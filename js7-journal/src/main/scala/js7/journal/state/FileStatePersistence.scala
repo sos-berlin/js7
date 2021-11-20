@@ -17,9 +17,9 @@ import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.journal.recover.Recovered
 import js7.journal.state.FileStatePersistence.logger
-import js7.journal.state.StateJournalingActor.{PersistFunction, StateToEvents}
+import js7.journal.state.StateJournalingActor.{PersistFunction, PersistLaterFunction, StateToEvents}
 import js7.journal.watch.FileEventWatch
-import js7.journal.{EventIdGenerator, JournalActor, StampedKeyedEventBus}
+import js7.journal.{CommitOptions, EventIdGenerator, JournalActor, StampedKeyedEventBus}
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.{Future, Promise}
@@ -49,6 +49,10 @@ extends StatePersistence[S] with AutoCloseable
 
   private val persistPromise = Promise[PersistFunction[S, Event]]()
   private val persistTask: Task[PersistFunction[S, Event]] = Task.fromFuture(persistPromise.future)
+
+  private val persistLaterPromise = Promise[PersistLaterFunction[Event]]()
+  private val persistLaterTask: Task[PersistLaterFunction[Event]] =
+    Task.fromFuture(persistLaterPromise.future)
 
   private val actorOnce = SetOnce[ActorRef]
   private val getCurrentState = SetOnce[() => S]
@@ -85,7 +89,8 @@ extends StatePersistence[S] with AutoCloseable
         }
         .tapEval(_ => Task {
           actorOnce := actorRefFactory.actorOf(
-            StateJournalingActor.props[S, Event](currentState, journalActor, journalConf, persistPromise),
+            StateJournalingActor.props[S, Event](currentState, journalActor, journalConf,
+              persistPromise, persistLaterPromise),
             encodeAsActorName("StateJournalingActor:" + S))
         })
     }
@@ -97,22 +102,35 @@ extends StatePersistence[S] with AutoCloseable
       Task.fromFuture(journalActorStopped)
     }.memoize
 
-  def persistKeyedEvent[E <: Event](keyedEvent: KeyedEvent[E]): Task[Checked[(Stamped[KeyedEvent[E]], S)]] = {
+  def persistKeyedEvent[E <: Event](
+    keyedEvent: KeyedEvent[E],
+    options: CommitOptions = CommitOptions.default)
+  : Task[Checked[(Stamped[KeyedEvent[E]], S)]] = {
     requireStarted()
-    persistEvent(key = keyedEvent.key)(_ => Right(keyedEvent.event))
+    persistEvent(key = keyedEvent.key, options)(_ => Right(keyedEvent.event))
   }
 
-  def persistEvent[E <: Event](key: E#Key): (S => Checked[E]) => Task[Checked[(Stamped[KeyedEvent[E]], S)]] = {
+  def persistKeyedEventLater[E <: Event](
+    keyedEvent: KeyedEvent[E],
+    options: CommitOptions = CommitOptions.default)
+  : Task[Checked[Unit]] =
+    persistLaterTask.flatMap(_(keyedEvent, options))
+
+  def persistEvent[E <: Event](key: E#Key, options: CommitOptions = CommitOptions.default)
+  : (S => Checked[E]) => Task[Checked[(Stamped[KeyedEvent[E]], S)]] = {
     requireStarted()
     stateToEvent => lock(key)(
       persistEventUnlocked(
-        stateToEvent.andThen(_.map(KeyedEvent(key, _)))))
+        stateToEvent.andThen(_.map(KeyedEvent(key, _))),
+        options))
   }
 
-  private def persistEventUnlocked[E <: Event](stateToEvent: S => Checked[KeyedEvent[E]])
+  private def persistEventUnlocked[E <: Event](
+    stateToEvent: S => Checked[KeyedEvent[E]],
+    options: CommitOptions = CommitOptions.default)
   : Task[Checked[(Stamped[KeyedEvent[E]], S)]] =
     persistTask
-      .flatMap(_(state => stateToEvent(state).map(_ :: Nil), /*transaction=*/false))
+      .flatMap(_(state => stateToEvent(state).map(_ :: Nil), options))
       .map(_ map {
         case (stampedKeyedEvents, state) =>
           assertThat(stampedKeyedEvents.lengthIs == 1)
@@ -122,7 +140,7 @@ extends StatePersistence[S] with AutoCloseable
   def persist[E <: Event](stateToEvents: S => Checked[Seq[KeyedEvent[E]]])
   : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] = {
     requireStarted()
-    persistUnlocked(stateToEvents, transaction = false)
+    persistUnlocked(stateToEvents, CommitOptions.default)
   }
 
   /** Persist multiple events in a transaction. */
@@ -134,14 +152,16 @@ extends StatePersistence[S] with AutoCloseable
         persistUnlocked(
           state => stateToEvents(state)
             .map(_.map(KeyedEvent[E](key, _))),
-          transaction = true))
+          CommitOptions(transaction = true)))
   }
 
-  private def persistUnlocked[E <: Event](stateToEvents: StateToEvents[S, E], transaction: Boolean)
+  private def persistUnlocked[E <: Event](
+    stateToEvents: StateToEvents[S, E],
+    options: CommitOptions)
   : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] = {
     requireStarted()
     persistTask.flatMap(
-      _(stateToEvents, transaction)
+      _(stateToEvents, options)
         .map(_.map { case (stampedKeyedEvents, state) =>
           stampedKeyedEvents.asInstanceOf[Seq[Stamped[KeyedEvent[E]]]] -> state }))
   }

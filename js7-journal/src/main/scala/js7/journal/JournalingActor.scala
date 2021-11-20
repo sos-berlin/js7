@@ -21,7 +21,6 @@ import monix.eval.Task
 import monix.execution.cancelables.SerialCancelable
 import monix.execution.{Cancelable, Scheduler}
 import scala.concurrent.duration.Deadline.now
-import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{Future, Promise}
 import scala.util.Success
 import scala.util.control.NonFatal
@@ -73,10 +72,10 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
   protected final def persistKeyedEventAcceptEarlyTask[EE <: E](
     keyedEvent: KeyedEvent[EE],
     timestampMillis: Option[Long] = None,
-    delay: FiniteDuration = ZeroDuration)
+    options: CommitOptions = CommitOptions.default)
   : Task[Checked[Accepted]] =
     promiseTask[Checked[Accepted]] { promise =>
-      self ! PersistAcceptEarly(keyedEvent, timestampMillis, delay, promise)
+      self ! PersistAcceptEarly(keyedEvent, timestampMillis, options, promise)
     }
 
   protected final def persistKeyedEvent[EE <: E, A](
@@ -92,9 +91,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
 
   protected final def persistKeyedEvents[EE <: E, A](
     timestamped: Seq[Timestamped[EE]],
-    transaction: Boolean = false,
-    delay: FiniteDuration = ZeroDuration,
-    alreadyDelayed: FiniteDuration = ZeroDuration,
+    options: CommitOptions = CommitOptions.default,
     async: Boolean = false)(
     callback: (Seq[Stamped[KeyedEvent[EE]]], S) => A)
   : Future[A] =
@@ -103,9 +100,8 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
       if (TraceLog && logger.underlying.isTraceEnabled)
         for (t <- timestamped) logger.trace(s"»$toString« Store ${t.keyedEvent.key} <-: ${typeName(t.keyedEvent.event.getClass)}")
       journalActor.forward(
-        JournalActor.Input.Store(timestamped, self, acceptEarly = false, transaction = transaction,
-          delay = delay, alreadyDelayed = alreadyDelayed, since = now,
-          EventsCallback[S](
+        JournalActor.Input.Store(timestamped, self, options, since = now,
+          callersItem = EventsCallback[S](
             async = async,
             (stampedSeq, journaledState) => promise.complete(
               try Success(callback(stampedSeq.asInstanceOf[Seq[Stamped[KeyedEvent[EE]]]], journaledState))
@@ -126,9 +122,8 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
   private def defer_(async: Boolean, callback: => Unit): Unit = {
     start(async = async, "defer")
     journalActor.forward(
-      JournalActor.Input.Store(Nil, self, acceptEarly = false, transaction = false,
-        delay = ZeroDuration, alreadyDelayed = ZeroDuration, since = now,
-        Deferred(async = async, {
+      JournalActor.Input.Store(Nil, self, CommitOptions.default, since = now,
+        callersItem = Deferred(async = async, {
           case Left(problem) => throw problem.throwable.appendCurrentStackTrace
           case Right(Accepted) => callback
         })))
@@ -153,12 +148,11 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
             case t: Throwable => throw t.appendCurrentStackTrace
           }))
 
-    case PersistAcceptEarly(keyedEvent, timestampMillis, delay, promise) =>
+    case PersistAcceptEarly(keyedEvent, timestampMillis, options, promise) =>
       start(async = true, "persistKeyedEventAcceptEarlyTask")
       val timestamped = Timestamped(keyedEvent, timestampMillis) :: Nil
       journalActor.forward(
-        JournalActor.Input.Store(timestamped, self, acceptEarly = true, transaction = false,
-          delay = delay, alreadyDelayed = ZeroDuration, since = now,
+        JournalActor.Input.Store(timestamped, self, options, since = now, commitLater = true,
           Deferred(async = true, checked => promise.success(checked))))
 
     case JournalActor.Output.Stored(stampedSeq, journaledState, item: Item) =>
@@ -268,7 +262,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
   private case class PersistAcceptEarly[A](
     keyedEvent: KeyedEvent[E],
     timestampMillis: Option[Long],
-    delay: FiniteDuration,
+    options: CommitOptions,
     promise: Promise[Checked[A]])
 
   private class PersistStatistics {

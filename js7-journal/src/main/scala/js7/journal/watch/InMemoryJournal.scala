@@ -6,16 +6,19 @@ import js7.base.utils.BinarySearch.binarySearch
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{AsyncLock, CloseableIterator}
 import js7.data.event.{Event, EventId, JournalInfo, JournaledState, KeyedEvent, Stamped}
-import js7.journal.EventIdGenerator
 import js7.journal.log.JournalLogger
 import js7.journal.log.JournalLogger.SimpleLoggable
+import js7.journal.state.StatePersistence
 import js7.journal.watch.InMemoryJournal._
+import js7.journal.{CommitOptions, EventIdGenerator}
 import monix.eval.Task
 import scala.concurrent.duration.Deadline.now
 
-final class InMemoryJournal[S <: JournaledState[S]](initial: S, eventIdGenerator: EventIdGenerator)
-  (implicit S: JournaledState.Companion[S])
-extends RealEventWatch
+final class InMemoryJournal[S <: JournaledState[S]](
+  initial: S,
+  eventIdGenerator: EventIdGenerator)
+  (implicit protected val S: JournaledState.Companion[S])
+extends StatePersistence[S] with RealEventWatch
 {
   // TODO Use AsyncLock instead of synchronized
   private val lock = AsyncLock("InMemoryJournal")
@@ -33,6 +36,8 @@ extends RealEventWatch
 
   def waitUntilStarted = Task.unit
 
+  def eventWatch = this
+
   protected def isActiveNode = true
 
   def tornEventId = _tornEventId
@@ -48,10 +53,19 @@ extends RealEventWatch
   def currentState: S =
     _state
 
-  def persistKeyedEvent[E <: Event](keyedEvent: KeyedEvent[E])
+  def persistKeyedEvent[E <: Event](
+    keyedEvent: KeyedEvent[E],
+    options: CommitOptions = CommitOptions.default)
   : Task[Checked[(Stamped[KeyedEvent[E]], S)]] =
     persistKeyedEvents(keyedEvent :: Nil)
       .map(_.map { case (events, s) => events.head -> s })
+
+  def persistKeyedEventLater[E <: Event](
+    keyedEvent: KeyedEvent[E],
+    options: CommitOptions = CommitOptions.default)
+  : Task[Checked[Unit]] =
+    persistKeyedEvent(keyedEvent, options)
+      .rightAs(())
 
   def persistKeyedEvents[E <: Event](keyedEvents: Seq[KeyedEvent[E]])
   : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =

@@ -72,7 +72,7 @@ import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow}
 import js7.journal.recover.Recovered
 import js7.journal.state.FileStatePersistence
-import js7.journal.{JournalActor, MainJournalingActor}
+import js7.journal.{CommitOptions, JournalActor, MainJournalingActor}
 import monix.eval.Task
 import monix.execution.cancelables.SerialCancelable
 import monix.execution.{Cancelable, Scheduler}
@@ -535,7 +535,9 @@ with MainJournalingActor[ControllerState, Event]
                     // (switch from actors to Task required!)
                   case _ =>
                     committedPromise.completeWith(
-                      persistTransactionTimestamped(timestampedEvents, alreadyDelayed = agentDriverConfiguration.eventBufferDelay) {
+                      persistTransactionTimestamped(timestampedEvents,
+                        CommitOptions(alreadyDelayed = agentDriverConfiguration.eventBufferDelay))
+                      {
                         (stampedEvents, updatedState) =>
                           handleEvents(stampedEvents, updatedState)
                           Some(agentEventId)

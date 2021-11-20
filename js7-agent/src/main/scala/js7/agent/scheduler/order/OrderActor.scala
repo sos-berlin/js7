@@ -24,7 +24,7 @@ import js7.data.order.{Order, OrderEvent, OrderId, OrderMark, Outcome}
 import js7.data.value.expression.Expression
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.journal.configuration.JournalConf
-import js7.journal.{JournalActor, KeyedJournalingActor}
+import js7.journal.{CommitOptions, JournalActor, KeyedJournalingActor}
 import js7.launcher.StdObservers
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -293,7 +293,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
         Accepted
       }.map(_.orThrow)
     else
-      persistAcceptEarlyTask(OrderStdWritten(t)(chunk), delay = stdoutCommitDelay)
+      persistAcceptEarlyTask(OrderStdWritten(t)(chunk), CommitOptions(delay = stdoutCommitDelay))
         .map(_.orThrow)
       // Don't wait for disk-sync. OrderStdWritten is followed by a OrderProcessed, then waiting for disk-sync.
 

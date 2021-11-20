@@ -162,7 +162,7 @@ extends Actor with Stash with JournalLogging
     logger.info(s"Ready, writing ${if (conf.syncOnCommit) "(with sync)" else "(without sync)"} journal file '${eventWriter.file.getFileName}'")
 
   private def ready: Receive = receiveGet orElse {
-    case Input.Store(timestamped, replyTo, acceptEarly, transaction, delay, alreadyDelayed, since, callersItem) =>
+    case Input.Store(timestamped, replyTo, options, since, commitLater, callersItem) =>
       if (switchedOver) {
         for (o <- timestamped) {
           logger.debug(s"Event ignored while active cluster node is switching over: ${o.keyedEvent.toString.truncateWithEllipsis(200)}")
@@ -183,13 +183,13 @@ extends Actor with Stash with JournalLogging
           case Right(updatedState) =>
             uncommittedState = updatedState
             checkUncommittedState(stampedEvents)
-            eventWriter.writeEvents(stampedEvents, transaction = transaction)
+            eventWriter.writeEvents(stampedEvents, transaction = options.transaction)
             val lastFileLengthAndEventId = stampedEvents.lastOption.map(o => PositionAnd(eventWriter.fileLength, o.eventId))
             for (o <- lastFileLengthAndEventId) {
               lastWrittenEventId = o.value
             }
             // TODO Handle serialization (but not I/O) error? writeEvents is not atomic.
-            if (acceptEarly && !requireClusterAcknowledgement/*? irrelevant because acceptEarly is not used in a Cluster for now*/) {
+            if (commitLater && !requireClusterAcknowledgement/*? irrelevant because acceptEarly is not used in a Cluster for now*/) {
               reply(sender(), replyTo, Output.Accepted(callersItem))
               persistBuffer.add(
                 AcceptEarlyPersist(totalEventCount + 1, stampedEvents.size, since,
@@ -199,7 +199,7 @@ extends Actor with Stash with JournalLogging
               // Ergibt falsche Reihenfolge mit dem anderen Aufruf: logCommitted(flushed = false, synced = false, stampedEvents)
             } else {
               persistBuffer.add(
-                StandardPersist(totalEventCount + 1, stampedEvents, transaction, since,
+                StandardPersist(totalEventCount + 1, stampedEvents, options.transaction, since,
                   lastFileLengthAndEventId, replyTo, sender(), callersItem))
             }
             totalEventCount += stampedEvents.size
@@ -234,7 +234,7 @@ extends Actor with Stash with JournalLogging
                   // TODO coalesce-event-limit has no effect in cluster mode, persistBuffer does not shrink
                   commit()
                 } else {
-                  forwardCommit((delay max conf.delay) - alreadyDelayed)
+                  forwardCommit((options.delay max conf.delay) - options.alreadyDelayed)
                 }
             }
           }
@@ -713,18 +713,19 @@ object JournalActor
       journalingObserver: Option[JournalingObserver],
       recoveredJournalHeader: JournalHeader,
       totalRunningSince: Deadline)
+
     final case class StartWithoutRecovery[S <: SnapshotableState[S]](
       journalId: JournalId,
       journalingObserver: Option[JournalingObserver] = None)
+
     private[journal] final case class Store(
       timestamped: Seq[Timestamped],
       journalingActor: ActorRef,
-      acceptEarly: Boolean,
-      transaction: Boolean,
-      delay: FiniteDuration,
-      alreadyDelayed: FiniteDuration,
+      options: CommitOptions,
       since: Deadline,
+      commitLater: Boolean = false,
       callersItem: CallersItem)
+
     final case object TakeSnapshot
     final case class PassiveNodeAcknowledged(eventId: EventId)
     final case class PassiveLost(passiveLost: ClusterPassiveLost)

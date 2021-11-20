@@ -2,12 +2,10 @@ package js7.journal
 
 import js7.base.generic.Accepted
 import js7.base.problem.Checked
-import js7.base.time.ScalaTime.ZeroDuration
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.data.event.{Event, JournaledState, KeyedEvent, Stamped}
 import monix.eval.Task
 import scala.concurrent.Future
-import scala.concurrent.duration.FiniteDuration
 
 /**
   * @author Joacim Zschimmer
@@ -27,14 +25,19 @@ trait KeyedJournalingActor[S <: JournaledState[S], E <: Event]
     }
 
   /** Fast lane for events not affecting the journaled state. */
-  protected final def persistAcceptEarlyTask[EE <: E, A](event: EE, delay: FiniteDuration = ZeroDuration)
+  protected final def persistAcceptEarlyTask[EE <: E, A](
+    event: EE,
+    options: CommitOptions = CommitOptions.default)
   : Task[Checked[Accepted]] =
-    super.persistKeyedEventAcceptEarlyTask(KeyedEvent(key, event), delay = delay)
+    super.persistKeyedEventAcceptEarlyTask(KeyedEvent(key, event), options = options)
 
   protected final def persistTransaction[EE <: E, A](events: Seq[EE], async: Boolean = false)
     (callback: (Seq[EE], S) => A)
   : Future[A] =
-    super.persistKeyedEvents(events.map(e => Timestamped(KeyedEvent(key, e))), async = async, transaction = true) {
+    super.persistKeyedEvents(
+      events.map(e => Timestamped(KeyedEvent(key, e))),
+      CommitOptions(transaction = true),
+      async = async) {
       (stampedEvents, journaledState) => callback(stampedEvents.map(_.value.event.asInstanceOf[EE]), journaledState)
     }
 
