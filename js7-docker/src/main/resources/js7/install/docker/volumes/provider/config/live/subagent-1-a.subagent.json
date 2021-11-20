@@ -1,0 +1,6 @@
+{
+  "TYPE": "SubagentRef",
+  "id": "subagent-1-a",
+  "agentPath": "agent-1",
+  "uri": "https://subagent-1-a:4443"
+}

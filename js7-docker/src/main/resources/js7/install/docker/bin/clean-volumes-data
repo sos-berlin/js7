@@ -3,7 +3,7 @@ set -euo pipefail
 
 cd "$(cd "$(realpath "${0%/*}")"/../../build/bin/../.. && pwd)"
 
-rm -rf volumes/{controller,backup-controller,provider,agent-1,agent-2}/data/*
+rm -rf volumes/{controller,backup-controller,provider,subagent-1-a,subagent-1-b,subagent-2-a}/data/*
 rm -rf volumes/testControllerAgent/controller/data/*
 rm -rf volumes/testControllerAgent/AGENT-*/data/*
 

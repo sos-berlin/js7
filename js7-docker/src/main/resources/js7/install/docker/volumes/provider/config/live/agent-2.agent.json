@@ -1,0 +1,5 @@
+{
+  "TYPE": "AgentRef",
+  "path": "agent-2",
+  "directors": ["subagent-2-a"]
+}

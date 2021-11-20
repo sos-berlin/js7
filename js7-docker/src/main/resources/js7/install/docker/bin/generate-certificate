@@ -121,8 +121,9 @@ extendedKeyUsage = clientAuth
   if $install; then
     generateCertificate --dns --host=controller --cn="JS7 Example Primary Controller"
     generateCertificate --dns --host=backup-controller --cn="JS7 Example Backup Controller"
-    generateCertificate --dns --host=agent-1 --cn="JS7 Example Agent 1"
-    generateCertificate --dns --host=agent-2 --cn="JS7 Example Agent 2"
+    generateCertificate --dns --host=subagent-1-a --cn="JS7 Example subagent-1-a"
+    generateCertificate --dns --host=subagent-1-b --cn="JS7 Example subagent-1-b"
+    generateCertificate --dns --host=subagent-2-a --cn="JS7 Example subagent-2-a"
     generateCertificate --dns --host=provider --cn="JS7 Example Provider"
   fi
   if [ -n "$client" ]; then
@@ -131,7 +132,7 @@ extendedKeyUsage = clientAuth
 )
 
 if $install; then
-  for host in controller backup-controller provider agent-1 agent-2; do
+  for host in controller backup-controller provider subagent-1-a subagent-1-b subagent-2-a; do
     dir="volumes/$host/config/private"
     echo "$dir/https-keystore.p12"
     [ -d "$dir" ] || mkdir "$dir"

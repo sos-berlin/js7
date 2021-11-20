@@ -8,10 +8,7 @@ privateKeyFile=volumes/provider/config/private/private-pgp-key.asc
 controllerPublicKeyFile=volumes/controller/config/private/trusted-pgp-keys/test.asc
 passphrase="PGP-PASSWORD"
 
-mkdir -p volumes/controller/config/private/trusted-pgp-keys
-mkdir -p volumes/backup-controller/config/private/trusted-pgp-keys
-mkdir -p volumes/agent-1/config/private/trusted-pgp-keys
-mkdir -p volumes/agent-2/config/private/trusted-pgp-keys
+mkdir -p volumes/{controller,backup-controller,subagent-1-a,subagent-1-b,subagent-2-a}/config/private/trusted-pgp-keys
 
 umask go-rwx
 
@@ -49,7 +46,7 @@ EOF
   fi
 fi
 
-for a in volumes/backup-controller volumes/agent-*; do
+for a in volumes/backup-controller volumes/subagent-*; do
   cp -p "$controllerPublicKeyFile" "$a/config/private/trusted-pgp-keys/test.asc"
 done
 ls -ld "$privateKeyFile" volumes/*/config/private/trusted-pgp-keys/test.asc

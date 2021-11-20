@@ -2,7 +2,7 @@
 set -euo pipefail
 
 while true; do
-  docker-compose kill agent-1 || true
-  docker-compose start agent-1 || true
+  docker-compose kill subagent-1-a || true
+  docker-compose start subagent-1-a || true
   sleep $((2 ** (RANDOM / 5000)))
 done

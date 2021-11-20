@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration status="WARN" shutdownHook="disable" monitorInterval="10">
+  <properties>
+    <property name="logDirectory">${sys:js7.log4j.directory:-logs}</property>
+  </properties>
+
+  <appenders>
+    <console name="stderr" target="SYSTEM_ERR">
+      <patternLayout pattern="%highlight{%d{DEFAULT} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message}{INFO=blue,WARN=red bold}%n"/>
+    </console>
+
+    <rollingRandomAccessFile name="file-info"
+                             fileName="${logDirectory}/agent.log"
+                             filePattern="${logDirectory}/agent-%d{yyyy-MM-dd}-%i.log.gz"
+                             immediateFlush="${sys:js7.log4j.immediateFlush:-true}">
+      <patternLayout pattern="%d{DEFAULT_MICROS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message%n"
+                     charset="UTF-8"/>
+      <policies>
+        <onStartupTriggeringPolicy/>
+        <timeBasedTriggeringPolicy/>
+        <sizeBasedTriggeringPolicy size="1GB"/>
+      </policies>
+      <defaultRolloverStrategy fileIndex="nomax">
+        <delete basePath="${logDirectory}">
+          <ifFileName glob="agent-*.log.gz"/>
+          <ifAny>
+            <ifLastModified age="8d"/>
+            <ifAccumulatedFileSize exceeds="2GB"/>
+          </ifAny>
+        </delete>
+      </defaultRolloverStrategy>
+    </rollingRandomAccessFile>
+
+    <rollingRandomAccessFile name="file-debug"
+                             fileName="${logDirectory}/agent-debug.log"
+                             filePattern="${logDirectory}/agent-debug-%d{yyyy-MM-dd}-%i.log.gz"
+                             immediateFlush="${sys:js7.log4j.immediateFlush:-true}">
+      <patternLayout pattern="%d{DEFAULT_MICROS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message%n"
+                     charset="UTF-8"/>
+      <policies>
+        <onStartupTriggeringPolicy/>
+        <timeBasedTriggeringPolicy/>
+        <sizeBasedTriggeringPolicy size="1GB"/>
+      </policies>
+      <defaultRolloverStrategy fileIndex="nomax">
+        <delete basePath="${logDirectory}">
+          <ifFileName glob="agent-debug-*.log.gz"/>
+          <ifAny>
+            <ifLastModified age="8d"/>
+            <ifAccumulatedFileSize exceeds="2GB"/>
+          </ifAny>
+        </delete>
+      </defaultRolloverStrategy>
+    </rollingRandomAccessFile>
+  </appenders>
+
+  <loggers>
+    <root level="info">
+      <!-- The appenderRef levels do not prevent loggers from logging and increasing CPU usage !!! -->
+      <appenderRef level="warn"  ref="stderr"/>
+      <appenderRef level="info"  ref="file-info"/>
+      <appenderRef level="trace" ref="file-debug"/>
+    </root>
+    <logger level="warn" name="akka.event.slf4j.Slf4jLogger"/>
+    <logger level="debug" name="js7"/>
+
+    <!--
+    <logger level="trace" name="js7.journal.JournalActor"/>
+    <logger level="trace" name="js7.journal.cluster"/>
+    -->
+  </loggers>
+</configuration>

@@ -62,10 +62,10 @@ object TestDockerExample
     provide("controller/config/private/private.conf")
     provide("provider/config/live/მაგალითად.workflow.json")
     provide("provider/config/order-generators/test.order.xml")
-    provide("agent-1/config/private/private.conf")
-    provide("agent-1/config/executables/test")
-    provide("agent-2/config/private/private.conf")
-    provide("agent-2/config/executables/exit-7")
+    provide("agent-a/config/private/private.conf")
+    provide("agent-a/config/executables/test")
+    provide("agent-b-1/config/private/private.conf")
+    provide("agent-b-1/config/executables/exit-7")
     env.controllerDir / "config" / "controller.conf" := """js7.web.server.auth.loopback-is-public = on"""
     withCloser { implicit closer =>
       val controllerConfiguration = ControllerConfiguration.forTest(configAndData = env.controllerDir, httpPort = Some(4444))

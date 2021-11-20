@@ -41,4 +41,4 @@ ENV PATH /home/js7/bin:/usr/local/bin:/usr/bin:/bin
 USER js7
 
 # Possible start:
-# docker run --publish=4444:4444 -ti --tag=js7-agent js7 agent
+# docker run --publish=4444:4444 -ti --tag=js7-subagent js7 agent

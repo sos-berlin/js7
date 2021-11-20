@@ -15,8 +15,8 @@ services:
         - UID
     image: js7
     container_name: js7-controller
-    command: ["js7-controller", "-J-Xmx200m"]
     hostname: controller
+    command: ["js7-controller", "-J-Xmx200m"]
     networks:
     - default
     ports:
@@ -26,9 +26,6 @@ services:
     volumes:
       - ./volumes/controller/config:/var/opt/js7/controller/config:ro
       - ./volumes/controller/data:/var/opt/js7/controller/data:delegated
-    depends_on:
-      - agent-1
-      - agent-2
     stop_grace_period: 10s
     restart: unless-stopped
 
@@ -39,8 +36,8 @@ services:
         - UID
     image: js7
     container_name: js7-backup-controller
-    command: ["js7-controller", "-J-Xmx200m"]
     hostname: backup-controller
+    command: ["js7-controller", "-J-Xmx200m"]
     networks:
     - default
     #ports:
@@ -55,34 +52,46 @@ services:
   provider:
     image: js7
     container_name: js7-provider
-    command: ["js7-provider", "-J-Xmx100m", "--controller-uri=https://controller:4443"]
     hostname: provider
+    command: ["js7-provider", "-J-Xmx100m", "--controller-uri=https://controller:4443"]
     working_dir: /var/opt/js7/provider/data
     volumes:
       - ./volumes/provider/config:/var/opt/js7/provider/config:ro
       - ./volumes/provider/data:/var/opt/js7/provider/data:delegated
     restart: unless-stopped
 
-  agent-1:
+  subagent-1-a:
     image: js7
-    container_name: js7-agent-1
-    command: ["js7-agent", "-J-Xmx200m"]
-    hostname: agent-1
+    container_name: js7-subagent-1-a
+    hostname: subagent-1-a
+    command: ["js7-subagent", "-J-Xmx200m"]
     working_dir: /var/opt/js7/agent/data
     volumes:
-      - ./volumes/agent-1/config:/var/opt/js7/agent/config:ro
-      - ./volumes/agent-1/data:/var/opt/js7/agent/data:delegated
+      - ./volumes/subagent-1-a/config:/var/opt/js7/agent/config:ro
+      - ./volumes/subagent-1-a/data:/var/opt/js7/agent/data:delegated
     stop_grace_period: 10s
     restart: unless-stopped
 
-  agent-2:
+  subagent-1-b:
     image: js7
-    container_name: js7-agent-2
-    command: ["js7-agent", "-J-Xmx200m"]
-    hostname: agent-2
+    container_name: js7-subagent-1-b
+    hostname: subagent-1-b
+    command: ["js7-subagent", "-J-Xmx200m"]
     working_dir: /var/opt/js7/agent/data
     volumes:
-      - ./volumes/agent-2/config:/var/opt/js7/agent/config:ro
-      - ./volumes/agent-2/data:/var/opt/js7/agent/data:delegated
+      - ./volumes/subagent-1-b/config:/var/opt/js7/agent/config:ro
+      - ./volumes/subagent-1-b/data:/var/opt/js7/agent/data:delegated
+    stop_grace_period: 10s
+    restart: unless-stopped
+
+  subagent-2-a:
+    image: js7
+    container_name: js7-subagent-2-a
+    hostname: subagent-2-a
+    command: ["js7-subagent", "-J-Xmx200m"]
+    working_dir: /var/opt/js7/agent/data
+    volumes:
+      - ./volumes/subagent-2-a/config:/var/opt/js7/agent/config:ro
+      - ./volumes/subagent-2-a/data:/var/opt/js7/agent/data:delegated
     stop_grace_period: 10s
     restart: unless-stopped

@@ -18,22 +18,20 @@ import monix.reactive.Observable
 
 final class Feed(controllerApi: ControllerApi, settings: Settings)
 {
-  def run(in: Resource[Task, InputStream]): Task[Checked[Completed]] = {
-    in.use { in =>
+  def run(in: Resource[Task, InputStream]): Task[Checked[Completed]] =
+    in.use(in =>
       Task {
-        implicit val jsonCodec = Feed.opJsonCodec
+        implicit val x = Feed.opJsonCodec
         ByteArray.fromInputStreamUnlimited(in).utf8String.parseJsonAs[Vector[Any]]
-      } .flatMapT { ops =>
-          val itemOperations = Observable.fromIterable(ops.map(_.asInstanceOf[ItemOperation]))
-          controllerApi.updateItems(itemOperations)
-        }
-    }
-  }
+      }.flatMapT(ops =>
+        controllerApi.updateItems(Observable
+          .fromIterable(ops)
+          .map(_.asInstanceOf[ItemOperation]))))
 }
 
 object Feed
 {
-  def run(in: Resource[Task, InputStream], settings: Settings): Task[Checked[Completed]] = {
+  def run(in: Resource[Task, InputStream], settings: Settings): Task[Checked[Completed]] =
     Akkas.actorSystemResource("Feed")
       .flatMap(actorSystem =>
         ControllerApi.resource(
@@ -42,7 +40,6 @@ object Feed
         val feed = new Feed(controllerApi, settings)
         feed.run(in)
       }
-  }
 
   val opJsonCodec = {
     import ControllerState._
