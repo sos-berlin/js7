@@ -88,24 +88,6 @@ final case class Repo private(
         }
       }
 
-  private def diffCurrentVersion(base: Repo): Seq[RepoChange] = {
-    // Optimized for small differences (less materialization, more views)
-    val added = currentItems.view
-      .filter(o => !base.exists(o.path))
-      .map(o => o.path -> o)
-      .toMap[VersionedItemPath, VersionedItem]
-    val updated = currentItems.view
-      .filter(o => base.isCurrentItem(o.key))
-    val removed = base.currentItems.view
-      .map(_.path)
-      .filter(path => !exists(path) && !added.contains(path))
-    (removed.map(RepoChange.Removed.apply) ++
-      updated.map(RepoChange.Changed.apply) ++
-      added.values.view.map(RepoChange.Added.apply)
-    ).toVector
-      .sortBy(_.path)
-  }
-
   private def checkItemVersions(versionId: VersionId, signedItems: Seq[Signed[VersionedItem]])
   : Checked[Seq[Signed[VersionedItem]]] =
     signedItems.traverse(o =>
@@ -197,22 +179,24 @@ final case class Repo private(
             pathToVersionToSignedItems - id.path
           else
             pathToVersionToSignedItems + (id.path -> updatedEntries.view.reverse.toList),
-      ).deleteEmptyVersions(
-        versionIds = reverseEntries
-          .view
-          .take(reverseEntries.length - updatedEntries.length)
-          .map(_.versionId)
-          .concat(id.versionId :: Nil)
-          .toSet)
+      ).deleteEmptyVersions(reverseEntries
+        .view.map(_.versionId)
+        .filterNot(updatedEntries.view.map(_.versionId).toSet))
     }
 
-  private def deleteEmptyVersions(versionIds: Set[VersionId]): Repo =
-    if (pathToVersionToSignedItems.forall(_._2.forall(entry => !versionIds(entry.versionId))))
+  private def deleteEmptyVersions(versionIdCandidates: View[VersionId]): Repo = {
+    val versionIds = versionIdCandidates.filterNot(usedVersions).toSet
+    if (versionIds.nonEmpty &&
+      pathToVersionToSignedItems.forall(_._2.forall(entry => !versionIds(entry.versionId))))
       copy(
         versions = versions.filterNot(versionIds),
         versionSet = versionSet -- versionIds)
     else
       this
+  }
+
+  private def usedVersions: Set[VersionId] =
+    pathToVersionToSignedItems.values.flatMap(_.map(_.versionId)).toSet
 
   def applyEvents(events: Iterable[VersionedEvent]): Checked[Repo] = {
     var result = Checked(this)
