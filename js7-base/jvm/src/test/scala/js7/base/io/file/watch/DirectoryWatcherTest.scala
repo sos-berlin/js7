@@ -18,7 +18,6 @@ import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import monix.reactive.subjects.PublishSubject
 import org.scalatest.freespec.AnyFreeSpec
-import scala.collection.mutable
 import scala.concurrent.Promise
 import scala.math.Ordering.Int
 
@@ -82,13 +81,13 @@ final class DirectoryWatcherTest extends AnyFreeSpec
   "observe" in {
     withTemporaryDirectory("DirectoryWatcherTest-") { dir =>
       val options = WatchOptions.forTest(dir, Set(ENTRY_CREATE, ENTRY_DELETE))
-      val buffer = mutable.Buffer[Set[DirectoryEvent]]()
+      var buffer = Vector.empty[Set[DirectoryEvent]]
       val subscribed = Promise[Unit]()
       val stop = PublishSubject[Unit]()
       val whenObserved = DirectoryWatcher.observable(DirectoryState.empty, options)
         .doOnSubscribe(Task(subscribed.success(())))
         .takeUntil(stop)
-        .foreach(buffer += _.toSet)
+        .foreach(buffer :+= _.toSet)
       subscribed.future await 99.s
       assert(buffer.isEmpty)
       touchFile(dir / "TEST-1")
@@ -103,7 +102,7 @@ final class DirectoryWatcherTest extends AnyFreeSpec
     withTemporaryDirectory("DirectoryWatcherTest-") { mainDir =>
       val dir = mainDir / "DIRECTORY"
       val options = WatchOptions.forTest(dir, Set(ENTRY_CREATE, ENTRY_DELETE), pollTimeout = 100.ms)
-      val buffer = mutable.Buffer[DirectoryEvent]()
+      var buffer = Vector.empty[DirectoryEvent]
       val subscribed = Promise[Unit]()
       val stop = PublishSubject[Unit]()
       val whenObserved = DirectoryWatcher.observable(DirectoryState.empty, options)
@@ -133,18 +132,18 @@ final class DirectoryWatcherTest extends AnyFreeSpec
   "Starting observation under load" in {
     withTemporaryDirectory("DirectoryWatcherTest-") { dir =>
       val options = WatchOptions.forTest(dir, Set(ENTRY_CREATE, ENTRY_DELETE))
-      val buffer = mutable.Buffer[Seq[DirectoryEvent]]()
+      var buffer = Vector.empty[Seq[DirectoryEvent]]
       val whenObserved = DirectoryWatcher.observable(DirectoryState.empty, options)
-        .foreach(o => synchronized { buffer += o })
+        .foreach(buffer :+= _)
       var first = 0
 
       for (n <- Seq(1000, 1, 10, 500, 3, 50)) {
-        buffer.clear()
+        buffer = Vector.empty
         val indices = first + 0 until first + n
         val fileCreationFuture = Observable.fromIterable(indices).executeAsync.foreach { i =>
           touchFile(dir / i.toString)
         }
-        waitForCondition(99.s, 10.ms)(synchronized(buffer.view.map(_.size).sum) == indices.size)
+        waitForCondition(99.s, 10.ms)(buffer.view.map(_.size).sum == indices.size)
         fileCreationFuture.await(100.ms)
 
         assert(buffer.flatten.sortBy(_.relativePath.getFileName.toString.toInt) ==
