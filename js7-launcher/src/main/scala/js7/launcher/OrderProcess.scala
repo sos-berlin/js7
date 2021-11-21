@@ -1,6 +1,6 @@
 package js7.launcher
 
-import js7.base.problem.Checked
+import js7.base.problem.{Checked, Problem}
 import js7.base.utils.SetOnce
 import js7.data.order.Outcome
 import js7.data.value.NamedValues
@@ -36,8 +36,6 @@ trait OrderProcess
       onStarted(future)
       future
     }
-
-  // TODO def cancel(immediately: Boolean) here ?
 }
 
 object OrderProcess
@@ -59,6 +57,18 @@ object OrderProcess
 
     override def toString =
       "OrderProcess.Simple"
+  }
+
+  final case class Failed(problem: Problem)
+  extends OrderProcess
+  {
+    protected def run: Task[Fiber[Outcome.Completed]] =
+      Task.pure(Fiber(
+        Task.pure(Outcome.Failed.fromProblem(problem)),
+        cancel = Task.unit))
+
+    def cancel(immediately: Boolean) =
+      Task.unit
   }
 
   trait FutureCancelling extends OrderProcess

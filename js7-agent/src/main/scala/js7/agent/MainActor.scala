@@ -16,7 +16,7 @@ import js7.common.akkautils.CatchingSupervisorStrategy
 import js7.common.guice.GuiceImplicits.RichInjector
 import js7.core.command.CommandMeta
 import js7.journal.recover.Recovered
-import js7.journal.state.{FileStatePersistence, StatePersistence}
+import js7.journal.state.FileStatePersistence
 import monix.execution.Scheduler
 import scala.concurrent.Promise
 import scala.util.control.NoStackTrace
@@ -38,12 +38,12 @@ extends Actor {
   override val supervisorStrategy = CatchingSupervisorStrategy(terminationPromise)
 
   private implicit val scheduler = injector.instance[Scheduler]
-  private val agentActor = watch(
-    actorOf(
-      Props {
-        injector.instance[AgentActor.Factory].apply(persistence, terminationPromise)
-      },
-      "agent"))
+  private val agentActor = watch(actorOf(
+    Props {
+      injector.instance[AgentActor.Factory]
+        .apply(persistence, terminationPromise)
+    },
+    "agent"))
   private val agentHandle = new AgentHandle(agentActor)(akkaAskTimeout)
 
   private val commandHandler = injector.option[CommandHandler] getOrElse { // Only tests bind a CommandHandler

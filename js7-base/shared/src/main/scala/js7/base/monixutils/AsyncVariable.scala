@@ -26,6 +26,14 @@ final class AsyncVariable[V](initial: V)
         checked
       })
 
+  def updateWithResult[R](update: V => Task[(V, R)]): Task[R] =
+    lock.lock(
+      update(_value)
+        .map { case (v, r) =>
+          _value = v
+          r
+        })
+
   def updateCheckedWithResult[R](update: V => Task[Checked[(V, R)]]): Task[Checked[R]] =
     lock.lock(
       update(_value)

@@ -16,9 +16,8 @@ import js7.base.utils.Tests.isTest
 import js7.cluster.ClusterConf
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.commandline.CommandLineArguments
-import js7.common.configuration.Js7Configuration
+import js7.common.configuration.{CommonConfiguration, Js7Configuration}
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import js7.core.configuration.CommonConfiguration
 import js7.data.controller.{ControllerId, ControllerState}
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta

@@ -2,7 +2,7 @@ package js7.agent.web
 
 import js7.agent.client.AgentClient
 import js7.agent.data.Problems.{AgentPathMismatchProblem, AgentRunIdMismatchProblem}
-import js7.agent.data.commands.AgentCommand.{CoupleController, DedicateAgent, ReleaseEvents, TakeSnapshot}
+import js7.agent.data.commands.AgentCommand.{CoupleController, DedicateAgentDirector, ReleaseEvents, TakeSnapshot}
 import js7.agent.data.event.AgentEvent.AgentReady
 import js7.agent.tests.AgentTester
 import js7.agent.tests.TestAgentDirectoryProvider._
@@ -18,6 +18,7 @@ import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
 import js7.data.event.{Event, EventId, EventRequest, EventSeq, EventSeqTornProblem, JournalEvent, JournalId}
 import js7.data.problems.UnknownEventIdProblem
+import js7.data.subagent.SubagentId
 import js7.journal.files.JournalFiles.listJournalFiles
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
@@ -40,9 +41,10 @@ final class EventRouteTest extends AnyFreeSpec with AgentTester
     agentClient.login().await(99.s)
   }
 
-  "(DedicateAgent)" in {
-    val DedicateAgent.Response(agentRunId, _) = agentClient
-      .commandExecute(DedicateAgent(agentPath, controllerId))
+  "(DedicateAgentDirector)" in {
+    val DedicateAgentDirector.Response(agentRunId, _) = agentClient
+      .commandExecute(
+        DedicateAgentDirector(Some(SubagentId("SUBAGENT")), controllerId, agentPath))
       .await(99.s).orThrow
     this.agentRunId = agentRunId
   }

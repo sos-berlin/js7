@@ -39,7 +39,8 @@ final class TerminateWithUnknownAgentTest extends AnyFreeSpec with ControllerAge
 
 private object TerminateWithUnknownAgentTest
 {
-  private val agentRef = AgentRef(AgentPath("UNKNOWN"), Uri(s"http://0.0.0.0:0"))
+  private val agentRef = AgentRef(AgentPath("UNKNOWN"), directors = Nil,
+    uri = Some(Uri(s"http://0.0.0.0:0")))
   private val workflow = Workflow.of(WorkflowPath("WORKFLOW"),
     EmptyJob.execute(agentRef.path))
 }

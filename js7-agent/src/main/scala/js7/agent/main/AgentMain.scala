@@ -16,6 +16,7 @@ import js7.common.system.startup.JavaMain.withShutdownHooks
 import js7.common.system.startup.JavaMainLockfileSupport.lockAndRunMain
 import js7.common.system.startup.StartUp
 import js7.common.system.startup.StartUp.printlnWithClock
+import js7.subagent.StandaloneSubagent
 import scala.concurrent.duration.{Deadline, Duration, NANOSECONDS}
 
 /**
@@ -29,7 +30,7 @@ final class AgentMain
 
   def run(arguments: CommandLineArguments): ProgramTermination = {
     // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
-    logger.info("JS7 JobScheduler Agent " + BuildInfo.longVersion +
+    logger.info("JS7 Agent " + BuildInfo.longVersion +
       "\n" + "━" * 80)  // In case, the previous file is appended
     logger.info(StartUp.startUpLine())
     logger.debug(arguments.toString)
@@ -37,12 +38,17 @@ final class AgentMain
     logger.info(s"config=${agentConfiguration.configDirectory} data=${agentConfiguration.dataDirectory}")
     logConfig(agentConfiguration.config)
     StartUp.logJavaSettings()
+
     var terminated = ProgramTermination()
-    autoClosing(RunningAgent(agentConfiguration).awaitInfinite) { agent =>
-      withShutdownHooks(agentConfiguration.config, "AgentMain", () => onJavaShutdown(agent)) {
-        terminated = agent.terminated.awaitInfinite
+    if (agentConfiguration.isStandaloneSubagent)
+      StandaloneSubagent.blockingRun(agentConfiguration.toSubagentConf)
+    else
+      autoClosing(RunningAgent(agentConfiguration).awaitInfinite) { agent =>
+        withShutdownHooks(agentConfiguration.config, "AgentMain", () => onJavaShutdown(agent)) {
+          terminated = agent.terminated.awaitInfinite
+        }
       }
-    }
+
     // Log complete timestamp in case of short log timestamp
     val msg = s"JS7 Agent terminates now"
     logger.info(msg)

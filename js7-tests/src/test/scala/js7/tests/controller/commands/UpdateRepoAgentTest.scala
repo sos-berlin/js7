@@ -15,7 +15,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.web.HttpClient.HttpException
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.RunningController
-import js7.data.agent.{AgentPath, AgentRef}
+import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderFinished
@@ -64,7 +64,9 @@ final class UpdateRepoAgentTest extends AnyFreeSpec
             httpPort = Some(port))
           ).await(99.s)
 
-          controller.updateUnsignedSimpleItemsAsSystemUser(Seq(AgentRef(agentPath, uri = agent2.localUri))).await(99.s).orThrow
+          controller.updateUnsignedSimpleItemsAsSystemUser(Seq(
+            provider.subagentRefs.head.copy(uri = agent2.localUri)
+          )).await(99.s).orThrow
           runOrder(controller, OrderId(s"🔵-$i"))
         }
       }

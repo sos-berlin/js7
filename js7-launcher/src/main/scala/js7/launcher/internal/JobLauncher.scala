@@ -7,7 +7,6 @@ import java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.system.OperatingSystem.isUnix
-import js7.base.thread.IOExecutor
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.job.{AbsolutePathExecutable, CommandLineExecutable, InternalExecutable, JobConf, JobResource, JobResourcePath, RelativePathExecutable, ShellScriptExecutable}
 import js7.data.value.expression.Scope.evalExpressionMap
@@ -47,10 +46,9 @@ object JobLauncher
     jobConf: JobConf,
     launcherConf: JobLauncherConf,
     pathToJobResource: JobResourcePath => Checked[JobResource])
-    (implicit scheduler: Scheduler, iox: IOExecutor)
-  : Checked[JobLauncher] = {
-    import jobConf.workflowJob
-    workflowJob.executable match {
+    (implicit scheduler: Scheduler)
+  : Checked[JobLauncher] =
+    jobConf.workflowJob.executable match {
       case executable: AbsolutePathExecutable =>
         if (!launcherConf.scriptInjectionAllowed)
           Left(SignedInjectionNotAllowed)
@@ -73,13 +71,13 @@ object JobLauncher
         if (!launcherConf.scriptInjectionAllowed)
           Left(SignedInjectionNotAllowed)
         else {
+          import launcherConf.iox
           lazy val scope = NowScope() |+| EnvScope
           for (jobArguments <- evalExpressionMap(executable.jobArguments, scope))
             yield new InternalJobLauncher(executable, jobConf, pathToJobResource, jobArguments,
               launcherConf.blockingJobScheduler, launcherConf.clock)
         }
     }
-  }
 
   private[launcher] def warnIfNotExecutable(file: Path): Unit =
     if (!exists(file)) {

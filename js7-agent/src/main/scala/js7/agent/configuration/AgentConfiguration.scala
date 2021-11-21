@@ -17,16 +17,18 @@ import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
 import js7.base.time.JavaTimeConverters._
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.utils.Tests.isTest
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.commandline.CommandLineArguments
-import js7.common.configuration.Js7Configuration
+import js7.common.configuration.CommonConfiguration
+import js7.common.http.configuration.RecouplingStreamReaderConfs
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import js7.core.configuration.CommonConfiguration
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.launcher.configuration.{JobLauncherConf, ProcessKillScript}
 import js7.launcher.process.ProcessKillScriptProvider
+import js7.subagent.configuration.SubagentConf
 import monix.execution.schedulers.SchedulerService
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._
@@ -42,6 +44,7 @@ final case class AgentConfiguration(
   jobWorkingDirectory: Path = WorkingDirectory,
   defaultJobSigkillDelay: FiniteDuration,
   killScript: Option[ProcessKillScript],
+  isStandaloneSubagent: Boolean = false,
   implicit val akkaAskTimeout: Timeout,
   journalConf: JournalConf,
   name: String,
@@ -49,6 +52,8 @@ final case class AgentConfiguration(
 extends CommonConfiguration
 {
   require(jobWorkingDirectory.isAbsolute)
+
+  val recouplingStreamReaderConf = RecouplingStreamReaderConfs.fromConfig(config).orThrow
 
   private def withCommandLineArguments(a: CommandLineArguments): AgentConfiguration = {
     val common = CommonConfiguration.Common.fromCommandLineArguments(a)
@@ -113,11 +118,25 @@ extends CommonConfiguration
       workingDirectory = jobWorkingDirectory,
       killScript = killScript,
       scriptInjectionAllowed = scriptInjectionAllowed,
+      RecouplingStreamReaderConfs.fromConfig(config).orThrow,
       iox,
       blockingJobScheduler = blockingJobScheduler,
       clock)
 
   val journalMeta = JournalMeta(AgentState, stateDirectory / "agent")
+
+  def toSubagentConf =
+    SubagentConf(
+      configDirectory = configDirectory,
+      dataDirectory = dataDirectory,
+      logDirectory = logDirectory,
+      jobWorkingDirectory = jobWorkingDirectory,
+      webServerPorts,
+      defaultJobSigkillDelay = defaultJobSigkillDelay,
+      killScript,
+      akkaAskTimeout = akkaAskTimeout,
+      name = name,
+      config)
 
   // Suppresses Config (which may contain secrets)
   override def toString = s"AgentConfiguration($configDirectory,$dataDirectory,$webServerPorts," +
@@ -128,9 +147,10 @@ object AgentConfiguration
 {
   val DefaultName = if (isTest) "Agent" else "JS7"
   private val DelayUntilFinishKillScript = ProcessKillScript(EmptyPath)  // Marker for finish
-  lazy val DefaultConfig = Configs.loadResource(
-    JavaResource("js7/agent/configuration/agent.conf")
-  ).withFallback(Js7Configuration.defaultConfig)
+
+  val DefaultConfig = Configs
+    .loadResource(JavaResource("js7/agent/configuration/agent.conf"))
+    .withFallback(SubagentConf.defaultConfig)
 
   def fromCommandLine(arguments: CommandLineArguments, extraDefaultConfig: Config = ConfigFactory.empty) = {
     val common = CommonConfiguration.Common.fromCommandLineArguments(arguments)
@@ -156,6 +176,7 @@ object AgentConfiguration
       logDirectory = config.optionAs("js7.job.execution.log.directory")(asAbsolutePath) getOrElse defaultLogDirectory(dataDirectory),
       defaultJobSigkillDelay = config.getDuration("js7.job.execution.sigkill-delay").toFiniteDuration,
       killScript = Some(DelayUntilFinishKillScript),  // Changed later
+      isStandaloneSubagent = config.getBoolean("js7.subagent.is-standalone"),
       akkaAskTimeout = config.getDuration("js7.akka.ask-timeout").toFiniteDuration,
       journalConf = JournalConf.fromConfig(config),
       name = name,

@@ -3,10 +3,10 @@ package js7.data.agent
 import java.util.UUID
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Problem
-import js7.base.web.Uri
-import js7.data.event.{EventId, JournalId}
+import js7.data.event.JournalId
 import js7.data.item.ItemRevision
-import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
+import js7.data.subagent.SubagentId
+import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
 final class AgentRefStateTest extends AnyFreeSpec
@@ -14,7 +14,10 @@ final class AgentRefStateTest extends AnyFreeSpec
   "JSON" in {
     testJson(
       AgentRefState(
-        AgentRef(AgentPath("AGENT"), Uri("https://URI"), Some(ItemRevision(0))),
+        AgentRef(
+          AgentPath("AGENT"),
+          directors = Seq(SubagentId("SUBAGENT-1")),
+          itemRevision = Some(ItemRevision(0))),
         None,
         None,
         AgentRefState.Reset,
@@ -23,7 +26,7 @@ final class AgentRefStateTest extends AnyFreeSpec
       json"""{
         "agentRef": {
           "path": "AGENT",
-          "uri": "https://URI",
+          "directors": [ "SUBAGENT-1" ],
           "itemRevision": 0
         },
         "couplingState": {
@@ -36,19 +39,23 @@ final class AgentRefStateTest extends AnyFreeSpec
 
     testJson(
       AgentRefState(
-        AgentRef(AgentPath("AGENT"), Uri("https://URI"), Some(ItemRevision(0))),
+        AgentRef(
+          AgentPath("AGENT"),
+          directors = Seq(SubagentId("SUBAGENT-1")),
+          itemRevision = Some(ItemRevision(0))),
         Some(agentRunId),
-        None,
+        Some("UTC"),
         AgentRefState.Resetting(force = true),
         123L,
         Some(Problem("PROBLEM"))),
       json"""{
         "agentRef": {
           "path": "AGENT",
-          "uri": "https://URI",
+          "directors": [ "SUBAGENT-1" ],
           "itemRevision": 0
         },
         "agentRunId": "ABEiM0RVZneImaq7zN3u_w",
+        "timezone": "UTC",
         "couplingState": {
           "TYPE": "Resetting",
           "force": true
@@ -57,26 +64,6 @@ final class AgentRefStateTest extends AnyFreeSpec
         "problem": {
           "message": "PROBLEM"
         }
-      }""")
-
-    testJsonDecoder(
-      AgentRefState(
-        AgentRef(AgentPath("AGENT"), Uri("https://URI"), Some(ItemRevision(0))),
-        None,
-        None,
-        AgentRefState.Resetting(),
-        EventId.BeforeFirst,
-        None),
-      json"""{
-        "agentRef": {
-          "path": "AGENT",
-          "uri": "https://URI",
-          "itemRevision": 0
-        },
-        "couplingState": {
-          "TYPE": "Resetting"
-        },
-        "eventId": 0
       }""")
 
     testJson[AgentRefState.CouplingState](AgentRefState.Reset, json"""{ "TYPE": "Reset" }""")

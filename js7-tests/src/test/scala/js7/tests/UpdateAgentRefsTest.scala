@@ -7,6 +7,7 @@ import js7.agent.data.Problems.{AgentNotDedicatedProblem, AgentRunIdMismatchProb
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.{copyDirectory, deleteDirectoryContentRecursively, deleteDirectoryRecursively}
 import js7.base.problem.Checked._
+import js7.base.problem.Problem
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
@@ -20,6 +21,7 @@ import js7.data.item.BasicItemEvent.ItemDeleted
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVersion, DeleteSimple, RemoveVersioned}
 import js7.data.item.VersionId
 import js7.data.order.{FreshOrder, OrderId}
+import js7.data.subagent.{SubagentId, SubagentRef}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.UpdateAgentRefsTest._
 import js7.tests.jobs.EmptyJob
@@ -45,7 +47,9 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
 
   private lazy val agentPort1 :: agentPort2 :: agentPort3 :: Nil = findFreeTcpPorts(3)
   private lazy val agentFileTree = new DirectoryProvider.AgentTree(directoryProvider.directory,
-    agentPath, "AGENT", agentPort1, config = agentConfig)
+    agentPath, SubagentId(agentPath.string + "-0"), "AGENT",
+    agentPort1, config = agentConfig)
+  private val subagentId = agentFileTree.localSubagentId
   private lazy val controller = directoryProvider.startController() await 99.s
   private lazy val controllerApi = newControllerApi(controller, Some(directoryProvider.controller.userAndPassword))
   private var agent: RunningAgent = null
@@ -59,13 +63,15 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
   "Add AgentRef and run an order" in {
     directoryProvider.prepareAgentFiles(agentFileTree)
 
-    val agentRef = AgentRef(agentPath, Uri(s"http://127.0.0.1:$agentPort1"))
+    val agentRef = AgentRef(agentPath, directors = Seq(subagentId))
+    val subagentRef = SubagentRef(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort1"))
     agent = RunningAgent.startForTest(agentFileTree.agentConfiguration) await 99.s
 
     controllerApi
       .updateItems(
         Observable(
           AddOrChangeSimple(agentRef),
+          AddOrChangeSimple(subagentRef),
           AddVersion(v1),
           AddOrChangeSigned(sign(workflow withVersion v1).signedString)))
       .await(99.s).orThrow
@@ -78,12 +84,15 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
     copyDirectory(agentFileTree.stateDir, outdatedState)
 
     assert(controllerApi.updateItems(Observable(DeleteSimple(agentPath))).await(99.s) ==
-      Left(ItemIsStillReferencedProblem(agentPath, workflow.path ~ v1)))
+      Left(Problem.combine(
+        ItemIsStillReferencedProblem(agentPath, subagentId),
+        ItemIsStillReferencedProblem(agentPath, workflow.path ~ v1))))
 
     val eventId = controller.eventWatch.lastAddedEventId
 
     controllerApi.updateItems(Observable(
       DeleteSimple(agentPath),
+      DeleteSimple(subagentId),
       AddVersion(VersionId("DELETE")),
       RemoveVersioned(workflow.path))
     ).await(99.s).orThrow
@@ -97,11 +106,13 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
 
     val eventId = controller.eventWatch.lastFileTornEventId
     val versionId = VersionId("AGAIN")
-    val agentRef = AgentRef(agentPath, Uri(s"http://127.0.0.1:$agentPort1"))
+    val agentRef = AgentRef(agentPath, directors = Seq(subagentId))
+    val subagentRef = SubagentRef(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort1"))
     controllerApi
       .updateItems(
         Observable(
           AddOrChangeSimple(agentRef),
+          AddOrChangeSimple(subagentRef),
           AddVersion(versionId),
           AddOrChangeSigned(sign(workflow withVersion versionId).signedString)))
       .await(99.s).orThrow
@@ -113,12 +124,13 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
   }
 
   "Change Agent's URI and keep Agent's state (move the Agent)" in {
-    val agentRef = AgentRef(agentPath, Uri(s"http://127.0.0.1:$agentPort2"))
+    val agentRef = AgentRef(agentPath, Seq(subagentId))
+    val subagentRef = SubagentRef(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort2"))
     agent = RunningAgent.startForTest(
       agentFileTree.agentConfiguration.copy(
         webServerPorts = List(WebServerPort.localhost(agentPort2)))
     ) await 99.s
-    controllerApi.updateUnsignedSimpleItems(Seq(agentRef)).await(99.s).orThrow
+    controllerApi.updateUnsignedSimpleItems(Seq(agentRef, subagentRef)).await(99.s).orThrow
     controller.runOrder(FreshOrder(OrderId("🔶"), workflow.path))
     agent.terminate() await 99.s
   }
@@ -143,7 +155,8 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
   }
 
   "Change Agent's URI and start Agent with clean state: fails" in {
-    val agentRef = AgentRef(agentPath, Uri(s"http://127.0.0.1:$agentPort3"))
+    val agentRef = AgentRef(agentPath, Seq(subagentId))
+    val subagentRef = SubagentRef(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort3"))
     // DELETE AGENT'S STATE DIRECTORY
     deleteDirectoryContentRecursively(agentFileTree.stateDir)
     agent = RunningAgent.startForTest(
@@ -152,7 +165,7 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
     ) await 99.s
 
     val eventId = controller.eventWatch.lastFileTornEventId
-    controllerApi.updateUnsignedSimpleItems(Seq(agentRef)).await(99.s).orThrow
+    controllerApi.updateUnsignedSimpleItems(Seq(agentRef, subagentRef)).await(99.s).orThrow
     controller.eventWatch.await[AgentCouplingFailed](
       _.event.problem == AgentNotDedicatedProblem,
       after = eventId)
@@ -164,6 +177,7 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
 object UpdateAgentRefsTest
 {
   private val agentPath = AgentPath("AGENT")
+  private val subagentId = SubagentId("SUBAGENT")
   private val v1 = VersionId("1")
   private val workflow = Workflow(WorkflowPath("WORKFLOW"), Vector(
     EmptyJob.execute(agentPath)))

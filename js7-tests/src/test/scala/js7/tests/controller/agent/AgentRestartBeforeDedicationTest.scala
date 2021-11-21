@@ -7,13 +7,13 @@ import js7.data.agent.AgentRefStateEvent.AgentDedicated
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.controller.agent.AgentRestartBeforeCreationTest._
+import js7.tests.controller.agent.AgentRestartBeforeDedicationTest._
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 
-final class AgentRestartBeforeCreationTest extends AnyFreeSpec with DirectoryProviderForScalaTest
+final class AgentRestartBeforeDedicationTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 {
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on"""
@@ -42,7 +42,7 @@ final class AgentRestartBeforeCreationTest extends AnyFreeSpec with DirectoryPro
   }
 }
 
-object AgentRestartBeforeCreationTest
+object AgentRestartBeforeDedicationTest
 {
   private val agentPath = AgentPath("AGENT")
   private val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "INITIAL", Seq(

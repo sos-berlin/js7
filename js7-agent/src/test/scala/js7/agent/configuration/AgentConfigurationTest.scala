@@ -41,7 +41,7 @@ final class AgentConfigurationTest extends AnyFreeSpec
         journalConf = JournalConf.fromConfig(DefaultConfig)
           .copy(slowCheckState = sys.props.get("js7.test").fold(false)(StringAsBoolean(_))),
         name = AgentConfiguration.DefaultName,
-        DefaultConfig))
+        config = DefaultConfig))
     }
   }
 

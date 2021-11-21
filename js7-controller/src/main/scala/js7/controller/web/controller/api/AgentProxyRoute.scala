@@ -3,13 +3,14 @@ package js7.controller.web.controller.api
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.HttpMethods.GET
 import akka.http.scaladsl.model.headers.{Accept, `Cache-Control`}
-import akka.http.scaladsl.model.{HttpHeader, HttpRequest, HttpResponse, headers, Uri => AkkaUri}
+import akka.http.scaladsl.model.{HttpEntity, HttpHeader, HttpRequest, HttpResponse, headers, Uri => AkkaUri}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import js7.agent.client.AgentClient
 import js7.base.auth.{SessionToken, ValidUserPermission}
-import js7.base.problem.Checked
+import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
+import js7.base.web.Uri
 import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
 import js7.common.akkahttp.StandardMarshallers._
 import js7.common.http.AkkaHttpUtils.RichAkkaUri
@@ -17,6 +18,7 @@ import js7.controller.configuration.ControllerConfiguration
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.AgentProxyRoute._
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
+import js7.data.controller.ControllerState
 import monix.eval.Task
 import monix.execution.Scheduler
 
@@ -28,6 +30,7 @@ trait AgentProxyRoute extends ControllerRouteProvider
   protected implicit def actorSystem: ActorSystem
   protected def pathToAgentRefState: Task[Checked[Map[AgentPath, AgentRefState]]]
   protected def controllerConfiguration: ControllerConfiguration
+  protected def controllerState: Task[Checked[ControllerState]]
 
   private implicit def implicitScheduler: Scheduler = scheduler
 
@@ -48,23 +51,36 @@ trait AgentProxyRoute extends ControllerRouteProvider
     }
 
   private def forward(agentRef: AgentRef, request: HttpRequest): Task[HttpResponse] = {
-    val agentUri = agentRef.uri
-    val uri = agentUri
-      .asAkka.copy(
-        path = AkkaUri.Path((agentUri.asAkka.path ?/ "agent" / "api").toString),
-        rawQueryString = request.uri.rawQueryString)
-    forwardTo(agentRef, uri, request.headers)
+    controllerState
+      .map(_.flatMap(s =>
+        s.agentToUri(agentRef.path)
+          .map(uri =>
+            uri -> uri.asAkka.copy(
+              path = AkkaUri.Path((uri.asAkka.path ?/ "agent" / "api").toString),
+              rawQueryString = request.uri.rawQueryString))
+          .toRight(Problem.pure("AgentRef has no URI"))))
+      .flatMap {
+        case Left(problem) =>
+          Task.pure(HttpResponse(
+            problem.httpStatusCode,
+            // Encoding: application/json, or use standard marshaller ???
+            entity = HttpEntity(problem.toString)))
+
+        case Right((uri, akkaUri)) =>
+          forwardTo(agentRef, uri, akkaUri, request.headers)
+      }
   }
 
-  private def forwardTo(agentRef: AgentRef, forwardUri: AkkaUri, headers: Seq[HttpHeader]): Task[HttpResponse] = {
+  private def forwardTo(agentRef: AgentRef, uri: Uri, akkaUri: AkkaUri, headers: Seq[HttpHeader])
+  : Task[HttpResponse] = {
     val agentClient = AgentClient(  // TODO Reuse AgentClient of AgentDriver
-      agentRef.uri,
+      uri,
       userAndPassword = None,
       label = agentRef.path.toString,
       controllerConfiguration.httpsConfig)
     implicit val sessionToken: Task[Option[SessionToken]] = Task.pure(None)
     agentClient
-      .sendReceive(HttpRequest(GET,  forwardUri, headers = headers.filter(h => isForwardableHeaderClass(h.getClass))))
+      .sendReceive(HttpRequest(GET,  akkaUri, headers = headers.filter(h => isForwardableHeaderClass(h.getClass))))
       .map(response => response.withHeaders(response.headers.filterNot(h => IsIgnoredAgentHeader(h.getClass))))
       .guarantee(Task(agentClient.close()))
   }

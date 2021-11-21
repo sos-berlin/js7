@@ -11,23 +11,25 @@ import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSignedItem, DetachItem, DetachOrder, GetOrder, GetOrderIds, GetOrders, MarkOrder, OrderCommand, ReleaseEvents, Response}
 import js7.agent.data.event.AgentEvent.{AgentReady, AgentShutDown}
 import js7.agent.main.AgentMain
-import js7.agent.scheduler.job.JobDriver
 import js7.agent.scheduler.order.AgentOrderKeeper._
 import js7.agent.scheduler.order.OrderRegister.OrderEntry
+import js7.agent.subagent.SubagentKeeper
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.crypt.{SignatureVerifier, Signed}
 import js7.base.generic.Completed
-import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger
 import js7.base.log.Logger.ops._
+import js7.base.monixutils.MonixBase.syntax.RichMonixTask
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.thread.IOExecutor
+import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.JavaTime._
 import js7.base.time.ScalaTime._
 import js7.base.time.{AdmissionTimeScheme, AlarmClock, TimeInterval}
 import js7.base.utils.Collections.implicits.InsertableMutableMap
 import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.utils.{DuplicateKeyException, SetOnce}
 import js7.common.akkautils.Akkas.{encodeAsActorName, uniqueActorName}
 import js7.common.akkautils.SupervisorStrategies
@@ -39,13 +41,14 @@ import js7.data.event.{<-:, Event, EventId, JournalState, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.instructions.{ExecuteAdmissionTimeSwitch, InstructionExecutorService}
 import js7.data.item.BasicItemEvent.{ItemAttachedToAgent, ItemDetached}
-import js7.data.item.{InventoryItemPath, SignableItem, UnsignedSimpleItem}
-import js7.data.job.{JobConf, JobKey, JobResource}
+import js7.data.item.{InventoryItem, InventoryItemPath, SignableItem, UnsignedSimpleItem}
+import js7.data.job.{JobKey, JobResource}
 import js7.data.order.OrderEvent.{OrderBroken, OrderDetached, OrderProcessed}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.state.OrderEventHandler.FollowUp
 import js7.data.state.{OrderEventHandler, StateView}
+import js7.data.subagent.{SubagentId, SubagentRef}
 import js7.data.value.expression.Expression
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -55,13 +58,12 @@ import js7.journal.state.FileStatePersistence
 import js7.journal.{JournalActor, MainJournalingActor}
 import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
-import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 import shapeless.tag
 
 /**
@@ -85,6 +87,7 @@ with Stash
   import context.{actorOf, watch}
 
   private val ownAgentPath = persistence.currentState.meta.agentPath
+  private val localSubagentId = persistence.currentState.meta.subagentId
   private val controllerId = persistence.currentState.meta.controllerId
   private implicit val instructionExecutorService = new InstructionExecutorService(clock)
 
@@ -158,11 +161,9 @@ with Stash
           if (orderRegister.isEmpty) {
             if (!terminatingJobs) {
               terminatingJobs = true
-              Task
-                .parTraverseUnordered(jobRegister.values)(jobEntry =>
-                  jobEntry.jobDriver.stop(SIGKILL)
-                    .onErrorHandle(t => logger.error(t.toStringWithCauses, t))
-                    .map(_ => self ! Internal.JobDriverStopped(jobEntry)))
+              subagentKeeper.stop
+                .onErrorHandle(t => logger.error(t.toStringWithCauses, t))
+                .map(_ => self ! Internal.JobDriverStopped)
                 .runAsyncAndForget
             }
             if (jobRegister.isEmpty && !terminatingJournal) {
@@ -177,11 +178,17 @@ with Stash
   }
   import shutdown.shuttingDown
 
+  private val subagentKeeper =
+    new SubagentKeeper(persistence, jobLauncherConf, conf, context.system)
+
   watch(journalActor)
   self ! Internal.Recover(recovered_)
   // Do not use recovered_ after here to allow release of the big object
 
   override def postStop() = {
+    // TODO Use Resource (like the Subagent starter)
+    Try(subagentKeeper.stop.uncancelable.timeout(3.s).logWhenItTakesLonger.await(99.s))
+
     fileWatchManager.stop.runAsyncAndForget
     shutdown.close()
     super.postStop()
@@ -226,9 +233,14 @@ with Stash
             AgentMain.runningSince.fold("")(o => s" (after ${o.elapsed.pretty})") +
             "\n" + "─" * 80)
         }
+
         fileWatchManager.start
           .map(_.orThrow)  // How to handle a failure, due to missing environment variable ???
           .runAsyncAndForget
+
+        subagentKeeper.start(ownAgentPath, localSubagentId, controllerId)
+          .runToFuture
+          .onComplete(tried => self ! Internal.SubagentKeeperStarted(tried))
       }
 
     val receive: Receive = {
@@ -240,12 +252,13 @@ with Stash
 
       case Internal.JournalIsReady(state) =>
         logger.info(s"${orderRegister.size} Orders and ${workflowRegister.size} Workflows recovered")
+        state.keyToItem.values foreach proceedWithItem
 
         for (workflow <- state.idToWorkflow.values)
           wrapException(s"Error while recovering ${workflow.path}") {
             workflowRegister.recover(workflow)
             val timeZone = ZoneId.of(workflow.timeZone.string) // throws on unknown time zone !!!
-            createJobDrivers(workflow, timeZone)
+            createJobEntries(workflow, timeZone)
           }
 
         for (recoveredOrder <- state.idToOrder.values)
@@ -258,6 +271,9 @@ with Stash
           }
 
         continue()
+
+      case Internal.SubagentKeeperStarted(tried) =>
+        for (t <- tried.failed) throw t.appendCurrentStackTrace
 
       case _: AgentCommand.ShutDown =>
         logger.info("Command 'ShutDown' terminates Agent while recovering")
@@ -331,8 +347,21 @@ with Stash
         logger.warn(s"DetachItem($itemKey) but item is unknown")
         Future.successful(Right(AgentCommand.Response.Accepted))
       } else
-        persist(ItemDetached(itemKey, ownAgentPath)) { (stampedEvent, journaledState) =>
-          Right(AgentCommand.Response.Accepted)
+        itemKey match {
+          case subagentId: SubagentId =>
+            subagentKeeper
+              .remove(subagentId)
+              .flatMap(_ =>
+                persistence
+                  .persistKeyedEvent(ItemDetached(itemKey, ownAgentPath))
+                  .rightAs(AgentCommand.Response.Accepted)
+              )
+              .runToFuture
+
+          case _ =>
+            persist(ItemDetached(itemKey, ownAgentPath)) { (stampedEvent, journaledState) =>
+              Right(AgentCommand.Response.Accepted)
+            }
         }
 
     case AgentCommand.TakeSnapshot =>
@@ -353,8 +382,9 @@ with Stash
             .map(_.rightAs(AgentCommand.Response.Accepted))
             .runToFuture
 
-      case item: Calendar =>
+      case item @ (_: Calendar | _: SubagentRef) =>
         persist(ItemAttachedToAgent(item)) { (stampedEvent, journaledState) =>
+          proceedWithItem(item)
           Right(AgentCommand.Response.Accepted)
         }
 
@@ -379,7 +409,7 @@ with Stash
                     logger.trace("Reduced workflow: " + workflow.asJson.compactPrint)
                     persist(ItemAttachedToAgent(workflow)) { (stampedEvent, journaledState) =>
                       workflowRegister.handleEvent(stampedEvent.value)
-                      createJobDrivers(workflow, zoneId)
+                      createJobEntries(workflow, zoneId)
                       Right(AgentCommand.Response.Accepted)
                     }
                 }
@@ -399,6 +429,16 @@ with Stash
           case _ =>
             Future.successful(Left(Problem.pure(s"AgentCommand.AttachSignedItem(${signed.value.key}) for unknown SignableItem")))
         }
+    }
+
+  private def proceedWithItem(item: InventoryItem): Unit =
+    item match {
+      case subagentRef: SubagentRef =>
+        subagentKeeper.proceed(subagentRef)
+          .onErrorHandle(t =>
+            logger.error(s"proceedWithItem(${subagentRef.id}: ${t.toStringWithCauses})", t))
+          .runAsyncAndForget/*???*/
+      case _ =>
     }
 
   private def processOrderCommand(cmd: OrderCommand): Future[Checked[Response]] = cmd match {
@@ -511,16 +551,10 @@ with Stash
         }
   }
 
-  private def createJobDrivers(workflow: Workflow, zone: ZoneId): Unit =
+  private def createJobEntries(workflow: Workflow, zone: ZoneId): Unit =
     for ((jobKey, job) <- workflow.keyToJob) {
       if (job.agentPath == ownAgentPath) {
-        val jobDriver = new JobDriver(
-          JobConf(
-            jobKey, job, workflow, controllerId,
-            sigkillDelay = job.sigkillDelay getOrElse conf.defaultJobSigkillDelay),
-          jobLauncherConf,
-          id => persistence.currentState.pathToJobResource.checked(id))
-        jobRegister.insert(jobKey -> new JobEntry(jobKey, job, zone, jobDriver))
+        jobRegister.insert(jobKey -> new JobEntry(jobKey, job, zone))
       }
     }
 
@@ -541,7 +575,7 @@ with Stash
 
   private def newOrderActor(order: Order[Order.State]) =
     watch(actorOf(
-      OrderActor.props(order.id, journalActor = journalActor, orderActorConf),
+      OrderActor.props(order.id, subagentKeeper, journalActor = journalActor, orderActorConf),
       name = uniqueActorName(encodeAsActorName("Order:" + order.id.string))))
 
   private def handleOrderEvent(order: Order[Order.State], event: OrderEvent): Unit = {
@@ -653,8 +687,7 @@ with Stash
       case _ => Map.empty[String, Expression]
     }
     jobEntry.taskCount += 1
-    orderEntry.actor !
-      OrderActor.Input.StartProcessing(jobEntry.jobDriver, jobEntry.workflowJob, defaultArguments)
+    orderEntry.actor ! OrderActor.Input.StartProcessing(defaultArguments)
   }
 
   private def deleteOrder(orderId: OrderId): Unit =
@@ -665,12 +698,10 @@ with Stash
 
   override def unhandled(message: Any) =
     message match {
-      case Internal.JobDriverStopped(jobEntry) =>
-        import jobEntry.jobKey
-        logger.trace(s"JobDriver '$jobKey' stopped")
-        for (jobEntry <- jobRegister.remove(jobKey)) {
-          jobEntry.close()
-        }
+      case Internal.JobDriverStopped =>
+        logger.trace("Internal.JobDriverStopped")
+        jobRegister.values.foreach(_.close())
+        jobRegister.keys.toVector.foreach(jobRegister.remove)
         shutdown.continue()
 
       case Terminated(actorRef) if orderRegister contains actorRef =>
@@ -712,6 +743,8 @@ with Stash
 
       def pathToBoardState = persistence.currentState.pathToBoardState
 
+      def pathToJobResource = persistence.currentState.pathToJobResource
+
       def keyToItem = persistence.currentState.keyToItem
     })
 
@@ -729,17 +762,17 @@ object AgentOrderKeeper {
   private object Internal {
     final case class Recover(recovered: Recovered[AgentState])
     final case class JournalIsReady(agentState: AgentState)
+    final case class SubagentKeeperStarted(tried: Try[Unit])
     final case class Due(orderId: OrderId)
     final case class JobDue(jobKey: JobKey)
-    final case class JobDriverStopped(jobEntry: JobEntry)
+    case object JobDriverStopped
     object StillTerminating extends DeadLetterSuppression
   }
 
   private final class JobEntry(
     val jobKey: JobKey,
     val workflowJob: WorkflowJob,
-    zone: ZoneId,
-    val jobDriver: JobDriver)
+    zone: ZoneId)
   {
     val queue = new OrderQueue
     private val admissionTimeIntervalSwitch = new ExecuteAdmissionTimeSwitch(

@@ -72,6 +72,9 @@ object AsyncLock
 {
   private val logger = scribe.Logger[this.type]
 
+  def apply()(implicit enclosing: sourcecode.Enclosing): AsyncLock =
+    apply(name = enclosing.value)
+
   def apply(
     name: String,
     logWorryDurations: IterableOnce[FiniteDuration] = DefaultWorryDurations,

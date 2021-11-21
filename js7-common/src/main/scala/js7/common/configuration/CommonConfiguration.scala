@@ -1,4 +1,4 @@
-package js7.core.configuration
+package js7.common.configuration
 
 import cats.syntax.semigroup._
 import com.typesafe.config.Config
@@ -11,8 +11,8 @@ import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.common.akkahttp.web.data.{WebServerBinding, WebServerPort}
 import js7.common.commandline.CommandLineArguments
+import js7.common.configuration.CommonConfiguration._
 import js7.common.internet.IP.StringToServerInetSocketAddress
-import js7.core.configuration.CommonConfiguration._
 
 /**
   * @author Joacim Zschimmer

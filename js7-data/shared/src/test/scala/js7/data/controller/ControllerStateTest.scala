@@ -29,6 +29,7 @@ import js7.data.node.NodeId
 import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.OrderWatchState.{HasOrder, VanishedAck}
 import js7.data.orderwatch.{AllOrderWatchesState, ExternalOrderKey, ExternalOrderName, FileWatch, OrderWatchPath, OrderWatchState}
+import js7.data.subagent.{SubagentId, SubagentRef}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, ExpectNotice, LockInstruction}
@@ -45,7 +46,7 @@ import org.scalatest.freespec.AsyncFreeSpec
 final class ControllerStateTest extends AsyncFreeSpec
 {
   "estimatedSnapshotSize" in {
-    assert(controllerState.estimatedSnapshotSize == 18)
+    assert(controllerState.estimatedSnapshotSize == 19)
     for (n <- controllerState.toSnapshotObservable.countL.runToFuture) yield
       assert(controllerState.estimatedSnapshotSize == n)
   }
@@ -54,6 +55,7 @@ final class ControllerStateTest extends AsyncFreeSpec
     val sum =
       controllerState.pathToCalendar.values ++
         controllerState.pathToAgentRefState.map(_._2.item) ++
+        controllerState.idToSubagentRef.values ++
         controllerState.pathToLockState.map(_._2.item) ++
         controllerState.allOrderWatchesState.pathToOrderWatchState.map(_._2.item) ++
         controllerState.pathToSignedSimpleItem.values.map(_.value)
@@ -78,6 +80,7 @@ final class ControllerStateTest extends AsyncFreeSpec
           controllerState.controllerMetaState
         ) ++
           controllerState.pathToAgentRefState.values ++
+          controllerState.idToSubagentRef.values ++
           controllerState.pathToLockState.values ++
           Seq(board) ++
           boardState.notices.map(Notice.Snapshot(board.path, _)) ++
@@ -121,7 +124,8 @@ final class ControllerStateTest extends AsyncFreeSpec
     assert(controllerState.pathToReferencingItemKeys.mapValuesStrict(_.toSet) == Map(
       lock.path -> Set(workflow.id),
       board.path -> Set(workflow.id),
-      agentRef.path -> Set(fileWatch.path, workflow.id),
+      agentRef.path -> Set(subagentRef.id, fileWatch.path, workflow.id),
+      subagentRef.id -> Set(agentRef.path),
       jobResource.path -> Set(workflow.id),
       workflow.path -> Set(fileWatch.path)))
   }
@@ -140,7 +144,8 @@ final class ControllerStateTest extends AsyncFreeSpec
       == Map(
         lock.path -> Set(workflow.id, changedWorkflowId),
         board.path -> Set(workflow.id, changedWorkflowId),
-        agentRef.path -> Set(workflow.id, changedWorkflowId, fileWatch.path),
+        agentRef.path -> Set(subagentRef.id, workflow.id, changedWorkflowId, fileWatch.path),
+        subagentRef.id -> Set(agentRef.path),
         jobResource.path -> Set(workflow.id, changedWorkflowId),
         workflow.path -> Set(fileWatch.path)))
   }
@@ -188,13 +193,19 @@ final class ControllerStateTest extends AsyncFreeSpec
         "TYPE": "AgentRefState",
         "agentRef": {
           "path": "AGENT",
-          "uri": "https://AGENT",
+          "directors": [ "SUBAGENT" ],
           "itemRevision": 0
         },
         "couplingState": {
           "TYPE": "Reset"
         },
         "eventId": 7
+      }, {
+        "TYPE": "SubagentRef",
+        "id": "SUBAGENT",
+        "agentPath": "AGENT",
+        "uri": "https://SUBAGENT",
+        "itemRevision": 7
       }, {
         "TYPE": "LockState",
         "lock": {
@@ -338,7 +349,8 @@ final class ControllerStateTest extends AsyncFreeSpec
     assert(controllerState.keyToItem.get(workflow.id) == Some(workflow))
 
     assert(controllerState.keyToItem.keySet == Set(
-      jobResource.path, calendar.path, agentRef.path, lock.path, fileWatch.path, workflow.id))
+      jobResource.path, calendar.path, agentRef.path, subagentRef.id, lock.path, fileWatch.path,
+      workflow.id))
   }
 }
 
@@ -349,7 +361,15 @@ object ControllerStateTest
   private lazy val signedJobResource = itemSigner.sign(jobResource)
   private val orderId = OrderId("ORDER")
   private val expectingNoticeOrderId = OrderId("ORDER-EXPECTING-NOTICE")
-  private val agentRef = AgentRef(AgentPath("AGENT"), Uri("https://AGENT"), Some(ItemRevision(0)))
+  private val agentRef = AgentRef(AgentPath("AGENT"), directors = Seq(SubagentId("SUBAGENT")),
+    itemRevision = Some(ItemRevision(0)))
+
+  private val subagentRef = SubagentRef(
+    SubagentId("SUBAGENT"),
+    AgentPath("AGENT"),
+    Uri("https://SUBAGENT"),
+    Some(ItemRevision(7)))
+
   private val lock = Lock(LockPath("LOCK"), itemRevision = Some(ItemRevision(7)))
   private val notice = Notice(NoticeId("NOTICE-1"), Timestamp.ofEpochMilli(10_000_000_000L + 24*3600*1000))
   private val noticeExpectation = NoticeExpectation(NoticeId("NOTICE-2"), Set(expectingNoticeOrderId))
@@ -406,6 +426,8 @@ object ControllerStateTest
     Map(
       agentRef.path -> AgentRefState(
         agentRef, None, None, AgentRefState.Reset, EventId(7), None)),
+    Map(
+      subagentRef.id -> subagentRef),
     Map(
       lock.path -> LockState(lock)),
     Map(

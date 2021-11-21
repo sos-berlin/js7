@@ -11,6 +11,7 @@ import js7.data.Problems.ItemIsStillReferencedProblem
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, DeleteOrdersWhenTerminated}
 import js7.data.item.BasicItemEvent.{ItemDeleted, ItemDetached}
+import js7.data.item.ItemAttachedState.Attached
 import js7.data.item.ItemOperation.{AddVersion, DeleteSimple, RemoveVersioned}
 import js7.data.item.VersionedEvent.VersionAdded
 import js7.data.item.{ItemRevision, Repo, VersionId}
@@ -18,6 +19,7 @@ import js7.data.lock.Acquired.Available
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.OrderEvent._
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.subagent.SubagentId
 import js7.data.value.StringValue
 import js7.data.value.ValuePrinter.quoteString
 import js7.data.value.expression.Expression.StringConstant
@@ -616,7 +618,13 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       .applyEvents(controllerState.repo.versions.reverse.map(VersionAdded(_)))
       .orThrow)
     assert(controllerState.pathToLockState.isEmpty)
-    assert(controllerState.itemToAgentToAttachedState.isEmpty)
+
+    // No Lock is atteched to any Agent
+    assert(controllerState.itemToAgentToAttachedState == Map(
+      SubagentId("AGENT-0") -> Map(
+        AgentPath("AGENT") -> Attached(Some(ItemRevision(0)))),
+      SubagentId("B-AGENT-0") -> Map(
+        AgentPath("B-AGENT") -> Attached(Some(ItemRevision(0))))))
   }
 
   private def defineWorkflow(workflowNotation: String): Workflow =

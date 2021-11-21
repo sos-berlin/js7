@@ -1,8 +1,8 @@
-package js7.agent.scheduler.order
+package js7.subagent
 
-import js7.agent.scheduler.order.OutErrStatistics._
 import js7.base.time.ScalaTime._
 import js7.base.utils.ByteUnits.toKBGB
+import js7.subagent.OutErrStatistics._
 import monix.eval.Task
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
@@ -34,7 +34,6 @@ private final class OutErrStatistics
         s" (${toKBGB(size)}), blocked ${blocked.pretty} " +
           s"${(blocked / messageCount).pretty}/chunk ($percentage%)"
       })  // This is the time an unbuffered stdout/stderr pipe is blocked
-
 }
 
 private object OutErrStatistics

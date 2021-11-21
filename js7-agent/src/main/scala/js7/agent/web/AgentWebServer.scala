@@ -3,7 +3,6 @@ package js7.agent.web
 import akka.actor.ActorSystem
 import js7.agent.DirectAgentApi
 import js7.agent.configuration.AgentConfiguration
-import js7.agent.data.AgentState
 import js7.base.auth.SimpleUser
 import js7.base.generic.Completed
 import js7.base.utils.SetOnce
@@ -12,7 +11,7 @@ import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.core.cluster.ClusterWatchRegister
 import js7.core.command.CommandMeta
-import js7.journal.state.StatePersistence
+import js7.journal.watch.EventWatch
 import monix.eval.Task
 import monix.execution.Scheduler
 
@@ -23,7 +22,7 @@ object AgentWebServer
     gateKeeperConfiguration: GateKeeper.Configuration[SimpleUser],
     sessionRegister: SessionRegister[SimpleSession],
     clusterWatchRegister: ClusterWatchRegister,
-    persistence: StatePersistence[AgentState])
+    eventWatch: EventWatch)
     (implicit
       actorSystem: ActorSystem,
       scheduler: Scheduler)
@@ -43,7 +42,7 @@ object AgentWebServer
             gateKeeperConfiguration,
             sessionRegister,
             clusterWatchRegister,
-            persistence))))
+            eventWatch))))
       with StartableWithApi
       {
         def start(api: CommandMeta => DirectAgentApi) =

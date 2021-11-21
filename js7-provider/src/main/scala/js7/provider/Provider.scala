@@ -27,6 +27,7 @@ import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.controller.ControllerState.versionedItemJsonCodec
 import js7.data.item.VersionedItems.diffVersionedItems
 import js7.data.item.{ItemSigner, VersionId, VersionedItem, VersionedItemPath, VersionedItems}
+import js7.data.subagent.{SubagentId, SubagentRef}
 import js7.data.workflow.WorkflowPath
 import js7.provider.Provider._
 import js7.provider.configuration.ProviderConfiguration
@@ -84,8 +85,13 @@ extends HasCloser with Observing with ProvideActorSystem
     val agentRefs = config.getObject("js7.provider.agents").asScala
       .view
       .collect { case (name, obj: ConfigObject) =>
-        AgentRef(AgentPath(name), Uri(obj.toConfig.getString("uri")))
+        val agentPath = AgentPath(name)
+        val subagentId = SubagentId(name)
+        Seq(
+          AgentRef(agentPath, Seq(subagentId)),
+          SubagentRef(subagentId, agentPath, Uri(obj.toConfig.getString("uri"))))
       }
+      .flatten
       .toSeq
     controllerApi.updateUnsignedSimpleItems(agentRefs)
       .map {

@@ -136,7 +136,7 @@ trait ControllerClusterForScalaTest
           primaryId -> Uri(s"http://127.0.0.1:$primaryControllerPort"),
           backupId -> Uri(s"http://127.0.0.1:$backupControllerPort")),
         activeId = primaryId,
-        primary.agentRefs.take(1).map(o => ClusterSetting.Watch(o.uri)),
+        primary.subagentRefs.take(1).map(o => ClusterSetting.Watch(o.uri)),
         clusterTiming)
 
       body(primary, backup, setting)

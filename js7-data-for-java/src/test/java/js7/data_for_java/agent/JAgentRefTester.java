@@ -1,7 +1,8 @@
 package js7.data_for_java.agent;
 
-import js7.base.web.Uri;
 import js7.data.agent.AgentPath;
+import js7.data.subagent.SubagentId;
+import static java.util.Arrays.asList;
 import static js7.data_for_java.vavr.VavrUtils.getOrThrow;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -15,7 +16,7 @@ class JAgentRefTester
        "{\n" +
        "  \"TYPE\": \"AgentRef\",\n" +
        "  \"path\": \"AGENT\",\n" +
-       "  \"uri\": \"https://agent.example.com\"\n" +
+       "  \"directors\": [ \"SUBAGENT\" ]\n" +
        "}";
 
     private final JAgentRef agentRef;
@@ -27,8 +28,7 @@ class JAgentRefTester
     void test() {
         testAgentPath();
         testJson();
-        assertThat(agentRef.uri(), equalTo(Uri.of("https://agent.example.com")));
-        assertThat(agentRef.uri().string(), equalTo("https://agent.example.com"));
+        assertThat(agentRef.directors(), equalTo(asList(SubagentId.of("SUBAGENT"))));
     }
 
     private void testAgentPath() {

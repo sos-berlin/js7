@@ -17,6 +17,7 @@ import js7.data.item.{ItemSigner, Repo, VersionId}
 import js7.data.node.NodeId
 import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.AllOrderWatchesState
+import js7.data.subagent.SubagentId
 import js7.data.value.StringValue
 import js7.data.workflow.position.Position
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
@@ -94,7 +95,10 @@ private object JControllerStateTest
       Timestamp("2019-05-24T12:00:00Z"),
       Timezone("Europe/Berlin")),
     Map(AgentPath("AGENT") ->
-      AgentRefState(AgentRef(AgentPath("AGENT"), Uri("https://AGENT")), None, None, AgentRefState.Reset, EventId(7), None)),
+      AgentRefState(
+        AgentRef(AgentPath("AGENT"), Seq(SubagentId("SUBAGENT"))),
+        None, None, AgentRefState.Reset, EventId(7), None)),
+    Map.empty,
     Map.empty,
     Map.empty,
     Map.empty,

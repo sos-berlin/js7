@@ -4,7 +4,6 @@ import js7.base.crypt.silly.SillySigner
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.WallClock
 import js7.base.utils.ScalaUtils.syntax.RichEither
-import js7.base.web.Uri
 import js7.data.Problems.{ItemIsStillReferencedProblem, MissingReferencedItemProblem, UnknownItemPathProblem}
 import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.controller.ControllerStateExecutor.convertImplicitly
@@ -504,8 +503,10 @@ object ControllerStateExecutorTest
 
   private val itemSigner = new ItemSigner(SillySigner.Default, ControllerState.signableItemJsonCodec)
 
-  private val aAgentRef = AgentRef(AgentPath("A-AGENT"), Uri("http://0.0.0.0:0"), Some(ItemRevision(0)))
-  private val bAgentRef = AgentRef(AgentPath("B-AGENT"), Uri("http://0.0.0.0:0"), Some(ItemRevision(0)))
+  private val aAgentRef = AgentRef(AgentPath("A-AGENT"), directors = Nil,
+    itemRevision = Some(ItemRevision(0)))
+  private val bAgentRef = AgentRef(AgentPath("B-AGENT"), directors = Nil,
+    itemRevision = Some(ItemRevision(0)))
   private val lock = Lock(LockPath("LOCK"), itemRevision = Some(ItemRevision(0)))
 
   private val aJobResource = JobResource(

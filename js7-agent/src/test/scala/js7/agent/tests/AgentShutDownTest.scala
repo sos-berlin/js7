@@ -4,7 +4,7 @@ import js7.agent.RunningAgent
 import js7.agent.client.AgentClient
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.Akkas.newAgentActorSystem
-import js7.agent.data.commands.AgentCommand.{AttachOrder, AttachSignedItem, DedicateAgent, ShutDown}
+import js7.agent.data.commands.AgentCommand.{AttachOrder, AttachSignedItem, DedicateAgentDirector, ShutDown}
 import js7.agent.tests.AgentShutDownTest._
 import js7.base.auth.UserId
 import js7.base.generic.SecretString
@@ -20,6 +20,7 @@ import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId, Outcome}
+import js7.data.subagent.SubagentId
 import js7.data.value.StringValue
 import js7.data.workflow.test.TestSetting._
 import monix.execution.Scheduler.Implicits.global
@@ -48,7 +49,9 @@ final class AgentShutDownTest extends AnyFreeSpec with BeforeAndAfterAll with Te
 
     val client = AgentClient(agentUri = agent.localUri, Some(userId -> SecretString("TEST-PASSWORD")))
     client.login() await 99.s
-    client.commandExecute(DedicateAgent(agentPath, controllerId)) await 99.s
+    client
+      .commandExecute(DedicateAgentDirector(Some(SubagentId("SUBAGENT")), controllerId, agentPath))
+      .await(99.s)
 
     client.commandExecute(AttachSignedItem(itemSigner.sign(SimpleTestWorkflow)))
       .await(99.s).orThrow

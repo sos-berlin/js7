@@ -8,7 +8,6 @@ import akka.http.scaladsl.model.{HttpEntity, HttpHeader, Uri => AkkaUri}
 import com.google.inject.{AbstractModule, Provides}
 import io.circe.syntax.EncoderOps
 import io.circe.{Json, JsonObject}
-import java.time.ZoneId
 import javax.inject.Singleton
 import js7.base.BuildInfo
 import js7.base.auth.SessionToken
@@ -25,17 +24,12 @@ import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.{Timestamp, WaitForCondition}
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
-import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.Uri
 import js7.common.http.AkkaHttpClient.HttpException
 import js7.common.http.AkkaHttpUtils.RichHttpResponse
 import js7.common.system.ServerOperatingSystem.operatingSystem
 import js7.data.Problems.UnknownItemPathProblem
-import js7.data.agent.AgentRefStateEvent.AgentDedicated
 import js7.data.agent.{AgentPath, AgentRefStateEvent}
-import js7.data.controller.ControllerEvent.ControllerReady
-import js7.data.controller.{ControllerMetaState, ControllerState}
-import js7.data.event.{<-:, Event, KeyedEvent}
 import js7.data.item.{ItemOperation, VersionId}
 import js7.data.job.{PathExecutable, RelativePathExecutable}
 import js7.data.order.OrderEvent.OrderFinished
@@ -342,242 +336,6 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest
 
   "(await OrderFinished)" in {
     controller.eventWatch.await[OrderFinished]()  // Needed for test /controller/api/events
-  }
-
-  "/controller/api/snapshot/ (only JSON)" in {
-    val observable = httpClient.getRawLinesObservable(Uri(s"$uri/controller/api/snapshot/")) await 99.s
-    val shortenedArray =
-      observable.map(_.parseJson.orThrow)
-        // Delete AgentRefState in `array` (for easy comparison)
-        .filterNot(_.asObject.get("TYPE").contains("AgentRefState".asJson))
-        .toListL await 99.s
-    val controllerMetaState = shortenedArray.iterator.map(_.as(ControllerState.snapshotObjectJsonCodec).orThrow)
-      .collectFirst { case o: ControllerMetaState => o }.get
-    assert(shortenedArray.toSet/*ignore ordering*/ == json"""[
-      {
-        "TYPE": "SnapshotEventId",
-        "eventId": ${controller.eventWatch.lastAddedEventId}
-      }, {
-        "TYPE": "ControllerMetaState",
-        "controllerId": "Controller",
-        "initiallyStartedAt": ${controllerMetaState.initiallyStartedAt.toEpochMilli},
-        "timezone": "${controllerMetaState.timezone}"
-      }, {
-        "TYPE": "VersionAdded",
-        "versionId": "VERSION-1"
-      }, {
-        "TYPE": "VersionedItemAdded",
-        "signed": {
-          "string": "{\"TYPE\":\"Workflow\",\"path\":\"FOLDER/WORKFLOW-2\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"B$sh\"},\"parallelism\":1}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"MISSING$sh\"},\"parallelism\":1}}]}",
-          "signature": {
-            "TYPE": "Silly",
-            "signatureString": "MY-SILLY-SIGNATURE"
-          }
-        }
-      }, {
-        "TYPE": "VersionedItemAdded",
-        "signed": {
-          "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"A$sh\"},\"parallelism\":1}}]}",
-          "signature": {
-            "TYPE": "Silly",
-            "signatureString": "MY-SILLY-SIGNATURE"
-          }
-        }
-      }, {
-        "TYPE" : "ItemAttached",
-        "key": "Workflow:WORKFLOW~VERSION-1",
-        "delegateId": "Agent:AGENT"
-      },
-      { "TYPE": "Order",
-        "id": "ORDER-ID",
-        "workflowPosition": {
-          "workflowId": {
-            "path": "WORKFLOW",
-            "versionId": "VERSION-1"
-          },
-          "position": [ 1 ]
-        },
-        "state": {
-          "TYPE": "Finished"
-        },
-        "historicOutcomes": [
-          {
-            "position": [ 0 ],
-            "outcome": {
-              "TYPE": "Succeeded",
-              "namedValues": {
-                "returnCode": 0
-              }
-            }
-          }
-        ]
-      }
-    ]""".asArray.get.toSet)   // Any orders would be added to `array`.
-  }
-
-  "/controller/api/event (only JSON)" in {
-    val headers = RawHeader("x-js7-session", sessionToken) :: Nil
-    val eventsJson = httpClient.get[Json](Uri(s"$uri/controller/api/event?after=0"), headers) await 99.s
-    val keyedEvents: Seq[KeyedEvent[Event]] =
-      eventsJson.asObject.get("stamped").get.asArray.get.map(_.as(ControllerState.keyedEventJsonCodec).orThrow)
-    val agentRunId = keyedEvents.collectFirst { case AgentPath("AGENT") <-: (e: AgentDedicated) => e.agentRunId }.get
-    val totalRunningTime = keyedEvents.collectFirst { case _ <-: (e: ControllerReady) => e.totalRunningTime }.get
-    // Fields named "eventId" are renumbered for this test, "timestamp" are removed due to time-dependant values
-    assert(manipulateEventsForTest(eventsJson) == json"""{
-      "TYPE": "NonEmpty",
-      "stamped": [
-        {
-          "eventId": 1001,
-          "TYPE": "SnapshotTaken"
-        }, {
-          "eventId": 1002,
-          "TYPE": "ControllerInitialized",
-          "controllerId": "Controller",
-          "initiallyStartedAt": 111222333
-        }, {
-          "eventId": 1003,
-          "TYPE": "ControllerReady",
-          "timezone": "${ZoneId.systemDefault.getId}",
-          "totalRunningTime": ${totalRunningTime.toBigDecimalSeconds}
-        }, {
-          "eventId": 1004,
-          "TYPE": "UnsignedSimpleItemAdded",
-          "item": {
-            "TYPE": "AgentRef",
-            "path": "AGENT",
-            "uri": "$agent1Uri",
-            "itemRevision": 0
-          }
-        }, {
-          "eventId": 1005,
-          "TYPE": "UnsignedSimpleItemAdded",
-          "item": {
-            "TYPE": "AgentRef",
-            "path": "AGENT-A",
-            "uri": "$agent2Uri",
-            "itemRevision": 0
-          }
-        }, {
-          "eventId": 1006,
-          "TYPE": "AgentDedicated",
-          "Key": "AGENT",
-          "agentRunId": "${agentRunId.string}",
-          "agentEventId": 2000001
-        }, {
-          "eventId": 1007,
-          "TYPE": "AgentReady",
-          "Key": "AGENT",
-          "timezone": "${ZoneId.systemDefault.getId}"
-        }, {
-          "eventId": 1008,
-          "TYPE": "VersionAdded",
-          "versionId": "VERSION-1"
-        }, {
-          "eventId": 1009,
-          "TYPE": "VersionedItemAdded",
-          "signed": {
-            "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"A$sh\"},\"parallelism\":1}}]}",
-            "signature": {
-              "TYPE": "Silly",
-              "signatureString": "MY-SILLY-SIGNATURE"
-            }
-          }
-        }, {
-          "eventId": 1010,
-          "TYPE": "VersionedItemAdded",
-          "signed": {
-            "string": "{\"TYPE\":\"Workflow\",\"path\":\"FOLDER/WORKFLOW-2\",\"versionId\":\"VERSION-1\",\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"B$sh\"},\"parallelism\":1}},{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"AGENT\",\"executable\":{\"TYPE\":\"PathExecutable\",\"path\":\"MISSING$sh\"},\"parallelism\":1}}]}",
-            "signature": {
-              "TYPE": "Silly",
-              "signatureString": "MY-SILLY-SIGNATURE"
-            }
-          }
-        }, {
-          "eventId": 1011,
-          "TYPE": "OrderAdded",
-          "Key": "ORDER-ID",
-          "workflowId": {
-            "path": "WORKFLOW",
-            "versionId": "VERSION-1"
-          }
-        }, {
-          "eventId": 1012,
-          "TYPE": "OrderAttachable",
-          "Key": "ORDER-ID",
-          "agentPath":"AGENT"
-        }, {
-          "eventId": 1013,
-          "TYPE": "ItemAttached",
-          "key": "Workflow:WORKFLOW~VERSION-1",
-          "delegateId": "Agent:AGENT"
-        }, {
-          "eventId": 1014,
-          "TYPE": "OrderAttached",
-          "Key": "ORDER-ID",
-          "agentPath": "AGENT"
-        }, {
-          "eventId": 1015,
-          "TYPE": "OrderStarted",
-          "Key": "ORDER-ID"
-        }, {
-          "eventId": 1016,
-          "TYPE": "OrderProcessingStarted",
-          "Key": "ORDER-ID"
-        }, {
-          "eventId": 1017,
-          "TYPE": "OrderProcessed",
-          "Key": "ORDER-ID",
-          "outcome": {
-            "TYPE": "Succeeded",
-            "namedValues": {
-              "returnCode": 0
-            }
-          }
-        }, {
-          "eventId": 1018,
-          "TYPE": "OrderMoved",
-          "Key": "ORDER-ID",
-          "to": [ 1 ]
-        }, {
-          "eventId": 1019,
-          "TYPE": "OrderDetachable",
-          "Key": "ORDER-ID"
-        }, {
-          "eventId": 1020,
-          "TYPE": "OrderDetached",
-          "Key": "ORDER-ID"
-        }, {
-          "eventId": 1021,
-          "TYPE": "OrderFinished",
-          "Key": "ORDER-ID"
-        }
-      ]
-    }""")
-
-    def manipulateEventsForTest(eventResponse: Json): Json = {
-      def ignoreIt(json: Json): Boolean = {
-        val obj = json.asObject.get.toMap
-        (obj("TYPE") == Json.fromString("AgentReady") || obj("TYPE") == Json.fromString("AgentDedicated")) &&
-            json.as[KeyedEvent[AgentRefStateEvent]].orThrow.key != TestAgentPath || // Let through only Events for one AgentRef, because ordering is undefined
-          obj("TYPE") == Json.fromString("AgentCoupled") ||
-          obj("TYPE") == Json.fromString("AgentCouplingFailed") ||
-          obj("TYPE") == Json.fromString("AgentEventsObserved")
-      }
-      val eventIds = Iterator.from(1001)
-      def changeEvent(json: Json): Json = {
-        val obj = json.asObject.get
-        Json.fromJsonObject(JsonObject.fromMap(
-          obj.toMap flatMap {
-            case ("eventId", _) => ("eventId" -> Json.fromInt(eventIds.next())) :: Nil
-            case ("initiallyStartedAt", _) => ("initiallyStartedAt" -> Json.fromLong(111222333)) :: Nil
-            case ("timestamp", _) => Nil
-            case o => o :: Nil
-          }))
-      }
-      eventResponse.hcursor
-        .downField("stamped").withFocus(_.mapArray(_ filterNot ignoreIt map changeEvent)).up
-        .top.get
-    }
   }
 
   "Unknown path returns 404 Not found" in {

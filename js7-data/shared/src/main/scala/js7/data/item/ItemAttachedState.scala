@@ -2,12 +2,17 @@ package js7.data.item
 
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 
 sealed trait ItemAttachedState
 
 object ItemAttachedState
 {
   sealed trait NotDetached extends ItemAttachedState
+  {
+    def toShortString: String =
+      getClass.simpleScalaName
+  }
   object NotDetached {
     implicit val jsonCodec = TypedJsonCodec[NotDetached](
       Subtype(Attachable),

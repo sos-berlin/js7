@@ -2,13 +2,16 @@ package js7.agent.data
 
 import js7.agent.data.AgentState.AgentMetaState
 import js7.agent.data.orderwatch.{AllFileWatchesState, FileWatchState}
+import js7.agent.data.subagent.SubagentRefState
 import js7.base.problem.Checked._
 import js7.base.utils.Collections.implicits._
 import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.cluster.ClusterState
 import js7.data.event.{EventId, JournalState, SnapshotableState, SnapshotableStateBuilder, Stamped}
+import js7.data.item.BasicItemEvent
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.{Order, OrderId}
+import js7.data.subagent.{SubagentId, SubagentRef}
 import js7.data.workflow.{Workflow, WorkflowId}
 import scala.collection.mutable
 
@@ -20,6 +23,7 @@ extends SnapshotableStateBuilder[AgentState]
   private var _journalState = JournalState.empty
   private var _eventId = EventId.BeforeFirst
   private var agentMetaState = AgentMetaState.empty
+  private val idToSubagentRefState = mutable.Map.empty[SubagentId, SubagentRefState]
   private val idToOrder = mutable.Map.empty[OrderId, Order[Order.State]]
   private val idToWorkflow = mutable.Map.empty[WorkflowId, Workflow]
   private val pathToCalendar = mutable.Map.empty[CalendarPath, Calendar]
@@ -46,6 +50,16 @@ extends SnapshotableStateBuilder[AgentState]
     case snapshot: FileWatchState.Snapshot =>
       allFileWatchesState.addSnapshot(snapshot)
 
+    case subagentRef: SubagentRef =>
+      idToSubagentRefState.insert(subagentRef.id -> SubagentRefState.initial(subagentRef))
+
+    case event: BasicItemEvent.ItemAttachedStateEvent =>
+      event.delegateId match {
+        case subagentId: SubagentId =>
+          idToSubagentRefState(subagentId) =
+            idToSubagentRefState(subagentId).applyEvent(event).orThrow
+      }
+
     case o: JournalState =>
       _journalState = o
 
@@ -58,6 +72,7 @@ extends SnapshotableStateBuilder[AgentState]
       _eventId,
       SnapshotableState.Standards(_journalState, ClusterState.Empty),
       agentMetaState,
+      idToSubagentRefState.toMap,
       idToOrder.toMap,
       idToWorkflow.toMap,
       allFileWatchesState.result(),

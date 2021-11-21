@@ -9,6 +9,7 @@ import js7.data.calendar.CalendarPath
 import js7.data.item.InventoryItem.Companion
 import js7.data.job.JobResourcePath
 import js7.data.lock.LockPath
+import js7.data.subagent.SubagentId
 import js7.data.workflow.WorkflowPath
 import scala.collection.View
 import scala.reflect.ClassTag
@@ -36,8 +37,9 @@ trait InventoryItem
 
   def referencedItemPaths: View[InventoryItemPath] =
     referencedLockPaths.view ++
-      referencedBoardPaths.view ++
+      referencedBoardPaths ++
       referencedAgentPaths ++
+      referencedSubagentIds ++
       referencedJobResourcePaths ++
       referencedWorkflowPaths ++
       referencedCalendarPaths
@@ -50,6 +52,9 @@ trait InventoryItem
 
   def referencedAgentPaths: Set[AgentPath] =
     Set.empty
+
+  def referencedSubagentIds: Iterable[SubagentId] =
+    Nil
 
   def referencedJobResourcePaths: Set[JobResourcePath] =
     Set.empty

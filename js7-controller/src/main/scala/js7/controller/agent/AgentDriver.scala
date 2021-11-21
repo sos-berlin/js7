@@ -6,7 +6,7 @@ import com.typesafe.config.ConfigUtil
 import js7.agent.client.AgentClient
 import js7.agent.data.Problems.AgentNotDedicatedProblem
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.{CoupleController, DedicateAgent}
+import js7.agent.data.commands.AgentCommand.{CoupleController, DedicateAgentDirector}
 import js7.agent.data.event.AgentEvent
 import js7.base.auth.UserAndPassword
 import js7.base.configutils.Configs.ConvertibleConfig
@@ -33,13 +33,15 @@ import js7.controller.agent.CommandQueue.QueuedInputResponse
 import js7.controller.configuration.ControllerConfiguration
 import js7.data.agent.AgentRefState.{Coupled, Reset, Resetting}
 import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentReset}
-import js7.data.agent.{AgentPath, AgentRunId}
+import js7.data.agent.{AgentPath, AgentRef, AgentRunId}
 import js7.data.controller.ControllerState
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
+import js7.data.item.ItemAttachedState.{Attachable, Attached}
 import js7.data.item.{InventoryItemEvent, InventoryItemKey, SignableItem, UnsignedSimpleItem}
 import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetached}
 import js7.data.order.{Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.OrderWatchEvent
+import js7.data.subagent.SubagentId
 import js7.journal.state.StatePersistence
 import monix.eval.Task
 import monix.execution.atomic.AtomicInt
@@ -56,8 +58,7 @@ import scala.util.{Failure, Success, Try}
   * @author Joacim Zschimmer
   */
 final class AgentDriver private(
-  agentPath: AgentPath,
-  initialUri: Uri,
+  initialAgentRef: AgentRef,
   initialAgentRunId: Option[AgentRunId],
   initialEventId: EventId,
   persistence: StatePersistence[ControllerState],
@@ -68,15 +69,16 @@ extends ReceiveLoggingActor.WithStash
 {
   import controllerConfiguration.controllerId
 
-  protected def journalConf = controllerConfiguration.journalConf
-
+  private val agentPath = initialAgentRef.path
+  private var agentRef = initialAgentRef
   private val logger = Logger.withPrefix[this.type](agentPath.string)
   private val agentUserAndPassword: Option[UserAndPassword] =
     controllerConfiguration.config.optionAs[SecretString]("js7.auth.agents." + ConfigUtil.joinPath(agentPath.string))
       .map(password => UserAndPassword(controllerConfiguration.controllerId.toUserId, password))
 
   private val agentRunIdOnce = SetOnce.fromOption(initialAgentRunId)
-  private var client = newAgentClient(initialUri)
+  private var client = newAgentClient(persistence.currentState.agentToUri(agentPath)
+    .getOrElse(Uri(s"unknown-uri://$agentPath"/*should not happen ???*/)))
   /** Only filled when coupled */
   private var lastFetchedEventId = initialEventId
   private var lastCommittedEventId = initialEventId
@@ -238,13 +240,14 @@ extends ReceiveLoggingActor.WithStash
       controllerConfiguration.httpsConfig)(context.system)
 
   def receive = {
-    case input: Input with Queueable if sender() == context.parent && !isTerminating =>
+    case input: Input with Queueable if !isTerminating =>
       val ok = commandQueue.enqueue(input)
       if (ok) scheduler.scheduleOnce(conf.commandBatchDelay) {
         self ! Internal.CommandQueueReady  // (Even with commandBatchDelay == 0) delay maySend() such that Queueable pending in actor's mailbox can be queued
       }
 
-    case Input.ChangeUri(uri) =>
+    case Input.ChangeUri(agentRef, uri) =>
+      this.agentRef = agentRef
       if (uri != client.baseUri || isReset) {
         logger.debug(s"ChangeUri $uri")
         // TODO Changing URI in quick succession is not properly solved
@@ -495,8 +498,10 @@ extends ReceiveLoggingActor.WithStash
       agentRunIdOnce.toOption match {
         case Some(agentRunId) => Task.pure(Right(agentRunId -> lastFetchedEventId))
         case None =>
-          client.commandExecute(DedicateAgent(agentPath, controllerId))
-            .flatMapT { case DedicateAgent.Response(agentRunId, agentEventId) =>
+          client
+            .commandExecute(
+              DedicateAgentDirector(agentRef.director, controllerId, agentPath))
+            .flatMapT { case DedicateAgentDirector.Response(agentRunId, agentEventId) =>
               (if (noJournal)
                 Task.pure(Checked.unit)
               else
@@ -506,11 +511,36 @@ extends ReceiveLoggingActor.WithStash
                   .map(_.map { _ =>
                     // Asynchronous assignment
                     agentRunIdOnce := agentRunId
+                    reattachSubagents()
                   }))
               .rightAs(agentRunId -> agentEventId)
             }
       }
     }
+
+  private def reattachSubagents(): Unit = {
+    val controllerState = persistence.currentState
+    controllerState.itemToAgentToAttachedState
+      .foreach {
+        case (subagentId: SubagentId, agentToAttachedState) =>
+          // After Agent Reset, re-attach SubagentRefs
+          controllerState.pathToUnsignedSimpleItem.get(subagentId)
+            .foreach(item => agentToAttachedState.get(agentPath)
+              .foreach {
+                case Attachable =>
+                  self ! Input.AttachUnsignedItem(item)
+
+                case Attached(rev) =>
+                  if (item.itemRevision == rev) {
+                    self ! Input.AttachUnsignedItem(item)
+                  }
+
+                case _ =>
+              })
+
+        case _ =>
+      }
+  }
 
   private def stopIfTerminated() =
     if (commandQueue.isTerminated) {
@@ -549,12 +579,12 @@ private[controller] object AgentDriver
     classOf[OrderWatchEvent])
   private val DecoupledProblem = Problem.pure("Agent has been decoupled")
 
-  def props(agentPath: AgentPath, uri: Uri, agentRunId: Option[AgentRunId], eventId: EventId,
+  def props(agentRef: AgentRef, agentRunId: Option[AgentRunId], eventId: EventId,
     persistence: StatePersistence[ControllerState],
     agentDriverConf: AgentDriverConfiguration, controllerConf: ControllerConfiguration)
     (implicit s: Scheduler)
   =
-    Props { new AgentDriver(agentPath, uri, agentRunId, eventId,
+    Props { new AgentDriver(agentRef, agentRunId, eventId,
       persistence, agentDriverConf, controllerConf) }
 
   sealed trait Queueable extends Input {
@@ -567,7 +597,7 @@ private[controller] object AgentDriver
   object Input {
     case object StartFetchingEvents
 
-    final case class ChangeUri(uri: Uri)
+    final case class ChangeUri(agentRef: AgentRef, uri: Uri)
 
     final case class AttachUnsignedItem(item: UnsignedSimpleItem)
     extends Input with Queueable

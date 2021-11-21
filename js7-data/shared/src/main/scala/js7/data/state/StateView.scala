@@ -10,20 +10,20 @@ import js7.data.board.{BoardPath, BoardState}
 import js7.data.controller.ControllerId
 import js7.data.event.ItemContainer
 import js7.data.item.{InventoryItem, InventoryItemKey}
-import js7.data.job.{JobKey, JobResource}
+import js7.data.job.{JobKey, JobResource, JobResourcePath}
 import js7.data.lock.{LockPath, LockState}
 import js7.data.order.Order.{FailedInFork, Processing}
 import js7.data.order.{Order, OrderId}
 import js7.data.value.expression.Scope
 import js7.data.value.expression.scopes.{JobResourceScope, NowScope, OrderScopes}
-import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{BoardInstruction, End}
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow, WorkflowId, WorkflowPath}
 import scala.collection.MapView
 import scala.reflect.ClassTag
 
-trait StateView extends ItemContainer
+/** Common interface for ControllerState and AgentState (but not SubagentState). */
+trait StateView extends AgentStateView with ItemContainer
 {
   def isAgent: Boolean
 
@@ -82,16 +82,6 @@ trait StateView extends ItemContainer
       .map(_.instruction_[A](workflowPosition.position))
       .orThrow
 
-  private def keyToJob(jobKey: JobKey): Checked[WorkflowJob] =
-    idToWorkflow.checked(jobKey.workflowId)
-      .flatMap(_.keyToJob.checked(jobKey))
-
-  final def workflowJob(workflowPosition: WorkflowPosition): Checked[WorkflowJob] =
-    for {
-      workflow <- idToWorkflow.checked(workflowPosition.workflowId)
-      job <- workflow.checkedWorkflowJob(workflowPosition.position)
-    } yield job
-
   def childOrderEnded(order: Order[Order.State], parent: Order[Order.Forked]): Boolean = {
     lazy val endReached = order.state == Order.Ready &&
       order.position.parent.contains(parent.position) &&
@@ -149,6 +139,8 @@ object StateView
       def workflowPathToId(workflowPath: WorkflowPath) =
         Left(Problem("workflowPathToId is not implemented"))
 
+      def pathToJobResource = throw new NotImplementedError
+
       lazy val keyToItem: MapView[InventoryItemKey, InventoryItem] =
         new MapView[InventoryItemKey, InventoryItem] {
           def get(itemKey: InventoryItemKey): Option[InventoryItem] =
@@ -183,6 +175,9 @@ object StateView
 
     def pathToBoardState: PartialFunction[BoardPath, BoardState] =
       new NotImplementedMap[BoardPath, BoardState]
+
+    def pathToJobResource =
+      new NotImplementedMap[JobResourcePath, JobResource]
 
     val controllerId = ControllerId("CONTROLLER")
   }

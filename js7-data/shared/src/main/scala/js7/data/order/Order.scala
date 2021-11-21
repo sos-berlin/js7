@@ -814,6 +814,19 @@ object Order
       }
     }
 
+  implicit val ProcessingOrderJsonEncoder: Encoder.AsObject[Order[Processing]] =
+    o => jsonEncoder.encodeObject(o)
+
+  implicit val ProcessingOrderJsonDecoder: Decoder[Order[Processing]] = c =>
+    jsonDecoder(c).flatMap {
+      o => o.ifState[Processing] match {
+        case None => Left(DecodingFailure(
+          s"Order is not Fresh or Ready, but: ${o.state.getClass.simpleScalaName}",
+          c.history))
+        case Some(x) => Right(x)
+      }
+    }
+
   final case class InapplicableOrderEventProblem(event: OrderEvent, order: Order[State])
   extends Problem.Coded {
     def arguments = Map(

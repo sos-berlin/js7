@@ -11,6 +11,7 @@ import js7.data.board.{Board, BoardPath, BoardState, Notice}
 import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
+import js7.data.controller.ControllerStateBuilder._
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{JournalEvent, JournalState, KeyedEvent, SnapshotableState, SnapshotableStateBuilder, Stamped}
 import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeleted, ItemDeletionMarked}
@@ -26,6 +27,7 @@ import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{AllOrderWatchesState, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState}
 import js7.data.state.StateView
 import js7.data.state.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
+import js7.data.subagent.{SubagentId, SubagentRef}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import scala.collection.{MapView, mutable}
 
@@ -40,6 +42,7 @@ with StateView
   private var repo = Repo.empty
   private val _idToOrder = mutable.Map.empty[OrderId, Order[Order.State]]
   private val _pathToAgentRefState = mutable.Map.empty[AgentPath, AgentRefState]
+  private val _idToSubagentRef = mutable.Map.empty[SubagentId, SubagentRef]
   private val _pathToLockState = mutable.Map.empty[LockPath, LockState]
   private val _pathToBoardState = mutable.Map.empty[BoardPath, BoardState]
   private val _pathToCalendar = mutable.Map.empty[CalendarPath, Calendar]
@@ -78,14 +81,15 @@ with StateView
   lazy val keyToItem: MapView[InventoryItemKey, InventoryItem] =
     throw new NotImplementedError("ControllerStateBuilder.keyToItem")
 
+  def pathToJobResource = keyTo(JobResource)
+
   protected def onInitializeState(state: ControllerState): Unit = {
     standards = state.standards
     controllerMetaState = state.controllerMetaState
     repo = state.repo
-    _idToOrder.clear()
     _idToOrder ++= state.idToOrder
-    _pathToAgentRefState.clear()
     _pathToAgentRefState ++= state.pathToAgentRefState
+    _idToSubagentRef ++= state.idToSubagentRef
     _pathToLockState ++= state.pathToLockState
     _pathToBoardState ++= state.pathToBoardState
     _pathToCalendar ++= state.pathToCalendar
@@ -111,6 +115,9 @@ with StateView
 
     case agentRefState: AgentRefState =>
       _pathToAgentRefState.insert(agentRefState.agentPath -> agentRefState)
+
+    case subagentRef: SubagentRef =>
+      _idToSubagentRef.insert(subagentRef.id -> subagentRef)
 
     case lockState: LockState =>
       _pathToLockState.insert(lockState.lock.path -> lockState)
@@ -183,6 +190,9 @@ with StateView
                 case agentRef: AgentRef =>
                   _pathToAgentRefState.insert(agentRef.path -> AgentRefState(agentRef))
 
+                case subagentRef: SubagentRef =>
+                  _idToSubagentRef.insert(subagentRef.id -> subagentRef)
+
                 case orderWatch: OrderWatch =>
                   allOrderWatchesState = allOrderWatchesState.addOrderWatch(orderWatch).orThrow
 
@@ -202,6 +212,9 @@ with StateView
                 case agentRef: AgentRef =>
                   _pathToAgentRefState(agentRef.path) = _pathToAgentRefState(agentRef.path).copy(
                     agentRef = agentRef)
+
+                case subagentRef: SubagentRef =>
+                  _idToSubagentRef(subagentRef.id) = subagentRef
 
                 case orderWatch: OrderWatch =>
                   allOrderWatchesState = allOrderWatchesState.changeOrderWatch(orderWatch).orThrow
@@ -265,6 +278,22 @@ with StateView
 
                 case agentPath: AgentPath =>
                   _pathToAgentRefState -= agentPath
+
+                  for ((itemKey, agentToNotDetached) <- itemToAgentToAttachedState) {
+                    if (agentToNotDetached.contains(agentPath)) {
+                      val m = agentToNotDetached.removed(agentPath)
+                      logger.debug(
+                        s"$event: silently detach ${agentToNotDetached(agentPath).toShortString} $itemKey")
+                      if (m.nonEmpty) {
+                        itemToAgentToAttachedState += (itemKey -> m)
+                      } else {
+                        itemToAgentToAttachedState -= itemKey
+                      }
+                    }
+                  }
+
+                case subagentId: SubagentId =>
+                  _idToSubagentRef -= subagentId
 
                 case boardPath: BoardPath =>
                   _pathToBoardState -= boardPath
@@ -411,6 +440,7 @@ with StateView
       standards,
       controllerMetaState,
       _pathToAgentRefState.toMap,
+      _idToSubagentRef.toMap,
       _pathToLockState.toMap,
       _pathToBoardState.toMap,
       _pathToCalendar.toMap,
@@ -424,4 +454,9 @@ with StateView
   def journalState = standards.journalState
 
   def clusterState = standards.clusterState
+}
+
+object ControllerStateBuilder
+{
+  private val logger = scribe.Logger[this.type]
 }

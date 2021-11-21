@@ -1,9 +1,10 @@
 package js7.common.akkahttp
 
 import akka.NotUsed
-import akka.http.scaladsl.marshalling.{Marshaller, ToEntityMarshaller, ToResponseMarshallable, ToResponseMarshaller}
+import akka.http.scaladsl.marshalling.{Marshaller, Marshalling, ToEntityMarshaller, ToResponseMarshallable, ToResponseMarshaller}
 import akka.http.scaladsl.model.ContentTypes.`application/json`
 import akka.http.scaladsl.model.MediaTypes.`text/plain`
+import akka.http.scaladsl.model.StatusCodes.OK
 import akka.http.scaladsl.model.{ContentType, HttpEntity, HttpResponse, MediaType, StatusCode}
 import akka.http.scaladsl.unmarshalling.{FromStringUnmarshaller, Unmarshaller}
 import akka.stream.scaladsl.Source
@@ -18,6 +19,7 @@ import js7.common.akkautils.ByteStrings.syntax._
 import js7.common.http.StreamingSupport.AkkaObservable
 import monix.execution.Scheduler
 import monix.reactive.Observable
+import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.language.implicitConversions
 import scala.reflect.runtime.universe._
@@ -88,4 +90,10 @@ object StandardMarshallers
           problemToResponseMarshaller(problem)
       }
     }
+
+  implicit val unitToResponseMarshaller: ToResponseMarshaller[Unit] =
+    Marshaller {
+      _ => _ => Future.successful(List(Marshalling.Opaque(() => HttpResponse(OK))))
+    }
+
 }

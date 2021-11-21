@@ -11,6 +11,8 @@ import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
+import js7.base.web.Uri
 import js7.data.Problems.{ItemIsStillReferencedProblem, MissingReferencedItemProblem}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRefStateEvent}
 import js7.data.board.BoardEvent.{NoticeDeleted, NoticePosted}
@@ -35,6 +37,7 @@ import js7.data.order.OrderEvent.{OrderAdded, OrderAddedX, OrderCancelled, Order
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{AllOrderWatchesState, FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState}
 import js7.data.state.StateView
+import js7.data.subagent.{SubagentId, SubagentRef}
 import js7.data.value.Value
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import monix.reactive.Observable
@@ -49,6 +52,7 @@ final case class ControllerState(
   standards: SnapshotableState.Standards,
   controllerMetaState: ControllerMetaState,
   pathToAgentRefState: Map[AgentPath, AgentRefState],
+  idToSubagentRef: Map[SubagentId, SubagentRef],
   pathToLockState: Map[LockPath, LockState],
   pathToBoardState: Map[BoardPath, BoardState],
   pathToCalendar: Map[CalendarPath, Calendar],
@@ -74,6 +78,7 @@ with SnapshotableState[ControllerState]
     controllerMetaState.isDefined.toInt +
     repo.estimatedEventCount +
     pathToAgentRefState.size +
+    idToSubagentRef.size +
     pathToLockState.size +
     pathToBoardState.values.size +
     pathToBoardState.values.view.map(_.notices.size).sum +
@@ -90,6 +95,7 @@ with SnapshotableState[ControllerState]
       standards.toSnapshotObservable,
       Observable.fromIterable(controllerMetaState.isDefined ? controllerMetaState),
       Observable.fromIterable(pathToAgentRefState.values),
+      Observable.fromIterable(idToSubagentRef.values),
       Observable.fromIterable(pathToLockState.values),
       Observable.fromIterable(pathToBoardState.values.view.map(_.toSnapshotObservable))
         .flatten,
@@ -145,6 +151,11 @@ with SnapshotableState[ControllerState]
                     yield copy(
                       pathToAgentRefState = o)
 
+                case subagentRef: SubagentRef =>
+                  for (o <- idToSubagentRef.insert(subagentRef.id -> subagentRef))
+                    yield copy(
+                      idToSubagentRef = o)
+
                 case orderWatch: OrderWatch =>
                   for (o <- allOrderWatchesState.addOrderWatch(orderWatch)) yield
                     copy(allOrderWatchesState = o)
@@ -167,10 +178,24 @@ with SnapshotableState[ControllerState]
                         lock = lock)))
 
                 case agentRef: AgentRef =>
-                  for (agentRefState <- pathToAgentRefState.checked(agentRef.path))
-                    yield copy(
-                      pathToAgentRefState = pathToAgentRefState + (agentRef.path -> agentRefState.copy(
-                        agentRef = agentRef)))
+                  for {
+                    agentRefState <- pathToAgentRefState.checked(agentRef.path)
+                    _ <-
+                      if (agentRef.directors != agentRefState.agentRef.directors)
+                        Left(Problem.pure("Agent Director cannot not be changed"))
+                      else
+                        Checked.unit
+                  } yield copy(
+                    pathToAgentRefState = pathToAgentRefState + (agentRef.path -> agentRefState.copy(
+                      agentRef = agentRef)))
+
+                case subagentRef: SubagentRef =>
+                  for {
+                    x <- idToSubagentRef.checked(subagentRef.id)
+                    _ <- x.agentPath == subagentRef.agentPath !!
+                      Problem.pure("A Subagent's AgentPath cannot be changed")
+                  } yield copy(
+                    idToSubagentRef = idToSubagentRef + (subagentRef.id -> subagentRef))
 
                 case orderWatch: OrderWatch =>
                   allOrderWatchesState.changeOrderWatch(orderWatch)
@@ -249,7 +274,28 @@ with SnapshotableState[ControllerState]
 
                 case agentPath: AgentPath =>
                   Right(copy(
-                    pathToAgentRefState = pathToAgentRefState - agentPath))
+                    pathToAgentRefState = pathToAgentRefState - agentPath,
+                    itemToAgentToAttachedState = itemToAgentToAttachedState
+                      .view
+                      .flatMap { case (itemKey, agentToAttached) =>
+                        agentToAttached
+                          .view
+                          .filterNot { case (a, notDetached) =>
+                            (a == agentPath) && {
+                              logger.debug(
+                                s"$event: silently detach ${notDetached.toShortString} $itemKey")
+                              true
+                            }
+                          }
+                          .toMap
+                          .emptyToNone
+                          .map(itemKey -> _)
+                      }
+                      .toMap))
+
+                case subagentId: SubagentId =>
+                  Right(copy(
+                    idToSubagentRef = idToSubagentRef - subagentId))
 
                 case path: OrderWatchPath =>
                   Right(copy(
@@ -526,6 +572,15 @@ with SnapshotableState[ControllerState]
     idToOrder.valuesIterator.map(_.workflowId).toSet
       .tap(o => logger.trace(s"${idToOrder.size} orders => isWorkflowUsedByOrders size=${o.size}"))
 
+  def agentToUri(agentPath: AgentPath): Option[Uri] =
+    keyTo(AgentRef)
+      .get(agentPath)
+      .flatMap(agentRef =>
+        agentRef.director match {
+          case Some(director) => keyTo(SubagentRef).get(director).map(_.uri)
+          case None => agentRef.uri
+        })
+
   def itemToAttachedState(itemKey: InventoryItemKey, itemRevision: Option[ItemRevision], agentPath: AgentPath)
   : ItemAttachedState =
     itemToAgentToAttachedState
@@ -575,6 +630,7 @@ with SnapshotableState[ControllerState]
 
   private def unsignedSimpleItems: View[UnsignedSimpleItem] =
     pathToCalendar.values.view ++
+    idToSubagentRef.values.view ++
       (pathToAgentRefState.view ++
         pathToLockState ++
         allOrderWatchesState.pathToOrderWatchState
@@ -597,6 +653,8 @@ with SnapshotableState[ControllerState]
   def workflowPathToId(workflowPath: WorkflowPath) =
     repo.pathToId(workflowPath)
       .toRight(UnknownKeyProblem("WorkflowPath", workflowPath.string))
+
+  def pathToJobResource = keyTo(JobResource)
 
   lazy val keyToSignedItem: MapView[SignableItemKey, Signed[SignableItem]] =
     new MapView[SignableItemKey, Signed[SignableItem]] {
@@ -621,6 +679,7 @@ with SnapshotableState[ControllerState]
     itemKey match {
       case id: VersionedItemId_ => repo.anyIdToSigned(id).toOption.map(_.value)
       case path: AgentPath => pathToAgentRefState.get(path).map(_.item)
+      case id: SubagentId => idToSubagentRef.get(id)
       case path: LockPath => pathToLockState.get(path).map(_.item)
       case path: OrderWatchPath => allOrderWatchesState.pathToOrderWatchState.get(path).map(_.item)
       case path: BoardPath => pathToBoardState.get(path).map(_.item)
@@ -650,6 +709,7 @@ with ItemContainer.Companion[ControllerState]
     Map.empty,
     Map.empty,
     Map.empty,
+    Map.empty,
     AllOrderWatchesState.empty,
     Repo.empty,
     Map.empty,
@@ -662,7 +722,7 @@ with ItemContainer.Companion[ControllerState]
   def newBuilder() = new ControllerStateBuilder
 
   protected val inventoryItems = Vector(
-    AgentRef, Lock, Board, Calendar, FileWatch, JobResource, Workflow)
+    AgentRef, SubagentRef, Lock, Board, Calendar, FileWatch, JobResource, Workflow)
 
   lazy val snapshotObjectJsonCodec: TypedJsonCodec[Any] =
     TypedJsonCodec.named("ControllerState.Snapshot",
@@ -672,6 +732,7 @@ with ItemContainer.Companion[ControllerState]
       Subtype(deriveCodec[ClusterStateSnapshot]),
       Subtype[ControllerMetaState],
       Subtype[AgentRefState],
+      Subtype[SubagentRef],
       Subtype[LockState],
       Subtype[Board],
       Subtype[Calendar],

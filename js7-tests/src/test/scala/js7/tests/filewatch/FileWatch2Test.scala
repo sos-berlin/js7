@@ -13,7 +13,7 @@ import js7.data.agent.AgentPath
 import js7.data.controller.ControllerEvent.ControllerShutDown
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest}
-import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemAttachedToAgent}
+import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemAttachedStateEvent, ItemAttachedToAgent}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.{BasicItemEvent, InventoryItemEvent, ItemRevision, UnsignedSimpleItemEvent}
 import js7.data.order.OrderEvent.{OrderAdded, OrderDeleted, OrderFinished, OrderStarted, OrderStderrWritten}
@@ -21,6 +21,7 @@ import js7.data.order.OrderId
 import js7.data.orderwatch.FileWatch.FileArgumentName
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
 import js7.data.orderwatch.{ExternalOrderKey, ExternalOrderName, FileWatch, OrderWatchEvent, OrderWatchPath}
+import js7.data.subagent.SubagentId
 import js7.data.value.StringValue
 import js7.data.value.expression.Expression.{MkString, StringConstant}
 import js7.data.workflow.{OrderParameter, OrderParameterList, OrderPreparation, Workflow, WorkflowPath}
@@ -199,8 +200,9 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
       .filter(_
         .event match {
           case _: ControllerShutDown => true
+          case e: ItemAttachedStateEvent if e.key.isInstanceOf[SubagentId] => false
           case _: BasicItemEvent => true
-          case event: UnsignedSimpleItemEvent if event.key.isInstanceOf[OrderWatchPath] => true
+          case e: UnsignedSimpleItemEvent if e.key.isInstanceOf[OrderWatchPath] => true
           case _: OrderAdded => true
           case _: OrderStarted => true
           case _: OrderStderrWritten => true
@@ -313,7 +315,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
       .flatMap(ke => Observable.fromIterable(Some(ke.event)
         .collect {
           case e: AgentReady => e.copy(timezone = "UTC", totalRunningTime = 1.s)
-          case e: InventoryItemEvent => e
+          case e: InventoryItemEvent if !e.key.isInstanceOf[SubagentId] => e
           case e: OrderWatchEvent => e
         }
         .map(e => ke.copy(event = e))))

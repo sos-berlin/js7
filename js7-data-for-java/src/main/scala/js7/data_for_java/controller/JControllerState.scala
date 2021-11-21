@@ -11,6 +11,7 @@ import js7.base.time.JavaTimeConverters.AsScalaInstant
 import js7.base.time.WallClock
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
+import js7.base.web.Uri
 import js7.data.agent.AgentPath
 import js7.data.board.{Board, BoardPath}
 import js7.data.calendar.{Calendar, CalendarPath}
@@ -79,6 +80,12 @@ extends JJournaledState[JControllerState, ControllerState]
       .map(_.agentRef)
       .map(JAgentRef.apply)
       .toVavr
+
+  /** Looks up the URI of an AgentPath.. */
+  @Nonnull
+  def agentToUri(@Nonnull agentPath: AgentPath): JOptional[Uri] =
+    asScala.agentToUri(agentPath)
+      .toJava
 
   /** Looks up an AgentRefState. */
   @Nonnull

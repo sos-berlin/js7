@@ -427,11 +427,11 @@ object ScalaUtils
         if (underlying) string else ""
 
       def !!(problem: => Problem): Checked[Unit] =
-        isTrueOr(problem)
+        orLeft(problem)
 
-      def isTrueOr(problem: => Problem): Checked[Unit] =
-        if (!underlying) Left(problem)
-        else Checked.unit
+      def orLeft[L](left: => L): Either[L, Unit] =
+        if (!underlying) Left(left)
+        else RightUnit
 
       def toInt: Int =
         if (underlying) 1 else 0

@@ -157,6 +157,7 @@ resolvers += Resolver.mavenLocal
 lazy val js7 = (project in file("."))
   .aggregate(
     `js7-agent`,
+    `js7-subagent`,
     `js7-base`.jvm,
     `js7-common`,
     `js7-common-http`.jvm,
@@ -553,7 +554,9 @@ lazy val `js7-cluster` = project
   }
 
 lazy val `js7-agent` = project
-  .dependsOn(`js7-agent-data`, `js7-launcher`, `js7-core`, `js7-common`, `js7-data`.jvm,
+  .dependsOn(
+    `js7-subagent`,
+    `js7-agent-data`, `js7-launcher`, `js7-core`, `js7-common`, `js7-data`.jvm,
     `js7-agent-client` % "test", `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
@@ -567,6 +570,22 @@ lazy val `js7-agent` = project
       akkaHttp ++
       intelliJAnnotations % "compile" ++
       guice ++
+      scalaTest % "test" ++
+      log4j % "test" ++
+      lmaxDisruptor % "test"
+  }
+
+lazy val `js7-subagent` = project
+  .dependsOn(
+    `js7-launcher`,
+    `js7-common`,
+    `js7-data`.jvm,
+    `js7-tester`.jvm % "test")
+  .settings(commonSettings)
+  .settings {
+    import Dependencies._
+    libraryDependencies ++=
+      intelliJAnnotations % "compile" ++
       scalaTest % "test" ++
       log4j % "test" ++
       lmaxDisruptor % "test"

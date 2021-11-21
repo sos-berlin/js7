@@ -1,5 +1,6 @@
 package js7.launcher
 
+import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
 import js7.base.monixutils.TaskObserver
 import js7.base.utils.ScalaUtils.syntax._
 import js7.launcher.utils.KeepLastLineObserver
@@ -20,6 +21,12 @@ final class StdObservers(
 
   val outTaskObserver = TaskObserver(out)
   val errTaskObserver = TaskObserver(err)
+
+  def taskObserver(outerr: StdoutOrStderr): TaskObserver[String] =
+    outerr match {
+      case Stdout => outTaskObserver
+      case Stderr => errTaskObserver
+    }
 
   val stop: Task[Unit] =
     Task.parZip2(outTaskObserver.complete, errTaskObserver.complete)

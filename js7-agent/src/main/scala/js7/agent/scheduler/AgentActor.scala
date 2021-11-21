@@ -35,7 +35,7 @@ import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.recover.Recovered
-import js7.journal.state.{FileStatePersistence, StatePersistence}
+import js7.journal.state.FileStatePersistence
 import js7.launcher.configuration.JobLauncherConf
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -51,7 +51,8 @@ private[agent] final class AgentActor private(
   agentConf: AgentConfiguration,
   jobLauncherConf: JobLauncherConf)
   (implicit closer: Closer, protected val scheduler: Scheduler, iox: IOExecutor)
-extends Actor with Stash with SimpleStateActor
+
+  extends Actor with Stash with SimpleStateActor
 {
   import agentConf.{akkaAskTimeout, journalMeta}
   import context.{actorOf, watch}
@@ -138,13 +139,16 @@ extends Actor with Stash with SimpleStateActor
             }
         }
 
-      case AgentCommand.DedicateAgent(agentPath, controllerId) if !terminating =>
+      case AgentCommand.DedicateAgentDirector(maybeSubagentId, controllerId, agentPath)
+        if !terminating =>
         // Command is idempotent until AgentState has been touched
         val agentRunId = AgentRunId(persistence.journalId)
         persistence
           .persist(agentState =>
             if (!agentState.isDedicated)
-              Right((NoKey <-: AgentDedicated(agentPath, agentRunId, controllerId)) :: Nil)
+              for (_ <- UserId.checked(agentPath.string)/*used for Subagent login*/) yield
+                Seq(NoKey <-:
+                  AgentDedicated(maybeSubagentId, agentPath, agentRunId, controllerId))
             else if (agentPath != agentState.agentPath)
               Left(AgentPathMismatchProblem(agentPath, agentState.agentPath))
             else if (controllerId != agentState.meta.controllerId)
@@ -161,7 +165,7 @@ extends Actor with Stash with SimpleStateActor
           .runToFuture
           .onComplete { triedEventId =>
             response.complete(triedEventId.map(_.map(eventId =>
-              AgentCommand.DedicateAgent.Response(agentRunId, eventId))))
+              AgentCommand.DedicateAgentDirector.Response(agentRunId, eventId))))
           }
 
       case AgentCommand.CoupleController(agentPath, agentRunId, eventId) if !terminating =>
@@ -308,6 +312,7 @@ object AgentActor
       persistence: FileStatePersistence[AgentState],
       terminatePromise: Promise[ProgramTermination])
     =
-      new AgentActor(terminatePromise, persistence, clock, agentConfiguration, jobLauncherConf)
+      new AgentActor(terminatePromise, persistence,
+        clock, agentConfiguration, jobLauncherConf)
   }
 }

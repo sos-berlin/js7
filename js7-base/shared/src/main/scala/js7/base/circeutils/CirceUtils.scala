@@ -98,6 +98,21 @@ object CirceUtils
     implicit val CompactPrinter = CirceUtils.CompactPrinter
   }
 
+  implicit final class RichCirceObjectCodec[A](private val codec: Codec.AsObject[A]) extends AnyVal {
+    def check(check: A => Checked[A]): Codec.AsObject[A] =
+      new Codec.AsObject[A] {
+        def encodeObject(a: A) =
+          codec.encodeObject(a)
+
+        def apply(c: HCursor) =
+          codec(c).flatMap(a =>
+            check(a) match {
+              case Left(problem) => Left(DecodingFailure(problem.toString, c.history))
+              case Right(a) => Right(a)
+            })
+      }
+  }
+
   implicit final class RichCirceError(private val error: io.circe.Error) extends AnyVal
   {
     def toProblem = Problem.pure("JSON " + error.show

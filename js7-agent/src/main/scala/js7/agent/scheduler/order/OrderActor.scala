@@ -4,32 +4,25 @@ import akka.actor.{ActorRef, DeadLetterSuppression, Props, Status}
 import akka.pattern.pipe
 import com.typesafe.config.Config
 import js7.agent.data.AgentState
-import js7.agent.scheduler.job.JobDriver
 import js7.agent.scheduler.order.OrderActor._
+import js7.agent.subagent.SubagentKeeper
 import js7.base.configutils.Configs.RichConfig
-import js7.base.generic.{Accepted, Completed}
+import js7.base.generic.Completed
+import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
-import js7.base.io.process.{ProcessSignal, Stderr, Stdout, StdoutOrStderr}
 import js7.base.log.Logger
-import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked.Ops
 import js7.base.time.JavaTimeConverters._
-import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.ScalaUtils.chunkStrings
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.order.OrderEvent._
 import js7.data.order.{Order, OrderEvent, OrderId, OrderMark, Outcome}
 import js7.data.value.expression.Expression
-import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.journal.configuration.JournalConf
-import js7.journal.{CommitOptions, JournalActor, KeyedJournalingActor}
-import js7.launcher.StdObservers
+import js7.journal.{JournalActor, KeyedJournalingActor}
 import monix.eval.Task
 import monix.execution.Scheduler
-import monix.reactive.Observable
-import monix.reactive.subjects.PublishSubject
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import shapeless.tag.@@
@@ -39,13 +32,13 @@ import shapeless.tag.@@
   */
 final class OrderActor private(
   orderId: OrderId,
+  subagentKeeper: SubagentKeeper,
   protected val journalActor: ActorRef @@ JournalActor.type,
   conf: Conf)
   (implicit protected val scheduler: Scheduler)
 extends KeyedJournalingActor[AgentState, OrderEvent]
 {
   private val logger = Logger.withPrefix[this.type](orderId.toString)
-  import conf.{charBufferSize, stdoutCommitDelay}
 
   protected def journalConf = conf.journalConf
   private var order: Order[Order.State] = null
@@ -95,56 +88,32 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
     startable orElse receiveCommand orElse receiveTerminate
 
   private def processingKilled: Receive =
-    receiveEvent() orElse receiveCommand orElse receiveTerminate
+    receiveEvent orElse receiveCommand orElse receiveTerminate
 
   private def delayedAfterError: Receive =
     startable orElse receiveCommand orElse receiveTerminate
 
   private def startable: Receive =
-    receiveEvent() orElse {
-      case Input.StartProcessing(jobDriver, workflowJob, defaultArguments) =>
+    receiveEvent orElse {
+      case Input.StartProcessing(defaultArguments) =>
         if (order.isProcessable) {
-          val out, err = PublishSubject[String]()
-          val outErrStatistics = Map(Stdout -> new OutErrStatistics, Stderr -> new OutErrStatistics)
-
-          def writeObservableAsEvents(outerr: StdoutOrStderr, observable: Observable[String]) =
-            observable
-              .buffer(Some(conf.stdouterr.delay), conf.stdouterr.chunkSize, toWeight = _.length)
-              .flatMap(strings => Observable.fromIterable(chunkStrings(strings, conf.stdouterr.chunkSize)))
-              .flatMap(chunk => Observable.fromTask(
-                outErrStatistics(outerr).count(
-                  chunk.length,
-                  persistStdouterr(outerr, chunk))))
-              .completedL
-
-          val outErrCompleted = Task
-            .parZip2(
-              writeObservableAsEvents(Stdout, out),
-              writeObservableAsEvents(Stderr, err))
-            .void.runToFuture
-
-          val stdObservers = new StdObservers(out, err, charBufferSize = charBufferSize,
-            keepLastErrLine = workflowJob.failOnErrWritten)
-
           become("processing")(
-            processing(jobDriver, stdObservers, outErrCompleted,
-              () => (outErrStatistics(Stdout).isRelevant || outErrStatistics(Stderr).isRelevant) ?
-                s"stdout: ${outErrStatistics(Stdout)}, stderr: ${outErrStatistics(Stderr)}"))
+            processing)
 
           // OrderStarted automatically with first OrderProcessingStarted
           val orderStarted = order.isState[Order.Fresh] thenList OrderStarted
           persistTransaction(orderStarted :+ OrderProcessingStarted) { (events, updatedState) =>
             update(events, updatedState)
-            jobDriver
+
+            subagentKeeper
               .processOrder(
-                order.castState[Order.Processing],
-                defaultArguments,
-                stdObservers)
+                order.checkedState[Order.Processing].orThrow,
+                defaultArguments)
+              .onErrorHandle(Outcome.Failed.fromThrowable)
               .tapEval(outcome => Task {
-                self ! Internal.OrderProcessed(orderId, outcome)
+                self ! Internal.OrderProcessed(outcome)
               })
               .runAsyncAndForget
-            maybeKillOrder(jobDriver)
           }
         }
 
@@ -152,49 +121,39 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
         context.stop(self)
     }
 
-  private def processing(jobDriver: JobDriver, stdObservers: StdObservers, outerrCompleted: Future[Unit],
-    stdoutStderrStatistics: () => Option[String])
-  : Receive =
-    receiveCommand orElse receiveEvent(Some(jobDriver)) orElse {
-      case Internal.OrderProcessed(`orderId`, outcome) =>
-        stdObservers.stop/*may already be stopped by OrderProcess/JobDriver*/
-          .flatMap(_ => Task.fromFuture(outerrCompleted))
-          .runToFuture
-          .onComplete { _ =>
-            self ! Internal.OutErrCompleted(outcome)
-          }
-
-      case Internal.OutErrCompleted(outcome) =>
-        finishProcessing(OrderProcessed(outcome), stdoutStderrStatistics)
+  private def processing: Receive =
+    receiveCommand orElse receiveEvent orElse {
+      case Internal.OrderProcessed(outcome) =>
+        maybeKillOrder()
+        finishProcessing(OrderProcessed(outcome))
 
       case Input.Terminate(signal) =>
         terminating = true
         for (signal <- signal) {
-          jobDriver.killOrder(orderId, signal)
+          subagentKeeper
+            .killProcess(orderId, signal)
             .runAsyncAndForget
         }
     }
 
-  private def finishProcessing(event: OrderProcessed, stdoutStderrStatistics: () => Option[String]): Unit = {
-    for (o <- stdoutStderrStatistics()) logger.debug(o)
+  private def finishProcessing(event: OrderProcessed): Unit =
     handleEvent(event)
-  }
 
   private def processed: Receive =
-    receiveEvent() orElse receiveCommand orElse receiveTerminate
+    receiveEvent orElse receiveCommand orElse receiveTerminate
 
   private def standard: Receive =
-    receiveEvent() orElse receiveCommand orElse receiveTerminate
+    receiveEvent orElse receiveCommand orElse receiveTerminate
 
-  private def receiveEvent(jobDriver: Option[JobDriver] = None): Receive = {
-    case Command.HandleEvents(events) => handleEvents(events, jobDriver) pipeTo sender()
+  private def receiveEvent: Receive = {
+    case Command.HandleEvents(events) => handleEvents(events) pipeTo sender()
   }
 
-  private def handleEvent(event: OrderCoreEvent, jobDriver: Option[JobDriver] = None)
+  private def handleEvent(event: OrderCoreEvent)
   : Future[Completed] =
-    handleEvents(event :: Nil, jobDriver)
+    handleEvents(event :: Nil)
 
-  private def handleEvents(events: Seq[OrderCoreEvent], jobDriver: Option[JobDriver] = None)
+  private def handleEvents(events: Seq[OrderCoreEvent])
   : Future[Completed] =
     order.applyEvents(events) match {
       case Left(problem) =>
@@ -212,36 +171,31 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
               context.stop(self)
             } else
               event foreach {
-                case OrderKillingMarked(Some(kill)) => maybeKillOrder(kill, jobDriver)
+                case OrderKillingMarked(Some(kill)) => maybeKillOrder(kill)
                 case _ =>
               }
             Completed
           }
     }
 
-  private def maybeKillOrder(jobDriver: JobDriver): Unit =
+  private def maybeKillOrder(): Unit =
     order.mark match {
       case Some(OrderMark.Cancelling(CancellationMode.FreshOrStarted(Some(kill)))) =>
-        maybeKillOrder(kill, Some(jobDriver))
+        maybeKillOrder(kill)
 
       case Some(OrderMark.Suspending(SuspensionMode(Some(kill)))) =>
-        maybeKillOrder(kill, Some(jobDriver))
+        maybeKillOrder(kill)
 
       case _ =>
     }
 
-  private def maybeKillOrder(kill: CancellationMode.Kill, jobDriver: Option[JobDriver]): Unit =
-    jobDriver match {
-      case None =>
-        logger.debug(s"maybeKillOrder $kill: jobDriver == None")
-      case Some(jobDriver) =>
-        if (kill.workflowPosition.forall(_ == order.workflowPosition)) {
-          jobDriver
-            .killOrder(
-              order.id,
-              if (kill.immediately) SIGKILL else SIGTERM)
-            .runAsyncAndForget
-        }
+  private def maybeKillOrder(kill: CancellationMode.Kill): Unit =
+    if (kill.workflowPosition.forall(_ == order.workflowPosition)) {
+      subagentKeeper
+        .killProcess(
+          order.id,
+          if (kill.immediately) SIGKILL else SIGTERM)
+        .runAsyncAndForget
     }
 
   private def becomeAsStateOf(anOrder: Order[Order.State], force: Boolean = false): Unit = {
@@ -270,7 +224,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
   }
 
   private def detaching: Receive =
-    receiveCommand orElse receiveEvent() orElse receiveTerminate
+    receiveCommand orElse receiveEvent orElse receiveTerminate
 
   private def receiveTerminate: Receive = {
     case _: Input.Terminate =>
@@ -286,16 +240,6 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
     logger.error(msg)
     sender() ! Status.Failure(new IllegalStateException(msg))
   }
-
-  private def persistStdouterr(t: StdoutOrStderr, chunk: String): Task[Accepted] =
-    if (stdoutCommitDelay.isZero)  // slow
-      persistTask(OrderStdWritten(t)(chunk)) { (_, _) =>
-        Accepted
-      }.map(_.orThrow)
-    else
-      persistAcceptEarlyTask(OrderStdWritten(t)(chunk), CommitOptions(delay = stdoutCommitDelay))
-        .map(_.orThrow)
-      // Don't wait for disk-sync. OrderStdWritten is followed by a OrderProcessed, then waiting for disk-sync.
 
   private def update(events: Seq[OrderEvent], updatedState: AgentState) = {
     events foreach updateOrder
@@ -340,14 +284,14 @@ private[order] object OrderActor
 {
   private[order] def props(
     orderId: OrderId,
+    subagentKeeper: SubagentKeeper,
     journalActor: ActorRef @@ JournalActor.type,
     conf: OrderActor.Conf)
     (implicit s: Scheduler) =
-    Props { new OrderActor(orderId, journalActor = journalActor, conf) }
+    Props { new OrderActor(orderId, subagentKeeper, journalActor = journalActor, conf) }
 
   private object Internal {
-    final case class OrderProcessed(orderId: OrderId, outcome: Outcome)
-    final case class OutErrCompleted(outcome: Outcome)
+    final case class OrderProcessed(outcome: Outcome)
   }
 
   sealed trait Command
@@ -361,10 +305,7 @@ private[order] object OrderActor
     final case class Recover(order: Order[Order.State]) extends Input
     final case class AddChild(order: Order[Order.Ready]) extends Input
 
-    final case class StartProcessing(
-      jobDriver: JobDriver,
-      workflowJob: WorkflowJob,
-      defaultArguments: Map[String, Expression])
+    final case class StartProcessing(defaultArguments: Map[String, Expression])
     extends Input
 
     final case class Terminate(processSignal: Option[ProcessSignal] = None)

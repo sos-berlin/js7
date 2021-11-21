@@ -5,7 +5,7 @@ import akka.util.Timeout
 import js7.agent.data.AgentState
 import js7.agent.data.Problems.AgentDuplicateOrder
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.{AttachOrder, AttachSignedItem, CoupleController, DedicateAgent, DetachOrder, GetOrders}
+import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSignedItem, CoupleController, DedicateAgentDirector, DetachOrder, GetOrders}
 import js7.agent.scheduler.AgentActorTest._
 import js7.agent.scheduler.order.TestAgentActorProvider
 import js7.base.io.file.FileUtils.syntax._
@@ -17,10 +17,12 @@ import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.ScalaUtils.syntax._
+import js7.base.web.Uri
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.event.{EventId, EventRequest}
 import js7.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
+import js7.data.subagent.{SubagentId, SubagentRef}
 import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.position.Position
 import js7.data.workflow.test.TestSetting._
@@ -52,11 +54,16 @@ final class AgentActorTest extends AnyFreeSpec
           AgentActor.Input.Start(Recovered[AgentState](journalMeta, None, now, config))
         ).mapTo[AgentActor.Output.Ready.type] await 99.s
 
-        val agentRunId = executeCommand(DedicateAgent(agentPath, controllerId))
-          .await(99.s).orThrow.asInstanceOf[DedicateAgent.Response].agentRunId
+
+        val subagentId = SubagentId("SUBAGENT")
+        val agentRunId = executeCommand(
+          DedicateAgentDirector(Some(subagentId), controllerId, agentPath)
+        ).await(99.s).orThrow.asInstanceOf[DedicateAgentDirector.Response].agentRunId
         val stopwatch = new Stopwatch
         val orderIds = for (i <- 0 until n) yield OrderId(s"TEST-ORDER-$i")
 
+        executeCommand(AttachItem(SubagentRef(subagentId, agentPath, Uri("https://0.0.0.0:0"))))
+          .await(99.s).orThrow
         executeCommand(AttachSignedItem(provider.itemSigner.sign(SimpleTestWorkflow)))
           .await(99.s).orThrow
 

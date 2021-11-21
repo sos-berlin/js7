@@ -5,6 +5,7 @@ import java.nio.file.Path
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
+import js7.common.http.configuration.RecouplingStreamReaderConf
 import monix.execution.Scheduler
 
 final case class JobLauncherConf(
@@ -15,6 +16,7 @@ final case class JobLauncherConf(
   workingDirectory: Path,
   killScript: Option[ProcessKillScript],
   scriptInjectionAllowed: Boolean,
+  recouplingStreamReaderConf: RecouplingStreamReaderConf,
   implicit val iox: IOExecutor,
   blockingJobScheduler: Scheduler,
   clock: AlarmClock)

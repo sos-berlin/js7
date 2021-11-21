@@ -82,6 +82,14 @@ object BasicItemEvent
     def key = item.key
   }
 
+  // FIXME Use this SignedItemAttachedToAgent to provide Subagents with Signed[SignableItem]
+  ///** Agent only. */
+  //final case class SignedItemAttachedToAgent(signed: Signed[SignableItem])
+  //extends ForDelegate {
+  //  def item = signed.value
+  //  def key = item.key
+  //}
+
   final case class ItemDetachable(key: InventoryItemKey, delegateId: DelegateId)
   extends ItemAttachedStateEvent {
     def attachedState = Detachable
@@ -116,6 +124,7 @@ object BasicItemEvent
     implicit val x = S.inventoryItemJsonCodec
     implicit val y = S.inventoryItemKeyJsonCodec
     implicit val z = S.delegateIdJsonCodec
+    implicit val q = S.signableItemJsonCodec
 
     TypedJsonCodec(
       Subtype(deriveCodec[ItemDeletionMarked]),
@@ -123,6 +132,7 @@ object BasicItemEvent
       Subtype(deriveEncoder[ItemAttachable], ItemAttachable.jsonDecoder),
       Subtype(deriveEncoder[ItemAttached], ItemAttached.jsonDecoder),
       Subtype(deriveCodec[ItemAttachedToAgent]),
+      //Subtype(deriveCodec[SignedItemAttachedToAgent]),
       Subtype(deriveEncoder[ItemDetachable], ItemDetachable.jsonDecoder),
       Subtype(deriveEncoder[ItemDetached], ItemDetached.jsonDecoder))
   }

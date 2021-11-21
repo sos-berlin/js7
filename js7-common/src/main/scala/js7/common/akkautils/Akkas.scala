@@ -13,6 +13,7 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.configuration.Js7Configuration
 import monix.eval.Task
+import monix.execution.Scheduler
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future, Promise}
@@ -149,16 +150,21 @@ object Akkas
 
   def actorSystemResource(name: String, config: Config = ConfigFactory.empty)
   : Resource[Task, ActorSystem] =
+    Resource.suspend(Task.deferAction(scheduler => Task(
+      actorSystemResource(name, config, scheduler))))
+
+  def actorSystemResource(name: String, config: Config, scheduler: Scheduler)
+  : Resource[Task, ActorSystem] =
     Resource.make(
-      acquire = Task.deferAction(scheduler => Task(newActorSystem(name, config, scheduler))))(
+      acquire = Task(newActorSystem(name, config, scheduler)).executeOn(scheduler))(
       release = actorSystem =>
-        Task.deferFutureAction { implicit s =>
+        Task.deferFuture {
           logger.debug(s"ActorSystem('$name') terminate ...")
           val since = now
           terminate(actorSystem)
             .map { _ =>
               logger.debug(s"ActorSystem('$name') terminated (${since.elapsed.pretty})")
               ()
-            }
+            }(scheduler)
         })
 }

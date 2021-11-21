@@ -287,9 +287,18 @@ trait RealEventWatch extends EventWatch
     timeout: FiniteDuration)
     (implicit s: Scheduler)
   : Vector[Stamped[KeyedEvent[E]]] =
-    when[E](EventRequest.singleClass[E](after = after, Some(timeout)), predicate)
+    awaitAsync[E](predicate, after, timeout)
       .await(timeout + 1.s)
-      .match_ {
+
+  @TestOnly
+  final def awaitAsync[E <: Event: ClassTag: TypeTag](
+    predicate: KeyedEvent[E] => Boolean,
+    after: EventId,
+    timeout: FiniteDuration)
+    (implicit s: Scheduler)
+  : Task[Vector[Stamped[KeyedEvent[E]]]] =
+    when[E](EventRequest.singleClass[E](after = after, Some(timeout)), predicate)
+      .map {
         case EventSeq.NonEmpty(events) =>
           try events.toVector
           finally events.close()

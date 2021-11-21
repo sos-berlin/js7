@@ -10,6 +10,7 @@ import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.AlarmClock
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax.{RichEitherF, RichEitherIterable, RichPartialFunction}
+import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.common.system.ThreadPools.newUnlimitedScheduler
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
@@ -56,7 +57,9 @@ final class InternalJobLauncherForJavaTest extends AnyFreeSpec with BeforeAndAft
             workflow,
             ControllerId("CONTROLLER"),
             sigkillDelay = 0.s),
-          JobLauncherConf(u, u, u, None, scriptInjectionAllowed = true, globalIOX, blockingJobScheduler,
+          JobLauncherConf(u, u, u, None, scriptInjectionAllowed = true,
+            RecouplingStreamReaderConf.forTest,
+            globalIOX, blockingJobScheduler,
             AlarmClock()),
           _ => Left(Problem("No JobResource here"))
         ).orThrow.asInstanceOf[InternalJobLauncher]

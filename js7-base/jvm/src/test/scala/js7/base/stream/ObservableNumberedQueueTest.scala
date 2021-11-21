@@ -17,20 +17,21 @@ final class ObservableNumberedQueueTest extends AnyFreeSpec
   private def observe(after: Long, take: Int): Checked[List[Numbered[X]]] =
     queue
       .observable(after)
+      .await(99.s)
       .map(_
         .take(take)
         .toListL
         .await(99.s))
 
   "Enqueue some values" in {
-    queue.enqueue(Seq(X("a"), X("b")))
+    queue.enqueue(Seq(X("a"), X("b"))).await(99.s)
     assert(observe(0, take = 2) == Right(List(Numbered(1, X("a")), Numbered(2, X("b")))))
     assert(observe(1, take = 1) == Right(List(Numbered(2, X("b")))))
     assert(observe(2, take = 0) == Right(Nil))
     assert(observe(3, take = 0) ==
       Left(Problem("Unknown Numbered[ObservableNumberedQueueTest::X]: #3")))
 
-    queue.enqueue(Seq(X("c")))
+    queue.enqueue(Seq(X("c"))).await(99.s)
     assert(observe(0, take = 3) ==
       Right(List(
         Numbered(1, X("a")),
@@ -42,7 +43,7 @@ final class ObservableNumberedQueueTest extends AnyFreeSpec
     val buffer = mutable.Buffer.empty[Numbered[X]]
     val future = queue
       .observable(0)
-      .orThrow
+      .await(99.s).orThrow
       .foreach {
         buffer += _
       }
@@ -53,11 +54,11 @@ final class ObservableNumberedQueueTest extends AnyFreeSpec
       Numbered(2, X("b")),
       Numbered(3, X("c"))))
 
-    queue.enqueue(Seq(X("d")))
+    queue.enqueue(Seq(X("d"))).await(99.s)
     waitForCondition(10.s, 10.ms)(buffer.length == 4)
     assert(buffer(3) == Numbered(4, X("d")))
 
-    queue.enqueue(Seq(X("e")))
+    queue.enqueue(Seq(X("e"))).await(99.s)
     waitForCondition(10.s, 10.ms)(buffer.length == 5)
     assert(buffer(4) == Numbered(5, X("e")))
 
@@ -65,16 +66,16 @@ final class ObservableNumberedQueueTest extends AnyFreeSpec
   }
 
   "releaseUntil" in {
-    queue.releaseUntil(0).orThrow
+    queue.releaseUntil(0).await(99.s).orThrow
     assert(observe(0, take = 1) == Right(List(Numbered(1, X("a")))))
 
-    queue.releaseUntil(1).orThrow
+    queue.releaseUntil(1).await(99.s).orThrow
     assert(observe(0, take = 1) ==
       Left(Problem("Unknown Numbered[ObservableNumberedQueueTest::X]: #0")))
 
     assert(observe(1, take = 1) == Right(List(Numbered(2, X("b")))))
 
-    assert(queue.releaseUntil(6) == Left(Problem("releaseUntil(6) > last.number ?")))
+    assert(queue.releaseUntil(6).await(99.s) == Left(Problem("releaseUntil(6) > last.number ?")))
   }
 }
 

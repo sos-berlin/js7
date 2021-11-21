@@ -17,6 +17,7 @@ import js7.data.item.{ItemRevision, ItemSigner, VersionId}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.{Order, OrderId, OrderMark}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
+import js7.data.subagent.SubagentId
 import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.WorkflowPath
@@ -106,22 +107,26 @@ final class AgentCommandTest extends AnyFreeSpec
       }""")
   }
 
-  "DedicateAgent" in {
-    check(AgentCommand.DedicateAgent(AgentPath("AGENT"), ControllerId("CONTROLLER")),
+  "DedicateAgentDirector" in {
+    check(AgentCommand.DedicateAgentDirector(
+      Some(SubagentId("SUBAGENT")),
+      ControllerId("CONTROLLER"),
+      AgentPath("AGENT")),
       json"""{
-        "TYPE": "DedicateAgent",
-        "agentPath": "AGENT",
-        "controllerId": "CONTROLLER"
+        "TYPE": "DedicateAgentDirector",
+        "subagentId": "SUBAGENT",
+        "controllerId": "CONTROLLER",
+        "agentPath": "AGENT"
       }""")
   }
 
-  "DedicateAgent.Response" in {
+  "DedicateAgentDirector.Response" in {
     testJson[AgentCommand.Response](
-      AgentCommand.DedicateAgent.Response(
+      AgentCommand.DedicateAgentDirector.Response(
         AgentRunId(JournalId(UUID.fromString("11111111-2222-3333-4444-555555555555"))),
         1000L),
       json"""{
-        "TYPE": "DedicateAgent.Response",
+        "TYPE": "DedicateAgentDirector.Response",
         "agentRunId": "ERERESIiMzNERFVVVVVVVQ",
         "agentEventId": 1000
       }""")

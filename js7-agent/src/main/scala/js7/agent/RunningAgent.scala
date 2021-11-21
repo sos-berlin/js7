@@ -188,34 +188,36 @@ object RunningAgent {
         injector.instance[GateKeeper.Configuration[SimpleUser]],
         injector.instance[SessionRegister[SimpleSession]],
         injector.instance[ClusterWatchRegister],
-        persistence
+        persistence.eventWatch
       ).closeWithCloser(closer)
 
       val mainActorReadyPromise = Promise[MainActor.Ready]()
       val terminationPromise = Promise[ProgramTermination]()
       val mainActor = actorSystem.actorOf(
         Props {
-          new MainActor(persistence,
-          agentConfiguration, injector, mainActorReadyPromise, terminationPromise)
+          new MainActor(persistence, agentConfiguration, injector, mainActorReadyPromise,
+            terminationPromise)
         },
         "main")
 
       mainActor ! MainActor.Input.Start(recovered)
 
-      agentConfiguration.stateDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", o => s"$o/agent")
-
       val sessionTokenFile = agentConfiguration.workDirectory / "session-token"
       val sessionRegister = injector.instance[SessionRegister[SimpleSession]]
 
       val task = for {
-        sessionToken <- sessionRegister.createSystemSession(SimpleUser.System, sessionTokenFile)
-        _ <- Task { closer onClose { deleteIfExists(sessionTokenFile) } }
         ready <- Task.fromFuture(mainActorReadyPromise.future)
         api = ready.api
         _ <- webServer.start(api)
-      } yield
+        sessionToken <- sessionRegister.createSystemSession(SimpleUser.System, sessionTokenFile)
+        _ <- Task { closer onClose { deleteIfExists(sessionTokenFile) } }
+      } yield {
+        agentConfiguration.stateDirectory / "http-uri" :=
+          webServer.localHttpUri.fold(_ => "", o => s"$o/agent")
+
         new RunningAgent(persistence.eventWatch, webServer, mainActor,
           terminationPromise.future, api, sessionRegister, sessionToken, closer, injector)
+      }
       task.runToFuture
     }.flatten
   }

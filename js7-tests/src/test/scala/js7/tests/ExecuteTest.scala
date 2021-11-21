@@ -40,6 +40,8 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
+  // TODO Test separate Subagent, too
+
   protected val agentPaths = agentPath :: Nil
   protected val items = Seq(jobResource)
   override protected val controllerConfig = config"""

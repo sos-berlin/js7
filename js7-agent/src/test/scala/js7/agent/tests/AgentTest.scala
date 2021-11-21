@@ -5,7 +5,7 @@ import java.nio.file.Path
 import js7.agent.RunningAgent
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.{AttachOrder, AttachSignedItem, DedicateAgent}
+import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSignedItem, DedicateAgentDirector}
 import js7.agent.tests.AgentTest._
 import js7.agent.tests.TestAgentDirectoryProvider.provideAgentDirectory
 import js7.base.auth.SimpleUser
@@ -15,12 +15,15 @@ import js7.base.io.process.Processes.{ShellFileExtension => sh}
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
+import js7.base.utils.ScalaUtils.syntax.RichEither
+import js7.base.web.Uri
 import js7.core.command.CommandMeta
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId, Outcome}
+import js7.data.subagent.{SubagentId, SubagentRef}
 import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -55,8 +58,14 @@ final class AgentTest extends AnyFreeSpec with AgentTester
           }
           RunningAgent.run(agentConf, timeout = Some(99.s)) { agent =>
             val agentApi = agent.api(CommandMeta(TestUser))
-            assert(agentApi.commandExecute(DedicateAgent(agentPath, controllerId)).await(99.s).toOption.get
-              .isInstanceOf[DedicateAgent.Response])
+            agentApi
+              .commandExecute(
+                DedicateAgentDirector(Some(subagentId), controllerId, agentPath))
+              .await(99.s).orThrow
+            agentApi
+              .commandExecute(
+                AttachItem(SubagentRef(subagentId, agentPath, Uri("https://127.0.0.1:0"))))
+              .await(99.s).orThrow
 
             assert(agentApi.commandExecute(AttachSignedItem(itemSigner.sign(TestWorkflow))).await(99.s)
               == Right(AgentCommand.Response.Accepted))
@@ -77,6 +86,7 @@ object AgentTest
   private val controllerId = ControllerId("CONTROLLER")
   private val TestUser = SimpleUser(controllerId.toUserId)
   private val agentPath = AgentPath("AGENT")
+  private val subagentId = SubagentId("SUBAGENT")
 
   private val TestScript =
     if (isWindows) """

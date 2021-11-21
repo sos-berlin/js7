@@ -7,8 +7,10 @@ import js7.base.problem.Problem
 import js7.base.web.Uri
 import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.item.ItemRevision
+import js7.data.subagent.SubagentId
 import js7.data_for_java.common.JJsonable
 import js7.data_for_java.item.JUnsignedSimpleItem
+import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
 
 final case class JAgentRef(asScala: AgentRef)
@@ -22,8 +24,16 @@ extends JJsonable[JAgentRef] with JUnsignedSimpleItem
     asScala.path
 
   @Nonnull
-  def uri: Uri =
-    asScala.uri
+  def director: java.util.Optional[SubagentId] =
+    asScala.director.toJava
+
+  @Nonnull
+  def directors: java.util.List[SubagentId] =
+    asScala.directors.asJava
+
+  @Nonnull @Deprecated
+  def uri: Optional[Uri] =
+    asScala.uri.toJava
 
   @Nonnull
   def withRevision(revision: Optional[ItemRevision]) =
@@ -33,8 +43,14 @@ extends JJsonable[JAgentRef] with JUnsignedSimpleItem
 object JAgentRef extends JJsonable.Companion[JAgentRef]
 {
   @Nonnull
+  def of(
+    @Nonnull path: AgentPath,
+    @Nonnull directors: java.lang.Iterable[SubagentId])
+  = JAgentRef(AgentRef(path, directors = directors.asScala.toVector))
+
+  @Nonnull @Deprecated
   def of(@Nonnull path: AgentPath, @Nonnull uri: Uri) =
-    JAgentRef(AgentRef(path, uri))
+    JAgentRef(AgentRef(path, directors = Nil, uri = Some(uri)))
 
   @Nonnull
   override def fromJson(jsonString: String): VEither[Problem, JAgentRef] =

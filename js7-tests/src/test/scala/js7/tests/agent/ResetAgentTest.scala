@@ -25,6 +25,7 @@ import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCatched, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLockAcquired, OrderLockReleased, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.subagent.SubagentRef
 import js7.data.workflow.instructions.{Fork, LockInstruction, TryInstruction}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -109,7 +110,7 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderFinished))
   }
 
-  "ReseAgent while a forking order is executed" in {
+  "ResetAgent while a forking order is executed" in {
     val orderId = OrderId("FORKING")
     val childOrderId = orderId / "FORK"
     controllerApi.addOrder(FreshOrder(orderId, forkingWorkflow.path)).await(99.s).orThrow
@@ -206,7 +207,8 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
             Some(directoryProvider.controller.userAndPassword))
           ))(secondController.actorSystem))
         secondControllerApi.updateItems(Observable(
-          AddOrChangeSimple(AgentRef(agentPath, agents(0).localUri)),
+          AddOrChangeSimple(AgentRef(agentPath, Seq(agentTree.localSubagentId))),
+          AddOrChangeSimple(SubagentRef(agentTree.localSubagentId, agentPath, agents(0).localUri)),
           AddOrChangeSigned(secondProvider.toSignedString(jobResource)),
           AddVersion(v1),
           AddOrChangeSigned(secondProvider.toSignedString(simpleWorkflow.withVersion(v1))))

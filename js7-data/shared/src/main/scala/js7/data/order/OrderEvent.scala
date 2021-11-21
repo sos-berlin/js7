@@ -155,15 +155,24 @@ object OrderEvent
     def stdoutStderr = Stdout
     override def toString = super.toString
   }
+  object OrderStdoutWritten {
+    implicit val jsonCodec = deriveCodec[OrderStdoutWritten]
+  }
 
   final case class OrderStderrWritten(chunk: String) extends OrderStdWritten {
     def stdoutStderr = Stderr
     override def toString = super.toString
   }
+  object OrderStderrWritten {
+    implicit val jsonCodec = deriveCodec[OrderStderrWritten]
+  }
 
   final case class OrderProcessed(outcome: Outcome) extends OrderCoreEvent
   {
     override def isFailed = outcome.isFailed
+  }
+  object OrderProcessed {
+    implicit val jsonCodec = deriveCodec[OrderProcessed]
   }
 
   final case class OrderForked(children: Vector[OrderForked.Child]) extends OrderActorEvent
@@ -429,9 +438,9 @@ object OrderEvent
     Subtype(OrderDeleted),
     Subtype(OrderStarted),
     Subtype(OrderProcessingStarted),
-    Subtype(deriveCodec[OrderStdoutWritten]),
-    Subtype(deriveCodec[OrderStderrWritten]),
-    Subtype(deriveCodec[OrderProcessed]),
+    Subtype[OrderStdoutWritten],
+    Subtype[OrderStderrWritten],
+    Subtype[OrderProcessed],
     Subtype(deriveCodec[OrderCatched]),
     Subtype(deriveCodec[OrderRetrying]),
     Subtype(OrderAwoke),

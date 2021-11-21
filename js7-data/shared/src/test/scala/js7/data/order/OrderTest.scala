@@ -88,6 +88,24 @@ final class OrderTest extends AnyFreeSpec
           }""")
       }
 
+      "Procesing (extra Codec)" in {
+        testJson[Order[Order.Processing]](
+          Order(OrderId("ID"), WorkflowPath("WORKFLOW") ~ "VERSION", Order.Processing),
+          json"""{
+            "id": "ID",
+            "workflowPosition": {
+              "workflowId": {
+                "path": "WORKFLOW",
+                "versionId": "VERSION"
+              },
+              "position": [ 0 ]
+            },
+            "state": {
+              "TYPE": "Processing"
+            }
+          }""")
+      }
+
       "mark" in {
         check(
           Order(OrderId("ID"), WorkflowPath("WORKFLOW") ~ "VERSION", Fresh,

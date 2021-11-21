@@ -108,6 +108,9 @@ object Problem extends Semigroup[Problem]
       Combined(Vector(a, b))
   }
 
+  def combineToChecked(problems: IterableOnce[Problem]): Checked[Unit] =
+    combineAllOption(problems).toLeft(())
+
   private def combineMessages(a: String, b: String) = {
     val b1 = b.trim
     if (b1.isEmpty || a.trim == b1)

@@ -6,7 +6,8 @@ import js7.base.circeutils.CirceUtils._
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
 import js7.data.event.{JournalId, KeyedEvent}
-import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
+import js7.data.subagent.SubagentId
+import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
 
@@ -14,25 +15,13 @@ final class AgentEventTest extends AnyFreeSpec
 {
   "AgentDedicated" in {
     testJson[KeyedEvent[AgentEvent]](AgentDedicated(
+      Some(SubagentId("SUBAGENT")),
       AgentPath("AGENT"),
       AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))),
-      ControllerId("CONTROLLER")
-    ),
+      ControllerId("CONTROLLER")),
       json"""{
         "TYPE": "AgentDedicated",
-        "agentPath": "AGENT",
-        "agentRunId": "ABEiM0RVZneImaq7zN3u_w",
-        "controllerId": "CONTROLLER"
-      }""")
-
-    // Compatible with 2.0.0-alpha.20210909
-    testJsonDecoder[KeyedEvent[AgentEvent]](AgentDedicated(
-      AgentPath("AGENT"),
-      AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))),
-      ControllerId("CONTROLLER")
-    ),
-      json"""{
-        "TYPE": "AgentCreated",
+        "subagentId": "SUBAGENT",
         "agentPath": "AGENT",
         "agentRunId": "ABEiM0RVZneImaq7zN3u_w",
         "controllerId": "CONTROLLER"

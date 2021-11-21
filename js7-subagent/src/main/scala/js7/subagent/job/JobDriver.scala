@@ -1,8 +1,7 @@
-package js7.agent.scheduler.job
+package js7.subagent.job
 
 import cats.syntax.traverse._
 import java.util.Objects.requireNonNull
-import js7.agent.scheduler.job.JobDriver._
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.log.Logger
@@ -10,7 +9,6 @@ import js7.base.monixutils.MonixBase.syntax.{RichCheckedTask, RichMonixTask}
 import js7.base.monixutils.MonixDeadline.syntax.DeadlineSchedule
 import js7.base.monixutils.{AsyncMap, MonixDeadline}
 import js7.base.problem.Checked
-import js7.base.thread.IOExecutor
 import js7.base.time.ScalaTime._
 import js7.base.utils.Collections.implicits.RichIterableOnce
 import js7.base.utils.ScalaUtils.syntax._
@@ -18,19 +16,19 @@ import js7.data.job.{JobConf, JobResource, JobResourcePath}
 import js7.data.order.Outcome.Succeeded
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.value.expression.Expression
-import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.internal.JobLauncher
 import js7.launcher.{OrderProcess, ProcessOrder, StdObservers}
+import js7.subagent.job.JobDriver._
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.cancelables.SerialCancelable
 import scala.concurrent.Promise
 
-private[agent] final class JobDriver(
+final class JobDriver(
   jobConf: JobConf,
-  jobLauncherConf: JobLauncherConf,
-  pathToJobResource: JobResourcePath => Checked[JobResource])
-  (implicit scheduler: Scheduler, iox: IOExecutor)
+  pathToJobResource: JobResourcePath => Checked[JobResource],
+  checkedJobLauncher: Checked[JobLauncher])
+  (implicit scheduler: Scheduler)
 {
   import jobConf.{jobKey, sigkillDelay, workflow, workflowJob}
 
@@ -38,13 +36,10 @@ private[agent] final class JobDriver(
   private val orderToProcess = AsyncMap.empty[OrderId, Entry]
   @volatile private var lastProcessTerminated: Promise[Unit] = null
 
-  private val checkedJobLauncher: Checked[JobLauncher] =
-    JobLauncher.checked(jobConf, jobLauncherConf, pathToJobResource)
-      .map { jobLauncher =>
-        jobLauncher.precheckAndWarn
-          .runAsyncAndForget  // TODO JobDriver.start(): Task[Checked[JobDriver]]
-        jobLauncher
-      }
+  for (launcher <- checkedJobLauncher) {
+    // TODO JobDriver.start(): Task[Checked[JobDriver]]
+    launcher.precheckAndWarn.runAsyncAndForget
+  }
 
   for (problem <- checkedJobLauncher.left) logger.error(problem.toString)
 
@@ -72,7 +67,8 @@ private[agent] final class JobDriver(
             .stop
             .logWhenItTakesLonger("Stop")
             .onErrorHandle(throwable =>
-              logger.error("Stop", throwable.nullIfNoStackTrace))
+              logger.error(s"Stop '$jobLauncher' failed: ${throwable.toStringWithCauses}",
+                throwable.nullIfNoStackTrace))
         })
     }
 
@@ -190,7 +186,7 @@ private[agent] final class JobDriver(
     Task.defer {
       val entries = orderToProcess.toMap.values
       if (entries.nonEmpty) logger.warn(
-        s"Terminating, sending $signal to toMap $orderProcessCount tasks")
+        s"Terminating, sending $signal to $orderProcessCount processes")
       entries
         .toVector
         .traverse(killProcess(_, signal))
@@ -226,7 +222,7 @@ private[agent] final class JobDriver(
   private def orderProcessCount = orderToProcess.size
 }
 
-private[agent] object JobDriver
+object JobDriver
 {
   private final class Entry(val orderId: OrderId) {
     var orderProcess: Option[OrderProcess] = None

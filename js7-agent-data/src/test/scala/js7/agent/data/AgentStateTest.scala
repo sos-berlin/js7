@@ -9,6 +9,7 @@ import java.util.UUID
 import js7.agent.data.AgentState.AgentMetaState
 import js7.agent.data.event.AgentEvent.AgentDedicated
 import js7.agent.data.orderwatch.{AllFileWatchesState, FileWatchState}
+import js7.agent.data.subagent.SubagentRefState
 import js7.base.auth.UserId
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceEither}
 import js7.base.io.file.watch.DirectoryState
@@ -17,6 +18,7 @@ import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.time.Timezone
 import js7.base.utils.SimplePattern
+import js7.base.web.Uri
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.cluster.ClusterState
@@ -25,12 +27,13 @@ import js7.data.event.JournalEvent.SnapshotTaken
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalId, JournalState, SnapshotableState}
 import js7.data.item.BasicItemEvent.ItemAttachedToAgent
-import js7.data.item.ItemRevision
+import js7.data.item.{ItemAttachedState, ItemRevision}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.Order.{Forked, Ready}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachedToAgent, OrderForked}
 import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
+import js7.data.subagent.{SubagentId, SubagentRef}
 import js7.data.value.expression.Expression
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.position._
@@ -45,6 +48,12 @@ import org.scalatest.freespec.AsyncFreeSpec
   */
 final class AgentStateTest extends AsyncFreeSpec
 {
+  private val subagentRef = SubagentRef(
+    SubagentId("SUBAGENT"),
+    AgentPath("AGENT"),
+    Uri("https://localhost:0"),
+    Some(ItemRevision(7)))
+
   private val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "1.0", Nil)
   private val jobResource = JobResource(JobResourcePath("JOB-RESOURCE"))
 
@@ -72,9 +81,15 @@ final class AgentStateTest extends AsyncFreeSpec
       JournalState(Map(UserId("USER") -> 500L)),
       ClusterState.Empty),
     AgentMetaState(
+      Some(SubagentId("SUBAGENT")),
       AgentPath("AGENT"),
       AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))),
       ControllerId("CONTROLLER")),
+    Map(
+      subagentRef.id -> SubagentRefState(
+        subagentRef,
+        Map(
+          JobResourcePath("JOB-RESOURCE") -> ItemAttachedState.Attached(None)))),
     Map(
       OrderId("ORDER") -> Order.fromOrderAdded(OrderId("ORDER"), OrderAdded(workflow.id))),
     Map(
@@ -106,16 +121,20 @@ final class AgentStateTest extends AsyncFreeSpec
       assert(!afterSnapshot.isFreshlyDedicated)
     }
 
-    val dedicated = AgentDedicated(AgentPath("A"), AgentRunId(JournalId.random()), ControllerId("C"))
+    val dedicated = AgentDedicated(
+      Some(SubagentId("SUBAGENT")),
+      AgentPath("A"),
+      AgentRunId(JournalId.random()),
+      ControllerId("C"))
     "AgentDedicated" in {
-      val created = AgentState.empty.applyEvent(dedicated).orThrow
-      assert(created.isDedicated)
-      assert(created.isFreshlyDedicated)
+      val dedicatedState = AgentState.empty.applyEvent(dedicated).orThrow
+      assert(dedicatedState.isDedicated)
+      assert(dedicatedState.isFreshlyDedicated)
     }
   }
 
   "estimatedSnapshotSize" in {
-    assert(agentState.estimatedSnapshotSize == 9)
+    assert(agentState.estimatedSnapshotSize == 11)
     for (n <- agentState.toSnapshotObservable.countL.runToFuture)
       yield assert(n == agentState.estimatedSnapshotSize)
   }
@@ -133,9 +152,22 @@ final class AgentStateTest extends AsyncFreeSpec
           }""",
           json"""{
             "TYPE": "AgentMetaState",
+            "subagentId": "SUBAGENT",
             "agentPath": "AGENT",
             "agentRunId": "ABEiM0RVZneImaq7zN3u_w",
             "controllerId": "CONTROLLER"
+          }""",
+          json"""{
+            "TYPE": "SubagentRef",
+            "id": "SUBAGENT",
+            "agentPath": "AGENT",
+            "uri": "https://localhost:0",
+            "itemRevision": 7
+          }""",
+          json"""{
+            "TYPE": "ItemAttached",
+            "key": "JobResource:JOB-RESOURCE",
+            "delegateId": "Subagent:SUBAGENT"
           }""",
           json"""{
             "TYPE": "Workflow",
@@ -188,7 +220,7 @@ final class AgentStateTest extends AsyncFreeSpec
           }""",
           json"""{
             "TYPE": "Calendar",
-            "path" : "CALENDAR",
+            "path": "CALENDAR",
             "timezone": "Europe/Mariehamn",
             "dateOffset": 21600,
             "orderIdPattern": "#([^#]+)#.*",
@@ -232,10 +264,15 @@ final class AgentStateTest extends AsyncFreeSpec
     val agentPath = AgentPath("AGENT")
     var agentState = AgentState.empty
     val meta = AgentMetaState(
+      Some(subagentRef.id),
       AgentPath("AGENT"),
       AgentRunId(JournalId(UUID.fromString("11111111-2222-3333-4444-555555555555"))),
       ControllerId("CONTROLLER"))
-    agentState = agentState.applyEvent(AgentDedicated(meta.agentPath, meta.agentRunId, meta.controllerId)).orThrow
+    agentState = agentState.applyEvent(AgentDedicated(
+      Some(subagentRef.id),
+      meta.agentPath,
+      meta.agentRunId,
+      meta.controllerId)).orThrow
     agentState = agentState.applyEvent(NoKey <-: ItemAttachedToAgent(workflow)).orThrow
     agentState = agentState.applyEvent(orderId <-:
       OrderAttachedToAgent(
@@ -247,6 +284,7 @@ final class AgentStateTest extends AsyncFreeSpec
       EventId.BeforeFirst,
       SnapshotableState.Standards.empty,
       meta,
+      Map.empty,
       Map(
         orderId ->
           Order(orderId, workflowId, Forked(Vector(Forked.Child("BRANCH", childOrderId))),
@@ -265,6 +303,6 @@ final class AgentStateTest extends AsyncFreeSpec
     assert(agentState.keyToItem.get(workflow.id) == Some(workflow))
     assert(agentState.keyToItem.get(jobResource.path) == Some(jobResource))
     assert(agentState.keyToItem.keySet ==
-      Set(workflow.id, jobResource.path, calendar.path, fileWatch.path))
+      Set(workflow.id, jobResource.path, calendar.path, fileWatch.path, subagentRef.id))
   }
 }

@@ -23,6 +23,7 @@ import js7.data.controller.ControllerId
 import js7.data.event.{EventId, ItemContainer}
 import js7.data.item.{InventoryItemKey, SignableItem, UnsignedSimpleItem}
 import js7.data.order.{Order, OrderId, OrderMark}
+import js7.data.subagent.SubagentId
 
 /**
  * @author Joacim Zschimmer
@@ -90,14 +91,17 @@ object AgentCommand extends CommonCommand.Companion
   }
 
   /** Registers the Controller identified by current User as a new Controller and couples it.
-    * The Agent starts a new Agent, dedicated to the Controller.
+    * The Agent starts as a new Agent, dedicated to the Controller.
     * Command may be given twice (in case of a sudden restart).
     */
-  final case class DedicateAgent(agentPath: AgentPath, controllerId: ControllerId)
+  final case class DedicateAgentDirector(
+    subagentId: Option[SubagentId],
+    controllerId: ControllerId,
+    agentPath: AgentPath)
   extends AgentCommand {
-    type Response = DedicateAgent.Response
+    type Response = DedicateAgentDirector.Response
   }
-  object DedicateAgent {
+  object DedicateAgentDirector {
     /**
       * @param agentRunId Use the value for `CoupleController`. */
     final case class Response(agentRunId: AgentRunId, agentEventId: EventId)
@@ -105,7 +109,7 @@ object AgentCommand extends CommonCommand.Companion
   }
 
   /** Couples the registered Controller identified by current User.
-    * @param agentRunId Must be the value returned by `DedicateAgent`. */
+    * @param agentRunId Must be the value returned by `DedicateAgentDirector`. */
   final case class CoupleController(agentPath: AgentPath, agentRunId: AgentRunId, eventId: EventId)
   extends AgentCommand {
     type Response = CoupleController.Response
@@ -217,7 +221,7 @@ object AgentCommand extends CommonCommand.Companion
       Subtype[EmergencyStop],
       Subtype(deriveCodec[ReleaseEvents]),
       Subtype(NoOperation),
-      Subtype(deriveCodec[DedicateAgent]),
+      Subtype(deriveCodec[DedicateAgentDirector]),
       Subtype(deriveCodec[CoupleController]),
       Subtype(deriveCodec[Reset]),
       Subtype[ShutDown],
@@ -237,7 +241,7 @@ object AgentCommand extends CommonCommand.Companion
       Subtype.named(deriveCodec[CoupleController.Response], "CoupleController.Response"),
       Subtype.named(deriveCodec[Batch.Response], "Batch.Response"),
       Subtype(Response.Accepted),
-      Subtype.named(deriveCodec[DedicateAgent.Response], "DedicateAgent.Response"))
+      Subtype.named(deriveCodec[DedicateAgentDirector.Response], "DedicateAgentDirector.Response"))
 
   intelliJuseImport((FiniteDurationJsonDecoder,
     checkedJsonEncoder[Int], checkedJsonDecoder[Int],

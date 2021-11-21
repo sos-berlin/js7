@@ -17,7 +17,7 @@ import monix.eval.Task
 import monix.execution.ExecutionModel.SynchronousExecution
 import monix.execution.atomic.AtomicInt
 import monix.execution.schedulers.{ExecutorScheduler, SchedulerService}
-import monix.execution.{ExecutionModel, Features, UncaughtExceptionReporter}
+import monix.execution.{ExecutionModel, Features, Scheduler, UncaughtExceptionReporter}
 import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
 
@@ -66,7 +66,14 @@ object ThreadPools
   private val nextNumber = AtomicInt(0)
 
   // Requires an outer Scheduler (global).
-  def standardSchedulerResource(name: String, config: Config): Resource[Task, SchedulerService] =
+  def standardSchedulerResource(name: String, config: Config, orCommon: Option[Scheduler])
+  : Resource[Task, Scheduler] =
+    orCommon
+      .map(o => Resource.pure[Task, Scheduler](o))
+      .getOrElse(standardSchedulerResource(name, config))
+
+  // Requires an outer Scheduler (global).
+  def standardSchedulerResource(name: String, config: Config): Resource[Task, Scheduler] =
     Resource
       .fromAutoCloseable(Task(new Closer))
       .map(newStandardScheduler(name, config, _))

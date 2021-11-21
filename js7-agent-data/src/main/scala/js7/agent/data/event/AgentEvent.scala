@@ -7,6 +7,7 @@ import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
 import js7.data.event.NoKeyEvent
+import js7.data.subagent.SubagentId
 import scala.concurrent.duration.FiniteDuration
 
 /**
@@ -20,6 +21,7 @@ object AgentEvent
 
   /** Agent has been dedicated to a Controlller. */
   final case class AgentDedicated(
+    subagentId: Option[SubagentId],
     agentPath: AgentPath,
     agentRunId: AgentRunId,
     controllerId: ControllerId)

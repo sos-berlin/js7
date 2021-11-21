@@ -21,6 +21,8 @@ import static java.lang.System.lineSeparator;
 import static java.util.Collections.singletonMap;
 import static java.util.concurrent.ForkJoinPool.commonPool;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 // For a simpler example, see TestBlockingInternalJob
 public final class TestJInternalJob implements JInternalJob
@@ -41,9 +43,11 @@ public final class TestJInternalJob implements JInternalJob
     }
 
     public TestJInternalJob(JobContext jobContext) {
-        blockingThreadPoolName = jobContext.jobArguments().get("blockingThreadPoolName").convertToString();
+        blockingThreadPoolName = jobContext.jobArguments().get("blockingThreadPoolName")
+            .convertToString();
     }
 
+    @Override
     public CompletionStage<Either<Problem,Void>> start() {
         return CompletableFuture.supplyAsync(
             () -> {
@@ -52,9 +56,11 @@ public final class TestJInternalJob implements JInternalJob
             });
     }
 
+    @Override
     public CompletionStage<Void> stop() {
         return CompletableFuture.supplyAsync(
             () -> {
+                assertThat(started, equalTo("STARTED"));
                 stoppedCalled.put(blockingThreadPoolName, true);
                 scheduler.shutdown();
                 return null;

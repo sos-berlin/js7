@@ -34,7 +34,8 @@ private[internal] final class InternalJobAdapterHelper[J: ClassTag: TypeTag]
 
   def callStop(call: J => Task[Unit]): Task[Unit] =
     Task.defer {
-      call(checkedJobOnce.orThrow.orThrow)
+      checkedJobOnce.toOption.fold(Task.unit)(checked =>
+        call(checked.orThrow))
     }
 
   def callProcessOrder(call: J => OrderProcess): OrderProcess =

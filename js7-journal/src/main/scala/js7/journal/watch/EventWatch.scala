@@ -59,6 +59,14 @@ trait EventWatch
     (implicit s: Scheduler)
   : Vector[Stamped[KeyedEvent[E]]]
 
+  @TestOnly
+  def awaitAsync[E <: Event: ClassTag: TypeTag](
+    predicate: KeyedEvent[E] => Boolean = Every,
+    after: EventId = EventId.BeforeFirst,
+    timeout: FiniteDuration = 99.s)
+    (implicit s: Scheduler)
+  : Task[Vector[Stamped[KeyedEvent[E]]]]
+
   def lastAddedEventId: EventId
 
   def tornEventId: EventId

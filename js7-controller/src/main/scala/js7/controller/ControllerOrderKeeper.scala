@@ -60,13 +60,14 @@ import js7.data.item.BasicItemEvent.{ItemAttached, ItemAttachedToAgent, ItemDele
 import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemEvent}
-import js7.data.item.{InventoryItemEvent, InventoryItemKey, SignableItemKey, UnsignedSimpleItemPath}
+import js7.data.item.{InventoryItemEvent, InventoryItemKey, ItemAddedOrChanged, SignableItemKey, UnsignedSimpleItemPath}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderMoved, OrderNoticePosted, OrderNoticeRead, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath}
 import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
 import js7.data.state.OrderEventHandler
 import js7.data.state.OrderEventHandler.FollowUp
+import js7.data.subagent.SubagentRef
 import js7.data.value.expression.scopes.NowScope
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow}
@@ -509,6 +510,9 @@ with MainJournalingActor[ControllerState, Event]
                       case KeyedEvent(_: OrderWatchPath, _: OrderWatchEvent) =>
                         Timestamped(keyedEvent) :: Nil
 
+                      case KeyedEvent(_, _: ItemAddedOrChanged) =>
+                        Nil
+
                       case _ =>
                         logger.error(s"Unknown event received from ${agentEntry.agentPath}: $keyedEvent")
                         Nil
@@ -934,7 +938,7 @@ with MainJournalingActor[ControllerState, Event]
 
   private def registerAgent(agent: AgentRef, agentRunId: Option[AgentRunId], eventId: EventId): AgentEntry = {
     val actor = watch(actorOf(
-      AgentDriver.props(agent.path, agent.uri, agentRunId, eventId = eventId,
+      AgentDriver.props(agent, agentRunId, eventId = eventId,
         persistence, agentDriverConfiguration, controllerConfiguration),
       encodeAsActorName(agent.path.toString)))
     val entry = AgentEntry(agent, actor)
@@ -1058,7 +1062,16 @@ with MainJournalingActor[ControllerState, Event]
 
       case UnsignedSimpleItemChanged(agentRef: AgentRef) =>
         agentRegister.update(agentRef)
-        agentRegister(agentRef.path).reconnect()
+        for (uri <- persistence.currentState.agentToUri(agentRef.path)) {
+          agentRegister(agentRef.path).actor ! AgentDriver.Input.ChangeUri(agentRef, uri)
+        }
+
+      case UnsignedSimpleItemChanged(subagentRef: SubagentRef) =>
+        for (agentRef <- persistence.currentState.keyTo(AgentRef).get(subagentRef.agentPath)) {
+          for (uri <- persistence.currentState.agentToUri(agentRef.path)) {
+            agentRegister(agentRef.path).actor ! AgentDriver.Input.ChangeUri(agentRef, uri)
+          }
+        }
 
       case ItemDetached(itemKey, agentPath: AgentPath) =>
         for (agentEntry <- agentRegister.get(agentPath)) {
@@ -1410,9 +1423,6 @@ private[controller] object ControllerOrderKeeper
     val detachingItems = mutable.Set.empty[InventoryItemKey]
 
     def agentPath = agentRef.path
-
-    def reconnect()(implicit sender: ActorRef): Unit =
-      actor ! AgentDriver.Input.ChangeUri(uri = agentRef.uri)
   }
 
   private class OrderEntry(now: MonixDeadline)

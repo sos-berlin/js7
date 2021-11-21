@@ -6,7 +6,7 @@ import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.Akkas.newAgentActorSystem
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.{AttachOrder, AttachSignedItem, Batch, DedicateAgent, DetachOrder}
+import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSignedItem, Batch, DedicateAgentDirector, DetachOrder}
 import js7.agent.tests.OrderAgentTest._
 import js7.agent.tests.TestAgentDirectoryProvider.{TestUserAndPassword, provideAgentDirectory}
 import js7.base.Problems.TamperedWithSignedMessageProblem
@@ -21,6 +21,7 @@ import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
 import js7.base.utils.Closer.syntax._
 import js7.base.utils.Closer.withCloser
+import js7.base.web.Uri
 import js7.common.crypt.pgp.PgpSigner
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
@@ -28,6 +29,7 @@ import js7.data.event.{Event, EventRequest, KeyedEvent, Stamped}
 import js7.data.item.{ItemSigner, SignableItem}
 import js7.data.order.OrderEvent.OrderDetachable
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
+import js7.data.subagent.{SubagentId, SubagentRef}
 import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.position.Position
 import js7.data.workflow.test.TestSetting._
@@ -58,14 +60,23 @@ final class OrderAgentTest extends AnyFreeSpec
         withCloser { implicit closer =>
           implicit val actorSystem = newAgentActorSystem(getClass.getSimpleName)
           val agentClient = AgentClient(agent.localUri, Some(TestUserAndPassword)).closeWithCloser
-          assert(agentClient.commandExecute(DedicateAgent(agentPath, controllerId)).await(99.s) ==
+          assert(agentClient
+            .commandExecute(
+              DedicateAgentDirector(Some(subagentId), controllerId, agentPath))
+            .await(99.s) ==
             Left(Problem(s"HTTP 401 Unauthorized: POST ${agent.localUri}/agent/api/command => " +
               "The resource requires authentication, which was not supplied with the request")))
           agentClient.login() await 99.s
           // Without Login, this registers all anonymous clients
-          assert(agentClient.commandExecute(DedicateAgent(agentPath, controllerId))
+          assert(agentClient
+            .commandExecute(
+                DedicateAgentDirector(Some(subagentId), controllerId, agentPath))
             .await(99.s).toOption.get
-            .isInstanceOf[DedicateAgent.Response])
+            .isInstanceOf[DedicateAgentDirector.Response])
+          agentClient
+            .commandExecute(
+              AttachItem(SubagentRef(subagentId, agentPath, Uri("http://127.0.0.1:0"))))
+            .await(99.s).orThrow
 
           val order = Order(OrderId("TEST-ORDER"), SimpleTestWorkflow.id, Order.Ready, Map(
             "x" -> StringValue("X")))
@@ -126,7 +137,9 @@ final class OrderAgentTest extends AnyFreeSpec
           val agentClient = AgentClient(agent.localUri, Some(TestUserAndPassword)).closeWithCloser
           agentClient.login() await 99.s
           assert(
-            agentClient.commandExecute(DedicateAgent(agentPath, controllerId))
+            agentClient
+              .commandExecute(
+                DedicateAgentDirector(Some(SubagentId("SUBAGENT")), controllerId, agentPath))
               .await(99.s).isRight)
 
           val orders = for (i <- 1 to n) yield
@@ -165,6 +178,7 @@ final class OrderAgentTest extends AnyFreeSpec
 private object OrderAgentTest
 {
   private val agentPath = AgentPath("AGENT")
+  private val subagentId = SubagentId("SUBAGENT")
   private val controllerId = ControllerId("CONTROLLER")
   private val TestScript =
     if (isWindows) """
