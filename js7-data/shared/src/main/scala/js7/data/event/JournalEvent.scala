@@ -14,7 +14,14 @@ object JournalEvent
   final case class JournalEventsReleased(userId: UserId, untilEventId: EventId)
   extends JournalEvent
 
+  case object Heartbeat
+  extends JournalEvent
+
+  final val StampedHeartbeat: Stamped[KeyedEvent[JournalEvent]] =
+    Stamped(0, Heartbeat)
+
   implicit val jsonCodec = TypedJsonCodec[JournalEvent](
     Subtype(SnapshotTaken),
-    Subtype(deriveCodec[JournalEventsReleased]))
+    Subtype(deriveCodec[JournalEventsReleased]),
+    Subtype(Heartbeat))
 }

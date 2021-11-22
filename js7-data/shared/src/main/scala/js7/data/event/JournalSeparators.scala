@@ -1,9 +1,11 @@
 package js7.data.event
 
 import io.circe.Json
-import js7.base.circeutils.CirceUtils.RichCirceString
+import io.circe.syntax.EncoderOps
+import js7.base.circeutils.CirceUtils.{RichCirceString, RichJson}
 import js7.base.data.ByteArray
 import js7.base.problem.Checked._
+import js7.data.event.JournalEvent.StampedHeartbeat
 
 /**
   * @author Joacim Zschimmer
@@ -24,5 +26,9 @@ object JournalSeparators
     * The file itself must not contain this line! */
   val EndOfJournalFileMarker = ByteArray("\"/// END OF JOURNAL FILE ///\"\n")
   val EndOfJournalFileMarkerJson: Json = EndOfJournalFileMarker.utf8String.parseJsonOrThrow
-  val HeartbeatMarker: ByteArray = ByteArray("\"/// HEARTBEAT ///\"\n")
+  val HeartbeatMarker = ByteArray("""{"eventId":0,"TYPE":"Heartbeat"}""" + "\n")
+
+  // Serialization must equal HeartbeatMarker
+  assert(HeartbeatMarker.parseJsonAs[Stamped[KeyedEvent[JournalEvent]]] == Right(StampedHeartbeat))
+  assert(StampedHeartbeat.asJson.toByteArray ++ ByteArray("\n") == HeartbeatMarker)
 }

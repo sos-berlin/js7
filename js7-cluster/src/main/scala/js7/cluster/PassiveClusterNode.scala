@@ -16,6 +16,7 @@ import js7.base.data.ByteSequence.ops._
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.monixutils.MonixDeadline.now
+import js7.base.monixutils.ObservablePauseDetector.RichPauseObservable
 import js7.base.monixutils.RefCountedResource
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
@@ -37,6 +38,7 @@ import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterCoupled
 import js7.data.cluster.ClusterState.{Coupled, Decoupled, PreparedToBeCoupled}
 import js7.data.cluster.{ClusterEvent, ClusterNodeApi, ClusterSetting, ClusterState}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
+import js7.data.event.JournalSeparators.HeartbeatMarker
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalId, JournalPosition, JournalSeparators, KeyedEvent, SnapshotableState, SnapshotableStateBuilder, Stamped}
 import js7.data.node.NodeId
@@ -293,7 +295,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
               heartbeat = Some(setting.timing.heartbeat),
               markEOF = true
             ).map(_.scan(PositionAnd(position, ByteArray.empty/*unused*/))((s, line) =>
-              PositionAnd(s.position + (if (line == JournalSeparators.HeartbeatMarker) 0 else line.length), line))))
+              PositionAnd(s.position + (if (line == HeartbeatMarker) 0 else line.length), line))))
 
         protected def stopRequested = stopped
 
@@ -418,8 +420,8 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                 Observable.empty  // Ignore
             }
 
-          case Right((_, JournalSeparators.HeartbeatMarker, _)) =>
-            logger.trace(JournalSeparators.HeartbeatMarker.utf8String.trim)
+          case Right((_, HeartbeatMarker, _)) =>
+            logger.trace(HeartbeatMarker.utf8String.trim)
             Observable.empty
 
           case Right((fileLength, JournalSeparators.EndOfJournalFileMarker, _)) =>
@@ -590,7 +592,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
 
   private def testHeartbeatSuppressor(tuple: (Long, ByteArray, Any)): Boolean =
     tuple match {
-      case (_, JournalSeparators.HeartbeatMarker, _)
+      case (_, HeartbeatMarker, _)
       if clusterConf.testHeartbeatLossPropertyKey.fold(false)(k => sys.props(k).toBoolean) =>
         logger.warn("TEST: Suppressing received heartbeat")
         false

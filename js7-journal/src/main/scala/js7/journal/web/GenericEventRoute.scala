@@ -7,7 +7,6 @@ import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.model.HttpEntity
 import akka.http.scaladsl.model.HttpEntity.Chunk
 import akka.http.scaladsl.model.StatusCodes.{BadRequest, ServiceUnavailable}
-import akka.http.scaladsl.model.headers.`Last-Event-ID`
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive, Directive1, ExceptionHandler, Route}
 import akka.stream.scaladsl.Source
@@ -17,6 +16,7 @@ import js7.base.auth.ValidUserPermission
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.closeableIteratorToObservable
+import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Problem
 import js7.base.problem.Problems.ShuttingDownProblem
 import js7.base.time.JavaTimeConverters.AsScalaDuration
@@ -30,13 +30,13 @@ import js7.common.akkahttp.AkkaHttpServerUtils.{accept, completeTask}
 import js7.common.akkahttp.ByteSequenceChunkerObservable.syntax._
 import js7.common.akkahttp.CirceJsonSupport.jsonMarshaller
 import js7.common.akkahttp.EventSeqStreamingSupport.NonEmptyEventSeqJsonStreamingSupport
-import js7.common.akkahttp.HttpStatusCodeException
 import js7.common.akkahttp.StandardMarshallers._
 import js7.common.akkahttp.html.HtmlDirectives.htmlPreferred
 import js7.common.akkahttp.web.session.RouteProvider
 import js7.common.akkautils.ByteStrings.syntax._
 import js7.common.http.JsonStreamingSupport._
 import js7.common.http.StreamingSupport.AkkaObservable
+import js7.data.event.JournalEvent.StampedHeartbeat
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, EventSeqTornProblem, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
 import js7.journal.watch.{ClosedException, EventWatch}
 import js7.journal.web.EventDirectives.eventRequest
@@ -131,76 +131,24 @@ trait GenericEventRoute extends RouteProvider
           })
       }
 
-    private def jsonSeqEvents(eventWatch: EventWatch)(implicit streamingSupport: JsonEntityStreamingSupport): Route =
+    private def jsonSeqEvents(eventWatch: EventWatch)(implicit s: JsonEntityStreamingSupport): Route =
       parameter("onlyAcks" ? false) { onlyAcks =>
         parameter("heartbeat".as[FiniteDuration].?) { maybeHeartbeat =>  // Echo last EventId as a heartbeat
-          if (maybeHeartbeat.isDefined && !onlyAcks)
-            complete(BadRequest -> Problem.pure("heartbeat=... is allowed only in conjunction with onlyAcks=true"))
-          else if (onlyAcks)
+          if (onlyAcks)
             eventIdRoute(maybeHeartbeat, eventWatch)
           else
-            eventDirective(eventWatch.lastAddedEventId, defaultTimeout = defaultJsonSeqChunkTimeout, defaultDelay = defaultStreamingDelay) { request =>
-              eventRoute(request, eventWatch)
+            eventDirective(
+              eventWatch.lastAddedEventId,
+              defaultTimeout = defaultJsonSeqChunkTimeout,
+              defaultDelay = defaultStreamingDelay
+            ) { request =>
+              eventRoute(request, maybeHeartbeat, eventWatch)
             }
         }
       }
 
-    private def eventRoute(request: EventRequest[Event], eventWatch: EventWatch)
-      (implicit streamingSupport: JsonEntityStreamingSupport)
-    : Route = {
-      def predicate(ke: KeyedEvent[Event]) = isRelevantEvent(ke)
-      val runningSince = now
-      val initialRequest = request.copy[Event](
-        limit = 1 min request.limit)
-      // Await the first event to check for Torn and convert it to a proper error message, otherwise continue with observe
-      complete(eventWatch.when(initialRequest, predicate)
-        .map {
-          case TearableEventSeq.Torn(eventId) =>
-            ToResponseMarshallable(
-              BadRequest -> EventSeqTornProblem(requestedAfter = request.after, tornEventId = eventId))
-
-          case EventSeq.Empty(_) =>
-            emptyResponseMarshallable
-
-          case EventSeq.NonEmpty(closeableIterator) =>
-            val head = autoClosing(closeableIterator)(_.next())
-            val tail = observe(  // Continue with an Observable, skipping the already read event
-              request.copy[Event](
-                after = head.eventId,
-                limit = request.limit - 1,
-                delay = (request.delay - runningSince.elapsed) min ZeroDuration),
-              predicate,
-              eventWatch)
-            val observable = head.asJson.toByteSequence[ByteString] +:
-              tail.map(_.asJson.toByteSequence[ByteString])
-            ToResponseMarshallable(
-              HttpEntity.Chunked(
-                streamingSupport.contentType,
-                observable
-                  .map(_ ++ LF)
-                  .chunk(chunkSize)
-                  .map(Chunk(_))
-                  .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
-                    Task { logger.debug("whenShuttingDown completed") })
-                  .toAkkaSourceForHttpResponse))
-        }
-        .onCancelRaiseError(CanceledException)
-        .onErrorRecover {
-          case CanceledException => emptyResponseMarshallable
-        }
-        .runToFuture
-        .cancelOnCompletionOf(whenShuttingDownCompletion))
-    }
-
-    private def emptyResponseMarshallable(implicit streamingSupport: JsonEntityStreamingSupport)
-    : ToResponseMarshallable = {
-      implicit val x = jsonSeqMarshaller[Unit]
-      observableToMarshallable(
-        Observable.empty[Unit])
-    }
-
     private def eventIdRoute(maybeHeartbeat: Option[FiniteDuration], eventWatch: EventWatch)
-      (implicit streamingSupport: JsonEntityStreamingSupport)
+      (implicit s: JsonEntityStreamingSupport)
     : Route =
       parameter("timeout" ? defaultJsonSeqChunkTimeout) { timeout =>
         val maybeTimeout = timeout match {
@@ -214,7 +162,97 @@ trait GenericEventRoute extends RouteProvider
         }
       }
 
-    private def observe(request: EventRequest[Event], predicate: AnyKeyedEvent => Boolean, eventWatch: EventWatch)
+    private def eventRoute(
+      request: EventRequest[Event],
+      maybeHeartbeat: Option[FiniteDuration],
+      eventWatch: EventWatch)
+      (implicit s: JsonEntityStreamingSupport)
+    : Route = {
+      val toResponseMarshallable: Task[ToResponseMarshallable] =
+        maybeHeartbeat match {
+          case None =>
+            // Await the first event to check for Torn and convert it to a proper error message, otherwise continue with observe
+            awaitFirstEventObservable(request, eventWatch)
+
+          case Some(heartbeat) =>
+            Task(observableToResponseMarshallable(
+              heartbeatingObservable(request, heartbeat, eventWatch)))
+        }
+
+      complete(
+        toResponseMarshallable
+          .onCancelRaiseError(CanceledException)
+          .onErrorRecover {
+            case CanceledException => emptyResponseMarshallable
+          }
+          .runToFuture
+          .cancelOnCompletionOf(whenShuttingDownCompletion))
+    }
+
+    private def awaitFirstEventObservable(request: EventRequest[Event], eventWatch: EventWatch)
+      (implicit s: JsonEntityStreamingSupport)
+    = {
+      val runningSince = now
+      val initialRequest = request.copy[Event](
+        limit = 1 min request.limit)
+      eventWatch
+        .when(initialRequest, isRelevantEvent)
+        .map {
+          case TearableEventSeq.Torn(eventId) =>
+            ToResponseMarshallable(
+              BadRequest -> EventSeqTornProblem(requestedAfter = request.after, tornEventId = eventId))
+
+          case EventSeq.Empty(_) =>
+            emptyResponseMarshallable
+
+          case EventSeq.NonEmpty(closeableIterator) =>
+            val head = autoClosing(closeableIterator)(_.next())
+
+            val tailRequest = request.copy[Event](
+              after = head.eventId,
+              limit = request.limit - 1,
+              delay = (request.delay - runningSince.elapsed) min ZeroDuration)
+
+            observableToResponseMarshallable(
+              head +: eventObservable(tailRequest, isRelevantEvent, eventWatch))
+        }
+    }
+
+    private def emptyResponseMarshallable(implicit s: JsonEntityStreamingSupport)
+    : ToResponseMarshallable = {
+      implicit val x = jsonSeqMarshaller[Unit]
+      observableToMarshallable(
+        Observable.empty[Unit])
+    }
+
+    private def heartbeatingObservable(
+      request: EventRequest[Event],
+      heartbeat: FiniteDuration,
+      eventWatch: EventWatch)
+      (implicit s: JsonEntityStreamingSupport)
+    : Observable[Stamped[AnyKeyedEvent]] = {
+      // TODO Check if torn then return Task.raiseError
+      eventObservable(request, isRelevantEvent, eventWatch)
+        .insertHeartbeatsOnSlowUpstream(heartbeat, StampedHeartbeat)
+    }
+
+    private def observableToResponseMarshallable(observable: Observable[Stamped[AnyKeyedEvent]])
+      (implicit streamingSupport: JsonEntityStreamingSupport)
+    : ToResponseMarshallable =
+      ToResponseMarshallable(
+        HttpEntity.Chunked(
+          streamingSupport.contentType,
+          observable
+            .mapParallelBatch(responsive = true)(_
+              .asJson.toByteSequence[ByteString])
+            .map(_ ++ LF)
+            .chunk(chunkSize)
+            .map(Chunk(_))
+            .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
+              Task { logger.debug("whenShuttingDown completed") })
+            .toAkkaSourceForHttpResponse))
+
+    private def eventObservable(request: EventRequest[Event], predicate: AnyKeyedEvent => Boolean, eventWatch: EventWatch)
     : Observable[Stamped[AnyKeyedEvent]] =
       filterObservable(
         eventWatch  // Continue with an Observable, skipping the already read event
@@ -253,13 +291,6 @@ object GenericEventRoute
 
   private val logger = Logger(getClass)
   private val LF = ByteString("\n")
-
-  private def toLastEventId(header: `Last-Event-ID`): EventId =
-    try java.lang.Long.parseLong(header.id)
-    catch {
-      case e: NumberFormatException =>
-        throw new HttpStatusCodeException(BadRequest, Problem.pure(s"Invalid header Last-Event-Id: $e"))
-    }
 
   private object CanceledException extends Exception with NoStackTrace
 }
