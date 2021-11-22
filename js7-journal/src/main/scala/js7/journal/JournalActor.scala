@@ -59,8 +59,6 @@ extends Actor with Stash with JournalLogging
 
   override val supervisorStrategy = SupervisorStrategies.escalate
 
-  protected val logger = JournalActor.logger
-
   private val snapshotRequesters = mutable.Set.empty[ActorRef]
   private var snapshotSchedule: Cancelable = null
 

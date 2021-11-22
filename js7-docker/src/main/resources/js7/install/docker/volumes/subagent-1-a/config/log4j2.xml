@@ -65,7 +65,7 @@
     <logger level="debug" name="js7"/>
 
     <!--
-    <logger level="trace" name="js7.journal.JournalActor"/>
+    <logger level="trace" name="js7.journal.Journal"/>
     <logger level="trace" name="js7.journal.cluster"/>
     -->
   </loggers>

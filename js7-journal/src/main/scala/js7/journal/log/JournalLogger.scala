@@ -15,7 +15,6 @@ import scala.concurrent.duration.Deadline.now
 private[journal] final class JournalLogger(
   syncOrFlush5Chars: String,
   infoLogEvents: Set[String],
-  logger: Logger,
   supressTiming: Boolean = false)
 {
   private val syncOrFlush6Chars = syncOrFlush5Chars + " "
@@ -134,6 +133,8 @@ private[journal] final class JournalLogger(
 
 object JournalLogger
 {
+  private val logger = Logger("js7.journal.Journal")
+
   private[journal] trait Loggable {
     def eventNumber: Long
     def stampedSeq: Seq[Stamped[AnyKeyedEvent]]

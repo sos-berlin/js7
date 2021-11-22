@@ -1,6 +1,5 @@
 package js7.journal.watch
 
-import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.utils.BinarySearch.binarySearch
 import js7.base.utils.ScalaUtils.syntax._
@@ -9,7 +8,6 @@ import js7.data.event.{Event, EventId, JournalInfo, JournaledState, KeyedEvent, 
 import js7.journal.log.JournalLogger
 import js7.journal.log.JournalLogger.SimpleLoggable
 import js7.journal.state.StatePersistence
-import js7.journal.watch.InMemoryJournal._
 import js7.journal.{CommitOptions, EventIdGenerator}
 import monix.eval.Task
 import scala.concurrent.duration.Deadline.now
@@ -31,7 +29,6 @@ extends StatePersistence[S] with RealEventWatch
   private val journalLogger = new JournalLogger(
     syncOrFlush5Chars = "mem  ",
     infoLogEvents = Set.empty,
-    logger,
     supressTiming = true)
 
   def waitUntilStarted = Task.unit
@@ -134,9 +131,4 @@ extends StatePersistence[S] with RealEventWatch
         Some(queue.drop(index + found.toInt).iterator)
     }
   }
-}
-
-object InMemoryJournal
-{
-  private val logger = Logger[this.type]
 }
