@@ -16,6 +16,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.web.{HttpClient, Uri}
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkahttp.web.AkkaWebServer
+import js7.common.akkahttp.web.session.SimpleSession
 import js7.common.http.AkkaHttpClient
 import js7.common.jsonseq.PositionAnd
 import js7.controller.web.controller.api.test.RouteTester
@@ -30,6 +31,7 @@ import js7.data.workflow.WorkflowPath
 import js7.journal.data.JournalMeta
 import js7.journal.files.JournalFiles._
 import js7.journal.watch.JournalEventWatch
+import js7.journal.web.JournalRoute
 import js7.journal.write.{EventJournalWriter, SnapshotJournalWriter}
 import monix.eval.Task
 import monix.execution.{CancelableFuture, Scheduler}
@@ -42,6 +44,8 @@ import scala.concurrent.Future
   */
 final class JournalRouteTest extends AnyFreeSpec with RouteTester with JournalRoute
 {
+  protected type Session = SimpleSession
+
   private implicit val timeout = 99.s
   private implicit val routeTestTimeout = RouteTestTimeout(timeout)
   protected def whenShuttingDown = Future.never
@@ -57,7 +61,8 @@ final class JournalRouteTest extends AnyFreeSpec with RouteTester with JournalRo
 
   private lazy val webServer = AkkaWebServer.forTest()(pathSegments("journal")(journalRoute))
   private lazy val uri = webServer.localUri
-  private lazy val client = new AkkaHttpClient.Standard(uri, uriPrefixPath = "", actorSystem = system, name = "JournalRouteTest")
+  private lazy val client = new AkkaHttpClient.Standard(uri, uriPrefixPath = "",
+    actorSystem = system, name = "JournalRouteTest")
 
   override def beforeAll() = {
     super.beforeAll()
@@ -97,7 +102,8 @@ final class JournalRouteTest extends AnyFreeSpec with RouteTester with JournalRo
 
     "Nothing yet written" in {
       val initialFileLength = size(journalMeta.file(0L))
-      observing = client.getRawLinesObservable(Uri(s"$uri/journal?timeout=9&markEOF=true&file=0&position=$initialFileLength"))
+      observing = client
+        .getRawLinesObservable(Uri(s"$uri/journal?timeout=9&markEOF=true&file=0&position=$initialFileLength"))
         .await(99.s).foreach(observed += _.utf8String)
       sleep(100.ms)
       assert(observed.isEmpty)
@@ -152,7 +158,8 @@ final class JournalRouteTest extends AnyFreeSpec with RouteTester with JournalRo
     writeSnapshot(3000L)
 
     eventWatch = new JournalEventWatch(journalMeta, config)
-    eventWatch.onJournalingStarted(file3, journalId, PositionAnd(size(file3), 3000L), PositionAnd(size(file3), 3000L), isActiveNode = true)
+    eventWatch.onJournalingStarted(file3, journalId,
+      PositionAnd(size(file3), 3000L), PositionAnd(size(file3), 3000L), isActiveNode = true)
 
     val lines = client.getRawLinesObservable(Uri(s"$uri/journal?timeout=0&markEOF=true&file=2000&position=$file2size"))
       .await(99.s).toListL.await(99.s)

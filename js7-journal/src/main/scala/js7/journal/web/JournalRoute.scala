@@ -1,34 +1,34 @@
-package js7.controller.web.controller.api
+package js7.journal.web
 
 import akka.http.scaladsl.model.HttpEntity
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import js7.base.auth.ValidUserPermission
 import js7.base.data.ByteArray
-import js7.base.data.ByteSequence.ops._
 import js7.base.log.Logger
-import js7.base.monixutils.MonixBase.syntax._
+import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.{Checked, Problem}
-import js7.base.time.JavaTimeConverters._
+import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.utils.FutureCompletion
 import js7.base.utils.FutureCompletion.syntax._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.AkkaHttpServerUtils.accept
 import js7.common.akkahttp.ByteSequenceChunkerObservable.syntax._
 import js7.common.akkahttp.StandardMarshallers._
+import js7.common.akkahttp.web.session.RouteProvider
 import js7.common.akkautils.ByteStrings.syntax._
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
-import js7.common.http.StreamingSupport._
+import js7.common.http.StreamingSupport.AkkaObservable
 import js7.common.jsonseq.PositionAnd
-import js7.controller.web.common.ControllerRouteProvider
-import js7.controller.web.controller.api.JournalRoute._
-import js7.data.event.JournalSeparators.HeartbeatMarker
-import js7.data.event.{EventId, JournalPosition, JournalSeparators}
+import js7.data.event.JournalSeparators.{EndOfJournalFileMarker, HeartbeatMarker}
+import js7.data.event.{EventId, JournalPosition}
 import js7.journal.watch.FileEventWatch
+import js7.journal.web.JournalRoute._
 import monix.eval.Task
-import monix.execution.Scheduler
 import scala.concurrent.duration.FiniteDuration
 
+// TODO Similar to GenericEventRoute
+// Test is Controller's JournalRouteTest
 /** Returns the content of an old or currently written journal file as a live stream.
   * Additional to EventRoute this web service returns the complete file including
   * - JournalHeader
@@ -36,19 +36,18 @@ import scala.concurrent.duration.FiniteDuration
   * - Snapshots section
   * - Events (including transaction separators)
   */
-trait JournalRoute extends ControllerRouteProvider
+trait JournalRoute extends RouteProvider
 {
   protected def eventWatch: FileEventWatch
-  protected def scheduler: Scheduler
 
   private implicit def implicitScheduler = scheduler
 
   private lazy val whenShuttingDownCompletion = new FutureCompletion(whenShuttingDown)
-
-  private lazy val defaultJsonSeqChunkTimeout = config.getDuration("js7.web.server.services.event.streaming.chunk-timeout")
+  private lazy val defaultJsonSeqChunkTimeout = config
+    .getDuration("js7.web.server.services.event.streaming.chunk-timeout")
     .toFiniteDuration
 
-  protected final lazy val journalRoute: Route =
+  protected final def journalRoute: Route =
     get {
       pathEnd {
         handleExceptions(exceptionHandler) {
@@ -95,6 +94,19 @@ trait JournalRoute extends ControllerRouteProvider
         }
       }
     }
+}
+
+object JournalRoute
+{
+  private val logger = Logger(getClass)
+  private val JournalContentType = `application/x-ndjson`
+
+  private def parseReturnAckParameter(returnType: String): Checked[Boolean] =
+    returnType match {
+      case "" => Right(false)
+      case "ack" => Right(true)
+      case _ => Left(Problem(s"Invalid parameter: return=$returnType"))
+    }
 
   private def toContent(o: PositionAnd[ByteArray]) =
     o.value
@@ -104,18 +116,4 @@ trait JournalRoute extends ControllerRouteProvider
       ByteArray(o.position.toString + '\n')
     else
       o.value
-}
-
-object JournalRoute
-{
-  private val logger = Logger(getClass)
-  private val JournalContentType = `application/x-ndjson`
-  private val EndOfJournalFileMarker = JournalSeparators.EndOfJournalFileMarker.toByteArray
-
-  private def parseReturnAckParameter(returnType: String): Checked[Boolean] =
-    returnType match {
-      case "" => Right(false)
-      case "ack" => Right(true)
-      case _ => Left(Problem(s"Invalid parameter: return=$returnType"))
-    }
 }

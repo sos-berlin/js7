@@ -55,7 +55,7 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
 
   override def beforeAll() = {
     super.beforeAll()
-    directoryProvider.agents(0).writeExecutable(pathExecutable, script(2.s))
+    directoryProvider.agents(0).writeExecutable(pathExecutable, script(3.s))
   }
 
   override protected val controllerConfig = config"""
@@ -131,18 +131,19 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
 
   "Heartbeat" in {
     var lines = Vector.empty[String]
-    var heartbeatLines = Vector.empty[String]
+    var observedLines = Vector.empty[String]
     val fileAfter = controller.eventWatch.lastFileTornEventId
     val u = Uri(s"$uri/controller/api/journal?markEOF=true&file=$fileAfter&position=0")
     httpClient.getRawLinesObservable(u).await(99.s)
       .foreach {
         lines :+= _.utf8String
       }
-    val observeWithHeartbeat = httpClient.getRawLinesObservable(Uri(u.string + "&heartbeat=0.1")).await(99.s)
+    val observeWithHeartbeat = httpClient
+      .getRawLinesObservable(Uri(u.string + "&heartbeat=0.1")).await(99.s)
       .timeoutOnSlowUpstream(2.s/*sometimes 1s is too short*/)  // Check heartbeat
       .doOnError(t => Task(scribe.error(t.toString)))
       .foreach { bytes =>
-        heartbeatLines :+= bytes.utf8String
+        observedLines :+= bytes.utf8String
         scribe.debug(s"observeWithHeartbeat: ${bytes.utf8String.trim}")
       }
 
@@ -153,11 +154,11 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
     for (o <- observeWithHeartbeat.value; t <- o.failed) throw t.appendCurrentStackTrace
     assert(lines.exists(_ contains "OrderFinished"))
 
-    waitForCondition(9.s, 10.ms) { heartbeatLines.exists(_ contains "OrderFinished") }
-    assert(heartbeatLines.exists(_ contains "OrderFinished"))
+    waitForCondition(9.s, 10.ms) { observedLines.exists(_ contains "OrderFinished") }
+    assert(observedLines.exists(_ contains "OrderFinished"))
 
-    assert(heartbeatLines.count(_ == JournalSeparators.HeartbeatMarker.utf8String) > 1)
-    assert(heartbeatLines.filterNot(_ == JournalSeparators.HeartbeatMarker.utf8String) == lines)
+    assert(observedLines.count(_ == JournalSeparators.HeartbeatMarker.utf8String) > 1)
+    assert(observedLines.filterNot(_ == JournalSeparators.HeartbeatMarker.utf8String) == lines)
   }
 }
 

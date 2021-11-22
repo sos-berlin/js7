@@ -10,6 +10,7 @@ import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.ApiRoute._
 import js7.controller.web.controller.api.log.LogRoute
 import js7.controller.web.controller.api.order.OrderRoute
+import js7.journal.web.JournalRoute
 
 /**
   * @author Joacim Zschimmer
