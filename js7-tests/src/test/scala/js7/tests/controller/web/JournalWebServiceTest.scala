@@ -130,19 +130,19 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
   }
 
   "Heartbeat" in {
-    val lines = mutable.Buffer[String]()
-    val heartbeatLines = mutable.Buffer[String]()
+    var lines = Vector.empty[String]
+    var heartbeatLines = Vector.empty[String]
     val fileAfter = controller.eventWatch.lastFileTornEventId
     val u = Uri(s"$uri/controller/api/journal?markEOF=true&file=$fileAfter&position=0")
     httpClient.getRawLinesObservable(u).await(99.s)
       .foreach {
-        lines += _.utf8String
+        lines :+= _.utf8String
       }
     val observeWithHeartbeat = httpClient.getRawLinesObservable(Uri(u.string + "&heartbeat=0.1")).await(99.s)
       .timeoutOnSlowUpstream(2.s/*sometimes 1s is too short*/)  // Check heartbeat
       .doOnError(t => Task(scribe.error(t.toString)))
       .foreach { bytes =>
-        heartbeatLines += bytes.utf8String
+        heartbeatLines :+= bytes.utf8String
         scribe.debug(s"observeWithHeartbeat: ${bytes.utf8String.trim}")
       }
 
