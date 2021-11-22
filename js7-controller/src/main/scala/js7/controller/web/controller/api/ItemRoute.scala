@@ -79,7 +79,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                   }
                   .map[ToResponseMarshallable] {
                     case Left(problem) =>
-                      logger.debug(problem.toString)
+                      logger.warn(problem.toString)
                       BadRequest -> problem
                     case Right(Completed) =>
                       OK -> emptyJsonObject
