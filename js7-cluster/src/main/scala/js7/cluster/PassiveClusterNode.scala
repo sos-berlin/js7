@@ -29,7 +29,6 @@ import js7.base.utils.StackTraces._
 import js7.base.web.HttpClient
 import js7.cluster.ClusterCommon.clusterEventAndStateToString
 import js7.cluster.ClusterConf.ClusterProductName
-import js7.cluster.ObservablePauseDetector.RichPauseObservable
 import js7.cluster.PassiveClusterNode._
 import js7.common.http.RecouplingStreamReader
 import js7.common.jsonseq.PositionAnd

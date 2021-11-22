@@ -9,6 +9,7 @@ import com.softwaremill.diffx
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax._
+import js7.base.monixutils.ObservablePauseDetector._
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
@@ -17,7 +18,6 @@ import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.{HttpClient, Uri}
 import js7.cluster.ActiveClusterNode._
-import js7.cluster.ObservablePauseDetector._
 import js7.common.http.RecouplingStreamReader
 import js7.common.system.startup.Halt.haltJava
 import js7.data.Problems.{ClusterCommandInapplicableProblem, ClusterSettingNotUpdatable, MissingPassiveClusterNodeHeartbeatProblem}

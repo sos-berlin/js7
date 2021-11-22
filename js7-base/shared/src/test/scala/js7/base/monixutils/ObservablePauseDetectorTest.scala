@@ -1,8 +1,7 @@
-package js7.cluster
+package js7.base.monixutils
 
-import js7.base.monixutils.MonixDeadline
+import js7.base.monixutils.ObservablePauseDetector._
 import js7.base.time.ScalaTime._
-import js7.cluster.ObservablePauseDetector._
 import monix.eval.Task
 import monix.execution.schedulers.TestScheduler
 import monix.reactive.Observable

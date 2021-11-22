@@ -1,18 +1,19 @@
-package js7.cluster
+package js7.base.monixutils
 
 import js7.base.monixutils.MonixBase.syntax._
-import js7.base.monixutils.MonixDeadline
 import js7.base.monixutils.MonixDeadline.now
 import monix.reactive.{Observable, OverflowStrategy}
 import scala.concurrent.duration.FiniteDuration
 
-private[cluster] object ObservablePauseDetector
+object ObservablePauseDetector
 {
   private implicit val overflowStrategy = OverflowStrategy.BackPressure(bufferSize = 2/*minimum*/)
 
   implicit final class RichPauseObservable[A](private val underlying: Observable[A]) extends AnyVal
   {
-    /** Returns Some[A], or None for each pause (only one None per pause). */
+    // TODO Left should contain the timestamp of the last A, not the first Tick after the last A
+    // TODO May parameterize the current Either return type with two functions for less allocs
+    /** Returns Right[A], or Left for each pause (only one Left per pause). */
     def detectPauses(delay: FiniteDuration): Observable[Either[MonixDeadline, A]] =
       Observable.deferAction(implicit scheduler =>
         Observable[Observable[Ticking]](
@@ -27,7 +28,7 @@ private[cluster] object ObservablePauseDetector
           }
           .collect {
             case Expired(since) => Left(since)
-            case Data(a: A @ unchecked) => Right(a)
+            case Data(a: A @unchecked) => Right(a)
           })
   }
 
