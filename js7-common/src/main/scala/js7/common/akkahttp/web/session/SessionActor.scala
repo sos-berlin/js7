@@ -39,7 +39,7 @@ extends Actor {
       .view.mapValues(_.toVector.sortBy(_.number))
       .toVector.sortBy(_._1)
       .foreach { case (userId, sessionTokens) =>
-        logger.debug(sessionTokens.size + " open sessions for " + userId +
+        logger.debug(sessionTokens.size.toString + " open sessions for " + userId +
           sessionTokens.view.mkString(" (", " ", ")"))
       }
     super.postStop()
