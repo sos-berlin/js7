@@ -50,4 +50,8 @@ final class AsyncVariableTest extends AsyncFreeSpec
         .runToFuture
     }
   }
+
+  "Massive parallel" in {
+    pending // TODO
+  }
 }

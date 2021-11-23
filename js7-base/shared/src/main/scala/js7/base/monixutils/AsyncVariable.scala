@@ -13,34 +13,37 @@ final class AsyncVariable[V](initial: V)
     _value
 
   def update(update: V => Task[V]): Task[V] =
-    lock.lock(
+    shieldValue(
       for (v <- update(_value)) yield {
         _value = v
         v
       })
 
   def updateChecked(update: V => Task[Checked[V]]): Task[Checked[V]] =
-    lock.lock(
+    shieldValue(
       for (checked <- update(_value)) yield {
         for (v <- checked) _value = v
         checked
       })
 
   def updateWithResult[R](update: V => Task[(V, R)]): Task[R] =
-    lock.lock(
+    shieldValue(
       update(_value)
-        .map { case (v, r) =>
-          _value = v
-          r
-        })
+      .map { case (v, r) =>
+        _value = v
+        r
+      })
 
   def updateCheckedWithResult[R](update: V => Task[Checked[(V, R)]]): Task[Checked[R]] =
-    lock.lock(
+    shieldValue(
       update(_value)
-        .map(_.map { case (v, r) =>
-          _value = v
-          r
-        }))
+      .map(_.map { case (v, r) =>
+        _value = v
+        r
+      }))
+
+  private def shieldValue[A](body: => Task[A]): Task[A] =
+    lock.lock(Task.defer/*shield access to _value in body*/(body))
 }
 
 object AsyncVariable
