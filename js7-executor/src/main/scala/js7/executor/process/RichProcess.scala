@@ -60,11 +60,8 @@ class RichProcess protected[process](
           if (isWindows)
             Task.raiseError(new UnsupportedOperationException(
               "SIGTERM is a Unix process signal and cannot be handled by Microsoft Windows"))
-          else {
-            logger.debug("destroy (SIGTERM)")
-            process.destroy()
-            Task.unit
-          }
+          else
+            destroy(force = false)
 
         case SIGKILL =>
           processConfiguration
@@ -101,10 +98,53 @@ class RichProcess protected[process](
             })
       }
 
-  private def kill = Task {
-    logger.debug("destroyForcibly" + (!isWindows ?? " (SIGKILL)"))
-    process.destroyForcibly()
+  private def kill =
+    destroy(force = true)
+
+  private def destroy(force: Boolean): Task[Unit] =
+    (process, pidOption) match {
+      case (_: JavaProcess, Some(pid)) =>
+        // Do not destory with Java because Java closes stdout and stdin immediately,
+        // not allowing a signal handler to write to stdout
+        destroyWithUnixCommand(pid, force)
+
+      case _ =>
+        Task { destroyWithJava(force) }
+    }
+
+  private def destroyWithUnixCommand(pid: Pid, force: Boolean): Task[Unit] = {
+    var args = Vector("kill")
+    if (force) args :+= "-KILL"
+    args :+= pid.number.toString
+
+    val processBuilder = new ProcessBuilder(args.asJava)
+      .redirectOutput(INHERIT)  // TODO Pipe to stdout
+      .redirectError(INHERIT)
+
+    logger.debug(args.mkString(" "))
+    processBuilder
+      .startRobustly()
+      .executeOn(iox.scheduler)
+      .flatMap(onKillProcess =>
+        ioTask {
+          waitForProcessTermination(JavaProcess(onKillProcess))
+        } >> Task {
+          val exitCode = onKillProcess.exitValue
+          if (exitCode != 0) {
+            logger.warn(s"Could not kill with unix command: ${args.mkString(" ")} => $exitCode")
+            destroyWithJava(force)
+          }
+        })
   }
+
+  private def destroyWithJava(force: Boolean): Unit =
+    if (force) {
+      logger.debug("destroyForcibly")
+      process.destroyForcibly()
+    } else {
+      logger.debug("destroy (SIGTERM)")
+      process.destroy()
+    }
 
   final def isKilled = _killed
 
