@@ -84,8 +84,11 @@ object EventRequest
     limit: Int = DefaultLimit,
     /** Return Torn if the first event is older than `tornOlder`. */
     tornOlder: Option[FiniteDuration] = None)
-  : EventRequest[E] =
+  : EventRequest[E] = {
+    if (implicitClass[E] eq classOf[Nothing])
+      throw new IllegalArgumentException("EventRequest.singleClass[Nothing]: Missing type parameter?")
     new EventRequest[E](Set(implicitClass[E]), after, timeout, delay, limit, tornOlder)
+  }
 
   def durationToString(duration: FiniteDuration): String =
     BigDecimal(duration.toNanos, scale = 9).bigDecimal.toPlainString.dropLastWhile(_ == '0').stripSuffix(".")  // TODO Use ScalaTime.formatNumber
