@@ -41,6 +41,7 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.executor.configuration.JobExecutorConf
+import js7.executor.process.ProcessConfiguration
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.journal.watch.JournalEventWatch
@@ -168,6 +169,8 @@ private object OrderActorTest {
       executablesDirectory = (dir / "config" / "executables").toRealPath(),
       workDirectory = dir / "data" / "work",
       workingDirectory = dir / "data" / "work",
+      killWithSigterm = ProcessConfiguration.forTest.killWithSigterm,
+      killWithSigkill = ProcessConfiguration.forTest.killWithSigkill,
       killScript = None,
       scriptInjectionAllowed = false,
       globalIOX,

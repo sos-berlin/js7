@@ -13,6 +13,7 @@ import js7.base.convert.AsJava.asAbsolutePath
 import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.file.FileUtils.{EmptyPath, WorkingDirectory}
+import js7.base.problem.{Checked, Problem}
 import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
 import js7.base.time.JavaTimeConverters._
@@ -106,16 +107,29 @@ extends CommonConfiguration
 
   lazy val scriptInjectionAllowed = config.getBoolean("js7.job.execution.signed-script-injection-allowed")
 
-  def toExecutorConf(iox: IOExecutor, blockingJobScheduler: SchedulerService, clock: AlarmClock) =
-    JobExecutorConf(
-      executablesDirectory = executablesDirectory,
-      workDirectory = workDirectory,
-      workingDirectory = jobWorkingDirectory,
-      killScript = killScript,
-      scriptInjectionAllowed = scriptInjectionAllowed,
-      iox,
-      blockingJobScheduler = blockingJobScheduler,
-      clock)
+  def toExecutorConf(iox: IOExecutor, blockingJobScheduler: SchedulerService, clock: AlarmClock)
+  : Checked[JobExecutorConf] = {
+    val sigtermName = "js7.job.execution.kill-with-sigterm-command"
+    val sigkillName = "js7.job.execution.kill-with-sigkill-command"
+    val killWithSigterm = config.seqAs[String](sigtermName)
+    val killWithSigkill = config.seqAs[String](sigkillName)
+    if (killWithSigterm.nonEmpty && !killWithSigterm.contains("$pid"))
+      Left(Problem(s"Setting $sigtermName must contain \"$$pid\""))
+    else if (killWithSigkill.nonEmpty && !killWithSigkill.contains("$pid"))
+      Left(Problem(s"Setting $sigkillName must contain \"$$pid\""))
+    else Right(
+      JobExecutorConf(
+        executablesDirectory = executablesDirectory,
+        workDirectory = workDirectory,
+        workingDirectory = jobWorkingDirectory,
+        killWithSigterm = config.seqAs[String](sigtermName),
+        killWithSigkill = config.seqAs[String](sigkillName),
+        killScript = killScript,
+        scriptInjectionAllowed = scriptInjectionAllowed,
+        iox,
+        blockingJobScheduler = blockingJobScheduler,
+        clock))
+  }
 
   val journalMeta = JournalMeta(AgentState, stateDirectory / "agent")
 

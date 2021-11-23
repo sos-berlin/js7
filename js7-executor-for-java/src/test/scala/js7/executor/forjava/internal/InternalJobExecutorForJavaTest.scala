@@ -25,6 +25,7 @@ import js7.executor.configuration.JobExecutorConf
 import js7.executor.forjava.internal.InternalJobExecutorForJavaTest._
 import js7.executor.forjava.internal.tests.{TestBlockingInternalJob, TestJInternalJob}
 import js7.executor.internal.{InternalJobExecutor, JobExecutor}
+import js7.executor.process.ProcessConfiguration
 import js7.executor.{ProcessOrder, StdObservers}
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
@@ -56,7 +57,10 @@ final class InternalJobExecutorForJavaTest extends AnyFreeSpec with BeforeAndAft
             workflow,
             ControllerId("CONTROLLER"),
             sigkillDelay = 0.s),
-          JobExecutorConf(u, u, u, None, scriptInjectionAllowed = true, globalIOX, blockingJobScheduler,
+          JobExecutorConf(u, u, u,
+            killWithSigterm = ProcessConfiguration.forTest.killWithSigterm,
+            killWithSigkill = ProcessConfiguration.forTest.killWithSigkill,
+            None, scriptInjectionAllowed = true, globalIOX, blockingJobScheduler,
             AlarmClock()),
           _ => Left(Problem("No JobResource here"))
         ).orThrow.asInstanceOf[InternalJobExecutor]

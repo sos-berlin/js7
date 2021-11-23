@@ -14,6 +14,7 @@ import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.{AlarmClock, WallClock}
 import js7.base.utils.Closer
 import js7.base.utils.Closer.syntax._
+import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.system.ThreadPools
@@ -92,7 +93,7 @@ extends AbstractModule
       closer.onClose(scheduler.shutdown())
       scheduler
     }
-    conf.toExecutorConf(iox, blockingJobScheduler, clock)
+    conf.toExecutorConf(iox, blockingJobScheduler, clock).orThrow
   }
 
   @Provides @Singleton

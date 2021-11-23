@@ -13,6 +13,8 @@ final case class JobExecutorConf(
   workDirectory: Path,
   /** Working directory of the process to be started. */
   workingDirectory: Path,
+  killWithSigterm: Seq[String],
+  killWithSigkill: Seq[String],
   killScript: Option[ProcessKillScript],
   scriptInjectionAllowed: Boolean,
   implicit val iox: IOExecutor,

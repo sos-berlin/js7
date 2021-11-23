@@ -112,30 +112,50 @@ class RichProcess protected[process](
         Task { destroyWithJava(force) }
     }
 
-  private def destroyWithUnixCommand(pid: Pid, force: Boolean): Task[Unit] = {
-    var args = Vector("kill")
-    if (force) args :+= "-KILL"
-    args :+= pid.number.toString
-
-    val processBuilder = new ProcessBuilder(args.asJava)
-      .redirectOutput(INHERIT)  // TODO Pipe to stdout
-      .redirectError(INHERIT)
-
-    logger.debug(args.mkString(" "))
-    processBuilder
-      .startRobustly()
-      .executeOn(iox.scheduler)
-      .flatMap(onKillProcess =>
-        ioTask {
-          waitForProcessTermination(JavaProcess(onKillProcess))
-        } >> Task {
-          val exitCode = onKillProcess.exitValue
-          if (exitCode != 0) {
-            logger.warn(s"Could not kill with unix command: ${args.mkString(" ")} => $exitCode")
-            destroyWithJava(force)
+  private def destroyWithUnixCommand(pid: Pid, force: Boolean): Task[Unit] =
+    Task.defer {
+      val argsPattern =
+        if (force) processConfiguration.killWithSigkill
+        else processConfiguration.killWithSigterm
+      if (argsPattern.isEmpty)
+        Task(destroyWithJava(force))
+      else if (!argsPattern.contains("$pid")) {
+        logger.error("Missing '$pid' in configured kill command")
+        Task(destroyWithJava(force))
+      } else {
+        val args = argsPattern.map {
+          case "$pid" => pid.number.toString
+          case o => o
+        }
+        executeKillCommand(args)
+          .flatMap { rc =>
+            if (rc.isSuccess)
+              Task.unit
+            else Task {
+              logger.warn(s"Could not kill with unix command: ${args.mkString(" ")} => $rc")
+              destroyWithJava(force)
+            }
           }
-        })
-  }
+      }
+    }
+
+  private def executeKillCommand(args: Seq[String]): Task[ReturnCode] =
+    Task.defer {
+      logger.debug(args.mkString(" "))
+
+      val processBuilder = new ProcessBuilder(args.asJava)
+        .redirectOutput(INHERIT)  // TODO Pipe to stdout
+        .redirectError(INHERIT)
+
+      processBuilder
+        .startRobustly()
+        .executeOn(iox.scheduler)
+        .flatMap(killProcess =>
+          ioTask {
+            waitForProcessTermination(JavaProcess(killProcess))
+            ReturnCode(killProcess.exitValue)
+          })
+    }
 
   private def destroyWithJava(force: Boolean): Unit =
     if (force) {

@@ -67,6 +67,8 @@ final class ProcessDriver(
                   workingDirectory = Some(jobExecutorConf.workingDirectory),
                   additionalEnvironment = env + returnValuesProvider.toEnv,
                   maybeTaskId = Some(taskId),
+                  killWithSigterm = jobExecutorConf.killWithSigterm,
+                  killWithSigkill = jobExecutorConf.killWithSigkill,
                   killScriptOption = jobExecutorConf.killScript,
                   maybeWindowsLogon))
             }
