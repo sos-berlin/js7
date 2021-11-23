@@ -12,7 +12,7 @@ import scala.reflect.ClassTag
 class AsyncMap[K: ClassTag, V](initial: Map[K, V])
 {
   private val lockKeeper = new LockKeeper[K]
-  private val lock = AsyncLock(s"AsyncMap[${implicitClass[K].shortClassName}]")
+  private val shortLock = AsyncLock(s"AsyncMap[${implicitClass[K].shortClassName}]")
   @volatile private var _map = initial
 
   protected[AsyncMap] def onEntryRemoved() = {}
@@ -43,7 +43,7 @@ class AsyncMap[K: ClassTag, V](initial: Map[K, V])
 
   /** Not synchronized with other updates! */
   final def removeAll(implicit src: sourcecode.Enclosing): Task[Map[K, V]] =
-    lock.lock(Task {
+    shortLock.lock(Task {
       val result = _map
       _map = Map.empty
       result
@@ -51,7 +51,7 @@ class AsyncMap[K: ClassTag, V](initial: Map[K, V])
 
   final def remove(key: K)(implicit src: sourcecode.Enclosing): Task[Option[V]] =
     lockKeeper.lock(key)(
-      lock.lock(Task {
+      shortLock.lock(Task {
         val result = _map.get(key)
         _map = _map.removed(key)
         onEntryRemoved()
@@ -83,15 +83,17 @@ class AsyncMap[K: ClassTag, V](initial: Map[K, V])
   final def getAndUpdate(key: K, update: Option[V] => Task[V])
     (implicit src: sourcecode.Enclosing)
   : Task[(Option[V], V)] =
-    lock.lock(Task.defer {
-      val previous = _map.get(key)
-      update(previous)
-        .map { updated =>
-          _map += key -> updated
-          updated
-        }
-        .map(previous -> _)
-    })
+    lockKeeper.lock(key)(
+      Task.defer {
+        val previous = _map.get(key)
+        update(previous)
+          .flatMap(updated =>
+            shortLock.lock(Task {
+              _map += key -> updated
+              updated
+          }))
+          .map(previous -> _)
+      })
 
   final def updateChecked(key: K, update: Option[V] => Task[Checked[V]])
     (implicit src: sourcecode.Enclosing)
@@ -102,10 +104,11 @@ class AsyncMap[K: ClassTag, V](initial: Map[K, V])
           updated
             .match_ {
               case Left(p) => Task.pure(Left(p))
-              case Right(updated) => lock.lock(Task {
-                _map += key -> updated
-                Checked.unit
-              })
+              case Right(v) =>
+                shortLock.lock(Task {
+                  _map += key -> v
+                  Checked.unit
+                })
             }
             .as(updated)
         })
@@ -117,7 +120,7 @@ class AsyncMap[K: ClassTag, V](initial: Map[K, V])
       Task.defer {
         update(_map.get(key))
           .flatMapT { case (v, r) =>
-            lock
+            shortLock
               .lock(Task {
                 _map += key -> v
               })
@@ -143,13 +146,13 @@ object AsyncMap
     private val whenEmptyPromise = Promise[Unit]()
 
     final val whenEmpty: Task[Unit] =
-      lock
-        .lock {
-          if (_map.isEmpty)
+      Task
+        .defer {
+          (if (_map.isEmpty)
             Task.unit
           else {
             Task.fromFuture(whenEmptyPromise.future)
-          }
+          })
         }
         .memoize
 
