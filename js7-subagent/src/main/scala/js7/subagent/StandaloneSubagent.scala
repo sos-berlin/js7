@@ -13,6 +13,7 @@ import js7.base.time.AlarmClock
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{Closer, ProgramTermination, SetOnce}
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
@@ -132,7 +133,7 @@ object StandaloneSubagent
           blockingJobScheduler <- Resource.make(
             acquire = Task(newUnlimitedScheduler("JS7 blocking job")))(
             release = o => Task(o.shutdown()))
-          jobLauncherConf = conf.toJobLauncherConf(iox, blockingJobScheduler, clock)
+          jobLauncherConf = conf.toJobLauncherConf(iox, blockingJobScheduler, clock).orThrow
         } yield
           new StandaloneSubagent(conf, jobLauncherConf, journal, scheduler, actorSystem)
       }.executeOn(scheduler))

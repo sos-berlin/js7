@@ -13,6 +13,7 @@ import js7.base.convert.AsJava.asAbsolutePath
 import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.file.FileUtils.{EmptyPath, WorkingDirectory}
+import js7.base.problem.Checked
 import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
 import js7.base.time.JavaTimeConverters._
@@ -111,21 +112,13 @@ extends CommonConfiguration
 
   lazy val scriptInjectionAllowed = config.getBoolean("js7.job.execution.signed-script-injection-allowed")
 
-  def toExecutorConf(iox: IOExecutor, blockingJobScheduler: SchedulerService, clock: AlarmClock) =
-    JobLauncherConf(
-      executablesDirectory = executablesDirectory,
-      workDirectory = workDirectory,
-      workingDirectory = jobWorkingDirectory,
-      killScript = killScript,
-      scriptInjectionAllowed = scriptInjectionAllowed,
-      RecouplingStreamReaderConfs.fromConfig(config).orThrow,
-      iox,
-      blockingJobScheduler = blockingJobScheduler,
-      clock)
+  def toJobLauncherConf(iox: IOExecutor, blockingJobScheduler: SchedulerService, clock: AlarmClock)
+  : Checked[JobLauncherConf] =
+    toSubagentConf.toJobLauncherConf(iox, blockingJobScheduler, clock)
 
-  val journalMeta = JournalMeta(AgentState, stateDirectory / "agent")
+  val journalMeta = JournalMeta(AgentState, stateDirectory / "agent" )
 
-  def toSubagentConf =
+  lazy val toSubagentConf =
     SubagentConf(
       configDirectory = configDirectory,
       dataDirectory = dataDirectory,

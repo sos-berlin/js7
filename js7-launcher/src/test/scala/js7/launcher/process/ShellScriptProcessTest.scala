@@ -69,7 +69,7 @@ final class ShellScriptProcessTest extends AnyFreeSpec
                  |echo TEST-SCRIPT
                  |""".stripMargin)
             val stdFileMap = RichProcess.createStdFiles(temporaryDirectory, id = s"ShellScriptProcessTest-shebang")
-            val shellProcess = startShellScript(ProcessConfiguration(), scriptFile, stdFileMap)
+            val shellProcess = startShellScript(ProcessConfiguration.forTest, scriptFile, stdFileMap)
               .await(99.s)
             shellProcess.terminated await 99.s
             assert(stdFileMap(Stdout).contentString ==

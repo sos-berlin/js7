@@ -26,6 +26,7 @@ import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.forjava.internal.InternalJobLauncherForJavaTest._
 import js7.launcher.forjava.internal.tests.{TestBlockingInternalJob, TestJInternalJob}
 import js7.launcher.internal.{InternalJobLauncher, JobLauncher}
+import js7.launcher.process.ProcessConfiguration
 import js7.launcher.{ProcessOrder, StdObservers}
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
@@ -57,7 +58,11 @@ final class InternalJobLauncherForJavaTest extends AnyFreeSpec with BeforeAndAft
             workflow,
             ControllerId("CONTROLLER"),
             sigkillDelay = 0.s),
-          JobLauncherConf(u, u, u, None, scriptInjectionAllowed = true,
+          JobLauncherConf(u, u, u,
+            killWithSigterm = ProcessConfiguration.forTest.killWithSigterm,
+            killWithSigkill = ProcessConfiguration.forTest.killWithSigkill,
+            None,
+            scriptInjectionAllowed = true,
             RecouplingStreamReaderConf.forTest,
             globalIOX, blockingJobScheduler,
             AlarmClock()),

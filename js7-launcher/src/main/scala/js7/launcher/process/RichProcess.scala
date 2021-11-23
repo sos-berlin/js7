@@ -60,11 +60,8 @@ class RichProcess protected[process](
           if (isWindows)
             Task.raiseError(new UnsupportedOperationException(
               "SIGTERM is a Unix process signal and cannot be handled by Microsoft Windows"))
-          else {
-            logger.debug("destroy (SIGTERM)")
-            process.destroy()
-            Task.unit
-          }
+          else
+            destroy(force = false)
 
         case SIGKILL =>
           processConfiguration
@@ -101,10 +98,73 @@ class RichProcess protected[process](
             })
       }
 
-  private def kill = Task {
-    logger.debug("destroyForcibly" + (!isWindows ?? " (SIGKILL)"))
-    process.destroyForcibly()
-  }
+  private def kill =
+    destroy(force = true)
+
+  private def destroy(force: Boolean): Task[Unit] =
+    (process, pidOption) match {
+      case (_: JavaProcess, Some(pid)) =>
+        // Do not destory with Java because Java closes stdout and stdin immediately,
+        // not allowing a signal handler to write to stdout
+        destroyWithUnixCommand(pid, force)
+
+      case _ =>
+        Task { destroyWithJava(force) }
+    }
+
+  private def destroyWithUnixCommand(pid: Pid, force: Boolean): Task[Unit] =
+    Task.defer {
+      val argsPattern =
+        if (force) processConfiguration.killWithSigkill
+        else processConfiguration.killWithSigterm
+      if (argsPattern.isEmpty)
+        Task(destroyWithJava(force))
+      else if (!argsPattern.contains("$pid")) {
+        logger.error("Missing '$pid' in configured kill command")
+        Task(destroyWithJava(force))
+      } else {
+        val args = argsPattern.map {
+          case "$pid" => pid.number.toString
+          case o => o
+        }
+        executeKillCommand(args)
+          .flatMap { rc =>
+            if (rc.isSuccess)
+              Task.unit
+            else Task {
+              logger.warn(s"Could not kill with unix command: ${args.mkString(" ")} => $rc")
+              destroyWithJava(force)
+            }
+          }
+      }
+    }
+
+  private def executeKillCommand(args: Seq[String]): Task[ReturnCode] =
+    Task.defer {
+      logger.debug(args.mkString(" "))
+
+      val processBuilder = new ProcessBuilder(args.asJava)
+        .redirectOutput(INHERIT)  // TODO Pipe to stdout
+        .redirectError(INHERIT)
+
+      processBuilder
+        .startRobustly()
+        .executeOn(iox.scheduler)
+        .flatMap(killProcess =>
+          ioTask {
+            waitForProcessTermination(JavaProcess(killProcess))
+            ReturnCode(killProcess.exitValue)
+          })
+    }
+
+  private def destroyWithJava(force: Boolean): Unit =
+    if (force) {
+      logger.debug("destroyForcibly")
+      process.destroyForcibly()
+    } else {
+      logger.debug("destroy (SIGTERM)")
+      process.destroy()
+    }
 
   final def isKilled = _killed
 

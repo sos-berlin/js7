@@ -11,7 +11,10 @@ import js7.base.time.Timestamp
 import js7.data.Problems.{CancelStartedOrderProblem, UnknownOrderProblem}
 import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode
+import js7.data.command.CancellationMode.{FreshOrStarted, Kill}
 import js7.data.controller.ControllerCommand.{CancelOrders, Response}
+import js7.data.event.KeyedEvent
+import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion}
 import js7.data.item.VersionId
 import js7.data.job.ShellScriptExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderStdoutWritten, OrderTerminated}
@@ -26,6 +29,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.CancelOrdersTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global
+import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
@@ -36,6 +40,7 @@ import scala.concurrent.duration._
 final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   override protected val controllerConfig = config"""
+    js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.controller.agent-driver.command-batch-delay = 0ms
     js7.controller.agent-driver.event-buffer-delay = 0ms"""
 
@@ -316,6 +321,133 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
     assert(response == Response.Accepted)
     for (o <- orders) eventWatch.await[OrderCancelled](_.key == o.id)
   }
+
+  "Cancel a script having a trap writing to stdout" in {
+    val v = VersionId("TRAP-STDOUT")
+    val workflow = Workflow(
+      WorkflowPath("TRAP-STDOUT") ~ v,
+      Seq(Execute(WorkflowJob(
+        agentPath,
+        ShellScriptExecutable(
+          """#!/usr/bin/env bash
+            |set -euo pipefail
+            |
+            |onSIGTERM() {
+            |  # Send some lines to (unbuffered?) stdout — JS7 must read these lines
+            |  echo "TRAP 1"
+            |  echo "TRAP 2"
+            |  echo "TRAP 3"
+            |  exit
+            |}
+            |
+            |trap onSIGTERM SIGTERM
+            |echo "READY"
+            |for i in {0..99}; do
+            |  sleep 0.1
+            |done
+            |""".stripMargin)))))
+    addWorkflow(workflow)
+
+    val orderId = OrderId("TRAP-STDOUT")
+    val eventId = eventWatch.lastAddedEventId
+    controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+    eventWatch.await[OrderStdoutWritten](after = eventId)
+
+    controllerApi
+      .executeCommand(
+        CancelOrders(Seq(orderId), CancellationMode.kill()))
+      .await(99.s).orThrow
+    eventWatch.await[OrderTerminated](after = eventId)
+
+    val events = eventWatch.keyedEvents[OrderEvent](after = eventId)
+      .collect { case KeyedEvent(`orderId`, event) => event }
+    assert(events == Seq(
+      OrderAdded(workflow.id),
+      OrderAttachable(agentPath),
+      OrderAttached(agentPath),
+      OrderStarted,
+      OrderProcessingStarted,
+      OrderStdoutWritten("READY\n"),
+      OrderCancellationMarked(FreshOrStarted(Some(Kill(false,None)))),
+      OrderCancellationMarkedOnAgent,
+      OrderStdoutWritten(
+        """TRAP 1
+          |TRAP 2
+          |TRAP 3
+          |""".stripMargin),
+      OrderProcessed(Outcome.Killed(Outcome.succeededRC0)),
+      OrderProcessingKilled,
+      OrderDetachable,
+      OrderDetached,
+      OrderCancelled))
+  }
+
+  "Cancel a script with a child process" in {
+    val v = VersionId("TRAP-CHILD")
+    val workflow = Workflow(
+      WorkflowPath("TRAP-CHILD") ~ v,
+      Seq(Execute(WorkflowJob(
+        agentPath,
+        ShellScriptExecutable(
+          """#!/usr/bin/env bash
+            |set -euo pipefail
+            |
+            |if [ "$1" == "-child" ]; then
+            |  trap "wait; echo CHILD EXIT" EXIT
+            |  trap "echo CHILD SIGTERM; exit" SIGTERM
+            |  for i in {0..1111}; do
+            |    sleep 0.1
+            |  done
+            |else
+            |  trap wait EXIT
+            |  "$0" -child &
+            |  trap 'kill -TERM $!' SIGTERM
+            |  echo "READY"
+            |fi
+            |""".stripMargin)))))
+    addWorkflow(workflow)
+
+    val orderId = OrderId("TRAP-CHILD")
+    val eventId = eventWatch.lastAddedEventId
+    controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+    eventWatch.await[OrderStdoutWritten](after = eventId)
+
+    controllerApi
+      .executeCommand(
+        CancelOrders(Seq(orderId), CancellationMode.kill()))
+      .await(99.s).orThrow
+    eventWatch.await[OrderTerminated](after = eventId)
+
+    val events = eventWatch.keyedEvents[OrderEvent](after = eventId)
+      .collect { case KeyedEvent(`orderId`, event) => event }
+    assert(events == Seq(
+      OrderAdded(workflow.id),
+      OrderAttachable(agentPath),
+      OrderAttached(agentPath),
+      OrderStarted,
+      OrderProcessingStarted,
+      OrderStdoutWritten("READY\n"),
+      OrderCancellationMarked(FreshOrStarted(Some(Kill(false,None)))),
+      OrderCancellationMarkedOnAgent,
+      OrderStdoutWritten(
+        """CHILD SIGTERM
+          |CHILD EXIT
+          |""".stripMargin),
+      OrderProcessed(Outcome.Killed(Outcome.Failed(Map(
+        "returnCode" -> NumberValue(128 + 15/*SIGTERM*/))))),
+      OrderProcessingKilled,
+      OrderDetachable,
+      OrderDetached,
+      OrderCancelled))
+  }
+
+  private def addWorkflow(workflow: Workflow): Unit = {
+    controllerApi
+      .updateItems(Observable(
+        AddVersion(workflow.id.versionId),
+        AddOrChangeSigned(directoryProvider.itemSigner.toSignedString(workflow))))
+      .await(99.s).orThrow
+  }
 }
 
 object CancelOrdersTest
@@ -340,7 +472,7 @@ object CancelOrdersTest
     WorkflowPath("SINGLE") ~ versionId,
     Execute(WorkflowJob(agentPath, sleepingExecutable)))
 
-  private val trappingExecutable = ShellScriptExecutable(
+  private val sigtermIgnoringExecutable = ShellScriptExecutable(
     """#!/usr/bin/env bash
       |set -euo pipefail
       |trap "" SIGTERM
@@ -353,11 +485,11 @@ object CancelOrdersTest
   private val sigkillDelay = 1.s
   private val sigkillDelayWorkflow = Workflow.of(
     WorkflowPath("SIGKILL-DELAY") ~ versionId,
-    Execute(WorkflowJob(agentPath, trappingExecutable, sigkillDelay = Some(sigkillDelay))))
+    Execute(WorkflowJob(agentPath, sigtermIgnoringExecutable, sigkillDelay = Some(sigkillDelay))))
 
   private val sigkillImmediatelyWorkflow = Workflow.of(
     WorkflowPath("SIGKILL-DELAY-0") ~ versionId,
-    Execute(WorkflowJob(agentPath, trappingExecutable, sigkillDelay = Some(0.s))))
+    Execute(WorkflowJob(agentPath, sigtermIgnoringExecutable, sigkillDelay = Some(0.s))))
 
   private val twoJobsWorkflow = Workflow.of(
     WorkflowPath("TWO") ~ versionId,

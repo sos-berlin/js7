@@ -46,6 +46,7 @@ import js7.journal.data.JournalMeta
 import js7.journal.recover.Recovered
 import js7.journal.state.FileStatePersistence
 import js7.launcher.configuration.JobLauncherConf
+import js7.launcher.process.ProcessConfiguration
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Assertions._
 import org.scalatest.BeforeAndAfterAll
@@ -170,6 +171,8 @@ private object OrderActorTest {
       executablesDirectory = (dir / "config" / "executables").toRealPath(),
       workDirectory = dir / "data" / "work",
       workingDirectory = dir / "data" / "work",
+      killWithSigterm = ProcessConfiguration.forTest.killWithSigterm,
+      killWithSigkill = ProcessConfiguration.forTest.killWithSigkill,
       killScript = None,
       scriptInjectionAllowed = false,
       RecouplingStreamReaderConf.forTest,
