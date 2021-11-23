@@ -65,7 +65,7 @@ abstract class RecouplingStreamReader[
 
   protected def requestTimeout = conf.timeout
 
-  private def idleTimeout = requestTimeout + 2.s/*let service timeout kick in first*/
+  protected def idleTimeout = requestTimeout + 2.s/*let service timeout kick in first*/
 
   private def isStopped = stopRequested || coupledApiVar.isStopped || !inUse.get()
 

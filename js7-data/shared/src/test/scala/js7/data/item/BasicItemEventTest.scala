@@ -57,7 +57,7 @@ final class BasicItemEventTest extends AnyFreeSpec
         {
           "TYPE": "ItemAttached",
           "key": "OrderWatch:PATH",
-          "itemRevision":  7,
+          "itemRevision": 7,
           "delegateId": "Agent:AGENT"
         }""")
 
@@ -66,7 +66,7 @@ final class BasicItemEventTest extends AnyFreeSpec
         {
           "TYPE": "ItemAttached",
           "key": "OrderWatch:PATH",
-          "itemRevision":  7,
+          "itemRevision": 7,
           "agentPath": "AGENT"
         }""")
     }

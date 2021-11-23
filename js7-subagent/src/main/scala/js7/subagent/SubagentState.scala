@@ -1,23 +1,22 @@
 package js7.subagent
 
+import js7.data.event.JournalEvent.Heartbeat
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, ItemContainer, JournaledState, KeyedEvent, KeyedEventTypedJsonCodec}
 import js7.data.item.{InventoryItem, InventoryItemKey}
-import js7.data.job.{JobKey, JobResource, JobResourcePath}
+import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten, OrderStderrWritten, OrderStdoutWritten}
 import js7.data.state.AgentStateView
-import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowId}
 import js7.subagent.data.SubagentEvent
 import js7.subagent.data.SubagentEvent.SubagentItemAttached
-import scala.collection.MapView
+import scala.collection.{MapView, View}
 
 final case class SubagentState(
   eventId: EventId,
   idToWorkflow: Map[WorkflowId, Workflow],
-  pathToJobResource: Map[JobResourcePath, JobResource],
-  keyToWorkflowJob: Map[JobKey, WorkflowJob])
+  pathToJobResource: Map[JobResourcePath, JobResource])
 extends AgentStateView
 with JournaledState[SubagentState]
 with ItemContainer
@@ -43,7 +42,21 @@ with ItemContainer
     }
 
   def keyToItem: MapView[InventoryItemKey, InventoryItem] =
-    ???
+    new MapView[InventoryItemKey,InventoryItem] {
+      def get(key: InventoryItemKey) =
+        key match {
+          case WorkflowId.as(id) => idToWorkflow.get(id)
+          case path: JobResourcePath => pathToJobResource.get(path)
+          case _ => None
+        }
+
+      def iterator =
+        items.iterator.map(o => o.key -> o)
+    }
+
+  lazy val items: View[InventoryItem] =
+    idToWorkflow.values.view ++
+      pathToJobResource.values.view
 }
 
 object SubagentState
@@ -52,7 +65,7 @@ with ItemContainer.Companion[SubagentState]
 {
   type StateEvent = Event
 
-  val empty = SubagentState(EventId.BeforeFirst, Map.empty, Map.empty, Map.empty)
+  val empty = SubagentState(EventId.BeforeFirst, Map.empty, Map.empty)
 
   protected def inventoryItems =
     Seq(Workflow, JobResource)
@@ -62,5 +75,6 @@ with ItemContainer.Companion[SubagentState]
       KeyedSubtype[SubagentEvent],
       KeyedSubtype.singleEvent[OrderStdoutWritten],
       KeyedSubtype.singleEvent[OrderStderrWritten],
-      KeyedSubtype.singleEvent[OrderProcessed])
+      KeyedSubtype.singleEvent[OrderProcessed],
+      KeyedSubtype.singleEvent(Heartbeat))
 }

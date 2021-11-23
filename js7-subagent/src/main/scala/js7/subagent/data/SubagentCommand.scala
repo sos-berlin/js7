@@ -94,6 +94,10 @@ object SubagentCommand
     implicit val jsonCodec = deriveConfiguredCodec[ShutDown]
   }
 
+  case object NoOperation extends SubagentCommand {
+    type Response = Accepted
+  }
+
   implicit val jsonCodec = TypedJsonCodec[SubagentCommand](
     Subtype(deriveCodec[DedicateSubagent]),
     Subtype(deriveCodec[AttachItem]),
@@ -101,7 +105,8 @@ object SubagentCommand
     Subtype[AttachSignedItem],
     Subtype(deriveCodec[StartOrderProcess]),
     Subtype(deriveCodec[KillProcess]),
-    Subtype(deriveCodec[ShutDown]))
+    Subtype(deriveCodec[ShutDown]),
+    Subtype(NoOperation))
 
   implicit val responseJsonCodec = TypedJsonCodec[Response](
     Subtype(Accepted),

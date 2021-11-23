@@ -7,6 +7,8 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{ProgramTermination, SetOnce}
 import js7.data.controller.ControllerId
+import js7.data.event.KeyedEvent.NoKey
+import js7.data.item.{InventoryItem, SignableItem}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.subagent.SubagentId
@@ -16,6 +18,7 @@ import js7.launcher.configuration.JobLauncherConf
 import js7.subagent.SubagentExecutor._
 import js7.subagent.client.SubagentDriver
 import js7.subagent.configuration.SubagentConf
+import js7.subagent.data.SubagentEvent.SubagentItemAttached
 import monix.eval.{Fiber, Task}
 import monix.execution.Scheduler
 
@@ -56,6 +59,19 @@ trait SubagentExecutor
       controllerId,
       jobLauncherConf,
       subagentDriverConf)
+
+  protected def attachItem(item: InventoryItem): Task[Checked[Unit]] =
+    journal
+      .persist(state =>
+        Right(if (state.keyToItem.get(item.key).contains(item))
+          Nil  // Ignore duplicate
+        else {
+          if (item.isInstanceOf[SignableItem]) {
+            logger.warn(s"❗️ Signature not validated for ${item.key}") // FIXME Validate signature!
+          }
+          (NoKey <-: SubagentItemAttached(item)) :: Nil
+        }))
+      .rightAs(())
 
   private def persistStdouterr(orderId: OrderId, t: StdoutOrStderr, chunk: String): Task[Unit] =
     journal

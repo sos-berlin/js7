@@ -9,16 +9,19 @@ import js7.base.io.https.HttpsConfig
 import js7.base.io.process.{ProcessSignal, StdoutOrStderr}
 import js7.base.log.Logger
 import js7.base.monixutils.AsyncMap
-import js7.base.monixutils.MonixBase.syntax.RichMonixTask
+import js7.base.monixutils.MonixBase.syntax.{RichMonixObservable, RichMonixTask}
+import js7.base.monixutils.ObservablePauseDetector._
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.stream.{Numbered, ObservableNumberedQueue}
-import js7.base.utils.ScalaUtils.syntax.{RichAny, RichEitherF, RichPartialFunction}
+import js7.base.time.ScalaTime.DurationRichInt
+import js7.base.utils.ScalaUtils.syntax.{RichAny, RichEitherF, RichPartialFunction, RichString}
 import js7.base.web.HttpClient
 import js7.common.http.RecouplingStreamReader
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
+import js7.data.event.JournalEvent.StampedHeartbeat
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, JournaledState, KeyedEvent, Stamped}
 import js7.data.item.SignableItem
 import js7.data.job.JobResourcePath
@@ -34,13 +37,14 @@ import js7.subagent.client.RemoteSubagentDriver._
 import js7.subagent.data.SubagentCommand
 import js7.subagent.data.SubagentCommand.{AttachItem, AttachSignedItem, DedicateSubagent, KillProcess, StartOrderProcess}
 import monix.eval.Task
+import monix.execution.atomic.Atomic
 import monix.execution.cancelables.SerialCancelable
 import monix.reactive.Observable
 import scala.concurrent.Promise
 
 final class RemoteSubagentDriver[S <: JournaledState[S] with StateView](
   val subagentRef: SubagentRef,
-  userAndPassword: UserAndPassword,
+  userAndPassword: Option[UserAndPassword],
   httpsConfig: HttpsConfig,
   persistence: StatePersistence[S],
   agentPath: AgentPath,
@@ -56,7 +60,7 @@ extends SubagentDriver
   private val commandQueue = new ObservableNumberedQueue[SubagentCommand]
 
   private val client = new SubagentClient(
-    Admission(subagentRef.uri, Some(userAndPassword)),
+    Admission(subagentRef.uri, userAndPassword),
     httpsConfig,
     name = subagentRef.id.toString,
     actorSystem)
@@ -67,6 +71,14 @@ extends SubagentDriver
     new AsyncMap(Map.empty[OrderId, Processing]) with AsyncMap.WhenEmpty
 
   @volatile private var stopping = false
+  private val _isAlive = Atomic(false)
+
+  def isAlive = _isAlive.get()
+
+  private def setAlive(alive: Boolean): Unit =
+    if (_isAlive.getAndSet(alive) != alive) {
+      logger.info(subagentId.toString + (if (isAlive) " is alive" else " is not alive"))
+    }
 
   def start: Task[Unit] =
     commandQueue.enqueue(Seq(
@@ -228,17 +240,37 @@ extends SubagentDriver
       _.eventId, recouplingStreamReaderConf)
     {
       private var lastProblem: Option[Problem] = None
+      override protected def idleTimeout = longHeartbeatTimeout * 2/*???*/
 
       //override protected def couple(eventId: EventId) = ???
 
       protected def getObservable(api: SubagentClient, after: EventId) =
         Task.defer {
           logger.debug(s"getObservable(after=$after)")
-          api
-            .eventObservable(EventRequest.singleClass[Event](
-              after = after,
-              timeout = Some(requestTimeout)))
-            .map(Right(_))
+          api.login(onlyIfNotLoggedIn = true) >>
+            api
+              .eventObservable(
+                EventRequest.singleClass[Event](after = after, timeout = None),
+                heartbeat = Some(heartbeat))
+              .map(_
+                .doAfterSubscribe(Task {
+                  setAlive(true)
+                })
+                .tapEach(o => Task(logger.debug(o.toString.truncateWithEllipsis(200))))
+                .detectPauses(longHeartbeatTimeout, EmptyStamped)
+                .flatMap(o =>
+                  if (o eq EmptyStamped) {
+                    setAlive(false)
+                    Observable.empty
+                  } else {
+                    setAlive(true)
+                    Observable.pure(o)
+                  })
+                .filter(_ != StampedHeartbeat)
+                .guarantee(Task {
+                  setAlive(false)
+                }))
+              .map(Right(_))
         }
 
       override protected def onCouplingFailed(api: SubagentClient, problem: Problem) =
@@ -283,6 +315,10 @@ extends SubagentDriver
 object RemoteSubagentDriver
 {
   private val noJournal = false
+  private val EmptyStamped: Stamped[KeyedEvent[Event]] = Stamped(0L, null)
+  private val heartbeat = 3.s // TODO
+  private val heartbeatTimeout = 10.s // TODO
+  private val longHeartbeatTimeout = heartbeat + heartbeatTimeout
 
   private final class Processing(val stdObservers: StdObservers) {
     val completed = Promise[Outcome]()

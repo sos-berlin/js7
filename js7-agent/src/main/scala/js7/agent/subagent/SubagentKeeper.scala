@@ -45,7 +45,7 @@ final class SubagentKeeper(
   private val state = AsyncVariable[State](State(Map.empty, Vector.empty))
   private val orderToWaitForDriver = AsyncMap.empty[OrderId, Promise[Unit]]
   private val orderToDriver = AsyncMap.empty[OrderId, SubagentDriver]
-  private val nextDriverIndex = AsyncVariable(0)
+  private val roundRobin = new RoundRobin
 
   def start(agentPath: AgentPath, localSubagentId: Option[SubagentId], controllerId: ControllerId)
   : Task[Unit] =
@@ -79,11 +79,7 @@ final class SubagentKeeper(
   def stop: Task[Unit] =
     state
       .updateWithResult(state => Task(
-        state.copy(
-          idToDriver = Map.empty,
-          subagentIds = Vector.empty
-        ) ->
-          state.idToDriver.values))
+        state.removeAllDrivers -> state.idToDriver.values))
       .flatMap(drivers => Task
         .parSequenceUnordered(drivers.map(_.stop(Some(SIGKILL)))))
       .void
@@ -92,6 +88,7 @@ final class SubagentKeeper(
   : Task[Outcome] =
     Task.defer {
       val promise = Promise[Unit]()
+      // TODO Long lock on orderId !
       orderToWaitForDriver.update(order.id, _ => Task.pure(promise)) >>
         Task
           .race(Task.fromFuture(promise.future), selectSubagentDriver)
@@ -101,6 +98,8 @@ final class SubagentKeeper(
             case None => Task.pure(Outcome.Killed(Outcome.Failed(Some(
               "Order has been canceled while selecting a Subagent"))))
             case Some(driver) =>
+              logger.debug(s"### ${order.id} --> ${driver.subagentId}")
+              // TODO Update lock blocks the order while processing!
               orderToDriver.update(order.id, _ => Task.pure(driver)) >>
                 driver
                   .processOrder(order, defaultArguments)
@@ -111,22 +110,17 @@ final class SubagentKeeper(
   //TODO Fixed Priority
   private def selectSubagentDriver: Task[SubagentDriver] =
     Observable
-      .repeatEvalF(Task.defer {
+      .repeatEval {
         val state = this.state.get
-        if (state.subagentIds.isEmpty)
-          Task.pure(None)
-        else
-          nextDriverIndex
-            .update(i => Task {
-              val j = if (i >= state.subagentIds.length) 0 else i
-              j + 1 // Round robin
-            })
-            .map(i => Some(state.idToDriver(state.subagentIds(i - 1))))
-      })
+        import state.subagentIds
+        subagentIds.nonEmpty ? {
+          val i = roundRobin.next(subagentIds.length)
+          state.idToDriver(subagentIds(i))
+        }
+      }
+      .map(_.filter(_.isAlive))
       .delayOnNextBySelector {
-        case None =>
-          val delay = 1.s  // TODO Do not poll
-          Observable.unit.delayExecution(delay)
+        case None => Observable.unit.delayExecution(1.s/*TODO Do not poll*/)
         case Some(_) => Observable.empty
       }
       .flatMap(Observable.fromIterable(_))
@@ -173,7 +167,8 @@ final class SubagentKeeper(
                   (if (subagentRef.uri == existing.subagentRef.uri)
                     Task.unit
                   else
-                    existing.stop(Some(SIGKILL))
+                    existing
+                      .stop(Some(SIGKILL))
                       .onErrorHandle(t => logger.error("After change of URI of " +
                         existing.subagentId + " " + existing.subagentRef.uri + ": " +
                         t.toStringWithCauses))
@@ -181,9 +176,8 @@ final class SubagentKeeper(
                   ).map { _ =>
                     // Replace and forget the existing driver
                     val driver = newRemoteSubagentDriver(subagentRef, started)
-                    val updated = state.copy(
-                      idToDriver = state.idToDriver + (subagentRef.id -> driver))
-                    Right(updated -> Some(driver))
+                    for (updated <- state.insertDriver(driver)) yield
+                      updated -> Some(driver)
                   }
 
                 case None =>
@@ -196,7 +190,7 @@ final class SubagentKeeper(
           .map(o => o: Checked[Option[SubagentDriver]])
           .flatMapT {
             case None => Task.pure(Checked.unit)
-            case Some(subagentDriver) => subagentDriver.start.map(Right(_))
+            case Some(driver) => driver.start.map(Right(_))
           }
           .void)
 
@@ -220,9 +214,10 @@ final class SubagentKeeper(
   private def newRemoteSubagentDriver(subagentRef: SubagentRef, started: Started) =
     new RemoteSubagentDriver(
       subagentRef,
-      UserAndPassword(
-        UserId.checked(started.agentPath.string).orThrow,
-        SecretString.empty),
+      for (subagentId <- started.localSubagentId) yield
+        UserAndPassword(
+          UserId.checked(subagentId.string).orThrow,
+          SecretString.empty),
       agentConf.httpsConfig,
       persistence,
       started.agentPath,
@@ -257,6 +252,11 @@ object SubagentKeeper
     def removeDriver(subagentId: SubagentId): State =
       copy(
         idToDriver = idToDriver.removed(subagentId),
-        subagentIds = subagentIds.filterNot(_ == subagentId))
+        subagentIds = subagentIds.filter(_ != subagentId))
+
+    def removeAllDrivers: State =
+      copy(
+        idToDriver = Map.empty,
+        subagentIds = Vector.empty)
   }
 }

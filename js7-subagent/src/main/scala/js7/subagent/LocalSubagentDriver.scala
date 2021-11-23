@@ -44,6 +44,8 @@ extends SubagentDriver
 
   @volatile private var stopping = false  // TODO Reject further starts
 
+  val isAlive = true
+
   def start = Task {
     logger.debug("Start LocalSubagentDriver")
   }

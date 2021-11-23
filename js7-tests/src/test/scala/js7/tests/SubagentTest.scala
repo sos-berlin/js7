@@ -42,17 +42,14 @@ final class SubagentTest extends AnyFreeSpec with ControllerAgentForScalaTest
     }"""
 
   override protected def agentConfig = config"""
-    js7.auth.users.SUBAGENT {
-      password: "plain:SUBAGENT-PASSWORD"
-    }
     js7.job.execution.signed-script-injection-allowed = true
     """
   protected val agentPaths = Seq(agentPath)
-  protected lazy val items = Seq(workflow, subagentRef)
+  protected lazy val items = Seq(workflow, subagentRef1)
 
   private lazy val subagentPort = findFreeTcpPort()
-  private lazy val subagentRef = SubagentRef(
-    SubagentId("SUBAGENT"),
+  private lazy val subagentRef1 = SubagentRef(
+    SubagentId("SUBAGENT-1"),
     agentPath,
     Uri(s"http://localhost:$subagentPort"))
 
@@ -111,10 +108,10 @@ final class SubagentTest extends AnyFreeSpec with ControllerAgentForScalaTest
     StandaloneSubagent.makeSubagentConf(
       directory,
       Seq(WebServerPort.localhost(port)),
-      name = "SUBAGENT",
+      name = "SUBAGENT-1",
       config = config"""
         js7.job.execution.signed-script-injection-allowed = yes
-        js7.auth.users.AGENT {
+        js7.auth.users.AGENT-0 {
           permissions: [ AgentDirector ]
           password: ""
         }

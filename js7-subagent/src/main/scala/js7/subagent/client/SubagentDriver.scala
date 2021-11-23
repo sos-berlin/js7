@@ -26,6 +26,8 @@ trait SubagentDriver
 {
   def subagentId: SubagentId
 
+  def isAlive: Boolean
+
   def start: Task[Unit]
 
   def stop(signal: Option[ProcessSignal]): Task[Unit]

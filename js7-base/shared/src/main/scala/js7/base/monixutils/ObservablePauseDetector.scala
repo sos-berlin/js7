@@ -3,7 +3,7 @@ package js7.base.monixutils
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.monixutils.MonixDeadline.now
 import monix.reactive.{Observable, OverflowStrategy}
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration._
 
 object ObservablePauseDetector
 {
@@ -15,6 +15,14 @@ object ObservablePauseDetector
     // TODO May parameterize the current Either return type with two functions for less allocs
     /** Returns Right[A], or Left for each pause (only one Left per pause). */
     def detectPauses(delay: FiniteDuration): Observable[Either[MonixDeadline, A]] =
+      detectPauses(delay, Left(_), Right(_))
+
+    def detectPauses[A1 <: A](delay: FiniteDuration, pause: A1)
+    : Observable[A] =
+      detectPauses(delay, _ => pause, identity)
+
+    def detectPauses[B](delay: FiniteDuration, fromPause: MonixDeadline => B, fromData: A => B)
+    : Observable[B] =
       Observable.deferAction(implicit scheduler =>
         Observable[Observable[Ticking]](
           underlying map Data.apply,
@@ -27,8 +35,8 @@ object ObservablePauseDetector
             case (_, data: Data[A]) => data
           }
           .collect {
-            case Expired(since) => Left(since)
-            case Data(a: A @unchecked) => Right(a)
+            case Expired(since) => fromPause(since)
+            case Data(a: A @unchecked) => fromData(a)
           })
   }
 

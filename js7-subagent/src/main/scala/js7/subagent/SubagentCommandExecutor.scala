@@ -3,19 +3,20 @@ package js7.subagent
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.stream.Numbered
+import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{Base64UUID, ProgramTermination, SetOnce}
 import js7.data.event.EventId
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.item.SignableItem
 import js7.data.subagent.SubagentRunId
 import js7.launcher.configuration.JobLauncherConf
 import js7.subagent.SubagentCommandExecutor._
 import js7.subagent.SubagentExecutor.Dedicated
 import js7.subagent.data.SubagentCommand
-import js7.subagent.data.SubagentCommand.{AttachItem, AttachSignedItem, DedicateSubagent, KillProcess, ShutDown, StartOrderProcess}
+import js7.subagent.data.SubagentCommand.{AttachItem, AttachSignedItem, DedicateSubagent, KillProcess, NoOperation, ShutDown, StartOrderProcess}
 import js7.subagent.data.SubagentEvent.SubagentItemAttached
 import monix.eval.Task
+import scala.concurrent.duration.Deadline.now
 
 trait SubagentCommandExecutor
 extends CommandExecutor
@@ -31,6 +32,7 @@ with SubagentExecutor
     Task.defer {
       val command = numbered.value
       logger.debug(s"#${numbered.number} -> $command")
+      val since = now
       command
         .match_ {
           case DedicateSubagent(subagentId, agentPath, controllerId) =>
@@ -46,11 +48,7 @@ with SubagentExecutor
             }
 
           case AttachItem(item) =>
-            if (item.isInstanceOf[SignableItem]) {
-              logger.warn(s"❗️ Signature not validated for ${item.key}") // FIXME Validate signature!
-            }
-            journal
-              .persistKeyedEvent(NoKey <-: SubagentItemAttached(item))
+            attachItem(item)
               .rightAs(SubagentCommand.Accepted)
 
           //case AttachUnsignedItem(item) =>
@@ -78,9 +76,13 @@ with SubagentExecutor
             logger.info(s"❗️ $command")
             stop(processSignal, restart)
               .as(Right(SubagentCommand.Accepted))
+
+          case NoOperation =>
+            Task.pure(Right(SubagentCommand.Accepted))
         }
         .tapEval(checked => Task(logger.debug(
-          s"#${numbered.number} <- ${command.getClass.simpleScalaName} => $checked")))
+          s"#${numbered.number} <- ${command.getClass.simpleScalaName}" +
+            s" ${since.elapsed.pretty} => $checked")))
         .map(_.map(_.asInstanceOf[numbered.value.Response]))
     }
 }
