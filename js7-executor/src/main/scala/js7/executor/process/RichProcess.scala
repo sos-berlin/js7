@@ -71,6 +71,14 @@ class RichProcess protected[process](
                 .onErrorHandle(t => logger.error(
                   s"Cannot start kill script command '$args': ${t.toStringWithCauses}"))
                 .tapEval(_ => kill))
+            .flatMap(_ => Task {
+              // The process may have terminated while long running child processes
+              // inherting the file handle still use these.
+              // So we forcibly close stdout and stderr.
+              // The child processes may receive EPIPE or may block !!!
+              process.stdout.close()
+              process.stderr.close()
+            })
       }
     }
 
