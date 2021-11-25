@@ -36,6 +36,7 @@ import js7.data.item.VersionId
 import js7.data.job.{JobKey, RelativePathExecutable}
 import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetachable, OrderDetached, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId, Outcome}
+import js7.data.subagent.SubagentId
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.WorkflowPath
@@ -133,7 +134,7 @@ private object OrderActorTest {
   private val ExpectedOrderEvents = List(
     OrderAttachedToAgent(TestOrder.workflowPosition, Order.Ready, TestOrder.arguments, None, None,
       TestOrder.historicOutcomes, AgentPath("TEST-AGENT"), None, None, false, false),
-    OrderProcessingStarted,
+    OrderProcessingStarted(SubagentId("TEST-AGENT-0")),
     OrderProcessed(Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "result" -> StringValue("TEST-RESULT-FROM-JOB")))),
     OrderMoved(TestPosition),
     OrderDetachable,

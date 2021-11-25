@@ -89,7 +89,7 @@ final case class ControllerStateExecutor private(
   : Checked[Seq[KeyedEvent[OrderCoreEvent]]] = {
     val outcome = Outcome.Disrupted(AgentResetProblem(agentPath))
     val stateEvents = (order.state: State) match {
-      case Order.Processing =>
+      case _: Order.Processing =>
         Vector(order.id <-: OrderProcessed(outcome))
 
       case _: Order.DelayedAfterError =>

@@ -16,6 +16,7 @@ import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.job.{InternalExecutable, JobConf, JobKey}
 import js7.data.order.{Order, OrderId, Outcome}
+import js7.data.subagent.SubagentId
 import js7.data.value.expression.Expression
 import js7.data.value.expression.Expression.{NamedValue, NumericConstant, StringConstant}
 import js7.data.value.{NamedValues, NumberValue}
@@ -124,7 +125,8 @@ final class InternalJobLauncherForJavaTest extends AnyFreeSpec with BeforeAndAft
       .flatMapT(_ =>
         executor.toOrderProcess(
           ProcessOrder(
-            Order(OrderId("TEST"), workflow.id /: Position(0), Order.Processing),
+            Order(OrderId("TEST"), workflow.id /: Position(0),
+              Order.Processing(SubagentId("SUBAGENT"))),
             workflow,
             executor.jobConf.jobKey,
             jobResources = Nil,

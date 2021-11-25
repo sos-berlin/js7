@@ -19,8 +19,8 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
-import js7.data.order.OrderEvent.OrderStdWritten
-import js7.data.order.{Order, OrderId, Outcome}
+import js7.data.order.OrderEvent.{LegacySubagentId, OrderCoreEvent, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten}
+import js7.data.order.{Order, OrderId}
 import js7.data.subagent.{SubagentId, SubagentRef}
 import js7.data.value.expression.Expression
 import js7.journal.CommitOptions
@@ -57,7 +57,7 @@ final class SubagentKeeper(
       else  // COMPATIBLE with v2.1 AgentRef
         state
           .update(state => Task.defer {
-            val driver = newLocalSubagentDriver(compatibleLocalSubagentId, started)
+            val driver = newLocalSubagentDriver(LegacySubagentId, started)
             driver.start >>
               Task(state.insertDriver(driver).orThrow)
           })
@@ -84,8 +84,11 @@ final class SubagentKeeper(
         .parSequenceUnordered(drivers.map(_.stop(Some(SIGKILL)))))
       .void
 
-  def processOrder(order: Order[Order.Processing], defaultArguments: Map[String, Expression])
-  : Task[Outcome] =
+  def processOrder(
+    order: Order[Order.IsFreshOrReady],
+    defaultArguments: Map[String, Expression],
+    onEvents: (Seq[OrderCoreEvent], AgentState) => Unit)
+  : Task[Checked[Unit]] =
     Task.defer {
       val promise = Promise[Unit]()
       // TODO Long lock on orderId !
@@ -95,15 +98,32 @@ final class SubagentKeeper(
           .guarantee(orderToWaitForDriver.remove(order.id).void)
           .map(_.toOption)
           .flatMap {
-            case None => Task.pure(Outcome.Killed(Outcome.Failed(Some(
-              "Order has been canceled while selecting a Subagent"))))
+            case None => Task.pure(Left(Problem(
+              "Order has been canceled while selecting a Subagent")))
+              Task.pure(Checked.unit) // ???
+
             case Some(driver) =>
               logger.debug(s"### ${order.id} --> ${driver.subagentId}")
-              // TODO Update lock blocks the order while processing!
-              orderToDriver.update(order.id, _ => Task.pure(driver)) >>
-                driver
-                  .processOrder(order, defaultArguments)
-                  .guarantee(orderToDriver.remove(order.id).void)
+              // OrderStarted automatically with first OrderProcessingStarted
+              val events = order.isState[Order.Fresh].thenList(OrderStarted) :::
+                OrderProcessingStarted(driver.subagentId) :: Nil
+              persistence.persistKeyedEvents(events.map(order.id <-: _))
+                .flatMapT { case (_, s) =>
+                  onEvents(events, s)
+                  orderToDriver.update(order.id, _ => Task.pure(driver)) >>
+                    driver
+                      .processOrder(
+                        s.idToOrder(order.id).checkedState[Order.Processing].orThrow,
+                        defaultArguments)
+                      .guarantee(orderToDriver.remove(order.id).void)
+                      .map(Right(_))
+                }
+                .flatMapT { outcome =>
+                  val event = OrderProcessed(outcome)
+                  persistence.persistKeyedEvent(order.id <-: event)
+                    .map(_.map { case (_, s) => onEvents(event :: Nil, s) })
+                    .rightAs(())
+                }
           }
     }
 
@@ -128,6 +148,7 @@ final class SubagentKeeper(
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): Task[Unit] =
     Task.defer {
+      // TODO Race condition?
       orderToWaitForDriver
         .get(orderId)
         .fold(Task.unit)(promise => Task(promise.success(()))) >>
@@ -230,9 +251,6 @@ final class SubagentKeeper(
 object SubagentKeeper
 {
   private val logger = Logger[this.type]
-
-  // COMPATIBLE with v2.1, start automatically a local Subagent
-  private val compatibleLocalSubagentId = SubagentId("Local")
 
   private case class Started(
     agentPath: AgentPath,

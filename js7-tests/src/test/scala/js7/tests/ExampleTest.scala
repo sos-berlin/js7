@@ -13,6 +13,7 @@ import js7.data.workflow.Workflow
 import js7.data.workflow.position.Position
 import js7.tests.ExampleTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
+import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -42,7 +43,7 @@ final class ExampleTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderStarted,
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(1)),
       OrderDetachable,
@@ -55,6 +56,7 @@ final class ExampleTest extends AnyFreeSpec with ControllerAgentForScalaTest
 object ExampleTest
 {
   private val agentPath = AgentPath("AGENT")
+  private val subagentId = toLocalSubagentId(agentPath)
 
   private val workflow = json"""{
     "path": "WORKFLOW",

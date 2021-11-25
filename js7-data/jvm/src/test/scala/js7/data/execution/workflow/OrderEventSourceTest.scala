@@ -21,6 +21,7 @@ import js7.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, OrderMark, O
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.state.OrderEventHandler.FollowUp
 import js7.data.state.{OrderEventHandler, StateView}
+import js7.data.subagent.SubagentId
 import js7.data.value.NamedValues
 import js7.data.value.expression.Expression.{BooleanConstant, Equal, LastReturnCode, NumericConstant}
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -121,7 +122,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
     assert(process.run(orderId / "🥕") == List(
       orderId / "🥕" <-: OrderAttachable(TestAgentPath),
       orderId / "🥕" <-: OrderAttached(TestAgentPath),
-      orderId / "🥕" <-: OrderProcessingStarted,
+      orderId / "🥕" <-: OrderProcessingStarted(subagentId),
       orderId / "🥕" <-: OrderProcessed(Outcome.succeededRC0),
       orderId / "🥕" <-: OrderMoved(Position(0) / "fork+🥕" % 1),
       orderId / "🥕" <-: OrderDetachable,
@@ -132,7 +133,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
     assert(process.run(orderId / "🍋") == List(
       orderId / "🍋" <-: OrderAttachable(TestAgentPath),
       orderId / "🍋" <-: OrderAttached(TestAgentPath),
-      orderId / "🍋" <-: OrderProcessingStarted,
+      orderId / "🍋" <-: OrderProcessingStarted(subagentId),
       orderId / "🍋" <-: OrderProcessed(Outcome.succeededRC0),
       orderId / "🍋" <-: OrderMoved(Position(0) / "fork+🍋" % 1),
       orderId / "🍋" <-: OrderDetachable,
@@ -147,7 +148,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
     assert(process.run(orderId / "🥕") == List(
       orderId / "🥕" <-: OrderAttachable(TestAgentPath),
       orderId / "🥕" <-: OrderAttached(TestAgentPath),
-      orderId / "🥕" <-: OrderProcessingStarted,
+      orderId / "🥕" <-: OrderProcessingStarted(subagentId),
       orderId / "🥕" <-: OrderProcessed(Outcome.succeededRC0),
       orderId / "🥕" <-: OrderMoved(Position(1) / "fork+🥕" % 1),
       orderId / "🥕" <-: OrderDetachable,
@@ -158,7 +159,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
     assert(process.run(orderId / "🍋") == List(
       orderId / "🍋" <-: OrderAttachable(TestAgentPath),
       orderId / "🍋" <-: OrderAttached(TestAgentPath),
-      orderId / "🍋" <-: OrderProcessingStarted,
+      orderId / "🍋" <-: OrderProcessingStarted(subagentId),
       orderId / "🍋" <-: OrderProcessed(Outcome.succeededRC0),
       orderId / "🍋" <-: OrderMoved(Position(1) / "fork+🍋" % 1),
       orderId / "🍋" <-: OrderDetachable,
@@ -168,7 +169,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
     assert(process.step(orderId) == Seq(orderId <-: OrderMoved(Position(2))))
     assert(process.step(orderId) == Seq(orderId <-: OrderAttachable(TestAgentPath)))
     assert(process.step(orderId) == Seq(orderId <-: OrderAttached(TestAgentPath)))
-    assert(process.step(orderId) == Seq(orderId <-: OrderProcessingStarted))
+    assert(process.step(orderId) == Seq(orderId <-: OrderProcessingStarted(subagentId)))
     // and so forth...
   }
 
@@ -315,7 +316,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
       }
 
       "Processing Attached" in {
-        val processingOrder = unmarkedOrder.copy(state = Order.Processing)
+        val processingOrder = unmarkedOrder.copy(state = Order.Processing(subagentId))
         testEventSource(processingOrder, attached) { (order, controller, agent) =>
           assert(controller.nextEvents(order.id) == Nil)
           assert(agent     .nextEvents(order.id) == Nil)
@@ -394,7 +395,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
       }
 
       "Processing Attached" in {
-        val processingOrder = cancellingOrder.copy(state = Order.Processing)
+        val processingOrder = cancellingOrder.copy(state = Order.Processing(subagentId))
         testEventSource(processingOrder, attached) { (order, controller, agent) =>
           assert(controller.nextEvents(order.id) == Nil)
           assert(agent     .nextEvents(order.id) == Nil)
@@ -452,7 +453,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
       }
 
       "Processing Attached" in {
-        val processingOrder = suspendingOrder.copy(state = Order.Processing)
+        val processingOrder = suspendingOrder.copy(state = Order.Processing(subagentId))
         testEventSource(processingOrder, attached) { (order, controller, agent) =>
           assert(controller.nextEvents(order.id) == Nil)
           assert(agent     .nextEvents(order.id) == Nil)
@@ -643,7 +644,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
       }
 
       "Processing Attached" in {
-        val processingOrder = suspendedOrder.copy(state = Order.Processing)
+        val processingOrder = suspendedOrder.copy(state = Order.Processing(subagentId))
         testEventSource(processingOrder, attached) { (order, controller, agent) =>
           assert(controller.nextEvents(order.id) == Nil)
           assert(agent     .nextEvents(order.id) == Nil)
@@ -1006,6 +1007,7 @@ object OrderEventSourceTest
   private val TestWorkflowId = WorkflowPath("WORKFLOW") ~ "VERSION"
   private val ForkWorkflow = ForkTestSetting.TestWorkflow.withId(TestWorkflowId)
   private val TestAgentPath = AgentPath("AGENT")
+  private val subagentId = SubagentId("SUBAGENT")
   private val succeededOrderId = OrderId("SUCCESS")
   private val succeededOrder = Order(succeededOrderId, TestWorkflowId, Order.Processed,
     historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(0)))))
@@ -1063,7 +1065,7 @@ object OrderEventSourceTest
         idToWorkflow = idToWorkflow))
 
     def jobStep(orderId: OrderId, outcome: Outcome = Outcome.succeeded): Unit = {
-      update(orderId <-: OrderProcessingStarted)
+      update(orderId <-: OrderProcessingStarted(subagentId))
       update(orderId <-: OrderProcessed(outcome))
     }
 
@@ -1092,7 +1094,7 @@ object OrderEventSourceTest
             else if (order.isAttaching)
               Seq(order.id <-: OrderAttached(TestAgentPath))
             else
-              Seq(order.id <-: OrderProcessingStarted)
+              Seq(order.id <-: OrderProcessingStarted(subagentId))
 
           case _ if inProcess contains orderId =>
             Seq(orderId <-: OrderProcessed(Outcome.succeededRC0))
@@ -1121,7 +1123,7 @@ object OrderEventSourceTest
 
     private def processEvent(keyedEvent: KeyedEvent[OrderEvent]): Unit =
       keyedEvent match {
-        case orderId <-: OrderProcessingStarted =>
+        case orderId <-: OrderProcessingStarted(subagentId) =>
           inProcess += orderId
 
         case orderId <-: (_: OrderProcessed) =>

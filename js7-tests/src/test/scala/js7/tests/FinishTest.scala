@@ -8,13 +8,16 @@ import js7.data.event.KeyedEvent
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.subagent.SubagentId
 import js7.data.value.NamedValues
 import js7.data.workflow.instructions.Fork
 import js7.data.workflow.position.BranchId.Then
 import js7.data.workflow.position.Position
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
+import js7.tests.CalendarTest.agentPath
 import js7.tests.FinishTest._
 import js7.tests.testenv.DirectoryProvider
+import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.reflect.ClassTag
@@ -34,7 +37,7 @@ final class FinishTest extends AnyFreeSpec
         OrderAttachable(TestAgentPath),
         OrderAttached(TestAgentPath),
         OrderStarted,
-        OrderProcessingStarted,
+        OrderProcessingStarted(subagentId),
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
         OrderMoved(Position(1)),
         OrderDetachable,
@@ -58,10 +61,10 @@ final class FinishTest extends AnyFreeSpec
         OrderAttachable(TestAgentPath),
         OrderAttached(TestAgentPath),
         OrderStarted,
-        OrderProcessingStarted,
+        OrderProcessingStarted(subagentId),
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
         OrderMoved(Position(1) / "then" % 0),
-        OrderProcessingStarted,
+        OrderProcessingStarted(subagentId),
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
         OrderMoved(Position(1) / "then" % 1),
         OrderDetachable,
@@ -103,7 +106,7 @@ final class FinishTest extends AnyFreeSpec
       Vector(
         OrderAttachable(TestAgentPath),
         OrderAttached(TestAgentPath),
-        OrderProcessingStarted,
+        OrderProcessingStarted(subagentId),
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
         OrderMoved(Position(0) / "fork+🥕" % 1 / Then % 0),  // Position of Finish
         OrderDetachable,
@@ -114,7 +117,7 @@ final class FinishTest extends AnyFreeSpec
       Vector(
         OrderAttachable(TestAgentPath),
         OrderAttached(TestAgentPath),
-        OrderProcessingStarted,
+        OrderProcessingStarted(subagentId),
         OrderProcessed(Outcome.succeededRC0),
         OrderMoved(Position(0) / "fork+🍋" % 1),
         OrderDetachable,
@@ -154,7 +157,7 @@ final class FinishTest extends AnyFreeSpec
       Vector(
         OrderAttachable(TestAgentPath),
         OrderAttached(TestAgentPath),
-        OrderProcessingStarted,
+        OrderProcessingStarted(subagentId),
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
         OrderMoved(Position(0) / "fork+🥕" % 1 / Then % 0),  // Position of Finish
         OrderDetachable,
@@ -165,7 +168,7 @@ final class FinishTest extends AnyFreeSpec
       Vector(
         OrderAttachable(TestAgentPath),
         OrderAttached(TestAgentPath),
-        OrderProcessingStarted,
+        OrderProcessingStarted(subagentId),
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
         OrderMoved(Position(0) / "fork+🍋" % 1),
         OrderDetachable,
@@ -199,5 +202,6 @@ object FinishTest
 {
   private val orderId = OrderId("🔺")
   private val TestAgentPath = AgentPath("AGENT")
+  private val subagentId = toLocalSubagentId(agentPath)
   private val TestWorkflowId = WorkflowPath("WORKFLOW") ~ "INITIAL"
 }

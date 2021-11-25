@@ -17,6 +17,7 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.IfTest._
 import js7.tests.testenv.DirectoryProvider
+import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -61,7 +62,7 @@ final class IfTest extends AnyFreeSpec
           OrderAttachable(agentPath),
           OrderAttached(agentPath),
           OrderStarted,
-          OrderProcessingStarted,
+          OrderProcessingStarted(subagentId),
           OrderProcessed(Outcome.succeededRC0),
           OrderDetachable,
           OrderDetached,
@@ -82,6 +83,7 @@ final class IfTest extends AnyFreeSpec
 
 object IfTest {
   private val agentPath = AgentPath("AGENT")
+  private val subagentId = toLocalSubagentId(agentPath)
 
   private val jobScript =
     if (isWindows)
@@ -123,13 +125,13 @@ object IfTest {
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderStarted,
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.Succeeded(Map("JOB-KEY" -> StringValue("JOB-RESULT"), "returnCode" -> NumberValue(0)))),
       OrderMoved(Position(1) / Then % 0 / Then % 0),
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.Succeeded.rc(0)),
       OrderMoved(Position(2)),
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.Succeeded.rc(0)),
       OrderMoved(Position(3)),
       OrderDetachable,
@@ -141,13 +143,13 @@ object IfTest {
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderStarted,
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.Succeeded(Map("JOB-KEY" -> StringValue("JOB-RESULT"), "returnCode" -> NumberValue(1)))),
       OrderMoved(Position(1) / Then % 0 / Else % 0),
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.Succeeded.rc(0)),
       OrderMoved(Position(2)),
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.Succeeded.rc(0)),
       OrderMoved(Position(3)),
       OrderDetachable,
@@ -159,7 +161,7 @@ object IfTest {
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderStarted,
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.Failed(Map("JOB-KEY" -> StringValue("JOB-RESULT"), "returnCode" -> NumberValue(2)))),
       OrderDetachable,
       OrderDetached,

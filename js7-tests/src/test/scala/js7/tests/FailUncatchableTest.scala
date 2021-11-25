@@ -14,6 +14,7 @@ import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.FailUncatchableTest._
 import js7.tests.testenv.DirectoryProvider
+import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.reflect.ClassTag
@@ -32,7 +33,7 @@ final class FailUncatchableTest extends AnyFreeSpec
         OrderAttachable(TestAgentPath),
         OrderAttached(TestAgentPath),
         OrderStarted,
-        OrderProcessingStarted,
+        OrderProcessingStarted(subagentId),
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
         OrderMoved(Position(1)),
         OrderDetachable,
@@ -51,7 +52,7 @@ final class FailUncatchableTest extends AnyFreeSpec
         OrderAttachable(TestAgentPath),
         OrderAttached(TestAgentPath),
         OrderStarted,
-        OrderProcessingStarted,
+        OrderProcessingStarted(subagentId),
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
         OrderMoved(Position(1)),
         OrderDetachable,
@@ -70,7 +71,7 @@ final class FailUncatchableTest extends AnyFreeSpec
         OrderAttachable(TestAgentPath),
         OrderAttached(TestAgentPath),
         OrderStarted,
-        OrderProcessingStarted,
+        OrderProcessingStarted(subagentId),
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
         OrderMoved(Position(1)),
         OrderDetachable,
@@ -106,7 +107,7 @@ final class FailUncatchableTest extends AnyFreeSpec
       Vector(
         OrderAttachable(TestAgentPath),
         OrderAttached(TestAgentPath),
-        OrderProcessingStarted,
+        OrderProcessingStarted(subagentId),
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
         OrderMoved(Position(0) / "fork+🥕" % 1),
         // TODO OrderDetached, because agent does not has parent order and
@@ -123,7 +124,7 @@ final class FailUncatchableTest extends AnyFreeSpec
       Vector(
         OrderAttachable(TestAgentPath),
         OrderAttached(TestAgentPath),
-        OrderProcessingStarted,
+        OrderProcessingStarted(subagentId),
         OrderProcessed(Outcome.succeededRC0),
         OrderMoved(Position(0) / "fork+🍋" % 1),
         OrderDetachable,
@@ -158,7 +159,7 @@ final class FailUncatchableTest extends AnyFreeSpec
       Vector(
         OrderAttachable(TestAgentPath),
         OrderAttached(TestAgentPath),
-        OrderProcessingStarted,
+        OrderProcessingStarted(subagentId),
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
         OrderMoved(Position(0) / "fork+🥕" % 1),
         // TODO OrderDetached, because agent does not has parent order and
@@ -175,7 +176,7 @@ final class FailUncatchableTest extends AnyFreeSpec
       Vector(
         OrderAttachable(TestAgentPath),
         OrderAttached(TestAgentPath),
-        OrderProcessingStarted,
+        OrderProcessingStarted(subagentId),
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
         OrderMoved(Position(0) / "fork+🍋" % 1),
         OrderDetachable,
@@ -207,5 +208,6 @@ object FailUncatchableTest
 {
   private val orderId = OrderId("🔺")
   private val TestAgentPath = AgentPath("AGENT")
+  private val subagentId = toLocalSubagentId(TestAgentPath)
   private val TestWorkflowId = WorkflowPath("WORKFLOW") ~ "INITIAL"
 }

@@ -57,16 +57,18 @@ extends StatePersistence[S] with RealEventWatch
     persistKeyedEvents(keyedEvent :: Nil)
       .map(_.map { case (events, s) => events.head -> s })
 
+  def persistKeyedEvents[E <: Event](
+    keyedEvents: Seq[KeyedEvent[E]],
+    options: CommitOptions = CommitOptions.default)
+  : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
+    persist(_ => Right(keyedEvents))
+
   def persistKeyedEventLater[E <: Event](
     keyedEvent: KeyedEvent[E],
     options: CommitOptions = CommitOptions.default)
   : Task[Checked[Unit]] =
     persistKeyedEvent(keyedEvent, options)
       .rightAs(())
-
-  def persistKeyedEvents[E <: Event](keyedEvents: Seq[KeyedEvent[E]])
-  : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
-    persist(_ => Right(keyedEvents))
 
   def persist[E <: Event](stateToEvents: S => Checked[Seq[KeyedEvent[E]]])
   : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =

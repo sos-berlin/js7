@@ -28,6 +28,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.CycleTest._
 import js7.tests.jobs.{EmptyJob, SemaphoreJob}
 import js7.tests.testenv.ControllerAgentForScalaTest
+import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.immutable.VectorBuilder
@@ -101,26 +102,26 @@ final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with 
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderStarted,
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(1)),
 
       OrderCyclingPrepared(cycleState),
 
       OrderCycleStarted,
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(1) / "cycle+end=1633122000000,i=1" % 1),
       OrderCycleFinished(Some(cycleState.copy(index = 2))),
 
       OrderCycleStarted,
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(1) / "cycle+end=1633122000000,i=2" % 1),
       OrderCycleFinished(Some(cycleState.copy(index = 3))),
 
       OrderCycleStarted,
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(1) / "cycle+end=1633122000000,i=3" % 1),
       OrderCycleFinished(None),
@@ -425,6 +426,7 @@ final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with 
 object CycleTest
 {
   private val agentPath = AgentPath("AGENT")
+  private val subagentId = toLocalSubagentId(agentPath)
   private implicit val zone = ZoneId.of("Europe/Mariehamn")
   private val clock = TestAlarmClock(local("2021-10-01T04:00"))
 

@@ -14,6 +14,7 @@ import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowParser, WorkflowPath}
 import js7.tests.FailTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
+import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.reflect.ClassTag
@@ -47,7 +48,7 @@ final class FailTest extends AnyFreeSpec with ControllerAgentForScalaTest
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderStarted,
-        OrderProcessingStarted,
+        OrderProcessingStarted(subagentId),
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
         OrderMoved(Position(1)),
         OrderDetachable,
@@ -68,7 +69,7 @@ final class FailTest extends AnyFreeSpec with ControllerAgentForScalaTest
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderStarted,
-        OrderProcessingStarted,
+        OrderProcessingStarted(subagentId),
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
         OrderMoved(Position(1)),
         OrderDetachable,
@@ -179,4 +180,5 @@ final class FailTest extends AnyFreeSpec with ControllerAgentForScalaTest
 object FailTest
 {
   private val agentPath = AgentPath("AGENT")
+  private val subagentId = toLocalSubagentId(agentPath)
 }

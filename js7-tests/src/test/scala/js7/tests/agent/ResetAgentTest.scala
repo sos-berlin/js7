@@ -34,6 +34,7 @@ import js7.launcher.internal.InternalJob
 import js7.proxy.ControllerApi
 import js7.tests.agent.ResetAgentTest._
 import js7.tests.jobs.EmptyJob
+import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{ControllerAgentForScalaTest, DirectoryProvider}
 import monix.catnap.MVar
 import monix.eval.Task
@@ -74,7 +75,7 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderLockAcquired(lock.path),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.Disrupted(AgentResetProblem(agentPath))),
       OrderDetached,
       OrderLockReleased(lock.path),
@@ -100,7 +101,7 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderLockAcquired(lock.path),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(0) / "try+0" % 0 / "lock" % 1),
       OrderDetachable,
@@ -123,7 +124,7 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
     assert(eventWatch.eventsByKey[OrderEvent](childOrderId) == Seq(
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.Disrupted(AgentResetProblem(agentPath))),
       OrderDetached,
       OrderFailedInFork(
@@ -247,6 +248,7 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
 object ResetAgentTest
 {
   private val agentPath = AgentPath("AGENT")
+  private val subagentId = toLocalSubagentId(agentPath)
   private val lock = Lock(LockPath("LOCK"))
   private val jobResource = JobResource(JobResourcePath("JOB-RESOURCE"))
 

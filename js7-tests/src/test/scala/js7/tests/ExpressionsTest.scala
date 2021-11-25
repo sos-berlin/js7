@@ -16,6 +16,7 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.ExpressionsTest._
 import js7.tests.testenv.DirectoryProvider
+import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -46,6 +47,7 @@ final class ExpressionsTest extends AnyFreeSpec
 
 object ExpressionsTest {
   private val TestAgentPath = AgentPath("AGENT")
+  private val subagentId = toLocalSubagentId(TestAgentPath)
 
   private val jobScript =
     if (isWindows)
@@ -96,7 +98,7 @@ object ExpressionsTest {
       OrderAttachable(TestAgentPath),
       OrderAttached(TestAgentPath),
       OrderStarted,
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.Succeeded(Map("JOB-KEY" -> StringValue("JOB-RESULT")) ++ NamedValues.rc(0))),
       OrderDetachable,
       OrderDetached,
@@ -110,13 +112,13 @@ object ExpressionsTest {
       OrderAttachable(TestAgentPath),
       OrderAttached(TestAgentPath),
       OrderStarted,
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.Succeeded(Map("JOB-KEY" -> StringValue("JOB-RESULT")) ++ NamedValues.rc(1))),
       OrderMoved(Position(1) / Then % 0 / Then % 0),
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.succeededRC0),
       OrderMoved(Position(2) / Then % 0),
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.succeededRC0),
       OrderMoved(Position(3)),
       OrderDetachable,

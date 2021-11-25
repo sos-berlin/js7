@@ -18,6 +18,7 @@ import js7.base.utils.Closer
 import js7.common.guice.GuiceImplicits.RichInjector
 import js7.data.job.{CommandLine, JobKey, RelativePathExecutable}
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
+import js7.data.subagent.SubagentId
 import js7.data.value.{NamedValues, NumberValue, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
@@ -56,7 +57,7 @@ final class ProcessDriverTest extends AnyFreeSpec with BeforeAndAfterAll with Te
       val order = Order(
         OrderId("TEST"),
         WorkflowPath("JOBCHAIN") ~ "VERSION",
-        Order.Processing,
+        Order.Processing(SubagentId("SUBAGENT")),
         historicOutcomes = Vector(HistoricOutcome(Position(999), Outcome.Succeeded(Map("a" -> StringValue("A"))))))
       val taskRunner = new ProcessDriver(order.id, taskConfiguration,
         injector.instance[JobLauncherConf])

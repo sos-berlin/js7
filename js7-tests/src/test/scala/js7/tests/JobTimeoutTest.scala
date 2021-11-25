@@ -18,7 +18,7 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.JobTimeoutTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
-import js7.tests.testenv.DirectoryProvider.sleepingScript
+import js7.tests.testenv.DirectoryProvider.{sleepingScript, toLocalSubagentId}
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.Deadline.now
 
@@ -58,7 +58,7 @@ final class JobTimeoutTest extends AnyFreeSpec with ControllerAgentForScalaTest
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderStarted,
-        OrderProcessingStarted,
+        OrderProcessingStarted(subagentId),
         OrderProcessed(Outcome.TimedOut(Outcome.Failed(Map(
           "returnCode" -> NumberValue(128 + SIGTERM.number))))),
         OrderDetachable,
@@ -70,6 +70,7 @@ final class JobTimeoutTest extends AnyFreeSpec with ControllerAgentForScalaTest
 object JobTimeoutTest
 {
   private val agentPath = AgentPath("AGENT")
+  private val subagentId = toLocalSubagentId(agentPath)
   private val timeout = 200.ms
   private val logger = Logger[this.type]
 

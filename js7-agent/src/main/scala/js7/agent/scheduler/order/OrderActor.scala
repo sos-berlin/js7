@@ -21,10 +21,10 @@ import js7.data.order.{Order, OrderEvent, OrderId, OrderMark, Outcome}
 import js7.data.value.expression.Expression
 import js7.journal.configuration.JournalConf
 import js7.journal.{JournalActor, KeyedJournalingActor}
-import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.Future
 import scala.concurrent.duration._
+import scala.util.{Failure, Success}
 import shapeless.tag.@@
 
 /**
@@ -51,7 +51,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
       assertThat(order == null)
       order = o
       order.state match {
-        case Order.Processing => handleEvent(OrderProcessed(Outcome.RecoveryGeneratedOutcome))
+        case _: Order.Processing => handleEvent(OrderProcessed(Outcome.RecoveryGeneratedOutcome))
         case _ => becomeAsStateOf(order, force = true)
       }
       logger.debug(s"Recovered $order")
@@ -97,24 +97,18 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
     receiveEvent orElse {
       case Input.StartProcessing(defaultArguments) =>
         if (order.isProcessable) {
-          become("processing")(
-            processing)
-
-          // OrderStarted automatically with first OrderProcessingStarted
-          val orderStarted = order.isState[Order.Fresh] thenList OrderStarted
-          persistTransaction(orderStarted :+ OrderProcessingStarted) { (events, updatedState) =>
-            update(events, updatedState)
-
-            subagentKeeper
-              .processOrder(
-                order.checkedState[Order.Processing].orThrow,
-                defaultArguments)
-              .onErrorHandle(Outcome.Failed.fromThrowable)
-              .tapEval(outcome => Task {
-                self ! Internal.OrderProcessed(outcome)
-              })
-              .runAsyncAndForget
-          }
+          become("processing")(processing)
+          subagentKeeper
+            .processOrder(
+              order.checkedState[Order.IsFreshOrReady].orThrow,
+              defaultArguments,
+              (events, state) => self ! Internal.UpdateEvents(events, state))
+            .materialize
+            .foreach {
+              case Failure(t) => logger.error(t.toStringWithCauses)  // ???
+              case Success(Left(problem)) => logger.error(problem.toString)  // ???
+              case Success(Right(())) => self ! Internal.OrderProcessed
+            }
         }
 
       case _: Input.Terminate =>
@@ -123,9 +117,16 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
 
   private def processing: Receive =
     receiveCommand orElse receiveEvent orElse {
-      case Internal.OrderProcessed(outcome) =>
+      case Internal.UpdateEvents(events, updatedState) =>
+        update(events, updatedState)
+
+      case Internal.OrderProcessed =>
         maybeKillOrder()
-        finishProcessing(OrderProcessed(outcome))
+        if (terminating) {
+          context.stop(self)
+        } else {
+          become("processed")(processed)
+        }
 
       case Input.Terminate(signal) =>
         terminating = true
@@ -135,9 +136,6 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
             .runAsyncAndForget
         }
     }
-
-  private def finishProcessing(event: OrderProcessed): Unit =
-    handleEvent(event)
 
   private def processed: Receive =
     receiveEvent orElse receiveCommand orElse receiveTerminate
@@ -153,8 +151,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
   : Future[Completed] =
     handleEvents(event :: Nil)
 
-  private def handleEvents(events: Seq[OrderCoreEvent])
-  : Future[Completed] =
+  private def handleEvents(events: Seq[OrderCoreEvent]): Future[Completed] =
     order.applyEvents(events) match {
       case Left(problem) =>
         logger.error(problem.toString)
@@ -291,7 +288,8 @@ private[order] object OrderActor
     Props { new OrderActor(orderId, subagentKeeper, journalActor = journalActor, conf) }
 
   private object Internal {
-    final case class OrderProcessed(outcome: Outcome)
+    final case class UpdateEvents(events: Seq[OrderEvent], updated: AgentState)
+    case object OrderProcessed
   }
 
   sealed trait Command

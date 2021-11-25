@@ -18,6 +18,7 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.ForkListRecoveryTest._
 import js7.tests.jobs.EmptyJob
+import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
@@ -90,7 +91,7 @@ final class ForkListRecoveryTest extends AnyFreeSpec with DirectoryProviderForSc
 
       for (orderId <- childOrderIds) {
         assert(controller.eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
-          OrderProcessingStarted,
+          OrderProcessingStarted(subagentId),
           OrderProcessed(Outcome.succeeded),
           OrderMoved(Position(0) / "fork" % 1),
           OrderDetachable,
@@ -109,6 +110,7 @@ object ForkListRecoveryTest
   private val parentOrderId = OrderId("PARENT")
   private val childOrderIds = for (i <- 1 to 3) yield parentOrderId / s"CHILD-$i"
   private val agentPath = AgentPath("AGENT")
+  private val subagentId = toLocalSubagentId(agentPath)
 
   private val workflow = Workflow(
     WorkflowPath("AT-CONTROLLER-WORKFLOW") ~ "INITIAL",

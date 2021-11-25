@@ -17,6 +17,7 @@ import js7.data.job.JobKey
 import js7.data.order.Order._
 import js7.data.order.OrderEvent._
 import js7.data.orderwatch.ExternalOrderKey
+import js7.data.subagent.SubagentId
 import js7.data.value.{NamedValues, Value}
 import js7.data.workflow.position.{BranchId, InstructionNr, Position, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowId}
@@ -110,10 +111,10 @@ final case class Order[+S <: Order.State](
         check(isState[Fresh] && !isSuspended && (isDetached || isAttached),
           copy(state = Ready))
 
-      case OrderProcessingStarted =>
+      case OrderProcessingStarted(subagentId) =>
         check(isState[Ready] && !isSuspended && isAttached,
           copy(
-            state = Processing,
+            state = Processing(subagentId),
             mark = cleanMark))
 
       case OrderProcessed(outcome_) =>
@@ -671,7 +672,7 @@ object Order
   object State {
     implicit val jsonCodec: TypedJsonCodec[State] = TypedJsonCodec(
       Subtype[IsFreshOrReady],
-      Subtype(Processing),
+      Subtype[Processing],
       Subtype(Processed),
       Subtype(ProcessingKilled),
       Subtype(deriveCodec[DelayedAfterError]),
@@ -716,8 +717,17 @@ object Order
 
   final case class Broken(problem: Problem) extends IsStarted/*!!!*/
 
-  type Processing = Processing.type
-  case object Processing extends IsStarted
+  final case class Processing(subagentId: SubagentId) extends IsStarted
+  object Processing {
+    implicit val jsonEncoder: Encoder.AsObject[Processing] =
+      o => JsonObject.fromIterable(
+        (o.subagentId != LegacySubagentId) ? ("subagentId" -> o.subagentId.asJson))
+
+    implicit val jsonDecoder: Decoder[Processing] =
+      c => for {
+        subagentId <- c.getOrElse("subagentId")(LegacySubagentId)
+      } yield Processing(subagentId)
+  }
 
   type Processed = Processed.type
   case object Processed extends IsStarted

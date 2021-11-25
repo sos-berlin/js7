@@ -103,7 +103,7 @@ private[history] final class InMemoryHistory
           terminatedAt = Optional.of(terminatedAt/*timestamp*/),
           endWorkflowPosition = Optional.of(order.workflowPosition))
 
-      case JOrderProcessingStarted.singleton =>
+      case _: JOrderProcessingStarted =>
         val order = getOrThrow(eventAndState.state.idToCheckedOrder(orderId))
         var entry = _idToOrderEntry(orderId)
         if (!entry.startedAt.isPresent) {

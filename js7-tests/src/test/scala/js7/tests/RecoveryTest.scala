@@ -29,7 +29,7 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.RecoveryTest._
 import js7.tests.testenv.DirectoryProvider
-import js7.tests.testenv.DirectoryProvider.{StdoutOutput, script}
+import js7.tests.testenv.DirectoryProvider.{StdoutOutput, script, toLocalSubagentId}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
@@ -151,6 +151,7 @@ private object RecoveryTest {
 
   private val TestConfig = config"js7.journal.remove-obsolete-files = false"
   private val AgentPaths = AgentPath("agent-111") :: AgentPath("agent-222") :: Nil
+  private val subagentIds = AgentPaths.map(toLocalSubagentId)
   private val TestPathExecutable = RelativePathExecutable("TEST.cmd", v1Compatible = true)
 
   private val TestWorkflow = Workflow(WorkflowPath("test") ~ "INITIAL",
@@ -172,15 +173,15 @@ private object RecoveryTest {
     OrderAttachable(AgentPaths(0)),
     OrderAttached(AgentPaths(0)),
     OrderStarted,
-    OrderProcessingStarted,
+    OrderProcessingStarted(subagentIds(0)),
     OrderStdoutWritten(StdoutOutput),
     OrderProcessed(Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "result" -> StringValue("SCRIPT-VARIABLE-VALUE-agent-111")))),
     OrderMoved(Position(1)),
-    OrderProcessingStarted,
+    OrderProcessingStarted(subagentIds(0)),
     OrderStdoutWritten(StdoutOutput),
     OrderProcessed(Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "result" -> StringValue("SCRIPT-VARIABLE-VALUE-agent-111")))),
     OrderMoved(Position(2)),
-    OrderProcessingStarted,
+    OrderProcessingStarted(subagentIds(0)),
     OrderStdoutWritten(StdoutOutput),
     OrderProcessed(Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "result" -> StringValue("SCRIPT-VARIABLE-VALUE-agent-111")))),
     OrderMoved(Position(3)),
@@ -188,11 +189,11 @@ private object RecoveryTest {
     OrderDetached,
     OrderAttachable(AgentPaths(1)),
     OrderAttached(AgentPaths(1)),
-    OrderProcessingStarted,
+    OrderProcessingStarted(subagentIds(1)),
     OrderStdoutWritten(StdoutOutput),
     OrderProcessed(Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "result" -> StringValue("SCRIPT-VARIABLE-VALUE-agent-222")))),
     OrderMoved(Position(4)),
-    OrderProcessingStarted,
+    OrderProcessingStarted(subagentIds(1)),
     OrderStdoutWritten(StdoutOutput),
     OrderProcessed(Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "result" -> StringValue("SCRIPT-VARIABLE-VALUE-agent-222")))),
     OrderMoved(Position(5)),
@@ -206,7 +207,7 @@ private object RecoveryTest {
     while (events.hasNext) {
       events.next() match {
         case OrderProcessed(Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted)) =>
-          while (result.last != OrderEvent.OrderProcessingStarted) {
+          while (!result.last.isInstanceOf[OrderProcessingStarted]) {
             result.remove(result.size - 1)
           }
           result.remove(result.size - 1)

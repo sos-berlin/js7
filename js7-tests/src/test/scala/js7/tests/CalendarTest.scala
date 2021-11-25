@@ -25,6 +25,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.CalendarTest._
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
+import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
@@ -105,6 +106,7 @@ final class CalendarTest extends AnyFreeSpec with ControllerAgentForScalaTest
 object CalendarTest
 {
   private val agentPath = AgentPath("AGENT")
+  private val subagentId = toLocalSubagentId(agentPath)
   private implicit val zone = ZoneId.of("Europe/Mariehamn")
   private val clock = TestAlarmClock(local("2021-10-01T00:00"))
 
@@ -135,7 +137,7 @@ object CalendarTest
     OrderCycleStarted,
     OrderAttachable(agentPath),
     OrderAttached(agentPath),
-    OrderProcessingStarted,
+    OrderProcessingStarted(subagentId),
     OrderProcessed(Outcome.succeeded),
     OrderMoved(Position(0) / "cycle+end=1633122000000,i=1" %  1),
     OrderCycleFinished(None),

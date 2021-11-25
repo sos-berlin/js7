@@ -61,12 +61,15 @@ final class SubagentTest extends AnyFreeSpec with ControllerAgentForScalaTest
       assertEvents = (orderId, events) =>
         Task {
           val result = withClue(s"$orderId: ") {
-            assert(events == Seq(
+            assert(events.collect {
+              case OrderProcessingStarted(_) => OrderProcessingStarted(SubagentId("ANY"))
+              case o => o
+            } == Seq(
               OrderAdded(workflow.id),
               OrderAttachable(agentPath),
               OrderAttached(agentPath),
               OrderStarted,
-              OrderProcessingStarted,
+              OrderProcessingStarted(SubagentId("ANY")),
               OrderStdoutWritten("STDOUT 1\nSTDOUT 2\n"),
               OrderProcessed(Outcome.succeeded),
               OrderMoved(Position(1)),

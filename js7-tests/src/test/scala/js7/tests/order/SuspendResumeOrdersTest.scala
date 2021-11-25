@@ -30,7 +30,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.EmptyJob
 import js7.tests.order.SuspendResumeOrdersTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
-import js7.tests.testenv.DirectoryProvider.waitingForFileScript
+import js7.tests.testenv.DirectoryProvider.{toLocalSubagentId, waitingForFileScript}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -97,7 +97,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderStarted,
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.succeededRC0),
       OrderMoved(Position(1)),
       OrderDetachable,
@@ -119,7 +119,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderStarted,
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderSuspensionMarked(),
       OrderSuspensionMarkedOnAgent,
       OrderProcessed(Outcome.succeededRC0),
@@ -162,7 +162,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderStarted,
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderSuspensionMarked(SuspensionMode(Some(CancellationMode.Kill()))),
       OrderSuspensionMarkedOnAgent,
       OrderProcessed(Outcome.Killed(if (isWindows) Outcome.succeededRC0 else Outcome.Failed(NamedValues.rc(SIGTERM)))),
@@ -180,7 +180,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderResumed(),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.succeededRC0),
       OrderMoved(Position(1)),
       OrderDetachable,
@@ -204,7 +204,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderStarted,
-        OrderProcessingStarted,
+        OrderProcessingStarted(subagentId),
         OrderSuspensionMarked(),
         OrderSuspensionMarkedOnAgent,
         OrderProcessed(Outcome.succeededRC0),
@@ -222,7 +222,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
         OrderResumed(),
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
-        OrderProcessingStarted,
+        OrderProcessingStarted(subagentId),
         OrderProcessed(Outcome.succeededRC0),
         OrderMoved(Position(2)),
         OrderDetachable,
@@ -271,7 +271,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
         OrderId("FORK") <-: OrderForked(Vector(OrderForked.Child(Fork.Branch.Id("🥕"), OrderId("FORK|🥕")))),
         OrderId("FORK|🥕") <-: OrderAttachable(agentPath),
         OrderId("FORK|🥕") <-: OrderAttached(agentPath),
-        OrderId("FORK|🥕") <-: OrderProcessingStarted,
+        OrderId("FORK|🥕") <-: OrderProcessingStarted(subagentId),
         OrderId("FORK") <-: OrderSuspensionMarked(),
         OrderId("FORK|🥕") <-: OrderProcessed(Outcome.succeededRC0),
         OrderId("FORK|🥕") <-: OrderMoved(Position(0) / "fork+🥕" % 1),
@@ -321,7 +321,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderStarted,
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderSuspensionMarked(),
       OrderSuspensionMarkedOnAgent,
       OrderResumptionMarked(),
@@ -335,7 +335,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
 
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.succeededRC0),
       OrderMoved(Position(2)),
       OrderDetachable,
@@ -362,7 +362,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderStarted,
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderSuspensionMarked(),
       OrderSuspensionMarkedOnAgent,
       OrderProcessed(Outcome.succeededRC0),
@@ -404,7 +404,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderStarted,
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderSuspensionMarked(),
       OrderSuspensionMarkedOnAgent,
       OrderProcessed(Outcome.succeededRC0),
@@ -416,7 +416,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderResumed(),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderSuspensionMarked(),
       OrderSuspensionMarkedOnAgent,
       OrderProcessed(Outcome.succeededRC0),
@@ -474,7 +474,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderStarted,
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderSuspensionMarked(),
       OrderSuspensionMarkedOnAgent,
       OrderProcessed(Outcome.succeededRC0),
@@ -530,7 +530,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderStarted,
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(1)),
       OrderDetachable,
@@ -544,7 +544,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       OrderResumed(Some(Position(0))),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(1)),
       OrderDetachable,
@@ -557,6 +557,7 @@ object SuspendResumeOrdersTest
 {
   private val pathExecutable = RelativePathExecutable("executable.cmd")
   private val agentPath = AgentPath("AGENT")
+  private val subagentId = toLocalSubagentId(agentPath)
   private val versionId = VersionId("INITIAL")
   private val executeJob = Execute(WorkflowJob(agentPath, pathExecutable, parallelism = 100))
 

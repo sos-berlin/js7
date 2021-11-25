@@ -29,6 +29,7 @@ import js7.proxy.data.event.EventAndState
 import js7.tests.ForkListTest._
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
+import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
@@ -197,7 +198,7 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
     for (i <- myList.elements.indices) {
       assert(eventWatch.eventsByKey[OrderEvent](orderId / i.toString) == Seq(
         OrderMoved(Position(0) / "fork" % 1),
-        OrderProcessingStarted,
+        OrderProcessingStarted(subagentId),
         OrderProcessed(Outcome.succeeded),
         OrderMoved(Position(0) / "fork" % 2),
         OrderDetachable,
@@ -324,7 +325,7 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
       // Attach to bAgentPath
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(3)),
 
@@ -337,7 +338,7 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(5)),
       // Each child order starts at bAgentPath. So detach and then attach forking order to bAgentPath.
@@ -405,7 +406,7 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
       .head.value.event == OrderFinished)
     for (elementId <- View("1", "2", "3")) {
       assert(eventWatch.eventsByKey[OrderEvent](orderId / elementId) == Seq(
-        OrderProcessingStarted,
+        OrderProcessingStarted(subagentId),
         OrderStdoutWritten(s"ELEMENT_ID=$elementId\n"),
         OrderProcessed(Outcome.succeededRC0),
         OrderMoved(Position(0) / "fork" % 1),
@@ -419,6 +420,7 @@ object ForkListTest
 {
   private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT")
+  private val subagentId = toLocalSubagentId(agentPath)
   private val bAgentPath = AgentPath("B-AGENT")
 
   private val forkList = ForkList(

@@ -22,6 +22,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.AdmissionTimeSkipJobTest._
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
+import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -76,11 +77,11 @@ final class AdmissionTimeSkipJobTest extends AnyFreeSpec with ControllerAgentFor
         OrderAttached(agentPath),
 
         OrderStarted,
-        OrderProcessingStarted,
+        OrderProcessingStarted(subagentId),
         OrderProcessed(Outcome.succeeded),
         OrderMoved(Position(3)),  // Positions 1 and 2 are skipped!
 
-        OrderProcessingStarted,
+        OrderProcessingStarted(subagentId),
         OrderProcessed(Outcome.succeeded),
         OrderMoved(Position(4)),
 
@@ -140,6 +141,7 @@ final class AdmissionTimeSkipJobTest extends AnyFreeSpec with ControllerAgentFor
 object AdmissionTimeSkipJobTest
 {
   private val agentPath = AgentPath("AGENT")
+  private val subagentId = toLocalSubagentId(agentPath)
   private val timeZone = ZoneId.of("Europe/Mariehamn")
 
   private val fridayExecute = Execute(

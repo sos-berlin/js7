@@ -24,6 +24,7 @@ import js7.launcher.internal.InternalJob
 import js7.tests.controller.commands.AddOrderTest._
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
+import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -55,7 +56,7 @@ final class AddOrderTest extends AnyFreeSpec with ControllerAgentForScalaTest
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderStarted,
-        OrderProcessingStarted,
+        OrderProcessingStarted(subagentId),
         OrderProcessed(Outcome.Disrupted(Problem("No such named value: unknownString"))),
         OrderDetachable,
         OrderDetached,
@@ -80,7 +81,7 @@ final class AddOrderTest extends AnyFreeSpec with ControllerAgentForScalaTest
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderStarted,
-        OrderProcessingStarted,
+        OrderProcessingStarted(subagentId),
         OrderStdoutWritten("STRING=DEFAULT\n" + "NUMBER=7\n"),
         OrderProcessed(Outcome.succeeded),
         OrderMoved(Position(1)),
@@ -94,6 +95,7 @@ object AddOrderTest
 {
   private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT")
+  private val subagentId = toLocalSubagentId(agentPath)
   private val emptyWorkflow = Workflow.of(WorkflowPath("EMPTY"))
   private val stringParameter = OrderParameter.Optional("myString", StringValue, StringConstant("DEFAULT"))
   private val numberParameter = OrderParameter.Required("myNumber", NumberValue)

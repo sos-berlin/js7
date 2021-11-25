@@ -150,7 +150,8 @@ with Stash
     def continue() =
       for (terminate <- shutDownCommand) {
         logger.trace(s"termination.continue: ${orderRegister.size} orders, " +
-          s"${jobRegister.size} jobs ${if (snapshotFinished) ", snapshot taken" else ""}")
+          jobRegister.size + " jobs" +
+          (snapshotFinished ?? ", snapshot taken"))
         if (snapshotFinished) {
           if (!terminatingOrders) {
             terminatingOrders = true

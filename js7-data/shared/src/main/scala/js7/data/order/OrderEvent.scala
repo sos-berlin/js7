@@ -17,6 +17,7 @@ import js7.data.event.Event
 import js7.data.lock.LockPath
 import js7.data.order.Order._
 import js7.data.orderwatch.ExternalOrderKey
+import js7.data.subagent.SubagentId
 import js7.data.value.{NamedValues, Value}
 import js7.data.workflow.WorkflowId
 import js7.data.workflow.instructions.Fork
@@ -127,8 +128,21 @@ object OrderEvent
   type OrderStarted = OrderStarted.type
   case object OrderStarted extends OrderActorEvent
 
-  type OrderProcessingStarted = OrderProcessingStarted.type
-  case object OrderProcessingStarted extends OrderCoreEvent
+  // COMPATIBLE with v2.1
+  val LegacySubagentId = SubagentId("JS7-2.1-LEGACY")
+
+  final case class OrderProcessingStarted(subagentId: SubagentId)
+  extends OrderCoreEvent
+  object OrderProcessingStarted {
+    implicit val jsonEncoder: Encoder.AsObject[OrderProcessingStarted] =
+      o => JsonObject.fromIterable(
+        (o.subagentId != LegacySubagentId) ? ("subagentId" -> o.subagentId.asJson))
+
+    implicit val jsonDecoder: Decoder[OrderProcessingStarted] =
+      c => for {
+        subagentId <- c.getOrElse("subagentId")(LegacySubagentId)
+      } yield OrderProcessingStarted(subagentId)
+  }
 
   sealed trait OrderStdWritten extends OrderEvent {
 
@@ -437,7 +451,7 @@ object OrderEvent
     Subtype(OrderDeletionMarked),
     Subtype(OrderDeleted),
     Subtype(OrderStarted),
-    Subtype(OrderProcessingStarted),
+    Subtype[OrderProcessingStarted],
     Subtype[OrderStdoutWritten],
     Subtype[OrderStderrWritten],
     Subtype[OrderProcessed],

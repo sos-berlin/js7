@@ -72,10 +72,6 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
   {
     protected type AsScala = OrderProcessingStarted
   }
-  object JOrderProcessingStarted {
-    val singleton = new JOrderProcessingStarted(OrderProcessingStarted)
-    def apply(underlying: OrderProcessingStarted) = singleton
-  }
 
   final case class JOrderStdWritten(asScala: OrderStdWritten)
   extends JOrderEvent {

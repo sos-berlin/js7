@@ -28,6 +28,7 @@ import js7.data.workflow.position.{Position, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.CancelOrdersTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
+import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
@@ -80,7 +81,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderStarted,
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderCancellationMarked(CancellationMode.FreshOrStarted()),
       OrderCancellationMarkedOnAgent,
       OrderProcessed(Outcome.succeededRC0),
@@ -114,7 +115,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderStarted,
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderCancellationMarked(CancellationMode.FreshOrStarted()),
       OrderCancellationMarkedOnAgent,
       OrderProcessed(Outcome.succeededRC0),
@@ -137,7 +138,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderStarted,
-        OrderProcessingStarted,
+        OrderProcessingStarted(subagentId),
         OrderCancellationMarked(mode),
         OrderCancellationMarkedOnAgent,
         OrderProcessed(Outcome.succeededRC0),
@@ -168,7 +169,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
           OrderAttachable(agentPath),
           OrderAttached(agentPath),
           OrderStarted,
-          OrderProcessingStarted,
+          OrderProcessingStarted(subagentId),
           OrderCancellationMarked(mode),
           OrderCancellationMarkedOnAgent,
           OrderProcessed(Outcome.Killed(Outcome.Failed(NamedValues.rc(ReturnCode(SIGKILL))))),
@@ -187,7 +188,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
           OrderAttachable(agentPath),
           OrderAttached(agentPath),
           OrderStarted,
-          OrderProcessingStarted,
+          OrderProcessingStarted(subagentId),
           OrderCancellationMarked(mode),
           OrderCancellationMarkedOnAgent,
           OrderProcessed(Outcome.Killed(Outcome.Failed(NamedValues.rc(ReturnCode(SIGKILL))))),
@@ -205,7 +206,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderStarted,
-        OrderProcessingStarted,
+        OrderProcessingStarted(subagentId),
         OrderCancellationMarked(mode),
         OrderCancellationMarkedOnAgent,
         OrderProcessed(Outcome.Killed(Outcome.Failed(NamedValues.rc(
@@ -235,7 +236,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
         OrderId("FORK") <-: OrderForked(Vector(OrderForked.Child(Fork.Branch.Id("🥕"), OrderId("FORK|🥕")))),
         OrderId("FORK|🥕") <-: OrderAttachable(agentPath),
         OrderId("FORK|🥕") <-: OrderAttached(agentPath),
-        OrderId("FORK|🥕") <-: OrderProcessingStarted,
+        OrderId("FORK|🥕") <-: OrderProcessingStarted(subagentId),
         OrderId("FORK") <-: OrderCancellationMarked(mode),
         OrderId("FORK|🥕") <-: OrderProcessed(Outcome.succeededRC0),
         OrderId("FORK|🥕") <-: OrderMoved(Position(0) / "fork+🥕" % 1),
@@ -270,7 +271,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
           OrderForked.Child(Fork.Branch.Id("🥕"), OrderId("CANCEL-CHILD|🥕")))),
         OrderId("CANCEL-CHILD|🥕") <-: OrderAttachable(agentPath),
         OrderId("CANCEL-CHILD|🥕") <-: OrderAttached(agentPath),
-        OrderId("CANCEL-CHILD|🥕") <-: OrderProcessingStarted,
+        OrderId("CANCEL-CHILD|🥕") <-: OrderProcessingStarted(subagentId),
         OrderId("CANCEL-CHILD|🥕") <-: OrderCancellationMarked(mode),
         OrderId("CANCEL-CHILD|🥕") <-: OrderCancellationMarkedOnAgent,
         OrderId("CANCEL-CHILD|🥕") <-: OrderProcessed(Outcome.Killed(
@@ -368,7 +369,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderStarted,
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderStdoutWritten("READY\n"),
       OrderCancellationMarked(FreshOrStarted(Some(Kill(false,None)))),
       OrderCancellationMarkedOnAgent,
@@ -427,7 +428,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderStarted,
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderStdoutWritten("READY\n"),
       OrderCancellationMarked(FreshOrStarted(Some(Kill(false,None)))),
       OrderCancellationMarkedOnAgent,
@@ -481,7 +482,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderStarted,
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderStdoutWritten("READY\n"),
       OrderCancellationMarked(FreshOrStarted(Some(Kill(false,None)))),
       OrderCancellationMarkedOnAgent,
@@ -518,6 +519,7 @@ object CancelOrdersTest
        |""".stripMargin,
     Map("SLEEP" -> NamedValue("sleep")))
   private val agentPath = AgentPath("AGENT")
+  private val subagentId = toLocalSubagentId(agentPath)
   private val versionId = VersionId("INITIAL")
 
   private val singleJobWorkflow = Workflow.of(

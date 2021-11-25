@@ -92,7 +92,7 @@ extends HasCloser
     agentPaths
       .zip(agentPorts ++ Vector.fill(agentPaths.size - agentPorts.size)(findFreeTcpPort()))
       .map { case (agentPath, port) =>
-        val localSubagentId = SubagentId(agentPath.string + "-0")
+        val localSubagentId = toLocalSubagentId(agentPath)
         agentPath ->
           new AgentTree(directory, agentPath, localSubagentId,
             testName.fold("")(_ + "-") ++ localSubagentId.string,
@@ -110,6 +110,8 @@ extends HasCloser
   lazy val subagentRefs: Vector[SubagentRef] =
     for (a <- agents) yield
       SubagentRef(a.localSubagentId, a.agentPath, uri = a.agentConfiguration.localUri)
+  lazy val subagentId: SubagentId = subagentRefs.head.id
+
   private val itemsHasBeenAdded = AtomicBoolean(false)
 
   closeOnError(this) {
@@ -262,6 +264,9 @@ object DirectoryProvider
 {
   val Vinitial = VersionId("INITIAL")
   private val logger = Logger(getClass)
+
+  def toLocalSubagentId(agentPath: AgentPath): SubagentId =
+    SubagentId(agentPath.string + "-0")
 
   sealed trait Tree {
     val directory: Path

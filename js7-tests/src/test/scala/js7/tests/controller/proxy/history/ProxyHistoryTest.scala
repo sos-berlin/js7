@@ -36,7 +36,7 @@ import js7.tests.controller.proxy.ClusterProxyTest
 import js7.tests.controller.proxy.history.JControllerApiHistoryTester.TestWorkflowId
 import js7.tests.controller.proxy.history.ProxyHistoryTest._
 import js7.tests.testenv.ControllerClusterForScalaTest.TestPathExecutable
-import js7.tests.testenv.DirectoryProvider.StdoutOutput
+import js7.tests.testenv.DirectoryProvider.{StdoutOutput, toLocalSubagentId}
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalactic.source
@@ -150,7 +150,7 @@ final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with Cl
             OrderAttachable(AAgentPath),
             OrderAttached(AAgentPath),
             OrderStarted,
-            OrderProcessingStarted,
+            OrderProcessingStarted(aSubagentId),
             OrderStdoutWritten(StdoutOutput),
             OrderProcessed(Succeeded(NamedValues.rc(0))),
             OrderMoved(Position(1)),
@@ -163,7 +163,7 @@ final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with Cl
             OrderMoved(Position(2)),
             OrderAttachable(AAgentPath),
             OrderAttached(AAgentPath),
-            OrderProcessingStarted,
+            OrderProcessingStarted(aSubagentId),
             OrderStdoutWritten(StdoutOutput),
             OrderProcessed(Succeeded(NamedValues.rc(0))),
             OrderMoved(Position(3)),
@@ -171,18 +171,18 @@ final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with Cl
             OrderDetached,
             OrderFinished),
           OrderId("🔺|🥕") -> List(
-            OrderProcessingStarted,
+            OrderProcessingStarted(aSubagentId),
             OrderStdoutWritten(StdoutOutput),
             OrderProcessed(Succeeded(NamedValues.rc(0))),
             OrderMoved(Position(1) / "fork+🥕" % 1),
-            OrderProcessingStarted,
+            OrderProcessingStarted(aSubagentId),
             OrderStdoutWritten(StdoutOutput),
             OrderProcessed(Succeeded(NamedValues.rc(0))),
             OrderMoved(Position(1) / "fork+🥕" % 2),
             OrderDetachable,
             OrderDetached),
           OrderId("🔺|🍋") -> List(
-            OrderProcessingStarted,
+            OrderProcessingStarted(aSubagentId),
             OrderStdoutWritten(StdoutOutput),
             OrderProcessed(Succeeded(NamedValues.rc(0))),
             OrderMoved(Position(1) / "fork+🍋" % 1),
@@ -190,7 +190,7 @@ final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with Cl
             OrderDetached,
             OrderAttachable(BAgentPath),
             OrderAttached(BAgentPath),
-            OrderProcessingStarted,
+            OrderProcessingStarted(bSubagentId),
             OrderStdoutWritten(StdoutOutput),
             OrderProcessed(Succeeded(NamedValues.rc(0))),
             OrderMoved(Position(1) / "fork+🍋" % 2),
@@ -233,6 +233,8 @@ object ProxyHistoryTest
   private val logger = Logger(getClass)
   private val AAgentPath = AgentPath("AGENT-A")
   private val BAgentPath = AgentPath("AGENT-B")
+  private val aSubagentId = toLocalSubagentId(AAgentPath)
+  private val bSubagentId = toLocalSubagentId(BAgentPath)
   private val TestWorkflow = WorkflowParser.parse(TestWorkflowId.asScala, s"""
      |define workflow {
      |  execute executable="${TestPathExecutable.path}", agent="AGENT-A";

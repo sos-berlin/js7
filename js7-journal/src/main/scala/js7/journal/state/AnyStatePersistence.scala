@@ -10,12 +10,13 @@ import monix.eval.Task
 trait AnyStatePersistence
 {
   protected type State <: JournaledState[State]
+  private type S = State
 
-  protected val S: JournaledState.Companion[State]
+  protected val S: JournaledState.Companion[S]
 
-  def currentState: State
+  def currentState: S
 
-  final def awaitCurrentState: Task[State] =
+  final def awaitCurrentState: Task[S] =
     waitUntilStarted >> Task(currentState)
 
   def waitUntilStarted: Task[Unit]
@@ -25,15 +26,20 @@ trait AnyStatePersistence
   def persistKeyedEvent[E <: Event](
     keyedEvent: KeyedEvent[E],
     options: CommitOptions = CommitOptions.default)
-  : Task[Checked[(Stamped[KeyedEvent[E]], State)]]
+  : Task[Checked[(Stamped[KeyedEvent[E]], S)]]
+
+  def persistKeyedEvents[E <: Event](
+    keyedEvents: Seq[KeyedEvent[E]],
+    options: CommitOptions = CommitOptions.default)
+  : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]]
 
   def persistKeyedEventLater[E <: Event](
     keyedEvent: KeyedEvent[E],
     options: CommitOptions = CommitOptions.default)
   : Task[Checked[Unit]]
 
-  def persist[E <: Event](stateToEvents: State => Checked[Seq[KeyedEvent[E]]])
-  : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], State)]]
+  def persist[E <: Event](stateToEvents: S => Checked[Seq[KeyedEvent[E]]])
+  : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]]
 
   private val keyLockKeeper = new LockKeeper[Any]
 

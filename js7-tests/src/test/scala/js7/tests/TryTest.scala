@@ -15,6 +15,7 @@ import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.TryTest._
 import js7.tests.testenv.DirectoryProvider
+import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -79,14 +80,14 @@ final class TryTest extends AnyFreeSpec
           OrderAttachable(TestAgentPath),
           OrderAttached(TestAgentPath),
           OrderStarted,
-          OrderProcessingStarted,
+          OrderProcessingStarted(subagentId),
           OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
           OrderMoved(Position(0) / try_(0) % 1 / Then % 0),
           OrderCatched(Position(0) / "catch+0" % 0, Some(Outcome.failed)),
-          OrderProcessingStarted,
+          OrderProcessingStarted(subagentId),
           OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
           OrderMoved(Position(1)),
-          OrderProcessingStarted,
+          OrderProcessingStarted(subagentId),
           OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
           OrderMoved(Position(2)),
           OrderDetachable,
@@ -137,14 +138,14 @@ final class TryTest extends AnyFreeSpec
           OrderCatched(Position(0) / "catch+0" % 0),
           OrderAttachable(TestAgentPath),
           OrderAttached(TestAgentPath),
-          OrderProcessingStarted,
+          OrderProcessingStarted(subagentId),
           OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
           OrderMoved(Position(1)),
           OrderDetachable,
           OrderDetached,
           OrderFinished))
         checkEventSeq(OrderId("🔴|🍋"), controller.eventWatch.allKeyedEvents[OrderEvent], Vector(
-          OrderProcessingStarted,
+          OrderProcessingStarted(subagentId),
           OrderProcessed(Outcome.Failed(None, NamedValues.rc(1))),
           OrderFailedInFork(Position(0) / BranchId.try_(0) % 0 / BranchId.fork("🍋") % 0),
           OrderDetachable,
@@ -166,6 +167,7 @@ final class TryTest extends AnyFreeSpec
 object TryTest
 {
   private val TestAgentPath = AgentPath("AGENT")
+  private val subagentId = toLocalSubagentId(TestAgentPath)
   private val finishingScript = s"""
      |define workflow {
      |  try {                                                // :0
@@ -188,16 +190,16 @@ object TryTest
     OrderAttached(TestAgentPath),
 
     OrderStarted,
-    OrderProcessingStarted,
+    OrderProcessingStarted(subagentId),
     OrderProcessed(Outcome.Failed.rc(1)),
     OrderCatched(Position(0) / "try+0" % 0 / "catch+0" % 0),
 
-    OrderProcessingStarted,
+    OrderProcessingStarted(subagentId),
     OrderProcessed(Outcome.Failed.rc(2)),
     OrderCatched(Position(0) / "catch+0" % 0),
     OrderMoved(Position(1)),
 
-    OrderProcessingStarted,
+    OrderProcessingStarted(subagentId),
     OrderProcessed(Outcome.Succeeded.rc(0)),
     OrderMoved(Position(2)),
 
@@ -222,11 +224,11 @@ object TryTest
     OrderAttached(TestAgentPath),
 
     OrderStarted,
-    OrderProcessingStarted,
+    OrderProcessingStarted(subagentId),
     OrderProcessed(Outcome.Failed.rc(1)),
     OrderCatched(Position(0) / "catch+0" % 0),
 
-    OrderProcessingStarted,
+    OrderProcessingStarted(subagentId),
     OrderProcessed(Outcome.Failed.rc(2)),
     OrderDetachable,
     OrderDetached,

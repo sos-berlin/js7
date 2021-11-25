@@ -11,6 +11,7 @@ import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.job.{JobKey, JobResource, JobResourcePath, ShellScriptExecutable}
 import js7.data.order.{FreshOrder, HistoricOutcome, Order, OrderId, Outcome}
+import js7.data.subagent.SubagentId
 import js7.data.value.expression.Expression.{NamedValue, StringConstant}
 import js7.data.value.expression.ExpressionParser
 import js7.data.value.expression.scopes.OrderScopesTest._
@@ -57,7 +58,7 @@ final class OrderScopesTest extends AnyFreeSpec
     lazy val orderScopes: ProcessingOrderScopes = new ProcessingOrderScopes {
       protected val controllerId = OrderScopesTest.controllerId
       protected val workflow = OrderScopesTest.workflow
-      protected val order = OrderScopesTest.order.copy(state = Order.Processing)
+      protected val order = OrderScopesTest.order.copy(state = Order.Processing(SubagentId("SUBAGENT")))
       protected val jobKey = JobKey.Named(workflow.id, jobName)
       protected val jobResources = Seq(jobResource)
     }

@@ -12,6 +12,7 @@ import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.job.{InternalExecutable, JobConf, JobKey}
 import js7.data.order.{Order, OrderId, Outcome}
+import js7.data.subagent.SubagentId
 import js7.data.value.expression.Expression.{NamedValue, NumericConstant}
 import js7.data.value.{NamedValues, NumberValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -52,7 +53,7 @@ final class InternalJobLauncherTest extends AnyFreeSpec
     val stdObservers = new StdObservers(out, err, charBufferSize = 4096, keepLastErrLine = false)
     val orderProcess = executor.toOrderProcess(
       ProcessOrder(
-        Order(OrderId("TEST"), workflow.id /: Position(0), Order.Processing),
+        Order(OrderId("TEST"), workflow.id /: Position(0), Order.Processing(SubagentId("SUBAGENT"))),
         workflow,
         JobKey.Named(WorkflowBranchPath(WorkflowPath("WORKFLOW"), Nil), WorkflowJob.Name("TEST-JOB")),
         jobResources = Nil,

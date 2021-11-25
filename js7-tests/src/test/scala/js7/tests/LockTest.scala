@@ -29,7 +29,7 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowParser, WorkflowPath}
 import js7.tests.LockTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
-import js7.tests.testenv.DirectoryProvider.{script, waitingForFileScript}
+import js7.tests.testenv.DirectoryProvider.{script, toLocalSubagentId, waitingForFileScript}
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
@@ -94,7 +94,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
         OrderLockAcquired(lockPath, None),
           OrderAttachable(agentPath),
           OrderAttached(agentPath),
-          OrderProcessingStarted,
+          OrderProcessingStarted(subagentId),
           OrderProcessed(Outcome.succeededRC0),
           OrderMoved(Position(0) / "lock" % 1),
           OrderDetachable,
@@ -102,7 +102,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
           OrderAttachable(bAgentPath),
           OrderAttached(bAgentPath),
-          OrderProcessingStarted,
+          OrderProcessingStarted(bSubagentId),
           OrderProcessed(Outcome.succeededRC0),
           OrderMoved(Position(0) / "lock" % 2),
           OrderDetachable,
@@ -121,7 +121,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
           OrderLockAcquired(lockPath, None),
             OrderAttachable(agentPath),
             OrderAttached(agentPath),
-            OrderProcessingStarted,
+            OrderProcessingStarted(subagentId),
             OrderProcessed(Outcome.succeededRC0),
             OrderMoved(Position(0) / "lock" % 1),
             OrderDetachable,
@@ -129,7 +129,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
             OrderAttachable(bAgentPath),
             OrderAttached(bAgentPath),
-            OrderProcessingStarted,
+            OrderProcessingStarted(bSubagentId),
             OrderProcessed(Outcome.succeededRC0),
             OrderMoved(Position(0) / "lock" % 2),
             OrderDetachable,
@@ -281,7 +281,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderCatched(Position(0) / "lock" % 0 / "catch+0" % 0, Some(Outcome.failed)),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.succeededRC0),
       OrderMoved(Position(0) / "lock" % 1),
       OrderDetachable,
@@ -648,7 +648,9 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
 object LockTest
 {
   private val agentPath = AgentPath("AGENT")
+  private val subagentId = toLocalSubagentId(agentPath)
   private val bAgentPath = AgentPath("B-AGENT")
+  private val bSubagentId = toLocalSubagentId(bAgentPath)
   private val workflowPath = WorkflowPath("WORKFLOW")
   private val workflow1Path = WorkflowPath("WORKFLOW-1")
   private val workflow2Path = WorkflowPath("WORKFLOW-2")

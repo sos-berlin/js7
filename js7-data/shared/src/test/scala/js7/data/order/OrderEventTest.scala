@@ -15,6 +15,7 @@ import js7.data.lock.LockPath
 import js7.data.order.OrderEvent.OrderResumed.{AppendHistoricOutcome, DeleteHistoricOutcome, InsertHistoricOutcome, ReplaceHistoricOutcome}
 import js7.data.order.OrderEvent._
 import js7.data.orderwatch.{ExternalOrderKey, ExternalOrderName, OrderWatchPath}
+import js7.data.subagent.SubagentId
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.{BranchId, Position}
@@ -152,7 +153,13 @@ final class OrderEventTest extends AnyFreeSpec
   }
 
   "OrderProcessingStarted" in {
-    check(OrderProcessingStarted, json"""
+    check(OrderProcessingStarted(SubagentId("SUBAGENT")), json"""
+      {
+        "TYPE": "OrderProcessingStarted",
+        "subagentId": "SUBAGENT"
+      }""")
+
+    check(OrderProcessingStarted(LegacySubagentId), json"""
       {
         "TYPE": "OrderProcessingStarted"
       }""")

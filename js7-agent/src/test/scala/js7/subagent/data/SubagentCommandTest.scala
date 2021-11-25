@@ -85,7 +85,10 @@ final class SubagentCommandTest extends AnyFreeSpec
     "StartOrderProcess" in {
       testJson[SubagentCommand](
         StartOrderProcess(
-          Order(OrderId("ORDER"), (WorkflowPath("WORKFLOW") ~ "1") /: Position(0), Order.Processing),
+          Order(
+            OrderId("ORDER"),
+            (WorkflowPath("WORKFLOW") ~ "1") /: Position(0),
+            Order.Processing(SubagentId("SUBAGENT"))),
           Map("expr" -> expr("'EXPR'"))),
         json"""{
           "TYPE": "StartOrderProcess",
@@ -95,7 +98,8 @@ final class SubagentCommandTest extends AnyFreeSpec
           "order": {
             "id": "ORDER",
             "state": {
-              "TYPE": "Processing"
+              "TYPE": "Processing",
+              "subagentId": "SUBAGENT"
             },
             "workflowPosition": {
               "workflowId": {

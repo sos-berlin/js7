@@ -15,7 +15,8 @@ import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.job.{InternalExecutable, JobKey}
 import js7.data.lock.LockPath
 import js7.data.order.Order.{Attached, AttachedState, Attaching, BetweenCycles, Broken, Cancelled, DelayedAfterError, Detaching, ExpectingNotice, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, InapplicableOrderEventProblem, IsFreshOrReady, Processed, Processing, ProcessingKilled, Prompting, Ready, State, WaitingForLock}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCatched, OrderCoreEvent, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLockAcquired, OrderLockDequeued, OrderLockQueued, OrderLockReleased, OrderMoved, OrderNoticeExpected, OrderNoticePosted, OrderNoticeRead, OrderOrderAdded, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
+import js7.data.order.OrderEvent.{LegacySubagentId, OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCatched, OrderCoreEvent, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLockAcquired, OrderLockDequeued, OrderLockQueued, OrderLockReleased, OrderMoved, OrderNoticeExpected, OrderNoticePosted, OrderNoticeRead, OrderOrderAdded, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
+import js7.data.subagent.SubagentId
 import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fork}
@@ -43,6 +44,8 @@ final class OrderTest extends AnyFreeSpec
       "key2" -> StringValue("value2")),
     historicOutcomes = Vector(
       HistoricOutcome(Position(123), Outcome.Succeeded(NamedValues.rc(0)))))
+
+  private val subagentId = SubagentId("SUBAGENT")
 
   "JSON" - {
     "Order" - {
@@ -89,8 +92,25 @@ final class OrderTest extends AnyFreeSpec
       }
 
       "Procesing (extra Codec)" in {
-        testJson[Order[Order.Processing]](
-          Order(OrderId("ID"), WorkflowPath("WORKFLOW") ~ "VERSION", Order.Processing),
+        testJson[Order[Processing]](
+          Order(OrderId("ID"), WorkflowPath("WORKFLOW") ~ "VERSION", Processing(subagentId)),
+          json"""{
+            "id": "ID",
+            "workflowPosition": {
+              "workflowId": {
+                "path": "WORKFLOW",
+                "versionId": "VERSION"
+              },
+              "position": [ 0 ]
+            },
+            "state": {
+              "TYPE": "Processing",
+              "subagentId": "SUBAGENT"
+            }
+          }""")
+
+        testJson[Order[Processing]](
+          Order(OrderId("ID"), WorkflowPath("WORKFLOW") ~ "VERSION", Processing(LegacySubagentId)),
           json"""{
             "id": "ID",
             "workflowPosition": {
@@ -152,9 +172,10 @@ final class OrderTest extends AnyFreeSpec
       }
 
       "Processing" in {
-        testJson[State](Processing,
+        testJson[State](Processing(SubagentId("SUBAGENT")),
           json"""{
-            "TYPE": "Processing"
+            "TYPE": "Processing",
+            "subagentId": "SUBAGENT"
           }""")
       }
 
@@ -319,7 +340,7 @@ final class OrderTest extends AnyFreeSpec
       OrderAttached(agentPath),
 
       OrderStarted,
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       //OrderStdoutWritten("stdout") is not an OrderCoreEvent
       //OrderStderrWritten("stderr") is not an OrderCoreEvent
       OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
@@ -470,7 +491,7 @@ final class OrderTest extends AnyFreeSpec
     }
 
     "Processing" in {
-      checkAllEvents(Order(orderId, workflowId, Processing),
+      checkAllEvents(Order(orderId, workflowId, Processing(subagentId)),
         deletionMarkable[Processing] orElse
         markable[Processing] orElse
         cancelMarkedAllowed[Processing] orElse

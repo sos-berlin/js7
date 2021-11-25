@@ -16,7 +16,7 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.order.DeleteOrderWhenTerminatedTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
-import js7.tests.testenv.DirectoryProvider.script
+import js7.tests.testenv.DirectoryProvider.{script, toLocalSubagentId}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -44,7 +44,7 @@ final class DeleteOrderWhenTerminatedTest extends AnyFreeSpec with ControllerAge
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderStarted,
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderDeletionMarked,
       OrderProcessed(Outcome.succeededRC0),
       OrderMoved(Position(1)),
@@ -65,7 +65,7 @@ final class DeleteOrderWhenTerminatedTest extends AnyFreeSpec with ControllerAge
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderStarted,
-      OrderProcessingStarted,
+      OrderProcessingStarted(subagentId),
       OrderDeletionMarked,
       OrderProcessed(Outcome.succeededRC0),
       OrderMoved(Position(1)),
@@ -81,6 +81,7 @@ object DeleteOrderWhenTerminatedTest
   private val quickPathExecutable = RelativePathExecutable("quick.cmd")
   private val slowPathExecutable = RelativePathExecutable("slow.cmd")
   private val agentPath = AgentPath("AGENT")
+  private val subagentId = toLocalSubagentId(agentPath)
   private val versionId = VersionId("INITIAL")
 
   private val quickWorkflow = Workflow.of(

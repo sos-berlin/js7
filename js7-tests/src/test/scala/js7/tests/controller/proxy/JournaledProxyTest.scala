@@ -29,7 +29,7 @@ import js7.tests.controller.proxy.ClusterProxyTest.{primaryUserAndPassword, work
 import js7.tests.controller.proxy.JournaledProxyObservableTester.syntax._
 import js7.tests.controller.proxy.JournaledProxyTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
-import js7.tests.testenv.DirectoryProvider.script
+import js7.tests.testenv.DirectoryProvider.{script, toLocalSubagentId}
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import org.scalatest.BeforeAndAfterAll
@@ -123,7 +123,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with Controll
             OrderAttachable(agentPath),
             OrderAttached(agentPath),
             OrderStarted,
-            OrderProcessingStarted,
+            OrderProcessingStarted(subagentId),
             OrderStdoutWritten("TEST ☘\n"),
             OrderProcessed(Succeeded(NamedValues.rc(0))),
             OrderMoved(Position(1)),
@@ -137,4 +137,5 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with Controll
 
 object JournaledProxyTest {
   private val agentPath = AgentPath("AGENT")
+  private val subagentId = toLocalSubagentId(agentPath)
 }
