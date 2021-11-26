@@ -20,7 +20,6 @@ import monix.eval.Task
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.Deadline.now
 import scala.jdk.CollectionConverters._
-import scala.util.Try
 import scala.util.control.NonFatal
 
 /**
@@ -39,6 +38,12 @@ class RichProcess protected[process](
    * UTF-8 encoded stdin.
    */
   final lazy val stdinWriter = new OutputStreamWriter(new BufferedOutputStream(stdin), UTF_8)
+
+  protected def onSigkill(): Unit =
+    if (process.isAlive) {
+      logger.debug("destroyForcibly")
+      process.destroyForcibly()
+    }
 
   private val _terminated: Task[ReturnCode] =
     Task.defer {
@@ -80,10 +85,7 @@ class RichProcess protected[process](
             // So we forcibly close stdout and stderr.
             // The child processes write operations will fail with EPIPE or may block !!!
             // Let destroyForcibly try to close the handles (implementation dependent)
-            logger.debug("destroyForcibly, and close stdout and stderr")
-            process.destroyForcibly()
-            Try(process.stdout.close())
-            Try(process.stderr.close())
+            onSigkill()
           })
       }
     }

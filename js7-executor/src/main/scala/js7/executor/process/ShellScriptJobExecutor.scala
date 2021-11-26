@@ -9,7 +9,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.RightUnit
-import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEitherF}
+import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.data.job.{JobConf, JobResource, JobResourcePath, ShellScriptExecutable}
 import js7.executor.configuration.JobExecutorConf
 import js7.executor.configuration.Problems.SignedInjectionNotAllowed

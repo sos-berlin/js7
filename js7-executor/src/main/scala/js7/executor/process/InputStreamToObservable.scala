@@ -1,39 +1,73 @@
 package js7.executor.process
 
-import cats.effect.ExitCase
+import cats.effect.{ExitCase, Resource}
 import java.io.{InputStream, InputStreamReader, Reader}
 import java.nio.charset.StandardCharsets.UTF_8
+import js7.base.log.Logger
 import js7.base.monixutils.UnbufferedReaderObservable
 import js7.base.thread.IOExecutor
-import monix.eval.{Fiber, Task}
-import monix.reactive.Observer
-import scala.concurrent.Promise
+import js7.base.utils.ScalaUtils.syntax.RichThrowable
+import monix.eval.Task
+import monix.execution.Cancelable
+import monix.reactive.{Observable, Observer}
+import scala.util.control.NonFatal
+import scala.util.{Failure, Success}
 
 object InputStreamToObservable
 {
+  private val logger = Logger[this.type]
+
   def copyInputStreamToObservable(in: InputStream, observer: Observer[String], charBufferSize: Int)
     (implicit iox: IOExecutor)
-  : Task[Fiber[Unit]] =
-    copyReaderToObservable(new InputStreamReader(in, UTF_8), observer, charBufferSize)
+  : Task[Unit] =
+    copyInputStreamToObservable(Resource.pure[Task, InputStream](in), observer, charBufferSize)
 
-  def copyReaderToObservable(reader: Reader, observer: Observer[String], charBufferSize: Int)
+  def copyInputStreamToObservable(in: Resource[Task, InputStream], observer: Observer[String], charBufferSize: Int)
     (implicit iox: IOExecutor)
-  : Task[Fiber[Unit]] =
-    Task.deferAction { implicit s =>
-      Task {
-        val onTerminated = Promise[Unit]()
-        val cancelable = new UnbufferedReaderObservable(reader, charBufferSize)
-          .executeOn(iox.scheduler)
-          .guaranteeCase {
-            case ExitCase.Error(t) => Task(onTerminated.failure(t))
-            case ExitCase.Completed | ExitCase.Canceled => Task(onTerminated.success(()))
-          }
-          .subscribe(observer)
+  : Task[Unit] =
+    copyReaderToObservable(in.map(new InputStreamReader(_, UTF_8)), observer, charBufferSize)
 
-        Fiber(
-          Task.fromFuture(onTerminated.future),
-          Task(cancelable.cancel()))
-      }.onErrorHandle(t =>
-        Fiber(Task.raiseError(t), Task.unit))
+  def copyReaderToObservable(reader: Resource[Task, Reader], observer: Observer[String], charBufferSize: Int)
+    (implicit iox: IOExecutor)
+  : Task[Unit] =
+    Task.create[Unit] { (scheduler, callback) =>
+      try
+        readerToObservable(reader, charBufferSize)
+          .guaranteeCase {
+            case ExitCase.Canceled =>
+              logger.debug("Canceled")
+              Task(callback(Success(())))
+            case _ => Task.unit
+          }
+          .subscribe(
+            new Observer[String] {
+              def onNext(o: String) =
+                observer.onNext(o)
+
+              def onError(t: Throwable) = {
+                logger.debug("⚠️ " + t.toStringWithCauses)
+                observer.onError(t)
+                callback(Failure(t))
+              }
+
+              def onComplete() = {
+                observer.onComplete()
+                callback(Success(()))
+              }
+            })(scheduler)
+      catch { case NonFatal(t) =>
+        callback(Failure(t))
+        Cancelable.empty
+      }
     }
+
+  def readerToObservable(reader: Resource[Task, Reader], charBufferSize: Int)
+    (implicit iox: IOExecutor)
+  : Observable[String] =
+    Observable
+      .fromTask(reader.use(reader => Task {
+        new UnbufferedReaderObservable(reader, charBufferSize)
+          .executeOn(iox.scheduler)
+      }))
+      .flatten
 }

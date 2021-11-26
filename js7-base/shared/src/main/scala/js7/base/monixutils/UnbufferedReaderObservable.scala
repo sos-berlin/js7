@@ -94,7 +94,7 @@ extends Observable[String]
     var streamErrors = true
 
     try {
-      val length = fillBuffer(in, buffer)
+      val length = in.read(buffer, 0, buffer.length)
       // From this point on, whatever happens is a protocol violation
       streamErrors = false
 
@@ -135,18 +135,6 @@ extends Observable[String]
     }
   }
 
-  private def fillBuffer(in: Reader, buffer: Array[Char], nTotalCharsRead: Int = 0): Int = {
-    if (nTotalCharsRead >= buffer.length) {
-      nTotalCharsRead
-    } else {
-      val nCharsRead = in.read(buffer, nTotalCharsRead, buffer.length - nTotalCharsRead)
-      if (nTotalCharsRead <= 0)
-        nCharsRead // no more chars (-1 via Reader.read contract) available, end the observable
-      else
-        nTotalCharsRead // we read the last chars available
-    }
-  }
-
   private def sendError(out: Subscriber[Nothing], e: Throwable)(implicit s: UncaughtExceptionReporter): Unit = {
     try {
       out.onError(e)
@@ -174,5 +162,4 @@ object UnbufferedReaderObservable
       .resource(newReader)(reader => Task(reader.close()))
       .flatMap(in => new UnbufferedReaderObservable(in, chunkSizeMax))
       .executeAsync
-
 }

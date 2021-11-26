@@ -4,11 +4,13 @@ import io.circe._
 import io.circe.syntax._
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import js7.base.io.process.ReturnCode
+import js7.base.io.process.{ProcessSignal, ReturnCode}
 import js7.base.problem.{Checked, Problem}
+import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.typeclasses.IsEmpty.syntax._
-import js7.data.value.NamedValues
+import js7.data.value.{NamedValues, NumberValue}
+import org.jetbrains.annotations.TestOnly
 import scala.collection.View
 import scala.util.{Failure, Success, Try}
 
@@ -28,6 +30,10 @@ object Outcome
   val succeededRC0 = Succeeded.returnCode0
   val failed = new Failed(None, Map.empty)
   val RecoveryGeneratedOutcome = new Disrupted(Disrupted.JobSchedulerRestarted)
+
+  @TestOnly
+  def failedWithSignal(signal: ProcessSignal) =
+    Failed(Map("returnCode" -> NumberValue(if (isWindows) 0 else 128 + signal.number)))
 
   /** The job has terminated. */
   sealed trait Completed extends Outcome {
@@ -153,6 +159,10 @@ object Outcome
     def isSucceeded = false
     override def toString = s"⚠️ Killed($outcome)"
   }
+
+  @TestOnly
+  def killed(signal: ProcessSignal): Killed =
+    Killed(Outcome.failedWithSignal(signal))
 
   /** No response from job - some other error has occurred. */
   final case class Disrupted(reason: Disrupted.Reason) extends Outcome with NotSucceeded {

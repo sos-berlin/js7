@@ -2,7 +2,7 @@ package js7.tests
 
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
-import js7.base.io.process.ReturnCode
+import js7.base.io.process.{ProcessSignal, ReturnCode}
 import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.MonixBlocking.syntax._
@@ -59,13 +59,8 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
     eventWatch.await[OrderAttached](_.key == order.id)
     controllerApi.executeCommand(CancelOrders(Set(order.id), CancellationMode.FreshOnly)).await(99.seconds).orThrow
     eventWatch.await[OrderCancelled](_.key == order.id)
-    assert(eventWatch.keyedEvents[OrderEvent](order.id) == Vector(
-      OrderAdded(singleJobWorkflow.id, order.arguments, order.scheduledFor),
-      OrderAttachable(agentPath),
-      OrderAttached(agentPath),
+    assert(onlyRelevantEvents(eventWatch.keyedEvents[OrderEvent](order.id)) == Vector(
       OrderCancellationMarked(CancellationMode.FreshOnly),
-      OrderDetachable,
-      OrderDetached,
       OrderCancelled))
   }
 
@@ -75,18 +70,15 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
     controllerApi.executeCommand(CancelOrders(Set(order.id), CancellationMode.FreshOrStarted())).await(99.seconds).orThrow
     eventWatch.await[OrderFinished](_.key == order.id)
-    assert(eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
-      OrderAdded(singleJobWorkflow.id, order.arguments, order.scheduledFor),
-      OrderAttachable(agentPath),
-      OrderAttached(agentPath),
-      OrderStarted,
+
+    val events = eventWatch.keyedEvents[OrderEvent](order.id)
+      .filterNot(_.isInstanceOf[OrderStdWritten])
+    assert(onlyRelevantEvents(events) == Vector(
       OrderProcessingStarted,
       OrderCancellationMarked(CancellationMode.FreshOrStarted()),
       OrderCancellationMarkedOnAgent,
       OrderProcessed(Outcome.succeededRC0),
       OrderMoved(Position(1)),
-      OrderDetachable,
-      OrderDetached,
       OrderFinished))
   }
 
@@ -95,6 +87,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
     controller.addOrderBlocking(order)
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
     sleep(100.ms)  // ControllerOrderKeeper may take some time to update its state
+
     // Controller knows, the order has started
     assert(controllerApi.executeCommand(CancelOrders(Set(order.id), CancellationMode.FreshOnly)).await(99.seconds) ==
       Left(CancelStartedOrderProblem(OrderId("❌"))))
@@ -109,18 +102,15 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
     controllerApi.executeCommand(CancelOrders(Set(order.id), CancellationMode.FreshOrStarted())).await(99.seconds).orThrow
     eventWatch.await[OrderCancelled](_.key == order.id)
-    assert(eventWatch.keyedEvents[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
-      OrderAdded(twoJobsWorkflow.id, order.arguments, order.scheduledFor),
-      OrderAttachable(agentPath),
-      OrderAttached(agentPath),
-      OrderStarted,
+
+    val events = eventWatch.keyedEvents[OrderEvent](order.id)
+      .filterNot(_.isInstanceOf[OrderStdWritten])
+    assert(onlyRelevantEvents(events) == Vector(
       OrderProcessingStarted,
       OrderCancellationMarked(CancellationMode.FreshOrStarted()),
       OrderCancellationMarkedOnAgent,
       OrderProcessed(Outcome.succeededRC0),
       OrderMoved(Position(1)),
-      OrderDetachable,
-      OrderDetached,
       OrderCancelled))
   }
 
@@ -133,17 +123,11 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
     val order = FreshOrder(OrderId("🔶"), twoJobsWorkflow.path, Map("sleep" -> 2))
     testCancel(order, Some(twoJobsWorkflow.id /: Position(1)), immediately = false,
       expectedEvents = mode => Vector(
-        OrderAdded(twoJobsWorkflow.id, order.arguments),
-        OrderAttachable(agentPath),
-        OrderAttached(agentPath),
-        OrderStarted,
         OrderProcessingStarted,
         OrderCancellationMarked(mode),
         OrderCancellationMarkedOnAgent,
         OrderProcessed(Outcome.succeededRC0),
         OrderMoved(Position(1)),
-        OrderDetachable,
-        OrderDetached,
         OrderCancelled))
   }
 
@@ -164,17 +148,11 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
       val t = now
       testCancel(order, None, awaitTrapping = true, immediately = false,
         mode => Vector(
-          OrderAdded(order.workflowPath ~ versionId, order.arguments),
-          OrderAttachable(agentPath),
-          OrderAttached(agentPath),
-          OrderStarted,
           OrderProcessingStarted,
           OrderCancellationMarked(mode),
           OrderCancellationMarkedOnAgent,
           OrderProcessed(Outcome.Killed(Outcome.Failed(NamedValues.rc(ReturnCode(SIGKILL))))),
           OrderProcessingKilled,
-          OrderDetachable,
-          OrderDetached,
           OrderCancelled))
       assert(t.elapsed > sigkillDelay)
     }
@@ -183,17 +161,11 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
       val order = FreshOrder(OrderId("🟧️"), sigkillImmediatelyWorkflow.path)
       testCancel(order, None, awaitTrapping = true, immediately = false,
         mode => Vector(
-          OrderAdded(order.workflowPath ~ versionId, order.arguments),
-          OrderAttachable(agentPath),
-          OrderAttached(agentPath),
-          OrderStarted,
           OrderProcessingStarted,
           OrderCancellationMarked(mode),
           OrderCancellationMarkedOnAgent,
           OrderProcessed(Outcome.Killed(Outcome.Failed(NamedValues.rc(ReturnCode(SIGKILL))))),
           OrderProcessingKilled,
-          OrderDetachable,
-          OrderDetached,
           OrderCancelled))
     }
   }
@@ -201,18 +173,11 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
   private def testCancelFirstJob(order: FreshOrder, workflowPosition: Option[WorkflowPosition], immediately: Boolean): Unit =
     testCancel(order, workflowPosition, immediately = immediately,
       expectedEvents = mode => Vector(
-        OrderAdded(order.workflowPath ~ versionId, order.arguments),
-        OrderAttachable(agentPath),
-        OrderAttached(agentPath),
-        OrderStarted,
         OrderProcessingStarted,
         OrderCancellationMarked(mode),
         OrderCancellationMarkedOnAgent,
-        OrderProcessed(Outcome.Killed(Outcome.Failed(NamedValues.rc(
-          if (isWindows) ReturnCode(0) else ReturnCode(if (immediately) SIGKILL else SIGTERM))))),
+        OrderProcessed(Outcome.killed(if (immediately) SIGKILL else SIGTERM)),
         OrderProcessingKilled,
-        OrderDetachable,
-        OrderDetached,
         OrderCancelled))
 
   "Cancel a forking order and kill job" in {
@@ -296,8 +261,9 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
     controllerApi.executeCommand(CancelOrders(Set(order.id), mode))
       .await(99.seconds).orThrow
     eventWatch.await[OrderCancelled](_.key == order.id)
-    assert(eventWatch.keyedEvents[OrderEvent](order.id)
-      .filterNot(_.isInstanceOf[OrderStdWritten]) ==
+    assert(onlyRelevantEvents(
+      eventWatch.keyedEvents[OrderEvent](order.id)
+        .filterNot(_.isInstanceOf[OrderStdWritten])) ==
       expectedEvents(mode))
   }
 
@@ -362,11 +328,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
 
     val events = eventWatch.keyedEvents[OrderEvent](after = eventId)
       .collect { case KeyedEvent(`orderId`, event) => event }
-    assert(events == Seq(
-      OrderAdded(workflow.id),
-      OrderAttachable(agentPath),
-      OrderAttached(agentPath),
-      OrderStarted,
+    assert(onlyRelevantEvents(events) == Seq(
       OrderProcessingStarted,
       OrderStdoutWritten("READY\n"),
       OrderCancellationMarked(CancellationMode.kill()),
@@ -378,8 +340,6 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
           |""".stripMargin),
       OrderProcessed(Outcome.Killed(Outcome.succeededRC0)),
       OrderProcessingKilled,
-      OrderDetachable,
-      OrderDetached,
       OrderCancelled))
   }
 
@@ -423,11 +383,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
 
     val events = eventWatch.keyedEvents[OrderEvent](after = eventId)
       .collect { case KeyedEvent(`orderId`, event) => event }
-    assert(events == Seq(
-      OrderAdded(workflow.id),
-      OrderAttachable(agentPath),
-      OrderAttached(agentPath),
-      OrderStarted,
+    assert(onlyRelevantEvents(events) == Seq(
       OrderProcessingStarted,
       OrderStdoutWritten("READY\n"),
       OrderCancellationMarked(FreshOrStarted(Some(Kill(false,None)))),
@@ -437,11 +393,8 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
         //"""CHILD SIGTERM
         //  |CHILD EXIT
         //  |""".stripMargin),
-      OrderProcessed(Outcome.Killed(Outcome.Failed(Map(
-        "returnCode" -> NumberValue(128 + 15/*SIGTERM*/))))),
+      OrderProcessed(Outcome.killed(SIGTERM)),
       OrderProcessingKilled,
-      OrderDetachable,
-      OrderDetached,
       OrderCancelled))
   }
 
@@ -459,9 +412,8 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
             |set -euo pipefail
             |
             |sleep 111 &
-            |trap "wait; exit" SIGTERM
+            |trap "wait; exit" EXIT SIGTERM
             |echo READY
-            |wait
             |""".stripMargin),
         sigkillDelay = Some(500.ms)))))
     addWorkflow(workflow)
@@ -479,121 +431,131 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
 
     val events = eventWatch.keyedEvents[OrderEvent](after = eventId)
       .collect { case KeyedEvent(`orderId`, event) => event }
-    assert(events == Seq(
-      OrderAdded(workflow.id),
-      OrderAttachable(agentPath),
-      OrderAttached(agentPath),
-      OrderStarted,
+    assert(onlyRelevantEvents(events) == Seq(
       OrderProcessingStarted,
       OrderStdoutWritten("READY\n"),
       OrderCancellationMarked(FreshOrStarted(Some(Kill(false,None)))),
       OrderCancellationMarkedOnAgent,
-      OrderProcessed(Outcome.Killed(Outcome.Failed(Map(
-        "returnCode" -> NumberValue(128 + 9/*SIGKILL*/))))),
+      OrderProcessed(Outcome.killed(SIGKILL)),
       OrderProcessingKilled,
-      OrderDetachable,
-      OrderDetached,
       OrderCancelled))
   }
 
-  "Cancel a terminated script with a still running child process" in {
-    // The child processes are not killed, but cut off from stdout and stderr.
-    val name = "TERMINATED-SCRIPT"
-    val orderId = OrderId(name)
-    val v = VersionId(name)
-    val workflow = Workflow(
-      WorkflowPath(name) ~ v,
-      Seq(Execute(WorkflowJob(
-        agentPath,
+  "Cancel a SIGTERMed script with a still running child process" - {
+    "Without traps" in {
+      run("TERMINATED-SCRIPT", "", SIGTERM)
+    }
+
+    "With traps" in {
+      run("TERMINATED-SCRIPT-TRAPPED", """
+        |trap "wait && exit 143" SIGTERM  # 15+128
+        |trap "rc=$? && wait && exit $?" EXIT
+        |""".stripMargin, SIGKILL)
+    }
+
+    def run(name: String, traps: String, expectedSignal: ProcessSignal): Unit = {
+      // The child processes are not killed, but cut off from stdout and stderr.
+      val orderId = OrderId(name)
+      val v = VersionId(name)
+      val workflow = Workflow(
+        WorkflowPath(name) ~ v,
+        Seq(Execute(WorkflowJob(
+          agentPath,
+            ShellScriptExecutable(
+              """#!/usr/bin/env bash
+                |set -euo pipefail
+                |""".stripMargin +
+                traps + """
+                |sleep 111 &
+                |echo READY
+                |for i in {0..99}; do
+                |  sleep 0.1
+                |done
+                |""".stripMargin),
+          sigkillDelay = Some(500.ms)))))
+      addWorkflow(workflow)
+
+      val eventId = eventWatch.lastAddedEventId
+      controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+      eventWatch.await[OrderStdoutWritten](after = eventId)
+
+      sleep(500.ms)
+      controllerApi
+        .executeCommand(
+          CancelOrders(Seq(orderId), CancellationMode.kill()))
+        .await(99.s).orThrow
+      eventWatch.await[OrderTerminated](after = eventId)
+
+      val events = eventWatch.keyedEvents[OrderEvent](after = eventId)
+        .collect { case KeyedEvent(`orderId`, event) => event }
+      assert(onlyRelevantEvents(events) == Seq(
+        OrderProcessingStarted,
+        OrderStdoutWritten("READY\n"),
+        OrderCancellationMarked(CancellationMode.kill()),
+        OrderCancellationMarkedOnAgent,
+        OrderProcessed(Outcome.killed(expectedSignal)),
+        OrderProcessingKilled,
+        OrderCancelled))
+    }
+  }
+
+  "Sleep in another script" - {
+    "Without traps" in {
+      run("FOREGROUND", "", SIGTERM)
+    }
+
+    "Withs traps" in {
+      run("FOREGROUND-TRAPPED",
+        """trap "wait && exit 143" SIGTERM  # 15+128
+          |trap "rc=$? && wait && exit $?" EXIT
+          |""".stripMargin,
+        SIGKILL)
+    }
+    def run(name: String, traps: String, expectedSignal: ProcessSignal): Unit = {
+      // The child processes are not killed, but cut off from stdout and stderr.
+      val orderId = OrderId(name)
+      val v = VersionId(name)
+      val workflow = Workflow(
+        WorkflowPath(name) ~ v,
+        Seq(Execute(WorkflowJob(
+          agentPath,
           ShellScriptExecutable(
-          """#!/usr/bin/env bash
-            |set -euo pipefail
-            |
-            |sleep 111 &
-            |echo READY
-            |""".stripMargin),
-        sigkillDelay = Some(500.ms)))))
-    addWorkflow(workflow)
+           """#!/usr/bin/env bash
+              |set -euo pipefail
+              |""".stripMargin +
+             traps + """
+              |if [ "$1" == "-child" ]; then
+              |  sleep 120
+              |else
+              |  echo READY
+              |  "$0" -child
+              |fi
+              |""".stripMargin),
+          sigkillDelay = Some(500.ms)))))
+      addWorkflow(workflow)
 
-    val eventId = eventWatch.lastAddedEventId
-    controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
-    eventWatch.await[OrderStdoutWritten](after = eventId)
+      val eventId = eventWatch.lastAddedEventId
+      controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+      eventWatch.await[OrderStdoutWritten](after = eventId)
 
-    sleep(500.ms)
-    controllerApi
-      .executeCommand(
-        CancelOrders(Seq(orderId), CancellationMode.kill()))
-      .await(99.s).orThrow
-    eventWatch.await[OrderTerminated](after = eventId)
+      sleep(500.ms)
+      controllerApi
+        .executeCommand(
+          CancelOrders(Seq(orderId), CancellationMode.kill()))
+        .await(99.s).orThrow
+      eventWatch.await[OrderTerminated](after = eventId)
 
-    val events = eventWatch.keyedEvents[OrderEvent](after = eventId)
-      .collect { case KeyedEvent(`orderId`, event) => event }
-    assert(events == Seq(
-      OrderAdded(workflow.id),
-      OrderAttachable(agentPath),
-      OrderAttached(agentPath),
-      OrderStarted,
-      OrderProcessingStarted,
-      OrderStdoutWritten("READY\n"),
-      OrderCancellationMarked(CancellationMode.kill()),
-      OrderCancellationMarkedOnAgent,
-      OrderProcessed(Outcome.Killed(Outcome.succeededRC0)),
-      OrderProcessingKilled,
-      OrderDetachable,
-      OrderDetached,
-      OrderCancelled))
-  }
-
-  "Sleep in another script" in {
-    // The child processes are not killed, but cut off from stdout and stderr.
-    val name = "FOREGROUND"
-    val orderId = OrderId(name)
-    val v = VersionId(name)
-    val workflow = Workflow(
-      WorkflowPath(name) ~ v,
-      Seq(Execute(WorkflowJob(
-        agentPath,
-        ShellScriptExecutable(
-          """#!/usr/bin/env bash
-            |set -euo pipefail
-            |if [ "$1" == "-child" ]; then
-            |  sleep 120
-            |else
-            |  echo READY
-            |  "$0" -child
-            |fi
-            |""".stripMargin),
-        sigkillDelay = Some(500.ms)))))
-    addWorkflow(workflow)
-
-    val eventId = eventWatch.lastAddedEventId
-    controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
-    eventWatch.await[OrderStdoutWritten](after = eventId)
-
-    sleep(500.ms)
-    controllerApi
-      .executeCommand(
-        CancelOrders(Seq(orderId), CancellationMode.kill()))
-      .await(99.s).orThrow
-    eventWatch.await[OrderTerminated](after = eventId)
-
-    val events = eventWatch.keyedEvents[OrderEvent](after = eventId)
-      .collect { case KeyedEvent(`orderId`, event) => event }
-    assert(events == Seq(
-      OrderAdded(workflow.id),
-      OrderAttachable(agentPath),
-      OrderAttached(agentPath),
-      OrderStarted,
-      OrderProcessingStarted,
-      OrderStdoutWritten("READY\n"),
-      OrderCancellationMarked(FreshOrStarted(Some(Kill(false,None)))),
-      OrderCancellationMarkedOnAgent,
-      OrderProcessed(Outcome.Killed(Outcome.Failed(Map(
-        "returnCode" -> NumberValue(128 + 15/*SIGTERM*/))))),
-      OrderProcessingKilled,
-      OrderDetachable,
-      OrderDetached,
-      OrderCancelled))
+      val events = eventWatch.keyedEvents[OrderEvent](after = eventId)
+        .collect { case KeyedEvent(`orderId`, event) => event }
+      assert(onlyRelevantEvents(events) == Seq(
+        OrderProcessingStarted,
+        OrderStdoutWritten("READY\n"),
+        OrderCancellationMarked(FreshOrStarted(Some(Kill(false,None)))),
+        OrderCancellationMarkedOnAgent,
+        OrderProcessed(Outcome.killed(expectedSignal)),
+        OrderProcessingKilled,
+        OrderCancelled))
+    }
   }
 
   "Sleep in a background script and do not wait for it" in {
@@ -608,6 +570,9 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
         ShellScriptExecutable(
           """#!/usr/bin/env bash
             |set -euo pipefail
+            |trap "wait && exit 143" SIGTERM  # 15+128
+            |trap "rc=$? && wait && exit $?" EXIT
+            |
             |if [ "$1" == "-child" ]; then
             |  sleep 120
             |else
@@ -631,19 +596,13 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
 
     val events = eventWatch.keyedEvents[OrderEvent](after = eventId)
       .collect { case KeyedEvent(`orderId`, event) => event }
-    assert(events == Seq(
-      OrderAdded(workflow.id),
-      OrderAttachable(agentPath),
-      OrderAttached(agentPath),
-      OrderStarted,
+    assert(onlyRelevantEvents(events) == Seq(
       OrderProcessingStarted,
       OrderStdoutWritten("READY\n"),
       OrderCancellationMarked(FreshOrStarted(Some(Kill(false,None)))),
       OrderCancellationMarkedOnAgent,
-      OrderProcessed(Outcome.Killed(Outcome.succeededRC0)),
+      OrderProcessed(Outcome.killed(SIGKILL)),
       OrderProcessingKilled,
-      OrderDetachable,
-      OrderDetached,
       OrderCancelled))
   }
 
@@ -717,4 +676,15 @@ object CancelOrdersTest
       "🥕" -> Workflow.of(
         Execute(WorkflowJob(agentPath, sleepingExecutable)))),
     Execute(WorkflowJob(agentPath, sleepingExecutable)))
+
+  private def onlyRelevantEvents(events: Seq[OrderEvent]): Seq[OrderEvent] =
+    events.filter {
+      case _: OrderAdded => false
+      case _: OrderStarted => false
+      case _: OrderAttachable => false
+      case _: OrderAttached => false
+      case _: OrderDetachable => false
+      case _: OrderDetached => false
+      case _ => true
+    }
 }
