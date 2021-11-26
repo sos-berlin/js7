@@ -67,7 +67,8 @@ object ShellScriptJobExecutor
 
   private def writeScriptToFile(script: String, tmpDir: Path, userName: Option[WindowsUserName]): Checked[Path] =
     Checked.catchNonFatal {
-      createTempFile(tmpDir, "script-", isWindows ?? ".cmd", ShellFileAttributes: _*)
+      val ext = if (isWindows) ".cmd" else ".sh"
+      createTempFile(tmpDir, "script-", ext, ShellFileAttributes: _*)
     }.flatMap { file =>
       Checked.catchNonFatal {
         file.write(script, JobExecutorConf.FileEncoding)
