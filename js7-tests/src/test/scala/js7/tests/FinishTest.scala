@@ -8,13 +8,11 @@ import js7.data.event.KeyedEvent
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
-import js7.data.subagent.SubagentId
 import js7.data.value.NamedValues
 import js7.data.workflow.instructions.Fork
 import js7.data.workflow.position.BranchId.Then
 import js7.data.workflow.position.Position
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
-import js7.tests.CalendarTest.agentPath
 import js7.tests.FinishTest._
 import js7.tests.testenv.DirectoryProvider
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
@@ -202,6 +200,6 @@ object FinishTest
 {
   private val orderId = OrderId("🔺")
   private val TestAgentPath = AgentPath("AGENT")
-  private val subagentId = toLocalSubagentId(agentPath)
+  private val subagentId = toLocalSubagentId(TestAgentPath)
   private val TestWorkflowId = WorkflowPath("WORKFLOW") ~ "INITIAL"
 }
