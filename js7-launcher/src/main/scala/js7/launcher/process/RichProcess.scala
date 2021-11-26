@@ -37,9 +37,15 @@ class RichProcess protected[process](
   /**
    * UTF-8 encoded stdin.
    */
-  lazy val stdinWriter = new OutputStreamWriter(new BufferedOutputStream(stdin), UTF_8)
+  final lazy val stdinWriter = new OutputStreamWriter(new BufferedOutputStream(stdin), UTF_8)
 
-  private lazy val _terminated: Task[ReturnCode] =
+  protected def onSigkill(): Unit =
+    if (process.isAlive) {
+      logger.debug("destroyForcibly")
+      process.destroyForcibly()
+    }
+
+  private val _terminated: Task[ReturnCode] =
     Task.defer {
       process.returnCode.map(Task.pure)
         .getOrElse(ioTask {
@@ -64,50 +70,51 @@ class RichProcess protected[process](
             destroy(force = false)
 
         case SIGKILL =>
-          processConfiguration
-            .toKillScriptCommandArgumentsOption(pidOption)
-            .fold(kill)(args =>
-              executeKillScript(args ++ pidOption.map(o => s"--pid=${o.string}"))
-                .onErrorHandle(t => logger.error(
-                  s"Cannot start kill script command '$args': ${t.toStringWithCauses}"))
-                .tapEval(_ => kill))
-            .flatMap(_ => Task {
-              // The process may have terminated while long running child processes
-              // inherting the file handle still use these.
-              // So we forcibly close stdout and stderr.
-              // The child processes may receive EPIPE or may block !!!
-              process.stdout.close()
-              process.stderr.close()
-            })
+          ifAlive("sendProcessSignal SIGKILL")(
+            processConfiguration
+              .toKillScriptCommandArgumentsOption(pidOption)
+              .fold(kill)(args =>
+                executeKillScript(args ++ pidOption.map(o => s"--pid=${o.string}"))
+                  .onErrorHandle(t => logger.error(
+                    s"Cannot start kill script command '$args': ${t.toStringWithCauses}"))
+                  .tapEval(_ => kill))
+          ).guarantee(Task {
+            // The process may have terminated
+            // while long running child processes inheriting the file handles
+            // still use these.
+            // So we forcibly close stdout and stderr.
+            // The child processes write operations will fail with EPIPE or may block !!!
+            // Let destroyForcibly try to close the handles (implementation dependent)
+            onSigkill()
+          })
       }
     }
 
   private def executeKillScript(args: Seq[String]): Task[Unit] =
-    if (!process.isAlive) {
-      Task(logger.debug("executeKillScript: Process has just died"))
-    } else if (isMac)
-      Task {
-        // TODO On MacOS, the kill script may kill a foreign process like the developers IDE
-        logger.warn("Execution of kill script is suppressed on MacOS")
-      }
-    else
-      Task.defer {
-        logger.info("Executing kill script: " + args.mkString("  "))
-        val processBuilder = new ProcessBuilder(args.asJava)
-          .redirectOutput(INHERIT)
-          .redirectError(INHERIT)
-        processBuilder
-          .startRobustly()
-          .executeOn(iox.scheduler)
-          .flatMap(onKillProcess =>
-            ioTask {
-              waitForProcessTermination(JavaProcess(onKillProcess))
-            } >> Task {
-              val exitCode = onKillProcess.exitValue
-              val logLevel = if (exitCode == 0) LogLevel.Debug else LogLevel.Warn
-              logger.log(logLevel, s"Kill script '${args(0)}' has returned exit code $exitCode")
-            })
-      }
+    ifAlive("executeKillScript")(
+      if (isMac)
+        Task {
+          // TODO On MacOS, the kill script may kill a foreign process like the developers IDE
+          logger.warn("Execution of kill script is suppressed on MacOS")
+        }
+      else
+        Task.defer {
+          logger.info("Executing kill script: " + args.mkString("  "))
+          val processBuilder = new ProcessBuilder(args.asJava)
+            .redirectOutput(INHERIT)
+            .redirectError(INHERIT)
+          processBuilder
+            .startRobustly()
+            .executeOn(iox.scheduler)
+            .flatMap(onKillProcess =>
+              ioTask {
+                waitForProcessTermination(JavaProcess(onKillProcess))
+              } >> Task {
+                val exitCode = onKillProcess.exitValue
+                val logLevel = if (exitCode == 0) LogLevel.Debug else LogLevel.Warn
+                logger.log(logLevel, s"Kill script '${args(0)}' has returned exit code $exitCode")
+              })
+        })
 
   private def kill: Task[Unit] =
     destroy(force = true)
@@ -128,29 +135,34 @@ class RichProcess protected[process](
       val argsPattern =
         if (force) processConfiguration.killWithSigkill
         else processConfiguration.killWithSigterm
-      if (!process.isAlive)
-        Task(logger.debug("destroyWithUnixCommand: Process has just died"))
-      else if (argsPattern.isEmpty)
-        Task(destroyWithJava(force))
-      else if (!argsPattern.contains("$pid")) {
-        logger.error("Missing '$pid' in configured kill command")
-        Task(destroyWithJava(force))
-      } else {
-        val args = argsPattern.map {
-          case "$pid" => pid.number.toString
-          case o => o
-        }
-        executeKillCommand(args)
-          .flatMap { rc =>
-            if (rc.isSuccess)
-              Task.unit
-            else Task {
-              logger.warn(s"Could not kill with unix command: ${args.mkString(" ")} => $rc")
-              destroyWithJava(force)
-            }
+      ifAlive("destroyWithUnixCommand")(
+        if (argsPattern.isEmpty)
+          Task(destroyWithJava(force))
+        else if (!argsPattern.contains("$pid")) {
+          logger.error("Missing '$pid' in configured kill command")
+          Task(destroyWithJava(force))
+        } else {
+          val args = argsPattern.map {
+            case "$pid" => pid.number.toString
+            case o => o
           }
-      }
+          executeKillCommand(args)
+            .flatMap { rc =>
+              if (rc.isSuccess)
+                Task.unit
+              else Task {
+                logger.warn(s"Could not kill with unix command: ${args.mkString(" ")} => $rc")
+                destroyWithJava(force)
+              }
+            }
+        })
     }
+
+  private def ifAlive(label: String)(body: Task[Unit]): Task[Unit] =
+    if (!process.isAlive)
+      Task(logger.debug(s"$label: Process has already terminated"))
+    else
+      body
 
   private def executeKillCommand(args: Seq[String]): Task[ReturnCode] =
     Task.defer {

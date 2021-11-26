@@ -1,37 +1,43 @@
 package js7.launcher.process
 
-import cats.effect.ExitCase
-import java.io.{InputStream, InputStreamReader}
 import java.lang.ProcessBuilder.Redirect.PIPE
 import js7.base.io.process.Processes._
-import js7.base.io.process.{JavaProcess, Js7Process}
+import js7.base.io.process.{JavaProcess, Js7Process, Stderr, Stdout, StdoutOrStderr}
 import js7.base.log.Logger
-import js7.base.monixutils.UnbufferedReaderObservable
 import js7.base.problem.Checked
-import js7.base.system.OperatingSystem.isUnix
 import js7.base.thread.IOExecutor
+import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.job.CommandLine
 import js7.launcher.StdObservers
 import js7.launcher.forwindows.WindowsProcess
 import js7.launcher.forwindows.WindowsProcess.StartWindowsProcess
-import monix.eval.Task
-import monix.reactive.Observable
+import js7.launcher.process.InputStreamToObservable.copyInputStreamToObservable
+import monix.eval.{Fiber, Task}
 import scala.concurrent.Promise
 import scala.jdk.CollectionConverters._
+import scala.util.Try
 
 class ShellScriptProcess private(
   processConfiguration: ProcessConfiguration,
   process: Js7Process)
   (implicit iox: IOExecutor)
-extends RichProcess(processConfiguration, process)
+  extends RichProcess(processConfiguration, process)
 {
   stdin.close() // Process gets an empty stdin
+
+  private val _sigkilled = Promise[Unit]()
+
+  final val sigkilled: Task[Unit] =
+    Task.fromFuture(_sigkilled.future).memoize
+
+  override protected def onSigkill(): Unit =
+    _sigkilled.trySuccess(())
 }
 
-object ShellScriptProcess
-{
-  private val logger = Logger(getClass)
+object ShellScriptProcess {
+  private val logger = Logger[this.type]
+  private val stdoutAndStderrDetachDelay = 1.s  // TODO
 
   def startPipedShellScript(
     commandLine: CommandLine,
@@ -43,39 +49,34 @@ object ShellScriptProcess
     Task.deferAction { implicit scheduler =>
       val commandArgs = toShellCommandArguments(
         commandLine.file,
-        commandLine.arguments.tail ++ conf.idArgumentOption/*TODO Should not be an argument*/)
+        commandLine.arguments.tail ++ conf.idArgumentOption /*TODO Should not be an argument*/)
       // Check argsToCommandLine here to avoid exception in WindowsProcess.start
 
       startProcess(commandArgs, conf)
         .map(_.map { process =>
-          def toObservable(in: InputStream, onTerminated: Promise[Unit]): Observable[String] =
-            UnbufferedReaderObservable(Task(new InputStreamReader(in)), stdObservers.charBufferSize)
-              .executeOn(iox.scheduler)
-              .guaranteeCase {
-                case ExitCase.Error(t) => Task(onTerminated.failure(t))
-                case ExitCase.Completed | ExitCase.Canceled => Task(onTerminated.success(()))
-              }
-
-          val outClosed, errClosed = Promise[Unit]()
-          toObservable(process.stdout, outClosed).subscribe(stdObservers.out)
-          toObservable(process.stderr, errClosed).subscribe(stdObservers.err)
-
           new ShellScriptProcess(conf, process) {
+            import stdObservers.{charBufferSize, err, out}
+
+            def await(outerr: StdoutOrStderr, fiber: Fiber[Unit]): Task[Unit] =
+              fiber.join.onErrorHandle(t => logger.warn(outerr.toString + ": " + t.toStringWithCauses))
+
             override val terminated =
-              ( for {
-                 outTried <- Task.fromFuture(outClosed.future).materialize
-                 errTried <- Task.fromFuture(errClosed.future).materialize
-                 returnCode <- super.terminated
-                 returnCode <-
-                   if (isKilled || isUnix && returnCode.isProcessSignal/*externally killed?*/) {
-                     for (t <- outTried.failed) logger.warn(t.toStringWithCauses)
-                     for (t <- errTried.failed) logger.warn(t.toStringWithCauses)
-                     Task.pure(returnCode)
-                   } else
-                     Task.fromTry(for (_ <- outTried; _ <- errTried) yield returnCode)
-                 _ <- whenTerminated
-                } yield returnCode
-              ).memoize
+              (for {
+                outFiber <- copyInputStreamToObservable(process.stdout, out, charBufferSize).start
+                errFiber <- copyInputStreamToObservable(process.stderr, err, charBufferSize).start
+                _ <- Task.race(
+                  sigkilled.delayExecution(stdoutAndStderrDetachDelay).map { _ =>
+                    Try(process.stdout.close())
+                    Try(process.stderr.close())
+                    if (process.isAlive) {
+                      logger.debug("destroyForcibly")
+                      process.destroyForcibly()
+                    }
+                  },
+                  await(Stdout, outFiber) >> await(Stderr, errFiber))
+                returnCode <- super.terminated
+                _ <- whenTerminated
+              } yield returnCode).memoize
           }
         })
     }
@@ -100,6 +101,5 @@ object ShellScriptProcess
               stderrRedirect = PIPE,
               additionalEnv = conf.additionalEnvironment),
             Some(logon)))
-
-  }
+    }
 }

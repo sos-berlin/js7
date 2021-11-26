@@ -9,7 +9,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.RightUnit
-import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEitherF}
+import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.data.job.{JobConf, JobResource, JobResourcePath, ShellScriptExecutable}
 import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
@@ -67,7 +67,8 @@ object ShellScriptJobLauncher
 
   private def writeScriptToFile(script: String, tmpDir: Path, userName: Option[WindowsUserName]): Checked[Path] =
     Checked.catchNonFatal {
-      createTempFile(tmpDir, "script-", isWindows ?? ".cmd", ShellFileAttributes: _*)
+      val ext = if (isWindows) ".cmd" else ".sh"
+      createTempFile(tmpDir, "script-", ext, ShellFileAttributes: _*)
     }.flatMap { file =>
       Checked.catchNonFatal {
         file.write(script, JobLauncherConf.FileEncoding)

@@ -9,6 +9,7 @@ import js7.base.io.file.FileUtils.temporaryDirectory
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.io.process.Processes.newTemporaryShellFile
 import js7.base.io.process.{ReturnCode, Stderr, Stdout, StdoutOrStderr}
+import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.system.OperatingSystem.{isMac, isSolaris, isUnix, isWindows}
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.thread.MonixBlocking.syntax.RichTask
@@ -34,6 +35,8 @@ import scala.concurrent.Future
  */
 final class ShellScriptProcessTest extends AnyFreeSpec
 {
+  coupleScribeWithSlf4j()
+
   "ShellScriptProcess" in {
     val envName = "ENVNAME"
     val envValue = "ENVVALUE"
@@ -90,12 +93,22 @@ final class ShellScriptProcessTest extends AnyFreeSpec
     } else {
       val taskId = TaskId("TEST-PROCESS-ID")
       withScriptFile { scriptFile =>
-        scriptFile.writeExecutable(if (isWindows) "echo SCRIPT-ARGUMENTS=%*\nping -n 7 127.0.0.1" else "echo SCRIPT-ARGUMENTS=$*; sleep 6")
+        scriptFile.writeExecutable(
+          if (isWindows)
+            """echo SCRIPT-ARGUMENTS=%*
+              |ping -n 7 127.0.0.1
+              |""".stripMargin
+          else
+            "echo SCRIPT-ARGUMENTS=$*; sleep 6")
         withCloser { closer =>
           val stdFileMap = RichProcess.createStdFiles(temporaryDirectory, id = "ShellScriptProcessTest-kill")
           val killScriptOutputFile = createTempFile("test-", ".tmp")
           val killScriptFile = newTemporaryShellFile("TEST-KILL-SCRIPT")
-          killScriptFile := (if (isWindows) s"@echo KILL-ARGUMENTS=%* >$killScriptOutputFile\n" else s"echo KILL-ARGUMENTS=$$* >$killScriptOutputFile\n")
+          killScriptFile := (
+            if (isWindows)
+              s"@echo KILL-ARGUMENTS=%* >$killScriptOutputFile\n"
+            else
+              s"echo KILL-ARGUMENTS=$$* >$killScriptOutputFile\n")
           closer.onClose {
             waitForCondition(15.s, 1.s) {
               RichProcess.tryDeleteFiles(stdFileMap.values)
