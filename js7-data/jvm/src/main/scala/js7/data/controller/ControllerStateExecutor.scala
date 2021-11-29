@@ -209,7 +209,7 @@ final case class ControllerStateExecutor private(
               }))
           .toVector
 
-        val deleteItems = (detachWorkflowCandidates.view ++ detachedItems)
+        val deleteItemKeys = (detachWorkflowCandidates.view ++ detachedItems)
           .filter(controllerState.keyToItem.contains)
           .filterNot(controllerState.itemToAgentToAttachedState.contains)
           .filter {
@@ -222,7 +222,7 @@ final case class ControllerStateExecutor private(
           }
           .map(itemKey => NoKey <-: ItemDeleted(itemKey))
           .toVector
-        controllerState = controllerState.applyEvents(makeWorkflowsDetachable.view ++ deleteItems)
+        controllerState = controllerState.applyEvents(makeWorkflowsDetachable.view ++ deleteItemKeys)
           .orThrow
 
         val eventsAndState = controllerState.nextOrderEvents(touchedOrderIds)
@@ -236,7 +236,7 @@ final case class ControllerStateExecutor private(
         val subsequentKeyedEvents = Vector.concat(
           itemEvents.view,
           makeWorkflowsDetachable,
-          deleteItems,
+          deleteItemKeys,
           orderEvents,
           orderWatchEvents)
 

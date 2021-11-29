@@ -81,9 +81,10 @@ extends SubagentDriver
     }
 
   def start: Task[Unit] =
-    commandQueue.enqueue(Seq(
-      DedicateSubagent(subagentId, agentPath, controllerId))) >>
-      startCommandPosting >>
+    commandQueue.enqueue(
+      DedicateSubagent(subagentId, agentPath, controllerId) :: Nil
+    ) *>
+      startCommandPosting *>
         startEventFetching
 
   def stop(signal: Option[ProcessSignal]): Task[Unit] =

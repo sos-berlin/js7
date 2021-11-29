@@ -103,7 +103,6 @@ final class SubagentKeeper(
               Task.pure(Checked.unit) // ???
 
             case Some(driver) =>
-              logger.debug(s"### ${order.id} --> ${driver.subagentId}")
               // OrderStarted automatically with first OrderProcessingStarted
               val events = order.isState[Order.Fresh].thenList(OrderStarted) :::
                 OrderProcessingStarted(driver.subagentId) :: Nil

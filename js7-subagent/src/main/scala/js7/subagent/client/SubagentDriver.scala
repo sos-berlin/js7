@@ -34,9 +34,7 @@ trait SubagentDriver
 
   protected def conf: Conf
 
-  def processOrder(
-    order: Order[Order.Processing],
-    defaultArguments: Map[String, Expression])
+  def processOrder(order: Order[Order.Processing], defaultArguments: Map[String, Expression])
   : Task[Outcome]
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): Task[Unit]
@@ -114,5 +112,4 @@ object SubagentDriver
           .toFiniteDuration)
     }
   }
-
 }
