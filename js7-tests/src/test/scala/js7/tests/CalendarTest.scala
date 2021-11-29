@@ -38,7 +38,7 @@ final class CalendarTest extends AnyFreeSpec with ControllerAgentForScalaTest
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.controller.agent-driver.command-batch-delay = 0ms
-    js7.controller.agent-driver.event-buffer-delay = 0ms
+    #js7.controller.agent-driver.event-buffer-delay = 0ms
     """
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
@@ -91,11 +91,22 @@ final class CalendarTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   "Delete Workflow and Calendar" in {
     val eventId = eventWatch.lastAddedEventId
-    controllerApi.updateItems(Observable(
-      DeleteSimple(calendar.path),
-      AddVersion(VersionId("DELETE")),
-      RemoveVersioned(workflow.path))
-    ).await(99.s).orThrow
+    if (false) { // TODO Allow and test simultaneous deletion of Calendar and Workflow (?)
+      controllerApi.updateItems(Observable(
+        DeleteSimple(calendar.path),
+        AddVersion(VersionId("DELETE")),
+        RemoveVersioned(workflow.path))
+      ).await(99.s).orThrow
+    } else {
+      controllerApi.updateItems(Observable(
+        AddVersion(VersionId("DELETE")),
+        RemoveVersioned(workflow.path))
+      ).await(99.s).orThrow
+      eventWatch.await[ItemDeleted](_.event.key == workflow.id, after = eventId)
+      controllerApi.updateItems(Observable(
+        DeleteSimple(calendar.path)),
+      ).await(99.s).orThrow
+    }
     eventWatch.await[ItemDeletionMarked](_.event.key == calendar.path, after = eventId)
     eventWatch.await[ItemDetachable](_.event.key == calendar.path, after = eventId)
     eventWatch.await[ItemDetached](_.event.key == calendar.path, after = eventId)
