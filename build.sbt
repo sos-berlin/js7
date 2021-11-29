@@ -266,7 +266,7 @@ lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
       "io.monix" %%% "monix-eval" % monixVersion ++
       "io.monix" %%% "monix-reactive" % monixVersion ++
       "com.github.mpilquist" %% "simulacrum" % simulacrumVersion ++
-      "com.lihaoyi" %%% "sourcecode" % "0.2.7" ++
+      "com.lihaoyi" %%% "sourcecode" % sourcecodeVersion ++
       "com.outr" %%% "scribe" % scribeVersion ++
       "org.scalactic" %%% "scalactic" % scalaTestVersion % Test ++
       findbugs ++

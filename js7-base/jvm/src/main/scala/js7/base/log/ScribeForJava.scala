@@ -25,8 +25,9 @@ object ScribeForJava
     }
 
   private object DummyLogOutput extends LogOutput {
-    override def plainText = throw new NotImplementedError("DummyLogOutput.plainText")
-    override def map(f: String => String) = this
+    def map(f: String => String) = this
+    def plainText = throw new NotImplementedError("DummyLogOutput.plainText")
+    def splitAt(index: Int) = (this, this)
   }
 
   private object Log4jFormatter extends Formatter {
