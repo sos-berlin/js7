@@ -31,8 +31,11 @@ class ShellScriptProcess private(
   final val sigkilled: Task[Unit] =
     Task.fromFuture(_sigkilled.future).memoize
 
-  override protected def onSigkill(): Unit =
+  override protected def onSigkill(): Unit = {
+    // We do not super.onSigkill(), because Process.destroyForcibly closes stdout and stderr
+    // leading to blocked child processes trying to write to stdout (as observed by a customer).
     _sigkilled.trySuccess(())
+  }
 }
 
 object ShellScriptProcess {
