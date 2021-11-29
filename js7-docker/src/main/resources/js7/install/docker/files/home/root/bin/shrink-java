@@ -1,0 +1,25 @@
+#!/bin/sh
+set -eu
+
+$JAVA_HOME/bin/jlink \
+  --add-modules \
+java.base,\
+java.compiler,\
+java.desktop,\
+java.management,\
+java.security.jgss,\
+jdk.crypto.cryptoki,\
+jdk.management,\
+jdk.unsupported\
+  --no-header-files \
+  --no-man-pages \
+  --compress 2 \
+  --output /opt/js7-java
+
+/opt/js7-java/bin/java -Xshare:dump
+
+du -sm $JAVA_HOME /opt/js7-java
+#rm -rf $JAVA_HOME
+
+# Insert the following line in Dockerfile:
+# ENV /opt/js7-java
