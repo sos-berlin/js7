@@ -17,6 +17,23 @@ import scala.collection.View
 
 object VerifiedUpdateItemsExecutor
 {
+  /* TODO Delete (and add?) along the dependency tree
+     to allow simultaneous deletion of interdependent items.
+    OrderWatch (detached) ->
+      AgentPath <-> SubagentRef ->
+      Workflow ->
+        AgentPath <-> SubagentRef ->
+        Board ->
+        Calendar ->
+        JobResource ->
+        Lock
+
+     Ordered by dependency;
+     OrderWatch, Workflow, (AgentPath <-> SubagentRef), Board, Calendar, JobResource, Lock
+
+     Delete in the reverse order of addition?
+   */
+
   def execute(
     verifiedUpdateItems: VerifiedUpdateItems,
     controllerState: ControllerState,
@@ -24,50 +41,58 @@ object VerifiedUpdateItemsExecutor
   : Checked[Seq[KeyedEvent[NoKeyEvent]]] =
   {
     def result: Checked[Seq[KeyedEvent[NoKeyEvent]]] =
-      ( for {
-        versionedEvents <- versionedEvents
-        simpleItemEvents <- simpleItemEvents
-        updatedState <- controllerState.applyEvents(
-            (versionedEvents.view ++ simpleItemEvents).map(NoKey <-: _))
+      (for {
+        versionedEvents <- versionedEvents(controllerState)
+        updatedState <- controllerState.applyEvents(versionedEvents)
+        simpleItemEvents <- simpleItemEvents(updatedState)
+        updatedState <- updatedState.applyEvents(simpleItemEvents)
         updatedState <- updatedState.applyEvents(
-            versionedEvents.view
-              .collect { case e: VersionedItemRemoved => e.path }
-              .flatMap(deleteRemovedVersionedItem(updatedState, _)))
+          versionedEvents.view
+            .collect { case KeyedEvent(_, e: VersionedItemRemoved) => e.path }
+            .flatMap(deleteRemovedVersionedItem(_, updatedState)))
         _ <- checkVerifiedUpdateConsistency(verifiedUpdateItems, updatedState)
-        } yield (simpleItemEvents ++ versionedEvents).map(NoKey <-: _).toVector
-      ) .left.map {
+      } yield (simpleItemEvents ++ versionedEvents).toVector
+      ).left.map {
         case prblm @ Problem.Combined(Seq(_, duplicateKey: DuplicateKey)) =>
           scribe.debug(prblm.toString)
           duplicateKey
         case o => o
       }
 
-    def versionedEvents: Checked[Seq[VersionedEvent]] =
+    def versionedEvents(controllerState: ControllerState)
+    : Checked[Seq[KeyedEvent[VersionedEvent]]] =
       verifiedUpdateItems.maybeVersioned match {
         case None => Right(Nil)
         case Some(versioned) =>
-          controllerState.repo.itemsToEvents(
-            versioned.versionId,
-            versioned.verifiedItems.map(_.signedItem),
-            versioned.remove)
+          controllerState.repo
+            .itemsToEvents(
+              versioned.versionId,
+              versioned.verifiedItems.map(_.signedItem),
+              versioned.remove)
+            .map(_.map(NoKey <-: _))
       }
 
-    def simpleItemEvents: Checked[View[InventoryItemEvent]] = {
+    def simpleItemEvents(controllerState: ControllerState)
+    : Checked[View[KeyedEvent[InventoryItemEvent]]] = {
       import verifiedUpdateItems.simple
       simple.verifiedSimpleItems
-        .traverse(verifiedSimpleItemToEvent)
+        .traverse(verifiedSimpleItemToEvent(_, controllerState))
         .flatMap(signedEvents =>
           simple.unsignedSimpleItems
-            .traverse(unsignedSimpleItemToEvent)
+            .traverse(unsignedSimpleItemToEvent(_, controllerState))
             .map { unsignedEvents =>
+              // Check again, is deletedAgents necessary ???
               val deletedAgents = simple.delete.view.collect { case a: AgentPath => a }.toSet
               simple.delete.view
-                .flatMap(simpleItemDeletionEvents(_, deletedAgents))
+                .flatMap(simpleItemDeletionEvents(_, deletedAgents, controllerState))
                 .view ++ signedEvents ++ unsignedEvents
-            })
+            }
+          .map(_.map(NoKey <-: _)))
     }
 
-    def verifiedSimpleItemToEvent(verified: SignedItemVerifier.Verified[SignableSimpleItem])
+    def verifiedSimpleItemToEvent(
+      verified: SignedItemVerifier.Verified[SignableSimpleItem],
+      controllerState: ControllerState)
     : Checked[SignedItemAddedOrChanged] = {
       val item = verified.item
       if (item.itemRevision.isDefined)
@@ -86,7 +111,9 @@ object VerifiedUpdateItemsExecutor
           })
     }
 
-    def unsignedSimpleItemToEvent(item: UnsignedSimpleItem)
+    def unsignedSimpleItemToEvent(
+      item: UnsignedSimpleItem,
+      controllerState: ControllerState)
     : Checked[UnsignedSimpleItemAddedOrChanged] =
       if (item.itemRevision.isDefined)
         Left(Problem.pure("ItemRevision is not accepted here"))
@@ -101,12 +128,15 @@ object VerifiedUpdateItemsExecutor
                   existing.itemRevision.fold(ItemRevision.Initial/*not expected*/)(_.next))))
           }
 
-    def simpleItemDeletionEvents(path: SimpleItemPath, isDeleted: Set[AgentPath])
+    def simpleItemDeletionEvents(
+      path: SimpleItemPath,
+      isDeleted: Set[AgentPath],
+      controllerState: ControllerState)
     : View[BasicItemEvent.ForClient] =
       path match {
         case path: InventoryItemPath.AssignableToAgent
           if controllerState.itemToAgentToAttachedState.contains(path)
-            && !isAttachedToDeletedAgentsOnly(path, isDeleted) =>
+            && !isAttachedToDeletedAgentsOnly(path, isDeleted, controllerState) =>
           (!controllerState.deletionMarkedItems.contains(path) ? ItemDeletionMarked(path)).view ++
             controllerState.detach(path)
 
@@ -116,7 +146,11 @@ object VerifiedUpdateItemsExecutor
 
     // If the deleted Item (a SubagentRef) is attached only to deleted Agents,
     // then we delete the Item without detaching.
-    def isAttachedToDeletedAgentsOnly(path: SimpleItemPath, isDeleted: Set[AgentPath]): Boolean =
+    def isAttachedToDeletedAgentsOnly(
+      path: SimpleItemPath,
+      isDeleted: Set[AgentPath],
+      controllerState: ControllerState)
+    : Boolean =
       controllerState.itemToAgentToAttachedState
         .get(path).view.flatMap(_.keys)
         .forall(isDeleted)
@@ -124,7 +158,7 @@ object VerifiedUpdateItemsExecutor
     result
   }
 
-  private def deleteRemovedVersionedItem(controllerState: ControllerState, path: VersionedItemPath)
+  private def deleteRemovedVersionedItem(path: VersionedItemPath, controllerState: ControllerState)
   : Option[KeyedEvent[ItemDeleted]] =
     controllerState.repo
       .pathToVersionToSignedItems(path)
