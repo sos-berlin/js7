@@ -11,14 +11,12 @@ import js7.data.board.{Board, BoardPath, BoardState, Notice}
 import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
-import js7.data.controller.ControllerStateBuilder._
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{JournalEvent, JournalState, KeyedEvent, SnapshotableState, SnapshotableStateBuilder, Stamped}
 import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeleted, ItemDeletionMarked}
-import js7.data.item.ItemAttachedState.{Detached, NotDetached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
-import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, ItemAttachedState, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, UnsignedSimpleItemEvent, VersionedEvent, VersionedItemId_}
+import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItem, InventoryItemEvent, InventoryItemKey, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, UnsignedSimpleItemEvent, VersionedEvent, VersionedItemId_}
 import js7.data.job.JobResource
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.Order.ExpectingNotice
@@ -47,7 +45,7 @@ with StateView
   private val _pathToBoardState = mutable.Map.empty[BoardPath, BoardState]
   private val _pathToCalendar = mutable.Map.empty[CalendarPath, Calendar]
   private var allOrderWatchesState = AllOrderWatchesState.empty
-  private val itemToAgentToAttachedState = mutable.Map.empty[InventoryItemKey, Map[AgentPath, ItemAttachedState.NotDetached]]
+  private var agentAttachments = ClientAttachments.empty[AgentPath]
   private val deletionMarkedItems = mutable.Set[InventoryItemKey]()
   private val pathToSignedSimpleItem = mutable.Map.empty[SignableSimpleItemPath, Signed[SignableSimpleItem]]
 
@@ -95,7 +93,7 @@ with StateView
     _pathToCalendar ++= state.pathToCalendar
     allOrderWatchesState = state.allOrderWatchesState
     pathToSignedSimpleItem ++= state.pathToSignedSimpleItem
-    itemToAgentToAttachedState ++= state.itemToAgentToAttachedState
+    agentAttachments = state.agentAttachments
     deletionMarkedItems ++= state.deletionMarkedItems
   }
 
@@ -141,9 +139,8 @@ with StateView
     case snapshot: OrderWatchState.ExternalOrderSnapshot =>
       allOrderWatchesState = allOrderWatchesState.applySnapshot(snapshot).orThrow
 
-    case ItemAttachedStateEvent(key: InventoryItemKey, agentPath: AgentPath, attachedState: NotDetached) =>
-      itemToAgentToAttachedState +=
-        key -> (itemToAgentToAttachedState.getOrElse(key, Map.empty) + (agentPath -> attachedState))
+    case event: ItemAttachedStateEvent =>
+      agentAttachments = agentAttachments.applyEvent(event).orThrow
 
     case ItemDeletionMarked(itemKey) =>
       deletionMarkedItems += itemKey
@@ -246,31 +243,21 @@ with StateView
 
         case event: BasicItemEvent.ForClient =>
           event match {
-            case ItemAttachedStateEvent(itemKey, agentPath: AgentPath, attachedState) =>
-              attachedState match {
-                case attachedState: NotDetached =>
-                  itemToAgentToAttachedState += itemKey ->
-                    (itemToAgentToAttachedState.getOrElse(itemKey, Map.empty) +
-                      (agentPath -> attachedState))
-
-                case Detached =>
-                  val updated = itemToAgentToAttachedState.getOrElse(itemKey, Map.empty) - agentPath
-                  if (updated.isEmpty)
-                    itemToAgentToAttachedState -= itemKey
-                  else
-                    itemToAgentToAttachedState += itemKey -> updated
-              }
+            case event: ItemAttachedStateEvent =>
+              agentAttachments = agentAttachments.applyEvent(event).orThrow
 
             case ItemDeletionMarked(itemKey) =>
               deletionMarkedItems += itemKey
 
-            case ItemDeleted(itemKey) =>
-              itemKey match {
+            case event: ItemDeleted =>
+              deletionMarkedItems -= event.key
+              agentAttachments = agentAttachments.applyItemDeleted(event)
+
+              event.key match {
                 case id: VersionedItemId_ =>
                   repo = repo.deleteItem(id).orThrow
 
                 case path: OrderWatchPath =>
-                  deletionMarkedItems -= path
                   allOrderWatchesState = allOrderWatchesState.removeOrderWatch(path)
 
                 case path: LockPath =>
@@ -278,19 +265,6 @@ with StateView
 
                 case agentPath: AgentPath =>
                   _pathToAgentRefState -= agentPath
-
-                  for ((itemKey, agentToNotDetached) <- itemToAgentToAttachedState) {
-                    if (agentToNotDetached.contains(agentPath)) {
-                      val m = agentToNotDetached.removed(agentPath)
-                      logger.debug(
-                        s"$event: silently detach ${agentToNotDetached(agentPath).toShortString} $itemKey")
-                      if (m.nonEmpty) {
-                        itemToAgentToAttachedState += (itemKey -> m)
-                      } else {
-                        itemToAgentToAttachedState -= itemKey
-                      }
-                    }
-                  }
 
                 case subagentId: SubagentId =>
                   _idToSubagentRef -= subagentId
@@ -447,7 +421,7 @@ with StateView
       allOrderWatchesState,
       repo,
       pathToSignedSimpleItem.toMap,
-      itemToAgentToAttachedState.toMap,
+      agentAttachments,
       deletionMarkedItems.toSet,
       _idToOrder.toMap)
 

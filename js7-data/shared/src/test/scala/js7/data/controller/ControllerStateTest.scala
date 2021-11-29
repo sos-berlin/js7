@@ -22,7 +22,7 @@ import js7.data.item.ItemAttachedState.{Attachable, Attached}
 import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemChanged}
-import js7.data.item.{ItemRevision, ItemSigner, Repo, VersionId}
+import js7.data.item.{ClientAttachments, ItemRevision, ItemSigner, Repo, VersionId}
 import js7.data.job.{JobResource, JobResourcePath, ShellScriptExecutable}
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.node.NodeId
@@ -445,8 +445,8 @@ object ControllerStateTest
       VersionedItemAdded(signedWorkflow))).orThrow,
     Map(
       jobResource.path -> signedJobResource),
-    Map(
-      jobResource.path -> Map(agentRef.path -> Attachable)),
+    ClientAttachments(Map(
+      jobResource.path -> Map(agentRef.path -> Attachable))),
     deletionMarkedItems = Set(fileWatch.path),
     Seq(
       Order(orderId, workflow.id /: Position(0), Order.Fresh,

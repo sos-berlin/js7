@@ -11,7 +11,6 @@ import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
 import js7.base.web.Uri
 import js7.data.Problems.{ItemIsStillReferencedProblem, MissingReferencedItemProblem}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRefStateEvent}
@@ -29,7 +28,7 @@ import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeleted, ItemDe
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detached, NotDetached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
-import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemPath, ItemAttachedState, ItemRevision, Repo, SignableItem, SignableItemKey, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, SimpleItem, SimpleItemPath, UnsignedSimpleItem, UnsignedSimpleItemEvent, VersionedEvent, VersionedItemId_, VersionedItemPath}
+import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemPath, ItemAttachedState, ItemRevision, Repo, SignableItem, SignableItemKey, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, SimpleItem, SimpleItemPath, UnsignedSimpleItem, UnsignedSimpleItemEvent, VersionedEvent, VersionedItemId_, VersionedItemPath}
 import js7.data.job.JobResource
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.Order.ExpectingNotice
@@ -59,7 +58,7 @@ final case class ControllerState(
   allOrderWatchesState: AllOrderWatchesState,
   repo: Repo,
   pathToSignedSimpleItem: Map[SignableSimpleItemPath, Signed[SignableSimpleItem]],
-  itemToAgentToAttachedState: Map[InventoryItemKey, Map[AgentPath, ItemAttachedState.NotDetached]],
+  agentAttachments: ClientAttachments[AgentPath],
   /** Used for OrderWatch to allow to attach it from Agent. */
   deletionMarkedItems: Set[InventoryItemKey],
   idToOrder: Map[OrderId, Order[Order.State]])
@@ -85,7 +84,7 @@ with SnapshotableState[ControllerState]
     pathToCalendar.values.size +
     allOrderWatchesState.estimatedSnapshotSize +
     pathToSignedSimpleItem.size +
-    itemToAgentToAttachedState.values.view.map(_.size).sum +
+    agentAttachments.estimatedSnapshotSize +
     deletionMarkedItems.size +
     idToOrder.size
 
@@ -103,13 +102,7 @@ with SnapshotableState[ControllerState]
       allOrderWatchesState.toSnapshot,
       Observable.fromIterable(pathToSignedSimpleItem.values).map(SignedItemAdded(_)),
       Observable.fromIterable(repo.toEvents),
-      Observable.fromIterable(itemToAgentToAttachedState
-        .to(View)
-        .flatMap { case (key, agentToAttached) =>
-          agentToAttached.map { case (agentPath, attachedState) =>
-            ItemAttachedStateEvent(key, agentPath, attachedState)
-          }
-        }),
+      agentAttachments.toSnapshotObservable,
       Observable.fromIterable(deletionMarkedItems.map(ItemDeletionMarked(_))),
       Observable.fromIterable(idToOrder.values)
     ).flatten
@@ -234,81 +227,47 @@ with SnapshotableState[ControllerState]
 
         case event: BasicItemEvent.ForClient =>
           event match {
-            case ItemAttachedStateEvent(itemKey, agentPath: AgentPath, attachedState) =>
-              attachedState match {
-                case attachedState: NotDetached =>
-                  Right(copy(
-                    itemToAgentToAttachedState = itemToAgentToAttachedState +
-                      (itemKey ->
-                        (itemToAgentToAttachedState.getOrElse(itemKey, Map.empty) +
-                          (agentPath -> attachedState)))))
-
-                case Detached =>
-                  for {
-                    agentToAttachedState <- itemToAgentToAttachedState.checked(itemKey)
-                    _ <- agentToAttachedState.checked(agentPath)
-                  } yield
-                    copy(itemToAgentToAttachedState = {
-                      val updated = agentToAttachedState - agentPath
-                      if (updated.isEmpty)
-                        itemToAgentToAttachedState - itemKey
-                      else
-                        itemToAgentToAttachedState + (itemKey -> updated)
-                    })
-              }
+            case event: ItemAttachedStateEvent =>
+              for (o <- agentAttachments.applyEvent(event)) yield
+                copy(agentAttachments = o)
 
             case ItemDeletionMarked(itemKey) =>
               Right(copy(
                 deletionMarkedItems = deletionMarkedItems + itemKey))
 
-            case ItemDeleted(itemKey) =>
+            case event @ ItemDeleted(itemKey) =>
+              val updated = copy(
+                deletionMarkedItems = deletionMarkedItems - itemKey,
+                agentAttachments = agentAttachments.applyItemDeleted(event))
+
               itemKey match {
                 case id: VersionedItemId_ =>
                   for (repo <- repo.deleteItem(id)) yield
-                    copy(
+                    updated.copy(
                       repo = repo)
 
                 case lockPath: LockPath =>
-                  Right(copy(
+                  Right(updated.copy(
                     pathToLockState = pathToLockState - lockPath))
 
                 case agentPath: AgentPath =>
-                  Right(copy(
-                    pathToAgentRefState = pathToAgentRefState - agentPath,
-                    itemToAgentToAttachedState = itemToAgentToAttachedState
-                      .view
-                      .flatMap { case (itemKey, agentToAttached) =>
-                        agentToAttached
-                          .view
-                          .filterNot { case (a, notDetached) =>
-                            (a == agentPath) && {
-                              logger.debug(
-                                s"$event: silently detach ${notDetached.toShortString} $itemKey")
-                              true
-                            }
-                          }
-                          .toMap
-                          .emptyToNone
-                          .map(itemKey -> _)
-                      }
-                      .toMap))
+                  Right(updated.copy(
+                    pathToAgentRefState = pathToAgentRefState - agentPath))
 
                 case subagentId: SubagentId =>
-                  Right(copy(
+                  Right(updated.copy(
                     idToSubagentRef = idToSubagentRef - subagentId))
 
                 case path: OrderWatchPath =>
-                  Right(copy(
-                    deletionMarkedItems = deletionMarkedItems - path,
-                    itemToAgentToAttachedState = itemToAgentToAttachedState - path,
+                  Right(updated.copy(
                     allOrderWatchesState = allOrderWatchesState.removeOrderWatch(path)))
 
                 case boardPath: BoardPath =>
-                  Right(copy(
+                  Right(updated.copy(
                     pathToBoardState = pathToBoardState - boardPath))
 
                 case calendarPath: CalendarPath =>
-                  Right(copy(
+                  Right(updated.copy(
                     pathToCalendar = pathToCalendar - calendarPath))
 
                 case _ =>
@@ -542,6 +501,9 @@ with SnapshotableState[ControllerState]
       case _ => None
     }
 
+  def itemToAgentToAttachedState: Map[InventoryItemKey, Map[AgentPath, NotDetached]] =
+    agentAttachments.itemToDelegateToAttachedState
+
   private[controller] def isReferenced(path: InventoryItemPath): Boolean =
     pathToReferencingItemKeys contains path
 
@@ -636,7 +598,6 @@ with SnapshotableState[ControllerState]
         allOrderWatchesState.pathToOrderWatchState
       ).map(_._2.item)
 
-
   lazy val idToWorkflow: PartialFunction[WorkflowId, Workflow] =
     new PartialFunction[WorkflowId, Workflow] {
       def isDefinedAt(workflowId: WorkflowId) =
@@ -713,7 +674,7 @@ with ItemContainer.Companion[ControllerState]
     AllOrderWatchesState.empty,
     Repo.empty,
     Map.empty,
-    Map.empty,
+    ClientAttachments.empty,
     Set.empty,
     Map.empty)
 

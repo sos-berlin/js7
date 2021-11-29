@@ -26,7 +26,7 @@ import js7.base.utils.LockKeeper
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.item.BasicItemEvent.{ItemAttachedToAgent, ItemDetached}
+import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached}
 import js7.data.order.OrderId
 import js7.data.orderwatch.FileWatch.FileArgumentName
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
@@ -79,7 +79,7 @@ final class FileWatchManager(
         .persist(agentState =>
           Right(
             !agentState.allFileWatchesState.contains(fileWatch) thenList
-              NoKey <-: ItemAttachedToAgent(fileWatch)))
+              NoKey <-: ItemAttachedToMe(fileWatch)))
         .flatMapT { case (_, agentState) =>
           startWatching(agentState.allFileWatchesState.pathToFileWatchState(fileWatch.path))
         }

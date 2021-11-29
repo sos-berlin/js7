@@ -101,6 +101,11 @@ object Subtype {
     fromClassName[A](implicitClass[A], Nil, codec, codec)
   }
 
+  def withAliases[A: ClassTag](codec: Codec.AsObject[A], aliases: Seq[String]) =
+    of(implicitClass[A], Nil, typeName(implicitClass[A]),
+      codec, codec,
+      aliases = aliases)
+
   /**
     * Use implicit Encoder.AsObject and Decoder (CirceCodec); Simple class name is type name.
     * <p>

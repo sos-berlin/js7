@@ -4,7 +4,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.implicits.InsertableMutableMap
 import js7.data.event.KeyedEvent
 import js7.data.item.BasicItemEvent
-import js7.data.item.BasicItemEvent.ItemAttachedToAgent
+import js7.data.item.BasicItemEvent.ItemAttachedToMe
 import js7.data.order.Order
 import js7.data.workflow.{Workflow, WorkflowId}
 import scala.collection.mutable
@@ -25,7 +25,7 @@ private[order] final class WorkflowRegister {
 
   def handleEvent(keyedEvent: KeyedEvent[BasicItemEvent]): Unit = {
     keyedEvent.event match {
-      case ItemAttachedToAgent(workflow: Workflow) =>
+      case ItemAttachedToMe(workflow: Workflow) =>
         _idToWorkflow += workflow.id -> workflow
 
       //case ItemDetached(workflowId: WorkflowId, _) =>

@@ -16,7 +16,7 @@ import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, ItemContainer, JournalEvent, JournalState, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState}
-import js7.data.item.BasicItemEvent.{ItemAttachedToAgent, ItemDetached}
+import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached}
 import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.OrderEvent.{OrderCoreEvent, OrderForked, OrderJoined, OrderStdWritten}
@@ -106,27 +106,27 @@ with SnapshotableState[AgentState]
 
       case KeyedEvent(_: NoKey, event: BasicItemEvent.ForDelegate) =>
         event match {
-          case ItemAttachedToAgent(workflow: Workflow) =>
+          case ItemAttachedToMe(workflow: Workflow) =>
             for (o <- idToWorkflow.insert(workflow.id -> workflow)) yield
               copy(
                 idToWorkflow = o)
 
-          case ItemAttachedToAgent(fileWatch: FileWatch) =>
+          case ItemAttachedToMe(fileWatch: FileWatch) =>
             // May replace an existing JobResource
             Right(copy(
               allFileWatchesState = allFileWatchesState.attach(fileWatch)))
 
-          case ItemAttachedToAgent(jobResource: JobResource) =>
+          case ItemAttachedToMe(jobResource: JobResource) =>
             // May replace an existing JobResource
             Right(copy(
               pathToJobResource = pathToJobResource + (jobResource.path -> jobResource)))
 
-          case ItemAttachedToAgent(calendar: Calendar) =>
+          case ItemAttachedToMe(calendar: Calendar) =>
             // May replace an existing Calendar
             Right(copy(
               pathToCalendar = pathToCalendar + (calendar.path -> calendar)))
 
-          case ItemAttachedToAgent(subagentRef: SubagentRef) =>
+          case ItemAttachedToMe(subagentRef: SubagentRef) =>
             // May replace an existing SubagentRef
             Right(copy(
               idToSubagentRefState = idToSubagentRefState + (subagentRef.id ->

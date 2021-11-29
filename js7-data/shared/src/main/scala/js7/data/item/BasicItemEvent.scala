@@ -1,9 +1,10 @@
 package js7.data.item
 
-import io.circe.Decoder
 import io.circe.generic.semiauto.deriveEncoder
+import io.circe.{Codec, Decoder, HCursor}
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.crypt.Signed
 import js7.data.agent.DelegateId
 import js7.data.event.ItemContainer
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detached}
@@ -76,19 +77,30 @@ object BasicItemEvent
     }
   }
 
+  // COMPATIBLE with v2.2: item is not applicable for remote Subagents !!!
   /** Agent only. */
-  final case class ItemAttachedToAgent(item: InventoryItem)
+  final case class ItemAttachedToMe(item: InventoryItem)
   extends ForDelegate {
     def key = item.key
   }
 
-  // FIXME Use this SignedItemAttachedToAgent to provide Subagents with Signed[SignableItem]
-  ///** Agent only. */
-  //final case class SignedItemAttachedToAgent(signed: Signed[SignableItem])
-  //extends ForDelegate {
-  //  def item = signed.value
-  //  def key = item.key
-  //}
+  // FIXME Use this SignedItemAttachedToMe to provide Subagents with Signed[SignableItem]
+  /** Agent only. */
+  private final case class SignedItemAttachedToMe(signed: Signed[SignableItem])
+  extends ForDelegate {
+    def item = signed.value
+    def key = item.key
+  }
+  private object SignedItemAttachedToMe {
+    def jsonCodec[S: ItemContainer.Companion]: Codec.AsObject[SignedItemAttachedToMe] =
+      new Codec.AsObject[SignedItemAttachedToMe] {
+        def encodeObject(o: SignedItemAttachedToMe) =
+          SignableItem.signedEncodeJson(o.signed.signedString, o.signed.value.itemRevision)
+
+        def apply(c: HCursor) =
+         SignableItem.signedJsonDecoder.decodeJson(c.value).map(SignedItemAttachedToMe(_))
+      }
+  }
 
   final case class ItemDetachable(key: InventoryItemKey, delegateId: DelegateId)
   extends ItemAttachedStateEvent {
@@ -131,8 +143,8 @@ object BasicItemEvent
       Subtype(deriveCodec[ItemDeleted]),
       Subtype(deriveEncoder[ItemAttachable], ItemAttachable.jsonDecoder),
       Subtype(deriveEncoder[ItemAttached], ItemAttached.jsonDecoder),
-      Subtype(deriveCodec[ItemAttachedToAgent]),
-      //Subtype(deriveCodec[SignedItemAttachedToAgent]),
+      Subtype.withAliases(deriveCodec[ItemAttachedToMe], aliases = "ItemAttachedToAgent" :: Nil),
+      Subtype(SignedItemAttachedToMe.jsonCodec),
       Subtype(deriveEncoder[ItemDetachable], ItemDetachable.jsonDecoder),
       Subtype(deriveEncoder[ItemDetached], ItemDetached.jsonDecoder))
   }

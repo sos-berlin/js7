@@ -1,0 +1,93 @@
+package js7.data.item
+
+import js7.base.problem.Checked
+import js7.base.utils.ScalaUtils.cast
+import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
+import js7.data.agent.DelegateId
+import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeleted}
+import js7.data.item.ClientAttachments._
+import js7.data.item.ItemAttachedState.{Detached, NotDetached}
+import monix.reactive.Observable
+import scala.collection.View
+import scala.reflect.ClassTag
+
+/** Client side bookkeeping of attachments. */
+final case class ClientAttachments[D <: DelegateId: ClassTag](
+  itemToDelegateToAttachedState: Map[InventoryItemKey, Map[D, ItemAttachedState.NotDetached]])
+{
+  def estimatedSnapshotSize: Int =
+    itemToDelegateToAttachedState.values.view.map(_.size).sum
+
+  def toSnapshotObservable: Observable[ItemAttachedStateEvent] =
+    Observable.fromIterable(itemToDelegateToAttachedState
+      .to(View)
+      .flatMap { case (key, agentToAttached) =>
+        agentToAttached.map { case (agentPath, attachedState) =>
+          ItemAttachedStateEvent(key, agentPath, attachedState)
+        }
+      })
+
+  def applyEvent(event: ItemAttachedStateEvent): Checked[ClientAttachments[D]] = {
+    val delegateId = cast[D](event.delegateId)
+    import event.{attachedState, key => itemKey}
+      attachedState match {
+        case attachedState: NotDetached =>
+          Right(copy(
+            itemToDelegateToAttachedState = itemToDelegateToAttachedState +
+              (itemKey ->
+                (itemToDelegateToAttachedState.getOrElse(itemKey, Map.empty) +
+                  (delegateId -> attachedState)))))
+
+        case Detached =>
+          for {
+            agentToAttachedState <- itemToDelegateToAttachedState.checked(itemKey)
+            _ <- agentToAttachedState.checked(delegateId)
+          } yield
+            copy(itemToDelegateToAttachedState = {
+              val updated = agentToAttachedState - delegateId
+              if (updated.isEmpty)
+                itemToDelegateToAttachedState - itemKey
+              else
+                itemToDelegateToAttachedState + (itemKey -> updated)
+            })
+      }
+  }
+
+  def applyItemDeleted(event: ItemDeleted): ClientAttachments[D] =
+    event.key match {
+      case delegateId: DelegateId =>
+        copy(
+          itemToDelegateToAttachedState = itemToDelegateToAttachedState
+            .view
+            .flatMap { case (itemKey, agentToAttached) =>
+              agentToAttached
+                .view
+                .filterNot { case (a, notDetached) =>
+                  (a == delegateId) && {
+                    logger.debug(
+                      s"$event: silently detach ${notDetached.toShortString} $itemKey")
+                    true
+                  }
+                }
+                .toMap
+                .emptyToNone
+                .map(itemKey -> _)
+            }
+            .toMap)
+
+      case itemKey =>
+        copy(
+          itemToDelegateToAttachedState = itemToDelegateToAttachedState - itemKey)
+    }
+}
+
+object ClientAttachments
+{
+  private val Empty = ClientAttachments[DelegateId](Map.empty)
+
+  def empty[D <: DelegateId] =
+    Empty.asInstanceOf[ClientAttachments[D]]
+
+  private val logger = scribe.Logger[this.type]
+}

@@ -26,8 +26,8 @@ import js7.data.controller.ControllerId
 import js7.data.event.JournalEvent.SnapshotTaken
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalId, JournalState, SnapshotableState}
-import js7.data.item.BasicItemEvent.ItemAttachedToAgent
-import js7.data.item.{ItemAttachedState, ItemRevision}
+import js7.data.item.BasicItemEvent.ItemAttachedToMe
+import js7.data.item.ItemRevision
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.Order.{Forked, Ready}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachedToAgent, OrderForked}
@@ -273,7 +273,7 @@ final class AgentStateTest extends AsyncFreeSpec
       meta.agentPath,
       meta.agentRunId,
       meta.controllerId)).orThrow
-    agentState = agentState.applyEvent(NoKey <-: ItemAttachedToAgent(workflow)).orThrow
+    agentState = agentState.applyEvent(NoKey <-: ItemAttachedToMe(workflow)).orThrow
     agentState = agentState.applyEvent(orderId <-:
       OrderAttachedToAgent(
         workflowId, Order.Ready, Map.empty, None, None, Vector.empty, agentPath, None, None, false, false))

@@ -40,7 +40,7 @@ import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.{<-:, Event, EventId, JournalState, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.instructions.{ExecuteAdmissionTimeSwitch, InstructionExecutorService}
-import js7.data.item.BasicItemEvent.{ItemAttachedToAgent, ItemDetached}
+import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached}
 import js7.data.item.{InventoryItem, InventoryItemPath, SignableItem, UnsignedSimpleItem}
 import js7.data.job.{JobKey, JobResource}
 import js7.data.order.OrderEvent.{OrderBroken, OrderDetached, OrderProcessed}
@@ -384,7 +384,7 @@ with Stash
             .runToFuture
 
       case item @ (_: Calendar | _: SubagentRef) =>
-        persist(ItemAttachedToAgent(item)) { (stampedEvent, journaledState) =>
+        persist(ItemAttachedToMe(item)) { (stampedEvent, journaledState) =>
           proceedWithItem(item)
           Right(AgentCommand.Response.Accepted)
         }
@@ -408,7 +408,7 @@ with Stash
                   case Left(problem) => Future.successful(Left(problem))
                   case Right(zoneId) =>
                     logger.trace("Reduced workflow: " + workflow.asJson.compactPrint)
-                    persist(ItemAttachedToAgent(workflow)) { (stampedEvent, journaledState) =>
+                    persist(ItemAttachedToMe(workflow)) { (stampedEvent, journaledState) =>
                       workflowRegister.handleEvent(stampedEvent.value)
                       createJobEntries(workflow, zoneId)
                       Right(AgentCommand.Response.Accepted)
@@ -423,7 +423,7 @@ with Stash
             }
 
           case jobResource: JobResource =>
-            persist(ItemAttachedToAgent(jobResource)) { (stampedEvent, journaledState) =>
+            persist(ItemAttachedToMe(jobResource)) { (stampedEvent, journaledState) =>
               Right(AgentCommand.Response.Accepted)
             }
 

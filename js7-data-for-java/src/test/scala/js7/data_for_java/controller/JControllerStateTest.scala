@@ -13,7 +13,7 @@ import js7.data.controller.ControllerState.versionedItemJsonCodec
 import js7.data.controller.{ControllerId, ControllerMetaState, ControllerState}
 import js7.data.event.{EventId, JournalState, SnapshotableState}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded}
-import js7.data.item.{ItemSigner, Repo, VersionId}
+import js7.data.item.{ClientAttachments, ItemSigner, Repo, VersionId}
 import js7.data.node.NodeId
 import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.AllOrderWatchesState
@@ -110,7 +110,7 @@ private object JControllerStateTest
         VersionedItemAdded(itemSigner.sign(bWorkflow)))
       ).orThrow,
     Map.empty,
-    Map.empty,
+    ClientAttachments.empty,
     Set.empty,
     Vector(
       Order(

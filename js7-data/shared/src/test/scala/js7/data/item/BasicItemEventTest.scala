@@ -3,7 +3,7 @@ package js7.data.item
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerState
-import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemAttachedToAgent, ItemDeleted, ItemDeletionMarked, ItemDetachable, ItemDetached}
+import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemAttachedToMe, ItemDeleted, ItemDeletionMarked, ItemDetachable, ItemDetached}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.orderwatch.OrderWatchPath
 import js7.data.workflow.WorkflowPath
@@ -71,9 +71,24 @@ final class BasicItemEventTest extends AnyFreeSpec
         }""")
     }
 
-    "ItemAttachedToAgent" in {
+    "ItemAttachedToMe" in {
       testJson[BasicItemEvent](
-        ItemAttachedToAgent(
+        ItemAttachedToMe(
+          JobResource(JobResourcePath("JOB-RESOURCE"), itemRevision = Some(ItemRevision(7)))),
+        json"""
+        {
+          "TYPE": "ItemAttachedToMe",
+          "item": {
+            "TYPE": "JobResource",
+            "path": "JOB-RESOURCE",
+            "variables": {},
+            "env": {},
+            "itemRevision": 7
+           }
+        }""")
+
+      testJsonDecoder[BasicItemEvent](
+        ItemAttachedToMe(
           JobResource(JobResourcePath("JOB-RESOURCE"), itemRevision = Some(ItemRevision(7)))),
         json"""
         {
