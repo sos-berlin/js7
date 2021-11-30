@@ -24,7 +24,7 @@ import js7.data.controller.ControllerId
 import js7.data.event.JournalEvent.StampedHeartbeat
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, JournaledState, KeyedEvent, Stamped}
 import js7.data.item.SignableItem
-import js7.data.job.JobResourcePath
+import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.state.StateView
@@ -170,7 +170,7 @@ extends SubagentDriver
                 val cmd = StartOrderProcess(order, defaultArguments)
                 val jobResourcePaths: Seq[JobResourcePath] = Nil // FIXME
                 jobResourcePaths
-                  .traverse(persistence.currentState.pathToJobResource.checked)
+                  .traverse(persistence.currentState.keyTo(JobResource).checked)
                   .map(_  :+ workflow)
                   .match_ {
                     case Left(problem) =>

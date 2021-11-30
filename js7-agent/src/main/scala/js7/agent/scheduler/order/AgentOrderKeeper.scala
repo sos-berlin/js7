@@ -2,7 +2,6 @@ package js7.agent.scheduler.order
 
 import akka.actor.{ActorRef, DeadLetterSuppression, Stash, Terminated}
 import akka.pattern.ask
-import io.circe.syntax.EncoderOps
 import java.time.ZoneId
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
@@ -14,7 +13,6 @@ import js7.agent.main.AgentMain
 import js7.agent.scheduler.order.AgentOrderKeeper._
 import js7.agent.scheduler.order.OrderRegister.OrderEntry
 import js7.agent.subagent.SubagentKeeper
-import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.crypt.{SignatureVerifier, Signed}
 import js7.base.generic.Completed
 import js7.base.log.Logger
@@ -40,7 +38,7 @@ import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.{<-:, Event, EventId, JournalState, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.instructions.{ExecuteAdmissionTimeSwitch, InstructionExecutorService}
-import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached}
+import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached, SignedItemAttachedToMe}
 import js7.data.item.{InventoryItem, InventoryItemPath, SignableItem, UnsignedSimpleItem}
 import js7.data.job.{JobKey, JobResource}
 import js7.data.order.OrderEvent.{OrderBroken, OrderDetached, OrderProcessed}
@@ -98,7 +96,7 @@ with Stash
 
   private var journalState = JournalState.empty
   private val jobRegister = mutable.Map.empty[JobKey, JobEntry]
-  private val workflowRegister = new WorkflowRegister
+  private val workflowRegister = new WorkflowRegister(ownAgentPath)
   private val fileWatchManager = new FileWatchManager(ownAgentPath, persistence, conf.config)
   private val orderActorConf = OrderActor.Conf(conf.config, conf.journalConf)
   private val orderRegister = new OrderRegister
@@ -400,17 +398,16 @@ with Stash
         logger.info(Logger.SignatureVerified, s"Verified ${signed.value.key}, signed by ${signerIds.mkString(", ")}")
 
         signed.value match {
-          case origWorkflow: Workflow =>
-            val workflow = origWorkflow.reduceForAgent(ownAgentPath)
+          case workflow: Workflow =>
             workflowRegister.get(workflow.id) match {
               case None =>
                 workflow.timeZone.toZoneId match {
                   case Left(problem) => Future.successful(Left(problem))
                   case Right(zoneId) =>
-                    logger.trace("Reduced workflow: " + workflow.asJson.compactPrint)
-                    persist(ItemAttachedToMe(workflow)) { (stampedEvent, journaledState) =>
-                      workflowRegister.handleEvent(stampedEvent.value)
-                      createJobEntries(workflow, zoneId)
+                    persist(SignedItemAttachedToMe(signed)) { (stampedEvent, journaledState) =>
+                      val reducedWorkflow = journaledState.idToWorkflow(workflow.id)
+                      workflowRegister.handleEvent(stampedEvent.value, reducedWorkflow)
+                      createJobEntries(reducedWorkflow, zoneId)
                       Right(AgentCommand.Response.Accepted)
                     }
                 }

@@ -86,12 +86,12 @@ object BasicItemEvent
 
   // FIXME Use this SignedItemAttachedToMe to provide Subagents with Signed[SignableItem]
   /** Agent only. */
-  private final case class SignedItemAttachedToMe(signed: Signed[SignableItem])
+  final case class SignedItemAttachedToMe(signed: Signed[SignableItem])
   extends ForDelegate {
     def item = signed.value
     def key = item.key
   }
-  private object SignedItemAttachedToMe {
+  object SignedItemAttachedToMe {
     def jsonCodec[S: ItemContainer.Companion]: Codec.AsObject[SignedItemAttachedToMe] =
       new Codec.AsObject[SignedItemAttachedToMe] {
         def encodeObject(o: SignedItemAttachedToMe) =

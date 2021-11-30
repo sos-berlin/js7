@@ -16,6 +16,7 @@ import js7.data.order.Order.{FailedInFork, Processing}
 import js7.data.order.{Order, OrderId}
 import js7.data.value.expression.Scope
 import js7.data.value.expression.scopes.{JobResourceScope, NowScope, OrderScopes}
+import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{BoardInstruction, End}
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow, WorkflowId, WorkflowPath}
@@ -23,7 +24,7 @@ import scala.collection.MapView
 import scala.reflect.ClassTag
 
 /** Common interface for ControllerState and AgentState (but not SubagentState). */
-trait StateView extends AgentStateView with ItemContainer
+trait StateView extends ItemContainer
 {
   def isAgent: Boolean
 
@@ -61,6 +62,16 @@ trait StateView extends AgentStateView with ItemContainer
   final def workflowPositionToBoardPath(workflowPosition: WorkflowPosition): Checked[BoardPath] =
     instruction_[BoardInstruction](workflowPosition)
       .map(_.boardPath)
+
+  final def workflowJob(workflowPosition: WorkflowPosition): Checked[WorkflowJob] =
+    for {
+      workflow <- idToWorkflow.checked(workflowPosition.workflowId)
+      job <- workflow.checkedWorkflowJob(workflowPosition.position)
+    } yield job
+
+  private def keyToJob(jobKey: JobKey): Checked[WorkflowJob] =
+    idToWorkflow.checked(jobKey.workflowId)
+      .flatMap(_.keyToJob.checked(jobKey))
 
   protected def orderIdToBoardState(orderId: OrderId): Checked[BoardState] =
     for {
@@ -138,8 +149,6 @@ object StateView
 
       def workflowPathToId(workflowPath: WorkflowPath) =
         Left(Problem("workflowPathToId is not implemented"))
-
-      def pathToJobResource = throw new NotImplementedError
 
       lazy val keyToItem: MapView[InventoryItemKey, InventoryItem] =
         new MapView[InventoryItemKey, InventoryItem] {

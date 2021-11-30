@@ -367,6 +367,10 @@ final case class Repo private(
       signedItem <- itemOption.toChecked(VersionedItemRemovedProblem(id.path))
     } yield signedItem
 
+  def signedItems: View[Signed[VersionedItem]] =
+    pathToVersionToSignedItems.values.view
+      .flatMap(_.flatMap(_.maybeSignedItem))
+
   lazy val estimatedEventCount: Int = {
     var sum = versions.size  // VersionAdded
     for (o <- pathToVersionToSignedItems.values) sum += o.size

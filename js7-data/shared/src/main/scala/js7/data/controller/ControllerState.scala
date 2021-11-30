@@ -23,7 +23,7 @@ import js7.data.controller.ControllerState.logger
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.SnapshotMeta.SnapshotEventId
-import js7.data.event.{Event, EventId, ItemContainer, JournalEvent, JournalHeader, JournalState, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotMeta, SnapshotableState}
+import js7.data.event.{Event, EventId, ItemContainer, JournalEvent, JournalHeader, JournalState, KeyedEvent, KeyedEventTypedJsonCodec, SignedItemContainer, SnapshotMeta, SnapshotableState}
 import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeleted, ItemDeletionMarked, ItemDetachable}
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detached, NotDetached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
@@ -62,7 +62,8 @@ final case class ControllerState(
   /** Used for OrderWatch to allow to attach it from Agent. */
   deletionMarkedItems: Set[InventoryItemKey],
   idToOrder: Map[OrderId, Order[Order.State]])
-extends StateView
+extends SignedItemContainer
+with StateView
 with SnapshotableState[ControllerState]
 {
   def isAgent = false
@@ -622,19 +623,16 @@ with SnapshotableState[ControllerState]
       def get(itemKey: SignableItemKey): Option[Signed[SignableItem]] =
         itemKey match {
           case id: VersionedItemId_ => repo.anyIdToSigned(id).toOption
-          case path: SignableSimpleItemPath =>
-            pathToSignedSimpleItem.get(path)
+          case path: SignableSimpleItemPath => pathToSignedSimpleItem.get(path)
         }
 
       def iterator: Iterator[(SignableItemKey, Signed[SignableItem])] =
-        Iterator(
-          repo.pathToVersionToSignedItems.values.view
-            .flatMap(_
-              .flatMap(_.maybeSignedItem)
-              .map(signed => signed.value.key -> signed)),
-          pathToSignedSimpleItem
-        ).flatten
+        signedItems.iterator.map(o => o.value.key -> o)
     }
+
+  private def signedItems: View[Signed[SignableItem]] =
+    pathToSignedSimpleItem.values.view ++
+      repo.signedItems
 
   private def keyToItemFunc(itemKey: InventoryItemKey): Option[InventoryItem] =
     itemKey match {

@@ -7,6 +7,7 @@ import js7.agent.data.orderwatch.{AllFileWatchesState, FileWatchState}
 import js7.agent.data.subagent.SubagentRefState
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.crypt.Signed
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax._
@@ -15,9 +16,10 @@ import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import js7.data.event.{Event, EventId, ItemContainer, JournalEvent, JournalState, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState}
-import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached}
-import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey}
+import js7.data.event.{Event, EventId, ItemContainer, JournalEvent, JournalState, KeyedEvent, KeyedEventTypedJsonCodec, SignedItemContainer, SnapshotableState}
+import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached, SignedItemAttachedToMe}
+import js7.data.item.SignedItemEvent.SignedItemAdded
+import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, SignableItem, SignableItemKey}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.OrderEvent.{OrderCoreEvent, OrderForked, OrderJoined, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
@@ -37,11 +39,13 @@ final case class AgentState(
   meta: AgentMetaState,
   idToSubagentRefState: Map[SubagentId, SubagentRefState],
   idToOrder: Map[OrderId, Order[Order.State]],
-  idToWorkflow: Map[WorkflowId, Workflow],
+  idToWorkflow: Map[WorkflowId, Workflow/*reduced for this Agent!!!*/],
   allFileWatchesState: AllFileWatchesState,
   pathToJobResource: Map[JobResourcePath, JobResource],
-  pathToCalendar: Map[CalendarPath, Calendar])
-extends StateView
+  pathToCalendar: Map[CalendarPath, Calendar],
+  keyToSignedItem_ : Map[SignableItemKey, Signed[SignableItem]])
+extends SignedItemContainer
+with StateView
 with AgentStateView
 with SnapshotableState[AgentState]
 {
@@ -66,22 +70,31 @@ with SnapshotableState[AgentState]
   def estimatedSnapshotSize =
     standards.snapshotSize +
       1 +
+      //idToSubagentRefState.size +
       idToSubagentRefState.values.view.map(_.estimatedSnapshotSize).sum +
       idToWorkflow.size +
       idToOrder.size +
       allFileWatchesState.estimatedSnapshotSize +
       pathToJobResource.size +
+      //keyToSignedItem.size +  // == idToWorkflow.size + pathToJobResource.size
       pathToCalendar.size
 
-  def toSnapshotObservable =
-    standards.toSnapshotObservable ++
-      Observable.fromIterable((meta != AgentMetaState.empty) thenList meta) ++
-      Observable.fromIterable(idToSubagentRefState.values).flatMap(_.toSnapshotObservable) ++
-      Observable.fromIterable(idToWorkflow.values) ++
-      Observable.fromIterable(idToOrder.values) ++
-      allFileWatchesState.toSnapshot ++
-      Observable.fromIterable(pathToJobResource.values) ++
-      Observable.fromIterable(pathToCalendar.values)
+  def toSnapshotObservable = Observable(
+    standards.toSnapshotObservable,
+    Observable.fromIterable((meta != AgentMetaState.empty) thenList meta),
+    //Observable.fromIterable(idToSubagentRefState.values),
+    Observable.fromIterable(idToSubagentRefState.values).flatMap(_.toSnapshotObservable),
+    Observable.fromIterable(idToOrder.values),
+    allFileWatchesState.toSnapshot,
+    Observable.fromIterable(keyToSignedItem.values).map(SignedItemAdded(_)),
+    Observable.fromIterable(idToWorkflow.view.filterKeys(isWithoutSignature).values),
+    Observable.fromIterable(pathToJobResource.view.filterKeys(isWithoutSignature).values),
+    Observable.fromIterable(pathToCalendar.values)
+  ).flatten
+
+  // COMPATIBLE with v2.1
+  private def isWithoutSignature(itemKey: SignableItemKey) =
+    !keyToSignedItem.contains(itemKey)
 
   def withEventId(eventId: EventId) =
     copy(eventId = eventId)
@@ -106,8 +119,22 @@ with SnapshotableState[AgentState]
 
       case KeyedEvent(_: NoKey, event: BasicItemEvent.ForDelegate) =>
         event match {
+          case SignedItemAttachedToMe(signed: Signed[SignableItem]) =>
+            Right(signed.value match {
+              case workflow: Workflow =>
+                copy(
+                  keyToSignedItem_ = keyToSignedItem_ + (workflow.id -> signed),
+                  idToWorkflow = idToWorkflow + (workflow.id -> workflow.reduceForAgent(agentPath)))
+
+              case jobResource: JobResource  =>
+                copy(
+                  keyToSignedItem_ = keyToSignedItem_ + (jobResource.path -> signed),
+                  pathToJobResource = pathToJobResource + (jobResource.path -> jobResource))
+            })
+
           case ItemAttachedToMe(workflow: Workflow) =>
-            for (o <- idToWorkflow.insert(workflow.id -> workflow)) yield
+            // COMPATIBLE with v2.1
+            for (o <- idToWorkflow.insert(workflow.id -> workflow.reduceForAgent(agentPath))) yield
               copy(
                 idToWorkflow = o)
 
@@ -117,6 +144,7 @@ with SnapshotableState[AgentState]
               allFileWatchesState = allFileWatchesState.attach(fileWatch)))
 
           case ItemAttachedToMe(jobResource: JobResource) =>
+            // COMPATIBLE with v2.1
             // May replace an existing JobResource
             Right(copy(
               pathToJobResource = pathToJobResource + (jobResource.path -> jobResource)))
@@ -140,6 +168,7 @@ with SnapshotableState[AgentState]
           case ItemDetached(WorkflowId.as(workflowId), _) =>
             for (_ <- idToWorkflow.checked(workflowId)) yield
               copy(
+                keyToSignedItem_ = keyToSignedItem_ - workflowId,
                 idToWorkflow = idToWorkflow - workflowId)
 
           case ItemDetached(path: OrderWatchPath, meta.agentPath) =>
@@ -150,6 +179,7 @@ with SnapshotableState[AgentState]
           case ItemDetached(path: JobResourcePath, meta.agentPath) =>
             for (_ <- pathToJobResource.checked(path)) yield
               copy(
+                keyToSignedItem_ = keyToSignedItem_ - path,
                 pathToJobResource = pathToJobResource - path)
 
           case ItemDetached(path: CalendarPath, meta.agentPath) =>
@@ -240,6 +270,9 @@ with SnapshotableState[AgentState]
           idToSubagentRefState.view.mapValues(_.item).iterator
     }
 
+  def keyToSignedItem: MapView[SignableItemKey, Signed[SignableItem]] =
+    keyToSignedItem_.view
+
   def workflowPathToId(workflowPath: WorkflowPath) =
     Left(Problem.pure("workflowPathToId is not available at Agent"))
 
@@ -257,7 +290,8 @@ with ItemContainer.Companion[AgentState]
 
   val empty = AgentState(EventId.BeforeFirst, SnapshotableState.Standards.empty,
     AgentMetaState.empty,
-    Map.empty, Map.empty, Map.empty, AllFileWatchesState.empty, Map.empty, Map.empty)
+    Map.empty, Map.empty, Map.empty, AllFileWatchesState.empty,
+    Map.empty, Map.empty, Map.empty)
 
   def newBuilder() = new AgentStateBuilder
 
@@ -284,13 +318,14 @@ with ItemContainer.Companion[AgentState]
   }
 
   val snapshotObjectJsonCodec: TypedJsonCodec[Any] =
-    TypedJsonCodec.named("AgentState.Snapshot",
+    TypedJsonCodec.named("AgentState.snapshotObjectJsonCodec",
       Subtype[JournalState],
       Subtype[AgentMetaState],
       Workflow.subtype,
       Subtype[Order[Order.State]],
       Subtype[FileWatchState.Snapshot],
-      Subtype(signableSimpleItemJsonCodec),
+      Subtype(SignedItemAdded.jsonCodec(this)),  // For Repo and SignedItemAdded
+      Subtype(signableSimpleItemJsonCodec),  // COMPATIBLE with v2.1
       Subtype(unsignedSimpleItemJsonCodec),
       Subtype[BasicItemEvent])
 

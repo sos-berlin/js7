@@ -1,10 +1,12 @@
 package js7.agent.scheduler.order
 
+import js7.base.crypt.Signed
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.implicits.InsertableMutableMap
+import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
 import js7.data.item.BasicItemEvent
-import js7.data.item.BasicItemEvent.ItemAttachedToMe
+import js7.data.item.BasicItemEvent.{ItemAttachedToMe, SignedItemAttachedToMe}
 import js7.data.order.Order
 import js7.data.workflow.{Workflow, WorkflowId}
 import scala.collection.mutable
@@ -12,8 +14,9 @@ import scala.collection.mutable
 /**
   * @author Joacim Zschimmer
   */
-private[order] final class WorkflowRegister {
+private[order] final class WorkflowRegister(agentPath: AgentPath) {
 
+  // COMPATIBLE with v2.1
   private val _idToWorkflow = mutable.Map.empty[WorkflowId, Workflow]
     .withDefault { workflowPath => throw new NoSuchElementException(s"No such $workflowPath") }
 
@@ -23,10 +26,19 @@ private[order] final class WorkflowRegister {
     _idToWorkflow.insert(workflow.id -> workflow)
   }
 
-  def handleEvent(keyedEvent: KeyedEvent[BasicItemEvent]): Unit = {
+  def recover(signed: Signed[Workflow]): Unit = {
+    val workflow = signed.value
+    _idToWorkflow.insert(workflow.id -> workflow.reduceForAgent(agentPath))
+  }
+
+  def handleEvent(keyedEvent: KeyedEvent[BasicItemEvent], reducedWorkflow: Workflow): Unit = {
     keyedEvent.event match {
+      case SignedItemAttachedToMe(Signed(_: Workflow, _)) =>
+        _idToWorkflow += reducedWorkflow.id -> reducedWorkflow.reduceForAgent(agentPath)
+
+      // COMPATIBLE with v2.1
       case ItemAttachedToMe(workflow: Workflow) =>
-        _idToWorkflow += workflow.id -> workflow
+        _idToWorkflow += workflow.id -> reducedWorkflow
 
       //case ItemDetached(workflowId: WorkflowId, _) =>
       //  _idToWorkflow -= workflowId

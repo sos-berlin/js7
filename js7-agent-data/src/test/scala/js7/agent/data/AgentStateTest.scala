@@ -12,6 +12,7 @@ import js7.agent.data.orderwatch.{AllFileWatchesState, FileWatchState}
 import js7.agent.data.subagent.SubagentRefState
 import js7.base.auth.UserId
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceEither}
+import js7.base.crypt.silly.SillySigner
 import js7.base.io.file.watch.DirectoryState
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
@@ -26,8 +27,8 @@ import js7.data.controller.ControllerId
 import js7.data.event.JournalEvent.SnapshotTaken
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalId, JournalState, SnapshotableState}
-import js7.data.item.BasicItemEvent.ItemAttachedToMe
-import js7.data.item.ItemRevision
+import js7.data.item.BasicItemEvent.{ItemAttachedToMe, SignedItemAttachedToMe}
+import js7.data.item.{ItemAttachedState, ItemRevision, ItemSigner}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.Order.{Forked, Ready}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachedToAgent, OrderForked}
@@ -56,6 +57,9 @@ final class AgentStateTest extends AsyncFreeSpec
 
   private val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "1.0", Nil)
   private val jobResource = JobResource(JobResourcePath("JOB-RESOURCE"))
+  private val itemSigner = new ItemSigner(SillySigner.Default, AgentState.signableItemJsonCodec)
+  private val signedWorkflow = itemSigner.sign(Workflow(WorkflowPath("SIGNED-WORKFLOW") ~ "1.0", Nil))
+  private val signedJobResource = itemSigner.sign(JobResource(JobResourcePath("SIGNED-JOBRESOURCE")))
 
   private val calendar = Calendar(
     CalendarPath("CALENDAR"),
@@ -93,7 +97,8 @@ final class AgentStateTest extends AsyncFreeSpec
     Map(
       OrderId("ORDER") -> Order.fromOrderAdded(OrderId("ORDER"), OrderAdded(workflow.id))),
     Map(
-      workflow.id -> workflow),
+      workflow.id -> workflow,
+      signedWorkflow.value.id -> signedWorkflow.value),
     AllFileWatchesState.fromIterable(Seq(
       FileWatchState(
         fileWatch,
@@ -101,9 +106,13 @@ final class AgentStateTest extends AsyncFreeSpec
           DirectoryState.Entry(Paths.get("/DIRECTORY/1.csv")),
           DirectoryState.Entry(Paths.get("/DIRECTORY/2.csv"))))))),
     Map(
-      jobResource.path -> jobResource),
+      jobResource.path -> jobResource,
+      signedJobResource.value.path -> signedJobResource.value),
     Map(
-      calendar.path -> calendar))
+      calendar.path -> calendar),
+    Map(
+      signedJobResource.value.path -> signedJobResource,
+      signedWorkflow.value.id -> signedWorkflow))
 
   "isDedicated, isFreshlyDedicated" - {
     "empty" in {
@@ -134,7 +143,7 @@ final class AgentStateTest extends AsyncFreeSpec
   }
 
   "estimatedSnapshotSize" in {
-    assert(agentState.estimatedSnapshotSize == 11)
+    assert(agentState.estimatedSnapshotSize == 13)
     for (n <- agentState.toSnapshotObservable.countL.runToFuture)
       yield assert(n == agentState.estimatedSnapshotSize)
   }
@@ -168,12 +177,6 @@ final class AgentStateTest extends AsyncFreeSpec
             "TYPE": "ItemAttached",
             "key": "JobResource:JOB-RESOURCE",
             "delegateId": "Subagent:SUBAGENT"
-          }""",
-          json"""{
-            "TYPE": "Workflow",
-            "path": "WORKFLOW",
-            "versionId": "1.0",
-            "instructions": []
           }""",
           json"""{
             "TYPE": "Order",
@@ -212,6 +215,33 @@ final class AgentStateTest extends AsyncFreeSpec
             "orderWatchPath": "ORDER-SOURCE-ID",
             "path": "${separator}DIRECTORY${separator}2.csv"
           }""",
+
+          json"""{
+            "TYPE" : "SignedItemAdded",
+            "signed" : {
+              "string" : "{\"TYPE\":\"JobResource\",\"path\":\"SIGNED-JOBRESOURCE\",\"variables\":{},\"env\":{}}",
+              "signature" : {
+                "TYPE" : "Silly",
+                "signatureString" : "SILLY-SIGNATURE"
+              }
+            }
+          }""",
+          json"""{
+            "TYPE" : "SignedItemAdded",
+            "signed" : {
+              "string" : "{\"TYPE\":\"Workflow\",\"path\":\"SIGNED-WORKFLOW\",\"versionId\":\"1.0\",\"instructions\":[]}",
+              "signature" : {
+                "TYPE" : "Silly",
+                "signatureString" : "SILLY-SIGNATURE"
+              }
+            }
+          }""",
+          json"""{
+            "TYPE": "Workflow",
+            "path": "WORKFLOW",
+            "versionId": "1.0",
+            "instructions": []
+          }""",
           json"""{
             "TYPE": "JobResource",
             "path": "JOB-RESOURCE",
@@ -247,7 +277,7 @@ final class AgentStateTest extends AsyncFreeSpec
   "Unknown TYPE for snapshotObjectJsonCodec" in {
     assert(AgentState.snapshotObjectJsonCodec
       .decodeJson(json"""{ "TYPE": "UNKNOWN" }""").toChecked == Left(Problem(
-      """JSON DecodingFailure at : Unexpected JSON {"TYPE": "UNKNOWN", ...} for class 'AgentState.Snapshot'""")))
+      """JSON DecodingFailure at : Unexpected JSON {"TYPE": "UNKNOWN", ...} for class 'AgentState.snapshotObjectJsonCodec'""")))
   }
 
   "Unknown TYPE for keyedEventJsonCodec" in {
@@ -274,6 +304,9 @@ final class AgentStateTest extends AsyncFreeSpec
       meta.agentRunId,
       meta.controllerId)).orThrow
     agentState = agentState.applyEvent(NoKey <-: ItemAttachedToMe(workflow)).orThrow
+    agentState = agentState.applyEvent(NoKey <-: ItemAttachedToMe(jobResource)).orThrow
+    agentState = agentState.applyEvent(NoKey <-: SignedItemAttachedToMe(signedWorkflow)).orThrow
+    agentState = agentState.applyEvent(NoKey <-: SignedItemAttachedToMe(signedJobResource)).orThrow
     agentState = agentState.applyEvent(orderId <-:
       OrderAttachedToAgent(
         workflowId, Order.Ready, Map.empty, None, None, Vector.empty, agentPath, None, None, false, false))
@@ -292,10 +325,17 @@ final class AgentStateTest extends AsyncFreeSpec
         childOrderId ->
           Order(childOrderId, workflowId /: (Position(0) / "fork+BRANCH" % 0), Ready,
             attachedState = Some(Order.Attached(agentPath)), parent = Some(orderId))),
-      Map(workflowId -> workflow),
+      Map(
+        workflowId -> workflow,
+        signedWorkflow.value.id -> signedWorkflow.value),
       AllFileWatchesState.empty,
+      Map(
+        jobResource.path -> jobResource,
+        signedJobResource.value.path -> signedJobResource.value),
       Map.empty,
-      Map.empty))
+      Map(
+        signedJobResource.value.path -> signedJobResource,
+        signedWorkflow.value.id -> signedWorkflow)))
   }
 
   "keyToItem" in {
@@ -303,6 +343,8 @@ final class AgentStateTest extends AsyncFreeSpec
     assert(agentState.keyToItem.get(workflow.id) == Some(workflow))
     assert(agentState.keyToItem.get(jobResource.path) == Some(jobResource))
     assert(agentState.keyToItem.keySet ==
-      Set(workflow.id, jobResource.path, calendar.path, fileWatch.path, subagentRef.id))
+      Set(workflow.id, signedWorkflow.value.id,
+        jobResource.path, signedJobResource.value.path,
+      calendar.path, fileWatch.path, subagentRef.id))
   }
 }
