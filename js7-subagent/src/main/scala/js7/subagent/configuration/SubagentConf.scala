@@ -33,7 +33,6 @@ final case class SubagentConf(
   webServerPorts: Seq[WebServerPort],
   defaultJobSigkillDelay: FiniteDuration,
   killScript: Option[ProcessKillScript],
-  akkaAskTimeout: Timeout,
   name: String,
   config: Config)
 extends CommonConfiguration

@@ -44,7 +44,7 @@ final case class AgentConfiguration(
   logDirectory: Path,
   jobWorkingDirectory: Path = WorkingDirectory,
   defaultJobSigkillDelay: FiniteDuration,
-  killScript: Option[ProcessKillScript],
+  killScript: Option[ProcessKillScript],  // TODO Duplicate with SubagentConf
   isStandaloneSubagent: Boolean = false,
   implicit val akkaAskTimeout: Timeout,
   journalConf: JournalConf,
@@ -127,7 +127,6 @@ extends CommonConfiguration
       webServerPorts,
       defaultJobSigkillDelay = defaultJobSigkillDelay,
       killScript,
-      akkaAskTimeout = akkaAskTimeout,
       name = name,
       config)
 
