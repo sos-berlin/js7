@@ -27,7 +27,7 @@ extends StatePersistence[S] with RealEventWatch
   private var _eventCount = 0L
 
   private val journalLogger = new JournalLogger(
-    syncOrFlush5Chars = "mem  ",
+    syncOrFlushChars = "memory",
     infoLogEvents = Set.empty,
     supressTiming = true)
 

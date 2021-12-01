@@ -13,12 +13,13 @@ import scala.concurrent.duration.Deadline
 import scala.concurrent.duration.Deadline.now
 
 private[journal] final class JournalLogger(
-  syncOrFlush5Chars: String,
+  syncOrFlushChars: String,
   infoLogEvents: Set[String],
   supressTiming: Boolean = false)
 {
-  private val syncOrFlush6Chars = syncOrFlush5Chars + " "
-  private val ackSyncOrFlushString = syncOrFlush6Chars.toUpperCase(ROOT)
+  private val syncOrFlushCharsAndSpace = syncOrFlushChars + " "
+  private val syncOrFlushWidth = 6 max syncOrFlushCharsAndSpace.length
+  private val ackSyncOrFlushString = syncOrFlushCharsAndSpace.toUpperCase(ROOT)
 
   private val infoLoggableEventClasses = new SubclassCache(infoLogEvents)
   private val sb = new StringBuilder
@@ -78,9 +79,9 @@ private[journal] final class JournalLogger(
     sb.append(':')  // Something simple to grep
     //? sb.fillRight(5) { sb.append(nr) }
     sb.append(persistMarker)
-    sb.fillRight(6) {
+    sb.fillRight(syncOrFlushWidth) {
       if (isLast && persist.isLastOfFlushedOrSynced) {
-        sb.append(if (ack) ackSyncOrFlushString else syncOrFlush6Chars)
+        sb.append(if (ack) ackSyncOrFlushString else syncOrFlushCharsAndSpace)
       } else if (isFirst && persistIndex == 0 && persistCount >= 2) {
         sb.append(persistCount)  // Wrongly counts multiple isLastOfFlushedOrSynced (but only SnapshotTaken)
       } else if (nr == nextToLastEventNr && persistEventCount >= 10_000) {
