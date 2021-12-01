@@ -41,7 +41,7 @@ import js7.data.item.{InventoryItemEvent, InventoryItemKey, SignableItem, Unsign
 import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetached}
 import js7.data.order.{Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.OrderWatchEvent
-import js7.data.subagent.SubagentId
+import js7.data.subagent.{SubagentId, SubagentRefStateEvent}
 import js7.journal.state.StatePersistence
 import monix.eval.Task
 import monix.execution.atomic.AtomicInt
@@ -575,6 +575,7 @@ private[controller] object AgentDriver
     classOf[OrderEvent],
     classOf[AgentEvent.AgentReady],
     classOf[AgentEvent.AgentShutDown],
+    classOf[SubagentRefStateEvent],
     classOf[InventoryItemEvent],
     classOf[OrderWatchEvent])
   private val DecoupledProblem = Problem.pure("Agent has been decoupled")

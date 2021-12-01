@@ -67,7 +67,7 @@ import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath}
 import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
 import js7.data.state.OrderEventHandler
 import js7.data.state.OrderEventHandler.FollowUp
-import js7.data.subagent.SubagentRef
+import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefStateEvent}
 import js7.data.value.expression.scopes.NowScope
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow}
@@ -517,6 +517,9 @@ with MainJournalingActor[ControllerState, Event]
 
                       case KeyedEvent(_, _: ItemAddedOrChanged) =>
                         Nil
+
+                      case KeyedEvent(_: SubagentId, _: SubagentRefStateEvent) =>
+                        Timestamped(keyedEvent) :: Nil
 
                       case _ =>
                         logger.error(s"Unknown event received from ${agentEntry.agentPath}: $keyedEvent")

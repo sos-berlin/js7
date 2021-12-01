@@ -43,18 +43,19 @@ object SubagentCommand
     extends SubagentCommand.Response
   }
 
-  @deprecated("Use AttachSignedItem and AttachUnsignedItem")
+  final case class CoupleDirector(
+    subagentId: SubagentId,
+    subagentRunId: SubagentRunId,
+    eventId: EventId)
+  extends SubagentCommand {
+    type Response = SubagentCommand.Accepted
+  }
+
   final case class AttachItem(item: InventoryItem)
   extends SubagentCommand {
     type Response = Accepted
   }
-  @deprecated("Use AttachSignedItem and AttachUnsignedItem")
   object AttachItem
-
-  //final case class AttachUnsignedItem(item: UnsignedSimpleItem)
-  //extends SubagentCommand {
-  //  type Response = Accepted
-  //}
 
   final case class AttachSignedItem(signed: Signed[SignableItem])
   extends SubagentCommand {
@@ -100,6 +101,7 @@ object SubagentCommand
 
   implicit val jsonCodec = TypedJsonCodec[SubagentCommand](
     Subtype(deriveCodec[DedicateSubagent]),
+    Subtype(deriveCodec[CoupleDirector]),
     Subtype(deriveCodec[AttachItem]),
     //Subtype(deriveCodec[AttachUnsignedItem]),
     Subtype[AttachSignedItem],

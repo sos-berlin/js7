@@ -2,7 +2,6 @@ package js7.agent.data
 
 import js7.agent.data.AgentState.AgentMetaState
 import js7.agent.data.orderwatch.{AllFileWatchesState, FileWatchState}
-import js7.agent.data.subagent.SubagentRefState
 import js7.base.crypt.Signed
 import js7.base.problem.Checked._
 import js7.base.utils.Collections.implicits._
@@ -10,10 +9,10 @@ import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.cluster.ClusterState
 import js7.data.event.{EventId, JournalState, SnapshotableState, SnapshotableStateBuilder, Stamped}
 import js7.data.item.SignedItemEvent.SignedItemAdded
-import js7.data.item.{BasicItemEvent, SignableItem, SignableItemKey, SignedItemEvent}
+import js7.data.item.{SignableItem, SignableItemKey, SignedItemEvent}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.{Order, OrderId}
-import js7.data.subagent.{SubagentId, SubagentRef}
+import js7.data.subagent.{SubagentId, SubagentRefState}
 import js7.data.workflow.{Workflow, WorkflowId}
 import scala.collection.mutable
 
@@ -58,18 +57,8 @@ extends SnapshotableStateBuilder[AgentState]
     case snapshot: FileWatchState.Snapshot =>
       allFileWatchesState.addSnapshot(snapshot)
 
-    case subagentRef: SubagentRef =>
-      idToSubagentRefState.insert(subagentRef.id -> SubagentRefState.initial(subagentRef))
-
-    //case subagentRefState: SubagentRefState =>
-    //  idToSubagentRefState.insert(subagentRefState.subagentId -> subagentRefState)
-
-    case event: BasicItemEvent.ItemAttachedStateEvent =>
-      event.delegateId match {
-        case subagentId: SubagentId =>
-          idToSubagentRefState(subagentId) =
-            idToSubagentRefState(subagentId).applyEvent(event).orThrow
-      }
+    case subagentRefState: SubagentRefState =>
+      idToSubagentRefState.insert(subagentRefState.subagentId -> subagentRefState)
 
     case o: JournalState =>
       _journalState = o

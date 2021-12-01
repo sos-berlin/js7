@@ -36,7 +36,7 @@ import js7.data.order.OrderEvent.{OrderAdded, OrderAddedX, OrderCancelled, Order
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{AllOrderWatchesState, FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState}
 import js7.data.state.StateView
-import js7.data.subagent.{SubagentId, SubagentRef}
+import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState, SubagentRefStateEvent}
 import js7.data.value.Value
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import monix.reactive.Observable
@@ -51,7 +51,7 @@ final case class ControllerState(
   standards: SnapshotableState.Standards,
   controllerMetaState: ControllerMetaState,
   pathToAgentRefState: Map[AgentPath, AgentRefState],
-  idToSubagentRef: Map[SubagentId, SubagentRef],
+  idToSubagentRefState: Map[SubagentId, SubagentRefState],
   pathToLockState: Map[LockPath, LockState],
   pathToBoardState: Map[BoardPath, BoardState],
   pathToCalendar: Map[CalendarPath, Calendar],
@@ -78,7 +78,7 @@ with SnapshotableState[ControllerState]
     controllerMetaState.isDefined.toInt +
     repo.estimatedEventCount +
     pathToAgentRefState.size +
-    idToSubagentRef.size +
+    idToSubagentRefState.size +
     pathToLockState.size +
     pathToBoardState.values.size +
     pathToBoardState.values.view.map(_.notices.size).sum +
@@ -95,7 +95,7 @@ with SnapshotableState[ControllerState]
       standards.toSnapshotObservable,
       Observable.fromIterable(controllerMetaState.isDefined ? controllerMetaState),
       Observable.fromIterable(pathToAgentRefState.values),
-      Observable.fromIterable(idToSubagentRef.values),
+      Observable.fromIterable(idToSubagentRefState.values),
       Observable.fromIterable(pathToLockState.values),
       Observable.fromIterable(pathToBoardState.values.view.map(_.toSnapshotObservable))
         .flatten,
@@ -146,9 +146,9 @@ with SnapshotableState[ControllerState]
                       pathToAgentRefState = o)
 
                 case subagentRef: SubagentRef =>
-                  for (o <- idToSubagentRef.insert(subagentRef.id -> subagentRef))
+                  for (o <- idToSubagentRefState.insert(subagentRef.id -> SubagentRefState.initial(subagentRef)))
                     yield copy(
-                      idToSubagentRef = o)
+                      idToSubagentRefState = o)
 
                 case orderWatch: OrderWatch =>
                   for (o <- allOrderWatchesState.addOrderWatch(orderWatch)) yield
@@ -185,11 +185,12 @@ with SnapshotableState[ControllerState]
 
                 case subagentRef: SubagentRef =>
                   for {
-                    x <- idToSubagentRef.checked(subagentRef.id)
-                    _ <- x.agentPath == subagentRef.agentPath !!
+                    subagentRefState <- idToSubagentRefState.checked(subagentRef.id)
+                    _ <- subagentRefState.subagentRef.agentPath == subagentRef.agentPath !!
                       Problem.pure("A Subagent's AgentPath cannot be changed")
                   } yield copy(
-                    idToSubagentRef = idToSubagentRef + (subagentRef.id -> subagentRef))
+                    idToSubagentRefState = idToSubagentRefState + (subagentRef.id ->
+                      subagentRefState.copy(subagentRef = subagentRef)))
 
                 case orderWatch: OrderWatch =>
                   allOrderWatchesState.changeOrderWatch(orderWatch)
@@ -257,7 +258,7 @@ with SnapshotableState[ControllerState]
 
                 case subagentId: SubagentId =>
                   Right(updated.copy(
-                    idToSubagentRef = idToSubagentRef - subagentId))
+                    idToSubagentRefState = idToSubagentRefState - subagentId))
 
                 case path: OrderWatchPath =>
                   Right(updated.copy(
@@ -418,6 +419,13 @@ with SnapshotableState[ControllerState]
       allOrderWatchesState
         .onOrderWatchEvent(orderWatchPath <-: event)
         .map(o => copy(allOrderWatchesState = o))
+
+    case KeyedEvent(subagentId: SubagentId, event: SubagentRefStateEvent) =>
+      for {
+        o <- idToSubagentRefState.checked(subagentId)
+        o <- o.applyEvent(event)
+      } yield copy(
+        idToSubagentRefState = idToSubagentRefState + (subagentId -> o))
 
     case KeyedEvent(_, _: ControllerShutDown) =>
       Right(this)
@@ -593,8 +601,8 @@ with SnapshotableState[ControllerState]
 
   private def unsignedSimpleItems: View[UnsignedSimpleItem] =
     pathToCalendar.values.view ++
-    idToSubagentRef.values.view ++
-      (pathToAgentRefState.view ++
+      (idToSubagentRefState.view ++
+        pathToAgentRefState.view ++
         pathToLockState ++
         allOrderWatchesState.pathToOrderWatchState
       ).map(_._2.item)
@@ -638,7 +646,7 @@ with SnapshotableState[ControllerState]
     itemKey match {
       case id: VersionedItemId_ => repo.anyIdToSigned(id).toOption.map(_.value)
       case path: AgentPath => pathToAgentRefState.get(path).map(_.item)
-      case id: SubagentId => idToSubagentRef.get(id)
+      case id: SubagentId => idToSubagentRefState.get(id).map(_.item)
       case path: LockPath => pathToLockState.get(path).map(_.item)
       case path: OrderWatchPath => allOrderWatchesState.pathToOrderWatchState.get(path).map(_.item)
       case path: BoardPath => pathToBoardState.get(path).map(_.item)
@@ -684,14 +692,14 @@ with ItemContainer.Companion[ControllerState]
     AgentRef, SubagentRef, Lock, Board, Calendar, FileWatch, JobResource, Workflow)
 
   lazy val snapshotObjectJsonCodec: TypedJsonCodec[Any] =
-    TypedJsonCodec.named("ControllerState.Snapshot",
+    TypedJsonCodec.named("ControllerState.snapshotObjectJsonCodec",
       Subtype[JournalHeader],
       Subtype[SnapshotMeta],
       Subtype[JournalState],
       Subtype(deriveCodec[ClusterStateSnapshot]),
       Subtype[ControllerMetaState],
       Subtype[AgentRefState],
-      Subtype[SubagentRef],
+      Subtype[SubagentRefState],
       Subtype[LockState],
       Subtype[Board],
       Subtype[Calendar],
@@ -702,13 +710,14 @@ with ItemContainer.Companion[ControllerState]
       Subtype[Order[Order.State]])
 
   implicit lazy val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] =
-    KeyedEventTypedJsonCodec.named("ControlllerState.Event",
+    KeyedEventTypedJsonCodec.named("ControllerState.keyedEventJsonCodec",
       KeyedSubtype[JournalEvent],
       KeyedSubtype[InventoryItemEvent],
       KeyedSubtype[VersionedEvent],
       KeyedSubtype[ControllerEvent],
       KeyedSubtype[ClusterEvent],
       KeyedSubtype[AgentRefStateEvent],
+      KeyedSubtype[SubagentRefStateEvent],
       KeyedSubtype[OrderWatchEvent],
       KeyedSubtype[OrderEvent],
       KeyedSubtype[BoardEvent])

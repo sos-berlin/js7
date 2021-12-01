@@ -1,6 +1,7 @@
 package js7.tests
 
 import cats.effect.Resource
+import com.typesafe.config.ConfigFactory
 import java.nio.file.Files.createDirectory
 import java.nio.file.Path
 import js7.base.configutils.Configs.HoconStringInterpolator
@@ -18,6 +19,7 @@ import js7.data.agent.AgentPath
 import js7.data.event.{EventId, KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.subagent.SubagentRefStateEvent.SubagentDedicated
 import js7.data.subagent.{SubagentId, SubagentRef}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -53,23 +55,48 @@ final class SubagentTest extends AnyFreeSpec with ControllerAgentForScalaTest
     agentPath,
     Uri(s"http://localhost:$subagentPort"))
 
+  // FIXME Doppelt mit testResource
+  private val subagent1Resource = Resource.suspend(Task {
+    val name = subagentRef1.id.string
+    val subagentDir = directoryProvider.directory / name
+    StandaloneSubagent.resource(SubagentConf.of(
+      configDirectory = subagentDir / "config",
+      dataDirectory = subagentDir / "data",
+      webServerPorts = Seq(WebServerPort.localhost(subagentPort)),
+      config = ConfigFactory.empty,
+      name = name))
+  })
+
+  //private lazy val (subagent1, subagent1Release) = subagent1Resource.allocated.await(99.s)
+  //
+  //override def beforeAll() = {
+  //  super.beforeAll()
+  //  subagent1
+  //  eventWatch.await[SubagentDedicated]()
+  //}
+  //
+  //override def afterAll(): Unit = {
+  //  subagent1Release.await(99.s)
+  //  super.afterAll()
+  //}
+
   "test" in {
-    // TODO Sicherstellen, dass nicht der lokale Subagent genommen wird! FixedPriority
     val n = 100
     val runOrders = runMultipleOrders(
       orderIds = for (i <- 1 to n) yield OrderId(s"ORDER-$i"),
       assertEvents = (orderId, events) =>
         Task {
           val result = withClue(s"$orderId: ") {
+            val anySubagentId = SubagentId("ANY")
             assert(events.collect {
-              case OrderProcessingStarted(_) => OrderProcessingStarted(SubagentId("ANY"))
+              case OrderProcessingStarted(_) => OrderProcessingStarted(anySubagentId)
               case o => o
             } == Seq(
               OrderAdded(workflow.id),
               OrderAttachable(agentPath),
               OrderAttached(agentPath),
               OrderStarted,
-              OrderProcessingStarted(SubagentId("ANY")),
+              OrderProcessingStarted(anySubagentId),
               OrderStdoutWritten("STDOUT 1\nSTDOUT 2\n"),
               OrderProcessed(Outcome.succeeded),
               OrderMoved(Position(1)),
@@ -82,8 +109,14 @@ final class SubagentTest extends AnyFreeSpec with ControllerAgentForScalaTest
         })
 
     testResource(directoryProvider.directory / "subagent", subagentPort)
-      .use(subagent =>
-        runOrders.executeOn(implicitly[Scheduler]))
+      .use { subagent =>
+        eventWatch.await[SubagentDedicated]()
+        runOrders.executeOn(implicitly[Scheduler]) >>
+          Task {
+            assert(eventWatch.allKeyedEvents[OrderProcessingStarted].map(_.event.subagentId).toSet
+              == Set(directoryProvider.subagentId, subagentRef1.id))
+          }
+      }
     //runWithOwnScheduler(directoryProvider.directory / "subagent", subagentPort)(runOrders)
       .await(99.s)
   }
@@ -95,6 +128,13 @@ final class SubagentTest extends AnyFreeSpec with ControllerAgentForScalaTest
   "Delete Subagent while processes are still running" in {
     pending // TODO
   }
+
+  private def testResource(directory: Path, port: Int): Resource[Task, StandaloneSubagent] =
+    for {
+      conf <- subagentEnvironment(directory, port)
+      scheduler <- StandaloneSubagent.threadPoolResource(conf)
+      subagent <- StandaloneSubagent.resource(conf)(scheduler)
+    } yield subagent
 
   private def subagentEnvironment(directory: Path, port: Int): Resource[Task, SubagentConf] =
     Resource.make(
@@ -108,8 +148,9 @@ final class SubagentTest extends AnyFreeSpec with ControllerAgentForScalaTest
     )
 
   private def toSubagentConf(directory: Path, port: Int): SubagentConf =
-    StandaloneSubagent.makeSubagentConf(
-      directory,
+    SubagentConf.of(
+      configDirectory = directory / "config",
+      dataDirectory = directory / "data",
       Seq(WebServerPort.localhost(port)),
       name = "SUBAGENT-1",
       config = config"""
@@ -124,15 +165,8 @@ final class SubagentTest extends AnyFreeSpec with ControllerAgentForScalaTest
     createDirectory(dir)
     //createDirectory(dir / "config")
     createDirectory(dir / "data")
-    createDirectory(dir / "logs")
+    createDirectory(dir / "data" / "logs")
   }
-
-  private def testResource(directory: Path, port: Int): Resource[Task, StandaloneSubagent] =
-    for {
-      conf <- subagentEnvironment(directory, port)
-      scheduler <- StandaloneSubagent.threadPoolResource(conf)
-      subagent <- StandaloneSubagent.resource(conf)(scheduler)
-    } yield subagent
 
   private def runMultipleOrders(
     orderIds: Iterable[OrderId],

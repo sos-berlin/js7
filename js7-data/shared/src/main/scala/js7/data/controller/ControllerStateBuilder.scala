@@ -25,7 +25,7 @@ import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{AllOrderWatchesState, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState}
 import js7.data.state.StateView
 import js7.data.state.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
-import js7.data.subagent.{SubagentId, SubagentRef}
+import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState, SubagentRefStateEvent}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import scala.collection.{MapView, mutable}
 
@@ -40,7 +40,7 @@ with StateView
   private var repo = Repo.empty
   private val _idToOrder = mutable.Map.empty[OrderId, Order[Order.State]]
   private val _pathToAgentRefState = mutable.Map.empty[AgentPath, AgentRefState]
-  private val _idToSubagentRef = mutable.Map.empty[SubagentId, SubagentRef]
+  private val _idToSubagentRefState = mutable.Map.empty[SubagentId, SubagentRefState]
   private val _pathToLockState = mutable.Map.empty[LockPath, LockState]
   private val _pathToBoardState = mutable.Map.empty[BoardPath, BoardState]
   private val _pathToCalendar = mutable.Map.empty[CalendarPath, Calendar]
@@ -87,7 +87,7 @@ with StateView
     repo = state.repo
     _idToOrder ++= state.idToOrder
     _pathToAgentRefState ++= state.pathToAgentRefState
-    _idToSubagentRef ++= state.idToSubagentRef
+    _idToSubagentRefState ++= state.idToSubagentRefState
     _pathToLockState ++= state.pathToLockState
     _pathToBoardState ++= state.pathToBoardState
     _pathToCalendar ++= state.pathToCalendar
@@ -114,8 +114,8 @@ with StateView
     case agentRefState: AgentRefState =>
       _pathToAgentRefState.insert(agentRefState.agentPath -> agentRefState)
 
-    case subagentRef: SubagentRef =>
-      _idToSubagentRef.insert(subagentRef.id -> subagentRef)
+    case subagentRefState: SubagentRefState =>
+      _idToSubagentRefState.insert(subagentRefState.subagentId -> subagentRefState)
 
     case lockState: LockState =>
       _pathToLockState.insert(lockState.lock.path -> lockState)
@@ -188,7 +188,7 @@ with StateView
                   _pathToAgentRefState.insert(agentRef.path -> AgentRefState(agentRef))
 
                 case subagentRef: SubagentRef =>
-                  _idToSubagentRef.insert(subagentRef.id -> subagentRef)
+                  _idToSubagentRefState.insert(subagentRef.id -> SubagentRefState.initial(subagentRef))
 
                 case orderWatch: OrderWatch =>
                   allOrderWatchesState = allOrderWatchesState.addOrderWatch(orderWatch).orThrow
@@ -211,7 +211,8 @@ with StateView
                     agentRef = agentRef)
 
                 case subagentRef: SubagentRef =>
-                  _idToSubagentRef(subagentRef.id) = subagentRef
+                  _idToSubagentRefState(subagentRef.id) = _idToSubagentRefState(subagentRef.id).copy(
+                    subagentRef = subagentRef)
 
                 case orderWatch: OrderWatch =>
                   allOrderWatchesState = allOrderWatchesState.changeOrderWatch(orderWatch).orThrow
@@ -267,7 +268,7 @@ with StateView
                   _pathToAgentRefState -= agentPath
 
                 case subagentId: SubagentId =>
-                  _idToSubagentRef -= subagentId
+                  _idToSubagentRefState -= subagentId
 
                 case boardPath: BoardPath =>
                   _pathToBoardState -= boardPath
@@ -278,8 +279,11 @@ with StateView
           }
       }
 
-    case Stamped(_, _, KeyedEvent(name: AgentPath, event: AgentRefStateEvent)) =>
-      _pathToAgentRefState += name -> _pathToAgentRefState(name).applyEvent(event).orThrow
+    case Stamped(_, _, KeyedEvent(path: AgentPath, event: AgentRefStateEvent)) =>
+      _pathToAgentRefState += path -> _pathToAgentRefState(path).applyEvent(event).orThrow
+
+    case Stamped(_, _, KeyedEvent(id: SubagentId, event: SubagentRefStateEvent)) =>
+      _idToSubagentRefState += id -> _idToSubagentRefState(id).applyEvent(event).orThrow
 
     case Stamped(_, _, KeyedEvent(orderId: OrderId, event: OrderEvent)) =>
       event match {
@@ -414,7 +418,7 @@ with StateView
       standards,
       controllerMetaState,
       _pathToAgentRefState.toMap,
-      _idToSubagentRef.toMap,
+      _idToSubagentRefState.toMap,
       _pathToLockState.toMap,
       _pathToBoardState.toMap,
       _pathToCalendar.toMap,

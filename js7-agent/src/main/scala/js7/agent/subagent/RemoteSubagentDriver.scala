@@ -1,7 +1,9 @@
-package js7.subagent.client
+package js7.agent.subagent
 
 import akka.actor.ActorSystem
 import cats.syntax.traverse._
+import js7.agent.data.AgentState
+import js7.agent.subagent.RemoteSubagentDriver._
 import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.crypt.Signed
 import js7.base.generic.Completed
@@ -14,7 +16,7 @@ import js7.base.monixutils.ObservablePauseDetector._
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.stream.{Numbered, ObservableNumberedQueue}
-import js7.base.time.ScalaTime.DurationRichInt
+import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax.{RichAny, RichEitherF, RichPartialFunction, RichString}
 import js7.base.web.HttpClient
 import js7.common.http.RecouplingStreamReader
@@ -22,31 +24,32 @@ import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.event.JournalEvent.StampedHeartbeat
-import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, JournaledState, KeyedEvent, Stamped}
+import js7.data.event.KeyedEvent.NoKey
+import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
 import js7.data.item.SignableItem
-import js7.data.job.{JobResource, JobResourcePath}
+import js7.data.job.JobResource
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
-import js7.data.order.{Order, OrderId, Outcome}
-import js7.data.state.StateView
-import js7.data.subagent.SubagentRef
+import js7.data.order.{Order, OrderEvent, OrderId, Outcome}
+import js7.data.subagent.SubagentRefStateEvent.SubagentEventsObserved
+import js7.data.subagent.{SubagentRef, SubagentRefState, SubagentRefStateEvent}
 import js7.data.value.expression.Expression
 import js7.journal.state.StatePersistence
 import js7.launcher.StdObservers
 import js7.subagent.SubagentState.keyedEventJsonCodec
-import js7.subagent.client.RemoteSubagentDriver._
-import js7.subagent.data.SubagentCommand
-import js7.subagent.data.SubagentCommand.{AttachItem, AttachSignedItem, DedicateSubagent, KillProcess, StartOrderProcess}
+import js7.subagent.client.{SubagentClient, SubagentDriver}
+import js7.subagent.data.SubagentCommand.{AttachItem, AttachSignedItem, CoupleDirector, DedicateSubagent, KillProcess, StartOrderProcess}
+import js7.subagent.data.{SubagentCommand, SubagentEvent}
 import monix.eval.Task
 import monix.execution.atomic.Atomic
 import monix.execution.cancelables.SerialCancelable
 import monix.reactive.Observable
 import scala.concurrent.Promise
 
-final class RemoteSubagentDriver[S <: JournaledState[S] with StateView](
+final class RemoteSubagentDriver(
   val subagentRef: SubagentRef,
   userAndPassword: Option[UserAndPassword],
   httpsConfig: HttpsConfig,
-  persistence: StatePersistence[S],
+  persistence: StatePersistence[AgentState],
   agentPath: AgentPath,
   controllerId: ControllerId,
   protected val conf: SubagentDriver.Conf,
@@ -81,11 +84,26 @@ extends SubagentDriver
     }
 
   def start: Task[Unit] =
-    commandQueue.enqueue(
-      DedicateSubagent(subagentId, agentPath, controllerId) :: Nil
-    ) *>
-      startCommandPosting *>
-        startEventFetching
+    persistence.currentState
+      .idToSubagentRefState
+      .checked(subagentId)
+      .orThrowInTask
+      .flatMap(dedicateOrCouple)
+      .*>(startEventFetching)
+      .*>(startCommandPosting)
+
+  private def dedicateOrCouple(subagentRefState: SubagentRefState): Task[Unit] =
+    Task.defer {
+      // FIXME Was tun, wenn die Kopplung abgelehnt wird?
+      subagentRefState.subagentRunId match {
+        case None =>
+          commandQueue.enqueue(
+            DedicateSubagent(subagentId, agentPath, controllerId) :: Nil)
+        case Some(subagentRunId) =>
+          commandQueue.enqueue(
+            CoupleDirector(subagentId, subagentRunId, subagentRefState.eventId) :: Nil)
+      }
+    }
 
   def stop(signal: Option[ProcessSignal]): Task[Unit] =
     Task.defer {
@@ -168,24 +186,30 @@ extends SubagentDriver
             .flatMapT(workflow =>
               Task.defer {
                 val cmd = StartOrderProcess(order, defaultArguments)
-                val jobResourcePaths: Seq[JobResourcePath] = Nil // FIXME
-                jobResourcePaths
-                  .traverse(persistence.currentState.keyTo(JobResource).checked)
-                  .map(_  :+ workflow)
-                  .match_ {
-                    case Left(problem) =>
-                      Task.pure(Right(Outcome.Failed.fromProblem(problem)))
+                Task
+                  .pure(workflow
+                    .positionToJobKey(order.position)
+                    .flatMap(workflow.keyToJob.checked)
+                    // TODO Duplicate with JobConf.jobResourcePaths
+                    .map(_.referencedJobResourcePaths ++ workflow.jobResourcePaths)
+                    .map(_.toVector.distinct))
+                  .flatMapT(_
+                    .traverse(persistence.currentState.keyTo(JobResource).checked)
+                    .map(_  :+ workflow)
+                    .match_ {
+                      case Left(problem) =>
+                        Task.pure(Right(Outcome.Failed.fromProblem(problem)))
 
-                    case Right(items) =>
-                      commandQueue.enqueue(items.view.map(AttachItem(_)) :+ cmd) >>
-                        Task
-                          .fromFuture(processing.completed.future)
-                          .map {
-                            // What should we do with Outcome.Disrupt ???
-                            case Outcome.Disrupted(reason) => Right(Outcome.Failed(Some(reason.toString)))
-                            case o: Outcome.Completed => Right(o)
-                          }
-                  }
+                      case Right(items) =>
+                        commandQueue.enqueue(items.view.map(AttachItem(_)) :+ cmd) >>
+                          Task
+                            .fromFuture(processing.completed.future)
+                            .map {
+                              // What should we do with Outcome.Disrupt ???
+                              case Outcome.Disrupted(reason) => Right(Outcome.Failed(Some(reason.toString)))
+                              case o: Outcome.Completed => Right(o)
+                            }
+                    })
                 })
           })).map(Outcome.Completed.fromChecked)
 
@@ -205,36 +229,71 @@ extends SubagentDriver
     Task.deferAction(scheduler => Task {
       if (!stopping) {
         eventFetcher
-          .observe(client, after = EventId.BeforeFirst)
-          .mapEval {
-            // Wie liest man transaktions-sicher ???
-            //  Solange nicht OrderProcessed in unserem Journal steht,
-            //  müssen wir (nach Fehler/Wiederanlauf) die Events nochmal vom Subagenten lesen.
-            case Stamped(_, _, KeyedEvent(orderId: OrderId, event @ OrderStdWritten(outerr, chunk))) =>
-              Task.defer(
-                orderToProcessing.get(orderId)
-                  .toRight(Problem.pure(s"Unknown $orderId for $event"))
-                  .traverse {
-                    _.stdObservers.taskObserver(outerr).send(chunk)
-                  })
-
-            case Stamped(_, _, KeyedEvent(orderId: OrderId, event @ OrderProcessed(outcome))) =>
-              for (maybeProcessing <- orderToProcessing.remove(orderId)) yield
-                maybeProcessing
-                  .toRight(Problem.pure(s"Unknown $orderId for $event"))
-                  .map(_.completed.success(outcome))
-
-            case stamped =>
-              Task.pure(Right(Problem.pure(s"Unknown event from $subagentId ignored: $stamped")))
-          }
+          .observe(client, after = persistence.currentState.idToSubagentRefState(subagentId).eventId)
+          // Wie lesen wir transaktions-sicher ???
+          //  Solange nicht OrderProcessed in unserem Journal steht,
+          //  müssen wir (nach Fehler/Wiederanlauf) die Events nochmal vom Subagenten lesen.
+          .mapEval(stamped =>
+            // FIXME Provisorisch für Wiederanläuffähigkeit bei schönem Wetter.
+            //  SubagentEventsObserved muss nach den anderen persist kommen (die sind aber in OrderActor)
+            // Nur, wenn auch Events ausgegeben worden sind.
+            persistence
+              .persistKeyedEvent(subagentId <-: SubagentEventsObserved(stamped.eventId))
+              .flatMap(_.orThrowInTask/*TODO*/)
+              .as(stamped))
+          .mapEval(processEvent)
           .map {
-            case Left(problem) => logger.error(problem.toString) // TODO Should we abort?
-            case Right(_) =>
+            case Left(problem) =>
+              logger.error(problem.toString) // TODO Should we abort?
+              None
+            case Right(maybe) => maybe
           }
+          .flatMap(Observable.fromIterable(_))
+          .mapEval(keyedEvent =>
+            // TODO Buffer multiple events!
+            if (keyedEvent.event.isInstanceOf[OrderEvent]/*TODO*/)  // OrderEvent is handled later
+              Task.pure(Checked.unit)
+            else
+              persistence.persistKeyedEvent(keyedEvent)
+                .map(_.onProblemHandle(problem =>
+                  logger.error(problem.toString)))) // TODO Should we abort?
           .completedL
           .runAsyncAndForget(scheduler)
       }
     })
+
+  private def processEvent(stamped: Stamped[KeyedEvent[Event]])
+  : Task[Checked[Option[KeyedEvent[Event]]]] = {
+    val keyedEvent = stamped.value
+    keyedEvent match {
+      case KeyedEvent(orderId: OrderId, event @ OrderStdWritten(outerr, chunk)) =>
+        Task.defer(
+          orderToProcessing.get(orderId)
+            .toRight(Problem.pure(s"Unknown $orderId for $event"))
+            .traverse(_.stdObservers.taskObserver(outerr).send(chunk))
+            .rightAs(Some(keyedEvent)))  // TODO Use Timstamped() mit Zeitstempel vom Subagenten!
+
+      case KeyedEvent(orderId: OrderId, event @ OrderProcessed(outcome)) =>
+        for (maybeProcessing <- orderToProcessing.remove(orderId)) yield
+          maybeProcessing
+            .toRight(Problem.pure(s"Unknown $orderId for $event"))
+            .map(_.completed.success(outcome))
+            .map(_ => Some(keyedEvent))
+
+      case KeyedEvent(_: NoKey, event: SubagentEvent) =>
+        event match {
+          case SubagentEvent.SubagentDedicated(subagentId, subagentRunId, _, _) =>
+            Task.pure(Right(Some(
+              subagentId <-: SubagentRefStateEvent.SubagentDedicated(subagentRunId))))
+
+          case _ =>
+            Task.pure(Right(None))
+        }
+
+      case stamped =>
+        Task.pure(Left(Problem.pure(s"Unknown event from $subagentId ignored: $stamped")))
+    }
+  }
 
   private def newEventFetcher() =
     new RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], SubagentClient](
@@ -286,7 +345,7 @@ extends SubagentDriver
               true
             else {
               logger.error(s"onCouplingFailed $problem")
-              //eventObserver.persist(subagentId <-: SubagentCouplingFailed(problem))
+              //persistence.persistKeyedEvent(subagentId <-: SubagentCouplingFailed(problem))
               //  .map(_ => true)  // recouple and continue after onCouplingFailed
               //  .orThrow
               true

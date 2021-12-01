@@ -9,7 +9,6 @@ import java.util.UUID
 import js7.agent.data.AgentState.AgentMetaState
 import js7.agent.data.event.AgentEvent.AgentDedicated
 import js7.agent.data.orderwatch.{AllFileWatchesState, FileWatchState}
-import js7.agent.data.subagent.SubagentRefState
 import js7.base.auth.UserId
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceEither}
 import js7.base.crypt.silly.SillySigner
@@ -34,7 +33,7 @@ import js7.data.order.Order.{Forked, Ready}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachedToAgent, OrderForked}
 import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
-import js7.data.subagent.{SubagentId, SubagentRef}
+import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState}
 import js7.data.value.expression.Expression
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.position._
@@ -90,10 +89,7 @@ final class AgentStateTest extends AsyncFreeSpec
       AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))),
       ControllerId("CONTROLLER")),
     Map(
-      subagentRef.id -> SubagentRefState(
-        subagentRef,
-        Map(
-          JobResourcePath("JOB-RESOURCE") -> ItemAttachedState.Attached(None)))),
+      subagentRef.id -> SubagentRefState.initial(subagentRef)),
     Map(
       OrderId("ORDER") -> Order.fromOrderAdded(OrderId("ORDER"), OrderAdded(workflow.id))),
     Map(
@@ -143,7 +139,7 @@ final class AgentStateTest extends AsyncFreeSpec
   }
 
   "estimatedSnapshotSize" in {
-    assert(agentState.estimatedSnapshotSize == 13)
+    assert(agentState.estimatedSnapshotSize == 12)
     for (n <- agentState.toSnapshotObservable.countL.runToFuture)
       yield assert(n == agentState.estimatedSnapshotSize)
   }
@@ -167,16 +163,17 @@ final class AgentStateTest extends AsyncFreeSpec
             "controllerId": "CONTROLLER"
           }""",
           json"""{
-            "TYPE": "SubagentRef",
-            "id": "SUBAGENT",
-            "agentPath": "AGENT",
-            "uri": "https://localhost:0",
-            "itemRevision": 7
-          }""",
-          json"""{
-            "TYPE": "ItemAttached",
-            "key": "JobResource:JOB-RESOURCE",
-            "delegateId": "Subagent:SUBAGENT"
+            "TYPE": "SubagentRefState",
+            "subagentRef": {
+              "id": "SUBAGENT",
+              "agentPath": "AGENT",
+              "uri": "https://localhost:0",
+              "itemRevision": 7
+             },
+             "couplingState": {
+               "TYPE" : "Reset"
+             },
+             "eventId": 0
           }""",
           json"""{
             "TYPE": "Order",

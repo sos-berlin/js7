@@ -107,7 +107,10 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
             .foreach {
               case Failure(t) => logger.error(t.toStringWithCauses)  // ???
               case Success(Left(problem)) => logger.error(problem.toString)  // ???
-              case Success(Right(())) => self ! Internal.OrderProcessed
+              case Success(Right(())) =>
+                // FIXME Maybe to late due to concurrent event processing
+                //  leading to DeadLetter
+                self ! Internal.OrderProcessed
             }
         }
 

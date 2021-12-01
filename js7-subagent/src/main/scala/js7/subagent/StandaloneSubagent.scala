@@ -1,21 +1,15 @@
 package js7.subagent
 
 import akka.actor.ActorSystem
-import akka.util.Timeout
 import cats.effect.Resource
-import com.typesafe.config.Config
-import java.nio.file.Path
-import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger
 import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
 import js7.base.time.JavaTimeConverters.AsScalaDuration
-import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{Closer, ProgramTermination, SetOnce}
-import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.akkautils.Akkas
 import js7.common.system.ThreadPools
@@ -52,6 +46,7 @@ extends SubagentCommandExecutor
   protected def onStopped(termination: ProgramTermination) =
     Task.defer {
       release.orThrow.map { _ =>
+        // TODO Beware race condition?
         stoppedOnce.trySet(termination)
         termination
       }
@@ -83,24 +78,6 @@ object StandaloneSubagent
         .runSyncUnsafe()
     }
 
-  def makeSubagentConf(
-    dir: Path,
-    webServerPorts: Seq[WebServerPort],
-    name: String = "JS7",
-    config: Config)
-  : SubagentConf =
-    SubagentConf(
-      configDirectory = dir / "config",
-      dataDirectory = dir / "data",
-      logDirectory = dir / "logs",
-      jobWorkingDirectory = dir,
-      webServerPorts = webServerPorts,
-      defaultJobSigkillDelay = 15.s,  // TODO
-      killScript = None,
-      akkaAskTimeout = Timeout(99.s), // TODO
-      name = name,
-      config.withFallback(SubagentConf.defaultConfig))
-
   def resource(conf: SubagentConf)(implicit scheduler: Scheduler)
   : Resource[Task, StandaloneSubagent] =
     StandaloneSubagent
@@ -110,7 +87,7 @@ object StandaloneSubagent
           .start
           .executeOn(scheduler))(
         release = _
-          .stop(Some(SIGKILL))
+          .shutdown(Some(SIGKILL))
           .void
           .executeOn(scheduler)))
 

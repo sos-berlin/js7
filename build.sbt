@@ -579,6 +579,7 @@ lazy val `js7-subagent` = project
   .dependsOn(
     `js7-launcher`,
     `js7-common`,
+    `js7-agent-data`,
     `js7-data`.jvm,
     `js7-tester`.jvm % "test")
   .settings(commonSettings)

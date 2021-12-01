@@ -12,7 +12,9 @@ import js7.base.convert.{As, ConvertiblePartialFunction}
 import js7.base.io.JavaResource
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.utils.ScalaUtils.syntax._
+import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._
 
 /**
@@ -116,6 +118,9 @@ object Configs
 
     def ifPath[A](path: String)(f: String => A): Option[A] =
       underlying.hasPath(path) ? f(path)
+
+    def finiteDuration(path: String): Checked[FiniteDuration] =
+      Right(underlying.getDuration(path).toFiniteDuration)
 
     def memorySizeAsInt(path: String): Checked[Int] = {
       val bigInteger = underlying.getMemorySize(path).toBytesBigInteger

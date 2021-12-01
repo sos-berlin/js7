@@ -1,11 +1,10 @@
 package js7.subagent.configuration
 
-import akka.util.Timeout
 import com.typesafe.config.Config
 import java.nio.file.Files.{createDirectory, exists}
 import java.nio.file.{Path, Paths}
 import js7.base.configutils.Configs
-import js7.base.configutils.Configs.RichConfig
+import js7.base.configutils.Configs.{ConvertibleConfig, RichConfig}
 import js7.base.convert.AsJava.asAbsolutePath
 import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.syntax._
@@ -126,7 +125,29 @@ object SubagentConf
   private def defaultLogDirectory(data: Path) = data / "logs"
   private val DelayUntilFinishKillScript = ProcessKillScript(EmptyPath)  // Marker for finish
 
-  def defaultConfig = Configs
+  val defaultConfig = Configs
     .loadResource(JavaResource("js7/subagent/configuration/subagent.conf"))
     .withFallback(Js7Configuration.defaultConfig)
+
+  def of(
+    configDirectory: Path,
+    dataDirectory: Path,
+    webServerPorts: Seq[WebServerPort],
+    config: Config,
+    name: String = "JS7")
+  : SubagentConf = {
+    val myConfig = config.withFallback(SubagentConf.defaultConfig)
+    SubagentConf(
+      configDirectory = configDirectory,
+      dataDirectory = dataDirectory,
+      logDirectory = dataDirectory / "logs",
+      jobWorkingDirectory = dataDirectory,
+      webServerPorts = webServerPorts,
+      defaultJobSigkillDelay = myConfig.finiteDuration("js7.job.execution.sigkill-delay").orThrow,
+      killScript = myConfig
+        .optionAs[String]("js7.job.execution.kill.script")
+        .map(o => ProcessKillScript(Paths.get(o).toAbsolutePath)),
+      name = name,
+      myConfig.withFallback(SubagentConf.defaultConfig))
+  }
 }

@@ -325,6 +325,9 @@ with Stash
       for (jobEntry <- jobRegister.get(jobKey)) {
         tryStartProcessing(jobEntry)
       }
+
+    case Internal.SubagentKeeperStarted(tried) =>
+      for (t <- tried.failed) throw t.appendCurrentStackTrace
   }
 
   private def processCommand(cmd: AgentCommand): Future[Checked[Response]] = cmd match {
@@ -432,10 +435,12 @@ with Stash
   private def proceedWithItem(item: InventoryItem): Unit =
     item match {
       case subagentRef: SubagentRef =>
-        subagentKeeper.proceed(subagentRef)
-          .onErrorHandle(t =>
-            logger.error(s"proceedWithItem(${subagentRef.id}: ${t.toStringWithCauses})", t))
-          .runAsyncAndForget/*???*/
+        for (subagentRefState <- persistence.currentState.idToSubagentRefState.get(subagentRef.id))
+          yield subagentKeeper
+            .proceed(subagentRefState)
+            .onErrorHandle(t =>
+              logger.error(s"proceedWithItem(${subagentRef.id}: ${t.toStringWithCauses})", t))
+            .runAsyncAndForget/*???*/
       case _ =>
     }
 

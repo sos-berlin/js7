@@ -4,7 +4,6 @@ import js7.agent.data.AgentState.AgentMetaState
 import js7.agent.data.event.AgentEvent
 import js7.agent.data.event.AgentEvent.AgentDedicated
 import js7.agent.data.orderwatch.{AllFileWatchesState, FileWatchState}
-import js7.agent.data.subagent.SubagentRefState
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.Signed
@@ -25,7 +24,7 @@ import js7.data.order.OrderEvent.{OrderCoreEvent, OrderForked, OrderJoined, Orde
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchEvent, OrderWatchPath}
 import js7.data.state.{AgentStateView, StateView}
-import js7.data.subagent.{SubagentId, SubagentRef}
+import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState, SubagentRefStateEvent}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import monix.reactive.Observable
 import scala.collection.MapView
@@ -70,8 +69,7 @@ with SnapshotableState[AgentState]
   def estimatedSnapshotSize =
     standards.snapshotSize +
       1 +
-      //idToSubagentRefState.size +
-      idToSubagentRefState.values.view.map(_.estimatedSnapshotSize).sum +
+      idToSubagentRefState.size +
       idToWorkflow.size +
       idToOrder.size +
       allFileWatchesState.estimatedSnapshotSize +
@@ -83,7 +81,7 @@ with SnapshotableState[AgentState]
     standards.toSnapshotObservable,
     Observable.fromIterable((meta != AgentMetaState.empty) thenList meta),
     //Observable.fromIterable(idToSubagentRefState.values),
-    Observable.fromIterable(idToSubagentRefState.values).flatMap(_.toSnapshotObservable),
+    Observable.fromIterable(idToSubagentRefState.values),
     Observable.fromIterable(idToOrder.values),
     allFileWatchesState.toSnapshot,
     Observable.fromIterable(keyToSignedItem.values).map(SignedItemAdded(_)),
@@ -194,6 +192,13 @@ with SnapshotableState[AgentState]
 
           case _ => applyStandardEvent(keyedEvent)
         }
+
+      case KeyedEvent(subagentId: SubagentId, event: SubagentRefStateEvent) =>
+        for {
+          subagentRefState <- idToSubagentRefState.checked(subagentId)
+          subagentRefState <- subagentRefState.applyEvent(event)
+        } yield copy(
+          idToSubagentRefState = idToSubagentRefState + (subagentId -> subagentRefState))
 
       case KeyedEvent(_: NoKey, AgentDedicated(subagentId, agentPath, agentRunId, controllerId)) =>
         Right(copy(meta = meta.copy(
@@ -322,6 +327,7 @@ with ItemContainer.Companion[AgentState]
       Subtype[JournalState],
       Subtype[AgentMetaState],
       Workflow.subtype,
+      Subtype[SubagentRefState],
       Subtype[Order[Order.State]],
       Subtype[FileWatchState.Snapshot],
       Subtype(SignedItemAdded.jsonCodec(this)),  // For Repo and SignedItemAdded
@@ -332,6 +338,7 @@ with ItemContainer.Companion[AgentState]
   implicit val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] =
     KeyedEventTypedJsonCodec.named("AgentState.Event",
       KeyedSubtype[JournalEvent],
+      KeyedSubtype[SubagentRefStateEvent],
       KeyedSubtype[OrderEvent],
       KeyedSubtype[AgentEvent],
       KeyedSubtype[InventoryItemEvent],

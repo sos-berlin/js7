@@ -29,7 +29,7 @@ import js7.data.node.NodeId
 import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.OrderWatchState.{HasOrder, VanishedAck}
 import js7.data.orderwatch.{AllOrderWatchesState, ExternalOrderKey, ExternalOrderName, FileWatch, OrderWatchPath, OrderWatchState}
-import js7.data.subagent.{SubagentId, SubagentRef}
+import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, ExpectNotice, LockInstruction}
@@ -55,7 +55,7 @@ final class ControllerStateTest extends AsyncFreeSpec
     val sum =
       controllerState.pathToCalendar.values ++
         controllerState.pathToAgentRefState.map(_._2.item) ++
-        controllerState.idToSubagentRef.values ++
+        controllerState.idToSubagentRefState.map(_._2.item) ++
         controllerState.pathToLockState.map(_._2.item) ++
         controllerState.allOrderWatchesState.pathToOrderWatchState.map(_._2.item) ++
         controllerState.pathToSignedSimpleItem.values.map(_.value)
@@ -80,7 +80,7 @@ final class ControllerStateTest extends AsyncFreeSpec
           controllerState.controllerMetaState
         ) ++
           controllerState.pathToAgentRefState.values ++
-          controllerState.idToSubagentRef.values ++
+          controllerState.idToSubagentRefState.values ++
           controllerState.pathToLockState.values ++
           Seq(board) ++
           boardState.notices.map(Notice.Snapshot(board.path, _)) ++
@@ -201,11 +201,17 @@ final class ControllerStateTest extends AsyncFreeSpec
         },
         "eventId": 7
       }, {
-        "TYPE": "SubagentRef",
-        "id": "SUBAGENT",
-        "agentPath": "AGENT",
-        "uri": "https://SUBAGENT",
-        "itemRevision": 7
+        "TYPE": "SubagentRefState",
+        "subagentRef": {
+          "id": "SUBAGENT",
+          "agentPath": "AGENT",
+          "uri": "https://SUBAGENT",
+          "itemRevision": 7
+        },
+        "couplingState": {
+          "TYPE": "Reset"
+        },
+        "eventId": 0
       }, {
         "TYPE": "LockState",
         "lock": {
@@ -369,6 +375,7 @@ object ControllerStateTest
     AgentPath("AGENT"),
     Uri("https://SUBAGENT"),
     Some(ItemRevision(7)))
+  private val subagentRefState = SubagentRefState.initial(subagentRef)
 
   private val lock = Lock(LockPath("LOCK"), itemRevision = Some(ItemRevision(7)))
   private val notice = Notice(NoticeId("NOTICE-1"), Timestamp.ofEpochMilli(10_000_000_000L + 24*3600*1000))
@@ -427,7 +434,7 @@ object ControllerStateTest
       agentRef.path -> AgentRefState(
         agentRef, None, None, DelegateCouplingState.Reset, EventId(7), None)),
     Map(
-      subagentRef.id -> subagentRef),
+      subagentRef.id -> subagentRefState),
     Map(
       lock.path -> LockState(lock)),
     Map(

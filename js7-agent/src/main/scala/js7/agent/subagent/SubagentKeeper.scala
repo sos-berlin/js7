@@ -21,13 +21,13 @@ import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.order.OrderEvent.{LegacySubagentId, OrderCoreEvent, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten}
 import js7.data.order.{Order, OrderId}
-import js7.data.subagent.{SubagentId, SubagentRef}
+import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState}
 import js7.data.value.expression.Expression
 import js7.journal.CommitOptions
 import js7.journal.state.StatePersistence
 import js7.launcher.configuration.JobLauncherConf
 import js7.subagent.LocalSubagentDriver
-import js7.subagent.client.{RemoteSubagentDriver, SubagentDriver}
+import js7.subagent.client.SubagentDriver
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
@@ -124,6 +124,7 @@ final class SubagentKeeper(
                     .rightAs(())
                 }
           }
+      // TODO Fehler in OrderProcessed(Outcome.Disrupted/Failed) fangen
     }
 
   //TODO Fixed Priority
@@ -167,7 +168,8 @@ final class SubagentKeeper(
       .flatMap(_.fold(Task.unit)(_.stop(Some(SIGKILL))))
       .void
 
-  def proceed(subagentRef: SubagentRef): Task[Unit] =
+  def proceed(subagentRefState: SubagentRefState): Task[Unit] = {
+    val subagentRef = subagentRefState.subagentRef
     started.task
       .logWhenItTakesLonger("SubagentKeeper.started?")
       .flatMap(started =>
@@ -183,7 +185,7 @@ final class SubagentKeeper(
                   Task.pure(Left(Problem(
                     s"Local SubagentRef (${subagentRef.id}) cannot not be changed")))
 
-                case Some(existing: RemoteSubagentDriver[_]) =>
+                case Some(existing: RemoteSubagentDriver) =>
                   (if (subagentRef.uri == existing.subagentRef.uri)
                     Task.unit
                   else
@@ -213,6 +215,7 @@ final class SubagentKeeper(
             case Some(driver) => driver.start.map(Right(_))
           }
           .void)
+  }
 
   private def newSubagentDriver(subagentRef: SubagentRef, started: Started)
     (implicit scheduler: Scheduler) =

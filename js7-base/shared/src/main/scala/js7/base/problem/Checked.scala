@@ -5,6 +5,7 @@ import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.generic.Completed
 import js7.base.problem.Problem._
 import js7.base.utils.ScalaUtils.syntax._
+import monix.eval.Task
 import scala.collection.immutable.VectorBuilder
 import scala.collection.mutable
 import scala.util.control.NonFatal
@@ -131,6 +132,12 @@ object Checked
 
     def orThrowWithoutStacktrace: A =
       underlying.left.map(_.throwable).orThrow
+
+    def orThrowInTask: Task[A] =
+      underlying match {
+        case Left(problem) => Task.raiseError(problem.throwable)
+        case Right(a) => Task.pure(a)
+      }
   }
 
   implicit final class RichCheckedIterable[A](private val underlying: IterableOnce[Checked[A]]) extends AnyVal {
