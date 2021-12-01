@@ -1,11 +1,9 @@
 package js7.data.agent
 
-import io.circe.generic.extras.Configuration.default.withDefaults
-import js7.base.circeutils.CirceUtils.{deriveCodec, deriveConfiguredCodec}
-import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.problem.{Checked, Problem}
-import js7.data.agent.AgentRefState.{Coupled, CouplingState, _}
 import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentEventsObserved, AgentReady, AgentReset, AgentResetStarted, AgentShutDown}
+import js7.data.agent.DelegateCouplingState.{Coupled, Reset, Resetting, ShutDown}
 import js7.data.event.EventId
 import js7.data.item.UnsignedSimpleItemState
 
@@ -13,7 +11,7 @@ final case class AgentRefState(
   agentRef: AgentRef,
   agentRunId: Option[AgentRunId],
   timezone: Option[String],
-  couplingState: CouplingState,
+  couplingState: DelegateCouplingState,
   eventId: EventId,
   problem: Option[Problem])
 extends UnsignedSimpleItemState
@@ -98,21 +96,4 @@ object AgentRefState
 
   def apply(agentRef: AgentRef) =
     new AgentRefState(agentRef, None, None, Reset, EventId.BeforeFirst, None)
-
-  sealed trait CouplingState
-  case object Reset extends CouplingState
-  case object Coupled extends CouplingState
-  @deprecated("Use problem field instead", ">2.0.0-alpha.20210909")
-  final case class CouplingFailed(problem: Problem) extends CouplingState
-  case object ShutDown extends CouplingState
-  final case class Resetting(force: Boolean = false) extends CouplingState
-
-  object CouplingState {
-    implicit val configuration = withDefaults
-    implicit val jsonCodec: TypedJsonCodec[CouplingState] = TypedJsonCodec(
-      Subtype(Reset),
-      Subtype(Coupled),
-      Subtype(ShutDown),
-      Subtype(deriveConfiguredCodec[Resetting]))
-  }
 }

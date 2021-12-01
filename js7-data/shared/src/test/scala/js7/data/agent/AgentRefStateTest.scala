@@ -20,7 +20,7 @@ final class AgentRefStateTest extends AnyFreeSpec
           itemRevision = Some(ItemRevision(0))),
         None,
         None,
-        AgentRefState.Reset,
+        DelegateCouplingState.Reset,
         123L,
         None),
       json"""{
@@ -45,7 +45,7 @@ final class AgentRefStateTest extends AnyFreeSpec
           itemRevision = Some(ItemRevision(0))),
         Some(agentRunId),
         Some("UTC"),
-        AgentRefState.Resetting(force = true),
+        DelegateCouplingState.Resetting(force = true),
         123L,
         Some(Problem("PROBLEM"))),
       json"""{
@@ -65,8 +65,5 @@ final class AgentRefStateTest extends AnyFreeSpec
           "message": "PROBLEM"
         }
       }""")
-
-    testJson[AgentRefState.CouplingState](AgentRefState.Reset, json"""{ "TYPE": "Reset" }""")
-    testJson[AgentRefState.CouplingState](AgentRefState.Coupled, json"""{ "TYPE": "Coupled" }""")
   }
 }

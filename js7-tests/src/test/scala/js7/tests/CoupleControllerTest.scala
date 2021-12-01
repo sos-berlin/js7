@@ -8,7 +8,7 @@ import js7.base.log.Logger
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
 import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentReady, AgentShutDown}
-import js7.data.agent.{AgentPath, AgentRefState}
+import js7.data.agent.{AgentPath, DelegateCouplingState}
 import js7.data.event.{Event, EventId, KeyedEvent, Stamped}
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderFinished
@@ -66,7 +66,7 @@ final class CoupleControllerTest extends AnyFreeSpec with DirectoryProviderForSc
       controller.eventWatch.await[AgentShutDown](after = lastEventId)
       sleep(100.ms)
       assert(controller.controllerState.await(99.s).pathToAgentRefState(agentPath).couplingState ==
-        AgentRefState.ShutDown)
+        DelegateCouplingState.ShutDown)
 
       // DELETE OLD AGENTS'S EVENTS THE CONTROLLER HAS NOT READ => UnknownEventIdProblem
       move(firstJournalFile, Paths.get(s"$firstJournalFile-MOVED"))

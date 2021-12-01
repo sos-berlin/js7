@@ -42,9 +42,9 @@ import js7.core.command.CommandMeta
 import js7.core.common.ActorRegister
 import js7.core.problems.ReverseReleaseEventsProblem
 import js7.data.Problems.{CannotDeleteChildOrderProblem, CannotDeleteWatchingOrderProblem, UnknownOrderProblem}
-import js7.data.agent.AgentRefState.{Reset, Resetting}
 import js7.data.agent.AgentRefStateEvent.{AgentEventsObserved, AgentReady, AgentReset, AgentShutDown}
-import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
+import js7.data.agent.DelegateCouplingState.{Reset, Resetting}
+import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId, DelegateCouplingState}
 import js7.data.board.BoardEvent.{NoticeDeleted, NoticePosted}
 import js7.data.board.{BoardPath, Notice, NoticeId}
 import js7.data.calendar.{Calendar, CalendarExecutor}
@@ -538,7 +538,7 @@ with MainJournalingActor[ControllerState, Event]
                 timestampedEvents ++= subseqEvents.map(Timestamped(_))
 
                 persistence.currentState.pathToAgentRefState.get(agentPath).map(_.couplingState) match {
-                  case Some(AgentRefState.Resetting(_) | AgentRefState.Reset) =>
+                  case Some(DelegateCouplingState.Resetting(_) | DelegateCouplingState.Reset) =>
                     // Ignore the events, because orders are already marked as detached (and Failed)
                     // TODO Avoid race-condition and guard with persistence.lock!
                     // (switch from actors to Task required!)

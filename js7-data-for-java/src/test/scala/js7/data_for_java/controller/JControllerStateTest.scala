@@ -7,7 +7,7 @@ import js7.base.time.ScalaTime._
 import js7.base.time.{Timestamp, Timezone}
 import js7.base.utils.Collections.implicits._
 import js7.base.web.Uri
-import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
+import js7.data.agent.{AgentPath, AgentRef, AgentRefState, DelegateCouplingState}
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterTiming}
 import js7.data.controller.ControllerState.versionedItemJsonCodec
 import js7.data.controller.{ControllerId, ControllerMetaState, ControllerState}
@@ -97,7 +97,7 @@ private object JControllerStateTest
     Map(AgentPath("AGENT") ->
       AgentRefState(
         AgentRef(AgentPath("AGENT"), Seq(SubagentId("SUBAGENT"))),
-        None, None, AgentRefState.Reset, EventId(7), None)),
+        None, None, DelegateCouplingState.Reset, EventId(7), None)),
     Map.empty,
     Map.empty,
     Map.empty,

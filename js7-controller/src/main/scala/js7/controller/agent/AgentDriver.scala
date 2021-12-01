@@ -31,8 +31,8 @@ import js7.common.http.RecouplingStreamReader
 import js7.controller.agent.AgentDriver._
 import js7.controller.agent.CommandQueue.QueuedInputResponse
 import js7.controller.configuration.ControllerConfiguration
-import js7.data.agent.AgentRefState.{Coupled, Reset, Resetting}
 import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentReset}
+import js7.data.agent.DelegateCouplingState.{Coupled, Reset, Resetting}
 import js7.data.agent.{AgentPath, AgentRef, AgentRunId}
 import js7.data.controller.ControllerState
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}

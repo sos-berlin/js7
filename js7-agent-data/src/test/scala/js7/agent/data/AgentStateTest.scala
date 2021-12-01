@@ -28,7 +28,7 @@ import js7.data.event.JournalEvent.SnapshotTaken
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalId, JournalState, SnapshotableState}
 import js7.data.item.BasicItemEvent.{ItemAttachedToMe, SignedItemAttachedToMe}
-import js7.data.item.{ItemAttachedState, ItemRevision, ItemSigner}
+import js7.data.item.{ItemRevision, ItemSigner}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.Order.{Forked, Ready}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachedToAgent, OrderForked}
