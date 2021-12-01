@@ -48,6 +48,12 @@ object JAgentRef extends JJsonable.Companion[JAgentRef]
     @Nonnull directors: java.lang.Iterable[SubagentId])
   = JAgentRef(AgentRef(path, directors = directors.asScala.toVector))
 
+  @Nonnull
+  def of(
+    @Nonnull path: AgentPath,
+    @Nonnull director: SubagentId)
+  = JAgentRef(AgentRef(path, directors = director :: Nil))
+
   @Nonnull @Deprecated
   def of(@Nonnull path: AgentPath, @Nonnull uri: Uri) =
     JAgentRef(AgentRef(path, directors = Nil, uri = Some(uri)))
