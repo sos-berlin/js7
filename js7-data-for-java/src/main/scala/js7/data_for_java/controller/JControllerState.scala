@@ -22,6 +22,7 @@ import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath}
 import js7.data.order.{Order, OrderId, OrderObstacleCalculator}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
+import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState}
 import js7.data.value.Value
 import js7.data.workflow.WorkflowPath
 import js7.data_for_java.agent.{JAgentRef, JAgentRefState}
@@ -29,6 +30,7 @@ import js7.data_for_java.board.{JBoard, JBoardState}
 import js7.data_for_java.calendar.JCalendar
 import js7.data_for_java.cluster.JClusterState
 import js7.data_for_java.common.JJournaledState
+import js7.data_for_java.common.MoreJavaConverters.MapViewHasAsJava
 import js7.data_for_java.item.{JInventoryItem, JRepo}
 import js7.data_for_java.jobresource.JJobResource
 import js7.data_for_java.lock.{JLock, JLockState}
@@ -73,13 +75,21 @@ extends JJournaledState[JControllerState, ControllerState]
   def repo: JRepo =
     new JRepo(asScala.repo)
 
-  /** Looks up an AgentRef VersionedItem in the current version. */
+  /** Looks up an AgentRef Item. */
   @Nonnull
   def pathToAgentRef(@Nonnull agentPath: AgentPath): VEither[Problem, JAgentRef] =
     asScala.pathToAgentRefState.checked(agentPath)
       .map(_.agentRef)
       .map(JAgentRef.apply)
       .toVavr
+
+  @Nonnull
+  def idToSubagentRef: java.util.Map[SubagentId, SubagentRef] =
+    asScala.idToSubagentRefState.view.mapValues(_.subagentRef).asJava
+
+  @Nonnull
+  def idToSubagentRefState: java.util.Map[SubagentId, SubagentRefState] =
+    asScala.idToSubagentRefState.asJava
 
   /** Looks up the URI of an AgentPath.. */
   @Nonnull

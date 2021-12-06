@@ -21,8 +21,10 @@ final class JMapViewWrapperTest extends AnyFreeSpec
     new mutable.HashSet()
     assert(jMapView.keySet().asScala == Set(1, 2))
     assert(jMapView.values().asScala.toSeq == Seq("EINS", "ZWEI"))
-    assert(jMapView.entrySet.asScala == Set(
-      java.util.Map.entry(1, "EINS"),
-      java.util.Map.entry(2, "ZWEI")))
+
+    // TODO Requires Java 9:
+    //assert(jMapView.entrySet.asScala == Set(
+    //  java.util.Map.entry(1, "EINS"),
+    //  java.util.Map.entry(2, "ZWEI")))
   }
 }
