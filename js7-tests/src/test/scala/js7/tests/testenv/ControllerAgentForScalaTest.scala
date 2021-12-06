@@ -2,7 +2,6 @@ package js7.tests.testenv
 
 import cats.syntax.traverse._
 import js7.agent.RunningAgent
-import js7.base.auth.Admission
 import js7.base.configutils.Configs._
 import js7.base.problem.Checked
 import js7.base.thread.Futures.implicits._
@@ -11,12 +10,10 @@ import js7.base.time.ScalaTime._
 import js7.base.time.WallClock
 import js7.base.utils.Lazy
 import js7.controller.RunningController
-import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
 import js7.data.controller.ControllerState
 import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.item.{VersionId, VersionedItem, VersionedItemPath}
 import js7.data.order.{OrderId, OrderObstacle, OrderObstacleCalculator}
-import js7.proxy.ControllerApi
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import scala.collection.mutable
@@ -43,11 +40,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
       .await(99.s)
 
   protected final lazy val eventWatch = controller.eventWatch
-  protected lazy val controllerAdmission = Admission(
-    controller.localUri,
-    Some(directoryProvider.controller.userAndPassword))
-  private val controllerApiLazy = Lazy(new ControllerApi(
-    admissionsToApiResources(Seq(controllerAdmission))(controller.actorSystem)))
+  private val controllerApiLazy = Lazy(directoryProvider.newControllerApi(controller))
   protected lazy val controllerApi = controllerApiLazy()
 
   protected def controllerHttpsMutual = false

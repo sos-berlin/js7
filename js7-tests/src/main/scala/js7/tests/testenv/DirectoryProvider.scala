@@ -9,7 +9,7 @@ import java.nio.file.Files.{createDirectory, createTempDirectory}
 import java.nio.file.Path
 import js7.agent.RunningAgent
 import js7.agent.configuration.AgentConfiguration
-import js7.base.auth.{UserAndPassword, UserId}
+import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.crypt.{DocumentSigner, SignatureVerifier, Signed, SignedString}
 import js7.base.generic.SecretString
 import js7.base.io.JavaResource
@@ -32,6 +32,7 @@ import js7.common.crypt.pgp.PgpSigner
 import js7.common.utils.Exceptions.repeatUntilNoException
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.RunningController
+import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
 import js7.controller.configuration.ControllerConfiguration
 import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.controller.ControllerState.signableItemJsonCodec
@@ -39,12 +40,14 @@ import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, RemoveVersion
 import js7.data.item.{InventoryItem, ItemOperation, ItemSigner, SignableItem, SignableSimpleItem, UnsignedSimpleItem, VersionId, VersionedItem, VersionedItemPath}
 import js7.data.job.RelativePathExecutable
 import js7.data.subagent.{SubagentId, SubagentRef}
+import js7.proxy.ControllerApi
 import js7.tests.testenv.DirectoryProvider._
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.atomic.AtomicBoolean
 import monix.reactive.Observable
+import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.Iterable
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -127,6 +130,12 @@ extends HasCloser
 
   def sign[A <: SignableItem](item: A): Signed[A] =
     itemSigner.sign(item)
+
+  @TestOnly
+  def newControllerApi(runningController: RunningController): ControllerApi = {
+    val admission = Admission(runningController.localUri, Some(controller.userAndPassword))
+    new ControllerApi(admissionsToApiResources(Seq(admission))(runningController.actorSystem))
+  }
 
   def run[A](body: (RunningController, IndexedSeq[RunningAgent]) => A): A =
     runAgents(scheduler = scheduler)(agents =>
