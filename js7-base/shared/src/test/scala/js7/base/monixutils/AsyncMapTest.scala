@@ -88,7 +88,7 @@ final class AsyncMapTest extends AsyncFreeSpec
 
   "insert" in {
     asyncMap.insert(3, "INSERTED")
-      .map(o => assert(o == Right(())))
+      .map(o => assert(o == Right("INSERTED")))
       .runToFuture
   }
 

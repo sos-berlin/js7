@@ -35,11 +35,11 @@ class AsyncMap[K: ClassTag, V](initial: Map[K, V])
   final def checked(key: K): Checked[V] =
     _map.checked(key)
 
-  final def insert(key: K, value: V)(implicit src: sourcecode.Enclosing): Task[Checked[Unit]] =
+  final def insert(key: K, value: V)(implicit src: sourcecode.Enclosing): Task[Checked[V]] =
     updateChecked(key, {
       case None => Task.pure(Right(value))
       case Some(_) => Task.pure(Left(DuplicateKey(implicitClass[K].simpleScalaName, key.toString)))
-    }).rightAs(())
+    }).rightAs(value)
 
   /** Not synchronized with other updates! */
   final def removeAll(implicit src: sourcecode.Enclosing): Task[Map[K, V]] =
