@@ -4,15 +4,15 @@ import akka.NotUsed
 import akka.actor.ActorRefFactory
 import akka.http.scaladsl.common.JsonEntityStreamingSupport
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
-import akka.http.scaladsl.model.HttpEntity
 import akka.http.scaladsl.model.HttpEntity.Chunk
 import akka.http.scaladsl.model.StatusCodes.{BadRequest, ServiceUnavailable}
+import akka.http.scaladsl.model.{HttpEntity, HttpRequest}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive, Directive1, ExceptionHandler, Route}
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import io.circe.syntax.EncoderOps
-import js7.base.auth.ValidUserPermission
+import js7.base.auth.{UserId, ValidUserPermission}
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.closeableIteratorToObservable
@@ -91,7 +91,8 @@ trait GenericEventRoute extends RouteProvider
       get {
         pathEnd {
           Route.seal {
-            authorizedUser(ValidUserPermission) { _ =>
+            authorizedUser(ValidUserPermission) { user =>
+              implicit val userId = user.id
               val waitingSince = !eventWatch.whenStarted.isCompleted ? now
               if (waitingSince.isDefined) logger.debug("Waiting for journal to become ready ...")
               onSuccess(eventWatch.whenStarted) { eventWatch =>
@@ -102,8 +103,9 @@ trait GenericEventRoute extends RouteProvider
                     oneShot(eventWatch))
                 } ~
                   accept(`application/x-ndjson`) {
+                    implicit val s = NdJsonStreamingSupport
                     Route.seal(
-                      jsonSeqEvents(eventWatch)(NdJsonStreamingSupport))
+                      jsonSeqEvents(eventWatch))
                   } ~
                   Route.seal(
                     oneShot(eventWatch))
@@ -131,7 +133,8 @@ trait GenericEventRoute extends RouteProvider
           })
       }
 
-    private def jsonSeqEvents(eventWatch: EventWatch)(implicit s: JsonEntityStreamingSupport): Route =
+    private def jsonSeqEvents(eventWatch: EventWatch)
+      (implicit userId: UserId, s: JsonEntityStreamingSupport): Route =
       parameter("onlyAcks" ? false) { onlyAcks =>
         parameter("heartbeat".as[FiniteDuration].?) { maybeHeartbeat =>  // Echo last EventId as a heartbeat
           if (onlyAcks)
@@ -166,57 +169,65 @@ trait GenericEventRoute extends RouteProvider
       request: EventRequest[Event],
       maybeHeartbeat: Option[FiniteDuration],
       eventWatch: EventWatch)
-      (implicit s: JsonEntityStreamingSupport)
-    : Route = {
-      val toResponseMarshallable: Task[ToResponseMarshallable] =
-        maybeHeartbeat match {
-          case None =>
-            // Await the first event to check for Torn and convert it to a proper error message, otherwise continue with observe
-            awaitFirstEventObservable(request, eventWatch)
+      (implicit userId: UserId, s: JsonEntityStreamingSupport)
+    : Route =
+      extractRequest { httpRequest =>
+        val toResponseMarshallable: Task[ToResponseMarshallable] =
+          maybeHeartbeat match {
+            case None =>
+              // Await the first event to check for Torn and convert it to a proper error message, otherwise continue with observe
+              awaitFirstEventObservable(request, eventWatch, httpRequest)
 
-          case Some(heartbeat) =>
-            Task(observableToResponseMarshallable(
-              heartbeatingObservable(request, heartbeat, eventWatch)))
-        }
-
-      complete(
-        toResponseMarshallable
-          .onCancelRaiseError(CanceledException)
-          .onErrorRecover {
-            case CanceledException => emptyResponseMarshallable
+            case Some(heartbeat) =>
+              Task(
+                observableToResponseMarshallable(
+                  heartbeatingObservable(request, heartbeat, eventWatch),
+                  httpRequest))
           }
-          .runToFuture
-          .cancelOnCompletionOf(whenShuttingDownCompletion))
-    }
 
-    private def awaitFirstEventObservable(request: EventRequest[Event], eventWatch: EventWatch)
-      (implicit s: JsonEntityStreamingSupport)
-    = {
-      val runningSince = now
-      val initialRequest = request.copy[Event](
-        limit = 1 min request.limit)
-      eventWatch
-        .when(initialRequest, isRelevantEvent)
-        .map {
-          case TearableEventSeq.Torn(eventId) =>
-            ToResponseMarshallable(
-              BadRequest -> EventSeqTornProblem(requestedAfter = request.after, tornEventId = eventId))
+        complete(
+          toResponseMarshallable
+            .onCancelRaiseError(CanceledException)
+            .onErrorRecover {
+              case CanceledException => emptyResponseMarshallable
+            }
+            .runToFuture
+            .cancelOnCompletionOf(whenShuttingDownCompletion))
+      }
 
-          case EventSeq.Empty(_) =>
-            emptyResponseMarshallable
+    private def awaitFirstEventObservable(
+      request: EventRequest[Event],
+      eventWatch: EventWatch,
+      httpRequest: HttpRequest)
+      (implicit userId: UserId, s: JsonEntityStreamingSupport)
+    : Task[ToResponseMarshallable] =
+      Task.defer {
+        val runningSince = now
+        val initialRequest = request.copy[Event](
+          limit = 1 min request.limit)
+        eventWatch
+          .when(initialRequest, isRelevantEvent)
+          .map {
+            case TearableEventSeq.Torn(eventId) =>
+              ToResponseMarshallable(
+                BadRequest -> EventSeqTornProblem(requestedAfter = request.after, tornEventId = eventId))
 
-          case EventSeq.NonEmpty(closeableIterator) =>
-            val head = autoClosing(closeableIterator)(_.next())
+            case EventSeq.Empty(_) =>
+              emptyResponseMarshallable
 
-            val tailRequest = request.copy[Event](
-              after = head.eventId,
-              limit = request.limit - 1,
-              delay = (request.delay - runningSince.elapsed) min ZeroDuration)
+            case EventSeq.NonEmpty(closeableIterator) =>
+              val head = autoClosing(closeableIterator)(_.next())
 
-            observableToResponseMarshallable(
-              head +: eventObservable(tailRequest, isRelevantEvent, eventWatch))
-        }
-    }
+              val tailRequest = request.copy[Event](
+                after = head.eventId,
+                limit = request.limit - 1,
+                delay = (request.delay - runningSince.elapsed) min ZeroDuration)
+
+              observableToResponseMarshallable(
+                head +: eventObservable(tailRequest, isRelevantEvent, eventWatch),
+                httpRequest)
+          }
+      }
 
     private def emptyResponseMarshallable(implicit s: JsonEntityStreamingSupport)
     : ToResponseMarshallable = {
@@ -236,8 +247,10 @@ trait GenericEventRoute extends RouteProvider
         .insertHeartbeatsOnSlowUpstream(heartbeat, StampedHeartbeat)
     }
 
-    private def observableToResponseMarshallable(observable: Observable[Stamped[AnyKeyedEvent]])
-      (implicit streamingSupport: JsonEntityStreamingSupport)
+    private def observableToResponseMarshallable(
+      observable: Observable[Stamped[AnyKeyedEvent]],
+      httpRequest: HttpRequest)
+      (implicit userId: UserId, streamingSupport: JsonEntityStreamingSupport)
     : ToResponseMarshallable =
       ToResponseMarshallable(
         HttpEntity.Chunked(
@@ -249,7 +262,7 @@ trait GenericEventRoute extends RouteProvider
             .chunk(chunkSize)
             .map(Chunk(_))
             .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
-              Task { logger.debug("whenShuttingDown completed") })
+              Task { logger.debug(s"Shutdown observing events for $userId ${httpRequest.uri}") })
             .toAkkaSourceForHttpResponse))
 
     private def eventObservable(request: EventRequest[Event], predicate: AnyKeyedEvent => Boolean, eventWatch: EventWatch)
