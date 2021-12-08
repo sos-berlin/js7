@@ -34,9 +34,8 @@ trait OrderProvider extends HasCloser
   private def addOrders(orders: Seq[FreshOrder]): Task[Completed] =
     retryUntilNoError {
       httpControllerApi.login(onlyIfNotLoggedIn = true) >>
-        httpControllerApi.addOrders(orders)
-          .flatMap((_: Completed) =>
-            httpControllerApi.deleteOrdersWhenTerminated(orders.map(_.id)))
+        httpControllerApi
+          .addOrders(orders.map(_.copy(deleteWhenTerminated = true)))
           .map(Right.apply)
     } unless orders.isEmpty
 
