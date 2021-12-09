@@ -1,23 +1,29 @@
 package js7.tests
 
 import cats.effect.Resource
-import com.typesafe.config.ConfigFactory
-import java.nio.file.Files.createDirectory
+import java.nio.file.Files.{createDirectories, createDirectory}
 import java.nio.file.Path
+import js7.agent.RunningAgent
+import js7.base.auth.Admission
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
+import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.web.Uri
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
+import js7.controller.RunningController
+import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
 import js7.data.agent.AgentPath
 import js7.data.event.{EventId, KeyedEvent, Stamped}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
+import js7.data.item.BasicItemEvent.ItemAttached
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTerminated}
+import js7.data.order.Outcome.Disrupted.JobSchedulerRestarted
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.subagent.SubagentRefStateEvent.SubagentDedicated
 import js7.data.subagent.{SubagentId, SubagentRef}
@@ -25,62 +31,77 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
+import js7.proxy.ControllerApi
 import js7.subagent.StandaloneSubagent
 import js7.subagent.configuration.SubagentConf
 import js7.tests.SubagentTest._
-import js7.tests.testenv.ControllerAgentForScalaTest
+import js7.tests.jobs.SemaphoreJob
+import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.eval.Task
 import monix.execution.Scheduler
-import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import org.scalatest.Assertion
 import org.scalatest.freespec.AnyFreeSpec
 
-final class SubagentTest extends AnyFreeSpec with ControllerAgentForScalaTest
+final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 {
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER {
       permissions = [ UpdateItem ]
     }"""
-
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = true
     """
   protected val agentPaths = Seq(agentPath)
-  protected lazy val items = Seq(workflow, subagentRef1)
+  protected lazy val items = Seq(workflow, cWorkflow, bSubagentRef)
 
-  private lazy val subagentPort = findFreeTcpPort()
-  private lazy val subagentRef1 = SubagentRef(
-    SubagentId("SUBAGENT-1"),
+  private lazy val bSubagentPort = findFreeTcpPort()
+  private lazy val bSubagentRef = SubagentRef(
+    SubagentId("B-SUBAGENT"),
     agentPath,
-    Uri(s"http://localhost:$subagentPort"))
+    Uri(s"http://localhost:$bSubagentPort"))
 
-  // FIXME Doppelt mit testResource
-  private val subagent1Resource = Resource.suspend(Task {
-    val name = subagentRef1.id.string
-    val subagentDir = directoryProvider.directory / name
-    StandaloneSubagent.resource(SubagentConf.of(
-      configDirectory = subagentDir / "config",
-      dataDirectory = subagentDir / "data",
-      webServerPorts = Seq(WebServerPort.localhost(subagentPort)),
-      config = ConfigFactory.empty,
-      name = name))
-  })
+  private implicit val scheduler = Scheduler.global
 
-  //private lazy val (subagent1, subagent1Release) = subagent1Resource.allocated.await(99.s)
-  //
-  //override def beforeAll() = {
-  //  super.beforeAll()
-  //  subagent1
-  //  eventWatch.await[SubagentDedicated]()
-  //}
-  //
-  //override def afterAll(): Unit = {
-  //  subagent1Release.await(99.s)
-  //  super.afterAll()
-  //}
+  private lazy val controller: RunningController = directoryProvider
+    .startController()
+    .await(99.s)
 
-  "test" in {
+  protected lazy val controllerApi = new ControllerApi(
+    admissionsToApiResources(Seq(Admission(
+      controller.localUri,
+      Some(directoryProvider.controller.userAndPassword)
+    )))(controller.actorSystem))
+
+  private var agent: RunningAgent = null
+  private var bSubagent: StandaloneSubagent = null
+  private var bSubagentRelease = Task.unit
+
+  override def beforeAll() = {
+    super.beforeAll()
+    agent = directoryProvider.startAgent(agentPath).await(99.s)
+    controller
+  }
+
+  override def afterAll() = {
+    controllerApi.stop.await(99.s)
+    controller.terminate().await(99.s)
+    for (a <- Option(agent)) a.terminate().await(99.s)
+    bSubagentRelease.await(99.s)
+    super.beforeAll()
+  }
+
+  import controller.eventWatch
+
+  "Start a second Subagent" in {
+    val eventId = eventWatch.lastAddedEventId
+    val pair = subagentResource(bSubagentRef).allocated.await(99.s)
+    bSubagent = pair._1
+    bSubagentRelease = pair._2
+    eventWatch.await[SubagentDedicated](after = eventId)
+  }
+
+  "Multiple orders" in {
     val n = 100
     val runOrders = runMultipleOrders(
       orderIds = for (i <- 1 to n) yield OrderId(s"ORDER-$i"),
@@ -108,64 +129,9 @@ final class SubagentTest extends AnyFreeSpec with ControllerAgentForScalaTest
           result
         })
 
-    testResource(directoryProvider.directory / "subagent", subagentPort)
-      .use { subagent =>
-        eventWatch.await[SubagentDedicated]()
-        runOrders.executeOn(implicitly[Scheduler]) >>
-          Task {
-            assert(eventWatch.allKeyedEvents[OrderProcessingStarted].map(_.event.subagentId).toSet
-              == Set(directoryProvider.subagentId, subagentRef1.id))
-          }
-      }
-    //runWithOwnScheduler(directoryProvider.directory / "subagent", subagentPort)(runOrders)
-      .await(99.s)
-  }
-
-  "Changing JobResource" in {
-    pending // TODO
-  }
-
-  "Delete Subagent while processes are still running" in {
-    pending // TODO
-  }
-
-  private def testResource(directory: Path, port: Int): Resource[Task, StandaloneSubagent] =
-    for {
-      conf <- subagentEnvironment(directory, port)
-      scheduler <- StandaloneSubagent.threadPoolResource(conf)
-      subagent <- StandaloneSubagent.resource(conf)(scheduler)
-    } yield subagent
-
-  private def subagentEnvironment(directory: Path, port: Int): Resource[Task, SubagentConf] =
-    Resource.make(
-      acquire = Task {
-        createSubagentDirectories(directory)
-        toSubagentConf(directory, port = port)
-      })(
-      release = _ => Task {
-        deleteDirectoryRecursively(directory)
-      }
-    )
-
-  private def toSubagentConf(directory: Path, port: Int): SubagentConf =
-    SubagentConf.of(
-      configDirectory = directory / "config",
-      dataDirectory = directory / "data",
-      Seq(WebServerPort.localhost(port)),
-      name = "SUBAGENT-1",
-      config = config"""
-        js7.job.execution.signed-script-injection-allowed = yes
-        js7.auth.users.AGENT-0 {
-          permissions: [ AgentDirector ]
-          password: ""
-        }
-      """)
-
-  private def createSubagentDirectories(dir: Path): Unit = {
-    createDirectory(dir)
-    //createDirectory(dir / "config")
-    createDirectory(dir / "data")
-    createDirectory(dir / "data" / "logs")
+    runOrders.await(99.s)
+    assert(eventWatch.allKeyedEvents[OrderProcessingStarted].map(_.event.subagentId).toSet
+      == Set(directoryProvider.subagentId, bSubagentRef.id))
   }
 
   private def runMultipleOrders(
@@ -218,6 +184,160 @@ final class SubagentTest extends AnyFreeSpec with ControllerAgentForScalaTest
       .takeWhileInclusive(_._2)
       .map(_._1)
       .flatMap(o => Observable.fromIterable(o))
+
+  private lazy val cSubagentRef = SubagentRef(
+    SubagentId("C-SUBAGENT"),
+    agentPath,
+    Uri(s"http://localhost:${findFreeTcpPort()}"),
+    priority = Some(1)/*higher than None*/)
+
+  "Add and use a prioritized Subagent" in {
+    TestSemaphoreJob.reset()
+    val eventId = eventWatch.lastAddedEventId
+
+    controllerApi.updateUnsignedSimpleItems(Seq(cSubagentRef)).await(99.s).orThrow
+    eventWatch.await[ItemAttached](_.event.key == cSubagentRef.id)
+
+    runSubagent(cSubagentRef)(Task {
+      for (i <- 1 to 2 ) {
+        val orderId = OrderId(s"PRIORITIZED-SUBAGENT-$i")
+        TestSemaphoreJob.continue()
+        controller.addOrder(FreshOrder(orderId, cWorkflow.path)).await(99.s).orThrow
+        val events = eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
+        assert(events.head.value.event == OrderProcessingStarted(cSubagentRef.id))
+        eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
+      }
+    }).await(99.s)
+
+    // Now, the another available Subagent is selected
+    val orderId = OrderId("NEXT-PRIORITIZED-SUBAGENT")
+    TestSemaphoreJob.reset()
+    TestSemaphoreJob.continue()
+    controller.addOrder(FreshOrder(orderId, cWorkflow.path)).await(99.s).orThrow
+    val events = eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
+    assert(events.head.value.event == OrderProcessingStarted(directoryProvider.subagentId))
+    eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
+  }
+
+  "Restart Director" in {
+    pending // TODO
+    val orderId = OrderId("RESTART-DIRECTOR")
+
+    runSubagent(cSubagentRef)(Task {
+      locally {
+        val eventId = eventWatch.lastAddedEventId
+        controller.addOrder(FreshOrder(orderId, cWorkflow.path)).await(99.s).orThrow
+        val events = eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
+        assert(events.head.value.event == OrderProcessingStarted(cSubagentRef.id))
+        agent.terminate().await(99.s)
+      }
+
+      TestSemaphoreJob.continue()
+
+      locally {
+        agent = directoryProvider.startAgent(agentPath).await(99.s)
+        val eventId = eventWatch.lastAddedEventId
+        eventWatch.await[OrderProcessed](_.key == orderId, after = eventId)
+        val events = eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
+        assert(events.head.value.event.isInstanceOf[OrderFinished])
+      }
+    }).await(199.s)
+  }
+
+  "Restart remote Subagent" in {
+    pending // TODO
+    val orderId = OrderId("RESTART-SUBAGENT")
+
+    TestSemaphoreJob.reset()
+
+    runSubagent(cSubagentRef)(Task {
+      val eventId = eventWatch.lastAddedEventId
+      controller.addOrder(FreshOrder(orderId, cWorkflow.path)).await(99.s).orThrow
+      val events = eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
+      assert(events.head.value.event == OrderProcessingStarted(cSubagentRef.id))
+      // TODO For this test, the terminating Subagent must not emit OrderProcessed
+      //  after the process has been killed.
+      sleep(1.s)  // TODO JobDriver.stop still races with .processOrder(). Here we give processOrder() a second.
+    }).await(199.s)
+
+    runSubagent(cSubagentRef)(Task {
+      locally {
+        val eventId = eventWatch.lastAddedEventId
+        val events = eventWatch.await[OrderProcessed](_.key == orderId, after = eventId)
+        assert(events.head.value.event == OrderProcessed(Outcome.Disrupted(JobSchedulerRestarted)))
+      }
+      locally {
+        val eventId = eventWatch.lastAddedEventId
+        TestSemaphoreJob.continue(777)
+        eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
+        TestSemaphoreJob.continue(9999)
+        val events = eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
+        assert(events.head.value.event.isInstanceOf[OrderFinished])
+      }
+    })
+    .await(199.s)
+  }
+
+  "Change JobResource" in {
+    pending // TODO
+  }
+
+  "Delete Subagent while processes are still running" in {
+    pending // TODO
+  }
+
+  private def runSubagent[A](subagentRef: SubagentRef, awaitDedicated: Boolean = true)
+    (body: Task[A])
+  : Task[A] =
+    Task.deferAction { implicit scheduler =>
+      val eventId = eventWatch.lastAddedEventId
+      subagentResource(subagentRef)
+        .use { _ =>
+          if (awaitDedicated) eventWatch.await[SubagentDedicated](after = eventId)
+          body.executeOn(scheduler)
+        }
+    }
+
+  private def subagentResource(subagentRef: SubagentRef): Resource[Task, StandaloneSubagent] =
+    for {
+      conf <- subagentEnvironment(subagentRef)
+      scheduler <- StandaloneSubagent.threadPoolResource(conf)
+      subagent <- StandaloneSubagent.resource(conf)(scheduler)
+    } yield subagent
+
+  private def subagentEnvironment(subagentRef: SubagentRef): Resource[Task, SubagentConf] = {
+    createDirectories(directoryProvider.directory / "subagents")
+    val directory = directoryProvider.directory / "subagents" / subagentRef.id.string
+    Resource.make(
+      acquire = Task {
+        createSubagentDirectories(directory)
+        toSubagentConf(directory, subagentRef.uri.port.orThrow, name = subagentRef.id.string)
+      })(
+      release = _ => Task {
+        deleteDirectoryRecursively(directory)
+      })
+  }
+
+  private def createSubagentDirectories(dir: Path): Unit = {
+    createDirectory(dir)
+    //createDirectory(dir / "config")
+    createDirectory(dir / "data")
+    createDirectory(dir / "data" / "logs")
+  }
+
+  private def toSubagentConf(directory: Path, port: Int, name: String): SubagentConf =
+    SubagentConf.of(
+      configDirectory = directory / "config",
+      dataDirectory = directory / "data",
+      Seq(WebServerPort.localhost(port)),
+      name = s"SubagentTest-$name",
+      config = config"""
+        js7.job.execution.signed-script-injection-allowed = yes
+        js7.auth.users.AGENT-0 {
+          permissions: [ AgentDirector ]
+          password: ""
+        }
+      """)
 }
 
 object SubagentTest
@@ -230,15 +350,21 @@ object SubagentTest
     Seq(
       TestJob.execute(agentPath, parallelism = 1_000_000)))
 
+  private val cWorkflow = Workflow(
+    WorkflowPath("C-WORKFLOW") ~ "INITIAL",
+    Seq(
+      TestSemaphoreJob.execute(agentPath)))
+
   final class TestJob extends InternalJob
   {
     def toOrderProcess(step: Step) =
       OrderProcess(
-        // FIXME? Delay before writing to out because early OrderStdWritten may get lost
-        //Task.sleep(Random.nextInt(4) * 500.ms + 500.ms) >>
         step.outTaskObserver.send("STDOUT 1\n") >>
         step.outTaskObserver.send("STDOUT 2\n") >>
         Task.pure(Outcome.succeeded))
   }
   object TestJob extends InternalJob.Companion[TestJob]
+
+  final class TestSemaphoreJob extends SemaphoreJob(TestSemaphoreJob)
+  object TestSemaphoreJob extends SemaphoreJob.Companion[TestSemaphoreJob]
 }

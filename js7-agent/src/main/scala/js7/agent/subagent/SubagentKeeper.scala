@@ -19,6 +19,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
+import js7.data.execution.workflow.instructions.ScheduleSimulator.Scheduled
 import js7.data.order.OrderEvent.{LegacySubagentId, OrderCoreEvent, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten}
 import js7.data.order.{Order, OrderId}
 import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState}
@@ -28,7 +29,7 @@ import js7.journal.state.StatePersistence
 import js7.launcher.configuration.JobLauncherConf
 import js7.subagent.LocalSubagentDriver
 import js7.subagent.client.SubagentDriver
-import monix.eval.Task
+import monix.eval.{Coeval, Task}
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import scala.concurrent.Promise
@@ -39,13 +40,13 @@ final class SubagentKeeper(
   agentConf: AgentConfiguration,
   actorSystem: ActorSystem)
 {
+  private val mutableFixedPriority = new FixedPriority
   private val stdoutCommitDelay = agentConf.config
     .getDuration("js7.order.stdout-stderr.commit-delay").toFiniteDuration
   private val started = SetOnce[Started]
-  private val state = AsyncVariable[State](State(Map.empty, Vector.empty))
+  private val state = AsyncVariable[State](State.empty)
   private val orderToWaitForDriver = AsyncMap.empty[OrderId, Promise[Unit]]
   private val orderToDriver = AsyncMap.empty[OrderId, SubagentDriver]
-  private val roundRobin = new RoundRobin
 
   def start(agentPath: AgentPath, localSubagentId: Option[SubagentId], controllerId: ControllerId)
   : Task[Unit] =
@@ -58,8 +59,8 @@ final class SubagentKeeper(
         state
           .update(state => Task.defer {
             val driver = newLocalSubagentDriver(LegacySubagentId, started)
-            driver.start >>
-              Task(state.insertDriver(driver).orThrow)
+            driver.start *>
+              Task(state.insert(driver, None).orThrow)
           })
           .void
     }
@@ -79,7 +80,7 @@ final class SubagentKeeper(
   def stop: Task[Unit] =
     state
       .updateWithResult(state => Task(
-        state.removeAllDrivers -> state.idToDriver.values))
+        state.clear -> state.idToDriver.values))
       .flatMap(drivers => Task
         .parSequenceUnordered(drivers.map(_.stop(Some(SIGKILL)))))
       .void
@@ -92,7 +93,7 @@ final class SubagentKeeper(
     Task.defer {
       val promise = Promise[Unit]()
       // TODO Long lock on orderId !
-      orderToWaitForDriver.update(order.id, _ => Task.pure(promise)) >>
+      orderToWaitForDriver.update(order.id, _ => Task.pure(promise)) *>
         Task
           .race(Task.fromFuture(promise.future), selectSubagentDriver)
           .guarantee(orderToWaitForDriver.remove(order.id).void)
@@ -109,7 +110,7 @@ final class SubagentKeeper(
               persistence.persistKeyedEvents(events.map(order.id <-: _))
                 .flatMapT { case (_, s) =>
                   onEvents(events, s)
-                  orderToDriver.update(order.id, _ => Task.pure(driver)) >>
+                  orderToDriver.update(order.id, _ => Task.pure(driver)) *>
                     driver
                       .processOrder(
                         s.idToOrder(order.id).checkedState[Order.Processing].orThrow,
@@ -127,43 +128,37 @@ final class SubagentKeeper(
       // TODO Fehler in OrderProcessed(Outcome.Disrupted/Failed) fangen
     }
 
-  //TODO Fixed Priority
-  private def selectSubagentDriver: Task[SubagentDriver] =
+  private def selectSubagentDriver: Task[SubagentDriver] = {
     Observable
-      .repeatEval {
-        val state = this.state.get
-        import state.subagentIds
-        subagentIds.nonEmpty ? {
-          val i = roundRobin.next(subagentIds.length)
-          state.idToDriver(subagentIds(i))
-        }
-      }
-      .map(_.filter(_.isAlive))
+      .repeatEvalF(Coeval {
+        state.get.selectNext(mutableFixedPriority)
+      })
       .delayOnNextBySelector {
         case None => Observable.unit.delayExecution(1.s/*TODO Do not poll*/)
         case Some(_) => Observable.empty
       }
       .flatMap(Observable.fromIterable(_))
       .headL
+  }
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): Task[Unit] =
     Task.defer {
       // TODO Race condition?
       orderToWaitForDriver
         .get(orderId)
-        .fold(Task.unit)(promise => Task(promise.success(()))) >>
-      orderToDriver
-        .get(orderId)
-        .match_ {
-          case None => Task(logger.warn(s"killProcess($orderId): Unknown OrderId"))
-          case Some(driver) => driver.killProcess(orderId, signal)
-        }
+        .fold(Task.unit)(promise => Task(promise.success(())))
+        .*>(orderToDriver
+          .get(orderId)
+          .match_ {
+            case None => Task(logger.warn(s"killProcess($orderId): Unknown OrderId"))
+            case Some(driver) => driver.killProcess(orderId, signal)
+          })
     }
 
   def remove(subagentId: SubagentId): Task[Unit] =
     state
       .updateWithResult(state => Task(
-        state.removeDriver(subagentId) ->
+        state.remove(subagentId) ->
           state.idToDriver.get(subagentId)))
       .flatMap(_.fold(Task.unit)(_.stop(Some(SIGKILL))))
       .void
@@ -198,14 +193,14 @@ final class SubagentKeeper(
                   ).map { _ =>
                     // Replace and forget the existing driver
                     val driver = newRemoteSubagentDriver(subagentRef, started)
-                    for (updated <- state.insertDriver(driver)) yield
+                    for (updated <- state.insert(driver, subagentRef.priority)) yield
                       updated -> Some(driver)
                   }
 
                 case None =>
                   Task.deferAction(implicit s => Task {
                     val subagentDriver = newSubagentDriver(subagentRef, started)
-                    for (s <- state.insertDriver(subagentDriver)) yield
+                    for (s <- state.insert(subagentDriver, subagentRef.priority)) yield
                       s -> Some(subagentDriver)
                   })
               })
@@ -260,23 +255,43 @@ object SubagentKeeper
     controllerId: ControllerId)
 
   private final case class State(
-    idToDriver: Map[SubagentId, SubagentDriver],
-    subagentIds: IndexedSeq[SubagentId])
+    idToEntry: Map[SubagentId, Entry],
+    prioritized: Prioritized[SubagentId, Entry])
   {
-    def insertDriver(driver: SubagentDriver): Checked[State] =
-      for (o <- idToDriver.insert(driver.subagentId -> driver))
-        yield copy(
-          idToDriver = o,
-          subagentIds = subagentIds :+ driver.subagentId)
+    def idToDriver = idToEntry.view.mapValues(_.driver)
 
-    def removeDriver(subagentId: SubagentId): State =
-      copy(
-        idToDriver = idToDriver.removed(subagentId),
-        subagentIds = subagentIds.filter(_ != subagentId))
+    def insert(driver: SubagentDriver, priority: Option[Int]): Checked[State] = {
+      val entry = Entry(driver, priority)
+      for {
+        idToE <- idToEntry.insert(driver.subagentId -> entry)
+        prio <- prioritized.insert(entry)
+      } yield copy(
+        idToEntry = idToE,
+        prioritized = prio)
+    }
 
-    def removeAllDrivers: State =
+    def remove(subagentId: SubagentId): State =
       copy(
-        idToDriver = Map.empty,
-        subagentIds = Vector.empty)
+        idToEntry = idToEntry.removed(subagentId),
+        prioritized = prioritized.remove(subagentId))
+
+    def clear: State =
+      copy(
+        idToEntry = Map.empty,
+        prioritized = prioritized.clear)
+
+    def selectNext(fixedPriority: FixedPriority): Option[SubagentDriver] =
+      prioritized
+        .selectNext(fixedPriority, _.driver.isAlive)
+        .map(_.driver)
   }
+  private object State {
+    val empty = State(
+      Map.empty,
+      Prioritized.empty[SubagentId, Entry](
+        vToK = _.driver.subagentId,
+        toPriority = _.priority.getOrElse(Int.MinValue)))
+  }
+
+  private final case class Entry(driver: SubagentDriver, priority: Option[Int])
 }

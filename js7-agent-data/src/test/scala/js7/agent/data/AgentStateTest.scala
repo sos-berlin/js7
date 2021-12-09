@@ -52,6 +52,7 @@ final class AgentStateTest extends AsyncFreeSpec
     SubagentId("SUBAGENT"),
     AgentPath("AGENT"),
     Uri("https://localhost:0"),
+    priority = None,
     Some(ItemRevision(7)))
 
   private val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "1.0", Nil)

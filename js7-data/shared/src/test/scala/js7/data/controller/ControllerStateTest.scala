@@ -374,6 +374,7 @@ object ControllerStateTest
     SubagentId("SUBAGENT"),
     AgentPath("AGENT"),
     Uri("https://SUBAGENT"),
+    priority = None,
     Some(ItemRevision(7)))
   private val subagentRefState = SubagentRefState.initial(subagentRef)
 

@@ -34,6 +34,10 @@ extends JJsonable[JSubagentRef] with JUnsignedSimpleItem
     asScala.uri
 
   @Nonnull
+  def priority: Optional[Int] =
+    asScala.priority.toJava
+
+  @Nonnull
   def withRevision(revision: Optional[ItemRevision]) =
     copy(asScala.withRevision(revision.toScala))
 }
@@ -46,6 +50,14 @@ object JSubagentRef extends JJsonable.Companion[JSubagentRef]
     @Nonnull agentPath: AgentPath,
     @Nonnull uri: Uri)
   = JSubagentRef(SubagentRef(id, agentPath, uri))
+
+  @Nonnull
+  def of(
+    @Nonnull id: SubagentId,
+    @Nonnull agentPath: AgentPath,
+    @Nonnull uri: Uri,
+    @Nonnull priority: Optional[Int])
+  = JSubagentRef(SubagentRef(id, agentPath, uri, priority = priority.toScala))
 
   @Nonnull
   override def fromJson(jsonString: String): VEither[Problem, JSubagentRef] =
