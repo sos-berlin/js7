@@ -25,6 +25,10 @@ extends JJsonable[JSubagentRefState]
   @Nonnull
   def subagentRunId: Optional[SubagentRunId] =
     asScala.subagentRunId.toJava
+
+  @Nonnull
+  def problem: Optional[Problem] =
+    asScala.problem.toJava
 }
 
 object JSubagentRefState extends JJsonable.Companion[JSubagentRefState]
