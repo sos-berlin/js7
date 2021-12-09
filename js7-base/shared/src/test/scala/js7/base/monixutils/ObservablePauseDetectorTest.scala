@@ -16,7 +16,7 @@ final class ObservablePauseDetectorTest extends AnyFreeSpec
 
   "detectPauses" in {
     implicit val scheduler = TestScheduler()
-    val future = pausingObservable.detectPauses(1.s).takeWhileInclusive(_ != Right(5)).toListL.runToFuture
+    val future = pausingObservable.detectPauses2(1.s).toListL.runToFuture
     scheduler.tick(100.s)
     assert(future.value == Some(Success(List(
       Right(1),
@@ -32,7 +32,7 @@ final class ObservablePauseDetectorTest extends AnyFreeSpec
   "detectPauses detects initial pause" in {
     implicit val scheduler = TestScheduler()
     val future = (Observable.fromTask(Task(0).delayExecution(2.s)) ++ pausingObservable)
-      .detectPauses(1001.ms).takeWhileInclusive(_ != Right(5)).toListL.runToFuture
+      .detectPauses2(1001.ms).toListL.runToFuture
     scheduler.tick(100.s)
     assert(future.value == Some(Success(List(
       Left(MonixDeadline.fromNanos(0L)),

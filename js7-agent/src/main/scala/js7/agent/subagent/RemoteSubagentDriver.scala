@@ -317,7 +317,7 @@ extends SubagentDriver
                   setAlive(true)
                 })
                 .tapEach(o => Task(logger.debug(o.toString.truncateWithEllipsis(200))))
-                .detectPauses(longHeartbeatTimeout, EmptyStamped)
+                .detectPauses2(longHeartbeatTimeout, EmptyStamped)
                 .flatMap(o =>
                   if (o eq EmptyStamped) {
                     setAlive(false)
