@@ -214,7 +214,10 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
     (implicit s: Task[Option[SessionToken]])
   : Task[HttpResponse] =
     for {
-      entity <- Task.deferFuture(executeOn(materializer.executionContext)(implicit ec => Marshal(data).to[RequestEntity]))
+      // Maybe executeOn avoid blocking with a single thread Scheduler,
+      // but sometimes throws RejectedExecutionException in test build
+      //entity <- Task.deferFuture(executeOn(materializer.executionContext)(implicit ec => Marshal(data).to[RequestEntity]))
+      entity <- Task.deferFutureAction(implicit s => Marshal(data).to[RequestEntity])
       response <- sendReceive(
         HttpRequest(POST, uri.asAkka, headers, entity),
         logData = Some(data.toString))
