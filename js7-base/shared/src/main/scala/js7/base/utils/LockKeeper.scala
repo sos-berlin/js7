@@ -13,9 +13,9 @@ import scala.concurrent.Promise
 
 final class LockKeeper[K]
 {
-  // keyMap.contains(key): key is locked
-  // keyMap(key).length: Number of clients waiting to get the lock
-  private val keyMap = mutable.Map.empty[Any, mutable.Queue[Promise[Token]]]
+  // keyToQueue.contains(key): key is locked
+  // keyToQueue(key).length: Number of clients waiting to get the lock
+  private val keyToQueue = mutable.Map.empty[Any, mutable.Queue[Promise[Token]]]
 
   def lock[A](key: K)(body: Task[A]): Task[A] =
     lockResource(key).use(_ => body)
@@ -25,11 +25,10 @@ final class LockKeeper[K]
 
   private def acquire(key: K): Task[Token] =
     Task.defer {
-      synchronized {
-        keyMap.get(key) match {
+      val result = synchronized {
+        keyToQueue.get(key) match {
           case None =>
-            logger.trace(s"Acquired lock '$key'")
-            keyMap += key -> mutable.Queue.empty
+            keyToQueue += key -> mutable.Queue.empty
             Task.pure(new Token(key))
 
           case Some(queue) =>
@@ -39,29 +38,36 @@ final class LockKeeper[K]
             deferFutureAndLog(promise.future, s"acquiring lock for $key")
         }
       }
+      logger.trace(s"Acquired lock '$key'")
+      result
     }
 
   private def release(token: Token): Task[Unit] =
     Task {
       if (!token.released.getAndSet(true)) {
-        synchronized {
-          import token.key
-          keyMap(key).dequeueFirst(_ => true) match {
+        import token.key
+        val handedOver = synchronized {
+          keyToQueue(key).dequeueFirst(_ => true) match {
             case None =>
-              logger.trace(s"Released lock '$key'")
-              keyMap.remove(key)
+              keyToQueue.remove(key)
+              false
             case Some(promise) =>
-              logger.trace(s"Released lock '$key', handing over to queued request")
               promise.success(new Token(key))
+              true
           }
         }
+        // Log late, but outside the synchronized block
+        if (!handedOver)
+          logger.trace(s"Released lock '$key'")
+        else
+          logger.trace(s"Released lock '$key', handed over to queued request")
       }
     }
 
   override def toString =
-    s"LogKeeper(${
+    s"LockKeeper(${
       synchronized {
-        (for ((key, queue) <- keyMap) yield
+        (for ((key, queue) <- keyToQueue) yield
           if (queue.isEmpty) key.toString
           else s"$key (${queue.length} waiting)"
         ).mkString(", ")

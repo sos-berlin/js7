@@ -9,10 +9,11 @@ import monix.eval.Task
 import scala.concurrent.Promise
 import scala.reflect.ClassTag
 
-class AsyncMap[K: ClassTag, V](initial: Map[K, V])
+class AsyncMap[K: ClassTag, V](initial: Map[K, V] = Map.empty[K, V])
 {
   private val lockKeeper = new LockKeeper[K]
-  private val shortLock = AsyncLock(s"AsyncMap[${implicitClass[K].shortClassName}]")
+  private val shortLock = AsyncLock(s"AsyncMap[${implicitClass[K].shortClassName}].shortLock",
+    suppressLog = true)
   @volatile private var _map = initial
 
   protected[AsyncMap] def onEntryRemoved() = {}
@@ -74,6 +75,15 @@ class AsyncMap[K: ClassTag, V](initial: Map[K, V])
       case None => value
     })
 
+  final def put(key: K, value: V)
+    (implicit src: sourcecode.Enclosing)
+  : Task[V] =
+    lockKeeper.lock(key)(
+      shortLock.lock(Task {
+        _map = _map.updated(key, value)
+        value
+      }))
+
   final def update(key: K, update: Option[V] => Task[V])
     (implicit src: sourcecode.Enclosing)
   : Task[V] =
@@ -89,7 +99,7 @@ class AsyncMap[K: ClassTag, V](initial: Map[K, V])
         update(previous)
           .flatMap(updated =>
             shortLock.lock(Task {
-              _map += key -> updated
+              _map = _map.updated(key, updated)
               updated
           }))
           .map(previous -> _)
@@ -106,7 +116,7 @@ class AsyncMap[K: ClassTag, V](initial: Map[K, V])
               case Left(p) => Task.pure(Left(p))
               case Right(v) =>
                 shortLock.lock(Task {
-                  _map += key -> v
+                  _map = _map.updated(key, v)
                   Checked.unit
                 })
             }
@@ -122,14 +132,14 @@ class AsyncMap[K: ClassTag, V](initial: Map[K, V])
           .flatMapT { case (v, r) =>
             shortLock
               .lock(Task {
-                _map += key -> v
+                _map = _map.updated(key, v)
               })
               .as(Right(r))
           }
       })
 
   override def toString =
-    s"AsyncMap[${implicitClass[K].simpleScalaName}, V](n=${_map.size})"
+    s"AsyncMap[${implicitClass[K].simpleScalaName}, _](n=${_map.size})"
 }
 
 object AsyncMap

@@ -18,16 +18,22 @@ final class AsyncLock private(
   private val log = if (suppressLog) ScribeUtils.emptyLogger else logger
 
   def lock[A](task: Task[A])(implicit src: sourcecode.Enclosing): Task[A] =
-    lock(src.value)(task)
+    lock2(src.value)(task)
 
-  def lock[A](acquirer: String)(task: Task[A]): Task[A] =
+  def lock[A](acquirer: => String)(task: Task[A]): Task[A] = {
+    lazy val acq = acquirer
+    lock2(acq)(task)
+  }
+
+  private def lock2[A](acquirer: String)(task: Task[A]): Task[A] = {
     acquire(acquirer).bracket(_ => task)(_ => release(acquirer))
       // Because cancel() is asynchronous, the use part may continue even though
       // the lock is released (?). Better we make the whole operation uncancelable.
       // TODO Make cancelable ?
       .uncancelable
+  }
 
-  private def acquire(acquirer: String): Task[Unit] =
+  private def acquire(acquirer: String): Task[Unit] = {
     lockM
       .flatMap(mvar =>
         mvar.tryPut(acquirer).flatMap(hasAcquired =>
@@ -58,6 +64,7 @@ final class AsyncLock private(
               })
           }))
       .map(_ => log.trace(s"$acquirer acquired $toString"))
+  }
 
   private def release(acquirer: String): Task[Unit] =
     Task.defer {
