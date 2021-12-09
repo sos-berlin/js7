@@ -10,6 +10,7 @@ import js7.base.time.JavaTimestamp.specific._
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.data.agent.AgentPath
 import js7.data.order.{Order, OrderId}
+import js7.data.subagent.SubagentId
 import js7.data.value.Value
 import js7.data_for_java.common.{JJsonable, JavaWrapper}
 import js7.data_for_java.vavr.VavrConverters._
@@ -63,6 +64,7 @@ extends JJsonable[JOrder]
       .flatMap((o: Order[Order.State]) =>
         o.state match {
           case forked: Order.Forked => Right(Forked(forked).asInstanceOf[S])
+          case o: Order.Processing => Right(Processing(o).asInstanceOf[S])
           case Order.Finished => Right(Finished.asInstanceOf[S])
           case Order.Deleted => Right(Deleted.asInstanceOf[S])
           case o => Left(Problem(s"Scala Order.${o.getClass.simpleScalaName} is not available for Java"))
@@ -96,6 +98,13 @@ object JOrder extends JJsonable.Companion[JOrder]
     @Nonnull
     def childOrderIds: java.util.List[OrderId] =
       asScala.children.map(_.orderId).asJava
+  }
+
+  final case class Processing(asScala: Order.Processing) extends State {
+    protected type AsScala = Order.Processing
+
+    def subagentId: SubagentId =
+      asScala.subagentId
   }
 
   case object Finished extends State {
