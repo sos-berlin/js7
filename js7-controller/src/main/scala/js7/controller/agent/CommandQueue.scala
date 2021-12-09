@@ -5,9 +5,10 @@ import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.Batch
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.controller.agent.AgentDriver.{Input, Queueable, ReleaseEventsQueueable}
 import js7.controller.agent.CommandQueue._
-import js7.data.order.{OrderId, OrderMark}
+import js7.data.order.OrderId
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.collection.{View, mutable}
@@ -188,8 +189,14 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
     synchronized {
       freshlyCoupled = false
       val inputs = responses.map(_.input).toSet
-      queue.dequeueAll(inputs)  // Including rejected commands. These command will not be repeated.
-      onQueuedInputsResponded(inputs)
+
+      // Dequeue commands including rejected ones, but not those with ServiceUnavailable response.
+      // The dequeued commands will not be repeated !!!
+      queue.dequeueAll(responses.view
+        .flatMap(r => r.response.left.forall(_.httpStatusCode != 503/*ServiceUnavailable*/) ?
+          r.input)
+        .toSet)
+      onQueuedInputsResponded(responses.map(_.input).toSet)
       responses.flatMap {
         case QueuedInputResponse(input, Right(AgentCommand.Response.Accepted)) =>
           Some(input)
