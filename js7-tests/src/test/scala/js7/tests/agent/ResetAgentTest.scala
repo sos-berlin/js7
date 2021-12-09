@@ -225,6 +225,7 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
         // Steal this Agent with ReseAgent(force)!
         secondControllerApi.executeCommand(ResetAgent(agentPath, force = true)).await(99.s)
+        secondControllerApi.stop.await(99.s)  // ActorSystem still alive ???
         myAgent.terminated.await(99.s)
         myAgent = directoryProvider.startAgent(agentPath) await 99.s
 

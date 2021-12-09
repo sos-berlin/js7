@@ -117,6 +117,7 @@ final class JournaledProxyClusterTest extends AnyFreeSpec with ClusterProxyTest
         val state = meterFetchSnapshot(n, api, primaryController.eventWatch)
         assert(state.repo.currentVersionSize == n + 1)
       }
+      api.stop.await(99.s)
     }
   }
 
@@ -151,6 +152,7 @@ final class JournaledProxyClusterTest extends AnyFreeSpec with ClusterProxyTest
         val state = meterFetchSnapshot(n, api, primaryController.eventWatch)
         assert(state.idToOrder.size == n)
       }
+      api.stop.await(99.s)
     }
   }
 

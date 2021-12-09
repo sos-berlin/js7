@@ -64,6 +64,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with Controll
   }
 
   override def afterAll() = {
+    api.stop.await(99.s)
     proxy.stop.await(99.s)
     close()
     super.afterAll()

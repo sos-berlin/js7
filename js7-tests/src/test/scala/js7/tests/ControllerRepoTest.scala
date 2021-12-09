@@ -236,7 +236,7 @@ final class ControllerRepoTest extends AnyFreeSpec
                 .orThrow
               logInfo(itemsPerSecondString(t.elapsed, itemCount, "deletions"))
             }
-
+            controllerApi.stop.await(99.s)
           })
           .runToFuture
           .await(1.h)
