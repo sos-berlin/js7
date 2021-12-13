@@ -103,8 +103,9 @@ object MonixBase
                 val d = durationIterator.nextOption() getOrElse lastDuration
                 if (d.isPositive)
                   Task.sleep(d)
-                    .flatMap(_ => thenDo(since.elapsed))
-                    .map(_ => Left(d))
+                    .*>(Task(since.elapsed))
+                    .flatMap(thenDo)
+                    .as(Left(d))
                 else
                   Task.pure(Right(()))
               }

@@ -24,7 +24,7 @@ trait ProcessJobLauncher extends JobLauncher
   import executable.v1Compatible
   import jobConf.jobKey
 
-  final val start = Task.pure(Right(()))
+  final val start = Task.pure(Checked.unit)
 
   protected final def makeOrderProcess(processOrder: ProcessOrder, startProcess: StartProcess)
   : OrderProcess = {

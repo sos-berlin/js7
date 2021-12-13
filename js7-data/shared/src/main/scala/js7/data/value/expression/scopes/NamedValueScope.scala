@@ -26,10 +26,5 @@ object NamedValueScope
     new NamedValueScope(nameToValue)
 
   private[scopes] def namesToString[V](nameToV: MapView[String, V]) =
-    nameToV match {
-      case nameToValue: Map[String, V] =>
-        nameToValue.keys.toVector.sorted.mkString(", ")
-
-      case _ => "?"
-    }
+    nameToV.keys.toVector.sorted.mkString(", ")
 }

@@ -57,7 +57,7 @@ object InventoryItemPath
         }
 
     final def toPossibleFilenames(path: P): Iterable[String] =
-      sourceTypeToFilenameExtension.values.map(path + _)
+      sourceTypeToFilenameExtension.values.map(path.toString + _)
   }
 
   type AnyCompanion = Companion[_ <: InventoryItemPath]

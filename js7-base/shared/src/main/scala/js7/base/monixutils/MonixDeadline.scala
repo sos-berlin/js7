@@ -84,7 +84,7 @@ extends Ordered[MonixDeadline]
 
 object MonixDeadline
 {
-  def monotonicClock: Task[MonixDeadline] =
+  val monotonicClock: Task[MonixDeadline] =
     Task.deferAction { scheduler =>
       Task.pure(MonixDeadline.now(scheduler))
     }

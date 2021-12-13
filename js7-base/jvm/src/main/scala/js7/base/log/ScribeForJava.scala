@@ -17,7 +17,7 @@ object ScribeForJava
         scribe.Logger.root
           .clearHandlers()
           .clearModifiers()
-          .withHandler(Log4jFormatter, Log4jWriter, Some(Level.Trace))
+          .withHandler(Slf4jFormatter, Log4jWriter, Some(Level.Trace))
           //.withHandler(Formatter.simple, Log4jWriter, Some(Level.Trace))
           .replace()
         initialized = true
@@ -30,7 +30,7 @@ object ScribeForJava
     def splitAt(index: Int) = (this, this)
   }
 
-  private object Log4jFormatter extends Formatter {
+  private object Slf4jFormatter extends Formatter {
     def format[M](record: LogRecord[M]) = DummyLogOutput
   }
 
