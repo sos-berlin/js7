@@ -7,13 +7,12 @@ object Dependencies
   val scalaVersion = "2.13.7"
 
   val akkaVersion = "2.6.17"
-  val akkaHttpVersion = "10.2.6"
+  val akkaHttpVersion = "10.2.7"
   val slf4jVersion = "1.7.32"  // See also plugins.sbt
-  val log4jVersion = "2.16.0"  // See also plugins.sbt
-  val catsVersion = "2.6.1"
-  //val catsVersion = "2.7.0"
+  val log4jVersion = "2.17.0"  // See also plugins.sbt
+  val catsVersion = "2.7.0"
   val catsEffectVersion = "2.5.4"
-  val izumiReflectVersion = "2.0.3"
+  val izumiReflectVersion = "2.0.7"
   //val kittensVersion = "1.2.1"
   val fastparseVersion = "2.2.4"
   val circeVersion = "0.14.1"
@@ -31,7 +30,7 @@ object Dependencies
   val scalaJsDomVersion = "1.2.0"
   val shapelessVersion = "2.3.7"
   val diffxVersion = "0.6.0"
-  val reactorVersion = "3.4.12"
+  val reactorVersion = "3.4.13"
   val vavrVersion = "0.10.4"
   val jnaVersion = "5.10.0"
 
@@ -78,7 +77,7 @@ object Dependencies
 
   val findbugs            = "com.google.code.findbugs" % "jsr305" % "3.0.2"
   //val guava               = "com.google.guava" % "guava" % "30.1.1-jre"
-  val bouncyCastle        = "org.bouncycastle" % "bcpg-jdk15on" % "1.69"
+  val bouncyCastle        = "org.bouncycastle" % "bcpg-jdk15on" % "1.70"
   val hamcrest            = "org.hamcrest" % "hamcrest" % "2.2" ::
                             "org.hamcrest" % "hamcrest-library" % "2.2" :: Nil
   val jna                 = "net.java.dev.jna" % "jna-platform" % jnaVersion ::

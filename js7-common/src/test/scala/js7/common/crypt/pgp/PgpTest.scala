@@ -24,7 +24,9 @@ final class PgpTest extends AnyFreeSpec
   "Invalid password for secret key" in {
     for (invalidPassword <- Array("", "INVALID")) {
       assert(PgpSigner.checked(secretKeyResource.readAs[ByteArray], SecretString(invalidPassword)) ==
-        Left(Problem("org.bouncycastle.openpgp.PGPException: checksum mismatch at 0 of 20")))  // TODO Weird Problem message for an invalid password))
+        Left(Problem(
+          // TODO Weird Problem message for an invalid password))
+          "org.bouncycastle.openpgp.PGPException: checksum mismatch at in checksum of 20 bytes")))
     }
   }
 
