@@ -31,7 +31,7 @@ final class ControllerMain
     logger.info(startUpLine())
     logger.debug(arguments.toString)
     val conf = ControllerConfiguration.fromCommandLine(arguments)
-    logger.info(s"id=${conf.controllerId} config=${conf.configDirectory} data=${conf.dataDirectory}")
+    logger.info(s"${conf.controllerId} config=${conf.configDirectory} data=${conf.dataDirectory}")
     logConfig(conf.config)
     logJavaSettings()
     var restartInProcess = false
