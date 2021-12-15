@@ -9,7 +9,7 @@ object Dependencies
   val akkaVersion = "2.6.17"
   val akkaHttpVersion = "10.2.6"
   val slf4jVersion = "1.7.32"  // See also plugins.sbt
-  val log4jVersion = "2.15.0"  // See also plugins.sbt
+  val log4jVersion = "2.16.0"  // See also plugins.sbt
   val catsVersion = "2.6.1"
   val catsEffectVersion = "2.5.3"
   //val kittensVersion = "1.2.1"
