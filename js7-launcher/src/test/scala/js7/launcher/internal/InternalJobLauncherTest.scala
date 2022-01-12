@@ -42,7 +42,6 @@ final class InternalJobLauncherTest extends AnyFreeSpec
         workflow,
         ControllerId("CONTROLLER"),
         sigkillDelay = 0.s),
-      _ => Left(Problem("No JobResource here")),
       Map.empty,
       globalIOX.scheduler,
       AlarmClock())(Scheduler.global, globalIOX)

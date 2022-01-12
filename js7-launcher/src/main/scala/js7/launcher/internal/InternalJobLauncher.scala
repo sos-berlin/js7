@@ -10,7 +10,7 @@ import js7.base.time.AlarmClock
 import js7.base.utils.Classes.superclassesOf
 import js7.base.utils.Lazy
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.job.{InternalExecutable, JobConf, JobResource, JobResourcePath}
+import js7.data.job.{InternalExecutable, JobConf}
 import js7.data.value.NamedValues
 import js7.data.value.expression.Scope.evalExpressionMap
 import js7.launcher.ProcessOrder
@@ -23,7 +23,6 @@ import scala.util.control.NonFatal
 final class InternalJobLauncher(
   executable: InternalExecutable,
   val jobConf: JobConf,
-  protected val pathToJobResource: JobResourcePath => Checked[JobResource],
   val jobArguments: NamedValues,
   blockingJobScheduler: Scheduler,
   clock: AlarmClock)

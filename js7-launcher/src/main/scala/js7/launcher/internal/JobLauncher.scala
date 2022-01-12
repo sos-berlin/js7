@@ -8,7 +8,7 @@ import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.system.OperatingSystem.isUnix
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.job.{AbsolutePathExecutable, CommandLineExecutable, InternalExecutable, JobConf, JobResource, JobResourcePath, RelativePathExecutable, ShellScriptExecutable}
+import js7.data.job.{AbsolutePathExecutable, CommandLineExecutable, InternalExecutable, JobConf, RelativePathExecutable, ShellScriptExecutable}
 import js7.data.value.expression.Scope.evalExpressionMap
 import js7.data.value.expression.scopes.{EnvScope, NowScope}
 import js7.launcher.configuration.JobLauncherConf
@@ -22,7 +22,6 @@ import scala.util.Try
 trait JobLauncher
 {
   protected val jobConf: JobConf
-  protected val pathToJobResource: JobResourcePath => Checked[JobResource]
 
   def precheckAndWarn = Task.unit
 
@@ -44,8 +43,7 @@ object JobLauncher
 
   def checked(
     jobConf: JobConf,
-    launcherConf: JobLauncherConf,
-    pathToJobResource: JobResourcePath => Checked[JobResource])
+    launcherConf: JobLauncherConf)
     (implicit scheduler: Scheduler)
   : Checked[JobLauncher] =
     jobConf.workflowJob.executable match {
@@ -53,19 +51,19 @@ object JobLauncher
         if (!launcherConf.scriptInjectionAllowed)
           Left(SignedInjectionNotAllowed)
         else
-          Right(new AbsolutePathJobLauncher(executable, jobConf, launcherConf, pathToJobResource))
+          Right(new AbsolutePathJobLauncher(executable, jobConf, launcherConf))
 
       case executable: RelativePathExecutable =>
-        Right(new RelativePathJobLauncher(executable, jobConf, launcherConf, pathToJobResource))
+        Right(new RelativePathJobLauncher(executable, jobConf, launcherConf))
 
       case executable: ShellScriptExecutable =>
-        ShellScriptJobLauncher.checked(executable, jobConf, launcherConf, pathToJobResource)
+        ShellScriptJobLauncher.checked(executable, jobConf, launcherConf)
 
       case executable: CommandLineExecutable =>
         if (!launcherConf.scriptInjectionAllowed)
           Left(SignedInjectionNotAllowed)
         else
-          Right(new CommandLineJobLauncher(executable, jobConf, launcherConf, pathToJobResource))
+          Right(new CommandLineJobLauncher(executable, jobConf, launcherConf))
 
       case executable: InternalExecutable =>
         if (!launcherConf.scriptInjectionAllowed)
@@ -74,7 +72,7 @@ object JobLauncher
           import launcherConf.iox
           lazy val scope = NowScope() |+| EnvScope
           for (jobArguments <- evalExpressionMap(executable.jobArguments, scope))
-            yield new InternalJobLauncher(executable, jobConf, pathToJobResource, jobArguments,
+            yield new InternalJobLauncher(executable, jobConf, jobArguments,
               launcherConf.blockingJobScheduler, launcherConf.clock)
         }
     }

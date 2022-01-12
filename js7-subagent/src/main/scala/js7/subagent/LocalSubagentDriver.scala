@@ -108,10 +108,7 @@ extends SubagentDriver
             new JobDriver(
               jobConf,
               id => currentState().pathToJobResource.checked(id),
-              JobLauncher.checked(
-                jobConf,
-                jobLauncherConf,
-                id => currentState().pathToJobResource.checked(id)))))
+              JobLauncher.checked(jobConf, jobLauncherConf))))
           .map(workflowJob -> _)
     }.flatMap(_.sequence)
 

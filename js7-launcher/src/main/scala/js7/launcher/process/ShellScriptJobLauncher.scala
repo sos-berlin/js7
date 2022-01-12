@@ -10,7 +10,7 @@ import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.RightUnit
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
-import js7.data.job.{JobConf, JobResource, JobResourcePath, ShellScriptExecutable}
+import js7.data.job.{JobConf, ShellScriptExecutable}
 import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
 import js7.launcher.forwindows.{WindowsProcess, WindowsProcessCredential, WindowsUserName}
@@ -22,8 +22,7 @@ import scala.collection.mutable
 final class ShellScriptJobLauncher(
   protected val executable: ShellScriptExecutable,
   protected val jobConf: JobConf,
-  protected val jobLauncherConf: JobLauncherConf,
-  protected val pathToJobResource: JobResourcePath => Checked[JobResource])
+  protected val jobLauncherConf: JobLauncherConf)
 extends PathProcessJobLauncher
 {
   private val userToFileLock = AsyncLock("ShellScriptJobLauncher.userToFile")
@@ -57,13 +56,12 @@ object ShellScriptJobLauncher
   def checked(
     executable: ShellScriptExecutable,
     jobConf: JobConf,
-    launcherConf: JobLauncherConf,
-    pathToJobResource: JobResourcePath => Checked[JobResource])
+    launcherConf: JobLauncherConf)
   : Checked[ShellScriptJobLauncher] =
     if (!launcherConf.scriptInjectionAllowed)
       Left(SignedInjectionNotAllowed)
     else
-      Right(new ShellScriptJobLauncher(executable, jobConf, launcherConf, pathToJobResource))
+      Right(new ShellScriptJobLauncher(executable, jobConf, launcherConf))
 
   private def writeScriptToFile(script: String, tmpDir: Path, userName: Option[WindowsUserName]): Checked[Path] =
     Checked.catchNonFatal {

@@ -66,8 +66,7 @@ final class InternalJobLauncherForJavaTest extends AnyFreeSpec with BeforeAndAft
             scriptInjectionAllowed = true,
             RecouplingStreamReaderConf.forTest,
             globalIOX, blockingJobScheduler,
-            AlarmClock()),
-          _ => Left(Problem("No JobResource here"))
+            AlarmClock())
         ).orThrow.asInstanceOf[InternalJobLauncher]
       }
 
