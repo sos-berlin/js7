@@ -39,7 +39,7 @@ Jeder dieser Subtypen kennt folgende Parameter.
   Map\[String, ExpressionString]
 
   Auf der linken Seite stehen die Namen der zu setzenden Umgebungsvariablen.
-  Auf der rechten Seite sind Strings mit [Ausdrücken](../../expression/expression.md).
+  Auf der rechten Seite sind Strings mit [Ausdrücken](../../expression/Expression.md).
   Vor dem Start des Jobs errechnet JS7 den Wert jedes Ausdrucks und
   weist ihn der genannten Umgebungsvariablen zu (in einen String konvertiert).
 
@@ -53,7 +53,7 @@ Jeder dieser Subtypen kennt folgende Parameter.
   }
   ```
 
-  Zur Ausdruckssprache siehe [Ausdrücke](../../expression/expression.md).
+  Zur Ausdruckssprache siehe [Ausdrücke](../../expression/Expression.md).
 
 * `returnCodeMeaning`
 
