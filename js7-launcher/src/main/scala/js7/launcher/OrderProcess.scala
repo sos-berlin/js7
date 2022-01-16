@@ -4,37 +4,27 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.SetOnce
 import js7.data.order.Outcome
 import js7.data.value.NamedValues
-import js7.launcher.OrderProcess._
 import monix.eval.{Fiber, Task}
-import monix.execution.{CancelableFuture, Scheduler}
-import scala.concurrent.Future
-import scala.util.control.NoStackTrace
-import scala.util.{Failure, Success}
+import scala.concurrent.Promise
 
 trait OrderProcess
 {
   protected def run: Task[Fiber[Outcome.Completed]]
 
-  protected def onStarted(future: CancelableFuture[Outcome.Completed]) = {}
+  protected def onStarted(fiber: Fiber[Outcome.Completed]) = {}
 
   def cancel(immediately: Boolean): Task[Unit]
 
-  /** Returns a Task with a Future for the started and running process. */
-  final def start(stdObservers: StdObservers)(implicit s: Scheduler)
-  : Task[Future[Outcome.Completed]] =
+  protected def fiberCanceled: Task[Outcome.Failed] = Task.never
+
+  /** Returns a Task for the started and running process. */
+  final def start(stdObservers: StdObservers): Task[Task[Outcome.Completed]] =
     run.map { fiber =>
-      val future = fiber
-        .join
-        .tapEval(_ => stdObservers.stop)
-        .onCancelRaiseError(CanceledException)
-        .materialize.map {
-          case Failure(CanceledException) => Outcome.Failed(Some("Canceled"))
-          case Failure(t) => Outcome.Failed.fromThrowable(t)
-          case Success(o) => o
-        }
-        .runToFuture
-      onStarted(future)
-      future
+      onStarted(fiber)
+      Task.race(fiber.join, fiberCanceled)
+        .guarantee(stdObservers.stop)
+        .map(_.fold(identity, identity))
+        .onErrorHandle(Outcome.Failed.fromThrowable)
     }
 }
 
@@ -50,13 +40,11 @@ object OrderProcess
     OrderProcess(Task.pure(Outcome.Completed.fromChecked(checkedOutcome)))
 
   private final class Simple(task: Task[Outcome.Completed])
-  extends OrderProcess.FutureCancelling
+  extends OrderProcess.FiberCancelling
   {
-    def run =
-      task.start
+    val run = task.start
 
-    override def toString =
-      "OrderProcess.Simple"
+    override def toString = "OrderProcess.Simple"
   }
 
   final case class Failed(problem: Problem)
@@ -71,20 +59,22 @@ object OrderProcess
       Task.unit
   }
 
-  trait FutureCancelling extends OrderProcess
+  private val CanceledOutcome = Outcome.Failed(Some("Canceled"))
+
+  trait FiberCancelling extends OrderProcess
   {
-    private val futureOnce = SetOnce[CancelableFuture[Outcome.Completed]]
+    private val fiberOnce = SetOnce[Fiber[Outcome.Completed]]
+    private val canceledPromise = Promise[Unit]()
+    override protected val fiberCanceled = Task.fromFuture(canceledPromise.future)
+      .as(CanceledOutcome)
 
-    private def future = futureOnce.orThrow
-
-    override protected def onStarted(future: CancelableFuture[Outcome.Completed]): Unit = {
+    override protected def onStarted(future: Fiber[Outcome.Completed]): Unit = {
       super.onStarted(future)
-      futureOnce := future
+      fiberOnce := future
     }
 
     def cancel(immediately: Boolean): Task[Unit] =
-      Task { future.cancel() }
+      fiberOnce.orThrow.cancel
+        .map(_ => canceledPromise.trySuccess(()))
   }
-
-  private object CanceledException extends NoStackTrace
 }

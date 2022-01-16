@@ -1,7 +1,6 @@
 package js7.launcher.internal
 
 import js7.base.problem.Checked._
-import js7.base.problem.Problem
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.IOExecutor.globalIOX
 import js7.base.thread.MonixBlocking.syntax._
@@ -60,7 +59,7 @@ final class InternalJobLauncherTest extends AnyFreeSpec
         ControllerId("CONTROLLER"),
         stdObservers)
     ).await(99.s).orThrow
-    val outcome = orderProcess.start(stdObservers).await(99.s).await(99.s)
+    val outcome = orderProcess.start(stdObservers).flatten.await(99.s)
     assert(outcome == Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(2))))
     out.onComplete()
     err.onComplete()

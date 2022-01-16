@@ -29,6 +29,7 @@ import js7.launcher.internal.InternalJob.JobContext
 import js7.tests.internaljob.InternalJobTest._
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
+import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.atomic.{Atomic, AtomicInt}
@@ -133,7 +134,9 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
     }
 
   "Kill InternalJob" in {
+    assert(CancelableJob.semaphore.flatMap(_.count).await(99.s) == 0)
     testCancelJob[CancelableJob]()
+    assert(CancelableJob.semaphore.flatMap(_.count).await(99.s) == 0)
   }
 
   "Kill JavaBlockingJob" in {
@@ -322,20 +325,21 @@ object InternalJobTest
   private class CancelableJob extends InternalJob
   {
     def toOrderProcess(step: Step) =
-      new OrderProcess.FutureCancelling {
-        def run =
-          Task.sleep(9.s)
-            .as[Outcome.Completed](Outcome.succeeded)
-            .start
-            .guaranteeCase(exitCase => Task {
-              logger.debug(s"CancelableJob $exitCase")
-            })
+       new OrderProcess.FiberCancelling {
+         def run =
+           CancelableJob.semaphore
+             .flatMap(_.acquire)
+             .as(Outcome.succeeded)
+             .start
 
-        override def cancel(immediately: Boolean) =
-          if (immediately)
-            super.cancel(immediately)
-          else
-            sys.error("TEST EXCEPTION FOR KILL")
-      }
+         override def cancel(immediately: Boolean) =
+           if (immediately)
+             super.cancel(immediately)
+           else
+             sys.error("TEST EXCEPTION FOR KILL")
+    }
+  }
+  private object CancelableJob {
+    val semaphore = Semaphore[Task](0).memoize
   }
 }

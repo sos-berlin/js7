@@ -94,14 +94,15 @@ final class JobDriver(
                 entry.orderProcess = Some(orderProcess)
                 // Start the orderProcess. The future completes the stdObservers (stdout, stderr)
                 orderProcess.start(processOrder.stdObservers)
-                  .flatMap { runningProcessFuture =>
-                    entry.terminated.completeWith(runningProcessFuture)
+                  .flatMap { runningProcess =>
+                    val whenCompleted = runningProcess.runToFuture
+                    entry.terminated.completeWith(whenCompleted)
                     val maybeKillAfterStart = entry.killSignal.traverse(killOrder(entry, _))
                     val awaitTermination = Task.defer {
                       entry.runningSince = scheduler.now
                       scheduleTimeout(entry)
                       Task
-                        .fromFuture(runningProcessFuture)
+                        .fromFuture(whenCompleted)
                         .map(entry.modifyOutcome)
                         .map {
                           case outcome: Succeeded =>

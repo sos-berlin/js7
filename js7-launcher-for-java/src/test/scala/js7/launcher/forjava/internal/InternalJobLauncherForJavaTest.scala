@@ -134,7 +134,7 @@ final class InternalJobLauncherForJavaTest extends AnyFreeSpec with BeforeAndAft
             stdObservers))
         .await(99.s).orThrow
         .start(stdObservers)
-        .flatMap(Task.fromFuture)
+        .flatten
         .guarantee(Task {
           try out.onComplete()
           finally err.onComplete()
