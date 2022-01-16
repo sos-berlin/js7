@@ -42,26 +42,29 @@ final class AsyncLock private(
           else {
             val since = now
             Task.tailRecM(())(_ =>
-              mvar.tryRead.flatMap {
-                case Some(lockedBy) =>
-                  log.debug(s"$acquirer is waiting for $toString (currently locked by $lockedBy)")
-                  mvar.put(acquirer)
-                    .whenItTakesLonger(warnTimeouts)(duration =>
-                      for (lockedBy <- mvar.tryRead) yield logger.info(
-                        s"⏳ $acquirer is still waiting for $toString" +
-                          s" (currently locked by ${lockedBy.getOrElse("None")})" +
-                          s" for ${duration.pretty} ..."))
-                    .map { _ =>
-                      log.debug(s"$acquirer acquired $toString after ${since.elapsed.pretty}")
-                      Right(())
-                    }
-                case None =>  // Lock has just become available
-                  for (hasAcquired <- mvar.tryPut(acquirer)) yield
-                    if (!hasAcquired)
-                      Left(())  // Locked again by someone else, so try again
-                    else
-                      Right(())  // The lock is ours!
-              })
+              if (suppressLog)
+                mvar.put(acquirer).as(Right(()))
+              else
+                mvar.tryRead.flatMap {
+                  case Some(lockedBy) =>
+                    log.debug(s"$acquirer is waiting for $toString (currently locked by $lockedBy)")
+                    mvar.put(acquirer)
+                      .whenItTakesLonger(warnTimeouts)(duration =>
+                        for (lockedBy <- mvar.tryRead) yield logger.info(
+                          s"⏳ $acquirer is still waiting for $toString" +
+                            s" (currently locked by ${lockedBy.getOrElse("None")})" +
+                            s" for ${duration.pretty} ..."))
+                      .map { _ =>
+                        log.debug(s"$acquirer acquired $toString after ${since.elapsed.pretty}")
+                        Right(())
+                      }
+                  case None =>  // Lock has just become available
+                    for (hasAcquired <- mvar.tryPut(acquirer)) yield
+                      if (!hasAcquired)
+                        Left(())  // Locked again by someone else, so try again
+                      else
+                        Right(())  // The lock is ours!
+                })
           }))
       .map(_ => log.trace(s"$acquirer acquired $toString"))
   }

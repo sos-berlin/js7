@@ -12,54 +12,63 @@ import scala.util.Random
   */
 final class AsyncLockTest extends AsyncFreeSpec
 {
-  private val n = 100000
   private val initial = 1
 
-  "AsyncLock, concurrent" in {
-    val lock = AsyncLock("TEST", logWorryDurations = Nil, suppressLog = true)
-    doTest(lock.lock(_))
-      .map(o => assert(o == Vector.fill(n)(initial)))
-      .runToFuture
+  "With logging" - {
+    addTests(n = 100, suppressLog = false)
   }
 
-  "No AsyncLock, concurrent" in {
-    doTest(identity)
-      .map(o => assert(o != Vector.fill(n)(initial)))
-      .runToFuture
+  "Without logging" - {
+    addTests(n = 10_000, suppressLog = false)
   }
 
-  "AsyncLock, not concurrent" in {
-    val lock = AsyncLock("TEST", logWorryDurations = Nil, suppressLog = true)
-    Observable.fromIterable(1 to n)
-      .map(_ => lock.lock(Task.unit))
-      .completedL
-      .timed.map { case (duration, ()) =>
-        scribe.info(Stopwatch.itemsPerSecondString(duration, n))
-        succeed
-      }
-      .runToFuture
-  }
+  def addTests(n: Int, suppressLog: Boolean): Unit = {
+    "AsyncLock, concurrent" in {
+      val lock = AsyncLock("TEST", logWorryDurations = Nil, suppressLog = suppressLog)
+      doTest(lock.lock(_))
+        .map(o => assert(o == Vector.fill(n)(initial)))
+        .runToFuture
+    }
 
-  private def doTest(body: Task[Int] => Task[Int]): Task[Seq[Int]] = {
-    @volatile var guardedVariable = initial
-    Task.parSequence(
-      for (_ <- 1 to n) yield
-        body {
-          Task {
-            val found = guardedVariable
-            guardedVariable += 1
-            found
-          } .tapEval(_ => if (Random.nextBoolean()) Task.shift else Task.unit)
-            .flatMap { found =>
-              Task {
-                guardedVariable = initial
-                found
+    "No AsyncLock, concurrent" in {
+      doTest(identity)
+        .map(o => assert(o != Vector.fill(n)(initial)))
+        .runToFuture
+    }
+
+    "AsyncLock, not concurrent" in {
+      val lock = AsyncLock("TEST", logWorryDurations = Nil, suppressLog = suppressLog)
+      Observable.fromIterable(1 to n)
+        .map(_ => lock.lock(Task.unit))
+        .completedL
+        .timed.map { case (duration, ()) =>
+          scribe.info(Stopwatch.itemsPerSecondString(duration, n))
+          succeed
+        }
+        .runToFuture
+    }
+
+    def doTest(body: Task[Int] => Task[Int]): Task[Seq[Int]] = {
+      @volatile var guardedVariable = initial
+      Task.parSequence(
+        for (_ <- 1 to n) yield
+          body {
+            Task {
+              val found = guardedVariable
+              guardedVariable += 1
+              found
+            } .tapEval(_ => if (Random.nextBoolean()) Task.shift else Task.unit)
+              .flatMap { found =>
+                Task {
+                  guardedVariable = initial
+                  found
+                }
               }
-            }
-        })
-      .timed.map { case (duration, result) =>
-        scribe.info(Stopwatch.itemsPerSecondString(duration, n))
-        result
+          })
+        .timed.map { case (duration, result) =>
+          scribe.info(Stopwatch.itemsPerSecondString(duration, n))
+          result
+      }
     }
   }
 }
