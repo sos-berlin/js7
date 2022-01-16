@@ -3,7 +3,7 @@ package js7.base.monixutils
 import cats.effect.ExitCase
 import js7.base.monixutils.MonixBase._
 import js7.base.monixutils.MonixBase.syntax._
-import js7.base.problem.{Checked, Problem}
+import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.time.ScalaTime._
 import js7.base.utils.CloseableIterator
 import monix.eval.Task
@@ -182,29 +182,61 @@ final class MonixBaseTest extends AsyncFreeSpec
     }
   }
 
-  "materializeIntoChecked" - {
-    "Right(value)" in {
-      Task.pure(Checked(1))
-        .materializeIntoChecked
-        .runToFuture
-        .map(o =>
-          assert(o == Checked(1)))
+  "Task[Checked[x]]" -  {
+    "materializeIntoChecked" - {
+      "Right(value)" in {
+        Task.pure(Checked(1))
+          .materializeIntoChecked
+          .runToFuture
+          .map(o =>
+            assert(o == Checked(1)))
+      }
+
+      "Left(problem)" in {
+        Task.pure(Left(Problem("PROBLEM")): Checked[Int])
+          .materializeIntoChecked
+          .runToFuture
+          .map(o =>
+            assert(o == Left(Problem("PROBLEM"))))
+      }
+
+      "exception" in {
+        Task(sys.error("ERROR"): Checked[Int])
+          .materializeIntoChecked
+          .runToFuture
+          .map(o =>
+            assert(o == Checked.catchNonFatal(sys.error("ERROR"))))
+      }
     }
 
-    "Left(problem)" in {
-      Task.pure(Left(Problem("PROBLEM")): Checked[Int])
-        .materializeIntoChecked
-        .runToFuture
-        .map(o =>
-          assert(o == Left(Problem("PROBLEM"))))
-    }
+    "orThrow" - {
+      "Right(value)" in {
+        Task.pure(Checked(1))
+          .orThrow
+          .runToFuture
+          .map(o =>
+            assert(o == 1))
+      }
 
-    "exception" in {
-      Task(sys.error("ERROR"): Checked[Int])
-        .materializeIntoChecked
-        .runToFuture
-        .map(o =>
-          assert(o == Checked.catchNonFatal(sys.error("ERROR"))))
+      "Left(problem)" in {
+        Task.pure(Left(Problem("PROBLEM")): Checked[Int])
+          .orThrow
+          .materialize
+          .map(_.failed.get.asInstanceOf[ProblemException].problem)
+          .runToFuture
+          .map(o =>
+            assert(o == Problem("PROBLEM")))
+      }
+
+      "exception" in {
+        Task(sys.error("ERROR"): Checked[Int])
+          .orThrow
+          .materialize
+          .map(_.failed.get)
+          .runToFuture
+          .map(o =>
+            assert(o.toString == "java.lang.RuntimeException: ERROR"))
+      }
     }
   }
 

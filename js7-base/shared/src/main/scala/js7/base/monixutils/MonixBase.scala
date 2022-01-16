@@ -267,11 +267,17 @@ object MonixBase
 
     private def simpleCount[A](a: A) = 1L
 
-    implicit class RichCheckedTask[A](private val underlying: Task[Checked[A]]) extends AnyVal
+    implicit class RichCheckedTask[A](private val task: Task[Checked[A]]) extends AnyVal
     {
       /** Converts a failed Task into a `Task[Left[Throwable]]`. */
       def materializeIntoChecked: Task[Checked[A]] =
-        underlying.materialize.map(Checked.flattenTryChecked)
+        task.materialize.map(Checked.flattenTryChecked)
+
+      def orThrow: Task[A] =
+        task.flatMap {
+          case Left(problem) => Task.raiseError(problem.throwable)
+          case Right(a) => Task.pure(a)
+        }
     }
 
     implicit final class RichScheduler(private val scheduler: Scheduler) extends AnyVal
