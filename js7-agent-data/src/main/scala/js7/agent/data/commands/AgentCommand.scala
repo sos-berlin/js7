@@ -117,6 +117,9 @@ object AgentCommand extends CommonCommand.Companion
   object CoupleController {
     final case class Response(orderIds: Set[OrderId])
     extends AgentCommand.Response with Big
+    {
+      override def toString = s"Response(${orderIds.size} Orders attached)"
+    }
   }
 
   final case class Reset(agentRunId: Option[AgentRunId])

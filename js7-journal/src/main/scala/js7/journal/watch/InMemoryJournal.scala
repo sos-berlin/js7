@@ -29,7 +29,7 @@ extends StatePersistence[S] with RealEventWatch
   private val journalLogger = new JournalLogger(
     syncOrFlushChars = "memory",
     infoLogEvents = Set.empty,
-    supressTiming = true)
+    suppressTiming = true)
 
   def waitUntilStarted = Task.unit
 

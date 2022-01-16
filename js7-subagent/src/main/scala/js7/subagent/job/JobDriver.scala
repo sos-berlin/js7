@@ -58,14 +58,14 @@ final class JobDriver(
               }
             })
           .flatMap(_ =>
-            Task.fromFuture(lastProcessTerminated.future)
-              .logWhenItTakesLonger(s"Job '$jobKey' OrderProcess"))
+            Task.fromFuture(lastProcessTerminated.future))
+          .logWhenItTakesLonger(s"'killing all $jobKey processes'")
       ).flatMap(_ =>
         checkedJobLauncher.toOption.fold(Task.unit) { jobLauncher =>
           logger.trace("JobLauncher stop")
           jobLauncher
             .stop
-            .logWhenItTakesLonger("Stop")
+            .logWhenItTakesLonger
             .onErrorHandle(throwable =>
               logger.error(s"Stop '$jobLauncher' failed: ${throwable.toStringWithCauses}",
                 throwable.nullIfNoStackTrace))
