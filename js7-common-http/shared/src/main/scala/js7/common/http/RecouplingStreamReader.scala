@@ -1,6 +1,6 @@
 package js7.common.http
 
-import cats.syntax.flatMap._
+import cats.syntax.apply._
 import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixBase.syntax._
@@ -75,21 +75,20 @@ abstract class RecouplingStreamReader[
   private var sinceLastTry = now - 1.hour
 
   /** Observes endlessly, recoupling and repeating when needed. */
-  final def observe(api: Api, after: I): Observable[V] = {
+  final def observe(api: Api, after: I): Observable[V] =
     Observable.fromTask(
-      Task(logger.debug(s"$api: observe(after=$after)")) >>
-        waitUntilNotInUse(api) >>
+      Task(logger.debug(s"$api: observe(after=$after)")) *>
+        waitUntilNotInUse(api) *>
         decouple
-    ) >>
+    ) *>
       new ForApi(api, after)
         .observeAgainAndAgain
         .guarantee(Task {
           logger.trace(s"$api: inUse := false")
           inUse := false
         })
-  }
 
-  /** Wait until `inUse` has finally set to false.
+  /** Wait until `inUse` has finally has become false.
     * `inUse := false` may be executed lately,
     * due to Monix's asynchronous cancel/guarantee processing?
     * We simply wait for it.
@@ -99,22 +98,19 @@ abstract class RecouplingStreamReader[
       if (!inUse.getAndSet(true))
         Task.unit
       else
-        Task.tailRecM(0)(i =>
-          if (inUse.getAndSet(true))
-            Task {
-              val msg = s"RecouplingStreamReader.observe($api) is still inUse ..."
-              if (i % 50 == 10) logger.warn(msg) else logger.debug(msg)
-            } >>
-              Task.sleep(100.ms)
-                .map(_ => Left(i + 1))
-          else
-            Task {
-              logger.debug(s"RecouplingStreamReader.observe($api) inUse is false, we continue")
-              Right(())
-            }))
+        Task
+          .tailRecM(())(_ =>
+            if (inUse.getAndSet(true))
+              Task.sleep(100.ms).as(Left(()))
+            else
+              Task.right(()))
+          .whenItTakesLonger(Seq(10.s))(duration => Task {
+            logger.warn(
+              s"RecouplingStreamReader.observe($api) is still inUse for ${duration.pretty} ...")
+          }))
 
   final def terminateAndLogout: Task[Completed] =
-    decouple >> coupledApiVar.terminate
+    decouple *> coupledApiVar.terminate
 
   final def decouple: Task[Completed] =
     coupledApiVar.tryTake
@@ -134,7 +130,7 @@ abstract class RecouplingStreamReader[
   final def pauseBeforeNextTry(delay: FiniteDuration): Task[Unit] =
     Task.defer {
       Task.sleep((sinceLastTry + delay).timeLeftOrZero roundUpToNext PauseGranularity)
-    } >>
+    } *>
       Task {
         sinceLastTry = now  // update asynchronously
       }
@@ -160,8 +156,8 @@ abstract class RecouplingStreamReader[
                         case true => Observable.empty[V]
                       }).flatten
                 })) ++
-              (Observable.fromTask(pauseBeforeNextTry(conf.delay)) >>
-                Observable.delay(Left(lastIndex)/*FIXME Observable.tailRecM: Left leaks memory, https://github.com/monix/monix/issues/791*/))
+              (Observable.fromTask(pauseBeforeNextTry(conf.delay)) *>
+                Observable.eval(Left(lastIndex)/*FIXME Observable.tailRecM: Left leaks memory, https://github.com/monix/monix/issues/791*/))
         }
       ).flatten
 
@@ -200,20 +196,20 @@ abstract class RecouplingStreamReader[
                         case _ =>
                           onCouplingFailed(api, problem)
                       }).flatMap(continue =>
-                        decouple >>
+                        decouple *>
                           (if (continue)
-                            pauseBeforeRecoupling >> Task.pure(Left(()))
+                            pauseBeforeRecoupling.as(Left(()))
                           else
-                            Task.pure(Right(Observable.empty))))
+                            Task.right(Observable.empty)))
 
                   case Right(observable) =>
-                    Task.pure(Right(observable))
+                    Task.right(observable)
                 }))
 
     private def getObservableX(after: I): Task[Checked[Observable[V]]] =
       Task {
         sinceLastTry = now
-      } >>
+      } *>
         getObservable(api, after = after)
           //.timeout(idleTimeout)
           .onErrorRecoverWith { case t: TimeoutException =>

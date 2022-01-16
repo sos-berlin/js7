@@ -71,6 +71,5 @@ object JobKey
             name <- c.get[WorkflowJob.Name]("jobName")
           } yield Named(WorkflowBranchPath(workflowId, branchPath), name)
       }
-
     } yield jobKey
 }

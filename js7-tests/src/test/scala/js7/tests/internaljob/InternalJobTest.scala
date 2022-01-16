@@ -148,20 +148,20 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
     val order = FreshOrder(orderIdIterator.next(), workflow.path, Map("ORDER_ARG" -> NumberValue(1)))
     controller.addOrderBlocking(order)
-    controller.eventWatch.await[OrderProcessingStarted](_.key == order.id)
+    eventWatch.await[OrderProcessingStarted](_.key == order.id)
 
     // Let cancel handler throw its exception
     controllerApi.executeCommand(CancelOrders(Seq(order.id), CancellationMode.kill()))
       .await(99.s).orThrow
-    controller.eventWatch.await[OrderCancellationMarked](_.key == order.id)
+    eventWatch.await[OrderCancellationMarked](_.key == order.id)
     sleep(50.ms)
 
     // Now cancel immediately
     controllerApi.executeCommand(CancelOrders(Seq(order.id), CancellationMode.kill(immediately = true)))
       .await(99.s).orThrow
-    val outcome = controller.eventWatch.await[OrderProcessed](_.key == order.id).head.value.event.outcome
+    val outcome = eventWatch.await[OrderProcessed](_.key == order.id).head.value.event.outcome
     assert(outcome == Outcome.Killed(Outcome.Failed(Some("Canceled"))))
-    controller.eventWatch.await[OrderProcessingKilled](_.key == order.id)
+    eventWatch.await[OrderProcessingKilled](_.key == order.id)
   }
 
   "stop" in {
@@ -226,7 +226,7 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val workflow = anonymousWorkflow.withId(workflowPathIterator.next() ~ versionId)
     directoryProvider.updateVersionedItems(controller, versionId, Seq(workflow))
 
-    val eventId = controller.eventWatch.lastAddedEventId
+    val eventId = eventWatch.lastAddedEventId
     controllerApi.addOrders(
       Observable.fromIterable(ordersArguments)
         .map {
@@ -235,7 +235,7 @@ final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
       .await(99.s).orThrow
     val orderIds = ordersArguments.keySet
     val _runningOrderIds = orderIds.to(mutable.Set)
-    controller.eventWatch
+    eventWatch
       .observe(EventRequest.singleClass[OrderEvent](eventId, Some(99.s)))
       .filter(stamped => orderIds contains stamped.value.key)
       .map(_.value)

@@ -26,7 +26,7 @@ sealed trait Outcome
 
 object Outcome
 {
-  val succeeded = Succeeded.empty
+  val succeeded: Completed = Succeeded.empty
   val succeededRC0 = Succeeded.returnCode0
   val failed = new Failed(None, Map.empty)
   val RecoveryGeneratedOutcome = new Disrupted(Disrupted.JobSchedulerRestarted)

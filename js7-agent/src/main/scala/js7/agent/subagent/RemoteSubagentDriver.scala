@@ -84,10 +84,8 @@ extends SubagentDriver
     }
 
   def start: Task[Unit] =
-    persistence.currentState
-      .idToSubagentRefState
-      .checked(subagentId)
-      .orThrowInTask
+    persistence.state
+      .map(_.idToSubagentRefState.checked(subagentId).orThrow)
       .flatMap(dedicateOrCouple)
       .*>(startEventFetching)
       .*>(startCommandPosting)
@@ -239,7 +237,7 @@ extends SubagentDriver
             // Nur, wenn auch Events ausgegeben worden sind.
             persistence
               .persistKeyedEvent(subagentId <-: SubagentEventsObserved(stamped.eventId))
-              .flatMap(_.orThrowInTask/*TODO*/)
+              .map(_.orThrow/*TODO*/)
               .as(stamped))
           .mapEval(processEvent)
           .map {

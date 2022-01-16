@@ -19,7 +19,7 @@ sealed trait JOutcome extends JJsonable[JOutcome]
 object JOutcome extends JJsonable.Companion[JOutcome]
 {
   @javaApi
-  val succeeded = JOutcome.Succeeded(Outcome.succeeded)
+  val succeeded = JOutcome.Succeeded(Outcome.Succeeded.empty)
 
   @javaApi @Nonnull
   def succeeded(@Nonnull namedValues: java.util.Map[String, Value]) =

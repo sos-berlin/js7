@@ -16,6 +16,9 @@ trait AnyStatePersistence
 
   def currentState: S
 
+  final def state: Task[S] =
+    Task(currentState)
+
   final def awaitCurrentState: Task[S] =
     waitUntilStarted >> Task(currentState)
 
