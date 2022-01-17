@@ -97,7 +97,7 @@ final class FileWatchManager(
                 // to allow proper remove of the Controller's orders (after OrderFinished), and
                 // to allow the Controller to move the FileWatch to a different Agent,
                 // because the other Agent will start with an empty FileWatchState.
-                val vanished = fileWatchState.directoryState.pathToEntry.keys.view
+                val vanished = fileWatchState.directoryState.fileToEntry.keys.view
                   .map(file => orderWatchPath <-: ExternalOrderVanished(ExternalOrderName(file.toString)))
                 (vanished ++
                   Seq(NoKey <-: ItemDetached(orderWatchPath, ownAgentPath))

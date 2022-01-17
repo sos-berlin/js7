@@ -13,7 +13,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import scala.collection.{View, mutable}
 import scala.concurrent.duration.Deadline.now
 
-final case class DirectoryState(pathToEntry: Map[Path, Entry])
+final case class DirectoryState(fileToEntry: Map[Path, Entry])
 {
   def applyAndReduceEvents(events: Seq[DirectoryEvent]): (Seq[DirectoryEvent], DirectoryState) = {
     val added = mutable.Map.empty[Path, Entry]
@@ -35,18 +35,18 @@ final case class DirectoryState(pathToEntry: Map[Path, Entry])
         modified -= path
     }
 
-    val updatedState = copy(pathToEntry -- deleted ++ added)
+    val updatedState = copy(fileToEntry -- deleted ++ added)
     val reducedEvents = diffTo(updatedState) ++
-      modified.filter(updatedState.pathToEntry.keySet).map(FileModified)
+      modified.filter(updatedState.fileToEntry.keySet).map(FileModified)
     reducedEvents -> updatedState
   }
 
   def diffTo(other: DirectoryState): Seq[DirectoryEvent] =
-    diffToDirectoryEvents(MapDiff.diff(pathToEntry, other.pathToEntry))
+    diffToDirectoryEvents(MapDiff.diff(fileToEntry, other.fileToEntry))
       .toVector
 
   def isEmpty =
-    pathToEntry.isEmpty
+    fileToEntry.isEmpty
 }
 
 object DirectoryState
@@ -71,7 +71,7 @@ object DirectoryState
         }
         .map(path => path -> DirectoryState.Entry(path))
         .toMap))
-    logger.debug(s"readDirectory '$directory' => ${directoryState.pathToEntry.size} files in ${since.elapsed.pretty}")
+    logger.debug(s"readDirectory '$directory' => ${directoryState.fileToEntry.size} files in ${since.elapsed.pretty}")
     directoryState
   }
 

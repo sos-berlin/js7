@@ -26,7 +26,7 @@ final case class FileWatchState(
         copy(
           directoryState =
             directoryState.copy(
-              pathToEntry = directoryState.pathToEntry +
+              fileToEntry = directoryState.fileToEntry +
                 (relativePath -> DirectoryState.Entry(relativePath))))
 
       case ExternalOrderVanished(ExternalOrderName(relativePath_)) =>
@@ -34,18 +34,18 @@ final case class FileWatchState(
         copy(
           directoryState =
             directoryState.copy(
-              pathToEntry = directoryState.pathToEntry - relativePath))
+              fileToEntry = directoryState.fileToEntry - relativePath))
     }
 
   def containsPath(path: Path) =
-    directoryState.pathToEntry.contains(path)
+    directoryState.fileToEntry.contains(path)
 
   def estimatedSnapshotSize =
-    1 + directoryState.pathToEntry.size
+    1 + directoryState.fileToEntry.size
 
   def toSnapshot: Observable[Snapshot] =
     Observable.pure(HeaderSnapshot(fileWatch)) ++
-      Observable.fromIterable(directoryState.pathToEntry.values)
+      Observable.fromIterable(directoryState.fileToEntry.values)
         .map(entry => EntrySnapshot(id, entry.path))
 }
 
