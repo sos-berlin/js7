@@ -1,7 +1,6 @@
 package js7.base.io.file.watch
 
-import io.circe.{Decoder, Encoder, Json, JsonObject}
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Files, Path}
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted, FileModified}
 import js7.base.io.file.watch.DirectoryState._
 import js7.base.log.Logger
@@ -82,17 +81,4 @@ object DirectoryState
     diff.deleted.view.map(FileDeleted) ++
       diff.updated.keys.view.map(FileModified) ++
       diff.added.keySet.view.map(FileAdded)
-
-  implicit val jsonEncoder: Encoder.AsObject[DirectoryState] =
-    o => JsonObject.fromIterable(o
-      .pathToEntry
-      .values
-      .view
-      .map(e => e.path.toString -> Json.fromJsonObject(JsonObject.empty)))
-
-  implicit val jsonDecoder: Decoder[DirectoryState] =
-    c => for {
-      jsonObject <- c.as[JsonObject]
-      entries <- Right(jsonObject.toIterable.map { case (k, v) => Entry(Paths.get(k)) })
-    } yield DirectoryState.fromIterable(entries)
 }
