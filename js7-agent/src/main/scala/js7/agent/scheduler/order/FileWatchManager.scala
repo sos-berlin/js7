@@ -78,8 +78,24 @@ final class FileWatchManager(
       persistence
         .persist(agentState =>
           Right(
-            !agentState.allFileWatchesState.contains(fileWatch) thenList
-              NoKey <-: ItemAttachedToMe(fileWatch)))
+            agentState.allFileWatchesState.pathToFileWatchState.get(fileWatch.path) match {
+              case Some(watchState) =>
+                if (watchState.fileWatch == fileWatch)
+                  Nil
+                else {
+                  // If the directory changes, all arisen files vanish now.
+                  // Beware that directory is an (EnvScope-only) Expression.
+                  val vanished =
+                    if (watchState.fileWatch.directory == fileWatch.directory)
+                      Nil
+                    else
+                      watchState.allFilesVanished
+                  vanished.toVector :+ (NoKey <-: ItemAttachedToMe(fileWatch))
+                }
+
+              case None =>
+                (NoKey <-: ItemAttachedToMe(fileWatch)) :: Nil
+            }))
         .flatMapT { case (_, agentState) =>
           startWatching(agentState.allFileWatchesState.pathToFileWatchState(fileWatch.path))
         }
@@ -93,19 +109,16 @@ final class FileWatchManager(
             agentState.allFileWatchesState.pathToFileWatchState.get(orderWatchPath) match {
               case None => Nil
               case Some(fileWatchState) =>
-                // When a FileWatch is detached, all arisen files vanishes now,
-                // to allow proper remove of the Controller's orders (after OrderFinished), and
+                // When a FileWatch is detached, all arisen files vanish now,
+                // to allow proper removal of the Controller's orders (after OrderFinished), and
                 // to allow the Controller to move the FileWatch to a different Agent,
                 // because the other Agent will start with an empty FileWatchState.
-                val vanished = fileWatchState.directoryState.fileToEntry.keys.view
-                  .map(file => orderWatchPath <-: ExternalOrderVanished(ExternalOrderName(file.toString)))
-                (vanished ++
-                  Seq(NoKey <-: ItemDetached(orderWatchPath, ownAgentPath))
-                ).toVector
+                fileWatchState.allFilesVanished.toVector :+
+                  (NoKey <-: ItemDetached(orderWatchPath, ownAgentPath))
             }))
         .flatMapT { case (_, agentState) =>
           stopWatching(orderWatchPath)
-            .map(_ => Right(()))
+            .as(Checked.unit)
         }
     }
 

@@ -8,10 +8,11 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.io.file.watch.DirectoryState
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.SetOnce
+import js7.data.event.KeyedEvent
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchEvent, OrderWatchPath}
 import monix.reactive.Observable
-import scala.collection.mutable
+import scala.collection.{View, mutable}
 
 final case class FileWatchState(
   fileWatch: FileWatch,
@@ -39,6 +40,12 @@ final case class FileWatchState(
 
   def containsPath(path: Path) =
     directoryState.fileToEntry.contains(path)
+
+  def allFilesVanished: View[KeyedEvent[ExternalOrderVanished]] =
+    directoryState.fileToEntry.keys
+      .view
+      .map(file =>
+        fileWatch.path <-: ExternalOrderVanished(ExternalOrderName(file.toString)))
 
   def estimatedSnapshotSize =
     1 + directoryState.fileToEntry.size
