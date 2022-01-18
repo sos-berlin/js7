@@ -120,7 +120,8 @@ extends UnsignedSimpleItemState
           vanishedQueue = vanishedQueue - externalOrderName))
 
       case HasOrder(_, _) =>
-        logger.debug(s"$orderId <-: OrderDeletionMarked ($externalOrderName) but watched order has not vanished")
+        // Happens when the file has re-arisen, leading to a second order
+        //logger.debug(s"$orderId <-: OrderDeletionMarked ($externalOrderName) but watched order has not vanished")
         Right(this)
 
       case _ =>

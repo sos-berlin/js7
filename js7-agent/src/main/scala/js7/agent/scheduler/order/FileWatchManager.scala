@@ -160,6 +160,9 @@ final class FileWatchManager(
               retryDelays = retryDelays,
               pollTimeout = pollTimeout,
               delay = watchDelay))
+          .doOnSubscribe(Task {
+            logger.debug(s"${fileWatch.path} watching started - $directory")
+          })
           .takeUntil(stop)
           .flatMap(Observable.fromIterable)
           .delayFileAdded(fileWatch.delay)  // buffers without limit all incoming event
@@ -214,6 +217,9 @@ final class FileWatchManager(
             for (t <- throwable.ifStackTrace) logger.debug(t.toString, t)
             Task.sleep(delay) >> restart(now)
           }
+          .guaranteeCase(exitCase => Task {
+            logger.debug(s"${fileWatch.path} watching $exitCase - $directory")
+          })
       }
   }
 

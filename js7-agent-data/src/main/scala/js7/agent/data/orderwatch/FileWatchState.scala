@@ -58,12 +58,15 @@ object FileWatchState
   final case class HeaderSnapshot(fileWatch: FileWatch)
   extends Snapshot {
     def orderWatchPath = fileWatch.path
+    override def productPrefix = "FileWatchState"
   }
 
   final case class EntrySnapshot(
     orderWatchPath: OrderWatchPath,
     path: Path)
-  extends Snapshot
+  extends Snapshot {
+    override def productPrefix = "FileWatchState.File"
+  }
 
   implicit val jsonCodec = TypedJsonCodec[Snapshot](
     Subtype.named(deriveCodec[HeaderSnapshot], "FileWatchState"),
