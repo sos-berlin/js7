@@ -129,9 +129,8 @@ final class FileWatchManager(
                       stop.onComplete()
                       fiber.join
                     }))
-            // ???
             .void
-            .as(Right(())))
+            .as(Checked.unit))
     }
 
   private def stopWatching(id: OrderWatchPath): Task[Unit] =
@@ -156,7 +155,7 @@ final class FileWatchManager(
             WatchOptions(
               directory,
               Set(ENTRY_CREATE, ENTRY_MODIFY, ENTRY_DELETE),
-              // Regular expresion is evaluated twice: here and when deriving OrderId
+              // Regular expression is evaluated twice: here and when deriving OrderId
               matches = relativePath => fileWatch.resolvedPattern.matcher(relativePath.toString).matches,
               retryDelays = retryDelays,
               pollTimeout = pollTimeout,
@@ -164,7 +163,7 @@ final class FileWatchManager(
           .takeUntil(stop)
           .flatMap(Observable.fromIterable)
           .delayFileAdded(fileWatch.delay)  // buffers without limit all incoming event
-          .bufferIntrospective(1024/*TODO?*/)
+          .bufferIntrospective(1024)
           .mapEval(dirEventSeqs =>
             lockKeeper.lock(fileWatch.path)(
               persistence.awaitCurrentState
@@ -203,8 +202,7 @@ final class FileWatchManager(
                                 }))
                           .map(fileWatch.path <-: _)
                           .toVector)
-                    }
-                )))
+                    })))
           .foreachL {
             case Left(problem) => logger.error(problem.toString)
             case Right((_, agentState)) =>
