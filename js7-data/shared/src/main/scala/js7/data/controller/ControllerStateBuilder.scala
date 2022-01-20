@@ -20,7 +20,7 @@ import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItem, Inventor
 import js7.data.job.JobResource
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.Order.ExpectingNotice
-import js7.data.order.OrderEvent.{OrderAdded, OrderAddedX, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderForked, OrderJoined, OrderLockEvent, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticeRead, OrderOrderAdded, OrderStdWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAddedX, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderForked, OrderJoined, OrderLockEvent, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticeRead, OrderOrderAdded, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{AllOrderWatchesState, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState}
 import js7.data.state.StateView
@@ -159,7 +159,7 @@ with StateView
     val (added, deleted) = followUpRecoveredWorkflowsAndOrders(repo.idTo[Workflow], _idToOrder.toMap)
     _idToOrder ++= added
     _idToOrder --= deleted
-    allOrderWatchesState = allOrderWatchesState.onEndOfRecovery.orThrow
+    allOrderWatchesState = allOrderWatchesState.finishRecovery.orThrow
   }
 
   protected def onAddEvent = {
@@ -294,11 +294,11 @@ with StateView
           addOrder(orderAdded.orderId, orderAdded)
           _idToOrder(orderId) = _idToOrder(orderId).applyEvent(orderAdded).orThrow
 
-        case orderDeleted: OrderDeleted =>
+        case OrderDeleted =>
           for (order <- _idToOrder.remove(orderId)) {
             for (externalOrderKey <- order.externalOrderKey)
               allOrderWatchesState = allOrderWatchesState
-                .onOrderEvent(externalOrderKey, orderId <-: orderDeleted)
+                .onOrderDeleted(externalOrderKey, orderId)
                 .orThrow
           }
 
@@ -330,8 +330,6 @@ with StateView
           handleForkJoinEvent(order, event)
 
           event match {
-            case _: OrderDeletionMarked | _: OrderDeleted =>
-
             case _: OrderCancelled =>
               for (order <- order.ifState[ExpectingNotice]) {
                 for {
@@ -342,16 +340,17 @@ with StateView
                 }
               }
 
+            case _: OrderDeleted =>
+              for (externalOrderKey <- order.externalOrderKey) {
+                allOrderWatchesState = allOrderWatchesState
+                  .onOrderDeleted(externalOrderKey, orderId)
+                  .orThrow
+              }
+
             case _ =>
           }
 
           _idToOrder(orderId) = order.applyEvent(event).orThrow
-
-          for (externalOrderKey <- order.externalOrderKey) {
-            allOrderWatchesState = allOrderWatchesState
-              .onOrderEvent(externalOrderKey, orderId <-: event)
-              .orThrow
-          }
 
         case _: OrderStdWritten =>
       }

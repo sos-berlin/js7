@@ -18,7 +18,7 @@ import js7.data.item.VersionedEvent.VersionedItemEvent
 import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, SimpleItemPath, VersionedItemId_}
 import js7.data.job.JobResource
 import js7.data.order.Order.State
-import js7.data.order.OrderEvent.{OrderAdded, OrderAwoke, OrderBroken, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetached, OrderForked, OrderLockEvent, OrderOrderAdded, OrderProcessed}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAwoke, OrderBroken, OrderCoreEvent, OrderDeleted, OrderDetached, OrderForked, OrderLockEvent, OrderOrderAdded, OrderProcessed}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.orderwatch.ExternalOrderKey
 import js7.data.value.expression.scopes.NowScope
@@ -303,13 +303,10 @@ final case class ControllerStateExecutor private(
 
   def nextOrderWatchOrderEvents: View[KeyedEvent[OrderCoreEvent]] =
     controllerState.allOrderWatchesState
-      .nextEvents(addOrder(_, _))
-      .filter {
-        case KeyedEvent(orderId: OrderId, OrderDeletionMarked) =>
-          // OrderWatchState emits OrderDeletionMarked without knowledge of the order
-          controllerState.idToOrder.get(orderId).exists(o => !o.deleteWhenTerminated)
-        case _ => true
-      }
+      .nextEvents(addOrder(_, _), isDeletionMarkable)
+
+  private def isDeletionMarkable(orderId: OrderId): Boolean =
+    controllerState.idToOrder.get(orderId).exists(o => !o.deleteWhenTerminated)
 
   def nextOrderEvents(orderIds: Iterable[OrderId]): ControllerStateExecutor = {
     var controllerState = this.controllerState

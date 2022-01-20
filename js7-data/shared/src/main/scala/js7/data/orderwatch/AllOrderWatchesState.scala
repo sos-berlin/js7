@@ -6,7 +6,7 @@ import js7.base.problem.Checked
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.event.KeyedEvent
-import js7.data.order.OrderEvent.{OrderAddedX, OrderCoreEvent}
+import js7.data.order.OrderEvent.OrderAddedX
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.orderwatch.OrderWatchState.ToOrderAdded
 import monix.reactive.Observable
@@ -52,18 +52,19 @@ final case class AllOrderWatchesState(pathToOrderWatchState: Map[OrderWatchPath,
         pathToOrderWatchState = pathToOrderWatchState + (orderWatchPath -> watchState)))
   }
 
-  def onOrderEvent(externalOrderKey: ExternalOrderKey, keyedEvent: KeyedEvent[OrderCoreEvent])
+  def onOrderDeleted(externalOrderKey: ExternalOrderKey, orderId: OrderId)
   : Checked[AllOrderWatchesState] = {
     import externalOrderKey.{name, orderWatchPath}
     pathToOrderWatchState.checked(orderWatchPath)
-      .flatMap(_.applyOrderEvent(name, keyedEvent))
+      .flatMap(_.onOrderDeleted(name, orderId))
       .map(o => copy(
         pathToOrderWatchState = pathToOrderWatchState + (orderWatchPath -> o)))
   }
 
-  def nextEvents(toOrderAdded: ToOrderAdded): View[KeyedEvent[OrderEvent.OrderCoreEvent]] =
+  def nextEvents(toOrderAdded: ToOrderAdded, isDeletionMarkable: OrderId => Boolean)
+  : View[KeyedEvent[OrderEvent.OrderCoreEvent]] =
     pathToOrderWatchState.values.view
-      .flatMap(_.nextEvents(toOrderAdded))
+      .flatMap(_.nextEvents(toOrderAdded, isDeletionMarkable))
 
   def estimatedSnapshotSize =
     pathToOrderWatchState.view.values.map(_.estimatedSnapshotSize).sum
@@ -78,11 +79,10 @@ final case class AllOrderWatchesState(pathToOrderWatchState: Map[OrderWatchPath,
         .map(watchState => copy(
           pathToOrderWatchState = pathToOrderWatchState + (watchState.id -> watchState))))
 
-  // TODO How about a Builder class ?
-  def onEndOfRecovery: Checked[AllOrderWatchesState] =
+  def finishRecovery: Checked[AllOrderWatchesState] =
     pathToOrderWatchState.values
       .toVector
-      .traverse(_.onEndOfRecovery)
+      .traverse(_.finishRecovery)
       .map(_.view.map(o => o.id -> o).toMap)
       .map(o => copy(
         pathToOrderWatchState = o))

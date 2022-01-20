@@ -142,8 +142,7 @@ final class FileWatchManager(
                       stop.onComplete()
                       fiber.join
                     }))
-            .void
-            .as(Checked.unit))
+            .void)
     }
 
   private def stopWatching(id: OrderWatchPath): Task[Unit] =
