@@ -5,10 +5,13 @@ import js7.base.auth.{SessionToken, UserAndPassword}
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
+import js7.base.problem.{Checked, Problem}
 import js7.base.session.SessionCommand.{Login, Logout}
 import js7.base.session.{HasSessionToken, SessionApi, SessionCommand}
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
 import js7.base.utils.AsyncLock
+import js7.base.utils.ScalaUtils.syntax.RichBoolean
+import js7.base.version.Version
 import js7.base.web.{HttpClient, Uri}
 import js7.data.event.SnapshotableState
 import js7.data.session.HttpSessionApi._
@@ -44,6 +47,9 @@ trait HttpSessionApi extends SessionApi.HasUserAndPassword with HasSessionToken
           Task { logger.debug(s"$toString: $cmd") } >>
           executeSessionCommand(cmd)
             .map { response =>
+              for (problem <- checkNonMatchingVersion(response.js7Version).left) {
+                logger.error(problem.toString)
+              }
               setSessionToken(response.sessionToken)
               for (version <- response.js7Version) if (version != BuildInfo.version) {
                 logger.info(sessionUri.string.takeWhile(_ != '/') +
@@ -111,4 +117,23 @@ trait HttpSessionApi extends SessionApi.HasUserAndPassword with HasSessionToken
 
 object HttpSessionApi {
   private val logger = scribe.Logger[this.type]
+
+  private[session] def checkNonMatchingVersion(
+    serverVersion: Option[String],
+    ourVersion: String = BuildInfo.version)
+  : Checked[Unit] =
+    Checked.catchNonFatal {
+      serverVersion match {
+        case None => Left(Problem.pure("Server did not return its version"))
+        case Some(serverVersion) =>
+          for {
+            client <- Version.checked(serverVersion)
+            our <- Version.checked(ourVersion)
+            _ <-
+              (client.major == our.major && client.minor == our.minor) !!
+                Problem(
+                  s"Server version $serverVersion does not match this client version $our")
+          } yield ()
+      }
+    }.flatten
 }

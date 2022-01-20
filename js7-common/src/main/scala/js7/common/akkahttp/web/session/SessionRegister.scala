@@ -6,6 +6,7 @@ import akka.util.Timeout
 import com.typesafe.config.Config
 import java.nio.file.Files.{createFile, deleteIfExists}
 import java.nio.file.Path
+import js7.base.BuildInfo
 import js7.base.auth.{SessionToken, UserId}
 import js7.base.configutils.Configs._
 import js7.base.generic.Completed
@@ -28,7 +29,7 @@ final class SessionRegister[S <: Session] private[session](actor: ActorRef, impl
   val systemUser: Task[Checked[S#User]] = systemSession.map(_.map(_.currentUser))
 
   def createSystemSession(user: S#User, file: Path): Task[SessionToken] =
-    for (sessionToken <- login(user, clientVersion = None, isEternalSession = true)) yield {
+    for (sessionToken <- login(user, clientVersion = Some(BuildInfo.version), isEternalSession = true)) yield {
       deleteIfExists(file)
       createFile(file, operatingSystem.secretFileAttributes: _*)
       file := sessionToken.secret.string
