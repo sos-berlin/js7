@@ -17,6 +17,7 @@ import js7.base.io.file.watch.DirectoryEventDelayer.syntax.RichDelayLineObservab
 import js7.base.io.file.watch.{DirectoryWatcher, WatchOptions}
 import js7.base.log.Logger
 import js7.base.monixutils.AsyncMap
+import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked
 import js7.base.thread.IOExecutor
 import js7.base.time.JavaTimeConverters.AsScalaDuration
@@ -124,6 +125,7 @@ final class FileWatchManager(
 
   private def startWatching(fileWatchState: FileWatchState): Task[Checked[Unit]] =
     Task.defer {
+      val id = fileWatchState.fileWatch.path
       val stop = PublishSubject[Unit]()
       watch(fileWatchState, stop)
         .traverse(observable =>
@@ -141,8 +143,10 @@ final class FileWatchManager(
                     Task.defer {
                       stop.onComplete()
                       fiber.join
+                        .logWhenItTakesLonger(s"startWatching $id: stopping previous watcher")
                     }))
             .void)
+        .logWhenItTakesLonger(s"startWatching $id")
     }
 
   private def stopWatching(id: OrderWatchPath): Task[Unit] =
