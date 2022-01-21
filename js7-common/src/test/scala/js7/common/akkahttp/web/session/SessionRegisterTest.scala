@@ -29,78 +29,79 @@ final class SessionRegisterTest extends AnyFreeSpec with ScalatestRouteTest
   private var sessionToken = SessionToken(SecretString("INVALID"))
 
   "Logout unknown SessionToken" in {
-    assert(sessionRegister.logout(unknownSessionToken).await(99.seconds) == Completed)
+    assert(sessionRegister.logout(unknownSessionToken).await(99.s) == Completed)
   }
 
   "session(unknown)" in {
-    assert(sessionRegister.session(unknownSessionToken, Right(Anonymous)).await(99.seconds).isLeft)
-    assert(sessionRegister.session(unknownSessionToken, Right(AUser)).await(99.seconds).isLeft)
+    assert(sessionRegister.session(unknownSessionToken, Right(Anonymous)).await(99.s).isLeft)
+    assert(sessionRegister.session(unknownSessionToken, Right(AUser)).await(99.s).isLeft)
   }
 
   "login anonymously" in {
-    sessionToken = sessionRegister.login(Anonymous, clientVersion = None).await(99.seconds)
+    sessionToken = sessionRegister.login(Anonymous, clientVersion = None).await(99.s)
   }
 
   "login and update User" in {
-    val originalSession = sessionRegister.session(sessionToken, Right(Anonymous)).await(99.seconds).orThrow
-    val updatedSession = sessionRegister.session(sessionToken, Right(AUser)).await(99.seconds).orThrow
+    val originalSession = sessionRegister.session(sessionToken, Right(Anonymous)).await(99.s).orThrow
+    val updatedSession = sessionRegister.session(sessionToken, Right(AUser)).await(99.s).orThrow
     assert(updatedSession.sessionToken == sessionToken)
     assert(updatedSession.sessionInit == originalSession.sessionInit)
     assert(updatedSession.currentUser == AUser)
   }
 
   "Session use does not match HTTPS distinguished name's UserIds" in {
-    assert(sessionRegister.session(sessionToken, Left(Set(AUser.id))).await(99.seconds).map(_.sessionToken) == Right(sessionToken))
-    assert(sessionRegister.session(sessionToken, Left(Set(BUser.id))).await(99.seconds).map(_.sessionToken) == Left(InvalidSessionTokenProblem))
+    assert(sessionRegister.session(sessionToken, Left(Set(AUser.id))).await(99.s).map(_.sessionToken) == Right(sessionToken))
+    assert(sessionRegister.session(sessionToken, Left(Set(BUser.id))).await(99.s).map(_.sessionToken) == Left(InvalidSessionTokenProblem))
   }
 
   "Changed UserId is rejected" in {
-    assert(sessionRegister.session(sessionToken, Right(BUser)).await(99.seconds) == Left(InvalidSessionTokenProblem))
+    assert(sessionRegister.session(sessionToken, Right(BUser)).await(99.s) == Left(InvalidSessionTokenProblem))
   }
 
   "session returns always the same Session" in {
-    val session = sessionRegister.session(sessionToken, Right(Anonymous)).await(99.seconds).orThrow
-    assert(session eq sessionRegister.session(sessionToken, Right(AUser)).await(99.seconds).orThrow)
-    assert(session eq sessionRegister.session(sessionToken, Left(Set(AUser.id))).await(99.seconds).orThrow)
+    val session = sessionRegister.session(sessionToken, Right(Anonymous)).await(99.s).orThrow
+    assert(session eq sessionRegister.session(sessionToken, Right(AUser)).await(99.s).orThrow)
+    assert(session eq sessionRegister.session(sessionToken, Left(Set(AUser.id))).await(99.s).orThrow)
   }
 
   "But late authentication is allowed, changing from anonymous to non-anonymous User" in {
     val mySystem = newActorSystem("SessionRegisterTest")
     val mySessionRegister = SessionRegister.start[MySession](mySystem, MySession.apply, SessionRegister.TestConfig)(testScheduler)
     val sessionToken = mySessionRegister.login(SimpleUser.TestAnonymous, clientVersion = Some("0.0.0-TEST"))
-      .await(99.seconds)
+      .await(99.s)
 
-    mySessionRegister.session(sessionToken, Right(Anonymous)).runSyncUnsafe(99.seconds).orThrow
-    assert(mySessionRegister.session(sessionToken, Right(Anonymous)).runSyncUnsafe(99.seconds).toOption.get.currentUser == SimpleUser.TestAnonymous)
+    mySessionRegister.session(sessionToken, Right(Anonymous)).runSyncUnsafe(99.s).orThrow
+    assert(mySessionRegister.session(sessionToken, Right(Anonymous)).runSyncUnsafe(99.s).toOption.get.currentUser == SimpleUser.TestAnonymous)
 
     // Late authentication: change session's user from SimpleUser.Anonymous to AUser
-    assert(mySessionRegister.session(sessionToken, Right(AUser)).await(99.seconds) == Right(MySession(SessionInit(sessionToken, loginUser = SimpleUser.TestAnonymous))))
-    assert(mySessionRegister.session(sessionToken, Right(Anonymous)).runSyncUnsafe(99.seconds).toOption.get.currentUser == AUser/*changed*/)
+    assert(mySessionRegister.session(sessionToken, Right(AUser)).await(99.s) == Right(MySession(SessionInit(sessionToken, loginUser = SimpleUser.TestAnonymous))))
+    assert(mySessionRegister.session(sessionToken, Right(Anonymous)).runSyncUnsafe(99.s).toOption.get.currentUser == AUser/*changed*/)
 
-    assert(mySessionRegister.session(sessionToken, Right(AUser)).await(99.seconds) == Right(MySession(SessionInit(sessionToken, loginUser = SimpleUser.TestAnonymous))))
-    assert(mySessionRegister.session(sessionToken, Right(BUser)).await(99.seconds) == Left(InvalidSessionTokenProblem))
-    assert(mySessionRegister.session(sessionToken, Right(Anonymous)).runSyncUnsafe(99.seconds).toOption.get.currentUser == AUser)
+    assert(mySessionRegister.session(sessionToken, Right(AUser)).await(99.s) == Right(MySession(SessionInit(sessionToken, loginUser = SimpleUser.TestAnonymous))))
+    assert(mySessionRegister.session(sessionToken, Right(BUser)).await(99.s) == Left(InvalidSessionTokenProblem))
+    assert(mySessionRegister.session(sessionToken, Right(Anonymous)).runSyncUnsafe(99.s).toOption.get.currentUser == AUser)
 
     Akkas.terminateAndWait(mySystem, 10.s)
   }
 
   "logout" in {
-    assert(sessionRegister.logout(sessionToken).await(99.seconds) == Completed)
-    assert(sessionRegister.session(sessionToken, Right(Anonymous)).await(99.seconds).isLeft)
+    assert(sessionRegister.logout(sessionToken).await(99.s) == Completed)
+    assert(sessionRegister.session(sessionToken, Right(Anonymous)).await(99.s).isLeft)
   }
 
   "Session timeout" in {
-    assert(sessionRegister.count.await(99.seconds) == 0)
+    assert(sessionRegister.count.await(99.s) == 0)
 
-    sessionToken = sessionRegister.login(AUser, Some(BuildInfo.version)).await(99.seconds)
-    val eternal = sessionRegister.login(BUser, Some(BuildInfo.version), isEternalSession = true).await(99.seconds)
-    assert(sessionRegister.count.await(99.seconds) == 2)
-    assert(sessionRegister.session(sessionToken, Right(Anonymous)).await(99.seconds).isRight)
+    sessionToken = sessionRegister.login(AUser, Some(BuildInfo.version)).await(99.s)
+    val eternal = sessionRegister.login(BUser, Some(BuildInfo.version), isEternalSession = true)
+      .await(99.s)
+    assert(sessionRegister.count.await(99.s) == 2)
+    assert(sessionRegister.session(sessionToken, Right(Anonymous)).await(99.s).isRight)
 
     testScheduler.tick(TestSessionTimeout + 1.s)
-    assert(sessionRegister.session(sessionToken, Right(Anonymous)).await(99.seconds).isLeft)
-    assert(sessionRegister.session(eternal, Right(Anonymous)).await(99.seconds).isRight)
-    assert(sessionRegister.count.await(99.seconds) == 1)
+    assert(sessionRegister.session(sessionToken, Right(Anonymous)).await(99.s).isLeft)
+    assert(sessionRegister.session(eternal, Right(Anonymous)).await(99.s).isRight)
+    assert(sessionRegister.count.await(99.s) == 1)
   }
 }
 

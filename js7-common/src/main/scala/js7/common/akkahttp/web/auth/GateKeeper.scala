@@ -285,16 +285,8 @@ object GateKeeper
       config: Config,
       toUser: (UserId, HashedPassword, Set[Permission], Seq[DistinguishedName]) => U,
       permissions: Iterable[Permission] = Nil)
-    : Configuration[U] =
-      fromConfig(config, toUser, Permission.toStringToPermission(permissions))
-
-    @deprecated
-    def fromConfig[U <: User](
-      config: Config,
-      toUser: (UserId, HashedPassword, Set[Permission], Seq[DistinguishedName]) => U,
-      toPermission: PartialFunction[String, Permission])
     : Configuration[U] = {
-      val idToUser = IdToUser.fromConfig(config, toUser, toPermission)
+      val idToUser = IdToUser.fromConfig(config, toUser, Permission.toStringToPermission(permissions))
       Configuration[U](
         realm                       = config.getString  ("js7.web.server.auth.realm"),
         invalidAuthenticationDelay  = config.getDuration("js7.web.server.auth.invalid-authentication-delay").toFiniteDuration,
