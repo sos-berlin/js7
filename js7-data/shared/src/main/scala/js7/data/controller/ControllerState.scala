@@ -371,15 +371,7 @@ with SnapshotableState[ControllerState]
                   updated.copy(idToOrder = updated.idToOrder ++ updatedIdToOrder)
 
               case OrderDeletionMarked =>
-                previousOrder.externalOrderKey match {
-                  case None =>
-                    Right(copy(idToOrder = updatedIdToOrder))
-                  case Some(externalOrderKey) =>
-                    allOrderWatchesState.onOrderEvent(externalOrderKey, orderId <-: OrderDeletionMarked)
-                      .map(o => copy(
-                        idToOrder = updatedIdToOrder,
-                        allOrderWatchesState = o))
-                }
+                Right(copy(idToOrder = updatedIdToOrder))
 
               case OrderDeleted =>
                 previousOrder.externalOrderKey match {
@@ -387,7 +379,7 @@ with SnapshotableState[ControllerState]
                     Right(copy(idToOrder = idToOrder - orderId))
                   case Some(externalOrderKey) =>
                     allOrderWatchesState
-                      .onOrderEvent(externalOrderKey, orderId <-: OrderDeleted)
+                      .onOrderDeleted(externalOrderKey, orderId)
                       .map(o => copy(
                         idToOrder = idToOrder - orderId,
                         allOrderWatchesState = o))

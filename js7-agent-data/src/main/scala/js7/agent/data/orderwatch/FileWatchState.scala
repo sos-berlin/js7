@@ -8,10 +8,11 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.io.file.watch.DirectoryState
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.SetOnce
+import js7.data.event.KeyedEvent
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchEvent, OrderWatchPath}
 import monix.reactive.Observable
-import scala.collection.mutable
+import scala.collection.{View, mutable}
 
 final case class FileWatchState(
   fileWatch: FileWatch,
@@ -26,7 +27,7 @@ final case class FileWatchState(
         copy(
           directoryState =
             directoryState.copy(
-              pathToEntry = directoryState.pathToEntry +
+              fileToEntry = directoryState.fileToEntry +
                 (relativePath -> DirectoryState.Entry(relativePath))))
 
       case ExternalOrderVanished(ExternalOrderName(relativePath_)) =>
@@ -34,18 +35,24 @@ final case class FileWatchState(
         copy(
           directoryState =
             directoryState.copy(
-              pathToEntry = directoryState.pathToEntry - relativePath))
+              fileToEntry = directoryState.fileToEntry - relativePath))
     }
 
   def containsPath(path: Path) =
-    directoryState.pathToEntry.contains(path)
+    directoryState.fileToEntry.contains(path)
+
+  def allFilesVanished: View[KeyedEvent[ExternalOrderVanished]] =
+    directoryState.fileToEntry.keys
+      .view
+      .map(file =>
+        fileWatch.path <-: ExternalOrderVanished(ExternalOrderName(file.toString)))
 
   def estimatedSnapshotSize =
-    1 + directoryState.pathToEntry.size
+    1 + directoryState.fileToEntry.size
 
   def toSnapshot: Observable[Snapshot] =
     Observable.pure(HeaderSnapshot(fileWatch)) ++
-      Observable.fromIterable(directoryState.pathToEntry.values)
+      Observable.fromIterable(directoryState.fileToEntry.values)
         .map(entry => EntrySnapshot(id, entry.path))
 }
 
@@ -58,12 +65,15 @@ object FileWatchState
   final case class HeaderSnapshot(fileWatch: FileWatch)
   extends Snapshot {
     def orderWatchPath = fileWatch.path
+    override def productPrefix = "FileWatchState"
   }
 
   final case class EntrySnapshot(
     orderWatchPath: OrderWatchPath,
     path: Path)
-  extends Snapshot
+  extends Snapshot {
+    override def productPrefix = "FileWatchState.File"
+  }
 
   implicit val jsonCodec = TypedJsonCodec[Snapshot](
     Subtype.named(deriveCodec[HeaderSnapshot], "FileWatchState"),

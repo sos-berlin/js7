@@ -150,8 +150,8 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
             val orderId = orderId6
             val file = bDirectory / "6"
             file := ""
-            await[OrderStarted](_.key == orderId)
             await[ExternalOrderArised](_.event.externalOrderName == ExternalOrderName("6"))
+            await[OrderStarted](_.key == orderId)
 
             TestJob.continue(2)
             val vanished = await[ExternalOrderVanished](_.event.externalOrderName == ExternalOrderName("6"))
@@ -343,8 +343,8 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
       orderWatchPath <-: ExternalOrderArised(ExternalOrderName("4"),
         OrderId("file:FILE-WATCH:4"),
         Map("file" -> StringValue(s"$aDirectory/4"))),
-      NoKey <-: ItemAttachedToMe(bFileWatch.copy(itemRevision = Some(ItemRevision(1)))),
       orderWatchPath <-: ExternalOrderVanished(ExternalOrderName("4")),
+      NoKey <-: ItemAttachedToMe(bFileWatch.copy(itemRevision = Some(ItemRevision(1)))),
 
       orderWatchPath <-: ExternalOrderArised(ExternalOrderName("5"),
         OrderId("file:FILE-WATCH:5"),

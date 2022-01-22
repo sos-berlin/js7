@@ -10,12 +10,12 @@ import js7.data.controller.ControllerState
 import js7.data.item.ItemAttachedState.Attached
 import js7.data.item.{ItemRevision, UnsignedSimpleItemEvent}
 import js7.data.order.OrderId
-import js7.data.orderwatch.OrderWatchState.{Arised, ExternalOrderSnapshot, HasOrder, Vanished, VanishedAck}
+import js7.data.orderwatch.OrderWatchState.{Arised, ArisedOrHasOrder, ExternalOrderSnapshot, HasOrder, Vanished}
 import js7.data.value.expression.Expression.NamedValue
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
-import js7.tester.CirceJsonTester.testJson
+import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AsyncFreeSpec
 
@@ -42,6 +42,52 @@ final class OrderWatchStateTest extends AsyncFreeSpec
   }
 
   "JSON" - {
+    "ArisedOrHasOrder" in {
+      testJson[ArisedOrHasOrder](Arised(OrderId("ORDER"), Map("file" -> StringValue("FILE"))),
+        json"""{
+          "TYPE": "Arised",
+          "orderId": "ORDER",
+          "arguments": {
+            "file": "FILE"
+          }
+        }""")
+
+      testJson[ArisedOrHasOrder](HasOrder(OrderId("ORDER"), Some(Vanished)),
+        json"""{
+          "TYPE": "HasOrder",
+          "orderId": "ORDER",
+          "queued": {
+            "TYPE": "Vanished"
+          }
+        }""")
+
+      // Until v2.2.1 exists VanishedAck. It is equivalent to Vanished.
+      testJsonDecoder[ArisedOrHasOrder](HasOrder(OrderId("ORDER"), Some(Vanished)),
+        json"""{
+          "TYPE": "HasOrder",
+          "orderId": "ORDER",
+          "queued": {
+            "TYPE": "VanishedAck"
+          }
+        }""")
+
+      testJson[ArisedOrHasOrder](
+        HasOrder(
+          OrderId("ORDER"),
+          Some(Arised(OrderId("ORDER"), Map("file" -> StringValue("FILE"))))),
+        json"""{
+          "TYPE": "HasOrder",
+          "orderId": "ORDER",
+          "queued": {
+            "TYPE": "Arised",
+            "orderId": "ORDER",
+            "arguments": {
+              "file": "FILE"
+            }
+          }
+        }""")
+    }
+
     "ExternalOrderSnapshot" in {
       testJson[OrderWatchState.Snapshot](
         ExternalOrderSnapshot(
@@ -96,7 +142,7 @@ final class OrderWatchStateTest extends AsyncFreeSpec
         ExternalOrderSnapshot(
           OrderWatchPath("FILE-WATCH"),
           ExternalOrderName("FILE"),
-          HasOrder(OrderId("ORDER"), Some(VanishedAck))),
+          HasOrder(OrderId("ORDER"), Some(Vanished))),
         json"""{
           "TYPE": "ExternalOrder",
           "externalOrderName": "FILE",
@@ -105,7 +151,7 @@ final class OrderWatchStateTest extends AsyncFreeSpec
             "TYPE": "HasOrder",
             "orderId": "ORDER",
             "queued": {
-              "TYPE": "VanishedAck"
+              "TYPE": "Vanished"
             }
           }
         }""")

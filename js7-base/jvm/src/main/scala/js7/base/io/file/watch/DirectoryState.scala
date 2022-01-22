@@ -1,7 +1,6 @@
 package js7.base.io.file.watch
 
-import io.circe.{Decoder, Encoder, Json, JsonObject}
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Files, Path}
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted, FileModified}
 import js7.base.io.file.watch.DirectoryState._
 import js7.base.log.Logger
@@ -14,7 +13,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import scala.collection.{View, mutable}
 import scala.concurrent.duration.Deadline.now
 
-final case class DirectoryState(pathToEntry: Map[Path, Entry])
+final case class DirectoryState(fileToEntry: Map[Path, Entry])
 {
   def applyAndReduceEvents(events: Seq[DirectoryEvent]): (Seq[DirectoryEvent], DirectoryState) = {
     val added = mutable.Map.empty[Path, Entry]
@@ -36,18 +35,18 @@ final case class DirectoryState(pathToEntry: Map[Path, Entry])
         modified -= path
     }
 
-    val updatedState = copy(pathToEntry -- deleted ++ added)
+    val updatedState = copy(fileToEntry -- deleted ++ added)
     val reducedEvents = diffTo(updatedState) ++
-      modified.filter(updatedState.pathToEntry.keySet).map(FileModified)
+      modified.filter(updatedState.fileToEntry.keySet).map(FileModified)
     reducedEvents -> updatedState
   }
 
   def diffTo(other: DirectoryState): Seq[DirectoryEvent] =
-    diffToDirectoryEvents(MapDiff.diff(pathToEntry, other.pathToEntry))
+    diffToDirectoryEvents(MapDiff.diff(fileToEntry, other.fileToEntry))
       .toVector
 
   def isEmpty =
-    pathToEntry.isEmpty
+    fileToEntry.isEmpty
 }
 
 object DirectoryState
@@ -72,7 +71,7 @@ object DirectoryState
         }
         .map(path => path -> DirectoryState.Entry(path))
         .toMap))
-    logger.debug(s"readDirectory '$directory' => ${directoryState.pathToEntry.size} files in ${since.elapsed.pretty}")
+    logger.debug(s"readDirectory '$directory' => ${directoryState.fileToEntry.size} files in ${since.elapsed.pretty}")
     directoryState
   }
 
@@ -82,17 +81,4 @@ object DirectoryState
     diff.deleted.view.map(FileDeleted) ++
       diff.updated.keys.view.map(FileModified) ++
       diff.added.keySet.view.map(FileAdded)
-
-  implicit val jsonEncoder: Encoder.AsObject[DirectoryState] =
-    o => JsonObject.fromIterable(o
-      .pathToEntry
-      .values
-      .view
-      .map(e => e.path.toString -> Json.fromJsonObject(JsonObject.empty)))
-
-  implicit val jsonDecoder: Decoder[DirectoryState] =
-    c => for {
-      jsonObject <- c.as[JsonObject]
-      entries <- Right(jsonObject.toIterable.map { case (k, v) => Entry(Paths.get(k)) })
-    } yield DirectoryState.fromIterable(entries)
 }

@@ -54,7 +54,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     """
   private lazy val versionIdIterator = Iterator.from(1).map(i => VersionId(i.toString))
 
-  "Run some orders at differant agents with a lock with limit=1" in {
+  "Run some orders at different agents with a lock with limit=1" in {
     withTemporaryFile("LockTest-", ".tmp") { file =>
       val workflow = defineWorkflow(s"""
         define workflow {

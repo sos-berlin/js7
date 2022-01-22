@@ -6,11 +6,12 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
+import js7.base.utils.Tests.isTest
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded
 import js7.data.item.{ItemAttachedState, UnsignedSimpleItemState}
-import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderDeleted, OrderDeletionMarked}
+import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderDeletionMarked}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
 import js7.data.orderwatch.OrderWatchState._
@@ -18,6 +19,19 @@ import js7.data.value.NamedValues
 import monix.reactive.Observable
 import scala.collection.View
 
+/**
+ * Existence of "external orders" (like files) and their coupling to JS7 Orders.
+ *
+ * `arisedQueue` contains the arisen external orders (files),
+ * which are not yet tied to an JS7 Order.
+ * `nextEvents` returns `OrderAdded`.
+ *
+ * `vanishedQueue` contains the vanished external orders (files),
+ * which are tied to an JS7 Order.
+ * `nextEvents` returns `OrderDeletionMarked`.
+ *
+ * For `arisedQueue` and `vanishedQueue` see `recalculateQueues`.
+ */
 final case class OrderWatchState(
   orderWatch: OrderWatch,
   externalToState: Map[ExternalOrderName, ArisedOrHasOrder],
@@ -32,7 +46,10 @@ extends UnsignedSimpleItemState
 
   type Revision = Int
 
-  private def recoverQueues: OrderWatchState =
+  def finishRecovery: Checked[OrderWatchState] =
+    Right(recalculateQueues)
+
+  private def recalculateQueues: OrderWatchState =
     copy(
       arisedQueue = externalToState.view
         .collect {
@@ -41,7 +58,7 @@ extends UnsignedSimpleItemState
         .toSet,
       vanishedQueue = externalToState.view
         .collect {
-          case (externalOrderName, HasOrder(_, Some(Vanished))) => externalOrderName
+          case (externalOrderName, HasOrder(_, Some(_))) => externalOrderName
         }
         .toSet)
 
@@ -62,34 +79,41 @@ extends UnsignedSimpleItemState
           externalToState = externalToState + (externalOrderName -> Arised(orderId, arguments)),
           arisedQueue = arisedQueue + externalOrderName))
 
-      case Some(HasOrder(orderId, None | Some(Vanished | VanishedAck))) =>
+      case Some(HasOrder(orderId, Some(Vanished))) =>
+        // Queue for an additional Order (with same OrderId)
         Right(copy(
           externalToState = externalToState +
             (externalOrderName -> HasOrder(orderId, Some(Arised(orderId, arguments))))))
 
-      case Some(state @ (Arised(_, _) | HasOrder(_, Some(Arised(_, _))))) =>
-        Left(Problem(s"Duplicate ExternalOrderArised($externalOrderName, $arguments): $state"))
+      case Some(state @ (Arised(_, _) | HasOrder(_, None | Some(Arised(_, _))))) =>
+        unexpected(s"Duplicate ExternalOrderArised($externalOrderName, $arguments): $state")
     }
 
-  private def onExternalOrderVanished(externalOrderName: ExternalOrderName): Checked[OrderWatchState] =
-    externalToState.checked(externalOrderName) flatMap {
-      case Arised(_, _) =>
+  private def onExternalOrderVanished(externalOrderName: ExternalOrderName)
+  : Checked[OrderWatchState] =
+    externalToState.get(externalOrderName) match {
+      case None =>
+        unexpected(s"${orderWatch.path}: Ignored ExternalOrderVanished($externalOrderName) event for unknown name")
+
+      case Some(Arised(_, _)) =>
+        // Vanished before Order has been added
         Right(copy(
           externalToState = externalToState - externalOrderName,
           arisedQueue = arisedQueue - externalOrderName))
 
-      case HasOrder(orderId, None) =>
+      case Some(HasOrder(orderId, None)) =>
+        // Vanished after Order has been added – the normal case
         Right(copy(
           externalToState = externalToState + (externalOrderName -> HasOrder(orderId, Some(Vanished))),
           vanishedQueue = vanishedQueue + externalOrderName))
 
-      case HasOrder(orderId, Some(Arised(_, _))) =>
+      case Some(HasOrder(orderId, Some(Arised(_, _)))) =>
+        // The re-arisen external order (file) has vanished again – we ignore it
         Right(copy(
-          externalToState = externalToState + (externalOrderName -> HasOrder(orderId, None)),
-          arisedQueue = arisedQueue - externalOrderName))
+          externalToState = externalToState + (externalOrderName -> HasOrder(orderId, Some(Vanished)))))
 
-      case state @ HasOrder(_, Some(Vanished | VanishedAck)) =>
-        Left(Problem(s"Duplicate ExternalOrderVanished($externalOrderName), state=$state"))
+      case Some(state @ HasOrder(_, Some(Vanished))) =>
+        unexpected(s"Duplicate ExternalOrderVanished($externalOrderName), state=$state")
     }
 
   def onOrderAdded(externalOrderName: ExternalOrderName, orderId: OrderId): Checked[OrderWatchState] =
@@ -100,52 +124,33 @@ extends UnsignedSimpleItemState
           arisedQueue = arisedQueue - externalOrderName))
 
       case _ =>
-        Left(Problem(s"$orderId <-: OrderAdded($externalOrderName) but not Arised($orderId)"))
+        unexpected(s"$orderId <-: OrderAdded($externalOrderName) but not Arised($orderId)")
     }
 
-  def applyOrderEvent(externalOrderName: ExternalOrderName, keyedEvent: KeyedEvent[OrderCoreEvent]) = {
-    import keyedEvent.{event, key => orderId}
-    event match {
-      case OrderDeletionMarked => onOrderDeletionMarked(externalOrderName, orderId)
-      case OrderDeleted => onOrderDeleted(externalOrderName, orderId)
-      case _ => Right(this)
-    }
-  }
-
-  def onOrderDeletionMarked(externalOrderName: ExternalOrderName, orderId: OrderId): Checked[OrderWatchState] =
-    externalToState.checked(externalOrderName) flatMap {
-      case HasOrder(_, Some(Vanished) | None/*Not vanished but DeleteOrdersWhenTerminated command*/) =>
+  def onOrderDeleted(externalOrderName: ExternalOrderName, orderId: OrderId)
+  : Checked[OrderWatchState] =
+    externalToState.get(externalOrderName) match {
+      case Some(HasOrder(`orderId`, None/*?*/ | Some(Vanished))) | None =>
         Right(copy(
-          externalToState = externalToState + (externalOrderName -> HasOrder(orderId, Some(VanishedAck))),
+          externalToState = externalToState - externalOrderName,
           vanishedQueue = vanishedQueue - externalOrderName))
 
-      case HasOrder(_, _) =>
-        logger.debug(s"$orderId <-: OrderDeletionMarked ($externalOrderName) but watched order has not vanished")
-        Right(this)
-
-      case _ =>
-        Left(Problem(s"$orderId <-: OrderDeletionMarked ($externalOrderName) but not HasOrder"))
-    }
-
-  private def onOrderDeleted(externalOrderName: ExternalOrderName, orderId: OrderId): Checked[OrderWatchState] =
-    externalToState.checked(externalOrderName) flatMap {
-      case HasOrder(`orderId`, Some(arised: Arised)) =>
+      case Some(HasOrder(`orderId`, Some(arised: Arised))) =>
+        // The re-arisen ExternalOrderName has been deleted.
+        // We insert the ExternalOrderName into arisedQueue, to start a new Order.
         Right(copy(
           externalToState = externalToState + (externalOrderName -> arised),
+          vanishedQueue = vanishedQueue - externalOrderName,
           arisedQueue = arisedQueue + externalOrderName))
 
-      case HasOrder(`orderId`, None/*?*/ | Some(Vanished/*?*/ | VanishedAck)) =>
-        Right(copy(
-          externalToState = externalToState - externalOrderName))
-
-      case state =>
-        Left(Problem(s"onOrderDeleted($externalOrderName, $orderId) but state=$state"))
+      case None =>
+        unexpected(s"${orderWatch.path}: onOrderDeleted($externalOrderName, $orderId) for unknown Order")
     }
 
-  def nextEvents(toOrderAdded: ToOrderAdded)
-  : Seq[KeyedEvent[OrderCoreEvent]] =
-    (nextOrderAddedEvents(toOrderAdded) ++ nextOrderDeletionMarkedEvents)
-      .toVector
+  def nextEvents(toOrderAdded: ToOrderAdded, isDeletionMarkable: OrderId => Boolean)
+  : View[KeyedEvent[OrderCoreEvent]] =
+    nextOrderAddedEvents(toOrderAdded) ++
+      nextOrderDeletionMarkedEvents(isDeletionMarkable)
 
   private def nextOrderAddedEvents(toOrderAdded: ToOrderAdded)
   : View[KeyedEvent[OrderAdded]] =
@@ -157,25 +162,29 @@ extends UnsignedSimpleItemState
           val externalOrderKey = ExternalOrderKey(id, externalOrderName)
           toOrderAdded(freshOrder, Some(externalOrderKey)) match {
             case Left(problem) =>
-              // Handle this error ???
-              logger.error(s"$externalOrderKey: $problem")
+              // Should not happen
+              logger.error(s"${orderWatch.path}: $externalOrderKey: $problem")
               None
+
             case Right(None) =>
-              // Handle duplicate OrderId as error ???
-              logger.error(s"$externalOrderKey: Duplicate OrderId ?")
+              // Should not happen
+              logger.error(s"${orderWatch.path}: $externalOrderKey: Duplicate OrderId ?")
               None
+
             case Right(Some(added)) =>
               Some(added)
           }
         })
 
-  private def nextOrderDeletionMarkedEvents: View[KeyedEvent[OrderDeletionMarked]] =
+  private def nextOrderDeletionMarkedEvents(isDeletionMarkable: OrderId => Boolean)
+  : View[KeyedEvent[OrderDeletionMarked]] =
     vanishedQueue.view
       .flatMap(externalOrderName => externalToState
         .get(externalOrderName)
-        .collect {
-          case HasOrder(orderId, _) => orderId <-: OrderDeletionMarked  // may be filtered later
-        })
+        .collect { case HasOrder(orderId, _) => orderId }
+        .filter(isDeletionMarkable)
+        .map(_ <-: OrderDeletionMarked)
+      )
 
   def estimatedSnapshotSize =
     1 + externalToState.size
@@ -191,8 +200,13 @@ extends UnsignedSimpleItemState
     externalToState.insert(snapshot.externalOrderName -> snapshot.state)
       .map(o => copy(externalToState = o))
 
-  def onEndOfRecovery: Checked[OrderWatchState] =
-    Right(recoverQueues)
+  private def unexpected(msg: String): Checked[this.type] =
+    if (strictErrorChecking)
+      Left(Problem(msg))
+    else {
+      logger.error(msg)
+      Right(this)
+    }
 }
 
 object OrderWatchState
@@ -200,6 +214,7 @@ object OrderWatchState
   type ToOrderAdded = (FreshOrder, Option[ExternalOrderKey]) => Checked[Option[KeyedEvent[OrderAdded]]]
 
   private val logger = scribe.Logger[this.type]
+  private val strictErrorChecking = sys.props.contains("js7.strict") || isTest
 
   def apply(orderWatch: OrderWatch): OrderWatchState =
     OrderWatchState(orderWatch, Map.empty, Set.empty, Set.empty)
@@ -210,11 +225,11 @@ object OrderWatchState
     sourceToOrderId: Map[ExternalOrderName, ArisedOrHasOrder])
   : OrderWatchState =
     OrderWatchState(orderWatch, sourceToOrderId, Set.empty, Set.empty)
-      .recoverQueues
+      .recalculateQueues
 
   def fromSnapshot(snapshot: OrderWatchState) =
     OrderWatchState(snapshot.orderWatch, Map.empty, Set.empty, Set.empty)
-      .recoverQueues
+      .recalculateQueues
 
   sealed trait Snapshot {
     def orderWatchPath: OrderWatchPath
@@ -245,18 +260,14 @@ object OrderWatchState
   final case object Vanished
   extends VanishedOrArised
 
-  final case object VanishedAck
-  extends VanishedOrArised
-
   object VanishedOrArised {
-    private[OrderWatchState] implicit val jsonCodec = TypedJsonCodec[VanishedOrArised](
-      Subtype(Vanished),
-      Subtype(VanishedAck),
+    private[orderwatch] implicit val jsonCodec = TypedJsonCodec[VanishedOrArised](
+      Subtype.singleton(Vanished, aliases = Seq("VanishedAck")/*until v2.2.1*/),
       Subtype(deriveCodec[Arised]))
   }
 
   object ArisedOrHasOrder {
-    private[OrderWatchState] implicit val jsonCodec = TypedJsonCodec[ArisedOrHasOrder](
+    private[orderwatch] implicit val jsonCodec = TypedJsonCodec[ArisedOrHasOrder](
       Subtype(deriveCodec[Arised]),
       Subtype(deriveCodec[HasOrder]))
   }

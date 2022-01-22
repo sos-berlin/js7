@@ -27,7 +27,7 @@ import js7.data.job.{JobResource, JobResourcePath, ShellScriptExecutable}
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.node.NodeId
 import js7.data.order.{Order, OrderId}
-import js7.data.orderwatch.OrderWatchState.{HasOrder, VanishedAck}
+import js7.data.orderwatch.OrderWatchState.{HasOrder, Vanished}
 import js7.data.orderwatch.{AllOrderWatchesState, ExternalOrderKey, ExternalOrderName, FileWatch, OrderWatchPath, OrderWatchState}
 import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState}
 import js7.data.value.expression.ExpressionParser.expr
@@ -95,7 +95,7 @@ final class ControllerStateTest extends AsyncFreeSpec
             OrderWatchState.ExternalOrderSnapshot(
               fileWatch.path,
               ExternalOrderName("ORDER-NAME"),
-              HasOrder(OrderId("ORDER"), Some(VanishedAck))),
+              HasOrder(OrderId("ORDER"), Some(Vanished))),
             SignedItemAdded(signedJobResource),
             VersionAdded(versionId),
             VersionedItemAdded(signedWorkflow),
@@ -262,7 +262,7 @@ final class ControllerStateTest extends AsyncFreeSpec
           "TYPE": "HasOrder",
           "orderId": "ORDER",
           "queued": {
-            "TYPE": "VanishedAck"
+            "TYPE": "Vanished"
           }
         }
       }, {
@@ -447,7 +447,7 @@ object ControllerStateTest
         fileWatch,
         Map(agentRef.path -> Attached(Some(ItemRevision(7)))),
         Map(
-          ExternalOrderName("ORDER-NAME") -> HasOrder(OrderId("ORDER"), Some(VanishedAck)))))),
+          ExternalOrderName("ORDER-NAME") -> HasOrder(OrderId("ORDER"), Some(Vanished)))))),
     Repo.empty.applyEvents(Seq(
       VersionAdded(versionId),
       VersionedItemAdded(signedWorkflow))).orThrow,

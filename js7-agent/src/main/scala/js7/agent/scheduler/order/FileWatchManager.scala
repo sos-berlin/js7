@@ -17,6 +17,7 @@ import js7.base.io.file.watch.DirectoryEventDelayer.syntax.RichDelayLineObservab
 import js7.base.io.file.watch.{DirectoryWatcher, WatchOptions}
 import js7.base.log.Logger
 import js7.base.monixutils.AsyncMap
+import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked
 import js7.base.thread.IOExecutor
 import js7.base.time.JavaTimeConverters.AsScalaDuration
@@ -78,8 +79,24 @@ final class FileWatchManager(
       persistence
         .persist(agentState =>
           Right(
-            !agentState.allFileWatchesState.contains(fileWatch) thenList
-              NoKey <-: ItemAttachedToMe(fileWatch)))
+            agentState.allFileWatchesState.pathToFileWatchState.get(fileWatch.path) match {
+              case Some(watchState) =>
+                if (watchState.fileWatch == fileWatch)
+                  Nil
+                else {
+                  // If the directory changes, all arisen files vanish now.
+                  // Beware that directory is an (EnvScope-only) Expression.
+                  val vanished =
+                    if (watchState.fileWatch.directory == fileWatch.directory)
+                      Nil
+                    else
+                      watchState.allFilesVanished
+                  vanished.toVector :+ (NoKey <-: ItemAttachedToMe(fileWatch))
+                }
+
+              case None =>
+                (NoKey <-: ItemAttachedToMe(fileWatch)) :: Nil
+            }))
         .flatMapT { case (_, agentState) =>
           startWatching(agentState.allFileWatchesState.pathToFileWatchState(fileWatch.path))
         }
@@ -93,24 +110,22 @@ final class FileWatchManager(
             agentState.allFileWatchesState.pathToFileWatchState.get(orderWatchPath) match {
               case None => Nil
               case Some(fileWatchState) =>
-                // When a FileWatch is detached, all arisen files vanishes now,
-                // to allow proper remove of the Controller's orders (after OrderFinished), and
+                // When a FileWatch is detached, all arisen files vanish now,
+                // to allow proper removal of the Controller's orders (after OrderFinished), and
                 // to allow the Controller to move the FileWatch to a different Agent,
                 // because the other Agent will start with an empty FileWatchState.
-                val vanished = fileWatchState.directoryState.pathToEntry.keys.view
-                  .map(file => orderWatchPath <-: ExternalOrderVanished(ExternalOrderName(file.toString)))
-                (vanished ++
-                  Seq(NoKey <-: ItemDetached(orderWatchPath, ownAgentPath))
-                ).toVector
+                fileWatchState.allFilesVanished.toVector :+
+                  (NoKey <-: ItemDetached(orderWatchPath, ownAgentPath))
             }))
         .flatMapT { case (_, agentState) =>
           stopWatching(orderWatchPath)
-            .map(_ => Right(()))
+            .as(Checked.unit)
         }
     }
 
   private def startWatching(fileWatchState: FileWatchState): Task[Checked[Unit]] =
     Task.defer {
+      val id = fileWatchState.fileWatch.path
       val stop = PublishSubject[Unit]()
       watch(fileWatchState, stop)
         .traverse(observable =>
@@ -128,10 +143,10 @@ final class FileWatchManager(
                     Task.defer {
                       stop.onComplete()
                       fiber.join
+                        .logWhenItTakesLonger(s"startWatching $id: stopping previous watcher")
                     }))
-            // ???
-            .void
-            .as(Right(())))
+            .void)
+        .logWhenItTakesLonger(s"startWatching $id")
     }
 
   private def stopWatching(id: OrderWatchPath): Task[Unit] =
@@ -156,15 +171,18 @@ final class FileWatchManager(
             WatchOptions(
               directory,
               Set(ENTRY_CREATE, ENTRY_MODIFY, ENTRY_DELETE),
-              // Regular expresion is evaluated twice: here and when deriving OrderId
+              // Regular expression is evaluated twice: here and when deriving OrderId
               matches = relativePath => fileWatch.resolvedPattern.matcher(relativePath.toString).matches,
               retryDelays = retryDelays,
               pollTimeout = pollTimeout,
               delay = watchDelay))
+          .doOnSubscribe(Task {
+            logger.debug(s"${fileWatch.path} watching started - $directory")
+          })
           .takeUntil(stop)
           .flatMap(Observable.fromIterable)
           .delayFileAdded(fileWatch.delay)  // buffers without limit all incoming event
-          .bufferIntrospective(1024/*TODO?*/)
+          .bufferIntrospective(1024)
           .mapEval(dirEventSeqs =>
             lockKeeper.lock(fileWatch.path)(
               persistence.awaitCurrentState
@@ -203,8 +221,7 @@ final class FileWatchManager(
                                 }))
                           .map(fileWatch.path <-: _)
                           .toVector)
-                    }
-                )))
+                    })))
           .foreachL {
             case Left(problem) => logger.error(problem.toString)
             case Right((_, agentState)) =>
@@ -216,6 +233,9 @@ final class FileWatchManager(
             for (t <- throwable.ifStackTrace) logger.debug(t.toString, t)
             Task.sleep(delay) >> restart(now)
           }
+          .guaranteeCase(exitCase => Task {
+            logger.debug(s"${fileWatch.path} watching $exitCase - $directory")
+          })
       }
   }
 

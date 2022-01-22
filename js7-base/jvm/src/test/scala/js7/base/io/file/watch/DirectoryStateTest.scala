@@ -1,27 +1,16 @@
 package js7.base.io.file.watch
 
 import java.nio.file.Paths
-import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted}
 import js7.base.io.file.watch.DirectoryState.Entry
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
-import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
 final class DirectoryStateTest extends AnyFreeSpec
 {
   coupleScribeWithSlf4j()
-
-  "JSON" in {
-    testJson(DirectoryState.fromIterable(Seq(Entry(Paths.get("FILE-1")), Entry(Paths.get("FILE-2")))),
-      json"""{
-        "FILE-1": {},
-        "FILE-2": {}
-      }""")
-    // In a future version, these empty braces may be filled
-  }
 
   "readDirectory" in {
     withTemporaryDirectory("DirectoryStateTest-") { dir =>

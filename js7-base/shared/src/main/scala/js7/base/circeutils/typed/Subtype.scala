@@ -96,9 +96,9 @@ object Subtype {
     * <p>
     * Usage: Subtype(A)
     */
-  def singleton[A: ClassTag](singleton: A) = {
+  def singleton[A: ClassTag](singleton: A, aliases: Seq[String] = Nil) = {
     val codec = singletonCodec(singleton)
-    fromClassName[A](implicitClass[A], Nil, codec, codec)
+    fromClassName[A](implicitClass[A], Nil, codec, codec, aliases = aliases)
   }
 
   def withAliases[A: ClassTag](codec: Codec.AsObject[A], aliases: Seq[String]) =

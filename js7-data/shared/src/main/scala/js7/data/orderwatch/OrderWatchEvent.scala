@@ -15,7 +15,8 @@ sealed trait OrderWatchEvent extends Event
 
 object OrderWatchEvent
 {
-  /** External Order arised, Controller is expected to add it. */
+  // TODO Rename as ExternalOrderArose
+  /** An external Order arose, Controller is expected to add an Order. */
   final case class ExternalOrderArised(
     externalOrderName: ExternalOrderName,
     orderId: OrderId,
