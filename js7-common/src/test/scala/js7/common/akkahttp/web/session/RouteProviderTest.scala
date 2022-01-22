@@ -5,10 +5,13 @@ import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
+import js7.base.Js7Version
 import js7.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
 import js7.base.configutils.Configs._
 import js7.base.generic.SecretString
+import js7.base.problem.Checked._
 import js7.base.thread.MonixBlocking.syntax._
+import js7.base.time.ScalaTime._
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.RouteProviderTest._
@@ -30,7 +33,7 @@ final class RouteProviderTest extends AnyFreeSpec with RouteProvider with Scalat
   implicit protected def scheduler = Scheduler.global
   protected val config = config"js7.web.server.verbose-error-messages = on"
   protected lazy val sessionRegister = SessionRegister.start[MySession](system, MySession.apply, SessionRegister.TestConfig)
-  private implicit val routeTestTimeout = RouteTestTimeout(99.seconds)
+  private implicit val routeTestTimeout = RouteTestTimeout(99.s)
 
   protected val gateKeeper = new GateKeeper(
     WebServerBinding.Http,
@@ -95,7 +98,7 @@ final class RouteProviderTest extends AnyFreeSpec with RouteProvider with Scalat
     }
 
     "Known SessionToken" in {
-      sessionToken = sessionRegister.login(TestUser, Some("0.0.0-TEST")).await(99.seconds)
+      sessionToken = sessionRegister.login(TestUser, Some(Js7Version)).await(99.s).orThrow
       Get("/sessionOption") ~> addHeader(`x-js7-session`.name, sessionToken.secret.string) ~> route ~> check {
         assert(status == OK)
         assert(responseAs[String] == "userId=TEST-USER")

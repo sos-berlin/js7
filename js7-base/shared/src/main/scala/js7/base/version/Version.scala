@@ -1,17 +1,21 @@
 package js7.base.version
 
+import js7.base.generic.GenericString
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils.syntax.RichEither
-import js7.base.version.Version._
+import js7.base.utils.ScalaUtils.syntax._
+import js7.base.version.Version.compareLists
 import scala.annotation.tailrec
 import scala.math.Ordered.orderingToOrdered
 
+/** Semantic version. */
 final case class Version private(
   string: String,
-  major: Int, minor: Int, patch: Int,
+  major: Int,
+  minor: Int,
+  patch: Int,
   prerelease: List[String] = Nil,
   build: List[String] = Nil)
-extends Ordered[Version]
+extends GenericString with Ordered[Version]
 {
   def compare(o: Version) =
     if (this eq o)
@@ -30,15 +34,15 @@ extends Ordered[Version]
   override def toString = string
 }
 
-object Version
+object Version extends GenericString.Checked_[Version]
 {
   private val VersionRegex =
-    """([0-9]+)\.([0-9]+)\.([0-9]+)(-([A-Za-z0-9.]+))?(\+([A-Za-z0-9]+))?""".r
+  """([0-9]+)\.([0-9]+)\.([0-9]+)(-([A-Za-z0-9.]+))?(\+([A-Za-z0-9]+))?""".r
 
-  def apply(string: String): Version =
+  protected def unchecked(string: String) =
     checked(string).orThrow
 
-  def checked(string: String): Checked[Version] =
+  override def checked(string: String): Checked[Version] =
     string match {
       case VersionRegex(major, minor, patch, _, prereleaseGroup, _, buildGroup) =>
         val prerelease = Option(prereleaseGroup).fold[List[String]](Nil)(_.split("\\.").toList)

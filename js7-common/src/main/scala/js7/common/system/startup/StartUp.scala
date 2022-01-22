@@ -23,7 +23,7 @@ object StartUp
 
   def initialize(): Unit = {}
 
-  // Initialize class and object for possibly quicker emergency stop
+  // Initialize class and object for possible quicker emergency stop
   Halt
 
   def logJavaSettings(): Unit = {

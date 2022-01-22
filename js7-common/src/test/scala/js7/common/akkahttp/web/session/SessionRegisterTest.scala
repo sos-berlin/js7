@@ -1,13 +1,15 @@
 package js7.common.akkahttp.web.session
 
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import js7.base.BuildInfo
+import js7.base.Js7Version
 import js7.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
 import js7.base.generic.{Completed, SecretString}
 import js7.base.problem.Checked.Ops
+import js7.base.problem.Problem
 import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
+import js7.base.version.Version
 import js7.common.akkahttp.web.session.SessionRegisterTest._
 import js7.common.akkautils.Akkas
 import js7.common.akkautils.Akkas.newActorSystem
@@ -38,7 +40,7 @@ final class SessionRegisterTest extends AnyFreeSpec with ScalatestRouteTest
   }
 
   "login anonymously" in {
-    sessionToken = sessionRegister.login(Anonymous, clientVersion = None).await(99.s)
+    sessionToken = sessionRegister.login(Anonymous, Some(Js7Version)).await(99.s).orThrow
   }
 
   "login and update User" in {
@@ -67,8 +69,8 @@ final class SessionRegisterTest extends AnyFreeSpec with ScalatestRouteTest
   "But late authentication is allowed, changing from anonymous to non-anonymous User" in {
     val mySystem = newActorSystem("SessionRegisterTest")
     val mySessionRegister = SessionRegister.start[MySession](mySystem, MySession.apply, SessionRegister.TestConfig)(testScheduler)
-    val sessionToken = mySessionRegister.login(SimpleUser.TestAnonymous, clientVersion = Some("0.0.0-TEST"))
-      .await(99.s)
+    val sessionToken = mySessionRegister.login(SimpleUser.TestAnonymous, Some(Js7Version))
+      .await(99.s).orThrow
 
     mySessionRegister.session(sessionToken, Right(Anonymous)).runSyncUnsafe(99.s).orThrow
     assert(mySessionRegister.session(sessionToken, Right(Anonymous)).runSyncUnsafe(99.s).toOption.get.currentUser == SimpleUser.TestAnonymous)
@@ -92,9 +94,9 @@ final class SessionRegisterTest extends AnyFreeSpec with ScalatestRouteTest
   "Session timeout" in {
     assert(sessionRegister.count.await(99.s) == 0)
 
-    sessionToken = sessionRegister.login(AUser, Some(BuildInfo.version)).await(99.s)
-    val eternal = sessionRegister.login(BUser, Some(BuildInfo.version), isEternalSession = true)
-      .await(99.s)
+    sessionToken = sessionRegister.login(AUser, Some(Js7Version)).await(99.s).orThrow
+    val eternal = sessionRegister.login(BUser, Some(Js7Version), isEternalSession = true)
+      .await(99.s).orThrow
     assert(sessionRegister.count.await(99.s) == 2)
     assert(sessionRegister.session(sessionToken, Right(Anonymous)).await(99.s).isRight)
 
@@ -102,6 +104,30 @@ final class SessionRegisterTest extends AnyFreeSpec with ScalatestRouteTest
     assert(sessionRegister.session(sessionToken, Right(Anonymous)).await(99.s).isLeft)
     assert(sessionRegister.session(eternal, Right(Anonymous)).await(99.s).isRight)
     assert(sessionRegister.count.await(99.s) == 1)
+  }
+
+  "Non-matching version" in {
+    assert(sessionRegister.login(AUser, Some(Version("2.2.0"))).await(99.s) == Left(Problem(
+      s"Client's version 2.2.0 does not match JS7 TEST version $Js7Version")))
+  }
+
+  "logNonMatchingVersion (manual test)" in {
+    assert(check(Version("1.2.4")) == Right(()))
+    assert(check(Version("1.2.3")) == Right(()))
+    assert(check(Version("1.2.2")) == Right(()))
+    assert(check(Version("1.2.0-SNAPSHOT+BUILD")) == Right(()))
+
+    assert(check(Version("1.1.2")) == Left(Problem(
+      "Client's version 1.1.2 does not match JS7 TEST version 1.2.3")))
+
+    assert(check(Version("1.3.2")) == Left(Problem(
+      "Client's version 1.3.2 does not match JS7 TEST version 1.2.3")))
+
+    assert(check(Version("2.0.0")) == Left(Problem(
+      "Client's version 2.0.0 does not match JS7 TEST version 1.2.3")))
+
+    def check(v: Version) =
+      sessionRegister.checkNonMatchingVersion(Some(v), Version("1.2.3"))
   }
 }
 

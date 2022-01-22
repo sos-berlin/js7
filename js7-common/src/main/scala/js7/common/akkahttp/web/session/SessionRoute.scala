@@ -3,14 +3,14 @@ package js7.common.akkahttp.web.session
 import akka.http.scaladsl.model.StatusCodes.Unauthorized
 import akka.http.scaladsl.server.Directive1
 import akka.http.scaladsl.server.Directives._
-import cats.syntax.traverse._
-import js7.base.BuildInfo
+import js7.base.Js7Version
 import js7.base.auth.{SessionToken, UserAndPassword, UserId}
 import js7.base.generic.Completed
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.session.SessionCommand
 import js7.base.session.SessionCommand.{Login, Logout}
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.akkahttp.StandardMarshallers._
 import js7.common.akkahttp.web.session.SessionRoute._
@@ -52,10 +52,10 @@ trait SessionRoute extends RouteProvider
   : Task[Checked[SessionCommand.Response]] =
     command match {
       case Login(userAndPasswordOption, version) =>
-        authenticateOrUseHttpUser(idsOrUser, userAndPasswordOption)
-          .traverse(user =>
+        Task(authenticateOrUseHttpUser(idsOrUser, userAndPasswordOption))
+          .flatMapT(user =>
             sessionRegister.login(user, version, sessionTokenOption)
-              .map(Login.LoggedIn(_, Some(BuildInfo.version))))
+              .map(_.map(Login.LoggedIn(_, Js7Version))))
 
       case Logout(sessionToken) =>
         sessionRegister.logout(sessionToken)

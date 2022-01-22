@@ -2,14 +2,13 @@ package js7.common.akkahttp.web.session
 
 import akka.actor.{Actor, DeadLetterSuppression, Props}
 import com.typesafe.config.Config
-import js7.base.BuildInfo
+import js7.base.Js7Version
 import js7.base.auth.{SessionToken, User, UserId}
 import js7.base.generic.Completed
 import js7.base.log.Logger
-import js7.base.problem.{Checked, Problem}
 import js7.base.problem.Checked._
 import js7.base.problem.Problems.InvalidSessionTokenProblem
-import js7.base.time.JavaTimeConverters.{logger, _}
+import js7.base.time.JavaTimeConverters._
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.implicits.InsertableMutableMap
 import js7.base.utils.ScalaUtils.syntax._
@@ -18,7 +17,6 @@ import js7.common.akkahttp.web.session.SessionActor._
 import js7.common.auth.SecretStringGenerator
 import monix.execution.{Cancelable, Scheduler}
 import scala.collection.mutable
-import scala.util.control.NonFatal
 
 // TODO https://www.owasp.org/index.php/Session_Management_Cheat_Sheet
 /**
@@ -59,11 +57,9 @@ extends Actor {
         session.touch(sessionTimeout)
       }
       tokenToSession.insert(session.sessionToken -> session)
-      for (problem <- checkNonMatchingVersion(user.id, clientVersion).left) {
-        logger.error(problem.toString)
-      }
       logger.info(s"${session.sessionToken} for ${user.id}: Login" +
-        clientVersion.fold("")(v => " (" + v + (if (v == BuildInfo.version) " ✔)" else " ⚠️ version differs!)")) +
+        clientVersion.fold("")(v =>
+          " (" + v + (if (v == Js7Version) " ✔)" else " ⚠️ version differs!)")) +
         (session.isEternal ?? " (eternal)"))
       sender() ! token
       scheduleNextCleanup()
@@ -159,30 +155,11 @@ object SessionActor
   private[session] def props[S <: Session](newSession: SessionInit[S#User] => S, config: Config)(implicit s: Scheduler) =
     Props { new SessionActor[S](newSession, config) }
 
-  private[session] def checkNonMatchingVersion(
-    userId: UserId,
-    clientVersion: Option[String],
-    ourVersion: String = BuildInfo.version)
-  : Checked[Unit] =
-    Checked.catchNonFatal {
-      clientVersion match {
-        case None => Left(Problem.pure(s"$userId did not send its version"))
-        case Some(clientVersion) =>
-          for {
-            client <- Version.checked(clientVersion)
-            our <- Version.checked(ourVersion)
-            _ <-
-              (client.major == our.major && client.minor == our.minor) !! Problem(
-                s"$userId client version $client does not match this server version $our")
-          } yield ()
-      }
-    }.flatten
-
   private[session] sealed trait Command
   private[session] object Command {
     final case class Login[U <: User](
       user: U,
-      clientVersion: Option[String],
+      js7Version: Option[Version],
       oldSessionTokenOption: Option[SessionToken],
       isEternalSession: Boolean
     ) extends Command

@@ -7,6 +7,7 @@ import js7.base.circeutils.CirceCodec
 import js7.base.circeutils.CirceUtils.{deriveCodec, singletonCodec}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.generic.SecretString
+import js7.base.version.Version
 
 /**
   * @author Joacim Zschimmer
@@ -22,15 +23,16 @@ object SessionCommand
     */
   final case class Login(
     userAndPassword: Option[UserAndPassword],
-    version: Option[String] = None)
+    js7Version: Option[Version])
   extends SessionCommand {
     type Response = Login.LoggedIn
   }
 
   object Login {
-    final case class LoggedIn(
-      sessionToken: SessionToken,
-      js7Version: Option[String]/*Optional for compatibility with <2.0.0-alpha.20210916*/)
+    implicit val x = UserAndPassword.jsonCodec
+    implicit val jsonCodec = deriveCodec[Login]
+
+    final case class LoggedIn(sessionToken: SessionToken, js7Version: Version)
     extends SessionCommand.Response
 
     object LoggedIn {
@@ -43,7 +45,7 @@ object SessionCommand
         cursor =>
           for {
             token <- cursor.get[String]("sessionToken")
-            version <- cursor.get[Option[String]]("js7Version")
+            version <- cursor.get[Version]("js7Version")
           } yield LoggedIn(SessionToken(SecretString(token)), js7Version = version)
     }
   }
@@ -78,7 +80,7 @@ object SessionCommand
   implicit val jsonCodec = {
     implicit val x = UserAndPassword.jsonCodec
     TypedJsonCodec[SessionCommand](
-      Subtype(deriveCodec[Login]),
+      Subtype[Login],
       Subtype[Logout])
   }
 }

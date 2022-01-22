@@ -6,8 +6,10 @@ import akka.http.scaladsl.model.headers.RawHeader
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.web.common.AgentRouteProvider
+import js7.base.Js7Version
 import js7.base.auth.{HashedPassword, SimpleUser, UserId}
 import js7.base.configutils.Configs.HoconStringInterpolator
+import js7.base.problem.Checked._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.HasCloser
@@ -45,8 +47,9 @@ trait WebServiceTest extends HasCloser with BeforeAndAfterAll with ScalatestRout
   implicit val routeTestTimeout = RouteTestTimeout(5.s)
 
   protected lazy val testSessionHeader: HttpHeader = {
-    val token = sessionRegister.login(SimpleUser(UserId("SOME-USER"), HashedPassword.MatchesNothing), None)
-      .await(99.s)
+    val token = sessionRegister
+      .login(SimpleUser(UserId("SOME-USER"), HashedPassword.MatchesNothing), Some(Js7Version))
+      .await(99.s).orThrow
     RawHeader(`x-js7-session`.name, token.secret.string)
   }
 
