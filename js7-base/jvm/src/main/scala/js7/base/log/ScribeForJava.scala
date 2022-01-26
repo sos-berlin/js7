@@ -2,8 +2,8 @@ package js7.base.log
 
 import java.util.concurrent.ConcurrentHashMap
 import scribe.format.Formatter
-import scribe.output.LogOutput
 import scribe.output.format.OutputFormat
+import scribe.output.{EmptyOutput, LogOutput}
 import scribe.{Level, LogRecord}
 
 object ScribeForJava
@@ -24,14 +24,8 @@ object ScribeForJava
       }
     }
 
-  private object DummyLogOutput extends LogOutput {
-    def map(f: String => String) = this
-    def plainText = throw new NotImplementedError("DummyLogOutput.plainText")
-    def splitAt(index: Int) = (this, this)
-  }
-
   private object Slf4jFormatter extends Formatter {
-    def format[M](record: LogRecord[M]) = DummyLogOutput
+    def format[M](record: LogRecord[M]) = EmptyOutput
   }
 
   private object Log4jWriter extends scribe.writer.Writer {

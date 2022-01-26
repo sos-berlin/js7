@@ -8,7 +8,7 @@ object Dependencies
 
   val akkaVersion = "2.6.18"
   val akkaHttpVersion = "10.2.7"
-  val slf4jVersion = "1.7.32"  // See also plugins.sbt
+  val slf4jVersion = "1.7.35"  // See also plugins.sbt
   val log4jVersion = "2.17.1"  // See also plugins.sbt
   val catsVersion = "2.7.0"
   val catsEffectVersion = "2.5.4"
@@ -21,15 +21,15 @@ object Dependencies
   val scalaTestCheckVersion = "3.2.2.0"
   val scalaCheckVersion= "1.14.3"
   val simulacrumVersion = "0.19.0"
-  val sourcecodeVersion = "0.2.7"
+  val sourcecodeVersion = "0.2.8"
   val disciplineVersion = "1.0.3"
   val disciplineScalaTestVersion = "2.0.0"
   val monixVersion = "3.4.0"
   val monocleVersion = "1.5.0"
-  val scribeVersion = "3.6.3"
+  val scribeVersion = "3.6.7"
   val scalaJsDomVersion = "1.2.0"
   val shapelessVersion = "2.3.7"
-  val diffxVersion = "0.6.0"
+  val diffxVersion = "0.7.0"
   val reactorVersion = "3.4.13"
   val vavrVersion = "0.10.4"
   val jnaVersion = "5.10.0"
@@ -54,10 +54,10 @@ object Dependencies
   val cats                = "org.typelevel" %% "cats-core" % catsVersion
   val shapeless           = "com.chuusai" %% "shapeless" % shapelessVersion
   val diffx               = "com.softwaremill.diffx" %% "diffx-core" % diffxVersion
-  val diffxScalaTest      = "com.softwaremill.diffx" %% "diffx-scalatest" % "0.5.5"
+  val diffxScalaTest      = "com.softwaremill.diffx" %% "diffx-scalatest" % diffxVersion
 
   val javaxInject         = "javax.inject" % "javax.inject" % "1"
-  val guice               = ("com.google.inject" % "guice" % "5.0.1") :: javaxInject :: Nil
+  val guice               = ("com.google.inject" % "guice" % "5.1.0") :: javaxInject :: Nil
 
   val typesafeConfig      = "com.typesafe" % "config" % "1.4.1"
   val akkaActor           = "com.typesafe.akka" %% "akka-actor" % akkaVersion
