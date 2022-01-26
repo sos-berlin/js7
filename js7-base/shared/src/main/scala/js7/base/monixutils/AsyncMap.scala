@@ -1,7 +1,7 @@
 package js7.base.monixutils
 
-import js7.base.problem.Checked
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
+import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{AsyncLock, LockKeeper}
@@ -16,6 +16,7 @@ class AsyncMap[K: ClassTag, V](initial: Map[K, V] = Map.empty[K, V])
     suppressLog = true)
   @volatile private var _map = initial
 
+  protected[AsyncMap] def onEntryInsert() = Checked.unit
   protected[AsyncMap] def onEntryRemoved() = {}
 
   final def isEmpty: Boolean =
@@ -47,16 +48,17 @@ class AsyncMap[K: ClassTag, V](initial: Map[K, V] = Map.empty[K, V])
     shortLock.lock(Task {
       val result = _map
       _map = Map.empty
+      onEntryRemoved()
       result
     })
 
   final def remove(key: K)(implicit src: sourcecode.Enclosing): Task[Option[V]] =
     lockKeeper.lock(key)(
       shortLock.lock(Task {
-        val result = _map.get(key)
+        val removed = _map.get(key)
         _map = _map.removed(key)
-        onEntryRemoved()
-        result
+        if (removed.isDefined) onEntryRemoved()
+        removed
       }))
 
   final def updateExisting(key: K, update: V => Task[Checked[V]])
@@ -80,7 +82,7 @@ class AsyncMap[K: ClassTag, V](initial: Map[K, V] = Map.empty[K, V])
   : Task[V] =
     lockKeeper.lock(key)(
       shortLock.lock(Task {
-        _map = _map.updated(key, value)
+        updateMap(key, value)
         value
       }))
 
@@ -99,7 +101,7 @@ class AsyncMap[K: ClassTag, V](initial: Map[K, V] = Map.empty[K, V])
         update(previous)
           .flatMap(updated =>
             shortLock.lock(Task {
-              _map = _map.updated(key, updated)
+              updateMap(key, updated)
               updated
           }))
           .map(previous -> _)
@@ -116,7 +118,7 @@ class AsyncMap[K: ClassTag, V](initial: Map[K, V] = Map.empty[K, V])
               case Left(p) => Task.pure(Left(p))
               case Right(v) =>
                 shortLock.lock(Task {
-                  _map = _map.updated(key, v)
+                  updateMap(key, v)
                   Checked.unit
                 })
             }
@@ -132,11 +134,16 @@ class AsyncMap[K: ClassTag, V](initial: Map[K, V] = Map.empty[K, V])
           .flatMapT { case (v, r) =>
             shortLock
               .lock(Task {
-                _map = _map.updated(key, v)
+                updateMap(key, v)
               })
               .as(Right(r))
           }
       })
+
+  private def updateMap(key: K, value: V): Unit = {
+    if (!_map.contains(key)) onEntryInsert()
+    _map = _map.updated(key, value)
+  }
 
   override def toString =
     s"AsyncMap[${implicitClass[K].simpleScalaName}, _](n=${_map.size})"
@@ -150,25 +157,27 @@ object AsyncMap
   def empty[K: ClassTag, V] =
     new AsyncMap(Map.empty[K, V])
 
-  trait WhenEmpty {
+  trait Stoppable {
     this: AsyncMap[_, _] =>
 
+    @volatile private var stopped = false
     private val whenEmptyPromise = Promise[Unit]()
 
-    final val whenEmpty: Task[Unit] =
-      Task
-        .defer {
-          (if (_map.isEmpty)
-            Task.unit
-          else {
-            Task.fromFuture(whenEmptyPromise.future)
-          })
-        }
+    final val stop: Task[Unit] =
+      shortLock
+        .lock(Task {
+          stopped = true
+          _map.isEmpty
+        })
+        .flatMap(isEmpty =>
+          if (isEmpty) Task.unit
+          else Task.fromFuture(whenEmptyPromise.future))
         .memoize
 
+    override protected[monixutils] final def onEntryInsert(): Checked[Unit] =
+      !stopped !! Problem.pure("$toString has been stopped")
+
     override protected[monixutils] final def onEntryRemoved(): Unit =
-      if (_map.isEmpty) {
-        whenEmptyPromise.trySuccess(())
-      }
+      if (stopped && isEmpty) whenEmptyPromise.trySuccess(())
   }
 }
