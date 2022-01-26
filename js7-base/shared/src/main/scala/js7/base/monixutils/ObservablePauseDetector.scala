@@ -34,7 +34,7 @@ object ObservablePauseDetector
             case (Tick(o), Tick(_)) => Expired(o)
             case (Expired(o), Tick(_)) => Expired(o)
             case (_, tick: Tick) => tick
-            case (_, data: Data[A]) => data
+            case (_, data: Data[A @unchecked]) => data
           }
           .collect {
             case Expired(since) => fromPause(since)
@@ -71,7 +71,7 @@ object ObservablePauseDetector
             case (Tick(o), Tick(_)) => Expired(o)
             case (Expired(o), Tick(_)) => Expired(o)
             case (_, tick: Tick) => tick
-            case (_, data: Data[A]) => data
+            case (_, data: Data[A @unchecked]) => data
           }
           .collect {
             case Expired(since) => fromPause(since)

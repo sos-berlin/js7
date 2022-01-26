@@ -1,18 +1,19 @@
 package js7.journal.test
 
-import io.circe.generic.JsonCodec
+import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.data.event.Event
 
 /**
   * @author Joacim Zschimmer
   */
-private[journal] sealed trait TestEvent extends Event {
-  type Key = String
+private[journal] sealed trait TestEvent extends Event.ForScala3[TestEvent] {
+  val companion = TestEvent
 }
 
-private[journal] object TestEvent {
-  @JsonCodec
+private[journal] object TestEvent extends Event.Companion[TestEvent] {
+  type Key = String
+
   final case class Added(
     string: String,
     a: String = "X",   // Many arguments for speed test
@@ -35,7 +36,6 @@ private[journal] object TestEvent {
     r: String = "X")
   extends TestEvent
 
-  @JsonCodec
   final case class Appended(char: Char) extends TestEvent
 
   final case object NothingDone extends TestEvent
@@ -43,8 +43,8 @@ private[journal] object TestEvent {
   final case object Removed extends TestEvent
 
   implicit val jsonFormat = TypedJsonCodec[TestEvent](
-    Subtype[Added],
-    Subtype[Appended],
+    Subtype(deriveCodec[Added]),
+    Subtype(deriveCodec[Appended]),
     Subtype(NothingDone),
     Subtype(Removed))
 }
