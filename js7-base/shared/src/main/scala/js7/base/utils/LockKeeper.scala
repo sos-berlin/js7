@@ -1,7 +1,7 @@
 package js7.base.utils
 
 import cats.effect.Resource
-import js7.base.monixutils.MonixBase.deferFutureAndLog
+import js7.base.monixutils.MonixBase.syntax.RichMonixTask
 import js7.base.utils.LockKeeper._
 import js7.base.utils.ScalaUtils.syntax._
 import monix.eval.Task
@@ -34,8 +34,9 @@ final class LockKeeper[K]
           case Some(queue) =>
             val promise = Promise[Token]()
             queue += promise
-            logger.trace(s"Acquire lock '$key', queuing (#${queue.length})")
-            deferFutureAndLog(promise.future, s"acquiring lock for $key")
+            logger.trace(s"Acquire lock '$key': queuing (#${queue.length})")
+            Task.fromFuture(promise.future)
+              .logWhenItTakesLonger(key.toString)
         }
       }
       logger.trace(s"Acquired lock '$key'")

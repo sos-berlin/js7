@@ -52,7 +52,7 @@ final class ProcessDriver(
     Task.deferAction { implicit scheduler =>
       killedBeforeStart match {
         case Some(signal) =>
-          Task.pure(Left(Problem.pure(s"Processing killed before start with $signal")))
+          Task.pure(Left(Problem.pure("Processing killed before start")))
 
         case None =>
           Task(checkedWindowsLogon
@@ -129,8 +129,7 @@ final class ProcessDriver(
         case None =>
           logger.debug(s"$orderId: Kill before start")
           Task {
-            terminatedPromise.tryFailure(new RuntimeException(
-              s"$taskId killed before start with $signal"))
+            terminatedPromise.tryFailure(new RuntimeException(s"$taskId killed before start"))
             killedBeforeStart = Some(signal)
           }
         case Some(richProcess) =>

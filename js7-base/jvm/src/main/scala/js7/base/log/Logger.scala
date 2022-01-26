@@ -1,9 +1,13 @@
 package js7.base.log
 
+import cats.effect.ExitCase.{Canceled, Completed, Error}
 import com.typesafe.scalalogging.{Logger => ScalaLogger}
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.implicitClass
+import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.base.utils.StackTraces.StackTraceThrowable
+import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
+import monix.eval.Task
 import org.slf4j.{LoggerFactory, Marker, MarkerFactory}
 import scala.reflect.ClassTag
 
@@ -43,15 +47,38 @@ object Logger
     c.getName stripSuffix "$"
 
   object ops {
-    implicit final class RichScalaLogger(private val underlying: ScalaLogger) extends AnyVal
+    implicit final class RichScalaLogger(private val logger: ScalaLogger) extends AnyVal
     {
       def error(problem: Problem): Unit =
         problem.throwableOption match {
           case Some(t) =>
-            underlying.error(problem.toString, t.appendCurrentStackTrace)
+            logger.error(problem.toString, t.appendCurrentStackTrace)
           case None =>
-            underlying.error(problem.toString)
+            logger.error(problem.toString)
         }
+    }
+  }
+
+  object syntax {
+    implicit final class RichScalaLogger(private val logger: ScalaLogger) extends AnyVal
+    {
+      def debugTask[A](task: Task[A])(implicit src: sourcecode.Name): Task[A] =
+        debugTask(src.value)(task)
+
+      def debugTask[A](function: String, args: String = "")(task: Task[A]): Task[A] = {
+        def logReturn(msg: AnyRef) = Task(logger.debug(s"︎↙︎ $function => $msg"))
+        Task.defer {
+          logger.debug("↘︎ " + function + args.emptyToNone.fold("")(" " + _) + " ...")
+          task.tapEval {
+            case left: Left[_, _] => logReturn(left)
+            case _ => logReturn("Completed")
+          }
+        }.guaranteeCase {
+            case Completed => Task.unit
+            case Error(t) => logReturn(t.toStringWithCauses)
+            case Canceled => logReturn(Canceled)
+        }
+      }
     }
   }
 }

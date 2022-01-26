@@ -16,6 +16,7 @@ import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted}
 import js7.base.io.file.watch.DirectoryEventDelayer.syntax.RichDelayLineObservable
 import js7.base.io.file.watch.{DirectoryWatcher, WatchOptions}
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax._
 import js7.base.monixutils.AsyncMap
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked
@@ -102,12 +103,12 @@ final class FileWatchManager(
         }
     }
 
-  def remove(orderWatchPath: OrderWatchPath): Task[Checked[Unit]] =
-    lockKeeper.lock(orderWatchPath) {
+  def remove(fileWatchPath: OrderWatchPath): Task[Checked[Unit]] =
+    lockKeeper.lock(fileWatchPath) {
       persistence
         .persist(agentState =>
           Right(
-            agentState.allFileWatchesState.pathToFileWatchState.get(orderWatchPath) match {
+            agentState.allFileWatchesState.pathToFileWatchState.get(fileWatchPath) match {
               case None => Nil
               case Some(fileWatchState) =>
                 // When a FileWatch is detached, all arisen files vanish now,
@@ -115,17 +116,17 @@ final class FileWatchManager(
                 // to allow the Controller to move the FileWatch to a different Agent,
                 // because the other Agent will start with an empty FileWatchState.
                 fileWatchState.allFilesVanished.toVector :+
-                  (NoKey <-: ItemDetached(orderWatchPath, ownAgentPath))
+                  (NoKey <-: ItemDetached(fileWatchPath, ownAgentPath))
             }))
         .flatMapT { case (_, agentState) =>
-          stopWatching(orderWatchPath)
+          stopWatching(fileWatchPath)
             .as(Checked.unit)
         }
     }
 
-  private def startWatching(fileWatchState: FileWatchState): Task[Checked[Unit]] =
-    Task.defer {
-      val id = fileWatchState.fileWatch.path
+  private def startWatching(fileWatchState: FileWatchState): Task[Checked[Unit]] = {
+    val id = fileWatchState.fileWatch.path
+    logger.debugTask(s"startWatching $id")(Task.defer {
       val stop = PublishSubject[Unit]()
       watch(fileWatchState, stop)
         .traverse(observable =>
@@ -139,15 +140,16 @@ final class FileWatchManager(
               previous.getOrElse(Task.unit) >>
                 observable.start
                   .map(fiber =>
-                    // The delayed task to register for the next update:
-                    Task.defer {
+                    // Register the stopper, a joining task for the next update:
+                    logger.debugTask(s"stop watching $id")(Task.defer {
                       stop.onComplete()
                       fiber.join
                         .logWhenItTakesLonger(s"startWatching $id: stopping previous watcher")
-                    }))
+                    })))
             .void)
         .logWhenItTakesLonger(s"startWatching $id")
-    }
+    })
+  }
 
   private def stopWatching(id: OrderWatchPath): Task[Unit] =
     idToStopper
