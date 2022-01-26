@@ -98,9 +98,8 @@ final class FileWatchManager(
               case None =>
                 (NoKey <-: ItemAttachedToMe(fileWatch)) :: Nil
             }))
-        .flatMapT { case (_, agentState) =>
-          startWatching(agentState.allFileWatchesState.pathToFileWatchState(fileWatch.path))
-        }
+    }.flatMapT { case (_, agentState) =>
+      startWatching(agentState.allFileWatchesState.pathToFileWatchState(fileWatch.path))
     }
 
   def remove(fileWatchPath: OrderWatchPath): Task[Checked[Unit]] =
