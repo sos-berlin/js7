@@ -216,6 +216,7 @@ final class CancelOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTes
     val order = FreshOrder(OrderId("CANCEL-CHILD"), forkJoinIfFailedWorkflow.path, Map("sleep" -> 2))
     controller.addOrderBlocking(order)
     eventWatch.await[OrderProcessingStarted](_.key == order.id / "🥕")
+    sleep(100.ms)  // Try to avoid "killed before start"
 
     val mode = CancellationMode.FreshOrStarted(Some(CancellationMode.Kill()))
     controllerApi.executeCommand(CancelOrders(Set(order.id  / "🥕"), mode))
