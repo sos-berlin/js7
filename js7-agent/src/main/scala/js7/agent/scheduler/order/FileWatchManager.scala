@@ -137,8 +137,12 @@ final class FileWatchManager(
           idToStopper
             .update(fileWatchState.id, previous =>
               // Wait for previous Observable to complete (stop and fiber.join)
-              previous.getOrElse(Task.unit) >>
-                observable.start
+              previous.getOrElse(Task.unit) *>
+                observable
+                  .onCancelRaiseError(CanceledException)
+                  .onErrorHandle(throwable =>
+                    logger.error(throwable.toStringWithCauses))  // Ignore ???
+                  .start
                   .map(fiber =>
                     // Register the stopper, a joining task for the next update:
                     logger.debugTask(s"stop watching $id")(Task.defer {
@@ -255,6 +259,7 @@ final class FileWatchManager(
 object FileWatchManager
 {
   private val logger = Logger(getClass)
+  private val CanceledException = new Exception
 
   def relativePathToOrderId(fileWatch: FileWatch, relativePath: String): Option[Checked[OrderId]] = {
     lazy val default = OrderId.checked(s"file:${fileWatch.path.string}:$relativePath")
