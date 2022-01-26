@@ -473,14 +473,14 @@ with Stash
 
     case DetachOrder(orderId) =>
       if (shuttingDown)
-        Future.failed(AgentIsShuttingDown.throwable)
+        Future.successful(AgentIsShuttingDown)
       else
         orderRegister.get(orderId) match {
           case Some(orderEntry) =>
             // TODO Antwort erst nach OrderDetached _und_ Terminated senden, wenn Actor aus orderRegister entfernt worden ist
             // Bei langsamem Agenten, schnellem Controller-Wiederanlauf kann DetachOrder doppelt kommen, während OrderActor sich noch beendet.
             persistence.currentState.idToOrder.checked(orderId).flatMap(_.detaching) match {
-              case Left(problem) => Future.failed(problem.throwable)
+              case Left(problem) => Future.successful(Left(problem))
               case Right(_) =>
                 val promise = Promise[Unit]()
                 orderEntry.detachResponses ::= promise
