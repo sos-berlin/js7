@@ -4,7 +4,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.data.event.KeyedEvent
 import js7.data.job.JobKey
 import js7.data.order.OrderEvent.{OrderCancelled, OrderDeleted, OrderDetachable, OrderForked, OrderJoined, OrderProcessed}
-import js7.data.order.{Order, OrderEvent, OrderId, Outcome}
+import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.state.OrderEventHandler.FollowUp
 import js7.data.workflow.{Workflow, WorkflowId}
 
@@ -26,7 +26,7 @@ final class OrderEventHandler(
   private def handleEvent(previousOrder: Order[Order.State], orderId: OrderId, event: OrderEvent)
   : Checked[Seq[FollowUp]] =
     event match {
-      case event: OrderProcessed if event.outcome != Outcome.RecoveryGeneratedOutcome =>
+      case _: OrderProcessed =>
         for {
           workflow <- idToWorkflow(previousOrder.workflowId)
           jobKey <- workflow.positionToJobKey(previousOrder.position)

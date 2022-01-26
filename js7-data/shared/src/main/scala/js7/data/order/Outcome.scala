@@ -29,7 +29,18 @@ object Outcome
   val succeeded: Completed = Succeeded.empty
   val succeededRC0 = Succeeded.returnCode0
   val failed = new Failed(None, Map.empty)
-  val RecoveryGeneratedOutcome = new Disrupted(Disrupted.JobSchedulerRestarted)
+
+  def leftToFailed(checked: Checked[Outcome]): Outcome =
+    checked match {
+      case Left(problem) => Outcome.Failed.fromProblem(problem)
+      case Right(o) => o
+    }
+
+  def leftToDisrupted(checked: Checked[Outcome]): Outcome =
+    checked match {
+      case Left(problem) => Outcome.Disrupted(problem)
+      case Right(o) => o
+    }
 
   @TestOnly
   def failedWithSignal(signal: ProcessSignal) =

@@ -2,28 +2,25 @@ package js7.agent.scheduler.order
 
 import akka.actor.{ActorRef, DeadLetterSuppression, Props, Status}
 import akka.pattern.pipe
-import com.typesafe.config.Config
 import js7.agent.data.AgentState
 import js7.agent.scheduler.order.OrderActor._
 import js7.agent.subagent.SubagentKeeper
-import js7.base.configutils.Configs.RichConfig
 import js7.base.generic.Completed
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.log.Logger
+import js7.base.monixutils.MonixBase.syntax.RichCheckedTask
 import js7.base.problem.Checked.Ops
-import js7.base.time.JavaTimeConverters._
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.order.OrderEvent._
-import js7.data.order.{Order, OrderEvent, OrderId, OrderMark, Outcome}
+import js7.data.order.{Order, OrderEvent, OrderId, OrderMark}
 import js7.data.value.expression.Expression
 import js7.journal.configuration.JournalConf
 import js7.journal.{JournalActor, KeyedJournalingActor}
 import monix.execution.Scheduler
 import scala.concurrent.Future
-import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 import shapeless.tag.@@
 
@@ -34,13 +31,12 @@ final class OrderActor private(
   orderId: OrderId,
   subagentKeeper: SubagentKeeper,
   protected val journalActor: ActorRef @@ JournalActor.type,
-  conf: Conf)
+  protected val journalConf: JournalConf)
   (implicit protected val scheduler: Scheduler)
 extends KeyedJournalingActor[AgentState, OrderEvent]
 {
   private val logger = Logger.withPrefix[this.type](orderId.toString)
 
-  protected def journalConf = conf.journalConf
   private var order: Order[Order.State] = null
   private var terminating = false
 
@@ -50,10 +46,16 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
     case Input.Recover(o) =>
       assertThat(order == null)
       order = o
-      order.state match {
-        case _: Order.Processing => handleEvent(OrderProcessed(Outcome.RecoveryGeneratedOutcome))
-        case _ => becomeAsStateOf(order, force = true)
+      for (o <- order.ifState[Order.Processing]) {
+        subagentKeeper
+          .continueProcessingOrder(
+            o,
+            events => self ! Internal.UpdateEvents(events))
+          .materializeIntoChecked
+          .map(_.onProblemHandle(problem => logger.error(s"continueProcessingOrder: $problem")))
+          .runAsyncAndForget
       }
+      becomeAsStateOf(order, force = true)
       logger.debug(s"Recovered $order")
       sender() ! Output.RecoveryFinished(order)
 
@@ -73,7 +75,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
             historicOutcomes, agentPath, parent, mark,
             isSuspended = isSuspended, deleteWhenTerminated = removeWhenTerminated)) {
             (event, updatedState) =>
-              update(event :: Nil, updatedState)
+              update(event :: Nil)
               Completed
           } pipeTo sender()
 
@@ -102,15 +104,12 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
             .processOrder(
               order.checkedState[Order.IsFreshOrReady].orThrow,
               defaultArguments,
-              (events, state) => self ! Internal.UpdateEvents(events, state))
+              events => self ! Internal.UpdateEvents(events))
             .materialize
             .foreach {
-              case Failure(t) => logger.error(t.toStringWithCauses)  // ???
+              case Failure(t) => logger.error(t.toStringWithCauses)  // OrderFailed ???
               case Success(Left(problem)) => logger.error(problem.toString)  // ???
               case Success(Right(())) =>
-                // FIXME Maybe to late due to concurrent event processing
-                //  leading to DeadLetter
-                self ! Internal.OrderProcessed
             }
         }
 
@@ -120,23 +119,19 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
 
   private def processing: Receive =
     receiveCommand orElse receiveEvent orElse {
-      case Internal.UpdateEvents(events, updatedState) =>
-        update(events, updatedState)
-
-      case Internal.OrderProcessed =>
-        maybeKillOrder()
-        if (terminating) {
-          context.stop(self)
-        } else {
-          become("processed")(processed)
-        }
+      case Internal.UpdateEvents(events) =>
+        update(events)
 
       case Input.Terminate(signal) =>
         terminating = true
-        for (signal <- signal) {
-          subagentKeeper
-            .killProcess(orderId, signal)
-            .runAsyncAndForget
+        if (subagentKeeper.orderIsLocal(orderId)) {
+          for (signal <- signal) {
+            subagentKeeper
+              .killProcess(orderId, signal)
+              .runAsyncAndForget
+          }
+        } else {
+          context.stop(self)
         }
     }
 
@@ -166,7 +161,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
           Future.successful(Completed)
         else
           persistTransaction(events) { (event, updatedState) =>
-            update(events, updatedState)
+            update(events)
             if (terminating) {
               context.stop(self)
             } else
@@ -206,7 +201,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
       anOrder.state match {
         case _: Order.Fresh             => become("fresh")(fresh)
         case _: Order.Ready             => become("ready")(ready)
-        case _: Order.Processing        => sys.error("Unexpected Order.state 'Processing'")  // Not handled here
+        case _: Order.Processing        => become("processing")(processing)
         case _: Order.Processed         => become("processed")(processed)
         case _: Order.ProcessingKilled  => become("processingKilled")(processingKilled)
         case _: Order.DelayedAfterError => become("delayedAfterError")(delayedAfterError)
@@ -241,13 +236,23 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
     sender() ! Status.Failure(new IllegalStateException(msg))
   }
 
-  private def update(events: Seq[OrderEvent], updatedState: AgentState) = {
+  private def update(events: Seq[OrderEvent]) = {
     events foreach updateOrder
     context.parent ! Output.OrderChanged(order, events)
-    if (events.last == OrderDetached) {
-      logger.trace("Stopping after OrderDetached")
-      order = null
-      context.stop(self)
+    events.last match {
+      case OrderDetached =>
+        logger.trace("Stopping after OrderDetached")
+        order = null
+        context.stop(self)
+
+      case _: OrderProcessed =>
+        maybeKillOrder()
+        if (terminating) {
+          context.stop(self)
+        } else {
+          become("processed")(processed)
+        }
+      case _ =>
     }
   }
 
@@ -286,13 +291,12 @@ private[order] object OrderActor
     orderId: OrderId,
     subagentKeeper: SubagentKeeper,
     journalActor: ActorRef @@ JournalActor.type,
-    conf: OrderActor.Conf)
+    journalConf: JournalConf)
     (implicit s: Scheduler) =
-    Props { new OrderActor(orderId, subagentKeeper, journalActor = journalActor, conf) }
+    Props { new OrderActor(orderId, subagentKeeper, journalActor = journalActor, journalConf) }
 
   private object Internal {
-    final case class UpdateEvents(events: Seq[OrderEvent], updated: AgentState)
-    case object OrderProcessed
+    final case class UpdateEvents(events: Seq[OrderEvent])
   }
 
   sealed trait Command
@@ -316,30 +320,5 @@ private[order] object OrderActor
   object Output {
     final case class RecoveryFinished(order: Order[Order.State])
     final case class OrderChanged(order: Order[Order.State], events: Seq[OrderEvent])
-  }
-
-  final case class Conf(
-    stdoutCommitDelay: FiniteDuration,
-    charBufferSize: Int,
-    journalConf: JournalConf,
-    stdouterr: StdouterrConf)
-  object Conf {
-    def apply(config: Config, journalConf: JournalConf) = {
-      val outErrConf = StdouterrConf(config)
-      new Conf(
-        stdoutCommitDelay = config.getDuration("js7.order.stdout-stderr.commit-delay").toFiniteDuration,
-        charBufferSize    = config.memorySizeAsInt("js7.order.stdout-stderr.char-buffer-size").orThrow
-                              .min(outErrConf.chunkSize),
-        journalConf,
-        outErrConf)
-    }
-  }
-
-  final case class StdouterrConf(chunkSize: Int, delay: FiniteDuration/*, noDelayAfter: FiniteDuration*/)
-  object StdouterrConf {
-    def apply(config: Config): StdouterrConf = new StdouterrConf(
-      chunkSize    = config.memorySizeAsInt("js7.order.stdout-stderr.chunk-size").orThrow,
-      delay        = config.getDuration("js7.order.stdout-stderr.delay").toFiniteDuration)
-      //noDelayAfter = config.getDuration("js7.order.stdout-stderr.no-delay-after").toFiniteDuration)
   }
 }

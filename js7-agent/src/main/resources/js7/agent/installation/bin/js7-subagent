@@ -99,7 +99,6 @@ if $log4Async; then :
   javaOptions+=("-Dlog4j2.asyncLoggerWaitStrategy=Block")  # Uses less CPU when idling than default "Timeout"
   javaOptions+=("-Djs7.log4j.immediateFlush=false")
 fi
-javaOptions+=("-Dfile.encoding=UTF-8")
 
 agentOptions+=("--config-directory=$config")
 agentOptions+=("--data-directory=$data")
@@ -130,6 +129,7 @@ while true; do
     "$java"
     "${javaOptions[@]}"
     "${loopJavaOptions[@]}"
+    "${standardJavaOptions[@]}"
     -classpath "$classpathString"
     js7.agent.main.AgentMain
     "${agentOptions[@]}")

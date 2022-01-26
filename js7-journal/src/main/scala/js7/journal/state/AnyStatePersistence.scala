@@ -2,6 +2,7 @@ package js7.journal.state
 
 import js7.base.problem.Checked
 import js7.base.utils.LockKeeper
+import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.data.event.{Event, JournaledState, KeyedEvent, Stamped}
 import js7.journal.CommitOptions
 import js7.journal.watch.EventWatch
@@ -16,7 +17,7 @@ trait AnyStatePersistence
 
   def currentState: S
 
-  final def state: Task[S] =
+  final val state: Task[S] =
     Task(currentState)
 
   final def awaitCurrentState: Task[S] =
@@ -30,6 +31,16 @@ trait AnyStatePersistence
     keyedEvent: KeyedEvent[E],
     options: CommitOptions = CommitOptions.default)
   : Task[Checked[(Stamped[KeyedEvent[E]], S)]]
+
+  final def persistKeyedEvent[E <: Event](
+    keyedEvent: KeyedEvent[E],
+    options: CommitOptions,
+    commitLater: Boolean)
+  : Task[Checked[Unit]] =
+    if (commitLater)
+      persistKeyedEventLater(keyedEvent, options)
+    else
+      persistKeyedEvent(keyedEvent, options).rightAs(())
 
   def persistKeyedEvents[E <: Event](
     keyedEvents: Seq[KeyedEvent[E]],

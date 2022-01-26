@@ -190,13 +190,14 @@ private object OrderActorTest {
     private val agentConf = AgentConfiguration.forTest(dir, name = "OrderActorTest", config)
     val subagentKeeper =
       new SubagentKeeper(persistence, jobLauncherConf, agentConf, context.system)
-    subagentKeeper.start(TestAgentPath, localSubagentId = None, controllerId).await(99.s)
+    subagentKeeper.initialize(TestAgentPath, localSubagentId = None, controllerId).await(99.s)
+    subagentKeeper.start.await(99.s)
 
     private val orderActor = watch(actorOf(
       OrderActor.props(TestOrder.id,
         subagentKeeper,
         persistence.journalActor,
-        OrderActor.Conf(config, JournalConf.fromConfig(config))),
+        JournalConf.fromConfig(config)),
       s"Order-${TestOrder.id.string}"))
 
     private val orderChangeds = mutable.Buffer.empty[OrderActor.Output.OrderChanged]
@@ -253,7 +254,7 @@ private object OrderActorTest {
       case Stamped(_, _, KeyedEvent(TestOrder.id, event: OrderEvent)) =>  // Duplicate to OrderChanged, in unknown order
         event match {
           case OrderStdWritten(t, chunk) =>
-            assert(events.last == OrderProcessingStarted)
+            assert(events.last.isInstanceOf[OrderProcessingStarted])
             stdoutStderr(t) ++= chunk
 
           case _: OrderProcessed =>

@@ -26,7 +26,7 @@ import monix.execution.Scheduler
 final class StandaloneSubagent(
   protected val subagentConf: SubagentConf,
   protected val jobLauncherConf: JobLauncherConf,
-  protected val journal: InMemoryJournal[SubagentState],
+  val journal: InMemoryJournal[SubagentState],
   implicit val scheduler: Scheduler,
   implicit val actorSystem: ActorSystem)
 extends SubagentCommandExecutor
@@ -57,9 +57,6 @@ extends SubagentCommandExecutor
       .map { case (_, releaseWebServer) =>
         logger.info("Subagent is ready" +
           "\n" + "─" * 80)
-        //logger.info(s"Subagent '${subagentId.string}' is ready " +
-        //  SubagentMain.runningSince.fold("")(o => s" (after ${o.elapsed.pretty})") +
-        //  "\n" + "─" * 80)
         release := releaseWebServer
       }
       .as(this)

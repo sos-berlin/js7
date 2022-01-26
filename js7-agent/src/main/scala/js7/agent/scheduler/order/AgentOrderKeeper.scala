@@ -17,7 +17,7 @@ import js7.base.crypt.{SignatureVerifier, Signed}
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.log.Logger.ops._
-import js7.base.monixutils.MonixBase.syntax.RichMonixTask
+import js7.base.monixutils.MonixBase.syntax.{RichCheckedTask, RichMonixTask}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.thread.IOExecutor
@@ -56,6 +56,7 @@ import js7.journal.state.FileStatePersistence
 import js7.journal.{JournalActor, MainJournalingActor}
 import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
+import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline.now
@@ -98,7 +99,6 @@ with Stash
   private val jobRegister = mutable.Map.empty[JobKey, JobEntry]
   private val workflowRegister = new WorkflowRegister(ownAgentPath)
   private val fileWatchManager = new FileWatchManager(ownAgentPath, persistence, conf.config)
-  private val orderActorConf = OrderActor.Conf(conf.config, conf.journalConf)
   private val orderRegister = new OrderRegister
   private val orderEventHandler = new OrderEventHandler(
     workflowRegister.idToWorkflow.checked,
@@ -136,7 +136,8 @@ with Stash
     }
 
     def onStillTerminating() =
-      logger.info(s"Still terminating, waiting for ${orderRegister.size} orders, ${jobRegister.size} jobs" +
+      logger.info(s"Still terminating, waiting for ${orderRegister.size} orders" +
+        s", ${jobRegister.size} jobs" +
         (!snapshotFinished ?? ", and the snapshot"))
 
     def onSnapshotTaken(): Unit =
@@ -146,7 +147,7 @@ with Stash
       }
 
     def continue() =
-      for (terminate <- shutDownCommand) {
+      for (shutDown <- shutDownCommand) {
         logger.trace(s"termination.continue: ${orderRegister.size} orders, " +
           jobRegister.size + " jobs" +
           (snapshotFinished ?? ", snapshot taken"))
@@ -154,7 +155,7 @@ with Stash
           if (!terminatingOrders) {
             terminatingOrders = true
             for (o <- orderRegister.values if !o.isDetaching) {
-              o.actor ! OrderActor.Input.Terminate(terminate.processSignal)
+              o.actor ! OrderActor.Input.Terminate(shutDown.processSignal/*only local Subagent*/)
             }
           }
           if (orderRegister.isEmpty) {
@@ -221,37 +222,37 @@ with Stash
           }
         }
 
+        fileWatchManager.start
+          .map(_.orThrow)  // How to handle a failure, due to missing environment variable ???
+          .runAsyncAndForget
+
+        // TODO AgentReady should be the first event ?
         persist(
           AgentReady(
             ZoneId.systemDefault.getId,
             totalRunningTime = totalRunningSince.elapsed.roundUpToNext(1.ms))
         ) { (_, _) =>
-          become("ready")(ready)
-          unstashAll()
-          logger.info(s"Agent '${ownAgentPath.string}' is ready" +
-            AgentMain.runningSince.fold("")(o => s" (after ${o.elapsed.pretty})") +
-            "\n" + "─" * 80)
+          self ! Internal.OrdersRecovered(recoveredState)
         }
-
-        fileWatchManager.start
-          .map(_.orThrow)  // How to handle a failure, due to missing environment variable ???
-          .runAsyncAndForget
-
-        subagentKeeper.start(ownAgentPath, localSubagentId, controllerId)
-          .runToFuture
-          .onComplete(tried => self ! Internal.SubagentKeeperStarted(tried))
       }
 
     val receive: Receive = {
-      case OrderActor.Output.RecoveryFinished(order) =>
-        orderRegister(order.id).order = order
-        proceedWithOrder(order.id)
-        remainingOrders -= 1
-        continue()
-
       case Internal.JournalIsReady(state) =>
         logger.info(s"${orderRegister.size} Orders and ${workflowRegister.size} Workflows recovered")
-        state.keyToItem.values foreach proceedWithItem
+        subagentKeeper
+          .initialize(ownAgentPath, localSubagentId, controllerId)
+          .*>(
+            subagentKeeper
+              .addOrChangeMultiple(recoveredState.idToSubagentRefState.values)
+              .map {
+                case Left(problem) => logger.error(problem.toString)  // ???
+                case _ =>
+              })
+          .runToFuture
+          .onComplete(tried => self ! Internal.SubagentKeeperInitialized(state, tried))
+
+      case Internal.SubagentKeeperInitialized(state, tried) =>
+        for (t <- tried.failed) throw t.appendCurrentStackTrace
 
         for (workflow <- state.idToWorkflow.values)
           wrapException(s"Error while recovering ${workflow.path}") {
@@ -271,8 +272,37 @@ with Stash
 
         continue()
 
-      case Internal.SubagentKeeperStarted(tried) =>
-        for (t <- tried.failed) throw t.appendCurrentStackTrace
+      case OrderActor.Output.RecoveryFinished(order) =>
+        orderRegister(order.id).order = order
+        remainingOrders -= 1
+        continue()
+
+      case Internal.OrdersRecovered(state) =>
+        state.idToOrder.values.view.flatMap(_.ifState[Order.Processing]).foreach { order =>
+          for (jobKey <- state.jobKey(order.workflowPosition).toOption) {
+            jobRegister(jobKey).recoverProcessingOrder(order)
+          }
+        }
+        subagentKeeper.start
+          .runToFuture
+          .onComplete { tried =>
+            for (t <- tried.failed) logger.error("subagentKeeper.start: " + t.toStringWithCauses)
+            self ! Internal.SubagentKeeperStarted
+          }
+
+      case Internal.SubagentKeeperStarted =>
+        for (order <- persistence.currentState.idToOrder.values) {
+          proceedWithOrder(order.id)
+        }
+        self ! Internal.Ready
+
+      case Internal.Ready =>
+        logger.info(s"Agent '${ownAgentPath.string}' is ready" +
+          AgentMain.runningSince.fold("")(o => s" (after ${o.elapsed.pretty})") +
+          "\n" + "─" * 80)
+
+        become("ready")(ready)
+        unstashAll()
 
       case _: AgentCommand.ShutDown =>
         logger.info("Command 'ShutDown' terminates Agent while recovering")
@@ -325,9 +355,6 @@ with Stash
       for (jobEntry <- jobRegister.get(jobKey)) {
         tryStartProcessing(jobEntry)
       }
-
-    case Internal.SubagentKeeperStarted(tried) =>
-      for (t <- tried.failed) throw t.appendCurrentStackTrace
   }
 
   private def processCommand(cmd: AgentCommand): Future[Checked[Response]] = cmd match {
@@ -435,19 +462,24 @@ with Stash
   private def proceedWithItem(item: InventoryItem): Unit =
     item match {
       case subagentRef: SubagentRef =>
-        for (subagentRefState <- persistence.currentState.idToSubagentRefState.get(subagentRef.id))
-          yield subagentKeeper
-            .proceed(subagentRefState)
-            .onErrorHandle(t =>
-              logger.error(s"proceedWithItem(${subagentRef.id}: ${t.toStringWithCauses})", t))
+        proceedWithSubagentRef(subagentRef)
+          .map(_.orThrow)
+          .onErrorHandle(t => logger.error(s"${item.key}: ${t.toStringWithCauses}"))
             .runAsyncAndForget/*???*/
       case _ =>
     }
 
+  private def proceedWithSubagentRef(subagentRef: SubagentRef): Task[Checked[Unit]] =
+    persistence.state.flatMap(_
+      .idToSubagentRefState.get(subagentRef.id)
+      .fold(Task.pure(Checked.unit))(subagentRefState => subagentKeeper
+        .proceed(subagentRefState)
+        .materializeIntoChecked))
+
   private def processOrderCommand(cmd: OrderCommand): Future[Checked[Response]] = cmd match {
     case AttachOrder(order) =>
       if (shuttingDown)
-        Future.failed(AgentIsShuttingDown.throwable)
+        Future.successful(Left(AgentIsShuttingDown))
       else
         order.attached match {
           case Left(problem) => Future.successful(Left(problem))
@@ -578,7 +610,7 @@ with Stash
 
   private def newOrderActor(order: Order[Order.State]) =
     watch(actorOf(
-      OrderActor.props(order.id, subagentKeeper, journalActor = journalActor, orderActorConf),
+      OrderActor.props(order.id, subagentKeeper, journalActor = journalActor, journalConf),
       name = uniqueActorName(encodeAsActorName("Order:" + order.id.string))))
 
   private def handleOrderEvent(order: Order[Order.State], event: OrderEvent): Unit = {
@@ -765,7 +797,10 @@ object AgentOrderKeeper {
   private object Internal {
     final case class Recover(recovered: Recovered[AgentState])
     final case class JournalIsReady(agentState: AgentState)
-    final case class SubagentKeeperStarted(tried: Try[Unit])
+    final case class SubagentKeeperInitialized(agentState: AgentState, tried: Try[Unit])
+    final case class OrdersRecovered(agentState: AgentState)
+    case object SubagentKeeperStarted
+    case object Ready
     final case class Due(orderId: OrderId)
     final case class JobDue(jobKey: JobKey)
     case object JobDriverStopped
@@ -790,6 +825,11 @@ object AgentOrderKeeper {
 
     def close(): Unit =
       admissionTimeIntervalSwitch.cancel()
+
+    def recoverProcessingOrder(order: Order[Order.Processing]): Unit = {
+      taskCount += 1
+      queue.recoverProcessingOrder(order)
+    }
 
     def checkAdmissionTimeInterval(clock: AlarmClock)(onPermissionGranted: => Unit): Boolean =
       admissionTimeIntervalSwitch.updateAndCheck(onPermissionGranted)(clock)
@@ -823,6 +863,9 @@ object AgentOrderKeeper {
       queue += orderId
       queueSet += orderId
     }
+
+    def recoverProcessingOrder(order: Order[Order.Processing]): Unit =
+      inProcess += order.id
 
     def -=(orderId: OrderId): Unit =
       remove(orderId)

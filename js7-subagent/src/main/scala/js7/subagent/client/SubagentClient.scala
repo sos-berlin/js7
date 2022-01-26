@@ -31,17 +31,23 @@ extends /*EventApi with*/ SessionApi.HasUserAndPassword with HttpSessionApi with
 
   protected def baseUri = admission.uri
 
-  protected val sessionUri = uri / "subagent" / "api" / "session"
+  private val apiUri = uri / "subagent" / "api"
+  protected val sessionUri = apiUri / "session"
+  private val commandUri = apiUri / "command"
+  private val eventUri = apiUri / "event"
 
   protected val httpClient = this
 
   protected def userAndPassword = admission.userAndPassword
 
-  def executeSubagentCommand(numbered: Numbered[SubagentCommand]): Task[numbered.value.Response] =
+
+  def executeSubagentCommand[A <: SubagentCommand](numbered: Numbered[A])
+  : Task[numbered.value.Response] =
     retryIfSessionLost()(
       httpClient
         .post[Numbered[SubagentCommand], SubagentCommand.Response](
-          uri / "subagent" / "api" / "command", numbered)
+          commandUri,
+          numbered.asInstanceOf[Numbered[SubagentCommand]])
         .map(_.asInstanceOf[numbered.value.Response]))
 
   def eventObservable[E <: Event: ClassTag](
@@ -51,7 +57,7 @@ extends /*EventApi with*/ SessionApi.HasUserAndPassword with HttpSessionApi with
   : Task[Observable[Stamped[KeyedEvent[E]]]] =
     httpClient.getDecodedLinesObservable[Stamped[KeyedEvent[E]]](
       Uri(
-        (uri / "subagent" / "api" / "event").string +
+        eventUri.string +
           encodeQuery(
            (heartbeat.map("heartbeat" -> _.toDecimalString)) ++
               request.toQueryParameters)),

@@ -1,36 +1,39 @@
 package js7.agent.subagent
 
 import akka.actor.ActorSystem
+import cats.effect.Resource
+import cats.syntax.parallel._
+import cats.syntax.traverse._
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.subagent.SubagentKeeper._
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString
+import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGKILL
-import js7.base.io.process.{ProcessSignal, StdoutOrStderr}
 import js7.base.log.Logger
-import js7.base.monixutils.MonixBase.syntax.RichMonixTask
+import js7.base.log.Logger.syntax._
+import js7.base.monixutils.MonixBase.syntax.{RichCheckedTask, RichMonixTask}
 import js7.base.monixutils.{AsyncMap, AsyncVariable}
+import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
-import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime._
 import js7.base.utils.Collections.RichMap
+import js7.base.utils.Collections.implicits.RichIterableOnce
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
-import js7.data.execution.workflow.instructions.ScheduleSimulator.Scheduled
-import js7.data.order.OrderEvent.{LegacySubagentId, OrderCoreEvent, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten}
-import js7.data.order.{Order, OrderId}
+import js7.data.event.{KeyedEvent, Stamped}
+import js7.data.order.OrderEvent.{LegacySubagentId, OrderCoreEvent, OrderProcessed, OrderProcessingStarted, OrderStarted}
+import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState}
 import js7.data.value.expression.Expression
-import js7.journal.CommitOptions
 import js7.journal.state.StatePersistence
 import js7.launcher.configuration.JobLauncherConf
 import js7.subagent.LocalSubagentDriver
 import js7.subagent.client.SubagentDriver
 import monix.eval.{Coeval, Task}
-import monix.execution.Scheduler
 import monix.reactive.Observable
 import scala.concurrent.Promise
 
@@ -40,95 +43,161 @@ final class SubagentKeeper(
   agentConf: AgentConfiguration,
   actorSystem: ActorSystem)
 {
+  private val driverConf = SubagentDriver.Conf.fromConfig(agentConf.config)  // TODO
   private val mutableFixedPriority = new FixedPriority
-  private val stdoutCommitDelay = agentConf.config
-    .getDuration("js7.order.stdout-stderr.commit-delay").toFiniteDuration
-  private val started = SetOnce[Started]
+  private val initialized = SetOnce[Initialized]
   private val state = AsyncVariable[State](State.empty)
-  private val orderToWaitForDriver = AsyncMap.empty[OrderId, Promise[Unit]]
-  private val orderToDriver = AsyncMap.empty[OrderId, SubagentDriver]
+  private val orderToWaitForSubagent = AsyncMap.empty[OrderId, Promise[Unit]]
+  private val orderToSubagent = AsyncMap.empty[OrderId, SubagentDriver]
 
-  def start(agentPath: AgentPath, localSubagentId: Option[SubagentId], controllerId: ControllerId)
+  def initialize(agentPath: AgentPath, localSubagentId: Option[SubagentId], controllerId: ControllerId)
   : Task[Unit] =
     Task.deferAction { implicit scheduler =>
-      val started = Started(agentPath, localSubagentId, controllerId)
-      this.started := started
+      val initialized = Initialized(agentPath, localSubagentId, controllerId)
+      this.initialized := initialized
       if (localSubagentId.isDefined)
         Task.unit
       else  // COMPATIBLE with v2.1 AgentRef
         state
-          .update(state => Task.defer {
-            val driver = newLocalSubagentDriver(LegacySubagentId, started)
-            driver.start *>
-              Task(state.insert(driver, None).orThrow)
-          })
+          .update(state => Task(state
+            .insert(
+              driver = newLocalSubagentDriver(LegacySubagentId, initialized),
+              priority = None)
+            .orThrow))
           .void
     }
 
-  private def persistStdouterr(orderId: OrderId, t: StdoutOrStderr, chunk: String): Task[Unit] =
-    persistence
-      // Don't wait for disk-sync.
-      // OrderStdWritten is followed by a OrderProcessed, then waiting for disk-sync.
-      .persistKeyedEventLater(
-        orderId <-: OrderStdWritten(t)(chunk),
-        options = CommitOptions(delay = stdoutCommitDelay))
-      .map {
-        case Left(problem) => logger.error(s"Emission of OrderStdWritten event failed: $problem")
-        case Right(_) =>
-      }
+  def start: Task[Unit] =
+    logger.debugTask(
+      Task(initialized.orThrow) *>
+        state.get.idToDriver.values
+          .toVector
+          .parUnorderedTraverse(_.start)
+          .map(_.fold_))
 
   def stop: Task[Unit] =
     state
       .updateWithResult(state => Task(
         state.clear -> state.idToDriver.values))
-      .flatMap(drivers => Task
-        .parSequenceUnordered(drivers.map(_.stop(Some(SIGKILL)))))
-      .void
+      .flatMap(drivers =>
+        drivers.toVector
+          .parUnorderedTraverse(_.stop(Some(SIGKILL)))
+          .map(_.fold_))
+
+  def orderIsLocal(orderId: OrderId): Boolean =
+    orderToSubagent.toMap.get(orderId)
+      .exists(_.isInstanceOf[LocalSubagentDriver[_]])
 
   def processOrder(
     order: Order[Order.IsFreshOrReady],
     defaultArguments: Map[String, Expression],
-    onEvents: (Seq[OrderCoreEvent], AgentState) => Unit)
+    onEvents: Seq[OrderCoreEvent] => Unit)
   : Task[Checked[Unit]] =
-    Task.defer {
-      val promise = Promise[Unit]()
-      // TODO Long lock on orderId !
-      orderToWaitForDriver.update(order.id, _ => Task.pure(promise)) *>
-        Task
-          .race(Task.fromFuture(promise.future), selectSubagentDriver)
-          .guarantee(orderToWaitForDriver.remove(order.id).void)
-          .map(_.toOption)
-          .flatMap {
-            case None => Task.pure(Left(Problem(
-              "Order has been canceled while selecting a Subagent")))
-              Task.pure(Checked.unit) // ???
+    selectSubagentDriverCancelable(order.id).flatMap {
+      case None =>
+        logger.debug(s"${order.id} has been canceled while selecting a Subagent")
+        Task.right(())
 
-            case Some(driver) =>
-              // OrderStarted automatically with first OrderProcessingStarted
-              val events = order.isState[Order.Fresh].thenList(OrderStarted) :::
-                OrderProcessingStarted(driver.subagentId) :: Nil
-              persistence.persistKeyedEvents(events.map(order.id <-: _))
-                .flatMapT { case (_, s) =>
-                  onEvents(events, s)
-                  orderToDriver.update(order.id, _ => Task.pure(driver)) *>
-                    driver
-                      .processOrder(
-                        s.idToOrder(order.id).checkedState[Order.Processing].orThrow,
-                        defaultArguments)
-                      .guarantee(orderToDriver.remove(order.id).void)
-                      .map(Right(_))
-                }
-                .flatMapT { outcome =>
-                  val event = OrderProcessed(outcome)
-                  persistence.persistKeyedEvent(order.id <-: event)
-                    .map(_.map { case (_, s) => onEvents(event :: Nil, s) })
-                    .rightAs(())
-                }
-          }
-      // TODO Fehler in OrderProcessed(Outcome.Disrupted/Failed) fangen
+      case Some(driver) =>
+        processOrderAndForwardEvents(order, defaultArguments, onEvents, driver)
     }
 
-  private def selectSubagentDriver: Task[SubagentDriver] = {
+  private def processOrderAndForwardEvents(
+    order: Order[Order.IsFreshOrReady],
+    defaultArguments: Map[String, Expression],
+    onEvents: Seq[OrderCoreEvent] => Unit,
+    subagentDriver: SubagentDriver)
+  : Task[Checked[Unit]] =
+  {
+    // TODO Race with CancelOrders ?
+    val startedEvents = order.isState[Order.Fresh].thenList(OrderStarted) :::
+      OrderProcessingStarted(subagentDriver.subagentId) :: Nil
+    persist(order.id, startedEvents, onEvents)
+      .map(_.map { case (_, s) =>
+        s.idToOrder
+          .checked(order.id)
+          .flatMap(_.checkedState[Order.Processing])
+          .orThrow
+      })
+    .flatMapT(order =>
+      forProcessingOrder(order.id, subagentDriver)(
+        subagentDriver.processOrder(order, defaultArguments)))
+    .onErrorHandle { t =>
+      logger.error(s"${order.id}: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+      Left(Problem.fromThrowable(t))
+    }
+    .map(Outcome.leftToDisrupted)
+    .flatMap(outcome =>
+      persist(order.id, OrderProcessed(outcome) :: Nil, onEvents)
+        .rightAs(()))
+  }
+
+  private def persist(
+    orderId: OrderId,
+    events: Seq[OrderCoreEvent],
+    onEvents: Seq[OrderCoreEvent] => Unit)
+  : Task[Checked[(Seq[Stamped[KeyedEvent[OrderCoreEvent]]], AgentState)]] =
+    persistence
+      .persistKeyedEvents(events.map(orderId <-: _))
+      .map(_.map { o =>
+        onEvents(events)
+        o
+      })
+
+  def continueProcessingOrder(
+    order: Order[Order.Processing],
+    onEvents: Seq[OrderCoreEvent] => Unit)
+  : Task[Checked[(OrderProcessed, AgentState)]] =
+    continueProcessingOrder2(order)
+      .flatMapT { outcome =>
+        val event = OrderProcessed(outcome)
+        persist(order.id, event :: Nil, onEvents)
+          .map(_.map { case (_, s) => event -> s })
+      }
+
+  private def continueProcessingOrder2(order: Order[Order.Processing]): Task[Checked[Outcome]] =
+    Task.defer {
+      val subagentId = order.state.subagentId
+      state.get.idToDriver.get(subagentId)
+        .match_ {
+          case None => Task.pure(Right(Outcome.Disrupted(Problem.pure(
+            s"Missing $subagentId for processing ${order.id} after Agent Director restart"))))
+
+          case Some(subagentDriver) =>
+            forProcessingOrder(order.id, subagentDriver)(
+              subagentDriver.continueProcessingOrder(order)
+            ).materializeIntoChecked
+        }
+    }
+
+  private def forProcessingOrder(
+    orderId: OrderId,
+    subagentDriver: SubagentDriver)(
+    body: Task[Checked[Outcome]])
+  : Task[Checked[Outcome]] =
+    Resource.make(
+      acquire = orderToSubagent.put(orderId, subagentDriver).void)(
+      release = _ => orderToSubagent.remove(orderId).void
+    ).use(_ => body)
+
+  private def selectSubagentDriverCancelable(orderId: OrderId): Task[Option[SubagentDriver]] =
+    cancelableWhileWaitingForSubagent(orderId)
+      .use(canceledPromise =>
+        Task.race(
+          Task.fromFuture(canceledPromise.future),
+          selectSubagentDriver))
+      .map(_.toOption)
+
+  /** While waiting for a Subagent, the Order is cancelable. */
+  private def cancelableWhileWaitingForSubagent(orderId: OrderId): Resource[Task, Promise[Unit]] =
+    Resource
+      .eval(Task(Promise[Unit]()))
+      .flatMap(canceledPromise =>
+        Resource.make(
+          acquire = orderToWaitForSubagent.put(orderId, canceledPromise))(
+          release = _ => orderToWaitForSubagent.remove(orderId).void))
+
+  private def selectSubagentDriver: Task[SubagentDriver] =
     Observable
       .repeatEvalF(Coeval {
         state.get.selectNext(mutableFixedPriority)
@@ -139,15 +208,14 @@ final class SubagentKeeper(
       }
       .flatMap(Observable.fromIterable(_))
       .headL
-  }
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): Task[Unit] =
     Task.defer {
       // TODO Race condition?
-      orderToWaitForDriver
+      orderToWaitForSubagent
         .get(orderId)
         .fold(Task.unit)(promise => Task(promise.success(())))
-        .*>(orderToDriver
+        .*>(orderToSubagent
           .get(orderId)
           .match_ {
             case None => Task(logger.warn(s"killProcess($orderId): Unknown OrderId"))
@@ -163,17 +231,30 @@ final class SubagentKeeper(
       .flatMap(_.fold(Task.unit)(_.stop(Some(SIGKILL))))
       .void
 
-  def proceed(subagentRefState: SubagentRefState): Task[Unit] = {
+  def proceed(subagentRefState: SubagentRefState): Task[Checked[Unit]] =
+    addOrChange(subagentRefState)
+      .flatMapT(_
+        .start.map(Right(_)))
+
+  def addOrChangeMultiple(subagentRefStates: Iterable[SubagentRefState]): Task[Checked[Unit]] =
+    subagentRefStates
+      .toVector
+      .traverse(addOrChange)
+      .map(_
+        .collectFirst { case Left(problem) => Left(problem) }
+        .getOrElse(Checked.unit))
+
+  def addOrChange(subagentRefState: SubagentRefState): Task[Checked[SubagentDriver]] = {
     val subagentRef = subagentRefState.subagentRef
-    started.task
-      .logWhenItTakesLonger("SubagentKeeper.started?")
-      .flatMap(started =>
+    initialized.task
+      .logWhenItTakesLonger("SubagentKeeper.initialized?")
+      .flatMap(initialized =>
         state
           .updateCheckedWithResult(state =>
             state.idToDriver
               .get(subagentRef.id)
               .match_ {
-                case Some(existing: LocalSubagentDriver) =>
+                case Some(existing: LocalSubagentDriver[_]) =>
                   // TODO Subagent.uri may have changed!
                   logger.error(s"Change of local SubagentRef? $existing -> $subagentRef}")
                   //Task.pure(Right(state -> None))
@@ -189,67 +270,61 @@ final class SubagentKeeper(
                       .onErrorHandle(t => logger.error("After change of URI of " +
                         existing.subagentId + " " + existing.subagentRef.uri + ": " +
                         t.toStringWithCauses))
-                      .start // Do not block the `state` here, so start and forget ???
+                      .startAndForget // Do not block the `state` here, so startAndForget ???
                   ).map { _ =>
                     // Replace and forget the existing driver
-                    val driver = newRemoteSubagentDriver(subagentRef, started)
+                    val driver = newRemoteSubagentDriver(subagentRef, initialized)
                     for (updated <- state.insert(driver, subagentRef.priority)) yield
-                      updated -> Some(driver)
+                      updated -> driver
                   }
 
                 case None =>
                   Task.deferAction(implicit s => Task {
-                    val subagentDriver = newSubagentDriver(subagentRef, started)
+                    val subagentDriver = newSubagentDriver(subagentRef, initialized)
                     for (s <- state.insert(subagentDriver, subagentRef.priority)) yield
-                      s -> Some(subagentDriver)
+                      s -> subagentDriver
                   })
-              })
-          .map(o => o: Checked[Option[SubagentDriver]])
-          .flatMapT {
-            case None => Task.pure(Checked.unit)
-            case Some(driver) => driver.start.map(Right(_))
-          }
-          .void)
+              }))
   }
 
-  private def newSubagentDriver(subagentRef: SubagentRef, started: Started)
-    (implicit scheduler: Scheduler) =
-    if (started.localSubagentId contains subagentRef.id)
-      newLocalSubagentDriver(subagentRef.id, started)
+  private def newSubagentDriver(subagentRef: SubagentRef, initialized: Initialized) =
+    if (initialized.localSubagentId contains subagentRef.id)
+      newLocalSubagentDriver(subagentRef.id, initialized)
     else
-      newRemoteSubagentDriver(subagentRef, started)
+      newRemoteSubagentDriver(subagentRef, initialized)
 
-  private def newLocalSubagentDriver(subagentId: SubagentId, started: Started)
-    (implicit s: Scheduler) =
+  private def newLocalSubagentDriver(subagentId: SubagentId, initialized: Initialized) =
     new LocalSubagentDriver(
       subagentId,
-      () => persistence.currentState,
-      persistStdouterr,
-      started.controllerId,
+      persistence,
+      initialized.agentPath,
+      initialized.controllerId,
       jobLauncherConf,
-      SubagentDriver.Conf.fromConfig(agentConf.config))/*TODO*/
+      driverConf)
 
-  private def newRemoteSubagentDriver(subagentRef: SubagentRef, started: Started) =
+  private def newRemoteSubagentDriver(subagentRef: SubagentRef, initialized: Initialized) =
     new RemoteSubagentDriver(
       subagentRef,
-      for (subagentId <- started.localSubagentId) yield
+      for (subagentId <- initialized.localSubagentId) yield
         UserAndPassword(
           UserId.checked(subagentId.string).orThrow,
           SecretString.empty),
       agentConf.httpsConfig,
       persistence,
-      started.agentPath,
-      started.controllerId,
-      SubagentDriver.Conf.fromConfig(actorSystem.settings.config /*TODO*/),
+      initialized.controllerId,
+      driverConf,
       agentConf.recouplingStreamReaderConf,
       actorSystem)
+
+  def isInLocalProcess(orderId: OrderId) =
+    orderToSubagent.get(orderId).exists(_.isInstanceOf[LocalSubagentDriver[_]])
 }
 
 object SubagentKeeper
 {
   private val logger = Logger[this.type]
 
-  private case class Started(
+  private case class Initialized(
     agentPath: AgentPath,
     localSubagentId: Option[SubagentId],
     controllerId: ControllerId)
@@ -282,7 +357,7 @@ object SubagentKeeper
 
     def selectNext(fixedPriority: FixedPriority): Option[SubagentDriver] =
       prioritized
-        .selectNext(fixedPriority, _.driver.isAlive)
+        .selectNext(fixedPriority, _.driver.isHeartbeating)
         .map(_.driver)
   }
   private object State {

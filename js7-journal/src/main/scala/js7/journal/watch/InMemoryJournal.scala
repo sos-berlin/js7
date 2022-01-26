@@ -10,6 +10,7 @@ import js7.journal.log.JournalLogger.SimpleLoggable
 import js7.journal.state.StatePersistence
 import js7.journal.{CommitOptions, EventIdGenerator}
 import monix.eval.Task
+import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.Deadline.now
 
 final class InMemoryJournal[S <: JournaledState[S]](
@@ -24,6 +25,7 @@ extends StatePersistence[S] with RealEventWatch
   @volatile private var _lastEventId = EventId.BeforeFirst
   @volatile private var _queue = Vector.empty[Stamped[KeyedEvent[Event]]]
   @volatile private var _state = initial
+  @volatile private var eventWatchStopped = false
   private var _eventCount = 0L
 
   private val journalLogger = new JournalLogger(
@@ -31,7 +33,7 @@ extends StatePersistence[S] with RealEventWatch
     infoLogEvents = Set.empty,
     suppressTiming = true)
 
-  def waitUntilStarted = Task.unit
+  val waitUntilStarted = Task.unit
 
   def eventWatch = this
 
@@ -84,10 +86,11 @@ extends StatePersistence[S] with RealEventWatch
           val n = _queue.length - qLen
           if (n > 0) {
             _eventCount += n
-            _lastEventId = _queue.last.eventId
-            _state = updated
+            val eventId = _queue.last.eventId
+            _lastEventId = eventId
+            _state = updated.withEventId(eventId)
             log(_eventCount, stampedEvents)
-            onEventsCommitted(_lastEventId)
+            onEventsCommitted(eventId)
           }
           stampedEvents -> updated
         }
@@ -129,8 +132,15 @@ extends StatePersistence[S] with RealEventWatch
       if (!found && after != torn) {
         //Left(Problem.pure(s"Unknown ${EventId.toString(after)}"))
         None
-      } else
+      } else if (eventWatchStopped)
+        Some(Iterator.empty)
+      else
         Some(queue.drop(index + found.toInt).iterator)
     }
   }
+
+  /** To simulate sudden death. */
+  @TestOnly
+  def stopEventWatch() =
+    eventWatchStopped = true
 }

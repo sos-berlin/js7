@@ -2,6 +2,7 @@ package js7.base.monixutils
 
 import cats.Monoid
 import cats.effect.{ExitCase, Resource}
+import cats.syntax.flatMap._
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixDeadline.monotonicClock
 import js7.base.monixutils.MonixDeadline.syntax._
@@ -10,11 +11,9 @@ import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.CloseableIterator
-import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import monix.eval.Task
 import monix.execution.Ack.{Continue, Stop}
 import monix.execution.cancelables.SerialCancelable
-import monix.execution.internal.Platform
 import monix.execution.{Ack, Cancelable, Scheduler, UncaughtExceptionReporter}
 import monix.reactive.Observable
 import monix.reactive.OverflowStrategy.BackPressure
@@ -132,6 +131,9 @@ object MonixBase
     {
       def toL[Col[x] <: IterableOps[x, Iterable, Iterable[x]]](implicit factory: IterableFactory[Col]): Task[Col[A @uncheckedVariance]] =
         underlying.foldLeftL(factory.newBuilder[A])(_ += _).map(_.result())
+
+      def tapEval(f: A => Task[Unit]): Observable[A] =
+        underlying.flatTap(a => Observable.fromTask(f(a)))
 
       def tapEach(f: A => Unit): Observable[A] =
         underlying.map { a =>

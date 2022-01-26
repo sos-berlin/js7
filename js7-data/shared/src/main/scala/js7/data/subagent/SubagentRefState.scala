@@ -3,10 +3,10 @@ package js7.data.subagent
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.problem.{Checked, Problem}
 import js7.data.agent.DelegateCouplingState
-import js7.data.agent.DelegateCouplingState.Coupled
+import js7.data.agent.DelegateCouplingState.{Coupled, Reset}
 import js7.data.event.EventId
 import js7.data.item.UnsignedSimpleItemState
-import js7.data.subagent.SubagentRefStateEvent.{SubagentCoupled, SubagentCouplingFailed, SubagentDedicated, SubagentEventsObserved}
+import js7.data.subagent.SubagentRefStateEvent.{SubagentCoupled, SubagentDedicated, SubagentEventsObserved, SubagentLost, SubagentReset}
 
 final case class SubagentRefState(
   subagentRef: SubagentRef,
@@ -28,7 +28,7 @@ extends UnsignedSimpleItemState
         Right(copy(
           eventId = untilEventId))
 
-      case SubagentCouplingFailed(problem) =>
+      case SubagentLost(problem) =>
         Right(copy(
           problem = Some(problem)))
 
@@ -46,6 +46,12 @@ extends UnsignedSimpleItemState
         Right(copy(
           couplingState = Coupled,
           problem = None))
+
+      case SubagentReset =>
+        Right(copy(
+          subagentRunId = None,
+          couplingState = Reset,
+          eventId = EventId.BeforeFirst))
     }
 }
 

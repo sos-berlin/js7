@@ -1,5 +1,6 @@
 package js7.subagent
 
+import js7.agent.data.Problems.SubagentNotDedicatedProblem
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.stream.Numbered
@@ -23,7 +24,7 @@ with SubagentExecutor
   protected def jobLauncherConf: JobLauncherConf
   protected def onStopped(termination: ProgramTermination): Task[Unit]
 
-  protected[subagent] val dedicatedOnce = SetOnce[Dedicated]
+  protected[subagent] val dedicatedOnce = SetOnce[Dedicated](SubagentNotDedicatedProblem)
 
   def executeCommand(numbered: Numbered[SubagentCommand]): Task[Checked[numbered.value.Response]] =
     Task.defer {
@@ -66,6 +67,7 @@ with SubagentExecutor
 
           case ShutDown(processSignal, restart) =>
             logger.info(s"❗️ $command")
+            // TODO Delay shutdown until Director has read and acknowledged all events!
             shutdown(processSignal, restart)
               .as(Right(SubagentCommand.Accepted))
 

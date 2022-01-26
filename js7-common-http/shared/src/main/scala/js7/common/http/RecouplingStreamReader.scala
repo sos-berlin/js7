@@ -110,16 +110,20 @@ abstract class RecouplingStreamReader[
           }))
 
   final def terminateAndLogout: Task[Completed] =
-    decouple *> coupledApiVar.terminate
+    decouple
+      .*>(coupledApiVar.terminate)
+      .logWhenItTakesLonger
 
   final def decouple: Task[Completed] =
-    coupledApiVar.tryTake
-      .flatMap {
-        case None => Task.completed
-        case Some(api) =>
-          onDecoupled >>
-            api.tryLogout
-      }
+    coupledApiVar.isTerminated.flatMap(
+      if (_)
+        Task.completed
+      else
+        coupledApiVar.tryTake
+          .flatMap {
+            case None => Task.completed
+            case Some(api) => onDecoupled *> api.tryLogout
+          })
 
   final def invalidateCoupledApi: Task[Completed] =
     coupledApiVar.invalidate
