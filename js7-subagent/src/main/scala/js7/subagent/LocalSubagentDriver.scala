@@ -14,6 +14,7 @@ import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.event.JournaledState
 import js7.data.job.{JobConf, JobKey}
+import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.Outcome.Disrupted.JobSchedulerRestarted
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.state.AgentStateView
@@ -78,15 +79,12 @@ extends SubagentDriver
   def processOrder(
     order: Order[Order.Processing],
     defaultArguments: Map[String, Expression])
-  : Task[Checked[Outcome]] =
+  : Task[Checked[OrderProcessed]] =
     processOrder2(order, defaultArguments)
-      .map(Right(_))
-      //.flatMap { outcome =>
-      //  val orderProcessed = OrderProcessed(outcome)
-      //  persistence
-      //    .persistKeyedEvent(order.id <-: orderProcessed)
-      //    .rightAs(orderProcessed)
-      //}
+      .flatMap(outcome =>
+        persistence
+          .persistKeyedEvent(order.id <-: OrderProcessed(outcome)))
+      .map(_.map(_._1.value.event))
 
   def processOrder2(
     order: Order[Order.Processing],
@@ -178,7 +176,9 @@ extends SubagentDriver
       .flatMap(_.sequence)
 
   def continueProcessingOrder(order: Order[Order.Processing]) =
-    Task.pure(Right(Outcome.Disrupted(JobSchedulerRestarted)))
+    persistence
+      .persistKeyedEvent(order.id <-: OrderProcessed(Outcome.Disrupted(JobSchedulerRestarted)))
+      .map(_.map(_._1.value.event))
 
 //  def continueProcessingOrder(order: Order[Order.Processing]) = {
 //    val processed = OrderProcessed(Outcome.Disrupted(JobSchedulerRestarted))

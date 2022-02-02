@@ -1,8 +1,0 @@
-#!/usr/bin/env bash
-set -euo pipefail
-
-while true; do
-  docker-compose kill subagent-1-a || true
-  docker-compose start subagent-1-a || true
-  sleep $((2 ** (RANDOM / 5000)))
-done

@@ -27,7 +27,7 @@ import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.Outcome.Disrupted.JobSchedulerRestarted
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.subagent.SubagentRefStateEvent.{SubagentDedicated, SubagentReset}
-import js7.data.subagent.{SubagentRef, SubagentRefState}
+import js7.data.subagent.{SubagentRef, SubagentRefState, SubagentRefStateEvent}
 import js7.data.value.expression.Expression
 import js7.data.workflow.position.WorkflowPosition
 import js7.journal.state.StatePersistence
@@ -61,7 +61,8 @@ extends SubagentDriver with SubagentEventListener
     name = subagentRef.id.toString,
     actorSystem)
 
-  private val orderToProcessing = new AsyncMap[OrderId, Promise[Outcome]] with AsyncMap.Stoppable
+  private val orderToProcessing = new AsyncMap[OrderId, Promise[OrderProcessed]]
+    with AsyncMap.Stoppable
 
   @volatile private var stopping = false
 
@@ -73,12 +74,10 @@ extends SubagentDriver with SubagentEventListener
         .*>(commandQueue.start)
         .memoize)
 
-  def stop(signal: Option[ProcessSignal]): Task[Unit] =
+  def stop(ignoredSignal: Option[ProcessSignal]): Task[Unit] =
     logger.debugTask(Task.defer {
       stopping = true
-      signal
-        .fold(Task.unit)(/*killAll*/_ => Task.unit/*TODO Do not kill remote processes when shutting down normally!*/)
-        .*>(Task.parZip2(commandQueue.stop, stopEventListener))
+      Task.parZip2(commandQueue.stop, stopEventListener)
         .*>(client.tryLogout.void)
         .logWhenItTakesLonger(s"RemoteSubagentDriver($subagentId).stop")
     })
@@ -108,27 +107,39 @@ extends SubagentDriver with SubagentEventListener
           }
           .onErrorRecoverWith {
             case HttpException.HasProblem(SubagentNotDedicatedProblem) =>
-              val processCount = orderToProcessing.toMap.size
-              if (processCount > 0) {
-                logger.warn("Subagent has been restarted: " + SubagentNotDedicatedProblem +
-                  s", $processCount processes are lost")
+              if (orderToProcessing.toMap.nonEmpty) {
+                logger.warn("Subagent restarted and lost its Order processes")
               }
-              // Subagent has restarted and lost its state
               //commandQueue.stop/*???*/ *>
-                persistence
-                  .persistKeyedEvent(subagentId <-: SubagentReset)
-                  .map(_.orThrow)
-                  .*>(Task.defer {
-                    val processLost = Outcome.Disrupted(JobSchedulerRestarted)
-                    orderToProcessing.removeAll
-                      .map(_ foreach { case (orderId, promise) =>
-                        logger.warn("Process lost for " + orderId)
-                        promise.success(processLost)
-                      })
-                  })
-                  .*>(dedicate)
-                  .as(EventId.BeforeFirst)
+              onSubagentLost(SubagentReset)
+                .*>(dedicate)
+                .as(EventId.BeforeFirst)
           }
+    }
+
+  def onSubagentLost(subagentLostEvent: SubagentRefStateEvent): Task[Unit] = {
+    // Subagent has restarted and lost its state
+    // Emit OrderProcessed(Disrupted(JobSchedulerRestarted)) for all processing orders.
+    // Then SubagentReset
+    val processed = OrderProcessed(Outcome.Disrupted(JobSchedulerRestarted))
+    val processing = Order.Processing(subagentId)
+    orderToProcessing.removeAll
+      .flatMap { oToP =>
+        val (orderIds, promises) = oToP.view.unzip
+        for (o <- orderIds) logger.warn(s"Lost process for $o")
+        persistence
+          .persist(state => Right(orderIds
+            .filter(orderId =>
+              // Just to be sure, should always be true:
+              state.idToOrder.get(orderId).exists(_.state == processing))
+            .map(_ <-: processed)
+            .concat((subagentId <-: subagentLostEvent) :: Nil)
+            .toVector))
+          .map(_.orThrow)
+          .*>(Task {
+            for (p <- promises) p.success(processed)
+          })
+      }
     }
 
   private def dedicate: Task[Unit] =
@@ -159,7 +170,7 @@ extends SubagentDriver with SubagentEventListener
   //  }
 
   def processOrder(order: Order[Order.Processing], defaultArguments: Map[String, Expression])
-  : Task[Checked[Outcome]] =
+  : Task[Checked[OrderProcessed]] =
     ifNotStopping.flatMapT(_ =>
       runProcessingOrder(order)(
         startProcess(order, defaultArguments)))
@@ -168,7 +179,7 @@ extends SubagentDriver with SubagentEventListener
     runProcessingOrder(order)(Task.right(()))
 
   private def runProcessingOrder(order: Order[Order.Processing])(body: Task[Checked[Unit]])
-  : Task[Checked[Outcome]] =
+  : Task[Checked[OrderProcessed]] =
     orderToProcessing
       .insert(order.id, Promise())
       // OrderProcessed event will fulfill the promise and remove the Processing entry
@@ -191,7 +202,7 @@ extends SubagentDriver with SubagentEventListener
         logger.error(s"Unknown Order for event: ${orderId <-: orderProcessed}")
 
       case Some(processing) =>
-        processing.success(orderProcessed.outcome)
+        processing.success(orderProcessed)
     }
 
   private def killAll(signal: ProcessSignal): Task[Unit] =
@@ -235,7 +246,7 @@ extends SubagentDriver with SubagentEventListener
     ).onErrorRestartLoop(()) { (throwable, _, retry) =>
       val msg = throwable.getMessage
       if (msg.contains("TCP") && msg.contains("Connection reset by peer")) // ???
-        retry().delayExecution(5.s/*TODO*/) // TODO Must be stoppable, but no OrderProcessed
+        retry(()).delayExecution(5.s/*TODO*/) // TODO Must be stoppable, but no OrderProcessed
       else
         Task.raiseError(throwable)
     }
@@ -249,5 +260,5 @@ extends SubagentDriver with SubagentEventListener
 
 object RemoteSubagentDriver
 {
-  private val reconnectAfterErrorDelay = 5.s
+  private val reconnectAfterErrorDelay = 5.s/*TODO*/
 }

@@ -18,12 +18,11 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
 import js7.data.order.{OrderEvent, OrderId}
-import js7.data.subagent.SubagentRefStateEvent.{SubagentCoupled, SubagentEventsObserved, SubagentLost}
+import js7.data.subagent.SubagentRefStateEvent.{SubagentCoupled, SubagentEventsObserved, SubagentLost, SubagentShutdown}
 import js7.journal.CommitOptions
 import js7.subagent.SubagentState.keyedEventJsonCodec
 import js7.subagent.client.SubagentClient
 import js7.subagent.data.SubagentEvent
-import js7.subagent.data.SubagentEvent.SubagentShutdown
 import monix.catnap.MVar
 import monix.eval.Task
 import monix.execution.atomic.Atomic
@@ -52,47 +51,42 @@ trait SubagentEventListener
       recouplingStreamReader
         .observe(client, after = persistence.currentState.idToSubagentRefState(subagentId).eventId)
         .takeUntilEval(stopObserving.flatMap(_.read))
-        // Wie lesen wir transaktions-sicher ???
-        //  Solange nicht OrderProcessed in unserem Journal steht,
-        //  müssen wir (nach Fehler/Wiederanlauf) die Events nochmal vom Subagenten lesen.
-        .mapEval(stamped =>
-          // FIXME Provisorisch für Wiederanlauffähigkeit bei schönem Wetter.
-          //  SubagentEventsObserved muss nach den anderen persist kommen (die sind aber in OrderActor)
-          // TODO Weniger SubagentEventsObserved ausgeben
-          // Nur, wenn auch Events ausgegeben worden sind.
-          persistence
-            .persistKeyedEvent(subagentId <-: SubagentEventsObserved(stamped.eventId))
-            .map(_.orThrow/*TODO*/)
-            .as(stamped.value))
-        .mapEval {
-          case keyedEvent @ KeyedEvent(orderId: OrderId, event: OrderEvent) =>
-            event match {
-              case _: OrderStdWritten =>
-                persistence
+        .mapEval { stamped =>
+          val observed = subagentId <-: SubagentEventsObserved(stamped.eventId)
+          stamped.value match {
+            case keyedEvent @ KeyedEvent(orderId: OrderId, event: OrderEvent) =>
+              event match {
+                case _: OrderStdWritten =>
                   // TODO Save Timestamp
-                  .persistKeyedEvent(keyedEvent, stdoutCommitOptions,
-                    commitLater = conf.stdoutCommitDelay.isPositive)
-                  .map(_.orThrow/*???*/)
+                  persistence
+                    .persistKeyedEvents(keyedEvent :: observed :: Nil/*, stdoutCommitOptions,
+                      commitLater = conf.stdoutCommitDelay.isPositive*/)
+                    .map(_.orThrow/*???*/)
 
-              case orderProcessed: OrderProcessed =>
-                onOrderProcessed(orderId, orderProcessed)
+                case orderProcessed: OrderProcessed =>
+                  // TODO Save Timestamp
+                  persistence
+                    .persistKeyedEvents(keyedEvent :: observed :: Nil)
+                    .map(_.orThrow/*???*/)
+                    .*>(onOrderProcessed(orderId, orderProcessed))
 
-              case _ =>
-                // Other OrderEvents are handled by SubagentKeeper
-                Task.unit
-            }
+                case _ =>
+                  logger.error(s"Unexpected event: $keyedEvent")
+                  Task.unit
+              }
 
-          case KeyedEvent(_: NoKey, SubagentShutdown) =>
-            // TODO Subagent must not have any orders. Otherwise OrderProcessed them!
-            Task.unit
+            case KeyedEvent(_: NoKey, SubagentEvent.SubagentShutdown) =>
+              onSubagentLost(SubagentShutdown)
 
-          case KeyedEvent(_: NoKey, event: SubagentEvent) =>
-            logger.debug(event.toString)
-            Task.unit
+            case KeyedEvent(_: NoKey, event: SubagentEvent) =>
+              logger.debug(event.toString)
+              persistence.persistKeyedEvent(observed)
+                .map(_.orThrow)
 
-          case keyedEvent =>
-            logger.warn(s"Ignored $keyedEvent")
-            Task.unit
+            case keyedEvent =>
+              logger.error(s"Unexpected event: $keyedEvent")
+              Task.unit
+          }
         }
         .guarantee(
           recouplingStreamReader.terminateAndLogout.void
@@ -163,7 +157,7 @@ trait SubagentEventListener
       protected def stopRequested = false
     }
 
-  private val onHeartbeatStarted: Observable[Unit] =
+  private def onHeartbeatStarted: Observable[Unit] =
     Observable.fromTask(Task.defer {
       Task.when(!_isHeartbeating.getAndSet(true))(
         // Different to AgentDriver,

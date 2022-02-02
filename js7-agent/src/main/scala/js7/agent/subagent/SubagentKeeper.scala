@@ -107,8 +107,7 @@ final class SubagentKeeper(
     defaultArguments: Map[String, Expression],
     onEvents: Seq[OrderCoreEvent] => Unit,
     subagentDriver: SubagentDriver)
-  : Task[Checked[Unit]] =
-  {
+  : Task[Checked[Unit]] = {
     // TODO Race with CancelOrders ?
     val startedEvents = order.isState[Order.Fresh].thenList(OrderStarted) :::
       OrderProcessingStarted(subagentDriver.subagentId) :: Nil
@@ -120,16 +119,12 @@ final class SubagentKeeper(
           .orThrow
       })
     .flatMapT(order =>
-      forProcessingOrder(order.id, subagentDriver)(
+      forProcessingOrder(order.id, subagentDriver, onEvents)(
         subagentDriver.processOrder(order, defaultArguments)))
     .onErrorHandle { t =>
       logger.error(s"${order.id}: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
       Left(Problem.fromThrowable(t))
     }
-    .map(Outcome.leftToDisrupted)
-    .flatMap(outcome =>
-      persist(order.id, OrderProcessed(outcome) :: Nil, onEvents)
-        .rightAs(()))
   }
 
   private def persist(
@@ -147,38 +142,33 @@ final class SubagentKeeper(
   def continueProcessingOrder(
     order: Order[Order.Processing],
     onEvents: Seq[OrderCoreEvent] => Unit)
-  : Task[Checked[(OrderProcessed, AgentState)]] =
-    continueProcessingOrder2(order)
-      .flatMapT { outcome =>
-        val event = OrderProcessed(outcome)
-        persist(order.id, event :: Nil, onEvents)
-          .map(_.map { case (_, s) => event -> s })
-      }
-
-  private def continueProcessingOrder2(order: Order[Order.Processing]): Task[Checked[Outcome]] =
+  : Task[Checked[Unit]] =
     Task.defer {
       val subagentId = order.state.subagentId
       state.get.idToDriver.get(subagentId)
         .match_ {
-          case None => Task.pure(Right(Outcome.Disrupted(Problem.pure(
-            s"Missing $subagentId for processing ${order.id} after Agent Director restart"))))
+          case None =>
+            val event = OrderProcessed(Outcome.Disrupted(Problem.pure(
+              s"Missing $subagentId SubagentDriver for processing ${ order.id }")))
+            persist(order.id, event :: Nil, onEvents)
+              .map(_.map { case (_, s) => event -> s })
 
           case Some(subagentDriver) =>
-            forProcessingOrder(order.id, subagentDriver)(
+            forProcessingOrder(order.id, subagentDriver, onEvents)(
               subagentDriver.continueProcessingOrder(order)
             ).materializeIntoChecked
         }
     }
 
-  private def forProcessingOrder(
-    orderId: OrderId,
-    subagentDriver: SubagentDriver)(
-    body: Task[Checked[Outcome]])
-  : Task[Checked[Outcome]] =
+  private def forProcessingOrder(orderId: OrderId, subagentDriver: SubagentDriver, onEvents: Seq[OrderCoreEvent] => Unit)
+    (body: Task[Checked[OrderProcessed]])
+  : Task[Checked[Unit]] =
     Resource.make(
       acquire = orderToSubagent.put(orderId, subagentDriver).void)(
       release = _ => orderToSubagent.remove(orderId).void
-    ).use(_ => body)
+    ).use(_ =>
+      body.map(_.map(processed => onEvents(processed :: Nil)))
+    )
 
   private def selectSubagentDriverCancelable(orderId: OrderId): Task[Option[SubagentDriver]] =
     cancelableWhileWaitingForSubagent(orderId)

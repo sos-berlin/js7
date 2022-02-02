@@ -223,7 +223,6 @@ final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
   }
 
   "Restart Director" in {
-    pending
     val orderId = OrderId("RESTART-DIRECTOR")
 
     runSubagent(cSubagentRef)(_ => Task {
@@ -252,7 +251,6 @@ final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
   }
 
   "Restart remote Subagent while a job is running" in {
-    pending
     val orderId = OrderId("RESTART-SUBAGENT")
 
     TestSemaphoreJob.reset()

@@ -8,8 +8,8 @@ import js7.base.problem.Checked
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.event.JournaledState
-import js7.data.order.OrderEvent.OrderStdWritten
-import js7.data.order.{Order, OrderId, Outcome}
+import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
+import js7.data.order.{Order, OrderId}
 import js7.data.state.AgentStateView
 import js7.data.subagent.SubagentId
 import js7.data.value.expression.Expression
@@ -36,9 +36,9 @@ trait SubagentDriver
   def stop(signal: Option[ProcessSignal]): Task[Unit]
 
   def processOrder(order: Order[Order.Processing], defaultArguments: Map[String, Expression])
-  : Task[Checked[Outcome]]
+  : Task[Checked[OrderProcessed]]
 
-  def continueProcessingOrder(order: Order[Order.Processing]): Task[Checked[Outcome]]
+  def continueProcessingOrder(order: Order[Order.Processing]): Task[Checked[OrderProcessed]]
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): Task[Unit]
 
@@ -47,9 +47,7 @@ trait SubagentDriver
   protected final def persistStdouterr(orderId: OrderId, t: StdoutOrStderr, chunk: String)
   : Task[Unit] =
     persistence
-      .persistKeyedEventLater(
-        orderId <-: OrderStdWritten(t)(chunk),
-        options = delayCommit)
+      .persistKeyedEventsLater((orderId <-: OrderStdWritten(t)(chunk)) :: Nil, delayCommit)
       .map {
         case Left(problem) => logger.error(s"Emission of OrderStdWritten event failed: $problem")
         case Right(_) =>

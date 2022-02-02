@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+killMonkey() {
+  local container="$1"
+  local downDurationExponent="$2"
+  local upDurationExponent="$3"
+  while true; do
+    docker-compose kill "$container" &>/dev/null || true
+    sleep $((2 ** (RANDOM / (32767 / downDurationExponent)))) # 1...64s
+
+    docker-compose start "$container" &>/dev/null || true
+    sleep $((2 ** (RANDOM / (32767 / upDurationExponent)))) # 1...64s
+  done
+}
+
+pids=""
+killMonkey subagent-1-a 1 6 &
+pids+="$pids $!"
+killMonkey subagent-1-b 6 6 &
+pids+="$pids $!"
+
+trap "kill -- -$$ >/dev/null || kill $pids" EXIT
+wait
