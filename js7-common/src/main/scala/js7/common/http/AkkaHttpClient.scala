@@ -248,7 +248,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
         lazy val logPrefix = s"$toString: ${sessionToken.fold("")(_.short + " ")}#$number"
         lazy val responseLog0 = s"$logPrefix ${requestToString(req, logData, isResponse = true)} "
         def responseLogPrefix = responseLog0 + since.elapsed.pretty
-        logger.trace(s"-> $logPrefix: ${requestToString(req, logData)}")
+        logger.trace(s">--> $logPrefix: ${requestToString(req, logData)}")
         Task
           .deferFutureAction { scheduler =>
             responseFuture = http.singleRequest(req,
@@ -285,7 +285,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
             }
 
             case ExitCase.Error(throwable) => Task.defer {
-              logger.debug(s"<- $responseLogPrefix => failed with ${throwable.toStringWithCauses}")
+              logger.debug(s"<--< $responseLogPrefix => failed with ${throwable.toStringWithCauses}")
               Task.raiseError(toPrettyProblem(throwable).throwable)
             }
 
@@ -299,7 +299,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
                 s"$responseLogPrefix => ⏳ Still waiting for response" + (closed ?? " (closed)")))
             }
             .tapEval(response => Task {
-              logger.debug(s"<- $responseLogPrefix => ${response.status}")
+              logger.debug(s"<--< $responseLogPrefix => ${response.status}")
             }))
       })
 

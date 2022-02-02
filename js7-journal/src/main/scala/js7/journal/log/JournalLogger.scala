@@ -178,12 +178,15 @@ object JournalLogger
 
     def persistMarker: Char =
       if (persistCount == 1) ' '
-      else if (isFirst)
-        if (persistIndex == 0) '┌'
-        else if (persistIndex == persistCount - 1 & isLast) '└'
-        else '├'
-      else if (isLast & persistIndex == persistCount - 1) '╵'
-      else '│'
+      else {
+        // Return a bold nipple at start of a Persist
+        if (isFirst)
+          if (persistIndex == 0) '┍'
+          else if (persistIndex == persistCount - 1 & isLast) '┕'  // Last Persist has one event
+          else '┝'
+        else if (isLast & persistIndex == persistCount - 1) '└'  // Last Persist has >1 events
+        else '│'
+      }
 
     def transactionMarker(forTrace: Boolean): Char = {
       if (persistEventCount == 1) ' '
@@ -193,8 +196,8 @@ object JournalLogger
         else if (forTrace && nr == beforeLastEventNr) '⎨'
         else '⎪'
       else if (forTrace) {
-        if (isFirst) '╷'
-        else if (isLast) '╵'
+        if (isFirst) '┐'
+        else if (isLast) '┘'
         else if (nr == beforeLastEventNr) '┤'
         else '┆'
       } else ' '

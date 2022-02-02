@@ -411,6 +411,9 @@ extends Actor with Stash with JournalLogging
     if (conf.slowCheckState && committedState != uncommittedState) {
       val msg = "SnapshotableState update mismatch: committedState != uncommittedState"
       logger.error(msg)
+      implicit val showConfig = diffx.ShowConfig.default.copy(
+        arrow = _.replace("->", "->>"),
+        transformer = diffx.DiffResultTransformer.skipIdentical)
       logger.error(diffx.compare(committedState, uncommittedState).show())
       sys.error(msg)
     }
