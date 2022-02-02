@@ -39,9 +39,9 @@ extends MainJournalingActor[S, E]
       self ! Persist(stateToEvents, options, promise)
     }
 
-  private def persistLater(keyedEvent: KeyedEvent[E], options: CommitOptions): Task[Checked[Unit]] =
+  private def persistLater(keyedEvents: Seq[KeyedEvent[E]], options: CommitOptions): Task[Checked[Unit]] =
     promiseTask[Checked[Unit]] { promise =>
-      self ! PersistLater(keyedEvent, options, promise)
+      self ! PersistLater(keyedEvents, options, promise)
     }
 
   def receive = {
@@ -62,9 +62,9 @@ extends MainJournalingActor[S, E]
             })
       }
 
-    case PersistLater(keyedEvent, options, promise) =>
+    case PersistLater(keyedEvents, options, promise) =>
       promise.completeWith(
-        persistKeyedEventAcceptEarlyTask(keyedEvent, options = options)
+        persistKeyedEventAcceptEarlyTask(keyedEvents, options = options)
           .rightAs(())
           .runToFuture)
   }
@@ -77,7 +77,7 @@ extends MainJournalingActor[S, E]
     promise: Promise[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]])
 
   private case class PersistLater(
-    keyedEvent: KeyedEvent[E],
+    keyedEvents: Seq[KeyedEvent[E]],
     options: CommitOptions,
     promise: Promise[Checked[Unit]])
 }
@@ -92,7 +92,7 @@ private[state] object StateJournalingActor
       Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]]
 
   type PersistLaterFunction[E <: Event] =
-    (KeyedEvent[E], CommitOptions) => Task[Checked[Unit]]
+    (Seq[KeyedEvent[E]], CommitOptions) => Task[Checked[Unit]]
 
   def props[S <: JournaledState[S], E <: Event](
     currentState: => S,

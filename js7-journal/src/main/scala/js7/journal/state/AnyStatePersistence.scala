@@ -37,18 +37,25 @@ trait AnyStatePersistence
     options: CommitOptions,
     commitLater: Boolean)
   : Task[Checked[Unit]] =
-    if (commitLater)
-      persistKeyedEventLater(keyedEvent, options)
-    else
-      persistKeyedEvent(keyedEvent, options).rightAs(())
+    persistKeyedEvents(keyedEvent :: Nil, options, commitLater = commitLater)
 
   def persistKeyedEvents[E <: Event](
     keyedEvents: Seq[KeyedEvent[E]],
     options: CommitOptions = CommitOptions.default)
   : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]]
 
-  def persistKeyedEventLater[E <: Event](
-    keyedEvent: KeyedEvent[E],
+  final def persistKeyedEvents[E <: Event](
+    keyedEvents: Seq[KeyedEvent[E]],
+    options: CommitOptions,
+    commitLater: Boolean)
+  : Task[Checked[Unit]] =
+    if (commitLater)
+      persistKeyedEventsLater(keyedEvents, options)
+    else
+      persistKeyedEvents(keyedEvents, options).rightAs(())
+
+  def persistKeyedEventsLater[E <: Event](
+    keyedEvents: Seq[KeyedEvent[E]],
     options: CommitOptions = CommitOptions.default)
   : Task[Checked[Unit]]
 

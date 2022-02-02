@@ -70,12 +70,12 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
 
   /** Fast lane for events not affecting the journaled state. */
   protected final def persistKeyedEventAcceptEarlyTask[EE <: E](
-    keyedEvent: KeyedEvent[EE],
+    keyedEvents: Seq[KeyedEvent[EE]],
     timestampMillis: Option[Long] = None,
     options: CommitOptions = CommitOptions.default)
   : Task[Checked[Accepted]] =
     promiseTask[Checked[Accepted]] { promise =>
-      self ! PersistAcceptEarly(keyedEvent, timestampMillis, options, promise)
+      self ! PersistAcceptEarly(keyedEvents, timestampMillis, options, promise)
     }
 
   protected final def persistKeyedEvent[EE <: E, A](
@@ -148,9 +148,9 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
             case t: Throwable => throw t.appendCurrentStackTrace
           }))
 
-    case PersistAcceptEarly(keyedEvent, timestampMillis, options, promise) =>
+    case PersistAcceptEarly(keyedEvents, timestampMillis, options, promise) =>
       start(async = true, "persistKeyedEventAcceptEarlyTask")
-      val timestamped = Timestamped(keyedEvent, timestampMillis) :: Nil
+      val timestamped = keyedEvents.map(Timestamped(_, timestampMillis))
       journalActor.forward(
         JournalActor.Input.Store(timestamped, self, options, since = now, commitLater = true,
           Deferred(async = true, checked => promise.success(checked))))
@@ -165,7 +165,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
         endStashing(stampedSeq)
       }
       (stampedSeq, item) match {
-        case (_, eventsCallback: EventsCallback[S]) =>
+        case (_, eventsCallback: EventsCallback[S @unchecked]) =>
           if (TraceLog && logger.underlying.isTraceEnabled) for (st <- stampedSeq)
             logger.trace(s"»$toString« Stored ${EventId.toString(st.eventId)} ${st.value.key} <-: ${typeName(st.value.event.getClass)}$stashingCountRemaining")
           eventsCallback.callback(stampedSeq.asInstanceOf[Seq[Stamped[KeyedEvent[E]]]], journaledState.asInstanceOf[S])
@@ -260,7 +260,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
     promise: Promise[Checked[A]])
 
   private case class PersistAcceptEarly[A](
-    keyedEvent: KeyedEvent[E],
+    keyedEvents: Seq[KeyedEvent[E]],
     timestampMillis: Option[Long],
     options: CommitOptions,
     promise: Promise[Checked[A]])

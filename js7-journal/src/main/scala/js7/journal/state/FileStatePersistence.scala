@@ -116,11 +116,11 @@ extends StatePersistence[S] with AutoCloseable
   : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
     persist(_ => Right(keyedEvents))
 
-  def persistKeyedEventLater[E <: Event](
-    keyedEvent: KeyedEvent[E],
+  def persistKeyedEventsLater[E <: Event](
+    keyedEvents: Seq[KeyedEvent[E]],
     options: CommitOptions = CommitOptions.default)
   : Task[Checked[Unit]] =
-    persistLaterTask.flatMap(_(keyedEvent, options))
+    persistLaterTask.flatMap(_(keyedEvents, options))
 
   def persistEvent[E <: Event](key: E#Key, options: CommitOptions = CommitOptions.default)
   : (S => Checked[E]) => Task[Checked[(Stamped[KeyedEvent[E]], S)]] = {

@@ -29,7 +29,7 @@ trait KeyedJournalingActor[S <: JournaledState[S], E <: Event]
     event: EE,
     options: CommitOptions = CommitOptions.default)
   : Task[Checked[Accepted]] =
-    super.persistKeyedEventAcceptEarlyTask(KeyedEvent(key, event), options = options)
+    super.persistKeyedEventAcceptEarlyTask(KeyedEvent(key, event) :: Nil, options = options)
 
   protected final def persistTransaction[EE <: E, A](events: Seq[EE], async: Boolean = false)
     (callback: (Seq[EE], S) => A)
