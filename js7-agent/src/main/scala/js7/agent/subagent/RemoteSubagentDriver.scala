@@ -24,7 +24,7 @@ import js7.data.event.EventId
 import js7.data.item.InventoryItem
 import js7.data.job.{JobConf, JobResource}
 import js7.data.order.OrderEvent.OrderProcessed
-import js7.data.order.Outcome.Disrupted.JobSchedulerRestarted
+import js7.data.order.Outcome.Disrupted.ProcessLost
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.subagent.SubagentRefStateEvent.{SubagentDedicated, SubagentReset}
 import js7.data.subagent.{SubagentRef, SubagentRefState, SubagentRefStateEvent}
@@ -119,9 +119,9 @@ extends SubagentDriver with SubagentEventListener
 
   def onSubagentLost(subagentLostEvent: SubagentRefStateEvent): Task[Unit] = {
     // Subagent has restarted and lost its state
-    // Emit OrderProcessed(Disrupted(JobSchedulerRestarted)) for all processing orders.
+    // Emit OrderProcessed(Disrupted(ProcessLost)) for all processing orders.
     // Then SubagentReset
-    val processed = OrderProcessed(Outcome.Disrupted(JobSchedulerRestarted))
+    val processed = OrderProcessed(Outcome.Disrupted(ProcessLost))
     val processing = Order.Processing(subagentId)
     orderToProcessing.removeAll
       .flatMap { oToP =>

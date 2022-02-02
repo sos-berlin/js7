@@ -15,7 +15,7 @@ import js7.data.controller.ControllerId
 import js7.data.event.JournaledState
 import js7.data.job.{JobConf, JobKey}
 import js7.data.order.OrderEvent.OrderProcessed
-import js7.data.order.Outcome.Disrupted.JobSchedulerRestarted
+import js7.data.order.Outcome.Disrupted.ProcessLost
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.state.AgentStateView
 import js7.data.subagent.SubagentId
@@ -177,11 +177,11 @@ extends SubagentDriver
 
   def continueProcessingOrder(order: Order[Order.Processing]) =
     persistence
-      .persistKeyedEvent(order.id <-: OrderProcessed(Outcome.Disrupted(JobSchedulerRestarted)))
+      .persistKeyedEvent(order.id <-: OrderProcessed(Outcome.Disrupted(ProcessLost)))
       .map(_.map(_._1.value.event))
 
 //  def continueProcessingOrder(order: Order[Order.Processing]) = {
-//    val processed = OrderProcessed(Outcome.Disrupted(JobSchedulerRestarted))
+//    val processed = OrderProcessed(Outcome.Disrupted(ProcessLost))
 //    persistence
 //      .persistKeyedEvent(order.id <-: processed)
 //      .rightAs(processed)

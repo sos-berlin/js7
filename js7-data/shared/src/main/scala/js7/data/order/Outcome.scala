@@ -188,15 +188,15 @@ object Outcome
       def problem: Problem
     }
 
-    final case object JobSchedulerRestarted extends Reason {
-      val problem = Problem.pure("JS7 stopped while order was in-process")
+    final case object ProcessLost extends Reason {
+      val problem = Problem.pure("Process lost due JS7 restart")
     }
 
     final case class Other(problem: Problem) extends Reason
 
     object Reason {
       implicit val jsonCodec = TypedJsonCodec[Reason](
-        Subtype(JobSchedulerRestarted),
+        Subtype.singleton(ProcessLost, aliases = Seq("JobSchedulerRestarted")),
         Subtype(deriveCodec[Other]))
     }
   }

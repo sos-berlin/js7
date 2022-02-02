@@ -40,7 +40,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
 {
   import OrderEventSourceTest.instructionExecutorService
 
-  "JobSchedulerRestarted" in {
+  "ProcessLost" in {
     val eventSource = new OrderEventSource(
       StateView.forTest(
         isAgent = false,
@@ -1014,7 +1014,7 @@ object OrderEventSourceTest
   private val failedOrder = Order(OrderId("FAILED"), TestWorkflowId, Order.Processed,
     historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.Failed(NamedValues.rc(1)))))
   private val disruptedOrder = Order(OrderId("DISRUPTED"), TestWorkflowId /: Position(2), Order.Processed,
-    historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted))))
+    historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.Disrupted(Outcome.Disrupted.ProcessLost))))
   private val orderForked = OrderForked(Vector(
     OrderForked.Child("🥕", OrderId("ORDER|🥕")),
     OrderForked.Child("🍋", OrderId("ORDER|🍋"))))

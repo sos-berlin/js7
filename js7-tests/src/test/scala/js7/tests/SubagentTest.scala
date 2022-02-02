@@ -23,7 +23,7 @@ import js7.data.agent.AgentPath
 import js7.data.event.{EventId, KeyedEvent, Stamped}
 import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTerminated}
-import js7.data.order.Outcome.Disrupted.JobSchedulerRestarted
+import js7.data.order.Outcome.Disrupted.ProcessLost
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.subagent.SubagentRefStateEvent.{SubagentCoupled, SubagentDedicated, SubagentLost}
 import js7.data.subagent.{SubagentId, SubagentRef}
@@ -269,7 +269,7 @@ final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
     runSubagent(cSubagentRef)(_ => Task {
       locally {
         val events = eventWatch.await[OrderProcessed](_.key == orderId, after = eventId)
-        assert(events.head.value.event == OrderProcessed(Outcome.Disrupted(JobSchedulerRestarted)))
+        assert(events.head.value.event == OrderProcessed(Outcome.Disrupted(ProcessLost)))
       }
       locally {
         eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)

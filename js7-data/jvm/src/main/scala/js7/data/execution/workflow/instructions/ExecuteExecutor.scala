@@ -10,7 +10,7 @@ import js7.data.execution.workflow.instructions.ExecuteExecutor.{noDateOffset, o
 import js7.data.order.Order.{IsFreshOrReady, Processed}
 import js7.data.order.OrderEvent.{OrderFailedIntermediate_, OrderMoved, OrderProcessingKilled}
 import js7.data.order.OrderObstacle.{WaitingForAdmission, jobParallelismLimitReached}
-import js7.data.order.Outcome.Disrupted.JobSchedulerRestarted
+import js7.data.order.Outcome.Disrupted.ProcessLost
 import js7.data.order.{Order, OrderId, OrderObstacle, OrderObstacleCalculator, Outcome}
 import js7.data.state.StateView
 import js7.data.workflow.instructions.Execute
@@ -45,7 +45,7 @@ extends EventInstructionExecutor with PositionInstructionExecutor
             .ifState[Processed]
             .map { order =>
               val event = order.lastOutcome match {
-                case Outcome.Disrupted(JobSchedulerRestarted) =>
+                case Outcome.Disrupted(ProcessLost) =>
                   OrderMoved(order.position) // Repeat
 
                 case _: Outcome.Succeeded =>

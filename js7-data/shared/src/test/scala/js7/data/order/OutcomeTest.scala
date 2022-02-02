@@ -5,7 +5,7 @@ import js7.base.io.process.ReturnCode
 import js7.base.problem.Problem
 import js7.data.order.Outcome.Completed
 import js7.data.value.{NamedValues, NumberValue, StringValue}
-import js7.tester.CirceJsonTester.testJson
+import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
@@ -18,7 +18,7 @@ final class OutcomeTest extends AnyFreeSpec
     assert(Outcome.Succeeded(NamedValues.rc(1)).isSucceeded)
     assert(!Outcome.Disrupted(Problem("error")).isSucceeded)
     assert(Outcome.Disrupted(Problem("error")) == Outcome.Disrupted(Problem("error")))
-    assert(!Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted).isSucceeded)
+    assert(!Outcome.Disrupted(Outcome.Disrupted.ProcessLost).isSucceeded)
   }
 
   "Completed" in {
@@ -101,8 +101,17 @@ final class OutcomeTest extends AnyFreeSpec
         }""")
     }
 
-    "Disrupted(JobSchedulerRestarted)" in {
-      testJson[Outcome](Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted), json"""
+    "Disrupted(ProcessLost)" in {
+      testJson[Outcome](Outcome.Disrupted(Outcome.Disrupted.ProcessLost), json"""
+        {
+          "TYPE": "Disrupted",
+          "reason": {
+            "TYPE": "ProcessLost"
+          }
+        }""")
+
+      // COMPATIBLE with v2.2
+      testJsonDecoder[Outcome](Outcome.Disrupted(Outcome.Disrupted.ProcessLost), json"""
         {
           "TYPE": "Disrupted",
           "reason": {

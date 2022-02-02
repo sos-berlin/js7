@@ -206,7 +206,7 @@ private object RecoveryTest {
     val result = mutable.Buffer[Event]()
     while (events.hasNext) {
       events.next() match {
-        case OrderProcessed(Outcome.Disrupted(Outcome.Disrupted.JobSchedulerRestarted)) =>
+        case OrderProcessed(Outcome.Disrupted(Outcome.Disrupted.ProcessLost)) =>
           while (!result.last.isInstanceOf[OrderProcessingStarted]) {
             result.remove(result.size - 1)
           }
