@@ -136,4 +136,19 @@ final class CirceUtilsTest extends AnyFreeSpec
     assert(decoder.decodeJson(json""""X"""").toChecked == Left(Problem(
       """JSON DecodingFailure at : NumberFormatException: For input string: "X"""")))
   }
+
+  "Codec.checked" in {
+    def checkSimple(simple: Simple) =
+      if (simple.int == 0)
+        Left(Problem("PROBLEM"))
+      else
+        Right(simple.copy(string = simple.string + "🔵"))
+
+    implicit val simpleCodec = deriveCodec[Simple].check(checkSimple)
+
+    assert(json"""{ "int": 0, "string": "B" }""".as[Simple] == Left(
+      DecodingFailure("PROBLEM", Nil)))
+
+    assert(json"""{ "int": 1, "string": "B" }""".as[Simple] == Right(Simple(1, "B🔵")))
+  }
 }

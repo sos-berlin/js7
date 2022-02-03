@@ -228,6 +228,22 @@ object CirceUtils
       }
   }
 
+  implicit final class RichCirceDecoder[A](private val decoder: Decoder[A]) extends AnyVal {
+    def checked(check: A => Checked[A]): Decoder[A] =
+      new Decoder[A] {
+        def apply(c: HCursor) = decoder(c).flatMap(a => check(a).toDecoderResult(c.history))
+      }
+  }
+
+  implicit final class RichCirceCodec[A](private val codec: Codec.AsObject[A]) extends AnyVal {
+    def checked(check: A => Checked[A]): Codec.AsObject[A] =
+      new Codec.AsObject[A] {
+        def encodeObject(a: A) = codec.encodeObject(a)
+        def apply(c: HCursor) = codec(c).flatMap(a => check(a).toDecoderResult(c.history))
+      }
+  }
+
+  // TODO @deprecated
   final def deriveCodec[A](implicit encode: Lazy[DerivedAsObjectEncoder[A]], decode: Lazy[DerivedDecoder[A]])
   : Codec.AsObject[A] = {
     new Codec.AsObject[A] {
