@@ -108,7 +108,7 @@ final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with Cl
                   case ProxyStarted =>
                     assert(!proxyStartedReceived)
                     proxyStartedReceived = true
-                    es.state should matchTo(lastState)
+                    es.state shouldMatchTo lastState
                   case _ =>
                     assert(lastState.eventId < es.stampedEvent.eventId)
                 }
