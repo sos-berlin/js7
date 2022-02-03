@@ -54,7 +54,7 @@ object Dependencies
   val cats                = "org.typelevel" %% "cats-core" % catsVersion
   val shapeless           = "com.chuusai" %% "shapeless" % shapelessVersion
   val diffx               = "com.softwaremill.diffx" %% "diffx-core" % diffxVersion
-  val diffxScalaTest      = "com.softwaremill.diffx" %% "diffx-scalatest" % diffxVersion
+  val diffxScalaTest      = "com.softwaremill.diffx" %% "diffx-scalatest-should" % diffxVersion
 
   val javaxInject         = "javax.inject" % "javax.inject" % "1"
   val guice               = ("com.google.inject" % "guice" % "5.1.0") :: javaxInject :: Nil
