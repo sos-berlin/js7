@@ -24,9 +24,17 @@ final class Base64UUIDTest extends AnyFreeSpec
   }
 
   "uuidToBase64" in {
-    assert(uuidToBase64(UUID.fromString("00000000-0000-0000-0000-000000000000")) == "AAAAAAAAAAAAAAAAAAAAAA")
-    assert(uuidToBase64(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF")) == "ABEiM0RVZneImaq7zN3u_w")
     forAll(Gen.uuid)((uuid: UUID) => assert(base64ToUUID(uuidToBase64(uuid)) == Right(uuid)))
+  }
+
+  "uuidToBase64 for testing values" in {
+    assert(uuidToBase64(UUID.fromString("00000000-0000-0000-0000-000000000000")) == "AAAAAAAAAAAAAAAAAAAAAA")
+    assert(Base64UUID.zero.string == "AAAAAAAAAAAAAAAAAAAAAA")
+
+    assert(uuidToBase64(UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff")) == "_____________________w")
+    assert(Base64UUID.ffff.string == "_____________________w")
+
+    assert(uuidToBase64(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF")) == "ABEiM0RVZneImaq7zN3u_w")
   }
 
   "random" in {
