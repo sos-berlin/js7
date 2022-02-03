@@ -2,6 +2,7 @@ package js7.agent.subagent
 
 import akka.actor.ActorSystem
 import cats.effect.Resource
+import cats.syntax.foldable._
 import cats.syntax.parallel._
 import cats.syntax.traverse._
 import js7.agent.configuration.AgentConfiguration
@@ -73,7 +74,7 @@ final class SubagentKeeper(
         state.get.idToDriver.values
           .toVector
           .parUnorderedTraverse(_.start)
-          .map(_.fold_))
+          .map(_.combineAll))
 
   def stop: Task[Unit] =
     state
@@ -82,7 +83,7 @@ final class SubagentKeeper(
       .flatMap(drivers =>
         drivers.toVector
           .parUnorderedTraverse(_.stop(Some(SIGKILL)))
-          .map(_.fold_))
+          .map(_.combineAll))
 
   def orderIsLocal(orderId: OrderId): Boolean =
     orderToSubagent.toMap.get(orderId)

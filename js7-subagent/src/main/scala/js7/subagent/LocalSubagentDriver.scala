@@ -1,5 +1,6 @@
 package js7.subagent
 
+import cats.syntax.foldable._
 import cats.syntax.parallel._
 import cats.syntax.traverse._
 import js7.base.io.process.{ProcessSignal, Stderr, Stdout, StdoutOrStderr}
@@ -7,7 +8,6 @@ import js7.base.log.Logger
 import js7.base.monixutils.AsyncMap
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.Collections.implicits.RichIterableOnce
 import js7.base.utils.ScalaUtils.chunkStrings
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentPath
@@ -74,7 +74,7 @@ extends SubagentDriver
         .parUnorderedTraverse(jobDriver => jobDriver
           .stop(signal)
           .onErrorHandle(t => logger.error(s"Stop $jobDriver: ${t.toStringWithCauses}")))
-        .map(_.fold_))
+        .map(_.combineAll))
 
   def processOrder(
     order: Order[Order.Processing],

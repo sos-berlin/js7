@@ -23,7 +23,6 @@ import js7.base.problem.Checked
 import js7.base.thread.IOExecutor
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime._
-import js7.base.utils.Collections.implicits.RichIterableOnce
 import js7.base.utils.LockKeeper
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentPath
@@ -73,7 +72,7 @@ final class FileWatchManager(
       .flatMap(_
         .toVector
         .traverse(startWatching)
-        .map(_.fold_))
+        .map(_.combineAll))
 
   def update(fileWatch: FileWatch): Task[Checked[Unit]] =
     lockKeeper.lock(fileWatch.path) {

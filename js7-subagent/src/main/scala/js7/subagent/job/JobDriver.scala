@@ -1,5 +1,6 @@
 package js7.subagent.job
 
+import cats.syntax.foldable._
 import cats.syntax.traverse._
 import java.util.Objects.requireNonNull
 import js7.base.io.process.ProcessSignal
@@ -10,7 +11,6 @@ import js7.base.monixutils.MonixDeadline.syntax.DeadlineSchedule
 import js7.base.monixutils.{AsyncMap, MonixDeadline}
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime._
-import js7.base.utils.Collections.implicits.RichIterableOnce
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.job.{JobConf, JobResource, JobResourcePath}
 import js7.data.order.Outcome.Succeeded
@@ -191,7 +191,7 @@ final class JobDriver(
       entries
         .toVector
         .traverse(killProcess(_, signal))
-        .map(_.fold_)
+        .map(_.combineAll)
         .onErrorHandle(t =>
           logger.error(t.toStringWithCauses, t))
     }
