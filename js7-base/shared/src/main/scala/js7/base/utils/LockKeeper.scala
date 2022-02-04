@@ -17,13 +17,13 @@ final class LockKeeper[K]
   // keyToQueue(key).length: Number of clients waiting to get the lock
   private val keyToQueue = mutable.Map.empty[Any, mutable.Queue[Promise[Token]]]
 
-  def lock[A](key: K)(body: Task[A]): Task[A] =
+  def lock[A](key: K)(body: Task[A])(implicit enclosing: sourcecode.Enclosing): Task[A] =
     lockResource(key).use(_ => body)
 
-  def lockResource(key: K): Resource[Task, Token] =
+  def lockResource(key: K)(implicit enclosing: sourcecode.Enclosing): Resource[Task, Token] =
     Resource.make(acquire(key))(release)
 
-  private def acquire(key: K): Task[Token] =
+  private def acquire(key: K)(implicit enclosing: sourcecode.Enclosing): Task[Token] =
     Task.defer {
       val result = synchronized {
         keyToQueue.get(key) match {
@@ -34,12 +34,12 @@ final class LockKeeper[K]
           case Some(queue) =>
             val promise = Promise[Token]()
             queue += promise
-            logger.trace(s"Acquire lock '$key': queuing (#${queue.length})")
+            logger.trace(s"↘ Acquire lock '$key': queuing (#${queue.length}) (${enclosing.value})")
             Task.fromFuture(promise.future)
-              .logWhenItTakesLonger(key.toString)
+              .logWhenItTakesLonger(s"$key (${enclosing.value})")
         }
       }
-      logger.trace(s"Acquired lock '$key'")
+      logger.trace(s"↙ Acquired lock '$key' (${enclosing.value})")
       result
     }
 
@@ -59,9 +59,9 @@ final class LockKeeper[K]
         }
         // Log late, but outside the synchronized block
         if (!handedOver)
-          logger.trace(s"Released lock '$key'")
+          logger.trace(s"↙ Released lock '$key'")
         else
-          logger.trace(s"Released lock '$key', handed over to queued request")
+          logger.trace(s"↙ Released lock '$key', handed over to queued request")
       }
     }
 

@@ -81,7 +81,9 @@ final class FileFileStatePersistenceTest extends AnyFreeSpec with BeforeAndAfter
     }
 
     "persistEvent" in {
-      assert(persistence.persistEvent[NumberEvent](NumberKey("TWO"))(_ => Right(NumberAdded)).runSyncUnsafe().isRight)
+      assert(persistence
+        .persistEvent[NumberEvent](NumberKey("TWO"))(implicitly[sourcecode.Enclosing])(
+          _ => Right(NumberAdded)).runSyncUnsafe().isRight)
     }
 
     "Concurrent update" in {

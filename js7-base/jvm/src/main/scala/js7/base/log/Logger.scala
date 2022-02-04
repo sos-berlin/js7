@@ -42,7 +42,7 @@ object Logger
         prefix,
         LoggerFactory.getLogger(normalizeClassName(c))))
 
-  /** Removes '$' from Scalas companion object class. */
+  /** Removes '$' from Scala's companion object class. */
   def normalizeClassName(c: Class[_]): String =
     c.getName stripSuffix "$"
 
@@ -68,7 +68,7 @@ object Logger
       def debugTask[A](function: String, args: String = "")(task: Task[A]): Task[A] = {
         def logReturn(msg: AnyRef) = Task(logger.debug(s"︎↙︎ $function => $msg"))
         Task.defer {
-          logger.debug("↘︎ " + function + args.emptyToNone.fold("")(" " + _) + " ...")
+          logger.debug(s"↘︎ $function${args.emptyToNone.fold("")(" " + _)} ...")
           task.tapEval {
             case left: Left[_, _] => logReturn(left)
             case _ => logReturn("Completed")

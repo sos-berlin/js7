@@ -70,10 +70,10 @@ object MonixBase
       def logWhenItTakesLonger(implicit enclosing: sourcecode.Enclosing): Task[A] =
         logWhenItTakesLonger2("in", enclosing.value)
 
-      def logWhenItTakesLonger(what: String): Task[A] =
+      def logWhenItTakesLonger(what: => String): Task[A] =
         task.logWhenItTakesLonger2("for", what)
 
-      def logWhenItTakesLonger2(preposition: String, what: String): Task[A] =
+      def logWhenItTakesLonger2(preposition: String, what: => String): Task[A] =
         task.whenItTakesLonger()(duration => Task {
           def msg = s"⏳ Still waiting $preposition $what for ${duration.pretty} ..."
           if (duration < 10.s) logger.debug(msg)

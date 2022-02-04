@@ -55,6 +55,7 @@ extends StatePersistence[S] with RealEventWatch
   def persistKeyedEvent[E <: Event](
     keyedEvent: KeyedEvent[E],
     options: CommitOptions = CommitOptions.default)
+    (implicit enclosing: sourcecode.Enclosing)
   : Task[Checked[(Stamped[KeyedEvent[E]], S)]] =
     persistKeyedEvents(keyedEvent :: Nil)
       .map(_.map { case (events, s) => events.head -> s })

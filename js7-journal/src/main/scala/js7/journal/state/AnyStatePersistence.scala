@@ -30,12 +30,14 @@ trait AnyStatePersistence
   def persistKeyedEvent[E <: Event](
     keyedEvent: KeyedEvent[E],
     options: CommitOptions = CommitOptions.default)
+    (implicit enclosing: sourcecode.Enclosing)
   : Task[Checked[(Stamped[KeyedEvent[E]], S)]]
 
   final def persistKeyedEvent[E <: Event](
     keyedEvent: KeyedEvent[E],
     options: CommitOptions,
     commitLater: Boolean)
+    (implicit enclosing: sourcecode.Enclosing)
   : Task[Checked[Unit]] =
     persistKeyedEvents(keyedEvent :: Nil, options, commitLater = commitLater)
 
@@ -64,6 +66,6 @@ trait AnyStatePersistence
 
   private val keyLockKeeper = new LockKeeper[Any]
 
-  def lock[A](key: Any)(body: Task[A]): Task[A] =
+  def lock[A](key: Any)(body: Task[A])(implicit enclosing: sourcecode.Enclosing): Task[A] =
     keyLockKeeper.lock(key)(body)
 }
