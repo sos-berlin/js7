@@ -12,6 +12,7 @@ import js7.data.controller.ControllerId
 import js7.data.event.EventId
 import js7.data.item.{InventoryItem, SignableItem}
 import js7.data.order.{Order, OrderId}
+import js7.data.other.HeartbeatTiming
 import js7.data.subagent.{SubagentId, SubagentRunId}
 import js7.data.value.expression.Expression
 import js7.subagent.SubagentState._
@@ -46,7 +47,8 @@ object SubagentCommand
   final case class CoupleDirector(
     subagentId: SubagentId,
     subagentRunId: SubagentRunId,
-    eventId: EventId)
+    eventId: EventId,
+    heartbeatTiming: HeartbeatTiming)
   extends SubagentCommand {
     type Response = SubagentCommand.Accepted
   }

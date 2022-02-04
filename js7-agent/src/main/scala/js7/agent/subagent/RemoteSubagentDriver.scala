@@ -17,6 +17,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.stream.Numbered
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
+import js7.base.web.HttpClient
 import js7.base.web.HttpClient.HttpException
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.data.controller.ControllerId
@@ -27,7 +28,7 @@ import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.Outcome.Disrupted.ProcessLost
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.subagent.SubagentRefStateEvent.{SubagentDedicated, SubagentReset}
-import js7.data.subagent.{SubagentRef, SubagentRefState, SubagentRefStateEvent}
+import js7.data.subagent.{SubagentRef, SubagentRefState, SubagentRefStateEvent, SubagentRunId}
 import js7.data.value.expression.Expression
 import js7.data.workflow.position.WorkflowPosition
 import js7.journal.state.StatePersistence
@@ -53,7 +54,8 @@ extends SubagentDriver with SubagentEventListener
   def subagentId = subagentRef.id
 
   private val logger = Logger.withPrefix[this.type](subagentId.toString)
-  private val commandQueue = new CommandQueue(subagentId, postCommand)
+  private val dispatcher = new SubagentDispatcher(subagentId,
+    cmd => HttpClient.liftProblem(postCommand(cmd)))
 
   protected val client = new SubagentClient(
     Admission(subagentRef.uri, userAndPassword),
@@ -71,13 +73,13 @@ extends SubagentDriver with SubagentEventListener
       dedicateOrCouple
         .map(_.orThrow)
         .*>(startEventListener)
-        .*>(commandQueue.start)
+        .*>(dispatcher.start)
         .memoize)
 
   def stop(ignoredSignal: Option[ProcessSignal]): Task[Unit] =
     logger.debugTask(Task.defer {
       stopping = true
-      Task.parZip2(commandQueue.stop, stopEventListener)
+      Task.parZip2(dispatcher.stop, stopEventListener)
         .*>(client.tryLogout.void)
         .logWhenItTakesLonger(s"RemoteSubagentDriver($subagentId).stop")
     })
@@ -91,35 +93,53 @@ extends SubagentDriver with SubagentEventListener
   private def dedicateOrCouple2(subagentRefState: SubagentRefState): Task[EventId] =
     subagentRefState.subagentRunId match {
       case None =>
-        dedicate.as(EventId.BeforeFirst)
+        for {
+          response <- dedicate
+          eventId <- couple(response.subagentRunId, response.subagentEventId)
+        } yield eventId
 
       case Some(subagentRunId) =>
-        val cmd = CoupleDirector(subagentId, subagentRunId, subagentRefState.eventId)
-        postCommand(Numbered(0, cmd))
-          .as(subagentRefState.eventId)
-          .onErrorRestartLoop(()) {
-            case (t @ HttpException.HasProblem(SubagentNotDedicatedProblem), _, _) =>
-              Task.raiseError(t)
-
-            case (throwable, _, retry) =>
-              logger.error("DedicateSubagent failed: " + throwable.toStringWithCauses)
-              retry(()).delayExecution(reconnectAfterErrorDelay)
-          }
-          .onErrorRecoverWith {
-            case HttpException.HasProblem(SubagentNotDedicatedProblem) =>
-              if (orderToProcessing.toMap.nonEmpty) {
-                logger.warn("Subagent restarted and lost its Order processes")
-              }
-              //commandQueue.stop/*???*/ *>
-              onSubagentLost(SubagentReset)
-                .*>(dedicate)
-                .as(EventId.BeforeFirst)
-          }
+        couple(subagentRunId, subagentRefState.eventId)
     }
 
-  def onSubagentLost(subagentLostEvent: SubagentRefStateEvent): Task[Unit] = {
-    // Subagent has restarted and lost its state
-    // Emit OrderProcessed(Disrupted(ProcessLost)) for all processing orders.
+  private def dedicate: Task[DedicateSubagent.Response] = {
+    val cmd = DedicateSubagent(subagentId, subagentRef.agentPath, controllerId)
+    postCommandUntilSucceeded(cmd)
+      .flatMap(response => persistence
+        .persistKeyedEvent(subagentId <-: SubagentDedicated(response.subagentRunId))
+        .rightAs(response))
+      .map(_.orThrow)
+  }
+
+  private def couple(subagentRunId: SubagentRunId, eventId: EventId): Task[EventId] =
+    Task.defer {
+      val cmd = CoupleDirector(subagentId, subagentRunId, eventId,
+        SubagentEventListener.heartbeatTiming)
+      postCommand(Numbered(0, cmd))
+        .as(eventId)
+        .onErrorRestartLoop(()) {
+          case (t @ HttpException.HasProblem(SubagentNotDedicatedProblem), _, _) =>
+            Task.raiseError(t)
+
+          case (throwable, _, retry) =>
+            logger.error("DedicateSubagent failed: " + throwable.toStringWithCauses)
+            retry(()).delayExecution(reconnectAfterErrorDelay)
+        }
+        .onErrorRecoverWith {
+          case HttpException.HasProblem(SubagentNotDedicatedProblem) =>
+            if (orderToProcessing.toMap.nonEmpty) {
+              logger.warn("Subagent restarted and lost its Order processes")
+            }
+            //dispatcher.stop/*???*/ *>
+            onSubagentDied(SubagentReset)
+              .*>(dedicate)
+              .map(_.subagentEventId)
+        }
+    }
+
+  def onSubagentDied(subagentLostEvent: SubagentRefStateEvent): Task[Unit] = {
+    // Subagent died and lost its state
+    // Emit OrderProcessed(Disrupted(ProcessLost)) for each processing order.
     // Then SubagentReset
     val processed = OrderProcessed(Outcome.Disrupted(ProcessLost))
     val processing = Order.Processing(subagentId)
@@ -141,12 +161,6 @@ extends SubagentDriver with SubagentEventListener
           })
       }
     }
-
-  private def dedicate: Task[Unit] =
-    postCommandUntilSucceeded(DedicateSubagent(subagentId, subagentRef.agentPath, controllerId))
-      .flatMap(response => persistence
-        .persistKeyedEvent(subagentId <-: SubagentDedicated(response.subagentRunId)))
-      .map(_.orThrow)
 
   // TODO Attach only new items
   private def itemsForOrderProcessing(workflowPosition: WorkflowPosition)
@@ -194,7 +208,7 @@ extends SubagentDriver with SubagentEventListener
     defaultArguments: Map[String, Expression])
   : Task[Checked[Unit]] =
     itemsForOrderProcessing(order.workflowPosition)
-      .flatMapT(commandQueue.startProcess(order, defaultArguments, _))
+      .flatMapT(dispatcher.startProcess(order, defaultArguments, _))
 
   protected def onOrderProcessed(orderId: OrderId, orderProcessed: OrderProcessed): Task[Unit] =
     orderToProcessing.remove(orderId).map {
@@ -206,23 +220,22 @@ extends SubagentDriver with SubagentEventListener
     }
 
   private def killAll(signal: ProcessSignal): Task[Unit] =
-    commandQueue
-      .executeCommands(
-        orderToProcessing.toMap.view
-          .filterNot(_._2.isCompleted)
-          .keys
-          .map(KillProcess(_, signal)))
-      .map {
-        case Left(problem) => logger.error(s"killAll => $problem")
-        case Right(()) =>
-      }
+    Task.defer {
+      val cmds = orderToProcessing.toMap.keys.map(KillProcess(_, signal))
+      dispatcher
+        .executeCommands(cmds)
+        .map(cmds.zip(_).map {
+          case (cmd, Left(problem)) => logger.error(s"$cmd => $problem")
+          case _ =>
+        })
+    }
 
   def killProcess(orderId: OrderId, signal: ProcessSignal) =
-    commandQueue.executeCommand(KillProcess(orderId, signal))
+    dispatcher.executeCommand(KillProcess(orderId, signal))
       .map {
         // Subagent may have been restarted
         case Left(problem) => logger.error(s"killProcess $orderId => $problem")
-        case Right(()) =>
+        case Right(_) =>
       }
 
   private def ifNotStopping: Task[Checked[Unit]] =
@@ -235,21 +248,22 @@ extends SubagentDriver with SubagentEventListener
     postCommand(Numbered(0, command))
       .map(_.asInstanceOf[command.Response])
       .onErrorRestartLoop(()) { (throwable, _, retry) =>
-        logger.error(command.getClass.simpleScalaName + " failed: " + throwable.toStringWithCauses)
+        logger.error(s"${command.getClass.simpleScalaName} failed: ${throwable.toStringWithCauses}")
         retry(()).delayExecution(5.s/*TODO*/)
       }
 
   private def postCommand(command: Numbered[SubagentCommand]): Task[SubagentCommand.Response] =
-    client.retryUntilReachable()(
-      client.loginUntilReachable(onlyIfNotLoggedIn = true) *>
-        client.executeSubagentCommand(command)
-    ).onErrorRestartLoop(()) { (throwable, _, retry) =>
-      val msg = throwable.getMessage
-      if (msg.contains("TCP") && msg.contains("Connection reset by peer")) // ???
-        retry(()).delayExecution(5.s/*TODO*/) // TODO Must be stoppable, but no OrderProcessed
-      else
-        Task.raiseError(throwable)
-    }
+    client
+      .retryUntilReachable()(
+        client.loginUntilReachable(onlyIfNotLoggedIn = true) *>
+          client.executeSubagentCommand(command))
+      .onErrorRestartLoop(()) { (throwable, _, retry) =>
+        val msg = throwable.getMessage
+        if (msg.contains("TCP") && msg.contains("Connection reset by peer")) // TODO Quick fix
+          retry(()).delayExecution(5.s/*TODO*/) // TODO Must be stoppable, but no OrderProcessed
+        else
+          Task.raiseError(throwable)
+      }
 
   private def subagentRefState: Task[Checked[SubagentRefState]] =
     persistence.state.map(_.idToSubagentRefState.checked(subagentId))

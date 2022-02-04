@@ -1,5 +1,6 @@
 package js7.subagent.data
 
+import java.util.Base64
 import js7.agent.data.AgentState
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.crypt.silly.SillySigner
@@ -8,13 +9,16 @@ import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.item.ItemSigner
 import js7.data.order.{Order, OrderId}
-import js7.data.subagent.SubagentId
+import js7.data.other.HeartbeatTiming
+import js7.data.subagent.{SubagentId, SubagentRunId}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.subagent.data.SubagentCommand.{AttachItem, AttachSignedItem, DedicateSubagent, KillProcess, ShutDown, StartOrderProcess}
+import js7.subagent.data.SubagentCommand.{AttachItem, AttachSignedItem, CoupleDirector, DedicateSubagent, KillProcess, ShutDown, StartOrderProcess}
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
+import js7.base.time.ScalaTime._
+import js7.base.utils.Base64UUID
 
 final class SubagentCommandTest extends AnyFreeSpec
 {
@@ -30,6 +34,25 @@ final class SubagentCommandTest extends AnyFreeSpec
           "subagentId": "SUBAGENT",
           "agentPath": "AGENT",
           "controllerId": "CONTROLLER"
+        }""")
+    }
+
+    "CoupleDirector" in {
+      testJson[SubagentCommand](
+        CoupleDirector(
+          SubagentId("SUBAGENT"),
+          SubagentRunId(Base64UUID.zero),
+          1001,
+          HeartbeatTiming(1234.ms, 12345.ms)),
+        json"""{
+          "TYPE": "CoupleDirector",
+          "subagentId": "SUBAGENT",
+          "subagentRunId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "eventId": 1001,
+          "heartbeatTiming": {
+            "heartbeat": 1.234,
+            "heartbeatTimeout": 12.345
+          }
         }""")
     }
 

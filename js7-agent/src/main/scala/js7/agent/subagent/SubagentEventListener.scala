@@ -18,6 +18,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
 import js7.data.order.{OrderEvent, OrderId}
+import js7.data.other.HeartbeatTiming
 import js7.data.subagent.SubagentRefStateEvent.{SubagentCoupled, SubagentEventsObserved, SubagentLost, SubagentShutdown}
 import js7.journal.CommitOptions
 import js7.subagent.SubagentState.keyedEventJsonCodec
@@ -76,7 +77,7 @@ trait SubagentEventListener
               }
 
             case KeyedEvent(_: NoKey, SubagentEvent.SubagentShutdown) =>
-              onSubagentLost(SubagentShutdown)
+              onSubagentDied(SubagentShutdown)
 
             case KeyedEvent(_: NoKey, event: SubagentEvent) =>
               logger.debug(event.toString)
@@ -103,7 +104,7 @@ trait SubagentEventListener
       _.eventId, recouplingStreamReaderConf)
     {
       private var lastProblem: Option[Problem] = None
-      override protected def idleTimeout = longHeartbeatTimeout * 2/*???*/
+      override protected def idleTimeout = heartbeatTiming.longHeartbeatTimeout + 2.s
 
       override protected def couple(eventId: EventId) =
         dedicateOrCouple
@@ -115,9 +116,9 @@ trait SubagentEventListener
             api
               .eventObservable(
                 EventRequest.singleClass[Event](after = after, timeout = None),
-                heartbeat = Some(heartbeat))
+                heartbeat = Some(heartbeatTiming.heartbeat))
               .map(_
-                .detectPauses2(longHeartbeatTimeout, PauseStamped)
+                .detectPauses2(heartbeatTiming.longHeartbeatTimeout, PauseStamped)
                 .tapEach(o => logger.debug("### " + o.toString.truncateWithEllipsis(200)))
                 .flatTap(stamped =>
                   if (stamped ne PauseStamped)
@@ -170,17 +171,21 @@ trait SubagentEventListener
     Task.defer {
       logger.warn(problem.toString)
       Task.when(_isHeartbeating.getAndSet(false))(
-        persistence.persistKeyedEvent(subagentId <-: SubagentLost(problem))
+        persistence
+          .lock(subagentId)(
+            persistence.persist(_
+              .idToSubagentRefState.checked(subagentId)
+              .map(subagentRefState =>
+                (!subagentRefState.problem.contains(problem))
+                  .thenList(subagentId <-: SubagentLost(problem)))))
           .map(_.orThrow))
     }
 
   final def isHeartbeating = _isHeartbeating.get()
 }
 
-private object SubagentEventListener
+object SubagentEventListener
 {
   private val PauseStamped: Stamped[KeyedEvent[Event]] = Stamped(0L, null)
-  private val heartbeat = 3.s // TODO
-  private val heartbeatTimeout = 10.s // TODO
-  private val longHeartbeatTimeout = heartbeat + heartbeatTimeout
+  private[subagent] val heartbeatTiming = HeartbeatTiming(3.s, 10.s)  // TODO
 }

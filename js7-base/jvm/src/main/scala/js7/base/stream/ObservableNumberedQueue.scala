@@ -16,6 +16,7 @@ import scala.util.{Failure, Success}
 
 final class ObservableNumberedQueue[V: Tag]
 {
+  private val vName = implicitly[Tag[V]].tag.toString
   private var torn = 0L
   private var queue = Vector.empty[Numbered[V]]
   private val sync = new IncreasingNumberSync(initial = 0, i => s"#$i")
@@ -61,14 +62,13 @@ final class ObservableNumberedQueue[V: Tag]
     }
 
   private def readQueue(after: Long): Task[Vector[Numbered[V]]] =
-    lock
-      .lock(Task.defer {
-        val (index, found) = binarySearch(0, queue.length, queue(_).number.compare(after))
-        if (!found && after != torn)
-          Task.raiseError(unknownNumber(after).throwable)
-        else
-          Task.pure(queue.drop(index + found.toInt))
-      })
+    lock.lock(Task.defer {
+      val (index, found) = binarySearch(0, queue.length, queue(_).number.compare(after))
+      if (!found && after != torn)
+        Task.raiseError(unknownNumber(after).throwable)
+      else
+        Task.pure(queue.drop(index + found.toInt))
+    })
 
   private def checkNumber(after: Long): Task[Unit] =
     Task.defer {
@@ -93,8 +93,5 @@ final class ObservableNumberedQueue[V: Tag]
       }
     })
 
-  override def toString =
-    s"ObservableNumberedQueue[$vName]"
-
-  private def vName = implicitly[Tag[V]].tag.toString
+  override def toString = s"ObservableNumberedQueue[$vName]"
 }
