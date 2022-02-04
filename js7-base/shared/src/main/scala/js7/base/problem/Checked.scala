@@ -1,5 +1,7 @@
 package js7.base.problem
 
+import cats.Monoid
+import cats.syntax.monoid._
 import io.circe.{Decoder, Encoder, Json}
 import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.generic.Completed
@@ -8,7 +10,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import scala.collection.immutable.VectorBuilder
 import scala.collection.mutable
 import scala.util.control.NonFatal
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Left, Success, Try}
 
 /**
   * @author Joacim Zschimmer
@@ -18,6 +20,19 @@ object Checked
   val unit = Checked(())
   val completed = Checked(Completed)
   private val logger = scribe.Logger[this.type]
+
+  implicit def checkedMonoid[A](implicit A: Monoid[A]): Monoid[Checked[A]] =
+    new Monoid[Checked[A]] {
+      lazy val empty = Right(A.empty)
+
+      def combine(x: Checked[A], y: Checked[A]) =
+        (x, y) match {
+          case (Left(x), Left(y)) => Left(x |+| y)
+          case (Left(x), Right(_)) => Left(x)
+          case (Right(_), Left(y)) => Left(y)
+          case (Right(x), Right(y)) => Right(x |+| y)
+        }
+    }
 
   def apply[A](a: A): Checked[A] = Right(a)
 

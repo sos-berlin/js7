@@ -5,6 +5,8 @@ import cats.instances.int._
 import cats.instances.list._
 import cats.syntax.apply._
 import cats.syntax.either._
+import cats.syntax.foldable._
+import cats.syntax.monoid._
 import cats.syntax.option._
 import cats.syntax.traverse._
 import cats.{Applicative, Apply}
@@ -254,6 +256,14 @@ final class CheckedTest extends AnyFreeSpec
       def g(i: Int): Checked[Int] = Right(i * 11)
       assert(List(1, 2, 3).failFastMap(g) == Right(List(11, 22, 33)))
     }
+  }
+
+  "Monoid[Checked]" in {
+    assert(Seq(1, 2, 3).combineAll == 6)
+    assert(Seq[Checked[Int]]().combineAll == Right(0))
+    assert(Seq[Checked[Int]](Right(1), Right(2), Right(3)).combineAll == Right(6))
+    assert(Seq[Checked[Int]](Right(1), Left(Problem("A")), Right(3), Left(Problem("B")))
+      .combineAll == Left(Problem("A") |+| Problem("B")))
   }
 
   "Some Cats examples" - {
