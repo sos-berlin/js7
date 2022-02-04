@@ -3,20 +3,16 @@ package js7.common.akkahttp.web.session
 import akka.actor.{ActorRef, ActorRefFactory}
 import akka.pattern.ask
 import akka.util.Timeout
-import cats.syntax.traverse._
 import com.typesafe.config.Config
 import java.nio.file.Files.{createFile, deleteIfExists}
 import java.nio.file.Path
-import js7.base.Js7Version
+import js7.base.BuildInfo
 import js7.base.auth.{SessionToken, UserId}
 import js7.base.configutils.Configs._
 import js7.base.generic.Completed
 import js7.base.io.file.FileUtils.syntax._
-import js7.base.problem.Checked._
-import js7.base.problem.{Checked, Problem}
+import js7.base.problem.Checked
 import js7.base.time.JavaTimeConverters._
-import js7.base.utils.ScalaUtils.syntax._
-import js7.base.version.Version
 import js7.common.system.ServerOperatingSystem.operatingSystem
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -26,18 +22,14 @@ import scala.concurrent.Promise
 /**
   * @author Joacim Zschimmer
   */
-final class SessionRegister[S <: Session] private[session](
-  actor: ActorRef,
-  implicit private val akkaAskTimeout: Timeout,
-  componentName: String)
+final class SessionRegister[S <: Session] private[session](actor: ActorRef, implicit private val akkaAskTimeout: Timeout)
 {
   private val systemSessionPromise = Promise[Checked[S]]()
   val systemSession: Task[Checked[S]] = Task.fromFuture(systemSessionPromise.future)
   val systemUser: Task[Checked[S#User]] = systemSession.map(_.map(_.currentUser))
 
   def createSystemSession(user: S#User, file: Path): Task[SessionToken] =
-    for (checked <- login(user, Some(Js7Version), isEternalSession = true)) yield {
-      val sessionToken = checked.orThrow
+    for (sessionToken <- login(user, clientVersion = Some(BuildInfo.version), isEternalSession = true)) yield {
       deleteIfExists(file)
       createFile(file, operatingSystem.secretFileAttributes: _*)
       file := sessionToken.secret.string
@@ -48,30 +40,13 @@ final class SessionRegister[S <: Session] private[session](
 
   def login(
     user: S#User,
-    clientVersion: Option[Version],
+    clientVersion: Option[String],
     sessionTokenOption: Option[SessionToken] = None,
     isEternalSession: Boolean = false
-  ): Task[Checked[SessionToken]] =
-    Task.defer(
-      checkNonMatchingVersion(clientVersion)
-        .traverse(_ =>
-          Task.deferFuture(
-            (actor ? SessionActor.Command.Login(user, clientVersion, sessionTokenOption,
-              isEternalSession = isEternalSession)).mapTo[SessionToken])))
-
-  private[session] def checkNonMatchingVersion(
-    clientVersion: Option[Version],
-    ourVersion: Version = Js7Version)
-  : Checked[Unit] =
-    Checked.catchNonFatal {
-      clientVersion match {
-        case None => Checked.unit
-        case Some(v) =>
-          (v.major == ourVersion.major && v.minor == ourVersion.minor) !!
-            Problem.pure(
-              s"Client's version $v does not match $componentName version $ourVersion")
-      }
-    }.flatten
+  ): Task[SessionToken] =
+    Task.deferFuture(
+      (actor ? SessionActor.Command.Login(user, clientVersion, sessionTokenOption,
+        isEternalSession = isEternalSession)).mapTo[SessionToken])
 
   def logout(sessionToken: SessionToken): Task[Completed] =
     Task.deferFuture(
@@ -97,13 +72,11 @@ object SessionRegister
   : SessionRegister[S] = {
     val sessionActor = actorRefFactory.actorOf(SessionActor.props[S](newSession, config), "session")
     new SessionRegister[S](sessionActor,
-      akkaAskTimeout = config.getDuration("js7.akka.ask-timeout").toFiniteDuration,
-      componentName = config.getString("js7.component.name"))
+      akkaAskTimeout = config.getDuration("js7.akka.ask-timeout").toFiniteDuration)
   }
 
   val TestConfig: Config = config"""
-    js7.component.name = "JS7 TEST"
-    js7.akka.ask-timeout = 99s
+    js7.akka.ask-timeout = 99.s
     js7.auth.session.timeout = 1 minute
     """
 }

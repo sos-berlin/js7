@@ -9,6 +9,7 @@ import com.google.inject.{AbstractModule, Provides}
 import io.circe.syntax.EncoderOps
 import io.circe.{Json, JsonObject}
 import javax.inject.Singleton
+import js7.base.BuildInfo
 import js7.base.auth.SessionToken
 import js7.base.circeutils.CirceUtils._
 import js7.base.crypt.silly.{SillySignature, SillySigner}
@@ -24,7 +25,6 @@ import js7.base.time.ScalaTime._
 import js7.base.time.{Timestamp, WaitForCondition}
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.web.Uri
-import js7.base.{BuildInfo, Js7Version}
 import js7.common.http.AkkaHttpClient.HttpException
 import js7.common.http.AkkaHttpUtils.RichHttpResponse
 import js7.common.system.ServerOperatingSystem.operatingSystem
@@ -130,8 +130,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest
         "userAndPassword": {
           "userId": "TEST-USER",
           "password": "TEST-PASSWORD"
-        },
-        "js7Version": "${Js7Version.string}"
+        }
       }"""
     val response = httpClient.post[Json, JsonObject](Uri(s"$uri/controller/api/session"), cmd) await 99.s
 
