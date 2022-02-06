@@ -46,4 +46,8 @@ final class AgentRefTest extends AnyFreeSpec
         "uri": "http://127.0.0.1"
       }""")
   }
+
+  "AgentPath.itemTypeName" in {
+    assert(AgentPath.itemTypeName == AgentRef.typeName)
+  }
 }

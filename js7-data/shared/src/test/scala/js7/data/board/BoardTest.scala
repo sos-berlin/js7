@@ -23,4 +23,8 @@ final class BoardTest extends AnyFreeSpec
         }"""
     )
   }
+
+  "BoardPath.itemTypeName" in {
+    assert(BoardPath.itemTypeName == Board.typeName)
+  }
 }

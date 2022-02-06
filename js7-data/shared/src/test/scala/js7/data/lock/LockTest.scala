@@ -13,4 +13,8 @@ final class LockTest extends AnyFreeSpec
         "limit": 3
       }""")
   }
+
+  "LockPath.itemTypeName" in {
+    assert(LockPath.itemTypeName == Lock.typeName)
+  }
 }

@@ -36,7 +36,8 @@ object InventoryItemPath
 
   abstract class Companion[P <: InventoryItemPath: ClassTag] extends Js7PathValidating[P]
   {
-    def itemTypeName: String = name stripSuffix "Path"
+    private lazy val itemTypeName_ = name stripSuffix "Path"
+    def itemTypeName: String = itemTypeName_
 
     def pathTypeName: String = itemTypeName
 
