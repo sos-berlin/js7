@@ -3,9 +3,11 @@ package js7.base.io.file
 import java.io.{BufferedOutputStream, File, FileOutputStream, IOException, OutputStreamWriter}
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets.{ISO_8859_1, UTF_8}
-import java.nio.file.Files.{copy, createDirectory, delete, deleteIfExists, isDirectory, isSymbolicLink, setPosixFilePermissions}
+import java.nio.file.Files.{copy, createDirectory, delete, deleteIfExists, isDirectory, isSymbolicLink, newOutputStream, setPosixFilePermissions}
+import java.nio.file.StandardOpenOption.{APPEND, CREATE, TRUNCATE_EXISTING, WRITE}
 import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
-import java.nio.file.{FileAlreadyExistsException, FileVisitOption, Files, Path, Paths}
+import java.nio.file.{FileAlreadyExistsException, FileVisitOption, Files, OpenOption, Path, Paths}
+import java.util.Objects.requireNonNull
 import java.util.concurrent.ThreadLocalRandom
 import js7.base.data.Writable.ops._
 import js7.base.data.{ByteArray, ByteSequence, Writable}
@@ -56,6 +58,20 @@ object FileUtils
     }
   }
 
+  // COMPATIBLE with Java 11 Files.writeString
+  def writeString(path: Path, chars: CharSequence, options: OpenOption*): Path =
+    writeString(path, chars, UTF_8, options: _*)
+
+  // COMPATIBLE with Java 11 Files.writeString
+  def writeString(path: Path, chars: CharSequence, charset: Charset, options: OpenOption*)
+  : Path = {
+    requireNonNull(chars)
+    autoClosing(new OutputStreamWriter(newOutputStream(path, options: _*), charset)) {
+      _.append(chars)
+    }
+    path
+  }
+
   object implicits {
     implicit def pathToFile(path: Path): File =
       path.toFile
@@ -103,12 +119,8 @@ object FileUtils
         write(bytes.toArray)
 
       def write(string: String, encoding: Charset = UTF_8, append: Boolean = false): Unit = {
-        // Java 11: Files.writeString(delegate, string, encoding, CREATE, APPEND)
-        val w = new OutputStreamWriter(new BufferedOutputStream(
-          new FileOutputStream(delegate.toFile, append)), encoding)
-        autoClosing(w) { _ =>
-          w.write(string)
-        }
+        val options = Array(CREATE, WRITE, if (append) APPEND else TRUNCATE_EXISTING)
+        writeString(delegate, string, encoding, options: _*)
       }
 
       def ++=[B: ByteSequence](byteSeq: B): Unit=
