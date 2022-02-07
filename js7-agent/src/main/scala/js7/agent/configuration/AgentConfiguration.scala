@@ -100,11 +100,11 @@ extends CommonConfiguration
 
   def toJobLauncherConf(iox: IOExecutor, blockingJobScheduler: SchedulerService, clock: AlarmClock)
   : Checked[JobLauncherConf] =
-    toSubagentConf.toJobLauncherConf(iox, blockingJobScheduler, clock)
+    subagentConf.toJobLauncherConf(iox, blockingJobScheduler, clock)
 
   val journalMeta = JournalMeta(AgentState, stateDirectory / "agent" )
 
-  lazy val toSubagentConf =
+  lazy val subagentConf =
     SubagentConf(
       configDirectory = configDirectory,
       dataDirectory = dataDirectory,
@@ -114,7 +114,8 @@ extends CommonConfiguration
       defaultJobSigkillDelay = defaultJobSigkillDelay,
       killScript,
       name = name,
-      config)
+      config
+    ).finishAndProvideFiles
 
   // Suppresses Config (which may contain secrets)
   override def toString = s"AgentConfiguration($configDirectory,$dataDirectory,$webServerPorts," +

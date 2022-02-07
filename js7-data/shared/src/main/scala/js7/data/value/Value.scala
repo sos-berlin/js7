@@ -108,9 +108,11 @@ object Value
 
   implicit val jsonEncoder: Encoder[Value] = {
     case StringValue(o) => Json.fromString(o)
-    case NumberValue.Zero => NumberValue.ZeroJson
-    case NumberValue.One => NumberValue.OneJson
-    case NumberValue(o) => Json.fromBigDecimal(o)
+    case NumberValue(n) => n match {
+      case NumberValue.Zero.number => NumberValue.ZeroJson
+      case NumberValue.One.number => NumberValue.OneJson
+      case o => Json.fromBigDecimal(o)
+    }
     case BooleanValue(o) => Json.fromBoolean(o)
     case ListValue(values) => Json.fromValues(values map jsonEncoder.apply)
     case ObjectValue(values) => Json.fromJsonObject(JsonObject.fromIterable(values.view.mapValues(jsonEncoder.apply)))
