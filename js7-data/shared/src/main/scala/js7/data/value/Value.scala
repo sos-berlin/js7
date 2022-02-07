@@ -14,6 +14,8 @@ import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.value.ValuePrinter.quoteString
 import js7.data.value.ValueType.{MissingValueProblem, UnexpectedValueTypeProblem}
+import js7.data.value.expression.ExprFunction
+import monix.eval.Task
 import scala.collection.View
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._
@@ -24,6 +26,8 @@ import scala.util.control.NonFatal
 sealed trait Value
 {
   def valueType: ValueType
+
+  def release = Task.unit
 
   final def toStringValueString: Checked[String] =
     toStringValue.map(_.string)
@@ -117,7 +121,8 @@ object Value
     case ListValue(values) => Json.fromValues(values map jsonEncoder.apply)
     case ObjectValue(values) => Json.fromJsonObject(JsonObject.fromIterable(values.view.mapValues(jsonEncoder.apply)))
     case NullValue => Json.Null
-    case v: IsErrorValue => sys.error(s"IsErrorValue cannot be JSON encoded: $v")
+    case v @ (_: IsErrorValue | _: FunctionValue) =>
+      sys.error(s"${v.valueType.name} cannot be JSON encoded: $v")
   }
 
   implicit val jsonDecoder: Decoder[Value] = {
@@ -334,6 +339,21 @@ final case class ObjectType(nameToType: Map[String, ValueType])
 extends ValueType.Compound
 {
   def name = "Object"
+}
+
+final case class FunctionValue(function: ExprFunction) extends Value
+{
+  def valueType = FunctionValue
+
+  def toJava = throw new RuntimeException("FunctionValue cannot be converted to a Java value")
+
+  def convertToString = function.toString
+
+  override def toString = function.toString
+}
+object FunctionValue extends ValueType
+{
+  val name = "Function"
 }
 
 /** Just a reminder that MissingValue could be an instance of a future IsErrorValue.

@@ -35,27 +35,41 @@ object ExpressionParser
     checkedParse(string, functionOnly(_))
       .left.map(_.withPrefix("Error in function:"))
 
-  private[expression] def functionOnly[x: P]: P[ExprFunction] =
-    P(function ~ End)
-
   def constantExpression[x: P]: P[Expression] =
     expression
 
   def expressionOnly[x: P]: P[Expression] =
-    P(w ~~ wordOperation ~ End)
+    P(w ~~ expression ~ End)
+
+  def expressionOrFunction[x: P]: P[Expression] =
+    P(functionExpr | expression)
 
   def expression[x: P]: P[Expression] =
     P(wordOperation)
 
-  private def parenthesizedExpression[x: P] = P[Expression](
-    ("(" ~ w ~/ expression ~ w ~ ")") |
-      bracketCommaSequence(expression).map(o => ListExpression(o.toList)))
+  private[expression] def functionOnly[x: P]: P[ExprFunction] =
+    P(function ~ End)
+
+  private def functionExpr[x: P]: P[FunctionExpr] =
+    P(function.map(FunctionExpr(_)))
 
   private def function[x: P] = P[ExprFunction](
-    (inParentheses(commaSequence(identifier)) ~~/ w ~~ "=>" ~~/ w ~~ expression)
+    (parameterList ~ w ~ "=>" ~/ w ~ expression)
       .map { case (names, expression) =>
         ExprFunction(names.map(VariableDeclaration(_)), expression)
       })
+
+  // Backtrackable
+  private def parameterList[x: P] = P[Seq[String]](
+    (w ~ "(" ~ w ~ (identifier ~ (w ~ "," ~ w ~ identifier).rep).? ~ w ~ ")")
+      .map {
+        case None => Nil
+        case Some((head, tail)) => head +: tail
+      })
+
+  private def parenthesizedExpression[x: P] = P[Expression](
+    ("(" ~ w ~/ expression ~ w ~ ")") |
+      bracketCommaSequence(expression).map(o => ListExpression(o.toList)))
 
   private def trueConstant[x: P] = P[BooleanConstant](
     keyword("true").map(_ => BooleanConstant(true)))
@@ -162,39 +176,40 @@ object ExpressionParser
       } yield NamedValue(where, key, default)))
 
   private def functionCall[x: P] = P[Expression](
-    (identifier ~/ w ~/ inParentheses(commaSequence((identifier ~ w ~ "=").? ~ w ~ expression)))
-      .flatMap {
-        case ("toBoolean", arguments) =>
-          arguments match {
-            case Seq((None, arg)) => valid(ToBoolean(arg))
-            case _ => invalid("toBoolean function expects exacly one argument")
-          }
-        case ("toNumber", arguments) =>
-          arguments match {
-            case Seq((None, arg)) => valid(ToNumber(arg))
-            case _ => invalid("toNumber function expects exacly one argument")
-          }
-        case ("stripMargin", arguments) =>
-          arguments match {
-            case Seq((None, arg)) => valid(StripMargin(arg))
-            case _ => invalid("stripMargin function expects exacly one argument")
-          }
-        case ("mkString", arguments) =>
-          arguments match {
-            case Seq((None, arg)) => valid(MkString(arg))
-            case _ => invalid("mkString function expects exacly one argument")
-          }
-        case ("replaceAll", arguments) =>
-          arguments match {
-            case Seq((None, string), (None, pattern), (None, replacement)) =>
-              valid(ReplaceAll(string, pattern, replacement))
-            case _ => invalid("replaceAll function expects exacly three arguments")
-          }
-        case (name, arguments) =>
-          valid(FunctionCall(
-            name,
-            arguments.map { case (maybeName, expr) => Argument(expr, maybeName) }))
-      })
+    (identifier ~/ w ~/ inParentheses(
+      commaSequence((identifier ~ w ~ "=").? ~ w ~ expressionOrFunction))
+    ).flatMap {
+      case ("toBoolean", arguments) =>
+        arguments match {
+          case Seq((None, arg)) => valid(ToBoolean(arg))
+          case _ => invalid("toBoolean function expects exacly one argument")
+        }
+      case ("toNumber", arguments) =>
+        arguments match {
+          case Seq((None, arg)) => valid(ToNumber(arg))
+          case _ => invalid("toNumber function expects exacly one argument")
+        }
+      case ("stripMargin", arguments) =>
+        arguments match {
+          case Seq((None, arg)) => valid(StripMargin(arg))
+          case _ => invalid("stripMargin function expects exacly one argument")
+        }
+      case ("mkString", arguments) =>
+        arguments match {
+          case Seq((None, arg)) => valid(MkString(arg))
+          case _ => invalid("mkString function expects exacly one argument")
+        }
+      case ("replaceAll", arguments) =>
+        arguments match {
+          case Seq((None, string), (None, pattern), (None, replacement)) =>
+            valid(ReplaceAll(string, pattern, replacement))
+          case _ => invalid("replaceAll function expects exacly three arguments")
+        }
+      case (name, arguments) =>
+        valid(FunctionCall(
+          name,
+          arguments.map { case (maybeName, expr) => Argument(expr, maybeName) }))
+    })
 
   private def namedValueKeyValue[x: P] = P[(String, Any)](
     keyValueConvert("label", identifier)(o => Right(NamedValue.ByLabel(o))) |
