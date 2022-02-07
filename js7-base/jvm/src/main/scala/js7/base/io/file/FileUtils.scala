@@ -1,5 +1,6 @@
 package js7.base.io.file
 
+import cats.effect.Resource
 import java.io.{BufferedOutputStream, File, FileOutputStream, IOException, OutputStreamWriter}
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets.{ISO_8859_1, UTF_8}
@@ -19,6 +20,7 @@ import js7.base.utils.Closer
 import js7.base.utils.Closer.syntax._
 import js7.base.utils.Closer.withCloser
 import js7.base.utils.JavaCollections.syntax._
+import monix.eval.Task
 import scala.annotation.tailrec
 import scala.collection.AbstractIterator
 import scala.language.implicitConversions
@@ -208,6 +210,11 @@ object FileUtils
       body(dir)
     }
   }
+
+  def temporaryDirectoryResource(prefix: String): Resource[Task, Path] =
+    Resource.make(
+      acquire = Task(Files.createTempDirectory(prefix)))(
+      release = dir => Task(deleteDirectoryRecursively(dir)))
 
   def deleteDirectoryRecursively(dir: Path): Unit = {
     require(isDirectory(dir), s"Not a directory: $dir")

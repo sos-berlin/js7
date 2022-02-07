@@ -2,6 +2,7 @@ package js7.base.io.file
 
 import io.circe.Json
 import java.io.File.separator
+import java.io.{File, IOException}
 import java.nio.charset.StandardCharsets.{UTF_16BE, UTF_8}
 import java.nio.file.Files.{createDirectories, createDirectory, createTempDirectory, createTempFile, delete, exists}
 import java.nio.file.StandardOpenOption.{CREATE_NEW, WRITE}
@@ -10,9 +11,12 @@ import js7.base.circeutils.CirceUtils._
 import js7.base.data.ByteArray
 import js7.base.io.file.FileUtils.implicits._
 import js7.base.io.file.FileUtils.syntax._
-import js7.base.io.file.FileUtils.{autoDeleting, checkRelativePath, copyDirectory, deleteDirectoryRecursively, touchFile, withTemporaryDirectory, withTemporaryFile}
+import js7.base.io.file.FileUtils.{autoDeleting, checkRelativePath, copyDirectory, deleteDirectoryRecursively, temporaryDirectoryResource, touchFile, withTemporaryDirectory, withTemporaryFile}
 import js7.base.io.file.FileUtilsTest._
 import js7.base.problem.ProblemException
+import js7.base.thread.MonixBlocking.syntax.RichTask
+import monix.eval.Task
+import monix.execution.Scheduler.Implicits.global
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
@@ -190,6 +194,19 @@ final class FileUtilsTest extends AnyFreeSpec with BeforeAndAfterAll
       file
     }
     assert(!exists(f))
+  }
+
+  "temporaryDirectoryResource" in {
+    var directory: Path = null
+    temporaryDirectoryResource("FileUtilsTest-")
+      .use(dir => Task {
+        directory = dir
+        touchFile(dir / "FILE")
+        createDirectory(dir / "SUBDIRECTORY")
+        touchFile(dir / "SUBDIRECTORY" / "FILE")
+      })
+      .awaitInfinite
+    assert(!exists(directory))
   }
 
   "autoDeleting" in {
