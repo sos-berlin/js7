@@ -28,7 +28,6 @@ import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.launcher.configuration.{JobLauncherConf, ProcessKillScript}
-import js7.launcher.process.ProcessKillScriptProvider
 import js7.subagent.configuration.SubagentConf
 import monix.execution.schedulers.SchedulerService
 import scala.concurrent.duration.FiniteDuration
@@ -79,7 +78,6 @@ extends CommonConfiguration
 
   def finishAndProvideFiles: AgentConfiguration =
     provideDataSubdirectories()
-      .provideKillScript()
 
   private def provideDataSubdirectories(): AgentConfiguration = {
     if (logDirectory == defaultLogDirectory(dataDirectory) && !exists(logDirectory)) {
@@ -94,18 +92,6 @@ extends CommonConfiguration
     }
     this
   }
-
-  private def provideKillScript(): AgentConfiguration = {
-    killScript match {
-      case Some(DelayUntilFinishKillScript) =>
-        val provider = new ProcessKillScriptProvider  //.closeWithCloser  After Agent termination, leave behind the kill script, in case of regular termination after error.
-        copy(killScript = Some(provider.provideTo(workDirectory)))
-      case _ => this
-    }
-  }
-
-  //??? private def killScriptConf: Option[KillScriptConf] =
-  //  killScript.map(o => KillScriptConf(o, workDirectory / s"kill_tasks_after_crash$ShellFileExtension"))
 
   lazy val workDirectory: Path =
     dataDirectory  / "work"

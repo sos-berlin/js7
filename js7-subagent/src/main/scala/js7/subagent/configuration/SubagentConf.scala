@@ -108,7 +108,7 @@ extends CommonConfiguration
         clock))
   }
 
-  private def provideKillScript(): SubagentConf = {
+  private def provideKillScript(): SubagentConf =
     killScript match {
       case Some(DelayUntilFinishKillScript) =>
         // After Subagent termination, leave behind the kill script,
@@ -117,7 +117,6 @@ extends CommonConfiguration
         copy(killScript = Some(provider.provideTo(workDirectory)))
       case _ => this
     }
-  }
 }
 
 object SubagentConf
