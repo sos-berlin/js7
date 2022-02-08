@@ -170,7 +170,8 @@ private object OrderActorTest {
 
     private val jobLauncherConf = JobLauncherConf(
       executablesDirectory = (dir / "config" / "executables").toRealPath(),
-      workDirectory = dir / "data" / "work",
+      shellScriptTmpDirectory = dir / "data" / "work",
+      tmpDirectory = dir / "data" / "work",
       workingDirectory = dir / "data" / "work",
       killWithSigterm = ProcessConfiguration.forTest.killWithSigterm,
       killWithSigkill = ProcessConfiguration.forTest.killWithSigkill,

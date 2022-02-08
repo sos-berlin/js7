@@ -300,7 +300,8 @@ final class SubagentKeeper(
       initialized.agentPath,
       initialized.controllerId,
       jobLauncherConf,
-      driverConf)
+      driverConf,
+      valueDirectory = agentConf.subagentConf.valueDirectory)
 
   private def newRemoteSubagentDriver(subagentRef: SubagentRef, initialized: Initialized) =
     new RemoteSubagentDriver(

@@ -13,6 +13,7 @@ import js7.data.job.{InternalExecutable, JobConf, JobKey}
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.subagent.SubagentId
 import js7.data.value.expression.Expression.{NamedValue, NumericConstant}
+import js7.data.value.expression.Scope
 import js7.data.value.{NamedValues, NumberValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.{Position, WorkflowBranchPath}
@@ -57,7 +58,8 @@ final class InternalJobLauncherTest extends AnyFreeSpec
         jobResources = Nil,
         Map("ARG" -> NumericConstant(1)),
         ControllerId("CONTROLLER"),
-        stdObservers)
+        stdObservers,
+        fileValueScope = Scope.empty)
     ).await(99.s).orThrow
     val outcome = orderProcess.start(stdObservers).flatten.await(99.s)
     assert(outcome == Outcome.Succeeded(NamedValues("RESULT" -> NumberValue(2))))

@@ -1,7 +1,9 @@
 package js7.launcher.forjava.internal
 
+import cats.effect.Resource
 import java.lang.System.{lineSeparator => nl}
 import java.nio.file.Paths
+import js7.base.io.file.FileUtils.temporaryDirectoryResource
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.thread.Futures.implicits._
@@ -19,6 +21,7 @@ import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.subagent.SubagentId
 import js7.data.value.expression.Expression
 import js7.data.value.expression.Expression.{NamedValue, NumericConstant, StringConstant}
+import js7.data.value.expression.scopes.{FileValueScope, FileValueState}
 import js7.data.value.{NamedValues, NumberValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.{Position, WorkflowBranchPath}
@@ -59,7 +62,7 @@ final class InternalJobLauncherForJavaTest extends AnyFreeSpec with BeforeAndAft
             workflow,
             ControllerId("CONTROLLER"),
             sigkillDelay = 0.s),
-          JobLauncherConf(u, u, u,
+          JobLauncherConf(u, u, u, u,
             killWithSigterm = ProcessConfiguration.forTest.killWithSigterm,
             killWithSigkill = ProcessConfiguration.forTest.killWithSigkill,
             None,
@@ -119,27 +122,33 @@ final class InternalJobLauncherForJavaTest extends AnyFreeSpec with BeforeAndAft
     val outFuture = out.fold.lastOrElseL("").runToFuture
     val errFuture = err.fold.lastOrElseL("").runToFuture
     val stdObservers = new StdObservers(out, err, 4096, keepLastErrLine = false)
-    executor
-      .start
-      .flatMapT(_ =>
-        executor.toOrderProcess(
-          ProcessOrder(
-            Order(OrderId("TEST"), workflow.id /: Position(0),
-              Order.Processing(SubagentId("SUBAGENT"))),
-            workflow,
-            executor.jobConf.jobKey,
-            jobResources = Nil,
-            Map("ORDER_ARG" -> arg),
-            ControllerId("CONTROLLER"),
-            stdObservers))
-        .await(99.s).orThrow
-        .start(stdObservers)
-        .flatten
-        .guarantee(Task {
-          try out.onComplete()
-          finally err.onComplete()
-        })
-        .map(outcome => Right(outcome, outFuture, errFuture)))
+    temporaryDirectoryResource("InternalJobLauncherForJavaTest-")
+      .flatMap(dir => Resource
+        .fromAutoCloseable(Task(new FileValueState(dir)))
+        .flatMap(fileValueState => FileValueScope.resource(fileValueState)))
+      .use(fileValueScope =>
+        executor
+          .start
+          .flatMapT(_ =>
+            executor.toOrderProcess(
+              ProcessOrder(
+                Order(OrderId("TEST"), workflow.id /: Position(0),
+                  Order.Processing(SubagentId("SUBAGENT"))),
+                workflow,
+                executor.jobConf.jobKey,
+                jobResources = Nil,
+                Map("ORDER_ARG" -> arg),
+                ControllerId("CONTROLLER"),
+                stdObservers,
+                fileValueScope))
+            .await(99.s).orThrow
+            .start(stdObservers)
+            .flatten
+            .guarantee(Task {
+              try out.onComplete()
+              finally err.onComplete()
+            })
+            .map(outcome => Right(outcome, outFuture, errFuture))))
   }
 }
 
