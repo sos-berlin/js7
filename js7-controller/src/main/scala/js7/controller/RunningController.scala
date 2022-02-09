@@ -427,9 +427,9 @@ object RunningController
             persistence.start(recovered)
           case _ =>
             cluster.stop
-              .onErrorHandle(t => Task {
-                logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)
-              })
+              .void
+              .onErrorHandle(t =>
+                logger.error(t.toStringWithCauses, t.nullIfNoStackTrace))
         }
       val controllerState = Task.defer {
         if (persistence.isStarted)
