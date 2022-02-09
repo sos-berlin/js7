@@ -28,7 +28,7 @@ extends AutoCloseable
   private val statistics = new Statistics
 
   def close(): Unit = {
-    if (commonDirectoryCreated.get) {
+    if (commonDirectoryCreated.get()) {
       tryDelete(directory.resolve(commonDirectory))
     }
     if (statistics.fileCount.get() == 0) {
