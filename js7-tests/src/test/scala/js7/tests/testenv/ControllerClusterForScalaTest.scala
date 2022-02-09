@@ -31,7 +31,6 @@ import js7.journal.files.JournalFiles.listJournalFiles
 import js7.tests.testenv.ControllerClusterForScalaTest.TestPathExecutable
 import js7.tests.testenv.DirectoryProvider.script
 import monix.eval.Task
-import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
 import org.scalactic.source
 import org.scalatest.Assertions._
@@ -154,8 +153,10 @@ trait ControllerClusterForScalaTest
     }
 
   /** Simulate a kill via ShutDown(failOver) - still writes new snapshot. */
-  protected final def simulateKillActiveNode(controller: RunningController)(implicit s: Scheduler): Task[Unit] =
-    controller.executeCommandAsSystemUser(ShutDown(clusterAction = Some(ShutDown.ClusterAction.Failover)))
+  protected final def simulateKillActiveNode(controller: RunningController): Task[Unit] =
+    controller
+      .executeCommandAsSystemUser(
+        ShutDown(clusterAction = Some(ShutDown.ClusterAction.Failover)))
       .map(_.orThrow)
       .flatMap(_ => Task.deferFuture(controller.terminated))
       .map((_: ProgramTermination) => ())

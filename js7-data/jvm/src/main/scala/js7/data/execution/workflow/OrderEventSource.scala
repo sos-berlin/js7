@@ -173,7 +173,7 @@ final class OrderEventSource(state: StateView)
   : Checked[List[OrderActorEvent]] =
   {
     def callToEvent(branchId: Option[BranchId], pos: Position) =
-      toEvent.lift(branchId, pos)
+      toEvent.lift((branchId, pos))
         .map(event => Right(event :: Nil))
         .getOrElse(Left(Problem(
           s"Unexpected Branchid '$branchId' while leaving instruction blocks")))

@@ -48,7 +48,6 @@ extends SubagentCommandExecutor
       release.orThrow.map { _ =>
         // TODO Beware race condition?
         stoppedOnce.trySet(termination)
-        termination
       }
     }
 

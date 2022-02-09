@@ -22,7 +22,7 @@ import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath}
 import js7.data.order.{Order, OrderId, OrderObstacleCalculator}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
-import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState}
+import js7.data.subagent.SubagentId
 import js7.data.value.Value
 import js7.data.workflow.WorkflowPath
 import js7.data_for_java.agent.{JAgentRef, JAgentRefState}

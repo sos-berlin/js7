@@ -152,7 +152,7 @@ extends AutoCloseable
         case _ =>
           throw new CorruptJournalException("Snapshot header is missing", journalFile, positionAndRaw)
       }
-    else if (record.headOption contains '{'/*JSON object?*/)
+    else if (record.headOption contains '{'.toByte/*JSON object?*/)
       Some(positionAndRaw)
     else if (record == SnapshotFooterLine)
       None

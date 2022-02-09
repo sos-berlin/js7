@@ -89,7 +89,7 @@ object TestAlarmClock
         tick1(duration)
       }
 
-    private final def tick1(duration: FiniteDuration = ZeroDuration) = {
+    private final def tick1(duration: FiniteDuration) = {
       assertThat(!duration.isNegative)
       clock += duration.toMillis
       scheduler.tick(duration)

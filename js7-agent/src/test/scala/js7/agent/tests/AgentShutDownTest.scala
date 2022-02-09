@@ -14,7 +14,6 @@ import js7.base.problem.Checked.Ops
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
-import js7.base.web.Uri
 import js7.common.akkautils.Akkas
 import js7.common.system.ServerOperatingSystem.operatingSystem
 import js7.data.agent.AgentPath

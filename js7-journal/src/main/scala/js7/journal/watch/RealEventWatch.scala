@@ -204,7 +204,7 @@ trait RealEventWatch extends EventWatch
                 // If the first event is not fresh, we have a read congestion.
                 // We serve a (simulated) Torn, and the client can fetch the current state
                 // and read fresh events, skipping the congestion.
-                Task.deferAction { implicit s =>
+                Task.defer {
                   val head = iterator.next()
                   // Don't compare head.timestamp, timestamp may be much older)
                   if (EventId.toTimestamp(head.eventId) + tornOlder < Timestamp.now) {
@@ -217,7 +217,7 @@ trait RealEventWatch extends EventWatch
             }
 
           case empty @ EventSeq.Empty(lastEventId) =>
-            Task.deferAction { implicit s =>
+            Task.defer {
               if (deadline.forall(_.hasTimeLeft)) {
                 val preventOverheating =
                   if (lastEventId < committedEventIdSync.last) {

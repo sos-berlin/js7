@@ -295,7 +295,7 @@ final case class Repo private(
           entries.tail.exists(_.versionId == id.versionId))
 
   /** Returns the current VersionedItem to a Path. */
-  def pathTo[A <: VersionedItem](path: A#Path)(implicit A: VersionedItem.Companion[A]): Checked[A] =
+  def pathTo[A <: VersionedItem](A: VersionedItem.Companion[A])(path: A.Path): Checked[A] =
     pathToVersionToSignedItems
       .rightOr(path, UnknownItemPathProblem(path))
       .flatMap(_.head

@@ -18,7 +18,7 @@ class AkkaHttpControllerApi(
   actorSystem: ActorSystem,
   protected final val config: Config = ConfigFactory.empty,
   httpsConfig: HttpsConfig = HttpsConfig.empty,
-  override protected final val loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays,
+  override protected final val loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays _,
   name: String = "")
 extends HttpControllerApi with AutoCloseable
 {
@@ -53,7 +53,7 @@ object AkkaHttpControllerApi
     uri: Uri,
     userAndPassword: Option[UserAndPassword],
     httpsConfig: HttpsConfig = HttpsConfig.empty,
-    loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays,
+    loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays _,
     name: String = "")
     (implicit actorSystem: ActorSystem)
   : Resource[Task, HttpControllerApi] =

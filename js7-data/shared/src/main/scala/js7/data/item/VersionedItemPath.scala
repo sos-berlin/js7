@@ -1,7 +1,6 @@
 package js7.data.item
 
 import io.circe.{Codec, Decoder, DecodingFailure, Encoder, HCursor, Json}
-import java.nio.file.{Path, Paths}
 import js7.base.circeutils.CirceUtils.CirceUtilsChecked
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
@@ -42,7 +41,7 @@ object VersionedItemPath
   type AnyCompanion = Companion[_ <: VersionedItemPath]
 
   implicit final class ImplicitItemPath[P <: VersionedItemPath](private val underlying: P) extends AnyVal {
-    def ~(version: String)(implicit P: VersionedItemPath.Companion[P]): VersionedItemId[P] =
+    def ~(version: String): VersionedItemId[P] =
       this ~ VersionId(version)
 
     def ~(v: VersionId): VersionedItemId[P] =

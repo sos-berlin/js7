@@ -132,12 +132,12 @@ trait JournaledProxy[S <: SnapshotableState[S]]
 
 object JournaledProxy
 {
-  private type Api[S <: JournaledState[S]] = EventApi { type State = S }
+  private type Api_[S <: JournaledState[S]] = EventApi { type State = S }
 
   private val logger = scribe.Logger[this.type]
 
   def observable[S <: JournaledState[S]](
-    apiResources: Seq[Resource[Task, Api[S]]],
+    apiResources: Seq[Resource[Task, Api_[S]]],
     fromEventId: Option[EventId],
     onProxyEvent: ProxyEvent => Unit = _ => (),
     proxyConf: ProxyConf)
@@ -188,7 +188,7 @@ object JournaledProxy
     def isTorn(t: Throwable) =
       fromEventId.isEmpty && checkedCast[ProblemException](t).exists(_.problem is EventSeqTornProblem)
 
-    def observeWithState(api: Api[S], state: S, stateFetchDuration: FiniteDuration)
+    def observeWithState(api: Api_[S], state: S, stateFetchDuration: FiniteDuration)
     : Observable[EventAndState[Event, S]] = {
       val seed = EventAndState(Stamped(state.eventId, ProxyStarted: AnyKeyedEvent), state, state)
       val recouplingStreamReader = new MyRecouplingStreamReader(onProxyEvent, stateFetchDuration,
@@ -239,12 +239,12 @@ object JournaledProxy
     tornOlder: Option[FiniteDuration],
     recouplingStreamReaderConf: RecouplingStreamReaderConf)
     (implicit S: JournaledState.Companion[S])
-  extends RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], Api[S]](
+  extends RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], Api_[S]](
     _.eventId, recouplingStreamReaderConf)
   {
     private var addToTornOlder = stateFetchDuration
 
-    def getObservable(api: Api[S], after: EventId) = {
+    def getObservable(api: Api_[S], after: EventId) = {
       import S.keyedEventJsonCodec
       HttpClient.liftProblem(api
         .eventObservable(
@@ -257,13 +257,13 @@ object JournaledProxy
         })
     }
 
-    override def onCoupled(api: Api[S], after: EventId) =
+    override def onCoupled(api: Api_[S], after: EventId) =
       Task {
         onProxyEvent(ProxyCoupled(after))
         Completed
       }
 
-    override protected def onCouplingFailed(api: Api[S], problem: Problem) =
+    override protected def onCouplingFailed(api: Api_[S], problem: Problem) =
       super.onCouplingFailed(api, problem) >>
         Task {
           onProxyEvent(ProxyCouplingError(problem))

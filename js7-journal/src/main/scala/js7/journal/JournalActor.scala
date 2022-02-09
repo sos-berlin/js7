@@ -303,7 +303,7 @@ extends Actor with Stash with JournalLogging
       }
   }
 
-  private def forwardCommit(delay: FiniteDuration = ZeroDuration): Unit = {
+  private def forwardCommit(delay: FiniteDuration): Unit = {
     val deadline = now + delay
     if (commitDeadline == null || deadline < commitDeadline) {
       commitDeadline = deadline

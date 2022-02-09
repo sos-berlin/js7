@@ -202,7 +202,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
           if (!httpResponse.status.isSuccess && !allowedStatusCodes(httpResponse.status.intValue)) {
             Task.deferFuture(httpResponse.entity.toStrict(FailureTimeout, maxBytes = HttpErrorContentSizeMaximum))
               .flatMap(entity =>
-                Task.raiseError(throw new HttpException(POST, uri, httpResponse, entity.data.utf8String)))
+                Task.raiseError(new HttpException(POST, uri, httpResponse, entity.data.utf8String)))
           } else
             Task.pure(httpResponse.status.intValue)
         }.guarantee(Task {

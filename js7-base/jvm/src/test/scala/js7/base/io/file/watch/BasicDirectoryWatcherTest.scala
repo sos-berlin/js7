@@ -58,7 +58,7 @@ final class BasicDirectoryWatcherTest extends AnyFreeSpec
         val future = watcher.observableResource
           .use(observable => Task {
             val observed = observable foreach { events ++= _ }
-            var file = dir / "1"
+            val file = dir / "1"
             file := ""
             waitForCondition(10.s, 10.ms)(events.lastOption contains FileAdded(file.getFileName))
             assert(events.lastOption contains FileAdded(file.getFileName))

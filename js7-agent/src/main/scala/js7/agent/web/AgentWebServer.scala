@@ -13,7 +13,6 @@ import js7.core.cluster.ClusterWatchRegister
 import js7.core.command.CommandMeta
 import js7.journal.watch.EventWatch
 import monix.eval.Task
-import monix.execution.Scheduler
 
 object AgentWebServer
 {
@@ -23,9 +22,7 @@ object AgentWebServer
     sessionRegister: SessionRegister[SimpleSession],
     clusterWatchRegister: ClusterWatchRegister,
     eventWatch: EventWatch)
-    (implicit
-      actorSystem: ActorSystem,
-      scheduler: Scheduler)
+    (implicit actorSystem: ActorSystem)
   : AkkaWebServer with AkkaWebServer.HasUri with StartableWithApi = {
     val apiOnce = SetOnce[CommandMeta => DirectAgentApi]
 

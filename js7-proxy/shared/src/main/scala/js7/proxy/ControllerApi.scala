@@ -10,11 +10,10 @@ import js7.base.monixutils.RefCountedResource
 import js7.base.problem.Checked
 import js7.base.session.SessionApi
 import js7.base.time.ScalaTime._
-import js7.base.utils.ScalaUtils.syntax.{RichEitherF, RichThrowable}
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.HttpClient.HttpException
 import js7.base.web.{HttpClient, Uri}
 import js7.controller.client.HttpControllerApi
-import js7.data.agent.AgentRef
 import js7.data.cluster.ClusterSetting
 import js7.data.controller.ControllerCommand.Response.Accepted
 import js7.data.controller.ControllerCommand.{AddOrder, AddOrders, ReleaseEvents}
@@ -76,13 +75,6 @@ extends ControllerApiWithHttp
   def clusterAppointNodes(idToUri: Map[NodeId, Uri], activeId: NodeId, clusterWatches: Seq[ClusterSetting.Watch])
   : Task[Checked[Accepted]] =
     executeCommand(ControllerCommand.ClusterAppointNodes(idToUri, activeId, clusterWatches))
-
-  @deprecated
-  def updateAgentRefs(agentRefs: Seq[AgentRef]): Task[Checked[Accepted]] =
-    updateItems(Observable
-      .fromIterable(agentRefs)
-      .map(ItemOperation.AddOrChangeSimple.apply))
-      .map(_.map((_: Completed) => Accepted))
 
   def updateRepo(
     versionId: VersionId,

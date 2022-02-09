@@ -148,7 +148,7 @@ final class InternalJobLauncherForJavaTest extends AnyFreeSpec with BeforeAndAft
               try out.onComplete()
               finally err.onComplete()
             })
-            .map(outcome => Right(outcome, outFuture, errFuture))))
+            .map(outcome => Right((outcome, outFuture, errFuture)))))
   }
 }
 

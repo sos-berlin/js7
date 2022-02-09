@@ -2,7 +2,6 @@ package js7.base.utils
 
 import cats.effect.{Bracket, Resource, SyncIO}
 import java.io.{ByteArrayInputStream, InputStream}
-import scala.language.implicitConversions
 
 /**
   * @author Joacim Zschimmer

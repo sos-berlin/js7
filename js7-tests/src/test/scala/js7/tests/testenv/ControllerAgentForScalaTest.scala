@@ -56,7 +56,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
     orderObstacleCalculator.orderToObstacles(orderId)(service)
   }
 
-  protected final def orderObstacleCalculator(implicit clock: WallClock): OrderObstacleCalculator =
+  protected final def orderObstacleCalculator: OrderObstacleCalculator =
     new OrderObstacleCalculator(controllerState)
 
   override def beforeAll() = {

@@ -2,7 +2,7 @@ package js7.journal.state
 
 import akka.actor.{ActorRef, Props}
 import js7.base.monixutils.MonixBase.promiseTask
-import js7.base.problem.{Checked, Problem}
+import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.common.akkautils.SupervisorStrategies
 import js7.data.event.{Event, JournaledState, KeyedEvent, Stamped}
@@ -107,6 +107,6 @@ private[state] object StateJournalingActor
       persistPromise, persistLaterPromise)
     }
 
-  private final class IllegalStateChangeWhilePersistingException(stamped: Stamped[KeyedEvent[_]], problem: Problem)
-  extends RuntimeException(s"Application of event failed after persisted: $stamped: $problem")
+  //private final class IllegalStateChangeWhilePersistingException(stamped: Stamped[KeyedEvent[_]], problem: Problem)
+  //extends RuntimeException(s"Application of event failed after persisted: $stamped: $problem")
 }

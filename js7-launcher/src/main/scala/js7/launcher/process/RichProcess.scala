@@ -59,7 +59,7 @@ class RichProcess protected[process](
     _terminated
 
   final def sendProcessSignal(signal: ProcessSignal): Task[Unit] =
-    Task.deferAction { implicit s =>
+    Task.defer {
       _killed = true
       signal match {
         case SIGTERM =>

@@ -1,6 +1,5 @@
 package js7.base.io.file.watch
 
-import cats.Show
 import cats.effect.{ExitCase, Resource}
 import java.io.IOException
 import java.nio.file.{ClosedWatchServiceException, NotDirectoryException, Path, WatchEvent, WatchKey}
@@ -119,8 +118,8 @@ object BasicDirectoryWatcher
           directoryWatcher.stop(
             canceled = exitCase == ExitCase.Canceled))
 
-  private implicit val watchEventShow: Show[WatchEvent[_]] = e =>
-    s"${e.kind.name} ${e.count}× ${e.context}"
+  //private implicit val watchEventShow: Show[WatchEvent[_]] = e =>
+  //  s"${e.kind.name} ${e.count}× ${e.context}"
 
   def repeatWhileIOException[A](options: WatchOptions, task: Task[A]): Task[A] =
     Task.defer {

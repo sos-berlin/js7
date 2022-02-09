@@ -52,6 +52,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
             o,
             events => self ! Internal.UpdateEvents(events))
           .materializeIntoChecked
+          .rightAs(())
           .map(_.onProblemHandle(problem => logger.error(s"continueProcessingOrder: $problem")))
           .runAsyncAndForget
       }

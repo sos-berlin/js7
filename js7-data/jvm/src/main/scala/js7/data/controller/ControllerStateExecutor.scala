@@ -57,13 +57,13 @@ final case class ControllerStateExecutor private(
 
   private def addOrderWithPrecheckedId(
     order: FreshOrder,
-    externalOrderKey: Option[ExternalOrderKey] = None)
+    externalOrderKey: Option[ExternalOrderKey])
   : Checked[Option[KeyedEvent[OrderAdded]]] =
     if (controllerState.idToOrder.contains(order.id))
       Right(None) // Ignore known orders  — TODO Fail as duplicate if deleteWhenTerminated ?
     else
       for {
-        workflow <- controllerState.repo.pathTo[Workflow](order.workflowPath)
+        workflow <- controllerState.repo.pathTo(Workflow)(order.workflowPath)
         preparedArguments <- workflow.orderParameterList.prepareOrderArguments(
           order, controllerId, controllerState.keyTo(JobResource), nowScope)
       } yield Some(

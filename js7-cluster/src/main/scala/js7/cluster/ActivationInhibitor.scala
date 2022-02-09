@@ -1,6 +1,5 @@
 package js7.cluster
 
-import akka.actor.ActorSystem
 import cats.effect.ExitCase
 import js7.base.log.Logger
 import js7.base.problem.Checked
@@ -33,7 +32,7 @@ private[cluster] final class ActivationInhibitor
           mvar.put(state)
         case s =>
           s.fold(Task.unit)(mvar.put) >>
-            Task.raiseError(throw new IllegalStateException(s"ActivationInhibitor markAs($state): Already '$s''"))
+            Task.raiseError(new IllegalStateException(s"ActivationInhibitor markAs($state): Already '$s''"))
       })
 
   def tryToActivate[A](ifInhibited: Task[A], activate: Task[A]): Task[A] =
@@ -106,7 +105,7 @@ private[cluster] object ActivationInhibitor
   private val logger = Logger(getClass)
 
   def inhibitActivationOfPassiveNode(setting: ClusterSetting, ctx: ClusterContext)
-    (implicit actorSystem: ActorSystem): Task[Option[FailedOver]] =
+  : Task[Option[FailedOver]] =
     Task.defer {
       val retryDelay = 5.s  // TODO
       ctx.clusterNodeApi(setting.passiveUri, "inhibitActivationOfPassiveNode")

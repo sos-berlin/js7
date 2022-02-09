@@ -16,7 +16,7 @@ import js7.data.event.{JournalEvent, JournalState, KeyedEvent, SnapshotableState
 import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeleted, ItemDeletionMarked}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
-import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItem, InventoryItemEvent, InventoryItemKey, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, UnsignedSimpleItemEvent, VersionedEvent, VersionedItemId_}
+import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItemEvent, InventoryItemKey, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, UnsignedSimpleItemEvent, VersionedEvent, VersionedItemId_}
 import js7.data.job.JobResource
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.Order.ExpectingNotice
@@ -27,7 +27,7 @@ import js7.data.state.StateView
 import js7.data.state.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
 import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState, SubagentRefStateEvent}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
-import scala.collection.{MapView, mutable}
+import scala.collection.mutable
 
 final class ControllerStateBuilder
 extends SnapshotableStateBuilder[ControllerState]
@@ -76,7 +76,7 @@ with StateView
 
   def orders = _idToOrder.values
 
-  lazy val keyToItem: MapView[InventoryItemKey, InventoryItem] =
+  def keyToItem =
     throw new NotImplementedError("ControllerStateBuilder.keyToItem")
 
   def pathToJobResource = keyTo(JobResource)
@@ -431,9 +431,4 @@ with StateView
   def journalState = standards.journalState
 
   def clusterState = standards.clusterState
-}
-
-object ControllerStateBuilder
-{
-  private val logger = scribe.Logger[this.type]
 }

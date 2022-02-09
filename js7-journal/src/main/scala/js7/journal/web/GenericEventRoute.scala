@@ -240,7 +240,6 @@ trait GenericEventRoute extends RouteProvider
       request: EventRequest[Event],
       heartbeat: FiniteDuration,
       eventWatch: EventWatch)
-      (implicit s: JsonEntityStreamingSupport)
     : Observable[Stamped[AnyKeyedEvent]] = {
       // TODO Check if torn then return Task.raiseError
       eventObservable(request, isRelevantEvent, eventWatch)

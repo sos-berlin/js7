@@ -28,7 +28,7 @@ final class OrderScheduleGenerator(addOrders: Seq[FreshOrder] => Task[Completed]
   @volatile private var timer = Cancelable.empty
   private val started = AtomicBoolean(false)
   @volatile private var closed = false
-  @volatile private var addOrdersCancelable = SerialCancelable()
+  private val addOrdersCancelable = SerialCancelable()
 
   def close() = {
     closed = true

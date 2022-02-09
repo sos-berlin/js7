@@ -778,8 +778,6 @@ with Stash
 
       def pathToBoardState = persistence.currentState.pathToBoardState
 
-      def pathToJobResource = persistence.currentState.pathToJobResource
-
       def keyToItem = persistence.currentState.keyToItem
     })
 

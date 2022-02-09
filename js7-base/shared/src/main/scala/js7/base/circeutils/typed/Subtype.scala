@@ -167,7 +167,7 @@ object Subtype {
 
   private def fromClassName[A](
     cls: Class[_],
-    subclasses: Iterable[Class[_/* <: A*/]] = Nil,
+    subclasses: Iterable[Class[_/* <: A*/]],
     encoder: Encoder.AsObject[A],
     decoder: Decoder[A],
     aliases: Seq[String] = Nil)

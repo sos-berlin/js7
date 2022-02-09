@@ -24,7 +24,7 @@ import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
 import js7.base.utils.ScalaUtils.RightUnit
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.{Closer, ProgramTermination, SetOnce}
+import js7.base.utils.{ProgramTermination, SetOnce}
 import js7.common.akkautils.{SimpleStateActor, SupervisorStrategies}
 import js7.common.crypt.generic.GenericSignatureVerifier
 import js7.common.system.JavaInformations.javaInformation
@@ -50,7 +50,7 @@ private[agent] final class AgentActor private(
   clock: AlarmClock,
   agentConf: AgentConfiguration,
   jobLauncherConf: JobLauncherConf)
-  (implicit closer: Closer, protected val scheduler: Scheduler, iox: IOExecutor)
+  (implicit protected val scheduler: Scheduler, iox: IOExecutor)
 
   extends Actor with Stash with SimpleStateActor
 {
@@ -306,7 +306,7 @@ object AgentActor
     clock: AlarmClock,
     agentConfiguration: AgentConfiguration,
     jobLauncherConf: JobLauncherConf)
-    (implicit closer: Closer, scheduler: Scheduler, iox: IOExecutor)
+    (implicit scheduler: Scheduler, iox: IOExecutor)
   {
     def apply(
       persistence: FileStatePersistence[AgentState],

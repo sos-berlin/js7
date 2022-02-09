@@ -101,7 +101,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
         for (t <- timestamped) logger.trace(s"»$toString« Store ${t.keyedEvent.key} <-: ${typeName(t.keyedEvent.event.getClass)}")
       journalActor.forward(
         JournalActor.Input.Store(timestamped, self, options, since = now,
-          callersItem = EventsCallback[S](
+          callersItem = EventsCallback(
             async = async,
             (stampedSeq, journaledState) => promise.complete(
               try Success(callback(stampedSeq.asInstanceOf[Seq[Stamped[KeyedEvent[EE]]]], journaledState))
@@ -165,7 +165,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
         endStashing(stampedSeq)
       }
       (stampedSeq, item) match {
-        case (_, eventsCallback: EventsCallback[S @unchecked]) =>
+        case (_, eventsCallback: EventsCallback) =>
           if (TraceLog && logger.underlying.isTraceEnabled) for (st <- stampedSeq)
             logger.trace(s"»$toString« Stored ${EventId.toString(st.eventId)} ${st.value.key} <-: ${typeName(st.value.event.getClass)}$stashingCountRemaining")
           eventsCallback.callback(stampedSeq.asInstanceOf[Seq[Stamped[KeyedEvent[E]]]], journaledState.asInstanceOf[S])
@@ -242,7 +242,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
   protected final def Timestamped[EE <: E](keyedEvent: KeyedEvent[EE], timestampMillis: Option[Long] = None) =
     JournalingActor.Timestamped(keyedEvent, timestampMillis)
 
-  private case class EventsCallback[S <: JournaledState[S]](
+  private case class EventsCallback(
     async: Boolean,
     callback: (Seq[Stamped[KeyedEvent[E]]], S) => Unit)
   extends Item {

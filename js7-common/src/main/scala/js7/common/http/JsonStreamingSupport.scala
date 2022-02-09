@@ -31,7 +31,6 @@ object JsonStreamingSupport
     StreamingJsonHeader :: Nil
 
   val JsonObjectMaxSize = 1024*1024  // TODO Maybe 10MB? For very big Workflows or snapshot objects
-  private val RS = ByteString(Ascii.RS)
   private val LF = ByteString(Ascii.LF)
 
   val NdJsonStreamingSupport = jsonSeqStreamingSupport(`application/x-ndjson`, _ ++ LF)

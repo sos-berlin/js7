@@ -21,9 +21,9 @@ final case class InstructionNr(number: Int) extends GenericInt
 
 object InstructionNr extends GenericInt.Companion[InstructionNr]
 {
-  private val predefined = (0 to 999).map(i => new InstructionNr(i)).toVector
   private val FirstInt = 0
-  val First = InstructionNr(FirstInt)
+  private lazy val predefined = (0 to 999).map(i => new InstructionNr(i)).toVector
+  lazy val First = InstructionNr(FirstInt)
   val Prefix = ":"
 
   def apply(number: Int): InstructionNr =

@@ -121,7 +121,7 @@ object FileUtils
         write(bytes.toArray)
 
       def write(string: String, encoding: Charset = UTF_8, append: Boolean = false): Unit = {
-        val options = Array(CREATE, WRITE, if (append) APPEND else TRUNCATE_EXISTING)
+        val options = Vector(CREATE, WRITE, if (append) APPEND else TRUNCATE_EXISTING)
         writeString(delegate, string, encoding, options: _*)
       }
 

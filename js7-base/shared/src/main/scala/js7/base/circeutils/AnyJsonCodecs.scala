@@ -20,7 +20,7 @@ object AnyJsonCodecs
   def anyToJson(value: Any, unknownToString: Boolean = false): Json =
     PlatformAnyJsonCodecs.platformAnyToJson.applyOrElse(value, standardAnyToJson(_, unknownToString))
 
-  private def standardAnyToJson(value: Any, unknownToString: Boolean = false): Json =
+  private def standardAnyToJson(value: Any, unknownToString: Boolean): Json =
     value match {
       case v: String => Json.fromString(v)
       case v: Boolean => Json.fromBoolean(v)

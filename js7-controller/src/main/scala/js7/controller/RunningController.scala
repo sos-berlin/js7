@@ -494,7 +494,7 @@ object RunningController
                 case Left(ClusterNodeIsNotActiveProblem | ShuttingDownProblem) => Task.pure(Right(ControllerCommand.Response.Accepted))
                 case Left(problem) => Task.pure(Left(problem))
                 case Right(actor) =>
-                  Task.deferFutureAction(implicit s =>
+                  Task.deferFuture(
                     (actor ? ControllerOrderKeeper.Command.Execute(command, meta))
                       .mapTo[Checked[ControllerCommand.Response]])
               }
@@ -510,7 +510,7 @@ object RunningController
 
         case _ =>
           orderKeeperActor.flatMapT(actor =>
-            Task.deferFutureAction(implicit s =>
+            Task.deferFuture(
               (actor ? ControllerOrderKeeper.Command.Execute(command, meta))
                 .mapTo[Checked[ControllerCommand.Response]]))
       }).map(_.map((_: ControllerCommand.Response).asInstanceOf[command.Response]))

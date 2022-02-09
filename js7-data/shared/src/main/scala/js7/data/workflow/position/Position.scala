@@ -23,10 +23,6 @@ final case class Position(branchPath: BranchPath, nr: InstructionNr)
 
   def /:(workflowId: WorkflowId) = new WorkflowPosition(workflowId, this)
 
-  @deprecated
-  def dropChild: Option[Position] =
-    parent
-
   def parent: Option[Position] =
     for (last <- branchPath.lastOption) yield
       Position(branchPath.init, last.nr)

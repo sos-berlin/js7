@@ -37,7 +37,6 @@ import js7.data.value.expression.scopes.{EnvScope, NowScope}
 import js7.data.value.{NamedValues, StringValue}
 import js7.journal.state.StatePersistence
 import monix.eval.Task
-import monix.execution.Scheduler
 import monix.reactive.Observable
 import monix.reactive.subjects.PublishSubject
 import scala.concurrent.duration.Deadline.now
@@ -48,7 +47,7 @@ final class FileWatchManager(
   ownAgentPath: AgentPath,
   persistence: StatePersistence[AgentState],
   config: Config)
-  (implicit scheduler: Scheduler, iox: IOExecutor)
+  (implicit iox: IOExecutor)
 {
   private val retryDelays = config.getDurationList("js7.filewatch.retry-delays")
     .asScala.map(_.toFiniteDuration).toVector match {

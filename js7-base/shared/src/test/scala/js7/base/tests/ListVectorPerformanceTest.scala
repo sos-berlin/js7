@@ -8,9 +8,6 @@ import scala.concurrent.duration.Deadline.now
 
 final class ListVectorPerformanceTest extends AnyFreeSpec
 {
-  private val n = 1_000_000
-  private val m = 10
-
   if (sys.props.contains("test.speed")) {
     "Vector" in {
       for (_ <- 1 to 10) {

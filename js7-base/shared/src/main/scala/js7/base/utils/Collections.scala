@@ -208,7 +208,7 @@ object Collections
         .scanLeft(List.empty[A])((reverseList, expr) =>
           (reverseList, expr) match {
             case (a :: tail, b) =>
-              merge.lift(a, b).fold(b :: a :: tail)(_ :: tail)
+              merge.lift((a, b)).fold(b :: a :: tail)(_ :: tail)
             case _ =>
               expr :: reverseList
           })

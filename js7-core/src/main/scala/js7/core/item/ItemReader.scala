@@ -11,7 +11,7 @@ trait ItemReader
 {
   val companion: InventoryItem.Companion_
 
-  import companion.{Item, Path => ThisItemPath}
+  import companion.{Path => ThisItemPath}
 
   private[item] final lazy val itemPathCompanion: InventoryItemPath.Companion[ThisItemPath] =
     companion.Path

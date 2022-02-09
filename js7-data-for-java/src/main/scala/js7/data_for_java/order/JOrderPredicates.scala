@@ -54,7 +54,6 @@ object JOrderPredicates
     now: Instant)
   : Predicate = {
     val cls = JOrderObstacle.toScalaClass(obstacleClass)
-    val timestamp = now.toTimestamp
     val service = new InstructionExecutorService(WallClock.fixed(now.toTimestamp))
 
     order => new OrderObstacleCalculator(state.asScala)

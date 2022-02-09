@@ -40,7 +40,7 @@ extends AutoCloseable
   private var blockPos = 0L
   private var blockLength = 0
   private var blockRead = 0
-  private var byteArrays = mutable.Buffer.empty[ByteArray]
+  private val byteArrays = mutable.Buffer.empty[ByteArray]
   private var lineNumber: Long = 1  // -1 for unknown line number after seek
   lazy val iterator: Iterator[PositionAnd[Json]] = UntilNoneIterator(read())
 

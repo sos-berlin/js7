@@ -169,7 +169,7 @@ object ByteArray extends ByteSequence[ByteArray]
   private[data] val inputStreamBufferSize = 32*1024
 
   override def fromInputStreamLimited(in: InputStream, limit: Int): Either[ByteArray, ByteArray] = {
-    var buffer = mutable.Buffer.empty[ByteArray]
+    val buffer = mutable.Buffer.empty[ByteArray]
     var totalLength = 0
     var eof = false
     var overflow = false

@@ -1,6 +1,5 @@
 package js7.cluster
 
-import akka.actor.ActorSystem
 import akka.pattern.ask
 import akka.util.Timeout
 import cats.syntax.flatMap._
@@ -46,9 +45,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff: TypeTag](
   common: ClusterCommon,
   clusterConf: ClusterConf)
   (implicit
-    S: SnapshotableState.Companion[S],
     scheduler: Scheduler,
-    actorSystem: ActorSystem,
     journalActorAskTimeout: Timeout)
 {
   private val clusterStateLock = AsyncLock("ClusterState")

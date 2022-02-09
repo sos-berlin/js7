@@ -6,6 +6,7 @@ import monix.eval.Task
 import monix.execution.atomic.Atomic
 import monix.execution.cancelables.SerialCancelable
 import monix.execution.{Cancelable, Scheduler}
+import scala.annotation.unused
 import scala.collection.mutable
 import scala.concurrent.duration._
 
@@ -36,8 +37,6 @@ trait AlarmClock extends WallClock
 
 object AlarmClock
 {
-  private val logger = scribe.Logger[this.type]
-
   def apply(clockCheckInterval: Option[FiniteDuration] = None)(implicit s: Scheduler): AlarmClock =
     clockCheckInterval match {
       case None =>
@@ -71,11 +70,11 @@ object AlarmClock
     def stop() = {}
 
     def scheduleOnce(delay: FiniteDuration)(callback: => Unit)
-      (implicit fullName: sourcecode.FullName): Cancelable =
+      (implicit @unused fullName: sourcecode.FullName): Cancelable =
       scheduler.scheduleOnce(delay)(callback)
 
     def scheduleAt(at: Timestamp)(callback: => Unit)
-      (implicit fullName: sourcecode.FullName): Cancelable =
+      (implicit @unused fullName: sourcecode.FullName): Cancelable =
       scheduler.scheduleOnce(at - now())(callback)
 
     override def toString =
@@ -115,7 +114,7 @@ object AlarmClock
       scheduleAt(now() + delay)(callback)
 
     final def scheduleAt(at: Timestamp)(callback: => Unit)
-      (implicit fullName: sourcecode.FullName)
+      (implicit @unused fullName: sourcecode.FullName)
     : Cancelable = {
       val milli = at.toEpochMilli
       val alarm = new Alarm(milli, callback)

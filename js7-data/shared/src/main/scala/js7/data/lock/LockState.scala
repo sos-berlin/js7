@@ -83,7 +83,7 @@ extends UnsignedSimpleItemState with Big/*acquired and queue get big with many o
       _ <- checkLimit(count)
     } yield a
 
-  private def checkLimit(count: Option[Int] = None): Either[LockRefusal, Unit] =
+  private def checkLimit(count: Option[Int]): Either[LockRefusal, Unit] =
     count match {
       case None =>
         if (acquired == Available)

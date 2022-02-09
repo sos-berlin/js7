@@ -34,7 +34,7 @@ final class JRepo(asScala: Repo)
 
   @Nonnull
   def pathToWorkflow(@Nonnull workflowPath: WorkflowPath): VEither[Problem, JWorkflow] =
-    asScala.pathTo[Workflow](workflowPath)
+    asScala.pathTo(Workflow)(workflowPath)
       .map(JWorkflow.apply)
       .toVavr
 }

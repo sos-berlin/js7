@@ -20,7 +20,6 @@ import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
 import js7.base.utils.Collections.RichMap
-import js7.base.utils.Collections.implicits.RichIterableOnce
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
 import js7.data.agent.AgentPath
@@ -53,7 +52,7 @@ final class SubagentKeeper(
 
   def initialize(agentPath: AgentPath, localSubagentId: Option[SubagentId], controllerId: ControllerId)
   : Task[Unit] =
-    Task.deferAction { implicit scheduler =>
+    Task.defer {
       val initialized = Initialized(agentPath, localSubagentId, controllerId)
       this.initialized := initialized
       if (localSubagentId.isDefined)
@@ -270,11 +269,11 @@ final class SubagentKeeper(
                   }
 
                 case None =>
-                  Task.deferAction(implicit s => Task {
+                  Task {
                     val subagentDriver = newSubagentDriver(subagentRef, initialized)
                     for (s <- state.insert(subagentDriver, subagentRef.priority)) yield
                       s -> subagentDriver
-                  })
+                  }
               }))
   }
 

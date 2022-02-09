@@ -324,7 +324,7 @@ object MonixBase
     }
 
   def durationOfTask[A](task: Task[A]): Task[(A, FiniteDuration)] =
-    Task.deferAction { implicit s =>
+    Task.defer {
       val t = now
       task.map(_ -> t.elapsed)
     }
@@ -341,13 +341,11 @@ object MonixBase
 
         case None =>
           logger.debug(s"Waiting for Future '$name' ...")
-          Task.deferAction { implicit s =>
-            Task.fromFuture(future)
-              .whenItTakesLonger()(duration => Task {
-                logger.info(s"Still waiting for '$name' for ${duration.pretty} ...")
-              })
-              .guaranteeCase(exitCase => Task(logger.debug(s"Future '$name' $exitCase")))
-          }
+          Task.fromFuture(future)
+            .whenItTakesLonger()(duration => Task {
+              logger.info(s"Still waiting for '$name' for ${duration.pretty} ...")
+            })
+            .guaranteeCase(exitCase => Task(logger.debug(s"Future '$name' $exitCase")))
       }
     }
 

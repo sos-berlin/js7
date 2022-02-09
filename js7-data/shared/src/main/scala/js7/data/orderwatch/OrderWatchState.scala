@@ -131,6 +131,7 @@ extends UnsignedSimpleItemState
   : Checked[OrderWatchState] =
     externalToState.get(externalOrderName) match {
       case Some(HasOrder(`orderId`, None/*?*/ | Some(Vanished))) | None =>
+
         Right(copy(
           externalToState = externalToState - externalOrderName,
           vanishedQueue = vanishedQueue - externalOrderName))
@@ -143,8 +144,8 @@ extends UnsignedSimpleItemState
           vanishedQueue = vanishedQueue - externalOrderName,
           arisedQueue = arisedQueue + externalOrderName))
 
-      case None =>
-        unexpected(s"${orderWatch.path}: onOrderDeleted($externalOrderName, $orderId) for unknown Order")
+      case Some(x) =>
+        unexpected(s"${orderWatch.path}: unexpected onOrderDeleted($externalOrderName, $orderId) for $x")
     }
 
   def nextEvents(toOrderAdded: ToOrderAdded, isDeletionMarkable: OrderId => Boolean)
@@ -157,7 +158,8 @@ extends UnsignedSimpleItemState
     arisedQueue.view
       .flatMap(externalOrderName => externalToState
         .get(externalOrderName)
-        .flatMap { case Arised(orderId, arguments) =>
+        .flatMap { arised =>
+          val Arised(orderId, arguments) = arised
           val freshOrder = FreshOrder(orderId, orderWatch.workflowPath, arguments)
           val externalOrderKey = ExternalOrderKey(id, externalOrderName)
           toOrderAdded(freshOrder, Some(externalOrderKey)) match {

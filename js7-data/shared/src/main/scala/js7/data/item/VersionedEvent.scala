@@ -91,5 +91,5 @@ object VersionedEvent {
     Subtype[VersionedItemChanged],
     Subtype(deriveCodec[VersionedItemRemoved]))
 
-  intelliJuseImport(versionedItemJsonCodec, versionedItemPathJsonCodec)
+  intelliJuseImport((versionedItemJsonCodec, versionedItemPathJsonCodec))
 }

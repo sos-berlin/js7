@@ -3,7 +3,7 @@ package js7.base.io
 import cats.effect.SyncIO
 import java.io.{File, InputStream}
 import java.net.{URI, URL}
-import java.nio.file.{CopyOption, DirectoryNotEmptyException, FileAlreadyExistsException, Files, Path}
+import java.nio.file.{CopyOption, Files, Path}
 import java.util.Objects.requireNonNull
 import js7.base.data.{ByteArray, ByteSequence}
 import js7.base.io.JavaResource._
@@ -38,10 +38,10 @@ final case class JavaResource(classLoader: ClassLoader, path: String)
     * Copies the resource files denoted by `resourceNames` name by name to `directory`.
     *
     * @return The created file paths
-    * @throws FileAlreadyExistsException
+    * @throws java.nio.file.FileAlreadyExistsException
     * if the target file exists but cannot be replaced because
     * the `REPLACE_EXISTING` option is not specified <i>(optional specific exception)</i>
-    * @throws DirectoryNotEmptyException
+    * @throws java.nio.file.DirectoryNotEmptyException
     * the `REPLACE_EXISTING` option is specified but the file cannot be replaced because
     * it is a non-empty directory <i>(optional specific exception)</i>
     */
@@ -56,10 +56,10 @@ final case class JavaResource(classLoader: ClassLoader, path: String)
   /**
     * Copies the resource to a new file with java.nio.file.Files.copy.
     *
-    * @throws FileAlreadyExistsException
+    * @throws java.nio.file.FileAlreadyExistsException
     * if the target file exists but cannot be replaced because
     * the `REPLACE_EXISTING` option is not specified <i>(optional specific exception)</i>
-    * @throws DirectoryNotEmptyException
+    * @throws java.nio.file.DirectoryNotEmptyException
     * the `REPLACE_EXISTING` option is specified but the file cannot be replaced because
     * it is a non-empty directory <i>(optional specific exception)</i>
     */

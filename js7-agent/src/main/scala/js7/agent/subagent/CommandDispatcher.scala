@@ -1,9 +1,8 @@
 package js7.agent.subagent
 
-import cats.syntax.foldable._
 import cats.syntax.traverse._
-import js7.base.log.Logger.syntax._
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax._
 import js7.base.problem.Checked
 import js7.base.stream.{Numbered, ObservableNumberedQueue}
 import js7.base.utils.Assertions.assertThat
@@ -25,7 +24,7 @@ trait CommandDispatcher
 
   private val queue = new ObservableNumberedQueue[Execute]
   private val posting = Atomic(null: Future[Unit])
-  private val stopped = PublishSubject[Unit]
+  private val stopped = PublishSubject[Unit]()
   private lazy val logger = Logger.withPrefix[this.type](name)
 
   final def start: Task[Unit] =

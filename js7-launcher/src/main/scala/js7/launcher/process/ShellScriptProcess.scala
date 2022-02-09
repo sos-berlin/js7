@@ -46,7 +46,7 @@ object ShellScriptProcess {
     whenTerminated: Task[Unit] = Task.unit)
     (implicit iox: IOExecutor)
   : Task[Checked[ShellScriptProcess]] =
-    Task.deferAction { implicit scheduler =>
+    Task.defer {
       val commandArgs = toShellCommandArguments(
         commandLine.file,
         commandLine.arguments.tail ++ conf.idArgumentOption /*TODO Should not be an argument*/)

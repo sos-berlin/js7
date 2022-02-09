@@ -15,12 +15,12 @@ object MonixBlocking
   object syntax {
     implicit class RichTask[A](private val underlying: Task[A]) extends AnyVal
     {
-      def await(duration: FiniteDuration)(implicit s: Scheduler, A: WeakTypeTag[A]): A =
+      def await(duration: FiniteDuration)(implicit s: Scheduler): A =
         underlying
           .runSyncStep
           .fold(_.runSyncUnsafe(duration), identity)
 
-      def awaitInfinite(implicit s: Scheduler, A: WeakTypeTag[A]): A =
+      def awaitInfinite(implicit s: Scheduler): A =
         underlying.runToFuture.awaitInfinite
     }
 

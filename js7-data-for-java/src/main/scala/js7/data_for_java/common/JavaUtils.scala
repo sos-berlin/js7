@@ -2,8 +2,9 @@ package js7.data_for_java.common
 
 import cats.instances.vector._
 import cats.syntax.traverse._
+import java.util.Optional
 import js7.base.problem.{Checked, Problem}
-import js7.data.value.{BooleanValue, ListValue, NamedValues, NumberValue, ObjectValue, StringValue, Value}
+import js7.data.value.{BooleanValue, ErrorValue, FunctionValue, ListValue, MissingValue, NamedValues, NullValue, NumberValue, ObjectValue, StringValue, Value}
 import scala.jdk.CollectionConverters._
 
 object JavaUtils
@@ -45,6 +46,7 @@ object JavaUtils
       case NumberValue(o) => o
       case StringValue(o) => o
       case ListValue(values) => values.asJava
-      case ObjectValue(nameToValue) => throw new NotImplementedError
+      case NullValue => Optional.empty
+      case _: ObjectValue | _: ErrorValue | _: FunctionValue | _: MissingValue => throw new NotImplementedError
     }
 }

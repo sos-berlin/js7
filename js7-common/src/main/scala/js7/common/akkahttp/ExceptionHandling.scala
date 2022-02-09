@@ -23,7 +23,7 @@ trait ExceptionHandling
 
   private lazy val respondWithException = config.getBoolean("js7.web.server.verbose-error-messages")
 
-  implicit protected val exceptionHandler: ExceptionHandler =
+  implicit protected final lazy val exceptionHandler: ExceptionHandler =
     ExceptionHandler {
       case e: HttpStatusCodeException =>
         complete(e.statusCode -> e.problem)

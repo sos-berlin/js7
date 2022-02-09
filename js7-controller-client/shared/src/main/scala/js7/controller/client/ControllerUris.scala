@@ -29,7 +29,11 @@ final class ControllerUris private(controllerUri: Uri)
   : Uri =
     events_[E]("/event", request, heartbeat = heartbeat)
 
-  private def events_[E <: Event: ClassTag](path: String, request: EventRequest[E], heartbeat: Option[FiniteDuration] = None) =
+  private def events_[E <: Event: ClassTag](
+    path: String,
+    request: EventRequest[E],
+    heartbeat: Option[FiniteDuration])
+  : Uri =
     Uri(
       api(path).string + encodeQuery(
        (heartbeat.map("heartbeat" -> _.toDecimalString)) ++

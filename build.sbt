@@ -68,29 +68,55 @@ addCommandAlias("quickPublishLocal", "; compile; publishLocal; project js7JS; co
 //addCompilerPlugin(scalafixSemanticdb)
 //ThisBuild / scalacOptions ++= Seq("-P:semanticdb:synthetics:on", "-Yrangepos"/*required by SemanticDB compiler plugin*/)
 
-val enableWarnings = Seq(
-  "-Wunused:imports",
-  "-Wunused:privates",
-  "-Wunused:locals",
-  "-Wunused:implicits",
-  "-Xlint:infer-any",
-  "-Xlint:doc-detached",
-  "-Xlint:private-shadow",
-  //"-Xlint:type-parameter-shadow",
-  "-Xlint:poly-implicit-overload",
-  "-Xlint:constant",
-  "-Xlint:implicit-not-found",
-  "-Xlint:eta-zero")
-
 //scalafixDependencies in ThisBuild += "org.scalatest" %% "autofix" % "3.1.0.0"
 //addCompilerPlugin(scalafixSemanticdb) // enable SemanticDB
 val jdkVersion = "1.8"
 
 ThisBuild / scalacOptions ++= Seq(
+  "-explaintypes",
   "-Ymacro-annotations",
-  "-unchecked",
+  "-explaintypes",
+  "-feature",
   "-deprecation",
-  "-feature")
+  //"-Wunused:privates",
+  //"-Wunused:locals",
+  //"-Wunused:implicits",
+  "-Xlint:infer-any",
+  "-Xlint:doc-detached",
+  "-Xlint:private-shadow",
+  //"-Xlint:type-parameter-shadow",
+  "-Xlint:implicit-not-found",
+  "-Xlint:eta-zero",
+
+  "-unchecked",
+  "-Xcheckinit",
+  "-Xlint:adapted-args",
+  "-Xlint:constant",
+  "-Xlint:delayedinit-select",
+  "-Xlint:deprecation",
+  "-Xlint:doc-detached",
+  "-Xlint:inaccessible",
+  "-Xlint:infer-any",
+  //"-Xlint:missing-interpolator",
+  //"-Xlint:nullary-override",
+  "-Xlint:nullary-unit",
+  "-Xlint:option-implicit",
+  //"-Xlint:package-object-classes",
+  "-Xlint:poly-implicit-overload",
+  //"-Xlint:private-shadow",
+  "-Xlint:stars-align",
+  "-Xlint:type-parameter-shadow",
+  "-Wdead-code",
+  "-Wextra-implicit",
+  //"-Wnumeric-widen",
+  //"-Wunused:implicits",
+  "-Wunused:imports",
+  //"-Wunused:locals",
+  //"-Wunused:params",
+  //"-Wunused:patvars",
+  //"-Wunused:privates",
+  //"-Wvalue-discard",
+  )
 
 Global / concurrentRestrictions += Tags.limit(Tags.Test, max = testParallelization)
 
