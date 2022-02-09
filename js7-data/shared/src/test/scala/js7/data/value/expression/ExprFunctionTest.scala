@@ -2,11 +2,13 @@ package js7.data.value.expression
 
 import fastparse.NoWhitespace._
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.parser.Parsers.checkedParse
-import js7.data.value.expression.Expression.{Add, Multiply, NamedValue, NumericConstant}
-import js7.data.value.expression.ExpressionParser.functionOnly
+import js7.data.value.ValueType.UnexpectedValueTypeProblem
+import js7.data.value.expression.Expression.{Add, FunctionExpr, Multiply, NamedValue, NumericConstant}
+import js7.data.value.expression.ExpressionParser.{expressionOrFunction, functionOnly}
 import js7.data.value.expression.scopes.NamedValueScope
-import js7.data.value.{NumberValue, StringValue, Value}
+import js7.data.value.{FunctionValue, NumberValue, StringValue, Value}
 import org.scalactic.source
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -54,8 +56,32 @@ final class ExprFunctionTest extends AnyFreeSpec
       for (function <- checkedFunction) {
         assert(checkedParse(function.toString, functionOnly(_)) == checkedFunction, " in toString❗")
         assert(function.eval(args)(scope) == result)
+        assert(checkedParse(exprString, expressionOrFunction(_)) == Right(FunctionExpr(function)))
       }
     }
+
+  "FunctionExpr and FunctionValue" - {
+    "() => 7" in {
+      val fun: ExprFunction = ExprFunction(Nil, NumericConstant(7))
+      val expr = checkedParse("() => 7", expressionOrFunction(_)).orThrow
+      assert(expr == FunctionExpr(fun))
+      implicit val scope = Scope.empty
+      assert(expr.eval.orThrow.asInstanceOf[FunctionValue].function.eval(Nil) == Right(
+        NumberValue(7)))
+      assert(expr.eval.flatMap(_.asString) == Left(
+        UnexpectedValueTypeProblem(StringValue, FunctionValue(fun))))
+    }
+
+    "(x) => x + 7" in {
+      val expr = checkedParse("(x) => $x + 7", expressionOrFunction(_)).orThrow
+      assert(expr == FunctionExpr(ExprFunction(
+        Seq(VariableDeclaration("x")),
+        Add(NamedValue("x"), NumericConstant(7)))))
+      implicit val scope = Scope.empty
+      assert(expr.eval.orThrow.asInstanceOf[FunctionValue].function.eval(NumberValue(10) :: Nil) ==
+        Right(NumberValue(17)))
+    }
+  }
 
   "restrict" in {
     def restrict(min: Int, max: Int): Checked[ExprFunction] =

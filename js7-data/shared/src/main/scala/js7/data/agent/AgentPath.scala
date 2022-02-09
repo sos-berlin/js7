@@ -23,7 +23,7 @@ with UnsignedSimpleItemPath.Companion[AgentPath]
   /** Internal use only. */
   private[js7] val empty = new AgentPath("")
 
-  override val itemTypeName = AgentRef.typeName
+  override val itemTypeName = "AgentRef"  // May deadlock: AgentRef.typeName
   override val pathTypeName = "Agent"
 
   protected def unchecked(string: String) = new AgentPath(string)

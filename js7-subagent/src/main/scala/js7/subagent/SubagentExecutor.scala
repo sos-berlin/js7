@@ -88,7 +88,8 @@ trait SubagentExecutor
       agentPath,
       controllerId,
       jobLauncherConf,
-      subagentDriverConf)
+      subagentDriverConf,
+      valueDirectory = subagentConf.valueDirectory)
 
   protected def executeCoupleDirector(cmd: CoupleDirector): Task[Checked[Unit]] =
     Task {

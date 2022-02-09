@@ -98,6 +98,7 @@ trait ProcessingOrderScopes extends OrderScopes
   protected val order: Order[Order.Processing]
   protected val jobKey: JobKey
   protected val jobResources: Seq[JobResource]
+  protected val fileValueScope: Scope
 
   final lazy val simpleJobName: String =
     jobKey match {
@@ -114,15 +115,15 @@ trait ProcessingOrderScopes extends OrderScopes
     "js7JobExecutionCount" -> NumberValue(jobExecutionCount)))
 
   /** To avoid name clash, JobResources are not allowed to access order variables. */
-  lazy val scopeForJobResources =
-    js7JobVariablesScope |+| variablelessOrderScope |+| nowScope
+  final lazy val scopeForJobResources =
+    js7JobVariablesScope |+| variablelessOrderScope |+| nowScope |+| fileValueScope
 
   private lazy val jobResourceScope = JobResourceScope(
     jobResources.toKeyedMap(_.path),
     useScope = scopeForJobResources)
 
   final lazy val processingOrderScope =
-    js7JobVariablesScope |+| pureOrderScope |+| nowScope |+| jobResourceScope
+    js7JobVariablesScope |+| pureOrderScope |+| nowScope |+| jobResourceScope |+| fileValueScope
 
   /** For defaultArguments (Execute and WorkflowJob). */
   private lazy val scopeForOrderDefaultArguments =

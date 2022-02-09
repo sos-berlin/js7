@@ -13,8 +13,8 @@ import js7.data.job.{JobKey, JobResource, JobResourcePath, ShellScriptExecutable
 import js7.data.order.{FreshOrder, HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.subagent.SubagentId
 import js7.data.value.expression.Expression.{NamedValue, StringConstant}
-import js7.data.value.expression.ExpressionParser
 import js7.data.value.expression.scopes.OrderScopesTest._
+import js7.data.value.expression.{ExpressionParser, Scope}
 import js7.data.value.{NumberValue, ObjectValue, StringValue}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -61,6 +61,7 @@ final class OrderScopesTest extends AnyFreeSpec
       protected val order = OrderScopesTest.order.copy(state = Order.Processing(SubagentId("SUBAGENT")))
       protected val jobKey = JobKey.Named(workflow.id, jobName)
       protected val jobResources = Seq(jobResource)
+      protected val fileValueScope = Scope.empty
     }
 
     "JobResource.env" in {

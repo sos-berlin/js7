@@ -3,6 +3,7 @@ package js7.subagent
 import cats.syntax.foldable._
 import cats.syntax.parallel._
 import cats.syntax.traverse._
+import java.nio.file.Path
 import js7.base.io.process.{ProcessSignal, Stderr, Stdout, StdoutOrStderr}
 import js7.base.log.Logger
 import js7.base.monixutils.AsyncMap
@@ -20,6 +21,7 @@ import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.state.AgentStateView
 import js7.data.subagent.SubagentId
 import js7.data.value.expression.Expression
+import js7.data.value.expression.scopes.FileValueState
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.WorkflowPosition
 import js7.journal.state.StatePersistence
@@ -40,11 +42,13 @@ final class LocalSubagentDriver[S0 <: AgentStateView with JournaledState[S0]](
   val agentPath: AgentPath,
   val controllerId: ControllerId,
   jobLauncherConf: JobLauncherConf,
-  protected val conf: SubagentDriver.Conf)
+  protected val conf: SubagentDriver.Conf,
+  valueDirectory: Path)
 extends SubagentDriver
 {
   protected type S = S0
 
+  private val fileValueState = new FileValueState(valueDirectory)
   private val jobKeyToJobDriver = AsyncMap.empty[JobKey, JobDriver]
   private val orderIdToJobDriver =
     new AsyncMap(Map.empty[OrderId, JobDriver]) with AsyncMap.Stoppable
@@ -64,7 +68,9 @@ extends SubagentDriver
           signal.fold(Task.unit)(killAllAndStop)
             .tapEval(_ => Task(logger.debug("killAllAndStop completed"))))
         .tapEval(_ => Task(logger.debug("Stopped")))
-        .void
+        .*>(Task {
+          fileValueState.close()
+        })
     }
 
   private def killAllAndStop(signal: ProcessSignal): Task[Unit] =
@@ -170,7 +176,8 @@ extends SubagentDriver
                 new JobDriver(
                   jobConf,
                   id => persistence.currentState.pathToJobResource.checked(id)/*live!*/,
-                  JobLauncher.checked(jobConf, jobLauncherConf))
+                  JobLauncher.checked(jobConf, jobLauncherConf),
+                  fileValueState)
               }))
             .map(workflowJob -> _))
       .flatMap(_.sequence)

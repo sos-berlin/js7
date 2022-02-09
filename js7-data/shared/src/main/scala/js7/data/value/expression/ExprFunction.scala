@@ -8,6 +8,7 @@ import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichString
 import js7.data.value.expression.scopes.NamedValueScope
 import js7.data.value.{MissingValue, Value}
+import org.jetbrains.annotations.TestOnly
 import scala.language.implicitConversions
 
 final case class ExprFunction(
@@ -75,9 +76,15 @@ object ExprFunction
     for (_ <- parameters.checkUniqueness) yield
       new ExprFunction(parameters, expression)()
 
+  @TestOnly
   object testing {
     implicit def fromPair(pair: (String, Expression)): ExprFunction =
       ExprFunction(Seq(VariableDeclaration(pair._1)), pair._2)
+
+    implicit final class FunctionExprSyntax(private val name: String) extends AnyVal {
+      def |=>(expr: Expression): ExprFunction =
+        ExprFunction(Seq(VariableDeclaration(name)), expr)
+    }
   }
 
   implicit val jsonEncoder: Encoder[ExprFunction] = o => Json.fromString(o.toString)

@@ -42,4 +42,8 @@ final class CalendarTest extends AnyFreeSpec
           "periodDatePattern": "yyyy-MM-dd"
         } """)
   }
+
+  "CalendarPath.itemTypeName" in {
+    assert(CalendarPath.itemTypeName == Calendar.typeName)
+  }
 }

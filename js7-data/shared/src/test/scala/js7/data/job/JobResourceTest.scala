@@ -41,4 +41,8 @@ final class JobResourceTest extends AnyFreeSpec
         "itemRevision": 1
       }""")
   }
+
+  "JobResourcePath.itemTypeName" in {
+    assert(JobResourcePath.itemTypeName == JobResource.typeName)
+  }
 }

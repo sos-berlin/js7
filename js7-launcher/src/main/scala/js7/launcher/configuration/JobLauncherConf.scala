@@ -10,8 +10,8 @@ import monix.execution.Scheduler
 
 final case class JobLauncherConf(
   executablesDirectory: Path,
-  /** Kind of temporary directory. */
-  workDirectory: Path,
+  shellScriptTmpDirectory: Path,
+  tmpDirectory: Path,
   /** Working directory of the process to be started. */
   workingDirectory: Path,
   killWithSigterm: Seq[String],

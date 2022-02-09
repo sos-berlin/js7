@@ -14,7 +14,7 @@ with InventoryItemPath.AssignableToAgent
 
 object CalendarPath extends UnsignedSimpleItemPath.Companion[CalendarPath]
 {
-  override val itemTypeName = Calendar.typeName
+  // May deadlock: override val itemTypeName = Calendar.typeName
 
   protected def unchecked(string: String) = new CalendarPath(string)
 

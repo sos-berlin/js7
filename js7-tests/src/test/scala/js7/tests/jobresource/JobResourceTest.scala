@@ -17,12 +17,14 @@ import js7.data.Problems.MissingReferencedItemProblem
 import js7.data.agent.AgentPath
 import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.item.SignedItemEvent.SignedItemAdded
+import js7.data.item.VersionId
 import js7.data.job.{JobResource, JobResourcePath, ShellScriptExecutable}
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed, OrderStdWritten, OrderStdoutWritten, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.StringValue
 import js7.data.value.expression.Expression.{NamedValue, StringConstant}
 import js7.data.value.expression.ExpressionParser
+import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -218,6 +220,51 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
         .await(99.s).orThrow
       workflow
     }
+  }
+
+  "toFile" in {
+    val resourceContent = (1 to 1_000_000).view.map(i => s"RESOURCE-$i\n").mkString
+    assert(resourceContent.length >= 10_000_000)
+
+    val executableContent = (1 to 1_000_000).view.map(i => s"EXECUTABLE-$i\n").mkString
+    assert(executableContent.length >= 10_000_000)
+
+    val myJobResource = JobResource(
+      JobResourcePath("JOB-RESOURCE-FILE"),
+      variables = Map(
+        "file" -> expr(s"""toFile(${StringConstant.quote(resourceContent)}, "*.tmp")""")),
+      env = Map(
+        "FROMRESOURCE" -> expr("$file")))
+
+    val versionId = VersionId("toFile")
+    val myWorkflow = Workflow(
+      WorkflowPath("WORKFLOW-FILE") ~ versionId,
+      Vector(Execute.Anonymous(
+        WorkflowJob(
+          agentPath,
+          ShellScriptExecutable(
+            """#!/usr/bin/env bash
+              |set -euo pipefail
+              |echo FROMRESOURCE=/$FROMRESOURCE/
+              |cat "$FROMRESOURCE"
+              |echo FROMEXECUTABLE=/$FROMEXECUTABLE/
+              |cat "$FROMEXECUTABLE"
+              |""".stripMargin,
+            env = Map(
+              "FROMEXECUTABLE" -> expr(s"""toFile(${StringConstant.quote(executableContent)}, "*.tmp")"""))),
+          jobResourcePaths = Seq(myJobResource.path)))))
+
+    controllerApi.updateSignedItems(Seq(sign(myJobResource), sign(myWorkflow)), Some(versionId))
+      .await(99.s).orThrow
+
+    val orderId = OrderId("TMPFILE")
+    val events = controller.runOrder(FreshOrder(orderId, myWorkflow.path)).map(_.value)
+    assert(events.last == OrderFinished)
+    val stdout = events
+      .collect { case OrderStdoutWritten(chunk) => chunk }
+      .combineAll
+    assert(stdout contains resourceContent)
+    assert(stdout contains executableContent)
   }
 }
 

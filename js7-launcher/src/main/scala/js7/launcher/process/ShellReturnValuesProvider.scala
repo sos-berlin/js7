@@ -14,12 +14,12 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-private final class ShellReturnValuesProvider(workDirectory: Path, v1Compatible: Boolean = false)
+private final class ShellReturnValuesProvider(tmpDirectory: Path, v1Compatible: Boolean = false)
 {
   private var fileExists = false
 
   val file: Path = {
-    val file = createTempFile(workDirectory, "returnValues-", ".tmp")
+    val file = createTempFile(tmpDirectory, "returnValues-", ".tmp")
     fileExists = true
     file
   }

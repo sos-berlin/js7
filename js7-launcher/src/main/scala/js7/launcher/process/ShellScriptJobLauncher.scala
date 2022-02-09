@@ -37,7 +37,7 @@ extends PathProcessJobLauncher
           userToFile.get(maybeUserName) match {
             case Some(path) => Right(path)
             case None =>
-              writeScriptToFile(executable.script, jobLauncherConf.workDirectory, maybeUserName)
+              writeScriptToFile(executable.script, jobLauncherConf.shellScriptTmpDirectory, maybeUserName)
                 .map { path =>
                   userToFile.put(maybeUserName, path)
                   path

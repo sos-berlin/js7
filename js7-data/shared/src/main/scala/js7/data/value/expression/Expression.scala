@@ -15,7 +15,7 @@ import js7.data.job.JobResourcePath
 import js7.data.parser.BasicPrinter.{appendIdentifier, appendIdentifierWithBackticks, identifierToString, isIdentifierPart}
 import js7.data.value.ValuePrinter.appendQuotedContent
 import js7.data.value.ValueType.MissingValueProblem
-import js7.data.value.{BooleanValue, IsErrorValue, ListValue, MissingValue, NullValue, NumberValue, ObjectValue, StringValue, Value, ValuePrinter}
+import js7.data.value.{BooleanValue, FunctionValue, IsErrorValue, ListValue, MissingValue, NullValue, NumberValue, ObjectValue, StringValue, Value, ValuePrinter}
 import js7.data.workflow.Label
 import js7.data.workflow.instructions.executable.WorkflowJob
 import scala.collection.{View, mutable}
@@ -378,6 +378,19 @@ object Expression
       _.as[Map[String, Expression]] map ObjectExpression.apply
   }
 
+  final case class FunctionExpr(function: ExprFunction)
+  extends Expression.PurityDependsOnSubexpressions
+  {
+    def subexpressions = function.expression :: Nil
+
+    protected def evalAllowError(implicit scope: Scope) =
+      Right(FunctionValue(function))
+
+    protected def precedence = Precedence.Function
+
+    override def toString = function.toString
+  }
+
   final case class ToNumber(expression: Expression)
   extends NumericExpression with PurityDependsOnSubexpressions {
     def precedence = Precedence.Factor
@@ -701,7 +714,8 @@ object Expression
   object Precedence {
     // Higher number means higher precedence
     private val next = Iterator.from(1).next _
-    val DotOperator = next()
+    val Function = next()
+    val DotOperator = next()  // correct precedence ???
     val WordOperator = next()
     val Word1Operator = next()
     val Or = next()

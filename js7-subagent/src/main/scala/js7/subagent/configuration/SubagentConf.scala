@@ -12,7 +12,6 @@ import js7.base.io.file.FileUtils.{EmptyPath, WorkingDirectory}
 import js7.base.problem.{Checked, Problem}
 import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
-import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.commandline.CommandLineArguments
@@ -61,8 +60,18 @@ extends CommonConfiguration
   lazy val stateDirectory: Path =
     dataDirectory / "state"
 
-  lazy val workDirectory: Path =
+  private lazy val workDirectory: Path =
     dataDirectory / "work"
+
+  private lazy val shellScriptTmpDirectory: Path =
+    workDirectory / "scripts"
+
+  private lazy val workTmpDirectory: Path =
+    workDirectory / "tmp"
+
+  /** Directory for temporary value files. */
+  lazy val valueDirectory: Path =
+    workDirectory / "values"
 
   def finishAndProvideFiles: SubagentConf =
     provideDataSubdirectories()
@@ -75,10 +84,9 @@ extends CommonConfiguration
     if (!exists(stateDirectory)) {
       createDirectory(stateDirectory)
     }
-    if (!exists(workDirectory)) {
-      assertThat(workDirectory == dataDirectory / "work")
-      createDirectory(workDirectory)
-    }
+    autoCreateDirectory(shellScriptTmpDirectory)
+    autoCreateDirectory(workTmpDirectory)
+    autoCreateDirectory(valueDirectory)
     this
   }
 
@@ -96,7 +104,8 @@ extends CommonConfiguration
     else Right(
       JobLauncherConf(
         executablesDirectory = executablesDirectory,
-        workDirectory = workDirectory,
+        shellScriptTmpDirectory = shellScriptTmpDirectory,
+        tmpDirectory = workTmpDirectory,
         workingDirectory = jobWorkingDirectory,
         killWithSigterm = config.seqAs[String](sigtermName),
         killWithSigkill = config.seqAs[String](sigkillName),
@@ -108,7 +117,7 @@ extends CommonConfiguration
         clock))
   }
 
-  private def provideKillScript(): SubagentConf = {
+  private def provideKillScript(): SubagentConf =
     killScript match {
       case Some(DelayUntilFinishKillScript) =>
         // After Subagent termination, leave behind the kill script,
@@ -117,7 +126,6 @@ extends CommonConfiguration
         copy(killScript = Some(provider.provideTo(workDirectory)))
       case _ => this
     }
-  }
 }
 
 object SubagentConf
@@ -149,5 +157,10 @@ object SubagentConf
         .map(o => ProcessKillScript(Paths.get(o).toAbsolutePath)),
       name = name,
       myConfig.withFallback(SubagentConf.defaultConfig))
+  }
+
+  private def autoCreateDirectory(directory: Path): Path = {
+    if (!exists(directory)) createDirectory(directory)
+    directory
   }
 }
