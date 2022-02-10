@@ -124,7 +124,8 @@ class RichProcess protected[process](
   private def destroyWithUnixCommand(pid: Pid, force: Boolean): Task[Unit] =
     ifAlive("destroyWithUnixCommand") {
       val argsPattern =
-        if (force) processConfiguration.killWithSigkill
+        if (isWindows) processConfiguration.killForWindows
+        else if (force) processConfiguration.killWithSigkill
         else processConfiguration.killWithSigterm
       if (argsPattern.isEmpty)
         Task(destroyWithJava(force))

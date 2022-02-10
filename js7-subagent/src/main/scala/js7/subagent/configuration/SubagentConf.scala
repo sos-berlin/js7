@@ -95,12 +95,16 @@ extends CommonConfiguration
   : Checked[JobLauncherConf] = {
     val sigtermName = "js7.job.execution.kill-with-sigterm-command"
     val sigkillName = "js7.job.execution.kill-with-sigkill-command"
+    val sigkillWindowsName = "js7.job.execution.kill-command-for-windows"
     val killWithSigterm = config.seqAs[String](sigtermName)
     val killWithSigkill = config.seqAs[String](sigkillName)
+    val killForWindows = config.seqAs[String](sigkillWindowsName)
     if (killWithSigterm.nonEmpty && !killWithSigterm.contains("$pid"))
       Left(Problem(s"Setting $sigtermName must contain \"$$pid\""))
     else if (killWithSigkill.nonEmpty && !killWithSigkill.contains("$pid"))
       Left(Problem(s"Setting $sigkillName must contain \"$$pid\""))
+    else if (killForWindows.nonEmpty && !killForWindows.contains("$pid"))
+      Left(Problem(s"Setting $sigkillWindowsName must contain \"$$pid\""))
     else Right(
       JobLauncherConf(
         executablesDirectory = executablesDirectory,
@@ -109,6 +113,7 @@ extends CommonConfiguration
         workingDirectory = jobWorkingDirectory,
         killWithSigterm = config.seqAs[String](sigtermName),
         killWithSigkill = config.seqAs[String](sigkillName),
+        killForWindows = config.seqAs[String](sigkillWindowsName),
         killScript = killScript,
         scriptInjectionAllowed = scriptInjectionAllowed,
         RecouplingStreamReaderConfs.fromConfig(config).orThrow,

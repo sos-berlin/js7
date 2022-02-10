@@ -16,6 +16,7 @@ final case class JobLauncherConf(
   workingDirectory: Path,
   killWithSigterm: Seq[String],
   killWithSigkill: Seq[String],
+  killForWindows: Seq[String],
   killScript: Option[ProcessKillScript],
   scriptInjectionAllowed: Boolean,
   recouplingStreamReaderConf: RecouplingStreamReaderConf,

@@ -65,6 +65,7 @@ final class InternalJobLauncherForJavaTest extends AnyFreeSpec with BeforeAndAft
           JobLauncherConf(u, u, u, u,
             killWithSigterm = ProcessConfiguration.forTest.killWithSigterm,
             killWithSigkill = ProcessConfiguration.forTest.killWithSigkill,
+            killForWindows = ProcessConfiguration.forTest.killForWindows,
             None,
             scriptInjectionAllowed = true,
             RecouplingStreamReaderConf.forTest,

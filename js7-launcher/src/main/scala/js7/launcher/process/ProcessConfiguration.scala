@@ -15,6 +15,7 @@ final case class ProcessConfiguration(
   maybeTaskId: Option[TaskId] = None,
   killWithSigterm: Seq[String],
   killWithSigkill: Seq[String],
+  killForWindows: Seq[String],
   killScriptOption: Option[ProcessKillScript] = None,
   windowsLogon: Option[WindowsLogon] = None)
 {
@@ -35,5 +36,6 @@ object ProcessConfiguration
 {
   def forTest = ProcessConfiguration(
     killWithSigterm = Seq("/bin/kill", "$pid"),
-    killWithSigkill = Seq("/bin/kill", "-KILL", "$pid"))
+    killWithSigkill = Seq("/bin/kill", "-KILL", "$pid"),
+    killForWindows = Seq("taskkill", "/pid", "$pid"))
 }
