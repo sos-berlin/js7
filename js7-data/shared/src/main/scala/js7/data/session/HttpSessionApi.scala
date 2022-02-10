@@ -48,7 +48,7 @@ trait HttpSessionApi extends SessionApi.HasUserAndPassword with HasSessionToken
           executeSessionCommand(cmd)
             .map { response =>
               for (problem <- checkNonMatchingVersion(response.js7Version).left) {
-                logger.error(problem.toString)
+                logger.warn(problem.toString)
               }
               setSessionToken(response.sessionToken)
               for (version <- response.js7Version) if (version != BuildInfo.version) {
