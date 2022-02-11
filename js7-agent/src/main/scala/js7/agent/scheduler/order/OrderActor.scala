@@ -174,14 +174,16 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
     }
 
   private def maybeKillOrder(): Unit =
-    order.mark match {
-      case Some(OrderMark.Cancelling(CancellationMode.FreshOrStarted(Some(kill)))) =>
-        maybeKillOrder(kill)
+    if (order.state.isInstanceOf[Order.Processing]) {
+      order.mark match {
+        case Some(OrderMark.Cancelling(CancellationMode.FreshOrStarted(Some(kill)))) =>
+          maybeKillOrder(kill)
 
-      case Some(OrderMark.Suspending(SuspensionMode(Some(kill)))) =>
-        maybeKillOrder(kill)
+        case Some(OrderMark.Suspending(SuspensionMode(Some(kill)))) =>
+          maybeKillOrder(kill)
 
-      case _ =>
+        case _ =>
+      }
     }
 
   private def maybeKillOrder(kill: CancellationMode.Kill): Unit =
@@ -245,8 +247,10 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
         order = null
         context.stop(self)
 
-      case _: OrderProcessed =>
+      case _: OrderProcessingStarted =>
         maybeKillOrder()
+
+      case _: OrderProcessed =>
         if (terminating) {
           context.stop(self)
         } else {
