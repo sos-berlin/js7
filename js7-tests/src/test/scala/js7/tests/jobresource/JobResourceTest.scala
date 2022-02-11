@@ -15,9 +15,12 @@ import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.Problems.MissingReferencedItemProblem
 import js7.data.agent.AgentPath
-import js7.data.item.BasicItemEvent.ItemAttached
+import js7.data.command.CancellationMode
+import js7.data.controller.ControllerCommand.{CancelOrders, DeleteOrdersWhenTerminated}
+import js7.data.item.BasicItemEvent.{ItemAttached, ItemDeleted}
+import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, DeleteSimple}
 import js7.data.item.SignedItemEvent.SignedItemAdded
-import js7.data.item.VersionId
+import js7.data.item.{ItemOperation, VersionId}
 import js7.data.job.{JobResource, JobResourcePath, ShellScriptExecutable}
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed, OrderStdWritten, OrderStdoutWritten, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
@@ -34,6 +37,7 @@ import js7.tests.jobresource.JobResourceTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
+import monix.reactive.Observable
 import org.scalatest.Assertions._
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -222,7 +226,57 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
     }
   }
 
+  "Delete a JobResource" in {
+    val deleteJobResource =
+      controllerApi.updateItems(Observable.pure(DeleteSimple(bJobResource.path)))
+
+    // ItemIsStillReferenced
+    assert(deleteJobResource.await(99.s)
+      .left.toOption
+      .map(_.toString)  // Problem objects are lost at HTTP transfer
+      .exists(_.contains("ItemIsStillReferenced")))
+
+    // Cancel and delete Orders
+    val referencingWorkflows = Set(workflow.id, internalWorkflow.id)
+    val orderIds = controllerApi
+      .controllerState.await(99.s).orThrow
+      .idToOrder.values
+      .filter(o => referencingWorkflows(o.workflowId))
+      .map(_.id)
+      .toSeq
+    controllerApi
+      .executeCommand(CancelOrders(orderIds, mode = CancellationMode.kill(immediately = true)))
+      .await(99.s).orThrow
+    controllerApi.executeCommand(DeleteOrdersWhenTerminated(orderIds))
+      .await(99.s).orThrow
+
+    // Remove workflows
+    controllerApi
+      .updateItems(Observable(
+        AddVersion(VersionId("JOBRESOURCE-DELETED")),
+        ItemOperation.RemoveVersioned(workflow.path),
+        ItemOperation.RemoveVersioned(internalWorkflow.path)))
+      .await(99.s).orThrow
+
+    eventWatch.await[ItemDeleted](_.event.key == workflow.id)
+    eventWatch.await[ItemDeleted](_.event.key == internalWorkflow.id)
+
+    // Now, the JobResource is deletable
+    deleteJobResource.await(99.s).orThrow
+
+    // JobResource can be added again
+    val v = VersionId("JOBRESOURCE-ADDED-AGAIN")
+    controllerApi
+      .updateItems(Observable(
+        AddVersion(v),
+        AddOrChangeSigned(toSignedString(bJobResource)),
+        AddOrChangeSigned(toSignedString(workflow.withId(workflow.path ~ v)))))
+      .await(99.s).orThrow
+  }
+
   "toFile" in {
+    // Test is slow due to >20MB stdout (many OrderStdoutWritten events)
+
     val resourceContent = (1 to 1_000_000).view.map(i => s"RESOURCE-$i\n").mkString
     assert(resourceContent.length >= 10_000_000)
 
