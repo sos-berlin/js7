@@ -283,15 +283,19 @@ extends ReceiveLoggingActor.WithStash
         agentRunIdOnce.toOption match {
           case Some(agentRunId) if reset =>
             // Required only for ItemDeleted, redundant for ResetAgent
-            // TODO There seems to be a concurrent logout, letting Reset fail
-            (client.login(onlyIfNotLoggedIn = true) >>
-              client.commandExecute(AgentCommand.Reset(Some(agentRunId)))
+            // Because of terminateAndLogout, we must login agein to issue the Reset command
+            Task
+              .fromFuture(eventFetcherTerminated.future)
+              .onErrorHandle(_ => ())
+              .*>(client.login(onlyIfNotLoggedIn = true))  // Login again
+              .*>(client
+                .commandExecute(AgentCommand.Reset(Some(agentRunId)))
                 .materializeIntoChecked
                 .map {
                   case Left(problem) => logger.error(s"Reset command failed: $problem")
                   case Right(_) =>
-                }
-            ).runToFuture
+                })
+              .runToFuture
               .foreach { _ =>
               // Ignore any Problem or Exception from Reset command
               self ! Internal.Terminate
