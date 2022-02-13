@@ -175,6 +175,7 @@ private object OrderActorTest {
       workingDirectory = dir / "data" / "work",
       killWithSigterm = ProcessConfiguration.forTest.killWithSigterm,
       killWithSigkill = ProcessConfiguration.forTest.killWithSigkill,
+      killForWindows = ProcessConfiguration.forTest.killForWindows,
       killScript = None,
       scriptInjectionAllowed = false,
       RecouplingStreamReaderConf.forTest,

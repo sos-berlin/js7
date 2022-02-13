@@ -5,7 +5,7 @@ import java.lang.ProcessBuilder.Redirect.INHERIT
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.delete
 import java.nio.file.Path
-import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
+import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.io.process.Processes._
 import js7.base.io.process.{JavaProcess, Js7Process, ProcessSignal, ReturnCode, StdoutOrStderr}
 import js7.base.log.LogLevel.syntax._
@@ -32,7 +32,6 @@ class RichProcess protected[process](
 {
   private val runningSince = now
   val pidOption: Option[Pid] = process.pid
-  @volatile var _killed = false
   private val logger = Logger.withPrefix[this.type](toString)
   /**
    * UTF-8 encoded stdin.
@@ -60,34 +59,26 @@ class RichProcess protected[process](
 
   final def sendProcessSignal(signal: ProcessSignal): Task[Unit] =
     Task.defer {
-      _killed = true
-      signal match {
-        case SIGTERM =>
-          if (isWindows)
-            Task.raiseError(new UnsupportedOperationException(
-              "SIGTERM is a Unix process signal and cannot be handled by Microsoft Windows"))
-          else
-            destroy(force = false)
-
-        case SIGKILL =>
-          ifAlive("sendProcessSignal SIGKILL")(
-            processConfiguration
-              .toKillScriptCommandArgumentsOption(pidOption)
-              .fold(kill)(args =>
-                executeKillScript(args ++ pidOption.map(o => s"--pid=${o.string}"))
-                  .onErrorHandle(t => logger.error(
-                    s"Cannot start kill script command '$args': ${t.toStringWithCauses}"))
-                  .tapEval(_ => kill))
-          ).guarantee(Task {
-            // The process may have terminated
-            // while long running child processes inheriting the file handles
-            // still use these.
-            // So we forcibly close stdout and stderr.
-            // The child processes write operations will fail with EPIPE or may block !!!
-            // Let destroyForcibly try to close the handles (implementation dependent)
-            onSigkill()
-          })
-      }
+      if (signal != SIGKILL && !isWindows)
+        destroy(force = false)
+      else
+        ifAlive("sendProcessSignal SIGKILL")(
+          processConfiguration
+            .toKillScriptCommandArgumentsOption(pidOption)
+            .fold(kill)(args =>
+              executeKillScript(args ++ pidOption.map(o => s"--pid=${o.string}"))
+                .onErrorHandle(t => logger.error(
+                  s"Cannot start kill script command '$args': ${t.toStringWithCauses}"))
+                .tapEval(_ => kill))
+        ).guarantee(Task {
+          // The process may have terminated
+          // while long running child processes inheriting the file handles
+          // still use these.
+          // So we forcibly close stdout and stderr.
+          // The child processes write operations will fail with EPIPE or may block !!!
+          // Let destroyForcibly try to close the handles (implementation dependent)
+          onSigkill()
+        })
     }
 
   private def executeKillScript(args: Seq[String]): Task[Unit] =
@@ -131,38 +122,39 @@ class RichProcess protected[process](
     }
 
   private def destroyWithUnixCommand(pid: Pid, force: Boolean): Task[Unit] =
-    Task.defer {
+    ifAlive("destroyWithUnixCommand") {
       val argsPattern =
-        if (force) processConfiguration.killWithSigkill
+        if (isWindows) processConfiguration.killForWindows
+        else if (force) processConfiguration.killWithSigkill
         else processConfiguration.killWithSigterm
-      ifAlive("destroyWithUnixCommand")(
-        if (argsPattern.isEmpty)
-          Task(destroyWithJava(force))
-        else if (!argsPattern.contains("$pid")) {
-          logger.error("Missing '$pid' in configured kill command")
-          Task(destroyWithJava(force))
-        } else {
-          val args = argsPattern.map {
-            case "$pid" => pid.number.toString
-            case o => o
-          }
-          executeKillCommand(args)
-            .flatMap { rc =>
-              if (rc.isSuccess)
-                Task.unit
-              else Task {
-                logger.warn(s"Could not kill with unix command: ${args.mkString(" ")} => $rc")
-                destroyWithJava(force)
-              }
+      if (argsPattern.isEmpty)
+        Task(destroyWithJava(force))
+      else if (!argsPattern.contains("$pid")) {
+        logger.error("Missing '$pid' in configured kill command")
+        Task(destroyWithJava(force))
+      } else {
+        val args = argsPattern.map {
+          case "$pid" => pid.number.toString
+          case o => o
+        }
+        executeKillCommand(args)
+          .flatMap { rc =>
+            if (rc.isSuccess)
+              Task.unit
+            else Task {
+              logger.warn(s"Could not kill with unix command: ${args.mkString(" ")} => $rc")
+              destroyWithJava(force)
             }
-        })
+          }
+      }
     }
 
   private def ifAlive(label: String)(body: Task[Unit]): Task[Unit] =
-    if (!process.isAlive)
-      Task(logger.debug(s"$label: Process has already terminated"))
-    else
-      body
+    Task.defer(
+      if (!process.isAlive)
+        Task(logger.debug(s"$label: Process has already terminated"))
+      else
+        body)
 
   private def executeKillCommand(args: Seq[String]): Task[ReturnCode] =
     Task.defer {
@@ -190,8 +182,6 @@ class RichProcess protected[process](
       logger.debug("destroy (SIGTERM)")
       process.destroy()
     }
-
-  final def isKilled = _killed
 
   @TestOnly
   private[process] final def isAlive = process.isAlive

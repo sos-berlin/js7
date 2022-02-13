@@ -68,6 +68,7 @@ final class ProcessDriver(
                   maybeTaskId = Some(taskId),
                   killWithSigterm = jobLauncherConf.killWithSigterm,
                   killWithSigkill = jobLauncherConf.killWithSigkill,
+                  killForWindows = jobLauncherConf.killForWindows,
                   killScriptOption = jobLauncherConf.killScript,
                   maybeWindowsLogon))
             }
