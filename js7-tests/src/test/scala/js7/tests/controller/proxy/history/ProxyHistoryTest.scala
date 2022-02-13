@@ -41,10 +41,8 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalactic.source
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.should.Matchers._
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
-import scala.language.implicitConversions
 
 final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with ClusterProxyTest
 {
