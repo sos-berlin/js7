@@ -118,7 +118,10 @@ ThisBuild / scalacOptions ++= Seq(
   //"-Wvalue-discard",
   )
 
-Global / concurrentRestrictions += Tags.limit(Tags.Test, max = testParallelization)
+Global / concurrentRestrictions := Seq(
+  Tags.limit(Tags.Test, max = testParallelization),
+  Tags.limit(Tags.Compile, max = sys.runtime.availableProcessors),
+  Tags.limitAll(if (parallelExecution.value) sys.runtime.availableProcessors max testParallelization else 1))
 
 // http://www.scalatest.org/user_guide/using_scalatest_with_sbt
 val scalaTestArguments = Tests.Argument(TestFrameworks.ScalaTest,

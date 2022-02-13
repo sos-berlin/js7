@@ -188,7 +188,7 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
     longFile := ""
     TestJob.continue()
 
-    for (i <- 1 to 3) withClue(s"#$i") {
+    for (i <- 1 to 2) withClue(s"#$i") {
       itemRevision = itemRevision.next
       val eventId = eventWatch.lastAddedEventId
       val changedFileWatch = waitingFileWatch.copy(delay = i.ms/*little change*/)

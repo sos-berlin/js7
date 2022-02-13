@@ -55,6 +55,7 @@ final class AsyncLockTest extends AsyncFreeSpec
           body {
             Task {
               val found = guardedVariable
+              idleNanos(10_000)
               guardedVariable += 1
               found
             } .tapEval(_ => if (Random.nextBoolean()) Task.shift else Task.unit)
@@ -70,5 +71,10 @@ final class AsyncLockTest extends AsyncFreeSpec
           result
       }
     }
+  }
+
+  private def idleNanos(nanos: Int): Unit = {
+    val t = System.nanoTime()
+    while (System.nanoTime() - t < nanos) {}
   }
 }

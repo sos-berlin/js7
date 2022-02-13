@@ -100,7 +100,7 @@ object BasicDirectoryWatcher
   private val logger = Logger(getClass)
 
   private val highSensitivity: Array[WatchEvent.Modifier] =
-    if (isMac)
+    if (isMac) // https://bugs.openjdk.java.net/browse/JDK-7133447
       try Array(com.sun.nio.file.SensitivityWatchEventModifier.HIGH/*2s instead of 10s*/)
       catch { case t: Throwable =>
         logger.debug(s"SensitivityWatchEventModifier.HIGH => ${t.toStringWithCauses}")
