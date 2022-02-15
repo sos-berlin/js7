@@ -7,6 +7,7 @@ import java.nio.file.StandardOpenOption.{CREATE_NEW, WRITE}
 import java.nio.file.{Files, Path, Paths}
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
+import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.AtomicUpdater
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ByteUnits.toKBGB
@@ -81,7 +82,7 @@ extends AutoCloseable
         }
         val size = Files.size(file)
         statistics.totalFileSize += size
-        file.toFile.setReadOnly()
+        file.toFile.setWritable(false)
         logger.debug(s"$functionName => $file ${toKBGB(size)}")
         file
       }
@@ -121,6 +122,9 @@ object FileValueState
 
   private def tryDelete(file: Path): Unit = {
     logger.debug(s"Delete $file")
+    if (isWindows) {
+      file.toFile.setWritable(true)
+    }
     try Files.delete(file)
     catch { case t: IOException =>
       // TODO Delete file later
