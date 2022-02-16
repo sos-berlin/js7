@@ -1,4 +1,5 @@
 -Dlog4j.configurationFile=project/log4j2.xml
 -J-Xmx3G
 -J-XX:MaxMetaspaceSize=1500M
+-J-XX:+UseG1GC
 -J-enableassertions
