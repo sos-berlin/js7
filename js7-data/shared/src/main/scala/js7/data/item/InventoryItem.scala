@@ -65,15 +65,6 @@ trait InventoryItem
   def referencedCalendarPaths: Set[CalendarPath] =
     Set.empty
 
-  def isReferencing(referenced: InventoryItemPath): Boolean =
-    referenced match {
-      case referenced: LockPath => referencedLockPaths.contains(referenced)
-      case referenced: AgentPath => referencedAgentPaths.contains(referenced)
-      case referenced: JobResourcePath => referencedJobResourcePaths.contains(referenced)
-      case referenced: WorkflowPath => referencedWorkflowPaths.contains(referenced)
-      case _ => false
-    }
-
   // Accelerate usage in Set[InventoryItem], for example in AgentDriver's CommandQueue
   override def hashCode = 31 * key.hashCode + itemRevision.hashCode
 }
