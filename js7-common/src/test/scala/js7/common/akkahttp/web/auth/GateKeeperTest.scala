@@ -15,6 +15,7 @@ import js7.base.auth.User.UserDoesNotHavePermissionProblem
 import js7.base.auth.{GetPermission, HashedPassword, Permission, SimpleUser, SuperPermission, User, UserAndPassword, UserId, ValidUserPermission}
 import js7.base.configutils.Configs._
 import js7.base.generic.SecretString
+import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Problem
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime._
@@ -34,6 +35,8 @@ import scala.language.implicitConversions
   */
 final class GateKeeperTest extends AnyFreeSpec with ScalatestRouteTest
 {
+  coupleScribeWithSlf4j()
+
   import GateKeeperTest.ImplicitGateKeeper
 
   private implicit val routeTestTimeout = RouteTestTimeout(10.seconds)

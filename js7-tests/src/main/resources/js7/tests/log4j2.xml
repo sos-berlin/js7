@@ -37,6 +37,7 @@
       <appenderRef level="info" ref="stderr"/>
       <appenderRef level="trace" ref="file"/>
     </root>
+    <logger level="warn"  name="akka.actor.CoordinatedShutdown"/>
     <logger level="warn"  name="akka.event.slf4j.Slf4jLogger"/>
     <logger level="debug" name="js7"/>
   </loggers>

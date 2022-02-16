@@ -4,6 +4,7 @@ import akka.http.scaladsl.testkit.ScalatestRouteTest
 import js7.base.Js7Version
 import js7.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
 import js7.base.generic.{Completed, SecretString}
+import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.problem.Problems.InvalidSessionTokenProblem
@@ -23,6 +24,8 @@ import scala.concurrent.duration._
   */
 final class SessionRegisterTest extends AnyFreeSpec with ScalatestRouteTest
 {
+  coupleScribeWithSlf4j()
+
   override def executor = super.executor  // Not implicit
 
   private val testScheduler = TestScheduler()

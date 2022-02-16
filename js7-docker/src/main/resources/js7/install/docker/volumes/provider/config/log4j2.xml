@@ -60,14 +60,15 @@
       <appenderRef level="info"  ref="file-info"/>
       <appenderRef level="trace" ref="file-debug"/>
     </root>
-    <logger level="warn" name="akka.event.slf4j.Slf4jLogger"/>
+    <logger level="warn"  name="akka.actor.CoordinatedShutdown"/>
+    <logger level="warn"  name="akka.event.slf4j.Slf4jLogger"/>
     <logger level="debug" name="js7"/>
 
     <!--
     <logger level="trace" name="js7.journal.Journal"/>
+    <logger level="trace" name="js7.journal.cluster"/>
     <logger level="trace" name="js7.common.http.AkkaHttpClient"/>
     <logger level="trace" name="js7.controller.agent"/>
-    <logger level="trace" name="js7.journal.cluster"/>
     -->
   </loggers>
 </configuration>

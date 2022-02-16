@@ -22,11 +22,11 @@
       <appenderRef level="off"   ref="stderr"/>
       <appenderRef level="trace" ref="file"/>
     </root>
+    <logger level="warn"  name="akka.actor.CoordinatedShutdown"/>
+    <logger level="warn"  name="akka.event.slf4j.Slf4jLogger"/>
     <logger level="debug" name="js7"/>
     <logger level="trace" name="js7.journal.Journal"/>
     <logger level="trace" name="js7.launcher.forwindows"/>
     <logger level="debug" name="js7.journal.watch.RealEventWatch"/>
-    <logger level="trace" name="js7.data.controller.ControllerState"/>
-    <logger level="trace" name="js7.data.controller.ControllerStateExecutor"/>
   </loggers>
 </configuration>

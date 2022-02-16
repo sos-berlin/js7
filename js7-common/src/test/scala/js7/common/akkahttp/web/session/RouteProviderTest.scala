@@ -9,6 +9,7 @@ import js7.base.Js7Version
 import js7.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
 import js7.base.configutils.Configs._
 import js7.base.generic.SecretString
+import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Checked._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
@@ -25,7 +26,9 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-final class RouteProviderTest extends AnyFreeSpec with RouteProvider with ScalatestRouteTest {
+final class RouteProviderTest extends AnyFreeSpec with RouteProvider with ScalatestRouteTest
+{
+  coupleScribeWithSlf4j()
 
   protected type Session = MySession
 

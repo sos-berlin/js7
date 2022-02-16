@@ -86,7 +86,8 @@
     <logger level="debug" name="js7.web">
       <appenderRef ref="js7.web.log"/>
     </logger>
-    <logger level="warn" name="akka.event.slf4j.Slf4jLogger"/>
+    <logger level="warn"  name="akka.actor.CoordinatedShutdown"/>
+    <logger level="warn"  name="akka.event.slf4j.Slf4jLogger"/>
     <logger level="debug" name="js7"/>
 
     <!--
@@ -95,5 +96,6 @@
     <logger level="trace" name="js7.controller.agent"/>
     <logger level="trace" name="js7.journal.cluster"/>
     -->
+
   </loggers>
 </configuration>

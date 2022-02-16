@@ -3,6 +3,7 @@ package js7.journal.web
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import io.circe.generic.JsonCodec
+import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.time.ScalaTime._
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, EventRequest, KeyedEvent}
@@ -14,7 +15,9 @@ import scala.concurrent.duration._
 /**
   * @author Joacim Zschimmer
   */
-final class EventDirectivesTest extends AnyFreeSpec with ScalatestRouteTest {
+final class EventDirectivesTest extends AnyFreeSpec with ScalatestRouteTest
+{
+  coupleScribeWithSlf4j()
 
   private implicit val myKeyedEventJsonFormat = {
     KeyedEvent.typedJsonCodec[MyEvent](

@@ -4,6 +4,7 @@ import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.OK
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
+import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import js7.common.akkahttp.CirceJsonSupport.jsonUnmarshaller
 import js7.controller.web.controller.api.test.RouteTester
@@ -19,6 +20,8 @@ import scala.concurrent.Future
   */
 final class ClusterRouteTest extends AnyFreeSpec with RouteTester with ClusterRoute
 {
+  coupleScribeWithSlf4j()
+
   protected def scheduler = Scheduler.global
 
   protected def whenShuttingDown = Future.never

@@ -5,6 +5,7 @@ import akka.http.scaladsl.model.StatusCodes.{BadRequest, OK}
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import io.circe.JsonObject
+import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.web.Uri
@@ -23,6 +24,8 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class ClusterWatchRouteTest extends AnyFreeSpec with ScalatestRouteTest with ClusterWatchRoute
 {
+  coupleScribeWithSlf4j()
+
   protected type Session = SimpleSession
 
   protected implicit val scheduler = Scheduler.global

@@ -4,6 +4,7 @@ import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.PayloadTooLarge
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
+import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Checked
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
@@ -19,7 +20,9 @@ import scala.concurrent.Future
 /**
   * @author Joacim Zschimmer
   */
-final class CommandRouteTest extends AnyFreeSpec with RouteTester with CommandRoute {
+final class CommandRouteTest extends AnyFreeSpec with RouteTester with CommandRoute
+{
+  coupleScribeWithSlf4j()
 
   protected val controllerId = ControllerId("TEST-CONTROLLER")
   protected def whenShuttingDown = Future.never
