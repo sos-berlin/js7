@@ -25,7 +25,7 @@ fi
 
 echo
 if [ $namesRC -eq 0 ] && [ $contentRC -eq 0 ]; then
-  echo "✔️  The backup Controller cluster node's journal files are exact copies of the primary cluster node"
+  echo "✔︎  The backup Controller cluster node's journal files are exact copies of the primary cluster node"
   exit 0
 else
   if [ $contentRC -ne 0 ]; then

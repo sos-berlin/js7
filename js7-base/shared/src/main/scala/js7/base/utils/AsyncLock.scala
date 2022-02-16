@@ -47,15 +47,15 @@ final class AsyncLock private(
               else
                 mvar.tryRead.flatMap {
                   case Some(lockedBy) =>
-                    log.debug(s"$acquirer is waiting for $toString (currently locked by $lockedBy)")
+                    log.debug(s"$name enqueues $acquirer (currently locked by $lockedBy)")
                     mvar.put(acquirer)
                       .whenItTakesLonger(warnTimeouts)(duration =>
                         for (lockedBy <- mvar.tryRead) yield logger.info(
-                          s"⏳ $acquirer is still waiting for $toString" +
+                          s"$name: ⏳ $acquirer is still waiting" +
                             s" (currently locked by ${lockedBy.getOrElse("None")})" +
                             s" for ${duration.pretty} ..."))
                       .map { _ =>
-                        log.debug(s"$acquirer acquired $toString after ${since.elapsed.pretty}")
+                        log.debug(s"$name acquired by $acquirer after ${since.elapsed.pretty}")
                         Right(())
                       }
                   case None =>  // Lock has just become available
@@ -66,12 +66,12 @@ final class AsyncLock private(
                         Right(())  // The lock is ours!
                 })
           }))
-      .map(_ => log.trace(s"$acquirer acquired $toString"))
+      .map(_ => log.trace(s"$name acquired by $acquirer"))
   }
 
   private def release(acquirer: String): Task[Unit] =
     Task.defer {
-      log.trace(s"$acquirer releases $toString")
+      log.trace(s"$name released by $acquirer")
       lockM.flatMap(_.take).void
     }
 

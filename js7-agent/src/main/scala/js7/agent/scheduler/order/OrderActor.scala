@@ -146,10 +146,6 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
     case Command.HandleEvents(events) => handleEvents(events) pipeTo sender()
   }
 
-  private def handleEvent(event: OrderCoreEvent)
-  : Future[Completed] =
-    handleEvents(event :: Nil)
-
   private def handleEvents(events: Seq[OrderCoreEvent]): Future[Completed] =
     order.applyEvents(events) match {
       case Left(problem) =>
@@ -240,8 +236,9 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
   }
 
   private def update(events: Seq[OrderEvent]) = {
+    val previousOrderOrNull = order
     events foreach updateOrder
-    context.parent ! Output.OrderChanged(order, events)
+    context.parent ! Output.OrderChanged(orderId, previousOrderOrNull, events)
     events.last match {
       case OrderDetached =>
         logger.trace("Stopping after OrderDetached")
@@ -324,6 +321,9 @@ private[order] object OrderActor
 
   object Output {
     final case class RecoveryFinished(order: Order[Order.State])
-    final case class OrderChanged(order: Order[Order.State], events: Seq[OrderEvent])
+    final case class OrderChanged(
+      orderId: OrderId,
+      previousOrderOrNull: Order[Order.State],
+      events: Seq[OrderEvent])
   }
 }

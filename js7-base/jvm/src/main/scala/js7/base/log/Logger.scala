@@ -3,10 +3,10 @@ package js7.base.log
 import cats.effect.ExitCase.{Canceled, Completed, Error}
 import com.typesafe.scalalogging.{Logger => ScalaLogger}
 import js7.base.problem.Problem
+import js7.base.time.ScalaTime.{DurationRichLong, RichDuration}
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.base.utils.StackTraces.StackTraceThrowable
-import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
 import monix.eval.Task
 import org.slf4j.{LoggerFactory, Marker, MarkerFactory}
 import scala.reflect.ClassTag
@@ -65,20 +65,57 @@ object Logger
       def debugTask[A](task: Task[A])(implicit src: sourcecode.Name): Task[A] =
         debugTask(src.value)(task)
 
-      def debugTask[A](function: String, args: String = "")(task: Task[A]): Task[A] = {
-        def logReturn(msg: AnyRef) = Task(logger.debug(s"︎↙︎ $function => $msg"))
-        Task.defer {
-          logger.debug(s"↘︎ $function${args.emptyToNone.fold("")(" " + _)} ...")
-          task.tapEval {
-            case left: Left[_, _] => logReturn(left)
-            case _ => logReturn("Completed")
+      def debugTask[A](function: String, args: => Any = "")(task: Task[A]): Task[A] =
+        logTask(logger, function, args)(task)
+
+      def traceTask[A](task: Task[A])(implicit src: sourcecode.Name): Task[A] =
+        traceTask(src.value)(task)
+
+      def traceTask[A](function: String, args: => Any = "")(task: Task[A]): Task[A] =
+        logTask(logger, function, args, trace = true)(task)
+    }
+
+    private def logTask[A](logger: ScalaLogger, function: String, args: => Any = "",
+      trace: Boolean = false)(task: Task[A])
+    : Task[A] =
+      Task.defer {
+        if (!logger.underlying.isDebugEnabled)
+          task
+        else {
+          val argsString = args.toString
+          val a1 = if (argsString.isEmpty) "" else " "
+          val a2 = if (argsString.isEmpty) "" else argsString
+          if (trace) {
+            logger.trace(s"↘︎ $function$a1$a2 ...")
+          } else {
+            logger.debug(s"↘︎ $function$a1$a2 ...")
           }
-        }.guaranteeCase {
-            case Completed => Task.unit
-            case Error(t) => logReturn(t.toStringWithCauses)
-            case Canceled => logReturn(Canceled)
+
+          val t = System.nanoTime()
+
+          def logReturn(marker: String, msg: AnyRef) =
+            Task {
+              val duration = if (t == 0) "" else (System.nanoTime() - t).ns.pretty + " "
+              if (trace) {
+                logger.trace(s"︎↙$marker $function => $duration$msg")
+              } else {
+                logger.debug(s"︎↙$marker $function => $duration$msg")
+              }
+            }
+
+          task
+            .tapEval {
+              case left @ Left(_: Throwable | _: Problem) =>
+                logReturn("🚫", left)
+              case _ =>
+                logReturn("", "Completed")
+            }
+            .guaranteeCase {
+              case Completed => Task.unit
+              case Error(t) => logReturn("💥️", t.toStringWithCauses)
+              case Canceled => logReturn("❌", Canceled)
+            }
         }
       }
-    }
   }
 }

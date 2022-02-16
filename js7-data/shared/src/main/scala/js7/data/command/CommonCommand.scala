@@ -24,7 +24,7 @@ object CommonCommand
   trait Companion
   {
     protected type Command <: CommonCommand
-    type Response
+    protected type Response
 
     implicit val jsonCodec: TypedJsonCodec[Command]
 
@@ -53,6 +53,10 @@ object CommonCommand
         flush()
         s"${jsonCodec.classToName(getClass)}(${b.mkString(", ")})"
       }
+
+      override def toShortString =
+        s"Batch(${commands.size} commands, ${commands.take(1).map(o => o.toShortString + ", ").mkString} ...)"
+
     }
     object CommonBatch {
       trait Response {

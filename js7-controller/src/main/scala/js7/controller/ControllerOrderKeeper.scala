@@ -427,7 +427,7 @@ with MainJournalingActor[ControllerState, Event]
       throw problem.throwable.appendCurrentStackTrace
 
     case Internal.Ready(Right(Completed)) =>
-      logger.info(s"Controller '${_controllerState.controllerId.string}' is ready " +
+      logger.info(s"Controller '${_controllerState.controllerId.string}' is ready" +
         ControllerMain.runningSince.fold("")(o => s" (after ${o.elapsed.pretty})") +
         "\n" + "─" * 80)
       testEventPublisher.publish(ControllerReadyTestIncident)

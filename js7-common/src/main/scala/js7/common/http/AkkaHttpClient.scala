@@ -285,7 +285,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
             }
 
             case ExitCase.Error(throwable) => Task.defer {
-              logger.debug(s"<--< $responseLogPrefix => failed with ${throwable.toStringWithCauses}")
+              logger.debug(s"<--<💥 $responseLogPrefix => failed with ${throwable.toStringWithCauses}")
               Task.raiseError(toPrettyProblem(throwable).throwable)
             }
 
@@ -296,10 +296,12 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
             _.whenItTakesLonger() {
               val level = if (request.headers contains StreamingJsonHeader) Trace else Debug
               _ => Task(logger.underlying.log(level,
-                s"$responseLogPrefix => ⏳ Still waiting for response" + (closed ?? " (closed)")))
+                "⏳ " + responseLogPrefix + " => Still waiting for response" +
+                  (closed ?? " (closed)")))
             }
             .tapEval(response => Task {
-              logger.debug(s"<--< $responseLogPrefix => ${response.status}")
+              logger.debug(
+                s"<--<${response.status.isFailure ?? "💥"} $responseLogPrefix => ${response.status}")
             }))
       })
 

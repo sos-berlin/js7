@@ -75,7 +75,7 @@ object MonixBase
 
       def logWhenItTakesLonger2(preposition: String, what: => String): Task[A] =
         task.whenItTakesLonger()(duration => Task {
-          def msg = s"⏳ Still waiting $preposition $what for ${duration.pretty} ..."
+          def msg = s"⏳ Still waiting $preposition $what for ${duration.pretty}"
           if (duration < 10.s) logger.debug(msg)
           else logger.info(msg)
         })

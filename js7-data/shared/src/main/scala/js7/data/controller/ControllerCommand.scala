@@ -46,7 +46,6 @@ object ControllerCommand extends CommonCommand.Companion
   final case class Batch(commands: Seq[ControllerCommand])
   extends ControllerCommand with CommonBatch with Big {
     type Response = Batch.Response
-    override def toShortString = s"Batch(${commands.size} commands, ${commands.take(1).map(o => o.toShortString + ", ").mkString} ...)"
   }
   object Batch {
     final case class Response(responses: Seq[Checked[ControllerCommand.Response]])

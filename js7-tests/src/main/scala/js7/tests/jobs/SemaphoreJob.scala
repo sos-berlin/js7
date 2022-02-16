@@ -1,6 +1,7 @@
 package js7.tests.jobs
 
 import js7.base.log.Logger
+import js7.base.monixutils.MonixBase.syntax.RichMonixTask
 import js7.data.order.Outcome
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
@@ -23,6 +24,7 @@ extends InternalJob
           sema.count.flatMap(count =>
             Task(logger.debug(s"${step.order.id} acquire ... (count=$count)"))))
         .flatMap(_.acquire)
+        .logWhenItTakesLonger(s"${getClass.getSimpleName}.semaphore.acquire")
         .tapEval(_ => Task(logger.debug(s"${step.order.id} acquired")))
         .as(Outcome.succeeded))
   }

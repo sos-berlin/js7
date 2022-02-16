@@ -123,7 +123,7 @@ final class FileWatchManager(
 
   private def startWatching(fileWatchState: FileWatchState): Task[Checked[Unit]] = {
     val id = fileWatchState.fileWatch.path
-    logger.debugTask(s"startWatching $id")(Task.defer {
+    logger.debugTask("startWatching", id)(Task.defer {
       val stop = PublishSubject[Unit]()
       watch(fileWatchState, stop)
         .traverse(observable =>
@@ -142,7 +142,7 @@ final class FileWatchManager(
                   .start
                   .map(fiber =>
                     // Register the stopper, a joining task for the next update:
-                    logger.debugTask(s"stop watching $id")(Task.defer {
+                    logger.debugTask("stop watching", id)(Task.defer {
                       stop.onComplete()
                       fiber.join
                         .logWhenItTakesLonger(s"startWatching $id: stopping previous watcher")
