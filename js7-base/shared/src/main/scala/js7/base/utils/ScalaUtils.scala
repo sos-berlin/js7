@@ -12,7 +12,7 @@ import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.utils.ScalaUtils.syntax.RichString
 import js7.base.utils.StackTraces.StackTraceThrowable
 import scala.annotation.tailrec
-import scala.collection.{Factory, MapView, mutable}
+import scala.collection.{Factory, MapView, View, mutable}
 import scala.math.max
 import scala.reflect.ClassTag
 import scala.util.Left
@@ -268,6 +268,12 @@ object ScalaUtils
     implicit final class SwitchOnAtomicBoolean(private val delegate: AtomicBoolean) extends AnyVal {
       def switchOn(body: => Unit) = if (delegate.compareAndSet(false, true)) body
       def switchOff(body: => Unit) = if (delegate.compareAndSet(true, false)) body
+    }
+
+    implicit final class RichView[A](private val view: View[A]) extends AnyVal
+    {
+      def :+[B >: A](b: B): View[B] =
+        view.concat(b :: Nil)
     }
 
     implicit final class RichScalaUtilsMap[K, V](private val underlying: Map[K, V])

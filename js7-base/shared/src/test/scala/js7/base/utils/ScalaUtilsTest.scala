@@ -13,7 +13,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import monix.eval.Coeval
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
-import scala.collection.MapView
+import scala.collection.{MapView, View}
 import scala.reflect.ClassTag
 import scala.util.control.NoStackTrace
 
@@ -306,6 +306,13 @@ final class ScalaUtilsTest extends AnyFreeSpec
       assert(c(3) == "tri")
       assert(c.toSeq == Seq(1 -> "ONE", 2 -> "TWO", 3 -> "tri"))
       assert(c.toMap == Map(1 -> "ONE", 2 -> "TWO", 3 -> "tri"))
+    }
+  }
+
+  "View" - {
+    ":+" in {
+      val view: View[Int] = View(1, 2, 3) :+ 4
+      assert(view.toSeq == Seq(1, 2, 3, 4))
     }
   }
 
