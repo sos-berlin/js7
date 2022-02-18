@@ -1154,10 +1154,8 @@ with MainJournalingActor[ControllerState, Event]
             Set.empty
 
           case Some(order) =>
-            val orderEventHandler = new OrderEventHandler(
-              _controllerState.repo.idTo[Workflow],
-              _controllerState.idToOrder.checked)
-            val checkedFollowUps = orderEventHandler.handleEvent(keyedEvent)
+            val orderEventHandler = new OrderEventHandler(_controllerState.repo.idTo[Workflow])
+            val checkedFollowUps = orderEventHandler.handleEvent(order, keyedEvent.event)
             val dependentOrderIds = mutable.Set.empty[OrderId]
             for (followUps <- checkedFollowUps.onProblem(p => logger.error(p))) {  // TODO OrderBroken on error?
               followUps foreach {

@@ -1055,7 +1055,7 @@ object OrderEventSourceTest
   final class Process(workflow: Workflow) {
     val idToWorkflow = Map(workflow.id -> workflow)
     val idToOrder = mutable.Map[OrderId, Order[Order.State]]()
-    private val eventHandler = new OrderEventHandler(idToWorkflow.checked, o => idToOrder.checked(o))
+    private val eventHandler = new OrderEventHandler(idToWorkflow.checked)
     private val inProcess = mutable.Set.empty[OrderId]
 
     private def eventSource(isAgent: Boolean) =
@@ -1130,15 +1130,18 @@ object OrderEventSourceTest
           inProcess -= orderId
 
         case _ =>
-          eventHandler.handleEvent(keyedEvent).orThrow foreach {
-            case FollowUp.AddChild(derivedOrder) =>
-              idToOrder.insert(derivedOrder.id -> derivedOrder)
+          eventHandler
+            .handleEvent(idToOrder(keyedEvent.key), keyedEvent.event)
+            .orThrow
+            .foreach {
+              case FollowUp.AddChild(derivedOrder) =>
+                idToOrder.insert(derivedOrder.id -> derivedOrder)
 
-            case FollowUp.Delete(deleteOrderId) =>
-              idToOrder -= deleteOrderId
+              case FollowUp.Delete(deleteOrderId) =>
+                idToOrder -= deleteOrderId
 
-            case o => sys.error(o.toString)
-          }
+              case o => sys.error(o.toString)
+            }
       }
   }
 

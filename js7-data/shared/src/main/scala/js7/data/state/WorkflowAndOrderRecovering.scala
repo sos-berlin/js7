@@ -2,9 +2,7 @@ package js7.data.state
 
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
-import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.StackTraces.StackTraceThrowable
-import js7.data.event.KeyedEvent
 import js7.data.order.OrderEvent.{OrderDeleted, OrderForked}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.state.OrderEventHandler.FollowUp
@@ -23,11 +21,11 @@ object WorkflowAndOrderRecovering
   : (Map[OrderId, Order[Order.State]], Set[OrderId]) = {
     val added = Map.newBuilder[OrderId, Order[Order.State]]
     val deleted = Set.newBuilder[OrderId]
-    val eventHandler = new OrderEventHandler(idToWorkflow, idToOrder.checked)
+    val eventHandler = new OrderEventHandler(idToWorkflow)
     for (
       order <- idToOrder.values;
       event <- snapshotToEvent(order);
-      followUps <- eventHandler.handleEvent(event)
+      followUps <- eventHandler.handleEvent(order, event)
         .onProblem(p =>
           scribe.error(p.toString, p.throwableOption.map(_.appendCurrentStackTrace).orNull)))  // TODO Really ignore error ?
     {
@@ -46,10 +44,10 @@ object WorkflowAndOrderRecovering
     (added.result(), deleted.result())
   }
 
-  private def snapshotToEvent(order: Order[Order.State]): Option[KeyedEvent[OrderEvent]] =
+  private def snapshotToEvent(order: Order[Order.State]): Option[OrderEvent] =
     order.ifState[Order.Forked].map(order =>
-      order.id <-: OrderForked(order.state.children))
+      OrderForked(order.state.children))
     .orElse(
       order.ifState[Order.Deleted].map(_ =>
-        order.id <-: OrderDeleted))
+        OrderDeleted))
 }

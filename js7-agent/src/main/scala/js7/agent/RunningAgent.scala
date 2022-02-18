@@ -38,8 +38,7 @@ import js7.core.cluster.ClusterWatchRegister
 import js7.core.command.CommandMeta
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.recover.StateRecoverer
-import js7.journal.state.FileStatePersistence
-import js7.journal.watch.EventWatch
+import js7.journal.state.{FileStatePersistence, ReadableStatePersistence}
 import js7.journal.{EventIdGenerator, StampedKeyedEventBus}
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -56,7 +55,7 @@ import scala.util.{Failure, Success, Try}
  * @author Joacim Zschimmer
  */
 final class RunningAgent private(
-  val eventWatch: EventWatch,
+  val persistence: ReadableStatePersistence[AgentState],
   val webServer: AkkaWebServer with AkkaWebServer.HasUri,
   mainActor: ActorRef,
   terminated1: Future[ProgramTermination],

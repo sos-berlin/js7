@@ -1,7 +1,6 @@
 package js7.data.state
 
 import js7.base.problem.{Checked, Problem}
-import js7.data.event.KeyedEvent
 import js7.data.job.JobKey
 import js7.data.order.OrderEvent.{OrderCancelled, OrderDeleted, OrderDetachable, OrderForked, OrderJoined, OrderProcessed}
 import js7.data.order.{Order, OrderEvent, OrderId}
@@ -11,20 +10,9 @@ import js7.data.workflow.{Workflow, WorkflowId}
 /**
   * @author Joacim Zschimmer
   */
-final class OrderEventHandler(
-  idToWorkflow: WorkflowId => Checked[Workflow],
-  idToOrder: OrderId => Checked[Order[Order.State]])
+final class OrderEventHandler(idToWorkflow: WorkflowId => Checked[Workflow])
 {
-  def handleEvent(keyedEvent: KeyedEvent[OrderEvent]): Checked[Seq[FollowUp]] = {
-    val KeyedEvent(orderId, event) = keyedEvent
-    for {
-      previousOrder <- idToOrder(orderId)
-      followUps <- handleEvent(previousOrder, orderId, event)
-    } yield followUps
-  }
-
-  private def handleEvent(previousOrder: Order[Order.State], orderId: OrderId, event: OrderEvent)
-  : Checked[Seq[FollowUp]] =
+  def handleEvent(previousOrder: Order[Order.State], event: OrderEvent): Checked[Seq[FollowUp]] =
     event match {
       case _: OrderProcessed =>
         for {
@@ -59,7 +47,7 @@ final class OrderEventHandler(
         }
 
       case _: OrderDeleted =>
-        Right(FollowUp.Delete(orderId) :: Nil)
+        Right(FollowUp.Delete(previousOrder.id) :: Nil)
 
       case _ =>
         Right(Nil)
