@@ -3,6 +3,7 @@ package js7.base.utils
 import js7.base.time.Stopwatch
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
+import monix.execution.atomic.Atomic
 import monix.reactive.Observable
 import org.scalatest.freespec.AsyncFreeSpec
 import scala.util.Random
@@ -15,11 +16,11 @@ final class AsyncLockTest extends AsyncFreeSpec
   private val initial = 1
 
   "With logging" - {
-    addTests(n = 100, suppressLog = false)
+    addTests(n = 200, suppressLog = false)
   }
 
   "Without logging" - {
-    addTests(n = 10_000, suppressLog = false)
+    addTests(n = 100_000, suppressLog = false)
   }
 
   def addTests(n: Int, suppressLog: Boolean): Unit = {
@@ -49,19 +50,19 @@ final class AsyncLockTest extends AsyncFreeSpec
     }
 
     def doTest(body: Task[Int] => Task[Int]): Task[Seq[Int]] = {
-      @volatile var guardedVariable = initial
+      val guardedVariable = Atomic(initial)
       Task.parSequence(
         for (_ <- 1 to n) yield
           body {
             Task {
-              val found = guardedVariable
-              idleNanos(10_000)
+              val found = guardedVariable.get()
+              idleNanos(1000)
               guardedVariable += 1
               found
             } .tapEval(_ => if (Random.nextBoolean()) Task.shift else Task.unit)
               .flatMap { found =>
                 Task {
-                  guardedVariable = initial
+                  guardedVariable := initial
                   found
                 }
               }
