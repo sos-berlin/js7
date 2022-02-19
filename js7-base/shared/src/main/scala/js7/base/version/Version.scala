@@ -31,6 +31,9 @@ extends GenericString with Ordered[Version]
         case n => n
       }
 
+  def isMajorMinorEqual(other: Version): Boolean =
+    major == other.major && minor == other.minor
+
   override def toString = string
 }
 

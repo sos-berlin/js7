@@ -52,4 +52,15 @@ final class VersionTest extends AnyFreeSpec
     assert(Version("1.2.3") > Version("1.2.3-alpha"))
     assert(Version("1.2.3-BETA") < Version("1.2.3-alpha"))
   }
+
+  "isMajorMinorEqual" in {
+    assert(!Version("1.0.0").isMajorMinorEqual(Version("0.1.0")))
+    assert(!Version("1.0.0").isMajorMinorEqual(Version("0.1.1")))
+    assert(!Version("1.1.0").isMajorMinorEqual(Version("1.2.0")))
+    assert(!Version("1.2.0").isMajorMinorEqual(Version("1.1.0")))
+
+    assert(Version("1.0.1").isMajorMinorEqual(Version("1.0.0")))
+    assert(Version("1.0.0").isMajorMinorEqual(Version("1.0.2")))
+    assert(Version("1.0.1").isMajorMinorEqual(Version("1.0.2")))
+  }
 }

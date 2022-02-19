@@ -6,7 +6,6 @@ import js7.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
 import js7.base.generic.{Completed, SecretString}
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Checked.Ops
-import js7.base.problem.Problem
 import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
@@ -109,28 +108,9 @@ final class SessionRegisterTest extends AnyFreeSpec with ScalatestRouteTest
     assert(sessionRegister.count.await(99.s) == 1)
   }
 
-  "Non-matching version" in {
-    assert(sessionRegister.login(AUser, Some(Version("2.2.0"))).await(99.s) == Left(Problem(
-      s"Client's version 2.2.0 does not match JS7 TEST version $Js7Version")))
-  }
-
-  "logNonMatchingVersion (manual test)" in {
-    assert(check(Version("1.2.4")) == Right(()))
-    assert(check(Version("1.2.3")) == Right(()))
-    assert(check(Version("1.2.2")) == Right(()))
-    assert(check(Version("1.2.0-SNAPSHOT+BUILD")) == Right(()))
-
-    assert(check(Version("1.1.2")) == Left(Problem(
-      "Client's version 1.1.2 does not match JS7 TEST version 1.2.3")))
-
-    assert(check(Version("1.3.2")) == Left(Problem(
-      "Client's version 1.3.2 does not match JS7 TEST version 1.2.3")))
-
-    assert(check(Version("2.0.0")) == Left(Problem(
-      "Client's version 2.0.0 does not match JS7 TEST version 1.2.3")))
-
-    def check(v: Version) =
-      sessionRegister.checkNonMatchingVersion(Some(v), Version("1.2.3"))
+  "Non-matching version are still not checked" in {
+    assert(sessionRegister.login(AUser, Some(Version("2.2.0"))).await(99.s).isRight)
+      //Left(Problem(s"Client's version 2.2.0 does not match JS7 TEST version $Js7Version")))
   }
 }
 

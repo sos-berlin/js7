@@ -3,7 +3,6 @@ package js7.common.akkahttp.web.session
 import akka.actor.{ActorRef, ActorRefFactory}
 import akka.pattern.ask
 import akka.util.Timeout
-import cats.syntax.traverse._
 import com.typesafe.config.Config
 import java.nio.file.Files.{createFile, deleteIfExists}
 import java.nio.file.Path
@@ -50,14 +49,13 @@ final class SessionRegister[S <: Session] private[session](
     user: S#User,
     clientVersion: Option[Version],
     sessionTokenOption: Option[SessionToken] = None,
-    isEternalSession: Boolean = false
-  ): Task[Checked[SessionToken]] =
-    Task.defer(
-      checkNonMatchingVersion(clientVersion)
-        .traverse(_ =>
-          Task.deferFuture(
-            (actor ? SessionActor.Command.Login(user, clientVersion, sessionTokenOption,
-              isEternalSession = isEternalSession)).mapTo[SessionToken])))
+    isEternalSession: Boolean = false)
+  : Task[Checked[SessionToken]] =
+    Task
+      .deferFuture(
+        (actor ? SessionActor.Command.Login(user, clientVersion, sessionTokenOption,
+          isEternalSession = isEternalSession)).mapTo[SessionToken])
+      .map(Right(_))
 
   private[session] def checkNonMatchingVersion(
     clientVersion: Option[Version],

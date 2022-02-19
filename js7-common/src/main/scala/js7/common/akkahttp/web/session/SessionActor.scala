@@ -12,7 +12,7 @@ import js7.base.time.JavaTimeConverters._
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.implicits.InsertableMutableMap
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.version.Version
+import js7.base.version.{Js7Versions, Version}
 import js7.common.akkahttp.web.session.SessionActor._
 import js7.common.auth.SecretStringGenerator
 import monix.execution.{Cancelable, Scheduler}
@@ -57,10 +57,26 @@ extends Actor {
         session.touch(sessionTimeout)
       }
       tokenToSession.insert(session.sessionToken -> session)
+
       logger.info(s"${session.sessionToken} for ${user.id}: Login" +
         clientVersion.fold("")(v =>
-          " (" + v + (if (v == Js7Version) " ✔)" else " ⚠️ version differs!)")) +
+          " (" + v + (
+            if (v == Js7Version)
+              " ✔)"
+            else
+              s" ⚠️ version differs from this server's version $Js7Version!)")) +
         (session.isEternal ?? " (eternal)"))
+
+      clientVersion match {
+        case None => logger.warn("Client does not provide its version")
+        case Some(v) =>
+          Js7Versions.checkNonMatchingVersion(v, otherName = user.id.toString)
+            .left
+            .foreach { problem =>
+              logger.error(problem.toString)
+            }
+      }
+
       sender() ! token
       scheduleNextCleanup()
 

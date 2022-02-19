@@ -9,6 +9,8 @@ import js7.base.session.SessionCommand.{Login, Logout}
 import js7.base.session.{HasSessionToken, SessionApi, SessionCommand}
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
 import js7.base.utils.AsyncLock
+import js7.base.version.Js7Versions.checkNonMatchingVersion
+import js7.base.version.Version
 import js7.base.web.{HttpClient, Uri}
 import js7.data.event.SnapshotableState
 import js7.data.session.HttpSessionApi._
@@ -44,6 +46,9 @@ trait HttpSessionApi extends SessionApi.HasUserAndPassword with HasSessionToken
           Task { logger.debug(s"$toString: $cmd") } >>
           executeSessionCommand(cmd)
             .map { response =>
+              logNonMatchingVersion(
+                otherVersion = response.js7Version,
+                otherName = sessionUri.stripPath.toString)
               setSessionToken(response.sessionToken)
               Completed
             }
@@ -105,6 +110,19 @@ trait HttpSessionApi extends SessionApi.HasUserAndPassword with HasSessionToken
     }
 }
 
-object HttpSessionApi {
+object HttpSessionApi
+{
   private val logger = scribe.Logger[this.type]
+
+  private[session] def logNonMatchingVersion(
+    otherVersion: Version,
+    otherName: => String,
+    ourVersion: Version = Js7Version): Unit =
+    checkNonMatchingVersion(otherVersion, otherName = otherName, ourVersion = ourVersion) match {
+      case Left(problem) => logger.error(problem.toString)
+      case Right(()) =>
+        if (otherVersion != ourVersion) {
+          logger.info(s"$otherName server version $otherVersion differs from own version $ourVersion")
+        }
+    }
 }
