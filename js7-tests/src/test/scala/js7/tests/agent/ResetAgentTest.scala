@@ -17,8 +17,9 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
 import js7.data.Problems.AgentResetProblem
 import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentReset}
-import js7.data.agent.{AgentPath, AgentRef, DelegateCouplingState}
+import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.controller.ControllerCommand.ResetAgent
+import js7.data.delegate.DelegateCouplingState
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVersion}
 import js7.data.item.VersionId
 import js7.data.job.{JobResource, JobResourcePath}

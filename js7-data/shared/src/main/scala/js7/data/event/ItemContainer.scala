@@ -2,7 +2,8 @@ package js7.data.event
 
 import io.circe.{Codec, Decoder}
 import js7.base.circeutils.typed.TypedJsonCodec
-import js7.data.agent.{AgentPath, DelegateId}
+import js7.data.agent.AgentPath
+import js7.data.delegate.DelegateId
 import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemPath, SignableItem, SignableItemKey, SignableSimpleItem, SimpleItem, SimpleItemPath, UnsignedSimpleItem, UnsignedSimpleItemPath, VersionedItem, VersionedItemPath}
 import scala.collection.MapView
 

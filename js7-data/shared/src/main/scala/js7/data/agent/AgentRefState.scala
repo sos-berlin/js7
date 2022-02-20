@@ -3,7 +3,8 @@ package js7.data.agent
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.problem.{Checked, Problem}
 import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentEventsObserved, AgentReady, AgentReset, AgentResetStarted, AgentShutDown}
-import js7.data.agent.DelegateCouplingState.{Coupled, Reset, Resetting, ShutDown}
+import js7.data.delegate.DelegateCouplingState
+import js7.data.delegate.DelegateCouplingState.{Coupled, Reset, Resetting, ShutDown}
 import js7.data.event.EventId
 import js7.data.item.UnsignedSimpleItemState
 

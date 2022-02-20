@@ -32,9 +32,9 @@ import js7.controller.agent.AgentDriver._
 import js7.controller.agent.CommandQueue.QueuedInputResponse
 import js7.controller.configuration.ControllerConfiguration
 import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentReset}
-import js7.data.agent.DelegateCouplingState.{Coupled, Reset, Resetting}
 import js7.data.agent.{AgentPath, AgentRef, AgentRunId}
 import js7.data.controller.ControllerState
+import js7.data.delegate.DelegateCouplingState.{Coupled, Reset, Resetting}
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
 import js7.data.item.ItemAttachedState.{Attachable, Attached}
 import js7.data.item.{InventoryItemEvent, InventoryItemKey, SignableItem, UnsignedSimpleItem}

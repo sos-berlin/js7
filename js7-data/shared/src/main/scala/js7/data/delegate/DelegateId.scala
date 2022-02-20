@@ -1,4 +1,4 @@
-package js7.data.agent
+package js7.data.delegate
 
 import js7.data.item.SimpleItemPath
 

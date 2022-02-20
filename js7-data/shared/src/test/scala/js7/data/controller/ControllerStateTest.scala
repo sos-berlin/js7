@@ -10,11 +10,12 @@ import js7.base.time.{Timestamp, Timezone}
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.Collections.implicits._
 import js7.base.web.Uri
-import js7.data.agent.{AgentPath, AgentRef, AgentRefState, DelegateCouplingState}
+import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import js7.data.board.{Board, BoardPath, BoardState, Notice, NoticeExpectation, NoticeId}
 import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterStateSnapshot, ClusterTiming}
 import js7.data.controller.ControllerStateTest._
+import js7.data.delegate.DelegateCouplingState
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{EventId, JournalState, SnapshotableState}
 import js7.data.item.BasicItemEvent.{ItemAttachable, ItemDeletionMarked}

@@ -4,7 +4,7 @@ import js7.base.annotation.javaApi
 import js7.base.auth.UserId
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.RichEither
-import js7.data.agent.DelegateId
+import js7.data.delegate.DelegateId
 import js7.data.item.InventoryItemPath.AssignableToAgent
 import js7.data.item.UnsignedSimpleItemPath
 

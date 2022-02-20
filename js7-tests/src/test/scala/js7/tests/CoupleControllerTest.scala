@@ -7,8 +7,9 @@ import js7.base.io.file.FileUtils.syntax._
 import js7.base.log.Logger
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
+import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentReady, AgentShutDown}
-import js7.data.agent.{AgentPath, DelegateCouplingState}
+import js7.data.delegate.DelegateCouplingState
 import js7.data.event.{Event, EventId, KeyedEvent, Stamped}
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderFinished

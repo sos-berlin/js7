@@ -1,4 +1,4 @@
-package js7.data.agent
+package js7.data.delegate
 
 import js7.base.circeutils.CirceUtils._
 import js7.tester.CirceJsonTester.testJson

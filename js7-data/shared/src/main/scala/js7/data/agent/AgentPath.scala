@@ -1,6 +1,7 @@
 package js7.data.agent
 
 import js7.base.annotation.javaApi
+import js7.data.delegate.DelegateId
 import js7.data.item.UnsignedSimpleItemPath
 
 /**

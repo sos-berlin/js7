@@ -5,7 +5,7 @@ import io.circe.{Codec, Decoder, HCursor}
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.Signed
-import js7.data.agent.DelegateId
+import js7.data.delegate.DelegateId
 import js7.data.event.ItemContainer
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detached}
 

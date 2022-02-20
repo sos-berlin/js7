@@ -43,14 +43,15 @@ import js7.core.common.ActorRegister
 import js7.core.problems.ReverseReleaseEventsProblem
 import js7.data.Problems.{CannotDeleteChildOrderProblem, CannotDeleteWatchingOrderProblem, UnknownOrderProblem}
 import js7.data.agent.AgentRefStateEvent.{AgentEventsObserved, AgentReady, AgentReset, AgentShutDown}
-import js7.data.agent.DelegateCouplingState.{Reset, Resetting}
-import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId, DelegateCouplingState}
+import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.board.BoardEvent.{NoticeDeleted, NoticePosted}
 import js7.data.board.{BoardPath, Notice, NoticeId}
 import js7.data.calendar.{Calendar, CalendarExecutor}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.data.controller.ControllerStateExecutor.convertImplicitly
 import js7.data.controller.{ControllerCommand, ControllerEvent, ControllerState, VerifiedUpdateItems, VerifiedUpdateItemsExecutor}
+import js7.data.delegate.DelegateCouplingState
+import js7.data.delegate.DelegateCouplingState.{Reset, Resetting}
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventId, JournalHeader, KeyedEvent, Stamped}

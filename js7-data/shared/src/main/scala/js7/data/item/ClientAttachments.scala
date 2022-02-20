@@ -4,7 +4,7 @@ import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.cast
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
-import js7.data.agent.DelegateId
+import js7.data.delegate.DelegateId
 import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeleted}
 import js7.data.item.ClientAttachments._
 import js7.data.item.ItemAttachedState.{Detached, NotDetached}

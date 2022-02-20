@@ -2,8 +2,8 @@ package js7.data.subagent
 
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.problem.{Checked, Problem}
-import js7.data.agent.DelegateCouplingState
-import js7.data.agent.DelegateCouplingState.{Coupled, Reset, ShutDown}
+import js7.data.delegate.DelegateCouplingState
+import js7.data.delegate.DelegateCouplingState.{Coupled, Reset, ShutDown}
 import js7.data.event.EventId
 import js7.data.item.UnsignedSimpleItemState
 import js7.data.subagent.SubagentRefStateEvent.{SubagentCoupled, SubagentDedicated, SubagentEventsObserved, SubagentLost, SubagentReset, SubagentShutdown}

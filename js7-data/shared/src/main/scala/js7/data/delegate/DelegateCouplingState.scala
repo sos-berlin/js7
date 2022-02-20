@@ -1,4 +1,4 @@
-package js7.data.agent
+package js7.data.delegate
 
 import io.circe.generic.extras.Configuration.default.withDefaults
 import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
