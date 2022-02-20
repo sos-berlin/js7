@@ -237,13 +237,14 @@ lazy val `js7-install` = project
     universalPluginSettings,
     Universal / topLevelDirectory := Some(s"js7-${version.value}"),
     Universal / mappings :=
-      (((Universal / mappings).value filter { case (_, path) => (path startsWith "lib/") && !isExcludedJar(path stripPrefix "lib/") }) ++
-        NativePackagerHelper.contentOf((`js7-controller` / Compile / classDirectory).value / "js7/controller/installation") ++
-        NativePackagerHelper.contentOf((`js7-provider` / Compile / classDirectory).value / "js7/provider/installation") ++
-        NativePackagerHelper.contentOf((`js7-agent` / Compile / classDirectory).value / "js7/agent/installation") ++
-        NativePackagerHelper.contentOf((`js7-core` / Compile / classDirectory).value / "js7/core/installation") ++
-        NativePackagerHelper.contentOf((`js7-base`.jvm / Compile / classDirectory).value / "js7/base/installation")
-      ).toVector.sortBy(_._2))
+      (Universal / mappings).value
+        .filter { case (_, path) => (path startsWith "lib/") && !isExcludedJar(path stripPrefix "lib/") }
+        .++(NativePackagerHelper.contentOf((`js7-controller` / Compile / classDirectory).value / "js7/controller/installation"))
+        .++(NativePackagerHelper.contentOf((`js7-provider` / Compile / classDirectory).value / "js7/provider/installation"))
+        .++(NativePackagerHelper.contentOf((`js7-agent` / Compile / classDirectory).value / "js7/agent/installation"))
+        .++(NativePackagerHelper.contentOf((`js7-core` / Compile / classDirectory).value / "js7/core/installation"))
+        .++(NativePackagerHelper.contentOf((`js7-base`.jvm / Compile / classDirectory).value / "js7/base/installation"))
+        .sortBy(_._2))
 
 lazy val `js7-docker` = project
   .settings(commonSettings)
