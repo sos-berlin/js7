@@ -118,20 +118,23 @@ object ServerOperatingSystem {
           .toOption
     }
 
-    def cpuModel =
-      if (isMac)
-        Try(("/usr/sbin/sysctl -n machdep.cpu.brand_string").!!.trim).toOption
-      else if (isSolaris)
-        None
-      else
-        Try {
-          val CpuModelRegex = """model name[ \t]*:[ \t]*(.+)""".r
-          autoClosing(new FileInputStream("/proc/cpuinfo")) { in =>
-            fromInputStream(in).getLines() collectFirst {  // Assuming all cores are of same model
-              case CpuModelRegex(model) => model.trim.replaceAll("""[ \t\n]+""", " ")
+    lazy val cpuModel: Option[String] = {
+      val fromOS =
+        if (isMac)
+          Try(("/usr/sbin/sysctl -n machdep.cpu.brand_string").!!.trim).toOption
+        else if (isSolaris)
+          None
+        else
+          Try {
+            val CpuModelRegex = """model name[ \t]*:[ \t]*(.+)""".r
+            autoClosing(new FileInputStream("/proc/cpuinfo")) { in =>
+              fromInputStream(in).getLines().collectFirst {  // We return the model of the first core
+                case CpuModelRegex(model) => model.trim.replaceAll("""[ \t\n]+""", " ")
+              }
             }
-          }
-        } .toOption.flatten
+          } .toOption.flatten
+      fromOS orElse sys.props.get("os.arch")
+    }
 
     def sleepingShellScript(duration: FiniteDuration) =
       s"sleep ${(duration + 999.ms).toSeconds}\n"
