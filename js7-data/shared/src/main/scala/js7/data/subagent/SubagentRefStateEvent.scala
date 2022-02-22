@@ -34,6 +34,7 @@ object SubagentRefStateEvent extends Event.Companion[SubagentRefStateEvent]
     override def toString = s"SubagentEventsObserved(${EventId.toString(untilEventId)})"
   }
 
+  // TODO Brauchen wir SubagentLost und SubagentReset ?
   type SubagentReset = SubagentReset.type
   /** Subagent has lost its state (including processes). */
   case object SubagentReset

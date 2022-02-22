@@ -1,6 +1,7 @@
 package js7.common.system
 
-import cats.effect.Resource
+import cats.Applicative
+import cats.effect.{Resource, Sync}
 import com.typesafe.config.Config
 import java.lang.Thread.currentThread
 import js7.base.configutils.Configs.ConvertibleConfig
@@ -13,7 +14,6 @@ import js7.base.utils.ByteUnits.toKiBGiB
 import js7.base.utils.Closer
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.system.startup.Halt.haltJava
-import monix.eval.Task
 import monix.execution.ExecutionModel.SynchronousExecution
 import monix.execution.atomic.AtomicInt
 import monix.execution.schedulers.{ExecutorScheduler, SchedulerService}
@@ -65,17 +65,20 @@ object ThreadPools
 
   private val nextNumber = AtomicInt(0)
 
-  // Requires an outer Scheduler (global).
-  def standardSchedulerResource(name: String, config: Config, orCommon: Option[Scheduler])
-  : Resource[Task, Scheduler] =
-    orCommon
-      .map(o => Resource.pure[Task, Scheduler](o))
-      .getOrElse(standardSchedulerResource(name, config))
+  def standardSchedulerResource[F[_]](name: String, config: Config, orCommon: Option[Scheduler])
+    (implicit F: Sync[F], FA: Applicative[F])
+  : Resource[F, Scheduler] =
+    orCommon match {
+      case Some(scheduler) => Resource.pure[F, Scheduler](scheduler)
+      case None => standardSchedulerResource(name, config)
+    }
 
   // Requires an outer Scheduler (global).
-  def standardSchedulerResource(name: String, config: Config): Resource[Task, Scheduler] =
+  def standardSchedulerResource[F[_]](name: String, config: Config)
+    (implicit F: Sync[F])
+  : Resource[F, Scheduler] =
     Resource
-      .fromAutoCloseable(Task(new Closer))
+      .fromAutoCloseable(F.delay(new Closer))
       .map(newStandardScheduler(name, config, _))
 
   def newStandardScheduler(name: String, config: Config, closer: Closer): SchedulerService = {

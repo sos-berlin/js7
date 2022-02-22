@@ -184,6 +184,7 @@ with Stash
 
   override def postStop() = {
     // TODO Use Resource (like the Subagent starter)
+    // TODO Blocking!
     Try(subagentKeeper.stop.uncancelable.timeout(3.s).logWhenItTakesLonger.await(99.s))
 
     fileWatchManager.stop.runAsyncAndForget
@@ -240,13 +241,16 @@ with Stash
           .initialize(ownAgentPath, localSubagentId, controllerId)
           .*>(
             subagentKeeper
-              .addOrChangeMultiple(recoveredState.idToSubagentRefState.values)
+              .recoverSubagents(recoveredState.idToSubagentRefState.values.toVector)
               .map {
-                case Left(problem) => logger.error(problem.toString)  // ???
+                case Left(problem) => logger.error(
+                  s"subagentKeeper.recoverSubagents => $problem")  // ???
                 case _ =>
               })
-          .runToFuture
-          .onComplete(tried => self ! Internal.SubagentKeeperInitialized(state, tried))
+          .materialize
+          .foreach { tried =>
+            self ! Internal.SubagentKeeperInitialized(state, tried)
+          }
 
       case Internal.SubagentKeeperInitialized(state, tried) =>
         for (t <- tried.failed) throw t.appendCurrentStackTrace
@@ -281,7 +285,7 @@ with Stash
         subagentKeeper.start
           .runToFuture
           .onComplete { tried =>
-            for (t <- tried.failed) logger.error("subagentKeeper.start: " + t.toStringWithCauses)
+            for (t <- tried.failed) logger.error(s"subagentKeeper.start: ${t.toStringWithCauses}")
             self ! Internal.SubagentKeeperStarted
           }
 
@@ -476,18 +480,11 @@ with Stash
         persistence.state.flatMap(_
           .idToSubagentRefState.get(subagentRef.id)
           .fold(Task.pure(Checked.unit))(subagentRefState => subagentKeeper
-            .proceed(subagentRefState)
+            .proceedWithSubagent(subagentRefState)
             .materializeIntoChecked))
 
       case _ => Task.right(())
     }
-
-  private def proceedWithSubagentRef(subagentRef: SubagentRef): Task[Checked[Unit]] =
-    persistence.state.flatMap(_
-      .idToSubagentRefState.get(subagentRef.id)
-      .fold(Task.pure(Checked.unit))(subagentRefState => subagentKeeper
-        .proceed(subagentRefState)
-        .materializeIntoChecked))
 
   private def processOrderCommand(cmd: OrderCommand): Future[Checked[Response]] = cmd match {
     case AttachOrder(order) =>

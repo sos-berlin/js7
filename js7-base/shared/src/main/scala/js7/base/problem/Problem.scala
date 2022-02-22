@@ -57,11 +57,13 @@ sealed trait Problem
   /** Message without cause. **/
   protected[problem] def message: String
 
-  def httpStatusCode: Int = 400  // Bad Request
+  def httpStatusCode: Int = Problem.DefaultHttpStatusCode
 }
 
 object Problem extends Semigroup[Problem]
 {
+  private val DefaultHttpStatusCode = 400  // Bad Request
+
   @javaApi
   def singleton = this
 
@@ -76,6 +78,13 @@ object Problem extends Semigroup[Problem]
 
   def pure(message: String): Problem =
     apply(message, cause = None)
+
+  def withHttpStatus(message: String, throwable: Throwable, httpStatusCode: Int): Problem = {
+    val msg = message
+    new FromEagerThrowable(throwable, httpStatusCode = httpStatusCode) {
+      override lazy val message = msg
+    }
+  }
 
   def pure(message: String, cause: Option[Problem]): Problem =
     apply(message, cause)
@@ -247,7 +256,9 @@ object Problem extends Semigroup[Problem]
 
   sealed trait FromThrowable extends Problem
 
-  private final class FromEagerThrowable(val throwable: Throwable)
+  private class FromEagerThrowable(
+    val throwable: Throwable,
+    override val httpStatusCode: Int = DefaultHttpStatusCode)
   extends FromThrowable
   {
     lazy val message = throwable.toStringWithCauses

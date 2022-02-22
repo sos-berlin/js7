@@ -1,15 +1,15 @@
 package js7.subagent
 
 import akka.actor.ActorSystem
-import cats.effect.Resource
+import cats.Applicative
+import cats.effect.{Resource, Sync}
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger
 import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
 import js7.base.time.JavaTimeConverters.AsScalaDuration
-import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.{Closer, ProgramTermination, SetOnce}
+import js7.base.utils.{ProgramTermination, SetOnce}
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.akkautils.Akkas
 import js7.common.system.ThreadPools
@@ -20,7 +20,7 @@ import js7.launcher.configuration.JobLauncherConf
 import js7.subagent.StandaloneSubagent.logger
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.web.SubagentWebServer
-import monix.eval.Task
+import monix.eval.{Coeval, Task}
 import monix.execution.Scheduler
 
 final class StandaloneSubagent(
@@ -40,7 +40,7 @@ extends SubagentCommandExecutor
   private val stoppedOnce = SetOnce[ProgramTermination]
 
   /** Completes when Subagent has stopped. */
-  val stopped: Task[ProgramTermination] =
+  val untilStopped: Task[ProgramTermination] =
     stoppedOnce.task
 
   protected def onStopped(termination: ProgramTermination) =
@@ -66,13 +66,16 @@ object StandaloneSubagent
   private val logger = Logger[this.type]
 
   // Startable without Scheduler
-  def blockingRun(conf: SubagentConf, commonScheduler: Option[Scheduler] = None): ProgramTermination =
-    autoClosing(new Closer) { closer =>
-      implicit val scheduler = commonScheduler.getOrElse(
-        ThreadPools.newStandardScheduler(conf.name, conf.config, closer))
-      resource(conf).use(_.stopped)
-        .runSyncUnsafe()
-    }
+  def blockingRun(conf: SubagentConf, orCommon: Option[Scheduler] = None)
+  : ProgramTermination =
+    ThreadPools
+      .standardSchedulerResource[Coeval](conf.name, conf.config, orCommon)
+      .use(implicit scheduler => Coeval {
+        resource(conf)
+          .use(_.untilStopped)
+          .runSyncUnsafe()
+      })
+      .apply()
 
   def resource(conf: SubagentConf)(implicit scheduler: Scheduler)
   : Resource[Task, StandaloneSubagent] =
@@ -111,8 +114,9 @@ object StandaloneSubagent
           new StandaloneSubagent(conf, jobLauncherConf, journal, scheduler, actorSystem)
       }.executeOn(scheduler))
 
-  def threadPoolResource(conf: SubagentConf, commonScheduler: Option[Scheduler] = None)
-  : Resource[Task, Scheduler] =
+  def threadPoolResource[F[_]](conf: SubagentConf, orCommon: Option[Scheduler] = None)
+    (implicit F: Sync[F], FA: Applicative[F])
+  : Resource[F, Scheduler] =
     ThreadPools
-      .standardSchedulerResource(conf.name, conf.config, orCommon = commonScheduler)
+      .standardSchedulerResource[F](conf.name, conf.config, orCommon = orCommon)
 }

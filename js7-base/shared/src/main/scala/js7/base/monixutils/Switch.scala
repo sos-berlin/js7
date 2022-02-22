@@ -2,16 +2,18 @@ package js7.base.monixutils
 
 import monix.catnap.MVar
 import monix.eval.Task
-import monix.reactive.Observable
 
 final class Switch private(initiallyOn: Boolean)
 {
-  private val switch = (if (initiallyOn) MVar[Task].empty[Unit]() else MVar[Task].of(())).memoize
+  private val switch: Task[MVar[Task, Unit]] =
+    (if (initiallyOn) MVar[Task].empty[Unit]() else MVar[Task].of(()))
+      .memoize
 
   /** Returns true iff switch turned from off to on. */
   val switchOn: Task[Boolean] =
     switch.flatMap(_.tryTake).map(_.nonEmpty)
 
+  /** Switch on and return `task` iff switch was previously off. */
   def switchOnThen(task: => Task[Unit]): Task[Unit] =
     switchOn.flatMap(Task.when(_)(task))
 
@@ -30,9 +32,6 @@ final class Switch private(initiallyOn: Boolean)
 
   val whenOff: Task[Unit] =
     switch.flatMap(_.read).void
-
-  def whenOffObservable: Observable[Unit] =
-    Observable.fromTask(whenOff)
 }
 
 object Switch {

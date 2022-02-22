@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+sleepExp() {
+  # $1 is the two-base exponent, should be a multitude of 2
+  #local exp=$(($1 / 2 * 2))  # Round to lower probability of many small numbers
+  local exp="$1"
+  # $2 is the progress bar string
+  local seconds=$((2 ** ((RANDOM + (32767 / $exp) - 2) / (32767 / $exp))))
+  for ((i = 0; i < $seconds; i++)); do :
+    sleep 1
+    echo -en "$2"
+  done
+}
+
+while true; do :
+  echo -n "$(date "+%H:%M:%S") start "
+  echo -n "$(docker start js7-subagent-1-b) "
+  sleepExp 5 "\e[0;32m█\e[0m"
+  echo
+  echo -n "$(date "+%H:%M:%S") kill  "
+  echo -n "$(docker kill js7-subagent-1-b) "
+  sleepExp 5 "\e[0;31m█\e[0m"
+  echo
+done

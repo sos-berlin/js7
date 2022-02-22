@@ -206,6 +206,7 @@ final class ControllerStateTest extends AsyncFreeSpec
           "id": "SUBAGENT",
           "agentPath": "AGENT",
           "uri": "https://SUBAGENT",
+          "disabled": false,
           "itemRevision": 7
         },
         "couplingState": {
@@ -375,6 +376,7 @@ object ControllerStateTest
     AgentPath("AGENT"),
     Uri("https://SUBAGENT"),
     priority = None,
+    disabled = false,
     Some(ItemRevision(7)))
   private val subagentRefState = SubagentRefState.initial(subagentRef)
 

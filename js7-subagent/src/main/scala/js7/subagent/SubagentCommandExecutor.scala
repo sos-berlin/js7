@@ -1,14 +1,15 @@
 package js7.subagent
 
+import cats.syntax.foldable._
+import cats.syntax.traverse._
 import js7.agent.data.Problems.SubagentNotDedicatedProblem
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.stream.Numbered
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.{ProgramTermination, SetOnce}
+import js7.base.utils.SetOnce
 import js7.data.event.KeyedEvent.NoKey
-import js7.launcher.configuration.JobLauncherConf
 import js7.subagent.SubagentCommandExecutor._
 import js7.subagent.SubagentExecutor.Dedicated
 import js7.subagent.data.SubagentCommand
@@ -21,10 +22,7 @@ trait SubagentCommandExecutor
 extends CommandExecutor
 with SubagentExecutor
 {
-  protected def jobLauncherConf: JobLauncherConf
-  protected def onStopped(termination: ProgramTermination): Task[Unit]
-
-  protected[subagent] val dedicatedOnce = SetOnce[Dedicated](SubagentNotDedicatedProblem)
+  protected[subagent] final val dedicatedOnce = SetOnce[Dedicated](SubagentNotDedicatedProblem)
 
   def executeCommand(numbered: Numbered[SubagentCommand]): Task[Checked[numbered.value.Response]] =
     Task.defer {
@@ -34,6 +32,7 @@ with SubagentExecutor
       command
         .match_ {
           case StartOrderProcess(order, defaultArguments) =>
+            // TODO Idempotent: Doppelte Kommandos (dieselbe Nummer) erkennen und dieselbe Antwort schicken.
             startOrderProcess(order, defaultArguments)
               .rightAs(SubagentCommand.Accepted)
 
@@ -70,6 +69,15 @@ with SubagentExecutor
             // TODO Delay shutdown until Director has read and acknowledged all events!
             shutdown(processSignal, restart)
               .as(Right(SubagentCommand.Accepted))
+
+          case SubagentCommand.Batch(numberedCommand) =>
+            // TODO Sobald Kommandos in einem Stream geschickt werden, wird Batch vielleicht nicht mehr gebraucht.
+            numberedCommand
+              .traverse(cmd => executeCommand(numbered.copy(value = cmd)))
+              .map(_
+                .map(_.rightAs(()))
+                .combineAll
+                .rightAs(SubagentCommand.Accepted))
 
           case NoOperation =>
             Task.pure(Right(SubagentCommand.Accepted))

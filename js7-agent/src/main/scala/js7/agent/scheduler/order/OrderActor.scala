@@ -4,6 +4,7 @@ import akka.actor.{ActorRef, DeadLetterSuppression, Props, Status}
 import akka.pattern.pipe
 import js7.agent.data.AgentState
 import js7.agent.scheduler.order.OrderActor._
+import js7.agent.subagent.RemoteSubagentDriver.SubagentDriverStoppedProblem
 import js7.agent.subagent.SubagentKeeper
 import js7.base.generic.Completed
 import js7.base.io.process.ProcessSignal
@@ -52,8 +53,8 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
             o,
             events => self ! Internal.UpdateEvents(events))
           .materializeIntoChecked
-          .rightAs(())
-          .map(_.onProblemHandle(problem => logger.error(s"continueProcessingOrder: $problem")))
+          .map(_.onProblemHandle(problem =>
+            logger.error(s"continueProcessingOrder: $problem")))
           .runAsyncAndForget
       }
       becomeAsStateOf(order, force = true)
@@ -108,8 +109,15 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
               events => self ! Internal.UpdateEvents(events))
             .materialize
             .foreach {
-              case Failure(t) => logger.error(t.toStringWithCauses)  // OrderFailed ???
-              case Success(Left(problem)) => logger.error(problem.toString)  // ???
+              case Failure(t) =>
+                logger.error(s"processOrder => ${t.toStringWithCauses}")  // OrderFailed ???
+
+              case Success(Left(p: SubagentDriverStoppedProblem)) =>
+                logger.debug(s"processOrder => $p")
+
+              case Success(Left(problem)) =>
+                logger.error(s"processOrder => $problem")  // ???
+
               case Success(Right(())) =>
             }
         }
@@ -149,7 +157,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
   private def handleEvents(events: Seq[OrderCoreEvent]): Future[Completed] =
     order.applyEvents(events) match {
       case Left(problem) =>
-        logger.error(problem.toString)
+        logger.error(s"${events.headOption.getOrElse("?")}...: $problem")
         Future.successful(Completed)
 
       case Right(updated) =>

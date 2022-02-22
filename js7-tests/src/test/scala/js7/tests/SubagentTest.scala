@@ -13,7 +13,7 @@ import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
-import js7.base.utils.ScalaUtils.syntax.RichEither
+import js7.base.utils.ScalaUtils.syntax.{RichEither, RichThrowable}
 import js7.base.web.Uri
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
@@ -42,6 +42,8 @@ import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.scalatest.Assertion
 import org.scalatest.freespec.AnyFreeSpec
+import scala.collection.View
+import scala.util.control.NonFatal
 
 final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 {
@@ -127,7 +129,7 @@ final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
               OrderDetached,
               OrderFinished))
           }
-          logger.info(s"$orderId ✔️")
+          logger.info(s"$orderId ✔︎")
           result
         })
 
@@ -199,7 +201,7 @@ final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
     controllerApi.updateUnsignedSimpleItems(Seq(cSubagentRef)).await(99.s).orThrow
     eventWatch.await[ItemAttached](_.event.key == cSubagentRef.id)
 
-    runSubagent(cSubagentRef)(_ => Task {
+    runSubagent(cSubagentRef) { _ =>
       eventWatch.await[SubagentCoupled](_.key == cSubagentRef.id, after = eventId)
       for (i <- 1 to 2) {
         val orderId = OrderId(s"PRIORITIZED-SUBAGENT-$i")
@@ -209,7 +211,7 @@ final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
         assert(events.head.value == orderId <-: OrderProcessingStarted(cSubagentRef.id))
         eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
       }
-    }).await(199.s)
+    }.await(199.s)
     eventWatch.await[SubagentLost](_.key == cSubagentRef.id, after = eventId)
 
     // Now, the another available Subagent is selected
@@ -225,7 +227,7 @@ final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
   "Restart Director" in {
     val orderId = OrderId("RESTART-DIRECTOR")
 
-    runSubagent(cSubagentRef)(_ => Task {
+    runSubagent(cSubagentRef){ _ =>
       locally {
         val eventId = eventWatch.lastAddedEventId
         controller.addOrder(FreshOrder(orderId, cWorkflow.path)).await(99.s).orThrow
@@ -247,37 +249,61 @@ final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
         val events = eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
         assert(events.head.value.event.isInstanceOf[OrderFinished])
       }
-    }).await(199.s)
+    }.await(199.s)
   }
 
   "Restart remote Subagent while a job is running" in {
-    val orderId = OrderId("RESTART-SUBAGENT")
+    var eventId = eventWatch.lastAddedEventId
+
+    locally {
+      // Disable local Subagent. We want use only cSubagentRef
+      val aSubagentRef = directoryProvider.subagentRefs(0)
+      controllerApi
+        .updateUnsignedSimpleItems(Seq(
+          aSubagentRef.copy(
+            disabled = true,
+            itemRevision = None)))
+        .await(99.s)
+        .orThrow
+      eventWatch.await[ItemAttached](_.event.key == aSubagentRef.id)
+    }
+
+    val aOrderId = OrderId("A-RESTART-SUBAGENT")
 
     TestSemaphoreJob.reset()
 
-    runSubagent(cSubagentRef)(subagent => Task {
-      val eventId = eventWatch.lastAddedEventId
-      controller.addOrder(FreshOrder(orderId, cWorkflow.path)).await(99.s).orThrow
-      val events = eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
+    runSubagent(cSubagentRef) { subagent =>
+      controller.addOrder(FreshOrder(aOrderId, cWorkflow.path)).await(99.s).orThrow
+      val events = eventWatch.await[OrderProcessingStarted](_.key == aOrderId, after = eventId)
       assert(events.head.value.event == OrderProcessingStarted(cSubagentRef.id))
-      // For this test, the terminating Subagent must not emit OrderProcessed
+      // For this test, the terminating Subagent must no emit any event before shutdown
       subagent.journal.stopEventWatch()
-      //??? sleep(1.s)  // JobDriver.stop still races with .processOrder(). Here we give processOrder() a second.
-    }).await(199.s)
+      //? sleep(1.s)  // JobDriver.stop still races with .processOrder(). Here we give processOrder() a second.
+    }.await(199.s)
 
-    val eventId = eventWatch.lastAddedEventId
-    runSubagent(cSubagentRef)(_ => Task {
+    // Subagent is unreachable now
+    eventId = eventWatch.lastAddedEventId
+    val bOrderId = OrderId("B-RESTART-SUBAGENT")
+    controller.addOrder(FreshOrder(bOrderId, cWorkflow.path)).await(99.s).orThrow
+//    //??? Because heartbeat timeout has still not elapsed, the Subagent appears to be alive and
+//    // OrderProcessingStarted is being emitted.
+//    // eventWatch.await[OrderProcessingStarted](_.key == bOrderId, after = eventId)
+
+    eventId = eventWatch.lastAddedEventId
+    runSubagent(cSubagentRef) { _ =>
       locally {
-        val events = eventWatch.await[OrderProcessed](_.key == orderId, after = eventId)
+        val events = eventWatch.await[OrderProcessed](_.key == aOrderId, after = eventId)
         assert(events.head.value.event == OrderProcessed(Outcome.Disrupted(ProcessLost)))
       }
       locally {
-        eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
-        TestSemaphoreJob.continue()
-        val events = eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
-        assert(events.head.value.event.isInstanceOf[OrderFinished])
+        TestSemaphoreJob.continue(2)
+        eventWatch.await[OrderProcessingStarted](_.key == aOrderId, after = eventId)
+        for (orderId <- View(aOrderId, bOrderId)) {
+          val events = eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
+          assert(events.head.value.event.isInstanceOf[OrderFinished])
+        }
       }
-    })
+    }
     .await(199.s)
   }
 
@@ -290,13 +316,19 @@ final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
   }
 
   private def runSubagent[A](subagentRef: SubagentRef, awaitDedicated: Boolean = true)
-    (body: StandaloneSubagent => Task[A])
+    (body: StandaloneSubagent => A)
   : Task[A] =
     Task.defer {
       val eventId = eventWatch.lastAddedEventId
       subagentResource(subagentRef).use { subagent =>
         if (awaitDedicated) eventWatch.await[SubagentDedicated](after = eventId)
-        body(subagent)
+        Task {
+          try body(subagent)
+          catch { case NonFatal(t) =>
+            logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)
+            throw t
+          }
+        }
       }
     }
 
@@ -304,7 +336,7 @@ final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
     for {
       dir <- subagentEnvironment(subagentRef)
       conf = toSubagentConf(dir, subagentRef.uri.port.orThrow, name = subagentRef.id.string)
-      scheduler <- StandaloneSubagent.threadPoolResource(conf)
+      scheduler <- StandaloneSubagent.threadPoolResource[Task](conf)
       subagent <- StandaloneSubagent.resource(conf)(scheduler)
     } yield subagent
 

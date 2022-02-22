@@ -53,6 +53,7 @@ final class AgentStateTest extends AsyncFreeSpec
     AgentPath("AGENT"),
     Uri("https://localhost:0"),
     priority = None,
+    disabled = false,
     Some(ItemRevision(7)))
 
   private val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "1.0", Nil)
@@ -169,6 +170,7 @@ final class AgentStateTest extends AsyncFreeSpec
               "id": "SUBAGENT",
               "agentPath": "AGENT",
               "uri": "https://localhost:0",
+              "disabled": false,
               "itemRevision": 7
              },
              "couplingState": {

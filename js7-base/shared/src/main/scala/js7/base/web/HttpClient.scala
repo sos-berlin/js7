@@ -64,8 +64,8 @@ object HttpClient
       case Failure(HttpException.HasProblem(problem)) =>
         Success(Left(problem))
       case Failure(t: HttpException) if t.getMessage != null =>
-        Success(Left(Problem.pure(
-          t.getMessage + (if (t.getCause == null) "" else ", caused by " + t.getCause))))
+        val msg = t.getMessage + (if (t.getCause == null) "" else ", caused by " + t.getCause)
+        Success(Left(Problem.withHttpStatus(msg, t, httpStatusCode = t.statusInt)))
       case Failure(t) =>
         Failure(t.appendCurrentStackTrace)
       case Success(a) =>
@@ -90,7 +90,7 @@ object HttpClient
       case _ => true  // Maybe a TCP exception
     }
 
-  private val isTemporaryUnreachableStatus = Set[Int](
+  val isTemporaryUnreachableStatus = Set[Int](
     408, // Request Timeout
     429, // Too Many Requests
     //? 449, // Retry With

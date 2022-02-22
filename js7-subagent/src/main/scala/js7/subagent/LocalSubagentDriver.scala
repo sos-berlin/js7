@@ -52,7 +52,6 @@ extends SubagentDriver
   private val jobKeyToJobDriver = AsyncMap.empty[JobKey, JobDriver]
   private val orderIdToJobDriver =
     new AsyncMap(Map.empty[OrderId, JobDriver]) with AsyncMap.Stoppable
-
   val isHeartbeating = true
 
   def start = Task(logger.debug("Start LocalSubagentDriver"))
@@ -184,15 +183,8 @@ extends SubagentDriver
 
   def continueProcessingOrder(order: Order[Order.Processing]) =
     persistence
-      .persistKeyedEvent(order.id <-: OrderProcessed(Outcome.Disrupted(ProcessLost)))
+      .persistKeyedEvent(order.id <-: OrderProcessed.processLost)
       .map(_.map(_._1.value.event))
-
-//  def continueProcessingOrder(order: Order[Order.Processing]) = {
-//    val processed = OrderProcessed(Outcome.Disrupted(ProcessLost))
-//    persistence
-//      .persistKeyedEvent(order.id <-: processed)
-//      .rightAs(processed)
-//  }
 
   def killProcess(orderId: OrderId, signal: ProcessSignal) =
     for {

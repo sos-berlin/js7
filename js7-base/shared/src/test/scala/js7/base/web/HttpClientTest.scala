@@ -13,12 +13,12 @@ import scala.util.{Failure, Success}
 final class HttpClientTest extends AsyncFreeSpec
 {
   private val problem = Problem.pure("PROBLEM")
-  private val withProblem = new HttpClient.HttpException() {
-    def statusInt = 400
+  private val withProblem = new HttpClient.HttpException {
+    def statusInt = 503
     val problem = Some(HttpClientTest.this.problem)
   }
-  private val withoutProblem = new HttpClient.HttpException() {
-    def statusInt = 400
+  private val withoutProblem = new HttpClient.HttpException {
+    def statusInt = 503
     val problem = None
     override def getMessage = "WITHOUT PROBLEM"
   }
@@ -46,13 +46,24 @@ final class HttpClientTest extends AsyncFreeSpec
 
   "liftProblem with HttpException without Problem but getMessage is null" in {
     // This is not expected. A HttpException should have a message.
-    val exception = new HttpClient.HttpException() {
-      def statusInt = 400
+    val exception = new HttpClient.HttpException {
+      def statusInt = 503
       val problem = None
       override def getMessage = null/*default when no message is given*/
     }
-    for (tried <- liftProblem(Task.raiseError[Int](exception)).materialize.runToFuture) yield
+
+    for (tried <- liftProblem(Task.raiseError[Int](exception)).materialize.runToFuture) yield {
       assert(tried == Failure(exception))
+    }
+  }
+
+  "liftProblem and failureToChecked save HTTP status code of the withoutProblem Exception" in {
+    val Success(Left(problem)) = HttpClient.failureToChecked(Failure(withoutProblem))
+    assert(problem.httpStatusCode == 503)
+    assert(problem.toString == "WITHOUT PROBLEM")
+
+    for (case Success(Left(problem)) <- liftProblem(Task.raiseError[Int](withoutProblem)).materialize.runToFuture) yield
+      assert(problem.httpStatusCode == 503)
   }
 
   "liftProblem with unknown Exception" in {

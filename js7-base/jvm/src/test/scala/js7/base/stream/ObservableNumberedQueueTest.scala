@@ -93,7 +93,7 @@ final class ObservableNumberedQueueTest extends AnyFreeSpec
 
     assert(observe(1, take = 1) == List(Numbered(2, X("b"))))
 
-    assert(queue.releaseUntil(7).await(99.s) == Left(Problem("releaseUntil(7) > last.number ?")))
+    assert(queue.releaseUntil(7).await(99.s) == Left(Problem("releaseUntil(7) > 6 ?")))
   }
 }
 

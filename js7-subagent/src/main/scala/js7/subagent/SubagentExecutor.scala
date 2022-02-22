@@ -64,6 +64,7 @@ trait SubagentExecutor
         new Dedicated(
           newLocalSubagentDriver(cmd.subagentId, cmd.agentPath, cmd.controllerId)))
       if (!isFirst) {
+        // TODO Idempotent: Frisch gewidmeter Subagent ist okay. Kein Kommando darf eingekommen sein.
         //if (cmd.subagentId == dedicatedOnce.orThrow.subagentId)
         //  Task.pure(Right(DedicateSubagent.Response(subagentRunId, EventId.BeforeFirst)))
         //else

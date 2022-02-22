@@ -1,97 +1,126 @@
 package js7.base.stream
 
 import izumi.reflect.Tag
+import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.{Checked, Problem}
+import js7.base.stream.ObservableNumberedQueue._
 import js7.base.time.ScalaTime._
-import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AsyncLock
 import js7.base.utils.BinarySearch.binarySearch
 import js7.base.utils.ScalaUtils.syntax._
 import monix.eval.Task
 import monix.execution.Ack
+import monix.execution.Ack.Continue
 import monix.reactive.Observable
 import monix.reactive.subjects.PublishToOneSubject
+import scala.concurrent.Future
 import scala.util.{Failure, Success}
 
 final class ObservableNumberedQueue[V: Tag]
 {
   private val vName = implicitly[Tag[V]].tag.toString
   private var torn = 0L
-  private var queue = Vector.empty[Numbered[V]]
+  private var nextNumber = 1L
+  @volatile private var queue = Vector.empty[Numbered[V]]
   private val sync = new IncreasingNumberSync(initial = 0, i => s"#$i")
   private val lock = AsyncLock("ObservableNumberedQueue", suppressLog = true)
 
   def enqueue(commands: Iterable[V]): Task[Unit] =
-    lock.lock(Task {
-      var lastNumber: Option[Long] = None
-      for (command <- commands) {
-        val number = queue.lastOption.fold(torn)(_.number) + 1
-        queue = queue :+ Numbered(number, command)
-        lastNumber = Some(number)
-      }
-      lastNumber foreach sync.onAdded
-    })
+    lock.lock(
+      Task {
+        var lastNumber = -1L
+        for (command <- commands) {
+          queue :+= Numbered(nextNumber, command)
+          lastNumber = nextNumber
+          nextNumber += 1
+        }
+        lastNumber
+      }.flatMap(lastNumber => Task {
+        // This separate Task should work as a write barrier for queue.
+        if (lastNumber != -1) sync.onAdded(lastNumber)
+      }))
+
+  def observable: Observable[Seq[Numbered[V]]] =
+    observable(torn)
 
   def observable(after: Long): Observable[Seq[Numbered[V]]] =
     Observable.deferAction { implicit s =>
-      import Ack.{Continue, Stop}
       val subject = PublishToOneSubject[Seq[Numbered[V]]]()
-      var ack = subject.subscription
 
-      def loop(after: Long): Unit =
-        ack.syncOnContinue {
+      def loop(ack: Future[Ack], after: Long): Unit =
+        ack.syncTryFlatten.syncOnContinue {
           checkNumber(after)
+            // Should we delay some milliseconds to reduce number of command batches ???
             .*>(sync.whenAvailable(after = after, until = None, delay = 0.s))
             .*>(readQueue(after))
-            .materialize
-            .foreach {
-              case Failure(t) => subject.onError(t)
+            .runToFuture  // Be sure to leave the `loop` recursion stack
+            .onComplete {
+              case Failure(t) =>
+                subject.onError(t)
+
               case Success(values) =>
-                assertThat(values.nonEmpty)
-                ack = ack.syncFlatMap {
-                  case Stop => Stop
-                  case Continue => subject.onNext(values)
+                if (values.isEmpty) {
+                  // Race condition ???
+                  logger.error(
+                    s"Internal: sync.whenAvailable($after) triggered but no command available - delay 1s")
+                  Task(loop(Continue, after)).delayExecution(1.s).runAsyncAndForget
+                } else {
+                  val ack = subject.onNext(values)
+                  loop(ack, after = values.lastOption.fold(after)(_.number))
                 }
-                loop(after = values.lastOption.fold(after)(_.number))
             }
         }
 
-      loop(after)
+      // Start only when subscribed
+      loop(subject.subscription, after)
       subject
     }
 
   private def readQueue(after: Long): Task[Vector[Numbered[V]]] =
     lock.lock(Task.defer {
-      val (index, found) = binarySearch(0, queue.length, queue(_).number.compare(after))
+      val q = queue
+      val (index, found) = binarySearch(0, q.length, q(_).number.compare(after))
       if (!found && after != torn)
-        Task.raiseError(unknownNumber(after).throwable)
+        Task.raiseError(unknownNumberProblem(after).throwable)
       else
-        Task.pure(queue.drop(index + found.toInt))
+        Task.pure(q.drop(index + found.toInt))
     })
 
   private def checkNumber(after: Long): Task[Unit] =
     Task.defer {
       Task.when(after < torn || queue.lastOption.map(_.number).exists(_ < after))(
-        Task.raiseError(unknownNumber(after).throwable))
+        Task.raiseError(unknownNumberProblem(after).throwable))
     }
 
-  private def unknownNumber(after: Long) =
+  private def unknownNumberProblem(after: Long) =
     Problem.pure(s"Unknown Numbered[$vName]: #$after")
 
   def releaseUntil(after: Long): Task[Checked[Unit]] =
     lock.lock(Task {
+      val q = queue
       if (after < torn)
         Left(Problem.pure(s"releaseUntil($after) < torn=$torn ?"))
-      else if (after > torn && queue.lastOption.forall(_.number < after))
-        Left(Problem.pure(s"releaseUntil($after) > last.number ?"))
+      else if (after > torn && q.lastOption.exists(_.number < after))
+        Left(Problem.pure(
+          s"releaseUntil($after) > ${q.lastOption.map(_.number).getOrElse("None")} ?"))
       else {
         torn = after
-        val index = binarySearch(0, queue.length, queue(_).number.compare(after))._1
-        queue = queue.drop(index)
+        val index = binarySearch(0, q.length, q(_).number.compare(after))._1
+        queue = q.drop(index)
         Checked.unit
       }
     })
 
+  def dequeueAll: Task[Unit] =
+    lock.lock(Task {
+      queue = Vector.empty
+    })
+
   override def toString = s"ObservableNumberedQueue[$vName]"
+}
+
+object ObservableNumberedQueue
+{
+  private val logger = Logger[this.type]
 }

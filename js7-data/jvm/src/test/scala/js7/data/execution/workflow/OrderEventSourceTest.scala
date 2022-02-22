@@ -40,16 +40,25 @@ final class OrderEventSourceTest extends AnyFreeSpec
 {
   import OrderEventSourceTest.instructionExecutorService
 
-  "ProcessLost" in {
-    val eventSource = new OrderEventSource(
-      StateView.forTest(
-        isAgent = false,
-        idToOrder = Map(
-          disruptedOrder.id -> disruptedOrder),
-        idToWorkflow = Map(
-          TestWorkflowId -> ForkWorkflow)))
-    assert(eventSource.nextEvents(disruptedOrder.id) ==
-      List(disruptedOrder.id <-: OrderMoved(disruptedOrder.position)))  // Move to same InstructionNr
+  "ProcessLost" - {
+    val rawOrder = Order(OrderId("PROCESS-LOST"), TestWorkflowId /: Position(2),
+      Order.Processed,
+      historicOutcomes = Vector(
+        HistoricOutcome(Position(0), Outcome.Disrupted(Outcome.Disrupted.ProcessLost))))
+
+    for (isAgent <- Seq(false, true)) s"isAgent=$isAgent" in {
+      val order = rawOrder.copy(attachedState = isAgent ? Order.Attached(agentPath = TestAgentPath))
+      val eventSource = new OrderEventSource(
+        StateView.forTest(
+          isAgent = isAgent,
+          idToOrder = Map(
+            order.id -> order),
+          idToWorkflow = Map(
+            TestWorkflowId -> ForkWorkflow)))
+
+      assert(eventSource.nextEvents(order.id) == List(
+        order.id <-: OrderMoved(order.position)))  // Move to same InstructionNr to repeat the job
+    }
   }
 
   "if" - {
@@ -1013,8 +1022,6 @@ object OrderEventSourceTest
     historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(0)))))
   private val failedOrder = Order(OrderId("FAILED"), TestWorkflowId, Order.Processed,
     historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.Failed(NamedValues.rc(1)))))
-  private val disruptedOrder = Order(OrderId("DISRUPTED"), TestWorkflowId /: Position(2), Order.Processed,
-    historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.Disrupted(Outcome.Disrupted.ProcessLost))))
   private val orderForked = OrderForked(Vector(
     OrderForked.Child("🥕", OrderId("ORDER|🥕")),
     OrderForked.Child("🍋", OrderId("ORDER|🍋"))))

@@ -122,7 +122,7 @@ final class SubagentKeeper(
       forProcessingOrder(order.id, subagentDriver, onEvents)(
         subagentDriver.processOrder(order, defaultArguments)))
     .onErrorHandle { t =>
-      logger.error(s"${order.id}: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+      logger.error(s"processOrder ${order.id} => ${t.toStringWithCauses}", t.nullIfNoStackTrace)
       Left(Problem.fromThrowable(t))
     }
   }
@@ -143,7 +143,7 @@ final class SubagentKeeper(
     order: Order[Order.Processing],
     onEvents: Seq[OrderCoreEvent] => Unit)
   : Task[Checked[Unit]] =
-    Task.defer {
+    logger.traceTask("continueProcessingOrder", order.id)(Task.defer {
       val subagentId = order.state.subagentId
       state.get.idToDriver.get(subagentId)
         .match_ {
@@ -158,7 +158,7 @@ final class SubagentKeeper(
               subagentDriver.continueProcessingOrder(order)
             ).materializeIntoChecked
         }
-    }
+    })
 
   private def forProcessingOrder(orderId: OrderId, subagentDriver: SubagentDriver, onEvents: Seq[OrderCoreEvent] => Unit)
     (body: Task[Checked[OrderProcessed]])
@@ -221,60 +221,68 @@ final class SubagentKeeper(
       .flatMap(_.fold(Task.unit)(_.stop(Some(SIGKILL))))
       .void
 
-  def proceed(subagentRefState: SubagentRefState): Task[Checked[Unit]] =
-    addOrChange(subagentRefState)
-      .flatMapT(_
-        .start.map(Right(_)))
-
-  def addOrChangeMultiple(subagentRefStates: Iterable[SubagentRefState]): Task[Checked[Unit]] =
+  def recoverSubagents(subagentRefStates: Seq[SubagentRefState]): Task[Checked[Unit]] =
     subagentRefStates
-      .toVector
       .traverse(addOrChange)
       .map(_
         .collectFirst { case Left(problem) => Left(problem) }
         .getOrElse(Checked.unit))
 
-  def addOrChange(subagentRefState: SubagentRefState): Task[Checked[SubagentDriver]] = {
+  // TODO Kann SubagentRef gelöscht werden während proceed hängt wegen unerreichbarem Subagenten?
+  def proceedWithSubagent(subagentRefState: SubagentRefState): Task[Checked[Unit]] =
+    logger.traceTask("proceedWithSubagent", subagentRefState.subagentId)(
+      addOrChange(subagentRefState)
+        .flatMapT(_
+          .fold(Task.unit)(_
+            .start
+            .onErrorHandle(t => logger.error( // TODO Emit event ?
+              s"proceedWithSubagent(${subagentRefState.subagentId}) => ${t.toStringWithCauses}"))
+            .startAndForget)
+          .map(Right(_))))
+
+  // Returns a SubagentDriver if created
+  private def addOrChange(subagentRefState: SubagentRefState)
+  : Task[Checked[Option[SubagentDriver]]] = {
     val subagentRef = subagentRefState.subagentRef
-    initialized.task
-      .logWhenItTakesLonger("SubagentKeeper.initialized?")
-      .flatMap(initialized =>
-        state
-          .updateCheckedWithResult(state =>
-            state.idToDriver
-              .get(subagentRef.id)
-              .match_ {
-                case Some(existing: LocalSubagentDriver[_]) =>
-                  // TODO Subagent.uri may have changed!
-                  logger.error(s"Change of local SubagentRef? $existing -> $subagentRef}")
-                  //Task.pure(Right(state -> None))
-                  Task.pure(Left(Problem(
-                    s"Local SubagentRef (${subagentRef.id}) cannot not be changed")))
+    logger.traceTask("addOrChange", subagentRefState.subagentId)(
+      initialized.task
+        .logWhenItTakesLonger("SubagentKeeper.initialized?")
+        .flatMap(initialized =>
+          state
+            .updateCheckedWithResult(state =>
+              state.idToDriver
+                .get(subagentRef.id)
+                .match_ {
+                  case Some(_: LocalSubagentDriver[_]) =>
+                    Task.pure(
+                      for (updated <- state.disable(subagentRef.id, subagentRef.disabled)) yield
+                        updated -> None)
 
-                case Some(existing: RemoteSubagentDriver) =>
-                  (if (subagentRef.uri == existing.subagentRef.uri)
-                    Task.unit
-                  else
-                    existing
-                      .stop(Some(SIGKILL))
-                      .onErrorHandle(t => logger.error("After change of URI of " +
-                        existing.subagentId + " " + existing.subagentRef.uri + ": " +
-                        t.toStringWithCauses))
-                      .startAndForget // Do not block the `state` here, so startAndForget ???
-                  ).map { _ =>
-                    // Replace and forget the existing driver
-                    val driver = newRemoteSubagentDriver(subagentRef, initialized)
-                    for (updated <- state.insert(driver, subagentRef.priority)) yield
-                      updated -> driver
-                  }
+                  case Some(existing: RemoteSubagentDriver) =>
+                    (if (subagentRef.uri == existing.subagentRef.uri)
+                      Task.unit
+                    else
+                      existing
+                        .stop(Some(SIGKILL))
+                        .onErrorHandle(t => logger.error("After change of URI of " +
+                          existing.subagentId + " " + existing.subagentRef.uri + ": " +
+                          t.toStringWithCauses))
+                        .startAndForget // Do not block the `state` here, so startAndForget ???
+                    ).map { _ =>
+                      // TODO subagentRef.disable!
+                      // Replace and forget the existing driver
+                      val driver = newRemoteSubagentDriver(subagentRef, initialized)
+                      for (updated <- state.insert(driver, subagentRef)) yield
+                        updated -> Some(driver)
+                    }
 
-                case None =>
-                  Task {
-                    val subagentDriver = newSubagentDriver(subagentRef, initialized)
-                    for (s <- state.insert(subagentDriver, subagentRef.priority)) yield
-                      s -> subagentDriver
-                  }
-              }))
+                  case None =>
+                    Task {
+                      val subagentDriver = newSubagentDriver(subagentRef, initialized)
+                      for (s <- state.insert(subagentDriver, subagentRef)) yield
+                        s -> Some(subagentDriver)
+                    }
+                })))
   }
 
   private def newSubagentDriver(subagentRef: SubagentRef, initialized: Initialized) =
@@ -326,11 +334,15 @@ object SubagentKeeper
   {
     def idToDriver = idToEntry.view.mapValues(_.driver)
 
-    def insert(driver: SubagentDriver, priority: Option[Int]): Checked[State] = {
-      val entry = Entry(driver, priority)
+    def insert(driver: SubagentDriver, subagentRef: SubagentRef): Checked[State] =
+      insert(driver, subagentRef.priority, subagentRef.disabled)
+
+    def insert(driver: SubagentDriver, priority: Option[Int], disabled: Boolean = false)
+    : Checked[State] = {
+      val entry = Entry(driver, priority, disabled)
       for {
         idToE <- idToEntry.insert(driver.subagentId -> entry)
-        prio <- prioritized.insert(entry)
+        prio <- if (disabled) Right(prioritized) else prioritized.insert(entry)
       } yield copy(
         idToEntry = idToE,
         prioritized = prio)
@@ -346,6 +358,20 @@ object SubagentKeeper
         idToEntry = Map.empty,
         prioritized = prioritized.clear)
 
+    def disable(id: SubagentId, disabled: Boolean): Checked[State] =
+      idToEntry
+        .get(id)
+        .filter(_.disabled != disabled)
+        .fold(Checked(this)) { entry =>
+          val checkedPrio =
+            if (disabled) Right(prioritized.remove(id))
+            else prioritized.insert(entry)
+          for (prio <- checkedPrio) yield
+            copy(
+              idToEntry = idToEntry.updated(id, entry.copy(disabled = disabled)),
+              prioritized = prio)
+        }
+
     def selectNext(fixedPriority: FixedPriority): Option[SubagentDriver] =
       prioritized
         .selectNext(fixedPriority, _.driver.isHeartbeating)
@@ -359,5 +385,8 @@ object SubagentKeeper
         toPriority = _.priority.getOrElse(Int.MinValue)))
   }
 
-  private final case class Entry(driver: SubagentDriver, priority: Option[Int])
+  private final case class Entry(
+    driver: SubagentDriver,
+    priority: Option[Int],
+    disabled: Boolean = false)
 }

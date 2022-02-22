@@ -1,7 +1,8 @@
 package js7.data.subagent
 
 import io.circe.Codec
-import io.circe.generic.semiauto.deriveCodec
+import io.circe.generic.extras.Configuration.default.withDefaults
+import io.circe.generic.extras.semiauto.deriveConfiguredCodec
 import js7.base.web.Uri
 import js7.data.agent.AgentPath
 import js7.data.item.{ItemRevision, UnsignedSimpleItem}
@@ -12,6 +13,7 @@ final case class SubagentRef(
   uri: Uri,
   // Higher number means higher priority
   priority: Option[Int] = None,
+  disabled: Boolean = false,
   itemRevision: Option[ItemRevision] = None)
 extends UnsignedSimpleItem
 {
@@ -44,6 +46,8 @@ extends UnsignedSimpleItem.Companion[SubagentRef]
 
   val cls = classOf[SubagentRef]
 
-  implicit val jsonCodec: Codec.AsObject[SubagentRef] =
-    deriveCodec[SubagentRef]
+  implicit val jsonCodec: Codec.AsObject[SubagentRef] = {
+    implicit val x = withDefaults
+    deriveConfiguredCodec[SubagentRef]
+  }
 }
