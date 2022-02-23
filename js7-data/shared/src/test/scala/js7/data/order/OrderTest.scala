@@ -91,7 +91,7 @@ final class OrderTest extends AnyFreeSpec
           }""")
       }
 
-      "Procesing (extra Codec)" in {
+      "Processing (extra Codec)" in {
         testJson[Order[Processing]](
           Order(OrderId("ID"), WorkflowPath("WORKFLOW") ~ "VERSION", Processing(subagentId)),
           json"""{
