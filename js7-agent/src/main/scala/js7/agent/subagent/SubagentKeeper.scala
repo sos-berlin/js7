@@ -25,7 +25,7 @@ import js7.base.utils.SetOnce
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.event.{KeyedEvent, Stamped}
-import js7.data.order.OrderEvent.{LegacySubagentId, OrderCoreEvent, OrderProcessed, OrderProcessingStarted, OrderStarted}
+import js7.data.order.OrderEvent.{OrderCoreEvent, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState}
 import js7.data.value.expression.Expression
@@ -38,11 +38,13 @@ import monix.reactive.Observable
 import scala.concurrent.Promise
 
 final class SubagentKeeper(
+  agentPath: AgentPath,
   persistence: StatePersistence[AgentState],
   jobLauncherConf: JobLauncherConf,
   agentConf: AgentConfiguration,
   actorSystem: ActorSystem)
 {
+  private val legacyLocalSubagentId = SubagentId.legacyLocalFromAgentPath(agentPath) // COMPATIBLE with v2.2
   private val driverConf = SubagentDriver.Conf.fromConfig(agentConf.config)  // TODO
   private val mutableFixedPriority = new FixedPriority
   private val initialized = SetOnce[Initialized]
@@ -50,18 +52,18 @@ final class SubagentKeeper(
   private val orderToWaitForSubagent = AsyncMap.empty[OrderId, Promise[Unit]]
   private val orderToSubagent = AsyncMap.empty[OrderId, SubagentDriver]
 
-  def initialize(agentPath: AgentPath, localSubagentId: Option[SubagentId], controllerId: ControllerId)
+  def initialize(localSubagentId: Option[SubagentId], controllerId: ControllerId)
   : Task[Unit] =
     Task.defer {
       val initialized = Initialized(agentPath, localSubagentId, controllerId)
       this.initialized := initialized
       if (localSubagentId.isDefined)
         Task.unit
-      else  // COMPATIBLE with v2.1 AgentRef
+      else // COMPATIBLE with v2.2 which does not know Subagents
         state
           .update(state => Task(state
             .insert(
-              driver = newLocalSubagentDriver(LegacySubagentId, initialized),
+              driver = newLocalSubagentDriver(legacyLocalSubagentId, initialized),
               priority = None)
             .orThrow))
           .void
@@ -144,7 +146,7 @@ final class SubagentKeeper(
     onEvents: Seq[OrderCoreEvent] => Unit)
   : Task[Checked[Unit]] =
     logger.traceTask("continueProcessingOrder", order.id)(Task.defer {
-      val subagentId = order.state.subagentId
+      val subagentId = order.state.subagentId getOrElse legacyLocalSubagentId
       state.get.idToDriver.get(subagentId)
         .match_ {
           case None =>

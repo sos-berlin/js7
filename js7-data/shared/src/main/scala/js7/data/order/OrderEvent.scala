@@ -129,20 +129,16 @@ object OrderEvent
   type OrderStarted = OrderStarted.type
   case object OrderStarted extends OrderActorEvent
 
-  // COMPATIBLE with v2.1
-  val LegacySubagentId = SubagentId("JS7-2.1-LEGACY")
-
-  final case class OrderProcessingStarted(subagentId: SubagentId)
-  extends OrderCoreEvent
+  // subagentId = None is COMPATIBLE with v2.2
+  final case class OrderProcessingStarted(subagentId: Option[SubagentId])
+  extends OrderCoreEvent {
+    override def toString =
+      s"OrderProcessingStarted(${subagentId getOrElse "legacy local Subagent"})"
+  }
   object OrderProcessingStarted {
-    implicit val jsonEncoder: Encoder.AsObject[OrderProcessingStarted] =
-      o => JsonObject.fromIterable(
-        (o.subagentId != LegacySubagentId) ? ("subagentId" -> o.subagentId.asJson))
-
-    implicit val jsonDecoder: Decoder[OrderProcessingStarted] =
-      c => for {
-        subagentId <- c.getOrElse("subagentId")(LegacySubagentId)
-      } yield OrderProcessingStarted(subagentId)
+    // Since v2.3
+    def apply(subagentId: SubagentId): OrderProcessingStarted =
+      OrderProcessingStarted(Some(subagentId))
   }
 
   sealed trait OrderStdWritten extends OrderEvent {
@@ -459,7 +455,7 @@ object OrderEvent
     Subtype(OrderDeletionMarked),
     Subtype(OrderDeleted),
     Subtype(OrderStarted),
-    Subtype[OrderProcessingStarted],
+    Subtype(deriveCodec[OrderProcessingStarted]),
     Subtype[OrderStdoutWritten],
     Subtype[OrderStderrWritten],
     Subtype[OrderProcessed],

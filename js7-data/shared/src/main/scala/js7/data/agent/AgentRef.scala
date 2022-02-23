@@ -7,7 +7,7 @@ import js7.base.circeutils.CirceUtils._
 import js7.base.problem.{Checked, Problem}
 import js7.base.web.Uri
 import js7.data.item.{ItemRevision, UnsignedSimpleItem}
-import js7.data.subagent.SubagentId
+import js7.data.subagent.{SubagentId, SubagentRef}
 
 final case class AgentRef(
   path: AgentPath,
@@ -42,6 +42,25 @@ extends UnsignedSimpleItem
     copy(itemRevision = revision)
 
   override def referencedSubagentIds = directors
+
+  def convertFromLegacy: Checked[(AgentRef, Option[SubagentRef])] =
+    this match {
+      case AgentRef(agentPath, Nil, Some(uri), itemRevision) =>
+        // COMPATIBLE with v2.2
+        val subagentRef = SubagentRef(
+          SubagentId.legacyLocalFromAgentPath(agentPath),
+          agentPath, uri,
+          itemRevision = Some(ItemRevision(1)))
+
+        val agentRef = AgentRef(agentPath,
+          directors = Seq(subagentRef.id),
+          itemRevision = itemRevision)
+
+        Right((agentRef, Some(subagentRef)))
+
+      case agentRef @ AgentRef(_, _, None, _) =>
+        Right((agentRef, None))
+    }
 }
 
 object AgentRef extends UnsignedSimpleItem.Companion[AgentRef]

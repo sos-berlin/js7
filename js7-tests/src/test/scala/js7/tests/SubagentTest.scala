@@ -135,8 +135,8 @@ final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 
     runOrders.await(99.s)
     assert(eventWatch.allKeyedEvents[OrderProcessingStarted].map(_.event.subagentId).toSet == Set(
-      aSubagentId,
-      bSubagentRef.id))
+      Some(aSubagentId),
+      Some(bSubagentRef.id)))
   }
 
   private def runMultipleOrders(

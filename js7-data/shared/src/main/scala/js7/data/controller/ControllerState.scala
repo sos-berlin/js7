@@ -140,10 +140,23 @@ with SnapshotableState[ControllerState]
                   for (o <- pathToLockState.insert(lock.path -> LockState(lock))) yield
                     copy(pathToLockState = o)
 
-                case agentRef: AgentRef =>
-                  for (o <- pathToAgentRefState.insert(agentRef.path -> AgentRefState(agentRef)))
-                    yield copy(
-                      pathToAgentRefState = o)
+                case addedAgentRef: AgentRef =>
+                  addedAgentRef
+                    .convertFromLegacy
+                    .flatMap { case (agentRef, subagentRef) =>
+                      for {
+                        pathToAgentRefState <-
+                          pathToAgentRefState.insert(agentRef.path -> AgentRefState(agentRef))
+                        idToSubagentRefState <-
+                          subagentRef match {
+                            case None => Right(idToSubagentRefState)
+                            case Some(subagentRef) => idToSubagentRefState
+                              .insert(subagentRef.id -> SubagentRefState.initial(subagentRef))
+                          }
+                      } yield copy(
+                        pathToAgentRefState = pathToAgentRefState,
+                        idToSubagentRefState = idToSubagentRefState)
+                    }
 
                 case subagentRef: SubagentRef =>
                   for (o <- idToSubagentRefState.insert(subagentRef.id -> SubagentRefState.initial(subagentRef)))
@@ -171,17 +184,30 @@ with SnapshotableState[ControllerState]
                       pathToLockState = pathToLockState + (lock.path -> lockState.copy(
                         lock = lock)))
 
-                case agentRef: AgentRef =>
-                  for {
-                    agentRefState <- pathToAgentRefState.checked(agentRef.path)
-                    _ <-
-                      if (agentRef.directors != agentRefState.agentRef.directors)
-                        Left(Problem.pure("Agent Director cannot not be changed"))
-                      else
-                        Checked.unit
-                  } yield copy(
-                    pathToAgentRefState = pathToAgentRefState + (agentRef.path -> agentRefState.copy(
-                      agentRef = agentRef)))
+                case changedAgentRef: AgentRef =>
+                  changedAgentRef
+                    .convertFromLegacy
+                    .flatMap { case (agentRef, subagentRef) =>
+                      for {
+                        agentRefState <- pathToAgentRefState.checked(agentRef.path)
+                        _ <-
+                          if (agentRef.directors != agentRefState.agentRef.directors)
+                            Left(Problem.pure("Agent Director cannot not be changed"))
+                          else
+                            Checked.unit
+                      } yield copy(
+                        pathToAgentRefState = pathToAgentRefState + (agentRef.path -> agentRefState.copy(
+                          agentRef = agentRef)),
+                        idToSubagentRefState = subagentRef match {
+                          case None => idToSubagentRefState
+                          case Some(subagentRef) =>
+                            idToSubagentRefState
+                              .get(subagentRef.id)
+                              .fold(idToSubagentRefState)(subagentRefState =>
+                                idToSubagentRefState +
+                                  (subagentRef.id -> subagentRefState.copy(subagentRef = subagentRef)))
+                        })
+                    }
 
                 case subagentRef: SubagentRef =>
                   for {

@@ -672,7 +672,7 @@ object Order
   object State {
     implicit val jsonCodec: TypedJsonCodec[State] = TypedJsonCodec(
       Subtype[IsFreshOrReady],
-      Subtype[Processing],
+      Subtype(deriveCodec[Processing]),
       Subtype(Processed),
       Subtype(ProcessingKilled),
       Subtype(deriveCodec[DelayedAfterError]),
@@ -717,16 +717,14 @@ object Order
 
   final case class Broken(problem: Problem) extends IsStarted/*!!!*/
 
-  final case class Processing(subagentId: SubagentId) extends IsStarted
+  final case class Processing(subagentId: Option[SubagentId]) extends IsStarted {
+    override def toString =
+      s"Processing(${subagentId getOrElse "legacy local Subagent"})"
+  }
   object Processing {
-    implicit val jsonEncoder: Encoder.AsObject[Processing] =
-      o => JsonObject.fromIterable(
-        (o.subagentId != LegacySubagentId) ? ("subagentId" -> o.subagentId.asJson))
-
-    implicit val jsonDecoder: Decoder[Processing] =
-      c => for {
-        subagentId <- c.getOrElse("subagentId")(LegacySubagentId)
-      } yield Processing(subagentId)
+    // Since v2.3
+    def apply(subagentId: SubagentId): Processing =
+      Processing(Some(subagentId))
   }
 
   type Processed = Processed.type

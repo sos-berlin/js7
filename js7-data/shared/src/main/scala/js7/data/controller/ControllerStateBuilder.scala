@@ -112,7 +112,12 @@ with StateView
       repo = repo.applyEvent(event).orThrow
 
     case agentRefState: AgentRefState =>
-      _pathToAgentRefState.insert(agentRefState.agentPath -> agentRefState)
+      val (agentRef, subagentRef) = agentRefState.agentRef.convertFromLegacy.orThrow
+
+      _pathToAgentRefState.insert(agentRef.path -> agentRefState.copy(agentRef = agentRef))
+      for (subagentRef <- subagentRef) {
+        _idToSubagentRefState.insert(subagentRef.id -> SubagentRefState.initial(subagentRef))
+      }
 
     case subagentRefState: SubagentRefState =>
       _idToSubagentRefState.insert(subagentRefState.subagentId -> subagentRefState)
@@ -184,6 +189,14 @@ with StateView
                 case lock: Lock =>
                   _pathToLockState.insert(lock.path -> LockState(lock))
 
+                case addedAgentRef: AgentRef =>
+                  val (agentRef, subagentRef) = addedAgentRef.convertFromLegacy.orThrow
+
+                  _pathToAgentRefState.insert(agentRef.path -> AgentRefState(agentRef))
+                  for (subagentRef <- subagentRef) {
+                    _idToSubagentRefState.insert(subagentRef.id -> SubagentRefState.initial(subagentRef))
+                  }
+
                 case agentRef: AgentRef =>
                   _pathToAgentRefState.insert(agentRef.path -> AgentRefState(agentRef))
 
@@ -206,9 +219,23 @@ with StateView
                   _pathToLockState(lock.path) = _pathToLockState(lock.path).copy(
                     lock = lock)
 
-                case agentRef: AgentRef =>
+                case changedAgentRef: AgentRef =>
+                  val (agentRef, subagentRef) = changedAgentRef.convertFromLegacy.orThrow
+
                   _pathToAgentRefState(agentRef.path) = _pathToAgentRefState(agentRef.path).copy(
                     agentRef = agentRef)
+
+                  for (subagentRef <- subagentRef) {
+                    _idToSubagentRefState.updateWith(subagentRef.id) {
+                      case None =>
+                        Some(SubagentRefState.initial(subagentRef))
+
+                      case Some(previous) =>
+                        Some(previous.copy(
+                          subagentRef = previous.subagentRef.copy(
+                            uri = subagentRef.uri)))
+                    }
+                  }
 
                 case subagentRef: SubagentRef =>
                   _idToSubagentRefState(subagentRef.id) = _idToSubagentRefState(subagentRef.id).copy(

@@ -176,7 +176,7 @@ with Stash
   import shutdown.shuttingDown
 
   private val subagentKeeper =
-    new SubagentKeeper(persistence, jobLauncherConf, conf, context.system)
+    new SubagentKeeper(ownAgentPath, persistence, jobLauncherConf, conf, context.system)
 
   watch(journalActor)
   self ! Internal.Recover(recovered_)
@@ -238,7 +238,7 @@ with Stash
       case Internal.JournalIsReady(state) =>
         logger.info(s"${orderRegister.size} Orders and ${workflowRegister.size} Workflows recovered")
         subagentKeeper
-          .initialize(ownAgentPath, localSubagentId, controllerId)
+          .initialize(localSubagentId, controllerId)
           .*>(
             subagentKeeper
               .recoverSubagents(recoveredState.idToSubagentRefState.values.toVector)

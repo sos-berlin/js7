@@ -103,8 +103,9 @@ object JOrder extends JJsonable.Companion[JOrder]
   final case class Processing(asScala: Order.Processing) extends State {
     protected type AsScala = Order.Processing
 
-    def subagentId: SubagentId =
-      asScala.subagentId
+    /** @return empty iff written by v2.2 */
+    def maybeSubagentId: Optional[SubagentId] =
+      asScala.subagentId.toJava
   }
 
   case object Finished extends State {

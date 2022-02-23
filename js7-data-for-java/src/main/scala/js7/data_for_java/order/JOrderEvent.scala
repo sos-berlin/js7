@@ -11,6 +11,7 @@ import js7.base.problem.Problem
 import js7.base.time.JavaTimestamp.specific._
 import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderDeleted, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
 import js7.data.order.{OrderEvent, OrderId}
+import js7.data.subagent.SubagentId
 import js7.data.value.Value
 import js7.data_for_java.common.JJsonable
 import scala.jdk.CollectionConverters._
@@ -71,6 +72,10 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
   extends JOrderEvent
   {
     protected type AsScala = OrderProcessingStarted
+
+    /** @return empty iff written by v2.2 */
+    def maybeSubagentId: Optional[SubagentId] =
+      asScala.subagentId.toJava
   }
 
   final case class JOrderStdWritten(asScala: OrderStdWritten)

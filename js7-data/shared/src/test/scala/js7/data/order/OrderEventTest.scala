@@ -159,7 +159,7 @@ final class OrderEventTest extends AnyFreeSpec
         "subagentId": "SUBAGENT"
       }""")
 
-    check(OrderProcessingStarted(LegacySubagentId), json"""
+    check(OrderProcessingStarted(None), json"""
       {
         "TYPE": "OrderProcessingStarted"
       }""")

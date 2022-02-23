@@ -17,13 +17,13 @@ import js7.data.cluster.{ClusterSetting, ClusterState, ClusterStateSnapshot, Clu
 import js7.data.controller.ControllerStateTest._
 import js7.data.delegate.DelegateCouplingState
 import js7.data.event.SnapshotMeta.SnapshotEventId
-import js7.data.event.{EventId, JournalState, SnapshotableState}
+import js7.data.event.{EventId, JournalState, SnapshotableState, Stamped}
 import js7.data.item.BasicItemEvent.{ItemAttachable, ItemDeletionMarked}
 import js7.data.item.ItemAttachedState.{Attachable, Attached}
 import js7.data.item.SignedItemEvent.SignedItemAdded
-import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded
+import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemChanged}
-import js7.data.item.{ClientAttachments, ItemRevision, ItemSigner, Repo, VersionId}
+import js7.data.item.{ClientAttachments, ItemRevision, ItemSigner, Repo, UnsignedSimpleItemEvent, VersionId}
 import js7.data.job.{JobResource, JobResourcePath, ShellScriptExecutable}
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.node.NodeId
@@ -359,6 +359,60 @@ final class ControllerStateTest extends AsyncFreeSpec
     assert(controllerState.keyToItem.keySet == Set(
       jobResource.path, calendar.path, agentRef.path, subagentRef.id, lock.path, fileWatch.path,
       workflow.id))
+  }
+
+  "v2.2 compatiblity" - {
+    // COMPATIBLE with v2.2
+    var cs = ControllerState.empty
+    val builder = ControllerState.newBuilder()
+    val eventIds = Iterator.from(1)
+    val agentPath = AgentPath("v2.2")
+    val uri = Uri("https://localhost")
+    val agentRef = AgentRef(agentPath, directors = Nil, Some(uri),
+      itemRevision = Some(ItemRevision(7)))
+
+    val subagentId = SubagentId("v2.2-1")
+    val generatedSubagentRef = SubagentRef(subagentId, agentPath, uri,
+      itemRevision = Some(ItemRevision(1)))
+
+    def applyEvent(event: UnsignedSimpleItemEvent): Unit = {
+      val eventId = eventIds.next()
+      cs = cs.applyEvent(event).orThrow
+      cs = cs.withEventId(eventId)
+      builder.addEvent(Stamped(eventId, event))
+      assert(builder.result() == cs)
+    }
+
+    "UnsignedSimpleItemAdded" in {
+      applyEvent(UnsignedSimpleItemAdded(agentRef))
+
+      assert(cs.pathToAgentRefState(agentRef.path).agentRef == agentRef.copy(
+        directors = Seq(subagentId),
+        uri = None))
+      assert(cs.idToSubagentRefState(subagentId).subagentRef == generatedSubagentRef)
+    }
+
+    "AgentRefState snapshot object" in {
+      val b = ControllerState.newBuilder()
+      b.addSnapshotObject(AgentRefState(agentRef))
+      b.onAllSnapshotsAdded()
+      val x = b.result()
+      assert(b.result() == cs.withEventId(0))
+    }
+
+    "UnsignedSimpleItemChanged" in {
+      val changedUri = Uri("https://example.com")
+      val changedAgentRef = agentRef.copy(
+        uri = Some(changedUri),
+        itemRevision = Some(ItemRevision(8)))
+      applyEvent(UnsignedSimpleItemChanged(changedAgentRef))
+      assert(cs.pathToAgentRefState(agentRef.path).agentRef == agentRef.copy(
+        directors = Seq(subagentId),
+        uri = None,
+        itemRevision = Some(ItemRevision(8))))
+      assert(cs.idToSubagentRefState(subagentId).subagentRef == generatedSubagentRef.copy(
+        uri = changedUri))
+    }
   }
 }
 
