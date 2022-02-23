@@ -25,7 +25,7 @@ import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTerminated}
 import js7.data.order.Outcome.Disrupted.ProcessLost
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
-import js7.data.subagent.SubagentRefStateEvent.{SubagentCoupled, SubagentDedicated, SubagentLost}
+import js7.data.subagent.SubagentRefStateEvent.{SubagentCoupled, SubagentCouplingFailed, SubagentDedicated}
 import js7.data.subagent.{SubagentId, SubagentRef}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -212,7 +212,7 @@ final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
         eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
       }
     }.await(199.s)
-    eventWatch.await[SubagentLost](_.key == cSubagentRef.id, after = eventId)
+    eventWatch.await[SubagentCouplingFailed](_.key == cSubagentRef.id, after = eventId)
 
     // Now, the another available Subagent is selected
     val orderId = OrderId("NEXT-PRIORITIZED-SUBAGENT")

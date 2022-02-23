@@ -16,7 +16,7 @@ import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.{SessionRegister, SessionRoute, SimpleSession}
 import js7.journal.watch.EventWatch
-import js7.subagent.CommandExecutor
+import js7.subagent.SubagentCommandExecutor
 import js7.subagent.data.SubagentCommand
 import monix.execution.Scheduler
 import scala.concurrent.Future
@@ -26,7 +26,7 @@ private[web] final class SubagentBoundRoute(
   binding: WebServerBinding,
   protected val whenShuttingDown: Future[Deadline],
   protected val eventWatch: EventWatch,
-  protected val commandExecutor: CommandExecutor,
+  protected val commandExecutor: SubagentCommandExecutor,
   protected val sessionRegister: SessionRegister[SimpleSession],
   protected val config: Config)
   (implicit

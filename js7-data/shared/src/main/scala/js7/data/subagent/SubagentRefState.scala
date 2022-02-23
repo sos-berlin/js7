@@ -6,7 +6,7 @@ import js7.data.delegate.DelegateCouplingState
 import js7.data.delegate.DelegateCouplingState.{Coupled, Reset, ShutDown}
 import js7.data.event.EventId
 import js7.data.item.UnsignedSimpleItemState
-import js7.data.subagent.SubagentRefStateEvent.{SubagentCoupled, SubagentDedicated, SubagentEventsObserved, SubagentLost, SubagentReset, SubagentShutdown}
+import js7.data.subagent.SubagentRefStateEvent.{SubagentCoupled, SubagentCouplingFailed, SubagentDedicated, SubagentEventsObserved, SubagentRestarted, SubagentShutdown}
 
 final case class SubagentRefState(
   subagentRef: SubagentRef,
@@ -28,7 +28,7 @@ extends UnsignedSimpleItemState
         Right(copy(
           eventId = untilEventId))
 
-      case SubagentLost(problem) =>
+      case SubagentCouplingFailed(problem) =>
         Right(copy(
           problem = Some(problem)))
 
@@ -47,16 +47,16 @@ extends UnsignedSimpleItemState
           couplingState = Coupled,
           problem = None))
 
-      case SubagentReset =>
+      case SubagentRestarted =>
         Right(copy(
-          subagentRunId = None,
           couplingState = Reset,
+          subagentRunId = None,
           eventId = EventId.BeforeFirst))
 
       case SubagentShutdown =>
         Right(copy(
-          subagentRunId = None,
           couplingState = ShutDown,
+          subagentRunId = None,
           eventId = EventId.BeforeFirst))
     }
 }

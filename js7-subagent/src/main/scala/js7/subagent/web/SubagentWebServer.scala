@@ -5,7 +5,7 @@ import cats.effect.Resource
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.journal.watch.EventWatch
-import js7.subagent.CommandExecutor
+import js7.subagent.SubagentCommandExecutor
 import js7.subagent.configuration.SubagentConf
 import monix.eval.Task
 
@@ -14,7 +14,7 @@ object SubagentWebServer
 {
   def resource(
     eventWatch: EventWatch,
-    commandExecutor: CommandExecutor,
+    commandExecutor: SubagentCommandExecutor,
     sessionRegister: SessionRegister[SimpleSession],
     conf: SubagentConf)
     (implicit actorSystem: ActorSystem)

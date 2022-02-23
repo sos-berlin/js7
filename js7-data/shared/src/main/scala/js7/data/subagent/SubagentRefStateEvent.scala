@@ -24,7 +24,7 @@ object SubagentRefStateEvent extends Event.Companion[SubagentRefStateEvent]
   extends SubagentRefStateEvent
 
   /** Subagent has been lost and its state is unknown. May recouple later. */
-  final case class SubagentLost(problem: Problem)
+  final case class SubagentCouplingFailed(problem: Problem)
   extends SubagentRefStateEvent
 
   /** Subagent should delete events until `untilEventId`. */
@@ -34,21 +34,29 @@ object SubagentRefStateEvent extends Event.Companion[SubagentRefStateEvent]
     override def toString = s"SubagentEventsObserved(${EventId.toString(untilEventId)})"
   }
 
-  // TODO Brauchen wir SubagentLost und SubagentReset ?
-  type SubagentReset = SubagentReset.type
+  // TODO Brauchen wir SubagentCouplingFailed und SubagentReset ?
+
+  sealed trait SubagentDied extends SubagentRefStateEvent
+
+  //type SubagentReset = SubagentReset.type
+  //case object SubagentReset
+  //extends SubagentDied
+
+  type SubagentRestarted = SubagentRestarted.type
   /** Subagent has lost its state (including processes). */
-  case object SubagentReset
-  extends SubagentRefStateEvent
+  case object SubagentRestarted
+  extends SubagentDied
 
   type SubagentShutdown = SubagentShutdown.type
   case object SubagentShutdown
-  extends SubagentRefStateEvent
+  extends SubagentDied
 
   implicit val jsonCodec = TypedJsonCodec[SubagentRefStateEvent](
     Subtype(deriveCodec[SubagentDedicated]),
     Subtype(SubagentCoupled),
-    Subtype(deriveCodec[SubagentLost]),
+    Subtype(deriveCodec[SubagentCouplingFailed]),
     Subtype(deriveCodec[SubagentEventsObserved]),
-    Subtype(SubagentReset),
+    //Subtype(SubagentReset),
+    Subtype(SubagentRestarted),
     Subtype(SubagentShutdown))
 }

@@ -26,8 +26,8 @@ import js7.data.item.InventoryItem
 import js7.data.job.{JobConf, JobResource}
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId}
-import js7.data.subagent.SubagentRefStateEvent.{SubagentDedicated, SubagentReset}
-import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState, SubagentRefStateEvent, SubagentRunId}
+import js7.data.subagent.SubagentRefStateEvent.{SubagentDedicated, SubagentDied, SubagentRestarted}
+import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState, SubagentRunId}
 import js7.data.value.expression.Expression
 import js7.data.workflow.position.WorkflowPosition
 import js7.journal.state.StatePersistence
@@ -35,7 +35,6 @@ import js7.subagent.client.{SubagentClient, SubagentDriver}
 import js7.subagent.data.SubagentCommand
 import js7.subagent.data.SubagentCommand.{AttachItem, CoupleDirector, DedicateSubagent, KillProcess, StartOrderProcess}
 import monix.eval.Task
-import monix.execution.atomic.Atomic
 import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
 import scala.util.{Failure, Success}
@@ -57,7 +56,6 @@ extends SubagentDriver with SubagentEventListener
 
   private val logger = Logger.withPrefix[this.type](subagentId.toString)
   private val dispatcher = new SubagentDispatcher(subagentId, postQueuedCommand)
-  private val isDedicatingOrCoupling = Atomic(false)
 
   protected val client = new SubagentClient(
     Admission(subagentRef.uri, userAndPassword),
@@ -133,7 +131,7 @@ extends SubagentDriver with SubagentEventListener
                 case 0 => logger.info("Subagent restarted")
                 case n => logger.warn(s"Subagent restarted and lost $n Order processes")
               }
-              onSubagentDied(SubagentReset)
+              onSubagentDied(SubagentRestarted)
                 .*>(dedicate)
                 .map(response => Right(response.subagentEventId))
 
@@ -143,13 +141,13 @@ extends SubagentDriver with SubagentEventListener
           })
     }
 
-  // May run concurrently with onStartOrderProcessDied !!!
+  // May run concurrently with onStartOrderProcessFailed !!!
   // Be sure that only on OrderProcessed event is emitted!
-  /** Emit OrderProcessed(ProcessLost) and an `subagentLostEvent`. */
-  protected def onSubagentDied(subagentLostEvent: SubagentRefStateEvent): Task[Unit] = {
+  /** Emit OrderProcessed(ProcessLost) and `subagentDied` events. */
+  protected def onSubagentDied(subagentDied: SubagentDied): Task[Unit] = {
     // Subagent died and lost its state
     // Emit OrderProcessed(Disrupted(ProcessLost)) for each processing order.
-    // Then SubagentReset
+    // Then subagentDied
     val processing = Order.Processing(subagentId)
     orderToProcessing.removeAll
       .flatMap { oToP =>
@@ -163,7 +161,7 @@ extends SubagentDriver with SubagentEventListener
                   // Just to be sure, condition should always be true:
                   state.idToOrder.get(orderId).exists(_.state == processing))
                 .map(_ <-: OrderProcessed.processLost)
-                .concat((subagentId <-: subagentLostEvent) :: Nil)
+                .concat((subagentId <-: subagentDied) :: Nil)
                 .toVector))
               .map(_.orThrow)
               .*>(Task {
@@ -174,7 +172,7 @@ extends SubagentDriver with SubagentEventListener
 
   // May run concurrently with onSubagentDied !!!
   // Be sure that only on OrderProcessed event is emitted!
-  private def onStartOrderProcessDied(startOrderProcess: StartOrderProcess): Task[Checked[Unit]] =
+  private def onStartOrderProcessFailed(startOrderProcess: StartOrderProcess): Task[Checked[Unit]] =
     persistence
       .persist(state => Right(
         state.idToOrder.get(startOrderProcess.orderId)
@@ -334,7 +332,7 @@ extends SubagentDriver with SubagentEventListener
                       // The SubagentEventListener should do the same for all lost processes
                       // at once, but just in case the SubagentEventListener does run, we issue
                       // an OrderProcess event here.
-                      onStartOrderProcessDied(command)
+                      onStartOrderProcessFailed(command)
                         .map(_.map { _ =>
                           promise.success(OrderProcessed.processLost)
                           ()

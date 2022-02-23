@@ -19,8 +19,7 @@ import monix.eval.Task
 import scala.concurrent.duration.Deadline.now
 
 trait SubagentCommandExecutor
-extends CommandExecutor
-with SubagentExecutor
+extends SubagentExecutor
 {
   protected[subagent] final val dedicatedOnce = SetOnce[Dedicated](SubagentNotDedicatedProblem)
 
