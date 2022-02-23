@@ -31,7 +31,6 @@ extends SubagentExecutor
       command
         .match_ {
           case StartOrderProcess(order, defaultArguments) =>
-            // TODO Idempotent: Doppelte Kommandos (dieselbe Nummer) erkennen und dieselbe Antwort schicken.
             startOrderProcess(order, defaultArguments)
               .rightAs(SubagentCommand.Accepted)
 
@@ -70,7 +69,8 @@ extends SubagentExecutor
               .as(Right(SubagentCommand.Accepted))
 
           case SubagentCommand.Batch(numberedCommand) =>
-            // TODO Sobald Kommandos in einem Stream geschickt werden, wird Batch vielleicht nicht mehr gebraucht.
+            // TODO Sobald Kommandos in einem Stream geschickt werden,
+            //  wird Batch wohl nicht mehr gebraucht.
             numberedCommand
               .traverse(cmd => executeCommand(numbered.copy(value = cmd)))
               .map(_

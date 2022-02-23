@@ -25,7 +25,7 @@ import js7.subagent.client.SubagentDriver
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.data.SubagentCommand.{CoupleDirector, DedicateSubagent}
 import js7.subagent.data.SubagentEvent.{SubagentDedicated, SubagentItemAttached, SubagentShutdown}
-import monix.eval.{Fiber, Task}
+import monix.eval.Task
 
 trait SubagentExecutor
 {
@@ -135,20 +135,26 @@ trait SubagentExecutor
   protected final def startOrderProcess(
     order: Order[Order.Processing],
     defaultArguments: Map[String, Expression])
-  : Task[Checked[Unit]] =
+  : Task[Checked[Unit]] = {
+    val hash = 31 * order.hashCode + defaultArguments.hashCode
     orderToProcessing
       .updateChecked(order.id, {
         case Some(existing) =>
-          Task.pure(Right(existing)) // Idempotency: Order process has already been started
+          Task.pure(
+            if (existing.orderHash != hash)
+              Left(Problem.pure("Duplicate SubagentCommand.StartOrder with different Order"))
+            else
+              Right(existing)) // Idempotency: Order process has already been started
 
         case None =>
           Task(dedicatedOnce.checked).flatMapT(dedicated =>
             processOrder(dedicated.subagentDriver, order, defaultArguments)
               .guarantee(orderToProcessing.remove(order.id).void)
-              .start
-              .map(fiber => Right(Processing(order, fiber))))
+              .startAndForget
+              .as(Right(Processing(hash))))
       })
       .rightAs(())
+  }
 
   private def processOrder(
     driver: LocalSubagentDriver[SubagentState],
@@ -181,7 +187,5 @@ object SubagentExecutor
     override def toString = s"Dedicated($subagentId $agentPath $controllerId)"
   }
 
-  private final case class Processing(
-    order: Order[Order.Processing],
-    fiber: Fiber[Outcome])
+  private final case class Processing(orderHash: Int)
 }
