@@ -175,6 +175,10 @@ object Outcome
   def killed(signal: ProcessSignal): Killed =
     Killed(Outcome.failedWithSignal(signal))
 
+  @TestOnly
+  val killedInternal: Killed =
+    Killed(Outcome.Failed(Some("Canceled")))
+
   /** No response from job - some other error has occurred. */
   final case class Disrupted(reason: Disrupted.Reason) extends Outcome with NotSucceeded {
     def isSucceeded = false

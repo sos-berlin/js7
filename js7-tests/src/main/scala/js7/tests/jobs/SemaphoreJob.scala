@@ -19,14 +19,15 @@ extends InternalJob
 
   final def toOrderProcess(step: Step) = {
     OrderProcess(
-      semaphore
-        .tapEval(sema =>
-          sema.count.flatMap(count =>
-            Task(logger.debug(s"${step.order.id} acquire ... (count=$count)"))))
-        .flatMap(_.acquire)
-        .logWhenItTakesLonger(s"${getClass.getSimpleName}.semaphore.acquire")
-        .tapEval(_ => Task(logger.debug(s"${step.order.id} acquired")))
-        .as(Outcome.succeeded))
+      step.outTaskObserver.send("STARTED\n") *>
+        semaphore
+          .tapEval(sema =>
+            sema.count.flatMap(count =>
+              Task(logger.debug(s"${step.order.id} acquire ... (count=$count)"))))
+          .flatMap(_.acquire)
+          .logWhenItTakesLonger(s"${getClass.getSimpleName}.semaphore.acquire")
+          .tapEval(_ => Task(logger.debug(s"${step.order.id} acquired")))
+          .as(Outcome.succeeded))
   }
 }
 

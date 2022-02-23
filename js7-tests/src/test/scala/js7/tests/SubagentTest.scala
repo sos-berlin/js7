@@ -20,9 +20,11 @@ import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.RunningController
 import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
 import js7.data.agent.AgentPath
+import js7.data.command.CancellationMode
+import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.event.{EventId, KeyedEvent, Stamped}
 import js7.data.item.BasicItemEvent.ItemAttached
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTerminated}
 import js7.data.order.Outcome.Disrupted.ProcessLost
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.subagent.SubagentRefStateEvent.{SubagentCoupled, SubagentCouplingFailed, SubagentDedicated}
@@ -305,6 +307,35 @@ final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
       }
     }
     .await(199.s)
+  }
+
+  "CancelOrder" in {
+    // Local Subagent must be disabled (see test above)
+
+    var eventId = eventWatch.lastAddedEventId
+    val orderId = OrderId("CANCEL-ORDER")
+
+    TestSemaphoreJob.reset()
+
+    runSubagent(cSubagentRef) { _ =>
+      controller.addOrder(FreshOrder(orderId, cWorkflow.path)).await(99.s).orThrow
+
+      val processingStarted = eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
+        .head.value.event
+      assert(processingStarted == OrderProcessingStarted(cSubagentRef.id))
+
+      val started = eventWatch.await[OrderStdoutWritten](_.key == orderId, after = eventId)
+        .head.value.event
+      assert(started == OrderStdoutWritten("STARTED\n"))
+
+      controllerApi.executeCommand(CancelOrders(Seq(orderId), CancellationMode.kill()))
+        .await(99.s).orThrow
+
+      val processed = eventWatch.await[OrderProcessed](_.key == orderId, after = eventId)
+        .head.value.event
+      assert(processed == OrderProcessed(Outcome.killedInternal))
+      eventWatch.await[OrderCancelled](_.key == orderId, after = eventId)
+    }.await(199.s)
   }
 
   "Change JobResource" in {
