@@ -60,7 +60,7 @@ extends CommonConfiguration
   lazy val stateDirectory: Path =
     dataDirectory / "state"
 
-  private lazy val workDirectory: Path =
+  lazy val workDirectory: Path =
     dataDirectory / "work"
 
   private lazy val shellScriptTmpDirectory: Path =
@@ -81,9 +81,8 @@ extends CommonConfiguration
     if (logDirectory == defaultLogDirectory(dataDirectory) && !exists(logDirectory)) {
       createDirectory(logDirectory)
     }
-    if (!exists(stateDirectory)) {
-      createDirectory(stateDirectory)
-    }
+    autoCreateDirectory(stateDirectory)
+    autoCreateDirectory(workDirectory)
     autoCreateDirectory(shellScriptTmpDirectory)
     autoCreateDirectory(workTmpDirectory)
     autoCreateDirectory(valueDirectory)

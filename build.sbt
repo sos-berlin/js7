@@ -225,7 +225,14 @@ lazy val all = (project in file("target/project-all"))  // Not the default proje
   .aggregate(js7, js7JS)
 
 lazy val `js7-install` = project
-  .dependsOn(`js7-controller`, `js7-provider`, `js7-agent`, `js7-launcher-for-java`, `js7-tests`, `js7-license-fake`)
+  .dependsOn(
+    `js7-provider`,
+    `js7-controller`,
+    `js7-agent`,
+    `js7-subagent`,
+    `js7-launcher-for-java`,
+    `js7-license-fake`,
+    `js7-tests`)
   .settings(commonSettings)
   .enablePlugins(JavaAppPackaging, UniversalDeployPlugin)
   .settings {
@@ -242,6 +249,7 @@ lazy val `js7-install` = project
         .++(NativePackagerHelper.contentOf((`js7-controller` / Compile / classDirectory).value / "js7/controller/installation"))
         .++(NativePackagerHelper.contentOf((`js7-provider` / Compile / classDirectory).value / "js7/provider/installation"))
         .++(NativePackagerHelper.contentOf((`js7-agent` / Compile / classDirectory).value / "js7/agent/installation"))
+        .++(NativePackagerHelper.contentOf((`js7-subagent` / Compile / classDirectory).value / "js7/subagent/installation"))
         .++(NativePackagerHelper.contentOf((`js7-core` / Compile / classDirectory).value / "js7/core/installation"))
         .++(NativePackagerHelper.contentOf((`js7-base`.jvm / Compile / classDirectory).value / "js7/base/installation"))
         .sortBy(_._2))

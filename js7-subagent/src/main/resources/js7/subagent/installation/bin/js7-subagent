@@ -143,8 +143,8 @@ while true; do
   log "PID $pid"
 
   terminate() {
-    echo "⚡$1"
-    log "$1: ShutDown JS7 Agent"
+    echo "⚡️ $1"
+    log "$1: ShutDown JS7 Subagent"
     # Add some seconds to start Java with AgentClientMain
     #local terminateTimeout=30
     if [ "$SHELL" = "/bin/bash" ]; then
@@ -173,10 +173,10 @@ while true; do
   trap "terminate SIGINT" SIGINT
   if wait $pid; then
     returnCode=${returnCode:-$?}
-    log "JS7 Agent has been shut down"
+    log "JS7 Subagent has been shut down"
   else
     returnCode=${returnCode:-$?}
-    log "JS7 Agent exited with exit code $returnCode"
+    log "JS7 Subagent exited with exit code $returnCode"
   fi
   rm "$pidFile"
   trap - SIGTERM SIGINT

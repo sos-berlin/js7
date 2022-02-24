@@ -1,8 +1,9 @@
 package js7.subagent.data
 
 import io.circe.generic.extras.Configuration.default.withDefaults
+import io.circe.generic.extras.semiauto.deriveConfiguredCodec
+import io.circe.generic.semiauto.deriveCodec
 import io.circe.{Decoder, Encoder}
-import js7.base.circeutils.CirceUtils.{deriveCodec, deriveConfiguredCodec}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.Signed
 import js7.base.io.process.ProcessSignal
@@ -122,7 +123,7 @@ object SubagentCommand extends CommonCommand.Companion
     type Response = Accepted
   }
   object ShutDown {
-    private implicit val customConfig = withDefaults
+    private implicit val x = withDefaults
     implicit val jsonCodec = deriveConfiguredCodec[ShutDown]
   }
 
@@ -139,7 +140,7 @@ object SubagentCommand extends CommonCommand.Companion
     Subtype[AttachSignedItem],
     Subtype(deriveCodec[StartOrderProcess]),
     Subtype(deriveCodec[KillProcess]),
-    Subtype(deriveCodec[ShutDown]),
+    Subtype[ShutDown],
     Subtype(NoOperation))
 
   implicit val responseJsonCodec = TypedJsonCodec[Response](

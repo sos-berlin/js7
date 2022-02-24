@@ -3,6 +3,7 @@ package js7.common.akkahttp.web.session
 import akka.actor.{ActorRef, ActorRefFactory}
 import akka.pattern.ask
 import akka.util.Timeout
+import cats.effect.Resource
 import com.typesafe.config.Config
 import java.nio.file.Files.{createFile, deleteIfExists}
 import java.nio.file.Path
@@ -10,6 +11,7 @@ import js7.base.Js7Version
 import js7.base.auth.{SessionToken, UserId}
 import js7.base.configutils.Configs._
 import js7.base.generic.Completed
+import js7.base.io.file.FileUtils.provideFile
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
@@ -33,6 +35,10 @@ final class SessionRegister[S <: Session] private[session](
   private val systemSessionPromise = Promise[Checked[S]]()
   val systemSession: Task[Checked[S]] = Task.fromFuture(systemSessionPromise.future)
   val systemUser: Task[Checked[S#User]] = systemSession.map(_.map(_.currentUser))
+
+  def provideSessionTokenFile(user: S#User, file: Path): Resource[Task, SessionToken] =
+    provideFile(file)
+      .flatMap(file => Resource.eval(createSystemSession(user, file)))
 
   def createSystemSession(user: S#User, file: Path): Task[SessionToken] =
     for (checked <- login(user, Some(Js7Version), isEternalSession = true)) yield {

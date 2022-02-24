@@ -12,6 +12,7 @@ import java.util.Objects.requireNonNull
 import java.util.concurrent.ThreadLocalRandom
 import js7.base.data.Writable.ops._
 import js7.base.data.{ByteArray, ByteSequence, Writable}
+import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.{isUnix, isWindows}
@@ -27,6 +28,7 @@ import scala.language.implicitConversions
 
 object FileUtils
 {
+  private val logger = Logger[this.type]
   val EmptyPath = Paths.get("")
   val WorkingDirectory = Paths.get(sys.props("user.dir")).toAbsolutePath
   def temporaryDirectory = Paths.get(sys.props("java.io.tmpdir"))
@@ -215,6 +217,14 @@ object FileUtils
     Resource.make(
       acquire = Task(Files.createTempDirectory(prefix)))(
       release = dir => Task(deleteDirectoryRecursively(dir)))
+
+  def provideFile(file: Path): Resource[Task, Path] =
+    Resource.make(
+      acquire = Task.pure(file))(
+      release = _ => Task {
+        try deleteIfExists(file)
+        catch { case t: IOException => logger.error(s"Delete $file => $t")}
+      })
 
   def deleteDirectoryRecursively(dir: Path): Unit = {
     require(isDirectory(dir), s"Not a directory: $dir")

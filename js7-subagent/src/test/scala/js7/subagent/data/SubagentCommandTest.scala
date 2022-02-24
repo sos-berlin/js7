@@ -16,7 +16,7 @@ import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.subagent.data.SubagentCommand.{AttachItem, AttachSignedItem, CoupleDirector, DedicateSubagent, KillProcess, ShutDown, StartOrderProcess}
-import js7.tester.CirceJsonTester.testJson
+import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 import org.scalatest.freespec.AnyFreeSpec
 
 final class SubagentCommandTest extends AnyFreeSpec
@@ -101,6 +101,12 @@ final class SubagentCommandTest extends AnyFreeSpec
           "TYPE": "ShutDown",
           "processSignal": "SIGTERM",
           "restart": true
+        } """)
+
+      testJsonDecoder[SubagentCommand](
+        ShutDown(),
+        json"""{
+          "TYPE": "ShutDown"
         } """)
     }
 

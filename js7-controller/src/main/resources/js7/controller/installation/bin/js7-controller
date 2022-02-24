@@ -138,7 +138,7 @@ while true; do
   log PID $pid
 
   terminate() {
-    echo "⚡ $1"
+    echo "⚡️ $1"
     log "$1: ShutDown JS7 Controller"
     # Add some seconds to start Java with ControllerClientMain
     #local terminateTimeout=30

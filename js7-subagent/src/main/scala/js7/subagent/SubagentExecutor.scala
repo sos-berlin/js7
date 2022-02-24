@@ -30,19 +30,24 @@ import monix.eval.Task
 trait SubagentExecutor
 {
   protected[this] val dedicatedOnce: SetOnce[Dedicated]
-  protected def journal: InMemoryJournal[SubagentState]
+  protected val journal: InMemoryJournal[SubagentState]
   protected val subagentConf: SubagentConf
-  protected def jobLauncherConf: JobLauncherConf
-  protected def onStopped(termination: ProgramTermination): Task[Unit]
+  protected val jobLauncherConf: JobLauncherConf
 
   private val subagentDriverConf = SubagentDriver.Conf.fromConfig(subagentConf.config)
   private val orderToProcessing = AsyncMap.empty[OrderId, Processing]
   private val subagentRunId = SubagentRunId(Base64UUID.random())
 
+  private val stoppedOnce = SetOnce[ProgramTermination]
+
+  def untilStopped: Task[ProgramTermination] =
+    stoppedOnce.task
+
   final def shutdown(
     signal: Option[ProcessSignal] = None,
     restart: Boolean = false)
-  : Task[ProgramTermination] =
+  : Task[ProgramTermination] = {
+    // TODO Only once!
     journal.persistKeyedEvent(NoKey <-: SubagentShutdown)
       // The event probably gets lost due to immediate shutdown
       .flatMap { checked =>
@@ -50,12 +55,14 @@ trait SubagentExecutor
         dedicatedOnce
           .toOption
           .fold(Task.unit)(_.subagentDriver.stop(signal))
-          .flatMap { _ =>
+          .*>(Task {
             logger.info(s"Subagent${dedicatedOnce.toOption.fold("")(_.toString + " ")} stopped")
             val t = ProgramTermination(restart = restart)
-            onStopped(t).as(t)
-          }
+            stoppedOnce.trySet(t)
+            t
+          })
       }
+  }
 
   protected def executeDedicateSubagent(cmd: DedicateSubagent)
   : Task[Checked[DedicateSubagent.Response]] =

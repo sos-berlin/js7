@@ -3,6 +3,10 @@ package js7.subagent
 import akka.actor.ActorSystem
 import cats.Applicative
 import cats.effect.{Resource, Sync}
+import js7.base.auth.SimpleUser
+import js7.base.io.file.FileUtils.provideFile
+import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger
 import js7.base.thread.IOExecutor
@@ -10,6 +14,7 @@ import js7.base.time.AlarmClock
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{ProgramTermination, SetOnce}
+import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.akkautils.Akkas
 import js7.common.system.ThreadPools
@@ -17,7 +22,6 @@ import js7.common.system.ThreadPools.newUnlimitedScheduler
 import js7.journal.EventIdGenerator
 import js7.journal.watch.InMemoryJournal
 import js7.launcher.configuration.JobLauncherConf
-import js7.subagent.StandaloneSubagent.logger
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.web.SubagentWebServer
 import monix.eval.{Coeval, Task}
@@ -26,22 +30,18 @@ import monix.execution.Scheduler
 final class StandaloneSubagent(
   protected val subagentConf: SubagentConf,
   protected val jobLauncherConf: JobLauncherConf,
+  val commandExecutor: SubagentCommandExecutor,
+  val webServer: AkkaWebServer with AkkaWebServer.HasUri,
   val journal: InMemoryJournal[SubagentState],
   implicit val scheduler: Scheduler,
   implicit val actorSystem: ActorSystem)
-extends SubagentCommandExecutor
 {
-  private val sessionRegister = SessionRegister.start[SimpleSession](
-    actorSystem, SimpleSession(_), subagentConf.config)
-  private val webServerResource = SubagentWebServer.resource(
-    journal, this, sessionRegister, subagentConf)
-
   private val release = SetOnce[Task[Unit]]
   private val stoppedOnce = SetOnce[ProgramTermination]
 
   /** Completes when Subagent has stopped. */
   val untilStopped: Task[ProgramTermination] =
-    stoppedOnce.task
+    commandExecutor.untilStopped
 
   protected def onStopped(termination: ProgramTermination) =
     Task.defer {
@@ -51,14 +51,11 @@ extends SubagentCommandExecutor
       }
     }
 
-  private def start: Task[this.type] =
-    webServerResource.allocated
-      .map { case (_, releaseWebServer) =>
-        logger.info("Subagent is ready" +
-          "\n" + "─" * 80)
-        release := releaseWebServer
-      }
-      .as(this)
+  def shutdown(
+    signal: Option[ProcessSignal] = None,
+    restart: Boolean = false)
+  : Task[ProgramTermination] =
+    commandExecutor.shutdown(signal, restart)
 }
 
 object StandaloneSubagent
@@ -79,12 +76,16 @@ object StandaloneSubagent
 
   def resource(conf: SubagentConf)(implicit scheduler: Scheduler)
   : Resource[Task, StandaloneSubagent] =
+    rawResource(conf)
+
+  private def rawResource(conf: SubagentConf)(implicit scheduler: Scheduler)
+  : Resource[Task, StandaloneSubagent] =
     StandaloneSubagent
       .unstartedResource(conf)
       .flatMap(subagent => Resource.make(
-        acquire = subagent
-          .start
-          .executeOn(scheduler))(
+        acquire = Task.pure(subagent)
+          //.start
+          /*.executeOn(scheduler)*/)(
         release = _
           .shutdown(Some(SIGKILL))
           .void
@@ -98,7 +99,6 @@ object StandaloneSubagent
         val clock = AlarmClock(Some(config
           .getDuration("js7.time.clock-setting-check-interval")
           .toFiniteDuration))
-
         for {
           actorSystem <- Akkas.actorSystemResource(conf.name, config, scheduler)
           iox <- IOExecutor.resource(config, name = conf.name + " I/O")
@@ -110,8 +110,25 @@ object StandaloneSubagent
             acquire = Task(newUnlimitedScheduler("JS7 blocking job")))(
             release = o => Task(o.shutdown()))
           jobLauncherConf = conf.toJobLauncherConf(iox, blockingJobScheduler, clock).orThrow
-        } yield
-          new StandaloneSubagent(conf, jobLauncherConf, journal, scheduler, actorSystem)
+          commandExecutor = new SubagentCommandExecutor(journal, conf, jobLauncherConf)
+          sessionRegister = SessionRegister.start[SimpleSession](
+            actorSystem, SimpleSession(_), conf.config)
+          webServer <- SubagentWebServer
+            .resource(
+              journal, commandExecutor, sessionRegister, conf)(actorSystem)
+          uriFile = conf.workDirectory / "http-uri"
+          _ <- provideFile(uriFile).evalTap(_ => Task {
+            for (uri <- webServer.localHttpUri) {
+              uriFile := s"$uri/subagent"
+            }
+          })
+          _ <- sessionRegister
+            .provideSessionTokenFile(SimpleUser.System, conf.workDirectory / "session-token")
+        } yield {
+          logger.info("Subagent is ready" + "\n" + "─" * 80)
+          new StandaloneSubagent(conf, jobLauncherConf, commandExecutor, webServer,
+            journal, scheduler, actorSystem)
+        }
       }.executeOn(scheduler))
 
   def threadPoolResource[F[_]](conf: SubagentConf, orCommon: Option[Scheduler] = None)

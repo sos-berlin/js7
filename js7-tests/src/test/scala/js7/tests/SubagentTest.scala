@@ -368,7 +368,7 @@ final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
       dir <- subagentEnvironment(subagentRef)
       conf = toSubagentConf(dir, subagentRef.uri.port.orThrow, name = subagentRef.id.string)
       scheduler <- StandaloneSubagent.threadPoolResource[Task](conf)
-      subagent <- StandaloneSubagent.resource(conf)(scheduler)
+      subagent <- StandaloneSubagent.resource(conf.finishAndProvideFiles)(scheduler)
     } yield subagent
 
   private def subagentEnvironment(subagentRef: SubagentRef): Resource[Task, Path] =

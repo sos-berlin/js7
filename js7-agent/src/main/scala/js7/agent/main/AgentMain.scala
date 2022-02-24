@@ -41,7 +41,7 @@ final class AgentMain
 
     var terminated = ProgramTermination()
     if (agentConfiguration.isStandaloneSubagent)
-      StandaloneSubagent.blockingRun(agentConfiguration.subagentConf)
+      StandaloneSubagent.blockingRun(agentConfiguration.subagentConf.finishAndProvideFiles)
     else
       autoClosing(RunningAgent(agentConfiguration).awaitInfinite) { agent =>
         withShutdownHooks(agentConfiguration.config, "AgentMain", () => onJavaShutdown(agent)) {

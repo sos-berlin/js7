@@ -10,15 +10,21 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
 import js7.data.event.KeyedEvent.NoKey
+import js7.journal.watch.InMemoryJournal
+import js7.launcher.configuration.JobLauncherConf
 import js7.subagent.SubagentCommandExecutor._
 import js7.subagent.SubagentExecutor.Dedicated
+import js7.subagent.configuration.SubagentConf
 import js7.subagent.data.SubagentCommand
 import js7.subagent.data.SubagentCommand.{AttachItem, AttachSignedItem, CoupleDirector, DedicateSubagent, KillProcess, NoOperation, ShutDown, StartOrderProcess}
 import js7.subagent.data.SubagentEvent.SubagentItemAttached
 import monix.eval.Task
 import scala.concurrent.duration.Deadline.now
 
-trait SubagentCommandExecutor
+final class SubagentCommandExecutor(
+  protected val journal: InMemoryJournal[SubagentState],
+  protected val subagentConf: SubagentConf,
+  protected val jobLauncherConf: JobLauncherConf)
 extends SubagentExecutor
 {
   protected[subagent] final val dedicatedOnce = SetOnce[Dedicated](SubagentNotDedicatedProblem)

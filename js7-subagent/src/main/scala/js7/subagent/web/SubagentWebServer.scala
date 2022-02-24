@@ -18,7 +18,7 @@ object SubagentWebServer
     sessionRegister: SessionRegister[SimpleSession],
     conf: SubagentConf)
     (implicit actorSystem: ActorSystem)
-  : Resource[Task, AkkaWebServer] =
+  : Resource[Task, AkkaWebServer with AkkaWebServer.HasUri] =
     AkkaWebServer.resource(
       conf.webServerBindings,
       conf.config,

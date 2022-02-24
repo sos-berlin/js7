@@ -38,6 +38,7 @@ object Numbered
         } yield Numbered(number, a)
 
       case _ =>
-        Left(DecodingFailure("Numbered (a JSON array) expected", c.history))
+        c.as[A].map(Numbered(0, _))
+        //Left(DecodingFailure("Numbered (a JSON array) expected", c.history))
     }
 }
