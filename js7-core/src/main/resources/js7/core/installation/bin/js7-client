@@ -55,9 +55,9 @@ if [ ! -f "$sessionTokenFile" ]; then
   exit 1
 fi
 
-httpUri="$(cat "$data/state/http-uri")"
+httpUri="$(cat "$data/work/http-uri")"
 if ! [[ "$httpUri" =~ ^http://[^:]+:([0-9]+)/(.*)$ ]]; then
-  echo File "$data/state/http-uri does not contain a valid HTTP URI. Maybe JS7 is not running or does not provide a HTTP port on localhost"
+  echo File "$data/work/http-uri does not contain a valid HTTP URI. Maybe JS7 is not running or does not provide a HTTP port on localhost"
   exit 1
 else
   httpPort="${BASH_REMATCH[1]}"

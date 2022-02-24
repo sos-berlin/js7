@@ -371,7 +371,7 @@ object RunningController
         .flatTap(_ =>
           createSessionTokenFile(injector.instance[SessionRegister[SimpleSession]]))
         .map { _ =>
-          controllerConfiguration.stateDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", o => s"$o/controller")
+          controllerConfiguration.workDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", o => s"$o/controller")
           new RunningController(recovered.eventWatch.strict, webServer,
             recoveredEventId = recovered.eventId,
             orderApi,

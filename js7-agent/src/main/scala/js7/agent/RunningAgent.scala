@@ -216,7 +216,7 @@ object RunningAgent {
         sessionToken <- sessionRegister.createSystemSession(SimpleUser.System, sessionTokenFile)
         _ <- Task { closer onClose { deleteIfExists(sessionTokenFile) } }
       } yield {
-        agentConfiguration.stateDirectory / "http-uri" :=
+        agentConfiguration.workDirectory / "http-uri" :=
           webServer.localHttpUri.fold(_ => "", o => s"$o/agent")
 
         new RunningAgent(persistence, webServer, mainActor,

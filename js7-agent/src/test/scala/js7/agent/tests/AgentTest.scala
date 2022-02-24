@@ -37,8 +37,8 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class AgentTest extends AnyFreeSpec with AgentTester
 {
-  "state/http-uri" in {
-    assert((agentConfiguration.stateDirectory / "http-uri").contentString == s"${agent.localUri}/agent")
+  "work/http-uri" in {
+    assert((agentConfiguration.workDirectory / "http-uri").contentString == s"${agent.localUri}/agent")
     agent.terminate() await 99.s
   }
 
