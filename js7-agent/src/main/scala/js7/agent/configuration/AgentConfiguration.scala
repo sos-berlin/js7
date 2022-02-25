@@ -44,7 +44,7 @@ final case class AgentConfiguration(
   jobWorkingDirectory: Path = WorkingDirectory,
   defaultJobSigkillDelay: FiniteDuration,
   killScript: Option[ProcessKillScript],  // TODO Duplicate with SubagentConf
-  isStandaloneSubagent: Boolean = false,
+  isBareSubagent: Boolean = false,
   implicit val akkaAskTimeout: Timeout,
   journalConf: JournalConf,
   name: String,
@@ -155,7 +155,7 @@ object AgentConfiguration
       logDirectory = config.optionAs("js7.job.execution.log.directory")(asAbsolutePath) getOrElse defaultLogDirectory(dataDirectory),
       defaultJobSigkillDelay = config.getDuration("js7.job.execution.sigkill-delay").toFiniteDuration,
       killScript = Some(DelayUntilFinishKillScript),  // Changed later
-      isStandaloneSubagent = config.getBoolean("js7.subagent.is-standalone"),
+      isBareSubagent = config.getBoolean("js7.subagent.bare"),
       akkaAskTimeout = config.getDuration("js7.akka.ask-timeout").toFiniteDuration,
       journalConf = JournalConf.fromConfig(config),
       name = name,

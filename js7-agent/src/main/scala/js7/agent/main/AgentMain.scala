@@ -16,7 +16,7 @@ import js7.common.system.startup.JavaMain.withShutdownHooks
 import js7.common.system.startup.JavaMainLockfileSupport.lockAndRunMain
 import js7.common.system.startup.StartUp
 import js7.common.system.startup.StartUp.printlnWithClock
-import js7.subagent.StandaloneSubagent
+import js7.subagent.BareSubagent
 import scala.concurrent.duration.{Deadline, Duration, NANOSECONDS}
 
 /**
@@ -40,8 +40,8 @@ final class AgentMain
     StartUp.logJavaSettings()
 
     var terminated = ProgramTermination()
-    if (agentConfiguration.isStandaloneSubagent)
-      StandaloneSubagent.blockingRun(agentConfiguration.subagentConf.finishAndProvideFiles)
+    if (agentConfiguration.isBareSubagent)
+      BareSubagent.blockingRun(agentConfiguration.subagentConf.finishAndProvideFiles)
     else
       autoClosing(RunningAgent(agentConfiguration).awaitInfinite) { agent =>
         withShutdownHooks(agentConfiguration.config, "AgentMain", () => onJavaShutdown(agent)) {
@@ -50,7 +50,7 @@ final class AgentMain
       }
 
     // Log complete timestamp in case of short log timestamp
-    val msg = s"JS7 Agent terminates now"
+    val msg = s"JS7 Subagent terminates now"
     logger.info(msg)
     printlnWithClock(msg)
     terminated

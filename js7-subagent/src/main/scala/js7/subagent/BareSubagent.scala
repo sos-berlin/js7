@@ -27,7 +27,7 @@ import js7.subagent.web.SubagentWebServer
 import monix.eval.{Coeval, Task}
 import monix.execution.Scheduler
 
-final class StandaloneSubagent(
+final class BareSubagent(
   protected val subagentConf: SubagentConf,
   protected val jobLauncherConf: JobLauncherConf,
   val commandExecutor: SubagentCommandExecutor,
@@ -58,7 +58,7 @@ final class StandaloneSubagent(
     commandExecutor.shutdown(signal, restart)
 }
 
-object StandaloneSubagent
+object BareSubagent
 {
   private val logger = Logger[this.type]
 
@@ -75,12 +75,12 @@ object StandaloneSubagent
       .apply()
 
   def resource(conf: SubagentConf)(implicit scheduler: Scheduler)
-  : Resource[Task, StandaloneSubagent] =
+  : Resource[Task, BareSubagent] =
     rawResource(conf)
 
   private def rawResource(conf: SubagentConf)(implicit scheduler: Scheduler)
-  : Resource[Task, StandaloneSubagent] =
-    StandaloneSubagent
+  : Resource[Task, BareSubagent] =
+    BareSubagent
       .unstartedResource(conf)
       .flatMap(subagent => Resource.make(
         acquire = Task.pure(subagent)
@@ -92,7 +92,7 @@ object StandaloneSubagent
           .executeOn(scheduler)))
 
   private def unstartedResource(conf: SubagentConf)(implicit scheduler: Scheduler)
-  : Resource[Task, StandaloneSubagent] =
+  : Resource[Task, BareSubagent] =
     Resource.suspend(
       Task {
         import conf.config
@@ -126,7 +126,7 @@ object StandaloneSubagent
             .provideSessionTokenFile(SimpleUser.System, conf.workDirectory / "session-token")
         } yield {
           logger.info("Subagent is ready" + "\n" + "─" * 80)
-          new StandaloneSubagent(conf, jobLauncherConf, commandExecutor, webServer,
+          new BareSubagent(conf, jobLauncherConf, commandExecutor, webServer,
             journal, scheduler, actorSystem)
         }
       }.executeOn(scheduler))

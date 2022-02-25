@@ -34,7 +34,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
 import js7.proxy.ControllerApi
-import js7.subagent.StandaloneSubagent
+import js7.subagent.BareSubagent
 import js7.subagent.configuration.SubagentConf
 import js7.tests.SubagentTest._
 import js7.tests.jobs.SemaphoreJob
@@ -79,7 +79,7 @@ final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 
   private var agent: RunningAgent = null
   private lazy val aSubagentId = directoryProvider.subagentId
-  private var bSubagent: StandaloneSubagent = null
+  private var bSubagent: BareSubagent = null
   private var bSubagentRelease = Task.unit
 
   override def beforeAll() = {
@@ -347,7 +347,7 @@ final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
   }
 
   private def runSubagent[A](subagentRef: SubagentRef, awaitDedicated: Boolean = true)
-    (body: StandaloneSubagent => A)
+    (body: BareSubagent => A)
   : Task[A] =
     Task.defer {
       val eventId = eventWatch.lastAddedEventId
@@ -363,12 +363,12 @@ final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
       }
     }
 
-  private def subagentResource(subagentRef: SubagentRef): Resource[Task, StandaloneSubagent] =
+  private def subagentResource(subagentRef: SubagentRef): Resource[Task, BareSubagent] =
     for {
       dir <- subagentEnvironment(subagentRef)
       conf = toSubagentConf(dir, subagentRef.uri.port.orThrow, name = subagentRef.id.string)
-      scheduler <- StandaloneSubagent.threadPoolResource[Task](conf)
-      subagent <- StandaloneSubagent.resource(conf.finishAndProvideFiles)(scheduler)
+      scheduler <- BareSubagent.threadPoolResource[Task](conf)
+      subagent <- BareSubagent.resource(conf.finishAndProvideFiles)(scheduler)
     } yield subagent
 
   private def subagentEnvironment(subagentRef: SubagentRef): Resource[Task, Path] =
