@@ -26,6 +26,7 @@ import js7.subagent.configuration.SubagentConf
 import js7.subagent.data.SubagentCommand.{CoupleDirector, DedicateSubagent}
 import js7.subagent.data.SubagentEvent.{SubagentDedicated, SubagentItemAttached, SubagentShutdown}
 import monix.eval.Task
+import monix.execution.atomic.Atomic
 
 trait SubagentExecutor
 {
@@ -38,6 +39,7 @@ trait SubagentExecutor
   private val orderToProcessing = AsyncMap.empty[OrderId, Processing]
   private val subagentRunId = SubagentRunId(Base64UUID.random())
 
+  private val shutdownStarted = Atomic(false)
   private val stoppedOnce = SetOnce[ProgramTermination]
 
   def untilStopped: Task[ProgramTermination] =
@@ -46,23 +48,27 @@ trait SubagentExecutor
   final def shutdown(
     signal: Option[ProcessSignal] = None,
     restart: Boolean = false)
-  : Task[ProgramTermination] = {
-    // TODO Only once!
-    journal.persistKeyedEvent(NoKey <-: SubagentShutdown)
-      // The event probably gets lost due to immediate shutdown
-      .flatMap { checked =>
-        for (problem <- checked.left) logger.warn(s"shutdown: $problem")
-        dedicatedOnce
-          .toOption
-          .fold(Task.unit)(_.subagentDriver.stop(signal))
-          .*>(Task {
-            logger.info(s"Subagent${dedicatedOnce.toOption.fold("")(_.toString + " ")} stopped")
-            val t = ProgramTermination(restart = restart)
-            stoppedOnce.trySet(t)
-            t
-          })
-      }
-  }
+  : Task[ProgramTermination] =
+    Task.defer {
+      val first = !shutdownStarted.getAndSet(true)
+      Task
+        .when(first)(
+          journal.persistKeyedEvent(NoKey <-: SubagentShutdown)
+            .map(_.onProblemHandle(problem => logger.warn(s"Shutdown: $problem"))))
+        // The event probably gets lost due to immediate shutdown
+        .*>(
+          dedicatedOnce
+            .toOption
+            .fold(Task.unit)(_.subagentDriver.stop(signal))
+            .*>(Task {
+              if (first) {
+                logger.info(s"Subagent${dedicatedOnce.toOption.fold("")(_.toString + " ")} stopped")
+              }
+              val t = ProgramTermination(restart = restart)
+              stoppedOnce.trySet(t)
+              t
+            }))
+    }
 
   protected def executeDedicateSubagent(cmd: DedicateSubagent)
   : Task[Checked[DedicateSubagent.Response]] =
@@ -73,7 +79,7 @@ trait SubagentExecutor
       if (!isFirst) {
         // TODO Idempotent: Frisch gewidmeter Subagent ist okay. Kein Kommando darf eingekommen sein.
         //if (cmd.subagentId == dedicatedOnce.orThrow.subagentId)
-        //  Task.pure(Right(DedicateSubagent.Response(subagentRunId, EventId.BeforeFirst)))
+        //  Task.pure(Rightm(DedicateSubagent.Response(subagentRunId, EventId.BeforeFirst)))
         //else
         Task.pure(Left(Problem.pure(
           s"This Subagent has already been dedicated: $dedicatedOnce")))
@@ -81,6 +87,8 @@ trait SubagentExecutor
         val event = SubagentDedicated(cmd.subagentId, subagentRunId, cmd.agentPath, cmd.controllerId)
         // TODO Check agentPath, controllerId (handle in SubagentState?)
         journal.persistKeyedEvent(NoKey <-: event)
+          .map(_.map(_ =>
+            logger.info(s"Subagent dedicated to be ${cmd.subagentId} in ${cmd.agentPath}, is ready")))
           .rightAs(DedicateSubagent.Response(subagentRunId, EventId.BeforeFirst))
       }
     }

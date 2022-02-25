@@ -11,10 +11,11 @@ import js7.base.circeutils.CirceUtils._
 import js7.base.data.ByteArray
 import js7.base.io.file.FileUtils.implicits._
 import js7.base.io.file.FileUtils.syntax._
-import js7.base.io.file.FileUtils.{autoDeleting, checkRelativePath, copyDirectory, deleteDirectoryRecursively, temporaryDirectoryResource, touchFile, withTemporaryDirectory, withTemporaryFile}
+import js7.base.io.file.FileUtils.{autoDeleting, checkRelativePath, copyDirectory, deleteDirectoryRecursively, provideFile, temporaryDirectoryResource, touchFile, withTemporaryDirectory, withTemporaryFile}
 import js7.base.io.file.FileUtilsTest._
 import js7.base.problem.ProblemException
 import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.time.ScalaTime._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.BeforeAndAfterAll
@@ -251,6 +252,15 @@ final class FileUtilsTest extends AnyFreeSpec with BeforeAndAfterAll
       delete(file)
       FileUtils.writeString(file, big, UTF_8, CREATE_NEW, WRITE)
       assert(file.contentString == big)
+    }
+  }
+
+  "provideFile"  in {
+    withTemporaryFile("FileUtilsTest-", ".tmp") { file =>
+      provideFile(file).use { file =>
+        Task(assert(exists(file)))
+      }.await(99.s)
+      assert(!exists(file))
     }
   }
 }

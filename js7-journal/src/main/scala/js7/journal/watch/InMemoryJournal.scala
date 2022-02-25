@@ -15,7 +15,7 @@ import scala.concurrent.duration.Deadline.now
 
 final class InMemoryJournal[S <: JournaledState[S]](
   initial: S,
-  eventIdGenerator: EventIdGenerator)
+  eventIdGenerator: EventIdGenerator = new EventIdGenerator)
   (implicit protected val S: JournaledState.Companion[S])
 extends StatePersistence[S] with RealEventWatch
 {

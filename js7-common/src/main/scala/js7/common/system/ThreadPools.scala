@@ -81,6 +81,14 @@ object ThreadPools
       .fromAutoCloseable(F.delay(new Closer))
       .map(newStandardScheduler(name, config, _))
 
+  // Requires an outer Scheduler (global).
+  def schedulerServiceToResource[F[_]](scheduler: F[SchedulerService])
+    (implicit F: Sync[F])
+  : Resource[F, SchedulerService] =
+    Resource.make(
+      acquire = scheduler)(
+      release = o => F.delay(o.shutdown()))
+
   def newStandardScheduler(name: String, config: Config, closer: Closer): SchedulerService = {
     val nr = nextNumber.incrementAndGet()
     val myName = if (nr == 1) name else s"$name-#$nr"
