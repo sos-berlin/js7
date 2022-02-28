@@ -17,7 +17,6 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.order.OrderEvent._
 import js7.data.order.{Order, OrderEvent, OrderId, OrderMark}
-import js7.data.value.expression.Expression
 import js7.journal.configuration.JournalConf
 import js7.journal.{JournalActor, KeyedJournalingActor}
 import monix.execution.Scheduler
@@ -99,13 +98,12 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
 
   private def startable: Receive =
     receiveEvent orElse {
-      case Input.StartProcessing(defaultArguments) =>
+      case Input.StartProcessing =>
         if (order.isProcessable) {
           become("processing")(processing)
           subagentKeeper
             .processOrder(
               order.checkedState[Order.IsFreshOrReady].orThrow,
-              defaultArguments,
               events => self ! Internal.UpdateEvents(events))
             .materialize
             .foreach {
@@ -320,7 +318,7 @@ private[order] object OrderActor
     final case class Recover(order: Order[Order.State]) extends Input
     final case class AddChild(order: Order[Order.Ready]) extends Input
 
-    final case class StartProcessing(defaultArguments: Map[String, Expression])
+    case object StartProcessing
     extends Input
 
     final case class Terminate(processSignal: Option[ProcessSignal] = None)

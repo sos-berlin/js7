@@ -18,7 +18,7 @@ import js7.base.monixutils.MonixBase.syntax.{RichCheckedTask, RichMonixTask}
 import js7.base.monixutils.{AsyncMap, AsyncVariable}
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
-import js7.base.time.ScalaTime._
+import js7.base.time.DelayIterator
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
@@ -28,7 +28,6 @@ import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.{OrderCoreEvent, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState}
-import js7.data.value.expression.Expression
 import js7.journal.state.StatePersistence
 import js7.launcher.configuration.JobLauncherConf
 import js7.subagent.LocalSubagentDriver
@@ -44,6 +43,7 @@ final class SubagentKeeper(
   agentConf: AgentConfiguration,
   actorSystem: ActorSystem)
 {
+  private var reconnectDelayer: DelayIterator = null
   private val legacyLocalSubagentId = SubagentId.legacyLocalFromAgentPath(agentPath) // COMPATIBLE with v2.2
   private val driverConf = SubagentDriver.Conf.fromConfig(agentConf.config)  // TODO
   private val mutableFixedPriority = new FixedPriority
@@ -54,7 +54,11 @@ final class SubagentKeeper(
 
   def initialize(localSubagentId: Option[SubagentId], controllerId: ControllerId)
   : Task[Unit] =
-    Task.defer {
+    Task.deferAction { scheduler =>
+      reconnectDelayer = DelayIterator
+        .fromConfig(agentConf.config, "js7.subagent-client.reconnect-delays")(scheduler)
+        .orThrow
+
       val initialized = Initialized(agentPath, localSubagentId, controllerId)
       this.initialized := initialized
       if (localSubagentId.isDefined)
@@ -92,7 +96,6 @@ final class SubagentKeeper(
 
   def processOrder(
     order: Order[Order.IsFreshOrReady],
-    defaultArguments: Map[String, Expression],
     onEvents: Seq[OrderCoreEvent] => Unit)
   : Task[Checked[Unit]] =
     selectSubagentDriverCancelable(order.id).flatMap {
@@ -101,12 +104,11 @@ final class SubagentKeeper(
         Task.right(())
 
       case Some(driver) =>
-        processOrderAndForwardEvents(order, defaultArguments, onEvents, driver)
+        processOrderAndForwardEvents(order, onEvents, driver)
     }
 
   private def processOrderAndForwardEvents(
     order: Order[Order.IsFreshOrReady],
-    defaultArguments: Map[String, Expression],
     onEvents: Seq[OrderCoreEvent] => Unit,
     subagentDriver: SubagentDriver)
   : Task[Checked[Unit]] = {
@@ -122,24 +124,12 @@ final class SubagentKeeper(
       })
     .flatMapT(order =>
       forProcessingOrder(order.id, subagentDriver, onEvents)(
-        subagentDriver.processOrder(order, defaultArguments)))
+        subagentDriver.processOrder(order)))
     .onErrorHandle { t =>
       logger.error(s"processOrder ${order.id} => ${t.toStringWithCauses}", t.nullIfNoStackTrace)
       Left(Problem.fromThrowable(t))
     }
   }
-
-  private def persist(
-    orderId: OrderId,
-    events: Seq[OrderCoreEvent],
-    onEvents: Seq[OrderCoreEvent] => Unit)
-  : Task[Checked[(Seq[Stamped[KeyedEvent[OrderCoreEvent]]], AgentState)]] =
-    persistence
-      .persistKeyedEvents(events.map(orderId <-: _))
-      .map(_.map { o =>
-        onEvents(events)
-        o
-      })
 
   def continueProcessingOrder(
     order: Order[Order.Processing],
@@ -161,6 +151,18 @@ final class SubagentKeeper(
             ).materializeIntoChecked
         }
     })
+
+  private def persist(
+    orderId: OrderId,
+    events: Seq[OrderCoreEvent],
+    onEvents: Seq[OrderCoreEvent] => Unit)
+  : Task[Checked[(Seq[Stamped[KeyedEvent[OrderCoreEvent]]], AgentState)]] =
+    persistence
+      .persistKeyedEvents(events.map(orderId <-: _))
+      .map(_.map { o =>
+        onEvents(events)
+        o
+      })
 
   private def forProcessingOrder(orderId: OrderId, subagentDriver: SubagentDriver, onEvents: Seq[OrderCoreEvent] => Unit)
     (body: Task[Checked[OrderProcessed]])
@@ -195,8 +197,10 @@ final class SubagentKeeper(
         state.get.selectNext(mutableFixedPriority)
       })
       .delayOnNextBySelector {
-        case None => Observable.unit.delayExecution(1.s/*TODO Do not poll*/)
-        case Some(_) => Observable.empty
+        case None => Observable.unit.delayExecution(reconnectDelayer.next())
+        case Some(_) =>
+          reconnectDelayer.reset()
+          Observable.empty
       }
       .flatMap(Observable.fromIterable(_))
       .headL

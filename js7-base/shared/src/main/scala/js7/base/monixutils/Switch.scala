@@ -4,6 +4,7 @@ import monix.catnap.MVar
 import monix.eval.Task
 
 final class Switch private(initiallyOn: Boolean)
+extends Switch.ReadOnly
 {
   private val switch: Task[MVar[Task, Unit]] =
     (if (initiallyOn) MVar[Task].empty[Unit]() else MVar[Task].of(()))
@@ -34,6 +35,16 @@ final class Switch private(initiallyOn: Boolean)
     switch.flatMap(_.read).void
 }
 
-object Switch {
+object Switch
+{
   def apply(on: Boolean) = new Switch(on)
+
+  trait ReadOnly
+  {
+    def isOn: Task[Boolean]
+
+    def isOff: Task[Boolean]
+
+    def whenOff: Task[Unit]
+  }
 }

@@ -10,8 +10,8 @@ import js7.base.io.https.HttpsConfig
 import js7.base.io.process.ProcessSignal
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax._
-import js7.base.monixutils.AsyncMap
 import js7.base.monixutils.MonixBase.syntax._
+import js7.base.monixutils.{AsyncMap, Switch}
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.stream.Numbered
@@ -28,7 +28,6 @@ import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId}
 import js7.data.subagent.SubagentRefStateEvent.{SubagentDedicated, SubagentDied, SubagentRestarted}
 import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState, SubagentRunId}
-import js7.data.value.expression.Expression
 import js7.data.workflow.position.WorkflowPosition
 import js7.journal.state.StatePersistence
 import js7.subagent.client.{SubagentClient, SubagentDriver}
@@ -192,17 +191,19 @@ extends SubagentDriver with SubagentEventListener
   //      executeCommands(AttachSignedItem(signedItem) :: Nil)
   //  }
 
-  def processOrder(order: Order[Order.Processing], defaultArguments: Map[String, Expression])
+  def processOrder(order: Order[Order.Processing])
   : Task[Checked[OrderProcessed]] =
     logger.traceTask("processOrder", order.id)(
-      ifNotStopping.flatMapT(_ =>
-        runProcessingOrder(order)(
-          dispatcher
-            .executeCommand(StartOrderProcess(order, defaultArguments))
-            .rightAs(()))))
+      orderToExecuteDefaultArguments(order)
+        .flatMapT(defaultArguments =>
+          ifNotStopping.flatMapT(_ =>
+            runProcessingOrder(order)(
+              dispatcher
+                .executeCommand(StartOrderProcess(order, defaultArguments))
+                .rightAs(())))))
 
   def continueProcessingOrder(order: Order[Order.Processing]) =
-    runProcessingOrder(order)(Task.right(()))
+    processOrder(order)
 
   private def runProcessingOrder(order: Order[Order.Processing])(body: Task[Checked[Unit]])
   : Task[Checked[OrderProcessed]] =
@@ -271,18 +272,18 @@ extends SubagentDriver with SubagentEventListener
   private def postQueuedCommand(
     numberedCommand: Numbered[SubagentCommand.OrderCommand],
     subagentRunId: SubagentRunId,
-    isStopped: Task[Boolean])
+    processingAllowed: Switch.ReadOnly)
   : Task[Checked[Unit]] =
     Task.defer {
       //val heartbeatTimeoutElapsed = scheduler.now + SubagentEventListener.heartbeatTiming.longHeartbeatTimeout
-      val retryAfterError = new RetryAfterError
+      val retryAfterError = new RetryAfterError(processingAllowed.whenOff)
       val command = numberedCommand.value
       lazy val commandString = numberedCommand.copy(value = command.toShortString).toString
       logger.traceTask("postQueuedCommand", commandString)(Task
         .tailRecM(())(_ =>
-          // TODO Use isStopped when Order is being canceled
+          // TODO Use processingAllowed when Order is being canceled
           currentSubagentRefState
-            .flatMapT(subagentRefState => isStopped
+            .flatMapT(subagentRefState => processingAllowed.isOff
               .flatMap(isStopped =>
                 // Double-check subagentRunId to be sure.
                 if (isStopped || !subagentRefState.subagentRunId.contains(subagentRunId)) {
@@ -343,7 +344,7 @@ extends SubagentDriver with SubagentEventListener
             }
 
           case Left(problem) =>
-            isStopped.flatMap(if (_) {
+            processingAllowed.isOff.flatMap(if (_) {
               logger.debug(s"postQueuedCommand($commandString) error after stop ignored: $problem")
               Task.right(())
             } else
@@ -353,12 +354,19 @@ extends SubagentDriver with SubagentEventListener
         })
     }
 
-  private final class RetryAfterError {
+  private final class RetryAfterError(whenStopped: Task[Unit]) {
     private val startedAt = now
     private var lastWarning: Option[String] = None
     private var warningCount = 0
 
-    def apply(problem: Problem): Task[Left[Unit, Nothing]] =
+    def apply(problem: Problem): Task[Either[Unit, Right[Nothing, Unit]]] =
+      Task
+        .race(
+          whenStopped.as(Right(Right(()))),
+          retry(problem))
+        .map(_.fold(identity, identity))
+
+    private def retry(problem: Problem): Task[Left[Unit, Nothing]] =
       Task.defer {
         warningCount += 1
         val warning = problem.throwableOption match {

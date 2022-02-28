@@ -6,13 +6,14 @@ import js7.base.io.process.{ProcessSignal, StdoutOrStderr}
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.time.JavaTimeConverters.AsScalaDuration
-import js7.base.utils.ScalaUtils.syntax.RichEither
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.event.JournaledState
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
 import js7.data.order.{Order, OrderId}
 import js7.data.state.AgentStateView
 import js7.data.subagent.SubagentId
 import js7.data.value.expression.Expression
+import js7.data.workflow.instructions.Execute
 import js7.journal.CommitOptions
 import js7.journal.state.StatePersistence
 import js7.subagent.client.SubagentDriver._
@@ -35,8 +36,7 @@ trait SubagentDriver
 
   def stop(signal: Option[ProcessSignal]): Task[Unit]
 
-  def processOrder(order: Order[Order.Processing], defaultArguments: Map[String, Expression])
-  : Task[Checked[OrderProcessed]]
+  def processOrder(order: Order[Order.Processing]): Task[Checked[OrderProcessed]]
 
   def continueProcessingOrder(order: Order[Order.Processing]): Task[Checked[OrderProcessed]]
 
@@ -52,6 +52,17 @@ trait SubagentDriver
         case Left(problem) => logger.error(s"Emission of OrderStdWritten event failed: $problem")
         case Right(_) =>
       }
+
+  final def orderToExecuteDefaultArguments(order: Order[Order.Processing]) =
+    persistence.state
+      .map(_
+        .idToWorkflow
+        .checked(order.workflowId)
+        .map(_.instruction(order.position))
+        .map {
+          case o: Execute.Named => o.defaultArguments
+          case _ => Map.empty[String, Expression]
+        })
 }
 
 object SubagentDriver

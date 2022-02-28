@@ -19,7 +19,7 @@ trait CommandDispatcher
 {
   protected type Command <: CommonCommand
   private type Response = Unit
-  protected final type PostCommand = (Numbered[Command], SubagentRunId, Task[Boolean]) =>
+  protected final type PostCommand = (Numbered[Command], SubagentRunId, Switch.ReadOnly) =>
     Task[Checked[Response]]
 
   protected def name: String
@@ -78,7 +78,7 @@ trait CommandDispatcher
   : Task[Unit] = {
     val execute = numbered.value
     val numberedCommand = Numbered(numbered.number, execute.command)
-    postCommand(numberedCommand, subagentRunId, processingAllowed.isOff/*stop retrying when off*/)
+    postCommand(numberedCommand, subagentRunId, processingAllowed/*stop retrying when off*/)
       .materialize
       .tapEval(_ => queue
         .releaseUntil(numbered.number)

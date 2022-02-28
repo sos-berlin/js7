@@ -45,7 +45,6 @@ import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.state.OrderEventHandler.FollowUp
 import js7.data.state.{OrderEventHandler, StateView}
 import js7.data.subagent.{SubagentId, SubagentRef}
-import js7.data.value.expression.Expression
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
@@ -728,26 +727,15 @@ with Stash
     }
   }
 
-  private def startProcessing(orderId: OrderId, jobEntry: JobEntry): Unit = {
-    val checked = for {
-      orderEntry <- orderRegister.checked(orderId)
-      order <- persistence.currentState.idToOrder.checked(orderId)
-      workflow <- persistence.currentState.idToWorkflow.checked(order.workflowId)
-    } yield (orderEntry, workflow.instruction(order.position))
-
-    checked match {
+  private def startProcessing(orderId: OrderId, jobEntry: JobEntry): Unit =
+    orderRegister.checked(orderId) match {
       case Left(problem) =>
         logger.error(s"onOrderIsProcessable => $problem")
 
-      case Right((orderEntry, instruction)) =>
-        val defaultArguments = instruction match {
-          case o: Execute.Named => o.defaultArguments
-          case _ => Map.empty[String, Expression]
-        }
+      case Right(orderEntry) =>
         jobEntry.taskCount += 1
-        orderEntry.actor ! OrderActor.Input.StartProcessing(defaultArguments)
+        orderEntry.actor ! OrderActor.Input.StartProcessing
     }
-  }
 
   private def deleteOrder(orderId: OrderId): Unit =
     for (orderEntry <- orderRegister.get(orderId)) {

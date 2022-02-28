@@ -16,7 +16,6 @@ import js7.data.controller.ControllerId
 import js7.data.event.JournaledState
 import js7.data.job.{JobConf, JobKey}
 import js7.data.order.OrderEvent.OrderProcessed
-import js7.data.order.Outcome.Disrupted.ProcessLost
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.state.AgentStateView
 import js7.data.subagent.SubagentId
@@ -81,15 +80,14 @@ extends SubagentDriver
           .onErrorHandle(t => logger.error(s"Stop $jobDriver: ${t.toStringWithCauses}")))
         .map(_.combineAll))
 
-  def processOrder(
-    order: Order[Order.Processing],
-    defaultArguments: Map[String, Expression])
-  : Task[Checked[OrderProcessed]] =
-    processOrder2(order, defaultArguments)
-      .flatMap(outcome =>
-        persistence
-          .persistKeyedEvent(order.id <-: OrderProcessed(outcome)))
-      .map(_.map(_._1.value.event))
+  def processOrder(order: Order[Order.Processing]): Task[Checked[OrderProcessed]] =
+    orderToExecuteDefaultArguments(order)
+      .flatMapT(defaultArguments =>
+        processOrder2(order, defaultArguments)
+          .flatMap(outcome =>
+            persistence
+              .persistKeyedEvent(order.id <-: OrderProcessed(outcome)))
+          .map(_.map(_._1.value.event)))
 
   def processOrder2(
     order: Order[Order.Processing],

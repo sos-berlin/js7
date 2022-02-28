@@ -224,7 +224,7 @@ private object OrderActorTest {
 
     def receive: Receive = receiveOrderEvent orElse {
       case Completed =>
-        orderActor ! OrderActor.Input.StartProcessing(Map.empty)
+        orderActor ! OrderActor.Input.StartProcessing
         become(processing)
     }
 

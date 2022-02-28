@@ -1,6 +1,7 @@
 package js7.agent.subagent
 
 import js7.agent.subagent.SubagentDispatcher._
+import js7.base.monixutils.Switch
 import js7.base.problem.Checked
 import js7.base.stream.Numbered
 import js7.data.subagent.{SubagentId, SubagentRunId}
@@ -21,6 +22,6 @@ extends CommandDispatcher
 
 object SubagentDispatcher
 {
-  type PostCommand = (Numbered[SubagentCommand.OrderCommand], SubagentRunId, Task[Boolean]) =>
+  type PostCommand = (Numbered[SubagentCommand.OrderCommand], SubagentRunId, Switch.ReadOnly) =>
     Task[Checked[Unit]]
 }

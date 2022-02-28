@@ -22,8 +22,8 @@ final class CommandDispatcherTest extends AnyFreeSpec
 
       protected val postCommand = (numberedCommand, subagentRunId, isStopped) => {
         assert(subagentRunId == CommandDispatcherTest.subagentRunId)
-        isStopped
-          .map(o => assert(!o))
+        isStopped.isOn
+          .map(assert(_))
           .*>(numberedCommand.value match {
             case Command("A") => Task.pure(Right(Response("a")))
             case _ => Task.pure(Left(Problem("FAILED")))

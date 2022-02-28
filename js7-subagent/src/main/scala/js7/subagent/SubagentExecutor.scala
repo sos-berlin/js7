@@ -18,6 +18,7 @@ import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.subagent.{SubagentId, SubagentRunId}
 import js7.data.value.expression.Expression
+import js7.data.workflow.position.WorkflowPosition
 import js7.journal.watch.InMemoryJournal
 import js7.launcher.configuration.JobLauncherConf
 import js7.subagent.SubagentExecutor._
@@ -150,13 +151,15 @@ trait SubagentExecutor
   protected final def startOrderProcess(
     order: Order[Order.Processing],
     defaultArguments: Map[String, Expression])
-  : Task[Checked[Unit]] = {
-    val hash = 31 * order.hashCode + defaultArguments.hashCode
+  : Task[Checked[Unit]] =
     orderToProcessing
       .updateChecked(order.id, {
+        // FIXME Doppeltes startOrderProcess nach Prozessende kommen
+        //  Client soll ein Kommando schicken, das den Prozess aus orderToProcessing nimmt.
+        //  Oder ReleaseEvents und wir sehen in der Event queue nach ?
         case Some(existing) =>
           Task.pure(
-            if (existing.orderHash != hash)
+            if (existing.workflowPosition != order.workflowPosition)
               Left(Problem.pure("Duplicate SubagentCommand.StartOrder with different Order"))
             else
               Right(existing)) // Idempotency: Order process has already been started
@@ -166,10 +169,9 @@ trait SubagentExecutor
             processOrder(dedicated.subagentDriver, order, defaultArguments)
               .guarantee(orderToProcessing.remove(order.id).void)
               .startAndForget
-              .as(Right(Processing(hash))))
+              .as(Right(Processing(order.workflowPosition))))
       })
       .rightAs(())
-  }
 
   private def processOrder(
     driver: LocalSubagentDriver[SubagentState],
@@ -202,5 +204,6 @@ object SubagentExecutor
     override def toString = s"Dedicated($subagentId $agentPath $controllerId)"
   }
 
-  private final case class Processing(orderHash: Int)
+  private final case class Processing(
+    workflowPosition: WorkflowPosition/*for check only*/)
 }

@@ -49,10 +49,12 @@ import scala.util.control.NonFatal
 
 final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 {
-  override protected def controllerConfig = config"""
-    js7.auth.users.TEST-USER {
-      permissions = [ UpdateItem ]
-    }"""
+  override protected val controllerConfig = config"""
+    js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
+    js7.journal.remove-obsolete-files = false
+    js7.controller.agent-driver.command-batch-delay = 0ms
+    js7.controller.agent-driver.event-buffer-delay = 10ms
+    """
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = true
     """
@@ -229,12 +231,14 @@ final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
   "Restart Director" in {
     val orderId = OrderId("RESTART-DIRECTOR")
 
-    runSubagent(cSubagentRef){ _ =>
+    runSubagent(cSubagentRef) { _ =>
       locally {
         val eventId = eventWatch.lastAddedEventId
         controller.addOrder(FreshOrder(orderId, cWorkflow.path)).await(99.s).orThrow
         val events = eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
         assert(events.head.value.event == OrderProcessingStarted(cSubagentRef.id))
+
+        // STOP DIRECTOR
         agent.terminate().await(99.s)
       }
 
@@ -246,6 +250,8 @@ final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
           case ke @ KeyedEvent(`orderId`, OrderProcessed(_)) => fail(s"Unexpected $ke")
           case _ =>
         }
+
+        // START DIRECTOR
         agent = directoryProvider.startAgent(agentPath).await(99.s)
         eventWatch.await[OrderProcessed](_.key == orderId, after = eventId)
         val events = eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
