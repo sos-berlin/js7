@@ -6,6 +6,7 @@ import java.nio.file.Files.{createDirectories, exists}
 import js7.agent.scheduler.order.FileWatchManager
 import js7.base.configutils.Configs._
 import js7.base.io.file.FileUtils.syntax._
+import js7.base.log.Logger
 import js7.base.problem.Checked._
 import js7.base.system.OperatingSystem.isMac
 import js7.base.thread.Futures.implicits.SuccessFuture
@@ -67,7 +68,7 @@ final class FileWatchDelayTest extends AnyFreeSpec with ControllerAgentForScalaT
 
     // Each test has an increasing sequence of file modifications, delaying FileAdded and OrderAdded.
     def delayedFileAddedTest(i: Int) = Task {
-      withClue(s"#$i") {
+      withClue(s"file-$i") {
         val file = watchedDirectory / i.toString
         val externalOrderName = ExternalOrderName(i.toString)
         val orderId = fileToOrderId(i.toString)
@@ -79,12 +80,17 @@ final class FileWatchDelayTest extends AnyFreeSpec with ControllerAgentForScalaT
           .runToFuture
         val since = now
 
+        logger.info(s"""file-$i := """"")
         file := ""
-        sleep(systemWatchDelay + 100.ms)
+        sleepUntil(since + systemWatchDelay + 100.ms)
+
+        logger.info(s"""file-$i ++= "A"""")
         file ++= "A"
         assert(!whenArised.isCompleted)
-        for (_ <- 0 to 4 * i) {
-          sleep(fileWatch.delay / 4)
+        val divisor = 2
+        for (j <- 1 to i * divisor) withClue(s"#$i") {
+          sleepUntil(since + j * fileWatch.delay / divisor)
+          logger.info(s"""file-$i ++= "${"+" * j}"""")
           file ++= "+"
           assert(!whenArised.isCompleted)
         }
@@ -105,8 +111,8 @@ final class FileWatchDelayTest extends AnyFreeSpec with ControllerAgentForScalaT
 
 object FileWatchDelayTest
 {
+  private val logger = Logger[this.type]
   private val agentPath = AgentPath("AGENT")
-
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Vector(
