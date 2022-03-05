@@ -54,15 +54,21 @@ trait CommandDispatcher
     executeCommands(command :: Nil)
       .map(_.head)
 
-  final def executeCommands(commands: Iterable[Command]): Task[Seq[Checked[Response]]] = {
+  final def executeCommands(commands: Iterable[Command]): Task[Seq[Checked[Response]]] =
+    enqueueCommands(commands)
+      .flatMap(_.sequence)
+
+  final def enqueueCommand(command: Command): Task[Task[Checked[Response]]] =
+    enqueueCommands(command :: Nil)
+      .map(_.head)
+
+  def enqueueCommands(commands: Iterable[Command]): Task[Seq[Task[Checked[Response]]]] = {
     val executes: Seq[Execute] = commands.view.map(new Execute(_)).toVector
-    logger.traceTask("executeCommands",
-      executes.headOption.fold("")(_.command.getClass.simpleScalaName) + " ..."
+    logger.traceTask("enqueueCommands",
+      executes.headOption.fold("")(_.command.toShortString) + ((executes.sizeIs > 1) ?? ",...")
     )(queue
       .enqueue(executes)
-      .*>(executes
-        .map(_.responded)
-        .sequence))
+      .map(_ => executes.map(_.responded)))
   }
 
   private def processQueue(subagentRunId: SubagentRunId): Task[Unit] =

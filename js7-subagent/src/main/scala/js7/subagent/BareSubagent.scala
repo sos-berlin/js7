@@ -45,9 +45,10 @@ final class BareSubagent(
 
   def shutdown(
     signal: Option[ProcessSignal] = None,
-    restart: Boolean = false)
+    restart: Boolean = false,
+    dontWaitForDirector: Boolean = false)
   : Task[ProgramTermination] =
-    commandExecutor.shutdown(signal, restart)
+    commandExecutor.shutdown(signal, restart = restart, dontWaitForDirector = dontWaitForDirector)
 }
 
 object BareSubagent

@@ -251,7 +251,8 @@ with SnapshotableState[AgentState]
 
       case _: OrderStdWritten =>
         // OrderStdWritten is not applied (but forwarded to Controller)
-        Right(this)
+        // But check OrderId
+        idToOrder.checked(orderId).rightAs(this)
     }
 
   def agentPath = meta.agentPath

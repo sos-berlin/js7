@@ -46,7 +46,13 @@ extends ReadableStatePersistence[S]
     options: CommitOptions = CommitOptions.default)
   : Task[Checked[Unit]]
 
-  def persist[E <: Event](stateToEvents: S => Checked[Seq[KeyedEvent[E]]])
+  final def persist[E <: Event](stateToEvents: S => Checked[Seq[KeyedEvent[E]]])
+  : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
+    persist(CommitOptions.default, stateToEvents)
+
+  def persist[E <: Event](
+    options: CommitOptions = CommitOptions.default,
+    stateToEvents: S => Checked[Seq[KeyedEvent[E]]])
   : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]]
 
   private val keyLockKeeper = new LockKeeper[Any]

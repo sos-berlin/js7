@@ -16,7 +16,7 @@ import js7.subagent.SubagentCommandExecutor._
 import js7.subagent.SubagentExecutor.Dedicated
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.data.SubagentCommand
-import js7.subagent.data.SubagentCommand.{AttachItem, AttachSignedItem, CoupleDirector, DedicateSubagent, KillProcess, NoOperation, ShutDown, StartOrderProcess}
+import js7.subagent.data.SubagentCommand.{AttachItem, AttachSignedItem, CoupleDirector, DedicateSubagent, DetachProcessedOrder, KillProcess, NoOperation, ReleaseEvents, ShutDown, StartOrderProcess}
 import js7.subagent.data.SubagentEvent.SubagentItemAttached
 import monix.eval.Task
 import scala.concurrent.duration.Deadline.now
@@ -70,9 +70,22 @@ extends SubagentExecutor
 
           case ShutDown(processSignal, restart) =>
             logger.info(s"❗️ $command")
-            // TODO Delay shutdown until Director has read and acknowledged all events!
             shutdown(processSignal, restart)
               .as(Right(SubagentCommand.Accepted))
+
+          case DetachProcessedOrder(orderId) =>
+            // DO NOT execute concurrently with a following StartOrderProcess(orderId)
+            // OrderId must be released before start of next order.
+            // Otherwise idempotency detection would kick in.
+            detachProcessedOrder(orderId)
+              .rightAs(SubagentCommand.Accepted)
+
+          case ReleaseEvents(eventId) =>
+            releaseEvents(eventId)
+              .rightAs(SubagentCommand.Accepted)
+
+          case NoOperation =>
+            Task.pure(Right(SubagentCommand.Accepted))
 
           case SubagentCommand.Batch(numberedCommand) =>
             // TODO Sobald Kommandos in einem Stream geschickt werden,
@@ -83,9 +96,6 @@ extends SubagentExecutor
                 .map(_.rightAs(()))
                 .combineAll
                 .rightAs(SubagentCommand.Accepted))
-
-          case NoOperation =>
-            Task.pure(Right(SubagentCommand.Accepted))
         }
         .tapEval(checked => Task(logger.debug(
           s"#${numbered.number} <- ${command.getClass.simpleScalaName}" +

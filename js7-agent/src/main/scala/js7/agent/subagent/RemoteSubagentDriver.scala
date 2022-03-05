@@ -31,6 +31,7 @@ import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState, SubagentRun
 import js7.data.workflow.position.WorkflowPosition
 import js7.journal.state.StatePersistence
 import js7.subagent.client.{SubagentClient, SubagentDriver}
+import js7.subagent.configuration.SubagentConf
 import js7.subagent.data.SubagentCommand
 import js7.subagent.data.SubagentCommand.{AttachItem, CoupleDirector, DedicateSubagent, KillProcess, StartOrderProcess}
 import monix.eval.Task
@@ -45,6 +46,7 @@ final class RemoteSubagentDriver(
   protected val persistence: StatePersistence[AgentState],
   controllerId: ControllerId,
   protected val conf: SubagentDriver.Conf,
+  protected val subaagentConf: SubagentConf,
   protected val recouplingStreamReaderConf: RecouplingStreamReaderConf,
   actorSystem: ActorSystem)
 extends SubagentDriver with SubagentEventListener
@@ -269,8 +271,23 @@ extends SubagentDriver with SubagentEventListener
           client.executeSubagentCommand(numberedCommand)))
   }
 
+  protected def detachProcessedOrder(orderId: OrderId): Task[Unit] =
+    enqueueCommandAndForget(
+      SubagentCommand.DetachProcessedOrder(orderId))
+
+  protected def releaseEvents(eventId: EventId): Task[Unit] =
+    enqueueCommandAndForget(
+      SubagentCommand.ReleaseEvents(eventId))
+
+  private def enqueueCommandAndForget(cmd: SubagentCommand.Queueable): Task[Unit] =
+    dispatcher
+      .enqueueCommand(cmd)
+      .map(_
+        .map(_.orThrow/*???*/)
+        .startAndForget/* Don't await response */)
+
   private def postQueuedCommand(
-    numberedCommand: Numbered[SubagentCommand.OrderCommand],
+    numberedCommand: Numbered[SubagentCommand.Queueable],
     subagentRunId: SubagentRunId,
     processingAllowed: Switch.ReadOnly)
   : Task[Checked[Unit]] =
@@ -384,7 +401,7 @@ extends SubagentDriver with SubagentEventListener
       }
   }
 
-  private def postQueuedCommand2(numberedCommand: Numbered[SubagentCommand.OrderCommand])
+  private def postQueuedCommand2(numberedCommand: Numbered[SubagentCommand.Queueable])
   : Task[Checked[Unit]] = {
     val command = numberedCommand.value
     dependentCommands(command)

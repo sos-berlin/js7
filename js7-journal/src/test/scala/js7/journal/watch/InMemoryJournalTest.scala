@@ -90,7 +90,7 @@ final class InMemoryJournalTest extends AnyFreeSpec
     observing.cancel()
 
     assert(journal.tornEventId == EventId.BeforeFirst)
-    journal.releaseEvents(1001).await(99.s)
+    journal.releaseEvents(1001).await(99.s).orThrow
     assert(journal.tornEventId == 1001)
 
     assert(journal

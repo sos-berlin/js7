@@ -8,6 +8,7 @@ import monix.execution.Scheduler
 import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.jdk.CollectionConverters._
 import scala.jdk.DurationConverters.JavaDurationOps
+import scala.util.Try
 
 /** Returns an endless sequence of durations usable to delay operation. */
 final class DelayIterator(durations: Seq[FiniteDuration])(implicit scheduler: Scheduler)
@@ -43,8 +44,9 @@ object DelayIterator
    * Then the last element is endlessly repeated.
    * Or a single duration can be given, which is endlessly repeated.
    */
-  def fromConfig(config: Config, key: String)(implicit s: Scheduler): Checked[DelayIterator] =
-    catchNonFatal(config.getDuration(key).toScala :: Nil)
+  def fromConfig(config: Config, key: String)(implicit s: Scheduler): Checked[DelayIterator] = {
+    Checked
+      .fromTry(Try(config.getDuration(key).toScala :: Nil))
       .orElse(catchNonFatal(
         config.getDurationList(key).asScala.view.map(_.toScala).toVector))
       .flatMap(durations =>
@@ -52,4 +54,5 @@ object DelayIterator
           Left(Problem(s"Setting '$key' must not be empty"))
         else
           Right(new DelayIterator(durations)))
+  }
 }

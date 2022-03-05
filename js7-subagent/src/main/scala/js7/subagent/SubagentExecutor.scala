@@ -1,11 +1,15 @@
 package js7.subagent
 
+import cats.effect.ExitCase
 import js7.agent.data.Problems.{SubagentIdMismatchProblem, SubagentRunIdMismatchProblem}
 import js7.base.io.process.ProcessSignal
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax._
 import js7.base.monixutils.AsyncMap
+import js7.base.monixutils.MonixBase.syntax.RichMonixTask
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.RightUnit
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{Base64UUID, ProgramTermination, SetOnce}
@@ -32,44 +36,55 @@ import monix.execution.atomic.Atomic
 trait SubagentExecutor
 {
   protected[this] val dedicatedOnce: SetOnce[Dedicated]
-  protected val journal: InMemoryJournal[SubagentState]
+  protected val journal: InMemoryJournal[SubagentState]  // FIXME Limit number of events!
   protected val subagentConf: SubagentConf
   protected val jobLauncherConf: JobLauncherConf
 
-  private val subagentDriverConf = SubagentDriver.Conf.fromConfig(subagentConf.config)
-  private val orderToProcessing = AsyncMap.empty[OrderId, Processing]
+  private val subagentDriverConf = SubagentDriver.Conf.fromConfig(subagentConf.config,
+    commitDelay = 0.s)
+  private val orderToProcessing = new AsyncMap(Map.empty[OrderId, Processing])
+    with AsyncMap.Stoppable
   private val subagentRunId = SubagentRunId(Base64UUID.random())
 
   private val shutdownStarted = Atomic(false)
   private val stoppedOnce = SetOnce[ProgramTermination]
+  @volatile private var dontWaitForDirector = false
 
   def untilStopped: Task[ProgramTermination] =
     stoppedOnce.task
 
   final def shutdown(
     signal: Option[ProcessSignal] = None,
-    restart: Boolean = false)
+    restart: Boolean = false,
+    dontWaitForDirector: Boolean = false)
   : Task[ProgramTermination] =
-    Task.defer {
+    logger.debugTask(
+      "shutdown",
+      s"${signal getOrElse ""}${restart ?? " restart"}${dontWaitForDirector ?? " dontWaitForDirector"}"
+    )(Task.defer {
+      this.dontWaitForDirector |= dontWaitForDirector
       val first = !shutdownStarted.getAndSet(true)
       Task
         .when(first)(
-          journal.persistKeyedEvent(NoKey <-: SubagentShutdown)
-            .map(_.onProblemHandle(problem => logger.warn(s"Shutdown: $problem"))))
-        // The event probably gets lost due to immediate shutdown
-        .*>(
           dedicatedOnce
             .toOption
             .fold(Task.unit)(_.subagentDriver.stop(signal))
-            .*>(Task {
-              if (first) {
-                logger.info(s"Subagent${dedicatedOnce.toOption.fold("")(_.toString + " ")} stopped")
-              }
-              val t = ProgramTermination(restart = restart)
-              stoppedOnce.trySet(t)
-              t
+            .*>(orderToProcessing
+              // Await process termination and DetachProcessedOrder commands
+              .stop
+              .logWhenItTakesLonger("Director-acknowledged Order processes"))
+          .*>(journal
+            // The event probably gets lost due to immediate shutdown !!!
+            .persistKeyedEvent(NoKey <-: SubagentShutdown)
+            .map(_.onProblemHandle(problem => logger.warn(s"Shutdown: $problem"))))
+          .*>(Task {
+            logger.info(
+              s"Subagent${dedicatedOnce.toOption.fold("")(_.toString + " ")} stopped")
+            val t = ProgramTermination(restart = restart)
+            stoppedOnce.trySet(t)
             }))
-    }
+        .*>(stoppedOnce.task)
+    })
 
   protected def executeDedicateSubagent(cmd: DedicateSubagent)
   : Task[Checked[DedicateSubagent.Response]] =
@@ -106,7 +121,7 @@ trait SubagentExecutor
       controllerId,
       jobLauncherConf,
       subagentDriverConf,
-      valueDirectory = subagentConf.valueDirectory)
+      subagentConf)
 
   protected def executeCoupleDirector(cmd: CoupleDirector): Task[Checked[Unit]] =
     Task {
@@ -154,9 +169,6 @@ trait SubagentExecutor
   : Task[Checked[Unit]] =
     orderToProcessing
       .updateChecked(order.id, {
-        // FIXME Doppeltes startOrderProcess nach Prozessende kommen
-        //  Client soll ein Kommando schicken, das den Prozess aus orderToProcessing nimmt.
-        //  Oder ReleaseEvents und wir sehen in der Event queue nach ?
         case Some(existing) =>
           Task.pure(
             if (existing.workflowPosition != order.workflowPosition)
@@ -167,7 +179,18 @@ trait SubagentExecutor
         case None =>
           Task(dedicatedOnce.checked).flatMapT(dedicated =>
             processOrder(dedicated.subagentDriver, order, defaultArguments)
-              .guarantee(orderToProcessing.remove(order.id).void)
+              .guaranteeCase {
+                case ExitCase.Completed =>
+                  if (!dontWaitForDirector)
+                    Task.unit
+                  else {
+                    logger.warn(
+                      s"dontWaitForDirector: ${order.id} <-: OrderProcessed")
+                    orderToProcessing.remove(order.id).void
+                  }
+
+                case _ => orderToProcessing.remove(order.id).void // Tidy-up on failure
+              }
               .startAndForget
               .as(Right(Processing(order.workflowPosition))))
       })
@@ -177,7 +200,7 @@ trait SubagentExecutor
     driver: LocalSubagentDriver[SubagentState],
     order: Order[Order.Processing],
     defaultArguments: Map[String, Expression])
-  : Task[Outcome] =
+  : Task[EventId] =
     driver
       .processOrder2(order, defaultArguments)
       .onErrorHandle(Outcome.Failed.fromThrowable)
@@ -185,9 +208,14 @@ trait SubagentExecutor
         val orderProcessed = order.id <-: OrderProcessed(outcome)
         journal
           .persistKeyedEvent(orderProcessed)
-          .map(_.onProblemHandle(problem => logger.error(s"${order.id}: $problem")))  // ???
-          .as(outcome)
+          .map(_.orThrow._1.eventId)
       }
+
+  protected def detachProcessedOrder(orderId: OrderId): Task[Checked[Unit]] =
+    orderToProcessing.remove(orderId).as(Checked.unit)
+
+  protected def releaseEvents(eventId: EventId): Task[Checked[Unit]] =
+    journal.releaseEvents(eventId)
 }
 
 object SubagentExecutor

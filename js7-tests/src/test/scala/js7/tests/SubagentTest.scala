@@ -8,6 +8,7 @@ import js7.base.auth.Admission
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.thread.Futures.implicits.SuccessFuture
@@ -24,6 +25,7 @@ import js7.data.command.CancellationMode
 import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.event.{EventId, KeyedEvent, Stamped}
 import js7.data.item.BasicItemEvent.ItemAttached
+import js7.data.item.ItemOperation
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTerminated}
 import js7.data.order.Outcome.Disrupted.ProcessLost
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
@@ -264,13 +266,15 @@ final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
     var eventId = eventWatch.lastAddedEventId
 
     locally {
-      // Disable local Subagent. We want use only cSubagentRef
+      // Disable local Subagent and bSubagentRef. We want use only cSubagentRef
       val aSubagentRef = directoryProvider.subagentRefs(0)
       controllerApi
-        .updateUnsignedSimpleItems(Seq(
-          aSubagentRef.copy(
-            disabled = true,
-            itemRevision = None)))
+        .updateItems(Observable(
+          ItemOperation.AddOrChangeSimple(
+            aSubagentRef.copy(
+              disabled = true,
+              itemRevision = None)),
+          ItemOperation.DeleteSimple(bSubagentRef.path)))
         .await(99.s)
         .orThrow
       eventWatch.await[ItemAttached](_.event.key == aSubagentRef.id)
@@ -282,11 +286,18 @@ final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 
     runSubagent(cSubagentRef) { subagent =>
       controller.addOrder(FreshOrder(aOrderId, cWorkflow.path)).await(99.s).orThrow
-      val events = eventWatch.await[OrderProcessingStarted](_.key == aOrderId, after = eventId)
-      assert(events.head.value.event == OrderProcessingStarted(cSubagentRef.id))
+
+      val started = eventWatch.await[OrderProcessingStarted](_.key == aOrderId, after = eventId)
+        .head.value.event
+      assert(started == OrderProcessingStarted(cSubagentRef.id))
+
+      val written = eventWatch.await[OrderStdoutWritten](_.key == aOrderId, after = eventId)
+        .head.value.event
+      assert(written == OrderStdoutWritten("STARTED\n"))
+
       // For this test, the terminating Subagent must no emit any event before shutdown
       subagent.journal.stopEventWatch()
-      //? sleep(1.s)  // JobDriver.stop still races with .processOrder(). Here we give processOrder() a second.
+      subagent.shutdown(Some(SIGKILL), dontWaitForDirector = true).await(99.s)
     }.await(199.s)
 
     // Subagent is unreachable now
@@ -395,7 +406,10 @@ final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
     SubagentConf.of(
       configDirectory = directory / "config",
       dataDirectory = directory / "data",
+      logDirectory = directory / "data" / "logs",
+      jobWorkingDirectory = directory,
       Seq(WebServerPort.localhost(port)),
+      killScript = None,
       name = s"SubagentTest-$name",
       config = config"""
         js7.job.execution.signed-script-injection-allowed = yes
@@ -403,7 +417,8 @@ final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
           permissions: [ AgentDirector ]
           password: ""
         }
-      """)
+        """
+        .withFallback(SubagentConf.defaultConfig))
 }
 
 object SubagentTest

@@ -1,5 +1,6 @@
 package js7.tests.jobs
 
+import cats.effect.ExitCase
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixTask
 import js7.data.order.Outcome
@@ -17,10 +18,10 @@ extends InternalJob
   def this(companion: SemaphoreJob.Companion[_ <: SemaphoreJob]) =
     this(companion.semaphore)
 
-  final def toOrderProcess(step: Step) = {
+  final def toOrderProcess(step: Step) =
     OrderProcess(
-      step.outTaskObserver.send("STARTED\n") *>
-        semaphore
+      step.outTaskObserver.send("STARTED\n")
+        .*>(semaphore
           .tapEval(sema =>
             sema.count.flatMap(count =>
               Task(logger.debug(s"${step.order.id} acquire ... (count=$count)"))))
@@ -28,7 +29,10 @@ extends InternalJob
           .logWhenItTakesLonger(s"${getClass.getSimpleName}.semaphore.acquire")
           .tapEval(_ => Task(logger.debug(s"${step.order.id} acquired")))
           .as(Outcome.succeeded))
-  }
+    .guaranteeCase {
+      case ExitCase.Completed => Task.unit
+      case exitCase => Task(logger.warn(exitCase.toString))
+    })
 }
 
 object SemaphoreJob

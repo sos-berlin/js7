@@ -3,7 +3,6 @@ package js7.subagent
 import cats.syntax.foldable._
 import cats.syntax.parallel._
 import cats.syntax.traverse._
-import java.nio.file.Path
 import js7.base.io.process.{ProcessSignal, Stderr, Stdout, StdoutOrStderr}
 import js7.base.log.Logger
 import js7.base.monixutils.AsyncMap
@@ -15,7 +14,7 @@ import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.event.JournaledState
 import js7.data.job.{JobConf, JobKey}
-import js7.data.order.OrderEvent.OrderProcessed
+import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.state.AgentStateView
 import js7.data.subagent.SubagentId
@@ -23,12 +22,14 @@ import js7.data.value.expression.Expression
 import js7.data.value.expression.scopes.FileValueState
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.WorkflowPosition
+import js7.journal.CommitOptions
 import js7.journal.state.StatePersistence
 import js7.launcher.StdObservers
 import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.internal.JobLauncher
 import js7.subagent.LocalSubagentDriver._
 import js7.subagent.client.SubagentDriver
+import js7.subagent.configuration.SubagentConf
 import js7.subagent.job.JobDriver
 import monix.eval.Task
 import monix.reactive.Observable
@@ -42,12 +43,12 @@ final class LocalSubagentDriver[S0 <: AgentStateView with JournaledState[S0]](
   val controllerId: ControllerId,
   jobLauncherConf: JobLauncherConf,
   protected val conf: SubagentDriver.Conf,
-  valueDirectory: Path)
+  subagentConf: SubagentConf)
 extends SubagentDriver
 {
   protected type S = S0
 
-  private val fileValueState = new FileValueState(valueDirectory)
+  private val fileValueState = new FileValueState(subagentConf.valueDirectory)
   private val jobKeyToJobDriver = AsyncMap.empty[JobKey, JobDriver]
   private val orderIdToJobDriver =
     new AsyncMap(Map.empty[OrderId, JobDriver]) with AsyncMap.Stoppable
@@ -111,6 +112,8 @@ extends SubagentDriver
     (body: StdObservers => Task[A])
   : Task[A] =
     Task.defer {
+      import subagentConf.{outerrCharBufferSize, stdouterr}
+
       val outErrStatistics = Map(
         Stdout -> new OutErrStatistics,
         Stderr -> new OutErrStatistics)
@@ -120,14 +123,14 @@ extends SubagentDriver
         Stderr -> Promise[Unit]())
 
       val out, err = PublishSubject[String]()
-      val stdObservers = new StdObservers(out, err, charBufferSize = conf.charBufferSize,
+      val stdObservers = new StdObservers(out, err, charBufferSize = outerrCharBufferSize,
         keepLastErrLine = keepLastErrLine)
 
       def writeObservableAsEvents(outerr: StdoutOrStderr, observable: Observable[String]) =
         observable
           .doAfterSubscribe(Task(observingStarted(outerr).success(())))
-          .buffer(Some(conf.stdouterr.delay), conf.stdouterr.chunkSize, toWeight = _.length)
-          .flatMap(strings => Observable.fromIterable(chunkStrings(strings, conf.stdouterr.chunkSize)))
+          .buffer(Some(stdouterr.delay), stdouterr.chunkSize, toWeight = _.length)
+          .flatMap(strings => Observable.fromIterable(chunkStrings(strings, stdouterr.chunkSize)))
           .flatMap(chunk => Observable.fromTask(
             outErrStatistics(outerr).count(
               chunk.length,
@@ -154,6 +157,16 @@ extends SubagentDriver
       }
     }
 
+  private val stdoutCommitDelay = CommitOptions(delay = subagentConf.stdoutCommitDelay)
+
+  private def persistStdouterr(orderId: OrderId, t: StdoutOrStderr, chunk: String): Task[Unit] =
+    persistence
+      .persistKeyedEventsLater((orderId <-: OrderStdWritten(t)(chunk)) :: Nil, stdoutCommitDelay)
+      .map {
+        case Left(problem) => logger.error(s"Emission of OrderStdWritten event failed: $problem")
+        case Right(_) =>
+      }
+
   // Create the JobDriver if needed
   private def jobDriver(workflowPosition: WorkflowPosition)
   : Task[Checked[(WorkflowJob, JobDriver)]] =
@@ -169,7 +182,8 @@ extends SubagentDriver
               Task.deferAction(implicit scheduler => Task {
                 val jobConf = JobConf(
                   jobKey, workflowJob, workflow, controllerId,
-                  sigkillDelay = workflowJob.sigkillDelay getOrElse conf.defaultJobSigkillDelay)
+                  sigkillDelay = workflowJob.sigkillDelay
+                    .getOrElse(subagentConf.defaultJobSigkillDelay))
                 new JobDriver(
                   jobConf,
                   id => persistence.currentState.pathToJobResource.checked(id)/*live!*/,

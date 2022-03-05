@@ -322,7 +322,7 @@ trait RealEventWatch extends EventWatch
 
         case o =>
           sys.error(s"RealEventWatch.await[${implicitClass[E].scalaName}]" +
-            s"(after=$after) unexpected EventSeq: $o")
+            s"(after=$after,timeout=${timeout.pretty}) unexpected EventSeq: $o")
       }
 }
 

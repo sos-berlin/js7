@@ -27,7 +27,7 @@ object SubagentRefStateEvent extends Event.Companion[SubagentRefStateEvent]
   final case class SubagentCouplingFailed(problem: Problem)
   extends SubagentRefStateEvent
 
-  /** Subagent should delete events until `untilEventId`. */
+  /** Subagent may delete events until `untilEventId`. */
   final case class SubagentEventsObserved(untilEventId: EventId)
   extends SubagentRefStateEvent
   {

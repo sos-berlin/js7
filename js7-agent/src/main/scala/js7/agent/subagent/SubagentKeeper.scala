@@ -45,7 +45,8 @@ final class SubagentKeeper(
 {
   private var reconnectDelayer: DelayIterator = null
   private val legacyLocalSubagentId = SubagentId.legacyLocalFromAgentPath(agentPath) // COMPATIBLE with v2.2
-  private val driverConf = SubagentDriver.Conf.fromConfig(agentConf.config)  // TODO
+  private val driverConf = SubagentDriver.Conf.fromConfig(agentConf.config,
+    commitDelay = agentConf.journalConf.delay)
   private val mutableFixedPriority = new FixedPriority
   private val initialized = SetOnce[Initialized]
   private val state = AsyncVariable[State](State.empty)
@@ -56,7 +57,7 @@ final class SubagentKeeper(
   : Task[Unit] =
     Task.deferAction { scheduler =>
       reconnectDelayer = DelayIterator
-        .fromConfig(agentConf.config, "js7.subagent-client.reconnect-delays")(scheduler)
+        .fromConfig(agentConf.config, "js7.subagent-driver.reconnect-delays")(scheduler)
         .orThrow
 
       val initialized = Initialized(agentPath, localSubagentId, controllerId)
@@ -305,7 +306,7 @@ final class SubagentKeeper(
       initialized.controllerId,
       jobLauncherConf,
       driverConf,
-      valueDirectory = agentConf.subagentConf.valueDirectory)
+      agentConf.subagentConf)
 
   private def newRemoteSubagentDriver(subagentRef: SubagentRef, initialized: Initialized) =
     new RemoteSubagentDriver(
@@ -318,11 +319,9 @@ final class SubagentKeeper(
       persistence,
       initialized.controllerId,
       driverConf,
+      agentConf.subagentConf,
       agentConf.recouplingStreamReaderConf,
       actorSystem)
-
-  def isInLocalProcess(orderId: OrderId) =
-    orderToSubagent.get(orderId).exists(_.isInstanceOf[LocalSubagentDriver[_]])
 }
 
 object SubagentKeeper

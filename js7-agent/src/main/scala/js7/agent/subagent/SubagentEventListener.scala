@@ -2,11 +2,13 @@ package js7.agent.subagent
 
 import cats.effect.ExitCase
 import cats.syntax.flatMap._
+import cats.syntax.foldable._
+import cats.syntax.traverse._
 import js7.agent.subagent.SubagentEventListener._
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax._
-import js7.base.monixutils.MonixBase.syntax.RichMonixTask
+import js7.base.monixutils.MonixBase.syntax.{RichMonixObservable, RichMonixTask}
 import js7.base.monixutils.ObservablePauseDetector.RichPauseObservable
 import js7.base.monixutils.Switch
 import js7.base.problem.Checked._
@@ -35,7 +37,7 @@ trait SubagentEventListener
   this: RemoteSubagentDriver =>
 
   private val logger = Logger.withPrefix[SubagentEventListener](subagentId.toString)
-  private lazy val stdoutCommitOptions = CommitOptions(delay = conf.stdoutCommitDelay)  // TODO Use it!
+  private lazy val stdoutCommitOptions = CommitOptions(delay = subaagentConf.stdoutCommitDelay)  // TODO Use it!
   private val stopObserving = MVar.empty[Task, Unit]().memoize
   private val observingStopped = MVar.empty[Task, Unit]().memoize
   private val _isHeartbeating = Atomic(false)
@@ -53,66 +55,84 @@ trait SubagentEventListener
           }
         })
 
-
   protected final def startEventListener: Task[Unit] =
     logger.debugTask(Task.defer {
       if (isListening.getAndSet(true)) {
         val msg = "Duplicate startEventListener"
         logger.error(msg)
         Task.raiseError(new RuntimeException(s"$toString: $msg"))
-      } else {
-        val recouplingStreamReader = newEventListener()
-        recouplingStreamReader
-          .observe(client, after = persistence.currentState.idToSubagentRefState(subagentId).eventId)
-          .takeUntilEval(stopObserving.flatMap(_.read))
-          .mapEval { stamped =>
-            val observed = subagentId <-: SubagentEventsObserved(stamped.eventId)
-            stamped.value match {
-              case keyedEvent @ KeyedEvent(orderId: OrderId, event: OrderEvent) =>
-                event match {
-                  // TODO Discard (while logging an error) inapplicable (wrong) events
-                  case _: OrderStdWritten =>
-                    // TODO Save Timestamp
-                    persistence
-                      .persistKeyedEvents(keyedEvent :: observed :: Nil/*, stdoutCommitOptions,
-                        commitLater = conf.stdoutCommitDelay.isPositive*/)
-                      .map(_.orThrow/*???*/)
-
-                  case orderProcessed: OrderProcessed =>
-                    // TODO Save Timestamp
-                    persistence
-                      .persistKeyedEvents(keyedEvent :: observed :: Nil)
-                      .map(_.orThrow/*???*/)
-                      .*>(onOrderProcessed(orderId, orderProcessed))
-
-                  case _ =>
-                    logger.error(s"Unexpected event: $keyedEvent")
-                    Task.unit
-                }
-
-              case KeyedEvent(_: NoKey, SubagentEvent.SubagentShutdown) =>
-                onSubagentDied(SubagentShutdown)
-
-              case KeyedEvent(_: NoKey, event: SubagentEvent) =>
-                logger.debug(event.toString)
-                persistence.persistKeyedEvent(observed)
-                  .map(_.orThrow)
-
-              case keyedEvent =>
-                logger.error(s"Unexpected event: $keyedEvent")
-                Task.unit
-            }
-          }
-          .guarantee(
-            recouplingStreamReader.terminateAndLogout.void
-              .logWhenItTakesLonger)
-          .guaranteeCase(exitCase => Task {
-            logger.debug(s"Observing events => $exitCase")
-          })
-          .completedL
-          .startAndForget
-      }
+      } else
+        logger.debugTask("Observing events")(
+          observeEvents
+        ).startAndForget
     })
+
+  private def observeEvents: Task[Unit] = {
+    val recouplingStreamReader = newEventListener()
+    recouplingStreamReader
+      .observe(client, after = persistence.currentState.idToSubagentRefState(subagentId).eventId)
+      .takeUntilEval(stopObserving.flatMap(_.read))
+      .buffer(
+        Some(conf.eventBufferDelay max conf.commitDelay),
+        maxCount = conf.eventBufferSize)  // ticks
+      .filter(_.nonEmpty)   // Ignore empty ticks
+      .mapEval { stampedSeq =>
+        val lastEventId = stampedSeq.last.eventId
+        val (updatedStampedSeq0, followUps) = stampedSeq.map(handleEvent).unzip
+        val updatedStampedSeq = updatedStampedSeq0.flatten
+        val events = updatedStampedSeq.view.map(_.value)
+          .concat((subagentId <-: SubagentEventsObserved(lastEventId)) :: Nil)
+          .toVector
+        // TODO Save Stamped timestamp
+        persistence
+          .persistKeyedEvents(events, CommitOptions(transaction = true))
+          .map(_.orThrow/*???*/)
+          // After an OrderProcessed event the observed EventIds must be released at the Subagent,
+          // to terminate StartOrderProcess command idempotency detection and
+          // allow a new StartOrderProcess command for a next process.
+          .*>(updatedStampedSeq
+            .collect { case Stamped(_, _, KeyedEvent(o: OrderId, _: OrderProcessed)) => o }
+            .traverse(detachProcessedOrder))
+          .*>(releaseEvents(lastEventId))
+          .*>(followUps.combineAll)
+      }
+      .guarantee(recouplingStreamReader
+        .terminateAndLogout
+        .void
+        .logWhenItTakesLonger)
+      .completedL
+  }
+
+  private def handleEvent(stamped: Stamped[AnyKeyedEvent])
+  : (Option[Stamped[AnyKeyedEvent]], Task[Unit]) =
+    stamped.value match {
+      case keyedEvent @ KeyedEvent(orderId: OrderId, event: OrderEvent) =>
+        event match {
+          // TODO Discard (while logging an error) inapplicable (wrong) events
+          case _: OrderStdWritten =>
+            // TODO Save Timestamp
+            Some(stamped) -> Task.unit
+
+          case orderProcessed: OrderProcessed =>
+            // TODO Save Timestamp
+            Some(stamped) -> onOrderProcessed(orderId, orderProcessed)
+
+          case _ =>
+            logger.error(s"Unexpected event: $keyedEvent")
+            None -> Task.unit
+        }
+
+      case KeyedEvent(_: NoKey, SubagentEvent.SubagentShutdown) =>
+        None -> onSubagentDied(SubagentShutdown)
+
+      case KeyedEvent(_: NoKey, event: SubagentEvent) =>
+        logger.debug(event.toString)
+        None -> Task.unit
+
+      case keyedEvent =>
+        logger.error(s"Unexpected event: $keyedEvent")
+        None -> Task.unit
+    }
 
   private def newEventListener() =
     new RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], SubagentClient](
@@ -145,7 +165,7 @@ trait SubagentEventListener
                   else {
                     val problem = Problem.pure(s"Missing heartbeat from $subagentId")
                     logger.warn(problem.toString)
-                    Observable.fromTask(onSubagentCouplingFailed(Some(problem)))
+                    Observable.fromTask(onSubagentDecoupled(Some(problem)))
                   })
                 .filter(_ != StampedHeartbeat)
                 .takeWhile(_ != PauseStamped)
@@ -154,13 +174,13 @@ trait SubagentEventListener
                     Task.defer {
                       val problem = Problem.pure(s"$subagentId event stream: $exitCase")
                       logger.warn(problem.toString)
-                      onSubagentCouplingFailed(Some(problem))
+                      onSubagentDecoupled(Some(problem))
                     }))))
               .map(Right(_))
         }
 
       override protected def onCouplingFailed(api: SubagentClient, problem: Problem) =
-        onSubagentCouplingFailed(Some(problem)) *>
+        onSubagentDecoupled(Some(problem)) *>
           Task {
             if (lastProblem contains problem) {
               logger.debug(s"Coupling failed: $problem")
@@ -172,7 +192,7 @@ trait SubagentEventListener
           }
 
       override protected def onDecoupled =
-        onSubagentCouplingFailed(None) *>
+        onSubagentDecoupled(None) *>
           Task.defer {
             logger.debug("onDecoupled")
             coupled.switchOff
@@ -191,8 +211,8 @@ trait SubagentEventListener
           .map(_.orThrow))
     })
 
-  private def onSubagentCouplingFailed(problem: Option[Problem]): Task[Unit] =
-    logger.traceTask("onSubagentCouplingFailed", problem.toString)(
+  private def onSubagentDecoupled(problem: Option[Problem]): Task[Unit] =
+    logger.traceTask("onSubagentDecoupled", problem.toString)(
       Task.when(_isHeartbeating.getAndSet(false))(
         persistence
           .lock(subagentId)(

@@ -95,7 +95,9 @@ object SubagentCommand extends CommonCommand.Companion
       c => SignableItem.signedJsonDecoder.decodeJson(c.value).map(AttachSignedItem(_))
   }
 
-  sealed trait OrderCommand extends SubagentCommand {
+  sealed trait Queueable extends SubagentCommand
+
+  sealed trait OrderCommand extends Queueable {
     def orderId: OrderId
   }
 
@@ -116,6 +118,11 @@ object SubagentCommand extends CommonCommand.Companion
     type Response = Accepted
   }
 
+  final case class DetachProcessedOrder(orderId: OrderId)
+  extends OrderCommand {
+    type Response = Accepted
+  }
+
   final case class ShutDown(
     processSignal: Option[ProcessSignal] = None,
     restart: Boolean = false)
@@ -125,6 +132,17 @@ object SubagentCommand extends CommonCommand.Companion
   object ShutDown {
     private implicit val x = withDefaults
     implicit val jsonCodec = deriveConfiguredCodec[ShutDown]
+  }
+
+  /** Some outer component no longer needs the events until (including) the given `untilEventId`.
+   * JS7 may delete these events to reduce the journal,
+   * keeping all events after `untilEventId`.
+   * The command MUST also be issued after OrderProcessed to release the OrderId.
+   * This is to detect a duplicate (idempotent) StartOrderProcess command.
+   */
+  final case class ReleaseEvents(untilEventId: EventId)
+  extends Queueable {
+    type Response = Accepted
   }
 
   case object NoOperation extends SubagentCommand {
@@ -139,8 +157,10 @@ object SubagentCommand extends CommonCommand.Companion
     //Subtype(deriveCodec[AttachUnsignedItem]),
     Subtype[AttachSignedItem],
     Subtype(deriveCodec[StartOrderProcess]),
-    Subtype(deriveCodec[KillProcess]),
+    Subtype(deriveCodec[DetachProcessedOrder]),
+    Subtype(deriveCodec[ReleaseEvents]),
     Subtype[ShutDown],
+    Subtype(deriveCodec[KillProcess]),
     Subtype(NoOperation))
 
   implicit val responseJsonCodec = TypedJsonCodec[Response](

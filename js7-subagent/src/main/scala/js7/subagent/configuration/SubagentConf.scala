@@ -2,10 +2,9 @@ package js7.subagent.configuration
 
 import com.typesafe.config.Config
 import java.nio.file.Files.{createDirectory, exists}
-import java.nio.file.{Path, Paths}
+import java.nio.file.Path
 import js7.base.configutils.Configs
-import js7.base.configutils.Configs.{ConvertibleConfig, RichConfig}
-import js7.base.convert.AsJava.asAbsolutePath
+import js7.base.configutils.Configs.RichConfig
 import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.file.FileUtils.{EmptyPath, WorkingDirectory}
@@ -14,11 +13,11 @@ import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.web.data.WebServerPort
-import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.{CommonConfiguration, Js7Configuration}
 import js7.common.http.configuration.RecouplingStreamReaderConfs
 import js7.launcher.configuration.{JobLauncherConf, ProcessKillScript}
 import js7.launcher.process.ProcessKillScriptProvider
+import js7.subagent.client.SubagentDriver.StdouterrConf
 import js7.subagent.configuration.SubagentConf._
 import monix.execution.schedulers.SchedulerService
 import scala.concurrent.duration.FiniteDuration
@@ -31,6 +30,9 @@ final case class SubagentConf(
   webServerPorts: Seq[WebServerPort],
   defaultJobSigkillDelay: FiniteDuration,
   killScript: Option[ProcessKillScript],
+  stdouterr: StdouterrConf,
+  outerrCharBufferSize: Int,
+  stdoutCommitDelay: FiniteDuration,
   name: String,
   config: Config)
 extends CommonConfiguration
@@ -38,21 +40,6 @@ extends CommonConfiguration
   require(jobWorkingDirectory.isAbsolute)
 
   lazy val scriptInjectionAllowed = config.getBoolean("js7.job.execution.signed-script-injection-allowed")
-
-  private def withCommandLineArguments(a: CommandLineArguments): SubagentConf = {
-    val common = CommonConfiguration.Common.fromCommandLineArguments(a)
-    copy(
-      webServerPorts = common.webServerPorts,
-      logDirectory = a.optionAs("--log-directory=")(asAbsolutePath) getOrElse logDirectory,
-      jobWorkingDirectory = a.as("--job-working-directory=", jobWorkingDirectory)(asAbsolutePath))
-    .withKillScript(a.optionAs[String]("--kill-script="))
-  }
-
-  private def withKillScript(killScriptPath: Option[String]) = killScriptPath match {
-    case None => this  // --kill-script= not given: Agent uses the internally provided kill script
-    case Some("") => copy(killScript = None)      // --kill-script= (empty argument) means: don't use any kill script
-    case Some(o) => copy(killScript = Some(ProcessKillScript(Paths.get(o).toAbsolutePath)))
-  }
 
   def executablesDirectory: Path =
     configDirectory / "executables"
@@ -144,21 +131,27 @@ object SubagentConf
   def of(
     configDirectory: Path,
     dataDirectory: Path,
+    logDirectory: Path,
+    jobWorkingDirectory: Path,
     webServerPorts: Seq[WebServerPort],
+    killScript: Option[ProcessKillScript],
     config: Config,
     name: String = "JS7")
   : SubagentConf = {
     val myConfig = config.withFallback(SubagentConf.defaultConfig)
+    val outErrConf = StdouterrConf.fromConfig(config)
     SubagentConf(
       configDirectory = configDirectory,
       dataDirectory = dataDirectory,
-      logDirectory = dataDirectory / "logs",
-      jobWorkingDirectory = dataDirectory,
-      webServerPorts = webServerPorts,
+      logDirectory = logDirectory,
+      jobWorkingDirectory = jobWorkingDirectory,
+      webServerPorts,
       defaultJobSigkillDelay = myConfig.finiteDuration("js7.job.execution.sigkill-delay").orThrow,
-      killScript = myConfig
-        .optionAs[String]("js7.job.execution.kill.script")
-        .map(o => ProcessKillScript(Paths.get(o).toAbsolutePath)),
+      killScript,
+      outErrConf,
+      outerrCharBufferSize = config.memorySizeAsInt("js7.order.stdout-stderr.char-buffer-size").orThrow
+        .min(outErrConf.chunkSize),
+      stdoutCommitDelay = config.finiteDuration("js7.order.stdout-stderr.commit-delay").orThrow,
       name = name,
       myConfig.withFallback(SubagentConf.defaultConfig))
   }

@@ -2,21 +2,18 @@ package js7.subagent.client
 
 import com.typesafe.config.Config
 import js7.base.configutils.Configs.RichConfig
-import js7.base.io.process.{ProcessSignal, StdoutOrStderr}
-import js7.base.log.Logger
+import js7.base.io.process.ProcessSignal
 import js7.base.problem.Checked
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.event.JournaledState
-import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
+import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId}
 import js7.data.state.AgentStateView
 import js7.data.subagent.SubagentId
 import js7.data.value.expression.Expression
 import js7.data.workflow.instructions.Execute
-import js7.journal.CommitOptions
 import js7.journal.state.StatePersistence
-import js7.subagent.client.SubagentDriver._
 import monix.eval.Task
 import scala.concurrent.duration.FiniteDuration
 
@@ -42,17 +39,6 @@ trait SubagentDriver
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): Task[Unit]
 
-  private val delayCommit = CommitOptions(delay = conf.stdoutCommitDelay)
-
-  protected final def persistStdouterr(orderId: OrderId, t: StdoutOrStderr, chunk: String)
-  : Task[Unit] =
-    persistence
-      .persistKeyedEventsLater((orderId <-: OrderStdWritten(t)(chunk)) :: Nil, delayCommit)
-      .map {
-        case Left(problem) => logger.error(s"Emission of OrderStdWritten event failed: $problem")
-        case Right(_) =>
-      }
-
   final def orderToExecuteDefaultArguments(order: Order[Order.Processing]) =
     persistence.state
       .map(_
@@ -67,24 +53,17 @@ trait SubagentDriver
 
 object SubagentDriver
 {
-  private val logger = Logger[this.type]
-
   final case class Conf(
-    stdoutCommitDelay: FiniteDuration,
-    charBufferSize: Int,
-    stdouterr: StdouterrConf,
-    defaultJobSigkillDelay: FiniteDuration)
+    //recouplingStreamReader: RecouplingStreamReaderConf,
+    eventBufferDelay: FiniteDuration,
+    eventBufferSize: Int,
+    commitDelay: FiniteDuration)
   object Conf {
-    def fromConfig(config: Config) = {
-      val outErrConf = StdouterrConf.fromConfig(config)
+    def fromConfig(config: Config, commitDelay: FiniteDuration) = {
       new Conf(
-        stdoutCommitDelay = config.getDuration("js7.order.stdout-stderr.commit-delay")
-          .toFiniteDuration,
-        charBufferSize = config.memorySizeAsInt("js7.order.stdout-stderr.char-buffer-size")
-          .orThrow.min(outErrConf.chunkSize),
-        outErrConf,
-        defaultJobSigkillDelay = config.getDuration("js7.job.execution.sigkill-delay")
-          .toFiniteDuration)
+        eventBufferDelay  = config.finiteDuration("js7.subagent-driver.event-buffer-delay").orThrow,
+        eventBufferSize   = config.getInt        ("js7.subagent-driver.event-buffer-size"),
+        commitDelay = commitDelay)
     }
   }
 

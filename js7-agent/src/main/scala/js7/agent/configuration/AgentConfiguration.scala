@@ -30,7 +30,6 @@ import js7.journal.data.JournalMeta
 import js7.launcher.configuration.{JobLauncherConf, ProcessKillScript}
 import js7.subagent.configuration.SubagentConf
 import monix.execution.schedulers.SchedulerService
-import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters._
 
 /**
@@ -42,7 +41,6 @@ final case class AgentConfiguration(
   webServerPorts: Seq[WebServerPort],
   logDirectory: Path,
   jobWorkingDirectory: Path = WorkingDirectory,
-  defaultJobSigkillDelay: FiniteDuration,
   killScript: Option[ProcessKillScript],  // TODO Duplicate with SubagentConf
   isBareSubagent: Boolean = false,
   implicit val akkaAskTimeout: Timeout,
@@ -105,16 +103,15 @@ extends CommonConfiguration
   val journalMeta = JournalMeta(AgentState, stateDirectory / "agent" )
 
   lazy val subagentConf =
-    SubagentConf(
+    SubagentConf.of(
       configDirectory = configDirectory,
       dataDirectory = dataDirectory,
       logDirectory = logDirectory,
       jobWorkingDirectory = jobWorkingDirectory,
       webServerPorts,
-      defaultJobSigkillDelay = defaultJobSigkillDelay,
       killScript,
-      name = name,
-      config
+      config,
+      name = name
     ).finishAndProvideFiles
 
   // Suppresses Config (which may contain secrets)
@@ -153,7 +150,6 @@ object AgentConfiguration
       dataDirectory = dataDirectory,
       webServerPorts = Nil,
       logDirectory = config.optionAs("js7.job.execution.log.directory")(asAbsolutePath) getOrElse defaultLogDirectory(dataDirectory),
-      defaultJobSigkillDelay = config.getDuration("js7.job.execution.sigkill-delay").toFiniteDuration,
       killScript = Some(DelayUntilFinishKillScript),  // Changed later
       isBareSubagent = config.getBoolean("js7.subagent.bare"),
       akkaAskTimeout = config.getDuration("js7.akka.ask-timeout").toFiniteDuration,

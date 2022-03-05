@@ -10,7 +10,6 @@ import js7.base.convert.As.StringAsBoolean
 import js7.base.io.file.FileUtils._
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.time.ScalaTime._
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.commandline.CommandLineArguments
 import js7.journal.configuration.JournalConf
@@ -27,7 +26,10 @@ final class AgentConfigurationTest extends AnyFreeSpec
 
   "Shortest argument list" in {
     provideConfigAndData { (config, data) =>
-      val c = AgentConfiguration.fromCommandLine(CommandLineArguments(s"--config-directory=$config" :: s"--data-directory=$data" :: Nil))
+      val c = AgentConfiguration
+        .fromCommandLine(CommandLineArguments(Seq(
+          s"--config-directory=$config",
+          s"--data-directory=$data")))
         .finishAndProvideFiles
       assert(c.copy(config = DefaultConfig) == AgentConfiguration(
         configDirectory = config,
@@ -35,7 +37,6 @@ final class AgentConfigurationTest extends AnyFreeSpec
         webServerPorts = Nil,
         logDirectory = data / "logs",
         jobWorkingDirectory = WorkingDirectory,
-        defaultJobSigkillDelay = 15.s,
         killScript = Some(ProcessKillScript(""))/*unused, replaced by SubagentConf.killScript*/,
         akkaAskTimeout = 1.hour,
         journalConf = JournalConf.fromConfig(DefaultConfig)

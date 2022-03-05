@@ -13,7 +13,7 @@ final class SubagentDispatcher(
   protected val postCommand: PostCommand)
 extends CommandDispatcher
 {
-  protected type Command = SubagentCommand.OrderCommand
+  protected type Command = SubagentCommand.Queueable
 
   protected def name = subagentId.toString
 
@@ -22,6 +22,6 @@ extends CommandDispatcher
 
 object SubagentDispatcher
 {
-  type PostCommand = (Numbered[SubagentCommand.OrderCommand], SubagentRunId, Switch.ReadOnly) =>
+  type PostCommand = (Numbered[SubagentCommand.Queueable], SubagentRunId, Switch.ReadOnly) =>
     Task[Checked[Unit]]
 }

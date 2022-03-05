@@ -1,6 +1,6 @@
 package js7.journal.watch
 
-import js7.base.problem.Checked
+import js7.base.problem.{Checked, Problem}
 import js7.base.utils.BinarySearch.binarySearch
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{AsyncLock, CloseableIterator}
@@ -23,6 +23,7 @@ extends StatePersistence[S] with RealEventWatch
   private val lock = AsyncLock("InMemoryJournal")
   @volatile private var _tornEventId = EventId.BeforeFirst
   @volatile private var _lastEventId = EventId.BeforeFirst
+  // FIXME Limit number of events (or total size)!
   @volatile private var _queue = Vector.empty[Stamped[KeyedEvent[Event]]]
   @volatile private var _state = initial
   @volatile private var eventWatchStopped = false
@@ -73,7 +74,9 @@ extends StatePersistence[S] with RealEventWatch
     persistKeyedEvents(keyedEvents, options)
       .rightAs(())
 
-  def persist[E <: Event](stateToEvents: S => Checked[Seq[KeyedEvent[E]]])
+  def persist[E <: Event](
+    options: CommitOptions = CommitOptions.default,
+    stateToEvents: S => Checked[Seq[KeyedEvent[E]]])
   : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
     lock.lock(Task {
       synchronized {
@@ -106,16 +109,19 @@ extends StatePersistence[S] with RealEventWatch
       since = now,
       isLastOfFlushedOrSynced = true)).view)
 
-  def releaseEvents(untilEventId: EventId): Task[Unit] =
+  def releaseEvents(untilEventId: EventId): Task[Checked[Unit]] =
     lock.lock(Task {
       synchronized {
         val (index, found) =
           binarySearch(0, _queue.length, i => _queue(i).eventId.compare(untilEventId))
-        if (!found) throw new IllegalArgumentException(
-          s"Unknown EventId: ${EventId.toString(untilEventId)}")
-        else if (index > 0) {
-          _tornEventId = _queue(index).eventId
-          _queue = _queue.drop(index)
+        if (!found)
+          Left(Problem(s"Unknown EventId: ${EventId.toString(untilEventId)}"))
+        else {
+          if (index > 0) {
+            _tornEventId = _queue(index).eventId
+            _queue = _queue.drop(index)
+          }
+          Checked.unit
         }
       }
     })

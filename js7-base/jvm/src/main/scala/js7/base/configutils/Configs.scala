@@ -120,7 +120,8 @@ object Configs
       underlying.hasPath(path) ? f(path)
 
     def finiteDuration(path: String): Checked[FiniteDuration] =
-      Right(underlying.getDuration(path).toFiniteDuration)
+      Checked.catchNonFatal(
+        underlying.getDuration(path).toFiniteDuration)
 
     def memorySizeAsInt(path: String): Checked[Int] = {
       val bigInteger = underlying.getMemorySize(path).toBytesBigInteger
