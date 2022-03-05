@@ -45,11 +45,16 @@ class AsyncMap[K: ClassTag, V](initial: Map[K, V] = Map.empty[K, V])
 
   /** Not synchronized with other updates! */
   final def removeAll(implicit src: sourcecode.Enclosing): Task[Map[K, V]] =
+    removeConditional(_ => true)
+
+  /** Not synchronized with other updates! */
+  final def removeConditional(predicate: ((K, V)) => Boolean)(implicit src: sourcecode.Enclosing)
+  : Task[Map[K, V]] =
     shortLock.lock(Task {
-      val result = _map
-      _map = Map.empty
+      val (removed, remaining) = _map.partition(predicate)
+      _map = remaining
       onEntryRemoved()
-      result
+      removed
     })
 
   final def remove(key: K)(implicit src: sourcecode.Enclosing): Task[Option[V]] =

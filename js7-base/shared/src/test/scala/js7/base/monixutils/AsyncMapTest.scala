@@ -220,12 +220,21 @@ final class AsyncMapTest extends AsyncFreeSpec
     assert(!asyncMap.isEmpty)
   }
 
-  "removeAll" in {
-    asyncMap.removeAll
+  "removeConditional" in {
+    asyncMap.removeConditional(_._1 <= 2)
       .map(all => assert(all == Map(
         0 -> "FIRST-UPDATED",
         1 -> "EINS",
-        2 -> "FIRST",
+        2 -> "FIRST")))
+      .map(_ => assert(asyncMap.toMap == Map(
+        3 -> "INSERTED",
+        4 -> "FIRST")))
+      .runToFuture
+  }
+
+  "removeAll" in {
+    asyncMap.removeAll
+      .map(all => assert(all == Map(
         3 -> "INSERTED",
         4 -> "FIRST")))
       .map(_ => assert(asyncMap.toMap.isEmpty))
