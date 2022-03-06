@@ -18,7 +18,7 @@ import js7.base.monixutils.MonixBase.syntax.{RichCheckedTask, RichMonixTask}
 import js7.base.monixutils.{AsyncMap, AsyncVariable}
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
-import js7.base.time.DelayIterator
+import js7.base.time.{DelayIterator, DelayIterators}
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SetOnce
@@ -56,7 +56,7 @@ final class SubagentKeeper(
   def initialize(localSubagentId: Option[SubagentId], controllerId: ControllerId)
   : Task[Unit] =
     Task.deferAction { scheduler =>
-      reconnectDelayer = DelayIterator
+      reconnectDelayer = DelayIterators
         .fromConfig(agentConf.config, "js7.subagent-driver.reconnect-delays")(scheduler)
         .orThrow
 
@@ -220,13 +220,18 @@ final class SubagentKeeper(
           })
     }
 
-  def remove(subagentId: SubagentId): Task[Unit] =
-    state
-      .updateWithResult(state => Task(
-        state.remove(subagentId) ->
-          state.idToDriver.get(subagentId)))
-      .flatMap(_.fold(Task.unit)(_.stop(Some(SIGKILL))))
-      .void
+  def remove(subagentId: SubagentId): Task[Checked[Unit]] =
+    logger.debugTask("remove", subagentId)(Task.defer {
+      state.get.idToDriver
+        .get(subagentId)
+        .fold(Task.right(()))(subagentDriver =>
+          subagentDriver.shutdown
+            .*>(state
+              .update(state => Task(
+                state.remove(subagentId))))
+            .*>(subagentDriver.stop(signal = None))
+            .map(Right(_)))
+    })
 
   def recoverSubagents(subagentRefStates: Seq[SubagentRefState]): Task[Checked[Unit]] =
     subagentRefStates
@@ -379,7 +384,7 @@ object SubagentKeeper
 
     def selectNext(fixedPriority: FixedPriority): Option[SubagentDriver] =
       prioritized
-        .selectNext(fixedPriority, _.driver.isHeartbeating)
+        .selectNext(fixedPriority, _.driver.isAcceptingOrder)
         .map(_.driver)
   }
   private object State {

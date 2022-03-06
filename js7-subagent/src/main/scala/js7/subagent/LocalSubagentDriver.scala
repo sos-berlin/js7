@@ -5,6 +5,7 @@ import cats.syntax.parallel._
 import cats.syntax.traverse._
 import js7.base.io.process.{ProcessSignal, Stderr, Stdout, StdoutOrStderr}
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax._
 import js7.base.monixutils.AsyncMap
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.{Checked, Problem}
@@ -52,20 +53,26 @@ extends SubagentDriver
   private val jobKeyToJobDriver = AsyncMap.empty[JobKey, JobDriver]
   private val orderIdToJobDriver =
     new AsyncMap(Map.empty[OrderId, JobDriver]) with AsyncMap.Stoppable
-  val isHeartbeating = true
+  @volatile private var stopping = false
+
+  def isHeartbeating = true
+
+  def isStopping = stopping
+
+  def isShuttingDown = false
 
   def start = Task(logger.debug("Start LocalSubagentDriver"))
 
   def stop(signal: Option[ProcessSignal]) =
     Task.defer {
+      stopping = true
       val orderCount = orderIdToJobDriver.toMap.size
       logger.info(s"Stopping" + ((orderCount > 0) ?? s", waiting for $orderCount processes"))
       Task
         .parZip2(
           orderIdToJobDriver.stop
             .tapEval(_ => Task(logger.debug("orderIdToJobDriver stopped"))),
-          signal.fold(Task.unit)(killAllAndStop)
-            .tapEval(_ => Task(logger.debug("killAllAndStop completed"))))
+          signal.fold(Task.unit)(killAllAndStop))
         .tapEval(_ => Task(logger.debug("Stopped")))
         .*>(Task {
           fileValueState.close()
@@ -73,13 +80,17 @@ extends SubagentDriver
     }
 
   private def killAllAndStop(signal: ProcessSignal): Task[Unit] =
-    Task(jobKeyToJobDriver.toMap.values)
-      .flatMap(_
-        .toVector
-        .parUnorderedTraverse(jobDriver => jobDriver
-          .stop(signal)
-          .onErrorHandle(t => logger.error(s"Stop $jobDriver: ${t.toStringWithCauses}")))
-        .map(_.combineAll))
+    logger.debugTask("killAllAndStop", signal)(
+      Task(jobKeyToJobDriver.toMap.values)
+        .flatMap(_
+          .toVector
+          .parUnorderedTraverse(jobDriver => jobDriver
+            .stop(signal)
+            .onErrorHandle(t => logger.error(s"Stop $jobDriver: ${t.toStringWithCauses}")))
+          .map(_.combineAll)))
+
+  def shutdown =
+    Task.raiseError(new NotImplementedError("LocalSubagentDriver.stop"))
 
   def processOrder(order: Order[Order.Processing]): Task[Checked[OrderProcessed]] =
     orderToExecuteDefaultArguments(order)

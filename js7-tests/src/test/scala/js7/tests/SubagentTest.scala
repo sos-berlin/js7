@@ -3,6 +3,7 @@ package js7.tests
 import cats.effect.Resource
 import java.nio.file.Files.{createDirectories, createDirectory}
 import java.nio.file.Path
+import java.util.concurrent.TimeoutException
 import js7.agent.RunningAgent
 import js7.base.auth.Admission
 import js7.base.configutils.Configs.HoconStringInterpolator
@@ -24,7 +25,7 @@ import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode
 import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.event.{EventId, KeyedEvent, Stamped}
-import js7.data.item.BasicItemEvent.ItemAttached
+import js7.data.item.BasicItemEvent.{ItemAttached, ItemDetachable, ItemDetached}
 import js7.data.item.ItemOperation
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTerminated}
 import js7.data.order.Outcome.Disrupted.ProcessLost
@@ -230,7 +231,80 @@ final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
     eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
   }
 
+  "Disable local Subagent" in {
+    // Disable local Subagent and bSubagentRef. We want use only cSubagentRef
+    val aSubagentRef = directoryProvider.subagentRefs(0)
+    controllerApi
+      .updateUnsignedSimpleItems(Seq(
+        aSubagentRef.copy(
+          disabled = true,
+          itemRevision = None)))
+      .await(99.s)
+      .orThrow
+    eventWatch.await[ItemAttached](_.event.key == aSubagentRef.id)
+  }
+
+  "Remove Subagent" - {
+    "Remove bSubagent" in {
+      val eventId = eventWatch.lastAddedEventId
+      controllerApi
+        .updateItems(Observable(
+          ItemOperation.DeleteSimple(bSubagentRef.path)))
+        .await(99.s)
+        .orThrow
+      eventWatch.await[ItemDetachable](_.event.key == bSubagentRef.id, after = eventId)
+    }
+
+    "Remove Subagent while an Order is processed" in {
+      val eventId = eventWatch.lastAddedEventId
+      val orderId = OrderId("REMOVE-SUBAGENT")
+      runSubagent(cSubagentRef) { subagent =>
+        controller.addOrder(FreshOrder(orderId, cWorkflow.path)).await(99.s).orThrow
+        val started = eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
+          .head.value.event
+        assert(started == OrderProcessingStarted(cSubagentRef.path))
+        eventWatch.await[OrderStdoutWritten](_.key == orderId, after = eventId)
+
+        controllerApi
+          .updateItems(Observable(
+            ItemOperation.DeleteSimple(cSubagentRef.path)))
+          .await(99.s)
+          .orThrow
+        eventWatch.await[ItemDetachable](_.event.key == cSubagentRef.id, after = eventId)
+
+        // ItemDetached is delayed until no Order is being processed
+        intercept[TimeoutException](
+          eventWatch.await[ItemDetached](_.event.key == cSubagentRef.id, after = eventId, timeout = 1.s))
+
+        TestSemaphoreJob.continue()
+        val processed = eventWatch.await[OrderProcessed](_.key == orderId, after = eventId)
+          .head.value.event
+        assert(processed == OrderProcessed(Outcome.succeeded))
+
+        eventWatch.await[ItemDetached](_.event.key == cSubagentRef.id, after = eventId)
+        //subagent.shutdown(signal = None).await(99.s)
+        subagent.untilStopped.await(99.s)
+      }.await(99.s)
+    }
+
+    // TODO Das Löschen kann dauern, wenn der Auftrag lange dauert,
+    //  länger als ein HTTP-Request braucht.
+    //  Also nicht auf Antwort auf AgentCommand.DetachItem warten,
+    //  sondern auf ein Event: ItemDetachable (vom Agenten?)
+
+    "Don't allow orders starts under removal" in {
+      pending // TODO
+    }
+
+    "Remove Subagent and continue removal after Subagent's restart" in {
+      pending // TODO
+    }
+  }
+
   "Restart Director" in {
+    controllerApi.updateUnsignedSimpleItems(Seq(cSubagentRef)).await(99.s).orThrow
+    eventWatch.await[ItemAttached](_.event.key == cSubagentRef.id)
+
     val orderId = OrderId("RESTART-DIRECTOR")
 
     runSubagent(cSubagentRef) { _ =>
@@ -264,21 +338,6 @@ final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
 
   "Restart remote Subagent while a job is running" in {
     var eventId = eventWatch.lastAddedEventId
-
-    locally {
-      // Disable local Subagent and bSubagentRef. We want use only cSubagentRef
-      val aSubagentRef = directoryProvider.subagentRefs(0)
-      controllerApi
-        .updateItems(Observable(
-          ItemOperation.AddOrChangeSimple(
-            aSubagentRef.copy(
-              disabled = true,
-              itemRevision = None)),
-          ItemOperation.DeleteSimple(bSubagentRef.path)))
-        .await(99.s)
-        .orThrow
-      eventWatch.await[ItemAttached](_.event.key == aSubagentRef.id)
-    }
 
     val aOrderId = OrderId("A-RESTART-SUBAGENT")
 

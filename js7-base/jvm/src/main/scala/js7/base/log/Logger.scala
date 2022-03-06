@@ -83,13 +83,18 @@ object Logger
           task
         else {
           val argsString = args.toString
-          val a1 = if (argsString.isEmpty) "" else " "
-          val a2 = if (argsString.isEmpty) "" else argsString
-          if (trace) {
-            logger.trace(s"↘︎ $function$a1$a2 ...")
-          } else {
-            logger.debug(s"↘︎ $function$a1$a2 ...")
-          }
+          if (argsString.isEmpty) {
+            if (trace) {
+              logger.trace(s"↘︎ $function ...")
+            } else {
+              logger.debug(s"↘︎ $function ...")
+            }
+          } else
+            if (trace) {
+              logger.trace(s"↘︎ $function($argsString) ...")
+            } else {
+              logger.debug(s"↘︎ $function($argsString) ...")
+            }
 
           val t = System.nanoTime()
 

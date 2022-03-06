@@ -18,21 +18,23 @@ extends InternalJob
   def this(companion: SemaphoreJob.Companion[_ <: SemaphoreJob]) =
     this(companion.semaphore)
 
-  final def toOrderProcess(step: Step) =
+  final def toOrderProcess(step: Step) = {
+    val orderId = step.order.id
     OrderProcess(
       step.outTaskObserver.send("STARTED\n")
         .*>(semaphore
           .tapEval(sema =>
             sema.count.flatMap(count =>
-              Task(logger.debug(s"${step.order.id} acquire ... (count=$count)"))))
+              Task(logger.debug(s"$orderId acquire ... (count=$count)"))))
           .flatMap(_.acquire)
           .logWhenItTakesLonger(s"${getClass.getSimpleName}.semaphore.acquire")
-          .tapEval(_ => Task(logger.debug(s"${step.order.id} acquired")))
+          .tapEval(_ => Task(logger.debug(s"$orderId acquired")))
           .as(Outcome.succeeded))
     .guaranteeCase {
       case ExitCase.Completed => Task.unit
-      case exitCase => Task(logger.warn(exitCase.toString))
+      case exitCase => Task(logger.warn(s"$orderId $exitCase"))
     })
+  }
 }
 
 object SemaphoreJob

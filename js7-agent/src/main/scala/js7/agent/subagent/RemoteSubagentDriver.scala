@@ -53,10 +53,16 @@ extends SubagentDriver with SubagentEventListener
 {
   protected type S = AgentState
 
-  def subagentId = subagentRef.id
-
   private val logger = Logger.withPrefix[this.type](subagentId.toString)
   private val dispatcher = new SubagentDispatcher(subagentId, postQueuedCommand)
+  @volatile private var stopping = false
+  @volatile private var shuttingDown = false
+
+  def subagentId = subagentRef.id
+
+  def isStopping = stopping
+
+  def isShuttingDown = shuttingDown
 
   protected val client = new SubagentClient(
     Admission(subagentRef.uri, userAndPassword),
@@ -67,9 +73,6 @@ extends SubagentDriver with SubagentEventListener
   private val orderToProcessing = new AsyncMap[OrderId, Promise[OrderProcessed]]
     with AsyncMap.Stoppable
 
-  @volatile private var stopping = false
-
-  // TODO Inhibit duplicate start (like SubagentEventListener)
   def start: Task[Unit] =
     logger
       .debugTask(
@@ -87,6 +90,22 @@ extends SubagentDriver with SubagentEventListener
         .*>(client.tryLogout.void)
         .logWhenItTakesLonger(s"RemoteSubagentDriver($subagentId).stop")
     })
+
+  def shutdown: Task[Unit] =
+    logger.debugTask(Task.defer {
+      shuttingDown = true
+      orderToProcessing.stop
+        // Emit event and change state ???
+        .*>(tryShutdownSubagent)
+    })
+
+  private def tryShutdownSubagent: Task[Unit] =
+    client
+      .login(onlyIfNotLoggedIn = true)
+      .*>(client.executeSubagentCommand(Numbered(0, SubagentCommand.ShutDown(restart = true))))
+      .void
+      .onErrorHandle(t =>  // Ignore when Subagent is unreachable
+        logger.error(s"SubagentCommand.ShutDown => ${t.toStringWithCauses}"))
 
   protected def dedicateOrCouple: Task[Checked[(SubagentRunId, EventId)]] =
     logger.debugTask(
@@ -111,7 +130,6 @@ extends SubagentDriver with SubagentEventListener
     val cmd = DedicateSubagent(subagentId, subagentRef.agentPath, controllerId)
     postCommandUntilSucceeded(cmd)
       .flatMap(response => persistence
-        // TODO Duplicate with SubagentEventListener SubagentDedicated ?
         .persistKeyedEvent(subagentId <-: SubagentDedicated(response.subagentRunId))
         .rightAs(response)
         .map(_.orThrow)

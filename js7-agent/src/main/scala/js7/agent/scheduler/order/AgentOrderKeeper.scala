@@ -394,7 +394,7 @@ with Stash
           case subagentId: SubagentId =>
             subagentKeeper
               .remove(subagentId)
-              .flatMap(_ =>
+              .flatMapT(_ =>
                 persistence
                   .persistKeyedEvent(ItemDetached(itemKey, ownAgentPath))
                   .rightAs(AgentCommand.Response.Accepted)

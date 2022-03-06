@@ -25,6 +25,13 @@ trait SubagentDriver
 
   def isHeartbeating: Boolean
 
+  def isStopping: Boolean
+
+  def isShuttingDown: Boolean
+
+  final def isAcceptingOrder =
+    isHeartbeating && !isStopping && !isShuttingDown
+
   protected def persistence: StatePersistence[S]
 
   protected val conf: SubagentDriver.Conf
@@ -32,6 +39,8 @@ trait SubagentDriver
   def start: Task[Unit]
 
   def stop(signal: Option[ProcessSignal]): Task[Unit]
+
+  def shutdown: Task[Unit]
 
   def processOrder(order: Order[Order.Processing]): Task[Checked[OrderProcessed]]
 

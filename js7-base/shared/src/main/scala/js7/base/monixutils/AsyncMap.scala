@@ -151,7 +151,12 @@ class AsyncMap[K: ClassTag, V](initial: Map[K, V] = Map.empty[K, V])
   }
 
   override def toString =
-    s"AsyncMap[${implicitClass[K].simpleScalaName}, _](n=${_map.size})"
+    s"$name(n=${_map.size})"
+
+  protected def name =
+    s"AsyncMap[${implicitClass[K].simpleScalaName}, ?]"
+
+  val stoppingProblem = Problem.pure(s"$name is being stopped")
 }
 
 object AsyncMap
@@ -180,7 +185,7 @@ object AsyncMap
         .memoize
 
     override protected[monixutils] final def onEntryInsert(): Checked[Unit] =
-      !stopped !! Problem.pure("$toString has been stopped")
+      !stopped !! stoppingProblem
 
     override protected[monixutils] final def onEntryRemoved(): Unit =
       if (stopped && isEmpty) whenEmptyPromise.trySuccess(())
