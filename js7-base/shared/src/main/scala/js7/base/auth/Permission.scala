@@ -39,5 +39,5 @@ case object ValidUserPermission extends Permission
 
 case object UpdateItemPermission extends Permission
 
-/** Permit the Agent Director to control the Subagent. */
+/** Permission to control the Subagent. */
 case object AgentDirectorPermission extends Permission

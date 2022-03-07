@@ -37,7 +37,7 @@ trait SubagentEventListener
   this: RemoteSubagentDriver =>
 
   private val logger = Logger.withPrefix[SubagentEventListener](subagentId.toString)
-  private lazy val stdoutCommitOptions = CommitOptions(delay = subaagentConf.stdoutCommitDelay)  // TODO Use it!
+  private lazy val stdoutCommitOptions = CommitOptions(delay = subagentConf.stdoutCommitDelay)  // TODO Use it!
   private val stopObserving = MVar.empty[Task, Unit]().memoize
   private val observingStopped = MVar.empty[Task, Unit]().memoize
   private val _isHeartbeating = Atomic(false)

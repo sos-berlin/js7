@@ -8,8 +8,6 @@ import cats.syntax.traverse._
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.subagent.SubagentKeeper._
-import js7.base.auth.{UserAndPassword, UserId}
-import js7.base.generic.SecretString
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger
@@ -316,10 +314,6 @@ final class SubagentKeeper(
   private def newRemoteSubagentDriver(subagentRef: SubagentRef, initialized: Initialized) =
     new RemoteSubagentDriver(
       subagentRef,
-      for (subagentId <- initialized.localSubagentId) yield
-        UserAndPassword(
-          UserId.checked(subagentId.string).orThrow,
-          SecretString.empty),
       agentConf.httpsConfig,
       persistence,
       initialized.controllerId,

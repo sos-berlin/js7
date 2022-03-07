@@ -2,10 +2,13 @@ package js7.agent.subagent
 
 import akka.actor.ActorSystem
 import cats.syntax.traverse._
+import com.typesafe.config.ConfigUtil
 import js7.agent.data.AgentState
 import js7.agent.data.Problems.SubagentNotDedicatedProblem
 import js7.agent.subagent.RemoteSubagentDriver._
 import js7.base.auth.{Admission, UserAndPassword}
+import js7.base.configutils.Configs.ConvertibleConfig
+import js7.base.generic.SecretString
 import js7.base.io.https.HttpsConfig
 import js7.base.io.process.ProcessSignal
 import js7.base.log.Logger
@@ -41,12 +44,11 @@ import scala.util.{Failure, Success}
 
 final class RemoteSubagentDriver(
   val subagentRef: SubagentRef,
-  userAndPassword: Option[UserAndPassword],
   httpsConfig: HttpsConfig,
   protected val persistence: StatePersistence[AgentState],
   controllerId: ControllerId,
   protected val conf: SubagentDriver.Conf,
-  protected val subaagentConf: SubagentConf,
+  protected val subagentConf: SubagentConf,
   protected val recouplingStreamReaderConf: RecouplingStreamReaderConf,
   actorSystem: ActorSystem)
 extends SubagentDriver with SubagentEventListener
@@ -65,7 +67,12 @@ extends SubagentDriver with SubagentEventListener
   def isShuttingDown = shuttingDown
 
   protected val client = new SubagentClient(
-    Admission(subagentRef.uri, userAndPassword),
+    Admission(
+      subagentRef.uri,
+      subagentConf.config
+        .optionAs[SecretString](
+          "js7.auth.subagents." + ConfigUtil.joinPath(subagentRef.id.string))
+        .map(UserAndPassword(subagentRef.agentPath.toUserId.orThrow, _))),
     httpsConfig,
     name = subagentRef.id.toString,
     actorSystem)

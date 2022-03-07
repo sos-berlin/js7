@@ -60,6 +60,9 @@ final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
     """
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = true
+    js7.auth.subagents.AGENT-1 = "AGENT-PASSWORD"
+    js7.auth.subagents.B-SUBAGENT = "AGENT-PASSWORD"
+    js7.auth.subagents.C-SUBAGENT = "AGENT-PASSWORD"
     """
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Seq(workflow, cWorkflow, bSubagentRef)
@@ -388,7 +391,7 @@ final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
   "CancelOrder" in {
     // Local Subagent must be disabled (see test above)
 
-    var eventId = eventWatch.lastAddedEventId
+    val eventId = eventWatch.lastAddedEventId
     val orderId = OrderId("CANCEL-ORDER")
 
     TestSemaphoreJob.reset()
@@ -472,9 +475,9 @@ final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
       name = s"SubagentTest-$name",
       config = config"""
         js7.job.execution.signed-script-injection-allowed = yes
-        js7.auth.users.AGENT-0 {
+        js7.auth.users.AGENT {
           permissions: [ AgentDirector ]
-          password: ""
+          password: "plain:AGENT-PASSWORD"
         }
         """
         .withFallback(SubagentConf.defaultConfig))
