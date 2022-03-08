@@ -385,7 +385,7 @@ with Stash
         .map(_.rightAs(AgentCommand.Response.Accepted))
         .runToFuture
 
-    case DetachItem(itemKey @ (_: InventoryItemPath.AssignableToAgent | WorkflowId.as(_))) =>
+    case DetachItem(itemKey @ (_: InventoryItemPath.AttachableToAgent | WorkflowId.as(_))) =>
       if (!persistence.currentState.keyToItem.contains(itemKey)) {
         logger.warn(s"DetachItem($itemKey) but item is unknown")
         Future.successful(Right(AgentCommand.Response.Accepted))

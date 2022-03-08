@@ -134,7 +134,7 @@ object VerifiedUpdateItemsExecutor
       controllerState: ControllerState)
     : View[BasicItemEvent.ForClient] =
       path match {
-        case path: InventoryItemPath.AssignableToAgent
+        case path: InventoryItemPath.AttachableToAgent
           if controllerState.itemToAgentToAttachedState.contains(path)
             && !isAttachedToDeletedAgentsOnly(path, isDeleted, controllerState) =>
           (!controllerState.deletionMarkedItems.contains(path) ? ItemDeletionMarked(path)).view ++

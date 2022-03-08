@@ -17,7 +17,7 @@ trait InventoryItemPath extends GenericString
   def companion: Companion[_ <: InventoryItemPath]
 
   final def isAssignableToAgent =
-    this.isInstanceOf[InventoryItemPath.AssignableToAgent]
+    this.isInstanceOf[InventoryItemPath.AttachableToAgent]
 
   final def toTypedString: String =
     s"${companion.pathTypeName}:$string"
@@ -63,7 +63,7 @@ object InventoryItemPath
 
   type AnyCompanion = Companion[_ <: InventoryItemPath]
 
-  trait AssignableToAgent {
+  trait AttachableToAgent {
     this: InventoryItemPath =>
   }
 

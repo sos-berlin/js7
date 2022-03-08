@@ -6,11 +6,11 @@ import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.delegate.DelegateId
-import js7.data.item.InventoryItemPath.AssignableToAgent
+import js7.data.item.InventoryItemPath.AttachableToAgent
 import js7.data.item.UnsignedSimpleItemPath
 
 final case class SubagentId(string: String)
-extends UnsignedSimpleItemPath with DelegateId with AssignableToAgent
+extends UnsignedSimpleItemPath with DelegateId with AttachableToAgent
 {
   def companion = SubagentId
 
