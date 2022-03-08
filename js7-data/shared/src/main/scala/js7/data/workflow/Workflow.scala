@@ -140,10 +140,14 @@ extends VersionedItem
         || calendarPath.nonEmpty
       ) !! Problem("Cycle instruction requires calendarPath"))
 
-  override lazy val referencedAgentPaths: Set[AgentPath] =
-    workflowJobs.map(_.agentPath).toSet
+  override lazy val referencedItemPaths =
+    referencedLockPaths.view ++
+      referencedAgentPaths.view ++
+      referencedBoardPaths.view ++
+      referencedJobResourcePaths.view ++
+      referencedCalendarPaths.view
 
-  override lazy val referencedLockPaths: Set[LockPath] =
+  private[workflow] def referencedLockPaths: Set[LockPath] =
     flattenedInstructions.view
       .map(_._2.instruction)
       .collect {
@@ -151,7 +155,10 @@ extends VersionedItem
       }
       .toSet
 
-  override lazy val referencedBoardPaths: Set[BoardPath] =
+  private[workflow] def referencedAgentPaths: Set[AgentPath] =
+    workflowJobs.view.map(_.agentPath).toSet
+
+  private[workflow] def referencedBoardPaths: Set[BoardPath] =
     flattenedInstructions.view
       .map(_._2.instruction)
       .collect {
@@ -159,13 +166,13 @@ extends VersionedItem
       }
       .toSet
 
-  override lazy val referencedJobResourcePaths: Set[JobResourcePath] =
-    (jobResourcePaths.view ++
-      workflowJobs.flatMap(_.referencedJobResourcePaths) ++
-      orderPreparation.referencedJobResourcePaths
-    ).toSet
+  lazy val referencedJobResourcePaths: Set[JobResourcePath] =
+    jobResourcePaths.view
+      .concat(workflowJobs.view.flatMap(_.referencedJobResourcePaths))
+      .concat(orderPreparation.referencedJobResourcePaths)
+      .toSet
 
-  override lazy val referencedCalendarPaths: Set[CalendarPath] =
+  lazy val referencedCalendarPaths: Set[CalendarPath] =
     calendarPath.toSet
 
   private[workflow] def workflowJobs: View[WorkflowJob] =

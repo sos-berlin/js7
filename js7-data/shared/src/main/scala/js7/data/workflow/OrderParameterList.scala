@@ -28,7 +28,7 @@ final case class OrderParameterList private(
   nameToParameter: Map[String, OrderParameter],
   allowUndeclared: Boolean)
 {
-  def referencedJobResourcePaths: Iterable[JobResourcePath] =
+  def referencedJobResourcePaths: View[JobResourcePath] =
     nameToParameter.values.view.flatMap(_.referencedJobResourcePaths)
 
   //def workflowOrderVariablesScope(

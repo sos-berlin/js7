@@ -4,13 +4,7 @@ import io.circe.{Codec, Decoder, Encoder}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentPath
-import js7.data.board.BoardPath
-import js7.data.calendar.CalendarPath
 import js7.data.item.InventoryItem.Companion
-import js7.data.job.JobResourcePath
-import js7.data.lock.LockPath
-import js7.data.subagent.SubagentId
-import js7.data.workflow.WorkflowPath
 import scala.collection.View
 import scala.reflect.ClassTag
 
@@ -36,34 +30,7 @@ trait InventoryItem
   def dedicatedAgentPath: Option[AgentPath] = None
 
   def referencedItemPaths: View[InventoryItemPath] =
-    referencedLockPaths.view ++
-      referencedBoardPaths ++
-      referencedAgentPaths ++
-      referencedSubagentIds ++
-      referencedJobResourcePaths ++
-      referencedWorkflowPaths ++
-      referencedCalendarPaths
-
-  def referencedLockPaths: Set[LockPath] =
-    Set.empty
-
-  def referencedBoardPaths: Set[BoardPath] =
-    Set.empty
-
-  def referencedAgentPaths: Set[AgentPath] =
-    Set.empty
-
-  def referencedSubagentIds: Iterable[SubagentId] =
-    Nil
-
-  def referencedJobResourcePaths: Set[JobResourcePath] =
-    Set.empty
-
-  def referencedWorkflowPaths: Set[WorkflowPath] =
-    Set.empty
-
-  def referencedCalendarPaths: Set[CalendarPath] =
-    Set.empty
+    View.empty
 
   // Accelerate usage in Set[InventoryItem], for example in AgentDriver's CommandQueue
   override def hashCode = 31 * key.hashCode + itemRevision.hashCode

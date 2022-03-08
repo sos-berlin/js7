@@ -14,6 +14,7 @@ import js7.data.item.ItemRevision
 import js7.data.orderwatch.FileWatch.defaultPattern
 import js7.data.value.expression.Expression
 import js7.data.workflow.WorkflowPath
+import scala.collection.View
 import scala.concurrent.duration.FiniteDuration
 
 final case class FileWatch(
@@ -39,9 +40,7 @@ extends OrderWatch
   def withRevision(revision: Option[ItemRevision]) =
     copy(itemRevision = revision)
 
-  override val referencedAgentPaths = Set(agentPath)
-
-  override val referencedWorkflowPaths = Set(workflowPath)
+  override val referencedItemPaths = View(agentPath, workflowPath)
 }
 
 object FileWatch extends OrderWatch.Companion[FileWatch]

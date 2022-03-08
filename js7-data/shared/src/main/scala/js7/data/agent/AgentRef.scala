@@ -41,7 +41,7 @@ extends UnsignedSimpleItem
   def withRevision(revision: Option[ItemRevision]) =
     copy(itemRevision = revision)
 
-  override def referencedSubagentIds = directors
+  override def referencedItemPaths = directors.view
 
   def convertFromLegacy: Checked[(AgentRef, Option[SubagentRef])] =
     this match {

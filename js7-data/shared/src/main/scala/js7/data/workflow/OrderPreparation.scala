@@ -6,12 +6,13 @@ import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.base.utils.typeclasses.IsEmpty
 import js7.data.job.JobResourcePath
 import js7.data.workflow.OrderPreparation._
+import scala.collection.View
 
 final case class OrderPreparation(parameterList: OrderParameterList)
 {
   def isEmpty = this == default
 
-  def referencedJobResourcePaths: Iterable[JobResourcePath] =
+  def referencedJobResourcePaths: View[JobResourcePath] =
     parameterList.referencedJobResourcePaths
 }
 

@@ -6,6 +6,7 @@ import io.circe.generic.extras.semiauto.deriveConfiguredCodec
 import js7.base.web.Uri
 import js7.data.agent.AgentPath
 import js7.data.item.{ItemRevision, UnsignedSimpleItem}
+import scala.collection.View
 
 final case class SubagentRef(
   id: SubagentId,
@@ -32,7 +33,7 @@ extends UnsignedSimpleItem
   override def dedicatedAgentPath = Some(agentPath)
 
   // Circular dependency! AgentRef references subagentId: Seq[SubagentId]
-  override def referencedAgentPaths = Set(agentPath)
+  override def referencedItemPaths = new View.Single(agentPath)
 }
 
 object SubagentRef
