@@ -1,6 +1,6 @@
 package js7.base.monixutils
 
-import cats.effect.{ExitCase, Resource}
+import cats.effect.ExitCase
 import js7.base.monixutils.MonixBase._
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.{Checked, Problem, ProblemException}
@@ -413,25 +413,5 @@ final class MonixBaseTest extends AsyncFreeSpec
     if (mem >= 50_000_000) pending
     val n = mem / 4
     observable.drop(n).headL.map(i => assert(i == -n)).runToFuture
-  }
-
-  "Resource" - {
-    "executeOn" in {
-      Task.defer {
-        val schedulerName = "MonixBaseTest-executeOn"
-        val scheduler = Scheduler.fixedPool(schedulerName, poolSize = 1)
-        var releaseThreadName = ""
-        Resource
-          .make(
-            acquire = Task { Thread.currentThread.getName })(
-            release = _ => Task { releaseThreadName = Thread.currentThread.getName})
-          .use(name => Task(
-            assert(name startsWith schedulerName)))
-          .map(_ => assert(releaseThreadName startsWith schedulerName))
-          .executeOn(scheduler)
-          .<*(Task(scheduler.shutdown()))
-      }
-      .runToFuture
-    }
   }
 }
