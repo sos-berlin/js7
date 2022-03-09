@@ -4,6 +4,7 @@
 /*/target/
 /*/*/target/
 /project/project/project/target/
+/project/project/project/project/target/
 
 # INTELLIJ IDEA
 /.idea/
@@ -11,6 +12,13 @@
 /classes
 idea-shared-main
 idea-shared-test
+
+# VISUAL STUDIO CODE
+/.bloop/
+/project/.bloop/
+/project/project/.bloop/
+/.metals/
+/.vscode/
 
 # MacOS
 .DS_Store
