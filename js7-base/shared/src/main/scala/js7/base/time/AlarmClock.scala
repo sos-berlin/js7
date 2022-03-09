@@ -51,7 +51,7 @@ object AlarmClock
   : Resource[Task, AlarmClock] =
     Resource.make(
       acquire = Task(AlarmClock(clockCheckInterval)))(
-      release = clock => Task(clock.stop))
+      release = clock => Task(clock.stop()))
 
   private final class SimpleAlarmClock
     (implicit val s: Scheduler)
