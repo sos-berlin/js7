@@ -103,6 +103,7 @@ private object JControllerStateTest
     Map.empty,
     Map.empty,
     Map.empty,
+    Map.empty,
     AllOrderWatchesState.empty,
     Repo.empty
       .applyEvents(List(

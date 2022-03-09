@@ -30,7 +30,7 @@ import js7.data.item.ItemOperation
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTerminated}
 import js7.data.order.Outcome.Disrupted.ProcessLost
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
-import js7.data.subagent.SubagentRefStateEvent.{SubagentCoupled, SubagentCouplingFailed, SubagentDedicated}
+import js7.data.subagent.SubagentRefStateEvent.{SubagentCoupled, SubagentDedicated}
 import js7.data.subagent.{SubagentId, SubagentRef}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -201,37 +201,11 @@ final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
   private lazy val cSubagentRef = SubagentRef(
     SubagentId("C-SUBAGENT"),
     agentPath,
-    Uri(s"http://localhost:${findFreeTcpPort()}"),
-    priority = Some(1)/*higher than None*/)
+    Uri(s"http://localhost:${findFreeTcpPort()}"))
 
-  "Add and use a prioritized Subagent" in {
-    TestSemaphoreJob.reset()
-    val eventId = eventWatch.lastAddedEventId
-
+  "Add C-SUBAGENT" in {
     controllerApi.updateUnsignedSimpleItems(Seq(cSubagentRef)).await(99.s).orThrow
     eventWatch.await[ItemAttached](_.event.key == cSubagentRef.id)
-
-    runSubagent(cSubagentRef) { _ =>
-      eventWatch.await[SubagentCoupled](_.key == cSubagentRef.id, after = eventId)
-      for (i <- 1 to 2) {
-        val orderId = OrderId(s"PRIORITIZED-SUBAGENT-$i")
-        TestSemaphoreJob.continue()
-        controller.addOrder(FreshOrder(orderId, cWorkflow.path)).await(99.s).orThrow
-        val events = eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
-        assert(events.head.value == orderId <-: OrderProcessingStarted(cSubagentRef.id))
-        eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
-      }
-    }.await(199.s)
-    eventWatch.await[SubagentCouplingFailed](_.key == cSubagentRef.id, after = eventId)
-
-    // Now, the another available Subagent is selected
-    val orderId = OrderId("NEXT-PRIORITIZED-SUBAGENT")
-    TestSemaphoreJob.reset()
-    TestSemaphoreJob.continue()
-    controller.addOrder(FreshOrder(orderId, cWorkflow.path)).await(99.s).orThrow
-    val events = eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
-    assert(events.head.value == orderId <-: OrderProcessingStarted(aSubagentId))
-    eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
   }
 
   "Disable local Subagent" in {

@@ -23,14 +23,14 @@ import js7.data.item.ItemAttachedState.{Attachable, Attached}
 import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemChanged}
-import js7.data.item.{ClientAttachments, ItemRevision, ItemSigner, Repo, UnsignedSimpleItemEvent, VersionId}
+import js7.data.item.{ClientAttachments, InventoryItemKey, InventoryItemPath, ItemRevision, ItemSigner, Repo, UnsignedSimpleItemEvent, VersionId}
 import js7.data.job.{JobResource, JobResourcePath, ShellScriptExecutable}
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.node.NodeId
 import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.OrderWatchState.{HasOrder, Vanished}
 import js7.data.orderwatch.{AllOrderWatchesState, ExternalOrderKey, ExternalOrderName, FileWatch, OrderWatchPath, OrderWatchState}
-import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState}
+import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState, SubagentSelection, SubagentSelectionId}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, ExpectNotice, LockInstruction}
@@ -47,7 +47,7 @@ import org.scalatest.freespec.AsyncFreeSpec
 final class ControllerStateTest extends AsyncFreeSpec
 {
   "estimatedSnapshotSize" in {
-    assert(controllerState.estimatedSnapshotSize == 19)
+    assert(controllerState.estimatedSnapshotSize == 20)
     for (n <- controllerState.toSnapshotObservable.countL.runToFuture) yield
       assert(controllerState.estimatedSnapshotSize == n)
   }
@@ -57,6 +57,7 @@ final class ControllerStateTest extends AsyncFreeSpec
       controllerState.pathToCalendar.values ++
         controllerState.pathToAgentRefState.map(_._2.item) ++
         controllerState.idToSubagentRefState.map(_._2.item) ++
+        controllerState.idToSubagentSelection.values ++
         controllerState.pathToLockState.map(_._2.item) ++
         controllerState.allOrderWatchesState.pathToOrderWatchState.map(_._2.item) ++
         controllerState.pathToSignedSimpleItem.values.map(_.value)
@@ -82,6 +83,7 @@ final class ControllerStateTest extends AsyncFreeSpec
         ) ++
           controllerState.pathToAgentRefState.values ++
           controllerState.idToSubagentRefState.values ++
+          controllerState.idToSubagentSelection.values ++
           controllerState.pathToLockState.values ++
           Seq(board) ++
           boardState.notices.map(Notice.Snapshot(board.path, _)) ++
@@ -122,11 +124,13 @@ final class ControllerStateTest extends AsyncFreeSpec
   }
 
   "pathToReferencingItemKeys" in {
-    assert(controllerState.pathToReferencingItemKeys.mapValuesStrict(_.toSet) == Map(
+    val x = controllerState.pathToReferencingItemKeys.mapValuesStrict(_.toSet)
+    assert(x == Map[InventoryItemPath, Set[InventoryItemKey]](
       lock.path -> Set(workflow.id),
       board.path -> Set(workflow.id),
       agentRef.path -> Set(subagentRef.id, fileWatch.path, workflow.id),
-      subagentRef.id -> Set(agentRef.path),
+      subagentRef.id -> Set(agentRef.path, subagentSelection.id),
+      subagentSelection.id -> Set(workflow.id),
       jobResource.path -> Set(workflow.id),
       workflow.path -> Set(fileWatch.path)))
   }
@@ -141,12 +145,13 @@ final class ControllerStateTest extends AsyncFreeSpec
       .orThrow
       .copy(idToOrder = Map.empty)
     // The original workflow is still in use by an order and not deleted
-    assert(controllerState.pathToReferencingItemKeys.view.mapValues(_.toSet).toMap
-      == Map(
+    val x = controllerState.pathToReferencingItemKeys.view.mapValues(_.toSet).toMap
+    assert(x == Map[InventoryItemPath, Set[InventoryItemKey]](
         lock.path -> Set(workflow.id, changedWorkflowId),
         board.path -> Set(workflow.id, changedWorkflowId),
-        agentRef.path -> Set(subagentRef.id, workflow.id, changedWorkflowId, fileWatch.path),
-        subagentRef.id -> Set(agentRef.path),
+        agentRef.path -> Set(subagentRef.id, fileWatch.path, workflow.id, changedWorkflowId),
+        subagentRef.id -> Set(agentRef.path, subagentSelection.id),
+        subagentSelection.id -> Set(workflow.id, changedWorkflowId),
         jobResource.path -> Set(workflow.id, changedWorkflowId),
         workflow.path -> Set(fileWatch.path)))
   }
@@ -214,6 +219,13 @@ final class ControllerStateTest extends AsyncFreeSpec
           "TYPE": "Reset"
         },
         "eventId": 0
+      }, {
+        "TYPE": "SubagentSelection",
+        "id": "SELECTION",
+        "subagentToPriority": {
+          "SUBAGENT": 1
+        },
+        "itemRevision": 7
       }, {
         "TYPE": "LockState",
         "lock": {
@@ -286,7 +298,7 @@ final class ControllerStateTest extends AsyncFreeSpec
             "TYPE": "Silly",
             "signatureString": "SILLY-SIGNATURE"
           },
-          "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"versionId\":\"1.0\",\"instructions\":[{\"TYPE\":\"Lock\",\"lockPath\":\"LOCK\",\"lockedWorkflow\":{\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"AGENT\",\"executable\":{\"TYPE\":\"ShellScriptExecutable\",\"script\":\"\"},\"jobResourcePaths\":[\"JOB-RESOURCE\"],\"parallelism\":1}}]}},{\"TYPE\":\"ExpectNotice\",\"boardPath\":\"BOARD\"}]}"
+          "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"versionId\":\"1.0\",\"instructions\":[{\"TYPE\":\"Lock\",\"lockPath\":\"LOCK\",\"lockedWorkflow\":{\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"AGENT\",\"subagentSelectionId\":\"SELECTION\",\"executable\":{\"TYPE\":\"ShellScriptExecutable\",\"script\":\"\"},\"jobResourcePaths\":[\"JOB-RESOURCE\"],\"parallelism\":1}}]}},{\"TYPE\":\"ExpectNotice\",\"boardPath\":\"BOARD\"}]}"
         }
       }, {
         "TYPE": "ItemAttachable",
@@ -357,7 +369,9 @@ final class ControllerStateTest extends AsyncFreeSpec
     assert(controllerState.keyToItem.get(workflow.id) == Some(workflow))
 
     assert(controllerState.keyToItem.keySet == Set(
-      jobResource.path, calendar.path, agentRef.path, subagentRef.id, lock.path, fileWatch.path,
+      jobResource.path, calendar.path,
+      agentRef.path, subagentRef.id, subagentSelection.id,
+      lock.path, fileWatch.path,
       workflow.id))
   }
 
@@ -430,10 +444,13 @@ object ControllerStateTest
     SubagentId("SUBAGENT"),
     AgentPath("AGENT"),
     Uri("https://SUBAGENT"),
-    priority = None,
     disabled = false,
     Some(ItemRevision(7)))
   private val subagentRefState = SubagentRefState.initial(subagentRef)
+  private val subagentSelection = SubagentSelection(
+    SubagentSelectionId("SELECTION"),
+    Map(subagentRef.id -> 1),
+    Some(ItemRevision(7)))
 
   private val lock = Lock(LockPath("LOCK"), itemRevision = Some(ItemRevision(7)))
   private val notice = Notice(NoticeId("NOTICE-1"), Timestamp.ofEpochMilli(10_000_000_000L + 24*3600*1000))
@@ -463,7 +480,9 @@ object ControllerStateTest
   private val versionId = VersionId("1.0")
   private[controller] val workflow = Workflow(WorkflowPath("WORKFLOW") ~ versionId, Seq(
     LockInstruction(lock.path, None, Workflow.of(
-      Execute(WorkflowJob(agentRef.path, ShellScriptExecutable(""), jobResourcePaths = Seq(jobResource.path))))),
+      Execute(WorkflowJob(agentRef.path, ShellScriptExecutable(""),
+        subagentSelectionId = Some(subagentSelection.id),
+        jobResourcePaths = Seq(jobResource.path))))),
     ExpectNotice(board.path)))
   private val signedWorkflow = itemSigner.sign(workflow)
   private[controller] val fileWatch = FileWatch(
@@ -493,6 +512,8 @@ object ControllerStateTest
         agentRef, None, None, DelegateCouplingState.Reset, EventId(7), None)),
     Map(
       subagentRef.id -> subagentRefState),
+    Map(
+      subagentSelection.id -> subagentSelection),
     Map(
       lock.path -> LockState(lock)),
     Map(

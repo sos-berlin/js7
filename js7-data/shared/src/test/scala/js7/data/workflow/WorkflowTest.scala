@@ -678,9 +678,7 @@ final class WorkflowTest extends AnyFreeSpec
               "BRANCH" -> Workflow.of(
                 LockInstruction(c, None, Workflow.of(
                   Execute(job)))))))))))))
-    assert(workflow.referencedLockPaths == Set(a, b, c))
-    assert(workflow.referencedAgentPaths == Set(AgentPath("AGENT")))
-    assert(workflow.referencedJobResourcePaths.isEmpty)
+    assert(workflow.referencedItemPaths.toSet == Set(a, b, c, AgentPath("AGENT")))
   }
 
   "referencedBoardPaths" in {
@@ -696,7 +694,6 @@ final class WorkflowTest extends AnyFreeSpec
             "BRANCH" -> Workflow.of(
               PostNotice(b),
               ExpectNotice(c)))))))
-    assert(workflow.referencedBoardPaths == Set(a, b, c))
     assert(workflow.referencedItemPaths.toSet == Set(a, b, c))
   }
 
@@ -720,9 +717,7 @@ final class WorkflowTest extends AnyFreeSpec
               Execute(cJob)))))),
       Map(
         WorkflowJob.Name("D") -> dJob))
-    assert(workflow.referencedLockPaths.isEmpty)
-    assert(workflow.referencedAgentPaths == Set(a, b, c, d))
-    assert(workflow.referencedJobResourcePaths.isEmpty)
+    assert(workflow.referencedItemPaths.toSet == Set(a, b, c, d))
     assert(workflow.workflowJobs.toSet == Set(aJob, bJob, cJob, dJob))
   }
 
@@ -747,9 +742,7 @@ final class WorkflowTest extends AnyFreeSpec
               Execute(job.copy(jobResourcePaths = Seq(c, d)))))))),
       orderPreparation = OrderPreparation(OrderParameterList(
         OrderParameter.Final("V", JobResourceVariable(f, Some("V"))))))
-    assert(workflow.referencedLockPaths.isEmpty)
-    assert(workflow.referencedAgentPaths == Set(AgentPath("AGENT")))
-    assert(workflow.referencedJobResourcePaths == Set(a, b, c, d, e, f))
+    assert(workflow.referencedItemPaths.toSet == Set(a, b, c, d, e, f, AgentPath("AGENT")))
   }
 
   "namedJobs" in {
@@ -1142,7 +1135,7 @@ final class WorkflowTest extends AnyFreeSpec
     //}
   }
 
-  "referencedItempPaths" in {
+  "referencedItemPaths" in {
     assert(TestWorkflow.referencedItemPaths.toSet == Set(
       TestAgentPath,
       JobResourcePath("JOB-RESOURCE"),

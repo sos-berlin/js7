@@ -24,7 +24,7 @@ import js7.data.order.OrderEvent.{OrderCoreEvent, OrderForked, OrderJoined, Orde
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchEvent, OrderWatchPath}
 import js7.data.state.{AgentStateView, StateView}
-import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState, SubagentRefStateEvent}
+import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState, SubagentRefStateEvent, SubagentSelection, SubagentSelectionId}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import monix.reactive.Observable
 import scala.collection.MapView
@@ -37,6 +37,7 @@ final case class AgentState(
   standards: SnapshotableState.Standards,
   meta: AgentMetaState,
   idToSubagentRefState: Map[SubagentId, SubagentRefState],
+  idToSubagentSelection: Map[SubagentSelectionId, SubagentSelection],
   idToOrder: Map[OrderId, Order[Order.State]],
   idToWorkflow: Map[WorkflowId, Workflow/*reduced for this Agent!!!*/],
   allFileWatchesState: AllFileWatchesState,
@@ -70,6 +71,7 @@ with SnapshotableState[AgentState]
     standards.snapshotSize +
       1 +
       idToSubagentRefState.size +
+      idToSubagentSelection.size +
       idToWorkflow.size +
       idToOrder.size +
       allFileWatchesState.estimatedSnapshotSize +
@@ -80,8 +82,8 @@ with SnapshotableState[AgentState]
   def toSnapshotObservable = Observable(
     standards.toSnapshotObservable,
     Observable.fromIterable((meta != AgentMetaState.empty) thenList meta),
-    //Observable.fromIterable(idToSubagentRefState.values),
     Observable.fromIterable(idToSubagentRefState.values),
+    Observable.fromIterable(idToSubagentSelection.values),
     Observable.fromIterable(idToOrder.values),
     allFileWatchesState.toSnapshot,
     Observable.fromIterable(keyToSignedItem.values).map(SignedItemAdded(_)),
@@ -163,6 +165,10 @@ with SnapshotableState[AgentState]
                     case Some(subagentState) => subagentState.copy(subagentRef = subagentRef)
                   })))
 
+          case ItemAttachedToMe(selection: SubagentSelection) =>
+            Right(copy(
+              idToSubagentSelection = idToSubagentSelection.updated(selection.id, selection)))
+
           case ItemDetached(WorkflowId.as(workflowId), _) =>
             for (_ <- idToWorkflow.checked(workflowId)) yield
               copy(
@@ -189,6 +195,10 @@ with SnapshotableState[AgentState]
             for (_ <- idToSubagentRefState.checked(id)) yield
               copy(
                 idToSubagentRefState = idToSubagentRefState - id)
+
+          case ItemDetached(id: SubagentSelectionId, meta.agentPath) =>
+            Right(copy(
+              idToSubagentSelection = idToSubagentSelection - id))
 
           case _ => applyStandardEvent(keyedEvent)
         }
@@ -266,6 +276,7 @@ with SnapshotableState[AgentState]
           case path: OrderWatchPath => allFileWatchesState.pathToFileWatchState.get(path).map(_.fileWatch)
           case WorkflowId.as(id) => idToWorkflow.get(id)
           case id: SubagentId => idToSubagentRefState.get(id).map(_.subagentRef)
+          case id: SubagentSelectionId => idToSubagentSelection.get(id)
         }
 
       def iterator: Iterator[(InventoryItemKey, InventoryItem)] =
@@ -296,13 +307,13 @@ with ItemContainer.Companion[AgentState]
 
   val empty = AgentState(EventId.BeforeFirst, SnapshotableState.Standards.empty,
     AgentMetaState.empty,
-    Map.empty, Map.empty, Map.empty, AllFileWatchesState.empty,
+    Map.empty, Map.empty, Map.empty, Map.empty, AllFileWatchesState.empty,
     Map.empty, Map.empty, Map.empty)
 
   def newBuilder() = new AgentStateBuilder
 
   protected val inventoryItems = Vector(
-    FileWatch, JobResource, Calendar, Workflow, SubagentRef)
+    FileWatch, JobResource, Calendar, Workflow, SubagentRef, SubagentSelection)
 
   override lazy val itemPaths =
     inventoryItems.map(_.Path) :+ AgentPath

@@ -138,7 +138,9 @@ object WorkflowParser
         parallelism <- kv[Int]("parallelism", WorkflowJob.DefaultParallelism)
         sigkillDelay <- kv.get[Int]("sigkillDelay").map(_.map(_.s))
       } yield
-        WorkflowJob(agentPath, executable, defaultArguments.nameToExpr, jobResourcePaths,
+        WorkflowJob(agentPath, executable, defaultArguments.nameToExpr,
+          subagentSelectionId = None/*TODO*/,
+          jobResourcePaths,
           parallelism = parallelism,
           sigkillDelay = sigkillDelay))
 

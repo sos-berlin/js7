@@ -25,7 +25,7 @@ import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{AllOrderWatchesState, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState}
 import js7.data.state.StateView
 import js7.data.state.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
-import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState, SubagentRefStateEvent}
+import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState, SubagentRefStateEvent, SubagentSelection, SubagentSelectionId}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import scala.collection.mutable
 
@@ -41,6 +41,7 @@ with StateView
   private val _idToOrder = mutable.Map.empty[OrderId, Order[Order.State]]
   private val _pathToAgentRefState = mutable.Map.empty[AgentPath, AgentRefState]
   private val _idToSubagentRefState = mutable.Map.empty[SubagentId, SubagentRefState]
+  private val _idToSubagentSelection = mutable.Map.empty[SubagentSelectionId, SubagentSelection]
   private val _pathToLockState = mutable.Map.empty[LockPath, LockState]
   private val _pathToBoardState = mutable.Map.empty[BoardPath, BoardState]
   private val _pathToCalendar = mutable.Map.empty[CalendarPath, Calendar]
@@ -88,6 +89,7 @@ with StateView
     _idToOrder ++= state.idToOrder
     _pathToAgentRefState ++= state.pathToAgentRefState
     _idToSubagentRefState ++= state.idToSubagentRefState
+    _idToSubagentSelection ++= state.idToSubagentSelection
     _pathToLockState ++= state.pathToLockState
     _pathToBoardState ++= state.pathToBoardState
     _pathToCalendar ++= state.pathToCalendar
@@ -121,6 +123,9 @@ with StateView
 
     case subagentRefState: SubagentRefState =>
       _idToSubagentRefState.insert(subagentRefState.subagentId -> subagentRefState)
+
+    case subagentSelection: SubagentSelection =>
+      _idToSubagentSelection.insert(subagentSelection.id -> subagentSelection)
 
     case lockState: LockState =>
       _pathToLockState.insert(lockState.lock.path -> lockState)
@@ -197,11 +202,11 @@ with StateView
                     _idToSubagentRefState.insert(subagentRef.id -> SubagentRefState.initial(subagentRef))
                   }
 
-                case agentRef: AgentRef =>
-                  _pathToAgentRefState.insert(agentRef.path -> AgentRefState(agentRef))
-
                 case subagentRef: SubagentRef =>
                   _idToSubagentRefState.insert(subagentRef.id -> SubagentRefState.initial(subagentRef))
+
+                case selection: SubagentSelection =>
+                  _idToSubagentSelection.insert(selection.id -> selection)
 
                 case orderWatch: OrderWatch =>
                   allOrderWatchesState = allOrderWatchesState.addOrderWatch(orderWatch).orThrow
@@ -236,6 +241,9 @@ with StateView
                             uri = subagentRef.uri)))
                     }
                   }
+
+                case selection: SubagentSelection =>
+                  _idToSubagentSelection(selection.id) = selection
 
                 case subagentRef: SubagentRef =>
                   _idToSubagentRefState(subagentRef.id) = _idToSubagentRefState(subagentRef.id).copy(
@@ -296,6 +304,9 @@ with StateView
 
                 case subagentId: SubagentId =>
                   _idToSubagentRefState -= subagentId
+
+                case id: SubagentSelectionId =>
+                  _idToSubagentSelection -= id
 
                 case boardPath: BoardPath =>
                   _pathToBoardState -= boardPath
@@ -448,6 +459,7 @@ with StateView
       controllerMetaState,
       _pathToAgentRefState.toMap,
       _idToSubagentRefState.toMap,
+      _idToSubagentSelection.toMap,
       _pathToLockState.toMap,
       _pathToBoardState.toMap,
       _pathToCalendar.toMap,

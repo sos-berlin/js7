@@ -44,7 +44,7 @@ import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.state.OrderEventHandler.FollowUp
 import js7.data.state.{OrderEventHandler, StateView}
-import js7.data.subagent.{SubagentId, SubagentRef}
+import js7.data.subagent.{SubagentId, SubagentRef, SubagentSelection, SubagentSelectionId}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
@@ -393,12 +393,18 @@ with Stash
         itemKey match {
           case subagentId: SubagentId =>
             subagentKeeper
-              .remove(subagentId)
-              .flatMapT(_ =>
-                persistence
-                  .persistKeyedEvent(ItemDetached(itemKey, ownAgentPath))
-                  .rightAs(AgentCommand.Response.Accepted)
-              )
+              .removeSubagent(subagentId)
+              .flatMapT(_ => persistence
+                .persistKeyedEvent(ItemDetached(itemKey, ownAgentPath))
+                .rightAs(AgentCommand.Response.Accepted))
+              .runToFuture
+
+          case selectionId: SubagentSelectionId =>
+            subagentKeeper
+              .removeSubagentSelection(selectionId)
+              .*>(persistence
+                .persistKeyedEvent(ItemDetached(itemKey, ownAgentPath))
+                .rightAs(AgentCommand.Response.Accepted))
               .runToFuture
 
           case _ =>
@@ -425,7 +431,7 @@ with Stash
             .map(_.rightAs(AgentCommand.Response.Accepted))
             .runToFuture
 
-      case item @ (_: Calendar | _: SubagentRef) =>
+      case item @ (_: Calendar | _: SubagentRef | _: SubagentSelection) =>
         persist(ItemAttachedToMe(item)) { (stampedEvent, journaledState) =>
           proceedWithItem(item).runToFuture
         }.flatten
@@ -481,6 +487,9 @@ with Stash
           .fold(Task.pure(Checked.unit))(subagentRefState => subagentKeeper
             .proceedWithSubagent(subagentRefState)
             .materializeIntoChecked))
+
+      case subagentSelection: SubagentSelection =>
+        subagentKeeper.addOrReplaceSubagentSelection(subagentSelection)
 
       case _ => Task.right(())
     }

@@ -12,8 +12,6 @@ final case class SubagentRef(
   id: SubagentId,
   agentPath: AgentPath,
   uri: Uri,
-  // Higher number means higher priority
-  priority: Option[Int] = None,
   disabled: Boolean = false,
   itemRevision: Option[ItemRevision] = None)
 extends UnsignedSimpleItem

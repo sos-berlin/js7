@@ -22,7 +22,7 @@ import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath}
 import js7.data.order.{Order, OrderId, OrderObstacleCalculator}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
-import js7.data.subagent.SubagentId
+import js7.data.subagent.{SubagentId, SubagentSelectionId}
 import js7.data.value.Value
 import js7.data.workflow.WorkflowPath
 import js7.data_for_java.agent.{JAgentRef, JAgentRefState}
@@ -37,7 +37,7 @@ import js7.data_for_java.lock.{JLock, JLockState}
 import js7.data_for_java.order.JOrderPredicates.any
 import js7.data_for_java.order.{JOrder, JOrderObstacle}
 import js7.data_for_java.orderwatch.JFileWatch
-import js7.data_for_java.subagent.{JSubagentRef, JSubagentRefState}
+import js7.data_for_java.subagent.{JSubagentRef, JSubagentRefState, JSubagentSelection}
 import js7.data_for_java.vavr.VavrConverters._
 import js7.data_for_java.workflow.{JWorkflow, JWorkflowId}
 import scala.jdk.CollectionConverters._
@@ -96,6 +96,13 @@ extends JJournaledState[JControllerState, ControllerState]
     asScala.idToSubagentRefState
       .view
       .mapValues(JSubagentRefState(_))
+      .asJava
+
+  @Nonnull
+  def idToSubagentSelection: java.util.Map[SubagentSelectionId, JSubagentSelection] =
+    asScala.idToSubagentSelection
+      .view
+      .mapValues(JSubagentSelection(_))
       .asJava
 
   /** Looks up the URI of an AgentPath.. */

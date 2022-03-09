@@ -14,6 +14,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
 import js7.data.agent.AgentPath
 import js7.data.job.{CommandLineExecutable, Executable, InternalExecutable, JobResourcePath, PathExecutable, ShellScriptExecutable}
+import js7.data.subagent.SubagentSelectionId
 import js7.data.value.ValuePrinter
 import js7.data.value.expression.Expression
 import scala.concurrent.duration.FiniteDuration
@@ -25,6 +26,7 @@ final case class WorkflowJob private(
   agentPath: AgentPath,
   executable: Executable,
   defaultArguments: Map[String, Expression],
+  subagentSelectionId: Option[SubagentSelectionId],
   jobResourcePaths: Seq[JobResourcePath],
   parallelism: Int,
   sigkillDelay: Option[FiniteDuration],
@@ -59,6 +61,7 @@ object WorkflowJob
     agentPath: AgentPath,
     executable: Executable,
     defaultArguments: Map[String, Expression] = Map.empty,
+    subagentSelectionId: Option[SubagentSelectionId] = None,
     jobResourcePaths: Seq[JobResourcePath] = Nil,
     parallelism: Int = DefaultParallelism,
     sigkillDelay: Option[FiniteDuration] = None,
@@ -68,8 +71,8 @@ object WorkflowJob
     admissionTimeScheme: Option[AdmissionTimeScheme] = None,
     skipIfNoAdmissionForOrderDay: Boolean = false)
   : WorkflowJob =
-    checked(agentPath, executable, defaultArguments, jobResourcePaths, parallelism,
-      sigkillDelay, timeout, failOnErrWritten = failOnErrWritten,
+    checked(agentPath, executable, defaultArguments, subagentSelectionId, jobResourcePaths,
+      parallelism, sigkillDelay, timeout, failOnErrWritten = failOnErrWritten,
       admissionTimeScheme, skipIfNoAdmissionForOrderDay
     ).orThrow
 
@@ -77,6 +80,7 @@ object WorkflowJob
     agentPath: AgentPath,
     executable: Executable,
     defaultArguments: Map[String, Expression] = Map.empty,
+    subagentSelectionId: Option[SubagentSelectionId] = None,
     jobResourcePaths: Seq[JobResourcePath] = Nil,
     parallelism: Int = DefaultParallelism,
     sigkillDelay: Option[FiniteDuration] = None,
@@ -87,7 +91,7 @@ object WorkflowJob
   : Checked[WorkflowJob] =
     for (_ <- jobResourcePaths.checkUniqueness) yield
       new WorkflowJob(
-        agentPath, executable, defaultArguments, jobResourcePaths,
+        agentPath, executable, defaultArguments, subagentSelectionId, jobResourcePaths,
         parallelism, sigkillDelay, timeout, failOnErrWritten,
         admissionTimeScheme, skipIfNoAdmissionForOrderDay)
 
@@ -103,6 +107,7 @@ object WorkflowJob
   implicit val jsonEncoder: Encoder.AsObject[WorkflowJob] = workflowJob =>
     JsonObject(
       "agentPath" -> workflowJob.agentPath.asJson,
+      "subagentSelectionId" -> workflowJob.subagentSelectionId.asJson,
       "executable" -> workflowJob.executable.asJson,
       "defaultArguments" -> workflowJob.defaultArguments.??.asJson,
       "jobResourcePaths" -> workflowJob.jobResourcePaths.??.asJson,
@@ -116,6 +121,7 @@ object WorkflowJob
   implicit val jsonDecoder: Decoder[WorkflowJob] = c =>
     for {
       executable <- c.get[Executable]("executable")
+      subagentSelectionId <- c.get[Option[SubagentSelectionId]]("subagentSelectionId")
       agentPath <- c.get[AgentPath]("agentPath")
       arguments <- c.getOrElse[Map[String, Expression]]("defaultArguments")(Map.empty)
       jobResourcePaths <- c.getOrElse[Seq[JobResourcePath]]("jobResourcePaths")(Nil)
@@ -125,8 +131,8 @@ object WorkflowJob
       failOnErrWritten <- c.getOrElse[Boolean]("failOnErrWritten")(false)
       admissionTimeScheme <- c.get[Option[AdmissionTimeScheme]]("admissionTimeScheme")
       skipIfNoAdmissionForOrderDay <- c.getOrElse[Boolean]("skipIfNoAdmissionForOrderDay")(false)
-      job <- checked(agentPath, executable, arguments, jobResourcePaths, parallelism,
-        sigkillDelay, timeout, failOnErrWritten, admissionTimeScheme,
+      job <- checked(agentPath, executable, arguments, subagentSelectionId, jobResourcePaths,
+        parallelism, sigkillDelay, timeout, failOnErrWritten, admissionTimeScheme,
         skipIfNoAdmissionForOrderDay
       ).toDecoderResult(c.history)
     } yield job

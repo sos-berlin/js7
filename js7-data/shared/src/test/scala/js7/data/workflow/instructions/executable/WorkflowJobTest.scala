@@ -10,6 +10,7 @@ import js7.base.time.ScalaTime._
 import js7.base.time.{AdmissionTimeScheme, WeekdayPeriod}
 import js7.data.agent.AgentPath
 import js7.data.job.{JobResourcePath, RelativePathExecutable, ReturnCodeMeaning}
+import js7.data.subagent.SubagentSelectionId
 import js7.data.value.expression.Expression.{NumericConstant, StringConstant}
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
@@ -45,6 +46,7 @@ final class WorkflowJobTest extends AnyFreeSpec
           Map(
             "NAME" -> StringConstant("VALUE"),
             "NUMBER" -> NumericConstant(7)),
+          Some(SubagentSelectionId("SELECTION")),
           Seq(JobResourcePath("JOB-RESOURCE")),
           parallelism = 3,
           Some(10.s),
@@ -68,6 +70,7 @@ final class WorkflowJobTest extends AnyFreeSpec
             "NAME": "'VALUE'",
             "NUMBER": "7"
           },
+          "subagentSelectionId": "SELECTION",
           "jobResourcePaths": [
             "JOB-RESOURCE"
           ],

@@ -10,7 +10,7 @@ import js7.data.item.UnsignedSimpleItemPath
   * @author Joacim Zschimmer
   */
 final case class AgentPath private(string: String)
-extends DelegateId with UnsignedSimpleItemPath
+extends UnsignedSimpleItemPath with DelegateId
 {
   protected type Self = AgentPath
 

@@ -33,7 +33,7 @@ import js7.data.order.Order.{Forked, Ready}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachedToAgent, OrderForked}
 import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
-import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState}
+import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState, SubagentSelection, SubagentSelectionId}
 import js7.data.value.expression.Expression
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.position._
@@ -52,8 +52,12 @@ final class AgentStateTest extends AsyncFreeSpec
     SubagentId("SUBAGENT"),
     AgentPath("AGENT"),
     Uri("https://localhost:0"),
-    priority = None,
     disabled = false,
+    Some(ItemRevision(7)))
+
+  private val subagentSelection = SubagentSelection(
+    SubagentSelectionId("SELECTION"),
+    Map(subagentRef.id -> 1),
     Some(ItemRevision(7)))
 
   private val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "1.0", Nil)
@@ -92,6 +96,8 @@ final class AgentStateTest extends AsyncFreeSpec
       ControllerId("CONTROLLER")),
     Map(
       subagentRef.id -> SubagentRefState.initial(subagentRef)),
+    Map(
+      subagentSelection.id -> subagentSelection),
     Map(
       OrderId("ORDER") -> Order.fromOrderAdded(OrderId("ORDER"), OrderAdded(workflow.id))),
     Map(
@@ -141,7 +147,7 @@ final class AgentStateTest extends AsyncFreeSpec
   }
 
   "estimatedSnapshotSize" in {
-    assert(agentState.estimatedSnapshotSize == 12)
+    assert(agentState.estimatedSnapshotSize == 13)
     for (n <- agentState.toSnapshotObservable.countL.runToFuture)
       yield assert(n == agentState.estimatedSnapshotSize)
   }
@@ -177,6 +183,14 @@ final class AgentStateTest extends AsyncFreeSpec
                "TYPE" : "Reset"
              },
              "eventId": 0
+          }""",
+          json"""{
+            "TYPE": "SubagentSelection",
+            "id": "SELECTION",
+            "subagentToPriority": {
+              "SUBAGENT": 1
+            },
+            "itemRevision": 7
           }""",
           json"""{
             "TYPE": "Order",
@@ -317,6 +331,7 @@ final class AgentStateTest extends AsyncFreeSpec
       EventId.BeforeFirst,
       SnapshotableState.Standards.empty,
       meta,
+      Map.empty,
       Map.empty,
       Map(
         orderId ->

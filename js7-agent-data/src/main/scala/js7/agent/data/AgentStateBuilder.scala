@@ -12,7 +12,7 @@ import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.item.{SignableItem, SignableItemKey, SignedItemEvent}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.{Order, OrderId}
-import js7.data.subagent.{SubagentId, SubagentRefState}
+import js7.data.subagent.{SubagentId, SubagentRefState, SubagentSelection, SubagentSelectionId}
 import js7.data.workflow.{Workflow, WorkflowId}
 import scala.collection.mutable
 
@@ -25,6 +25,7 @@ extends SnapshotableStateBuilder[AgentState]
   private var _eventId = EventId.BeforeFirst
   private var agentMetaState = AgentMetaState.empty
   private val idToSubagentRefState = mutable.Map.empty[SubagentId, SubagentRefState]
+  private val idToSubagentSelection = mutable.Map.empty[SubagentSelectionId, SubagentSelection]
   private val idToOrder = mutable.Map.empty[OrderId, Order[Order.State]]
   private val idToWorkflow = mutable.Map.empty[WorkflowId, Workflow]
   private val pathToCalendar = mutable.Map.empty[CalendarPath, Calendar]
@@ -60,6 +61,9 @@ extends SnapshotableStateBuilder[AgentState]
     case subagentRefState: SubagentRefState =>
       idToSubagentRefState.insert(subagentRefState.subagentId -> subagentRefState)
 
+    case selection: SubagentSelection =>
+      idToSubagentSelection.insert(selection.id -> selection)
+
     case o: JournalState =>
       _journalState = o
 
@@ -85,6 +89,7 @@ extends SnapshotableStateBuilder[AgentState]
       SnapshotableState.Standards(_journalState, ClusterState.Empty),
       agentMetaState,
       idToSubagentRefState.toMap,
+      idToSubagentSelection.toMap,
       idToOrder.toMap,
       idToWorkflow.toMap,
       allFileWatchesState.result(),

@@ -14,11 +14,9 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.ScalaUtils.{implicitClass, reuseIfEqual}
 import js7.base.utils.typeclasses.IsEmpty.syntax._
 import js7.data.agent.AgentPath
-import js7.data.board.BoardPath
 import js7.data.calendar.CalendarPath
-import js7.data.item.{VersionedItem, VersionedItemId}
+import js7.data.item.{InventoryItemPath, SignableSimpleItemPath, SimpleItemPath, UnsignedSimpleItemPath, VersionedItem, VersionedItemId}
 import js7.data.job.{JobKey, JobResourcePath}
-import js7.data.lock.LockPath
 import js7.data.value.expression.{Expression, PositionSearch}
 import js7.data.workflow.Instruction.{@:, Labeled}
 import js7.data.workflow.Workflow.isCorrectlyEnded
@@ -140,40 +138,41 @@ extends VersionedItem
         || calendarPath.nonEmpty
       ) !! Problem("Cycle instruction requires calendarPath"))
 
-  override lazy val referencedItemPaths =
-    referencedLockPaths.view ++
-      referencedAgentPaths.view ++
-      referencedBoardPaths.view ++
-      referencedJobResourcePaths.view ++
-      referencedCalendarPaths.view
+  lazy val referencedAttachableToAgentUnsignedPaths
+  : Seq[InventoryItemPath.AttachableToAgent with UnsignedSimpleItemPath] =
+    referencedItemPaths
+      .collect { case o: InventoryItemPath.AttachableToAgent with UnsignedSimpleItemPath => o }
+      .toVector
 
-  private[workflow] def referencedLockPaths: Set[LockPath] =
-    flattenedInstructions.view
-      .map(_._2.instruction)
-      .collect {
-        case lock: LockInstruction => lock.lockPath
-      }
-      .toSet
+  lazy val referencedAttachableToAgentSignablePaths
+  : Seq[InventoryItemPath.AttachableToAgent with SignableSimpleItemPath] =
+    referencedItemPaths
+      .collect { case o: InventoryItemPath.AttachableToAgent with SignableSimpleItemPath => o }
+      .toVector
 
-  private[workflow] def referencedAgentPaths: Set[AgentPath] =
-    workflowJobs.view.map(_.agentPath).toSet
+  override lazy val referencedItemPaths: View[SimpleItemPath] = {
+    val referencedLockAndBoardPaths =
+      flattenedInstructions.view
+        .map(_._2.instruction)
+        .collect {
+          case lock: LockInstruction => lock.lockPath
+          case board: BoardInstruction => board.boardPath
+        }
+        .toSet
 
-  private[workflow] def referencedBoardPaths: Set[BoardPath] =
-    flattenedInstructions.view
-      .map(_._2.instruction)
-      .collect {
-        case board: BoardInstruction => board.boardPath
-      }
-      .toSet
+    val referencedJobResourcePaths =
+      jobResourcePaths.view
+        .concat(workflowJobs.view.flatMap(_.referencedJobResourcePaths))
+        .concat(orderPreparation.referencedJobResourcePaths)
+        .toSet
 
-  lazy val referencedJobResourcePaths: Set[JobResourcePath] =
-    jobResourcePaths.view
-      .concat(workflowJobs.view.flatMap(_.referencedJobResourcePaths))
-      .concat(orderPreparation.referencedJobResourcePaths)
-      .toSet
-
-  lazy val referencedCalendarPaths: Set[CalendarPath] =
-    calendarPath.toSet
+    View.concat(
+      referencedLockAndBoardPaths,
+      referencedJobResourcePaths,
+      calendarPath,
+      workflowJobs.view.map(_.agentPath).toSet,
+      workflowJobs.view.flatMap(_.subagentSelectionId).toSet)
+  }
 
   private[workflow] def workflowJobs: View[WorkflowJob] =
     keyToJob.values.view

@@ -61,7 +61,7 @@ import js7.data.item.BasicItemEvent.{ItemAttached, ItemAttachedToMe, ItemDeleted
 import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemEvent}
-import js7.data.item.{InventoryItemEvent, InventoryItemKey, ItemAddedOrChanged, SignableItemKey, UnsignedSimpleItemPath}
+import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, ItemAddedOrChanged, SignableItemKey, UnsignedSimpleItemPath}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderMoved, OrderNoticePosted, OrderNoticeRead, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath}
@@ -1282,26 +1282,20 @@ with MainJournalingActor[ControllerState, Event]
       if (order.isAttaching && !agentEntry.isResetting) {
         val orderEntry = orderRegister(order.id)
         if (!orderEntry.triedToAttached) {
-          val jobResources = signedWorkflow.value.referencedJobResourcePaths
+          signedWorkflow.value.referencedAttachableToAgentSignablePaths
             .flatMap(_controllerState.pathToSignedSimpleItem.get)
-          for (signedItem <- jobResources ++ View(signedWorkflow)) {
-            val item = signedItem.value
-            val attachedState = _controllerState
-              .itemToAttachedState(item.key, item.itemRevision, agentEntry.agentPath)
-            if (attachedState == Detached || attachedState == Attachable) {
+            .appended(signedWorkflow)
+            .filter(signedItem => isDetachedOrAttachable(signedItem.value, agentEntry.agentPath))
+            .foreach { signedItem =>
               agentEntry.actor ! AgentDriver.Input.AttachSignedItem(signedItem)
             }
-          }
 
-          val calendars = signedWorkflow.value.referencedCalendarPaths
-            .flatMap(_controllerState.pathToCalendar.get)
-          for (item <- calendars) {
-            val attachedState = _controllerState
-              .itemToAttachedState(item.key, item.itemRevision, agentEntry.agentPath)
-            if (attachedState == Detached || attachedState == Attachable) {
-              agentEntry.actor ! AgentDriver.Input.AttachUnsignedItem(item)
+          signedWorkflow.value.referencedAttachableToAgentUnsignedPaths
+            .flatMap(_controllerState.pathToUnsignedSimpleItem.get)
+            .filter(isDetachedOrAttachable(_, agentEntry.agentPath))
+            .foreach { item =>
+                agentEntry.actor ! AgentDriver.Input.AttachUnsignedItem(item)
             }
-          }
 
           orderEntry.triedToAttached = true
           // TODO AttachOrder mit parent orders!
@@ -1323,6 +1317,11 @@ with MainJournalingActor[ControllerState, Event]
 
       case _ => None
     }
+
+  private def isDetachedOrAttachable(item: InventoryItem, agentPath: AgentPath) = {
+    val attachedState = _controllerState.itemToAttachedState(item.key, item.itemRevision, agentPath)
+    attachedState == Detached || attachedState == Attachable
+  }
 
   private def detachOrderFromAgent(orderId: OrderId): Unit =
     for (orderEntry <- orderRegister.get(orderId)) {

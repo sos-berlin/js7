@@ -36,7 +36,7 @@ import js7.data.order.OrderEvent.{OrderAdded, OrderAddedX, OrderCancelled, Order
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{AllOrderWatchesState, FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState}
 import js7.data.state.StateView
-import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState, SubagentRefStateEvent}
+import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState, SubagentRefStateEvent, SubagentSelection, SubagentSelectionId}
 import js7.data.value.Value
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import monix.reactive.Observable
@@ -52,6 +52,7 @@ final case class ControllerState(
   controllerMetaState: ControllerMetaState,
   pathToAgentRefState: Map[AgentPath, AgentRefState],
   idToSubagentRefState: Map[SubagentId, SubagentRefState],
+  idToSubagentSelection: Map[SubagentSelectionId, SubagentSelection],
   pathToLockState: Map[LockPath, LockState],
   pathToBoardState: Map[BoardPath, BoardState],
   pathToCalendar: Map[CalendarPath, Calendar],
@@ -79,6 +80,7 @@ with SnapshotableState[ControllerState]
     repo.estimatedEventCount +
     pathToAgentRefState.size +
     idToSubagentRefState.size +
+    idToSubagentSelection.size +
     pathToLockState.size +
     pathToBoardState.values.size +
     pathToBoardState.values.view.map(_.notices.size).sum +
@@ -96,6 +98,7 @@ with SnapshotableState[ControllerState]
       Observable.fromIterable(controllerMetaState.isDefined ? controllerMetaState),
       Observable.fromIterable(pathToAgentRefState.values),
       Observable.fromIterable(idToSubagentRefState.values),
+      Observable.fromIterable(idToSubagentSelection.values),
       Observable.fromIterable(pathToLockState.values),
       Observable.fromIterable(pathToBoardState.values.view.map(_.toSnapshotObservable))
         .flatten,
@@ -163,6 +166,10 @@ with SnapshotableState[ControllerState]
                     yield copy(
                       idToSubagentRefState = o)
 
+                case selection: SubagentSelection =>
+                  for (o <- idToSubagentSelection.insert(selection.id -> selection)) yield
+                    copy(idToSubagentSelection = o)
+
                 case orderWatch: OrderWatch =>
                   for (o <- allOrderWatchesState.addOrderWatch(orderWatch)) yield
                     copy(allOrderWatchesState = o)
@@ -208,6 +215,10 @@ with SnapshotableState[ControllerState]
                                   (subagentRef.id -> subagentRefState.copy(subagentRef = subagentRef)))
                         })
                     }
+
+                case selection: SubagentSelection =>
+                  Right(copy(
+                    idToSubagentSelection = idToSubagentSelection.updated(selection.id, selection)))
 
                 case subagentRef: SubagentRef =>
                   for {
@@ -285,6 +296,10 @@ with SnapshotableState[ControllerState]
                 case subagentId: SubagentId =>
                   Right(updated.copy(
                     idToSubagentRefState = idToSubagentRefState - subagentId))
+
+                case id: SubagentSelectionId =>
+                  Right(updated.copy(
+                    idToSubagentSelection = idToSubagentSelection - id))
 
                 case path: OrderWatchPath =>
                   Right(updated.copy(
@@ -623,6 +638,7 @@ with SnapshotableState[ControllerState]
 
   private def unsignedSimpleItems: View[UnsignedSimpleItem] =
     pathToCalendar.values.view ++
+      idToSubagentSelection.values.view ++
       (idToSubagentRefState.view ++
         pathToAgentRefState.view ++
         pathToLockState ++
@@ -669,6 +685,7 @@ with SnapshotableState[ControllerState]
       case id: VersionedItemId_ => repo.anyIdToSigned(id).toOption.map(_.value)
       case path: AgentPath => pathToAgentRefState.get(path).map(_.item)
       case id: SubagentId => idToSubagentRefState.get(id).map(_.item)
+      case id: SubagentSelectionId => idToSubagentSelection.get(id)
       case path: LockPath => pathToLockState.get(path).map(_.item)
       case path: OrderWatchPath => allOrderWatchesState.pathToOrderWatchState.get(path).map(_.item)
       case path: BoardPath => pathToBoardState.get(path).map(_.item)
@@ -699,6 +716,7 @@ with ItemContainer.Companion[ControllerState]
     Map.empty,
     Map.empty,
     Map.empty,
+    Map.empty,
     AllOrderWatchesState.empty,
     Repo.empty,
     Map.empty,
@@ -711,7 +729,7 @@ with ItemContainer.Companion[ControllerState]
   def newBuilder() = new ControllerStateBuilder
 
   protected val inventoryItems = Vector(
-    AgentRef, SubagentRef, Lock, Board, Calendar, FileWatch, JobResource, Workflow)
+    AgentRef, SubagentRef, SubagentSelection, Lock, Board, Calendar, FileWatch, JobResource, Workflow)
 
   lazy val snapshotObjectJsonCodec: TypedJsonCodec[Any] =
     TypedJsonCodec.named("ControllerState.snapshotObjectJsonCodec",
@@ -722,6 +740,7 @@ with ItemContainer.Companion[ControllerState]
       Subtype[ControllerMetaState],
       Subtype[AgentRefState],
       Subtype[SubagentRefState],
+      Subtype[SubagentSelection],
       Subtype[LockState],
       Subtype[Board],
       Subtype[Calendar],

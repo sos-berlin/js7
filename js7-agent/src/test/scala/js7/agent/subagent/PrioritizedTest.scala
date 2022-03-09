@@ -14,62 +14,64 @@ final class PrioritizedTest extends AnyFreeSpec
   }
 
   "Prioritized" in {
-    assert(empty.remove(Key(3)) == empty)
+    val empty = Prioritized.empty[A](Map(
+      A(32)-> 3,
+      A(31)-> 3,
+      A(30)-> 3,
+      A(12)-> 1,
+      A(11)-> 1,
+      A(99)-> 9))
+    assert(empty.remove(A(3)) == empty)
 
     val prioritized = empty
-      .insert(Value(Key(32), "DREI", 3)).orThrow
-      .insert(Value(Key(31), "TRE", 3)).orThrow
-      .insert(Value(Key(30), "THREE", 3)).orThrow
-      .insert(Value(Key(12), "EINS", 1)).orThrow
-      .insert(Value(Key(11), "ETT", 1)).orThrow
-      .insert(Value(Key(99), "HIGH", 9)).orThrow
+      .add(A(32)).orThrow
+      .add(A(31)).orThrow
+      .add(A(30)).orThrow
+      .add(A(12)).orThrow
+      .add(A(11)).orThrow
+      .add(A(99)).orThrow
 
-    val fixedPriority = new FixedPriority
-
-    assert(prioritized.selectNext(fixedPriority, _ => false) == None)
+    assert(prioritized.selectNext(_ => false) == None)
 
 
     // Highest priority 9
 
-    assert(prioritized.selectNext(fixedPriority, _ => true) == Some(
-      Value(Key(99), "HIGH", 9)))
+    assert(prioritized.selectNext(_ => true) == Some(
+      A(99)))
 
-    assert(prioritized.selectNext(fixedPriority, _ => true) == Some(
-      Value(Key(99), "HIGH", 9)))
+    assert(prioritized.selectNext(_ => true) == Some(
+      A(99)))
 
 
     // Next priority, rotating through multiple entries
 
-    assert(prioritized.selectNext(fixedPriority, _.key != Key(99)) == Some(
-      Value(Key(32), "DREI", 3)))
+    assert(prioritized.selectNext(_ != A(99)) == Some(
+      A(32)))
 
-    assert(prioritized.selectNext(fixedPriority, _.key != Key(99)) == Some(
-      Value(Key(31), "TRE", 3)))  // entries are reversed!
+    assert(prioritized.selectNext(_ != A(99)) == Some(
+      A(31)))  // entries are reversed!
 
-    assert(prioritized.selectNext(fixedPriority, _.key != Key(99)) == Some(
-      Value(Key(30), "THREE", 3)))
+    assert(prioritized.selectNext(_ != A(99)) == Some(
+      A(30)))
 
-    assert(prioritized.selectNext(fixedPriority, _.key != Key(99)) == Some(
-      Value(Key(32), "DREI", 3)))   // Priority 3 entries are in original order again!
+    assert(prioritized.selectNext(_ != A(99)) == Some(
+      A(32)))   // Priority 3 entries are in original order again!
 
-    assert(prioritized.selectNext(fixedPriority, v => Set(11, 12)(v.key.number)) == Some(
-      Value(Key(11), "ETT", 1)))
+    assert(prioritized.selectNext(a => Set(11, 12)(a.number)) == Some(
+      A(11)))
 
-    assert(prioritized.selectNext(fixedPriority, v => Set(11, 12)(v.key.number)) == Some(
-      Value(Key(12), "EINS", 1)))
+    assert(prioritized.selectNext(a => Set(11, 12)(a.number)) == Some(
+      A(12)))
 
-    assert(prioritized.selectNext(fixedPriority, v => Set(31, 12)(v.key.number)) == Some(
-      Value(Key(31), "TRE", 3)))
+    assert(prioritized.selectNext(a => Set(31, 12)(a.number)) == Some(
+      A(31)))
 
-    assert(prioritized.selectNext(fixedPriority, v => Set(31, 12)(v.key.number)) == Some(
-      Value(Key(31), "TRE", 3)))
+    assert(prioritized.selectNext(a => Set(31, 12)(a.number)) == Some(
+      A(31)))
   }
 }
 
 private object PrioritizedTest
 {
-  final case class Key(number: Int)
-  final case class Value(key: Key, string: String, priority: Int)
-
-  private val empty = Prioritized.empty[Key, Value](_.key, _.priority)
+  private final case class A(number: Int)
 }

@@ -169,7 +169,7 @@ trait SubagentEventListener
                   })
                 .filter(_ != StampedHeartbeat)
                 .takeWhile(_ != PauseStamped)
-                .guaranteeCase(exitCase => Task(
+                .guaranteeCase(exitCase => Task.defer(
                   Task.when(exitCase != ExitCase.Completed || isHeartbeating)(
                     Task.defer {
                       val problem = Problem.pure(s"$subagentId event stream: $exitCase")
@@ -203,17 +203,16 @@ trait SubagentEventListener
     }
 
   private def onHeartbeatStarted: Observable[Unit] =
-    Observable.fromTask(Task.defer {
-      Task.when(!_isHeartbeating.getAndSet(true))(
+    Observable.fromTask(
+      Task.defer(Task.when(!_isHeartbeating.getAndSet(true))(
         // Different to AgentDriver,
         // for Subagents the Coupling state is tied to the continuous flow of events.
         persistence.persistKeyedEvent(subagentId <-: SubagentCoupled)
-          .map(_.orThrow))
-    })
+          .map(_.orThrow))))
 
   private def onSubagentDecoupled(problem: Option[Problem]): Task[Unit] =
     logger.traceTask("onSubagentDecoupled", problem.toString)(
-      Task.when(_isHeartbeating.getAndSet(false))(
+      Task.defer(Task.when(_isHeartbeating.getAndSet(false))(
         persistence
           .lock(subagentId)(
             persistence.persist(_
@@ -225,7 +224,7 @@ trait SubagentEventListener
                 (!subagentRefState.problem.contains(prblm))
                   .thenList(subagentId <-: SubagentCouplingFailed(prblm))
               }))
-          .map(_.orThrow)))
+          .map(_.orThrow))))
 
   final def isHeartbeating = _isHeartbeating.get()
 }

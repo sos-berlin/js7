@@ -52,8 +52,8 @@ final class ItemConsistencyTest extends AnyFreeSpec with ControllerAgentForScala
       .await(99.s)
     assert(checked == Left(Problem.Combined(Set(
       MissingReferencedItemProblem(workflow.id, lock.path),
-      MissingReferencedItemProblem(workflow.id, agentPath),
-      MissingReferencedItemProblem(workflow.id, jobResource.path)))))
+      MissingReferencedItemProblem(workflow.id, jobResource.path),
+      MissingReferencedItemProblem(workflow.id, agentPath)))))
 
     controllerApi
       .updateItems(Observable(
