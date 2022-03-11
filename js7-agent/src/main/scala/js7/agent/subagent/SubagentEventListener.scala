@@ -46,14 +46,10 @@ trait SubagentEventListener
   protected final val coupled = Switch(false)
 
   protected final def stopEventListener: Task[Unit] =
-    logger.debugTask("stopEventListener")(
-      stopObserving.flatMap(_.tryPut(())) *>
-        observingStopped.flatMap(_.tryRead).void *>
-        Task {
-          if (!isListening.getAndSet(false)) {
-            logger.error("isListening == false ?")
-          }
-        })
+    logger.debugTask("stopEventListener")(Task.defer(
+      Task.when(isListening.getAndSet(false))(
+        stopObserving.flatMap(_.tryPut(())) *>
+          observingStopped.flatMap(_.tryRead).void)))
 
   protected final def startEventListener: Task[Unit] =
     logger.debugTask(Task.defer {
