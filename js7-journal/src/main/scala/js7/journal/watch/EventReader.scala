@@ -75,11 +75,12 @@ extends AutoCloseable
     import indexPositionAndEventId.position
     val iterator = iteratorPool.borrowIterator()
     closeOnError(iterator) {
-      if (iterator.position != position &&
-        (iterator.position < position || iterator.eventId > after/*No seek if skipToEventAfter works without seek*/))
+      val pos = iterator.position
+      if (pos != position &&
+        (pos < position || iterator.eventId > after/*No seek if skipToEventAfter works without seek*/))
       {
         logger.trace(s"seek $position (eventId=${indexPositionAndEventId.value}, for $after) ≠ " +
-          s"iterator ${iterator.position} (eventId=${iterator.eventId})")
+          s"iterator $pos (eventId=${iterator.eventId})")
         iterator.seek(indexPositionAndEventId)
       }
       val exists = iterator.skipToEventAfter(journalIndex, after) // May run very long (minutes for gigabyte journals) !!!
@@ -95,64 +96,69 @@ extends AutoCloseable
   extends CloseableIterator[Stamped[KeyedEvent[Event]]]
   {
     private val iteratorAtomic = AtomicAny(iterator_)
-    @volatile private var eof = false
+    private var eof = false
     private var _next: Stamped[KeyedEvent[Event]] = null
 
-    // May be called asynchronously (parallel to hasNext or next), as by Monix guarantee or bracket
     def close() =
-      for (it <- Option(iteratorAtomic.getAndSet(null))) {
-        logger.trace(s"EventIterator(after=$after) closed")
-        iteratorPool.returnIterator(it)
-        if (_closeAfterUse && !isInUse || iteratorPool.isClosed) {
-          logger.debug(s"CloseableIterator.close _closeAfterUse: '${EventReader.this}'")
-          EventReader.this.close()
+      synchronized {
+        // May be called asynchronously (parallel to hasNext or next), as by Monix guarantee or bracket
+        for (it <- Option(iteratorAtomic.getAndSet(null))) {
+          logger.trace(s"EventIterator(after=$after) closed")
+          iteratorPool.returnIterator(it)
+          if (_closeAfterUse && !isInUse || iteratorPool.isClosed) {
+            logger.debug(s"CloseableIterator.close _closeAfterUse: '${EventReader.this}'")
+            EventReader.this.close()
+          }
         }
       }
 
     def hasNext =
-      !eof && {  // Avoid exception in iterator in case of automatically closed iterator (closeAtEnd, for testing)
-        iteratorAtomic.get() match {
-          case null =>
-            logger.debug(JsonSeqFileClosedProblem(iteratorName).toString)
-            eof = true  // EOF to avoid exception logging (when closed (cancelled) asynchronously before hasNext, but not before `next`).
-            false
-          case iterator =>
-            _next != null || {
-              val has = iterator.hasNext
-              eof |= !has
-              if (has) {
-                // Read ahead next event to be sure to let the following `next()` succeed.
-                // So `close` may be executed asynchronously between `hasNext` and `next`.
-                // This may happen when the (HTTP) client stops reading.
-                _lastUsed = Timestamp.currentTimeMillis
-                val stamped = iterator.next()
-                assertThat(stamped.eventId >= after, s"${stamped.eventId} ≥ $after")
-                if (isHistoric) {
-                  journalIndex.tryAddAfter(stamped.eventId, iterator.position)
+      synchronized {
+        !eof && {  // Avoid exception in iterator in case of automatically closed iterator (closeAtEnd, for testing)
+          iteratorAtomic.get() match {
+            case null =>
+              logger.debug(JsonSeqFileClosedProblem(iteratorName).toString)
+              eof = true  // EOF to avoid exception logging (when closed (cancelled) asynchronously before hasNext, but not before `next`).
+              false
+            case iterator =>
+              _next != null || {
+                val has = iterator.hasNext
+                eof |= !has
+                if (has) {
+                  // Read ahead next event to be sure to let the following `next()` succeed.
+                  // So `close` may be executed asynchronously between `hasNext` and `next`.
+                  // This may happen when the (HTTP) client stops reading.
+                  _lastUsed = Timestamp.currentTimeMillis
+                  val stamped = iterator.next()
+                  assertThat(stamped.eventId >= after, s"${stamped.eventId} ≥ $after")
+                  if (isHistoric) {
+                    journalIndex.tryAddAfter(stamped.eventId, iterator.position)
+                  }
+                  _next = stamped
+                } else {
+                  if (isHistoric) {
+                    journalIndex.freeze(journalIndexFactor)
+                  }
+                  close()
                 }
-                _next = stamped
-              } else {
-                if (isHistoric) {
-                  journalIndex.freeze(journalIndexFactor)
-                }
-                close()
+                has
               }
-              has
-            }
+          }
         }
       }
 
-    def next() = {
-      hasNext
-      _next match {
-        case null =>
-          if (iteratorAtomic.get() == null) throw new ClosedException(iterator_.journalFile)
-          throw new NoSuchElementException("EventReader read past end of file")
-        case result =>
-          _next = null
-          result
+    def next() =
+      synchronized {
+        hasNext
+        _next match {
+          case null =>
+            if (iteratorAtomic.get() == null) throw new ClosedException(iterator_.journalFile)
+            throw new NoSuchElementException("EventReader read past end of file")
+          case result =>
+            _next = null
+            result
+        }
       }
-    }
 
     private def iteratorName = iterator_.toString
   }

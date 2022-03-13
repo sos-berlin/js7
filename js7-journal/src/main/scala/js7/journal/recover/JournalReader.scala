@@ -2,7 +2,6 @@ package js7.journal.recover
 
 import cats.effect.Resource
 import io.circe.Json
-import io.circe.syntax.EncoderOps
 import java.nio.file.Path
 import js7.base.circeutils.CirceUtils._
 import js7.base.data.ByteArray
@@ -30,9 +29,15 @@ final class JournalReader(journalMeta: JournalMeta, expectedJournalId: JournalId
 extends AutoCloseable
 {
   private val jsonReader = InputStreamJsonSeqReader.open(journalFile)
-  val journalHeader = closeOnError(jsonReader) {
-    val byteArray = jsonReader.read().map(_.value) getOrElse sys.error(s"Journal file '$journalFile' is empty")
-    JournalHeader.checkedHeader(byteArray, journalFile, expectedJournalId).orThrow
+
+  private val rawJournalHeader: PositionAnd[ByteArray] =
+    closeOnError(jsonReader) {
+      jsonReader.readRaw() getOrElse sys.error(s"Journal file '$journalFile' is empty")
+    }
+
+  val journalHeader = {
+    val json = jsonReader.toJson(rawJournalHeader).value
+    JournalHeader.checkedHeader(json, journalFile, expectedJournalId).orThrow
   }
 
   val tornEventId = journalHeader.eventId
@@ -47,30 +52,36 @@ extends AutoCloseable
     jsonReader.close()
 
   /** For FileEventIterator, skips snapshot section */
-  lazy val firstEventPosition: Long = {
-    if (snapshotHeaderRead || eventHeaderRead) throw new IllegalStateException("JournalReader.firstEventPosition has been called after nextEvent")
-    while (nextSnapshotJson().isDefined) {}
-    if (!eventHeaderRead) { // No snapshot section
-      jsonReader.read() match {
-        case Some(PositionAnd(_, EventHeader)) =>
-          eventHeaderRead = true
-        case None =>
-        case Some(positionAndJson) =>
-          throw new CorruptJournalException("Event header is missing", journalFile,
-            positionAndJson.copy(value = positionAndJson.value.toByteArray))
+  lazy val firstEventPosition: Long =
+    synchronized {
+      if (snapshotHeaderRead || eventHeaderRead) throw new IllegalStateException(
+        "JournalReader.firstEventPosition has been called after nextEvent")
+      while (nextSnapshotJson().isDefined) {}
+      if (!eventHeaderRead) { // No snapshot section
+        jsonReader.read() match {
+          case Some(PositionAnd(_, EventHeader)) =>
+            eventHeaderRead = true
+          case None =>
+          case Some(positionAndJson) =>
+            throw new CorruptJournalException("Event header is missing", journalFile,
+              positionAndJson.copy(value = positionAndJson.value.toByteArray))
+        }
       }
+      jsonReader.position
     }
-    jsonReader.position
-  }
 
   private[recover] def readSnapshot: Observable[Any] =
-    journalHeader +:
-      Observable.fromIteratorUnsafe(untilNoneIterator(nextSnapshotJson()))
-        .mapParallelBatch()(json => journalMeta.snapshotJsonCodec.decodeJson(json).toChecked.orThrow)
+    synchronized {
+      journalHeader +:
+        Observable.fromIteratorUnsafe(untilNoneIterator(nextSnapshotJson()))
+          .mapParallelBatch()(json => journalMeta.snapshotJsonCodec.decodeJson(json).toChecked.orThrow)
+    }
 
   private[recover] def readSnapshotRaw: Observable[ByteArray] =
-    ByteArray(journalHeader.asJson.compactPrint + '\n'/*for application/x-ndjson*/) +:
-      Observable.fromIteratorUnsafe(untilNoneIterator(nextSnapshotRaw().map(_.value)))
+    synchronized {
+      rawJournalHeader.value +:
+        Observable.fromIteratorUnsafe(untilNoneIterator(nextSnapshotRaw().map(_.value)))
+    }
 
   private def nextSnapshotJson(): Option[Json] =
     nextSnapshotRaw().map(jsonReader.toJson).map(_.value)
@@ -100,25 +111,27 @@ extends AutoCloseable
   }
 
   /** For FileEventIterator */
-  def seekEvent(positionAndEventId: PositionAnd[EventId]): Unit = {
-    require(positionAndEventId.value >= tornEventId, s"seek($positionAndEventId) but tornEventId=$tornEventId")
-    jsonReader.seek(positionAndEventId.position)
-    _eventId = positionAndEventId.value
-    eventHeaderRead = true
-    _totalEventCount = -1
-    transaction.clear()
-  }
+  def seekEvent(positionAndEventId: PositionAnd[EventId]): Unit =
+    synchronized {
+      require(positionAndEventId.value >= tornEventId, s"seek($positionAndEventId) but tornEventId=$tornEventId")
+      jsonReader.seek(positionAndEventId.position)
+      _eventId = positionAndEventId.value
+      eventHeaderRead = true
+      _totalEventCount = -1
+      transaction.clear()
+    }
 
   private[recover] def readEvents(): Iterator[Stamped[KeyedEvent[Event]]] =
     untilNoneIterator(nextEvent())
 
-  def nextEvent(): Option[Stamped[KeyedEvent[Event]]] = {
-    val result = transaction.readNext() orElse nextEvent2()
-    for (stamped <- result) {
-      _eventId = stamped.eventId
+  def nextEvent(): Option[Stamped[KeyedEvent[Event]]] =
+    synchronized {
+      val result = transaction.readNext() orElse nextEvent2()
+      for (stamped <- result) {
+        _eventId = stamped.eventId
+      }
+      result
     }
-    result
-  }
 
   private def nextEvent2(): Option[Stamped[KeyedEvent[Event]]] =
     if (!eventHeaderRead)
@@ -205,8 +218,10 @@ extends AutoCloseable
   def position = positionAndEventId.position
 
   def positionAndEventId: PositionAnd[EventId] =
-    transaction.positionAndEventId
-      .getOrElse(PositionAnd(jsonReader.position, _eventId))
+    synchronized {
+      transaction.positionAndEventId
+        .getOrElse(PositionAnd(jsonReader.position, _eventId))
+    }
 
   def totalEventCount = _totalEventCount
 }
@@ -220,11 +235,12 @@ object JournalReader
     snapshot_(_.readSnapshotRaw)(journalMeta, expectedJournalId, journalFile)
 
   private def snapshot_[A](f: JournalReader => Observable[A])
-    (journalMeta: JournalMeta, expectedJournalId: JournalId, journalFile: Path): Observable[A] =
-    Observable.fromResource(
-      Resource.fromAutoCloseable(Task(
-        new JournalReader(journalMeta, expectedJournalId, journalFile)))
-    ) flatMap f
+    (journalMeta: JournalMeta, expectedJournalId: JournalId, journalFile: Path)
+  : Observable[A] =
+    Observable
+      .fromResource(Resource.fromAutoCloseable(Task(
+        new JournalReader(journalMeta, expectedJournalId, journalFile))))
+      .flatMap(f)
 
   private final class CorruptJournalException(message: String, journalFile: Path, positionAndJson: PositionAnd[ByteArray])
   extends RuntimeException(
