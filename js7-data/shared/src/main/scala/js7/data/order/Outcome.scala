@@ -193,7 +193,7 @@ object Outcome
     }
 
     final case object ProcessLost extends Reason {
-      val problem = Problem.pure("Process lost due JS7 restart")
+      val problem = Problem.pure("Process lost due to JS7 restart")
     }
 
     final case class Other(problem: Problem) extends Reason

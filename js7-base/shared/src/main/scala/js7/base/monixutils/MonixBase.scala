@@ -129,8 +129,12 @@ object MonixBase
 
     implicit class RichMonixObservable[A](private val underlying: Observable[A]) extends AnyVal
     {
-      def toL[Col[x] <: IterableOps[x, Iterable, Iterable[x]]](implicit factory: IterableFactory[Col]): Task[Col[A @uncheckedVariance]] =
-        underlying.foldLeftL(factory.newBuilder[A])(_ += _).map(_.result())
+      /** Like toListL, but for an IterableFactory. */
+      def toL[Col[x] <: IterableOps[x, Iterable, Iterable[x]]](factory: IterableFactory[Col])
+      : Task[Col[A @uncheckedVariance]] =
+        underlying
+          .foldLeftL(factory.newBuilder[A])(_ += _)
+          .map(_.result())
 
       def tapEval(f: A => Task[Unit]): Observable[A] =
         underlying.flatTap(a => Observable.fromTask(f(a)))

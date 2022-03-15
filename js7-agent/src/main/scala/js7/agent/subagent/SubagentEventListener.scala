@@ -108,7 +108,6 @@ trait SubagentEventListener
     stamped.value match {
       case keyedEvent @ KeyedEvent(orderId: OrderId, event: OrderEvent) =>
         event match {
-          // TODO Discard (while logging an error) inapplicable (wrong) events
           case _: OrderStdWritten =>
             // TODO Save Timestamp
             Task.pure(Some(stamped) -> Task.unit)
@@ -128,7 +127,9 @@ trait SubagentEventListener
       case KeyedEvent(_: NoKey, SubagentEvent.SubagentShutdown) =>
         Task.pure(None -> onSubagentDied(SubagentShutdown))
 
-      case KeyedEvent(_: NoKey, event: SubagentEvent) =>
+      case KeyedEvent(_: NoKey, event @
+        (_: SubagentEvent.SubagentDedicated | _: SubagentEvent.SubagentItemAttached)) =>
+        // TODO Subagent should not emit unused events
         logger.debug(event.toString)
         Task.pure(None -> Task.unit)
 

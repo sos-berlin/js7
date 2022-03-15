@@ -47,7 +47,7 @@ abstract class RecouplingStreamReader[
         logged = true
       }
       if (!logged) {
-        logger.debug(msg)
+        logger.debug(s"💥 $api: $msg")
       }
       true  // Recouple and continue
     }
@@ -194,7 +194,7 @@ abstract class RecouplingStreamReader[
                       (problem match {
                         case InvalidSessionTokenProblem =>
                           Task {
-                            logger.debug(s"$api: $InvalidSessionTokenProblem")
+                            logger.debug(s"🚫 $api: $InvalidSessionTokenProblem")
                             true
                           }
                         case _ =>
@@ -217,7 +217,7 @@ abstract class RecouplingStreamReader[
         getObservable(api, after = after)
           //.timeout(idleTimeout)
           .onErrorRecoverWith { case t: TimeoutException =>
-            logger.debug(s"$api: ${t.toString}")
+            logger.debug(s"💥 $api: ${t.toString}")
             Task.pure(Right(Observable.empty))
           }
           .map(_.map(obs =>

@@ -29,8 +29,8 @@ object SubagentEvent extends Event.Companion[SubagentEvent]
   final case class SubagentItemAttached(item: InventoryItem)
   extends SubagentEvent
 
-  final case class SubagentCommandsObserved(untilCommandId: Long)
-  extends SubagentEvent
+  //final case class SubagentCommandsObserved(untilCommandId: Long)
+  //extends SubagentEvent
 
   type SubagentShutdown = SubagentShutdown.type
   case object SubagentShutdown
@@ -39,7 +39,7 @@ object SubagentEvent extends Event.Companion[SubagentEvent]
   implicit val jsonCodec = TypedJsonCodec[SubagentEvent](
     Subtype(deriveCodec[SubagentDedicated]),
     Subtype(deriveCodec[SubagentItemAttached]),
-    Subtype(deriveCodec[SubagentCommandsObserved]),
+    //Subtype(deriveCodec[SubagentCommandsObserved]),
     Subtype(SubagentShutdown))
 
   intelliJuseImport(inventoryItemJsonCodec)

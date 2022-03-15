@@ -110,8 +110,8 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
               case Failure(t) =>
                 logger.error(s"processOrder => ${t.toStringWithCauses}")  // OrderFailed ???
 
-              case Success(Left(p: SubagentDriverStoppedProblem)) =>
-                logger.debug(s"processOrder => $p")
+              case Success(Left(problem: SubagentDriverStoppedProblem)) =>
+                logger.debug(s"processOrder => $problem")
 
               case Success(Left(problem)) =>
                 logger.error(s"processOrder => $problem")  // ???

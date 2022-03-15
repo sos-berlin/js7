@@ -79,7 +79,7 @@ object Logger
       trace: Boolean = false)(task: Task[A])
     : Task[A] =
       Task.defer {
-        if (!logger.underlying.isDebugEnabled)
+        if (trace && !logger.underlying.isTraceEnabled || !logger.underlying.isDebugEnabled)
           task
         else {
           val argsString = args.toString

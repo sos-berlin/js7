@@ -116,11 +116,11 @@ final class SubagentKeeper(
     val startedEvents = order.isState[Order.Fresh].thenList(OrderStarted) :::
       OrderProcessingStarted(subagentDriver.subagentId) :: Nil
     persist(order.id, startedEvents, onEvents)
-      .map(_.map { case (_, s) =>
-        s.idToOrder
-          .checked(order.id)
-          .flatMap(_.checkedState[Order.Processing])
-          .orThrow
+      .map(_.map { case (_, s) => s
+        .idToOrder
+        .checked(order.id)
+        .flatMap(_.checkedState[Order.Processing])
+        .orThrow
       })
       .flatMapT(order =>
         forProcessingOrder(order.id, subagentDriver, onEvents)(
@@ -141,7 +141,7 @@ final class SubagentKeeper(
         .match_ {
           case None =>
             val event = OrderProcessed(Outcome.Disrupted(Problem.pure(
-              s"Missing $subagentId SubagentDriver for processing ${ order.id }")))
+              s"Missing $subagentId SubagentDriver for processing ${order.id}")))
             persist(order.id, event :: Nil, onEvents)
               .map(_.map { case (_, s) => event -> s })
 
@@ -164,7 +164,10 @@ final class SubagentKeeper(
         o
       })
 
-  private def forProcessingOrder(orderId: OrderId, subagentDriver: SubagentDriver, onEvents: Seq[OrderCoreEvent] => Unit)
+  private def forProcessingOrder(
+    orderId: OrderId,
+    subagentDriver: SubagentDriver,
+    onEvents: Seq[OrderCoreEvent] => Unit)
     (body: Task[Checked[OrderProcessed]])
   : Task[Checked[Unit]] =
     Resource.make(
