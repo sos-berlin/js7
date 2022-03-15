@@ -33,6 +33,9 @@ extends JJsonable[JSubagentRef] with JUnsignedSimpleItem
   def uri: Uri =
     asScala.uri
 
+  def disabled: Boolean =
+    asScala.disabled
+
   @Nonnull
   def withRevision(revision: Optional[ItemRevision]) =
     copy(asScala.withRevision(revision.toScala))
@@ -44,8 +47,9 @@ object JSubagentRef extends JJsonable.Companion[JSubagentRef]
   def of(
     @Nonnull id: SubagentId,
     @Nonnull agentPath: AgentPath,
-    @Nonnull uri: Uri)
-  = JSubagentRef(SubagentRef(id, agentPath, uri))
+    @Nonnull uri: Uri,
+    disabled: Boolean)
+  = JSubagentRef(SubagentRef(id, agentPath, uri, disabled = disabled))
 
   @Nonnull
   override def fromJson(jsonString: String): VEither[Problem, JSubagentRef] =

@@ -51,7 +51,8 @@ final class JSubagentTester
     private static final JSubagentRef subagentRef = JSubagentRef.of(
         SubagentId.of("SUBAGENT"),
         agentPath,
-        Uri.of("http://localhost:0"));
+        Uri.of("http://localhost:0"),
+        /*disabled=*/false);
 
     private static final JSubagentSelection subagentSelection = JSubagentSelection.of(
         SubagentSelectionId.of("SUBAGENT"),
