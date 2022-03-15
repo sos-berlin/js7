@@ -13,7 +13,7 @@ import js7.data.agent.AgentPath
 import js7.data.item.BasicItemEvent.{ItemAttached, ItemDeleted}
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVersion, DeleteSimple, RemoveVersioned}
 import js7.data.item.VersionId
-import js7.data.order.OrderEvent.OrderProcessingStarted
+import js7.data.order.OrderEvent.{OrderDeleted, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.subagent.SubagentRefStateEvent.{SubagentCoupled, SubagentCouplingFailed}
 import js7.data.subagent.{SubagentId, SubagentRef, SubagentSelection, SubagentSelectionId}
@@ -133,13 +133,14 @@ with SubagentTester
 
   def runOrdersAndCheck(n: Int, expected: Map[SubagentId, Int]): Unit = {
     val eventId = eventWatch.lastAddedEventId
-    val orderIds = for (i <- 1 to n) yield nextOrderId()
+    val orderIds = Vector.fill(n) { nextOrderId() }
     controllerApi.addOrders(Observable.fromIterable(orderIds).map(toOrder))
       .await(99.s).orThrow
     val started = for (orderId <- orderIds) yield
       eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
         .head.value.event
     assert(started.flatMap(_.subagentId).groupMapReduce(identity)(_ => 1)(_ + _) == expected)
+    for (orderId <- orderIds) eventWatch.await[OrderDeleted](_.key == orderId, after = eventId)
   }
 
   "Stop B-SUBAGENT" in {
@@ -164,14 +165,14 @@ with SubagentTester
     eventWatch.await[ItemDeleted](_.event.key == workflow.id, after = eventId)
   }
 
-  "Subagent can only be deleted after SubagentSelection ?" in {
+  "Subagent can only be deleted after SubagentSelection" in {
     val checked = controllerApi
       .updateItems(Observable(DeleteSimple(dSubagentId)))
       .await(99.s)
     assert(checked == Left(ItemIsStillReferencedProblem(dSubagentId, subagentSelection.id)))
   }
 
-  "Delete OrderSelection" in {
+  "Delete SubagentSelection" in {
     val eventId = eventWatch.lastAddedEventId
     controllerApi
       .updateItems(Observable(DeleteSimple(subagentSelection.id)))
