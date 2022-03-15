@@ -4,7 +4,7 @@ import js7.base.auth.{SessionToken, UserAndPassword, UserId}
 import js7.base.circeutils.CirceUtils._
 import js7.base.generic.SecretString
 import js7.base.version.Version
-import js7.tester.CirceJsonTester.testJson
+import js7.tester.CirceJsonTester.{testJson, testJsonDecoder, testJsonEncoder}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
@@ -14,7 +14,20 @@ final class SessionCommandTest extends AnyFreeSpec {
 
   "JSON" - {
     "Login" in {
-      testJson[SessionCommand](SessionCommand.Login(
+      testJsonEncoder[SessionCommand](SessionCommand.Login(
+        Some(UserAndPassword(UserId("USER"), SecretString("PASSWORD"))),
+        Some(Version("0.0.0-TEST"))),
+        json"""{
+          "TYPE": "Login",
+          "userAndPassword": {
+            "userId": "USER",
+            "password": "PASSWORD"
+          },
+          "js7Version": "0.0.0-TEST",
+          "version": "0.0.0-TEST"
+        }""")
+
+      testJsonDecoder[SessionCommand](SessionCommand.Login(
         Some(UserAndPassword(UserId("USER"), SecretString("PASSWORD"))),
         Some(Version("0.0.0-TEST"))),
         json"""{

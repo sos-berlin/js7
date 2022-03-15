@@ -20,13 +20,15 @@ object CirceJsonTester
     testJson(a, parseJson(jsonString))
 
   def testJson[A: Encoder: Decoder](a: A, json: => Json)(implicit pos: source.Position): Assertion = {
+    testJsonEncoder(a, json)
+    testJsonDecoder(a, json)
+  }
+
+  def testJsonEncoder[A: Encoder](a: A, json: => Json): Assertion = {
     // Do a.asJson first to get the JSON string, then evaluate lazy json (which may have syntax errors during development).
     val asJson: Json = removeJNull(a.asJson)  // Circe converts None to JNull which we remove here (like Printer dropNullValues = true)
-    if (asJson != json) fail(s"${prettyPrinter.print(normalizeJson(asJson))} did not equal ${prettyPrinter.print(normalizeJson(json))}")
-    val reencoded = rightOrThrow(json.as[A])
-    if (a != reencoded) {
-      assert(a == reencoded)
-    }
+    if (asJson != json) fail(
+      s"${prettyPrinter.print(normalizeJson(asJson))} did not equal ${prettyPrinter.print(normalizeJson(json))}")
     val reparsed = parseJson(printer.print(asJson))
     assert(reparsed == json)
     assert(reparsed == asJson)
