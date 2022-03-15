@@ -79,7 +79,9 @@ object BareSubagent
       clock <- AlarmClock.resource(Some(config
         .getDuration("js7.time.clock-setting-check-interval")
         .toFiniteDuration))
-      journal = new InMemoryJournal(SubagentState.empty)
+      journal = new InMemoryJournal(SubagentState.empty,
+        size = conf.config.getInt("js7.journal.event-buffer-size"),
+        waitingFor = "JS7 Agent Director")
       commandExecutor = new SubagentCommandExecutor(journal, conf,
         conf.toJobLauncherConf(iox, blockingInternalJobScheduler, clock).orThrow)
 

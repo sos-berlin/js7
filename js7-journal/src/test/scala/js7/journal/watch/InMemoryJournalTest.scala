@@ -4,6 +4,7 @@ import cats.instances.try_._
 import cats.syntax.foldable._
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
+import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
 import js7.base.time.WaitForCondition.waitForCondition
@@ -108,10 +109,61 @@ final class InMemoryJournalTest extends AnyFreeSpec
       .toListL
       .await(99.s) == Seq(Stamped(1002, "C" <-: TestEvent.Added("C"))))
   }
+
+  "size" in {
+    val size = 3
+    val journal = newJournal(size = size)
+
+    val observed = mutable.Buffer.empty[Stamped[KeyedEvent[TestEvent]]]
+    val observing = journal
+      .observe(EventRequest.singleClass[TestEvent](
+        after = EventId.BeforeFirst,
+        timeout = Some(99.s)))
+      .foreach(o => synchronized(observed += o))
+
+    val n = 10
+    val persisting = (0 until n).map(_.toString).toVector
+      .traverse_(x => journal
+        .persistKeyedEvent(x <-: TestEvent.Added(x))
+        .map(_.orThrow))
+        .runToFuture
+
+    def lastObserved = synchronized(observed.lastOption).map(_.eventId)
+
+    waitForCondition(10.s, 10.ms)(lastObserved.contains(1002) && journal.queueLength == 3)
+    assert(observed.last.eventId == 1002 && journal.queueLength == 3)
+
+    for (i <- 0 until n - size) withClue(s"#$i") {
+      journal.releaseEvents(untilEventId = 1000 + i).await(99.s).orThrow
+      waitForCondition(10.s, 10.ms)(lastObserved.contains(1000 + size + i) && journal.queueLength == 3)
+      assert(lastObserved.contains(1000 + size + i) && journal.queueLength == 3)
+    }
+
+    persisting.await(9.s)
+    observing.cancel()
+  }
+
+  "persist more than size events at once" in {
+    val size = 3
+    val journal = newJournal(size = size)
+    val events = (0 until 3 * size).map(_.toString).map(x => x <-: TestEvent.Added(x))
+    journal
+      .persistKeyedEvents(events)
+      .await(99.s)
+    assert(journal.queueLength == 3 * size)
+    assert(journal
+      .observe(EventRequest.singleClass[TestEvent](after = EventId.BeforeFirst))
+      .map(_.value)
+      .toListL
+      .await(99.s) == events)
+  }
 }
 
 object InMemoryJournalTest
 {
-  private def newJournal() =
-    new InMemoryJournal(TestState.empty, new EventIdGenerator(EventIdClock.fixed(1)))
+  private def newJournal(size: Int = Int.MaxValue) =
+    new InMemoryJournal(
+      TestState.empty,
+      size = size,
+      eventIdGenerator = new EventIdGenerator(EventIdClock.fixed(1)))
 }

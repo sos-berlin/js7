@@ -35,7 +35,7 @@ import monix.execution.atomic.Atomic
 trait SubagentExecutor
 {
   protected[this] val dedicatedOnce: SetOnce[Dedicated]
-  protected val journal: InMemoryJournal[SubagentState]  // FIXME Limit number of events!
+  protected val journal: InMemoryJournal[SubagentState]
   protected val subagentConf: SubagentConf
   protected val jobLauncherConf: JobLauncherConf
 

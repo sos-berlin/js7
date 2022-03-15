@@ -1,6 +1,9 @@
 package js7.journal.watch
 
+import cats.syntax.traverse._
+import js7.base.monixutils.MonixBase.syntax.RichMonixTask
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.Assertions.assertThat
 import js7.base.utils.BinarySearch.binarySearch
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{AsyncLock, CloseableIterator}
@@ -9,25 +12,28 @@ import js7.journal.log.JournalLogger
 import js7.journal.log.JournalLogger.SimpleLoggable
 import js7.journal.state.StatePersistence
 import js7.journal.{CommitOptions, EventIdGenerator}
+import monix.catnap.Semaphore
 import monix.eval.Task
+import monix.execution.atomic.Atomic
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.Deadline.now
 
 final class InMemoryJournal[S <: JournaledState[S]](
   initial: S,
+  size: Int,
+  waitingFor: String = "releaseEvents",
   eventIdGenerator: EventIdGenerator = new EventIdGenerator)
   (implicit protected val S: JournaledState.Companion[S])
 extends StatePersistence[S] with RealEventWatch
 {
-  // TODO Use AsyncLock instead of synchronized
-  private val lock = AsyncLock("InMemoryJournal")
-  @volatile private var _tornEventId = EventId.BeforeFirst
-  @volatile private var _lastEventId = EventId.BeforeFirst
-  // FIXME Limit number of events (or total size)!
-  @volatile private var _queue = Vector.empty[Stamped[KeyedEvent[Event]]]
+  private val stateLock = AsyncLock("InMemoryJournal.state")
+  private val queueLock = AsyncLock("InMemoryJournal.queue")
+  private val semaphore = Semaphore[Task](size).memoize
+  private val semaMininum = size max 1
+  @volatile private var queue = EventQueue(EventId.BeforeFirst, EventId.BeforeFirst, Vector.empty)
   @volatile private var _state = initial
   @volatile private var eventWatchStopped = false
-  private var _eventCount = 0L
+  private val _eventCount = Atomic(0L)
 
   private val journalLogger = new JournalLogger(
     syncOrFlushChars = "memory",
@@ -40,15 +46,15 @@ extends StatePersistence[S] with RealEventWatch
 
   protected def isActiveNode = true
 
-  def tornEventId = _tornEventId
+  def tornEventId = queue.tornEventId
 
-  def journalInfo: JournalInfo =
-    synchronized {
-      JournalInfo(
-        lastEventId = _lastEventId,
-        tornEventId = _tornEventId,
-        journalFiles = Nil)
-    }
+  def journalInfo: JournalInfo = {
+    val q = queue
+    JournalInfo(
+      lastEventId = q.lastEventId,
+      tornEventId = q.tornEventId,
+      journalFiles = Nil)
+  }
 
   def currentState: S =
     _state
@@ -78,27 +84,33 @@ extends StatePersistence[S] with RealEventWatch
     options: CommitOptions = CommitOptions.default,
     stateToEvents: S => Checked[Seq[KeyedEvent[E]]])
   : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
-    lock.lock(Task {
-      synchronized {
-        for {
-          keyedEvents <- stateToEvents(_state)
-          updated <- _state.applyEvents(keyedEvents)
-          stampedEvents = keyedEvents.map(eventIdGenerator.stamp(_))
-        } yield {
-          val qLen = _queue.length
-          _queue ++= stampedEvents
-          val n = _queue.length - qLen
-          if (n > 0) {
-            _eventCount += n
-            val eventId = _queue.last.eventId
-            _lastEventId = eventId
-            _state = updated.withEventId(eventId)
-            log(_eventCount, stampedEvents)
-            onEventsCommitted(eventId)
-          }
-          stampedEvents -> updated
-        }
-      }
+    stateLock.lock(Task.defer {
+      (for {
+        keyedEvents <- stateToEvents(_state)
+        updated <- _state.applyEvents(keyedEvents)
+        stampedEvents = keyedEvents.map(eventIdGenerator.stamp(_))
+      } yield
+        semaphore.flatMap(_
+          .acquireN(stampedEvents.length min semaMininum)
+          .logWhenItTakesLonger(waitingFor)
+          .*>(queueLock
+            .lock(Task {
+              var q = queue
+              val qLen = q.events.length
+              q = q.copy(events = q.events ++ stampedEvents)
+              val n = q.events.length - qLen
+              if (n > 0) {
+                _eventCount += n
+                val eventId = q.events.last.eventId
+                q = q.copy(lastEventId = eventId)
+                _state = updated.withEventId(eventId)
+                log(_eventCount.get(), stampedEvents)
+                onEventsCommitted(eventId)
+              }
+              queue = q
+              stampedEvents -> updated
+          })))
+      ).sequence
     })
 
   private def log(eventNumber: Long, stampedEvents: Seq[Stamped[KeyedEvent[Event]]]): Unit =
@@ -110,19 +122,21 @@ extends StatePersistence[S] with RealEventWatch
       isLastOfFlushedOrSynced = true)).view)
 
   def releaseEvents(untilEventId: EventId): Task[Checked[Unit]] =
-    lock.lock(Task {
-      synchronized {
-        val (index, found) =
-          binarySearch(0, _queue.length, i => _queue(i).eventId.compare(untilEventId))
-        if (!found)
-          Left(Problem(s"Unknown EventId: ${EventId.toString(untilEventId)}"))
-        else {
-          if (index > 0) {
-            _tornEventId = _queue(index).eventId
-            _queue = _queue.drop(index)
-          }
-          Checked.unit
-        }
+    queueLock.lock(Task.defer {
+      val q = queue
+      val (index, found) =
+        binarySearch(0, q.events.length, i => q.events(i).eventId.compare(untilEventId))
+      if (!found)
+        Task.pure(Left(Problem.pure(s"Unknown EventId: ${EventId.toString(untilEventId)}")))
+      else {
+        val n = index + 1
+        queue = q.copy(
+          tornEventId = untilEventId,
+          events = q.events.drop(n))
+        semaphore
+          .flatMap(_.releaseN(n))
+          .*>(semaphore.flatMap(_.available).map(available => assertThat(available >= 0)))
+          .as(Checked.unit)
       }
     })
 
@@ -131,18 +145,18 @@ extends StatePersistence[S] with RealEventWatch
       .map(iterator => CloseableIterator.fromIterator(iterator))
 
   private def eventsAfter_(after: EventId): Option[Iterator[Stamped[KeyedEvent[Event]]]] = {
-    val (queue, torn) = synchronized((_queue, _tornEventId))
-    if (after < torn)
+    val q = queue
+    if (after < q.tornEventId)
       None
     else {
-      val (index, found) = binarySearch(0, queue.length, i => queue(i).eventId.compare(after))
-      if (!found && after != torn) {
+      val (index, found) = binarySearch(0, q.events.length, i => q.events(i).eventId.compare(after))
+      if (!found && after != q.tornEventId) {
         //Left(Problem.pure(s"Unknown ${EventId.toString(after)}"))
         None
       } else if (eventWatchStopped)
         Some(Iterator.empty)
       else
-        Some(queue.drop(index + found.toInt).iterator)
+        Some(q.events.drop(index + found.toInt).iterator)
     }
   }
 
@@ -150,4 +164,12 @@ extends StatePersistence[S] with RealEventWatch
   @TestOnly
   def stopEventWatch() =
     eventWatchStopped = true
+
+  @TestOnly
+  def queueLength = queue.events.size
+
+  private final case class EventQueue(
+    tornEventId: EventId,
+    lastEventId: EventId,
+    events: Vector[Stamped[KeyedEvent[Event]]])
 }
