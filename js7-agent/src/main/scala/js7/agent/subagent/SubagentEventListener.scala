@@ -135,7 +135,7 @@ trait SubagentEventListener
       _.eventId, recouplingStreamReaderConf)
     {
       private var lastProblem: Option[Problem] = None
-      override protected def idleTimeout = heartbeatTiming.longHeartbeatTimeout + 2.s
+      override protected def idleTimeout = None  // SubagentEventListener itself detects heartbeat loss
 
       override protected def couple(eventId: EventId) =
         logger.traceTask(

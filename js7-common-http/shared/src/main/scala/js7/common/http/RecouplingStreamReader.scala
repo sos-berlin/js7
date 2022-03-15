@@ -65,7 +65,7 @@ abstract class RecouplingStreamReader[
 
   protected def requestTimeout = conf.timeout
 
-  protected def idleTimeout = requestTimeout + 2.s/*let service timeout kick in first*/
+  protected def idleTimeout = Option(requestTimeout + 2.s)/*let service timeout kick in first*/
 
   private def isStopped = stopRequested || coupledApiVar.isStopped || !inUse.get()
 
@@ -220,13 +220,14 @@ abstract class RecouplingStreamReader[
             logger.debug(s"$api: ${t.toString}")
             Task.pure(Right(Observable.empty))
           }
-          .map(_.map(
-            _.timeoutOnSlowUpstream(idleTimeout)
+          .map(_.map(obs =>
+            idleTimeout.fold(obs)(idleTimeout => obs
+              .timeoutOnSlowUpstream(idleTimeout)  // cancels upstream!
               .onErrorRecoverWith { case t: UpstreamTimeoutException =>
-                logger.debug(s"$api: ${t.toString}")
+                logger.debug(s"💥 $api: ${t.toString}")
                 // This should let Akka close the TCP connection to abort the stream
                 Observable.empty
-              }))
+              })))
 
     private def coupleIfNeeded(after: I): Task[I] =
       coupledApiVar.tryRead.flatMap {
