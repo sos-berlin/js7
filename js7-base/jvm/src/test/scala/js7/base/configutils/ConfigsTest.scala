@@ -1,6 +1,7 @@
 package js7.base.configutils
 
 import cats.Monoid
+import cats.syntax.semigroup._
 import com.typesafe.config.{Config, ConfigException, ConfigFactory}
 import js7.base.configutils.Configs._
 import js7.base.configutils.ConfigsTest._
@@ -111,7 +112,10 @@ final class ConfigsTest extends AnyFreeSpec
     val b = config"""
       X = 10
       Z = 30"""
-    assert(Monoid[Config].combine(a, b) == a.withFallback(b))
+    val combined = Monoid[Config].combine(a, b)
+    assert(combined == b.withFallback(a))
+    assert(combined.getInt("X") == 10)
+    assert(combined == (a |+| b))
   }
 }
 

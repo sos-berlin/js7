@@ -135,7 +135,7 @@ object Configs
   implicit val configMonoid: Monoid[Config] =
     new Monoid[Config] {
       val empty = ConfigFactory.empty
-      def combine(a: Config, b: Config) = a withFallback b
+      def combine(a: Config, b: Config) = b withFallback a
     }
 
   implicit final class HoconStringInterpolator(private val sc: StringContext) extends AnyVal
