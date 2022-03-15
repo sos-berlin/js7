@@ -14,7 +14,7 @@ import js7.data.agent.AgentPath
 import js7.data.command.CommonCommand
 import js7.data.controller.ControllerId
 import js7.data.event.EventId
-import js7.data.item.{InventoryItem, SignableItem}
+import js7.data.item.SignableItem
 import js7.data.order.{Order, OrderId}
 import js7.data.other.HeartbeatTiming
 import js7.data.subagent.{SubagentId, SubagentRunId}
@@ -72,13 +72,13 @@ object SubagentCommand extends CommonCommand.Companion
     type Response = SubagentCommand.Accepted
   }
 
-  final case class AttachItem(item: InventoryItem)
-  extends SubagentCommand {
-    type Response = Accepted
-
-    override def toShortString = s"AttachItem(${item.key})"
-  }
-  object AttachItem
+  //final case class AttachItem(item: InventoryItem)
+  //extends SubagentCommand {
+  //  type Response = Accepted
+  //
+  //  override def toShortString = s"AttachItem(${item.key})"
+  //}
+  //object AttachItem
 
   final case class AttachSignedItem(signed: Signed[SignableItem])
   extends SubagentCommand {
@@ -153,8 +153,7 @@ object SubagentCommand extends CommonCommand.Companion
     Subtype(deriveCodec[Batch]),
     Subtype(deriveCodec[DedicateSubagent]),
     Subtype(deriveCodec[CoupleDirector]),
-    Subtype(deriveCodec[AttachItem]),
-    //Subtype(deriveCodec[AttachUnsignedItem]),
+    //Subtype(deriveCodec[AttachItem]),
     Subtype[AttachSignedItem],
     Subtype(deriveCodec[StartOrderProcess]),
     Subtype(deriveCodec[DetachProcessedOrder]),

@@ -71,7 +71,7 @@ final class DirectoryProvider(
   controllerKeyStore: Option[JavaResource] = Some(ControllerKeyStoreResource),
   controllerTrustStores: Iterable[JavaResource] = Nil,
   signer: DocumentSigner = defaultSigner,
-  verifier: SignatureVerifier = defaultVerifier,
+  val verifier: SignatureVerifier = defaultVerifier,
   testName: Option[String] = None,
   useDirectory: Option[Path] = None,
   doNotAddItems: Boolean = false,

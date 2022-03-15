@@ -4,13 +4,13 @@ import cats.effect.Resource
 import java.nio.file.Files.{createDirectories, createDirectory}
 import java.nio.file.Path
 import js7.base.auth.Admission
-import js7.base.configutils.Configs.HoconStringInterpolator
+import js7.base.configutils.Configs._
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.log.Logger
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
-import js7.base.utils.ScalaUtils.syntax.{RichEither, RichThrowable}
+import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.controller.RunningController
 import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
@@ -53,32 +53,47 @@ trait SubagentTester
     controller.terminate().await(99.s)
   }
 
-  protected final def runSubagent[A](subagentRef: SubagentRef, awaitDedicated: Boolean = true)
+  protected final def runSubagent[A](
+    subagentRef: SubagentRef,
+    awaitDedicated: Boolean = true,
+    suppressSignatureKeys: Boolean = false)
     (body: BareSubagent => A)
   : Task[A] =
     Task.defer {
       val eventId = eventWatch.lastAddedEventId
-      subagentResource(subagentRef).use { subagent =>
-        if (awaitDedicated) eventWatch.await[SubagentDedicated](after = eventId)
-        Task {
-          try body(subagent)
-          catch { case NonFatal(t) =>
-            logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)
-            throw t
+      subagentResource(subagentRef, suppressSignatureKeys = suppressSignatureKeys)
+        .use { subagent =>
+          if (awaitDedicated) eventWatch.await[SubagentDedicated](after = eventId)
+          Task {
+            try body(subagent)
+            catch { case NonFatal(t) =>
+              logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)
+              throw t
+            }
           }
-        }
       }
     }
 
-  protected final def subagentResource(subagentRef: SubagentRef): Resource[Task, BareSubagent] =
+  protected final def subagentResource(
+    subagentRef: SubagentRef,
+    suppressSignatureKeys: Boolean = false)
+: Resource[Task, BareSubagent] =
     for {
       dir <- subagentEnvironment(subagentRef)
-      conf = toSubagentConf(dir, subagentRef.uri.port.orThrow, name = subagentRef.id.string)
+      trustedSignatureDir = dir / "config" / "private" / verifier.companion.recommendedKeyDirectoryName
+      conf = {
+        createDirectories(trustedSignatureDir)
+        if (!suppressSignatureKeys) provideSignatureKeys(trustedSignatureDir)
+        toSubagentConf(dir,
+          trustedSignatureDir,
+          subagentRef.uri.port.orThrow,
+          name = subagentRef.id.string)
+      }
       scheduler <- BareSubagent.threadPoolResource[Task](conf)
       subagent <- BareSubagent.resource(conf.finishAndProvideFiles, scheduler)
     } yield subagent
 
-  protected final def subagentEnvironment(subagentRef: SubagentRef): Resource[Task, Path] =
+  private def subagentEnvironment(subagentRef: SubagentRef): Resource[Task, Path] =
     Resource.make(
       acquire = Task {
         val dir = directoryProvider.directory / "subagents" / subagentRef.id.string
@@ -92,7 +107,17 @@ trait SubagentTester
         deleteDirectoryRecursively(dir)
       })
 
-  protected final def toSubagentConf(directory: Path, port: Int, name: String): SubagentConf =
+  private def provideSignatureKeys(trustedSignatureDir: Path) =
+    for ((key, i) <- verifier.publicKeys.zipWithIndex) {
+      trustedSignatureDir / (s"key-${i+1}${verifier.companion.filenameExtension}") := key
+    }
+
+  private def toSubagentConf(
+    directory: Path,
+    trustedSignatureDir: Path,
+    port: Int,
+    name: String)
+  : SubagentConf = {
     SubagentConf.of(
       configDirectory = directory / "config",
       dataDirectory = directory / "data",
@@ -107,8 +132,12 @@ trait SubagentTester
           permissions: [ AgentDirector ]
           password: "plain:AGENT-PASSWORD"
         }
+        js7.configuration.trusted-signature-keys {
+          ${directoryProvider.verifier.companion.typeName} = "$trustedSignatureDir"
+        }
         """
         .withFallback(SubagentConf.defaultConfig))
+  }
 }
 
 object SubagentTester {

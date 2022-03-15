@@ -15,7 +15,7 @@ import js7.data.subagent.{SubagentId, SubagentRunId}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.subagent.data.SubagentCommand.{AttachItem, AttachSignedItem, CoupleDirector, DedicateSubagent, KillProcess, ShutDown, StartOrderProcess}
+import js7.subagent.data.SubagentCommand.{AttachSignedItem, CoupleDirector, DedicateSubagent, KillProcess, ShutDown, StartOrderProcess}
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -55,14 +55,6 @@ final class SubagentCommandTest extends AnyFreeSpec
         }""")
     }
 
-    //"AttachUnsignedItem" in {
-    //  testJson[SubagentCommand](
-    //    AttachUnsignedItem(xx),
-    //    json"""{
-    //      "TYPE": "AttachUnignedItem"
-    //    } """)
-    //}
-
     "AttachSignedItem" in {
       val itemSigner = new ItemSigner(SillySigner.Default, AgentState.signableItemJsonCodec)
       testJson[SubagentCommand](
@@ -80,19 +72,19 @@ final class SubagentCommandTest extends AnyFreeSpec
         }""")
     }
 
-    "AttachItem" in {
-      testJson[SubagentCommand](
-        AttachItem(Workflow(WorkflowPath("WORKFLOW") ~ "1", Nil)),
-        json"""{
-          "TYPE": "AttachItem",
-          "item": {
-            "TYPE": "Workflow",
-            "path": "WORKFLOW",
-            "versionId": "1",
-            "instructions": []
-          }
-        }""")
-    }
+    //"AttachItem" in {
+    //  testJson[SubagentCommand](
+    //    AttachItem(Workflow(WorkflowPath("WORKFLOW") ~ "1", Nil)),
+    //    json"""{
+    //      "TYPE": "AttachItem",
+    //      "item": {
+    //        "TYPE": "Workflow",
+    //        "path": "WORKFLOW",
+    //        "versionId": "1",
+    //        "instructions": []
+    //      }
+    //    }""")
+    //}
 
     "ShutDown" in {
       testJson[SubagentCommand](

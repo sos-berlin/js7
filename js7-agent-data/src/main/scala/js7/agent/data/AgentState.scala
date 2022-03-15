@@ -43,7 +43,7 @@ final case class AgentState(
   allFileWatchesState: AllFileWatchesState,
   pathToJobResource: Map[JobResourcePath, JobResource],
   pathToCalendar: Map[CalendarPath, Calendar],
-  keyToSignedItem_ : Map[SignableItemKey, Signed[SignableItem]])
+  keyToSignedItem : Map[SignableItemKey, Signed[SignableItem]])
 extends SignedItemContainer
 with StateView
 with AgentStateView
@@ -123,12 +123,12 @@ with SnapshotableState[AgentState]
             Right(signed.value match {
               case workflow: Workflow =>
                 copy(
-                  keyToSignedItem_ = keyToSignedItem_ + (workflow.id -> signed),
+                  keyToSignedItem = keyToSignedItem + (workflow.id -> signed),
                   idToWorkflow = idToWorkflow + (workflow.id -> workflow.reduceForAgent(agentPath)))
 
               case jobResource: JobResource  =>
                 copy(
-                  keyToSignedItem_ = keyToSignedItem_ + (jobResource.path -> signed),
+                  keyToSignedItem = keyToSignedItem + (jobResource.path -> signed),
                   pathToJobResource = pathToJobResource + (jobResource.path -> jobResource))
             })
 
@@ -172,7 +172,7 @@ with SnapshotableState[AgentState]
           case ItemDetached(WorkflowId.as(workflowId), _) =>
             for (_ <- idToWorkflow.checked(workflowId)) yield
               copy(
-                keyToSignedItem_ = keyToSignedItem_ - workflowId,
+                keyToSignedItem = keyToSignedItem - workflowId,
                 idToWorkflow = idToWorkflow - workflowId)
 
           case ItemDetached(path: OrderWatchPath, meta.agentPath) =>
@@ -183,7 +183,7 @@ with SnapshotableState[AgentState]
           case ItemDetached(path: JobResourcePath, meta.agentPath) =>
             for (_ <- pathToJobResource.checked(path)) yield
               copy(
-                keyToSignedItem_ = keyToSignedItem_ - path,
+                keyToSignedItem = keyToSignedItem - path,
                 pathToJobResource = pathToJobResource - path)
 
           case ItemDetached(path: CalendarPath, meta.agentPath) =>
@@ -287,8 +287,23 @@ with SnapshotableState[AgentState]
           idToSubagentRefState.view.mapValues(_.item).iterator
     }
 
-  def keyToSignedItem: MapView[SignableItemKey, Signed[SignableItem]] =
-    keyToSignedItem_.view
+  def keyToSigned[I <: SignableItem](I: SignableItem.Companion[I]): MapView[I.Key, Signed[I]] =
+    new MapView[I.Key, Signed[I]] {
+      def get(key: I.Key) =
+        keyToSignedItem.get(key).asInstanceOf[Option[Signed[I]]]
+
+      def iterator =
+        keyToSignedItem.iterator.collect {
+          case pair @ (_, Signed(item, _)) if I.cls.isAssignableFrom(item.getClass) =>
+            pair.asInstanceOf[(I.Key, Signed[I])]
+        }
+
+      //? override def values =
+      //  keyToSignedItem.values.view.collect {
+      //    case signed @ Signed(item: I, _) if I.cls.isAssignableFrom(item.getClass) =>
+      //      signed.asInstanceOf[Signed[I]]
+      //  }
+    }
 
   def workflowPathToId(workflowPath: WorkflowPath) =
     Left(Problem.pure("workflowPathToId is not available at Agent"))

@@ -17,7 +17,6 @@ import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.event.EventId
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.item.{InventoryItem, SignableItem}
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.subagent.{SubagentId, SubagentRunId}
@@ -29,7 +28,7 @@ import js7.subagent.SubagentExecutor._
 import js7.subagent.client.SubagentDriver
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.data.SubagentCommand.{CoupleDirector, DedicateSubagent}
-import js7.subagent.data.SubagentEvent.{SubagentDedicated, SubagentItemAttached, SubagentShutdown}
+import js7.subagent.data.SubagentEvent.{SubagentDedicated, SubagentShutdown}
 import monix.eval.Task
 import monix.execution.atomic.Atomic
 
@@ -149,19 +148,6 @@ trait SubagentExecutor
         Left(problem)
       } else
         Checked.unit)
-
-  protected def attachItem(item: InventoryItem): Task[Checked[Unit]] =
-    journal
-      .persist(state =>
-        Right(if (state.keyToItem.get(item.key).contains(item))
-          Nil  // Ignore duplicate
-        else {
-          if (item.isInstanceOf[SignableItem]) {
-            logger.warn(s"❗️ Signature not validated for ${item.key}") // FIXME Validate signature!
-          }
-          (NoKey <-: SubagentItemAttached(item)) :: Nil
-        }))
-      .rightAs(())
 
   protected final def startOrderProcess(
     order: Order[Order.Processing],

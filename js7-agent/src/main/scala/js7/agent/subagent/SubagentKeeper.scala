@@ -97,14 +97,15 @@ final class SubagentKeeper(
     order: Order[Order.IsFreshOrReady],
     onEvents: Seq[OrderCoreEvent] => Unit)
   : Task[Checked[Unit]] =
-    selectSubagentDriverCancelable(order.id).flatMapT {
-      case None =>
-        logger.debug(s"${order.id} has been canceled while selecting a Subagent")
-        Task.right(())
+    logger.traceTask("processOrder", order.id)(
+      selectSubagentDriverCancelable(order.id).flatMapT {
+        case None =>
+          logger.debug(s"${order.id} has been canceled while selecting a Subagent")
+          Task.right(())
 
-      case Some(driver) =>
-        processOrderAndForwardEvents(order, onEvents, driver)
-    }
+        case Some(driver) =>
+          processOrderAndForwardEvents(order, onEvents, driver)
+      })
 
   private def processOrderAndForwardEvents(
     order: Order[Order.IsFreshOrReady],
@@ -121,13 +122,13 @@ final class SubagentKeeper(
           .flatMap(_.checkedState[Order.Processing])
           .orThrow
       })
-    .flatMapT(order =>
-      forProcessingOrder(order.id, subagentDriver, onEvents)(
-        subagentDriver.processOrder(order)))
-    .onErrorHandle { t =>
-      logger.error(s"processOrder ${order.id} => ${t.toStringWithCauses}", t.nullIfNoStackTrace)
-      Left(Problem.fromThrowable(t))
-    }
+      .flatMapT(order =>
+        forProcessingOrder(order.id, subagentDriver, onEvents)(
+          subagentDriver.processOrder(order)))
+      .onErrorHandle { t =>
+        logger.error(s"processOrder ${order.id} => ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+        Left(Problem.fromThrowable(t))
+      }
   }
 
   def continueProcessingOrder(

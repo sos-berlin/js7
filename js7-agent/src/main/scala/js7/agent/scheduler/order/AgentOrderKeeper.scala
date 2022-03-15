@@ -885,9 +885,6 @@ object AgentOrderKeeper {
     def recoverProcessingOrder(order: Order[Order.Processing]): Unit =
       inProcess += order.id
 
-    def -=(orderId: OrderId): Unit =
-      remove(orderId)
-
     def remove(orderId: OrderId, dontWarn: Boolean = false): Unit =
       if (!inProcess.remove(orderId)) {
         val s = queue.size
@@ -897,5 +894,7 @@ object AgentOrderKeeper {
         }
         queueSet -= orderId
       }
+
+    override def toString = s"OrderQueue(${queue.size} orders, ${inProcess.size} in process)"
   }
 }

@@ -8,6 +8,7 @@ import js7.agent.data.Problems.SubagentNotDedicatedProblem
 import js7.agent.subagent.RemoteSubagentDriver._
 import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.configutils.Configs.ConvertibleConfig
+import js7.base.crypt.Signed
 import js7.base.generic.SecretString
 import js7.base.io.https.HttpsConfig
 import js7.base.io.process.ProcessSignal
@@ -25,18 +26,19 @@ import js7.base.web.HttpClient.HttpException
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.data.controller.ControllerId
 import js7.data.event.EventId
-import js7.data.item.InventoryItem
+import js7.data.item.SignableItem
 import js7.data.job.{JobConf, JobResource}
 import js7.data.order.OrderEvent.OrderProcessed
-import js7.data.order.{Order, OrderId}
+import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.subagent.SubagentRefStateEvent.{SubagentDedicated, SubagentDied, SubagentRestarted}
 import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState, SubagentRunId}
+import js7.data.workflow.Workflow
 import js7.data.workflow.position.WorkflowPosition
 import js7.journal.state.StatePersistence
 import js7.subagent.client.{SubagentClient, SubagentDriver}
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.data.SubagentCommand
-import js7.subagent.data.SubagentCommand.{AttachItem, CoupleDirector, DedicateSubagent, KillProcess, StartOrderProcess}
+import js7.subagent.data.SubagentCommand.{AttachSignedItem, CoupleDirector, DedicateSubagent, KillProcess, StartOrderProcess}
 import monix.eval.Task
 import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
@@ -218,8 +220,7 @@ extends SubagentDriver with SubagentEventListener
   //      executeCommands(AttachSignedItem(signedItem) :: Nil)
   //  }
 
-  def processOrder(order: Order[Order.Processing])
-  : Task[Checked[OrderProcessed]] =
+  def processOrder(order: Order[Order.Processing]): Task[Checked[OrderProcessed]] =
     logger.traceTask("processOrder", order.id)(
       orderToExecuteDefaultArguments(order)
         .flatMapT(defaultArguments =>
@@ -239,17 +240,32 @@ extends SubagentDriver with SubagentEventListener
       // OrderProcessed event will fulfill the promise and remove the Processing entry
       .flatMapT(promisedOutcome =>
         body
-          .flatMapT(_ => Task
-            .fromFuture(promisedOutcome.future)
-            .map(Right(_))))
+          .flatMap {
+            case Left(problem) =>
+              orderToProcessing
+                .remove(order.id)
+                .flatMap {
+                  case None => Task.left(problem)
+                  case Some(_) =>
+                    val orderProcessed = OrderProcessed(Outcome.Disrupted(problem))
+                    persistence
+                      .persistKeyedEvent(order.id <-: orderProcessed)
+                      .rightAs(orderProcessed)
+                }
+            case Right(()) =>
+              Task.fromFuture(promisedOutcome.future)
+                .map(Right(_))
+          })
 
-  protected def onOrderProcessed(orderId: OrderId, orderProcessed: OrderProcessed): Task[Unit] =
+  protected def onOrderProcessed(orderId: OrderId, orderProcessed: OrderProcessed)
+  : Task[Option[Task[Unit]]] =
     orderToProcessing.remove(orderId).map {
       case None =>
         logger.error(s"Unknown Order for event: ${orderId <-: orderProcessed}")
+        None
 
       case Some(processing) =>
-        processing.success(orderProcessed)
+        Some(Task(processing.success(orderProcessed)))
     }
 
   private def killAll(signal: ProcessSignal): Task[Unit] =
@@ -444,22 +460,23 @@ extends SubagentDriver with SubagentEventListener
     command match {
       case startOrderProcess: StartOrderProcess =>
         // TODO Attach only new items
-        itemsForOrderProcessing(startOrderProcess.order.workflowPosition)
-          .map(_.map(_.map(AttachItem(_))))
+        signableItemsForOrderProcessing(startOrderProcess.order.workflowPosition)
+          .map(_.map(_.map(AttachSignedItem(_))))
       case _ =>
         Task.right(Nil)
     }
 
-  private def itemsForOrderProcessing(workflowPosition: WorkflowPosition)
-  : Task[Checked[Seq[InventoryItem]]] =
+  private def signableItemsForOrderProcessing(workflowPosition: WorkflowPosition)
+  : Task[Checked[Seq[Signed[SignableItem]]]] =
     for (agentState <- persistence.state) yield
       for {
-        workflow <- agentState.idToWorkflow.checked(workflowPosition.workflowId)
+        signedWorkflow <- agentState.keyToSigned(Workflow).checked(workflowPosition.workflowId)
+        workflow = signedWorkflow.value
         jobKey <- workflow.positionToJobKey(workflowPosition.position)
         job <- workflow.keyToJob.checked(jobKey)
         jobResourcePaths = JobConf.jobResourcePathsFor(job, workflow)
-        jobResources <- jobResourcePaths.traverse(agentState.keyTo(JobResource).checked)
-      } yield jobResources :+ workflow
+        signedJobResources <- jobResourcePaths.traverse(agentState.keyToSigned(JobResource).checked)
+      } yield signedJobResources :+ signedWorkflow
 
   private def currentSubagentRefState: Task[Checked[SubagentRefState]] =
     persistence.state.map(_.idToSubagentRefState.checked(subagentId))

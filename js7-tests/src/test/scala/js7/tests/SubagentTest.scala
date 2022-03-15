@@ -1,31 +1,23 @@
 package js7.tests
 
-import cats.effect.Resource
-import java.nio.file.Files.{createDirectories, createDirectory}
-import java.nio.file.Path
 import java.util.concurrent.TimeoutException
 import js7.agent.RunningAgent
-import js7.base.auth.Admission
+import js7.base.Problems.MessageSignedByUnknownProblem
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.io.file.FileUtils.deleteDirectoryRecursively
-import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
-import js7.base.utils.ScalaUtils.syntax.{RichEither, RichThrowable}
+import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.web.Uri
-import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import js7.controller.RunningController
-import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
 import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode
 import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.event.{EventId, KeyedEvent, Stamped}
-import js7.data.item.BasicItemEvent.{ItemAttached, ItemDetachable, ItemDetached}
+import js7.data.item.BasicItemEvent.{ItemAttached, ItemDeleted, ItemDetachable, ItemDetached}
 import js7.data.item.ItemOperation
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTerminated}
 import js7.data.order.Outcome.Disrupted.ProcessLost
@@ -36,9 +28,7 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
-import js7.proxy.ControllerApi
 import js7.subagent.BareSubagent
-import js7.subagent.configuration.SubagentConf
 import js7.tests.SubagentTest._
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.DirectoryProviderForScalaTest
@@ -48,9 +38,10 @@ import monix.reactive.Observable
 import org.scalatest.Assertion
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.View
-import scala.util.control.NonFatal
 
-final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
+final class SubagentTest extends AnyFreeSpec
+with DirectoryProviderForScalaTest
+with SubagentTester
 {
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -73,22 +64,14 @@ final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
     agentPath,
     Uri(s"http://localhost:$bSubagentPort"))
 
-  private implicit val scheduler = Scheduler.global
-
-  private lazy val controller: RunningController = directoryProvider
-    .startController()
-    .await(99.s)
-
-  protected lazy val controllerApi = new ControllerApi(
-    admissionsToApiResources(Seq(Admission(
-      controller.localUri,
-      Some(directoryProvider.controller.userAndPassword)
-    )))(controller.actorSystem))
+  protected implicit val scheduler = Scheduler.global
 
   private var agent: RunningAgent = null
   private lazy val aSubagentId = directoryProvider.subagentId
   private var bSubagent: BareSubagent = null
   private var bSubagentRelease = Task.unit
+
+  import controller.eventWatch
 
   override def beforeAll() = {
     super.beforeAll()
@@ -103,8 +86,6 @@ final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
     bSubagentRelease.await(99.s)
     super.beforeAll()
   }
-
-  import controller.eventWatch
 
   "Start a second Subagent" in {
     val eventId = eventWatch.lastAddedEventId
@@ -259,6 +240,7 @@ final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
         assert(processed == OrderProcessed(Outcome.succeeded))
 
         eventWatch.await[ItemDetached](_.event.key == cSubagentRef.id, after = eventId)
+        eventWatch.await[ItemDeleted](_.event.key == cSubagentRef.id, after = eventId)
         //subagent.shutdown(signal = None).await(99.s)
         subagent.untilStopped.await(99.s)
       }.await(99.s)
@@ -278,15 +260,35 @@ final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
     }
   }
 
-  "Restart Director" in {
+  "Add C-SUBAGENT again" in {
+    val eventId = eventWatch.lastAddedEventId
     controllerApi.updateUnsignedSimpleItems(Seq(cSubagentRef)).await(99.s).orThrow
-    eventWatch.await[ItemAttached](_.event.key == cSubagentRef.id)
+    eventWatch.await[ItemAttached](_.event.key == cSubagentRef.id, after = eventId)
+  }
 
+  "Reject items if no signature keys are installed" in {
+    val eventId = eventWatch.lastAddedEventId
+
+    runSubagent(cSubagentRef, suppressSignatureKeys = true) { _ =>
+      val orderId = OrderId("ITEM-SIGNATURE")
+      controller.addOrder(FreshOrder(orderId, cWorkflow.path)).await(99.s).orThrow
+
+      val started = eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
+        .head.value.event
+      assert(started == OrderProcessingStarted(cSubagentRef.id))
+
+      val processed = eventWatch.await[OrderProcessed](_.key == orderId, after = eventId)
+        .head.value.event
+      assert(processed == OrderProcessed(Outcome.Disrupted(MessageSignedByUnknownProblem)))
+    }.await(99.s)
+  }
+
+  "Restart Director" in {
+    val eventId = eventWatch.lastAddedEventId
     val orderId = OrderId("RESTART-DIRECTOR")
 
     runSubagent(cSubagentRef) { _ =>
       locally {
-        val eventId = eventWatch.lastAddedEventId
         controller.addOrder(FreshOrder(orderId, cWorkflow.path)).await(99.s).orThrow
         val events = eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
         assert(events.head.value.event == OrderProcessingStarted(cSubagentRef.id))
@@ -398,63 +400,6 @@ final class SubagentTest extends AnyFreeSpec with DirectoryProviderForScalaTest
   "Delete Subagent while processes are still running" in {
     pending // TODO
   }
-
-  private def runSubagent[A](subagentRef: SubagentRef, awaitDedicated: Boolean = true)
-    (body: BareSubagent => A)
-  : Task[A] =
-    Task.defer {
-      val eventId = eventWatch.lastAddedEventId
-      subagentResource(subagentRef).use { subagent =>
-        if (awaitDedicated) eventWatch.await[SubagentDedicated](after = eventId)
-        Task {
-          try body(subagent)
-          catch { case NonFatal(t) =>
-            logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)
-            throw t
-          }
-        }
-      }
-    }
-
-  private def subagentResource(subagentRef: SubagentRef): Resource[Task, BareSubagent] =
-    for {
-      dir <- subagentEnvironment(subagentRef)
-      conf = toSubagentConf(dir, subagentRef.uri.port.orThrow, name = subagentRef.id.string)
-      scheduler <- BareSubagent.threadPoolResource[Task](conf)
-      subagent <- BareSubagent.resource(conf.finishAndProvideFiles, scheduler)
-    } yield subagent
-
-  private def subagentEnvironment(subagentRef: SubagentRef): Resource[Task, Path] =
-    Resource.make(
-      acquire = Task {
-        val dir = directoryProvider.directory / "subagents" / subagentRef.id.string
-        createDirectories(directoryProvider.directory / "subagents")
-        createDirectory(dir)
-        createDirectory(dir / "data")
-        createDirectory(dir / "data" / "logs")
-        dir
-      })(
-      release = dir => Task {
-        deleteDirectoryRecursively(dir)
-      })
-
-  private def toSubagentConf(directory: Path, port: Int, name: String): SubagentConf =
-    SubagentConf.of(
-      configDirectory = directory / "config",
-      dataDirectory = directory / "data",
-      logDirectory = directory / "data" / "logs",
-      jobWorkingDirectory = directory,
-      Seq(WebServerPort.localhost(port)),
-      killScript = None,
-      name = s"SubagentTest-$name",
-      config = config"""
-        js7.job.execution.signed-script-injection-allowed = yes
-        js7.auth.users.AGENT {
-          permissions: [ AgentDirector ]
-          password: "plain:AGENT-PASSWORD"
-        }
-        """
-        .withFallback(SubagentConf.defaultConfig))
 }
 
 object SubagentTest

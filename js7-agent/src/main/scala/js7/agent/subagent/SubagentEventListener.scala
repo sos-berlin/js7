@@ -73,25 +73,28 @@ trait SubagentEventListener
         maxCount = conf.eventBufferSize)  // ticks
       .filter(_.nonEmpty)   // Ignore empty ticks
       .mapEval { stampedSeq =>
-        val lastEventId = stampedSeq.last.eventId
-        val (updatedStampedSeq0, followUps) = stampedSeq.map(handleEvent).unzip
-        val updatedStampedSeq = updatedStampedSeq0.flatten
-        val events = updatedStampedSeq.view.map(_.value)
-          .concat((subagentId <-: SubagentEventsObserved(lastEventId)) :: Nil)
-          .toVector
-        // TODO Save Stamped timestamp
-        persistence
-          .persistKeyedEvents(events, CommitOptions(transaction = true))
-          .map(_.orThrow/*???*/)
-          // After an OrderProcessed event the observed EventIds must be released at the Subagent,
-          // to terminate StartOrderProcess command idempotency detection and
-          // allow a new StartOrderProcess command for a next process.
-          .*>(updatedStampedSeq
-            .collect { case Stamped(_, _, KeyedEvent(o: OrderId, _: OrderProcessed)) => o }
-            .traverse(detachProcessedOrder))
-          .*>(releaseEvents(lastEventId))
-          .*>(followUps.combineAll)
-      }
+        stampedSeq.traverse(handleEvent)
+          .flatMap { updatedStampedSeq0 =>
+            val (updatedStampedSeqSeq, followUps) = updatedStampedSeq0.unzip
+            val updatedStampedSeq = updatedStampedSeqSeq.flatten
+            val lastEventId = updatedStampedSeq.lastOption.map(_.eventId)
+            val events = updatedStampedSeq.view.map(_.value)
+              .concat(lastEventId.map(subagentId <-: SubagentEventsObserved(_)))
+              .toVector
+            // TODO Save Stamped timestamp
+            persistence
+              .persistKeyedEvents(events, CommitOptions(transaction = true))
+              .map(_.orThrow/*???*/)
+              // After an OrderProcessed event an DetachProcessedOrder must be sent,
+              // to terminate StartOrderProcess command idempotency detection and
+              // allow a new StartOrderProcess command for a next process.
+              .*>(updatedStampedSeq
+                .collect { case Stamped(_, _, KeyedEvent(o: OrderId, _: OrderProcessed)) => o }
+                .traverse(detachProcessedOrder))
+              .*>(lastEventId.traverse(releaseEvents))
+              .*>(followUps.combineAll)
+          }
+        }
       .guarantee(recouplingStreamReader
         .terminateAndLogout
         .void
@@ -99,35 +102,39 @@ trait SubagentEventListener
       .completedL
   }
 
+  /** Returns optionally the event and a follow-up task. */
   private def handleEvent(stamped: Stamped[AnyKeyedEvent])
-  : (Option[Stamped[AnyKeyedEvent]], Task[Unit]) =
+  : Task[(Option[Stamped[AnyKeyedEvent]], Task[Unit])] =
     stamped.value match {
       case keyedEvent @ KeyedEvent(orderId: OrderId, event: OrderEvent) =>
         event match {
           // TODO Discard (while logging an error) inapplicable (wrong) events
           case _: OrderStdWritten =>
             // TODO Save Timestamp
-            Some(stamped) -> Task.unit
+            Task.pure(Some(stamped) -> Task.unit)
 
           case orderProcessed: OrderProcessed =>
             // TODO Save Timestamp
-            Some(stamped) -> onOrderProcessed(orderId, orderProcessed)
+            onOrderProcessed(orderId, orderProcessed).map {
+              case None => None -> Task.unit  // OrderProcessed already handled
+              case Some(followUp) => Some(stamped) -> followUp
+            }
 
           case _ =>
             logger.error(s"Unexpected event: $keyedEvent")
-            None -> Task.unit
+            Task.pure(None -> Task.unit)
         }
 
       case KeyedEvent(_: NoKey, SubagentEvent.SubagentShutdown) =>
-        None -> onSubagentDied(SubagentShutdown)
+        Task.pure(None -> onSubagentDied(SubagentShutdown))
 
       case KeyedEvent(_: NoKey, event: SubagentEvent) =>
         logger.debug(event.toString)
-        None -> Task.unit
+        Task.pure(None -> Task.unit)
 
       case keyedEvent =>
         logger.error(s"Unexpected event: $keyedEvent")
-        None -> Task.unit
+        Task.pure(None -> Task.unit)
     }
 
   private def newEventListener() =
@@ -154,9 +161,9 @@ trait SubagentEventListener
                 EventRequest.singleClass[Event](after = after, timeout = None),
                 heartbeat = Some(heartbeatTiming.heartbeat))
               .map(_
-                .detectPauses2(heartbeatTiming.longHeartbeatTimeout, PauseStamped)
+                .detectPauses2(heartbeatTiming.longHeartbeatTimeout, PauseDetected)
                 .flatTap(stamped =>
-                  if (stamped ne PauseStamped)
+                  if (stamped ne PauseDetected)
                     onHeartbeatStarted
                   else {
                     val problem = Problem.pure(s"Missing heartbeat from $subagentId")
@@ -164,14 +171,13 @@ trait SubagentEventListener
                     Observable.fromTask(onSubagentDecoupled(Some(problem)))
                   })
                 .filter(_ != StampedHeartbeat)
-                .takeWhile(_ != PauseStamped)
+                .takeWhile(_ != PauseDetected)
                 .guaranteeCase(exitCase => Task.defer(
-                  Task.when(exitCase != ExitCase.Completed || isHeartbeating)(
-                    Task.defer {
-                      val problem = Problem.pure(s"$subagentId event stream: $exitCase")
-                      logger.warn(problem.toString)
-                      onSubagentDecoupled(Some(problem))
-                    }))))
+                  Task.when(exitCase != ExitCase.Completed || isHeartbeating) {
+                    val problem = Problem.pure(s"$subagentId event stream: $exitCase")
+                    logger.warn(problem.toString)
+                    onSubagentDecoupled(Some(problem))
+                  })))
               .map(Right(_))
         }
 
@@ -187,7 +193,7 @@ trait SubagentEventListener
             true
           }
 
-      override protected def onDecoupled =
+      override protected val onDecoupled =
         onSubagentDecoupled(None) *>
           Task.defer {
             logger.debug("onDecoupled")
@@ -198,7 +204,7 @@ trait SubagentEventListener
       protected def stopRequested = false
     }
 
-  private def onHeartbeatStarted: Observable[Unit] =
+  private val onHeartbeatStarted: Observable[Unit] =
     Observable.fromTask(
       Task.defer(Task.when(!_isHeartbeating.getAndSet(true))(
         // Different to AgentDriver,
@@ -227,6 +233,6 @@ trait SubagentEventListener
 
 object SubagentEventListener
 {
-  private val PauseStamped: Stamped[KeyedEvent[Event]] = Stamped(0L, null)
+  private val PauseDetected: Stamped[KeyedEvent[Event]] = Stamped(0L, null)
   private[subagent] val heartbeatTiming = HeartbeatTiming(3.s, 10.s)  // TODO
 }
