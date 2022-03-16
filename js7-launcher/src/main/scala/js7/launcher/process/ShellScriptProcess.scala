@@ -58,6 +58,7 @@ object ShellScriptProcess {
       startProcess(commandArgs, conf)
         .map(_.map { process =>
           new ShellScriptProcess(conf, process) {
+            import conf.encoding
             import stdObservers.{charBufferSize, err, out}
 
             def await(outerr: StdoutOrStderr, fiber: Fiber[Unit]): Task[Unit] =
@@ -65,8 +66,10 @@ object ShellScriptProcess {
 
             override val terminated =
               (for {
-                outFiber <- copyInputStreamToObservable(process.stdout, out, charBufferSize).start
-                errFiber <- copyInputStreamToObservable(process.stderr, err, charBufferSize).start
+                outFiber <-
+                  copyInputStreamToObservable(process.stdout, out, encoding, charBufferSize).start
+                errFiber <-
+                  copyInputStreamToObservable(process.stderr, err, encoding, charBufferSize).start
                 _ <- Task.race(
                   sigkilled.delayExecution(stdoutAndStderrDetachDelay).map { _ =>
                     Try(process.stdout.close())

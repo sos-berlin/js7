@@ -1,6 +1,7 @@
 package js7.launcher.process
 
 import cats.syntax.traverse._
+import java.nio.charset.Charset
 import java.nio.file.Files.createTempFile
 import java.nio.file.Path
 import js7.base.io.file.FileUtils.syntax.RichPath
@@ -37,11 +38,15 @@ extends PathProcessJobLauncher
           userToFile.get(maybeUserName) match {
             case Some(path) => Right(path)
             case None =>
-              writeScriptToFile(executable.script, jobLauncherConf.shellScriptTmpDirectory, maybeUserName)
-                .map { path =>
-                  userToFile.put(maybeUserName, path)
-                  path
-                }
+              writeScriptToFile(
+                executable.script,
+                jobLauncherConf.shellScriptTmpDirectory,
+                jobLauncherConf.encoding,
+                maybeUserName
+              ).map { path =>
+                userToFile.put(maybeUserName, path)
+                path
+              }
           }
         }))
 
@@ -63,13 +68,15 @@ object ShellScriptJobLauncher
     else
       Right(new ShellScriptJobLauncher(executable, jobConf, launcherConf))
 
-  private def writeScriptToFile(script: String, tmpDir: Path, userName: Option[WindowsUserName]): Checked[Path] =
+  private def writeScriptToFile(script: String, tmpDir: Path, encoding: Charset,
+    userName: Option[WindowsUserName])
+  : Checked[Path] =
     Checked.catchNonFatal {
       val ext = if (isWindows) ".cmd" else ".sh"
       createTempFile(tmpDir, "script-", ext, ShellFileAttributes: _*)
     }.flatMap { file =>
       Checked.catchNonFatal {
-        file.write(script, JobLauncherConf.FileEncoding)
+        file.write(script, encoding)
       }
       .flatMap(_ => makeFileUserAccessible(userName, file))
       .left.map { problem =>

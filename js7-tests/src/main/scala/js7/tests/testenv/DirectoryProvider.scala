@@ -395,7 +395,7 @@ object DirectoryProvider
       DirectoryProvider.writeTrustedSignatureKeys(verifier, configDir, "agent.conf")
 
     def writeExecutable(path: RelativePathExecutable, string: String): Unit =
-      path.toFile(executables).writeExecutable(string)
+      path.toFile(executables).writeUtf8Executable(string)
   }
 
   final val StdoutOutput = if (isWindows) "TEST\r\n" else "TEST ☘\n"

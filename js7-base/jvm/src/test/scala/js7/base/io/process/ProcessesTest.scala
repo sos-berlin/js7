@@ -93,7 +93,7 @@ final class ProcessesTest extends AnyFreeSpec {
   "Many empty shell script processes" in {
     for (n <- sys.props.get("test.speed").flatMap(o => Try(o.toInt).toOption)) {
       withTemporaryFile("ProcessesTest-", ".sh") { file =>
-        file.writeExecutable(":")
+        file.writeUtf8Executable(":")
         val since = now
         (1 to n).toVector
           .traverse(_ => Future {

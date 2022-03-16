@@ -2,6 +2,7 @@ package js7.launcher.forjava.internal
 
 import cats.effect.Resource
 import java.lang.System.{lineSeparator => nl}
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Paths
 import js7.base.io.file.FileUtils.temporaryDirectoryResource
 import js7.base.problem.Checked._
@@ -63,6 +64,7 @@ final class InternalJobLauncherForJavaTest extends AnyFreeSpec with BeforeAndAft
             ControllerId("CONTROLLER"),
             sigkillDelay = 0.s),
           JobLauncherConf(u, u, u, u,
+            UTF_8,
             killWithSigterm = ProcessConfiguration.forTest.killWithSigterm,
             killWithSigkill = ProcessConfiguration.forTest.killWithSigkill,
             killForWindows = ProcessConfiguration.forTest.killForWindows,

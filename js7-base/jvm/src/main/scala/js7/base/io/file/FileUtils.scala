@@ -3,7 +3,7 @@ package js7.base.io.file
 import cats.effect.Resource
 import java.io.{BufferedOutputStream, File, FileOutputStream, IOException, OutputStreamWriter}
 import java.nio.charset.Charset
-import java.nio.charset.StandardCharsets.{ISO_8859_1, UTF_8}
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.{copy, createDirectory, delete, deleteIfExists, isDirectory, isSymbolicLink, newOutputStream, setPosixFilePermissions}
 import java.nio.file.StandardOpenOption.{APPEND, CREATE, TRUNCATE_EXISTING, WRITE}
 import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
@@ -15,7 +15,7 @@ import js7.base.data.{ByteArray, ByteSequence, Writable}
 import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
-import js7.base.system.OperatingSystem.{isUnix, isWindows}
+import js7.base.system.OperatingSystem.isUnix
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer
 import js7.base.utils.Closer.syntax._
@@ -149,8 +149,8 @@ object FileUtils
         // Java 11: Files.readString(encoding)
         new String(ByteArray.fromFileUnlimited(delegate).unsafeArray, encoding)
 
-      def writeExecutable(string: String): Unit = {
-        write(string, if (isWindows) ISO_8859_1 else UTF_8)
+      def writeUtf8Executable(string: String): Unit = {
+        write(string, UTF_8)
         makeExecutable()
       }
 

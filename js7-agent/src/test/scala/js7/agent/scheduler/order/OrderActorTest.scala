@@ -5,6 +5,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import com.softwaremill.diffx.generic.auto._
 import com.typesafe.config.{Config, ConfigValueFactory}
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.{createDirectory, exists}
 import java.nio.file.{Files, Path}
 import js7.agent.configuration.AgentConfiguration
@@ -81,7 +82,8 @@ final class OrderActorTest extends AnyFreeSpec with HasCloser with BeforeAndAfte
   "Shell script" in {
     pending // FIXME ?
     val pathExecutable = RelativePathExecutable(s"TEST-1$sh", v1Compatible = true)
-    pathExecutable.toFile(directoryProvider.agentDirectory / "config" / "executables").writeExecutable(TestScript)
+    pathExecutable.toFile(directoryProvider.agentDirectory / "config" / "executables")
+      .writeUtf8Executable(TestScript)
     val (testActor, result) = runTestActor(DummyJobKey, WorkflowJob(TestAgentPath, pathExecutable,
       Map("VAR1" -> StringConstant("FROM-JOB"))))
     assert(result.events == ExpectedOrderEvents)
@@ -100,12 +102,13 @@ final class OrderActorTest extends AnyFreeSpec with HasCloser with BeforeAndAfte
     val expectedStderr = (for (i <- 1 to n) yield line("e", i) + Nl).mkString
     val expectedStdout = (for (i <- 1 to n) yield line("o", i) + Nl).mkString
     val pathExecutable = RelativePathExecutable(s"TEST-2$sh")
-    pathExecutable.toFile(directoryProvider.agentDirectory / "config" / "executables").writeExecutable(
-      (isWindows ?? "@echo off\n") +
-        (for (i <- 1 to n) yield
-          s"""echo ${line("o", i)}
-             |echo ${line("e", i)}>&2
-             |""".stripMargin).mkString)
+    pathExecutable.toFile(directoryProvider.agentDirectory / "config" / "executables")
+      .writeUtf8Executable(
+        (isWindows ?? "@echo off\n") +
+          (for (i <- 1 to n) yield
+            s"""echo ${line("o", i)}
+               |echo ${line("e", i)}>&2
+               |""".stripMargin).mkString)
     val (testActor, result) = runTestActor(DummyJobKey, WorkflowJob(TestAgentPath, pathExecutable))
     info(s"2×($n unbuffered lines, ${toKBGB(expectedStdout.length)}) took ${result.duration.pretty}")
     assert(result.stdoutStderr(Stderr) == expectedStderr)
@@ -162,7 +165,8 @@ private object OrderActorTest {
 
 
 
-  private final class TestActor(dir: Path, jobKey: JobKey, workflowJob: WorkflowJob, terminatedPromise: Promise[Result], config: Config)
+  private final class TestActor(dir: Path, jobKey: JobKey, workflowJob: WorkflowJob,
+    terminatedPromise: Promise[Result], config: Config)
   extends Actor {
     import context.{actorOf, become, watch}
     override val supervisorStrategy = SupervisorStrategies.escalate
@@ -173,6 +177,7 @@ private object OrderActorTest {
       shellScriptTmpDirectory = dir / "data" / "work",
       tmpDirectory = dir / "data" / "work",
       workingDirectory = dir / "data" / "work",
+      UTF_8,
       killWithSigterm = ProcessConfiguration.forTest.killWithSigterm,
       killWithSigkill = ProcessConfiguration.forTest.killWithSigkill,
       killForWindows = ProcessConfiguration.forTest.killForWindows,

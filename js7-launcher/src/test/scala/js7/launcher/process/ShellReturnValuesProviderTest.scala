@@ -1,5 +1,6 @@
 package js7.launcher.process
 
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.exists
 import js7.base.io.file.FileUtils._
 import js7.base.io.file.FileUtils.syntax._
@@ -10,7 +11,7 @@ final class ShellReturnValuesProviderTest extends AnyFreeSpec
 {
   "ShellReturnValuesProvider" in {
     withTemporaryDirectory("ShellReturnValuesProviderTest-") { dir =>
-      val provider = new ShellReturnValuesProvider(dir)
+      val provider = new ShellReturnValuesProvider(dir, UTF_8)
       assert(provider.toEnv == "JS7_RETURN_VALUES" -> provider.file.toString)
       provider.file :=
         """A=a
@@ -28,7 +29,7 @@ final class ShellReturnValuesProviderTest extends AnyFreeSpec
 
   "v1Compatible=true" in {
     withTemporaryDirectory("ShellReturnValuesProviderTest-") { dir =>
-      val provider = new ShellReturnValuesProvider(dir, v1Compatible = true)
+      val provider = new ShellReturnValuesProvider(dir, UTF_8, v1Compatible = true)
       assert(provider.toEnv == "SCHEDULER_RETURN_VALUES" -> provider.file.toString)
     }
   }

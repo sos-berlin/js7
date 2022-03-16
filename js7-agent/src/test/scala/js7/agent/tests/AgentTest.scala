@@ -51,7 +51,7 @@ final class AgentTest extends AnyFreeSpec with AgentTester
         provideAgentDirectory { directory =>
           createDirectory(directory / "working")
           val workingDirectory = toWorkingDirectory(directory).toRealPath()
-          TestPathExecutable.toFile(directory / "config" / "executables").writeExecutable(TestScript)
+          TestPathExecutable.toFile(directory / "config" / "executables").writeUtf8Executable(TestScript)
           var agentConf = AgentConfiguration.forTest(directory, name = "AgentTest")
           if (directory != WorkingDirectory) {
             agentConf = agentConf.copy(jobWorkingDirectory = workingDirectory)

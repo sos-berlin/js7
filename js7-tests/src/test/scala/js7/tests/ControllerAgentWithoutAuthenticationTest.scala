@@ -64,7 +64,7 @@ final class ControllerAgentWithoutAuthenticationTest extends AnyFreeSpec
       if (isPublic) {
         dir / "agent/config/agent.conf" := "js7.web.server.auth.public = true\n"
       }
-      (dir / "agent/config/executables/EXECUTABLE.cmd").writeExecutable(":")
+      (dir / "agent/config/executables/EXECUTABLE.cmd").writeUtf8Executable(":")
 
       val itemSigner = {
         val signature = SillySignature("✘✘✘")

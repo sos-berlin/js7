@@ -2,7 +2,7 @@ package js7.launcher.process
 
 import cats.effect.{ExitCase, Resource}
 import java.io.{InputStream, InputStreamReader, Reader}
-import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.charset.Charset
 import js7.base.log.Logger
 import js7.base.monixutils.UnbufferedReaderObservable
 import js7.base.thread.IOExecutor
@@ -17,15 +17,27 @@ object InputStreamToObservable
 {
   private val logger = Logger[this.type]
 
-  def copyInputStreamToObservable(in: InputStream, observer: Observer[String], charBufferSize: Int)
+  def copyInputStreamToObservable(
+    in: InputStream,
+    observer: Observer[String],
+    encoding: Charset,
+    charBufferSize: Int)
     (implicit iox: IOExecutor)
   : Task[Unit] =
-    copyInputStreamToObservable(Resource.pure[Task, InputStream](in), observer, charBufferSize)
+    copyInputStreamToObservable(Resource.pure[Task, InputStream](in), observer, encoding,
+      charBufferSize)
 
-  def copyInputStreamToObservable(in: Resource[Task, InputStream], observer: Observer[String], charBufferSize: Int)
+  def copyInputStreamToObservable(
+    in: Resource[Task, InputStream],
+    observer: Observer[String],
+    encoding: Charset,
+    charBufferSize: Int)
     (implicit iox: IOExecutor)
   : Task[Unit] =
-    copyReaderToObservable(in.map(new InputStreamReader(_, UTF_8)), observer, charBufferSize)
+    copyReaderToObservable(
+      in.map(new InputStreamReader(_, encoding)),
+      observer,
+      charBufferSize)
 
   def copyReaderToObservable(reader: Resource[Task, Reader], observer: Observer[String], charBufferSize: Int)
     (implicit iox: IOExecutor)

@@ -34,8 +34,8 @@ final class AgentShutDownTest extends AnyFreeSpec with BeforeAndAfterAll with Te
         |js7.auth.users.TEST-USER = "plain:TEST-PASSWORD"
         |js7.web.server.delay-shutdown = 1000ms
         |""".stripMargin
-    APathExecutable.toFile(agentDirectory / "config" / "executables").writeExecutable(AScript)
-    BPathExecutable.toFile(agentDirectory / "config" / "executables").writeExecutable(AScript)
+    APathExecutable.toFile(agentDirectory / "config" / "executables").writeUtf8Executable(AScript)
+    BPathExecutable.toFile(agentDirectory / "config" / "executables").writeUtf8Executable(AScript)
     super.beforeAll()
   }
 

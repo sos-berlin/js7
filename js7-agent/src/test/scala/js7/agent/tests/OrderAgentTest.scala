@@ -52,8 +52,8 @@ final class OrderAgentTest extends AnyFreeSpec
            |""".stripMargin
 
       val jobDir = directory / "config" / "executables"
-      APathExecutable.toFile(jobDir).writeExecutable(TestScript)
-      BPathExecutable.toFile(jobDir).writeExecutable(TestScript)
+      APathExecutable.toFile(jobDir).writeUtf8Executable(TestScript)
+      BPathExecutable.toFile(jobDir).writeUtf8Executable(TestScript)
 
       val agentConf = AgentConfiguration.forTest(directory, name = "OrderAgentTest")
       RunningAgent.run(agentConf, timeout = Some(99.s)) { agent =>
@@ -118,8 +118,8 @@ final class OrderAgentTest extends AnyFreeSpec
     val n = testSpeed.toInt
     provideAgentDirectory { directory =>
       val executableDir = directory / "config" / "executables"
-      APathExecutable.toFile(executableDir).writeExecutable(TestScript)
-      BPathExecutable.toFile(executableDir).writeExecutable(TestScript)
+      APathExecutable.toFile(executableDir).writeUtf8Executable(TestScript)
+      BPathExecutable.toFile(executableDir).writeUtf8Executable(TestScript)
       val agentConf = AgentConfiguration.forTest(
         directory,
         name = "OrderAgentTest",

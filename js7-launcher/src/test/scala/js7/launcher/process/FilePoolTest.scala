@@ -1,5 +1,6 @@
 package js7.launcher.process
 
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.exists
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.file.FileUtils.temporaryDirectory
@@ -11,7 +12,7 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class FilePoolTest extends AnyFreeSpec
 {
-  private val filePool = new FilePool(JobKey.forTest, temporaryDirectory)
+  private val filePool = new FilePool(JobKey.forTest, temporaryDirectory, UTF_8)
   private var a: FilePool.FileSet = null
   private var b: FilePool.FileSet = null
   private var c: FilePool.FileSet = null

@@ -47,7 +47,7 @@ final class AgentActorTest extends AnyFreeSpec
 
         for (pathExecutable <- TestPathExecutables) {
           val file = pathExecutable.toFile(agentDirectory / "config" / "executables")
-          file.writeExecutable(TestScript)
+          file.writeUtf8Executable(TestScript)
         }
 
         (provider.agentActor ?

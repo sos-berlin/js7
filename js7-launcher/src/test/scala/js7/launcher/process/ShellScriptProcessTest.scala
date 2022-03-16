@@ -43,7 +43,7 @@ final class ShellScriptProcessTest extends AnyFreeSpec
     val exitCode = 42
     val processConfig = ProcessConfiguration.forTest.copy(additionalEnvironment = Map(envName -> envValue))
     withScriptFile { scriptFile =>
-      scriptFile.writeExecutable((isWindows ?? "@") + s"exit $exitCode")
+      scriptFile.writeUtf8Executable((isWindows ?? "@") + s"exit $exitCode")
       val shellProcess = startShellScript(processConfig, scriptFile, Map.empty)
         .await(99.s)
       val returnCode = shellProcess.terminated await 99.s
@@ -67,7 +67,7 @@ final class ShellScriptProcessTest extends AnyFreeSpec
               |echo INTERPRETER-END
               |""".stripMargin
           withScriptFile { scriptFile =>
-            scriptFile.writeExecutable(
+            scriptFile.writeUtf8Executable(
               s"""#! $interpreter
                  |echo TEST-SCRIPT
                  |""".stripMargin)
@@ -93,7 +93,7 @@ final class ShellScriptProcessTest extends AnyFreeSpec
     } else {
       val taskId = TaskId("TEST-PROCESS-ID")
       withScriptFile { scriptFile =>
-        scriptFile.writeExecutable(
+        scriptFile.writeUtf8Executable(
           if (isWindows)
             """echo SCRIPT-ARGUMENTS=%*
               |ping -n 7 127.0.0.1
@@ -146,7 +146,7 @@ final class ShellScriptProcessTest extends AnyFreeSpec
         pending
       } else {
         withScriptFile { scriptFile =>
-          scriptFile.writeExecutable(
+          scriptFile.writeUtf8Executable(
             "trap 'exit 7' SIGTERM; sleep 1; sleep 1; sleep 1;sleep 1; sleep 1; sleep 1;sleep 1; sleep 1; sleep 1; exit 3")
           val shellProcess = startShellScript(ProcessConfiguration.forTest, scriptFile)
             .await(99.s)

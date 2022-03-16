@@ -1,5 +1,7 @@
 package js7.launcher.process
 
+import java.nio.charset.Charset
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Path
 import js7.base.io.process.Processes.Pid
 import js7.data.job.TaskId
@@ -11,6 +13,7 @@ import js7.launcher.forwindows.WindowsLogon
  */
 final case class ProcessConfiguration(
   workingDirectory: Option[Path] = None,
+  encoding: Charset,
   additionalEnvironment: Map[String, String] = Map(),
   maybeTaskId: Option[TaskId] = None,
   killWithSigterm: Seq[String],
@@ -35,6 +38,7 @@ final case class ProcessConfiguration(
 object ProcessConfiguration
 {
   def forTest = ProcessConfiguration(
+    encoding = UTF_8/*Windows ???*/,
     killWithSigterm = Seq("/bin/kill", "$pid"),
     killWithSigkill = Seq("/bin/kill", "-KILL", "$pid"),
     killForWindows = Seq("taskkill", "/pid", "$pid"))

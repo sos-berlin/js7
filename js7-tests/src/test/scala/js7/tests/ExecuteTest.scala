@@ -61,7 +61,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
     for (a <- directoryProvider.agents) {
      a.writeExecutable(RelativePathExecutable("TEST-SCRIPT.cmd"), returnCodeScript("myExitCode"))
     }
-    argScriptFile.writeExecutable(
+    argScriptFile.writeUtf8Executable(
       if (isWindows)
         """@echo off
           |echo ARGUMENTS=/%*/
@@ -69,7 +69,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
       else
         """echo ARGUMENTS=/$*/
           |exit $2""".stripMargin)
-    myReturnCodeScriptFile.writeExecutable(returnCodeScript("myExitCode"))
+    myReturnCodeScriptFile.writeUtf8Executable(returnCodeScript("myExitCode"))
     super.beforeAll()
   }
 

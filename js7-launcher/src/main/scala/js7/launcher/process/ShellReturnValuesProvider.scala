@@ -1,5 +1,6 @@
 package js7.launcher.process
 
+import java.nio.charset.Charset
 import java.nio.file.Files.{createTempFile, deleteIfExists}
 import java.nio.file.Path
 import js7.base.io.file.FileUtils.syntax._
@@ -7,14 +8,16 @@ import js7.base.log.Logger
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.data.value.{NamedValues, StringValue}
-import js7.launcher.configuration.JobLauncherConf.FileEncoding
 import js7.launcher.process.ShellReturnValuesProvider._
 import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
   */
-private final class ShellReturnValuesProvider(tmpDirectory: Path, v1Compatible: Boolean = false)
+private final class ShellReturnValuesProvider(
+  tmpDirectory: Path,
+  encoding: Charset,
+  v1Compatible: Boolean = false)
 {
   private var fileExists = false
 
@@ -41,7 +44,7 @@ private final class ShellReturnValuesProvider(tmpDirectory: Path, v1Compatible: 
     varName -> file.toString
 
   def read(): NamedValues =
-    autoClosing(scala.io.Source.fromFile(file.toFile)(FileEncoding)) { source =>
+    autoClosing(scala.io.Source.fromFile(file.toFile)(encoding)) { source =>
       (source.getLines() map lineToNamedvalue).toMap
     }
 

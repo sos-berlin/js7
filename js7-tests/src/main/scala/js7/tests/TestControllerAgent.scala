@@ -73,7 +73,7 @@ object TestControllerAgent
       env.agents foreach { _.configDir / "agent.conf" ++= "js7.web.server.auth.loopback-is-public = on\n" }
       withCloser { implicit closer =>
         for (agentPath <- conf.agentPaths) {
-          TestPathExecutable.toFile(env.agentToTree(agentPath).configDir / "executables").writeExecutable(
+          TestPathExecutable.toFile(env.agentToTree(agentPath).configDir / "executables").writeUtf8Executable(
               if (isWindows) s"""
                  |@echo off
                  |echo Hello

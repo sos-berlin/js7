@@ -49,7 +49,7 @@ final class ProcessDriverTest extends AnyFreeSpec with BeforeAndAfterAll with Te
 
     val pathExecutable = RelativePathExecutable(s"TEST$sh", v1Compatible = true)
     val shellFile = pathExecutable.toFile(executableDirectory)
-    shellFile.writeExecutable(TestScript)
+    shellFile.writeUtf8Executable(TestScript)
     def toOutcome(namedValues: NamedValues, returnCode: ReturnCode) =
       Outcome.Succeeded(namedValues + ("returnCode" -> NumberValue(returnCode.number)))
     val taskConfiguration = TaskConfiguration(JobKey.forTest, toOutcome, CommandLine.fromFile(shellFile))

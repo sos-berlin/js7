@@ -1,8 +1,7 @@
 package js7.launcher.configuration
 
-import java.nio.charset.StandardCharsets.{ISO_8859_1, UTF_8}
+import java.nio.charset.Charset
 import java.nio.file.Path
-import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
 import js7.common.http.configuration.RecouplingStreamReaderConf
@@ -14,6 +13,7 @@ final case class JobLauncherConf(
   tmpDirectory: Path,
   /** Working directory of the process to be started. */
   workingDirectory: Path,
+  encoding: Charset,
   killWithSigterm: Seq[String],
   killWithSigkill: Seq[String],
   killForWindows: Seq[String],
@@ -26,7 +26,5 @@ final case class JobLauncherConf(
 
 object JobLauncherConf
 {
-  // TODO Put this constants at a central place
-  val FileEncoding = if (isWindows) ISO_8859_1 else UTF_8
   val ErrLineLengthMaximum = 4096  // Has to fit into the journal
 }

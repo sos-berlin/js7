@@ -1,14 +1,18 @@
 package js7.subagent.configuration
 
+import cats.syntax.semigroup._
 import com.typesafe.config.Config
+import java.nio.charset.Charset
+import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.{createDirectory, exists}
 import java.nio.file.Path
 import js7.base.configutils.Configs
-import js7.base.configutils.Configs.RichConfig
+import js7.base.configutils.Configs.{ConvertibleConfig, RichConfig}
 import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.file.FileUtils.{EmptyPath, WorkingDirectory}
 import js7.base.problem.{Checked, Problem}
+import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
 import js7.base.utils.ScalaUtils.syntax._
@@ -16,6 +20,7 @@ import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.configuration.{CommonConfiguration, Js7Configuration}
 import js7.common.http.configuration.RecouplingStreamReaderConfs
 import js7.launcher.configuration.{JobLauncherConf, ProcessKillScript}
+import js7.launcher.forwindows.configuration.WindowsConf
 import js7.launcher.process.ProcessKillScriptProvider
 import js7.subagent.client.SubagentDriver.StdouterrConf
 import js7.subagent.configuration.SubagentConf._
@@ -97,6 +102,7 @@ extends CommonConfiguration
         shellScriptTmpDirectory = shellScriptTmpDirectory,
         tmpDirectory = workTmpDirectory,
         workingDirectory = jobWorkingDirectory,
+        encoding = systemEncoding.orThrow,
         killWithSigterm = config.seqAs[String](sigtermName),
         killWithSigkill = config.seqAs[String](sigkillName),
         killForWindows = config.seqAs[String](sigkillWindowsName),
@@ -117,6 +123,22 @@ extends CommonConfiguration
         copy(killScript = Some(provider.provideTo(workDirectory)))
       case _ => this
     }
+
+  private val systemEncoding: Checked[Charset] =
+    if (isWindows)
+      windowsCodepageToEncoding(WindowsConf.codepage)
+    else
+      Right(UTF_8)
+
+  private[configuration] def windowsCodepageToEncoding(codepage: Int): Checked[Charset] = {
+    val key = s"js7.windows.codepages.$codepage"
+    config.optionAs[String](key) match {
+      case None => Left(Problem(s"Unknown Windows code page $codepage"))
+      case Some(encodingName) =>
+        Checked.catchNonFatal(Charset.forName(encodingName))
+          .left.map(Problem(s"Unknown encoding for Windows code page $codepage:") |+| _)
+    }
+  }
 }
 
 object SubagentConf
@@ -139,7 +161,7 @@ object SubagentConf
     name: String = "JS7")
   : SubagentConf = {
     val myConfig = config.withFallback(SubagentConf.defaultConfig)
-    val outErrConf = StdouterrConf.fromConfig(config)
+    val outErrConf = StdouterrConf.fromConfig(myConfig)
     SubagentConf(
       configDirectory = configDirectory,
       dataDirectory = dataDirectory,
@@ -149,11 +171,11 @@ object SubagentConf
       defaultJobSigkillDelay = myConfig.finiteDuration("js7.job.execution.sigkill-delay").orThrow,
       killScript,
       outErrConf,
-      outerrCharBufferSize = config.memorySizeAsInt("js7.order.stdout-stderr.char-buffer-size").orThrow
+      outerrCharBufferSize = myConfig.memorySizeAsInt("js7.order.stdout-stderr.char-buffer-size").orThrow
         .min(outErrConf.chunkSize),
-      stdoutCommitDelay = config.finiteDuration("js7.order.stdout-stderr.commit-delay").orThrow,
+      stdoutCommitDelay = myConfig.finiteDuration("js7.order.stdout-stderr.commit-delay").orThrow,
       name = name,
-      myConfig.withFallback(SubagentConf.defaultConfig))
+      myConfig)
   }
 
   private def autoCreateDirectory(directory: Path): Path = {
