@@ -2,7 +2,6 @@ package js7.tests.feed
 
 import cats.effect.Resource
 import java.io.InputStream
-import js7.base.generic.Completed
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Checked
 import js7.base.thread.Futures.implicits.SuccessFuture
@@ -25,12 +24,12 @@ object FeedMain
             println(problem.toString)
             System.exit(1)
 
-          case Right(Completed) =>
+          case Right(()) =>
         }
     }
   }
 
-  def run(args: Array[String], in: Resource[Task, InputStream]): Task[Checked[Completed]] = {
+  def run(args: Array[String], in: Resource[Task, InputStream]): Task[Checked[Unit]] = {
     val settings = Settings.parseArguments(args.toSeq)
     Feed.run(in, settings)
   }
