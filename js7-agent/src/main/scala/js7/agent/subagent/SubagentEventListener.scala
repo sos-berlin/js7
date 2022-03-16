@@ -31,6 +31,7 @@ import monix.catnap.MVar
 import monix.eval.Task
 import monix.execution.atomic.Atomic
 import monix.reactive.Observable
+import scala.util.chaining.scalaUtilChainingOps
 
 trait SubagentEventListener
 {
@@ -65,13 +66,18 @@ trait SubagentEventListener
 
   private def observeEvents: Task[Unit] = {
     val recouplingStreamReader = newEventListener()
+    val bufferDelay = conf.eventBufferDelay max conf.commitDelay
     recouplingStreamReader
       .observe(client, after = persistence.currentState.idToSubagentRefState(subagentId).eventId)
       .takeUntilEval(stopObserving.flatMap(_.read))
-      .buffer(
-        Some(conf.eventBufferDelay max conf.commitDelay),
-        maxCount = conf.eventBufferSize)  // ticks
-      .filter(_.nonEmpty)   // Ignore empty ticks
+      .pipe(obs =>
+        if (!bufferDelay.isPositive)
+          obs.map(_ :: Nil)
+        else
+          obs.buffer(
+            Some(conf.eventBufferDelay max conf.commitDelay),
+            maxCount = conf.eventBufferSize)  // ticks
+          .filter(_.nonEmpty))   // Ignore empty ticks
       .mapEval { stampedSeq =>
         stampedSeq.traverse(handleEvent)
           .flatMap { updatedStampedSeq0 =>

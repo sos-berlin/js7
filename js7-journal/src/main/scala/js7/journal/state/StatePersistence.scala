@@ -48,9 +48,9 @@ extends ReadableStatePersistence[S]
 
   final def persist[E <: Event](stateToEvents: S => Checked[Seq[KeyedEvent[E]]])
   : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
-    persist(CommitOptions.default, stateToEvents)
+    persistWithOptions(CommitOptions.default, stateToEvents)
 
-  def persist[E <: Event](
+  def persistWithOptions[E <: Event](
     options: CommitOptions = CommitOptions.default,
     stateToEvents: S => Checked[Seq[KeyedEvent[E]]])
   : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]]

@@ -116,7 +116,7 @@ extends StatePersistence[S] with AutoCloseable
     keyedEvents: Seq[KeyedEvent[E]],
     options: CommitOptions = CommitOptions.default)
   : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
-    persist(options, _ => Right(keyedEvents))
+    persistWithOptions(options, _ => Right(keyedEvents))
 
   def persistKeyedEventsLater[E <: Event](
     keyedEvents: Seq[KeyedEvent[E]],
@@ -147,7 +147,7 @@ extends StatePersistence[S] with AutoCloseable
           stampedKeyedEvents.head.asInstanceOf[Stamped[KeyedEvent[E]]] -> state
       })
 
-  def persist[E <: Event](
+  def persistWithOptions[E <: Event](
     options: CommitOptions = CommitOptions.default,
     stateToEvents: S => Checked[Seq[KeyedEvent[E]]])
   : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =

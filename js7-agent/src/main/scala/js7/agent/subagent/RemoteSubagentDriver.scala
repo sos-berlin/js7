@@ -15,7 +15,7 @@ import js7.base.io.process.ProcessSignal
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax._
 import js7.base.monixutils.MonixBase.syntax._
-import js7.base.monixutils.{AsyncMap, Switch}
+import js7.base.monixutils.{AsyncMap, AsyncVariable, Switch}
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.stream.Numbered
@@ -26,7 +26,7 @@ import js7.base.web.HttpClient.HttpException
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.data.controller.ControllerId
 import js7.data.event.EventId
-import js7.data.item.SignableItem
+import js7.data.item.{InventoryItemKey, ItemRevision, SignableItem}
 import js7.data.job.{JobConf, JobResource}
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId, Outcome}
@@ -59,6 +59,7 @@ extends SubagentDriver with SubagentEventListener
 
   private val logger = Logger.withPrefix[this.type](subagentId.toString)
   private val dispatcher = new SubagentDispatcher(subagentId, postQueuedCommand)
+  private val attachedItemKeys = AsyncVariable(Map.empty[InventoryItemKey, Option[ItemRevision]])
   @volatile private var stopping = false
   @volatile private var shuttingDown = false
 
@@ -183,6 +184,7 @@ extends SubagentDriver with SubagentEventListener
         val promises = oToP.values
         dispatcher
           .stop
+          .*>(attachedItemKeys.update(_ => Task.pure(Map.empty)))
           .*>(persistence
               .persist(state => Right(orderIds.view
                 .filter(orderId =>
@@ -445,26 +447,42 @@ extends SubagentDriver with SubagentEventListener
   private def postQueuedCommand2(numberedCommand: Numbered[SubagentCommand.Queueable])
   : Task[Checked[Unit]] = {
     val command = numberedCommand.value
-    dependentCommands(command)
+    dependentSignedItems(command)
       .map(_.orThrow)
-      .map {
-        case Nil => numberedCommand
-        case depCmds => numberedCommand.copy(
-          value = SubagentCommand.Batch(depCmds :+ command))
+      .flatMap { signedItems =>
+        val cmd = signedItems match {
+          case Nil => numberedCommand
+          case signedSeq => numberedCommand.copy(
+            value = SubagentCommand.Batch(signedSeq.map(AttachSignedItem(_)) :+ command))
+        }
+        HttpClient.liftProblem(
+          client
+            .executeSubagentCommand(cmd)
+            .*>(attachedItemKeys.update(o => Task.pure(o ++ signedItems.view.map(_.value.keyAndRevision))))
+            .void)
       }
-      .flatMap(cmd => HttpClient.liftProblem(
-        client.executeSubagentCommand(cmd).void))
   }
-
-  private def dependentCommands(command: SubagentCommand): Task[Checked[Seq[SubagentCommand]]] =
+  private def dependentSignedItems(command: SubagentCommand): Task[Checked[Seq[Signed[SignableItem]]]] =
     command match {
       case startOrderProcess: StartOrderProcess =>
-        // TODO Attach only new items
+        val alreadyAttached = attachedItemKeys.get
         signableItemsForOrderProcessing(startOrderProcess.order.workflowPosition)
-          .map(_.map(_.map(AttachSignedItem(_))))
+          .map(_.map(_.filterNot(signed =>
+            alreadyAttached.get(signed.value.key) contains signed.value.itemRevision)))
       case _ =>
         Task.right(Nil)
     }
+
+  //private def dependentCommands(command: SubagentCommand): Task[Checked[Seq[SubagentCommand]]] =
+  //  command match {
+  //    case startOrderProcess: StartOrderProcess =>
+  //      signableItemsForOrderProcessing(startOrderProcess.order.workflowPosition)
+  //        .map(_.map(_
+  //          .filterNot(signed => attachedItemKeys(signed.value.key))
+  //          .map(AttachSignedItem(_))))
+  //    case _ =>
+  //      Task.right(Nil)
+  //  }
 
   private def signableItemsForOrderProcessing(workflowPosition: WorkflowPosition)
   : Task[Checked[Seq[Signed[SignableItem]]]] =

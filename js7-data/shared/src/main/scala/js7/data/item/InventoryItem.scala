@@ -20,6 +20,9 @@ trait InventoryItem
 
   def itemRevision: Option[ItemRevision]
 
+  final def keyAndRevision: (InventoryItemKey, Option[ItemRevision]) =
+    (key, itemRevision)
+
   /** Only if this Item is dedicated to an Agent.
     * An Item may be
     * <ul>
