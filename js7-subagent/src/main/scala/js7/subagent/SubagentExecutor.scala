@@ -28,7 +28,7 @@ import js7.subagent.SubagentExecutor._
 import js7.subagent.client.SubagentDriver
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.data.SubagentCommand.{CoupleDirector, DedicateSubagent}
-import js7.subagent.data.SubagentEvent.{SubagentDedicated, SubagentShutdown}
+import js7.subagent.data.SubagentEvent.SubagentShutdown
 import monix.eval.Task
 import monix.execution.atomic.Atomic
 
@@ -96,15 +96,11 @@ trait SubagentExecutor
         //if (cmd.subagentId == dedicatedOnce.orThrow.subagentId)
         //  Task.pure(Rightm(DedicateSubagent.Response(subagentRunId, EventId.BeforeFirst)))
         //else
-        Task.pure(Left(Problem.pure(
-          s"This Subagent has already been dedicated: $dedicatedOnce")))
+        Task.left(Problem.pure(s"This Subagent has already been dedicated: $dedicatedOnce"))
       } else {
-        val event = SubagentDedicated(cmd.subagentId, subagentRunId, cmd.agentPath, cmd.controllerId)
         // TODO Check agentPath, controllerId (handle in SubagentState?)
-        journal.persistKeyedEvent(NoKey <-: event)
-          .map(_.map(_ =>
-            logger.info(s"Subagent dedicated to be ${cmd.subagentId} in ${cmd.agentPath}, is ready")))
-          .rightAs(DedicateSubagent.Response(subagentRunId, EventId.BeforeFirst))
+        logger.info(s"Subagent dedicated to be ${cmd.subagentId} in ${cmd.agentPath}, is ready")
+        Task.right(DedicateSubagent.Response(subagentRunId, EventId.BeforeFirst))
       }
     }
 

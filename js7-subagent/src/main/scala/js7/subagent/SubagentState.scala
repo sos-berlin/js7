@@ -10,7 +10,7 @@ import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten, OrderStderrWr
 import js7.data.state.AgentStateView
 import js7.data.workflow.{Workflow, WorkflowId}
 import js7.subagent.data.SubagentEvent
-import js7.subagent.data.SubagentEvent.{SubagentDedicated, SubagentItemAttached, SubagentShutdown}
+import js7.subagent.data.SubagentEvent.{SubagentItemAttached, SubagentShutdown}
 import scala.collection.{MapView, View}
 
 final case class SubagentState(
@@ -28,9 +28,6 @@ with ItemContainer
 
   def applyEvent(keyedEvent: KeyedEvent[Event]) =
     keyedEvent match {
-      case KeyedEvent(_: NoKey, SubagentDedicated(id, cId, aPath, runId)) =>
-        Right(this)
-
       case KeyedEvent(_: NoKey, SubagentItemAttached(workflow: Workflow)) =>
         Right(copy(
           idToWorkflow = idToWorkflow + (workflow.id -> workflow)))

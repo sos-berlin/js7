@@ -78,29 +78,28 @@ trait SubagentEventListener
             Some(conf.eventBufferDelay max conf.commitDelay),
             maxCount = conf.eventBufferSize)  // ticks
           .filter(_.nonEmpty))   // Ignore empty ticks
-      .mapEval { stampedSeq =>
-        stampedSeq.traverse(handleEvent)
-          .flatMap { updatedStampedSeq0 =>
-            val (updatedStampedSeqSeq, followUps) = updatedStampedSeq0.unzip
-            val updatedStampedSeq = updatedStampedSeqSeq.flatten
-            val lastEventId = updatedStampedSeq.lastOption.map(_.eventId)
-            val events = updatedStampedSeq.view.map(_.value)
-              .concat(lastEventId.map(subagentId <-: SubagentEventsObserved(_)))
-              .toVector
-            // TODO Save Stamped timestamp
-            persistence
-              .persistKeyedEvents(events, CommitOptions(transaction = true))
-              .map(_.orThrow/*???*/)
-              // After an OrderProcessed event an DetachProcessedOrder must be sent,
-              // to terminate StartOrderProcess command idempotency detection and
-              // allow a new StartOrderProcess command for a next process.
-              .*>(updatedStampedSeq
-                .collect { case Stamped(_, _, KeyedEvent(o: OrderId, _: OrderProcessed)) => o }
-                .traverse(detachProcessedOrder))
-              .*>(lastEventId.traverse(releaseEvents))
-              .*>(followUps.combineAll)
-          }
-        }
+      .mapEval(_
+        .traverse(handleEvent)
+        .flatMap { updatedStampedSeq0 =>
+          val (updatedStampedSeqSeq, followUps) = updatedStampedSeq0.unzip
+          val updatedStampedSeq = updatedStampedSeqSeq.flatten
+          val lastEventId = updatedStampedSeq.lastOption.map(_.eventId)
+          val events = updatedStampedSeq.view.map(_.value)
+            .concat(lastEventId.map(subagentId <-: SubagentEventsObserved(_)))
+            .toVector
+          // TODO Save Stamped timestamp
+          persistence
+            .persistKeyedEvents(events, CommitOptions(transaction = true))
+            .map(_.orThrow/*???*/)
+            // After an OrderProcessed event an DetachProcessedOrder must be sent,
+            // to terminate StartOrderProcess command idempotency detection and
+            // allow a new StartOrderProcess command for a next process.
+            .*>(updatedStampedSeq
+              .collect { case Stamped(_, _, KeyedEvent(o: OrderId, _: OrderProcessed)) => o }
+              .traverse(detachProcessedOrder))
+            .*>(lastEventId.traverse(releaseEvents))
+            .*>(followUps.combineAll)
+        })
       .guarantee(recouplingStreamReader
         .terminateAndLogout
         .void
@@ -133,8 +132,7 @@ trait SubagentEventListener
       case KeyedEvent(_: NoKey, SubagentEvent.SubagentShutdown) =>
         Task.pure(None -> onSubagentDied(SubagentShutdown))
 
-      case KeyedEvent(_: NoKey, event @
-        (_: SubagentEvent.SubagentDedicated | _: SubagentEvent.SubagentItemAttached)) =>
+      case KeyedEvent(_: NoKey, event: SubagentEvent.SubagentItemAttached) =>
         // TODO Subagent should not emit unused events
         logger.debug(event.toString)
         Task.pure(None -> Task.unit)

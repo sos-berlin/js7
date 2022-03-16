@@ -174,8 +174,7 @@ final class SubagentKeeper(
       acquire = orderToSubagent.put(orderId, subagentDriver).void)(
       release = _ => orderToSubagent.remove(orderId).void
     ).use(_ =>
-      body.map(_.map(processed => onEvents(processed :: Nil)))
-    )
+      body.map(_.map(processed => onEvents(processed :: Nil)))))
 
   private def selectSubagentDriverCancelable(orderId: OrderId)
   : Task[Checked[Option[SubagentDriver]]] =
