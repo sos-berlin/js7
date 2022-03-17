@@ -19,7 +19,7 @@ import scala.util.{Failure, Success}
   *
   * @author codyaray (original author)
   * @since 4/22/2013
-  * @see http://stackoverflow.com/questions/1793979/registering-multiple-keystores-in-jvm
+  * @see https://stackoverflow.com/questions/1793979/registering-multiple-keystores-in-jvm
   */
 final class CompositeX509TrustManager private(val trustManagers: Seq[X509TrustManager])
 extends X509TrustManager

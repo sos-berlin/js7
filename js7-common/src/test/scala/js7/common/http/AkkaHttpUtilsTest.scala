@@ -12,7 +12,7 @@ final class AkkaHttpUtilsTest extends AnyFreeSpec
 {
 
   "Uri asAkka, asUri" in {
-    val uri = "http://example.com:1/path/?query=value#hash"
+    val uri = "https://example.com:1/path/?query=value#hash"
     assert(Uri(uri).asAkka == AkkaUri(uri))
     assert(AkkaUri(uri).asUri == Uri(uri))
   }

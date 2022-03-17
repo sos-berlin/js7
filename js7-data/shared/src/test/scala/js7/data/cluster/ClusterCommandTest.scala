@@ -17,8 +17,8 @@ final class ClusterCommandTest extends AnyFreeSpec
       ClusterStartBackupNode(
         ClusterSetting(
           Map(
-            NodeId("A") -> Uri("http://A"),
-            NodeId("B") -> Uri("http://B")),
+            NodeId("A") -> Uri("https://A"),
+            NodeId("B") -> Uri("https://B")),
           NodeId("A"),
           Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
           ClusterTiming(10.s, 20.s)),
@@ -27,8 +27,8 @@ final class ClusterCommandTest extends AnyFreeSpec
         "TYPE": "ClusterStartBackupNode",
         "setting": {
           "idToUri": {
-            "A": "http://A",
-            "B": "http://B"
+            "A": "https://A",
+            "B": "https://B"
           },
           "activeId": "A",
           "clusterWatches": [ { "uri": "https://CLUSTER-WATCH" } ],
@@ -83,8 +83,8 @@ final class ClusterCommandTest extends AnyFreeSpec
     testJson[ClusterCommand.Response](ClusterInhibitActivation.Response(Some(FailedOver(
       ClusterSetting(
         Map(
-          NodeId("A") -> Uri("http://A"),
-          NodeId("B") -> Uri("http://B")),
+          NodeId("A") -> Uri("https://A"),
+          NodeId("B") -> Uri("https://B")),
         activeId = NodeId("A"),
         Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
         ClusterTiming(10.s, 20.s)),
@@ -94,8 +94,8 @@ final class ClusterCommandTest extends AnyFreeSpec
         "failedOver": {
           "setting": {
             "idToUri": {
-              "A": "http://A",
-              "B": "http://B"
+              "A": "https://A",
+              "B": "https://B"
             },
             "activeId": "A",
             "clusterWatches": [ { "uri": "https://CLUSTER-WATCH" } ],

@@ -16,8 +16,8 @@ import org.scalatest.freespec.AnyFreeSpec
 final class ClusterSettingTest extends AnyFreeSpec
 {
   private val idToUri = Map(
-    NodeId("A") -> Uri("http://A"),
-    NodeId("B") -> Uri("http://B"))
+    NodeId("A") -> Uri("https://A"),
+    NodeId("B") -> Uri("https://B"))
   private val timing = ClusterTiming(1.s, 2.s)
   private val clusterSetting = ClusterSetting(
     idToUri,
@@ -29,8 +29,8 @@ final class ClusterSettingTest extends AnyFreeSpec
     testJson(clusterSetting,
       json"""{
         "idToUri": {
-          "A": "http://A",
-          "B": "http://B"
+          "A": "https://A",
+          "B": "https://B"
         },
         "activeId": "A",
         "clusterWatches": [
@@ -47,8 +47,8 @@ final class ClusterSettingTest extends AnyFreeSpec
 
   "checked" in {
     assert(checkUris(Map.empty).isLeft)
-    assert(checkUris(Map(NodeId("A") -> Uri("http://A"))).isLeft)
-    assert(checkUris(Map(NodeId("A") -> Uri("http://SAME"), NodeId("B") -> Uri("http://SAME"))).isLeft)
+    assert(checkUris(Map(NodeId("A") -> Uri("https://A"))).isLeft)
+    assert(checkUris(Map(NodeId("A") -> Uri("https://SAME"), NodeId("B") -> Uri("https://SAME"))).isLeft)
 
     assert(ClusterSetting.checked(idToUri, NodeId("X"), Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))), timing).isLeft)
 
@@ -67,7 +67,7 @@ final class ClusterSettingTest extends AnyFreeSpec
   }
 
   "activeUri" in {
-    assert(clusterSetting.activeUri == Uri("http://A"))
+    assert(clusterSetting.activeUri == Uri("https://A"))
   }
 
   "passiveId" in {
@@ -75,7 +75,7 @@ final class ClusterSettingTest extends AnyFreeSpec
   }
 
   "passiveUri" in {
-    assert(clusterSetting.passiveUri == Uri("http://B"))
+    assert(clusterSetting.passiveUri == Uri("https://B"))
   }
 
   "peerOf" in {
@@ -85,9 +85,9 @@ final class ClusterSettingTest extends AnyFreeSpec
   }
 
   "withPassiveUri" in {
-    assert(clusterSetting.withPassiveUri(Uri("HTTP://UPDATED")) ==
+    assert(clusterSetting.withPassiveUri(Uri("https://UPDATED")) ==
       clusterSetting.copy(idToUri = Map(
-        NodeId("A") -> Uri("http://A"),
-        NodeId("B") -> Uri("HTTP://UPDATED"))))
+        NodeId("A") -> Uri("https://A"),
+        NodeId("B") -> Uri("https://UPDATED"))))
   }
 }

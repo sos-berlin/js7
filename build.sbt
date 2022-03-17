@@ -1,7 +1,7 @@
 // WARNING: Start only in a secure closed environment (like Docker) !!!
 // because tests open localhost TCP ports that may allow code injection.
 /**
-  * Install sbt from http://www.scala-sbt.org/.
+  * Install sbt from https://www.scala-sbt.org/.
   * Not needed for standard (JVM-only) production build:
   *   Install Node.js from https://nodejs.org/.
   *   If you don't start sbt with "./sbt-batch": Run "npm install jsdom" in this or a parent directory.
@@ -123,7 +123,7 @@ Global / concurrentRestrictions := Seq(
   Tags.limit(Tags.Compile, max = sys.runtime.availableProcessors),
   Tags.limitAll(if (parallelExecution.value) sys.runtime.availableProcessors max testParallelization else 1))
 
-// http://www.scalatest.org/user_guide/using_scalatest_with_sbt
+// https://www.scalatest.org/user_guide/using_scalatest_with_sbt
 val scalaTestArguments = Tests.Argument(TestFrameworks.ScalaTest,
   (if (testParallelization > 1) "-oNCLPQF" else "-oF") +: Seq("-W", "30", "30"): _*)
 

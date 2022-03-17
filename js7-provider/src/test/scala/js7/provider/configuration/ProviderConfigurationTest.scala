@@ -20,19 +20,19 @@ final class ProviderConfigurationTest extends AnyFreeSpec
     withTemporaryDirectory("ProviderConfigurationTest-") { dir =>
       assert(ProviderConfiguration.fromCommandLine(
         s"--config-directory=$dir" ::
-        "--controller-uri=http://example.com" :: Nil
+        "--controller-uri=https://example.com" :: Nil
       ).copy(config = ConfigFactory.empty)
-        == ProviderConfiguration(dir, Uri("http://example.com"), HttpsConfig.empty))
+        == ProviderConfiguration(dir, Uri("https://example.com"), HttpsConfig.empty))
     }
   }
 
   "Command line with provider.conf" in {
     withTemporaryDirectory("ProviderConfigurationTest-") { dir =>
-      dir / "provider.conf" := """js7.provider.controller.uri = "http://example.com"""" + "\n"
+      dir / "provider.conf" := """js7.provider.controller.uri = "https://example.com"""" + "\n"
       assert(ProviderConfiguration.fromCommandLine(
         s"--config-directory=$dir" ::Nil
       ).copy(config = ConfigFactory.empty)
-        == ProviderConfiguration(dir, Uri("http://example.com"), HttpsConfig.empty))
+        == ProviderConfiguration(dir, Uri("https://example.com"), HttpsConfig.empty))
     }
   }
 }

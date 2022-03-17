@@ -7,7 +7,7 @@ import scala.collection.immutable.Seq
 private object WindowsCommandLineConversion
 {
   // Here is how JDK does Windows quoting:
-  // http://hg.openjdk.java.net/jdk8/jdk8/jdk/file/687fd7c7986d/src/windows/classes/java/lang/ProcessImpl.java
+  // https://hg.openjdk.java.net/jdk8/jdk8/jdk/file/687fd7c7986d/src/windows/classes/java/lang/ProcessImpl.java
 
   private val ToBeQuoted = Set(' ', '"')
 

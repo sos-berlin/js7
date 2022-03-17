@@ -26,7 +26,7 @@ import scala.collection.mutable
   *
   * @author Joacim Zschimmer
   * @see https://tools.ietf.org/html/rfc7464
-  * @see http://ndjson.org/
+  * @see https://ndjson.org/
   */
 final class InputStreamJsonSeqReader(
   inputStream_ : SeekableInputStream,

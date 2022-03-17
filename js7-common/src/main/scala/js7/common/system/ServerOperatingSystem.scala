@@ -90,7 +90,7 @@ object ServerOperatingSystem {
       def readFileOsRelease() = {
         val prettyNamePrefix = "PRETTY_NAME="
         val file = "/etc/os-release"
-        autoClosing(new FileInputStream(file)) { in =>    // http://man7.org/linux/man-pages/man5/os-release.5.html
+        autoClosing(new FileInputStream(file)) { in =>    // https://man7.org/linux/man-pages/man5/os-release.5.html
           fromInputStream(in).getLines() collectFirst {
             case line if line startsWith prettyNamePrefix =>
               line.stripPrefix(prettyNamePrefix).stripPrefix("\"").stripPrefix("'").stripSuffix("\"").stripSuffix("'").trim

@@ -17,8 +17,8 @@ final class ClusterStateTest extends AnyFreeSpec
   "JSON" - {
     val setting = ClusterSetting(
       Map(
-        NodeId("A") -> Uri("http://A"),
-        NodeId("B") -> Uri("http://B")),
+        NodeId("A") -> Uri("https://A"),
+        NodeId("B") -> Uri("https://B")),
       NodeId("A"),
       Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
       ClusterTiming(10.s, 20.s))
@@ -38,8 +38,8 @@ final class ClusterStateTest extends AnyFreeSpec
           "TYPE": "NodesAppointed",
           "setting": {
             "idToUri": {
-              "A": "http://A",
-              "B": "http://B"
+              "A": "https://A",
+              "B": "https://B"
             },
             "activeId": "A",
             "clusterWatches": [
@@ -62,8 +62,8 @@ final class ClusterStateTest extends AnyFreeSpec
           "TYPE": "PreparedToBeCoupled",
           "setting": {
             "idToUri": {
-              "A": "http://A",
-              "B": "http://B"
+              "A": "https://A",
+              "B": "https://B"
             },
             "activeId": "A",
             "clusterWatches": [
@@ -86,8 +86,8 @@ final class ClusterStateTest extends AnyFreeSpec
           "TYPE": "Coupled",
           "setting": {
             "idToUri": {
-              "A": "http://A",
-              "B": "http://B"
+              "A": "https://A",
+              "B": "https://B"
             },
             "activeId": "A",
             "clusterWatches": [
@@ -110,8 +110,8 @@ final class ClusterStateTest extends AnyFreeSpec
           "TYPE": "ActiveShutDown",
           "setting": {
             "idToUri": {
-              "A": "http://A",
-              "B": "http://B"
+              "A": "https://A",
+              "B": "https://B"
             },
             "activeId": "A",
             "clusterWatches": [
@@ -134,8 +134,8 @@ final class ClusterStateTest extends AnyFreeSpec
           "TYPE": "PassiveLost",
           "setting": {
             "idToUri": {
-              "A": "http://A",
-              "B": "http://B"
+              "A": "https://A",
+              "B": "https://B"
             },
             "activeId": "A",
             "clusterWatches": [
@@ -158,8 +158,8 @@ final class ClusterStateTest extends AnyFreeSpec
           "TYPE": "SwitchedOver",
           "setting": {
             "idToUri": {
-              "A": "http://A",
-              "B": "http://B"
+              "A": "https://A",
+              "B": "https://B"
             },
             "activeId": "A",
             "clusterWatches": [
@@ -182,8 +182,8 @@ final class ClusterStateTest extends AnyFreeSpec
           "TYPE": "FailedOver",
           "setting": {
             "idToUri": {
-              "A": "http://A",
-              "B": "http://B"
+              "A": "https://A",
+              "B": "https://B"
             },
             "activeId": "A",
             "clusterWatches": [

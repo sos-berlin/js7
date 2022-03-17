@@ -23,16 +23,16 @@ final class ClusterWatchMessageTest extends AnyFreeSpec
             ClusterNodesAppointed(
               ClusterSetting(
                 Map(
-                  NodeId("A") -> Uri("http://A"),
-                  NodeId("B") -> Uri("http://B")),
+                  NodeId("A") -> Uri("https://A"),
+                  NodeId("B") -> Uri("https://B")),
                 NodeId("A"),
                 Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
                 ClusterTiming(10.s, 20.s)))),
           ClusterState.NodesAppointed(
             ClusterSetting(
               Map(
-                NodeId("A") -> Uri("http://A"),
-                NodeId("B") -> Uri("http://B")),
+                NodeId("A") -> Uri("https://A"),
+                NodeId("B") -> Uri("https://B")),
               NodeId("A"),
               Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
               ClusterTiming(10.s, 20.s)))),
@@ -44,8 +44,8 @@ final class ClusterWatchMessageTest extends AnyFreeSpec
               "TYPE": "ClusterNodesAppointed",
               "setting": {
                 "idToUri": {
-                  "A": "http://A",
-                  "B": "http://B"
+                  "A": "https://A",
+                  "B": "https://B"
                 },
                 "activeId": "A",
                 "clusterWatches": [ { "uri": "https://CLUSTER-WATCH" } ],
@@ -60,8 +60,8 @@ final class ClusterWatchMessageTest extends AnyFreeSpec
             "TYPE": "NodesAppointed",
               "setting": {
               "idToUri": {
-                "A": "http://A",
-                "B": "http://B"
+                "A": "https://A",
+                "B": "https://B"
               },
               "activeId": "A",
               "clusterWatches": [ { "uri": "https://CLUSTER-WATCH" } ],
@@ -82,8 +82,8 @@ final class ClusterWatchMessageTest extends AnyFreeSpec
           ClusterState.Coupled(
             ClusterSetting(
               Map(
-                NodeId("A") -> Uri("http://A"),
-                NodeId("B") -> Uri("http://B")),
+                NodeId("A") -> Uri("https://A"),
+                NodeId("B") -> Uri("https://B")),
               NodeId("A"),
               Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
               ClusterTiming(10.s, 20.s)))),
@@ -94,8 +94,8 @@ final class ClusterWatchMessageTest extends AnyFreeSpec
             "TYPE": "Coupled",
             "setting": {
               "idToUri": {
-                "A": "http://A",
-                "B": "http://B"
+                "A": "https://A",
+                "B": "https://B"
               },
               "activeId": "A",
               "clusterWatches": [ { "uri": "https://CLUSTER-WATCH" } ],

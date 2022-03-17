@@ -24,7 +24,7 @@ import scala.util.control.NonFatal
   * </ul>
   *
   * @author Joacim Zschimmer
-  * @see http://docs.oracle.com/javase/8/docs/technotes/guides/security/jsse/JSSERefGuide.html#CreateKeystore
+  * @see https://docs.oracle.com/javase/8/docs/technotes/guides/security/jsse/JSSERefGuide.html#CreateKeystore
   *      https://doc.akka.io/docs/akka-http/current/server-side/server-https-support.html
   *      https://tools.ietf.org/html/rfc5246
   */

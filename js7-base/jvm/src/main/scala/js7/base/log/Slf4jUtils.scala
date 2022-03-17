@@ -10,7 +10,7 @@ object Slf4jUtils
   // SLF4J: during the initialization phase. Logging calls during this
   // SLF4J: phase were not honored. However, subsequent logging calls to these
   // SLF4J: loggers will work as normally expected.
-  // SLF4J: See also http://www.slf4j.org/codes.html#substituteLogger
+  // SLF4J: See also https://www.slf4j.org/codes.html#substituteLogger
   LoggerFactory.getILoggerFactory()
 
   def initialize() = {}

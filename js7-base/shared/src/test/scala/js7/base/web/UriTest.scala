@@ -12,29 +12,29 @@ final class UriTest extends AnyFreeSpec
     assert(Uri("/") / "/" == Uri("/"))
     assert(Uri("/") / "B" == Uri("/B"))
     assert(Uri("/") / "B/" == Uri("/B/"))
-    assert(Uri("http://example.com") / "B" == Uri("http://example.com/B"))
-    assert(Uri("http://example.com/") / "/B" == Uri("http://example.com/B"))
-    assert(Uri("http://example.com/") / "/B/" == Uri("http://example.com/B/"))
-    assert(Uri("http://example.com") / "B" == Uri("http://example.com/B"))
+    assert(Uri("https://example.com") / "B" == Uri("https://example.com/B"))
+    assert(Uri("https://example.com/") / "/B" == Uri("https://example.com/B"))
+    assert(Uri("https://example.com/") / "/B/" == Uri("https://example.com/B/"))
+    assert(Uri("https://example.com") / "B" == Uri("https://example.com/B"))
   }
 
   "/?" in {
     assert(Uri("/") /? "" == Uri("/"))
     assert(Uri("/") /? "B" == Uri("/B"))
     assert(Uri("/") /? "B/" == Uri("/B/"))
-    assert(Uri("http://example.com") /? "B" == Uri("http://example.com/B"))
-    assert(Uri("http://example.com/") /? "/B" == Uri("http://example.com/B"))
-    assert(Uri("http://example.com/") /? "/B/" == Uri("http://example.com/B/"))
-    assert(Uri("http://example.com") /? "B" == Uri("http://example.com/B"))
+    assert(Uri("https://example.com") /? "B" == Uri("https://example.com/B"))
+    assert(Uri("https://example.com/") /? "/B" == Uri("https://example.com/B"))
+    assert(Uri("https://example.com/") /? "/B/" == Uri("https://example.com/B/"))
+    assert(Uri("https://example.com") /? "B" == Uri("https://example.com/B"))
   }
 
   "stripPath" in {
     assert(Uri("/").stripPath == Uri("/"))
 
-    assert(Uri("http://host/").stripPath == Uri("http://host/"))
-    assert(Uri("http://host/PATH").stripPath == Uri("http://host/"))
-    assert(Uri("http://host/PATH/MORE").stripPath == Uri("http://host/"))
-    assert(Uri("http://host/?QUERY").stripPath == Uri("http://host/"))
+    assert(Uri("https://host/").stripPath == Uri("https://host/"))
+    assert(Uri("https://host/PATH").stripPath == Uri("https://host/"))
+    assert(Uri("https://host/PATH/MORE").stripPath == Uri("https://host/"))
+    assert(Uri("https://host/?QUERY").stripPath == Uri("https://host/"))
 
     assert(Uri("//host/").stripPath == Uri("//host/"))
     assert(Uri("//host/PATH").stripPath == Uri("//host/"))

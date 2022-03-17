@@ -24,7 +24,7 @@ final class ClusterConfTest extends AnyFreeSpec
         js7.journal.cluster.node.is-backup = no
         js7.journal.cluster.heartbeat = 7s
         js7.journal.cluster.heartbeat-timeout = 5s
-        js7.journal.cluster.watches = [ "http://AGENT-1", "http://AGENT-2" ]
+        js7.journal.cluster.watches = [ "https://AGENT-1", "https://AGENT-2" ]
         js7.web.client.idle-get-timeout = 50s
         js7.web.client.polling-delay = 1s
         js7.web.client.failure-delay = 5s"""

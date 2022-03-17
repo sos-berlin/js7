@@ -7,7 +7,7 @@ final class UriJvmTest extends AnyFreeSpec
 {
   "port" in {
     assert(Uri("http://").port.left.toOption.get.toString.contains("URI"))
-    assert(Uri("http://example.com/test").port == Left(Problem("URI has no port number")))
-    assert(Uri("http://example.com:1234/test").port == Right(1234))
+    assert(Uri("https://example.com/test").port == Left(Problem("URI has no port number")))
+    assert(Uri("https://example.com:1234/test").port == Right(1234))
   }
 }

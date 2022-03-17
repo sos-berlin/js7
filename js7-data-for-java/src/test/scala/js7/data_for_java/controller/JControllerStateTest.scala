@@ -86,8 +86,8 @@ private object JControllerStateTest
       ClusterState.Coupled(
         ClusterSetting(
           Map(
-            NodeId("A") -> Uri("http://A"),
-            NodeId("B") -> Uri("http://B")),
+            NodeId("A") -> Uri("https://A"),
+            NodeId("B") -> Uri("https://B")),
           activeId = NodeId("A"),
           Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
           ClusterTiming(10.s, 20.s)))),

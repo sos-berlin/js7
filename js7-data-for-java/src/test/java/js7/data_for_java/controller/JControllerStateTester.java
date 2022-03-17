@@ -53,8 +53,8 @@ final class JControllerStateTester
         JClusterState.Coupled clusterState = (JClusterState.Coupled)controllerState.clusterState();
         assertThat(clusterState.idToUri(), equalTo(
                 new HashMap<NodeId, Uri>(){{
-                    put(NodeId.of("A"), Uri.of("http://A"));
-                    put(NodeId.of("B"), Uri.of("http://B"));
+                    put(NodeId.of("A"), Uri.of("https://A"));
+                    put(NodeId.of("B"), Uri.of("https://B"));
                 }}));
         assertThat(clusterState.activeId(), equalTo(NodeId.of("A")));
     }

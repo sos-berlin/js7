@@ -353,15 +353,15 @@ final class ControllerCommandTest extends AnyFreeSpec
     testJson[ControllerCommand](
       ClusterAppointNodes(
         Map(
-          NodeId("A") -> Uri("http://A"),
-          NodeId("B") -> Uri("http://B")),
+          NodeId("A") -> Uri("https://A"),
+          NodeId("B") -> Uri("https://B")),
         activeId = NodeId("A"),
         Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH")))),
       json"""{
         "TYPE": "ClusterAppointNodes",
         "idToUri": {
-          "A": "http://A",
-          "B": "http://B"
+          "A": "https://A",
+          "B": "https://B"
         },
         "activeId": "A",
         "clusterWatches": [
