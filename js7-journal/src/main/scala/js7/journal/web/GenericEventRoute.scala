@@ -242,8 +242,9 @@ trait GenericEventRoute extends RouteProvider
       eventWatch: EventWatch)
     : Observable[Stamped[AnyKeyedEvent]] = {
       // TODO Check if torn then return Task.raiseError
-      eventObservable(request, isRelevantEvent, eventWatch)
-        .insertHeartbeatsOnSlowUpstream(heartbeat, StampedHeartbeat)
+      StampedHeartbeat +:
+        eventObservable(request, isRelevantEvent, eventWatch)
+          .insertHeartbeatsOnSlowUpstream(heartbeat, StampedHeartbeat)
     }
 
     private def observableToResponseMarshallable(
