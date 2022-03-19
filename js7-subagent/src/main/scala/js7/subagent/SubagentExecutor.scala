@@ -41,8 +41,7 @@ trait SubagentExecutor
 
   private val subagentDriverConf = SubagentDriver.Conf.fromConfig(subagentConf.config,
     commitDelay = 0.s)
-  private val orderToProcessing = new AsyncMap(Map.empty[OrderId, Processing])
-    with AsyncMap.Stoppable
+  private val orderToProcessing = AsyncMap.stoppable[OrderId, Processing]()
   private val subagentRunId = SubagentRunId(Base64UUID.random())
 
   private val shutdownStarted = Atomic(false)
@@ -70,7 +69,7 @@ trait SubagentExecutor
             .fold(Task.unit)(_.subagentDriver.stop(signal))
             .*>(orderToProcessing
               // Await process termination and DetachProcessedOrder commands
-              .stop
+              .stopWithMessage(shuttingDownProblem)
               .logWhenItTakesLonger("Director-acknowledged Order processes"))
           .*>(journal
             // The event probably gets lost due to immediate shutdown !!!

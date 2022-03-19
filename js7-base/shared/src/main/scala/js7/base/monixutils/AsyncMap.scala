@@ -1,5 +1,6 @@
 package js7.base.monixutils
 
+import cats.syntax.apply._
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.implicitClass
@@ -87,7 +88,7 @@ class AsyncMap[K: ClassTag, V](initial: Map[K, V] = Map.empty[K, V])
   : Task[V] =
     lockKeeper.lock(key)(
       shortLock.lock(Task {
-        updateMap(key, value)
+        updateMap(key, value).orThrow
         value
       }))
 
@@ -106,7 +107,7 @@ class AsyncMap[K: ClassTag, V](initial: Map[K, V] = Map.empty[K, V])
         update(previous)
           .flatMap(updated =>
             shortLock.lock(Task {
-              updateMap(key, updated)
+              updateMap(key, updated).orThrow
               updated
           }))
           .map(previous -> _)
@@ -124,10 +125,9 @@ class AsyncMap[K: ClassTag, V](initial: Map[K, V] = Map.empty[K, V])
               case Right(v) =>
                 shortLock.lock(Task {
                   updateMap(key, v)
-                  Checked.unit
                 })
             }
-            .as(updated)
+            .map(_.*>(updated))
         })
 
   final def updateCheckedWithResult[R](key: K, update: Option[V] => Task[Checked[(V, R)]])
@@ -141,28 +141,34 @@ class AsyncMap[K: ClassTag, V](initial: Map[K, V] = Map.empty[K, V])
               .lock(Task {
                 updateMap(key, v)
               })
-              .as(Right(r))
+              .rightAs(r)
           }
       })
 
-  private def updateMap(key: K, value: V): Unit = {
-    if (!_map.contains(key)) onEntryInsert()
-    _map = _map.updated(key, value)
+  private def updateMap(key: K, value: V): Checked[Unit] = {
+    val checked = if (_map.contains(key)) Checked.unit else onEntryInsert()
+    for (_ <- checked) {
+      _map = _map.updated(key, value)
+    }
+    checked
   }
 
   override def toString =
     s"$name(n=${_map.size})"
 
   protected def name =
-    s"AsyncMap[${implicitClass[K].simpleScalaName}, ?]"
-
-  val stoppingProblem = Problem.pure(s"$name is being stopped")
+    s"AsyncMap[${implicitClass[K].simpleScalaName}]"
 }
 
 object AsyncMap
 {
+  private val logger = scribe.Logger[this.type]
+
   def apply[K: ClassTag, V](initial: Map[K, V] = Map.empty[K, V]) =
     new AsyncMap(initial)
+
+  def stoppable[K: ClassTag, V](initial: Map[K, V] = Map.empty[K, V]) =
+    new AsyncMap(initial) with Stoppable
 
   def empty[K: ClassTag, V] =
     new AsyncMap(Map.empty[K, V])
@@ -170,24 +176,32 @@ object AsyncMap
   trait Stoppable {
     this: AsyncMap[_, _] =>
 
-    @volatile private var stopped = false
+    @volatile var stoppingProblem: Problem = null
     private val whenEmptyPromise = Promise[Unit]()
 
+    private def isStopping = stoppingProblem != null
+
     final val stop: Task[Unit] =
-      shortLock
-        .lock(Task {
-          stopped = true
-          _map.isEmpty
-        })
-        .flatMap(isEmpty =>
-          if (isEmpty) Task.unit
-          else Task.fromFuture(whenEmptyPromise.future))
-        .memoize
+      stopWithMessage(Problem(s"$name is being stopped"))
+
+    final def stopWithMessage(problem: Problem): Task[Unit] =
+      Task.defer {
+        shortLock
+          .lock(Task {
+            stoppingProblem = problem
+            _map.isEmpty
+          })
+          .flatMap(isEmpty =>
+            if (isEmpty) Task.unit
+            else Task.fromFuture(whenEmptyPromise.future))
+          .*>(Task(logger.debug(s"$toString stopped")))
+          .memoize
+      }
 
     override protected[monixutils] final def onEntryInsert(): Checked[Unit] =
-      !stopped !! stoppingProblem
+      Option(stoppingProblem).toLeft(())
 
     override protected[monixutils] final def onEntryRemoved(): Unit =
-      if (stopped && isEmpty) whenEmptyPromise.trySuccess(())
+      if (isStopping && isEmpty) whenEmptyPromise.trySuccess(())
   }
 }

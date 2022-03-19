@@ -240,4 +240,57 @@ final class AsyncMapTest extends AsyncFreeSpec
       .map(_ => assert(asyncMap.toMap.isEmpty))
       .runToFuture
   }
+
+  "stop" - {
+    "empty" - {
+      "stop" in {
+        val asyncMap = AsyncMap.stoppable[Int, String]()
+        (for {
+          _ <- asyncMap.stop
+          checked <- asyncMap.insert(1, "NOT ALLOWED")
+          _ = assert(checked == Left(Problem("AsyncMap[int] is being stopped")))
+        } yield succeed
+        ).runToFuture
+      }
+
+      "stopWithMessage" in {
+        val asyncMap = AsyncMap.stoppable[Int, String]()
+        val myProblem = Problem("MY PROBLEM")
+        (for {
+          _ <- asyncMap.stopWithMessage(myProblem)
+          checked <- asyncMap.insert(1, "NOT ALLOWED")
+          _ = assert(checked == Left(myProblem))
+        } yield succeed
+        ).runToFuture
+      }
+    }
+
+    val asyncMap = AsyncMap.stoppable[Int, String]()
+
+    "non empty" - {
+        asyncMap.insert(1, "EINS")
+          .as(succeed).runToFuture
+
+      "update is allowed" in {
+        (for {
+          checked <- asyncMap.insert(1, "EINS")
+          _ = Task(assert(checked.isRight))
+          stopped <- asyncMap.stop.start
+
+          _ <- asyncMap.getAndUpdate(1, {
+            case Some("EINS") => Task("EINS*")
+            case _ => fail()
+          })
+          _ <- Task(assert(asyncMap.get(1) == Some("EINS*")))
+
+          tried <- asyncMap.getOrElseUpdate(2, Task("ZWEI")).materialize
+          _ <- Task(assert(tried.isFailure))
+
+          _ <- asyncMap.remove(1)
+          _ <- stopped.join
+        } yield succeed
+        ).runToFuture
+      }
+    }
+  }
 }

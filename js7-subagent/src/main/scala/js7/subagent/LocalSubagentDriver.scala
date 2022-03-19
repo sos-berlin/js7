@@ -51,8 +51,7 @@ extends SubagentDriver
 
   private val fileValueState = new FileValueState(subagentConf.valueDirectory)
   private val jobKeyToJobDriver = AsyncMap.empty[JobKey, JobDriver]
-  private val orderIdToJobDriver =
-    new AsyncMap(Map.empty[OrderId, JobDriver]) with AsyncMap.Stoppable
+  private val orderIdToJobDriver = AsyncMap.stoppable[OrderId, JobDriver]()
   @volatile private var stopping = false
 
   def isHeartbeating = true
