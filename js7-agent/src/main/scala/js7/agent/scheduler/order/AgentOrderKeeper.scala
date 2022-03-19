@@ -197,10 +197,23 @@ with Stash
       val state = recovered.state
       journalState = state.journalState
 
-      self.forward(Internal.JournalIsReady(state))
       become("Recovering")(recovering(state))
       unstashAll()
 
+      subagentKeeper
+        .initialize(localSubagentId, controllerId)
+        .*>(
+          subagentKeeper
+            .recoverSubagents(state.idToSubagentRefState.values.toVector)
+            .map {
+              case Left(problem) => logger.error(
+                s"subagentKeeper.recoverSubagents => $problem")  // ???
+              case _ =>
+            })
+        .materialize
+        .foreach { tried =>
+          self.forward(Internal.SubagentKeeperInitialized(state, tried))
+        }
     case _ => stash()
   }
 
@@ -234,23 +247,6 @@ with Stash
       }
 
     val receive: Receive = {
-      case Internal.JournalIsReady(state) =>
-        logger.info(s"${orderRegister.size} Orders and ${workflowRegister.size} Workflows recovered")
-        subagentKeeper
-          .initialize(localSubagentId, controllerId)
-          .*>(
-            subagentKeeper
-              .recoverSubagents(recoveredState.idToSubagentRefState.values.toVector)
-              .map {
-                case Left(problem) => logger.error(
-                  s"subagentKeeper.recoverSubagents => $problem")  // ???
-                case _ =>
-              })
-          .materialize
-          .foreach { tried =>
-            self ! Internal.SubagentKeeperInitialized(state, tried)
-          }
-
       case Internal.SubagentKeeperInitialized(state, tried) =>
         for (t <- tried.failed) throw t.appendCurrentStackTrace
 
@@ -271,7 +267,7 @@ with Stash
 
         continue()
 
-      case OrderActor.Output.RecoveryFinished(order) =>
+      case OrderActor.Output.RecoveryFinished =>
         remainingOrders -= 1
         continue()
 
@@ -281,18 +277,20 @@ with Stash
             jobRegister(jobKey).recoverProcessingOrder(order)
           }
         }
+
+        // proceedWithOrder before subagentKeeper.start because continued Orders (still
+        // processing at remote Subagent) will emit events and change idToOrder asynchronously!
+        // But not before SubagentKeeper has been started (when Subagents are coupled).
+        for (order <- state.idToOrder.values) {
+          proceedWithOrder(order)
+        }
+
         subagentKeeper.start
           .runToFuture
           .onComplete { tried =>
             for (t <- tried.failed) logger.error(s"subagentKeeper.start: ${t.toStringWithCauses}")
-            self ! Internal.SubagentKeeperStarted
+            self ! Internal.Ready
           }
-
-      case Internal.SubagentKeeperStarted =>
-        for (order <- persistence.currentState.idToOrder.values) {
-          proceedWithOrder(order)
-        }
-        self ! Internal.Ready
 
       case Internal.Ready =>
         logger.info(s"Agent '${ownAgentPath.string}' is ready" +
@@ -814,10 +812,8 @@ object AgentOrderKeeper {
 
   private object Internal {
     final case class Recover(recovered: Recovered[AgentState])
-    final case class JournalIsReady(agentState: AgentState)
     final case class SubagentKeeperInitialized(agentState: AgentState, tried: Try[Unit])
     final case class OrdersRecovered(agentState: AgentState)
-    case object SubagentKeeperStarted
     case object Ready
     final case class Due(orderId: OrderId)
     final case class JobDue(jobKey: JobKey)

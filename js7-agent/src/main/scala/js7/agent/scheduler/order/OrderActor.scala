@@ -46,19 +46,24 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
     case Input.Recover(o) =>
       assertThat(order == null)
       order = o
-      for (o <- order.ifState[Order.Processing]) {
-        subagentKeeper
-          .continueProcessingOrder(
-            o,
-            events => self ! Internal.UpdateEvents(events))
-          .materializeIntoChecked
-          .map(_.onProblemHandle(problem =>
-            logger.error(s"continueProcessingOrder: $problem")))
-          .runAsyncAndForget
-      }
       becomeAsStateOf(order, force = true)
-      logger.debug(s"Recovered $order")
-      sender() ! Output.RecoveryFinished(order)
+      val sender = this.sender()
+      order.ifState[Order.Processing] match {
+        case None =>
+          sender ! Output.RecoveryFinished
+
+        case Some(o) =>
+          subagentKeeper
+            .continueProcessingOrder(
+              o,
+              events => self ! Internal.UpdateEvents(events))
+            .materializeIntoChecked
+            .map(_.onProblemHandle(problem =>
+              logger.error(s"continueProcessingOrder: $problem")))
+            .foreach { _ =>
+              sender ! Output.RecoveryFinished
+            }
+      }
 
     case Input.AddChild(o) =>
       assertThat(order == null)
@@ -326,7 +331,7 @@ private[order] object OrderActor
   }
 
   object Output {
-    final case class RecoveryFinished(order: Order[Order.State])
+    case object RecoveryFinished
     final case class OrderChanged(
       orderId: OrderId,
       previousOrderOrNull: Order[Order.State],

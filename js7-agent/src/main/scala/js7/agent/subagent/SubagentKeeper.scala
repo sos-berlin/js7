@@ -149,6 +149,10 @@ final class SubagentKeeper(
             forProcessingOrder(order.id, subagentDriver, onEvents)(
               subagentDriver.continueProcessingOrder(order)
             ).materializeIntoChecked
+              .map(_.onProblemHandle(problem =>
+                logger.error(s"continueProcessingOrder ${order.id} => $problem")))
+              .startAndForget // ???
+              .as(Checked.unit)
         }
     })
 
