@@ -90,5 +90,5 @@ final class IncreasingNumberSync(initial: Long, valueToString: Long => String)
 
 object IncreasingNumberSync {
   private val logger = Logger(getClass)
-  private val RightTrue = Task.pure(Right(true))
+  private val RightTrue = Task.right(true)
 }

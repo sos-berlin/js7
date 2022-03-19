@@ -8,6 +8,9 @@ final case class Numbered[A](number: Long, value: A)
 {
   override def toString =
     s"#$number $value"
+
+  def map[B](f: A => B): Numbered[B] =
+    copy[B](value = f(value))
 }
 
 object Numbered

@@ -47,7 +47,7 @@ trait SubagentEventListener
   protected final val coupled = Switch(false)
 
   protected final def stopEventListener: Task[Unit] =
-    logger.debugTask("stopEventListener")(Task.defer(
+    logger.debugTask(Task.defer(
       Task.when(isListening.getAndSet(false))(
         stopObserving.flatMap(_.tryPut(())) *>
           observingStopped.flatMap(_.tryRead).void)))
@@ -59,15 +59,13 @@ trait SubagentEventListener
         logger.error(msg)
         Task.raiseError(new RuntimeException(s"$toString: $msg"))
       } else
-        logger.debugTask("Observing events")(
-          observeEvents
-        ).startAndForget
+        observeEvents.startAndForget
     })
 
   private def observeEvents: Task[Unit] = {
     val recouplingStreamReader = newEventListener()
     val bufferDelay = conf.eventBufferDelay max conf.commitDelay
-    recouplingStreamReader
+    logger.debugTask(recouplingStreamReader
       .observe(client, after = persistence.currentState.idToSubagentRefState(subagentId).eventId)
       .takeUntilEval(stopObserving.flatMap(_.read))
       .pipe(obs =>
@@ -104,7 +102,7 @@ trait SubagentEventListener
         .terminateAndLogout
         .void
         .logWhenItTakesLonger)
-      .completedL
+      .completedL)
   }
 
   /** Returns optionally the event and a follow-up task. */
@@ -150,7 +148,7 @@ trait SubagentEventListener
       override protected def idleTimeout = None  // SubagentEventListener itself detects heartbeat loss
 
       override protected def couple(eventId: EventId) =
-        logger.traceTask(
+        logger.debugTask(
           dedicateOrCouple
             .flatMapT { case (_, eventId) =>
               coupled.switchOn
@@ -218,7 +216,7 @@ trait SubagentEventListener
           .map(_.orThrow))))
 
   private def onSubagentDecoupled(problem: Option[Problem]): Task[Unit] =
-    logger.traceTask("onSubagentDecoupled", problem.toString)(
+    logger.debugTask("onSubagentDecoupled", problem)(
       Task.defer(Task.when(_isHeartbeating.getAndSet(false))(
         persistence
           .lock(subagentId)(

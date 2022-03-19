@@ -32,14 +32,13 @@ trait CommandDispatcher
   private var processing: Future[Unit] = Future.successful(())
   private val lock = AsyncLock()
 
-  def start(subagentRunId: SubagentRunId): Task[Unit] = {
+  def start(subagentRunId: SubagentRunId): Task[Unit] =
     lock.lock(
       processingAllowed.switchOnThen(
         logger.debugTask(
           Task.deferAction(scheduler => Task {
             processing = processQueue(subagentRunId).runToFuture(scheduler)
           }))))
-  }
 
   def stop: Task[Unit] =
     lock.lock(
@@ -64,9 +63,9 @@ trait CommandDispatcher
 
   def enqueueCommands(commands: Iterable[Command]): Task[Seq[Task[Checked[Response]]]] = {
     val executes: Seq[Execute] = commands.view.map(new Execute(_)).toVector
-    logger.traceTask("enqueueCommands",
+    /*logger.traceTask("enqueueCommands",
       executes.headOption.fold("")(_.command.toShortString) + ((executes.sizeIs > 1) ?? ",...")
-    )(queue
+    )*/(queue
       .enqueue(executes)
       .map(_ => executes.map(_.responded)))
   }
