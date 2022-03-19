@@ -24,6 +24,7 @@ import js7.data.order.OrderEvent.{OrderCoreEvent, OrderForked, OrderJoined, Orde
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchEvent, OrderWatchPath}
 import js7.data.state.{AgentStateView, StateView}
+import js7.data.subagent.SubagentRefStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState, SubagentRefStateEvent, SubagentSelection, SubagentSelectionId}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import monix.reactive.Observable
@@ -204,11 +205,18 @@ with SnapshotableState[AgentState]
         }
 
       case KeyedEvent(subagentId: SubagentId, event: SubagentRefStateEvent) =>
-        for {
-          subagentRefState <- idToSubagentRefState.checked(subagentId)
-          subagentRefState <- subagentRefState.applyEvent(event)
-        } yield copy(
-          idToSubagentRefState = idToSubagentRefState + (subagentId -> subagentRefState))
+        event match {
+          case SubagentShutdown if !idToSubagentRefState.contains(subagentId) =>
+            // May arrive when SubagentRef has been deleted
+            Right(this)
+
+          case _ =>
+            for {
+              subagentRefState <- idToSubagentRefState.checked(subagentId)
+              subagentRefState <- subagentRefState.applyEvent(event)
+            } yield copy(
+              idToSubagentRefState = idToSubagentRefState + (subagentId -> subagentRefState))
+        }
 
       case KeyedEvent(_: NoKey, AgentDedicated(subagentId, agentPath, agentRunId, controllerId)) =>
         Right(copy(meta = meta.copy(

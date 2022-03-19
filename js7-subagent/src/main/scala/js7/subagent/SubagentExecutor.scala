@@ -44,7 +44,7 @@ trait SubagentExecutor
   private val orderToProcessing = AsyncMap.stoppable[OrderId, Processing]()
   private val subagentRunId = SubagentRunId(Base64UUID.random())
 
-  private val shutdownStarted = Atomic(false)
+  private val shuttingDown = Atomic(false)
   private val stoppedOnce = SetOnce[ProgramTermination]
   @volatile private var dontWaitForDirector = false
 
@@ -61,12 +61,20 @@ trait SubagentExecutor
       s"${signal getOrElse ""}${restart ?? " restart"}${dontWaitForDirector ?? " dontWaitForDirector"}"
     )(Task.defer {
       this.dontWaitForDirector |= dontWaitForDirector
-      val first = !shutdownStarted.getAndSet(true)
+      val first = !shuttingDown.getAndSet(true)
       Task
         .when(first)(
           dedicatedOnce
             .toOption
-            .fold(Task.unit)(_.subagentDriver.stop(signal))
+            .fold(Task.unit)(_.localSubagentDriver.stop(signal))
+            .*>(Task {
+              // TODO Viele Aufträge können auf ihren Start warten.
+              //  Die müssen mit OrderProcessed(Disrupted(subagentShuttingDown) zurückgewiesen werden.
+              //  Sonst Deadlock
+              for (orderId <- orderToProcessing.toMap.keys) {
+                logger.info(s"Processing still not acknowledged: $orderId")
+              }
+            })
             .*>(orderToProcessing
               // Await process termination and DetachProcessedOrder commands
               .stopWithMessage(shuttingDownProblem)
@@ -148,34 +156,39 @@ trait SubagentExecutor
     order: Order[Order.Processing],
     defaultArguments: Map[String, Expression])
   : Task[Checked[Unit]] =
-    orderToProcessing
-      .updateChecked(order.id, {
-        case Some(existing) =>
-          Task.pure(
-            if (existing.workflowPosition != order.workflowPosition)
-              Left(Problem.pure("Duplicate SubagentCommand.StartOrder with different Order"))
-            else
-              Right(existing)) // Idempotency: Order process has already been started
+    Task.defer {
+      orderToProcessing
+        .updateChecked(order.id, {
+          case Some(existing) =>
+            Task.pure(
+              if (existing.workflowPosition != order.workflowPosition) {
+                val problem = Problem.pure("Duplicate SubagentCommand.StartOrder with different Order position")
+                logger.warn(s"$problem:")
+                logger.warn(s"  Added order   : ${order.id} ${order.workflowPosition}")
+                logger.warn(s"  Existing order: ${order.id} ${existing.workflowPosition}")
+                Left(problem)
+              } else
+                Right(existing)) // Idempotency: Order process has already been started
 
-        case None =>
-          Task(dedicatedOnce.checked).flatMapT(dedicated =>
-            processOrder(dedicated.subagentDriver, order, defaultArguments)
-              .guaranteeCase {
-                case ExitCase.Completed =>
-                  if (!dontWaitForDirector)
-                    Task.unit
-                  else {
-                    logger.warn(
-                      s"dontWaitForDirector: ${order.id} <-: OrderProcessed")
-                    orderToProcessing.remove(order.id).void
-                  }
+          case None =>
+            Task(dedicatedOnce.checked).flatMapT(dedicated =>
+              processOrder(dedicated.localSubagentDriver, order, defaultArguments)
+                .guaranteeCase {
+                  case ExitCase.Completed =>
+                    Task.unless(!dontWaitForDirector) {
+                      logger.warn(
+                        s"dontWaitForDirector: ${order.id} <-: OrderProcessed event may get lost")
+                      orderToProcessing.remove(order.id).void
+                    }
 
-                case _ => orderToProcessing.remove(order.id).void // Tidy-up on failure
-              }
-              .startAndForget
-              .as(Right(Processing(order.workflowPosition))))
-      })
-      .rightAs(())
+                  case _ => orderToProcessing.remove(order.id).void // Tidy-up on failure
+                }
+                .startAndForget
+                // TODO Asynchronous processOrder should not execute AFTER shutdown
+                .as(Right(Processing(order.workflowPosition))))
+        })
+        .rightAs(())
+    }
 
   private def processOrder(
     driver: LocalSubagentDriver[SubagentState],
@@ -203,12 +216,15 @@ object SubagentExecutor
 {
   private val logger = Logger(getClass)
 
+  // TODO Director should check this
+  private val shuttingDownProblem = Problem.pure("Subagent is shutting down")
+
   private[subagent] final class Dedicated(
-    val subagentDriver: LocalSubagentDriver[SubagentState])
+    val localSubagentDriver: LocalSubagentDriver[SubagentState])
   {
-    def subagentId = subagentDriver.subagentId
-    def agentPath = subagentDriver.agentPath
-    def controllerId = subagentDriver.controllerId
+    def subagentId = localSubagentDriver.subagentId
+    def agentPath = localSubagentDriver.agentPath
+    def controllerId = localSubagentDriver.controllerId
 
     override def toString = s"Dedicated($subagentId $agentPath $controllerId)"
   }

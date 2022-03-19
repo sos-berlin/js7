@@ -36,6 +36,7 @@ import js7.data.order.OrderEvent.{OrderAdded, OrderAddedX, OrderCancelled, Order
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{AllOrderWatchesState, FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState}
 import js7.data.state.StateView
+import js7.data.subagent.SubagentRefStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState, SubagentRefStateEvent, SubagentSelection, SubagentSelectionId}
 import js7.data.value.Value
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
@@ -457,12 +458,20 @@ with SnapshotableState[ControllerState]
         .onOrderWatchEvent(orderWatchPath <-: event)
         .map(o => copy(allOrderWatchesState = o))
 
+
     case KeyedEvent(subagentId: SubagentId, event: SubagentRefStateEvent) =>
-      for {
-        o <- idToSubagentRefState.checked(subagentId)
-        o <- o.applyEvent(event)
-      } yield copy(
-        idToSubagentRefState = idToSubagentRefState + (subagentId -> o))
+      event match {
+        case SubagentShutdown if !idToSubagentRefState.contains(subagentId) =>
+          // May arrive when SubagentRef has been deleted
+          Right(this)
+
+        case _ =>
+          for {
+            o <- idToSubagentRefState.checked(subagentId)
+            o <- o.applyEvent(event)
+          } yield copy(
+            idToSubagentRefState = idToSubagentRefState + (subagentId -> o))
+      }
 
     case KeyedEvent(_, _: ControllerShutDown) =>
       Right(this)

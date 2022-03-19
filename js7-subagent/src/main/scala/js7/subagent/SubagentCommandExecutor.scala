@@ -66,7 +66,7 @@ extends SubagentExecutor
 
           case KillProcess(orderId, signal) =>
             dedicatedOnce.task
-              .flatMap(_.subagentDriver
+              .flatMap(_.localSubagentDriver
                 .killProcess(orderId, signal))
               .as(Right(SubagentCommand.Accepted))
 

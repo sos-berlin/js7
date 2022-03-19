@@ -25,6 +25,7 @@ import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{AllOrderWatchesState, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState}
 import js7.data.state.StateView
 import js7.data.state.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
+import js7.data.subagent.SubagentRefStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState, SubagentRefStateEvent, SubagentSelection, SubagentSelectionId}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import scala.collection.mutable
@@ -323,8 +324,15 @@ with StateView
     case Stamped(_, _, KeyedEvent(path: AgentPath, event: AgentRefStateEvent)) =>
       _pathToAgentRefState += path -> _pathToAgentRefState(path).applyEvent(event).orThrow
 
+
     case Stamped(_, _, KeyedEvent(id: SubagentId, event: SubagentRefStateEvent)) =>
-      _idToSubagentRefState += id -> _idToSubagentRefState(id).applyEvent(event).orThrow
+      event match {
+        case SubagentShutdown if !_idToSubagentRefState.contains(id) =>
+          // May arrive when SubagentRef has been deleted
+
+        case _ =>
+        _idToSubagentRefState += id -> _idToSubagentRefState(id).applyEvent(event).orThrow
+      }
 
     case Stamped(_, _, KeyedEvent(orderId: OrderId, event: OrderEvent)) =>
       event match {
