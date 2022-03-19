@@ -80,8 +80,7 @@ extends SubagentDriver with SubagentEventListener
     name = subagentRef.id.toString,
     actorSystem)
 
-  private val orderToProcessing = new AsyncMap[OrderId, Promise[OrderProcessed]]
-    with AsyncMap.Stoppable
+  private val orderToPromise = AsyncMap.stoppable[OrderId, Promise[OrderProcessed]]()
 
   def start: Task[Unit] =
     logger
@@ -94,17 +93,19 @@ extends SubagentDriver with SubagentEventListener
       .memoize
 
   def stop(ignoredSignal: Option[ProcessSignal]): Task[Unit] =
-    logger.debugTask(Task.defer {
-      stopping = true
-      Task.parZip2(dispatcher.stop, stopEventListener)
-        .*>(client.tryLogout.void)
-        .logWhenItTakesLonger(s"RemoteSubagentDriver($subagentId).stop")
-    })
+    logger
+      .debugTask(Task.defer {
+        stopping = true
+        Task.parZip2(dispatcher.stop(), stopEventListener)
+          .*>(client.tryLogout.void)
+          .logWhenItTakesLonger(s"RemoteSubagentDriver($subagentId).stop")
+      })
+      .memoize
 
   def shutdown: Task[Unit] =
     logger.debugTask(Task.defer {
       shuttingDown = true
-      orderToProcessing.stop
+      orderToPromise.stop
         // Emit event and change state ???
         .*>(tryShutdownSubagent)
     })
@@ -156,7 +157,7 @@ extends SubagentDriver with SubagentEventListener
           .as(Right(eventId))
           .onErrorRecoverWith {
             case HttpException.HasProblem(SubagentNotDedicatedProblem) =>
-              orderToProcessing.toMap.size match {
+              orderToPromise.toMap.size match {
                 case 0 => logger.info("Subagent restarted")
                 case n => logger.warn(s"Subagent restarted and lost $n Order processes")
               }
@@ -178,12 +179,15 @@ extends SubagentDriver with SubagentEventListener
     // Emit OrderProcessed(Disrupted(ProcessLost)) for each processing order.
     // Then subagentDied
     val processing = Order.Processing(subagentId)
-    orderToProcessing.removeAll
+    logger.debugTask(orderToPromise
+      .removeAll
       .flatMap { oToP =>
         val orderIds = oToP.keys
         val promises = oToP.values
         dispatcher
-          .stop
+          .stop {
+            case _: StartOrderProcess => CommandDispatcherStoppedProblem
+          }
           .*>(attachedItemKeys.update(_ => Task.pure(Map.empty)))
           .*>(persistence
               .persist(state => Right(orderIds.view
@@ -197,7 +201,7 @@ extends SubagentDriver with SubagentEventListener
               .*>(Task {
                 for (p <- promises) p.success(OrderProcessed.processLost)
               }))
-      }
+      })
   }
 
   // May run concurrently with onSubagentDied !!!
@@ -222,46 +226,56 @@ extends SubagentDriver with SubagentEventListener
   //      executeCommands(AttachSignedItem(signedItem) :: Nil)
   //  }
 
-  def processOrder(order: Order[Order.Processing]): Task[Checked[OrderProcessed]] =
-    logger.traceTask("processOrder", order.id)(
-      orderToExecuteDefaultArguments(order)
-        .flatMapT(defaultArguments =>
-          ifNotStopping.flatMapT(_ =>
-            runProcessingOrder(order)(
-              dispatcher
-                .executeCommand(StartOrderProcess(order, defaultArguments))
-                .rightAs(())))))
-
+  /** Continue a recovered processing Order. */
   def continueProcessingOrder(order: Order[Order.Processing]) =
     processOrder(order)
 
-  private def runProcessingOrder(order: Order[Order.Processing])(body: Task[Checked[Unit]])
-  : Task[Checked[OrderProcessed]] =
-    orderToProcessing
+  def processOrder(order: Order[Order.Processing]): Task[Checked[OrderProcessed]] =
+    logger.traceTask("processOrder", order.id)(
+      ifNotStopping.flatMapT(_ => runProcessingOrder(order)))
+
+  private def runProcessingOrder(order: Order[Order.Processing]): Task[Checked[OrderProcessed]] =
+    orderToPromise
       .insert(order.id, Promise())
-      // OrderProcessed event will fulfill the promise and remove the Processing entry
+      // OrderProcessed event will fulfill and remove the promise
       .flatMapT(promisedOutcome =>
-        body
+        orderToExecuteDefaultArguments(order)
+          .map(_.map(StartOrderProcess(order, _)))
+          .flatMapT(dispatcher.executeCommand)
+          .materializeIntoChecked
           .flatMap {
             case Left(problem) =>
-              orderToProcessing
+              // StartOrderProcesss failed
+              orderToPromise
                 .remove(order.id)
                 .flatMap {
-                  case None => Task.left(problem)
-                  case Some(_) =>
+                  case None =>
+                    // Promise has been removed
+                    if (problem != CommandDispatcherStoppedProblem) {
+                      // onSubagentDied has stopped all queued StartOrderProcess commands
+                      logger.warn(s"${order.id} got OrderProcessed, so we ignore $problem")
+                    }
+                    // Wait for promise
+                    Task.fromFuture(promisedOutcome.future)
+                      .map(Right(_))
+
+                  case Some(promise) =>
                     val orderProcessed = OrderProcessed(Outcome.Disrupted(problem))
                     persistence
                       .persistKeyedEvent(order.id <-: orderProcessed)
                       .rightAs(orderProcessed)
+                      .<*(Task { promise.success(orderProcessed) })
                 }
+
             case Right(()) =>
+              // Command succeeded, wait for promise
               Task.fromFuture(promisedOutcome.future)
                 .map(Right(_))
           })
 
   protected def onOrderProcessed(orderId: OrderId, orderProcessed: OrderProcessed)
   : Task[Option[Task[Unit]]] =
-    orderToProcessing.remove(orderId).map {
+    orderToPromise.remove(orderId).map {
       case None =>
         logger.error(s"Unknown Order for event: ${orderId <-: orderProcessed}")
         None
@@ -272,7 +286,7 @@ extends SubagentDriver with SubagentEventListener
 
   private def killAll(signal: ProcessSignal): Task[Unit] =
     Task.defer {
-      val cmds = orderToProcessing.toMap.keys.map(KillProcess(_, signal))
+      val cmds = orderToPromise.toMap.keys.map(KillProcess(_, signal))
       dispatcher
         .executeCommands(cmds)
         .map(cmds.zip(_).map {
@@ -379,7 +393,7 @@ extends SubagentDriver with SubagentEventListener
               s"$commandString => SubagentNotDedicatedProblem => ProcessLost")
             command match {
               case command: StartOrderProcess =>
-                orderToProcessing
+                orderToPromise
                   .remove(command.orderId)
                   // Delay to let onSubagentDied go ahead and let it handle all orders at once
                   //?.delayExecution(100.ms)
@@ -507,6 +521,7 @@ object RemoteSubagentDriver
 {
   private val reconnectErrorDelay = 5.s/*TODO*/
   private val tryPostErrorDelay = 5.s/*TODO*/
+  private val CommandDispatcherStoppedProblem = Problem.pure("CommandDispatcher stopped")
 
   final case class SubagentDriverStoppedProblem(subagentId: SubagentId) extends Problem.Coded {
     def arguments = Map("subagentId" -> subagentId.string)

@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  echo "Usage: $0 --container=DOCKERCONTAINER"
+}
+
+containers=()
+for arg in "$@"; do :
+  case "$arg" in
+    --container=*)
+      containers+=("${arg#*=}")
+      ;;
+    -\?|-h|--help)
+      echo 1>&2 "Invalid argument: $arg"
+      usage
+      exit
+      ;;
+    *)
+      echo 1>&2 "Invalid argument: $arg"
+      usage
+      exit 1
+  esac
+done
+
+if [ "${#containers[@]}" -eq 0 ]; then
+  echo 1>&2 "Missing --container= argument"
+  usage
+  exit
+fi
+
+docker container inspect "${containers[@]}" >/dev/null
+
+sleepExp() {
+  # $1 is the two-base exponent, should be a multitude of 2
+  #local exp=$(($1 / 2 * 2))  # Round to lower probability of many small numbers
+  local exp="$1"
+  # $2 is the progress bar string
+  local seconds=$((2 ** ((RANDOM + (32767 / $exp) - 2) / (32767 / $exp))))
+
+  # Paint shadow for completed duration
+  echo -en "\e7\e[0;37m"  # Save position, gray
+  for ((j = 0; j < $seconds; j++)); do :
+    echo -en "█"
+  done
+  echo -en "\e8"  # Restore position
+
+  for ((i = 0; i < $seconds; i++)); do :
+    sleep 1
+    echo -en "$2"
+  done
+}
+
+while true; do :
+  echo -n "$(date "+%H:%M:%S") start "
+  # No quotes to combine multi-line output of docker
+  echo -n $(docker start "${containers[@]}") " "
+  sleepExp 5 "\e[0;32m█\e[0m"
+  echo
+  echo -n "$(date "+%H:%M:%S") kill  "
+  # No quotes to combine multi-line output of docker
+  echo -n $(docker kill "${containers[@]}") " "
+  sleepExp 5 "\e[0;31m█\e[0m"
+  echo
+done

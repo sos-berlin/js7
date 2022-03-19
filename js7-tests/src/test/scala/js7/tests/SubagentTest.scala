@@ -14,6 +14,7 @@ import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.web.Uri
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.agent.AgentPath
+import js7.data.agent.AgentRefStateEvent.AgentReady
 import js7.data.command.CancellationMode
 import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.event.{EventId, KeyedEvent, Stamped}
@@ -251,7 +252,7 @@ with SubagentTester
     //  Also nicht auf Antwort auf AgentCommand.DetachItem warten,
     //  sondern auf ein Event: ItemDetachable (vom Agenten?)
 
-    "Don't allow orders starts under removal" in {
+    "Don't allow orders to start under removal" in {
       pending // TODO
     }
 
@@ -317,7 +318,6 @@ with SubagentTester
 
   "Restart remote Subagent while a job is running" in {
     var eventId = eventWatch.lastAddedEventId
-
     val aOrderId = OrderId("A-RESTART-SUBAGENT")
 
     TestSemaphoreJob.reset()
@@ -342,20 +342,75 @@ with SubagentTester
     eventId = eventWatch.lastAddedEventId
     val bOrderId = OrderId("B-RESTART-SUBAGENT")
     controller.addOrder(FreshOrder(bOrderId, cWorkflow.path)).await(99.s).orThrow
-//    //??? Because heartbeat timeout has still not elapsed, the Subagent appears to be alive and
-//    // OrderProcessingStarted is being emitted.
-//    // eventWatch.await[OrderProcessingStarted](_.key == bOrderId, after = eventId)
 
-    eventId = eventWatch.lastAddedEventId
     runSubagent(cSubagentRef) { _ =>
       locally {
         val events = eventWatch.await[OrderProcessed](_.key == aOrderId, after = eventId)
         assert(events.head.value.event == OrderProcessed(Outcome.Disrupted(ProcessLost)))
+
+        // OrderProcessed must be followed by OrderMoved
+        eventWatch.await[OrderMoved](_.key == aOrderId, after = events.last.eventId)
+      }
+      locally {
+        sleep(4.s)
+        TestSemaphoreJob.continue(2)
+        eventWatch.await[OrderProcessingStarted](_.key == aOrderId, after = eventId)
+        for (orderId <- View(aOrderId, bOrderId)) {
+          val events = eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
+          assert(events.head.value.event.isInstanceOf[OrderFinished])
+        }
+      }
+    }
+    .await(199.s)
+  }
+
+  "Restart both Director and remote Subagent while a job is running" in {
+    var eventId = eventWatch.lastAddedEventId
+    val aOrderId = OrderId("A-RESTART-BOTH")
+
+    TestSemaphoreJob.reset()
+
+    runSubagent(cSubagentRef) { subagent =>
+      controller.addOrder(FreshOrder(aOrderId, cWorkflow.path)).await(99.s).orThrow
+
+      val started = eventWatch.await[OrderProcessingStarted](_.key == aOrderId, after = eventId)
+        .head.value.event
+      assert(started == OrderProcessingStarted(cSubagentRef.id))
+
+      val written = eventWatch.await[OrderStdoutWritten](_.key == aOrderId, after = eventId)
+        .head.value.event
+      assert(written == OrderStdoutWritten("STARTED\n"))
+
+      // For this test, the terminating Subagent must no emit any event before shutdown
+      subagent.journal.stopEventWatch()
+      subagent.shutdown(Some(SIGKILL), dontWaitForDirector = true).await(99.s)
+
+      // STOP DIRECTOR
+      agent.terminate().await(99.s)
+    }.await(199.s)
+    // Subagent is unreachable now
+
+    // START DIRECTOR
+    eventId = eventWatch.lastAddedEventId
+    logger.debug(s"eventId=$eventId")
+    agent = directoryProvider.startAgent(agentPath).await(99.s)
+    eventWatch.await[AgentReady](after = eventId)
+
+    val bOrderId = OrderId("B-RESTART-BOTH")
+    controller.addOrder(FreshOrder(bOrderId, cWorkflow.path)).await(99.s).orThrow
+
+    runSubagent(cSubagentRef) { _ =>
+      locally {
+        val events = eventWatch.await[OrderProcessed](_.key == aOrderId, after = eventId)
+        assert(events.head.value.event == OrderProcessed(Outcome.Disrupted(ProcessLost)))
+
+        // OrderProcessed must be followed by OrderMoved
+        eventWatch.await[OrderMoved](_.key == aOrderId, after = events.last.eventId)
       }
       locally {
         TestSemaphoreJob.continue(2)
         eventWatch.await[OrderProcessingStarted](_.key == aOrderId, after = eventId)
-        for (orderId <- View(aOrderId, bOrderId)) {
+        for (orderId <- View(aOrderId/*, bOrderId*/)) {
           val events = eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
           assert(events.head.value.event.isInstanceOf[OrderFinished])
         }
@@ -393,13 +448,10 @@ with SubagentTester
     }.await(199.s)
   }
 
-  "Change JobResource" in {
-    pending // TODO
-  }
-
-  "Delete Subagent while processes are still running" in {
-    pending // TODO
-  }
+  "Change URI of bare Subagent" in pending // TODO
+  "Change URI of Director" in pending // TODO
+  "Change JobResource" in pending // TODO
+  "Delete Subagent while processes are still running" in pending // TODO
 }
 
 object SubagentTest
@@ -415,7 +467,7 @@ object SubagentTest
   private val cWorkflow = Workflow(
     WorkflowPath("C-WORKFLOW") ~ "INITIAL",
     Seq(
-      TestSemaphoreJob.execute(agentPath)))
+      TestSemaphoreJob.execute(agentPath, parallelism = 1_000_000)))
 
   final class TestJob extends InternalJob
   {

@@ -4,7 +4,7 @@ import cats.syntax.traverse._
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax._
 import js7.base.monixutils.Switch
-import js7.base.problem.Checked
+import js7.base.problem.{Checked, Problem}
 import js7.base.stream.{Numbered, ObservableNumberedQueue}
 import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.syntax._
@@ -13,7 +13,7 @@ import js7.data.subagent.SubagentRunId
 import monix.eval.Task
 import monix.reactive.Observable
 import scala.concurrent.{Future, Promise}
-import scala.util.Try
+import scala.util.{Success, Try}
 
 trait CommandDispatcher
 {
@@ -26,9 +26,8 @@ trait CommandDispatcher
   protected val postCommand: PostCommand
 
   private lazy val logger = Logger.withPrefix[this.type](name)
-  private val queue = new ObservableNumberedQueue[Execute]
+  private var queue = new ObservableNumberedQueue[Execute]
   private val processingAllowed = Switch(false)
-  @volatile
   private var processing: Future[Unit] = Future.successful(())
   private val lock = AsyncLock()
 
@@ -40,14 +39,23 @@ trait CommandDispatcher
             processing = processQueue(subagentRunId).runToFuture(scheduler)
           }))))
 
-  def stop: Task[Unit] =
+  def stop(commandToProblem: PartialFunction[Command, Problem] = PartialFunction.empty)
+  : Task[Unit] =
     lock.lock(
-      processingAllowed.switchOffThen(logger.debugTask(
-        queue.dequeueAll
-          .*>(Task.fromFuture(processing))
-          .<*(Task {
-            processing = Future.successful(())
-          }))))
+      processingAllowed.switchOff.*>(logger.debugTask(
+        queue.dequeueAll.flatMap { numberedExecutes =>
+          queue = new ObservableNumberedQueue[Execute]
+          for (numberedExecute <- numberedExecutes) {
+            for (problem <- commandToProblem.lift(numberedExecute.value.command)) {
+              logger.debug(s"$numberedExecute => $problem")
+              numberedExecute.value.tryRespond(Success(Left(problem)))
+            }
+          }
+          Task.fromFuture(processing)
+            .<*(Task {
+              processing = Future.successful(())
+            })
+        })))
 
   final def executeCommand(command: Command): Task[Checked[Response]] =
     executeCommands(command :: Nil)
@@ -90,7 +98,7 @@ trait CommandDispatcher
         .map(_.orThrow)
         .onErrorHandle(t =>
           logger.error(s"releaseUntil(${numbered.number}) => ${t.toStringWithCauses}")))
-      .map(execute.onResponse)
+      .map(execute.respond)
   }
 
   override def toString = s"CommandDispatcher($name)"
@@ -101,9 +109,15 @@ trait CommandDispatcher
 
     val responded = Task.fromFuture(promise.future)
 
-    def onResponse(response: Try[Checked[Response]]): Unit =
-      promise.complete(response)
+    def respond(response: Try[Checked[Response]]): Unit =
+      if (!promise.tryComplete(response)) {
+        logger.warn/*debug?*/(
+          s"response($response): command already responded: ${command.toShortString} => ${promise.future.value.get}")
+      }
 
-    override def toString = s"Execute(${command.toShortString}"
+    def tryRespond(response: Try[Checked[Response]]): Unit =
+      promise.tryComplete(response)
+
+    override def toString = s"Execute(${command.toShortString})"
   }
 }

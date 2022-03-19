@@ -97,15 +97,14 @@ final class SubagentKeeper(
     order: Order[Order.IsFreshOrReady],
     onEvents: Seq[OrderCoreEvent] => Unit)
   : Task[Checked[Unit]] =
-    logger.traceTask("processOrder", order.id)(
-      selectSubagentDriverCancelable(order.id).flatMapT {
-        case None =>
-          logger.debug(s"${order.id} has been canceled while selecting a Subagent")
-          Task.right(())
+    selectSubagentDriverCancelable(order.id).flatMapT {
+      case None =>
+        logger.debug(s"${order.id} has been canceled while selecting a Subagent")
+        Task.right(())
 
-        case Some(driver) =>
-          processOrderAndForwardEvents(order, onEvents, driver)
-      })
+      case Some(driver) =>
+        processOrderAndForwardEvents(order, onEvents, driver)
+    }
 
   private def processOrderAndForwardEvents(
     order: Order[Order.IsFreshOrReady],
@@ -141,7 +140,7 @@ final class SubagentKeeper(
         .match_ {
           case None =>
             val event = OrderProcessed(Outcome.Disrupted(Problem.pure(
-              s"Missing $subagentId SubagentDriver for processing ${order.id}")))
+              s"Missing $subagentId SubagentRef to continue processing of ${order.id}")))
             persist(order.id, event :: Nil, onEvents)
               .map(_.map { case (_, s) => event -> s })
 
@@ -174,11 +173,15 @@ final class SubagentKeeper(
     onEvents: Seq[OrderCoreEvent] => Unit)
     (body: Task[Checked[OrderProcessed]])
   : Task[Checked[Unit]] =
-    Resource.make(
-      acquire = orderToSubagent.put(orderId, subagentDriver).void)(
-      release = _ => orderToSubagent.remove(orderId).void
-    ).use(_ =>
-      body.map(_.map(processed => onEvents(processed :: Nil)))))
+    Resource
+      .make(
+        acquire = orderToSubagent.put(orderId, subagentDriver).void)(
+        release = _ => orderToSubagent.remove(orderId).void)
+      .use(_ =>
+        body
+          .map(_.map(orderProcessed =>
+            // OrderProcessed event has been persisted by SubagentDriver
+            onEvents(orderProcessed :: Nil))))
 
   private def selectSubagentDriverCancelable(orderId: OrderId)
   : Task[Checked[Option[SubagentDriver]]] =

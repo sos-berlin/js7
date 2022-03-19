@@ -119,7 +119,9 @@ trait SubagentEventListener
             // TODO Save Timestamp
             onOrderProcessed(orderId, orderProcessed).map {
               case None => None -> Task.unit  // OrderProcessed already handled
-              case Some(followUp) => Some(stamped) -> followUp
+              case Some(followUp) =>
+                // The followUp Task notifies OrderActor about OrderProcessed by calling `onEvents`
+                Some(stamped) -> followUp
             }
 
           case _ =>

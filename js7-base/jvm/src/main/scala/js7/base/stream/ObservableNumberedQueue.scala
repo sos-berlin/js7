@@ -112,9 +112,11 @@ final class ObservableNumberedQueue[V: Tag]
       }
     })
 
-  def dequeueAll: Task[Unit] =
+  def dequeueAll: Task[Vector[Numbered[V]]] =
     lock.lock(Task {
+      val result = queue
       queue = Vector.empty
+      result
     })
 
   override def toString = s"ObservableNumberedQueue[$vName]"
