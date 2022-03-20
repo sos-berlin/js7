@@ -83,6 +83,7 @@ object Logger
           task
         else {
           val argsString = args.toString
+          // Are these optimizations justified ???
           if (argsString.isEmpty) {
             if (trace) {
               logger.trace(s"↘︎ $function ...")
@@ -101,11 +102,18 @@ object Logger
           def logReturn(marker: String, msg: AnyRef) =
             Task {
               val duration = if (t == 0) "" else (System.nanoTime() - t).ns.pretty + " "
-              if (trace) {
-                logger.trace(s"︎↙$marker $function => $duration$msg")
-              } else {
-                logger.debug(s"︎↙$marker $function => $duration$msg")
-              }
+              if (argsString.isEmpty) {
+                if (trace) {
+                  logger.trace(s"︎↙$marker $function => $duration$msg")
+                } else {
+                  logger.debug(s"︎↙$marker $function => $duration$msg")
+                }
+              } else
+                if (trace) {
+                  logger.trace(s"︎↙$marker $function($argsString) => $duration$msg")
+                } else {
+                  logger.debug(s"︎↙$marker $function($argsString) => $duration$msg")
+                }
             }
 
           task

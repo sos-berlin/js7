@@ -47,7 +47,7 @@ final class AsyncLock private(
               else
                 mvar.tryRead.flatMap {
                   case Some(lockedBy) =>
-                    log.debug(s"$name enqueues $acquirer (currently locked by $lockedBy)")
+                    log.debug(s"↘ $name enqueues $acquirer (currently locked by $lockedBy) ...")
                     mvar.put(acquirer)
                       .whenItTakesLonger(warnTimeouts)(duration =>
                         for (lockedBy <- mvar.tryRead) yield logger.info(
@@ -55,7 +55,7 @@ final class AsyncLock private(
                             s" (currently locked by ${lockedBy.getOrElse("None")})" +
                             s" for ${duration.pretty} ..."))
                       .map { _ =>
-                        log.debug(s"$name acquired by $acquirer after ${since.elapsed.pretty}")
+                        log.debug(s"↙ $name acquired by $acquirer after ${since.elapsed.pretty}")
                         Right(())
                       }
                   case None =>  // Lock has just become available

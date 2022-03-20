@@ -27,6 +27,8 @@
     <logger level="debug" name="js7"/>
     <logger level="trace" name="js7.journal.Journal"/>
     <logger level="trace" name="js7.launcher.forwindows"/>
+    <!--logger level="trace" name="js7.subagent"/-->
+    <!--logger level="trace" name="js7.agent.subagent"/-->
     <logger level="debug" name="js7.journal.watch.RealEventWatch"/>
   </loggers>
 </configuration>
