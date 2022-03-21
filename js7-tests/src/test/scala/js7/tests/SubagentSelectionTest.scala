@@ -15,8 +15,8 @@ import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVer
 import js7.data.item.VersionId
 import js7.data.order.OrderEvent.{OrderDeleted, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
-import js7.data.subagent.SubagentRefStateEvent.{SubagentCoupled, SubagentCouplingFailed}
-import js7.data.subagent.{SubagentId, SubagentRef, SubagentSelection, SubagentSelectionId}
+import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentCouplingFailed}
+import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.SubagentSelectionTest._
 import js7.tests.jobs.EmptyJob
@@ -45,10 +45,10 @@ with SubagentTester
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Nil
 
-  private lazy val bSubagentRef = newSubagentRef(bSubagentId)
-  private lazy val cSubagentRef = newSubagentRef(cSubagentId)
-  private lazy val dSubagentRef = newSubagentRef(dSubagentId)
-  private lazy val subagentItems = Seq(bSubagentRef, cSubagentRef, dSubagentRef)
+  private lazy val bSubagentItem = newSubagentItem(bSubagentId)
+  private lazy val cSubagentItem = newSubagentItem(cSubagentId)
+  private lazy val dSubagentItem = newSubagentItem(dSubagentId)
+  private lazy val subagentItems = Seq(bSubagentItem, cSubagentItem, dSubagentItem)
 
   protected implicit val scheduler = Scheduler.global
 
@@ -201,8 +201,8 @@ object SubagentSelectionTest
   private val cSubagentId = SubagentId("C-SUBAGENT")
   private val dSubagentId = SubagentId("D-SUBAGENT")
 
-  private def newSubagentRef(id: SubagentId) =
-    SubagentRef(id, agentPath, Uri(s"http://localhost:${findFreeTcpPort()}"))
+  private def newSubagentItem(id: SubagentId) =
+    SubagentItem(id, agentPath, Uri(s"http://localhost:${findFreeTcpPort()}"))
 
   private val subagentSelection = SubagentSelection(
     SubagentSelectionId("SELECTION"),

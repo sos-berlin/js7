@@ -6,23 +6,23 @@ import js7.data.delegate.DelegateCouplingState
 import js7.data.delegate.DelegateCouplingState.{Coupled, Reset, ShutDown}
 import js7.data.event.EventId
 import js7.data.item.UnsignedSimpleItemState
-import js7.data.subagent.SubagentRefStateEvent.{SubagentCoupled, SubagentCouplingFailed, SubagentDedicated, SubagentEventsObserved, SubagentRestarted, SubagentShutdown}
+import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentCouplingFailed, SubagentDedicated, SubagentEventsObserved, SubagentRestarted, SubagentShutdown}
 
-final case class SubagentRefState(
-  subagentRef: SubagentRef,
+final case class SubagentItemState(
+  subagentItem: SubagentItem,
   subagentRunId: Option[SubagentRunId],
   couplingState: DelegateCouplingState,
   eventId: EventId,
   problem: Option[Problem])
 extends UnsignedSimpleItemState
 {
-  protected type Item = SubagentRef
+  protected type Item = SubagentItem
 
-  def item = subagentRef
+  def item = subagentItem
 
-  def subagentId = subagentRef.id
+  def subagentId = subagentItem.id
 
-  def applyEvent(event: SubagentRefStateEvent): Checked[SubagentRefState] =
+  def applyEvent(event: SubagentItemStateEvent): Checked[SubagentItemState] =
     event match {
       case SubagentEventsObserved(untilEventId) =>
         Right(copy(
@@ -61,11 +61,11 @@ extends UnsignedSimpleItemState
     }
 }
 
-object SubagentRefState
+object SubagentItemState
 {
-  def initial(subagentRef: SubagentRef) =
-    SubagentRefState(subagentRef, None, DelegateCouplingState.Reset, eventId = EventId.BeforeFirst,
+  def initial(subagentItem: SubagentItem) =
+    SubagentItemState(subagentItem, None, DelegateCouplingState.Reset, eventId = EventId.BeforeFirst,
       None)
 
-  implicit val jsonCodec = deriveCodec[SubagentRefState]
+  implicit val jsonCodec = deriveCodec[SubagentItemState]
 }

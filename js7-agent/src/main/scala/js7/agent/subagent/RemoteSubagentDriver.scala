@@ -30,8 +30,8 @@ import js7.data.item.{InventoryItemKey, ItemRevision, SignableItem}
 import js7.data.job.{JobConf, JobResource}
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId, Outcome}
-import js7.data.subagent.SubagentRefStateEvent.{SubagentDedicated, SubagentDied, SubagentRestarted}
-import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState, SubagentRunId}
+import js7.data.subagent.SubagentItemStateEvent.{SubagentDedicated, SubagentDied, SubagentRestarted}
+import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentRunId}
 import js7.data.workflow.Workflow
 import js7.data.workflow.position.WorkflowPosition
 import js7.journal.state.StatePersistence
@@ -45,7 +45,7 @@ import scala.concurrent.duration.Deadline.now
 import scala.util.{Failure, Success}
 
 final class RemoteSubagentDriver(
-  val subagentRef: SubagentRef,
+  val subagentItem: SubagentItem,
   httpsConfig: HttpsConfig,
   protected val persistence: StatePersistence[AgentState],
   controllerId: ControllerId,
@@ -63,7 +63,7 @@ extends SubagentDriver with SubagentEventListener
   @volatile private var stopping = false
   @volatile private var shuttingDown = false
 
-  def subagentId = subagentRef.id
+  def subagentId = subagentItem.id
 
   def isStopping = stopping
 
@@ -71,13 +71,13 @@ extends SubagentDriver with SubagentEventListener
 
   protected val client = new SubagentClient(
     Admission(
-      subagentRef.uri,
+      subagentItem.uri,
       subagentConf.config
         .optionAs[SecretString](
-          "js7.auth.subagents." + ConfigUtil.joinPath(subagentRef.id.string))
-        .map(UserAndPassword(subagentRef.agentPath.toUserId.orThrow, _))),
+          "js7.auth.subagents." + ConfigUtil.joinPath(subagentItem.id.string))
+        .map(UserAndPassword(subagentItem.agentPath.toUserId.orThrow, _))),
     httpsConfig,
-    name = subagentRef.id.toString,
+    name = subagentItem.id.toString,
     actorSystem)
 
   private val orderToPromise = AsyncMap.stoppable[OrderId, Promise[OrderProcessed]]()
@@ -120,12 +120,12 @@ extends SubagentDriver with SubagentEventListener
 
   protected def dedicateOrCouple: Task[Checked[(SubagentRunId, EventId)]] =
     logger.debugTask(
-      currentSubagentRefState
-        .flatMapT(subagentRefState =>
-          dedicateOrCouple2(subagentRefState).map(Right(_))))
+      currentSubagentItemState
+        .flatMapT(subagentItemState =>
+          dedicateOrCouple2(subagentItemState).map(Right(_))))
 
-  private def dedicateOrCouple2(subagentRefState: SubagentRefState): Task[(SubagentRunId, EventId)] =
-    subagentRefState.subagentRunId match {
+  private def dedicateOrCouple2(subagentItemState: SubagentItemState): Task[(SubagentRunId, EventId)] =
+    subagentItemState.subagentRunId match {
       case None =>
         for {
           response <- dedicate
@@ -133,12 +133,12 @@ extends SubagentDriver with SubagentEventListener
         } yield (response.subagentRunId, eventId)
 
       case Some(subagentRunId) =>
-        couple(subagentRunId, subagentRefState.eventId)
+        couple(subagentRunId, subagentItemState.eventId)
           .map(subagentRunId -> _)
     }
 
   private def dedicate: Task[DedicateSubagent.Response] = {
-    val cmd = DedicateSubagent(subagentId, subagentRef.agentPath, controllerId)
+    val cmd = DedicateSubagent(subagentId, subagentItem.agentPath, controllerId)
     postCommandUntilSucceeded(cmd)
       .flatMap(response => persistence
         .persistKeyedEvent(subagentId <-: SubagentDedicated(response.subagentRunId))
@@ -356,11 +356,11 @@ extends SubagentDriver with SubagentEventListener
       logger.traceTask("postQueuedCommand", commandString)(Task
         .tailRecM(())(_ =>
           // TODO Use processingAllowed when Order is being canceled
-          currentSubagentRefState
-            .flatMapT(subagentRefState => processingAllowed.isOff
+          currentSubagentItemState
+            .flatMapT(subagentItemState => processingAllowed.isOff
               .flatMap(isStopped =>
                 // Double-check subagentRunId to be sure.
-                if (isStopped || !subagentRefState.subagentRunId.contains(subagentRunId)) {
+                if (isStopped || !subagentItemState.subagentRunId.contains(subagentRunId)) {
                   logger.debug(s"postQueuedCommand($commandString) stopped")
                   Task.right(())
                 } else
@@ -510,8 +510,8 @@ extends SubagentDriver with SubagentEventListener
         signedJobResources <- jobResourcePaths.traverse(agentState.keyToSigned(JobResource).checked)
       } yield signedJobResources :+ signedWorkflow
 
-  private def currentSubagentRefState: Task[Checked[SubagentRefState]] =
-    persistence.state.map(_.idToSubagentRefState.checked(subagentId))
+  private def currentSubagentItemState: Task[Checked[SubagentItemState]] =
+    persistence.state.map(_.idToSubagentItemState.checked(subagentId))
 
   override def toString =
     s"RemoteSubagentDriver(${subagentId.string})"

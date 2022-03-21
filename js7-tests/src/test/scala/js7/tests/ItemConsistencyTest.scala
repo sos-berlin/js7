@@ -13,7 +13,7 @@ import js7.data.item.VersionId
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
-import js7.data.subagent.{SubagentId, SubagentRef}
+import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.LockInstruction
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -58,7 +58,7 @@ final class ItemConsistencyTest extends AnyFreeSpec with ControllerAgentForScala
     controllerApi
       .updateItems(Observable(
         AddOrChangeSimple(AgentRef(agentPath, Seq(subagentId))),
-        AddOrChangeSimple(SubagentRef(subagentId, agentPath, Uri("http://0.0.0.0:0"))),
+        AddOrChangeSimple(SubagentItem(subagentId, agentPath, Uri("http://0.0.0.0:0"))),
         AddOrChangeSimple(lock),
         AddOrChangeSigned(itemSigner.sign(jobResource).signedString),
         AddVersion(versionId),

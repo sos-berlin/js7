@@ -20,7 +20,7 @@ import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId, Outcome}
-import js7.data.subagent.{SubagentId, SubagentRef}
+import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.value.StringValue
 import js7.data.workflow.test.TestSetting._
 import monix.execution.Scheduler.Implicits.global
@@ -54,7 +54,7 @@ final class AgentShutDownTest extends AnyFreeSpec with BeforeAndAfterAll with Te
       .await(99.s)
 
     val subagentId = SubagentId("SUBAGENT")
-    client.commandExecute(AttachItem(SubagentRef(subagentId, agentPath, agent.localUri)))
+    client.commandExecute(AttachItem(SubagentItem(subagentId, agentPath, agent.localUri)))
       .await(99.s).orThrow
     client.commandExecute(AttachSignedItem(itemSigner.sign(SimpleTestWorkflow)))
       .await(99.s).orThrow

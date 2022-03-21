@@ -7,12 +7,12 @@ import js7.data.event.KeyedEvent
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
-final class SubagentRefStateEventTest extends AnyFreeSpec
+final class SubagentItemStateEventTest extends AnyFreeSpec
 {
   "JSON" - {
     "SubagentCoupled" in {
-      testJson[KeyedEvent[SubagentRefStateEvent]](
-        SubagentId("SUBAGENT") <-: SubagentRefStateEvent.SubagentCoupled,
+      testJson[KeyedEvent[SubagentItemStateEvent]](
+        SubagentId("SUBAGENT") <-: SubagentItemStateEvent.SubagentCoupled,
         json"""{
           "Key": "SUBAGENT",
           "TYPE": "SubagentCoupled"
@@ -20,8 +20,8 @@ final class SubagentRefStateEventTest extends AnyFreeSpec
     }
 
     "SubagentCouplingFailed" in {
-      testJson[KeyedEvent[SubagentRefStateEvent]](
-        SubagentId("SUBAGENT") <-: SubagentRefStateEvent.SubagentCouplingFailed(Problem("PROBLEM")),
+      testJson[KeyedEvent[SubagentItemStateEvent]](
+        SubagentId("SUBAGENT") <-: SubagentItemStateEvent.SubagentCouplingFailed(Problem("PROBLEM")),
         json"""{
           "Key": "SUBAGENT",
           "TYPE": "SubagentCouplingFailed",
@@ -32,8 +32,8 @@ final class SubagentRefStateEventTest extends AnyFreeSpec
     }
 
     "SubagentDedicated" in {
-      testJson[KeyedEvent[SubagentRefStateEvent]](
-        SubagentId("SUBAGENT") <-: SubagentRefStateEvent.SubagentDedicated(SubagentRunId(Base64UUID.zero)),
+      testJson[KeyedEvent[SubagentItemStateEvent]](
+        SubagentId("SUBAGENT") <-: SubagentItemStateEvent.SubagentDedicated(SubagentRunId(Base64UUID.zero)),
         json"""{
           "Key": "SUBAGENT",
           "TYPE": "SubagentDedicated",
@@ -42,8 +42,8 @@ final class SubagentRefStateEventTest extends AnyFreeSpec
     }
 
     "SubagentEventsObserved" in {
-      testJson[KeyedEvent[SubagentRefStateEvent]](
-        SubagentId("SUBAGENT") <-: SubagentRefStateEvent.SubagentEventsObserved(1001L),
+      testJson[KeyedEvent[SubagentItemStateEvent]](
+        SubagentId("SUBAGENT") <-: SubagentItemStateEvent.SubagentEventsObserved(1001L),
         json"""{
           "Key": "SUBAGENT",
           "TYPE": "SubagentEventsObserved",
@@ -52,8 +52,8 @@ final class SubagentRefStateEventTest extends AnyFreeSpec
     }
 
     "SubagentRestarted" in {
-      testJson[KeyedEvent[SubagentRefStateEvent]](
-        SubagentId("SUBAGENT") <-: SubagentRefStateEvent.SubagentRestarted,
+      testJson[KeyedEvent[SubagentItemStateEvent]](
+        SubagentId("SUBAGENT") <-: SubagentItemStateEvent.SubagentRestarted,
         json"""{
           "Key": "SUBAGENT",
           "TYPE": "SubagentRestarted"
@@ -61,8 +61,8 @@ final class SubagentRefStateEventTest extends AnyFreeSpec
     }
 
     "SubagentShutdown" in {
-      testJson[KeyedEvent[SubagentRefStateEvent]](
-        SubagentId("SUBAGENT") <-: SubagentRefStateEvent.SubagentShutdown,
+      testJson[KeyedEvent[SubagentItemStateEvent]](
+        SubagentId("SUBAGENT") <-: SubagentItemStateEvent.SubagentShutdown,
         json"""{
           "Key": "SUBAGENT",
           "TYPE": "SubagentShutdown"

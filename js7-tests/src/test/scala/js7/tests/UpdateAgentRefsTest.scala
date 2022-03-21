@@ -21,7 +21,7 @@ import js7.data.item.BasicItemEvent.ItemDeleted
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVersion, DeleteSimple, RemoveVersioned}
 import js7.data.item.VersionId
 import js7.data.order.{FreshOrder, OrderId}
-import js7.data.subagent.{SubagentId, SubagentRef}
+import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.UpdateAgentRefsTest._
 import js7.tests.jobs.EmptyJob
@@ -63,14 +63,14 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
     directoryProvider.prepareAgentFiles(agentFileTree)
 
     val agentRef = AgentRef(agentPath, directors = Seq(subagentId))
-    val subagentRef = SubagentRef(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort1"))
+    val subagentItem = SubagentItem(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort1"))
     agent = RunningAgent.startForTest(agentFileTree.agentConfiguration) await 99.s
 
     controllerApi
       .updateItems(
         Observable(
           AddOrChangeSimple(agentRef),
-          AddOrChangeSimple(subagentRef),
+          AddOrChangeSimple(subagentItem),
           AddVersion(v1),
           AddOrChangeSigned(sign(workflow withVersion v1).signedString)))
       .await(99.s).orThrow
@@ -106,12 +106,12 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
     val eventId = controller.eventWatch.lastFileTornEventId
     val versionId = VersionId("AGAIN")
     val agentRef = AgentRef(agentPath, directors = Seq(subagentId))
-    val subagentRef = SubagentRef(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort1"))
+    val subagentItem = SubagentItem(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort1"))
     controllerApi
       .updateItems(
         Observable(
           AddOrChangeSimple(agentRef),
-          AddOrChangeSimple(subagentRef),
+          AddOrChangeSimple(subagentItem),
           AddVersion(versionId),
           AddOrChangeSigned(sign(workflow withVersion versionId).signedString)))
       .await(99.s).orThrow
@@ -124,12 +124,12 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
 
   "Change Agent's URI and keep Agent's state (move the Agent)" in {
     val agentRef = AgentRef(agentPath, Seq(subagentId))
-    val subagentRef = SubagentRef(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort2"))
+    val subagentItem = SubagentItem(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort2"))
     agent = RunningAgent.startForTest(
       agentFileTree.agentConfiguration.copy(
         webServerPorts = List(WebServerPort.localhost(agentPort2)))
     ) await 99.s
-    controllerApi.updateUnsignedSimpleItems(Seq(agentRef, subagentRef)).await(99.s).orThrow
+    controllerApi.updateUnsignedSimpleItems(Seq(agentRef, subagentItem)).await(99.s).orThrow
     controller.runOrder(FreshOrder(OrderId("🔶"), workflow.path))
     agent.terminate() await 99.s
   }
@@ -155,7 +155,7 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
 
   "Change Agent's URI and start Agent with clean state: fails" in {
     val agentRef = AgentRef(agentPath, Seq(subagentId))
-    val subagentRef = SubagentRef(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort3"))
+    val subagentItem = SubagentItem(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort3"))
     // DELETE AGENT'S STATE DIRECTORY
     deleteDirectoryContentRecursively(agentFileTree.stateDir)
     agent = RunningAgent.startForTest(
@@ -164,7 +164,7 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
     ) await 99.s
 
     val eventId = controller.eventWatch.lastFileTornEventId
-    controllerApi.updateUnsignedSimpleItems(Seq(agentRef, subagentRef)).await(99.s).orThrow
+    controllerApi.updateUnsignedSimpleItems(Seq(agentRef, subagentItem)).await(99.s).orThrow
     controller.eventWatch.await[AgentCouplingFailed](
       _.event.problem == AgentNotDedicatedProblem,
       after = eventId)

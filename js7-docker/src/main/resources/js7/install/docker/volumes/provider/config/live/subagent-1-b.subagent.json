@@ -1,5 +1,5 @@
 {
-  "TYPE": "SubagentRef",
+  "TYPE": "SubagentItem",
   "id": "subagent-1-b",
   "agentPath": "agent-1",
   "uri": "https://subagent-1-b:4443"

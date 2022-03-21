@@ -39,7 +39,7 @@ import js7.data.controller.ControllerState.signableItemJsonCodec
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, RemoveVersioned}
 import js7.data.item.{InventoryItem, ItemOperation, ItemSigner, SignableItem, SignableSimpleItem, UnsignedSimpleItem, VersionId, VersionedItem, VersionedItemPath}
 import js7.data.job.RelativePathExecutable
-import js7.data.subagent.{SubagentId, SubagentRef}
+import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.proxy.ControllerApi
 import js7.tests.testenv.DirectoryProvider._
 import monix.eval.Task
@@ -110,10 +110,10 @@ extends HasCloser
   val agents: Vector[AgentTree] = agentToTree.values.toVector
   lazy val agentRefs: Vector[AgentRef] =
     for (a <- agents) yield AgentRef(a.agentPath, Seq(a.localSubagentId))
-  lazy val subagentRefs: Vector[SubagentRef] =
+  lazy val subagentItems: Vector[SubagentItem] =
     for (a <- agents) yield
-      SubagentRef(a.localSubagentId, a.agentPath, uri = a.agentConfiguration.localUri)
-  lazy val subagentId: SubagentId = subagentRefs.head.id
+      SubagentItem(a.localSubagentId, a.agentPath, uri = a.agentConfiguration.localUri)
+  lazy val subagentId: SubagentId = subagentItems.head.id
 
   private val itemsHasBeenAdded = AtomicBoolean(false)
 
@@ -189,7 +189,7 @@ extends HasCloser
       if (!doNotAddItems && (agentRefs.nonEmpty || items.nonEmpty)) {
         if (!itemsHasBeenAdded.getAndSet(true)) {
           runningController.waitUntilReady()
-          runningController.updateUnsignedSimpleItemsAsSystemUser(agentRefs ++ subagentRefs)
+          runningController.updateUnsignedSimpleItemsAsSystemUser(agentRefs ++ subagentItems)
             .await(99.s).orThrow
           if (items.nonEmpty) {
             val versionedItems = items.collect { case o: VersionedItem => o }.map(_ withVersion Vinitial)

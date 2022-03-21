@@ -37,7 +37,7 @@ import js7.data_for_java.lock.{JLock, JLockState}
 import js7.data_for_java.order.JOrderPredicates.any
 import js7.data_for_java.order.{JOrder, JOrderObstacle}
 import js7.data_for_java.orderwatch.JFileWatch
-import js7.data_for_java.subagent.{JSubagentRef, JSubagentRefState, JSubagentSelection}
+import js7.data_for_java.subagent.{JSubagentItem, JSubagentItemState, JSubagentSelection}
 import js7.data_for_java.vavr.VavrConverters._
 import js7.data_for_java.workflow.{JWorkflow, JWorkflowId}
 import scala.jdk.CollectionConverters._
@@ -85,17 +85,17 @@ extends JJournaledState[JControllerState, ControllerState]
       .toVavr
 
   @Nonnull
-  def idToSubagentRef: java.util.Map[SubagentId, JSubagentRef] =
-    asScala.idToSubagentRefState
+  def idToSubagentItem: java.util.Map[SubagentId, JSubagentItem] =
+    asScala.idToSubagentItemState
       .view
-      .mapValues(o => JSubagentRef(o.subagentRef))
+      .mapValues(o => JSubagentItem(o.subagentItem))
       .asJava
 
   @Nonnull
-  def idToSubagentRefState: java.util.Map[SubagentId, JSubagentRefState] =
-    asScala.idToSubagentRefState
+  def idToSubagentItemState: java.util.Map[SubagentId, JSubagentItemState] =
+    asScala.idToSubagentItemState
       .view
-      .mapValues(JSubagentRefState(_))
+      .mapValues(JSubagentItemState(_))
       .asJava
 
   @Nonnull

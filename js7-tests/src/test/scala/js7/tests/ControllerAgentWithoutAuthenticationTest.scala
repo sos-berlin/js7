@@ -23,7 +23,7 @@ import js7.data.item.{ItemOperation, ItemSigner, VersionId}
 import js7.data.job.PathExecutable
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
-import js7.data.subagent.{SubagentId, SubagentRef}
+import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -92,14 +92,14 @@ final class ControllerAgentWithoutAuthenticationTest extends AnyFreeSpec
 
       val subagentId = SubagentId("SUBAGENT")
       val agentRef = AgentRef(agentPath, directors = Seq(subagentId))
-      val subagentRef = SubagentRef(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort"))
+      val subagentItem = SubagentItem(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort"))
       val agent = RunningAgent(agentConfiguration) await 99.s
       val controller = RunningController(controllerConfiguration) await 99.s
       controller.waitUntilReady()
 
       controller.updateItemsAsSystemUser(Observable(
         ItemOperation.AddOrChangeSimple(agentRef),
-        ItemOperation.AddOrChangeSimple(subagentRef),
+        ItemOperation.AddOrChangeSimple(subagentItem),
         ItemOperation.AddVersion(versionId),
         ItemOperation.AddOrChangeSigned(itemSigner.toSignedString(workflow)))
       ).await(99.s).orThrow

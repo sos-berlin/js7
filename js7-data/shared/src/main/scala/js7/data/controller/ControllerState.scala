@@ -36,8 +36,8 @@ import js7.data.order.OrderEvent.{OrderAdded, OrderAddedX, OrderCancelled, Order
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{AllOrderWatchesState, FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState}
 import js7.data.state.StateView
-import js7.data.subagent.SubagentRefStateEvent.SubagentShutdown
-import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState, SubagentRefStateEvent, SubagentSelection, SubagentSelectionId}
+import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
+import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent, SubagentSelection, SubagentSelectionId}
 import js7.data.value.Value
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import monix.reactive.Observable
@@ -52,7 +52,7 @@ final case class ControllerState(
   standards: SnapshotableState.Standards,
   controllerMetaState: ControllerMetaState,
   pathToAgentRefState: Map[AgentPath, AgentRefState],
-  idToSubagentRefState: Map[SubagentId, SubagentRefState],
+  idToSubagentItemState: Map[SubagentId, SubagentItemState],
   idToSubagentSelection: Map[SubagentSelectionId, SubagentSelection],
   pathToLockState: Map[LockPath, LockState],
   pathToBoardState: Map[BoardPath, BoardState],
@@ -80,7 +80,7 @@ with SnapshotableState[ControllerState]
     controllerMetaState.isDefined.toInt +
     repo.estimatedEventCount +
     pathToAgentRefState.size +
-    idToSubagentRefState.size +
+    idToSubagentItemState.size +
     idToSubagentSelection.size +
     pathToLockState.size +
     pathToBoardState.values.size +
@@ -98,7 +98,7 @@ with SnapshotableState[ControllerState]
       standards.toSnapshotObservable,
       Observable.fromIterable(controllerMetaState.isDefined ? controllerMetaState),
       Observable.fromIterable(pathToAgentRefState.values),
-      Observable.fromIterable(idToSubagentRefState.values),
+      Observable.fromIterable(idToSubagentItemState.values),
       Observable.fromIterable(idToSubagentSelection.values),
       Observable.fromIterable(pathToLockState.values),
       Observable.fromIterable(pathToBoardState.values.view.map(_.toSnapshotObservable))
@@ -147,25 +147,25 @@ with SnapshotableState[ControllerState]
                 case addedAgentRef: AgentRef =>
                   addedAgentRef
                     .convertFromLegacy
-                    .flatMap { case (agentRef, subagentRef) =>
+                    .flatMap { case (agentRef, subagentItem) =>
                       for {
                         pathToAgentRefState <-
                           pathToAgentRefState.insert(agentRef.path -> AgentRefState(agentRef))
-                        idToSubagentRefState <-
-                          subagentRef match {
-                            case None => Right(idToSubagentRefState)
-                            case Some(subagentRef) => idToSubagentRefState
-                              .insert(subagentRef.id -> SubagentRefState.initial(subagentRef))
+                        idToSubagentItemState <-
+                          subagentItem match {
+                            case None => Right(idToSubagentItemState)
+                            case Some(subagentItem) => idToSubagentItemState
+                              .insert(subagentItem.id -> SubagentItemState.initial(subagentItem))
                           }
                       } yield copy(
                         pathToAgentRefState = pathToAgentRefState,
-                        idToSubagentRefState = idToSubagentRefState)
+                        idToSubagentItemState = idToSubagentItemState)
                     }
 
-                case subagentRef: SubagentRef =>
-                  for (o <- idToSubagentRefState.insert(subagentRef.id -> SubagentRefState.initial(subagentRef)))
+                case subagentItem: SubagentItem =>
+                  for (o <- idToSubagentItemState.insert(subagentItem.id -> SubagentItemState.initial(subagentItem)))
                     yield copy(
-                      idToSubagentRefState = o)
+                      idToSubagentItemState = o)
 
                 case selection: SubagentSelection =>
                   for (o <- idToSubagentSelection.insert(selection.id -> selection)) yield
@@ -195,7 +195,7 @@ with SnapshotableState[ControllerState]
                 case changedAgentRef: AgentRef =>
                   changedAgentRef
                     .convertFromLegacy
-                    .flatMap { case (agentRef, subagentRef) =>
+                    .flatMap { case (agentRef, subagentItem) =>
                       for {
                         agentRefState <- pathToAgentRefState.checked(agentRef.path)
                         _ <-
@@ -206,14 +206,14 @@ with SnapshotableState[ControllerState]
                       } yield copy(
                         pathToAgentRefState = pathToAgentRefState + (agentRef.path -> agentRefState.copy(
                           agentRef = agentRef)),
-                        idToSubagentRefState = subagentRef match {
-                          case None => idToSubagentRefState
-                          case Some(subagentRef) =>
-                            idToSubagentRefState
-                              .get(subagentRef.id)
-                              .fold(idToSubagentRefState)(subagentRefState =>
-                                idToSubagentRefState +
-                                  (subagentRef.id -> subagentRefState.copy(subagentRef = subagentRef)))
+                        idToSubagentItemState = subagentItem match {
+                          case None => idToSubagentItemState
+                          case Some(subagentItem) =>
+                            idToSubagentItemState
+                              .get(subagentItem.id)
+                              .fold(idToSubagentItemState)(subagentItemState =>
+                                idToSubagentItemState +
+                                  (subagentItem.id -> subagentItemState.copy(subagentItem = subagentItem)))
                         })
                     }
 
@@ -221,14 +221,14 @@ with SnapshotableState[ControllerState]
                   Right(copy(
                     idToSubagentSelection = idToSubagentSelection.updated(selection.id, selection)))
 
-                case subagentRef: SubagentRef =>
+                case subagentItem: SubagentItem =>
                   for {
-                    subagentRefState <- idToSubagentRefState.checked(subagentRef.id)
-                    _ <- subagentRefState.subagentRef.agentPath == subagentRef.agentPath !!
+                    subagentItemState <- idToSubagentItemState.checked(subagentItem.id)
+                    _ <- subagentItemState.subagentItem.agentPath == subagentItem.agentPath !!
                       Problem.pure("A Subagent's AgentPath cannot be changed")
                   } yield copy(
-                    idToSubagentRefState = idToSubagentRefState + (subagentRef.id ->
-                      subagentRefState.copy(subagentRef = subagentRef)))
+                    idToSubagentItemState = idToSubagentItemState + (subagentItem.id ->
+                      subagentItemState.copy(subagentItem = subagentItem)))
 
                 case orderWatch: OrderWatch =>
                   allOrderWatchesState.changeOrderWatch(orderWatch)
@@ -296,7 +296,7 @@ with SnapshotableState[ControllerState]
 
                 case subagentId: SubagentId =>
                   Right(updated.copy(
-                    idToSubagentRefState = idToSubagentRefState - subagentId))
+                    idToSubagentItemState = idToSubagentItemState - subagentId))
 
                 case id: SubagentSelectionId =>
                   Right(updated.copy(
@@ -459,18 +459,18 @@ with SnapshotableState[ControllerState]
         .map(o => copy(allOrderWatchesState = o))
 
 
-    case KeyedEvent(subagentId: SubagentId, event: SubagentRefStateEvent) =>
+    case KeyedEvent(subagentId: SubagentId, event: SubagentItemStateEvent) =>
       event match {
-        case SubagentShutdown if !idToSubagentRefState.contains(subagentId) =>
-          // May arrive when SubagentRef has been deleted
+        case SubagentShutdown if !idToSubagentItemState.contains(subagentId) =>
+          // May arrive when SubagentItem has been deleted
           Right(this)
 
         case _ =>
           for {
-            o <- idToSubagentRefState.checked(subagentId)
+            o <- idToSubagentItemState.checked(subagentId)
             o <- o.applyEvent(event)
           } yield copy(
-            idToSubagentRefState = idToSubagentRefState + (subagentId -> o))
+            idToSubagentItemState = idToSubagentItemState + (subagentId -> o))
       }
 
     case KeyedEvent(_, _: ControllerShutDown) =>
@@ -594,7 +594,7 @@ with SnapshotableState[ControllerState]
       .get(agentPath)
       .flatMap(agentRef =>
         agentRef.director match {
-          case Some(director) => keyTo(SubagentRef).get(director).map(_.uri)
+          case Some(director) => keyTo(SubagentItem).get(director).map(_.uri)
           case None => agentRef.uri
         })
 
@@ -648,7 +648,7 @@ with SnapshotableState[ControllerState]
   private def unsignedSimpleItems: View[UnsignedSimpleItem] =
     pathToCalendar.values.view ++
       idToSubagentSelection.values.view ++
-      (idToSubagentRefState.view ++
+      (idToSubagentItemState.view ++
         pathToAgentRefState.view ++
         pathToLockState ++
         allOrderWatchesState.pathToOrderWatchState
@@ -693,7 +693,7 @@ with SnapshotableState[ControllerState]
     itemKey match {
       case id: VersionedItemId_ => repo.anyIdToSigned(id).toOption.map(_.value)
       case path: AgentPath => pathToAgentRefState.get(path).map(_.item)
-      case id: SubagentId => idToSubagentRefState.get(id).map(_.item)
+      case id: SubagentId => idToSubagentItemState.get(id).map(_.item)
       case id: SubagentSelectionId => idToSubagentSelection.get(id)
       case path: LockPath => pathToLockState.get(path).map(_.item)
       case path: OrderWatchPath => allOrderWatchesState.pathToOrderWatchState.get(path).map(_.item)
@@ -738,7 +738,7 @@ with ItemContainer.Companion[ControllerState]
   def newBuilder() = new ControllerStateBuilder
 
   protected val inventoryItems = Vector(
-    AgentRef, SubagentRef, SubagentSelection, Lock, Board, Calendar, FileWatch, JobResource, Workflow)
+    AgentRef, SubagentItem, SubagentSelection, Lock, Board, Calendar, FileWatch, JobResource, Workflow)
 
   lazy val snapshotObjectJsonCodec: TypedJsonCodec[Any] =
     TypedJsonCodec.named("ControllerState.snapshotObjectJsonCodec",
@@ -748,7 +748,7 @@ with ItemContainer.Companion[ControllerState]
       Subtype(deriveCodec[ClusterStateSnapshot]),
       Subtype[ControllerMetaState],
       Subtype[AgentRefState],
-      Subtype[SubagentRefState],
+      Subtype[SubagentItemState],
       Subtype[SubagentSelection],
       Subtype[LockState],
       Subtype[Board],
@@ -767,7 +767,7 @@ with ItemContainer.Companion[ControllerState]
       KeyedSubtype[ControllerEvent],
       KeyedSubtype[ClusterEvent],
       KeyedSubtype[AgentRefStateEvent],
-      KeyedSubtype[SubagentRefStateEvent],
+      KeyedSubtype[SubagentItemStateEvent],
       KeyedSubtype[OrderWatchEvent],
       KeyedSubtype[OrderEvent],
       KeyedSubtype[BoardEvent])

@@ -22,7 +22,7 @@ import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.event.{EventId, EventRequest}
 import js7.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
-import js7.data.subagent.{SubagentId, SubagentRef}
+import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.position.Position
 import js7.data.workflow.test.TestSetting._
@@ -62,7 +62,7 @@ final class AgentActorTest extends AnyFreeSpec
         val stopwatch = new Stopwatch
         val orderIds = for (i <- 0 until n) yield OrderId(s"TEST-ORDER-$i")
 
-        executeCommand(AttachItem(SubagentRef(subagentId, agentPath, Uri("https://0.0.0.0:0"))))
+        executeCommand(AttachItem(SubagentItem(subagentId, agentPath, Uri("https://0.0.0.0:0"))))
           .await(99.s).orThrow
         executeCommand(AttachSignedItem(provider.itemSigner.sign(SimpleTestWorkflow)))
           .await(99.s).orThrow

@@ -20,16 +20,16 @@ object VerifiedUpdateItemsExecutor
   /* TODO Delete (and add?) along the dependency tree
      to allow simultaneous deletion of interdependent items.
     OrderWatch (detached) ->
-      AgentPath <-> SubagentRef ->
+      AgentPath <-> SubagentItem ->
       Workflow ->
-        AgentPath <-> SubagentRef ->
+        AgentPath <-> SubagentItem ->
         Board ->
         Calendar ->
         JobResource ->
         Lock
 
      Ordered by dependency;
-     OrderWatch, Workflow, (AgentPath <-> SubagentRef), Board, Calendar, JobResource, Lock
+     OrderWatch, Workflow, (AgentPath <-> SubagentItem), Board, Calendar, JobResource, Lock
 
      Delete in the reverse order of addition?
    */
@@ -144,7 +144,7 @@ object VerifiedUpdateItemsExecutor
           new View.Single(ItemDeleted(path))
       }
 
-    // If the deleted Item (a SubagentRef) is attached only to deleted Agents,
+    // If the deleted Item (a SubagentItem) is attached only to deleted Agents,
     // then we delete the Item without detaching.
     def isAttachedToDeletedAgentsOnly(
       path: SimpleItemPath,

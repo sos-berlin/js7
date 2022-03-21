@@ -23,7 +23,7 @@ import js7.data.controller.ControllerId
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId, Outcome}
-import js7.data.subagent.{SubagentId, SubagentRef}
+import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -64,7 +64,7 @@ final class AgentTest extends AnyFreeSpec with AgentTester
               .await(99.s).orThrow
             agentApi
               .commandExecute(
-                AttachItem(SubagentRef(subagentId, agentPath, Uri("https://127.0.0.1:0"))))
+                AttachItem(SubagentItem(subagentId, agentPath, Uri("https://127.0.0.1:0"))))
               .await(99.s).orThrow
 
             assert(agentApi.commandExecute(AttachSignedItem(itemSigner.sign(TestWorkflow))).await(99.s)

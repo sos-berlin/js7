@@ -50,7 +50,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
   protected val agentPaths = agentPath :: Nil
   protected val items = Nil
   private lazy val agentRef = directoryProvider.agentRefs.head
-  private lazy val subagentRef = directoryProvider.subagentRefs.head
+  private lazy val subagentItem = directoryProvider.subagentItems.head
   private lazy val privateKeyPassword = SecretString("")
   private val privateKey = ByteArray("SILLY")
   override protected val signer = SillySigner.checked(privateKey, privateKeyPassword).orThrow
@@ -121,8 +121,8 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       for (agentRef <- directoryProvider.agentRefs) {
         live / (agentRef.path.string + ".agent.json") := agentRef
       }
-      for (subagentRef <- directoryProvider.subagentRefs) {
-        live / (subagentRef.path.string + ".subagent.json") := subagentRef
+      for (subagentItem <- directoryProvider.subagentItems) {
+        live / (subagentItem.path.string + ".subagent.json") := subagentItem
       }
 
       writeWorkflowFile(AWorkflowPath)
@@ -133,7 +133,7 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       assert(provider.testControllerDiff.await(99.s).orThrow == InventoryItemDiff(
         addedOrChanged = Seq(
           agentRef,
-          subagentRef,
+          subagentItem,
           TestWorkflow.withId(AWorkflowPath),
           TestWorkflow.withId(BWorkflowPath)
         ).sortBy(_.key: InventoryItemKey)))

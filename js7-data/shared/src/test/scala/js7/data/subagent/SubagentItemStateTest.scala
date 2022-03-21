@@ -10,12 +10,12 @@ import js7.data.item.ItemRevision
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
-final class SubagentRefStateTest extends AnyFreeSpec
+final class SubagentItemStateTest extends AnyFreeSpec
 {
   "JSON" in {
-    testJson[SubagentRefState](
-      SubagentRefState(
-        SubagentRef(
+    testJson[SubagentItemState](
+      SubagentItemState(
+        SubagentItem(
           SubagentId("SUBAGENT"),
           AgentPath("AGENT"),
           Uri("https://example.com"),
@@ -25,7 +25,7 @@ final class SubagentRefStateTest extends AnyFreeSpec
         1001L,
         Some(Problem("PROBLEM"))),
       json"""{
-        "subagentRef": {
+        "subagentItem": {
           "agentPath": "AGENT",
           "disabled": false,
           "id": "SUBAGENT",

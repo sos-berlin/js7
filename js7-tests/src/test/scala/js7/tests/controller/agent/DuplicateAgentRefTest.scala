@@ -9,7 +9,7 @@ import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentReady}
 import js7.data.agent.{AgentPath, AgentRef}
-import js7.data.subagent.{SubagentId, SubagentRef}
+import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.tests.controller.agent.DuplicateAgentRefTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
 import org.scalatest.freespec.AnyFreeSpec
@@ -36,12 +36,12 @@ final class DuplicateAgentRefTest extends AnyFreeSpec with ControllerAgentForSca
     pending // TODO
   }
 
-  "Add a second AgentRef/SubagentRef with same URI" in {
+  "Add a second AgentRef/SubagentItem with same URI" in {
     controller.eventWatch.await[AgentReady](_.key == aAgentPath)
     val subagentId = SubagentId(bAgentPath.string + "-0")
     controllerApi.updateUnsignedSimpleItems(Seq(
       AgentRef(bAgentPath, Seq(subagentId)),
-      SubagentRef(subagentId, bAgentPath, agent.localUri)
+      SubagentItem(subagentId, bAgentPath, agent.localUri)
     )).await(99.s).orThrow
 
     val a = controller.eventWatch.await[AgentCouplingFailed]().head.value.event

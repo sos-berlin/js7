@@ -25,8 +25,8 @@ import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{AllOrderWatchesState, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState}
 import js7.data.state.StateView
 import js7.data.state.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
-import js7.data.subagent.SubagentRefStateEvent.SubagentShutdown
-import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState, SubagentRefStateEvent, SubagentSelection, SubagentSelectionId}
+import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
+import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent, SubagentSelection, SubagentSelectionId}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import scala.collection.mutable
 
@@ -41,7 +41,7 @@ with StateView
   private var repo = Repo.empty
   private val _idToOrder = mutable.Map.empty[OrderId, Order[Order.State]]
   private val _pathToAgentRefState = mutable.Map.empty[AgentPath, AgentRefState]
-  private val _idToSubagentRefState = mutable.Map.empty[SubagentId, SubagentRefState]
+  private val _idToSubagentItemState = mutable.Map.empty[SubagentId, SubagentItemState]
   private val _idToSubagentSelection = mutable.Map.empty[SubagentSelectionId, SubagentSelection]
   private val _pathToLockState = mutable.Map.empty[LockPath, LockState]
   private val _pathToBoardState = mutable.Map.empty[BoardPath, BoardState]
@@ -89,7 +89,7 @@ with StateView
     repo = state.repo
     _idToOrder ++= state.idToOrder
     _pathToAgentRefState ++= state.pathToAgentRefState
-    _idToSubagentRefState ++= state.idToSubagentRefState
+    _idToSubagentItemState ++= state.idToSubagentItemState
     _idToSubagentSelection ++= state.idToSubagentSelection
     _pathToLockState ++= state.pathToLockState
     _pathToBoardState ++= state.pathToBoardState
@@ -115,15 +115,15 @@ with StateView
       repo = repo.applyEvent(event).orThrow
 
     case agentRefState: AgentRefState =>
-      val (agentRef, subagentRef) = agentRefState.agentRef.convertFromLegacy.orThrow
+      val (agentRef, subagentItem) = agentRefState.agentRef.convertFromLegacy.orThrow
 
       _pathToAgentRefState.insert(agentRef.path -> agentRefState.copy(agentRef = agentRef))
-      for (subagentRef <- subagentRef) {
-        _idToSubagentRefState.insert(subagentRef.id -> SubagentRefState.initial(subagentRef))
+      for (subagentItem <- subagentItem) {
+        _idToSubagentItemState.insert(subagentItem.id -> SubagentItemState.initial(subagentItem))
       }
 
-    case subagentRefState: SubagentRefState =>
-      _idToSubagentRefState.insert(subagentRefState.subagentId -> subagentRefState)
+    case subagentItemState: SubagentItemState =>
+      _idToSubagentItemState.insert(subagentItemState.subagentId -> subagentItemState)
 
     case subagentSelection: SubagentSelection =>
       _idToSubagentSelection.insert(subagentSelection.id -> subagentSelection)
@@ -196,15 +196,15 @@ with StateView
                   _pathToLockState.insert(lock.path -> LockState(lock))
 
                 case addedAgentRef: AgentRef =>
-                  val (agentRef, subagentRef) = addedAgentRef.convertFromLegacy.orThrow
+                  val (agentRef, subagentItem) = addedAgentRef.convertFromLegacy.orThrow
 
                   _pathToAgentRefState.insert(agentRef.path -> AgentRefState(agentRef))
-                  for (subagentRef <- subagentRef) {
-                    _idToSubagentRefState.insert(subagentRef.id -> SubagentRefState.initial(subagentRef))
+                  for (subagentItem <- subagentItem) {
+                    _idToSubagentItemState.insert(subagentItem.id -> SubagentItemState.initial(subagentItem))
                   }
 
-                case subagentRef: SubagentRef =>
-                  _idToSubagentRefState.insert(subagentRef.id -> SubagentRefState.initial(subagentRef))
+                case subagentItem: SubagentItem =>
+                  _idToSubagentItemState.insert(subagentItem.id -> SubagentItemState.initial(subagentItem))
 
                 case selection: SubagentSelection =>
                   _idToSubagentSelection.insert(selection.id -> selection)
@@ -226,29 +226,29 @@ with StateView
                     lock = lock)
 
                 case changedAgentRef: AgentRef =>
-                  val (agentRef, subagentRef) = changedAgentRef.convertFromLegacy.orThrow
+                  val (agentRef, subagentItem) = changedAgentRef.convertFromLegacy.orThrow
 
                   _pathToAgentRefState(agentRef.path) = _pathToAgentRefState(agentRef.path).copy(
                     agentRef = agentRef)
 
-                  for (subagentRef <- subagentRef) {
-                    _idToSubagentRefState.updateWith(subagentRef.id) {
+                  for (subagentItem <- subagentItem) {
+                    _idToSubagentItemState.updateWith(subagentItem.id) {
                       case None =>
-                        Some(SubagentRefState.initial(subagentRef))
+                        Some(SubagentItemState.initial(subagentItem))
 
                       case Some(previous) =>
                         Some(previous.copy(
-                          subagentRef = previous.subagentRef.copy(
-                            uri = subagentRef.uri)))
+                          subagentItem = previous.subagentItem.copy(
+                            uri = subagentItem.uri)))
                     }
                   }
 
                 case selection: SubagentSelection =>
                   _idToSubagentSelection(selection.id) = selection
 
-                case subagentRef: SubagentRef =>
-                  _idToSubagentRefState(subagentRef.id) = _idToSubagentRefState(subagentRef.id).copy(
-                    subagentRef = subagentRef)
+                case subagentItem: SubagentItem =>
+                  _idToSubagentItemState(subagentItem.id) = _idToSubagentItemState(subagentItem.id).copy(
+                    subagentItem = subagentItem)
 
                 case orderWatch: OrderWatch =>
                   allOrderWatchesState = allOrderWatchesState.changeOrderWatch(orderWatch).orThrow
@@ -304,7 +304,7 @@ with StateView
                   _pathToAgentRefState -= agentPath
 
                 case subagentId: SubagentId =>
-                  _idToSubagentRefState -= subagentId
+                  _idToSubagentItemState -= subagentId
 
                 case id: SubagentSelectionId =>
                   _idToSubagentSelection -= id
@@ -325,13 +325,13 @@ with StateView
       _pathToAgentRefState += path -> _pathToAgentRefState(path).applyEvent(event).orThrow
 
 
-    case Stamped(_, _, KeyedEvent(id: SubagentId, event: SubagentRefStateEvent)) =>
+    case Stamped(_, _, KeyedEvent(id: SubagentId, event: SubagentItemStateEvent)) =>
       event match {
-        case SubagentShutdown if !_idToSubagentRefState.contains(id) =>
-          // May arrive when SubagentRef has been deleted
+        case SubagentShutdown if !_idToSubagentItemState.contains(id) =>
+          // May arrive when SubagentItem has been deleted
 
         case _ =>
-        _idToSubagentRefState += id -> _idToSubagentRefState(id).applyEvent(event).orThrow
+        _idToSubagentItemState += id -> _idToSubagentItemState(id).applyEvent(event).orThrow
       }
 
     case Stamped(_, _, KeyedEvent(orderId: OrderId, event: OrderEvent)) =>
@@ -466,7 +466,7 @@ with StateView
       standards,
       controllerMetaState,
       _pathToAgentRefState.toMap,
-      _idToSubagentRefState.toMap,
+      _idToSubagentItemState.toMap,
       _idToSubagentSelection.toMap,
       _pathToLockState.toMap,
       _pathToBoardState.toMap,

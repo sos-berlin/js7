@@ -41,7 +41,7 @@ import js7.data.item.{InventoryItemEvent, InventoryItemKey, SignableItem, Unsign
 import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetached}
 import js7.data.order.{Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.OrderWatchEvent
-import js7.data.subagent.{SubagentId, SubagentRefStateEvent}
+import js7.data.subagent.{SubagentId, SubagentItemStateEvent}
 import js7.journal.state.StatePersistence
 import monix.eval.Task
 import monix.execution.atomic.AtomicInt
@@ -527,7 +527,7 @@ extends ReceiveLoggingActor.WithStash
     controllerState.itemToAgentToAttachedState
       .foreach {
         case (subagentId: SubagentId, agentToAttachedState) =>
-          // After Agent Reset, re-attach SubagentRefs
+          // After Agent Reset, re-attach SubagentItems
           controllerState.pathToUnsignedSimpleItem.get(subagentId)
             .foreach(item => agentToAttachedState.get(agentPath)
               .foreach {
@@ -579,7 +579,7 @@ private[controller] object AgentDriver
     classOf[OrderEvent],
     classOf[AgentEvent.AgentReady],
     classOf[AgentEvent.AgentShutDown],
-    classOf[SubagentRefStateEvent],
+    classOf[SubagentItemStateEvent],
     classOf[InventoryItemEvent],
     classOf[OrderWatchEvent])
   private val DecoupledProblem = Problem.pure("Agent has been decoupled")

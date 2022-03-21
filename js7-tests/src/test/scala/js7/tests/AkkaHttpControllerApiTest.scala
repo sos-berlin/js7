@@ -13,7 +13,7 @@ import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.controller.ControllerCommand.AddOrder
 import js7.data.job.PathExecutable
 import js7.data.order.{FreshOrder, Order, OrderId}
-import js7.data.subagent.{SubagentId, SubagentRef}
+import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -29,7 +29,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class AkkaHttpControllerApiTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   protected val agentPaths = Nil
-  protected val items = Seq(agentRef, subagentRef, workflow)
+  protected val items = Seq(agentRef, subagentItem, workflow)
 
   private lazy val api =
     new AkkaHttpControllerApi(controller.localUri, Some(userAndPassword),
@@ -97,7 +97,7 @@ private object AkkaHttpControllerApiTest
 {
   private val userAndPassword = UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))
   private val agentRef = AgentRef(AgentPath("AGENT"), directors = Seq(SubagentId("SUBAGENT")))
-  private val subagentRef = SubagentRef(SubagentId("SUBAGENT"), agentRef.path, Uri("http://0.0.0.0:0"))
+  private val subagentItem = SubagentItem(SubagentId("SUBAGENT"), agentRef.path, Uri("http://0.0.0.0:0"))
   private val workflow = Workflow.of(WorkflowPath("WORKFLOW") ~ "INITIAL",
     Execute(WorkflowJob(agentRef.path, PathExecutable("MISSING"))))
   private val TestOrder = Order(OrderId("ORDER-ID"), workflow.id, Order.Fresh)

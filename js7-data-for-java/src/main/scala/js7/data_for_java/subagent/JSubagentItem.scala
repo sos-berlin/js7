@@ -7,16 +7,16 @@ import js7.base.problem.Problem
 import js7.base.web.Uri
 import js7.data.agent.AgentPath
 import js7.data.item.ItemRevision
-import js7.data.subagent.{SubagentId, SubagentRef}
+import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data_for_java.common.JJsonable
 import js7.data_for_java.item.JUnsignedSimpleItem
 import scala.jdk.OptionConverters._
 
-final case class JSubagentRef(asScala: SubagentRef)
-extends JJsonable[JSubagentRef] with JUnsignedSimpleItem
+final case class JSubagentItem(asScala: SubagentItem)
+extends JJsonable[JSubagentItem] with JUnsignedSimpleItem
 {
-  protected type AsScala = SubagentRef
-  protected def companion = JSubagentRef
+  protected type AsScala = SubagentItem
+  protected def companion = JSubagentItem
 
   @Nonnull
   def path = id
@@ -41,7 +41,7 @@ extends JJsonable[JSubagentRef] with JUnsignedSimpleItem
     copy(asScala.withRevision(revision.toScala))
 }
 
-object JSubagentRef extends JJsonable.Companion[JSubagentRef]
+object JSubagentItem extends JJsonable.Companion[JSubagentItem]
 {
   @Nonnull
   def of(
@@ -49,12 +49,12 @@ object JSubagentRef extends JJsonable.Companion[JSubagentRef]
     @Nonnull agentPath: AgentPath,
     @Nonnull uri: Uri,
     disabled: Boolean)
-  = JSubagentRef(SubagentRef(id, agentPath, uri, disabled = disabled))
+  = JSubagentItem(SubagentItem(id, agentPath, uri, disabled = disabled))
 
   @Nonnull
-  override def fromJson(jsonString: String): VEither[Problem, JSubagentRef] =
+  override def fromJson(jsonString: String): VEither[Problem, JSubagentItem] =
     super.fromJson(jsonString)
 
-  protected def jsonEncoder = SubagentRef.jsonCodec
-  protected def jsonDecoder = SubagentRef.jsonCodec
+  protected def jsonEncoder = SubagentItem.jsonCodec
+  protected def jsonDecoder = SubagentItem.jsonCodec
 }

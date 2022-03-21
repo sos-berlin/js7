@@ -29,7 +29,7 @@ import js7.data.event.{Event, EventRequest, KeyedEvent, Stamped}
 import js7.data.item.{ItemSigner, SignableItem}
 import js7.data.order.OrderEvent.OrderDetachable
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
-import js7.data.subagent.{SubagentId, SubagentRef}
+import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.position.Position
 import js7.data.workflow.test.TestSetting._
@@ -75,7 +75,7 @@ final class OrderAgentTest extends AnyFreeSpec
             .isInstanceOf[DedicateAgentDirector.Response])
           agentClient
             .commandExecute(
-              AttachItem(SubagentRef(subagentId, agentPath, Uri("http://127.0.0.1:0"))))
+              AttachItem(SubagentItem(subagentId, agentPath, Uri("http://127.0.0.1:0"))))
             .await(99.s).orThrow
 
           val order = Order(OrderId("TEST-ORDER"), SimpleTestWorkflow.id, Order.Ready, Map(

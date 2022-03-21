@@ -8,18 +8,18 @@ import js7.data.item.{InventoryItem, ItemRevision}
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
-final class SubagentRefTest extends AnyFreeSpec
+final class SubagentItemTest extends AnyFreeSpec
 {
   "JSON" in {
     testJson[InventoryItem](
-      SubagentRef(
+      SubagentItem(
         SubagentId("SUBAGENT"),
         AgentPath("AGENT"),
         Uri("https://example.com"),
         disabled = true,
         Some(ItemRevision(1))),
       json"""{
-        "TYPE": "SubagentRef",
+        "TYPE": "SubagentItem",
         "id": "SUBAGENT",
         "agentPath": "AGENT",
         "uri": "https://example.com",

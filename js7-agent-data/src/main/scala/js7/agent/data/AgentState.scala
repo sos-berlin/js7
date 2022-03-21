@@ -24,8 +24,8 @@ import js7.data.order.OrderEvent.{OrderCoreEvent, OrderForked, OrderJoined, Orde
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchEvent, OrderWatchPath}
 import js7.data.state.{AgentStateView, StateView}
-import js7.data.subagent.SubagentRefStateEvent.SubagentShutdown
-import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState, SubagentRefStateEvent, SubagentSelection, SubagentSelectionId}
+import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
+import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent, SubagentSelection, SubagentSelectionId}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import monix.reactive.Observable
 import scala.collection.MapView
@@ -37,7 +37,7 @@ final case class AgentState(
   eventId: EventId,
   standards: SnapshotableState.Standards,
   meta: AgentMetaState,
-  idToSubagentRefState: Map[SubagentId, SubagentRefState],
+  idToSubagentItemState: Map[SubagentId, SubagentItemState],
   idToSubagentSelection: Map[SubagentSelectionId, SubagentSelection],
   idToOrder: Map[OrderId, Order[Order.State]],
   idToWorkflow: Map[WorkflowId, Workflow/*reduced for this Agent!!!*/],
@@ -71,7 +71,7 @@ with SnapshotableState[AgentState]
   def estimatedSnapshotSize =
     standards.snapshotSize +
       1 +
-      idToSubagentRefState.size +
+      idToSubagentItemState.size +
       idToSubagentSelection.size +
       idToWorkflow.size +
       idToOrder.size +
@@ -83,7 +83,7 @@ with SnapshotableState[AgentState]
   def toSnapshotObservable = Observable(
     standards.toSnapshotObservable,
     Observable.fromIterable((meta != AgentMetaState.empty) thenList meta),
-    Observable.fromIterable(idToSubagentRefState.values),
+    Observable.fromIterable(idToSubagentItemState.values),
     Observable.fromIterable(idToSubagentSelection.values),
     Observable.fromIterable(idToOrder.values),
     allFileWatchesState.toSnapshot,
@@ -155,15 +155,15 @@ with SnapshotableState[AgentState]
             Right(copy(
               pathToCalendar = pathToCalendar + (calendar.path -> calendar)))
 
-          case ItemAttachedToMe(subagentRef: SubagentRef) =>
-            // May replace an existing SubagentRef
+          case ItemAttachedToMe(subagentItem: SubagentItem) =>
+            // May replace an existing SubagentItem
             Right(copy(
-              idToSubagentRefState = idToSubagentRefState + (subagentRef.id ->
-                idToSubagentRefState
-                  .get(subagentRef.id)
+              idToSubagentItemState = idToSubagentItemState + (subagentItem.id ->
+                idToSubagentItemState
+                  .get(subagentItem.id)
                   .match_ {
-                    case None => SubagentRefState.initial(subagentRef)
-                    case Some(subagentState) => subagentState.copy(subagentRef = subagentRef)
+                    case None => SubagentItemState.initial(subagentItem)
+                    case Some(subagentState) => subagentState.copy(subagentItem = subagentItem)
                   })))
 
           case ItemAttachedToMe(selection: SubagentSelection) =>
@@ -193,9 +193,9 @@ with SnapshotableState[AgentState]
                 pathToCalendar = pathToCalendar - path)
 
           case ItemDetached(id: SubagentId, meta.agentPath) =>
-            for (_ <- idToSubagentRefState.checked(id)) yield
+            for (_ <- idToSubagentItemState.checked(id)) yield
               copy(
-                idToSubagentRefState = idToSubagentRefState - id)
+                idToSubagentItemState = idToSubagentItemState - id)
 
           case ItemDetached(id: SubagentSelectionId, meta.agentPath) =>
             Right(copy(
@@ -204,18 +204,18 @@ with SnapshotableState[AgentState]
           case _ => applyStandardEvent(keyedEvent)
         }
 
-      case KeyedEvent(subagentId: SubagentId, event: SubagentRefStateEvent) =>
+      case KeyedEvent(subagentId: SubagentId, event: SubagentItemStateEvent) =>
         event match {
-          case SubagentShutdown if !idToSubagentRefState.contains(subagentId) =>
-            // May arrive when SubagentRef has been deleted
+          case SubagentShutdown if !idToSubagentItemState.contains(subagentId) =>
+            // May arrive when SubagentItem has been deleted
             Right(this)
 
           case _ =>
             for {
-              subagentRefState <- idToSubagentRefState.checked(subagentId)
-              subagentRefState <- subagentRefState.applyEvent(event)
+              subagentItemState <- idToSubagentItemState.checked(subagentId)
+              subagentItemState <- subagentItemState.applyEvent(event)
             } yield copy(
-              idToSubagentRefState = idToSubagentRefState + (subagentId -> subagentRefState))
+              idToSubagentItemState = idToSubagentItemState + (subagentId -> subagentItemState))
         }
 
       case KeyedEvent(_: NoKey, AgentDedicated(subagentId, agentPath, agentRunId, controllerId)) =>
@@ -283,7 +283,7 @@ with SnapshotableState[AgentState]
           case path: CalendarPath => pathToCalendar.get(path)
           case path: OrderWatchPath => allFileWatchesState.pathToFileWatchState.get(path).map(_.fileWatch)
           case WorkflowId.as(id) => idToWorkflow.get(id)
-          case id: SubagentId => idToSubagentRefState.get(id).map(_.subagentRef)
+          case id: SubagentId => idToSubagentItemState.get(id).map(_.subagentItem)
           case id: SubagentSelectionId => idToSubagentSelection.get(id)
         }
 
@@ -292,7 +292,7 @@ with SnapshotableState[AgentState]
           pathToCalendar.iterator ++
           allFileWatchesState.pathToFileWatchState.view.mapValues(_.fileWatch).iterator ++
           idToWorkflow.iterator ++
-          idToSubagentRefState.view.mapValues(_.item).iterator
+          idToSubagentItemState.view.mapValues(_.item).iterator
     }
 
   def keyToSigned[I <: SignableItem](I: SignableItem.Companion[I]): MapView[I.Key, Signed[I]] =
@@ -336,7 +336,7 @@ with ItemContainer.Companion[AgentState]
   def newBuilder() = new AgentStateBuilder
 
   protected val inventoryItems = Vector(
-    FileWatch, JobResource, Calendar, Workflow, SubagentRef, SubagentSelection)
+    FileWatch, JobResource, Calendar, Workflow, SubagentItem, SubagentSelection)
 
   override lazy val itemPaths =
     inventoryItems.map(_.Path) :+ AgentPath
@@ -362,7 +362,7 @@ with ItemContainer.Companion[AgentState]
       Subtype[JournalState],
       Subtype[AgentMetaState],
       Workflow.subtype,
-      Subtype[SubagentRefState],
+      Subtype[SubagentItemState],
       Subtype[Order[Order.State]],
       Subtype[FileWatchState.Snapshot],
       Subtype(SignedItemAdded.jsonCodec(this)),  // For Repo and SignedItemAdded
@@ -373,7 +373,7 @@ with ItemContainer.Companion[AgentState]
   implicit val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] =
     KeyedEventTypedJsonCodec.named("AgentState.Event",
       KeyedSubtype[JournalEvent],
-      KeyedSubtype[SubagentRefStateEvent],
+      KeyedSubtype[SubagentItemStateEvent],
       KeyedSubtype[OrderEvent],
       KeyedSubtype[AgentEvent],
       KeyedSubtype[InventoryItemEvent],

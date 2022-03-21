@@ -65,7 +65,7 @@ final class UpdateRepoAgentTest extends AnyFreeSpec
           ).await(99.s)
 
           controller.updateUnsignedSimpleItemsAsSystemUser(Seq(
-            provider.subagentRefs.head.copy(uri = agent2.localUri)
+            provider.subagentItems.head.copy(uri = agent2.localUri)
           )).await(99.s).orThrow
           runOrder(controller, OrderId(s"🔵-$i"))
         }

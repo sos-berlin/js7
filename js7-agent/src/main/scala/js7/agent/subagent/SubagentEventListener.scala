@@ -22,7 +22,7 @@ import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, 
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.other.HeartbeatTiming
-import js7.data.subagent.SubagentRefStateEvent.{SubagentCoupled, SubagentCouplingFailed, SubagentEventsObserved, SubagentShutdown}
+import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentCouplingFailed, SubagentEventsObserved, SubagentShutdown}
 import js7.journal.CommitOptions
 import js7.subagent.SubagentState.keyedEventJsonCodec
 import js7.subagent.client.SubagentClient
@@ -66,7 +66,7 @@ trait SubagentEventListener
     val recouplingStreamReader = newEventListener()
     val bufferDelay = conf.eventBufferDelay max conf.commitDelay
     logger.debugTask(recouplingStreamReader
-      .observe(client, after = persistence.currentState.idToSubagentRefState(subagentId).eventId)
+      .observe(client, after = persistence.currentState.idToSubagentItemState(subagentId).eventId)
       .takeUntilEval(stopObserving.flatMap(_.read))
       .pipe(obs =>
         if (!bufferDelay.isPositive)
@@ -223,12 +223,12 @@ trait SubagentEventListener
         persistence
           .lock(subagentId)(
             persistence.persist(_
-              .idToSubagentRefState.checked(subagentId)
-              .map { subagentRefState =>
+              .idToSubagentItemState.checked(subagentId)
+              .map { subagentItemState =>
                 val prblm = problem
-                  .orElse(subagentRefState.problem)
+                  .orElse(subagentItemState.problem)
                   .getOrElse(Problem.pure("decoupled"))
-                (!subagentRefState.problem.contains(prblm))
+                (!subagentItemState.problem.contains(prblm))
                   .thenList(subagentId <-: SubagentCouplingFailed(prblm))
               }))
           .map(_.orThrow))))

@@ -25,7 +25,7 @@ import js7.data.controller.ControllerId
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.{OrderCoreEvent, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{Order, OrderId, Outcome}
-import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState, SubagentSelection, SubagentSelectionId}
+import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentSelection, SubagentSelectionId}
 import js7.journal.state.StatePersistence
 import js7.launcher.configuration.JobLauncherConf
 import js7.subagent.LocalSubagentDriver
@@ -140,7 +140,7 @@ final class SubagentKeeper(
         .match_ {
           case None =>
             val event = OrderProcessed(Outcome.Disrupted(Problem.pure(
-              s"Missing $subagentId SubagentRef to continue processing of ${order.id}")))
+              s"Missing $subagentId SubagentItem to continue processing of ${order.id}")))
             persist(order.id, event :: Nil, onEvents)
               .map(_.map { case (_, s) => event -> s })
 
@@ -254,74 +254,74 @@ final class SubagentKeeper(
             .map(Right(_)))
     })
 
-  def recoverSubagents(subagentRefStates: Seq[SubagentRefState]): Task[Checked[Unit]] =
-    subagentRefStates
+  def recoverSubagents(subagentItemStates: Seq[SubagentItemState]): Task[Checked[Unit]] =
+    subagentItemStates
       .traverse(addOrChange)
       .map(_
         .collectFirst { case Left(problem) => Left(problem) }
         .getOrElse(Checked.unit))
 
-  // TODO Kann SubagentRef gelöscht werden während proceed hängt wegen unerreichbarem Subagenten?
-  def proceedWithSubagent(subagentRefState: SubagentRefState): Task[Checked[Unit]] =
-    logger.traceTask("proceedWithSubagent", subagentRefState.subagentId)(
-      addOrChange(subagentRefState)
+  // TODO Kann SubagentItem gelöscht werden während proceed hängt wegen unerreichbarem Subagenten?
+  def proceedWithSubagent(subagentItemState: SubagentItemState): Task[Checked[Unit]] =
+    logger.traceTask("proceedWithSubagent", subagentItemState.subagentId)(
+      addOrChange(subagentItemState)
         .flatMapT(_
           .fold(Task.unit)(_
             .start
             .onErrorHandle(t => logger.error( // TODO Emit event ?
-              s"proceedWithSubagent(${subagentRefState.subagentId}) => ${t.toStringWithCauses}"))
+              s"proceedWithSubagent(${subagentItemState.subagentId}) => ${t.toStringWithCauses}"))
             .startAndForget)
           .map(Right(_))))
 
   // Returns a SubagentDriver if created
-  private def addOrChange(subagentRefState: SubagentRefState)
+  private def addOrChange(subagentItemState: SubagentItemState)
   : Task[Checked[Option[SubagentDriver]]] =
-    logger.traceTask("addOrChange", subagentRefState.subagentId) {
-      val subagentRef = subagentRefState.subagentRef
+    logger.traceTask("addOrChange", subagentItemState.subagentId) {
+      val subagentItem = subagentItemState.subagentItem
       initialized.task
         .logWhenItTakesLonger("SubagentKeeper.initialized?")
         .flatMap(initialized =>
           state
             .updateCheckedWithResult(state =>
               state.idToDriver
-                .get(subagentRef.id)
+                .get(subagentItem.id)
                 .match_ {
                   case Some(_: LocalSubagentDriver[_]) =>
                     Task.pure(
-                      for (updated <- state.disable(subagentRef.id, subagentRef.disabled)) yield
+                      for (updated <- state.disable(subagentItem.id, subagentItem.disabled)) yield
                         updated -> None)
 
                   case Some(existing: RemoteSubagentDriver) =>
                     Task
-                      .when(subagentRef.uri != existing.subagentRef.uri)(
+                      .when(subagentItem.uri != existing.subagentItem.uri)(
                         existing
                           .stop(Some(SIGKILL))
                           .onErrorHandle(t => logger.error("After change of URI of " +
-                            existing.subagentId + " " + existing.subagentRef.uri + ": " +
+                            existing.subagentId + " " + existing.subagentItem.uri + ": " +
                             t.toStringWithCauses))
                           .startAndForget) // Do not block the `state` here, so startAndForget ???
                       .map { _ =>
-                        // TODO subagentRef.disable!
+                        // TODO subagentItem.disable!
                         // Replace and forget the existing driver
-                        val driver = newRemoteSubagentDriver(subagentRef, initialized)
-                        for (updated <- state.insertSubagentDriver(driver, subagentRef)) yield
+                        val driver = newRemoteSubagentDriver(subagentItem, initialized)
+                        for (updated <- state.insertSubagentDriver(driver, subagentItem)) yield
                           updated -> Some(driver)
                       }
 
                   case None =>
                     Task {
-                      val subagentDriver = newSubagentDriver(subagentRef, initialized)
-                      for (s <- state.insertSubagentDriver(subagentDriver, subagentRef)) yield
+                      val subagentDriver = newSubagentDriver(subagentItem, initialized)
+                      for (s <- state.insertSubagentDriver(subagentDriver, subagentItem)) yield
                         s -> Some(subagentDriver)
                     }
                 }))
     }
 
-  private def newSubagentDriver(subagentRef: SubagentRef, initialized: Initialized) =
-    if (initialized.localSubagentId contains subagentRef.id)
-      newLocalSubagentDriver(subagentRef.id, initialized)
+  private def newSubagentDriver(subagentItem: SubagentItem, initialized: Initialized) =
+    if (initialized.localSubagentId contains subagentItem.id)
+      newLocalSubagentDriver(subagentItem.id, initialized)
     else
-      newRemoteSubagentDriver(subagentRef, initialized)
+      newRemoteSubagentDriver(subagentItem, initialized)
 
   private def newLocalSubagentDriver(subagentId: SubagentId, initialized: Initialized) =
     new LocalSubagentDriver(
@@ -333,9 +333,9 @@ final class SubagentKeeper(
       driverConf,
       agentConf.subagentConf)
 
-  private def newRemoteSubagentDriver(subagentRef: SubagentRef, initialized: Initialized) =
+  private def newRemoteSubagentDriver(subagentItem: SubagentItem, initialized: Initialized) =
     new RemoteSubagentDriver(
-      subagentRef,
+      subagentItem,
       agentConf.httpsConfig,
       persistence,
       initialized.controllerId,
@@ -373,8 +373,8 @@ object SubagentKeeper
   {
     def idToDriver = subagentToEntry.view.mapValues(_.driver)
 
-    def insertSubagentDriver(driver: SubagentDriver, subagentRef: SubagentRef): Checked[State] =
-      insertSubagentDriver(driver, subagentRef.disabled)
+    def insertSubagentDriver(driver: SubagentDriver, subagentItem: SubagentItem): Checked[State] =
+      insertSubagentDriver(driver, subagentItem.disabled)
 
     def insertSubagentDriver(driver: SubagentDriver, disabled: Boolean = false): Checked[State] =
       for {

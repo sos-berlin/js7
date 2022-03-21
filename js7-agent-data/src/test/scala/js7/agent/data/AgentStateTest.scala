@@ -33,7 +33,7 @@ import js7.data.order.Order.{Forked, Ready}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachedToAgent, OrderForked}
 import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
-import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState, SubagentSelection, SubagentSelectionId}
+import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentSelection, SubagentSelectionId}
 import js7.data.value.expression.Expression
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.position._
@@ -48,7 +48,7 @@ import org.scalatest.freespec.AsyncFreeSpec
   */
 final class AgentStateTest extends AsyncFreeSpec
 {
-  private val subagentRef = SubagentRef(
+  private val subagentItem = SubagentItem(
     SubagentId("SUBAGENT"),
     AgentPath("AGENT"),
     Uri("https://localhost:0"),
@@ -57,7 +57,7 @@ final class AgentStateTest extends AsyncFreeSpec
 
   private val subagentSelection = SubagentSelection(
     SubagentSelectionId("SELECTION"),
-    Map(subagentRef.id -> 1),
+    Map(subagentItem.id -> 1),
     Some(ItemRevision(7)))
 
   private val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "1.0", Nil)
@@ -95,7 +95,7 @@ final class AgentStateTest extends AsyncFreeSpec
       AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))),
       ControllerId("CONTROLLER")),
     Map(
-      subagentRef.id -> SubagentRefState.initial(subagentRef)),
+      subagentItem.id -> SubagentItemState.initial(subagentItem)),
     Map(
       subagentSelection.id -> subagentSelection),
     Map(
@@ -171,8 +171,8 @@ final class AgentStateTest extends AsyncFreeSpec
             "controllerId": "CONTROLLER"
           }""",
           json"""{
-            "TYPE": "SubagentRefState",
-            "subagentRef": {
+            "TYPE": "SubagentItemState",
+            "subagentItem": {
               "id": "SUBAGENT",
               "agentPath": "AGENT",
               "uri": "https://localhost:0",
@@ -308,12 +308,12 @@ final class AgentStateTest extends AsyncFreeSpec
     val agentPath = AgentPath("AGENT")
     var agentState = AgentState.empty
     val meta = AgentMetaState(
-      Some(subagentRef.id),
+      Some(subagentItem.id),
       AgentPath("AGENT"),
       AgentRunId(JournalId(UUID.fromString("11111111-2222-3333-4444-555555555555"))),
       ControllerId("CONTROLLER"))
     agentState = agentState.applyEvent(AgentDedicated(
-      Some(subagentRef.id),
+      Some(subagentItem.id),
       meta.agentPath,
       meta.agentRunId,
       meta.controllerId)).orThrow
@@ -360,6 +360,6 @@ final class AgentStateTest extends AsyncFreeSpec
     assert(agentState.keyToItem.keySet ==
       Set(workflow.id, signedWorkflow.value.id,
         jobResource.path, signedJobResource.value.path,
-      calendar.path, fileWatch.path, subagentRef.id))
+      calendar.path, fileWatch.path, subagentItem.id))
   }
 }

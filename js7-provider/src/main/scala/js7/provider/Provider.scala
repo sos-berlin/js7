@@ -27,7 +27,7 @@ import js7.data.agent.AgentRef
 import js7.data.controller.ControllerState.signableItemJsonCodec
 import js7.data.item.ItemOperation.AddVersion
 import js7.data.item.{InventoryItem, InventoryItemDiff, InventoryItemDiff_, ItemOperation, ItemSigner, SignableItem, UnsignedSimpleItem, VersionId, VersionedItem, VersionedItemPath}
-import js7.data.subagent.SubagentRef
+import js7.data.subagent.SubagentItem
 import js7.data.workflow.WorkflowPath
 import js7.provider.Provider._
 import js7.provider.configuration.ProviderConfiguration
@@ -214,7 +214,7 @@ object Provider
   private val readers = Seq(
     WorkflowReader,
     SimpleItemReader(AgentRef),
-    SimpleItemReader(SubagentRef))
+    SimpleItemReader(SubagentItem))
 
   def apply(conf: ProviderConfiguration): Checked[Provider] = {
     val itemSigner = {

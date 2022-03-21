@@ -30,7 +30,7 @@ import js7.data.node.NodeId
 import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.OrderWatchState.{HasOrder, Vanished}
 import js7.data.orderwatch.{AllOrderWatchesState, ExternalOrderKey, ExternalOrderName, FileWatch, OrderWatchPath, OrderWatchState}
-import js7.data.subagent.{SubagentId, SubagentRef, SubagentRefState, SubagentSelection, SubagentSelectionId}
+import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentSelection, SubagentSelectionId}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, ExpectNotice, LockInstruction}
@@ -56,7 +56,7 @@ final class ControllerStateTest extends AsyncFreeSpec
     val sum =
       controllerState.pathToCalendar.values ++
         controllerState.pathToAgentRefState.map(_._2.item) ++
-        controllerState.idToSubagentRefState.map(_._2.item) ++
+        controllerState.idToSubagentItemState.map(_._2.item) ++
         controllerState.idToSubagentSelection.values ++
         controllerState.pathToLockState.map(_._2.item) ++
         controllerState.allOrderWatchesState.pathToOrderWatchState.map(_._2.item) ++
@@ -82,7 +82,7 @@ final class ControllerStateTest extends AsyncFreeSpec
           controllerState.controllerMetaState
         ) ++
           controllerState.pathToAgentRefState.values ++
-          controllerState.idToSubagentRefState.values ++
+          controllerState.idToSubagentItemState.values ++
           controllerState.idToSubagentSelection.values ++
           controllerState.pathToLockState.values ++
           Seq(board) ++
@@ -128,8 +128,8 @@ final class ControllerStateTest extends AsyncFreeSpec
     assert(x == Map[InventoryItemPath, Set[InventoryItemKey]](
       lock.path -> Set(workflow.id),
       board.path -> Set(workflow.id),
-      agentRef.path -> Set(subagentRef.id, fileWatch.path, workflow.id),
-      subagentRef.id -> Set(agentRef.path, subagentSelection.id),
+      agentRef.path -> Set(subagentItem.id, fileWatch.path, workflow.id),
+      subagentItem.id -> Set(agentRef.path, subagentSelection.id),
       subagentSelection.id -> Set(workflow.id),
       jobResource.path -> Set(workflow.id),
       workflow.path -> Set(fileWatch.path)))
@@ -149,8 +149,8 @@ final class ControllerStateTest extends AsyncFreeSpec
     assert(x == Map[InventoryItemPath, Set[InventoryItemKey]](
         lock.path -> Set(workflow.id, changedWorkflowId),
         board.path -> Set(workflow.id, changedWorkflowId),
-        agentRef.path -> Set(subagentRef.id, fileWatch.path, workflow.id, changedWorkflowId),
-        subagentRef.id -> Set(agentRef.path, subagentSelection.id),
+        agentRef.path -> Set(subagentItem.id, fileWatch.path, workflow.id, changedWorkflowId),
+        subagentItem.id -> Set(agentRef.path, subagentSelection.id),
         subagentSelection.id -> Set(workflow.id, changedWorkflowId),
         jobResource.path -> Set(workflow.id, changedWorkflowId),
         workflow.path -> Set(fileWatch.path)))
@@ -207,8 +207,8 @@ final class ControllerStateTest extends AsyncFreeSpec
         },
         "eventId": 7
       }, {
-        "TYPE": "SubagentRefState",
-        "subagentRef": {
+        "TYPE": "SubagentItemState",
+        "subagentItem": {
           "id": "SUBAGENT",
           "agentPath": "AGENT",
           "uri": "https://SUBAGENT",
@@ -370,7 +370,7 @@ final class ControllerStateTest extends AsyncFreeSpec
 
     assert(controllerState.keyToItem.keySet == Set(
       jobResource.path, calendar.path,
-      agentRef.path, subagentRef.id, subagentSelection.id,
+      agentRef.path, subagentItem.id, subagentSelection.id,
       lock.path, fileWatch.path,
       workflow.id))
   }
@@ -386,7 +386,7 @@ final class ControllerStateTest extends AsyncFreeSpec
       itemRevision = Some(ItemRevision(7)))
 
     val subagentId = SubagentId("v2.2-1")
-    val generatedSubagentRef = SubagentRef(subagentId, agentPath, uri,
+    val generatedSubagentItem = SubagentItem(subagentId, agentPath, uri,
       itemRevision = Some(ItemRevision(1)))
 
     def applyEvent(event: UnsignedSimpleItemEvent): Unit = {
@@ -403,7 +403,7 @@ final class ControllerStateTest extends AsyncFreeSpec
       assert(cs.pathToAgentRefState(agentRef.path).agentRef == agentRef.copy(
         directors = Seq(subagentId),
         uri = None))
-      assert(cs.idToSubagentRefState(subagentId).subagentRef == generatedSubagentRef)
+      assert(cs.idToSubagentItemState(subagentId).subagentItem == generatedSubagentItem)
     }
 
     "AgentRefState snapshot object" in {
@@ -424,7 +424,7 @@ final class ControllerStateTest extends AsyncFreeSpec
         directors = Seq(subagentId),
         uri = None,
         itemRevision = Some(ItemRevision(8))))
-      assert(cs.idToSubagentRefState(subagentId).subagentRef == generatedSubagentRef.copy(
+      assert(cs.idToSubagentItemState(subagentId).subagentItem == generatedSubagentItem.copy(
         uri = changedUri))
     }
   }
@@ -440,16 +440,16 @@ object ControllerStateTest
   private val agentRef = AgentRef(AgentPath("AGENT"), directors = Seq(SubagentId("SUBAGENT")),
     itemRevision = Some(ItemRevision(0)))
 
-  private val subagentRef = SubagentRef(
+  private val subagentItem = SubagentItem(
     SubagentId("SUBAGENT"),
     AgentPath("AGENT"),
     Uri("https://SUBAGENT"),
     disabled = false,
     Some(ItemRevision(7)))
-  private val subagentRefState = SubagentRefState.initial(subagentRef)
+  private val subagentItemState = SubagentItemState.initial(subagentItem)
   private val subagentSelection = SubagentSelection(
     SubagentSelectionId("SELECTION"),
-    Map(subagentRef.id -> 1),
+    Map(subagentItem.id -> 1),
     Some(ItemRevision(7)))
 
   private val lock = Lock(LockPath("LOCK"), itemRevision = Some(ItemRevision(7)))
@@ -511,7 +511,7 @@ object ControllerStateTest
       agentRef.path -> AgentRefState(
         agentRef, None, None, DelegateCouplingState.Reset, EventId(7), None)),
     Map(
-      subagentRef.id -> subagentRefState),
+      subagentItem.id -> subagentItemState),
     Map(
       subagentSelection.id -> subagentSelection),
     Map(

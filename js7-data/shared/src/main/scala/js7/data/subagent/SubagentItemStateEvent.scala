@@ -5,38 +5,38 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Problem
 import js7.data.event.{Event, EventId}
 
-trait SubagentRefStateEvent extends Event.ForScala3[SubagentRefStateEvent]
+trait SubagentItemStateEvent extends Event.ForScala3[SubagentItemStateEvent]
 {
-  val companion = SubagentRefStateEvent
+  val companion = SubagentItemStateEvent
 }
 
-object SubagentRefStateEvent extends Event.Companion[SubagentRefStateEvent]
+object SubagentItemStateEvent extends Event.Companion[SubagentItemStateEvent]
 {
   type Key = SubagentId
 
   /** Subagent has been named. */
   final case class SubagentDedicated(subagentRunId: SubagentRunId)
-  extends SubagentRefStateEvent
+  extends SubagentItemStateEvent
 
   type SubagentCoupled = SubagentCoupled.type
   /** Subagent is coupled and alive. */
   case object SubagentCoupled
-  extends SubagentRefStateEvent
+  extends SubagentItemStateEvent
 
   /** Subagent has been lost and its state is unknown. May recouple later. */
   final case class SubagentCouplingFailed(problem: Problem)
-  extends SubagentRefStateEvent
+  extends SubagentItemStateEvent
 
   /** Subagent may delete events until `untilEventId`. */
   final case class SubagentEventsObserved(untilEventId: EventId)
-  extends SubagentRefStateEvent
+  extends SubagentItemStateEvent
   {
     override def toString = s"SubagentEventsObserved(${EventId.toString(untilEventId)})"
   }
 
   // TODO Brauchen wir SubagentCouplingFailed und SubagentReset ?
 
-  sealed trait SubagentDied extends SubagentRefStateEvent
+  sealed trait SubagentDied extends SubagentItemStateEvent
 
   //type SubagentReset = SubagentReset.type
   //case object SubagentReset
@@ -51,7 +51,7 @@ object SubagentRefStateEvent extends Event.Companion[SubagentRefStateEvent]
   case object SubagentShutdown
   extends SubagentDied
 
-  implicit val jsonCodec = TypedJsonCodec[SubagentRefStateEvent](
+  implicit val jsonCodec = TypedJsonCodec[SubagentItemStateEvent](
     Subtype(deriveCodec[SubagentDedicated]),
     Subtype(SubagentCoupled),
     Subtype(deriveCodec[SubagentCouplingFailed]),

@@ -14,8 +14,8 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.controller.RunningController
 import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
-import js7.data.subagent.SubagentRef
-import js7.data.subagent.SubagentRefStateEvent.SubagentDedicated
+import js7.data.subagent.SubagentItem
+import js7.data.subagent.SubagentItemStateEvent.SubagentDedicated
 import js7.proxy.ControllerApi
 import js7.subagent.BareSubagent
 import js7.subagent.configuration.SubagentConf
@@ -54,14 +54,14 @@ trait SubagentTester
   }
 
   protected final def runSubagent[A](
-    subagentRef: SubagentRef,
+    subagentItem: SubagentItem,
     awaitDedicated: Boolean = true,
     suppressSignatureKeys: Boolean = false)
     (body: BareSubagent => A)
   : Task[A] =
     Task.defer {
       val eventId = eventWatch.lastAddedEventId
-      subagentResource(subagentRef, suppressSignatureKeys = suppressSignatureKeys)
+      subagentResource(subagentItem, suppressSignatureKeys = suppressSignatureKeys)
         .use { subagent =>
           if (awaitDedicated) eventWatch.await[SubagentDedicated](after = eventId)
           Task {
@@ -75,28 +75,28 @@ trait SubagentTester
     }
 
   protected final def subagentResource(
-    subagentRef: SubagentRef,
+    subagentItem: SubagentItem,
     suppressSignatureKeys: Boolean = false)
 : Resource[Task, BareSubagent] =
     for {
-      dir <- subagentEnvironment(subagentRef)
+      dir <- subagentEnvironment(subagentItem)
       trustedSignatureDir = dir / "config" / "private" / verifier.companion.recommendedKeyDirectoryName
       conf = {
         createDirectories(trustedSignatureDir)
         if (!suppressSignatureKeys) provideSignatureKeys(trustedSignatureDir)
         toSubagentConf(dir,
           trustedSignatureDir,
-          subagentRef.uri.port.orThrow,
-          name = subagentRef.id.string)
+          subagentItem.uri.port.orThrow,
+          name = subagentItem.id.string)
       }
       scheduler <- BareSubagent.threadPoolResource[Task](conf)
       subagent <- BareSubagent.resource(conf.finishAndProvideFiles, scheduler)
     } yield subagent
 
-  private def subagentEnvironment(subagentRef: SubagentRef): Resource[Task, Path] =
+  private def subagentEnvironment(subagentItem: SubagentItem): Resource[Task, Path] =
     Resource.make(
       acquire = Task {
-        val dir = directoryProvider.directory / "subagents" / subagentRef.id.string
+        val dir = directoryProvider.directory / "subagents" / subagentItem.id.string
         createDirectories(directoryProvider.directory / "subagents")
         createDirectory(dir)
         createDirectory(dir / "data")

@@ -8,7 +8,7 @@ import js7.data.agent.AgentPath
 import js7.data.item.{ItemRevision, UnsignedSimpleItem}
 import scala.collection.View
 
-final case class SubagentRef(
+final case class SubagentItem(
   id: SubagentId,
   agentPath: AgentPath,
   uri: Uri,
@@ -16,9 +16,9 @@ final case class SubagentRef(
   itemRevision: Option[ItemRevision] = None)
 extends UnsignedSimpleItem
 {
-  protected type Self = SubagentRef
+  protected type Self = SubagentItem
 
-  val companion = SubagentRef
+  val companion = SubagentItem
 
   def rename(id: SubagentId) =
     copy(id = id)
@@ -34,8 +34,8 @@ extends UnsignedSimpleItem
   override def referencedItemPaths = new View.Single(agentPath)
 }
 
-object SubagentRef
-extends UnsignedSimpleItem.Companion[SubagentRef]
+object SubagentItem
+extends UnsignedSimpleItem.Companion[SubagentItem]
 {
   type Key = SubagentId
   val Key = SubagentId
@@ -43,10 +43,10 @@ extends UnsignedSimpleItem.Companion[SubagentRef]
   type Path = SubagentId
   val Path = SubagentId
 
-  val cls = classOf[SubagentRef]
+  val cls = classOf[SubagentItem]
 
-  implicit val jsonCodec: Codec.AsObject[SubagentRef] = {
+  implicit val jsonCodec: Codec.AsObject[SubagentItem] = {
     implicit val x = withDefaults
-    deriveConfiguredCodec[SubagentRef]
+    deriveConfiguredCodec[SubagentItem]
   }
 }

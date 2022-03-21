@@ -23,8 +23,8 @@ import js7.data.item.ItemOperation
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTerminated}
 import js7.data.order.Outcome.Disrupted.ProcessLost
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
-import js7.data.subagent.SubagentRefStateEvent.{SubagentCoupled, SubagentDedicated}
-import js7.data.subagent.{SubagentId, SubagentRef}
+import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentDedicated}
+import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.launcher.OrderProcess
@@ -57,10 +57,10 @@ with SubagentTester
     js7.auth.subagents.C-SUBAGENT = "AGENT-PASSWORD"
     """
   protected val agentPaths = Seq(agentPath)
-  protected lazy val items = Seq(workflow, cWorkflow, bSubagentRef)
+  protected lazy val items = Seq(workflow, cWorkflow, bSubagentItem)
 
   private lazy val bSubagentPort = findFreeTcpPort()
-  private lazy val bSubagentRef = SubagentRef(
+  private lazy val bSubagentItem = SubagentItem(
     SubagentId("B-SUBAGENT"),
     agentPath,
     Uri(s"http://localhost:$bSubagentPort"))
@@ -90,11 +90,11 @@ with SubagentTester
 
   "Start a second Subagent" in {
     val eventId = eventWatch.lastAddedEventId
-    val pair = subagentResource(bSubagentRef).allocated.await(99.s)
+    val pair = subagentResource(bSubagentItem).allocated.await(99.s)
     bSubagent = pair._1
     bSubagentRelease = pair._2
-    eventWatch.await[SubagentDedicated](_.key == bSubagentRef.id, after = eventId)
-    eventWatch.await[SubagentCoupled](_.key == bSubagentRef.id, after = eventId)
+    eventWatch.await[SubagentDedicated](_.key == bSubagentItem.id, after = eventId)
+    eventWatch.await[SubagentCoupled](_.key == bSubagentItem.id, after = eventId)
   }
 
   "Multiple orders" in {
@@ -128,7 +128,7 @@ with SubagentTester
     runOrders.await(99.s)
     assert(eventWatch.allKeyedEvents[OrderProcessingStarted].map(_.event.subagentId).toSet == Set(
       Some(aSubagentId),
-      Some(bSubagentRef.id)))
+      Some(bSubagentItem.id)))
   }
 
   private def runMultipleOrders(
@@ -180,27 +180,27 @@ with SubagentTester
       .map(_._1)
       .flatMap(o => Observable.fromIterable(o))
 
-  private lazy val cSubagentRef = SubagentRef(
+  private lazy val cSubagentItem = SubagentItem(
     SubagentId("C-SUBAGENT"),
     agentPath,
     Uri(s"http://localhost:${findFreeTcpPort()}"))
 
   "Add C-SUBAGENT" in {
-    controllerApi.updateUnsignedSimpleItems(Seq(cSubagentRef)).await(99.s).orThrow
-    eventWatch.await[ItemAttached](_.event.key == cSubagentRef.id)
+    controllerApi.updateUnsignedSimpleItems(Seq(cSubagentItem)).await(99.s).orThrow
+    eventWatch.await[ItemAttached](_.event.key == cSubagentItem.id)
   }
 
   "Disable local Subagent" in {
-    // Disable local Subagent and bSubagentRef. We want use only cSubagentRef
-    val aSubagentRef = directoryProvider.subagentRefs(0)
+    // Disable local Subagent and bSubagentItem. We want use only cSubagentItem
+    val aSubagentItem = directoryProvider.subagentItems(0)
     controllerApi
       .updateUnsignedSimpleItems(Seq(
-        aSubagentRef.copy(
+        aSubagentItem.copy(
           disabled = true,
           itemRevision = None)))
       .await(99.s)
       .orThrow
-    eventWatch.await[ItemAttached](_.event.key == aSubagentRef.id)
+    eventWatch.await[ItemAttached](_.event.key == aSubagentItem.id)
   }
 
   "Remove Subagent" - {
@@ -208,40 +208,40 @@ with SubagentTester
       val eventId = eventWatch.lastAddedEventId
       controllerApi
         .updateItems(Observable(
-          ItemOperation.DeleteSimple(bSubagentRef.path)))
+          ItemOperation.DeleteSimple(bSubagentItem.path)))
         .await(99.s)
         .orThrow
-      eventWatch.await[ItemDetachable](_.event.key == bSubagentRef.id, after = eventId)
+      eventWatch.await[ItemDetachable](_.event.key == bSubagentItem.id, after = eventId)
     }
 
     "Remove Subagent while an Order is processed" in {
       val eventId = eventWatch.lastAddedEventId
       val orderId = OrderId("REMOVE-SUBAGENT")
-      runSubagent(cSubagentRef) { subagent =>
+      runSubagent(cSubagentItem) { subagent =>
         controller.addOrder(FreshOrder(orderId, cWorkflow.path)).await(99.s).orThrow
         val started = eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
           .head.value.event
-        assert(started == OrderProcessingStarted(cSubagentRef.path))
+        assert(started == OrderProcessingStarted(cSubagentItem.path))
         eventWatch.await[OrderStdoutWritten](_.key == orderId, after = eventId)
 
         controllerApi
           .updateItems(Observable(
-            ItemOperation.DeleteSimple(cSubagentRef.path)))
+            ItemOperation.DeleteSimple(cSubagentItem.path)))
           .await(99.s)
           .orThrow
-        eventWatch.await[ItemDetachable](_.event.key == cSubagentRef.id, after = eventId)
+        eventWatch.await[ItemDetachable](_.event.key == cSubagentItem.id, after = eventId)
 
         // ItemDetached is delayed until no Order is being processed
         intercept[TimeoutException](
-          eventWatch.await[ItemDetached](_.event.key == cSubagentRef.id, after = eventId, timeout = 1.s))
+          eventWatch.await[ItemDetached](_.event.key == cSubagentItem.id, after = eventId, timeout = 1.s))
 
         TestSemaphoreJob.continue()
         val processed = eventWatch.await[OrderProcessed](_.key == orderId, after = eventId)
           .head.value.event
         assert(processed == OrderProcessed(Outcome.succeeded))
 
-        eventWatch.await[ItemDetached](_.event.key == cSubagentRef.id, after = eventId)
-        eventWatch.await[ItemDeleted](_.event.key == cSubagentRef.id, after = eventId)
+        eventWatch.await[ItemDetached](_.event.key == cSubagentItem.id, after = eventId)
+        eventWatch.await[ItemDeleted](_.event.key == cSubagentItem.id, after = eventId)
         //subagent.shutdown(signal = None).await(99.s)
         subagent.untilStopped.await(99.s)
       }.await(99.s)
@@ -263,20 +263,20 @@ with SubagentTester
 
   "Add C-SUBAGENT again" in {
     val eventId = eventWatch.lastAddedEventId
-    controllerApi.updateUnsignedSimpleItems(Seq(cSubagentRef)).await(99.s).orThrow
-    eventWatch.await[ItemAttached](_.event.key == cSubagentRef.id, after = eventId)
+    controllerApi.updateUnsignedSimpleItems(Seq(cSubagentItem)).await(99.s).orThrow
+    eventWatch.await[ItemAttached](_.event.key == cSubagentItem.id, after = eventId)
   }
 
   "Reject items if no signature keys are installed" in {
     val eventId = eventWatch.lastAddedEventId
 
-    runSubagent(cSubagentRef, suppressSignatureKeys = true) { _ =>
+    runSubagent(cSubagentItem, suppressSignatureKeys = true) { _ =>
       val orderId = OrderId("ITEM-SIGNATURE")
       controller.addOrder(FreshOrder(orderId, cWorkflow.path)).await(99.s).orThrow
 
       val started = eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
         .head.value.event
-      assert(started == OrderProcessingStarted(cSubagentRef.id))
+      assert(started == OrderProcessingStarted(cSubagentItem.id))
 
       val processed = eventWatch.await[OrderProcessed](_.key == orderId, after = eventId)
         .head.value.event
@@ -288,11 +288,11 @@ with SubagentTester
     val eventId = eventWatch.lastAddedEventId
     val orderId = OrderId("RESTART-DIRECTOR")
 
-    runSubagent(cSubagentRef) { _ =>
+    runSubagent(cSubagentItem) { _ =>
       locally {
         controller.addOrder(FreshOrder(orderId, cWorkflow.path)).await(99.s).orThrow
         val events = eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
-        assert(events.head.value.event == OrderProcessingStarted(cSubagentRef.id))
+        assert(events.head.value.event == OrderProcessingStarted(cSubagentItem.id))
 
         // STOP DIRECTOR
         agent.terminate().await(99.s)
@@ -322,12 +322,12 @@ with SubagentTester
 
     TestSemaphoreJob.reset()
 
-    runSubagent(cSubagentRef) { subagent =>
+    runSubagent(cSubagentItem) { subagent =>
       controller.addOrder(FreshOrder(aOrderId, cWorkflow.path)).await(99.s).orThrow
 
       val started = eventWatch.await[OrderProcessingStarted](_.key == aOrderId, after = eventId)
         .head.value.event
-      assert(started == OrderProcessingStarted(cSubagentRef.id))
+      assert(started == OrderProcessingStarted(cSubagentItem.id))
 
       val written = eventWatch.await[OrderStdoutWritten](_.key == aOrderId, after = eventId)
         .head.value.event
@@ -343,7 +343,7 @@ with SubagentTester
     val bOrderId = OrderId("B-RESTART-SUBAGENT")
     controller.addOrder(FreshOrder(bOrderId, cWorkflow.path)).await(99.s).orThrow
 
-    runSubagent(cSubagentRef) { _ =>
+    runSubagent(cSubagentItem) { _ =>
       locally {
         val events = eventWatch.await[OrderProcessed](_.key == aOrderId, after = eventId)
         assert(events.head.value.event == OrderProcessed(Outcome.Disrupted(ProcessLost)))
@@ -370,12 +370,12 @@ with SubagentTester
 
     TestSemaphoreJob.reset()
 
-    runSubagent(cSubagentRef) { subagent =>
+    runSubagent(cSubagentItem) { subagent =>
       controller.addOrder(FreshOrder(aOrderId, cWorkflow.path)).await(99.s).orThrow
 
       val started = eventWatch.await[OrderProcessingStarted](_.key == aOrderId, after = eventId)
         .head.value.event
-      assert(started == OrderProcessingStarted(cSubagentRef.id))
+      assert(started == OrderProcessingStarted(cSubagentItem.id))
 
       val written = eventWatch.await[OrderStdoutWritten](_.key == aOrderId, after = eventId)
         .head.value.event
@@ -399,7 +399,7 @@ with SubagentTester
     val bOrderId = OrderId("B-RESTART-BOTH")
     controller.addOrder(FreshOrder(bOrderId, cWorkflow.path)).await(99.s).orThrow
 
-    runSubagent(cSubagentRef) { _ =>
+    runSubagent(cSubagentItem) { _ =>
       locally {
         val events = eventWatch.await[OrderProcessed](_.key == aOrderId, after = eventId)
         assert(events.head.value.event == OrderProcessed(Outcome.Disrupted(ProcessLost)))
@@ -427,12 +427,12 @@ with SubagentTester
 
     TestSemaphoreJob.reset()
 
-    runSubagent(cSubagentRef) { _ =>
+    runSubagent(cSubagentItem) { _ =>
       controller.addOrder(FreshOrder(orderId, cWorkflow.path)).await(99.s).orThrow
 
       val processingStarted = eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
         .head.value.event
-      assert(processingStarted == OrderProcessingStarted(cSubagentRef.id))
+      assert(processingStarted == OrderProcessingStarted(cSubagentItem.id))
 
       val started = eventWatch.await[OrderStdoutWritten](_.key == orderId, after = eventId)
         .head.value.event

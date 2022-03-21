@@ -44,7 +44,7 @@ import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.state.OrderEventHandler.FollowUp
 import js7.data.state.{OrderEventHandler, StateView}
-import js7.data.subagent.{SubagentId, SubagentRef, SubagentSelection, SubagentSelectionId}
+import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
@@ -204,7 +204,7 @@ with Stash
         .initialize(localSubagentId, controllerId)
         .*>(
           subagentKeeper
-            .recoverSubagents(state.idToSubagentRefState.values.toVector)
+            .recoverSubagents(state.idToSubagentItemState.values.toVector)
             .map {
               case Left(problem) => logger.error(
                 s"subagentKeeper.recoverSubagents => $problem")  // ???
@@ -429,7 +429,7 @@ with Stash
             .map(_.rightAs(AgentCommand.Response.Accepted))
             .runToFuture
 
-      case item @ (_: Calendar | _: SubagentRef | _: SubagentSelection) =>
+      case item @ (_: Calendar | _: SubagentItem | _: SubagentSelection) =>
         persist(ItemAttachedToMe(item)) { (stampedEvent, journaledState) =>
           proceedWithItem(item).runToFuture
         }.flatten
@@ -479,11 +479,11 @@ with Stash
 
   private def proceedWithItem(item: InventoryItem): Task[Checked[Unit]] =
     item match {
-      case subagentRef: SubagentRef =>
+      case subagentItem: SubagentItem =>
         persistence.state.flatMap(_
-          .idToSubagentRefState.get(subagentRef.id)
-          .fold(Task.pure(Checked.unit))(subagentRefState => subagentKeeper
-            .proceedWithSubagent(subagentRefState)
+          .idToSubagentItemState.get(subagentItem.id)
+          .fold(Task.pure(Checked.unit))(subagentItemState => subagentKeeper
+            .proceedWithSubagent(subagentItemState)
             .materializeIntoChecked))
 
       case subagentSelection: SubagentSelection =>

@@ -25,7 +25,7 @@ import js7.data.subagent.SubagentId;
 import js7.data.subagent.SubagentSelectionId;
 import js7.data_for_java.auth.JAdmission;
 import js7.data_for_java.auth.JHttpsConfig;
-import js7.data_for_java.subagent.JSubagentRef;
+import js7.data_for_java.subagent.JSubagentItem;
 import js7.data_for_java.subagent.JSubagentSelection;
 import js7.proxy.data.event.ProxyEvent;
 import js7.proxy.javaapi.JControllerApi;
@@ -48,7 +48,7 @@ final class JSubagentTester
 {
     private static final AgentPath agentPath = AgentPath.of("AGENT");
 
-    private static final JSubagentRef subagentRef = JSubagentRef.of(
+    private static final JSubagentItem subagentItem = JSubagentItem.of(
         SubagentId.of("SUBAGENT"),
         agentPath,
         Uri.of("http://localhost:0"),
@@ -57,11 +57,11 @@ final class JSubagentTester
     private static final JSubagentSelection subagentSelection = JSubagentSelection.of(
         SubagentSelectionId.of("SUBAGENT"),
         new HashMap<SubagentId, Integer>() {{
-            put(subagentRef.id(), 1/*priority*/);
+            put(subagentItem.id(), 1/*priority*/);
         }});
 
     private static final Set<InventoryItemKey> keys = new HashSet<>(asList(
-        subagentRef.id(), subagentSelection.id()));
+        subagentItem.id(), subagentSelection.id()));
 
     private final JControllerProxy proxy;
     private final JControllerApi api;
@@ -84,36 +84,36 @@ final class JSubagentTester
                        keyedEvents.add(keyedEvent);
                     }
                 }
-                if (keyedEvent.equals(KeyedEvent.of(new ItemDeleted(subagentRef.id())))) {
+                if (keyedEvent.equals(KeyedEvent.of(new ItemDeleted(subagentItem.id())))) {
                     completed.complete((Void)null);
                 }
             });
         Disposable subscription = flux.subscribe();
 
         await(api.updateItems(Flux.just(
-            addOrChangeSimple(subagentRef),
+            addOrChangeSimple(subagentItem),
             addOrChangeSimple(subagentSelection))));
 
         try {
             await(api.updateItems(Flux.just(
                 deleteSimple(subagentSelection.id()))));
             await(api.updateItems(Flux.just(
-                deleteSimple(subagentRef.id()))));
+                deleteSimple(subagentItem.id()))));
             completed.get(99, SECONDS);
         } finally {
             subscription.dispose();
         }
         assertThat(keyedEvents, equalTo(new HashSet<KeyedEvent<Event>>(asList(
-            KeyedEvent.of(new UnsignedSimpleItemAdded(subagentRef
+            KeyedEvent.of(new UnsignedSimpleItemAdded(subagentItem
                 .withRevision(Optional.of(new ItemRevision(0))).asScala())),
             KeyedEvent.of(new UnsignedSimpleItemAdded(subagentSelection
                 .withRevision(Optional.of(new ItemRevision(0))).asScala())),
-            KeyedEvent.of(new ItemAttachable(subagentRef.id(), agentPath)),
-            KeyedEvent.of(new ItemAttached(subagentRef.id(), new Some<>(new ItemRevision(0)), agentPath)),
-            KeyedEvent.of(new ItemDetachable(subagentRef.id(), agentPath)),
-            KeyedEvent.of(new ItemDetached(subagentRef.id(), agentPath)),
-            KeyedEvent.of(new ItemDeletionMarked(subagentRef.id())),
-            KeyedEvent.of(new ItemDeleted(subagentRef.id())),
+            KeyedEvent.of(new ItemAttachable(subagentItem.id(), agentPath)),
+            KeyedEvent.of(new ItemAttached(subagentItem.id(), new Some<>(new ItemRevision(0)), agentPath)),
+            KeyedEvent.of(new ItemDetachable(subagentItem.id(), agentPath)),
+            KeyedEvent.of(new ItemDetached(subagentItem.id(), agentPath)),
+            KeyedEvent.of(new ItemDeletionMarked(subagentItem.id())),
+            KeyedEvent.of(new ItemDeleted(subagentItem.id())),
             KeyedEvent.of(new ItemDeleted(subagentSelection.id()))
         ))));
     }
