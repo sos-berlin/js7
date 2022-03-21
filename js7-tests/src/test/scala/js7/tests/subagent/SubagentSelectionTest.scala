@@ -1,4 +1,4 @@
-package js7.tests
+package js7.tests.subagent
 
 import cats.syntax.traverse._
 import js7.base.configutils.Configs.HoconStringInterpolator
@@ -18,8 +18,8 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentCouplingFailed}
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.SubagentSelectionTest._
 import js7.tests.jobs.EmptyJob
+import js7.tests.subagent.SubagentSelectionTest._
 import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler
 import monix.reactive.Observable

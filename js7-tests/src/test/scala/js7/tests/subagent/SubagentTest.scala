@@ -1,4 +1,4 @@
-package js7.tests
+package js7.tests.subagent
 
 import java.util.concurrent.TimeoutException
 import js7.agent.RunningAgent
@@ -30,8 +30,8 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
 import js7.subagent.BareSubagent
-import js7.tests.SubagentTest._
 import js7.tests.jobs.SemaphoreJob
+import js7.tests.subagent.SubagentTest._
 import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.eval.Task
 import monix.execution.Scheduler

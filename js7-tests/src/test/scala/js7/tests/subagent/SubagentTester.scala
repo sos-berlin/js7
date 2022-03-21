@@ -1,4 +1,4 @@
-package js7.tests
+package js7.tests.subagent
 
 import cats.effect.Resource
 import java.nio.file.Files.{createDirectories, createDirectory}
@@ -19,7 +19,7 @@ import js7.data.subagent.SubagentItemStateEvent.SubagentDedicated
 import js7.proxy.ControllerApi
 import js7.subagent.BareSubagent
 import js7.subagent.configuration.SubagentConf
-import js7.tests.SubagentTester._
+import js7.tests.subagent.SubagentTester._
 import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.eval.Task
 import monix.execution.Scheduler
