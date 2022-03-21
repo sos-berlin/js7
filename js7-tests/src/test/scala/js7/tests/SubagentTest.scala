@@ -448,10 +448,12 @@ with SubagentTester
     }.await(199.s)
   }
 
-  "Change URI of bare Subagent" in pending // TODO
-  "Change URI of Director" in pending // TODO
-  "Change JobResource" in pending // TODO
   "Delete Subagent while processes are still running" in pending // TODO
+
+  //"Change URI of Director" --> See UpdateAgentRefsTest
+
+  "Change URI of bare Subagent" in pending // TODO
+  "Change JobResource" in pending // TODO
 }
 
 object SubagentTest
@@ -473,8 +475,8 @@ object SubagentTest
   {
     def toOrderProcess(step: Step) =
       OrderProcess(
-        step.outTaskObserver.send("STDOUT 1\n") >>
-        step.outTaskObserver.send("STDOUT 2\n") >>
+        step.outTaskObserver.send("STDOUT 1\n") *>
+        step.outTaskObserver.send("STDOUT 2\n") *>
         Task.pure(Outcome.succeeded))
   }
   object TestJob extends InternalJob.Companion[TestJob]
