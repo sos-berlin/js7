@@ -40,6 +40,7 @@ import js7.subagent.configuration.SubagentConf
 import js7.subagent.data.SubagentCommand
 import js7.subagent.data.SubagentCommand.{AttachSignedItem, CoupleDirector, DedicateSubagent, KillProcess, StartOrderProcess}
 import monix.eval.Task
+import scala.annotation.unused
 import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
 import scala.util.{Failure, Success}
@@ -92,7 +93,7 @@ extends SubagentDriver with SubagentEventListener
           })
       .memoize
 
-  def stop(ignoredSignal: Option[ProcessSignal]): Task[Unit] =
+  def stop(@unused signal: Option[ProcessSignal] = None): Task[Unit] =
     logger
       .debugTask(Task.defer {
         stopping = true

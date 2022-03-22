@@ -1,15 +1,17 @@
 package js7.tests.testenv
 
+import cats.effect.Resource
 import cats.syntax.traverse._
 import com.google.inject.Module
 import com.google.inject.util.Modules.EMPTY_MODULE
 import com.typesafe.config.ConfigUtil.quoteString
 import com.typesafe.config.{Config, ConfigFactory}
-import java.nio.file.Files.{createDirectory, createTempDirectory}
+import java.nio.file.Files.{createDirectories, createDirectory, createTempDirectory}
 import java.nio.file.Path
 import js7.agent.RunningAgent
 import js7.agent.configuration.AgentConfiguration
 import js7.base.auth.{Admission, UserAndPassword, UserId}
+import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.crypt.{DocumentSigner, SignatureVerifier, Signed, SignedString}
 import js7.base.generic.SecretString
 import js7.base.io.JavaResource
@@ -28,6 +30,7 @@ import js7.base.utils.Closer.syntax.RichClosersAny
 import js7.base.utils.HasCloser
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.Uri
+import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.crypt.pgp.PgpSigner
 import js7.common.utils.Exceptions.repeatUntilNoException
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
@@ -41,6 +44,8 @@ import js7.data.item.{InventoryItem, ItemOperation, ItemSigner, SignableItem, Si
 import js7.data.job.RelativePathExecutable
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.proxy.ControllerApi
+import js7.subagent.BareSubagent
+import js7.subagent.configuration.SubagentConf
 import js7.tests.testenv.DirectoryProvider._
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -266,6 +271,70 @@ extends HasCloser
     agentTree.createDirectoriesAndFiles()
     controller.writeAgentAuthentication(agentTree)
     agentTree.writeTrustedSignatureKeys(verifier)
+  }
+
+  def subagentResource(subagentItem: SubagentItem, suppressSignatureKeys: Boolean = false)
+  : Resource[Task, BareSubagent] =
+    for {
+      dir <- subagentEnvironment(subagentItem)
+      trustedSignatureDir = dir / "config" / "private" /
+        verifier.companion.recommendedKeyDirectoryName
+      conf = {
+        createDirectories(trustedSignatureDir)
+        if (!suppressSignatureKeys) provideSignatureKeys(trustedSignatureDir)
+        toSubagentConf(dir,
+          trustedSignatureDir,
+          subagentItem.uri.port.orThrow,
+          name = subagentItem.id.string)
+      }
+      scheduler <- BareSubagent.threadPoolResource[Task](conf)
+      subagent <- BareSubagent.resource(conf.finishAndProvideFiles, scheduler)
+    } yield subagent
+
+  private def subagentEnvironment(subagentItem: SubagentItem): Resource[Task, Path] =
+    Resource.make(
+      acquire = Task {
+        val dir = directory / "subagents" / subagentItem.id.string
+        createDirectories(directory / "subagents")
+        createDirectory(dir)
+        createDirectory(dir / "data")
+        createDirectory(dir / "data" / "logs")
+        dir
+      })(
+      release = dir => Task {
+        deleteDirectoryRecursively(dir)
+      })
+
+  private def provideSignatureKeys(trustedSignatureDir: Path) =
+    for ((key, i) <- verifier.publicKeys.zipWithIndex) {
+      trustedSignatureDir / (s"key-${i+1}${verifier.companion.filenameExtension}") := key
+    }
+
+  def toSubagentConf(
+    directory: Path,
+    trustedSignatureDir: Path,
+    port: Int,
+    name: String)
+  : SubagentConf = {
+    SubagentConf.of(
+      configDirectory = directory / "config",
+      dataDirectory = directory / "data",
+      logDirectory = directory / "data" / "logs",
+      jobWorkingDirectory = directory,
+      Seq(WebServerPort.localhost(port)),
+      killScript = None,
+      name = s"SubagentSelectionTest-$name",
+      config = config"""
+        js7.job.execution.signed-script-injection-allowed = yes
+        js7.auth.users.AGENT {
+          permissions: [ AgentDirector ]
+          password: "plain:AGENT-PASSWORD"
+        }
+        js7.configuration.trusted-signature-keys {
+          ${verifier.companion.typeName} = "$trustedSignatureDir"
+        }
+        """
+        .withFallback(SubagentConf.defaultConfig))
   }
 }
 

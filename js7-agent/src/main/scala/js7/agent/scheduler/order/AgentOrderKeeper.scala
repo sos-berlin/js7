@@ -467,8 +467,8 @@ with Stash
                 Future.successful(Left(Problem.pure(s"Different duplicate ${workflow.id}")))
             }
 
-          case jobResource: JobResource =>
-            persist(ItemAttachedToMe(jobResource)) { (stampedEvent, journaledState) =>
+          case _: JobResource =>
+            persist(SignedItemAttachedToMe(signed)) { (stampedEvent, journaledState) =>
               Right(AgentCommand.Response.Accepted)
             }
 

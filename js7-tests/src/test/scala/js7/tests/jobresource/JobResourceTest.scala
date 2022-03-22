@@ -41,9 +41,9 @@ import monix.reactive.Observable
 import org.scalatest.Assertions._
 import org.scalatest.freespec.AnyFreeSpec
 
-final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
+class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  override protected val controllerConfig = config"""
+  override protected final val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
     js7.controller.agent-driver.command-batch-delay = 0ms
@@ -53,7 +53,7 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
     js7.job.execution.signed-script-injection-allowed = on"""
 
   protected val agentPaths = Seq(agentPath)
-  protected val items = Seq(workflow, envWorkflow, sosWorkflow, internalWorkflow,
+  protected lazy val items = Seq(workflow, envWorkflow, sosWorkflow, internalWorkflow,
     aJobResource, bJobResource, envJobResource, sosJobResource)
 
   "referencedItemPaths" in {
@@ -324,7 +324,7 @@ final class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
 object JobResourceTest
 {
-  private val agentPath = AgentPath("AGENT")
+  private[jobresource] val agentPath = AgentPath("AGENT")
 
   private val aJobResource = JobResource(
     JobResourcePath("JOB-RESOURCE-A"),

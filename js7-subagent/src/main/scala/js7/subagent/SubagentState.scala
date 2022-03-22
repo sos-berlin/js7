@@ -32,6 +32,10 @@ with ItemContainer
         Right(copy(
           idToWorkflow = idToWorkflow + (workflow.id -> workflow)))
 
+      case KeyedEvent(_: NoKey, SubagentItemAttached(jobResource: JobResource)) =>
+        Right(copy(
+          pathToJobResource = pathToJobResource + (jobResource.path -> jobResource)))
+
       case KeyedEvent(_, _: OrderProcessed | _: OrderStdWritten | _: SubagentShutdown) =>
         Right(this)
 

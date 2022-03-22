@@ -61,7 +61,7 @@ trait SubagentTester
   : Task[A] =
     Task.defer {
       val eventId = eventWatch.lastAddedEventId
-      subagentResource(subagentItem, suppressSignatureKeys = suppressSignatureKeys)
+      directoryProvider.subagentResource(subagentItem, suppressSignatureKeys = suppressSignatureKeys)
         .use { subagent =>
           if (awaitDedicated) eventWatch.await[SubagentDedicated](after = eventId)
           Task {
