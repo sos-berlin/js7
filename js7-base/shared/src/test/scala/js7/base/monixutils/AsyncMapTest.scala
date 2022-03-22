@@ -2,6 +2,7 @@ package js7.base.monixutils
 
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.ScalaTime._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AsyncFreeSpec
@@ -246,7 +247,7 @@ final class AsyncMapTest extends AsyncFreeSpec
       "stop" in {
         val asyncMap = AsyncMap.stoppable[Int, String]()
         (for {
-          _ <- asyncMap.stop
+          _ <- asyncMap.initiateStop
           checked <- asyncMap.insert(1, "NOT ALLOWED")
           _ = assert(checked == Left(Problem("AsyncMap[int] is being stopped")))
         } yield succeed
@@ -268,14 +269,14 @@ final class AsyncMapTest extends AsyncFreeSpec
     val asyncMap = AsyncMap.stoppable[Int, String]()
 
     "non empty" - {
-        asyncMap.insert(1, "EINS")
-          .as(succeed).runToFuture
+      asyncMap.insert(1, "EINS")
+        .as(succeed).runToFuture
 
       "update is allowed" in {
         (for {
           checked <- asyncMap.insert(1, "EINS")
           _ = Task(assert(checked.isRight))
-          stopped <- asyncMap.stop.start
+          _ <- asyncMap.initiateStop
 
           _ <- asyncMap.getAndUpdate(1, {
             case Some("EINS") => Task("EINS*")
@@ -287,7 +288,7 @@ final class AsyncMapTest extends AsyncFreeSpec
           _ <- Task(assert(tried.isFailure))
 
           _ <- asyncMap.remove(1)
-          _ <- stopped.join
+          _ <- asyncMap.whenStopped
         } yield succeed
         ).runToFuture
       }

@@ -181,8 +181,17 @@ object AsyncMap
 
     private def isStopping = stoppingProblem != null
 
+    final val whenStopped: Task[Unit] =
+      Task.fromFuture(whenEmptyPromise.future)
+        .*>(Task(logger.debug(s"$toString stopped")))
+        .memoize
+
+    /** Initiate stop. */
+    final val initiateStop: Task[Unit] =
+      stopWithMessage(Problem.pure(s"$name is being stopped"))
+
     final val stop: Task[Unit] =
-      stopWithMessage(Problem(s"$name is being stopped"))
+      initiateStop *> whenStopped
 
     final def stopWithMessage(problem: Problem): Task[Unit] =
       Task.defer {
@@ -191,11 +200,9 @@ object AsyncMap
             stoppingProblem = problem
             _map.isEmpty
           })
-          .flatMap(isEmpty =>
-            if (isEmpty) Task.unit
-            else Task.fromFuture(whenEmptyPromise.future))
-          .*>(Task(logger.debug(s"$toString stopped")))
-          .memoize
+          .map { isEmpty =>
+            if (isEmpty) whenEmptyPromise.success(())
+          }
       }
 
     override protected[monixutils] final def onEntryInsert(): Checked[Unit] =
