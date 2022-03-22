@@ -3,3 +3,4 @@
 -J-XX:MaxMetaspaceSize=1500M
 -J-XX:+UseG1GC
 -J-enableassertions
+-J-XX:+HeapDumpOnOutOfMemoryError -J-XX:HeapDumpPath=OutOfMemoryError.hprof
