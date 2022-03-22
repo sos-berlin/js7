@@ -46,7 +46,7 @@ class JControllerApiOrderTester
 
         // Fetch the whole big ControllerState:
         JControllerState controllerState = await(api.controllerState());
-        assertThat(controllerState.idToOrder(OrderId.of("TEST-CANCEL")).isPresent(), equalTo(true));
+        assertThat(controllerState.idToOrder().containsKey(OrderId.of("TEST-CANCEL")), equalTo(true));
 
         // OrderObstacle
         Set<JOrderObstacle> obstacles = getOrThrow(

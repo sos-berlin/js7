@@ -86,7 +86,7 @@ final class JControllerProxyRepoTester
     {
         // The specific workflow version should be unknown
         JWorkflowId workflowId = JWorkflowId.of(bWorkflowPath, versionId);
-        assertThat(proxy.currentState().repo().idToWorkflow(workflowId).mapLeft(Problem::codeOrNull),
+        assertThat(proxy.currentState().repo().idToCheckedWorkflow(workflowId).mapLeft(Problem::codeOrNull),
             equalTo(Either.left(ProblemCode.of("UnknownKey"/*may change*/))));
 
         CompletableFuture<JEventAndControllerState<Event>> whenWorkflowAdded =
@@ -109,21 +109,21 @@ final class JControllerProxyRepoTester
         assertThat(proxy
                 .currentState()
                 .repo()
-                .idToWorkflow(workflowId)
+                .idToCheckedWorkflow(workflowId)
                 .map(o -> o.id().path()),
             equalTo(Either.right(bWorkflowPath)));
 
         assertThat(proxy
                 .currentState()
-                .pathToLock(lock.path())
-                .map(o -> o.withRevision(Optional.empty())),
-            equalTo(Either.right(lock)));
+                .pathToLock().get(lock.path())
+                .withRevision(Optional.empty()),
+            equalTo(lock));
 
         assertThat(proxy
                 .currentState()
-                .pathToBoard(board.path())
-                .map(o -> o.withRevision(Optional.empty())),
-            equalTo(Either.right(board)));
+                .pathToBoard().get(board.path())
+                .withRevision(Optional.empty()),
+            equalTo(board));
     }
 
     private void addItemsOnly(List<JUnsignedSimpleItem> simpleItems, List<SignedString> signedItemJsons) {
@@ -139,7 +139,7 @@ final class JControllerProxyRepoTester
         VersionId versionId = VersionId.of("MY-VERSION-2");  // Must match the versionId in added or replaced objects
 
         // The workflow shoud be known (latest version)
-        assertThat(proxy.currentState().repo().pathToWorkflow(bWorkflowPath).isRight(), equalTo(true));
+        assertThat(proxy.currentState().repo().pathToCheckedWorkflow(bWorkflowPath).isRight(), equalTo(true));
 
         CompletableFuture<JEventAndControllerState<Event>> whenWorkflowRemoved =
             awaitEvent(keyedEvent -> isItemRemoved(keyedEvent, bWorkflowPath));
@@ -152,13 +152,13 @@ final class JControllerProxyRepoTester
 
         // The workflow should be removed (latest version)
         Thread.sleep(100); // Wait a little until currentState is updated
-        assertThat(proxy.currentState().repo().pathToWorkflow(bWorkflowPath).mapLeft(Problem::codeOrNull),
+        assertThat(proxy.currentState().repo().pathToCheckedWorkflow(bWorkflowPath).mapLeft(Problem::codeOrNull),
             equalTo(Either.left(ProblemCode.of("UnknownItemPath"))));
     }
 
     private static SignedString sign(String json) {
         return SignedString.of(
-            json,                       // The string to be be signed
+            json,                       // The string to be signed
             "Silly",                    // Thy signature type, "X509" or "PGP" (or "Silly" for silly testing)
             "MY-SILLY-SIGNATURE");      // The signature of string (in case of X.509: MIME base64 encoded)
     }

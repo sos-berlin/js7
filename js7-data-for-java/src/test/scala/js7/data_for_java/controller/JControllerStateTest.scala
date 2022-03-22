@@ -49,10 +49,6 @@ final class JControllerStateTest extends AnyFreeSpec
     tester.testIdToOrder()
   }
 
-  "eagerIdToOrder" in {
-    tester.testEagerIdToOrder()
-  }
-
   "testOrderByWorkflowPath" in {
     tester.testOrdersBy()
   }

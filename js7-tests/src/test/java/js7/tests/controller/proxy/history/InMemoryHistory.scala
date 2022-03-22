@@ -44,7 +44,7 @@ private[history] final class InMemoryHistory
     val orderId = eventAndState.stampedEvent.value.key
     JOrderEvent.of(eventAndState.stampedEvent.value.event) match {
       case event: JOrderAdded =>
-        val order = getOrThrow(eventAndState.state.idToCheckedOrder(orderId))
+        val order = eventAndState.state.idToOrder.get(orderId)
         _idToOrderEntry.get(orderId) match {
           case None =>
             _idToOrderEntry(orderId) = OrderEntry(
@@ -61,7 +61,7 @@ private[history] final class InMemoryHistory
         }
 
       case event: JOrderForked =>
-        val order = getOrThrow(eventAndState.state.idToCheckedOrder(orderId))
+        val order = eventAndState.state.idToOrder.get(orderId)
         for (child <- event.children.asScala) {
           _idToOrderEntry.get(child.orderId) match {
             case None =>
@@ -79,32 +79,32 @@ private[history] final class InMemoryHistory
         }
 
       case _: JOrderJoined =>
-        val order = getOrThrow(eventAndState.previousState.idToCheckedOrder(orderId))
+        val order = eventAndState.previousState.idToOrder.get(orderId)
         val orderState = getOrThrow(order.checkedState(JOrder.forked))
         for (id <- orderState.childOrderIds.asScala) {
           _idToOrderEntry(id) = _idToOrderEntry(id).copy(terminatedAt = Optional.of(terminatedAt/*timestamp*/))
         }
 
       case JOrderFinished.singleton =>
-        val order = getOrThrow(eventAndState.previousState.idToCheckedOrder(orderId))
+        val order = eventAndState.previousState.idToOrder.get(orderId)
         _idToOrderEntry(orderId) = _idToOrderEntry(orderId).copy(
           terminatedAt = Optional.of(terminatedAt/*timestamp*/),
           endWorkflowPosition = Optional.of(order.workflowPosition))
 
       case JOrderCancelled.singleton =>
-        val order = getOrThrow(eventAndState.state.idToCheckedOrder(orderId))
+        val order = eventAndState.state.idToOrder.get(orderId)
         _idToOrderEntry(orderId) = _idToOrderEntry(orderId).copy(
           terminatedAt = Optional.of(terminatedAt/*timestamp*/),
           endWorkflowPosition = Optional.of(order.workflowPosition))
 
       case _: JOrderFailed =>
-        val order = getOrThrow(eventAndState.state.idToCheckedOrder(orderId))
+        val order = eventAndState.state.idToOrder.get(orderId)
         _idToOrderEntry(orderId) = _idToOrderEntry(orderId).copy(
           terminatedAt = Optional.of(terminatedAt/*timestamp*/),
           endWorkflowPosition = Optional.of(order.workflowPosition))
 
       case _: JOrderProcessingStarted =>
-        val order = getOrThrow(eventAndState.state.idToCheckedOrder(orderId))
+        val order = eventAndState.state.idToOrder.get(orderId)
         var entry = _idToOrderEntry(orderId)
         if (!entry.startedAt.isPresent) {
           entry = entry.copy(
@@ -113,7 +113,7 @@ private[history] final class InMemoryHistory
         }
         val agentPath = getOrThrow(order.attached)
         val agentUri = eventAndState.state.agentToUri(agentPath).get()
-        val maybeJobName = eventAndState.state.repo.idToWorkflow(order.workflowId)
+        val maybeJobName = eventAndState.state.repo.idToCheckedWorkflow(order.workflowId)
           .flatMap(_.checkedJobName(order.workflowPosition.position))
           .fold(_ => Optional.empty[String], (jobName: WorkflowJob.Name) => Optional.of(jobName.string))
         _idToOrderEntry(orderId) = entry.copy(
@@ -123,7 +123,7 @@ private[history] final class InMemoryHistory
             ).asJava)
 
       case event: JOrderProcessed =>
-        val order = getOrThrow(eventAndState.state.idToCheckedOrder(orderId))
+        val order = eventAndState.state.idToOrder.get(orderId)
         _idToOrderEntry(orderId) = _idToOrderEntry(orderId).updateLastStep(terminatedAt/*timestamp*/, event.outcome, order.arguments)
 
       case event: JOrderStdWritten =>

@@ -9,8 +9,6 @@ import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.problem.Problem
 import js7.base.time.JavaTimeConverters.AsScalaInstant
 import js7.base.time.WallClock
-import js7.base.utils.Collections.implicits.RichIterable
-import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.base.web.Uri
 import js7.data.agent.AgentPath
 import js7.data.board.{Board, BoardPath}
@@ -18,13 +16,13 @@ import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.controller.ControllerState
 import js7.data.event.EventId
 import js7.data.execution.workflow.instructions.InstructionExecutorService
+import js7.data.item.InventoryItem
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath}
 import js7.data.order.{Order, OrderId, OrderObstacleCalculator}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.subagent.{SubagentId, SubagentSelectionId}
 import js7.data.value.Value
-import js7.data.workflow.WorkflowPath
 import js7.data_for_java.agent.{JAgentRef, JAgentRefState}
 import js7.data_for_java.board.{JBoard, JBoardState}
 import js7.data_for_java.calendar.JCalendar
@@ -39,7 +37,6 @@ import js7.data_for_java.order.{JOrder, JOrderObstacle}
 import js7.data_for_java.orderwatch.JFileWatch
 import js7.data_for_java.subagent.{JSubagentItem, JSubagentItemState, JSubagentSelection}
 import js7.data_for_java.vavr.VavrConverters._
-import js7.data_for_java.workflow.{JWorkflow, JWorkflowId}
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
 import scala.jdk.StreamConverters._
@@ -61,28 +58,16 @@ extends JJournaledState[JControllerState, ControllerState]
     JClusterState(asScala.clusterState)
 
   @Nonnull
-  @Deprecated
-  @deprecated("Please use repo.idToWorkflow", "2021-02-22")
-  def idToWorkflow(@Nonnull workflowId: JWorkflowId): VEither[Problem, JWorkflow] =
-    repo.idToWorkflow(workflowId)
-
-  @Nonnull
-  @Deprecated
-  @deprecated("Please use repo.pathToWorkflow", "2021-02-22")
-  def pathToWorkflow(@Nonnull workflowPath: WorkflowPath): VEither[Problem, JWorkflow] =
-    repo.pathToWorkflow(workflowPath)
-
-  @Nonnull
   def repo: JRepo =
     new JRepo(asScala.repo)
 
   /** Looks up an AgentRef Item. */
   @Nonnull
-  def pathToAgentRef(@Nonnull agentPath: AgentPath): VEither[Problem, JAgentRef] =
-    asScala.pathToAgentRefState.checked(agentPath)
-      .map(_.agentRef)
-      .map(JAgentRef.apply)
-      .toVavr
+  def pathToAgentRef: java.util.Map[AgentPath, JAgentRef] =
+    asScala.pathToAgentRefState
+      .view
+      .mapValues(o => JAgentRef(o.agentRef))
+      .asJava
 
   @Nonnull
   def idToSubagentItem: java.util.Map[SubagentId, JSubagentItem] =
@@ -113,58 +98,52 @@ extends JJournaledState[JControllerState, ControllerState]
 
   /** Looks up an AgentRefState. */
   @Nonnull
-  def pathToAgentRefState(@Nonnull agentPath: AgentPath): VEither[Problem, JAgentRefState] =
-    asScala.pathToAgentRefState.checked(agentPath)
-      .map(JAgentRefState.apply)
-      .toVavr
+  def pathToAgentRefState: java.util.Map[AgentPath, JAgentRefState] =
+    asScala.pathToAgentRefState
+      .view
+      .mapValues(JAgentRefState.apply)
+      .asJava
 
   /** Looks up a Lock item in the current version. */
   @Nonnull
-  def pathToLock(@Nonnull lockPath: LockPath): VEither[Problem, JLock] =
+  def pathToLock: java.util.Map[LockPath, JLock] =
     asScala.keyTo(Lock)
-      .checked(lockPath)
-      .map(JLock.apply)
-      .toVavr
+      .view
+      .mapValues(JLock.apply)
+      .asJava
 
   /** Looks up a LockState. */
   @Nonnull
-  def pathToLockState(@Nonnull lockPath: LockPath): VEither[Problem, JLockState] =
+  def pathToLockState: java.util.Map[LockPath, JLockState] =
     asScala.pathToLockState
-      .checked(lockPath)
-      .map(JLockState.apply)
-      .toVavr
+      .view
+      .mapValues(JLockState.apply)
+      .asJava
 
   /** Looks up a Board item. */
   @Nonnull
-  def pathToBoard(@Nonnull boardPath: BoardPath): VEither[Problem, JBoard] =
-    asScala.keyTo(Board)
-      .checked(boardPath)
-      .map(JBoard.apply)
-      .toVavr
+  def pathToBoard: java.util.Map[BoardPath, JBoard] =
+    keyToItem(Board, JBoard.apply)
 
   /** Looks up a BoardState. */
   @Nonnull
-  def pathToBoardState(@Nonnull boardPath: BoardPath): VEither[Problem, JBoardState] =
+  def pathToBoardState: java.util.Map[BoardPath, JBoardState] =
     asScala.pathToBoardState
-      .checked(boardPath)
-      .map(JBoardState.apply)
-      .toVavr
+      .view
+      .mapValues(JBoardState.apply)
+      .asJava
 
   @Nonnull
-  def pathToCalendar(@Nonnull boardPath: CalendarPath): VEither[Problem, JCalendar] =
-    asScala.keyTo(Calendar)
-      .checked(boardPath)
-      .map(JCalendar.apply)
-      .toVavr
+  def pathToCalendar: java.util.Map[CalendarPath, JCalendar] =
+    keyToItem(Calendar, JCalendar.apply)
 
   /** Looks up a JFileWatch. */
   @Nonnull
-  def pathToFileWatch(@Nonnull path: OrderWatchPath): VEither[Problem, JFileWatch] =
-    asScala.keyTo(FileWatch)
-      .checked(path)
-      .map(JFileWatch(_))
-      .toVavr
+  def pathToFileWatch: java.util.Map[OrderWatchPath, JFileWatch] =
+    keyToItem(FileWatch, JFileWatch.apply)
 
+  @deprecated("Use pathToFileWatch.values instead", "2.3")
+  @Deprecated
   @Nonnull
   def fileWatches(): java.util.Collection[JFileWatch] =
     asScala.keyTo(FileWatch)
@@ -175,23 +154,31 @@ extends JJournaledState[JControllerState, ControllerState]
 
   /** Looks up a JJobResource. */
   @Nonnull
-  def pathToJobResource(@Nonnull path: JobResourcePath): VEither[Problem, JJobResource] =
-    asScala.keyTo(JobResource)
-      .checked(path)
-      .map(JJobResource(_))
-      .toVavr
+  def pathToJobResource: java.util.Map[JobResourcePath, JJobResource] =
+    keyToItem(JobResource, JJobResource.apply)
+
+  @Nonnull
+  private def keyToItem[I <: InventoryItem, J](I: InventoryItem.Companion[I], toJava: I => J)
+  : java.util.Map[I.Key, J] =
+    asScala.keyTo(I)
+      .view
+      .mapValues(toJava)
+      .asJava
 
   @Nonnull
   def orderIds: java.util.Set[OrderId] =
     asScala.idToOrder.keySet.asJava
 
   @Nonnull
-  def idToOrder(@Nonnull orderId: OrderId): JOptional[JOrder] =
-    asScala.idToOrder.get(orderId)
-      .map(JOrder.apply)
-      .toJava
+  def idToOrder: java.util.Map[OrderId, JOrder] =
+    asScala.idToOrder
+      .view
+      .mapValues(JOrder.apply)
+      .asJava
 
   /** Looks up an OrderId and returns a Left(Problem) if the OrderId is unknown. */
+  @deprecated("Use idToOrder instread", "2.3.0")
+  @Deprecated
   @Nonnull
   def idToCheckedOrder(@Nonnull orderId: OrderId): VEither[Problem, JOrder] =
     asScala.idToOrder.get(orderId)
@@ -199,13 +186,6 @@ extends JJournaledState[JControllerState, ControllerState]
         case None => VEither.left(Problem(s"Unknown OrderId in JControllerState: ${orderId.string}"))
         case Some(o) => VEither.right(o)
       }
-
-  @Deprecated
-  lazy val eagerIdToOrder: JMap[OrderId, JOrder] =
-    asScala.idToOrder
-      .view.values.map(JOrder.apply)
-      .toKeyedMap(_.id)
-      .asJava
 
   @Nonnull
   def ordersBy(@Nonnull predicate: Order[Order.State] => Boolean)

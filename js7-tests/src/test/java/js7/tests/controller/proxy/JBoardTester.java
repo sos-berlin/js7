@@ -29,7 +29,6 @@ import js7.proxy.javaapi.JControllerProxy;
 import js7.proxy.javaapi.data.controller.JEventAndControllerState;
 import org.hamcrest.Matchers;
 import reactor.core.publisher.Flux;
-import static io.vavr.control.Either.right;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static js7.data_for_java.item.JUpdateItemOperation.addVersion;
@@ -87,9 +86,9 @@ public class JBoardTester
         whenBoardAdded.get(99, SECONDS);
         assertThat(proxy
                 .currentState()
-                .pathToBoard(board.path())
-                .map(o -> o.withRevision(Optional.empty())),
-            equalTo(right(board)));
+                .pathToBoard().get(board.path())
+                .withRevision(Optional.empty()),
+            equalTo(board));
     }
 
     private void testPostedNotice() throws ExecutionException, InterruptedException, TimeoutException {
@@ -104,9 +103,9 @@ public class JBoardTester
 
         whenPosted.get(99, SECONDS);
         JNoticePlace postedNotice =
-            getOrThrow(proxy
-                .currentState()
-                .pathToBoardState(board.path()))
+            proxy
+            .currentState()
+            .pathToBoardState().get(board.path())
             .idToNotice(postedNoticeId)
             .get();
         assert postedNotice instanceof JNotice;
@@ -127,9 +126,9 @@ public class JBoardTester
 
         whenWaiting.get(99, SECONDS);
         JNoticePlace noticeExpectation =
-            getOrThrow(proxy
+            proxy
                 .currentState()
-                .pathToBoardState(board.path()))
+                .pathToBoardState().get(board.path())
             .idToNotice(expectedNoticeId)
             .get();
         assert noticeExpectation instanceof JNoticeExpectation;

@@ -88,7 +88,7 @@ final class JFileWatchTester
         JControllerProxy proxy = api.startProxy().get(99, SECONDS);
         try {
             List<JFileWatch> fileWatches = workflowToOrderWatchPaths(proxy.currentState(), workflowPath);
-            JFileWatch expected = getOrThrow(proxy.currentState().pathToFileWatch(fileWatchPath));
+            JFileWatch expected = proxy.currentState().pathToFileWatch().get(fileWatchPath);
             assertThat(fileWatches, equalTo(asList(expected)));
         } finally {
             proxy.stop().get(99, SECONDS);
@@ -96,7 +96,10 @@ final class JFileWatchTester
     }
 
     private static List<JFileWatch> workflowToOrderWatchPaths(JControllerState controllerState, WorkflowPath workflowPath) {
-        return controllerState.fileWatches()
-            .stream().filter(o -> o.workflowPath().equals(workflowPath)).collect(toList());
+        return controllerState
+            .pathToFileWatch()
+            .values()
+            .stream()
+            .filter(o -> o.workflowPath().equals(workflowPath)).collect(toList());
     }
 }

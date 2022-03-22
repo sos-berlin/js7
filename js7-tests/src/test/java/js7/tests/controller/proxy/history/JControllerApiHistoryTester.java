@@ -77,7 +77,7 @@ final class JControllerApiHistoryTester
                 await(api.addOrder(freshOrder));
                 state = whenFirstFluxTerminated.get(99, SECONDS).get();
                 assertThat(
-                    state.idToOrder(freshOrder.id()).get().checkedState(JOrder.finished()).isRight(),
+                    state.idToOrder().get(freshOrder.id()).checkedState(JOrder.finished()).isRight(),
                     equalTo(true));
             } finally {
                 whenFirstFluxTerminated.cancel(false);

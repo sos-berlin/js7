@@ -61,7 +61,7 @@ final class JControllerStateTester
 
     void testWorkflows() {
         new JWorkflowTester(
-            controllerState.repo().idToWorkflow(JWorkflowId.of("A-WORKFLOW", "1.0")).get()
+            controllerState.repo().idToCheckedWorkflow(JWorkflowId.of("A-WORKFLOW", "1.0")).get()
         ).test();
     }
 
@@ -75,17 +75,10 @@ final class JControllerStateTester
 
     void testIdToOrder() {
         new JOrderTester(
-            controllerState.idToOrder(aOrderId).get()
+            controllerState.idToOrder().get(aOrderId)
         ).test();
 
-        assertThat(controllerState.idToOrder(OrderId.of("UNKNOWN")).isPresent(), equalTo(false));
-    }
-
-    void testEagerIdToOrder() {
-        Map<OrderId,JOrder> idToOrder = controllerState.eagerIdToOrder();
-        assertThat(idToOrder, equalTo(expectedIdToOrder));
-
-        new JOrderTester(idToOrder.get(aOrderId)).test();
+        assertThat(controllerState.idToOrder().containsKey(OrderId.of("UNKNOWN")), equalTo(false));
     }
 
     void testOrdersBy() {
