@@ -1,5 +1,6 @@
 package js7.tests.subagent
 
+import java.util.Locale.ROOT
 import java.util.concurrent.TimeoutException
 import js7.agent.RunningAgent
 import js7.base.Problems.MessageSignedByUnknownProblem
@@ -18,12 +19,12 @@ import js7.data.agent.AgentRefStateEvent.AgentReady
 import js7.data.command.CancellationMode
 import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.event.{EventId, KeyedEvent, Stamped}
-import js7.data.item.BasicItemEvent.{ItemAttached, ItemDeleted, ItemDetachable, ItemDetached}
+import js7.data.item.BasicItemEvent.{ItemAttached, ItemAttachedToMe, ItemDeleted, ItemDetachable, ItemDetached}
 import js7.data.item.ItemOperation
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTerminated}
 import js7.data.order.Outcome.Disrupted.ProcessLost
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
-import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentDedicated}
+import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentCouplingFailed, SubagentDedicated}
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -184,6 +185,9 @@ with SubagentTester
     SubagentId("C-SUBAGENT"),
     agentPath,
     Uri(s"http://localhost:${findFreeTcpPort()}"))
+
+  private lazy val c1SubagentItem =
+    cSubagentItem.copy(uri = Uri("http://localhost:" + findFreeTcpPort()))
 
   "Add C-SUBAGENT" in {
     controllerApi.updateUnsignedSimpleItems(Seq(cSubagentItem)).await(99.s).orThrow
@@ -410,7 +414,7 @@ with SubagentTester
       locally {
         TestSemaphoreJob.continue(2)
         eventWatch.await[OrderProcessingStarted](_.key == aOrderId, after = eventId)
-        for (orderId <- View(aOrderId/*, bOrderId*/)) {
+        for (orderId <- View(aOrderId, bOrderId)) {
           val events = eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
           assert(events.head.value.event.isInstanceOf[OrderFinished])
         }
@@ -452,13 +456,150 @@ with SubagentTester
 
   //"Change URI of Director" --> See UpdateAgentRefsTest
 
-  "Change URI of bare Subagent" in pending // TODO
-  "Change JobResource" in pending // TODO
+  "Restart Subagent at another URI" in {
+    var eventId = eventWatch.lastAddedEventId
+
+    val aOrderId = OrderId("A-MOVE-SUBAGENT")
+    // Start c0Subagent
+    val (c0Subagent, cSubagentRelease) = subagentResource(cSubagentItem, awaitDedicated = false)
+      .allocated.await(99.s)
+
+    locally {
+      controllerApi.addOrder(FreshOrder(aOrderId, cWorkflow.path)).await(99.s).orThrow
+      val processingStarted = eventWatch
+        .await[OrderProcessingStarted](_.key == aOrderId, after = eventId).head.value.event
+      assert(processingStarted == OrderProcessingStarted(cSubagentItem.id))
+      eventWatch.await[OrderStdoutWritten](_.key == aOrderId, after = eventId)
+      // aOrderIds is waiting for semaphore
+    }
+
+    eventId = eventWatch.lastAddedEventId
+    //val agentEventId = agent.eventWatch.lastAddedEventId
+    controllerApi.updateItems(Observable(ItemOperation.AddOrChangeSimple(c1SubagentItem)))
+      .await(99.s).orThrow
+    //agent.eventWatch.await[ItemAttachedToMe](_.event.item.key == c1SubagentItem.id,
+    //  after = agentEventId)
+    //agent.eventWatch.await[SubagentCouplingFailed](_.key == c1SubagentItem.id, after = agentEventId)
+
+    // Start the replacing c1Subagent while the previous c0Subagent is still running
+    runSubagent(c1SubagentItem, suffix = "-1") { _ =>
+      val aProcessed = eventWatch.await[OrderProcessed](_.key == aOrderId, after = eventId).head
+      assert(aProcessed.value.event == OrderProcessed.processLost)
+
+      // After ProcessLost at previous Subagent aOrderId restarts at current Subagent
+      TestSemaphoreJob.continue(1)  // aOrder still runs on c0Subagent (but it is ignored)
+      TestSemaphoreJob.continue(1)
+      val a2Processed = eventWatch
+        .await[OrderProcessed](_.key == aOrderId, after = aProcessed.eventId)
+        .head.value.event
+      assert(a2Processed == OrderProcessed(Outcome.succeeded))
+
+      eventWatch.await[OrderFinished](_.key == aOrderId, after = eventId)
+
+      locally {
+        // Start another order
+        val bOrderId = OrderId("B-MOVE-SUBAGENT")
+        TestSemaphoreJob.continue(1)
+        controllerApi.addOrder(FreshOrder(bOrderId, cWorkflow.path)).await(99.s).orThrow
+        val bStarted = eventWatch.await[OrderProcessingStarted](_.key == bOrderId, after = eventId)
+          .head.value.event
+        assert(bStarted == OrderProcessingStarted(c1SubagentItem.id))
+
+        eventWatch.await[OrderStdoutWritten](_.key == bOrderId, after = eventId)
+
+        eventWatch.await[OrderProcessed](_.key == bOrderId, after = eventId).head.value.event
+        val bProcessed = eventWatch.await[OrderProcessed](_.key == bOrderId, after = eventId)
+          .head.value.event
+        assert(bProcessed == OrderProcessed(Outcome.succeeded))
+        eventWatch.await[OrderFinished](_.key == bOrderId, after = eventId)
+      }
+    }.await(199.s)
+
+    // For this test, the terminating Subagent must no emit any event before shutdown
+    //c1Subagent.journal.stopEventWatch()
+    c0Subagent.shutdown(Some(SIGKILL), dontWaitForDirector = true).await(99.s)
+    cSubagentRelease.await(99.s)
+  }
+
+  "Change only URI of running Subagent" in {
+    pending
+
+    // The continuously running Subagent is reachable under a changed URI
+    // Orders are not affected.
+    runSubagent(c1SubagentItem) { _ =>
+      TestSemaphoreJob.reset()
+      var eventId = eventWatch.lastAddedEventId
+
+      locally {
+        // To be safe, the current Subagent is coupled, we run a Order.
+        val aOrderId = OrderId("A-CHANGE-URI")
+        controllerApi.addOrder(FreshOrder(aOrderId, cWorkflow.path)).await(99.s).orThrow
+        val bStarted = eventWatch.await[OrderProcessingStarted](_.key == aOrderId, after = eventId)
+          .head.value.event
+        assert(bStarted == OrderProcessingStarted(c1SubagentItem.id))
+
+        TestSemaphoreJob.continue(1)
+        eventWatch.await[OrderFinished](_.key == aOrderId, after = eventId)
+      }
+
+      // Start an Order
+      val bOrderId = OrderId("B-CHANGE-URI")
+      locally {
+        controllerApi.addOrder(FreshOrder(bOrderId, cWorkflow.path)).await(99.s).orThrow
+        val processingStarted = eventWatch
+          .await[OrderProcessingStarted](_.key == bOrderId, after = eventId).head.value.event
+        assert(processingStarted == OrderProcessingStarted(c1SubagentItem.id))
+        eventWatch.await[OrderStdoutWritten](_.key == bOrderId, after = eventId)
+        // bOrderId is waiting for semaphore
+      }
+
+      // Change URI to upper-case
+      val c2SubagentItem = c1SubagentItem.copy(uri = Uri(c1SubagentItem.uri.string.toUpperCase(ROOT)))
+      assert(c2SubagentItem.uri != c1SubagentItem.uri)
+      eventId = eventWatch.lastAddedEventId
+      val agentEventId = agent.eventWatch.lastAddedEventId
+      controllerApi.updateItems(Observable(ItemOperation.AddOrChangeSimple(c2SubagentItem)))
+        .await(99.s).orThrow
+      agent.eventWatch.await[ItemAttachedToMe](_.event.item.key == c2SubagentItem.id,
+        after = agentEventId)
+      agent.eventWatch.await[SubagentCouplingFailed](_.key == c1SubagentItem.id, after = agentEventId)
+
+      TestSemaphoreJob.continue(1)
+      val aProcessed = eventWatch.await[OrderProcessed](_.key == bOrderId, after = eventId).head
+      assert(aProcessed.value.event == OrderProcessed(Outcome.succeeded))
+
+      eventWatch.await[OrderFinished](_.key == bOrderId, after = eventId)
+      assert(eventWatch
+        .allKeyedEvents[OrderEvent]
+        .collect { case KeyedEvent(`bOrderId`, event) => event }
+        == Seq())
+
+      locally {
+        // Start another order
+        val cOrderId = OrderId("C-CHANGE-URI")
+        controllerApi.addOrder(FreshOrder(cOrderId, cWorkflow.path)).await(99.s).orThrow
+        val bStarted = eventWatch.await[OrderProcessingStarted](_.key == cOrderId, after = eventId)
+          .head.value.event
+        assert(bStarted == OrderProcessingStarted(c2SubagentItem.id))
+
+        TestSemaphoreJob.continue(1)
+        eventWatch.await[OrderProcessed](_.key == cOrderId, after = eventId).head.value.event
+        val bProcessed = eventWatch.await[OrderProcessed](_.key == cOrderId, after = eventId)
+          .head.value.event
+        assert(bProcessed == OrderProcessed(Outcome.succeeded))
+        eventWatch.await[OrderFinished](_.key == cOrderId, after = eventId)
+      }
+    }
+  }.await(99.s)
+
+  "❓ Change URI twice before Subagent has restarted" in pending // FIXME
+
+  //"Change JobResource" in --> See JobResourceAtBareSubagentTest
 }
 
 object SubagentTest
 {
-  private val agentPath = AgentPath("AGENT")
+  val agentPath = AgentPath("AGENT")
   private val logger = Logger[this.type]
 
   private val workflow = Workflow(

@@ -1,6 +1,7 @@
 package js7.agent.subagent
 
 import akka.actor.ActorSystem
+import cats.syntax.flatMap._
 import cats.syntax.traverse._
 import com.typesafe.config.ConfigUtil
 import js7.agent.data.AgentState
@@ -21,6 +22,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.stream.Numbered
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.SetOnce
 import js7.base.web.HttpClient
 import js7.base.web.HttpClient.HttpException
 import js7.common.http.configuration.RecouplingStreamReaderConf
@@ -61,6 +63,8 @@ extends SubagentDriver with SubagentEventListener
   private val logger = Logger.withPrefix[this.type](subagentId.toString)
   private val dispatcher = new SubagentDispatcher(subagentId, postQueuedCommand)
   private val attachedItemKeys = AsyncVariable(Map.empty[InventoryItemKey, Option[ItemRevision]])
+  private val initiallyCoupled = SetOnce[SubagentRunId]
+  @volatile private var lastSubagentRunId: Option[SubagentRunId] = None
   @volatile private var stopping = false
   @volatile private var shuttingDown = false
 
@@ -100,6 +104,21 @@ extends SubagentDriver with SubagentEventListener
           })
       .memoize
 
+  def startMovedSubagent(previous: RemoteSubagentDriver): Task[Unit] =
+    logger.debugTask(
+      startEventListener
+        .*>(initiallyCoupled.task)
+        .flatTap(subagentRunId => Task.defer {
+          logger.debug(s"startMovedSubagent(${previous.lastSubagentRunId} $previous ${previous.hashCode}): this=$subagentRunId")
+          // Does not work, so we kill all processes.
+          //if (previous.lastSubagentRunId contains subagentRunId)
+          //  // Same SubagentRunId continues. So we transfer the command queue.
+          //  dispatcher.enqueueExecutes(previous.dispatcher)
+          //else
+            previous.emitProcessLostEvents(None)
+        })
+        .flatMap(dispatcher.start))
+
   def stop(@unused signal: Option[ProcessSignal] = None): Task[Unit] =
     logger
       .debugTask(Task.defer {
@@ -117,6 +136,9 @@ extends SubagentDriver with SubagentEventListener
         // Emit event and change state ???
         .*>(tryShutdownSubagent)
     })
+
+  //def suspend: Task[Unit] =
+  //  dispatcher.suspend *> stopEventListener
 
   private def tryShutdownSubagent: Task[Unit] =
     client
@@ -147,22 +169,27 @@ extends SubagentDriver with SubagentEventListener
 
   private def dedicate: Task[DedicateSubagent.Response] = {
     val cmd = DedicateSubagent(subagentId, subagentItem.agentPath, controllerId)
-    postCommandUntilSucceeded(cmd)
-      .flatMap(response => persistence
-        .persistKeyedEvent(subagentId <-: SubagentDedicated(response.subagentRunId))
-        .rightAs(response)
-        .map(_.orThrow)
-        .<*(dispatcher.start(response.subagentRunId)))
+    logger.debugTask(
+      postCommandUntilSucceeded(cmd)
+        .flatMap(response => persistence
+          .persistKeyedEvent(subagentId <-: SubagentDedicated(response.subagentRunId))
+          .tapEval(checked => Task.when(checked.isRight)(Task {
+            logger.debug(s"### dedicate: $toString $hashCode lastSubagentRunId=${response.subagentRunId}")
+            lastSubagentRunId = Some(response.subagentRunId)
+          }))
+          .rightAs(response)
+          .map(_.orThrow)
+          .<*(dispatcher.start(response.subagentRunId))))
   }
 
-  private def couple(subagentRunId: SubagentRunId, eventId: EventId): Task[EventId] =
-    Task.defer {
-      val cmd = CoupleDirector(subagentId, subagentRunId, eventId,
-        SubagentEventListener.heartbeatTiming)
-      Task.tailRecM(())(_ =>
+  private def couple(subagentRunId: SubagentRunId, eventId: EventId): Task[EventId] = {
+    val cmd = CoupleDirector(subagentId, subagentRunId, eventId,
+      SubagentEventListener.heartbeatTiming)
+    Task
+      .tailRecM(())(_ =>
         // TODO Must be stoppable
         postCommand(Numbered(0, cmd))
-          .as(Right(eventId))
+          .as(Right(subagentRunId -> eventId))
           .onErrorRecoverWith {
             case HttpException.HasProblem(SubagentNotDedicatedProblem) =>
               orderToPromise.toMap.size match {
@@ -171,44 +198,58 @@ extends SubagentDriver with SubagentEventListener
               }
               onSubagentDied(SubagentRestarted)
                 .*>(dedicate)
-                .map(response => Right(response.subagentEventId))
+                .map(response => Right(response.subagentRunId -> response.subagentEventId))
 
             case throwable =>
               logger.warn(s"DedicateSubagent failed: ${throwable.toStringWithCauses}")
               Task.left(()).delayExecution(reconnectErrorDelay)
           })
-    }
+      .flatTap { case (subagentRunId, _) =>
+        Task {
+          logger.debug(s"### couple: $toString $hashCode lastSubagentRunId=$subagentRunId")
+          lastSubagentRunId = Some(subagentRunId)
+          initiallyCoupled.trySet(subagentRunId)
+        }
+      }
+      .map(_._2/*EventId*/)
+  }
 
   // May run concurrently with onStartOrderProcessFailed !!!
-  // Be sure that only on OrderProcessed event is emitted!
+  // We make sure that only one OrderProcessed event is emitted.
   /** Emit OrderProcessed(ProcessLost) and `subagentDied` events. */
-  protected def onSubagentDied(subagentDied: SubagentDied): Task[Unit] = {
+  protected def onSubagentDied(subagentDied: SubagentDied): Task[Unit] =
+    emitProcessLostEvents(Some(subagentDied))
+
+  /** Emit OrderProcessed(ProcessLost) and optionally a `subagentDied` event. */
+  private def emitProcessLostEvents(subagentDied: Option[SubagentDied]): Task[Unit] = {
     // Subagent died and lost its state
     // Emit OrderProcessed(Disrupted(ProcessLost)) for each processing order.
-    // Then subagentDied
+    // Then optionally subagentDied
     val processing = Order.Processing(subagentId)
     logger.debugTask(orderToPromise
       .removeAll
       .flatMap { oToP =>
         val orderIds = oToP.keys
         val promises = oToP.values
-        dispatcher
-          .stop {
-            case _: StartOrderProcess => CommandDispatcherStoppedProblem
-          }
+        Task
+          .when(subagentDied.isDefined)(
+            dispatcher.stop {
+              case _: StartOrderProcess => CommandDispatcherStoppedProblem
+            })
           .*>(attachedItemKeys.update(_ => Task.pure(Map.empty)))
           .*>(persistence
-              .persist(state => Right(orderIds.view
-                .filter(orderId =>
-                  // Just to be sure, condition should always be true:
-                  state.idToOrder.get(orderId).exists(_.state == processing))
-                .map(_ <-: OrderProcessed.processLost)
-                .concat((subagentId <-: subagentDied) :: Nil)
-                .toVector))
-              .map(_.orThrow)
-              .*>(Task {
-                for (p <- promises) p.success(OrderProcessed.processLost)
-              }))
+            .persist(state => Right(orderIds.view
+              .filter(orderId =>
+                // Just to be sure, condition should always be true:
+                state.idToOrder.get(orderId).exists(_.state == processing))
+              // Filter Orders which have been sent to Subagent ???
+              .map(_ <-: OrderProcessed.processLost)
+              .concat(subagentDied.map(subagentId <-: _))
+              .toVector))
+            .map(_.orThrow)
+            .*>(Task {
+              for (p <- promises) p.success(OrderProcessed.processLost)
+            }))
       })
   }
 
@@ -349,6 +390,9 @@ extends SubagentDriver with SubagentEventListener
       .enqueueCommand(cmd)
       .map(_
         .map(_.orThrow/*???*/)
+        .onErrorHandle(t =>
+          logger.error(s"${cmd.toShortString} => ${t.toStringWithCauses}",
+            t.nullIfNoStackTrace))
         .startAndForget/* Don't await response */)
 
   private def postQueuedCommand(

@@ -14,6 +14,7 @@ import js7.base.monixutils.Switch
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
+import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.http.RecouplingStreamReader
 import js7.data.event.JournalEvent.StampedHeartbeat
@@ -28,7 +29,7 @@ import js7.subagent.SubagentState.keyedEventJsonCodec
 import js7.subagent.client.SubagentClient
 import js7.subagent.data.SubagentEvent
 import monix.catnap.MVar
-import monix.eval.Task
+import monix.eval.{Fiber, Task}
 import monix.execution.atomic.Atomic
 import monix.reactive.Observable
 import scala.util.chaining.scalaUtilChainingOps
@@ -40,27 +41,34 @@ private trait SubagentEventListener
   private val logger = Logger.withPrefix[SubagentEventListener](subagentId.toString)
   private lazy val stdoutCommitOptions = CommitOptions(delay = subagentConf.stdoutCommitDelay)  // TODO Use it!
   private val stopObserving = MVar.empty[Task, Unit]().memoize
-  private val observingStopped = MVar.empty[Task, Unit]().memoize
+  @volatile private var observing: Fiber[Unit] = Fiber(Task.unit, Task.unit)
   private val _isHeartbeating = Atomic(false)
   private val isListening = Atomic(false)
+  private val lock = AsyncLock()
 
   protected final val coupled = Switch(false)
 
-  protected final def stopEventListener: Task[Unit] =
-    logger.debugTask(Task.defer(
+  protected final def stopEventListener: Task[Unit] = {
+    lock.lock(logger.debugTask(Task.defer(
       Task.when(isListening.getAndSet(false))(
-        stopObserving.flatMap(_.tryPut(())) *>
-          observingStopped.flatMap(_.tryRead).void)))
+        stopObserving
+          .flatMap(_.tryPut(())).void
+          .*>(Task.defer(observing.join))))))
+  }
 
   protected final def startEventListener: Task[Unit] =
-    logger.debugTask(Task.defer {
+    lock.lock(logger.debugTask(Task.defer {
       if (isListening.getAndSet(true)) {
         val msg = "Duplicate startEventListener"
         logger.error(msg)
         Task.raiseError(new RuntimeException(s"$toString: $msg"))
       } else
-        observeEvents.startAndForget
-    })
+        observeEvents
+          .start
+          .map(fiber => Task {
+            observing = fiber
+          })
+    }))
 
   private def observeEvents: Task[Unit] = {
     val recouplingStreamReader = newEventListener()
@@ -211,7 +219,7 @@ private trait SubagentEventListener
 
   private val onHeartbeatStarted: Observable[Unit] =
     Observable.fromTask(
-      Task.defer(Task.when(!_isHeartbeating.getAndSet(true))(
+      Task.defer(Task.when(!_isHeartbeating.getAndSet(true) && isCoupled)(
         // Different to AgentDriver,
         // for Subagents the Coupling state is tied to the continuous flow of events.
         persistence.persistKeyedEvent(subagentId <-: SubagentCoupled)

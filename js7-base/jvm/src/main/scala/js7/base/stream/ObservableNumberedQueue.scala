@@ -6,6 +6,7 @@ import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.{Checked, Problem}
 import js7.base.stream.ObservableNumberedQueue._
 import js7.base.time.ScalaTime._
+import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AsyncLock
 import js7.base.utils.BinarySearch.binarySearch
 import js7.base.utils.ScalaUtils.syntax._
@@ -36,10 +37,25 @@ final class ObservableNumberedQueue[V: Tag]
           nextNumber += 1
         }
         lastNumber
-      }.flatMap(lastNumber => Task {
-        // This separate Task should work as a write barrier for queue.
-        if (lastNumber != -1) sync.onAdded(lastNumber)
-      }))
+      }.flatMap(syncNumber)) // This separate Task should work as a write barrier for queue (?)
+
+  def enqueueNumbered(commands: Iterable[Numbered[V]]): Task[Unit] =
+    Task.when(commands.nonEmpty)(
+      lock.lock(Task {
+        var lastNumber = -1L
+        for (command <- commands) {
+          assertThat(command.number >= nextNumber)
+          queue :+= command
+          lastNumber = command.number
+          nextNumber = command.number + 1
+        }
+        lastNumber
+      }.flatMap(syncNumber))) // This separate Task should work as a write barrier for queue (?)
+
+  private def syncNumber(lastNumber: Long): Task[Unit] =
+    Task {
+      if (lastNumber != -1) sync.onAdded(lastNumber)
+    }
 
   def observable: Observable[Seq[Numbered[V]]] =
     observable(torn)

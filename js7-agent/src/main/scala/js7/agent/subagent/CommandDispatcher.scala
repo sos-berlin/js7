@@ -26,7 +26,7 @@ private trait CommandDispatcher
   protected val postCommand: PostCommand
 
   private lazy val logger = Logger.withPrefix[this.type](name)
-  private var queue = new ObservableNumberedQueue[Execute]
+  protected final var queue = new ObservableNumberedQueue[Execute]
   private val processingAllowed = Switch(false)
   private var processing: Future[Unit] = Future.successful(())
   private val lock = AsyncLock()
@@ -50,12 +50,16 @@ private trait CommandDispatcher
               logger.debug(s"$numberedExecute => $problem")
               numberedExecute.value.tryRespond(Success(Left(problem)))
             }
+            // TODO Die anderen Kommandos auch abbrechen? tryResponse(Success(Left(??)))
           }
           Task.fromFuture(processing)
             .<*(Task {
               processing = Future.successful(())
             })
         })))
+
+  //def dequeueAll: Task[Seq[Numbered[Command]]] =
+  //  queue.dequeueAll.map(_.map(_.map(_.command)))
 
   final def executeCommand(command: Command): Task[Checked[Response]] =
     executeCommands(command :: Nil)
@@ -71,11 +75,9 @@ private trait CommandDispatcher
 
   def enqueueCommands(commands: Iterable[Command]): Task[Seq[Task[Checked[Response]]]] = {
     val executes: Seq[Execute] = commands.view.map(new Execute(_)).toVector
-    /*logger.traceTask("enqueueCommands",
-      executes.headOption.fold("")(_.command.toShortString) + ((executes.sizeIs > 1) ?? ",...")
-    )*/(queue
+    queue
       .enqueue(executes)
-      .map(_ => executes.map(_.responded)))
+      .map(_ => executes.map(_.responded))
   }
 
   private def processQueue(subagentRunId: SubagentRunId): Task[Unit] =
@@ -103,10 +105,10 @@ private trait CommandDispatcher
 
   override def toString = s"CommandDispatcher($name)"
 
-  private final class Execute(val command: Command)
+  protected final class Execute(
+    val command: Command,
+    val promise: Promise[Checked[Response]] = Promise())
   {
-    private val promise = Promise[Checked[Response]]()
-
     val responded = Task.fromFuture(promise.future)
 
     def respond(response: Try[Checked[Response]]): Unit =
