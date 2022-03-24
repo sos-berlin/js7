@@ -54,8 +54,6 @@ extends SubagentDriver
   private val orderIdToJobDriver = AsyncMap.stoppable[OrderId, JobDriver]()
   @volatile private var stopping = false
 
-  def isHeartbeating = true
-
   def isStopping = stopping
 
   def isShuttingDown = false

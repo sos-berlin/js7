@@ -66,6 +66,13 @@ extends SubagentDriver with SubagentEventListener
 
   def subagentId = subagentItem.id
 
+  override def isCoupled =
+    super.isCoupled &&
+      isHeartbeating &&
+      persistence.currentState
+        .idToSubagentItemState.get(subagentId)
+        .exists(_.isCoupled)
+
   def isStopping = stopping
 
   def isShuttingDown = shuttingDown

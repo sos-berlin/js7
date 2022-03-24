@@ -23,14 +23,12 @@ trait SubagentDriver
 
   def subagentId: SubagentId
 
-  def isHeartbeating: Boolean
-
   def isStopping: Boolean
 
   def isShuttingDown: Boolean
 
-  final def isAcceptingOrder =
-    isHeartbeating && !isStopping && !isShuttingDown
+  def isCoupled =
+    !isStopping && !isShuttingDown
 
   protected def persistence: StatePersistence[S]
 

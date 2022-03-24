@@ -22,6 +22,9 @@ extends UnsignedSimpleItemState
 
   def subagentId = subagentItem.id
 
+  def isCoupled =
+    couplingState == Coupled && problem.isEmpty
+
   def applyEvent(event: SubagentItemStateEvent): Checked[SubagentItemState] =
     event match {
       case SubagentEventsObserved(untilEventId) =>
