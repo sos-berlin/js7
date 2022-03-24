@@ -273,10 +273,13 @@ extends HasCloser
     agentTree.writeTrustedSignatureKeys(verifier)
   }
 
-  def subagentResource(subagentItem: SubagentItem, suppressSignatureKeys: Boolean = false)
+  def subagentResource(
+    subagentItem: SubagentItem,
+    suffix: String = "",
+    suppressSignatureKeys: Boolean = false)
   : Resource[Task, BareSubagent] =
     for {
-      dir <- subagentEnvironment(subagentItem)
+      dir <- subagentEnvironment(subagentItem, suffix = suffix)
       trustedSignatureDir = dir / "config" / "private" /
         verifier.companion.recommendedKeyDirectoryName
       conf = {
@@ -291,10 +294,10 @@ extends HasCloser
       subagent <- BareSubagent.resource(conf.finishAndProvideFiles, scheduler)
     } yield subagent
 
-  private def subagentEnvironment(subagentItem: SubagentItem): Resource[Task, Path] =
+  private def subagentEnvironment(subagentItem: SubagentItem, suffix: String): Resource[Task, Path] =
     Resource.make(
       acquire = Task {
-        val dir = directory / "subagents" / subagentItem.id.string
+        val dir = directory / "subagents" / (subagentItem.id.string + suffix)
         createDirectories(directory / "subagents")
         createDirectory(dir)
         createDirectory(dir / "data")

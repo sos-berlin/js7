@@ -84,8 +84,7 @@ object BasicItemEvent
     def key = item.key
   }
 
-  // FIXME Use this SignedItemAttachedToMe to provide Subagents with Signed[SignableItem]
-  /** Agent only. */
+  /** Agent and Subagent only. */
   final case class SignedItemAttachedToMe(signed: Signed[SignableItem])
   extends ForDelegate {
     def item = signed.value

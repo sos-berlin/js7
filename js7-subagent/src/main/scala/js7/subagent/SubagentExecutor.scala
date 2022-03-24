@@ -88,7 +88,7 @@ trait SubagentExecutor
               s"Subagent${dedicatedOnce.toOption.fold("")(_.toString + " ")} stopped")
             val t = ProgramTermination(restart = restart)
             stoppedOnce.trySet(t)
-            }))
+          }))
         .*>(stoppedOnce.task)
     })
 
@@ -101,7 +101,7 @@ trait SubagentExecutor
       if (!isFirst) {
         // TODO Idempotent: Frisch gewidmeter Subagent ist okay. Kein Kommando darf eingekommen sein.
         //if (cmd.subagentId == dedicatedOnce.orThrow.subagentId)
-        //  Task.pure(Rightm(DedicateSubagent.Response(subagentRunId, EventId.BeforeFirst)))
+        //  Task.pure(Right(DedicateSubagent.Response(subagentRunId, EventId.BeforeFirst)))
         //else
         Task.left(Problem.pure(s"This Subagent has already been dedicated: $dedicatedOnce"))
       } else {

@@ -90,7 +90,7 @@ with SubagentTester
 
   "Start a second Subagent" in {
     val eventId = eventWatch.lastAddedEventId
-    val pair = subagentResource(bSubagentItem).allocated.await(99.s)
+    val pair = directoryProvider.subagentResource(bSubagentItem).allocated.await(99.s)
     bSubagent = pair._1
     bSubagentRelease = pair._2
     eventWatch.await[SubagentDedicated](_.key == bSubagentItem.id, after = eventId)

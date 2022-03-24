@@ -45,7 +45,7 @@ import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
 import scala.util.{Failure, Success}
 
-final class RemoteSubagentDriver(
+private final class RemoteSubagentDriver(
   val subagentItem: SubagentItem,
   httpsConfig: HttpsConfig,
   protected val persistence: StatePersistence[AgentState],
@@ -83,7 +83,7 @@ extends SubagentDriver with SubagentEventListener
 
   private val orderToPromise = AsyncMap.stoppable[OrderId, Promise[OrderProcessed]]()
 
-  def start: Task[Unit] =
+  val start: Task[Unit] =
     logger
       .debugTask(
         dedicateOrCouple
@@ -449,10 +449,10 @@ extends SubagentDriver with SubagentEventListener
           case Some(t) => t.toStringWithCauses
         }
         if (lastWarning.contains(warning)) {
-          logger.debug(s"#$warningCount (${startedAt.elapsed.pretty}) $warning")
+          logger.debug(s"Retry warning #$warningCount (${startedAt.elapsed.pretty}) $warning")
         } else {
           lastWarning = Some(warning)
-          logger.warn(s"#$warningCount $warning")
+          logger.warn(s"Retry warning #$warningCount $warning")
         }
         Task.sleep(tryPostErrorDelay) // Retry
           .as(Left(()))
@@ -477,6 +477,7 @@ extends SubagentDriver with SubagentEventListener
             .void)
       }
   }
+
   private def dependentSignedItems(command: SubagentCommand): Task[Checked[Seq[Signed[SignableItem]]]] =
     command match {
       case startOrderProcess: StartOrderProcess =>
@@ -487,17 +488,6 @@ extends SubagentDriver with SubagentEventListener
       case _ =>
         Task.right(Nil)
     }
-
-  //private def dependentCommands(command: SubagentCommand): Task[Checked[Seq[SubagentCommand]]] =
-  //  command match {
-  //    case startOrderProcess: StartOrderProcess =>
-  //      signableItemsForOrderProcessing(startOrderProcess.order.workflowPosition)
-  //        .map(_.map(_
-  //          .filterNot(signed => attachedItemKeys(signed.value.key))
-  //          .map(AttachSignedItem(_))))
-  //    case _ =>
-  //      Task.right(Nil)
-  //  }
 
   private def signableItemsForOrderProcessing(workflowPosition: WorkflowPosition)
   : Task[Checked[Seq[Signed[SignableItem]]]] =

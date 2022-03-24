@@ -3,7 +3,7 @@ package js7.agent.subagent
 import js7.agent.subagent.Prioritized._
 import js7.base.problem.{Checked, Problem}
 
-final class Prioritized[A] private(
+private final class Prioritized[A] private(
   private val orderedKeys: IndexedSeq[A],
   private val toPriority: A => Int)
 {

@@ -33,7 +33,7 @@ import monix.execution.atomic.Atomic
 import monix.reactive.Observable
 import scala.util.chaining.scalaUtilChainingOps
 
-trait SubagentEventListener
+private trait SubagentEventListener
 {
   this: RemoteSubagentDriver =>
 
@@ -236,7 +236,7 @@ trait SubagentEventListener
   final def isHeartbeating = _isHeartbeating.get()
 }
 
-object SubagentEventListener
+private object SubagentEventListener
 {
   private val PauseDetected: Stamped[KeyedEvent[Event]] = Stamped(0L, null)
   private[subagent] val heartbeatTiming = HeartbeatTiming(3.s, 10.s)  // TODO

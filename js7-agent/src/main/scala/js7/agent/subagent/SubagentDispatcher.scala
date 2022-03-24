@@ -8,7 +8,7 @@ import js7.data.subagent.{SubagentId, SubagentRunId}
 import js7.subagent.data.SubagentCommand
 import monix.eval.Task
 
-final class SubagentDispatcher(
+private final class SubagentDispatcher(
   subagentId: SubagentId,
   protected val postCommand: PostCommand)
 extends CommandDispatcher

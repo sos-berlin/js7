@@ -15,7 +15,7 @@ import monix.reactive.Observable
 import scala.concurrent.{Future, Promise}
 import scala.util.{Success, Try}
 
-trait CommandDispatcher
+private trait CommandDispatcher
 {
   protected type Command <: CommonCommand
   private type Response = Unit

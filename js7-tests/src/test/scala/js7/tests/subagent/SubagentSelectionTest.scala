@@ -72,7 +72,7 @@ with SubagentTester
 
   private lazy val idToRelease = subagentItems
     .traverse(subagentItem =>
-      subagentResource(subagentItem)
+      directoryProvider.subagentResource(subagentItem)
         .allocated
         .map(subagentItem.id -> _._2))
     .await(99.s)
