@@ -194,7 +194,7 @@ abstract class RecouplingStreamReader[
                       (problem match {
                         case InvalidSessionTokenProblem =>
                           Task {
-                            logger.debug(s"🚫 $api: $InvalidSessionTokenProblem")
+                            logger.debug(s"⛔️ $api: $InvalidSessionTokenProblem")
                             true
                           }
                         case _ =>

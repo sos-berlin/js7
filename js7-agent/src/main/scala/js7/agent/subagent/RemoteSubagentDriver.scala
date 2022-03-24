@@ -174,7 +174,6 @@ extends SubagentDriver with SubagentEventListener
         .flatMap(response => persistence
           .persistKeyedEvent(subagentId <-: SubagentDedicated(response.subagentRunId))
           .tapEval(checked => Task.when(checked.isRight)(Task {
-            logger.debug(s"### dedicate: $toString $hashCode lastSubagentRunId=${response.subagentRunId}")
             lastSubagentRunId = Some(response.subagentRunId)
           }))
           .rightAs(response)
@@ -194,7 +193,7 @@ extends SubagentDriver with SubagentEventListener
             case HttpException.HasProblem(SubagentNotDedicatedProblem) =>
               orderToPromise.toMap.size match {
                 case 0 => logger.info("Subagent restarted")
-                case n => logger.warn(s"Subagent restarted and lost $n Order processes")
+                case n => logger.warn(s"Subagent restarted, $n Order processes are lost")
               }
               onSubagentDied(SubagentRestarted)
                 .*>(dedicate)
@@ -206,7 +205,6 @@ extends SubagentDriver with SubagentEventListener
           })
       .flatTap { case (subagentRunId, _) =>
         Task {
-          logger.debug(s"### couple: $toString $hashCode lastSubagentRunId=$subagentRunId")
           lastSubagentRunId = Some(subagentRunId)
           initiallyCoupled.trySet(subagentRunId)
         }

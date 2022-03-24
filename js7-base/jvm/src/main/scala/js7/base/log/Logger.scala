@@ -119,7 +119,7 @@ object Logger
           task
             .tapEval {
               case left @ Left(_: Throwable | _: Problem) =>
-                logReturn("🚫", left)
+                logReturn("❓", left)
               case _ =>
                 logReturn("", "Completed")
             }

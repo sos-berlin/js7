@@ -301,7 +301,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
             }
             .tapEval(response => Task {
               logger.debug(
-                s"<--<${response.status.isFailure ?? "💥"} $responseLogPrefix => ${response.status}")
+                s"<--<${response.status.isFailure ?? "❓"} $responseLogPrefix => ${response.status}")
             }))
       })
 
