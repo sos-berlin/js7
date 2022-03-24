@@ -45,18 +45,22 @@ extends UnsignedSimpleItem
 
   def convertFromLegacy: Checked[(AgentRef, Option[SubagentItem])] =
     this match {
-      case AgentRef(agentPath, Nil, Some(uri), itemRevision) =>
-        // COMPATIBLE with v2.2
-        val subagentItem = SubagentItem(
-          SubagentId.legacyLocalFromAgentPath(agentPath),
-          agentPath, uri,
-          itemRevision = Some(ItemRevision(1)))
+      case AgentRef(agentPath, directors, Some(uri), itemRevision) =>
+        if (directors.nonEmpty)
+          Left(Problem.pure("Invalid AgentRef: both directors and uri?"))
+        else {
+          // COMPATIBLE with v2.2
+          val subagentItem = SubagentItem(
+            SubagentId.legacyLocalFromAgentPath(agentPath),
+            agentPath, uri,
+            itemRevision = Some(ItemRevision(1)))
 
-        val agentRef = AgentRef(agentPath,
-          directors = Seq(subagentItem.id),
-          itemRevision = itemRevision)
+          val agentRef = AgentRef(agentPath,
+            directors = Seq(subagentItem.id),
+            itemRevision = itemRevision)
 
-        Right((agentRef, Some(subagentItem)))
+          Right((agentRef, Some(subagentItem)))
+      }
 
       case agentRef @ AgentRef(_, _, None, _) =>
         Right((agentRef, None))

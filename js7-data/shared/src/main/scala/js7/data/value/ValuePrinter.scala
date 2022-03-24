@@ -37,6 +37,9 @@ object ValuePrinter
           }
         }
         sb.append(']')
+
+      case _ =>
+        sb.append("???") // FIXME
     }
 
   def quoteString(string: String) = {

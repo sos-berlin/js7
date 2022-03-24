@@ -50,6 +50,7 @@ import js7.journal.recover.{FileSnapshotableStateBuilder, JournalProgress, Recov
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
+import scala.annotation.nowarn
 
 private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
   ownId: NodeId,
@@ -244,14 +245,19 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
     Task.defer {
       import continuation.file
 
-      val maybeTmpFile = continuation match {
-        case _: NoLocalJournal | _: NextFile =>
-          val tmp = Paths.get(file.toString + TmpSuffix)
-          logger.debug(s"Replicating snapshot into temporary journal file ${tmp.getFileName}")
-          Some(tmp)
+      val maybeTmpFile = locally {
+        // Suppress wrong "unreachable code" error for FirstPartialFile case
+        @nowarn("cat=other-match-analysis")
+        def toTmpFile = continuation match {
+          case _: NoLocalJournal | _: NextFile =>
+            val tmp = Paths.get(file.toString + TmpSuffix)
+            logger.debug(s"Replicating snapshot into temporary journal file ${tmp.getFileName}")
+            Some(tmp)
 
-        case _: FirstPartialFile =>
-          None
+          case _: FirstPartialFile =>
+            None
+        }
+        toTmpFile
       }
 
       var out = maybeTmpFile match {
@@ -644,7 +650,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
     }
   }
 
-  private case class NoLocalJournal(fileEventId: EventId)
+  private final case class NoLocalJournal(fileEventId: EventId)
   extends Continuation.Replicatable {
     def clusterState = ClusterState.Empty
     def fileLength = 0

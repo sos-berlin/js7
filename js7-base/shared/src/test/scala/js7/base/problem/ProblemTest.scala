@@ -214,7 +214,7 @@ final class ProblemTest extends AnyFreeSpec
       val a: Problem = Problem.HasCodeAndMessage(TestProblem.code, Map("a" -> "A"), "MSG")
       a match {
         case TestProblem(a) => assert(a == "A")
-        case _: Problem.HasCodeAndMessage => fail("unapply after serialization fails")
+        case _ => fail("unapply after serialization fails")
       }
     }
   }

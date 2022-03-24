@@ -35,6 +35,7 @@ extends OneForOneStrategy(maxNrOfRetries = 0, loggingEnabled = loggingEnabled)(d
           case Resume   => Warn
           case Escalate => Debug
           case Restart | Stop => Error
+          case _ => Error
         }
     logger.log(logLevel, s"$decision ${child.path.pretty}: $logMessage", throwable)
   }

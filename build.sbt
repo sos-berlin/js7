@@ -78,6 +78,7 @@ ThisBuild / scalacOptions ++= Seq(
   "-explaintypes",
   "-feature",
   "-deprecation",
+  "-Wconf:cat=other-match-analysis:error",
   //"-Wunused:privates",
   //"-Wunused:locals",
   //"-Wunused:implicits",
@@ -87,7 +88,6 @@ ThisBuild / scalacOptions ++= Seq(
   //"-Xlint:type-parameter-shadow",
   "-Xlint:implicit-not-found",
   "-Xlint:eta-zero",
-
   "-unchecked",
   "-Xcheckinit",
   "-Xlint:adapted-args",
