@@ -38,6 +38,7 @@ with SubagentTester
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = true
     js7.auth.subagents.AGENT-1 = "AGENT-PASSWORD"
+    js7.auth.subagents.A-SUBAGENT = "AGENT-PASSWORD"
     js7.auth.subagents.B-SUBAGENT = "AGENT-PASSWORD"
     js7.auth.subagents.C-SUBAGENT = "AGENT-PASSWORD"
     js7.auth.subagents.D-SUBAGENT = "AGENT-PASSWORD"
@@ -45,10 +46,11 @@ with SubagentTester
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Nil
 
+  private lazy val aSubagentItem = newSubagentItem(aSubagentId)
   private lazy val bSubagentItem = newSubagentItem(bSubagentId)
   private lazy val cSubagentItem = newSubagentItem(cSubagentId)
   private lazy val dSubagentItem = newSubagentItem(dSubagentId)
-  private lazy val subagentItems = Seq(bSubagentItem, cSubagentItem, dSubagentItem)
+  private lazy val subagentItems = Seq(aSubagentItem, bSubagentItem, cSubagentItem, dSubagentItem)
 
   protected implicit val scheduler = Scheduler.global
 
@@ -143,13 +145,30 @@ with SubagentTester
     for (orderId <- orderIds) eventWatch.await[OrderDeleted](_.key == orderId, after = eventId)
   }
 
-  "Stop B-SUBAGENT" in {
+  "Change SubagentSelection" in {
     val eventId = eventWatch.lastAddedEventId
-    idToRelease(bSubagentId).await(99.s)
-    eventWatch.await[SubagentCouplingFailed](_.key == bSubagentId, after = eventId)
+    val changed = subagentSelection.copy(subagentToPriority = Map(
+      aSubagentId -> 1))
+    controllerApi
+      .updateItems(Observable(AddOrChangeSimple(changed)))
+      .await(99.s)
+      .orThrow
+
+    val orderId = OrderId("CHANGED-SUBAGENTSELECTION")
+    controllerApi.addOrder(toOrder(orderId)).await(99.s).orThrow
+    val started = eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
+      .head.value.event
+    assert(started.subagentId.contains(aSubagentId))
+    eventWatch.await[OrderDeleted](_.key == orderId, after = eventId)
   }
 
-  "OrderSelection can only be deleted after Workflow" in {
+  "Stop A-SUBAGENT" in {
+    val eventId = eventWatch.lastAddedEventId
+    idToRelease(aSubagentId).await(99.s)
+    eventWatch.await[SubagentCouplingFailed](_.key == aSubagentId, after = eventId)
+  }
+
+  "SubagentSelection can only be deleted after Workflow" in {
     val eventId = eventWatch.lastAddedEventId
     val checked = controllerApi
       .updateItems(Observable(DeleteSimple(subagentSelection.id)))
@@ -167,9 +186,9 @@ with SubagentTester
 
   "Subagent can only be deleted after SubagentSelection" in {
     val checked = controllerApi
-      .updateItems(Observable(DeleteSimple(dSubagentId)))
+      .updateItems(Observable(DeleteSimple(aSubagentId)))
       .await(99.s)
-    assert(checked == Left(ItemIsStillReferencedProblem(dSubagentId, subagentSelection.id)))
+    assert(checked == Left(ItemIsStillReferencedProblem(aSubagentId, subagentSelection.id)))
   }
 
   "Delete SubagentSelection" in {
@@ -197,6 +216,7 @@ with SubagentTester
 object SubagentSelectionTest
 {
   private val agentPath = AgentPath("AGENT")
+  private val aSubagentId = SubagentId("A-SUBAGENT")
   private val bSubagentId = SubagentId("B-SUBAGENT")
   private val cSubagentId = SubagentId("C-SUBAGENT")
   private val dSubagentId = SubagentId("D-SUBAGENT")
@@ -207,9 +227,10 @@ object SubagentSelectionTest
   private val subagentSelection = SubagentSelection(
     SubagentSelectionId("SELECTION"),
     Map(
-      bSubagentId -> 1,
-      cSubagentId -> 2,
-      dSubagentId -> 2))
+      aSubagentId -> 1,
+      bSubagentId -> 2,
+      cSubagentId -> 3,
+      dSubagentId -> 3))
 
   private val versionId = VersionId("VERSION")
   private val workflow = Workflow(

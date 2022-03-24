@@ -360,7 +360,7 @@ final class SubagentKeeper(
 
   def addOrReplaceSubagentSelection(selection: SubagentSelection): Task[Checked[Unit]] =
     state
-      .updateChecked(state => Task(state.insertSelection(selection)))
+      .updateChecked(state => Task(state.insertOrReplaceSelection(selection)))
       .rightAs(())
 
   def removeSubagentSelection(subagentSelectionId: SubagentSelectionId): Task[Unit] =
@@ -420,18 +420,16 @@ object SubagentKeeper
         selectionToPrioritized =
           selectionToPrioritized.updated(None, selectionToPrioritized(None).remove(subagentId)))
 
-    def insertSelection(selection: SubagentSelection): Checked[State] =
-      selectionToPrioritized
-        .insert(
-          Some(selection.id) ->
-            Prioritized[SubagentId](
-              selection.subagentToPriority.keys,
-              id => selection.subagentToPriority.getOrElse(id, {
-                logger.error(s"${selection.id} uses unknown $id. Assuming priority=$DefaultPriority")
-                DefaultPriority
-              })))
-        .map(o => copy(
-          selectionToPrioritized = o))
+    def insertOrReplaceSelection(selection: SubagentSelection): Checked[State] =
+      Right(copy(
+        selectionToPrioritized = selectionToPrioritized.updated(
+          Some(selection.id),
+          Prioritized[SubagentId](
+            selection.subagentToPriority.keys,
+            id => selection.subagentToPriority.getOrElse(id, {
+              logger.error(s"${selection.id} uses unknown $id. Assuming priority=$DefaultPriority")
+              DefaultPriority
+            })))))
 
     def removeSelection(selectionId: SubagentSelectionId): State =
       copy(selectionToPrioritized = selectionToPrioritized - Some(selectionId))
