@@ -184,13 +184,20 @@ private trait SubagentEventListener
                     Observable.fromTask(onSubagentDecoupled(Some(problem)))
                   })
                 .filter(_ != StampedHeartbeat)
-                .takeWhile(_ != PauseDetected)
+                .takeWhile(_ ne PauseDetected)
                 .guaranteeCase(exitCase => Task.defer(
-                  Task.when(exitCase != ExitCase.Completed || isHeartbeating) {
-                    val problem = Problem.pure(s"$subagentId event stream: $exitCase")
-                    logger.warn(problem.toString)
-                    onSubagentDecoupled(Some(problem))
-                  })))
+                  Task.when(exitCase != ExitCase.Completed || isHeartbeating)(
+                    stopObserving
+                      .flatMap(_.tryRead)
+                      .map {
+                        case None =>
+                          val problem = Problem.pure(s"$subagentId event stream: $exitCase")
+                          logger.warn(problem.toString)
+                          problem
+                        case Some(()) =>
+                          Problem.pure("Stopped")
+                      }
+                      .flatMap(problem => onSubagentDecoupled(Some(problem)))))))
               .map(Right(_))
         }
 
