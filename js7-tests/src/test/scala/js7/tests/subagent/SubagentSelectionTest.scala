@@ -1,6 +1,7 @@
 package js7.tests.subagent
 
 import cats.syntax.traverse._
+import js7.agent.RunningAgent
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
@@ -10,6 +11,7 @@ import js7.base.web.Uri
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.Problems.ItemIsStillReferencedProblem
 import js7.data.agent.AgentPath
+import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentCouplingFailed}
 import js7.data.item.BasicItemEvent.{ItemAttached, ItemDeleted}
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVersion, DeleteSimple, RemoveVersioned}
 import js7.data.item.VersionId
@@ -44,7 +46,7 @@ with SubagentTester
     js7.auth.subagents.D-SUBAGENT = "AGENT-PASSWORD"
     """
   protected val agentPaths = Seq(agentPath)
-  protected lazy val items = Nil
+  protected val items = Nil
 
   private lazy val aSubagentItem = newSubagentItem(aSubagentId)
   private lazy val bSubagentItem = newSubagentItem(bSubagentId)
@@ -54,12 +56,11 @@ with SubagentTester
 
   protected implicit val scheduler = Scheduler.global
 
-  private lazy val agent = directoryProvider.startAgent(agentPath).await(99.s)
+  private var agent: RunningAgent = null
 
   override def beforeAll() = {
     super.beforeAll()
     startSubagentTester()
-    agent
   }
 
   override def afterAll() = {
@@ -79,6 +80,10 @@ with SubagentTester
         .map(subagentItem.id -> _._2))
     .await(99.s)
     .toMap
+
+  "Start Agent" in {
+    agent = directoryProvider.startAgent(agentPath).await(99.s)
+  }
 
   "Start and attach Subagents and SubagentSelection" in {
     // Start Subagents
@@ -112,7 +117,20 @@ with SubagentTester
       dSubagentId -> 1))
   }
 
-  "Stop D-SUBAGENT: only C-SUBAGENT (prioerity=2) is used" in {
+  "Restart Agent" in {
+    val eventId = eventWatch.lastAddedEventId
+    agent.terminate().await(99.s)
+    eventWatch.await[AgentCouplingFailed](_.key == agentPath, after = eventId)
+
+    agent = directoryProvider.startAgent(agentPath).await(99.s)
+    eventWatch.await[AgentCoupled](_.key == agentPath, after = eventId)
+    eventWatch.await[SubagentCoupled](_.key == aSubagentId, after = eventId)
+    eventWatch.await[SubagentCoupled](_.key == bSubagentId, after = eventId)
+    eventWatch.await[SubagentCoupled](_.key == cSubagentId, after = eventId)
+    eventWatch.await[SubagentCoupled](_.key == dSubagentId, after = eventId)
+  }
+
+  "Stop D-SUBAGENT: only C-SUBAGENT (priority=2) is used" in {
     // After stopping D-SUBAGENT, only C-SUBAGENT has the highest priority=2
     stopSubagentAndRunOrders(dSubagentId, 3, Map(
       cSubagentId -> 3))

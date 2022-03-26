@@ -263,6 +263,11 @@ final class SubagentKeeper(
         .combineProblems
         .rightAs(()))
 
+  def recoverSubagentSelections(subagentSelections: Seq[SubagentSelection]): Task[Checked[Unit]] =
+    subagentSelections
+      .traverse(addOrReplaceSubagentSelection)
+      .map(_.combineAll)
+
   // TODO Kann SubagentItem gelöscht werden während proceed hängt wegen unerreichbaren Subagenten?
   def proceedWithSubagent(subagentItemState: SubagentItemState): Task[Checked[Unit]] =
     logger.traceTask("proceedWithSubagent", subagentItemState.subagentId)(

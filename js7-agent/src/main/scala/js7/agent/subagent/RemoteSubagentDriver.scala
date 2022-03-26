@@ -27,6 +27,7 @@ import js7.base.web.HttpClient
 import js7.base.web.HttpClient.HttpException
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.data.controller.ControllerId
+import js7.data.delegate.DelegateCouplingState.Coupled
 import js7.data.event.EventId
 import js7.data.item.{InventoryItemKey, ItemRevision, SignableItem}
 import js7.data.job.{JobConf, JobResource}
@@ -75,7 +76,8 @@ extends SubagentDriver with SubagentEventListener
       isHeartbeating &&
       persistence.currentState
         .idToSubagentItemState.get(subagentId)
-        .exists(_.isCoupled)
+        .exists(s => s.couplingState == Coupled
+          /*Due to isHeartbeating we gnore s.problem to allow SubagentCoupled event.*/)
 
   def isStopping = stopping
 
