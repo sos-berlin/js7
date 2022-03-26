@@ -205,11 +205,9 @@ with Stash
         .*>(
           subagentKeeper
             .recoverSubagents(state.idToSubagentItemState.values.toVector)
-            .map {
-              case Left(problem) => logger.error(
-                s"subagentKeeper.recoverSubagents => $problem")  // ???
-              case _ =>
-            })
+            .flatMapT(_ =>
+              subagentKeeper.recoverSubagentSelections(state.idToSubagentSelection.values.toVector))
+            .map(_.orThrow))
         .materialize
         .foreach { tried =>
           self.forward(Internal.SubagentKeeperInitialized(state, tried))
