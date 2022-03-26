@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+home="$(dirname "$0")"
+user=build
+
+docker rm js7-builder &>/dev/null || true
+
+( cd "$home"
+  DOCKER_BUILDKIT=1 DOCKER_SCAN_SUGGEST=false docker build --tag=js7-builder .
+)
+
+docker run \
+  --volume=js7-builder:/home/$user/mount \
+  --volume="$(pwd)":/home/$user/js7 \
+  --workdir="/home/$user/js7" \
+  --tty $(if tty -s; then echo "--interactive"; fi) \
+  --hostname=js7-builder \
+  --name=js7-builder \
+  --rm \
+  js7-builder \
+  "$@"
