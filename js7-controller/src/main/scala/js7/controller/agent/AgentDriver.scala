@@ -34,7 +34,7 @@ import js7.controller.configuration.ControllerConfiguration
 import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentReset}
 import js7.data.agent.{AgentPath, AgentRef, AgentRunId}
 import js7.data.controller.ControllerState
-import js7.data.delegate.DelegateCouplingState.{Coupled, Reset, Resetting}
+import js7.data.delegate.DelegateCouplingState.{Coupled, Resetting}
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
 import js7.data.item.ItemAttachedState.{Attachable, Attached}
 import js7.data.item.{InventoryItemEvent, InventoryItemKey, SignableItem, UnsignedSimpleItem}
@@ -129,7 +129,7 @@ extends ReceiveLoggingActor.WithStash
                 .lock(agentPath)(
                   persistence.persist(controllerState =>
                     for (a <- controllerState.pathToAgentRefState.checked(agentPath)) yield
-                      (a.couplingState == Reset || (a.couplingState == Coupled && a.problem.nonEmpty))
+                      (a.couplingState != Coupled || a.problem.nonEmpty)
                         .thenList(agentPath <-: AgentCoupled)))
                 .rightAs(agentEventId)
             }
