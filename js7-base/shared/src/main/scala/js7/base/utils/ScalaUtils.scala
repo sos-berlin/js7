@@ -428,6 +428,14 @@ object ScalaUtils
       def thenIterator[A](a: => A): Iterator[A] =
         if (underlying) Iterator.single(a) else Iterator.empty
 
+      /**
+        * Conditional `View`.
+        * <p>`(true option a) == View.Single(a)`
+        * <br>`(false option a) == View.empty`
+        */
+      def thenView[A](a: => A): View[A] =
+        if (underlying) new View.Single(a) else View.empty
+
       /** The string on the right side if true, otherwise the empty string. */
       def ??(string: => String): String =
         if (underlying) string else ""

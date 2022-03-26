@@ -82,18 +82,18 @@ with SnapshotableState[AgentState]
 
   def toSnapshotObservable = Observable(
     standards.toSnapshotObservable,
-    Observable.fromIterable((meta != AgentMetaState.empty) thenList meta),
+    Observable.fromIterable(meta != AgentMetaState.empty thenList meta),
     Observable.fromIterable(idToSubagentItemState.values),
     Observable.fromIterable(idToSubagentSelection.values),
-    Observable.fromIterable(idToOrder.values),
     allFileWatchesState.toSnapshot,
-    Observable.fromIterable(keyToSignedItem.values).map(SignedItemAdded(_)),
+    Observable.fromIterable(keyToSignedItem.values.view.map(SignedItemAdded(_))),
     Observable.fromIterable(idToWorkflow.view.filterKeys(isWithoutSignature).values),
     Observable.fromIterable(pathToJobResource.view.filterKeys(isWithoutSignature).values),
-    Observable.fromIterable(pathToCalendar.values)
+    Observable.fromIterable(pathToCalendar.values),
+    Observable.fromIterable(idToOrder.values)
   ).flatten
 
-  // COMPATIBLE with v2.1
+  // COMPATIBLE with v2.2
   private def isWithoutSignature(itemKey: SignableItemKey) =
     !keyToSignedItem.contains(itemKey)
 
@@ -292,7 +292,8 @@ with SnapshotableState[AgentState]
           pathToCalendar.iterator ++
           allFileWatchesState.pathToFileWatchState.view.mapValues(_.fileWatch).iterator ++
           idToWorkflow.iterator ++
-          idToSubagentItemState.view.mapValues(_.item).iterator
+          idToSubagentItemState.view.mapValues(_.item).iterator ++
+          idToSubagentSelection.iterator
     }
 
   def keyToSigned[I <: SignableItem](I: SignableItem.Companion[I]): MapView[I.Key, Signed[I]] =

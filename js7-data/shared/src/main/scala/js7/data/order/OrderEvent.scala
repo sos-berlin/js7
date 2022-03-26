@@ -110,15 +110,15 @@ object OrderEvent
   final case class OrderAttachedToAgent(
     workflowPosition: WorkflowPosition,
     state: IsFreshOrReady,
-    arguments: NamedValues,
-    scheduledFor: Option[Timestamp],
-    externalOrderKey: Option[ExternalOrderKey],
-    historicOutcomes: Vector[HistoricOutcome],
+    arguments: NamedValues = Map.empty,
+    scheduledFor: Option[Timestamp] = None,
+    externalOrderKey: Option[ExternalOrderKey] = None,
+    historicOutcomes: Vector[HistoricOutcome] = Vector.empty,
     agentPath: AgentPath,
-    parent: Option[OrderId],
-    mark: Option[OrderMark],
-    isSuspended: Boolean,
-    deleteWhenTerminated: Boolean)
+    parent: Option[OrderId] = None,
+    mark: Option[OrderMark] = None,
+    isSuspended: Boolean = false,
+    deleteWhenTerminated: Boolean = false)
   extends OrderCoreEvent {
     workflowPosition.workflowId.requireNonAnonymous()
   }

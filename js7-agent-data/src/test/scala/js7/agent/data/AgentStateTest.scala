@@ -4,15 +4,13 @@ import com.softwaremill.diffx
 import com.softwaremill.diffx.generic.auto._
 import io.circe.syntax.EncoderOps
 import java.io.File.separator
-import java.nio.file.Paths
 import java.util.UUID
 import js7.agent.data.AgentState.AgentMetaState
 import js7.agent.data.event.AgentEvent.AgentDedicated
-import js7.agent.data.orderwatch.{AllFileWatchesState, FileWatchState}
+import js7.agent.data.orderwatch.AllFileWatchesState
 import js7.base.auth.UserId
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceEither}
 import js7.base.crypt.silly.SillySigner
-import js7.base.io.file.watch.DirectoryState
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
@@ -21,19 +19,19 @@ import js7.base.utils.SimplePattern
 import js7.base.web.Uri
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.calendar.{Calendar, CalendarPath}
-import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerId
-import js7.data.event.JournalEvent.SnapshotTaken
+import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{EventId, JournalId, JournalState, SnapshotableState}
+import js7.data.event.{EventId, JournalId, SnapshotableState}
 import js7.data.item.BasicItemEvent.{ItemAttachedToMe, SignedItemAttachedToMe}
 import js7.data.item.{ItemRevision, ItemSigner}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.Order.{Forked, Ready}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachedToAgent, OrderForked}
+import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderForked}
 import js7.data.order.{Order, OrderId}
-import js7.data.orderwatch.{FileWatch, OrderWatchPath}
-import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentSelection, SubagentSelectionId}
+import js7.data.orderwatch.OrderWatchEvent.ExternalOrderArised
+import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath}
+import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
 import js7.data.value.expression.Expression
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.position._
@@ -60,11 +58,12 @@ final class AgentStateTest extends AsyncFreeSpec
     Map(subagentItem.id -> 1),
     Some(ItemRevision(7)))
 
+  private val unsignedWorkflow = Workflow(WorkflowPath("UNSIGNED-v2.2-WORKFLOW") ~ "1.0", Nil)
   private val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "1.0", Nil)
-  private val jobResource = JobResource(JobResourcePath("JOB-RESOURCE"))
+  private val unsignedJobResource = JobResource(JobResourcePath("UNSIGNED-v2.2-JOB-RESOURCE"))
   private val itemSigner = new ItemSigner(SillySigner.Default, AgentState.signableItemJsonCodec)
-  private val signedWorkflow = itemSigner.sign(Workflow(WorkflowPath("SIGNED-WORKFLOW") ~ "1.0", Nil))
-  private val signedJobResource = itemSigner.sign(JobResource(JobResourcePath("SIGNED-JOBRESOURCE")))
+  private val signedWorkflow = itemSigner.sign(workflow)
+  private val signedJobResource = itemSigner.sign(JobResource(JobResourcePath("JOBRESOURCE")))
 
   private val calendar = Calendar(
     CalendarPath("CALENDAR"),
@@ -84,39 +83,49 @@ final class AgentStateTest extends AsyncFreeSpec
     3.s,
     Some(ItemRevision(7)))
 
-  private val agentState = AgentState(
-    EventId(1000),
-    SnapshotableState.Standards(
-      JournalState(Map(UserId("USER") -> 500L)),
-      ClusterState.Empty),
-    AgentMetaState(
-      Some(SubagentId("SUBAGENT")),
+  private val agentState = locally {
+    val meta = AgentMetaState(
+      Some(subagentItem.id),
       AgentPath("AGENT"),
       AgentRunId(JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))),
-      ControllerId("CONTROLLER")),
-    Map(
-      subagentItem.id -> SubagentItemState.initial(subagentItem)),
-    Map(
-      subagentSelection.id -> subagentSelection),
-    Map(
-      OrderId("ORDER") -> Order.fromOrderAdded(OrderId("ORDER"), OrderAdded(workflow.id))),
-    Map(
-      workflow.id -> workflow,
-      signedWorkflow.value.id -> signedWorkflow.value),
-    AllFileWatchesState.fromIterable(Seq(
-      FileWatchState(
-        fileWatch,
-        DirectoryState.fromIterable(Seq(
-          DirectoryState.Entry(Paths.get("/DIRECTORY/1.csv")),
-          DirectoryState.Entry(Paths.get("/DIRECTORY/2.csv"))))))),
-    Map(
-      jobResource.path -> jobResource,
-      signedJobResource.value.path -> signedJobResource.value),
-    Map(
-      calendar.path -> calendar),
-    Map(
-      signedJobResource.value.path -> signedJobResource,
-      signedWorkflow.value.id -> signedWorkflow))
+      ControllerId("CONTROLLER"))
+
+    AgentState(
+      EventId(1000),
+      SnapshotableState.Standards.empty,
+      AgentMetaState.empty,
+      Map.empty,
+      Map.empty,
+      Map.empty,
+      Map.empty,
+      AllFileWatchesState.empty,
+      Map.empty,
+      Map.empty,
+      Map.empty
+    ).applyEvents(Seq(
+      JournalEventsReleased(UserId("USER"), 500L),
+      AgentDedicated(
+        Some(subagentItem.id),
+        meta.agentPath,
+        meta.agentRunId,
+        meta.controllerId),
+      ItemAttachedToMe(subagentItem),
+      ItemAttachedToMe(subagentSelection),
+      ItemAttachedToMe(fileWatch),
+      fileWatch.key <-: ExternalOrderArised(ExternalOrderName("/DIRECTORY/1.csv"), OrderId("1")),
+      fileWatch.key <-: ExternalOrderArised(ExternalOrderName("/DIRECTORY/2.csv"), OrderId("2")),
+      SignedItemAttachedToMe(signedJobResource),
+      ItemAttachedToMe(calendar),
+      SignedItemAttachedToMe(signedWorkflow),
+
+      //COMPATIBLE with v2.2
+      ItemAttachedToMe(unsignedJobResource),
+      ItemAttachedToMe(unsignedWorkflow),
+
+      OrderId("ORDER") <-:
+        OrderAttachedToAgent(workflow.id, Order.Fresh, agentPath = AgentPath("AGENT")))
+    ).orThrow
+  }
 
   "isDedicated, isFreshlyDedicated" - {
     "empty" in {
@@ -180,7 +189,7 @@ final class AgentStateTest extends AsyncFreeSpec
               "itemRevision": 7
              },
              "couplingState": {
-               "TYPE" : "Reset"
+               "TYPE": "Reset"
              },
              "eventId": 0
           }""",
@@ -191,20 +200,6 @@ final class AgentStateTest extends AsyncFreeSpec
               "SUBAGENT": 1
             },
             "itemRevision": 7
-          }""",
-          json"""{
-            "TYPE": "Order",
-            "id": "ORDER",
-            "workflowPosition": {
-              "workflowId": {
-                "path": "WORKFLOW",
-                "versionId": "1.0"
-              },
-              "position": [ 0 ]
-             },
-            "state": {
-              "TYPE": "Fresh"
-            }
           }""",
           json"""{
             "TYPE": "FileWatchState",
@@ -231,34 +226,34 @@ final class AgentStateTest extends AsyncFreeSpec
           }""",
 
           json"""{
-            "TYPE" : "SignedItemAdded",
-            "signed" : {
-              "string" : "{\"TYPE\":\"JobResource\",\"path\":\"SIGNED-JOBRESOURCE\",\"variables\":{},\"env\":{}}",
-              "signature" : {
-                "TYPE" : "Silly",
-                "signatureString" : "SILLY-SIGNATURE"
+            "TYPE": "SignedItemAdded",
+            "signed": {
+              "string": "{\"TYPE\":\"JobResource\",\"path\":\"JOBRESOURCE\",\"variables\":{},\"env\":{}}",
+              "signature": {
+                "TYPE": "Silly",
+                "signatureString": "SILLY-SIGNATURE"
               }
             }
           }""",
           json"""{
-            "TYPE" : "SignedItemAdded",
-            "signed" : {
-              "string" : "{\"TYPE\":\"Workflow\",\"path\":\"SIGNED-WORKFLOW\",\"versionId\":\"1.0\",\"instructions\":[]}",
-              "signature" : {
-                "TYPE" : "Silly",
-                "signatureString" : "SILLY-SIGNATURE"
+            "TYPE": "SignedItemAdded",
+            "signed": {
+              "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"versionId\":\"1.0\",\"instructions\":[]}",
+              "signature": {
+                "TYPE": "Silly",
+                "signatureString": "SILLY-SIGNATURE"
               }
             }
           }""",
           json"""{
             "TYPE": "Workflow",
-            "path": "WORKFLOW",
+            "path": "UNSIGNED-v2.2-WORKFLOW",
             "versionId": "1.0",
             "instructions": []
           }""",
           json"""{
             "TYPE": "JobResource",
-            "path": "JOB-RESOURCE",
+            "path": "UNSIGNED-v2.2-JOB-RESOURCE",
             "variables": {},
             "env": {}
           }""",
@@ -270,6 +265,24 @@ final class AgentStateTest extends AsyncFreeSpec
             "orderIdPattern": "#([^#]+)#.*",
             "periodDatePattern": "yyyy-MM-dd",
             "itemRevision": 1
+          }""",
+          json"""{
+            "TYPE": "Order",
+            "id": "ORDER",
+            "workflowPosition": {
+              "workflowId": {
+                "path": "WORKFLOW",
+                "versionId": "1.0"
+              },
+              "position": [ 0 ]
+             },
+            "state": {
+              "TYPE": "Fresh"
+            },
+            "attachedState": {
+              "TYPE": "Attached",
+              "agentPath": "AGENT"
+            }
           }"""))
 
         AgentState
@@ -303,8 +316,7 @@ final class AgentStateTest extends AsyncFreeSpec
   "applyEvent" in {
     val orderId = OrderId("ORDER")
     val childOrderId = OrderId("ORDER") / "BRANCH"
-    val workflowId = WorkflowPath("WORKFLOW") ~ "1.0"
-    val workflow = Workflow.of(workflowId)
+    val workflow = Workflow.of(WorkflowPath("WORKFLOW") ~ "1.0")
     val agentPath = AgentPath("AGENT")
     var agentState = AgentState.empty
     val meta = AgentMetaState(
@@ -318,12 +330,12 @@ final class AgentStateTest extends AsyncFreeSpec
       meta.agentRunId,
       meta.controllerId)).orThrow
     agentState = agentState.applyEvent(NoKey <-: ItemAttachedToMe(workflow)).orThrow
-    agentState = agentState.applyEvent(NoKey <-: ItemAttachedToMe(jobResource)).orThrow
+    agentState = agentState.applyEvent(NoKey <-: ItemAttachedToMe(unsignedJobResource)).orThrow
     agentState = agentState.applyEvent(NoKey <-: SignedItemAttachedToMe(signedWorkflow)).orThrow
     agentState = agentState.applyEvent(NoKey <-: SignedItemAttachedToMe(signedJobResource)).orThrow
     agentState = agentState.applyEvent(orderId <-:
       OrderAttachedToAgent(
-        workflowId, Order.Ready, Map.empty, None, None, Vector.empty, agentPath, None, None, false, false))
+        workflow.id, Order.Ready, Map.empty, None, None, Vector.empty, agentPath, None, None, false, false))
       .orThrow
     agentState = agentState.applyEvent(orderId <-: OrderForked(Vector(OrderForked.Child("BRANCH", childOrderId))))
       .orThrow
@@ -335,31 +347,30 @@ final class AgentStateTest extends AsyncFreeSpec
       Map.empty,
       Map(
         orderId ->
-          Order(orderId, workflowId, Forked(Vector(Forked.Child("BRANCH", childOrderId))),
+          Order(orderId, workflow.id, Forked(Vector(Forked.Child("BRANCH", childOrderId))),
             attachedState = Some(Order.Attached(agentPath))),
         childOrderId ->
-          Order(childOrderId, workflowId /: (Position(0) / "fork+BRANCH" % 0), Ready,
+          Order(childOrderId, workflow.id /: (Position(0) / "fork+BRANCH" % 0), Ready,
             attachedState = Some(Order.Attached(agentPath)), parent = Some(orderId))),
       Map(
-        workflowId -> workflow,
-        signedWorkflow.value.id -> signedWorkflow.value),
+        workflow.id -> workflow),
       AllFileWatchesState.empty,
       Map(
-        jobResource.path -> jobResource,
+        unsignedJobResource.path -> unsignedJobResource,
         signedJobResource.value.path -> signedJobResource.value),
       Map.empty,
       Map(
         signedJobResource.value.path -> signedJobResource,
-        signedWorkflow.value.id -> signedWorkflow)))
+        workflow.id -> signedWorkflow)))
   }
 
   "keyToItem" in {
     assert(!agentState.keyToItem.contains(WorkflowPath("UNKNOWN") ~ "1"))
     assert(agentState.keyToItem.get(workflow.id) == Some(workflow))
-    assert(agentState.keyToItem.get(jobResource.path) == Some(jobResource))
+    assert(agentState.keyToItem.get(unsignedJobResource.path) == Some(unsignedJobResource))
     assert(agentState.keyToItem.keySet ==
-      Set(workflow.id, signedWorkflow.value.id,
-        jobResource.path, signedJobResource.value.path,
-      calendar.path, fileWatch.path, subagentItem.id))
+      Set(unsignedWorkflow.id, workflow.id,
+        unsignedJobResource.path, signedJobResource.value.path,
+      calendar.path, fileWatch.path, subagentItem.id, subagentSelection.id))
   }
 }
