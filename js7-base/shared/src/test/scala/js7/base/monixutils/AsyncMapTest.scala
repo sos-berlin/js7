@@ -2,7 +2,6 @@ package js7.base.monixutils
 
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem}
-import js7.base.time.ScalaTime._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AsyncFreeSpec

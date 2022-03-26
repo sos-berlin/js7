@@ -168,7 +168,7 @@ extends StatePersistence[S] with RealEventWatch
   @TestOnly
   def queueLength = queue.events.size
 
-  private final case class EventQueue(
+  private sealed case class EventQueue(
     tornEventId: EventId,
     lastEventId: EventId,
     events: Vector[Stamped[KeyedEvent[Event]]])

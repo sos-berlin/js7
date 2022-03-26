@@ -11,7 +11,7 @@ import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
+import js7.common.akkahttp.CirceJsonSupport.jsonUnmarshaller
 import js7.common.http.AkkaHttpUtils.RichHttpResponse
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.controller.web.controller.api.EventRouteTest._

@@ -650,7 +650,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
     }
   }
 
-  private final case class NoLocalJournal(fileEventId: EventId)
+  private sealed case class NoLocalJournal(fileEventId: EventId)
   extends Continuation.Replicatable {
     def clusterState = ClusterState.Empty
     def fileLength = 0

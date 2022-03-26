@@ -80,9 +80,9 @@ extends Codec.AsObject[A]
   def classToName(getClass: Class[_ <: A]): String =
     _classToName(getClass)
 
-  def classes[A1 <: A: ClassTag]: Set[Class[_ <: A1]] =
+  def classes[A2 <: A: ClassTag]: Set[Class[_ <: A2]] =
     classToEncoder.keySet collect {
-      case c if implicitClass[A1] isAssignableFrom c => c.asInstanceOf[Class[_ <: A1]]
+      case c if implicitClass[A2] isAssignableFrom c => c.asInstanceOf[Class[_ <: A2]]
     }
 
   def isOfType[A1 <: A: ClassTag](json: Json): Boolean =

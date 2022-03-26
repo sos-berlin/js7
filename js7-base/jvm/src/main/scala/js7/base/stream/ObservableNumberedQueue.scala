@@ -127,7 +127,7 @@ final class ObservableNumberedQueue[V: Tag]
 
   override def toString = s"ObservableNumberedQueue[$vName]"
 
-  private final case class State(
+  private sealed case class State(
     torn: Long = 0L,
     nextNumber: Long = 1L,
     queue: Vector[Numbered[V]] = Vector.empty[Numbered[V]])
