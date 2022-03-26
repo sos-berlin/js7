@@ -147,9 +147,9 @@ final class TryTest extends AnyFreeSpec
         checkEventSeq(OrderId("🔴|🍋"), controller.eventWatch.allKeyedEvents[OrderEvent], Vector(
           OrderProcessingStarted(subagentId),
           OrderProcessed(Outcome.Failed(None, NamedValues.rc(1))),
-          OrderFailedInFork(Position(0) / BranchId.try_(0) % 0 / BranchId.fork("🍋") % 0),
           OrderDetachable,
-          OrderDetached))
+          OrderDetached,
+          OrderFailedInFork(Position(0) / BranchId.try_(0) % 0 / BranchId.fork("🍋") % 0)))
       }
     }
   }

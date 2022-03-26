@@ -153,10 +153,10 @@ final class OrderEventSource(state: StateView)
       case (None | Some(BranchId.IsFailureBoundary(_)), failPosition) =>
         // TODO Transfer parent order to Agent to access joinIfFailed there !
         // For now, order will be moved to Controller, which joins the orders anyway.
-        val joinIfFailed = order.parent
+        lazy val joinIfFailed = order.parent
           .flatMap(forkOrder => instruction_[ForkInstruction](forkOrder).toOption)
           .fold(false)(_.joinIfFailed)
-        if (joinIfFailed/*false at Agent*/)
+        if (!isAgent && joinIfFailed/*false at Agent*/)
           OrderFailedInFork(failPosition, outcome)
         else
           OrderFailed(failPosition, outcome)
