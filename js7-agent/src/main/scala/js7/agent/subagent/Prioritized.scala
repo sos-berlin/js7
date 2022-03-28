@@ -1,6 +1,7 @@
 package js7.agent.subagent
 
 import js7.agent.subagent.Prioritized._
+import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 
 private final class Prioritized[A] private(
@@ -9,18 +10,24 @@ private final class Prioritized[A] private(
 {
   private val fixedPriority = new FixedPriority
 
+  override def equals(other: Any) =
+    other match {
+      case o: Prioritized[A] @unchecked =>
+        toPriority.eq(o.toPriority) &&
+          orderedKeys == o.orderedKeys
+      case _ => false
+    }
+
   def add(a: A): Checked[Prioritized[A]] =
     if (orderedKeys.contains(a))
       Left(Problem.pure(s"Duplicate value for Prioritized: $a"))
     else
-      Right(copy(
-        orderedKeys = prioritySort(
-          orderedKeys.view :+ a)(
-          toPriority = k => toPriority(k))))
+      Right(copy(prioritySort(
+        orderedKeys.view :+ a)(
+        toPriority = k => toPriority(k))))
 
   def remove(a: A): Prioritized[A] =
-    copy(
-      orderedKeys = orderedKeys.filter(_ != a))
+    copy(orderedKeys.filter(_ != a))
 
   def clear: Prioritized[A] =
     copy(Vector.empty)
@@ -40,14 +47,13 @@ private final class Prioritized[A] private(
   }
 
   private def copy(orderedKeys: IndexedSeq[A]) =
-    new Prioritized[A](orderedKeys, toPriority)
+    if (orderedKeys == this.orderedKeys) {
+      // Keep fixedPriority.index
+      this
+    } else
+      new Prioritized[A](orderedKeys, toPriority)
 
-  override def equals(other: Any) =
-    other match {
-      case o: Prioritized[A] @unchecked =>
-        toPriority.eq(o.toPriority) && orderedKeys == o.orderedKeys
-      case _ => false
-    }
+  override def toString = s"Prioritized(${orderedKeys.mkString(" ")})"
 }
 
 private object Prioritized

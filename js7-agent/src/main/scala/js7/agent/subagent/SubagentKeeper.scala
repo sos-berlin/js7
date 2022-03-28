@@ -51,7 +51,8 @@ final class SubagentKeeper(
   private val defaultPrioritized = Prioritized.empty[SubagentId](
     toPriority = _ => 0/*same priority for each entry, round-robin*/)
   private val initialized = SetOnce[Initialized]
-  private val state = AsyncVariable[State](State(Map.empty, Map(None -> defaultPrioritized)))
+  private val state = AsyncVariable[State](State(Map.empty, Map(
+    /*local Subagent*/None -> defaultPrioritized)))
   private val orderToWaitForSubagent = AsyncMap.empty[OrderId, Promise[Unit]]
   private val orderToSubagent = AsyncMap.empty[OrderId, SubagentDriver]
   private val subagentItemLockKeeper = new LockKeeper[SubagentId]
@@ -292,8 +293,8 @@ final class SubagentKeeper(
           state.get.idToDriver.get(subagentItem.id) match {
             case Some(_: LocalSubagentDriver[_]) =>
               state
-                .updateChecked(state => Task(state
-                  .disable(subagentItem.id, subagentItem.disabled)))
+                .updateChecked(state => Task(
+                  state.disable(subagentItem.id, subagentItem.disabled)))
                 .rightAs(None)
 
             case _ =>
@@ -474,8 +475,7 @@ object SubagentKeeper
 
     def selectNext(selectionId: Option[SubagentSelectionId]): Option[SubagentDriver] =
       selectionToPrioritized(selectionId)
-        .selectNext(subagentId => subagentToEntry.get(subagentId)
-          .fold(false)(_.driver.isCoupled))
+        .selectNext(subagentId => subagentToEntry.get(subagentId).fold(false)(_.driver.isCoupled))
         .flatMap(subagentId => subagentToEntry.get(subagentId).map(_.driver))
   }
 

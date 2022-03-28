@@ -5,21 +5,23 @@ import scala.annotation.tailrec
 
 private final class FixedPriority
 {
-  private val index = Atomic(0)
+  private val nextIndex = Atomic(0)
 
   @tailrec
   def next[P](n: Int, isEquivalent: (Int, Int) => Boolean): Int =
     if (n == 0)
       0
     else {
-      val i = index.get()
+      val i = nextIndex.get()
       val result = if (i < n) i else 0
       var nxt = result + 1
       if (nxt == n) nxt = 0
       if (nxt != result && !isEquivalent(i, nxt)) nxt = 0
-      if (!index.compareAndSet(i, nxt))
+      if (!nextIndex.compareAndSet(i, nxt))
         next(n, isEquivalent)
       else
         result
     }
+
+  override def toString = s"FixedPriority(nextIndex=${nextIndex.get()})"
 }
