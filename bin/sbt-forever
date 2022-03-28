@@ -3,14 +3,14 @@ set -euo pipefail
 cd "${0%/*}/../js7-controller/.."
 
 # First build should be error-free
-time ./sbt-batch -Dsbt.log.noformat=false "$@"
+time bin/sbt-batch -Dsbt.log.noformat=false "$@"
 failureCount=0
 failMsg=""
 
 for i in {2..999999}; do
   echo -e "\n\n———————————————————— $i ———————————————————$failMsg\n"
   echo -n "" >target/build.log
-  time if ! ./sbt-batch "$@" | tee target/build.out; then :
+  time if ! bin/sbt-batch "$@" | tee target/build.out; then :
     ts=$(date +%Y%m%d-%H%M%S)
     gzip <target/build.out >"target/build-$ts-$i.out.gz"
     gzip <target/build.log >"target/build-$ts-$i.log.gz"

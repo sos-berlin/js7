@@ -1,8 +1,9 @@
 -Dlog4j.configurationFile=project/log4j2.xml
+-J-enableassertions
 -J-Xmx3G
 -J-XX:MaxMetaspaceSize=1500M
 -J-XX:+UseG1GC
 -J-XX:+UseStringDeduplication
--J-enableassertions
+-J-XX:ReservedCodeCacheSize=256m
 -J-XX:+HeapDumpOnOutOfMemoryError
--J-XX:HeapDumpPath=OutOfMemoryError.hprof
+-J-XX:HeapDumpPath=target/OutOfMemoryError.hprof

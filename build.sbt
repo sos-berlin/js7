@@ -4,7 +4,7 @@
   * Install sbt from https://www.scala-sbt.org/.
   * Not needed for standard (JVM-only) production build:
   *   Install Node.js from https://nodejs.org/.
-  *   If you don't start sbt with "./sbt-batch": Run "npm install jsdom" in this or a parent directory.
+  *   If you don't start sbt with "bin/sbt-batch": Run "npm install jsdom" in this or a parent directory.
   *   This command creates a directory "node_modules" and a file "package-lock.json".
   *
   * Recommended usage for CI server:

@@ -12,7 +12,7 @@ docker rm js7-builder &>/dev/null || true
 
 docker run \
   --volume=js7-builder:/home/$user/mount \
-  --volume="$(pwd)":/home/$user/js7 \
+  --volume="$(pwd)":/home/$user/js7:delegated \
   --workdir="/home/$user/js7" \
   --tty $(if tty -s; then echo "--interactive"; fi) \
   --hostname=js7-builder \

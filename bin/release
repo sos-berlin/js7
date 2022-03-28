@@ -52,7 +52,7 @@ fi
 
 # We skip-tests because the commit should already have been tested.
 # Don't forget to build and test the released version!
-./sbt-batch "${sbtDefines[@]}" --warn 'release with-defaults skip-tests'
+bin/sbt-batch "${sbtDefines[@]}" --warn 'release with-defaults skip-tests'
 
 git push "${pushOptions[@]}" --follow-tags
 if [ $gitPush != true ]; then
