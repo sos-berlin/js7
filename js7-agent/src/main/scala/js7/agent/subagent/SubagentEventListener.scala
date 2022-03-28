@@ -195,7 +195,7 @@ private trait SubagentEventListener
                           logger.warn(problem.toString)
                           problem
                         case Some(()) =>
-                          Problem.pure("Stopped")
+                          Problem.pure("SubagentEventListener stopped")
                       }
                       .flatMap(problem => onSubagentDecoupled(Some(problem)))))))
               .map(Right(_))

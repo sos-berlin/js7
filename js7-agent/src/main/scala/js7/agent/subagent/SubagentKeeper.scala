@@ -270,20 +270,20 @@ final class SubagentKeeper(
 
   // TODO Kann SubagentItem gelöscht werden während proceed hängt wegen unerreichbaren Subagenten?
   def proceedWithSubagent(subagentItemState: SubagentItemState): Task[Checked[Unit]] =
-    logger.traceTask("proceedWithSubagent", subagentItemState.subagentId)(
+    logger.traceTask("proceedWithSubagent", subagentItemState.pathRev)(
       addOrChange(subagentItemState)
         .flatMapT(_
           .fold(Task.unit)(_
             .start
-        .onErrorHandle(t => logger.error( // TODO Emit event ?
-          s"proceedWithSubagent(${subagentItemState.subagentId}) => ${t.toStringWithCauses}"))
+            .onErrorHandle(t => logger.error( // TODO Emit event ?
+              s"proceedWithSubagent(${subagentItemState.pathRev}) => ${t.toStringWithCauses}"))
             .startAndForget)
           .map(Right(_))))
 
   // Returns a SubagentDriver if created
   private def addOrChange(subagentItemState: SubagentItemState)
   : Task[Checked[Option[SubagentDriver]]] =
-    logger.traceTask("addOrChange", subagentItemState.subagentId) {
+    logger.debugTask("addOrChange", subagentItemState.pathRev) {
       val subagentItem = subagentItemState.subagentItem
       initialized.task
         .logWhenItTakesLonger("SubagentKeeper.initialized?")

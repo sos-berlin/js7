@@ -22,6 +22,8 @@ extends UnsignedSimpleItemState
 
   def subagentId = subagentItem.id
 
+  def pathRev = item.pathRev
+
   def isCoupled =
     couplingState == Coupled && problem.isEmpty
 
@@ -38,7 +40,7 @@ extends UnsignedSimpleItemState
       case SubagentDedicated(subagentRunId) =>
         if (this.subagentRunId.exists(_ != subagentRunId))
           Left(Problem.pure(
-            s"Duplicate SubagentDedicated event: " + this.subagentRunId + " -> " + subagentId))
+            s"Duplicate SubagentDedicated event: " + this.subagentRunId + " -> " + pathRev))
         else
           Right(copy(
             couplingState = Coupled,

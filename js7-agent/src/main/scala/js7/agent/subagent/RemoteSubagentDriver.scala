@@ -556,7 +556,7 @@ extends SubagentDriver with SubagentEventListener
     persistence.state.map(_.idToSubagentItemState.checked(subagentId))
 
   override def toString =
-    s"RemoteSubagentDriver(${subagentId.string})"
+    s"RemoteSubagentDriver(${subagentItem.pathRev})"
 }
 
 object RemoteSubagentDriver

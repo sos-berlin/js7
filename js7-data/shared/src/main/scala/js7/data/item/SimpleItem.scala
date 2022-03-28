@@ -17,6 +17,8 @@ trait SimpleItem extends InventoryItem
   final def key = path
 
   def path: companion.Key
+
+  def pathRev = PathRev(path, itemRevision)
 }
 
 object SimpleItem
