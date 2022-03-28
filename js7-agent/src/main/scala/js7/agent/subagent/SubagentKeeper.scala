@@ -2,7 +2,6 @@ package js7.agent.subagent
 
 import akka.actor.ActorSystem
 import cats.effect.Resource
-import cats.syntax.flatMap._
 import cats.syntax.foldable._
 import cats.syntax.parallel._
 import cats.syntax.traverse._
@@ -322,8 +321,10 @@ final class SubagentKeeper(
                               .map(_ -> Some(Some(existing) -> driver))
                             // Continue after locking updateCheckedWithResult
                           })
-                        .flatTap(_ =>
-                          state.disable(subagentItem.id, subagentItem.disabled)))
+                        .flatMap { case (state, result) =>
+                          state.disable(subagentItem.id, subagentItem.disabled)
+                            .map(_ -> result)
+                        })
                 })
           })
         .flatMapT {
