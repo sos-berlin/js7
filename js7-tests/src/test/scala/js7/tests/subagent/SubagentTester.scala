@@ -1,50 +1,49 @@
 package js7.tests.subagent
 
 import cats.effect.Resource
-import js7.base.auth.Admission
+import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.log.Logger
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
-import js7.controller.RunningController
-import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
-import js7.data.subagent.SubagentItem
+import js7.base.web.Uri
+import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.subagent.SubagentItemStateEvent.SubagentDedicated
-import js7.proxy.ControllerApi
+import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.subagent.BareSubagent
+import js7.tests.subagent.SubagentMultipleOrdersTest.agentPath
 import js7.tests.subagent.SubagentTester._
-import js7.tests.testenv.DirectoryProviderForScalaTest
+import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.eval.Task
 import monix.execution.Scheduler
+import org.scalatest.Suite
 import scala.util.control.NonFatal
 
-trait SubagentTester
+trait SubagentTester extends ControllerAgentForScalaTest
 {
-  this: DirectoryProviderForScalaTest =>
+  this: Suite =>
+
+  override protected val controllerConfig = config"""
+    js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
+    js7.journal.remove-obsolete-files = false
+    js7.controller.agent-driver.command-batch-delay = 0ms
+    js7.controller.agent-driver.event-buffer-delay = 10ms
+    """.resolveWith(super.controllerConfig)
+
+  override protected def agentConfig = config"""
+    js7.job.execution.signed-script-injection-allowed = true
+    js7.auth.subagents.BARE-SUBAGENT = "AGENT-PASSWORD"
+    """.resolveWith(super.agentConfig)
+
+  protected val bareSubagentId = SubagentId("BARE-SUBAGENT")
+  protected lazy val bareSubagentItem = SubagentItem(
+    bareSubagentId,
+    agentPath,
+    Uri(s"http://localhost:${findFreeTcpPort()}"))
 
   protected val scheduler: Scheduler
 
   implicit private def implicitScheduler = scheduler
-
-  protected lazy val controller: RunningController = directoryProvider
-    .startController()
-    .await(99.s)
-
-  protected lazy val controllerApi = new ControllerApi(
-    admissionsToApiResources(Seq(Admission(
-      controller.localUri,
-      Some(directoryProvider.controller.userAndPassword)
-    )))(controller.actorSystem))
-
-  import controller.eventWatch
-
-  protected final def startSubagentTester() =
-    controller
-
-  protected final def stopSubagentTester() = {
-    controllerApi.stop.await(99.s)
-    controller.terminate().await(99.s)
-  }
 
   protected final def runSubagent[A](
     subagentItem: SubagentItem,
@@ -52,7 +51,7 @@ trait SubagentTester
     awaitDedicated: Boolean = true,
     suppressSignatureKeys: Boolean = false)
     (body: BareSubagent => A)
-  : Task[A] =
+  : A =
     subagentResource(subagentItem,
       suffix = suffix,
       awaitDedicated = awaitDedicated,
@@ -65,6 +64,7 @@ trait SubagentTester
           throw t
         }
       })
+      .await(99.s)
 
   protected final def subagentResource(
     subagentItem: SubagentItem,

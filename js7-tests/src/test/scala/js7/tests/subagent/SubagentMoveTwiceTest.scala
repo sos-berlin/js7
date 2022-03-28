@@ -1,83 +1,31 @@
 package js7.tests.subagent
 
-import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.process.ProcessSignal.SIGKILL
-import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.web.Uri
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.agent.AgentPath
-import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.item.ItemOperation
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.subagent.SubagentItemStateEvent.SubagentCouplingFailed
-import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.subagent.SubagentMoveTwiceTest._
-import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
 
-final class SubagentMoveTwiceTest extends AnyFreeSpec
-with DirectoryProviderForScalaTest
-with SubagentTester
+final class SubagentMoveTwiceTest extends AnyFreeSpec with SubagentTester
 {
-  override protected val controllerConfig = config"""
-    js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
-    js7.journal.remove-obsolete-files = false
-    js7.controller.agent-driver.command-batch-delay = 0ms
-    js7.controller.agent-driver.event-buffer-delay = 10ms
-    """
-  override protected def agentConfig = config"""
-    js7.job.execution.signed-script-injection-allowed = true
-    js7.auth.subagents.BARE-SUBAGENT = "AGENT-PASSWORD"
-    """
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Seq(workflow, bareSubagentItem)
-
-  private val bareSubagentItemId = SubagentId("BARE-SUBAGENT")
-  private lazy val bareSubagentItem = SubagentItem(
-    bareSubagentItemId,
-    agentPath,
-    Uri(s"http://localhost:${findFreeTcpPort()}"))
-
+  override protected val subagentsDisabled = true
   protected implicit val scheduler = Scheduler.global
 
-  private lazy val agent = directoryProvider.startAgent(agentPath).await(99.s)
-
-  import controller.eventWatch
-
-  override def beforeAll() = {
-    super.beforeAll()
-    agent
-    controller
-  }
-
-  override def afterAll() = {
-    controllerApi.stop.await(99.s)
-    controller.terminate().await(99.s)
-    agent.terminate().await(99.s)
-    super.beforeAll()
-  }
-
   "Change URI twice before Subagent has restarted" in {
-    // Disable local Subagent
-    val localSubagentItem = directoryProvider.subagentItems(0)
-    controllerApi
-      .updateUnsignedSimpleItems(Seq(
-        localSubagentItem.copy(
-          disabled = true,
-          itemRevision = None)))
-      .await(99.s)
-      .orThrow
-    eventWatch.await[ItemAttached](_.event.key == localSubagentItem.id)
-
-
     // Start bareSubagent
     val (bareSubagent, bareSubagentRelease) = subagentResource(bareSubagentItem, awaitDedicated = false)
       .allocated.await(99.s)
@@ -88,7 +36,7 @@ with SubagentTester
       controllerApi.addOrder(FreshOrder(aOrderId, workflow.path)).await(99.s).orThrow
       val processingStarted = eventWatch
         .await[OrderProcessingStarted](_.key == aOrderId, after = eventId).head.value.event
-      assert(processingStarted == OrderProcessingStarted(bareSubagentItemId))
+      assert(processingStarted == OrderProcessingStarted(bareSubagentId))
       eventWatch.await[OrderStdoutWritten](_.key == aOrderId, after = eventId)
       // aOrderId is waiting for semaphore
     }
@@ -100,7 +48,7 @@ with SubagentTester
       val agentEventId = agent.eventWatch.lastAddedEventId
       controllerApi.updateItems(Observable(ItemOperation.AddOrChangeSimple(bare1SubagentItem)))
         .await(99.s).orThrow
-      agent.eventWatch.await[SubagentCouplingFailed](_.key == bareSubagentItemId, after = agentEventId)
+      agent.eventWatch.await[SubagentCouplingFailed](_.key == bareSubagentId, after = agentEventId)
     }
 
     // Change URI again and start the corresponding Subagent
@@ -109,7 +57,7 @@ with SubagentTester
       val agentEventId = agent.eventWatch.lastAddedEventId
       controllerApi.updateItems(Observable(ItemOperation.AddOrChangeSimple(bare2SubagentItem)))
         .await(99.s).orThrow
-      agent.eventWatch.await[SubagentCouplingFailed](_.key == bareSubagentItemId, after = agentEventId)
+      agent.eventWatch.await[SubagentCouplingFailed](_.key == bareSubagentId, after = agentEventId)
     }
 
     // Start the replacing bareSubagent
@@ -139,7 +87,7 @@ with SubagentTester
         controllerApi.addOrder(FreshOrder(bOrderId, workflow.path)).await(99.s).orThrow
         val bStarted = eventWatch.await[OrderProcessingStarted](_.key == bOrderId, after = eventId)
           .head.value.event
-        assert(bStarted == OrderProcessingStarted(bareSubagentItemId))
+        assert(bStarted == OrderProcessingStarted(bareSubagentId))
 
         eventWatch.await[OrderStdoutWritten](_.key == bOrderId, after = eventId)
 
@@ -149,10 +97,8 @@ with SubagentTester
         assert(bProcessed == OrderProcessed(Outcome.succeeded))
         eventWatch.await[OrderFinished](_.key == bOrderId, after = eventId)
       }
-    }.await(199.s)
+    }
   }
-
-  "Delete SubagentItem while being changed ❓" in pending // FIXME
 }
 
 object SubagentMoveTwiceTest

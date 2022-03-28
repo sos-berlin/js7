@@ -15,22 +15,22 @@ import monix.reactive.Observable
 final class JobResourceAtBareSubagentTest extends JobResourceTest
 {
   override protected val agentConfig = config"""
-    js7.auth.subagents.B-SUBAGENT = "AGENT-PASSWORD"
+    js7.auth.subagents.BARE-SUBAGENT = "AGENT-PASSWORD"
     """.withFallback(super.agentConfig)
 
-  private lazy val bSubagentItem = SubagentItem(
-    SubagentId("B-SUBAGENT"),
+  private lazy val bareSubagentItem = SubagentItem(
+    SubagentId("BARE-SUBAGENT"),
     agentPath,
     Uri("http://localhost:" + findFreeTcpPort()))
 
   private lazy val (bSubagent, bSubagentRelease) =
-    directoryProvider.subagentResource(bSubagentItem).allocated.await(99.s)
+    directoryProvider.subagentResource(bareSubagentItem).allocated.await(99.s)
 
   override def beforeAll() = {
     super.beforeAll()
     controllerApi
       .updateItems(Observable(
-        ItemOperation.AddOrChangeSimple(bSubagentItem),
+        ItemOperation.AddOrChangeSimple(bareSubagentItem),
         ItemOperation.AddOrChangeSimple(directoryProvider.subagentItems(0).copy(disabled = true))))
       .await(99.s)
       .orThrow

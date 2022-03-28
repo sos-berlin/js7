@@ -22,29 +22,19 @@ import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentS
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.EmptyJob
 import js7.tests.subagent.SubagentSelectionTest._
-import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
 
-final class SubagentSelectionTest extends AnyFreeSpec
-with DirectoryProviderForScalaTest
-with SubagentTester
+final class SubagentSelectionTest extends AnyFreeSpec with SubagentTester
 {
-  override protected val controllerConfig = config"""
-    js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
-    js7.journal.remove-obsolete-files = false
-    js7.controller.agent-driver.command-batch-delay = 0ms
-    js7.controller.agent-driver.event-buffer-delay = 10ms
-    """
   override protected def agentConfig = config"""
-    js7.job.execution.signed-script-injection-allowed = true
-    js7.auth.subagents.AGENT-1 = "AGENT-PASSWORD"
     js7.auth.subagents.A-SUBAGENT = "AGENT-PASSWORD"
     js7.auth.subagents.B-SUBAGENT = "AGENT-PASSWORD"
     js7.auth.subagents.C-SUBAGENT = "AGENT-PASSWORD"
     js7.auth.subagents.D-SUBAGENT = "AGENT-PASSWORD"
-    """
+    """.resolveWith(super.agentConfig)
+
   protected val agentPaths = Seq(agentPath)
   protected val items = Nil
 
@@ -54,22 +44,9 @@ with SubagentTester
   private lazy val dSubagentItem = newSubagentItem(dSubagentId)
   private lazy val subagentItems = Seq(aSubagentItem, bSubagentItem, cSubagentItem, dSubagentItem)
 
+  private var myAgent: RunningAgent = null
+
   protected implicit val scheduler = Scheduler.global
-
-  private var agent: RunningAgent = null
-
-  override def beforeAll() = {
-    super.beforeAll()
-    startSubagentTester()
-  }
-
-  override def afterAll() = {
-    stopSubagentTester()
-    for (a <- Option(agent)) a.terminate().await(99.s)
-    super.beforeAll()
-  }
-
-  import controller.eventWatch
 
   private val nextOrderId = Iterator.from(1).map(i => OrderId(s"ORDER-$i")).next _
 
@@ -81,8 +58,9 @@ with SubagentTester
     .await(99.s)
     .toMap
 
-  "Start Agent" in {
-    agent = directoryProvider.startAgent(agentPath).await(99.s)
+  override def beforeAll() = {
+    super.beforeAll()
+    myAgent = agent
   }
 
   "Start and attach Subagents and SubagentSelection" in {
@@ -117,12 +95,12 @@ with SubagentTester
       dSubagentId -> 1))
   }
 
-  "Restart Agent" in {
+  "Recover SubagentSelection when Agent has restarted" in {
     val eventId = eventWatch.lastAddedEventId
-    agent.terminate().await(99.s)
+    myAgent.terminate().await(99.s)
     eventWatch.await[AgentCouplingFailed](_.key == agentPath, after = eventId)
 
-    agent = directoryProvider.startAgent(agentPath).await(99.s)
+    myAgent = directoryProvider.startAgent(agentPath).await(99.s)
     eventWatch.await[AgentCoupled](_.key == agentPath, after = eventId)
     eventWatch.await[SubagentCoupled](_.key == aSubagentId, after = eventId)
     eventWatch.await[SubagentCoupled](_.key == bSubagentId, after = eventId)

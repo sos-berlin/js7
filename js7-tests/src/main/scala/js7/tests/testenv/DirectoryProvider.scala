@@ -71,6 +71,7 @@ final class DirectoryProvider(
   agentHttpsMutual: Boolean = false,
   agentConfig: Config = ConfigFactory.empty,
   agentPorts: Iterable[Int] = Nil,
+  subagentsDisabled: Boolean = false,
   provideAgentHttpsCertificate: Boolean = false,
   provideAgentClientCertificate: Boolean = false,
   controllerKeyStore: Option[JavaResource] = Some(ControllerKeyStoreResource),
@@ -117,7 +118,8 @@ extends HasCloser
     for (a <- agents) yield AgentRef(a.agentPath, Seq(a.localSubagentId))
   lazy val subagentItems: Vector[SubagentItem] =
     for (a <- agents) yield
-      SubagentItem(a.localSubagentId, a.agentPath, uri = a.agentConfiguration.localUri)
+      SubagentItem(a.localSubagentId, a.agentPath, uri = a.agentConfiguration.localUri,
+        disabled = subagentsDisabled)
   lazy val subagentId: SubagentId = subagentItems.head.id
 
   private val itemsHasBeenAdded = AtomicBoolean(false)

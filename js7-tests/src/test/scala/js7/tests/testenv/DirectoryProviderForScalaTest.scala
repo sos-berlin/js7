@@ -33,6 +33,7 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
   protected def agentHttps = false
   protected def agentPorts: Iterable[Int] = Nil
   protected def doNotAddItems = false
+  protected def subagentsDisabled = false
 
   protected final lazy val directoryProvider = new DirectoryProvider(
     agentPaths,
@@ -42,6 +43,7 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
     agentHttpsMutual = agentHttpsMutual,
     agentConfig = agentConfig,
     agentPorts = agentPorts,
+    subagentsDisabled = subagentsDisabled,
     provideAgentHttpsCertificate = provideAgentHttpsCertificate,
     provideAgentClientCertificate = provideAgentClientCertificate,
     controllerTrustStores = controllerTrustStores,
