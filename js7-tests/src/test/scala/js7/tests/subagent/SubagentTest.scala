@@ -457,20 +457,20 @@ with SubagentTester
   //"Change URI of Director" --> See UpdateAgentRefsTest
 
   "Restart Subagent at another URI" in {
-    var eventId = eventWatch.lastAddedEventId
 
-    val aOrderId = OrderId("A-MOVE-SUBAGENT")
     // Start c0Subagent
     val (c0Subagent, cSubagentRelease) = subagentResource(cSubagentItem, awaitDedicated = false)
       .allocated.await(99.s)
 
+    val aOrderId = OrderId("A-MOVE-SUBAGENT")
+    var eventId = eventWatch.lastAddedEventId
     locally {
       controllerApi.addOrder(FreshOrder(aOrderId, cWorkflow.path)).await(99.s).orThrow
       val processingStarted = eventWatch
         .await[OrderProcessingStarted](_.key == aOrderId, after = eventId).head.value.event
       assert(processingStarted == OrderProcessingStarted(cSubagentItem.id))
       eventWatch.await[OrderStdoutWritten](_.key == aOrderId, after = eventId)
-      // aOrderIds is waiting for semaphore
+      // aOrderId is waiting for semaphore
     }
 
     eventId = eventWatch.lastAddedEventId
@@ -521,7 +521,9 @@ with SubagentTester
     cSubagentRelease.await(99.s)
   }
 
-  "Change only URI of running Subagent" in {
+  "Change only URI of continuously running Subagent ❓" in {
+    // TODO Test, ob die Prozesse abgebrochen und wiederholt werden.
+    //  Besser, die Aufträge werden vom neuen RemoteSubagentDriver übernommen.
     pending
 
     // The continuously running Subagent is reachable under a changed URI
@@ -591,8 +593,6 @@ with SubagentTester
       }
     }
   }.await(99.s)
-
-  "❓ Change URI twice before Subagent has restarted" in pending // FIXME
 
   //"Change JobResource" in --> See JobResourceAtBareSubagentTest
 }

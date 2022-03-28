@@ -38,7 +38,7 @@ private trait SubagentEventListener
 {
   this: RemoteSubagentDriver =>
 
-  private val logger = Logger.withPrefix[SubagentEventListener](subagentId.toString)
+  private val logger = Logger.withPrefix[SubagentEventListener](subagentItem.pathRev.toString)
   private lazy val stdoutCommitOptions = CommitOptions(delay = subagentConf.stdoutCommitDelay)  // TODO Use it!
   private val stopObserving = MVar.empty[Task, Unit]().memoize
   @volatile private var observing: Fiber[Unit] = Fiber(Task.unit, Task.unit)
@@ -57,7 +57,8 @@ private trait SubagentEventListener
   }
 
   protected final def startEventListener: Task[Unit] =
-    lock.lock(logger.debugTask(Task.defer {
+    lock.lock(Task.defer {
+      logger.debug("startEventListener")
       if (isListening.getAndSet(true)) {
         val msg = "Duplicate startEventListener"
         logger.error(msg)
@@ -68,7 +69,7 @@ private trait SubagentEventListener
           .map(fiber => Task {
             observing = fiber
           })
-    }))
+    })
 
   private def observeEvents: Task[Unit] = {
     val recouplingStreamReader = newEventListener()
@@ -234,7 +235,8 @@ private trait SubagentEventListener
 
   private def onSubagentDecoupled(problem: Option[Problem]): Task[Unit] =
     logger.debugTask("onSubagentDecoupled", problem)(
-      Task.defer(Task.when(_isHeartbeating.getAndSet(false))(
+      Task.defer {
+        _isHeartbeating := false
         persistence
           .lock(subagentId)(
             persistence.persist(_
@@ -246,7 +248,8 @@ private trait SubagentEventListener
                 (!subagentItemState.problem.contains(prblm))
                   .thenList(subagentId <-: SubagentCouplingFailed(prblm))
               }))
-          .map(_.orThrow))))
+          .map(_.orThrow)
+      })
 
   final def isHeartbeating = _isHeartbeating.get()
 }

@@ -42,6 +42,7 @@ import js7.subagent.client.{SubagentClient, SubagentDriver}
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.data.SubagentCommand
 import js7.subagent.data.SubagentCommand.{AttachSignedItem, CoupleDirector, DedicateSubagent, KillProcess, StartOrderProcess}
+import monix.catnap.MVar
 import monix.eval.Task
 import scala.annotation.unused
 import scala.concurrent.Promise
@@ -61,12 +62,13 @@ extends SubagentDriver with SubagentEventListener
 {
   protected type S = AgentState
 
-  private val logger = Logger.withPrefix[this.type](subagentId.toString)
+  private val logger = Logger.withPrefix[this.type](subagentItem.pathRev.toString)
   private val dispatcher = new SubagentDispatcher(subagentId, postQueuedCommand)
   private val attachedItemKeys = AsyncVariable(Map.empty[InventoryItemKey, Option[ItemRevision]])
   private val initiallyCoupled = SetOnce[SubagentRunId]
   @volatile private var lastSubagentRunId: Option[SubagentRunId] = None
   @volatile private var stopping = false
+  private val stoppingVar = MVar.empty[Task, Unit]().memoize
   @volatile private var shuttingDown = false
 
   def subagentId = subagentItem.id
@@ -109,26 +111,36 @@ extends SubagentDriver with SubagentEventListener
   def startMovedSubagent(previous: RemoteSubagentDriver): Task[Unit] =
     logger.debugTask(
       startEventListener
-        .*>(initiallyCoupled.task)
-        .flatTap(subagentRunId => Task.defer {
-          logger.debug(s"startMovedSubagent(${previous.lastSubagentRunId} $previous ${previous.hashCode}): this=$subagentRunId")
-          // Does not work, so we kill all processes.
-          //if (previous.lastSubagentRunId contains subagentRunId)
-          //  // Same SubagentRunId continues. So we transfer the command queue.
-          //  dispatcher.enqueueExecutes(previous.dispatcher)
-          //else
-            previous.emitProcessLostEvents(None)
+        //.*>(previous.emitProcessLostEvents(None))
+        .*>(Task.race(
+          stoppingVar.flatMap(_.read),
+          initiallyCoupled.task))
+        .flatMap {
+          case Left(())/*stopped*/ => Task.unit
+          case Right(subagentRunId) =>
+            logger.debug(s"startMovedSubagent(${previous.lastSubagentRunId} $previous ${previous.hashCode}): this=$subagentRunId")
+            // Does not work, so we kill all processes. FIXME Do we kill them?
+            //if (previous.lastSubagentRunId contains subagentRunId)
+            //  // Same SubagentRunId continues. So we transfer the command queue.
+            //  dispatcher.enqueueExecutes(previous.dispatcher)
+            //else
+              /*previous.emitProcessLostEvents(None)
+            .*>*/(dispatcher.start(subagentRunId))
         })
-        .flatMap(dispatcher.start))
 
-  def stop(@unused signal: Option[ProcessSignal] = None): Task[Unit] =
+  def stop(@unused signal: Option[ProcessSignal]): Task[Unit] =
+    stop
+
+  val stop: Task[Unit] =
     logger
-      .debugTask(Task.defer {
-        stopping = true
-        Task.parZip2(dispatcher.stop(), stopEventListener)
-          .*>(client.tryLogout.void)
-          .logWhenItTakesLonger(s"RemoteSubagentDriver($subagentId).stop")
-      })
+      .debugTask(
+        stoppingVar.flatMap(_.tryPut(()))
+          .*>(Task.defer {
+            stopping = true
+            Task.parZip2(dispatcher.stop(), stopEventListener)
+              .*>(client.tryLogout.void)
+              .logWhenItTakesLonger(s"RemoteSubagentDriver($subagentId).stop")
+          }))
       .memoize
 
   def shutdown: Task[Unit] =
@@ -221,7 +233,7 @@ extends SubagentDriver with SubagentEventListener
     emitProcessLostEvents(Some(subagentDied))
 
   /** Emit OrderProcessed(ProcessLost) and optionally a `subagentDied` event. */
-  private def emitProcessLostEvents(subagentDied: Option[SubagentDied]): Task[Unit] = {
+  def emitProcessLostEvents(subagentDied: Option[SubagentDied]): Task[Unit] = {
     // Subagent died and lost its state
     // Emit OrderProcessed(Disrupted(ProcessLost)) for each processing order.
     // Then optionally subagentDied

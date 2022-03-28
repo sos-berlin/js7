@@ -21,7 +21,7 @@ import js7.base.time.{DelayIterator, DelayIterators}
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.checkedCast
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.SetOnce
+import js7.base.utils.{LockKeeper, SetOnce}
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.event.{KeyedEvent, Stamped}
@@ -54,6 +54,7 @@ final class SubagentKeeper(
   private val state = AsyncVariable[State](State(Map.empty, Map(None -> defaultPrioritized)))
   private val orderToWaitForSubagent = AsyncMap.empty[OrderId, Promise[Unit]]
   private val orderToSubagent = AsyncMap.empty[OrderId, SubagentDriver]
+  private val subagentItemLockKeeper = new LockKeeper[SubagentId]
 
   def initialize(localSubagentId: Option[SubagentId], controllerId: ControllerId): Task[Unit] =
     Task.deferAction { scheduler =>
@@ -327,10 +328,19 @@ final class SubagentKeeper(
         .flatMapT {
           case Some((Some(oldDriver), newDriver: RemoteSubagentDriver)) =>
             // FIXME SubagentItem kann wieder geändert werden!
+            assert(oldDriver.subagentId == newDriver.subagentId)
+            val name = "addOrChange " + oldDriver.subagentItem.pathRev
             oldDriver
-              .stop()
-              .*>(newDriver.startMovedSubagent(oldDriver))
-              .as(Right(None))
+              .emitProcessLostEvents(None)  // FIXME Kill the processes
+              .*>(oldDriver.stop)  // Maybe try to send Shutdown command ???
+              .*>(subagentItemLockKeeper
+                .lock(oldDriver.subagentId)(
+                  newDriver.startMovedSubagent(oldDriver))
+                .logWhenItTakesLonger(name)
+                  .onErrorHandle(t => logger.error(
+                    s"addOrChange $name => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+                .startAndForget
+                .as(Right(None)))
 
           case maybeNewDriver => Task.right(maybeNewDriver.map(_._2))
         }
