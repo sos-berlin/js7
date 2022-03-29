@@ -1,5 +1,6 @@
 package js7.tests.subagent
 
+import java.util.concurrent.TimeoutException
 import js7.base.Problems.MessageSignedByUnknownProblem
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
@@ -7,7 +8,7 @@ import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode
 import js7.data.controller.ControllerCommand.CancelOrders
-import js7.data.order.OrderEvent.{OrderCancelled, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten}
+import js7.data.order.OrderEvent.{OrderAttached, OrderCancelled, OrderFinished, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.SemaphoreJob
@@ -66,6 +67,29 @@ final class SubagentTest extends AnyFreeSpec with SubagentTester
         .head.value.event
       assert(processed == OrderProcessed(Outcome.killedInternal))
       eventWatch.await[OrderCancelled](_.key == orderId, after = eventId)
+    }
+  }
+
+  "Order waits when no Subagent is available" in {
+    enableSubagents(directoryProvider.subagentItems.head -> false)
+
+    val orderId = OrderId("WAIT-FOR-SUBAGENT")
+    controller.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+
+    var eventId = eventWatch.lastAddedEventId
+    controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+    eventWatch.await[OrderAttached](_.key == orderId, after = eventId)
+    intercept[TimeoutException] {
+      eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId, timeout = 200.ms)
+    }
+
+    eventId = eventWatch.lastAddedEventId
+    runSubagent(bareSubagentItem) { _ =>
+      TestSemaphoreJob.continue()
+      val started = eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
+        .head.value.event
+      assert(started.subagentId contains bareSubagentId)
+      eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
     }
   }
 
