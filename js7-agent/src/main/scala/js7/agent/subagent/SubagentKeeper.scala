@@ -475,8 +475,9 @@ object SubagentKeeper
         }
 
     def selectNext(selectionId: Option[SubagentSelectionId]): Option[SubagentDriver] =
-      selectionToPrioritized(selectionId)
-        .selectNext(subagentId => subagentToEntry.get(subagentId).fold(false)(_.driver.isCoupled))
+      selectionToPrioritized.get(selectionId) // May be non-existent when stopping
+        .flatMap(_
+          .selectNext(subagentId => subagentToEntry.get(subagentId).fold(false)(_.driver.isCoupled)))
         .flatMap(subagentId => subagentToEntry.get(subagentId).map(_.driver))
   }
 
