@@ -1,5 +1,6 @@
 package js7.tests.subagent
 
+import java.util.concurrent.TimeoutException
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
@@ -9,7 +10,7 @@ import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.agent.AgentPath
 import js7.data.item.ItemOperation.AddOrChangeSimple
 import js7.data.item.VersionId
-import js7.data.order.OrderEvent.OrderProcessingStarted
+import js7.data.order.OrderEvent.{OrderAttached, OrderDeleted, OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -18,7 +19,6 @@ import js7.tests.subagent.SubagentDisabledTest._
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
-import org.scalatest.Assertion
 import org.scalatest.freespec.AnyFreeSpec
 
 final class SubagentDisabledTest extends AnyFreeSpec with SubagentTester
@@ -26,7 +26,7 @@ final class SubagentDisabledTest extends AnyFreeSpec with SubagentTester
   override protected def agentConfig = config"""
     js7.auth.subagents.A-SUBAGENT = "AGENT-PASSWORD"
     js7.auth.subagents.B-SUBAGENT = "AGENT-PASSWORD"
-    """.resolveWith(super.agentConfig)
+    """.withFallback(super.agentConfig)
 
   protected val agentPaths = Seq(agentPath)
   protected def items = Seq(workflow, aSubagentItem, bSubagentItem)
@@ -56,7 +56,7 @@ final class SubagentDisabledTest extends AnyFreeSpec with SubagentTester
     super.afterAll()
   }
 
-  "All Subagents enabled" in {
+  "All Subagents are enabled" in {
     runOrderAndCheck(localSubagentId)
     runOrderAndCheck(aSubagentId)
     runOrderAndCheck(bSubagentId)
@@ -67,10 +67,7 @@ final class SubagentDisabledTest extends AnyFreeSpec with SubagentTester
   }
 
   "Disable localSubagentId" in {
-    controllerApi
-      .updateItems(Observable(AddOrChangeSimple(
-        localSubagentItem.copy(disabled = true))))
-      .await(99.s).orThrow
+    enableSubagents(localSubagentItem -> false)
 
     runOrderAndCheck(aSubagentId)
     runOrderAndCheck(bSubagentId)
@@ -80,37 +77,54 @@ final class SubagentDisabledTest extends AnyFreeSpec with SubagentTester
   }
 
   "Disable aSubagentId" in {
-    controllerApi
-      .updateItems(Observable(AddOrChangeSimple(
-        aSubagentItem.copy(disabled = true))))
-      .await(99.s).orThrow
-
+    enableSubagents(aSubagentItem -> false)
     runOrderAndCheck(bSubagentId)
     runOrderAndCheck(bSubagentId)
   }
 
   "Enable aSubagentId, disable bSubagentId" in {
-    controllerApi
-      .updateItems(Observable(
-        AddOrChangeSimple(
-          aSubagentItem.copy(disabled = false)),
-        AddOrChangeSimple(
-          bSubagentItem.copy(disabled = true))))
-      .await(99.s).orThrow
-
+    enableSubagents(aSubagentItem -> true, bSubagentItem -> false)
     runOrderAndCheck(aSubagentId)
     runOrderAndCheck(aSubagentId)
   }
 
-  private def runOrderAndCheck(subagentId: SubagentId): Assertion =
+  "Disable all Subagents including Director, then re-enableSubagents one" in {
+    enableSubagents(aSubagentItem -> false)
+
+    val orderId = nextOrderId()
+    var eventId = eventWatch.lastAddedEventId
+    controllerApi.addOrder(toOrder(orderId)).await(99.s).orThrow
+    eventWatch.await[OrderAttached](_.key == orderId, after = eventId)
+    eventId = eventWatch.lastAddedEventId
+    intercept[TimeoutException] {
+      eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId, timeout = 200.ms)
+    }
+
+    // Re-enableSubagents
+    eventId = eventWatch.lastAddedEventId
+    controllerApi
+      .updateItems(Observable(
+        AddOrChangeSimple(aSubagentItem.copy(disabled = false))))
+      .await(99.s).orThrow
+
+    // Now, the enabled Subagent is selected and Order processing starts
+    val started = eventWatch
+      .await[OrderProcessingStarted](_.key == orderId, after = eventId)
+      .head.value.event
+    assert(started.subagentId.contains(aSubagentId))
+    eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
+  }
+
+  private def runOrderAndCheck(subagentId: SubagentId): Unit =
     runOrderAndCheck(nextOrderId(), subagentId)
 
-  private def runOrderAndCheck(orderId: OrderId, subagentId: SubagentId): Assertion = {
+  private def runOrderAndCheck(orderId: OrderId, subagentId: SubagentId): Unit = {
     val eventId = eventWatch.lastAddedEventId
     controllerApi.addOrder(toOrder(orderId)).await(99.s).orThrow
     val started = eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
       .head.value.event
     assert(started.subagentId contains subagentId)
+    eventWatch.await[OrderDeleted](_.key == orderId, after = eventId)
   }
 }
 
