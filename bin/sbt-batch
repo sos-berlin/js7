@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd "${0%/*}"
-# This script is located in bin, but there is also a compatibility link in the parent directory.
-cd ../bin/.. &>/dev/null || false
+cd "${0%/*}"/../js7-controller/..
 
 rm -f target/build.log
 if [ "$OSTYPE" = "cygwin" ]; then
