@@ -12,6 +12,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.common.http.RecouplingStreamReader._
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.data.event.EventSeqTornProblem
+import monix.catnap.MVar
 import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean
 import monix.execution.exceptions.UpstreamTimeoutException
@@ -35,22 +36,25 @@ abstract class RecouplingStreamReader[
   protected def getObservable(api: Api, after: I): Task[Checked[Observable[V]]]
 
   protected def onCouplingFailed(api: Api, problem: Problem): Task[Boolean] =
-    Task {
-      var logged = false
-      lazy val msg = s"$api: coupling failed: $problem"
-      if (inUse.get() && !stopRequested && !coupledApiVar.isStopped) {
-        logger.warn(msg)
-        logged = true
-      }
-      for (throwable <- problem.throwableOption.map(_.nullIfNoStackTrace) if !api.isIgnorableStackTrace(throwable)) {
-        logger.debug(msg, throwable)
-        logged = true
-      }
-      if (!logged) {
-        logger.debug(s"💥 $api: $msg")
-      }
-      true  // Recouple and continue
-    }
+    inUseVar.flatMap(_.tryRead).map(_.isDefined)
+      .flatMap(inUse =>
+        Task {
+          var logged = false
+          lazy val msg = s"$api: coupling failed: $problem"
+          if (inUse && !stopRequested && !coupledApiVar.isStopped) {
+            logger.warn(msg)
+            logged = true
+          }
+          for (throwable <- problem.throwableOption.map(_.nullIfNoStackTrace)
+               if !api.isIgnorableStackTrace(throwable)) {
+            logger.debug(msg, throwable)
+            logged = true
+          }
+          if (!logged) {
+            logger.debug(s"💥 $api: $msg")
+          }
+          true  // Recouple and continue
+        })
 
   protected def onCoupled(api: Api, after: I): Task[Completed] =
     Task.completed
@@ -72,42 +76,25 @@ abstract class RecouplingStreamReader[
   private val coupledApiVar = new CoupledApiVar[Api]
   private val recouplingPause = new RecouplingPause
   private val inUse = AtomicBoolean(false)
+  private val inUseVar = MVar.empty[Task, Unit]().memoize
   private var sinceLastTry = now - 1.hour
 
   /** Observes endlessly, recoupling and repeating when needed. */
   final def observe(api: Api, after: I): Observable[V] =
     Observable.fromTask(
       Task(logger.debug(s"$api: observe(after=$after)")) *>
-        waitUntilNotInUse(api) *>
-        decouple
+        inUseVar.flatMap(_.put(()))
+          .*>(Task { inUse := true })
+          .logWhenItTakesLonger
+          .*>(decouple)
     ) *>
       new ForApi(api, after)
         .observeAgainAndAgain
-        .guarantee(Task {
+        .guarantee(Task.defer {
           logger.trace(s"$api: inUse := false")
           inUse := false
+          inUseVar.flatMap(_.tryTake.void)
         })
-
-  /** Wait until `inUse` has finally has become false.
-    * `inUse := false` may be executed lately,
-    * due to Monix's asynchronous cancel/guarantee processing?
-    * We simply wait for it.
-    */
-  private def waitUntilNotInUse(api: Api): Task[Unit] =
-    Task.defer(
-      if (!inUse.getAndSet(true))
-        Task.unit
-      else
-        Task
-          .tailRecM(())(_ =>
-            if (inUse.getAndSet(true))
-              Task.sleep(100.ms).as(Left(()))
-            else
-              Task.right(()))
-          .whenItTakesLonger(Seq(10.s))(duration => Task {
-            logger.warn(
-              s"RecouplingStreamReader.observe($api) is still inUse for ${duration.pretty} ...")
-          }))
 
   final def terminateAndLogout: Task[Completed] =
     decouple
@@ -256,7 +243,8 @@ abstract class RecouplingStreamReader[
                   Task.pure(Left(()))  // Fail in next iteration
                 else
                   for {
-                    _ <- api.tryLogout
+                    _ <- Task.when(problem == InvalidSessionTokenProblem)(
+                      api.tryLogout.void)
                     // TODO akka.stream.scaladsl.TcpIdleTimeoutException sollte still ignoriert werden, ist aber abhängig von Akka
                     continue <- onCouplingFailed(api, problem)
                     either <-
