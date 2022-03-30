@@ -231,6 +231,9 @@ extends ReceiveLoggingActor.WithStash
 
   override def postStop() = {
     super.postStop()
+    eventFetcher.markAsStopped()
+    eventFetcher.terminateAndLogout.runAsyncAndForget
+    currentFetchedFuture.foreach(_.cancel())
     logger.debug("postStop")
   }
 
@@ -329,15 +332,17 @@ extends ReceiveLoggingActor.WithStash
               }
         }
         .flatMap(agentHasBeenReset =>
-          eventFetcher.invalidateCoupledApi >>
-            Task { currentFetchedFuture.foreach(_.cancel()) } >>
-            cancelObservationAndAwaitTermination >>
-            eventFetcher.decouple
-              .as(agentHasBeenReset))
+          eventFetcher.terminateAndLogout
+            .*>(Task { currentFetchedFuture.foreach(_.cancel()) })
+            .*>(cancelObservationAndAwaitTermination)
+            .*>(eventFetcher.decouple)
+            .as(agentHasBeenReset))
         .runToFuture
         .onComplete { tried =>
           sender ! (tried: Try[Boolean])
-          context.stop(self)
+          if (tried.isSuccess) {
+            context.stop(self)
+          }
         }
 
     case Input.StartFetchingEvents | Internal.FetchEvents =>

@@ -30,6 +30,8 @@ abstract class RecouplingStreamReader[
 ](toIndex: V => I,
   conf: RecouplingStreamReaderConf)
 {
+  @volatile private var markedAsStopped = false
+
   protected def couple(index: I): Task[Checked[I]] =
     Task.pure(Right(index))
 
@@ -71,7 +73,7 @@ abstract class RecouplingStreamReader[
 
   protected def idleTimeout = Option(requestTimeout + 2.s)/*let service timeout kick in first*/
 
-  private def isStopped = stopRequested || coupledApiVar.isStopped || !inUse.get()
+  private def isStopped = stopRequested || coupledApiVar.isStopped || !inUse.get() || markedAsStopped
 
   private val coupledApiVar = new CoupledApiVar[Api]
   private val recouplingPause = new RecouplingPause
@@ -95,6 +97,9 @@ abstract class RecouplingStreamReader[
           inUse := false
           inUseVar.flatMap(_.tryTake.void)
         })
+
+  final def markAsStopped(): Unit =
+    markedAsStopped = true
 
   final def terminateAndLogout: Task[Completed] =
     decouple

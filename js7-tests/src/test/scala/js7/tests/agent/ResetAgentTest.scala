@@ -153,8 +153,13 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
       Problem("AgentRef is already in state 'Reset'"))
     assert(checked.left.exists(possibleProblems.contains))
 
-    waitForCondition(10.s, 10.ms)(
-      controllerState.pathToAgentRefState(agentPath).couplingState == DelegateCouplingState.Reset)
+    def isResettingOrReset(s: DelegateCouplingState) = s match {
+      case _: DelegateCouplingState.Resetting | DelegateCouplingState.Reset => true
+      case _ => false
+    }
+    waitForCondition(10.s, 10.ms)(isResettingOrReset(
+      controllerState.pathToAgentRefState(agentPath).couplingState))
+    assert(isResettingOrReset(controllerState.pathToAgentRefState(agentPath).couplingState))
   }
 
   "Simulate journal deletion at restart" in {
