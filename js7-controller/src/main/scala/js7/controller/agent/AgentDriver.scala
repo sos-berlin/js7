@@ -136,7 +136,7 @@ extends ReceiveLoggingActor.WithStash
         })
 
     protected def getObservable(api: AgentClient, after: EventId) =
-      Task { logger.debug(s"getObservable(after=$after)") } >>
+      Task { logger.debug(s"getObservable(after=$after)") } *>
         api.eventObservable(EventRequest[Event](EventClasses, after = after,
           timeout = Some(requestTimeout)))
 
@@ -211,16 +211,17 @@ extends ReceiveLoggingActor.WithStash
       if (problem == DecoupledProblem/*avoid loop*/ || isTerminating) {
         self ! Internal.BatchFailed(inputs, problem)
       } else
-        (eventFetcher.invalidateCoupledApi >>
-          Task { currentFetchedFuture.foreach(_.cancel()) } >>
-          cancelObservationAndAwaitTermination >>
-          eventFetcher.decouple >>
-          Task {
+        eventFetcher.invalidateCoupledApi
+          .*>(Task { currentFetchedFuture.foreach(_.cancel()) })
+          .*>(cancelObservationAndAwaitTermination)
+          .*>(eventFetcher.decouple)
+          .*>(Task {
             self ! Internal.BatchFailed(inputs, problem)
+          })
+          .runToFuture
+          .onFailure { case t =>
+            logger.error("asyncOnBatchFailed: " + t.toStringWithCauses, t.nullIfNoStackTrace)
           }
-        ).runToFuture.onFailure { case t =>
-          logger.error("asyncOnBatchFailed: " + t.toStringWithCauses, t.nullIfNoStackTrace)
-        }
   }
 
   override def preStart() = {
@@ -254,11 +255,11 @@ extends ReceiveLoggingActor.WithStash
         isReset = false
         for (u <- changingUri) logger.warn(s"Already changing URI to $u ?")
         changingUri = Some(uri)
-        (cancelObservationAndAwaitTermination >>
-          eventFetcher.decouple
-        ).runToFuture.onFailure { case t =>
-          logger.error("ChangeUri: " + t.toStringWithCauses, t.nullIfNoStackTrace)
-        }
+        cancelObservationAndAwaitTermination
+          .*>(eventFetcher.decouple)
+          .runToFuture.onFailure { case t =>
+            logger.error("ChangeUri: " + t.toStringWithCauses, t.nullIfNoStackTrace)
+          }
       }
 
     case Internal.UriChanged =>
@@ -409,9 +410,9 @@ extends ReceiveLoggingActor.WithStash
       // Message is expected only after ChangeUri or after InvalidSessionTokenProblem while executing a command
       logger.debug(s"FetchFinished $tried")
       currentFetchedFuture = None
-      (eventFetcher.decouple >>
-        eventFetcher.pauseBeforeNextTry(conf.recouplingStreamReader.delay)
-      ).runToFuture
+      eventFetcher.decouple
+        .*>(eventFetcher.pauseBeforeNextTry(conf.recouplingStreamReader.delay))
+        .runToFuture
         .onComplete { _ =>
           if (!isTerminating) {
             if (changingUri.isDefined) {
@@ -466,15 +467,17 @@ extends ReceiveLoggingActor.WithStash
   }
 
   private def cancelObservationAndAwaitTermination: Task[Completed] =
-    currentFetchedFuture match {
-      case None => Task.completed
-      case Some(fetchedFuture) =>
-        fetchedFuture.cancel()
-        Task.fromFuture(fetchedFuture)
-          .onErrorRecover { case t =>
-            if (t ne CancelledMarker) logger.warn(t.toStringWithCauses)
-            Completed
-          }
+    Task.defer {
+      currentFetchedFuture match {
+        case None => Task.completed
+        case Some(fetchedFuture) =>
+          fetchedFuture.cancel()
+          Task.fromFuture(fetchedFuture)
+            .onErrorRecover { case t =>
+              if (t ne CancelledMarker) logger.warn(t.toStringWithCauses)
+              Completed
+            }
+      }
     }
 
   private def observeAndConsumeEvents: Task[Completed] =
