@@ -37,6 +37,9 @@ object AgentRefStateEvent
 
   final case class AgentResetStarted(force: Boolean = false)
   extends AgentRefStateEvent
+  {
+    override def toString = s"AgentResetStarted(force=$force)"
+  }
 
   type AgentShutDown = AgentShutDown.type
   case object AgentShutDown extends AgentRefStateEvent

@@ -128,6 +128,7 @@ private[agent] final class AgentActor private(
         }
 
       case AgentCommand.Reset(maybeAgentRunId) =>
+        logger.info(s"❗️ $command")
         maybeAgentRunId.fold(Checked.unit)(checkAgentRunId(_)) match {
           case Left(problem) => response.success(Left(problem))
           case Right(()) =>
@@ -158,7 +159,7 @@ private[agent] final class AgentActor private(
             else
               Right(Nil))
           .flatMapT(eventAndState => Task {
-            logger.info(s"Dedicating Agent '${agentPath.string}' to '$controllerId'")
+            logger.info(s"Dedicating $agentPath to '$controllerId'")
             addOrderKeeper(agentPath, controllerId)
               .rightAs(eventAndState._2.eventId)
           })

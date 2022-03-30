@@ -291,7 +291,7 @@ with Stash
           }
 
       case Internal.Ready =>
-        logger.info(s"Agent '${ownAgentPath.string}' is ready" +
+        logger.info(s"$ownAgentPath is ready" +
           AgentMain.runningSince.fold("")(o => s" (after ${o.elapsed.pretty})") +
           "\n" + "─" * 80)
 

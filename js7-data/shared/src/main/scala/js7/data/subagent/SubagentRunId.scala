@@ -6,6 +6,8 @@ import js7.base.utils.Base64UUID
 final case class SubagentRunId(base64UUID: Base64UUID) extends GenericString
 {
   def string = base64UUID.string
+
+  override def toString = typedToString
 }
 
 object SubagentRunId extends GenericString.NonEmpty[SubagentRunId]

@@ -19,6 +19,9 @@ trait GenericString
   final def nonEmpty = string.nonEmpty
 
   override def toString = string
+
+  def typedToString: String =
+    getClass.getSimpleName + ":" + string
 }
 
 object GenericString

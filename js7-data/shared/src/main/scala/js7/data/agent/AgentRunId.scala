@@ -8,8 +8,11 @@ import js7.data.event.JournalId
   * It identifies an Agent's event stream.
   * So and Agents keeps its `AgentRunId` event if its restartet,
   * as long as it uses the same event steam (Journal). */
-final case class AgentRunId(journalId: JournalId) extends GenericString {
+final case class AgentRunId(journalId: JournalId) extends GenericString
+{
   def string = journalId.string
+
+  override def toString = typedToString
 }
 
 object AgentRunId extends GenericString.NonEmpty[AgentRunId]
