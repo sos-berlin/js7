@@ -135,7 +135,11 @@ extends CommonConfiguration
   private[configuration] def windowsCodepageToEncoding(codepage: Int): Checked[Charset] = {
     val key = s"js7.windows.codepages.$codepage"
     config.optionAs[String](key) match {
-      case None => Left(Problem(s"Unknown Windows code page $codepage"))
+      case None =>
+        Checked.catchNonFatal(Charset.forName("cp" + codepage))
+          .orElse(Checked.catchNonFatal(Charset.forName("CP" + codepage)))
+          .left.map(_ => Problem(s"Unknown Windows code page $codepage"))
+
       case Some(encodingName) =>
         Checked.catchNonFatal(Charset.forName(encodingName))
           .left.map(Problem(s"Unknown encoding for Windows code page $codepage:") |+| _)

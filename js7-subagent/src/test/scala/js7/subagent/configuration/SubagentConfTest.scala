@@ -6,8 +6,14 @@ import java.nio.file.Paths
 import js7.base.configutils.Configs._
 import js7.base.log.Logger
 import js7.base.problem.Problem
+import js7.base.thread.MonixBlocking.syntax._
+import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
+import monix.eval.Task
+import monix.execution.Scheduler.Implicits.global
+import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
+import scala.collection.View
 import scala.jdk.CollectionConverters._
 
 final class SubagentConfTest extends AnyFreeSpec
@@ -35,15 +41,72 @@ final class SubagentConfTest extends AnyFreeSpec
   }
 
   "js7.windows.codepages are known" in {
-    for ((cp, nameObj) <- SubagentConf.defaultConfig.getObject("js7.windows.codepages").asScala) {
+    val cpToEncoding = SubagentConf.defaultConfig.getObject("js7.windows.codepages")
+      .asScala
+      .to(View)
+      .map { case (cp, v) => cp.toInt -> v.unwrapped.asInstanceOf[String] }
+      .toVector
+      .sortBy(_._1)
+    for ((cp, name) <- cpToEncoding) {
+      try {
+        val encoding = Charset.forName(name)
+        val hasCpName = encoding.name == s"cp$cp" || encoding.aliases.contains(s"cp$cp")
+        logger.info(s"Windows code page $cp -> $encoding " +
+          encoding.aliases.asScala.mkString(", ") + " " +
+          ((encoding.name != name) ?? s" ($name) ❗️") +
+          (hasCpName ?? " (derived too)"))
+      } catch {
+        case t: IllegalArgumentException => fail(s"Windows code page $cp: $t")
+      }
+    }
+  }
+
+  "Configured codepages that can also be derived" in {
+    for ((cp, nameObj) <- SubagentConf.defaultConfig.getObject("js7.windows.codepages")
+      .asScala.toVector.sortBy(_._1.toInt)) {
       try {
         val name = nameObj.unwrapped.asInstanceOf[String]
         val encoding = Charset.forName(name)
-        logger.info(s"Windows code page $cp -> $encoding${(encoding.name != name) ?? s" ($name) ❗️"}")
-      }
-      catch {
+        val cpName = s"cp$cp"
+        if (encoding.name == cpName || encoding.aliases.asScala(cpName))  {
+          logger.info(s"Superfluous configured Windows code page $cp -> $encoding " +
+            encoding.aliases.asScala.mkString(", "))
+        }
+      } catch {
         case t: IllegalArgumentException => fail(s"Windows code page $cp: $t")
       }
+    }
+  }
+
+  "Known codepages" in {
+    // Slow due to many Charset.forName
+    val configuredCodepages  = SubagentConf.defaultConfig.getObject("js7.windows.codepages")
+      .asScala.keySet
+    // Parallelize for shorter test duration (4s instead of 17s)
+    val cpToEnc = Observable.fromIterable(1 to 32767)
+      .bufferTumbling(512)
+      .mapParallelOrdered(sys.runtime.availableProcessors)(chunk => Task(
+        chunk.map(cp => cp -> subagentConf.windowsCodepageToEncoding(cp))))
+      .flatMap(Observable.fromIterable)
+      .collect { case (codepage, Right(encoding)) => codepage -> encoding }
+      .toListL
+      .await(99.s)
+    for ((codepage, encoding) <- cpToEnc) {
+      logger.info(s"Known Windows code page $codepage -> $encoding" +
+        ((configuredCodepages(codepage.toString) ?? " (configured)")))
+    }
+  }
+
+  "Encodings without codepage (informative)" in {
+    val supportedEncodings = SubagentConf.defaultConfig.getObject("js7.windows.codepages")
+      .asScala.values.view.map(_.unwrapped.asInstanceOf[String]).toSet
+    val javaEncodings = Charset.availableCharsets().asScala.values.toSet
+    val unsupported = javaEncodings
+      .filterNot(o => supportedEncodings(o.name))
+      .filterNot(o => (o.aliases.asScala + o.name).exists(o => o.matches("""(cp|CP)\d+""")))
+    for (encoding <- unsupported.toVector.sorted) {
+      logger.info(s"Java encoding without Windows codepage: ${encoding.name} " +
+        s"${encoding.aliases.asScala.mkString(", ")}")
     }
   }
 }
