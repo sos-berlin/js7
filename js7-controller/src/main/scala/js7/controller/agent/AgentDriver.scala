@@ -230,11 +230,11 @@ extends ReceiveLoggingActor.WithStash
   }
 
   override def postStop() = {
-    super.postStop()
+    logger.debug("postStop")
     eventFetcher.markAsStopped()
     eventFetcher.terminateAndLogout.runAsyncAndForget
     currentFetchedFuture.foreach(_.cancel())
-    logger.debug("postStop")
+    super.postStop()
   }
 
   protected def key = agentPath  // Only one version is active at any time
