@@ -389,7 +389,7 @@ with Stash
         itemKey match {
           case subagentId: SubagentId =>
             subagentKeeper
-              .removeSubagent(subagentId)
+              .removeSubagent(subagentId)/*FIXME May take a long time*/
               .flatMapT(_ => persistence
                 .persistKeyedEvent(ItemDetached(itemKey, ownAgentPath))
                 .rightAs(AgentCommand.Response.Accepted))

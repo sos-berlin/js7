@@ -12,6 +12,7 @@ import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.subagent.SubagentDeleteTest._
+import js7.tests.subagent.SubagentMoveTwiceTest.TestSemaphoreJob
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
@@ -24,7 +25,9 @@ final class SubagentDeleteTest extends AnyFreeSpec with SubagentTester
 
   protected implicit val scheduler = Scheduler.global
 
-  "Delete bareSubagent" in {
+  "Delete the Director Subagent ❓" in pending // TODO
+
+  "Delete bare Subagent" in {
     runSubagent(bareSubagentItem) { _ =>
       val eventId = eventWatch.lastAddedEventId
       controllerApi
@@ -80,15 +83,9 @@ final class SubagentDeleteTest extends AnyFreeSpec with SubagentTester
   //  Also nicht auf Antwort auf AgentCommand.DetachItem warten,
   //  sondern auf ein Event: ItemDetachable (vom Agenten?)
 
-  "Delay deleletion of SubagentItem while processes are still running" in pending // TODO
+  "Don't allow orders to start while SubagentItem is deleted ❓" in pending // TODO
 
-  "Don't allow orders to start while SubagentItem is deleted" in {
-    pending // TODO
-  }
-
-  "Delete Subagent and continue deletion after Subagent's restart" in {
-    pending // TODO
-  }
+  "Delete Subagent and continue deletion after Subagent's restart ❓" in pending // TODO
 }
 
 object SubagentDeleteTest
@@ -96,9 +93,9 @@ object SubagentDeleteTest
   val agentPath = AgentPath("AGENT")
 
   private val workflow = Workflow(
-    WorkflowPath("C-WORKFLOW") ~ "INITIAL",
+    WorkflowPath("WORKFLOW") ~ "INITIAL",
     Seq(
-      TestSemaphoreJob.execute(agentPath, parallelism = 1_000_000)))
+      TestSemaphoreJob.execute(agentPath)))
 
   final class TestSemaphoreJob extends SemaphoreJob(TestSemaphoreJob)
   object TestSemaphoreJob extends SemaphoreJob.Companion[TestSemaphoreJob]

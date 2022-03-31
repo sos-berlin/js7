@@ -102,9 +102,9 @@ object SubagentTest
   val agentPath = AgentPath("AGENT")
 
   private val workflow = Workflow(
-    WorkflowPath("C-WORKFLOW") ~ "INITIAL",
+    WorkflowPath("WORKFLOW") ~ "INITIAL",
     Seq(
-      TestSemaphoreJob.execute(agentPath, parallelism = 1_000_000)))
+      TestSemaphoreJob.execute(agentPath)))
 
   final class TestSemaphoreJob extends SemaphoreJob(TestSemaphoreJob)
   object TestSemaphoreJob extends SemaphoreJob.Companion[TestSemaphoreJob]

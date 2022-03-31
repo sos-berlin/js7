@@ -87,7 +87,7 @@ extends SubagentDriver
           .map(_.combineAll)))
 
   def shutdown =
-    Task.raiseError(new NotImplementedError("LocalSubagentDriver.stop"))
+    Task.raiseError(new NotImplementedError("LocalSubagentDriver.shutdown"))
 
   def processOrder(order: Order[Order.Processing]): Task[Checked[OrderProcessed]] =
     orderToExecuteDefaultArguments(order)

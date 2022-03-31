@@ -329,7 +329,6 @@ final class SubagentKeeper(
           })
         .flatMapT {
           case Some((Some(oldDriver), newDriver: RemoteSubagentDriver)) =>
-            // FIXME SubagentItem kann wieder geändert werden!
             assert(oldDriver.subagentId == newDriver.subagentId)
             val name = "addOrChange " + oldDriver.subagentItem.pathRev
             oldDriver

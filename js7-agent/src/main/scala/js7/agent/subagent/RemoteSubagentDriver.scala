@@ -156,7 +156,7 @@ extends SubagentDriver with SubagentEventListener
 
   private def tryShutdownSubagent: Task[Unit] =
     client
-      .login(onlyIfNotLoggedIn = true)
+      .login(onlyIfNotLoggedIn = true)  // TODO Mail be unreachable
       .*>(client.executeSubagentCommand(Numbered(0, SubagentCommand.ShutDown(restart = true))))
       .void
       .onErrorHandle(t =>  // Ignore when Subagent is unreachable

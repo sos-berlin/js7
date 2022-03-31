@@ -10,67 +10,55 @@ import js7.data.agent.AgentPath
 import js7.data.item.ItemOperation.AddOrChangeSimple
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
-import js7.data.subagent.SubagentItemStateEvent.SubagentCouplingFailed
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.SemaphoreJob
-import js7.tests.subagent.SubagentMoveTwiceTest._
+import js7.tests.subagent.SubagentMoveTest._
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
 
-final class SubagentMoveTwiceTest extends AnyFreeSpec with SubagentTester
+final class SubagentMoveTest extends AnyFreeSpec with SubagentTester
 {
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Seq(workflow, bareSubagentItem)
   override protected val subagentsDisabled = true
+
   protected implicit val scheduler = Scheduler.global
 
-  "Change URI twice before Subagent has restarted" in {
+  private lazy val bare1SubagentItem =
+    bareSubagentItem.copy(uri = Uri("http://localhost:" + findFreeTcpPort()))
+
+  "Restart Subagent at another URI" in {
     // Start bareSubagent
     val (bareSubagent, bareSubagentRelease) = subagentResource(bareSubagentItem, awaitDedicated = false)
       .allocated.await(99.s)
 
+    val aOrderId = OrderId("A-MOVE-SUBAGENT")
     var eventId = eventWatch.lastAddedEventId
-    val aOrderId = OrderId("A-CHANGE-URI-TWICE")
     locally {
       controllerApi.addOrder(FreshOrder(aOrderId, workflow.path)).await(99.s).orThrow
       val processingStarted = eventWatch
         .await[OrderProcessingStarted](_.key == aOrderId, after = eventId).head.value.event
-      assert(processingStarted == OrderProcessingStarted(bareSubagentId))
+      assert(processingStarted == OrderProcessingStarted(bareSubagentItem.id))
       eventWatch.await[OrderStdoutWritten](_.key == aOrderId, after = eventId)
       // aOrderId is waiting for semaphore
     }
 
-    // Change URI, but do not start a corresponding Subagent
     eventId = eventWatch.lastAddedEventId
-    locally {
-      val bare1SubagentItem = bareSubagentItem.copy(uri = Uri("http://localhost:" + findFreeTcpPort()))
-      val agentEventId = agent.eventWatch.lastAddedEventId
-      controllerApi.updateItems(Observable(AddOrChangeSimple(bare1SubagentItem)))
-        .await(99.s).orThrow
-      agent.eventWatch.await[SubagentCouplingFailed](_.key == bareSubagentId, after = agentEventId)
-    }
+    //val agentEventId = myAgent.eventWatch.lastAddedEventId
+    controllerApi.updateItems(Observable(AddOrChangeSimple(bare1SubagentItem)))
+      .await(99.s).orThrow
+    //myAgent.eventWatch.await[ItemAttachedToMe](_.event.item.key == bare1SubagentItem.id,
+    //  after = agentEventId)
+    //myAgent.eventWatch.await[SubagentCouplingFailed](_.key == bare1SubagentItem.id, after = agentEventId)
 
-    // Change URI again and start the corresponding Subagent
-    val bare2SubagentItem = bareSubagentItem.copy(uri = Uri("http://localhost:" + findFreeTcpPort()))
-    locally {
-      val agentEventId = agent.eventWatch.lastAddedEventId
-      controllerApi.updateItems(Observable(AddOrChangeSimple(bare2SubagentItem)))
-        .await(99.s).orThrow
-      agent.eventWatch.await[SubagentCouplingFailed](_.key == bareSubagentId, after = agentEventId)
-    }
-
-    // Start the replacing bareSubagent
-    runSubagent(bare2SubagentItem, suffix = "-2") { _ =>
+    // Start the replacing c1Subagent while the previous bareSubagent is still running
+    runSubagent(bare1SubagentItem, suffix = "-1") { _ =>
       val aProcessed = eventWatch.await[OrderProcessed](_.key == aOrderId, after = eventId).head
       assert(aProcessed.value.event == OrderProcessed.processLost)
 
-      // Shutdown the original Subagent
-      bareSubagent.shutdown(Some(SIGKILL), dontWaitForDirector = true).await(99.s)
-      bareSubagentRelease.await(99.s)
-
       // After ProcessLost at previous Subagent aOrderId restarts at current Subagent
-      //TestSemaphoreJob.continue(1)  // aOrder still runs on bareSubagent (but it is ignored)
+      TestSemaphoreJob.continue(1)  // aOrder still runs on bareSubagent (but it is ignored)
       TestSemaphoreJob.continue(1)
       val a2Processed = eventWatch
         .await[OrderProcessed](_.key == aOrderId, after = aProcessed.eventId)
@@ -79,15 +67,14 @@ final class SubagentMoveTwiceTest extends AnyFreeSpec with SubagentTester
 
       eventWatch.await[OrderFinished](_.key == aOrderId, after = eventId)
 
-      eventId = eventWatch.lastAddedEventId
       locally {
         // Start another order
-        val bOrderId = OrderId("B-CHANGE-URI-TWICE")
+        val bOrderId = OrderId("B-MOVE-SUBAGENT")
         TestSemaphoreJob.continue(1)
         controllerApi.addOrder(FreshOrder(bOrderId, workflow.path)).await(99.s).orThrow
         val bStarted = eventWatch.await[OrderProcessingStarted](_.key == bOrderId, after = eventId)
           .head.value.event
-        assert(bStarted == OrderProcessingStarted(bareSubagentId))
+        assert(bStarted == OrderProcessingStarted(bare1SubagentItem.id))
 
         eventWatch.await[OrderStdoutWritten](_.key == bOrderId, after = eventId)
 
@@ -98,12 +85,15 @@ final class SubagentMoveTwiceTest extends AnyFreeSpec with SubagentTester
         eventWatch.await[OrderFinished](_.key == bOrderId, after = eventId)
       }
     }
+
+    bareSubagent.shutdown(Some(SIGKILL), dontWaitForDirector = true).await(99.s)
+    bareSubagentRelease.await(99.s)
   }
 }
 
-object SubagentMoveTwiceTest
+object SubagentMoveTest
 {
-  private val agentPath = AgentPath("AGENT")
+  val agentPath = AgentPath("AGENT")
 
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
