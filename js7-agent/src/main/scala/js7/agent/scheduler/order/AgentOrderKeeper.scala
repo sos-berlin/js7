@@ -376,17 +376,17 @@ with Stash
     case AttachSignedItem(signed: Signed[SignableItem]) =>
       attachSignedItem(signed)
 
-    case DetachItem(path: OrderWatchPath) =>
-      fileWatchManager.remove(path)
-        .map(_.rightAs(AgentCommand.Response.Accepted))
-        .runToFuture
-
     case DetachItem(itemKey @ (_: InventoryItemPath.AttachableToAgent | WorkflowId.as(_))) =>
       if (!persistence.currentState.keyToItem.contains(itemKey)) {
         logger.warn(s"DetachItem($itemKey) but item is unknown")
         Future.successful(Right(AgentCommand.Response.Accepted))
       } else
         itemKey match {
+          case path: OrderWatchPath =>
+            fileWatchManager.remove(path)
+              .rightAs(AgentCommand.Response.Accepted)
+              .runToFuture
+
           case subagentId: SubagentId =>
             subagentKeeper
               .removeSubagent(subagentId)/*FIXME May take a long time*/

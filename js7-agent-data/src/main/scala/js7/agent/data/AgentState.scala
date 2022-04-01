@@ -170,36 +170,41 @@ with SnapshotableState[AgentState]
             Right(copy(
               idToSubagentSelection = idToSubagentSelection.updated(selection.id, selection)))
 
-          case ItemDetached(WorkflowId.as(workflowId), _) =>
-            for (_ <- idToWorkflow.checked(workflowId)) yield
-              copy(
-                keyToSignedItem = keyToSignedItem - workflowId,
-                idToWorkflow = idToWorkflow - workflowId)
+          case ItemDetached(itemKey, meta.agentPath) =>
+            itemKey match {
+              case WorkflowId.as(workflowId) =>
+                for (_ <- idToWorkflow.checked(workflowId)) yield
+                  copy(
+                    keyToSignedItem = keyToSignedItem - workflowId,
+                    idToWorkflow = idToWorkflow - workflowId)
 
-          case ItemDetached(path: OrderWatchPath, meta.agentPath) =>
-            for (_ <- allFileWatchesState.pathToFileWatchState.checked(path)) yield
-              copy(
-                allFileWatchesState = allFileWatchesState.detach(path))
+              case path: OrderWatchPath =>
+                for (_ <- allFileWatchesState.pathToFileWatchState.checked(path)) yield
+                  copy(
+                    allFileWatchesState = allFileWatchesState.detach(path))
 
-          case ItemDetached(path: JobResourcePath, meta.agentPath) =>
-            for (_ <- pathToJobResource.checked(path)) yield
-              copy(
-                keyToSignedItem = keyToSignedItem - path,
-                pathToJobResource = pathToJobResource - path)
+              case path: JobResourcePath =>
+                for (_ <- pathToJobResource.checked(path)) yield
+                  copy(
+                    keyToSignedItem = keyToSignedItem - path,
+                    pathToJobResource = pathToJobResource - path)
 
-          case ItemDetached(path: CalendarPath, meta.agentPath) =>
-            for (_ <- pathToCalendar.checked(path)) yield
-              copy(
-                pathToCalendar = pathToCalendar - path)
+              case path: CalendarPath =>
+                for (_ <- pathToCalendar.checked(path)) yield
+                  copy(
+                    pathToCalendar = pathToCalendar - path)
 
-          case ItemDetached(id: SubagentId, meta.agentPath) =>
-            for (_ <- idToSubagentItemState.checked(id)) yield
-              copy(
-                idToSubagentItemState = idToSubagentItemState - id)
+              case id: SubagentId =>
+                for (_ <- idToSubagentItemState.checked(id)) yield
+                  copy(
+                    idToSubagentItemState = idToSubagentItemState - id)
 
-          case ItemDetached(id: SubagentSelectionId, meta.agentPath) =>
-            Right(copy(
-              idToSubagentSelection = idToSubagentSelection - id))
+              case id: SubagentSelectionId =>
+                Right(copy(
+                  idToSubagentSelection = idToSubagentSelection - id))
+
+              case _ => applyStandardEvent(keyedEvent)
+            }
 
           case _ => applyStandardEvent(keyedEvent)
         }
