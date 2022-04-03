@@ -140,25 +140,22 @@ extends ControllerApiWithHttp
     var warned = now - 1.h
     /*HttpClient.liftProblem*/(
       apiResource
-        .use(api =>
-          api.login(onlyIfNotLoggedIn = true)
-            .flatMap(_ =>
-              api.retryIfSessionLost()(
-                body(api)))
-            .materialize.map {
-              case Failure(t: HttpException) if t.statusInt == 503/*Service unavailable*/ =>
-                Failure(t)  // Trigger onErrorRestartLoop
-              case o => HttpClient.failureToChecked(o)
-            }
-            .dematerialize)
+        .use(api => api
+          .retryIfSessionLost()(body(api))
+          .materialize.map {
+            case Failure(t: HttpException) if t.statusInt == 503/*Service unavailable*/ =>
+              Failure(t)  // Trigger onErrorRestartLoop
+            case o => HttpClient.failureToChecked(o)
+          }
+          .dematerialize)
         .onErrorRestartLoop(()) {
           case (t, _, retry) if HttpClient.isTemporaryUnreachable(t) && delays.hasNext =>
             if (warned.elapsed >= 60.s) {
               logger.warn(t.toStringWithCauses)
               warned = now
             } else logger.debug(t.toStringWithCauses)
-            apiCache.clear >>
-              Task.sleep(delays.next()) >>
+            apiCache.clear *>
+              Task.sleep(delays.next()) *>
               retry(())
           case (t, _, _) =>
             Task.raiseError(t)

@@ -131,7 +131,7 @@ object SessionApi
     : Task[A] =
       Task.defer {
         val delays = loginDelays()
-        login(onlyIfNotLoggedIn = true) >>
+        login(onlyIfNotLoggedIn = true) *>
           body
             .onErrorRestartLoop(()) {
               case (HttpException.HasProblem(problem), _, retry)
@@ -141,8 +141,8 @@ object SessionApi
                 // which after the same error has already logged-in again successfully.
                 // Should be okay if login is delayed like here
                 logger.info(s"Login again due to: $problem")
-                Task.sleep(delays.next()) >>
-                  login() >>
+                Task.sleep(delays.next()) *>
+                  login() *>
                   retry(())
 
               case (throwable, _, _) =>
@@ -174,7 +174,7 @@ object SessionApi
 
                 case _ =>
                   Task.raiseError(throwable)
-              }) >>
+              }) *>
                 retry(()).delayExecution(delays.next())
             })
       }
