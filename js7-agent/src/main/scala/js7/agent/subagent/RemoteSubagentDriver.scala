@@ -79,7 +79,7 @@ extends SubagentDriver with SubagentEventListener
       persistence.currentState
         .idToSubagentItemState.get(subagentId)
         .exists(s => s.couplingState == Coupled
-          /*Due to isHeartbeating we gnore s.problem to allow SubagentCoupled event.*/)
+          /*Due to isHeartbeating we ignore s.problem to allow SubagentCoupled event.*/)
 
   def isStopping = stopping
 
@@ -143,9 +143,10 @@ extends SubagentDriver with SubagentEventListener
           }))
       .memoize
 
-  def shutdown: Task[Unit] =
+  def tryShutdown: Task[Unit] =
     logger.debugTask(Task.defer {
       shuttingDown = true
+      // Wait until no Order is being processed
       orderToPromise.stop
         // Emit event and change state ???
         .*>(tryShutdownSubagent)
@@ -155,9 +156,7 @@ extends SubagentDriver with SubagentEventListener
   //  dispatcher.suspend *> stopEventListener
 
   private def tryShutdownSubagent: Task[Unit] =
-    client
-      .login(onlyIfNotLoggedIn = true)  // TODO Mail be unreachable
-      .*>(client.executeSubagentCommand(Numbered(0, SubagentCommand.ShutDown(restart = true))))
+    client.executeSubagentCommand(Numbered(0, SubagentCommand.ShutDown(restart = true)))
       .void
       .onErrorHandle(t =>  // Ignore when Subagent is unreachable
         logger.error(s"SubagentCommand.ShutDown => ${t.toStringWithCauses}"))

@@ -1,7 +1,11 @@
 package js7.data.subagent
 
-import io.circe.generic.semiauto.deriveCodec
+import io.circe.generic.extras.Configuration.default.withDefaults
+import io.circe.generic.extras.semiauto.deriveConfiguredDecoder
+import io.circe.syntax.EncoderOps
+import io.circe.{Codec, Encoder, JsonObject}
 import js7.base.problem.{Checked, Problem}
+import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.data.delegate.DelegateCouplingState
 import js7.data.delegate.DelegateCouplingState.{Coupled, Reset, ShutDown}
 import js7.data.event.EventId
@@ -12,6 +16,7 @@ final case class SubagentItemState(
   subagentItem: SubagentItem,
   subagentRunId: Option[SubagentRunId],
   couplingState: DelegateCouplingState,
+  isDetaching: Boolean = false,  // Agent only
   eventId: EventId,
   problem: Option[Problem])
 extends UnsignedSimpleItemState
@@ -23,9 +28,6 @@ extends UnsignedSimpleItemState
   def subagentId = subagentItem.id
 
   def pathRev = item.pathRev
-
-  def isCoupled =
-    couplingState == Coupled && problem.isEmpty
 
   def applyEvent(event: SubagentItemStateEvent): Checked[SubagentItemState] =
     event match {
@@ -69,8 +71,24 @@ extends UnsignedSimpleItemState
 object SubagentItemState
 {
   def initial(subagentItem: SubagentItem) =
-    SubagentItemState(subagentItem, None, DelegateCouplingState.Reset, eventId = EventId.BeforeFirst,
+    SubagentItemState(subagentItem, None, DelegateCouplingState.Reset,
+      isDetaching = false,
+      eventId = EventId.BeforeFirst,
       None)
 
-  implicit val jsonCodec = deriveCodec[SubagentItemState]
+  private val jsonDecoder = {
+    implicit val x = withDefaults
+    deriveConfiguredDecoder[SubagentItemState]
+  }
+
+  private val jsonEncoder: Encoder.AsObject[SubagentItemState] =
+    o => JsonObject(
+      "subagentItem" -> o.subagentItem.asJson,
+      "subagentRunId" -> o.subagentRunId.asJson,
+      "couplingState" -> o.couplingState.asJson,
+      "isDetaching" -> o.isDetaching.?.asJson,
+      "eventId" -> o.eventId.asJson,
+      "problem" -> o.problem.asJson)
+
+  implicit val jsonCodec = Codec.AsObject.from(jsonDecoder, jsonEncoder)
 }

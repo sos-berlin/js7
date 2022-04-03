@@ -40,7 +40,6 @@ extends /*EventApi with*/ SessionApi.HasUserAndPassword with HttpSessionApi with
 
   protected def userAndPassword = admission.userAndPassword
 
-
   def executeSubagentCommand[A <: SubagentCommand](numbered: Numbered[A])
   : Task[numbered.value.Response] =
     retryIfSessionLost()(

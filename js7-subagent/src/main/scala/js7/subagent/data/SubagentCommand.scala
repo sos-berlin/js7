@@ -126,7 +126,7 @@ object SubagentCommand extends CommonCommand.Companion
   final case class ShutDown(
     processSignal: Option[ProcessSignal] = None,
     restart: Boolean = false)
-  extends SubagentCommand {
+  extends Queueable {
     type Response = Accepted
   }
   object ShutDown {

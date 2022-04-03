@@ -22,6 +22,7 @@ final class SubagentItemStateTest extends AnyFreeSpec
           itemRevision = Some(ItemRevision(1))),
         Some(SubagentRunId(Base64UUID.zero)),
         DelegateCouplingState.Coupled,
+        isDetaching = false,
         1001L,
         Some(Problem("PROBLEM"))),
       json"""{
@@ -40,6 +41,33 @@ final class SubagentItemStateTest extends AnyFreeSpec
         "problem": {
           "message": "PROBLEM"
         }
+      }""")
+
+    testJson[SubagentItemState](
+      SubagentItemState(
+        SubagentItem(
+          SubagentId("SUBAGENT"),
+          AgentPath("AGENT"),
+          Uri("https://example.com"),
+          itemRevision = Some(ItemRevision(1))),
+        None,
+        DelegateCouplingState.Coupled,
+        isDetaching = true,
+        1001L,
+        None),
+      json"""{
+        "subagentItem": {
+          "agentPath": "AGENT",
+          "disabled": false,
+          "id": "SUBAGENT",
+          "itemRevision": 1,
+          "uri": "https://example.com"
+        },
+        "couplingState": {
+          "TYPE": "Coupled"
+        },
+        "isDetaching": true,
+        "eventId": 1001
       }""")
   }
 }

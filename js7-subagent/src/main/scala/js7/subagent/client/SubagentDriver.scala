@@ -38,7 +38,7 @@ trait SubagentDriver
 
   def stop(signal: Option[ProcessSignal]): Task[Unit]
 
-  def shutdown: Task[Unit]
+  def tryShutdown: Task[Unit]
 
   def processOrder(order: Order[Order.Processing]): Task[Checked[OrderProcessed]]
 

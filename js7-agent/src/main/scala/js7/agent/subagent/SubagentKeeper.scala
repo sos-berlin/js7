@@ -24,6 +24,7 @@ import js7.base.utils.{LockKeeper, SetOnce}
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.event.{KeyedEvent, Stamped}
+import js7.data.item.BasicItemEvent.ItemDetached
 import js7.data.order.OrderEvent.{OrderCoreEvent, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentSelection, SubagentSelectionId}
@@ -50,7 +51,7 @@ final class SubagentKeeper(
   private val defaultPrioritized = Prioritized.empty[SubagentId](
     toPriority = _ => 0/*same priority for each entry, round-robin*/)
   private val initialized = SetOnce[Initialized]
-  private val state = AsyncVariable[State](State(Map.empty, Map(
+  private val stateVar = AsyncVariable[State](State(Map.empty, Map(
     /*local Subagent*/None -> defaultPrioritized)))
   private val orderToWaitForSubagent = AsyncMap.empty[OrderId, Promise[Unit]]
   private val orderToSubagent = AsyncMap.empty[OrderId, SubagentDriver]
@@ -67,7 +68,7 @@ final class SubagentKeeper(
       if (localSubagentId.isDefined)
         Task.unit
       else // COMPATIBLE with v2.2 which does not know Subagents
-        state
+        stateVar
           .update(state => Task(state
             .insertSubagentDriver(newLocalSubagentDriver(legacyLocalSubagentId, initialized))
             .orThrow))
@@ -77,14 +78,15 @@ final class SubagentKeeper(
   def start: Task[Unit] =
     logger.debugTask(Task.defer {
       initialized.orThrow
-      state.get.idToDriver.values
-        .toVector
-        .parUnorderedTraverse(_.start)
-        .map(_.combineAll)
+      continueDetaching *>
+        stateVar.get.idToDriver.values
+          .toVector
+          .parUnorderedTraverse(_.start)
+          .map(_.combineAll)
     })
 
   def stop: Task[Unit] =
-    state
+    stateVar
       .updateWithResult(state => Task(
         state.clear -> state.idToDriver.values))
       .flatMap(drivers =>
@@ -139,7 +141,7 @@ final class SubagentKeeper(
   : Task[Checked[Unit]] =
     logger.traceTask("continueProcessingOrder", order.id)(Task.defer {
       val subagentId = order.state.subagentId getOrElse legacyLocalSubagentId
-      state.get.idToDriver.get(subagentId)
+      stateVar.get.idToDriver.get(subagentId)
         .match_ {
           case None =>
             val event = OrderProcessed(Outcome.Disrupted(Problem.pure(
@@ -219,7 +221,7 @@ final class SubagentKeeper(
   : Task[SubagentDriver] =
     Observable
       .repeatEvalF(Coeval {
-        state.get.selectNext(maybeSelectionId)
+        stateVar.get.selectNext(maybeSelectionId)
       })
       .delayOnNextBySelector {
         case None => Observable.unit.delayExecution(reconnectDelayer.next())
@@ -244,30 +246,47 @@ final class SubagentKeeper(
           })
     }
 
-  def removeSubagent(subagentId: SubagentId): Task[Checked[Unit]] =
-    logger.debugTask("removeSubagent", subagentId)(Task.defer {
-      state.get.idToDriver
-        .get(subagentId)
-        .fold(Task.right(()))(subagentDriver =>
-          subagentDriver.shutdown
-            .*>(state
-              .update(state => Task(
+  def removeSubagent(subagentId: SubagentId): Task[Unit] =
+    logger.debugTask("removeSubagent", subagentId)(
+      stateVar.value
+        .flatMap(_.idToDriver
+          .get(subagentId)
+          .fold(Task.unit)(subagentDriver =>
+            subagentDriver.tryShutdown
+              .*>(stateVar.update(state => Task(
                 state.removeSubagent(subagentId))))
-            .*>(subagentDriver.stop(signal = None))
-            .map(Right(_)))
-    })
+              .*>(subagentDriver.stop(signal = None)))))
+              .*>(persistence
+                .persistKeyedEvent(ItemDetached(subagentId, agentPath))
+                .orThrow
+                .void)
 
   def recoverSubagents(subagentItemStates: Seq[SubagentItemState]): Task[Checked[Unit]] =
     subagentItemStates
-      .traverse(addOrChange)
-      .map(_
-        .combineProblems
-        .rightAs(()))
+      .traverse(s => addOrChange(s)
+        .map(_.map(_.map(_ => s))))
+      .map(_.combineProblems)
+      .map(_.map(_.flatten))
+
+  private def continueDetaching: Task[Checked[Unit]] =
+    persistence.state.flatMap(_
+      .idToSubagentItemState.values
+      .filter(_.isDetaching)
+      .toVector
+      .traverse { subagentItemState =>
+        val subagentId = subagentItemState.subagentId
+        removeSubagent(subagentId)
+          .onErrorHandle(t => Task(logger.error(s"removeSubagent($subagentId) => $t")))
+          .startAndForget
+      }
+      .map(_.combineAll)
+      .map(Right(_)))
 
   def recoverSubagentSelections(subagentSelections: Seq[SubagentSelection]): Task[Checked[Unit]] =
-    subagentSelections
-      .traverse(addOrReplaceSubagentSelection)
-      .map(_.combineAll)
+    logger.debugTask(
+      subagentSelections
+        .traverse(addOrReplaceSubagentSelection)
+        .map(_.combineAll))
 
   // TODO Kann SubagentItem gelöscht werden während proceed hängt wegen unerreichbaren Subagenten?
   def proceedWithSubagent(subagentItemState: SubagentItemState): Task[Checked[Unit]] =
@@ -279,7 +298,7 @@ final class SubagentKeeper(
             .onErrorHandle(t => logger.error( // TODO Emit event ?
               s"proceedWithSubagent(${subagentItemState.pathRev}) => ${t.toStringWithCauses}"))
             .startAndForget)
-          .map(Right(_))))
+        .map(Right(_))))
 
   // Returns a SubagentDriver if created
   private def addOrChange(subagentItemState: SubagentItemState)
@@ -289,43 +308,40 @@ final class SubagentKeeper(
       initialized.task
         .logWhenItTakesLonger("SubagentKeeper.initialized?")
         .flatMap(initialized =>
-          state.get.idToDriver.get(subagentItem.id) match {
+          stateVar.get.idToDriver.get(subagentItem.id) match {
             case Some(_: LocalSubagentDriver[_]) =>
-              state
+              stateVar
                 .updateChecked(state => Task(
                   state.disable(subagentItem.id, subagentItem.disabled)))
                 .rightAs(None)
 
             case _ =>
               // Don't use the matched RemoteAgentDriver. We update state with an atomic operation.
-              state.updateCheckedWithResult(state =>
-                state.idToDriver.get(subagentItem.id) match {
+              stateVar.updateCheckedWithResult(state =>
+                Task(state.idToDriver.get(subagentItem.id) match {
                   case None =>
-                    Task {
-                      val subagentDriver = newSubagentDriver(subagentItem, initialized)
-                      state.insertSubagentDriver(subagentDriver, subagentItem)
-                        .flatMap(_.disable(subagentItem.id, subagentItem.disabled))
-                        .map(_ -> Some(None -> subagentDriver))
-                    }
+                    val subagentDriver = newSubagentDriver(subagentItem, initialized)
+                    state.insertSubagentDriver(subagentDriver, subagentItem)
+                      .flatMap(_.disable(subagentItem.id, subagentItem.disabled))
+                      .map(_ -> Some(None -> subagentDriver))
 
                   case Some(existing) =>
-                    Task(
-                      checkedCast[RemoteSubagentDriver](existing)
-                        .flatMap(existing =>
-                          if (subagentItem.uri == existing.subagentItem.uri)
-                            Right(state -> None)
-                          else {
-                            // Subagent moved
-                            val driver = newRemoteSubagentDriver(subagentItem, initialized)
-                            state.replaceSubagentDriver(driver, subagentItem)
-                              .map(_ -> Some(Some(existing) -> driver))
-                            // Continue after locking updateCheckedWithResult
-                          })
-                        .flatMap { case (state, result) =>
-                          state.disable(subagentItem.id, subagentItem.disabled)
-                            .map(_ -> result)
+                    checkedCast[RemoteSubagentDriver](existing)
+                      .flatMap(existing =>
+                        if (subagentItem.uri == existing.subagentItem.uri)
+                          Right(state -> None)
+                        else {
+                          // Subagent moved
+                          val driver = newRemoteSubagentDriver(subagentItem, initialized)
+                          state.replaceSubagentDriver(driver, subagentItem)
+                            .map(_ -> Some(Some(existing) -> driver))
+                          // Continue after locking updateCheckedWithResult
                         })
-                })
+                      .flatMap { case (state, result) =>
+                        state.disable(subagentItem.id, subagentItem.disabled)
+                          .map(_ -> result)
+                      }
+                }))
           })
         .flatMapT {
           case Some((Some(oldDriver), newDriver: RemoteSubagentDriver)) =>
@@ -375,12 +391,12 @@ final class SubagentKeeper(
       actorSystem)
 
   def addOrReplaceSubagentSelection(selection: SubagentSelection): Task[Checked[Unit]] =
-    state
+    stateVar
       .updateChecked(state => Task(state.insertOrReplaceSelection(selection)))
       .rightAs(())
 
   def removeSubagentSelection(subagentSelectionId: SubagentSelectionId): Task[Unit] =
-    state
+    stateVar
       .update(state => Task(state.removeSelection(subagentSelectionId)))
       .void
 

@@ -118,15 +118,18 @@ object VerifiedUpdateItemsExecutor
       if (item.itemRevision.isDefined)
         Left(Problem.pure("ItemRevision is not accepted here"))
       else
-        for (_ <- checkItem.getOrElse(item, Checked.unit)) yield
-          controllerState.pathToSimpleItem.get(item.key) match {
+        checkItem.getOrElse(item, Checked.unit)
+          .flatMap(_ => controllerState.pathToSimpleItem.get(item.key) match {
             case None =>
-              UnsignedSimpleItemAdded(item.withRevision(Some(ItemRevision.Initial)))
+              Right(UnsignedSimpleItemAdded(item.withRevision(Some(ItemRevision.Initial))))
             case Some(existing) =>
-              UnsignedSimpleItemChanged(item
-                .withRevision(Some(
-                  existing.itemRevision.fold(ItemRevision.Initial/*not expected*/)(_.next))))
-          }
+              if (controllerState.deletionMarkedItems.contains(item.key))
+                Left(Problem.pure(s"${item.key} is marked as deleted and cannot be changed"))
+              else
+                Right(UnsignedSimpleItemChanged(item
+                  .withRevision(Some(
+                    existing.itemRevision.fold(ItemRevision.Initial /*not expected*/)(_.next)))))
+          })
 
     def simpleItemDeletionEvents(
       path: SimpleItemPath,

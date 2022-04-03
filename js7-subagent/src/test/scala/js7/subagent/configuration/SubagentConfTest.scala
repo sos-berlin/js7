@@ -92,7 +92,8 @@ final class SubagentConfTest extends AnyFreeSpec
       .toListL
       .await(99.s)
     for ((codepage, encoding) <- cpToEnc) {
-      logger.info(s"Known Windows code page $codepage -> $encoding" +
+      logger.info(s"Known Windows code page $codepage -> $encoding " +
+        encoding.aliases.asScala.toVector.sorted.mkString(", ") +
         ((configuredCodepages(codepage.toString) ?? " (configured)")))
     }
   }
@@ -106,7 +107,7 @@ final class SubagentConfTest extends AnyFreeSpec
       .filterNot(o => (o.aliases.asScala + o.name).exists(o => o.matches("""(cp|CP)\d+""")))
     for (encoding <- unsupported.toVector.sorted) {
       logger.info(s"Java encoding without Windows codepage: ${encoding.name} " +
-        s"${encoding.aliases.asScala.mkString(", ")}")
+        s"${encoding.aliases.asScala.toVector.mkString(", ")}")
     }
   }
 }

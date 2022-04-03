@@ -54,13 +54,18 @@ final class SubagentSelectionTest extends AnyFreeSpec with SubagentTester
     .traverse(subagentItem =>
       directoryProvider.subagentResource(subagentItem)
         .allocated
-        .map(subagentItem.id -> _._2))
+        .map(subagentItem.id -> _._2.memoize))
     .await(99.s)
     .toMap
 
   override def beforeAll() = {
     super.beforeAll()
     myAgent = agent
+  }
+
+  override def afterAll() = {
+    idToRelease.values.toVector.sequence.await(99.s)
+    super.afterAll()
   }
 
   "Start and attach Subagents and SubagentSelection" in {

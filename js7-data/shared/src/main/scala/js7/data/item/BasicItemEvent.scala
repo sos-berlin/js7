@@ -5,6 +5,7 @@ import io.circe.{Codec, Decoder, HCursor}
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.Signed
+import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.data.delegate.DelegateId
 import js7.data.event.ItemContainer
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detached}
@@ -13,6 +14,7 @@ sealed trait BasicItemEvent extends InventoryItemEvent
 
 object BasicItemEvent
 {
+  // Should we clearly separate Client and Delegate event ?
   sealed trait ForClient extends BasicItemEvent
   sealed trait ForDelegate extends BasicItemEvent
 
@@ -116,6 +118,19 @@ object BasicItemEvent
     }
   }
 
+  final case class ItemDetachingFromMe(key: InventoryItemKey)
+  extends ForDelegate {
+    def attachedState = Detached
+  }
+  object ItemDetachingFromMe {
+    def jsonCodec[S](implicit S: ItemContainer.Companion[S])
+    : Codec.AsObject[ItemDetachingFromMe] = {
+      import S.{delegateIdJsonCodec, inventoryItemKeyJsonCodec}
+      intelliJuseImport((inventoryItemKeyJsonCodec, delegateIdJsonCodec))
+      deriveCodec[ItemDetachingFromMe]
+    }
+  }
+
   final case class ItemDetached(key: InventoryItemKey, delegateId: DelegateId)
   extends ItemAttachedStateEvent with ForDelegate {
     def attachedState = Detached
@@ -145,6 +160,7 @@ object BasicItemEvent
       Subtype.withAliases(deriveCodec[ItemAttachedToMe], aliases = "ItemAttachedToAgent" :: Nil),
       Subtype(SignedItemAttachedToMe.jsonCodec),
       Subtype(deriveEncoder[ItemDetachable], ItemDetachable.jsonDecoder),
+      Subtype(ItemDetachingFromMe.jsonCodec),
       Subtype(deriveEncoder[ItemDetached], ItemDetached.jsonDecoder))
   }
 }

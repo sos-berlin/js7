@@ -86,8 +86,8 @@ extends SubagentDriver
             .onErrorHandle(t => logger.error(s"Stop $jobDriver: ${t.toStringWithCauses}")))
           .map(_.combineAll)))
 
-  def shutdown =
-    Task.raiseError(new NotImplementedError("LocalSubagentDriver.shutdown"))
+  def tryShutdown =
+    Task.unit
 
   def processOrder(order: Order[Order.Processing]): Task[Checked[OrderProcessed]] =
     orderToExecuteDefaultArguments(order)

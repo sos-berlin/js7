@@ -3,9 +3,10 @@ package js7.data.item
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerState
-import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemAttachedToMe, ItemDeleted, ItemDeletionMarked, ItemDetachable, ItemDetached}
+import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemAttachedToMe, ItemDeleted, ItemDeletionMarked, ItemDetachable, ItemDetached, ItemDetachingFromMe}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.orderwatch.OrderWatchPath
+import js7.data.subagent.SubagentId
 import js7.data.workflow.WorkflowPath
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 import org.scalatest.freespec.AnyFreeSpec
@@ -138,6 +139,16 @@ final class BasicItemEventTest extends AnyFreeSpec
           "TYPE": "ItemDetached",
           "key": "Workflow:PATH~1",
           "agentPath": "AGENT"
+        }""")
+    }
+
+    "ItemDetachingFromMe" in {
+      val event = ItemDetachingFromMe(SubagentId("SUBAGENT"))
+      testJson[BasicItemEvent](event,
+        json"""
+        {
+          "TYPE": "ItemDetachingFromMe",
+          "key": "Subagent:SUBAGENT"
         }""")
     }
   }

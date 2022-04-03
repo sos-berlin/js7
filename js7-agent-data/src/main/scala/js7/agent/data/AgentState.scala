@@ -16,7 +16,7 @@ import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, ItemContainer, JournalEvent, JournalState, KeyedEvent, KeyedEventTypedJsonCodec, SignedItemContainer, SnapshotableState}
-import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached, SignedItemAttachedToMe}
+import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached, ItemDetachingFromMe, SignedItemAttachedToMe}
 import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, SignableItem, SignableItemKey}
 import js7.data.job.{JobResource, JobResourcePath}
@@ -205,6 +205,12 @@ with SnapshotableState[AgentState]
 
               case _ => applyStandardEvent(keyedEvent)
             }
+
+          case ItemDetachingFromMe(id: SubagentId) =>
+            for (subagentItemState <- idToSubagentItemState.checked(id)) yield
+              copy(
+                idToSubagentItemState = idToSubagentItemState.updated(id,
+                  subagentItemState.copy(isDetaching = true)))
 
           case _ => applyStandardEvent(keyedEvent)
         }

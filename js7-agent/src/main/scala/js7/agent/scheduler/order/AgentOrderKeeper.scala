@@ -33,10 +33,11 @@ import js7.common.utils.Exceptions.wrapException
 import js7.core.problems.ReverseReleaseEventsProblem
 import js7.data.calendar.Calendar
 import js7.data.event.JournalEvent.JournalEventsReleased
+import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{<-:, Event, EventId, JournalState, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.instructions.{ExecuteAdmissionTimeSwitch, InstructionExecutorService}
-import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached, SignedItemAttachedToMe}
+import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached, ItemDetachingFromMe, SignedItemAttachedToMe}
 import js7.data.item.{InventoryItem, InventoryItemPath, SignableItem, UnsignedSimpleItem}
 import js7.data.job.{JobKey, JobResource}
 import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderBroken, OrderCoreEvent, OrderDetached, OrderProcessed}
@@ -64,10 +65,10 @@ import scala.util.{Failure, Success, Try}
 import shapeless.tag
 
 /**
-  * Keeper of one Controller's orders.
-  *
-  * @author Joacim Zschimmer
-  */
+ * Keeper of one Controller's orders.
+ *
+ * @author Joacim Zschimmer
+ */
 final class AgentOrderKeeper(
   totalRunningSince: Deadline,
   recovered_ : Recovered[AgentState],
@@ -77,7 +78,7 @@ final class AgentOrderKeeper(
   private implicit val clock: AlarmClock,
   conf: AgentConfiguration)
   (implicit protected val scheduler: Scheduler, iox: IOExecutor)
-extends MainJournalingActor[AgentState, Event]
+  extends MainJournalingActor[AgentState, Event]
 with Stash
 {
   import conf.akkaAskTimeout
@@ -388,19 +389,24 @@ with Stash
               .runToFuture
 
           case subagentId: SubagentId =>
-            subagentKeeper
-              .removeSubagent(subagentId)/*FIXME May take a long time*/
-              .flatMapT(_ => persistence
-                .persistKeyedEvent(ItemDetached(itemKey, ownAgentPath))
-                .rightAs(AgentCommand.Response.Accepted))
+            persistence
+              .persistKeyedEvent(NoKey <-: ItemDetachingFromMe(subagentId))
+              .flatMapT(_ => subagentKeeper
+                .removeSubagent(subagentId) // May take a long time
+                // SubagentKeeper emits ItemDetached event
+                //.*>(persistence.persistKeyedEvent(ItemDetached(itemKey, ownAgentPath)))
+                .onErrorHandle(t => Task(logger.error(s"$cmd => $t")))
+                .startAndForget
+                .map(Right(_)))
+              .as(Right(AgentCommand.Response.Accepted))
               .runToFuture
 
           case selectionId: SubagentSelectionId =>
-            subagentKeeper
-              .removeSubagentSelection(selectionId)
-              .*>(persistence
-                .persistKeyedEvent(ItemDetached(itemKey, ownAgentPath))
-                .rightAs(AgentCommand.Response.Accepted))
+            persistence
+              .persistKeyedEvent(NoKey <-: ItemDetached(selectionId, ownAgentPath))
+              .flatMapT(_ => subagentKeeper
+                .removeSubagentSelection(selectionId)
+                .as(Right(AgentCommand.Response.Accepted)))
               .runToFuture
 
           case _ =>
@@ -514,7 +520,7 @@ with Stash
                   else
                     attachOrder(/*workflowRegister.reuseMemory*/(order), workflow)
                       .map((_: Completed) => Right(Response.Accepted))
-          }
+              }
         }
 
     case DetachOrder(orderId) =>
@@ -582,8 +588,8 @@ with Stash
             case (Stamped(_,_, _ <-: event), journaledState) =>
               journalState = journalState.applyEvent(event)
               Right(AgentCommand.Response.Accepted)
-            }
-        }
+          }
+      }
   }
 
   private def createJobEntries(workflow: Workflow, zone: ZoneId): Unit =
@@ -637,7 +643,7 @@ with Stash
         case FollowUp.Delete(deleteOrderId) =>
           deleteOrder(deleteOrderId)
       })
-    }
+  }
 
   private def proceedWithOrder(orderId: OrderId): Unit =
     persistence.currentState.idToOrder.checked(orderId) match {
@@ -673,7 +679,7 @@ with Stash
             catch { case NonFatal(t) => logger.error(
               s"$orderId_ <-: ${event.toShortString} => ${t.toStringWithCauses}")
             }
-            // TODO Not awaiting the response may lead to duplicate events
+          // TODO Not awaiting the response may lead to duplicate events
             //  for example when OrderSuspensionMarked is emitted after OrderProcessed and before OrderMoved.
             //  Then, two OrderMoved are emitted, because the second event is based on the same Order state.
         }
@@ -713,7 +719,7 @@ with Stash
     }
 
   private def onOrderAvailableForJob(orderId: OrderId, jobEntry: JobEntry): Unit =
-    // TODO Make this more functional!
+  // TODO Make this more functional!
     if (!jobEntry.queue.isKnown(orderId)) {
       jobEntry.queue += orderId
       tryStartProcessing(jobEntry)
@@ -775,7 +781,7 @@ with Stash
     }
 
   private def orderEventSource =
-    //new OrderEventSource(persistence.currentState)
+  //new OrderEventSource(persistence.currentState)
     new OrderEventSource(new StateView {
       def isAgent = true
 

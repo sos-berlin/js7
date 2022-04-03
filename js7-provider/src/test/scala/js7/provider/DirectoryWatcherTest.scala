@@ -40,7 +40,7 @@ final class DirectoryWatcherTest extends AnyFreeSpec with BeforeAndAfterAll
     "Java's WatchService does not work properly under MacOS" in {
       // https://bugs.openjdk.java.net/browse/JDK-7133447
       assert(counter == 0)
-      sleep(2 * timeout)
+      sleep(3 * timeout)
       assert(counter > 0)
     }
   } else {

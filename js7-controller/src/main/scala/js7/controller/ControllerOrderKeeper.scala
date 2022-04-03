@@ -57,7 +57,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventId, JournalHeader, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.instructions.InstructionExecutorService
-import js7.data.item.BasicItemEvent.{ItemAttached, ItemAttachedToMe, ItemDeleted, ItemDetached, SignedItemAttachedToMe}
+import js7.data.item.BasicItemEvent.{ItemAttached, ItemAttachedToMe, ItemDeleted, ItemDetached, ItemDetachingFromMe, SignedItemAttachedToMe}
 import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemEvent}
@@ -510,6 +510,9 @@ with MainJournalingActor[ControllerState, Event]
                         // TODO Das kann schon der Agent machen. Dann wird weniger übertragen.
                         val item = signed.value
                         Timestamped(NoKey <-: ItemAttached(item.key, item.itemRevision, agentPath)) :: Nil
+
+                      case KeyedEvent(_: NoKey, _: ItemDetachingFromMe) =>
+                        Nil
 
                       case KeyedEvent(_: NoKey, _: ItemDetached) =>
                         Timestamped(keyedEvent) :: Nil
