@@ -278,15 +278,6 @@ extends SubagentDriver with SubagentEventListener
           .toList))
       .rightAs(())
 
-  // TODO Call this to update a changed JobResource
-  //private def onSignedItemChanged(signedItem: Signed[SignableItem]): Task[Unit] =
-  //  Task.defer {
-  //    if (stopping)
-  //      Task.unit
-  //    else
-  //      executeCommands(AttachSignedItem(signedItem) :: Nil)
-  //  }
-
   /** Continue a recovered processing Order. */
   def continueProcessingOrder(order: Order[Order.Processing]) =
     processOrder(order)
