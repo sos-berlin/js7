@@ -1,5 +1,6 @@
 package js7.base.utils
 
+import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
@@ -8,7 +9,6 @@ import monix.reactive.Observable
 import org.scalatest.freespec.AsyncFreeSpec
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Random
-import js7.base.time.ScalaTime._
 
 /**
   * @author Joacim Zschimmer
@@ -30,6 +30,11 @@ final class AsyncLockTest extends AsyncFreeSpec
       val lock = AsyncLock("TEST", logWorryDurations = Nil, suppressLog = suppressLog)
       doTest(lock.lock(_))
         .map(o => assert(o == Vector.fill(n)(initial)))
+        // High probability to fail once
+        .onErrorRestartLoop(100) {
+          case (t, 0, _) => Task.raiseError(t)
+          case (_, i, retry) => retry(i - 1)
+        }
         .runToFuture
     }
 
