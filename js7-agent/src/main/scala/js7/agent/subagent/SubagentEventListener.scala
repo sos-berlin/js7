@@ -249,6 +249,12 @@ private trait SubagentEventListener
                   .thenList(subagentId <-: SubagentCouplingFailed(prblm))
               }))
           .map(_.orThrow)
+          .void
+          .onErrorHandleWith(t => Task.defer {
+            // Error isn't logged until stopEventListener is called
+            logger.error("onSubagentDecoupled => " + t.toStringWithCauses)
+            Task.raiseError(t)
+          })
       })
 
   final def isHeartbeating = _isHeartbeating.get()

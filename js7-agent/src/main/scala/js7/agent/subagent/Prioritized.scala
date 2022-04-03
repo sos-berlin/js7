@@ -1,7 +1,6 @@
 package js7.agent.subagent
 
 import js7.agent.subagent.Prioritized._
-import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 
 private final class Prioritized[A] private(

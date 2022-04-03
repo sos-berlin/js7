@@ -320,7 +320,7 @@ extends HasCloser
     trustedSignatureDir: Path,
     port: Int,
     name: String)
-  : SubagentConf = {
+  : SubagentConf =
     SubagentConf.of(
       configDirectory = directory / "config",
       dataDirectory = directory / "data",
@@ -328,7 +328,7 @@ extends HasCloser
       jobWorkingDirectory = directory,
       Seq(WebServerPort.localhost(port)),
       killScript = None,
-      name = s"SubagentSelectionTest-$name",
+      name = testName.fold("")(_ + "-") + name,
       config = config"""
         js7.job.execution.signed-script-injection-allowed = yes
         js7.auth.users.AGENT {
@@ -340,7 +340,6 @@ extends HasCloser
         }
         """
         .withFallback(SubagentConf.defaultConfig))
-  }
 }
 
 object DirectoryProvider

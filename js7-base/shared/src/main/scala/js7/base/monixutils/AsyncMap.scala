@@ -9,12 +9,14 @@ import js7.base.utils.{AsyncLock, LockKeeper}
 import monix.eval.Task
 import scala.concurrent.Promise
 import scala.reflect.ClassTag
+import izumi.reflect.Tag
 
-class AsyncMap[K: ClassTag, V](initial: Map[K, V] = Map.empty[K, V])
+class AsyncMap[K: Tag: ClassTag, V: Tag](initial: Map[K, V] = Map.empty[K, V])
 {
   private val lockKeeper = new LockKeeper[K]
-  private val shortLock = AsyncLock(s"AsyncMap[${implicitClass[K].shortClassName}].shortLock",
-    suppressLog = true)
+  protected val name =
+    s"AsyncMap[${implicitly[Tag[K]].tag}, ${implicitly[Tag[V]].tag}]"
+  private val shortLock = AsyncLock(s"$name.shortLock", suppressLog = true)
   @volatile private var _map = initial
 
   protected[AsyncMap] def onEntryInsert() = Checked.unit
@@ -155,22 +157,19 @@ class AsyncMap[K: ClassTag, V](initial: Map[K, V] = Map.empty[K, V])
 
   override def toString =
     s"$name(n=${_map.size})"
-
-  protected def name =
-    s"AsyncMap[${implicitClass[K].simpleScalaName}]"
 }
 
 object AsyncMap
 {
   private val logger = scribe.Logger[this.type]
 
-  def apply[K: ClassTag, V](initial: Map[K, V] = Map.empty[K, V]) =
+  def apply[K: Tag: ClassTag, V: Tag](initial: Map[K, V] = Map.empty[K, V]) =
     new AsyncMap(initial)
 
-  def stoppable[K: ClassTag, V](initial: Map[K, V] = Map.empty[K, V]) =
+  def stoppable[K: Tag: ClassTag, V: Tag](initial: Map[K, V] = Map.empty[K, V]) =
     new AsyncMap(initial) with Stoppable
 
-  def empty[K: ClassTag, V] =
+  def empty[K: Tag: ClassTag, V: Tag] =
     new AsyncMap(Map.empty[K, V])
 
   trait Stoppable {

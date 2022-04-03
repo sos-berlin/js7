@@ -18,10 +18,14 @@ object StartUp
 {
   val runningSince = now
   val startedAt = Timestamp.now
+  private var _isMain = false
   private val logger = Logger(getClass)
   private val classPathLogged = AtomicBoolean(false)
 
-  def initialize(): Unit = {}
+  def initializeMain(): Unit =
+    _isMain = true
+
+  def isMain = _isMain
 
   // Initialize class and object for possible quicker emergency stop
   Halt

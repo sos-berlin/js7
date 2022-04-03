@@ -91,7 +91,7 @@ object ControllerMain
     val nanoTime = System.nanoTime() // Before anything else, fetch clock
     printlnWithClock(s"JS7 Controller ${BuildInfo.longVersion}")
     _runningSince = Some(Deadline(Duration(nanoTime, NANOSECONDS)))
-    StartUp.initialize()
+    StartUp.initializeMain()
 
     var terminate = ProgramTermination()
     lockAndRunMain(args) { commandLineArguments =>

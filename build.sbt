@@ -79,6 +79,7 @@ ThisBuild / scalacOptions ++= Seq(
   "-feature",
   "-deprecation",
   "-Wconf:cat=other-match-analysis:error",
+  "-Wconf:cat=lint-adapted-args:error",
   //"-Wunused:privates",
   //"-Wunused:locals",
   //"-Wunused:implicits",
