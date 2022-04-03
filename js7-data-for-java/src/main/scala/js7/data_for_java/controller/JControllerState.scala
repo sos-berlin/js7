@@ -16,7 +16,7 @@ import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.controller.ControllerState
 import js7.data.event.EventId
 import js7.data.execution.workflow.instructions.InstructionExecutorService
-import js7.data.item.InventoryItem
+import js7.data.item.{InventoryItem, InventoryItemKey}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath}
 import js7.data.order.{Order, OrderId, OrderObstacleCalculator}
@@ -164,6 +164,10 @@ extends JJournaledState[JControllerState, ControllerState]
       .view
       .mapValues(toJava)
       .asJava
+
+  @Nonnull
+  def deletionMarkedItems: java.util.Set[InventoryItemKey] =
+    asScala.deletionMarkedItems.asJava
 
   @Nonnull
   def orderIds: java.util.Set[OrderId] =
