@@ -32,9 +32,7 @@ extends AutoCloseable
     if (commonDirectoryCreated.get()) {
       tryDelete(directory.resolve(commonDirectory))
     }
-    if (statistics.fileCount.get() == 0) {
-      logger.debug(s"toFile function not used")
-    } else {
+    if (statistics.fileCount.get() > 0) {
       logger.info(s"toFile function statistics: $statistics")
     }
   }
