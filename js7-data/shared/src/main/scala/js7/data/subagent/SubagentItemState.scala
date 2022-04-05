@@ -72,9 +72,7 @@ object SubagentItemState
 {
   def initial(subagentItem: SubagentItem) =
     SubagentItemState(subagentItem, None, DelegateCouplingState.Reset,
-      isDetaching = false,
-      eventId = EventId.BeforeFirst,
-      None)
+      eventId = EventId.BeforeFirst)
 
   private val jsonDecoder = {
     implicit val x = withDefaults

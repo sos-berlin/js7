@@ -246,7 +246,12 @@ final class SubagentKeeper(
           })
     }
 
-  def removeSubagent(subagentId: SubagentId): Task[Unit] =
+  def startRemoveSubagent(subagentId: SubagentId): Task[Unit] =
+    removeSubagent(subagentId)
+      .onErrorHandle(t => Task(logger.error(s"removeSubagent($subagentId) => $t")))
+      .startAndForget
+
+  private def removeSubagent(subagentId: SubagentId): Task[Unit] =
     logger.debugTask("removeSubagent", subagentId)(
       stateVar.value
         .flatMap(_.idToDriver
@@ -271,14 +276,10 @@ final class SubagentKeeper(
   private def continueDetaching: Task[Checked[Unit]] =
     persistence.state.flatMap(_
       .idToSubagentItemState.values
-      .filter(_.isDetaching)
+      .view
+      .collect { case o if o.isDetaching => o.subagentId }
       .toVector
-      .traverse { subagentItemState =>
-        val subagentId = subagentItemState.subagentId
-        removeSubagent(subagentId)
-          .onErrorHandle(t => Task(logger.error(s"removeSubagent($subagentId) => $t")))
-          .startAndForget
-      }
+      .traverse(startRemoveSubagent)
       .map(_.combineAll)
       .map(Right(_)))
 

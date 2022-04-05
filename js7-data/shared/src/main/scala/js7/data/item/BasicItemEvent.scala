@@ -14,7 +14,6 @@ sealed trait BasicItemEvent extends InventoryItemEvent
 
 object BasicItemEvent
 {
-  // Should we clearly separate Client and Delegate event ?
   sealed trait ForClient extends BasicItemEvent
   sealed trait ForDelegate extends BasicItemEvent
 

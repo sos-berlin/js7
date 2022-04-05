@@ -392,11 +392,8 @@ with Stash
             persistence
               .persistKeyedEvent(NoKey <-: ItemDetachingFromMe(subagentId))
               .flatMapT(_ => subagentKeeper
-                .removeSubagent(subagentId) // May take a long time
-                // SubagentKeeper emits ItemDetached event
-                //.*>(persistence.persistKeyedEvent(ItemDetached(itemKey, ownAgentPath)))
-                .onErrorHandle(t => Task(logger.error(s"$cmd => $t")))
-                .startAndForget
+                .startRemoveSubagent(subagentId)
+                // SubagentKeeper will emit ItemDetached event
                 .map(Right(_)))
               .as(Right(AgentCommand.Response.Accepted))
               .runToFuture
