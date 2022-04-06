@@ -191,7 +191,13 @@ object SessionApi
   }
 
   private val initialLoginDelays = {
-    val seq = Seq(1.s, 1.s, 1.s, 1.s, 1.s, 2.s, 3.s,  5.s, 5.s,  5.s, 5.s,  5.s, 5.s,  5.s, 5.s,  5.s, 5.s)
+    val seq = Seq(
+      100.ms, 900.ms, 1.s, 1.s, 1.s, 2.s, 2.s, 2.s, // 10s
+      5.s, 5.s, // 20s
+      5.s, 5.s, // 30s
+      5.s, 5.s, // 40s
+      5.s, 5.s, // 50s
+      5.s, 5.s) // 60s
     assert(seq.reduce(_ + _) == 1.minute)
     seq
   }

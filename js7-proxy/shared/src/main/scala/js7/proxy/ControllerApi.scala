@@ -153,7 +153,9 @@ extends ControllerApiWithHttp
             if (warned.elapsed >= 60.s) {
               logger.warn(t.toStringWithCauses)
               warned = now
-            } else logger.debug(t.toStringWithCauses)
+            } else {
+              logger.debug(t.toStringWithCauses)
+            }
             apiCache.clear *>
               Task.sleep(delays.next()) *>
               retry(())
