@@ -27,7 +27,7 @@ import js7.data.event.{Event, EventId, JournalEvent, KeyedEvent, KeyedEventTyped
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.journal.recover.StateRecoverer
-import js7.journal.state.FileFileStatePersistenceTest._
+import js7.journal.state.FileStatePersistenceTest._
 import js7.journal.test.TestData
 import js7.journal.watch.JournalEventWatch
 import js7.journal.{EventIdClock, EventIdGenerator, JournalActor}
@@ -40,12 +40,12 @@ import scala.concurrent.Future
 /**
   * @author Joacim Zschimmer
   */
-final class FileFileStatePersistenceTest extends AnyFreeSpec with BeforeAndAfterAll
+final class FileStatePersistenceTest extends AnyFreeSpec with BeforeAndAfterAll
 {
   coupleScribeWithSlf4j()
 
   private implicit lazy val scheduler = Scheduler(Executors.newCachedThreadPool())  // Scheduler.Implicits.global blocks on 2-processor machine
-  protected lazy val directory = createTempDirectory("FileFileStatePersistenceTest-")
+  protected lazy val directory = createTempDirectory("FileStatePersistenceTest-")
   private lazy val journalMeta = testJournalMeta(fileBase = directory)
 
   override def afterAll() = {
@@ -155,7 +155,7 @@ final class FileFileStatePersistenceTest extends AnyFreeSpec with BeforeAndAfter
   }
 }
 
-private object FileFileStatePersistenceTest
+private object FileStatePersistenceTest
 {
   private val TestConfig = TestData.TestConfig
     .withFallback(config"""
