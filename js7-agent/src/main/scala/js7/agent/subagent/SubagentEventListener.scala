@@ -24,6 +24,7 @@ import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.other.HeartbeatTiming
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentCouplingFailed, SubagentEventsObserved, SubagentShutdown}
+import js7.data.subagent.SubagentRunId
 import js7.journal.CommitOptions
 import js7.subagent.SubagentState.keyedEventJsonCodec
 import js7.subagent.client.SubagentClient
@@ -48,13 +49,12 @@ private trait SubagentEventListener
 
   protected final val coupled = Switch(false)
 
-  protected final def stopEventListener: Task[Unit] = {
+  protected final def stopEventListener: Task[Unit] =
     lock.lock(logger.debugTask(Task.defer(
       Task.when(isListening.getAndSet(false))(
         stopObserving
           .flatMap(_.tryPut(())).void
           .*>(Task.defer(observing.join))))))
-  }
 
   protected final def startEventListener: Task[Unit] =
     lock.lock(Task.defer {
@@ -167,40 +167,49 @@ private trait SubagentEventListener
             })
 
       protected def getObservable(api: SubagentClient, after: EventId) =
-        Task.defer {
-          logger.debug(s"getObservable(after=$after)")
-          api.login(onlyIfNotLoggedIn = true) *>
-            api
-              .eventObservable(
-                EventRequest.singleClass[Event](after = after, timeout = None),
-                heartbeat = Some(heartbeatTiming.heartbeat))
-              .map(_
-                .detectPauses2(heartbeatTiming.longHeartbeatTimeout, PauseDetected)
-                .flatTap(stamped =>
-                  if (stamped ne PauseDetected)
-                    onHeartbeatStarted
-                  else {
-                    val problem = Problem.pure(s"Missing heartbeat from $subagentId")
-                    logger.warn(problem.toString)
-                    Observable.fromTask(onSubagentDecoupled(Some(problem)))
-                  })
-                .filter(_ != StampedHeartbeat)
-                .takeWhile(_ ne PauseDetected)
-                .guaranteeCase(exitCase => Task.defer(
-                  Task.when(exitCase != ExitCase.Completed || isHeartbeating)(
-                    stopObserving
-                      .flatMap(_.tryRead)
-                      .map {
-                        case None =>
-                          val problem = Problem.pure(s"$subagentId event stream: $exitCase")
-                          logger.warn(problem.toString)
-                          problem
-                        case Some(()) =>
-                          Problem.pure("SubagentEventListener stopped")
-                      }
-                      .flatMap(problem => onSubagentDecoupled(Some(problem)))))))
-              .map(Right(_))
-        }
+        logger.debugTask(s"getObservable(after=$after)")(
+          persistence.state.map(_.idToSubagentItemState.checked(subagentId).map(_.subagentRunId))
+            .flatMapT(maybeAgentRunId =>
+                getObservable(api, after, maybeAgentRunId)))
+
+      private def getObservable(api: SubagentClient, after: EventId, subagentRunId: Option[SubagentRunId]) =
+        api.login(onlyIfNotLoggedIn = true) *>
+          api
+            .eventObservable(
+              EventRequest.singleClass[Event](after = after, timeout = None),
+              subagentRunId,
+              heartbeat = Some(heartbeatTiming.heartbeat))
+            .map(_
+              .detectPauses2(heartbeatTiming.longHeartbeatTimeout, PauseDetected)
+              .flatTap(stamped =>
+                if (stamped ne PauseDetected)
+                  onHeartbeatStarted
+                else {
+                  val problem = Problem.pure(s"Missing heartbeat from $subagentId")
+                  logger.warn(problem.toString)
+                  Observable.fromTask(onSubagentDecoupled(Some(problem)))
+                })
+              .filter(_ != StampedHeartbeat)
+              .takeWhile(_ ne PauseDetected)
+              .guaranteeCase(exitCase => Task.defer(
+                Task.when(exitCase != ExitCase.Completed || isHeartbeating)(
+                  stopObserving
+                    .flatMap(_.tryRead)
+                    .map {
+                      case None =>
+                        val problem = exitCase match {
+                          case ExitCase.Completed =>
+                            Problem.pure(s"$subagentId event stream has ended")
+                          case _ =>
+                            Problem.pure(s"$subagentId event stream: $exitCase")
+                        }
+                        logger.warn(problem.toString)
+                        problem
+                      case Some(()) =>
+                        Problem.pure("SubagentEventListener stopped")
+                    }
+                    .flatMap(problem => onSubagentDecoupled(Some(problem)))))))
+            .map(Right(_))
 
       override protected def onCouplingFailed(api: SubagentClient, problem: Problem) =
         onSubagentDecoupled(Some(problem)) *>

@@ -12,6 +12,7 @@ import js7.common.http.AkkaHttpClient
 import js7.common.http.Uris.encodeQuery
 import js7.data.event.{Event, EventRequest, KeyedEvent, Stamped}
 import js7.data.session.HttpSessionApi
+import js7.data.subagent.SubagentRunId
 import js7.subagent.data.SubagentCommand
 import monix.eval.Task
 import monix.reactive.Observable
@@ -51,14 +52,17 @@ extends /*EventApi with*/ SessionApi.HasUserAndPassword with HttpSessionApi with
 
   def eventObservable[E <: Event: ClassTag](
     request: EventRequest[E],
+    subagentRunId: Option[SubagentRunId],
     heartbeat: Option[FiniteDuration] = None)
     (implicit kd: Decoder[KeyedEvent[E]])
   : Task[Observable[Stamped[KeyedEvent[E]]]] =
-    httpClient.getDecodedLinesObservable[Stamped[KeyedEvent[E]]](
-      Uri(
-        eventUri.string +
-          encodeQuery(
-           (heartbeat.map("heartbeat" -> _.toDecimalString)) ++
-              request.toQueryParameters)),
-      responsive = true)
+    retryIfSessionLost()(
+      httpClient.getDecodedLinesObservable[Stamped[KeyedEvent[E]]](
+        Uri(
+          eventUri.string +
+            encodeQuery(
+              subagentRunId.map("subagentRunId" -> _.string) ++
+                (heartbeat.map("heartbeat" -> _.toDecimalString) ++
+                request.toQueryParameters))),
+        responsive = true))
 }
