@@ -33,7 +33,7 @@ final class SubagentSelectionTest extends AnyFreeSpec with SubagentTester
     js7.auth.subagents.B-SUBAGENT = "AGENT-PASSWORD"
     js7.auth.subagents.C-SUBAGENT = "AGENT-PASSWORD"
     js7.auth.subagents.D-SUBAGENT = "AGENT-PASSWORD"
-    """.resolveWith(super.agentConfig)
+    """.withFallback(super.agentConfig)
 
   protected val agentPaths = Seq(agentPath)
   protected val items = Nil

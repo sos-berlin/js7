@@ -1,6 +1,7 @@
 package js7.tests.subagent
 
 import cats.effect.Resource
+import com.typesafe.config.{Config, ConfigFactory}
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.log.Logger
 import js7.base.thread.MonixBlocking.syntax._
@@ -31,12 +32,12 @@ trait SubagentTester extends ControllerAgentForScalaTest
     js7.journal.remove-obsolete-files = false
     js7.controller.agent-driver.command-batch-delay = 0ms
     js7.controller.agent-driver.event-buffer-delay = 10ms
-    """.resolveWith(super.controllerConfig)
+    """.withFallback(super.controllerConfig)
 
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = true
     js7.auth.subagents.BARE-SUBAGENT = "AGENT-PASSWORD"
-    """.resolveWith(super.agentConfig)
+    """.withFallback(super.agentConfig)
 
   protected val bareSubagentId = SubagentId("BARE-SUBAGENT")
   protected lazy val bareSubagentItem = SubagentItem(
@@ -50,27 +51,31 @@ trait SubagentTester extends ControllerAgentForScalaTest
 
   protected final def runSubagent[A](
     subagentItem: SubagentItem,
+    config: Config = ConfigFactory.empty,
     suffix: String = "",
     awaitDedicated: Boolean = true,
     suppressSignatureKeys: Boolean = false)
     (body: BareSubagent => A)
-  : A =
-    subagentResource(subagentItem,
+  : A = {
+    val (subagent, release) = subagentResource(subagentItem,
+      config = config,
       suffix = suffix,
       awaitDedicated = awaitDedicated,
       suppressSignatureKeys = suppressSignatureKeys
-    ).use(subagent =>
-      Task {
-        try body(subagent)
-        catch { case NonFatal(t) =>
-          logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)
-          throw t
-        }
-      })
-      .await(99.s)
+    ).allocated.await(99.s)
+
+    // body runs in the callers test thread
+    try body(subagent)
+    catch { case NonFatal(t) =>
+      logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)
+      throw t
+    } finally
+      release.await(99.s)
+  }
 
   protected final def subagentResource(
     subagentItem: SubagentItem,
+    config: Config = ConfigFactory.empty,
     suffix: String = "",
     // FIXME awaitCoupled ?
     awaitDedicated: Boolean = true,
@@ -79,7 +84,9 @@ trait SubagentTester extends ControllerAgentForScalaTest
     Resource.suspend(Task {
       val eventId = eventWatch.lastAddedEventId
       directoryProvider
-        .subagentResource(subagentItem, suffix = suffix, suppressSignatureKeys = suppressSignatureKeys)
+        .subagentResource(subagentItem, config,
+          suffix = suffix,
+          suppressSignatureKeys = suppressSignatureKeys)
         .map { subagent =>
           if (awaitDedicated) eventWatch.await[SubagentDedicated](after = eventId)
           subagent
