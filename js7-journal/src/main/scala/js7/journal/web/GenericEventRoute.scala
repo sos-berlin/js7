@@ -261,6 +261,8 @@ trait GenericEventRoute extends RouteProvider
             .map(_ ++ LF)
             .chunk(chunkSize)
             .map(Chunk(_))
+            // TODO Delay takeUntil until no more events are available (time limited)
+            //  to let flow queued events to the client before shutdown.
             .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
               Task { logger.debug(s"Shutdown observing events for $userId ${httpRequest.uri}") })
             .toAkkaSourceForHttpResponse))

@@ -28,6 +28,7 @@ extends StatePersistence[S] with RealEventWatch
 {
   private val stateLock = AsyncLock("InMemoryJournal.state")
   private val queueLock = AsyncLock("InMemoryJournal.queue")
+  // TODO Pause journal if queue is events are not released for a long time, despite length of queue?
   private val semaphore = Semaphore[Task](size).memoize
   private val semaMininum = size max 1
   @volatile private var queue = EventQueue(EventId.BeforeFirst, EventId.BeforeFirst, Vector.empty)
