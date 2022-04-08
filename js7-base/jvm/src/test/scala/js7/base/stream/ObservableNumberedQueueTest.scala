@@ -34,11 +34,13 @@ final class ObservableNumberedQueueTest extends AnyFreeSpec
     assert(observe(3, take = 0) == Nil)  // Invalid `after` is not detected due to take=0
     locally {
       val t = intercept[ProblemException](observe(3, take = 1))
-      assert(t.problem == Problem("Unknown Numbered[ObservableNumberedQueueTest::X]: #3"))
+      assert(t.problem == Problem(
+        "Unknown number: Numbered[ObservableNumberedQueueTest::X]: #3 (must be >=0 and <=2)"))
     }
     locally {
       val t = intercept[ProblemException](observe(-1, take = 1))
-      assert(t.problem == Problem("Unknown Numbered[ObservableNumberedQueueTest::X]: #-1"))
+      assert(t.problem == Problem(
+        "Unknown number: Numbered[ObservableNumberedQueueTest::X]: #-1 (must be >=0 and <=2)"))
     }
 
     queue.enqueue(Seq(X("c"))).await(99.s)

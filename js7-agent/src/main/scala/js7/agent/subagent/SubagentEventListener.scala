@@ -215,7 +215,7 @@ private trait SubagentEventListener
         onSubagentDecoupled(Some(problem)) *>
           Task {
             if (lastProblem contains problem) {
-              logger.debug(s"Coupling failed: $problem")
+              logger.debug(s"⚠️ Coupling failed: $problem")
             } else {
               lastProblem = Some(problem)
               logger.warn(s"Coupling failed: $problem")

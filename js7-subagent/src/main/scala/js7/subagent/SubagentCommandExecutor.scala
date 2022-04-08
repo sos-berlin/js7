@@ -111,7 +111,7 @@ extends SubagentExecutor
         }
         .tapEval(checked => Task(logger.debug(
           s"#${numbered.number} <- ${command.getClass.simpleScalaName}" +
-            s" ${since.elapsed.pretty} => $checked")))
+            s" ${since.elapsed.pretty} => ${checked.left.map("⚠️ " + _.toString)}")))
         .map(_.map(_.asInstanceOf[numbered.value.Response]))
     }
 }

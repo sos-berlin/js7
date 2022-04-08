@@ -443,8 +443,7 @@ extends SubagentDriver with SubagentEventListener
             })
         .flatMap {
           case Left(SubagentNotDedicatedProblem) =>
-            logger.debug(
-              s"$commandString => SubagentNotDedicatedProblem => ProcessLost")
+            logger.debug(s"⚠️ $commandString => SubagentNotDedicatedProblem => ProcessLost")
             command match {
               case command: StartOrderProcess =>
                 orderToPromise
@@ -473,7 +472,7 @@ extends SubagentDriver with SubagentEventListener
 
           case Left(problem) =>
             processingAllowed.isOff.flatMap(if (_) {
-              logger.debug(s"postQueuedCommand($commandString) error after stop ignored: $problem")
+              logger.debug(s"⚠️ postQueuedCommand($commandString) error after stop ignored: $problem")
               Task.right(())
             } else
               Task.left(problem))
@@ -502,10 +501,10 @@ extends SubagentDriver with SubagentEventListener
           case Some(t) => t.toStringWithCauses
         }
         if (lastWarning.contains(warning)) {
-          logger.debug(s"Retry warning #$warningCount (${startedAt.elapsed.pretty}) $warning")
+          logger.debug(s"⚠️ Retry warning #$warningCount (${startedAt.elapsed.pretty}) $warning")
         } else {
           lastWarning = Some(warning)
-          logger.warn(s"Retry warning #$warningCount $warning")
+          logger.warn(s"⚠️ Retry warning #$warningCount $warning")
         }
         Task.sleep(tryPostErrorDelay) // Retry
           .as(Left(()))

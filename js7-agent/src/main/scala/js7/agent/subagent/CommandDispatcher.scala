@@ -43,20 +43,25 @@ private trait CommandDispatcher
   : Task[Unit] =
     lock.lock(
       processingAllowed.switchOff.*>(logger.debugTask(
-        queue.dequeueAll.flatMap { numberedExecutes =>
-          queue = new ObservableNumberedQueue[Execute]
-          for (numberedExecute <- numberedExecutes) {
-            for (problem <- commandToProblem.lift(numberedExecute.value.command)) {
-              logger.debug(s"$numberedExecute => $problem")
-              numberedExecute.value.tryRespond(Success(Left(problem)))
+        queue.dequeueAll
+          .flatMap { numberedExecutes =>
+            queue = new ObservableNumberedQueue[Execute]
+            for (numberedExecute <- numberedExecutes) {
+              commandToProblem.lift(numberedExecute.value.command) match {
+                case None =>
+                  logger.debug(s"⚠️ $numberedExecute => discarded")
+
+                case Some(problem) =>
+                  logger.debug(s"⚠️ $numberedExecute => $problem")
+                  numberedExecute.value.tryRespond(Success(Left(problem)))
+              }
+              // TODO Die anderen Kommandos auch abbrechen? tryResponse(Success(Left(??)))
             }
-            // TODO Die anderen Kommandos auch abbrechen? tryResponse(Success(Left(??)))
-          }
-          Task.fromFuture(processing)
-            .<*(Task {
-              processing = Future.successful(())
-            })
-        })))
+            Task.fromFuture(processing)
+              .<*(Task {
+                processing = Future.successful(())
+              })
+          })))
 
   //def dequeueAll: Task[Seq[Numbered[Command]]] =
   //  queue.dequeueAll.map(_.map(_.map(_.command)))

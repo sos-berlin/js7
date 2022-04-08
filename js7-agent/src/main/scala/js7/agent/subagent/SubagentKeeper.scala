@@ -104,7 +104,7 @@ final class SubagentKeeper(
   : Task[Checked[Unit]] =
     selectSubagentDriverCancelable(order.id).flatMapT {
       case None =>
-        logger.debug(s"${order.id} has been canceled while selecting a Subagent")
+        logger.debug(s"⚠️ ${order.id} has been canceled while selecting a Subagent")
         Task.right(())
 
       case Some(driver) =>
