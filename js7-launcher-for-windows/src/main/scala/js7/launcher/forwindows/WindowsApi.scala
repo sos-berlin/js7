@@ -12,6 +12,7 @@ import com.sun.jna.win32.W32APIOptions.UNICODE_OPTIONS
 import com.sun.jna.{Native, Pointer}
 import java.nio.file.{Path, Paths}
 import js7.base.log.Logger
+import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
 import scala.annotation.tailrec
 import scala.concurrent.blocking
@@ -138,10 +139,13 @@ private object WindowsApi
       throwLastError(functionName)
   }
 
-  def throwLastError(function: String): Nothing = {
+  def throwLastError(function: String): Nothing =
+    throw new WindowsException(getLastErrorAsProblem(function).toString)
+
+  def getLastErrorAsProblem(function: String): Problem = {
     requireWindows("GetLastError")
     val err = kernel32.GetLastError
-    throw new WindowsException(f"WINDOWS-${ messageIdToString(err) } ($function) ${ formatMessageFromLastErrorCode(err) }")
+    Problem(f"WINDOWS-${messageIdToString(err)} ($function) ${formatMessageFromLastErrorCode(err)}")
   }
 
   def messageIdToString(id: Int) =

@@ -128,7 +128,7 @@ extends CommonConfiguration
 
   private val systemEncoding: Checked[Charset] =
     if (isWindows)
-      windowsCodepageToEncoding(WindowsConf.codepage)
+      WindowsConf.codepage.flatMap(windowsCodepageToEncoding)
     else
       Right(UTF_8)
 
