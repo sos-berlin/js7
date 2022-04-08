@@ -101,10 +101,10 @@ private trait CommandDispatcher
     postCommand(numberedCommand, subagentRunId, processingAllowed/*stop retrying when off*/)
       .materialize
       .tapEval(_ => queue
-        .releaseUntil(numbered.number)
+        .release(numbered.number)
         .map(_.orThrow)
         .onErrorHandle(t =>
-          logger.error(s"releaseUntil(${numbered.number}) => ${t.toStringWithCauses}")))
+          logger.error(s"release(${numbered.number}) => ${t.toStringWithCauses}")))
       .map(execute.respond)
   }
 

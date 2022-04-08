@@ -70,8 +70,8 @@ final class ObservableNumberedQueue[V: Tag]
 
       def loop(ack: Future[Ack], after: Long): Unit =
         ack.syncTryFlatten.syncOnContinue {
-          Task.defer(_state.checkNumber(after))
-            // Should we delay some milliseconds to reduce number of command batches ???
+          Task(_state.checkAfter(after).orThrow)
+          // Should we delay some milliseconds to reduce number of command batches ???
             .*>(sync.whenAvailable(after = after, until = None, delay = 0.s))
             .*>(Task.defer(_state.readQueue(after)))
             .runToFuture  // Be sure to leave the `loop` recursion stack
@@ -97,23 +97,13 @@ final class ObservableNumberedQueue[V: Tag]
       subject
     }
 
-  private def unknownNumberProblem(after: Long) =
-    Problem.pure(s"Unknown Numbered[$vName]: #$after")
-
-  def releaseUntil(after: Long): Task[Checked[Unit]] =
+  def release(after: Long): Task[Checked[Unit]] =
     lock.lock(Task {
       val s = _state
       val q = s.queue
-      val torn = s.torn
-      if (after < s.torn)
-        Left(Problem.pure(s"releaseUntil($after) < torn=$torn ?"))
-      else if (after > torn && q.lastOption.exists(_.number < after))
-        Left(Problem.pure(
-          s"releaseUntil($after) > ${q.lastOption.map(_.number).getOrElse("None")} ?"))
-      else {
-        val index = binarySearch(0, q.length, q(_).number.compare(after))._1
-        _state = s.copy(torn = after, queue = q.drop(index))
-        Checked.unit
+      for (_ <- s.checkAfter(after)) yield {
+        val (index, found) = binarySearch(0, q.length, q(_).number.compare(after))
+        _state = s.copy(torn = after, queue = q.drop(index + found.toInt))
       }
     })
 
@@ -122,6 +112,15 @@ final class ObservableNumberedQueue[V: Tag]
       val s = _state
       val result = s.queue
       _state = s.copy(queue = Vector.empty)
+      result
+    })
+
+  // Unused
+  private def dequeueSelected(predicate: V => Boolean): Task[Vector[Numbered[V]]] =
+    lock.lock(Task {
+      val s = _state
+      val (result, remaining) = s.queue.partition(numbered => predicate(numbered.value))
+      _state = s.copy(queue = remaining)
       result
     })
 
@@ -136,16 +135,37 @@ final class ObservableNumberedQueue[V: Tag]
       val q = queue
       val (index, found) = binarySearch(0, q.length, q(_).number.compare(after))
       if (!found && after != torn)
-        Task.raiseError(unknownNumberProblem(after).throwable)
+        Task.raiseError(unknownAfterProblem(after).throwable)
       else
         Task.pure(q.drop(index + found.toInt))
     }
 
-    def checkNumber(after: Long): Task[Unit] =
-      if (after < torn || queue.lastOption.map(_.number).exists(_ < after))
-        Task.raiseError(unknownNumberProblem(after).throwable)
+    def requireValidNumber(after: Long): Task[Unit] = {
+      val last = queue.lastOption.map(_.number)
+      if (after < torn || last.exists(_ < after))
+        Task.raiseError(unknownAfterProblem(after).throwable)
       else
         Task.unit
+    }
+
+    def checkAfter(after: Long): Checked[Unit] = {
+      val minimum = queue.headOption.map(_.number - 1) getOrElse torn
+      val last = queue.lastOption.map(_.number) getOrElse torn
+      (minimum <= after && after <= last) !!
+        Problem.pure(s"Unknown number: Numbered[$vName]: #$after (must be >=$minimum and <=$last)")
+    }
+
+    def unknownAfterProblem(after: Long) = {
+      val beforeFirst = queue.headOption.map(_.number - 1) getOrElse torn
+      val last = queue.lastOption.map(_.number) getOrElse torn
+      Problem.pure(s"Unknown number: Numbered[$vName]: #$after (must be >=$beforeFirst and <=$last)")
+    }
+
+    def unknownNumberProblem(after: Long) = {
+      val beforeFirst = queue.headOption.map(_.number - 1) getOrElse torn
+      val last = queue.lastOption.map(_.number) getOrElse torn
+      Problem.pure(s"Unknown number: Numbered[$vName]: #$after (must be >$beforeFirst and <=$last)")
+    }
   }
 }
 

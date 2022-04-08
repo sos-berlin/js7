@@ -85,17 +85,28 @@ final class ObservableNumberedQueueTest extends AnyFreeSpec
     assert(isCompleted)
   }
 
-  "releaseUntil" in {
-    queue.releaseUntil(0).await(99.s).orThrow
+  "release" in {
+    queue.release(0).await(99.s).orThrow
     assert(observe(0, take = 1) == List(Numbered(1, X("a"))))
 
-    queue.releaseUntil(1).await(99.s).orThrow
-    val t = intercept[ProblemException](observe(0, take = 1))
-    assert(t.problem == Problem("Unknown Numbered[ObservableNumberedQueueTest::X]: #0"))
+    locally {
+      queue.release(1).await(99.s).orThrow
+      val t = intercept[ProblemException](observe(0, take = 1))
+      assert(t.problem == Problem(
+        "Unknown number: Numbered[ObservableNumberedQueueTest::X]: #0 (must be >=1 and <=6)"))
+    }
 
     assert(observe(1, take = 1) == List(Numbered(2, X("b"))))
 
-    assert(queue.releaseUntil(7).await(99.s) == Left(Problem("releaseUntil(7) > 6 ?")))
+    locally {
+      queue.release(3).await(99.s).orThrow
+      val t = intercept[ProblemException](observe(0, take = 1))
+      assert(t.problem == Problem(
+        "Unknown number: Numbered[ObservableNumberedQueueTest::X]: #0 (must be >=3 and <=6)"))
+    }
+
+    assert(queue.release(7).await(99.s) == Left(Problem(
+      "Unknown number: Numbered[ObservableNumberedQueueTest::X]: #7 (must be >=3 and <=6)")))
   }
 }
 
