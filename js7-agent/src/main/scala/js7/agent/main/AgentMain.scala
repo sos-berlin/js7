@@ -73,7 +73,6 @@ final class AgentMain
 object AgentMain
 {
   // Don't use a Logger here to avoid overwriting a concurrently used logfile
-  // Don't use a Logger here to avoid overwriting a concurrently used logfile
   var _runningSince: Option[Deadline] = None
 
   def runningSince =
