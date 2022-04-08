@@ -4,12 +4,16 @@ import java.util.concurrent.TimeoutException
 import js7.base.Problems.MessageSignedByUnknownProblem
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
+import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode
 import js7.data.controller.ControllerCommand.CancelOrders
+import js7.data.delegate.DelegateCouplingState.Coupled
 import js7.data.order.OrderEvent.{OrderAttached, OrderCancelled, OrderFinished, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
+import js7.data.subagent.SubagentId
+import js7.data.subagent.SubagentItemStateEvent.SubagentCoupled
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.subagent.SubagentTest._
@@ -23,6 +27,13 @@ final class SubagentTest extends AnyFreeSpec with SubagentTester
   override protected val subagentsDisabled = true
 
   protected implicit val scheduler = Scheduler.global
+
+  "Local Subagent couplingState is Coupled" in {
+    val localSubagentId = SubagentId("AGENT-0")
+    eventWatch.await[SubagentCoupled](_.key == localSubagentId)
+    assert(waitForCondition(10.s, 10.ms)(
+      controllerState.idToSubagentItemState(localSubagentId).couplingState == Coupled))
+  }
 
   "Reject items if no signature keys are installed" in {
     val eventId = eventWatch.lastAddedEventId

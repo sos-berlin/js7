@@ -2,6 +2,7 @@ package js7.agent.subagent
 
 import akka.actor.ActorSystem
 import cats.effect.Resource
+import cats.instances.option._
 import cats.syntax.flatMap._
 import cats.syntax.foldable._
 import cats.syntax.parallel._
@@ -24,11 +25,12 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{LockKeeper, SetOnce}
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
+import js7.data.delegate.DelegateCouplingState.Coupled
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.item.BasicItemEvent.ItemDetached
 import js7.data.order.OrderEvent.{OrderCoreEvent, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{Order, OrderId, Outcome}
-import js7.data.subagent.SubagentItemStateEvent.SubagentResetStarted
+import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentResetStarted}
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentSelection, SubagentSelectionId}
 import js7.journal.state.StatePersistence
 import js7.launcher.configuration.JobLauncherConf
@@ -79,7 +81,8 @@ final class SubagentKeeper(
 
   def start: Task[Unit] =
     logger.debugTask(Task.defer {
-      initialized.orThrow
+      initialized.orThrow // Must be initialized!
+
       continueDetaching *>
         stateVar.get.idToDriver.values
           .toVector
@@ -379,8 +382,24 @@ final class SubagentKeeper(
                 .startAndForget
                 .as(Right(None)))
 
+          case Some((None, newDriver: LocalSubagentDriver[_])) =>
+            coupleLocalSubagent
+              .as(Right(Some(newDriver)))
+
           case maybeNewDriver => Task.right(maybeNewDriver.map(_._2))
         }
+    }
+
+  private def coupleLocalSubagent: Task[Unit] =
+    Task.defer {
+      initialized.orThrow.localSubagentId.traverse(localSubagentId =>
+        persistence
+          .persist(agentState => Right(agentState
+            .idToSubagentItemState.get(localSubagentId)
+            .exists(_.couplingState != Coupled)
+            .thenList(localSubagentId <-: SubagentCoupled)))
+          .orThrow)
+        .void
     }
 
   private def newSubagentDriver(subagentItem: SubagentItem, initialized: Initialized) =
