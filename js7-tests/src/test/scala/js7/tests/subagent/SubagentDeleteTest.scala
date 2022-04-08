@@ -158,6 +158,7 @@ final class SubagentDeleteTest extends AnyFreeSpec with SubagentTester
       // RESTART DIRECTOR
 
       myAgent.terminate().await(99.s)
+      eventId = eventWatch.lastAddedEventId
       myAgent = directoryProvider.startAgent(agentPath).await(99.s)
       eventWatch.await[AgentReady](after = eventId)
 
@@ -189,7 +190,7 @@ object SubagentDeleteTest
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Seq(
-      TestSemaphoreJob.execute(agentPath)))
+      TestSemaphoreJob.execute(agentPath, parallelism = 99)))
 
   final class TestSemaphoreJob extends SemaphoreJob(TestSemaphoreJob)
   object TestSemaphoreJob extends SemaphoreJob.Companion[TestSemaphoreJob]

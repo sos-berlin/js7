@@ -7,7 +7,7 @@ import cats.instances.future._
 import cats.syntax.traverse._
 import js7.agent.command.CommandActor._
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.{AttachItem, AttachSignedItem, Batch, CoupleController, DedicateAgentDirector, DetachItem, EmergencyStop, NoOperation, OrderCommand, Reset, Response, ShutDown, TakeSnapshot}
+import js7.agent.data.commands.AgentCommand.{AttachItem, AttachSignedItem, Batch, CoupleController, DedicateAgentDirector, DetachItem, EmergencyStop, NoOperation, OrderCommand, Reset, ResetSubagent, Response, ShutDown, TakeSnapshot}
 import js7.agent.scheduler.AgentHandle
 import js7.base.auth.UserId
 import js7.base.circeutils.JavaJsonCodecs.instant.StringInstantJsonCodec
@@ -56,7 +56,7 @@ extends Actor {
     val run = register.add(meta.user.id, command, batchId)
     logCommand(meta.user.id, run)
     val myResponse = Promise[Checked[Response]]()
-    executeCommand2(batchId, run.internalId, command, meta,myResponse)
+    executeCommand2(batchId, run.internalId, command, meta, myResponse)
     myResponse.future onComplete { tried =>
       self ! Internal.Respond(run, promise, tried)
     }
@@ -93,7 +93,7 @@ extends Actor {
 
       case command @ (_: OrderCommand | _: DedicateAgentDirector | _: CoupleController | _: Reset |
                       _: TakeSnapshot.type | _: ShutDown |
-                      _: AttachItem | _: AttachSignedItem | _: DetachItem) =>
+                      _: AttachItem | _: AttachSignedItem | _: DetachItem | _: ResetSubagent) =>
         // FIXME Delay CoupleController until all AttachOrder (extends OrderCommand) (and DetachOrder?) have been finished, to return a properly updated state
         agentHandle.executeCommand(command, meta.user.id, response)
 

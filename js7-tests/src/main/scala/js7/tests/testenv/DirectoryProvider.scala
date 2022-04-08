@@ -277,6 +277,7 @@ extends HasCloser
 
   def subagentResource(
     subagentItem: SubagentItem,
+    config: Config = ConfigFactory.empty,
     suffix: String = "",
     suppressSignatureKeys: Boolean = false)
   : Resource[Task, BareSubagent] =
@@ -290,6 +291,7 @@ extends HasCloser
         toSubagentConf(dir,
           trustedSignatureDir,
           subagentItem.uri.port.orThrow,
+          config,
           name = subagentItem.id.string)
       }
       scheduler <- BareSubagent.threadPoolResource[Task](conf)
@@ -319,6 +321,7 @@ extends HasCloser
     directory: Path,
     trustedSignatureDir: Path,
     port: Int,
+    config: Config = ConfigFactory.empty,
     name: String)
   : SubagentConf =
     SubagentConf.of(
@@ -329,16 +332,17 @@ extends HasCloser
       Seq(WebServerPort.localhost(port)),
       killScript = None,
       name = testName.fold("")(_ + "-") + name,
-      config = config"""
-        js7.job.execution.signed-script-injection-allowed = yes
-        js7.auth.users.AGENT {
-          permissions: [ AgentDirector ]
-          password: "plain:AGENT-PASSWORD"
-        }
-        js7.configuration.trusted-signature-keys {
-          ${verifier.companion.typeName} = "$trustedSignatureDir"
-        }
-        """
+      config = config
+        .withFallback(config"""
+          js7.job.execution.signed-script-injection-allowed = yes
+          js7.auth.users.AGENT {
+            permissions: [ AgentDirector ]
+            password: "plain:AGENT-PASSWORD"
+          }
+          js7.configuration.trusted-signature-keys {
+            ${verifier.companion.typeName} = "$trustedSignatureDir"
+          }
+          """)
         .withFallback(SubagentConf.defaultConfig))
 }
 

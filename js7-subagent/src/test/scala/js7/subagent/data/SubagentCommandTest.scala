@@ -88,10 +88,11 @@ final class SubagentCommandTest extends AnyFreeSpec
 
     "ShutDown" in {
       testJson[SubagentCommand](
-        ShutDown(Some(SIGTERM), restart = true),
+        ShutDown(Some(SIGTERM), dontWaitForDirector = true, restart = true),
         json"""{
           "TYPE": "ShutDown",
           "processSignal": "SIGTERM",
+          "dontWaitForDirector": true,
           "restart": true
         } """)
 

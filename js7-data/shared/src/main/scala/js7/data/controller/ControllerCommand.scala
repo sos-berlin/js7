@@ -23,6 +23,7 @@ import js7.data.event.EventId
 import js7.data.node.NodeId
 import js7.data.order.OrderEvent.OrderResumed
 import js7.data.order.{FreshOrder, OrderId}
+import js7.data.subagent.SubagentId
 import js7.data.workflow.position.Position
 import scala.collection.immutable
 import scala.concurrent.duration.FiniteDuration
@@ -241,6 +242,11 @@ object ControllerCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
 
+  final case class ResetSubagent(subagentId: SubagentId, force: Boolean = false)
+  extends ControllerCommand {
+    type Response = Response.Accepted
+  }
+
   sealed trait Response
 
   object Response {
@@ -278,5 +284,6 @@ object ControllerCommand extends CommonCommand.Companion
     Subtype(ClusterSwitchOver),
     Subtype(deriveConfiguredCodec[InternalClusterCommand]),
     Subtype(deriveConfiguredCodec[ResetAgent]),
+    Subtype(deriveConfiguredCodec[ResetSubagent]),
     Subtype(TakeSnapshot))
 }

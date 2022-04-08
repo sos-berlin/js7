@@ -52,7 +52,7 @@ extends /*EventApi with*/ SessionApi.HasUserAndPassword with HttpSessionApi with
 
   def eventObservable[E <: Event: ClassTag](
     request: EventRequest[E],
-    subagentRunId: Option[SubagentRunId],
+    subagentRunId: SubagentRunId,
     heartbeat: Option[FiniteDuration] = None)
     (implicit kd: Decoder[KeyedEvent[E]])
   : Task[Observable[Stamped[KeyedEvent[E]]]] =
@@ -61,7 +61,7 @@ extends /*EventApi with*/ SessionApi.HasUserAndPassword with HttpSessionApi with
         Uri(
           eventUri.string +
             encodeQuery(
-              subagentRunId.map("subagentRunId" -> _.string) ++
+              Some("subagentRunId" -> subagentRunId.string) ++
                 (heartbeat.map("heartbeat" -> _.toDecimalString) ++
                 request.toQueryParameters))),
         responsive = true))

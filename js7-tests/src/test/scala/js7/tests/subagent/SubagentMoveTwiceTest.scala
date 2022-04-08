@@ -31,7 +31,7 @@ final class SubagentMoveTwiceTest extends AnyFreeSpec with SubagentTester
       .allocated.await(99.s)
 
     var eventId = eventWatch.lastAddedEventId
-    val aOrderId = OrderId("A-CHANGE-URI-TWICE")
+    val aOrderId = OrderId("A-ORDER")
     locally {
       controllerApi.addOrder(FreshOrder(aOrderId, workflow.path)).await(99.s).orThrow
       val processingStarted = eventWatch
@@ -82,7 +82,7 @@ final class SubagentMoveTwiceTest extends AnyFreeSpec with SubagentTester
       eventId = eventWatch.lastAddedEventId
       locally {
         // Start another order
-        val bOrderId = OrderId("B-CHANGE-URI-TWICE")
+        val bOrderId = OrderId("B-ORDER")
         TestSemaphoreJob.continue(1)
         controllerApi.addOrder(FreshOrder(bOrderId, workflow.path)).await(99.s).orThrow
         val bStarted = eventWatch.await[OrderProcessingStarted](_.key == bOrderId, after = eventId)

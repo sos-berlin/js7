@@ -639,6 +639,8 @@ private[controller] object AgentDriver
     extends DeadLetterSuppression
 
     final case class Reset(force: Boolean) extends DeadLetterSuppression
+
+    final case class ResetSubagent(subagentId: SubagentId, force: Boolean) extends Queueable
   }
 
   object Output {

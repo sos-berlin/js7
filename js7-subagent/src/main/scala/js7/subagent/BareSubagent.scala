@@ -18,11 +18,13 @@ import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.akkautils.Akkas
 import js7.common.system.ThreadPools
 import js7.common.system.ThreadPools.{newUnlimitedScheduler, schedulerServiceToResource}
+import js7.data.subagent.SubagentRunId
 import js7.journal.watch.InMemoryJournal
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.web.SubagentWebServer
 import monix.eval.{Coeval, Task}
 import monix.execution.Scheduler
+import org.jetbrains.annotations.TestOnly
 
 final class BareSubagent(
   private val commandExecutor: SubagentCommandExecutor,
@@ -49,6 +51,10 @@ final class BareSubagent(
     dontWaitForDirector: Boolean = false)
   : Task[ProgramTermination] =
     commandExecutor.shutdown(signal, restart = restart, dontWaitForDirector = dontWaitForDirector)
+
+  @TestOnly
+  def subagentRunId: SubagentRunId =
+    commandExecutor.subagentRunId
 }
 
 object BareSubagent

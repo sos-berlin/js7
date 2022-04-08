@@ -1,5 +1,6 @@
 package js7.subagent
 
+import cats.syntax.traverse._
 import js7.agent.data.Problems.SubagentNotDedicatedProblem
 import js7.base.log.Logger
 import js7.base.problem.Checked
@@ -28,6 +29,9 @@ final class SubagentCommandExecutor(
 extends SubagentExecutor
 {
   protected[subagent] final val dedicatedOnce = SetOnce[Dedicated](SubagentNotDedicatedProblem)
+
+  def checkedDedicated: Checked[Dedicated] =
+    dedicatedOnce.checked
 
   private val signatureVerifier = GenericSignatureVerifier(subagentConf.config).orThrow
 
@@ -65,10 +69,11 @@ extends SubagentExecutor
               }
 
           case KillProcess(orderId, signal) =>
-            dedicatedOnce.task
-              .flatMap(_.localSubagentDriver
+            checkedDedicated
+              .traverse(_
+                .localSubagentDriver
                 .killProcess(orderId, signal))
-              .as(Right(SubagentCommand.Accepted))
+              .rightAs(SubagentCommand.Accepted)
 
           case cmd: DedicateSubagent =>
             executeDedicateSubagent(cmd)
@@ -77,9 +82,9 @@ extends SubagentExecutor
             executeCoupleDirector(cmd)
               .rightAs(SubagentCommand.Accepted)
 
-          case ShutDown(processSignal, restart) =>
+          case ShutDown(processSignal, dontWaitForDirector, restart) =>
             logger.info(s"❗️ $command")
-            shutdown(processSignal, restart)
+            shutdown(processSignal, dontWaitForDirector, restart)
               .as(Right(SubagentCommand.Accepted))
 
           case DetachProcessedOrder(orderId) =>

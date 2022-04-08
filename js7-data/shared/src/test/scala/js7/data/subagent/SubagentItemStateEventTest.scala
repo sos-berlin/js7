@@ -68,5 +68,24 @@ final class SubagentItemStateEventTest extends AnyFreeSpec
           "TYPE": "SubagentShutdown"
         }""")
     }
+
+    "SubagentResetStarted" in {
+      testJson[KeyedEvent[SubagentItemStateEvent]](
+        SubagentId("SUBAGENT") <-: SubagentItemStateEvent.SubagentResetStarted(force = false),
+        json"""{
+          "Key": "SUBAGENT",
+          "TYPE": "SubagentResetStarted",
+          "force": false
+        }""")
+    }
+
+    "SubagentReset" in {
+      testJson[KeyedEvent[SubagentItemStateEvent]](
+        SubagentId("SUBAGENT") <-: SubagentItemStateEvent.SubagentReset,
+        json"""{
+          "Key": "SUBAGENT",
+          "TYPE": "SubagentReset"
+        }""")
+    }
   }
 }

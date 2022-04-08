@@ -297,6 +297,16 @@ final class AgentCommandTest extends AnyFreeSpec
     }
   }
 
+  "ResetSubagent" in {
+    check(
+      AgentCommand.ResetSubagent(SubagentId("SUBAGENT"), force = false),
+      json"""{
+        "TYPE": "ResetSubagent",
+        "subagentId": "SUBAGENT",
+        "force": false
+      }""")
+  }
+
   "Batch toString" in {
     assert(Batch(Nil).toString == "Batch()")
     assert(Batch(DetachOrder(OrderId("A")) :: Nil).toString == "Batch(DetachOrder)")

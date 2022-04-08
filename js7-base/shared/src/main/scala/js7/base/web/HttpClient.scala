@@ -61,15 +61,25 @@ object HttpClient
 
   def failureToChecked[A](tried: Try[A]): Try[Checked[A]] =
     tried match {
-      case Failure(HttpException.HasProblem(problem)) =>
-        Success(Left(problem))
-      case Failure(t: HttpException) if t.getMessage != null =>
+      case Failure(throwable) => throwableToTry(throwable).map(Left(_))
+      case Success(a) => Success(Right(a))
+    }
+
+  def throwableToProblem(throwable: Throwable): Problem =
+    throwableToTry(throwable) match {
+      case Failure(throwable) => Problem.fromThrowable(throwable)
+      case Success(problem) => problem
+    }
+
+  private def throwableToTry(throwable: Throwable): Try[Problem] =
+    throwable match {
+      case HttpException.HasProblem(problem) =>
+        Success(problem)
+      case t: HttpException if t.getMessage != null =>
         val msg = t.getMessage + (if (t.getCause == null) "" else ", caused by " + t.getCause)
-        Success(Left(Problem.withHttpStatus(msg, t, httpStatusCode = t.statusInt)))
-      case Failure(t) =>
+        Success(Problem.withHttpStatus(msg, t, httpStatusCode = t.statusInt))
+      case t =>
         Failure(t.appendCurrentStackTrace)
-      case Success(a) =>
-        Success(Right(a))
     }
 
   abstract class HttpException(message: String = null) extends RuntimeException(message) {

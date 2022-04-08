@@ -8,6 +8,7 @@ import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.web.Uri
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.agent.AgentPath
+import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.item.ItemOperation.AddOrChangeSimple
 import js7.data.item.VersionId
 import js7.data.order.OrderEvent.{OrderAttached, OrderDeleted, OrderFinished, OrderProcessingStarted}
@@ -49,6 +50,8 @@ final class SubagentDisabledTest extends AnyFreeSpec with SubagentTester
     super.beforeAll()
     aSubagent
     bSubagent
+    eventWatch.await[ItemAttached](_.event.key == aSubagentId)
+    eventWatch.await[ItemAttached](_.event.key == bSubagentId)
   }
 
   override def afterAll() = {

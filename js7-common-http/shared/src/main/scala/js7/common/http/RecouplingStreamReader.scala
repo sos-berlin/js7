@@ -9,6 +9,7 @@ import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.session.SessionApi
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
+import js7.base.web.HttpClient.HttpException
 import js7.common.http.RecouplingStreamReader._
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.data.event.EventSeqTornProblem
@@ -208,9 +209,13 @@ abstract class RecouplingStreamReader[
       } *>
         getObservable(api, after = after)
           //.timeout(idleTimeout)
-          .onErrorRecoverWith { case t: TimeoutException =>
-            logger.debug(s"💥 $api: ${t.toString}")
-            Task.pure(Right(Observable.empty))
+          .onErrorRecoverWith {
+            case t: TimeoutException =>
+              logger.debug(s"💥 $api: ${t.toString}")
+              Task.pure(Right(Observable.empty))
+
+            case HttpException.HasProblem(problem) =>
+              Task.pure(Left(problem))
           }
           .map(_.map(obs =>
             idleTimeout.fold(obs)(idleTimeout => obs

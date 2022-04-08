@@ -13,6 +13,7 @@ import js7.base.crypt.Signed
 import js7.base.generic.SecretString
 import js7.base.io.https.HttpsConfig
 import js7.base.io.process.ProcessSignal
+import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax._
 import js7.base.monixutils.MonixBase.syntax._
@@ -22,7 +23,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.stream.Numbered
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.SetOnce
+import js7.base.utils.{AsyncLock, SetOnce}
 import js7.base.web.HttpClient
 import js7.base.web.HttpClient.HttpException
 import js7.common.http.configuration.RecouplingStreamReaderConf
@@ -33,7 +34,7 @@ import js7.data.item.{InventoryItemKey, ItemRevision, SignableItem}
 import js7.data.job.{JobConf, JobResource}
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId, Outcome}
-import js7.data.subagent.SubagentItemStateEvent.{SubagentDedicated, SubagentDied, SubagentRestarted}
+import js7.data.subagent.SubagentItemStateEvent.{SubagentCouplingFailed, SubagentDedicated, SubagentDied, SubagentReset, SubagentRestarted}
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentRunId}
 import js7.data.workflow.Workflow
 import js7.data.workflow.position.WorkflowPosition
@@ -48,6 +49,11 @@ import scala.annotation.unused
 import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
 import scala.util.{Failure, Success}
+
+// TODO Some bookkeeping required
+// - Which operations (SubagentCommand) on SubagentItem are ongoing?
+// - dedicate, couple, reset, delete, ...
+// - Which operations may overlap with, wait for or cancel the older?
 
 private final class RemoteSubagentDriver(
   val subagentItem: SubagentItem,
@@ -79,11 +85,11 @@ extends SubagentDriver with SubagentEventListener
       persistence.currentState
         .idToSubagentItemState.get(subagentId)
         .exists(s => s.couplingState == Coupled
-          /*Due to isHeartbeating we ignore s.problem to allow SubagentCoupled event.*/)
+          /*Due to isHeartbeating we can ignore s.problem to allow SubagentCoupled event.*/)
 
-  def isStopping = stopping
+  protected def isStopping = stopping
 
-  def isShuttingDown = shuttingDown
+  protected def isShuttingDown = shuttingDown
 
   protected val client = new SubagentClient(
     Admission(
@@ -101,17 +107,13 @@ extends SubagentDriver with SubagentEventListener
   val start: Task[Unit] =
     logger
       .debugTask(
-        dedicateOrCouple
-          .map(_.orThrow)
-          .flatMap { case (subagentRunId, _) =>
-            startEventListener *> dispatcher.start(subagentRunId)
-          })
+        startEventListener)
       .memoize
 
   def startMovedSubagent(previous: RemoteSubagentDriver): Task[Unit] =
     logger.debugTask(
       startEventListener
-        //.*>(previous.emitProcessLostEvents(None))
+        //.*>(previous.stopDispatcherAndEmitProcessLostEvents(None))
         .*>(Task.race(
           stoppingVar.flatMap(_.read),
           initiallyCoupled.task))
@@ -124,8 +126,8 @@ extends SubagentDriver with SubagentEventListener
             //  // Same SubagentRunId continues. So we transfer the command queue.
             //  dispatcher.enqueueExecutes(previous.dispatcher)
             //else
-              /*previous.emitProcessLostEvents(None)
-            .*>*/(dispatcher.start(subagentRunId))
+              /*previous.stopDispatcherAndEmitProcessLostEvents(None)
+            .*>*/(Task.unit/*dispatcher.start(subagentRunId)*/)
         })
 
   def stop(@unused signal: Option[ProcessSignal]): Task[Unit] =
@@ -143,23 +145,54 @@ extends SubagentDriver with SubagentEventListener
           }))
       .memoize
 
+  private val resetLock = AsyncLock()
+
+  def reset(force: Boolean): Task[Unit] =
+    logger.debugTask(
+      resetLock.lock(Task.defer {
+        val wasHeartbeating = isHeartbeating
+        // Stop listening events before we mark order processes as lost.
+        // Eventual event from Subagent must not interfere with out
+        // OrderProcessed .processLost.
+        // Unfortunately, this will inhibit SubagentShutdown event, too.
+        stopEventListener
+          .*>(Task.when((wasHeartbeating || force) && !suppressResetShutdown)(
+            // One shot. Processes are killed only if Subagent is reachable.
+            // May delay ProcessLost and SubagentReset for connection timeout.
+            tryShutdownSubagent(processSignal = Some(SIGKILL), dontWaitForDirector = true)))
+          .*>(onSubagentDied(SubagentReset))
+          .*>(startEventListener)
+      }))
+
+  private def suppressResetShutdown =
+    subagentConf.config.hasPath("js7.tests.RemoteSubagentDriver.suppressResetShutdown")
+
   def tryShutdown: Task[Unit] =
     logger.debugTask(Task.defer {
       shuttingDown = true
       // Wait until no Order is being processed
       orderToPromise.stop
         // Emit event and change state ???
-        .*>(tryShutdownSubagent)
+        .*>(tryShutdownSubagent())
     })
 
   //def suspend: Task[Unit] =
   //  dispatcher.suspend *> stopEventListener
 
-  private def tryShutdownSubagent: Task[Unit] =
-    client.executeSubagentCommand(Numbered(0, SubagentCommand.ShutDown(restart = true)))
-      .void
-      .onErrorHandle(t =>  // Ignore when Subagent is unreachable
-        logger.error(s"SubagentCommand.ShutDown => ${t.toStringWithCauses}"))
+  private def tryShutdownSubagent(
+    processSignal: Option[ProcessSignal] = None,
+    dontWaitForDirector: Boolean = false)
+  : Task[Unit] =
+    Task.defer {
+      shuttingDown = true
+      client
+        .executeSubagentCommand(Numbered(0,
+          SubagentCommand.ShutDown(processSignal, dontWaitForDirector = dontWaitForDirector,
+            restart = true)))
+        .void
+        .onErrorHandle(t =>  // Ignore when Subagent is unreachable
+          logger.error(s"SubagentCommand.ShutDown => ${t.toStringWithCauses}"))
+    }
 
   protected def dedicateOrCouple: Task[Checked[(SubagentRunId, EventId)]] =
     logger.debugTask(
@@ -183,59 +216,62 @@ extends SubagentDriver with SubagentEventListener
   private def dedicate: Task[DedicateSubagent.Response] = {
     val cmd = DedicateSubagent(subagentId, subagentItem.agentPath, controllerId)
     logger.debugTask(
-      postCommandUntilSucceeded(cmd)
+      postCommandUntilSucceeded(cmd) // TODO Cancelable, whenStoppedCancelAndFail?
         .flatMap(response => persistence
           .persistKeyedEvent(subagentId <-: SubagentDedicated(response.subagentRunId))
           .tapEval(checked => Task.when(checked.isRight)(Task {
             lastSubagentRunId = Some(response.subagentRunId)
+            shuttingDown = false
           }))
           .rightAs(response)
           .map(_.orThrow)
-          .<*(dispatcher.start(response.subagentRunId))))
+          /*.<*(dispatcher.start(response.subagentRunId))*/))
   }
 
   private def couple(subagentRunId: SubagentRunId, eventId: EventId): Task[EventId] = {
     val cmd = CoupleDirector(subagentId, subagentRunId, eventId,
       SubagentEventListener.heartbeatTiming)
-    Task
-      .tailRecM(())(_ =>
-        // TODO Must be stoppable
-        postCommand(Numbered(0, cmd))
-          .as(Right(subagentRunId -> eventId))
-          .onErrorRecoverWith {
-            case HttpException.HasProblem(SubagentNotDedicatedProblem) =>
-              orderToPromise.toMap.size match {
-                case 0 => logger.info("Subagent restarted")
-                case n => logger.warn(s"Subagent restarted, $n Order processes are lost")
-              }
-              onSubagentDied(SubagentRestarted)
-                .*>(dedicate)
-                .map(response => Right(response.subagentRunId -> response.subagentEventId))
+    // TODO Must be stoppable, whenStoppedCancelAndFail?
+    client.login(onlyIfNotLoggedIn = true)
+      .*>(client.executeSubagentCommand(Numbered(0, cmd)))
+      .as(subagentRunId -> eventId)
+      .onErrorRestartLoop(()) {
+        case (HttpException.HasProblem(SubagentNotDedicatedProblem), _, _) =>
+          orderToPromise.toMap.size match {
+            case 0 => logger.info("Subagent restarted")
+            case n => logger.warn(s"Subagent restarted, $n Order processes are lost")
+          }
+          onSubagentDied(SubagentRestarted)
+            .*>(dedicate)
+            .map(response => response.subagentRunId -> response.subagentEventId)
 
-            case throwable =>
-              logger.warn(s"DedicateSubagent failed: ${throwable.toStringWithCauses}")
-              Task.left(()).delayExecution(reconnectErrorDelay)
-          })
+        case (throwable, _, retry) =>
+          logger.warn(s"DedicateSubagent failed: ${throwable.toStringWithCauses}")
+          emitSubagentCouplingFailed(Some(HttpClient.throwableToProblem(throwable)))
+            .*>(Task.sleep(reconnectErrorDelay))
+            .*>(retry(()))
+      }
       .flatTap { case (subagentRunId, _) =>
         Task {
-          lastSubagentRunId = Some(subagentRunId)
+          shuttingDown = false
           initiallyCoupled.trySet(subagentRunId)
-        }
+        } *>
+          dispatcher.start(subagentRunId)  // Dispatcher may have been stopped after SubagentReset
       }
       .map(_._2/*EventId*/)
   }
 
   // May run concurrently with onStartOrderProcessFailed !!!
   // We make sure that only one OrderProcessed event is emitted.
-  /** Emit OrderProcessed(ProcessLost) and `subagentDied` events. */
-  protected def onSubagentDied(subagentDied: SubagentDied): Task[Unit] =
-    emitProcessLostEvents(Some(subagentDied))
+  /** Emit OrderProcessed(ProcessLost) and `subagentDiedEvent`. */
+  protected def onSubagentDied(subagentDiedEvent: SubagentDied): Task[Unit] =
+    stopDispatcherAndEmitProcessLostEvents(Some(subagentDiedEvent))
 
-  /** Emit OrderProcessed(ProcessLost) and optionally a `subagentDied` event. */
-  def emitProcessLostEvents(subagentDied: Option[SubagentDied]): Task[Unit] = {
+  /** Emit OrderProcessed(ProcessLost) and optionally a `subagentDiedEvent` event. */
+  def stopDispatcherAndEmitProcessLostEvents(subagentDiedEvent: Option[SubagentDied]): Task[Unit] = {
     // Subagent died and lost its state
     // Emit OrderProcessed(Disrupted(ProcessLost)) for each processing order.
-    // Then optionally subagentDied
+    // Then optionally subagentDiedEvent
     val processing = Order.Processing(subagentId)
     logger.debugTask(orderToPromise
       .removeAll
@@ -243,7 +279,7 @@ extends SubagentDriver with SubagentEventListener
         val orderIds = oToP.keys
         val promises = oToP.values
         Task
-          .when(subagentDied.isDefined)(
+          .when(subagentDiedEvent.isDefined)(
             dispatcher.stop {
               case _: StartOrderProcess => CommandDispatcherStoppedProblem
             })
@@ -255,7 +291,7 @@ extends SubagentDriver with SubagentEventListener
                 state.idToOrder.get(orderId).exists(_.state == processing))
               // Filter Orders which have been sent to Subagent ???
               .map(_ <-: OrderProcessed.processLost)
-              .concat(subagentDied.map(subagentId <-: _))
+              .concat(subagentDiedEvent.map(subagentId <-: _))
               .toVector))
             .map(_.orThrow)
             .*>(Task {
@@ -362,22 +398,49 @@ extends SubagentDriver with SubagentEventListener
 
   // TODO How to cancel this ?
   private def postCommandUntilSucceeded(command: SubagentCommand): Task[command.Response] =
-    postCommand(Numbered(0, command))
-      .map(_.asInstanceOf[command.Response])
-      .onErrorRestartLoop(()) { (throwable, _, retry) =>
-        logger.error(
-          s"${command.getClass.simpleScalaName} command failed: ${throwable.toStringWithCauses}")
-        retry(()).delayExecution(5.s/*TODO*/)
+    logger.traceTask("postCommandUntilSucceeded", command.toShortString)(
+      client.login(onlyIfNotLoggedIn = true)
+        .*>(client.executeSubagentCommand(Numbered(0, command)))
+        .map(_.asInstanceOf[command.Response])
+        .onErrorRestartLoop(()) { (throwable, _, retry) =>
+          logger.warn(
+            s"${command.getClass.simpleScalaName} command failed: ${throwable.toStringWithCauses}")
+          emitSubagentCouplingFailed(Some(HttpClient.throwableToProblem(throwable)))
+            .*>(Task.sleep(5.s/*TODO*/))
+            .*>(retry(()))
+        })
+
+  private def whenStoppedCancelAndFail[A](task: Task[A]): Task[A] =
+    Task
+      .race(stoppingVar.flatMap(_.read), task)
+      .flatMap {
+        case Left(()) =>
+          logger.debug("❌ whenStoppedCancelAndFail!")
+          Task.raiseError(Problem("postCommandUntilSucceeded stopped").throwable)
+        case Right(a) =>
+          Task.pure(a)
       }
 
-  private def postCommand(numberedCommand: Numbered[SubagentCommand])
-  : Task[SubagentCommand.Response] = {
-    val command = numberedCommand.value
-    logger.traceTask("postCommand", command.toShortString)(
-      client
-        .retryUntilReachable()(
-          client.executeSubagentCommand(numberedCommand)))
-  }
+  protected def emitSubagentCouplingFailed(maybeProblem: Option[Problem]): Task[Unit] =
+    logger.debugTask("emitSubagentCouplingFailed", maybeProblem)(
+      persistence
+        .lock(subagentId)(
+          persistence.persist(_
+            .idToSubagentItemState.checked(subagentId)
+            .map { subagentItemState =>
+              val problem = maybeProblem
+                .orElse(subagentItemState.problem)
+                .getOrElse(Problem.pure("decoupled"))
+              (!subagentItemState.problem.contains(problem))
+                .thenList(subagentId <-: SubagentCouplingFailed(problem))
+            }))
+        .map(_.orThrow)
+        .void
+        .onErrorHandleWith(t => Task.defer {
+          // Error isn't logged until stopEventListener is called
+          logger.error("emitSubagentCouplingFailed => " + t.toStringWithCauses)
+          Task.raiseError(t)
+        }))
 
   protected def detachProcessedOrder(orderId: OrderId): Task[Unit] =
     enqueueCommandAndForget(

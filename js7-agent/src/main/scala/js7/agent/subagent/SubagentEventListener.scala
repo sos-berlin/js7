@@ -23,7 +23,7 @@ import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, 
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.other.HeartbeatTiming
-import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentCouplingFailed, SubagentEventsObserved, SubagentShutdown}
+import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentEventsObserved, SubagentShutdown}
 import js7.data.subagent.SubagentRunId
 import js7.journal.CommitOptions
 import js7.subagent.SubagentState.keyedEventJsonCodec
@@ -50,26 +50,29 @@ private trait SubagentEventListener
   protected final val coupled = Switch(false)
 
   protected final def stopEventListener: Task[Unit] =
-    lock.lock(logger.debugTask(Task.defer(
-      Task.when(isListening.getAndSet(false))(
-        stopObserving
-          .flatMap(_.tryPut(())).void
-          .*>(Task.defer(observing.join))))))
+    lock.lock(
+      logger.debugTask(Task.defer(
+        Task.when(isListening.getAndSet(false))(Task.defer {
+          stopObserving
+            .flatMap(_.tryPut(())).void
+            .*>(Task.defer(observing.join))
+        }))))
 
   protected final def startEventListener: Task[Unit] =
-    lock.lock(Task.defer {
-      logger.debug("startEventListener")
-      if (isListening.getAndSet(true)) {
-        val msg = "Duplicate startEventListener"
-        logger.error(msg)
-        Task.raiseError(new RuntimeException(s"$toString: $msg"))
-      } else
-        observeEvents
-          .start
-          .map(fiber => Task {
-            observing = fiber
-          })
-    })
+    lock.lock(
+      logger.debugTask(Task.defer {
+        if (isListening.getAndSet(true)) {
+          val msg = "Duplicate startEventListener"
+          logger.error(msg)
+          Task.raiseError(new RuntimeException(s"$toString: $msg"))
+        } else
+          stopObserving.flatMap(_.tryTake)
+            .*>(observeEvents)
+            .start
+            .flatMap(fiber => Task {
+              observing = fiber
+            })
+      }))
 
   private def observeEvents: Task[Unit] = {
     val recouplingStreamReader = newEventListener()
@@ -165,14 +168,19 @@ private trait SubagentEventListener
               coupled.switchOn
                 .as(Right(eventId))
             })
+          .<*(Task {
+            lastProblem = None
+          })
 
       protected def getObservable(api: SubagentClient, after: EventId) =
         logger.debugTask(s"getObservable(after=$after)")(
           persistence.state.map(_.idToSubagentItemState.checked(subagentId).map(_.subagentRunId))
-            .flatMapT(maybeAgentRunId =>
-                getObservable(api, after, maybeAgentRunId)))
+            .flatMapT {
+              case None => Task.left(Problem.pure("Subagent not yet dedicated"))
+              case Some(subagentRunId) => getObservable(api, after, subagentRunId)
+            })
 
-      private def getObservable(api: SubagentClient, after: EventId, subagentRunId: Option[SubagentRunId]) =
+      private def getObservable(api: SubagentClient, after: EventId, subagentRunId: SubagentRunId) =
         api.login(onlyIfNotLoggedIn = true) *>
           api
             .eventObservable(
@@ -191,8 +199,9 @@ private trait SubagentEventListener
                 })
               .filter(_ != StampedHeartbeat)
               .takeWhile(_ ne PauseDetected)
-              .guaranteeCase(exitCase => Task.defer(
-                Task.when(exitCase != ExitCase.Completed || isHeartbeating)(
+              .guaranteeCase(exitCase => Task.defer {
+                // guaranteeCase runs concurrently, maybe with onDecoupled ???
+                Task.when((exitCase != ExitCase.Completed /*&& exitCase != ExitCase.Canceled*/) || /*isCoupled*/isHeartbeating)(
                   stopObserving
                     .flatMap(_.tryRead)
                     .map {
@@ -208,7 +217,8 @@ private trait SubagentEventListener
                       case Some(()) =>
                         Problem.pure("SubagentEventListener stopped")
                     }
-                    .flatMap(problem => onSubagentDecoupled(Some(problem)))))))
+                    .flatMap(problem => onSubagentDecoupled(Some(problem))))
+              }))
             .map(Right(_))
 
       override protected def onCouplingFailed(api: SubagentClient, problem: Problem) =
@@ -224,12 +234,9 @@ private trait SubagentEventListener
           }
 
       override protected val onDecoupled =
-        onSubagentDecoupled(None) *>
-          Task.defer {
-            logger.debug("onDecoupled")
-            coupled.switchOff
-              .as(Completed)
-          }
+        logger.traceTask(
+          onSubagentDecoupled(None) *>
+            coupled.switchOff.as(Completed))
 
       protected def stopRequested = false
     }
@@ -242,31 +249,14 @@ private trait SubagentEventListener
         persistence.persistKeyedEvent(subagentId <-: SubagentCoupled)
           .map(_.orThrow))))
 
-  private def onSubagentDecoupled(problem: Option[Problem]): Task[Unit] =
-    logger.debugTask("onSubagentDecoupled", problem)(
-      Task.defer {
-        _isHeartbeating := false
-        persistence
-          .lock(subagentId)(
-            persistence.persist(_
-              .idToSubagentItemState.checked(subagentId)
-              .map { subagentItemState =>
-                val prblm = problem
-                  .orElse(subagentItemState.problem)
-                  .getOrElse(Problem.pure("decoupled"))
-                (!subagentItemState.problem.contains(prblm))
-                  .thenList(subagentId <-: SubagentCouplingFailed(prblm))
-              }))
-          .map(_.orThrow)
-          .void
-          .onErrorHandleWith(t => Task.defer {
-            // Error isn't logged until stopEventListener is called
-            logger.error("onSubagentDecoupled => " + t.toStringWithCauses)
-            Task.raiseError(t)
-          })
-      })
+  protected final def isHeartbeating = _isHeartbeating.get()
 
-  final def isHeartbeating = _isHeartbeating.get()
+  private def onSubagentDecoupled(problem: Option[Problem]): Task[Unit] =
+    Task.defer {
+      _isHeartbeating := false
+      Task.when(true || isCoupled)(
+        emitSubagentCouplingFailed(problem))
+    }
 }
 
 private object SubagentEventListener

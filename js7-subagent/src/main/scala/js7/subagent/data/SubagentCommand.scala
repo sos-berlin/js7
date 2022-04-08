@@ -80,6 +80,7 @@ object SubagentCommand extends CommonCommand.Companion
   //}
   //object AttachItem
 
+  // TODO Send and check AgentRunId with each command
   final case class AttachSignedItem(signed: Signed[SignableItem])
   extends SubagentCommand {
     type Response = Accepted
@@ -125,6 +126,7 @@ object SubagentCommand extends CommonCommand.Companion
 
   final case class ShutDown(
     processSignal: Option[ProcessSignal] = None,
+    dontWaitForDirector: Boolean = false,
     restart: Boolean = false)
   extends Queueable {
     type Response = Accepted

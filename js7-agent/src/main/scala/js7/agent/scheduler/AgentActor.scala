@@ -183,7 +183,8 @@ private[agent] final class AgentActor private(
                       _: AgentCommand.TakeSnapshot |
                       _: AgentCommand.AttachItem |
                       _: AgentCommand.AttachSignedItem |
-                      _: AgentCommand.DetachItem) =>
+                      _: AgentCommand.DetachItem |
+                      _: AgentCommand.ResetSubagent) =>
         // TODO Check AgentRunId ?
         started.toOption match {
           case None =>

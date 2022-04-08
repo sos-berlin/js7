@@ -23,7 +23,8 @@ final class SubagentItemStateTest extends AnyFreeSpec
         Some(SubagentRunId(Base64UUID.zero)),
         DelegateCouplingState.Coupled,
         isDetaching = false,
-        1001L,
+        isResettingForcibly = None,
+        eventId = 1001L,
         Some(Problem("PROBLEM"))),
       json"""{
         "subagentItem": {
@@ -52,7 +53,8 @@ final class SubagentItemStateTest extends AnyFreeSpec
           itemRevision = Some(ItemRevision(1))),
         None,
         DelegateCouplingState.Coupled,
-        isDetaching = true,
+        /*Agent only*/isDetaching = true,
+        /*Controller only*/isResettingForcibly = Some(false),
         1001L,
         None),
       json"""{
@@ -67,6 +69,7 @@ final class SubagentItemStateTest extends AnyFreeSpec
           "TYPE": "Coupled"
         },
         "isDetaching": true,
+        "isResettingForcibly": false,
         "eventId": 1001
       }""")
   }

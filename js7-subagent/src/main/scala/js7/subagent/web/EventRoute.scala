@@ -1,8 +1,6 @@
 package js7.subagent.web
 
 import akka.http.scaladsl.server.Directives._
-import cats.syntax.traverse._
-import js7.agent.data.Problems.{SubagentNotDedicatedProblem, SubagentRunIdMismatchProblem}
 import js7.common.akkahttp.StandardMarshallers._
 import js7.data.subagent.SubagentRunId
 import js7.journal.web.GenericEventRoute
@@ -17,23 +15,12 @@ trait EventRoute extends SubagentRouteProvider with GenericEventRoute
       def keyedEventTypedJsonCodec = SubagentState.keyedEventJsonCodec
     }.route
 
-    parameter("subagentRunId".?) { subagentRunIdString =>
-      subagentRunIdString.traverse(SubagentRunId.checked) match {
-        case Left(problem) =>
-          complete(problem)
-
-        case Right(maybeSubagentRunId) =>
-          commandExecutor.dedicated match {
-            case None =>
-              complete(SubagentNotDedicatedProblem)
-
-            case Some(dedicated) =>
-              if (maybeSubagentRunId.exists(_ != commandExecutor.subagentRunId))
-                complete(SubagentRunIdMismatchProblem(dedicated.subagentId))
-              else
-                route
-          }
-      }
-    }
+    parameter("subagentRunId")(subagentRunIdString =>
+      (for {
+        subagentRunId <- SubagentRunId.checked(subagentRunIdString)
+        _ <- commandExecutor.checkedDedicated // Subagent must be dedicated
+        _ <- commandExecutor.checkSubagentRunId(subagentRunId)
+      } yield ())
+        .fold(complete(_), _ => route))
   }
 }

@@ -2,6 +2,7 @@ package js7.agent.subagent
 
 import akka.actor.ActorSystem
 import cats.effect.Resource
+import cats.syntax.flatMap._
 import cats.syntax.foldable._
 import cats.syntax.parallel._
 import cats.syntax.traverse._
@@ -27,6 +28,7 @@ import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.item.BasicItemEvent.ItemDetached
 import js7.data.order.OrderEvent.{OrderCoreEvent, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{Order, OrderId, Outcome}
+import js7.data.subagent.SubagentItemStateEvent.SubagentResetStarted
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentSelection, SubagentSelectionId}
 import js7.journal.state.StatePersistence
 import js7.launcher.configuration.JobLauncherConf
@@ -190,7 +192,7 @@ final class SubagentKeeper(
 
   private def selectSubagentDriverCancelable(orderId: OrderId)
   : Task[Checked[Option[SubagentDriver]]] =
-    orderIdSubagentSelectionId(orderId)
+    orderToSubagentSelectionId(orderId)
       .flatMapT(maybeSelectionId =>
         cancelableWhileWaitingForSubagent(orderId)
           .use(canceledPromise =>
@@ -200,7 +202,7 @@ final class SubagentKeeper(
           .map(_.toOption)
           .map(Right(_)))
 
-  private def orderIdSubagentSelectionId(orderId: OrderId)
+  private def orderToSubagentSelectionId(orderId: OrderId)
   : Task[Checked[Option[SubagentSelectionId]]] =
     for (agentState <- persistence.state) yield
       for {
@@ -220,10 +222,11 @@ final class SubagentKeeper(
   private def selectSubagentDriver(maybeSelectionId: Option[SubagentSelectionId])
   : Task[SubagentDriver] =
     Observable
-      .repeatEvalF(Coeval {
-        stateVar.get.selectNext(maybeSelectionId)
-      })
+      .repeatEvalF(Coeval { stateVar.get.selectNext(maybeSelectionId) }
+        .flatTap(o => Coeval(
+          logger.trace(s"selectSubagentDriver($maybeSelectionId) => $o ${stateVar.get}"))))
       .delayOnNextBySelector {
+        // TODO Do not poll (for each Order)
         case None => Observable.unit.delayExecution(reconnectDelayer.next())
         case Some(_) =>
           reconnectDelayer.reset()
@@ -246,9 +249,25 @@ final class SubagentKeeper(
           })
     }
 
+  def startResetSubagent(subagentId: SubagentId, force: Boolean): Task[Checked[Unit]] =
+    stateVar.value
+      .flatMap(s => Task(s.idToDriver.checked(subagentId)))
+      .flatMapT {
+        case driver: RemoteSubagentDriver =>
+          persistence.persistKeyedEvent(subagentId <-: SubagentResetStarted(force))
+            .flatMapT(_ =>
+              driver.reset(force)
+                .onErrorHandle(t =>
+                  logger.error(s"$subagentId reset => $t", t.nullIfNoStackTrace))
+                .startAndForget
+                .map(Right(_)))
+        case _ =>
+          Task.pure(Problem.pure(s"$subagentId as the Agent Director cannot be reset"))
+      }
+
   def startRemoveSubagent(subagentId: SubagentId): Task[Unit] =
     removeSubagent(subagentId)
-      .onErrorHandle(t => Task(logger.error(s"removeSubagent($subagentId) => $t")))
+      .onErrorHandle[Unit](t => Task(logger.error(s"removeSubagent($subagentId) => $t")))
       .startAndForget
 
   private def removeSubagent(subagentId: SubagentId): Task[Unit] =
@@ -349,7 +368,7 @@ final class SubagentKeeper(
             assert(oldDriver.subagentId == newDriver.subagentId)
             val name = "addOrChange " + oldDriver.subagentItem.pathRev
             oldDriver
-              .emitProcessLostEvents(None)  // FIXME Kill the processes
+              .stopDispatcherAndEmitProcessLostEvents(None)  // FIXME Kill the processes
               .*>(oldDriver.stop)  // Maybe try to send Shutdown command ???
               .*>(subagentItemLockKeeper
                 .lock(oldDriver.subagentId)(

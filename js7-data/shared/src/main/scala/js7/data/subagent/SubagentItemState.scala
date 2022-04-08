@@ -7,18 +7,19 @@ import io.circe.{Codec, Encoder, JsonObject}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.data.delegate.DelegateCouplingState
-import js7.data.delegate.DelegateCouplingState.{Coupled, Reset, ShutDown}
+import js7.data.delegate.DelegateCouplingState.{Coupled, Reset, Resetting, ShutDown}
 import js7.data.event.EventId
 import js7.data.item.UnsignedSimpleItemState
-import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentCouplingFailed, SubagentDedicated, SubagentEventsObserved, SubagentRestarted, SubagentShutdown}
+import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentCouplingFailed, SubagentDedicated, SubagentEventsObserved, SubagentReset, SubagentResetStarted, SubagentResetStartedByController, SubagentRestarted, SubagentShutdown}
 
 final case class SubagentItemState(
   subagentItem: SubagentItem,
   subagentRunId: Option[SubagentRunId],
   couplingState: DelegateCouplingState,
   isDetaching: Boolean = false,  // Agent only
+  isResettingForcibly: Option[Boolean] = None,  // Controller only
   eventId: EventId,
-  problem: Option[Problem])
+  problem: Option[Problem] = None)
 extends UnsignedSimpleItemState
 {
   protected type Item = SubagentItem
@@ -58,13 +59,34 @@ extends UnsignedSimpleItemState
         Right(copy(
           couplingState = Reset,
           subagentRunId = None,
-          eventId = EventId.BeforeFirst))
+          eventId = EventId.BeforeFirst,
+          problem = None))
 
       case SubagentShutdown =>
         Right(copy(
           couplingState = ShutDown,
           subagentRunId = None,
-          eventId = EventId.BeforeFirst))
+          eventId = EventId.BeforeFirst,
+          problem = None))
+
+      case SubagentResetStartedByController(force) =>
+        Right(copy(
+          // Do not touch anything else!
+          // Only the Agent Director is allowed to to update other fields then isResettingForcibly
+          isResettingForcibly = Some(force)))
+
+      case SubagentResetStarted(force) =>
+        Right(copy(
+          couplingState = Resetting(force = force),
+          problem = None))
+
+      case SubagentReset =>
+        Right(copy(
+          couplingState = Reset,
+          isResettingForcibly = None,
+          subagentRunId = None,
+          eventId = EventId.BeforeFirst,
+          problem = None))
     }
 }
 
@@ -85,6 +107,7 @@ object SubagentItemState
       "subagentRunId" -> o.subagentRunId.asJson,
       "couplingState" -> o.couplingState.asJson,
       "isDetaching" -> o.isDetaching.?.asJson,
+      "isResettingForcibly" -> o.isResettingForcibly.asJson,
       "eventId" -> o.eventId.asJson,
       "problem" -> o.problem.asJson)
 

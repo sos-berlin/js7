@@ -174,6 +174,9 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
 
       case ReleaseEventsQueueable(untilEventId) =>
         AgentCommand.ReleaseEvents(untilEventId)
+
+      case Input.ResetSubagent(subagentId, force) =>
+        AgentCommand.ResetSubagent(subagentId, force = force)
     }
 
   final def onOrdersDetached(orderIds: View[OrderId]): Unit = {

@@ -1,7 +1,7 @@
 package js7.subagent
 
 import cats.effect.ExitCase
-import js7.agent.data.Problems.{SubagentIdMismatchProblem, SubagentRunIdMismatchProblem}
+import js7.agent.data.Problems.{SubagentAlreadyDedicatedProblem, SubagentIdMismatchProblem, SubagentRunIdMismatchProblem}
 import js7.base.io.process.ProcessSignal
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax._
@@ -39,10 +39,10 @@ trait SubagentExecutor
   protected val subagentConf: SubagentConf
   protected val jobLauncherConf: JobLauncherConf
 
+  val subagentRunId = SubagentRunId(Base64UUID.random())
   private val subagentDriverConf = SubagentDriver.Conf.fromConfig(subagentConf.config,
     commitDelay = 0.s)
   private val orderToProcessing = AsyncMap.stoppable[OrderId, Processing]()
-  private val subagentRunId = SubagentRunId(Base64UUID.random())
 
   private val shuttingDown = Atomic(false)
   private val stoppedOnce = SetOnce[ProgramTermination]
@@ -53,12 +53,13 @@ trait SubagentExecutor
 
   final def shutdown(
     signal: Option[ProcessSignal] = None,
-    restart: Boolean = false,
-    dontWaitForDirector: Boolean = false)
+    dontWaitForDirector: Boolean = false,
+    restart: Boolean = false)
   : Task[ProgramTermination] =
     logger.debugTask(
       "shutdown",
-      s"${signal getOrElse ""}${restart ?? " restart"}${dontWaitForDirector ?? " dontWaitForDirector"}"
+      Seq(signal, restart ? "restart", dontWaitForDirector ? "dontWaitForDirector")
+        .flatten.mkString(" ")
     )(Task.defer {
       this.dontWaitForDirector |= dontWaitForDirector
       val first = !shuttingDown.getAndSet(true)
@@ -79,16 +80,17 @@ trait SubagentExecutor
               // Await process termination and DetachProcessedOrder commands
               .stopWithMessage(shuttingDownProblem)
               .logWhenItTakesLonger("Director-acknowledged Order processes"))
-          .*>(journal
-            // The event probably gets lost due to immediate shutdown !!!
-            .persistKeyedEvent(NoKey <-: SubagentShutdown)
-            .map(_.onProblemHandle(problem => logger.warn(s"Shutdown: $problem"))))
-          .*>(Task {
-            logger.info(
-              s"Subagent${dedicatedOnce.toOption.fold("")(_.toString + " ")} stopped")
-            val t = ProgramTermination(restart = restart)
-            stoppedOnce.trySet(t)
-          }))
+            .*>(journal
+              // The event may get lost due to immediate shutdown !!!
+              .persistKeyedEvent(NoKey <-: SubagentShutdown)
+              .map(_.onProblemHandle(problem => logger.warn(s"Shutdown: $problem"))))
+            //.delayExecution(200.ms) // Delay to allow remaining events flow to client ???
+            .*>(Task {
+              logger.info(
+                s"Subagent${dedicatedOnce.toOption.fold("")(_.toString + " ")} stopped")
+              val t = ProgramTermination(restart = restart)
+              stoppedOnce.trySet(t)
+            }))
         .*>(stoppedOnce.task)
     })
 
@@ -103,7 +105,8 @@ trait SubagentExecutor
         //if (cmd.subagentId == dedicatedOnce.orThrow.subagentId)
         //  Task.pure(Right(DedicateSubagent.Response(subagentRunId, EventId.BeforeFirst)))
         //else
-        Task.left(Problem.pure(s"This Subagent has already been dedicated: $dedicatedOnce"))
+        logger.warn(s"$cmd => $SubagentAlreadyDedicatedProblem: $dedicatedOnce")
+        Task.left(SubagentAlreadyDedicatedProblem)
       } else {
         // TODO Check agentPath, controllerId (handle in SubagentState?)
         logger.info(s"Subagent dedicated to be ${cmd.subagentId} in ${cmd.agentPath}, is ready")
@@ -141,7 +144,7 @@ trait SubagentExecutor
       else
         RightUnit)
 
-  private def checkSubagentRunId(requestedSubagentRunId: SubagentRunId): Checked[Unit] =
+  def checkSubagentRunId(requestedSubagentRunId: SubagentRunId): Checked[Unit] =
     dedicatedOnce.checked.flatMap(dedicated =>
       if (requestedSubagentRunId != this.subagentRunId) {
         val problem = SubagentRunIdMismatchProblem(dedicated.subagentId)

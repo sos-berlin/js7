@@ -412,6 +412,11 @@ with Stash
             }
         }
 
+    case AgentCommand.ResetSubagent(subagentId, force) =>
+      subagentKeeper.startResetSubagent(subagentId, force)
+        .rightAs(AgentCommand.Response.Accepted)
+        .runToFuture
+
     case AgentCommand.TakeSnapshot =>
       (journalActor ? JournalActor.Input.TakeSnapshot)
         .mapTo[JournalActor.Output.SnapshotTaken.type]

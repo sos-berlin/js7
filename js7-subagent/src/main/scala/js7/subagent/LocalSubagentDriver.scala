@@ -54,9 +54,9 @@ extends SubagentDriver
   private val orderIdToJobDriver = AsyncMap.stoppable[OrderId, JobDriver]()
   @volatile private var stopping = false
 
-  def isStopping = stopping
+  protected def isStopping = stopping
 
-  def isShuttingDown = false
+  protected def isShuttingDown = false
 
   def start = Task(logger.debug("Start LocalSubagentDriver"))
 

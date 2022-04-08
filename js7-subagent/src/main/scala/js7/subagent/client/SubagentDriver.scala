@@ -23,9 +23,9 @@ trait SubagentDriver
 
   def subagentId: SubagentId
 
-  def isStopping: Boolean
+  protected def isStopping: Boolean
 
-  def isShuttingDown: Boolean
+  protected def isShuttingDown: Boolean
 
   def isCoupled =
     !isStopping && !isShuttingDown

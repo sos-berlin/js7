@@ -18,7 +18,8 @@ object SubagentItemStateEvent extends Event.Companion[SubagentItemStateEvent]
   final case class SubagentDedicated(subagentRunId: SubagentRunId)
   extends SubagentItemStateEvent
 
-  type SubagentCoupled = SubagentCoupled.type
+  type
+  SubagentCoupled = SubagentCoupled.type
   /** Subagent is coupled and alive. */
   case object SubagentCoupled
   extends SubagentItemStateEvent
@@ -38,9 +39,15 @@ object SubagentItemStateEvent extends Event.Companion[SubagentItemStateEvent]
 
   sealed trait SubagentDied extends SubagentItemStateEvent
 
-  //type SubagentReset = SubagentReset.type
-  //case object SubagentReset
-  //extends SubagentDied
+  final case class SubagentResetStartedByController(force: Boolean)
+  extends SubagentItemStateEvent
+
+  final case class SubagentResetStarted(force: Boolean)
+  extends SubagentItemStateEvent
+
+  type SubagentReset = SubagentReset.type
+  case object SubagentReset
+  extends SubagentDied
 
   type SubagentRestarted = SubagentRestarted.type
   /** Subagent has lost its state (including processes). */
@@ -56,7 +63,9 @@ object SubagentItemStateEvent extends Event.Companion[SubagentItemStateEvent]
     Subtype(SubagentCoupled),
     Subtype(deriveCodec[SubagentCouplingFailed]),
     Subtype(deriveCodec[SubagentEventsObserved]),
-    //Subtype(SubagentReset),
+    Subtype(deriveCodec[SubagentResetStartedByController]),
+    Subtype(deriveCodec[SubagentResetStarted]),
+    Subtype(SubagentReset),
     Subtype(SubagentRestarted),
     Subtype(SubagentShutdown))
 }

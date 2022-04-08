@@ -68,7 +68,7 @@ import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath}
 import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
 import js7.data.state.OrderEventHandler
 import js7.data.state.OrderEventHandler.FollowUp
-import js7.data.subagent.SubagentItemStateEvent.SubagentEventsObserved
+import js7.data.subagent.SubagentItemStateEvent.{SubagentEventsObserved, SubagentResetStartedByController}
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemStateEvent}
 import js7.data.value.expression.scopes.NowScope
 import js7.data.workflow.position.WorkflowPosition
@@ -903,6 +903,20 @@ with MainJournalingActor[ControllerState, Event]
             }
         }
 
+      case ControllerCommand.ResetSubagent(subagentId, force) =>
+        persistence.currentState.idToSubagentItemState.checked(subagentId)
+          .map(subagentItemState =>
+            (subagentItemState.couplingState != DelegateCouplingState.Resetting(force))
+              .thenList((subagentId <-: SubagentResetStartedByController(force = force))))
+          .match_ {
+            case Left(problem) => Future.successful(Left(problem))
+            case Right(events) =>
+              persistMultiple(events) { (_, updated) =>
+                _controllerState = updated
+                proceedWithItem(subagentId)
+              }.map(_ => Right(ControllerCommand.Response.Accepted))
+          }
+
       case ControllerCommand.AnswerOrderPrompt(orderId) =>
         orderEventSource.answer(orderId) match {
           case Left(problem) =>
@@ -1105,7 +1119,7 @@ with MainJournalingActor[ControllerState, Event]
     }
   }
 
-  private def proceedWithItem(itemKey: InventoryItemKey): Unit =
+  private def proceedWithItem(itemKey: InventoryItemKey): Unit = {
     itemKey match {
       case agentPath: AgentPath =>
         // TODO Handle AgentRef here: agentEntry .actor ! AgentDriver.Input.StartFetchingEvents ...
@@ -1145,6 +1159,22 @@ with MainJournalingActor[ControllerState, Event]
 
       case _ =>
     }
+
+    // ResetSubagent
+    itemKey match {
+      case subagentId: SubagentId =>
+        for (subagentItemState <- _controllerState.idToSubagentItemState.get(subagentId)) {
+          subagentItemState.isResettingForcibly match {
+            case Some(force) =>
+              for (actor <- agentRegister.get(subagentItemState.item.agentPath).map(_.actor)) {
+                actor ! AgentDriver.Input.ResetSubagent(subagentId, force)
+              }
+            case _ =>
+          }
+        }
+      case _ =>
+    }
+  }
 
   private def handleOrderEvent(keyedEvent: KeyedEvent[OrderEvent]): Set[OrderId] = {
     val KeyedEvent(orderId, event) = keyedEvent

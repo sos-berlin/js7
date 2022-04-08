@@ -197,6 +197,10 @@ object AgentCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
 
+  final case class ResetSubagent(subagentId: SubagentId, force: Boolean)
+  extends AgentCommand {
+    type Response = Response.Accepted
+  }
 
   implicit val jsonCodec: TypedJsonCodec[AgentCommand] = {
     implicit val S = AgentState
@@ -215,7 +219,8 @@ object AgentCommand extends CommonCommand.Companion
       Subtype(deriveCodec[DetachItem]),
       Subtype(deriveCodec[AttachOrder]),
       Subtype(deriveCodec[DetachOrder]),
-      Subtype(TakeSnapshot))
+      Subtype(TakeSnapshot),
+      Subtype(deriveCodec[ResetSubagent]))
   }
 
   implicit val responseJsonCodec: TypedJsonCodec[AgentCommand.Response] =
