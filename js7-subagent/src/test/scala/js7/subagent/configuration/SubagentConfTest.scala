@@ -104,7 +104,7 @@ final class SubagentConfTest extends AnyFreeSpec
     val javaEncodings = Charset.availableCharsets().asScala.values.toSet
     val unsupported = javaEncodings
       .filterNot(o => supportedEncodings(o.name))
-      .filterNot(o => (o.aliases.asScala + o.name).exists(o => o.matches("""(cp|CP)\d+""")))
+      .filterNot(o => (o.aliases.asScala.toSet + o.name).exists(o => o.matches("""(cp|CP)\d+""")))
     for (encoding <- unsupported.toVector.sorted) {
       logger.info(s"Java encoding without Windows codepage: ${encoding.name} " +
         s"${encoding.aliases.asScala.toVector.mkString(", ")}")
