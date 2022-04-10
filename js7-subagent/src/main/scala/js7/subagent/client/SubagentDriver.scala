@@ -1,15 +1,14 @@
 package js7.subagent.client
 
 import com.typesafe.config.Config
+import js7.agent.data.subagent.SubagentServerState
 import js7.base.configutils.Configs.RichConfig
 import js7.base.io.process.ProcessSignal
 import js7.base.problem.Checked
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.event.JournaledState
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId}
-import js7.data.state.AgentStateView
 import js7.data.subagent.SubagentId
 import js7.data.value.expression.Expression
 import js7.data.workflow.instructions.Execute
@@ -19,7 +18,7 @@ import scala.concurrent.duration.FiniteDuration
 
 trait SubagentDriver
 {
-  protected type S <: AgentStateView with JournaledState[S]
+  protected type S <: SubagentServerState[S]
 
   def subagentId: SubagentId
 

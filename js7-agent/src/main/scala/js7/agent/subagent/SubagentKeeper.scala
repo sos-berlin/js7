@@ -8,7 +8,7 @@ import cats.syntax.foldable._
 import cats.syntax.parallel._
 import cats.syntax.traverse._
 import js7.agent.configuration.AgentConfiguration
-import js7.agent.data.AgentState
+import js7.agent.data.subagent.SubagentClientState
 import js7.agent.subagent.SubagentKeeper._
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGKILL
@@ -40,9 +40,9 @@ import monix.eval.{Coeval, Task}
 import monix.reactive.Observable
 import scala.concurrent.Promise
 
-final class SubagentKeeper(
+final class SubagentKeeper[S <: SubagentClientState[S]](
   agentPath: AgentPath,
-  persistence: StatePersistence[AgentState],
+  persistence: StatePersistence[S],
   jobLauncherConf: JobLauncherConf,
   agentConf: AgentConfiguration,
   actorSystem: ActorSystem)
@@ -169,7 +169,7 @@ final class SubagentKeeper(
     orderId: OrderId,
     events: Seq[OrderCoreEvent],
     onEvents: Seq[OrderCoreEvent] => Unit)
-  : Task[Checked[(Seq[Stamped[KeyedEvent[OrderCoreEvent]]], AgentState)]] =
+  : Task[Checked[(Seq[Stamped[KeyedEvent[OrderCoreEvent]]], S)]] =
     persistence
       .persistKeyedEvents(events.map(orderId <-: _))
       .map(_.map { o =>
@@ -256,7 +256,7 @@ final class SubagentKeeper(
     stateVar.value
       .flatMap(s => Task(s.idToDriver.checked(subagentId)))
       .flatMapT {
-        case driver: RemoteSubagentDriver =>
+        case driver: RemoteSubagentDriver[S] @unchecked =>
           persistence.persistKeyedEvent(subagentId <-: SubagentResetStarted(force))
             .flatMapT(_ =>
               driver.reset(force)
@@ -349,7 +349,7 @@ final class SubagentKeeper(
                       .map(_ -> Some(None -> subagentDriver))
 
                   case Some(existing) =>
-                    checkedCast[RemoteSubagentDriver](existing)
+                    checkedCast[RemoteSubagentDriver[S]](existing)
                       .flatMap(existing =>
                         if (subagentItem.uri == existing.subagentItem.uri)
                           Right(state -> None)
@@ -367,7 +367,7 @@ final class SubagentKeeper(
                 }))
           })
         .flatMapT {
-          case Some((Some(oldDriver), newDriver: RemoteSubagentDriver)) =>
+          case Some((Some(oldDriver), newDriver: RemoteSubagentDriver[S] @unchecked)) =>
             assert(oldDriver.subagentId == newDriver.subagentId)
             val name = "addOrChange " + oldDriver.subagentItem.pathRev
             oldDriver

@@ -4,6 +4,7 @@ import cats.effect.ExitCase
 import cats.syntax.flatMap._
 import cats.syntax.foldable._
 import cats.syntax.traverse._
+import js7.agent.data.subagent.SubagentClientState
 import js7.agent.subagent.SubagentEventListener._
 import js7.base.generic.Completed
 import js7.base.log.Logger
@@ -35,11 +36,11 @@ import monix.execution.atomic.Atomic
 import monix.reactive.Observable
 import scala.util.chaining.scalaUtilChainingOps
 
-private trait SubagentEventListener
+private trait SubagentEventListener[S <: SubagentClientState[S]]
 {
-  this: RemoteSubagentDriver =>
+  this: RemoteSubagentDriver[S] =>
 
-  private val logger = Logger.withPrefix[SubagentEventListener](subagentItem.pathRev.toString)
+  private val logger = Logger.withPrefix[SubagentEventListener[S]](subagentItem.pathRev.toString)
   private lazy val stdoutCommitOptions = CommitOptions(delay = subagentConf.stdoutCommitDelay)  // TODO Use it!
   private val stopObserving = MVar.empty[Task, Unit]().memoize
   @volatile private var observing: Fiber[Unit] = Fiber(Task.unit, Task.unit)

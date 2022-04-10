@@ -4,8 +4,8 @@ import akka.actor.ActorSystem
 import cats.syntax.flatMap._
 import cats.syntax.traverse._
 import com.typesafe.config.ConfigUtil
-import js7.agent.data.AgentState
 import js7.agent.data.Problems.SubagentNotDedicatedProblem
+import js7.agent.data.subagent.SubagentClientState
 import js7.agent.subagent.RemoteSubagentDriver._
 import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.configutils.Configs.ConvertibleConfig
@@ -55,18 +55,18 @@ import scala.util.{Failure, Success}
 // - dedicate, couple, reset, delete, ...
 // - Which operations may overlap with, wait for or cancel the older?
 
-private final class RemoteSubagentDriver(
+private final class RemoteSubagentDriver[S0 <: SubagentClientState[S0]](
   val subagentItem: SubagentItem,
   httpsConfig: HttpsConfig,
-  protected val persistence: StatePersistence[AgentState],
+  protected val persistence: StatePersistence[S0],
   controllerId: ControllerId,
   protected val conf: SubagentDriver.Conf,
   protected val subagentConf: SubagentConf,
   protected val recouplingStreamReaderConf: RecouplingStreamReaderConf,
   actorSystem: ActorSystem)
-extends SubagentDriver with SubagentEventListener
+extends SubagentDriver with SubagentEventListener[S0]
 {
-  protected type S = AgentState
+  protected type S = S0
 
   private val logger = Logger.withPrefix[this.type](subagentItem.pathRev.toString)
   private val dispatcher = new SubagentDispatcher(subagentId, postQueuedCommand)
@@ -110,7 +110,7 @@ extends SubagentDriver with SubagentEventListener
         startEventListener)
       .memoize
 
-  def startMovedSubagent(previous: RemoteSubagentDriver): Task[Unit] =
+  def startMovedSubagent(previous: RemoteSubagentDriver[S]): Task[Unit] =
     logger.debugTask(
       startEventListener
         //.*>(previous.stopDispatcherAndEmitProcessLostEvents(None))
@@ -606,14 +606,14 @@ extends SubagentDriver with SubagentEventListener
 
   private def signableItemsForOrderProcessing(workflowPosition: WorkflowPosition)
   : Task[Checked[Seq[Signed[SignableItem]]]] =
-    for (agentState <- persistence.state) yield
+    for (s <- persistence.state) yield
       for {
-        signedWorkflow <- agentState.keyToSigned(Workflow).checked(workflowPosition.workflowId)
+        signedWorkflow <- s.keyToSigned(Workflow).checked(workflowPosition.workflowId)
         workflow = signedWorkflow.value
         jobKey <- workflow.positionToJobKey(workflowPosition.position)
         job <- workflow.keyToJob.checked(jobKey)
         jobResourcePaths = JobConf.jobResourcePathsFor(job, workflow)
-        signedJobResources <- jobResourcePaths.traverse(agentState.keyToSigned(JobResource).checked)
+        signedJobResources <- jobResourcePaths.traverse(s.keyToSigned(JobResource).checked)
       } yield signedJobResources :+ signedWorkflow
 
   private def currentSubagentItemState: Task[Checked[SubagentItemState]] =

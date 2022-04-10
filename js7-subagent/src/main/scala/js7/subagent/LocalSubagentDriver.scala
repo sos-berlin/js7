@@ -3,6 +3,7 @@ package js7.subagent
 import cats.syntax.foldable._
 import cats.syntax.parallel._
 import cats.syntax.traverse._
+import js7.agent.data.subagent.SubagentServerState
 import js7.base.io.process.{ProcessSignal, Stderr, Stdout, StdoutOrStderr}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax._
@@ -13,11 +14,9 @@ import js7.base.utils.ScalaUtils.chunkStrings
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
-import js7.data.event.JournaledState
 import js7.data.job.{JobConf, JobKey}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
 import js7.data.order.{Order, OrderId, Outcome}
-import js7.data.state.AgentStateView
 import js7.data.subagent.SubagentId
 import js7.data.value.expression.Expression
 import js7.data.value.expression.scopes.FileValueState
@@ -37,7 +36,7 @@ import monix.reactive.Observable
 import monix.reactive.subjects.PublishSubject
 import scala.concurrent.Promise
 
-final class LocalSubagentDriver[S0 <: AgentStateView with JournaledState[S0]](
+final class LocalSubagentDriver[S0 <: SubagentServerState[S0]](
   val subagentId: SubagentId,
   protected val persistence: StatePersistence[S0],
   val agentPath: AgentPath,

@@ -119,7 +119,7 @@ trait SubagentExecutor
     agentPath: AgentPath,
     controllerId: ControllerId)
   =
-    new LocalSubagentDriver(
+    new LocalSubagentDriver[SubagentState](
       subagentId,
       journal,
       agentPath,

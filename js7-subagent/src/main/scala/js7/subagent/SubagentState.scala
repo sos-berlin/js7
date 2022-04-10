@@ -1,5 +1,6 @@
 package js7.subagent
 
+import js7.agent.data.subagent.SubagentServerState
 import js7.data.event.JournalEvent.Heartbeat
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
@@ -7,7 +8,6 @@ import js7.data.event.{Event, EventId, ItemContainer, JournaledState, KeyedEvent
 import js7.data.item.{InventoryItem, InventoryItemKey}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten, OrderStderrWritten, OrderStdoutWritten}
-import js7.data.state.AgentStateView
 import js7.data.workflow.{Workflow, WorkflowId}
 import js7.subagent.data.SubagentEvent
 import js7.subagent.data.SubagentEvent.{SubagentItemAttached, SubagentShutdown}
@@ -17,8 +17,7 @@ final case class SubagentState(
   eventId: EventId,
   idToWorkflow: Map[WorkflowId, Workflow],
   pathToJobResource: Map[JobResourcePath, JobResource])
-extends AgentStateView
-with JournaledState[SubagentState]
+extends SubagentServerState[SubagentState]
 with ItemContainer
 {
   val companion = SubagentState

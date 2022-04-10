@@ -29,7 +29,7 @@ import shapeless.tag.@@
   */
 final class OrderActor private(
   orderId: OrderId,
-  subagentKeeper: SubagentKeeper,
+  subagentKeeper: SubagentKeeper[AgentState],
   protected val journalActor: ActorRef @@ JournalActor.type,
   protected val journalConf: JournalConf)
   (implicit protected val scheduler: Scheduler)
@@ -302,7 +302,7 @@ private[order] object OrderActor
 {
   private[order] def props(
     orderId: OrderId,
-    subagentKeeper: SubagentKeeper,
+    subagentKeeper: SubagentKeeper[AgentState],
     journalActor: ActorRef @@ JournalActor.type,
     journalConf: JournalConf)
     (implicit s: Scheduler) =
