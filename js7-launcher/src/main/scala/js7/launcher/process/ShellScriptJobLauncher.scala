@@ -41,7 +41,7 @@ extends PathProcessJobLauncher
               writeScriptToFile(
                 executable.script,
                 jobLauncherConf.shellScriptTmpDirectory,
-                jobLauncherConf.encoding,
+                jobLauncherConf.systemEncoding,
                 maybeUserName
               ).map { path =>
                 userToFile.put(maybeUserName, path)

@@ -102,7 +102,7 @@ extends CommonConfiguration
         shellScriptTmpDirectory = shellScriptTmpDirectory,
         tmpDirectory = workTmpDirectory,
         workingDirectory = jobWorkingDirectory,
-        encoding = config.optionAs[String]("js7.job.execution.encoding")
+        systemEncoding = config.optionAs[String]("js7.job.execution.encoding")
           .map(Charset.forName/*throws*/)
           .getOrElse(systemEncoding.orThrow),
         killWithSigterm = config.seqAs[String](sigtermName),

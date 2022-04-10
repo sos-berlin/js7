@@ -191,7 +191,8 @@ extends SubagentDriver
                 val jobConf = JobConf(
                   jobKey, workflowJob, workflow, controllerId,
                   sigkillDelay = workflowJob.sigkillDelay
-                    .getOrElse(subagentConf.defaultJobSigkillDelay))
+                    .getOrElse(subagentConf.defaultJobSigkillDelay),
+                  jobLauncherConf.systemEncoding)
                 new JobDriver(
                   jobConf,
                   id => persistence.currentState.pathToJobResource.checked(id)/*live!*/,

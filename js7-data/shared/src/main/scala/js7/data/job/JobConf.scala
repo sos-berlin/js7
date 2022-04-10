@@ -1,5 +1,6 @@
 package js7.data.job
 
+import java.nio.charset.Charset
 import js7.data.controller.ControllerId
 import js7.data.job.JobConf._
 import js7.data.workflow.Workflow
@@ -11,7 +12,8 @@ final case class JobConf(
   workflowJob: WorkflowJob,
   workflow: Workflow,
   controllerId: ControllerId,
-  sigkillDelay: FiniteDuration)
+  sigkillDelay: FiniteDuration,
+  systemEncoding: Charset)
 {
   val jobResourcePaths: Seq[JobResourcePath] =
     jobResourcePathsFor(workflowJob, workflow)

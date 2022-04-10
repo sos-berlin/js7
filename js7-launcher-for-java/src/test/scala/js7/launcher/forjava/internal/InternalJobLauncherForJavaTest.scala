@@ -56,24 +56,28 @@ final class InternalJobLauncherForJavaTest extends AnyFreeSpec with BeforeAndAft
 
       implicit lazy val executor: InternalJobLauncher = {
         val u = Paths.get("UNUSED")
-        JobLauncher.checked(
-          JobConf(
-            JobKey(WorkflowBranchPath(WorkflowPath("WORKFLOW") ~ "1", Nil), WorkflowJob.Name("JOB")),
-            WorkflowJob(AgentPath("AGENT"), executable),
-            workflow,
-            ControllerId("CONTROLLER"),
-            sigkillDelay = 0.s),
-          JobLauncherConf(u, u, u, u,
-            UTF_8,
-            killWithSigterm = ProcessConfiguration.forTest.killWithSigterm,
-            killWithSigkill = ProcessConfiguration.forTest.killWithSigkill,
-            killForWindows = ProcessConfiguration.forTest.killForWindows,
-            None,
-            scriptInjectionAllowed = true,
-            RecouplingStreamReaderConf.forTest,
-            globalIOX, blockingJobScheduler,
-            AlarmClock())
-        ).orThrow.asInstanceOf[InternalJobLauncher]
+
+        val jobLauncherConf = JobLauncherConf(u, u, u, u,
+          UTF_8,
+          killWithSigterm = ProcessConfiguration.forTest.killWithSigterm,
+          killWithSigkill = ProcessConfiguration.forTest.killWithSigkill,
+          killForWindows = ProcessConfiguration.forTest.killForWindows,
+          None,
+          scriptInjectionAllowed = true,
+          RecouplingStreamReaderConf.forTest,
+          globalIOX, blockingJobScheduler,
+          AlarmClock())
+
+        val jobConf = JobConf(
+          JobKey(WorkflowBranchPath(WorkflowPath("WORKFLOW") ~ "1", Nil), WorkflowJob.Name("JOB")),
+          WorkflowJob(AgentPath("AGENT"), executable),
+          workflow,
+          ControllerId("CONTROLLER"),
+          sigkillDelay = 0.s,
+          jobLauncherConf.systemEncoding)
+
+        JobLauncher.checked(jobConf, jobLauncherConf)
+          .orThrow.asInstanceOf[InternalJobLauncher]
       }
 
       "orderProcess" in {

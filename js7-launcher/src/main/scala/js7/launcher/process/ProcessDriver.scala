@@ -33,7 +33,7 @@ final class ProcessDriver(
   private val checkedWindowsLogon = conf.login.traverse(WindowsLogon.fromKeyLogin)
   private lazy val returnValuesProvider = new ShellReturnValuesProvider(
     jobLauncherConf.tmpDirectory,
-    jobLauncherConf.encoding,
+    jobLauncherConf.systemEncoding,
     v1Compatible = conf.v1Compatible)
   private val terminatedPromise = Promise[Completed]()
   private val richProcessOnce = SetOnce[RichProcess]
@@ -65,7 +65,7 @@ final class ProcessDriver(
               .map(_ =>
                 ProcessConfiguration(
                   workingDirectory = Some(jobLauncherConf.workingDirectory),
-                  encoding = jobLauncherConf.encoding,
+                  encoding = jobLauncherConf.systemEncoding,
                   additionalEnvironment = env + returnValuesProvider.toEnv,
                   maybeTaskId = Some(taskId),
                   killWithSigterm = jobLauncherConf.killWithSigterm,

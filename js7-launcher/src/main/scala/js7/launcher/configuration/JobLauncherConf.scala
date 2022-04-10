@@ -13,7 +13,7 @@ final case class JobLauncherConf(
   tmpDirectory: Path,
   /** Working directory of the process to be started. */
   workingDirectory: Path,
-  encoding: Charset,
+  systemEncoding: Charset,
   killWithSigterm: Seq[String],
   killWithSigkill: Seq[String],
   killForWindows: Seq[String],

@@ -1,5 +1,6 @@
 package js7.launcher.internal
 
+import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.problem.Checked._
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.IOExecutor.globalIOX
@@ -41,7 +42,8 @@ final class InternalJobLauncherTest extends AnyFreeSpec
         workflowJob,
         workflow,
         ControllerId("CONTROLLER"),
-        sigkillDelay = 0.s),
+        sigkillDelay = 0.s,
+        UTF_8),
       Map.empty,
       globalIOX.scheduler,
       AlarmClock())(Scheduler.global, globalIOX)
