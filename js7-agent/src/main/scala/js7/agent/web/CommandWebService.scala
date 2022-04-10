@@ -33,8 +33,8 @@ extends AgentRouteProvider with EntitySizeLimitProvider
     authorizedUser(ValidUserPermission) { user =>
       post {
         pathEnd {
-          sessionTokenOption { maybeSessionToken =>
-            withSizeLimit(entitySizeLimit) {
+          withSizeLimit(entitySizeLimit) {
+            sessionTokenOption { maybeSessionToken =>
               entity(as[AgentCommand]) { command =>
                 completeTask {
                   commandExecute(CommandMeta(user, maybeSessionToken), command)

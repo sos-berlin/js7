@@ -281,8 +281,17 @@ extends HasCloser
     suffix: String = "",
     suppressSignatureKeys: Boolean = false)
   : Resource[Task, BareSubagent] =
+    subagentResource2(subagentItem.id, subagentItem.uri, config, suffix, suppressSignatureKeys)
+
+  private def subagentResource2(
+    subagentId: SubagentId,
+    uri: Uri,
+    config: Config = ConfigFactory.empty,
+    suffix: String = "",
+    suppressSignatureKeys: Boolean = false)
+  : Resource[Task, BareSubagent] =
     for {
-      dir <- subagentEnvironment(subagentItem, suffix = suffix)
+      dir <- subagentEnvironment(subagentId, suffix = suffix)
       trustedSignatureDir = dir / "config" / "private" /
         verifier.companion.recommendedKeyDirectoryName
       conf = {
@@ -290,18 +299,18 @@ extends HasCloser
         if (!suppressSignatureKeys) provideSignatureKeys(trustedSignatureDir)
         toSubagentConf(dir,
           trustedSignatureDir,
-          subagentItem.uri.port.orThrow,
+          uri.port.orThrow,
           config,
-          name = subagentItem.id.string)
+          name = subagentId.string)
       }
       scheduler <- BareSubagent.threadPoolResource[Task](conf)
       subagent <- BareSubagent.resource(conf.finishAndProvideFiles, scheduler)
     } yield subagent
 
-  private def subagentEnvironment(subagentItem: SubagentItem, suffix: String): Resource[Task, Path] =
+  private def subagentEnvironment(subagentId: SubagentId, suffix: String): Resource[Task, Path] =
     Resource.make(
       acquire = Task {
-        val dir = directory / "subagents" / (subagentItem.id.string + suffix)
+        val dir = directory / "subagents" / (subagentId.string + suffix)
         createDirectories(directory / "subagents")
         createDirectory(dir)
         createDirectory(dir / "data")

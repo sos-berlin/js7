@@ -138,9 +138,9 @@ while true; do
   "${execute[@]}" &
 
   pid=$!
+  log "PID $pid"
   pidFile="$stateDir/pid"
   echo "$pid" >"$pidFile"
-  log "PID $pid"
 
   terminate() {
     echo "⚡️ $1"

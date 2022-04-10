@@ -1,6 +1,7 @@
 package js7.common.system.startup
 
 import java.io.File
+import java.time.Instant
 import js7.base.io.process.ProcessPidRetriever.maybeOwnPid
 import js7.base.log.Logger
 import js7.base.time.Timestamp
@@ -61,8 +62,10 @@ object StartUp
     catch { case _: Throwable => }
 
   def printlnWithClock(line: String): Unit =
-    printlnWithClock(Timestamp.now, line)
+    System.err.println(s"$nowString $line")
 
-  def printlnWithClock(ts: Timestamp, line: String): Unit =
-    System.err.println(s"${ts.toString.replace('T', ' ') take 23/*ms*/} $line")
+  def nowString =
+    Instant.now.toString
+      .replace('T', ' ')
+      .take(23)/*ms*/
 }

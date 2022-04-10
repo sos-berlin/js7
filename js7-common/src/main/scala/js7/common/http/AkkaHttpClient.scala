@@ -408,7 +408,7 @@ object AkkaHttpClient
 
   final class Standard(
     protected val baseUri: Uri,
-    protected val uriPrefixPath: String,
+    protected val uriPrefixPath: String = "",
     protected val actorSystem: ActorSystem,
     protected val httpsConfig: HttpsConfig = HttpsConfig.empty,
     protected val name: String = "")

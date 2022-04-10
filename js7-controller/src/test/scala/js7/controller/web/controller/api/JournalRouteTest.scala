@@ -61,8 +61,8 @@ final class JournalRouteTest extends AnyFreeSpec with RouteTester with JournalRo
 
   private lazy val webServer = AkkaWebServer.forTest()(pathSegments("journal")(journalRoute))
   private lazy val uri = webServer.localUri
-  private lazy val client = new AkkaHttpClient.Standard(uri, uriPrefixPath = "",
-    actorSystem = system, name = "JournalRouteTest")
+  private lazy val client = new AkkaHttpClient.Standard(uri, actorSystem = system,
+    name = "JournalRouteTest")
 
   override def beforeAll() = {
     super.beforeAll()

@@ -100,7 +100,6 @@ extends AutoCloseable
   val sessionRegister: SessionRegister[SimpleSession] = injector.instance[SessionRegister[SimpleSession]]
   private lazy val controllerConfiguration = injector.instance[ControllerConfiguration]
 
-  @TestOnly
   lazy val actorSystem = injector.instance[ActorSystem]
 
   val terminated: Future[ProgramTermination] =
