@@ -9,7 +9,7 @@ import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
 import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.akkahttp.StandardMarshallers.checkedToResponseMarshaller
 import js7.core.web.EntitySizeLimitProvider
-import js7.subagent.data.SubagentCommand
+import js7.data.subagent.SubagentCommand
 import monix.eval.Task
 
 private trait CommandRoute extends SubagentRouteProvider with EntitySizeLimitProvider

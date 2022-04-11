@@ -12,7 +12,6 @@ import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.Akkas.newAgentActorSystem
 import js7.agent.data.AgentState
 import js7.agent.scheduler.order.OrderActorTest._
-import js7.agent.subagent.SubagentKeeper
 import js7.agent.tests.TestAgentDirectoryProvider
 import js7.base.generic.Completed
 import js7.base.io.file.FileUtils.syntax._
@@ -49,6 +48,7 @@ import js7.journal.recover.Recovered
 import js7.journal.state.FileStatePersistence
 import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.process.ProcessConfiguration
+import js7.subagent.director.SubagentKeeper
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.Assertions._
 import org.scalatest.BeforeAndAfterAll
@@ -196,7 +196,8 @@ private object OrderActorTest {
     //persistence.persistKeyedEvent()
     private val agentConf = AgentConfiguration.forTest(dir, name = "OrderActorTest", config)
     val subagentKeeper =
-      new SubagentKeeper(TestAgentPath, persistence, jobLauncherConf, agentConf, context.system)
+      new SubagentKeeper(TestAgentPath, persistence, jobLauncherConf,
+        agentConf.subagentDirectorConf, context.system)
     subagentKeeper.initialize(localSubagentId = None, controllerId).await(99.s)
     subagentKeeper.start.await(99.s)
 

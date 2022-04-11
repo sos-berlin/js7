@@ -2,9 +2,9 @@ package js7.subagent.web
 
 import akka.http.scaladsl.server.Directives._
 import js7.common.akkahttp.StandardMarshallers._
-import js7.data.subagent.SubagentRunId
+import js7.data.subagent.{SubagentRunId, SubagentState}
 import js7.journal.web.GenericEventRoute
-import js7.subagent.{SubagentCommandExecutor, SubagentState}
+import js7.subagent.SubagentCommandExecutor
 
 private trait EventRoute extends SubagentRouteProvider with GenericEventRoute
 {

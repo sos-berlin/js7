@@ -28,7 +28,7 @@ import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.launcher.configuration.{JobLauncherConf, ProcessKillScript}
-import js7.subagent.configuration.SubagentConf
+import js7.subagent.configuration.{DirectorConf, SubagentConf}
 import monix.execution.schedulers.SchedulerService
 import scala.jdk.CollectionConverters._
 
@@ -101,6 +101,9 @@ extends CommonConfiguration
     subagentConf.toJobLauncherConf(iox, blockingJobScheduler, clock)
 
   val journalMeta = JournalMeta(AgentState, stateDirectory / "agent" )
+
+  lazy val subagentDirectorConf =
+    DirectorConf(journalConf, httpsConfig, recouplingStreamReaderConf, subagentConf)
 
   lazy val subagentConf =
     SubagentConf.of(

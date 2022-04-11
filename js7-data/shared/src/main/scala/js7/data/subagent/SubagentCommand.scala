@@ -1,4 +1,4 @@
-package js7.subagent.data
+package js7.data.subagent
 
 import io.circe.generic.extras.Configuration.default.withDefaults
 import io.circe.generic.extras.semiauto.deriveConfiguredCodec
@@ -17,9 +17,8 @@ import js7.data.event.EventId
 import js7.data.item.SignableItem
 import js7.data.order.{Order, OrderId}
 import js7.data.other.HeartbeatTiming
-import js7.data.subagent.{SubagentId, SubagentRunId}
+import js7.data.subagent.SubagentState._
 import js7.data.value.expression.Expression
-import js7.subagent.SubagentState._
 
 sealed trait SubagentCommand extends CommonCommand
 {

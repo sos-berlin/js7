@@ -1,15 +1,12 @@
-package js7.agent.subagent
+package js7.subagent.director
 
 import akka.actor.ActorSystem
 import cats.effect.Resource
+import cats.implicits.catsSyntaxParallelUnorderedTraverse
 import cats.instances.option._
 import cats.syntax.flatMap._
 import cats.syntax.foldable._
-import cats.syntax.parallel._
 import cats.syntax.traverse._
-import js7.agent.configuration.AgentConfiguration
-import js7.agent.data.subagent.SubagentClientState
-import js7.agent.subagent.SubagentKeeper._
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger
@@ -31,26 +28,27 @@ import js7.data.item.BasicItemEvent.ItemDetached
 import js7.data.order.OrderEvent.{OrderCoreEvent, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentResetStarted}
-import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentSelection, SubagentSelectionId}
+import js7.data.subagent.{SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState, SubagentSelection, SubagentSelectionId}
 import js7.journal.state.StatePersistence
 import js7.launcher.configuration.JobLauncherConf
-import js7.subagent.LocalSubagentDriver
-import js7.subagent.client.SubagentDriver
+import js7.subagent.configuration.DirectorConf
+import js7.subagent.director.SubagentKeeper._
+import js7.subagent.{LocalSubagentDriver, SubagentDriver}
 import monix.eval.{Coeval, Task}
 import monix.reactive.Observable
 import scala.concurrent.Promise
 
-final class SubagentKeeper[S <: SubagentClientState[S]](
+final class SubagentKeeper[S <: SubagentDirectorState[S]](
   agentPath: AgentPath,
   persistence: StatePersistence[S],
   jobLauncherConf: JobLauncherConf,
-  agentConf: AgentConfiguration,
+  directorConf: DirectorConf,
   actorSystem: ActorSystem)
 {
   private var reconnectDelayer: DelayIterator = null
   private val legacyLocalSubagentId = SubagentId.legacyLocalFromAgentPath(agentPath) // COMPATIBLE with v2.2
-  private val driverConf = SubagentDriver.Conf.fromConfig(agentConf.config,
-    commitDelay = agentConf.journalConf.delay)
+  private val driverConf = SubagentDriver.Conf.fromConfig(directorConf.config,
+    commitDelay = directorConf.journalConf.delay)
   /** defaultPrioritized is used when no SubagentSelectionId is given. */
   private val defaultPrioritized = Prioritized.empty[SubagentId](
     toPriority = _ => 0/*same priority for each entry, round-robin*/)
@@ -64,7 +62,7 @@ final class SubagentKeeper[S <: SubagentClientState[S]](
   def initialize(localSubagentId: Option[SubagentId], controllerId: ControllerId): Task[Unit] =
     Task.deferAction { scheduler =>
       reconnectDelayer = DelayIterators
-        .fromConfig(agentConf.config, "js7.subagent-driver.reconnect-delays")(scheduler)
+        .fromConfig(directorConf.config, "js7.subagent-driver.reconnect-delays")(scheduler)
         .orThrow
 
       val initialized = Initialized(agentPath, localSubagentId, controllerId)
@@ -416,17 +414,17 @@ final class SubagentKeeper[S <: SubagentClientState[S]](
       initialized.controllerId,
       jobLauncherConf,
       driverConf,
-      agentConf.subagentConf)
+      directorConf.subagentConf)
 
   private def newRemoteSubagentDriver(subagentItem: SubagentItem, initialized: Initialized) =
     new RemoteSubagentDriver(
       subagentItem,
-      agentConf.httpsConfig,
+      directorConf.httpsConfig,
       persistence,
       initialized.controllerId,
       driverConf,
-      agentConf.subagentConf,
-      agentConf.recouplingStreamReaderConf,
+      directorConf.subagentConf,
+      directorConf.recouplingStreamReaderConf,
       actorSystem)
 
   def addOrReplaceSubagentSelection(selection: SubagentSelection): Task[Checked[Unit]] =

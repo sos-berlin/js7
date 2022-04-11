@@ -22,7 +22,7 @@ import js7.common.http.configuration.RecouplingStreamReaderConfs
 import js7.launcher.configuration.{JobLauncherConf, ProcessKillScript}
 import js7.launcher.forwindows.configuration.WindowsConf
 import js7.launcher.process.ProcessKillScriptProvider
-import js7.subagent.client.SubagentDriver.StdouterrConf
+import js7.subagent.SubagentDriver.StdouterrConf
 import js7.subagent.configuration.SubagentConf._
 import monix.execution.schedulers.SchedulerService
 import scala.concurrent.duration.FiniteDuration
@@ -81,7 +81,6 @@ extends CommonConfiguration
     this
   }
 
-  // TODO Duplicate
   def toJobLauncherConf(iox: IOExecutor, blockingJobScheduler: SchedulerService, clock: AlarmClock)
   : Checked[JobLauncherConf] = {
     val sigtermName = "js7.job.execution.kill-with-sigterm-command"

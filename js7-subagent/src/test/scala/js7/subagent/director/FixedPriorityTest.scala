@@ -1,4 +1,4 @@
-package js7.agent.subagent
+package js7.subagent.director
 
 import org.scalatest.freespec.AnyFreeSpec
 

@@ -1,7 +1,6 @@
-package js7.subagent.client
+package js7.subagent
 
 import com.typesafe.config.Config
-import js7.agent.data.subagent.SubagentServerState
 import js7.base.configutils.Configs.RichConfig
 import js7.base.io.process.ProcessSignal
 import js7.base.problem.Checked
@@ -9,7 +8,7 @@ import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId}
-import js7.data.subagent.SubagentId
+import js7.data.subagent.{SubagentDriverState, SubagentId}
 import js7.data.value.expression.Expression
 import js7.data.workflow.instructions.Execute
 import js7.journal.state.StatePersistence
@@ -18,7 +17,7 @@ import scala.concurrent.duration.FiniteDuration
 
 trait SubagentDriver
 {
-  protected type S <: SubagentServerState[S]
+  protected type S <: SubagentDriverState[S]
 
   def subagentId: SubagentId
 

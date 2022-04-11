@@ -19,7 +19,7 @@ import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.akkautils.Akkas
 import js7.common.system.ThreadPools
 import js7.common.system.ThreadPools.{newUnlimitedScheduler, schedulerServiceToResource}
-import js7.data.subagent.SubagentRunId
+import js7.data.subagent.{SubagentRunId, SubagentState}
 import js7.journal.watch.InMemoryJournal
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.web.SubagentWebServer

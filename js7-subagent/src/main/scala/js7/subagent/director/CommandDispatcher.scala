@@ -1,4 +1,4 @@
-package js7.agent.subagent
+package js7.subagent.director
 
 import cats.syntax.traverse._
 import js7.base.log.Logger

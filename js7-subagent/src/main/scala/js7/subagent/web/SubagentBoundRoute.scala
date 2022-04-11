@@ -15,9 +15,9 @@ import js7.common.akkahttp.web.auth.CSRF.forbidCSRF
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.{SessionRegister, SessionRoute, SimpleSession}
+import js7.data.subagent.SubagentCommand
 import js7.journal.watch.EventWatch
 import js7.subagent.SubagentCommandExecutor
-import js7.subagent.data.SubagentCommand
 import monix.execution.Scheduler
 import scala.concurrent.Future
 import scala.concurrent.duration.Deadline

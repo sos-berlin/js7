@@ -1,4 +1,4 @@
-package js7.subagent.job
+package js7.subagent
 
 import cats.syntax.foldable._
 import cats.syntax.traverse._
@@ -19,7 +19,7 @@ import js7.data.value.expression.Expression
 import js7.data.value.expression.scopes.FileValueState
 import js7.launcher.internal.JobLauncher
 import js7.launcher.{OrderProcess, ProcessOrder, StdObservers}
-import js7.subagent.job.JobDriver._
+import js7.subagent.JobDriver._
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.cancelables.SerialCancelable

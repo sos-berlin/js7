@@ -1,12 +1,9 @@
-package js7.agent.subagent
+package js7.subagent.director
 
 import akka.actor.ActorSystem
 import cats.syntax.flatMap._
 import cats.syntax.traverse._
 import com.typesafe.config.ConfigUtil
-import js7.agent.data.Problems.SubagentNotDedicatedProblem
-import js7.agent.data.subagent.SubagentClientState
-import js7.agent.subagent.RemoteSubagentDriver._
 import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.crypt.Signed
@@ -34,15 +31,16 @@ import js7.data.item.{InventoryItemKey, ItemRevision, SignableItem}
 import js7.data.job.{JobConf, JobResource}
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId, Outcome}
+import js7.data.subagent.Problems.SubagentNotDedicatedProblem
+import js7.data.subagent.SubagentCommand.{AttachSignedItem, CoupleDirector, DedicateSubagent, KillProcess, StartOrderProcess}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCouplingFailed, SubagentDedicated, SubagentDied, SubagentReset, SubagentRestarted}
-import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentRunId}
+import js7.data.subagent.{SubagentDirectorState, SubagentCommand, SubagentId, SubagentItem, SubagentItemState, SubagentRunId}
 import js7.data.workflow.Workflow
 import js7.data.workflow.position.WorkflowPosition
 import js7.journal.state.StatePersistence
-import js7.subagent.client.{SubagentClient, SubagentDriver}
+import js7.subagent.SubagentDriver
 import js7.subagent.configuration.SubagentConf
-import js7.subagent.data.SubagentCommand
-import js7.subagent.data.SubagentCommand.{AttachSignedItem, CoupleDirector, DedicateSubagent, KillProcess, StartOrderProcess}
+import js7.subagent.director.RemoteSubagentDriver._
 import monix.catnap.MVar
 import monix.eval.Task
 import scala.annotation.unused
@@ -55,7 +53,7 @@ import scala.util.{Failure, Success}
 // - dedicate, couple, reset, delete, ...
 // - Which operations may overlap with, wait for or cancel the older?
 
-private final class RemoteSubagentDriver[S0 <: SubagentClientState[S0]](
+private final class RemoteSubagentDriver[S0 <: SubagentDirectorState[S0]](
   val subagentItem: SubagentItem,
   httpsConfig: HttpsConfig,
   protected val persistence: StatePersistence[S0],

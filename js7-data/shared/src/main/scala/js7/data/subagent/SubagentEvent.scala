@@ -1,4 +1,4 @@
-package js7.subagent.data
+package js7.data.subagent
 
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
@@ -6,7 +6,7 @@ import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.data.event.Event
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.item.InventoryItem
-import js7.subagent.SubagentState.inventoryItemJsonCodec
+import js7.data.subagent.SubagentState.inventoryItemJsonCodec
 
 trait SubagentEvent extends Event.ForScala3[SubagentEvent] {
   val companion = SubagentEvent

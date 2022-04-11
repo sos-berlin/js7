@@ -1,21 +1,19 @@
-package js7.subagent.data
+package js7.data.subagent
 
-import js7.agent.data.AgentState
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.crypt.silly.SillySigner
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.time.ScalaTime._
 import js7.base.utils.Base64UUID
 import js7.data.agent.AgentPath
-import js7.data.controller.ControllerId
+import js7.data.controller.{ControllerId, ControllerState}
 import js7.data.item.ItemSigner
 import js7.data.order.{Order, OrderId}
 import js7.data.other.HeartbeatTiming
-import js7.data.subagent.{SubagentId, SubagentRunId}
+import js7.data.subagent.SubagentCommand.{AttachSignedItem, CoupleDirector, DedicateSubagent, KillProcess, ShutDown, StartOrderProcess}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.subagent.data.SubagentCommand.{AttachSignedItem, CoupleDirector, DedicateSubagent, KillProcess, ShutDown, StartOrderProcess}
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -56,7 +54,7 @@ final class SubagentCommandTest extends AnyFreeSpec
     }
 
     "AttachSignedItem" in {
-      val itemSigner = new ItemSigner(SillySigner.Default, AgentState.signableItemJsonCodec)
+      val itemSigner = new ItemSigner(SillySigner.Default, ControllerState.signableItemJsonCodec)
       testJson[SubagentCommand](
         AttachSignedItem(
           itemSigner.sign(Workflow(WorkflowPath("WORKFLOW") ~ "1", Nil))),

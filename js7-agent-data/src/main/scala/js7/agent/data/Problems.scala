@@ -4,7 +4,6 @@ import js7.base.problem.Problem
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.order.OrderId
-import js7.data.subagent.SubagentId
 
 /**
   * @author Joacim Zschimmer
@@ -45,24 +44,4 @@ object Problems
 
   type AgentNotDedicatedProblem = AgentNotDedicatedProblem.type
   case object AgentNotDedicatedProblem extends Problem.ArgumentlessCoded
-
-  final case class SubagentIdMismatchProblem(
-    requestedSubagentId: SubagentId,
-    realSubagentId: SubagentId)
-  extends Problem.Coded {
-    def arguments = Map(
-      "requestedSubagentId" -> requestedSubagentId.string,
-      "realSubagentId" -> realSubagentId.string)
-  }
-
-  final case class SubagentRunIdMismatchProblem(subagentId: SubagentId)
-  extends Problem.Coded {
-    def arguments = Map("subagentId" -> subagentId.string)
-  }
-
-  type SubagentAlreadyDedicatedProblem = SubagentAlreadyDedicatedProblem.type
-  case object SubagentAlreadyDedicatedProblem extends Problem.ArgumentlessCoded
-
-  type SubagentNotDedicatedProblem = SubagentNotDedicatedProblem.type
-  case object SubagentNotDedicatedProblem extends Problem.ArgumentlessCoded
 }

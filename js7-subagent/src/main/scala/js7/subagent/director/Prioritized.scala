@@ -1,7 +1,7 @@
-package js7.agent.subagent
+package js7.subagent.director
 
-import js7.agent.subagent.Prioritized._
 import js7.base.problem.{Checked, Problem}
+import js7.subagent.director.Prioritized.prioritySort
 
 private final class Prioritized[A] private(
   private val orderedKeys: IndexedSeq[A],

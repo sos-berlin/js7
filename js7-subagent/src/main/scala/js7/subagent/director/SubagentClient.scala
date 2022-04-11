@@ -1,4 +1,4 @@
-package js7.subagent.client
+package js7.subagent.director
 
 import akka.actor.ActorSystem
 import io.circe.Decoder
@@ -12,8 +12,7 @@ import js7.common.http.AkkaHttpClient
 import js7.common.http.Uris.encodeQuery
 import js7.data.event.{Event, EventRequest, KeyedEvent, Stamped}
 import js7.data.session.HttpSessionApi
-import js7.data.subagent.SubagentRunId
-import js7.subagent.data.SubagentCommand
+import js7.data.subagent.{SubagentCommand, SubagentRunId}
 import monix.eval.Task
 import monix.reactive.Observable
 import scala.concurrent.duration.FiniteDuration

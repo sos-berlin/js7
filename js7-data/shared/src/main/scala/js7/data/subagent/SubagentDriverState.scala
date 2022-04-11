@@ -1,10 +1,10 @@
-package js7.agent.data.subagent
+package js7.data.subagent
 
 import js7.data.event.JournaledState
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.workflow.{Workflow, WorkflowId}
 
-trait SubagentServerState[S <: SubagentServerState[S]]
+trait SubagentDriverState[S <: SubagentDriverState[S]]
 extends JournaledState[S]
 {
   this: S =>

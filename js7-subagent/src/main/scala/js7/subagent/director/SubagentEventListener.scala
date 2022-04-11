@@ -1,11 +1,9 @@
-package js7.agent.subagent
+package js7.subagent.director
 
 import cats.effect.ExitCase
 import cats.syntax.flatMap._
 import cats.syntax.foldable._
 import cats.syntax.traverse._
-import js7.agent.data.subagent.SubagentClientState
-import js7.agent.subagent.SubagentEventListener._
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax._
@@ -25,18 +23,17 @@ import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.other.HeartbeatTiming
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentEventsObserved, SubagentShutdown}
-import js7.data.subagent.SubagentRunId
+import js7.data.subagent.SubagentState.keyedEventJsonCodec
+import js7.data.subagent.{SubagentDirectorState, SubagentEvent, SubagentRunId}
 import js7.journal.CommitOptions
-import js7.subagent.SubagentState.keyedEventJsonCodec
-import js7.subagent.client.SubagentClient
-import js7.subagent.data.SubagentEvent
+import js7.subagent.director.SubagentEventListener._
 import monix.catnap.MVar
 import monix.eval.{Fiber, Task}
 import monix.execution.atomic.Atomic
 import monix.reactive.Observable
 import scala.util.chaining.scalaUtilChainingOps
 
-private trait SubagentEventListener[S <: SubagentClientState[S]]
+private trait SubagentEventListener[S <: SubagentDirectorState[S]]
 {
   this: RemoteSubagentDriver[S] =>
 

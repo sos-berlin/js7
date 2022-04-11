@@ -11,7 +11,6 @@ import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSign
 import js7.agent.data.event.AgentEvent.{AgentReady, AgentShutDown}
 import js7.agent.main.AgentMain
 import js7.agent.scheduler.order.AgentOrderKeeper._
-import js7.agent.subagent.SubagentKeeper
 import js7.base.crypt.{SignatureVerifier, Signed}
 import js7.base.generic.Completed
 import js7.base.log.Logger
@@ -54,6 +53,7 @@ import js7.journal.state.FileStatePersistence
 import js7.journal.{JournalActor, MainJournalingActor}
 import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
+import js7.subagent.director.SubagentKeeper
 import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
 import scala.collection.mutable
@@ -176,7 +176,8 @@ with Stash
   import shutdown.shuttingDown
 
   private val subagentKeeper =
-    new SubagentKeeper(ownAgentPath, persistence, jobLauncherConf, conf, context.system)
+    new SubagentKeeper(ownAgentPath, persistence, jobLauncherConf, conf.subagentDirectorConf,
+      context.system)
 
   watch(journalActor)
   self ! Internal.Recover(recovered_)

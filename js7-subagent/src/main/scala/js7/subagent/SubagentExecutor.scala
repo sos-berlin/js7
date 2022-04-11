@@ -1,7 +1,6 @@
 package js7.subagent
 
 import cats.effect.ExitCase
-import js7.agent.data.Problems.{SubagentAlreadyDedicatedProblem, SubagentIdMismatchProblem, SubagentRunIdMismatchProblem}
 import js7.base.io.process.ProcessSignal
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax._
@@ -19,16 +18,16 @@ import js7.data.event.EventId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId, Outcome}
-import js7.data.subagent.{SubagentId, SubagentRunId}
+import js7.data.subagent.Problems.{SubagentAlreadyDedicatedProblem, SubagentIdMismatchProblem, SubagentRunIdMismatchProblem}
+import js7.data.subagent.SubagentCommand.{CoupleDirector, DedicateSubagent}
+import js7.data.subagent.SubagentEvent.SubagentShutdown
+import js7.data.subagent.{SubagentId, SubagentRunId, SubagentState}
 import js7.data.value.expression.Expression
 import js7.data.workflow.position.WorkflowPosition
 import js7.journal.watch.InMemoryJournal
 import js7.launcher.configuration.JobLauncherConf
 import js7.subagent.SubagentExecutor._
-import js7.subagent.client.SubagentDriver
 import js7.subagent.configuration.SubagentConf
-import js7.subagent.data.SubagentCommand.{CoupleDirector, DedicateSubagent}
-import js7.subagent.data.SubagentEvent.SubagentShutdown
 import monix.eval.Task
 import monix.execution.atomic.Atomic
 
