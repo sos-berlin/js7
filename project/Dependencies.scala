@@ -6,18 +6,18 @@ object Dependencies
 {
   val scalaVersion = "2.13.8"
 
-  val akkaVersion = "2.6.18"
-  val akkaHttpVersion = "10.2.7"
+  val akkaVersion = "2.6.19"
+  val akkaHttpVersion = "10.2.9"
   val slf4jVersion = "1.7.36"  // See also plugins.sbt
   val log4jVersion = "2.17.2"  // See also plugins.sbt
   val catsVersion = "2.7.0"
   val catsEffectVersion = "2.5.4"
-  val izumiReflectVersion = "2.0.7"
+  val izumiReflectVersion = "2.1.0"
   //val kittensVersion = "1.2.1"
   val fastparseVersion = "2.2.4"
   val circeVersion = "0.14.1"
   val scalaJava8Version = "1.0.0"
-  val scalaTestVersion = "3.2.10"
+  val scalaTestVersion = "3.2.11"
   val scalaTestCheckVersion = "3.2.2.0"
   val scalaCheckVersion= "1.14.3"
   val simulacrumVersion = "0.19.0"
@@ -26,11 +26,11 @@ object Dependencies
   val disciplineScalaTestVersion = "2.0.0"
   val monixVersion = "3.4.0"
   val monocleVersion = "1.5.0"
-  val scribeVersion = "3.6.7"
+  val scribeVersion = "3.6.7" // TODO "3.8.2"
   val scalaJsDomVersion = "1.2.0"
   val shapelessVersion = "2.3.7"
   val diffxVersion = "0.7.0"
-  val reactorVersion = "3.4.15"
+  val reactorVersion = "3.4.16"
   val vavrVersion = "0.10.4"
   val jnaVersion = "5.10.0"
 
@@ -59,7 +59,7 @@ object Dependencies
   val javaxInject         = "javax.inject" % "javax.inject" % "1"
   val guice               = ("com.google.inject" % "guice" % "5.1.0") :: javaxInject :: Nil
 
-  val typesafeConfig      = "com.typesafe" % "config" % "1.4.1"
+  val typesafeConfig      = "com.typesafe" % "config" % "1.4.2"
   val akkaActor           = "com.typesafe.akka" %% "akka-actor" % akkaVersion
   val akkaStream          = "com.typesafe.akka" %% "akka-stream" % akkaVersion
   val akkaSlf4j           = "com.typesafe.akka" %% "akka-slf4j" % akkaVersion
