@@ -1,5 +1,6 @@
 package js7.launcher.forjava.internal
 
+import java.nio.charset.Charset
 import js7.data.job.JobKey
 import js7.data.value.Value
 import js7.data_for_java.common.JavaWrapper
@@ -17,6 +18,9 @@ trait JavaJobContext extends JavaWrapper
 
   lazy val jobArguments: java.util.Map[String, Value] =
     asScala.jobArguments.asJava
+
+  def systemEncoding: Charset =
+    asScala.systemEncoding
 
   /** The `Executor` internally used by JS7.
     * <ul><li>

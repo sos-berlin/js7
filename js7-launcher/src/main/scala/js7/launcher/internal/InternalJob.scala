@@ -1,5 +1,6 @@
 package js7.launcher.internal
 
+import java.nio.charset.Charset
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
 import js7.base.monixutils.TaskObserver
 import js7.base.problem.Checked
@@ -46,7 +47,8 @@ object InternalJob
     implicit val js7Scheduler: Scheduler,
     ioExecutor: IOExecutor,
     blockingJobScheduler: Scheduler,
-    clock: AlarmClock)
+    clock: AlarmClock,
+    systemEncoding: Charset)
 
   final case class Step private(processOrder: ProcessOrder, arguments: NamedValues) {
     self =>

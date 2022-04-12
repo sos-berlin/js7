@@ -88,7 +88,8 @@ extends JobLauncher
   }
 
   private def toJobContext(cls: Class[_]) =
-    JobContext(cls, executable, jobArguments, jobConf, scheduler, iox, blockingJobScheduler, clock)
+    JobContext(cls, executable, jobArguments, jobConf, scheduler, iox, blockingJobScheduler, clock,
+      jobConf.systemEncoding)
 
   override def toString = s"InternalJobLauncher(${jobConf.jobKey} ${executable.className})"
 }
