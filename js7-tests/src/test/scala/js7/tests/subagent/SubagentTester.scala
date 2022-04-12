@@ -11,7 +11,7 @@ import js7.base.web.Uri
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.item.ItemOperation.AddOrChangeSimple
-import js7.data.subagent.SubagentItemStateEvent.SubagentDedicated
+import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentDedicated}
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.subagent.BareSubagent
 import js7.tests.subagent.SubagentMultipleOrdersTest.agentPath
@@ -88,7 +88,10 @@ trait SubagentTester extends ControllerAgentForScalaTest
           suffix = suffix,
           suppressSignatureKeys = suppressSignatureKeys)
         .map { subagent =>
-          if (awaitDedicated) eventWatch.await[SubagentDedicated](after = eventId)
+          if (awaitDedicated) {
+            val e = eventWatch.await[SubagentDedicated](after = eventId).head.eventId
+            eventWatch.await[SubagentCoupled](after = e)
+          }
           subagent
       }
     })
