@@ -1,7 +1,6 @@
 package js7.agent.web
 
 import js7.agent.client.AgentClient
-import js7.agent.data.Problems.{AgentPathMismatchProblem, AgentRunIdMismatchProblem}
 import js7.agent.data.commands.AgentCommand.{CoupleController, DedicateAgentDirector, ReleaseEvents, TakeSnapshot}
 import js7.agent.data.event.AgentEvent.AgentReady
 import js7.agent.tests.AgentTester
@@ -14,6 +13,7 @@ import js7.base.time.ScalaTime._
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.Closer.syntax._
 import js7.common.guice.GuiceImplicits._
+import js7.data.agent.Problems.{AgentPathMismatchProblem, AgentRunIdMismatchProblem}
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
 import js7.data.event.{Event, EventId, EventRequest, EventSeq, EventSeqTornProblem, JournalEvent, JournalId}

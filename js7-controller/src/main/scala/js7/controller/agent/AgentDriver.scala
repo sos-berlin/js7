@@ -4,7 +4,6 @@ import akka.actor.{DeadLetterSuppression, Props}
 import cats.data.EitherT
 import com.typesafe.config.ConfigUtil
 import js7.agent.client.AgentClient
-import js7.agent.data.Problems.AgentNotDedicatedProblem
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{CoupleController, DedicateAgentDirector}
 import js7.agent.data.event.AgentEvent
@@ -32,6 +31,7 @@ import js7.controller.agent.AgentDriver._
 import js7.controller.agent.CommandQueue.QueuedInputResponse
 import js7.controller.configuration.ControllerConfiguration
 import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentReset}
+import js7.data.agent.Problems.AgentNotDedicatedProblem
 import js7.data.agent.{AgentPath, AgentRef, AgentRunId}
 import js7.data.controller.ControllerState
 import js7.data.delegate.DelegateCouplingState.{Coupled, Resetting}

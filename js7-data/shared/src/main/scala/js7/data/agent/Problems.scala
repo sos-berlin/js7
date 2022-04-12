@@ -1,7 +1,6 @@
-package js7.agent.data
+package js7.data.agent
 
 import js7.base.problem.Problem
-import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.order.OrderId
 

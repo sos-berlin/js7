@@ -5,7 +5,6 @@ import akka.http.scaladsl.model.StatusCodes.{OK, ServiceUnavailable}
 import akka.http.scaladsl.model.headers.Accept
 import io.circe.Json
 import io.circe.syntax.EncoderOps
-import js7.agent.data.Problems.AgentIsShuttingDown
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand._
 import js7.agent.web.CommandWebServiceTest._
@@ -17,6 +16,7 @@ import js7.base.time.ScalaTime._
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.core.command.CommandMeta
+import js7.data.agent.Problems.AgentIsShuttingDown
 import js7.data.command.{CommandHandlerDetailed, CommandHandlerOverview, CommandRunOverview, InternalCommandId}
 import monix.eval.Task
 import monix.execution.Scheduler

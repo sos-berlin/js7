@@ -23,6 +23,7 @@ import js7.data.subagent.{SubagentRunId, SubagentState}
 import js7.journal.watch.InMemoryJournal
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.web.SubagentWebServer
+import monix.catnap.MVar
 import monix.eval.{Coeval, Task}
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
@@ -62,19 +63,35 @@ object BareSubagent
 {
   private val logger = Logger[this.type]
 
+  type StartAsAgentDirector = StartAsAgentDirector.type
+  object StartAsAgentDirector
+
   // Startable without Scheduler
-  def blockingRun(conf: SubagentConf, orCommon: Option[Scheduler] = None)
-  : ProgramTermination =
+  def blockingRun(conf: SubagentConf, orCommonScheduler: Option[Scheduler] = None)
+  : Either[StartAsAgentDirector, ProgramTermination] = {
     ThreadPools
-      .standardSchedulerResource[Coeval](conf.name, conf.config, orCommon)
+      .standardSchedulerResource[Coeval](conf.name, conf.config, orCommonScheduler)
       .use(implicit scheduler => Coeval {
-        resource(conf, scheduler)
-          .use(_.untilStopped)
+        val restartAsDirectorVar = MVar.empty[Task, Unit]().memoize
+        val restartAsDirector = restartAsDirectorVar.flatMap(_.tryPut(())).void
+        resource(conf, scheduler, restartAsDirector)
+          .use(bareSubagent => Task
+            .race(
+              restartAsDirectorVar.flatMap(_.take),
+              bareSubagent.untilStopped)
+            .flatMap {
+              case Left(()) =>
+                bareSubagent.shutdown(dontWaitForDirector = true)
+                  .as(Left(StartAsAgentDirector))
+              case Right(o) => Task.right(o)
+            })
           .runSyncUnsafe()
       })
       .apply()
+  }
 
-  def resource(conf: SubagentConf, js7Scheduler: Scheduler): Resource[Task, BareSubagent] =
+  def resource(conf: SubagentConf, js7Scheduler: Scheduler, restartAsDirector: Task[Unit] = Task.unit)
+  : Resource[Task, BareSubagent] =
     Resource.suspend(Task {
       import conf.config
       implicit val s = js7Scheduler
@@ -102,7 +119,7 @@ object BareSubagent
           .provideSessionTokenFile(SimpleUser.System, conf.workDirectory / "session-token")
 
         webServer <- SubagentWebServer.resource(
-          journal, commandExecutor, sessionRegister, conf)(actorSystem)
+          journal, commandExecutor, sessionRegister, restartAsDirector, conf)(actorSystem)
         _ <- provideUriFile(conf, webServer.localHttpUri)
         subagent <- Resource.make(
           acquire = Task(new BareSubagent(commandExecutor, journal)))(

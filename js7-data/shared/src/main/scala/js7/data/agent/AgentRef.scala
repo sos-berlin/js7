@@ -28,7 +28,7 @@ extends UnsignedSimpleItem
         else if (directors.nonEmpty && uri.nonEmpty)
           Left(Problem.pure(s"AgentRef.directors cannot be used with .uri"))
         else if (directors.sizeIs > 1)
-          Left(Problem.pure("Only one Subagent Director is allowed in AgentRef '$path'"))
+          Left(Problem.pure("Only one Agent Director is allowed in AgentRef '$path'"))
         else
           Checked.unit
     } yield this

@@ -1,13 +1,13 @@
 package js7.tests.controller.agent
 
 import com.typesafe.config.ConfigUtil.quoteString
-import js7.agent.data.Problems.AgentPathMismatchProblem
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.problem.Checked._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentReady}
+import js7.data.agent.Problems.AgentPathMismatchProblem
 import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.tests.controller.agent.DuplicateAgentRefTest._

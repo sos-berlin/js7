@@ -2,7 +2,6 @@ package js7.tests.agent
 
 import java.nio.file.Files.exists
 import js7.agent.RunningAgent
-import js7.agent.data.Problems.AgentAlreadyDedicatedProblem
 import js7.base.auth.Admission
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.syntax._
@@ -17,6 +16,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
 import js7.data.Problems.AgentResetProblem
 import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentReset}
+import js7.data.agent.Problems.AgentAlreadyDedicatedProblem
 import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.controller.ControllerCommand.ResetAgent
 import js7.data.delegate.DelegateCouplingState

@@ -15,7 +15,8 @@ import js7.common.commandline.CommandLineArguments
 import js7.common.system.startup.JavaMain.withShutdownHooks
 import js7.common.system.startup.JavaMainLockfileSupport.lockAndRunMain
 import js7.common.system.startup.StartUp
-import js7.common.system.startup.StartUp.printlnWithClock
+import js7.common.system.startup.StartUp.{nowString, printlnWithClock}
+import js7.journal.files.JournalFiles
 import js7.subagent.BareSubagent
 import scala.concurrent.duration.{Deadline, Duration, NANOSECONDS}
 
@@ -29,31 +30,53 @@ final class AgentMain
   private val logger = Logger(getClass)
 
   def run(arguments: CommandLineArguments): ProgramTermination = {
-    // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
+    // Log early for early timestamp and proper logger initialization by a single (non-parallel) call
     logger.info("JS7 Agent " + BuildInfo.longVersion +
       "\n" + "━" * 80)  // In case, the previous file is appended
     logger.info(StartUp.startUpLine())
     logger.debug(arguments.toString)
-    val agentConfiguration = AgentConfiguration.fromCommandLine(arguments)
-    logger.info(s"config=${agentConfiguration.configDirectory} data=${agentConfiguration.dataDirectory}")
-    logConfig(agentConfiguration.config)
+
+    val agentConf = AgentConfiguration.fromCommandLine(arguments)
+    logger.info(s"config=${agentConf.configDirectory} data=${agentConf.dataDirectory}")
+    if (agentConf.scriptInjectionAllowed) logger.info("SIGNED SCRIPT INJECTION IS ALLOWED")
+    logConfig(agentConf.config)
     StartUp.logJavaSettings()
 
-    var terminated = ProgramTermination()
-    if (agentConfiguration.isBareSubagent)
-      BareSubagent.blockingRun(agentConfiguration.subagentConf.finishAndProvideFiles)
-    else
-      autoClosing(RunningAgent(agentConfiguration).awaitInfinite) { agent =>
-        withShutdownHooks(agentConfiguration.config, "AgentMain", () => onJavaShutdown(agent)) {
-          terminated = agent.terminated.awaitInfinite
-        }
-      }
+    val terminated = blockingRun(agentConf)
 
     // Log complete timestamp in case of short log timestamp
-    val msg = s"JS7 Subagent terminates now"
+    val msg = s"JS7 Subagent terminates now ($nowString)"
     logger.info(msg)
     printlnWithClock(msg)
     terminated
+  }
+
+  /** Run as an Agent Director or as a bare Subagent. */
+  private def blockingRun(agentConf: AgentConfiguration): ProgramTermination =
+    JournalFiles.currentFile(agentConf.journalMeta.fileBase) match {
+      case Left(_) =>
+        BareSubagent
+          .blockingRun(agentConf.subagentConf.finishAndProvideFiles)
+          .getOrElse {
+            logger.info("Continue as Agent Director\n" + "─" * 80)
+            blockingRunAgentDirector(agentConf)
+          }
+
+      case Right(_) =>
+        logger.debug(s"Start as Agent Director with existing journal")
+        blockingRunAgentDirector(agentConf)
+    }
+
+  private def blockingRunAgentDirector(agentConf: AgentConfiguration): ProgramTermination = {
+    printlnWithClock("Continue as Agent Director")
+    var termination = ProgramTermination()
+    val agent = RunningAgent(agentConf).awaitInfinite
+    autoClosing(agent) { _ =>
+      withShutdownHooks(agentConf.config, "AgentMain", () => onJavaShutdown(agent)) {
+        termination = agent.terminated.awaitInfinite
+      }
+    }
+    termination
   }
 
   private def onJavaShutdown(agent: RunningAgent): Unit = {

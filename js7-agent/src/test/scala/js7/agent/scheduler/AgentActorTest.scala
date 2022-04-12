@@ -3,7 +3,6 @@ package js7.agent.scheduler
 import akka.pattern.ask
 import akka.util.Timeout
 import js7.agent.data.AgentState
-import js7.agent.data.Problems.AgentDuplicateOrder
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSignedItem, CoupleController, DedicateAgentDirector, DetachOrder}
 import js7.agent.scheduler.AgentActorTest._
@@ -19,6 +18,7 @@ import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.Uri
 import js7.data.agent.AgentPath
+import js7.data.agent.Problems.AgentDuplicateOrder
 import js7.data.controller.ControllerId
 import js7.data.event.{EventId, EventRequest}
 import js7.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, Outcome}

@@ -176,7 +176,6 @@ object RunningAgent {
       import agentConfiguration.{akkaAskTimeout, config, journalConf, journalMeta}
       agentConfiguration.journalMeta.deleteJournalIfMarked()
         .orThrow
-      if (agentConfiguration.scriptInjectionAllowed) logger.info("SIGNED SCRIPT INJECTION IS ALLOWED")
       val whenRecovered = Future(StateRecoverer.recover[AgentState](journalMeta, config))
 
       implicit val actorSystem = injector.instance[ActorSystem]
