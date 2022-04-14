@@ -7,7 +7,7 @@ import io.circe.{Codec, Encoder, JsonObject}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.data.delegate.DelegateCouplingState
-import js7.data.delegate.DelegateCouplingState.{Coupled, Reset, Resetting, ShutDown}
+import js7.data.delegate.DelegateCouplingState.{Coupled, Reset, Resetting}
 import js7.data.event.EventId
 import js7.data.item.UnsignedSimpleItemState
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentCouplingFailed, SubagentDedicated, SubagentEventsObserved, SubagentReset, SubagentResetStarted, SubagentResetStartedByController, SubagentRestarted, SubagentShutdown}
@@ -57,14 +57,14 @@ extends UnsignedSimpleItemState
 
       case SubagentRestarted =>
         Right(copy(
-          couplingState = Reset,
+          couplingState = Reset.restart,
           subagentRunId = None,
           eventId = EventId.BeforeFirst,
           problem = None))
 
       case SubagentShutdown =>
         Right(copy(
-          couplingState = ShutDown,
+          couplingState = Reset.shutdown,
           subagentRunId = None,
           eventId = EventId.BeforeFirst,
           problem = None))
@@ -82,7 +82,7 @@ extends UnsignedSimpleItemState
 
       case SubagentReset =>
         Right(copy(
-          couplingState = Reset,
+          couplingState = Reset.byCommand,
           isResettingForcibly = None,
           subagentRunId = None,
           eventId = EventId.BeforeFirst,
@@ -93,7 +93,7 @@ extends UnsignedSimpleItemState
 object SubagentItemState
 {
   def initial(subagentItem: SubagentItem) =
-    SubagentItemState(subagentItem, None, DelegateCouplingState.Reset,
+    SubagentItemState(subagentItem, None, DelegateCouplingState.Reset.fresh,
       eventId = EventId.BeforeFirst)
 
   private val jsonDecoder = {

@@ -549,7 +549,7 @@ with MainJournalingActor[ControllerState, Event]
                 timestampedEvents ++= subseqEvents.map(Timestamped(_))
 
                 persistence.currentState.pathToAgentRefState.get(agentPath).map(_.couplingState) match {
-                  case Some(DelegateCouplingState.Resetting(_) | DelegateCouplingState.Reset) =>
+                  case Some(DelegateCouplingState.Resetting(_) | DelegateCouplingState.Reset(_)) =>
                     // Ignore the events, because orders are already marked as detached (and Failed)
                     // TODO Avoid race-condition and guard with persistence.lock!
                     // (switch from actors to Task required!)
@@ -624,7 +624,7 @@ with MainJournalingActor[ControllerState, Event]
         agentRegister -= actor
         for (agentRefState <- persistence.currentState.pathToAgentRefState.checked(agentPath)) {
           agentRefState.couplingState match {
-            case Resetting(_) | Reset =>
+            case Resetting(_) | Reset(_) =>
               agentEntry = registerAgent(agentRefState.agentRef,
                 agentRunId = None, eventId = EventId.BeforeFirst)
               agentEntry.actor ! AgentDriver.Input.StartFetchingEvents
@@ -861,8 +861,8 @@ with MainJournalingActor[ControllerState, Event]
                 agentRefState.couplingState match {
                   case Resetting(frc) if !force || frc != force =>
                     Future.successful(Left(Problem.pure(s"AgentRef is already in state 'Resetting'")))
-                  case Reset if !force =>
-                    Future.successful(Left(Problem.pure(s"AgentRef is already in state 'Reset'")))
+                  case reset: Reset if !force =>
+                    Future.successful(Left(Problem.pure(s"AgentRef is already in state '$reset'")))
                   case _ =>
                     persistence.currentState.resetAgent(agentPath, force = force) match {
                       case Left(problem) => Future.successful(Left(problem))

@@ -189,7 +189,10 @@ final class AgentStateTest extends AsyncFreeSpec
               "itemRevision": 7
              },
              "couplingState": {
-               "TYPE": "Reset"
+               "TYPE": "Reset",
+               "reason": {
+                 "TYPE": "Fresh"
+               }
              },
              "eventId": 0
           }""",

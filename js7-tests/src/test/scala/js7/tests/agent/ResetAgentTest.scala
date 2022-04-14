@@ -150,11 +150,11 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val checked = controllerApi.executeCommand(ResetAgent(agentPath)).await(99.s)
     val possibleProblems = Set(
       Problem("AgentRef is already in state 'Resetting'"),
-      Problem("AgentRef is already in state 'Reset'"))
+      Problem("AgentRef is already in state 'Reset(ResetCommand)'"))
     assert(checked.left.exists(possibleProblems.contains))
 
     def isResettingOrReset(s: DelegateCouplingState) = s match {
-      case _: DelegateCouplingState.Resetting | DelegateCouplingState.Reset => true
+      case _: DelegateCouplingState.Resetting | _: DelegateCouplingState.Reset => true
       case _ => false
     }
     waitForCondition(10.s, 10.ms)(isResettingOrReset(
@@ -227,7 +227,8 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
         // Simple ResetAgent does not work
         val checked = secondControllerApi.executeCommand(ResetAgent(agentPath)).await(99.s)
-        assert(checked == Left(Problem("AgentRef is already in state 'Reset'")))
+        // TODO Should reject Subagent due to non-matching SubagentRunId --> check SubagentRunId!
+        assert(checked == Left(Problem("AgentRef is already in state 'Reset(Fresh)'")))
 
         // Steal this Agent with ReseAgent(force)!
         secondControllerApi.executeCommand(ResetAgent(agentPath, force = true)).await(99.s)

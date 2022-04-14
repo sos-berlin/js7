@@ -21,7 +21,7 @@ final class AgentRefStateTest extends AnyFreeSpec
           itemRevision = Some(ItemRevision(0))),
         None,
         None,
-        DelegateCouplingState.Reset,
+        DelegateCouplingState.Coupled,
         123L,
         None),
       json"""{
@@ -31,7 +31,7 @@ final class AgentRefStateTest extends AnyFreeSpec
           "itemRevision": 0
         },
         "couplingState": {
-          "TYPE": "Reset"
+          "TYPE": "Coupled"
         },
         "eventId": 123
       }""")

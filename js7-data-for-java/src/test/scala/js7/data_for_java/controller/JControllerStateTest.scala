@@ -94,7 +94,7 @@ private object JControllerStateTest
     Map(AgentPath("AGENT") ->
       AgentRefState(
         AgentRef(AgentPath("AGENT"), Seq(SubagentId("SUBAGENT"))),
-        None, None, DelegateCouplingState.Reset, EventId(7), None)),
+        None, None, DelegateCouplingState.Reset.fresh, EventId(7), None)),
     Map.empty,
     Map.empty,
     Map.empty,

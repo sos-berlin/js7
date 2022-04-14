@@ -85,7 +85,7 @@ extends UnsignedSimpleItemState
 
       case AgentReset =>
         Right(copy(
-          couplingState = Reset,
+          couplingState = Reset.byCommand,
           agentRunId = None,
           problem = None))
     }
@@ -96,5 +96,5 @@ object AgentRefState
   implicit val jsonCodec = deriveCodec[AgentRefState]
 
   def apply(agentRef: AgentRef) =
-    new AgentRefState(agentRef, None, None, Reset, EventId.BeforeFirst, None)
+    new AgentRefState(agentRef, None, None, Reset.fresh, EventId.BeforeFirst, None)
 }

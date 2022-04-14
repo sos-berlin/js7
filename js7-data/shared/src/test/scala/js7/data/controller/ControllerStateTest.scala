@@ -203,7 +203,7 @@ final class ControllerStateTest extends AsyncFreeSpec
           "itemRevision": 0
         },
         "couplingState": {
-          "TYPE": "Reset"
+          "TYPE": "Coupled"
         },
         "eventId": 7
       }, {
@@ -216,7 +216,10 @@ final class ControllerStateTest extends AsyncFreeSpec
           "itemRevision": 7
         },
         "couplingState": {
-          "TYPE": "Reset"
+          "TYPE": "Reset",
+          "reason": {
+            "TYPE": "Fresh"
+          }
         },
         "eventId": 0
       }, {
@@ -509,7 +512,7 @@ object ControllerStateTest
       Timezone("Europe/Berlin")),
     Map(
       agentRef.path -> AgentRefState(
-        agentRef, None, None, DelegateCouplingState.Reset, EventId(7), None)),
+        agentRef, None, None, DelegateCouplingState.Coupled, EventId(7), None)),
     Map(
       subagentItem.id -> subagentItemState),
     Map(
