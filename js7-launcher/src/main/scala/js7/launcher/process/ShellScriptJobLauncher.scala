@@ -7,6 +7,7 @@ import java.nio.file.Path
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.process.Processes.ShellFileAttributes
 import js7.base.problem.{Checked, Problem}
+import js7.base.system.OperatingSystem
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.RightUnit
@@ -68,15 +69,18 @@ object ShellScriptJobLauncher
     else
       Right(new ShellScriptJobLauncher(executable, jobConf, launcherConf))
 
-  private def writeScriptToFile(script: String, tmpDir: Path, encoding: Charset,
-    userName: Option[WindowsUserName])
+  private val crRegex = "\r?\n".r
+
+  private[process] def writeScriptToFile(script: String, tmpDir: Path, encoding: Charset,
+    userName: Option[WindowsUserName], isWindows: Boolean = OperatingSystem.isWindows)
   : Checked[Path] =
     Checked.catchNonFatal {
       val ext = if (isWindows) ".cmd" else ".sh"
       createTempFile(tmpDir, "script-", ext, ShellFileAttributes: _*)
     }.flatMap { file =>
       Checked.catchNonFatal {
-        file.write(script, encoding)
+        val scrpt = if (isWindows) crRegex.replaceAllIn(script, "\r\n") else script
+        file.write(scrpt, encoding)
       }
       .flatMap(_ => makeFileUserAccessible(userName, file))
       .left.map { problem =>
