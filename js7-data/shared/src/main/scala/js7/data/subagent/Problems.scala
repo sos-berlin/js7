@@ -24,6 +24,9 @@ object Problems
   type SubagentNotDedicatedProblem = SubagentNotDedicatedProblem.type
   case object SubagentNotDedicatedProblem extends Problem.ArgumentlessCoded
 
+  type SubagentShutDownBeforeProcessStartProblem = SubagentShutDownBeforeProcessStartProblem.type
+  case object SubagentShutDownBeforeProcessStartProblem extends Problem.ArgumentlessCoded
+
   type SubagentIsShuttingDownProblem = SubagentIsShuttingDownProblem.type
   case object SubagentIsShuttingDownProblem extends Problem.ArgumentlessCoded
 

@@ -8,7 +8,7 @@ import js7.base.log.Logger
 import js7.base.log.Logger.syntax._
 import js7.base.monixutils.AsyncMap
 import js7.base.monixutils.MonixBase.syntax._
-import js7.base.problem.Checked
+import js7.base.problem.{Checked, ProblemException}
 import js7.base.utils.ScalaUtils.chunkStrings
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentPath
@@ -16,6 +16,7 @@ import js7.data.controller.ControllerId
 import js7.data.job.{JobConf, JobKey}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
 import js7.data.order.{Order, OrderId, Outcome}
+import js7.data.subagent.Problems.SubagentShutDownBeforeProcessStartProblem
 import js7.data.subagent.{SubagentDriverState, SubagentId}
 import js7.data.value.expression.Expression
 import js7.data.value.expression.scopes.FileValueState
@@ -107,8 +108,17 @@ extends SubagentDriver
           stdObservers =>
             orderIdToJobDriver
               .put(order.id, jobDriver)
+              .map(Right(_))
+              .onErrorRecover { case ProblemException(problem)
+                if orderIdToJobDriver.isStoppingWith(problem) =>
+                Left(Outcome.processLost(SubagentShutDownBeforeProcessStartProblem))
+              }
               .bracket(
-                use = _.processOrder(order, defaultArguments, stdObservers))(
+                use = {
+                  case Left(processLost) => Task.pure(processLost)
+                  case Right(jobDriver) =>
+                    jobDriver.processOrder(order, defaultArguments, stdObservers)
+                })(
                 release = _ => orderIdToJobDriver.remove(order.id).void))
     }
 

@@ -31,7 +31,7 @@ import js7.data.item.{InventoryItemKey, ItemRevision, SignableItem}
 import js7.data.job.{JobConf, JobResource}
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId, Outcome}
-import js7.data.subagent.Problems.{ProcessLostDueToResetProblem, ProcessLostDueToRestartProblem, ProcessLostProblem, SubagentNotDedicatedProblem}
+import js7.data.subagent.Problems.{ProcessLostDueToResetProblem, ProcessLostDueToRestartProblem, ProcessLostProblem, SubagentIsShuttingDownProblem, SubagentNotDedicatedProblem, SubagentShutDownBeforeProcessStartProblem}
 import js7.data.subagent.SubagentCommand.{AttachSignedItem, CoupleDirector, DedicateSubagent, KillProcess, StartOrderProcess}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCouplingFailed, SubagentDedicated, SubagentDied, SubagentReset, SubagentRestarted}
 import js7.data.subagent.{SubagentCommand, SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState, SubagentRunId}
@@ -351,7 +351,12 @@ extends SubagentDriver with SubagentEventListener[S0]
                       .map(Right(_))
 
                   case Some(promise) =>
-                    val orderProcessed = OrderProcessed(Outcome.Disrupted(problem))
+                    val orderProcessed = OrderProcessed(
+                      problem match {
+                        case SubagentIsShuttingDownProblem =>
+                          Outcome.processLost(SubagentShutDownBeforeProcessStartProblem)
+                        case _ => Outcome.Disrupted(problem)
+                      })
                     persistence
                       .persistKeyedEvent(order.id <-: orderProcessed)
                       .rightAs(orderProcessed)
