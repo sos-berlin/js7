@@ -12,7 +12,6 @@ import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.AgentReady
 import js7.data.event.KeyedEvent
 import js7.data.order.OrderEvent.{OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten, OrderTerminated}
-import js7.data.order.Outcome.Disrupted.ProcessLost
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.SemaphoreJob
@@ -122,7 +121,7 @@ final class SubagentRestartTest extends AnyFreeSpec with SubagentTester
     runSubagent(bareSubagentItem) { _ =>
       locally {
         val events = eventWatch.await[OrderProcessed](_.key == aOrderId, after = eventId)
-        assert(events.head.value.event == OrderProcessed(Outcome.Disrupted(ProcessLost)))
+        assert(events.head.value.event == OrderProcessed.processLostDueToRestart)
 
         // OrderProcessed must be followed by OrderMoved
         eventWatch.await[OrderMoved](_.key == aOrderId, after = events.last.eventId)
@@ -177,7 +176,7 @@ final class SubagentRestartTest extends AnyFreeSpec with SubagentTester
     runSubagent(bareSubagentItem) { _ =>
       locally {
         val events = eventWatch.await[OrderProcessed](_.key == aOrderId, after = eventId)
-        assert(events.head.value.event == OrderProcessed(Outcome.Disrupted(ProcessLost)))
+        assert(events.head.value.event == OrderProcessed.processLostDueToRestart)
 
         // OrderProcessed must be followed by OrderMoved
         eventWatch.await[OrderMoved](_.key == aOrderId, after = events.last.eventId)

@@ -8,7 +8,7 @@ import js7.base.log.Logger
 import js7.base.log.Logger.syntax._
 import js7.base.monixutils.AsyncMap
 import js7.base.monixutils.MonixBase.syntax._
-import js7.base.problem.{Checked, Problem}
+import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.chunkStrings
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentPath
@@ -200,7 +200,7 @@ extends SubagentDriver
 
   def continueProcessingOrder(order: Order[Order.Processing]) =
     persistence
-      .persistKeyedEvent(order.id <-: OrderProcessed.processLost)
+      .persistKeyedEvent(order.id <-: OrderProcessed.processLostDueToRestart)
       .map(_.map(_._1.value.event))
 
   def killProcess(orderId: OrderId, signal: ProcessSignal) =
@@ -216,8 +216,4 @@ extends SubagentDriver
 object LocalSubagentDriver
 {
   private val logger = Logger(getClass)
-
-  // TODO Use special Problem which is catched by the Director for trying another Subagent
-  private val stoppingOutcome =
-    Task.pure(Outcome.Disrupted(Problem.pure("Subagent is shutting down")))
 }

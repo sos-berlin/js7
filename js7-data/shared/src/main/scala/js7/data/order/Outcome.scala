@@ -9,6 +9,8 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.typeclasses.IsEmpty.syntax._
+import js7.data.order.Outcome.Disrupted.ProcessLost
+import js7.data.subagent.Problems.ProcessLostDueToUnknownReasonProblem
 import js7.data.value.{NamedValues, NumberValue}
 import org.jetbrains.annotations.TestOnly
 import scala.collection.View
@@ -192,18 +194,30 @@ object Outcome
       def problem: Problem
     }
 
-    final case object ProcessLost extends Reason {
-      val problem = Problem.pure("Process lost due to JS7 restart")
+    final case class ProcessLost(problem: Problem) extends Reason {
+    }
+    object ProcessLost {
+      private val jsonEncoder: Encoder.AsObject[ProcessLost] =
+        o => JsonObject("problem" -> ((o.problem != ProcessLostDueToUnknownReasonProblem) ? o.problem).asJson)
+
+      private val jsonDecoder: Decoder[ProcessLost] =
+        c => for (problem <- c.getOrElse[Problem]("problem")(ProcessLostDueToUnknownReasonProblem)) yield
+          ProcessLost(problem)
+
+      implicit val jsonCodec = Codec.AsObject.from(jsonDecoder, jsonEncoder)
     }
 
     final case class Other(problem: Problem) extends Reason
 
     object Reason {
       implicit val jsonCodec = TypedJsonCodec[Reason](
-        Subtype.singleton(ProcessLost, aliases = Seq("JobSchedulerRestarted")),
+        Subtype.withAliases(ProcessLost.jsonCodec, Seq("JobSchedulerRestarted")),
         Subtype(deriveCodec[Other]))
     }
   }
+
+  def processLost(problem: Problem): Disrupted =
+    Disrupted(ProcessLost(problem))
 
   sealed trait NotSucceeded extends Outcome
   object NotSucceeded {

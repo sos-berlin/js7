@@ -48,7 +48,7 @@ extends EventInstructionExecutor with PositionInstructionExecutor
                 case _: Outcome.Succeeded =>
                   OrderMoved(order.position.increment)
 
-                case Outcome.Disrupted(ProcessLost) =>
+                case Outcome.Disrupted(_: ProcessLost) =>
                   OrderMoved(order.position) // Repeat
 
                 case _: Outcome.NotSucceeded | _: Outcome.TimedOut =>

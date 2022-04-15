@@ -22,6 +22,7 @@ import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, 
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.other.HeartbeatTiming
+import js7.data.subagent.Problems.ProcessLostDueToShutdownProblem
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentEventsObserved, SubagentShutdown}
 import js7.data.subagent.SubagentState.keyedEventJsonCodec
 import js7.data.subagent.{SubagentDirectorState, SubagentEvent, SubagentRunId}
@@ -140,7 +141,7 @@ private trait SubagentEventListener[S <: SubagentDirectorState[S]]
         }
 
       case KeyedEvent(_: NoKey, SubagentEvent.SubagentShutdown) =>
-        Task.pure(None -> onSubagentDied(SubagentShutdown))
+        Task.pure(None -> onSubagentDied(ProcessLostDueToShutdownProblem, SubagentShutdown))
 
       case KeyedEvent(_: NoKey, event: SubagentEvent.SubagentItemAttached) =>
         // TODO Subagent should not emit unused events

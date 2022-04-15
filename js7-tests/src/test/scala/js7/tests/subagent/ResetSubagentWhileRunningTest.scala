@@ -48,7 +48,7 @@ final class ResetSubagentWhileRunningTest extends AnyFreeSpec with SubagentTeste
       eventWatch.await[SubagentResetStarted](_.key == bareSubagentId)
 
       val processed = eventWatch.await[OrderProcessed](_.key == aOrderId).head
-      assert(processed.value.event == OrderProcessed.processLost)
+      assert(processed.value.event == OrderProcessed.processLostDueToReset)
       eventWatch.await[OrderMoved](_.key == aOrderId, after = processed.eventId)
 
       // Add bOrderId which should wait until Subagent has been reset and restarted
@@ -97,7 +97,7 @@ final class ResetSubagentWhileRunningTest extends AnyFreeSpec with SubagentTeste
       aOrderId <-: OrderStarted,
       aOrderId <-: OrderProcessingStarted(bareSubagentId),
       aOrderId <-: OrderStdoutWritten("STARTED\n"),
-      aOrderId <-: OrderProcessed.processLost,
+      aOrderId <-: OrderProcessed.processLostDueToReset,
       aOrderId <-: OrderMoved(Position(0)),
 
       bOrderId <-: OrderAdded(workflow.id),

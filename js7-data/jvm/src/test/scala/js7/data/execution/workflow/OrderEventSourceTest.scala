@@ -21,6 +21,7 @@ import js7.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, OrderMark, O
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.state.OrderEventHandler.FollowUp
 import js7.data.state.{OrderEventHandler, StateView}
+import js7.data.subagent.Problems.ProcessLostDueToRestartProblem
 import js7.data.subagent.SubagentId
 import js7.data.value.NamedValues
 import js7.data.value.expression.Expression.{BooleanConstant, Equal, LastReturnCode, NumericConstant}
@@ -44,7 +45,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
     val rawOrder = Order(OrderId("PROCESS-LOST"), TestWorkflowId /: Position(2),
       Order.Processed,
       historicOutcomes = Vector(
-        HistoricOutcome(Position(0), Outcome.Disrupted(Outcome.Disrupted.ProcessLost))))
+        HistoricOutcome(Position(0), Outcome.processLost(ProcessLostDueToRestartProblem))))
 
     for (isAgent <- Seq(false, true)) s"isAgent=$isAgent" in {
       val order = rawOrder.copy(attachedState = isAgent ? Order.Attached(agentPath = TestAgentPath))

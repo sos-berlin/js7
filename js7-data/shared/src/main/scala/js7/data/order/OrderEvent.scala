@@ -16,8 +16,8 @@ import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.event.Event
 import js7.data.lock.LockPath
 import js7.data.order.Order._
-import js7.data.order.Outcome.Disrupted.ProcessLost
 import js7.data.orderwatch.ExternalOrderKey
+import js7.data.subagent.Problems.{ProcessLostDueToResetProblem, ProcessLostDueToRestartProblem}
 import js7.data.subagent.SubagentId
 import js7.data.value.{NamedValues, Value}
 import js7.data.workflow.WorkflowId
@@ -189,7 +189,12 @@ object OrderEvent
     override def isFailed = outcome.isFailed
   }
   object OrderProcessed {
-    val processLost = OrderProcessed(Outcome.Disrupted(ProcessLost))
+    val processLostDueToRestart = processLost(ProcessLostDueToRestartProblem)
+    val processLostDueToReset = processLost(ProcessLostDueToResetProblem)
+
+    def processLost(problem: Problem) =
+      OrderProcessed(Outcome.Disrupted(Outcome.Disrupted.ProcessLost(problem)))
+
     implicit val jsonCodec = deriveCodec[OrderProcessed]
   }
 

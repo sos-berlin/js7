@@ -10,6 +10,7 @@ import js7.data.agent.AgentPath
 import js7.data.item.ItemOperation.AddOrChangeSimple
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
+import js7.data.subagent.Problems.ProcessLostDueSubagentUriChangeProblem
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.subagent.SubagentMoveTest._
@@ -55,7 +56,8 @@ final class SubagentMoveTest extends AnyFreeSpec with SubagentTester
     // Start the replacing c1Subagent while the previous bareSubagent is still running
     runSubagent(bare1SubagentItem, suffix = "-1") { _ =>
       val aProcessed = eventWatch.await[OrderProcessed](_.key == aOrderId, after = eventId).head
-      assert(aProcessed.value.event == OrderProcessed.processLost)
+      assert(aProcessed.value.event ==
+        OrderProcessed.processLost(ProcessLostDueSubagentUriChangeProblem))
 
       // After ProcessLost at previous Subagent aOrderId restarts at current Subagent
       TestSemaphoreJob.continue(1)  // aOrder still runs on bareSubagent (but it is ignored)

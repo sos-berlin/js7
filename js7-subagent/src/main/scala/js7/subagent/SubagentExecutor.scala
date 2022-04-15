@@ -18,7 +18,7 @@ import js7.data.event.EventId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId, Outcome}
-import js7.data.subagent.Problems.{SubagentAlreadyDedicatedProblem, SubagentIdMismatchProblem, SubagentRunIdMismatchProblem}
+import js7.data.subagent.Problems.{SubagentAlreadyDedicatedProblem, SubagentIdMismatchProblem, SubagentIsShuttingDownProblem, SubagentRunIdMismatchProblem}
 import js7.data.subagent.SubagentCommand.{CoupleDirector, DedicateSubagent}
 import js7.data.subagent.SubagentEvent.SubagentShutdown
 import js7.data.subagent.{SubagentId, SubagentRunId, SubagentState}
@@ -77,7 +77,7 @@ trait SubagentExecutor
             })
             .*>(orderToProcessing
               // Await process termination and DetachProcessedOrder commands
-              .stopWithProblem(shuttingDownProblem)
+              .stopWithProblem(SubagentIsShuttingDownProblem)
               .logWhenItTakesLonger("Director-acknowledged Order processes"))
             .*>(journal
               // The event may get lost due to immediate shutdown !!!
@@ -217,9 +217,6 @@ trait SubagentExecutor
 object SubagentExecutor
 {
   private val logger = Logger(getClass)
-
-  // TODO Director should check this
-  private val shuttingDownProblem = Problem.pure("Subagent is shutting down")
 
   private[subagent] final class Dedicated(
     val localSubagentDriver: LocalSubagentDriver[SubagentState])

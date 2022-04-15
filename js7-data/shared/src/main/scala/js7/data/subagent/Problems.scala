@@ -23,4 +23,30 @@ object Problems
 
   type SubagentNotDedicatedProblem = SubagentNotDedicatedProblem.type
   case object SubagentNotDedicatedProblem extends Problem.ArgumentlessCoded
+
+  type SubagentIsShuttingDownProblem = SubagentIsShuttingDownProblem.type
+  case object SubagentIsShuttingDownProblem extends Problem.ArgumentlessCoded
+
+  sealed trait ProcessLostProblem extends Problem.Coded
+
+  // COMPATIBLE with v2.2
+  type ProcessLostDueToUnknownReasonProblem = ProcessLostDueToUnknownReasonProblem.type
+  case object ProcessLostDueToUnknownReasonProblem
+  extends ProcessLostProblem with Problem.ArgumentlessCoded
+
+  type ProcessLostDueToRestartProblem = ProcessLostDueToRestartProblem.type
+  case object ProcessLostDueToRestartProblem
+  extends ProcessLostProblem with Problem.ArgumentlessCoded
+
+  type ProcessLostDueToResetProblem = ProcessLostDueToResetProblem.type
+  case object ProcessLostDueToResetProblem
+  extends ProcessLostProblem with Problem.ArgumentlessCoded
+
+  type ProcessLostDueToShutdownProblem = ProcessLostDueToShutdownProblem.type
+  case object ProcessLostDueToShutdownProblem
+  extends ProcessLostProblem with Problem.ArgumentlessCoded
+
+  type ProcessLostDueSubagentUriChangeProblem = ProcessLostDueSubagentUriChangeProblem.type
+  case object ProcessLostDueSubagentUriChangeProblem
+  extends ProcessLostProblem with Problem.ArgumentlessCoded
 }

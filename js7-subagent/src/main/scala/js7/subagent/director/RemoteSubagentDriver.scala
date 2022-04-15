@@ -31,10 +31,10 @@ import js7.data.item.{InventoryItemKey, ItemRevision, SignableItem}
 import js7.data.job.{JobConf, JobResource}
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId, Outcome}
-import js7.data.subagent.Problems.SubagentNotDedicatedProblem
+import js7.data.subagent.Problems.{ProcessLostDueToResetProblem, ProcessLostDueToRestartProblem, ProcessLostProblem, SubagentNotDedicatedProblem}
 import js7.data.subagent.SubagentCommand.{AttachSignedItem, CoupleDirector, DedicateSubagent, KillProcess, StartOrderProcess}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCouplingFailed, SubagentDedicated, SubagentDied, SubagentReset, SubagentRestarted}
-import js7.data.subagent.{SubagentDirectorState, SubagentCommand, SubagentId, SubagentItem, SubagentItemState, SubagentRunId}
+import js7.data.subagent.{SubagentCommand, SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState, SubagentRunId}
 import js7.data.workflow.Workflow
 import js7.data.workflow.position.WorkflowPosition
 import js7.journal.state.StatePersistence
@@ -150,7 +150,7 @@ extends SubagentDriver with SubagentEventListener[S0]
       resetLock.lock(Task.defer {
         val wasHeartbeating = isHeartbeating
         // Stop listening events before we mark order processes as lost.
-        // Eventual event from Subagent must not interfere with out
+        // Eventual event from Subagent must not interfere without
         // OrderProcessed .processLost.
         // Unfortunately, this will inhibit SubagentShutdown event, too.
         stopEventListener
@@ -158,7 +158,7 @@ extends SubagentDriver with SubagentEventListener[S0]
             // One shot. Processes are killed only if Subagent is reachable.
             // May delay ProcessLost and SubagentReset for connection timeout.
             tryShutdownSubagent(processSignal = Some(SIGKILL), dontWaitForDirector = true)))
-          .*>(onSubagentDied(SubagentReset))
+          .*>(onSubagentDied(ProcessLostDueToResetProblem, SubagentReset))
           .*>(startEventListener)
       }))
 
@@ -239,7 +239,7 @@ extends SubagentDriver with SubagentEventListener[S0]
             case 0 => logger.info("Subagent restarted")
             case n => logger.warn(s"Subagent restarted, $n Order processes are lost")
           }
-          onSubagentDied(SubagentRestarted)
+          onSubagentDied(ProcessLostDueToRestartProblem, SubagentRestarted)
             .*>(dedicate)
             .map(response => response.subagentRunId -> response.subagentEventId)
 
@@ -262,15 +262,20 @@ extends SubagentDriver with SubagentEventListener[S0]
   // May run concurrently with onStartOrderProcessFailed !!!
   // We make sure that only one OrderProcessed event is emitted.
   /** Emit OrderProcessed(ProcessLost) and `subagentDiedEvent`. */
-  protected def onSubagentDied(subagentDiedEvent: SubagentDied): Task[Unit] =
-    stopDispatcherAndEmitProcessLostEvents(Some(subagentDiedEvent))
+  protected def onSubagentDied(orderProblem: ProcessLostProblem, subagentDiedEvent: SubagentDied)
+  : Task[Unit] =
+    stopDispatcherAndEmitProcessLostEvents(orderProblem, Some(subagentDiedEvent))
 
   /** Emit OrderProcessed(ProcessLost) and optionally a `subagentDiedEvent` event. */
-  def stopDispatcherAndEmitProcessLostEvents(subagentDiedEvent: Option[SubagentDied]): Task[Unit] = {
+  def stopDispatcherAndEmitProcessLostEvents(
+    orderProblem: ProcessLostProblem,
+    subagentDiedEvent: Option[SubagentDied])
+  : Task[Unit] = {
     // Subagent died and lost its state
     // Emit OrderProcessed(Disrupted(ProcessLost)) for each processing order.
     // Then optionally subagentDiedEvent
     val processing = Order.Processing(subagentId)
+    val orderProcessed = OrderProcessed.processLost(orderProblem)
     logger.debugTask(orderToPromise
       .removeAll
       .flatMap { oToP =>
@@ -288,26 +293,27 @@ extends SubagentDriver with SubagentEventListener[S0]
                 // Just to be sure, condition should always be true:
                 state.idToOrder.get(orderId).exists(_.state == processing))
               // Filter Orders which have been sent to Subagent ???
-              .map(_ <-: OrderProcessed.processLost)
+              .map(_ <-: orderProcessed)
               .concat(subagentDiedEvent.map(subagentId <-: _))
               .toVector))
             .map(_.orThrow)
             .*>(Task {
-              for (p <- promises) p.success(OrderProcessed.processLost)
+              for (p <- promises) p.success(orderProcessed)
             }))
       })
   }
 
   // May run concurrently with onSubagentDied !!!
   // Be sure that only on OrderProcessed event is emitted!
-  private def onStartOrderProcessFailed(startOrderProcess: StartOrderProcess): Task[Checked[Unit]] =
+  private def onStartOrderProcessFailed(startOrderProcess: StartOrderProcess, problem: Problem)
+  : Task[Checked[Unit]] =
     persistence
       .persist(state => Right(
         state.idToOrder.get(startOrderProcess.orderId)
           .filter(o => // Just to be sure, condition should always be true:
             o.state == Order.Processing(subagentId) &&
               o.workflowPosition == startOrderProcess.order.workflowPosition)
-          .map(_.id <-: OrderProcessed.processLost)
+          .map(_.id <-: OrderProcessed.processLost(problem))
           .toList))
       .rightAs(())
 
@@ -521,9 +527,9 @@ extends SubagentDriver with SubagentEventListener[S0]
                       // The SubagentEventListener should do the same for all lost processes
                       // at once, but just in case the SubagentEventListener does run, we issue
                       // an OrderProcess event here.
-                      onStartOrderProcessFailed(command)
+                      onStartOrderProcessFailed(command, SubagentNotDedicatedProblem)
                         .map(_.map { _ =>
-                          promise.success(OrderProcessed.processLost)
+                          promise.success(OrderProcessed.processLost(SubagentNotDedicatedProblem))
                           ()
                         })
                   }

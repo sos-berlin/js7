@@ -27,6 +27,7 @@ import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.item.BasicItemEvent.ItemDetached
 import js7.data.order.OrderEvent.{OrderCoreEvent, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{Order, OrderId, Outcome}
+import js7.data.subagent.Problems.ProcessLostDueSubagentUriChangeProblem
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentResetStarted}
 import js7.data.subagent.{SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState, SubagentSelection, SubagentSelectionId}
 import js7.journal.state.StatePersistence
@@ -369,7 +370,8 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
             assert(oldDriver.subagentId == newDriver.subagentId)
             val name = "addOrChange " + oldDriver.subagentItem.pathRev
             oldDriver
-              .stopDispatcherAndEmitProcessLostEvents(None)  // FIXME Kill the processes
+              // FIXME Kill the processes ?
+              .stopDispatcherAndEmitProcessLostEvents(ProcessLostDueSubagentUriChangeProblem, None)
               .*>(oldDriver.stop)  // Maybe try to send Shutdown command ???
               .*>(subagentItemLockKeeper
                 .lock(oldDriver.subagentId)(

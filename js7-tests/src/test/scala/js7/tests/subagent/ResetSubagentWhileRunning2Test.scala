@@ -52,7 +52,7 @@ final class ResetSubagentWhileRunning2Test extends AnyFreeSpec with SubagentTest
       eventWatch.await[SubagentResetStarted](_.key == bareSubagentId)
 
       val processed = eventWatch.await[OrderProcessed](_.key == aOrderId).head
-      assert(processed.value.event == OrderProcessed.processLost)
+      assert(processed.value.event == OrderProcessed.processLostDueToReset)
       eventWatch.await[OrderMoved](_.key == aOrderId, after = processed.eventId)
 
       // Subagent continue to run because we have suppressed SubagentCommand.ShutDown
@@ -100,7 +100,7 @@ final class ResetSubagentWhileRunning2Test extends AnyFreeSpec with SubagentTest
       aOrderId <-: OrderStarted,
       aOrderId <-: OrderProcessingStarted(bareSubagentId),
       aOrderId <-: OrderStdoutWritten("STARTED\n"),
-      aOrderId <-: OrderProcessed.processLost,
+      aOrderId <-: OrderProcessed.processLostDueToReset,
       aOrderId <-: OrderMoved(Position(0)),
 
       bOrderId <-: OrderAdded(workflow.id),

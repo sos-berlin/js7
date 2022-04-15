@@ -48,7 +48,7 @@ final class ResetSubagentTest extends AnyFreeSpec with SubagentTester
 
     controllerApi.executeCommand(ResetSubagent(bareSubagentItem.id)).await(99.s).orThrow
     val processed1 = eventWatch.await[OrderProcessed](_.key == orderId).head
-    assert(processed1.value.event == OrderProcessed.processLost)
+    assert(processed1.value.event == OrderProcessed.processLostDueToReset)
 
     eventWatch.await[OrderMoved](_.key == orderId, after = processed1.eventId)
     eventWatch.await[SubagentReset](_.key == bareSubagentId)
@@ -72,7 +72,7 @@ final class ResetSubagentTest extends AnyFreeSpec with SubagentTester
 
         SubagentResetStartedByController(force = false),
         SubagentResetStarted(force = false),
-        OrderProcessed.processLost,
+        OrderProcessed.processLostDueToReset,
         SubagentReset,
         OrderMoved(Position(0))))
 

@@ -10,6 +10,7 @@ import js7.data.agent.AgentPath
 import js7.data.item.ItemOperation.AddOrChangeSimple
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
+import js7.data.subagent.Problems.ProcessLostDueSubagentUriChangeProblem
 import js7.data.subagent.SubagentItemStateEvent.SubagentCouplingFailed
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.SemaphoreJob
@@ -63,7 +64,8 @@ final class SubagentMoveTwiceTest extends AnyFreeSpec with SubagentTester
     // Start the replacing bareSubagent
     runSubagent(bare2SubagentItem, suffix = "-2") { _ =>
       val aProcessed = eventWatch.await[OrderProcessed](_.key == aOrderId, after = eventId).head
-      assert(aProcessed.value.event == OrderProcessed.processLost)
+      assert(aProcessed.value.event ==
+        OrderProcessed.processLost(ProcessLostDueSubagentUriChangeProblem))
 
       // Shutdown the original Subagent
       bareSubagent.shutdown(Some(SIGKILL), dontWaitForDirector = true).await(99.s)
