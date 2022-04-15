@@ -1,6 +1,7 @@
 package js7.base.monixutils
 
 import cats.syntax.apply._
+import izumi.reflect.Tag
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.implicitClass
@@ -9,7 +10,6 @@ import js7.base.utils.{AsyncLock, LockKeeper}
 import monix.eval.Task
 import scala.concurrent.Promise
 import scala.reflect.ClassTag
-import izumi.reflect.Tag
 
 class AsyncMap[K: Tag: ClassTag, V: Tag](initial: Map[K, V] = Map.empty[K, V])
 {
@@ -175,10 +175,13 @@ object AsyncMap
   trait Stoppable {
     this: AsyncMap[_, _] =>
 
-    @volatile var stoppingProblem: Problem = null
+    @volatile private var stoppingProblem: Problem = null
     private val whenEmptyPromise = Promise[Unit]()
 
     private def isStopping = stoppingProblem != null
+
+    def isStoppingWith(problem: Problem) =
+      problem == stoppingProblem
 
     final val whenStopped: Task[Unit] =
       Task.fromFuture(whenEmptyPromise.future)
@@ -187,12 +190,12 @@ object AsyncMap
 
     /** Initiate stop. */
     final val initiateStop: Task[Unit] =
-      stopWithMessage(Problem.pure(s"$name is being stopped"))
+      stopWithProblem(Problem.pure(s"$name is being stopped"))
 
     final val stop: Task[Unit] =
       initiateStop *> whenStopped
 
-    final def stopWithMessage(problem: Problem): Task[Unit] =
+    final def stopWithProblem(problem: Problem): Task[Unit] =
       Task.defer {
         shortLock
           .lock(Task {

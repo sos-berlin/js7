@@ -77,7 +77,7 @@ trait SubagentExecutor
             })
             .*>(orderToProcessing
               // Await process termination and DetachProcessedOrder commands
-              .stopWithMessage(shuttingDownProblem)
+              .stopWithProblem(shuttingDownProblem)
               .logWhenItTakesLonger("Director-acknowledged Order processes"))
             .*>(journal
               // The event may get lost due to immediate shutdown !!!
