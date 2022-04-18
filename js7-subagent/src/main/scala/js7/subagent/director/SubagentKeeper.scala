@@ -319,10 +319,10 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
             .start
             .onErrorHandle(t => logger.error( // TODO Emit event ?
               s"proceedWithSubagent(${subagentItemState.pathRev}) => ${t.toStringWithCauses}"))
-            .startAndForget)
+            /*.startAndForget*/)
         .map(Right(_))))
 
-  // Returns a SubagentDriver if created
+  // May return a new, non-started SubagentDriver
   private def addOrChange(subagentItemState: SubagentItemState)
   : Task[Checked[Option[SubagentDriver]]] =
     logger.debugTask("addOrChange", subagentItemState.pathRev) {

@@ -103,10 +103,8 @@ extends SubagentDriver with SubagentEventListener[S0]
   private val orderToPromise = AsyncMap.stoppable[OrderId, Promise[OrderProcessed]]()
 
   val start: Task[Unit] =
-    logger
-      .debugTask(
-        startEventListener)
-      .memoize
+    logger.debugTask(
+      startEventListener)
 
   def startMovedSubagent(previous: RemoteSubagentDriver[S]): Task[Unit] =
     logger.debugTask(
@@ -634,7 +632,6 @@ object RemoteSubagentDriver
 {
   private val reconnectErrorDelay = 5.s/*TODO*/
   private val tryPostErrorDelay = 5.s/*TODO*/
-  private val CommandDispatcherStoppedProblem = Problem.pure("CommandDispatcher stopped")
 
   final case class SubagentDriverStoppedProblem(subagentId: SubagentId) extends Problem.Coded {
     def arguments = Map("subagentId" -> subagentId.string)
