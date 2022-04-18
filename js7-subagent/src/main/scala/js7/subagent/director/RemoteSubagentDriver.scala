@@ -571,10 +571,10 @@ extends SubagentDriver with SubagentEventListener[S0]
           case Some(t) => t.toStringWithCauses
         }
         if (lastWarning.contains(warning)) {
-          logger.debug(s"⚠️ Retry warning #$warningCount (${startedAt.elapsed.pretty}) $warning")
+          logger.debug(s"⚠️ Retry warning #$warningCount (${startedAt.elapsed.pretty}): $warning")
         } else {
           lastWarning = Some(warning)
-          logger.warn(s"⚠️ Retry warning #$warningCount $warning")
+          logger.warn(s"Retry warning #$warningCount: $warning")
         }
         Task.sleep(tryPostErrorDelay) // Retry
           .as(Left(()))

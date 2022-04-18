@@ -1,6 +1,5 @@
 package js7.subagent.director
 
-import cats.effect.ExitCase
 import cats.syntax.flatMap._
 import cats.syntax.foldable._
 import cats.syntax.traverse._
@@ -197,40 +196,44 @@ private trait SubagentEventListener[S <: SubagentDirectorState[S]]
                   Observable.fromTask(onSubagentDecoupled(Some(problem)))
                 })
               .filter(_ != StampedHeartbeat)
-              .takeWhile(_ ne PauseDetected)
-              .guaranteeCase(exitCase => Task.defer {
-                // guaranteeCase runs concurrently, maybe with onDecoupled ???
-                Task.when((exitCase != ExitCase.Completed /*&& exitCase != ExitCase.Canceled*/) || /*isCoupled*/isHeartbeating)(
-                  stopObserving
-                    .flatMap(_.tryRead)
-                    .map {
-                      case None =>
-                        val problem = exitCase match {
-                          case ExitCase.Completed =>
-                            Problem.pure(s"$subagentId event stream has ended")
-                          case _ =>
-                            Problem.pure(s"$subagentId event stream: $exitCase")
-                        }
-                        logger.warn(problem.toString)
-                        problem
-                      case Some(()) =>
-                        Problem.pure("SubagentEventListener stopped")
-                    }
-                    .flatMap(problem => onSubagentDecoupled(Some(problem))))
-              }))
+              .takeWhile(_ ne PauseDetected))
+              //.guaranteeCase(exitCase => Task.defer {
+              //  // guaranteeCase runs concurrently, maybe with onDecoupled ?
+              //  Task.when((exitCase != ExitCase.Completed /*&& exitCase != ExitCase.Canceled*/) || /*isCoupled*/isHeartbeating)(
+              //    stopObserving.flatMap(_.tryRead).map(_.isDefined)
+              //      .flatMap(stopped =>
+              //        if (stopped) {
+              //          logger.debug("stopped")
+              //          Task.unit
+              //        } else {
+              //          val problem = exitCase match {
+              //            case ExitCase.Completed =>
+              //              Problem.pure(s"$subagentId event stream has ended")
+              //            case _ =>
+              //              Problem.pure(s"$subagentId event stream: $exitCase")
+              //          }
+              //          logger.warn(problem.toString)
+              //          onSubagentDecoupled(Some(problem))
+              //        }))
+              //}))
             .map(Right(_))
 
       override protected def onCouplingFailed(api: SubagentClient, problem: Problem) =
-        onSubagentDecoupled(Some(problem)) *>
-          Task {
-            if (lastProblem contains problem) {
-              logger.debug(s"⚠️ Coupling failed: $problem")
-            } else {
-              lastProblem = Some(problem)
-              logger.warn(s"Coupling failed: $problem")
-            }
-            true
-          }
+        stopObserving.flatMap(_.tryRead).map(_.isDefined)
+          .flatMap(stopped =>
+            if (stopped)
+              Task.pure(false)
+            else
+              onSubagentDecoupled(Some(problem)) *>
+                Task {
+                  if (lastProblem contains problem) {
+                    logger.debug(s"⚠️ Coupling failed again: $problem")
+                  } else {
+                    lastProblem = Some(problem)
+                    logger.warn(s"Coupling failed: $problem")
+                  }
+                  true
+                })
 
       override protected val onDecoupled =
         logger.traceTask(

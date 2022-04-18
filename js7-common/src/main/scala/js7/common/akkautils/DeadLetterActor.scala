@@ -1,6 +1,6 @@
 package js7.common.akkautils
 
-import akka.actor.{Actor, ActorSystem, DeadLetter, DeadLetterSuppression, Props, UnhandledMessage}
+import akka.actor.{Actor, ActorSystem, DeadLetter, DeadLetterSuppression, Props, ReceiveTimeout, UnhandledMessage}
 import js7.base.log.LogLevel.syntax._
 import js7.base.log.LogLevel.{Debug, Warn}
 import js7.base.log.{LogLevel, Logger}
@@ -55,6 +55,7 @@ object DeadLetterActor
   private def messageToLogLevel(message: Any): LogLevel =
     message match {
       case _: akka.io.Tcp.Write => Debug
+      case ReceiveTimeout => Debug
       case _ => Warn
     }
 }
