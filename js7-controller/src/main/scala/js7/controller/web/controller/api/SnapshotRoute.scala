@@ -2,10 +2,9 @@ package js7.controller.web.controller.api
 
 import akka.http.scaladsl.model.HttpEntity
 import akka.http.scaladsl.model.HttpEntity.Chunk
-import akka.http.scaladsl.server.Directives.{complete, get}
+import akka.http.scaladsl.server.Directives.{complete, get, pathEndOrSingleSlash}
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.directives.ParameterDirectives._
-import akka.http.scaladsl.server.directives.PathDirectives.pathSingleSlash
 import akka.util.ByteString
 import io.circe.syntax._
 import js7.base.auth.ValidUserPermission
@@ -47,7 +46,7 @@ trait SnapshotRoute extends ControllerRouteProvider
   final def filteredSnapshotRoute(filter: SnapshotFilter): Route =
     get {
       authorizedUser(ValidUserPermission) { _ =>
-        pathSingleSlash {
+        pathEndOrSingleSlash {
           parameter("eventId".as[Long].?) {
             case None => currentSnapshot(filter)
             case Some(eventId) => historicSnapshot(eventId)

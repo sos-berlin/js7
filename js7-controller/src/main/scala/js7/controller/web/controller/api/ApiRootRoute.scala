@@ -1,6 +1,6 @@
 package js7.controller.web.controller.api
 
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives.{get, pathEndOrSingleSlash}
 import akka.http.scaladsl.server.Route
 import js7.base.BuildInfo
 import js7.base.problem.Checked
@@ -28,7 +28,7 @@ trait ApiRootRoute extends ControllerRouteProvider
   private implicit def implicitScheduler: Scheduler = scheduler
 
   final val apiRootRoute: Route =
-    pathEnd {
+    pathEndOrSingleSlash {
       get {
         completeTask(
           overview)
