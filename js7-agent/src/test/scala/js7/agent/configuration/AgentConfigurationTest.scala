@@ -70,21 +70,25 @@ final class AgentConfigurationTest extends AnyFreeSpec
   "--kill-script= is missing (default)" in {
     provideConfigAndData { (config, data) =>
       val expectedFile = data / s"work/kill_task.$shellExt"
-      val myConf = conf(s"--config-directory=$config", s"--data-directory=$data").finishAndProvideFiles
+      val myConf = conf(s"--config-directory=$config", s"--data-directory=$data")
+        .finishAndProvideFiles
       assert(myConf.subagentConf.killScript == Some(ProcessKillScript(expectedFile)))
     }
   }
 
   "--kill-script= (empty)" in {
     provideConfigAndData { (config, data) =>
-      val myConf = conf(s"--config-directory=$config", s"--data-directory=$data", "--kill-script=").finishAndProvideFiles
+      val myConf = conf(s"--config-directory=$config", s"--data-directory=$data", "--kill-script=")
+        .finishAndProvideFiles
       assert(myConf.killScript == None)
     }
   }
 
   "--kill-script=FILE" in {
     provideConfigAndData { (config, data) =>
-      val myConf = conf(s"--config-directory=$config", s"--data-directory=$data", "--kill-script=/my/kill/script").finishAndProvideFiles
+      val myConf = conf(s"--config-directory=$config", s"--data-directory=$data",
+        "--kill-script=/my/kill/script"
+      ).finishAndProvideFiles
       assert(myConf.killScript == Some(ProcessKillScript(Paths.get("/my/kill/script").toAbsolutePath)))
     }
   }

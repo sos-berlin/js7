@@ -73,10 +73,7 @@ extends CommonConfiguration
   def stateDirectory: Path =
     dataDirectory / "state"
 
-  def finishAndProvideFiles: AgentConfiguration =
-    provideDataSubdirectories()
-
-  private def provideDataSubdirectories(): AgentConfiguration = {
+  def finishAndProvideFiles: AgentConfiguration = {
     if (logDirectory == defaultLogDirectory(dataDirectory) && !exists(logDirectory)) {
       createDirectory(logDirectory)
     }
@@ -93,7 +90,8 @@ extends CommonConfiguration
   lazy val workDirectory: Path =
     dataDirectory  / "work"
 
-  lazy val scriptInjectionAllowed = config.getBoolean("js7.job.execution.signed-script-injection-allowed")
+  lazy val scriptInjectionAllowed =
+    config.getBoolean("js7.job.execution.signed-script-injection-allowed")
 
   def toJobLauncherConf(iox: IOExecutor, blockingJobScheduler: SchedulerService, clock: AlarmClock)
   : Checked[JobLauncherConf] =

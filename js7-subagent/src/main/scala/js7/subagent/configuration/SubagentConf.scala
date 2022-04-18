@@ -69,7 +69,7 @@ extends CommonConfiguration
     provideDataSubdirectories()
       .provideKillScript()
 
-  private def provideDataSubdirectories(): SubagentConf = {
+  private def provideDataSubdirectories(): this.type = {
     if (logDirectory == defaultLogDirectory(dataDirectory) && !exists(logDirectory)) {
       createDirectory(logDirectory)
     }

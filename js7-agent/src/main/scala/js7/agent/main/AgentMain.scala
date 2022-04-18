@@ -56,7 +56,7 @@ final class AgentMain
     JournalFiles.currentFile(agentConf.journalMeta.fileBase) match {
       case Left(_) =>
         BareSubagent
-          .blockingRun(agentConf.subagentConf.finishAndProvideFiles)
+          .blockingRun(agentConf.subagentConf)
           .getOrElse {
             logger.info("Continue as Agent Director\n" + "─" * 80)
             blockingRunAgentDirector(agentConf)
