@@ -3,9 +3,11 @@ set -euo pipefail
 
 cd "$(cd "$(realpath "${0%/*}")"/../../build/bin/../.. && pwd)"
 
-# First, free some disk space
-rm -rf volumes/*/data/logs
+# First, free disk space
+build/bin/clean-volumes-data
 
 # Fails if disk is full:
 docker-compose kill
+
+# Free again
 build/bin/clean-volumes-data

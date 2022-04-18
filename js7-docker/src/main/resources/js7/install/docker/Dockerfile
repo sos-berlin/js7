@@ -1,14 +1,11 @@
 FROM openjdk:18
 
-# UID of the 'js7'. The mounted volume /var/opt/js7 must be rwx for this UID
-# Used as group ID, too.
-
 # Directory structure according to the Filesystem Hierarchy Standard, https://refspecs.linuxfoundation.org/FHS_3.0/fhs-3.0.pdf
 #   /opt/js7-VERSION/bin/
 #   /opt/js7-VERSION/lib/
 #   /opt/js7 -> js7-VERSION
 #   /var/opt/js7/{controller,agent}/config/  read-only
-#   /var/opt/js7/{controller,agent}/data/{logs,state,work,...}  writable
+#   /var/opt/js7/{controller,agent}/data/{cache,logs,state,work,...}  writable
 #   /home/js7/bin
 
 ENV LANG=C.UTF-8
@@ -40,6 +37,7 @@ RUN chown root:root -R /opt/js7-[1-9]* && \
     ln -s /opt/js7-[1-9]* /opt/js7 && \
     groupadd --gid ${UID:-1000} js7 && \
     useradd --uid ${UID:-1000} --gid js7 --home-dir /home/js7 --no-create-home --shell /bin/bash js7 && \
+    mkdir -p /var/opt/js7/{provider,controller,agent}/data &&\
     mkdir -p /var/opt/js7/testControllerAgent && \
     chown js7:js7 -R /home/js7 /var/opt/js7
 
@@ -48,4 +46,4 @@ ENV PATH /home/js7/bin:/usr/local/bin:/usr/bin:/bin
 USER js7
 
 # Possible start:
-# docker run --publish=4444:4444 -ti --tag=js7-subagent js7 agent
+# docker run --publish=4444:4444 -ti --tag=js7-subagent js7 js7-subagent

@@ -22,10 +22,12 @@ services:
     ports:
     - "127.0.0.1:4443:4443"
     - "127.0.0.1:4444:4444"
-    working_dir: /var/opt/js7/controller/data
+    working_dir: /home/js7
     volumes:
       - ./volumes/controller/config:/var/opt/js7/controller/config:ro
-      - ./volumes/controller/data:/var/opt/js7/controller/data:delegated
+      - ./volumes/controller/data/cache:/var/opt/js7/controller/data/cache:delegated
+      - ./volumes/controller/data/logs:/var/opt/js7/controller/data/logs:delegated
+      - ./volumes/controller/data/state:/var/opt/js7/controller/data/state:delegated
     stop_grace_period: 10s
     restart: unless-stopped
 
@@ -42,10 +44,12 @@ services:
     - default
     #ports:
     #Does not work for Docker 2.2.3.0 MacOS:  - "127.0.0.2:4444:4444"
-    working_dir: /var/opt/js7/controller/data
+    working_dir: /home/js7
     volumes:
       - ./volumes/backup-controller/config:/var/opt/js7/controller/config:ro
-      - ./volumes/backup-controller/data:/var/opt/js7/controller/data:delegated
+      - ./volumes/backup-controller/data/cache:/var/opt/js7/controller/data/cache:delegated
+      - ./volumes/backup-controller/data/logs:/var/opt/js7/controller/data/logs:delegated
+      - ./volumes/backup-controller/data/state:/var/opt/js7/controller/data/state:delegated
     stop_grace_period: 10s
     restart: unless-stopped
 
@@ -54,10 +58,12 @@ services:
     container_name: js7-provider
     hostname: provider
     command: ["js7-provider", "-J-Xmx100m", "--controller-uri=https://controller:4443"]
-    working_dir: /var/opt/js7/provider/data
+    working_dir: /home/js7
     volumes:
       - ./volumes/provider/config:/var/opt/js7/provider/config:ro
-      - ./volumes/provider/data:/var/opt/js7/provider/data:delegated
+      - ./volumes/provider/data/cache:/var/opt/js7/provicer/data/cache:delegated
+      - ./volumes/provider/data/logs:/var/opt/js7/provicer/data/logs:delegated
+      - ./volumes/provider/data/state:/var/opt/js7/provicer/data/state:delegated
     restart: unless-stopped
 
   subagent-1-a:
@@ -65,10 +71,12 @@ services:
     container_name: js7-subagent-1-a
     hostname: subagent-1-a
     command: ["js7-subagent", "-J-Xmx200m"]
-    working_dir: /var/opt/js7/agent/data
+    working_dir: /home/js7
     volumes:
       - ./volumes/subagent-1-a/config:/var/opt/js7/agent/config:ro
-      - ./volumes/subagent-1-a/data:/var/opt/js7/agent/data:delegated
+      - ./volumes/subagent-1-a/data/cache:/var/opt/js7/agent/data/cache:delegated
+      - ./volumes/subagent-1-a/data/logs:/var/opt/js7/agent/data/logs:delegated
+      - ./volumes/subagent-1-a/data/state:/var/opt/js7/agent/data/state:delegated
     stop_grace_period: 10s
     restart: unless-stopped
 
@@ -77,10 +85,12 @@ services:
     container_name: js7-subagent-1-b
     hostname: subagent-1-b
     command: ["js7-subagent", "-J-Xmx200m"]
-    working_dir: /var/opt/js7/agent/data
+    working_dir: /home/js7
     volumes:
       - ./volumes/subagent-1-b/config:/var/opt/js7/agent/config:ro
-      - ./volumes/subagent-1-b/data:/var/opt/js7/agent/data:delegated
+      - ./volumes/subagent-1-b/data/cache:/var/opt/js7/agent/data/cache:delegated
+      - ./volumes/subagent-1-b/data/logs:/var/opt/js7/agent/data/logs:delegated
+      - ./volumes/subagent-1-b/data/state:/var/opt/js7/agent/data/state:delegated
     stop_grace_period: 10s
     restart: unless-stopped
 
@@ -89,9 +99,11 @@ services:
     container_name: js7-subagent-2-a
     hostname: subagent-2-a
     command: ["js7-subagent", "-J-Xmx200m"]
-    working_dir: /var/opt/js7/agent/data
+    working_dir: /home/js7
     volumes:
       - ./volumes/subagent-2-a/config:/var/opt/js7/agent/config:ro
-      - ./volumes/subagent-2-a/data:/var/opt/js7/agent/data:delegated
+      - ./volumes/subagent-2-a/data/cache:/var/opt/js7/agent/data/cache:delegated
+      - ./volumes/subagent-2-a/data/logs:/var/opt/js7/agent/data/logs:delegated
+      - ./volumes/subagent-2-a/data/state:/var/opt/js7/agent/data/state:delegated
     stop_grace_period: 10s
     restart: unless-stopped

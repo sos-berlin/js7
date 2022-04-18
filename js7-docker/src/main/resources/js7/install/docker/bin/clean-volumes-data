@@ -3,8 +3,14 @@ set -euo pipefail
 
 cd "$(cd "$(realpath "${0%/*}")"/../../build/bin/../.. && pwd)"
 
-rm -rf volumes/{controller,backup-controller,provider,subagent-1-a,subagent-1-b,subagent-2-a}/data/*
-rm -rf volumes/testControllerAgent/controller/data/*
-rm -rf volumes/testControllerAgent/AGENT-*/data/*
+dirs=()
+dirs+=(volumes/{controller,backup-controller,provider,subagent-1-a,subagent-1-b,subagent-2-a}/data/{cache,logs,state})
+dirs+=(volumes/testControllerAgent/*/data/{cache,logs,state})
+
+for dir in "${dirs[@]}"; do :
+  if test -d "$dir"; then :
+    find "$dir" -mindepth 1 -delete
+  fi
+done
 
 # Keep 'https' directory with CA certificate
