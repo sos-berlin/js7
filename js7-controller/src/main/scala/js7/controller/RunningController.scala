@@ -11,7 +11,6 @@ import com.google.inject.util.Modules.EMPTY_MODULE
 import com.google.inject.{Guice, Injector, Module}
 import com.softwaremill.diffx.generic.auto._
 import com.typesafe.config.{Config, ConfigFactory}
-import java.nio.file.Files.deleteIfExists
 import java.nio.file.Path
 import js7.base.auth.{SimpleUser, UserAndPassword}
 import js7.base.eventbus.{EventPublisher, StandardEventBus}
@@ -368,7 +367,11 @@ object RunningController
 
       webServer.start
         .flatTap(_ =>
-          createSessionTokenFile(injector.instance[SessionRegister[SimpleSession]]))
+          injector.instance[SessionRegister[SimpleSession]]
+            .placeSessionTokenInDirectoryLegacy(
+              SimpleUser.System,
+              controllerConfiguration.workDirectory,
+              closer))
         .map { _ =>
           controllerConfiguration.workDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", o => s"$o/controller")
           new RunningController(recovered.eventWatch.strict, webServer,
@@ -460,17 +463,6 @@ object RunningController
             .andThen { case Failure(t) => logger.error(t.toStringWithCauses, t) }
             .andThen { case _ => closer.close() }  // Close automatically after termination
           Right(OrderKeeperStarted(tag[ControllerOrderKeeper](actor), termination))
-      }
-
-    private def createSessionTokenFile(sessionRegister: SessionRegister[SimpleSession]): Task[Unit] =
-      Task.defer {
-        val sessionTokenFile = controllerConfiguration.workDirectory / "session-token"
-        sessionRegister.createSystemSession(SimpleUser.System, sessionTokenFile)
-          .logWhenItTakesLonger("createSystemSession")
-          .guarantee(Task {
-            closer onClose { deleteIfExists(sessionTokenFile) }
-          })
-          .void
       }
   }
 

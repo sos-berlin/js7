@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+uriPath="$1"
+
+data="/var/opt/js7/controller/data"
+
+curlOptions=()
+test -t 1 && curlOptions+=(--no-buffer)
+
+cd "$data/work"
+
+if ! [ -f http-uri ] || ! [ -f secret-http-headers ]; then :
+  echo 1>&2 JS7 not yet ready
+  exit
+fi
+
+exec curl --silent --show-error --header @secret-http-headers "${curlOptions[@]}" \
+ $(cat http-uri)/api/"$uriPath"

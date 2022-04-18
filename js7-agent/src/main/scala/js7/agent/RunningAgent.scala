@@ -8,7 +8,6 @@ import com.google.inject.util.Modules.EMPTY_MODULE
 import com.google.inject.{Guice, Injector, Module}
 import com.softwaremill.diffx.generic.auto._
 import com.typesafe.config.Config
-import java.nio.file.Files.deleteIfExists
 import js7.agent.RunningAgent._
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.inject.AgentModule
@@ -210,15 +209,16 @@ object RunningAgent {
 
       mainActor ! MainActor.Input.Start(recovered)
 
-      val sessionTokenFile = agentConfiguration.workDirectory / "session-token"
       val sessionRegister = injector.instance[SessionRegister[SimpleSession]]
 
       val task = for {
         ready <- Task.fromFuture(mainActorReadyPromise.future)
         api = ready.api
         _ <- webServer.start(api)
-        sessionToken <- sessionRegister.createSystemSession(SimpleUser.System, sessionTokenFile)
-        _ <- Task { closer onClose { deleteIfExists(sessionTokenFile) } }
+        sessionToken <- sessionRegister.placeSessionTokenInDirectoryLegacy(
+          SimpleUser.System,
+          agentConfiguration.workDirectory,
+          closer)
       } yield {
         agentConfiguration.workDirectory / "http-uri" :=
           webServer.localHttpUri.fold(_ => "", o => s"$o/agent")

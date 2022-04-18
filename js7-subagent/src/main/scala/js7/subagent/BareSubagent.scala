@@ -117,8 +117,7 @@ object BareSubagent
         actorSystem <- Akkas.actorSystemResource(conf.name, config, js7Scheduler)
         sessionRegister = SessionRegister.start[SimpleSession](
           actorSystem, SimpleSession(_), config)
-        _ <- sessionRegister
-          .provideSessionTokenFile(SimpleUser.System, conf.workDirectory / "session-token")
+        _ <- sessionRegister.placeSessionTokenInDirectory(SimpleUser.System, conf.workDirectory)
 
         webServer <- SubagentWebServer.resource(
           journal, commandExecutor, sessionRegister, restartAsDirector, conf)(actorSystem)

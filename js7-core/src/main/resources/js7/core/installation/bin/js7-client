@@ -15,20 +15,20 @@ argToRequest() {
 
 argToGet() {
   arg="$1"
-  echo -e "GET $baseUri/api$arg HTTP/1.1\r
-Host: host\r
+  echo -e "GET $uriPath/api$arg HTTP/1.1\r
+Host: $uriIP\r
 Connection: close\r
 x-js7-session: $(cat "$sessionTokenFile")\r
 Accept: application/json\r
 Accept-Charset: UTF-8\r
 \r
-"
+\r"
 }
 
 argToPost() {
   arg="$1"
-  echo -en "POST $baseUri/api/command HTTP/1.1\r
-Host: host\r
+  echo -en "POST $uriPath/api/command HTTP/1.1\r
+Host: $uriIP\r
 Connection: close\r
 x-js7-session: $(cat "$sessionTokenFile")\r
 Content-Type: application/json\r
@@ -56,25 +56,26 @@ if [ ! -f "$sessionTokenFile" ]; then
 fi
 
 httpUri="$(cat "$data/work/http-uri")"
-if ! [[ "$httpUri" =~ ^http://[^:]+:([0-9]+)/(.*)$ ]]; then
+if ! [[ "$httpUri" =~ ^http://([^:]+):([0-9]+)(/.*)$ ]]; then
   echo File "$data/work/http-uri does not contain a valid HTTP URI. Maybe JS7 is not running or does not provide a HTTP port on localhost"
   exit 1
 else
-  httpPort="${BASH_REMATCH[1]}"
-  baseUri="/${BASH_REMATCH[2]}"
+  uriIP="${BASH_REMATCH[1]}"
+  uriPort="${BASH_REMATCH[2]}"
+  uriPath="${BASH_REMATCH[3]}"
 fi
 
 for arg in "${args[@]}"; do
   # Try until connected
-  for i in {30..0}; do
-    exec 3<>"/dev/tcp/127.0.0.1/$httpPort" && break
+  for i in {10..0}; do
+    exec 3<>"/dev/tcp/$uriIP/$uriPort" && break
     test $i -gt 0 || exit 1
     sleep 1
   done
   request=$(argToRequest "$arg")
   echo -n "$request" >&3
 
-  IFS=' ' read -r httpVersion status remainder <&3
+  IFS=' ' read -t 10 -r httpVersion status remainder <&3
   if [ "$status" != '200' ]; then
     echo "$status $remainder"
     echo

@@ -4,6 +4,8 @@ import akka.actor.{ActorRef, ActorRefFactory}
 import akka.pattern.ask
 import akka.util.Timeout
 import cats.effect.Resource
+import cats.syntax.apply._
+import cats.syntax.flatMap._
 import com.typesafe.config.Config
 import java.nio.file.Files.{createFile, deleteIfExists}
 import java.nio.file.Path
@@ -13,16 +15,23 @@ import js7.base.configutils.Configs._
 import js7.base.generic.Completed
 import js7.base.io.file.FileUtils.provideFile
 import js7.base.io.file.FileUtils.syntax._
+import js7.base.log.Logger
+import js7.base.monixutils.MonixBase.syntax.RichMonixTask
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.JavaTimeConverters._
+import js7.base.time.ScalaTime._
+import js7.base.utils.Closer
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.version.Version
+import js7.common.akkahttp.web.session.SessionRegister._
+import js7.common.http.AkkaHttpClient.`x-js7-session`
 import js7.common.system.ServerOperatingSystem.operatingSystem
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.Promise
+import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
@@ -36,11 +45,41 @@ final class SessionRegister[S <: Session] private[session](
   val systemSession: Task[Checked[S]] = Task.fromFuture(systemSessionPromise.future)
   val systemUser: Task[Checked[S#User]] = systemSession.map(_.map(_.currentUser))
 
-  def provideSessionTokenFile(user: S#User, file: Path): Resource[Task, SessionToken] =
+  def placeSessionTokenInDirectoryLegacy(user: S#User, workDirectory: Path, closer: Closer)
+  : Task[SessionToken] =
+    Task.deferAction(implicit s =>
+      placeSessionTokenInDirectory(user, workDirectory)
+        .allocated
+        .logWhenItTakesLonger("createSystemSession")
+        .flatMap { case (sessionToken, release) =>
+          Task {
+            closer.onClose {
+              try release.runSyncUnsafe(5.s)
+              catch { case NonFatal(t) => logger.error(
+                s"createSessionTokenFile release => ${t.toStringWithCauses}")
+              }
+            }
+            sessionToken
+          }
+        })
+
+  def placeSessionTokenInDirectory(user: S#User, workDirectory: Path)
+  : Resource[Task, SessionToken] = {
+    val sessionTokenFile = workDirectory / "session-token"
+    val headersFile = workDirectory / "secret-http-headers"
+    provideSessionTokenFile(user, sessionTokenFile)
+      .flatTap(sessionToken => provideFile(headersFile)
+        .*>(Resource.eval(Task {
+          createFile(headersFile, operatingSystem.secretFileAttributes: _*)
+          headersFile := `x-js7-session`.name + ": " + sessionToken.secret.string + "\n"
+        })))
+  }
+
+  private def provideSessionTokenFile(user: S#User, file: Path): Resource[Task, SessionToken] =
     provideFile(file)
       .flatMap(file => Resource.eval(createSystemSession(user, file)))
 
-  def createSystemSession(user: S#User, file: Path): Task[SessionToken] =
+  private def createSystemSession(user: S#User, file: Path): Task[SessionToken] =
     for (checked <- login(user, Some(Js7Version), isEternalSession = true)) yield {
       val sessionToken = checked.orThrow
       deleteIfExists(file)
@@ -96,6 +135,8 @@ final class SessionRegister[S <: Session] private[session](
 
 object SessionRegister
 {
+  private val logger = Logger[this.type]
+
   def start[S <: Session](actorRefFactory: ActorRefFactory, newSession: SessionInit[S#User] => S, config: Config)
     (implicit scheduler: Scheduler)
   : SessionRegister[S] = {
