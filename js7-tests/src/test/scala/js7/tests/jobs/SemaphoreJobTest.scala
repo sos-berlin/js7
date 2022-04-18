@@ -5,7 +5,7 @@ import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
-import js7.data.order.OrderEvent.{OrderProcessed, OrderProcessingStarted}
+import js7.data.order.OrderEvent.{OrderProcessed, OrderProcessingStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.SemaphoreJobTest._
@@ -28,6 +28,7 @@ final class SemaphoreJobTest extends AnyFreeSpec with ControllerAgentForScalaTes
     controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
 
     controller.eventWatch.await[OrderProcessingStarted](_.key == orderId)
+    controller.eventWatch.await[OrderStdoutWritten](_.key == orderId)
     intercept[TimeoutException](
       controller.eventWatch.await[OrderProcessed](_.key == orderId, timeout = 1.s))
     assert(TestSemaphoreJob.semaphore.flatMap(_.count).await(99.s) == -1)
@@ -49,6 +50,7 @@ final class SemaphoreJobTest extends AnyFreeSpec with ControllerAgentForScalaTes
     controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
 
     controller.eventWatch.await[OrderProcessingStarted](_.key == orderId)
+    controller.eventWatch.await[OrderStdoutWritten](_.key == orderId)
     intercept[TimeoutException](
       controller.eventWatch.await[OrderProcessed](_.key == orderId, timeout = 1.s))
     assert(TestSemaphoreJob.semaphore.flatMap(_.count).await(99.s) == -1)

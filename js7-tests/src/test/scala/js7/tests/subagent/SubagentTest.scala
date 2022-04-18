@@ -82,14 +82,17 @@ final class SubagentTest extends AnyFreeSpec with SubagentTester
   }
 
   "Order waits when no Subagent is available" in {
+    var eventId = eventWatch.lastAddedEventId
     enableSubagents(directoryProvider.subagentItems.head -> false)
+
+    // Be sure that BareSubagent's shutdown has been detected
+    assert(waitForCondition(10.s, 10.ms)(
+      controllerState.idToSubagentItemState(bareSubagentId).problem.isDefined))
 
     val orderId = OrderId("WAIT-FOR-SUBAGENT")
     controller.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
-
-    var eventId = eventWatch.lastAddedEventId
-    controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
     eventWatch.await[OrderAttached](_.key == orderId, after = eventId)
+
     intercept[TimeoutException] {
       eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId, timeout = 200.ms)
     }
