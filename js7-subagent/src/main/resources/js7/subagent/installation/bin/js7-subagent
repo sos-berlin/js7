@@ -137,14 +137,11 @@ while true; do
 
   pid=$!
   log "PID $pid"
-  pidFile="$stateDir/pid"
-  echo "$pid" >"$pidFile"
 
   terminate() {
     echo "⚡️ $1"
     log "$1: ShutDown JS7 Subagent"
-    # Add some seconds to start Java with AgentClientMain
-    #local terminateTimeout=30
+
     if [ "$SHELL" = "/bin/bash" ]; then
       "$JS7_HOME"/bin/js7-client --data-directory="$data" "$terminateCommand" &
     else
@@ -158,12 +155,9 @@ while true; do
         "$terminateCommand" \
         >/dev/null &
     fi
-    #(sleep $terminateTimeout && kill $pid) &
-    #killer=$!
+
     wait $pid
     returnCode=$?
-    #kill $killer
-    #wait $killer
   }
 
   returnCode=""
@@ -177,7 +171,6 @@ while true; do
     returnCode=${returnCode:-$?}
     log "JS7 Subagent exited with exit code $returnCode"
   fi
-  rm "$pidFile"
   trap - SIGTERM SIGINT
 
   if [ -n "$crashKillScript" ] && [ -s "$crashKillScript" ]; then :

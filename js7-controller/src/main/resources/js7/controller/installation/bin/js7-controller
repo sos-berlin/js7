@@ -132,8 +132,6 @@ while true; do
 
   pid=$!
   log "PID $pid"
-  pidFile="$stateDir/pid"
-  echo "$pid" >"$pidFile"
 
   terminate() {
     echo "⚡️ $1"
@@ -161,7 +159,6 @@ while true; do
     returnCode=${returnCode:-$?}
     log "JS7 Controller exited with exit code $returnCode"
   fi
-  rm "$pidFile"
   trap - SIGTERM SIGINT
 
   if [[ $returnCode -ne 97 ]] && [[ $returnCode -ne 98 ]]; then
