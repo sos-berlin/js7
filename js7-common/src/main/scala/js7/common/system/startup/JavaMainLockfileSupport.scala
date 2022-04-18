@@ -20,11 +20,22 @@ object JavaMainLockfileSupport
   def lockAndRunMain(args: Array[String])(body: CommandLineArguments => Unit): Unit =
     CommandLineArguments.parse(args.toIndexedSeq) { arguments =>
       val dataDirectory = Paths.get(arguments.as[String]("--data-directory="))
-      val stateDirectory = dataDirectory resolve "state"
+      val stateDirectory = dataDirectory.resolve("state")
+      // lock file is not placed in workDirectory.
+      // Instead we place the lock file in the stateDirectory.
+      // So we can delete the whole workDirectory content at start.
       if (!exists(stateDirectory)) {
         createDirectory(stateDirectory)
       }
       lock(stateDirectory resolve "lock") {
+        val workDirectory = dataDirectory.resolve("work")
+        val pidFile = workDirectory.resolve("pid")
+        if (exists(workDirectory)) {
+          deleteIfExists(pidFile)
+          tryDeleteDirectoryContentRecursively(workDirectory)
+        } else {
+          createDirectory(workDirectory)
+        }
         JavaMain.runMain {
           body(arguments)
         }

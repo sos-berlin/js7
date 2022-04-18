@@ -82,6 +82,7 @@ stateDir="$data/state"
 [ -d "$stateDir" ] || mkdir "$stateDir"
 
 workDir="$data/work"
+[ -d "$workDir" ] || mkdir "$workDir"
 
 # Copy stdout and stderr to stdouterr.log
 if [ -e "$logs/stdouterr.log" ]; then
@@ -105,9 +106,6 @@ controllerOptions+=("--config-directory=$config" "--data-directory=$data")
 [ -z "$httpsPort" ] || controllerOptions+=("--https-port=$httpsPort")
 
 while true; do
-  rm -rf "$workDir"
-  mkdir "$workDir"
-
   loopJavaOptions=()
 
   if [[ "$JAVA_VERSION" =~ ([0-9]+).* && ${BASH_REMATCH[1]} -ge 13 ]]; then
@@ -158,6 +156,7 @@ while true; do
     # After a trapped signal, $? is 128+signal, but not the real $returnCode (only in Docker?)
     returnCode=${returnCode:-$?}
     log "JS7 Controller has been shut down"
+    find "$workDir" -mindepth 1 -delete ! -type f -printf "Removed %p\n"
   else
     returnCode=${returnCode:-$?}
     log "JS7 Controller exited with exit code $returnCode"

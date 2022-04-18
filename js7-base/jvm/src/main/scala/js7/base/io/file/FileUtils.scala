@@ -21,10 +21,12 @@ import js7.base.utils.Closer
 import js7.base.utils.Closer.syntax._
 import js7.base.utils.Closer.withCloser
 import js7.base.utils.JavaCollections.syntax._
+import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import monix.eval.Task
 import scala.annotation.tailrec
 import scala.collection.AbstractIterator
 import scala.language.implicitConversions
+import scala.util.control.NonFatal
 
 object FileUtils
 {
@@ -234,12 +236,20 @@ object FileUtils
     delete(dir)
   }
 
-  def deleteDirectoryContentRecursively(dir: Path): Unit = {
+  def deleteDirectoryContentRecursively(dir: Path): Unit =
     for (f <- dir.directoryContents) {
       if (isDirectory(f) && !isSymbolicLink(f)) deleteDirectoryContentRecursively(f)
       delete(f)
     }
-  }
+
+  def tryDeleteDirectoryContentRecursively(dir: Path): Unit =
+    for (f <- dir.directoryContents) {
+      if (isDirectory(f) && !isSymbolicLink(f)) deleteDirectoryContentRecursively(f)
+      try delete(f)
+      catch { case NonFatal(t) =>
+        logger.warn(s"Delete $f => ${t.toStringWithCauses}")
+      }
+    }
 
   def nestedPathsIterator(directory: Path, options: FileVisitOption*): AutoCloseable with Iterator[Path] =
     new AbstractIterator[Path] with AutoCloseable {
