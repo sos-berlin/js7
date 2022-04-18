@@ -11,10 +11,17 @@ FROM openjdk:18
 #   /var/opt/js7/{controller,agent}/data/{logs,state,work,...}  writable
 #   /home/js7/bin
 
+ENV LANG=C.UTF-8
+# Own Docker image layer with downloaded microdnf metadata (may take several seconds)
+RUN microdnf install procps
+# Until here, same Dockerfile command sequence as in build-with-docker for shorter build time
+#———————————————————————————————————————————————————————————————————————————————
+
+# UID of the 'js7'. The mounted volume /var/opt/js7 must be rwx for this UID
+# Used as group ID, too.
 ARG UID
 
-CMD "/bin/bash"
-ENV LANG=C.UTF-8
+RUN microdnf install less findutils which
 
 # A tiny improvement of the Java runtime:
 #RUN $JAVA_HOME/bin/jlink --no-header-files --no-man-pages \
