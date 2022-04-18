@@ -15,7 +15,6 @@
       <patternLayout pattern="%d{DEFAULT_MICROS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message%n"
                      charset="UTF-8"/>
       <policies>
-        <onStartupTriggeringPolicy/>
         <timeBasedTriggeringPolicy/>
         <sizeBasedTriggeringPolicy size="1GB"/>
       </policies>
@@ -37,7 +36,6 @@
       <patternLayout pattern="%d{DEFAULT_MICROS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message%n"
                      charset="UTF-8"/>
       <policies>
-        <onStartupTriggeringPolicy/>
         <timeBasedTriggeringPolicy/>
         <sizeBasedTriggeringPolicy size="1GB"/>
       </policies>
