@@ -1,7 +1,9 @@
 package js7.base.stream
 
+import cats.syntax.apply._
 import izumi.reflect.Tag
 import js7.base.log.Logger
+import js7.base.monixutils.Latch
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.{Checked, Problem}
 import js7.base.stream.ObservableNumberedQueue._
@@ -23,6 +25,7 @@ final class ObservableNumberedQueue[V: Tag]
   private val vName = implicitly[Tag[V]].tag.toString
   private val sync = new IncreasingNumberSync(initial = 0, i => s"#$i")
   private val lock = AsyncLock("ObservableNumberedQueue", suppressLog = true)
+  private val stopped = new Latch
   @volatile private var _state = State()
 
   def enqueue(commands: Iterable[V]): Task[Unit] =
@@ -70,16 +73,26 @@ final class ObservableNumberedQueue[V: Tag]
 
       def loop(ack: Future[Ack], after: Long): Unit =
         ack.syncTryFlatten.syncOnContinue {
-          Task(_state.checkAfter(after).orThrow)
-          // Should we delay some milliseconds to reduce number of command batches ???
-            .*>(sync.whenAvailable(after = after, until = None, delay = 0.s))
-            .*>(Task.defer(_state.readQueue(after)))
+          Task
+            .race(
+              stopped.when, // -> Left
+              sync.whenAvailable(after = after, until = None) // -> Right
+                .*>(Task(_state.readQueue(after))))
             .runToFuture  // Be sure to leave the `loop` recursion stack
             .onComplete {
               case Failure(t) =>
                 subject.onError(t)
 
-              case Success(values) =>
+              case Success(Left(())) => // stopped
+                subject.onComplete()
+
+              case Success(Right(Left(StoppedProblem))) =>
+                subject.onComplete()
+
+              case Success(Right(Left(problem))) =>
+                subject.onError(problem.throwable)
+
+              case Success(Right(Right(values))) =>
                 if (values.isEmpty) {
                   // Race condition ???
                   logger.warn(
@@ -92,6 +105,7 @@ final class ObservableNumberedQueue[V: Tag]
             }
         }
 
+      _state.checkAfter(after).orThrow
       // Start only when subscribed
       loop(subject.subscription, after)
       subject
@@ -100,20 +114,25 @@ final class ObservableNumberedQueue[V: Tag]
   def release(after: Long): Task[Checked[Unit]] =
     lock.lock(Task {
       val s = _state
-      val q = s.queue
-      for (_ <- s.checkAfter(after)) yield {
-        val (index, found) = binarySearch(0, q.length, q(_).number.compare(after))
-        _state = s.copy(torn = after, queue = q.drop(index + found.toInt))
-      }
+      if (s.stopped)
+        Checked.unit
+      else
+        for (_ <- s.checkAfter(after)) yield {
+          val q = s.queue
+          val (index, found) = binarySearch(0, q.length, q(_).number.compare(after))
+          _state = s.copy(torn = after, queue = q.drop(index + found.toInt))
+        }
     })
 
-  def dequeueAll: Task[Vector[Numbered[V]]] =
-    lock.lock(Task {
-      val s = _state
-      val result = s.queue
-      _state = s.copy(queue = Vector.empty)
-      result
-    })
+  def stop: Task[Vector[Numbered[V]]] =
+    lock.lock(
+      stopped.switch
+        .*>(Task {
+          val s = _state
+          val result = s.queue
+          _state = s.copy(stopped = true, queue = Vector.empty)
+          result
+        }))
 
   // Unused
   private def dequeueSelected(predicate: V => Boolean): Task[Vector[Numbered[V]]] =
@@ -129,16 +148,20 @@ final class ObservableNumberedQueue[V: Tag]
   private sealed case class State(
     torn: Long = 0L,
     nextNumber: Long = 1L,
-    queue: Vector[Numbered[V]] = Vector.empty[Numbered[V]])
+    queue: Vector[Numbered[V]] = Vector.empty[Numbered[V]],
+    stopped: Boolean = false)
   {
-    def readQueue(after: Long): Task[Vector[Numbered[V]]] = {
-      val q = queue
-      val (index, found) = binarySearch(0, q.length, q(_).number.compare(after))
-      if (!found && after != torn)
-        Task.raiseError(unknownAfterProblem(after).throwable)
-      else
-        Task.pure(q.drop(index + found.toInt))
-    }
+    def readQueue(after: Long): Checked[Vector[Numbered[V]]] =
+      if (stopped)
+        Left(StoppedProblem)
+      else {
+        val q = queue
+        val (index, found) = binarySearch(0, q.length, q(_).number.compare(after))
+        if (!found && after != torn)
+          Left(unknownAfterProblem(after))
+        else
+          Right(q.drop(index + found.toInt))
+      }
 
     def requireValidNumber(after: Long): Task[Unit] = {
       val last = queue.lastOption.map(_.number)
@@ -148,12 +171,15 @@ final class ObservableNumberedQueue[V: Tag]
         Task.unit
     }
 
-    def checkAfter(after: Long): Checked[Unit] = {
-      val minimum = queue.headOption.map(_.number - 1) getOrElse torn
-      val last = queue.lastOption.map(_.number) getOrElse torn
-      (minimum <= after && after <= last) !!
-        Problem.pure(s"Unknown number: Numbered[$vName]: #$after (must be >=$minimum and <=$last)")
-    }
+    def checkAfter(after: Long): Checked[Unit] =
+      notStopped *> {
+        val minimum = queue.headOption.map(_.number - 1) getOrElse torn
+        val last = queue.lastOption.map(_.number) getOrElse torn
+        (minimum <= after && after <= last) !! {
+          val a = 1
+          Problem.pure(s"Unknown number: Numbered[$vName]: #$after (must be >=$minimum and <=$last)")
+        }
+      }
 
     def unknownAfterProblem(after: Long) = {
       val beforeFirst = queue.headOption.map(_.number - 1) getOrElse torn
@@ -166,10 +192,17 @@ final class ObservableNumberedQueue[V: Tag]
       val last = queue.lastOption.map(_.number) getOrElse torn
       Problem.pure(s"Unknown number: Numbered[$vName]: #$after (must be >$beforeFirst and <=$last)")
     }
+
+    def notStopped: Checked[this.type] =
+      if (stopped)
+        Left(StoppedProblem)
+      else
+        Right(this)
   }
 }
 
 object ObservableNumberedQueue
 {
   private val logger = Logger[this.type]
+  private val StoppedProblem = Problem.pure("ObservableNumberedQueue stopped")
 }

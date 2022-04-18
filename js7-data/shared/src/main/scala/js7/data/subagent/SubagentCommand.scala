@@ -10,6 +10,7 @@ import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.problem.Checked
 import js7.base.utils.Big
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentPath
 import js7.data.command.CommonCommand
 import js7.data.controller.ControllerId
@@ -129,6 +130,12 @@ object SubagentCommand extends CommonCommand.Companion
     restart: Boolean = false)
   extends Queueable {
     type Response = Accepted
+
+    override def toString =
+      "ShutDown(" +
+        Seq(processSignal, dontWaitForDirector ? "dontWaitForDirector", restart ? "restart")
+          .flatten.mkString(" ") +
+        ")"
   }
   object ShutDown {
     private implicit val x = withDefaults

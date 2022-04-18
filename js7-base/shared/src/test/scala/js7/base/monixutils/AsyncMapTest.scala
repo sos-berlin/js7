@@ -253,11 +253,11 @@ final class AsyncMapTest extends AsyncFreeSpec
         ).runToFuture
       }
 
-      "stopWithProblem" in {
+      "initiateStopWithProblem" in {
         val asyncMap = AsyncMap.stoppable[Int, String]()
         val myProblem = Problem("MY PROBLEM")
         (for {
-          _ <- asyncMap.stopWithProblem(myProblem)
+          _ <- asyncMap.initiateStopWithProblem(myProblem)
           checked <- asyncMap.insert(1, "NOT ALLOWED")
           _ = assert(checked == Left(myProblem))
           _ = assert(asyncMap.isStoppingWith(myProblem))

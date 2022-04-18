@@ -82,9 +82,9 @@ extends SubagentExecutor
             executeCoupleDirector(cmd)
               .rightAs(SubagentCommand.Accepted)
 
-          case ShutDown(processSignal, dontWaitForDirector, restart) =>
+          case shutDown: ShutDown =>
             logger.info(s"❗️ $command")
-            shutdown(processSignal, dontWaitForDirector, restart)
+            shutdown(shutDown)
               .as(Right(SubagentCommand.Accepted))
 
           case DetachProcessedOrder(orderId) =>

@@ -22,7 +22,7 @@ extends CommandDispatcher
   private def enqueueExecutes(previous: SubagentDispatcher): Task[Unit] =
     logger.debugTask(previous
       .queue
-      .dequeueAll
+      .stop
       .flatMap(executes => queue
         .enqueueNumbered(executes
           .filter(_.value.command match {

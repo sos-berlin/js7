@@ -137,7 +137,7 @@ extends SubagentDriver with SubagentEventListener[S0]
         stoppingVar.flatMap(_.tryPut(()))
           .*>(Task.defer {
             stopping = true
-            Task.parZip2(dispatcher.stop(), stopEventListener)
+            Task.parZip2(dispatcher.shutdown, stopEventListener)
               .*>(client.tryLogout.void)
               .logWhenItTakesLonger(s"RemoteSubagentDriver($subagentId).stop")
           }))
@@ -283,9 +283,7 @@ extends SubagentDriver with SubagentEventListener[S0]
         val promises = oToP.values
         Task
           .when(subagentDiedEvent.isDefined)(
-            dispatcher.stop {
-              case _: StartOrderProcess => CommandDispatcherStoppedProblem
-            })
+            dispatcher.stopAndFailCommands)
           .*>(attachedItemKeys.update(_ => Task.pure(Map.empty)))
           .*>(persistence
             .persist(state => Right(orderIds.view
@@ -342,7 +340,7 @@ extends SubagentDriver with SubagentEventListener[S0]
                 .flatMap {
                   case None =>
                     // Promise has been removed
-                    if (problem != CommandDispatcherStoppedProblem) {
+                    if (problem != CommandDispatcher.StoppedProblem) {
                       // onSubagentDied has stopped all queued StartOrderProcess commands
                       logger.warn(s"${order.id} got OrderProcessed, so we ignore $problem")
                     }

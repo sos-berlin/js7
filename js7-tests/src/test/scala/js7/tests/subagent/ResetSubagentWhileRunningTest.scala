@@ -86,7 +86,7 @@ final class ResetSubagentWhileRunningTest extends AnyFreeSpec with SubagentTeste
         SubagentCoupled,
         SubagentResetStartedByController(false),
         SubagentResetStarted(false),
-        SubagentCouplingFailed(Problem("SubagentEventListener stopped")),
+        SubagentCouplingFailed(Problem("decoupled")),
         SubagentReset,
         SubagentCouplingFailed(SubagentAlreadyDedicatedProblem)/*time dependent?*/))
 

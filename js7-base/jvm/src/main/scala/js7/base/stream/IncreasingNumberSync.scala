@@ -1,6 +1,7 @@
 package js7.base.stream
 
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax._
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.monixutils.MonixDeadline
 import js7.base.stream.IncreasingNumberSync._
@@ -42,31 +43,29 @@ final class IncreasingNumberSync(initial: Long, valueToString: Long => String)
     */
   def whenAvailable(after: Long, until: Option[MonixDeadline], delay: FiniteDuration = ZeroDuration)
   : Task[Boolean] =
-    Task.defer {
-      lazy val logPrefix =
-        s"whenAvailable($after delay=${delay.pretty}${until.fold("")(o => " until="+o.timeLeft.pretty)})"
-      if (after < _last) {
-        logger.trace(s"$logPrefix => fulfilled immediately")
-        Task.True  // Event already waiting
-      } else if (until.exists(_.hasElapsed)) {
-        logger.trace(s"$logPrefix => timed out immediately")
-        Task.False  // Timeout
-      } else {
-        lazy val since = now
-        logger.whenTraceEnabled { since; logger.trace(s"$logPrefix ...") }
-        val task = whenAvailable2(after)
-          .delayResult(delay min until.fold(FiniteDuration.MaxValue)(_.timeLeftOrZero))
-        until.fold(task)(u => task.timeoutTo(u.timeLeftOrZero, Task.False))
-          .map { isAvailable =>
-            logger.trace(
-              s"$logPrefix => ${if (isAvailable) "ok" else "timed out"} after ${since.elapsed.pretty}")
-            isAvailable
-          }
-          .doOnCancel(Task {
-            logger.trace(s"$logPrefix => canceled after ${since.elapsed.pretty}")
-          })
-      }
-    }
+    logger.traceTask(
+      Task.defer {
+        lazy val logPrefix =
+          s"whenAvailable($after delay=${delay.pretty}${until.fold("")(o => " until="+o.timeLeft.pretty)})"
+        if (after < _last) {
+          logger.trace(s"$logPrefix => fulfilled immediately")
+          Task.True  // Event already waiting
+        } else if (until.exists(_.hasElapsed)) {
+          logger.trace(s"$logPrefix => timed out immediately")
+          Task.False  // Timeout
+        } else {
+          lazy val since = now
+          logger.whenTraceEnabled { since; logger.trace(s"$logPrefix ...") }
+          val task = whenAvailable2(after)
+            .delayResult(delay min until.fold(FiniteDuration.MaxValue)(_.timeLeftOrZero))
+          until.fold(task)(u => task.timeoutTo(u.timeLeftOrZero, Task.False))
+            .map { isAvailable =>
+              logger.trace(
+                s"$logPrefix => ${if (isAvailable) "ok" else "timed out"} after ${since.elapsed.pretty}")
+              isAvailable
+            }
+        }
+      })
 
   private def whenAvailable2(after: Long): Task[Boolean] =
     Task.tailRecM(())(_ =>

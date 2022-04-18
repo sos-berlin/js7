@@ -190,12 +190,9 @@ object AsyncMap
 
     /** Initiate stop. */
     final val initiateStop: Task[Unit] =
-      stopWithProblem(Problem.pure(s"$name is being stopped"))
+      initiateStopWithProblem(Problem.pure(s"$name is being stopped"))
 
-    final val stop: Task[Unit] =
-      initiateStop *> whenStopped
-
-    final def stopWithProblem(problem: Problem): Task[Unit] =
+    final def initiateStopWithProblem(problem: Problem): Task[Unit] =
       Task.defer {
         shortLock
           .lock(Task {
@@ -206,6 +203,9 @@ object AsyncMap
             if (isEmpty) whenEmptyPromise.success(())
           }
       }
+
+    final val stop: Task[Unit] =
+      initiateStop *> whenStopped
 
     override protected[monixutils] final def onEntryInsert(): Checked[Unit] =
       Option(stoppingProblem).toLeft(())

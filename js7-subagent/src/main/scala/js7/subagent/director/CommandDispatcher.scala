@@ -10,6 +10,7 @@ import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.command.CommonCommand
 import js7.data.subagent.SubagentRunId
+import js7.subagent.director.CommandDispatcher._
 import monix.eval.Task
 import monix.reactive.Observable
 import scala.concurrent.{Future, Promise}
@@ -39,11 +40,21 @@ private trait CommandDispatcher
             processing = processQueue(subagentRunId).runToFuture(scheduler)
           }))))
 
-  def stop(commandToProblem: PartialFunction[Command, Problem] = PartialFunction.empty)
+  /** Stop and forget queued commands (do not respond them). */
+  def shutdown: Task[Unit] =
+    stopWithProblem(PartialFunction.empty)
+
+  def stopAndFailCommands: Task[Unit] =
+    stopWithProblem {
+      case _ => StoppedProblem
+    }
+
+  private def stopWithProblem(
+    commandToProblem: PartialFunction[Command, Problem] = PartialFunction.empty)
   : Task[Unit] =
     lock.lock(
       processingAllowed.switchOff.*>(logger.debugTask(
-        queue.dequeueAll
+        queue.stop
           .flatMap { numberedExecutes =>
             queue = new ObservableNumberedQueue[Execute]
             for (numberedExecute <- numberedExecutes) {
@@ -86,26 +97,29 @@ private trait CommandDispatcher
   }
 
   private def processQueue(subagentRunId: SubagentRunId): Task[Unit] =
-    logger.debugTask(
+    logger.debugTask(Task.defer {
+      // Save queue, because it may changes with stop and start
+      val queue = this.queue
       queue
         .observable
         .takeUntilEval(processingAllowed.whenOff)
         .flatMap(Observable.fromIterable)
-        .mapEval(executeCommandNow(subagentRunId, _))
-        .completedL)
+        .mapEval(numbered =>
+          executeCommandNow(subagentRunId, numbered)
+            .materialize
+            .tapEval(_ => queue
+              .release(numbered.number)
+              .map(_.orThrow)
+              .onErrorHandle(t =>
+                logger.error(s"release(${numbered.number}) => ${t.toStringWithCauses}")))
+            .map(numbered.value/*Execute*/.respond))
+        .completedL
+    })
 
   private def executeCommandNow(subagentRunId: SubagentRunId, numbered: Numbered[Execute])
-  : Task[Unit] = {
-    val execute = numbered.value
-    val numberedCommand = Numbered(numbered.number, execute.command)
+  : Task[Checked[Response]] = {
+    val numberedCommand = Numbered(numbered.number, numbered.value.command)
     postCommand(numberedCommand, subagentRunId, processingAllowed/*stop retrying when off*/)
-      .materialize
-      .tapEval(_ => queue
-        .release(numbered.number)
-        .map(_.orThrow)
-        .onErrorHandle(t =>
-          logger.error(s"release(${numbered.number}) => ${t.toStringWithCauses}")))
-      .map(execute.respond)
   }
 
   override def toString = s"CommandDispatcher($name)"
@@ -127,4 +141,8 @@ private trait CommandDispatcher
 
     override def toString = s"Execute(${command.toShortString})"
   }
+}
+
+object CommandDispatcher {
+  private[director] val StoppedProblem = Problem.pure("CommandDispatcher stopped")
 }
