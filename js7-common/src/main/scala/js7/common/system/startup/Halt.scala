@@ -13,9 +13,11 @@ object Halt
   Log4j
 
   def haltJava(msg: String, restart: Boolean): Nothing =
-    haltJava(msg, exitCode = if (restart) 98 else 99)
+    haltJava(msg, exitCode =
+      if (restart) Js7ReturnCodes.HaltAndRestart
+      else Js7ReturnCodes.Halt)
 
-  def haltJava(msg: String, exitCode: Int = 99): Nothing = {
+  private def haltJava(msg: String, exitCode: Int = Js7ReturnCodes.Halt): Nothing = {
     System.err.println()
     printlnWithClockIgnoringException(msg)
     logger.error(msg)

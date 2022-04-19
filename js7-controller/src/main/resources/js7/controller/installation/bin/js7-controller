@@ -136,33 +136,36 @@ while true; do
   terminate() {
     echo "⚡️ $1"
     log "$1: ShutDown JS7 Controller"
-    # Add some seconds to start Java with ControllerClientMain
-    #local terminateTimeout=30
     "$JS7_HOME/bin/js7-shutdown" --data-directory="$data" &
-    #(sleep $terminateTimeout && kill $pid) &
-    #killer=$!
     wait $pid
     returnCode=$?
-    #kill $killer
-    #wait $killer
   }
 
   returnCode=
   trap "terminate SIGTERM" SIGTERM
   trap "terminate SIGINT" SIGINT
   if wait $pid; then
-    # After a trapped signal, $? is 128+signal, but not the real $returnCode (only in Docker?)
     returnCode=${returnCode:-$?}
-    log "JS7 Controller has been shut down"
-    find "$workDir" -mindepth 1 -delete ! -type f -printf "Removed %p\n"
   else
     returnCode=${returnCode:-$?}
-    log "JS7 Controller exited with exit code $returnCode"
   fi
+  # After a trapped signal, $? is 128+signal, but not the real $returnCode (only in Docker?)
   trap - SIGTERM SIGINT
 
-  if [[ $returnCode -ne 97 ]] && [[ $returnCode -ne 98 ]]; then
+  if [[ $returnCode -eq 0 ]] || [[ $returnCode -eq 97 ]]; then
+    log "JS7 Controller has been shut down"
+  else
+    log "JS7 Controller exited with exit code $returnCode"
+  fi
+
+  if [[ $returnCode -eq 0 ]] || [[ $returnCode -ge 97 ]] && [[ $returnCode -le 99 ]]; then
+    log "Clean $workDir"
+    find "$workDir" -mindepth 1 -delete ! -type d -printf "Removed %p\n"
+  fi
+
+  if [[ $returnCode -eq 97 ]] || [[ $returnCode -eq 98 ]]; then
+    log "Starting again"
+  else
     exit $returnCode
   fi
-  log "Starting again"
 done

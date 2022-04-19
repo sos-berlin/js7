@@ -20,19 +20,17 @@ object JavaMainLockfileSupport
   // Do not call any function that may use a Logger before we own the lock file !!!
   // Because this could trigger an unexpected log file rotation.
 
-  /** Exits program if lockfile is already locked. */
+  /** Exit if lockFile is already locked. */
   def lockAndRunMain(args: Array[String])(body: CommandLineArguments => Unit): Unit =
     CommandLineArguments.parse(args.toIndexedSeq) { arguments =>
-      val dataDirectory = Paths.get(arguments.as[String]("--data-directory="))
-      val stateDirectory = dataDirectory.resolve("state")
-      // lock file is not placed in workDirectory.
-      // Instead we place the lock file in the stateDirectory.
-      // So we can delete the whole workDirectory content at start.
-      if (!exists(stateDirectory)) {
-        createDirectory(stateDirectory)
-      }
-      lock(stateDirectory.resolve("pid")) {
-        cleanWorkDirectory(dataDirectory.resolve("work"))
+      val data = Paths.get(arguments.as[String]("--data-directory="))
+      val state = data.resolve("state")
+      if (!exists(state)) createDirectory(state)
+      // The lockFile secures the state directory against double use.
+      val lockFile = state.resolve("pid")
+
+      lock(lockFile) {
+        cleanWorkDirectory(data.resolve("work"))
         JavaMain.runMain {
           body(arguments)
         }
@@ -46,7 +44,7 @@ object JavaMainLockfileSupport
       createDirectory(workDirectory)
     }
 
-  // Also write out PID to lockFile (Java >= 9)
+  // Also write PID to lockFile (Java >= 9)
   private def lock(lockFile: Path)(body: => Unit): Unit = {
     val lockFileChannel = FileChannel.open(lockFile, CREATE, WRITE)
     Try(lockFileChannel.tryLock()) match {
@@ -66,7 +64,7 @@ object JavaMainLockfileSupport
           }
           body
         } finally lockFileChannel.close()
-        // Let the surrounding start script delete the lockFile containing the PID, if required.
+        // Do not delete the lockFile, to avoid race condition with concurrent start.
     }
   }
 }

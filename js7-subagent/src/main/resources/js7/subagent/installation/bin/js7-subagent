@@ -123,6 +123,10 @@ while true; do
     fi
   fi
 
+  # JS7 will delete the maybeDuplicateStartFile after lock file as been acquired
+  maybeDuplicateStartFile="$workDir/maybe-duplicate-start-$$"
+  touch "$maybeDuplicateStartFile"
+
   execute=(
     "$java"
     "${javaOptions[@]}"
@@ -165,15 +169,19 @@ while true; do
   trap "terminate SIGINT" SIGINT
   if wait $pid; then
     returnCode=${returnCode:-$?}
-    log "JS7 Subagent has been shut down"
-    find "$workDir" -mindepth 1 -delete ! -type f -printf "Removed %p\n"
   else
     returnCode=${returnCode:-$?}
-    log "JS7 Subagent exited with exit code $returnCode"
   fi
   trap - SIGTERM SIGINT
 
-  if [ -n "$crashKillScript" ] && [ -s "$crashKillScript" ]; then :
+  if [[ $returnCode -eq 0 ]] || [[ $returnCode -eq 97 ]]; then
+    log "JS7 Subagent has been shut down"
+  else
+    log "JS7 Subagent exited with exit code $returnCode"
+  fi
+
+  # Run $crashKillScript only when maybeDuplicateStartFile has been deleted (no duplicate start)
+  if [ ! -e "$maybeDuplicateStartFile" ] && [ -s "$crashKillScript" ]; then :
     ps fux || true
     log "Executing crash kill script $crashKillScript:"
     cat "$crashKillScript"
@@ -181,8 +189,14 @@ while true; do
     ps fux || true
   fi
 
-  if [[ $returnCode -ne 97 ]] && [[ $returnCode -ne 98 ]]; then
+  if [[ $returnCode -eq 0 ]] || [[ $returnCode -ge 97 ]] && [[ $returnCode -le 99 ]]; then
+    log "Clean $workDir"
+    find "$workDir" -mindepth 1 -delete ! -type d -printf "Removed %p\n"
+  fi
+
+  if [[ $returnCode -eq 97 ]] || [[ $returnCode -eq 98 ]]; then
+    log "Starting again"
+  else
     exit $returnCode
   fi
-  log "Starting again"
 done

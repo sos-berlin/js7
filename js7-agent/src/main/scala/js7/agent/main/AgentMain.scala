@@ -14,8 +14,8 @@ import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.common.commandline.CommandLineArguments
 import js7.common.system.startup.JavaMain.withShutdownHooks
 import js7.common.system.startup.JavaMainLockfileSupport.lockAndRunMain
-import js7.common.system.startup.StartUp
 import js7.common.system.startup.StartUp.{nowString, printlnWithClock}
+import js7.common.system.startup.{Js7ReturnCodes, StartUp}
 import js7.journal.files.JournalFiles
 import js7.subagent.BareSubagent
 import scala.concurrent.duration.{Deadline, Duration, NANOSECONDS}
@@ -112,7 +112,7 @@ object AgentMain
       terminated = new AgentMain().run(commandLineArguments)
     }
     if (terminated.restart) {
-      System.exit(97)
+      System.exit(Js7ReturnCodes.Restart)
     }
   }
 }

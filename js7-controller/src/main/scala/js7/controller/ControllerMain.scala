@@ -10,8 +10,8 @@ import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.common.commandline.CommandLineArguments
 import js7.common.system.startup.JavaMain.withShutdownHooks
 import js7.common.system.startup.JavaMainLockfileSupport.lockAndRunMain
-import js7.common.system.startup.StartUp
 import js7.common.system.startup.StartUp.{logJavaSettings, nowString, printlnWithClock, startUpLine}
+import js7.common.system.startup.{Js7ReturnCodes, StartUp}
 import js7.controller.configuration.ControllerConfiguration
 import monix.execution.Scheduler
 import scala.concurrent.duration.{Deadline, Duration, NANOSECONDS}
@@ -63,7 +63,7 @@ final class ControllerMain
     } while (restartInProcess)
 
     // Log complete timestamp in case of short log timestamp
-    val msg = " JS7 Controller terminates now" +
+    val msg = "JS7 Controller terminates now" +
       (terminate.restart ?? " and is expected to restart") + s" ($nowString)"
     logger.info(msg)
     printlnWithClock(msg)
@@ -100,7 +100,7 @@ object ControllerMain
       terminate = new ControllerMain().run(commandLineArguments)
     }
     if (terminate.restart) {
-      System.exit(97)
+      System.exit(Js7ReturnCodes.Restart)
     }
   }
 }
