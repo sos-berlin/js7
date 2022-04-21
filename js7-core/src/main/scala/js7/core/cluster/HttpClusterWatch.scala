@@ -8,6 +8,7 @@ import js7.base.io.https.HttpsConfig
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.problem.Problems.InvalidSessionTokenProblem
+import js7.base.session.SessionApi
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.HttpClient.HttpException
@@ -26,6 +27,7 @@ final class HttpClusterWatch(
   protected val httpsConfig: HttpsConfig,
   protected val actorSystem: ActorSystem)
 extends ClusterWatchApi with AkkaHttpClient with HttpSessionApi
+with SessionApi.HasUserAndPassword
 {
   override def close(): Unit = {
     logOpenSession()

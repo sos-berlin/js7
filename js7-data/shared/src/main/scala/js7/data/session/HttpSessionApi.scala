@@ -22,7 +22,7 @@ import scala.concurrent.duration.Deadline.now
 /**
   * @author Joacim Zschimmer
   */
-trait HttpSessionApi extends SessionApi.HasUserAndPassword with HasSessionToken
+trait HttpSessionApi extends SessionApi with HasSessionToken
 {
   protected def httpClient: HttpClient
   protected def sessionUri: Uri
@@ -63,7 +63,7 @@ trait HttpSessionApi extends SessionApi.HasUserAndPassword with HasSessionToken
           case sometoken @ Some(sessionToken) =>
             Task.defer {
               val cmd = Logout(sessionToken)
-              logger.debug(s"$toString: $cmd ${userAndPassword.fold("")(_.userId.string)}")
+              logger.debug(s"$toString: $cmd")
               executeSessionCommand(cmd, suppressSessionToken = true)
                 .doOnFinish(_ => Task {
                   // Change nothing in case of a concurrent successful Logout or Login

@@ -11,7 +11,7 @@ import monix.reactive.Observable
 import scala.reflect.ClassTag
 
 trait EventApi
-extends SessionApi.HasUserAndPassword
+extends SessionApi
 with HasIsIgnorableStackTrace
 {
   type State <: JournaledState[State]

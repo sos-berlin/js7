@@ -6,6 +6,7 @@ import js7.base.auth.UserAndPassword
 import js7.base.configutils.Configs._
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.https.{HttpsConfig, KeyStoreRef, TrustStoreRef}
+import js7.base.session.SessionApi
 import js7.base.utils.HasCloser
 import js7.base.web.Uri
 import js7.common.akkautils.ProvideActorSystem
@@ -22,6 +23,7 @@ private[controller] final class AkkaHttpControllerTextApi(
   protected val print: String => Unit,
   configDirectory: Option[Path] = None)
 extends HasCloser with ProvideActorSystem with TextApi with HttpSessionApi with AkkaHttpClient
+with SessionApi.HasUserAndPassword
 {
   protected val config = config"akka.log-dead-letters = 0"
 

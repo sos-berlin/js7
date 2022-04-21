@@ -64,6 +64,19 @@ object SessionApi
 {
   private val logger = scribe.Logger[this.type]
 
+  def logError(throwable: Throwable): Task[Boolean] =
+    Task {
+      logger.warn(s"$toString: ${throwable.toStringWithCauses}")
+      throwable match {
+        case _: javax.net.ssl.SSLException =>
+        case _ =>
+          if (throwable.getStackTrace.nonEmpty && throwable.getClass.scalaName != "akka.stream.StreamTcpException") {
+            logger.debug(s"$toString: ${throwable.toString}", throwable)
+          }
+      }
+      true
+    }
+
   trait NoSession extends SessionApi
   {
     final def login_(userAndPassword: Option[UserAndPassword], onlyIfNotLoggedIn: Boolean = false) =
@@ -104,19 +117,6 @@ object SessionApi
 
     def logErrorAndTerminate(throwable: Throwable): Task[Boolean] =
       logError(throwable).map(_ => false)
-
-    def logError(throwable: Throwable): Task[Boolean] =
-      Task {
-        logger.warn(s"$toString: ${throwable.toStringWithCauses}")
-        throwable match {
-          case _: javax.net.ssl.SSLException =>
-          case _ =>
-            if (throwable.getStackTrace.nonEmpty && throwable.getClass.scalaName != "akka.stream.StreamTcpException") {
-              logger.debug(s"$toString: ${throwable.toString}", throwable)
-            }
-        }
-        true
-      }
   }
 
   trait HasUserAndPassword extends LoginUntilReachable

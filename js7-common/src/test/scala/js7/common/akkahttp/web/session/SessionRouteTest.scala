@@ -10,6 +10,7 @@ import js7.base.generic.{Completed, SecretString}
 import js7.base.io.https.HttpsConfig
 import js7.base.log.Logger
 import js7.base.problem.Problem
+import js7.base.session.SessionApi
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
@@ -409,9 +410,9 @@ extends AnyFreeSpec with SessionRouteTester
   private def withSessionApi(
     userAndPassword_ : Option[UserAndPassword],
     idsOrUserOrHeaders: Either[Either[Set[UserId], Session#User], List[HttpHeader]] = Right(Nil))
-    (body: HttpSessionApi with AkkaHttpClient => Unit)
+    (body: HttpSessionApi with AkkaHttpClient with SessionApi.HasUserAndPassword => Unit)
   : Unit = {
-    val api = new HttpSessionApi with AkkaHttpClient {
+    val api = new HttpSessionApi with AkkaHttpClient with SessionApi.HasUserAndPassword {
       protected val name = "SessionRouteTest"
       protected def userAndPassword = userAndPassword_
       def httpClient = this: AkkaHttpClient

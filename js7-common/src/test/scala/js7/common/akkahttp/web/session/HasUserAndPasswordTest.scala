@@ -5,6 +5,7 @@ import cats.syntax.flatMap._
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString
 import js7.base.io.https.HttpsConfig
+import js7.base.session.SessionApi
 import js7.base.thread.Futures.implicits._
 import js7.base.time.ScalaTime._
 import js7.base.web.Uri
@@ -24,7 +25,7 @@ final class HasUserAndPasswordTest extends AnyFreeSpec with SessionRouteTester
     @volatile var loopCounter = 0
 
     val apiTask = Resource.fromAutoCloseable(Task {
-      new HttpSessionApi with AkkaHttpClient {
+      new HttpSessionApi with AkkaHttpClient with SessionApi.HasUserAndPassword {
         protected val name = "HasUserAndPasswordTest"
         def httpClient = this
         def sessionUri = Uri(s"$baseUri/session")

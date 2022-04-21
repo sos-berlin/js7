@@ -10,6 +10,7 @@ import js7.agent.data.web.AgentUris
 import js7.base.auth.UserAndPassword
 import js7.base.io.https.HttpsConfig
 import js7.base.problem.Checked
+import js7.base.session.SessionApi
 import js7.base.web.Uri
 import js7.common.http.AkkaHttpClient
 import js7.data.event.{Event, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
@@ -24,7 +25,9 @@ import org.jetbrains.annotations.TestOnly
  *
  * @author Joacim Zschimmer
  */
-trait AgentClient extends AgentApi with HttpSessionApi with AkkaHttpClient
+trait AgentClient
+extends AgentApi with HttpSessionApi with AkkaHttpClient
+with SessionApi.HasUserAndPassword
 {
   protected def httpClient = this
 
