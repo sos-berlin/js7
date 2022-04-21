@@ -1,6 +1,6 @@
 package js7.base.time
 
-import cats.effect.Resource
+import cats.effect.{Resource, Sync}
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import monix.eval.Task
@@ -47,11 +47,12 @@ object AlarmClock
         new ClockCheckingAlarmClock(clockCheckInterval)
     }
 
-  def resource(clockCheckInterval: Option[FiniteDuration] = None)(implicit s: Scheduler)
-  : Resource[Task, AlarmClock] =
+  def resource[F[_]](clockCheckInterval: Option[FiniteDuration] = None)
+    (implicit F: Sync[F], s: Scheduler)
+  : Resource[F, AlarmClock] =
     Resource.make(
-      acquire = Task(AlarmClock(clockCheckInterval)))(
-      release = clock => Task(clock.stop()))
+      acquire = F.delay(AlarmClock(clockCheckInterval)))(
+      release = clock => F.delay(clock.stop()))
 
   private final class SimpleAlarmClock
     (implicit val s: Scheduler)

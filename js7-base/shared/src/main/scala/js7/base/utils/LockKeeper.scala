@@ -1,7 +1,7 @@
 package js7.base.utils
 
 import cats.effect.Resource
-import js7.base.monixutils.MonixBase.syntax.RichMonixTask
+import js7.base.monixutils.MonixBase.syntax._
 import js7.base.utils.LockKeeper._
 import js7.base.utils.ScalaUtils.syntax._
 import monix.eval.Task

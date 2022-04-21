@@ -11,7 +11,7 @@ import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax._
-import js7.base.monixutils.MonixBase.syntax.{RichCheckedTask, RichMonixTask}
+import js7.base.monixutils.MonixBase.syntax._
 import js7.base.monixutils.{AsyncMap, AsyncVariable}
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}

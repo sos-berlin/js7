@@ -2,6 +2,7 @@ package js7.subagent
 
 import cats.Applicative
 import cats.effect.{Resource, Sync}
+import java.nio.file.Path
 import js7.base.auth.SimpleUser
 import js7.base.configutils.Configs.RichConfig
 import js7.base.io.file.FileUtils.provideFile
@@ -103,11 +104,11 @@ object BareSubagent
       val inMemoryJournalSize = config.getInt("js7.journal.event-buffer-size")
 
       (for {
-        iox <- IOExecutor.resource(config, name = conf.name + " I/O")
+        iox <- IOExecutor.resource[Task](config, name = conf.name + " I/O")
         // For BlockingInternalJob (thread-blocking Java jobs)
         blockingInternalJobScheduler <- schedulerServiceToResource(Task(
           newUnlimitedScheduler("JS7 blocking job")))
-        clock <- AlarmClock.resource(Some(alarmClockCheckingInterval))
+        clock <- AlarmClock.resource[Task](Some(alarmClockCheckingInterval))
         journal = new InMemoryJournal(SubagentState.empty,
           size = inMemoryJournalSize,
           waitingFor = "JS7 Agent Director")
@@ -131,9 +132,9 @@ object BareSubagent
       }).executeOn(js7Scheduler)
     })
 
-  private def provideUriFile(conf: SubagentConf, uri: Checked[Uri]) = {
+  private def provideUriFile(conf: SubagentConf, uri: Checked[Uri]): Resource[Task, Path] = {
     val uriFile = conf.workDirectory / "http-uri"
-    provideFile(uriFile)
+    provideFile[Task](uriFile)
       .evalTap(_ => Task {
         for (uri <- uri) uriFile := s"$uri/subagent"
       })
@@ -142,6 +143,5 @@ object BareSubagent
   def threadPoolResource[F[_]](conf: SubagentConf, orCommon: Option[Scheduler] = None)
     (implicit F: Sync[F], FA: Applicative[F])
   : Resource[F, Scheduler] =
-    ThreadPools
-      .standardSchedulerResource[F](conf.name, conf.config, orCommon = orCommon)
+    ThreadPools.standardSchedulerResource[F](conf.name, conf.config, orCommon = orCommon)
 }

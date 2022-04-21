@@ -16,7 +16,7 @@ import js7.base.generic.Completed
 import js7.base.io.file.FileUtils.provideFile
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.log.Logger
-import js7.base.monixutils.MonixBase.syntax.RichMonixTask
+import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.JavaTimeConverters._
@@ -68,7 +68,7 @@ final class SessionRegister[S <: Session] private[session](
     val sessionTokenFile = workDirectory / "session-token"
     val headersFile = workDirectory / "secret-http-headers"
     provideSessionTokenFile(user, sessionTokenFile)
-      .flatTap(sessionToken => provideFile(headersFile)
+      .flatTap(sessionToken => provideFile[Task](headersFile)
         .*>(Resource.eval(Task {
           createFile(headersFile, operatingSystem.secretFileAttributes: _*)
           headersFile := `x-js7-session`.name + ": " + sessionToken.secret.string + "\n"
@@ -76,7 +76,7 @@ final class SessionRegister[S <: Session] private[session](
   }
 
   private def provideSessionTokenFile(user: S#User, file: Path): Resource[Task, SessionToken] =
-    provideFile(file)
+    provideFile[Task](file)
       .flatMap(file => Resource.eval(createSystemSession(user, file)))
 
   private def createSystemSession(user: S#User, file: Path): Task[SessionToken] =

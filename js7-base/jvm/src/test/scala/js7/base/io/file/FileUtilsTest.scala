@@ -15,8 +15,7 @@ import js7.base.io.file.FileUtils.{autoDeleting, checkRelativePath, copyDirector
 import js7.base.io.file.FileUtilsTest._
 import js7.base.problem.ProblemException
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
-import monix.eval.Task
+import monix.eval.{Coeval, Task}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
@@ -257,9 +256,9 @@ final class FileUtilsTest extends AnyFreeSpec with BeforeAndAfterAll
 
   "provideFile"  in {
     withTemporaryFile("FileUtilsTest-", ".tmp") { file =>
-      provideFile(file).use { file =>
-        Task(assert(exists(file)))
-      }.await(99.s)
+      provideFile[Coeval](file)
+        .use(file => Coeval(assert(exists(file))))
+        .value()
       assert(!exists(file))
     }
   }

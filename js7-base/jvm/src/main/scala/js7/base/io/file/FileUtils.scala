@@ -1,6 +1,6 @@
 package js7.base.io.file
 
-import cats.effect.Resource
+import cats.effect.{Resource, Sync}
 import java.io.{BufferedOutputStream, File, FileOutputStream, IOException, OutputStreamWriter}
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets.UTF_8
@@ -220,10 +220,10 @@ object FileUtils
       acquire = Task(Files.createTempDirectory(prefix)))(
       release = dir => Task(deleteDirectoryRecursively(dir)))
 
-  def provideFile(file: Path): Resource[Task, Path] =
+  def provideFile[F[_]](file: Path)(implicit F: Sync[F]): Resource[F, Path] =
     Resource.make(
-      acquire = Task.pure(file))(
-      release = _ => Task {
+      acquire = F.pure(file))(
+      release = _ => F.delay {
         try deleteIfExists(file)
         catch { case t: IOException => logger.error(s"Delete $file => $t")}
       })

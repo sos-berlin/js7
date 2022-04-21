@@ -1,7 +1,7 @@
 package js7.journal.watch
 
 import cats.syntax.traverse._
-import js7.base.monixutils.MonixBase.syntax.RichMonixTask
+import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.BinarySearch.binarySearch

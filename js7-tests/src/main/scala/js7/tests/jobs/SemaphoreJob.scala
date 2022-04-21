@@ -2,7 +2,7 @@ package js7.tests.jobs
 
 import cats.effect.ExitCase
 import js7.base.log.Logger
-import js7.base.monixutils.MonixBase.syntax.RichMonixTask
+import js7.base.monixutils.MonixBase.syntax._
 import js7.data.order.Outcome
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob

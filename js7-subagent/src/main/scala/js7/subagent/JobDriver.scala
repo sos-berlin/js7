@@ -6,7 +6,7 @@ import java.util.Objects.requireNonNull
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.log.Logger
-import js7.base.monixutils.MonixBase.syntax.{RichCheckedTask, RichMonixTask}
+import js7.base.monixutils.MonixBase.syntax._
 import js7.base.monixutils.MonixDeadline.syntax.DeadlineSchedule
 import js7.base.monixutils.{AsyncMap, MonixDeadline}
 import js7.base.problem.Checked

@@ -1,6 +1,6 @@
 package js7.base.thread
 
-import cats.effect.Resource
+import cats.effect.{Resource, Sync}
 import com.typesafe.config.Config
 import java.lang.Thread.currentThread
 import java.util.concurrent.{Executor, ThreadPoolExecutor}
@@ -43,11 +43,11 @@ object IOExecutor
     implicit val globalIOX = IOExecutor.globalIOX
   }
 
-  def resource(config: Config, name: String): Resource[Task, IOExecutor] =
+  def resource[F[_]](config: Config, name: String)(implicit F: Sync[F]): Resource[F, IOExecutor] =
     Resource
       .make(
-        acquire = Task(newUnlimitedThreadPool(config, name)))(
-        release = o => Task(o.shutdown()))
+        acquire = F.delay(newUnlimitedThreadPool(config, name)))(
+        release = o => F.delay(o.shutdown()))
       .map(new IOExecutor(_))
 
   def ioFuture[A](body: => A)(implicit iox: IOExecutor): Future[A] =

@@ -2,7 +2,7 @@ package js7.tests.addOrders
 
 import cats.syntax.flatMap._
 import com.typesafe.config.ConfigFactory
-import js7.base.monixutils.MonixBase.syntax.RichMonixTask
+import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._

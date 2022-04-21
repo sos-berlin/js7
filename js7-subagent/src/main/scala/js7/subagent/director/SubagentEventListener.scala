@@ -6,7 +6,7 @@ import cats.syntax.traverse._
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax._
-import js7.base.monixutils.MonixBase.syntax.{RichMonixObservable, RichMonixTask}
+import js7.base.monixutils.MonixBase.syntax._
 import js7.base.monixutils.ObservablePauseDetector.RichPauseObservable
 import js7.base.monixutils.Switch
 import js7.base.problem.Checked._
