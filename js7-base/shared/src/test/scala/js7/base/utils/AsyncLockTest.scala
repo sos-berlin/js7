@@ -31,7 +31,7 @@ final class AsyncLockTest extends AsyncFreeSpec
       doTest(lock.lock(_))
         .map(o => assert(o == Vector.fill(n)(initial)))
         // High probability to fail once
-        .onErrorRestartLoop(100) {
+        .onErrorRestartLoop(1000) {
           case (t, 0, _) => Task.raiseError(t)
           case (_, i, retry) => retry(i - 1)
         }
