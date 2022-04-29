@@ -77,7 +77,6 @@ trait SubagentTester extends ControllerAgentForScalaTest
     subagentItem: SubagentItem,
     config: Config = ConfigFactory.empty,
     suffix: String = "",
-    // FIXME awaitCoupled ?
     awaitDedicated: Boolean = true,
     suppressSignatureKeys: Boolean = false)
   : Resource[Task, BareSubagent] =

@@ -130,7 +130,7 @@ final class ObservableNumberedQueue[V: Tag]
         .*>(Task {
           val s = _state
           val result = s.queue
-          _state = s.copy(stopped = true, queue = Vector.empty)
+          _state = s.stop
           result
         }))
 
@@ -151,6 +151,11 @@ final class ObservableNumberedQueue[V: Tag]
     queue: Vector[Numbered[V]] = Vector.empty[Numbered[V]],
     stopped: Boolean = false)
   {
+    def stop: State =
+      copy(
+        stopped = true,
+        queue = Vector.empty)
+
     def readQueue(after: Long): Checked[Vector[Numbered[V]]] =
       if (stopped)
         Left(StoppedProblem)
@@ -175,10 +180,8 @@ final class ObservableNumberedQueue[V: Tag]
       notStopped *> {
         val minimum = queue.headOption.map(_.number - 1) getOrElse torn
         val last = queue.lastOption.map(_.number) getOrElse torn
-        (minimum <= after && after <= last) !! {
-          val a = 1
+        (minimum <= after && after <= last) !!
           Problem.pure(s"Unknown number: Numbered[$vName]: #$after (must be >=$minimum and <=$last)")
-        }
       }
 
     def unknownAfterProblem(after: Long) = {
