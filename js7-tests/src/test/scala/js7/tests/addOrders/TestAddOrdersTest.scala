@@ -3,7 +3,7 @@ package js7.tests.addOrders
 import js7.base.circeutils.CirceUtils.RichCirceString
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.JavaResource
-import js7.base.log.Logger
+import js7.base.log.{Logger, OpIdBinder}
 import js7.base.problem.Checked._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
@@ -21,6 +21,11 @@ final class TestAddOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTe
 {
   protected val agentPaths = Seq(AgentPath("agent-1"), AgentPath("agent-2"))
   protected val items = Seq(workflow)
+
+  override def afterAll(): Unit = {
+    super.afterAll()
+    OpIdBinder.logStatistics()
+  }
 
   override protected def controllerConfig = config"""
     js7.auth.users.TestAddOrders.password = "plain:TEST-PASSWORD"
@@ -59,7 +64,7 @@ private object TestAddOrdersTest
 
   private val workflow =
     JavaResource(
-      "js7/install/docker/volumes/provider/config/live/testCase3.workflow.json"
+      "js7/install/docker/volumes/provider/config/live/testCase3Empty.workflow.json"
     ).asUTF8String.parseJsonAs[Workflow].orThrow
       .withId(WorkflowPath("testCase3"))
 }
