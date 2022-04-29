@@ -151,13 +151,17 @@ object AgentCommand extends CommonCommand.Companion
   extends AgentCommand
   {
     type Response = Response.Accepted
+
+    override def toShortString =
+      s"AttachItem(${item.key}${item.itemRevision.fold("")(o => "~" + o.number)})"
   }
 
   final case class AttachSignedItem(signed: Signed[SignableItem])
   extends AgentCommand
   {
     type Response = Response.Accepted
-    override def toString = s"AttachSignedItem(${signed.value.key})"
+    override def toShortString = s"AttachSignedItem(${signed.value.key})"
+    override def toString = toShortString
   }
   object AttachSignedItem {
     // Same serialization as SignedItemAdded event
