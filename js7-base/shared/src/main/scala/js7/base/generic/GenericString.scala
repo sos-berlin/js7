@@ -16,7 +16,7 @@ trait GenericString
 
   final def isEmpty = string.isEmpty
 
-  final def nonEmpty = string.nonEmpty
+  final def nonEmpty = !isEmpty
 
   override def toString = string
 
