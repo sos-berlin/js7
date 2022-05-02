@@ -115,10 +115,10 @@ with StateView
       repo = repo.applyEvent(event).orThrow
 
     case agentRefState: AgentRefState =>
-      val (agentRef, subagentItem) = agentRefState.agentRef.convertFromLegacy.orThrow
+      val (agentRef, maybeSubagentItem) = agentRefState.agentRef.convertFromV2_1.orThrow
 
       _pathToAgentRefState.insert(agentRef.path -> agentRefState.copy(agentRef = agentRef))
-      for (subagentItem <- subagentItem) {
+      for (subagentItem <- maybeSubagentItem) {
         _idToSubagentItemState.insert(subagentItem.id -> SubagentItemState.initial(subagentItem))
       }
 
@@ -196,10 +196,10 @@ with StateView
                   _pathToLockState.insert(lock.path -> LockState(lock))
 
                 case addedAgentRef: AgentRef =>
-                  val (agentRef, subagentItem) = addedAgentRef.convertFromLegacy.orThrow
+                  val (agentRef, maybeSubagentItem) = addedAgentRef.convertFromV2_1.orThrow
 
                   _pathToAgentRefState.insert(agentRef.path -> AgentRefState(agentRef))
-                  for (subagentItem <- subagentItem) {
+                  for (subagentItem <- maybeSubagentItem) {
                     _idToSubagentItemState.insert(subagentItem.id -> SubagentItemState.initial(subagentItem))
                   }
 
@@ -226,20 +226,19 @@ with StateView
                     lock = lock)
 
                 case changedAgentRef: AgentRef =>
-                  val (agentRef, subagentItem) = changedAgentRef.convertFromLegacy.orThrow
+                  val (agentRef, maybeSubagentItem) = changedAgentRef.convertFromV2_1.orThrow
 
                   _pathToAgentRefState(agentRef.path) = _pathToAgentRefState(agentRef.path).copy(
                     agentRef = agentRef)
 
-                  for (subagentItem <- subagentItem) {
+                  for (subagentItem <- maybeSubagentItem) {
                     _idToSubagentItemState.updateWith(subagentItem.id) {
                       case None =>
                         Some(SubagentItemState.initial(subagentItem))
 
                       case Some(previous) =>
                         Some(previous.copy(
-                          subagentItem = previous.subagentItem.copy(
-                            uri = subagentItem.uri)))
+                          subagentItem = previous.item.updateUri(subagentItem.uri)))
                     }
                   }
 

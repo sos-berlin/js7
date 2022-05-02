@@ -43,13 +43,14 @@ extends UnsignedSimpleItem
 
   override def referencedItemPaths = directors.view
 
-  def convertFromLegacy: Checked[(AgentRef, Option[SubagentItem])] =
+  // COMPATIBLE with v2.1
+  /** Converts a legacy AgentRef to a modern AgentRef and a local SubagentItem. */
+  def convertFromV2_1: Checked[(AgentRef, Option[SubagentItem])] =
     this match {
       case AgentRef(agentPath, directors, Some(uri), itemRevision) =>
         if (directors.nonEmpty)
           Left(Problem.pure("Invalid AgentRef: both directors and uri?"))
         else {
-          // COMPATIBLE with v2.2
           val subagentItem = SubagentItem(
             SubagentId.legacyLocalFromAgentPath(agentPath),
             agentPath, uri,

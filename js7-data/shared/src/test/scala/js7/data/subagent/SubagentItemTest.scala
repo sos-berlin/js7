@@ -5,7 +5,7 @@ import js7.base.web.Uri
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerState.inventoryItemJsonCodec
 import js7.data.item.{InventoryItem, ItemRevision}
-import js7.tester.CirceJsonTester.testJson
+import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 import org.scalatest.freespec.AnyFreeSpec
 
 final class SubagentItemTest extends AnyFreeSpec
@@ -24,6 +24,21 @@ final class SubagentItemTest extends AnyFreeSpec
         "agentPath": "AGENT",
         "uri": "https://example.com",
         "disabled": true,
+        "itemRevision": 1
+      }""")
+
+    // COMPATIBLE with v2.2.2
+    testJsonDecoder[InventoryItem](
+      SubagentItem(
+        SubagentId("SUBAGENT"),
+        AgentPath("AGENT"),
+        Uri("https://example.com"),
+        itemRevision = Some(ItemRevision(1))),
+      json"""{
+        "TYPE": "SubagentItem",
+        "id": "SUBAGENT",
+        "agentPath": "AGENT",
+        "uri": "https://example.com",
         "itemRevision": 1
       }""")
   }

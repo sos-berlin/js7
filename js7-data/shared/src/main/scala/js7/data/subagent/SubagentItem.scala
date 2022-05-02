@@ -3,6 +3,7 @@ package js7.data.subagent
 import io.circe.Codec
 import io.circe.generic.extras.Configuration.default.withDefaults
 import io.circe.generic.extras.semiauto.deriveConfiguredCodec
+import js7.base.circeutils.typed.Subtype
 import js7.base.web.Uri
 import js7.data.agent.AgentPath
 import js7.data.item.{ItemRevision, UnsignedSimpleItem}
@@ -32,6 +33,13 @@ extends UnsignedSimpleItem
 
   // Circular dependency! AgentRef references subagentId: Seq[SubagentId]
   override def referencedItemPaths = new View.Single(agentPath)
+
+  // COMPATIBLE with v2.1
+  def updateUri(uri: Uri): SubagentItem =
+    copy(
+      uri = uri,
+      itemRevision = Some(
+        itemRevision.fold(ItemRevision(1))(_.next)))
 }
 
 object SubagentItem
@@ -49,4 +57,7 @@ extends UnsignedSimpleItem.Companion[SubagentItem]
     implicit val x = withDefaults
     deriveConfiguredCodec[SubagentItem]
   }
+
+  override val subtype: Subtype[SubagentItem] =
+    Subtype.withAliases(jsonCodec, aliases = Seq("SubagentRef"))
 }
