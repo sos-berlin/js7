@@ -3,8 +3,9 @@
 /target/
 /*/target/
 /*/*/target/
-/project/project/project/target/
-/project/project/project/project/target/
+/project/project/
+#/project/project/project/target/
+#/project/project/project/project/target/
 
 # INTELLIJ IDEA
 /.idea/
@@ -19,6 +20,7 @@ idea-shared-test
 /project/project/.bloop/
 /.metals/
 /.vscode/
+/project/metals.sbt
 
 # MacOS
 .DS_Store
