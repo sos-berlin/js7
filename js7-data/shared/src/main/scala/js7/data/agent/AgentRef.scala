@@ -24,11 +24,11 @@ extends UnsignedSimpleItem
       _ <- AgentPath.checked(path.string)
       _ <-
         if (directors.isEmpty && uri.isEmpty)
-          Left(Problem.pure(s"Missing Director in AgentRef '$path'"))
+          Left(Problem.pure(s"Missing Director in $path"))
         else if (directors.nonEmpty && uri.nonEmpty)
           Left(Problem.pure(s"AgentRef.directors cannot be used with .uri"))
         else if (directors.sizeIs > 1)
-          Left(Problem.pure("Only one Agent Director is allowed in AgentRef '$path'"))
+          Left(Problem.pure(s"Only one Agent Director is allowed in $path"))
         else
           Checked.unit
     } yield this
