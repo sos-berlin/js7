@@ -84,6 +84,9 @@ object BlockingInternalJob
     def jobResourceVariable(jobResourcePath: JobResourcePath, name: String): VEither[Problem, Value] =
       asScala.jobResourceVariable(jobResourcePath, name)
         .toVavr
+
+    lazy val env: VEither[Problem, JMap[String, String]] =
+      asScala.env.map(_.asJava).toVavr
   }
   object Step {
     def apply(asScala: InternalJob.Step)(implicit s: Scheduler): Step =

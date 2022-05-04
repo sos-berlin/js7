@@ -91,16 +91,14 @@ public final class TestBlockingInternalJob implements BlockingInternalJob
             // The recommened way is to access the declared job arguments:
             Value argOrNull = step.arguments().get("STEP_ARG");
 
-            {
-                // Access any (maybe undeclared) named values
-                // like $ORDER_ARG in the expression language.
-                // Returns a declared Order default value, too.
-                // STEP_ARG is not accessible here.
-                assertThat(step.namedValue("ORDER_ARG"), equalTo(Optional
-                    .ofNullable(argOrNull)
-                    .map(o -> right(o))));
-                assertThat(step.namedValue("UNKNOWN"), equalTo(Optional.empty()));
-            }
+            // Access any (maybe undeclared) named values
+            // like $ORDER_ARG in the expression language.
+            // Returns a declared Order default value, too.
+            // STEP_ARG is not accessible here.
+            assertThat(step.namedValue("ORDER_ARG"), equalTo(Optional
+                .ofNullable(argOrNull)
+                .map(o -> right(o))));
+            assertThat(step.namedValue("UNKNOWN"), equalTo(Optional.empty()));
 
             // 💥 May throw NullPointerException or ArithmeticException 💥
             long arg = ((NumberValue)argOrNull).toBigDecimal().longValueExact();

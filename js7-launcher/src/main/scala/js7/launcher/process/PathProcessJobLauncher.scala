@@ -25,7 +25,7 @@ trait PathProcessJobLauncher extends ProcessJobLauncher
   final def toOrderProcess(processOrder: ProcessOrder) =
     checkFile
       .flatMapT(file => Task(
-        evalEnv(executable.env, processOrder.scope)
+        ProcessOrder.evalEnv(executable.env, processOrder.scope)
           .map(env =>
             makeOrderProcess(
               processOrder,

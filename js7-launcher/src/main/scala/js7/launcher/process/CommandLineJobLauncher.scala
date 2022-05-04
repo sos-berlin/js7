@@ -22,7 +22,7 @@ extends ProcessJobLauncher
         .eval(executable.commandLineExpression)
         .flatMap { commandLine =>
           warnIfNotExecutable(commandLine.file)
-          evalEnv(executable.env, processOrder.scope)
+          ProcessOrder.evalEnv(executable.env, processOrder.scope)
             .map(env =>
               makeOrderProcess(
                 processOrder,

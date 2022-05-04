@@ -136,4 +136,8 @@ trait ProcessingOrderScopes extends OrderScopes
   protected[scopes] final def evalLazilyJobDefaultArguments(expressionMap: MapView[String, Expression])
   : MapView[String, Checked[Value]] =
     evalLazilyExpressions(expressionMap.view)(scopeForOrderDefaultArguments)
+
+  final def evalLazilyJobResourceEnv(jobResource: JobResource): MapView[String, Checked[String]] =
+    evalLazilyExpressions(jobResource.env.view)(scopeForJobResources)
+      .mapValues(_.flatMap(_.toStringValueString))
 }
