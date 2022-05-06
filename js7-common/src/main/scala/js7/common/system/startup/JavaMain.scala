@@ -12,13 +12,15 @@ import js7.common.utils.JavaShutdownHook
 object JavaMain
 {
   private val AkkaShutdownHook = "akka.coordinated-shutdown.run-by-jvm-shutdown-hook"
-  private val logger = Logger(getClass)
+  private lazy val logger = Logger[this.type]
 
   def runMain(body: => Unit): Unit =
     try {
+      Log4j.initialize()
       coupleScribeWithSlf4j()
-      Log4j  // initialize
       ProblemCodeMessages.initialize()
+      // Initialize class and object for possible quicker emergency stop
+      Halt.initialize()
       body
       Log4j.shutdown()
     } catch { case t: Throwable =>

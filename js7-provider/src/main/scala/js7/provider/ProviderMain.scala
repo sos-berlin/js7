@@ -13,7 +13,7 @@ import js7.common.system.startup.StartUp.logJavaSettings
 import js7.provider.configuration.ProviderConfiguration
 import monix.eval.Task
 import monix.execution.CancelableFuture
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.{Future, Promise}
 
 /**
@@ -23,12 +23,12 @@ object ProviderMain
 {
   coupleScribeWithSlf4j()
 
-  private val logger = Logger(getClass)
+  private lazy val logger = Logger[this.type]
 
-  def main(args: Array[String]): Unit = {
-    // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
-    logger.info(s"Provider ${BuildInfo.longVersion}")
+  def main(args: Array[String]): Unit =
     runMain {
+      // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
+      logger.info(s"Provider ${BuildInfo.longVersion}")
       val conf = ProviderConfiguration.fromCommandLine(args.toVector)
       logger.info(s"config=${conf.configDirectory}")
       logConfig(conf.config)
@@ -42,7 +42,6 @@ object ProviderMain
         awaitTermination(terminated)
       }
     }
-  }
 
   private def onJavaShutdown(stop: Promise[Unit], future: CancelableFuture[Unit]): Unit = {
     logger.warn("Trying to terminate Provider due to Java shutdown")

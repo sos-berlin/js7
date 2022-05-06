@@ -7,6 +7,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.PathMatcher.{Matched, Unmatched}
 import akka.http.scaladsl.server.{ContentNegotiator, Directive, Directive0, Directive1, PathMatcher, PathMatcher0, Route, UnacceptedResponseContentTypeRejection, ValidationRejection}
 import akka.shapeless.HNil
+import js7.base.log.CorrelIdBinder.bindCorrelId
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.annotation.tailrec
@@ -61,10 +62,11 @@ object AkkaHttpServerUtils
         case Accept(requestedMediaTypes) if requestedMediaTypes exists { o => mediaTypes exists o.matches } =>
           inner
         case _ =>
-          reject(UnacceptedResponseContentTypeRejection(mediaTypes collect {
-            case m: MediaType.WithOpenCharset => ContentNegotiator.Alternative.MediaType(m)
-            case m: MediaType.WithFixedCharset => ContentNegotiator.Alternative.ContentType(m)
-          }))
+          reject(UnacceptedResponseContentTypeRejection(
+            mediaTypes.collect[ContentNegotiator.Alternative] {
+              case m: MediaType.WithOpenCharset => ContentNegotiator.Alternative.MediaType(m)
+              case m: MediaType.WithFixedCharset => ContentNegotiator.Alternative.ContentType(m)
+            }))
       }
     }
 
@@ -241,5 +243,17 @@ object AkkaHttpServerUtils
   }
 
   def completeTask[A: ToResponseMarshaller](task: Task[A])(implicit s: Scheduler): Route =
-    complete(task.runToFuture)
+    optionalAttribute(WebLogDirectives.CorrelIdAttributeKey) {
+      case None =>
+        complete {
+          task.runToFuture
+        }
+
+      case Some(correlId) =>
+        complete {
+          bindCorrelId(correlId) {
+            task.runToFuture
+          }
+        }
+    }
 }

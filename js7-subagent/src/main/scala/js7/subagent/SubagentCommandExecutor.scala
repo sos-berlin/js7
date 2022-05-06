@@ -101,14 +101,17 @@ extends SubagentExecutor
           case NoOperation =>
             Task.pure(Right(SubagentCommand.Accepted))
 
-          case SubagentCommand.Batch(commands) =>
+          case SubagentCommand.Batch(correlIdWrappedCommands) =>
             // TODO Sobald Kommandos in einem Stream geschickt werden,
             //  wird Batch wohl nicht mehr gebraucht.
             // Der Stream braucht dann Kommando-Transaktionen?
             Observable
-              .fromIterable(commands)
+              .fromIterable(correlIdWrappedCommands)
               // mapEval is executed one by one with takeWhileInclusive
-              .mapEval(cmd => executeCommand(numbered.copy(value = cmd)))
+              .mapEval(_
+                .bindCorrelId(subcmd =>
+                  executeCommand(numbered.copy(value = subcmd))
+                    .map(_.map(o => o: SubagentCommand.Response))))
               .takeWhileInclusive(_.isRight)  // Don't continue after first problem
               .map(_.rightAs(()))
               .foldL

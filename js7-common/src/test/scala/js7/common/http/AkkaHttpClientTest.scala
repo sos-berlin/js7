@@ -13,6 +13,7 @@ import js7.base.auth.SessionToken
 import js7.base.circeutils.CirceUtils._
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.https.HttpsConfig
+import js7.base.log.CorrelId
 import js7.base.problem.Problem
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
@@ -26,7 +27,7 @@ import js7.common.akkahttp.StandardMarshallers._
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkautils.Akkas
 import js7.common.akkautils.Akkas.newActorSystem
-import js7.common.http.AkkaHttpClient.{HttpException, toPrettyProblem}
+import js7.common.http.AkkaHttpClient.{HttpException, `x-js7-correlation-id`, toPrettyProblem}
 import js7.common.http.AkkaHttpClientTest._
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.StreamingSupport.AkkaObservable
@@ -39,6 +40,7 @@ import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Await
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
+import scala.util.{Failure, Success}
 
 /**
   * @author Joacim Zschimmer
@@ -284,6 +286,19 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll with H
         assert(a.value.get.isFailure)
       }
     }
+  }
+
+  "Header x-js7-correlation-id uses ASCII" in {
+    val h = `x-js7-correlation-id`(CorrelId("_CORRELñ"))
+    val asciiString = "_CORREL-"
+
+    assert(h.value == asciiString)
+    assert(`x-js7-correlation-id`.parse(asciiString) == Success(h))
+
+    assert(`x-js7-correlation-id`.parse("_CORRELñX") == Failure(Problem("Invalid CorrelId")
+      .throwable))
+    assert(`x-js7-correlation-id`.parse("_CORREL?") == Failure(Problem("Invalid CorrelId")
+      .throwable))
   }
 }
 

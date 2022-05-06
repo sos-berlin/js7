@@ -16,8 +16,7 @@ import java.nio.charset.Charset
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicBoolean
 import js7.base.io.file.FileUtils.syntax.RichPath
-import js7.base.io.process.Processes.Pid
-import js7.base.io.process.{Js7Process, ReturnCode, Stderr, Stdout, StdoutOrStderr}
+import js7.base.io.process.{Js7Process, Pid, ReturnCode, Stderr, Stdout, StdoutOrStderr}
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.utils.AutoClosing.autoClosing

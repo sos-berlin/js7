@@ -14,7 +14,7 @@ trait GenericString
 {
   def string: String
 
-  final def isEmpty = string.isEmpty
+  def isEmpty = string.isEmpty
 
   final def nonEmpty = !isEmpty
 

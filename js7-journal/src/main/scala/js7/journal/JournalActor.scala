@@ -8,7 +8,7 @@ import java.nio.file.Path
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import js7.base.circeutils.CirceUtils._
 import js7.base.generic.Completed
-import js7.base.log.Logger
+import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
@@ -160,7 +160,7 @@ extends Actor with Stash with JournalLogging
     logger.info(s"Ready, writing ${if (conf.syncOnCommit) "(with sync)" else "(without sync)"} journal file '${eventWriter.file.getFileName}'")
 
   private def ready: Receive = receiveGet orElse {
-    case Input.Store(timestamped, replyTo, options, since, commitLater, callersItem) =>
+    case Input.Store(correlId, timestamped, replyTo, options, since, commitLater, callersItem) =>
       if (switchedOver) {
         for (o <- timestamped) {
           logger.debug(s"Event ignored while active cluster node is switching over: ${o.keyedEvent.toString.truncateWithEllipsis(200)}")
@@ -190,14 +190,14 @@ extends Actor with Stash with JournalLogging
             if (commitLater && !requireClusterAcknowledgement/*? irrelevant because acceptEarly is not used in a Cluster for now*/) {
               reply(sender(), replyTo, Output.Accepted(callersItem))
               persistBuffer.add(
-                AcceptEarlyPersist(totalEventCount + 1, stampedEvents.size, since,
+                AcceptEarlyPersist(correlId, totalEventCount + 1, stampedEvents.size, since,
                   lastFileLengthAndEventId, sender()))
               // acceptEarly-events must not modify the SnapshotableState !!!
               // The EventId will be updated.
               // Ergibt falsche Reihenfolge mit dem anderen Aufruf: logCommitted(flushed = false, synced = false, stampedEvents)
             } else {
               persistBuffer.add(
-                StandardPersist(totalEventCount + 1, stampedEvents, options.transaction, since,
+                StandardPersist(correlId, totalEventCount + 1, stampedEvents, options.transaction, since,
                   lastFileLengthAndEventId, replyTo, sender(), callersItem))
             }
             totalEventCount += stampedEvents.size
@@ -565,8 +565,10 @@ extends Actor with Stash with JournalLogging
     snapshotWriter.writeEvent(snapshotTaken)
     snapshotWriter.flush(sync = conf.syncOnCommit)
     locally {
-      val standardPersist = StandardPersist(totalEventCount + 1, snapshotTaken :: Nil, false, since,
-        Some(PositionAnd(snapshotWriter.fileLength, snapshotTaken.eventId)), Actor.noSender, null, null)
+      val standardPersist = StandardPersist(
+        CorrelId.empty, totalEventCount + 1, snapshotTaken :: Nil, false, since,
+        Some(PositionAnd(snapshotWriter.fileLength, snapshotTaken.eventId)),
+        Actor.noSender, null, null)
       standardPersist.isLastOfFlushedOrSynced = true
       persistBuffer.add(standardPersist)
     }
@@ -720,6 +722,7 @@ object JournalActor
       journalingObserver: Option[JournalingObserver] = None)
 
     private[journal] final case class Store(
+      correlId: CorrelId,
       timestamped: Seq[Timestamped],
       journalingActor: ActorRef,
       options: CommitOptions,
@@ -813,6 +816,7 @@ object JournalActor
 
   /** A bundle of written but not yet committed (flushed and acknowledged) Persists. */
   private final case class StandardPersist(
+    correlId: CorrelId,
     eventNumber: Long,
     stampedSeq: Seq[Stamped[AnyKeyedEvent]],
     isTransaction: Boolean,
@@ -834,6 +838,7 @@ object JournalActor
 
   // Without event to keep heap usage low (especially for many big stdout event)
   private final case class AcceptEarlyPersist(
+    correlId: CorrelId,
     eventNumber: Long,
     eventCount: Int,
     since: Deadline,

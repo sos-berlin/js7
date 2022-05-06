@@ -7,6 +7,7 @@ import javax.inject.Singleton
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.Akkas.newAgentActorSystem
 import js7.base.auth.SimpleUser
+import js7.base.log.CorrelIdBinder
 import js7.base.thread.IOExecutor
 import js7.base.thread.ThreadPoolsBase.newUnlimitedThreadPool
 import js7.base.time.JavaTimeConverters.AsScalaDuration
@@ -20,7 +21,6 @@ import js7.common.system.ThreadPools.newUnlimitedScheduler
 import js7.journal.{EventIdClock, EventIdGenerator}
 import js7.launcher.configuration.JobLauncherConf
 import monix.execution.Scheduler
-import monix.execution.schedulers.SchedulerService
 import scala.concurrent.ExecutionContext
 
 /**
@@ -78,17 +78,17 @@ extends AbstractModule
 
   @Provides @Singleton
   def scheduler(configuration: AgentConfiguration, closer: Closer): Scheduler =
-    commonScheduler getOrElse
+    commonScheduler.map(CorrelIdBinder.enableScheduler(_)) getOrElse
       ThreadPools.newStandardScheduler(configuration.name, configuration.config, closer)
 
   @Provides @Singleton
   def jobLauncherConf(conf: AgentConfiguration, iox: IOExecutor, clock: AlarmClock, closer: Closer)
   : JobLauncherConf = {
-    val blockingJobScheduler: SchedulerService = {
+    val blockingJobScheduler: Scheduler = {
       // For BlockingInternalJob (thread-blocking Java jobs)
       val scheduler = newUnlimitedScheduler("JS7 blocking job")
       closer.onClose(scheduler.shutdown())
-      scheduler
+      CorrelIdBinder.enableScheduler(scheduler)
     }
     conf.toJobLauncherConf(iox, blockingJobScheduler, clock).orThrow
   }

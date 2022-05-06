@@ -9,6 +9,7 @@ import cats.syntax.foldable._
 import cats.syntax.traverse._
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGKILL
+import js7.base.log.CorrelIdBinder.{bindCorrelId, currentCorrelId}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax._
 import js7.base.monixutils.MonixBase.syntax._
@@ -199,7 +200,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
         cancelableWhileWaitingForSubagent(orderId)
           .use(canceledPromise =>
             Task.race(
-              Task.fromFuture(canceledPromise.future),
+              Task.fromFuture(bindCorrelId(currentCorrelId)(canceledPromise.future)),
               selectSubagentDriver(maybeSelectionId)))
           .map(_.toOption)
           .map(Right(_)))

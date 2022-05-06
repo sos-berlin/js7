@@ -24,7 +24,7 @@ import js7.launcher.forwindows.configuration.WindowsConf
 import js7.launcher.process.ProcessKillScriptProvider
 import js7.subagent.SubagentDriver.StdouterrConf
 import js7.subagent.configuration.SubagentConf._
-import monix.execution.schedulers.SchedulerService
+import monix.execution.Scheduler
 import scala.concurrent.duration.FiniteDuration
 
 final case class SubagentConf(
@@ -81,7 +81,7 @@ extends CommonConfiguration
     this
   }
 
-  def toJobLauncherConf(iox: IOExecutor, blockingJobScheduler: SchedulerService, clock: AlarmClock)
+  def toJobLauncherConf(iox: IOExecutor, blockingJobScheduler: Scheduler, clock: AlarmClock)
   : Checked[JobLauncherConf] = {
     val sigtermName = "js7.job.execution.kill-with-sigterm-command"
     val sigkillName = "js7.job.execution.kill-with-sigkill-command"

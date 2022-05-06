@@ -3,7 +3,7 @@ package js7.common.system.startup
 import java.io.File
 import java.time.Instant
 import js7.base.io.process.ProcessPidRetriever.maybeOwnPid
-import js7.base.log.Logger
+import js7.base.log.{CorrelId, Logger}
 import js7.base.time.Timestamp
 import js7.base.utils.ByteUnits.toKiBGiB
 import js7.base.utils.ScalaUtils.syntax._
@@ -20,7 +20,6 @@ object StartUp
   val runningSince = now
   val startedAt = Timestamp.now
   private var _isMain = false
-  private val logger = Logger(getClass)
   private val classPathLogged = AtomicBoolean(false)
 
   def initializeMain(): Unit =
@@ -28,10 +27,10 @@ object StartUp
 
   def isMain = _isMain
 
-  // Initialize class and object for possible quicker emergency stop
-  Halt
-
   def logJavaSettings(): Unit = {
+    // Do not initialize logging framework to early
+    val logger = Logger[this.type]
+
     if (!classPathLogged.getAndSet(true)) {  // Log only once (for tests running controller and agents in same JVM)
       val paths = sys.props("java.class.path").split(File.pathSeparator).filter(_.nonEmpty)
       logger.debug(Logger.Java, s"Classpath contains ${paths.length} entries:")
@@ -39,8 +38,13 @@ object StartUp
         logger.debug(Logger.Java, s"Classpath $o")
       }
     }
+    if (CorrelId.isEnabled) {
+      // Check isEnabled after some debug line has been logged,
+      // because CorrelIds may be enabled automatically on the first use by Log4j.
+      logger.debug("Correlation IDs are enabled")
+    }
     logger.whenTraceEnabled {
-      logger.debug("Logger TRACE enabled")
+      logger.debug("TRACE level logging is enabled")
     }
   }
 

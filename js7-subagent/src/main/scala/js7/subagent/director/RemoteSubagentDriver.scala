@@ -11,8 +11,9 @@ import js7.base.generic.SecretString
 import js7.base.io.https.HttpsConfig
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGKILL
-import js7.base.log.Logger
+import js7.base.log.CorrelIdBinder.currentCorrelId
 import js7.base.log.Logger.syntax._
+import js7.base.log.{CorrelIdWrapped, Logger}
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.monixutils.{AsyncMap, AsyncVariable, Switch}
 import js7.base.problem.Checked._
@@ -332,7 +333,7 @@ extends SubagentDriver with SubagentEventListener[S0]
           .materializeIntoChecked
           .flatMap {
             case Left(problem) =>
-              // StartOrderProcesss failed
+              // StartOrderProcess failed
               orderToPromise
                 .remove(order.id)
                 .flatMap {
@@ -580,23 +581,30 @@ extends SubagentDriver with SubagentEventListener[S0]
   }
 
   private def postQueuedCommand2(numberedCommand: Numbered[SubagentCommand.Queueable])
-  : Task[Checked[Unit]] = {
-    val command = numberedCommand.value
-    dependentSignedItems(command)
-      .map(_.orThrow)
-      .flatMap { signedItems =>
-        val cmd = signedItems match {
-          case Nil => numberedCommand
-          case signedSeq => numberedCommand.copy(
-            value = SubagentCommand.Batch(signedSeq.map(AttachSignedItem(_)) :+ command))
+  : Task[Checked[Unit]] =
+    Task.defer {
+      val command = numberedCommand.value
+      dependentSignedItems(command)
+        .map(_.orThrow)
+        .flatMap { signedItems =>
+          val cmd = signedItems match {
+            case Nil => numberedCommand
+            case signedSeq =>
+              val correlId = currentCorrelId
+              numberedCommand.copy(
+                value = SubagentCommand.Batch(signedSeq
+                  .map(AttachSignedItem(_): SubagentCommand)
+                  .appended(command)
+                  .map(CorrelIdWrapped(correlId, _))))
+          }
+          HttpClient.liftProblem(
+            client
+              .executeSubagentCommand(cmd)
+              .*>(attachedItemKeys.update(o => Task.pure(
+                o ++ signedItems.view.map(_.value.keyAndRevision))))
+              .void)
         }
-        HttpClient.liftProblem(
-          client
-            .executeSubagentCommand(cmd)
-            .*>(attachedItemKeys.update(o => Task.pure(o ++ signedItems.view.map(_.value.keyAndRevision))))
-            .void)
-      }
-  }
+    }
 
   private def dependentSignedItems(command: SubagentCommand): Task[Checked[Seq[Signed[SignableItem]]]] =
     command match {

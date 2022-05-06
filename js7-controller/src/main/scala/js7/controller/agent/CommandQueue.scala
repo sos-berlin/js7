@@ -3,6 +3,7 @@ package js7.controller.agent
 import com.typesafe.scalalogging.{Logger => ScalaLogger}
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.Batch
+import js7.base.log.{CorrelId, CorrelIdWrapped}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
@@ -135,7 +136,8 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
         if (openRequestCount < commandParallelism && (!freshlyCoupled || openRequestCount == 0) && inputs.nonEmpty) {
           executingInputs ++= inputs
           openRequestCount += 1
-          executeCommand(Batch(inputs map inputToAgentCommand))
+          val subcmds = inputs.map(o => CorrelIdWrapped(CorrelId.empty, inputToAgentCommand(o)))
+          executeCommand(Batch(subcmds))
             .materialize foreach {
               case Success(Right(Batch.Response(responses))) =>
                 asyncOnBatchSucceeded(

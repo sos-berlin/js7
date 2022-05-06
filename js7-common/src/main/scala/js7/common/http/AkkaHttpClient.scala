@@ -27,9 +27,10 @@ import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.generic.SecretString
 import js7.base.io.https.Https.loadSSLContext
 import js7.base.io.https.HttpsConfig
+import js7.base.log.CorrelIdBinder.currentCorrelId
 import js7.base.log.LogLevel.syntax.LevelLogger
 import js7.base.log.LogLevel.{Debug, Trace}
-import js7.base.log.Logger
+import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
@@ -237,11 +238,12 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
           logger.debug(s"(WARN) AkkaHttpClient has actually been closed: ${requestToString(request, logData)}")
         }
         val number = requestCounter.incrementAndGet()
-        val req = request
-          .withHeaders(
-            sessionToken.map(token => `x-js7-session`(token)).toList :::
-            `x-js7-request-id`(s"#$number") :: request.headers.toList ::: standardHeaders)
-          .pipeIf(useCompression)(encodeGzip)
+        val headers = sessionToken.map(token => `x-js7-session`(token)).toList :::
+          `x-js7-request-id`(s"#$number") ::
+          currentCorrelId.toOption.map(`x-js7-correlation-id`(_)).toList :::
+          request.headers.toList :::
+          standardHeaders
+        val req = request.withHeaders(headers).pipeIf(useCompression)(encodeGzip)
         @volatile var canceled = false
         var responseFuture: Future[HttpResponse] = null
         val since = now
@@ -396,6 +398,20 @@ object AkkaHttpClient
   object `x-js7-request-id` extends ModeledCustomHeaderCompanion[`x-js7-request-id`] {
     val name = "x-js7-request-id"
     def parse(value: String) = Success(new `x-js7-request-id`(value))
+  }
+
+  final case class `x-js7-correlation-id`(correlId: CorrelId)
+  extends ModeledCustomHeader[`x-js7-correlation-id`] {
+    val companion = `x-js7-correlation-id`
+    // Convert to ASCII
+    def value = correlId.toAscii
+    val renderInRequests = true
+    val renderInResponses = false
+  }
+  object `x-js7-correlation-id` extends ModeledCustomHeaderCompanion[`x-js7-correlation-id`] {
+    val name = "x-js7-correlation-id"
+    def parse(asciiString: String) =
+      CorrelId.checked(asciiString).map(`x-js7-correlation-id`(_)).asTry
   }
 
   private val ErrorMessageLengthMaximum = 10000

@@ -1,6 +1,7 @@
 package js7.journal.watch
 
 import cats.syntax.traverse._
+import js7.base.log.CorrelIdBinder.currentCorrelId
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
@@ -116,6 +117,7 @@ extends StatePersistence[S] with RealEventWatch
 
   private def log(eventNumber: Long, stampedEvents: Seq[Stamped[KeyedEvent[Event]]]): Unit =
     journalLogger.logCommitted(Vector(new SimpleLoggable(
+      currentCorrelId,
       eventNumber = eventNumber,
       stampedEvents,
       isTransaction = false,

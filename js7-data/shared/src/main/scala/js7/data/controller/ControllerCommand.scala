@@ -7,6 +7,7 @@ import io.circe.{Decoder, Encoder, Json, JsonObject}
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.ScalaJsonCodecs.{FiniteDurationJsonDecoder, FiniteDurationJsonEncoder}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.log.CorrelIdWrapped
 import js7.base.problem.Checked
 import js7.base.problem.Checked.implicits.{checkedJsonDecoder, checkedJsonEncoder}
 import js7.base.time.Timestamp
@@ -44,7 +45,7 @@ object ControllerCommand extends CommonCommand.Companion
 
   protected type Command = ControllerCommand
 
-  final case class Batch(commands: Seq[ControllerCommand])
+  final case class Batch(commands: Seq[CorrelIdWrapped[ControllerCommand]])
   extends ControllerCommand with CommonBatch with Big {
     type Response = Batch.Response
   }

@@ -28,10 +28,9 @@ object JavaMainLockfileSupport
       if (!exists(state)) createDirectory(state)
       // The lockFile secures the state directory against double use.
       val lockFile = state.resolve("pid")
-
       lock(lockFile) {
-        cleanWorkDirectory(data.resolve("work"))
         JavaMain.runMain {
+          cleanWorkDirectory(data.resolve("work"))
           body(arguments)
         }
       }
@@ -48,13 +47,13 @@ object JavaMainLockfileSupport
   private def lock(lockFile: Path)(body: => Unit): Unit = {
     val lockFileChannel = FileChannel.open(lockFile, CREATE, WRITE)
     Try(lockFileChannel.tryLock()) match {
+      case Failure(throwable) =>
+        printlnWithClock(s"tryLock: $throwable")
+        System.exit(1)
+
       case Success(null) =>
         lockFileChannel.close()
         printlnWithClock("Duplicate start of JS7")
-        System.exit(1)
-
-      case Failure(throwable) =>
-        printlnWithClock(s"tryLock: $throwable")
         System.exit(1)
 
       case Success(_) =>

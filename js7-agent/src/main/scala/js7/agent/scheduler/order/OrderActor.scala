@@ -7,7 +7,8 @@ import js7.agent.scheduler.order.OrderActor._
 import js7.base.generic.Completed
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
-import js7.base.log.Logger
+import js7.base.log.CorrelIdBinder.{bindCorrelId, currentCorrelId}
+import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.RichCheckedTask
 import js7.base.problem.Checked.Ops
 import js7.base.utils.Assertions.assertThat
@@ -29,6 +30,7 @@ import shapeless.tag.@@
   */
 final class OrderActor private(
   orderId: OrderId,
+  orderCorrelId: CorrelId,
   subagentKeeper: SubagentKeeper[AgentState],
   protected val journalActor: ActorRef @@ JournalActor.type,
   protected val journalConf: JournalConf)
@@ -56,7 +58,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
           subagentKeeper
             .continueProcessingOrder(
               o,
-              events => self ! Internal.UpdateEvents(events))
+              events => self ! Internal.UpdateEvents(events, orderCorrelId))
             .materializeIntoChecked
             .map(_.onProblemHandle(problem =>
               logger.error(s"continueProcessingOrder: $problem")))
@@ -74,16 +76,18 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
       command match {
         case Command.Attach(attached @ Order(`orderId`, wfPos, state: Order.IsFreshOrReady,
           arguments, scheduledFor, externalOrderKey, historicOutcomes,
-          Some(Order.Attached(agentPath)), parent, mark, isSuspended, removeWhenTerminated)
-        ) =>
-          becomeAsStateOf(attached, force = true)
-          persist(OrderAttachedToAgent(wfPos, state, arguments, scheduledFor, externalOrderKey,
-            historicOutcomes, agentPath, parent, mark,
-            isSuspended = isSuspended, deleteWhenTerminated = removeWhenTerminated)) {
-            (event, updatedState) =>
-              update(event :: Nil)
-              Completed
-          } pipeTo sender()
+          Some(Order.Attached(agentPath)), parent, mark, isSuspended, removeWhenTerminated),
+        correlId) =>
+          bindCorrelId(correlId) {
+            becomeAsStateOf(attached, force = true)
+            persist(OrderAttachedToAgent(wfPos, state, arguments, scheduledFor, externalOrderKey,
+              historicOutcomes, agentPath, parent, mark,
+              isSuspended = isSuspended, deleteWhenTerminated = removeWhenTerminated)) {
+              (event, updatedState) =>
+                update(event :: Nil)
+                Completed
+            } pipeTo sender()
+          }
 
         case _ =>
           executeOtherCommand(command)
@@ -104,25 +108,31 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
   private def startable: Receive =
     receiveEvent orElse {
       case Input.StartProcessing =>
-        if (order.isProcessable) {
-          become("processing")(processing)
-          subagentKeeper
-            .processOrder(
-              order.checkedState[Order.IsFreshOrReady].orThrow,
-              events => self ! Internal.UpdateEvents(events))
-            .materialize
-            .foreach {
-              case Failure(t) =>
-                logger.error(s"processOrder => ${t.toStringWithCauses}")  // OrderFailed ???
+        bindCorrelId[Unit](orderCorrelId) {
+          if (order.isProcessable) {
+            // Separate CorrelId for each order process
+            bindCorrelId(CorrelId.generate()) {
+              become("processing")(processing)
+              subagentKeeper
+                .processOrder(
+                  order.checkedState[Order.IsFreshOrReady].orThrow,
+                  events => self ! Internal.UpdateEvents(events, orderCorrelId))
+                .materialize
+                .map {
+                  case Failure(t) =>
+                    logger.error(s"processOrder => ${t.toStringWithCauses}")  // OrderFailed ???
 
-              case Success(Left(problem: SubagentDriverStoppedProblem)) =>
-                logger.debug(s"processOrder => $problem")
+                  case Success(Left(problem: SubagentDriverStoppedProblem)) =>
+                    logger.debug(s"processOrder => $problem")
 
-              case Success(Left(problem)) =>
-                logger.error(s"processOrder => $problem")  // ???
+                  case Success(Left(problem)) =>
+                    logger.error(s"processOrder => $problem")  // ???
 
-              case Success(Right(())) =>
+                  case Success(Right(())) =>
+                }
+                .runToFuture
             }
+          }
         }
 
       case _: Input.Terminate =>
@@ -131,8 +141,10 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
 
   private def processing: Receive =
     receiveCommand orElse receiveEvent orElse {
-      case Internal.UpdateEvents(events) =>
-        update(events)
+      case Internal.UpdateEvents(events, correlId) =>
+        bindCorrelId(correlId) {
+          update(events)
+        }
 
       case Input.Terminate(signal) =>
         terminating = true
@@ -154,7 +166,10 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
     receiveEvent orElse receiveCommand orElse receiveTerminate
 
   private def receiveEvent: Receive = {
-    case Command.HandleEvents(events) => handleEvents(events) pipeTo sender()
+    case Command.HandleEvents(events, correlId) =>
+      bindCorrelId(correlId) {
+        handleEvents(events) pipeTo sender()
+      }
   }
 
   private def handleEvents(events: Seq[OrderCoreEvent]): Future[Completed] =
@@ -209,23 +224,30 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
     else
     if (force || anOrder.state.getClass != order.state.getClass) {
       anOrder.state match {
-        case _: Order.Fresh             => become("fresh")(fresh)
-        case _: Order.Ready             => become("ready")(ready)
-        case _: Order.Processing        => become("processing")(processing)
-        case _: Order.Processed         => become("processed")(processed)
-        case _: Order.ProcessingKilled  => become("processingKilled")(processingKilled)
-        case _: Order.DelayedAfterError => become("delayedAfterError")(delayedAfterError)
-        case _: Order.Forked            => become("forked")(standard)
-        case _: Order.BetweenCycles     => become("forked")(standard)
-        case _: Order.Failed            => become("failed")(standard)
-        case _: Order.FailedWhileFresh  => become("stoppedWhileFresh")(standard)
-        case _: Order.FailedInFork      => become("failedInFork")(standard)
-        case _: Order.Broken            => become("broken")(standard)
+        case _: Order.Fresh             => become("fresh")(wrap(fresh))
+        case _: Order.Ready             => become("ready")(wrap(ready))
+        case _: Order.Processing        => become("processing")(wrap(processing))
+        case _: Order.Processed         => become("processed")(wrap(processed))
+        case _: Order.ProcessingKilled  => become("processingKilled")(wrap(processingKilled))
+        case _: Order.DelayedAfterError => become("delayedAfterError")(wrap(delayedAfterError))
+        case _: Order.Forked            => become("forked")(wrap(standard))
+        case _: Order.BetweenCycles     => become("forked")(wrap(standard))
+        case _: Order.Failed            => become("failed")(wrap(standard))
+        case _: Order.FailedWhileFresh  => become("stoppedWhileFresh")(wrap(standard))
+        case _: Order.FailedInFork      => become("failedInFork")(wrap(standard))
+        case _: Order.Broken            => become("broken")(wrap(standard))
         case Order.WaitingForLock | _: Order.ExpectingNotice | _: Order.Prompting |
              Order.Finished | Order.Cancelled | Order.Deleted =>
           sys.error(s"Order is expected to be at the Controller, not at Agent: ${order.state}")   // A Finished order must be at Controller
       }
     }
+  }
+
+  private def wrap(receive: Receive): Receive = {
+    case msg if receive.isDefinedAt(msg) =>
+      bindCorrelId(orderCorrelId) {
+        receive(msg)
+      }
   }
 
   private def detaching: Receive =
@@ -249,7 +271,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
   private def update(events: Seq[OrderEvent]) = {
     val previousOrderOrNull = order
     events foreach updateOrder
-    context.parent ! Output.OrderChanged(orderId, previousOrderOrNull, events)
+    context.parent ! Output.OrderChanged(orderId, currentCorrelId, previousOrderOrNull, events)
     events.last match {
       case OrderDetached =>
         logger.trace("Stopping after OrderDetached")
@@ -302,20 +324,26 @@ private[order] object OrderActor
 {
   private[order] def props(
     orderId: OrderId,
+    correlId: CorrelId,
     subagentKeeper: SubagentKeeper[AgentState],
     journalActor: ActorRef @@ JournalActor.type,
     journalConf: JournalConf)
     (implicit s: Scheduler) =
-    Props { new OrderActor(orderId, subagentKeeper, journalActor = journalActor, journalConf) }
+    Props { new OrderActor(
+      orderId, correlId, subagentKeeper, journalActor = journalActor, journalConf)
+    }
 
   private object Internal {
-    final case class UpdateEvents(events: Seq[OrderEvent])
+    final case class UpdateEvents(events: Seq[OrderEvent], correlId: CorrelId)
   }
 
   sealed trait Command
   object Command {
-    final case class Attach(order: Order[Order.IsFreshOrReady]) extends Command
-    final case class HandleEvents(event: Seq[OrderCoreEvent]) extends Input
+    final case class Attach(order: Order[Order.IsFreshOrReady], correlId: CorrelId)
+    extends Command
+
+    final case class HandleEvents(event: Seq[OrderCoreEvent], correlId: CorrelId)
+    extends Input
   }
 
   sealed trait Input
@@ -334,6 +362,7 @@ private[order] object OrderActor
     case object RecoveryFinished
     final case class OrderChanged(
       orderId: OrderId,
+      correlId: CorrelId,
       previousOrderOrNull: Order[Order.State],
       events: Seq[OrderEvent])
   }

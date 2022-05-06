@@ -1,7 +1,7 @@
 package js7.core.command
 
-import js7.base.auth.UserId
-import js7.data.command.{CommandHandlerDetailed, CommandHandlerOverview, CommonCommand, InternalCommandId}
+import js7.base.log.CorrelId
+import js7.data.command.{CommandHandlerDetailed, CommandHandlerOverview, CommonCommand}
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline.now
 
@@ -11,19 +11,18 @@ import scala.concurrent.duration.Deadline.now
 final class CommandRegister[C <: CommonCommand]
 {
   private var totalCounter = 0L
-  private val idToCommand = mutable.Map.empty[InternalCommandId, CommandRun[C]]
-  private val idGenerator = InternalCommandId.newGenerator()
+  private val idToCommand = mutable.Map.empty[CorrelId, CommandRun[C]]
 
-  def add(userId: UserId, command: C, batchId: Option[InternalCommandId]): CommandRun[C] =
+  def add(command: C, meta: CommandMeta, correlId: CorrelId, batchId: Option[CorrelId])
+  : CommandRun[C] =
     synchronized {
       totalCounter += 1
-      val id = idGenerator.next()
-      val run = CommandRun[C](id, userId, command, now, batchId)
-      idToCommand += id -> run
+      val run = CommandRun[C](correlId, meta.user.id, command, now, batchId)
+      idToCommand += correlId -> run
       run
     }
 
-  def remove(id: InternalCommandId): Unit =
+  def remove(id: CorrelId): Unit =
     synchronized {
       idToCommand -= id
     }

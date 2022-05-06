@@ -129,6 +129,35 @@ final class SubagentCommandTest extends AnyFreeSpec
             }
           }
         }""")
+
+      // COMPATIBLE WITH v2.3.0: no correlId
+      testJsonDecoder[SubagentCommand](
+        StartOrderProcess(
+          Order(
+            OrderId("ORDER"),
+            (WorkflowPath("WORKFLOW") ~ "1") /: Position(0),
+            Order.Processing(SubagentId("SUBAGENT"))),
+          Map("expr" -> expr("'EXPR'"))),
+        json"""{
+          "TYPE": "StartOrderProcess",
+          "defaultArguments": {
+            "expr": "'EXPR'"
+          },
+          "order": {
+            "id": "ORDER",
+            "state": {
+              "TYPE": "Processing",
+              "subagentId": "SUBAGENT"
+            },
+            "workflowPosition": {
+              "workflowId": {
+                "path": "WORKFLOW",
+                "versionId": "1"
+              },
+              "position": [ 0 ]
+            }
+          }
+        }""")
     }
 
     "KillProcess" in {

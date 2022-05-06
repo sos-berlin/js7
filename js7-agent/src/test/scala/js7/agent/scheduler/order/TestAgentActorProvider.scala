@@ -12,6 +12,7 @@ import js7.agent.scheduler.AgentActor
 import js7.agent.scheduler.order.TestAgentActorProvider._
 import js7.agent.tests.TestAgentDirectoryProvider
 import js7.base.auth.UserId
+import js7.base.log.CorrelId
 import js7.base.problem.Checked
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.utils.AutoClosing.autoClosing
@@ -42,7 +43,8 @@ private class TestAgentActorProvider(testName: String) extends HasCloser
 
   def executeCommand(command: AgentCommand): Future[Checked[AgentCommand.Response]] = {
     val response = Promise[Checked[AgentCommand.Response]]()
-    agentActor ! AgentActor.Input.ExternalCommand(ControllerUserId, command, response)
+    agentActor !
+      AgentActor.Input.ExternalCommand(ControllerUserId, command, CorrelId.generate(), response)
     response.future
   }
 }

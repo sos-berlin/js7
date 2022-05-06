@@ -4,6 +4,7 @@ import io.circe.{Decoder, Encoder}
 import js7.base.circeutils.CirceObjectCodec
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.ScalaJsonCodecs._
+import js7.base.log.CorrelId
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import scala.concurrent.duration.FiniteDuration
 
@@ -11,7 +12,7 @@ import scala.concurrent.duration.FiniteDuration
  * @author Joacim Zschimmer
  */
 final case class CommandRunOverview[C <: CommonCommand](
-  internalId: InternalCommandId,
+  correlId: CorrelId,
   duration: FiniteDuration,
   command: C)
 

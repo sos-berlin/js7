@@ -3,7 +3,7 @@ package js7.launcher.process
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Path
-import js7.base.io.process.Processes.Pid
+import js7.base.io.process.Pid
 import js7.data.job.TaskId
 import js7.launcher.configuration.ProcessKillScript
 import js7.launcher.forwindows.WindowsLogon

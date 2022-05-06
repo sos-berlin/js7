@@ -1,10 +1,5 @@
 package js7.core.command
 
-import js7.base.auth.{SessionToken, SimpleUser}
+import js7.base.auth.SimpleUser
 
-/**
- * @author Joacim Zschimmer
- */
-final case class CommandMeta(
-  user: SimpleUser,
-  sessionTokenOption: Option[SessionToken] = None)
+final case class CommandMeta(user: SimpleUser)

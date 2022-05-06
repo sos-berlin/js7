@@ -13,6 +13,7 @@ import js7.base.Problems.TamperedWithSignedMessageProblem
 import js7.base.configutils.Configs._
 import js7.base.crypt.Signed
 import js7.base.io.file.FileUtils.syntax._
+import js7.base.log.{CorrelId, CorrelIdWrapped}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.isWindows
@@ -33,7 +34,7 @@ import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.position.Position
 import js7.data.workflow.test.TestSetting._
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._
 import scala.collection.mutable
@@ -149,7 +150,9 @@ final class OrderAgentTest extends AnyFreeSpec
 
           val stopwatch = new Stopwatch
           agentClient.commandExecute(Batch(
-            Seq(AttachSignedItem(signedSimpleWorkflow)) ++ orders.map(AttachOrder(_)))
+            Seq(AttachSignedItem(signedSimpleWorkflow))
+              .concat(orders.map(AttachOrder(_)))
+              .map(CorrelIdWrapped(CorrelId.empty, _)))
           ) await 99.s
 
           val awaitedOrderIds = orders.map(_.id).toSet
@@ -164,7 +167,9 @@ final class OrderAgentTest extends AnyFreeSpec
               .toListL
               .await(99.s)
           }
-          agentClient.commandExecute(Batch(orders map { o => DetachOrder(o.id) }))
+          agentClient.commandExecute(Batch(orders
+            .map(o => DetachOrder(o.id))
+            .map(CorrelIdWrapped(CorrelId.empty, _))))
             .await(99.s).orThrow
           info(stopwatch.itemsPerSecondString(n, "orders"))
 

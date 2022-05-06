@@ -1,6 +1,7 @@
 package js7.data.command
 
 import js7.base.circeutils.typed.TypedJsonCodec
+import js7.base.log.CorrelIdWrapped
 import js7.base.problem.Checked
 import scala.collection.mutable
 
@@ -31,7 +32,7 @@ object CommonCommand
     trait CommonBatch {
       this: Command =>
 
-      def commands: Seq[Command]
+      def commands: Seq[CorrelIdWrapped[Command]]
 
       override def toString = {
         val b = mutable.Buffer.empty[String]
@@ -42,7 +43,7 @@ object CommonCommand
           last = ""
           n = 0
         }
-        for (command <- commands) {
+        for (CorrelIdWrapped(_, command) <- commands) {
           val name = jsonCodec.typeName(command)
           if (last != name) {
             flush()
@@ -55,7 +56,7 @@ object CommonCommand
       }
 
       override def toShortString =
-        s"Batch(${commands.size} commands, ${commands.take(1).map(o => o.toShortString + ", ").mkString} ...)"
+        s"Batch(${commands.size} commands, ${commands.take(1).map(o => o.value.toShortString + ", ").mkString} ...)"
 
     }
     object CommonBatch {

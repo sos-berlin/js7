@@ -7,6 +7,7 @@ import js7.agent.data.commands.AgentCommand.{Batch, DetachOrder, NoOperation, Sh
 import js7.base.circeutils.CirceUtils._
 import js7.base.crypt.silly.SillySigner
 import js7.base.io.process.ProcessSignal.SIGTERM
+import js7.base.log.{CorrelId, CorrelIdWrapped}
 import js7.base.problem.TestCodeProblem
 import js7.common.message.ProblemCodeMessages
 import js7.data.agent.{AgentPath, AgentRunId}
@@ -34,12 +35,15 @@ final class AgentCommandTest extends AnyFreeSpec
   ProblemCodeMessages.initialize()
 
   "Batch" in {
-    check(AgentCommand.Batch(List(AgentCommand.NoOperation, AgentCommand.EmergencyStop())),
+    check(AgentCommand.Batch(
+      List(
+        CorrelIdWrapped(CorrelId.empty, AgentCommand.NoOperation),
+        CorrelIdWrapped(CorrelId("_CORREL_"), AgentCommand.EmergencyStop()))),
       json"""{
         "TYPE": "Batch",
         "commands": [
           { "TYPE": "NoOperation" },
-          { "TYPE": "EmergencyStop" }
+          { "TYPE": "EmergencyStop", "correlId": "_CORREL_" }
         ]
       }""")
   }
@@ -309,12 +313,16 @@ final class AgentCommandTest extends AnyFreeSpec
 
   "Batch toString" in {
     assert(Batch(Nil).toString == "Batch()")
-    assert(Batch(DetachOrder(OrderId("A")) :: Nil).toString == "Batch(DetachOrder)")
+    assert(Batch(Seq(CorrelIdWrapped(CorrelId("_CORREL_"), DetachOrder(OrderId("A")))))
+      .toString == "Batch(DetachOrder)")
     assert(
-      Batch(
-        DetachOrder(OrderId("A")) :: DetachOrder(OrderId("A")) ::
-        ShutDown() ::
-        NoOperation :: NoOperation :: NoOperation :: Nil
+      Batch(Seq(
+        CorrelIdWrapped(CorrelId("_CORREL_"), DetachOrder(OrderId("A"))),
+        CorrelIdWrapped(CorrelId("_CORREL_"), DetachOrder(OrderId("A"))),
+        CorrelIdWrapped(CorrelId("_CORREL_"), ShutDown()),
+        CorrelIdWrapped(CorrelId("_CORREL_"), NoOperation),
+        CorrelIdWrapped(CorrelId("_CORREL_"), NoOperation),
+        CorrelIdWrapped(CorrelId("_CORREL_"), NoOperation))
       ).toString == "Batch(2×DetachOrder, ShutDown, 3×NoOperation)")
   }
 

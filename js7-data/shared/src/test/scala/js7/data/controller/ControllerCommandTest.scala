@@ -1,6 +1,7 @@
 package js7.data.controller
 
 import js7.base.circeutils.CirceUtils._
+import js7.base.log.{CorrelId, CorrelIdWrapped}
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
@@ -24,19 +25,34 @@ final class ControllerCommandTest extends AnyFreeSpec
 {
   "Batch" - {
     "Batch" in {
-      testJson[ControllerCommand](Batch(List(NoOperation(), EmergencyStop())),
+      testJson[ControllerCommand](Batch(
+        Seq(
+          CorrelIdWrapped(CorrelId.empty, NoOperation()),
+          CorrelIdWrapped(CorrelId("_CORREL_"), EmergencyStop()))),
         json"""{
           "TYPE": "Batch",
           "commands": [
             { "TYPE": "NoOperation" },
-            { "TYPE": "EmergencyStop" }
+            { "TYPE": "EmergencyStop", "correlId": "_CORREL_" }
           ]
         }""")
     }
 
     "Batch.toString" in {
-      assert(Batch(List(NoOperation(), EmergencyStop(), NoOperation())).toString == "Batch(NoOperation, EmergencyStop, NoOperation)")
-      assert(Batch(List(NoOperation(), EmergencyStop(), NoOperation(), NoOperation())).toString == "Batch(NoOperation, EmergencyStop, 2×NoOperation)")
+      assert(Batch(
+        List(
+          CorrelIdWrapped(CorrelId("_CORREL_"), NoOperation()),
+          CorrelIdWrapped(CorrelId.empty, EmergencyStop()),
+          CorrelIdWrapped(CorrelId.empty, NoOperation())))
+        .toString == "Batch(NoOperation, EmergencyStop, NoOperation)")
+
+      assert(Batch(
+        List(
+          CorrelIdWrapped(CorrelId.empty, NoOperation()),
+          CorrelIdWrapped(CorrelId.empty, EmergencyStop()),
+          CorrelIdWrapped(CorrelId.empty, NoOperation()),
+          CorrelIdWrapped(CorrelId.empty, NoOperation())))
+        .toString == "Batch(NoOperation, EmergencyStop, 2×NoOperation)")
     }
 
     "BatchResponse" in {

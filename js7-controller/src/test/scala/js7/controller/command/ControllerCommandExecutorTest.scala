@@ -1,6 +1,7 @@
 package js7.controller.command
 
 import js7.base.auth.{SimpleUser, UserId}
+import js7.base.log.{CorrelId, CorrelIdWrapped}
 import js7.base.problem.Problem
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
@@ -10,7 +11,7 @@ import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{Batch, CancelOrders, NoOperation, ReleaseEvents, Response}
 import js7.data.order.OrderId
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec
 import scala.language.reflectiveCalls
 
@@ -49,8 +50,14 @@ final class ControllerCommandExecutorTest extends AnyFreeSpec
   }
 
   "Batch" in {
-    assert(commandExecutor.executeCommand(Batch(NoOperation() :: ReleaseEvents(999L) :: cancelOrder :: Nil), meta).await(99.s) ==
-      Right(Batch.Response(Right(Response.Accepted) :: Left(Problem("COMMAND NOT IMPLEMENTED")) :: Right(Response.Accepted) :: Nil)))
+    assert(commandExecutor.executeCommand(Batch(
+      Seq(NoOperation(), ReleaseEvents(999L), cancelOrder)
+        .map(CorrelIdWrapped(CorrelId.empty, _))), meta)
+        .await(99.s) ==
+      Right(Batch.Response(Seq(
+        Right(Response.Accepted),
+        Left(Problem("COMMAND NOT IMPLEMENTED")),
+        Right(Response.Accepted)))))
     assert(otherCommandExecutor.cancelled == 2)
   }
 

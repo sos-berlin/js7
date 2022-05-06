@@ -27,7 +27,7 @@ import scala.concurrent.duration.{Deadline, Duration, NANOSECONDS}
  */
 final class AgentMain
 {
-  private val logger = Logger(getClass)
+  private lazy val logger = Logger(getClass)
 
   def run(arguments: CommandLineArguments): ProgramTermination = {
     // Log early for early timestamp and proper logger initialization by a single (non-parallel) call

@@ -3,7 +3,8 @@ package js7.journal
 import akka.actor.{Actor, ActorLogging, ActorRef, Stash}
 import js7.base.circeutils.typed.TypedJsonCodec.typeName
 import js7.base.generic.Accepted
-import js7.base.log.Logger
+import js7.base.log.CorrelIdBinder.{bindCorrelId, currentCorrelId}
+import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.promiseTask
 import js7.base.monixutils.MonixBase.syntax.RichScheduler
 import js7.base.problem.{Checked, ProblemException}
@@ -100,8 +101,9 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
       if (TraceLog && logger.underlying.isTraceEnabled)
         for (t <- timestamped) logger.trace(s"»$toString« Store ${t.keyedEvent.key} <-: ${typeName(t.keyedEvent.event.getClass)}")
       journalActor.forward(
-        JournalActor.Input.Store(timestamped, self, options, since = now,
+        JournalActor.Input.Store(currentCorrelId, timestamped, self, options, since = now,
           callersItem = EventsCallback(
+            currentCorrelId,
             async = async,
             (stampedSeq, journaledState) => promise.complete(
               try Success(callback(stampedSeq.asInstanceOf[Seq[Stamped[KeyedEvent[EE]]]], journaledState))
@@ -122,8 +124,8 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
   private def defer_(async: Boolean, callback: => Unit): Unit = {
     start(async = async, "defer")
     journalActor.forward(
-      JournalActor.Input.Store(Nil, self, CommitOptions.default, since = now,
-        callersItem = Deferred(async = async, {
+      JournalActor.Input.Store(currentCorrelId, Nil, self, CommitOptions.default, since = now,
+        callersItem = Deferred(currentCorrelId, async = async, {
           case Left(problem) => throw problem.throwable.appendCurrentStackTrace
           case Right(Accepted) => callback
         })))
@@ -152,8 +154,8 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
       start(async = true, "persistKeyedEventAcceptEarlyTask")
       val timestamped = keyedEvents.map(Timestamped(_, timestampMillis))
       journalActor.forward(
-        JournalActor.Input.Store(timestamped, self, options, since = now, commitLater = true,
-          Deferred(async = true, checked => promise.success(checked))))
+        JournalActor.Input.Store(currentCorrelId, timestamped, self, options, since = now, commitLater = true,
+          Deferred(currentCorrelId, async = true, checked => promise.success(checked))))
 
     case JournalActor.Output.Stored(stampedSeq, journaledState, item: Item) =>
       // sender() is from persistKeyedEvent or deferAsync
@@ -166,14 +168,17 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
       }
       (stampedSeq, item) match {
         case (_, eventsCallback: EventsCallback) =>
-          if (TraceLog && logger.underlying.isTraceEnabled) for (st <- stampedSeq)
-            logger.trace(s"»$toString« Stored ${EventId.toString(st.eventId)} ${st.value.key} <-: ${typeName(st.value.event.getClass)}$stashingCountRemaining")
-          eventsCallback.callback(stampedSeq.asInstanceOf[Seq[Stamped[KeyedEvent[E]]]], journaledState.asInstanceOf[S])
+          bindCorrelId(eventsCallback.correlId) {
+            if (TraceLog && logger.underlying.isTraceEnabled) for (st <- stampedSeq)
+              logger.trace(s"»$toString« Stored ${EventId.toString(st.eventId)} ${st.value.key} <-: ${typeName(st.value.event.getClass)}$stashingCountRemaining")
+            eventsCallback.callback(stampedSeq.asInstanceOf[Seq[Stamped[KeyedEvent[E]]]], journaledState.asInstanceOf[S])
+        }
 
-        case (Nil, Deferred(_, callback)) =>
-          if (TraceLog) logger.trace(s"»$toString« Stored (no event)$stashingCountRemaining")
-          callback(Right(Accepted))
-
+        case (Nil, Deferred(correlId, _, callback)) =>
+          bindCorrelId(correlId) {
+            if (TraceLog) logger.trace(s"»$toString« Stored (no event)$stashingCountRemaining")
+            callback(Right(Accepted))
+          }
         case _ => sys.error(s"JournalActor.Output.Stored(${stampedSeq.length}×) message does not match item '$item'")
       }
 
@@ -183,9 +188,11 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
         endStashing(Nil)
       }
       item match {
-        case Deferred(_, callback) =>
-          if (TraceLog) logger.trace(s"»$toString« Stored (events are written, not flushed)$stashingCountRemaining")
-          callback(Right(Accepted))
+        case Deferred(correlId, _, callback) =>
+          bindCorrelId(correlId) {
+            if (TraceLog) logger.trace(s"»$toString« Stored (events are written, not flushed)$stashingCountRemaining")
+            callback(Right(Accepted))
+          }
 
         case _ => sys.error(s"JournalActor.Output.Accepted message does not match item '$item'")
       }
@@ -243,13 +250,15 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
     JournalingActor.Timestamped(keyedEvent, timestampMillis)
 
   private case class EventsCallback(
+    correlId: CorrelId,
     async: Boolean,
     callback: (Seq[Stamped[KeyedEvent[E]]], S) => Unit)
   extends Item {
     override def toString = s"EventsCallback(${async ?? "async"})"
   }
 
-  private case class Deferred(async: Boolean, callback: Checked[Accepted] => Unit) extends Item {
+  private case class Deferred(correlId: CorrelId, async: Boolean, callback: Checked[Accepted] => Unit)
+  extends Item {
     override def toString = s"Deferred${async ?? "async"}"
   }
 

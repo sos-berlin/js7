@@ -8,6 +8,7 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.Signed
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGTERM
+import js7.base.log.CorrelIdWrapped
 import js7.base.problem.Checked
 import js7.base.utils.Big
 import js7.base.utils.ScalaUtils.syntax._
@@ -34,7 +35,7 @@ object SubagentCommand extends CommonCommand.Companion
   type Accepted = Accepted.type
   case object Accepted extends Response
 
-  final case class Batch(commands: Seq[SubagentCommand])
+  final case class Batch(commands: Seq[CorrelIdWrapped[SubagentCommand]])
   extends SubagentCommand with CommonBatch with Big {
     type Response = Batch.Response
   }

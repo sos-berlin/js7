@@ -12,12 +12,13 @@ import js7.agent.web.test.WebServiceTest
 import js7.base.circeutils.CirceUtils._
 import js7.base.circeutils.CirceUtils.implicits._
 import js7.base.io.process.ProcessSignal.SIGTERM
+import js7.base.log.CorrelId
 import js7.base.time.ScalaTime._
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.core.command.CommandMeta
 import js7.data.agent.Problems.AgentIsShuttingDown
-import js7.data.command.{CommandHandlerDetailed, CommandHandlerOverview, CommandRunOverview, InternalCommandId}
+import js7.data.command.{CommandHandlerDetailed, CommandHandlerOverview, CommandRunOverview}
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
@@ -29,7 +30,7 @@ import scala.concurrent.Future
 final class CommandWebServiceTest extends AnyFreeSpec with WebServiceTest with CommandWebService
 {
   protected def whenShuttingDown = Future.never
-  protected def scheduler = Scheduler.global
+  protected def scheduler = Scheduler.traced
   override protected val uriPathPrefix = "test"
 
   protected def commandExecute(meta: CommandMeta, command: AgentCommand) =
@@ -40,10 +41,12 @@ final class CommandWebServiceTest extends AnyFreeSpec with WebServiceTest with C
         case _ => fail()
       })
 
-  protected def commandOverview = Task.pure(CommandHandlerOverview(currentCommandCount = 111, totalCommandCount = 222))
+  protected def commandOverview =
+    Task.pure(CommandHandlerOverview(currentCommandCount = 111, totalCommandCount = 222))
 
-  protected def commandDetailed = Task.pure(CommandHandlerDetailed(List(
-    CommandRunOverview(InternalCommandId(333), 1.h, TestCommand))))
+  protected def commandDetailed =
+    Task.pure(CommandHandlerDetailed(List(
+      CommandRunOverview(CorrelId("_CORREL_"), 1.h, TestCommand))))
 
   private val route =
     pathSegments("agent/api/command") {
@@ -94,7 +97,7 @@ final class CommandWebServiceTest extends AnyFreeSpec with WebServiceTest with C
       assert(status == OK)
       assert(responseAs[Json] == Json.fromValues(List(
         Json.obj(
-          "internalId" -> "333".asJson,
+          "correlId" -> "_CORREL_".asJson,
           "duration" -> 3600.asJson,
           "command" -> (TestCommand: AgentCommand).asJson.dropNullValues))))
     }

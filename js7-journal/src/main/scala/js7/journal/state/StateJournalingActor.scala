@@ -1,6 +1,8 @@
 package js7.journal.state
 
 import akka.actor.{ActorRef, Props}
+import js7.base.log.CorrelId
+import js7.base.log.CorrelIdBinder.bindCorrelId
 import js7.base.monixutils.MonixBase.promiseTask
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
@@ -29,14 +31,18 @@ extends MainJournalingActor[S, E]
 
   override def preStart() = {
     super.preStart()
-    persistPromise.success((stateToEvent, options) => persistStateToEvents(stateToEvent, options))
+    persistPromise.success((stateToEvent, options, correlId) =>
+      persistStateToEvents(stateToEvent, options, correlId))
     persistLaterPromise.success(persistLater)
   }
 
-  private def persistStateToEvents(stateToEvents: StateToEvents[S, E], options: CommitOptions)
+  private def persistStateToEvents(
+    stateToEvents: StateToEvents[S, E],
+    options: CommitOptions,
+    correlId: CorrelId)
   : Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] =
     promiseTask[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]] { promise =>
-      self ! Persist(stateToEvents, options, promise)
+      self ! Persist(stateToEvents, options, correlId, promise)
     }
 
   private def persistLater(keyedEvents: Seq[KeyedEvent[E]], options: CommitOptions): Task[Checked[Unit]] =
@@ -45,21 +51,23 @@ extends MainJournalingActor[S, E]
     }
 
   def receive = {
-    case Persist(stateToEvents, options, promise) =>
-      val state = currentState
-      Try(
-        for {
-          keyedEvent <- stateToEvents(state)
-          _ <- state.applyEvents(keyedEvent)
-        } yield keyedEvent
-      ) match {
-        case Failure(t) => promise.failure(t)
-        case Success(Left(problem)) => promise.success(Left(problem))
-        case Success(Right(keyedEvents)) =>
-          promise.completeWith(
-            persistKeyedEvents(toTimestamped(keyedEvents), options, async = true) { (stampedKeyedEvents, journaledState) =>
-              Right(stampedKeyedEvents -> journaledState)
-            })
+    case Persist(stateToEvents, options, correlId, promise) =>
+      bindCorrelId[Unit](correlId) {
+        val state = currentState
+        Try(
+          for {
+            keyedEvent <- stateToEvents(state)
+            _ <- state.applyEvents(keyedEvent)
+          } yield keyedEvent
+        ) match {
+          case Failure(t) => promise.failure(t)
+          case Success(Left(problem)) => promise.success(Left(problem))
+          case Success(Right(keyedEvents)) =>
+            promise.completeWith(
+              persistKeyedEvents(toTimestamped(keyedEvents), options, async = true) { (stampedKeyedEvents, journaledState) =>
+                Right(stampedKeyedEvents -> journaledState)
+              })
+        }
       }
 
     case PersistLater(keyedEvents, options, promise) =>
@@ -74,6 +82,7 @@ extends MainJournalingActor[S, E]
   private case class Persist(
     stateToEvents: StateToEvents[S, E],
     options: CommitOptions,
+    correlId: CorrelId,
     promise: Promise[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]])
 
   private case class PersistLater(
@@ -88,7 +97,7 @@ private[state] object StateJournalingActor
     Checked[Seq[KeyedEvent[E]]]
 
   type PersistFunction[S <: JournaledState[S], E <: Event] =
-    (StateToEvents[S, E], CommitOptions) =>
+    (StateToEvents[S, E], CommitOptions, CorrelId) =>
       Task[Checked[(Seq[Stamped[KeyedEvent[E]]], S)]]
 
   type PersistLaterFunction[E <: Event] =

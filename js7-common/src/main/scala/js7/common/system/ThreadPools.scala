@@ -6,7 +6,7 @@ import com.typesafe.config.Config
 import java.lang.Thread.currentThread
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.convert.As
-import js7.base.log.Logger
+import js7.base.log.{CorrelIdBinder, Logger}
 import js7.base.thread.ThreadPoolsBase.newUnlimitedThreadPool
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime._
@@ -68,10 +68,13 @@ object ThreadPools
   def standardSchedulerResource[F[_]](name: String, config: Config, orCommon: Option[Scheduler])
     (implicit F: Sync[F], FA: Applicative[F])
   : Resource[F, Scheduler] =
-    orCommon match {
-      case Some(scheduler) => Resource.pure[F, Scheduler](scheduler)
-      case None => standardSchedulerResource(name, config)
-    }
+    orCommon
+      .match_ {
+        case Some(scheduler) =>
+          Resource.pure[F, Scheduler](CorrelIdBinder.enableScheduler(scheduler))
+        case None =>
+          standardSchedulerResource(name, config)
+      }
 
   // Requires an outer Scheduler (global).
   def standardSchedulerResource[F[_]](name: String, config: Config)
@@ -89,7 +92,7 @@ object ThreadPools
       acquire = scheduler)(
       release = o => F.delay(o.shutdown()))
 
-  def newStandardScheduler(name: String, config: Config, closer: Closer): SchedulerService = {
+  def newStandardScheduler(name: String, config: Config, closer: Closer): Scheduler = {
     val nr = nextNumber.incrementAndGet()
     val myName = if (nr == 1) name else s"$name-#$nr"
     val shutdownTimeout = config.getDuration("js7.thread-pools.standard.shutdown-timeout").toFiniteDuration
@@ -126,6 +129,6 @@ object ThreadPools
       }
     }
 
-    scheduler
+    CorrelIdBinder.enableScheduler(scheduler)
   }
 }

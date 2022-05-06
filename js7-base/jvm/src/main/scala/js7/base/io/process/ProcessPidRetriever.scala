@@ -1,10 +1,7 @@
 package js7.base.io.process
 
 import javax.lang.model.SourceVersion
-import js7.base.io.process.Processes.Pid
-import js7.base.log.Logger
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.utils.ScalaUtils.syntax._
 
 /**
  * Tries to retrieve the PID of a process.
@@ -15,7 +12,8 @@ import js7.base.utils.ScalaUtils.syntax._
  */
 object ProcessPidRetriever
 {
-  private val logger = Logger[this.type]
+  // ProcessPidRetriever may be called at start-up, before logging framework is being initialized.
+  // So do not use a Logger here !!!
 
   private[process] val hasJava9 = SourceVersion.values.map(_.toString) contains "RELEASE_9"
 
@@ -33,7 +31,7 @@ object ProcessPidRetriever
             .asInstanceOf[Long]))
       } catch {
         case t: Throwable =>
-          logger.debug(s"maybeOwnPid => ${t.toStringWithCauses}")
+          //logger.debug(s"maybeOwnPid => ${t.toStringWithCauses}")
           None
       }
 
@@ -54,7 +52,7 @@ object ProcessPidRetriever
       catch { case t: Throwable =>
         if (!logged) {
           logged = true
-          logger.error(s"(Logged only once) Process.pid: ${t.toStringWithCauses}", t)
+          //logger.error(s"(Logged only once) Process.pid: ${t.toStringWithCauses}", t)
         }
         None
       }

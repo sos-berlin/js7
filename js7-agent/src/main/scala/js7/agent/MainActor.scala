@@ -9,7 +9,8 @@ import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
 import js7.agent.scheduler.{AgentActor, AgentHandle}
 import js7.base.auth.UserId
-import js7.base.log.Logger
+import js7.base.log.CorrelIdBinder.bindCorrelId
+import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.Checked
 import js7.base.utils.ProgramTermination
 import js7.common.akkautils.CatchingSupervisorStrategy
@@ -46,10 +47,11 @@ extends Actor {
     "agent"))
   private val agentHandle = new AgentHandle(agentActor)(akkaAskTimeout)
 
-  private val commandHandler = injector.option[CommandHandler] getOrElse { // Only tests bind a CommandHandler
-    val actor = actorOf(Props { new CommandActor(agentHandle) }, "command")
-    new CommandActor.Handle(actor)(akkaAskTimeout)
-  }
+  private val commandHandler = injector.option[CommandHandler]/*Only tests bind a CommandHandler*/
+    .getOrElse {
+      val actor = actorOf(Props { new CommandActor(agentHandle) }, "command")
+      new CommandActor.Handle(actor)(akkaAskTimeout)
+    }
 
   private def api(meta: CommandMeta) = new DirectAgentApi(commandHandler, agentHandle, meta)
 
@@ -76,8 +78,10 @@ extends Actor {
     case AgentActor.Output.Ready =>
       readyPromise.success(Ready(api))
 
-    case Input.ExternalCommand(userId, cmd, response) =>  // For RunningController
-      agentHandle.executeCommand(cmd, userId, response)
+    case Input.ExternalCommand(cmd, userId, correlId, response) =>  // For RunningController
+      bindCorrelId(correlId) {
+        agentHandle.executeCommand(cmd, userId, response)
+      }
 
     case Terminated(`agentActor`) =>
       logger.debug("Stop")
@@ -94,6 +98,11 @@ object MainActor
 
   object Input {
     final case class Start(recovered: Recovered[AgentState])
-    final case class ExternalCommand(userId: UserId, command: AgentCommand, response: Promise[Checked[AgentCommand.Response]])
+
+    final case class ExternalCommand(
+      command: AgentCommand,
+      userId: UserId,
+      correlId: CorrelId,
+      response: Promise[Checked[AgentCommand.Response]])
   }
 }

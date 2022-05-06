@@ -4,6 +4,7 @@ import java.nio.file.Files.{createTempFile, deleteIfExists}
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.touchFile
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
+import js7.base.log.{CorrelId, CorrelIdWrapped}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
@@ -293,7 +294,9 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       FreshOrder(OrderId(i.toString), singleJobWorkflow.path, scheduledFor = Some(Timestamp.now + 99.s))
     for (o <- orders) addOrder(o).await(99.s).orThrow
     for (o <- orders) eventWatch.await[OrderAttached](_.key == o.id)
-    val response = executeCommand(Batch(for (o <- orders) yield SuspendOrders(Set(o.id)))).await(99.s).orThrow
+    val response = executeCommand(Batch(
+      for (o <- orders) yield CorrelIdWrapped(CorrelId.empty, SuspendOrders(Set(o.id))))
+    ).await(99.s).orThrow
     assert(response == Batch.Response(Vector.fill(orders.length)(Right(Response.Accepted))))
     for (o <- orders) eventWatch.await[OrderSuspended](_.key == o.id)
   }

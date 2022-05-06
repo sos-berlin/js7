@@ -3,23 +3,24 @@ package js7.common.akkahttp
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.ContentTypes.{`application/json`, `text/plain(UTF-8)`}
 import akka.http.scaladsl.model.headers.{Referer, `User-Agent`}
-import akka.http.scaladsl.model.{AttributeKeys, HttpEntity, HttpHeader, HttpRequest, HttpResponse, StatusCode}
-import akka.http.scaladsl.server.Directive0
+import akka.http.scaladsl.model.{AttributeKey, AttributeKeys, HttpEntity, HttpHeader, HttpRequest, HttpResponse, StatusCode}
 import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.{Directive0, Route}
 import com.typesafe.config.Config
 import io.circe.parser.{parse => parseJson}
 import java.lang.System.nanoTime
 import js7.base.auth.SessionToken
 import js7.base.configutils.Configs._
+import js7.base.log.CorrelIdBinder.bindCorrelId
 import js7.base.log.LogLevel.syntax._
-import js7.base.log.{LogLevel, Logger}
+import js7.base.log.{CorrelId, LogLevel, Logger}
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.akkahttp.WebLogDirectives._
-import js7.common.http.AkkaHttpClient.{`x-js7-request-id`, `x-js7-session`}
+import js7.common.http.AkkaHttpClient.{`x-js7-correlation-id`, `x-js7-request-id`, `x-js7-session`}
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
@@ -41,32 +42,51 @@ trait WebLogDirectives extends ExceptionHandling
 
   protected def webLog: Directive0 =
     mapInnerRoute { inner =>
-      webLogOnly {
-        seal {
-          inner
+      extractRequest { request =>
+        val correlId = getCorrelId(request)
+        setCorrelIdAttribute(correlId) {
+          webLogOnly(request, correlId) {
+            seal {
+              inner
+            }
+          }
         }
       }
     }
 
-  private def webLogOnly: Directive0 =
+  private def getCorrelId(request: HttpRequest): CorrelId =
+    if (!CorrelId.isEnabled)
+      CorrelId.empty
+    else
+      request.headers
+        .collectFirst { case h: `x-js7-correlation-id` => h.correlId }
+        .getOrElse(CorrelId.generate())
+
+  private def setCorrelIdAttribute(correlId: CorrelId)(route: Route): Route =
+    if (!CorrelId.isEnabled)
+      route
+    else
+      mapRequest(_.addAttribute(CorrelIdAttributeKey, correlId))(route)
+
+  private def webLogOnly(request: HttpRequest, correlId: CorrelId): Directive0 =
     if (!logRequest && !logResponse)
       pass
-    else
-      extractRequest flatMap { request =>
-        if (logRequest || webLogger.underlying.isTraceEnabled) {
-          log(request, None, if (logRequest) logLevel else LogLevel.Trace, nanos = 0)
-        }
-        if (logResponse) {
-          val start = nanoTime
-          mapResponse { response =>
-            log(request, Some(response), statusToLogLevel(response.status), nanoTime - start)
-            meterTime(request, response, start)
-          }
-        } else
-          pass
+    else {
+      if (logRequest || webLogger.underlying.isTraceEnabled) {
+        log(request, None, correlId, if (logRequest) logLevel else LogLevel.Trace, nanos = 0)
       }
+      if (logResponse) {
+        val start = nanoTime
+        mapResponse { response =>
+          log(request, Some(response), correlId, statusToLogLevel(response.status), nanoTime - start)
+          meterTime(request, response, correlId, start)
+        }
+      } else
+        pass
+    }
 
-  private def meterTime(request: HttpRequest, response: HttpResponse, start: Long): HttpResponse = {
+  private def meterTime(request: HttpRequest, response: HttpResponse, correlId: CorrelId, start: Long)
+  : HttpResponse = {
     val since = now
     var chunkCount = 0L
     var byteCount = 0L
@@ -80,7 +100,7 @@ trait WebLogDirectives extends ExceptionHandling
             }
             .watchTermination() { (mat, future) =>
               future.onComplete { tried =>
-                log(request, Some(response), logLevel, nanoTime - start,
+                log(request, Some(response), correlId, logLevel, nanoTime - start,
                   streamSuffix = // Timing of the stream, after response header has been sent
                     chunkCount.toString + " chunks, " +
                     bytesPerSecondString(since.elapsed, byteCount) +
@@ -92,12 +112,14 @@ trait WebLogDirectives extends ExceptionHandling
     }
   }
 
-  private def log(request: HttpRequest, response: Option[HttpResponse], logLevel: LogLevel,
-    nanos: Long, streamSuffix: String = ""): Unit
+  private def log(request: HttpRequest, response: Option[HttpResponse],
+    correlId: CorrelId, logLevel: LogLevel, nanos: Long, streamSuffix: String = ""): Unit
   =
-    webLogger.log(
-      logLevel,
-      requestResponseToLine(request, response, nanos, streamSuffix))
+    bindCorrelId(correlId) {
+      webLogger.log(
+        logLevel,
+        requestResponseToLine(request, response, nanos, streamSuffix))
+    }
 
   private def statusToLogLevel(statusCode: StatusCode): LogLevel =
     statusCode match {
@@ -186,6 +208,8 @@ trait WebLogDirectives extends ExceptionHandling
 object WebLogDirectives
 {
   private val webLogger = Logger("js7.web.log")
+
+  val CorrelIdAttributeKey = AttributeKey[CorrelId]("CorrelId")
 
   val TestConfig = config"""
     js7.web.server.log.level = debug

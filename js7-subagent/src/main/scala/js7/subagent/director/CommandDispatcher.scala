@@ -1,8 +1,9 @@
 package js7.subagent.director
 
 import cats.syntax.traverse._
-import js7.base.log.Logger
+import js7.base.log.CorrelIdBinder.{bindCorrelId, currentCorrelId}
 import js7.base.log.Logger.syntax._
+import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.Switch
 import js7.base.problem.{Checked, Problem}
 import js7.base.stream.{Numbered, ObservableNumberedQueue}
@@ -105,28 +106,31 @@ private trait CommandDispatcher
         .takeUntilEval(processingAllowed.whenOff)
         .flatMap(Observable.fromIterable)
         .mapEval(numbered =>
-          executeCommandNow(subagentRunId, numbered)
-            .materialize
-            .tapEval(_ => queue
-              .release(numbered.number)
-              .map(_.orThrow)
-              .onErrorHandle(t =>
-                logger.error(s"release(${numbered.number}) => ${t.toStringWithCauses}")))
-            .map(numbered.value/*Execute*/.respond))
+          bindCorrelId(numbered.value.correlId)(
+            executeCommandNow(subagentRunId, numbered)
+              .materialize
+              .tapEval(_ => queue
+                .release(numbered.number)
+                .map(_.orThrow)
+                .onErrorHandle(t =>
+                  logger.error(s"release(${numbered.number}) => ${t.toStringWithCauses}")))
+              .map(numbered.value/*Execute*/.respond)))
         .completedL
     })
 
   private def executeCommandNow(subagentRunId: SubagentRunId, numbered: Numbered[Execute])
-  : Task[Checked[Response]] = {
-    val numberedCommand = Numbered(numbered.number, numbered.value.command)
-    postCommand(numberedCommand, subagentRunId, processingAllowed/*stop retrying when off*/)
-  }
+  : Task[Checked[Response]] =
+    bindCorrelId(numbered.value.correlId) {
+      val numberedCommand = Numbered(numbered.number, numbered.value.command)
+      postCommand(numberedCommand, subagentRunId, processingAllowed/*stop retrying when off*/)
+    }
 
   override def toString = s"CommandDispatcher($name)"
 
   protected final class Execute(
     val command: Command,
-    val promise: Promise[Checked[Response]] = Promise())
+    val promise: Promise[Checked[Response]] = Promise(),
+    val correlId: CorrelId = currentCorrelId)
   {
     val responded = Task.fromFuture(promise.future)
 

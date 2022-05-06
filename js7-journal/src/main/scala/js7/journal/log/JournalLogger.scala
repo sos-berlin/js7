@@ -2,6 +2,7 @@ package js7.journal.log
 
 import com.typesafe.scalalogging.Logger
 import java.util.Locale.ROOT
+import js7.base.log.{CorrelId, CorrelIdBinder}
 import js7.base.time.ScalaTime._
 import js7.base.utils.Classes.superclassesOf
 import js7.base.utils.ScalaUtils.syntax._
@@ -50,27 +51,31 @@ private[journal] final class JournalLogger(
     persists.slice(dropLeft, persists.length - dropRight)
   }
 
-  private def logPersists(persists: IndexedSeqView[Loggable], committedAt: Deadline,
+  private def logPersists(
+    persists: IndexedSeqView[Loggable],
+    committedAt: Deadline,
     isLoggable: Stamped[AnyKeyedEvent] => Boolean = _ => true)
     (body: (Frame, Stamped[AnyKeyedEvent]) => Unit)
-  : Unit = {
-    var index = 0
-    for (persist <- persists) {
-      val stampedSeq = persist.stampedSeq.filter(isLoggable)
-      val frame = Frame(persist, stampedSeq.length, index, persists.length, committedAt)
-      val stampedIterator = stampedSeq.iterator
-      var hasNext = stampedIterator.hasNext
-      while (hasNext) {
-        val stamped = stampedIterator.next()
-        hasNext = stampedIterator.hasNext
-        frame.isLast = !hasNext
-        body(frame, stamped)
-        frame.nr += 1
-        frame.isFirst = false
+  : Unit =
+    CorrelIdBinder.isolate { logCorrelId =>
+      var index = 0
+      for (persist <- persists) {
+        logCorrelId := persist.correlId
+        val stampedSeq = persist.stampedSeq.filter(isLoggable)
+        val frame = Frame(persist, stampedSeq.length, index, persists.length, committedAt)
+        val stampedIterator = stampedSeq.iterator
+        var hasNext = stampedIterator.hasNext
+        while (hasNext) {
+          val stamped = stampedIterator.next()
+          hasNext = stampedIterator.hasNext
+          frame.isLast = !hasNext
+          body(frame, stamped)
+          frame.nr += 1
+          frame.isFirst = false
+        }
+        index += 1
       }
-      index += 1
     }
-  }
 
   private def traceLogPersist(ack: Boolean)(frame: Frame, stamped: Stamped[AnyKeyedEvent]): Unit = {
     import frame._
@@ -138,6 +143,7 @@ object JournalLogger
   private val MinimumDuration = 1.ms
 
   private[journal] trait Loggable {
+    def correlId: CorrelId
     def eventNumber: Long
     def stampedSeq: Seq[Stamped[AnyKeyedEvent]]
     def isTransaction: Boolean
@@ -146,6 +152,7 @@ object JournalLogger
   }
 
   final class SimpleLoggable(
+    val correlId: CorrelId,
     val eventNumber: Long,
     val stampedSeq: Seq[Stamped[AnyKeyedEvent]],
     val isTransaction: Boolean,

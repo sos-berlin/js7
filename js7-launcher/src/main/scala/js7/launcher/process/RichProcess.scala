@@ -7,7 +7,7 @@ import java.nio.file.Files.delete
 import java.nio.file.Path
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.io.process.Processes._
-import js7.base.io.process.{JavaProcess, Js7Process, ProcessSignal, ReturnCode, StdoutOrStderr}
+import js7.base.io.process.{JavaProcess, Js7Process, Pid, ProcessSignal, ReturnCode, StdoutOrStderr}
 import js7.base.log.LogLevel.syntax._
 import js7.base.log.{LogLevel, Logger}
 import js7.base.system.OperatingSystem.{isMac, isWindows}

@@ -10,6 +10,7 @@ import js7.base.circeutils.ScalaJsonCodecs._
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.Signed
 import js7.base.io.process.ProcessSignal
+import js7.base.log.CorrelIdWrapped
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
 import js7.base.problem.Checked.implicits.{checkedJsonDecoder, checkedJsonEncoder}
@@ -43,7 +44,7 @@ object AgentCommand extends CommonCommand.Companion
     }
   }
 
-  final case class Batch(commands: Seq[AgentCommand])
+  final case class Batch(commands: Seq[CorrelIdWrapped[AgentCommand]])
   extends AgentCommand with CommonBatch with Big {
     type Response = Batch.Response
   }

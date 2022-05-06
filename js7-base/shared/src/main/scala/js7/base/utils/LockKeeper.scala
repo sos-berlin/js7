@@ -1,6 +1,7 @@
 package js7.base.utils
 
 import cats.effect.Resource
+import js7.base.log.CorrelIdBinder.{bindCorrelId, currentCorrelId}
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.utils.LockKeeper._
 import js7.base.utils.ScalaUtils.syntax._
@@ -35,8 +36,9 @@ final class LockKeeper[K]
             val promise = Promise[Token]()
             queue += promise
             logger.trace(s"↘ Acquire lock '$key': queuing (#${queue.length}) (${enclosing.value})")
-            Task.fromFuture(promise.future)
-              .logWhenItTakesLonger(s"$key (${enclosing.value})")
+            bindCorrelId(currentCorrelId)(
+              Task.fromFuture(promise.future)
+                .logWhenItTakesLonger(s"$key (${enclosing.value})"))
         }
       }
       logger.trace(s"↙ Acquired lock '$key' (${enclosing.value})")

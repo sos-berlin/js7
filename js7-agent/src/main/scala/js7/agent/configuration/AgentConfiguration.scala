@@ -29,7 +29,7 @@ import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.launcher.configuration.{JobLauncherConf, ProcessKillScript}
 import js7.subagent.configuration.{DirectorConf, SubagentConf}
-import monix.execution.schedulers.SchedulerService
+import monix.execution.Scheduler
 import scala.jdk.CollectionConverters._
 
 /**
@@ -93,7 +93,7 @@ extends CommonConfiguration
   lazy val scriptInjectionAllowed =
     config.getBoolean("js7.job.execution.signed-script-injection-allowed")
 
-  def toJobLauncherConf(iox: IOExecutor, blockingJobScheduler: SchedulerService, clock: AlarmClock)
+  def toJobLauncherConf(iox: IOExecutor, blockingJobScheduler: Scheduler, clock: AlarmClock)
   : Checked[JobLauncherConf] =
     subagentConf.toJobLauncherConf(iox, blockingJobScheduler, clock)
 

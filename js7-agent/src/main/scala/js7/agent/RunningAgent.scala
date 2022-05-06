@@ -17,6 +17,7 @@ import js7.agent.web.AgentWebServer
 import js7.base.auth.{SessionToken, SimpleUser, UserId}
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.process.ProcessSignal
+import js7.base.log.CorrelIdBinder.currentCorrelId
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
@@ -103,8 +104,10 @@ extends AutoCloseable
   /** Circumvents the CommandHandler which is possibly replaced by a test via DI. */  // TODO Do we need all this code?
   private def directExecuteCommand(command: AgentCommand): Task[Checked[AgentCommand.Response]] =
     Task.deferFuture(
-      promiseFuture[Checked[AgentCommand.Response]](promise =>
-        mainActor ! MainActor.Input.ExternalCommand(UserId.Anonymous, command, promise)))
+      promiseFuture[Checked[AgentCommand.Response]] { promise =>
+        mainActor !
+          MainActor.Input.ExternalCommand(command, UserId.Anonymous, currentCorrelId, promise)
+      })
 
   def executeCommandAsSystemUser(command: AgentCommand): Task[Checked[AgentCommand.Response]] =
     for {
@@ -190,9 +193,11 @@ object RunningAgent {
         .awaitInfinite
         .closeWithCloser(closer)
 
+      val gateKeeperConf = injector.instance[GateKeeper.Configuration[SimpleUser]]
+
       val webServer = AgentWebServer(
         agentConfiguration,
-        injector.instance[GateKeeper.Configuration[SimpleUser]],
+        gateKeeperConf,
         injector.instance[SessionRegister[SimpleSession]],
         injector.instance[ClusterWatchRegister],
         persistence.eventWatch
@@ -224,7 +229,8 @@ object RunningAgent {
           webServer.localHttpUri.fold(_ => "", o => s"$o/agent")
 
         new RunningAgent(persistence, webServer, mainActor,
-          terminationPromise.future, api, sessionRegister, sessionToken, closer, injector)
+          terminationPromise.future, api, sessionRegister, sessionToken,
+          closer, injector)
       }
       task.runToFuture
     }.flatten

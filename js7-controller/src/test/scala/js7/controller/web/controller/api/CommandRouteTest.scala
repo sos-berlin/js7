@@ -26,7 +26,7 @@ final class CommandRouteTest extends AnyFreeSpec with RouteTester with CommandRo
 
   protected val controllerId = ControllerId("TEST-CONTROLLER")
   protected def whenShuttingDown = Future.never
-  protected implicit def scheduler: Scheduler = Scheduler.global
+  protected implicit def scheduler: Scheduler = Scheduler.traced
 
   private var commandReceived = false
 
@@ -47,10 +47,12 @@ final class CommandRouteTest extends AnyFreeSpec with RouteTester with CommandRo
 
   "POST /api/command" in {
     assert(!commandReceived)
-    Post("/api/command", ControllerCommand.NoOperation(): ControllerCommand) ~> Accept(`application/json`) ~> route ~> check {
-      val response = responseAs[ControllerCommand.Response]
-      assert(response == ControllerCommand.Response.Accepted)
-    }
+    Post("/api/command", ControllerCommand.NoOperation(): ControllerCommand) ~>
+      Accept(`application/json`) ~>
+      route ~> check {
+        val response = responseAs[ControllerCommand.Response]
+        assert(response == ControllerCommand.Response.Accepted)
+      }
     assert(commandReceived)
   }
 
@@ -74,7 +76,8 @@ final class CommandRouteTest extends AnyFreeSpec with RouteTester with CommandRo
     def testBigJson(size: Int)(checkBody: => Unit): Unit = {
       var json = """{ "TYPE": "NoOperation" """
       json += " " * (size - json.length - 1) + "}"
-      Post("/api/command", JsonString(json)) ~> Accept(`application/json`) ~> route ~> check(checkBody)
+      Post("/api/command", JsonString(json)) ~> Accept(`application/json`) ~>
+        route ~> check(checkBody)
     }
   }
 }

@@ -10,7 +10,7 @@ object Halt
 {
   private val logger = Logger(getClass)
 
-  Log4j
+  def initialize() = {}
 
   def haltJava(msg: String, restart: Boolean): Nothing =
     haltJava(msg, exitCode =

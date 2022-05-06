@@ -5,8 +5,8 @@ import java.util.concurrent.ForkJoinPool
 import javax.annotation.Nonnull
 import js7.base.BuildInfo
 import js7.base.annotation.javaApi
-import js7.base.log.Logger
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
+import js7.base.log.{CorrelIdBinder, Logger}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{HasCloser, Lazy}
 import js7.common.akkautils.Akkas
@@ -32,7 +32,11 @@ extends HasCloser
   logger.info(s"JS7 Proxy ${BuildInfo.longVersion}")
   logger.debug(StartUp.startUpLine())
 
-  coupleScribeWithSlf4j()
+  // Do not initialize Log4j and log4j2.threadContextMap.
+  // It's the caller responsibility. It is to late, anyway.
+  // No CorrelIds are logged.
+  coupleScribeWithSlf4j(noLog4jInit = true)
+
   ProblemCodeMessages.initialize()
 
   private val config_ = config
@@ -44,7 +48,8 @@ extends HasCloser
   private val useJavaThreadPool = config_.getBoolean("js7.thread-pools.use-java-thread-pool")
   private val ownScheduler = !useJavaThreadPool ?
     ThreadPools.newStandardScheduler("JControllerProxy", config_, closer)
-  private[proxy] implicit val scheduler = ownScheduler getOrElse Scheduler(ForkJoinPool.commonPool)
+  private[proxy] implicit val scheduler = CorrelIdBinder.enableScheduler(
+    ownScheduler getOrElse Scheduler(ForkJoinPool.commonPool))
 
   private val actorSystemLazy = Lazy(newActorSystem(
     "JS7-Proxy",
@@ -54,7 +59,6 @@ extends HasCloser
   onClose {
     logger.debug("close JS7 JProxyContext")
     for (a <- actorSystemLazy) Akkas.terminateAndWait(a)
-    for (s <- ownScheduler) s.shutdown()
   }
 
   @javaApi @Nonnull

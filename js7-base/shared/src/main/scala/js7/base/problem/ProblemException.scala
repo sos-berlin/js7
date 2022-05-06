@@ -3,7 +3,7 @@ package js7.base.problem
 /**
   * @author Joacim Zschimmer
   */
-class ProblemException private(val problem: Problem, message: String, cause: Throwable)
+case class ProblemException private(problem: Problem, message: String, cause: Throwable)
 extends RuntimeException(message, cause)
 {
   protected[problem] def this(problem: Problem, cause: Throwable) =

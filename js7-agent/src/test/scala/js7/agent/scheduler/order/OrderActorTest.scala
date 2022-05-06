@@ -17,6 +17,7 @@ import js7.base.generic.Completed
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.process.Processes.{ShellFileExtension => sh}
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
+import js7.base.log.CorrelId
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.IOExecutor.Implicits.globalIOX
@@ -49,7 +50,7 @@ import js7.journal.state.FileStatePersistence
 import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.process.ProcessConfiguration
 import js7.subagent.director.SubagentKeeper
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.Assertions._
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
@@ -203,6 +204,7 @@ private object OrderActorTest {
 
     private val orderActor = watch(actorOf(
       OrderActor.props(TestOrder.id,
+        CorrelId.generate(),
         subagentKeeper,
         persistence.journalActor,
         JournalConf.fromConfig(config)),
@@ -220,8 +222,10 @@ private object OrderActorTest {
 
     val runningSince = now
 
-    orderActor ! OrderActor.Command.Attach(TestOrder.copy(
-      attachedState = Some(Order.Attached(TestAgentPath))))
+    orderActor ! OrderActor.Command.Attach(
+      TestOrder.copy(
+        attachedState = Some(Order.Attached(TestAgentPath))),
+      CorrelId.empty)
 
     override def postStop() = {
       recovered.eventWatch.close()
@@ -267,16 +271,20 @@ private object OrderActorTest {
 
           case _: OrderProcessed =>
             events += event
-            orderActor ? OrderActor.Command.HandleEvents(OrderMoved(TestPosition) :: Nil) await 99.s
+            (orderActor ? OrderActor.Command.HandleEvents(OrderMoved(TestPosition) :: Nil, CorrelId.empty))
+              .await(99.s)
 
           case _: OrderMoved =>
             events += event
-            orderActor ? OrderActor.Command.HandleEvents(OrderDetachable :: Nil) await 99.s
+            (orderActor ? OrderActor.Command.HandleEvents(OrderDetachable :: Nil, CorrelId.empty))
+              .await(99.s)
             become(detachable)
 
           case OrderDetachable =>
             events += event
-            (orderActor ? OrderActor.Command.HandleEvents(OrderDetached :: Nil)).mapTo[Completed].map(_ => self ! "DETACHED")
+            (orderActor ? OrderActor.Command.HandleEvents(OrderDetached :: Nil, CorrelId.empty))
+              .mapTo[Completed]
+              .map(_ => self ! "DETACHED")
             become(detaching)
 
           case OrderDetached =>

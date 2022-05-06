@@ -16,7 +16,8 @@ import js7.base.BuildInfo
 import js7.base.auth.UserId
 import js7.base.generic.Completed
 import js7.base.io.process.ProcessSignal.SIGKILL
-import js7.base.log.Logger
+import js7.base.log.CorrelIdBinder.{bindCorrelId, currentCorrelId}
+import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.thread.IOExecutor
@@ -97,7 +98,9 @@ private[agent] final class AgentActor private(
 
   private def ready: Receive = {
     case cmd: Input.ExternalCommand =>
-      executeExternalCommand(cmd)
+      bindCorrelId(cmd.correlId) {
+        executeExternalCommand(cmd)
+      }
 
     case Terminated(a) if started.toOption.exists(_.actor == a) =>
       logger.debug("AgentOrderKeeper terminated")
@@ -190,7 +193,8 @@ private[agent] final class AgentActor private(
           case None =>
             response.success(Left(AgentNotDedicatedProblem))
           case Some(started) =>
-            started.actor.forward(AgentOrderKeeper.Input.ExternalCommand(command, response))
+            started.actor.forward(
+              AgentOrderKeeper.Input.ExternalCommand(command, currentCorrelId, response))
         }
 
       case command =>
@@ -291,7 +295,11 @@ object AgentActor
 
   object Input {
     final case class Start(recovered: Recovered[AgentState])
-    final case class ExternalCommand(userId: UserId, command: AgentCommand, response: Promise[Checked[AgentCommand.Response]])
+    final case class ExternalCommand(
+      userId: UserId,
+      command: AgentCommand,
+      correlId: CorrelId,
+      response: Promise[Checked[AgentCommand.Response]])
   }
 
   object Output {

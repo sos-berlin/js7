@@ -9,8 +9,8 @@ import js7.base.io.file.FileUtils.implicits._
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.file.FileUtils.{deleteDirectoryRecursively, temporaryDirectory}
 import js7.base.io.process.ProcessSignal.SIGKILL
-import js7.base.io.process.Processes
-import js7.base.io.process.Processes.{Pid, RobustlyStartProcess, processToPidOption}
+import js7.base.io.process.Processes.{RobustlyStartProcess, processToPidOption}
+import js7.base.io.process.{Pid, Processes}
 import js7.base.log.Logger
 import js7.base.system.OperatingSystem.{isMac, isSolaris, isUnix, isWindows}
 import js7.base.thread.Futures.implicits._
@@ -19,7 +19,7 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.job.TaskId
 import js7.launcher.process.ProcessKillScriptTest._
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
 import scala.concurrent.{Future, blocking}

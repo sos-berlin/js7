@@ -9,11 +9,13 @@ import scribe.{Level, LogRecord}
 object ScribeForJava
 {
   private var initialized = false
-  private val classToLoggerCache = new ConcurrentHashMap[String, org.slf4j.Logger]
+  // Lazy for not touching Logger before initialization (?)
+  private lazy val classToLoggerCache = new ConcurrentHashMap[String, org.slf4j.Logger]
 
-  def coupleScribeWithSlf4j(): Unit =
+  def coupleScribeWithSlf4j(noLog4jInit: Boolean = false): Unit =
     synchronized {
       if (!initialized) {
+        if (!noLog4jInit) Log4j.initialize()
         scribe.Logger.root
           .clearHandlers()
           .clearModifiers()

@@ -9,15 +9,15 @@ import js7.agent.command.CommandActor._
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{AttachItem, AttachSignedItem, Batch, CoupleController, DedicateAgentDirector, DetachItem, EmergencyStop, NoOperation, OrderCommand, Reset, ResetSubagent, Response, ShutDown, TakeSnapshot}
 import js7.agent.scheduler.AgentHandle
-import js7.base.auth.UserId
 import js7.base.circeutils.JavaJsonCodecs.instant.StringInstantJsonCodec
-import js7.base.log.Logger
+import js7.base.log.CorrelIdBinder.{bindCorrelId, currentCorrelId}
+import js7.base.log.{CorrelId, CorrelIdWrapped, Logger}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.common.system.startup.Halt
 import js7.core.command.{CommandMeta, CommandRegister, CommandRun}
-import js7.data.command.{CommandHandlerDetailed, CommandHandlerOverview, InternalCommandId}
+import js7.data.command.{CommandHandlerDetailed, CommandHandlerOverview}
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.Promise
@@ -34,8 +34,10 @@ extends Actor {
   private val register = new CommandRegister[AgentCommand]
 
   def receive = {
-    case Input.Execute(command, meta, response) =>
-      executeCommand(command, meta, response)
+    case Input.Execute(command, meta, correlId, response) =>
+      bindCorrelId(correlId) {
+        executeCommand(command, meta, response)
+      }
 
     case Command.GetOverview =>
       sender() ! register.overview
@@ -43,34 +45,46 @@ extends Actor {
     case Command.GetDetailed =>
       sender() ! register.detailed
 
-    case Internal.Respond(run, promise, response) =>
-      def msg = s"Response to ${run.idString} ${AgentCommand.jsonCodec.classToName(run.command.getClass)} (${run.runningSince.elapsed.pretty}): $response"
-      if (run.batchInternalId.isEmpty) {
-        if (response == Success(Right(AgentCommand.Response.Accepted))) logger.trace(msg) else logger.debug(msg)
+    case Internal.Respond(run, correlId, promise, response) =>
+      bindCorrelId[Unit](correlId) {
+        def msg = s"Response to ${run.idString} " +
+          s"${AgentCommand.jsonCodec.classToName(run.command.getClass)} " +
+          s"(${run.runningSince.elapsed.pretty}): $response"
+        if (run.batchInternalId.isEmpty) {
+          if (response == Success(Right(AgentCommand.Response.Accepted)))
+            logger.trace(msg)
+          else
+            logger.debug(msg)
+        }
+        register.remove(run.correlId)
+        promise.complete(response)
       }
-      register.remove(run.internalId)
-      promise.complete(response)
   }
 
-  private def executeCommand(command: AgentCommand, meta: CommandMeta, promise: Promise[Checked[Response]], batchId: Option[InternalCommandId] = None): Unit = {
-    val run = register.add(meta.user.id, command, batchId)
-    logCommand(meta.user.id, run)
+  private def executeCommand(
+    command: AgentCommand,
+    meta: CommandMeta,
+    promise: Promise[Checked[Response]],
+    batchId: Option[CorrelId] = None)
+  : Unit = {
+    val run = register.add(command, meta, currentCorrelId, batchId)
+    logCommand(run)
     val myResponse = Promise[Checked[Response]]()
-    executeCommand2(batchId, run.internalId, command, meta, myResponse)
+    executeCommand2(batchId, run.correlId, command, meta, myResponse)
     myResponse.future onComplete { tried =>
-      self ! Internal.Respond(run, promise, tried)
+      self ! Internal.Respond(run, run.correlId, promise, tried)
     }
   }
 
-  private def logCommand(userId: UserId, run: CommandRun[AgentCommand]): Unit =
+  private def logCommand(run: CommandRun[AgentCommand]): Unit =
     run.command match {
       case Batch(_) =>  // Log only individual commands
       case _ => logger.debug(run.toString)
     }
 
   private def executeCommand2(
-    batchId: Option[InternalCommandId],
-    id: InternalCommandId,
+    batchId: Option[CorrelId],
+    correlId: CorrelId,
     command: AgentCommand,
     meta: CommandMeta,
     response: Promise[Checked[Response]])
@@ -78,8 +92,11 @@ extends Actor {
     command match {
       case Batch(commands) =>
         val promises = Vector.fill(commands.size) { Promise[Checked[Response]]() }
-        for ((cmd, promise) <- commands zip promises)
-          executeCommand(cmd, meta, promise, batchId orElse Some(id))
+        for ((CorrelIdWrapped(subcorrelId, cmd), promise) <- commands zip promises) {
+          bindCorrelId(subcorrelId or CorrelId.generate()) {
+            executeCommand(cmd, meta, promise, batchId = batchId orElse Some(correlId))
+          }
+        }
         response.completeWith(
           promises
             .map(_.future.recover {
@@ -113,18 +130,26 @@ object CommandActor {
   }
 
   object Input {
-    final case class Execute(command: AgentCommand, meta: CommandMeta, response: Promise[Checked[Response]])
+    final case class Execute(
+      command: AgentCommand,
+      meta: CommandMeta,
+      correlId: CorrelId,
+      response: Promise[Checked[Response]])
   }
 
   private object Internal {
-    final case class Respond(run: CommandRun[AgentCommand], promise: Promise[Checked[Response]], response: Try[Checked[Response]])
+    final case class Respond(
+      run: CommandRun[AgentCommand],
+      correlId: CorrelId,
+      promise: Promise[Checked[Response]],
+      response: Try[Checked[Response]])
   }
 
   final class Handle(actor: ActorRef)(implicit askTimeout: Timeout) extends CommandHandler {
     def execute(command: AgentCommand, meta: CommandMeta) =
       Task.deferFuture {
         val promise = Promise[Checked[Response]]()
-        actor ! Input.Execute(command, meta, promise)
+        actor ! Input.Execute(command, meta, currentCorrelId, promise)
         promise.future
       }
 

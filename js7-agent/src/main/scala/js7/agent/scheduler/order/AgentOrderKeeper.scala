@@ -12,7 +12,8 @@ import js7.agent.main.AgentMain
 import js7.agent.scheduler.order.AgentOrderKeeper._
 import js7.base.crypt.{SignatureVerifier, Signed}
 import js7.base.generic.Completed
-import js7.base.log.Logger
+import js7.base.log.CorrelIdBinder.{bindCorrelId, currentCorrelId}
+import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.{RichCheckedTask, RichMonixTask}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
@@ -312,8 +313,11 @@ with Stash
   }
 
   private def ready: Receive = {
-    case Input.ExternalCommand(cmd, response) =>
-      response.completeWith(processCommand(cmd))
+    case Input.ExternalCommand(cmd, correlId, response) =>
+      response.completeWith(
+        bindCorrelId(correlId) {
+          processCommand(cmd)
+        })
 
     case terminate: AgentCommand.ShutDown =>
       shutdown.start(terminate)
@@ -322,41 +326,43 @@ with Stash
     case JournalActor.Output.SnapshotTaken =>
       shutdown.onSnapshotTaken()
 
-    case OrderActor.Output.OrderChanged(orderId, previousOrderOrNull, events) =>
-      if (!shuttingDown) {
-        // previousOrderOrNull is null only for OrderAttachedToAgent event
-        var order = previousOrderOrNull
-        var myJobEntry: JobEntry = null
-        for (event <- events) {
-          event match {
-            case event: OrderAttachedToAgent =>
-              order = Order.fromOrderAttached(orderId, event)
+    case OrderActor.Output.OrderChanged(orderId, correlId, previousOrderOrNull, events) =>
+      bindCorrelId(correlId) {
+        if (!shuttingDown) {
+          // previousOrderOrNull is null only for OrderAttachedToAgent event
+          var order = previousOrderOrNull
+          var myJobEntry: JobEntry = null
+          for (event <- events) {
+            event match {
+              case event: OrderAttachedToAgent =>
+                order = Order.fromOrderAttached(orderId, event)
 
-            case event: OrderProcessed =>
-              (for {
-                jobKey <- persistence.currentState.jobKey(previousOrderOrNull.workflowPosition)
-                jobEntry <- jobRegister.checked(jobKey)
-              } yield jobEntry)
-              match {
-                case Left(problem) =>
-                  logger.error(s"OrderActor.Output.OrderChanged($orderId) => $problem")
+              case event: OrderProcessed =>
+                (for {
+                  jobKey <- persistence.currentState.jobKey(previousOrderOrNull.workflowPosition)
+                  jobEntry <- jobRegister.checked(jobKey)
+                } yield jobEntry)
+                match {
+                  case Left(problem) =>
+                    logger.error(s"OrderActor.Output.OrderChanged($orderId) => $problem")
 
-                case Right(jobEntry) =>
-                  jobEntry.taskCount -= 1
-                  myJobEntry = jobEntry
-              }
-              order = order.applyEvent(event).orThrow
+                  case Right(jobEntry) =>
+                    jobEntry.taskCount -= 1
+                    myJobEntry = jobEntry
+                }
+                order = order.applyEvent(event).orThrow
 
-            case event: OrderCoreEvent =>
-              order = order.applyEvent(event).orThrow
+              case event: OrderCoreEvent =>
+                order = order.applyEvent(event).orThrow
 
-            case _ =>
+              case _ =>
+            }
+            handleOrderEvent(order, event)
           }
-          handleOrderEvent(order, event)
-        }
-        if (myJobEntry != null) tryStartProcessing(myJobEntry)
-        if (!events.lastOption.contains(OrderDetached)) {
-          proceedWithOrder(orderId)
+          if (myJobEntry != null) tryStartProcessing(myJobEntry)
+          if (!events.lastOption.contains(OrderDetached)) {
+            proceedWithOrder(orderId)
+          }
         }
       }
 
@@ -521,7 +527,7 @@ with Stash
                   else if (shuttingDown)
                     Future.successful(Left(AgentIsShuttingDown))
                   else
-                    attachOrder(/*workflowRegister.reuseMemory*/(order), workflow)
+                    attachOrder(/*workflowRegister.reuseMemory*/(order))
                       .map((_: Completed) => Right(Response.Accepted))
               }
         }
@@ -539,7 +545,7 @@ with Stash
               case Right(_) =>
                 val promise = Promise[Unit]()
                 orderEntry.detachResponses ::= promise
-                (orderEntry.actor ? OrderActor.Command.HandleEvents(OrderDetached :: Nil))
+                (orderEntry.actor ? OrderActor.Command.HandleEvents(OrderDetached :: Nil, currentCorrelId))
                   .mapTo[Completed]
                   .onComplete {
                     case Failure(t) => promise.tryFailure(t)
@@ -572,7 +578,7 @@ with Stash
                 // one after the other because execution is asynchronous.
                 // A second command may may see the same not yet updated order.
                 // TODO Queue for each order? And no more OrderActor?
-                (orderEntry.actor ? OrderActor.Command.HandleEvents(events))
+                (orderEntry.actor ? OrderActor.Command.HandleEvents(events, currentCorrelId))
                   .mapTo[Completed]
                   .map(_ => Right(AgentCommand.Response.Accepted))
             }
@@ -602,16 +608,17 @@ with Stash
       }
     }
 
-  private def attachOrder(order: Order[Order.IsFreshOrReady], workflow: Workflow): Future[Completed] = {
+  private def attachOrder(order: Order[Order.IsFreshOrReady]): Future[Completed] = {
     val actor = newOrderActor(order.id)
     orderRegister.insert(order.id, actor)
-    (actor ? OrderActor.Command.Attach(order)).mapTo[Completed]  // TODO ask will time-out when Journal blocks
+    (actor ? OrderActor.Command.Attach(order, currentCorrelId)).mapTo[Completed]  // TODO ask will time-out when Journal blocks
     // Now expecting OrderEvent.OrderAttachedToAgent
   }
 
   private def newOrderActor(orderId: OrderId) =
     watch(actorOf(
-      OrderActor.props(orderId, subagentKeeper, journalActor = journalActor, journalConf),
+      OrderActor.props(
+        orderId, currentCorrelId, subagentKeeper, journalActor = journalActor, journalConf),
       name = uniqueActorName(encodeAsActorName("Order:" + orderId.string))))
 
   private def handleOrderEvent(
@@ -677,7 +684,8 @@ with Stash
             logger.error(s"Order ${orderId.string} is broken: $problem")
 
           case KeyedEvent(orderId_, event) =>
-            val future = orderRegister(orderId_).actor ? OrderActor.Command.HandleEvents(event :: Nil)
+            val future = orderRegister(orderId_).actor ?
+              OrderActor.Command.HandleEvents(event :: Nil, currentCorrelId)
             try Await.result(future, 99.s) // TODO Blocking! SLOW because inhibits parallelization
             catch { case NonFatal(t) => logger.error(
               s"$orderId_ <-: ${event.toShortString} => ${t.toStringWithCauses}")
@@ -814,7 +822,10 @@ object AgentOrderKeeper {
 
   sealed trait Input
   object Input {
-    final case class ExternalCommand(command: AgentCommand, response: Promise[Checked[Response]])
+    final case class ExternalCommand(
+      command: AgentCommand,
+      correlId: CorrelId,
+      response: Promise[Checked[Response]])
   }
 
   private object Internal {

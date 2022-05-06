@@ -1,13 +1,14 @@
 package js7.controller.command
 
-import js7.base.log.Logger
+import js7.base.log.CorrelIdBinder.{bindCorrelId, currentCorrelId}
+import js7.base.log.{CorrelId, CorrelIdWrapped, Logger}
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.common.system.startup.Halt
 import js7.controller.command.ControllerCommandExecutor._
 import js7.core.command.{CommandExecutor, CommandMeta, CommandRegister, CommandRun}
-import js7.data.command.{CommandHandlerDetailed, CommandHandlerOverview, InternalCommandId}
+import js7.data.command.{CommandHandlerDetailed, CommandHandlerOverview}
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{Batch, EmergencyStop}
 import monix.eval.Task
@@ -15,7 +16,8 @@ import monix.eval.Task
 /**
   * @author Joacim Zschimmer
   */
-private[controller] final class ControllerCommandExecutor(otherCommandExecutor: CommandExecutor[ControllerCommand])
+private[controller] final class ControllerCommandExecutor(
+  otherCommandExecutor: CommandExecutor[ControllerCommand])
 extends CommandExecutor[ControllerCommand]
 {
   private val register = new CommandRegister[ControllerCommand]
@@ -23,11 +25,12 @@ extends CommandExecutor[ControllerCommand]
   def executeCommand(command: ControllerCommand, meta: CommandMeta): Task[Checked[command.Response]] =
     executeCommand(command, meta, None)
 
-  private def executeCommand(command: ControllerCommand, meta: CommandMeta, batchId: Option[InternalCommandId])
+  private def executeCommand(command: ControllerCommand, meta: CommandMeta, batchId: Option[CorrelId])
   : Task[Checked[command.Response]] = {
-    val run = register.add(meta.user.id, command, batchId)
+    val correlId = currentCorrelId
+    val run = register.add(command, meta, correlId, batchId)
     logCommand(run)
-    executeCommand2(command, meta, run.internalId, batchId)
+    executeCommand2(command, meta, correlId, batchId)
       .map { checkedResponse =>
         if (run.batchInternalId.isEmpty || checkedResponse != Right(ControllerCommand.Response.Accepted)) {
           logger.debug(s"Response to ${run.idString} ${ControllerCommand.jsonCodec.classToName(run.command.getClass)}" +
@@ -40,15 +43,18 @@ extends CommandExecutor[ControllerCommand]
         for (t <- maybeThrowable if run.batchInternalId.isEmpty) {
           logger.warn(s"$run failed: ${t.toStringWithCauses}")
         }
-        register.remove(run.internalId)
+        register.remove(run.correlId)
       })
   }
 
-  private def executeCommand2(command: ControllerCommand, meta: CommandMeta, id: InternalCommandId, batchId: Option[InternalCommandId])
+  private def executeCommand2(command: ControllerCommand, meta: CommandMeta, id: CorrelId, batchId: Option[CorrelId])
   : Task[Checked[ControllerCommand.Response]] =
     command match {
-      case Batch(commands) =>
-        val tasks = for (c <- commands) yield executeCommand(c, meta, batchId orElse Some(id))
+      case Batch(correlIdWrappedCommands) =>
+        val tasks = for (CorrelIdWrapped(correlId, command) <- correlIdWrappedCommands) yield
+          bindCorrelId(correlId) {
+            executeCommand(command, meta, batchId orElse Some(id))
+          }
         Task.sequence(tasks).map(checkedResponses => Right(Batch.Response(checkedResponses)))
 
       case EmergencyStop(restart) =>

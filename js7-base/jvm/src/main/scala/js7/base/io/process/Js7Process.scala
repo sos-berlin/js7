@@ -1,7 +1,6 @@
 package js7.base.io.process
 
 import java.io.{InputStream, OutputStream}
-import js7.base.io.process.Processes.Pid
 import scala.concurrent.duration.FiniteDuration
 
 trait Js7Process

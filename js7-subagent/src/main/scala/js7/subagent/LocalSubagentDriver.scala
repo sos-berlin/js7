@@ -4,6 +4,7 @@ import cats.syntax.foldable._
 import cats.syntax.parallel._
 import cats.syntax.traverse._
 import js7.base.io.process.{ProcessSignal, Stderr, Stdout, StdoutOrStderr}
+import js7.base.log.CorrelIdBinder.{bindCorrelId, currentCorrelId}
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax._
 import js7.base.monixutils.AsyncMap
@@ -141,15 +142,19 @@ extends SubagentDriver
         keepLastErrLine = keepLastErrLine)
 
       def writeObservableAsEvents(outerr: StdoutOrStderr, observable: Observable[String]) =
-        observable
-          .doAfterSubscribe(Task(observingStarted(outerr).success(())))
-          .buffer(Some(stdouterr.delay), stdouterr.chunkSize, toWeight = _.length)
-          .flatMap(strings => Observable.fromIterable(chunkStrings(strings, stdouterr.chunkSize)))
-          .flatMap(chunk => Observable.fromTask(
-            outErrStatistics(outerr).count(
-              chunk.length,
-              persistStdouterr(orderId, outerr, chunk))))
-          .completedL
+        Task.defer {
+          val correlId = currentCorrelId
+          observable
+            .doAfterSubscribe(Task(observingStarted(outerr).success(())))
+            .buffer(Some(stdouterr.delay), stdouterr.chunkSize, toWeight = _.length)
+            .flatMap(strings => Observable.fromIterable(chunkStrings(strings, stdouterr.chunkSize)))
+            .flatMap(chunk => Observable.fromTask(
+              outErrStatistics(outerr).count(
+                chunk.length,
+                bindCorrelId(correlId)(
+                  persistStdouterr(orderId, outerr, chunk)))))
+            .completedL
+        }
 
       val observeOutErr = Task
         .parZip2(

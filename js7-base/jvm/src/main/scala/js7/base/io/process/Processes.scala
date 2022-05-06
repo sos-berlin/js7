@@ -4,7 +4,6 @@ import java.io.{ByteArrayOutputStream, IOException}
 import java.nio.file.Path
 import java.nio.file.attribute.FileAttribute
 import js7.base.data.ByteArray
-import js7.base.generic.GenericLong
 import js7.base.io.process.OperatingSystemSpecific.OS
 import js7.base.io.process.Processes.RobustlyStartProcess.TextFileBusyIOException
 import js7.base.log.Logger
@@ -28,13 +27,6 @@ object Processes
 
   def processToPidOption(process: Process): Option[Pid] = ProcessPidRetriever.processToPid(process)
 
-  final case class Pid(number: Long) extends GenericLong {
-    def string = number.toString
-
-    override def toString = s"PID:$number"
-  }
-
-  object Pid extends GenericLong.Companion[Pid]
 
   /**
    * Builds an argument list for [[ProcessBuilder]].

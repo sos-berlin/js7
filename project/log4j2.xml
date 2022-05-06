@@ -2,7 +2,7 @@
 <configuration status="WARN">
   <appenders>
     <console name="stderr" target="SYSTEM_ERR">
-      <patternLayout pattern="%highlight{%d{DEFAULT} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %notEmpty{»%marker« }- %message}{INFO=blue,WARN=red bold}%n"/>
+      <patternLayout pattern="%highlight{%d{DEFAULT} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %message}{INFO=blue,WARN=red bold}%n"/>
     </console>
     <rollingRandomAccessFile name="file"
                              fileName="target/build.log"
@@ -10,7 +10,7 @@
                              append="true"
                              immediateFlush="${sys:js7.log4j.immediateFlush:-true}">
       <!-- append=true is required to let forked tests append. -->
-      <patternLayout pattern="%d{DEFAULT_MICROS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} [%threadName] %logger %notEmpty{»%marker« }- %message%n"
+      <patternLayout pattern="%d{DEFAULT_MICROS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %notEmpty{%X{js7.correlId} } [%threadName] %logger %notEmpty{»%marker« }%logger - %message%n"
                      charset="UTF-8"/>
       <policies>
         <timeBasedTriggeringPolicy/>

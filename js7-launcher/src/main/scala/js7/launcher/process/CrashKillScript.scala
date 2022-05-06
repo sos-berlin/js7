@@ -5,7 +5,7 @@ import java.nio.charset.Charset.defaultCharset
 import java.nio.file.Files.{createFile, deleteIfExists, move}
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
-import js7.base.io.process.Processes.Pid
+import js7.base.io.process.Pid
 import js7.base.log.LazyScalaLogger.AsLazyScalaLogger
 import js7.base.log.Logger
 import js7.base.utils.AutoClosing.autoClosing
