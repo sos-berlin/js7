@@ -62,7 +62,9 @@ final class X509Test extends AnyFreeSpec
 
       val certificateBytes = certificateFile.byteArray
       val verifier = X509SignatureVerifier.checked(Seq(certificateBytes), origin = certificateFile.toString).orThrow
-      val signerId = X509Cert.fromPem(certificateBytes.utf8String).map(_.signerId).orThrow
+      val signerCert = X509Cert.fromPem(certificateBytes.utf8String).orThrow
+      logger.info(signerCert.toLongString)
+      val signerId = signerCert.signerId
       assert(!signerId.string.startsWith("/"))
       val signature = X509Signature(signatureFile.byteArray, SHA512withRSA, Left(signerId))
       assert(verifier.verifyString(documentFile.contentString, signature) == Right(SignerId("CN=SIGNER") :: Nil))
@@ -74,7 +76,9 @@ final class X509Test extends AnyFreeSpec
     withTemporaryDirectory("X509Test-") { dir =>
       val openssl = new Openssl(dir)
       val ca = new openssl.Root("Root")
-      assert(X509Cert.fromByteArray(ca.certificateFile.byteArray).orThrow.isCA)
+      val caCert = X509Cert.fromByteArray(ca.certificateFile.byteArray).orThrow
+      logger.info(caCert.toLongString)
+      assert(caCert.isCA)
 
       val documentFile = dir / "document"
       documentFile := "TEST DOCUMENT"
@@ -175,9 +179,11 @@ object X509Test
   private def toSignatureWithSignerId(signatureFile: Path, signerId: SignerId): X509Signature =
     X509Signature(toSignatureBytes(signatureFile), SHA512withRSA, Left(signerId))
 
-  private def toSignatureWithTrustedCertificate(signatureFile: Path, signersCertificateFile: Path): X509Signature =
-    X509Signature(toSignatureBytes(signatureFile), SHA512withRSA,
-      Right(X509Cert.fromPem(signersCertificateFile.contentString).orThrow))
+  private def toSignatureWithTrustedCertificate(signatureFile: Path, signersCertificateFile: Path): X509Signature = {
+    val cert = X509Cert.fromPem(signersCertificateFile.contentString).orThrow
+    logger.info(cert.toLongString)
+    X509Signature(toSignatureBytes(signatureFile), SHA512withRSA, Right(cert))
+  }
 
   /** Reverse Openssl's base64 encoding. */
   private def toSignatureBytes(signatureFile: Path) =

@@ -35,9 +35,10 @@ extends SignatureVerifier
   def publicKeys = for (o <- trustedCertificates) yield
     CertificatePem.toPem(ByteArray.unsafeWrap(o.x509Certificate.getEncoded))
 
-  def publicKeysToString =
-    s"X.509 origin=$publicKeyOrigin " +
-      trustedCertificates.map(_.x509Certificate.getSubjectX500Principal.toString).mkString(", ")
+  def publicKeysToStrings =
+    Seq(s"X.509 origin=$publicKeyOrigin") ++
+      trustedCertificates
+        .map(o => "  " + o.toLongString)
 
   def verify(document: ByteArray, signature: X509Signature): Checked[Seq[SignerId]] = {
     signature.signerIdOrCertificate match {
@@ -113,7 +114,7 @@ object X509SignatureVerifier extends SignatureVerifier.Companion
       .flatMap(trustedCertificates =>
         trustedCertificates
           // Openssl 1.1.1i always sets the CA critical extension
-          // to allow self-signed certificats (?)
+          // to allow self-signed certificates (?)
           //.filterNot(_.isCA)
           .toCheckedKeyedMap(_.signersDistinguishedName, duplicateDNsToProblem)
           .map { signerDNToTrustedCertificate =>

@@ -1,5 +1,6 @@
 package js7.base.crypt.x509
 
+import java.security.MessageDigest
 import java.security.cert.{CertificateFactory, X509Certificate}
 import js7.base.auth.{DistinguishedName, Pem}
 import js7.base.crypt.SignerId
@@ -8,6 +9,7 @@ import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops._
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax._
+import scala.jdk.CollectionConverters._
 
 private[x509] final case class X509Cert(x509Certificate: X509Certificate)
 {
@@ -16,6 +18,12 @@ private[x509] final case class X509Cert(x509Certificate: X509Certificate)
   lazy val signersDistinguishedName = new DistinguishedName(getSubjectX500Principal)
   lazy val signerId = SignerId(signersDistinguishedName.toString)
 
+  lazy val fingerprint: ByteArray = {
+    val md = MessageDigest.getInstance("SHA-1")
+    md.update(getEncoded)
+    ByteArray(md.digest)
+  }
+
   lazy val isCA =
     containsCA(getCriticalExtensionOIDs) ||
       containsCA(getNonCriticalExtensionOIDs)
@@ -23,9 +31,21 @@ private[x509] final case class X509Cert(x509Certificate: X509Certificate)
   private def containsCA(strings: java.util.Set[String]) =
     Option(strings).fold(false)(_.contains(MayActAsCA))
 
-  override def toString = s"X.509Certificate(${x509Certificate.getSubjectX500Principal} " +
-    (isCA ?? "CA ") +
-    s"serialNr=${x509Certificate.getSerialNumber} modulus=${ByteArray(x509Certificate.getEncoded).toHexRaw(16)})"
+  def toLongString =
+    "X.509 certificate " +
+      getSubjectX500Principal + " · " +
+      (isCA ?? "CA, ") +
+      "fingerprint=" + fingerprint.toHexRaw +
+      (getKeyUsage != null) ?? (" keyUsage=" + keyUsageToString(getKeyUsage)) +
+      (getExtendedKeyUsage != null) ??
+        (" extendedKeyUsage=" +
+          getExtendedKeyUsage.asScala.map(o => oidToString.getOrElse(o, o)).mkString(",")) +
+      ((getSubjectAlternativeNames != null) ??
+        (" subjectAlternativeNames=" + subjectAlternativeNamesToString(
+          getSubjectAlternativeNames)))
+
+  override def toString =
+    s"X.509Certificate($getSubjectX500Principal)"
 }
 
 object X509Cert
@@ -44,4 +64,45 @@ object X509Cert
       certificate.checkValidity()  // throws
       X509Cert(certificate)
     }
+
+  private val keyUsages = Vector(
+    "digitalSignature",
+    "nonRepudiation",
+    "keyEncipherment",
+    "dataEncipherment",
+    "keyAgreement",
+    "keyCertSign",
+    "crlSign",
+    "encipherOnly",
+    "decipherOnly")
+
+  private def keyUsageToString(keyUsage: Array[Boolean]): String =
+    keyUsages.indices.flatMap(i => keyUsage(i) ? keyUsages(i)).mkString(",")
+
+  private val oidToString = Map[String, String](
+    "1.3.6.1.5.5.7.3.1" -> "serverAuth",
+    "1.3.6.1.5.5.7.3.2" -> "clientAuth")
+
+  private def subjectAlternativeNamesToString(collection: java.util.Collection[java.util.List[_]]): String =
+    collection.asScala.map(_.asScala.to(Array) match {
+      case Array(i, value) =>
+        (i match {
+          case i: java.lang.Integer => subjectAlternativeKeys.getOrElse(i, i.toString)
+          case i => i.toString
+        }) + "=" + (value match {
+          case value: String => value
+          case _ => "..."
+        })
+    }).mkString(",")
+
+  private val subjectAlternativeKeys = Map(
+    0 -> "other",
+    1 -> "rfc822",
+    2 -> "DNS",
+    3 -> "x400Address",
+    4 -> "directory",
+    5 -> "ediParty",
+    6 -> "uniformResourceIdentifier",
+    7 -> "IP",
+    8 -> "registeredID")
 }

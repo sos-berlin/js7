@@ -9,6 +9,7 @@ import java.io.{ByteArrayOutputStream, InputStream, OutputStream}
 import java.nio.charset.StandardCharsets.US_ASCII
 import java.security.Security
 import js7.base.data.ByteArray
+import js7.base.data.ByteSequence.ops._
 import js7.base.time.JavaTime._
 import js7.base.utils.SyncResource.syntax._
 import org.bouncycastle.bcpg.{ArmoredOutputStream, HashAlgorithmTags, PublicKeyAlgorithmTags}
@@ -29,25 +30,25 @@ object PgpCommons
 
   private val BufferSize = 4096
 
-  def pgpPublicKeyToShortString(key: PGPPublicKey) = {
-    import key._
-    f"PGPPublicKey(" +
-      "fingerprint=" + fingerprintToString(getFingerprint) +
-      " userIDs=" + getUserIDs.asScala.mkString("'", "', '", "'") +
-      ")"
-  }
+  def pgpPublicKeyToShortString(key: PGPPublicKey) =
+    "PGPPublicKey" +
+      " userIDs=" + key.getUserIDs.asScala.mkString("'", "', '", "'") +
+      " fingerprint=" + fingerPrintAsString(key)
 
   implicit val PGPPublicKeyShow = Show[PGPPublicKey] { key =>
     import key._
     f"PGPPublicKey($getKeyID%08X" +
-      " fingerprint=" + fingerprintToString(getFingerprint) +
       " userIDs=" + getUserIDs.asScala.mkString("'", "', '", "'") +
+      " fingerprint=" + fingerPrintAsString(key) +
       " created=" + getCreationTime.show +
       " algorithm=" + publicKeyAlgorithmToString(getAlgorithm) +
       " isEncryptionKey=" + isEncryptionKey +
       " isMasterKey=" + isMasterKey +
       ")"
   }
+
+  private def fingerPrintAsString(key: PGPPublicKey): String =
+    Option(key.getFingerprint).fold(ByteArray.empty)(ByteArray(_)).toHexRaw
 
   implicit val PGPPublicKeyRingShow = Show[PGPPublicKeyRing](
     _.asScala.toVector.mkString_("PGPPublicKeyRing(", ", ", ")"))
@@ -131,12 +132,6 @@ object PgpCommons
   private def cipherToString(n: Int) =
     try PGPUtil.getSymmetricCipherName(n)
     catch { case NonFatal(_) => s"cipher-$n" }
-
-  private def fingerprintToString(fingerprint: Array[Byte]): String =
-    fingerprint match {
-      case null => "(no fingerprint)"
-      case bytes => bytes.map(b => f"$b%02X").grouped(2).map(_.mkString).mkString(" ")
-    }
 
   private[crypt] def registerBouncyCastle() = ()  // Dummy to initialize this object
 

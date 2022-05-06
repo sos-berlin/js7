@@ -41,7 +41,8 @@ extends SignatureVerifier
 
   def isEmpty = typeToVerifier.isEmpty
 
-  override def publicKeysToString = "GenericSignatureVerifier#publicKeysToString"
+  override def publicKeysToStrings =
+    "GenericSignatureVerifier#publicKeysToStrings" :: Nil
 }
 
 object GenericSignatureVerifier extends SignatureVerifier.Companion
@@ -89,9 +90,13 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion
         if (typeToVerifier.isEmpty)
           Left(Problem.pure(s"No trusted signature keys - Configure one with $configPath!"))
         else {
-          for (verifier <- typeToVerifier.values.toVector.sortBy(_.companion.typeName)) {
-            logger.info(s"Trusting public signature keys: ${verifier.publicKeysToString}")
-          }
+          logger.info(
+            Seq(s"Trusting public signature keys:")
+              .concat(
+                typeToVerifier.values.toVector
+                .sortBy(_.companion.typeName)
+                .flatMap(_.publicKeysToStrings))
+              .mkString("\n  "))
           Right(
             new GenericSignatureVerifier(
               typeToVerifier.toChecked(key => Problem(s"No trusted public key for signature type '$key'"))))

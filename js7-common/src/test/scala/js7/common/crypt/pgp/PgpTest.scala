@@ -40,12 +40,12 @@ final class PgpTest extends AnyFreeSpec
       "toString" in {
         assert(verifier.toString ==
           "PgpSignatureVerifier(" +
-            "publicKeyOrigin=PgpTest, " +
+            "origin=PgpTest, " +
             "PGPPublicKeyRing(" +
               "PGPPublicKey(" +
                 "F5726E50E5345B98 " +
-                "fingerprint=D759 C7DA 556F 2EF9 CAD5 2460 F572 6E50 E534 5B98 " +
                 "userIDs='TEST (COMMENT) <test@example.com>' " +
+                "fingerprint=d759c7da 556f2ef9 cad52460 f5726e50 e5345b98 " +
                 "created=2019-01-09T10:24:28Z " +
                 "algorithm='RSA general' " +
                 "isEncryptionKey=true " +
@@ -53,8 +53,8 @@ final class PgpTest extends AnyFreeSpec
               "), " +
               "PGPPublicKey(" +
                 "20058E9B9A6C7F27 " +
-                "fingerprint=7105 E581 0035 32F1 43DF DEB7 2005 8E9B 9A6C 7F27 " +
                 "userIDs='' " +
+                "fingerprint=7105e581 003532f1 43dfdeb7 20058e9b 9a6c7f27 " +
                 "created=2019-01-09T10:24:28Z " +
                 "algorithm='RSA general' " +
                 "isEncryptionKey=true " +
@@ -89,8 +89,8 @@ final class PgpTest extends AnyFreeSpec
             "PGPSecretKey(" +
               "PGPPublicKey(" +
                 "F5726E50E5345B98 " +
-                "fingerprint=D759 C7DA 556F 2EF9 CAD5 2460 F572 6E50 E534 5B98 " +
                 "userIDs='TEST (COMMENT) <test@example.com>' " +
+                "fingerprint=d759c7da 556f2ef9 cad52460 f5726e50 e5345b98 " +
                 "created=2019-01-09T10:24:28Z " +
                 "algorithm='RSA general' " +
                 "isEncryptionKey=true " +

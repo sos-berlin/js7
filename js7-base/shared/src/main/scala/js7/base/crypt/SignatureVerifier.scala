@@ -21,7 +21,7 @@ trait SignatureVerifier {
 
   def publicKeyOrigin: String
 
-  def publicKeysToString: String
+  def publicKeysToStrings: Seq[String]
 
   def verify(document: ByteArray, signature: MySignature): Checked[Seq[SignerId]]
 

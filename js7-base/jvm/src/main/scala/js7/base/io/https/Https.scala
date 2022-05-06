@@ -4,6 +4,7 @@ import java.io.InputStream
 import java.security.KeyStore
 import java.security.cert.{Certificate, CertificateFactory, X509Certificate}
 import javax.net.ssl.{KeyManager, KeyManagerFactory, SSLContext, TrustManagerFactory, X509TrustManager}
+import js7.base.crypt.x509.X509Cert
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops._
 import js7.base.generic.SecretString
@@ -116,13 +117,7 @@ object Https
   private def certificateToString(cert: Certificate): String =
     (cert match {
       case cert: X509Certificate =>
-        "X.509 '" + cert.getSubjectX500Principal + "'" +
-          (cert.getKeyUsage != null) ??
-            (" keyUsage=" + keyUsageToString(cert.getKeyUsage)) +
-          (cert.getExtendedKeyUsage != null) ??
-            (" extendedKeyUsage=" + cert.getExtendedKeyUsage.asScala.map(o => oidToString.getOrElse(o, o)).mkString(",")) +
-          (cert.getSubjectAlternativeNames != null) ??
-            (" subjectAlternativeNames=" + subjectAlternativeNamesToString(cert.getSubjectAlternativeNames))
+        X509Cert(cert).toLongString
       case o =>
         o.getType
     })
@@ -143,45 +138,4 @@ object Https
     }
     keyStore
   }
-
-  private val keyUsages = Vector(
-    "digitalSignature",
-    "nonRepudiation",
-    "keyEncipherment",
-    "dataEncipherment",
-    "keyAgreement",
-    "keyCertSign",
-    "crlSign",
-    "encipherOnly",
-    "decipherOnly")
-
-  private def keyUsageToString(keyUsage: Array[Boolean]): String =
-    keyUsages.indices.flatMap(i => keyUsage(i) ? keyUsages(i)).mkString(",")
-
-  private val subjectAlternativeKeys = Map(
-    0 -> "other",
-    1 -> "rfc822",
-    2 -> "DNS",
-    3 -> "x400Address",
-    4 -> "directory",
-    5 -> "ediParty",
-    6 -> "uniformResourceIdentifier",
-    7 -> "IP",
-    8 -> "registeredID")
-
-  private def subjectAlternativeNamesToString(collection: java.util.Collection[java.util.List[_]]): String =
-    collection.asScala.map(_.asScala.to(Array) match {
-      case Array(i, value) =>
-        (i match {
-          case i: java.lang.Integer => subjectAlternativeKeys.getOrElse(i, i.toString)
-          case i => i.toString
-        }) + "=" + (value match {
-          case value: String => value
-          case _ => "..."
-        })
-    }).mkString(",")
-
-  private val oidToString = Map[String, String](
-    "1.3.6.1.5.5.7.3.1" -> "serverAuth",
-    "1.3.6.1.5.5.7.3.2" -> "clientAuth")
 }

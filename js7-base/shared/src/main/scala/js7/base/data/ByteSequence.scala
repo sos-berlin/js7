@@ -112,6 +112,9 @@ with Monoid[ByteSeq] with Eq[ByteSeq] with Show[ByteSeq]
         "« " +
         toHexRaw(byteSeq, n, withEllipsis))
 
+  def toHexRaw(byteSeq: ByteSeq): String =
+    toHexRaw(byteSeq, n = Int.MaxValue)
+
   def toHexRaw(byteSeq: ByteSeq, n: Int = Int.MaxValue, withEllipsis: Boolean = false): String =
     iterator(byteSeq).take(n).grouped(4).map(_.map(o => f"$o%02x").mkString).mkString(" ") +
       ((withEllipsis || lengthIs(byteSeq) > n) ?? "...")

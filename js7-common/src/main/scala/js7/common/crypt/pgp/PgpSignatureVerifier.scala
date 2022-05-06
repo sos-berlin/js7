@@ -66,9 +66,12 @@ extends SignatureVerifier
       Right(publicKey.getUserIDs.asScala.map(SignerId.apply).toVector)
   }
 
-  override def toString = s"PgpSignatureVerifier(publicKeyOrigin=$publicKeyOrigin, ${publicKeyRingCollection.show})"
+  override def toString = s"PgpSignatureVerifier(origin=$publicKeyOrigin, ${publicKeyRingCollection.show})"
 
-  def publicKeysToString = s"$typeName(publicKeyOrigin=$publicKeyOrigin, ${publicKeyRingCollection.show})"
+  def publicKeysToStrings =
+    Seq(s"PGP origin=$publicKeyOrigin") ++
+      publicKeyRingCollection.asScala
+        .flatMap(_.asScala.map(k => "  " + pgpPublicKeyToShortString(k)))
 }
 
 object PgpSignatureVerifier extends SignatureVerifier.Companion

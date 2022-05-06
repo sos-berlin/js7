@@ -30,9 +30,10 @@ extends SignatureVerifier
     else
       Right(SillySignerId :: Nil)
 
-  override def toString = s"SillySignatureVerifer(publicKeyOrigin=$publicKeyOrigin)"
+  override def toString = s"SillySignatureVerifer(origin=$publicKeyOrigin)"
 
-  def publicKeysToString = s"$typeName(publicKeyOrigin=$publicKeyOrigin)"
+  def publicKeysToStrings =
+    s"$typeName(origin=$publicKeyOrigin)" :: Nil
 }
 
 object SillySignatureVerifier extends SignatureVerifier.Companion
