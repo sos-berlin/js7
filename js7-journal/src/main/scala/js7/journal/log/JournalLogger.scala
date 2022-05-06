@@ -120,8 +120,8 @@ private[journal] final class JournalLogger(
     import frame._
     import stamped.value.{event, key}
     sb.clear()
-    sb.append(persistMarker)
     sb.append("Event ")
+    sb.append(persistMarker)
     sb.append(transactionMarker(false))
     if (key != NoKey) {
       sb.append(key)
@@ -177,7 +177,8 @@ object JournalLogger
     var isLast = true
 
     def persistMarker: Char =
-      if (persistCount == 1) ' '
+      if (persistCount == 1)
+        ' '
       else {
         // Return a bold nipple at start of a Persist
         if (isFirst)
