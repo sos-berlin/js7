@@ -75,7 +75,7 @@ trait RouteProvider extends ExceptionHandling
         }
     }
 
-  /** Returns the session denoted by optional header `x-js7-session-Token` or None.
+  /** Returns the session denoted by optional header `x-js7-session` or None.
     * The request is `Forbidden` if
     * the SessionToken is invalid or
     * the given `userId` is not Anonymous and does not match the sessions UserId.*/

@@ -47,6 +47,9 @@ trait SubagentExecutor
   private val stoppedOnce = SetOnce[ProgramTermination]
   @volatile private var dontWaitForDirector = false
 
+  def isShuttingDown: Boolean =
+    shuttingDown()
+
   def untilStopped: Task[ProgramTermination] =
     stoppedOnce.task
 

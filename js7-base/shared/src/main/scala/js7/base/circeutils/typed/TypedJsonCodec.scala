@@ -74,6 +74,9 @@ extends Codec.AsObject[A]
       case _ => false
     }
 
+  def typeName[A1 <: A](implicit A1: ClassTag[A1]): String =
+    _classToName(implicitClass[A1])
+
   def typeName[A1 <: A](a: A1): String =
     _classToName(a.getClass)
 

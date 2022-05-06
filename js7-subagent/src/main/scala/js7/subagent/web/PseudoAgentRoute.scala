@@ -1,52 +1,70 @@
 package js7.subagent.web
 
 import akka.http.scaladsl.model.StatusCodes.{BadRequest, NotFound, ServiceUnavailable}
-import akka.http.scaladsl.server.Directives.{Segment, as, complete, entity, get, pathEnd, pathPrefix, post, withSizeLimit}
+import akka.http.scaladsl.server.Directives.{Segment, as, complete, entity, get, pathEnd, pathEndOrSingleSlash, pathPrefix, post, withSizeLimit}
 import akka.http.scaladsl.server.Route
-import io.circe.JsonObject
+import akka.http.scaladsl.server.RouteConcatenation._
+import cats.syntax.traverse._
+import io.circe.{Json, JsonObject}
 import js7.base.auth.ValidUserPermission
+import js7.base.circeutils.CirceUtils.RichCirceEither
 import js7.base.circeutils.typed.TypedJsonCodec
-import js7.base.problem.Problem
+import js7.base.problem.{Checked, Problem}
+import js7.base.stream.Numbered
 import js7.common.akkahttp.AkkaHttpServerUtils.{completeTask, pathSegment}
-import js7.common.akkahttp.CirceJsonSupport.jsonUnmarshaller
+import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.akkahttp.StandardMarshallers._
 import js7.common.akkahttp.web.session.SessionRoute
 import js7.core.web.EntitySizeLimitProvider
 import js7.data.agent.Problems.AgentNotDedicatedProblem
 import js7.data.subagent.Problems.SubagentAlreadyDedicatedProblem
+import js7.data.subagent.SubagentCommand
 import js7.subagent.SubagentCommandExecutor
 import monix.eval.Task
 
 /** Looks like Agent Director web service to detect a client's request for an Director. */
 private trait PseudoAgentRoute extends SessionRoute with EntitySizeLimitProvider
 {
+  protected def executeCommand(command: Numbered[SubagentCommand])
+  : Task[Checked[SubagentCommand.Response]]
+
   protected val commandExecutor: SubagentCommandExecutor
   protected def restartAsDirector: Task[Unit]
+  protected def overviewRoute: Route
 
   private implicit def implicitScheduler = scheduler
 
   protected final lazy val pseudoAgentRoute: Route =
     pathSegment("api")(
-      pathPrefix(Segment) {
-        case "session" => sessionRoute
-        case "command" => pseudoAgentCommandRoute
-        case "event" => pseudoAgentEventRoute
-        case "clusterWatch" => pseudoAgentClusterWatchRoute
-        case _ => complete(NotFound)
-      })
+      pathEndOrSingleSlash(overviewRoute) ~
+        pathPrefix(Segment) {
+          case "session" => sessionRoute
+          case "command" => agentCommandRoute
+          case "event" => pseudoAgentEventRoute
+          case "clusterWatch" => pseudoAgentClusterWatchRoute
+          case _ => complete(NotFound)
+        })
 
-  private lazy val pseudoAgentCommandRoute: Route =
+  private lazy val agentCommandRoute: Route =
     (pathEnd & post & withSizeLimit(entitySizeLimit))(
       authorizedUser(ValidUserPermission)(_ =>
         entity(as[JsonObject])(json =>
-          checkSubagent(
-            json(TypedJsonCodec.TypeFieldName).flatMap(_.asString) match {
-              case Some("DedicateAgentDirector" | "CoupleController") =>
-                completeWithRestartAsDirector
+          json(TypedJsonCodec.TypeFieldName).flatMap(_.asString) match {
+            case Some("DedicateAgentDirector" | "CoupleController") =>
+              checkSubagent(
+                completeWithRestartAsDirector)
 
-              case _ =>
-                complete(AgentNotDedicatedProblem)
-            }))))
+            case typeName =>
+              if (typeName contains SubagentCommand.jsonCodec.typeName[SubagentCommand.ShutDown])
+                completeTask(
+                  Json.fromJsonObject(json)
+                    .as[SubagentCommand]
+                    .toChecked
+                    .traverse(cmd => executeCommand(Numbered(0, cmd))))
+              else
+                checkSubagent(
+                  complete(AgentNotDedicatedProblem))
+          })))
 
   private lazy val pseudoAgentEventRoute: Route =
     (pathEnd & get)(
