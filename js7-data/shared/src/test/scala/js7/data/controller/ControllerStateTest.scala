@@ -428,7 +428,8 @@ final class ControllerStateTest extends AsyncFreeSpec
         uri = None,
         itemRevision = Some(ItemRevision(8))))
       assert(cs.idToSubagentItemState(subagentId).subagentItem == generatedSubagentItem.copy(
-        uri = changedUri))
+        uri = changedUri,
+        itemRevision = Some(ItemRevision(2))))
     }
   }
 }

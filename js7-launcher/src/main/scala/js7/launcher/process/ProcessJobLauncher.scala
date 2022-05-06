@@ -1,15 +1,11 @@
 package js7.launcher.process
 
-import cats.syntax.all._
 import java.util.Locale.ROOT
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.problem.Checked
-import js7.data.job.{CommandLine, JobResource, ProcessExecutable}
+import js7.data.job.{CommandLine, ProcessExecutable}
 import js7.data.order.Outcome
-import js7.data.value.expression.Scope.evalExpressionMap
-import js7.data.value.expression.scopes.NameToCheckedValueScope
-import js7.data.value.expression.{Expression, Scope}
-import js7.data.value.{NullValue, StringValue}
+import js7.data.value.StringValue
 import js7.launcher.configuration.{JobLauncherConf, TaskConfiguration}
 import js7.launcher.internal.JobLauncher
 import js7.launcher.process.ProcessJobLauncher._
@@ -28,19 +24,7 @@ trait ProcessJobLauncher extends JobLauncher
 
   protected final def makeOrderProcess(processOrder: ProcessOrder, startProcess: StartProcess)
   : OrderProcess = {
-    import processOrder.{evalLazilyJobResourceVariables, order, scopeForJobResources}
-
-    def evalJobResourceEnv(jobResource: JobResource): Checked[Map[String, String]] =
-      evalEnv(
-        jobResource.env,
-        scopeForJobResources |+|
-          NameToCheckedValueScope(evalLazilyJobResourceVariables(jobResource)))
-
-    val checkedJobResourcesEnv: Checked[Map[String, String]] =
-      processOrder.jobResources
-        .reverse/*left overrides right*/
-        .traverse(evalJobResourceEnv)
-        .map(_.fold(Map.empty)(_ ++ _))
+    import processOrder.order
 
     val processDriver = new ProcessDriver(
       order.id,
@@ -51,7 +35,7 @@ trait ProcessJobLauncher extends JobLauncher
     new OrderProcess {
       def run: Task[Fiber[Outcome.Completed]] = {
         val checkedEnv = for {
-          jobResourcesEnv <- checkedJobResourcesEnv
+          jobResourcesEnv <- processOrder.checkedJobResourcesEnv
           v1 <- v1Env(processOrder)
         } yield (v1.view ++ startProcess.env ++ jobResourcesEnv).toMap
         checkedEnv match {
@@ -83,15 +67,6 @@ trait ProcessJobLauncher extends JobLauncher
           .map { case (k, StringValue(v)) => (V1EnvPrefix + k.toUpperCase(ROOT)) -> v }
           .toMap
     }
-
-  protected final def evalEnv(nameToExpr: Map[String, Expression], scope: => Scope)
-  : Checked[Map[String, String]] =
-    evalExpressionMap(nameToExpr, scope)
-      .flatMap(_
-        .view
-        .filter(_._2 != NullValue)  // TODO Experimental
-        .toVector.traverse { case (k, v) => v.toStringValueString.map(k -> _) })
-      .map(_.toMap)
 }
 
 object ProcessJobLauncher

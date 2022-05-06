@@ -1,9 +1,7 @@
 package js7.data.subagent
 
-import io.circe.generic.extras.Configuration.default.withDefaults
-import io.circe.generic.extras.semiauto.deriveConfiguredDecoder
 import io.circe.syntax.EncoderOps
-import io.circe.{Codec, Encoder, JsonObject}
+import io.circe.{Codec, Decoder, Encoder, JsonObject}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.data.delegate.DelegateCouplingState
@@ -96,10 +94,20 @@ object SubagentItemState
     SubagentItemState(subagentItem, None, DelegateCouplingState.Reset.fresh,
       eventId = EventId.BeforeFirst)
 
-  private val jsonDecoder = {
-    implicit val x = withDefaults
-    deriveConfiguredDecoder[SubagentItemState]
-  }
+  private val jsonDecoder: Decoder[SubagentItemState] =
+   c => for {
+     subagentItem <- c.get[SubagentItem]("subagentItem") orElse c.get[SubagentItem]("subagentRef")
+     subagentRunId <- c.get[Option[SubagentRunId]]("subagentRunId")
+     couplingState <- c.get[DelegateCouplingState]("couplingState")
+     isDetaching <- c.getOrElse[Boolean]("isDetaching")(false)
+     isResettingForcibly <- c.get[Option[Boolean]]("isResettingForcibly")
+     eventId <- c.get[EventId]("eventId")
+     problem <- c.get[Option[Problem]]("problem")
+   } yield SubagentItemState(
+     subagentItem, subagentRunId, couplingState,
+     isDetaching = isDetaching, isResettingForcibly = isResettingForcibly,
+     eventId = eventId,
+     problem)
 
   private val jsonEncoder: Encoder.AsObject[SubagentItemState] =
     o => JsonObject(

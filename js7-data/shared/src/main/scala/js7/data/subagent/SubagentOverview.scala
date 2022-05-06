@@ -1,4 +1,4 @@
-package js7.agent.data.views
+package js7.data.subagent
 
 import js7.base.circeutils.CirceCodec
 import js7.base.circeutils.CirceUtils.deriveCodec
@@ -7,7 +7,7 @@ import js7.base.time.Timestamp
 import js7.data.delegate.DelegateOverview
 import js7.data.system.JavaInformation
 
-final case class AgentOverview(
+final case class SubagentOverview(
   version: String,
   buildId: String,
   startedAt: Timestamp,
@@ -16,7 +16,6 @@ final case class AgentOverview(
   java: JavaInformation)
 extends DelegateOverview
 
-object AgentOverview
-{
-  implicit val jsonCodec: CirceCodec[AgentOverview] = deriveCodec[AgentOverview]
+object SubagentOverview {
+  implicit val jsonCodec: CirceCodec[SubagentOverview] = deriveCodec[SubagentOverview]
 }

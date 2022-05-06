@@ -78,7 +78,6 @@ object BasicItemEvent
     }
   }
 
-  // COMPATIBLE with v2.2: item is not applicable for remote Subagents !!!
   /** Agent only. */
   final case class ItemAttachedToMe(item: InventoryItem)
   extends ForDelegate {

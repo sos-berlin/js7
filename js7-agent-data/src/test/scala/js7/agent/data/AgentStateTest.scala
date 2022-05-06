@@ -118,7 +118,7 @@ final class AgentStateTest extends AsyncFreeSpec
       ItemAttachedToMe(calendar),
       SignedItemAttachedToMe(signedWorkflow),
 
-      //COMPATIBLE with v2.2
+      //COMPATIBLE with v2.2.2
       ItemAttachedToMe(unsignedJobResource),
       ItemAttachedToMe(unsignedWorkflow),
 

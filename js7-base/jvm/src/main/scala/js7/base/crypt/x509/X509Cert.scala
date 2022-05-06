@@ -8,16 +8,20 @@ import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops._
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax._
-import scala.jdk.CollectionConverters._
 
 private[x509] final case class X509Cert(x509Certificate: X509Certificate)
 {
-  lazy val isCA = Option(x509Certificate.getCriticalExtensionOIDs.asScala)
-    .getOrElse(Set.empty[String])
-    .contains(MayActAsCA)
+  import x509Certificate._
 
-  lazy val signersDistinguishedName = new DistinguishedName(x509Certificate.getSubjectX500Principal)
+  lazy val signersDistinguishedName = new DistinguishedName(getSubjectX500Principal)
   lazy val signerId = SignerId(signersDistinguishedName.toString)
+
+  lazy val isCA =
+    containsCA(getCriticalExtensionOIDs) ||
+      containsCA(getNonCriticalExtensionOIDs)
+
+  private def containsCA(strings: java.util.Set[String]) =
+    Option(strings).fold(false)(_.contains(MayActAsCA))
 
   override def toString = s"X.509Certificate(${x509Certificate.getSubjectX500Principal} " +
     (isCA ?? "CA ") +

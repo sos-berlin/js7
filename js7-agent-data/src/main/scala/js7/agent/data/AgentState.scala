@@ -134,7 +134,7 @@ with SnapshotableState[AgentState]
             })
 
           case ItemAttachedToMe(workflow: Workflow) =>
-            // COMPATIBLE with v2.2
+            // COMPATIBLE with v2.2.0. Since v2.2.2, workflow is transferred via SignedItemAttachedToMe
             for (o <- idToWorkflow.insert(workflow.id -> workflow.reduceForAgent(agentPath))) yield
               copy(
                 idToWorkflow = o)
@@ -145,8 +145,8 @@ with SnapshotableState[AgentState]
               allFileWatchesState = allFileWatchesState.attach(fileWatch)))
 
           case ItemAttachedToMe(jobResource: JobResource) =>
-            // COMPATIBLE with v2.2
-            // May replace an existing JobResource
+            // COMPATIBLE with v2.2.0. Since v2.2.2, workflow is transferred via SignedItemAttachedToMe
+             // May replace an existing JobResource
             Right(copy(
               pathToJobResource = pathToJobResource + (jobResource.path -> jobResource)))
 
@@ -374,11 +374,11 @@ with ItemContainer.Companion[AgentState]
       Subtype[JournalState],
       Subtype[AgentMetaState],
       Workflow.subtype,
-      Subtype[SubagentItemState],
+      Subtype.withAliases(SubagentItemState.jsonCodec, aliases = Seq("SubagentRefState")),
       Subtype[Order[Order.State]],
       Subtype[FileWatchState.Snapshot],
       Subtype(SignedItemAdded.jsonCodec(this)),  // For Repo and SignedItemAdded
-      Subtype(signableSimpleItemJsonCodec),  // COMPATIBLE with v2.2
+      Subtype(signableSimpleItemJsonCodec),
       Subtype(unsignedSimpleItemJsonCodec),
       Subtype[BasicItemEvent])
 

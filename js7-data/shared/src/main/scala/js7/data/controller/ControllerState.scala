@@ -146,13 +146,13 @@ with SnapshotableState[ControllerState]
 
                 case addedAgentRef: AgentRef =>
                   addedAgentRef
-                    .convertFromLegacy
-                    .flatMap { case (agentRef, subagentItem) =>
+                    .convertFromV2_1
+                    .flatMap { case (agentRef, maybeSubagentItem) =>
                       for {
                         pathToAgentRefState <-
                           pathToAgentRefState.insert(agentRef.path -> AgentRefState(agentRef))
                         idToSubagentItemState <-
-                          subagentItem match {
+                          maybeSubagentItem match {
                             case None => Right(idToSubagentItemState)
                             case Some(subagentItem) => idToSubagentItemState
                               .insert(subagentItem.id -> SubagentItemState.initial(subagentItem))
@@ -194,26 +194,26 @@ with SnapshotableState[ControllerState]
 
                 case changedAgentRef: AgentRef =>
                   changedAgentRef
-                    .convertFromLegacy
-                    .flatMap { case (agentRef, subagentItem) =>
+                    .convertFromV2_1
+                    .flatMap { case (agentRef, maybeSubagentItem) =>
                       for {
                         agentRefState <- pathToAgentRefState.checked(agentRef.path)
-                        _ <-
-                          if (agentRef.directors != agentRefState.agentRef.directors)
-                            Left(Problem.pure("Agent Director cannot not be changed"))
-                          else
-                            Checked.unit
+                        _ <- (agentRef.directors == agentRefState.agentRef.directors) !!
+                          Problem.pure("Agent Director cannot not be changed")
                       } yield copy(
                         pathToAgentRefState = pathToAgentRefState + (agentRef.path -> agentRefState.copy(
                           agentRef = agentRef)),
-                        idToSubagentItemState = subagentItem match {
+                        idToSubagentItemState = maybeSubagentItem match {
                           case None => idToSubagentItemState
-                          case Some(subagentItem) =>
+                          case Some(changedSubagentItem) =>
+                            // COMPATIBLE with v2.2.2
                             idToSubagentItemState
-                              .get(subagentItem.id)
+                              .get(changedSubagentItem.id) // Should not happen
                               .fold(idToSubagentItemState)(subagentItemState =>
-                                idToSubagentItemState +
-                                  (subagentItem.id -> subagentItemState.copy(subagentItem = subagentItem)))
+                                idToSubagentItemState + (changedSubagentItem.id ->
+                                  subagentItemState.copy(
+                                    subagentItem = subagentItemState.item
+                                      .updateUri(changedSubagentItem.uri))))
                         })
                     }
 
@@ -748,7 +748,7 @@ with ItemContainer.Companion[ControllerState]
       Subtype(deriveCodec[ClusterStateSnapshot]),
       Subtype[ControllerMetaState],
       Subtype[AgentRefState],
-      Subtype[SubagentItemState],
+      Subtype.withAliases(SubagentItemState.jsonCodec, aliases = Seq("SubagentRefState")),
       Subtype[SubagentSelection],
       Subtype[LockState],
       Subtype[Board],
