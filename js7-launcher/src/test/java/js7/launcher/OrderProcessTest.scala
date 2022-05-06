@@ -7,7 +7,7 @@ import js7.base.time.WaitForCondition.waitForCondition
 import js7.data.order.Outcome
 import monix.catnap.Semaphore
 import monix.eval.{Fiber, Task}
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.subjects.PublishSubject
 import org.scalatest.freespec.AnyFreeSpec
 

@@ -27,7 +27,7 @@ import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.position.Position
 import js7.data.workflow.test.TestSetting._
 import js7.journal.recover.Recovered
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.Deadline.now
 

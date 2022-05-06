@@ -12,7 +12,7 @@ import js7.data.event.{EventId, EventRequest, KeyedEvent, Stamped}
 import js7.journal.test.{TestAggregate, TestEvent, TestState}
 import js7.journal.watch.InMemoryJournalTest._
 import js7.journal.{EventIdClock, EventIdGenerator}
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 

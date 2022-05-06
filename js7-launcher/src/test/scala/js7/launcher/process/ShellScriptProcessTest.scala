@@ -24,7 +24,7 @@ import js7.launcher.configuration.ProcessKillScript
 import js7.launcher.process.RichProcess.tryDeleteFile
 import js7.launcher.process.ShellScriptProcess.startPipedShellScript
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import monix.reactive.subjects.PublishSubject
 import org.scalatest.freespec.AnyFreeSpec

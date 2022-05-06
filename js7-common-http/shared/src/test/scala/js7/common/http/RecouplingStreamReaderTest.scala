@@ -7,7 +7,7 @@ import js7.base.session.TestSessionApi
 import js7.base.time.ScalaTime._
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import org.scalatest.freespec.AsyncFreeSpec
 import scala.concurrent.Await

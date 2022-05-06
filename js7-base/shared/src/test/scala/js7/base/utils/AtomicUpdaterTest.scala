@@ -3,7 +3,7 @@ package js7.base.utils
 import cats.syntax.foldable._
 import js7.base.utils.AtomicUpdaterTest._
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AsyncFreeSpec
 
 final class AtomicUpdaterTest extends AsyncFreeSpec

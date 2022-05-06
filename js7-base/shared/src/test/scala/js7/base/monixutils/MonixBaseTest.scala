@@ -8,7 +8,7 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.CloseableIterator
 import monix.eval.Task
 import monix.execution.Scheduler
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.execution.atomic.AtomicInt
 import monix.execution.schedulers.TestScheduler
 import monix.reactive.Observable

@@ -3,7 +3,7 @@ package js7.base.utils
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.execution.atomic.Atomic
 import monix.reactive.Observable
 import org.scalatest.freespec.AsyncFreeSpec

@@ -39,7 +39,7 @@ import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{ControllerAgentForScalaTest, DirectoryProvider}
 import monix.catnap.MVar
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
 

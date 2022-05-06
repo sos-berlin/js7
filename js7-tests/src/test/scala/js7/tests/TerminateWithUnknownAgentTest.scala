@@ -11,7 +11,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.TerminateWithUnknownAgentTest._
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

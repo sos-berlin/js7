@@ -24,7 +24,7 @@ final class SubagentMoveTwiceTest extends AnyFreeSpec with SubagentTester
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Seq(workflow, bareSubagentItem)
   override protected val subagentsDisabled = true
-  protected implicit val scheduler = Scheduler.global
+  protected implicit val scheduler = Scheduler.traced
 
   "Change URI twice before Subagent has restarted" in {
     // Start bareSubagent

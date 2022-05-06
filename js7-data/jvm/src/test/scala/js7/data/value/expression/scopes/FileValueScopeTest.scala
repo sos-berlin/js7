@@ -20,7 +20,7 @@ import js7.data.value.expression.Expression.{Argument, StringConstant}
 import js7.data.value.expression.scopes.FileValueScope.functionName
 import js7.data.value.expression.scopes.FileValueScopeTest._
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.Deadline.now
 import scala.util.Random

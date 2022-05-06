@@ -13,7 +13,7 @@ import js7.base.version.Version
 import js7.common.akkahttp.web.session.SessionRegisterTest._
 import js7.common.akkautils.Akkas
 import js7.common.akkautils.Akkas.newActorSystem
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.execution.schedulers.TestScheduler
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._

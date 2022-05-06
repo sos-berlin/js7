@@ -25,7 +25,7 @@ import js7.data.workflow.position.Position
 import js7.launcher.StdObservers
 import js7.launcher.configuration.{JobLauncherConf, TaskConfiguration}
 import js7.launcher.process.{ProcessDriver, RichProcess}
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.subjects.PublishSubject
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec

@@ -24,7 +24,7 @@ final class ResetSubagentTest extends AnyFreeSpec with SubagentTester
   protected lazy val items = Seq(workflow, bareSubagentItem)
   override protected val subagentsDisabled = true
 
-  protected implicit val scheduler = Scheduler.global
+  protected implicit val scheduler = Scheduler.traced
 
   "ResetSubagent after Subagent has been shutdown" in {
     enableSubagents(directoryProvider.subagentItems.head -> false)

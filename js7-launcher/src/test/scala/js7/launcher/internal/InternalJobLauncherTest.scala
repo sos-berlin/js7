@@ -28,7 +28,7 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class InternalJobLauncherTest extends AnyFreeSpec
 {
-  private implicit val scheduler = Scheduler.global
+  private implicit val scheduler = Scheduler.traced
 
   "InternalJobLauncher" in {
     val executable = InternalExecutable(
@@ -46,7 +46,7 @@ final class InternalJobLauncherTest extends AnyFreeSpec
         UTF_8),
       Map.empty,
       globalIOX.scheduler,
-      AlarmClock())(Scheduler.global, globalIOX)
+      AlarmClock())(Scheduler.traced, globalIOX)
     val out = PublishSubject[String]()
     val err = PublishSubject[String]()
     val whenOutString = out.fold.lastL.runToFuture

@@ -8,7 +8,7 @@ import js7.base.thread.Futures.implicits._
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.time.ScalaTime._
 import js7.base.time.WaitForCondition.waitForCondition
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._

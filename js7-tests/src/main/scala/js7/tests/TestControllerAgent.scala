@@ -37,7 +37,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.journal.StampedKeyedEventBus
 import js7.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration._
 
 /**
@@ -106,7 +106,7 @@ object TestControllerAgent
             } .closeWithCloser
 
             val startTime = Timestamp.now
-            Scheduler.global.scheduleWithFixedDelay(0.s, conf.period) {
+            Scheduler.traced.scheduleWithFixedDelay(0.s, conf.period) {
               for (i <- 1 to conf.orderGeneratorCount) {
                 val at = Timestamp.now
                 controller

@@ -27,7 +27,7 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
   ProblemCodeMessages.initialize()
 
   protected def commonScheduler: Option[Scheduler] =
-    sys.props.contains("test.speed") ? Scheduler.global
+    sys.props.contains("test.speed") ? Scheduler.traced
 
   protected def agentPaths: Seq[AgentPath]
   protected def agentHttps = false

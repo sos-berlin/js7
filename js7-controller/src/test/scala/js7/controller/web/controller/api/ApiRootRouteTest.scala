@@ -27,7 +27,7 @@ final class ApiRootRouteTest extends AnyFreeSpec with RouteTester with ApiRootRo
 {
   protected val controllerId = ControllerId("TEST-CONTROLLER")
   protected def whenShuttingDown = Future.never
-  protected implicit def scheduler: Scheduler = Scheduler.global
+  protected implicit def scheduler: Scheduler = Scheduler.traced
   protected def controllerState = Task.pure(Right(ControllerState.empty.copy(
     eventId = EventId(1001),
     standards = SnapshotableState.Standards(

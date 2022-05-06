@@ -25,7 +25,7 @@ import js7.data.event.{EventId, JournalId}
 import js7.data.order.OrderId
 import monix.eval.Task
 import monix.execution.Scheduler
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AsyncFreeSpec
 import scala.concurrent.Future
 
@@ -55,7 +55,7 @@ final class CommandWebServerTest extends AsyncFreeSpec
     decodeRequest/*decompress*/ {
       pathSegments("agent/api/command") {
         new CommandWebService {
-          protected def scheduler = Scheduler.global
+          protected def scheduler = Scheduler.traced
           protected def whenShuttingDown = Future.never
           protected def config = testConfig
           protected def commandOverview = throw new NotImplementedError

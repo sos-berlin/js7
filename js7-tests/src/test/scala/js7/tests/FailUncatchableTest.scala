@@ -15,7 +15,7 @@ import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.FailUncatchableTest._
 import js7.tests.testenv.DirectoryProvider
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe._

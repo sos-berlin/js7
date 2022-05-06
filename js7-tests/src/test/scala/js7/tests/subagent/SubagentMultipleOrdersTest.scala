@@ -26,7 +26,7 @@ final class SubagentMultipleOrdersTest extends AnyFreeSpec with SubagentTester
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Seq(workflow, bareSubagentItem)
 
-  protected implicit val scheduler = Scheduler.global
+  protected implicit val scheduler = Scheduler.traced
 
   private lazy val localSubagentId = directoryProvider.subagentId
 

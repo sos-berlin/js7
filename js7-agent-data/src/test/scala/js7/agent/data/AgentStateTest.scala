@@ -37,7 +37,7 @@ import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.position._
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tester.CirceJsonTester.removeJNull
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import org.scalatest.freespec.AsyncFreeSpec
 

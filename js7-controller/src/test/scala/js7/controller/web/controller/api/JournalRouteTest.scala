@@ -49,7 +49,7 @@ final class JournalRouteTest extends AnyFreeSpec with RouteTester with JournalRo
   private implicit val timeout = 99.s
   private implicit val routeTestTimeout = RouteTestTimeout(timeout)
   protected def whenShuttingDown = Future.never
-  protected implicit def scheduler: Scheduler = Scheduler.global
+  protected implicit def scheduler: Scheduler = Scheduler.traced
   private lazy val directory = createTempDirectory("JournalRouteTest-")
   private lazy val journalMeta = JournalMeta(ControllerState, directory / "test")
   override protected def config = config"js7.web.chunk-size = 1MiB"

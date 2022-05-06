@@ -19,7 +19,7 @@ import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.http.AkkaHttpClient.`x-js7-session`
 import js7.common.message.ProblemCodeMessages
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.{BeforeAndAfterAll, Suite}
 
 /**

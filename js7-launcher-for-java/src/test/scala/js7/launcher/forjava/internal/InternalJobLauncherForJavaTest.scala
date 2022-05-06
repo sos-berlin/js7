@@ -34,7 +34,7 @@ import js7.launcher.internal.{InternalJobLauncher, JobLauncher}
 import js7.launcher.process.ProcessConfiguration
 import js7.launcher.{ProcessOrder, StdObservers}
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.subjects.PublishSubject
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec

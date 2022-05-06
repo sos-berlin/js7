@@ -30,7 +30,7 @@ import js7.data.workflow.{Workflow, WorkflowId, WorkflowParser, WorkflowPath}
 import js7.tests.LockTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.{script, toLocalSubagentId, waitingForFileScript}
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.immutable.Queue

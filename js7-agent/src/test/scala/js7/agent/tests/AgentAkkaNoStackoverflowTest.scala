@@ -6,7 +6,7 @@ import js7.agent.tests.AgentAkkaNoStackoverflowTest._
 import js7.agent.tests.TestAgentDirectoryProvider.provideAgentDirectory
 import js7.base.log.Logger
 import js7.base.time.ScalaTime._
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

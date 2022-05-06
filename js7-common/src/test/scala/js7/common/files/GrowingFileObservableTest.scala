@@ -6,7 +6,7 @@ import js7.base.io.file.FileUtils._
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
 import scala.util.Random

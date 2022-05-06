@@ -24,7 +24,7 @@ final class SubagentDeleteWhileMovedTest extends AnyFreeSpec with SubagentTester
   protected lazy val items = Seq(workflow, bareSubagentItem)
   override protected val subagentsDisabled = true
 
-  protected implicit val scheduler = Scheduler.global
+  protected implicit val scheduler = Scheduler.traced
 
   "Delete SubagentItem while being changed" in {
     var eventId = eventWatch.lastAddedEventId

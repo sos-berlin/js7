@@ -6,7 +6,7 @@ import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Checked
 import js7.base.thread.Futures.implicits.SuccessFuture
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 
 object FeedMain
 {

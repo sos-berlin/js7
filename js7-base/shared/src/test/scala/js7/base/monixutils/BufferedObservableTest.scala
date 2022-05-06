@@ -2,7 +2,7 @@ package js7.base.monixutils
 
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.time.ScalaTime._
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.execution.schedulers.TestScheduler
 import monix.reactive.Observable
 import org.scalatest.freespec.AsyncFreeSpec

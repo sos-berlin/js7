@@ -1,7 +1,7 @@
 package js7.base.utils
 
 import js7.base.data.ByteArray
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AsyncFreeSpec
 
 final class ByteSequenceToLinesObservableTest extends AsyncFreeSpec

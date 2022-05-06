@@ -5,7 +5,7 @@ import java.util.concurrent.ConcurrentHashMap
 import js7.base.time.Stopwatch
 import js7.base.utils.LockKeeperTest._
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AsyncFreeSpec
 import scala.jdk.CollectionConverters._
 

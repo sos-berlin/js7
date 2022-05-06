@@ -35,7 +35,7 @@ import scala.concurrent.Future
 final class OrderRouteTest extends AnyFreeSpec with RouteTester with OrderRoute
 {
   protected def whenShuttingDown = Future.never
-  protected implicit def scheduler: Scheduler = Scheduler.global
+  protected implicit def scheduler: Scheduler = Scheduler.traced
   protected def actorSystem = system
   protected val orderApi = new OrderApi {
     def order(orderId: OrderId) = Task(Right(TestOrders.get(orderId)))

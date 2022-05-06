@@ -28,7 +28,7 @@ import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.watch.JournalEventWatchTest._
 import js7.journal.watch.TestData.{writeJournal, writeJournalSnapshot}
 import js7.journal.write.EventJournalWriter
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec

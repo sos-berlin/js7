@@ -27,7 +27,7 @@ import js7.common.akkautils.Akkas.newActorSystem
 import js7.common.http.AkkaHttpUtils.RichHttpResponse
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future

@@ -8,7 +8,7 @@ import js7.data.command.CommonCommand
 import js7.data.subagent.SubagentRunId
 import js7.subagent.director.CommandDispatcherTest._
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec
 
 final class CommandDispatcherTest extends AnyFreeSpec

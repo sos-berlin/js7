@@ -13,7 +13,7 @@ final class MonixAntiBlockingTest extends AnyFreeSpec
 {
   if (sys.props.get("scala.concurrent.context.numThreads") contains "1") {
     "Trying to minimize blocking error ..." in {
-      implicit val scheduler = Scheduler.global
+      implicit val scheduler = Scheduler.traced
       val task = Task.deferFuture {
         Future {
           val p = Promise[Int]()

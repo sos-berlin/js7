@@ -1,7 +1,7 @@
 package js7.base.monixutils
 
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.subjects.PublishSubject
 import org.scalatest.freespec.AsyncFreeSpec
 

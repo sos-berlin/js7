@@ -15,7 +15,7 @@ import js7.proxy.configuration.ProxyConfs
 import js7.tests.addOrders.TestAddOrders._
 import monix.catnap.MVar
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import monix.reactive.subjects.PublishSubject
 import scala.concurrent.duration.Deadline.now

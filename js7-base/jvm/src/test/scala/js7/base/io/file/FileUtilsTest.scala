@@ -16,7 +16,7 @@ import js7.base.io.file.FileUtilsTest._
 import js7.base.problem.ProblemException
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import monix.eval.{Coeval, Task}
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers._

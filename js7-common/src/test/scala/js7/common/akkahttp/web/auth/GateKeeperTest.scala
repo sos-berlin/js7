@@ -490,7 +490,7 @@ final class GateKeeperTest extends AnyFreeSpec with ScalatestRouteTest
 
   private def newGateKeeper[U <: User: User.Companion ](conf: GateKeeper.Configuration[U], isLoopback: Boolean = false) = {
     implicit val exceptionHandler: ExceptionHandler = null  // Use default ExceptionHandler, see Route.seal
-    implicit val s = Scheduler.global
+    implicit val s = Scheduler.traced
     new GateKeeper(WebServerBinding.Http, conf, isLoopback = isLoopback)
   }
 

@@ -18,7 +18,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.time.Stopwatch.itemsPerSecondString
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import org.scalatest.Assertions._
 import org.scalatest.freespec.AnyFreeSpec

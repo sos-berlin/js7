@@ -32,7 +32,7 @@ final class StealAndResetSubagentTest extends AnyFreeSpec with SubagentTester
   protected lazy val items = Seq(aWorkflow, thieveWorkflow, bareSubagentItem)
   override protected val subagentsDisabled = true
 
-  protected implicit val scheduler = Scheduler.global
+  protected implicit val scheduler = Scheduler.traced
 
   "ResetSubagent(force) steals a dedicated alien Subagent" in {
     // Both SubagentItems denote the same Subagent (same URI)

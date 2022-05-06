@@ -17,7 +17,7 @@ import js7.launcher.internal.InternalJob
 import js7.tests.WorkflowDefinedOrderVariablesTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import org.scalatest.Assertions._
 import org.scalatest.freespec.AnyFreeSpec

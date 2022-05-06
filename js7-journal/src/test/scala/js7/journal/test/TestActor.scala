@@ -16,7 +16,7 @@ import js7.journal.recover.StateRecoverer
 import js7.journal.state.FileStatePersistence
 import js7.journal.test.TestActor._
 import js7.journal.{EventIdClock, EventIdGenerator, JournalActor}
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import scala.collection.mutable
 import scala.concurrent.Promise
 import scala.concurrent.duration.DurationInt

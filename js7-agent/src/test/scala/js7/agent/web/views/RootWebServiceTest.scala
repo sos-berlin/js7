@@ -16,7 +16,7 @@ import js7.common.http.AkkaHttpUtils.RichHttpResponse
 import js7.data.system.JavaInformation
 import monix.eval.Task
 import monix.execution.Scheduler
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future
 
@@ -26,7 +26,7 @@ import scala.concurrent.Future
 final class RootWebServiceTest extends AnyFreeSpec with WebServiceTest with RootWebService
 {
   protected def whenShuttingDown = Future.never
-  protected def scheduler = Scheduler.global
+  protected def scheduler = Scheduler.traced
   protected def agentOverview = Task.pure(AgentOverview(
     startedAt = Timestamp.parse("2015-06-01T12:00:00Z"),
     version = "TEST-VERSION",

@@ -103,7 +103,7 @@ final class DirectoryEventDelayerTest extends AnyFreeSpec with BeforeAndAfterAll
   }
 
   "Crash test" in {
-    implicit val scheduler = Scheduler.global
+    implicit val scheduler = Scheduler.traced
     val buffer = mutable.Buffer[DirectoryEvent]()
     val publishSubject = PublishSubject[DirectoryEvent]()
     val future = publishSubject

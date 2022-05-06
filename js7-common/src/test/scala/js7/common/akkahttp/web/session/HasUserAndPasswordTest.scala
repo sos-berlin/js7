@@ -18,7 +18,7 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class HasUserAndPasswordTest extends AnyFreeSpec with SessionRouteTester
 {
-  protected implicit def scheduler = Scheduler.global
+  protected implicit def scheduler = Scheduler.traced
 
   "HasUserAndPassword retryUntilReachable repeats body after server loss" in {
     val progress = MVar[Task].empty[String]().memoize

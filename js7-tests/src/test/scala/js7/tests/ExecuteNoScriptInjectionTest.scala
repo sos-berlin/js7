@@ -9,7 +9,7 @@ import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
 import js7.tests.ExecuteNoScriptInjectionTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec
 
 final class ExecuteNoScriptInjectionTest extends AnyFreeSpec with ControllerAgentForScalaTest

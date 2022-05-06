@@ -6,7 +6,7 @@ import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
 import js7.common.akkahttp.ByteSequenceChunkerObservable.syntax._
 import js7.common.akkautils.ByteStrings.syntax._
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
 import scala.util.Random

@@ -33,7 +33,7 @@ final class RouteProviderTest extends AnyFreeSpec with RouteProvider with Scalat
   protected type Session = MySession
 
   protected def whenShuttingDown = Future.never
-  implicit protected def scheduler = Scheduler.global
+  implicit protected def scheduler = Scheduler.traced
   protected val config = config"js7.web.server.verbose-error-messages = on"
   protected lazy val sessionRegister = SessionRegister.start[MySession](system, MySession.apply, SessionRegister.TestConfig)
   private implicit val routeTestTimeout = RouteTestTimeout(99.s)

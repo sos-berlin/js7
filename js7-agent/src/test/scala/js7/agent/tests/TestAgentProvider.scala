@@ -12,7 +12,7 @@ import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.base.utils.Closer.syntax._
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 
 /**
  * @author Joacim Zschimmer

@@ -11,7 +11,7 @@ import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.akkahttp.{AkkaHttpUtils, ExceptionHandling}
 import js7.common.message.ProblemCodeMessages
 import js7.controller.configuration.ControllerConfiguration.DefaultConfig
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.Suite
 import scala.concurrent.duration._
 

@@ -37,7 +37,7 @@ final class EventRouteTest extends AnyFreeSpec with RouteTester with EventRoute
   private implicit val routeTestTimeout = RouteTestTimeout(timeout - 1.s)
   protected def whenShuttingDown = Future.never
   protected def actorRefFactory = system
-  protected implicit def scheduler: Scheduler = Scheduler.global
+  protected implicit def scheduler: Scheduler = Scheduler.traced
   private lazy val eventCollector = SimpleEventCollector[OrderEvent]()
   protected def eventWatch = eventCollector.eventWatch
 

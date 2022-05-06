@@ -27,7 +27,7 @@ import js7.controller.configuration.ControllerConfiguration
 import js7.controller.configuration.inject.ControllerModule
 import js7.controller.tests.TestEnvironment
 import js7.data.agent.AgentPath
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 
 /**
   * @author Joacim Zschimmer

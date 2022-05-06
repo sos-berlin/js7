@@ -16,7 +16,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SideEffect.ImplicitSideEffect
 import js7.core.command.CommandMeta
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.freespec.AnyFreeSpec
 

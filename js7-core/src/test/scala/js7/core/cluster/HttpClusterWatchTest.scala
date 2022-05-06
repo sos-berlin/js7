@@ -32,7 +32,7 @@ final class HttpClusterWatchTest extends AnyFreeSpec with BeforeAndAfterAll with
   private val controllerId = ControllerId("CONTROLLER")
 
   private val clusterWatchRoute = new ClusterWatchRoute {
-    protected def scheduler = Scheduler.global
+    protected def scheduler = Scheduler.traced
     protected val clusterWatchRegister = new ClusterWatchRegister(scheduler)
     def route = clusterWatchRoute(controllerId)
   }.route

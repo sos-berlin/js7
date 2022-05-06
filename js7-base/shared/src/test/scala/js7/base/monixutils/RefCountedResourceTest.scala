@@ -2,7 +2,7 @@ package js7.base.monixutils
 
 import cats.effect.Resource
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.execution.atomic.Atomic
 import org.scalatest.freespec.AsyncFreeSpec
 

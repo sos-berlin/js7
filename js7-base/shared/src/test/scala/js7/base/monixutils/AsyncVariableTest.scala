@@ -2,7 +2,7 @@ package js7.base.monixutils
 
 import js7.base.problem.Problem
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AsyncFreeSpec
 
 final class AsyncVariableTest extends AsyncFreeSpec

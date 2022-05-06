@@ -26,7 +26,7 @@ import js7.common.http.AkkaHttpClient
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.core.command.CommandMeta
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.Assertions._
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec

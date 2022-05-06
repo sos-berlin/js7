@@ -15,7 +15,7 @@ import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.item.{VersionId, VersionedItem, VersionedItemPath}
 import js7.data.order.{OrderId, OrderObstacle, OrderObstacleCalculator}
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import scala.collection.mutable
 
 /**

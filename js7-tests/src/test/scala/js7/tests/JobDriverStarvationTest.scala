@@ -15,7 +15,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.JobDriverStarvationTest._
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.ControllerAgentForScalaTest
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.Deadline.now

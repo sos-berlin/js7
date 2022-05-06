@@ -28,7 +28,7 @@ final class ClusterWatchRouteTest extends AnyFreeSpec with ScalatestRouteTest wi
 
   protected type Session = SimpleSession
 
-  protected implicit val scheduler = Scheduler.global
+  protected implicit val scheduler = Scheduler.traced
   protected val clusterWatchRegister = new ClusterWatchRegister(scheduler)
 
   private implicit val routeTestTimeout = RouteTestTimeout(10.s)

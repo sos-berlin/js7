@@ -17,7 +17,7 @@ import js7.data.item.{ItemSigner, SignableItem, VersionId, VersionedItem}
 import js7.data.lock.{Lock, LockPath}
 import js7.data.workflow.instructions.Fail
 import js7.data.workflow.{Workflow, WorkflowPath}
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
 

@@ -37,7 +37,7 @@ import scala.concurrent.duration.Deadline.now
 sealed abstract class SessionRouteTest(override protected val isPublic: Boolean)
 extends AnyFreeSpec with SessionRouteTester
 {
-  protected final implicit def scheduler = Scheduler.global
+  protected final implicit def scheduler = Scheduler.traced
   private implicit val routeTestTimeout = RouteTestTimeout(10.s)
 
   override protected[session] val specificLoginRequiredProblem = Problem.pure("specificLoginRequired")

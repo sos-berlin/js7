@@ -24,7 +24,7 @@ final class SubagentMoveTest extends AnyFreeSpec with SubagentTester
   protected lazy val items = Seq(workflow, bareSubagentItem)
   override protected val subagentsDisabled = true
 
-  protected implicit val scheduler = Scheduler.global
+  protected implicit val scheduler = Scheduler.traced
 
   private lazy val bare1SubagentItem =
     bareSubagentItem.copy(uri = Uri("http://localhost:" + findFreeTcpPort()))

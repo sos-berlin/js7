@@ -12,7 +12,7 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class ClusterWatchRegisterTest extends AnyFreeSpec
 {
-  private val clusterWatchRegister = new ClusterWatchRegister(Scheduler.global)
+  private val clusterWatchRegister = new ClusterWatchRegister(Scheduler.traced)
 
   "ClusterWatchRegister" in {
     val aControllerId = ControllerId("A")

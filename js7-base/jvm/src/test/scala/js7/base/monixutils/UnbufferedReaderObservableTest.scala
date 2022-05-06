@@ -2,7 +2,7 @@ package js7.base.monixutils
 
 import java.io.{PipedReader, PipedWriter}
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.execution.schedulers.TestScheduler
 import org.scalatest.freespec.AnyFreeSpec
 

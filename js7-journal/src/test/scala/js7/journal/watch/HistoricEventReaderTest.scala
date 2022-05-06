@@ -9,7 +9,7 @@ import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.watch.HistoricEventReaderTest._
 import js7.journal.watch.TestData.{AEvent, BEvent, TestKeyedEventJsonCodec, journalId}
 import js7.journal.write.EventJournalWriter
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

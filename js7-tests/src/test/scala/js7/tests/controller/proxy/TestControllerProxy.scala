@@ -63,7 +63,7 @@ object TestControllerProxy
   private val userAndPassword = Some(UserAndPassword(UserId("demo"), SecretString("demo")))
 
   def main(args: Array[String]): Unit = {
-    implicit def scheduler = Scheduler.global
+    implicit def scheduler = Scheduler.traced
     println(s"${LocalDateTime.now.toString.replace('T', ' ')} " +
       s"JS7 TestControllerProxy ${BuildInfo.longVersion}")
     coupleScribeWithSlf4j()

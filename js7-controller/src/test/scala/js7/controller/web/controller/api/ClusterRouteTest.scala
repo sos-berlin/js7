@@ -22,7 +22,7 @@ final class ClusterRouteTest extends AnyFreeSpec with RouteTester with ClusterRo
 {
   coupleScribeWithSlf4j()
 
-  protected def scheduler = Scheduler.global
+  protected def scheduler = Scheduler.traced
 
   protected def whenShuttingDown = Future.never
 

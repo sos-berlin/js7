@@ -46,7 +46,7 @@ final class SubagentSelectionTest extends AnyFreeSpec with SubagentTester
 
   private var myAgent: RunningAgent = null
 
-  protected implicit val scheduler = Scheduler.global
+  protected implicit val scheduler = Scheduler.traced
 
   private val nextOrderId = Iterator.from(1).map(i => OrderId(s"ORDER-$i")).next _
 

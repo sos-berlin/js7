@@ -5,7 +5,7 @@ import js7.agent.configuration.Akkas
 import js7.base.BuildInfo
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.freespec.AnyFreeSpec
 

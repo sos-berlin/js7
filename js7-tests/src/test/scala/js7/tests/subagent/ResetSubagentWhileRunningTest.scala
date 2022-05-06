@@ -26,7 +26,7 @@ final class ResetSubagentWhileRunningTest extends AnyFreeSpec with SubagentTeste
   protected lazy val items = Seq(workflow, bareSubagentItem)
   override protected val subagentsDisabled = true
 
-  protected implicit val scheduler = Scheduler.global
+  protected implicit val scheduler = Scheduler.traced
 
   "ResetSubagent while Subagent is coupled" in {
     enableSubagents(directoryProvider.subagentItems.head -> false)

@@ -19,7 +19,7 @@ object WaitForCondition
   private val defaultSleeper = new StandardSleeper
 
   private class StandardSleeper extends Sleeper {
-    def now = Scheduler.global.now
+    def now = Scheduler.traced.now
     def sleep(duration: FiniteDuration) = ScalaTime.sleep(duration)
   }
 

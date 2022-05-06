@@ -36,7 +36,7 @@ final class LogRouteTest extends AnyFreeSpec with RouteTester with LogRoute
   override protected def config = config"js7.web.server.services.log.poll-interval = 1.ms"
     .withFallback(super.config)
 
-  implicit protected def scheduler = Scheduler.global
+  implicit protected def scheduler = Scheduler.traced
   private implicit val routeTestTimeout = RouteTestTimeout(9.s)
 
   private var _currentLogFile: Path = null

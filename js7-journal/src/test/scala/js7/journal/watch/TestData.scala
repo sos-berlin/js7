@@ -12,7 +12,7 @@ import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, JournalEvent, JournalHeaders, JournalId, KeyedEvent, KeyedEventTypedJsonCodec, Stamped}
 import js7.journal.data.JournalMeta
 import js7.journal.write.{EventJournalWriter, SnapshotJournalWriter}
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 
 /**
   * @author Joacim Zschimmer

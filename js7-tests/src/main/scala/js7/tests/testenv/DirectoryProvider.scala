@@ -49,7 +49,7 @@ import js7.subagent.configuration.SubagentConf
 import js7.tests.testenv.DirectoryProvider._
 import monix.eval.Task
 import monix.execution.Scheduler
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.execution.atomic.AtomicBoolean
 import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly

@@ -3,7 +3,7 @@ package js7.base.web
 import js7.base.problem.Problem
 import js7.base.web.HttpClient.liftProblem
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AsyncFreeSpec
 import scala.util.{Failure, Success}
 

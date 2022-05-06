@@ -16,7 +16,7 @@ import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AsyncFreeSpec
 
 final class OrderWatchStateTest extends AsyncFreeSpec

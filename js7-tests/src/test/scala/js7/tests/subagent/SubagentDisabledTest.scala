@@ -35,7 +35,7 @@ final class SubagentDisabledTest extends AnyFreeSpec with SubagentTester
   private lazy val aSubagentItem = newSubagentItem(aSubagentId)
   private lazy val bSubagentItem = newSubagentItem(bSubagentId)
 
-  protected implicit val scheduler = Scheduler.global
+  protected implicit val scheduler = Scheduler.traced
 
   private val localSubagentItem = directoryProvider.subagentItems.head
   private val localSubagentId = localSubagentItem.id

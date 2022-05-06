@@ -6,7 +6,7 @@ import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.board.BoardStateTest._
 import js7.data.order.OrderId
 import js7.data.value.expression.ExpressionParser.expr
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AsyncFreeSpec
 import scala.collection.View
 

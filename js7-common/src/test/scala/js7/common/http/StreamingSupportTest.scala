@@ -5,7 +5,7 @@ import js7.common.akkautils.Akkas
 import js7.common.akkautils.Akkas.newActorSystem
 import js7.common.http.StreamingSupport._
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Await

@@ -31,7 +31,7 @@ import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.catnap.Semaphore
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.execution.atomic.{Atomic, AtomicInt}
 import monix.reactive.Observable
 import org.scalactic.source

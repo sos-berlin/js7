@@ -5,7 +5,7 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.CloseableIterator
 import js7.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped}
 import js7.journal.watch.RealEventWatchTest._
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 

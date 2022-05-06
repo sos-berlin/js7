@@ -20,7 +20,7 @@ import js7.journal.JournalActor
 import js7.journal.files.JournalFiles
 import js7.journal.test.{TestActor, TestAggregate, TestAggregateActor, TestEvent, TestJournalMixin}
 import js7.journal.write.{EventJournalWriter, FileJsonWriter, SnapshotJournalWriter}
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

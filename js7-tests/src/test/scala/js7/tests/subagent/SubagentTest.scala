@@ -26,7 +26,7 @@ final class SubagentTest extends AnyFreeSpec with SubagentTester
   protected lazy val items = Seq(workflow, bareSubagentItem)
   override protected val subagentsDisabled = true
 
-  protected implicit val scheduler = Scheduler.global
+  protected implicit val scheduler = Scheduler.traced
 
   "Local Subagent couplingState is Coupled" in {
     val localSubagentId = SubagentId("AGENT-0")
