@@ -96,8 +96,8 @@ final class RepoTest extends AnyFreeSpec
   }
 
   "versionId" in {
-    assert(testRepo.versionId == v3)
-    assert(emptyRepo.versionId.isAnonymous)
+    assert(testRepo.currentVersionId == v3)
+    assert(emptyRepo.currentVersionId.isAnonymous)
   }
 
   "idTo" in {
@@ -163,19 +163,22 @@ final class RepoTest extends AnyFreeSpec
 
     "Other" in {
       assert(emptyRepo.itemsToEventBlock(v1, sign(a1) :: sign(b1) :: Nil, removed = bx2.path :: Nil)
-        == Right(emptyRepo.NonEmptyEventBlock(v1, Nil, VersionedItemAdded(sign(a1)) :: VersionedItemAdded(sign(b1)) :: Nil)))
+        == Right(emptyRepo.NonEmptyEventBlock(v1, Nil,
+          List(VersionedItemAdded(sign(a1)), VersionedItemAdded(sign(b1))))))
     }
 
     "More" in {
       var repo = Repo.empty.copy(selfTest = true)
-      repo = repo.itemsToEventBlock(v1, sign(a1) :: sign(b1) :: Nil).map(_.events).flatMap(repo.applyEvents).orThrow
+      repo = repo.itemsToEventBlock(v1, sign(a1) :: sign(b1) :: Nil)
+        .map(_.events).flatMap(repo.applyEvents).orThrow
       assert(repo == Repo.fromEntries(
         v1 :: Nil, Map(
           a1.path -> List(Repo.Add(sign(a1))),
           b1.path -> List(Repo.Add(sign(b1)))),
         Some(signatureVerifier)))
 
-      val eventBlock = repo.itemsToEventBlock(v2, sign(a2) :: sign(bx2) :: Nil, removed = b1.path :: Nil).orThrow
+      val eventBlock = repo.itemsToEventBlock(v2, Seq(sign(a2), sign(bx2)), removed = Seq(b1.path))
+        .orThrow
       assert(eventBlock == repo.NonEmptyEventBlock(
         v2,
         removedEvents = Seq(VersionedItemRemoved(b1.path)),
@@ -204,6 +207,8 @@ final class RepoTest extends AnyFreeSpec
   }
 
   "deleteItem" - {
+    import Repo.{Add, Remove, deleteVersionFromEntries, removeDuplicateRemoved}
+
     "Delete the only Item in the Repo" in {
       val repo = emptyRepo
         .applyEvents(Seq(
@@ -258,73 +263,44 @@ final class RepoTest extends AnyFreeSpec
 
     "removeDuplicateRemoved" in {
       // For positive tests, see below
-      import Repo.{Entry, removeDuplicateRemoved}
+      import Repo.{Add, Remove, removeDuplicateRemoved}
 
       assert(removeDuplicateRemoved(Vector.empty) == Nil)
 
       assert(removeDuplicateRemoved(
-        Vector(
-          Entry(v2, Some(sign(a2))),
-          Entry(v1, None))) ==
-        Vector(
-          Entry(v2, Some(sign(a2)))))
+        Vector(Add(sign(a2)), Remove(v1)))
+        == Vector(Add(sign(a2))))
 
       assert(removeDuplicateRemoved(
-        Vector(
-          Entry(v3, None),
-          Entry(v2, Some(sign(a2))),
-          Entry(v1, None))) ==
-        Vector(
-          Entry(v3, None),
-          Entry(v2, Some(sign(a2)))))
+        Vector(Remove(v3), Add(sign(a2)), Remove(v1)))
+        == Vector(Remove(v3), Add(sign(a2))))
 
       assert(removeDuplicateRemoved(
-        Vector(
-          Entry(v4, None),
-          Entry(v3, None),
-          Entry(v2, None),
-          Entry(v1, Some(sign(a1))))) ==
-        Vector(
-          Entry(v4, None),
-          Entry(v1, Some(sign(a1)))))
+        Vector(Remove(v4), Remove(v3), Remove(v2), Add(sign(a1))))
+        == Vector(Remove(v4), Add(sign(a1))))
 
       assert(removeDuplicateRemoved(
-        Vector(
-          Entry(v4, None),
-          Entry(v3, None),
-          Entry(v2, Some(sign(a2))),
-          Entry(v1, None))) ==
-        Vector(
-          Entry(v4, None),
-          Entry(v2, Some(sign(a2)))))
+        Vector(Remove(v4), Remove(v3), Add(sign(a2)), Remove(v1)))
+        == Vector(Remove(v4), Add(sign(a2))))
 
       assert(removeDuplicateRemoved(
-        Vector(
-          Entry(v5, None),
-          Entry(v4, None),
-          Entry(v3, Some(sign(a3))),
-          Entry(v2, None),
-          Entry(v1, None))) ==
-        Vector(
-          Entry(v5, None),
-          Entry(v3, Some(sign(a3)))))
+        Vector(Remove(v5), Remove(v4), Add(sign(a3)), Remove(v2), Remove(v1)))
+        == Vector(Remove(v5), Add(sign(a3))))
     }
 
     "deleteVersionFromEntries" in {
-      import Repo.{Entry, deleteVersionFromEntries, removeDuplicateRemoved}
-
       assert(deleteVersionFromEntries(v1, Nil) == Nil)
 
       locally {
-        val entries = List(Entry(v1, Some(sign(a1))))
+        val entries = List(Add(sign(a1)))
         assert(removeDuplicateRemoved(entries.toVector) == entries)
 
         assert(deleteVersionFromEntries(v1, entries) == Nil)
-        assert(deleteVersionFromEntries(v2, entries) == List(Entry(v1, Some(sign(a1)))))
+        assert(deleteVersionFromEntries(v2, entries) == List(Add(sign(a1))))
       }
 
       locally {
-        val entries = List(Entry(v2, None), Entry(v1, Some(sign(a1))))
+        val entries = List(Remove(v2), Add(sign(a1)))
         assert(removeDuplicateRemoved(entries.toVector) == entries)
 
         assert(deleteVersionFromEntries(v1, entries) == Nil)
@@ -333,7 +309,7 @@ final class RepoTest extends AnyFreeSpec
 
       locally {
         // Impossible sequence ?
-        val entries = List(Entry(v2, Some(sign(a2))), Entry(v1, None))
+        val entries = List(Add(sign(a2)), Remove(v1))
         assert(removeDuplicateRemoved(entries.toVector) == entries.dropRight(1))
 
         assert(deleteVersionFromEntries(v1, entries) == entries)
@@ -341,21 +317,21 @@ final class RepoTest extends AnyFreeSpec
       }
 
       locally {
-        val entries = List(Entry(v3, None), Entry(v2, Some(sign(a2))), Entry(v1, Some(sign(a1))))
+        val entries = List(Remove(v3), Add(sign(a2)), Add(sign(a1)))
         assert(removeDuplicateRemoved(entries.toVector) == entries)
 
-        assert(deleteVersionFromEntries(v1, entries) == List(Entry(v3, None), Entry(v2, Some(sign(a2)))))
-        assert(deleteVersionFromEntries(v2, entries) == List(Entry(v3, None), Entry(v1, Some(sign(a1)))))
+        assert(deleteVersionFromEntries(v1, entries) == List(Remove(v3), Add(sign(a2))))
+        assert(deleteVersionFromEntries(v2, entries) == List(Remove(v3), Add(sign(a1))))
         assert(deleteVersionFromEntries(v3, entries) == entries)
       }
 
       locally {
-        val entries = List(Entry(v5, Some(sign(a5))), Entry(v4, None), Entry(v3, Some(sign(a3))), Entry(v2, None), Entry(v1, Some(sign(a1))))
+        val entries = List(Add(sign(a5)), Remove(v4), Add(sign(a3)), Remove(v2), Add(sign(a1)))
         assert(removeDuplicateRemoved(entries.toVector) == entries)
 
-        assert(deleteVersionFromEntries(v1, entries) == List(Entry(v5, Some(sign(a5))), Entry(v4, None), Entry(v3, Some(sign(a3)))))
+        assert(deleteVersionFromEntries(v1, entries) == List(Add(sign(a5)), Remove(v4), Add(sign(a3))))
         assert(deleteVersionFromEntries(v2, entries) == entries)
-        assert(deleteVersionFromEntries(v3, entries) == List(Entry(v5, Some(sign(a5))), Entry(v4, None), Entry(v1, Some(sign(a1)))))
+        assert(deleteVersionFromEntries(v3, entries) == List(Add(sign(a5)), Remove(v4), Add(sign(a1))))
         assert(deleteVersionFromEntries(v4, entries) == entries)
       }
     }
@@ -385,9 +361,9 @@ final class RepoTest extends AnyFreeSpec
       repo = repo.deleteItem(APath("A") ~ v3).orThrow
       assert(Repo.empty.applyEvents(repo.toEvents.toSeq) == Right(repo))
 
-      assert(repo.versions == List(v3Removed, v2))
+      assert(repo.versionIds == List(v3Removed, v2))
       assert(repo.pathToVersionToSignedItems == Map(
-        APath("A") -> List(Repo.Entry(v3Removed, None), Repo.Entry(v2, Some(itemSigner.sign(a2))))))
+        APath("A") -> List(Repo.Remove(v3Removed), Add(itemSigner.sign(a2)))))
 
       assert(repo.toEvents.toSeq == Seq(
         VersionAdded(v2),
@@ -452,11 +428,13 @@ final class RepoTest extends AnyFreeSpec
       repo = repo.applyEvent(VersionAdded(v2)).orThrow
       repo = repo.applyEvent(VersionedItemRemoved(APath("A"))).orThrow
       repo = repo.applyEvent(VersionAdded(v3)).orThrow
-      assert(repo.applyEvent(VersionedItemChanged(sign(AItem(APath("A") ~ v3, "A")))) == Left(VersionedItemRemovedProblem(APath("A"))))
+      assert(repo.applyEvent(VersionedItemChanged(sign(AItem(APath("A") ~ v3, "A")))) ==
+        Left(VersionedItemRemovedProblem(APath("A"))))
     }
 
     "VersionedItemRemoved for removed path" in {
-      assert(repo.applyEvent(VersionedItemRemoved(APath("A"))) == Left(VersionedItemRemovedProblem(APath("A"))))
+      assert(repo.applyEvent(VersionedItemRemoved(APath("A"))) ==
+        Left(VersionedItemRemovedProblem(APath("A"))))
     }
   }
 
@@ -469,7 +447,8 @@ final class RepoTest extends AnyFreeSpec
       var sw = new Stopwatch
       for (i <- 1 to n) {
         val v = VersionId(i.toString)
-        val eventBlock = repo.itemsToEventBlock(v, sign(AItem(APath(s"A-$i"), "A") withVersion v) :: Nil).orThrow
+        val eventBlock = repo
+          .itemsToEventBlock(v, sign(AItem(APath(s"A-$i"), "A") withVersion v) :: Nil).orThrow
         repo = repo.applyEvents(eventBlock.events).orThrow
         if (i % 1000 == 0) {
           scribe.info(sw.itemsPerSecondString(1000, "versions"))
@@ -505,7 +484,6 @@ object RepoTest
   private val bx3 = BItem(BPath("Bx") ~ v3, "Bx-3")
   private val by2 = BItem(BPath("By") ~ v2, "By-2")
   private val a3 = AItem(APath("A") ~ v3, "A-3")
-  private val a4 = AItem(APath("A") ~ v4, "A-4")
   private val a5 = AItem(APath("A") ~ v4, "A-5")
 
   private implicit val itemJsonCodec = TypedJsonCodec[VersionedItem](

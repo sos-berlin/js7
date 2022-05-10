@@ -615,7 +615,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
     assert(controllerState.idToOrder.isEmpty)
     assert(controllerState.repo == Repo.empty
-      .applyEvents(controllerState.repo.versions.reverse.map(VersionAdded(_)))
+      .applyEvents(controllerState.repo.versionIds.reverse.map(VersionAdded(_)))
       .orThrow)
     assert(controllerState.pathToLockState.isEmpty)
 

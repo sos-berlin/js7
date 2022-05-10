@@ -16,7 +16,7 @@ final class JRepo(asScala: Repo)
     * @return `Optional.empty` iff the repo is empty. */
   @Nonnull
   def versionId: java.util.Optional[VersionId] =
-    asScala.versions.headOption.toJava
+    asScala.versionIds.headOption.toJava
 
   /** The `VersionId`s in reverse order of creation.
     * The first entry is the current `VersionId`,
@@ -24,7 +24,7 @@ final class JRepo(asScala: Repo)
     */
   @Nonnull
   def versionIds: java.util.Collection[VersionId] =
-    asScala.versions.asJavaCollection
+    asScala.versionIds.asJavaCollection
 
   @deprecated("Renamed as idToCheckedWorkflow", "2.3")
   @Deprecated

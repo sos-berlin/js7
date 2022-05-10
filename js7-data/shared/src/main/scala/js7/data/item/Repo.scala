@@ -6,7 +6,6 @@ import js7.base.crypt.{SignatureVerifier, Signed}
 import js7.base.problem.Checked._
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.implicits._
 import js7.base.utils.Memoizer
 import js7.base.utils.ScalaUtils.syntax._
@@ -19,29 +18,29 @@ import scala.collection.{View, mutable}
 
 /**
   * Representation of versioned VersionedItem (configuration objects).
-  * @param versionSet `versionSet == versions.toSet`
+  * @param versionIdSet `versionIdSet == versionIds.toSet`
   * @author Joacim Zschimmer
   */
 final case class Repo private(
-  versions: List[VersionId],
-  versionSet: Set[VersionId],
-  pathToVersionToSignedItems: Map[VersionedItemPath, List[Entry]],
+  versionIds: List[VersionId],
+  versionIdSet: Set[VersionId],
+  pathToVersionToSignedItems: Map[VersionedItemPath, List[Version]],
   signatureVerifier: Option[SignatureVerifier],
   selfTest: Boolean = false)
 {
-  assertThat(versions.nonEmpty || pathToVersionToSignedItems.isEmpty)
+  assert(versionIds.nonEmpty || pathToVersionToSignedItems.isEmpty)
 
   /** `signatureVerifier` is not compared - for testing only. */
   override def equals(o: Any) = o match {
     case o: Repo =>
-      versions == o.versions &&
+      versionIds == o.versionIds &&
         pathToVersionToSignedItems == o.pathToVersionToSignedItems
     case _ => false
   }
 
   import Repo._
 
-  lazy val versionId: VersionId = versions.headOption getOrElse VersionId.Anonymous
+  lazy val currentVersionId: VersionId = versionIds.headOption getOrElse VersionId.Anonymous
 
   def currentVersionSize =
     currentSignedItems.size
@@ -80,7 +79,7 @@ final case class Repo private(
             .filter(exists)  // only known
             .map(VersionedItemRemoved(_))
             .toVector
-          if (versionId == this.versionId && addedSet.isEmpty && removedEvents.isEmpty
+          if (versionId == this.currentVersionId && addedSet.isEmpty && removedEvents.isEmpty
             && (changed.nonEmpty || removed.nonEmpty))
             // Ignore same version with empty difference if it is not a versionId-only UpdateRepo
             emptyEventBlock
@@ -133,14 +132,10 @@ final case class Repo private(
     pathToVersionToSignedItems
       .to(View)
       .collect {
-        case (path, entries) if path.companion eq companion =>
-          entries.map(e => path.asInstanceOf[P] ~ e.versionId)
+        case (path, versions) if path.companion eq companion =>
+          versions.map(e => path.asInstanceOf[P] ~ e.versionId)
       }
       .flatten
-
-  private def entry(itemId: VersionedItemId_): Option[Entry] =
-    pathToVersionToSignedItems.get(itemId.path)
-      .flatMap(_.find(_.versionId == itemId.versionId))
 
   // TODO unused (maybe useful for garbage collection?)
   private[item] def unusedItemIdsForType[P <: VersionedItemPath](inUse: Set[VersionedItemId[P]])
@@ -148,8 +143,8 @@ final case class Repo private(
   : View[VersionedItemId[P]] =
     pathToVersionToSignedItems.to(View)
       .collect {
-        case (path, entries) if path.companion eq P =>
-          (path.asInstanceOf[P], entries)
+        case (path, versions) if path.companion eq P =>
+          path.asInstanceOf[P] -> versions
       }
       .flatMap { case (path, entries) =>
         def isInUse(id: VersionedItemId_) =
@@ -183,12 +178,12 @@ final case class Repo private(
     }
 
   private def deleteEmptyVersions(versionIdCandidates: View[VersionId]): Repo = {
-    val versionIds = versionIdCandidates.filterNot(usedVersions).toSet
-    if (versionIds.nonEmpty &&
-      pathToVersionToSignedItems.forall(_._2.forall(entry => !versionIds(entry.versionId))))
+    val delete = versionIdCandidates.filterNot(usedVersions).toSet
+    if (delete.nonEmpty &&
+      pathToVersionToSignedItems.forall(_._2.forall(version => !delete(version.versionId))))
       copy(
-        versions = versions.filterNot(versionIds),
-        versionSet = versionSet -- versionIds)
+        versionIds = versionIds.filterNot(delete),
+        versionIdSet = versionIdSet -- delete)
     else
       this
   }
@@ -208,15 +203,15 @@ final case class Repo private(
   def applyEvent(event: VersionedEvent): Checked[Repo] =
     event match {
       case VersionAdded(version) =>
-        if (versionSet contains version)
+        if (versionIdSet contains version)
           DuplicateKey("VersionId", version)
         else
           Right(copy(
-            versions = version :: versions,
-            versionSet = versionSet + version))
+            versionIds = version :: versionIds,
+            versionIdSet = versionIdSet + version))
 
       case event: VersionedItemEvent =>
-        if (versions.isEmpty)
+        if (versionIds.isEmpty)
           Problem.pure(s"Missing initial VersionAdded event for Repo")
         else
           event match {
@@ -232,7 +227,7 @@ final case class Repo private(
 
             case VersionedItemRemoved(path) =>
               for (_ <- pathToItem(event.path)) yield
-                addEntry(path, Remove(versionId))
+                addEntry(path, Remove(currentVersionId))
           }
     }
 
@@ -245,12 +240,12 @@ final case class Repo private(
           .flatMap(item =>
             if (item.path.isAnonymous)
               Problem.pure(s"Adding an anonymous ${item.companion.typeName} is not allowed")
-            else if (item.key.versionId != versionId)
-              EventVersionDoesNotMatchProblem(versionId, event)
+            else if (item.key.versionId != currentVersionId)
+              EventVersionDoesNotMatchProblem(currentVersionId, event)
             else
               Right(addEntry(
                 item.path,
-                Add(Signed(item withVersion versionId, event.signedString)))))
+                Add(Signed(item withVersion currentVersionId, event.signedString)))))
 
       case None =>
         Right(addEntry(event.path, Add(event.signed)))
@@ -267,17 +262,17 @@ final case class Repo private(
         Right(signed.value)
     }
 
-  private def addEntry(path: VersionedItemPath, entry: Entry): Repo = {
+  private def addEntry(path: VersionedItemPath, version: Version): Repo = {
     copy(pathToVersionToSignedItems =
       pathToVersionToSignedItems +
         (path ->
-          (entry :: pathToVersionToSignedItems.getOrElse(path, Nil))))
+          (version :: pathToVersionToSignedItems.getOrElse(path, Nil))))
   }
 
   def exists(path: VersionedItemPath): Boolean =
     pathToVersionToSignedItems.get(path) match {
       case None => false
-      case Some(entries) => !entries.head.isRemoved
+      case Some(versions) => !versions.head.isRemoved
     }
 
   def markedAsRemoved(path: VersionedItemPath): Boolean =
@@ -286,12 +281,6 @@ final case class Repo private(
   def isCurrentItem(id: VersionedItemId_): Boolean =
     pathToId(id.path)
       .exists(_.versionId == id.versionId)
-
-  private def isHiddenItem(id: VersionedItemId_): Boolean =
-    pathToVersionToSignedItems.get(id.path)
-      .fold(false)(entries =>
-        entries.head.versionId != id.versionId &&
-          entries.tail.exists(_.versionId == id.versionId))
 
   /** Returns the current VersionedItem to a Path. */
   def pathTo[A <: VersionedItem](A: VersionedItem.Companion[A])(path: A.Path): Checked[A] =
@@ -304,31 +293,13 @@ final case class Repo private(
 
   def pathToId[P <: VersionedItemPath](path: P): Option[VersionedItemId[P]] =
     for {
-      entries <- pathToVersionToSignedItems.get(path)
-      signed <- entries.head.maybeSignedItem
+      versions <- pathToVersionToSignedItems.get(path)
+      signed <- versions.head.maybeSignedItem
     } yield signed.value.id.asInstanceOf[VersionedItemId[P]]
 
   def pathToItem(path: VersionedItemPath): Checked[VersionedItem] =
     pathToSigned(path)
       .map(_.value)
-
-  private def pathToItems(path: VersionedItemPath): View[VersionedItem] =
-    pathToVersionToSignedItems
-      .getOrElse(path, Nil)
-      .view
-      .collect {
-        case Add(Signed(item, _)) => item
-      }
-
-  private def previousVersionOf(id: VersionedItemId_): Option[VersionedItem] = {
-    val entries = pathToVersionToSignedItems.getOrElse(id.path, Nil)
-    if (entries.sizeIs < 2)
-      None
-    else entries.dropRight(1).last match {
-      case Add(Signed(item, _)) => Some(item)
-      case _ => None
-    }
-  }
 
   private def pathToSigned(path: VersionedItemPath): Checked[Signed[VersionedItem]] =
     pathToVersionToSignedItems
@@ -355,7 +326,7 @@ final case class Repo private(
     for {
       versionToSignedItem <- pathToVersionToSignedItems.checked(id.path)
       maybeItem <- versionToSignedItem
-        .collectFirst { case Entry(id.versionId, o) => o }
+        .collectFirst { case Version(id.versionId, o) => o }
         .toChecked(UnknownKeyProblem("VersionedItemId", id))
         .orElse(
           for {
@@ -371,7 +342,7 @@ final case class Repo private(
       .flatMap(_.flatMap(_.maybeSignedItem))
 
   lazy val estimatedEventCount: Int = {
-    var sum = versions.size  // VersionAdded
+    var sum = versionIds.size  // VersionAdded
     for (o <- pathToVersionToSignedItems.values) sum += o.size
     sum
   }
@@ -400,17 +371,17 @@ final case class Repo private(
     val versionToChanges: Map[VersionId, Seq[RemovedOrUpdated]] =
       pathToVersionToSignedItems
         .view
-        .flatMap { case (path, entries) =>
-          entries.map(entry =>
-            entry.versionId -> entry.maybeSignedItem.fold[RemovedOrUpdated](Left(path))(Right.apply))
+        .flatMap { case (path, versions) =>
+          versions.map(version =>
+            version.versionId -> version.maybeSignedItem.fold[RemovedOrUpdated](Left(path))(Right.apply))
         }
         .groupBy(_._1)
         .view
         .mapValues(_.map(_._2).toVector)
         .toMap
 
-    versions
-      .foldLeft((versionSet, List.empty[View[VersionedEvent]])) { case ((versionSet, events), version) =>
+    versionIds
+      .foldLeft((versionIdSet, List.empty[View[VersionedEvent]])) { case ((versionSet, events), version) =>
         val tailVersionSet = versionSet - version
         val nextEvents = View(VersionAdded(version)) ++
           versionToChanges
@@ -420,8 +391,8 @@ final case class Repo private(
               case Left(path) =>
                 VersionedItemRemoved(path)
               case Right(signedItem) =>
-                val entries = pathToVersionToSignedItems(signedItem.value.path)
-                if (findInHistory(entries, tailVersionSet).flatten.isDefined)
+                val versions = pathToVersionToSignedItems(signedItem.value.path)
+                if (findInHistory(versions, tailVersionSet).flatten.isDefined)
                   VersionedItemChanged(signedItem)
                 else
                   VersionedItemAdded(signedItem)
@@ -434,17 +405,17 @@ final case class Repo private(
   }
 
   private[item] def historyBefore(versionId: VersionId): Checked[List[VersionId]] =
-    versions.dropWhile(versionId.!=) match {
+    versionIds.dropWhile(versionId.!=) match {
       case Nil => UnknownKeyProblem("VersionId", versionId)
       case _ :: tail => Right(tail)
     }
 
   // TODO Very big toString ?
   override def toString =
-    if (versions.isEmpty && pathToVersionToSignedItems.isEmpty)
+    if (versionIds.isEmpty && pathToVersionToSignedItems.isEmpty)
       "Repo.empty"
     else
-      s"Repo(versions: ${ versions.map(_.string).mkString(" ") }" + {
+      s"Repo(versions: ${ versionIds.map(_.string).mkString(" ") }" + {
         val pathLines = pathToVersionToSignedItems
           .keys.toSeq.sorted
           .map(path => s"$path " + pathToVersionToSignedItems(path).mkString(" "))
@@ -494,9 +465,9 @@ object Repo
   def signatureVerifying(signatureVerifier: SignatureVerifier): Repo =
     new Repo(Nil, Set.empty, Map.empty, Some(signatureVerifier))
 
-  private def unusedVersionIds(entries: List[Entry], inUse: VersionedItemId_ => Boolean)
+  private def unusedVersionIds(versions: List[Version], inUse: VersionedItemId_ => Boolean)
   : View[VersionId] = {
-    val remainingVersionIds: Set[VersionId] = entries.view
+    val remainingVersionIds: Set[VersionId] = versions.view
       .collect {
         case entry @ Add(Signed(item, _)) if inUse(item.id) =>
           entry
@@ -505,14 +476,14 @@ object Repo
       }
       .map(_.versionId)
       .toSet
-    val removeVersions = entries.view
+    val removeVersions = versions.view
       .filterNot(e => remainingVersionIds(e.versionId))
       .map(_.versionId)
       .toSeq
     val intermediateResult = removeVersions.view ++
-      redundantRemovedIds(entries.view.filterNot(e => removeVersions.contains(e.versionId)))
+      redundantRemovedIds(versions.view.filterNot(e => removeVersions.contains(e.versionId)))
 
-    entries.head.maybeSignedItem match {
+    versions.head.maybeSignedItem match {
       case Some(Signed(item, _)) if removeVersions.headOption.contains(item.id.versionId) =>
         // Keep the current item despite it is not currently used
         intermediateResult.tail
@@ -521,8 +492,8 @@ object Repo
     }
   }
 
-  private def redundantRemovedIds(entries: Iterable[Entry]): View[VersionId] = {
-    val a = entries.toArray
+  private def redundantRemovedIds(versions: Iterable[Version]): View[VersionId] = {
+    val a = versions.toArray
     val result = new mutable.ArrayBuffer[VersionId](a.size)
     for (i <- a.indices) {
       if (a(i).isRemoved && (i == a.length - 1 || a(i + 1).isRemoved)) {
@@ -532,14 +503,14 @@ object Repo
     result.view
   }
 
-  private[item] def deleteVersionFromEntries(versionId: VersionId, entries: List[Entry])
-  : List[Entry] = {
-    val reverseVersions = entries.toVector.reverse // Older versions first
+  private[item] def deleteVersionFromEntries(versionId: VersionId, versions: List[Version])
+  : List[Version] = {
+    val reverseVersions = versions.toVector.reverse // Older versions first
     reverseVersions.indexWhere(_.versionId == versionId) match {
-      case -1 => entries
+      case -1 => versions
       case cut =>
         if (reverseVersions(cut).isRemoved)
-          entries // A version marked as Removed cannot be deleted
+          versions // A version marked as Removed cannot be deleted
         else {
           val older = reverseVersions.take(cut)
           val newer = reverseVersions.drop(cut + 1)
@@ -548,8 +519,8 @@ object Repo
     }
   }
 
-  private[item] def removeDuplicateRemoved(versions: Vector[Entry]): List[Entry] = {
-    val result = ListBuffer.empty[Entry]
+  private[item] def removeDuplicateRemoved(versions: Vector[Version]): List[Version] = {
+    val result = ListBuffer.empty[Version]
     var inRemove = false
     for (version <- versions.dropLastWhile(_.isRemoved)) {
       if (!version.isRemoved) {
@@ -566,7 +537,7 @@ object Repo
   @TestOnly
   private[item] def fromEntries(
     versionIds: Seq[VersionId],
-    pathToEntries: Map[VersionedItemPath, Seq[Entry]],
+    pathToEntries: Map[VersionedItemPath, Seq[Version]],
     signatureVerifier: Option[SignatureVerifier] = None)
   : Repo =
     new Repo(
@@ -575,37 +546,37 @@ object Repo
       pathToEntries.view.mapValues(_.toList).toMap,
       signatureVerifier)
 
-  sealed trait Entry {
+  sealed trait Version {
     def versionId: VersionId
     def maybeSignedItem: Option[Signed[VersionedItem]]
     def isRemoved: Boolean
   }
-  object Entry {
+  object Version {
     def apply(versionId: VersionId, maybeSignedItem: Option[Signed[VersionedItem]]) =
       maybeSignedItem match {
         case None => Remove(versionId)
         case Some(signed) => Add(signed)
       }
-    def unapply(entry: Entry) = Some(entry.versionId -> entry.maybeSignedItem)
+    def unapply(version: Version) = Some(version.versionId -> version.maybeSignedItem)
   }
   /** Add or updated. */
   final case class Add private(signedItem: Signed[VersionedItem])
-  extends Entry {
+  extends Version {
     def versionId = signedItem.value.id.versionId
     val maybeSignedItem = Some(signedItem)
     def isRemoved = false
     override def toString = s"+${signedItem.value.id.versionId.string}"
   }
   final case class Remove private(versionId: VersionId)
-  extends Entry {
+  extends Version {
     def isRemoved = true
     def maybeSignedItem = None
     override def toString = s"-${versionId.string}"
   }
 
   /** None: not known at or before this VersionId; Some(None): removed at or before this VersionId. */
-  private def findInHistory(entries: List[Entry], isKnownVersion: VersionId => Boolean): Option[Option[Signed[VersionedItem]]] =
-    entries
+  private def findInHistory(versions: List[Version], isKnownVersion: VersionId => Boolean): Option[Option[Signed[VersionedItem]]] =
+    versions
       .view
       .dropWhile(e => !isKnownVersion(e.versionId))
       .map(_.maybeSignedItem)
