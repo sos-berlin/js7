@@ -10,7 +10,6 @@ import js7.base.problem.Problem
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.time.Stopwatch
 import js7.data.Problems.{EventVersionDoesNotMatchProblem, ItemVersionDoesNotMatchProblem, VersionedItemRemovedProblem}
-import js7.data.item.Repo.testOnly.{Changed, OpRepo, Removed}
 import js7.data.item.RepoTest._
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemChanged, VersionedItemRemoved}
 import org.scalatest.freespec.AnyFreeSpec
@@ -168,9 +167,13 @@ final class RepoTest extends AnyFreeSpec
     }
 
     "More" in {
-      var repo = emptyRepo
+      var repo = Repo.empty.copy(selfTest = true)
       repo = repo.itemsToEventBlock(v1, sign(a1) :: sign(b1) :: Nil).map(_.events).flatMap(repo.applyEvents).orThrow
-      assert(repo == Repo.fromOp(v1 :: Nil, Changed(sign(a1)) :: Changed(sign(b1)) :: Nil, Some(signatureVerifier)))
+      assert(repo == Repo.fromEntries(
+        v1 :: Nil, Map(
+          a1.path -> List(Repo.Add(sign(a1))),
+          b1.path -> List(Repo.Add(sign(b1)))),
+        Some(signatureVerifier)))
 
       val eventBlock = repo.itemsToEventBlock(v2, sign(a2) :: sign(bx2) :: Nil, removed = b1.path :: Nil).orThrow
       assert(eventBlock == repo.NonEmptyEventBlock(
@@ -179,14 +182,12 @@ final class RepoTest extends AnyFreeSpec
         addedOrChanged = Seq(VersionedItemChanged(sign(a2)), VersionedItemAdded(sign(bx2)))))
 
       repo = repo.applyEvents(eventBlock.events).orThrow
-      assert(repo == Repo.fromOp(
+      assert(repo == Repo.fromEntries(
         Seq(v2, v1),
-        Seq(
-          Changed(sign(a1)),
-          Changed(sign(a2)),
-          Changed(sign(b1)),
-          Removed(b1.path ~ v2),
-          Changed(sign(bx2))),
+        Map(
+          a1.path -> Seq(Repo.Add(sign(a2)), Repo.Add(sign(a1))),
+          b1.path -> Seq(Repo.Remove(v2), Repo.Add(sign(b1))),
+          bx2.path -> Seq(Repo.Add(sign(bx2)))),
         Some(signatureVerifier)))
 
       assert(repo.applyEvents(eventBlock.events) == Left(DuplicateKey("VersionId", v2)))

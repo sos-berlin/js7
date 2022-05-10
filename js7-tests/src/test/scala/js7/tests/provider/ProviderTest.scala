@@ -23,9 +23,8 @@ import js7.core.item.{ItemPaths, VersionedItemReader}
 import js7.data.agent.AgentPath
 import js7.data.event.EventId
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.item.Repo.Entry
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemChanged, VersionedItemEvent, VersionedItemRemoved}
-import js7.data.item.{InventoryItemDiff, InventoryItemKey, InventoryItemPath, SourceType, VersionId}
+import js7.data.item.{InventoryItemDiff, InventoryItemKey, InventoryItemPath, Repo, SourceType, VersionId}
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderAdded
 import js7.data.subagent.SubagentId
@@ -142,11 +141,11 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       //assert(controller.controllerState.map(_.pathToAgentRefState.values).await(99.s) == Seq(agentRef))
       assert(controllerState.repo.pathToVersionToSignedItems == Map(
         AWorkflowPath -> List(
-          Entry(V1, Some(sign(TestWorkflow.withId(AWorkflowPath ~ V1))))),
+          Repo.Add(sign(TestWorkflow.withId(AWorkflowPath ~ V1)))),
         AWorkflowPath -> List(
-          Entry(V1, Some(sign(TestWorkflow.withId(AWorkflowPath ~ V1))))),
+          Repo.Add(sign(TestWorkflow.withId(AWorkflowPath ~ V1)))),
         BWorkflowPath -> List(
-          Entry(V1, Some(sign(TestWorkflow.withId(BWorkflowPath ~ V1)))))))
+          Repo.Add(sign(TestWorkflow.withId(BWorkflowPath ~ V1))))))
 
       assert(provider.testControllerDiff.await(99.s).orThrow.isEmpty)
     }
@@ -179,11 +178,11 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       // AWorkflow and BWorkflow from previous test are added
       assert(controllerState.repo.pathToVersionToSignedItems == Map(
         AWorkflowPath -> List(
-          Entry(V2, Some(sign(TestWorkflow.withId(AWorkflowPath ~ V2))))),
+          Repo.Add(sign(TestWorkflow.withId(AWorkflowPath ~ V2)))),
         BWorkflowPath -> List(
-          Entry(V1, Some(sign(TestWorkflow.withId(BWorkflowPath ~ V1))))),
+          Repo.Add(sign(TestWorkflow.withId(BWorkflowPath ~ V1)))),
         CWorkflowPath -> List(
-          Entry(V2, Some(sign(TestWorkflow.withId(CWorkflowPath ~ V2)))))))
+          Repo.Add(sign(TestWorkflow.withId(CWorkflowPath ~ V2))))))
     }
 
     "Delete a Workflow" in {
@@ -192,9 +191,9 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
       assert(controllerState.repo.versions == List(V2))
       assert(controllerState.repo.pathToVersionToSignedItems == Map(
         AWorkflowPath -> List(
-          Entry(V2, Some(sign(TestWorkflow.withId(AWorkflowPath ~ V2))))),
+          Repo.Add(sign(TestWorkflow.withId(AWorkflowPath ~ V2)))),
         CWorkflowPath -> List(
-          Entry(V2, Some(sign(TestWorkflow.withId(CWorkflowPath ~ V2)))))))
+          Repo.Add(sign(TestWorkflow.withId(CWorkflowPath ~ V2))))))
     }
 
     "Workflow notation (including a try-instruction)" in {

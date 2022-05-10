@@ -106,7 +106,7 @@ final case class Repo private(
 
   def typedCount[A <: VersionedItem](implicit A: VersionedItem.Companion[A]): Int =
     pathToVersionToSignedItems.values.view.flatten.count {
-      case Entry(_, Some(signed)) => signed.value.companion eq A
+      case Add(signed) => signed.value.companion eq A
       case _ => false
     }
 
@@ -142,7 +142,6 @@ final case class Repo private(
     pathToVersionToSignedItems.get(itemId.path)
       .flatMap(_.find(_.versionId == itemId.versionId))
 
-
   // TODO unused (maybe useful for garbage collection?)
   private[item] def unusedItemIdsForType[P <: VersionedItemPath](inUse: Set[VersionedItemId[P]])
     (implicit P: VersionedItemPath.Companion[P])
@@ -158,7 +157,7 @@ final case class Repo private(
         unusedVersionIds(entries, isInUse).map(path ~ _)
       }
 
-  def unusedItemIdsForPaths(paths: Iterable[VersionedItemPath], inUse: Set[VersionedItemId_])
+  private def unusedItemIdsForPaths(paths: Iterable[VersionedItemPath], inUse: Set[VersionedItemId_])
   : View[VersionedItemId_] =
     for {
       path <- paths.view
@@ -233,7 +232,7 @@ final case class Repo private(
 
             case VersionedItemRemoved(path) =>
               for (_ <- pathToItem(event.path)) yield
-                addEntry(path, None)
+                addEntry(path, Remove(versionId))
           }
     }
 
@@ -249,10 +248,12 @@ final case class Repo private(
             else if (item.key.versionId != versionId)
               EventVersionDoesNotMatchProblem(versionId, event)
             else
-              Right(addEntry(item.path, Some(js7.base.crypt.Signed(item withVersion versionId, event.signedString)))))
+              Right(addEntry(
+                item.path,
+                Add(Signed(item withVersion versionId, event.signedString)))))
 
       case None =>
-        Right(addEntry(event.path, Some(event.signed)))
+        Right(addEntry(event.path, Add(event.signed)))
     }
   }
 
@@ -266,12 +267,11 @@ final case class Repo private(
         Right(signed.value)
     }
 
-  private def addEntry(path: VersionedItemPath, itemOption: Option[Signed[VersionedItem]]): Repo = {
-    val version = versions.head
+  private def addEntry(path: VersionedItemPath, entry: Entry): Repo = {
     copy(pathToVersionToSignedItems =
       pathToVersionToSignedItems +
         (path ->
-          (Entry(version, itemOption) :: pathToVersionToSignedItems.getOrElse(path, Nil))))
+          (entry :: pathToVersionToSignedItems.getOrElse(path, Nil))))
   }
 
   def exists(path: VersionedItemPath): Boolean =
@@ -317,7 +317,7 @@ final case class Repo private(
       .getOrElse(path, Nil)
       .view
       .collect {
-        case Entry(_, Some(Signed(item, _))) => item
+        case Add(Signed(item, _)) => item
       }
 
   private def previousVersionOf(id: VersionedItemId_): Option[VersionedItem] = {
@@ -325,7 +325,7 @@ final case class Repo private(
     if (entries.sizeIs < 2)
       None
     else entries.dropRight(1).last match {
-      case Entry(_, Some(Signed(item, _))) => Some(item)
+      case Add(Signed(item, _)) => Some(item)
       case _ => None
     }
   }
@@ -354,7 +354,7 @@ final case class Repo private(
   def anyIdToSigned(id: VersionedItemId_): Checked[Signed[VersionedItem]] =
     for {
       versionToSignedItem <- pathToVersionToSignedItems.checked(id.path)
-      itemOption <- versionToSignedItem
+      maybeItem <- versionToSignedItem
         .collectFirst { case Entry(id.versionId, o) => o }
         .toChecked(UnknownKeyProblem("VersionedItemId", id))
         .orElse(
@@ -363,7 +363,7 @@ final case class Repo private(
             fb <- findInHistory(versionToSignedItem, history.contains) toChecked UnknownKeyProblem("VersionedItemId", id)
           } yield fb
         ): Checked[Option[Signed[VersionedItem]]]
-      signedItem <- itemOption.toChecked(VersionedItemRemovedProblem(id.path))
+      signedItem <- maybeItem.toChecked(VersionedItemRemovedProblem(id.path))
     } yield signedItem
 
   def signedItems: View[Signed[VersionedItem]] =
@@ -440,13 +440,17 @@ final case class Repo private(
     }
 
   // TODO Very big toString ?
-  override def toString = s"Repo($versions," +
-    pathToVersionToSignedItems
-      .keys.toSeq.sorted
-      .map(path => s"$path: " +
-        pathToVersionToSignedItems(path)
-          .map(entry => entry.maybeSignedItem.fold(s"${entry.versionId} removed")(_ => s"${entry.versionId} added"))
-      ) + ")"
+  override def toString =
+    if (versions.isEmpty && pathToVersionToSignedItems.isEmpty)
+      "Repo.empty"
+    else
+      s"Repo(versions: ${ versions.map(_.string).mkString(" ") }" + {
+        val pathLines = pathToVersionToSignedItems
+          .keys.toSeq.sorted
+          .map(path => s"$path " + pathToVersionToSignedItems(path).mkString(" "))
+        if (pathLines.sizeIs <= 1) " · " + pathLines.mkString
+        else pathLines.map("↩︎\n  " + _).mkString
+      } + ")"
 
   private[item] sealed trait EventBlock {
     def events: Seq[VersionedEvent]
@@ -494,10 +498,9 @@ object Repo
   : View[VersionId] = {
     val remainingVersionIds: Set[VersionId] = entries.view
       .collect {
-        case entry @ Entry(_, Some(Signed(item, _)))
-          if inUse(item.id) =>
+        case entry @ Add(Signed(item, _)) if inUse(item.id) =>
           entry
-        case entry @ Entry(_, None) =>
+        case entry @ Remove(_) =>
           entry
       }
       .map(_.versionId)
@@ -561,35 +564,43 @@ object Repo
   }
 
   @TestOnly
-  private[item] object testOnly {
-    implicit final class OpRepo(private val underlying: Repo.type) extends AnyVal {
-      def fromOp(versionIds: Seq[VersionId], operations: Seq[Operation], signatureVerifier: Option[SignatureVerifier]) =
-        new Repo(
-          versionIds.toList,
-          versionIds.toSet,
-          operations.view
-            .reverse
-            .map(_.fold(o => (o.value.key.path, o.value.key.versionId -> Some(o)), o => (o.path, o.versionId -> None)))
-            .groupMap(_._1)(_._2)
-            .view
-            .mapValues(_.map(o => Entry(o._1, o._2)).toList)
-            .toMap,
-          signatureVerifier)
-    }
+  private[item] def fromEntries(
+    versionIds: Seq[VersionId],
+    pathToEntries: Map[VersionedItemPath, Seq[Entry]],
+    signatureVerifier: Option[SignatureVerifier] = None)
+  : Repo =
+    new Repo(
+      versionIds.toList,
+      versionIds.toSet,
+      pathToEntries.view.mapValues(_.toList).toMap,
+      signatureVerifier)
 
-    sealed trait Operation {
-      def fold[A](whenChanged: Signed[VersionedItem] => A, whenRemoved: VersionedItemId_ => A): A
-    }
-    final case class Changed(item: Signed[VersionedItem]) extends Operation {
-      def fold[A](whenChanged: Signed[VersionedItem] => A, whenRemoved: VersionedItemId_ => A) = whenChanged(item)
-    }
-    final case class Removed(id: VersionedItemId_) extends Operation {
-      def fold[A](whenChanged: Signed[VersionedItem] => A, whenRemoved: VersionedItemId_ => A) = whenRemoved(id)
-    }
+  sealed trait Entry {
+    def versionId: VersionId
+    def maybeSignedItem: Option[Signed[VersionedItem]]
+    def isRemoved: Boolean
   }
-
-  final case class Entry private(versionId: VersionId, maybeSignedItem: Option[Signed[VersionedItem]]) {
-    def isRemoved = maybeSignedItem.isEmpty
+  object Entry {
+    def apply(versionId: VersionId, maybeSignedItem: Option[Signed[VersionedItem]]) =
+      maybeSignedItem match {
+        case None => Remove(versionId)
+        case Some(signed) => Add(signed)
+      }
+    def unapply(entry: Entry) = Some(entry.versionId -> entry.maybeSignedItem)
+  }
+  /** Add or updated. */
+  final case class Add private(signedItem: Signed[VersionedItem])
+  extends Entry {
+    def versionId = signedItem.value.id.versionId
+    val maybeSignedItem = Some(signedItem)
+    def isRemoved = false
+    override def toString = s"+${signedItem.value.id.versionId.string}"
+  }
+  final case class Remove private(versionId: VersionId)
+  extends Entry {
+    def isRemoved = true
+    def maybeSignedItem = None
+    override def toString = s"-${versionId.string}"
   }
 
   /** None: not known at or before this VersionId; Some(None): removed at or before this VersionId. */
