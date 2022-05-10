@@ -11,9 +11,10 @@ import js7.base.utils.Collections.implicits._
 import js7.base.utils.Memoizer
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.Problems.{EventVersionDoesNotMatchProblem, ItemVersionDoesNotMatchProblem, UnknownItemPathProblem, VersionedItemRemovedProblem}
-import js7.data.item.Repo.Entry
+import js7.data.item.Repo._
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemAddedOrChanged, VersionedItemChanged, VersionedItemEvent, VersionedItemRemoved}
 import org.jetbrains.annotations.TestOnly
+import scala.collection.mutable.ListBuffer
 import scala.collection.{View, mutable}
 
 /**
@@ -167,21 +168,19 @@ final case class Repo private(
 
   def deleteItem(id: VersionedItemId_): Checked[Repo] =
     for (entries <- pathToVersionToSignedItems.checked(id.path)) yield {
-      val reverseEntries = entries.toVector.reverse
-      val updatedEntries = reverseEntries
-        .view
-        .filter(_.versionId != id.versionId)
-        .dropWhile(_.isRemoved)
-        .toVector
-      copy(
-        pathToVersionToSignedItems =
-          if (updatedEntries.isEmpty)
-            pathToVersionToSignedItems - id.path
-          else
-            pathToVersionToSignedItems + (id.path -> updatedEntries.view.reverse.toList),
-      ).deleteEmptyVersions(reverseEntries
-        .view.map(_.versionId)
-        .filterNot(updatedEntries.view.map(_.versionId).toSet))
+      val updatedEntries = deleteVersionFromEntries(id.versionId, entries)
+      if (updatedEntries eq entries)
+        this
+      else
+        copy(
+          pathToVersionToSignedItems =
+            if (updatedEntries.isEmpty)
+              pathToVersionToSignedItems - id.path
+            else
+              pathToVersionToSignedItems + (id.path -> updatedEntries),
+        ).deleteEmptyVersions(entries
+          .view.map(_.versionId)
+          .filterNot(updatedEntries.view.map(_.versionId).toSet))
     }
 
   private def deleteEmptyVersions(versionIdCandidates: View[VersionId]): Repo = {
@@ -391,7 +390,7 @@ final case class Repo private(
       if (applied == this)
         Checked.unit
       else
-        Left(Problem.pure(s"💥 Repo.toEvents self-test failed, events does not match repo"))
+        Left(Problem.pure(s"💥 Repo.toEvents self-test failed, events do not match repo"))
     }
 
   /** Convert the Repo to an event sequence ordered by VersionId. */
@@ -528,6 +527,37 @@ object Repo
       }
     }
     result.view
+  }
+
+  private[item] def deleteVersionFromEntries(versionId: VersionId, entries: List[Entry])
+  : List[Entry] = {
+    val reverseVersions = entries.toVector.reverse // Older versions first
+    reverseVersions.indexWhere(_.versionId == versionId) match {
+      case -1 => entries
+      case cut =>
+        if (reverseVersions(cut).isRemoved)
+          entries // A version marked as Removed cannot be deleted
+        else {
+          val older = reverseVersions.take(cut)
+          val newer = reverseVersions.drop(cut + 1)
+          removeDuplicateRemoved((older ++ newer).reverse)
+        }
+    }
+  }
+
+  private[item] def removeDuplicateRemoved(versions: Vector[Entry]): List[Entry] = {
+    val result = ListBuffer.empty[Entry]
+    var inRemove = false
+    for (version <- versions.dropLastWhile(_.isRemoved)) {
+      if (!version.isRemoved) {
+        inRemove = false
+        result += version
+      } else if (!inRemove) {
+        result += version
+        inRemove = true
+      }
+    }
+    result.toList
   }
 
   @TestOnly
