@@ -254,6 +254,148 @@ final class RepoTest extends AnyFreeSpec
         VersionAdded(v3), VersionedItemAdded(sign(a3))))
       assert(emptyRepo.applyEvents(a2Deleted.toEvents) == Right(a2Deleted))
     }
+
+    "removeDuplicateRemoved" in {
+      // For positive tests, see below
+      import Repo.{Entry, removeDuplicateRemoved}
+
+      assert(removeDuplicateRemoved(Vector.empty) == Nil)
+
+      assert(removeDuplicateRemoved(
+        Vector(
+          Entry(v2, Some(sign(a2))),
+          Entry(v1, None))) ==
+        Vector(
+          Entry(v2, Some(sign(a2)))))
+
+      assert(removeDuplicateRemoved(
+        Vector(
+          Entry(v3, None),
+          Entry(v2, Some(sign(a2))),
+          Entry(v1, None))) ==
+        Vector(
+          Entry(v3, None),
+          Entry(v2, Some(sign(a2)))))
+
+      assert(removeDuplicateRemoved(
+        Vector(
+          Entry(v4, None),
+          Entry(v3, None),
+          Entry(v2, None),
+          Entry(v1, Some(sign(a1))))) ==
+        Vector(
+          Entry(v4, None),
+          Entry(v1, Some(sign(a1)))))
+
+      assert(removeDuplicateRemoved(
+        Vector(
+          Entry(v4, None),
+          Entry(v3, None),
+          Entry(v2, Some(sign(a2))),
+          Entry(v1, None))) ==
+        Vector(
+          Entry(v4, None),
+          Entry(v2, Some(sign(a2)))))
+
+      assert(removeDuplicateRemoved(
+        Vector(
+          Entry(v5, None),
+          Entry(v4, None),
+          Entry(v3, Some(sign(a3))),
+          Entry(v2, None),
+          Entry(v1, None))) ==
+        Vector(
+          Entry(v5, None),
+          Entry(v3, Some(sign(a3)))))
+    }
+
+    "deleteVersionFromEntries" in {
+      import Repo.{Entry, deleteVersionFromEntries, removeDuplicateRemoved}
+
+      assert(deleteVersionFromEntries(v1, Nil) == Nil)
+
+      locally {
+        val entries = List(Entry(v1, Some(sign(a1))))
+        assert(removeDuplicateRemoved(entries.toVector) == entries)
+
+        assert(deleteVersionFromEntries(v1, entries) == Nil)
+        assert(deleteVersionFromEntries(v2, entries) == List(Entry(v1, Some(sign(a1)))))
+      }
+
+      locally {
+        val entries = List(Entry(v2, None), Entry(v1, Some(sign(a1))))
+        assert(removeDuplicateRemoved(entries.toVector) == entries)
+
+        assert(deleteVersionFromEntries(v1, entries) == Nil)
+        assert(deleteVersionFromEntries(v2, entries) == entries)
+      }
+
+      locally {
+        // Impossible sequence ?
+        val entries = List(Entry(v2, Some(sign(a2))), Entry(v1, None))
+        assert(removeDuplicateRemoved(entries.toVector) == entries.dropRight(1))
+
+        assert(deleteVersionFromEntries(v1, entries) == entries)
+        assert(deleteVersionFromEntries(v2, entries) == Nil)
+      }
+
+      locally {
+        val entries = List(Entry(v3, None), Entry(v2, Some(sign(a2))), Entry(v1, Some(sign(a1))))
+        assert(removeDuplicateRemoved(entries.toVector) == entries)
+
+        assert(deleteVersionFromEntries(v1, entries) == List(Entry(v3, None), Entry(v2, Some(sign(a2)))))
+        assert(deleteVersionFromEntries(v2, entries) == List(Entry(v3, None), Entry(v1, Some(sign(a1)))))
+        assert(deleteVersionFromEntries(v3, entries) == entries)
+      }
+
+      locally {
+        val entries = List(Entry(v5, Some(sign(a5))), Entry(v4, None), Entry(v3, Some(sign(a3))), Entry(v2, None), Entry(v1, Some(sign(a1))))
+        assert(removeDuplicateRemoved(entries.toVector) == entries)
+
+        assert(deleteVersionFromEntries(v1, entries) == List(Entry(v5, Some(sign(a5))), Entry(v4, None), Entry(v3, Some(sign(a3)))))
+        assert(deleteVersionFromEntries(v2, entries) == entries)
+        assert(deleteVersionFromEntries(v3, entries) == List(Entry(v5, Some(sign(a5))), Entry(v4, None), Entry(v1, Some(sign(a1)))))
+        assert(deleteVersionFromEntries(v4, entries) == entries)
+      }
+    }
+
+    "FIX Duplicate VersionedItemRemoved" in {
+      val v1Removed = VersionId("1-REMOVED")
+      val v2Removed = VersionId("2-REMOVED")
+      val v3Removed = VersionId("3-REMOVED")
+      var repo = Repo.empty.applyEvents(Seq(
+        VersionAdded(v1),
+        VersionedItemAdded(itemSigner.sign(a1)),
+        VersionAdded(v1Removed),
+        VersionedItemRemoved(APath("A")),
+        VersionAdded(v2),
+        VersionedItemAdded(itemSigner.sign(a2)),
+        VersionAdded(v2Removed),
+        VersionedItemRemoved(APath("A")),
+        VersionAdded(v3),
+        VersionedItemAdded(itemSigner.sign(a3)),
+        VersionAdded(v3Removed),
+        VersionedItemRemoved(APath("A")),
+      )).orThrow
+
+      repo = repo.deleteItem(APath("A") ~ v1).orThrow
+      assert(Repo.empty.applyEvents(repo.toEvents.toSeq) == Right(repo))
+
+      repo = repo.deleteItem(APath("A") ~ v3).orThrow
+      assert(Repo.empty.applyEvents(repo.toEvents.toSeq) == Right(repo))
+
+      assert(repo.versions == List(v3Removed, v2))
+      assert(repo.pathToVersionToSignedItems == Map(
+        APath("A") -> List(Repo.Entry(v3Removed, None), Repo.Entry(v2, Some(itemSigner.sign(a2))))))
+
+      assert(repo.toEvents.toSeq == Seq(
+        VersionAdded(v2),
+        VersionedItemAdded(itemSigner.sign(a2)),
+        VersionAdded(VersionId("3-REMOVED")),
+        VersionedItemRemoved(APath("A"))))
+
+      assert(Repo.empty.applyEvents(repo.toEvents.toSeq) == Right(repo))
+    }
   }
 
   "unusedItemIdsForType" in {
@@ -353,6 +495,8 @@ object RepoTest
   private val v1 = VersionId("1")
   private val v2 = VersionId("2")
   private val v3 = VersionId("3")
+  private val v4 = VersionId("4")
+  private val v5 = VersionId("5")
   private val a1 = AItem(APath("A") ~ v1, "A-1")
   private val a2 = AItem(APath("A") ~ v2, "A-2")
   private val b1 = BItem(BPath("B") ~ v1, "B-1")
@@ -360,6 +504,8 @@ object RepoTest
   private val bx3 = BItem(BPath("Bx") ~ v3, "Bx-3")
   private val by2 = BItem(BPath("By") ~ v2, "By-2")
   private val a3 = AItem(APath("A") ~ v3, "A-3")
+  private val a4 = AItem(APath("A") ~ v4, "A-4")
+  private val a5 = AItem(APath("A") ~ v4, "A-5")
 
   private implicit val itemJsonCodec = TypedJsonCodec[VersionedItem](
     Subtype[AItem],
