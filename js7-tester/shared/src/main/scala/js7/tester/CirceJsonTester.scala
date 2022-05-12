@@ -19,12 +19,14 @@ object CirceJsonTester
   def testJsonString[A: Encoder: Decoder](a: A, jsonString: String): Assertion =
     testJson(a, parseJson(jsonString))
 
-  def testJson[A: Encoder: Decoder](a: A, json: => Json)(implicit pos: source.Position): Assertion = {
+  def testJson[A: Encoder: Decoder](a: A, json: => Json)(implicit pos: source.Position)
+  : Assertion = {
     testJsonEncoder(a, json)
     testJsonDecoder(a, json)
   }
 
-  def testJsonEncoder[A: Encoder](a: A, json: => Json): Assertion = {
+  def testJsonEncoder[A: Encoder](a: A, json: => Json)(implicit pos: source.Position)
+  : Assertion = {
     // Do a.asJson first to get the JSON string, then evaluate lazy json (which may have syntax errors during development).
     val asJson: Json = removeJNull(a.asJson)  // Circe converts None to JNull which we remove here (like Printer dropNullValues = true)
     if (asJson != json) fail(
@@ -34,7 +36,7 @@ object CirceJsonTester
     assert(reparsed == asJson)
   }
 
-  def testJsonDecoder[A: Decoder](a: A, json: => Json): Assertion = {
+  def testJsonDecoder[A: Decoder](a: A, json: => Json)(implicit pos: source.Position): Assertion = {
     // Do a.asJson first to get the JSON string, then evaluate lazy json (which may have syntax errors during development).
     assert(rightOrThrow(json.as[A]) == a)
   }
