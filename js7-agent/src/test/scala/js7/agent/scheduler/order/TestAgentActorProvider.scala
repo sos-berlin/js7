@@ -17,7 +17,7 @@ import js7.base.problem.Checked
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
-import js7.base.utils.{Closer, HasCloser}
+import js7.base.utils.HasCloser
 import js7.common.guice.GuiceImplicits.RichInjector
 import js7.journal.recover.Recovered
 import js7.journal.state.{FileStatePersistence, StatePersistence}
@@ -55,7 +55,7 @@ object TestAgentActorProvider {
   def provide[A](testName: String)(body: TestAgentActorProvider => A): A =
     autoClosing(new TestAgentActorProvider(testName))(body)
 
-  private def start(configAndData: Path, testName: String)(implicit closer: Closer)
+  private def start(configAndData: Path, testName: String)
   : (AgentConfiguration, StatePersistence[AgentState], ActorRef) = {
     implicit val agentConfiguration = AgentConfiguration.forTest(configAndData = configAndData, name = testName)
     import agentConfiguration.{akkaAskTimeout, config, journalConf, journalMeta}

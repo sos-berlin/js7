@@ -4,6 +4,7 @@ import implicitbox.Not
 import monix.execution.Scheduler
 import monix.execution.misc.{CanBindLocals, Local}
 import monix.execution.schedulers.TracingScheduler
+import scala.annotation.unused
 
 object CorrelIdBinder
 {
@@ -36,7 +37,9 @@ object CorrelIdBinder
     R.bind(correlId)(body)
 
   /** For a synchronous non-Unit executable body only, uses `CanBindLocals.synchronous`. */
-  def bindCorrelIdNow[R](correlId: CorrelId)(body: => R)(implicit ev: Not[CanBindLocals[R]]): R =
+  def bindCorrelIdNow[R](correlId: CorrelId)(body: => R)
+    (implicit @unused ev: Not[CanBindLocals[R]])
+  : R =
     bindCorrelId(correlId)(body)(CanBindCorrelId.synchronous)
 
   def enableScheduler(scheduler: Scheduler): Scheduler =

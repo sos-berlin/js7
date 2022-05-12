@@ -22,7 +22,6 @@ extends ReadableStatePersistence[S]
     keyedEvent: KeyedEvent[E],
     options: CommitOptions,
     commitLater: Boolean)
-    (implicit enclosing: sourcecode.Enclosing)
   : Task[Checked[Unit]] =
     persistKeyedEvents(keyedEvent :: Nil, options, commitLater = commitLater)
 

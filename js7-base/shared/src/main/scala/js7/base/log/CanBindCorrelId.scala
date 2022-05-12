@@ -6,7 +6,7 @@ import monix.eval.Task
 import monix.execution.CancelableFuture
 import monix.execution.misc.Local
 import monix.execution.schedulers.TrampolineExecutionContext
-import scala.annotation.implicitNotFound
+import scala.annotation.{implicitNotFound, unused}
 import scala.concurrent.Future
 
 // Inspired by Monix 3.4 CanBindLocals
@@ -95,7 +95,7 @@ object CanBindCorrelId
      * Needs to be imported explicitly in scope. Will NOT override
      * other `CanBindCorrelId` implicits that are already visible.
      */
-    @inline implicit def synchronousAsDefault[R](implicit ev: Not[CanBindCorrelId[R]])
+    @inline implicit def synchronousAsDefault[R](implicit @unused ev: Not[CanBindCorrelId[R]])
     : CanBindCorrelId[R] =
       CanBindCorrelId.synchronous[R]
   }

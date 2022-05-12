@@ -6,6 +6,7 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.SignedString
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.data.controller.ControllerState.signableItemJsonCodec
+import scala.annotation.unused
 
 sealed trait ItemOperation
 
@@ -33,10 +34,8 @@ object ItemOperation
   object VersionedOperation
   {
     implicit def jsonCodec(implicit
-      idJsonEncoder: Encoder[SimpleItemPath],
-      idJsonDecoder: Decoder[SimpleItemPath],
-      itemPathJsonEncoder: Encoder[VersionedItemPath],
-      itemPathJsonDecoder: Decoder[VersionedItemPath])
+      @unused/*Scala 2.13.8 macro?*/ itemPathJsonEncoder: Encoder[VersionedItemPath],
+      @unused/*Scala 2.13.8 macro?*/ itemPathJsonDecoder: Decoder[VersionedItemPath])
     : TypedJsonCodec[VersionedOperation] =
       TypedJsonCodec(
         Subtype(deriveCodec[AddVersion]),
@@ -56,12 +55,12 @@ object ItemOperation
   extends VersionedItemOperation with Remove
 
   implicit def jsonCodec(implicit
-    idJsonEncoder: Encoder[SimpleItemPath],
-    idJsonDecoder: Decoder[SimpleItemPath],
+    @unused/*Scala 2.13.8 macro?*/ idJsonEncoder: Encoder[SimpleItemPath],
+    @unused/*Scala 2.13.8 macro?*/ idJsonDecoder: Decoder[SimpleItemPath],
     itemPathJsonEncoder: Encoder[VersionedItemPath],
     itemPathJsonDecoder: Decoder[VersionedItemPath],
-    unsignedSimpleItemJsonEncoder: Encoder[UnsignedSimpleItem],
-    unsignedSimpleItemJsonDecoder: Decoder[UnsignedSimpleItem])
+    @unused/*Scala 2.13.8 macro?*/ unsignedSimpleItemJsonEncoder: Encoder[UnsignedSimpleItem],
+    @unused/*Scala 2.13.8 macro?*/ unsignedSimpleItemJsonDecoder: Decoder[UnsignedSimpleItem])
   : TypedJsonCodec[ItemOperation] =
     TypedJsonCodec(
       Subtype(deriveCodec[AddOrChangeSimple]),

@@ -19,7 +19,6 @@ import js7.launcher.internal.InternalJob
 import js7.tests.StdoutTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.eval.Task
-import org.scalactic.source
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Try
@@ -114,11 +113,7 @@ final class StdoutTest extends AnyFreeSpec with ControllerAgentForScalaTest
     runTest()
   }
 
-  private def testExecutable(
-    executable: Executable,
-    expectedChunks: Seq[String])
-    (implicit pos: source.Position)
-  : Unit =
+  private def testExecutable(executable: Executable, expectedChunks: Seq[String]): Unit =
     testWithWorkflow(
       Workflow.of(Execute(WorkflowJob(agentPath, executable))),
       expectedChunks)

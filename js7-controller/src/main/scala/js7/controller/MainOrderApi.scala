@@ -1,13 +1,11 @@
 package js7.controller
 
-import akka.util.Timeout
 import js7.base.problem.Checked
 import js7.data.controller.ControllerState
 import js7.data.order.{Order, OrderId}
 import monix.eval.Task
 
 private[controller] class MainOrderApi(controllerState: Task[Checked[ControllerState]])
-  (implicit akkaAskTimeout: Timeout)
 extends OrderApi
 {
   def order(orderId: OrderId): Task[Checked[Option[Order[Order.State]]]] =

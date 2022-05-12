@@ -9,6 +9,7 @@ import js7.data.value.Value
 import js7.data.value.expression.Expression.{FunctionCall, JobResourceVariable}
 import js7.data.value.expression.Scope.evalLazilyExpressions
 import js7.data.value.expression.scopes.CombinedScope
+import scala.annotation.unused
 import scala.collection.MapView
 
 /** Provides data for `Expression` evaluation.
@@ -33,10 +34,12 @@ trait Scope
         None
     }
 
-  def evalFunctionCall(functionCall: FunctionCall)(implicit fullScope: Scope): Option[Checked[Value]] =
+  def evalFunctionCall(functionCall: FunctionCall)(implicit @unused fullScope: Scope)
+  : Option[Checked[Value]] =
     None
 
-  def evalJobResourceVariable(v: JobResourceVariable)(implicit fullScope: Scope): Option[Checked[Value]] =
+  def evalJobResourceVariable(v: JobResourceVariable)(implicit @unused fullScope: Scope)
+  : Option[Checked[Value]] =
     None
 
   final def namedValue(name: String): Option[Checked[Value]] =

@@ -1,6 +1,5 @@
 package js7.subagent
 
-import cats.Applicative
 import cats.effect.{Resource, Sync}
 import java.nio.file.Path
 import js7.base.auth.SimpleUser
@@ -142,7 +141,7 @@ object BareSubagent
   }
 
   def threadPoolResource[F[_]](conf: SubagentConf, orCommon: Option[Scheduler] = None)
-    (implicit F: Sync[F], FA: Applicative[F])
+    (implicit F: Sync[F])
   : Resource[F, Scheduler] =
     ThreadPools.standardSchedulerResource[F](conf.name, conf.config, orCommon = orCommon)
 }

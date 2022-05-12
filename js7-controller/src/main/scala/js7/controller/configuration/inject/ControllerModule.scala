@@ -84,7 +84,7 @@ extends AbstractModule
 
   /** Do not override this, override alarmClock! */
   @Provides @Singleton
-  def wallClock(clock: AlarmClock)(implicit s: Scheduler): WallClock =
+  def wallClock(clock: AlarmClock): WallClock =
     clock
 
   @Provides @Singleton

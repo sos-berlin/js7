@@ -1,6 +1,5 @@
 package js7.common.system
 
-import cats.Applicative
 import cats.effect.{Resource, Sync}
 import com.typesafe.config.Config
 import java.lang.Thread.currentThread
@@ -66,7 +65,7 @@ object ThreadPools
   private val nextNumber = AtomicInt(0)
 
   def standardSchedulerResource[F[_]](name: String, config: Config, orCommon: Option[Scheduler])
-    (implicit F: Sync[F], FA: Applicative[F])
+    (implicit F: Sync[F])
   : Resource[F, Scheduler] =
     orCommon
       .match_ {

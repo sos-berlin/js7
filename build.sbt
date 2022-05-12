@@ -73,7 +73,6 @@ addCommandAlias("quickPublishLocal", "; compile; publishLocal; project js7JS; co
 val jdkVersion = "1.8"
 
 ThisBuild / scalacOptions ++= Seq(
-  "-explaintypes",
   "-Ymacro-annotations",
   "-explaintypes",
   "-feature",
@@ -81,15 +80,18 @@ ThisBuild / scalacOptions ++= Seq(
   "-Wconf:cat=other-match-analysis:error",
   "-Wconf:cat=lint-adapted-args:error",
   "-Wconf:cat=unchecked&src=src/main/*:error",
+  "-Wunused:imports",
   "-Wconf:cat=unused-imports:error",
-  "-Wconf:cat=unused-nowarn:error",
-  //"-Wunused:privates",
+  "-Wunused:implicits",
   //"-Wunused:locals",
-  //"-Wunused:implicits",
+  //"-Wunused:params",
+  //"-Wunused:patvars",
+  //"-Wunused:privates",
+  "-Wconf:cat=unused-nowarn:error",
   "-Xlint:infer-any",
   "-Xlint:doc-detached",
   "-Xlint:private-shadow",
-  //"-Xlint:type-parameter-shadow",
+  "-Xlint:type-parameter-shadow",
   "-Xlint:implicit-not-found",
   "-Xlint:eta-zero",
   "-Xcheckinit",
@@ -112,12 +114,6 @@ ThisBuild / scalacOptions ++= Seq(
   "-Wdead-code",
   "-Wextra-implicit",
   //"-Wnumeric-widen",
-  //"-Wunused:implicits",
-  "-Wunused:imports",
-  //"-Wunused:locals",
-  //"-Wunused:params",
-  //"-Wunused:patvars",
-  //"-Wunused:privates",
   //"-Wvalue-discard",
   )
 
