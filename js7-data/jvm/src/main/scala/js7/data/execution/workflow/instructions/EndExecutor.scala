@@ -35,7 +35,7 @@ extends EventInstructionExecutor with PositionInstructionExecutor
       case Some(returnPosition) =>
         state.instruction(order.workflowId /: returnPosition) match {
           case fork: ForkInstruction =>
-            Right(service.forkExecutor.tryJoinChildOrder(order, fork, state).toList)
+            Right(service.tryJoinChildOrder(fork, order, state).toList)
 
           case lock: LockInstruction =>
             Right(service.lockExecutor.onReturnFromSubworkflow(order, lock).toList)

@@ -1,16 +1,17 @@
 package js7.data.execution.workflow.instructions
 
 import cats.instances.either._
+import cats.instances.vector._
 import cats.syntax.semigroup._
 import cats.syntax.traverse._
-import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.Timestamp
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.data.event.KeyedEvent
-import js7.data.order.Order
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderFailedIntermediate_, OrderForked, OrderMoved}
+import js7.data.order.{Order, Outcome}
 import js7.data.state.StateView
-import js7.data.value.NumberValue
+import js7.data.value.{ListValue, NumberValue}
 import js7.data.workflow.instructions.ForkList
 import scala.collection.View
 
@@ -51,7 +52,7 @@ extends EventInstructionExecutor with ForkInstructionExecutor
             .flatMap(_.toStringValueString)
         }
       _ <- childIds.checkUniqueness
-        .mapProblem(Problem(s"Duplicate child IDs in ${fork.children}: ") |+| _)
+        .left.map(Problem(s"Duplicate child IDs in ${fork.children}: ") |+| _)
       argsOfChildren <- elements
         .traverseWithIndexM { case (element, i) =>
           fork.childToArguments
@@ -66,4 +67,17 @@ extends EventInstructionExecutor with ForkInstructionExecutor
       orderForked = OrderForked(children)
       event <- postprocessOrderForked(fork, order, orderForked, state)
     } yield (order.id <-: event) :: Nil
+
+  protected def forkResult(fork: ForkList, order: Order[Order.Forked], state: StateView,
+    now: Timestamp) =
+    Outcome.Completed.fromChecked(
+      for {
+        results <- order.state.children
+          .map(_.orderId)
+          .traverse(childOrderId =>
+            calcResult(fork.workflow.result getOrElse Map.empty, childOrderId, state, now))
+      } yield Outcome.Succeeded(results.view
+        .flatten
+        .groupMap(_._1)(_._2).view
+        .mapValues(ListValue(_)).toMap))
 }

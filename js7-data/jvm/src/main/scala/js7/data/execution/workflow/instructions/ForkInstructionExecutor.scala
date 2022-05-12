@@ -1,8 +1,10 @@
 package js7.data.execution.workflow.instructions
 
+import cats.instances.either._
 import cats.instances.vector._
 import cats.syntax.traverse._
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
 import js7.data.agent.AgentPath
@@ -13,7 +15,9 @@ import js7.data.order.Order.Cancelled
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAttachable, OrderDetachable, OrderFailedIntermediate_, OrderForked, OrderJoined}
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.state.StateView
-import js7.data.workflow.instructions.{Fork, ForkInstruction, ForkList}
+import js7.data.value.Value
+import js7.data.value.expression.Expression
+import js7.data.workflow.instructions.ForkInstruction
 import scala.collection.mutable
 
 trait ForkInstructionExecutor extends EventInstructionExecutor
@@ -23,11 +27,11 @@ trait ForkInstructionExecutor extends EventInstructionExecutor
   protected val service: InstructionExecutorService
   private implicit val implicitService = service
 
-  private[workflow] final def tryJoinChildOrder(
+  private[execution] final def tryJoinChildOrder(
+    fork: Instr,
     childOrder: Order[Order.State],
-    fork: ForkInstruction,
     state: StateView)
-  : Option[KeyedEvent[OrderActorEvent]] =
+  =
     if (childOrder.isAttached)
       Some(childOrder.id <-: OrderDetachable)
     else
@@ -45,7 +49,7 @@ trait ForkInstructionExecutor extends EventInstructionExecutor
 
   protected[instructions] final def toJoined(
     order: Order[Order.Forked],
-    fork: ForkInstruction,
+    fork: Instr,
     state: StateView)
   : Option[KeyedEvent[OrderActorEvent]] =
     if (order.isAttached)
@@ -59,34 +63,29 @@ trait ForkInstructionExecutor extends EventInstructionExecutor
             .forall(_.lastOutcome.isSucceeded)
           val now = clock.now()
           order.id <-: OrderJoined(
-            if (allSucceeded)
-              fork match {
-                case fork: Fork =>
-                  fork.branches
-                    .traverse { branch =>
-                      state.idToOrder.checked(order.id / branch.id.string)
-                        .flatMap(childOrder =>
-                          branch.result
-                            .toVector
-                            .traverse { case (name, expr) =>
-                              for {
-                                scope <- state.toImpureOrderExecutingScope(childOrder, now)
-                                value <- expr.eval(scope)
-                              } yield name -> value
-                            })
-                    }
-                    .match_ {
-                      case Left(problem) => Outcome.Failed.fromProblem(problem)
-                      case Right(result) => Outcome.Succeeded(result.view.flatten.toMap)
-                    }
-
-                case _: ForkList =>
-                  Outcome.succeeded
-              }
+            if (!allSucceeded)
+              Outcome.Failed(toJoinFailedMessage(order, state))
             else
-              Outcome.Failed(toJoinFailedMessage(order, state)))
+              forkResult(fork, order, state, now))
         }
       }
+
+  protected def forkResult(fork: Instr, order: Order[Order.Forked], state: StateView,
+    now: Timestamp): Outcome.Completed
+
+  protected def calcResult(resultExpr: Map[String, Expression], childOrderId: OrderId,
+    state: StateView, now: Timestamp)
+  : Checked[Vector[(String, Value)]] =
+    state.idToOrder.checked(childOrderId)
+      .flatMap(childOrder =>
+        resultExpr
+          .toVector
+          .traverse { case (name, expr) =>
+            for {
+              scope <- state.toImpureOrderExecutingScope(childOrder, now)
+              value <- expr.eval(scope)
+            } yield name -> value
+          })
 
   private def toJoinFailedMessage(order: Order[Order.Forked], state: StateView): Option[String] = {
     order.state.children.view
@@ -112,12 +111,13 @@ trait ForkInstructionExecutor extends EventInstructionExecutor
     (body: service.forkCache.Access => A)
   : A =
     service.forkCache.synchronized {
-      val entry = service.forkCache.ensureEntry(order.id,
-        init = order.state.children
-        .view
-        .map(o => state.idToOrder(o.orderId))
-        .filter(state.childOrderEnded(_, parent = order))
-        .map(_.id))
+      val entry = service.forkCache.ensureEntry(
+        order.id,
+        order.state.children
+          .view
+          .map(o => state.idToOrder(o.orderId))
+          .filter(state.childOrderEnded(_, parent = order))
+          .map(_.id))
       body(entry)
     }
 

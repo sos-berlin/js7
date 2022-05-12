@@ -734,7 +734,7 @@ object Order
   case object ProcessingKilled extends IsStarted
 
   final case class Forked(children: Vector[Forked.Child]) extends IsStarted {
-    def childOrderIds = children.map(_.orderId)
+    def childOrderIds = children.view.map(_.orderId)
   }
   object Forked {
     type Child = OrderForked.Child

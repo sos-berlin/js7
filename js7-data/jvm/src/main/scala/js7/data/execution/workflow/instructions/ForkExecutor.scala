@@ -2,6 +2,7 @@ package js7.data.execution.workflow.instructions
 
 import cats.instances.list._
 import cats.syntax.traverse._
+import js7.base.time.Timestamp
 import js7.data.order.OrderEvent.{OrderFailedIntermediate_, OrderForked, OrderMoved}
 import js7.data.order.{Order, Outcome}
 import js7.data.state.StateView
@@ -18,7 +19,7 @@ extends EventInstructionExecutor with ForkInstructionExecutor
       .getOrElse(order
         .ifState[Order.Ready].map { order =>
           for {
-            children <- fork.branches.toVector
+            children <- fork.branches
               .traverse(branch =>
                 order.id.withChild(branch.id.string)
                   .map(childOrderId => OrderForked.Child(branch.id, childOrderId)))
@@ -43,4 +44,13 @@ extends EventInstructionExecutor with ForkInstructionExecutor
               }))))
         .toList
         .sequence)
+
+  protected def forkResult(fork: Fork, order: Order[Order.Forked], state: StateView, now: Timestamp)
+  : Outcome.Completed =
+    Outcome.Completed.fromChecked(
+      fork.branches
+        .traverse(branch =>
+          calcResult(branch.result, order.id / branch.id.string, state, now))
+        .map(results =>
+          Outcome.Succeeded(results.view.flatten.toMap)))
 }

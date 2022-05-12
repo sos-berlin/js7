@@ -10,11 +10,13 @@ import js7.data.order.OrderEvent.OrderActorEvent
 import js7.data.order.{Order, OrderObstacle, OrderObstacleCalculator}
 import js7.data.state.StateView
 import js7.data.workflow.Instruction
+import js7.data.workflow.instructions.{Fork, ForkInstruction, ForkList}
 import js7.data.workflow.position.Position
 
 final class InstructionExecutorService(val clock: WallClock)
 {
   private[workflow] val forkExecutor = new ForkExecutor(this)
+  private[workflow] val forkListExecutor = new ForkListExecutor(this)
   private[instructions] val lockExecutor = new LockExecutor(this)
   private[instructions] val cycleExecutor = new CycleExecutor(this)
 
@@ -25,7 +27,7 @@ final class InstructionExecutorService(val clock: WallClock)
       new FailExecutor(this),
       new FinishExecutor(this),
       forkExecutor,
-      new ForkListExecutor(this),
+      forkListExecutor,
       new GapExecutor(this),
       new IfExecutor(this),
       new TryExecutor(this),
@@ -62,6 +64,16 @@ final class InstructionExecutorService(val clock: WallClock)
         exec.toEvents(instruction.asInstanceOf[exec.Instr], order, stateView)
       case _ =>
         Right(Nil)
+    }
+
+  private[execution] def tryJoinChildOrder(
+    fork: ForkInstruction,
+    order: Order[Order.State],
+    state: StateView)
+  : Option[KeyedEvent[OrderActorEvent]] =
+    fork match {
+      case fork: Fork => forkExecutor.tryJoinChildOrder(fork, order, state)
+      case fork: ForkList => forkListExecutor.tryJoinChildOrder(fork, order, state)
     }
 
   def toObstacles(order: Order[Order.State], calculator: OrderObstacleCalculator)

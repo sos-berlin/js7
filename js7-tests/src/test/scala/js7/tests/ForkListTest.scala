@@ -117,7 +117,10 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
             "element" -> StringValue("ELEMENT-3"))))),
       OrderDetachable,
       OrderDetached,
-      OrderJoined(Outcome.succeeded),
+      OrderJoined(Outcome.Succeeded(Map("resultList" -> ListValue(Seq(
+        StringValue("🔹" + (orderId / "ELEMENT-1").string),
+        StringValue("🔹" + (orderId / "ELEMENT-2").string),
+        StringValue("🔹" + (orderId / "ELEMENT-3").string)))))),
       OrderMoved(Position(1)),
       OrderFinished,
       OrderDeleted))
@@ -232,7 +235,7 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   "ForkList with failing child orders, joinIfFailed=true" in {
     runOrder(joinFailingChildOrdersWorkflow.path, OrderId("FAIL-THEN-JOIN"), 2,
-      expectedChildOrderEvent = OrderFailedInFork(
+      expectedChildOrderEvent = _ => OrderFailedInFork(
         Position(0) / "fork" % 1,
         Some(Outcome.Failed(Some("TEST FAILURE"), Map.empty))),
       expectedTerminationEvent = OrderFailed(Position(0)))
@@ -240,7 +243,7 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   "ForkList with failing child orders" in {
     runOrder(failingChildOrdersWorkflow.path, OrderId("FAIL-THEN-STOP"), 2,
-      expectedChildOrderEvent = OrderFailed(
+      expectedChildOrderEvent = _ => OrderFailed(
         Position(0) / "fork" % 1,
         Some(Outcome.Failed(Some("TEST FAILURE"), Map.empty))),
       cancelChildOrders = true,
@@ -248,7 +251,8 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
   }
 
   private def runOrder(workflowPath: WorkflowPath, orderId: OrderId, n: Int,
-    expectedChildOrderEvent: OrderEvent = OrderProcessed(Outcome.succeeded),
+    expectedChildOrderEvent: OrderId => OrderEvent =
+    orderId => OrderProcessed(Outcome.Succeeded(Map("result" -> StringValue("🔹" + orderId.string)))),
     expectedTerminationEvent: OrderTerminated = OrderFinished,
     cancelChildOrders: Boolean = false
   ): Unit = {
@@ -258,7 +262,8 @@ final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val childOrdersProcessed = proxy.observable
       .map(_.stampedEvent.value)
       .collect {
-        case KeyedEvent(orderId: OrderId, `expectedChildOrderEvent`) =>
+        case KeyedEvent(orderId: OrderId, event: OrderEvent)
+        if event == expectedChildOrderEvent(orderId) =>
           orderId
       }
       .scan0(childOrderIds)(_ - _)
@@ -427,8 +432,10 @@ object ForkListTest
     expr("$myList"),
     exprFunction("(element) => $element"),
     exprFunction("(element) => { element: $element }"),
-    Workflow.of(
-      TestJob.execute(agentPath, parallelism = 100_000)))
+    Workflow.anonymous(
+      Seq(
+        TestJob.execute(agentPath, parallelism = 100_000)),
+      result = Some(Map("resultList" -> expr("$result")))))
 
   private val atControllerWorkflow = Workflow(
     WorkflowPath("AT-CONTROLLER-WORKFLOW") ~ "INITIAL",
@@ -448,7 +455,7 @@ object ForkListTest
         assert(step.order.arguments.keySet == Set("element", "myList"))
         assert(step.order.arguments("element").toStringValueString.orThrow.startsWith("ELEMENT-"))
         step.order.arguments("myList").asListValue.orThrow
-        Outcome.succeeded
+        Outcome.Succeeded(Map("result" -> StringValue("🔹" + step.order.id.string)))
       })
   }
   private object TestJob extends InternalJob.Companion[TestJob]

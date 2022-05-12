@@ -222,7 +222,7 @@ final class OrderEventSource(state: StateView)
       for {
         forkPosition <- order.forkPosition
         fork <- state.instruction_[ForkInstruction](order.workflowId /: forkPosition)
-      } yield executorService.forkExecutor.tryJoinChildOrder(order, fork, state)
+      } yield executorService.tryJoinChildOrder(fork, order, state)
     else
       Right(None)
   }
