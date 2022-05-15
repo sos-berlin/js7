@@ -14,9 +14,7 @@ final class BoardStateTest extends AsyncFreeSpec
 {
   "BoardState snapshot" in {
     (for (snapshot <- boardState.toSnapshotObservable.toListL) yield {
-      assert(snapshot == List(
-        board,
-        Notice.Snapshot(board.path, notice)))
+      assert(snapshot == List(board, notice))
 
       // Order of addExpectation is irrelevant
       var recovered = BoardState(board)
@@ -43,7 +41,7 @@ private object BoardStateTest
     expectOrderToNoticeId = expr("'NOTICE'"),
     endOfLife = expr("$js7EpochMilli + 24 * 3600 * 1000"))
 
-  private val notice = Notice(NoticeId("A"), Timestamp.ofEpochSecond(1))
+  private val notice = Notice(NoticeId("A"), board.path, Timestamp.ofEpochSecond(1))
   private val aOrderId = OrderId("A")
   private val bOrderId = OrderId("B")
 

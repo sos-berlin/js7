@@ -63,7 +63,10 @@ trait StateView extends ItemContainer
   // COMPATIBLE with v2.3
   final def workflowPositionToBoardPath(workflowPosition: WorkflowPosition): Checked[BoardPath] =
     instruction_[BoardInstruction](workflowPosition)
-      .map(_.boardPath)
+      .flatMap(_.boardPaths match {
+        case Seq(boardPath) => Right(boardPath)
+        case _ => Left(Problem.pure("Legacy orderIdToBoardState, but instruction has multiple BoardPaths"))
+      })
 
   final def workflowJob(workflowPosition: WorkflowPosition): Checked[WorkflowJob] =
     for {
@@ -75,11 +78,16 @@ trait StateView extends ItemContainer
     idToWorkflow.checked(jobKey.workflowId)
       .flatMap(_.keyToJob.checked(jobKey))
 
+  // COMPATIBLE with v2.3
   protected def orderIdToBoardState(orderId: OrderId): Checked[BoardState] =
     for {
       order <- idToOrder.checked(orderId)
       instr <- instruction_[BoardInstruction](order.workflowPosition)
-      boardState <- pathToBoardState.checked(instr.boardPath)
+      boardPath <- instr.boardPaths match {
+        case Vector(o) => Right(o)
+        case _ => Left(Problem.pure("Legacy orderIdToBoardState, but instruction has multiple BoardPaths"))
+      }
+      boardState <- pathToBoardState.checked(boardPath)
     } yield boardState
 
   def instruction(workflowPosition: WorkflowPosition): Instruction =

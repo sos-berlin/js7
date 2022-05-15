@@ -10,22 +10,12 @@ sealed trait NoticePlace
   def id: NoticeId
 }
 
-final case class Notice(id: NoticeId, endOfLife: Timestamp)
+final case class Notice(id: NoticeId, boardPath: BoardPath, endOfLife: Timestamp)
 extends NoticePlace
 
 object Notice
 {
-  final case class Snapshot(id: NoticeId, boardPath: BoardPath, endOfLife: Timestamp) {
-    def notice = Notice(id, endOfLife)
-  }
-
-  object Snapshot {
-    def apply(boardPath: BoardPath, notice: Notice) =
-      new Snapshot(notice.id, boardPath, notice.endOfLife)
-  }
-
   implicit val jsonCodec = deriveCodec[Notice]
-  implicit val snapshotJsonCodec = deriveCodec[Notice.Snapshot]
 }
 
 

@@ -10,12 +10,12 @@ import js7.base.time.{TimeInterval, Timestamp}
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentPath
-import js7.data.board.{Notice, NoticeId}
+import js7.data.board.{BoardPath, Notice, NoticeId, NoticeV2_3}
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.job.{InternalExecutable, JobKey}
 import js7.data.lock.LockPath
 import js7.data.order.Order.{Attached, AttachedState, Attaching, BetweenCycles, Broken, Cancelled, DelayedAfterError, Detaching, ExpectingNotice, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, InapplicableOrderEventProblem, IsFreshOrReady, Processed, Processing, ProcessingKilled, Prompting, Ready, State, WaitingForLock}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCatched, OrderCoreEvent, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLockAcquired, OrderLockDequeued, OrderLockQueued, OrderLockReleased, OrderMoved, OrderNoticeExpected, OrderNoticePosted, OrderNoticeRead, OrderOrderAdded, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCatched, OrderCoreEvent, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLockAcquired, OrderLockDequeued, OrderLockQueued, OrderLockReleased, OrderMoved, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticeRead, OrderOrderAdded, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
 import js7.data.subagent.SubagentId
 import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -369,7 +369,10 @@ final class OrderTest extends AnyFreeSpec
       OrderLockDequeued(LockPath("LOCK")),
       OrderLockReleased(LockPath("LOCK")),
 
-      OrderNoticePosted(Notice(NoticeId("NOTICE"), endOfLife = Timestamp.ofEpochSecond(1))),
+      OrderNoticePostedV2_3(
+        NoticeV2_3(NoticeId("NOTICE"), endOfLife = Timestamp.ofEpochSecond(1))),
+      OrderNoticePosted(
+        Notice(NoticeId("NOTICE"), BoardPath("BOARD"), endOfLife = Timestamp.ofEpochSecond(1))),
       OrderNoticeExpected(NoticeId("NOTICE")),
       OrderNoticeRead,
 
@@ -386,7 +389,8 @@ final class OrderTest extends AnyFreeSpec
       OrderDetached)
 
     "Event list is complete" in {
-      assert(allEvents.map(_.getClass) == OrderEvent.jsonCodec.classes[OrderCoreEvent])
+      assert(allEvents.map(_.getClass).toVector.sortBy(_.getName) ==
+        OrderEvent.jsonCodec.classes[OrderCoreEvent].toVector.sortBy(_.getName))
     }
 
     val IsDetached  = none[AttachedState]
@@ -455,6 +459,7 @@ final class OrderTest extends AnyFreeSpec
           case (_: OrderResumed          , IsSuspended(true) , _            , IsDetached | IsAttached) => _.isInstanceOf[Ready]
           case (_: OrderLockAcquired     , _                 , _            , IsDetached             ) => _.isInstanceOf[Ready]
           case (_: OrderLockQueued       , _                 , _            , IsDetached             ) => _.isInstanceOf[WaitingForLock]
+          case (_: OrderNoticePostedV2_3 , IsSuspended(false), _            , IsDetached             ) => _.isInstanceOf[Ready]
           case (_: OrderNoticePosted     , IsSuspended(false), _            , IsDetached             ) => _.isInstanceOf[Ready]
           case (_: OrderNoticeExpected   , IsSuspended(false), _            , IsDetached             ) => _.isInstanceOf[ExpectingNotice]
           case (_: OrderNoticeRead       , IsSuspended(false), _            , IsDetached             ) => _.isInstanceOf[Ready]

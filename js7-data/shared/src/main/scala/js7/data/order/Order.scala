@@ -367,6 +367,10 @@ final case class Order[+S <: Order.State](
           copy(
             state = Ready))
 
+      case _: OrderNoticePostedV2_3 =>
+        check(isDetached && isState[Ready] && !isSuspended,
+          this)  // TODO Recoverable ?
+
       case _: OrderNoticePosted =>
         check(isDetached && isState[Ready] && !isSuspended,
           this)  // TODO Recoverable ?

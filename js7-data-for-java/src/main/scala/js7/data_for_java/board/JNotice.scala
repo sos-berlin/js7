@@ -4,7 +4,7 @@ import java.time.Instant
 import javax.annotation.Nonnull
 import js7.base.time.JavaTimeConverters.AsScalaInstant
 import js7.base.time.JavaTimestamp.specific._
-import js7.data.board.{Notice, NoticeExpectation, NoticeId, NoticePlace}
+import js7.data.board.{BoardPath, Notice, NoticeExpectation, NoticeId, NoticePlace}
 import js7.data.order.OrderId
 import scala.jdk.CollectionConverters._
 
@@ -39,9 +39,10 @@ object JNotice
   @Nonnull
   def of(
     @Nonnull id: NoticeId,
+    @Nonnull boardPath: BoardPath,
     @Nonnull endOfLife: Instant)
   : JNotice =
-    JNotice(Notice(id, endOfLife.toTimestamp))
+    JNotice(Notice(id, boardPath, endOfLife.toTimestamp))
 }
 
 final case class JNoticeExpectation(asScala: NoticeExpectation)

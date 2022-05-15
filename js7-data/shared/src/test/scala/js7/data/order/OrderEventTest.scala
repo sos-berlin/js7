@@ -8,7 +8,7 @@ import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.AgentPath
-import js7.data.board.{Notice, NoticeId}
+import js7.data.board.{BoardPath, Notice, NoticeId, NoticeV2_3}
 import js7.data.command.CancellationMode
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.lock.LockPath
@@ -20,6 +20,7 @@ import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.{BranchId, Position}
 import js7.tester.CirceJsonTester.testJson
+import org.scalactic.source
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
 
@@ -519,8 +520,8 @@ final class OrderEventTest extends AnyFreeSpec
       }""")
   }
 
-  "OrderNoticePosted" in {
-    check(OrderNoticePosted(Notice(
+  "OrderNoticePosted until v2.3" in {
+    check(OrderNoticePostedV2_3(NoticeV2_3(
       NoticeId("NOTICE"),
       endOfLife = Timestamp("1970-01-01T01:00:00Z"))),
       json"""
@@ -528,6 +529,22 @@ final class OrderEventTest extends AnyFreeSpec
         "TYPE": "OrderNoticePosted",
         "notice": {
           "id": "NOTICE",
+          "endOfLife": 3600000
+        }
+      }""")
+  }
+
+  "OrderNoticePosted" in {
+    check(OrderNoticePosted(Notice(
+      NoticeId("NOTICE"),
+      BoardPath("BOARD"),
+      endOfLife = Timestamp("1970-01-01T01:00:00Z"))),
+      json"""
+      {
+        "TYPE": "OrderNoticePosted",
+        "notice": {
+          "id": "NOTICE",
+          "boardPath": "BOARD",
           "endOfLife": 3600000
         }
       }""")
@@ -565,7 +582,7 @@ final class OrderEventTest extends AnyFreeSpec
       }""")
   }
 
-  private def check(event: OrderEvent, json: => Json) =
+  private def check(event: OrderEvent, json: => Json)(implicit pos: source.Position) =
     testJson(event, json)
 
   if (sys.props contains "test.speed") "Speed" in {

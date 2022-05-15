@@ -19,10 +19,10 @@ import js7.data.controller.ControllerCommand.{CancelOrders, DeleteNotice, Resume
 import js7.data.item.ItemOperation.{AddVersion, DeleteSimple, RemoveVersioned}
 import js7.data.item.{ItemRevision, VersionId}
 import js7.data.order.Order.Fresh
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderNoticeExpected, OrderNoticePosted, OrderNoticeRead, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderSuspended, OrderSuspensionMarked}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderNoticeExpected, OrderNoticeRead, OrderNoticePosted, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderSuspended, OrderSuspensionMarked}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.workflow.instructions.{ExpectNotice, PostNotice}
+import js7.data.workflow.instructions.{ExpectNotice, PostNotices}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.BoardTest._
@@ -48,78 +48,99 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   protected def agentPaths = Seq(agentPath)
 
-  protected def items = Seq(board,
-    postingWorkflow, expectingWorkflow,
+  protected def items = boards ++ Seq(
+    posting1Workflow, expecting1Workflow,
+    posting3Workflow, expecting3Workflow,
     postingAgentWorkflow, expectingAgentWorkflow)
 
-  private val alarmClock = TestAlarmClock(startTimestamp)
+  private val clock = TestAlarmClock(startTimestamp)
 
   override protected def controllerModule = new AbstractModule {
-    @Provides @Singleton def provideAlarmClock(): AlarmClock = alarmClock
+    @Provides @Singleton def provideAlarmClock(): AlarmClock = clock
   }
 
-  "Post a notice, then expect it" in {
+  "Post three notices, then expect them" in {
     val qualifier = nextQualifier()
-    val notice = Notice(NoticeId(qualifier), endOfLife)
+    val notices = for ((boardPath, endOfLife) <- boards.map(_.path) zip endOfLifes) yield
+      Notice(NoticeId(qualifier), boardPath, endOfLife)
+    val Seq(notice1, notice2, notice3) = notices
 
-    val posterEvents = controller.runOrder(FreshOrder(OrderId(s"#$qualifier#POSTING"), postingWorkflow.path))
+    val posterEvents = controller.runOrder(FreshOrder(OrderId(s"#$qualifier#POSTING"), posting3Workflow.path))
     assert(posterEvents.map(_.value) == Seq(
-      OrderAdded(postingWorkflow.id),
+      OrderAdded(posting3Workflow.id),
       OrderStarted,
-      OrderNoticePosted(notice),
+      OrderNoticePosted(notice1),
+      OrderNoticePosted(notice2),
+      OrderNoticePosted(notice3),
       OrderMoved(Position(1)),
       OrderFinished))
 
-    assert(controllerState.pathToBoardState(board.path) ==
-      BoardState(
-        board.withRevision(Some(ItemRevision(0))),
-        Map(notice.id -> notice)))
+    assert(controllerState.pathToBoardState == Map(
+      board0.path -> BoardState(
+        board0.withRevision(Some(ItemRevision(0))),
+        Map(notice1.id -> notice1)),
+      board1.path -> BoardState(
+        board1.withRevision(Some(ItemRevision(0))),
+        Map(notice2.id -> notice2)),
+      board2.path -> BoardState(
+        board2.withRevision(Some(ItemRevision(0))),
+        Map(notice3.id -> notice3))))
 
-    val readerEvents = controller.runOrder(FreshOrder(OrderId(s"#$qualifier#EXPECTING"), expectingWorkflow.path))
+    val readerEvents = controller.runOrder(FreshOrder(OrderId(s"#$qualifier#EXPECTING"), expecting3Workflow.path))
     assert(readerEvents.map(_.value) == Seq(
-      OrderAdded(expectingWorkflow.id),
+      OrderAdded(expecting3Workflow.id),
       OrderStarted,
       OrderNoticeRead,
       OrderMoved(Position(1)),
+      OrderNoticeRead,
+      OrderMoved(Position(2)),
+      OrderNoticeRead,
+      OrderMoved(Position(3)),
       OrderFinished))
 
-    assert(controllerState.pathToBoardState(board.path) ==
-      BoardState(
-        board.withRevision(Some(ItemRevision(0))),
-        Map(notice.id -> notice)))
+    assert(controllerState.pathToBoardState == Map(
+      board0.path -> BoardState(
+        board0.withRevision(Some(ItemRevision(0))),
+        Map(notice1.id -> notice1)),
+      board1.path -> BoardState(
+        board1.withRevision(Some(ItemRevision(0))),
+        Map(notice2.id -> notice2)),
+      board2.path -> BoardState(
+        board2.withRevision(Some(ItemRevision(0))),
+        Map(notice3.id -> notice3))))
   }
 
   "Two orders expect a notice, then post the notice" in {
     val qualifier = nextQualifier()
-    val notice = Notice(NoticeId(qualifier), endOfLife)
+    val notice = Notice(NoticeId(qualifier), board0.path, endOfLife0)
 
     val expectingOrderIds = Seq(OrderId(s"#$qualifier#EXPECTING-A"), OrderId(s"#$qualifier#EXPECTING-B"))
     controllerApi.addOrders(
-      Observable.fromIterable(expectingOrderIds).map(FreshOrder(_, expectingWorkflow.path))
+      Observable.fromIterable(expectingOrderIds).map(FreshOrder(_, expecting1Workflow.path))
     ).await(99.s).orThrow
     for (orderId <- expectingOrderIds) eventWatch.await[OrderNoticeExpected](_.key == orderId)
 
     val posterEvents = controller.runOrder(
-      FreshOrder(OrderId(s"#$qualifier#POSTING"), postingWorkflow.path))
+      FreshOrder(OrderId(s"#$qualifier#POSTING"), posting1Workflow.path))
     assert(posterEvents.map(_.value) == Seq(
-      OrderAdded(postingWorkflow.id),
+      OrderAdded(posting1Workflow.id),
       OrderStarted,
       OrderNoticePosted(notice),
       OrderMoved(Position(1)),
       OrderFinished))
 
-    assert(controllerState.pathToBoardState(board.path) ==
+    assert(controllerState.pathToBoardState(board0.path) ==
       BoardState(
-        board.withRevision(Some(ItemRevision(0))),
+        board0.withRevision(Some(ItemRevision(0))),
         Map(
-          NoticeId("2222-01-01") -> Notice(NoticeId("2222-01-01"), endOfLife),  // from previous test
+          NoticeId("2222-01-01") -> Notice(NoticeId("2222-01-01"), board0.path, endOfLife0),  // from previous test
           notice.id -> notice)))
 
     for (orderId <- expectingOrderIds) {
       eventWatch.await[OrderFinished](_.key == orderId)
       val expectingEvents = eventWatch.eventsByKey[OrderCoreEvent](orderId)
       assert(expectingEvents == Seq(
-        OrderAdded(expectingWorkflow.id),
+        OrderAdded(expecting1Workflow.id),
         OrderStarted,
         OrderNoticeExpected(notice.id),
         OrderNoticeRead,
@@ -127,11 +148,11 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
         OrderFinished))
     }
 
-    assert(controllerState.pathToBoardState(board.path) ==
+    assert(controllerState.pathToBoardState(board0.path) ==
       BoardState(
-        board.withRevision(Some(ItemRevision(0))),
+        board0.withRevision(Some(ItemRevision(0))),
         View(
-          Notice(NoticeId("2222-01-01"), endOfLife),  // from previous test
+          Notice(NoticeId("2222-01-01"), board0.path, endOfLife0),  // from previous test
           notice
         ).toKeyedMap(_.id)))
   }
@@ -140,7 +161,7 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
     // TODO Post kann am Agenten ausgeführt werden, wenn Board (ohne BoardState) dahin übertragen wird,
     //  und anschließend der Controller Order.ExpectingNotice löst.
     val qualifier = nextQualifier()
-    val notice = Notice(NoticeId(qualifier), endOfLife)
+    val notice = Notice(NoticeId(qualifier), board0.path, endOfLife0)
 
     val posterEvents = controller.runOrder(
       FreshOrder(OrderId(s"#$qualifier#POSTING"), postingAgentWorkflow.path))
@@ -175,7 +196,7 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderFinished))
   }
 
-  "PostNotice command with expecting orders" in {
+  "PostNotices command with expecting orders" in {
     val qualifier = "2222-08-08"
     val noticeId = NoticeId(qualifier)
 
@@ -185,44 +206,44 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
     ).await(99.s).orThrow
     for (orderId <- orderIds) eventWatch.await[OrderNoticeExpected](_.key == orderId)
     controllerApi.executeCommand(
-      ControllerCommand.PostNotice(board.path, noticeId)
+      ControllerCommand.PostNotice(board0.path, noticeId)
     ).await(99.s).orThrow
     for (orderId <- orderIds) eventWatch.await[OrderNoticeRead](_.key == orderId)
 
-    val notice2 = Notice(NoticeId("2222-08-09"), endOfLife)
+    val notice2 = Notice(NoticeId("2222-08-09"), board0.path, endOfLife0)
     controllerApi.executeCommand(
-      ControllerCommand.PostNotice(board.path, notice2.id)
+      ControllerCommand.PostNotice(board0.path, notice2.id)
     ).await(99.s).orThrow
     sleep(100.ms)
-    assert(controllerState.pathToBoardState(board.path).idToNotice(notice2.id) == notice2)
+    assert(controllerState.pathToBoardState(board0.path).idToNotice(notice2.id) == notice2)
   }
 
-  "PostNotice command without expecting order" in {
-    val notice = Notice(NoticeId("2222-08-09"), endOfLife)
+  "PostNotices command without expecting order" in {
+    val notice = Notice(NoticeId("2222-08-09"), board0.path, endOfLife0)
     controllerApi.executeCommand(
-      ControllerCommand.PostNotice(board.path, notice.id)
+      ControllerCommand.PostNotice(board0.path, notice.id)
     ).await(99.s).orThrow
 
     // With explicit endOfLife
-    val notice2 = Notice(NoticeId("2222-08-10"), Timestamp("2222-08-09T12:00:00Z"))
+    val notice2 = Notice(NoticeId("2222-08-10"), board0.path, Timestamp("2222-08-09T12:00:00Z"))
     controllerApi.executeCommand(
-      ControllerCommand.PostNotice(board.path, notice2.id,
+      ControllerCommand.PostNotice(board0.path, notice2.id,
         endOfLife = Some(notice2.endOfLife))
     ).await(99.s).orThrow
 
     sleep(100.ms)
-    assert(controllerState.pathToBoardState(board.path).idToNotice(notice.id) == notice)
-    assert(controllerState.pathToBoardState(board.path).idToNotice(notice2.id) == notice2)
+    assert(controllerState.pathToBoardState(board0.path).idToNotice(notice.id) == notice)
+    assert(controllerState.pathToBoardState(board0.path).idToNotice(notice2.id) == notice2)
   }
 
   "DeleteNotice command" in {
     val qualifier = "2222-09-09"
-    val notice = Notice(NoticeId(qualifier), endOfLife)
+    val notice = Notice(NoticeId(qualifier), board0.path, endOfLife0)
 
     val posterEvents = controller.runOrder(
-      FreshOrder(OrderId(s"#$qualifier#POSTING"), postingWorkflow.path))
+      FreshOrder(OrderId(s"#$qualifier#POSTING"), posting1Workflow.path))
     assert(posterEvents.map(_.value) == Seq(
-      OrderAdded(postingWorkflow.id),
+      OrderAdded(posting1Workflow.id),
       OrderStarted,
       OrderNoticePosted(notice),
       OrderMoved(Position(1)),
@@ -230,30 +251,30 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
     val eventId = eventWatch.lastAddedEventId
 
-    assert(controllerApi.executeCommand(DeleteNotice(board.path, NoticeId("UNKNOWN"))).await(99.s) ==
+    assert(controllerApi.executeCommand(DeleteNotice(board0.path, NoticeId("UNKNOWN"))).await(99.s) ==
       Left(UnknownKeyProblem("NoticeId", "NoticeId:UNKNOWN")))
 
     assert(controllerApi.executeCommand(DeleteNotice(BoardPath("UNKNOWN"), notice.id)).await(99.s) ==
       Left(UnknownKeyProblem("BoardPath", "Board:UNKNOWN")))
 
-    controllerApi.executeCommand(DeleteNotice(board.path, notice.id)).await(99.s).orThrow
-    assert(eventWatch.await[NoticeDeleted](_.key == board.path, after = eventId).head.value.event ==
+    controllerApi.executeCommand(DeleteNotice(board0.path, notice.id)).await(99.s).orThrow
+    assert(eventWatch.await[NoticeDeleted](_.key == board0.path, after = eventId).head.value.event ==
       NoticeDeleted(notice.id))
   }
 
   "Delete notice after endOfLife" in {
-    alarmClock := endOfLife - 1.s
+    clock := endOfLife0 - 1.s
     sleep(100.ms)
     val eventId = eventWatch.lastAddedEventId
     // NoticeDeleted do not occur before endOfLife
-    alarmClock := endOfLife
+    clock := endOfLife0
     // Spare noticeIds.head for DeleteNotice test
     for (noticeId <- noticeIds) {
       eventWatch.await[NoticeDeleted](_.event.noticeId == noticeId, after = eventId)
     }
   }
 
-  "PostNotice and ExpectNotice respect Order.scheduledFor" in {
+  "PostNotices and ExpectNotice respect Order.scheduledFor" in {
     val qualifier = "2222-10-10"
     val posterOrderId = OrderId(s"#$qualifier#POSTER")
     val expectingOrderId = OrderId(s"#$qualifier#EXPECTING")
@@ -261,14 +282,14 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
     controllerApi
       .addOrders(Observable(
-        FreshOrder(posterOrderId, postingWorkflow.path, scheduledFor = Some(startAt)),
-        FreshOrder(expectingOrderId, expectingWorkflow.path, scheduledFor = Some(startAt))))
+        FreshOrder(posterOrderId, posting1Workflow.path, scheduledFor = Some(startAt)),
+        FreshOrder(expectingOrderId, expecting1Workflow.path, scheduledFor = Some(startAt))))
       .await(99.s).orThrow
     sleep(500.ms)
     val idToOrder = controllerApi.controllerState.await(99.s).orThrow.idToOrder
     assert(idToOrder(posterOrderId).isState[Fresh] && idToOrder(expectingOrderId).isState[Fresh])
 
-    alarmClock := startAt
+    clock := startAt
     eventWatch.await[OrderFinished](_.key == posterOrderId)
     eventWatch.await[OrderFinished](_.key == expectingOrderId)
   }
@@ -277,7 +298,7 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val qualifier = "2222-11-11"
     val postingOrderId = OrderId(s"#$qualifier#SUSPENDIBLE-POSTING")
     val expectingOrderId = OrderId(s"#$qualifier#SUSPENDIBLE-EXPECTING")
-    controllerApi.addOrder(FreshOrder(expectingOrderId, expectingWorkflow.path))
+    controllerApi.addOrder(FreshOrder(expectingOrderId, expecting1Workflow.path))
       .await(99.s).orThrow
     eventWatch.await[OrderNoticeExpected](_.key == expectingOrderId)
 
@@ -285,7 +306,7 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
     eventWatch.await[OrderSuspensionMarked](_.key == expectingOrderId)
 
     val eventId = eventWatch.lastAddedEventId
-    controllerApi.addOrder(FreshOrder(postingOrderId, postingWorkflow.path))
+    controllerApi.addOrder(FreshOrder(postingOrderId, posting1Workflow.path))
       .await(99.s).orThrow
     eventWatch.await[OrderNoticeRead](_.key == expectingOrderId)
     eventWatch.await[OrderMoved](_.key == expectingOrderId, after = eventId)
@@ -298,7 +319,7 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
   "Order.ExpectingNotice is cancelable" in {
     val qualifier = "2222-12-12"
     val expectingOrderId = OrderId(s"#$qualifier#CANCELABLE-EXPECTING")
-    controllerApi.addOrder(FreshOrder(expectingOrderId, expectingWorkflow.path))
+    controllerApi.addOrder(FreshOrder(expectingOrderId, expecting1Workflow.path))
       .await(99.s).orThrow
     eventWatch.await[OrderNoticeExpected](_.key == expectingOrderId)
 
@@ -307,24 +328,34 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
   }
 
   "Update Board" in {
-    val boardState = controllerState.pathToBoardState(board.path)
+    val boardState = controllerState.pathToBoardState(board0.path)
 
-    val updatedBoard = board.copy(postOrderToNoticeId = expr("$jsOrderId"))
+    val updatedBoard = board0.copy(postOrderToNoticeId = expr("$jsOrderId"))
     controllerApi.updateUnsignedSimpleItems(Seq(updatedBoard)).await(99.s).orThrow
 
-    assert(controllerState.pathToBoardState(board.path) ==
+    assert(controllerState.pathToBoardState(board0.path) ==
       boardState.copy(
         board = updatedBoard.withRevision(Some(ItemRevision(1)))))
   }
 
   "Delete Board" in {
-    val checked = controllerApi.updateItems(Observable(DeleteSimple(board.path)))
+    val checked = controller
+      .updateItemsAsSystemUser(Observable(
+        DeleteSimple(board0.path),
+        DeleteSimple(board1.path),
+        DeleteSimple(board2.path)))
       .await(99.s)
     assert(checked == Left(Problem.Combined(Set(
-      ItemIsStillReferencedProblem(board.path, postingWorkflow.id),
-      ItemIsStillReferencedProblem(board.path, expectingWorkflow.id),
-      ItemIsStillReferencedProblem(board.path, postingAgentWorkflow.id),
-      ItemIsStillReferencedProblem(board.path, expectingAgentWorkflow.id)))))
+      ItemIsStillReferencedProblem(board0.path, posting1Workflow.id),
+      ItemIsStillReferencedProblem(board0.path, posting3Workflow.id),
+      ItemIsStillReferencedProblem(board1.path, posting3Workflow.id),
+      ItemIsStillReferencedProblem(board2.path, posting3Workflow.id),
+      ItemIsStillReferencedProblem(board0.path, expecting1Workflow.id),
+      ItemIsStillReferencedProblem(board0.path, expecting3Workflow.id),
+      ItemIsStillReferencedProblem(board1.path, expecting3Workflow.id),
+      ItemIsStillReferencedProblem(board2.path, expecting3Workflow.id),
+      ItemIsStillReferencedProblem(board0.path, postingAgentWorkflow.id),
+      ItemIsStillReferencedProblem(board0.path, expectingAgentWorkflow.id)))))
 
     controllerApi
       .deleteOrdersWhenTerminated(Observable.fromIterable(
@@ -332,15 +363,19 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
       .await(99.s).orThrow
     controllerApi
       .updateItems(Observable(
-        DeleteSimple(board.path),
+        DeleteSimple(board0.path),
+        DeleteSimple(board1.path),
+        DeleteSimple(board2.path),
         AddVersion(VersionId("DELETION")),
-        RemoveVersioned(postingWorkflow.path),
-        RemoveVersioned(expectingWorkflow.path),
+        RemoveVersioned(posting1Workflow.path),
+        RemoveVersioned(posting3Workflow.path),
+        RemoveVersioned(expecting1Workflow.path),
+        RemoveVersioned(expecting3Workflow.path),
         RemoveVersioned(postingAgentWorkflow.path),
         RemoveVersioned(expectingAgentWorkflow.path)))
       .await(99.s).orThrow
 
-    assert(!controllerState.pathToBoardState.contains(board.path))
+    assert(!controllerState.pathToBoardState.contains(board0.path))
   }
 }
 
@@ -353,30 +388,43 @@ object BoardTest
   private val noticeIds = qualifiers.map(NoticeId(_))
   private val nextQualifier = qualifiers.iterator.next _
 
-  private val lifeTime = 2.days
-  private val startTimestamp = Timestamp("2222-11-11T00:00:00Z")
-  private val endOfLife = BoardTest.startTimestamp + lifeTime
+  // One lifeTime per board
+  private val lifeTimes = Seq(1.days, 2.days, 3.days)
+  private val startTimestamp = Timestamp("2222-10-10T00:00:00Z")
+  private val endOfLifes = lifeTimes.map(BoardTest.startTimestamp + _)
+  private val Seq(endOfLife0, _, _) = endOfLifes
 
   private val orderIdToNoticeId = expr(
     """replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')""")
 
-  private val board = Board(
-    BoardPath("BOARD"),
-    postOrderToNoticeId = orderIdToNoticeId,
-    endOfLife = expr(s"$$js7EpochMilli + ${lifeTime.toMillis}"),
-    expectOrderToNoticeId = orderIdToNoticeId)
+  private val boards = for ((lifeTime, i) <- lifeTimes.zipWithIndex) yield
+    Board(
+      BoardPath(s"BOARD-$i"),
+      postOrderToNoticeId = orderIdToNoticeId,
+      endOfLife = expr(s"$$js7EpochMilli + ${lifeTime.toMillis}"),
+      expectOrderToNoticeId = orderIdToNoticeId)
 
-  private val expectingWorkflow = Workflow(WorkflowPath("EXPECTING") ~ "INITIAL", Seq(
-    ExpectNotice(board.path)))
+  private val Seq(board0, board1, board2) = boards
 
-  private val postingWorkflow = Workflow(WorkflowPath("POSTING") ~ "INITIAL", Seq(
-    PostNotice(board.path)))
+  private val expecting1Workflow = Workflow(WorkflowPath("EXPECTING-1") ~ "INITIAL", Seq(
+    ExpectNotice(board0.path)))
+
+  private val expecting3Workflow = Workflow(WorkflowPath("EXPECTING-3") ~ "INITIAL", Seq(
+    ExpectNotice(board0.path),
+    ExpectNotice(board1.path),
+    ExpectNotice(board2.path)))
+
+  private val posting1Workflow = Workflow(WorkflowPath("POSTING-1") ~ "INITIAL", Seq(
+    PostNotices(Seq(board0.path))))
+
+  private val posting3Workflow = Workflow(WorkflowPath("POSTING-3") ~ "INITIAL", Seq(
+    PostNotices(boards.map(_.path))))
 
   private val postingAgentWorkflow = Workflow(WorkflowPath("POSTING-AT-AGENT") ~ "INITIAL", Seq(
     EmptyJob.execute(agentPath),
-    PostNotice(board.path)))
+    PostNotices(Seq(board0.path))))
 
   private val expectingAgentWorkflow = Workflow(WorkflowPath("EXPECTING-AT-AGENT") ~ "INITIAL", Seq(
     EmptyJob.execute(agentPath),
-    ExpectNotice(board.path)))
+    ExpectNotice(board0.path)))
 }

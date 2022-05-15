@@ -62,7 +62,7 @@ import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemEvent}
 import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, ItemAddedOrChanged, SignableItemKey, UnsignedSimpleItemPath}
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderMoved, OrderNoticePosted, OrderNoticeRead, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderMoved, OrderNoticePostedV2_3, OrderNoticeRead, OrderNoticePosted, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath}
 import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
@@ -121,10 +121,10 @@ with MainJournalingActor[ControllerState, Event]
   private object notices {
     private val noticeToSchedule = mutable.Map.empty[(BoardPath, NoticeId), Cancelable]
 
-    def schedule(boardPath: BoardPath, notice: Notice): Unit =
-      noticeToSchedule += boardPath -> notice.id ->
+    def schedule(notice: Notice): Unit =
+      noticeToSchedule += notice.boardPath -> notice.id ->
         alarmClock.scheduleAt(notice.endOfLife) {
-          self ! Internal.NoticeIsDue(boardPath, notice.id)
+          self ! Internal.NoticeIsDue(notice.boardPath, notice.id)
         }
 
     def deleteSchedule(boardPath: BoardPath, noticeId: NoticeId): Unit =
@@ -313,7 +313,7 @@ with MainJournalingActor[ControllerState, Event]
         boardState <- controllerState.pathToBoardState.values;
         notice <- boardState.notices)
       {
-        notices.schedule(boardState.path, notice)
+        notices.schedule(notice)
       }
 
       persistedEventId = controllerState.eventId
@@ -593,7 +593,7 @@ with MainJournalingActor[ControllerState, Event]
         keyedEvent <- boardState.deleteNoticeEvent(noticeId))
       {
         if (alarmClock.now() < notice.endOfLife) {
-          notices.schedule(boardPath, notice)
+          notices.schedule(notice)
         } else {
           logger.debug(s"Notice lifetime expired: $boardPath $noticeId")
           persistMultiple(keyedEvent :: Nil)(handleEvents)
@@ -748,14 +748,14 @@ with MainJournalingActor[ControllerState, Event]
         checked match {
           case Left(problem) => Future.successful(Left(problem))
           case Right((notice, expectingOrders)) =>
-            val events = View(boardPath <-: NoticePosted(notice)) ++
+            val events = View(NoticePosted.toKeyedEvent(notice)) ++
               expectingOrders.view
                 .flatMap(o => View(
                   o.id <-: OrderNoticeRead,
                   o.id <-: OrderMoved(o.position.increment)))
-           persistTransactionAndSubsequentEvents(events.toVector)(
-             handleEvents
-           ).map(_ => Right(ControllerCommand.Response.Accepted))
+            persistTransactionAndSubsequentEvents(events.toVector)(
+              handleEvents
+            ).map(_ => Right(ControllerCommand.Response.Accepted))
         }
 
       case ControllerCommand.DeleteNotice(boardPath, noticeId) =>
@@ -1210,11 +1210,16 @@ with MainJournalingActor[ControllerState, Event]
             }
 
             event match {
-              case OrderNoticePosted(notice) =>
+              case OrderNoticePostedV2_3(notice) =>
                 for (boardPath <- _controllerState.workflowPositionToBoardPath(order.workflowPosition)) {
                   notices.deleteSchedule(boardPath, notice.id)
-                  notices.schedule(boardPath, notice)
+                  notices.schedule(notice.toNotice(boardPath))
                 }
+
+              case OrderNoticePosted(notice) =>
+                notices.deleteSchedule(notice.boardPath, notice.id)
+                notices.schedule(notice)
+
               case _ =>
             }
 

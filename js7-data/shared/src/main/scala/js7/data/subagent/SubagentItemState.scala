@@ -1,7 +1,7 @@
 package js7.data.subagent
 
 import io.circe.syntax.EncoderOps
-import io.circe.{Codec, Decoder, Encoder, JsonObject}
+import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.data.delegate.DelegateCouplingState
@@ -94,7 +94,7 @@ object SubagentItemState
     SubagentItemState(subagentItem, None, DelegateCouplingState.Reset.fresh,
       eventId = EventId.BeforeFirst)
 
-  private val jsonDecoder: Decoder[SubagentItemState] =
+  implicit val jsonDecoder: Decoder[SubagentItemState] =
    c => for {
      subagentItem <- c.get[SubagentItem]("subagentItem") orElse c.get[SubagentItem]("subagentRef")
      subagentRunId <- c.get[Option[SubagentRunId]]("subagentRunId")
@@ -109,7 +109,7 @@ object SubagentItemState
      eventId = eventId,
      problem)
 
-  private val jsonEncoder: Encoder.AsObject[SubagentItemState] =
+  implicit val jsonEncoder: Encoder.AsObject[SubagentItemState] =
     o => JsonObject(
       "subagentItem" -> o.subagentItem.asJson,
       "subagentRunId" -> o.subagentRunId.asJson,
@@ -118,6 +118,4 @@ object SubagentItemState
       "isResettingForcibly" -> o.isResettingForcibly.asJson,
       "eventId" -> o.eventId.asJson,
       "problem" -> o.problem.asJson)
-
-  implicit val jsonCodec = Codec.AsObject.from(jsonDecoder, jsonEncoder)
 }

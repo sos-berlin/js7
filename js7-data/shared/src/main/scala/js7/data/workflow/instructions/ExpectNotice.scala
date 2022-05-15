@@ -10,6 +10,8 @@ final case class ExpectNotice(
 extends BoardInstruction
 {
   def withoutSourcePos = copy(sourcePos = None)
+
+  def boardPaths = Vector(boardPath)
 }
 
 object ExpectNotice

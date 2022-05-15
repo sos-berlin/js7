@@ -59,5 +59,5 @@ extends UnsignedSimpleItem.Companion[SubagentItem]
   }
 
   override val subtype: Subtype[SubagentItem] =
-    Subtype.withAliases(jsonCodec, aliases = Seq("SubagentRef"))
+    Subtype[SubagentItem](aliases = Seq("SubagentRef"))
 }

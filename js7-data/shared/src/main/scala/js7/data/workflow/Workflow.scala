@@ -155,9 +155,10 @@ extends VersionedItem
       flattenedInstructions.view
         .map(_._2.instruction)
         .collect {
-          case lock: LockInstruction => lock.lockPath
-          case board: BoardInstruction => board.boardPath
+          case lock: LockInstruction => lock.lockPath :: Nil
+          case board: BoardInstruction => board.boardPaths
         }
+        .flatten
         .toSet
 
     val referencedJobResourcePaths =

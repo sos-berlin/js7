@@ -17,7 +17,7 @@ import js7.data.board.BoardPath
 import js7.data.controller.ControllerState.{inventoryItemJsonCodec, versionedItemJsonCodec}
 import js7.data.item.{InventoryItem, VersionId, VersionedItem}
 import js7.data.job.RelativePathExecutable
-import js7.data.workflow.instructions.{ExpectNotice, PostNotice}
+import js7.data.workflow.instructions.{ExpectNotice, PostNotices}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.data_for_java.auth.{JAdmission, JCredentials, JHttpsConfig}
 import js7.proxy.javaapi.JProxyContext
@@ -111,12 +111,12 @@ object JControllerProxyTest
   val boardVersion = VersionId("BOARD-VERSION")
 
   val postingBoardWorkflow = Workflow(WorkflowPath("POSTING-WORKFLOW") ~ boardVersion,
-      Seq(PostNotice(boardPath)))
+    Seq(PostNotices(Seq(boardPath))))
 
   val postingBoardWorkflowJson = (postingBoardWorkflow: InventoryItem).asJson.compactPrint
 
   val expectingBoardWorkflow = Workflow(WorkflowPath("EXPECTING-WORKFLOW") ~ boardVersion,
-      Seq(ExpectNotice(boardPath)))
+    Seq(ExpectNotice(boardPath)))
 
   val expectingBoardWorkflowJson = (expectingBoardWorkflow: InventoryItem).asJson.compactPrint
 }

@@ -32,12 +32,12 @@ extends UnsignedSimpleItem
       endOfLife <- evalEndOfLife(scope)
       value <- postOrderToNoticeId.eval/*(args)*/(scope)
       noticeId <- value.asString
-    } yield Notice(NoticeId(noticeId), endOfLife)
+    } yield Notice(NoticeId(noticeId), path, endOfLife)
   }
 
   def toNotice(noticeId: NoticeId, endOfLife: Option[Timestamp])(scope: Scope): Checked[Notice] =
     endOfLife.fold(evalEndOfLife(scope))(Checked(_))
-      .map(Notice(noticeId, _))
+      .map(Notice(noticeId, path, _))
 
   private def evalEndOfLife(scope: Scope): Checked[Timestamp] =
     endOfLife

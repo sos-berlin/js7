@@ -1,5 +1,6 @@
 package js7.data.order
 
+import io.circe.generic.semiauto.deriveEncoder
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.circeutils.CirceUtils.deriveCodec
@@ -11,7 +12,7 @@ import js7.base.utils.Big
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.typeclasses.IsEmpty.syntax._
 import js7.data.agent.AgentPath
-import js7.data.board.{Notice, NoticeId}
+import js7.data.board.{Notice, NoticeId, NoticeV2_3}
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.event.Event
 import js7.data.lock.LockPath
@@ -232,8 +233,31 @@ object OrderEvent
 
   sealed trait OrderNoticeEvent extends OrderActorEvent
 
+  sealed trait OrderNoticePosted_ extends OrderNoticeEvent
+  object OrderNoticePosted_ {
+    implicit val jsonEncoder: Encoder.AsObject[OrderNoticePosted_] = {
+      case o: OrderNoticePostedV2_3 => OrderNoticePostedV2_3.jsonEncoder.encodeObject(o)
+      case o: OrderNoticePosted => OrderNoticePosted.jsonEncoder.encodeObject(o)
+    }
+    implicit val jsonDecoder: Decoder[OrderNoticePosted_] = c =>
+      if (c.value.asObject.flatMap(_("notice")).flatMap(_.asObject).exists(_.contains("boardPath")))
+        c.get[Notice]("notice").map(OrderNoticePosted(_))
+      else
+        c.get[NoticeV2_3]("notice").map(OrderNoticePostedV2_3(_))
+  }
+
+  // COMPATIBLE with v2.3
+  final case class OrderNoticePostedV2_3(notice: NoticeV2_3)
+  extends OrderNoticePosted_
+  object OrderNoticePostedV2_3 {
+    implicit val jsonEncoder = deriveEncoder[OrderNoticePostedV2_3]
+  }
+
   final case class OrderNoticePosted(notice: Notice)
-  extends OrderNoticeEvent
+  extends OrderNoticePosted_
+  object OrderNoticePosted {
+    implicit val jsonEncoder = deriveEncoder[OrderNoticePosted]
+  }
 
   final case class OrderNoticeExpected(noticeId: NoticeId)
   extends OrderNoticeEvent
@@ -492,7 +516,9 @@ object OrderEvent
     Subtype(deriveCodec[OrderLockQueued]),
     Subtype(deriveCodec[OrderLockDequeued]),
     Subtype(deriveCodec[OrderLockReleased]),
-    Subtype(deriveCodec[OrderNoticePosted]),
+    Subtype.named[OrderNoticePosted_](typeName ="OrderNoticePosted", subclasses = Seq(
+      classOf[OrderNoticePostedV2_3],
+      classOf[OrderNoticePosted])),
     Subtype(deriveCodec[OrderNoticeExpected]),
     Subtype(OrderNoticeRead),
     Subtype(deriveCodec[OrderPrompted]),

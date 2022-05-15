@@ -20,7 +20,7 @@ import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItemEvent, Inv
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.Order.ExpectingNotice
-import js7.data.order.OrderEvent.{OrderAdded, OrderAddedX, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderForked, OrderJoined, OrderLockEvent, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticeRead, OrderOrderAdded, OrderStdWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAddedX, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderForked, OrderJoined, OrderLockEvent, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePostedV2_3, OrderNoticeRead, OrderNoticePosted, OrderOrderAdded, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{AllOrderWatchesState, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState}
 import js7.data.state.StateView
@@ -137,9 +137,9 @@ with StateView
     case calendar: Calendar =>
       _pathToCalendar.insert(calendar.path -> calendar)
 
-    case noticeSnapshot: Notice.Snapshot =>
-      _pathToBoardState(noticeSnapshot.boardPath) = _pathToBoardState(noticeSnapshot.boardPath)
-        .addNotice(noticeSnapshot.notice).orThrow
+    case notice: Notice =>
+      _pathToBoardState(notice.boardPath) = _pathToBoardState(notice.boardPath)
+        .addNotice(notice).orThrow
 
     case signedItemAdded: SignedItemAdded =>
       onSignedItemAdded(signedItemAdded)
@@ -357,16 +357,20 @@ with StateView
           _idToOrder(orderId) = _idToOrder(orderId).applyEvent(event).orThrow
 
         case event: OrderNoticeEvent =>
-          val boardState = orderIdToBoardState(orderId).orThrow
-          val boardPath = boardState.path
           event match {
+            case OrderNoticePostedV2_3(noticeV2_3) =>
+              val boardState = orderIdToBoardState(orderId).orThrow
+              _pathToBoardState += boardState.path ->
+                boardState.addNotice(noticeV2_3.toNotice(boardState.path)).orThrow
+
             case OrderNoticePosted(notice) =>
-              _pathToBoardState += boardPath ->
-                boardState.addNotice(notice).orThrow
+              val boardState = pathToBoardState.checked(notice.boardPath).orThrow
+              _pathToBoardState += notice.boardPath -> boardState.addNotice(notice).orThrow
 
             case OrderNoticeExpected(noticeId) =>
+              val boardState = orderIdToBoardState(orderId).orThrow
               pathToBoardState +=
-                boardPath -> boardState.addExpectation(orderId, noticeId).orThrow
+                boardState.path -> boardState.addExpectation(orderId, noticeId).orThrow
 
             case OrderNoticeRead =>
           }
@@ -408,7 +412,8 @@ with StateView
 
     case Stamped(_, _, KeyedEvent(boardPath: BoardPath, NoticePosted(notice))) =>
       for (boardState <- _pathToBoardState.get(boardPath)) {
-        _pathToBoardState(boardState.path) = boardState.addNotice(notice).orThrow
+        _pathToBoardState(boardState.path) =
+          boardState.addNotice(notice.toNotice(boardState.path)).orThrow
       }
 
     case Stamped(_, _, KeyedEvent(boardPath: BoardPath, NoticeDeleted(noticeId))) =>

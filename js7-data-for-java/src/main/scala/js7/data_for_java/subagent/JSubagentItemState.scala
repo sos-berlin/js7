@@ -37,6 +37,6 @@ object JSubagentItemState extends JJsonable.Companion[JSubagentItemState]
   override def fromJson(jsonString: String): VEither[Problem, JSubagentItemState] =
     super.fromJson(jsonString)
 
-  protected def jsonEncoder = SubagentItemState.jsonCodec
-  protected def jsonDecoder = SubagentItemState.jsonCodec
+  protected def jsonEncoder = SubagentItemState.jsonEncoder
+  protected def jsonDecoder = SubagentItemState.jsonDecoder
 }

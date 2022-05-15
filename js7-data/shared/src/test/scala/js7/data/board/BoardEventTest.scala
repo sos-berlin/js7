@@ -11,7 +11,7 @@ final class BoardEventTest extends AnyFreeSpec
   "NoticePosted" in {
     testJson[BoardEvent](
       NoticePosted(
-        Notice(NoticeId("NOTICE"), Timestamp("1970-01-01T01:00:00Z"))),
+        NoticePosted.PostedNotice(NoticeId("NOTICE"), Timestamp("1970-01-01T01:00:00Z"))),
       json"""{
          "TYPE": "NoticePosted",
          "notice": {

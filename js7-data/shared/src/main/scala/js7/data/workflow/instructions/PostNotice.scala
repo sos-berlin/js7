@@ -1,18 +1,19 @@
 package js7.data.workflow.instructions
 
-import io.circe.generic.semiauto.deriveCodec
+import io.circe.generic.semiauto.deriveDecoder
+import js7.base.circeutils.typed.Subtype
 import js7.data.board.BoardPath
 import js7.data.source.SourcePos
 
+// COMPATIBLE with v2.3
+@deprecated("Use PostNotices", "2.4")
 final case class PostNotice(
   boardPath: BoardPath,
   sourcePos: Option[SourcePos] = None)
-extends BoardInstruction
-{
-  def withoutSourcePos = copy(sourcePos = None)
-}
 
 object PostNotice
 {
-  implicit val jsonCodec = deriveCodec[PostNotice]
+  val compatibleSubtype: Subtype[PostNotices] =
+    Subtype.decodeCompatible(deriveDecoder[PostNotice])(postNotice =>
+      PostNotices(Vector(postNotice.boardPath), postNotice.sourcePos))
 }

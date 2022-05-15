@@ -32,7 +32,7 @@ import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItem, Inventor
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.Order.ExpectingNotice
-import js7.data.order.OrderEvent.{OrderAdded, OrderAddedX, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderForked, OrderJoined, OrderLockEvent, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticeRead, OrderOrderAdded, OrderStdWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAddedX, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderForked, OrderJoined, OrderLockEvent, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePostedV2_3, OrderNoticeRead, OrderNoticePosted, OrderOrderAdded, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{AllOrderWatchesState, FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState}
 import js7.data.state.StateView
@@ -374,29 +374,30 @@ with SnapshotableState[ControllerState]
                       pathToLockState = pathToLockState ++ lockStates.map(o => o.lock.path -> o)))
 
               case event: OrderNoticeEvent =>
-                orderIdToBoardState(orderId)
-                  .flatMap { boardState =>
-                    val boardPath = boardState.path
-                    event match {
+                  event
+                    .match_ {
+                      case OrderNoticePostedV2_3(notice) =>
+                        orderIdToBoardState(orderId)
+                          .flatMap(boardState => boardState.addNoticeV2_3(notice))
+                          .map(Some(_))
+
                       case OrderNoticePosted(notice) =>
-                        for (updatedBoardState <- boardState.addNotice(notice)) yield
-                          copy(
-                            idToOrder = updatedIdToOrder,
-                            pathToBoardState = pathToBoardState +
-                              (boardPath -> updatedBoardState))
+                        pathToBoardState
+                          .checked(notice.boardPath)
+                          .flatMap(_.addNotice(notice))
+                          .map(Some(_))
 
                       case OrderNoticeExpected(noticeId) =>
-                        boardState
-                          .addExpectation(orderId, noticeId)
-                          .map(boardState => copy(
-                            idToOrder = updatedIdToOrder,
-                            pathToBoardState = pathToBoardState + (boardPath -> boardState)))
+                        orderIdToBoardState(orderId)
+                          .flatMap(_.addExpectation(orderId, noticeId))
+                          .map(Some(_))
 
                       case OrderNoticeRead =>
-                        Right(copy(
-                          idToOrder = updatedIdToOrder))
+                        Right(None)
                     }
-                  }
+                  .map(updatedBoardStates => copy(
+                    pathToBoardState = pathToBoardState ++ updatedBoardStates.map(o => o.path -> o),
+                    idToOrder = updatedIdToOrder))
 
               case _: OrderCancelled =>
                 previousOrder
@@ -439,10 +440,10 @@ with SnapshotableState[ControllerState]
           Right(this)
       }
 
-    case KeyedEvent(boardPath: BoardPath, NoticePosted(noticeId)) =>
+    case KeyedEvent(boardPath: BoardPath, NoticePosted(notice)) =>
       for {
         boardState <- pathToBoardState.checked(boardPath)
-        o <- boardState.addNotice(noticeId)
+        o <- boardState.addNotice(notice.toNotice(boardPath))
       } yield copy(
         pathToBoardState = pathToBoardState + (o.path -> o))
 
@@ -759,7 +760,7 @@ with ItemContainer.Companion[ControllerState]
     Subtype[Order[Order.State]])
 
   implicit lazy val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] =
-    KeyedEventTypedJsonCodec.named("ControllerState.keyedEventJsonCodec",
+    KeyedEventTypedJsonCodec/*.named("ControllerState.keyedEventJsonCodec"*/(
       KeyedSubtype[JournalEvent],
       KeyedSubtype[InventoryItemEvent],
       KeyedSubtype[VersionedEvent],

@@ -19,9 +19,13 @@ extends UnsignedSimpleItemState
   def item = board
 
   def toSnapshotObservable: Observable[Any] = {
-    board +: Observable.fromIterable(notices.map(Notice.Snapshot(board.path, _)))
+    board +: Observable.fromIterable(notices)
     // NoticeExpectation are recovered from Order[Order.ExpectingNotice]
   }
+
+  // COMPATIBLE with v2.3
+  def addNoticeV2_3(notice: NoticeV2_3): Checked[BoardState] =
+    addNotice(notice.toNotice(board.path))
 
   def addNotice(notice: Notice): Checked[BoardState] =
     Right(copy(

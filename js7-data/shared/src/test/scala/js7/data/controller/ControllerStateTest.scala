@@ -86,7 +86,7 @@ final class ControllerStateTest extends AsyncFreeSpec
           controllerState.idToSubagentSelection.values ++
           controllerState.pathToLockState.values ++
           Seq(board) ++
-          boardState.notices.map(Notice.Snapshot(board.path, _)) ++
+          boardState.notices ++
           Seq(calendar) ++
           Seq(
             UnsignedSimpleItemAdded(FileWatch(
@@ -457,8 +457,6 @@ object ControllerStateTest
     Some(ItemRevision(7)))
 
   private val lock = Lock(LockPath("LOCK"), itemRevision = Some(ItemRevision(7)))
-  private val notice = Notice(NoticeId("NOTICE-1"), Timestamp.ofEpochMilli(10_000_000_000L + 24*3600*1000))
-  private val noticeExpectation = NoticeExpectation(NoticeId("NOTICE-2"), Set(expectingNoticeOrderId))
 
   private val board = Board(
     BoardPath("BOARD"),
@@ -466,6 +464,9 @@ object ControllerStateTest
     expectOrderToNoticeId = expr("$orderId"),
     endOfLife = expr("$js7EpochMilli + 24*3600*1000"),
     itemRevision = Some(ItemRevision(7)))
+
+  private val notice = Notice(NoticeId("NOTICE-1"), board.path, Timestamp.ofEpochMilli(10_000_000_000L + 24*3600*1000))
+  private val noticeExpectation = NoticeExpectation(NoticeId("NOTICE-2"), Set(expectingNoticeOrderId))
 
   private val boardState = BoardState(
     board,

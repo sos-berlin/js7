@@ -18,7 +18,7 @@ import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.expression.PositionSearch
 import js7.data.workflow.WorkflowTest._
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{Execute, ExpectNotice, Fail, Fork, Gap, If, ImplicitEnd, LockInstruction, PostNotice, Retry, TryInstruction}
+import js7.data.workflow.instructions.{Execute, ExpectNotice, Fail, Fork, Gap, If, ImplicitEnd, LockInstruction, PostNotices, Retry, TryInstruction}
 import js7.data.workflow.position.BranchId.{Catch_, Else, Then, Try_, fork, try_}
 import js7.data.workflow.position._
 import js7.data.workflow.test.ForkTestSetting
@@ -688,11 +688,11 @@ final class WorkflowTest extends AnyFreeSpec
     val workflow = Workflow(
       WorkflowPath("WORKFLOW") ~ "1",
       Vector(
-        PostNotice(a),
+        PostNotices(Seq(a)),
         If(BooleanConstant(true), Workflow.of(
           Fork.of(
             "BRANCH" -> Workflow.of(
-              PostNotice(b),
+              PostNotices(Seq(b)),
               ExpectNotice(c)))))))
     assert(workflow.referencedItemPaths.toSet == Set(a, b, c))
   }

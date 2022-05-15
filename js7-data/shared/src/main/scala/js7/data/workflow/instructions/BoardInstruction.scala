@@ -5,5 +5,5 @@ import js7.data.workflow.Instruction
 
 trait BoardInstruction extends Instruction
 {
-  def boardPath: BoardPath
+  def boardPaths: Vector[BoardPath]
 }
