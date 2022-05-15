@@ -369,25 +369,26 @@ with ItemContainer.Companion[AgentState]
     implicit val jsonCodec = deriveCodec[AgentMetaState]
   }
 
-  val snapshotObjectJsonCodec: TypedJsonCodec[Any] =
-    TypedJsonCodec.named("AgentState.snapshotObjectJsonCodec",
-      Subtype[JournalState],
-      Subtype[AgentMetaState],
-      Workflow.subtype,
-      Subtype.withAliases(SubagentItemState.jsonCodec, aliases = Seq("SubagentRefState")),
-      Subtype[Order[Order.State]],
-      Subtype[FileWatchState.Snapshot],
-      Subtype(SignedItemAdded.jsonCodec(this)),  // For Repo and SignedItemAdded
-      Subtype(signableSimpleItemJsonCodec),
-      Subtype(unsignedSimpleItemJsonCodec),
-      Subtype[BasicItemEvent])
+  val snapshotObjectJsonCodec = TypedJsonCodec[Any](
+    Subtype[JournalState],
+    Subtype[AgentMetaState],
+    Workflow.subtype,
+    Subtype[SubagentItemState](aliases = Seq("SubagentRefState")),
+    Subtype[Order[Order.State]],
+    Subtype[FileWatchState.Snapshot],
+    Subtype(SignedItemAdded.jsonCodec(this)),  // For Repo and SignedItemAdded
+    Subtype(signableSimpleItemJsonCodec),
+    Subtype(unsignedSimpleItemJsonCodec),
+    Subtype[BasicItemEvent])
 
-  implicit val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] =
-    KeyedEventTypedJsonCodec.named("AgentState.Event",
+  implicit val keyedEventJsonCodec = {
+    implicit val x = AgentState.inventoryItemEventJsonCodec // Isn't this val already implicit ?
+    KeyedEventTypedJsonCodec[Event](
       KeyedSubtype[JournalEvent],
       KeyedSubtype[SubagentItemStateEvent],
       KeyedSubtype[OrderEvent],
       KeyedSubtype[AgentEvent],
       KeyedSubtype[InventoryItemEvent],
       KeyedSubtype[OrderWatchEvent])
+  }
 }

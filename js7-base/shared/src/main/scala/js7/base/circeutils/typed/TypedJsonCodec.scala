@@ -96,7 +96,7 @@ extends Codec.AsObject[A]
     json.asObject
       .flatMap(_(TypeFieldName)).flatMap(_.asString).flatMap(nameToClass.get)
 
-  override def toString = s"TypedJsonCodec[$printName]"
+  override def toString = printName
 }
 
 object TypedJsonCodec
@@ -112,13 +112,20 @@ object TypedJsonCodec
   def typeName(cls: Class[_]): String =
     cls.simpleScalaName
 
-  def apply[A: ClassTag](subtypes: Subtype[_ <: A]*): TypedJsonCodec[A] =
-    fromIterable(implicitClass[A].shortClassName, subtypes)
+  def apply[A: ClassTag](subtypes: Subtype[_ <: A]*)
+    (implicit enclosing: sourcecode.Enclosing)
+  : TypedJsonCodec[A] =
+    fromIterable(
+      enclosing.value + ": TypedJsonCodec[" + implicitClass[A].shortClassName + "]",
+      subtypes)
 
-  def named[A: ClassTag](name: String, subtypes: Subtype[_ <: A]*): TypedJsonCodec[A] =
+  def named[A: ClassTag](name: String, subtypes: Subtype[_ <: A]*)
+    (implicit enclosing: sourcecode.Enclosing)
+  : TypedJsonCodec[A] =
     fromIterable(name, subtypes)
 
-  def fromIterable[A: ClassTag](name: String, subtypes: Iterable[Subtype[_ <: A]]): TypedJsonCodec[A] =
+  def fromIterable[A: ClassTag](name: String, subtypes: Iterable[Subtype[_ <: A]])
+  : TypedJsonCodec[A] =
     new TypedJsonCodec[A](name, subtypes.toSeq)
 
   implicit final class TypedJson(private val underlying: Json) extends AnyVal {
@@ -130,8 +137,10 @@ object TypedJsonCodec
   }
 
   final class UnknownClassForJsonException(subclassName: String, superclassName: String)
-  extends NoSuchElementException(s"Class '$subclassName' is not registered in TypedJsonCodec[$superclassName]")
+  extends NoSuchElementException("Class '" + subclassName + "' is not registered in " +
+    (if (superclassName.contains("TypedJsonCodec")) superclassName
+    else s"TypedJsonCodec[$superclassName]}"))
 
   final def unknownJsonTypeFailure(typeName: String, superclassName: String, history: List[CursorOp]): DecodingFailure =
-    DecodingFailure(s"""Unexpected JSON {"$TypeFieldName": "$typeName", ...} for class '$superclassName'""", history)
+    DecodingFailure(s"""Unexpected JSON {"$TypeFieldName": "$typeName", ...} for $superclassName""", history)
 }

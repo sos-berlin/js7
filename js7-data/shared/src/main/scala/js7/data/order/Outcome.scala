@@ -211,7 +211,7 @@ object Outcome
 
     object Reason {
       implicit val jsonCodec = TypedJsonCodec[Reason](
-        Subtype.withAliases(ProcessLost.jsonCodec, Seq("JobSchedulerRestarted")),
+        Subtype[ProcessLost](aliases = Seq("JobSchedulerRestarted")),
         Subtype(deriveCodec[Other]))
     }
   }

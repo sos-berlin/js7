@@ -53,12 +53,14 @@ trait StateView extends ItemContainer
 
   def pathToBoardState: PartialFunction[BoardPath, BoardState]
 
+  // COMPATIBLE with v2.3
   final def workflowPositionToBoardState(workflowPosition: WorkflowPosition): Checked[BoardState] =
     for {
       boardPath <- workflowPositionToBoardPath(workflowPosition)
       boardState <- pathToBoardState.checked(boardPath)
     } yield boardState
 
+  // COMPATIBLE with v2.3
   final def workflowPositionToBoardPath(workflowPosition: WorkflowPosition): Checked[BoardPath] =
     instruction_[BoardInstruction](workflowPosition)
       .map(_.boardPath)

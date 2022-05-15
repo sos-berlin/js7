@@ -740,24 +740,23 @@ with ItemContainer.Companion[ControllerState]
   protected val inventoryItems = Vector(
     AgentRef, SubagentItem, SubagentSelection, Lock, Board, Calendar, FileWatch, JobResource, Workflow)
 
-  lazy val snapshotObjectJsonCodec: TypedJsonCodec[Any] =
-    TypedJsonCodec.named("ControllerState.snapshotObjectJsonCodec",
-      Subtype[JournalHeader],
-      Subtype[SnapshotMeta],
-      Subtype[JournalState],
-      Subtype(deriveCodec[ClusterStateSnapshot]),
-      Subtype[ControllerMetaState],
-      Subtype[AgentRefState],
-      Subtype.withAliases(SubagentItemState.jsonCodec, aliases = Seq("SubagentRefState")),
-      Subtype[SubagentSelection],
-      Subtype[LockState],
-      Subtype[Board],
-      Subtype[Calendar],
-      Subtype.named[Notice.Snapshot]("Notice"),
-      Subtype[VersionedEvent],  // These events describe complete objects
-      Subtype[InventoryItemEvent],  // For Repo and SignedItemAdded
-      Subtype[OrderWatchState.Snapshot],
-      Subtype[Order[Order.State]])
+  lazy val snapshotObjectJsonCodec = TypedJsonCodec[Any](
+    Subtype[JournalHeader],
+    Subtype[SnapshotMeta],
+    Subtype[JournalState],
+    Subtype(deriveCodec[ClusterStateSnapshot]),
+    Subtype[ControllerMetaState],
+    Subtype[AgentRefState],
+    Subtype[SubagentItemState](aliases = Seq("SubagentRefState")),
+    Subtype[SubagentSelection],
+    Subtype[LockState],
+    Subtype[Board],
+    Subtype[Calendar],
+    Subtype[Notice],
+    Subtype[VersionedEvent],  // These events describe complete objects
+    Subtype[InventoryItemEvent],  // For Repo and SignedItemAdded
+    Subtype[OrderWatchState.Snapshot],
+    Subtype[Order[Order.State]])
 
   implicit lazy val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] =
     KeyedEventTypedJsonCodec.named("ControllerState.keyedEventJsonCodec",

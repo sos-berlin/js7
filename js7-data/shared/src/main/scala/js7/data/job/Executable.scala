@@ -105,7 +105,7 @@ object PathExecutable
   private[job] def isAbsolute(path: String) =
     path.startsWith("/") || path.startsWith("\\")/*also on Unix, to be reliable*/
 
-  val jsonEncoder: Encoder.AsObject[PathExecutable] =
+  implicit val jsonEncoder: Encoder.AsObject[PathExecutable] =
     o => JsonObject(
       TypedJsonCodec.typeField[PathExecutable],
       "path" -> o.path.asJson,
@@ -114,7 +114,7 @@ object PathExecutable
       "returnCodeMeaning" -> o.returnCodeMeaning.??.asJson,
       "v1Compatible" -> o.v1Compatible.?.asJson)
 
-  val jsonDecoder: Decoder[PathExecutable] =
+  implicit val jsonDecoder: Decoder[PathExecutable] =
     cursor => for {
       path <-cursor.get[String]("path")
       env <- cursor.getOrElse[Map[String, Expression]]("env")(Map.empty)
@@ -265,12 +265,12 @@ object Executable
   private implicit val customConfig = withDefaults
 
   implicit val jsonCodec = TypedJsonCodec[Executable](
-    Subtype.named(PathExecutable.jsonEncoder, PathExecutable.jsonDecoder,
-      Seq(
+    Subtype[PathExecutable](
+      subclasses = Seq(
         classOf[AbsolutePathExecutable],
         classOf[RelativePathExecutable]),
       aliases = Seq("ExecutablePath")),
-    Subtype.named[ShellScriptExecutable](aliases = Seq("ExecutableScript", "ScriptExecutable")),
+    Subtype[ShellScriptExecutable](aliases = Seq("ExecutableScript", "ScriptExecutable")),
     Subtype[CommandLineExecutable],
     Subtype(deriveConfiguredCodec[InternalExecutable]))
 }

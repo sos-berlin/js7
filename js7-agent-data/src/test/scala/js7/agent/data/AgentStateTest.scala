@@ -307,13 +307,15 @@ final class AgentStateTest extends AsyncFreeSpec
   "Unknown TYPE for snapshotObjectJsonCodec" in {
     assert(AgentState.snapshotObjectJsonCodec
       .decodeJson(json"""{ "TYPE": "UNKNOWN" }""").toChecked == Left(Problem(
-      """JSON DecodingFailure at : Unexpected JSON {"TYPE": "UNKNOWN", ...} for class 'AgentState.snapshotObjectJsonCodec'""")))
+      """JSON DecodingFailure at : Unexpected JSON {"TYPE": "UNKNOWN", ...} for """ +
+         "js7.agent.data.AgentState.snapshotObjectJsonCodec: TypedJsonCodec[Object]")))
   }
 
   "Unknown TYPE for keyedEventJsonCodec" in {
     assert(AgentState.keyedEventJsonCodec
       .decodeJson(json"""{ "TYPE": "UNKNOWN" }""").toChecked == Left(Problem(
-      """JSON DecodingFailure at : Unexpected JSON {"TYPE": "UNKNOWN", ...} for class 'AgentState.Event'""")))
+      """JSON DecodingFailure at : Unexpected JSON {"TYPE": "UNKNOWN", ...} for """ +
+        "js7.agent.data.AgentState.keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event]")))
   }
 
   "applyEvent" in {

@@ -92,13 +92,17 @@ with Decoder[KeyedEvent[E]]
     else
       nameToClass.get(name)
 
-  override def toString = s"KeyedEventTypedJsonCodec[$printName]"
+  override def toString = printName
 }
 
 object KeyedEventTypedJsonCodec
 {
-  def apply[E <: Event: ClassTag](subtypes: KeyedSubtype[_ <: E]*): KeyedEventTypedJsonCodec[E] =
-    named[E](implicitClass[E].shortClassName, subtypes: _*)
+  def apply[E <: Event: ClassTag](subtypes: KeyedSubtype[_ <: E]*)
+    (implicit enclosing: sourcecode.Enclosing)
+  : KeyedEventTypedJsonCodec[E] =
+    named[E](
+      enclosing.value + ": KeyedEventTypedJsonCodec[" + implicitClass[E].shortClassName + "]",
+      subtypes: _*)
 
   def named[E <: Event: ClassTag](name: String, subtypes: KeyedSubtype[_ <: E]*)
   : KeyedEventTypedJsonCodec[E] =
@@ -146,14 +150,12 @@ object KeyedEventTypedJsonCodec
 
     def of[E <: Event: ClassTag](name: String)
       (implicit ke: Encoder[E#Key], kd: Decoder[E#Key], codec: TypedJsonCodec[E])
-    : KeyedSubtype[E] = {
+    : KeyedSubtype[E] =
       new KeyedSubtype[E](
         classToEncoder = codec.classToEncoder
           .mapValuesStrict(_ => KeyedEvent.jsonEncoder[E]),
         nameToDecoder = codec.nameToDecoder
           .mapValuesStrict(_ => KeyedEvent.jsonDecoder[E]),
-        nameToClass = codec.nameToClass + (name -> implicitClass[E])
-      )
-    }
+        nameToClass = codec.nameToClass + (name -> implicitClass[E]))
   }
 }

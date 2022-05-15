@@ -264,7 +264,7 @@ object OrderWatchState
 
   object VanishedOrArised {
     private[orderwatch] implicit val jsonCodec = TypedJsonCodec[VanishedOrArised](
-      Subtype.singleton(Vanished, aliases = Seq("VanishedAck")/*until v2.2.1*/),
+      Subtype.singleton(Vanished, aliases = Seq("VanishedAck")/*COMPATIBLE with v2.2.1*/),
       Subtype(deriveCodec[Arised]))
   }
 

@@ -24,12 +24,16 @@ final class TypedJsonCodecTest extends AnyFreeSpec
     intercept[UnknownClassForJsonException] {
       (NotRegistered(1): A).asJson(AJsonCodec)
     }.getMessage should include (
-      "Class 'TypedJsonCodecTest.NotRegistered' is not registered in TypedJsonCodec[TypedJsonCodecTest.A]")
+      "Class 'TypedJsonCodecTest.NotRegistered' is not registered in " +
+        "js7.base.circeutils.typed.TypedJsonCodecTest.AJsonCodec: " +
+        "TypedJsonCodec[TypedJsonCodecTest.A]")
   }
 
   "decode unknown subclass" in {
     assert(json"""{ "TYPE": "UNKNOWN" }""".as[A].toChecked == Left(Problem(
-      """JSON DecodingFailure at : Unexpected JSON {"TYPE": "UNKNOWN", ...} for class 'TypedJsonCodecTest.A'""")))
+      """JSON DecodingFailure at : Unexpected JSON {"TYPE": "UNKNOWN", ...} for """ +
+        "js7.base.circeutils.typed.TypedJsonCodecTest.AJsonCodec: " +
+        "TypedJsonCodec[TypedJsonCodecTest.A]")))
   }
 
   "Nested TypedJsonCodec" in {

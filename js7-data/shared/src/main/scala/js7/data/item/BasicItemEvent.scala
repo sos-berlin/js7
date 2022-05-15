@@ -155,7 +155,7 @@ object BasicItemEvent
       Subtype(deriveCodec[ItemDeleted]),
       Subtype(deriveEncoder[ItemAttachable], ItemAttachable.jsonDecoder),
       Subtype(deriveEncoder[ItemAttached], ItemAttached.jsonDecoder),
-      Subtype.withAliases(deriveCodec[ItemAttachedToMe], aliases = "ItemAttachedToAgent" :: Nil),
+      Subtype(deriveCodec[ItemAttachedToMe], aliases = "ItemAttachedToAgent" :: Nil),
       Subtype(SignedItemAttachedToMe.jsonCodec),
       Subtype(deriveEncoder[ItemDetachable], ItemDetachable.jsonDecoder),
       Subtype(ItemDetachingFromMe.jsonCodec),
