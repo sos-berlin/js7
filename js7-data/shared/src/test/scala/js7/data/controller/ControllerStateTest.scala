@@ -11,7 +11,7 @@ import js7.base.utils.Collections.RichMap
 import js7.base.utils.Collections.implicits._
 import js7.base.web.Uri
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
-import js7.data.board.{Board, BoardPath, BoardState, Notice, NoticeExpectation, NoticeId}
+import js7.data.board.{Board, BoardPath, BoardState, Notice, NoticeExpectation, NoticeId, NoticePlace}
 import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterStateSnapshot, ClusterTiming}
 import js7.data.controller.ControllerStateTest._
@@ -27,13 +27,14 @@ import js7.data.item.{ClientAttachments, InventoryItemKey, InventoryItemPath, It
 import js7.data.job.{JobResource, JobResourcePath, ShellScriptExecutable}
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.node.NodeId
+import js7.data.order.OrderEvent.OrderNoticesExpected
 import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.OrderWatchState.{HasOrder, Vanished}
 import js7.data.orderwatch.{AllOrderWatchesState, ExternalOrderKey, ExternalOrderName, FileWatch, OrderWatchPath, OrderWatchState}
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentSelection, SubagentSelectionId}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{Execute, ExpectNotice, LockInstruction}
+import js7.data.workflow.instructions.{Execute, ExpectNotices, LockInstruction}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tester.CirceJsonTester.testJson
@@ -301,7 +302,7 @@ final class ControllerStateTest extends AsyncFreeSpec
             "TYPE": "Silly",
             "signatureString": "SILLY-SIGNATURE"
           },
-          "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"versionId\":\"1.0\",\"instructions\":[{\"TYPE\":\"Lock\",\"lockPath\":\"LOCK\",\"lockedWorkflow\":{\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"AGENT\",\"subagentSelectionId\":\"SELECTION\",\"executable\":{\"TYPE\":\"ShellScriptExecutable\",\"script\":\"\"},\"jobResourcePaths\":[\"JOB-RESOURCE\"],\"parallelism\":1}}]}},{\"TYPE\":\"ExpectNotice\",\"boardPath\":\"BOARD\"}]}"
+          "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"versionId\":\"1.0\",\"instructions\":[{\"TYPE\":\"Lock\",\"lockPath\":\"LOCK\",\"lockedWorkflow\":{\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"AGENT\",\"subagentSelectionId\":\"SELECTION\",\"executable\":{\"TYPE\":\"ShellScriptExecutable\",\"script\":\"\"},\"jobResourcePaths\":[\"JOB-RESOURCE\"],\"parallelism\":1}}]}},{\"TYPE\":\"ExpectNotices\",\"boardPaths\":[\"BOARD\"]}]}"
         }
       }, {
         "TYPE": "ItemAttachable",
@@ -331,8 +332,13 @@ final class ControllerStateTest extends AsyncFreeSpec
         "TYPE": "Order",
         "id": "ORDER-EXPECTING-NOTICE",
         "state": {
-          "TYPE": "ExpectingNotice",
-          "noticeId": "NOTICE-2"
+          "TYPE": "ExpectingNotices",
+          "expected": [
+            {
+              "boardPath": "BOARD",
+              "noticeId": "NOTICE-2"
+            }
+          ]
         },
         "workflowPosition": {
           "position": [ 1 ],
@@ -359,7 +365,7 @@ final class ControllerStateTest extends AsyncFreeSpec
       .map(json => ControllerState.snapshotObjectJsonCodec.decodeJson(json).toChecked.orThrow)
       .foreach(builder.addSnapshotObject)
     builder.onAllSnapshotsAdded()
-    assert(builder.result() == controllerState)
+    assertEqual(builder.result(), controllerState)
   }
 
   "keyToItem" in {
@@ -471,8 +477,8 @@ object ControllerStateTest
   private val boardState = BoardState(
     board,
     Map(
-      notice.id -> notice,
-      noticeExpectation.id -> noticeExpectation))
+      notice.id -> NoticePlace(Some(notice)),
+      noticeExpectation.id -> NoticePlace(None, Some(noticeExpectation))))
 
   private val calendar = Calendar(
     CalendarPath("Calendar"),
@@ -488,7 +494,7 @@ object ControllerStateTest
       Execute(WorkflowJob(agentRef.path, ShellScriptExecutable(""),
         subagentSelectionId = Some(subagentSelection.id),
         jobResourcePaths = Seq(jobResource.path))))),
-    ExpectNotice(board.path)))
+    ExpectNotices(Seq(board.path))))
   private val signedWorkflow = itemSigner.sign(workflow)
   private[controller] val fileWatch = FileWatch(
     OrderWatchPath("WATCH"),
@@ -542,6 +548,7 @@ object ControllerStateTest
     Seq(
       Order(orderId, workflow.id /: Position(0), Order.Fresh,
         externalOrderKey = Some(ExternalOrderKey(fileWatch.path, ExternalOrderName("ORDER-NAME")))),
-      Order(expectingNoticeOrderId, workflow.id /: Position(1), Order.ExpectingNotice(noticeExpectation.id))
+      Order(expectingNoticeOrderId, workflow.id /: Position(1),
+        Order.ExpectingNotices(Vector(OrderNoticesExpected.Expected(board.path, noticeExpectation.id))))
     ).toKeyedMap(_.id))
 }

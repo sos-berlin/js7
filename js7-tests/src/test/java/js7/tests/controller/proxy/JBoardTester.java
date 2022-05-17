@@ -18,8 +18,6 @@ import js7.data.order.OrderEvent;
 import js7.data.order.OrderId;
 import js7.data.workflow.WorkflowPath;
 import js7.data_for_java.board.JBoard;
-import js7.data_for_java.board.JNotice;
-import js7.data_for_java.board.JNoticeExpectation;
 import js7.data_for_java.board.JNoticePlace;
 import js7.data_for_java.item.JUpdateItemOperation;
 import js7.data_for_java.order.JFreshOrder;
@@ -102,15 +100,14 @@ public class JBoardTester
             api.addOrders(Flux.just(JFreshOrder.of(posterOrderId, postingBoardWorkflowPath))));
 
         whenPosted.get(99, SECONDS);
-        JNoticePlace postedNotice =
-            proxy
+        JNoticePlace noticePlace = proxy
             .currentState()
             .pathToBoardState().get(board.path())
             .idToNotice(postedNoticeId)
             .get();
-        assert postedNotice instanceof JNotice;
-        assertThat(postedNotice.id(), equalTo(postedNoticeId));
-        assertThat(((JNotice)postedNotice).endOfLife(), Matchers.greaterThan(Instant.now()));
+        assert noticePlace.notice().isPresent();
+        assertThat(noticePlace.id(), equalTo(postedNoticeId));
+        assertThat(noticePlace.notice().get().endOfLife(), Matchers.greaterThan(Instant.now()));
     }
 
     private void testExpectedNotice() throws ExecutionException, InterruptedException, TimeoutException {
@@ -120,20 +117,19 @@ public class JBoardTester
         CompletableFuture<JEventAndControllerState<Event>> whenWaiting =
             awaitEvent(keyedEvent ->
                 keyedEvent.key().equals(expectingOrderId)
-                    && keyedEvent.event() instanceof OrderEvent.OrderNoticeExpected);
+                    && keyedEvent.event() instanceof OrderEvent.OrderNoticesExpected);
         await(
             api.addOrders(Flux.just(JFreshOrder.of(expectingOrderId, expectingBoardWorkflowPath))));
 
         whenWaiting.get(99, SECONDS);
-        JNoticePlace noticeExpectation =
+        JNoticePlace noticePlace =
             proxy
                 .currentState()
                 .pathToBoardState().get(board.path())
             .idToNotice(expectedNoticeId)
             .get();
-        assert noticeExpectation instanceof JNoticeExpectation;
-        assertThat(noticeExpectation.id(), equalTo(expectedNoticeId));
-        assertThat(((JNoticeExpectation)noticeExpectation).orderIds(),
+        assertThat(noticePlace.id(), equalTo(expectedNoticeId));
+        assertThat(noticePlace.expectation().get().orderIds(),
             equalTo(new HashSet<>(asList(expectingOrderId))));
     }
 

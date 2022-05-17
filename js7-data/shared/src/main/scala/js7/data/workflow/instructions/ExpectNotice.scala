@@ -1,20 +1,19 @@
 package js7.data.workflow.instructions
 
-import io.circe.generic.semiauto.deriveCodec
+import io.circe.generic.semiauto.deriveDecoder
+import js7.base.circeutils.typed.Subtype
 import js7.data.board.BoardPath
 import js7.data.source.SourcePos
 
+// COMPATIBLE with v2.3
+@deprecated("Use ExpectNotices", "2.4")
 final case class ExpectNotice(
   boardPath: BoardPath,
   sourcePos: Option[SourcePos] = None)
-extends BoardInstruction
-{
-  def withoutSourcePos = copy(sourcePos = None)
-
-  def boardPaths = Vector(boardPath)
-}
 
 object ExpectNotice
 {
-  implicit val jsonCodec = deriveCodec[ExpectNotice]
+  val compatibleSubtype: Subtype[ExpectNotices] =
+    Subtype.decodeCompatible(deriveDecoder[ExpectNotice])(expectNotice =>
+      ExpectNotices(Vector(expectNotice.boardPath), expectNotice.sourcePos))
 }

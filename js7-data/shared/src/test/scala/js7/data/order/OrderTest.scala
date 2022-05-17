@@ -14,8 +14,8 @@ import js7.data.board.{BoardPath, Notice, NoticeId, NoticeV2_3}
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.job.{InternalExecutable, JobKey}
 import js7.data.lock.LockPath
-import js7.data.order.Order.{Attached, AttachedState, Attaching, BetweenCycles, Broken, Cancelled, DelayedAfterError, Detaching, ExpectingNotice, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, InapplicableOrderEventProblem, IsFreshOrReady, Processed, Processing, ProcessingKilled, Prompting, Ready, State, WaitingForLock}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCatched, OrderCoreEvent, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLockAcquired, OrderLockDequeued, OrderLockQueued, OrderLockReleased, OrderMoved, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticeRead, OrderOrderAdded, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
+import js7.data.order.Order.{Attached, AttachedState, Attaching, BetweenCycles, Broken, Cancelled, DelayedAfterError, Detaching, ExpectingNotice, ExpectingNotices, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, InapplicableOrderEventProblem, IsFreshOrReady, Processed, Processing, ProcessingKilled, Prompting, Ready, State, WaitingForLock}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCatched, OrderCoreEvent, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLockAcquired, OrderLockDequeued, OrderLockQueued, OrderLockReleased, OrderMoved, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesExpected, OrderNoticesRead, OrderOrderAdded, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
 import js7.data.subagent.SubagentId
 import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -253,6 +253,22 @@ final class OrderTest extends AnyFreeSpec
           }""")
       }
 
+      "ExpectingNotices" in {
+        testJson[State](ExpectingNotices(Vector(
+          OrderNoticesExpected.Expected(
+            BoardPath("BOARD"),
+            NoticeId("NOTICE")))),
+          json"""{
+            "TYPE": "ExpectingNotices",
+            "expected": [
+              {
+                "boardPath": "BOARD",
+                "noticeId": "NOTICE"
+              }
+            ]
+          }""")
+      }
+
       "Prompting" in {
         testJson[State](Prompting(StringValue("QUESTION")),
           json"""{
@@ -373,8 +389,9 @@ final class OrderTest extends AnyFreeSpec
         NoticeV2_3(NoticeId("NOTICE"), endOfLife = Timestamp.ofEpochSecond(1))),
       OrderNoticePosted(
         Notice(NoticeId("NOTICE"), BoardPath("BOARD"), endOfLife = Timestamp.ofEpochSecond(1))),
-      OrderNoticeExpected(NoticeId("NOTICE")),
-      OrderNoticeRead,
+      OrderNoticesExpected(Vector(
+        OrderNoticesExpected.Expected(BoardPath("BOARD"), NoticeId("NOTICE")))),
+      OrderNoticesRead,
 
       OrderPrompted(StringValue("QUESTION")),
       OrderPromptAnswered(),
@@ -390,7 +407,9 @@ final class OrderTest extends AnyFreeSpec
 
     "Event list is complete" in {
       assert(allEvents.map(_.getClass).toVector.sortBy(_.getName) ==
-        OrderEvent.jsonCodec.classes[OrderCoreEvent].toVector.sortBy(_.getName))
+        OrderEvent.jsonCodec.classes[OrderCoreEvent]
+          .filter(_ != classOf[OrderNoticeExpected])
+          .toVector.sortBy(_.getName))
     }
 
     val IsDetached  = none[AttachedState]
@@ -461,8 +480,8 @@ final class OrderTest extends AnyFreeSpec
           case (_: OrderLockQueued       , _                 , _            , IsDetached             ) => _.isInstanceOf[WaitingForLock]
           case (_: OrderNoticePostedV2_3 , IsSuspended(false), _            , IsDetached             ) => _.isInstanceOf[Ready]
           case (_: OrderNoticePosted     , IsSuspended(false), _            , IsDetached             ) => _.isInstanceOf[Ready]
-          case (_: OrderNoticeExpected   , IsSuspended(false), _            , IsDetached             ) => _.isInstanceOf[ExpectingNotice]
-          case (_: OrderNoticeRead       , IsSuspended(false), _            , IsDetached             ) => _.isInstanceOf[Ready]
+          case (_: OrderNoticesExpected  , IsSuspended(false), _            , IsDetached             ) => _.isInstanceOf[ExpectingNotices]
+          case (_: OrderNoticesRead       , IsSuspended(false), _            , IsDetached             ) => _.isInstanceOf[Ready]
           case (_: OrderPrompted         , _                 , _            , IsDetached             ) => _.isInstanceOf[Prompting]
           case (_: OrderCyclingPrepared  , IsSuspended(false), _            , IsDetached | IsAttached) => _.isInstanceOf[BetweenCycles]
           case (_: OrderOrderAdded       , _                 , _            , IsDetached             ) => _.isInstanceOf[Ready]
@@ -484,14 +503,16 @@ final class OrderTest extends AnyFreeSpec
     }
 
     "ExpectingNotice" in {
-      checkAllEvents(Order(orderId, workflowId, ExpectingNotice(NoticeId("NOTICE"))),
-        deletionMarkable[ExpectingNotice] orElse
-        markable[ExpectingNotice] orElse
-        cancelMarkedAllowed[ExpectingNotice] orElse
-        suspendMarkedAllowed[ExpectingNotice] orElse {
-          case (_: OrderNoticeRead, IsSuspended(false), _, IsDetached) => _.isInstanceOf[Ready]
-          case (_: OrderCancelled , _                 , _, IsDetached) => _.isInstanceOf[Cancelled]
-          case (_: OrderBroken    , _                 , _, _         ) => _.isInstanceOf[Broken]
+      val expectingNotices = ExpectingNotices(Vector(
+        OrderNoticesExpected.Expected(BoardPath("BOARD"), NoticeId("NOTICE"))))
+      checkAllEvents(Order(orderId, workflowId, expectingNotices),
+        deletionMarkable[ExpectingNotices] orElse
+        markable[ExpectingNotices] orElse
+        cancelMarkedAllowed[ExpectingNotices] orElse
+        suspendMarkedAllowed[ExpectingNotices] orElse {
+          case (_: OrderNoticesRead, IsSuspended(false), _, IsDetached) => _.isInstanceOf[Ready]
+          case (_: OrderCancelled  , _                 , _, IsDetached) => _.isInstanceOf[Cancelled]
+          case (_: OrderBroken     , _                 , _, _         ) => _.isInstanceOf[Broken]
         })
     }
 

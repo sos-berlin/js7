@@ -19,7 +19,7 @@ import js7.data.subagent.SubagentId
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.{BranchId, Position}
-import js7.tester.CirceJsonTester.testJson
+import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 import org.scalactic.source
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
@@ -559,11 +559,35 @@ final class OrderEventTest extends AnyFreeSpec
       }""")
   }
 
+  "OrderNoticesExpected" in {
+    check(OrderNoticesExpected(Vector(
+      OrderNoticesExpected.Expected(BoardPath("BOARD"), NoticeId("NOTICE")))),
+      json"""
+      {
+        "TYPE": "OrderNoticesExpected",
+        "expected": [
+          {
+            "boardPath": "BOARD",
+            "noticeId": "NOTICE"
+          }
+        ]
+      }""")
+  }
+
+  // COMPATIBLE with v2.3
   "OrderNoticeRead" in {
-    check(OrderNoticeRead,
+    testJsonDecoder[OrderEvent](OrderNoticesRead,
       json"""
       {
         "TYPE": "OrderNoticeRead"
+      }""")
+  }
+
+  "OrderNoticesRead" in {
+    check(OrderNoticesRead,
+      json"""
+      {
+        "TYPE": "OrderNoticesRead"
       }""")
   }
 

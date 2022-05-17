@@ -19,8 +19,8 @@ import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedS
 import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItemEvent, InventoryItemKey, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, UnsignedSimpleItemEvent, VersionedEvent, VersionedItemId_}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath, LockState}
-import js7.data.order.Order.ExpectingNotice
-import js7.data.order.OrderEvent.{OrderAdded, OrderAddedX, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderForked, OrderJoined, OrderLockEvent, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePostedV2_3, OrderNoticeRead, OrderNoticePosted, OrderOrderAdded, OrderStdWritten}
+import js7.data.order.Order.ExpectingNotices
+import js7.data.order.OrderEvent.{OrderAdded, OrderAddedX, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderForked, OrderJoined, OrderLockEvent, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesExpected, OrderNoticesRead, OrderOrderAdded, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{AllOrderWatchesState, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState}
 import js7.data.state.StateView
@@ -107,7 +107,21 @@ with StateView
       order.state match {
         case Order.ExpectingNotice(noticeId) =>
           val boardState = workflowPositionToBoardState(order.workflowPosition).orThrow
-          _pathToBoardState += boardState.path -> boardState.addExpectation(order.id, noticeId).orThrow
+          _pathToBoardState += boardState.path -> boardState.addExpectation(noticeId, order.id).orThrow
+
+          // Change ExpectingNotice (Orders of v2.3) to ExpectingNotices
+          _idToOrder.update(order.id, order.copy(
+            state = Order.ExpectingNotices(Vector(
+              OrderNoticesExpected.Expected(boardState.path, noticeId)))))
+
+        case Order.ExpectingNotices(expectedSeq) =>
+          _pathToBoardState ++= expectedSeq
+            .map(expected => expected.boardPath ->
+              pathToBoardState
+                .checked(expected.boardPath)
+                .flatMap(_.addExpectation(expected.noticeId, order.id))
+                .orThrow)
+
         case _ =>
       }
 
@@ -360,19 +374,32 @@ with StateView
           event match {
             case OrderNoticePostedV2_3(noticeV2_3) =>
               val boardState = orderIdToBoardState(orderId).orThrow
-              _pathToBoardState += boardState.path ->
-                boardState.addNotice(noticeV2_3.toNotice(boardState.path)).orThrow
+              _pathToBoardState.update(
+                boardState.path,
+                boardState.addNotice(noticeV2_3.toNotice(boardState.path)).orThrow)
 
             case OrderNoticePosted(notice) =>
               val boardState = pathToBoardState.checked(notice.boardPath).orThrow
-              _pathToBoardState += notice.boardPath -> boardState.addNotice(notice).orThrow
+              _pathToBoardState.update(
+                notice.boardPath,
+                boardState.addNotice(notice).orThrow)
 
             case OrderNoticeExpected(noticeId) =>
               val boardState = orderIdToBoardState(orderId).orThrow
               pathToBoardState +=
-                boardState.path -> boardState.addExpectation(orderId, noticeId).orThrow
+                boardState.path -> boardState.addExpectation(noticeId, orderId).orThrow
 
-            case OrderNoticeRead =>
+            case OrderNoticesExpected(expectedSeq) =>
+              for (expected <- expectedSeq) {
+                pathToBoardState.update(
+                  expected.boardPath,
+                  pathToBoardState.checked(expected.boardPath)
+                    .flatMap(_.addExpectation(expected.noticeId, orderId))
+                    .orThrow)
+              }
+
+            case OrderNoticesRead =>
+              removeNoticeExpectation(orderId)
           }
 
           _idToOrder(orderId) = _idToOrder(orderId).applyEvent(event).orThrow
@@ -383,14 +410,7 @@ with StateView
 
           event match {
             case _: OrderCancelled =>
-              for (order <- order.ifState[ExpectingNotice]) {
-                for {
-                  boardState <- orderIdToBoardState(orderId)
-                  updatedBoardState <- boardState.removeExpectation(orderId, order.state.noticeId)
-                } {
-                  _pathToBoardState(boardState.path) = updatedBoardState
-                }
-              }
+              removeNoticeExpectation(order.id)
 
             case _: OrderDeleted =>
               for (externalOrderKey <- order.externalOrderKey) {
@@ -418,7 +438,7 @@ with StateView
 
     case Stamped(_, _, KeyedEvent(boardPath: BoardPath, NoticeDeleted(noticeId))) =>
       for (boardState <- _pathToBoardState.get(boardPath)) {
-        _pathToBoardState(boardState.path) = boardState.deleteNotice(noticeId).orThrow
+        _pathToBoardState(boardState.path) = boardState.removeNotice(noticeId).orThrow
       }
 
     case Stamped(_, _, KeyedEvent(_, _: ControllerShutDown)) =>
@@ -462,6 +482,16 @@ with StateView
         }
 
       case _ =>
+    }
+
+  private def removeNoticeExpectation(orderId: OrderId): Unit =
+    for (order <- _idToOrder(orderId).ifState[ExpectingNotices]) {
+      for (expected <- order.state.expected) {
+        val boardState = pathToBoardState.checked(expected.boardPath).orThrow
+        for (updatedBoardState <- boardState.removeExpectation(expected.noticeId, orderId)) {
+          _pathToBoardState(boardState.path) = updatedBoardState
+        }
+      }
     }
 
   def result() =

@@ -31,8 +31,8 @@ import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedS
 import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemPath, ItemAttachedState, ItemRevision, Repo, SignableItem, SignableItemKey, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, SimpleItem, SimpleItemPath, UnsignedSimpleItem, UnsignedSimpleItemEvent, VersionedEvent, VersionedItemId_, VersionedItemPath}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath, LockState}
-import js7.data.order.Order.ExpectingNotice
-import js7.data.order.OrderEvent.{OrderAdded, OrderAddedX, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderForked, OrderJoined, OrderLockEvent, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePostedV2_3, OrderNoticeRead, OrderNoticePosted, OrderOrderAdded, OrderStdWritten}
+import js7.data.order.Order.ExpectingNotices
+import js7.data.order.OrderEvent.{OrderAdded, OrderAddedX, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderForked, OrderJoined, OrderLockEvent, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesExpected, OrderNoticesRead, OrderOrderAdded, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{AllOrderWatchesState, FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState}
 import js7.data.state.StateView
@@ -84,7 +84,7 @@ with SnapshotableState[ControllerState]
     idToSubagentSelection.size +
     pathToLockState.size +
     pathToBoardState.values.size +
-    pathToBoardState.values.view.map(_.notices.size).sum +
+    pathToBoardState.values.view.map(_.noticeCount).sum +
     pathToCalendar.values.size +
     allOrderWatchesState.estimatedSnapshotSize +
     pathToSignedSimpleItem.size +
@@ -379,21 +379,34 @@ with SnapshotableState[ControllerState]
                       case OrderNoticePostedV2_3(notice) =>
                         orderIdToBoardState(orderId)
                           .flatMap(boardState => boardState.addNoticeV2_3(notice))
-                          .map(Some(_))
+                          .map(_ :: Nil)
 
                       case OrderNoticePosted(notice) =>
                         pathToBoardState
                           .checked(notice.boardPath)
                           .flatMap(_.addNotice(notice))
-                          .map(Some(_))
+                          .map(_ :: Nil)
 
                       case OrderNoticeExpected(noticeId) =>
                         orderIdToBoardState(orderId)
-                          .flatMap(_.addExpectation(orderId, noticeId))
-                          .map(Some(_))
+                          .flatMap(_.addExpectation(noticeId, orderId))
+                          .map(_ :: Nil)
 
-                      case OrderNoticeRead =>
-                        Right(None)
+                      case OrderNoticesExpected(expectedSeq) =>
+                        expectedSeq.traverse(expected =>
+                          pathToBoardState
+                          .checked(expected.boardPath)
+                          .flatMap(_.addExpectation(expected.noticeId, orderId)))
+
+                      case OrderNoticesRead =>
+                        previousOrder.ifState[Order.ExpectingNotices] match {
+                          case None => Right(Nil)
+                          case Some(previousOrder) =>
+                            previousOrder.state.expected
+                              .traverse(expected =>
+                                pathToBoardState.checked(expected.boardPath)
+                                  .flatMap(_.removeExpectation(expected.noticeId, orderId)))
+                        }
                     }
                   .map(updatedBoardStates => copy(
                     pathToBoardState = pathToBoardState ++ updatedBoardStates.map(o => o.path -> o),
@@ -401,14 +414,18 @@ with SnapshotableState[ControllerState]
 
               case _: OrderCancelled =>
                 previousOrder
-                  .ifState[ExpectingNotice].map(order =>
+                  .ifState[ExpectingNotices].map(order =>
                     for {
-                      boardState <- orderIdToBoardState(orderId)
-                      updatedBoardState <- boardState.removeExpectation(orderId, order.state.noticeId)
+                      pairs <- order.state.expected.traverse(exp =>
+                        pathToBoardState.checked(exp.boardPath).map(_ -> exp.noticeId))
+                      updatedBoardStates <- pairs
+                        .traverse { case (boardState, noticeId) =>
+                          boardState.removeExpectation(noticeId, orderId)
+                        }
                     } yield
                       copy(
                         idToOrder = updatedIdToOrder,
-                        pathToBoardState = pathToBoardState + (boardState.path -> updatedBoardState)))
+                        pathToBoardState = pathToBoardState ++ updatedBoardStates.map(o => o.path -> o)))
                   .getOrElse(
                     Right(copy(
                       idToOrder = updatedIdToOrder)))
@@ -450,7 +467,7 @@ with SnapshotableState[ControllerState]
     case KeyedEvent(boardPath: BoardPath, NoticeDeleted(noticeId)) =>
       for {
         boardState <- pathToBoardState.checked(boardPath)
-        o <- boardState.deleteNotice(noticeId)
+        o <- boardState.removeNotice(noticeId)
       } yield copy(
         pathToBoardState = pathToBoardState + (o.path -> o))
 

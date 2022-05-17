@@ -375,13 +375,17 @@ final case class Order[+S <: Order.State](
         check(isDetached && isState[Ready] && !isSuspended,
           this)  // TODO Recoverable ?
 
+      // FIXME Convert v2.3 OrderNoticeExpected event in ControllerStateBuilder
       case OrderNoticeExpected(noticeId) =>
+        throw new NotImplementedError("Order.OrderNoticeExpected")
+
+      case OrderNoticesExpected(expectedSeq) =>
         check(isDetached && isState[Ready] && !isSuspended,
           copy(
-            state = ExpectingNotice(noticeId)))
+            state = ExpectingNotices(expectedSeq)))
 
-      case OrderNoticeRead =>
-        check(isDetached && (isState[Ready] || isState[ExpectingNotice]) && !isSuspended,
+      case OrderNoticesRead =>
+        check(isDetached && (isState[Ready] || isState[ExpectingNotices]) && !isSuspended,
           copy(
             state = Ready))
 
@@ -572,7 +576,7 @@ final case class Order[+S <: Order.State](
      isState[ProcessingKilled] ||
      isState[WaitingForLock] ||
      isState[Prompting] ||
-     isState[ExpectingNotice] ||
+     isState[ExpectingNotices] ||
      isState[BetweenCycles] ||
      isState[FailedWhileFresh] ||
      isState[DelayedAfterError] ||
@@ -683,7 +687,8 @@ object Order
       Subtype(FailedWhileFresh),
       Subtype(deriveCodec[Forked]),
       Subtype(WaitingForLock),
-      Subtype(deriveCodec[ExpectingNotice]),
+      Subtype(deriveCodec[ExpectingNotice]), // Is being converted to ExpectingNotices
+      Subtype(deriveCodec[ExpectingNotices]),
       Subtype(deriveCodec[BetweenCycles]),
       Subtype(Failed),
       Subtype(FailedInFork),
@@ -749,7 +754,11 @@ object Order
   case object WaitingForLock
   extends IsStarted
 
+  // COMPATIBLE with v2.3, only used for JSON deserialization
   final case class ExpectingNotice(noticeId: NoticeId)
+  extends IsStarted
+
+  final case class ExpectingNotices(expected: Vector[OrderNoticesExpected.Expected])
   extends IsStarted
 
   final case class Prompting(question: Value)

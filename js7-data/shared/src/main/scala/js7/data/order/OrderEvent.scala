@@ -12,7 +12,7 @@ import js7.base.utils.Big
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.typeclasses.IsEmpty.syntax._
 import js7.data.agent.AgentPath
-import js7.data.board.{Notice, NoticeId, NoticeV2_3}
+import js7.data.board.{BoardPath, Notice, NoticeId, NoticeV2_3}
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.event.Event
 import js7.data.lock.LockPath
@@ -259,11 +259,25 @@ object OrderEvent
     implicit val jsonEncoder = deriveEncoder[OrderNoticePosted]
   }
 
+  // COMPATIBLE with v2.3
   final case class OrderNoticeExpected(noticeId: NoticeId)
   extends OrderNoticeEvent
 
-  type OrderNoticeRead = OrderNoticeRead.type
-  case object OrderNoticeRead
+  final case class OrderNoticesExpected(expected: Vector[OrderNoticesExpected.Expected])
+  extends OrderNoticeEvent
+  object OrderNoticesExpected {
+    final case class Expected(boardPath: BoardPath, noticeId: NoticeId)
+    {
+      def matches(notice: Notice): Boolean =
+        boardPath == notice.boardPath && noticeId == notice.id
+    }
+    object Expected {
+      implicit val jsonCodec = deriveCodec[Expected]
+    }
+  }
+
+  type OrderNoticesRead = OrderNoticesRead.type
+  case object OrderNoticesRead
   extends OrderNoticeEvent
 
   type OrderProcessingKilled = OrderProcessingKilled.type
@@ -520,7 +534,8 @@ object OrderEvent
       classOf[OrderNoticePostedV2_3],
       classOf[OrderNoticePosted])),
     Subtype(deriveCodec[OrderNoticeExpected]),
-    Subtype(OrderNoticeRead),
+    Subtype(deriveCodec[OrderNoticesExpected]),
+    Subtype.singleton(OrderNoticesRead, aliases = Seq("OrderNoticeRead")),
     Subtype(deriveCodec[OrderPrompted]),
     Subtype(deriveCodec[OrderPromptAnswered]),
     Subtype(deriveCodec[OrderCyclingPrepared]),

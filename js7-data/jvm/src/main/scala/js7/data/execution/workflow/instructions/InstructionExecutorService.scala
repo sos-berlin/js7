@@ -33,7 +33,7 @@ final class InstructionExecutorService(val clock: WallClock)
       new TryExecutor(this),
       lockExecutor,
       new PostNoticesExecutor(this),
-      new ExpectNoticeExecutor(this),
+      new ExpectNoticesExecutor(this),
       new PromptExecutor(this),
       new RetryExecutor(this),
       new AddOrderExecutor(this),

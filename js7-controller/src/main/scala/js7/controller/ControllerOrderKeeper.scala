@@ -62,7 +62,7 @@ import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemEvent}
 import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, ItemAddedOrChanged, SignableItemKey, UnsignedSimpleItemPath}
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderMoved, OrderNoticePostedV2_3, OrderNoticeRead, OrderNoticePosted, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderMoved, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesRead, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath}
 import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
@@ -751,7 +751,7 @@ with MainJournalingActor[ControllerState, Event]
             val events = View(NoticePosted.toKeyedEvent(notice)) ++
               expectingOrders.view
                 .flatMap(o => View(
-                  o.id <-: OrderNoticeRead,
+                  o.id <-: OrderNoticesRead,
                   o.id <-: OrderMoved(o.position.increment)))
             persistTransactionAndSubsequentEvents(events.toVector)(
               handleEvents

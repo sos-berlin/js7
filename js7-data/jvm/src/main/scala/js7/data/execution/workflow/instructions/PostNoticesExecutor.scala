@@ -3,7 +3,7 @@ package js7.data.execution.workflow.instructions
 import cats.syntax.traverse._
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.order.Order
-import js7.data.order.OrderEvent.{OrderMoved, OrderNoticePosted, OrderNoticeRead}
+import js7.data.order.OrderEvent.{OrderMoved, OrderNoticePosted, OrderNoticesRead}
 import js7.data.state.StateView
 import js7.data.workflow.instructions.PostNotices
 import scala.collection.View
@@ -35,8 +35,17 @@ extends EventInstructionExecutor
               .map(order.id <-: OrderNoticePosted(_))
               .appended(order.id <-: OrderMoved(order.position.increment))
               .concat(expectingOrders
+                .filter(o =>
+                  state.idToOrder.get(o.id)
+                    .flatMap(_.ifState[Order.ExpectingNotices])
+                    .fold(false)(_.state.expected
+                      .forall(expected =>
+                        notices.exists(expected.matches) ||
+                          state.pathToBoardState
+                            .get(expected.boardPath)
+                            .exists(_.containsNotice(expected.noticeId)))))
                 .flatMap(o => View(
-                  o.id <-: OrderNoticeRead,
+                  o.id <-: OrderNoticesRead,
                   o.id <-: OrderMoved(o.position.increment))))
               .toList
         } else
