@@ -537,6 +537,8 @@ with SnapshotableState[ControllerState]
 
   private def checkVersionedItemIsDeletable(path: VersionedItemPath): Checked[Unit] =
     referencingItemKeys(path)
+      .toVector
+      .sortBy(_.path)
       .map(ItemIsStillReferencedProblem(path, _))
       .reduceLeftOption(Problem.combine)
       .toLeft(())
@@ -555,6 +557,8 @@ with SnapshotableState[ControllerState]
         case path: SimpleItemPath => !otherDeleted.contains(path)
         case _ => true
       }
+      .toVector
+      .sortBy(_.path)
       .map(ItemIsStillReferencedProblem(path, _))
       .reduceLeftOption(Problem.combine)
       .toLeft(())

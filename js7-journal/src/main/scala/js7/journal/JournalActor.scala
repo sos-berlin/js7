@@ -675,22 +675,25 @@ extends Actor with Stash with JournalLogging
 
       // Check recoverability
       implicit val s = scheduler
-      assertEqualSnapshotState("recovered", uncommittedState.toRecovered.runSyncUnsafe(99.s))
+      assertEqualSnapshotState("toRecovered", uncommittedState.toRecovered.runSyncUnsafe(99.s),
+        stampedEvents)
 
       val builder = S.newBuilder()
       builder.initializeState(None, uncommittedState.eventId, totalEventCount, uncommittedState)
       assertEqualSnapshotState("Builder.initializeState",
-        builder.result().withEventId(uncommittedState.eventId))
+        builder.result().withEventId(uncommittedState.eventId),
+        stampedEvents)
     }
 
-  private def assertEqualSnapshotState(what: String, snapshotState: S, stampedSeq: Seq[Stamped[AnyKeyedEvent]] = Nil)
+  private def assertEqualSnapshotState(what: String, couldBeRecoveredState: S,
+    stampedSeq: Seq[Stamped[AnyKeyedEvent]] = Nil)
   : Unit =
-    if (snapshotState != uncommittedState) {
+    if (couldBeRecoveredState != uncommittedState) {
       var msg = s"$what does not match actual '$S'"
       logger.error(msg)
       for (stamped <- stampedSeq) logger.error(stamped.toString.truncateWithEllipsis(200))
       // msg may get very big
-      msg ++= s":\n" ++ diffx.compare(snapshotState, uncommittedState).show()
+      msg ++= s":\n" ++ diffx.compare(couldBeRecoveredState, uncommittedState).show()
       logger.info(msg)  // Without colors because msg is already colored
       throw new AssertionError(msg)
     }
