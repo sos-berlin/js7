@@ -52,6 +52,7 @@ object JournalConfTest
        snapshot.log-period = 4s
        snapshot.period = 7h
        snapshot.when-bigger-than = 8G
+       snapshot.estimate-event-threshold = 1000
        persist-warn-durations = [ 20s, 30s ]
        remove-obsolete-files = true
        users-allowed-to-release-events = []
@@ -66,6 +67,7 @@ object JournalConfTest
     coalesceEventLimit = 6,
     snapshotPeriod = 7.h,
     snapshotSizeLimit = 8*1000*1000*1000L,
+    snapshotSizeEstimateEventThreshold = 1000L,
     ackWarnDurations = List(10.s, 15.s),
     persistWarnDurations = List(20.s, 30.s),
     deleteObsoleteFiles = true,

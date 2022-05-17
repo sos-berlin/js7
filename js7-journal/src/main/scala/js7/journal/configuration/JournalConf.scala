@@ -17,6 +17,7 @@ final case class JournalConf(
   coalesceEventLimit: Int,
   snapshotPeriod: FiniteDuration,
   snapshotSizeLimit: Long,
+  snapshotSizeEstimateEventThreshold: Long,
   ackWarnDurations: Seq[FiniteDuration],
   persistWarnDurations: Seq[FiniteDuration],
   deleteObsoleteFiles: Boolean,
@@ -42,6 +43,8 @@ object JournalConf
       coalesceEventLimit = config.as[Int]("js7.journal.coalesce-event-limit"),  // TODO Limit byte count to avoid OutOfMemoryError?
       snapshotPeriod = config.getDuration("js7.journal.snapshot.period").toFiniteDuration,
       snapshotSizeLimit = config.as("js7.journal.snapshot.when-bigger-than")(StringAsByteCountWithDecimalPrefix),
+      snapshotSizeEstimateEventThreshold = config.as(
+        "js7.journal.snapshot.estimate-event-threshold")(StringAsByteCountWithDecimalPrefix),
       ackWarnDurations = config.getDurationList("js7.journal.log.ack-warn-durations")
         .asScala.toSeq.map(_.toFiniteDuration),
       persistWarnDurations = config.getDurationList("js7.journal.persist-warn-durations")

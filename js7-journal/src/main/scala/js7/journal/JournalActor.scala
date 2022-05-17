@@ -80,6 +80,8 @@ extends Actor with Stash with JournalLogging
   private val delayedCommit = SerialCancelable()
   private var totalEventCount = 0L
   private var fileEventCount = 0L
+  private var lastSnapshotSizeEventCount = 0L
+  private var lastSnapshotSize = -1L
   private var requireClusterAcknowledgement = false
   private var releaseEventIdsAfterClusterCoupledAck: Option[EventId] = None
   private val waitingForAcknowledgeTimer = SerialCancelable()
@@ -454,7 +456,7 @@ extends Actor with Stash with JournalLogging
   private def maybeDoASnapshot(): Unit = {
     if (snapshotRequesters.isEmpty &&
       eventWriter.bytesWritten >= conf.snapshotSizeLimit &&
-      fileEventCount >= 2 * committedState.estimatedSnapshotSize)
+      fileEventCount >= 2 * estimatedSnapshotSize)
     {
       logger.debug(s"Take snapshot because written size ${toKBGB(eventWriter.bytesWritten)} is above the limit ${toKBGB(conf.snapshotSizeLimit)}")
       snapshotRequesters += self
@@ -467,6 +469,14 @@ extends Actor with Stash with JournalLogging
         }
       }
     }
+  }
+
+  private def estimatedSnapshotSize = {
+    if (fileEventCount > lastSnapshotSizeEventCount + conf.snapshotSizeEstimateEventThreshold) {
+      lastSnapshotSizeEventCount = fileEventCount
+      lastSnapshotSize = committedState.estimatedSnapshotSize
+    }
+    lastSnapshotSize
   }
 
   private def reply(sender: ActorRef, replyTo: ActorRef, msg: Any): Unit =
