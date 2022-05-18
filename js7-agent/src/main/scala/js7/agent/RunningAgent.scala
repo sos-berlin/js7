@@ -195,14 +195,6 @@ object RunningAgent {
 
       val gateKeeperConf = injector.instance[GateKeeper.Configuration[SimpleUser]]
 
-      val webServer = AgentWebServer(
-        agentConfiguration,
-        gateKeeperConf,
-        injector.instance[SessionRegister[SimpleSession]],
-        injector.instance[ClusterWatchRegister],
-        persistence.eventWatch
-      ).closeWithCloser(closer)
-
       val mainActorReadyPromise = Promise[MainActor.Ready]()
       val terminationPromise = Promise[ProgramTermination]()
       val mainActor = actorSystem.actorOf(
@@ -219,7 +211,15 @@ object RunningAgent {
       val task = for {
         ready <- Task.fromFuture(mainActorReadyPromise.future)
         api = ready.api
-        _ <- webServer.start(api)
+        webServer = AgentWebServer(
+          agentConfiguration,
+          gateKeeperConf,
+          api,
+          injector.instance[SessionRegister[SimpleSession]],
+          injector.instance[ClusterWatchRegister],
+          persistence.eventWatch
+        ).closeWithCloser(closer)
+        _ <- webServer.start
         sessionToken <- sessionRegister.placeSessionTokenInDirectoryLegacy(
           SimpleUser.System,
           agentConfiguration.workDirectory,

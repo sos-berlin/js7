@@ -55,7 +55,7 @@ trait AkkaWebServer extends AutoCloseable
   /**
    * @return Future, completed when Agent has been started and is running.
    */
-  def start: Task[Completed] =
+  final def start: Task[Completed] =
     Task.deferAction { scheduler =>
       shutdownTimeout
       this.scheduler := scheduler  // For close()
@@ -190,7 +190,7 @@ object AkkaWebServer
       config.withFallback(testConfig),
       (_, whenTerminating) => Task.pure(BoundRoute(route, whenTerminating)))
 
-  class Standard(
+  final class Standard(
     protected val bindings: Seq[WebServerBinding],
     protected val config: Config,
     route: (WebServerBinding, Future[Deadline]) => Task[BoundRoute])

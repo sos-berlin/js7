@@ -4,8 +4,6 @@ import akka.actor.ActorSystem
 import js7.agent.DirectAgentApi
 import js7.agent.configuration.AgentConfiguration
 import js7.base.auth.SimpleUser
-import js7.base.generic.Completed
-import js7.base.utils.SetOnce
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
@@ -19,13 +17,12 @@ object AgentWebServer
   def apply(
     agentConfiguration: AgentConfiguration,
     gateKeeperConfiguration: GateKeeper.Configuration[SimpleUser],
+    api: CommandMeta => DirectAgentApi,
     sessionRegister: SessionRegister[SimpleSession],
     clusterWatchRegister: ClusterWatchRegister,
     eventWatch: EventWatch)
     (implicit actorSystem: ActorSystem)
-  : AkkaWebServer with AkkaWebServer.HasUri with StartableWithApi = {
-    val apiOnce = SetOnce[CommandMeta => DirectAgentApi]
-
+  : AkkaWebServer with AkkaWebServer.HasUri =
     new AkkaWebServer.Standard(
       agentConfiguration.webServerBindings,
       agentConfiguration.config,
@@ -34,23 +31,10 @@ object AgentWebServer
           new AgentBoundRoute(
             binding,
             whenShuttingDown,
-            apiOnce.orThrow,
+            api,
             agentConfiguration,
             gateKeeperConfiguration,
             sessionRegister,
             clusterWatchRegister,
             eventWatch))))
-      with StartableWithApi
-      {
-        def start(api: CommandMeta => DirectAgentApi) =
-          Task.defer {
-            apiOnce := api
-            super.start
-          }
-      }
-  }
-
-  sealed trait StartableWithApi {
-    def start(api: CommandMeta => DirectAgentApi): Task[Completed]
-  }
 }

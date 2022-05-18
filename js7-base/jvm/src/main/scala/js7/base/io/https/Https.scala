@@ -37,7 +37,10 @@ object Https
 
   logger.debug("algorithm=" + algorithm)
 
-  def loadSSLContext(keyStoreRef: Option[KeyStoreRef] = None, trustStoreRefs: Seq[TrustStoreRef] = Nil): SSLContext = {
+  def loadSSLContext(
+    keyStoreRef: Option[KeyStoreRef] = None,
+    trustStoreRefs: Seq[TrustStoreRef] = Nil)
+  : SSLContext = {
     val keyManagers = keyStoreRef match {
       case None => Array.empty[KeyManager]
       case Some(ref) =>
@@ -47,34 +50,40 @@ object Https
           factory.init(keyStore, _))
         factory.getKeyManagers
     }
-    val trustManagers = trustStoreRefs.view.flatMap { trustStoreRef =>
-      val factory = TrustManagerFactory.getInstance(algorithm)
-      factory.init(loadKeyStore(trustStoreRef, "trust"))
-      factory.getTrustManagers
-    }.collect {
-      case o: X509TrustManager => Some(o)
-      case o =>
-        logger.debug(s"Ignoring unknown TrustManager: ${o.getClass.getName} $o")
-        None
-    }.flatten
-      .toSeq
+    val trustManagers = trustStoreRefs
+      .flatMap { trustStoreRef =>
+        val factory = TrustManagerFactory.getInstance(algorithm)
+        factory.init(loadKeyStore(trustStoreRef, "trust"))
+        factory.getTrustManagers
+      }
+      .collect {
+        case o: X509TrustManager => Some(o)
+        case o =>
+          logger.debug(s"Ignoring unknown TrustManager: ${o.getClass.getName} $o")
+          None
+      }
+      .flatten
     val sslContext = SSLContext.getInstance("TLS")
     sslContext.init(keyManagers, Array(CompositeX509TrustManager(trustManagers)), null)
     sslContext
   }
 
-  private[https] def loadKeyStore(storeRef: StoreRef, kind: String): KeyStore = {
+  private def loadKeyStore(storeRef: StoreRef, kind: String): KeyStore =
     autoClosing(storeRef.url.openStream())(
       loadKeyStoreFromInputStream(_, storeRef.storePassword, storeRef.url.toString, kind))
-  }
 
-  private[https] def loadKeyStoreFromInputStream(in: InputStream, password: SecretString, sourcePath: String, kind: String)
+  private[https] def loadKeyStoreFromInputStream(
+    in: InputStream,
+    password: SecretString,
+    sourcePath: String,
+    kind: String)
   : KeyStore = {
     val sizeLimit = 10_000_000
     val keyStore =
       try {
         val content = ByteArray.fromInputStreamLimited(in, sizeLimit)
-            .getOrElse(throw new RuntimeException(s"Certificate store must have more than $sizeLimit bytes: $sourcePath"))
+          .getOrElse(throw new RuntimeException(
+            s"Certificate store must have more than $sizeLimit bytes: $sourcePath"))
         if (content startsWith PemHeader)
           pemToKeyStore(content.toInputStream,
             name = sourcePath.replace('\\', '/').indexOf('/') match {
@@ -98,7 +107,8 @@ object Https
   }
 
   private def log(keyStore: KeyStore, sourcePath: String, kind: String): Unit = {
-    val iterator = keyStore.aliases.asScala.flatMap(a => Option(keyStore.getCertificate(a)) map a.->)
+    val iterator = keyStore.aliases.asScala
+      .flatMap(a => Option(keyStore.getCertificate(a)).map(a -> _))
     if (iterator.isEmpty) {
       logger.warn(s"Loaded empty $kind keystore $sourcePath")
     } else {
