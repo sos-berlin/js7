@@ -23,22 +23,22 @@ private[order] final class WorkflowRegister(agentPath: AgentPath) {
   def idToWorkflow: PartialFunction[WorkflowId, Workflow] = _idToWorkflow
 
   def recover(workflow: Workflow): Unit = {
-    _idToWorkflow.insert(workflow.id -> workflow)
+    _idToWorkflow.insert(workflow.id, workflow)
   }
 
   def recover(signed: Signed[Workflow]): Unit = {
     val workflow = signed.value
-    _idToWorkflow.insert(workflow.id -> workflow.reduceForAgent(agentPath))
+    _idToWorkflow.insert(workflow.id, workflow.reduceForAgent(agentPath))
   }
 
   def handleEvent(keyedEvent: KeyedEvent[BasicItemEvent], reducedWorkflow: Workflow): Unit = {
     keyedEvent.event match {
       case SignedItemAttachedToMe(Signed(_: Workflow, _)) =>
-        _idToWorkflow += reducedWorkflow.id -> reducedWorkflow.reduceForAgent(agentPath)
+        _idToWorkflow.update(reducedWorkflow.id, reducedWorkflow.reduceForAgent(agentPath))
 
       // COMPATIBLE with v2.1
       case ItemAttachedToMe(workflow: Workflow) =>
-        _idToWorkflow += workflow.id -> reducedWorkflow
+        _idToWorkflow.update(workflow.id, reducedWorkflow)
 
       //case ItemDetached(workflowId: WorkflowId, _) =>
       //  _idToWorkflow -= workflowId

@@ -56,7 +56,7 @@ extends Actor {
       if (!isEternalSession) {
         session.touch(sessionTimeout)
       }
-      tokenToSession.insert(session.sessionToken -> session)
+      tokenToSession.insert(session.sessionToken, session)
 
       logger.info(s"${session.sessionToken} for ${user.id}: Login" +
         clientVersion.fold("")(v =>

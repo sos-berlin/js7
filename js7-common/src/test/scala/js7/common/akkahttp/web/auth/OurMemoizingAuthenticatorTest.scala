@@ -15,7 +15,7 @@ final class OurMemoizingAuthenticatorTest extends AnyFreeSpec
 {
   private val accessCounter = mutable.Map[UserId, Int]()
   private lazy val authenticator = new OurMemoizingAuthenticator[SimpleUser](userId => {
-    accessCounter.put(userId, accessCounter.getOrElse(userId, 0) + 1)
+    accessCounter.update(userId, accessCounter.getOrElse(userId, 0) + 1)
     userId match {
       case AUser.id => Some(AUser)
       case BUser.id => Some(BUser)

@@ -102,7 +102,7 @@ with StateView
 
   protected def onAddSnapshotObject = {
     case order: Order[Order.State] =>
-      _idToOrder.insert(order.id -> order)
+      _idToOrder.insert(order.id, order)
 
       order.state match {
         case Order.ExpectingNotice(noticeId) =>
@@ -131,25 +131,25 @@ with StateView
     case agentRefState: AgentRefState =>
       val (agentRef, maybeSubagentItem) = agentRefState.agentRef.convertFromV2_1.orThrow
 
-      _pathToAgentRefState.insert(agentRef.path -> agentRefState.copy(agentRef = agentRef))
+      _pathToAgentRefState.insert(agentRef.path, agentRefState.copy(agentRef = agentRef))
       for (subagentItem <- maybeSubagentItem) {
-        _idToSubagentItemState.insert(subagentItem.id -> SubagentItemState.initial(subagentItem))
+        _idToSubagentItemState.insert(subagentItem.id, SubagentItemState.initial(subagentItem))
       }
 
     case subagentItemState: SubagentItemState =>
-      _idToSubagentItemState.insert(subagentItemState.subagentId -> subagentItemState)
+      _idToSubagentItemState.insert(subagentItemState.subagentId, subagentItemState)
 
     case subagentSelection: SubagentSelection =>
-      _idToSubagentSelection.insert(subagentSelection.id -> subagentSelection)
+      _idToSubagentSelection.insert(subagentSelection.id, subagentSelection)
 
     case lockState: LockState =>
-      _pathToLockState.insert(lockState.lock.path -> lockState)
+      _pathToLockState.insert(lockState.lock.path, lockState)
 
     case board: Board =>
-      _pathToBoardState.insert(board.path -> BoardState(board))
+      _pathToBoardState.insert(board.path, BoardState(board))
 
     case calendar: Calendar =>
-      _pathToCalendar.insert(calendar.path -> calendar)
+      _pathToCalendar.insert(calendar.path, calendar)
 
     case notice: Notice =>
       _pathToBoardState(notice.boardPath) = _pathToBoardState(notice.boardPath)
@@ -207,30 +207,30 @@ with StateView
             case UnsignedSimpleItemAdded(item) =>
               item match {
                 case lock: Lock =>
-                  _pathToLockState.insert(lock.path -> LockState(lock))
+                  _pathToLockState.insert(lock.path, LockState(lock))
 
                 case addedAgentRef: AgentRef =>
                   val (agentRef, maybeSubagentItem) = addedAgentRef.convertFromV2_1.orThrow
 
-                  _pathToAgentRefState.insert(agentRef.path -> AgentRefState(agentRef))
+                  _pathToAgentRefState.insert(agentRef.path, AgentRefState(agentRef))
                   for (subagentItem <- maybeSubagentItem) {
-                    _idToSubagentItemState.insert(subagentItem.id -> SubagentItemState.initial(subagentItem))
+                    _idToSubagentItemState.insert(subagentItem.id, SubagentItemState.initial(subagentItem))
                   }
 
                 case subagentItem: SubagentItem =>
-                  _idToSubagentItemState.insert(subagentItem.id -> SubagentItemState.initial(subagentItem))
+                  _idToSubagentItemState.insert(subagentItem.id, SubagentItemState.initial(subagentItem))
 
                 case selection: SubagentSelection =>
-                  _idToSubagentSelection.insert(selection.id -> selection)
+                  _idToSubagentSelection.insert(selection.id, selection)
 
                 case orderWatch: OrderWatch =>
                   allOrderWatchesState = allOrderWatchesState.addOrderWatch(orderWatch).orThrow
 
                 case board: Board =>
-                  _pathToBoardState.insert(board.path -> BoardState(board))
+                  _pathToBoardState.insert(board.path, BoardState(board))
 
                 case calendar: Calendar =>
-                  _pathToCalendar.insert(calendar.path -> calendar)
+                  _pathToCalendar.insert(calendar.path, calendar)
               }
 
             case UnsignedSimpleItemChanged(item) =>
@@ -267,15 +267,16 @@ with StateView
                   allOrderWatchesState = allOrderWatchesState.changeOrderWatch(orderWatch).orThrow
 
                 case board: Board =>
-                  _pathToBoardState += board.path ->
+                  _pathToBoardState.update(
+                    board.path,
                     _pathToBoardState
                       .checked(board.path)
                       .map(boardState => boardState.copy(
                         board = board))
-                      .orThrow
+                      .orThrow)
 
                 case calendar: Calendar =>
-                  _pathToCalendar += calendar.path -> calendar
+                  _pathToCalendar.update(calendar.path, calendar)
               }
           }
 
@@ -287,7 +288,7 @@ with StateView
             case SignedItemChanged(Signed(item, signedString)) =>
               item match {
                 case jobResource: JobResource =>
-                  pathToSignedSimpleItem += jobResource.path -> Signed(jobResource, signedString)
+                  pathToSignedSimpleItem.update(jobResource.path, Signed(jobResource, signedString))
               }
           }
 
@@ -335,7 +336,7 @@ with StateView
       }
 
     case Stamped(_, _, KeyedEvent(path: AgentPath, event: AgentRefStateEvent)) =>
-      _pathToAgentRefState += path -> _pathToAgentRefState(path).applyEvent(event).orThrow
+      _pathToAgentRefState.update(path, _pathToAgentRefState(path).applyEvent(event).orThrow)
 
 
     case Stamped(_, _, KeyedEvent(id: SubagentId, event: SubagentItemStateEvent)) =>
@@ -344,7 +345,7 @@ with StateView
           // May arrive when SubagentItem has been deleted
 
         case _ =>
-        _idToSubagentItemState += id -> _idToSubagentItemState(id).applyEvent(event).orThrow
+        _idToSubagentItemState.update(id, _idToSubagentItemState(id).applyEvent(event).orThrow)
       }
 
     case Stamped(_, _, KeyedEvent(orderId: OrderId, event: OrderEvent)) =>
@@ -386,8 +387,9 @@ with StateView
 
             case OrderNoticeExpected(noticeId) =>
               val boardState = orderIdToBoardState(orderId).orThrow
-              pathToBoardState +=
-                boardState.path -> boardState.addExpectation(noticeId, orderId).orThrow
+              pathToBoardState.update(
+                boardState.path,
+                boardState.addExpectation(noticeId, orderId).orThrow)
 
             case OrderNoticesExpected(expectedSeq) =>
               for (expected <- expectedSeq) {
@@ -454,7 +456,7 @@ with StateView
   }
 
   private def addOrder(orderId: OrderId, orderAdded: OrderAddedX): Unit = {
-    _idToOrder.insert(orderId -> Order.fromOrderAdded(orderId, orderAdded))
+    _idToOrder.insert(orderId, Order.fromOrderAdded(orderId, orderAdded))
     allOrderWatchesState = allOrderWatchesState.onOrderAdded(orderId <-: orderAdded)
       .orThrow
   }
@@ -462,14 +464,14 @@ with StateView
   private def onSignedItemAdded(added: SignedItemEvent.SignedItemAdded): Unit =
     added.signed.value match {
       case jobResource: JobResource =>
-        pathToSignedSimpleItem.insert(jobResource.path -> Signed(jobResource, added.signedString))
+        pathToSignedSimpleItem.insert(jobResource.path, Signed(jobResource, added.signedString))
     }
 
   private def handleForkJoinEvent(order: Order[Order.State], event: OrderCoreEvent): Unit =  // TODO Duplicate with Agent's OrderJournalRecoverer
     event match {
       case event: OrderForked =>
         for (childOrder <- order.newForkedOrders(event)) {
-          _idToOrder += childOrder.id -> childOrder
+          _idToOrder.update(childOrder.id, childOrder)
         }
 
       case event: OrderJoined =>

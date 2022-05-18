@@ -15,10 +15,10 @@ final class ScalaConcurrentHashMapTest extends AnyFreeSpec
   }
 
   "+=" in {
-    m += 1 -> "eins"
-    m += 2 -> "zwei"
-    m += 1 -> "EINS"
-    m += 3 -> "drei"
+    m.update(1, "eins")
+    m.update(2, "zwei")
+    m.update(1, "EINS")
+    m.update(3, "drei")
     assert(m == Map(1 -> "EINS", 2 -> "zwei", 3 -> "drei"))
   }
 

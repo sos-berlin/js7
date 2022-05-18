@@ -44,7 +44,7 @@ final class FutureCompletion[A](future: Future[A])(implicit ec: ExecutionContext
     val entry = new Entry
     val wasCompleted = numberToEntry.synchronized {
       if (completed.isEmpty) {
-        numberToEntry.put(entry.number, entry)
+        numberToEntry.update(entry.number, entry)
       }
       completed
     }

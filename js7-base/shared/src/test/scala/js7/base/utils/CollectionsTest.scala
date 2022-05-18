@@ -181,9 +181,9 @@ final class CollectionsTest extends AnyFreeSpec
 
   "insert" in {
     val m = mutable.Map(1 -> "eins", 2 -> "zwei")
-    m.insert(3 -> "drei")
+    m.insert(3, "drei")
     m(3) shouldEqual "drei"
-    intercept[DuplicateKeyException] { m.insert(3 -> "drei") }
+    intercept[DuplicateKeyException] { m.insert(3, "drei") }
   }
 
   "isDisjoint with" in {

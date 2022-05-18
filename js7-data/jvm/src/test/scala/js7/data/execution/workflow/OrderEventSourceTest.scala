@@ -1116,7 +1116,7 @@ object OrderEventSourceTest
       val KeyedEvent(orderId, event) = keyedEvent
       event match {
         case event: OrderAdded =>
-          idToOrder.insert(orderId -> Order.fromOrderAdded(orderId, event))
+          idToOrder.insert(orderId, Order.fromOrderAdded(orderId, event))
 
         case event: OrderCoreEvent =>
           processEvent(keyedEvent)
@@ -1143,7 +1143,7 @@ object OrderEventSourceTest
             .orThrow
             .foreach {
               case FollowUp.AddChild(derivedOrder) =>
-                idToOrder.insert(derivedOrder.id -> derivedOrder)
+                idToOrder.insert(derivedOrder.id, derivedOrder)
 
               case FollowUp.Delete(deleteOrderId) =>
                 idToOrder -= deleteOrderId

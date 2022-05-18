@@ -22,7 +22,7 @@ final case class DirectoryState(fileToEntry: Map[Path, Entry])
 
     events foreach {
       case FileAdded(path) =>
-        added += path -> Entry(path)
+        added.update(path, Entry(path))
         deleted -= path
         modified -= path
 

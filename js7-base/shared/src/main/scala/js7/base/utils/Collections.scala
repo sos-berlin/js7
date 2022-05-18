@@ -194,9 +194,9 @@ object Collections
     }
 
     implicit final class InsertableMutableMap[K, V](private val delegate: mutable.Map[K, V]) extends AnyVal {
-      def insert(kv: (K, V)): Unit = {
-        if (delegate contains kv._1) throw new DuplicateKeyException(s"Key ${kv._1} is already known")
-        delegate += kv
+      def insert(key: K, value: V): Unit = {
+        if (delegate contains key) throw new DuplicateKeyException(s"Key $key is already known")
+        delegate.update(key, value)
       }
     }
   }

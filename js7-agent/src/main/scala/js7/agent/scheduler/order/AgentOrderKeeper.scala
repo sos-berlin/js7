@@ -604,7 +604,7 @@ with Stash
   private def createJobEntries(workflow: Workflow, zone: ZoneId): Unit =
     for ((jobKey, job) <- workflow.keyToJob) {
       if (job.agentPath == ownAgentPath) {
-        jobRegister.insert(jobKey -> new JobEntry(jobKey, job, zone))
+        jobRegister.insert(jobKey, new JobEntry(jobKey, job, zone))
       }
     }
 

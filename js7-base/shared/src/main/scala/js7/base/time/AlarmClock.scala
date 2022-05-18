@@ -127,7 +127,7 @@ object AlarmClock
       val milli = at.toEpochMilli
       val alarm = new Alarm(milli, callback)
       self.synchronized {
-        epochMilliToAlarms += milli -> (epochMilliToAlarms.getOrElse(milli, Vector.empty) :+ alarm)
+        epochMilliToAlarms.update(milli, epochMilliToAlarms.getOrElse(milli, Vector.empty) :+ alarm)
         scheduleNext()
       }
       alarm
@@ -210,7 +210,7 @@ object AlarmClock
           for (alarms <- epochMilliToAlarms.get(epochMilli)) {
             val remaining = alarms.filterNot(_ eq this)
             if (remaining.nonEmpty) {
-              epochMilliToAlarms += epochMilli -> remaining
+              epochMilliToAlarms.update(epochMilli, remaining)
             } else {
               epochMilliToAlarms -= epochMilli
               scheduleNext()

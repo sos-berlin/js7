@@ -39,30 +39,30 @@ extends SnapshotableStateBuilder[AgentState]
 
   protected def onAddSnapshotObject = {
     case order: Order[Order.State] =>
-      idToOrder.insert(order.id -> order)
+      idToOrder.insert(order.id, order)
 
     case signedItemAdded: SignedItemAdded =>
       onSignedItemAdded(signedItemAdded)
 
     case workflow: Workflow =>
       // COMPATIBLE with v2.1
-      idToWorkflow.insert(workflow.id -> workflow)
+      idToWorkflow.insert(workflow.id, workflow)
 
     case jobResource: JobResource =>
       // COMPATIBLE with v2.1
-      pathToJobResource.insert(jobResource.path -> jobResource)
+      pathToJobResource.insert(jobResource.path, jobResource)
 
     case calendar: Calendar =>
-      pathToCalendar.insert(calendar.path -> calendar)
+      pathToCalendar.insert(calendar.path, calendar)
 
     case snapshot: FileWatchState.Snapshot =>
       allFileWatchesState.addSnapshot(snapshot)
 
     case subagentItemState: SubagentItemState =>
-      idToSubagentItemState.insert(subagentItemState.subagentId -> subagentItemState)
+      idToSubagentItemState.insert(subagentItemState.subagentId, subagentItemState)
 
     case selection: SubagentSelection =>
-      idToSubagentSelection.insert(selection.id -> selection)
+      idToSubagentSelection.insert(selection.id, selection)
 
     case o: JournalState =>
       _journalState = o
@@ -73,12 +73,12 @@ extends SnapshotableStateBuilder[AgentState]
 
   private def onSignedItemAdded(added: SignedItemEvent.SignedItemAdded): Unit = {
     val item = added.signed.value
-    keyToSignedItem.insert(item.key -> added.signed)
+    keyToSignedItem.insert(item.key, added.signed)
     item match {
       case workflow: Workflow =>
-        idToWorkflow.insert(workflow.id -> workflow.reduceForAgent(agentMetaState.agentPath))
+        idToWorkflow.insert(workflow.id, workflow.reduceForAgent(agentMetaState.agentPath))
       case jobResource: JobResource =>
-        pathToJobResource.insert(jobResource.path -> jobResource)
+        pathToJobResource.insert(jobResource.path, jobResource)
       case _ =>
     }
   }

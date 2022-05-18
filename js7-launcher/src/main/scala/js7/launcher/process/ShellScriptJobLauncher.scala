@@ -45,7 +45,7 @@ extends PathProcessJobLauncher
                 jobLauncherConf.systemEncoding,
                 maybeUserName
               ).map { path =>
-                userToFile.put(maybeUserName, path)
+                userToFile.update(maybeUserName, path)
                 path
               }
           }

@@ -18,7 +18,7 @@ final class CommandRegister[C <: CommonCommand]
     synchronized {
       totalCounter += 1
       val run = CommandRun[C](correlId, meta.user.id, command, now, batchId)
-      idToCommand += correlId -> run
+      idToCommand.update(correlId, run)
       run
     }
 

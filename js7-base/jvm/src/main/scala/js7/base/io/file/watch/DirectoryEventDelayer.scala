@@ -86,7 +86,7 @@ extends Observable[Seq[DirectoryEvent]]
 
       private def enqueue(fileAdded: FileAdded): Unit = {
         val index = indexToEntry.lastOption.fold(0L)(_._1) + 1
-        indexToEntry += index -> Entry(fileAdded, now + delay)
+        indexToEntry.update(index, Entry(fileAdded, now + delay))
         pathToIndex(fileAdded.relativePath) = index
         logger.trace(s"#$index + $fileAdded")
 
