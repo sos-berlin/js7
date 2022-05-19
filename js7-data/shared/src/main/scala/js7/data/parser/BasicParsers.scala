@@ -35,7 +35,7 @@ object BasicParsers
   def int[x: P] = P[Int](("-".? ~ digits).!.map(_.toInt))
 
   def bigDecimal[x: P] = P[BigDecimal](
-    ("-".? ~ digits).!
+    ("-".? ~ digits ~ ("." ~ digits).?).!
       .flatMap(o => checkedToP(Checked.catchNonFatal(BigDecimal(o)))))
 
   def digits[x: P] = P[String](CharsWhile(c => c >= '0' && c <= '9').!)

@@ -96,9 +96,13 @@ final class ExpressionTest extends AnyFreeSpec
       result = 7,
       Right(NumericConstant(7)))
 
-    testEval(Int.MinValue.toString,  // -2147483648
-      result = Int.MinValue,
-      Right(NumericConstant(Int.MinValue)))
+    testEval(Long.MinValue.toString,
+      result = Long.MinValue,
+      Right(NumericConstant(Long.MinValue)))
+
+    testEval("-1.111222333444555666777888999",
+      result = BigDecimal("-1.111222333444555666777888999"),
+      Right(NumericConstant(BigDecimal("-1.111222333444555666777888999"))))
 
     testEval(""" "" """,
       result = "",
@@ -686,7 +690,7 @@ final class ExpressionTest extends AnyFreeSpec
   : Unit =
     testEval(exprString, Right(BooleanValue(result)), expression)
 
-  private def testEval(exprString: String, result: Int, expression: Checked[Expression])
+  private def testEval(exprString: String, result: BigDecimal, expression: Checked[Expression])
     (implicit scope: Scope, pos: source.Position)
   : Unit =
     testEval(exprString, Right(NumberValue(result)), expression)
