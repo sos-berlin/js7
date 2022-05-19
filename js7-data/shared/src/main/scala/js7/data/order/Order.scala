@@ -369,14 +369,14 @@ final case class Order[+S <: Order.State](
 
       case _: OrderNoticePostedV2_3 =>
         check(isDetached && isState[Ready] && !isSuspended,
-          this)  // TODO Recoverable ?
+          this)
 
       case _: OrderNoticePosted =>
         check(isDetached && isState[Ready] && !isSuspended,
-          this)  // TODO Recoverable ?
+          this)
 
-      // FIXME Convert v2.3 OrderNoticeExpected event in ControllerStateBuilder
       case OrderNoticeExpected(noticeId) =>
+        // ControllerStateBuilder converts this State to OrderNoticesExpected
         throw new NotImplementedError("Order.OrderNoticeExpected")
 
       case OrderNoticesExpected(expectedSeq) =>

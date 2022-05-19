@@ -530,7 +530,7 @@ object OrderEvent
     Subtype(deriveCodec[OrderLockQueued]),
     Subtype(deriveCodec[OrderLockDequeued]),
     Subtype(deriveCodec[OrderLockReleased]),
-    Subtype.named[OrderNoticePosted_](typeName ="OrderNoticePosted", subclasses = Seq(
+    Subtype.named[OrderNoticePosted_](typeName = "OrderNoticePosted", subclasses = Seq(
       classOf[OrderNoticePostedV2_3],
       classOf[OrderNoticePosted])),
     Subtype(deriveCodec[OrderNoticeExpected]),
