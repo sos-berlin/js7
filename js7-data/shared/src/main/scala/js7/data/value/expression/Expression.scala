@@ -6,9 +6,9 @@ import io.circe.{Decoder, Encoder, Json, JsonObject}
 import java.lang.Character.{isUnicodeIdentifierPart, isUnicodeIdentifierStart}
 import java.util.regex.Pattern
 import js7.base.circeutils.CirceUtils.CirceUtilsChecked
-import js7.base.problem.Checked.CheckedOption
+import js7.base.problem.Checked.{CheckedOption, catchNonFatal}
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils.syntax.RichOption
+import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichOption}
 import js7.base.utils.ScalaUtils.withStringBuilder
 import js7.base.utils.typeclasses.IsEmpty
 import js7.data.job.JobResourcePath
@@ -50,6 +50,9 @@ sealed trait Expression extends Expression.Precedence
 
   final def evalAsNumber(implicit scope: Scope): Checked[BigDecimal] =
     eval.flatMap(_.asNumberValue).map(_.number)
+
+  final def evalAsInt(implicit scope: Scope): Checked[Int] =
+    evalAsNumber.flatMap(o => catchNonFatal(o.toIntExact))
 
   final def evalToString(implicit scope: Scope): Checked[String] =
     eval.flatMap(_.toStringValue).map(_.string)
@@ -293,7 +296,7 @@ object Expression
       for {
         a <- a.evalToString
         b <- b.evalToString
-        result <- Checked.catchNonFatal(BooleanValue(a matches b))
+        result <- catchNonFatal(BooleanValue(a matches b))
       } yield result
 
     override def toString = toString(a, "matches", b)
@@ -325,6 +328,23 @@ object Expression
       }
 
     override def toString = Precedence.inParentheses(a, precedence) + "?"
+  }
+
+  final case class ArgumentExpression(obj: Expression, arg: Expression)
+  extends PurityDependsOnSubexpressions {
+    def precedence = Precedence.Factor
+    def subexpressions = obj :: arg :: Nil
+
+    protected def evalAllowError(implicit scope: Scope) =
+      for {
+        list <- obj.evalAsVector
+        index <- arg.evalAsInt
+        _ <- (index >= 0 && index < list.length) !!
+          Problem(s"Index $index out of range 0...${list.length - 1}")
+      } yield list(index)
+
+    override def toString =
+      Precedence.inParentheses(obj, precedence) + "(" + arg + ")"
   }
 
   final case class DotExpression(a: Expression, name: String) extends PurityDependsOnSubexpressions {
@@ -669,9 +689,9 @@ object Expression
       for {
         string <- string.eval.flatMap(_.asString)
         pattern <- pattern.eval.flatMap(_.asString)
-        pattern <- Checked.catchNonFatal(Pattern.compile(pattern))
+        pattern <- catchNonFatal(Pattern.compile(pattern))
         replacement <- replacement.eval.flatMap(_.asString)
-        result <- Checked.catchNonFatal(StringValue(pattern.matcher(string).replaceAll(replacement)))
+        result <- catchNonFatal(StringValue(pattern.matcher(string).replaceAll(replacement)))
       } yield result
 
     override def toString = s"replaceAll($string, $pattern, $replacement)"

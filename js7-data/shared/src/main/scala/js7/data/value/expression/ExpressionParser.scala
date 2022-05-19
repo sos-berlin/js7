@@ -222,7 +222,7 @@ object ExpressionParser
   private def nullConstant[x: P] = P[NullConstant](
     P("null").map(_ => NullConstant))
 
-  private def factorOnly[x: P] = P(
+  private def factor[x: P] = P(
     parenthesizedExpression | booleanConstant | numericConstant |
       singleQuotedStringConstant | interpolatedString | listExpr | objectExpr | dollarNamedValue |
       catchCount | argumentFunctionCall | variableFunctionCall |
@@ -230,8 +230,8 @@ object ExpressionParser
       jobResourceVariable |
       functionCall)
 
-  private def factor[x: P] = P(
-    (factorOnly ~/ (w ~ ("." ~ w ~/ identifier)).rep).flatMap {
+  private def dotExpression[x: P] = P(
+    (factor ~/ (w ~ ("." ~ w ~/ identifier)).rep).flatMap {
       case (o, Seq()) => valid(o)
       // TODO Don't use these legacy names:
       case (o, Seq("toNumber")) => valid(ToNumber(o))
@@ -241,13 +241,20 @@ object ExpressionParser
       case (o, fields) => valid(fields.scanLeft[Expression](o)(DotExpression(_, _)).last)
     })
 
+  private def argumentExpression[x: P] = P(
+    (dotExpression ~/ w ~ inParentheses(expression).?)
+      .map {
+        case (o, None) => o
+        case (o, Some(arg)) => ArgumentExpression(o, arg)
+      })
+
   private def not[x: P]: P[Expression] = P(
     ("!" ~ w ~/ bFactor).flatMap {
       case o: BooleanExpression => valid(Not(o))
       case _ => invalid("Operator '!' expects Boolean expression")
     })
 
-  private def bFactor[x: P] = P(not | factor)
+  private def bFactor[x: P] = P(not | argumentExpression)
 
   private def multiplication[x: P] = P[Expression](
     bFactor.flatMap(initial =>

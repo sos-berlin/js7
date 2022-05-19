@@ -144,7 +144,7 @@ final class ExpressionParserTest extends AnyFreeSpec
         testExpression(s"'''->''<-'''".trim, StringConstant("->''<-"))
         testExpression(s"''''->'''<-''''".trim, StringConstant("->'''<-"))
         testExpression(s"'''''->''''<-'''''".trim, StringConstant("->''''<-"))
-        testError(s"''''''->'''''<-''''''".trim, """Expected (not | factor):1:15, found "-''''''"""")
+        testError(s"''''''->'''''<-''''''".trim, """Expected (not | argumentExpression):1:15, found "-''''''"""")
       }
 
       "Invalid escaped characters" in {

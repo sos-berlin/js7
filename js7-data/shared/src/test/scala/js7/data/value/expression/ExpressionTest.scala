@@ -8,6 +8,7 @@ import js7.data.parser.Parsers.checkedParse
 import js7.data.value.ValueType.{MissingValueProblem, UnexpectedValueTypeProblem}
 import js7.data.value.expression.Expression._
 import js7.data.value.expression.ExpressionParser.{expressionOnly, expressionOrFunction}
+import js7.data.value.expression.scopes.NameToCheckedValueScope
 import js7.data.value.{BooleanValue, ListValue, NullValue, NumberValue, ObjectValue, StringValue, Value}
 import js7.data.workflow.Label
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -656,6 +657,35 @@ final class ExpressionTest extends AnyFreeSpec
       assert((OrElse(NumericConstant(1), NumericConstant(7))).eval == Right(NumberValue(1)))
       assert((OrElse(NullConstant, NumericConstant(7))).eval == Right(NumberValue(7)))
     }
+  }
+
+  "ListValue" - {
+    implicit val scope = NameToCheckedValueScope(MapView(
+      "list" -> Right(ListValue(Seq(NumberValue(-1), NumberValue(111), NumberValue(222))))))
+
+    testEval("$list(0)",
+      result = Right(NumberValue(-1)),
+      Right(ArgumentExpression(NamedValue("list"), NumericConstant(0))))
+
+    testEval("$list(1)",
+      result = Right(NumberValue(111)),
+      Right(ArgumentExpression(NamedValue("list"), NumericConstant(1))))
+
+    testEval("$list(2)",
+      result = Right(NumberValue(222)),
+      Right(ArgumentExpression(NamedValue("list"), NumericConstant(2))))
+
+    testEval("$list(3)",
+      result = Left(Problem.pure("Index 3 out of range 0...2")),
+      Right(ArgumentExpression(NamedValue("list"), NumericConstant(3))))
+
+    testEval("$list(-1)",
+      result = Left(Problem.pure("Index -1 out of range 0...2")),
+      Right(ArgumentExpression(NamedValue("list"), NumericConstant(-1))))
+
+    testEval("$list(1.5)",
+      result = Left(Problem.pure("java.lang.ArithmeticException: Rounding necessary")),
+      Right(ArgumentExpression(NamedValue("list"), NumericConstant(BigDecimal("1.5")))))
   }
 
   "Constant expressions" - {
