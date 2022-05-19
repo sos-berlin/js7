@@ -7,10 +7,10 @@ import js7.base.data.ByteArray
 import js7.base.io.process.OperatingSystemSpecific.OS
 import js7.base.io.process.Processes.RobustlyStartProcess.TextFileBusyIOException
 import js7.base.log.Logger
+import js7.base.system.Java8Polyfill._
 import js7.base.thread.IOExecutor
 import js7.base.thread.IOExecutor.ioFuture
 import js7.base.time.ScalaTime._
-import js7.base.utils.IOUtils.copyStream
 import js7.base.utils.ScalaUtils.syntax._
 import monix.eval.Task
 import org.jetbrains.annotations.TestOnly
@@ -88,10 +88,10 @@ object Processes
     val process = processBuilder.start()
     process.getInputStream.close()
     val stdoutClosed = ioFuture {
-      copyStream(process.getInputStream, out)
+      process.getInputStream.transferTo(out)
     }
     val stderrClosed = ioFuture {
-      copyStream(process.getErrorStream, err)
+      process.getErrorStream.transferTo(err)
     }
     Await.result(stdoutClosed, Duration.Inf)
     Await.result(stderrClosed, Duration.Inf)
@@ -142,4 +142,6 @@ object Processes
         matchesError26(Option(e.getMessage) getOrElse "").matches option e
     }
   }
+
+  java8Polyfill()
 }

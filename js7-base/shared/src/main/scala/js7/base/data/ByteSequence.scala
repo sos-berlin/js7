@@ -11,8 +11,8 @@ import java.util.Base64
 import js7.base.circeutils.CirceUtils._
 import js7.base.data.ByteSequence.{byteToPrintable, maxShowLength}
 import js7.base.problem.{Checked, Problem}
+import js7.base.system.Java8Polyfill._
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.IOUtils
 import js7.base.utils.ScalaUtils.syntax._
 import scala.collection.immutable
 import scala.collection.immutable.ArraySeq
@@ -235,7 +235,7 @@ with Monoid[ByteSeq] with Eq[ByteSeq] with Show[ByteSeq]
     Resource.fromAutoCloseable(SyncIO { toInputStream(byteSeq) })
 
   override def writeToStream(byteSeq: ByteSeq, out: OutputStream): Unit =
-    IOUtils.copyStream(toInputStream(byteSeq), out)
+    toInputStream(byteSeq).transferTo(out)
 
   def parseJsonAs[B: Decoder](byteSeq: ByteSeq): Checked[B] =
     parseJson(byteSeq).flatMap(_.checkedAs[B])
@@ -255,4 +255,6 @@ object ByteSequence
       case 0x7f => '\u2421'
       case _ => '�' // or ␦
     }
+
+  java8Polyfill()
 }

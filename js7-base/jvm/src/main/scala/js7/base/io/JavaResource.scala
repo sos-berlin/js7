@@ -1,15 +1,16 @@
 package js7.base.io
 
 import cats.effect.SyncIO
-import java.io.{File, InputStream}
+import java.io.{File, InputStream, OutputStream}
 import java.net.{URI, URL}
 import java.nio.file.{CopyOption, Files, Path}
 import java.util.Objects.requireNonNull
-import js7.base.data.{ByteArray, ByteSequence}
+import js7.base.data.{ByteArray, ByteSequence, Writable}
 import js7.base.io.JavaResource._
 import js7.base.log.Logger
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
+import js7.base.system.Java8Polyfill._
 import js7.base.utils.AutoClosing.autoClosing
 import scala.language.implicitConversions
 
@@ -70,6 +71,9 @@ final case class JavaResource(classLoader: ClassLoader, path: String)
     file
   }
 
+  def writeToStream(out: OutputStream): Unit =
+    autoClosing(openStream())(_.transferTo(out))
+
   def contentBytes: Array[Byte] =
     readAs[ByteArray].unsafeArray
 
@@ -120,4 +124,8 @@ object JavaResource {
 
   implicit def asResource(o: JavaResource): cats.effect.Resource[SyncIO, InputStream] =
     o.asResource
+
+  implicit val writable: Writable[JavaResource] = _ writeToStream _
+
+  java8Polyfill()
 }

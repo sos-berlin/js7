@@ -7,7 +7,7 @@ import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.data.ByteSequence.ops._
 import js7.base.data.ByteSequenceTester._
 import js7.base.problem.Problem
-import js7.base.utils.IOUtils
+import js7.base.system.Java8Polyfill._
 import js7.base.utils.SyncResource.syntax.RichResource
 import org.scalatest.freespec.AnyFreeSpec
 import scala.util.Random
@@ -280,7 +280,7 @@ extends AnyFreeSpec
     val byteSeq = ByteSequence[ByteSeq].random(100001)
     val x = byteSeq.toInputStreamResource.useSync { in =>
       val out = new ByteArrayOutputStream
-      IOUtils.copyStream(in, out)
+      in.transferTo(out)
       ByteSeq.unsafeWrap(out.toByteArray)
     }
     assert(x == byteSeq)
@@ -324,4 +324,6 @@ object ByteSequenceTester
    "cnN0dXZ3eHl6e3x9fn+AgYKDhIWGh4iJiouMjY6PkJGSk5SVlpeYmZqbnJ2en6ChoqOkpaanqKmq\r\n" +
    "q6ytrq+wsbKztLW2t7i5uru8vb6/wMHCw8TFxsfIycrLzM3Oz9DR0tPU1dbX2Nna29zd3t/g4eLj\r\n" +
    "5OXm5+jp6uvs7e7v8PHy8/T19vf4+fr7/P3+/w=="
+
+  java8Polyfill() // For in.transferTo(out)
 }
