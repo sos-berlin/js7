@@ -14,8 +14,8 @@ import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.crypt.Signed
 import js7.base.eventbus.EventPublisher
 import js7.base.generic.Completed
-import js7.base.log.Logger
 import js7.base.log.Logger.ops._
+import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.monixutils.MonixDeadline
 import js7.base.monixutils.MonixDeadline.now
@@ -339,10 +339,10 @@ with MainJournalingActor[ControllerState, Event]
 
   private def notYetReady(message: Any): Unit =
     message match {
-      case Command.Execute(_: ControllerCommand.ShutDown, _) =>
+      case Command.Execute(_: ControllerCommand.ShutDown, _, _) =>
         stash()
 
-      case Command.Execute(cmd, _) =>
+      case Command.Execute(cmd, _, _) =>
         logger.warn(s"$ControllerIsNotReadyProblem: $cmd")
         sender() ! Left(ControllerIsNotReadyProblem)
 
@@ -409,11 +409,13 @@ with MainJournalingActor[ControllerState, Event]
         _.actor ! AgentDriver.Input.StartFetchingEvents
       }
 
-    case Command.Execute(_: ControllerCommand.ShutDown, _) =>
+    case Command.Execute(_: ControllerCommand.ShutDown, _, _) =>
       stash()
 
-    case Command.Execute(cmd, _) =>
-      logger.warn(s"$ControllerIsNotReadyProblem: $cmd")
+    case Command.Execute(cmd, _, correlId) =>
+      correlId.bind {
+        logger.warn(s"$ControllerIsNotReadyProblem: $cmd")
+      }
       sender() ! Left(ControllerIsNotReadyProblem)
 
     case cmd: Command =>
@@ -453,14 +455,16 @@ with MainJournalingActor[ControllerState, Event]
         persistTransaction(keyedEvents)(handleEvents)
       }
 
-    case Command.Execute(command, meta) =>
+    case Command.Execute(command, meta, correlId) =>
       val sender = this.sender()
       if (shuttingDown)
         sender ! Status.Failure(ControllerIsShuttingDownProblem.throwable)
       else if (switchover.isDefined)
         sender ! Status.Failure(ControllerIsSwitchingOverProblem.throwable)
       else
-        executeControllerCommand(command, meta) onComplete {
+        correlId.bind(
+          executeControllerCommand(command, meta)
+        ).onComplete {
           case Failure(t) => sender ! Status.Failure(t)
           case Success(response) => sender ! response
         }
@@ -1424,7 +1428,8 @@ private[controller] object ControllerOrderKeeper
 
   sealed trait Command
   object Command {
-    final case class Execute(command: ControllerCommand, meta: CommandMeta) extends Command
+    final case class Execute(command: ControllerCommand, meta: CommandMeta, correlId: CorrelId)
+    extends Command
     final case class VerifiedUpdateItemsCmd(verifiedUpdateRepo: VerifiedUpdateItems) extends Command
   }
 

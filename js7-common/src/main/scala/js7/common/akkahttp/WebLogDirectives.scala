@@ -57,8 +57,10 @@ trait WebLogDirectives extends ExceptionHandling
     if (!CorrelId.isEnabled)
       CorrelId.empty
     else
+      //request.header[`x-js7-correlation-id`].fold(CorrelId.generate())(_.correlId)
       request.headers
-        .collectFirst { case h: `x-js7-correlation-id` => h.correlId }
+        .find(_.is(`x-js7-correlation-id`.lowercaseName))
+        .flatMap(h => CorrelId.checked(h.value).toOption)
         .getOrElse(CorrelId.generate())
 
   private def setCorrelIdAttribute(correlId: CorrelId)(route: Route): Route =

@@ -7,6 +7,7 @@ import java.util.concurrent.CompletableFuture
 import java.util.{Optional, OptionalLong}
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
+import js7.base.log.CorrelId.bindNewCorrelId
 import js7.base.problem.Problem
 import js7.base.web.Uri
 import js7.data.board.{BoardPath, NoticeId}
@@ -28,6 +29,7 @@ import js7.proxy.ControllerApi
 import js7.proxy.data.event.ProxyEvent
 import js7.proxy.javaapi.data.controller.JEventAndControllerState
 import js7.proxy.javaapi.eventbus.{JControllerEventBus, JStandardEventBus}
+import monix.eval.Task
 import monix.execution.FutureUtils.Java8Extensions
 import monix.execution.Scheduler
 import reactor.core.publisher.Flux
@@ -38,9 +40,7 @@ import scala.jdk.OptionConverters._
 final class JControllerApi(val asScala: ControllerApi)(implicit scheduler: Scheduler)
 {
   def stop: CompletableFuture[Void] =
-    asScala.stop
-      .as(Void)
-      .runToFuture.asJava
+    runTask(asScala.stop.as(Void))
 
   /** Fetch event stream from Controller. */
   @Nonnull
@@ -53,7 +53,8 @@ final class JControllerApi(val asScala: ControllerApi)(implicit scheduler: Sched
     @Nonnull proxyEventBus: JStandardEventBus[ProxyEvent],
     after: OptionalLong/*EventId*/)
   : Flux[JEventAndControllerState[Event]] =
-    asScala.eventAndStateObservable(proxyEventBus.asScala, after.toScala)
+    asScala
+      .eventAndStateObservable(proxyEventBus.asScala, after.toScala)
       .map(JEventAndControllerState.apply)
       .asFlux
 
@@ -72,10 +73,9 @@ final class JControllerApi(val asScala: ControllerApi)(implicit scheduler: Sched
     @Nonnull proxyEventBus: JStandardEventBus[ProxyEvent],
     @Nonnull controllerEventBus: JControllerEventBus)
   : CompletableFuture[JControllerProxy] =
-    asScala.startProxy(proxyEventBus.asScala, controllerEventBus.asScala)
-      .map(new JControllerProxy(_, this, controllerEventBus))
-      .runToFuture
-      .asJava
+    runTask(asScala
+      .startProxy(proxyEventBus.asScala, controllerEventBus.asScala)
+      .map(new JControllerProxy(_, this, controllerEventBus)))
 
   @Nonnull
   def clusterAppointNodes(
@@ -84,10 +84,9 @@ final class JControllerApi(val asScala: ControllerApi)(implicit scheduler: Sched
     @Nonnull clusterWatches: java.util.List[ClusterSetting.Watch])
   : CompletableFuture[VEither[Problem, Void]] = {
     requireNonNull(activeId)
-    asScala.clusterAppointNodes(idToUri.asScala.toMap, activeId, clusterWatches.asScala.toVector)
-      .map(_.toVoidVavr)
-      .runToFuture
-      .asJava
+    runTask(asScala
+      .clusterAppointNodes(idToUri.asScala.toMap, activeId, clusterWatches.asScala.toVector)
+      .map(_.toVoidVavr))
   }
 
   /** Update the Items, i.e. add, change or remove/delete simple or versioned items.
@@ -147,18 +146,16 @@ final class JControllerApi(val asScala: ControllerApi)(implicit scheduler: Sched
   @Nonnull
   def updateItems(@Nonnull operations: Flux[JUpdateItemOperation])
   : CompletableFuture[VEither[Problem, Void]] =
-    asScala.updateItems(operations.asObservable.map(_.asScala))
-      .map(_.toVoidVavr)
-      .runToFuture
-      .asJava
+    runTask(asScala
+      .updateItems(operations.asObservable.map(_.asScala))
+      .map(_.toVoidVavr))
 
   /** @return true iff added, false iff not added because of duplicate OrderId. */
   @Nonnull
   def addOrder(@Nonnull order: JFreshOrder): CompletableFuture[VEither[Problem, java.lang.Boolean]] =
-    asScala.addOrder(order.asScala)
-      .map(_.map(o => java.lang.Boolean.valueOf(o)).toVavr)
-      .runToFuture
-      .asJava
+    runTask(asScala
+      .addOrder(order.asScala)
+      .map(_.map(o => java.lang.Boolean.valueOf(o)).toVavr))
 
   /** Add `Order`s provided by a Reactor stream.
     *
@@ -171,26 +168,30 @@ final class JControllerApi(val asScala: ControllerApi)(implicit scheduler: Sched
     * {{{api.addOrders(Flux.fromIterable(orders))}}}
     * */
   @Nonnull
-  def addOrders(@Nonnull orders: Flux[JFreshOrder]): CompletableFuture[VEither[Problem, AddOrdersResponse]] =
-    asScala.addOrders(orders.asObservable.map(_.asScala))
-      .map(_.toVavr)
-      .runToFuture
-      .asJava
+  def addOrders(@Nonnull orders: Flux[JFreshOrder])
+  : CompletableFuture[VEither[Problem, AddOrdersResponse]] =
+    runTask(asScala
+      .addOrders(orders.asObservable.map(_.asScala))
+      .map(_.toVavr))
 
   @Nonnull
-  def cancelOrders(@Nonnull orderIds: java.lang.Iterable[OrderId]): CompletableFuture[VEither[Problem, Void]] =
+  def cancelOrders(@Nonnull orderIds: java.lang.Iterable[OrderId])
+  : CompletableFuture[VEither[Problem, Void]] =
     cancelOrders(orderIds, JCancellationMode.freshOrStarted)
 
   @Nonnull
-  def cancelOrders(@Nonnull orderIds: java.lang.Iterable[OrderId], mode: JCancellationMode): CompletableFuture[VEither[Problem, Void]] =
+  def cancelOrders(@Nonnull orderIds: java.lang.Iterable[OrderId], mode: JCancellationMode)
+  : CompletableFuture[VEither[Problem, Void]] =
     execute(CancelOrders(orderIds.asScala.toVector, mode.asScala))
 
   @Nonnull
-  def suspendOrders(@Nonnull orderIds: java.lang.Iterable[OrderId]): CompletableFuture[VEither[Problem, Void]] =
+  def suspendOrders(@Nonnull orderIds: java.lang.Iterable[OrderId])
+  : CompletableFuture[VEither[Problem, Void]] =
     execute(SuspendOrders(orderIds.asScala.toVector))
 
   @Nonnull
-  def suspendOrders(@Nonnull orderIds: java.lang.Iterable[OrderId], mode: JSuspensionMode): CompletableFuture[VEither[Problem, Void]] =
+  def suspendOrders(@Nonnull orderIds: java.lang.Iterable[OrderId], mode: JSuspensionMode)
+  : CompletableFuture[VEither[Problem, Void]] =
     execute(SuspendOrders(orderIds.asScala.toVector, mode.asScala))
 
   @Nonnull
@@ -205,19 +206,22 @@ final class JControllerApi(val asScala: ControllerApi)(implicit scheduler: Sched
       historyOperations.asScala.view.map(_.asScala).toVector))
 
   @Nonnull
-  def resumeOrders(@Nonnull orderIds: java.lang.Iterable[OrderId]): CompletableFuture[VEither[Problem, Void]] =
+  def resumeOrders(@Nonnull orderIds: java.lang.Iterable[OrderId])
+  : CompletableFuture[VEither[Problem, Void]] =
     execute(ResumeOrders(orderIds.asScala.toVector))
 
   @Nonnull
-  def deleteOrdersWhenTerminated(@Nonnull orderIds: java.lang.Iterable[OrderId]): CompletableFuture[VEither[Problem, Void]] =
+  def deleteOrdersWhenTerminated(@Nonnull orderIds: java.lang.Iterable[OrderId])
+  : CompletableFuture[VEither[Problem, Void]] =
     deleteOrdersWhenTerminated(Flux.fromIterable(orderIds))
 
   @Nonnull
-  def deleteOrdersWhenTerminated(@Nonnull orderIds: Flux[OrderId]): CompletableFuture[VEither[Problem, Void]] =
-    asScala.deleteOrdersWhenTerminated(orderIds.asObservable)
-      .map(_.toVoidVavr)
-      .runToFuture
-      .asJava
+  def deleteOrdersWhenTerminated(@Nonnull orderIds: Flux[OrderId])
+  : CompletableFuture[VEither[Problem, Void]] = {
+    runTask(asScala
+      .deleteOrdersWhenTerminated(orderIds.asObservable)
+      .map(_.toVoidVavr))
+  }
 
   @Nonnull
   def postNotice(
@@ -234,24 +238,21 @@ final class JControllerApi(val asScala: ControllerApi)(implicit scheduler: Sched
     execute(ReleaseEvents(until))
 
   private def execute(command: ControllerCommand): CompletableFuture[VEither[Problem, Void]] =
-    asScala.executeCommand(command)
-      .map(_.toVoidVavr)
-      .runToFuture
-      .asJava
+    runTask(asScala
+      .executeCommand(command)
+      .map(_.toVoidVavr))
 
   @Nonnull
   def takeSnapshot(): CompletableFuture[VEither[Problem, Void]] =
-    asScala.executeCommand(TakeSnapshot)
-      .map(_.toVoidVavr)
-      .runToFuture
-      .asJava
+    runTask(asScala
+      .executeCommand(TakeSnapshot)
+      .map(_.toVoidVavr))
 
   @Nonnull
   def executeCommand(@Nonnull command: JControllerCommand): CompletableFuture[VEither[Problem, ControllerCommand.Response]] =
-    asScala.executeCommand(command.asScala)
-      .map(_.map(o => (o: ControllerCommand.Response)).toVavr)
-      .runToFuture
-      .asJava
+    runTask(asScala
+      .executeCommand(command.asScala)
+      .map(_.map(o => (o: ControllerCommand.Response)).toVavr))
 
   @Nonnull
   def executeCommandJson(@Nonnull command: String): CompletableFuture[VEither[Problem, String]] =
@@ -262,10 +263,9 @@ final class JControllerApi(val asScala: ControllerApi)(implicit scheduler: Sched
     @Nonnull uriTail: String,
     @Nonnull jsonString: String)
   : CompletableFuture[VEither[Problem, String]] =
-    asScala.httpPostJson(requireNonNull(uriTail), requireNonNull(jsonString))
-      .map(_.toVavr)
-      .runToFuture
-      .asJava
+    runTask(asScala
+      .httpPostJson(requireNonNull(uriTail), requireNonNull(jsonString))
+      .map(_.toVavr))
 
   /** HTTP GET
     * @param uriTail path and query of the URI
@@ -273,34 +273,33 @@ final class JControllerApi(val asScala: ControllerApi)(implicit scheduler: Sched
     */
   @Nonnull
   def httpGetJson(@Nonnull uriTail: String): CompletableFuture[VEither[Problem, String]] =
-    asScala.httpGetJson(requireNonNull(uriTail))
-      .map(_.toVavr)
-      .runToFuture
-      .asJava
+    runTask(asScala
+      .httpGetJson(requireNonNull(uriTail))
+      .map(_.toVavr))
 
   @Nonnull
   def journalInfo: CompletableFuture[VEither[Problem, JournalInfo]] =
-    asScala.journalInfo
-      .map(_.toVavr)
-      .runToFuture
-      .asJava
+    runTask(asScala
+      .journalInfo
+      .map(_.toVavr))
 
   /** Fetch the maybe very big JournalState. */
   @Nonnull
   def controllerState: CompletableFuture[VEither[Problem, JControllerState]] =
-    asScala.controllerState
+    runTask(asScala
+      .controllerState
       .map(_ map JControllerState.apply)
-      .map(_.toVavr)
-      .runToFuture
-      .asJava
+      .map(_.toVavr))
 
   /** For testing (it's slow): wait for a condition in the running event stream. **/
   @Nonnull
   def when(@Nonnull predicate: JEventAndControllerState[Event] => Boolean): CompletableFuture[JEventAndControllerState[Event]] = {
     requireNonNull(predicate)
-    asScala.when(es => predicate(JEventAndControllerState(es)))
-      .map(JEventAndControllerState.apply)
-      .runToFuture
-      .asJava
+    runTask(asScala
+      .when(es => predicate(JEventAndControllerState(es)))
+      .map(JEventAndControllerState.apply))
   }
+
+  private def runTask[A](task: Task[A]): CompletableFuture[A] =
+    bindNewCorrelId(task.runToFuture).asJava
 }

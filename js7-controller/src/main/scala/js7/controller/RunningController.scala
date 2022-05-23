@@ -16,6 +16,7 @@ import js7.base.auth.{SimpleUser, UserAndPassword}
 import js7.base.eventbus.{EventPublisher, StandardEventBus}
 import js7.base.generic.Completed
 import js7.base.io.file.FileUtils.syntax._
+import js7.base.log.CorrelId.currentCorrelId
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked._
@@ -486,7 +487,7 @@ object RunningController
                 case Left(problem) => Task.pure(Left(problem))
                 case Right(actor) =>
                   Task.deferFuture(
-                    (actor ? ControllerOrderKeeper.Command.Execute(command, meta))
+                    (actor ? ControllerOrderKeeper.Command.Execute(command, meta, currentCorrelId))
                       .mapTo[Checked[ControllerCommand.Response]])
               }
 
@@ -502,7 +503,7 @@ object RunningController
         case _ =>
           orderKeeperActor.flatMapT(actor =>
             Task.deferFuture(
-              (actor ? ControllerOrderKeeper.Command.Execute(command, meta))
+              (actor ? ControllerOrderKeeper.Command.Execute(command, meta, currentCorrelId))
                 .mapTo[Checked[ControllerCommand.Response]]))
       }).map(_.map((_: ControllerCommand.Response).asInstanceOf[command.Response]))
   }
