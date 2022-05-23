@@ -1,6 +1,6 @@
 package js7.controller.command
 
-import js7.base.log.CorrelIdBinder.{bindCorrelId, currentCorrelId}
+import js7.base.log.CorrelId.currentCorrelId
 import js7.base.log.{CorrelId, CorrelIdWrapped, Logger}
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime._
@@ -52,7 +52,7 @@ extends CommandExecutor[ControllerCommand]
     command match {
       case Batch(correlIdWrappedCommands) =>
         val tasks = for (CorrelIdWrapped(correlId, command) <- correlIdWrappedCommands) yield
-          bindCorrelId(correlId) {
+          correlId.bind {
             executeCommand(command, meta, batchId orElse Some(id))
           }
         Task.sequence(tasks).map(checkedResponses => Right(Batch.Response(checkedResponses)))

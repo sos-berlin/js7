@@ -2,7 +2,7 @@ package js7.journal.log
 
 import com.typesafe.scalalogging.Logger
 import java.util.Locale.ROOT
-import js7.base.log.{CorrelId, CorrelIdBinder}
+import js7.base.log.CorrelId
 import js7.base.time.ScalaTime._
 import js7.base.utils.Classes.superclassesOf
 import js7.base.utils.ScalaUtils.syntax._
@@ -57,7 +57,7 @@ private[journal] final class JournalLogger(
     isLoggable: Stamped[AnyKeyedEvent] => Boolean = _ => true)
     (body: (Frame, Stamped[AnyKeyedEvent]) => Unit)
   : Unit =
-    CorrelIdBinder.isolate { logCorrelId =>
+    CorrelId.isolate { logCorrelId =>
       var index = 0
       for (persist <- persists) {
         logCorrelId := persist.correlId

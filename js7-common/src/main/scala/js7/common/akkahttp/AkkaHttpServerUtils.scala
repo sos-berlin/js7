@@ -7,7 +7,6 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.PathMatcher.{Matched, Unmatched}
 import akka.http.scaladsl.server.{ContentNegotiator, Directive, Directive0, Directive1, PathMatcher, PathMatcher0, Route, UnacceptedResponseContentTypeRejection, ValidationRejection}
 import akka.shapeless.HNil
-import js7.base.log.CorrelIdBinder.bindCorrelId
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.annotation.tailrec
@@ -251,7 +250,7 @@ object AkkaHttpServerUtils
 
       case Some(correlId) =>
         complete {
-          bindCorrelId(correlId) {
+          correlId.bind {
             task.runToFuture
           }
         }

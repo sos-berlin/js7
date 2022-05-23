@@ -3,7 +3,7 @@ package js7.journal
 import akka.actor.{Actor, ActorLogging, ActorRef, Stash}
 import js7.base.circeutils.typed.TypedJsonCodec.typeName
 import js7.base.generic.Accepted
-import js7.base.log.CorrelIdBinder.{bindCorrelId, currentCorrelId}
+import js7.base.log.CorrelId.currentCorrelId
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.promiseTask
 import js7.base.monixutils.MonixBase.syntax.RichScheduler
@@ -168,14 +168,14 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
       }
       (stampedSeq, item) match {
         case (_, eventsCallback: EventsCallback) =>
-          bindCorrelId(eventsCallback.correlId) {
+          eventsCallback.correlId.bind {
             if (TraceLog && logger.underlying.isTraceEnabled) for (st <- stampedSeq)
               logger.trace(s"»$toString« Stored ${EventId.toString(st.eventId)} ${st.value.key} <-: ${typeName(st.value.event.getClass)}$stashingCountRemaining")
             eventsCallback.callback(stampedSeq.asInstanceOf[Seq[Stamped[KeyedEvent[E]]]], journaledState.asInstanceOf[S])
         }
 
         case (Nil, Deferred(correlId, _, callback)) =>
-          bindCorrelId(correlId) {
+          correlId.bind {
             if (TraceLog) logger.trace(s"»$toString« Stored (no event)$stashingCountRemaining")
             callback(Right(Accepted))
           }
@@ -189,7 +189,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
       }
       item match {
         case Deferred(correlId, _, callback) =>
-          bindCorrelId(correlId) {
+          correlId.bind {
             if (TraceLog) logger.trace(s"»$toString« Stored (events are written, not flushed)$stashingCountRemaining")
             callback(Right(Accepted))
           }

@@ -1,7 +1,7 @@
 package js7.base.log
 
 import implicitbox.Not
-import js7.base.log.CorrelIdBinder.local
+import js7.base.log.CorrelId.local
 import monix.eval.Task
 import monix.execution.CancelableFuture
 import monix.execution.misc.Local

@@ -1,6 +1,6 @@
 package js7.base.log
 
-import js7.base.log.CorrelIdBinder.{currentCorrelId, local}
+import js7.base.log.CorrelId.{currentCorrelId, local}
 import js7.base.log.CorrelIdLog4JThreadContextMap._
 import org.apache.logging.log4j.spi.{CopyOnWrite, ReadOnlyThreadContextMap, ThreadContextMap}
 import org.apache.logging.log4j.util.StringMap

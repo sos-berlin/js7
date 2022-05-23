@@ -4,7 +4,7 @@ import akka.actor.{ActorRef, ActorRefFactory}
 import akka.pattern.ask
 import akka.util.Timeout
 import com.softwaremill.diffx
-import js7.base.log.CorrelIdBinder.currentCorrelId
+import js7.base.log.CorrelId.currentCorrelId
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked

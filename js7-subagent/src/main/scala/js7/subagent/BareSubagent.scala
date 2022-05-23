@@ -7,7 +7,7 @@ import js7.base.configutils.Configs.RichConfig
 import js7.base.io.file.FileUtils.provideFile
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.process.ProcessSignal
-import js7.base.log.{CorrelIdBinder, Logger}
+import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked
 import js7.base.thread.IOExecutor
@@ -107,7 +107,7 @@ object BareSubagent
         // For BlockingInternalJob (thread-blocking Java jobs)
         blockingInternalJobScheduler <-
           schedulerServiceToResource(Task(newUnlimitedScheduler("JS7 blocking job")))
-            .map(CorrelIdBinder.enableScheduler(_))
+            .map(CorrelId.enableScheduler(_))
         clock <- AlarmClock.resource[Task](Some(alarmClockCheckingInterval))
         journal = new InMemoryJournal(SubagentState.empty,
           size = inMemoryJournalSize,

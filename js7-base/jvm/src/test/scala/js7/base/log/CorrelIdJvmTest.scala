@@ -1,8 +1,8 @@
 package js7.base.log
 
 import cats.syntax.parallel._
-import js7.base.log.CorrelIdBinder.{bindCorrelId, currentCorrelId}
-import js7.base.log.CorrelIdBinderTest._
+import js7.base.log.CorrelId.currentCorrelId
+import js7.base.log.CorrelIdJvmTest._
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
@@ -17,18 +17,18 @@ import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future
 import scala.concurrent.duration.Deadline.now
 
-final class CorrelIdBinderTest extends AnyFreeSpec with BeforeAndAfterAll
+final class CorrelIdJvmTest extends AnyFreeSpec with BeforeAndAfterAll
 {
   Log4j.initialize()
 
   private val taskBatchSize = 3
 
   private lazy val underlyingScheduler =
-    ExecutorScheduler.forkJoinDynamic("CorrelIdBinderTest",
+    ExecutorScheduler.forkJoinDynamic("CorrelIdJvmTest",
       parallelism = sys.runtime.availableProcessors(),
       maxThreads = sys.runtime.availableProcessors(),
       daemonic = true,
-      reporter = t => println("CorrelIdBinderTest: " + t.toStringWithCauses),
+      reporter = t => println("CorrelIdJvmTest: " + t.toStringWithCauses),
       ExecutionModel.BatchedExecution(taskBatchSize))
 
   private implicit lazy val scheduler = TracingScheduler(
@@ -37,7 +37,7 @@ final class CorrelIdBinderTest extends AnyFreeSpec with BeforeAndAfterAll
   override def afterAll() = {
     super.afterAll()
     underlyingScheduler.shutdown()
-    CorrelIdBinder.logStatistics()
+    CorrelId.logStatistics()
     CorrelIdLog4JThreadContextMap.logStatistics()
   }
 
@@ -51,7 +51,7 @@ final class CorrelIdBinderTest extends AnyFreeSpec with BeforeAndAfterAll
 
     "Synchronous (Unit)" in {
       val correlId = CorrelId("AAAAAAAA")
-      bindCorrelId(correlId) {
+      correlId.bind {
         logger.info(s"${Thread.currentThread.getId} $currentCorrelId Synchronous (Unit)")
       }
       logger.info(s"${Thread.currentThread.getId} $currentCorrelId Synchronous (Unit) — not bound")
@@ -63,7 +63,7 @@ final class CorrelIdBinderTest extends AnyFreeSpec with BeforeAndAfterAll
         logger.info(s"${Thread.currentThread.getId} $currentCorrelId Task.runToFuture")
         assert(currentCorrelId == correlId)
       }
-      val future = bindCorrelId(correlId) {
+      val future = correlId.bind {
         task.runToFuture
       }
       future.await(99.s)
@@ -86,7 +86,7 @@ final class CorrelIdBinderTest extends AnyFreeSpec with BeforeAndAfterAll
             assert(currentCorrelId == correlId)
           }
       )
-      val future = bindCorrelId(correlId) {
+      val future = correlId.bind {
         task.runToFuture
       }
       future.await(99.s)
@@ -96,7 +96,7 @@ final class CorrelIdBinderTest extends AnyFreeSpec with BeforeAndAfterAll
 
     "Future" in {
       val correlId = CorrelId("DDDDDDDD")
-      val future = bindCorrelId(correlId)(
+      val future = correlId.bind(
         Future {
           logger.info(s"${Thread.currentThread.getId} $currentCorrelId Future 1")
           assert(currentCorrelId == correlId)
@@ -111,9 +111,9 @@ final class CorrelIdBinderTest extends AnyFreeSpec with BeforeAndAfterAll
     "Task" in {
       val correlId = CorrelId("EEEEEEEE")
       val future: CancelableFuture[Unit] =
-        bindCorrelId(CorrelId("_WRONG__")) {
+        CorrelId("_WRONG__").bind {
           val task: Task[Unit] =
-            bindCorrelId(correlId)(Task {
+            correlId.bind(Task {
               logger.info(s"${Thread.currentThread.getId} $currentCorrelId Task")
               assert(currentCorrelId == correlId)
               ()
@@ -132,7 +132,7 @@ final class CorrelIdBinderTest extends AnyFreeSpec with BeforeAndAfterAll
       val t = now
       correlIds
         .parTraverse(correlId =>
-          bindCorrelId(correlId)(
+          correlId.bind(
             Task.traverse((1 to taskBatchSize + 1))(j => Task {
               //  logger.debug(s"bindCorrelId[Task[r]] $i $correlId $j")
               assert(currentCorrelId == correlId)
@@ -153,7 +153,7 @@ final class CorrelIdBinderTest extends AnyFreeSpec with BeforeAndAfterAll
       Future
         .sequence(correlIds
           .map(correlId =>
-            bindCorrelId(correlId)(
+            correlId.bind(
               Future.traverse((1 to taskBatchSize + 1).toVector)(j => Future {
                 //  logger.debug(s"bindCorrelId[Task[r]] $i $correlId $j")
                 assert(currentCorrelId == correlId)
@@ -164,24 +164,6 @@ final class CorrelIdBinderTest extends AnyFreeSpec with BeforeAndAfterAll
         logger.info(itemsPerSecondString(t.elapsed, correlIds.size, "Futures"))
       }
     }
-  }
-
-  "bindCorrelId[Unit]" in {
-    var a: CorrelId = null
-    bindCorrelId(CorrelId("__SYNC__")) {
-      a = currentCorrelId
-    }
-    assert(currentCorrelId.isEmpty)
-    assert(a == CorrelId("__SYNC__"))
-  }
-
-  "bindCorrelId[String]" in {
-    import CanBindCorrelId.implicits.synchronousAsDefault
-    val result = bindCorrelId(CorrelId("__SYNC__")) {
-      currentCorrelId.string
-    }
-    assert(currentCorrelId.isEmpty)
-    assert(result == "__SYNC__")
   }
 
   if (false) "ThreadContext implemented with Monix Local, is stiched to the Fiber" in {
@@ -198,6 +180,6 @@ final class CorrelIdBinderTest extends AnyFreeSpec with BeforeAndAfterAll
   }
 }
 
-object CorrelIdBinderTest {
+object CorrelIdJvmTest {
   private val logger = Logger[this.type]
 }

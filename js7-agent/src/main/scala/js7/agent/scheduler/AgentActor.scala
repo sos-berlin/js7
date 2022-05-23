@@ -16,7 +16,7 @@ import js7.base.BuildInfo
 import js7.base.auth.UserId
 import js7.base.generic.Completed
 import js7.base.io.process.ProcessSignal.SIGKILL
-import js7.base.log.CorrelIdBinder.{bindCorrelId, currentCorrelId}
+import js7.base.log.CorrelId.currentCorrelId
 import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
@@ -98,7 +98,7 @@ private[agent] final class AgentActor private(
 
   private def ready: Receive = {
     case cmd: Input.ExternalCommand =>
-      bindCorrelId(cmd.correlId) {
+      cmd.correlId.bind {
         executeExternalCommand(cmd)
       }
 

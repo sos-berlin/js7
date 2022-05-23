@@ -2,7 +2,6 @@ package js7.journal.state
 
 import akka.actor.{ActorRef, Props}
 import js7.base.log.CorrelId
-import js7.base.log.CorrelIdBinder.bindCorrelId
 import js7.base.monixutils.MonixBase.promiseTask
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
@@ -52,7 +51,7 @@ extends MainJournalingActor[S, E]
 
   def receive = {
     case Persist(stateToEvents, options, correlId, promise) =>
-      bindCorrelId[Unit](correlId) {
+      correlId.bind[Unit] {
         val state = currentState
         Try(
           for {

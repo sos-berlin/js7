@@ -11,7 +11,7 @@ import js7.base.generic.SecretString
 import js7.base.io.https.HttpsConfig
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGKILL
-import js7.base.log.CorrelIdBinder.currentCorrelId
+import js7.base.log.CorrelId.currentCorrelId
 import js7.base.log.Logger.syntax._
 import js7.base.log.{CorrelIdWrapped, Logger}
 import js7.base.monixutils.MonixBase.syntax._

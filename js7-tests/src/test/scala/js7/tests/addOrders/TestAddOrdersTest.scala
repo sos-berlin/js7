@@ -3,7 +3,7 @@ package js7.tests.addOrders
 import js7.base.circeutils.CirceUtils.RichCirceString
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.JavaResource
-import js7.base.log.{CorrelIdBinder, Logger}
+import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.Checked._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
@@ -24,7 +24,7 @@ final class TestAddOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTe
 
   override def afterAll(): Unit = {
     super.afterAll()
-    CorrelIdBinder.logStatistics()
+    CorrelId.logStatistics()
   }
 
   override protected def controllerConfig = config"""

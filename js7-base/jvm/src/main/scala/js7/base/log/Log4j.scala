@@ -50,7 +50,7 @@ object Log4j
     */
   def shutdown(): Unit =
     if (!isShutdown.getAndSet(true)) {
-      CorrelIdBinder.onLog4jStop()
+      CorrelId.logStatisticsIfEnabled()
       CorrelIdLog4JThreadContextMap.logStatistics()
       for (shutdown <- shutdownMethod) {
         // Log complete timestamp in case of short log timestamp

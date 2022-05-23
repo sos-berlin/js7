@@ -5,7 +5,7 @@ import com.typesafe.config.Config
 import java.lang.Thread.currentThread
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.convert.As
-import js7.base.log.{CorrelIdBinder, Logger}
+import js7.base.log.{CorrelId, Logger}
 import js7.base.thread.ThreadPoolsBase.newUnlimitedThreadPool
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime._
@@ -70,7 +70,7 @@ object ThreadPools
     orCommon
       .match_ {
         case Some(scheduler) =>
-          Resource.pure[F, Scheduler](CorrelIdBinder.enableScheduler(scheduler))
+          Resource.pure[F, Scheduler](CorrelId.enableScheduler(scheduler))
         case None =>
           standardSchedulerResource(name, config)
       }
@@ -128,6 +128,6 @@ object ThreadPools
       }
     }
 
-    CorrelIdBinder.enableScheduler(scheduler)
+    CorrelId.enableScheduler(scheduler)
   }
 }

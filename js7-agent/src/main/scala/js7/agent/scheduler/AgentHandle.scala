@@ -7,7 +7,7 @@ import js7.agent.data.commands.AgentCommand
 import js7.agent.data.views.AgentOverview
 import js7.agent.scheduler.AgentActor.Command
 import js7.base.auth.UserId
-import js7.base.log.CorrelIdBinder.currentCorrelId
+import js7.base.log.CorrelId.currentCorrelId
 import js7.base.problem.Checked
 import monix.eval.Task
 import scala.concurrent.Promise

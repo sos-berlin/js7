@@ -5,7 +5,7 @@ import com.google.inject.{AbstractModule, Provides}
 import com.typesafe.config.Config
 import javax.inject.Singleton
 import js7.base.eventbus.StandardEventBus
-import js7.base.log.{CorrelIdBinder, Logger}
+import js7.base.log.{CorrelId, Logger}
 import js7.base.time.JavaTimeConverters._
 import js7.base.time.{AlarmClock, WallClock}
 import js7.base.utils.Closer
@@ -47,7 +47,7 @@ extends AbstractModule
 
   @Provides @Singleton
   def scheduler(closer: Closer): Scheduler =
-    commonScheduler.map(CorrelIdBinder.enableScheduler(_)) getOrElse
+    commonScheduler.map(CorrelId.enableScheduler(_)) getOrElse
       ThreadPools.newStandardScheduler(configuration.name, config, closer)
 
   @Provides @Singleton

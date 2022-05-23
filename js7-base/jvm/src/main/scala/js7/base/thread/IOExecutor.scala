@@ -4,7 +4,7 @@ import cats.effect.{Resource, Sync}
 import com.typesafe.config.Config
 import java.lang.Thread.currentThread
 import java.util.concurrent.{Executor, ThreadPoolExecutor}
-import js7.base.log.{CorrelIdBinder, Logger}
+import js7.base.log.{CorrelId, Logger}
 import js7.base.thread.Futures.promiseFuture
 import js7.base.thread.IOExecutor._
 import js7.base.thread.ThreadPoolsBase.newUnlimitedThreadPool
@@ -27,7 +27,7 @@ final class IOExecutor(threadPool: ThreadPoolExecutor) extends Executor
     threadPool,
     t => logger.error(t.toStringWithCauses, t))
 
-  lazy val scheduler = CorrelIdBinder.enableScheduler(
+  lazy val scheduler = CorrelId.enableScheduler(
     Scheduler(myExecutionContext, uncaughtExceptionReporter, SynchronousExecution))
 
   def execute(runnable: Runnable) = myExecutionContext.execute(runnable)

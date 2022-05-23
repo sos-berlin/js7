@@ -17,7 +17,7 @@ import js7.agent.web.AgentWebServer
 import js7.base.auth.{SessionToken, SimpleUser, UserId}
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.process.ProcessSignal
-import js7.base.log.CorrelIdBinder.currentCorrelId
+import js7.base.log.CorrelId.currentCorrelId
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.problem.Checked._

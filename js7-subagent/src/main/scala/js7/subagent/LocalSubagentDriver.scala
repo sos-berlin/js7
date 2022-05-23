@@ -4,7 +4,7 @@ import cats.syntax.foldable._
 import cats.syntax.parallel._
 import cats.syntax.traverse._
 import js7.base.io.process.{ProcessSignal, Stderr, Stdout, StdoutOrStderr}
-import js7.base.log.CorrelIdBinder.{bindCorrelId, currentCorrelId}
+import js7.base.log.CorrelId.currentCorrelId
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax._
 import js7.base.monixutils.AsyncMap
@@ -151,7 +151,7 @@ extends SubagentDriver
             .flatMap(chunk => Observable.fromTask(
               outErrStatistics(outerr).count(
                 chunk.length,
-                bindCorrelId(correlId)(
+                correlId.bind(
                   persistStdouterr(orderId, outerr, chunk)))))
             .completedL
         }

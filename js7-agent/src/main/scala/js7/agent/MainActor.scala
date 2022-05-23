@@ -9,7 +9,6 @@ import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
 import js7.agent.scheduler.{AgentActor, AgentHandle}
 import js7.base.auth.UserId
-import js7.base.log.CorrelIdBinder.bindCorrelId
 import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.Checked
 import js7.base.utils.ProgramTermination
@@ -79,7 +78,7 @@ extends Actor {
       readyPromise.success(Ready(api))
 
     case Input.ExternalCommand(cmd, userId, correlId, response) =>  // For RunningController
-      bindCorrelId(correlId) {
+      correlId.bind {
         agentHandle.executeCommand(cmd, userId, response)
       }
 

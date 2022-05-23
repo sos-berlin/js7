@@ -1,7 +1,7 @@
 package js7.subagent.director
 
 import cats.syntax.traverse._
-import js7.base.log.CorrelIdBinder.{bindCorrelId, currentCorrelId}
+import js7.base.log.CorrelId.currentCorrelId
 import js7.base.log.Logger.syntax._
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.Switch
@@ -106,7 +106,7 @@ private trait CommandDispatcher
         .takeUntilEval(processingAllowed.whenOff)
         .flatMap(Observable.fromIterable)
         .mapEval(numbered =>
-          bindCorrelId(numbered.value.correlId)(
+          numbered.value.correlId.bind(
             executeCommandNow(subagentRunId, numbered)
               .materialize
               .tapEval(_ => queue
@@ -120,7 +120,7 @@ private trait CommandDispatcher
 
   private def executeCommandNow(subagentRunId: SubagentRunId, numbered: Numbered[Execute])
   : Task[Checked[Response]] =
-    bindCorrelId(numbered.value.correlId) {
+    numbered.value.correlId.bind {
       val numberedCommand = Numbered(numbered.number, numbered.value.command)
       postCommand(numberedCommand, subagentRunId, processingAllowed/*stop retrying when off*/)
     }

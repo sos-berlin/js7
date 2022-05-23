@@ -7,7 +7,7 @@ import js7.base.utils.ScalaUtils.syntax.RichAny
 final case class CorrelIdWrapped[+V](correlId: CorrelId, value: V)
 {
   def bindCorrelId[R: CanBindCorrelId](body: V => R): R =
-    CorrelIdBinder.bindCorrelId(correlId or CorrelId.generate())(
+    (correlId or CorrelId.generate()).bind(
       body(value))
 }
 

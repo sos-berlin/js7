@@ -10,7 +10,7 @@ import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{AttachItem, AttachSignedItem, Batch, CoupleController, DedicateAgentDirector, DetachItem, EmergencyStop, NoOperation, OrderCommand, Reset, ResetSubagent, Response, ShutDown, TakeSnapshot}
 import js7.agent.scheduler.AgentHandle
 import js7.base.circeutils.JavaJsonCodecs.instant.StringInstantJsonCodec
-import js7.base.log.CorrelIdBinder.{bindCorrelId, currentCorrelId}
+import js7.base.log.CorrelId.currentCorrelId
 import js7.base.log.{CorrelId, CorrelIdWrapped, Logger}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
@@ -35,7 +35,7 @@ extends Actor {
 
   def receive = {
     case Input.Execute(command, meta, correlId, response) =>
-      bindCorrelId(correlId) {
+      correlId.bind {
         executeCommand(command, meta, response)
       }
 
@@ -46,7 +46,7 @@ extends Actor {
       sender() ! register.detailed
 
     case Internal.Respond(run, correlId, promise, response) =>
-      bindCorrelId[Unit](correlId) {
+      correlId.bind[Unit] {
         def msg = s"Response to ${run.idString} " +
           s"${AgentCommand.jsonCodec.classToName(run.command.getClass)} " +
           s"(${run.runningSince.elapsed.pretty}): $response"
@@ -93,7 +93,7 @@ extends Actor {
       case Batch(commands) =>
         val promises = Vector.fill(commands.size) { Promise[Checked[Response]]() }
         for ((CorrelIdWrapped(subcorrelId, cmd), promise) <- commands zip promises) {
-          bindCorrelId(subcorrelId or CorrelId.generate()) {
+          (subcorrelId or CorrelId.generate()).bind {
             executeCommand(cmd, meta, promise, batchId = batchId orElse Some(correlId))
           }
         }

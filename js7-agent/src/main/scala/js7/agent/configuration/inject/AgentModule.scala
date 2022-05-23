@@ -7,7 +7,7 @@ import javax.inject.Singleton
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.Akkas.newAgentActorSystem
 import js7.base.auth.SimpleUser
-import js7.base.log.CorrelIdBinder
+import js7.base.log.CorrelId
 import js7.base.thread.IOExecutor
 import js7.base.thread.ThreadPoolsBase.newUnlimitedThreadPool
 import js7.base.time.JavaTimeConverters.AsScalaDuration
@@ -78,7 +78,7 @@ extends AbstractModule
 
   @Provides @Singleton
   def scheduler(configuration: AgentConfiguration, closer: Closer): Scheduler =
-    commonScheduler.map(CorrelIdBinder.enableScheduler(_)) getOrElse
+    commonScheduler.map(CorrelId.enableScheduler(_)) getOrElse
       ThreadPools.newStandardScheduler(configuration.name, configuration.config, closer)
 
   @Provides @Singleton
@@ -88,7 +88,7 @@ extends AbstractModule
       // For BlockingInternalJob (thread-blocking Java jobs)
       val scheduler = newUnlimitedScheduler("JS7 blocking job")
       closer.onClose(scheduler.shutdown())
-      CorrelIdBinder.enableScheduler(scheduler)
+      CorrelId.enableScheduler(scheduler)
     }
     conf.toJobLauncherConf(iox, blockingJobScheduler, clock).orThrow
   }

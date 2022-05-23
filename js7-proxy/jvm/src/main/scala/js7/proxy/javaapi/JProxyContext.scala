@@ -6,7 +6,7 @@ import javax.annotation.Nonnull
 import js7.base.BuildInfo
 import js7.base.annotation.javaApi
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
-import js7.base.log.{CorrelIdBinder, Logger}
+import js7.base.log.{CorrelId, Logger}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{HasCloser, Lazy}
 import js7.common.akkautils.Akkas
@@ -48,7 +48,7 @@ extends HasCloser
   private val useJavaThreadPool = config_.getBoolean("js7.thread-pools.use-java-thread-pool")
   private val ownScheduler = !useJavaThreadPool ?
     ThreadPools.newStandardScheduler("JControllerProxy", config_, closer)
-  private[proxy] implicit val scheduler = CorrelIdBinder.enableScheduler(
+  private[proxy] implicit val scheduler = CorrelId.enableScheduler(
     ownScheduler getOrElse Scheduler(ForkJoinPool.commonPool))
 
   private val actorSystemLazy = Lazy(newActorSystem(

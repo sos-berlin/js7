@@ -27,7 +27,7 @@ import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.generic.SecretString
 import js7.base.io.https.Https.loadSSLContext
 import js7.base.io.https.HttpsConfig
-import js7.base.log.CorrelIdBinder.currentCorrelId
+import js7.base.log.CorrelId.currentCorrelId
 import js7.base.log.LogLevel.syntax.LevelLogger
 import js7.base.log.LogLevel.{Debug, Trace}
 import js7.base.log.{CorrelId, Logger}

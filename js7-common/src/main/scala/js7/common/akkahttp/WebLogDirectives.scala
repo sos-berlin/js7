@@ -11,7 +11,6 @@ import io.circe.parser.{parse => parseJson}
 import java.lang.System.nanoTime
 import js7.base.auth.SessionToken
 import js7.base.configutils.Configs._
-import js7.base.log.CorrelIdBinder.bindCorrelId
 import js7.base.log.LogLevel.syntax._
 import js7.base.log.{CorrelId, LogLevel, Logger}
 import js7.base.problem.Problem
@@ -115,7 +114,7 @@ trait WebLogDirectives extends ExceptionHandling
   private def log(request: HttpRequest, response: Option[HttpResponse],
     correlId: CorrelId, logLevel: LogLevel, nanos: Long, streamSuffix: String = ""): Unit
   =
-    bindCorrelId(correlId) {
+    correlId.bind {
       webLogger.log(
         logLevel,
         requestResponseToLine(request, response, nanos, streamSuffix))

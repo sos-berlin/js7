@@ -7,7 +7,7 @@ import js7.agent.scheduler.order.OrderActor._
 import js7.base.generic.Completed
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
-import js7.base.log.CorrelIdBinder.{bindCorrelId, currentCorrelId}
+import js7.base.log.CorrelId.{bindNewCorrelId, currentCorrelId}
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.RichCheckedTask
 import js7.base.problem.Checked.Ops
@@ -78,7 +78,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
           arguments, scheduledFor, externalOrderKey, historicOutcomes,
           Some(Order.Attached(agentPath)), parent, mark, isSuspended, removeWhenTerminated),
         correlId) =>
-          bindCorrelId(correlId) {
+          correlId.bind {
             becomeAsStateOf(attached, force = true)
             persist(OrderAttachedToAgent(wfPos, state, arguments, scheduledFor, externalOrderKey,
               historicOutcomes, agentPath, parent, mark,
@@ -108,10 +108,10 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
   private def startable: Receive =
     receiveEvent orElse {
       case Input.StartProcessing =>
-        bindCorrelId[Unit](orderCorrelId) {
+        orderCorrelId.bind[Unit] {
           if (order.isProcessable) {
             // Separate CorrelId for each order process
-            bindCorrelId(CorrelId.generate()) {
+            bindNewCorrelId {
               become("processing")(processing)
               subagentKeeper
                 .processOrder(
@@ -142,7 +142,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
   private def processing: Receive =
     receiveCommand orElse receiveEvent orElse {
       case Internal.UpdateEvents(events, correlId) =>
-        bindCorrelId(correlId) {
+        correlId.bind {
           update(events)
         }
 
@@ -167,7 +167,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
 
   private def receiveEvent: Receive = {
     case Command.HandleEvents(events, correlId) =>
-      bindCorrelId(correlId) {
+      correlId.bind {
         handleEvents(events) pipeTo sender()
       }
   }
@@ -245,7 +245,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
 
   private def wrap(receive: Receive): Receive = {
     case msg if receive.isDefinedAt(msg) =>
-      bindCorrelId(orderCorrelId) {
+      orderCorrelId.bind {
         receive(msg)
       }
   }

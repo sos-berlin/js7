@@ -7,6 +7,9 @@ import js7.base.generic.GenericString
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.Tests.isTest
+import monix.execution.Scheduler
+import monix.execution.misc.Local
+import monix.execution.schedulers.TracingScheduler
 
 /** Correlation ID. */
 sealed trait CorrelId extends GenericString
@@ -24,6 +27,13 @@ sealed trait CorrelId extends GenericString
 
   /** ASCII encoding is required for HTTP header values. */
   def toAscii: String
+
+  def bind[R](body: => R)(implicit R: CanBindCorrelId[R]): R =
+    R.bind(this)(body)
+
+  /** For a synchronous non-Unit executable body only, uses `CanBindLocals.synchronous`. */
+  def bindNow[R](body: => R): R =
+    bind(body)(CanBindCorrelId.synchronous)
 }
 
 object CorrelId extends GenericString.Checked_[CorrelId]
@@ -32,12 +42,13 @@ object CorrelId extends GenericString.Checked_[CorrelId]
   private[log] val width = (longByteCount + 2) / 3 * 4  // Base64 length
   private[log] val bitMask = (1L << (longByteCount * 8)) - 1
   private[log] val emptyString = " " * width
-
+  val empty: CorrelId = EmptyCorrelId
+  private[log] val local = Local(CorrelId.empty)
   private val random = new SecureRandom
+
+  private var currentCorrelIdCount = 0L
   private var generateCount = 0L
   private var asStringCount = 0L
-
-  val empty: CorrelId = EmptyCorrelId
 
   private val maybeEnabled0 =
     sys.props.get("js7.log.correlId") match {
@@ -59,20 +70,6 @@ object CorrelId extends GenericString.Checked_[CorrelId]
   def apply(number: Long): CorrelId =
     LongCorrelId(number)
 
-  def generate(): CorrelId =
-    if (!isEnabled)
-      CorrelId.empty
-    else {
-      generateCount += 1
-      LongCorrelId(random.nextLong & bitMask)
-    }
-
-  def logStatistics(): Unit =
-    scribe.debug(statistics)
-
-  def statistics: String =
-    s"$generateCount CorrelIds generated, $asStringCount× string"
-
   protected def unchecked(string: String): CorrelId =
     throw new NotImplementedError("CorrelId.unchecked is not implemented")
 
@@ -81,6 +78,61 @@ object CorrelId extends GenericString.Checked_[CorrelId]
       Right(EmptyCorrelId)
     else
       LongCorrelId.checked(string)
+
+  override implicit val jsonDecoder: Decoder[CorrelId] =
+    c => c.as[String].flatMap(o => checked(o).toDecoderResult(c.history))
+
+  def generate(): CorrelId =
+    if (!isEnabled)
+      CorrelId.empty
+    else {
+      generateCount += 1
+      LongCorrelId(random.nextLong & bitMask)
+    }
+
+  def currentCorrelId: CorrelId =
+    if (!CorrelId.isEnabled)
+      CorrelId.empty
+    else {
+      currentCorrelIdCount += 1
+      local()
+    }
+
+  def isolate[R](body: LogCorrelId => R): R =
+    if (!CorrelId.isEnabled)
+      body(EmptyLogCorrelId)
+    else {
+      val previous = currentCorrelId
+      try body(new ActiveLogCorrelId(previous))
+      finally local.update(previous)
+    }
+
+  sealed trait LogCorrelId {
+    def :=(correlId: CorrelId): Unit
+  }
+
+  private final class ActiveLogCorrelId(private var currCorrelId: CorrelId)
+  extends LogCorrelId
+  {
+    def :=(correlId: CorrelId): Unit =
+      if (correlId != currCorrelId) {
+        currCorrelId = correlId
+        local.update(correlId)
+      }
+  }
+
+  private object EmptyLogCorrelId extends LogCorrelId {
+    def :=(correlId: CorrelId) = {}
+  }
+
+  def bindNewCorrelId[R](body: => R)(implicit R: CanBindCorrelId[R]): R =
+    R.bind(CorrelId.generate())(body)
+
+  def enableScheduler(scheduler: Scheduler): Scheduler =
+    if (!CorrelId.couldBeEnabled)
+      scheduler
+    else
+      TracingScheduler(scheduler)
 
   private[log] sealed case class LongCorrelId(long: Long) extends CorrelId {
     import LongCorrelId._
@@ -167,6 +219,14 @@ object CorrelId extends GenericString.Checked_[CorrelId]
     val toAscii = ""
   }
 
-  override implicit val jsonDecoder: Decoder[CorrelId] =
-    c => c.as[String].flatMap(o => checked(o).toDecoderResult(c.history))
+  def logStatisticsIfEnabled(): Unit =
+    if (CorrelId.isEnabled) logStatistics()
+
+  def logStatistics(): Unit =
+    scribe.debug(statistics)
+
+  def statistics: String =
+    s"$generateCount CorrelIds generated, $asStringCount× string, " +
+    s"${CanBindCorrelId.bindCorrelIdCount}× bindCorrelId, " +
+      s"$currentCorrelIdCount× currentCorrelId"
 }

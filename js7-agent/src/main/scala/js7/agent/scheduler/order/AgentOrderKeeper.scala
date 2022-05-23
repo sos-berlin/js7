@@ -12,7 +12,7 @@ import js7.agent.main.AgentMain
 import js7.agent.scheduler.order.AgentOrderKeeper._
 import js7.base.crypt.{SignatureVerifier, Signed}
 import js7.base.generic.Completed
-import js7.base.log.CorrelIdBinder.{bindCorrelId, currentCorrelId}
+import js7.base.log.CorrelId.currentCorrelId
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.{RichCheckedTask, RichMonixTask}
 import js7.base.problem.Checked.Ops
@@ -315,7 +315,7 @@ with Stash
   private def ready: Receive = {
     case Input.ExternalCommand(cmd, correlId, response) =>
       response.completeWith(
-        bindCorrelId(correlId) {
+        correlId.bind {
           processCommand(cmd)
         })
 
@@ -327,7 +327,7 @@ with Stash
       shutdown.onSnapshotTaken()
 
     case OrderActor.Output.OrderChanged(orderId, correlId, previousOrderOrNull, events) =>
-      bindCorrelId(correlId) {
+      correlId.bind {
         if (!shuttingDown) {
           // previousOrderOrNull is null only for OrderAttachedToAgent event
           var order = previousOrderOrNull
