@@ -14,6 +14,7 @@ object Dependencies
   val catsEffectVersion = "2.5.4"
   val izumiReflectVersion = "2.1.0"
   //val kittensVersion = "1.2.1"
+  val catsParseVersion = "0.3.7"
   val fastparseVersion = "2.2.4"
   val circeVersion = "0.14.1"
   val scalaJava8Version = "1.0.0"

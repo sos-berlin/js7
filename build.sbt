@@ -360,6 +360,7 @@ lazy val `js7-data` = crossProject(JSPlatform, JVMPlatform)
   .settings {
     import Dependencies._
     libraryDependencies ++=
+      "org.typelevel" %%% "cats-parse" % catsParseVersion ++
       "com.lihaoyi" %%% "fastparse" % fastparseVersion ++
       "org.scalatest" %%% "scalatest" % scalaTestVersion % "test" ++
     //"org.scalatest" %%% "scalatest-freespec" % scalaTestVersion % "test" ++
