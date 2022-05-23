@@ -250,7 +250,7 @@ object BasicParsers
             operation(left, op, right).flatMap(a => loop(a, tl))
         }
       loop(initial, tail.toList)
-  }
+    }
   }
 
   def valid[A](a: A)(implicit ctx: P[_]): P[A] = checkedToP(Right(a))

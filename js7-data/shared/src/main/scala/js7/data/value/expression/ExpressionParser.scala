@@ -90,7 +90,7 @@ object ExpressionParser
 
   def quotedString[x: P] = P[String](BasicParsers.quotedString)  // Public
 
-  def interpolatedString[x: P] = P[StringExpression](
+  private def interpolatedString[x: P] = P[StringExpression](
     "\"" ~~/
     interpolatedStringContent ~~/
     "\"")

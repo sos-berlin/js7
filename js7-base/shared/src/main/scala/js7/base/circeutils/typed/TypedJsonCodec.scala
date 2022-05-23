@@ -120,7 +120,6 @@ object TypedJsonCodec
       subtypes)
 
   def named[A: ClassTag](name: String, subtypes: Subtype[_ <: A]*)
-    (implicit enclosing: sourcecode.Enclosing)
   : TypedJsonCodec[A] =
     fromIterable(name, subtypes)
 
