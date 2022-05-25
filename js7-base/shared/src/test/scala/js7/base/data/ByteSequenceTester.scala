@@ -308,7 +308,7 @@ extends AnyFreeSpec
     assert(byteSeq.parseJsonAs[A] == Right(A(7)))
 
     val wrongByteSeq = ByteSeq("""{ "alien": 7 }""")
-    assert(wrongByteSeq.parseJsonAs[A] == Left(Problem("JSON DecodingFailure at .value: Attempt to decode value on failed cursor")))
+    assert(wrongByteSeq.parseJsonAs[A] == Left(Problem("JSON DecodingFailure at .value: Missing required field")))
 
     val noJsonByteSeq = ByteSeq("""XXX""")
     assert(noJsonByteSeq.parseJsonAs[A] == Left(Problem("JSON ParsingFailure: expected json value got 'XXX' (line 1, column 1)")))

@@ -299,7 +299,7 @@ lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
       "io.circe" %%% "circe-core" % circeVersion ++
       "io.circe" %%% "circe-parser" % circeVersion ++
       "io.circe" %%% "circe-generic" % circeVersion ++
-      "io.circe" %%% "circe-generic-extras" % circeVersion ++
+      "io.circe" %%% "circe-generic-extras" % circeGenericExtrasVersion ++
       "io.monix" %%% "monix-eval" % monixVersion ++
       "io.monix" %%% "monix-reactive" % monixVersion ++
       "com.github.mpilquist" %% "simulacrum" % simulacrumVersion ++

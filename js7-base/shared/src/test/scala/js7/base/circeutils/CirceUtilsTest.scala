@@ -1,6 +1,7 @@
 package js7.base.circeutils
 
 import io.circe.CursorOp.DownField
+import io.circe.DecodingFailure.Reason.MissingField
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, DecodingFailure, Json, JsonObject}
 import js7.base.circeutils.CirceUtils._
@@ -26,8 +27,8 @@ final class CirceUtilsTest extends AnyFreeSpec
     val myCodec = deriveRenamingCodec[Simple](Map("old" -> "string"))
     assert(myCodec.decodeJson(json"""{ "int": 1, "string":  "B" }""") == Right(Simple(1, "B")))
     assert(myCodec.decodeJson(json"""{ "int": 1, "old":  "B" }""") == Right(Simple(1, "B")))
-    assert(myCodec.decodeJson(json"""{ "int": 1 }""") ==
-      Left(DecodingFailure("Attempt to decode value on failed cursor", DownField("string") :: Nil)))
+    assert(myCodec.decodeJson(json"""{ "int": 1 }""") == Left(
+      DecodingFailure(MissingField, DownField("string") :: Nil)))
 
     assert(myCodec.apply(Simple(1, "B")) == json"""{ "int": 1, "string": "B" }""")
   }
@@ -127,7 +128,8 @@ final class CirceUtilsTest extends AnyFreeSpec
     val decoder: Decoder[A] = _.get[Int]("number") map A.apply
     assert(decoder.decodeJson(json"""{ "number": 7 }""").toChecked == Right(A(7)))
     assert(decoder.decodeJson(json"""{ "number": true }""").toChecked == Left(Problem("JSON DecodingFailure at .number: Int")))
-    assert(decoder.decodeJson(json"""{ "x": true }""").toChecked == Left(Problem("JSON DecodingFailure at .number: Attempt to decode value on failed cursor")))
+    assert(decoder.decodeJson(json"""{ "x": true }""").toChecked == Left(Problem(
+      "JSON DecodingFailure at .number: Missing required field")))
   }
 
   "stringDecoder catches exceptions" in {

@@ -164,9 +164,9 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
           VersionedItemReader.SourceProblem(WorkflowPath("NO-JSON"), SourceType.Json,
             Problem("JSON ParsingFailure: expected json value got 'INVALI...' (line 1, column 1)")),
           VersionedItemReader.SourceProblem(WorkflowPath("ERROR-1"), SourceType.Json,
-            Problem("JSON DecodingFailure at .instructions: Attempt to decode value on failed cursor")),
+            Problem("JSON DecodingFailure at .instructions: Missing required field")),
           VersionedItemReader.SourceProblem(WorkflowPath("ERROR-2"), SourceType.Json,
-            Problem("JSON DecodingFailure at .instructions: C[A]"))))))
+            Problem("JSON DecodingFailure at .instructions: Got value '0' with wrong type, expecting array"))))))
     }
 
     "Delete invalid files" in {
