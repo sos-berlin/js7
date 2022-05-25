@@ -53,7 +53,7 @@
     </rollingRandomAccessFile>
   </appenders>
   <loggers>
-    <root level="debug">
+    <root level="info">
       <!-- The appenderRef levels do not prevent loggers from logging and increasing CPU usage !!! -->
       <appenderRef level="info"  ref="stderr"/>
       <appenderRef level="info"  ref="file-info"/>
@@ -62,5 +62,6 @@
     <logger level="warn"  name="akka.actor.CoordinatedShutdown"/>
     <logger level="warn"  name="akka.event.slf4j.Slf4jLogger"/>
     <logger level="debug" name="js7"/>
+    <logger level="trace" name="js7.common.http.AkkaHttpClient"/>
   </loggers>
 </configuration>

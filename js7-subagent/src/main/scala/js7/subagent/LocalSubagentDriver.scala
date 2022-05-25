@@ -65,8 +65,7 @@ extends SubagentDriver
       logger.info(s"Stopping" + ((orderCount > 0) ?? s", waiting for $orderCount processes"))
       Task
         .parZip2(
-          orderIdToJobDriver.stop
-            .tapEval(_ => Task(logger.debug("orderIdToJobDriver stopped"))),
+          orderIdToJobDriver.stop,
           signal.fold(Task.unit)(killAllAndStop))
         .tapEval(_ => Task(logger.debug("Stopped")))
         .*>(Task {

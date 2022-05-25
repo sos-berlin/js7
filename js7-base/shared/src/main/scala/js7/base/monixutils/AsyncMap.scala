@@ -185,7 +185,7 @@ object AsyncMap
 
     final val whenStopped: Task[Unit] =
       Task.fromFuture(whenEmptyPromise.future)
-        .*>(Task(logger.debug(s"$toString stopped")))
+        .*>(Task(logger.debug(s"$name stopped")))
         .memoize
 
     /** Initiate stop. */

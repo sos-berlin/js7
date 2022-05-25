@@ -72,10 +72,10 @@ object CorrelIdLog4JThreadContextMap
 
   def statistics: String =
     s"$getReadOnlyContextDataCount× getReadOnlyContextData, " +
-    s"${CorrelIdLog4jStringMap.forEachCount}× forEach, " +
-    s"$getCopyCount× getCopy, " +
+      s"${CorrelIdLog4jStringMap.forEachCount}× forEach, " +
+      s"$getCopyCount× getCopy, " +
       s"$getCount× get, " +
-      s"$putSuppressedCount× put suppressed"
+      s"$putSuppressedCount× put (suppressed)"
 
   def logStatistics(): Unit =
     Logger[this.type].debug(statistics)
