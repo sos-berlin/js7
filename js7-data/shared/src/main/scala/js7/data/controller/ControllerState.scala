@@ -636,7 +636,7 @@ with SnapshotableState[ControllerState]
       def get(itemKey: InventoryItemKey) =
         itemKey match {
           case id: VersionedItemId_ => repo.anyIdToItem(id).toOption
-          case path: SimpleItemPath => keyToItemFunc(path).collect { case o: SimpleItem => o }
+          case path: SimpleItemPath => pathToItem.get(path)
         }
 
       def iterator = items.map(o => o.key -> o).iterator
@@ -648,11 +648,15 @@ with SnapshotableState[ControllerState]
     new MapView[InventoryItemPath, InventoryItem] {
       def get(path: InventoryItemPath): Option[InventoryItem] = {
         path match {
-          case path: SimpleItemPath =>
-            keyToItemFunc(path) collect { case o: SimpleItem => o }
-
-          case path: VersionedItemPath =>
-            repo.pathToItem(path).toOption
+          case path: AgentPath => pathToAgentRefState.get(path).map(_.item)
+          case id: SubagentId => idToSubagentItemState.get(id).map(_.item)
+          case id: SubagentSelectionId => idToSubagentSelection.get(id)
+          case path: LockPath => pathToLockState.get(path).map(_.item)
+          case path: OrderWatchPath => allOrderWatchesState.pathToOrderWatchState.get(path).map(_.item)
+          case path: BoardPath => pathToBoardState.get(path).map(_.item)
+          case path: CalendarPath => pathToCalendar.get(path)
+          case path: SignableSimpleItemPath => pathToSignedSimpleItem.get(path).map(_.value)
+          case path: VersionedItemPath => repo.pathToItem(path).toOption
         }
       }
 
@@ -710,19 +714,6 @@ with SnapshotableState[ControllerState]
   private def signedItems: View[Signed[SignableItem]] =
     pathToSignedSimpleItem.values.view ++
       repo.signedItems
-
-  private def keyToItemFunc(itemKey: InventoryItemKey): Option[InventoryItem] =
-    itemKey match {
-      case id: VersionedItemId_ => repo.anyIdToSigned(id).toOption.map(_.value)
-      case path: AgentPath => pathToAgentRefState.get(path).map(_.item)
-      case id: SubagentId => idToSubagentItemState.get(id).map(_.item)
-      case id: SubagentSelectionId => idToSubagentSelection.get(id)
-      case path: LockPath => pathToLockState.get(path).map(_.item)
-      case path: OrderWatchPath => allOrderWatchesState.pathToOrderWatchState.get(path).map(_.item)
-      case path: BoardPath => pathToBoardState.get(path).map(_.item)
-      case path: CalendarPath => pathToCalendar.get(path)
-      case path: SignableSimpleItemPath => pathToSignedSimpleItem.get(path).map(_.value)
-    }
 
   def orders = idToOrder.values
 
