@@ -20,7 +20,7 @@ import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, Or
 import js7.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, OrderMark, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.state.OrderEventHandler.FollowUp
-import js7.data.state.{OrderEventHandler, StateView}
+import js7.data.state.{OrderEventHandler, TestStateView}
 import js7.data.subagent.Problems.ProcessLostDueToRestartProblem
 import js7.data.subagent.SubagentId
 import js7.data.value.NamedValues
@@ -50,7 +50,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
     for (isAgent <- Seq(false, true)) s"isAgent=$isAgent" in {
       val order = rawOrder.copy(attachedState = isAgent ? Order.Attached(agentPath = TestAgentPath))
       val eventSource = new OrderEventSource(
-        StateView.forTest(
+        TestStateView(
           isAgent = isAgent,
           idToOrder = Map(
             order.id -> order),
@@ -676,7 +676,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
       (body: (Order[Order.State], OrderEventSource, OrderEventSource) => Unit)
     = {
       val order = templateOrder.copy(attachedState = attachedState)
-      def eventSource(isAgent: Boolean) = new OrderEventSource(StateView.forTest(
+      def eventSource(isAgent: Boolean) = new OrderEventSource(TestStateView(
         isAgent = isAgent,
         idToOrder = Map(order.id -> order),
         idToWorkflow = Map(TestWorkflowId -> ForkWorkflow)))
@@ -750,7 +750,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
       def testResume(workflow: Workflow, from: Position, to: Position)
       : Checked[Option[List[OrderEvent.OrderActorEvent]]] = {
         val order = Order(OrderId("SUSPENDED"), workflow.id /: from, Order.Ready, isSuspended = true)
-        def eventSource = new OrderEventSource(StateView.forTest(
+        def eventSource = new OrderEventSource(TestStateView(
           isAgent = false,
           idToOrder = Map(order.id -> order),
           idToWorkflow = Map(workflow.id -> workflow),
@@ -763,7 +763,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
   "Failed" in {
     lazy val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "1", Vector(Fail()))
     val order = Order(OrderId("ORDER"), workflow.id /: Position(0), Order.Failed)
-    val eventSource = new OrderEventSource(StateView.forTest(
+    val eventSource = new OrderEventSource(TestStateView(
       isAgent = false,
       idToOrder = Map(order.id -> order),
       idToWorkflow = Map(workflow.id -> workflow)))
@@ -796,7 +796,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
          |}""".stripMargin).orThrow
 
     def eventSource(order: Order[Order.State]) =
-      new OrderEventSource(StateView.forTest(
+      new OrderEventSource(TestStateView(
         isAgent = false,
         idToOrder = Map(order.id -> order),
         idToWorkflow = Map(workflow.id -> workflow)))
@@ -924,7 +924,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
           Order.Forked.Child("🥕", aChild.id),
           Order.Forked.Child("🍋", bChild.id))))
 
-      def eventSource = new OrderEventSource(StateView.forTest(
+      def eventSource = new OrderEventSource(TestStateView(
         isAgent = false,
         idToOrder = Map(
           forkingOrder.id -> forkingOrder,
@@ -983,7 +983,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
         Order.Forked(Vector(
           Order.Forked.Child("🥕", aChild.id),
           Order.Forked.Child("🍋", bChild.id))))
-      def liveEventSource = new OrderEventSource(StateView.forTest(
+      def liveEventSource = new OrderEventSource(TestStateView(
         isAgent = false,
         idToOrder = Map(
           forkingOrder.id -> forkingOrder,
@@ -1067,7 +1067,7 @@ object OrderEventSourceTest
     private val inProcess = mutable.Set.empty[OrderId]
 
     private def eventSource(isAgent: Boolean) =
-      new OrderEventSource(StateView.forTest(
+      new OrderEventSource(TestStateView(
         isAgent = isAgent,
         idToOrder = idToOrder.toMap,
         idToWorkflow = idToWorkflow))
@@ -1157,7 +1157,7 @@ object OrderEventSourceTest
     workflow: Workflow,
     orders: Iterable[Order[Order.State]],
     isAgent: Boolean) =
-    new OrderEventSource(StateView.forTest(
+    new OrderEventSource(TestStateView(
       isAgent = isAgent,
       idToOrder = orders.toKeyedMap(_.id),
       idToWorkflow = Map(TestWorkflowId -> workflow)))

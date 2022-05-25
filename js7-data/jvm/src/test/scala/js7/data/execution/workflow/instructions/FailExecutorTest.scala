@@ -5,13 +5,12 @@ import js7.data.agent.AgentPath
 import js7.data.execution.workflow.instructions.FailExecutorTest._
 import js7.data.order.OrderEvent.{OrderFailedIntermediate_, OrderStarted}
 import js7.data.order.{Order, OrderId, Outcome}
-import js7.data.state.StateView
+import js7.data.state.TestStateView
 import js7.data.workflow.instructions.{Fail, Fork}
 import js7.data.workflow.position.BranchId.Then
 import js7.data.workflow.position.{InstructionNr, Position, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import org.scalatest.freespec.AnyFreeSpec
-import scala.collection.MapView
 
 /**
   * @author Joacim Zschimmer
@@ -20,17 +19,14 @@ final class FailExecutorTest extends AnyFreeSpec
 {
   private val failExecutor = new FailExecutor(new InstructionExecutorService(WallClock))
 
-  private lazy val stateView = new StateView.ForTest {
-    val isAgent = false
-
-    def keyToItem = MapView.empty
-
-    override val idToOrder = Map(
+  private lazy val stateView = new TestStateView(
+    isAgent = false,
+    idToOrder = Map(
       TestOrder.id -> TestOrder,
       ForkedOrder.id -> ForkedOrder,
       Carrot.id -> Carrot,
       Lemon.id -> Lemon)
-
+  ) {
     override def childOrderEnded(order: Order[Order.State], parent: Order[Order.Forked]) =
       Set(Carrot.id, Lemon.id)(order.id)
 

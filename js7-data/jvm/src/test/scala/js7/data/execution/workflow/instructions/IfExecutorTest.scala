@@ -8,7 +8,7 @@ import js7.data.agent.AgentPath
 import js7.data.execution.workflow.instructions.IfExecutorTest._
 import js7.data.job.PathExecutable
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
-import js7.data.state.StateView
+import js7.data.state.TestStateView
 import js7.data.value.expression.Expression._
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -25,7 +25,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class IfExecutorTest extends AnyFreeSpec {
 
   private val ifExecutor = new IfExecutor(new InstructionExecutorService(WallClock))
-  private lazy val stateView = StateView.forTest(
+  private lazy val stateView = TestStateView(
     isAgent = false,
     idToOrder = Map(
       AOrder.id -> AOrder,

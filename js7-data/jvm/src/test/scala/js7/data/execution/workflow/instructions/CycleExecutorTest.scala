@@ -14,7 +14,7 @@ import js7.data.execution.workflow.instructions.CycleExecutorTest._
 import js7.data.order.Order.{BetweenCycles, Finished, Ready}
 import js7.data.order.OrderEvent.{OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderMoved}
 import js7.data.order.{CycleState, Order, OrderEvent, OrderId}
-import js7.data.state.StateView
+import js7.data.state.TestStateView
 import js7.data.workflow.instructions.Schedule.{Periodic, Scheme, Ticking}
 import js7.data.workflow.instructions.{Cycle, CycleTest, ImplicitEnd, Schedule}
 import js7.data.workflow.position.{BranchId, Position}
@@ -364,12 +364,12 @@ final class CycleExecutorTest extends AnyFreeSpec with ScheduleTester
       timeZone = Timezone(zone.getId),
       calendarPath = Some(calendar.path))
 
-    lazy val stateView = new StateView.ForTest {
-      def isAgent = true
+    lazy val stateView = new TestStateView(
+      isAgent = true,
 
-      override def idToWorkflow = Map(workflow.id -> workflow)
-
-      def keyToItem =
+      idToWorkflow = Map(workflow.id -> workflow)
+    ) {
+      override lazy val keyToItem =
         MapView(calendar.path -> calendar)
     }
 
@@ -454,12 +454,11 @@ object CycleExecutorTest
 
   final class Stepper(orderId: OrderId, workflow: Workflow, val clock: WallClock)
   {
-    private lazy val stateView = new StateView.ForTest {
-      def isAgent = true
-
-      override def idToWorkflow = Map(workflow.id -> workflow)
-
-      def keyToItem = MapView(calendar.path -> calendar)
+    private lazy val stateView = new TestStateView(
+      isAgent = true,
+      idToWorkflow = Map(workflow.id -> workflow)
+    ) {
+      override lazy val keyToItem = MapView(calendar.path -> calendar)
     }
 
     private val executorService = new InstructionExecutorService(clock)

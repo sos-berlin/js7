@@ -7,7 +7,7 @@ import js7.data.job.PathExecutable
 import js7.data.lock.{Acquired, Lock, LockPath, LockState}
 import js7.data.order.OrderEvent.{OrderLockAcquired, OrderLockEvent, OrderLockQueued, OrderLockReleased}
 import js7.data.order.{Order, OrderId}
-import js7.data.state.StateView
+import js7.data.state.TestStateView
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, LockInstruction}
 import js7.data.workflow.position.{BranchId, Position}
@@ -16,7 +16,7 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class LockExecutorTest extends AnyFreeSpec
 {
-  private lazy val stateView = StateView.forTest(
+  private lazy val stateView = TestStateView(
     isAgent = false,
     idToOrder = Map(
       freeLockOrder.id -> freeLockOrder,

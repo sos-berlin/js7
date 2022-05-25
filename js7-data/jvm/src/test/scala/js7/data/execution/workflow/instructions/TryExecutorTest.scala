@@ -8,7 +8,7 @@ import js7.data.execution.workflow.instructions.TryExecutorTest._
 import js7.data.job.PathExecutable
 import js7.data.order.OrderEvent.OrderMoved
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
-import js7.data.state.StateView
+import js7.data.state.TestStateView
 import js7.data.value.NamedValues
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, TryInstruction}
@@ -24,7 +24,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class TryExecutorTest extends AnyFreeSpec
 {
   private val tryExecutor = new TryExecutor(new InstructionExecutorService(WallClock))
-  private lazy val stateView = StateView.forTest(
+  private lazy val stateView = TestStateView(
     isAgent = false,
     idToOrder = Map(AOrder.id -> AOrder))
 

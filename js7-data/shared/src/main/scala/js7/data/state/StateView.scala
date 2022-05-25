@@ -4,13 +4,11 @@ import cats.syntax.semigroup._
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
-import js7.base.utils.NotImplementedMap
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.board.{BoardPath, BoardState}
 import js7.data.controller.ControllerId
 import js7.data.event.ItemContainer
-import js7.data.item.{InventoryItem, InventoryItemKey}
-import js7.data.job.{JobKey, JobResource, JobResourcePath}
+import js7.data.job.{JobKey, JobResource}
 import js7.data.lock.{LockPath, LockState}
 import js7.data.order.Order.{FailedInFork, Processing}
 import js7.data.order.OrderEvent.OrderNoticesExpected
@@ -21,7 +19,6 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{BoardInstruction, End}
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow, WorkflowId, WorkflowPath}
-import scala.collection.MapView
 import scala.reflect.ClassTag
 
 /** Common interface for ControllerState and AgentState (but not SubagentState). */
@@ -138,75 +135,4 @@ trait StateView extends ItemContainer
   final def toOrderScopes(order: Order[Order.State]): Checked[OrderScopes] =
     for (w <- idToWorkflow.checked(order.workflowId)) yield
       OrderScopes(order, w, controllerId)
-}
-
-object StateView
-{
-  def forTest(
-    isAgent: Boolean,
-    controllerId: ControllerId = ControllerId("CONTROLLER"),
-    idToOrder: Map[OrderId, Order[Order.State]] = new NotImplementedMap,
-    idToWorkflow: PartialFunction[WorkflowId, Workflow] = new NotImplementedMap,
-    pathToLockState: PartialFunction[LockPath, LockState] = new NotImplementedMap,
-    pathToBoardState: PartialFunction[BoardPath, BoardState] = new NotImplementedMap)
-  = {
-    val isAgent_ = isAgent
-    val controllerId_ = controllerId
-    val idToOrder_ = idToOrder
-    val idToWorkflow_ = idToWorkflow
-    val pathToLockState_ = pathToLockState
-    val pathToBoardState_ = pathToBoardState
-
-    new StateView {
-      val isAgent = isAgent_
-      val idToOrder = idToOrder_
-      val orders = idToOrder_.values
-      val idToWorkflow = idToWorkflow_
-      val pathToLockState = pathToLockState_
-      val pathToBoardState = pathToBoardState_
-      val controllerId = controllerId_
-
-      def workflowPathToId(workflowPath: WorkflowPath) =
-        Left(Problem("workflowPathToId is not implemented"))
-
-      lazy val keyToItem: MapView[InventoryItemKey, InventoryItem] =
-        new MapView[InventoryItemKey, InventoryItem] {
-          def get(itemKey: InventoryItemKey): Option[InventoryItem] =
-            itemKey match {
-              case WorkflowId.as(id) => idToWorkflow.get(id)
-              case path: LockPath => pathToLockState.get(path).map(_.item)
-              case path: BoardPath => pathToBoardState.get(path).map(_.item)
-            }
-
-          def iterator: Iterator[(InventoryItemKey, InventoryItem)] =
-            throw new NotImplementedError
-        }
-    }
-  }
-
-  trait ForTest extends StateView
-  {
-    def idToOrder: Map[OrderId, Order[Order.State]] =
-      new NotImplementedMap[OrderId, Order[Order.State]]
-
-    def orders: Iterable[Order[Order.State]] =
-      idToOrder.values
-
-    def idToWorkflow: PartialFunction[WorkflowId, Workflow] =
-      new NotImplementedMap[WorkflowId, Workflow]
-
-    def workflowPathToId(workflowPath: WorkflowPath) =
-      Left(Problem("workflowPathToId is not implemented"))
-
-    def pathToLockState: PartialFunction[LockPath, LockState] =
-      new NotImplementedMap[LockPath, LockState]
-
-    def pathToBoardState: PartialFunction[BoardPath, BoardState] =
-      new NotImplementedMap[BoardPath, BoardState]
-
-    def pathToJobResource =
-      new NotImplementedMap[JobResourcePath, JobResource]
-
-    val controllerId = ControllerId("CONTROLLER")
-  }
 }

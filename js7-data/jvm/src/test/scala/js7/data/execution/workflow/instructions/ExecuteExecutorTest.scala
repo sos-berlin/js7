@@ -12,7 +12,7 @@ import js7.data.execution.workflow.instructions.ExecuteExecutorTest._
 import js7.data.job.InternalExecutable
 import js7.data.order.OrderEvent.{OrderAttachable, OrderMoved}
 import js7.data.order.{Order, OrderId}
-import js7.data.state.StateView
+import js7.data.state.TestStateView
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
@@ -25,7 +25,7 @@ import scala.collection.View
   */
 final class ExecuteExecutorTest extends AnyFreeSpec
 {
-  private lazy val stateView = StateView.forTest(
+  private lazy val stateView = TestStateView(
     isAgent = false,
     idToOrder = orders.toKeyedMap(_.id),
     idToWorkflow = Map(

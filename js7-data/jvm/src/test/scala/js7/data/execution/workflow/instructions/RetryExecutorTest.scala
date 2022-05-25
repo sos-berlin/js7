@@ -6,7 +6,7 @@ import js7.base.time.{Timestamp, WallClock}
 import js7.data.execution.workflow.instructions.RetryExecutorTest._
 import js7.data.order.OrderEvent.OrderRetrying
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
-import js7.data.state.StateView
+import js7.data.state.TestStateView
 import js7.data.value.NamedValues
 import js7.data.workflow.instructions.{Gap, Retry, TryInstruction}
 import js7.data.workflow.position.{Position, WorkflowPosition}
@@ -53,13 +53,10 @@ object RetryExecutorTest
   private def toEvents(position: Position, delays: Seq[FiniteDuration] = Nil) = {
     val order = Order(orderId, workflowId /: position, Order.Ready,
       historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(1)))))
-    val stateView = new StateView.ForTest {
-      def isAgent = false
-
-      def keyToItem = throw new NotImplementedError
-
-      override def idToOrder = Map(order.id -> order)
-
+    val stateView = new TestStateView(
+      isAgent = false,
+      idToOrder = Map(order.id -> order)
+    ) {
       override def instruction(position: WorkflowPosition) =
         if (position == workflowId /: tryPosition) tryInstruction.copy(retryDelays = Some(delays.toVector))
         else Gap.empty

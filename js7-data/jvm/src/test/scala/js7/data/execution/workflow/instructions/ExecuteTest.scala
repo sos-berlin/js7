@@ -9,7 +9,7 @@ import js7.data.event.KeyedEvent
 import js7.data.job.{InternalExecutable, RelativePathExecutable, ReturnCodeMeaning}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderFailedIntermediate_, OrderMoved}
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
-import js7.data.state.StateView
+import js7.data.state.TestStateView
 import js7.data.value.{NamedValues, NumberValue, StringValue}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -29,7 +29,7 @@ final class ExecuteTest extends AnyFreeSpec
     Seq(Execute(WorkflowJob(AgentPath("AGENT"), InternalExecutable("?")))))
   private val executeExecutor = new ExecuteExecutor(new InstructionExecutorService(WallClock))
 
-  private val stateView = StateView.forTest(
+  private val stateView = TestStateView(
     isAgent = false,
     idToWorkflow = {
       case workflow.id => workflow
