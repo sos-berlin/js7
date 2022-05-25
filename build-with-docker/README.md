@@ -14,7 +14,7 @@ Do not use a snapshot version for production.
 ## Build
 ```
 > cd js7
-> git pull  # Update the code
+> git pull --ff-only  # Update the code
 > build-with-docker/run sbt clean-build
 
 Or without running the tests:
@@ -30,4 +30,11 @@ Or without running the tests:
 * A Docker container `js7-builder`.
 * A Docker volume `js7-builder`, containing the downloaded third-party libraries.
 
-Docker container and volume are left to speed up future builds. You can delete them.
+## Clean up
+Docker container and volume are left to speed up future builds. If you delete them, the next build will recreate them.
+
+```
+> docker image rm js7-builder
+> docker volume rm js7-builder
+> rm -rf js7
+```
