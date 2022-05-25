@@ -26,18 +26,12 @@ extends UnsignedSimpleItem
   def rename(path: BoardPath) =
     copy(path = path)
 
-  def postingOrderToNotice(scope: Scope): Checked[Notice] = {
-    //val args = ListValue(Vector(StringValue(order.id.string)))
+  def postingOrderToNotice(scope: Scope): Checked[Notice] =
     for {
-      endOfLife <- evalEndOfLife(scope)
-      value <- postOrderToNoticeId.eval/*(args)*/(scope)
-      noticeId <- value.asString
-    } yield Notice(NoticeId(noticeId), path, endOfLife)
-  }
-
-  def toNotice(noticeId: NoticeId, endOfLife: Option[Timestamp])(scope: Scope): Checked[Notice] =
-    endOfLife.fold(evalEndOfLife(scope))(Checked(_))
-      .map(Notice(noticeId, path, _))
+      value <- postOrderToNoticeId.eval(scope)
+      string <- value.asString
+      notice <- toNotice(NoticeId(string))(scope)
+    } yield notice
 
   private def evalEndOfLife(scope: Scope): Checked[Timestamp] =
     endOfLife
@@ -46,10 +40,16 @@ extends UnsignedSimpleItem
       .map(Timestamp.ofEpochMilli)
 
   def expectingOrderToNoticeId(scope: Scope): Checked[NoticeId] =
-    expectOrderToNoticeId
-      .eval(scope)
-      .flatMap(_.asString)
-      .flatMap(NoticeId.checked)
+    for {
+      value <- expectOrderToNoticeId.eval(scope)
+      string <- value.asString
+      noticeId <- NoticeId.checked(string)
+    } yield noticeId
+
+  def toNotice(noticeId: NoticeId, endOfLife: Option[Timestamp] = None)(scope: Scope)
+  : Checked[Notice] =
+    for (endOfLife <- endOfLife.fold(evalEndOfLife(scope))(Checked(_)))
+      yield Notice(noticeId, path, endOfLife)
 }
 
 object Board extends UnsignedSimpleItem.Companion[Board]

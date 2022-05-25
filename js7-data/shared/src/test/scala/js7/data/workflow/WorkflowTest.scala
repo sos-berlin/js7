@@ -7,7 +7,7 @@ import js7.base.problem.Problem
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.time.Timezone
 import js7.data.agent.AgentPath
-import js7.data.board.BoardPath
+import js7.data.board.{BoardPath, BoardPathExpression}
 import js7.data.calendar.CalendarPath
 import js7.data.item.VersionId
 import js7.data.job.{JobKey, JobResourcePath, PathExecutable, ShellScriptExecutable}
@@ -693,7 +693,7 @@ final class WorkflowTest extends AnyFreeSpec
           Fork.of(
             "BRANCH" -> Workflow.of(
               PostNotices(Seq(b)),
-              ExpectNotices(Seq(c))))))))
+              ExpectNotices(BoardPathExpression.ExpectNotice(c))))))))
     assert(workflow.referencedItemPaths.toSet == Set(a, b, c))
   }
 

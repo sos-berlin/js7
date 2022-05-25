@@ -160,9 +160,6 @@ object CatsBasicParsers
   val quotedString: Parser[String] =
     doubleQuoted | singleQuoted
 
-  val pathString: Parser[String] =
-    quotedString
-
   def keyValues[A](namedValueParser: Parser[(String, A)]): Parser0[KeyToValue[A]] =
     commaSequence(namedValueParser)
       .flatMap(namedValues =>

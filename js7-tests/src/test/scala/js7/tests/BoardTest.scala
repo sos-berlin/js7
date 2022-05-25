@@ -13,6 +13,7 @@ import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.Problems.ItemIsStillReferencedProblem
 import js7.data.agent.AgentPath
 import js7.data.board.BoardEvent.NoticeDeleted
+import js7.data.board.BoardPathExpressionParser.boardPathExpr
 import js7.data.board.{Board, BoardPath, BoardState, Notice, NoticeExpectation, NoticeId, NoticePlace}
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{CancelOrders, DeleteNotice, ResumeOrder, SuspendOrders}
@@ -80,17 +81,14 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
       board0.path -> BoardState(
         board0.withRevision(Some(ItemRevision(0))),
         Map(
-          //NoticeId("2222-01-01") -> Notice(NoticeId("2222-01-01"), board0.path, endOfLife0),  // from previous test
           notice0.id -> NoticePlace(None, Some(NoticeExpectation(notice0.id, expecting01OrderIds.toSet))))),
       board1.path -> BoardState(
         board1.withRevision(Some(ItemRevision(0))),
         Map(
-          //NoticeId("2222-01-01") -> Notice(NoticeId("2222-01-01"), board1.path, endOfLife1),  // from previous test
           notice1.id -> NoticePlace(Some(notice1), Some(NoticeExpectation(notice0.id, expecting01OrderIds.toSet))))),
       board2.path -> BoardState(
         board2.withRevision(Some(ItemRevision(0))),
         Map(
-          //NoticeId("2222-01-01") -> Notice(NoticeId("2222-01-01"), board2.path, endOfLife2),  // from previous test
           notice2.id -> NoticePlace(Some(notice2))))))
 
     controller.runOrder(FreshOrder(OrderId(s"#$qualifier#POSTING-0"), posting0Workflow.path))
@@ -116,16 +114,6 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderNoticesRead,
       OrderMoved(Position(1)),
       OrderFinished))
-
-    //assert(controllerState.pathToBoardState(board0.path) ==
-    //  BoardState(
-    //    board0.withRevision(Some(ItemRevision(0))),
-    //    Map(
-    //      NoticeId("2222-01-01") -> Notice(NoticeId("2222-01-01"), board0.path, endOfLife0),  // from previous test
-    //      notice0.id -> notice0,
-    //      notice1.id -> notice1,
-    //      notice2.id -> notice2)))
-
 
     assert(controllerState.pathToBoardState == Map(
       board0.path -> BoardState(
@@ -443,16 +431,24 @@ object BoardTest
   private val Seq(board0, board1, board2) = boards
 
   private val expecting0Workflow = Workflow(WorkflowPath("EXPECTING-0") ~ "INITIAL", Seq(
-    ExpectNotices(Seq(board0.path))))
+    ExpectNotices(boardPathExpr(
+      s"'${board0.path.string}'"))))
 
   private val expecting012Workflow = Workflow(WorkflowPath("EXPECTING-0-1-2") ~ "INITIAL", Seq(
-    ExpectNotices(Seq(board0.path, board1.path, board2.path))))
+    ExpectNotices(boardPathExpr(
+      s"'${board0.path.string}' && " +
+      s"'${board1.path.string}' && " +
+      s"'${board2.path.string}'"))))
 
   private val expecting01Workflow = Workflow(WorkflowPath("EXPECTING-0-1") ~ "INITIAL", Seq(
-    ExpectNotices(Seq(board0.path, board1.path))))
+    ExpectNotices(boardPathExpr(
+      s"'${board0.path.string}' && " +
+      s"'${board1.path.string}'"))))
 
   private val expecting02Workflow = Workflow(WorkflowPath("EXPECTING-0-2") ~ "INITIAL", Seq(
-    ExpectNotices(Seq(board0.path, board2.path))))
+    ExpectNotices(boardPathExpr(
+      s"'${board0.path.string}' && " +
+      s"'${board2.path.string}'"))))
 
   private val posting0Workflow = Workflow(WorkflowPath("POSTING-0") ~ "INITIAL", Seq(
     PostNotices(Seq(board0.path))))
@@ -466,5 +462,5 @@ object BoardTest
 
   private val expectingAgentWorkflow = Workflow(WorkflowPath("EXPECTING-AT-AGENT") ~ "INITIAL", Seq(
     EmptyJob.execute(agentPath),
-    ExpectNotices(Seq(board0.path))))
+    ExpectNotices(boardPathExpr(s"'${board0.path.string}'"))))
 }

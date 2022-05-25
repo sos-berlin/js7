@@ -1,7 +1,7 @@
 package js7.data.workflow.instructions
 
 import io.circe.Codec
-import io.circe.generic.semiauto.deriveCodec
+import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 import js7.base.circeutils.CirceUtils.RichCirceDecoder
 import js7.base.problem.Checked
 import js7.base.utils.Collections.implicits.RichIterable
@@ -14,6 +14,11 @@ final case class PostNotices private(
   sourcePos: Option[SourcePos])
 extends BoardInstruction
 {
+  val referencedBoardPaths = boardPaths.toSet
+
+  protected def checked: Checked[this.type] =
+    for (_ <- boardPaths.checkUniqueness) yield this
+
   def withoutSourcePos = copy(sourcePos = None)
 }
 
@@ -32,8 +37,8 @@ object PostNotices
     for (_ <- boardPaths.checkUniqueness) yield
       new PostNotices(boardPaths, sourcePos)
 
-  implicit val jsonCodec: Codec.AsObject[PostNotices] = {
-    val codec = deriveCodec[PostNotices]
-    Codec.AsObject.from(codec.checked(_.checked), codec)
-  }
+  implicit val jsonCodec: Codec.AsObject[PostNotices] =
+    Codec.AsObject.from(
+      deriveDecoder[PostNotices].checked(_.checked),
+      deriveEncoder[PostNotices])
 }

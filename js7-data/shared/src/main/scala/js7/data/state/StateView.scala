@@ -13,6 +13,7 @@ import js7.data.item.{InventoryItem, InventoryItemKey}
 import js7.data.job.{JobKey, JobResource, JobResourcePath}
 import js7.data.lock.{LockPath, LockState}
 import js7.data.order.Order.{FailedInFork, Processing}
+import js7.data.order.OrderEvent.OrderNoticesExpected
 import js7.data.order.{Order, OrderId}
 import js7.data.value.expression.Scope
 import js7.data.value.expression.scopes.{JobResourceScope, NowScope, OrderScopes}
@@ -53,6 +54,14 @@ trait StateView extends ItemContainer
 
   def pathToBoardState: PartialFunction[BoardPath, BoardState]
 
+  def availableNotices(expectedSeq: Iterable[OrderNoticesExpected.Expected]): Set[BoardPath] =
+    expectedSeq
+      .collect {
+        case x if pathToBoardState.get(x.boardPath).exists(_ containsNotice x.noticeId) =>
+          x.boardPath
+      }
+      .toSet
+
   // COMPATIBLE with v2.3
   final def workflowPositionToBoardState(workflowPosition: WorkflowPosition): Checked[BoardState] =
     for {
@@ -63,7 +72,7 @@ trait StateView extends ItemContainer
   // COMPATIBLE with v2.3
   final def workflowPositionToBoardPath(workflowPosition: WorkflowPosition): Checked[BoardPath] =
     instruction_[BoardInstruction](workflowPosition)
-      .flatMap(_.boardPaths match {
+      .flatMap(_.referencedBoardPaths.toSeq match {
         case Seq(boardPath) => Right(boardPath)
         case _ => Left(Problem.pure("Legacy orderIdToBoardState, but instruction has multiple BoardPaths"))
       })
@@ -83,7 +92,7 @@ trait StateView extends ItemContainer
     for {
       order <- idToOrder.checked(orderId)
       instr <- instruction_[BoardInstruction](order.workflowPosition)
-      boardPath <- instr.boardPaths match {
+      boardPath <- instr.referencedBoardPaths.toVector match {
         case Vector(o) => Right(o)
         case _ => Left(Problem.pure("Legacy orderIdToBoardState, but instruction has multiple BoardPaths"))
       }

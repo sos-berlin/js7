@@ -1,12 +1,15 @@
 package js7.data.execution.workflow.instructions
 
 import cats.syntax.traverse._
+import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.order.Order
-import js7.data.order.OrderEvent.{OrderMoved, OrderNoticePosted, OrderNoticesRead}
+import js7.data.board.{BoardState, Notice}
+import js7.data.event.KeyedEvent
+import js7.data.execution.workflow.instructions.PostNoticesExecutor._
+import js7.data.order.OrderEvent.{OrderMoved, OrderNoticePosted}
+import js7.data.order.{Order, OrderEvent}
 import js7.data.state.StateView
-import js7.data.workflow.instructions.PostNotices
-import scala.collection.View
+import js7.data.workflow.instructions.{ExpectNotices, PostNotices}
 
 private[instructions] final class PostNoticesExecutor(
   protected val service: InstructionExecutorService)
@@ -19,35 +22,54 @@ extends EventInstructionExecutor
     detach(order)
       .orElse(start(order))
       .getOrElse(
-        if (order.isState[Order.Ready]) {
-          val now = clock.now()
+        if (order.isState[Order.Ready])
           for {
             boardStates <- postNotices.boardPaths.traverse(state.pathToBoardState.checked)
-            orderScope <- state.toImpureOrderExecutingScope(order, now)
-            notices <- boardStates.traverse(_.board.postingOrderToNotice(orderScope))
-            expectingOrders <- boardStates
-              .flatMap(boardState =>
-                notices.flatMap(notice => boardState.expectingOrders(notice.id)))
-              .distinct
-              .traverse(state.idToOrder.checked)
+            orderScope <- state.toImpureOrderExecutingScope(order, clock.now())
+            fatNotices <- boardStates.traverse(bs => bs.board
+              .postingOrderToNotice(orderScope)
+              .map(FatNotice(_, bs)))
+            expectingOrderEvents <- toExpectingOrderEvents(fatNotices, state)
           } yield
-            notices
-              .map(order.id <-: OrderNoticePosted(_))
-              .appended(order.id <-: OrderMoved(order.position.increment))
-              .concat(expectingOrders
-                .filter(o =>
-                  state.idToOrder.get(o.id)
-                    .flatMap(_.ifState[Order.ExpectingNotices])
-                    .fold(false)(_.state.expected
-                      .forall(expected =>
-                        notices.exists(expected.matches) ||
-                          state.pathToBoardState
-                            .get(expected.boardPath)
-                            .exists(_.containsNotice(expected.noticeId)))))
-                .flatMap(o => View(
-                  o.id <-: OrderNoticesRead,
-                  o.id <-: OrderMoved(o.position.increment))))
-              .toList
-        } else
+            toPostingOrderEvents(fatNotices.map(_.notice), order) ++:
+              expectingOrderEvents.toList
+        else
           Right(Nil))
+
+  private def toPostingOrderEvents(notices: Vector[Notice], order: Order[Order.State])
+  : Vector[KeyedEvent[OrderEvent.OrderActorEvent]] =
+    notices
+      .map(n => order.id <-: OrderNoticePosted(n))
+      .appended(order.id <-: OrderMoved(order.position.increment))
+
+  private def toExpectingOrderEvents(
+    postedNotices: Vector[FatNotice],
+    state: StateView)
+  : Checked[Vector[KeyedEvent[OrderEvent.OrderActorEvent]]] =
+    for {
+      expectingOrders <- postedNotices
+        .flatMap(post => post.boardState.expectingOrders(post.notice.id))
+        .distinct
+        .traverse(state.idToOrder.checked)
+      events <- expectingOrders
+        .traverse(expectingOrder => state
+          .instruction_[ExpectNotices](expectingOrder.workflowPosition)
+          .map(expectingOrder -> _))
+        .flatMap(_
+          .traverse { case (expectingOrder, expectNoticesInstr) =>
+            state.idToOrder.checked(expectingOrder.id)
+              .flatMap(_.checkedState[Order.ExpectingNotices])
+              .map { expectingOrder =>
+                val postedBoards = postedNotices.map(_.boardState.path).toSet
+                ExpectNoticesExecutor
+                  .tryFulfillExpectingOrder(expectNoticesInstr, expectingOrder, state, postedBoards)
+                  .map(expectingOrder.id <-: _)
+              }
+          }
+          .map(_.flatten))
+    } yield events
+}
+
+private object PostNoticesExecutor {
+  private final case class FatNotice(notice: Notice, boardState: BoardState)
 }

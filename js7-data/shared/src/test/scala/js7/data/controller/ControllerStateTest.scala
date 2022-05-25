@@ -11,7 +11,7 @@ import js7.base.utils.Collections.RichMap
 import js7.base.utils.Collections.implicits._
 import js7.base.web.Uri
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
-import js7.data.board.{Board, BoardPath, BoardState, Notice, NoticeExpectation, NoticeId, NoticePlace}
+import js7.data.board.{Board, BoardPath, BoardPathExpression, BoardState, Notice, NoticeExpectation, NoticeId, NoticePlace}
 import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterStateSnapshot, ClusterTiming}
 import js7.data.controller.ControllerStateTest._
@@ -302,7 +302,7 @@ final class ControllerStateTest extends AsyncFreeSpec
             "TYPE": "Silly",
             "signatureString": "SILLY-SIGNATURE"
           },
-          "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"versionId\":\"1.0\",\"instructions\":[{\"TYPE\":\"Lock\",\"lockPath\":\"LOCK\",\"lockedWorkflow\":{\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"AGENT\",\"subagentSelectionId\":\"SELECTION\",\"executable\":{\"TYPE\":\"ShellScriptExecutable\",\"script\":\"\"},\"jobResourcePaths\":[\"JOB-RESOURCE\"],\"parallelism\":1}}]}},{\"TYPE\":\"ExpectNotices\",\"boardPaths\":[\"BOARD\"]}]}"
+          "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"versionId\":\"1.0\",\"instructions\":[{\"TYPE\":\"Lock\",\"lockPath\":\"LOCK\",\"lockedWorkflow\":{\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"AGENT\",\"subagentSelectionId\":\"SELECTION\",\"executable\":{\"TYPE\":\"ShellScriptExecutable\",\"script\":\"\"},\"jobResourcePaths\":[\"JOB-RESOURCE\"],\"parallelism\":1}}]}},{\"TYPE\":\"ExpectNotices\",\"boardPaths\":\"'BOARD'\"}]}"
         }
       }, {
         "TYPE": "ItemAttachable",
@@ -494,7 +494,7 @@ object ControllerStateTest
       Execute(WorkflowJob(agentRef.path, ShellScriptExecutable(""),
         subagentSelectionId = Some(subagentSelection.id),
         jobResourcePaths = Seq(jobResource.path))))),
-    ExpectNotices(Seq(board.path))))
+    ExpectNotices(BoardPathExpression.ExpectNotice(board.path))))
   private val signedWorkflow = itemSigner.sign(workflow)
   private[controller] val fileWatch = FileWatch(
     OrderWatchPath("WATCH"),

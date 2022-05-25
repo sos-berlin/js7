@@ -156,7 +156,7 @@ extends VersionedItem
         .map(_._2.instruction)
         .collect {
           case lock: LockInstruction => lock.lockPath :: Nil
-          case board: BoardInstruction => board.boardPaths
+          case board: BoardInstruction => board.referencedBoardPaths
         }
         .flatten
         .toSet

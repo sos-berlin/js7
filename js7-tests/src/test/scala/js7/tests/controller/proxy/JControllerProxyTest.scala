@@ -14,6 +14,7 @@ import js7.base.utils.Lazy
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPath
+import js7.data.board.BoardPathExpressionParser.boardPathExpr
 import js7.data.controller.ControllerState.{inventoryItemJsonCodec, versionedItemJsonCodec}
 import js7.data.item.{InventoryItem, VersionId, VersionedItem}
 import js7.data.job.RelativePathExecutable
@@ -116,7 +117,7 @@ object JControllerProxyTest
   val postingBoardWorkflowJson = (postingBoardWorkflow: InventoryItem).asJson.compactPrint
 
   val expectingBoardWorkflow = Workflow(WorkflowPath("EXPECTING-WORKFLOW") ~ boardVersion,
-    Seq(ExpectNotices(Vector(boardPath))))
+    Seq(ExpectNotices(boardPathExpr(s"'${boardPath.string}'"))))
 
   val expectingBoardWorkflowJson = (expectingBoardWorkflow: InventoryItem).asJson.compactPrint
 }

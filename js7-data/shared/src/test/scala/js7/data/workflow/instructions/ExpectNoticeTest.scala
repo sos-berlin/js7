@@ -1,7 +1,7 @@
 package js7.data.workflow.instructions
 
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
-import js7.data.board.BoardPath
+import js7.data.board.{BoardPath, BoardPathExpression}
 import js7.data.workflow.Instruction
 import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.tester.CirceJsonTester.testJsonDecoder
@@ -9,10 +9,10 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class ExpectNoticeTest extends AnyFreeSpec
 {
-  "JSON" in {
+  "JSON compatible with v2.3" in {
     // COMPATIBLE with v2.3
     testJsonDecoder[Instruction](
-      ExpectNotices(Vector(BoardPath("BOARD"))),
+      ExpectNotices(BoardPathExpression.ExpectNotice(BoardPath("BOARD"))),
       json"""
         {
           "TYPE": "ExpectNotice",

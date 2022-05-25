@@ -4,13 +4,12 @@ import cats.syntax.traverse._
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
-import js7.data.board.{BoardState, NoticeId}
+import js7.data.board.BoardPath
 import js7.data.execution.workflow.instructions.ExpectNoticesExecutor._
-import js7.data.order.Order
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderMoved, OrderNoticesExpected, OrderNoticesRead}
+import js7.data.order.OrderEvent.{OrderMoved, OrderNoticesExpected, OrderNoticesRead}
+import js7.data.order.{Order, OrderEvent}
 import js7.data.state.StateView
 import js7.data.workflow.instructions.ExpectNotices
-import js7.data.workflow.position.Position
 
 private[instructions] final class ExpectNoticesExecutor(
   protected val service: InstructionExecutorService)
@@ -22,63 +21,55 @@ extends EventInstructionExecutor
   def toEvents(expectNotices: ExpectNotices, order: Order[Order.State], state: StateView) =
     detach(order)
       .orElse(start(order))
-      .getOrElse(
-        expectNotices.boardPaths
-          .traverse(state.pathToBoardState.checked)
-          .flatMap(boardStates =>
-            order.state match {
-              case _: Order.Ready =>
-                for {
-                  scope <- state.toPureScope(order)
-                  expectations <- boardStates.traverse(boardState =>
-                    boardState.board
-                      .expectingOrderToNoticeId(scope)
-                      .map(StateAndNoticeId(boardState, _)))
-                } yield
-                  tryRead(expectations, order.position)
-                    .emptyToNone
-                    .getOrElse(
-                      OrderNoticesExpected(expectations
-                        .map(x => OrderNoticesExpected.Expected(x.boardState.path, x.noticeId))
-                      ) :: Nil)
-
-              case Order.ExpectingNotices(expectings) =>
-                if (expectings.map(_.boardPath).toSet != expectNotices.boardPaths.toSet)
-                  Left(Problem.pure(
-                    s"Instruction does not match Order State: $expectNotices <> ${order.state}"))
-                else
-                  expectings.traverse(exp => state
-                    .pathToBoardState.checked(exp.boardPath))
-                    .map(boardStates =>
-                      tryRead(
-                        boardStates.zip(expectings.map(_.noticeId))
-                          .map(StateAndNoticeId.fromPair),
-                        order.position))
-
-              case _ => Right(Nil)
+      .getOrElse(order
+        .ifState[Order.Ready]
+        .map(order =>
+          expectNotices.referencedBoardPaths
+            .toVector
+            .traverse(state.pathToBoardState.checked)
+            .flatMap { boardStates =>
+              for {
+                scope <- state.toPureScope(order)
+                expected <- boardStates.traverse(boardState =>
+                  boardState.board
+                    .expectingOrderToNoticeId(scope)
+                    .map(OrderNoticesExpected.Expected(boardState.path, _)))
+              } yield
+                tryFulfill(expectNotices, order, expected, state)
+                  .emptyToNone
+                  .getOrElse(OrderNoticesExpected(expected) :: Nil)
             })
-          .map(_.map(order.id <-: _)))
-
-  private def tryRead(statesAndNoticeIds: Seq[StateAndNoticeId], position: Position)
-  : List[OrderActorEvent] =
-    if (allNoticesAvailable(statesAndNoticeIds))
-      OrderNoticesRead :: OrderMoved(position.increment) :: Nil
-    else
-      Nil
+        .orElse(order
+          .ifState[Order.ExpectingNotices]
+          .map(order =>
+            if (order.state.expected.map(_.boardPath).toSet != expectNotices.referencedBoardPaths)
+              Left(Problem.pure(
+                s"Instruction does not match Order.State: $expectNotices <-> ${order.state}"))
+            else
+              Right(tryFulfillExpectingOrder(expectNotices, order, state))))
+        .getOrElse(Right(Nil))
+        .map(_.map(order.id <-: _)))
 }
 
-object ExpectNoticesExecutor
+private object ExpectNoticesExecutor
 {
-  private def allNoticesAvailable(statesAndNoticeIds: Seq[StateAndNoticeId])
-  : Boolean =
-    statesAndNoticeIds
-      .forall(x => x
-        .boardState.idToNotice.get(x.noticeId)
-        .exists(_.notice.isDefined))
+  def tryFulfillExpectingOrder(
+    expectNotices: ExpectNotices,
+    order: Order[Order.ExpectingNotices],
+    state: StateView,
+    postedBoards: Set[BoardPath] = Set.empty)
+  : List[OrderEvent.OrderActorEvent] =
+    tryFulfill(expectNotices, order, order.state.expected, state, postedBoards)
 
-  private final case class StateAndNoticeId(boardState: BoardState, noticeId: NoticeId)
-  private object StateAndNoticeId {
-    def fromPair(pair: (BoardState, NoticeId)): StateAndNoticeId =
-      StateAndNoticeId(pair._1, pair._2)
-  }
+  private def tryFulfill(
+    expectNotices: ExpectNotices,
+    order: Order[Order.State],
+    expected: Vector[OrderNoticesExpected.Expected],
+    state: StateView,
+    postedBoards: Set[BoardPath] = Set.empty)
+  : List[OrderEvent.OrderActorEvent] =
+    if (expectNotices.isFulfilled(postedBoards ++ state.availableNotices(expected)))
+      OrderNoticesRead :: OrderMoved(order.position.increment) :: Nil
+    else
+      Nil
 }
