@@ -23,7 +23,7 @@ import scala.collection.{View, mutable}
 /**
   * @author Joacim Zschimmer
   */
-sealed trait Expression extends Expression.Precedence
+sealed trait Expression extends Precedence
 {
   def subexpressions: Iterable[Expression]
 
@@ -723,36 +723,4 @@ object Expression
     protected def evalAllowError(implicit scope: Scope) = eval()
   }
 
-  sealed trait Precedence {
-    protected def precedence: Int
-
-    protected def inParentheses(o: Precedence): String = Precedence.inParentheses(o, precedence)
-
-    protected def toString(a: Expression, op: String, b: Expression) =
-      Precedence.toString(a, op, precedence, b)
-  }
-  object Precedence {
-    // Higher number means higher precedence
-    private val next = Iterator.from(1).next _
-    val Function = next()
-    val DotOperator = next()  // correct precedence ???
-    val WordOperator = next()
-    val Word1Operator = next()
-    val Or = next()
-    val And = next()
-    val Comparison = next()
-    val Addition = next()
-    val Multiplication = next()
-    val Factor = next()
-    val Highest = next()
-
-    def toString(a: Expression, op: String, opPrecedence: Int, b: Expression): String =
-      inParentheses(a, opPrecedence) + " " + op + " " + inParentheses(b, opPrecedence + 1)
-
-    def inParentheses(o: Precedence, opPrecedence: Int): String =
-      if (o.precedence >= opPrecedence)
-        o.toString
-      else
-        s"($o)"
-  }
 }
