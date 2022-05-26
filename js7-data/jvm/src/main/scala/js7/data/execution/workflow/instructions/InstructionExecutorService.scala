@@ -7,7 +7,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.SubclassToX
 import js7.data.event.KeyedEvent
 import js7.data.order.OrderEvent.OrderActorEvent
-import js7.data.order.{Order, OrderObstacle, OrderObstacleCalculator}
+import js7.data.order.{Order, OrderId, OrderObstacle, OrderObstacleCalculator}
 import js7.data.state.StateView
 import js7.data.workflow.Instruction
 import js7.data.workflow.instructions.{Fork, ForkInstruction, ForkList}
@@ -52,6 +52,13 @@ final class InstructionExecutorService(val clock: WallClock)
         executor.nextPosition(instruction.asInstanceOf[executor.Instr], order, stateView)
       case _ => Right(None)
     }
+
+  def toEvents(orderId: OrderId, stateView: StateView)
+  : Checked[List[KeyedEvent[OrderActorEvent]]] =
+    for {
+      order <- stateView.idToOrder.checked(orderId)
+      events <- toEvents(stateView.instruction(order.workflowPosition), order, stateView)
+    } yield events
 
   def toEvents(order: Order[Order.State], stateView: StateView)
   : Checked[List[KeyedEvent[OrderActorEvent]]] =
