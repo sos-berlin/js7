@@ -5,7 +5,6 @@ import java.time.{LocalDate, LocalTime}
 import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
 import js7.base.time.{AdmissionTimeScheme, WallClock, WeekdayPeriod}
-import js7.base.utils.Collections.implicits._
 import js7.data.agent.AgentPath
 import js7.data.execution.workflow.instructions.ExecuteExecutor.orderIdToDate
 import js7.data.execution.workflow.instructions.ExecuteExecutorTest._
@@ -25,11 +24,10 @@ import scala.collection.View
   */
 final class ExecuteExecutorTest extends AnyFreeSpec
 {
-  private lazy val stateView = TestStateView(
+  private lazy val stateView = TestStateView.of(
     isAgent = false,
-    idToOrder = orders.toKeyedMap(_.id),
-    idToWorkflow = Map(
-      workflow.id -> workflow))
+    orders = Some(orders),
+    workflows = Some(Seq(workflow)))
   private lazy val executorService = new InstructionExecutorService(WallClock)
 
   "orderIdToDate" in {

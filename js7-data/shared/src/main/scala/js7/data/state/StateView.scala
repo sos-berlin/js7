@@ -99,15 +99,15 @@ trait StateView extends ItemContainer
   def instruction(workflowPosition: WorkflowPosition): Instruction =
     idToWorkflow
       .checked(workflowPosition.workflowId)
-      .map(_.instruction(workflowPosition.position))
       .orThrow
+      .instruction(workflowPosition.position)
 
   final def instruction_[A <: Instruction: ClassTag](workflowPosition: WorkflowPosition)
   : Checked[A] =
     idToWorkflow
       .checked(workflowPosition.workflowId)
-      .map(_.instruction_[A](workflowPosition.position))
       .orThrow
+      .instruction_[A](workflowPosition.position)
 
   def childOrderEnded(order: Order[Order.State], parent: Order[Order.Forked]): Boolean = {
     lazy val endReached = order.state == Order.Ready &&

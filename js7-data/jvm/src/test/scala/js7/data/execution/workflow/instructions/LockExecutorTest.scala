@@ -16,18 +16,13 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class LockExecutorTest extends AnyFreeSpec
 {
-  private lazy val stateView = TestStateView(
+  private lazy val stateView = TestStateView.of(
     isAgent = false,
-    idToOrder = Map(
-      freeLockOrder.id -> freeLockOrder,
-      freeLockedOrder.id -> freeLockedOrder,
-      occupiedLockOrder.id -> occupiedLockOrder),
-    idToWorkflow = Map(workflow.id -> workflow),
-    pathToLockState = Map(
-      freeLockPath ->
-        LockState(Lock(freeLockPath, limit = 1)),
-      occupiedLockPath ->
-        LockState(Lock(occupiedLockPath, limit = 1), Acquired.Exclusive(OrderId("OCCUPANT")))))
+    orders = Some(Seq(freeLockOrder, freeLockedOrder, occupiedLockOrder)),
+    workflows = Some(Seq(workflow)),
+    lockStates = Some(Seq(
+      LockState(Lock(freeLockPath, limit = 1)),
+      LockState(Lock(occupiedLockPath, limit = 1), Acquired.Exclusive(OrderId("OCCUPANT"))))))
 
   private lazy val service = new InstructionExecutorService(WallClock)
 
@@ -66,7 +61,7 @@ object LockExecutorTest
     LockInstruction(exclusiveLockPath, None, Workflow.of(execute)))
 
   private val freeLockOrder = Order(OrderId("ORDER-A"), workflow.id /: Position(0), Order.Ready)
-  private val freeLockedOrder = Order(OrderId("ORDER-A"), workflow.id /: (Position(0) / BranchId.Lock % 1), Order.Ready)
+  private val freeLockedOrder = Order(OrderId("ORDER-B"), workflow.id /: (Position(0) / BranchId.Lock % 1), Order.Ready)
 
-  private val occupiedLockOrder = Order(OrderId("ORDER-B"), workflow.id /: Position(1), Order.Ready)
+  private val occupiedLockOrder = Order(OrderId("ORDER-C"), workflow.id /: Position(1), Order.Ready)
 }

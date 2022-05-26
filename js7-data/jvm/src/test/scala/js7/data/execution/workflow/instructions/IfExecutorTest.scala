@@ -25,13 +25,10 @@ import org.scalatest.freespec.AnyFreeSpec
 final class IfExecutorTest extends AnyFreeSpec {
 
   private val ifExecutor = new IfExecutor(new InstructionExecutorService(WallClock))
-  private lazy val stateView = TestStateView(
+  private lazy val stateView = TestStateView.of(
     isAgent = false,
-    idToOrder = Map(
-      AOrder.id -> AOrder,
-      BOrder.id -> BOrder),
-    idToWorkflow = Map(
-      TestWorkflowId -> Workflow.of(TestWorkflowId)))
+    orders = Some(Seq(AOrder, BOrder)),
+    workflows = Some(Seq(Workflow.of(TestWorkflowId))))
   private lazy val executorService = new InstructionExecutorService(WallClock)
 
   "JSON BranchId" - {

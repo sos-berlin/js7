@@ -11,6 +11,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.agent.{AgentPath, AgentRunId}
+import js7.data.board.BoardState
 import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
@@ -20,10 +21,10 @@ import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached, ItemDetachi
 import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, SignableItem, SignableItemKey}
 import js7.data.job.{JobResource, JobResourcePath}
-import js7.data.order.OrderEvent.{OrderCoreEvent, OrderForked, OrderJoined, OrderStdWritten}
+import js7.data.lock.LockState
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchEvent, OrderWatchPath}
-import js7.data.state.StateView
+import js7.data.state.EventDrivenStateView
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent, SubagentSelection, SubagentSelectionId}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
@@ -46,7 +47,7 @@ final case class AgentState(
   pathToCalendar: Map[CalendarPath, Calendar],
   keyToSignedItem : Map[SignableItemKey, Signed[SignableItem]])
 extends SignedItemContainer
-with StateView
+with EventDrivenStateView[AgentState, Event]
 with SubagentDirectorState[AgentState]
 with SnapshotableState[AgentState]
 {
@@ -239,50 +240,17 @@ with SnapshotableState[AgentState]
       case _ => applyStandardEvent(keyedEvent)
     }
 
-  private def applyOrderEvent(orderId: OrderId, event: OrderEvent) =
-    event match {
-      case event: OrderEvent.OrderAttachedToAgent =>
-        if (idToOrder.contains(orderId))
-          Left(Problem.pure(s"Duplicate order attached: $orderId"))
-        else
-          Right(copy(
-            idToOrder = idToOrder + (orderId -> Order.fromOrderAttached(orderId, event))))
-
-      case OrderEvent.OrderDetached =>
-        Right(copy(
-          idToOrder = idToOrder - orderId))
-
-      case event: OrderCoreEvent =>
-        // See also OrderActor#update
-        idToOrder.checked(orderId)
-          .flatMap(_.applyEvent(event))
-          .flatMap(order =>
-            event match {
-              case event: OrderForked =>
-                // TODO Check duplicate child OrderIds
-                Right(copy(
-                  idToOrder = idToOrder +
-                    (order.id -> order) ++
-                    idToOrder(orderId).newForkedOrders(event).map(o => o.id -> o)))
-
-              case _: OrderJoined =>
-                //order.checkedState[Order.Forked]
-                //  .map(order => copy(
-                //    idToOrder = idToOrder +
-                //      (order.id -> order) --
-                //      order.state.childOrderIds))
-                Left(Problem.pure("OrderJoined not applicable on AgentState"))
-
-              case _: OrderCoreEvent =>
-                Right(copy(
-                  idToOrder = idToOrder + (order.id -> order)))
-            })
-
-      case _: OrderStdWritten =>
-        // OrderStdWritten is not applied (but forwarded to Controller)
-        // But check OrderId
-        idToOrder.checked(orderId).rightAs(this)
-    }
+  protected def update(
+    removeOrders: Iterable[OrderId],
+    orders: Iterable[Order[Order.State]],
+    lockStates: Iterable[LockState],
+    boardStates: Iterable[BoardState])
+  : Checked[AgentState] =
+    if (lockStates.nonEmpty || boardStates.nonEmpty)
+      Left(Problem.pure("No LockState or BoardState at Agent"))
+    else
+      Right(copy(
+        idToOrder = idToOrder -- removeOrders ++ orders.map(o => o.id -> o)))
 
   def agentPath = meta.agentPath
 
@@ -381,8 +349,7 @@ with ItemContainer.Companion[AgentState]
     Subtype(unsignedSimpleItemJsonCodec),
     Subtype[BasicItemEvent])
 
-  implicit val keyedEventJsonCodec = {
-    implicit val x = AgentState.inventoryItemEventJsonCodec // Isn't this val already implicit ?
+  implicit val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] = {
     KeyedEventTypedJsonCodec[Event](
       KeyedSubtype[JournalEvent],
       KeyedSubtype[SubagentItemStateEvent],

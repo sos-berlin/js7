@@ -29,11 +29,9 @@ final class ExecuteTest extends AnyFreeSpec
     Seq(Execute(WorkflowJob(AgentPath("AGENT"), InternalExecutable("?")))))
   private val executeExecutor = new ExecuteExecutor(new InstructionExecutorService(WallClock))
 
-  private val stateView = TestStateView(
+  private val stateView = TestStateView.of(
     isAgent = false,
-    idToWorkflow = {
-      case workflow.id => workflow
-    })
+    workflows = Some(Seq(workflow)))
 
   "toOutcome" in {
     val namedValues = Map("a" -> StringValue("A"))

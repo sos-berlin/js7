@@ -366,7 +366,6 @@ final class CycleExecutorTest extends AnyFreeSpec with ScheduleTester
 
     lazy val stateView = new TestStateView(
       isAgent = true,
-
       idToWorkflow = Map(workflow.id -> workflow)
     ) {
       override lazy val keyToItem =

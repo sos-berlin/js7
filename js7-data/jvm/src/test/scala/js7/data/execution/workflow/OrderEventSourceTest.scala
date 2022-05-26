@@ -50,12 +50,10 @@ final class OrderEventSourceTest extends AnyFreeSpec
     for (isAgent <- Seq(false, true)) s"isAgent=$isAgent" in {
       val order = rawOrder.copy(attachedState = isAgent ? Order.Attached(agentPath = TestAgentPath))
       val eventSource = new OrderEventSource(
-        TestStateView(
+        TestStateView.of(
           isAgent = isAgent,
-          idToOrder = Map(
-            order.id -> order),
-          idToWorkflow = Map(
-            TestWorkflowId -> ForkWorkflow)))
+          orders = Some(Seq(order)),
+          workflows = Some(Seq(ForkWorkflow))))
 
       assert(eventSource.nextEvents(order.id) == List(
         order.id <-: OrderMoved(order.position)))  // Move to same InstructionNr to repeat the job
@@ -676,10 +674,10 @@ final class OrderEventSourceTest extends AnyFreeSpec
       (body: (Order[Order.State], OrderEventSource, OrderEventSource) => Unit)
     = {
       val order = templateOrder.copy(attachedState = attachedState)
-      def eventSource(isAgent: Boolean) = new OrderEventSource(TestStateView(
+      def eventSource(isAgent: Boolean) = new OrderEventSource(TestStateView.of(
         isAgent = isAgent,
-        idToOrder = Map(order.id -> order),
-        idToWorkflow = Map(TestWorkflowId -> ForkWorkflow)))
+        orders = Some(Seq(order)),
+        workflows = Some(Seq(ForkWorkflow))))
       body(order, eventSource(isAgent = false), eventSource(isAgent = true))
     }
 
@@ -750,11 +748,11 @@ final class OrderEventSourceTest extends AnyFreeSpec
       def testResume(workflow: Workflow, from: Position, to: Position)
       : Checked[Option[List[OrderEvent.OrderActorEvent]]] = {
         val order = Order(OrderId("SUSPENDED"), workflow.id /: from, Order.Ready, isSuspended = true)
-        def eventSource = new OrderEventSource(TestStateView(
+        def eventSource = new OrderEventSource(TestStateView.of(
           isAgent = false,
-          idToOrder = Map(order.id -> order),
-          idToWorkflow = Map(workflow.id -> workflow),
-          pathToLockState = Map(lockPath -> LockState(Lock(lockPath)))))
+          orders = Some(Seq(order)),
+          workflows = Some(Seq(workflow)),
+          lockStates = Some(Seq(LockState(Lock(lockPath))))))
         eventSource.resume(order.id, Some(to), Nil)
       }
     }
@@ -763,10 +761,10 @@ final class OrderEventSourceTest extends AnyFreeSpec
   "Failed" in {
     lazy val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "1", Vector(Fail()))
     val order = Order(OrderId("ORDER"), workflow.id /: Position(0), Order.Failed)
-    val eventSource = new OrderEventSource(TestStateView(
+    val eventSource = new OrderEventSource(TestStateView.of(
       isAgent = false,
-      idToOrder = Map(order.id -> order),
-      idToWorkflow = Map(workflow.id -> workflow)))
+      orders = Some(Seq(order)),
+      workflows = Some(Seq(workflow))))
     assert(eventSource.nextEvents(order.id) == Nil)
     assert(eventSource.suspend(order.id, SuspensionMode()) == Left(CannotSuspendOrderProblem))
     assert(eventSource.cancel(order.id, CancellationMode.Default) ==
@@ -796,10 +794,10 @@ final class OrderEventSourceTest extends AnyFreeSpec
          |}""".stripMargin).orThrow
 
     def eventSource(order: Order[Order.State]) =
-      new OrderEventSource(TestStateView(
+      new OrderEventSource(TestStateView.of(
         isAgent = false,
-        idToOrder = Map(order.id -> order),
-        idToWorkflow = Map(workflow.id -> workflow)))
+        orders = Some(Seq(order)),
+        workflows = Some(Seq(workflow))))
 
     val failed7 = Outcome.Failed(NamedValues.rc(7))
 
@@ -924,14 +922,10 @@ final class OrderEventSourceTest extends AnyFreeSpec
           Order.Forked.Child("🥕", aChild.id),
           Order.Forked.Child("🍋", bChild.id))))
 
-      def eventSource = new OrderEventSource(TestStateView(
+      def eventSource = new OrderEventSource(TestStateView.of(
         isAgent = false,
-        idToOrder = Map(
-          forkingOrder.id -> forkingOrder,
-          aChild.id -> aChild,
-          bChild.id -> bChild),
-        idToWorkflow = Map(
-          workflow.id -> workflow)))
+        orders = Some(Seq(forkingOrder, aChild, bChild)),
+        workflows = Some(Seq(workflow))))
 
       val orderFailedInFork = OrderFailedInFork(
         Position(0) / BranchId.try_(0) % 0 / BranchId.fork("🥕") % 0)
@@ -983,18 +977,14 @@ final class OrderEventSourceTest extends AnyFreeSpec
         Order.Forked(Vector(
           Order.Forked.Child("🥕", aChild.id),
           Order.Forked.Child("🍋", bChild.id))))
-      def liveEventSource = new OrderEventSource(TestStateView(
+      def liveEventSource = new OrderEventSource(TestStateView.of(
         isAgent = false,
-        idToOrder = Map(
-          forkingOrder.id -> forkingOrder,
-          aChild.id -> aChild,
-          bChild.id -> bChild),
-        idToWorkflow = Map(
-          workflow.id -> workflow),
-        pathToLockState = Map(
-          LockPath("LOCK") -> LockState(Lock(LockPath("LOCK"))),
-          LockPath("LOCK-1") -> LockState(Lock(LockPath("LOCK-1"))),
-          LockPath("LOCK-2") -> LockState(Lock(LockPath("LOCK-2"))))))
+        orders = Some(Seq(forkingOrder, aChild, bChild)),
+        workflows = Some(Seq(workflow)),
+        lockStates = Some(Seq(
+          LockState(Lock(LockPath("LOCK"))),
+          LockState(Lock(LockPath("LOCK-1"))),
+          LockState(Lock(LockPath("LOCK-2")))))))
 
       val orderFailedInFork = OrderFailedInFork(Position(0) / BranchId.Lock % 0 / BranchId.try_(0) % 0 / BranchId.fork("🥕") % 0)
       assert(liveEventSource.nextEvents(aChild.id) == Seq(aChild.id <-: orderFailedInFork))
@@ -1067,10 +1057,10 @@ object OrderEventSourceTest
     private val inProcess = mutable.Set.empty[OrderId]
 
     private def eventSource(isAgent: Boolean) =
-      new OrderEventSource(TestStateView(
+      new OrderEventSource(TestStateView.of(
         isAgent = isAgent,
-        idToOrder = idToOrder.toMap,
-        idToWorkflow = idToWorkflow))
+        orders = Some(idToOrder.values),
+        workflows = Some(idToWorkflow.values)))
 
     def jobStep(orderId: OrderId, outcome: Outcome = Outcome.succeeded): Unit = {
       update(orderId <-: OrderProcessingStarted(subagentId))
@@ -1157,8 +1147,8 @@ object OrderEventSourceTest
     workflow: Workflow,
     orders: Iterable[Order[Order.State]],
     isAgent: Boolean) =
-    new OrderEventSource(TestStateView(
+    new OrderEventSource(TestStateView.of(
       isAgent = isAgent,
-      idToOrder = orders.toKeyedMap(_.id),
-      idToWorkflow = Map(TestWorkflowId -> workflow)))
+      orders = Some(orders),
+      workflows = Some(Seq(workflow))))
 }

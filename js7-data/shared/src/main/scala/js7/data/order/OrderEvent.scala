@@ -78,6 +78,7 @@ object OrderEvent
       } yield OrderAdded(workflowId, arguments, scheduledFor, externalOrderKey, deleteWhenTerminated)
   }
 
+  /** Event for the AddOrder instruction. */
   final case class OrderOrderAdded(
     orderId: OrderId,
     workflowId: WorkflowId,

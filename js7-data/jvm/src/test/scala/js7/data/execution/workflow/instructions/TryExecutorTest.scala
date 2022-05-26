@@ -24,9 +24,9 @@ import org.scalatest.freespec.AnyFreeSpec
 final class TryExecutorTest extends AnyFreeSpec
 {
   private val tryExecutor = new TryExecutor(new InstructionExecutorService(WallClock))
-  private lazy val stateView = TestStateView(
+  private lazy val stateView = TestStateView.of(
     isAgent = false,
-    idToOrder = Map(AOrder.id -> AOrder))
+    orders = Some(Seq(AOrder)))
 
   private lazy val executorService = new InstructionExecutorService(WallClock)
 

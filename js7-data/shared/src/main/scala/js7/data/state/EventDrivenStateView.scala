@@ -1,0 +1,174 @@
+package js7.data.state
+
+import cats.syntax.apply._
+import cats.syntax.traverse._
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.ScalaUtils.syntax._
+import js7.data.board.BoardState
+import js7.data.event.{Event, EventDrivenState}
+import js7.data.lock.LockState
+import js7.data.order.Order.ExpectingNotices
+import js7.data.order.OrderEvent.{OrderAdded, OrderAddedX, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderForked, OrderJoined, OrderLockEvent, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesExpected, OrderNoticesRead, OrderOrderAdded, OrderStdWritten}
+import js7.data.order.{Order, OrderEvent, OrderId}
+
+// TODO Replace F-type polymorphism with a typeclass ? https://tpolecat.github.io/2015/04/29/f-bounds.html
+trait EventDrivenStateView[This <: EventDrivenStateView[This, E], E <: Event]
+extends EventDrivenState[This, E]
+with StateView
+{
+  this: This =>
+
+  protected def update(
+    removeOrders: Iterable[OrderId] = Nil,
+    orders: Iterable[Order[Order.State]] = Nil,
+    lockStates: Iterable[LockState] = Nil,
+    boardStates: Iterable[BoardState] = Nil)
+  : Checked[This]
+
+  protected def applyOrderEvent(orderId: OrderId, event: OrderEvent): Checked[This] =
+    event match {
+      case orderAdded: OrderAdded =>
+        addOrder(orderId, orderAdded)
+
+      case event: OrderEvent.OrderAttachedToAgent =>
+        if (idToOrder isDefinedAt orderId)
+          Left(Problem.pure(s"Duplicate order attached: $orderId"))
+        else
+          update(orders = Order.fromOrderAttached(orderId, event) :: Nil)
+
+      case event: OrderCoreEvent =>
+        applyOrderCoreEvent(orderId, event)
+
+      case _: OrderStdWritten =>
+        // OrderStdWritten is not applied. But check OrderId.
+        idToOrder.checked(orderId).rightAs(this)
+    }
+
+  private def applyOrderCoreEvent(orderId: OrderId, event: OrderCoreEvent): Either[Problem, This] =
+    for {
+      previousOrder <- idToOrder.checked(orderId)
+      updatedOrder <- previousOrder.applyEvent(event)
+      result <- event match {
+        case OrderEvent.OrderDetached =>
+          if (isAgent)
+            update(removeOrders = orderId :: Nil)
+          else
+            update(orders = updatedOrder :: Nil)
+
+        case event: OrderForked =>
+          update(
+            orders = updatedOrder +: previousOrder.newForkedOrders(event))
+
+        case event: OrderJoined =>
+          if (isAgent)
+            eventNotApplicable(orderId <-: event)
+          else
+            previousOrder.state match {
+              case forked: Order.Forked =>
+                update(
+                  orders = updatedOrder :: Nil,
+                  removeOrders = forked.childOrderIds)
+
+              case state =>
+                Left(Problem(
+                  s"For event $event, $orderId must be in Forked state, not: $state"))
+            }
+
+        case event: OrderLockEvent =>
+          event.lockPaths
+            .toList
+            .traverse(lockPath => pathToLockState
+              .checked(lockPath)
+              .flatMap(_.applyEvent(orderId <-: event)))
+            .flatMap(lockStates =>
+              update(
+                orders = updatedOrder :: Nil,
+                lockStates = lockStates))
+
+        case event: OrderNoticeEvent =>
+          applyOrderNoticeEvent(previousOrder, orderId, event)
+            .flatMap(_.update(orders = updatedOrder :: Nil))
+
+        case _: OrderCancelled =>
+          previousOrder
+            .ifState[ExpectingNotices]
+            .fold(update(orders = updatedOrder :: Nil))(order =>
+              removeNoticeExpectation(order)
+                .flatMap(updatedBoardStates =>
+                  update(
+                    orders = updatedOrder :: Nil,
+                    boardStates = updatedBoardStates)))
+
+        case orderAdded: OrderOrderAdded =>
+          addOrder(orderAdded.orderId, orderAdded)
+
+        case OrderDeletionMarked =>
+          update(orders = updatedOrder :: Nil)
+
+        case OrderDeleted =>
+          if (isAgent)
+            eventNotApplicable(orderId <-: event)
+          else
+            deleteOrder(previousOrder)
+              .flatMap(_.update(removeOrders = orderId :: Nil))
+
+        case _ =>
+          update(orders = updatedOrder :: Nil)
+      }
+    } yield result
+
+  protected def addOrder(addedOrderId: OrderId, orderAdded: OrderAddedX): Checked[This] =
+    idToOrder.checkNoDuplicate(addedOrderId)
+      .*>(update(
+        orders = Order.fromOrderAdded(addedOrderId, orderAdded) :: Nil))
+
+  protected def deleteOrder(order: Order[Order.State]): Checked[This] =
+    update(removeOrders = order.id :: Nil)
+
+  private def applyOrderNoticeEvent(
+    previousOrder: Order[Order.State],
+    orderId: OrderId,
+    event: OrderNoticeEvent)
+  : Checked[This] =
+    event
+      .match_ {
+        case OrderNoticePostedV2_3(notice) =>
+          orderIdToBoardState(orderId)
+            .flatMap(boardState => boardState.addNoticeV2_3(notice))
+            .map(_ :: Nil)
+
+        case OrderNoticePosted(notice) =>
+          pathToBoardState
+            .checked(notice.boardPath)
+            .flatMap(_.addNotice(notice))
+            .map(_ :: Nil)
+
+        case OrderNoticeExpected(noticeId) =>
+          orderIdToBoardState(orderId)
+            .flatMap(_.addExpectation(noticeId, orderId))
+            .map(_ :: Nil)
+
+        case OrderNoticesExpected(expectedSeq) =>
+          expectedSeq.traverse(expected =>
+            pathToBoardState
+              .checked(expected.boardPath)
+              .flatMap(_.addExpectation(expected.noticeId, orderId)))
+
+        case OrderNoticesRead =>
+          previousOrder.ifState[Order.ExpectingNotices] match {
+            case None => Right(Nil)
+            case Some(previousOrder) => removeNoticeExpectation(previousOrder)
+          }
+      }
+    .flatMap(o => update(boardStates = o))
+
+  private def removeNoticeExpectation(order: Order[Order.State]): Checked[Seq[BoardState]] =
+    order.ifState[Order.ExpectingNotices] match {
+      case None => Right(Nil)
+      case Some(order) =>
+        order.state.expected
+          .traverse(expected => pathToBoardState
+            .checked(expected.boardPath)
+            .flatMap(_.removeExpectation(expected.noticeId, order.id)))
+    }
+}

@@ -1,7 +1,6 @@
 package js7.data.controller
 
-import cats.instances.list._
-import cats.syntax.flatMap._
+import cats.syntax.apply._
 import cats.syntax.traverse._
 import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
@@ -31,11 +30,10 @@ import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedS
 import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemPath, ItemAttachedState, ItemRevision, Repo, SignableItem, SignableItemKey, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, SimpleItem, SimpleItemPath, UnsignedSimpleItem, UnsignedSimpleItemEvent, VersionedEvent, VersionedItemId_, VersionedItemPath}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath, LockState}
-import js7.data.order.Order.ExpectingNotices
-import js7.data.order.OrderEvent.{OrderAdded, OrderAddedX, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderForked, OrderJoined, OrderLockEvent, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesExpected, OrderNoticesRead, OrderOrderAdded, OrderStdWritten}
+import js7.data.order.OrderEvent.OrderAddedX
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{AllOrderWatchesState, FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState}
-import js7.data.state.StateView
+import js7.data.state.EventDrivenStateView
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent, SubagentSelection, SubagentSelectionId}
 import js7.data.value.Value
@@ -65,7 +63,7 @@ final case class ControllerState(
   deletionMarkedItems: Set[InventoryItemKey],
   idToOrder: Map[OrderId, Order[Order.State]])
 extends SignedItemContainer
-with StateView
+with EventDrivenStateView[ControllerState, Event]
 with SnapshotableState[ControllerState]
 {
   def isAgent = false
@@ -336,126 +334,7 @@ with SnapshotableState[ControllerState]
         pathToAgentRefState = pathToAgentRefState + (agentPath -> agentRefState))
 
     case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
-      event match {
-        case orderAdded: OrderAdded =>
-          addOrder(orderId, orderAdded)
-
-        case event: OrderCoreEvent =>
-          for {
-            previousOrder <- idToOrder.checked(orderId)
-            updatedOrder <- previousOrder.applyEvent(event)
-            updatedIdToOrder = idToOrder + (updatedOrder.id -> updatedOrder)
-            updatedControllerState <- event match {
-              case event: OrderForked =>
-                Right(copy(
-                  idToOrder = updatedIdToOrder ++
-                    previousOrder
-                      .newForkedOrders(event)
-                      .map(childOrder => childOrder.id -> childOrder)))
-
-              case event: OrderJoined =>
-                previousOrder.state match {
-                  case forked: Order.Forked =>
-                    Right(copy(
-                      idToOrder = updatedIdToOrder -- forked.childOrderIds))
-
-                  case state =>
-                    Left(Problem(
-                      s"For event $event, $orderId must be in state Forked or Forked, not: $state"))
-                }
-
-              case event: OrderLockEvent =>
-                event.lockPaths
-                  .toList
-                  .traverse(lockPath => pathToLockState(lockPath).applyEvent(orderId <-: event))
-                  .map(lockStates =>
-                    copy(
-                      idToOrder = updatedIdToOrder,
-                      pathToLockState = pathToLockState ++ lockStates.map(o => o.lock.path -> o)))
-
-              case event: OrderNoticeEvent =>
-                  event
-                    .match_ {
-                      case OrderNoticePostedV2_3(notice) =>
-                        orderIdToBoardState(orderId)
-                          .flatMap(boardState => boardState.addNoticeV2_3(notice))
-                          .map(_ :: Nil)
-
-                      case OrderNoticePosted(notice) =>
-                        pathToBoardState
-                          .checked(notice.boardPath)
-                          .flatMap(_.addNotice(notice))
-                          .map(_ :: Nil)
-
-                      case OrderNoticeExpected(noticeId) =>
-                        orderIdToBoardState(orderId)
-                          .flatMap(_.addExpectation(noticeId, orderId))
-                          .map(_ :: Nil)
-
-                      case OrderNoticesExpected(expectedSeq) =>
-                        expectedSeq.traverse(expected =>
-                          pathToBoardState
-                          .checked(expected.boardPath)
-                          .flatMap(_.addExpectation(expected.noticeId, orderId)))
-
-                      case OrderNoticesRead =>
-                        previousOrder.ifState[Order.ExpectingNotices] match {
-                          case None => Right(Nil)
-                          case Some(previousOrder) =>
-                            previousOrder.state.expected
-                              .traverse(expected =>
-                                pathToBoardState.checked(expected.boardPath)
-                                  .flatMap(_.removeExpectation(expected.noticeId, orderId)))
-                        }
-                    }
-                  .map(updatedBoardStates => copy(
-                    pathToBoardState = pathToBoardState ++ updatedBoardStates.map(o => o.path -> o),
-                    idToOrder = updatedIdToOrder))
-
-              case _: OrderCancelled =>
-                previousOrder
-                  .ifState[ExpectingNotices].map(order =>
-                    for {
-                      pairs <- order.state.expected.traverse(exp =>
-                        pathToBoardState.checked(exp.boardPath).map(_ -> exp.noticeId))
-                      updatedBoardStates <- pairs
-                        .traverse { case (boardState, noticeId) =>
-                          boardState.removeExpectation(noticeId, orderId)
-                        }
-                    } yield
-                      copy(
-                        idToOrder = updatedIdToOrder,
-                        pathToBoardState = pathToBoardState ++ updatedBoardStates.map(o => o.path -> o)))
-                  .getOrElse(
-                    Right(copy(
-                      idToOrder = updatedIdToOrder)))
-
-              case orderAdded: OrderOrderAdded =>
-                for (updated <- addOrder(orderAdded.orderId, orderAdded)) yield
-                  updated.copy(idToOrder = updated.idToOrder ++ updatedIdToOrder)
-
-              case OrderDeletionMarked =>
-                Right(copy(idToOrder = updatedIdToOrder))
-
-              case OrderDeleted =>
-                previousOrder.externalOrderKey match {
-                  case None =>
-                    Right(copy(idToOrder = idToOrder - orderId))
-                  case Some(externalOrderKey) =>
-                    allOrderWatchesState
-                      .onOrderDeleted(externalOrderKey, orderId)
-                      .map(o => copy(
-                        idToOrder = idToOrder - orderId,
-                        allOrderWatchesState = o))
-                }
-
-              case _ => Right(copy(idToOrder = updatedIdToOrder))
-            }
-          } yield updatedControllerState
-
-        case _: OrderStdWritten =>
-          Right(this)
-      }
+      applyOrderEvent(orderId, event)
 
     case KeyedEvent(boardPath: BoardPath, NoticePosted(notice)) =>
       for {
@@ -500,13 +379,37 @@ with SnapshotableState[ControllerState]
     case _ => applyStandardEvent(keyedEvent)
   }
 
-  private def addOrder(addedOrderId: OrderId, orderAdded: OrderAddedX): Checked[ControllerState] =
-    idToOrder.checkNoDuplicate(addedOrderId) >>
+  protected def update(
+    removeOrders: Iterable[OrderId],
+    orders: Iterable[Order[Order.State]],
+    lockStates: Iterable[LockState],
+    boardStates: Iterable[BoardState])
+  = Right(copy(
+    idToOrder = idToOrder -- removeOrders ++ orders.map(o => o.id -> o),
+    pathToLockState = pathToLockState ++ lockStates.map(o => o.lock.path -> o),
+    pathToBoardState = pathToBoardState ++ boardStates.map(o => o.path -> o)))
+
+  override protected def addOrder(addedOrderId: OrderId, orderAdded: OrderAddedX)
+  : Checked[ControllerState] =
+    idToOrder.checkNoDuplicate(addedOrderId) *>
       allOrderWatchesState.onOrderAdded(addedOrderId <-: orderAdded)
         .map(updated => copy(
           idToOrder = idToOrder +
             (addedOrderId -> Order.fromOrderAdded(addedOrderId, orderAdded)),
           allOrderWatchesState = updated))
+
+  override protected def deleteOrder(order: Order[Order.State]): Checked[ControllerState] =
+    order.externalOrderKey match {
+      case None =>
+        Right(copy(idToOrder = idToOrder - order.id))
+      case Some(externalOrderKey) =>
+        allOrderWatchesState
+          .onOrderDeleted(externalOrderKey, order.id)
+          .map(o => copy(
+            idToOrder = idToOrder - order.id,
+            allOrderWatchesState = o))
+    }
+
 
   /** The named values as seen at the current workflow position. */
   def orderNamedValues(orderId: OrderId): Checked[MapView[String, Value]] =

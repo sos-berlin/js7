@@ -76,6 +76,7 @@ ThisBuild / scalacOptions ++= Seq(
   "-Ymacro-annotations",
   "-explaintypes",
   "-feature",
+  "-Ypatmat-exhaust-depth", "80",
   "-deprecation",
   "-Wconf:cat=other-match-analysis:error",
   "-Wconf:cat=lint-adapted-args:error",
