@@ -171,7 +171,7 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
         View(
           NoticePlace(Some(Notice(NoticeId("2222-01-01"), board0.path, endOfLife0))),  // from previous test
           NoticePlace(Some(notice))
-        ).toKeyedMap(_.id)))
+        ).toKeyedMap(_.noticeId)))
   }
 
   "Detach order when at Agent" in {

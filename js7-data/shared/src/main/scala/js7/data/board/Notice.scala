@@ -15,7 +15,8 @@ final case class NoticePlace(
 {
   assert(notice.isDefined | expectation.isDefined)
 
-  def id: NoticeId = notice.fold(expectation.get.id)(_.id)
+  def noticeId: NoticeId =
+    notice.fold(expectation.get.id)(_.id)
 }
 object NoticePlace
 {
@@ -35,5 +36,6 @@ extends Big
 }
 object NoticeExpectation
 {
-  implicit val jsonCodec: Codec.AsObject[NoticeExpectation] = deriveCodec[NoticeExpectation]  // TODO Big
+  implicit val jsonCodec: Codec.AsObject[NoticeExpectation] =
+    deriveCodec[NoticeExpectation]  // TODO Big
 }

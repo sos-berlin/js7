@@ -193,5 +193,5 @@ private object BoardStateTest
     View(
       NoticePlace(Some(notice)),
       NoticePlace(None, Some(NoticeExpectation(NoticeId("B"), Set(aOrderId, bOrderId))))
-    ).toKeyedMap(_.id))
+    ).toKeyedMap(_.noticeId))
 }
