@@ -274,6 +274,9 @@ object ScalaUtils
     {
       def :+[B >: A](b: B): View[B] =
         view.concat(b :: Nil)
+
+      def +:[B >: A](b: B): View[B] =
+        new View.Single(b) ++ view
     }
 
     implicit final class RichScalaUtilsMap[K, V](private val underlying: Map[K, V])

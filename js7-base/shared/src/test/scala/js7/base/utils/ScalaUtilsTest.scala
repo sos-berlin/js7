@@ -314,6 +314,11 @@ final class ScalaUtilsTest extends AnyFreeSpec
       val view: View[Int] = View(1, 2, 3) :+ 4
       assert(view.toSeq == Seq(1, 2, 3, 4))
     }
+
+    "+:" in {
+      val view: View[Int] = 1 +: View(2, 3, 4)
+      assert(view.toSeq == Seq(1, 2, 3, 4))
+    }
   }
 
   "PartialFunction" - {
