@@ -1,6 +1,7 @@
 package js7.data.event
 
 import io.circe.Json
+import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.CirceUtils._
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.data.event.KeyedEventTest._

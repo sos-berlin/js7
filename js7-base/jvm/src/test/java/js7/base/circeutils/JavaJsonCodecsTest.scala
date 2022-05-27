@@ -1,5 +1,6 @@
 package js7.base.circeutils
 
+import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json}
 import java.io.File

@@ -1,6 +1,6 @@
 package js7.data.event
 
-import js7.base.circeutils.CirceUtils.deriveCodec
+import io.circe.generic.semiauto.deriveCodec
 
 /** A byte-position in a journal consisting of multiple files.
   *

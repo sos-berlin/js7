@@ -3,8 +3,6 @@ package js7.base.circeutils
 import cats.syntax.show._
 import io.circe.generic.decoding.DerivedDecoder
 import io.circe.generic.encoding.DerivedAsObjectEncoder
-import io.circe.generic.extras.decoding.ConfiguredDecoder
-import io.circe.generic.extras.encoding.ConfiguredAsObjectEncoder
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, CursorOp, Decoder, DecodingFailure, Encoder, HCursor, Json, JsonNumber, JsonObject, ParsingFailure, Printer}
 import java.io.{OutputStream, OutputStreamWriter}
@@ -16,6 +14,7 @@ import js7.base.generic.GenericString
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
 import scala.collection.immutable.SeqMap
+import scala.collection.mutable
 import scala.util.control.NonFatal
 import shapeless.Lazy
 
@@ -243,15 +242,6 @@ object CirceUtils
       }
   }
 
-  // TODO @deprecated
-  final def deriveCodec[A](implicit encode: Lazy[DerivedAsObjectEncoder[A]], decode: Lazy[DerivedDecoder[A]])
-  : Codec.AsObject[A] = {
-    new Codec.AsObject[A] {
-      def encodeObject(a: A) = encode.value.encodeObject(a)
-      def apply(c: HCursor) = decode.value.tryDecode(c)
-    }
-  }
-
   //import io.circe.generic.extras.Configuration.default.withDefaults
   //import io.circe.generic.extras.semiauto.deriveConfiguredDecoder
   //import io.circe.generic.extras.semiauto.deriveConfiguredDecoder
@@ -267,15 +257,6 @@ object CirceUtils
   //    def encodeObject(a: A) = encode.value.encodeObject(a)
   //    def apply(c: HCursor) = decodeWithDefaults.tryDecode(c)
   //  }
-
-  final def deriveConfiguredCodec[A](
-    implicit encode: Lazy[ConfiguredAsObjectEncoder[A]],
-    decode: Lazy[ConfiguredDecoder[A]])
-  : Codec.AsObject[A] =
-    new Codec.AsObject[A] {
-      def encodeObject(a: A) = encode.value.encodeObject(a)
-      def apply(c: HCursor) = decode.value.tryDecode(c)
-    }
 
   def singletonCodec[A](singleton: A): Codec.AsObject[A] =
     new Codec.AsObject[A] {
@@ -348,7 +329,7 @@ object CirceUtils
     def interpolate(sc: StringContext, args: Seq[Any]): String = {
       StringContext.checkLengths(args, sc.parts)
       val p = sc.parts.iterator
-      val builder = new StringBuilder(sc.parts.map(_.length).sum + 50)
+      val builder = new mutable.StringBuilder(sc.parts.map(_.length).sum + 50)
       builder.append(p.next())
       for (arg <- args) {
         builder.append(toJsonString(arg))

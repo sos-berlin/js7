@@ -1,6 +1,6 @@
 package js7.journal.test
 
-import js7.base.circeutils.CirceUtils.deriveCodec
+import io.circe.generic.semiauto.deriveCodec
 import js7.journal.test.TestEvent.{Appended, NothingDone}
 
 /**

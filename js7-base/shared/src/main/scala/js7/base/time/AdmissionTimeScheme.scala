@@ -1,6 +1,6 @@
 package js7.base.time
 
-import js7.base.circeutils.CirceUtils.deriveCodec
+import io.circe.generic.semiauto.deriveCodec
 
 final case class AdmissionTimeScheme(periods: Seq[AdmissionPeriod])
 

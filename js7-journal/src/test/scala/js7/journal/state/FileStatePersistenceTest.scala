@@ -4,10 +4,10 @@ import akka.pattern.ask
 import akka.util.Timeout
 import com.softwaremill.diffx.generic.auto._
 import io.circe.generic.JsonCodec
+import io.circe.generic.semiauto.deriveCodec
 import java.nio.file.Files.createTempDirectory
 import java.nio.file.Path
 import java.util.concurrent.Executors
-import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.configutils.Configs._
 import js7.base.generic.GenericString

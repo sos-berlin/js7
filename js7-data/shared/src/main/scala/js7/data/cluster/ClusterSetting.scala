@@ -2,8 +2,8 @@ package js7.data.cluster
 
 import cats.instances.either._
 import cats.syntax.flatMap._
+import io.circe.generic.semiauto.deriveCodec
 import js7.base.annotation.javaApi
-import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
@@ -96,4 +96,3 @@ object ClusterSetting
 
   implicit val jsonCodec = deriveCodec[ClusterSetting]
 }
-

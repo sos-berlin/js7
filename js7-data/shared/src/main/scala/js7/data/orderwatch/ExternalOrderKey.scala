@@ -1,6 +1,6 @@
 package js7.data.orderwatch
 
-import js7.base.circeutils.CirceUtils.deriveCodec
+import io.circe.generic.semiauto.deriveCodec
 
 final case class ExternalOrderKey(
   orderWatchPath: OrderWatchPath,

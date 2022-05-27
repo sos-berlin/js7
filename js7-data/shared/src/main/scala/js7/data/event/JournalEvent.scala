@@ -1,7 +1,7 @@
 package js7.data.event
 
+import io.circe.generic.semiauto.deriveCodec
 import js7.base.auth.UserId
-import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 
 sealed trait JournalEvent extends NoKeyEvent

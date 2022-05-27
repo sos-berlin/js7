@@ -1,6 +1,6 @@
 package js7.data.agent
 
-import js7.base.circeutils.CirceUtils.deriveCodec
+import io.circe.generic.semiauto.deriveCodec
 import js7.base.problem.{Checked, Problem}
 import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentEventsObserved, AgentReady, AgentReset, AgentResetStarted, AgentShutDown}
 import js7.data.delegate.DelegateCouplingState

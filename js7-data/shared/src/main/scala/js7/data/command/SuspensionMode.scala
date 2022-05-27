@@ -1,7 +1,7 @@
 package js7.data.command
 
 import io.circe.generic.extras.Configuration.default.withDefaults
-import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
+import io.circe.generic.extras.semiauto.deriveConfiguredCodec
 
 final case class SuspensionMode(kill: Option[CancellationMode.Kill] = None)
 

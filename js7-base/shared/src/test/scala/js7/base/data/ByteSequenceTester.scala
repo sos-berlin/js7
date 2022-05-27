@@ -1,9 +1,9 @@
 package js7.base.data
 
 import cats.syntax.monoid._
+import io.circe.generic.semiauto.deriveCodec
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 import java.nio.ReadOnlyBufferException
-import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.data.ByteSequence.ops._
 import js7.base.data.ByteSequenceTester._
 import js7.base.problem.Problem

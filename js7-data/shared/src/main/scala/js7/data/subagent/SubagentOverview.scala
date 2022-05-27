@@ -1,7 +1,7 @@
 package js7.data.subagent
 
+import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.CirceCodec
-import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.system.SystemInformation
 import js7.base.time.Timestamp
 import js7.data.delegate.DelegateOverview

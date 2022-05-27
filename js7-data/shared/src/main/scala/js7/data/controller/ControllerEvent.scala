@@ -1,6 +1,7 @@
 package js7.data.controller
 
-import js7.base.circeutils.CirceUtils.{deriveCodec, deriveRenamingCodec}
+import io.circe.generic.semiauto.deriveCodec
+import js7.base.circeutils.CirceUtils.deriveRenamingCodec
 import js7.base.circeutils.ScalaJsonCodecs._
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.time.{Timestamp, Timezone}

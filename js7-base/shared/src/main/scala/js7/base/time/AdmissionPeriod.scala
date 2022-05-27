@@ -1,5 +1,6 @@
 package js7.base.time
 
+import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
 import java.time.{DayOfWeek, LocalTime}

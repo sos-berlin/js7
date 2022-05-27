@@ -2,7 +2,7 @@ package js7.data.controller
 
 import cats.syntax.apply._
 import cats.syntax.traverse._
-import js7.base.circeutils.CirceUtils.deriveCodec
+import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.Signed
 import js7.base.problem.Checked.{CheckedOption, RichCheckedIterable}

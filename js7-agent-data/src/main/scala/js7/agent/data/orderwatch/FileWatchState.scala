@@ -1,8 +1,8 @@
 package js7.agent.data.orderwatch
 
+import io.circe.generic.semiauto.deriveCodec
 import java.nio.file.{Path, Paths}
 import js7.agent.data.orderwatch.FileWatchState._
-import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.JavaJsonCodecs.PathJsonCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.io.file.watch.DirectoryState

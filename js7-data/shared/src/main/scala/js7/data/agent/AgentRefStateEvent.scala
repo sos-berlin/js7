@@ -1,7 +1,7 @@
 package js7.data.agent
 
 import io.circe.generic.extras.Configuration.default.withDefaults
-import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
+import io.circe.generic.extras.semiauto.deriveConfiguredCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Problem
 import js7.data.event.{Event, EventId}

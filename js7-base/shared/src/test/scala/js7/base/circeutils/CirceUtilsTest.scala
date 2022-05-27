@@ -2,6 +2,7 @@ package js7.base.circeutils
 
 import io.circe.CursorOp.DownField
 import io.circe.DecodingFailure.Reason.MissingField
+import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, DecodingFailure, Json, JsonObject}
 import js7.base.circeutils.CirceUtils._

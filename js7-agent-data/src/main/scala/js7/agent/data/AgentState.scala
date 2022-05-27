@@ -1,10 +1,10 @@
 package js7.agent.data
 
+import io.circe.generic.semiauto.deriveCodec
 import js7.agent.data.AgentState.AgentMetaState
 import js7.agent.data.event.AgentEvent
 import js7.agent.data.event.AgentEvent.AgentDedicated
 import js7.agent.data.orderwatch.{AllFileWatchesState, FileWatchState}
-import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.Signed
 import js7.base.problem.{Checked, Problem}

@@ -1,6 +1,6 @@
 package js7.agent.scheduler
 
-import js7.base.circeutils.CirceUtils.deriveCodec
+import io.circe.generic.semiauto.deriveCodec
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
 

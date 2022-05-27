@@ -1,6 +1,6 @@
 package js7.data.event
 
-import js7.base.circeutils.CirceUtils.deriveCodec
+import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 
 sealed trait SnapshotMeta

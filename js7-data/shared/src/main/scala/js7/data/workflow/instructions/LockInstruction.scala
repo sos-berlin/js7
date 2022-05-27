@@ -1,6 +1,6 @@
 package js7.data.workflow.instructions
 
-import js7.base.circeutils.CirceUtils.deriveCodec
+import io.circe.generic.semiauto.deriveCodec
 import js7.base.problem.Problem
 import js7.base.utils.Assertions.assertThat
 import js7.data.agent.AgentPath

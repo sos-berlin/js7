@@ -1,6 +1,6 @@
 package js7.data.order
 
-import js7.base.circeutils.CirceUtils.deriveCodec
+import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.ScalaJsonCodecs.FiniteDurationJsonDecoder
 import js7.base.time.{TimeInterval, Timestamp}
 import js7.base.utils.IntelliJUtils.intelliJuseImport

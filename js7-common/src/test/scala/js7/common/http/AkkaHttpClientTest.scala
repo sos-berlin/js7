@@ -8,6 +8,7 @@ import akka.http.scaladsl.model.{HttpEntity, HttpResponse}
 import akka.http.scaladsl.server.Directives._
 import akka.util.ByteString
 import cats.syntax.option._
+import io.circe.generic.semiauto.deriveCodec
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.auth.SessionToken
 import js7.base.circeutils.CirceUtils._

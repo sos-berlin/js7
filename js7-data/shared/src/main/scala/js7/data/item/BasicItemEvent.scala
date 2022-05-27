@@ -1,8 +1,7 @@
 package js7.data.item
 
-import io.circe.generic.semiauto.deriveEncoder
+import io.circe.generic.semiauto.{deriveCodec, deriveEncoder}
 import io.circe.{Codec, Decoder, HCursor}
-import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.Signed
 import js7.base.utils.IntelliJUtils.intelliJuseImport

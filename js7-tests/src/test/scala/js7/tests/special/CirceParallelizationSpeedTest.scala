@@ -1,6 +1,7 @@
 package js7.tests.special
 
 import io.circe._
+import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax._
 import js7.base.circeutils.CirceObjectCodec
 import js7.base.circeutils.CirceUtils._

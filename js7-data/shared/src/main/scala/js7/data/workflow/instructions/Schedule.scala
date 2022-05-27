@@ -1,7 +1,7 @@
 package js7.data.workflow.instructions
 
 import io.circe.Decoder
-import io.circe.generic.semiauto.deriveEncoder
+import io.circe.generic.semiauto.{deriveCodec, deriveEncoder}
 import js7.base.circeutils.CirceUtils._
 import js7.base.circeutils.ScalaJsonCodecs._
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}

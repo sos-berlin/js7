@@ -1,6 +1,7 @@
 package js7.journal.watch
 
 import io.circe._
+import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax._
 import java.nio.file.Files
 import java.util.UUID

@@ -1,9 +1,8 @@
 package js7.data.order
 
-import io.circe.generic.semiauto.deriveEncoder
+import io.circe.generic.semiauto.{deriveCodec, deriveEncoder}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
-import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
 import js7.base.problem.Problem

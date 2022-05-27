@@ -1,11 +1,13 @@
 package js7.agent.data.commands
 
 import io.circe.generic.extras.Configuration.default.withDefaults
+import io.circe.generic.extras.semiauto.deriveConfiguredCodec
+import io.circe.generic.semiauto.deriveCodec
 import io.circe.{Decoder, Encoder, Json, JsonObject}
 import js7.agent.data.AgentState
 import js7.agent.data.AgentState.{inventoryItemKeyJsonCodec, signableItemJsonCodec, unsignedSimpleItemJsonCodec}
 import js7.base.circeutils.CirceCodec
-import js7.base.circeutils.CirceUtils.{deriveCodec, deriveConfiguredCodec, singletonCodec}
+import js7.base.circeutils.CirceUtils.singletonCodec
 import js7.base.circeutils.ScalaJsonCodecs._
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.Signed

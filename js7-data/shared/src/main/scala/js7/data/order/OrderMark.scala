@@ -1,6 +1,6 @@
 package js7.data.order
 
-import js7.base.circeutils.CirceUtils.deriveCodec
+import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.Big
 import js7.data.command.{CancellationMode, SuspensionMode}

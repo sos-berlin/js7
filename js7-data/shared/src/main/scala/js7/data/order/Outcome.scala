@@ -1,8 +1,8 @@
 package js7.data.order
 
 import io.circe._
+import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax._
-import js7.base.circeutils.CirceUtils.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.io.process.{ProcessSignal, ReturnCode}
 import js7.base.problem.{Checked, Problem}
