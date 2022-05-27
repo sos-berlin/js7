@@ -56,13 +56,13 @@ import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventId, JournalHeader, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventSource
-import js7.data.execution.workflow.instructions.InstructionExecutorService
+import js7.data.execution.workflow.instructions.{InstructionExecutorService, PostNoticesExecutor}
 import js7.data.item.BasicItemEvent.{ItemAttached, ItemAttachedToMe, ItemDeleted, ItemDetached, ItemDetachingFromMe, SignedItemAttachedToMe}
 import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemEvent}
 import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, ItemAddedOrChanged, SignableItemKey, UnsignedSimpleItemPath}
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderMoved, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesRead, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderNoticePosted, OrderNoticePostedV2_3, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath}
 import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
@@ -80,7 +80,7 @@ import monix.eval.Task
 import monix.execution.cancelables.SerialCancelable
 import monix.execution.{Cancelable, Scheduler}
 import scala.collection.immutable.VectorBuilder
-import scala.collection.{View, mutable}
+import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success, Try}
@@ -738,26 +738,20 @@ with MainJournalingActor[ControllerState, Event]
       case ControllerCommand.ResumeOrders(orderIds) =>
         executeOrderMarkCommands(orderIds.toVector)(orderEventSource.resume(_, None, Nil))
 
-      case ControllerCommand.PostNotice(boardPath, noticeId, endOfLife) =>
+      case ControllerCommand.PostNotice(boardPath, noticeId, maybeEndOfLife) =>
         val scope = NowScope(alarmClock.now())
         val checked = for {
           boardState <- _controllerState.pathToBoardState.checked(boardPath)
-          notice <- boardState.board.toNotice(noticeId, endOfLife)(scope)
-          _ <- boardState.addNotice(notice)
-          expectingOrders <- boardState
-            .expectingOrders(noticeId)
-            .toVector
-            .traverse(_controllerState.idToOrder.checked)
-        } yield (notice, expectingOrders)
+          notice <- boardState.board.toNotice(noticeId, maybeEndOfLife)(scope)
+          _ <- boardState.addNotice(notice) // Check
+          expectingOrderEvents <- PostNoticesExecutor
+            .postedNoticeToExpectingOrderEvents(boardState, notice, _controllerState)
+        } yield (notice, expectingOrderEvents)
         checked match {
           case Left(problem) => Future.successful(Left(problem))
-          case Right((notice, expectingOrders)) =>
-            val events = View(NoticePosted.toKeyedEvent(notice)) ++
-              expectingOrders.view
-                .flatMap(o => View(
-                  o.id <-: OrderNoticesRead,
-                  o.id <-: OrderMoved(o.position.increment)))
-            persistTransactionAndSubsequentEvents(events.toVector)(
+          case Right((notice, expectingOrderEvents)) =>
+            val events = NoticePosted.toKeyedEvent(notice) +: expectingOrderEvents
+            persistTransactionAndSubsequentEvents(events)(
               handleEvents
             ).map(_ => Right(ControllerCommand.Response.Accepted))
         }

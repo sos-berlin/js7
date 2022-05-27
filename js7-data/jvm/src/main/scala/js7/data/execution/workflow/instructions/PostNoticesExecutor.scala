@@ -29,18 +29,27 @@ extends EventInstructionExecutor
             fatNotices <- boardStates.traverse(bs => bs.board
               .postingOrderToNotice(orderScope)
               .map(FatNotice(_, bs)))
+            postingOrderEvents = toPostingOrderEvents(fatNotices.map(_.notice), order)
             expectingOrderEvents <- toExpectingOrderEvents(fatNotices, state)
           } yield
-            toPostingOrderEvents(fatNotices.map(_.notice), order) ++:
-              expectingOrderEvents.toList
+            postingOrderEvents ++: expectingOrderEvents.toList
         else
           Right(Nil))
+}
+
+object PostNoticesExecutor {
+  private final case class FatNotice(notice: Notice, boardState: BoardState)
 
   private def toPostingOrderEvents(notices: Vector[Notice], order: Order[Order.State])
   : Vector[KeyedEvent[OrderEvent.OrderActorEvent]] =
     notices
       .map(n => order.id <-: OrderNoticePosted(n))
       .appended(order.id <-: OrderMoved(order.position.increment))
+
+  // For PostNotice command
+  def postedNoticeToExpectingOrderEvents(boardState: BoardState, notice: Notice, state: StateView)
+  : Checked[Seq[KeyedEvent[OrderEvent.OrderActorEvent]]] =
+    toExpectingOrderEvents(Vector(FatNotice(notice, boardState)), state)
 
   private def toExpectingOrderEvents(
     postedNotices: Vector[FatNotice],
@@ -68,8 +77,4 @@ extends EventInstructionExecutor
           }
           .map(_.flatten))
     } yield events
-}
-
-private object PostNoticesExecutor {
-  private final case class FatNotice(notice: Notice, boardState: BoardState)
 }
