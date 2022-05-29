@@ -21,6 +21,7 @@ import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import js7.data.controller.ControllerState
 import monix.eval.Task
 import monix.execution.Scheduler
+import scala.collection.MapView
 
 /**
   * @author Joacim Zschimmer
@@ -28,7 +29,7 @@ import monix.execution.Scheduler
 trait AgentProxyRoute extends ControllerRouteProvider
 {
   protected implicit def actorSystem: ActorSystem
-  protected def pathToAgentRefState: Task[Checked[Map[AgentPath, AgentRefState]]]
+  protected def pathToAgentRefState: Task[Checked[MapView[AgentPath, AgentRefState]]]
   protected def controllerConfiguration: ControllerConfiguration
   protected def controllerState: Task[Checked[ControllerState]]
 

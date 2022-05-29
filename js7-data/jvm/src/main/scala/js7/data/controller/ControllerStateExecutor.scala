@@ -17,6 +17,7 @@ import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable}
 import js7.data.item.VersionedEvent.VersionedItemEvent
 import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, SimpleItemPath, VersionedItemId_}
 import js7.data.job.JobResource
+import js7.data.lock.LockState
 import js7.data.order.Order.State
 import js7.data.order.OrderEvent.{OrderAdded, OrderAwoke, OrderBroken, OrderCoreEvent, OrderDeleted, OrderDetached, OrderForked, OrderLockEvent, OrderOrderAdded, OrderProcessed}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
@@ -265,7 +266,7 @@ final case class ControllerStateExecutor private(
         agentPathToAttached.view.flatMap {
           case (agentPath, Attached(revision)) =>
             def detachable =
-              if (controllerState.pathToAgentRefState.contains(agentPath))
+              if (controllerState.pathToItemState_.contains(agentPath))
                 ItemDetachable(item.key, agentPath)
               else // shortcut in case, the Agent has been deleted (reset)
                 ItemDetached(item.key, agentPath)
@@ -302,8 +303,7 @@ final case class ControllerStateExecutor private(
     }
 
   def nextOrderWatchOrderEvents: View[KeyedEvent[OrderCoreEvent]] =
-    controllerState.allOrderWatchesState
-      .nextEvents(addOrder(_, _), isDeletionMarkable)
+    controllerState.ow.nextEvents(addOrder(_, _), isDeletionMarkable)
 
   private def isDeletionMarkable(orderId: OrderId): Boolean =
     controllerState.idToOrder.get(orderId).exists(o => !o.deleteWhenTerminated)
@@ -343,7 +343,7 @@ final case class ControllerStateExecutor private(
     View(keyedEvent.key) ++ (keyedEvent.event match {
       case OrderLockEvent(lockPaths) =>
         lockPaths.view
-          .flatMap(controllerState.pathToLockState.get)
+          .flatMap(controllerState.pathTo(LockState).get)
           .flatMap(_.firstQueuedOrderId)
 
       case OrderForked(children) =>

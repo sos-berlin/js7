@@ -24,7 +24,8 @@ object OrderWatch
 {
   trait Companion[A <: OrderWatch] extends UnsignedSimpleItem.Companion[A]
   {
-    type Key <: OrderWatchPath
+    type Key = OrderWatchPath
+    val Key = OrderWatchPath
   }
 
   implicit val jsonCodec = TypedJsonCodec[OrderWatch](

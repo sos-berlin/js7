@@ -19,6 +19,6 @@ object UnsignedSimpleItem
     val Key: UnsignedSimpleItemPath.Companion[Key]
   }
 
-  def jsonCodec[A <: UnsignedSimpleItem](companions: Seq[Companion_]) =
+  private def jsonCodec(companions: Seq[Companion_]) =
     TypedJsonCodec.fromIterable("UnsignedSimpleItem", companions.map(_.subtype))
 }

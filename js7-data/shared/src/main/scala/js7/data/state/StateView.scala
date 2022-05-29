@@ -8,8 +8,8 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.board.{BoardPath, BoardState}
 import js7.data.controller.ControllerId
 import js7.data.event.ItemContainer
+import js7.data.item.{UnsignedSimpleItem, UnsignedSimpleItemPath, UnsignedSimpleItemState}
 import js7.data.job.{JobKey, JobResource}
-import js7.data.lock.{LockPath, LockState}
 import js7.data.order.Order.{FailedInFork, Processing}
 import js7.data.order.OrderEvent.OrderNoticesExpected
 import js7.data.order.{Order, OrderId}
@@ -19,6 +19,7 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{BoardInstruction, End}
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow, WorkflowId, WorkflowPath}
+import scala.collection.MapView
 import scala.reflect.ClassTag
 
 /** Common interface for ControllerState and AgentState (but not SubagentState). */
@@ -47,14 +48,30 @@ trait StateView extends ItemContainer
 
   def workflowPathToId(workflowPath: WorkflowPath): Checked[WorkflowId]
 
-  def pathToLockState: PartialFunction[LockPath, LockState]
+  def pathToItemState: MapView[UnsignedSimpleItemPath, UnsignedSimpleItemState]
 
-  def pathToBoardState: PartialFunction[BoardPath, BoardState]
+  final def pathTo[A <: UnsignedSimpleItemState](A: UnsignedSimpleItemState.Companion[A])
+  : MapView[A.Path, A] =
+    pathToItemState
+      .filter { case (_, v) => v.companion eq A }
+      .asInstanceOf[MapView[A.Path, A]]
+
+  final def pathTo[A <: UnsignedSimpleItem](A: UnsignedSimpleItem.Companion[A])
+  : MapView[A.Path, A] =
+    pathToItemState
+      .filter { case (_, v) => v.item.companion eq A }
+      .mapValues(_.item)
+      .asInstanceOf[MapView[A.Path, A]]
+
+  //final def pathToCheckedItem[P <: UnsignedSimpleItemPath](path: P)
+  //  (implicit P: UnsignedSimpleItemPath.Companion[P])
+  //: Checked[P.Item] =
+  //  pathToItemState.checked(path).asInstanceOf[Checked[P.Item]]
 
   def availableNotices(expectedSeq: Iterable[OrderNoticesExpected.Expected]): Set[BoardPath] =
     expectedSeq
       .collect {
-        case x if pathToBoardState.get(x.boardPath).exists(_ containsNotice x.noticeId) =>
+        case x if pathTo(BoardState).get(x.boardPath).exists(_ containsNotice x.noticeId) =>
           x.boardPath
       }
       .toSet
@@ -63,7 +80,7 @@ trait StateView extends ItemContainer
   final def workflowPositionToBoardState(workflowPosition: WorkflowPosition): Checked[BoardState] =
     for {
       boardPath <- workflowPositionToBoardPath(workflowPosition)
-      boardState <- pathToBoardState.checked(boardPath)
+      boardState <- pathTo(BoardState).checked(boardPath)
     } yield boardState
 
   // COMPATIBLE with v2.3
@@ -93,7 +110,7 @@ trait StateView extends ItemContainer
         case Vector(o) => Right(o)
         case _ => Left(Problem.pure("Legacy orderIdToBoardState, but instruction has multiple BoardPaths"))
       }
-      boardState <- pathToBoardState.checked(boardPath)
+      boardState <- pathTo(BoardState).checked(boardPath)
     } yield boardState
 
   def instruction(workflowPosition: WorkflowPosition): Instruction =

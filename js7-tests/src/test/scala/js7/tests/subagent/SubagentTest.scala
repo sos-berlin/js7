@@ -12,8 +12,8 @@ import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.delegate.DelegateCouplingState.Coupled
 import js7.data.order.OrderEvent.{OrderAttached, OrderCancelled, OrderFinished, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
-import js7.data.subagent.SubagentId
 import js7.data.subagent.SubagentItemStateEvent.SubagentCoupled
+import js7.data.subagent.{SubagentId, SubagentItemState}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.subagent.SubagentTest._
@@ -32,7 +32,7 @@ final class SubagentTest extends AnyFreeSpec with SubagentTester
     val localSubagentId = SubagentId("AGENT-0")
     eventWatch.await[SubagentCoupled](_.key == localSubagentId)
     assert(waitForCondition(10.s, 10.ms)(
-      controllerState.idToSubagentItemState(localSubagentId).couplingState == Coupled))
+      controllerState.pathTo(SubagentItemState)(localSubagentId).couplingState == Coupled))
   }
 
   "Reject items if no signature keys are installed" in {
@@ -87,7 +87,7 @@ final class SubagentTest extends AnyFreeSpec with SubagentTester
 
     // Be sure that BareSubagent's shutdown has been detected
     assert(waitForCondition(10.s, 10.ms)(
-      controllerState.idToSubagentItemState(bareSubagentId).problem.isDefined))
+      controllerState.pathTo(SubagentItemState)(bareSubagentId).problem.isDefined))
 
     val orderId = OrderId("WAIT-FOR-SUBAGENT")
     controller.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow

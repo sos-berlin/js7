@@ -16,7 +16,7 @@ trait InventoryItem
 
   def key: InventoryItemKey
 
-  def path: InventoryItemPath
+  def path: companion.Path
 
   def itemRevision: Option[ItemRevision]
 

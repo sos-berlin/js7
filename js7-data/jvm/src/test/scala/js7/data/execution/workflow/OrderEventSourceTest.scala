@@ -752,7 +752,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
           isAgent = false,
           orders = Some(Seq(order)),
           workflows = Some(Seq(workflow)),
-          lockStates = Some(Seq(LockState(Lock(lockPath))))))
+          itemStates = Some(Seq(LockState(Lock(lockPath))))))
         eventSource.resume(order.id, Some(to), Nil)
       }
     }
@@ -981,7 +981,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
         isAgent = false,
         orders = Some(Seq(forkingOrder, aChild, bChild)),
         workflows = Some(Seq(workflow)),
-        lockStates = Some(Seq(
+        itemStates = Some(Seq(
           LockState(Lock(LockPath("LOCK"))),
           LockState(Lock(LockPath("LOCK-1"))),
           LockState(Lock(LockPath("LOCK-2")))))))

@@ -15,7 +15,6 @@ import scala.annotation.tailrec
 import scala.collection.{Factory, MapView, View, mutable}
 import scala.math.max
 import scala.reflect.ClassTag
-import scala.util.Left
 import scala.util.chaining._
 
 object ScalaUtils

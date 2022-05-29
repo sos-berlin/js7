@@ -13,7 +13,7 @@ import js7.data.item.BasicItemEvent.{ItemAttached, ItemDeleted}
 import js7.data.item.ItemOperation.DeleteSimple
 import js7.data.order.OrderEvent.OrderDeleted
 import js7.data.order.OrderId
-import js7.data.orderwatch.{FileWatch, OrderWatchPath}
+import js7.data.orderwatch.{FileWatch, OrderWatchPath, OrderWatchState}
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.filewatch.FileWatchLongTest._
@@ -71,7 +71,7 @@ final class FileWatchLongTest extends AnyFreeSpec with ControllerAgentForScalaTe
       Right(Completed))
     eventWatch.await[ItemDeleted](_.event.key == fileWatch.path)
     sleep(100.ms)
-    assert(controllerState.allOrderWatchesState.pathToOrderWatchState.isEmpty)
+    assert(controllerState.pathTo(OrderWatchState).isEmpty)
   }
 }
 

@@ -26,6 +26,8 @@ object AgentPath
 extends DelegateId.Companion[AgentPath]
 with UnsignedSimpleItemPath.Companion[AgentPath]
 {
+  type Item = AgentRef
+
   /** Internal use only. */
   private[js7] val empty = new AgentPath("")
 

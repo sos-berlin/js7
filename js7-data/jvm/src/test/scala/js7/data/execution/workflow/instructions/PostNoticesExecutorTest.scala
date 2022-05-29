@@ -24,7 +24,7 @@ final class PostNoticesExecutorTest extends AnyFreeSpec
       isAgent = false,
       orders = Some(Nil),
       workflows = Some(Seq(postingWorkflow, expecting02or13Workflow, expecting0Workflow)),
-      boardStates = Some(boards.map(BoardState(_))))
+      itemStates = Some(boards.map(BoardState(_))))
 
     // PostNotice board0, board1
     locally {
@@ -41,7 +41,7 @@ final class PostNoticesExecutorTest extends AnyFreeSpec
         postingOrderId <-: OrderMoved(Position(1))))
 
       state = state.applyEvents(events).orThrow
-      assert(state.pathToBoardState == Map(
+      assert(state.pathTo(BoardState).toMap == Map(
         board0.path -> BoardState(board0, Map(
           notice0.id -> NoticePlace(Some(notice0)))),
         board1.path -> BoardState(board1, Map(
@@ -67,7 +67,7 @@ final class PostNoticesExecutorTest extends AnyFreeSpec
           OrderNoticesExpected.Expected(board3.path, notice3.id)))))
 
       state = state.applyEvents(events).orThrow
-      assert(state.pathToBoardState == Map(
+      assert(state.pathTo(BoardState).toMap == Map(
         board0.path -> BoardState(board0, Map(
           notice0.id -> NoticePlace(
             Some(notice0),
@@ -100,7 +100,7 @@ final class PostNoticesExecutorTest extends AnyFreeSpec
           OrderNoticesExpected.Expected(board0.path, otherNotice0.id)))))
 
       state = state.applyEvents(events).orThrow
-      assert(state.pathToBoardState == Map(
+      assert(state.pathTo(BoardState).toMap == Map(
         board0.path -> BoardState(board0, Map(
           notice0.id -> NoticePlace(
             Some(notice0),
@@ -133,7 +133,7 @@ final class PostNoticesExecutorTest extends AnyFreeSpec
       ))
 
       state = state.applyEvents(events).orThrow
-      assert(state.pathToBoardState == Map(
+      assert(state.pathTo(BoardState).toMap == Map(
         board0.path -> BoardState(board0, Map(
           notice0.id -> NoticePlace(
             Some(notice0)),

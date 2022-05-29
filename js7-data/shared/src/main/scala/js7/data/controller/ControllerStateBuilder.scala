@@ -9,7 +9,7 @@ import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRefStateEvent}
 import js7.data.board.BoardEvent.{NoticeDeleted, NoticePosted}
 import js7.data.board.{Board, BoardPath, BoardState, Notice}
-import js7.data.calendar.{Calendar, CalendarPath}
+import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.data.event.KeyedEvent.NoKey
@@ -17,22 +17,23 @@ import js7.data.event.{Event, EventDrivenState, JournalEvent, JournalState, Keye
 import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeleted, ItemDeletionMarked}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
-import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItemEvent, InventoryItemKey, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, UnsignedSimpleItemEvent, VersionedEvent, VersionedItemId_}
+import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItemEvent, InventoryItemKey, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, UnsignedSimpleItemState, VersionedEvent, VersionedItemId_}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.OrderEvent.{OrderAddedX, OrderNoticesExpected}
 import js7.data.order.{Order, OrderEvent, OrderId}
-import js7.data.orderwatch.{AllOrderWatchesState, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState}
+import js7.data.orderwatch.{OrderWatch, OrderWatchEvent, OrderWatchStateHandler, OrderWatchPath, OrderWatchState}
 import js7.data.state.EventDrivenStateView
 import js7.data.state.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
-import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent, SubagentSelection, SubagentSelectionId}
+import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent, SubagentSelection, SubagentSelectionId, SubagentSelectionState}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import scala.collection.mutable
 
 final class ControllerStateBuilder
 extends SnapshotableStateBuilder[ControllerState]
 with EventDrivenStateView[ControllerStateBuilder, Event]
+with OrderWatchStateHandler[ControllerStateBuilder]
 {
   protected val S = ControllerState
   val companion = ControllerStateBuilder
@@ -41,13 +42,7 @@ with EventDrivenStateView[ControllerStateBuilder, Event]
   private var controllerMetaState = ControllerMetaState.Undefined
   private var repo = Repo.empty
   private val _idToOrder = mutable.Map.empty[OrderId, Order[Order.State]]
-  private val _pathToAgentRefState = mutable.Map.empty[AgentPath, AgentRefState]
-  private val _idToSubagentItemState = mutable.Map.empty[SubagentId, SubagentItemState]
-  private val _idToSubagentSelection = mutable.Map.empty[SubagentSelectionId, SubagentSelection]
-  private val _pathToLockState = mutable.Map.empty[LockPath, LockState]
-  private val _pathToBoardState = mutable.Map.empty[BoardPath, BoardState]
-  private val _pathToCalendar = mutable.Map.empty[CalendarPath, Calendar]
-  private var allOrderWatchesState = AllOrderWatchesState.empty
+  private val _pathToItemState = mutable.Map.empty[UnsignedSimpleItemPath, UnsignedSimpleItemState]
   private var agentAttachments = ClientAttachments.empty[AgentPath]
   private val deletionMarkedItems = mutable.Set[InventoryItemKey]()
   private val pathToSignedSimpleItem = mutable.Map.empty[SignableSimpleItemPath, Signed[SignableSimpleItem]]
@@ -72,9 +67,8 @@ with EventDrivenStateView[ControllerStateBuilder, Event]
     repo.pathToId(workflowPath)
       .toRight(UnknownKeyProblem("WorkflowPath", workflowPath.string))
 
-  val pathToLockState = _pathToLockState
-  val pathToBoardState = _pathToBoardState
-  val pathToCalendar = _pathToCalendar
+  val pathToItemState = _pathToItemState.view
+
   def controllerId = controllerMetaState.controllerId
 
   def orders = _idToOrder.values
@@ -89,13 +83,7 @@ with EventDrivenStateView[ControllerStateBuilder, Event]
     controllerMetaState = state.controllerMetaState
     repo = state.repo
     _idToOrder ++= state.idToOrder
-    _pathToAgentRefState ++= state.pathToAgentRefState
-    _idToSubagentItemState ++= state.idToSubagentItemState
-    _idToSubagentSelection ++= state.idToSubagentSelection
-    _pathToLockState ++= state.pathToLockState
-    _pathToBoardState ++= state.pathToBoardState
-    _pathToCalendar ++= state.pathToCalendar
-    allOrderWatchesState = state.allOrderWatchesState
+    _pathToItemState ++= state.pathToItemState_
     pathToSignedSimpleItem ++= state.pathToSignedSimpleItem
     agentAttachments = state.agentAttachments
     deletionMarkedItems ++= state.deletionMarkedItems
@@ -108,7 +96,7 @@ with EventDrivenStateView[ControllerStateBuilder, Event]
       order.state match {
         case Order.ExpectingNotice(noticeId) =>
           val boardState = workflowPositionToBoardState(order.workflowPosition).orThrow
-          _pathToBoardState += boardState.path -> boardState.addExpectation(noticeId, order.id).orThrow
+          _pathToItemState(boardState.path) = boardState.addExpectation(noticeId, order.id).orThrow
 
           // Change ExpectingNotice (Orders of v2.3) to ExpectingNotices
           _idToOrder.update(order.id, order.copy(
@@ -116,9 +104,9 @@ with EventDrivenStateView[ControllerStateBuilder, Event]
               OrderNoticesExpected.Expected(boardState.path, noticeId)))))
 
         case Order.ExpectingNotices(expectedSeq) =>
-          _pathToBoardState ++= expectedSeq
+          _pathToItemState ++= expectedSeq
             .map(expected => expected.boardPath ->
-              pathToBoardState
+              pathTo(BoardState)
                 .checked(expected.boardPath)
                 .flatMap(_.addExpectation(expected.noticeId, order.id))
                 .orThrow)
@@ -132,38 +120,38 @@ with EventDrivenStateView[ControllerStateBuilder, Event]
     case agentRefState: AgentRefState =>
       val (agentRef, maybeSubagentItem) = agentRefState.agentRef.convertFromV2_1.orThrow
 
-      _pathToAgentRefState.insert(agentRef.path, agentRefState.copy(agentRef = agentRef))
+      _pathToItemState.insert(agentRef.path, agentRefState.copy(agentRef = agentRef))
       for (subagentItem <- maybeSubagentItem) {
-        _idToSubagentItemState.insert(subagentItem.id, SubagentItemState.initial(subagentItem))
+        _pathToItemState.insert(subagentItem.id, SubagentItemState.initial(subagentItem))
       }
 
     case subagentItemState: SubagentItemState =>
-      _idToSubagentItemState.insert(subagentItemState.subagentId, subagentItemState)
+      _pathToItemState.insert(subagentItemState.subagentId, subagentItemState)
 
     case subagentSelection: SubagentSelection =>
-      _idToSubagentSelection.insert(subagentSelection.id, subagentSelection)
+      _pathToItemState.insert(subagentSelection.id, SubagentSelectionState(subagentSelection))
 
     case lockState: LockState =>
-      _pathToLockState.insert(lockState.lock.path, lockState)
+      _pathToItemState.insert(lockState.lock.path, lockState)
 
     case board: Board =>
-      _pathToBoardState.insert(board.path, BoardState(board))
+      _pathToItemState.insert(board.path, BoardState(board))
 
     case calendar: Calendar =>
-      _pathToCalendar.insert(calendar.path, calendar)
+      _pathToItemState.insert(calendar.path, CalendarState(calendar))
 
     case notice: Notice =>
-      _pathToBoardState(notice.boardPath) = _pathToBoardState(notice.boardPath)
+      _pathToItemState(notice.boardPath) = pathTo(BoardState)(notice.boardPath)
         .addNotice(notice).orThrow
 
     case signedItemAdded: SignedItemAdded =>
       onSignedItemAdded(signedItemAdded)
 
     case UnsignedSimpleItemAdded(orderWatch: OrderWatch) =>
-      allOrderWatchesState = allOrderWatchesState.addOrderWatch(orderWatch).orThrow
+      ow.addOrderWatch(orderWatch).orThrow
 
     case snapshot: OrderWatchState.ExternalOrderSnapshot =>
-      allOrderWatchesState = allOrderWatchesState.applySnapshot(snapshot).orThrow
+      ow.applySnapshot(snapshot).orThrow
 
     case event: ItemAttachedStateEvent =>
       agentAttachments = agentAttachments.applyEvent(event).orThrow
@@ -185,7 +173,7 @@ with EventDrivenStateView[ControllerStateBuilder, Event]
     val (added, deleted) = followUpRecoveredWorkflowsAndOrders(repo.idTo[Workflow], _idToOrder.toMap)
     _idToOrder ++= added
     _idToOrder --= deleted
-    allOrderWatchesState = allOrderWatchesState.finishRecovery.orThrow
+    ow.finishRecovery.orThrow
   }
 
   protected def onAddEvent = {
@@ -218,76 +206,79 @@ with EventDrivenStateView[ControllerStateBuilder, Event]
               case UnsignedSimpleItemAdded(item) =>
                 item match {
                   case lock: Lock =>
-                    _pathToLockState.insert(lock.path, LockState(lock))
+                    _pathToItemState.insert(lock.path, LockState(lock))
 
                   case addedAgentRef: AgentRef =>
                     val (agentRef, maybeSubagentItem) = addedAgentRef.convertFromV2_1.orThrow
 
-                    _pathToAgentRefState.insert(agentRef.path, AgentRefState(agentRef))
+                    _pathToItemState.insert(agentRef.path, AgentRefState(agentRef))
                     for (subagentItem <- maybeSubagentItem) {
-                      _idToSubagentItemState.insert(subagentItem.id, SubagentItemState.initial(subagentItem))
+                      _pathToItemState.insert(subagentItem.id, SubagentItemState.initial(subagentItem))
                     }
 
                   case subagentItem: SubagentItem =>
-                    _idToSubagentItemState.insert(subagentItem.id, SubagentItemState.initial(subagentItem))
+                    _pathToItemState.insert(subagentItem.id, SubagentItemState.initial(subagentItem))
 
                   case selection: SubagentSelection =>
-                    _idToSubagentSelection.insert(selection.id, selection)
+                    _pathToItemState.insert(selection.id, SubagentSelectionState(selection))
 
                   case orderWatch: OrderWatch =>
-                    allOrderWatchesState = allOrderWatchesState.addOrderWatch(orderWatch).orThrow
+                    ow.addOrderWatch(orderWatch).orThrow
 
                   case board: Board =>
-                    _pathToBoardState.insert(board.path, BoardState(board))
+                    _pathToItemState.insert(board.path, BoardState(board))
 
                   case calendar: Calendar =>
-                    _pathToCalendar.insert(calendar.path, calendar)
+                    _pathToItemState.insert(calendar.path, CalendarState(calendar))
                 }
 
               case UnsignedSimpleItemChanged(item) =>
                 item match {
                   case lock: Lock =>
-                    _pathToLockState(lock.path) = _pathToLockState(lock.path).copy(
+                    _pathToItemState(lock.path) = pathTo(LockState)(lock.path).copy(
                       lock = lock)
 
                   case changedAgentRef: AgentRef =>
                     val (agentRef, maybeSubagentItem) = changedAgentRef.convertFromV2_1.orThrow
 
-                    _pathToAgentRefState(agentRef.path) = _pathToAgentRefState(agentRef.path).copy(
+                    _pathToItemState(agentRef.path) = pathTo(AgentRefState)(agentRef.path).copy(
                       agentRef = agentRef)
 
                     for (subagentItem <- maybeSubagentItem) {
-                      _idToSubagentItemState.updateWith(subagentItem.id) {
+                      _pathToItemState.updateWith(subagentItem.id) {
                         case None =>
                           Some(SubagentItemState.initial(subagentItem))
 
-                        case Some(previous) =>
+                        case Some(previous: SubagentItemState) =>
                           Some(previous.copy(
                             subagentItem = previous.item.updateUri(subagentItem.uri)))
+
+                        case _ => sys.error("No SubagentItemState")
                       }
                     }
 
                   case selection: SubagentSelection =>
-                    _idToSubagentSelection(selection.id) = selection
+                    _pathToItemState(selection.id) = SubagentSelectionState(selection)
 
                   case subagentItem: SubagentItem =>
-                    _idToSubagentItemState(subagentItem.id) = _idToSubagentItemState(subagentItem.id).copy(
-                      subagentItem = subagentItem)
+                    _pathToItemState(subagentItem.id) =
+                      pathTo(SubagentItemState)(subagentItem.id).copy(
+                        subagentItem = subagentItem)
 
                   case orderWatch: OrderWatch =>
-                    allOrderWatchesState = allOrderWatchesState.changeOrderWatch(orderWatch).orThrow
+                    ow.changeOrderWatch(orderWatch).orThrow
 
                   case board: Board =>
-                    _pathToBoardState.update(
+                    _pathToItemState.update(
                       board.path,
-                      _pathToBoardState
+                      pathTo(BoardState)
                         .checked(board.path)
                         .map(boardState => boardState.copy(
                           board = board))
                         .orThrow)
 
                   case calendar: Calendar =>
-                    _pathToCalendar.update(calendar.path, calendar)
+                    _pathToItemState.update(calendar.path, CalendarState(calendar))
                 }
             }
 
@@ -320,25 +311,25 @@ with EventDrivenStateView[ControllerStateBuilder, Event]
                     repo = repo.deleteItem(id).orThrow
 
                   case path: OrderWatchPath =>
-                    allOrderWatchesState = allOrderWatchesState.removeOrderWatch(path)
+                    ow.removeOrderWatch(path)
 
                   case path: LockPath =>
-                    _pathToLockState -= path
+                    _pathToItemState -= path
+
+                  case path: BoardPath =>
+                    _pathToItemState -= path
 
                   case agentPath: AgentPath =>
-                    _pathToAgentRefState -= agentPath
+                    _pathToItemState -= agentPath
 
                   case subagentId: SubagentId =>
-                    _idToSubagentItemState -= subagentId
+                    _pathToItemState -= subagentId
 
                   case id: SubagentSelectionId =>
-                    _idToSubagentSelection -= id
-
-                  case boardPath: BoardPath =>
-                    _pathToBoardState -= boardPath
+                    _pathToItemState -= id
 
                   case calendarPath: CalendarPath =>
-                    _pathToCalendar -= calendarPath
+                    _pathToItemState -= calendarPath
 
                   case jobResourcePath: JobResourcePath =>
                     pathToSignedSimpleItem -= jobResourcePath
@@ -347,33 +338,33 @@ with EventDrivenStateView[ControllerStateBuilder, Event]
         }
 
       case KeyedEvent(path: AgentPath, event: AgentRefStateEvent) =>
-        _pathToAgentRefState.update(path, _pathToAgentRefState(path).applyEvent(event).orThrow)
+        _pathToItemState.update(path, pathTo(AgentRefState)(path).applyEvent(event).orThrow)
 
 
       case KeyedEvent(id: SubagentId, event: SubagentItemStateEvent) =>
         event match {
-          case SubagentShutdown if !_idToSubagentItemState.contains(id) =>
+          case SubagentShutdown if !_pathToItemState.contains(id) =>
             // May arrive when SubagentItem has been deleted
 
           case _ =>
-          _idToSubagentItemState.update(id, _idToSubagentItemState(id).applyEvent(event).orThrow)
+          _pathToItemState.update(id, pathTo(SubagentItemState)(id).applyEvent(event).orThrow)
         }
 
       case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
         super.applyOrderEvent(orderId, event).orThrow
 
       case KeyedEvent(orderWatchPath: OrderWatchPath, event: OrderWatchEvent) =>
-        allOrderWatchesState = allOrderWatchesState.onOrderWatchEvent(orderWatchPath <-: event).orThrow
+        ow.onOrderWatchEvent(orderWatchPath <-: event).orThrow
 
       case KeyedEvent(boardPath: BoardPath, NoticePosted(notice)) =>
-        for (boardState <- _pathToBoardState.get(boardPath)) {
-          _pathToBoardState(boardState.path) =
+        for (boardState <- pathTo(BoardState).get(boardPath)) {
+          _pathToItemState(boardState.path) =
             boardState.addNotice(notice.toNotice(boardState.path)).orThrow
         }
 
       case KeyedEvent(boardPath: BoardPath, NoticeDeleted(noticeId)) =>
-        for (boardState <- _pathToBoardState.get(boardPath)) {
-          _pathToBoardState(boardState.path) = boardState.removeNotice(noticeId).orThrow
+        for (boardState <- pathTo(BoardState).get(boardPath)) {
+          _pathToItemState(boardState.path) = boardState.removeNotice(noticeId).orThrow
         }
 
       case KeyedEvent(_, _: ControllerShutDown) =>
@@ -392,17 +383,14 @@ with EventDrivenStateView[ControllerStateBuilder, Event]
 
   override protected def addOrder(orderId: OrderId, orderAdded: OrderAddedX) = {
     _idToOrder.insert(orderId, Order.fromOrderAdded(orderId, orderAdded))
-    allOrderWatchesState = allOrderWatchesState.onOrderAdded(orderId <-: orderAdded)
-      .orThrow
+    ow.onOrderAdded(orderId <-: orderAdded).orThrow
     Right(this)
   }
 
   override protected def deleteOrder(order: Order[Order.State]) = {
     for (order <- _idToOrder.remove(order.id)) {
       for (externalOrderKey <- order.externalOrderKey)
-        allOrderWatchesState = allOrderWatchesState
-          .onOrderDeleted(externalOrderKey, order.id)
-          .orThrow
+        ow.onOrderDeleted(externalOrderKey, order.id).orThrow
     }
     Right(this)
   }
@@ -413,16 +401,23 @@ with EventDrivenStateView[ControllerStateBuilder, Event]
         pathToSignedSimpleItem.insert(jobResource.path, Signed(jobResource, added.signedString))
     }
 
+  protected def pathToOrderWatchState = pathTo(OrderWatchState)
+
+  protected def updateOrderWatchStates(
+    orderWatchStates: Iterable[OrderWatchState],
+    remove: Iterable[OrderWatchPath]
+  ) = update(addItemStates = orderWatchStates, removeItemStates = remove)
+
   protected def update(
+    addOrders: Iterable[Order[Order.State]],
     removeOrders: Iterable[OrderId],
-    orders: Iterable[Order[Order.State]],
-    lockStates: Iterable[LockState],
-    boardStates: Iterable[BoardState])
+    addItemStates: Iterable[UnsignedSimpleItemState],
+    removeItemStates: Iterable[UnsignedSimpleItemPath])
   : Checked[ControllerStateBuilder] = {
     _idToOrder --= removeOrders
-    _idToOrder ++= orders.map(o => o.id -> o)
-    _pathToLockState ++= lockStates.map(o => o.lock.path -> o)
-    _pathToBoardState ++= boardStates.map(o => o.path -> o)
+    _idToOrder ++= addOrders.map(o => o.id -> o)
+    _pathToItemState --= removeItemStates
+    _pathToItemState ++= addItemStates.map(o => o.path -> o)
     Right(this)
   }
 
@@ -431,13 +426,7 @@ with EventDrivenStateView[ControllerStateBuilder, Event]
       eventId = eventId,
       standards,
       controllerMetaState,
-      _pathToAgentRefState.toMap,
-      _idToSubagentItemState.toMap,
-      _idToSubagentSelection.toMap,
-      _pathToLockState.toMap,
-      _pathToBoardState.toMap,
-      _pathToCalendar.toMap,
-      allOrderWatchesState,
+      _pathToItemState.toMap,
       repo,
       pathToSignedSimpleItem.toMap,
       agentAttachments,

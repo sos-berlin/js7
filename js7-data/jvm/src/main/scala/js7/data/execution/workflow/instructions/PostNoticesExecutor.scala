@@ -24,7 +24,7 @@ extends EventInstructionExecutor
       .getOrElse(
         if (order.isState[Order.Ready])
           for {
-            boardStates <- postNotices.boardPaths.traverse(state.pathToBoardState.checked)
+            boardStates <- postNotices.boardPaths.traverse(state.pathTo(BoardState).checked)
             orderScope <- state.toImpureOrderExecutingScope(order, clock.now())
             fatNotices <- boardStates.traverse(bs => bs.board
               .postingOrderToNotice(orderScope)

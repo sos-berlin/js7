@@ -16,7 +16,7 @@ trait SimpleItem extends InventoryItem
 
   final def key = path
 
-  def path: companion.Key
+  def path: companion.Path
 
   def pathRev = PathRev(path, itemRevision)
 }
@@ -31,6 +31,8 @@ object SimpleItem
 
     type Key <: SimpleItemPath
     val Key: SimpleItemPath.Companion[Key]
+
+    type Path = Key
   }
 
   def jsonCodec(companions: Seq[Companion_]): Codec.AsObject[SimpleItem] =

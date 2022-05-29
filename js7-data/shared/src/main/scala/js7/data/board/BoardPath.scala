@@ -13,6 +13,7 @@ final case class BoardPath private(string: String) extends UnsignedSimpleItemPat
 object BoardPath extends UnsignedSimpleItemPath.Companion[BoardPath]
 {
   // May deadlock: override val itemTypeName = Board.typeName
+  type Item = Board
 
   protected def unchecked(string: String) = new BoardPath(string)
 

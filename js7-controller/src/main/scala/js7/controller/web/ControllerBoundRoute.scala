@@ -23,6 +23,7 @@ import js7.controller.item.ItemUpdater
 import js7.controller.web.controller.ControllerRoute
 import js7.controller.web.serviceprovider.{RouteServiceContext, ServiceProviderRoute}
 import js7.core.command.CommandMeta
+import js7.data.agent.AgentRefState
 import js7.data.controller.{ControllerCommand, ControllerState}
 import js7.journal.watch.FileEventWatch
 import monix.eval.Task
@@ -60,7 +61,7 @@ with WebLogDirectives
   protected val config              = controllerConfiguration.config
   protected val clusterNodeIsBackup = controllerConfiguration.clusterConf.isBackup
   protected val currentLogFile      = config.as[Path]("js7.log.file")
-  protected val pathToAgentRefState = controllerState.map(_.map(_.pathToAgentRefState))
+  protected val pathToAgentRefState = controllerState.map(_.map(_.pathTo(AgentRefState)))
   protected val checkedClusterState = controllerState.map(_.map(_.clusterState))
   protected val routeServiceContext = RouteServiceContext(filteredSnapshotRoute, filteredEventRoute)
   protected val actorRefFactory     = actorSystem

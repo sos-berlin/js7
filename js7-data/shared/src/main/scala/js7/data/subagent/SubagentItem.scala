@@ -48,8 +48,8 @@ extends UnsignedSimpleItem.Companion[SubagentItem]
   type Key = SubagentId
   val Key = SubagentId
 
-  type Path = SubagentId
-  val Path = SubagentId
+  override type Path = SubagentId
+  override val Path = SubagentId
 
   val cls = classOf[SubagentItem]
 

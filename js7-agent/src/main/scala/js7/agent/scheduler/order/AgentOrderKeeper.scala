@@ -209,7 +209,8 @@ with Stash
           subagentKeeper
             .recoverSubagents(state.idToSubagentItemState.values.toVector)
             .flatMapT(_ =>
-              subagentKeeper.recoverSubagentSelections(state.idToSubagentSelection.values.toVector))
+              subagentKeeper.recoverSubagentSelections(
+                state.pathTo(SubagentSelection).values.toVector))
             .map(_.orThrow))
         .materialize
         .foreach { tried =>
@@ -807,9 +808,7 @@ with Stash
       def workflowPathToId(workflowPath: WorkflowPath) =
         persistence.currentState.workflowPathToId(workflowPath)
 
-      def pathToLockState = persistence.currentState.pathToLockState
-
-      def pathToBoardState = persistence.currentState.pathToBoardState
+      def pathToItemState = persistence.currentState.pathToItemState
 
       def keyToItem = persistence.currentState.keyToItem
     })

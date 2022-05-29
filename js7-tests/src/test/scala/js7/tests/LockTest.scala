@@ -143,7 +143,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
         assert(controller.eventWatch.await[OrderLockAcquired](_.key == pair(0)).map(_.eventId).head <
                controller.eventWatch.await[OrderLockAcquired](_.key == pair(1)).map(_.eventId).head)
       }
-      assert(controllerState.pathToLockState(lockPath) ==
+      assert(controllerState.pathTo(LockState)(lockPath) ==
         LockState(
           Lock(lockPath, itemRevision = Some(ItemRevision(0))),
           Available,
@@ -183,7 +183,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val bReleased = stampedEvents.find(stamped => stamped.value.key == aOrderId && stamped.value.event.isInstanceOf[OrderLockReleased]).get
     assert(aAquired.eventId < bReleased.eventId, "- a acquired lock after b released")
     assert(bAquired.eventId < aReleased.eventId, "- b acquired lock after a released")
-    assert(controllerState.pathToLockState(limit2LockPath) ==
+    assert(controllerState.pathTo(LockState)(limit2LockPath) ==
       LockState(
         Lock(limit2LockPath, limit = 2, itemRevision = Some(ItemRevision(0))),
         Available,
@@ -211,7 +211,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val terminated = for (order <- orders) yield controller.eventWatch.await[OrderTerminated](_.key == order.id)
     for (keyedEvent <- terminated.map(_.last.value))  assert(keyedEvent.event == OrderFinished, s"- ${keyedEvent.key}")
     for (order <- orders) controller.eventWatch.await[OrderDeleted](_.key == order.id)
-    assert(controllerState.pathToLockState(limit2LockPath) ==
+    assert(controllerState.pathTo(LockState)(limit2LockPath) ==
       LockState(
         Lock(limit2LockPath, limit = 2, itemRevision = Some(ItemRevision(0))),
         Available,
@@ -248,7 +248,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderCancelled,
       OrderDeleted))
 
-    assert(controllerState.pathToLockState(lockPath) ==
+    assert(controllerState.pathTo(LockState)(lockPath) ==
       LockState(
         Lock(lockPath, itemRevision = Some(ItemRevision(0))),
         Available, Queue.empty))
@@ -289,7 +289,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderLockReleased(lockPath),
       OrderFinished,
       OrderDeleted))
-    assert(controllerState.pathToLockState(lockPath) ==
+    assert(controllerState.pathTo(LockState)(lockPath) ==
       LockState(
         Lock(lockPath, itemRevision = Some(ItemRevision(0))),
         Available,
@@ -330,7 +330,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderLockReleased(lockPath),
       OrderFailedInFork(Position(0) / "fork+BRANCH" % 0, Some(Outcome.failed))))
 
-    assert(controllerState.pathToLockState(lockPath) ==
+    assert(controllerState.pathTo(LockState)(lockPath) ==
       LockState(
         Lock(lockPath, itemRevision = Some(ItemRevision(0))),
         Available,
@@ -372,7 +372,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
         "Lock:LOCK has already been acquired by parent Order:🟪")))),
       OrderCancelled))
 
-    assert(controllerState.pathToLockState(lockPath) ==
+    assert(controllerState.pathTo(LockState)(lockPath) ==
       LockState(
         Lock(lockPath, itemRevision = Some(ItemRevision(0))),
         Available,
@@ -397,7 +397,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderCancelled,
       OrderDeleted))
 
-    assert(controllerState.pathToLockState(lockPath) ==
+    assert(controllerState.pathTo(LockState)(lockPath) ==
       LockState(
         Lock(lockPath, itemRevision = Some(ItemRevision(0))),
         Available,
@@ -446,7 +446,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderFinished,
       OrderDeleted))
 
-    assert(controllerState.pathToLockState(lockPath) ==
+    assert(controllerState.pathTo(LockState)(lockPath) ==
       LockState(
         Lock(lockPath, itemRevision = Some(ItemRevision(0))),
         Available,
@@ -475,7 +475,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderCancelled,
       OrderDeleted))
 
-    assert(controllerState.pathToLockState(lockPath) ==
+    assert(controllerState.pathTo(LockState)(lockPath) ==
       LockState(
         Lock(lockPath, itemRevision = Some(ItemRevision(0))),
         Available,
@@ -617,7 +617,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     assert(controllerState.repo == Repo.empty
       .applyEvents(controllerState.repo.versionIds.reverse.map(VersionAdded(_)))
       .orThrow)
-    assert(controllerState.pathToLockState.isEmpty)
+    assert(controllerState.pathTo(LockState).isEmpty)
 
     // No Lock is atteched to any Agent
     assert(controllerState.itemToAgentToAttachedState == Map(

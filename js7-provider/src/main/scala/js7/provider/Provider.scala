@@ -26,7 +26,7 @@ import js7.core.item.{ItemPaths, SimpleItemReader, TypedSourceReader}
 import js7.data.agent.AgentRef
 import js7.data.controller.ControllerState.signableItemJsonCodec
 import js7.data.item.ItemOperation.AddVersion
-import js7.data.item.{InventoryItem, InventoryItemDiff, InventoryItemDiff_, ItemOperation, ItemSigner, SignableItem, UnsignedSimpleItem, VersionId, VersionedItem, VersionedItemPath}
+import js7.data.item.{InventoryItem, InventoryItemDiff, InventoryItemDiff_, InventoryItemPath, ItemOperation, ItemSigner, SignableItem, UnsignedSimpleItem, VersionId, VersionedItem, VersionedItemPath}
 import js7.data.subagent.SubagentItem
 import js7.data.workflow.WorkflowPath
 import js7.provider.Provider._
@@ -183,8 +183,9 @@ extends HasCloser with Observing with ProvideActorSystem
 
   private def logUpdate(versionId: VersionId, diff: InventoryItemDiff_): Unit = {
     logger.info(s"Version ${versionId.string}")
-    for (o <- diff.removed            .sorted) logger.info(s"Delete $o")
-    for (o <- diff.addedOrChanged  .map(_.path).sorted) logger.info(s"AddOrChange $o")
+    for (o <- diff.removed.sorted) logger.info(s"Delete $o")
+    for (o <- diff.addedOrChanged.map(_.path: InventoryItemPath).sorted)
+      logger.info(s"AddOrChange $o")
   }
 
   private def fetchControllerItems: Task[Iterable[InventoryItem]] =

@@ -7,7 +7,6 @@ import java.io.File.separator
 import java.util.UUID
 import js7.agent.data.AgentState.AgentMetaState
 import js7.agent.data.event.AgentEvent.AgentDedicated
-import js7.agent.data.orderwatch.AllFileWatchesState
 import js7.base.auth.UserId
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceEither}
 import js7.base.crypt.silly.SillySigner
@@ -74,7 +73,7 @@ final class AgentStateTest extends AsyncFreeSpec
     Some(ItemRevision(1)))
 
   private val fileWatch = FileWatch(
-    OrderWatchPath("ORDER-SOURCE-ID"),
+    OrderWatchPath("FILE-WATCH-ID"),
     WorkflowPath("WORKFLOW"),
     AgentPath("AGENT"),
     expr(s"'${separator}DIRECTORY'"),
@@ -96,9 +95,6 @@ final class AgentStateTest extends AsyncFreeSpec
       AgentMetaState.empty,
       Map.empty,
       Map.empty,
-      Map.empty,
-      Map.empty,
-      AllFileWatchesState.empty,
       Map.empty,
       Map.empty,
       Map.empty
@@ -155,7 +151,7 @@ final class AgentStateTest extends AsyncFreeSpec
     }
   }
 
-  "estimatedSnapshotSize" in {
+  "estimatedExtraSnapshotSize" in {
     assert(agentState.estimatedSnapshotSize == 13)
     for (n <- agentState.toSnapshotObservable.countL.runToFuture)
       yield assert(n == agentState.estimatedSnapshotSize)
@@ -207,7 +203,7 @@ final class AgentStateTest extends AsyncFreeSpec
           json"""{
             "TYPE": "FileWatchState",
             "fileWatch": {
-              "path": "ORDER-SOURCE-ID",
+              "path": "FILE-WATCH-ID",
               "workflowPath": "WORKFLOW",
               "agentPath": "AGENT",
               "directoryExpr": "'${separator}DIRECTORY'",
@@ -219,12 +215,12 @@ final class AgentStateTest extends AsyncFreeSpec
           }""",
           json"""{
             "TYPE": "FileWatchState.File",
-            "orderWatchPath": "ORDER-SOURCE-ID",
+            "orderWatchPath": "FILE-WATCH-ID",
             "path": "${separator}DIRECTORY${separator}1.csv"
           }""",
           json"""{
             "TYPE": "FileWatchState.File",
-            "orderWatchPath": "ORDER-SOURCE-ID",
+            "orderWatchPath": "FILE-WATCH-ID",
             "path": "${separator}DIRECTORY${separator}2.csv"
           }""",
 
@@ -349,7 +345,6 @@ final class AgentStateTest extends AsyncFreeSpec
       SnapshotableState.Standards.empty,
       meta,
       Map.empty,
-      Map.empty,
       Map(
         orderId ->
           Order(orderId, workflow.id, Forked(Vector(Forked.Child("BRANCH", childOrderId))),
@@ -359,11 +354,9 @@ final class AgentStateTest extends AsyncFreeSpec
             attachedState = Some(Order.Attached(agentPath)), parent = Some(orderId))),
       Map(
         workflow.id -> workflow),
-      AllFileWatchesState.empty,
       Map(
         unsignedJobResource.path -> unsignedJobResource,
         signedJobResource.value.path -> signedJobResource.value),
-      Map.empty,
       Map(
         signedJobResource.value.path -> signedJobResource,
         workflow.id -> signedWorkflow)))
@@ -373,9 +366,11 @@ final class AgentStateTest extends AsyncFreeSpec
     assert(!agentState.keyToItem.contains(WorkflowPath("UNKNOWN") ~ "1"))
     assert(agentState.keyToItem.get(workflow.id) == Some(workflow))
     assert(agentState.keyToItem.get(unsignedJobResource.path) == Some(unsignedJobResource))
-    assert(agentState.keyToItem.keySet ==
-      Set(unsignedWorkflow.id, workflow.id,
+    assert(agentState.keyToItem.keys.toVector.sortBy(_.toString) ==
+      Vector(
+        unsignedWorkflow.id, workflow.id,
         unsignedJobResource.path, signedJobResource.value.path,
-      calendar.path, fileWatch.path, subagentItem.id, subagentSelection.id))
+        calendar.path, fileWatch.path, subagentItem.id, subagentSelection.id
+      ).sortBy(_.toString))
   }
 }

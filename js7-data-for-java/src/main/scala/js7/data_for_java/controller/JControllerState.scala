@@ -10,18 +10,18 @@ import js7.base.problem.Problem
 import js7.base.time.JavaTimeConverters.AsScalaInstant
 import js7.base.time.WallClock
 import js7.base.web.Uri
-import js7.data.agent.AgentPath
-import js7.data.board.{Board, BoardPath}
+import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
+import js7.data.board.{Board, BoardPath, BoardState}
 import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.controller.ControllerState
 import js7.data.event.EventId
 import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.item.{InventoryItem, InventoryItemKey}
 import js7.data.job.{JobResource, JobResourcePath}
-import js7.data.lock.{Lock, LockPath}
+import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.{Order, OrderId, OrderObstacleCalculator}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
-import js7.data.subagent.{SubagentId, SubagentSelectionId}
+import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentSelection, SubagentSelectionId}
 import js7.data.value.Value
 import js7.data_for_java.agent.{JAgentRef, JAgentRefState}
 import js7.data_for_java.board.{JBoard, JBoardState}
@@ -64,30 +64,8 @@ extends JJournaledState[JControllerState, ControllerState]
   /** Looks up an AgentRef Item. */
   @Nonnull
   def pathToAgentRef: java.util.Map[AgentPath, JAgentRef] =
-    asScala.pathToAgentRefState
-      .view
-      .mapValues(o => JAgentRef(o.agentRef))
-      .asJava
-
-  @Nonnull
-  def idToSubagentItem: java.util.Map[SubagentId, JSubagentItem] =
-    asScala.idToSubagentItemState
-      .view
-      .mapValues(o => JSubagentItem(o.subagentItem))
-      .asJava
-
-  @Nonnull
-  def idToSubagentItemState: java.util.Map[SubagentId, JSubagentItemState] =
-    asScala.idToSubagentItemState
-      .view
-      .mapValues(JSubagentItemState(_))
-      .asJava
-
-  @Nonnull
-  def idToSubagentSelection: java.util.Map[SubagentSelectionId, JSubagentSelection] =
-    asScala.idToSubagentSelection
-      .view
-      .mapValues(JSubagentSelection(_))
+    asScala.pathTo(AgentRef)
+      .mapValues(JAgentRef(_))
       .asJava
 
   /** Looks up the URI of an AgentPath.. */
@@ -99,24 +77,39 @@ extends JJournaledState[JControllerState, ControllerState]
   /** Looks up an AgentRefState. */
   @Nonnull
   def pathToAgentRefState: java.util.Map[AgentPath, JAgentRefState] =
-    asScala.pathToAgentRefState
-      .view
+    asScala.pathTo(AgentRefState)
       .mapValues(JAgentRefState.apply)
+      .asJava
+
+  @Nonnull
+  def idToSubagentItem: java.util.Map[SubagentId, JSubagentItem] =
+    asScala.pathTo(SubagentItem)
+      .mapValues(JSubagentItem(_))
+      .asJava
+
+  @Nonnull
+  def idToSubagentItemState: java.util.Map[SubagentId, JSubagentItemState] =
+    asScala.pathTo(SubagentItemState)
+      .mapValues(JSubagentItemState(_))
+      .asJava
+
+  @Nonnull
+  def idToSubagentSelection: java.util.Map[SubagentSelectionId, JSubagentSelection] =
+    asScala.pathTo(SubagentSelection)
+      .mapValues(JSubagentSelection(_))
       .asJava
 
   /** Looks up a Lock item in the current version. */
   @Nonnull
   def pathToLock: java.util.Map[LockPath, JLock] =
     asScala.keyTo(Lock)
-      .view
       .mapValues(JLock.apply)
       .asJava
 
   /** Looks up a LockState. */
   @Nonnull
   def pathToLockState: java.util.Map[LockPath, JLockState] =
-    asScala.pathToLockState
-      .view
+    asScala.pathTo(LockState)
       .mapValues(JLockState.apply)
       .asJava
 
@@ -128,7 +121,7 @@ extends JJournaledState[JControllerState, ControllerState]
   /** Looks up a BoardState. */
   @Nonnull
   def pathToBoardState: java.util.Map[BoardPath, JBoardState] =
-    asScala.pathToBoardState
+    asScala.pathTo(BoardState)
       .view
       .mapValues(JBoardState.apply)
       .asJava

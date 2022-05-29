@@ -228,10 +228,13 @@ object Collections
       underlying map { case (k, v) => k -> f(v) }
 
     def insert(kv: (K, V)): Checked[Map[K, V]] =
-      if (underlying contains kv._1)
-        Left(DuplicateKey(kv._1.getClass.simpleScalaName, kv._1))
+      insert(kv._1, kv._2)
+
+    def insert(key: K, value: V): Checked[Map[K, V]] =
+      if (underlying contains key)
+        Left(DuplicateKey(key.getClass.simpleScalaName, key))
       else
-        Right(underlying + kv)
+        Right(underlying.updated(key, value))
   }
 
   implicit final class RichMutableMap[K, V](private val underlying: mutable.Map[K, V]) extends AnyVal {

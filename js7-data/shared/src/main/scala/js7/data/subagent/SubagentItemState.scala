@@ -20,9 +20,12 @@ final case class SubagentItemState(
   problem: Option[Problem] = None)
 extends UnsignedSimpleItemState
 {
+  protected type Self = SubagentItemState
+  val companion = SubagentItemState
+
   protected type Item = SubagentItem
 
-  def item = subagentItem
+  val item = subagentItem
 
   def subagentId = subagentItem.id
 
@@ -88,8 +91,10 @@ extends UnsignedSimpleItemState
     }
 }
 
-object SubagentItemState
+object SubagentItemState extends UnsignedSimpleItemState.Companion[SubagentItemState]
 {
+  type Path = SubagentId
+
   def initial(subagentItem: SubagentItem) =
     SubagentItemState(subagentItem, None, DelegateCouplingState.Reset.fresh,
       eventId = EventId.BeforeFirst)

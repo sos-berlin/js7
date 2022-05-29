@@ -14,14 +14,15 @@ final case class BoardState(
   idToNotice: Map[NoticeId, NoticePlace] = Map.empty)
 extends UnsignedSimpleItemState
 {
-  def path = board.path
+  protected type Self = BoardState
+  val companion = BoardState
 
   type Item = Board
-  def item = board
+  val item = board
 
   override def toString = s"BoardState(${board.pathRev} $idToNotice)"
 
-  def toSnapshotObservable: Observable[Any] = {
+  override def toSnapshotObservable: Observable[Any] = {
     board +: Observable.fromIterable(notices)
     // NoticeExpectation are recovered from Order[Order.ExpectingNotice]
   }
@@ -133,4 +134,8 @@ extends UnsignedSimpleItemState
           Left(Problem(s"$noticeId does not denote a Notice (but a NoticeExpectation)"))
       }
     } yield notice
+}
+
+object BoardState extends UnsignedSimpleItemState.Companion[BoardState] {
+  type Path = BoardPath
 }

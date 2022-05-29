@@ -43,8 +43,8 @@ object Calendar extends UnsignedSimpleItem.Companion[Calendar]
   type Key = CalendarPath
   val Key = CalendarPath
 
-  type Path = CalendarPath
-  val Path = CalendarPath
+  override type Path = CalendarPath
+  override val Path = CalendarPath
 
   @TestOnly
   def jocStandard(

@@ -1,32 +1,31 @@
 package js7.agent.data
 
 import io.circe.generic.semiauto.deriveCodec
-import js7.agent.data.AgentState.AgentMetaState
+import js7.agent.data.AgentState.{AgentMetaState, allowedItemStates}
 import js7.agent.data.event.AgentEvent
 import js7.agent.data.event.AgentEvent.AgentDedicated
-import js7.agent.data.orderwatch.{AllFileWatchesState, FileWatchState}
+import js7.agent.data.orderwatch.{FileWatchStateHandler, FileWatchState}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.Signed
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.agent.{AgentPath, AgentRunId}
-import js7.data.board.BoardState
-import js7.data.calendar.{Calendar, CalendarPath}
+import js7.base.utils.Tests.isTest
+import js7.data.agent.{AgentPath, AgentRefState, AgentRunId}
+import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, ItemContainer, JournalEvent, JournalState, KeyedEvent, KeyedEventTypedJsonCodec, SignedItemContainer, SnapshotableState}
 import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached, ItemDetachingFromMe, SignedItemAttachedToMe}
 import js7.data.item.SignedItemEvent.SignedItemAdded
-import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, SignableItem, SignableItemKey}
+import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemState, SignableItem, SignableItemKey, UnsignedSimpleItemPath, UnsignedSimpleItemState}
 import js7.data.job.{JobResource, JobResourcePath}
-import js7.data.lock.LockState
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchEvent, OrderWatchPath}
 import js7.data.state.EventDrivenStateView
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
-import js7.data.subagent.{SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent, SubagentSelection, SubagentSelectionId}
+import js7.data.subagent.{SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent, SubagentSelection, SubagentSelectionId, SubagentSelectionState}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import monix.reactive.Observable
 import scala.collection.MapView
@@ -38,17 +37,15 @@ final case class AgentState(
   eventId: EventId,
   standards: SnapshotableState.Standards,
   meta: AgentMetaState,
-  idToSubagentItemState: Map[SubagentId, SubagentItemState],
-  idToSubagentSelection: Map[SubagentSelectionId, SubagentSelection],
+  pathToItemState_ : Map[UnsignedSimpleItemPath, UnsignedSimpleItemState],
   idToOrder: Map[OrderId, Order[Order.State]],
   idToWorkflow: Map[WorkflowId, Workflow/*reduced for this Agent!!!*/],
-  allFileWatchesState: AllFileWatchesState,
   pathToJobResource: Map[JobResourcePath, JobResource],
-  pathToCalendar: Map[CalendarPath, Calendar],
   keyToSignedItem : Map[SignableItemKey, Signed[SignableItem]])
 extends SignedItemContainer
 with EventDrivenStateView[AgentState, Event]
 with SubagentDirectorState[AgentState]
+with FileWatchStateHandler[AgentState]
 with SnapshotableState[AgentState]
 {
   def isAgent = true
@@ -72,25 +69,23 @@ with SnapshotableState[AgentState]
   def estimatedSnapshotSize =
     standards.snapshotSize +
       1 +
-      idToSubagentItemState.size +
-      idToSubagentSelection.size +
       idToWorkflow.size +
       idToOrder.size +
-      allFileWatchesState.estimatedSnapshotSize +
-      pathToJobResource.size +
+      pathToItemState_.size +
+      fw.estimatedExtraSnapshotSize +
+      pathToJobResource.size
       //keyToSignedItem.size +  // == idToWorkflow.size + pathToJobResource.size
-      pathToCalendar.size
 
   def toSnapshotObservable = Observable(
     standards.toSnapshotObservable,
     Observable.fromIterable(meta != AgentMetaState.empty thenList meta),
-    Observable.fromIterable(idToSubagentItemState.values),
-    Observable.fromIterable(idToSubagentSelection.values),
-    allFileWatchesState.toSnapshot,
+    Observable.fromIterable(pathTo(SubagentItemState).values).flatMap(_.toSnapshotObservable),
+    Observable.fromIterable(pathTo(SubagentSelectionState).values).flatMap(_.toSnapshotObservable),
+    Observable.fromIterable(pathTo(FileWatchState).values).flatMap(_.toSnapshotObservable),
     Observable.fromIterable(keyToSignedItem.values.view.map(SignedItemAdded(_))),
     Observable.fromIterable(idToWorkflow.view.filterKeys(isWithoutSignature).values),
     Observable.fromIterable(pathToJobResource.view.filterKeys(isWithoutSignature).values),
-    Observable.fromIterable(pathToCalendar.values),
+    Observable.fromIterable(pathTo(CalendarState).values).flatMap(_.toSnapshotObservable),
     Observable.fromIterable(idToOrder.values)
   ).flatten
 
@@ -116,8 +111,7 @@ with SnapshotableState[AgentState]
         Right(this)
 
       case KeyedEvent(orderWatchPath: OrderWatchPath, event: OrderWatchEvent) =>
-        allFileWatchesState.applyEvent(orderWatchPath <-: event)
-          .map(o => copy(allFileWatchesState = o))
+        fw.applyEvent(orderWatchPath <-: event)
 
       case KeyedEvent(_: NoKey, event: BasicItemEvent.ForDelegate) =>
         event match {
@@ -142,8 +136,7 @@ with SnapshotableState[AgentState]
 
           case ItemAttachedToMe(fileWatch: FileWatch) =>
             // May replace an existing JobResource
-            Right(copy(
-              allFileWatchesState = allFileWatchesState.attach(fileWatch)))
+            fw.attach(fileWatch)
 
           case ItemAttachedToMe(jobResource: JobResource) =>
             // COMPATIBLE with v2.2.0. Since v2.2.2, workflow is transferred via SignedItemAttachedToMe
@@ -154,13 +147,13 @@ with SnapshotableState[AgentState]
           case ItemAttachedToMe(calendar: Calendar) =>
             // May replace an existing Calendar
             Right(copy(
-              pathToCalendar = pathToCalendar + (calendar.path -> calendar)))
+              pathToItemState_ = pathToItemState_.updated(calendar.path, CalendarState(calendar))))
 
           case ItemAttachedToMe(subagentItem: SubagentItem) =>
             // May replace an existing SubagentItem
             Right(copy(
-              idToSubagentItemState = idToSubagentItemState + (subagentItem.id ->
-                idToSubagentItemState
+              pathToItemState_ = pathToItemState_.updated(subagentItem.id,
+                pathTo(SubagentItemState)
                   .get(subagentItem.id)
                   .match_ {
                     case None => SubagentItemState.initial(subagentItem)
@@ -169,7 +162,7 @@ with SnapshotableState[AgentState]
 
           case ItemAttachedToMe(selection: SubagentSelection) =>
             Right(copy(
-              idToSubagentSelection = idToSubagentSelection.updated(selection.id, selection)))
+              pathToItemState_ = pathToItemState_.updated(selection.id, SubagentSelectionState(selection))))
 
           case ItemDetached(itemKey, meta.agentPath) =>
             itemKey match {
@@ -180,9 +173,7 @@ with SnapshotableState[AgentState]
                     idToWorkflow = idToWorkflow - workflowId)
 
               case path: OrderWatchPath =>
-                for (_ <- allFileWatchesState.pathToFileWatchState.checked(path)) yield
-                  copy(
-                    allFileWatchesState = allFileWatchesState.detach(path))
+                fw.detach(path)
 
               case path: JobResourcePath =>
                 for (_ <- pathToJobResource.checked(path)) yield
@@ -191,26 +182,26 @@ with SnapshotableState[AgentState]
                     pathToJobResource = pathToJobResource - path)
 
               case path: CalendarPath =>
-                for (_ <- pathToCalendar.checked(path)) yield
+                for (_ <- pathToItemState_.checked(path)) yield
                   copy(
-                    pathToCalendar = pathToCalendar - path)
+                    pathToItemState_ = pathToItemState_ - path)
 
               case id: SubagentId =>
-                for (_ <- idToSubagentItemState.checked(id)) yield
+                for (_ <- pathToItemState_.checked(id)) yield
                   copy(
-                    idToSubagentItemState = idToSubagentItemState - id)
+                    pathToItemState_ = pathToItemState_ - id)
 
               case id: SubagentSelectionId =>
                 Right(copy(
-                  idToSubagentSelection = idToSubagentSelection - id))
+                  pathToItemState_ = pathToItemState_ - id))
 
               case _ => applyStandardEvent(keyedEvent)
             }
 
           case ItemDetachingFromMe(id: SubagentId) =>
-            for (subagentItemState <- idToSubagentItemState.checked(id)) yield
+            for (subagentItemState <- pathTo(SubagentItemState).checked(id)) yield
               copy(
-                idToSubagentItemState = idToSubagentItemState.updated(id,
+                pathToItemState_ = pathToItemState_.updated(id,
                   subagentItemState.copy(isDetaching = true)))
 
           case _ => applyStandardEvent(keyedEvent)
@@ -218,16 +209,16 @@ with SnapshotableState[AgentState]
 
       case KeyedEvent(subagentId: SubagentId, event: SubagentItemStateEvent) =>
         event match {
-          case SubagentShutdown if !idToSubagentItemState.contains(subagentId) =>
+          case SubagentShutdown if !pathToItemState_.contains(subagentId) =>
             // May arrive when SubagentItem has been deleted
             Right(this)
 
           case _ =>
             for {
-              subagentItemState <- idToSubagentItemState.checked(subagentId)
+              subagentItemState <- pathTo(SubagentItemState).checked(subagentId)
               subagentItemState <- subagentItemState.applyEvent(event)
             } yield copy(
-              idToSubagentItemState = idToSubagentItemState + (subagentId -> subagentItemState))
+              pathToItemState_ = pathToItemState_.updated(subagentId, subagentItemState))
         }
 
       case KeyedEvent(_: NoKey, AgentDedicated(subagentId, agentPath, agentRunId, controllerId)) =>
@@ -240,17 +231,30 @@ with SnapshotableState[AgentState]
       case _ => applyStandardEvent(keyedEvent)
     }
 
+  def pathToItemState = pathToItemState_.view
+
+  def idToSubagentItemState = pathTo(SubagentItemState)
+
+  protected def pathToFileWatchState = pathTo(FileWatchState)
+
+  protected def updateFileWatchStates(
+    fileWatchStates: Iterable[FileWatchState],
+    remove: Iterable[OrderWatchPath]
+  ) = update(addItemStates = fileWatchStates, removeItemStates = remove)
+
   protected def update(
-    removeOrders: Iterable[OrderId],
     orders: Iterable[Order[Order.State]],
-    lockStates: Iterable[LockState],
-    boardStates: Iterable[BoardState])
+    removeOrders: Iterable[OrderId],
+    addItemStates: Iterable[UnsignedSimpleItemState],
+    removeItemStates: Iterable[UnsignedSimpleItemPath])
   : Checked[AgentState] =
-    if (lockStates.nonEmpty || boardStates.nonEmpty)
-      Left(Problem.pure("No LockState or BoardState at Agent"))
+    if (isTest && !addItemStates.forall(o => allowedItemStates(o.companion)))
+      Left(Problem.pure("Unsupported InventoryItemState"))
     else
       Right(copy(
-        idToOrder = idToOrder -- removeOrders ++ orders.map(o => o.id -> o)))
+        idToOrder = idToOrder -- removeOrders ++ orders.map(o => o.id -> o),
+        pathToItemState_ = pathToItemState_
+          -- removeItemStates ++ addItemStates.map(o => o.path -> o)))
 
   def agentPath = meta.agentPath
 
@@ -259,20 +263,14 @@ with SnapshotableState[AgentState]
       def get(itemKey: InventoryItemKey): Option[InventoryItem] =
         itemKey match {
           case path: JobResourcePath => pathToJobResource.get(path)
-          case path: CalendarPath => pathToCalendar.get(path)
-          case path: OrderWatchPath => allFileWatchesState.pathToFileWatchState.get(path).map(_.fileWatch)
           case WorkflowId.as(id) => idToWorkflow.get(id)
-          case id: SubagentId => idToSubagentItemState.get(id).map(_.subagentItem)
-          case id: SubagentSelectionId => idToSubagentSelection.get(id)
+          case path: UnsignedSimpleItemPath => pathToItemState_.get(path).map(_.item)
         }
 
       def iterator: Iterator[(InventoryItemKey, InventoryItem)] =
         pathToJobResource.iterator ++
-          pathToCalendar.iterator ++
-          allFileWatchesState.pathToFileWatchState.view.mapValues(_.fileWatch).iterator ++
           idToWorkflow.iterator ++
-          idToSubagentItemState.view.mapValues(_.item).iterator ++
-          idToSubagentSelection.iterator
+          pathToItemState.mapValues(_.item).iterator
     }
 
   def keyToSigned[I <: SignableItem](I: SignableItem.Companion[I]): MapView[I.Key, Signed[I]] =
@@ -296,9 +294,6 @@ with SnapshotableState[AgentState]
   def workflowPathToId(workflowPath: WorkflowPath) =
     Left(Problem.pure("workflowPathToId is not available at Agent"))
 
-  def pathToLockState = Map.empty
-  def pathToBoardState = Map.empty
-
   def orders = idToOrder.values
 }
 
@@ -310,8 +305,10 @@ with ItemContainer.Companion[AgentState]
 
   val empty = AgentState(EventId.BeforeFirst, SnapshotableState.Standards.empty,
     AgentMetaState.empty,
-    Map.empty, Map.empty, Map.empty, Map.empty, AllFileWatchesState.empty,
-    Map.empty, Map.empty, Map.empty)
+    Map.empty, Map.empty, Map.empty, Map.empty, Map.empty)
+
+  private val allowedItemStates: Set[InventoryItemState.AnyCompanion] =
+    Set(AgentRefState, SubagentItemState, FileWatchState)
 
   def newBuilder() = new AgentStateBuilder
 

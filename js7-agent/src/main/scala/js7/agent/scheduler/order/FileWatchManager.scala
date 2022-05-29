@@ -66,8 +66,7 @@ final class FileWatchManager(
 
   def start: Task[Checked[Unit]] =
     persistence.awaitCurrentState
-      .map(_.allFileWatchesState)
-      .map(_.pathToFileWatchState.values)
+      .map(_.pathTo(FileWatchState).values)
       .flatMap(_
         .toVector
         .traverse(startWatching)
@@ -78,7 +77,7 @@ final class FileWatchManager(
       persistence
         .persist(agentState =>
           Right(
-            agentState.allFileWatchesState.pathToFileWatchState.get(fileWatch.path) match {
+            agentState.pathTo(FileWatchState).get(fileWatch.path) match {
               case Some(watchState) =>
                 if (watchState.fileWatch == fileWatch)
                   Nil
@@ -97,7 +96,7 @@ final class FileWatchManager(
                 (NoKey <-: ItemAttachedToMe(fileWatch)) :: Nil
             }))
     }.flatMapT { case (_, agentState) =>
-      startWatching(agentState.allFileWatchesState.pathToFileWatchState(fileWatch.path))
+      startWatching(agentState.pathTo(FileWatchState)(fileWatch.path))
     }
 
   def remove(fileWatchPath: OrderWatchPath): Task[Checked[Unit]] =
@@ -105,7 +104,7 @@ final class FileWatchManager(
       persistence
         .persist(agentState =>
           Right(
-            agentState.allFileWatchesState.pathToFileWatchState.get(fileWatchPath) match {
+            agentState.pathTo(FileWatchState).get(fileWatchPath) match {
               case None => Nil
               case Some(fileWatchState) =>
                 // When a FileWatch is detached, all arisen files vanish now,
@@ -190,7 +189,7 @@ final class FileWatchManager(
             lockKeeper.lock(fileWatch.path)(
               persistence.awaitCurrentState
                 .flatMap(agentState =>
-                  if (!agentState.allFileWatchesState.pathToFileWatchState.contains(fileWatch.path))
+                  if (!agentState.pathTo(FileWatchState).contains(fileWatch.path))
                     Task.pure(Right(Nil -> agentState))
                   else
                     persistence.persist { agentState =>
@@ -201,7 +200,7 @@ final class FileWatchManager(
                           // In case of DirectoryWatcher error recovery, duplicate DirectoryEvent may occur.
                           // We check this here.
                           .flatMap(dirEvent =>
-                            agentState.allFileWatchesState.pathToFileWatchState
+                            agentState.pathTo(FileWatchState)
                               .get(fileWatch.path)
                               // Ignore late events after FileWatch has been removed
                               .flatMap(fileWatchState =>
@@ -228,7 +227,7 @@ final class FileWatchManager(
           .foreachL {
             case Left(problem) => logger.error(problem.toString)
             case Right((_, agentState)) =>
-              directoryState = agentState.allFileWatchesState.pathToFileWatchState(fileWatch.path).directoryState
+              directoryState = agentState.pathTo(FileWatchState)(fileWatch.path).directoryState
           }
           .onErrorRestartLoop(now) { (throwable, since, restart) =>
             val delay = (since + delayIterator.next()).timeLeftOrZero

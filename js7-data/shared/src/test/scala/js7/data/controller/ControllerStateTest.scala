@@ -12,7 +12,7 @@ import js7.base.utils.Collections.implicits._
 import js7.base.web.Uri
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import js7.data.board.{Board, BoardPath, BoardPathExpression, BoardState, Notice, NoticeExpectation, NoticeId, NoticePlace}
-import js7.data.calendar.{Calendar, CalendarPath}
+import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterStateSnapshot, ClusterTiming}
 import js7.data.controller.ControllerStateTest._
 import js7.data.delegate.DelegateCouplingState
@@ -30,8 +30,8 @@ import js7.data.node.NodeId
 import js7.data.order.OrderEvent.OrderNoticesExpected
 import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.OrderWatchState.{HasOrder, Vanished}
-import js7.data.orderwatch.{AllOrderWatchesState, ExternalOrderKey, ExternalOrderName, FileWatch, OrderWatchPath, OrderWatchState}
-import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentSelection, SubagentSelectionId}
+import js7.data.orderwatch.{ExternalOrderKey, ExternalOrderName, FileWatch, OrderWatchPath, OrderWatchState}
+import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentSelection, SubagentSelectionId, SubagentSelectionState}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, ExpectNotices, LockInstruction}
@@ -55,12 +55,7 @@ final class ControllerStateTest extends AsyncFreeSpec
 
   "pathToSimpleItem" in {
     val sum =
-      controllerState.pathToCalendar.values ++
-        controllerState.pathToAgentRefState.map(_._2.item) ++
-        controllerState.idToSubagentItemState.map(_._2.item) ++
-        controllerState.idToSubagentSelection.values ++
-        controllerState.pathToLockState.map(_._2.item) ++
-        controllerState.allOrderWatchesState.pathToOrderWatchState.map(_._2.item) ++
+      controllerState.pathToItemState_.map(_._2.item) ++
         controllerState.pathToSignedSimpleItem.values.map(_.value)
     assert(controllerState.pathToSimpleItem.toMap == sum.toKeyedMap(_.key))
   }
@@ -82,10 +77,10 @@ final class ControllerStateTest extends AsyncFreeSpec
                 ClusterTiming(10.s, 20.s)))),
           controllerState.controllerMetaState
         ) ++
-          controllerState.pathToAgentRefState.values ++
-          controllerState.idToSubagentItemState.values ++
-          controllerState.idToSubagentSelection.values ++
-          controllerState.pathToLockState.values ++
+          controllerState.pathTo(AgentRefState).values ++
+          controllerState.pathTo(SubagentItemState).values ++
+          controllerState.pathTo(SubagentSelection).values ++
+          controllerState.pathTo(LockState).values ++
           Seq(board) ++
           boardState.notices ++
           Seq(calendar) ++
@@ -380,7 +375,7 @@ final class ControllerStateTest extends AsyncFreeSpec
     assert(controllerState.keyToItem.keySet == Set(
       jobResource.path, calendar.path,
       agentRef.path, subagentItem.id, subagentSelection.id,
-      lock.path, fileWatch.path,
+      lock.path, board.path, fileWatch.path,
       workflow.id))
   }
 
@@ -409,10 +404,10 @@ final class ControllerStateTest extends AsyncFreeSpec
     "UnsignedSimpleItemAdded" in {
       applyEvent(UnsignedSimpleItemAdded(agentRef))
 
-      assert(cs.pathToAgentRefState(agentRef.path).agentRef == agentRef.copy(
+      assert(cs.pathTo(AgentRefState)(agentRef.path).agentRef == agentRef.copy(
         directors = Seq(subagentId),
         uri = None))
-      assert(cs.idToSubagentItemState(subagentId).subagentItem == generatedSubagentItem)
+      assert(cs.pathTo(SubagentItemState)(subagentId).subagentItem == generatedSubagentItem)
     }
 
     "AgentRefState snapshot object" in {
@@ -429,11 +424,11 @@ final class ControllerStateTest extends AsyncFreeSpec
         uri = Some(changedUri),
         itemRevision = Some(ItemRevision(8)))
       applyEvent(UnsignedSimpleItemChanged(changedAgentRef))
-      assert(cs.pathToAgentRefState(agentRef.path).agentRef == agentRef.copy(
+      assert(cs.pathTo(AgentRefState)(agentRef.path).agentRef == agentRef.copy(
         directors = Seq(subagentId),
         uri = None,
         itemRevision = Some(ItemRevision(8))))
-      assert(cs.idToSubagentItemState(subagentId).subagentItem == generatedSubagentItem.copy(
+      assert(cs.pathTo(SubagentItemState)(subagentId).subagentItem == generatedSubagentItem.copy(
         uri = changedUri,
         itemRevision = Some(ItemRevision(2))))
     }
@@ -520,23 +515,17 @@ object ControllerStateTest
       Timezone("Europe/Berlin")),
     Map(
       agentRef.path -> AgentRefState(
-        agentRef, None, None, DelegateCouplingState.Coupled, EventId(7), None)),
-    Map(
-      subagentItem.id -> subagentItemState),
-    Map(
-      subagentSelection.id -> subagentSelection),
-    Map(
-      lock.path -> LockState(lock)),
-    Map(
-      boardState.path -> boardState),
-    Map(
-      calendar.path -> calendar),
-    AllOrderWatchesState(Map(
+        agentRef, None, None, DelegateCouplingState.Coupled, EventId(7), None),
+      lock.path -> LockState(lock),
+      boardState.path -> boardState,
+      subagentItem.id -> subagentItemState,
+      calendar.path -> CalendarState(calendar),
+      subagentSelection.id -> SubagentSelectionState(subagentSelection),
       fileWatch.path -> OrderWatchState(
         fileWatch,
         Map(agentRef.path -> Attached(Some(ItemRevision(7)))),
         Map(
-          ExternalOrderName("ORDER-NAME") -> HasOrder(OrderId("ORDER"), Some(Vanished)))))),
+          ExternalOrderName("ORDER-NAME") -> HasOrder(OrderId("ORDER"), Some(Vanished))))),
     Repo.empty.applyEvents(Seq(
       VersionAdded(versionId),
       VersionedItemAdded(signedWorkflow))).orThrow,

@@ -15,7 +15,7 @@ import js7.data.Problems.{ItemIsStillReferencedProblem, MissingReferencedItemPro
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRefStateEvent}
 import js7.data.board.BoardEvent.{NoticeDeleted, NoticePosted}
 import js7.data.board.{Board, BoardEvent, BoardPath, BoardState, Notice}
-import js7.data.calendar.{Calendar, CalendarPath}
+import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.data.controller.ControllerState.logger
@@ -27,15 +27,15 @@ import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeleted, ItemDe
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detached, NotDetached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
-import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemPath, ItemAttachedState, ItemRevision, Repo, SignableItem, SignableItemKey, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, SimpleItem, SimpleItemPath, UnsignedSimpleItem, UnsignedSimpleItemEvent, VersionedEvent, VersionedItemId_, VersionedItemPath}
+import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemPath, ItemAttachedState, ItemRevision, Repo, SignableItem, SignableItemKey, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, SimpleItem, SimpleItemPath, UnsignedSimpleItem, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, UnsignedSimpleItemState, VersionedEvent, VersionedItemId_, VersionedItemPath}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.OrderEvent.OrderAddedX
 import js7.data.order.{Order, OrderEvent, OrderId}
-import js7.data.orderwatch.{AllOrderWatchesState, FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState}
+import js7.data.orderwatch.{FileWatch, OrderWatch, OrderWatchEvent, OrderWatchStateHandler, OrderWatchPath, OrderWatchState}
 import js7.data.state.EventDrivenStateView
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
-import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent, SubagentSelection, SubagentSelectionId}
+import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent, SubagentSelection, SubagentSelectionId, SubagentSelectionState}
 import js7.data.value.Value
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import monix.reactive.Observable
@@ -49,13 +49,7 @@ final case class ControllerState(
   eventId: EventId,
   standards: SnapshotableState.Standards,
   controllerMetaState: ControllerMetaState,
-  pathToAgentRefState: Map[AgentPath, AgentRefState],
-  idToSubagentItemState: Map[SubagentId, SubagentItemState],
-  idToSubagentSelection: Map[SubagentSelectionId, SubagentSelection],
-  pathToLockState: Map[LockPath, LockState],
-  pathToBoardState: Map[BoardPath, BoardState],
-  pathToCalendar: Map[CalendarPath, Calendar],
-  allOrderWatchesState: AllOrderWatchesState,
+  pathToItemState_ : Map[UnsignedSimpleItemPath, UnsignedSimpleItemState],
   repo: Repo,
   pathToSignedSimpleItem: Map[SignableSimpleItemPath, Signed[SignableSimpleItem]],
   agentAttachments: ClientAttachments[AgentPath],
@@ -64,6 +58,7 @@ final case class ControllerState(
   idToOrder: Map[OrderId, Order[Order.State]])
 extends SignedItemContainer
 with EventDrivenStateView[ControllerState, Event]
+with OrderWatchStateHandler[ControllerState]
 with SnapshotableState[ControllerState]
 {
   def isAgent = false
@@ -77,14 +72,9 @@ with SnapshotableState[ControllerState]
     standards.snapshotSize +
     controllerMetaState.isDefined.toInt +
     repo.estimatedEventCount +
-    pathToAgentRefState.size +
-    idToSubagentItemState.size +
-    idToSubagentSelection.size +
-    pathToLockState.size +
-    pathToBoardState.values.size +
-    pathToBoardState.values.view.map(_.noticeCount).sum +
-    pathToCalendar.values.size +
-    allOrderWatchesState.estimatedSnapshotSize +
+    pathToItemState_.size +
+    pathTo(OrderWatchState).values.view.map(_.estimatedSnapshotSize - 1).sum +
+    pathTo(BoardState).values.view.map(_.noticeCount).sum +
     pathToSignedSimpleItem.size +
     agentAttachments.estimatedSnapshotSize +
     deletionMarkedItems.size +
@@ -95,14 +85,13 @@ with SnapshotableState[ControllerState]
       Observable.pure(SnapshotEventId(eventId)),
       standards.toSnapshotObservable,
       Observable.fromIterable(controllerMetaState.isDefined ? controllerMetaState),
-      Observable.fromIterable(pathToAgentRefState.values),
-      Observable.fromIterable(idToSubagentItemState.values),
-      Observable.fromIterable(idToSubagentSelection.values),
-      Observable.fromIterable(pathToLockState.values),
-      Observable.fromIterable(pathToBoardState.values.view.map(_.toSnapshotObservable))
-        .flatten,
-      Observable.fromIterable(pathToCalendar.values),
-      allOrderWatchesState.toSnapshot,
+      Observable.fromIterable(pathTo(AgentRefState).values).flatMap(_.toSnapshotObservable),
+      Observable.fromIterable(pathTo(SubagentItemState).values).flatMap(_.toSnapshotObservable),
+      Observable.fromIterable(pathTo(SubagentSelectionState).values).flatMap(_.toSnapshotObservable),
+      Observable.fromIterable(pathTo(LockState).values).flatMap(_.toSnapshotObservable),
+      Observable.fromIterable(pathTo(BoardState).values).flatMap(_.toSnapshotObservable),
+      Observable.fromIterable(pathTo(CalendarState).values).flatMap(_.toSnapshotObservable),
+      Observable.fromIterable(pathTo(OrderWatchState).values).flatMap(_.toSnapshotObservable),
       Observable.fromIterable(pathToSignedSimpleItem.values).map(SignedItemAdded(_)),
       Observable.fromIterable(repo.toEvents),
       agentAttachments.toSnapshotObservable,
@@ -139,55 +128,54 @@ with SnapshotableState[ControllerState]
             case UnsignedSimpleItemAdded(item) =>
               item match {
                 case lock: Lock =>
-                  for (o <- pathToLockState.insert(lock.path -> LockState(lock))) yield
-                    copy(pathToLockState = o)
+                  for (o <- pathToItemState_.insert(lock.path -> LockState(lock))) yield
+                    copy(pathToItemState_ = o)
 
                 case addedAgentRef: AgentRef =>
                   addedAgentRef
                     .convertFromV2_1
                     .flatMap { case (agentRef, maybeSubagentItem) =>
                       for {
-                        pathToAgentRefState <-
-                          pathToAgentRefState.insert(agentRef.path -> AgentRefState(agentRef))
-                        idToSubagentItemState <-
+                        pathToItemState <-
+                          pathToItemState_.insert(agentRef.path, AgentRefState(agentRef))
+                        pathToItemState <-
                           maybeSubagentItem match {
-                            case None => Right(idToSubagentItemState)
-                            case Some(subagentItem) => idToSubagentItemState
-                              .insert(subagentItem.id -> SubagentItemState.initial(subagentItem))
+                            case None => Right(pathToItemState)
+                            case Some(subagentItem) => pathToItemState
+                              .insert(subagentItem.id, SubagentItemState.initial(subagentItem))
                           }
                       } yield copy(
-                        pathToAgentRefState = pathToAgentRefState,
-                        idToSubagentItemState = idToSubagentItemState)
+                        pathToItemState_ = pathToItemState)
                     }
 
                 case subagentItem: SubagentItem =>
-                  for (o <- idToSubagentItemState.insert(subagentItem.id -> SubagentItemState.initial(subagentItem)))
+                  for (o <- pathToItemState_.insert(subagentItem.id, SubagentItemState.initial(subagentItem)))
                     yield copy(
-                      idToSubagentItemState = o)
+                      pathToItemState_ = o)
 
                 case selection: SubagentSelection =>
-                  for (o <- idToSubagentSelection.insert(selection.id -> selection)) yield
-                    copy(idToSubagentSelection = o)
+                  pathToItemState_
+                    .insert(selection.id, SubagentSelectionState(selection))
+                    .map(o => copy(pathToItemState_ = o))
 
                 case orderWatch: OrderWatch =>
-                  for (o <- allOrderWatchesState.addOrderWatch(orderWatch)) yield
-                    copy(allOrderWatchesState = o)
+                  ow.addOrderWatch(orderWatch)
 
                 case board: Board =>
-                  for (o <- pathToBoardState.insert(board.path -> BoardState(board))) yield
-                    copy(pathToBoardState = o)
+                  for (o <- pathToItemState_.insert(board.path, BoardState(board))) yield
+                    copy(pathToItemState_ = o)
 
                 case calendar: Calendar =>
-                  for (o <- pathToCalendar.insert(calendar.path -> calendar)) yield
-                    copy(pathToCalendar = o)
+                  for (o <- pathToItemState_.insert(calendar.path, CalendarState(calendar))) yield
+                    copy(pathToItemState_ = o)
               }
 
             case UnsignedSimpleItemChanged(item) =>
               item match {
                 case lock: Lock =>
-                  for (lockState <- pathToLockState.checked(lock.path))
+                  for (lockState <- pathTo(LockState).checked(lock.path))
                     yield copy(
-                      pathToLockState = pathToLockState + (lock.path -> lockState.copy(
+                      pathToItemState_ = pathToItemState_.updated(lock.path, lockState.copy(
                         lock = lock)))
 
                 case changedAgentRef: AgentRef =>
@@ -195,54 +183,52 @@ with SnapshotableState[ControllerState]
                     .convertFromV2_1
                     .flatMap { case (agentRef, maybeSubagentItem) =>
                       for {
-                        agentRefState <- pathToAgentRefState.checked(agentRef.path)
+                        agentRefState <- pathTo(AgentRefState).checked(agentRef.path)
                         _ <- (agentRef.directors == agentRefState.agentRef.directors) !!
                           Problem.pure("Agent Director cannot not be changed")
-                      } yield copy(
-                        pathToAgentRefState = pathToAgentRefState + (agentRef.path -> agentRefState.copy(
-                          agentRef = agentRef)),
-                        idToSubagentItemState = maybeSubagentItem match {
-                          case None => idToSubagentItemState
-                          case Some(changedSubagentItem) =>
-                            // COMPATIBLE with v2.2.2
-                            idToSubagentItemState
-                              .get(changedSubagentItem.id) // Should not happen
-                              .fold(idToSubagentItemState)(subagentItemState =>
-                                idToSubagentItemState + (changedSubagentItem.id ->
-                                  subagentItemState.copy(
-                                    subagentItem = subagentItemState.item
-                                      .updateUri(changedSubagentItem.uri))))
-                        })
+                      } yield
+                        copy(
+                          pathToItemState_ = pathToItemState_
+                            .updated(agentRef.path, agentRefState.copy(
+                              agentRef = agentRef))
+                            .pipeMaybe(maybeSubagentItem)((pathToItemState, changedSubagentItem) =>
+                              // COMPATIBLE with v2.2.2
+                              pathTo(SubagentItemState)
+                                .get(changedSubagentItem.id)
+                                .fold(pathToItemState)(subagentItemState =>
+                                  pathToItemState.updated(changedSubagentItem.id,
+                                    subagentItemState.copy(
+                                      subagentItem = subagentItemState.item
+                                        .updateUri(changedSubagentItem.uri))))))
                     }
 
                 case selection: SubagentSelection =>
                   Right(copy(
-                    idToSubagentSelection = idToSubagentSelection.updated(selection.id, selection)))
+                    pathToItemState_ = pathToItemState_
+                      .updated(selection.id, SubagentSelectionState(selection))))
 
                 case subagentItem: SubagentItem =>
                   for {
-                    subagentItemState <- idToSubagentItemState.checked(subagentItem.id)
+                    subagentItemState <- pathTo(SubagentItemState).checked(subagentItem.id)
                     _ <- subagentItemState.subagentItem.agentPath == subagentItem.agentPath !!
                       Problem.pure("A Subagent's AgentPath cannot be changed")
                   } yield copy(
-                    idToSubagentItemState = idToSubagentItemState + (subagentItem.id ->
+                    pathToItemState_ = pathToItemState_.updated(subagentItem.id,
                       subagentItemState.copy(subagentItem = subagentItem)))
 
                 case orderWatch: OrderWatch =>
-                  allOrderWatchesState.changeOrderWatch(orderWatch)
-                    .map(o => copy(
-                      allOrderWatchesState = o))
+                  ow.changeOrderWatch(orderWatch)
 
                 case board: Board =>
-                  for (boardState <- pathToBoardState.checked(board.path))
+                  for (boardState <- pathTo(BoardState).checked(board.path))
                     yield copy(
-                      pathToBoardState = pathToBoardState + (board.path -> boardState.copy(
+                      pathToItemState_ = pathToItemState_.updated(board.path, boardState.copy(
                         board = board)))
 
                 case calendar: Calendar =>
-                  for (_ <- pathToCalendar.checked(calendar.path))
+                  for (_ <- pathToItemState_.checked(calendar.path))
                     yield copy(
-                      pathToCalendar = pathToCalendar + (calendar.path -> calendar))
+                      pathToItemState_ = pathToItemState_.updated(calendar.path, CalendarState(calendar)))
               }
           }
 
@@ -286,31 +272,30 @@ with SnapshotableState[ControllerState]
 
                 case lockPath: LockPath =>
                   Right(updated.copy(
-                    pathToLockState = pathToLockState - lockPath))
+                    pathToItemState_ = pathToItemState_ - lockPath))
 
                 case agentPath: AgentPath =>
                   Right(updated.copy(
-                    pathToAgentRefState = pathToAgentRefState - agentPath))
+                    pathToItemState_ = pathToItemState_ - agentPath))
 
                 case subagentId: SubagentId =>
                   Right(updated.copy(
-                    idToSubagentItemState = idToSubagentItemState - subagentId))
+                    pathToItemState_ = pathToItemState_ - subagentId))
 
                 case id: SubagentSelectionId =>
                   Right(updated.copy(
-                    idToSubagentSelection = idToSubagentSelection - id))
+                    pathToItemState_ = pathToItemState_ - id))
 
                 case path: OrderWatchPath =>
-                  Right(updated.copy(
-                    allOrderWatchesState = allOrderWatchesState.removeOrderWatch(path)))
+                  updated.ow.removeOrderWatch(path)
 
                 case boardPath: BoardPath =>
                   Right(updated.copy(
-                    pathToBoardState = pathToBoardState - boardPath))
+                    pathToItemState_ = pathToItemState_ - boardPath))
 
                 case calendarPath: CalendarPath =>
                   Right(updated.copy(
-                    pathToCalendar = pathToCalendar - calendarPath))
+                    pathToItemState_ = pathToItemState_ - calendarPath))
 
                 case jobResourcePath: JobResourcePath =>
                   Right(updated.copy(
@@ -328,46 +313,43 @@ with SnapshotableState[ControllerState]
 
     case KeyedEvent(agentPath: AgentPath, event: AgentRefStateEvent) =>
       for {
-        agentRefState <- pathToAgentRefState.checked(agentPath)
+        agentRefState <- pathTo(AgentRefState).checked(agentPath)
         agentRefState <- agentRefState.applyEvent(event)
       } yield copy(
-        pathToAgentRefState = pathToAgentRefState + (agentPath -> agentRefState))
+        pathToItemState_ = pathToItemState_ + (agentPath -> agentRefState))
 
     case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
       applyOrderEvent(orderId, event)
 
     case KeyedEvent(boardPath: BoardPath, NoticePosted(notice)) =>
       for {
-        boardState <- pathToBoardState.checked(boardPath)
+        boardState <- pathTo(BoardState).checked(boardPath)
         o <- boardState.addNotice(notice.toNotice(boardPath))
       } yield copy(
-        pathToBoardState = pathToBoardState + (o.path -> o))
+        pathToItemState_ = pathToItemState_.updated(o.path, o))
 
     case KeyedEvent(boardPath: BoardPath, NoticeDeleted(noticeId)) =>
       for {
-        boardState <- pathToBoardState.checked(boardPath)
+        boardState <- pathTo(BoardState).checked(boardPath)
         o <- boardState.removeNotice(noticeId)
       } yield copy(
-        pathToBoardState = pathToBoardState + (o.path -> o))
+        pathToItemState_ = pathToItemState_.updated(o.path, o))
 
     case KeyedEvent(orderWatchPath: OrderWatchPath, event: OrderWatchEvent) =>
-      allOrderWatchesState
-        .onOrderWatchEvent(orderWatchPath <-: event)
-        .map(o => copy(allOrderWatchesState = o))
-
+      ow.onOrderWatchEvent(orderWatchPath <-: event)
 
     case KeyedEvent(subagentId: SubagentId, event: SubagentItemStateEvent) =>
       event match {
-        case SubagentShutdown if !idToSubagentItemState.contains(subagentId) =>
+        case SubagentShutdown if !pathToItemState_.contains(subagentId) =>
           // May arrive when SubagentItem has been deleted
           Right(this)
 
         case _ =>
           for {
-            o <- idToSubagentItemState.checked(subagentId)
+            o <- pathTo(SubagentItemState).checked(subagentId)
             o <- o.applyEvent(event)
           } yield copy(
-            idToSubagentItemState = idToSubagentItemState + (subagentId -> o))
+            pathToItemState_ = pathToItemState_.updated(subagentId, o))
       }
 
     case KeyedEvent(_, _: ControllerShutDown) =>
@@ -379,37 +361,40 @@ with SnapshotableState[ControllerState]
     case _ => applyStandardEvent(keyedEvent)
   }
 
+  protected def pathToOrderWatchState = pathTo(OrderWatchState)
+
+  protected def updateOrderWatchStates(
+    orderWatchStates: Iterable[OrderWatchState],
+    remove: Iterable[OrderWatchPath]
+  ) = update(addItemStates = orderWatchStates, removeItemStates = remove)
+
   protected def update(
-    removeOrders: Iterable[OrderId],
     orders: Iterable[Order[Order.State]],
-    lockStates: Iterable[LockState],
-    boardStates: Iterable[BoardState])
-  = Right(copy(
-    idToOrder = idToOrder -- removeOrders ++ orders.map(o => o.id -> o),
-    pathToLockState = pathToLockState ++ lockStates.map(o => o.lock.path -> o),
-    pathToBoardState = pathToBoardState ++ boardStates.map(o => o.path -> o)))
+    removeOrders: Iterable[OrderId],
+    addItemStates: Iterable[UnsignedSimpleItemState],
+    removeItemStates: Iterable[UnsignedSimpleItemPath]) =
+    Right(copy(
+      idToOrder = idToOrder -- removeOrders ++ orders.map(o => o.id -> o),
+      pathToItemState_ = pathToItemState_ -- removeItemStates ++ addItemStates.map(o => o.path -> o)))
 
   override protected def addOrder(addedOrderId: OrderId, orderAdded: OrderAddedX)
   : Checked[ControllerState] =
     idToOrder.checkNoDuplicate(addedOrderId) *>
-      allOrderWatchesState.onOrderAdded(addedOrderId <-: orderAdded)
-        .map(updated => copy(
-          idToOrder = idToOrder +
-            (addedOrderId -> Order.fromOrderAdded(addedOrderId, orderAdded)),
-          allOrderWatchesState = updated))
+      ow.onOrderAdded(addedOrderId <-: orderAdded)
+        .map(_.copy(
+          idToOrder = idToOrder.updated(addedOrderId,
+            Order.fromOrderAdded(addedOrderId, orderAdded))))
 
   override protected def deleteOrder(order: Order[Order.State]): Checked[ControllerState] =
     order.externalOrderKey match {
       case None =>
         Right(copy(idToOrder = idToOrder - order.id))
       case Some(externalOrderKey) =>
-        allOrderWatchesState
+        ow
           .onOrderDeleted(externalOrderKey, order.id)
-          .map(o => copy(
-            idToOrder = idToOrder - order.id,
-            allOrderWatchesState = o))
+          .map(_.copy(
+            idToOrder = idToOrder - order.id))
     }
-
 
   /** The named values as seen at the current workflow position. */
   def orderNamedValues(orderId: OrderId): Checked[MapView[String, Value]] =
@@ -547,17 +532,14 @@ with SnapshotableState[ControllerState]
       override def values = items
     }
 
+  def pathToItemState: MapView[UnsignedSimpleItemPath, UnsignedSimpleItemState] =
+    pathToItemState_.view
+
   private lazy val pathToItem: MapView[InventoryItemPath, InventoryItem] =
     new MapView[InventoryItemPath, InventoryItem] {
       def get(path: InventoryItemPath): Option[InventoryItem] = {
         path match {
-          case path: AgentPath => pathToAgentRefState.get(path).map(_.item)
-          case id: SubagentId => idToSubagentItemState.get(id).map(_.item)
-          case id: SubagentSelectionId => idToSubagentSelection.get(id)
-          case path: LockPath => pathToLockState.get(path).map(_.item)
-          case path: OrderWatchPath => allOrderWatchesState.pathToOrderWatchState.get(path).map(_.item)
-          case path: BoardPath => pathToBoardState.get(path).map(_.item)
-          case path: CalendarPath => pathToCalendar.get(path)
+          case path: UnsignedSimpleItemPath => pathToItemState_.get(path).map(_.item)
           case path: SignableSimpleItemPath => pathToSignedSimpleItem.get(path).map(_.value)
           case path: VersionedItemPath => repo.pathToItem(path).toOption
         }
@@ -575,13 +557,10 @@ with SnapshotableState[ControllerState]
     unsignedSimpleItems ++ pathToSignedSimpleItem.values.view.map(_.value)
 
   private def unsignedSimpleItems: View[UnsignedSimpleItem] =
-    pathToCalendar.values.view ++
-      idToSubagentSelection.values.view ++
-      (idToSubagentItemState.view ++
-        pathToAgentRefState.view ++
-        pathToLockState ++
-        allOrderWatchesState.pathToOrderWatchState
-      ).map(_._2.item)
+    unsignedSimpleItemStates.map(_.item)
+
+  private def unsignedSimpleItemStates: View[UnsignedSimpleItemState] =
+    pathToItemState_.values.view.collect { case o: UnsignedSimpleItemState => o }
 
   lazy val idToWorkflow: PartialFunction[WorkflowId, Workflow] =
     new PartialFunction[WorkflowId, Workflow] {
@@ -637,12 +616,6 @@ with ItemContainer.Companion[ControllerState]
     SnapshotableState.Standards.empty,
     ControllerMetaState.Undefined,
     Map.empty,
-    Map.empty,
-    Map.empty,
-    Map.empty,
-    Map.empty,
-    Map.empty,
-    AllOrderWatchesState.empty,
     Repo.empty,
     Map.empty,
     ClientAttachments.empty,

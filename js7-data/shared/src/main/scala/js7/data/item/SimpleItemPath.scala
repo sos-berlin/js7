@@ -17,6 +17,9 @@ object SimpleItemPath
   trait Companion[A <: SimpleItemPath]
   extends InventoryItemPath.Companion[A]
   with InventoryItemKey.Companion[A]
+  {
+    implicit def implicitCompanion = this
+  }
 
   type AnyCompanion = Companion[_ <: SimpleItemPath]
 

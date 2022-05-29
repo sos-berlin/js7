@@ -13,6 +13,10 @@ object UnsignedSimpleItemPath
   type Companion_ = Companion[_ <: UnsignedSimpleItemPath]
 
   trait Companion[A <: UnsignedSimpleItemPath] extends SimpleItemPath.Companion[A]
+  {
+    type Item <: UnsignedSimpleItem
+    override implicit def implicitCompanion = this
+  }
 
   def jsonCodec(companions: Iterable[UnsignedSimpleItemPath.Companion_]): Codec[UnsignedSimpleItemPath] =
     InventoryItemKey.jsonCodec(companions)

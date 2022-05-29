@@ -4,11 +4,11 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.NotImplementedMap
 import js7.base.utils.ScalaUtils.syntax._
-import js7.data.board.{BoardPath, BoardState}
+import js7.data.board.BoardPath
 import js7.data.controller.ControllerId
 import js7.data.event.{Event, EventDrivenState, KeyedEvent}
-import js7.data.item.{InventoryItem, InventoryItemKey}
-import js7.data.lock.{LockPath, LockState}
+import js7.data.item.{InventoryItem, InventoryItemKey, UnsignedSimpleItemPath, UnsignedSimpleItemState}
+import js7.data.lock.LockPath
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import scala.collection.MapView
@@ -18,8 +18,7 @@ case class TestStateView(
   controllerId: ControllerId = ControllerId("CONTROLLER"),
   idToOrder: Map[OrderId, Order[Order.State]] = new NotImplementedMap,
   idToWorkflow: PartialFunction[WorkflowId, Workflow] = new NotImplementedMap,
-  pathToLockState: Map[LockPath, LockState] = new NotImplementedMap,
-  pathToBoardState: Map[BoardPath, BoardState] = new NotImplementedMap)
+  pathToItemState_ : Map[UnsignedSimpleItemPath, UnsignedSimpleItemState] = new NotImplementedMap)
 extends EventDrivenStateView[TestStateView, Event]
 {
   val companion = TestStateView
@@ -37,13 +36,15 @@ extends EventDrivenStateView[TestStateView, Event]
   def workflowPathToId(workflowPath: WorkflowPath) =
     Left(Problem.pure("workflowPathToId is not implemented"))
 
+  def pathToItemState = pathToItemState_.view
+
   lazy val keyToItem: MapView[InventoryItemKey, InventoryItem] =
     new MapView[InventoryItemKey, InventoryItem] {
       def get(itemKey: InventoryItemKey): Option[InventoryItem] =
         itemKey match {
           case WorkflowId.as(id) => idToWorkflow.get(id)
-          case path: LockPath => pathToLockState.get(path).map(_.item)
-          case path: BoardPath => pathToBoardState.get(path).map(_.item)
+          case path: LockPath => pathToItemState.get(path).map(_.item)
+          case path: BoardPath => pathToItemState.get(path).map(_.item)
         }
 
       def iterator: Iterator[(InventoryItemKey, InventoryItem)] =
@@ -51,17 +52,17 @@ extends EventDrivenStateView[TestStateView, Event]
     }
 
   override protected def update(
-    removeOrders: Iterable[OrderId],
     orders: Iterable[Order[Order.State]],
-    lockStates: Iterable[LockState],
-    boardStates: Iterable[BoardState])
+    removeOrders: Iterable[OrderId],
+    addItemStates: Iterable[UnsignedSimpleItemState],
+    removeItemStates: Iterable[UnsignedSimpleItemPath])
   : Checked[TestStateView] = {
     // Do not touch unused entries, they may be a NotImplementedMap
     var x = this
     if (removeOrders.nonEmpty) x = x.copy(idToOrder = idToOrder -- removeOrders)
     if (orders.nonEmpty) x = x.copy(idToOrder = idToOrder ++ orders.map(o => o.id -> o))
-    if (lockStates.nonEmpty) x = x.copy(pathToLockState = pathToLockState ++ lockStates.map(o => o.lock.path -> o))
-    if (boardStates.nonEmpty) x = x.copy(pathToBoardState = pathToBoardState ++ boardStates.map(o => o.path -> o))
+    if (removeItemStates.nonEmpty) x = x.copy(pathToItemState_ = pathToItemState_ -- removeItemStates)
+    if (addItemStates.nonEmpty) x = x.copy(pathToItemState_ = pathToItemState_ ++ addItemStates.map(o => o.path -> o))
     Right(x)
   }
 }
@@ -73,12 +74,10 @@ object TestStateView extends EventDrivenState.Companion[TestStateView, Event]
     controllerId: ControllerId = ControllerId("CONTROLLER"),
     orders: Option[Iterable[Order[Order.State]]] = None,
     workflows: Option[Iterable[Workflow]] = None,
-    lockStates: Option[Iterable[LockState]] = None,
-    boardStates: Option[Iterable[BoardState]] = None)
+    itemStates: Option[Iterable[UnsignedSimpleItemState]] = None)
   = new TestStateView(
     isAgent, controllerId,
     idToOrder = orders.fold_(new NotImplementedMap, _.toKeyedMap(_.id)),
     idToWorkflow = workflows.fold_(new NotImplementedMap, _.toKeyedMap(_.id)),
-    pathToLockState = lockStates.fold_(new NotImplementedMap, _.toKeyedMap(_.lock.path)),
-    pathToBoardState = boardStates.fold_(new NotImplementedMap, _.toKeyedMap(_.path)))
+    pathToItemState_ = itemStates.fold_(new NotImplementedMap, _.toKeyedMap(_.path)))
 }

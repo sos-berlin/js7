@@ -17,8 +17,11 @@ final case class AgentRefState(
   problem: Option[Problem])
 extends UnsignedSimpleItemState
 {
+  protected type Self = AgentRefState
+  val companion = AgentRefState
+
   type Item = AgentRef
-  def item = agentRef
+  val item = agentRef
 
   def agentPath = agentRef.path
 
@@ -91,8 +94,10 @@ extends UnsignedSimpleItemState
     }
 }
 
-object AgentRefState
+object AgentRefState extends UnsignedSimpleItemState.Companion[AgentRefState]
 {
+  type Path = AgentPath
+
   implicit val jsonCodec = deriveCodec[AgentRefState]
 
   def apply(agentRef: AgentRef) =

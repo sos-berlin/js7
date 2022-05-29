@@ -32,7 +32,7 @@ import js7.controller.agent.CommandQueue.QueuedInputResponse
 import js7.controller.configuration.ControllerConfiguration
 import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentReset}
 import js7.data.agent.Problems.AgentNotDedicatedProblem
-import js7.data.agent.{AgentPath, AgentRef, AgentRunId}
+import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.controller.ControllerState
 import js7.data.delegate.DelegateCouplingState.{Coupled, Resetting}
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
@@ -101,7 +101,7 @@ extends ReceiveLoggingActor.WithStash
     private var attachedOrderIds: Set[OrderId] = null
 
     override protected def couple(eventId: EventId) =
-      Task(persistence.currentState.pathToAgentRefState.checked(agentPath))
+      Task(persistence.currentState.pathTo(AgentRefState).checked(agentPath))
         .flatMapT(agentRefState =>
           ((agentRefState.couplingState, agentRefState.agentRunId) match {
             case (Resetting(false), None) =>
@@ -128,7 +128,7 @@ extends ReceiveLoggingActor.WithStash
               persistence
                 .lock(agentPath)(
                   persistence.persist(controllerState =>
-                    for (a <- controllerState.pathToAgentRefState.checked(agentPath)) yield
+                    for (a <- controllerState.pathTo(AgentRefState).checked(agentPath)) yield
                       (a.couplingState != Coupled || a.problem.nonEmpty)
                         .thenList(agentPath <-: AgentCoupled)))
                 .rightAs(agentEventId)

@@ -4,7 +4,7 @@ import cats.syntax.traverse._
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
-import js7.data.board.BoardPath
+import js7.data.board.{BoardPath, BoardState}
 import js7.data.execution.workflow.instructions.ExpectNoticesExecutor._
 import js7.data.order.OrderEvent.{OrderMoved, OrderNoticesExpected, OrderNoticesRead}
 import js7.data.order.{Order, OrderEvent}
@@ -26,7 +26,7 @@ extends EventInstructionExecutor
         .map(order =>
           expectNotices.referencedBoardPaths
             .toVector
-            .traverse(state.pathToBoardState.checked)
+            .traverse(state.pathTo(BoardState).checked)
             .flatMap { boardStates =>
               for {
                 scope <- state.toPureScope(order)

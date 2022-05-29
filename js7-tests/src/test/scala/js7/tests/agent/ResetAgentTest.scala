@@ -17,7 +17,7 @@ import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
 import js7.data.Problems.AgentResetProblem
 import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentReset}
 import js7.data.agent.Problems.AgentAlreadyDedicatedProblem
-import js7.data.agent.{AgentPath, AgentRef}
+import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import js7.data.controller.ControllerCommand.ResetAgent
 import js7.data.delegate.DelegateCouplingState
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVersion}
@@ -158,8 +158,8 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
       case _ => false
     }
     waitForCondition(10.s, 10.ms)(isResettingOrReset(
-      controllerState.pathToAgentRefState(agentPath).couplingState))
-    assert(isResettingOrReset(controllerState.pathToAgentRefState(agentPath).couplingState))
+      controllerState.pathTo(AgentRefState)(agentPath).couplingState))
+    assert(isResettingOrReset(controllerState.pathTo(AgentRefState)(agentPath).couplingState))
   }
 
   "Simulate journal deletion at restart" in {

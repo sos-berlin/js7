@@ -16,6 +16,7 @@ final case class LockPath private(string: String) extends UnsignedSimpleItemPath
 object LockPath extends UnsignedSimpleItemPath.Companion[LockPath]
 {
   // May deadlock: override val itemTypeName = Lock.typeName
+  type Item = Lock
 
   protected def unchecked(string: String) = new LockPath(string)
 

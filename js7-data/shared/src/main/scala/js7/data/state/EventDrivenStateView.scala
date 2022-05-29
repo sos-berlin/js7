@@ -6,26 +6,27 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.board.BoardState
 import js7.data.event.{Event, EventDrivenState}
+import js7.data.item.{UnsignedSimpleItemPath, UnsignedSimpleItemState}
 import js7.data.lock.LockState
 import js7.data.order.Order.ExpectingNotices
 import js7.data.order.OrderEvent.{OrderAdded, OrderAddedX, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderForked, OrderJoined, OrderLockEvent, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesExpected, OrderNoticesRead, OrderOrderAdded, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 
 // TODO Replace F-type polymorphism with a typeclass ? https://tpolecat.github.io/2015/04/29/f-bounds.html
-trait EventDrivenStateView[This <: EventDrivenStateView[This, E], E <: Event]
-extends EventDrivenState[This, E]
+trait EventDrivenStateView[Self <: EventDrivenStateView[Self, E], E <: Event]
+extends EventDrivenState[Self, E]
 with StateView
 {
-  this: This =>
+  this: Self =>
 
   protected def update(
+    addOrders: Iterable[Order[Order.State]] = Nil,
     removeOrders: Iterable[OrderId] = Nil,
-    orders: Iterable[Order[Order.State]] = Nil,
-    lockStates: Iterable[LockState] = Nil,
-    boardStates: Iterable[BoardState] = Nil)
-  : Checked[This]
+    addItemStates: Iterable[UnsignedSimpleItemState] = Nil,
+    removeItemStates: Iterable[UnsignedSimpleItemPath] = Nil)
+  : Checked[Self]
 
-  protected def applyOrderEvent(orderId: OrderId, event: OrderEvent): Checked[This] =
+  protected def applyOrderEvent(orderId: OrderId, event: OrderEvent): Checked[Self] =
     event match {
       case orderAdded: OrderAdded =>
         addOrder(orderId, orderAdded)
@@ -34,7 +35,7 @@ with StateView
         if (idToOrder isDefinedAt orderId)
           Left(Problem.pure(s"Duplicate order attached: $orderId"))
         else
-          update(orders = Order.fromOrderAttached(orderId, event) :: Nil)
+          update(addOrders = Order.fromOrderAttached(orderId, event) :: Nil)
 
       case event: OrderCoreEvent =>
         applyOrderCoreEvent(orderId, event)
@@ -44,7 +45,7 @@ with StateView
         idToOrder.checked(orderId).rightAs(this)
     }
 
-  private def applyOrderCoreEvent(orderId: OrderId, event: OrderCoreEvent): Either[Problem, This] =
+  private def applyOrderCoreEvent(orderId: OrderId, event: OrderCoreEvent): Either[Problem, Self] =
     for {
       previousOrder <- idToOrder.checked(orderId)
       updatedOrder <- previousOrder.applyEvent(event)
@@ -53,11 +54,11 @@ with StateView
           if (isAgent)
             update(removeOrders = orderId :: Nil)
           else
-            update(orders = updatedOrder :: Nil)
+            update(addOrders = updatedOrder :: Nil)
 
         case event: OrderForked =>
           update(
-            orders = updatedOrder +: previousOrder.newForkedOrders(event))
+            addOrders = updatedOrder +: previousOrder.newForkedOrders(event))
 
         case event: OrderJoined =>
           if (isAgent)
@@ -66,7 +67,7 @@ with StateView
             previousOrder.state match {
               case forked: Order.Forked =>
                 update(
-                  orders = updatedOrder :: Nil,
+                  addOrders = updatedOrder :: Nil,
                   removeOrders = forked.childOrderIds)
 
               case state =>
@@ -77,33 +78,33 @@ with StateView
         case event: OrderLockEvent =>
           event.lockPaths
             .toList
-            .traverse(lockPath => pathToLockState
+            .traverse(lockPath => pathTo(LockState)
               .checked(lockPath)
               .flatMap(_.applyEvent(orderId <-: event)))
             .flatMap(lockStates =>
               update(
-                orders = updatedOrder :: Nil,
-                lockStates = lockStates))
+                addOrders = updatedOrder :: Nil,
+                addItemStates = lockStates))
 
         case event: OrderNoticeEvent =>
           applyOrderNoticeEvent(previousOrder, orderId, event)
-            .flatMap(_.update(orders = updatedOrder :: Nil))
+            .flatMap(_.update(addOrders = updatedOrder :: Nil))
 
         case _: OrderCancelled =>
           previousOrder
             .ifState[ExpectingNotices]
-            .fold(update(orders = updatedOrder :: Nil))(order =>
+            .fold(update(addOrders = updatedOrder :: Nil))(order =>
               removeNoticeExpectation(order)
                 .flatMap(updatedBoardStates =>
                   update(
-                    orders = updatedOrder :: Nil,
-                    boardStates = updatedBoardStates)))
+                    addOrders = updatedOrder :: Nil,
+                    addItemStates = updatedBoardStates)))
 
         case orderAdded: OrderOrderAdded =>
           addOrder(orderAdded.orderId, orderAdded)
 
         case OrderDeletionMarked =>
-          update(orders = updatedOrder :: Nil)
+          update(addOrders = updatedOrder :: Nil)
 
         case OrderDeleted =>
           if (isAgent)
@@ -113,23 +114,23 @@ with StateView
               .flatMap(_.update(removeOrders = orderId :: Nil))
 
         case _ =>
-          update(orders = updatedOrder :: Nil)
+          update(addOrders = updatedOrder :: Nil)
       }
     } yield result
 
-  protected def addOrder(addedOrderId: OrderId, orderAdded: OrderAddedX): Checked[This] =
+  protected def addOrder(addedOrderId: OrderId, orderAdded: OrderAddedX): Checked[Self] =
     idToOrder.checkNoDuplicate(addedOrderId)
       .*>(update(
-        orders = Order.fromOrderAdded(addedOrderId, orderAdded) :: Nil))
+        addOrders = Order.fromOrderAdded(addedOrderId, orderAdded) :: Nil))
 
-  protected def deleteOrder(order: Order[Order.State]): Checked[This] =
+  protected def deleteOrder(order: Order[Order.State]): Checked[Self] =
     update(removeOrders = order.id :: Nil)
 
   private def applyOrderNoticeEvent(
     previousOrder: Order[Order.State],
     orderId: OrderId,
     event: OrderNoticeEvent)
-  : Checked[This] =
+  : Checked[Self] =
     event
       .match_ {
         case OrderNoticePostedV2_3(notice) =>
@@ -138,7 +139,7 @@ with StateView
             .map(_ :: Nil)
 
         case OrderNoticePosted(notice) =>
-          pathToBoardState
+          pathTo(BoardState)
             .checked(notice.boardPath)
             .flatMap(_.addNotice(notice))
             .map(_ :: Nil)
@@ -150,7 +151,7 @@ with StateView
 
         case OrderNoticesExpected(expectedSeq) =>
           expectedSeq.traverse(expected =>
-            pathToBoardState
+            pathTo(BoardState)
               .checked(expected.boardPath)
               .flatMap(_.addExpectation(expected.noticeId, orderId)))
 
@@ -160,14 +161,14 @@ with StateView
             case Some(previousOrder) => removeNoticeExpectation(previousOrder)
           }
       }
-    .flatMap(o => update(boardStates = o))
+    .flatMap(o => update(addItemStates = o))
 
   private def removeNoticeExpectation(order: Order[Order.State]): Checked[Seq[BoardState]] =
     order.ifState[Order.ExpectingNotices] match {
       case None => Right(Nil)
       case Some(order) =>
         order.state.expected
-          .traverse(expected => pathToBoardState
+          .traverse(expected => pathTo(BoardState)
             .checked(expected.boardPath)
             .flatMap(_.removeExpectation(expected.noticeId, order.id)))
     }

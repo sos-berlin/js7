@@ -20,8 +20,11 @@ extends UnsignedSimpleItemState with Big/*acquired and queue get big with many o
 {
   import lock.limit
 
+  protected type Self = LockState
+  val companion = LockState
+
   type Item = Lock
-  def item = lock
+  val item = lock
 
   def agentPathToAttachedState = Map.empty
 
@@ -116,10 +119,9 @@ extends UnsignedSimpleItemState with Big/*acquired and queue get big with many o
   //TODO Break snapshot into smaller parts: private def toSnapshot: Observable[Any] = ...
 }
 
-object LockState
+object LockState extends UnsignedSimpleItemState.Companion[LockState]
 {
-  def OrderLockNotAvailableProblem(lockPath: LockPath) =
-    Problem(s"Lock '${lockPath.string}' is not available")
+  type Path = LockPath
 
   implicit val jsonCodec = deriveCodec[LockState]
 }

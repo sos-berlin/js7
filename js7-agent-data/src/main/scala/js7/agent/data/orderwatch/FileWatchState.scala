@@ -2,13 +2,14 @@ package js7.agent.data.orderwatch
 
 import io.circe.generic.semiauto.deriveCodec
 import java.nio.file.{Path, Paths}
-import js7.agent.data.orderwatch.FileWatchState._
+import js7.agent.data.orderwatch.FileWatchState.{EntrySnapshot, HeaderSnapshot, Snapshot}
 import js7.base.circeutils.JavaJsonCodecs.PathJsonCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.io.file.watch.DirectoryState
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.SetOnce
 import js7.data.event.KeyedEvent
+import js7.data.item.UnsignedSimpleItemState
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchEvent, OrderWatchPath}
 import monix.reactive.Observable
@@ -17,7 +18,14 @@ import scala.collection.{View, mutable}
 final case class FileWatchState(
   fileWatch: FileWatch,
   directoryState: DirectoryState)
+extends UnsignedSimpleItemState
 {
+  protected type Self = FileWatchState
+  val companion = FileWatchState
+
+  protected type Item = FileWatch
+  val item = fileWatch
+
   def id = fileWatch.path
 
   def applyEvent(event: OrderWatchEvent): FileWatchState =
@@ -47,17 +55,19 @@ final case class FileWatchState(
       .map(file =>
         fileWatch.path <-: ExternalOrderVanished(ExternalOrderName(file.toString)))
 
-  def estimatedSnapshotSize =
-    1 + directoryState.fileToEntry.size
+  def estimatedExtraSnapshotSize =
+    directoryState.fileToEntry.size
 
-  def toSnapshot: Observable[Snapshot] =
+  override def toSnapshotObservable: Observable[Snapshot] =
     Observable.pure(HeaderSnapshot(fileWatch)) ++
       Observable.fromIterable(directoryState.fileToEntry.values)
         .map(entry => EntrySnapshot(id, entry.path))
 }
 
-object FileWatchState
+object FileWatchState extends UnsignedSimpleItemState.Companion[FileWatchState]
 {
+  type Path = OrderWatchPath
+
   sealed trait Snapshot {
     def orderWatchPath: OrderWatchPath
   }
@@ -70,7 +80,7 @@ object FileWatchState
 
   final case class EntrySnapshot(
     orderWatchPath: OrderWatchPath,
-    path: Path)
+    path: java.nio.file.Path)
   extends Snapshot {
     override def productPrefix = "FileWatchState.File"
   }

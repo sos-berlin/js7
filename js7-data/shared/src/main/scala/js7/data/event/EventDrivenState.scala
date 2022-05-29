@@ -4,15 +4,15 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.{RichJavaClass, RichString}
 import js7.data.event.EventDrivenState._
 
-trait EventDrivenState[This <: EventDrivenState[This, E], E <: Event]
+trait EventDrivenState[Self <: EventDrivenState[Self, E], E <: Event]
 {
-  this: This =>
+  this: Self =>
 
-  def companion: Companion[This, E]
+  def companion: Companion[Self, E]
 
-  def applyEvent(keyedEvent: KeyedEvent[E]): Checked[This]
+  def applyEvent(keyedEvent: KeyedEvent[E]): Checked[Self]
 
-  def applyStampedEvents(stampedEvents: Iterable[Stamped[KeyedEvent[E]]]): Checked[This] = {
+  def applyStampedEvents(stampedEvents: Iterable[Stamped[KeyedEvent[E]]]): Checked[Self] = {
     var state = this
     var problem: Problem = null
     for (stamped <- stampedEvents.iterator if problem == null) {
@@ -26,7 +26,7 @@ trait EventDrivenState[This <: EventDrivenState[This, E], E <: Event]
     if (problem != null) Left(problem) else Right(state)
   }
 
-  def applyEvents(keyedEvents: IterableOnce[KeyedEvent[E]]): Checked[This] = {
+  def applyEvents(keyedEvents: IterableOnce[KeyedEvent[E]]): Checked[Self] = {
     var state = this
     var problem: Problem = null
     for (keyedEvent <- keyedEvents.iterator if problem == null) {

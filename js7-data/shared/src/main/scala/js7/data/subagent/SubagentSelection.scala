@@ -29,8 +29,8 @@ extends UnsignedSimpleItem
 
 object SubagentSelection extends UnsignedSimpleItem.Companion[SubagentSelection]
 {
-  type Path = SubagentSelectionId
-  val Path = SubagentSelectionId
+  override type Path = SubagentSelectionId
+  override val Path = SubagentSelectionId
 
   type Key = Path
   val Key = Path

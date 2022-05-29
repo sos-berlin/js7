@@ -20,6 +20,8 @@ object SubagentSelectionId
 extends DelegateId.Companion[SubagentSelectionId]
 with UnsignedSimpleItemPath.Companion[SubagentSelectionId]
 {
+  type Item = SubagentSelection
+
   override val itemTypeName = "SubagentSelection"
   override val pathTypeName = itemTypeName
 

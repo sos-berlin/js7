@@ -30,8 +30,8 @@ object Lock extends UnsignedSimpleItem.Companion[Lock]
   type Key = LockPath
   val Key = LockPath
 
-  type Path = LockPath
-  val Path = LockPath
+  override type Path = LockPath
+  override val Path = LockPath
 
   val jsonCodec = {
     implicit val configuration = withDefaults

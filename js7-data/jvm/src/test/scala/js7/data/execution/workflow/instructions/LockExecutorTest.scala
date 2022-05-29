@@ -20,7 +20,7 @@ final class LockExecutorTest extends AnyFreeSpec
     isAgent = false,
     orders = Some(Seq(freeLockOrder, freeLockedOrder, occupiedLockOrder)),
     workflows = Some(Seq(workflow)),
-    lockStates = Some(Seq(
+    itemStates = Some(Seq(
       LockState(Lock(freeLockPath, limit = 1)),
       LockState(Lock(occupiedLockPath, limit = 1), Acquired.Exclusive(OrderId("OCCUPANT"))))))
 

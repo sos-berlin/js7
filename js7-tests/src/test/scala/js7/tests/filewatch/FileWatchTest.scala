@@ -28,7 +28,7 @@ import js7.data.item.{InventoryItemEvent, ItemRevision, VersionId}
 import js7.data.order.OrderEvent.{OrderCancellationMarkedOnAgent, OrderDeleted, OrderFinished, OrderProcessingStarted}
 import js7.data.order.OrderId
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
-import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath}
+import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath, OrderWatchState}
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.expression.scopes.EnvScope
@@ -341,7 +341,7 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
       NoKey <-: ItemDetached(fileWatch.path, bAgentPath),
       NoKey <-: ItemDeleted(fileWatch.path)))
     sleep(100.ms)   // Wait until controllerState has been updated
-    assert(controllerState.allOrderWatchesState.pathToOrderWatchState.isEmpty)
+    assert(controllerState.pathTo(OrderWatchState).isEmpty)
   }
 }
 

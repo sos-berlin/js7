@@ -2,7 +2,7 @@ package js7.data.execution.workflow.instructions
 
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.event.KeyedEvent
-import js7.data.lock.LockRefusal
+import js7.data.lock.{LockRefusal, LockState}
 import js7.data.order.Order
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderDetachable, OrderLockAcquired, OrderLockQueued, OrderLockReleased}
 import js7.data.state.StateView
@@ -22,7 +22,7 @@ extends EventInstructionExecutor
       .getOrElse(
         if (order.isState[Order.Ready] || order.isState[Order.WaitingForLock])
           for {
-            lockState <- state.pathToLockState.checked(lockPath)
+            lockState <- state.pathTo(LockState).checked(lockPath)
             event <- lockState.checkAcquire(order.id, count) match {
               case Right(()) =>
                 Right(Some(OrderLockAcquired(lockPath, count)))

@@ -19,7 +19,7 @@ extends SubagentDriverState[S]
   def idToOrder: Map[OrderId, Order[Order.State]]
   def idToWorkflow: Map[WorkflowId, Workflow]
   def workflowJob(workflowPosition: WorkflowPosition): Checked[WorkflowJob]
-  def idToSubagentItemState: Map[SubagentId, SubagentItemState]
+  def idToSubagentItemState: MapView[SubagentId, SubagentItemState]
   def pathToJobResource: Map[JobResourcePath, JobResource]
   def keyToSigned[I <: SignableItem](I: SignableItem.Companion[I]): MapView[I.Key, Signed[I]]
 

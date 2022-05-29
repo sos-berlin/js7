@@ -25,8 +25,8 @@ final case class VerifiedUpdateItems private(
     maybeVersioned.view.flatMap(_.paths)
 
   def addOrChangeKeys: View[InventoryItemKey] =
-    simple.unsignedSimpleItems.view.map(_.path) ++
-      simple.verifiedSimpleItems.view.map(_.item.path) ++
+    simple.unsignedSimpleItems.view.map(_.key) ++
+      simple.verifiedSimpleItems.view.map(_.item.key) ++
       maybeVersioned.view.flatMap(_.verifiedItems.view.map(_.item.id))
 
   def addedOrChangedAgentPaths: View[AgentPath] =

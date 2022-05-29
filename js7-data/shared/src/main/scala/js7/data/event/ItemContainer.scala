@@ -22,7 +22,7 @@ trait ItemContainer
 
   final def keyTo[I <: InventoryItem](I: InventoryItem.Companion[I]): MapView[I.Key, I] =
     keyToItem
-      .filter { case (_, v) => I.cls.isAssignableFrom(v.getClass) }
+      .filter { case (_, v) => v.companion eq I }
       .asInstanceOf[MapView[I.Key, I]]
 }
 

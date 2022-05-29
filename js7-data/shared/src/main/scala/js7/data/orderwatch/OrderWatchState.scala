@@ -14,7 +14,7 @@ import js7.data.item.{ItemAttachedState, UnsignedSimpleItemState}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderDeletionMarked}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
-import js7.data.orderwatch.OrderWatchState._
+import js7.data.orderwatch.OrderWatchState.{Arised, ArisedOrHasOrder, ExternalOrderSnapshot, HasOrder, ToOrderAdded, Vanished, logger, strictErrorChecking}
 import js7.data.value.NamedValues
 import monix.reactive.Observable
 import scala.collection.View
@@ -39,8 +39,11 @@ final case class OrderWatchState(
   private[orderwatch] val vanishedQueue: Set[ExternalOrderName])
 extends UnsignedSimpleItemState
 {
+  protected type Self = OrderWatchState
+  val companion = OrderWatchState
+
   type Item = OrderWatch
-  def item = orderWatch
+  val item = orderWatch
 
   def id: OrderWatchPath = orderWatch.key
 
@@ -191,7 +194,7 @@ extends UnsignedSimpleItemState
   def estimatedSnapshotSize =
     1 + externalToState.size
 
-  def toSnapshot: Observable[Any] =
+  override def toSnapshotObservable: Observable[Any] =
     UnsignedSimpleItemAdded(orderWatch) +:
       Observable.fromIterable(externalToState)
         .map { case (externalOrderName, state) =>
@@ -211,8 +214,10 @@ extends UnsignedSimpleItemState
     }
 }
 
-object OrderWatchState
+object OrderWatchState extends UnsignedSimpleItemState.Companion[OrderWatchState]
 {
+  type Path = OrderWatchPath
+
   type ToOrderAdded = (FreshOrder, Option[ExternalOrderKey]) => Checked[Option[KeyedEvent[OrderAdded]]]
 
   private val logger = scribe.Logger[this.type]
