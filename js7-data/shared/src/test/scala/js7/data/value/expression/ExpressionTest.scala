@@ -667,6 +667,10 @@ final class ExpressionTest extends AnyFreeSpec
       result = Right(NumberValue(-1)),
       Right(ArgumentExpression(NamedValue("list"), NumericConstant(0))))
 
+    testEval("${list}(0)",
+      result = Right(NumberValue(-1)),
+      Right(ArgumentExpression(NamedValue("list"), NumericConstant(0))))
+
     testEval("$list(1)",
       result = Right(NumberValue(111)),
       Right(ArgumentExpression(NamedValue("list"), NumericConstant(1))))
