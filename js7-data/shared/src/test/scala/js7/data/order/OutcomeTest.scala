@@ -126,7 +126,7 @@ final class OutcomeTest extends AnyFreeSpec
           }
         }""")
 
-      // COMPATIBLE with v2.2
+      // COMPATIBLE with v2.3
       testJsonDecoder[Outcome](Outcome.processLost(ProcessLostDueToUnknownReasonProblem), json"""
         {
           "TYPE": "Disrupted",

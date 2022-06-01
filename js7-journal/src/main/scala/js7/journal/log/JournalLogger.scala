@@ -126,7 +126,6 @@ private[journal] final class JournalLogger(
     import stamped.value.{event, key}
     sb.clear()
     sb.append("Event ")
-    sb.append(persistMarker)
     sb.append(transactionMarker(false))
     if (key != NoKey) {
       sb.append(key)
