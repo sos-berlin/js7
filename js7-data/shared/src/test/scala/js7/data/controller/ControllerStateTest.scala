@@ -245,8 +245,8 @@ final class ControllerStateTest extends AsyncFreeSpec
         "itemRevision": 7
       }, {
         "TYPE": "Notice",
-        "boardPath": "BOARD",
         "id": "NOTICE-1",
+        "boardPath": "BOARD",
         "endOfLife": 10086400000
       }, {
         "TYPE": "Calendar",
