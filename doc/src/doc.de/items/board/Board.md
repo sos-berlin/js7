@@ -41,8 +41,8 @@ JSON
 {
   "TYPE": "PostNotices",
   "boardPath": [
-    "MY-BOARD",
-    "ANOTHER-BOARD"
+    "A-BOARD",
+    "B-BOARD"
   ]
 }
 ```
@@ -50,14 +50,13 @@ JSON
 
 ## Anweisung ExpectNotices
 
+Die erwarteten schwarzen Bretter sind als Ausdruck anzugegeben. Die kleine Ausdrucksprache hierfür kennt konstante Strings (für  BoardPath) und die Operatoren `&&` und `||'. `&&` bindet stärker.
+
 JSON
 ```json
 {
   "TYPE": "ExpectNotices",
-  "boardPaths": [
-    "MY-BOARD",
-    "ANOTHER-BOARD"
-  ]
+  "boardPaths": "'A-BOARD' || 'B-BOARD' && 'C-BOARD'"
 }
 ```
 
