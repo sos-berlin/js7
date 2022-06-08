@@ -14,7 +14,7 @@ import js7.data.item.Repo._
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemAddedOrChanged, VersionedItemChanged, VersionedItemEvent, VersionedItemRemoved}
 import org.jetbrains.annotations.TestOnly
 import scala.collection.mutable.ListBuffer
-import scala.collection.{View, mutable}
+import scala.collection.{MapView, View, mutable}
 
 /**
   * Representation of versioned VersionedItem (configuration objects).
@@ -222,11 +222,11 @@ final case class Repo private(
                 addOrChange(event)
 
             case event: VersionedItemChanged =>
-              pathToItem(event.path)
+              pathToVersionedItem(event.path)
                 .flatMap(_ => addOrChange(event))
 
             case VersionedItemRemoved(path) =>
-              for (_ <- pathToItem(event.path)) yield
+              for (_ <- pathToVersionedItem(event.path)) yield
                 addEntry(path, Remove(currentVersionId))
           }
     }
@@ -297,9 +297,28 @@ final case class Repo private(
       signed <- versions.head.maybeSignedItem
     } yield signed.value.id.asInstanceOf[VersionedItemId[P]]
 
-  def pathToItem(path: VersionedItemPath): Checked[VersionedItem] =
+  def pathToVersionedItem(path: VersionedItemPath): Checked[VersionedItem] =
     pathToSigned(path)
       .map(_.value)
+
+  def pathToItems[I <: VersionedItem](I: VersionedItem.Companion[I])
+  : MapView[I.Path, Iterable[I]] =
+    new MapView[I.Path, Iterable[I]] {
+      def get(path: I.Path): Option[Seq[I]] =
+        pathToVersionToSignedItems
+          .get(path)
+          .map(_.collect {
+            case Add(signedItem) => signedItem.value.asInstanceOf[I]
+          })
+
+      def iterator: Iterator[(I.Path, Seq[I])] =
+        pathToVersionToSignedItems
+          .iterator
+          .collect { case (path, versions) if path.companion eq I.Path =>
+            path.asInstanceOf[I.Path] ->
+              versions.collect { case Add(signedItem) => signedItem.value.asInstanceOf[I] }
+          }
+    }
 
   private def pathToSigned(path: VersionedItemPath): Checked[Signed[VersionedItem]] =
     pathToVersionToSignedItems

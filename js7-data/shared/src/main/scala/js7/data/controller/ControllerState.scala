@@ -541,7 +541,7 @@ with SnapshotableState[ControllerState]
         path match {
           case path: UnsignedSimpleItemPath => pathToItemState_.get(path).map(_.item)
           case path: SignableSimpleItemPath => pathToSignedSimpleItem.get(path).map(_.value)
-          case path: VersionedItemPath => repo.pathToItem(path).toOption
+          case path: VersionedItemPath => repo.pathToVersionedItem(path).toOption
         }
       }
 

@@ -142,7 +142,7 @@ final case class ControllerStateExecutor private(
           controllerState = updated
           keyedEvent match {
             case KeyedEvent(_, event: VersionedItemEvent) =>
-              for (previousItem <- previous.repo.pathToItem(event.path)) {
+              for (previousItem <- previous.repo.pathToVersionedItem(event.path)) {
                 touchedItemKeys += previousItem.id
                 previousItem match {
                   case previousItem: Workflow =>
