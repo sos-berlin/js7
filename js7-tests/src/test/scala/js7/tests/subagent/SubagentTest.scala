@@ -69,7 +69,7 @@ final class SubagentTest extends AnyFreeSpec with SubagentTester
 
       val started = eventWatch.await[OrderStdoutWritten](_.key == orderId, after = eventId)
         .head.value.event
-      assert(started == OrderStdoutWritten("STARTED\n"))
+      assert(started == OrderStdoutWritten("TestSemaphoreJob\n"))
 
       controllerApi.executeCommand(CancelOrders(Seq(orderId), CancellationMode.kill()))
         .await(99.s).orThrow

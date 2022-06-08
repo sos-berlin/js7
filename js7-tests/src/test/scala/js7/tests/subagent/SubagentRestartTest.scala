@@ -106,7 +106,7 @@ final class SubagentRestartTest extends AnyFreeSpec with SubagentTester
 
       val written = eventWatch.await[OrderStdoutWritten](_.key == aOrderId, after = eventId)
         .head.value.event
-      assert(written == OrderStdoutWritten("STARTED\n"))
+      assert(written == OrderStdoutWritten("TestSemaphoreJob\n"))
 
       // For this test, the terminating Subagent must no emit any event before shutdown
       subagent.journal.stopEventWatch()
@@ -153,7 +153,7 @@ final class SubagentRestartTest extends AnyFreeSpec with SubagentTester
 
       val written = eventWatch.await[OrderStdoutWritten](_.key == aOrderId, after = eventId)
         .head.value.event
-      assert(written == OrderStdoutWritten("STARTED\n"))
+      assert(written == OrderStdoutWritten("TestSemaphoreJob\n"))
 
       // For this test, the terminating Subagent must no emit any event before shutdown
       subagent.journal.stopEventWatch()

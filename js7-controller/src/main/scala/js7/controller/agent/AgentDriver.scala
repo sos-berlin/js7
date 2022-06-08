@@ -226,7 +226,7 @@ extends ReceiveLoggingActor.WithStash
 
   override def preStart() = {
     super.preStart()
-    logger.debug(s"preStart AgentRunId=$agentRunIdOnce")
+    logger.debug(s"preStart $agentRunIdOnce")
   }
 
   override def postStop() = {

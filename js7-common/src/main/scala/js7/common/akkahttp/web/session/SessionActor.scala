@@ -6,7 +6,7 @@ import js7.base.Js7Version
 import js7.base.auth.{SessionToken, User, UserId}
 import js7.base.generic.Completed
 import js7.base.log.Logger
-import js7.base.problem.Checked._
+import js7.base.problem.Checked
 import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.time.JavaTimeConverters._
 import js7.base.utils.Assertions.assertThat
@@ -88,31 +88,31 @@ extends Actor {
 
     case Command.Get(token, _idsOrUser: Either[Set[UserId], User]) =>
       val idsOrUser = _idsOrUser.map(_.asInstanceOf[S#User])
-      val sessionOption = (tokenToSession.get(token), idsOrUser) match {
+      val checkedSession = (tokenToSession.get(token), idsOrUser) match {
         case (None, _) =>
-          logger.debug(s"Rejecting unknown session token of ${idsOrUser.fold(_.mkString("|"), _.id)}")
-          None
+          val users = idsOrUser.fold(_.mkString("|"), _.id)
+          logger.debug(s"⛔️ InvalidSessionToken: Rejecting unknown session token of $users")
+          Left(InvalidSessionTokenProblem)
 
         case (Some(session), Right(user)) if !user.id.isAnonymous && user.id != session.currentUser.id =>
           tryUpdateLatelyAuthenticatedUser(user, session)
 
         case (Some(session), Left(userIds)) if !userIds.contains(session.currentUser.id) =>
-          logger.debug(s"HTTPS distinguished name UserIds '${userIds.mkString(", ")}'" +
-            s" do not include Sessions's ${session.currentUser.id}")
-          None
+          logger.debug("⛔️ InvalidSessionToken: HTTPS distinguished name UserIds " +
+            s"'${userIds.mkString(", ")}' do not include Sessions's ${session.currentUser.id}")
+          Left(InvalidSessionTokenProblem)
 
         case (Some(session), _) =>
           if (handleTimeout(session)) {
-            None
+            Left(InvalidSessionTokenProblem)
           } else {
             if (!session.isEternal) {
               session.touch(sessionTimeout)
             }
-            Some(session)
+            Right(session)
           }
       }
-      val checkedSession = sessionOption toChecked InvalidSessionTokenProblem
-      sender() ! checkedSession
+      sender() ! (checkedSession: Checked[Session])
 
     case Command.GetCount =>
       sender() ! tokenToSession.size
@@ -132,15 +132,16 @@ extends Actor {
     * The session is updated with the authenticated user.
     * This may happen only once and the original user must be Anonymous.
     */
-  private def tryUpdateLatelyAuthenticatedUser(newUser: S#User, session: Session): Option[Session] = {
+  private def tryUpdateLatelyAuthenticatedUser(newUser: S#User, session: Session): Checked[Session] = {
     if (session.sessionInit.loginUser.isAnonymous &&
         session.tryUpdateUser(newUser.asInstanceOf[session.User]))  // Mutate session!
     {
       logger.info(s"${session.sessionToken} for ${session.sessionInit.loginUser.id} switched to ${newUser.id}")
-      Some(session)
+      Right(session)
     } else {
-      logger.debug(s"${session.sessionToken}: Rejecting session token belonging to ${session.currentUser.id} but sent by ${newUser.id}")
-      None
+      logger.debug(s"⛔️ InvalidSessionToken: ${session.sessionToken}: Rejecting session token " +
+        s"belonging to ${session.currentUser.id} but sent by ${newUser.id}")
+      Left(InvalidSessionTokenProblem)
     }
   }
 

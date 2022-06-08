@@ -99,7 +99,7 @@ final class ResetSubagentWhileRunning2Test extends AnyFreeSpec with SubagentTest
       aOrderId <-: OrderAttached(agentPath),
       aOrderId <-: OrderStarted,
       aOrderId <-: OrderProcessingStarted(bareSubagentId),
-      aOrderId <-: OrderStdoutWritten("STARTED\n"),
+      aOrderId <-: OrderStdoutWritten("TestSemaphoreJob\n"),
       aOrderId <-: OrderProcessed.processLostDueToReset,
       aOrderId <-: OrderMoved(Position(0)),
 

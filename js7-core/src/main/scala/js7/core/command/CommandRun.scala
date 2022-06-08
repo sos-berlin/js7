@@ -3,6 +3,7 @@ package js7.core.command
 import js7.base.auth.UserId
 import js7.base.log.CorrelId
 import js7.base.time.ScalaTime._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.command.{CommandRunOverview, CommonCommand}
 import scala.concurrent.duration.Deadline
 
@@ -18,7 +19,7 @@ final case class CommandRun[C <: CommonCommand](
 {
   override def toString = s"Command $idString by User '${userId.string}': ${command.toShortString}"
 
-  def idString = batchInternalId match {
+  def idString = "#" + batchInternalId.match_ {
     case None => correlId.toString
     case Some(batchId) => s"$batchId.$correlId"
   }

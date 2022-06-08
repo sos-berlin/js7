@@ -5,7 +5,7 @@ import akka.http.scaladsl.marshalling.Marshal
 import akka.http.scaladsl.model.HttpEntity.{Chunk, LastChunk}
 import akka.http.scaladsl.model.HttpMethods.{GET, POST}
 import akka.http.scaladsl.model.MediaTypes.`application/json`
-import akka.http.scaladsl.model.StatusCodes.GatewayTimeout
+import akka.http.scaladsl.model.StatusCodes.{Forbidden, GatewayTimeout, Unauthorized}
 import akka.http.scaladsl.model.headers.CacheDirectives.{`no-cache`, `no-store`}
 import akka.http.scaladsl.model.headers.{Accept, ModeledCustomHeader, ModeledCustomHeaderCompanion, `Cache-Control`}
 import akka.http.scaladsl.model.{ContentTypes, ErrorInfo, HttpEntity, HttpHeader, HttpMethod, HttpRequest, HttpResponse, RequestEntity, StatusCode, Uri => AkkaUri}
@@ -302,8 +302,12 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
                   (closed ?? " (closed)")))
             }
             .tapEval(response => Task {
+              val mark = response.status.isFailure ?? (response.status match {
+                case Unauthorized | Forbidden => "⛔️"
+                case _ => "❓"
+              })
               logger.debug(
-                s"<--<${response.status.isFailure ?? "❓"} $responseLogPrefix => ${response.status}")
+                s"<--<$mark $responseLogPrefix => ${response.status}")
             }))
       })
 

@@ -3,6 +3,7 @@ package js7.tests.jobs
 import cats.effect.ExitCase
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax._
+import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.data.order.Outcome
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
@@ -21,13 +22,13 @@ extends InternalJob
   final def toOrderProcess(step: Step) = {
     val orderId = step.order.id
     OrderProcess(
-      step.outTaskObserver.send("STARTED\n")
+      step.outTaskObserver.send(getClass.simpleScalaName + "\n")
         .*>(semaphore
           .tapEval(sema =>
             sema.count.flatMap(count =>
               Task(logger.debug(s"$orderId acquire ... (count=$count)"))))
           .flatMap(_.acquire)
-          .logWhenItTakesLonger(s"${getClass.getSimpleName}.semaphore.acquire/${step.order.id}")
+          .logWhenItTakesLonger(s"${getClass.simpleScalaName}.semaphore.acquire/${step.order.id}")
           .tapEval(_ => Task(logger.debug(s"$orderId acquired")))
           .as(Outcome.succeeded))
     .guaranteeCase {

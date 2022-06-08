@@ -68,7 +68,7 @@ final class ResetSubagentTest extends AnyFreeSpec with SubagentTester
         OrderAttached(agentPath),
         OrderStarted,
         OrderProcessingStarted(bareSubagentId),
-        OrderStdoutWritten("STARTED\n"),
+        OrderStdoutWritten("TestSemaphoreJob\n"),
 
         SubagentResetStartedByController(force = false),
         SubagentResetStarted(force = false),
