@@ -93,7 +93,7 @@ extends Actor {
       case Batch(commands) =>
         val promises = Vector.fill(commands.size) { Promise[Checked[Response]]() }
         for ((CorrelIdWrapped(subcorrelId, cmd), promise) <- commands zip promises) {
-          (subcorrelId or CorrelId.generate()).bind {
+          subcorrelId.orNew.bind {
             executeCommand(cmd, meta, promise, batchId = batchId orElse Some(correlId))
           }
         }

@@ -1,7 +1,7 @@
 package js7.base.log
 
 import implicitbox.Not
-import js7.base.log.CorrelId.local
+import js7.base.log.CorrelId.{generate, local}
 import monix.eval.Task
 import monix.execution.CancelableFuture
 import monix.execution.misc.Local
@@ -14,7 +14,8 @@ import scala.concurrent.Future
 If ${R} is the result of a synchronous action, either build an implicit with
 CanBindCorrelId.synchronous or import CanBindCorrelId.Implicits.synchronousAsDefault.""")
 trait CanBindCorrelId[R] {
-  def bind(correlId: CorrelId)(body: => R): R
+  private[log] def bind(correlId: CorrelId)(body: => R): R
+  private[log] def bindNewIfNoCurrent(body: => R): R
 }
 
 object CanBindCorrelId
@@ -38,7 +39,7 @@ object CanBindCorrelId
   def synchronous[R]: CanBindCorrelId[R] =
     SynchronousCan.asInstanceOf[CanBindCorrelId[R]]
 
-  object TaskCan extends CanBindCorrelId[Task[Any]] {
+  private object TaskCan extends CanBindCorrelId[Task[Any]] {
     def bind(correlId: CorrelId)(task: => Task[Any]): Task[Any] =
       if (!CorrelId.isEnabled)
         Task.defer(task)
@@ -50,6 +51,17 @@ object CanBindCorrelId
             Local.setContext(saved.bind(local.key, Some(correlId)))
             task
           }.guarantee(Task(Local.setContext(saved)))
+        }
+
+    private[log] def bindNewIfNoCurrent(task: => Task[Any]): Task[Any] =
+      if (!CorrelId.isEnabled)
+        Task.defer(task)
+      else
+        Task.defer {
+          if (CorrelId.current.nonEmpty)
+            task
+          else
+            bind(generate())(task)
         }
   }
 
@@ -69,6 +81,14 @@ object CanBindCorrelId
         finally
           Local.setContext(saved)
       }
+
+    def bindNewIfNoCurrent(future: => F[R]): F[R] =
+      if (!CorrelId.isEnabled)
+        future
+      else if (CorrelId.current.nonEmpty)
+        future
+      else
+        bind(generate())(future)
   }
 
   private object FutureCan extends FutureCan[Future, Any]
@@ -87,6 +107,14 @@ object CanBindCorrelId
         try body
         finally Local.setContext(saved)
       }
+
+    def bindNewIfNoCurrent(body: => Any): Any =
+      if (!CorrelId.isEnabled)
+        body
+      else if (CorrelId.current.nonEmpty)
+        body
+      else
+        bind(generate())(body)
   }
 
   object implicits {

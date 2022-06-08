@@ -125,7 +125,11 @@ object CorrelId extends GenericString.Checked_[CorrelId]
     def :=(correlId: CorrelId) = {}
   }
 
-  def bindNewCorrelId[R](body: => R)(implicit R: CanBindCorrelId[R]): R =
+  /** Generate a CorrelId for the body if `current` isEmpty. */
+  def bind[R](body: => R)(implicit R: CanBindCorrelId[R]): R =
+    R.bindNewIfNoCurrent(body)
+
+  def bindNew[R](body: => R)(implicit R: CanBindCorrelId[R]): R =
     R.bind(CorrelId.generate())(body)
 
   def enableScheduler(scheduler: Scheduler): Scheduler =

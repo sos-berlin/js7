@@ -6,6 +6,7 @@ import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.crypt.Signed
 import js7.base.eventbus.StandardEventBus
 import js7.base.generic.Completed
+import js7.base.log.CorrelId
 import js7.base.monixutils.RefCountedResource
 import js7.base.problem.Checked
 import js7.base.session.SessionApi
@@ -53,24 +54,30 @@ extends ControllerApiWithHttp
     apiCache.release
 
   /** For testing (it's slow): wait for a condition in the running event stream. **/
-  def when(predicate: EventAndState[Event, ControllerState] => Boolean): Task[EventAndState[Event, ControllerState]] =
-    JournaledProxy.observable(apiResources, None, _ => (), proxyConf)
-      .filter(predicate)
-      .headOptionL
-      .map(_.getOrElse(throw new EndOfEventStreamException))
+  def when(predicate: EventAndState[Event, ControllerState] => Boolean)
+  : Task[EventAndState[Event, ControllerState]] =
+    CorrelId.bind {
+      JournaledProxy.observable(apiResources, None, _ => (), proxyConf)
+        .filter(predicate)
+        .headOptionL
+        .map(_.getOrElse(throw new EndOfEventStreamException))
+    }
 
   /** Read events and state from Controller. */
   def eventAndStateObservable(
     proxyEventBus: StandardEventBus[ProxyEvent] = new StandardEventBus,
     fromEventId: Option[EventId] = None)
   : Observable[EventAndState[Event, ControllerState]] =
+    // CorrelId.bind ???
     JournaledProxy.observable(apiResources, fromEventId, proxyEventBus.publish, proxyConf)
 
   def startProxy(
     proxyEventBus: StandardEventBus[ProxyEvent] = new StandardEventBus,
     eventBus: JournaledStateEventBus[ControllerState] = new JournaledStateEventBus[ControllerState])
   : Task[ControllerProxy] =
-    ControllerProxy.start(this, apiResources, proxyEventBus, eventBus, proxyConf)
+    CorrelId.bind {
+      ControllerProxy.start(this, apiResources, proxyEventBus, eventBus, proxyConf)
+    }
 
   def clusterAppointNodes(idToUri: Map[NodeId, Uri], activeId: NodeId, clusterWatches: Seq[ClusterSetting.Watch])
   : Task[Checked[Accepted]] =
@@ -134,35 +141,36 @@ extends ControllerApiWithHttp
   def controllerState: Task[Checked[ControllerState]] =
     untilReachable(_.snapshot())
 
-  private def untilReachable[A](body: HttpControllerApi => Task[A]): Task[Checked[A]] = {
-    // TODO Similar to SessionApi.retryUntilReachable
-    val delays = SessionApi.defaultLoginDelays()
-    var warned = now - 1.h
-    /*HttpClient.liftProblem*/(
-      apiResource
-        .use(api => api
-          .retryIfSessionLost()(body(api))
-          .materialize.map {
-            case Failure(t: HttpException) if t.statusInt == 503/*Service unavailable*/ =>
-              Failure(t)  // Trigger onErrorRestartLoop
-            case o => HttpClient.failureToChecked(o)
-          }
-          .dematerialize)
-        .onErrorRestartLoop(()) {
-          case (t, _, retry) if HttpClient.isTemporaryUnreachable(t) && delays.hasNext =>
-            if (warned.elapsed >= 60.s) {
-              logger.warn(t.toStringWithCauses)
-              warned = now
-            } else {
-              logger.debug(t.toStringWithCauses)
+  private def untilReachable[A](body: HttpControllerApi => Task[A]): Task[Checked[A]] =
+    CorrelId.bind {
+      // TODO Similar to SessionApi.retryUntilReachable
+      val delays = SessionApi.defaultLoginDelays()
+      var warned = now - 1.h
+      /*HttpClient.liftProblem*/(
+        apiResource
+          .use(api => api
+            .retryIfSessionLost()(body(api))
+            .materialize.map {
+              case Failure(t: HttpException) if t.statusInt == 503/*Service unavailable*/ =>
+                Failure(t)  // Trigger onErrorRestartLoop
+              case o => HttpClient.failureToChecked(o)
             }
-            apiCache.clear *>
-              Task.sleep(delays.next()) *>
-              retry(())
-          case (t, _, _) =>
-            Task.raiseError(t)
-        })
-  }
+            .dematerialize)
+          .onErrorRestartLoop(()) {
+            case (t, _, retry) if HttpClient.isTemporaryUnreachable(t) && delays.hasNext =>
+              if (warned.elapsed >= 60.s) {
+                logger.warn(t.toStringWithCauses)
+                warned = now
+              } else {
+                logger.debug(t.toStringWithCauses)
+              }
+              apiCache.clear *>
+                Task.sleep(delays.next()) *>
+                retry(())
+            case (t, _, _) =>
+              Task.raiseError(t)
+          })
+    }
 }
 
 object ControllerApi
