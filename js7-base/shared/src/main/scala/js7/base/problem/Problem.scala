@@ -27,6 +27,13 @@ sealed trait Problem
 
   def throwableOption: Option[Throwable]
 
+  /** For Java, return an unchecked Exception. */
+  final def toRuntimeException: RuntimeException =
+    throwable match {
+      case t: RuntimeException => t
+      case t => new RuntimeException(t.toString, t)
+    }
+
   def cause: Option[Problem]
 
   def head: Problem = this

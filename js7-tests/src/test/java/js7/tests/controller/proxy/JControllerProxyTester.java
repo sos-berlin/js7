@@ -2,9 +2,13 @@ package js7.tests.controller.proxy;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 import js7.base.problem.Problem;
+import js7.data.controller.ControllerCommand.NoOperation;
 import js7.data_for_java.auth.JAdmission;
 import js7.data_for_java.auth.JHttpsConfig;
+import js7.data_for_java.controller.JControllerCommand;
 import js7.proxy.data.event.ProxyEvent;
 import js7.proxy.javaapi.JControllerApi;
 import js7.proxy.javaapi.JControllerProxy;
@@ -13,6 +17,7 @@ import js7.proxy.javaapi.eventbus.JStandardEventBus;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static js7.data_for_java.vavr.VavrUtils.await;
 import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 /**
@@ -29,6 +34,7 @@ class JControllerProxyTester
     }
 
     private void test(List<String> itemJsons, List<String> manyItemJsons) throws Exception {
+        testJsonCommand();
         testHttpGet();
 
         JControllerProxyRepoTester repoTester = new JControllerProxyRepoTester(proxy);
@@ -49,13 +55,26 @@ class JControllerProxyTester
         }
     }
 
+    private void testJsonCommand() throws ExecutionException, InterruptedException, TimeoutException {
+        JControllerCommand command = JControllerCommand
+            .fromJson("{ \"TYPE\": \"NoOperation\" }")
+            .getOrElseThrow(Problem::toRuntimeException);
+        assertThat(command.asScala(),instanceOf(NoOperation.class));
+        assertThat(command, equalTo(
+            JControllerCommand.apply(new NoOperation(scala.Option.empty()))));
+        api.executeCommand(command)
+            .get(99, SECONDS)
+            .getOrElseThrow(Problem::toRuntimeException);
+    }
+
     private void testHttpGet() {
         String overview = await(api.httpGetJson("/controller/api"));
         assertThat(overview.contains("\"id\":\"Controller\""), equalTo(true));
     }
 
     static void run(List<JAdmission> admissions, JHttpsConfig httpsConfig,
-        List<String> itemJsons, List<String> manyItemJsons, Runnable startController)
+        List<
+            String> itemJsons, List<String> manyItemJsons, Runnable startController)
         throws Exception
     {
         try (JStandardEventBus<ProxyEvent> proxyEventBus = new JStandardEventBus<>(ProxyEvent.class)) {
