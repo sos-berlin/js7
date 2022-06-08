@@ -688,7 +688,7 @@ lazy val `js7-tests` = project
     import Dependencies._
     libraryDependencies ++=
       akkaHttpTestkit % "test" ++  // For IntelliJ IDEA 2018.2
-      scalaTest % "test" ++
+      scalaTest ++
       diffx % "test" ++
       diffxScalaTest % "test" ++
       hamcrest % "test" ++
