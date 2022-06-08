@@ -4,7 +4,7 @@ import java.nio.file.Files.move
 import java.nio.file.Paths
 import js7.agent.RunningAgent
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.io.file.FileUtils.{copyDirectory, deleteDirectoryContentRecursively, deleteDirectoryRecursively}
+import js7.base.io.file.FileUtils.{copyDirectoryContent, deleteDirectoryContentRecursively, deleteDirectoryRecursively}
 import js7.base.problem.Checked._
 import js7.base.problem.Problem
 import js7.base.thread.Futures.implicits._
@@ -81,7 +81,7 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
   private lazy val outdatedState = agentFileTree.stateDir.resolveSibling(Paths.get("state~"))
 
   "Delete AgentRef" in {
-    copyDirectory(agentFileTree.stateDir, outdatedState)
+    copyDirectoryContent(agentFileTree.stateDir, outdatedState)
 
     assert(controllerApi.updateItems(Observable(DeleteSimple(agentPath))).await(99.s) ==
       Left(Problem.combine(

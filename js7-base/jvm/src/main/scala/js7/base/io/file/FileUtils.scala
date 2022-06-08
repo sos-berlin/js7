@@ -4,10 +4,10 @@ import cats.effect.{Resource, Sync}
 import java.io.{BufferedOutputStream, File, FileOutputStream, IOException, OutputStreamWriter}
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets.UTF_8
-import java.nio.file.Files.{copy, createDirectory, delete, deleteIfExists, isDirectory, isSymbolicLink, newOutputStream, setPosixFilePermissions}
+import java.nio.file.Files.{copy, createDirectory, delete, deleteIfExists, exists, isDirectory, isSymbolicLink, newOutputStream, setPosixFilePermissions}
 import java.nio.file.StandardOpenOption.{APPEND, CREATE, TRUNCATE_EXISTING, WRITE}
 import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
-import java.nio.file.{FileAlreadyExistsException, FileVisitOption, Files, OpenOption, Path, Paths}
+import java.nio.file.{CopyOption, FileAlreadyExistsException, FileVisitOption, Files, OpenOption, Path, Paths}
 import java.util.Objects.requireNonNull
 import java.util.concurrent.ThreadLocalRandom
 import js7.base.data.Writable.ops._
@@ -51,15 +51,15 @@ object FileUtils
       throw new IOException("touchFile file: unable to update modification time of " + file)
   }
 
-  def copyDirectory(from: Path, to: Path): Unit = {
-    createDirectory(to)
+  def copyDirectoryContent(from: Path, to: Path, options: CopyOption*): Unit = {
+    if (!exists(to)) createDirectory(to)
     autoClosing(Files.list(from)) { stream =>
       for (file <- stream.asScala) {
         val destination = to.resolve(file.getFileName)
         if (isDirectory(file))
-          copyDirectory(file, destination)
+          copyDirectoryContent(file, destination)
         else
-          copy(file, destination)
+          copy(file, destination, options: _*)
       }
     }
   }

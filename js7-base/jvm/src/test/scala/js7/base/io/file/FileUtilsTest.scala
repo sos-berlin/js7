@@ -11,7 +11,7 @@ import js7.base.circeutils.CirceUtils._
 import js7.base.data.ByteArray
 import js7.base.io.file.FileUtils.implicits._
 import js7.base.io.file.FileUtils.syntax._
-import js7.base.io.file.FileUtils.{autoDeleting, checkRelativePath, copyDirectory, deleteDirectoryRecursively, provideFile, temporaryDirectoryResource, touchFile, withTemporaryDirectory, withTemporaryFile}
+import js7.base.io.file.FileUtils.{autoDeleting, checkRelativePath, copyDirectoryContent, deleteDirectoryRecursively, provideFile, temporaryDirectoryResource, touchFile, withTemporaryDirectory, withTemporaryFile}
 import js7.base.io.file.FileUtilsTest._
 import js7.base.problem.ProblemException
 import js7.base.thread.MonixBlocking.syntax.RichTask
@@ -146,7 +146,7 @@ final class FileUtilsTest extends AnyFreeSpec with BeforeAndAfterAll
     }
   }
 
-  "copyDirectory" in {
+  "copyDirectoryContent" in {
     withTemporaryDirectory("FileUtilsTest-A-") { a =>
       a / "1" := 1
       createDirectories(a / "aa" / "aaa")
@@ -155,7 +155,7 @@ final class FileUtilsTest extends AnyFreeSpec with BeforeAndAfterAll
 
       withTemporaryDirectory("FileUtilsTest-B-") { bParent =>
         val b = bParent / "B"
-        copyDirectory(a, b)
+        copyDirectoryContent(a, b)
         assert((b / "1").contentString == "1")
         assert((b / "aa" / "aaa" / "2").contentString == "2")
         assert((b / "ax").isDirectory)
