@@ -20,7 +20,7 @@ import js7.data.orderwatch.ExternalOrderKey
 import js7.data.subagent.SubagentId
 import js7.data.value.{NamedValues, Value}
 import js7.data.workflow.position.{BranchId, InstructionNr, Position, WorkflowPosition}
-import js7.data.workflow.{Workflow, WorkflowId}
+import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import scala.collection.{MapView, View, mutable}
 import scala.reflect.ClassTag
 
@@ -59,6 +59,9 @@ final case class Order[+S <: Order.State](
 
   def workflowId: WorkflowId =
     workflowPosition.workflowId
+
+  def workflowPath: WorkflowPath =
+    workflowId.path
 
   def position: Position =
     workflowPosition.position

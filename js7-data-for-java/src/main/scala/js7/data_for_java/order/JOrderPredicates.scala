@@ -38,7 +38,7 @@ object JOrderPredicates
   @Nonnull
   def byWorkflowPath(@Nonnull workflowPath: WorkflowPath): Predicate = {
     requireNonNull(workflowPath)
-    _.workflowId.path == workflowPath
+    _.workflowPath == workflowPath
   }
 
   @Nonnull

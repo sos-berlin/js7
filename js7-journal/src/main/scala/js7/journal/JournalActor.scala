@@ -730,7 +730,7 @@ object JournalActor
       recoveredJournalHeader: JournalHeader,
       totalRunningSince: Deadline)
 
-    final case class StartWithoutRecovery[S <: SnapshotableState[S]](
+    final case class StartWithoutRecovery(
       journalId: JournalId,
       journalingObserver: Option[JournalingObserver] = None)
 

@@ -26,7 +26,7 @@ trait OrderScopes
     workflow.labeledInstruction(order.position).toOption.flatMap(_.maybeLabel)
 
   private def js7VariablesScope =
-    minimalJs7VariablesScope(order.id, order.workflowId.path, controllerId) |+|
+    minimalJs7VariablesScope(order.id, order.workflowPath, controllerId) |+|
       NamedValueScope(Map(
         "js7Label" -> StringValue(instructionLabel.fold("")(_.string)),
         "js7WorkflowPosition" -> StringValue(order.workflowPosition.toString)))

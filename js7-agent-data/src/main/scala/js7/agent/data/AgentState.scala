@@ -280,7 +280,7 @@ with SnapshotableState[AgentState]
 
       def iterator =
         keyToSignedItem.iterator.collect {
-          case pair @ (_, Signed(item, _)) if I.cls.isAssignableFrom(item.getClass) =>
+          case pair @ (_, Signed(item, _)) if item.companion eq I =>
             pair.asInstanceOf[(I.Key, Signed[I])]
         }
 
