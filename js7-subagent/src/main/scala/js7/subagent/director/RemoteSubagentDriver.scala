@@ -11,9 +11,8 @@ import js7.base.generic.SecretString
 import js7.base.io.https.HttpsConfig
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGKILL
-import js7.base.log.CorrelId.currentCorrelId
 import js7.base.log.Logger.syntax._
-import js7.base.log.{CorrelIdWrapped, Logger}
+import js7.base.log.{CorrelId, CorrelIdWrapped, Logger}
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.monixutils.{AsyncMap, AsyncVariable, Switch}
 import js7.base.problem.Checked._
@@ -590,7 +589,7 @@ extends SubagentDriver with SubagentEventListener[S0]
           val cmd = signedItems match {
             case Nil => numberedCommand
             case signedSeq =>
-              val correlId = currentCorrelId
+              val correlId = CorrelId.current
               numberedCommand.copy(
                 value = SubagentCommand.Batch(signedSeq
                   .map(AttachSignedItem(_): SubagentCommand)

@@ -7,7 +7,6 @@ import js7.agent.scheduler.order.OrderActor._
 import js7.base.generic.Completed
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
-import js7.base.log.CorrelId.{bindNewCorrelId, currentCorrelId}
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.RichCheckedTask
 import js7.base.problem.Checked.Ops
@@ -111,7 +110,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
         orderCorrelId.bind[Unit] {
           if (order.isProcessable) {
             // Separate CorrelId for each order process
-            bindNewCorrelId {
+            CorrelId.bindNew {
               become("processing")(processing)
               subagentKeeper
                 .processOrder(
@@ -271,7 +270,7 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
   private def update(events: Seq[OrderEvent]) = {
     val previousOrderOrNull = order
     events foreach updateOrder
-    context.parent ! Output.OrderChanged(orderId, currentCorrelId, previousOrderOrNull, events)
+    context.parent ! Output.OrderChanged(orderId, CorrelId.current, previousOrderOrNull, events)
     events.last match {
       case OrderDetached =>
         logger.trace("Stopping after OrderDetached")

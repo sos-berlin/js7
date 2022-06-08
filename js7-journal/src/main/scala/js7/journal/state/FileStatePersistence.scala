@@ -4,8 +4,7 @@ import akka.actor.{ActorRef, ActorRefFactory}
 import akka.pattern.ask
 import akka.util.Timeout
 import com.softwaremill.diffx
-import js7.base.log.CorrelId.currentCorrelId
-import js7.base.log.Logger
+import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime._
@@ -141,7 +140,7 @@ extends StatePersistence[S] with AutoCloseable
     options: CommitOptions = CommitOptions.default)
   : Task[Checked[(Stamped[KeyedEvent[E]], S)]] =
     persistTask
-      .flatMap(_(state => stateToEvent(state).map(_ :: Nil), options, currentCorrelId))
+      .flatMap(_(state => stateToEvent(state).map(_ :: Nil), options, CorrelId.current))
       .map(_ map {
         case (stampedKeyedEvents, state) =>
           assertThat(stampedKeyedEvents.lengthIs == 1)
@@ -176,7 +175,7 @@ extends StatePersistence[S] with AutoCloseable
     Task.defer {
       requireStarted()
       persistTask.flatMap(
-        _(stateToEvents, options, currentCorrelId)
+        _(stateToEvents, options, CorrelId.current)
           .map(_.map { case (stampedKeyedEvents, state) =>
             stampedKeyedEvents.asInstanceOf[Seq[Stamped[KeyedEvent[E]]]] -> state }))
     }

@@ -7,7 +7,7 @@ import java.util.concurrent.CompletableFuture
 import java.util.{Optional, OptionalLong}
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
-import js7.base.log.CorrelId.bindNewCorrelId
+import js7.base.log.CorrelId
 import js7.base.problem.Problem
 import js7.base.web.Uri
 import js7.data.board.{BoardPath, NoticeId}
@@ -301,5 +301,5 @@ final class JControllerApi(val asScala: ControllerApi)(implicit scheduler: Sched
   }
 
   private def runTask[A](task: Task[A]): CompletableFuture[A] =
-    bindNewCorrelId(task.runToFuture).asJava
+    CorrelId.bindNew(task.runToFuture).asJava
 }

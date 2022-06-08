@@ -1,6 +1,5 @@
 package js7.controller.command
 
-import js7.base.log.CorrelId.currentCorrelId
 import js7.base.log.{CorrelId, CorrelIdWrapped, Logger}
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime._
@@ -26,42 +25,45 @@ extends CommandExecutor[ControllerCommand]
     executeCommand(command, meta, None)
 
   private def executeCommand(command: ControllerCommand, meta: CommandMeta, batchId: Option[CorrelId])
-  : Task[Checked[command.Response]] = {
-    val correlId = currentCorrelId
-    val run = register.add(command, meta, correlId, batchId)
-    logCommand(run)
-    executeCommand2(command, meta, correlId, batchId)
-      .map { checkedResponse =>
-        if (run.batchInternalId.isEmpty || checkedResponse != Right(ControllerCommand.Response.Accepted)) {
-          logger.debug(s"Response to ${run.idString} ${ControllerCommand.jsonCodec.classToName(run.command.getClass)}" +
-            s" (${run.runningSince.elapsed.pretty}): $checkedResponse")
+  : Task[Checked[command.Response]] =
+    Task.defer {
+      val correlId = CorrelId.current
+      val run = register.add(command, meta, correlId, batchId)
+      logCommand(run)
+      executeCommand2(command, meta, correlId, batchId)
+        .map { checkedResponse =>
+          if (run.batchInternalId.isEmpty || checkedResponse != Right(ControllerCommand.Response.Accepted)) {
+            logger.debug(s"Response to ${run.idString} ${ControllerCommand.jsonCodec.classToName(run.command.getClass)}" +
+              s" (${run.runningSince.elapsed.pretty}): $checkedResponse")
+          }
+          for (problem <- checkedResponse.left) logger.warn(s"$run rejected: $problem")
+          checkedResponse.map(_.asInstanceOf[command.Response])
         }
-        for (problem <- checkedResponse.left) logger.warn(s"$run rejected: $problem")
-        checkedResponse.map(_.asInstanceOf[command.Response])
-      }
-      .doOnFinish(maybeThrowable => Task {
-        for (t <- maybeThrowable if run.batchInternalId.isEmpty) {
-          logger.warn(s"$run failed: ${t.toStringWithCauses}")
-        }
-        register.remove(run.correlId)
-      })
-  }
+        .doOnFinish(maybeThrowable => Task {
+          for (t <- maybeThrowable if run.batchInternalId.isEmpty) {
+            logger.warn(s"$run failed: ${t.toStringWithCauses}")
+          }
+          register.remove(run.correlId)
+        })
+    }
 
   private def executeCommand2(command: ControllerCommand, meta: CommandMeta, id: CorrelId, batchId: Option[CorrelId])
   : Task[Checked[ControllerCommand.Response]] =
-    command match {
-      case Batch(correlIdWrappedCommands) =>
-        val tasks = for (CorrelIdWrapped(correlId, command) <- correlIdWrappedCommands) yield
-          correlId.bind {
-            executeCommand(command, meta, batchId orElse Some(id))
-          }
-        Task.sequence(tasks).map(checkedResponses => Right(Batch.Response(checkedResponses)))
+    Task.defer {
+      command match {
+        case Batch(correlIdWrappedCommands) =>
+          val tasks = for (CorrelIdWrapped(correlId, command) <- correlIdWrappedCommands) yield
+            correlId.bind {
+              executeCommand(command, meta, batchId orElse Some(id))
+            }
+          Task.sequence(tasks).map(checkedResponses => Right(Batch.Response(checkedResponses)))
 
-      case EmergencyStop(restart) =>
-        Halt.haltJava("Command EmergencyStop received: JS7 CONTROLLER STOPS NOW", restart = restart)
+        case EmergencyStop(restart) =>
+          Halt.haltJava("Command EmergencyStop received: JS7 CONTROLLER STOPS NOW", restart = restart)
 
-      case _ =>
-        otherCommandExecutor.executeCommand(command, meta)
+        case _ =>
+          otherCommandExecutor.executeCommand(command, meta)
+      }
     }
 
   private def logCommand(run: CommandRun[ControllerCommand]): Unit =

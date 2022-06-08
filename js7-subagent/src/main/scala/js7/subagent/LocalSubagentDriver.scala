@@ -4,8 +4,7 @@ import cats.syntax.foldable._
 import cats.syntax.parallel._
 import cats.syntax.traverse._
 import js7.base.io.process.{ProcessSignal, Stderr, Stdout, StdoutOrStderr}
-import js7.base.log.CorrelId.currentCorrelId
-import js7.base.log.Logger
+import js7.base.log.{CorrelId, Logger}
 import js7.base.log.Logger.syntax._
 import js7.base.monixutils.AsyncMap
 import js7.base.monixutils.MonixBase.syntax._
@@ -142,7 +141,7 @@ extends SubagentDriver
 
       def writeObservableAsEvents(outerr: StdoutOrStderr, observable: Observable[String]) =
         Task.defer {
-          val correlId = currentCorrelId
+          val correlId = CorrelId.current
           observable
             .doAfterSubscribe(Task(observingStarted(outerr).success(())))
             .buffer(Some(stdouterr.delay), stdouterr.chunkSize, toWeight = _.length)

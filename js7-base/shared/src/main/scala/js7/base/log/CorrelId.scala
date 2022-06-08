@@ -16,6 +16,9 @@ sealed trait CorrelId extends GenericString
 {
   def fixedWidthString: String
 
+  def orNew: CorrelId =
+    or(CorrelId.generate())
+
   def or(correlId: CorrelId): CorrelId =
     if (isEmpty) correlId else this
 
@@ -57,15 +60,15 @@ object CorrelId extends GenericString.Checked_[CorrelId]
       case _ => isTest ? true
     }
 
+  def couldBeEnabled = maybeEnabled0 getOrElse true
+
   private val isEnabled0 = couldBeEnabled //maybeEnabled0 getOrElse false
 
   // Maybe some percent performance gain when not being called?
   @inline private[log] def onCorrelIdLogged(): Unit =
     {} //  isEnabled0 = true
 
-  def couldBeEnabled = maybeEnabled0 getOrElse true
-
-  def isEnabled = isEnabled0
+  @inline def isEnabled = isEnabled0
 
   def apply(number: Long): CorrelId =
     LongCorrelId(number)
@@ -90,7 +93,7 @@ object CorrelId extends GenericString.Checked_[CorrelId]
       LongCorrelId(random.nextLong & bitMask)
     }
 
-  def currentCorrelId: CorrelId =
+  def current: CorrelId =
     if (!CorrelId.isEnabled)
       CorrelId.empty
     else {
@@ -102,7 +105,7 @@ object CorrelId extends GenericString.Checked_[CorrelId]
     if (!CorrelId.isEnabled)
       body(EmptyLogCorrelId)
     else {
-      val previous = currentCorrelId
+      val previous = current
       try body(new ActiveLogCorrelId(previous))
       finally local.update(previous)
     }
@@ -232,5 +235,5 @@ object CorrelId extends GenericString.Checked_[CorrelId]
   def statistics: String =
     s"$generateCount CorrelIds generated, $asStringCount× string, " +
     s"${CanBindCorrelId.bindCorrelIdCount}× bindCorrelId, " +
-      s"$currentCorrelIdCount× currentCorrelId"
+      s"$currentCorrelIdCount× CorrelId.current"
 }

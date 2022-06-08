@@ -3,7 +3,6 @@ package js7.journal
 import akka.actor.{Actor, ActorLogging, ActorRef, Stash}
 import js7.base.circeutils.typed.TypedJsonCodec.typeName
 import js7.base.generic.Accepted
-import js7.base.log.CorrelId.currentCorrelId
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.promiseTask
 import js7.base.monixutils.MonixBase.syntax.RichScheduler
@@ -101,9 +100,9 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
       if (TraceLog && logger.underlying.isTraceEnabled)
         for (t <- timestamped) logger.trace(s"»$toString« Store ${t.keyedEvent.key} <-: ${typeName(t.keyedEvent.event.getClass)}")
       journalActor.forward(
-        JournalActor.Input.Store(currentCorrelId, timestamped, self, options, since = now,
+        JournalActor.Input.Store(CorrelId.current, timestamped, self, options, since = now,
           callersItem = EventsCallback(
-            currentCorrelId,
+            CorrelId.current,
             async = async,
             (stampedSeq, journaledState) => promise.complete(
               try Success(callback(stampedSeq.asInstanceOf[Seq[Stamped[KeyedEvent[EE]]]], journaledState))
@@ -124,8 +123,8 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
   private def defer_(async: Boolean, callback: => Unit): Unit = {
     start(async = async, "defer")
     journalActor.forward(
-      JournalActor.Input.Store(currentCorrelId, Nil, self, CommitOptions.default, since = now,
-        callersItem = Deferred(currentCorrelId, async = async, {
+      JournalActor.Input.Store(CorrelId.current, Nil, self, CommitOptions.default, since = now,
+        callersItem = Deferred(CorrelId.current, async = async, {
           case Left(problem) => throw problem.throwable.appendCurrentStackTrace
           case Right(Accepted) => callback
         })))
@@ -154,8 +153,8 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
       start(async = true, "persistKeyedEventAcceptEarlyTask")
       val timestamped = keyedEvents.map(Timestamped(_, timestampMillis))
       journalActor.forward(
-        JournalActor.Input.Store(currentCorrelId, timestamped, self, options, since = now, commitLater = true,
-          Deferred(currentCorrelId, async = true, checked => promise.success(checked))))
+        JournalActor.Input.Store(CorrelId.current, timestamped, self, options, since = now, commitLater = true,
+          Deferred(CorrelId.current, async = true, checked => promise.success(checked))))
 
     case JournalActor.Output.Stored(stampedSeq, journaledState, item: Item) =>
       // sender() is from persistKeyedEvent or deferAsync

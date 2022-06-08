@@ -17,8 +17,7 @@ import js7.agent.web.AgentWebServer
 import js7.base.auth.{SessionToken, SimpleUser, UserId}
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.io.process.ProcessSignal
-import js7.base.log.CorrelId.currentCorrelId
-import js7.base.log.Logger
+import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.Checked
 import js7.base.problem.Checked._
 import js7.base.thread.Futures.implicits._
@@ -106,7 +105,7 @@ extends AutoCloseable
     Task.deferFuture(
       promiseFuture[Checked[AgentCommand.Response]] { promise =>
         mainActor !
-          MainActor.Input.ExternalCommand(command, UserId.Anonymous, currentCorrelId, promise)
+          MainActor.Input.ExternalCommand(command, UserId.Anonymous, CorrelId.current, promise)
       })
 
   def executeCommandAsSystemUser(command: AgentCommand): Task[Checked[AgentCommand.Response]] =

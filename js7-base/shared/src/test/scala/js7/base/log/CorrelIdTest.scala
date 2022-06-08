@@ -4,7 +4,7 @@ import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets.US_ASCII
 import java.util.Base64
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
-import js7.base.log.CorrelId.{LongCorrelId, currentCorrelId}
+import js7.base.log.CorrelId.LongCorrelId
 import js7.base.log.CorrelIdTest._
 import js7.base.time.ScalaTime.RichDeadline
 import js7.base.time.Stopwatch.itemsPerSecondString
@@ -58,18 +58,18 @@ final class CorrelIdTest extends AnyFreeSpec
   "bind[Unit]" in {
     var a: CorrelId = null
     CorrelId("__SYNC__").bind {
-      a = currentCorrelId
+      a = CorrelId.current
     }
-    assert(currentCorrelId.isEmpty)
+    assert(CorrelId.current.isEmpty)
     assert(a == CorrelId("__SYNC__"))
   }
 
   "bind[String]" in {
     import CanBindCorrelId.implicits.synchronousAsDefault
     val result = CorrelId("__SYNC__").bind {
-      currentCorrelId.string
+      CorrelId.current.string
     }
-    assert(currentCorrelId.isEmpty)
+    assert(CorrelId.current.isEmpty)
     assert(result == "__SYNC__")
   }
 

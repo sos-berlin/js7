@@ -12,7 +12,6 @@ import js7.agent.main.AgentMain
 import js7.agent.scheduler.order.AgentOrderKeeper._
 import js7.base.crypt.{SignatureVerifier, Signed}
 import js7.base.generic.Completed
-import js7.base.log.CorrelId.currentCorrelId
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.{RichCheckedTask, RichMonixTask}
 import js7.base.problem.Checked.Ops
@@ -546,7 +545,7 @@ with Stash
               case Right(_) =>
                 val promise = Promise[Unit]()
                 orderEntry.detachResponses ::= promise
-                (orderEntry.actor ? OrderActor.Command.HandleEvents(OrderDetached :: Nil, currentCorrelId))
+                (orderEntry.actor ? OrderActor.Command.HandleEvents(OrderDetached :: Nil, CorrelId.current))
                   .mapTo[Completed]
                   .onComplete {
                     case Failure(t) => promise.tryFailure(t)
@@ -579,7 +578,7 @@ with Stash
                 // one after the other because execution is asynchronous.
                 // A second command may may see the same not yet updated order.
                 // TODO Queue for each order? And no more OrderActor?
-                (orderEntry.actor ? OrderActor.Command.HandleEvents(events, currentCorrelId))
+                (orderEntry.actor ? OrderActor.Command.HandleEvents(events, CorrelId.current))
                   .mapTo[Completed]
                   .map(_ => Right(AgentCommand.Response.Accepted))
             }
@@ -612,14 +611,14 @@ with Stash
   private def attachOrder(order: Order[Order.IsFreshOrReady]): Future[Completed] = {
     val actor = newOrderActor(order.id)
     orderRegister.insert(order.id, actor)
-    (actor ? OrderActor.Command.Attach(order, currentCorrelId)).mapTo[Completed]  // TODO ask will time-out when Journal blocks
+    (actor ? OrderActor.Command.Attach(order, CorrelId.current)).mapTo[Completed]  // TODO ask will time-out when Journal blocks
     // Now expecting OrderEvent.OrderAttachedToAgent
   }
 
   private def newOrderActor(orderId: OrderId) =
     watch(actorOf(
       OrderActor.props(
-        orderId, currentCorrelId, subagentKeeper, journalActor = journalActor, journalConf),
+        orderId, CorrelId.current, subagentKeeper, journalActor = journalActor, journalConf),
       name = uniqueActorName(encodeAsActorName("Order:" + orderId.string))))
 
   private def handleOrderEvent(
@@ -686,7 +685,7 @@ with Stash
 
           case KeyedEvent(orderId_, event) =>
             val future = orderRegister(orderId_).actor ?
-              OrderActor.Command.HandleEvents(event :: Nil, currentCorrelId)
+              OrderActor.Command.HandleEvents(event :: Nil, CorrelId.current)
             try Await.result(future, 99.s) // TODO Blocking! SLOW because inhibits parallelization
             catch { case NonFatal(t) => logger.error(
               s"$orderId_ <-: ${event.toShortString} => ${t.toStringWithCauses}")

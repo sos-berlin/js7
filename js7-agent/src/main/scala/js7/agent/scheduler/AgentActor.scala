@@ -16,7 +16,6 @@ import js7.base.BuildInfo
 import js7.base.auth.UserId
 import js7.base.generic.Completed
 import js7.base.io.process.ProcessSignal.SIGKILL
-import js7.base.log.CorrelId.currentCorrelId
 import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
@@ -194,7 +193,7 @@ private[agent] final class AgentActor private(
             response.success(Left(AgentNotDedicatedProblem))
           case Some(started) =>
             started.actor.forward(
-              AgentOrderKeeper.Input.ExternalCommand(command, currentCorrelId, response))
+              AgentOrderKeeper.Input.ExternalCommand(command, CorrelId.current, response))
         }
 
       case command =>

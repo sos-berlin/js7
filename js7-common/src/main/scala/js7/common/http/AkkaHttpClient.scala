@@ -27,7 +27,6 @@ import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.generic.SecretString
 import js7.base.io.https.Https.loadSSLContext
 import js7.base.io.https.HttpsConfig
-import js7.base.log.CorrelId.currentCorrelId
 import js7.base.log.LogLevel.syntax.LevelLogger
 import js7.base.log.LogLevel.{Debug, Trace}
 import js7.base.log.{CorrelId, Logger}
@@ -240,7 +239,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
         val number = requestCounter.incrementAndGet()
         val headers = sessionToken.map(token => `x-js7-session`(token)).toList :::
           `x-js7-request-id`(s"#$number") ::
-          currentCorrelId.toOption.map(`x-js7-correlation-id`(_)).toList :::
+          CorrelId.current.toOption.map(`x-js7-correlation-id`(_)).toList :::
           request.headers.toList :::
           standardHeaders
         val req = request.withHeaders(headers).pipeIf(useCompression)(encodeGzip)

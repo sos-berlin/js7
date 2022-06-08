@@ -10,7 +10,6 @@ import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{AttachItem, AttachSignedItem, Batch, CoupleController, DedicateAgentDirector, DetachItem, EmergencyStop, NoOperation, OrderCommand, Reset, ResetSubagent, Response, ShutDown, TakeSnapshot}
 import js7.agent.scheduler.AgentHandle
 import js7.base.circeutils.JavaJsonCodecs.instant.StringInstantJsonCodec
-import js7.base.log.CorrelId.currentCorrelId
 import js7.base.log.{CorrelId, CorrelIdWrapped, Logger}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
@@ -67,7 +66,7 @@ extends Actor {
     promise: Promise[Checked[Response]],
     batchId: Option[CorrelId] = None)
   : Unit = {
-    val run = register.add(command, meta, currentCorrelId, batchId)
+    val run = register.add(command, meta, CorrelId.current, batchId)
     logCommand(run)
     val myResponse = Promise[Checked[Response]]()
     executeCommand2(batchId, run.correlId, command, meta, myResponse)
@@ -149,7 +148,7 @@ object CommandActor {
     def execute(command: AgentCommand, meta: CommandMeta) =
       Task.deferFuture {
         val promise = Promise[Checked[Response]]()
-        actor ! Input.Execute(command, meta, currentCorrelId, promise)
+        actor ! Input.Execute(command, meta, CorrelId.current, promise)
         promise.future
       }
 

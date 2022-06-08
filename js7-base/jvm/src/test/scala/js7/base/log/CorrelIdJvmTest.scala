@@ -1,7 +1,7 @@
 package js7.base.log
 
 import cats.syntax.parallel._
-import js7.base.log.CorrelId.currentCorrelId
+import js7.base.log.CorrelId.current
 import js7.base.log.CorrelIdJvmTest._
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.MonixBlocking.syntax.RichTask
@@ -43,31 +43,31 @@ final class CorrelIdJvmTest extends AnyFreeSpec with BeforeAndAfterAll
 
   "Manual tests" - {
     // Look at build.log (with debug enabled and %X{js7.correlId} in the pattern)!
-    // %X{js7.correlId} should show the same value as $currentCorrelId in the same line.
+    // %X{js7.correlId} should show the same value as $current in the same line.
 
     "raw" in {
-      logger.info(s"${Thread.currentThread.getId} $currentCorrelId First line")
+      logger.info(s"${Thread.currentThread.getId} $current First line")
     }
 
     "Synchronous (Unit)" in {
       val correlId = CorrelId("AAAAAAAA")
       correlId.bind {
-        logger.info(s"${Thread.currentThread.getId} $currentCorrelId Synchronous (Unit)")
+        logger.info(s"${Thread.currentThread.getId} $current Synchronous (Unit)")
       }
-      logger.info(s"${Thread.currentThread.getId} $currentCorrelId Synchronous (Unit) — not bound")
+      logger.info(s"${Thread.currentThread.getId} $current Synchronous (Unit) — not bound")
     }
 
     "Task.runToFuture" in {
       val correlId = CorrelId("BBBBBBBB")
       val task = Task {
-        logger.info(s"${Thread.currentThread.getId} $currentCorrelId Task.runToFuture")
-        assert(currentCorrelId == correlId)
+        logger.info(s"${Thread.currentThread.getId} $current Task.runToFuture")
+        assert(current == correlId)
       }
       val future = correlId.bind {
         task.runToFuture
       }
       future.await(99.s)
-      logger.info(s"${Thread.currentThread.getId} $currentCorrelId Task.runToFuture — not bound")
+      logger.info(s"${Thread.currentThread.getId} $current Task.runToFuture — not bound")
     }
 
     "Task.runToFuture with Task.parSequence" in {
@@ -77,13 +77,13 @@ final class CorrelIdJvmTest extends AnyFreeSpec with BeforeAndAfterAll
           Task {
             sleep(10.ms)
             logger.info(
-              s"${Thread.currentThread.getId} $currentCorrelId Task.runToFuture parSequence $i a")
-            assert(currentCorrelId == correlId)
+              s"${Thread.currentThread.getId} $current Task.runToFuture parSequence $i a")
+            assert(current == correlId)
           } *>
           Task {
             logger.info(
-              s"${Thread.currentThread.getId} $currentCorrelId Task.runToFuture parSequence $i b")
-            assert(currentCorrelId == correlId)
+              s"${Thread.currentThread.getId} $current Task.runToFuture parSequence $i b")
+            assert(current == correlId)
           }
       )
       val future = correlId.bind {
@@ -91,21 +91,21 @@ final class CorrelIdJvmTest extends AnyFreeSpec with BeforeAndAfterAll
       }
       future.await(99.s)
       logger.info(
-        s"${Thread.currentThread.getId} $currentCorrelId Task.runToFuture parSequence — not bound")
+        s"${Thread.currentThread.getId} $current Task.runToFuture parSequence — not bound")
     }
 
     "Future" in {
       val correlId = CorrelId("DDDDDDDD")
       val future = correlId.bind(
         Future {
-          logger.info(s"${Thread.currentThread.getId} $currentCorrelId Future 1")
-          assert(currentCorrelId == correlId)
+          logger.info(s"${Thread.currentThread.getId} $current Future 1")
+          assert(current == correlId)
         }.flatMap(_ => Future {
-          logger.info(s"${Thread.currentThread.getId} $currentCorrelId Future 2")
-          assert(currentCorrelId == correlId)
+          logger.info(s"${Thread.currentThread.getId} $current Future 2")
+          assert(current == correlId)
         }))
       future.await(99.s)
-      logger.info(s"${Thread.currentThread.getId} $currentCorrelId Future — not bound")
+      logger.info(s"${Thread.currentThread.getId} $current Future — not bound")
     }
 
     "Task" in {
@@ -114,14 +114,14 @@ final class CorrelIdJvmTest extends AnyFreeSpec with BeforeAndAfterAll
         CorrelId("_WRONG__").bind {
           val task: Task[Unit] =
             correlId.bind(Task {
-              logger.info(s"${Thread.currentThread.getId} $currentCorrelId Task")
-              assert(currentCorrelId == correlId)
+              logger.info(s"${Thread.currentThread.getId} $current Task")
+              assert(current == correlId)
               ()
             })
           task.runToFuture
         }
       future.await(99.s)
-      logger.info(s"${Thread.currentThread.getId} $currentCorrelId Task — not bound")
+      logger.info(s"${Thread.currentThread.getId} $current Task — not bound")
     }
   }
 
@@ -135,7 +135,7 @@ final class CorrelIdJvmTest extends AnyFreeSpec with BeforeAndAfterAll
           correlId.bind(
             Task.traverse((1 to taskBatchSize + 1))(j => Task {
               //  logger.debug(s"bindCorrelId[Task[r]] $i $correlId $j")
-              assert(currentCorrelId == correlId)
+              assert(current == correlId)
               ()
             })(Vector)))
         .await(99.s)
@@ -156,7 +156,7 @@ final class CorrelIdJvmTest extends AnyFreeSpec with BeforeAndAfterAll
             correlId.bind(
               Future.traverse((1 to taskBatchSize + 1).toVector)(j => Future {
                 //  logger.debug(s"bindCorrelId[Task[r]] $i $correlId $j")
-                assert(currentCorrelId == correlId)
+                assert(current == correlId)
                 ()
               }))))
         .await(99.s)

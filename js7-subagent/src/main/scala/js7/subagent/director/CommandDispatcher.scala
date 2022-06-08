@@ -1,9 +1,8 @@
 package js7.subagent.director
 
 import cats.syntax.traverse._
-import js7.base.log.CorrelId.currentCorrelId
-import js7.base.log.Logger.syntax._
 import js7.base.log.{CorrelId, Logger}
+import js7.base.log.Logger.syntax._
 import js7.base.monixutils.Switch
 import js7.base.problem.{Checked, Problem}
 import js7.base.stream.{Numbered, ObservableNumberedQueue}
@@ -130,7 +129,7 @@ private trait CommandDispatcher
   protected final class Execute(
     val command: Command,
     val promise: Promise[Checked[Response]] = Promise(),
-    val correlId: CorrelId = currentCorrelId)
+    val correlId: CorrelId = CorrelId.current)
   {
     val responded = Task.fromFuture(promise.future)
 
