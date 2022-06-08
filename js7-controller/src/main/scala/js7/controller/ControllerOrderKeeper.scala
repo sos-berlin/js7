@@ -47,6 +47,7 @@ import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.board.BoardEvent.{NoticeDeleted, NoticePosted}
 import js7.data.board.{BoardPath, BoardState, Notice, NoticeId}
 import js7.data.calendar.{Calendar, CalendarExecutor}
+import js7.data.controller.ControllerCommand.ControlWorkflow
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.data.controller.ControllerStateExecutor.convertImplicitly
 import js7.data.controller.{ControllerCommand, ControllerEvent, ControllerState, VerifiedUpdateItems, VerifiedUpdateItemsExecutor}
@@ -71,8 +72,9 @@ import js7.data.state.OrderEventHandler.FollowUp
 import js7.data.subagent.SubagentItemStateEvent.{SubagentEventsObserved, SubagentResetStartedByController}
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
 import js7.data.value.expression.scopes.NowScope
+import js7.data.workflow.WorkflowControlEvent.{WorkflowControlAttached, WorkflowControlUpdated}
 import js7.data.workflow.position.WorkflowPosition
-import js7.data.workflow.{Instruction, Workflow}
+import js7.data.workflow.{Instruction, Workflow, WorkflowControl, WorkflowControlState, WorkflowPath}
 import js7.journal.recover.Recovered
 import js7.journal.state.FileStatePersistence
 import js7.journal.{CommitOptions, JournalActor, MainJournalingActor}
@@ -401,6 +403,15 @@ with MainJournalingActor[ControllerState, Event]
       proceedWithOrders(_controllerState.idToOrder.keys)
       orderQueue.enqueue(_controllerState.idToOrder.keys)
 
+      _controllerState.workflowControlPathToIgnorantAgent
+        .foreach { case (workflowPath, agentPaths) =>
+          for (agentPath <- agentPaths) {
+            attachWorkflowControlToAgent(
+              _controllerState.pathToWorkflowControl(workflowPath),
+              agentPath)
+          }
+        }
+
       // Start fetching events from Agents after AttachOrder has been sent to AgentDrivers.
       // This is to handle race-condition: An Agent may have already completed an order.
       // So send AttachOrder before DetachOrder.
@@ -532,6 +543,14 @@ with MainJournalingActor[ControllerState, Event]
                           case _: SubagentEventsObserved => Nil  // Not needed
                           case _ => Timestamped(keyedEvent) :: Nil
                         }
+
+                      case KeyedEvent(workflowPath: WorkflowPath, event: WorkflowControlUpdated) =>
+                        // If event.revision != WorkflowControl.revision,
+                        // then the event is informational only.
+                        Timestamped(
+                          workflowPath <-:
+                            WorkflowControlAttached(agentPath, event.suspended, event.revision)
+                        ) :: Nil
 
                       case _ =>
                         logger.error(s"Unknown event received from ${agentEntry.agentPath}: $keyedEvent")
@@ -734,6 +753,9 @@ with MainJournalingActor[ControllerState, Event]
 
       case ControllerCommand.ResumeOrder(orderId, position, historicOps) =>
         executeOrderMarkCommands(Vector(orderId))(orderEventSource.resume(_, position, historicOps))
+
+      case cmd: ControllerCommand.ControlWorkflow =>
+        controlWorkflow(cmd)
 
       case ControllerCommand.ResumeOrders(orderIds) =>
         executeOrderMarkCommands(orderIds.toVector)(orderEventSource.resume(_, None, Nil))
@@ -955,6 +977,52 @@ with MainJournalingActor[ControllerState, Event]
               persistTransactionAndSubsequentEvents(keyedEvents)(handleEvents))
             .map(_.map(_ => ControllerCommand.Response.Accepted))
       }
+
+  private def controlWorkflow(cmd: ControlWorkflow): Future[Checked[ControllerCommand.Response]] =
+    _controllerState.repo.pathToItems(Workflow).checked(cmd.workflowPath) match {
+      case Left(problem) => Future.successful(Left(problem))
+      case Right(_) =>
+        val workflowControl = _controllerState.pathToWorkflowControl
+          .getOrElse(cmd.workflowPath, WorkflowControl(cmd.workflowPath))
+        // Continue even if WorkflowControl is not changed.
+        // This allows the caller to force the redistribution of the WorkflowControl.
+        val event = WorkflowControlUpdated(suspended = cmd.suspend, workflowControl.revision.next)
+        persistKeyedEvent(cmd.workflowPath <-: event) { (stamped, updated) =>
+          handleEvents(stamped :: Nil, updated)
+          val controlState = updated.pathToWorkflowControlState_(cmd.workflowPath)
+          attachWorkflowControlToAgents(controlState)
+          if (!controlState.workflowControl.suspended) {
+            orderQueue.enqueue(
+              updated.orders.filter(_.workflowPath == controlState.workflowPath).map(_.id))
+          }
+          Right(ControllerCommand.Response.Accepted)
+        }
+      }
+
+  private def attachWorkflowControlToAgents(controlState: WorkflowControlState): Unit =
+    // For each Workflow version of controlState.workflowPath
+    _controllerState.repo.pathToItems(Workflow).checked(controlState.workflowPath)
+      .foreach { workflows =>
+        // Send WorkflowControl to each Agent that is referenced by an attached Workflow.
+        for (
+          workflow <- workflows.view;
+          agentPath <- workflow.referencedAgentPaths
+          if _controllerState.agentAttachments.itemToDelegateToAttachedState.get(workflow.id)
+            .exists(_.get(agentPath).exists(_.isAttachableOrAttached))
+          if !controlState.attachedToAgents.contains(agentPath)
+        ) {
+          attachWorkflowControlToAgent(controlState.workflowControl, agentPath)
+        }
+      }
+
+  private def attachWorkflowControlToAgent(control: WorkflowControl, agentPath: AgentPath): Unit = {
+    // WorkflowControlAttaching event, damit Control nicht mit jedem Auftrag geschickt wird, bis
+    // WorkflowControlAttached.
+    agentRegister(agentPath).actor ! AgentDriver.Input.ControlWorkflow(
+      control.path,
+      control.suspended,
+      control.revision)
+  }
 
   private def logEvent(event: Event): Unit =
     event match {
@@ -1318,26 +1386,38 @@ with MainJournalingActor[ControllerState, Event]
       if (order.isAttaching && !agentEntry.isResetting) {
         val orderEntry = orderRegister(order.id)
         if (!orderEntry.triedToAttached) {
-          signedWorkflow.value.referencedAttachableToAgentSignablePaths
+          val workflow = signedWorkflow.value
+          import agentEntry.{actor, agentPath}
+
+          // Maybe attach Workflow
+          workflow.referencedAttachableToAgentSignablePaths
             .flatMap(_controllerState.pathToSignedSimpleItem.get)
             .appended(signedWorkflow)
-            .filter(signedItem => isDetachedOrAttachable(signedItem.value, agentEntry.agentPath))
+            .filter(signedItem => isDetachedOrAttachable(signedItem.value, agentPath))
             .foreach { signedItem =>
-              agentEntry.actor ! AgentDriver.Input.AttachSignedItem(signedItem)
+              actor ! AgentDriver.Input.AttachSignedItem(signedItem)
             }
 
-          signedWorkflow.value.referencedAttachableToAgentUnsignedPaths
+          // Maybe attach WorkflowControl
+          _controllerState.pathToWorkflowControlState.get(workflow.path)
+            .filterNot(_.attachedToAgents contains agentPath)
+            .map(_.workflowControl)
+            .foreach(
+              attachWorkflowControlToAgent(_, agentPath))
+
+          // Maybe attach more required Items
+          workflow.referencedAttachableToAgentUnsignedPaths
             .flatMap(_controllerState.pathToUnsignedSimpleItem.get)
-            .filter(isDetachedOrAttachable(_, agentEntry.agentPath))
+            .filter(isDetachedOrAttachable(_, agentPath))
             .foreach { item =>
-                agentEntry.actor ! AgentDriver.Input.AttachUnsignedItem(item)
+                actor ! AgentDriver.Input.AttachUnsignedItem(item)
             }
 
           orderEntry.triedToAttached = true
           // TODO AttachOrder mit parent orders!
           // Agent markiert die als bloß gebraucht für Kindaufträge
           // Mit Referenzzähler: der letzte Kindauftrag löscht seine Elternaufträge
-          agentEntry.actor ! AgentDriver.Input.AttachOrder(order, agentEntry.agentPath)
+          actor ! AgentDriver.Input.AttachOrder(order, agentPath)
         }
       }
     }

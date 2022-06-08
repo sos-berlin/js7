@@ -171,9 +171,12 @@ extends VersionedItem
       referencedLockAndBoardPaths,
       referencedJobResourcePaths,
       calendarPath,
-      workflowJobs.view.map(_.agentPath).toSet,
+      referencedAgentPaths,
       workflowJobs.view.flatMap(_.subagentSelectionId).toSet)
   }
+
+  def referencedAgentPaths: Set[AgentPath] =
+    workflowJobs.map(_.agentPath).toSet
 
   private[workflow] def workflowJobs: View[WorkflowJob] =
     keyToJob.values.view

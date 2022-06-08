@@ -25,6 +25,7 @@ import js7.data.node.NodeId
 import js7.data.order.OrderEvent.OrderResumed
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.subagent.SubagentId
+import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
 import scala.collection.immutable
 import scala.concurrent.duration.FiniteDuration
@@ -211,6 +212,11 @@ object ControllerCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
 
+  final case class ControlWorkflow(workflowPath: WorkflowPath, suspend: Boolean)
+  extends ControllerCommand with Big {
+    type Response = Response.Accepted
+  }
+
   case object TakeSnapshot extends ControllerCommand {
     type Response = Response.Accepted
   }
@@ -281,6 +287,7 @@ object ControllerCommand extends CommonCommand.Companion
     Subtype(deriveConfiguredCodec[ResumeOrder]),
     Subtype(deriveConfiguredCodec[ResumeOrders]),
     Subtype(deriveConfiguredCodec[SuspendOrders]),
+    Subtype(deriveConfiguredCodec[ControlWorkflow]),
     Subtype(deriveConfiguredCodec[ClusterAppointNodes]),
     Subtype(ClusterSwitchOver),
     Subtype(deriveConfiguredCodec[InternalClusterCommand]),

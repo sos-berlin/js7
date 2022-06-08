@@ -4,7 +4,7 @@ import io.circe.generic.semiauto.deriveCodec
 import js7.agent.data.AgentState.{AgentMetaState, allowedItemStates}
 import js7.agent.data.event.AgentEvent
 import js7.agent.data.event.AgentEvent.AgentDedicated
-import js7.agent.data.orderwatch.{FileWatchStateHandler, FileWatchState}
+import js7.agent.data.orderwatch.{FileWatchState, FileWatchStateHandler}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.Signed
 import js7.base.problem.{Checked, Problem}
@@ -26,7 +26,7 @@ import js7.data.orderwatch.{FileWatch, OrderWatchEvent, OrderWatchPath}
 import js7.data.state.EventDrivenStateView
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent, SubagentSelection, SubagentSelectionId, SubagentSelectionState}
-import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
+import js7.data.workflow.{Workflow, WorkflowControlEvent, WorkflowControlState, WorkflowControlStateHandler, WorkflowId, WorkflowPath}
 import monix.reactive.Observable
 import scala.collection.MapView
 
@@ -40,12 +40,14 @@ final case class AgentState(
   pathToItemState_ : Map[UnsignedSimpleItemPath, UnsignedSimpleItemState],
   idToOrder: Map[OrderId, Order[Order.State]],
   idToWorkflow: Map[WorkflowId, Workflow/*reduced for this Agent!!!*/],
+  pathToWorkflowControlState_ : Map[WorkflowPath, WorkflowControlState],
   pathToJobResource: Map[JobResourcePath, JobResource],
   keyToSignedItem : Map[SignableItemKey, Signed[SignableItem]])
 extends SignedItemContainer
 with EventDrivenStateView[AgentState, Event]
 with SubagentDirectorState[AgentState]
 with FileWatchStateHandler[AgentState]
+with WorkflowControlStateHandler[AgentState]
 with SnapshotableState[AgentState]
 {
   def isAgent = true
@@ -72,6 +74,7 @@ with SnapshotableState[AgentState]
       idToWorkflow.size +
       idToOrder.size +
       pathToItemState_.size +
+      pathToWorkflowControlState_.size +
       fw.estimatedExtraSnapshotSize +
       pathToJobResource.size
       //keyToSignedItem.size +  // == idToWorkflow.size + pathToJobResource.size
@@ -84,6 +87,7 @@ with SnapshotableState[AgentState]
     Observable.fromIterable(pathTo(FileWatchState).values).flatMap(_.toSnapshotObservable),
     Observable.fromIterable(keyToSignedItem.values.view.map(SignedItemAdded(_))),
     Observable.fromIterable(idToWorkflow.view.filterKeys(isWithoutSignature).values),
+    Observable.fromIterable(pathToWorkflowControlState_.values),
     Observable.fromIterable(pathToJobResource.view.filterKeys(isWithoutSignature).values),
     Observable.fromIterable(pathTo(CalendarState).values).flatMap(_.toSnapshotObservable),
     Observable.fromIterable(idToOrder.values)
@@ -167,10 +171,17 @@ with SnapshotableState[AgentState]
           case ItemDetached(itemKey, meta.agentPath) =>
             itemKey match {
               case WorkflowId.as(workflowId) =>
-                for (_ <- idToWorkflow.checked(workflowId)) yield
+                for (_ <- idToWorkflow.checked(workflowId)) yield {
+                  val updatedIdToWorkflow = idToWorkflow - workflowId
                   copy(
                     keyToSignedItem = keyToSignedItem - workflowId,
-                    idToWorkflow = idToWorkflow - workflowId)
+                    idToWorkflow = updatedIdToWorkflow,
+                    pathToWorkflowControlState_ =
+                      if (idToWorkflow.keys.exists/*Slow???*/(_.path == workflowId.path))
+                        pathToWorkflowControlState_ - workflowId.path
+                      else
+                       pathToWorkflowControlState_)
+                }
 
               case path: OrderWatchPath =>
                 fw.detach(path)
@@ -228,6 +239,9 @@ with SnapshotableState[AgentState]
           controllerId = controllerId,
           subagentId = subagentId)))
 
+      case KeyedEvent(workflowPath: WorkflowPath, event: WorkflowControlEvent) =>
+        applyWorkflowControlEvent(workflowPath, event)
+
       case _ => applyStandardEvent(keyedEvent)
     }
 
@@ -241,6 +255,11 @@ with SnapshotableState[AgentState]
     fileWatchStates: Iterable[FileWatchState],
     remove: Iterable[OrderWatchPath]
   ) = update(addItemStates = fileWatchStates, removeItemStates = remove)
+
+  def pathToWorkflowControlState = pathToWorkflowControlState_.view
+
+  protected def updateWorkflowControlState(s: WorkflowControlState) =
+    copy(pathToWorkflowControlState_ = pathToWorkflowControlState_.updated(s.workflowPath, s))
 
   protected def update(
     orders: Iterable[Order[Order.State]],
@@ -305,7 +324,7 @@ with ItemContainer.Companion[AgentState]
 
   val empty = AgentState(EventId.BeforeFirst, SnapshotableState.Standards.empty,
     AgentMetaState.empty,
-    Map.empty, Map.empty, Map.empty, Map.empty, Map.empty)
+    Map.empty, Map.empty, Map.empty, Map.empty, Map.empty, Map.empty)
 
   private val allowedItemStates: Set[InventoryItemState.AnyCompanion] =
     Set(AgentRefState, SubagentItemState, FileWatchState)
@@ -344,7 +363,8 @@ with ItemContainer.Companion[AgentState]
     Subtype(SignedItemAdded.jsonCodec(this)),  // For Repo and SignedItemAdded
     Subtype(signableSimpleItemJsonCodec),
     Subtype(unsignedSimpleItemJsonCodec),
-    Subtype[BasicItemEvent])
+    Subtype[BasicItemEvent],
+    Subtype[WorkflowControlState])
 
   implicit val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] = {
     KeyedEventTypedJsonCodec[Event](
@@ -353,6 +373,7 @@ with ItemContainer.Companion[AgentState]
       KeyedSubtype[OrderEvent],
       KeyedSubtype[AgentEvent],
       KeyedSubtype[InventoryItemEvent],
-      KeyedSubtype[OrderWatchEvent])
+      KeyedSubtype[OrderWatchEvent],
+      KeyedSubtype[WorkflowControlEvent])
   }
 }

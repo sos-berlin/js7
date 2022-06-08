@@ -40,6 +40,14 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
     def enqueue(input: Queueable): Unit =
       input match {
         case o: Input.DetachOrder => detachQueue += o
+        case controlWorkflow: Input.ControlWorkflow =>
+          val duplicates = queue.collect {
+            case o: Input.ControlWorkflow if o.workflowPath == controlWorkflow.workflowPath => o
+          }
+          queue --= duplicates
+          queueSet --= duplicates
+          queue += controlWorkflow
+          queueSet += controlWorkflow
         case o =>
           queue += o
           queueSet += o
@@ -179,6 +187,9 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
 
       case Input.ResetSubagent(subagentId, force) =>
         AgentCommand.ResetSubagent(subagentId, force = force)
+
+      case Input.ControlWorkflow(workflowPath, suspend, revision) =>
+        AgentCommand.ControlWorkflow(workflowPath, suspend, revision)
     }
 
   final def onOrdersDetached(orderIds: View[OrderId]): Unit = {

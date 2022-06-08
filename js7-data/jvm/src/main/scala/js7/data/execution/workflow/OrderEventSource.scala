@@ -34,7 +34,9 @@ final class OrderEventSource(state: StateView)
 
   def nextEvents(orderId: OrderId): Seq[KeyedEvent[OrderActorEvent]] = {
     val order = idToOrder(orderId)
-    if (order.isState[Order.Broken])
+    if (state.isWorkflowSuspended(order.workflowPath))
+      Nil
+    else if (order.isState[Order.Broken])
       Nil  // Avoid issuing a second OrderBroken (would be a loop)
     else
       checkedNextEvents(order) |> (invalidToEvent(order, _))

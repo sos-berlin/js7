@@ -301,6 +301,18 @@ final class AgentCommandTest extends AnyFreeSpec
     }
   }
 
+  "ControlWorkflow" in {
+    check(
+      AgentCommand.ControlWorkflow(
+        WorkflowPath("WORKFLOW"), suspend = true, ItemRevision(1)),
+      json"""{
+        "TYPE": "ControlWorkflow",
+        "workflowPath": "WORKFLOW",
+        "suspend": true,
+        "revision": 1
+      }""")
+  }
+
   "ResetSubagent" in {
     check(
       AgentCommand.ResetSubagent(SubagentId("SUBAGENT"), force = false),

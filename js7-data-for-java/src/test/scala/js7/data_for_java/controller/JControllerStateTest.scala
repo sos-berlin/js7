@@ -14,7 +14,7 @@ import js7.data.controller.{ControllerId, ControllerMetaState, ControllerState}
 import js7.data.delegate.DelegateCouplingState
 import js7.data.event.{EventId, JournalState, SnapshotableState}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded}
-import js7.data.item.{ClientAttachments, ItemSigner, Repo, VersionId}
+import js7.data.item.{ItemSigner, Repo, VersionId}
 import js7.data.node.NodeId
 import js7.data.order.{Order, OrderId}
 import js7.data.subagent.SubagentId
@@ -74,9 +74,9 @@ private object JControllerStateTest
 
   private val itemSigner = new ItemSigner(SillySigner.Default, versionedItemJsonCodec)
 
-  private val controllerState = ControllerState(
-    EventId(1001),
-    SnapshotableState.Standards(
+  private val controllerState = ControllerState.empty.copy(
+    eventId = EventId(1001),
+    standards = SnapshotableState.Standards(
       JournalState(Map(UserId("A") -> EventId(1000))),
       ClusterState.Coupled(
         ClusterSetting(
@@ -86,24 +86,21 @@ private object JControllerStateTest
           activeId = NodeId("A"),
           Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
           ClusterTiming(10.s, 20.s)))),
-    ControllerMetaState(
+    controllerMetaState = ControllerMetaState(
       ControllerId("CONTROLLER-ID"),
       Timestamp("2019-05-24T12:00:00Z"),
       Timezone("Europe/Berlin")),
-    Map(AgentPath("AGENT") ->
+    pathToItemState_ = Map(AgentPath("AGENT") ->
       AgentRefState(
         AgentRef(AgentPath("AGENT"), Seq(SubagentId("SUBAGENT"))),
         None, None, DelegateCouplingState.Reset.fresh, EventId(7), None)),
-    Repo.empty
+    repo = Repo.empty
       .applyEvents(List(
         VersionAdded(v1),
         VersionedItemAdded(itemSigner.sign(aWorkflow)),
         VersionedItemAdded(itemSigner.sign(bWorkflow)))
       ).orThrow,
-    Map.empty,
-    ClientAttachments.empty,
-    Set.empty,
-    Vector(
+    idToOrder = Vector(
       Order(
         OrderId("A-ORDER"),
         (WorkflowPath("A-WORKFLOW") ~ v1) /: Position(0),

@@ -18,7 +18,7 @@ import js7.data.value.expression.scopes.{JobResourceScope, NowScope, OrderScopes
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{BoardInstruction, End}
 import js7.data.workflow.position.WorkflowPosition
-import js7.data.workflow.{Instruction, Workflow, WorkflowId, WorkflowPath}
+import js7.data.workflow.{Instruction, Workflow, WorkflowControl, WorkflowControlState, WorkflowId, WorkflowPath}
 import scala.collection.MapView
 import scala.reflect.ClassTag
 
@@ -47,6 +47,11 @@ trait StateView extends ItemContainer
   def idToWorkflow: PartialFunction[WorkflowId, Workflow]
 
   def workflowPathToId(workflowPath: WorkflowPath): Checked[WorkflowId]
+
+  def pathToWorkflowControlState: MapView[WorkflowPath, WorkflowControlState]
+
+  final def pathToWorkflowControl: MapView[WorkflowPath, WorkflowControl] =
+    pathToWorkflowControlState.view.mapValues(_.workflowControl)
 
   def pathToItemState: MapView[UnsignedSimpleItemPath, UnsignedSimpleItemState]
 
@@ -134,6 +139,10 @@ trait StateView extends ItemContainer
       order.attachedState == parent.attachedState &&
       (order.state.eq(FailedInFork) || endReached)
   }
+
+  final def isWorkflowSuspended(workflowPath: WorkflowPath): Boolean =
+    pathToWorkflowControlState.get(workflowPath)
+      .exists(_.workflowControl.suspended)
 
   /** A pure (stable, repeatable) Scope. */
   final def toPureScope(order: Order[Order.State]): Checked[Scope] =

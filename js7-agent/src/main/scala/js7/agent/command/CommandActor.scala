@@ -7,7 +7,7 @@ import cats.instances.future._
 import cats.syntax.traverse._
 import js7.agent.command.CommandActor._
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.{AttachItem, AttachSignedItem, Batch, CoupleController, DedicateAgentDirector, DetachItem, EmergencyStop, NoOperation, OrderCommand, Reset, ResetSubagent, Response, ShutDown, TakeSnapshot}
+import js7.agent.data.commands.AgentCommand.{AttachItem, AttachSignedItem, Batch, ControlWorkflow, CoupleController, DedicateAgentDirector, DetachItem, EmergencyStop, NoOperation, OrderCommand, Reset, ResetSubagent, Response, ShutDown, TakeSnapshot}
 import js7.agent.scheduler.AgentHandle
 import js7.base.circeutils.JavaJsonCodecs.instant.StringInstantJsonCodec
 import js7.base.log.{CorrelId, CorrelIdWrapped, Logger}
@@ -109,7 +109,8 @@ extends Actor {
 
       case command @ (_: OrderCommand | _: DedicateAgentDirector | _: CoupleController | _: Reset |
                       _: TakeSnapshot.type | _: ShutDown |
-                      _: AttachItem | _: AttachSignedItem | _: DetachItem | _: ResetSubagent) =>
+                      _: AttachItem | _: AttachSignedItem | _: DetachItem | _: ResetSubagent |
+                      _: ControlWorkflow) =>
         // FIXME Delay CoupleController until all AttachOrder (extends OrderCommand) (and DetachOrder?) have been finished, to return a properly updated state
         agentHandle.executeCommand(command, meta.user.id, response)
 

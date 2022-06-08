@@ -36,7 +36,7 @@ import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, ExpectNotices, LockInstruction}
 import js7.data.workflow.position.Position
-import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlState, WorkflowPath}
 import js7.tester.CirceJsonTester.testJson
 import js7.tester.DiffxAssertions.assertEqual
 import monix.execution.Scheduler.Implicits.traced
@@ -48,7 +48,7 @@ import org.scalatest.freespec.AsyncFreeSpec
 final class ControllerStateTest extends AsyncFreeSpec
 {
   "estimatedSnapshotSize" in {
-    assert(controllerState.estimatedSnapshotSize == 20)
+    assert(controllerState.estimatedSnapshotSize == 21)
     for (n <- controllerState.toSnapshotObservable.countL.runToFuture) yield
       assert(controllerState.estimatedSnapshotSize == n)
   }
@@ -97,10 +97,11 @@ final class ControllerStateTest extends AsyncFreeSpec
               HasOrder(OrderId("ORDER"), Some(Vanished))),
             SignedItemAdded(signedJobResource),
             VersionAdded(versionId),
-            VersionedItemAdded(signedWorkflow),
+            VersionedItemAdded(signedWorkflow)) ++
+          controllerState.pathToWorkflowControlState_.values ++
+          Seq(
             ItemAttachable(jobResource.path, agentRef.path),
-            ItemDeletionMarked(fileWatch.path)
-          ) ++
+            ItemDeletionMarked(fileWatch.path)) ++
           controllerState.idToOrder.values)
   }
 
@@ -300,6 +301,14 @@ final class ControllerStateTest extends AsyncFreeSpec
           "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"versionId\":\"1.0\",\"instructions\":[{\"TYPE\":\"Lock\",\"lockPath\":\"LOCK\",\"lockedWorkflow\":{\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"AGENT\",\"subagentSelectionId\":\"SELECTION\",\"executable\":{\"TYPE\":\"ShellScriptExecutable\",\"script\":\"\"},\"jobResourcePaths\":[\"JOB-RESOURCE\"],\"parallelism\":1}}]}},{\"TYPE\":\"ExpectNotices\",\"boardPaths\":\"'BOARD'\"}]}"
         }
       }, {
+        "TYPE": "WorkflowControlState",
+        "workflowControl": {
+          "path": "WORKFLOW",
+          "suspended": true,
+          "revision": 0
+        },
+        "attachedToAgents": []
+      }, {
         "TYPE": "ItemAttachable",
         "delegateId": "Agent:AGENT",
         "key": "JobResource:JOB-RESOURCE"
@@ -433,6 +442,49 @@ final class ControllerStateTest extends AsyncFreeSpec
         itemRevision = Some(ItemRevision(2))))
     }
   }
+
+  "workflowControlPathToIgnorantAgent" in {
+    assert(ControllerState.workflowControlPathToIgnorantAgent(Nil, Map.empty) == Map.empty)
+
+    val aWorkflowPath = WorkflowPath("A")
+    val bWorkflowPath = WorkflowPath("B")
+    val cWorkflowPath = WorkflowPath("C")
+    val aAgentPath = AgentPath("A")
+    val bAgentPath = AgentPath("B")
+    val cAgentPath = AgentPath("C")
+
+    val orders = Seq(
+      Order(OrderId("X"), aWorkflowPath ~ "1", Order.Ready),
+      Order(OrderId("A"), aWorkflowPath ~ "1", Order.Ready,
+        attachedState = Some(Order.Attaching(aAgentPath))),
+      Order(OrderId("B"), bWorkflowPath ~ "1", Order.Ready,
+        attachedState = Some(Order.Attached(bAgentPath))),
+      Order(OrderId("C"), cWorkflowPath ~ "1", Order.Ready,
+        attachedState = Some(Order.Detaching(cAgentPath))))
+
+    assert(
+      ControllerState.workflowControlPathToIgnorantAgent(
+        orders,
+        Seq(
+          WorkflowControlState(WorkflowControl(aWorkflowPath)),
+          WorkflowControlState(WorkflowControl(bWorkflowPath)),
+        ).toKeyedMap(_.workflowPath)
+      ) ==
+        Map(
+          aWorkflowPath -> Set(aAgentPath),
+          bWorkflowPath -> Set(bAgentPath)))
+
+    assert(
+      ControllerState.workflowControlPathToIgnorantAgent(
+        orders,
+        Seq(
+          WorkflowControlState(WorkflowControl(aWorkflowPath), Set(aAgentPath, bAgentPath)),
+          WorkflowControlState(WorkflowControl(bWorkflowPath), Set(aAgentPath)),
+        ).toKeyedMap(_.workflowPath)
+      ) ==
+        Map(
+          bWorkflowPath -> Set(bAgentPath)))
+  }
 }
 
 object ControllerStateTest
@@ -533,6 +585,9 @@ object ControllerStateTest
       jobResource.path -> signedJobResource),
     ClientAttachments(Map(
       jobResource.path -> Map(agentRef.path -> Attachable))),
+    pathToWorkflowControlState_ = Map(
+      workflow.path -> WorkflowControlState(WorkflowControl(workflow.path, suspended = true)),
+    ),
     deletionMarkedItems = Set(fileWatch.path),
     Seq(
       Order(orderId, workflow.id /: Position(0), Order.Fresh,

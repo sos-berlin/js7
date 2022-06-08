@@ -45,6 +45,7 @@ import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.state.OrderEventHandler.FollowUp
 import js7.data.state.{OrderEventHandler, StateView}
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
+import js7.data.workflow.WorkflowControlEvent.WorkflowControlUpdated
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
@@ -423,6 +424,23 @@ with Stash
       subagentKeeper.startResetSubagent(subagentId, force)
         .rightAs(AgentCommand.Response.Accepted)
         .runToFuture
+
+    case AgentCommand.ControlWorkflow(workflowPath, suspend, revision) =>
+      if (!persistence.currentState.idToWorkflow.keys.exists(_.path == workflowPath))
+        Future.successful(Left(Problem(s"Unknown $workflowPath")))
+      else
+        persistKeyedEvent(workflowPath <-: WorkflowControlUpdated(suspend, revision)) {
+          (stampedEvent, journaledState) =>
+            if (!suspend) {
+              // Event it Workflow was already suspended.
+              // This allows the used to force continuation of Orders (just in case)
+              for (order <- persistence.currentState.orders
+                   if order.workflowPath == workflowPath) {
+                proceedWithOrder(order)
+              }
+            }
+            Right(AgentCommand.Response.Accepted)
+        }
 
     case AgentCommand.TakeSnapshot =>
       (journalActor ? JournalActor.Input.TakeSnapshot)
@@ -806,6 +824,8 @@ with Stash
 
       def workflowPathToId(workflowPath: WorkflowPath) =
         persistence.currentState.workflowPathToId(workflowPath)
+
+      def pathToWorkflowControlState = persistence.currentState.pathToWorkflowControlState
 
       def pathToItemState = persistence.currentState.pathToItemState
 

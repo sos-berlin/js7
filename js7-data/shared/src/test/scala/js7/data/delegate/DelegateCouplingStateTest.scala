@@ -68,4 +68,26 @@ final class DelegateCouplingStateTest extends AnyFreeSpec
         "TYPE": "ShutDown"
       }""")
   }
+
+  "For Java" - {
+    "Reset.Fresh.string" in {
+      val s = DelegateCouplingState.Reset(DelegateCouplingState.Reset.Fresh)
+      assert(s.reason.string == "Fresh")
+    }
+
+    "Reset.Shutdown.string" in {
+      val s = DelegateCouplingState.Reset(DelegateCouplingState.Reset.Shutdown)
+      assert(s.reason.string == "Shutdown")
+    }
+
+    "Reset.Restart.string" in {
+      val s = DelegateCouplingState.Reset(DelegateCouplingState.Reset.Restart)
+      assert(s.reason.string == "Restart")
+    }
+
+    "Reset.ResetCommand.string" in {
+      val s = DelegateCouplingState.Reset(DelegateCouplingState.Reset.ResetCommand)
+      assert(s.reason.string == "ResetCommand")
+    }
+  }
 }
