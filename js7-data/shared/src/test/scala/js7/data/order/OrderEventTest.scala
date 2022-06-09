@@ -98,7 +98,8 @@ final class OrderEventTest extends AnyFreeSpec
         Some(OrderId("PARENT")),
         Some(OrderMark.Suspending()),
         isSuspended = true,
-        deleteWhenTerminated = true),
+        deleteWhenTerminated = true,
+        Some(Position(9))),
       json"""{
         "TYPE": "OrderAttachedToAgent",
         "workflowPosition": {
@@ -134,7 +135,8 @@ final class OrderEventTest extends AnyFreeSpec
           "mode": {}
         },
         "isSuspended": true,
-        "deleteWhenTerminated": true
+        "deleteWhenTerminated": true,
+        "stopPosition": [ 9 ]
       }""")
   }
 

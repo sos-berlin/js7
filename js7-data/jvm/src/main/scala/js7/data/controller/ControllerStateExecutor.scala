@@ -2,7 +2,7 @@ package js7.data.controller
 
 import cats.syntax.apply._
 import cats.syntax.traverse._
-import js7.base.problem.Checked
+import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEither}
 import js7.data.Problems.AgentResetProblem
@@ -23,6 +23,7 @@ import js7.data.order.OrderEvent.{OrderAdded, OrderAwoke, OrderBroken, OrderCore
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.orderwatch.ExternalOrderKey
 import js7.data.value.expression.scopes.NowScope
+import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowId}
 import scala.annotation.tailrec
 import scala.collection.{View, mutable}
@@ -57,18 +58,29 @@ final case class ControllerStateExecutor private(
       addOrderWithPrecheckedId(order, externalOrderKey)
 
   private def addOrderWithPrecheckedId(
-    order: FreshOrder,
+    freshOrder: FreshOrder,
     externalOrderKey: Option[ExternalOrderKey])
   : Checked[Option[KeyedEvent[OrderAdded]]] =
-    if (controllerState.idToOrder.contains(order.id))
+    if (controllerState.idToOrder.contains(freshOrder.id))
       Right(None) // Ignore known orders  — TODO Fail as duplicate if deleteWhenTerminated ?
     else
       for {
-        workflow <- controllerState.repo.pathTo(Workflow)(order.workflowPath)
+        workflow <- controllerState.repo.pathTo(Workflow)(freshOrder.workflowPath)
         preparedArguments <- workflow.orderParameterList.prepareOrderArguments(
-          order, controllerId, controllerState.keyTo(JobResource), nowScope)
+          freshOrder, controllerId, controllerState.keyTo(JobResource), nowScope)
+        _ <- checkStartOrStopPosition(freshOrder.startPosition, workflow)
+        _ <- checkStartOrStopPosition(freshOrder.stopPosition, workflow)
       } yield Some(
-        order.toOrderAdded(workflow.id.versionId, preparedArguments, externalOrderKey))
+        freshOrder.toOrderAdded(workflow.id.versionId, preparedArguments, externalOrderKey))
+
+  private def checkStartOrStopPosition(position: Option[Position], workflow: Workflow)
+  : Checked[Unit] =
+    position.fold(Checked.unit)(position =>
+      for {
+        _ <- position.branchPath.isEmpty !!
+          Problem.pure("Order's startPosition or stopPosition must not be in a Workflow branch")
+        _ <- workflow.checkedPosition(position)
+      } yield ())
 
   def resetAgent(agentPath: AgentPath, force: Boolean): Checked[Seq[AnyKeyedEvent]] = {
     val agentResetStarted = View(agentPath <-: AgentResetStarted(force = force))

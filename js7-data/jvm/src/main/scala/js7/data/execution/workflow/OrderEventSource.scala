@@ -17,7 +17,7 @@ import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, Orde
 import js7.data.order.{Order, OrderId, OrderMark, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.state.StateView
-import js7.data.workflow.instructions.{End, ForkInstruction, Gap, LockInstruction, Retry, TryInstruction}
+import js7.data.workflow.instructions.{End, Finish, ForkInstruction, Gap, LockInstruction, Retry, TryInstruction}
 import js7.data.workflow.position.BranchPath.Segment
 import js7.data.workflow.position.{BranchId, Position, TryBranchId, WorkflowPosition}
 import js7.data.workflow.{Instruction, Workflow, WorkflowId}
@@ -34,10 +34,10 @@ final class OrderEventSource(state: StateView)
 
   def nextEvents(orderId: OrderId): Seq[KeyedEvent[OrderActorEvent]] = {
     val order = idToOrder(orderId)
-    if (state.isWorkflowSuspended(order.workflowPath))
-      Nil
-    else if (order.isState[Order.Broken])
+    if (order.isState[Order.Broken])
       Nil  // Avoid issuing a second OrderBroken (would be a loop)
+    else if (state.isWorkflowSuspended(order.workflowPath))
+      Nil
     else
       checkedNextEvents(order) |> (invalidToEvent(order, _))
   }
@@ -55,23 +55,26 @@ final class OrderEventSource(state: StateView)
             case Left(problem) => Left(problem)
             case Right(Some(event)) => Right(event :: Nil)
             case Right(None) =>
-              executorService.toEvents(instruction(order.workflowPosition), order, state)
-                // Multiple returned events are expected to be independent
-                // and are applied to the same idToOrder !!!
-                .flatMap(_
-                  .flatTraverse {
-                    case orderId <-: (moved: OrderMoved) =>
-                      applyMoveInstructions(order, moved)
-                        .map(event => (orderId <-: event) :: Nil)
+              if (order.stopPosition contains order.position)
+                executorService.finishExecutor.toEvents(Finish(), order, state)
+              else
+                executorService.toEvents(instruction(order.workflowPosition), order, state)
+                  // Multiple returned events are expected to be independent
+                  // and are applied to the same idToOrder !!!
+                  .flatMap(_
+                    .flatTraverse {
+                      case orderId <-: (moved: OrderMoved) =>
+                        applyMoveInstructions(order, moved)
+                          .map(event => (orderId <-: event) :: Nil)
 
-                    case orderId <-: OrderFailedIntermediate_(outcome, uncatchable) =>
-                      // OrderFailedIntermediate_ is used internally only
-                      assertThat(orderId == order.id)
-                      failOrDetach(order, outcome, uncatchable)
-                        .map(_.map(orderId <-: _))
+                      case orderId <-: OrderFailedIntermediate_(outcome, uncatchable) =>
+                        // OrderFailedIntermediate_ is used internally only
+                        assertThat(orderId == order.id)
+                        failOrDetach(order, outcome, uncatchable)
+                          .map(_.map(orderId <-: _))
 
-                    case o => Right(o :: Nil)
-                  })
+                      case o => Right(o :: Nil)
+                    })
           }))
       .flatMap(checkEvents)
   }
@@ -452,7 +455,11 @@ final class OrderEventSource(state: StateView)
   private def applySingleMoveInstruction(order: Order[Order.State]): Checked[Option[Position]] =
     for {
       workflow <- idToWorkflow.checked(order.workflowId)
-      maybePosition <- executorService.nextPosition(workflow.instruction(order.position), order, state)
+      maybePosition <- (
+        if (order.stopPosition contains order.position)
+          Right(None)
+        else
+          executorService.nextPosition(workflow.instruction(order.position), order, state))
     } yield maybePosition
 
   private def instruction_[A <: Instruction: ClassTag](orderId: OrderId): Checked[A] = {

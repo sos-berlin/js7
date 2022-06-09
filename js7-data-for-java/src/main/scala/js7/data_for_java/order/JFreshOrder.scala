@@ -2,6 +2,7 @@ package js7.data_for_java.order
 
 import io.vavr.control.{Either => VEither}
 import java.time.Instant
+import java.util.Optional
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.problem.Problem
@@ -10,11 +11,13 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.Value
 import js7.data.workflow.WorkflowPath
 import js7.data_for_java.common.JJsonable
+import js7.data_for_java.workflow.position.JPosition
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
 
 @javaApi
-final case class JFreshOrder(asScala: FreshOrder)
+final case class
+JFreshOrder(asScala: FreshOrder)
 extends JJsonable[JFreshOrder]
 {
   protected type AsScala = FreshOrder
@@ -62,6 +65,26 @@ object JFreshOrder extends JJsonable.Companion[JFreshOrder]
       arguments.asScala.toMap,
       scheduledFor.toScala.map(o => Timestamp.ofEpochMilli(o.toEpochMilli)),
       deleteWhenTerminated = deleteWhenTerminated))
+
+  @Nonnull
+  @throws[RuntimeException]("on invalid syntax")
+  def of(
+    @Nonnull id: OrderId,
+    @Nonnull workflowPath: WorkflowPath,
+    @Nonnull scheduledFor: java.util.Optional[Instant],
+    @Nonnull arguments: java.util.Map[String, Value],
+    @Nonnull deleteWhenTerminated: Boolean,
+    @Nonnull startPosition: Optional[JPosition],
+    @Nonnull stopPosition: Optional[JPosition])
+  : JFreshOrder =
+    JFreshOrder(FreshOrder(
+      id,
+      workflowPath,
+      arguments.asScala.toMap,
+      scheduledFor.toScala.map(o => Timestamp.ofEpochMilli(o.toEpochMilli)),
+      deleteWhenTerminated = deleteWhenTerminated,
+      startPosition = startPosition.toScala.map(_.asScala),
+      stopPosition = stopPosition.toScala.map(_.asScala)))
 
   @Nonnull
   override def fromJson(@Nonnull jsonString: String): VEither[Problem, JFreshOrder] =

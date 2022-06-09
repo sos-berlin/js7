@@ -39,7 +39,8 @@ final case class Order[+S <: Order.State](
   parent: Option[OrderId] = None,
   mark: Option[OrderMark] = None,
   isSuspended: Boolean = false,
-  deleteWhenTerminated: Boolean = false)
+  deleteWhenTerminated: Boolean = false,
+  stopPosition: Option[Position] = None)
 {
   // Accelerate usage in Set[Order], for example in AgentDriver's CommandQueue
   override def hashCode = id.hashCode
@@ -636,9 +637,13 @@ final case class Order[+S <: Order.State](
 object Order
 {
   def fromOrderAdded(id: OrderId, event: OrderAddedX): Order[Fresh] =
-    Order(id, event.workflowId, Fresh, event.arguments,
+    Order(id,
+      event.workflowId /: event.startPosition.getOrElse(Position.First),
+      Fresh,
+      event.arguments,
       event.scheduledFor, event.externalOrderKey,
-      deleteWhenTerminated = event.deleteWhenTerminated)
+      deleteWhenTerminated = event.deleteWhenTerminated,
+      stopPosition = event.stopPosition)
 
   def fromOrderAttached(id: OrderId, event: OrderAttachedToAgent): Order[IsFreshOrReady] =
     Order(id, event.workflowPosition, event.state, event.arguments,
@@ -648,7 +653,8 @@ object Order
       Some(Attached(event.agentPath)),
       event.parent, event.mark,
       isSuspended = event.isSuspended,
-      deleteWhenTerminated = event.deleteWhenTerminated)
+      deleteWhenTerminated = event.deleteWhenTerminated,
+      stopPosition = event.stopPosition)
 
   sealed trait AttachedState
   object AttachedState {
@@ -809,6 +815,7 @@ object Order
       "mark" -> order.mark.asJson,
       "isSuspended" -> order.isSuspended.?.asJson,
       "deleteWhenTerminated" -> order.deleteWhenTerminated.?.asJson,
+      "stopPosition" -> order.stopPosition.asJson,
       "historicOutcomes" -> order.historicOutcomes.??.asJson)
 
   implicit val jsonDecoder: Decoder[Order[State]] = cursor =>
@@ -824,16 +831,20 @@ object Order
       mark <- cursor.get[Option[OrderMark]]("mark")
       isSuspended <- cursor.getOrElse[Boolean]("isSuspended")(false)
       deleteWhenTerminated <- cursor.getOrElse[Boolean]("deleteWhenTerminated")(false)
+      stopPosition <- cursor.get[Option[Position]]("stopPosition")
       historicOutcomes <- cursor.getOrElse[Vector[HistoricOutcome]]("historicOutcomes")(Vector.empty)
     } yield
       Order(id, workflowPosition, state, arguments, scheduledFor, externalOrderKey, historicOutcomes,
-        attachedState, parent, mark, isSuspended, deleteWhenTerminated)
+        attachedState, parent, mark, isSuspended, deleteWhenTerminated, stopPosition)
 
-  implicit val FreshOrReadyOrderJsonEncoder: Encoder.AsObject[Order[IsFreshOrReady]] = o => jsonEncoder.encodeObject(o)
+  implicit val FreshOrReadyOrderJsonEncoder: Encoder.AsObject[Order[IsFreshOrReady]] =
+    o => jsonEncoder.encodeObject(o)
+
   implicit val FreshOrReadyOrderJsonDecoder: Decoder[Order[IsFreshOrReady]] = cursor =>
     jsonDecoder(cursor) flatMap {
       o => o.ifState[IsFreshOrReady] match {
-        case None => Left(DecodingFailure(s"Order is not Fresh or Ready, but: ${o.state.getClass.simpleScalaName}", cursor.history))
+        case None => Left(DecodingFailure(
+          s"Order is not Fresh or Ready, but: ${o.state.getClass.simpleScalaName}", cursor.history))
         case Some(x) => Right(x)
       }
     }

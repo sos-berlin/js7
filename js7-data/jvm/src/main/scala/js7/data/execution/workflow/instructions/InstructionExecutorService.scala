@@ -15,6 +15,7 @@ import js7.data.workflow.position.Position
 
 final class InstructionExecutorService(val clock: WallClock)
 {
+  val finishExecutor = new FinishExecutor(this)
   private[workflow] val forkExecutor = new ForkExecutor(this)
   private[workflow] val forkListExecutor = new ForkListExecutor(this)
   private[instructions] val lockExecutor = new LockExecutor(this)
@@ -25,7 +26,7 @@ final class InstructionExecutorService(val clock: WallClock)
       new EndExecutor(this),
       new ExecuteExecutor(this),
       new FailExecutor(this),
-      new FinishExecutor(this),
+      finishExecutor,
       forkExecutor,
       forkListExecutor,
       new GapExecutor(this),
