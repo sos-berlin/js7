@@ -380,8 +380,8 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
           bOrderId <-: OrderDetached
         )) == Right(Seq(
           aOrderId <-: OrderStarted,
-          aOrderId <-: OrderFinished,
-          bOrderId <-: OrderFinished)))
+          bOrderId <-: OrderFinished,
+          aOrderId <-: OrderFinished)))
 
       assert(
         executor.applyEventsAndReturnSubsequentEvents(Seq(

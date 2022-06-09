@@ -1,7 +1,7 @@
 package js7.data.execution.workflow.instructions
 
 import js7.data.order.Order
-import js7.data.order.OrderEvent.{OrderDetachable, OrderFinished, OrderMoved, OrderStarted}
+import js7.data.order.OrderEvent.{OrderFinished, OrderMoved}
 import js7.data.state.StateView
 import js7.data.workflow.instructions.{Cycle, End, ForkInstruction, LockInstruction}
 
@@ -12,42 +12,35 @@ extends EventInstructionExecutor with PositionInstructionExecutor
   val instructionClass = classOf[End]
 
   def toEvents(instruction: End, order: Order[Order.State], state: StateView) =
-    (order.position.parent match {
-      case None =>
-        Right(
-          order.state match {
-            case _: Order.Ready =>
-              if (order.isAttached)
-                (order.id <-: OrderDetachable) :: Nil
-              else
-                (order.id <-: OrderFinished) :: Nil
+    start(order)
+      .getOrElse(
+        (order.position.parent match {
+          case None =>
+            order.state match {
+              case _: Order.Ready =>
+                detach(order)
+                  .getOrElse(Right(
+                    (order.id <-: OrderFinished) :: Nil))
 
-            case _: Order.Fresh =>
-              if (order.isAttached)
-                (order.id <-: OrderDetachable) :: Nil
-              else
-                (order.id <-: OrderStarted) ::
-                (order.id <-: OrderFinished) :: Nil
+              case _ => Right(Nil)
+            }
 
-            case _ => Nil
-          })
+          case Some(returnPosition) =>
+            state.instruction(order.workflowId /: returnPosition) match {
+              case fork: ForkInstruction =>
+                Right(service.tryJoinChildOrder(fork, order, state).toList)
 
-      case Some(returnPosition) =>
-        state.instruction(order.workflowId /: returnPosition) match {
-          case fork: ForkInstruction =>
-            Right(service.tryJoinChildOrder(fork, order, state).toList)
+              case lock: LockInstruction =>
+                Right(service.lockExecutor.onReturnFromSubworkflow(order, lock).toList)
 
-          case lock: LockInstruction =>
-            Right(service.lockExecutor.onReturnFromSubworkflow(order, lock).toList)
+              case cycle: Cycle =>
+                service.cycleExecutor.onReturnFromSubworkflow(order, cycle, state)
+                  .map(_ :: Nil)
 
-          case cycle: Cycle =>
-            service.cycleExecutor.onReturnFromSubworkflow(order, cycle, state)
-              .map(_ :: Nil)
-
-          case _ =>
-            Right((order.id <-: OrderMoved(returnPosition.increment)) :: Nil)
-        }
-    })
+              case _ =>
+                Right((order.id <-: OrderMoved(returnPosition.increment)) :: Nil)
+            }
+        }))
 
   def nextPosition(instruction: End, order: Order[Order.State], state: StateView) = {
     import service.instructionToExecutor
