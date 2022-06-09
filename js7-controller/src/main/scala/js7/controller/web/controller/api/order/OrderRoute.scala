@@ -83,7 +83,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
               else
                 entity(as[Json]) { json =>
                   if (json.isArray)
-                    json.as[Seq[FreshOrder]] match {
+                    json.as[Vector[FreshOrder]] match {
                       case Left(failure) => complete(failure.toProblem)
                       case Right(orders) =>
                         completeTask(

@@ -427,13 +427,13 @@ extends VersionedItem
     }
 
   def checkedPosition(position: Position): Checked[Position] =
-    labeledInstruction(position).map(_ => position)
+    labeledInstruction(position).rightAs(position)
 
   def labeledInstruction(position: Position): Checked[Instruction.Labeled] =
     for {
       workflow <- nestedWorkflow(position.branchPath)
       instr <- workflow.labeledInstructions.get(position.nr.number)
-        .toRight(Problem(s"Unknown position $position in workflow '$id'"))
+        .toRight(Problem(s"Unknown position $position in $id"))
     } yield instr
 
   def orderParameterList: OrderParameterList =

@@ -1,6 +1,6 @@
 package js7.data.controller
 
-import cats.syntax.flatMap._
+import cats.syntax.apply._
 import cats.syntax.traverse._
 import js7.base.problem.Checked
 import js7.base.utils.Collections.implicits.RichIterable
@@ -41,7 +41,7 @@ final case class ControllerStateExecutor private(
 
   def addOrders(freshOrders: Seq[FreshOrder], suppressOrderIdCheckFor: Option[String] = None)
   : Checked[Seq[KeyedEvent[OrderAdded]]] =
-    freshOrders.checkUniqueness(_.id) >>
+    freshOrders.checkUniqueness(_.id) *>
       freshOrders
         .traverse(addOrder(_, suppressOrderIdCheckFor = suppressOrderIdCheckFor))
         .map(_.flatten)
@@ -53,7 +53,7 @@ final case class ControllerStateExecutor private(
   : Checked[Option[KeyedEvent[OrderAdded]]] =
     ( if (suppressOrderIdCheckFor.contains(order.id.string)) Checked.unit
       else order.id.checkedNameSyntax
-    ) >>
+    ) *>
       addOrderWithPrecheckedId(order, externalOrderKey)
 
   private def addOrderWithPrecheckedId(

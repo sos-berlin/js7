@@ -101,7 +101,7 @@ final class OrderEventSource(state: StateView)
   private def catchStartsWithRetry(firstCatchPos: WorkflowPosition) =
     instruction(firstCatchPos).withoutSourcePos == Retry()
 
-  private def invalidToEvent[A](order: Order[Order.State], checkedEvents: Checked[Seq[KeyedEvent[OrderActorEvent]]])
+  private def invalidToEvent(order: Order[Order.State], checkedEvents: Checked[Seq[KeyedEvent[OrderActorEvent]]])
   : Seq[KeyedEvent[OrderActorEvent]] =
     checkedEvents match {
       case Left(problem) =>

@@ -455,7 +455,7 @@ final class SuspendResumeOrdersTest extends AnyFreeSpec with ControllerAgentForS
       AppendHistoricOutcome(Position(99), Outcome.succeeded))
     for (op <- invalidOps) assert(
       executeCommand(ResumeOrder(order.id, historyOperations = Seq(op))).await(99.s) ==
-        Left(Problem("Unknown position 99 in workflow 'Workflow:TRY~INITIAL'")))
+        Left(Problem("Unknown position 99 in Workflow:TRY~INITIAL")))
 
     executeCommand(CancelOrders(Set(order.id))).await(99.s).orThrow
     eventWatch.await[OrderCancelled](_.key == order.id)
