@@ -9,7 +9,7 @@ import scala.concurrent.duration.FiniteDuration
 /** Code requiring java time (JVM) .*/
 object AdmissionTimeSchemeForJavaTime
 {
-  implicit final class JavaAdmissionTimeSchemeJava(private val admissionTimeScheme: AdmissionTimeScheme)
+  implicit final class RichAdmissionTimeScheme(private val admissionTimeScheme: AdmissionTimeScheme)
   extends AnyVal
   {
     def hasPeriodForDay(localDate: LocalDate, dateOffset: FiniteDuration): Boolean =
@@ -38,7 +38,8 @@ object AdmissionTimeSchemeForJavaTime
         .filterNot(_.endsBefore(local))
         .minOption
 
-    private def findLocalIntervals(local: LocalDateTime, dateOffset: FiniteDuration): View[LocalInterval] =
+    private def findLocalIntervals(local: LocalDateTime, dateOffset: FiniteDuration)
+    : View[LocalInterval] =
       admissionTimeScheme.periods
         .view
         .map(AdmissionPeriodCalculator(_, dateOffset))

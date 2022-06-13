@@ -1,8 +1,7 @@
 package js7.base.generic
 
-import io.circe.{Decoder, Encoder, Json}
+import io.circe.{Codec, Decoder, Encoder, Json}
 import java.util.Objects.requireNonNull
-import js7.base.circeutils.CirceUtils
 import js7.base.convert.As
 import js7.base.generic.SecretString._
 import scala.annotation.tailrec
@@ -45,9 +44,9 @@ object SecretString
   object implicits {
     // Import explicitly, it's secret.
 
-    implicit val JsonEncoder: Encoder[SecretString] = o => Json.fromString(o.string)
-    implicit val JsonDecoder: Decoder[SecretString] = _.as[String] map SecretString.apply
-    val jsonCodec = CirceUtils.circeCodec[SecretString]
+    private val jsonEncoder: Encoder[SecretString] = o => Json.fromString(o.string)
+    private val jsonDecoder: Decoder[SecretString] = _.as[String] map SecretString.apply
+    implicit val jsonCodec = Codec.from(jsonDecoder, jsonEncoder)
   }
   val jsonCodec = implicits.jsonCodec
 

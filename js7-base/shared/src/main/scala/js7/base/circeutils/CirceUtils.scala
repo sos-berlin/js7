@@ -41,7 +41,7 @@ object CirceUtils
     stringJsonCodec(_.toString, from)
 
   def stringJsonCodec[A](to: A => String, from: String => A): Codec[A] =
-    circeCodec(stringEncoder(to), stringDecoder(from))
+    Codec.from(stringDecoder(from), stringEncoder(to))
 
   def stringEncoder[A](to: A => String): Encoder[A] =
     o => Json.fromString(to(o))
@@ -52,18 +52,6 @@ object CirceUtils
       catch { case NonFatal(t) =>
         Left(DecodingFailure(t.toStringWithCauses, c.history))
       })
-
-  def objectCodec[A <: AnyRef: Encoder.AsObject: Decoder]: Codec.AsObject[A] =
-    new Codec.AsObject[A] {
-      def encodeObject(a: A) = implicitly[Encoder.AsObject[A]].encodeObject(a)
-      def apply(c: HCursor) = implicitly[Decoder[A]].apply(c)
-    }
-
-  def circeCodec[A: Encoder: Decoder]: Codec[A] =
-    new Codec[A] {
-      def apply(a: A) = implicitly[Encoder[A]].apply(a)
-      def apply(c: HCursor) = implicitly[Decoder[A]].apply(c)
-    }
 
   def deriveRenamingCodec[A](rename: Map[String, String])
     (implicit encoder: Lazy[DerivedAsObjectEncoder[A]], decoder: Lazy[DerivedDecoder[A]])

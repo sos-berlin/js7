@@ -2,7 +2,7 @@ package js7.data.execution.workflow.instructions
 
 import java.time.LocalDate
 import js7.base.problem.Checked
-import js7.base.time.AdmissionTimeSchemeForJavaTime.JavaAdmissionTimeSchemeJava
+import js7.base.time.AdmissionTimeSchemeForJavaTime._
 import js7.base.time.JavaTime.JavaTimeZone
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichPartialFunction}
