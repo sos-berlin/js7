@@ -81,6 +81,68 @@ object DailyPeriod {
       .checked.orThrow
 }
 
+final case class MonthlyDatePeriod(secondOfMonth: Int, duration: FiniteDuration)
+extends AdmissionPeriod
+{
+  def checked: Checked[this.type] =
+    if (secondOfMonth < 0 || secondOfMonth >= 31*DaySeconds)
+      Left(Problem(s"Invalid time in a month: $toString"))
+    else if (!duration.isPositive)
+      Left(Problem(s"Duration must be positive: $toString"))
+    else
+      Right(this)
+}
+object MonthlyDatePeriod {
+  @TestOnly
+  def apply(dayOfMonth: Int, timeOfDate: LocalTime, duration: FiniteDuration): MonthlyDatePeriod =
+    apply((dayOfMonth - 1) * DaySeconds + timeOfDate.toSecondOfDay, duration)
+      .checked.orThrow
+}
+
+/** Monthly admission at a specific last day of month.
+ * @param lastSecondOfMonth for example, -3600 for the last day at 23:00. */
+final case class MonthlyLastDatePeriod(lastSecondOfMonth: Int, duration: FiniteDuration)
+extends AdmissionPeriod
+{
+  def checked: Checked[this.type] =
+    if (lastSecondOfMonth <= -28*DaySeconds || lastSecondOfMonth >= 0)
+      Left(Problem(s"Invalid reverse time in a month (must be negative): $toString"))
+    else if (!duration.isPositive)
+      Left(Problem(s"Duration must be positive: $toString"))
+    else
+      Right(this)
+}
+object MonthlyLastDatePeriod {
+  @TestOnly
+  def apply(lastDayOfMonth: Int, timeOfDate: LocalTime, duration: FiniteDuration)
+  : MonthlyLastDatePeriod =
+    apply((lastDayOfMonth + 1) * DaySeconds - (DaySeconds - timeOfDate.toSecondOfDay), duration)
+      .checked.orThrow
+}
+
+/** Monthly admission at specific weekdays.
+ * @param secondOfWeek may be > 7*24*3600. */
+final case class MonthlyWeekdayPeriod(secondOfWeek: Int, duration: FiniteDuration)
+extends AdmissionPeriod
+{
+  def checked: Checked[this.type] =
+    if (secondOfWeek < 0 || secondOfWeek >= 4*WeekSeconds)
+      Left(Problem(s"Invalid time in a month: $toString"))
+    else if (!duration.isPositive)
+      Left(Problem(s"Duration must be positive: $toString"))
+    else
+      Right(this)
+}
+object MonthlyWeekdayPeriod {
+  @TestOnly
+  def apply(number: Int, weekday: DayOfWeek, localTime: LocalTime, duration: FiniteDuration)
+  : MonthlyWeekdayPeriod =
+    apply(
+      (number - 1) * WeekSeconds + weekdayToSeconds(weekday) + localTime.toSecondOfDay,
+      duration
+    ).checked.orThrow
+}
+
 object AdmissionPeriod
 {
   private[time] val DaySeconds = 24 * 3600
@@ -96,7 +158,10 @@ object AdmissionPeriod
   implicit val jsonCodec = TypedJsonCodec[AdmissionPeriod](
     Subtype(AlwaysPeriod),
     Subtype(deriveCodec[WeekdayPeriod].checked(_.checked)),
-    Subtype(deriveCodec[DailyPeriod].checked(_.checked)))
+    Subtype(deriveCodec[DailyPeriod].checked(_.checked)),
+    Subtype(deriveCodec[MonthlyDatePeriod].checked(_.checked)),
+    Subtype(deriveCodec[MonthlyLastDatePeriod].checked(_.checked)),
+    Subtype(deriveCodec[MonthlyWeekdayPeriod].checked(_.checked)))
 
   intelliJuseImport(FiniteDurationJsonEncoder)
 }

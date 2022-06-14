@@ -91,7 +91,7 @@ extends EventInstructionExecutor with PositionInstructionExecutor
       job.admissionTimeScheme.fold(false)(admissionTimeScheme =>
         orderIdToDate(order.id)
           .fold(false)(localDate =>
-            !admissionTimeScheme.hasPeriodForDay(localDate, dateOffset = noDateOffset)))
+            !admissionTimeScheme.hasAdmissionPeriodForDay(localDate, dateOffset = noDateOffset)))
 }
 
 object ExecuteExecutor

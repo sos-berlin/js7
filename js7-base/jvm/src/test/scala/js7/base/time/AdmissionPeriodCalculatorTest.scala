@@ -1,9 +1,9 @@
 package js7.base.time
 
-import java.time.DayOfWeek.{MONDAY, SATURDAY, TUESDAY}
+import java.time.DayOfWeek.{FRIDAY, MONDAY, SATURDAY, TUESDAY}
 import java.time.LocalTime.MIDNIGHT
 import java.time.{LocalDate, LocalDateTime, LocalTime}
-import js7.base.time.AdmissionPeriodCalculator.{AlwaysPeriodCalculator, DailyPeriodCalculator, NoOffset, WeekdayPeriodCalculator, startOfWeek}
+import js7.base.time.AdmissionPeriodCalculator.{AlwaysPeriodCalculator, DailyPeriodCalculator, MonthlyDatePeriodCalculator, MonthlyLastDatePeriodCalculator, MonthlyWeekdayPeriodCalculator, NoOffset, WeekdayPeriodCalculator, startOfWeek}
 import js7.base.time.ScalaTime._
 import org.scalatest.freespec.AnyFreeSpec
 import scala.jdk.DurationConverters.{JavaDurationOps, ScalaDurationOps}
@@ -95,29 +95,29 @@ final class AdmissionPeriodCalculatorTest extends AnyFreeSpec
           Some(LocalInterval(localDT("2021-03-02T03:00"), 2.h)))
       }
 
-      "hasPeriodForDay" - {
+      "hasAdmissionPeriodForDay" - {
         "period within a day" in {
-          assert(!calculator.hasPeriodForDay(LocalDate.parse("2021-03-01")))
-          assert(calculator.hasPeriodForDay(LocalDate.parse("2021-03-02")))
-          assert(!calculator.hasPeriodForDay(LocalDate.parse("2021-03-03")))
+          assert(!calculator.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-01")))
+          assert(calculator.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-02")))
+          assert(!calculator.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-03")))
         }
 
         "period starts at midnight" in {
           val weekdayPeriod = AdmissionPeriodCalculator(
             WeekdayPeriod(MONDAY, MIDNIGHT, 1.h),
             calculator.dateOffset.toScala)
-          assert(!weekdayPeriod.hasPeriodForDay(LocalDate.parse("2021-03-07")))  // Sun
-          assert(weekdayPeriod.hasPeriodForDay(LocalDate.parse("2021-03-08")))   // Mon
-          assert(!weekdayPeriod.hasPeriodForDay(LocalDate.parse("2021-03-09")))  // Tue
+          assert(!weekdayPeriod.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-07")))  // Sun
+          assert(weekdayPeriod.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-08")))   // Mon
+          assert(!weekdayPeriod.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-09")))  // Tue
         }
 
         "period ends at midnight" in {
           val weekdayPeriod = AdmissionPeriodCalculator(
             WeekdayPeriod(MONDAY, LocalTime.of(23, 0), 1.h),
             calculator.dateOffset.toScala)
-          assert(!weekdayPeriod.hasPeriodForDay(LocalDate.parse("2021-03-07")))  // Sun
-          assert(weekdayPeriod.hasPeriodForDay(LocalDate.parse("2021-03-08")))   // Mon
-          assert(!weekdayPeriod.hasPeriodForDay(LocalDate.parse("2021-03-09")))  // Tue
+          assert(!weekdayPeriod.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-07")))  // Sun
+          assert(weekdayPeriod.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-08")))   // Mon
+          assert(!weekdayPeriod.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-09")))  // Tue
         }
 
         "period over two midnights" in {
@@ -125,11 +125,11 @@ final class AdmissionPeriodCalculatorTest extends AnyFreeSpec
           val calc = AdmissionPeriodCalculator(
             WeekdayPeriod(SATURDAY, LocalTime.of(23, 0), (24 + 3).h),
             calculator.dateOffset.toScala)
-          assert(!calc.hasPeriodForDay(LocalDate.parse("2021-03-05")))  // Fri
-          assert(calc.hasPeriodForDay(LocalDate.parse("2021-03-06")))   // Sat
-          assert(calc.hasPeriodForDay(LocalDate.parse("2021-03-07")))   // Sun
-          assert(calc.hasPeriodForDay(LocalDate.parse("2021-03-08")))   // Mon
-          assert(!calc.hasPeriodForDay(LocalDate.parse("2021-03-09")))  // Tue
+          assert(!calc.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-05")))  // Fri
+          assert(calc.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-06")))   // Sat
+          assert(calc.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-07")))   // Sun
+          assert(calc.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-08")))   // Mon
+          assert(!calc.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-09")))  // Tue
         }
       }
     }
@@ -180,9 +180,9 @@ final class AdmissionPeriodCalculatorTest extends AnyFreeSpec
     //    Some(LocalInterval(localDT("2021-10-01T08:00"), 2.h)))
     //}
 
-    "hasPeriodForDay" - {
+    "hasAdmissionPeriodForDay" - {
       "period within a day" in {
-        assert(calculator.hasPeriodForDay(LocalDate.parse("2021-10-01")))
+        assert(calculator.hasAdmissionPeriodForDay(LocalDate.parse("2021-10-01")))
 
         val empty = DailyPeriod(1, 0.s).checked
         assert(empty.isLeft)
@@ -190,21 +190,21 @@ final class AdmissionPeriodCalculatorTest extends AnyFreeSpec
 
       "period starts at midnight" in {
         val dailyPeriod = AdmissionPeriodCalculator(DailyPeriod(MIDNIGHT, 1.h), dateOffset = 0.s)
-        assert(dailyPeriod.hasPeriodForDay(LocalDate.parse("2021-08-30")))
+        assert(dailyPeriod.hasAdmissionPeriodForDay(LocalDate.parse("2021-08-30")))
       }
 
       "period ends at midnight" in {
         val dailyPeriod = AdmissionPeriodCalculator(
           DailyPeriod(LocalTime.of(23, 0), 1.h),
           dateOffset = 0.s)
-        assert(dailyPeriod.hasPeriodForDay(LocalDate.parse("2021-08-30")))   // Mon
+        assert(dailyPeriod.hasAdmissionPeriodForDay(LocalDate.parse("2021-08-30")))   // Mon
       }
 
       "period over midnight" in {
         val dailyPeriod = AdmissionPeriodCalculator(
           DailyPeriod(LocalTime.of(23, 0), 24.h),
           dateOffset = 0.s)
-        assert(dailyPeriod.hasPeriodForDay(LocalDate.parse("2021-08-28")))   // Sat
+        assert(dailyPeriod.hasAdmissionPeriodForDay(LocalDate.parse("2021-08-28")))   // Sat
       }
     }
   }
@@ -223,8 +223,333 @@ final class AdmissionPeriodCalculatorTest extends AnyFreeSpec
         None)
     }
 
-    "hasPeriodForDay" in {
-      assert(admissionPeriod.hasPeriodForDay(LocalDate.parse("2021-10-01")))
+    "hasAdmissionPeriodForDay" in {
+      assert(admissionPeriod.hasAdmissionPeriodForDay(LocalDate.parse("2021-10-01")))
+    }
+  }
+
+  "MonthlyDatePeriod" - {
+    val period = MonthlyDatePeriod(2, LocalTime.parse("03:00"), 1.h)
+
+    "secondOfMonth" in {
+      assert(period.secondOfMonth == 1 * 24*3600 + 3*3600)
+    }
+
+    "No dateOffset" - {
+      val calculator = new MonthlyDatePeriodCalculator(period, dateOffset = 0.s.toJava)
+      import calculator.{calendarPeriodStart, nextCalendarPeriodStart}
+
+      "calendarPeriodStart" in {
+        assert(calendarPeriodStart(localDT("2021-03-01T00:00")) == localDT("2021-03-01T00:00"))
+        assert(calendarPeriodStart(localDT("2021-03-31T23:59")) == localDT("2021-03-01T00:00"))
+      }
+
+      "nextCalendarPeriodStart" in {
+        assert(nextCalendarPeriodStart(localDT("2021-03-01T00:00")) == Some(localDT("2021-04-01T00:00")))
+        assert(nextCalendarPeriodStart(localDT("2021-03-31T23:59")) == Some(localDT("2021-04-01T00:00")))
+      }
+
+      addMonthlyTests(calculator)
+    }
+
+    "dateOffset = 6h" - {
+      val calculator = new MonthlyDatePeriodCalculator(period, dateOffset = 6.h.toJava)
+      import calculator.{calendarPeriodStart, nextCalendarPeriodStart}
+
+      "calendarStart" in {
+        assert(calendarPeriodStart(localDT("2021-03-01T06:00")) == localDT("2021-03-01T06:00"))
+        assert(calendarPeriodStart(localDT("2021-03-08T05:59")) == localDT("2021-03-01T06:00"))
+      }
+
+      "nextCalendarPeriodStart" in {
+        assert(nextCalendarPeriodStart(localDT("2021-03-01T06:00")) == Some(localDT("2021-04-01T06:00")))
+        assert(nextCalendarPeriodStart(localDT("2021-03-31T05:59")) == Some(localDT("2021-04-01T06:00")))
+      }
+
+      addMonthlyTests(calculator)
+    }
+
+    def addMonthlyTests(calculator: MonthlyDatePeriodCalculator) = {
+      import calculator.dateOffset
+      // Results are indifferent to datePeriod
+
+      "admissionPeriodStart" in {
+        import calculator.admissionPeriodStart
+        assert(admissionPeriodStart(localDT("2021-03-01T00:00")) == localDT("2021-03-02T03:00"))
+        assert(admissionPeriodStart(localDT("2021-03-01T01:00")) == localDT("2021-03-02T03:00"))
+        assert(admissionPeriodStart(localDT("2021-03-02T00:00")) == localDT("2021-03-02T03:00"))
+        assert(admissionPeriodStart(localDT("2021-03-02T03:00")) == localDT("2021-03-02T03:00"))
+        assert(admissionPeriodStart(localDT("2021-03-02T04:00")) == localDT("2021-03-02T03:00"))
+        assert(admissionPeriodStart(localDT("2021-03-31T00:00")) == localDT("2021-03-02T03:00"))
+        assert(admissionPeriodStart(localDT("2021-03-31T23:59")) == localDT("2021-03-02T03:00"))
+        assert(admissionPeriodStart(localDT("2021-04-01T00:00")) == localDT("2021-04-02T03:00"))
+      }
+
+      "toInterval" in {
+        assert(calculator.toLocalInterval(localDT("2021-03-01T00:00")) ==
+          Some(LocalInterval(localDT("2021-03-02T03:00"), 1.h)))
+      }
+
+      "toInterval may return past period" in {
+        // Past periods will be deleted by the caller. For easier code.
+        assert(calculator.toLocalInterval(localDT("2021-03-07T00:00")) ==
+          Some(LocalInterval(localDT("2021-03-02T03:00"), 1.h)))
+      }
+
+      "hasAdmissionPeriodForDay" - {
+        "period within a day" in {
+          assert(!calculator.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-01")))
+          assert(calculator.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-02")))
+          assert(!calculator.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-03")))
+        }
+
+        "period starts at midnight" in {
+          val calc = AdmissionPeriodCalculator(
+            MonthlyDatePeriod(2, LocalTime.parse("00:00"), 1.h),
+            dateOffset.toScala)
+          assert(!calc.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-01")))
+          assert(calc.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-02")))
+          assert(!calc.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-03")))
+        }
+
+        "period ends at midnight" in {
+          val calc = AdmissionPeriodCalculator(
+            MonthlyDatePeriod(2, LocalTime.parse("03:00"), 1.h),
+            dateOffset = 0.s)
+          assert(!calc.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-01")))
+          assert(calc.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-02")))
+          assert(!calc.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-03")))
+        }
+
+        "period over two midnights" in {
+          // 3rd of month 23:00 until 5th of month 02:00
+          val calc = AdmissionPeriodCalculator(
+            MonthlyDatePeriod(3, LocalTime.parse("23:00"), (24 + 3).h),
+            dateOffset.toScala)
+          assert(calc.admissionPeriod == MonthlyDatePeriod((2*24+23)*3600, 27.h))
+
+          assert(!calc.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-02")))
+          assert(calc.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-03")))
+          assert(calc.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-04")))
+          assert(calc.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-05")))
+          assert(!calc.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-06")))
+        }
+      }
+    }
+  }
+
+  "MonthlyLastDatePeriod" - {
+    val period = MonthlyLastDatePeriod(-2, LocalTime.parse("03:00"), 1.h)
+
+    "lastSecondOfMonth" in {
+      assert(period.lastSecondOfMonth == -(2*24-3)*3600)
+    }
+
+    "No dateOffset" - {
+      val calculator = new MonthlyLastDatePeriodCalculator(period, dateOffset = 0.s.toJava)
+      import calculator.{calendarPeriodStart, nextCalendarPeriodStart}
+
+      "calendarPeriodStart" in {
+        assert(calendarPeriodStart(localDT("2021-03-01T00:00")) == localDT("2021-03-01T00:00"))
+        assert(calendarPeriodStart(localDT("2021-03-31T23:59")) == localDT("2021-03-01T00:00"))
+      }
+
+      "nextCalendarPeriodStart" in {
+        assert(nextCalendarPeriodStart(localDT("2021-03-01T00:00")) == Some(localDT("2021-04-01T00:00")))
+        assert(nextCalendarPeriodStart(localDT("2021-03-31T23:59")) == Some(localDT("2021-04-01T00:00")))
+      }
+
+      addMonthlyTests(calculator)
+    }
+
+    "dateOffset = 6h" - {
+      val calculator = new MonthlyLastDatePeriodCalculator(period, dateOffset = 6.h.toJava)
+      import calculator.{calendarPeriodStart, nextCalendarPeriodStart}
+
+      "calendarStart" in {
+        assert(calendarPeriodStart(localDT("2021-03-01T06:00")) == localDT("2021-03-01T06:00"))
+        assert(calendarPeriodStart(localDT("2021-03-08T05:59")) == localDT("2021-03-01T06:00"))
+      }
+
+      "nextCalendarPeriodStart" in {
+        assert(nextCalendarPeriodStart(localDT("2021-03-01T06:00")) == Some(localDT("2021-04-01T06:00")))
+        assert(nextCalendarPeriodStart(localDT("2021-03-31T05:59")) == Some(localDT("2021-04-01T06:00")))
+      }
+
+      addMonthlyTests(calculator)
+    }
+
+    def addMonthlyTests(calculator: MonthlyLastDatePeriodCalculator) = {
+      // Results are indifferent to datePeriod
+
+      "admissionPeriodStart" in {
+        import calculator.admissionPeriodStart
+        assert(admissionPeriodStart(localDT("2022-06-01T00:00")) == localDT("2022-06-29T03:00"))
+        assert(admissionPeriodStart(localDT("2022-06-01T01:00")) == localDT("2022-06-29T03:00"))
+        assert(admissionPeriodStart(localDT("2022-06-30T03:00")) == localDT("2022-06-29T03:00"))
+        assert(admissionPeriodStart(localDT("2022-06-30T23:59")) == localDT("2022-06-29T03:00"))
+        assert(admissionPeriodStart(localDT("2022-07-01T00:00")) == localDT("2022-07-30T03:00"))
+      }
+
+      "toInterval" in {
+        assert(calculator.toLocalInterval(localDT("2021-03-01T00:00")) ==
+          Some(LocalInterval(localDT("2021-03-30T03:00"), 1.h)))
+      }
+
+      "toInterval may return past period" in {
+        // Past periods will be deleted by the caller. For easier code.
+        assert(calculator.toLocalInterval(localDT("2021-03-07T00:00")) ==
+          Some(LocalInterval(localDT("2021-03-30T03:00"), 1.h)))
+      }
+
+      "hasAdmissionPeriodForDay" - {
+        "period within a day" in {
+          assert(!calculator.hasAdmissionPeriodForDay(LocalDate.parse("2021-06-01")))
+          assert(!calculator.hasAdmissionPeriodForDay(LocalDate.parse("2021-06-28")))
+          assert(calculator.hasAdmissionPeriodForDay(LocalDate.parse("2021-06-29")))
+          assert(!calculator.hasAdmissionPeriodForDay(LocalDate.parse("2021-06-30")))
+        }
+
+        "period starts at midnight" in {
+          val calc = AdmissionPeriodCalculator(
+            MonthlyLastDatePeriod(-2, LocalTime.parse("00:00"), 1.h),
+            calculator.dateOffset.toScala)
+          assert(!calc.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-29")))
+          assert(calc.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-30")))
+          assert(!calc.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-31")))
+        }
+
+        "period ends at midnight" in {
+          val calc = AdmissionPeriodCalculator(
+            MonthlyLastDatePeriod(-2, LocalTime.parse("23:00"), 1.h),
+            calculator.dateOffset.toScala)
+          assert(!calc.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-29")))
+          assert(calc.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-30")))
+          assert(!calc.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-31")))
+        }
+
+        "period over two midnights" in {
+          val calc = AdmissionPeriodCalculator(
+            MonthlyLastDatePeriod(-3, LocalTime.parse("23:00:00"), (24 + 3).h),
+            calculator.dateOffset.toScala)
+          assert(!calc.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-28")))
+          assert(calc.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-29")))
+          assert(calc.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-30")))
+          assert(calc.hasAdmissionPeriodForDay(LocalDate.parse("2021-03-31")))
+          assert(!calc.hasAdmissionPeriodForDay(LocalDate.parse("2021-04-01")))
+        }
+      }
+    }
+  }
+
+  "MonthlyWeekdayPeriod" - {
+    val period = MonthlyWeekdayPeriod(2, FRIDAY, LocalTime.of(3, 0), 1.h)
+    // For example 2022-06-10
+
+    "secondOfWeek" in {
+      assert(period.secondOfWeek == ((7 + 4)*24 + 3)*3600)
+    }
+
+    "No dateOffset" - {
+      val calculator = new MonthlyWeekdayPeriodCalculator(period, dateOffset = 0.s.toJava)
+      import calculator.{calendarPeriodStart, nextCalendarPeriodStart}
+
+      "calendarPeriodStart" in {
+        assert(calendarPeriodStart(localDT("2022-06-01T00:00")) == localDT("2022-06-01T00:00"))
+        assert(calendarPeriodStart(localDT("2022-06-30T23:59")) == localDT("2022-06-01T00:00"))
+      }
+
+      "nextCalendarPeriodStart" in {
+        assert(nextCalendarPeriodStart(localDT("2022-06-01T00:00")) == Some(localDT("2022-07-01T00:00")))
+        assert(nextCalendarPeriodStart(localDT("2022-06-30T23:59")) == Some(localDT("2022-07-01T00:00")))
+      }
+
+      addMonthlyTests(calculator)
+    }
+
+    "dateOffset = 6h" - {
+      val calculator = new MonthlyWeekdayPeriodCalculator(period, dateOffset = 6.h.toJava)
+      import calculator.{calendarPeriodStart, nextCalendarPeriodStart}
+
+      "calendarStart" in {
+        assert(calendarPeriodStart(localDT("2022-06-01T06:00")) == localDT("2022-06-01T06:00"))
+        assert(calendarPeriodStart(localDT("2022-07-01T05:59")) == localDT("2022-06-01T06:00"))
+        assert(calendarPeriodStart(localDT("2022-07-01T06:00")) == localDT("2022-07-01T06:00"))
+      }
+
+      "nextCalendarPeriodStart" in {
+        assert(nextCalendarPeriodStart(localDT("2022-06-01T06:00")) == Some(localDT("2022-07-01T06:00")))
+        assert(nextCalendarPeriodStart(localDT("2022-06-30T05:59")) == Some(localDT("2022-07-01T06:00")))
+      }
+
+      addMonthlyTests(calculator)
+    }
+
+    def addMonthlyTests(calculator: MonthlyWeekdayPeriodCalculator) = {
+      // Results are indifferent to datePeriod
+
+      "startOfAdmissionPeriod" in {
+        def startOfAdmissionPeriod(local: LocalDateTime) =
+          LocalDateTime.ofEpochSecond(calculator.startOfAdmissionPeriod(local), 0,
+            NoOffset)
+
+        assert(startOfAdmissionPeriod(localDT("2022-07-01T00:00")) == localDT("2022-07-08T03:00"))
+        assert(startOfAdmissionPeriod(localDT("2022-12-01T00:00")) == localDT("2022-12-09T03:00"))
+        assert(startOfAdmissionPeriod(localDT("2022-06-01T00:00")) == localDT("2022-06-10T03:00"))
+        assert(startOfAdmissionPeriod(localDT("2022-02-01T00:00")) == localDT("2022-02-11T03:00"))
+        assert(startOfAdmissionPeriod(localDT("2022-08-01T00:00")) == localDT("2022-08-12T03:00"))
+        assert(startOfAdmissionPeriod(localDT("2022-05-01T00:00")) == localDT("2022-05-13T03:00"))
+        assert(startOfAdmissionPeriod(localDT("2022-10-01T00:00")) == localDT("2022-10-14T03:00"))
+      }
+
+      "toInterval" in {
+        assert(calculator.toLocalInterval(localDT("2022-07-01T00:00")) ==
+          Some(LocalInterval(localDT("2022-07-08T03:00"), 1.h)))
+      }
+
+      "toInterval may return past period" in {
+        // Past periods will be deleted by the caller. For easier code.
+        assert(calculator.toLocalInterval(localDT("2022-06-30T00:00")) ==
+          Some(LocalInterval(localDT("2022-06-10T03:00"), 1.h)))
+      }
+
+      "hasAdmissionPeriodForDay" - {
+        "period within a day" in {
+          assert(!calculator.hasAdmissionPeriodForDay(LocalDate.parse("2022-06-01")))
+          assert(!calculator.hasAdmissionPeriodForDay(LocalDate.parse("2022-06-09")))
+          assert(calculator.hasAdmissionPeriodForDay(LocalDate.parse("2022-06-10")))
+          assert(!calculator.hasAdmissionPeriodForDay(LocalDate.parse("2022-06-11")))
+        }
+
+        "period starts at midnight" in {
+          val calc = AdmissionPeriodCalculator(
+            MonthlyWeekdayPeriod(2, FRIDAY, LocalTime.of(0, 0), 1.h),
+            calculator.dateOffset.toScala)
+          assert(!calc.hasAdmissionPeriodForDay(LocalDate.parse("2022-06-09")))
+          assert(calc.hasAdmissionPeriodForDay(LocalDate.parse("2022-06-10")))
+          assert(!calc.hasAdmissionPeriodForDay(LocalDate.parse("2022-06-11")))
+        }
+
+        "period ends at midnight" in {
+          val calc = AdmissionPeriodCalculator(
+            MonthlyWeekdayPeriod(2, FRIDAY, LocalTime.of(23, 0), 1.h),
+            calculator.dateOffset.toScala)
+          assert(!calc.hasAdmissionPeriodForDay(LocalDate.parse("2022-06-09")))
+          assert(calc.hasAdmissionPeriodForDay(LocalDate.parse("2022-06-10")))
+          assert(!calc.hasAdmissionPeriodForDay(LocalDate.parse("2022-06-11")))
+        }
+
+        "period over two midnights" in {
+          val calc = AdmissionPeriodCalculator(
+            MonthlyWeekdayPeriod(2, FRIDAY, LocalTime.of(23, 0), (24+3).h),
+            calculator.dateOffset.toScala)
+          assert(!calc.hasAdmissionPeriodForDay(LocalDate.parse("2022-06-09")))
+          assert(calc.hasAdmissionPeriodForDay(LocalDate.parse("2022-06-10")))
+          assert(calc.hasAdmissionPeriodForDay(LocalDate.parse("2022-06-11")))
+          assert(calc.hasAdmissionPeriodForDay(LocalDate.parse("2022-06-12")))
+          assert(!calc.hasAdmissionPeriodForDay(LocalDate.parse("2022-06-13")))
+        }
+      }
     }
   }
 
