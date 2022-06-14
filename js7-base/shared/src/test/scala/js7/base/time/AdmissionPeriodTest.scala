@@ -103,17 +103,36 @@ final class AdmissionPeriodTest extends AnyFreeSpec
         json"""
           {
             "TYPE": "MonthlyWeekdayPeriod",
-            "secondOfWeek": 874800,
+            "secondOfWeeks": 874800,
             "duration": 600
           }""")
 
       assert(json"""
         {
           "TYPE": "MonthlyWeekdayPeriod",
-          "secondOfWeek": 874800,
+          "secondOfWeeks": 874800,
           "duration": -1
         }""".checkedAs[AdmissionPeriod] ==
           Left(Problem("JSON DecodingFailure at : Duration must be positive: MonthlyWeekdayPeriod(2nd Thursday 03:00, -1s)")))
+    }
+
+    "MonthlyLastWeekdayPeriod" in {
+      testJson[AdmissionPeriod](
+        MonthlyLastWeekdayPeriod(((-7+4)*24+3)*3600, 600.s),  // Second last week, thursday, 3:00, 10 minutes
+        json"""
+          {
+            "TYPE": "MonthlyLastWeekdayPeriod",
+            "secondOfWeeks": -248400,
+            "duration": 600
+          }""")
+
+      assert(json"""
+        {
+          "TYPE": "MonthlyLastWeekdayPeriod",
+          "secondOfWeeks": -248400,
+          "duration": -1
+        }""".checkedAs[AdmissionPeriod] ==
+          Left(Problem("JSON DecodingFailure at : Duration must be positive: MonthlyLastWeekdayPeriod(2nd last Friday 03:00, -1s)")))
     }
   }
 }

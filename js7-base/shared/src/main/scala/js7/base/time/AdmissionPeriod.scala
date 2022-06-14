@@ -150,17 +150,29 @@ object MonthlyLastDatePeriod {
 }
 
 /** Monthly admission at specific weekdays.
- * @param secondOfWeek may be > 7*24*3600. */
-final case class MonthlyWeekdayPeriod(secondOfWeek: Int, duration: FiniteDuration)
+ * @param secondOfWeeks may be > 7*24*3600. */
+final case class MonthlyWeekdayPeriod(secondOfWeeks: Int, duration: FiniteDuration)
 extends AdmissionPeriod
 {
   def checked: Checked[this.type] =
-    if (secondOfWeek < 0 || secondOfWeek >= 4*WeekSeconds)
-      Left(Problem(s"Invalid time in a month: $toString"))
+    if (secondOfWeeks < 0 || secondOfWeeks >= 4*WeekSeconds)
+      Left(Problem(s"Invalid time in a month: $secondOfWeeks $toString"))
     else if (!duration.isPositive)
       Left(Problem(s"Duration must be positive: $toString"))
     else
       Right(this)
+
+  def shiftWeeks = secondOfWeeks / WeekSeconds
+
+  def dayOfWeek = secondOfWeeks / DaySeconds % 7
+
+  def secondOfDay = secondOfWeeks % DaySeconds
+
+  def pretty =
+    ordinalToString(shiftWeeks + 1) + " " +
+      WeekdaysNames.checked(dayOfWeek).getOrElse("?") + " " +
+      secondsOfDayToString(secondOfDay) + ", " +
+      duration.pretty
 }
 object MonthlyWeekdayPeriod {
   @TestOnly
@@ -168,6 +180,52 @@ object MonthlyWeekdayPeriod {
   : MonthlyWeekdayPeriod =
     apply(
       (number - 1) * WeekSeconds + weekdayToSeconds(weekday) + localTime.toSecondOfDay,
+      duration
+    ).checked.orThrow
+}
+
+/** Monthly admission at specific last weekdays.
+ * @param secondOfWeeks may be > 7*24*3600. */
+final case class MonthlyLastWeekdayPeriod(
+  secondOfWeeks: Int,
+  duration: FiniteDuration)
+extends AdmissionPeriod
+{
+  def checked: Checked[this.type] =
+    if (secondOfWeeks <= -3*WeekSeconds || secondOfWeeks >= WeekSeconds)
+      Left(Problem(s"Invalid time in a month: $toString"))
+    else if (!duration.isPositive)
+      Left(Problem(s"Duration must be positive: $toString"))
+    else
+      Right(this)
+
+  def shiftWeeks = (secondOfWeeks - WeekSeconds + 1) / WeekSeconds
+
+  def dayOfWeek = ((secondOfWeeks + 5*WeekSeconds) / DaySeconds) % 7
+
+  def secondOfDay = (secondOfWeeks + 5*WeekSeconds) % DaySeconds
+
+  def secondOfWeek = (secondOfWeeks + 5*WeekSeconds) % WeekSeconds
+
+  def pretty =
+    (shiftWeeks match {
+      case 0 => "last "
+      case n => ordinalToString(-n+1) + " last "
+    }) +
+      WeekdaysNames.checked(dayOfWeek).getOrElse("?") + " " +
+      secondsOfDayToString(secondOfDay) + ", " +
+      duration.pretty
+}
+object MonthlyLastWeekdayPeriod {
+  @TestOnly
+  def apply(
+    week: Int,
+    weekday: DayOfWeek,
+    localTime: LocalTime,
+    duration: FiniteDuration)
+  : MonthlyLastWeekdayPeriod =
+    apply(
+      (week + 1) * WeekSeconds + weekdayToSeconds(weekday) + localTime.toSecondOfDay,
       duration
     ).checked.orThrow
 }
@@ -197,7 +255,8 @@ object AdmissionPeriod
     Subtype(deriveCodec[DailyPeriod].checked(_.checked)),
     Subtype(deriveCodec[MonthlyDatePeriod].checked(_.checked)),
     Subtype(deriveCodec[MonthlyLastDatePeriod].checked(_.checked)),
-    Subtype(deriveCodec[MonthlyWeekdayPeriod].checked(_.checked)))
+    Subtype(deriveCodec[MonthlyWeekdayPeriod].checked(_.checked)),
+    Subtype(deriveCodec[MonthlyLastWeekdayPeriod].checked(_.checked)))
 
   intelliJuseImport(FiniteDurationJsonEncoder)
 }
