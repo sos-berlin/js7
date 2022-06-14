@@ -124,7 +124,6 @@ final class AdmissionTimeTest extends AnyFreeSpec with ControllerAgentForScalaTe
 
     "Start order at end of shifted permission period" in {
       clock := local("2021-03-28T05:00")
-      val eventId = eventWatch.lastAddedEventId
       val orderId = OrderId("🟣")
       controllerApi.addOrder(FreshOrder(orderId, sundayWorkflow.path)).await(99.s).orThrow
       sleep(100.ms)

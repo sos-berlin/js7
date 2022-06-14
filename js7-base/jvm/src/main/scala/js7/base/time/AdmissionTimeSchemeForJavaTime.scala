@@ -47,8 +47,8 @@ object AdmissionTimeSchemeForJavaTime
           executor.toLocalInterval(local) ++
             // Look ahead in case of invalid local time due to start of daylight saving time
             // --> Could be done in findTimeInterval where LocalDate is checked
-            executor.toLocalInterval(
-              executor.nextCalendarStart(local))
+            executor.nextCalendarPeriodStart(local)
+              .flatMap(executor.toLocalInterval)
         }
   }
 }
