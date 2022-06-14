@@ -769,4 +769,12 @@ object ScalaUtils
       result
     }
   }
+
+  def ordinalToString(n: Int) =
+    n match {
+      case 1 => "1st"
+      case 2 => "2nd"
+      case 3 => "3rd"
+      case n => s"${n}th"
+    }
 }

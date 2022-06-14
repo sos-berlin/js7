@@ -3,6 +3,7 @@ package js7.base.time
 import java.time.LocalTime.MIDNIGHT
 import java.time.temporal.ChronoField.DAY_OF_WEEK
 import java.time.{LocalDate, LocalDateTime, LocalTime, ZoneOffset, Duration => JDuration}
+import js7.base.time.AdmissionPeriod.{DaySeconds, WeekSeconds}
 import js7.base.time.JavaTime._
 import js7.base.time.ScalaTime._
 import scala.concurrent.duration._
@@ -133,7 +134,7 @@ object AdmissionPeriodCalculator
 
   private[time] def sinceStartOfWeek(secondsSinceLocalEpoch: Long): Long = {
     val thursday = 3 // 1970-01-01 was a thursday
-    (secondsSinceLocalEpoch + thursday * 24*3600) % (7*24*3600)
+    (secondsSinceLocalEpoch + thursday * DaySeconds) % WeekSeconds
   }
 
   private[time] final class DailyPeriodCalculator(

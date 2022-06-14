@@ -68,7 +68,7 @@ final class AdmissionPeriodCalculatorTest extends AnyFreeSpec
       }
 
       "dayNumber, dayName" in {
-        assert(calculator.admissionPeriod.dayOffset == 1/*monday is 0*/)
+        assert(calculator.admissionPeriod.dayOfWeek == 1/*monday is 0*/)
         assert(calculator.admissionPeriod.dayName == "Tuesday")
       }
 
