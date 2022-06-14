@@ -337,6 +337,19 @@ final class AdmissionPeriodCalculatorTest extends AnyFreeSpec
         }
       }
     }
+
+    "Use last day of month if month does not have the requested day" in {
+      val period = MonthlyDatePeriod(31, LocalTime.parse("03:00"), 1.h)
+      val calc = AdmissionPeriodCalculator(period, 0.h).asInstanceOf[MonthlyDatePeriodCalculator]
+      assert(calc.admissionPeriodStart(localDT("2022-02-01T00:00")) == localDT("2022-02-28T03:00"))
+      assert(calc.admissionPeriodStart(localDT("2022-03-01T00:00")) == localDT("2022-03-31T03:00"))
+      assert(calc.admissionPeriodStart(localDT("2022-04-01T00:00")) == localDT("2022-04-30T03:00"))
+
+      assert(calc.hasAdmissionPeriodForDay(LocalDate.parse("2022-02-28")))
+      assert(!calc.hasAdmissionPeriodForDay(LocalDate.parse("2022-03-30")))
+      assert(calc.hasAdmissionPeriodForDay(LocalDate.parse("2022-03-31")))
+      assert(calc.hasAdmissionPeriodForDay(LocalDate.parse("2022-04-30")))
+    }
   }
 
   "MonthlyLastDatePeriod" - {
