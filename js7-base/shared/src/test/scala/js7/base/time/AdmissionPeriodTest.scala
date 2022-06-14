@@ -118,7 +118,7 @@ final class AdmissionPeriodTest extends AnyFreeSpec
 
     "MonthlyLastWeekdayPeriod" in {
       testJson[AdmissionPeriod](
-        MonthlyLastWeekdayPeriod(((-7+4)*24+3)*3600, 600.s),  // Second last week, thursday, 3:00, 10 minutes
+        MonthlyLastWeekdayPeriod(((-7+4)*24+3)*3600, 600.s),  // Second last week, friday, 3:00, 10 minutes
         json"""
           {
             "TYPE": "MonthlyLastWeekdayPeriod",

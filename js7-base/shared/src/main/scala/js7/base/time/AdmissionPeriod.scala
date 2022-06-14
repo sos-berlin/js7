@@ -30,6 +30,32 @@ case object AlwaysPeriod extends AdmissionPeriod
   override def toString = "Always"
 }
 
+final case class DailyPeriod(secondOfDay: Int, duration: FiniteDuration)
+extends AdmissionPeriod
+{
+  assertThat(secondOfDay >= 0 && secondOfDay <= DaySeconds)
+  assert(duration <= DayDuration)
+
+  def checked: Checked[DailyPeriod] =
+    if (secondOfDay < 0 || secondOfDay >= DaySeconds)
+      Left(Problem(s"Invalid daytime number: $toString"))
+    else if (!duration.isPositive || duration > DayDuration)
+      Left(Problem(s"Duration must be positive: $toString"))
+    else
+      Right(this)
+
+  def pretty =
+    "daily at " + secondsOfDayToString(secondOfDay) + ", " + duration.pretty
+}
+object DailyPeriod {
+  val always = DailyPeriod(0, 24.h)
+
+  @TestOnly
+  def apply(localTime: LocalTime, duration: FiniteDuration): DailyPeriod =
+    new DailyPeriod((localTime.toSecondOfDay), duration)
+      .checked.orThrow
+}
+
 /** Weekly admission time. */
 final case class WeekdayPeriod(secondOfWeek: Int, duration: FiniteDuration)
 extends AdmissionPeriod
@@ -54,38 +80,11 @@ extends AdmissionPeriod
   def pretty =
     "weekly at " + dayName + " " + secondsOfDayToString(secondOfDay) + ", " + duration.pretty
 }
-
 object WeekdayPeriod
 {
   @TestOnly
   def apply(weekday: DayOfWeek, localTime: LocalTime, duration: FiniteDuration): WeekdayPeriod =
     new WeekdayPeriod(weekdayToSeconds(weekday) + localTime.toSecondOfDay, duration)
-      .checked.orThrow
-}
-
-final case class DailyPeriod(secondOfDay: Int, duration: FiniteDuration)
-extends AdmissionPeriod
-{
-  assertThat(secondOfDay >= 0 && secondOfDay <= DaySeconds)
-  assert(duration <= DayDuration)
-
-  def checked: Checked[DailyPeriod] =
-    if (secondOfDay < 0 || secondOfDay >= DaySeconds)
-      Left(Problem(s"Invalid daytime number: $toString"))
-    else if (!duration.isPositive || duration > DayDuration)
-      Left(Problem(s"Duration must be positive: $toString"))
-    else
-      Right(this)
-
-  def pretty =
-    "daily at " + secondsOfDayToString(secondOfDay) + ", " + duration.pretty
-}
-object DailyPeriod {
-  val always = DailyPeriod(0, 24.h)
-
-  @TestOnly
-  def apply(localTime: LocalTime, duration: FiniteDuration): DailyPeriod =
-    new DailyPeriod((localTime.toSecondOfDay), duration)
       .checked.orThrow
 }
 
