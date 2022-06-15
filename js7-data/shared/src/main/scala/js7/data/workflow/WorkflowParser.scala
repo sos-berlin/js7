@@ -19,6 +19,7 @@ import js7.data.value.{NamedValues, ObjectValue}
 import js7.data.workflow.Instruction.Labeled
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, ExplicitEnd, Finish, Fork, If, ImplicitEnd, LockInstruction, Prompt, Retry, TryInstruction, End => EndInstr, Fail => FailInstr}
+import js7.data.workflow.position.Label
 import scala.concurrent.duration._
 
 /**

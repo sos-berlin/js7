@@ -23,7 +23,7 @@ import js7.data.workflow.Workflow.isCorrectlyEnded
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{BoardInstruction, Cycle, End, Execute, Fork, Gap, If, ImplicitEnd, Instructions, LockInstruction, Retry, TryInstruction}
 import js7.data.workflow.position.BranchPath.Segment
-import js7.data.workflow.position.{BranchId, BranchPath, InstructionNr, Position, WorkflowBranchPath, WorkflowPosition}
+import js7.data.workflow.position.{BranchId, BranchPath, InstructionNr, Label, Position, WorkflowBranchPath, WorkflowPosition}
 import scala.annotation.tailrec
 import scala.collection.View
 import scala.reflect.ClassTag

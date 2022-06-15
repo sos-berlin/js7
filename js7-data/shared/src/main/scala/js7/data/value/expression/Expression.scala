@@ -16,8 +16,8 @@ import js7.data.parser.BasicPrinter.{appendIdentifier, appendIdentifierWithBackt
 import js7.data.value.ValuePrinter.appendQuotedContent
 import js7.data.value.ValueType.MissingValueProblem
 import js7.data.value.{BooleanValue, FunctionValue, IsErrorValue, ListValue, MissingValue, NullValue, NumberValue, ObjectValue, StringValue, Value, ValuePrinter}
-import js7.data.workflow.Label
 import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.position.Label
 import scala.collection.{View, mutable}
 
 /**

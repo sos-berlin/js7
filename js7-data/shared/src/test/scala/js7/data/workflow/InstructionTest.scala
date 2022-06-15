@@ -2,6 +2,7 @@ package js7.data.workflow
 
 import js7.data.workflow.Instruction._
 import js7.data.workflow.instructions.ExplicitEnd
+import js7.data.workflow.position.Label
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

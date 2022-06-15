@@ -3,6 +3,7 @@ package js7.data.workflow.position
 import cats.syntax.show.toShow
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, DecodingFailure, Encoder, Json}
+import js7.base.generic.GenericString
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.reuseIfEqual
 import js7.data.workflow.WorkflowId
@@ -13,10 +14,24 @@ import js7.data.workflow.position.Position._
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
 
-/**
-  * @author Joacim Zschimmer
-  */
+trait PositionOrLabel
+
+object PositionOrLabel
+{
+  implicit val jsonEncoder: Encoder[PositionOrLabel] = {
+    case position: Position => position.asJson
+    case label: Label => label.asJson
+  }
+
+  implicit val jsonDecoder: Decoder[PositionOrLabel] = c =>
+    if (c.value.isString)
+      c.as[Label]
+    else
+      c.as[Position]
+}
+
 final case class Position(branchPath: BranchPath, nr: InstructionNr)
+extends PositionOrLabel
 {
   def /(branchId: BranchId): BranchPath =
     branchPath ::: Segment(nr, branchId) :: Nil
@@ -137,4 +152,15 @@ object Position
             }
           }
     }
+}
+
+final case class Label private(string: String)
+extends PositionOrLabel with GenericString
+
+object Label extends GenericString.Checked_[Label]
+{
+  protected def unchecked(string: String) = new Label(string)
+
+  import scala.language.implicitConversions
+  implicit def fromString(label: String): Label = super.apply(label)
 }

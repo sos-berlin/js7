@@ -6,7 +6,7 @@ import javax.annotation.Nonnull
 import js7.base.problem.Problem
 import js7.data.controller.ControllerId
 import js7.data.value.Value
-import js7.data.workflow.Label
+import js7.data.workflow.position.Label
 import js7.data_for_java.common.JavaWrapper
 import js7.data_for_java.order.JOrder
 import js7.data_for_java.vavr.VavrConverters._

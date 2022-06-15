@@ -12,7 +12,8 @@ import js7.data.value.expression.Scope.evalLazilyExpressions
 import js7.data.value.expression.scopes.OrderScopes._
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{NumberValue, StringValue, Value}
-import js7.data.workflow.{Label, Workflow, WorkflowPath}
+import js7.data.workflow.position.Label
+import js7.data.workflow.{Workflow, WorkflowPath}
 import scala.collection.MapView
 
 /** Provide some Scopes for an Order in any state. */

@@ -10,8 +10,8 @@ import js7.data.value.expression.Expression._
 import js7.data.value.expression.ExpressionParser.{expressionOnly, expressionOrFunction}
 import js7.data.value.expression.scopes.NameToCheckedValueScope
 import js7.data.value.{BooleanValue, ListValue, NullValue, NumberValue, ObjectValue, StringValue, Value}
-import js7.data.workflow.Label
 import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.position.Label
 import org.scalactic.source
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks._
