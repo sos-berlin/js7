@@ -40,6 +40,8 @@ object Execute
     sourcePos: Option[SourcePos] = None)
   extends Execute
   {
+    override def instructionName = "Execute.Named"
+
     def withoutSourcePos = copy(sourcePos = None)
 
     override def isVisibleForAgent(agentPath: AgentPath, workflow: Workflow) =
@@ -67,6 +69,8 @@ object Execute
     sourcePos: Option[SourcePos] = None)
   extends Execute
   {
+    override def instructionName = "Execute.Anonymous"
+
     def withoutSourcePos = copy(sourcePos = None)
 
     override def isVisibleForAgent(agentPath: AgentPath, workflow: Workflow) =

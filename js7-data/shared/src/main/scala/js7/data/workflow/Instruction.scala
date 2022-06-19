@@ -17,12 +17,15 @@ import scala.language.implicitConversions
   */
 trait Instruction
 {
+  def instructionName: String =
+    getClass.simpleScalaName
+
   def sourcePos: Option[SourcePos]
 
   def withoutSourcePos: Instruction
 
   def withPositions(position: Position): Instruction = {
-    assert(branchWorkflows.isEmpty, getClass.simpleScalaName + ".withPositions is not implemented")
+    assert(branchWorkflows.isEmpty, s"$instructionName.withPositions is not implemented")
     this
   }
 
@@ -50,7 +53,7 @@ trait Instruction
       .flatMap { case (branchId, workflow) => workflow.flattenedInstructions(parent / branchId) }
 
   def workflow(branchId: BranchId): Checked[Workflow] =
-    Problem(s"Instruction '${getClass.simpleScalaName}' does not have a nested workflow for branch '$branchId'")
+    Problem(s"Instruction '$instructionName' does not have a nested workflow for branch '$branchId'")
 
   def toCatchBranchId(branchId: BranchId): Option[BranchId] = None
 
