@@ -23,9 +23,12 @@ extends UnsignedSimpleItemState
   protected type Self = SubagentItemState
   val companion = SubagentItemState
 
-  protected type Item = SubagentItem
-
   val item = subagentItem
+
+  def updateItem(item: SubagentItem) =
+    for (_ <- item.agentPath == subagentItem.agentPath !! Problem.pure(
+      "A Subagent's AgentPath cannot be changed"))
+    yield copy(subagentItem = item)
 
   def subagentId = subagentItem.id
 
@@ -94,6 +97,8 @@ extends UnsignedSimpleItemState
 object SubagentItemState extends UnsignedSimpleItemState.Companion[SubagentItemState]
 {
   type Path = SubagentId
+  type ItemState = SubagentItemState
+  type Item = SubagentItem
 
   def initial(subagentItem: SubagentItem) =
     SubagentItemState(subagentItem, None, DelegateCouplingState.Reset.fresh,

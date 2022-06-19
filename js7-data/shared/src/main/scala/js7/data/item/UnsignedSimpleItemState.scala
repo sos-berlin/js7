@@ -1,12 +1,15 @@
 package js7.data.item
 
+import js7.base.problem.Checked
+
 trait UnsignedSimpleItemState extends SimpleItemState
 {
   protected type Self <: UnsignedSimpleItemState
   val companion: UnsignedSimpleItemState.Companion[Self]
-  protected type Item <: UnsignedSimpleItem
 
-  val item: Item
+  val item: companion.Item
+
+  def updateItem(item: companion.Item): Checked[companion.ItemState]
 }
 
 object UnsignedSimpleItemState
@@ -14,5 +17,7 @@ object UnsignedSimpleItemState
   trait Companion[A <: UnsignedSimpleItemState] extends SimpleItemState.Companion[A]
   {
     type Path <: UnsignedSimpleItemPath
+    type ItemState <: UnsignedSimpleItemState
+    type Item <: UnsignedSimpleItem
   }
 }

@@ -36,15 +36,15 @@ final class OrderWatchStateHandlerTest extends AnyFreeSpec
   }
 
   "addOrderWatch" in {
-    update(state.ow.addOrderWatch(aOrderWatch).orThrow)
-    update(state.ow.addOrderWatch(bOrderWatch).orThrow)
-    assert(state.ow.addOrderWatch(aOrderWatch) ==
+    update(state.ow.addOrderWatch(aOrderWatch.toInitialItemState).orThrow)
+    update(state.ow.addOrderWatch(bOrderWatch.toInitialItemState).orThrow)
+    assert(state.ow.addOrderWatch(aOrderWatch.toInitialItemState) ==
       Left(DuplicateKey("OrderWatchPath", "OrderWatch:A-WATCH")))
   }
 
   "removeOrderWatch" in {
     val x = bOrderWatch.copy(path = OrderWatchPath("X"))
-    val all1 = state.ow.addOrderWatch(x).orThrow
+    val all1 = state.ow.addOrderWatch(x.toInitialItemState).orThrow
     assert(all1.pathToOrderWatchStateMap.contains(x.path))
     val all0 = all1.ow.removeOrderWatch(x.path).orThrow
     assert(all0 == state)
@@ -184,7 +184,7 @@ final class OrderWatchStateHandlerTest extends AnyFreeSpec
 
   "OrderDeletionMarked (by user) when not Vanished" in {
     var a = TestState(Map.empty)
-    a = a.ow.addOrderWatch(aOrderWatch).orThrow
+    a = a.ow.addOrderWatch(aOrderWatch.toInitialItemState).orThrow
     a = a.ow.onOrderWatchEvent(externalOrderArised("C")).orThrow
     a = a.ow.onOrderAdded(orderAdded("C")).orThrow
 

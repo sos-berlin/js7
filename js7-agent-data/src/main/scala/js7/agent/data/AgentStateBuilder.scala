@@ -5,14 +5,12 @@ import js7.agent.data.orderwatch.{FileWatchState, FileWatchStateHandler}
 import js7.base.crypt.Signed
 import js7.base.problem.Checked._
 import js7.base.utils.Collections.implicits._
-import js7.data.calendar.{Calendar, CalendarState}
 import js7.data.cluster.ClusterState
 import js7.data.event.{EventId, JournalState, SnapshotableState, SnapshotableStateBuilder, Stamped}
 import js7.data.item.SignedItemEvent.SignedItemAdded
-import js7.data.item.{SignableItem, SignableItemKey, SignedItemEvent, UnsignedSimpleItemPath, UnsignedSimpleItemState}
+import js7.data.item.{SignableItem, SignableItemKey, SignedItemEvent, UnsignedSimpleItem, UnsignedSimpleItemPath, UnsignedSimpleItemState}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.{Order, OrderId}
-import js7.data.subagent.{SubagentItemState, SubagentSelection, SubagentSelectionState}
 import js7.data.workflow.{Workflow, WorkflowControlState, WorkflowId, WorkflowPath}
 import scala.collection.mutable
 
@@ -52,17 +50,14 @@ extends SnapshotableStateBuilder[AgentState]
       // COMPATIBLE with v2.1
       pathToJobResource.insert(jobResource.path, jobResource)
 
-    case calendar: Calendar =>
-      pathToItemState.insert(calendar.path, CalendarState(calendar))
-
     case snapshot: FileWatchState.Snapshot =>
       fileWatchStateBuilder.addSnapshot(snapshot)
 
-    case subagentItemState: SubagentItemState =>
-      pathToItemState.insert(subagentItemState.subagentId, subagentItemState)
+    case itemState: UnsignedSimpleItemState =>
+      pathToItemState.insert(itemState.path, itemState)
 
-    case selection: SubagentSelection =>
-      pathToItemState.insert(selection.id, SubagentSelectionState(selection))
+    case item: UnsignedSimpleItem =>
+      pathToItemState.insert(item.path, item.toInitialItemState)
 
     case o: JournalState =>
       _journalState = o

@@ -23,8 +23,10 @@ extends UnsignedSimpleItemState with Big/*acquired and queue get big with many o
   protected type Self = LockState
   val companion = LockState
 
-  type Item = Lock
   val item = lock
+
+  def updateItem(lock: Lock) =
+    Right(copy(lock = lock))
 
   def agentPathToAttachedState = Map.empty
 
@@ -122,6 +124,8 @@ extends UnsignedSimpleItemState with Big/*acquired and queue get big with many o
 object LockState extends UnsignedSimpleItemState.Companion[LockState]
 {
   type Path = LockPath
+  type ItemState = LockState
+  type Item = Lock
 
   implicit val jsonCodec = deriveCodec[LockState]
 }

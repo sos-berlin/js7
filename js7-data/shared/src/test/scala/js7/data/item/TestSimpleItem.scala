@@ -29,6 +29,8 @@ extends UnsignedSimpleItem {
 
   def withRevision(revision: Option[ItemRevision]) =
     copy(itemRevision = revision)
+
+  def toInitialItemState = TestSimpleItemState(this)
 }
 
 object TestSimpleItem extends UnsignedSimpleItem.Companion[TestSimpleItem] {
@@ -40,5 +42,20 @@ object TestSimpleItem extends UnsignedSimpleItem.Companion[TestSimpleItem] {
   type Key = TestSimplePath
   val Key = TestSimplePath
 
+  type ItemState = TestSimpleItemState
+
   implicit val jsonCodec: Codec.AsObject[TestSimpleItem] = deriveCodec[TestSimpleItem]
+}
+
+final case class TestSimpleItemState(item: TestSimpleItem)
+extends UnsignedSimpleItemState with TrivialItemState
+{
+  type Self = TestSimpleItemState
+  val companion = TestSimpleItemState
+}
+
+object TestSimpleItemState extends UnsignedSimpleItemState.Companion[TestSimpleItemState] {
+  type Path = TestSimplePath
+  type ItemState = TestSimpleItemState
+  type Item = TestSimpleItem
 }

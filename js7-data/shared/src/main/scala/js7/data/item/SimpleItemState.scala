@@ -2,9 +2,11 @@ package js7.data.item
 
 trait SimpleItemState extends InventoryItemState
 {
-  protected type Item <: SimpleItem
+  protected type Self <: SimpleItemState
 
-  val item: Item
+  val companion: SimpleItemState.Companion[Self]
+
+  val item: companion.Item
 }
 
 object SimpleItemState {

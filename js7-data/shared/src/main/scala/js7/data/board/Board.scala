@@ -26,6 +26,8 @@ extends UnsignedSimpleItem
   def rename(path: BoardPath) =
     copy(path = path)
 
+  def toInitialItemState = BoardState(this)
+
   def postingOrderToNotice(scope: Scope): Checked[Notice] =
     for {
       value <- postOrderToNoticeId.eval(scope)
@@ -61,6 +63,8 @@ object Board extends UnsignedSimpleItem.Companion[Board]
 
   override type Path = BoardPath
   override val Path = BoardPath
+
+  type ItemState = BoardState
 
   implicit val jsonCodec = {
     intelliJuseImport(FiniteDurationJsonEncoder)

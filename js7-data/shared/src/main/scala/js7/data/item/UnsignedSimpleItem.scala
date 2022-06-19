@@ -1,12 +1,12 @@
 package js7.data.item
 
-import js7.base.circeutils.typed.TypedJsonCodec
-
 trait UnsignedSimpleItem extends SimpleItem
 {
   protected type Self <: UnsignedSimpleItem
 
   val companion: UnsignedSimpleItem.Companion[Self]
+
+  def toInitialItemState: companion.ItemState
 }
 
 object UnsignedSimpleItem
@@ -17,8 +17,7 @@ object UnsignedSimpleItem
   {
     type Key <: UnsignedSimpleItemPath
     val Key: UnsignedSimpleItemPath.Companion[Key]
-  }
 
-  private def jsonCodec(companions: Seq[Companion_]) =
-    TypedJsonCodec.fromIterable("UnsignedSimpleItem", companions.map(_.subtype))
+    type ItemState <: UnsignedSimpleItemState
+  }
 }

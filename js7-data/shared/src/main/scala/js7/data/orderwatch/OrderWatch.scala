@@ -12,6 +12,8 @@ trait OrderWatch extends UnsignedSimpleItem
 
   val companion: Companion[Self] { type Key <: OrderWatchPath }
 
+  def toInitialItemState = OrderWatchState(this)
+
   val agentPath: AgentPath
 
   val workflowPath: WorkflowPath
@@ -26,6 +28,8 @@ object OrderWatch
   {
     type Key = OrderWatchPath
     val Key = OrderWatchPath
+
+    type ItemState = OrderWatchState
   }
 
   implicit val jsonCodec = TypedJsonCodec[OrderWatch](

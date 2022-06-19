@@ -33,15 +33,17 @@ extends UnsignedSimpleItem
           Checked.unit
     } yield this
 
-  def director = directors.headOption
-
   def rename(path: AgentPath) =
     copy(path = path)
 
   def withRevision(revision: Option[ItemRevision]) =
     copy(itemRevision = revision)
 
+  def toInitialItemState = AgentRefState(this)
+
   override def referencedItemPaths = directors.view
+
+  def director = directors.headOption
 
   // COMPATIBLE with v2.1
   /** Converts a legacy AgentRef to a modern AgentRef and a local SubagentItem. */
@@ -77,6 +79,8 @@ object AgentRef extends UnsignedSimpleItem.Companion[AgentRef]
 
   override type Path = AgentPath
   override val Path = AgentPath
+
+  type ItemState = AgentRefState
 
   implicit val jsonCodec = {
     val jsonDecoder: Decoder[AgentRef] =

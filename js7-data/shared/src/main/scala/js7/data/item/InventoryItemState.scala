@@ -7,8 +7,7 @@ trait InventoryItemState
   protected type Self <: InventoryItemState
   val companion: InventoryItemState.Companion[Self]
 
-  protected type Item <: InventoryItem
-  val item: Item
+  val item: companion.Item
 
   final def path: item.companion.Path =
     item.path
@@ -23,5 +22,6 @@ object InventoryItemState
 
   trait Companion[A <: InventoryItemState] {
     type Path <: InventoryItemPath
+    type Item <: InventoryItem
   }
 }

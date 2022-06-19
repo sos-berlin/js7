@@ -29,6 +29,8 @@ extends UnsignedSimpleItem
 
   def path = id
 
+  def toInitialItemState = SubagentItemState.initial(this)
+
   override def dedicatedAgentPath = Some(agentPath)
 
   // Circular dependency! AgentRef references subagentId: Seq[SubagentId]
@@ -50,6 +52,8 @@ extends UnsignedSimpleItem.Companion[SubagentItem]
 
   override type Path = SubagentId
   override val Path = SubagentId
+
+  type ItemState = SubagentItemState
 
   val cls = classOf[SubagentItem]
 

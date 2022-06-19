@@ -131,10 +131,6 @@ with SnapshotableState[ControllerState]
           event match {
             case UnsignedSimpleItemAdded(item) =>
               item match {
-                case lock: Lock =>
-                  for (o <- pathToItemState_.insert(lock.path -> LockState(lock))) yield
-                    copy(pathToItemState_ = o)
-
                 case addedAgentRef: AgentRef =>
                   addedAgentRef
                     .convertFromV2_1
@@ -152,36 +148,16 @@ with SnapshotableState[ControllerState]
                         pathToItemState_ = pathToItemState)
                     }
 
-                case subagentItem: SubagentItem =>
-                  for (o <- pathToItemState_.insert(subagentItem.id, SubagentItemState.initial(subagentItem)))
-                    yield copy(
-                      pathToItemState_ = o)
-
-                case selection: SubagentSelection =>
-                  pathToItemState_
-                    .insert(selection.id, SubagentSelectionState(selection))
-                    .map(o => copy(pathToItemState_ = o))
-
                 case orderWatch: OrderWatch =>
-                  ow.addOrderWatch(orderWatch)
+                  ow.addOrderWatch(orderWatch.toInitialItemState)
 
-                case board: Board =>
-                  for (o <- pathToItemState_.insert(board.path, BoardState(board))) yield
-                    copy(pathToItemState_ = o)
-
-                case calendar: Calendar =>
-                  for (o <- pathToItemState_.insert(calendar.path, CalendarState(calendar))) yield
+                case item: UnsignedSimpleItem =>
+                  for (o <- pathToItemState_.insert(item.path, item.toInitialItemState)) yield
                     copy(pathToItemState_ = o)
               }
 
             case UnsignedSimpleItemChanged(item) =>
               item match {
-                case lock: Lock =>
-                  for (lockState <- pathTo(LockState).checked(lock.path))
-                    yield copy(
-                      pathToItemState_ = pathToItemState_.updated(lock.path, lockState.copy(
-                        lock = lock)))
-
                 case changedAgentRef: AgentRef =>
                   changedAgentRef
                     .convertFromV2_1
@@ -190,11 +166,11 @@ with SnapshotableState[ControllerState]
                         agentRefState <- pathTo(AgentRefState).checked(agentRef.path)
                         _ <- (agentRef.directors == agentRefState.agentRef.directors) !!
                           Problem.pure("Agent Director cannot not be changed")
+                        updatedAgentRef <- agentRefState.updateItem(agentRef)
                       } yield
                         copy(
                           pathToItemState_ = pathToItemState_
-                            .updated(agentRef.path, agentRefState.copy(
-                              agentRef = agentRef))
+                            .updated(agentRef.path, updatedAgentRef)
                             .pipeMaybe(maybeSubagentItem)((pathToItemState, changedSubagentItem) =>
                               // COMPATIBLE with v2.2.2
                               pathTo(SubagentItemState)
@@ -206,33 +182,17 @@ with SnapshotableState[ControllerState]
                                         .updateUri(changedSubagentItem.uri))))))
                     }
 
-                case selection: SubagentSelection =>
-                  Right(copy(
-                    pathToItemState_ = pathToItemState_
-                      .updated(selection.id, SubagentSelectionState(selection))))
-
-                case subagentItem: SubagentItem =>
-                  for {
-                    subagentItemState <- pathTo(SubagentItemState).checked(subagentItem.id)
-                    _ <- subagentItemState.subagentItem.agentPath == subagentItem.agentPath !!
-                      Problem.pure("A Subagent's AgentPath cannot be changed")
-                  } yield copy(
-                    pathToItemState_ = pathToItemState_.updated(subagentItem.id,
-                      subagentItemState.copy(subagentItem = subagentItem)))
-
                 case orderWatch: OrderWatch =>
                   ow.changeOrderWatch(orderWatch)
 
-                case board: Board =>
-                  for (boardState <- pathTo(BoardState).checked(board.path))
-                    yield copy(
-                      pathToItemState_ = pathToItemState_.updated(board.path, boardState.copy(
-                        board = board)))
-
-                case calendar: Calendar =>
-                  for (_ <- pathToItemState_.checked(calendar.path))
-                    yield copy(
-                      pathToItemState_ = pathToItemState_.updated(calendar.path, CalendarState(calendar)))
+                case item: UnsignedSimpleItem =>
+                  for {
+                    itemState <- pathToItemState_.checked(item.path)
+                    updated <- itemState.updateItem(item.asInstanceOf[itemState.companion.Item])
+                  } yield
+                    copy(
+                      pathToItemState_ =
+                        pathToItemState_.updated(item.path, updated))
               }
           }
 

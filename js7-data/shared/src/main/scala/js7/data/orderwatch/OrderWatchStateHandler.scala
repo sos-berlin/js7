@@ -26,9 +26,9 @@ trait OrderWatchStateHandler[Self]
 
   /** OrderWatchStateHandler. */
   object ow {
-    def addOrderWatch(orderWatch: OrderWatch): Checked[Self] =
-      pathToOrderWatchState.checkNoDuplicate(orderWatch.key)
-        .flatMap(_ => updateOrderWatchState(OrderWatchState(orderWatch)))
+    def addOrderWatch(orderWatchState: OrderWatchState): Checked[Self] =
+      pathToOrderWatchState.checkNoDuplicate(orderWatchState.item.key)
+        .flatMap(_ => updateOrderWatchState(orderWatchState))
 
     def removeOrderWatch(orderWatchPath: OrderWatchPath): Checked[Self] =
       updateOrderWatchStates(remove = orderWatchPath :: Nil)

@@ -29,6 +29,8 @@ extends UnsignedSimpleItem
   def rename(path: CalendarPath) =
     copy(path = path)
 
+  def toInitialItemState = CalendarState(this)
+
   def withRevision(revision: Option[ItemRevision]) =
     copy(itemRevision = revision)
 }
@@ -45,6 +47,8 @@ object Calendar extends UnsignedSimpleItem.Companion[Calendar]
 
   override type Path = CalendarPath
   override val Path = CalendarPath
+
+  type ItemState = CalendarState
 
   @TestOnly
   def jocStandard(

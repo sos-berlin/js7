@@ -9,7 +9,7 @@ import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRefStateEvent}
 import js7.data.board.BoardEvent.{NoticeDeleted, NoticePosted}
 import js7.data.board.{Board, BoardPath, BoardState, Notice}
-import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
+import js7.data.calendar.{Calendar, CalendarState}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.data.event.KeyedEvent.NoKey
@@ -17,16 +17,16 @@ import js7.data.event.{Event, EventDrivenState, JournalEvent, JournalState, Keye
 import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeleted, ItemDeletionMarked}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
-import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItemEvent, InventoryItemKey, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, UnsignedSimpleItemState, VersionedEvent}
+import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItemEvent, InventoryItemKey, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, UnsignedSimpleItem, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, UnsignedSimpleItemState, VersionedEvent}
 import js7.data.job.{JobResource, JobResourcePath}
-import js7.data.lock.{Lock, LockPath, LockState}
+import js7.data.lock.{Lock, LockState}
 import js7.data.order.OrderEvent.{OrderAddedX, OrderNoticesExpected}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
 import js7.data.state.EventDrivenStateView
 import js7.data.state.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
-import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent, SubagentSelection, SubagentSelectionId, SubagentSelectionState}
+import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent, SubagentSelection, SubagentSelectionState}
 import js7.data.workflow.{Workflow, WorkflowControlEvent, WorkflowControlState, WorkflowControlStateHandler, WorkflowId, WorkflowPath}
 import scala.collection.mutable
 
@@ -129,21 +129,6 @@ with WorkflowControlStateHandler[ControllerStateBuilder]
         _pathToItemState.insert(subagentItem.id, SubagentItemState.initial(subagentItem))
       }
 
-    case subagentItemState: SubagentItemState =>
-      _pathToItemState.insert(subagentItemState.subagentId, subagentItemState)
-
-    case subagentSelection: SubagentSelection =>
-      _pathToItemState.insert(subagentSelection.id, SubagentSelectionState(subagentSelection))
-
-    case lockState: LockState =>
-      _pathToItemState.insert(lockState.lock.path, lockState)
-
-    case board: Board =>
-      _pathToItemState.insert(board.path, BoardState(board))
-
-    case calendar: Calendar =>
-      _pathToItemState.insert(calendar.path, CalendarState(calendar))
-
     case notice: Notice =>
       _pathToItemState(notice.boardPath) = pathTo(BoardState)(notice.boardPath)
         .addNotice(notice).orThrow
@@ -152,7 +137,13 @@ with WorkflowControlStateHandler[ControllerStateBuilder]
       onSignedItemAdded(signedItemAdded)
 
     case UnsignedSimpleItemAdded(orderWatch: OrderWatch) =>
-      ow.addOrderWatch(orderWatch).orThrow
+      ow.addOrderWatch(orderWatch.toInitialItemState).orThrow
+
+    case itemState: UnsignedSimpleItemState =>
+      _pathToItemState.insert(itemState.path, itemState)
+
+    case item: UnsignedSimpleItem =>
+      _pathToItemState.insert(item.path, item.toInitialItemState)
 
     case workflowControlState: WorkflowControlState =>
       updateWorkflowControlState(workflowControlState)
@@ -212,31 +203,19 @@ with WorkflowControlStateHandler[ControllerStateBuilder]
             event match {
               case UnsignedSimpleItemAdded(item) =>
                 item match {
-                  case lock: Lock =>
-                    _pathToItemState.insert(lock.path, LockState(lock))
-
                   case addedAgentRef: AgentRef =>
                     val (agentRef, maybeSubagentItem) = addedAgentRef.convertFromV2_1.orThrow
 
-                    _pathToItemState.insert(agentRef.path, AgentRefState(agentRef))
+                    _pathToItemState.insert(agentRef.path, agentRef.toInitialItemState)
                     for (subagentItem <- maybeSubagentItem) {
                       _pathToItemState.insert(subagentItem.id, SubagentItemState.initial(subagentItem))
                     }
 
-                  case subagentItem: SubagentItem =>
-                    _pathToItemState.insert(subagentItem.id, SubagentItemState.initial(subagentItem))
-
-                  case selection: SubagentSelection =>
-                    _pathToItemState.insert(selection.id, SubagentSelectionState(selection))
-
                   case orderWatch: OrderWatch =>
-                    ow.addOrderWatch(orderWatch).orThrow
+                    ow.addOrderWatch(orderWatch.toInitialItemState).orThrow
 
-                  case board: Board =>
-                    _pathToItemState.insert(board.path, BoardState(board))
-
-                  case calendar: Calendar =>
-                    _pathToItemState.insert(calendar.path, CalendarState(calendar))
+                  case item: UnsignedSimpleItem =>
+                    _pathToItemState.insert(item.path, item.toInitialItemState)
                 }
 
               case UnsignedSimpleItemChanged(item) =>
@@ -320,36 +299,20 @@ with WorkflowControlStateHandler[ControllerStateBuilder]
                       _pathToWorkflowControlState -= workflowId.path
                     }
 
+                  case jobResourcePath: JobResourcePath =>
+                    pathToSignedSimpleItem -= jobResourcePath
+
                   case path: OrderWatchPath =>
                     ow.removeOrderWatch(path)
 
-                  case path: LockPath =>
+                  case path: UnsignedSimpleItemPath =>
                     _pathToItemState -= path
-
-                  case path: BoardPath =>
-                    _pathToItemState -= path
-
-                  case agentPath: AgentPath =>
-                    _pathToItemState -= agentPath
-
-                  case subagentId: SubagentId =>
-                    _pathToItemState -= subagentId
-
-                  case id: SubagentSelectionId =>
-                    _pathToItemState -= id
-
-                  case calendarPath: CalendarPath =>
-                    _pathToItemState -= calendarPath
-
-                  case jobResourcePath: JobResourcePath =>
-                    pathToSignedSimpleItem -= jobResourcePath
                 }
             }
         }
 
       case KeyedEvent(path: AgentPath, event: AgentRefStateEvent) =>
         _pathToItemState.update(path, pathTo(AgentRefState)(path).applyEvent(event).orThrow)
-
 
       case KeyedEvent(id: SubagentId, event: SubagentItemStateEvent) =>
         event match {

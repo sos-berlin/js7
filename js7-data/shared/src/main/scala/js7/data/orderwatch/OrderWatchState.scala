@@ -42,8 +42,10 @@ extends UnsignedSimpleItemState
   protected type Self = OrderWatchState
   val companion = OrderWatchState
 
-  type Item = OrderWatch
   val item = orderWatch
+
+  def updateItem(item: OrderWatch) =
+    Right(copy(orderWatch = item))
 
   def id: OrderWatchPath = orderWatch.key
 
@@ -217,6 +219,8 @@ extends UnsignedSimpleItemState
 object OrderWatchState extends UnsignedSimpleItemState.Companion[OrderWatchState]
 {
   type Path = OrderWatchPath
+  type ItemState = OrderWatchState
+  type Item = OrderWatch
 
   type ToOrderAdded = (FreshOrder, Option[ExternalOrderKey]) => Checked[Option[KeyedEvent[OrderAdded]]]
 

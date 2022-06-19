@@ -21,6 +21,8 @@ extends UnsignedSimpleItem
 
   def withRevision(revision: Option[ItemRevision]) =
     copy(itemRevision = revision)
+
+  def toInitialItemState = LockState(this)
 }
 
 object Lock extends UnsignedSimpleItem.Companion[Lock]
@@ -32,6 +34,8 @@ object Lock extends UnsignedSimpleItem.Companion[Lock]
 
   override type Path = LockPath
   override val Path = LockPath
+
+  type ItemState = LockState
 
   val jsonCodec = {
     implicit val configuration = withDefaults

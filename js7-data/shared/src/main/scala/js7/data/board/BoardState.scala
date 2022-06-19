@@ -17,8 +17,10 @@ extends UnsignedSimpleItemState
   protected type Self = BoardState
   val companion = BoardState
 
-  type Item = Board
   val item = board
+
+  def updateItem(item: Board) =
+    Right(copy(board = item))
 
   override def toString = s"BoardState(${board.pathRev} $idToNotice)"
 
@@ -138,4 +140,6 @@ extends UnsignedSimpleItemState
 
 object BoardState extends UnsignedSimpleItemState.Companion[BoardState] {
   type Path = BoardPath
+  type ItemState = BoardState
+  type Item = Board
 }

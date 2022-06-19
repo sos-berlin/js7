@@ -20,8 +20,10 @@ extends UnsignedSimpleItemState
   protected type Self = AgentRefState
   val companion = AgentRefState
 
-  type Item = AgentRef
   val item = agentRef
+
+  def updateItem(item: AgentRef): Checked[AgentRefState] =
+    Right(copy(agentRef = item))
 
   def agentPath = agentRef.path
 
@@ -97,6 +99,8 @@ extends UnsignedSimpleItemState
 object AgentRefState extends UnsignedSimpleItemState.Companion[AgentRefState]
 {
   type Path = AgentPath
+  type ItemState = AgentRefState
+  type Item = AgentRef
 
   implicit val jsonCodec = deriveCodec[AgentRefState]
 

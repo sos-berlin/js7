@@ -21,6 +21,8 @@ extends UnsignedSimpleItem
   def withRevision(revision: Option[ItemRevision]) =
     copy(itemRevision = revision)
 
+  def toInitialItemState = SubagentSelectionState(this)
+
   //override def dedicatedAgentPath = AgentPath cannot be determined here ???
 
   override def referencedItemPaths =
@@ -34,6 +36,8 @@ object SubagentSelection extends UnsignedSimpleItem.Companion[SubagentSelection]
 
   type Key = Path
   val Key = Path
+
+  type ItemState = SubagentSelectionState
 
   val cls = classOf[SubagentSelection]
 
