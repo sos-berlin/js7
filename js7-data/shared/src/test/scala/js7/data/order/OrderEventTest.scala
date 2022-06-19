@@ -18,7 +18,7 @@ import js7.data.orderwatch.{ExternalOrderKey, ExternalOrderName, OrderWatchPath}
 import js7.data.subagent.SubagentId
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
-import js7.data.workflow.position.{BranchId, Position}
+import js7.data.workflow.position.{BranchId, Label, Position}
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 import org.scalactic.source
 import org.scalatest.freespec.AnyFreeSpec
@@ -35,7 +35,10 @@ final class OrderEventTest extends AnyFreeSpec
         WorkflowPath("WORKFLOW") ~ "VERSION",
         Map("VAR" -> StringValue("VALUE")),
         Some(Timestamp("2021-01-01T00:00:00Z")),
-        Some(ExternalOrderKey(OrderWatchPath("ORDER-WATCH"), ExternalOrderName("ORDER-NAME")))),
+        Some(ExternalOrderKey(OrderWatchPath("ORDER-WATCH"), ExternalOrderName("ORDER-NAME"))),
+        deleteWhenTerminated = true,
+        startPosition = Some(Position(1)),
+        stopPositions = Set(Position(9), Label("LABEL"))),
       json"""
       {
         "TYPE": "OrderAdded",
@@ -50,7 +53,10 @@ final class OrderEventTest extends AnyFreeSpec
         "externalOrderKey": {
           "orderWatchPath": "ORDER-WATCH",
           "name": "ORDER-NAME"
-        }
+        },
+        "deleteWhenTerminated": true,
+        "startPosition": [ 1 ],
+        "stopPositions": [ [ 9 ], "LABEL" ]
       }""")
   }
 
@@ -99,7 +105,7 @@ final class OrderEventTest extends AnyFreeSpec
         Some(OrderMark.Suspending()),
         isSuspended = true,
         deleteWhenTerminated = true,
-        Some(Position(9))),
+        Set(Position(9), Label("LABEL"))),
       json"""{
         "TYPE": "OrderAttachedToAgent",
         "workflowPosition": {
@@ -136,7 +142,7 @@ final class OrderEventTest extends AnyFreeSpec
         },
         "isSuspended": true,
         "deleteWhenTerminated": true,
-        "stopPosition": [ 9 ]
+        "stopPositions": [ [ 9 ], "LABEL" ]
       }""")
   }
 

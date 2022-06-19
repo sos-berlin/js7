@@ -23,7 +23,7 @@ import js7.data.order.OrderEvent.{OrderAdded, OrderAwoke, OrderBroken, OrderCore
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.orderwatch.ExternalOrderKey
 import js7.data.value.expression.scopes.NowScope
-import js7.data.workflow.position.Position
+import js7.data.workflow.position.{Position, PositionOrLabel}
 import js7.data.workflow.{Workflow, WorkflowId}
 import scala.annotation.tailrec
 import scala.collection.{View, mutable}
@@ -68,19 +68,20 @@ final case class ControllerStateExecutor private(
         workflow <- controllerState.repo.pathTo(Workflow)(freshOrder.workflowPath)
         preparedArguments <- workflow.orderParameterList.prepareOrderArguments(
           freshOrder, controllerId, controllerState.keyTo(JobResource), nowScope)
-        _ <- checkStartOrStopPosition(freshOrder.startPosition, workflow)
-        _ <- checkStartOrStopPosition(freshOrder.stopPosition, workflow)
+        startPosition <- freshOrder.startPosition.traverse(checkStartOrStopPosition(_, workflow))
+        _ <- freshOrder.stopPositions.toSeq.traverse(checkStartOrStopPosition(_, workflow))
       } yield Some(
-        freshOrder.toOrderAdded(workflow.id.versionId, preparedArguments, externalOrderKey))
+        freshOrder.toOrderAdded(workflow.id.versionId, preparedArguments, externalOrderKey,
+          startPosition))
 
-  private def checkStartOrStopPosition(position: Option[Position], workflow: Workflow)
-  : Checked[Unit] =
-    position.fold(Checked.unit)(position =>
-      for {
-        _ <- position.branchPath.isEmpty !!
-          Problem.pure("Order's startPosition or stopPosition must not be in a Workflow branch")
-        _ <- workflow.checkedPosition(position)
-      } yield ())
+  private def checkStartOrStopPosition(positionOrLabel: PositionOrLabel, workflow: Workflow)
+  : Checked[Position] =
+    for {
+      position <- workflow.positionOrLabelToPosition(positionOrLabel)
+      pos <- workflow.checkedPosition(position)
+      _ <- workflow.isMoveable(Position.First, position) !! Problem(
+        s"Order's startPosition or one of its stopPositions is not reachable: $positionOrLabel")
+    } yield pos
 
   def resetAgent(agentPath: AgentPath, force: Boolean): Checked[Seq[AnyKeyedEvent]] = {
     val agentResetStarted = View(agentPath <-: AgentResetStarted(force = force))

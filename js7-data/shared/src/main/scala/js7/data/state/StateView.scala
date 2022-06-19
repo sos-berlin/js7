@@ -96,6 +96,9 @@ trait StateView extends ItemContainer
         case _ => Left(Problem.pure("Legacy orderIdToBoardState, but instruction has multiple BoardPaths"))
       })
 
+  def isOrderAtStopPosition(order: Order[Order.State]): Boolean =
+    Workflow.isOrderAtStopPosition(order, idToWorkflow.get(order.workflowId))
+
   final def workflowJob(workflowPosition: WorkflowPosition): Checked[WorkflowJob] =
     for {
       workflow <- idToWorkflow.checked(workflowPosition.workflowId)

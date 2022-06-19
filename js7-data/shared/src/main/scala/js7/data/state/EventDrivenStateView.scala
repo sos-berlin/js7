@@ -1,6 +1,5 @@
 package js7.data.state
 
-import cats.syntax.apply._
 import cats.syntax.traverse._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax._
@@ -119,9 +118,11 @@ with StateView
     } yield result
 
   protected def addOrder(addedOrderId: OrderId, orderAdded: OrderAddedX): Checked[Self] =
-    idToOrder.checkNoDuplicate(addedOrderId)
-      .*>(update(
-        addOrders = Order.fromOrderAdded(addedOrderId, orderAdded) :: Nil))
+    for {
+      _ <- idToOrder.checkNoDuplicate(addedOrderId)
+      order = Order.fromOrderAdded(addedOrderId, orderAdded)
+      self <- update(addOrders = order :: Nil)
+    } yield self
 
   protected def deleteOrder(order: Order[Order.State]): Checked[Self] =
     update(removeOrders = order.id :: Nil)

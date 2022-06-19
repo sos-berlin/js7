@@ -14,7 +14,7 @@ import js7.data.order.OrderEvent.OrderAdded
 import js7.data.orderwatch.ExternalOrderKey
 import js7.data.value.NamedValues
 import js7.data.workflow.WorkflowPath
-import js7.data.workflow.position.Position
+import js7.data.workflow.position.{Position, PositionOrLabel}
 import org.jetbrains.annotations.TestOnly
 
 /**
@@ -26,19 +26,20 @@ final case class FreshOrder private(
   arguments: NamedValues = Map.empty,
   scheduledFor: Option[Timestamp] = None,
   deleteWhenTerminated: Boolean = false,
-  startPosition: Option[Position] = None,
-  stopPosition: Option[Position] = None)
+  startPosition: Option[PositionOrLabel] = None,
+  stopPositions: Set[PositionOrLabel] = Set.empty)
 {
   workflowPath.requireNonAnonymous()
 
   def toOrderAdded(
     versionId: VersionId,
     preparedArguments: NamedValues,
-    externalOrderKey: Option[ExternalOrderKey] = None)
+    externalOrderKey: Option[ExternalOrderKey] = None,
+    startPosition: Option[Position] = None)
   : KeyedEvent[OrderAdded] =
     id <-: OrderAdded(workflowPath ~ versionId, preparedArguments, scheduledFor, externalOrderKey,
       deleteWhenTerminated = deleteWhenTerminated,
-      startPosition, stopPosition)
+      startPosition, stopPositions)
 }
 
 object FreshOrder
@@ -49,11 +50,11 @@ object FreshOrder
     arguments: NamedValues = Map.empty,
     scheduledFor: Option[Timestamp] = None,
     deleteWhenTerminated: Boolean = false,
-    startPosition: Option[Position] = None,
-    stopPosition: Option[Position] = None)
+    startPosition: Option[PositionOrLabel] = None,
+    stopPositions: Set[PositionOrLabel] = Set.empty)
   : FreshOrder =
     checked(id, workflowPath, arguments, scheduledFor, deleteWhenTerminated,
-      startPosition, stopPosition)
+      startPosition, stopPositions)
       .orThrow
 
   @TestOnly
@@ -63,11 +64,11 @@ object FreshOrder
     arguments: NamedValues = Map.empty,
     scheduledFor: Option[Timestamp] = None,
     deleteWhenTerminated: Boolean = false,
-    startPosition: Option[Position] = None,
-    stopPosition: Option[Position] = None)
+    startPosition: Option[PositionOrLabel] = None,
+    stopPositions: Set[PositionOrLabel] = Set.empty)
   : FreshOrder =
     new FreshOrder(id, workflowPath, arguments, scheduledFor, deleteWhenTerminated,
-      startPosition, stopPosition)
+      startPosition, stopPositions)
 
   def checked(
     id: OrderId,
@@ -75,12 +76,12 @@ object FreshOrder
     arguments: NamedValues = Map.empty,
     scheduledFor: Option[Timestamp] = None,
     deleteWhenTerminated: Boolean = false,
-    startPosition: Option[Position] = None,
-    stopPosition: Option[Position] = None)
+    startPosition: Option[PositionOrLabel] = None,
+    stopPositions: Set[PositionOrLabel] = Set.empty)
   : Checked[FreshOrder] =
     for (checkedId <- id.checkedNameSyntax)
       yield new FreshOrder(checkedId, workflowPath, arguments, scheduledFor, deleteWhenTerminated,
-        startPosition, stopPosition)
+        startPosition, stopPositions)
 
   def fromOrder(order: Order[Order.Fresh]): FreshOrder =
     new FreshOrder(order.id, order.workflowPath, order.arguments, order.scheduledFor,
@@ -94,7 +95,7 @@ object FreshOrder
       "arguments" -> o.arguments.??.asJson,
       "deleteWhenTerminated" -> o.deleteWhenTerminated.?.asJson,
       "startPosition" -> o.startPosition.asJson,
-      "stopPosition" -> o.stopPosition.asJson)
+      "stopPositions" -> (o.stopPositions.nonEmpty ? o.stopPositions).asJson)
 
   implicit val jsonDecoder: Decoder[FreshOrder] =
     c => for {
@@ -103,10 +104,10 @@ object FreshOrder
       scheduledFor <- c.get[Option[Timestamp]]("scheduledFor")
       arguments <- c.getOrElse[NamedValues]("arguments")(NamedValues.empty)
       deleteWhenTerminated <- c.getOrElse[Boolean]("deleteWhenTerminated")(false)
-      startPosition <- c.get[Option[Position]]("startPosition")
-      stopPosition <- c.get[Option[Position]]("stopPosition")
+      startPosition <- c.get[Option[PositionOrLabel]]("startPosition")
+      stopPositions <- c.getOrElse[Set[PositionOrLabel]]("stopPositions")(Set.empty)
       order <- checked(id, workflowPath, arguments, scheduledFor, deleteWhenTerminated,
-        startPosition, stopPosition)
+        startPosition, stopPositions)
         .toDecoderResult(c.history)
     } yield order
 }

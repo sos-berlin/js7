@@ -1,6 +1,5 @@
 package js7.data.controller
 
-import cats.syntax.apply._
 import cats.syntax.traverse._
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
@@ -361,11 +360,13 @@ with SnapshotableState[ControllerState]
 
   override protected def addOrder(addedOrderId: OrderId, orderAdded: OrderAddedX)
   : Checked[ControllerState] =
-    idToOrder.checkNoDuplicate(addedOrderId) *>
-      ow.onOrderAdded(addedOrderId <-: orderAdded)
+    for {
+      _ <- idToOrder.checkNoDuplicate(addedOrderId)
+      order = Order.fromOrderAdded(addedOrderId, orderAdded)
+      updated <- ow.onOrderAdded(addedOrderId <-: orderAdded)
         .map(_.copy(
-          idToOrder = idToOrder.updated(addedOrderId,
-            Order.fromOrderAdded(addedOrderId, orderAdded))))
+          idToOrder = idToOrder.updated(order.id, order)))
+    } yield updated
 
   override protected def deleteOrder(order: Order[Order.State]): Checked[ControllerState] =
     order.externalOrderKey match {

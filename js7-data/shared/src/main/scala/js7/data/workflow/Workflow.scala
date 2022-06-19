@@ -17,13 +17,14 @@ import js7.data.agent.AgentPath
 import js7.data.calendar.CalendarPath
 import js7.data.item.{InventoryItemPath, SignableSimpleItemPath, SimpleItemPath, UnsignedSimpleItemPath, VersionedItem, VersionedItemId}
 import js7.data.job.{JobKey, JobResourcePath}
+import js7.data.order.Order
 import js7.data.value.expression.{Expression, PositionSearch}
 import js7.data.workflow.Instruction.{@:, Labeled}
 import js7.data.workflow.Workflow.isCorrectlyEnded
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{BoardInstruction, Cycle, End, Execute, Fork, Gap, If, ImplicitEnd, Instructions, LockInstruction, Retry, TryInstruction}
 import js7.data.workflow.position.BranchPath.Segment
-import js7.data.workflow.position.{BranchId, BranchPath, InstructionNr, Label, Position, WorkflowBranchPath, WorkflowPosition}
+import js7.data.workflow.position.{BranchId, BranchPath, InstructionNr, Label, Position, PositionOrLabel, WorkflowBranchPath, WorkflowPosition}
 import scala.annotation.tailrec
 import scala.collection.View
 import scala.reflect.ClassTag
@@ -233,6 +234,15 @@ extends VersionedItem
       .find(_._2.maybeLabel contains label)
       .map(_._1)
       .toChecked(UnknownKeyProblem("Label", label.toString))
+
+  def positionOrLabelToPosition(position: PositionOrLabel): Checked[Position] =
+    position match {
+      case position: Position => Right(position)
+      case label: Label => labelToPosition(label)
+    }
+
+  def isOrderAtStopPosition(order: Order[Order.State]): Boolean =
+    Workflow.isOrderAtStopPosition(order, Some(this))
 
   def lastWorkflowPosition: WorkflowPosition =
     id /: Position(lastNr)
@@ -525,6 +535,15 @@ object Workflow extends VersionedItem.Companion[Workflow]
   def isCorrectlyEnded(labeledInstructions: IndexedSeq[Instruction.Labeled]): Boolean =
     labeledInstructions.nonEmpty &&
       labeledInstructions.last.instruction.isInstanceOf[End]
+
+  def isOrderAtStopPosition(order: Order[Order.State], workflow: => Option[Workflow]): Boolean =
+    order.stopPositions.contains(order.position.normalized) ||
+      order.stopPositions.exists(_.isInstanceOf[Label]) &&
+        workflow.fold(false)(workflow =>
+          workflow.labeledInstruction(order.position)
+            .toOption
+            .flatMap(_.maybeLabel)
+            .exists(order.stopPositions.contains))
 
   override lazy val subtype: Subtype[Workflow] =
     Subtype(jsonEncoder, topJsonDecoder)

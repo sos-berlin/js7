@@ -55,7 +55,7 @@ final class OrderEventSource(state: StateView)
             case Left(problem) => Left(problem)
             case Right(Some(event)) => Right(event :: Nil)
             case Right(None) =>
-              if (order.stopPosition contains order.position)
+              if (state.isOrderAtStopPosition(order))
                 executorService.finishExecutor.toEvents(Finish(), order, state)
               else
                 executorService.toEvents(instruction(order.workflowPosition), order, state)
@@ -456,7 +456,7 @@ final class OrderEventSource(state: StateView)
     for {
       workflow <- idToWorkflow.checked(order.workflowId)
       maybePosition <- (
-        if (order.stopPosition contains order.position)
+        if (workflow.isOrderAtStopPosition(order))
           Right(None)
         else
           executorService.nextPosition(workflow.instruction(order.position), order, state))

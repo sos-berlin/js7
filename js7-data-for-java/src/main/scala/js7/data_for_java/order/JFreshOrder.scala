@@ -75,7 +75,7 @@ object JFreshOrder extends JJsonable.Companion[JFreshOrder]
     @Nonnull arguments: java.util.Map[String, Value],
     @Nonnull deleteWhenTerminated: Boolean,
     @Nonnull startPosition: Optional[JPosition],
-    @Nonnull stopPosition: Optional[JPosition])
+    @Nonnull stopPositions: java.util.Set[JPosition])
   : JFreshOrder =
     JFreshOrder(FreshOrder(
       id,
@@ -84,7 +84,7 @@ object JFreshOrder extends JJsonable.Companion[JFreshOrder]
       scheduledFor.toScala.map(o => Timestamp.ofEpochMilli(o.toEpochMilli)),
       deleteWhenTerminated = deleteWhenTerminated,
       startPosition = startPosition.toScala.map(_.asScala),
-      stopPosition = stopPosition.toScala.map(_.asScala)))
+      stopPositions = stopPositions.asScala.map(_.asScala).toSet))
 
   @Nonnull
   override def fromJson(@Nonnull jsonString: String): VEither[Problem, JFreshOrder] =

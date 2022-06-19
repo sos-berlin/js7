@@ -22,7 +22,7 @@ import js7.data.subagent.SubagentId
 import js7.data.value.{NamedValues, Value}
 import js7.data.workflow.WorkflowId
 import js7.data.workflow.instructions.Fork
-import js7.data.workflow.position.{Position, WorkflowPosition}
+import js7.data.workflow.position.{Position, PositionOrLabel, WorkflowPosition}
 
 /**
   * @author Joacim Zschimmer
@@ -44,7 +44,7 @@ object OrderEvent
     def externalOrderKey: Option[ExternalOrderKey]
     def deleteWhenTerminated: Boolean
     def startPosition: Option[Position]
-    def stopPosition: Option[Position]
+    def stopPositions: Set[PositionOrLabel]
     def addedOrderId(orderId: OrderId): OrderId
   }
 
@@ -55,7 +55,7 @@ object OrderEvent
     externalOrderKey: Option[ExternalOrderKey] = None,
     deleteWhenTerminated: Boolean = false,
     startPosition: Option[Position] = None,
-    stopPosition: Option[Position] = None)
+    stopPositions: Set[PositionOrLabel] = Set.empty)
   extends OrderAddedX {
     workflowId.requireNonAnonymous()
     def addedOrderId(orderId: OrderId) = orderId
@@ -70,7 +70,7 @@ object OrderEvent
         "arguments" -> o.arguments.??.asJson,
         "deleteWhenTerminated" -> o.deleteWhenTerminated.?.asJson,
         "startPosition" -> o.startPosition.asJson,
-        "stopPosition" -> o.stopPosition.asJson)
+        "stopPositions" -> (o.stopPositions.nonEmpty ? o.stopPositions).asJson)
 
     private[OrderEvent] implicit val jsonDecoder: Decoder[OrderAdded] =
       c => for {
@@ -80,9 +80,9 @@ object OrderEvent
         arguments <- c.getOrElse[NamedValues]("arguments")(Map.empty)
         deleteWhenTerminated <- c.getOrElse[Boolean]("deleteWhenTerminated")(false)
         startPosition <- c.get[Option[Position]]("startPosition")
-        stopPosition <- c.get[Option[Position]]("stopPosition")
+        stopPositions <- c.getOrElse[Set[PositionOrLabel]]("stopPositions")(Set.empty)
       } yield OrderAdded(workflowId, arguments, scheduledFor, externalOrderKey,
-        deleteWhenTerminated, startPosition, stopPosition)
+        deleteWhenTerminated, startPosition, stopPositions)
   }
 
   /** Event for the AddOrder instruction. */
@@ -95,7 +95,7 @@ object OrderEvent
     workflowId.requireNonAnonymous()
     def scheduledFor = None
     def startPosition = None
-    def stopPosition = None
+    def stopPositions = Set.empty
     def externalOrderKey = None
     def addedOrderId(o: OrderId) = orderId
     override def toShortString = s"OrderOrderAdded($orderId, ${workflowId.path})"
@@ -130,9 +130,11 @@ object OrderEvent
     mark: Option[OrderMark] = None,
     isSuspended: Boolean = false,
     deleteWhenTerminated: Boolean = false,
-    stopPosition: Option[Position] = None)
+    stopPositions: Set[PositionOrLabel] = Set.empty)
   extends OrderCoreEvent {
     workflowPosition.workflowId.requireNonAnonymous()
+
+    def workflowId = workflowPosition.workflowId
   }
 
   final case class OrderAttached(agentPath: AgentPath)
