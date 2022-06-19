@@ -148,8 +148,9 @@ final class SuspendWorkflowTest extends AnyFreeSpec with DirectoryProviderForSca
     val eventId = eventWatch.lastAddedEventId
 
     assert(
-      eventWatch.await[WorkflowControlAttached](after = eventId).map(_.value) == Seq(
-        bWorkflow.path <-: WorkflowControlAttached(bAgentPath, suspended = false, ItemRevision(1))))
+      eventWatch.await[WorkflowControlAttached](_.key == bWorkflow.path, after = eventId)
+        .map(_.value) ==
+        Seq(bWorkflow.path <-: WorkflowControlAttached(bAgentPath, suspended = false, ItemRevision(1))))
 
     suspendWorkflow(bWorkflow.path, false, ItemRevision(2))
     B2SemaphoreJob.continue()
