@@ -4,14 +4,30 @@ import io.vavr.control.{Either => VEither}
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.problem.Problem
-import js7.data.workflow.position.Position
-import js7.data_for_java.common.JJsonable
+import js7.data.workflow.position.{Label, Position, PositionOrLabel}
+import js7.data_for_java.common.{JJsonable, JavaWrapper}
 import js7.data_for_java.vavr.VavrConverters._
 import scala.jdk.CollectionConverters._
 
+sealed trait JPositionOrLabel extends JavaWrapper {
+  protected type AsScala <: PositionOrLabel
+  def toJson: String
+}
+object JPositionOrLabel
+{
+  def apply(underlying: PositionOrLabel): JPositionOrLabel =
+    underlying match {
+      case o: Position => JPosition(o)
+      case o: Label => JLabel(o)
+    }
+
+  protected def jsonEncoder = PositionOrLabel.jsonEncoder
+  protected def jsonDecoder = PositionOrLabel.jsonDecoder
+}
+
 /** Position in a Workflow. */
 final case class JPosition(asScala: Position)
-extends JJsonable[JPosition]
+extends JJsonable[JPosition] with JPositionOrLabel
 {
   protected type AsScala = Position
   protected def companion = JPosition
@@ -36,4 +52,18 @@ object JPosition extends JJsonable.Companion[JPosition]
 
   protected def jsonEncoder = Position.jsonEncoder
   protected def jsonDecoder = Position.jsonDecoder
+}
+
+final case class JLabel(asScala: Label)
+extends JJsonable[JLabel] with JPositionOrLabel
+{
+  protected type AsScala = Label
+  protected val companion = JLabel
+}
+object JLabel extends JJsonable.Companion[JLabel] {
+  def of(label: String): JLabel =
+    JLabel(Label(label))
+
+  protected def jsonEncoder = Label.jsonEncoder
+  protected def jsonDecoder = Label.jsonDecoder
 }

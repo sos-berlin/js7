@@ -11,13 +11,12 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.Value
 import js7.data.workflow.WorkflowPath
 import js7.data_for_java.common.JJsonable
-import js7.data_for_java.workflow.position.JPosition
+import js7.data_for_java.workflow.position.JPositionOrLabel
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
 
 @javaApi
-final case class
-JFreshOrder(asScala: FreshOrder)
+final case class JFreshOrder(asScala: FreshOrder)
 extends JJsonable[JFreshOrder]
 {
   protected type AsScala = FreshOrder
@@ -27,6 +26,12 @@ extends JJsonable[JFreshOrder]
   @Nonnull
   def id: OrderId =
     asScala.id
+
+  def startPosition: Optional[JPositionOrLabel] =
+    asScala.startPosition.map(JPositionOrLabel(_)).toJava
+
+  def stopPositions: java.util.Set[JPositionOrLabel] =
+    asScala.stopPositions.map(JPositionOrLabel(_)).asJava
 }
 
 @javaApi
@@ -74,8 +79,8 @@ object JFreshOrder extends JJsonable.Companion[JFreshOrder]
     @Nonnull scheduledFor: java.util.Optional[Instant],
     @Nonnull arguments: java.util.Map[String, Value],
     @Nonnull deleteWhenTerminated: Boolean,
-    @Nonnull startPosition: Optional[JPosition],
-    @Nonnull stopPositions: java.util.Set[JPosition])
+    @Nonnull startPosition: Optional[JPositionOrLabel],
+    @Nonnull stopPositions: java.util.Set[JPositionOrLabel])
   : JFreshOrder =
     JFreshOrder(FreshOrder(
       id,
