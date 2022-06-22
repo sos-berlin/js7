@@ -18,7 +18,7 @@ import js7.data.value.expression.scopes.{JobResourceScope, NowScope, OrderScopes
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{BoardInstruction, End}
 import js7.data.workflow.position.WorkflowPosition
-import js7.data.workflow.{Instruction, Workflow, WorkflowControl, WorkflowControlState, WorkflowId, WorkflowPath}
+import js7.data.workflow.{Instruction, Workflow, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlState}
 import scala.collection.MapView
 import scala.reflect.ClassTag
 
@@ -48,10 +48,10 @@ trait StateView extends ItemContainer
 
   def workflowPathToId(workflowPath: WorkflowPath): Checked[WorkflowId]
 
-  def pathToWorkflowControlState: MapView[WorkflowPath, WorkflowControlState]
+  def pathToWorkflowPathControlState: MapView[WorkflowPath, WorkflowPathControlState]
 
-  final def pathToWorkflowControl: MapView[WorkflowPath, WorkflowControl] =
-    pathToWorkflowControlState.view.mapValues(_.workflowControl)
+  final def pathToWorkflowPathControl: MapView[WorkflowPath, WorkflowPathControl] =
+    pathToWorkflowPathControlState.view.mapValues(_.workflowPathControl)
 
   def pathToItemState: MapView[UnsignedSimpleItemPath, UnsignedSimpleItemState]
 
@@ -144,8 +144,8 @@ trait StateView extends ItemContainer
   }
 
   final def isWorkflowSuspended(workflowPath: WorkflowPath): Boolean =
-    pathToWorkflowControlState.get(workflowPath)
-      .exists(_.workflowControl.suspended)
+    pathToWorkflowPathControlState.get(workflowPath)
+      .exists(_.workflowPathControl.suspended)
 
   /** A pure (stable, repeatable) Scope. */
   final def toPureScope(order: Order[Order.State]): Checked[Scope] =

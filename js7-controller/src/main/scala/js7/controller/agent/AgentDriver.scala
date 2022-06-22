@@ -42,7 +42,7 @@ import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetached}
 import js7.data.order.{Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.OrderWatchEvent
 import js7.data.subagent.{SubagentId, SubagentItemStateEvent}
-import js7.data.workflow.{WorkflowControlEvent, WorkflowPath}
+import js7.data.workflow.{WorkflowPath, WorkflowPathControlEvent}
 import js7.journal.state.StatePersistence
 import monix.eval.Task
 import monix.execution.atomic.AtomicInt
@@ -591,7 +591,7 @@ private[controller] object AgentDriver
     classOf[SubagentItemStateEvent],
     classOf[InventoryItemEvent],
     classOf[OrderWatchEvent],
-    classOf[WorkflowControlEvent])
+    classOf[WorkflowPathControlEvent])
   private val DecoupledProblem = Problem.pure("Agent has been decoupled")
 
   def props(agentRef: AgentRef, agentRunId: Option[AgentRunId], eventId: EventId,
@@ -644,7 +644,7 @@ private[controller] object AgentDriver
 
     final case class ResetSubagent(subagentId: SubagentId, force: Boolean) extends Queueable
 
-    final case class ControlWorkflow(
+    final case class ControlWorkflowPath(
       workflowPath: WorkflowPath,
       suspend: Boolean,
       revision: ItemRevision)

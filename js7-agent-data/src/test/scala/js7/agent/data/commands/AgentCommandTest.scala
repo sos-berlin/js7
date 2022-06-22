@@ -301,12 +301,12 @@ final class AgentCommandTest extends AnyFreeSpec
     }
   }
 
-  "ControlWorkflow" in {
+  "ControlWorkflowPath" in {
     check(
-      AgentCommand.ControlWorkflow(
+      AgentCommand.ControlWorkflowPath(
         WorkflowPath("WORKFLOW"), suspend = true, ItemRevision(1)),
       json"""{
-        "TYPE": "ControlWorkflow",
+        "TYPE": "ControlWorkflowPath",
         "workflowPath": "WORKFLOW",
         "suspend": true,
         "revision": 1

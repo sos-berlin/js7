@@ -212,7 +212,8 @@ object ControllerCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
 
-  final case class ControlWorkflow(workflowPath: WorkflowPath, suspend: Boolean)
+  /** Command to control all Workflows (all versions) of a WorkflowPath. */
+  final case class ControlWorkflowPath(workflowPath: WorkflowPath, suspend: Boolean)
   extends ControllerCommand with Big {
     type Response = Response.Accepted
   }
@@ -287,7 +288,7 @@ object ControllerCommand extends CommonCommand.Companion
     Subtype(deriveConfiguredCodec[ResumeOrder]),
     Subtype(deriveConfiguredCodec[ResumeOrders]),
     Subtype(deriveConfiguredCodec[SuspendOrders]),
-    Subtype(deriveConfiguredCodec[ControlWorkflow]),
+    Subtype(deriveConfiguredCodec[ControlWorkflowPath]),
     Subtype(deriveConfiguredCodec[ClusterAppointNodes]),
     Subtype(ClusterSwitchOver),
     Subtype(deriveConfiguredCodec[InternalClusterCommand]),

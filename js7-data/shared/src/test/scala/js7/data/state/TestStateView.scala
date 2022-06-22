@@ -10,7 +10,7 @@ import js7.data.event.{Event, EventDrivenState, KeyedEvent}
 import js7.data.item.{InventoryItem, InventoryItemKey, UnsignedSimpleItemPath, UnsignedSimpleItemState}
 import js7.data.lock.LockPath
 import js7.data.order.{Order, OrderEvent, OrderId}
-import js7.data.workflow.{Workflow, WorkflowControlState, WorkflowId, WorkflowPath}
+import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath, WorkflowPathControlState}
 import scala.collection.MapView
 
 case class TestStateView(
@@ -19,7 +19,7 @@ case class TestStateView(
   idToOrder: Map[OrderId, Order[Order.State]] = new NotImplementedMap,
   idToWorkflow: PartialFunction[WorkflowId, Workflow] = new NotImplementedMap,
   pathToItemState_ : Map[UnsignedSimpleItemPath, UnsignedSimpleItemState] = new NotImplementedMap,
-  pathToWorkflowControlState_ : Map[WorkflowPath, WorkflowControlState] = Map.empty)
+  pathToWorkflowPathControlState_ : Map[WorkflowPath, WorkflowPathControlState] = Map.empty)
 extends EventDrivenStateView[TestStateView, Event]
 {
   val companion = TestStateView
@@ -37,7 +37,7 @@ extends EventDrivenStateView[TestStateView, Event]
   def workflowPathToId(workflowPath: WorkflowPath) =
     Left(Problem.pure("workflowPathToId is not implemented"))
 
-  def pathToWorkflowControlState = pathToWorkflowControlState_.view
+  def pathToWorkflowPathControlState = pathToWorkflowPathControlState_.view
 
   def pathToItemState = pathToItemState_.view
 

@@ -9,7 +9,7 @@ import js7.base.problem.Problem
 import js7.base.time.JavaTimestamp
 import js7.data.board.{BoardPath, NoticeId}
 import js7.data.controller.ControllerCommand
-import js7.data.controller.ControllerCommand.{AddOrder, ControlWorkflow, PostNotice}
+import js7.data.controller.ControllerCommand.{AddOrder, ControlWorkflowPath, PostNotice}
 import js7.data.workflow.WorkflowPath
 import js7.data_for_java.common.JJsonable
 import js7.data_for_java.order.JFreshOrder
@@ -41,10 +41,19 @@ object JControllerCommand extends JJsonable.Companion[JControllerCommand]
         endOfLife.toScala
           .map(JavaTimestamp.ofInstant)))
 
+  @Deprecated
+  @deprecated("Use controlWorkflowPath")
   @Nonnull
   def controlWorkflow(workflowPath: WorkflowPath, suspend: Boolean): JControllerCommand =
+    controlWorkflowPath(workflowPath, suspend)
+
+  @Nonnull
+  def controlWorkflowPath(
+    workflowPath: WorkflowPath,
+    suspend: Boolean)
+  : JControllerCommand =
     JControllerCommand(
-      ControlWorkflow(workflowPath, suspend = suspend))
+      ControlWorkflowPath( workflowPath, suspend = suspend))
 
   @Nonnull
   override def fromJson(@Nonnull jsonString: String): VEither[Problem, JControllerCommand] =

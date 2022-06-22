@@ -33,9 +33,9 @@ import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath}
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
 import js7.data.value.expression.Expression
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.workflow.WorkflowControlEvent.WorkflowControlUpdated
+import js7.data.workflow.WorkflowPathControlEvent.WorkflowPathControlUpdated
 import js7.data.workflow.position._
-import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlState, WorkflowPath}
+import js7.data.workflow.{Workflow, WorkflowPath, WorkflowPathControl, WorkflowPathControlState}
 import js7.tester.CirceJsonTester.removeJNull
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
@@ -64,7 +64,7 @@ final class AgentStateTest extends AsyncFreeSpec
   private val itemSigner = new ItemSigner(SillySigner.Default, AgentState.signableItemJsonCodec)
   private val signedWorkflow = itemSigner.sign(workflow)
   private val signedJobResource = itemSigner.sign(JobResource(JobResourcePath("JOBRESOURCE")))
-  private val workflowControl = WorkflowControl(workflow.path, true, ItemRevision(1))
+  private val workflowPathControl = WorkflowPathControl(workflow.path, true, ItemRevision(1))
 
   private val calendar = Calendar(
     CalendarPath("CALENDAR"),
@@ -99,7 +99,7 @@ final class AgentStateTest extends AsyncFreeSpec
       Map.empty,
       Map.empty,
       Map(
-        workflow.path -> WorkflowControlState(workflowControl)),
+        workflow.path -> WorkflowPathControlState(workflowPathControl)),
       Map.empty,
       Map.empty
     ).applyEvents(Seq(
@@ -255,8 +255,8 @@ final class AgentStateTest extends AsyncFreeSpec
             "instructions": []
           }""",
           json"""{
-            "TYPE": "WorkflowControlState",
-            "workflowControl": {
+            "TYPE": "WorkflowPathControlState",
+            "workflowPathControl": {
               "path": "WORKFLOW",
               "suspended": true,
               "revision": 1
@@ -346,7 +346,7 @@ final class AgentStateTest extends AsyncFreeSpec
     agentState = agentState.applyEvent(NoKey <-: ItemAttachedToMe(workflow)).orThrow
     agentState = agentState.applyEvent(NoKey <-: ItemAttachedToMe(unsignedJobResource)).orThrow
     agentState = agentState.applyEvent(NoKey <-: SignedItemAttachedToMe(signedWorkflow)).orThrow
-    agentState = agentState.applyEvent(workflow.path <-: WorkflowControlUpdated(true, ItemRevision(1))).orThrow
+    agentState = agentState.applyEvent(workflow.path <-: WorkflowPathControlUpdated(true, ItemRevision(1))).orThrow
     agentState = agentState.applyEvent(NoKey <-: SignedItemAttachedToMe(signedJobResource)).orThrow
     agentState = agentState.applyEvent(orderId <-:
       OrderAttachedToAgent(
@@ -369,7 +369,7 @@ final class AgentStateTest extends AsyncFreeSpec
       Map(
         workflow.id -> workflow),
       Map(
-        workflow.path -> WorkflowControlState(workflowControl)),
+        workflow.path -> WorkflowPathControlState(workflowPathControl)),
       Map(
         unsignedJobResource.path -> unsignedJobResource,
         signedJobResource.value.path -> signedJobResource.value),

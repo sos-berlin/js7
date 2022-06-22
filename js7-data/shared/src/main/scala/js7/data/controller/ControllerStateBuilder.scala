@@ -27,14 +27,14 @@ import js7.data.state.EventDrivenStateView
 import js7.data.state.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent, SubagentSelection, SubagentSelectionState}
-import js7.data.workflow.{Workflow, WorkflowControlEvent, WorkflowControlState, WorkflowControlStateHandler, WorkflowId, WorkflowPath}
+import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath, WorkflowPathControlEvent, WorkflowPathControlState, WorkflowPathControlStateHandler}
 import scala.collection.mutable
 
 final class ControllerStateBuilder
 extends SnapshotableStateBuilder[ControllerState]
 with EventDrivenStateView[ControllerStateBuilder, Event]
 with OrderWatchStateHandler[ControllerStateBuilder]
-with WorkflowControlStateHandler[ControllerStateBuilder]
+with WorkflowPathControlStateHandler[ControllerStateBuilder]
 {
   protected val S = ControllerState
   val companion = ControllerStateBuilder
@@ -45,13 +45,13 @@ with WorkflowControlStateHandler[ControllerStateBuilder]
   private val _idToOrder = mutable.Map.empty[OrderId, Order[Order.State]]
   private val _pathToItemState = mutable.Map.empty[UnsignedSimpleItemPath, UnsignedSimpleItemState]
   private var agentAttachments = ClientAttachments.empty[AgentPath]
-  private val _pathToWorkflowControlState = mutable.Map.empty[WorkflowPath, WorkflowControlState]
+  private val _pathToWorkflowPathControlState = mutable.Map.empty[WorkflowPath, WorkflowPathControlState]
   private val deletionMarkedItems = mutable.Set[InventoryItemKey]()
   private val pathToSignedSimpleItem = mutable.Map.empty[SignableSimpleItemPath, Signed[SignableSimpleItem]]
 
   val isAgent = false
   def idToOrder = _idToOrder
-  def pathToWorkflowControlState = _pathToWorkflowControlState.view
+  def pathToWorkflowPathControlState = _pathToWorkflowPathControlState.view
 
   lazy val idToWorkflow: PartialFunction[WorkflowId, Workflow] =
     new PartialFunction[WorkflowId, Workflow] {
@@ -89,7 +89,7 @@ with WorkflowControlStateHandler[ControllerStateBuilder]
     _pathToItemState ++= state.pathToItemState_
     pathToSignedSimpleItem ++= state.pathToSignedSimpleItem
     agentAttachments = state.agentAttachments
-    _pathToWorkflowControlState ++= state.pathToWorkflowControlState_
+    _pathToWorkflowPathControlState ++= state.pathToWorkflowPathControlState_
     deletionMarkedItems ++= state.deletionMarkedItems
   }
 
@@ -145,8 +145,8 @@ with WorkflowControlStateHandler[ControllerStateBuilder]
     case item: UnsignedSimpleItem =>
       _pathToItemState.insert(item.path, item.toInitialItemState)
 
-    case workflowControlState: WorkflowControlState =>
-      updateWorkflowControlState(workflowControlState)
+    case controlState: WorkflowPathControlState =>
+      updateWorkflowPathControlState(controlState)
 
     case snapshot: OrderWatchState.ExternalOrderSnapshot =>
       ow.applySnapshot(snapshot).orThrow
@@ -296,7 +296,7 @@ with WorkflowControlStateHandler[ControllerStateBuilder]
                   case WorkflowId.as(workflowId) =>
                     repo = repo.deleteItem(workflowId).orThrow
                     if (!repo.pathToItems(Workflow).contains(workflowId.path)) {
-                      _pathToWorkflowControlState -= workflowId.path
+                      _pathToWorkflowPathControlState -= workflowId.path
                     }
 
                   case jobResourcePath: JobResourcePath =>
@@ -340,8 +340,8 @@ with WorkflowControlStateHandler[ControllerStateBuilder]
           _pathToItemState(boardState.path) = boardState.removeNotice(noticeId).orThrow
         }
 
-      case KeyedEvent(workflowPath: WorkflowPath, event: WorkflowControlEvent) =>
-        applyWorkflowControlEvent(workflowPath, event).orThrow
+      case KeyedEvent(workflowPath: WorkflowPath, event: WorkflowPathControlEvent) =>
+        applyWorkflowPathControlEvent(workflowPath, event).orThrow
 
       case KeyedEvent(_, _: ControllerShutDown) =>
       case KeyedEvent(_, ControllerTestEvent) =>
@@ -379,8 +379,8 @@ with WorkflowControlStateHandler[ControllerStateBuilder]
 
   protected def pathToOrderWatchState = pathTo(OrderWatchState)
 
-  protected def updateWorkflowControlState(state: WorkflowControlState) = {
-    _pathToWorkflowControlState(state.workflowPath) = state
+  protected def updateWorkflowPathControlState(state: WorkflowPathControlState) = {
+    _pathToWorkflowPathControlState(state.workflowPath) = state
     this
   }
 
@@ -411,7 +411,7 @@ with WorkflowControlStateHandler[ControllerStateBuilder]
       repo,
       pathToSignedSimpleItem.toMap,
       agentAttachments,
-      _pathToWorkflowControlState.toMap,
+      _pathToWorkflowPathControlState.toMap,
       deletionMarkedItems.toSet,
       _idToOrder.toMap)
 

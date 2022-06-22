@@ -26,7 +26,7 @@ import js7.data.orderwatch.{FileWatch, OrderWatchEvent, OrderWatchPath}
 import js7.data.state.EventDrivenStateView
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent, SubagentSelection, SubagentSelectionId, SubagentSelectionState}
-import js7.data.workflow.{Workflow, WorkflowControlEvent, WorkflowControlState, WorkflowControlStateHandler, WorkflowId, WorkflowPath}
+import js7.data.workflow.{Workflow, WorkflowPathControlEvent, WorkflowPathControlState, WorkflowPathControlStateHandler, WorkflowId, WorkflowPath}
 import monix.reactive.Observable
 import scala.collection.MapView
 
@@ -40,14 +40,14 @@ final case class AgentState(
   pathToItemState_ : Map[UnsignedSimpleItemPath, UnsignedSimpleItemState],
   idToOrder: Map[OrderId, Order[Order.State]],
   idToWorkflow: Map[WorkflowId, Workflow/*reduced for this Agent!!!*/],
-  pathToWorkflowControlState_ : Map[WorkflowPath, WorkflowControlState],
+  pathToWorkflowPathControlState_ : Map[WorkflowPath, WorkflowPathControlState],
   pathToJobResource: Map[JobResourcePath, JobResource],
   keyToSignedItem : Map[SignableItemKey, Signed[SignableItem]])
 extends SignedItemContainer
 with EventDrivenStateView[AgentState, Event]
 with SubagentDirectorState[AgentState]
 with FileWatchStateHandler[AgentState]
-with WorkflowControlStateHandler[AgentState]
+with WorkflowPathControlStateHandler[AgentState]
 with SnapshotableState[AgentState]
 {
   def isAgent = true
@@ -74,7 +74,7 @@ with SnapshotableState[AgentState]
       idToWorkflow.size +
       idToOrder.size +
       pathToItemState_.size +
-      pathToWorkflowControlState_.size +
+      pathToWorkflowPathControlState_.size +
       fw.estimatedExtraSnapshotSize +
       pathToJobResource.size
       //keyToSignedItem.size +  // == idToWorkflow.size + pathToJobResource.size
@@ -87,7 +87,7 @@ with SnapshotableState[AgentState]
     Observable.fromIterable(pathTo(FileWatchState).values).flatMap(_.toSnapshotObservable),
     Observable.fromIterable(keyToSignedItem.values.view.map(SignedItemAdded(_))),
     Observable.fromIterable(idToWorkflow.view.filterKeys(isWithoutSignature).values),
-    Observable.fromIterable(pathToWorkflowControlState_.values),
+    Observable.fromIterable(pathToWorkflowPathControlState_.values),
     Observable.fromIterable(pathToJobResource.view.filterKeys(isWithoutSignature).values),
     Observable.fromIterable(pathTo(CalendarState).values).flatMap(_.toSnapshotObservable),
     Observable.fromIterable(idToOrder.values)
@@ -176,11 +176,11 @@ with SnapshotableState[AgentState]
                   copy(
                     keyToSignedItem = keyToSignedItem - workflowId,
                     idToWorkflow = updatedIdToWorkflow,
-                    pathToWorkflowControlState_ =
+                    pathToWorkflowPathControlState_ =
                       if (idToWorkflow.keys.exists/*Slow???*/(_.path == workflowId.path))
-                        pathToWorkflowControlState_ - workflowId.path
+                        pathToWorkflowPathControlState_ - workflowId.path
                       else
-                       pathToWorkflowControlState_)
+                       pathToWorkflowPathControlState_)
                 }
 
               case path: OrderWatchPath =>
@@ -239,8 +239,8 @@ with SnapshotableState[AgentState]
           controllerId = controllerId,
           subagentId = subagentId)))
 
-      case KeyedEvent(workflowPath: WorkflowPath, event: WorkflowControlEvent) =>
-        applyWorkflowControlEvent(workflowPath, event)
+      case KeyedEvent(workflowPath: WorkflowPath, event: WorkflowPathControlEvent) =>
+        applyWorkflowPathControlEvent(workflowPath, event)
 
       case _ => applyStandardEvent(keyedEvent)
     }
@@ -256,10 +256,10 @@ with SnapshotableState[AgentState]
     remove: Iterable[OrderWatchPath]
   ) = update(addItemStates = fileWatchStates, removeItemStates = remove)
 
-  def pathToWorkflowControlState = pathToWorkflowControlState_.view
+  def pathToWorkflowPathControlState = pathToWorkflowPathControlState_.view
 
-  protected def updateWorkflowControlState(s: WorkflowControlState) =
-    copy(pathToWorkflowControlState_ = pathToWorkflowControlState_.updated(s.workflowPath, s))
+  protected def updateWorkflowPathControlState(s: WorkflowPathControlState) =
+    copy(pathToWorkflowPathControlState_ = pathToWorkflowPathControlState_.updated(s.workflowPath, s))
 
   protected def update(
     orders: Iterable[Order[Order.State]],
@@ -364,7 +364,7 @@ with ItemContainer.Companion[AgentState]
     Subtype(signableSimpleItemJsonCodec),
     Subtype(unsignedSimpleItemJsonCodec),
     Subtype[BasicItemEvent],
-    Subtype[WorkflowControlState])
+    WorkflowPathControlState.subtype)
 
   implicit val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] = {
     KeyedEventTypedJsonCodec[Event](
@@ -374,6 +374,6 @@ with ItemContainer.Companion[AgentState]
       KeyedSubtype[AgentEvent],
       KeyedSubtype[InventoryItemEvent],
       KeyedSubtype[OrderWatchEvent],
-      KeyedSubtype[WorkflowControlEvent])
+      KeyedSubtype[WorkflowPathControlEvent])
   }
 }

@@ -187,7 +187,7 @@ private[agent] final class AgentActor private(
                       _: AgentCommand.AttachSignedItem |
                       _: AgentCommand.DetachItem |
                       _: AgentCommand.ResetSubagent |
-                      _: AgentCommand.ControlWorkflow) =>
+                      _: AgentCommand.ControlWorkflowPath) =>
         // TODO Check AgentRunId ?
         started.toOption match {
           case None =>

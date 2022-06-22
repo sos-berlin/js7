@@ -47,7 +47,7 @@ import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.board.BoardEvent.{NoticeDeleted, NoticePosted}
 import js7.data.board.{BoardPath, BoardState, Notice, NoticeId}
 import js7.data.calendar.{Calendar, CalendarExecutor}
-import js7.data.controller.ControllerCommand.ControlWorkflow
+import js7.data.controller.ControllerCommand.ControlWorkflowPath
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.data.controller.ControllerStateExecutor.convertImplicitly
 import js7.data.controller.{ControllerCommand, ControllerEvent, ControllerState, VerifiedUpdateItems, VerifiedUpdateItemsExecutor}
@@ -72,9 +72,9 @@ import js7.data.state.OrderEventHandler.FollowUp
 import js7.data.subagent.SubagentItemStateEvent.{SubagentEventsObserved, SubagentResetStartedByController}
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
 import js7.data.value.expression.scopes.NowScope
-import js7.data.workflow.WorkflowControlEvent.{WorkflowControlAttached, WorkflowControlUpdated}
+import js7.data.workflow.WorkflowPathControlEvent.{WorkflowPathControlAttached, WorkflowPathControlUpdated}
 import js7.data.workflow.position.WorkflowPosition
-import js7.data.workflow.{Instruction, Workflow, WorkflowControl, WorkflowControlState, WorkflowPath}
+import js7.data.workflow.{Instruction, Workflow, WorkflowPath, WorkflowPathControl, WorkflowPathControlState}
 import js7.journal.recover.Recovered
 import js7.journal.state.FileStatePersistence
 import js7.journal.{CommitOptions, JournalActor, MainJournalingActor}
@@ -403,11 +403,11 @@ with MainJournalingActor[ControllerState, Event]
       proceedWithOrders(_controllerState.idToOrder.keys)
       orderQueue.enqueue(_controllerState.idToOrder.keys)
 
-      _controllerState.workflowControlPathToIgnorantAgent
+      _controllerState.workflowPathControlToIgnorantAgents
         .foreach { case (workflowPath, agentPaths) =>
           for (agentPath <- agentPaths) {
-            attachWorkflowControlToAgent(
-              _controllerState.pathToWorkflowControl(workflowPath),
+            attachWorkflowPathControlToAgent(
+              _controllerState.pathToWorkflowPathControl(workflowPath),
               agentPath)
           }
         }
@@ -544,12 +544,12 @@ with MainJournalingActor[ControllerState, Event]
                           case _ => Timestamped(keyedEvent) :: Nil
                         }
 
-                      case KeyedEvent(workflowPath: WorkflowPath, event: WorkflowControlUpdated) =>
-                        // If event.revision != WorkflowControl.revision,
+                      case KeyedEvent(workflowPath: WorkflowPath, event: WorkflowPathControlUpdated) =>
+                        // If event.revision != WorkflowPathControl.revision,
                         // then the event is informational only.
                         Timestamped(
                           workflowPath <-:
-                            WorkflowControlAttached(agentPath, event.suspended, event.revision)
+                            WorkflowPathControlAttached(agentPath, event.suspended, event.revision)
                         ) :: Nil
 
                       case _ =>
@@ -754,8 +754,8 @@ with MainJournalingActor[ControllerState, Event]
       case ControllerCommand.ResumeOrder(orderId, position, historicOps) =>
         executeOrderMarkCommands(Vector(orderId))(orderEventSource.resume(_, position, historicOps))
 
-      case cmd: ControllerCommand.ControlWorkflow =>
-        controlWorkflow(cmd)
+      case cmd: ControllerCommand.ControlWorkflowPath =>
+        controlWorkflowPath(cmd)
 
       case ControllerCommand.ResumeOrders(orderIds) =>
         executeOrderMarkCommands(orderIds.toVector)(orderEventSource.resume(_, None, Nil))
@@ -978,20 +978,21 @@ with MainJournalingActor[ControllerState, Event]
             .map(_.map(_ => ControllerCommand.Response.Accepted))
       }
 
-  private def controlWorkflow(cmd: ControlWorkflow): Future[Checked[ControllerCommand.Response]] =
+  private def controlWorkflowPath(cmd: ControlWorkflowPath)
+  : Future[Checked[ControllerCommand.Response]] =
     _controllerState.repo.pathToItems(Workflow).checked(cmd.workflowPath) match {
       case Left(problem) => Future.successful(Left(problem))
       case Right(_) =>
-        val workflowControl = _controllerState.pathToWorkflowControl
-          .getOrElse(cmd.workflowPath, WorkflowControl(cmd.workflowPath))
-        // Continue even if WorkflowControl is not changed.
-        // This allows the caller to force the redistribution of the WorkflowControl.
-        val event = WorkflowControlUpdated(suspended = cmd.suspend, workflowControl.revision.next)
+        val control = _controllerState.pathToWorkflowPathControl
+          .getOrElse(cmd.workflowPath, WorkflowPathControl(cmd.workflowPath))
+        // Continue even if WorkflowPathControl is not changed.
+        // This allows the caller to force the redistribution of the WorkflowPathControl.
+        val event = WorkflowPathControlUpdated(suspended = cmd.suspend, control.revision.next)
         persistKeyedEvent(cmd.workflowPath <-: event) { (stamped, updated) =>
           handleEvents(stamped :: Nil, updated)
-          val controlState = updated.pathToWorkflowControlState_(cmd.workflowPath)
-          attachWorkflowControlToAgents(controlState)
-          if (!controlState.workflowControl.suspended) {
+          val controlState = updated.pathToWorkflowPathControlState_(cmd.workflowPath)
+          attachWorkflowPathControlToAgents(controlState)
+          if (!controlState.workflowPathControl.suspended) {
             orderQueue.enqueue(
               updated.orders.filter(_.workflowPath == controlState.workflowPath).map(_.id))
           }
@@ -999,11 +1000,11 @@ with MainJournalingActor[ControllerState, Event]
         }
       }
 
-  private def attachWorkflowControlToAgents(controlState: WorkflowControlState): Unit =
+  private def attachWorkflowPathControlToAgents(controlState: WorkflowPathControlState): Unit =
     // For each Workflow version of controlState.workflowPath
     _controllerState.repo.pathToItems(Workflow).checked(controlState.workflowPath)
       .foreach { workflows =>
-        // Send WorkflowControl to each Agent that is referenced by an attached Workflow.
+        // Send WorkflowPathControl to each Agent that is referenced by an attached Workflow.
         for (
           workflow <- workflows.view;
           agentPath <- workflow.referencedAgentPaths
@@ -1011,14 +1012,14 @@ with MainJournalingActor[ControllerState, Event]
             .exists(_.get(agentPath).exists(_.isAttachableOrAttached))
           if !controlState.attachedToAgents.contains(agentPath)
         ) {
-          attachWorkflowControlToAgent(controlState.workflowControl, agentPath)
+          attachWorkflowPathControlToAgent(controlState.workflowPathControl, agentPath)
         }
       }
 
-  private def attachWorkflowControlToAgent(control: WorkflowControl, agentPath: AgentPath): Unit = {
-    // WorkflowControlAttaching event, damit Control nicht mit jedem Auftrag geschickt wird, bis
-    // WorkflowControlAttached.
-    agentRegister(agentPath).actor ! AgentDriver.Input.ControlWorkflow(
+  private def attachWorkflowPathControlToAgent(control: WorkflowPathControl, agentPath: AgentPath): Unit = {
+    // WorkflowPathControlAttaching event, damit Control nicht mit jedem Auftrag geschickt wird, bis
+    // WorkflowPathControlAttached.
+    agentRegister(agentPath).actor ! AgentDriver.Input.ControlWorkflowPath(
       control.path,
       control.suspended,
       control.revision)
@@ -1398,12 +1399,12 @@ with MainJournalingActor[ControllerState, Event]
               actor ! AgentDriver.Input.AttachSignedItem(signedItem)
             }
 
-          // Maybe attach WorkflowControl
-          _controllerState.pathToWorkflowControlState.get(workflow.path)
+          // Maybe attach WorkflowPathControl
+          _controllerState.pathToWorkflowPathControlState.get(workflow.path)
             .filterNot(_.attachedToAgents contains agentPath)
-            .map(_.workflowControl)
+            .map(_.workflowPathControl)
             .foreach(
-              attachWorkflowControlToAgent(_, agentPath))
+              attachWorkflowPathControlToAgent(_, agentPath))
 
           // Maybe attach more required Items
           workflow.referencedAttachableToAgentUnsignedPaths

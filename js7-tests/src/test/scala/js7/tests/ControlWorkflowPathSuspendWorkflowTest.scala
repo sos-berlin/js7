@@ -8,6 +8,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
+import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand
@@ -18,18 +19,19 @@ import js7.data.item.{ItemRevision, VersionId}
 import js7.data.order.OrderEvent.{OrderAttached, OrderFinished, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.workflow.WorkflowControlEvent.{WorkflowControlAttached, WorkflowControlUpdated}
+import js7.data.workflow.WorkflowPathControlEvent.{WorkflowPathControlAttached, WorkflowPathControlUpdated}
 import js7.data.workflow.instructions.Prompt
-import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlState, WorkflowPath}
+import js7.data.workflow.{Workflow, WorkflowPath, WorkflowPathControl, WorkflowPathControlState}
 import js7.proxy.ControllerApi
-import js7.tests.SuspendWorkflowTest._
+import js7.tests.ControlWorkflowPathSuspendWorkflowTest._
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
 
-final class SuspendWorkflowTest extends AnyFreeSpec with DirectoryProviderForScalaTest
+final class ControlWorkflowPathSuspendWorkflowTest
+extends AnyFreeSpec with DirectoryProviderForScalaTest
 {
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -56,7 +58,7 @@ final class SuspendWorkflowTest extends AnyFreeSpec with DirectoryProviderForSca
     super.afterAll()
   }
 
-  "UpdateWorkflowController suspend=true" in {
+  "ControlWorkflowPath suspend=true" in {
     aAgent = directoryProvider.startAgent(aAgentPath).await(99.s)
     controller = directoryProvider.startController().await(99.s)
     implicit val controllerApi = directoryProvider.newControllerApi(controller)
@@ -90,8 +92,8 @@ final class SuspendWorkflowTest extends AnyFreeSpec with DirectoryProviderForSca
       .head.eventId
 
     eventId = suspendWorkflow(aWorkflow.path, true, ItemRevision(5))
-    assert(eventWatch.await[WorkflowControlAttached](after = eventId).map(_.value) == Seq(
-      aWorkflow.path <-: WorkflowControlAttached(aAgentPath, suspended = true, ItemRevision(5))))
+    assert(eventWatch.await[WorkflowPathControlAttached](after = eventId).map(_.value) == Seq(
+      aWorkflow.path <-: WorkflowPathControlAttached(aAgentPath, suspended = true, ItemRevision(5))))
 
     ASemaphoreJob.continue()
     intercept[TimeoutException] {
@@ -101,9 +103,9 @@ final class SuspendWorkflowTest extends AnyFreeSpec with DirectoryProviderForSca
     eventId = suspendWorkflow(aWorkflow.path, false, ItemRevision(6))
     eventWatch.await[OrderFinished](_.key == aOrderId, after = eventId)
 
-    controller.controllerState.await(99.s).pathToWorkflowControlState_(aWorkflow.path) ==
-      WorkflowControlState(
-        WorkflowControl(
+    controller.controllerState.await(99.s).pathToWorkflowPathControlState_(aWorkflow.path) ==
+      WorkflowPathControlState(
+        WorkflowPathControl(
           aWorkflow.path,
           suspended = false,
           revision = ItemRevision(6)),
@@ -113,7 +115,7 @@ final class SuspendWorkflowTest extends AnyFreeSpec with DirectoryProviderForSca
     controllerApi.stop.await(99.s)
   }
 
-  "After Controller recovery, the WorkflowControl is attached to the remaining Agents" in {
+  "After Controller recovery, the WorkflowPathControl is attached to the remaining Agents" in {
     val bOrderId = OrderId("B")
     bAgent = directoryProvider.startAgent(bAgentPath).await(99.s)
     var agentEventId = bAgent.eventWatch.await[AgentReady]().last.eventId
@@ -148,21 +150,21 @@ final class SuspendWorkflowTest extends AnyFreeSpec with DirectoryProviderForSca
     val eventId = eventWatch.lastAddedEventId
 
     assert(
-      eventWatch.await[WorkflowControlAttached](_.key == bWorkflow.path, after = eventId)
+      eventWatch.await[WorkflowPathControlAttached](_.key == bWorkflow.path, after = eventId)
         .map(_.value) ==
-        Seq(bWorkflow.path <-: WorkflowControlAttached(bAgentPath, suspended = false, ItemRevision(1))))
+        Seq(bWorkflow.path <-: WorkflowPathControlAttached(bAgentPath, suspended = false, ItemRevision(1))))
 
     suspendWorkflow(bWorkflow.path, false, ItemRevision(2))
     B2SemaphoreJob.continue()
     eventWatch.await[OrderFinished](_.key == bOrderId)
 
-    controller.controllerState.await(99.s).pathToWorkflowControlState_(bWorkflow.path) ==
-      WorkflowControlState(
-        WorkflowControl(bWorkflow.path, suspended = true, ItemRevision(1)),
+    controller.controllerState.await(99.s).pathToWorkflowPathControlState_(bWorkflow.path) ==
+      WorkflowPathControlState(
+        WorkflowPathControl(bWorkflow.path, suspended = true, ItemRevision(1)),
         attachedToAgents = Set(bAgentPath))
   }
 
-  "WorkflowControl disappears with the last Workflow version" in {
+  "WorkflowPathControl disappears with the last Workflow version" in {
     val controllerApi = directoryProvider.newControllerApi(controller)
     val eventId = eventWatch.lastAddedEventId
 
@@ -179,8 +181,8 @@ final class SuspendWorkflowTest extends AnyFreeSpec with DirectoryProviderForSca
       .head.value.event
       == ItemDetached(bWorkflow.id, bAgentPath))
 
-    assert(aAgent.currentAgentState().pathToWorkflowControlState.isEmpty)
-    assert(controller.controllerState.await(99.s).pathToWorkflowControlState.isEmpty)
+    assert(aAgent.currentAgentState().pathToWorkflowPathControlState.isEmpty)
+    assert(controller.controllerState.await(99.s).pathToWorkflowPathControlState.isEmpty)
   }
 
   private def suspendWorkflow(workflowPath: WorkflowPath, suspend: Boolean, revision: ItemRevision)
@@ -188,16 +190,16 @@ final class SuspendWorkflowTest extends AnyFreeSpec with DirectoryProviderForSca
   : EventId = {
     val eventId = eventWatch.lastAddedEventId
     controllerApi
-      .executeCommand(ControllerCommand.ControlWorkflow(workflowPath, suspend = suspend))
-      .await(99.s)
-    val keyedEvents = eventWatch.await[WorkflowControlUpdated](after = eventId)
+      .executeCommand(ControllerCommand.ControlWorkflowPath(workflowPath, suspend = suspend))
+      .await(99.s).orThrow
+    val keyedEvents = eventWatch.await[WorkflowPathControlUpdated](after = eventId)
     assert(keyedEvents.map(_.value) == Seq(
-      workflowPath <-: WorkflowControlUpdated(suspend, revision)))
+      workflowPath <-: WorkflowPathControlUpdated(suspend, revision)))
     keyedEvents.last.eventId
   }
 }
 
-object SuspendWorkflowTest
+object ControlWorkflowPathSuspendWorkflowTest
 {
   private val aAgentPath = AgentPath("A-AGENT")
   private val bAgentPath = AgentPath("B-AGENT")

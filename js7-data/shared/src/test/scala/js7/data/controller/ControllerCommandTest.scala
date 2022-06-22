@@ -365,11 +365,11 @@ final class ControllerCommandTest extends AnyFreeSpec
       }""")
   }
 
-  "ControlWorkflow" in {
+  "ControlWorkflowPath" in {
     testJson[ControllerCommand](
-      ControlWorkflow(WorkflowPath("WORKFLOW"), suspend = true),
+      ControlWorkflowPath(WorkflowPath("WORKFLOW"), suspend = true),
       json"""{
-        "TYPE": "ControlWorkflow",
+        "TYPE": "ControlWorkflowPath",
         "workflowPath": "WORKFLOW",
         "suspend": true
       }""")

@@ -205,7 +205,7 @@ object AgentCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
 
-  final case class ControlWorkflow(
+  final case class ControlWorkflowPath(
     workflowPath: WorkflowPath,
     suspend: Boolean,
     revision: ItemRevision)
@@ -235,7 +235,7 @@ object AgentCommand extends CommonCommand.Companion
       Subtype(deriveCodec[DetachItem]),
       Subtype(deriveCodec[AttachOrder]),
       Subtype(deriveCodec[DetachOrder]),
-      Subtype(deriveCodec[ControlWorkflow]),
+      Subtype(deriveCodec[ControlWorkflowPath]),
       Subtype(TakeSnapshot),
       Subtype(deriveCodec[ResetSubagent]))
   }
