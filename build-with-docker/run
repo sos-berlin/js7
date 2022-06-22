@@ -1,11 +1,10 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/sh
+set -eu
 
 cd "${0%/*}"/../build-with-docker/..
-home="$(dirname "$0")"
 user=build
 
-docker rm js7-builder &>/dev/null || true
+docker rm js7-builder >/dev/null 2>&1 || true
 
 ( cd build-with-docker
   DOCKER_BUILDKIT=1 DOCKER_SCAN_SUGGEST=false docker build --tag=js7-builder .
