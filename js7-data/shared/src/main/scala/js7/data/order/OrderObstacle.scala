@@ -33,4 +33,8 @@ object OrderObstacle
 
   final case object JobParallelismLimitReached
   extends OrderObstacle
+
+  type WorkflowSuspended = WorkflowSuspended.type
+  final case object WorkflowSuspended
+  extends OrderObstacle
 }

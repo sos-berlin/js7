@@ -5,9 +5,11 @@ import java.util.concurrent.TimeoutException
 import js7.agent.RunningAgent
 import js7.agent.data.event.AgentEvent.AgentReady
 import js7.base.configutils.Configs.HoconStringInterpolator
+import js7.base.problem.Checked
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
+import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
@@ -17,7 +19,7 @@ import js7.data.item.BasicItemEvent.ItemDetached
 import js7.data.item.ItemOperation.{AddVersion, RemoveVersioned}
 import js7.data.item.{ItemRevision, VersionId}
 import js7.data.order.OrderEvent.{OrderAttached, OrderFinished, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderStarted, OrderStdoutWritten}
-import js7.data.order.{FreshOrder, OrderId}
+import js7.data.order.{FreshOrder, OrderId, OrderObstacle, OrderObstacleCalculator}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.WorkflowPathControlEvent.{WorkflowPathControlAttached, WorkflowPathControlUpdated}
 import js7.data.workflow.instructions.Prompt
@@ -74,12 +76,23 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
     eventId = suspendWorkflow(aWorkflow.path, false, ItemRevision(2))
     eventId = eventWatch.await[OrderPrompted](_.key == aOrderId, after = eventId).head.eventId
 
+    def orderObstacles: Checked[Seq[(OrderId, Set[OrderObstacle])]] =
+      new OrderObstacleCalculator(controller.controllerState.await(99.s))
+        .ordersToObstacles(Seq(aOrderId), Timestamp.now)
+        .map(_.toSeq)
+
+    assert(orderObstacles == Right(Seq(
+      aOrderId -> Set[OrderObstacle](OrderObstacle.WaitingForCommand))))
+
     eventId = suspendWorkflow(aWorkflow.path, true, ItemRevision(3))
 
     controllerApi.executeCommand(ControllerCommand.AnswerOrderPrompt(aOrderId)).await(99.s)
     // OrderPromptAnswered happens despite suspended Workflow
     eventId = eventWatch.await[OrderPromptAnswered](_.key == aOrderId, after = eventId)
       .head.eventId
+
+    assert(orderObstacles == Right(Seq(
+      aOrderId -> Set[OrderObstacle](OrderObstacle.WorkflowSuspended))))
 
     intercept[TimeoutException] {
       eventWatch.await[OrderAttached](_.key == aOrderId, after = eventId, timeout = 500.ms)

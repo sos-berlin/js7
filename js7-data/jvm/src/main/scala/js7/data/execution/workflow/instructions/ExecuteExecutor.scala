@@ -65,7 +65,9 @@ extends EventInstructionExecutor with PositionInstructionExecutor
     for (job <- state.workflowJob(order.workflowPosition)) yield
       isSkipped(order, job, state) ? order.position.increment
 
-  override def toObstacles(order: Order[Order.State], calculator: OrderObstacleCalculator)
+  override def toObstacles(
+    order: Order[Order.State],
+    calculator: OrderObstacleCalculator)
   : Checked[Set[OrderObstacle]] =
     for {
       workflow <- calculator.stateView.idToWorkflow.checked(order.workflowId)

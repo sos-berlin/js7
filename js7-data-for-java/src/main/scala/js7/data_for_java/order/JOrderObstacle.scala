@@ -18,6 +18,7 @@ object JOrderObstacle
       case o: OrderObstacle.WaitingForOtherTime => WaitingForOtherTime(o)
       case OrderObstacle.WaitingForCommand => WaitingForCommand
       case OrderObstacle.JobParallelismLimitReached => jobParallelismLimitReached
+      case OrderObstacle.WorkflowSuspended => workflowSuspended
     }
 
   type WaitingForCommand = WaitingForCommand.type
@@ -42,5 +43,10 @@ object JOrderObstacle
     JobParallelismLimitReached(OrderObstacle.JobParallelismLimitReached)
 
   final case class JobParallelismLimitReached(asScala: OrderObstacle.JobParallelismLimitReached.type)
+  extends JOrderObstacle
+
+  val workflowSuspended = WorkflowSuspended(OrderObstacle.WorkflowSuspended)
+
+  final case class WorkflowSuspended(asScala: OrderObstacle.WorkflowSuspended)
   extends JOrderObstacle
 }

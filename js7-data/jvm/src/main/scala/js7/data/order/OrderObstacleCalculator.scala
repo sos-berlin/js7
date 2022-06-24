@@ -4,7 +4,7 @@ import cats.syntax.traverse._
 import java.util.concurrent.ConcurrentHashMap
 import js7.base.problem.Checked
 import js7.base.time.{Timestamp, WallClock}
-import js7.base.utils.ScalaUtils.syntax.{RichEither, RichPartialFunction}
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.job.JobKey
 import js7.data.order.Order.Processing
@@ -44,7 +44,10 @@ final class OrderObstacleCalculator(val stateView: StateView)
       order <- stateView.idToOrder.checked(orderId)
       a <- instructionExecutorService.toObstacles(order, this)
       b <- orderStateToObstacles(order)
-    } yield a ++ b
+    } yield a ++ b ++ workflowSuspendedObstacle(order)
+
+  private def workflowSuspendedObstacle(order: Order[Order.State]) =
+    stateView.isWorkflowSuspended(order.workflowPath) ? OrderObstacle.WorkflowSuspended
 
   private def orderStateToObstacles(order: Order[Order.State])
   : Checked[Set[OrderObstacle]] =
