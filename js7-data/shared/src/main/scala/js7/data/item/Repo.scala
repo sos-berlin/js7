@@ -2,7 +2,7 @@ package js7.data.item
 
 import cats.instances.either._
 import cats.syntax.traverse._
-import js7.base.crypt.{SignatureVerifier, Signed}
+import js7.base.crypt.{GenericSignature, SignatureVerifier, Signed, SignedString}
 import js7.base.problem.Checked._
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem}
@@ -553,9 +553,24 @@ object Repo
     result.toList
   }
 
+  /** @param items Only one Version per VersionedItemPath! */
   @TestOnly
-  private[item] def fromEntries(
-    versionIds: Seq[VersionId],
+  def fromItems(
+    items: Seq[VersionedItem],
+    signatureVerifier: Option[SignatureVerifier] = None)
+  : Repo = {
+    val signedString = SignedString("", GenericSignature("", ""))
+    fromEntries(
+      items.view.map(_.id.versionId),
+      items
+        .map(item => Add(Signed(item, signedString)))
+        .groupBy(_.signedItem.value.path),
+      signatureVerifier)
+  }
+
+  @TestOnly
+  def fromEntries(
+    versionIds: Iterable[VersionId],
     pathToEntries: Map[VersionedItemPath, Seq[Version]],
     signatureVerifier: Option[SignatureVerifier] = None)
   : Repo =

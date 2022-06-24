@@ -27,6 +27,7 @@ import js7.data.item.{InventoryItemKey, ItemRevision, SignableItem, UnsignedSimp
 import js7.data.order.{Order, OrderId, OrderMark}
 import js7.data.subagent.SubagentId
 import js7.data.workflow.WorkflowPath
+import js7.data.workflow.position.Label
 
 /**
  * @author Joacim Zschimmer
@@ -208,6 +209,7 @@ object AgentCommand extends CommonCommand.Companion
   final case class ControlWorkflowPath(
     workflowPath: WorkflowPath,
     suspend: Boolean,
+    skip: Set[Label],
     revision: ItemRevision)
   extends AgentCommand {
     type Response = Response.Accepted

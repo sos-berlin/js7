@@ -21,6 +21,7 @@ final class WorkflowPathControlStateTest extends AnyFreeSpec
         "workflowPathControl": {
           "path": "WORKFLOW",
           "suspended": false,
+          "skip": [],
           "revision": 0
         },
         "attachedToAgents": [ "AGENT" ]

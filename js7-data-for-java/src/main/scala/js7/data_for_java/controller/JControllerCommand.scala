@@ -2,6 +2,7 @@ package js7.data_for_java.controller
 
 import io.vavr.control.{Either => VEither}
 import java.time.Instant
+import java.util.Collections.emptyMap
 import java.util.Optional
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
@@ -11,8 +12,10 @@ import js7.data.board.{BoardPath, NoticeId}
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{AddOrder, ControlWorkflowPath, PostNotice}
 import js7.data.workflow.WorkflowPath
+import js7.data.workflow.position.Label
 import js7.data_for_java.common.JJsonable
 import js7.data_for_java.order.JFreshOrder
+import scala.jdk.CollectionConverters.MapHasAsScala
 import scala.jdk.OptionConverters.RichOptional
 
 @javaApi
@@ -45,15 +48,18 @@ object JControllerCommand extends JJsonable.Companion[JControllerCommand]
   @deprecated("Use controlWorkflowPath")
   @Nonnull
   def controlWorkflow(workflowPath: WorkflowPath, suspend: Boolean): JControllerCommand =
-    controlWorkflowPath(workflowPath, suspend)
+    controlWorkflowPath(workflowPath, Optional.of(suspend), emptyMap)
 
   @Nonnull
   def controlWorkflowPath(
     workflowPath: WorkflowPath,
-    suspend: Boolean)
+    suspend: Optional[Boolean],
+    skip: java.util.Map[Label, java.lang.Boolean],
+  )
   : JControllerCommand =
     JControllerCommand(
-      ControlWorkflowPath( workflowPath, suspend = suspend))
+      ControlWorkflowPath( workflowPath, suspend = suspend.toScala,
+        skip.asScala.view.mapValues(_.booleanValue).toMap))
 
   @Nonnull
   override def fromJson(@Nonnull jsonString: String): VEither[Problem, JControllerCommand] =

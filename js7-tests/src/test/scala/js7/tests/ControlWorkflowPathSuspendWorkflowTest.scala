@@ -93,7 +93,7 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
 
     eventId = suspendWorkflow(aWorkflow.path, true, ItemRevision(5))
     assert(eventWatch.await[WorkflowPathControlAttached](after = eventId).map(_.value) == Seq(
-      aWorkflow.path <-: WorkflowPathControlAttached(aAgentPath, suspended = true, ItemRevision(5))))
+      aWorkflow.path <-: WorkflowPathControlAttached(aAgentPath, ItemRevision(5))))
 
     ASemaphoreJob.continue()
     intercept[TimeoutException] {
@@ -152,7 +152,7 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
     assert(
       eventWatch.await[WorkflowPathControlAttached](_.key == bWorkflow.path, after = eventId)
         .map(_.value) ==
-        Seq(bWorkflow.path <-: WorkflowPathControlAttached(bAgentPath, suspended = false, ItemRevision(1))))
+        Seq(bWorkflow.path <-: WorkflowPathControlAttached(bAgentPath, ItemRevision(1))))
 
     suspendWorkflow(bWorkflow.path, false, ItemRevision(2))
     B2SemaphoreJob.continue()
@@ -160,7 +160,7 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
 
     controller.controllerState.await(99.s).pathToWorkflowPathControlState_(bWorkflow.path) ==
       WorkflowPathControlState(
-        WorkflowPathControl(bWorkflow.path, suspended = true, ItemRevision(1)),
+        WorkflowPathControl(bWorkflow.path, suspended = true, revision = ItemRevision(1)),
         attachedToAgents = Set(bAgentPath))
   }
 
@@ -190,11 +190,11 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
   : EventId = {
     val eventId = eventWatch.lastAddedEventId
     controllerApi
-      .executeCommand(ControllerCommand.ControlWorkflowPath(workflowPath, suspend = suspend))
+      .executeCommand(ControllerCommand.ControlWorkflowPath(workflowPath, suspend = Some(suspend)))
       .await(99.s).orThrow
     val keyedEvents = eventWatch.await[WorkflowPathControlUpdated](after = eventId)
     assert(keyedEvents.map(_.value) == Seq(
-      workflowPath <-: WorkflowPathControlUpdated(suspend, revision)))
+      workflowPath <-: WorkflowPathControlUpdated(suspend, Set.empty, revision)))
     keyedEvents.last.eventId
   }
 }

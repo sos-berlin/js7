@@ -17,7 +17,7 @@ import js7.data.value.expression.Scope
 import js7.data.value.expression.scopes.{JobResourceScope, NowScope, OrderScopes}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{BoardInstruction, End}
-import js7.data.workflow.position.WorkflowPosition
+import js7.data.workflow.position.{Label, WorkflowPosition}
 import js7.data.workflow.{Instruction, Workflow, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlState}
 import scala.collection.MapView
 import scala.reflect.ClassTag
@@ -133,6 +133,12 @@ trait StateView extends ItemContainer
       .checked(workflowPosition.workflowId)
       .orThrow
       .instruction_[A](workflowPosition.position)
+
+  final def workflowPositionToLabel(workflowPosition: WorkflowPosition): Checked[Option[Label]] =
+    for {
+      workflow <- idToWorkflow.checked(workflowPosition.workflowId)
+      labeled <- workflow.labeledInstruction(workflowPosition.position)
+    } yield labeled.maybeLabel
 
   def childOrderEnded(order: Order[Order.State], parent: Order[Order.Forked]): Boolean = {
     lazy val endReached = order.state == Order.Ready &&

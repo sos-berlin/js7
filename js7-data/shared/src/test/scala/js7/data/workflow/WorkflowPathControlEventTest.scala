@@ -4,6 +4,7 @@ import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.data.agent.AgentPath
 import js7.data.item.ItemRevision
 import js7.data.workflow.WorkflowPathControlEvent.{WorkflowPathControlAttached, WorkflowPathControlUpdated}
+import js7.data.workflow.position.Label
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -11,10 +12,14 @@ final class WorkflowPathControlEventTest extends AnyFreeSpec
 {
   "WorkflowPathControlUpdated" in {
     testJson[WorkflowPathControlEvent](
-      WorkflowPathControlUpdated(suspended = true, ItemRevision(123)),
+      WorkflowPathControlUpdated(
+        suspended = true,
+        Set(Label("LABEL")),
+        ItemRevision(123)),
       json"""{
         "TYPE": "WorkflowPathControlUpdated",
         "suspended": true,
+        "skip": [ "LABEL" ],
         "revision": 123
        }""")
   }
@@ -26,16 +31,20 @@ final class WorkflowPathControlEventTest extends AnyFreeSpec
         "suspended": true,
         "revision": 123
        }""".as[WorkflowPathControlEvent] == Right(
-        WorkflowPathControlUpdated(suspended = true, ItemRevision(123))))
+        WorkflowPathControlUpdated(
+          suspended = true,
+          skip = Set.empty,
+          revision = ItemRevision(123))))
   }
 
   "WorkflowPathControlAttached" in {
     testJson[WorkflowPathControlEvent](
-      WorkflowPathControlAttached(AgentPath("AGENT"), true, ItemRevision(123)),
+      WorkflowPathControlAttached(
+        AgentPath("AGENT"),
+        ItemRevision(123)),
       json"""{
         "TYPE": "WorkflowPathControlAttached",
         "agentPath": "AGENT",
-        "suspended": true,
         "revision": 123
        }""")
   }
@@ -48,6 +57,8 @@ final class WorkflowPathControlEventTest extends AnyFreeSpec
         "suspended": true,
         "revision": 123
        }""".as[WorkflowPathControlEvent] == Right(
-        WorkflowPathControlAttached(AgentPath("AGENT"), true, ItemRevision(123))))
+        WorkflowPathControlAttached(
+          AgentPath("AGENT"),
+          ItemRevision(123))))
   }
 }

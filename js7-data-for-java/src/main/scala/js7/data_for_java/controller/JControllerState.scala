@@ -2,7 +2,7 @@ package js7.data_for_java.controller
 
 import io.vavr.control.{Either => VEither}
 import java.time.Instant
-import java.util.{Map => JMap, Optional => JOptional}
+import java.util.{Map => JMap, Optional => JOptional, Set => JSet}
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.circeutils.CirceUtils.RichJson
@@ -23,6 +23,7 @@ import js7.data.order.{Order, OrderId, OrderObstacleCalculator}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentSelection, SubagentSelectionId}
 import js7.data.value.Value
+import js7.data.workflow.WorkflowPath
 import js7.data_for_java.agent.{JAgentRef, JAgentRefState}
 import js7.data_for_java.board.{JBoard, JBoardState}
 import js7.data_for_java.calendar.JCalendar
@@ -157,6 +158,16 @@ extends JJournaledState[JControllerState, ControllerState]
       .view
       .mapValues(toJava)
       .asJava
+
+  // SLOW !!!
+  @Nonnull
+  def workflowPathControlToIgnorantAgent: JMap[WorkflowPath, JSet[AgentPath]] =
+    asScala.workflowPathControlToIgnorantAgents.view.mapValues(_.asJava).asJava
+
+  // SLOW !!!
+  @Nonnull
+  def singleWorkflowPathControlToIgnorantAgents(workflowPath: WorkflowPath): JSet[AgentPath] =
+    asScala.singleWorkflowPathControlToIgnorantAgents(workflowPath).asJava
 
   @Nonnull
   def deletionMarkedItems: java.util.Set[InventoryItemKey] =

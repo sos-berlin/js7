@@ -188,8 +188,8 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
       case Input.ResetSubagent(subagentId, force) =>
         AgentCommand.ResetSubagent(subagentId, force = force)
 
-      case Input.ControlWorkflowPath(workflowPath, suspend, revision) =>
-        AgentCommand.ControlWorkflowPath(workflowPath, suspend, revision)
+      case Input.ControlWorkflowPath(workflowPath, suspend, skip, revision) =>
+        AgentCommand.ControlWorkflowPath(workflowPath, suspend, skip, revision)
     }
 
   final def onOrdersDetached(orderIds: View[OrderId]): Unit = {

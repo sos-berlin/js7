@@ -38,7 +38,7 @@ import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentI
 import js7.data.value.Value
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath, WorkflowPathControlEvent, WorkflowPathControlState, WorkflowPathControlStateHandler}
 import monix.reactive.Observable
-import scala.collection.{MapView, View}
+import scala.collection.{MapView, View, mutable}
 import scala.util.chaining.scalaUtilChainingOps
 
 /**
@@ -332,7 +332,8 @@ with SnapshotableState[ControllerState]
     case _ => applyStandardEvent(keyedEvent)
   }
 
-  def pathToWorkflowPathControlState = pathToWorkflowPathControlState_.view
+  def pathToWorkflowPathControlState =
+    pathToWorkflowPathControlState_.view
 
   protected def updateWorkflowPathControlState(state: WorkflowPathControlState): ControllerState =
     copy(
@@ -340,7 +341,14 @@ with SnapshotableState[ControllerState]
 
   /** The Agents for each WorkflowPathControl which have not attached the current revision. */
   def workflowPathControlToIgnorantAgents: Map[WorkflowPath, Set[AgentPath]] =
-    ControllerState.workflowPathControlToIgnorantAgents(orders, pathToWorkflowPathControlState_)
+    ControllerState.workflowPathControlToIgnorantAgents(pathToWorkflowPathControlState_, idToOrder)
+
+  def singleWorkflowPathControlToIgnorantAgents(workflowPath: WorkflowPath): Set[AgentPath] =
+    pathToWorkflowPathControlState.get(workflowPath) match {
+      case None => Set.empty
+      case Some(control) =>
+        ControllerState.singleWorkflowPathControlToIgnorantAgents(control, idToOrder)
+    }
 
   protected def pathToOrderWatchState = pathTo(OrderWatchState)
 
@@ -650,21 +658,55 @@ with ItemContainer.Companion[ControllerState]
     implicit val snapshotObjectJsonCodec = ControllerState.snapshotObjectJsonCodec
   }
 
+  private[controller] def singleWorkflowPathControlToIgnorantAgents(
+    workflowPathControlState: WorkflowPathControlState,
+    idToOrder: Map[OrderId, Order[Order.State]])
+  : Set[AgentPath] = {
+    // Optimized
+    val result = mutable.HashSet.empty[AgentPath]
+    val workflowPath = workflowPathControlState.workflowPath
+    idToOrder foreachEntry { case (_, order) =>
+      if (order.workflowPath == workflowPath) {
+        order.attachedState match {
+          case Some(a: Order.AttachedState.AttachingOrAttached) =>
+            result += a.agentPath
+            // We remove already updated Agents later
+          case _ =>
+        }
+      }
+    }
+    result.view
+      .filterNot(workflowPathControlState.attachedToAgents)
+      .toSet
+  }
+
   /** The Agents for each WorkflowPathControl which have not attached the current revision. */
   private[controller] def workflowPathControlToIgnorantAgents(
-    orders: Iterable[Order[Order.State]],
-    pathToWorkflowPathControlState: Map[WorkflowPath, WorkflowPathControlState])
-  : Map[WorkflowPath, Set[AgentPath]] =
-    orders.iterator
-      .map(o => o -> o.attachedState)
-      .collect {
-        case (o, Some(Order.Attached(agentPath))) => o.workflowPath -> agentPath
-        case (o, Some(Order.Attaching(agentPath))) => o.workflowPath -> agentPath
+    pathToWorkflowPathControlState: Map[WorkflowPath, WorkflowPathControlState],
+    idToOrder: Map[OrderId, Order[Order.State]])
+  : Map[WorkflowPath, Set[AgentPath]] = {
+    val workflowPathToIgnorant = mutable.Map.empty[WorkflowPath, mutable.Set[AgentPath]]
+    for (workflowPath <- pathToWorkflowPathControlState.keys) {
+      workflowPathToIgnorant(workflowPath) = mutable.HashSet.empty
+    }
+    idToOrder foreachEntry { case (_, order) =>
+      workflowPathToIgnorant.get(order.workflowPath) match {
+        case None =>
+        case Some(agentPaths) =>
+          order.attachedState match {
+            case Some(a: Order.AttachedState.AttachingOrAttached) =>
+              agentPaths += a.agentPath
+              // We remove already updated Agents later
+            case _ =>
+          }
       }
-      .filter { case (workflowPath, agentPath) =>
-        pathToWorkflowPathControlState.get(workflowPath)
-          .exists(o => !o.attachedToAgents.contains(agentPath))
-      }
-      .toSet[(WorkflowPath, AgentPath)]
-      .groupMap(_._1)(_._2)
+    }
+    for (case (workflowPath, agentPaths) <- workflowPathToIgnorant) {
+      agentPaths --= pathToWorkflowPathControlState(workflowPath).attachedToAgents
+    }
+    workflowPathToIgnorant.view
+      .filter(_._2.nonEmpty)
+      .mapValues(_.toSet)
+      .toMap
+  }
 }

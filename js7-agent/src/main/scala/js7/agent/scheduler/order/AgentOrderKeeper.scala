@@ -425,11 +425,11 @@ with Stash
         .rightAs(AgentCommand.Response.Accepted)
         .runToFuture
 
-    case AgentCommand.ControlWorkflowPath(workflowPath, suspend, revision) =>
+    case AgentCommand.ControlWorkflowPath(workflowPath, suspend, skip, revision) =>
       if (!persistence.currentState.idToWorkflow.keys.exists(_.path == workflowPath))
         Future.successful(Left(Problem(s"Unknown $workflowPath")))
       else
-        persistKeyedEvent(workflowPath <-: WorkflowPathControlUpdated(suspend, revision)) {
+        persistKeyedEvent(workflowPath <-: WorkflowPathControlUpdated(suspend, skip, revision)) {
           (stampedEvent, journaledState) =>
             if (!suspend) {
               // Event it Workflow was already suspended.

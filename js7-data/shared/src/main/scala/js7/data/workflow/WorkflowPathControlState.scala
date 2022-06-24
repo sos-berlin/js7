@@ -16,14 +16,15 @@ final case class WorkflowPathControlState(
 
   def applyEvent(event: WorkflowPathControlEvent): Checked[WorkflowPathControlState] =
     event match {
-      case WorkflowPathControlUpdated(suspended, revision) =>
+      case WorkflowPathControlUpdated(suspended, skip, revision) =>
         Right(copy(
           workflowPathControl.copy(
             suspended = suspended,
+            skip = skip,
             revision = revision),
           attachedToAgents = Set.empty))
 
-      case WorkflowPathControlAttached(agentPath, suspended, revision) =>
+      case WorkflowPathControlAttached(agentPath, revision) =>
         Right(
           if (revision != workflowPathControl.revision)
             this // Ignore late event

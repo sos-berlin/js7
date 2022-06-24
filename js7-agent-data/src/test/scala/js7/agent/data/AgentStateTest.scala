@@ -64,7 +64,7 @@ final class AgentStateTest extends AsyncFreeSpec
   private val itemSigner = new ItemSigner(SillySigner.Default, AgentState.signableItemJsonCodec)
   private val signedWorkflow = itemSigner.sign(workflow)
   private val signedJobResource = itemSigner.sign(JobResource(JobResourcePath("JOBRESOURCE")))
-  private val workflowPathControl = WorkflowPathControl(workflow.path, true, ItemRevision(1))
+  private val workflowPathControl = WorkflowPathControl(workflow.path, true, Set.empty, ItemRevision(1))
 
   private val calendar = Calendar(
     CalendarPath("CALENDAR"),
@@ -259,6 +259,7 @@ final class AgentStateTest extends AsyncFreeSpec
             "workflowPathControl": {
               "path": "WORKFLOW",
               "suspended": true,
+              "skip" : [],
               "revision": 1
             },
             "attachedToAgents": []
@@ -346,7 +347,7 @@ final class AgentStateTest extends AsyncFreeSpec
     agentState = agentState.applyEvent(NoKey <-: ItemAttachedToMe(workflow)).orThrow
     agentState = agentState.applyEvent(NoKey <-: ItemAttachedToMe(unsignedJobResource)).orThrow
     agentState = agentState.applyEvent(NoKey <-: SignedItemAttachedToMe(signedWorkflow)).orThrow
-    agentState = agentState.applyEvent(workflow.path <-: WorkflowPathControlUpdated(true, ItemRevision(1))).orThrow
+    agentState = agentState.applyEvent(workflow.path <-: WorkflowPathControlUpdated(true, Set.empty, ItemRevision(1))).orThrow
     agentState = agentState.applyEvent(NoKey <-: SignedItemAttachedToMe(signedJobResource)).orThrow
     agentState = agentState.applyEvent(orderId <-:
       OrderAttachedToAgent(

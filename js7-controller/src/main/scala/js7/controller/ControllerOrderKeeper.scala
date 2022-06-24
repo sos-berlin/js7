@@ -548,8 +548,7 @@ with MainJournalingActor[ControllerState, Event]
                         // If event.revision != WorkflowPathControl.revision,
                         // then the event is informational only.
                         Timestamped(
-                          workflowPath <-:
-                            WorkflowPathControlAttached(agentPath, event.suspended, event.revision)
+                          workflowPath <-: WorkflowPathControlAttached(agentPath, event.revision)
                         ) :: Nil
 
                       case _ =>
@@ -987,7 +986,12 @@ with MainJournalingActor[ControllerState, Event]
           .getOrElse(cmd.workflowPath, WorkflowPathControl(cmd.workflowPath))
         // Continue even if WorkflowPathControl is not changed.
         // This allows the caller to force the redistribution of the WorkflowPathControl.
-        val event = WorkflowPathControlUpdated(suspended = cmd.suspend, control.revision.next)
+        val event = WorkflowPathControlUpdated(
+          suspended = cmd.suspend getOrElse control.suspended,
+          control.skip
+            -- cmd.skip.filterNot(_._2).keys
+            ++ cmd.skip.filter(_._2).keys,
+          control.revision.next)
         persistKeyedEvent(cmd.workflowPath <-: event) { (stamped, updated) =>
           handleEvents(stamped :: Nil, updated)
           val controlState = updated.pathToWorkflowPathControlState_(cmd.workflowPath)
@@ -1022,6 +1026,7 @@ with MainJournalingActor[ControllerState, Event]
     agentRegister(agentPath).actor ! AgentDriver.Input.ControlWorkflowPath(
       control.path,
       control.suspended,
+      control.skip,
       control.revision)
   }
 

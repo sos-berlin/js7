@@ -42,6 +42,7 @@ import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetached}
 import js7.data.order.{Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.OrderWatchEvent
 import js7.data.subagent.{SubagentId, SubagentItemStateEvent}
+import js7.data.workflow.position.Label
 import js7.data.workflow.{WorkflowPath, WorkflowPathControlEvent}
 import js7.journal.state.StatePersistence
 import monix.eval.Task
@@ -647,6 +648,7 @@ private[controller] object AgentDriver
     final case class ControlWorkflowPath(
       workflowPath: WorkflowPath,
       suspend: Boolean,
+      skip: Set[Label],
       revision: ItemRevision)
     extends Queueable
   }

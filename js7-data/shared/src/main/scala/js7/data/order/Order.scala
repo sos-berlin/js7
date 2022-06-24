@@ -668,13 +668,15 @@ object Order
       Subtype(deriveCodec[Attaching]),
       Subtype(deriveCodec[Attached]),
       Subtype(deriveCodec[Detaching]))
+
+    sealed trait AttachingOrAttached extends HasAgentPath
   }
   /** Order is going to be attached to an Agent. */
-  final case class Attaching(agentPath: AgentPath) extends AttachedState.HasAgentPath {
+  final case class Attaching(agentPath: AgentPath) extends AttachedState.AttachingOrAttached {
     override def toString = s"Attaching(${agentPath.string})"
   }
   /** Order is attached to an Agent. */
-  final case class Attached(agentPath: AgentPath) extends AttachedState.HasAgentPath {
+  final case class Attached(agentPath: AgentPath) extends AttachedState.AttachingOrAttached {
     override def toString = s"Attached(${agentPath.string})"
   }
   /** Order is going to be detached from Agent. */

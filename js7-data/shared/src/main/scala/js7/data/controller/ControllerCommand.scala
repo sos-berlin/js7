@@ -26,7 +26,7 @@ import js7.data.order.OrderEvent.OrderResumed
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.subagent.SubagentId
 import js7.data.workflow.WorkflowPath
-import js7.data.workflow.position.Position
+import js7.data.workflow.position.{Label, Position}
 import scala.collection.immutable
 import scala.concurrent.duration.FiniteDuration
 
@@ -213,7 +213,11 @@ object ControllerCommand extends CommonCommand.Companion
   }
 
   /** Command to control all Workflows (all versions) of a WorkflowPath. */
-  final case class ControlWorkflowPath(workflowPath: WorkflowPath, suspend: Boolean)
+  /** Command to control all Workflows (all versions) of a WorkflowPath. */
+  final case class ControlWorkflowPath(
+    workflowPath: WorkflowPath,
+    suspend: Option[Boolean] = None,
+    skip: Map[Label, Boolean] = Map.empty)
   extends ControllerCommand with Big {
     type Response = Response.Accepted
   }

@@ -28,7 +28,7 @@ extends EventInstructionExecutor with PositionInstructionExecutor
       .flatMap(job => order
         .ifState[IsFreshOrReady]
         .flatMap(order =>
-          if (isSkipped(order, job))
+          if (isSkipped(order, job, state))
             // If order should start, change nextPosition function, too!
             //? order.ifState[Fresh].map(_ => OrderStarted).toList :::
             Some(Right((order.id <-: OrderMoved(order.position.increment)) :: Nil))
@@ -63,7 +63,7 @@ extends EventInstructionExecutor with PositionInstructionExecutor
 
   def nextPosition(instruction: Execute, order: Order[Order.State], state: StateView) =
     for (job <- state.workflowJob(order.workflowPosition)) yield
-      isSkipped(order, job) ? order.position.increment
+      isSkipped(order, job, state) ? order.position.increment
 
   override def toObstacles(order: Order[Order.State], calculator: OrderObstacleCalculator)
   : Checked[Set[OrderObstacle]] =
@@ -75,7 +75,7 @@ extends EventInstructionExecutor with PositionInstructionExecutor
     } yield
       if (order.isState[IsFreshOrReady]) {
         val admissionObstacles = job.admissionTimeScheme
-          .filterNot(_ => isSkipped(order, job))
+          .filterNot(_ => isSkipped(order, job, calculator.stateView))
           .flatMap(_
             .findTimeInterval(clock.now(), zone, dateOffset = noDateOffset))
           .map(interval => WaitingForAdmission(interval.start))
@@ -86,7 +86,20 @@ extends EventInstructionExecutor with PositionInstructionExecutor
       } else
         Set.empty
 
-  private def isSkipped(order: Order[Order.State], job: WorkflowJob): Boolean =
+  private def isSkipped(order: Order[Order.State], job: WorkflowJob, state: StateView): Boolean =
+    isSkippedDueToWorkflowPathControl(order, state) ||
+      isSkippedBecauseNotInAdmissionPeriod(order, job)
+
+  private def isSkippedDueToWorkflowPathControl(order: Order[Order.State], state: StateView)
+  : Boolean =
+    state.pathToWorkflowPathControl.get(order.workflowPath)
+      .exists(control => state.workflowPositionToLabel(order.workflowPosition)
+        .toOption
+        .flatten
+        .exists(control.skip.contains))
+
+  private def isSkippedBecauseNotInAdmissionPeriod(order: Order[Order.State], job: WorkflowJob)
+  : Boolean =
     job.skipIfNoAdmissionForOrderDay &&
       job.admissionTimeScheme.fold(false)(admissionTimeScheme =>
         orderIdToDate(order.id)

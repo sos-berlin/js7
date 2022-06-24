@@ -17,7 +17,7 @@ import js7.data.order.OrderEvent.OrderResumed
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.NamedValues
 import js7.data.workflow.WorkflowPath
-import js7.data.workflow.position.Position
+import js7.data.workflow.position.{Label, Position}
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -367,11 +367,18 @@ final class ControllerCommandTest extends AnyFreeSpec
 
   "ControlWorkflowPath" in {
     testJson[ControllerCommand](
-      ControlWorkflowPath(WorkflowPath("WORKFLOW"), suspend = true),
+      ControlWorkflowPath(
+        WorkflowPath("WORKFLOW"),
+        suspend = Some(true),
+        skip = Map(
+          Label("LABEL") -> true)),
       json"""{
         "TYPE": "ControlWorkflowPath",
         "workflowPath": "WORKFLOW",
-        "suspend": true
+        "suspend": true,
+        "skip": {
+          "LABEL": true
+        }
       }""")
   }
 

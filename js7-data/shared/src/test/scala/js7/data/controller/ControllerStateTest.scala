@@ -4,16 +4,20 @@ import com.softwaremill.diffx.generic.auto._
 import js7.base.auth.UserId
 import js7.base.circeutils.CirceUtils._
 import js7.base.crypt.silly.SillySigner
+import js7.base.log.Logger
 import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
+import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.base.time.{Timestamp, Timezone}
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.Collections.implicits._
+import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.Uri
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import js7.data.board.{Board, BoardPath, BoardPathExpression, BoardState, Notice, NoticeExpectation, NoticeId, NoticePlace}
 import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterStateSnapshot, ClusterTiming}
+import js7.data.controller.ControllerState.{singleWorkflowPathControlToIgnorantAgents, workflowPathControlToIgnorantAgents}
 import js7.data.controller.ControllerStateTest._
 import js7.data.delegate.DelegateCouplingState
 import js7.data.event.SnapshotMeta.SnapshotEventId
@@ -35,12 +39,13 @@ import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentS
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, ExpectNotices, LockInstruction}
-import js7.data.workflow.position.Position
+import js7.data.workflow.position.{Label, Position}
 import js7.data.workflow.{Workflow, WorkflowPath, WorkflowPathControl, WorkflowPathControlState}
 import js7.tester.CirceJsonTester.testJson
 import js7.tester.DiffxAssertions.assertEqual
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AsyncFreeSpec
+import scala.concurrent.duration.Deadline.now
 
 /**
   * @author Joacim Zschimmer
@@ -305,6 +310,7 @@ final class ControllerStateTest extends AsyncFreeSpec
         "workflowPathControl": {
           "path": "WORKFLOW",
           "suspended": true,
+          "skip": [ "LABEL" ],
           "revision": 0
         },
         "attachedToAgents": []
@@ -443,52 +449,132 @@ final class ControllerStateTest extends AsyncFreeSpec
     }
   }
 
-  "workflowPathControlToIgnorantAgents" in {
-    assert(ControllerState.workflowPathControlToIgnorantAgents(Nil, Map.empty) == Map.empty)
+  "workflowPathControlToIgnorantAgents, singleWorkflowPathControlToIgnorantAgents" in {
+    assert(workflowPathControlToIgnorantAgents(Map.empty, Map.empty) == Map.empty)
 
     val aWorkflowPath = WorkflowPath("A")
     val bWorkflowPath = WorkflowPath("B")
     val cWorkflowPath = WorkflowPath("C")
+    val dWorkflowPath = WorkflowPath("D")
     val aAgentPath = AgentPath("A")
+    val a2AgentPath = AgentPath("A2")
     val bAgentPath = AgentPath("B")
     val cAgentPath = AgentPath("C")
+    val dAgentPath = AgentPath("D")
 
-    val orders = Seq(
-      Order(OrderId("X"), aWorkflowPath ~ "1", Order.Ready),
+    val idToOrder = Seq(
       Order(OrderId("A"), aWorkflowPath ~ "1", Order.Ready,
         attachedState = Some(Order.Attaching(aAgentPath))),
+      Order(OrderId("A2"), aWorkflowPath ~ "1", Order.Ready,
+        attachedState = Some(Order.Attached(a2AgentPath))),
       Order(OrderId("B"), bWorkflowPath ~ "1", Order.Ready,
         attachedState = Some(Order.Attached(bAgentPath))),
       Order(OrderId("C"), cWorkflowPath ~ "1", Order.Ready,
-        attachedState = Some(Order.Detaching(cAgentPath))))
+        attachedState = Some(Order.Detaching(cAgentPath))),
+      Order(OrderId("D"), dWorkflowPath ~ "1", Order.Ready,
+        attachedState = Some(Order.Attached(dAgentPath)))
+    ).toKeyedMap(_.id)
 
     assert(
-      ControllerState.workflowPathControlToIgnorantAgents(
-        orders,
+      workflowPathControlToIgnorantAgents(
         Seq(
           WorkflowPathControlState(WorkflowPathControl(aWorkflowPath)),
           WorkflowPathControlState(WorkflowPathControl(bWorkflowPath)),
-        ).toKeyedMap(_.workflowPath)
+        ).toKeyedMap(_.workflowPath),
+        idToOrder
       ) ==
         Map(
-          aWorkflowPath -> Set(aAgentPath),
+          aWorkflowPath -> Set(aAgentPath, a2AgentPath),
           bWorkflowPath -> Set(bAgentPath)))
 
     assert(
-      ControllerState.workflowPathControlToIgnorantAgents(
-        orders,
+      singleWorkflowPathControlToIgnorantAgents(
+        WorkflowPathControlState(WorkflowPathControl(aWorkflowPath)),
+        idToOrder
+      ) == Set(aAgentPath, a2AgentPath))
+
+    assert(
+      singleWorkflowPathControlToIgnorantAgents(
+        WorkflowPathControlState(WorkflowPathControl(bWorkflowPath)),
+        idToOrder
+      ) == Set(bAgentPath))
+
+    assert(
+      singleWorkflowPathControlToIgnorantAgents(
+        WorkflowPathControlState(WorkflowPathControl(cWorkflowPath)),
+        idToOrder
+      ) == Set.empty)
+
+    assert(
+      singleWorkflowPathControlToIgnorantAgents(
+        WorkflowPathControlState(WorkflowPathControl(dWorkflowPath)),
+        idToOrder
+      ) == Set(dAgentPath))
+
+    assert(
+      workflowPathControlToIgnorantAgents(
         Seq(
           WorkflowPathControlState(WorkflowPathControl(aWorkflowPath), Set(aAgentPath, bAgentPath)),
           WorkflowPathControlState(WorkflowPathControl(bWorkflowPath), Set(aAgentPath)),
-        ).toKeyedMap(_.workflowPath)
+        ).toKeyedMap(_.workflowPath),
+        idToOrder
       ) ==
         Map(
+          aWorkflowPath -> Set(a2AgentPath),
           bWorkflowPath -> Set(bAgentPath)))
+  }
+
+  "Speed" - {
+    val orderN = if (sys.props contains "test.speed") 1_000_000 else 1000
+    val attachedOrderQuote = 10 // One out of attachedOrderQuote Orders is attached to an Agent
+    val workflowN = 1000
+    val workflowPathControlN = 100
+    lazy val workflowIds = for (i <- 0 until workflowN) yield
+      WorkflowPath(s"MEDIUM-LONG-WORKFLOW-PATH-$i") ~ VersionId("1")
+    val tries = 10
+    lazy val controllerState = {
+      val attachedState = Order.Attached(AgentPath("AGENT"))
+      ControllerState.empty.copy(
+        repo = Repo.fromItems(workflowIds.map(workflow.withId)),
+        idToOrder = (0 until orderN)
+          .map(i => Order(OrderId(s"ORDER-$i"), workflowIds(i % workflowIds.size), Order.Ready,
+            attachedState = (i % attachedOrderQuote == 0) ? attachedState))
+          .toKeyedMap(_.id),
+        pathToWorkflowPathControlState_ = (0 until workflowPathControlN)
+          .map(i => WorkflowPathControlState(WorkflowPathControl(workflowIds(i).path)))
+          .toKeyedMap(_.workflowPath))
+    }
+
+    "singleWorkflowPathControlToIgnorantAgents" in {
+      controllerState
+      for (_ <- 1 to 5) {
+        val t = now
+        for (i <- 0 until tries) {
+          controllerState.singleWorkflowPathControlToIgnorantAgents(
+            workflowIds(i % workflowIds.size).path)
+        }
+        logger.info(itemsPerSecondString(t.elapsed, tries))
+      }
+      succeed
+    }
+
+    "workflowPathControlToIgnorantAgents" in {
+      controllerState
+      for (_ <- 1 to 5) {
+        val t = now
+        for (_ <- 1 to tries) {
+          controllerState.workflowPathControlToIgnorantAgents
+        }
+        logger.info(itemsPerSecondString(t.elapsed, tries))
+      }
+      succeed
+    }
   }
 }
 
 object ControllerStateTest
 {
+  private val logger = Logger[this.type]
   private val jobResource = JobResource(JobResourcePath("JOB-RESOURCE"))
   private lazy val itemSigner = new ItemSigner(SillySigner.Default, ControllerState.signableItemJsonCodec)
   private lazy val signedJobResource = itemSigner.sign(jobResource)
@@ -588,7 +674,8 @@ object ControllerStateTest
     pathToWorkflowPathControlState_ = Map(
       workflow.path -> WorkflowPathControlState(WorkflowPathControl(
         workflow.path,
-        suspended = true))),
+        suspended = true,
+        skip = Set(Label("LABEL"))))),
     deletionMarkedItems = Set(fileWatch.path),
     Seq(
       Order(orderId, workflow.id /: Position(0), Order.Fresh,
