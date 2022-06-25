@@ -684,29 +684,32 @@ with ItemContainer.Companion[ControllerState]
   private[controller] def workflowPathControlToIgnorantAgents(
     pathToWorkflowPathControlState: Map[WorkflowPath, WorkflowPathControlState],
     idToOrder: Map[OrderId, Order[Order.State]])
-  : Map[WorkflowPath, Set[AgentPath]] = {
-    val workflowPathToIgnorant = mutable.Map.empty[WorkflowPath, mutable.Set[AgentPath]]
-    for (workflowPath <- pathToWorkflowPathControlState.keys) {
-      workflowPathToIgnorant(workflowPath) = mutable.HashSet.empty
-    }
-    idToOrder foreachEntry { case (_, order) =>
-      workflowPathToIgnorant.get(order.workflowPath) match {
-        case None =>
-        case Some(agentPaths) =>
-          order.attachedState match {
-            case Some(a: Order.AttachedState.AttachingOrAttached) =>
-              agentPaths += a.agentPath
-              // We remove already updated Agents later
-            case _ =>
-          }
+  : Map[WorkflowPath, Set[AgentPath]] =
+    if (pathToWorkflowPathControlState.isEmpty)
+      Map.empty
+    else {
+      val workflowPathToIgnorant = mutable.Map.empty[WorkflowPath, mutable.Set[AgentPath]]
+      for (workflowPath <- pathToWorkflowPathControlState.keys) {
+        workflowPathToIgnorant(workflowPath) = mutable.HashSet.empty
       }
+      idToOrder foreachEntry { case (_, order) =>
+        workflowPathToIgnorant.get(order.workflowPath) match {
+          case None =>
+          case Some(agentPaths) =>
+            order.attachedState match {
+              case Some(a: Order.AttachedState.AttachingOrAttached) =>
+                agentPaths += a.agentPath
+                // We remove already updated Agents later
+              case _ =>
+            }
+        }
+      }
+      for (case (workflowPath, agentPaths) <- workflowPathToIgnorant) {
+        agentPaths --= pathToWorkflowPathControlState(workflowPath).attachedToAgents
+      }
+      workflowPathToIgnorant.view
+        .filter(_._2.nonEmpty)
+        .mapValues(_.toSet)
+        .toMap
     }
-    for (case (workflowPath, agentPaths) <- workflowPathToIgnorant) {
-      agentPaths --= pathToWorkflowPathControlState(workflowPath).attachedToAgents
-    }
-    workflowPathToIgnorant.view
-      .filter(_._2.nonEmpty)
-      .mapValues(_.toSet)
-      .toMap
-  }
 }
