@@ -51,16 +51,16 @@ final class RepoTest extends AnyFreeSpec
   }
 
   "pathToItems" in {
-    assert(testRepo.pathToItems(AItem).toMap == Map(
-      a1.path -> List(a3, a2, a1)))
-    assert(testRepo.pathToItems(AItem).iterator.toSeq == Seq(
-      a1.path -> List(a3, a2, a1)))
-    assert(testRepo.pathToItems(AItem)(a1.path) == List(a3, a2, a1))
+    assert(testRepo.pathToItems(AItem).mapValues(_.toSeq).toMap == Map(
+      a1.path -> Seq(a3, a2, a1)))
+    assert(testRepo.pathToItems(AItem).mapValues(_.toSeq).toSeq == Seq(
+      a1.path -> Seq(a3, a2, a1)))
+    assert(testRepo.pathToItems(AItem)(a1.path).toSeq == Seq(a3, a2, a1))
 
-    assert(testRepo.pathToItems(BItem).toMap == Map(
-      bx2.path -> List(bx2),
-      by2.path -> List(by2)))
-    assert(testRepo.pathToItems(BItem)(by2.path) == List(by2))
+    assert(testRepo.pathToItems(BItem).mapValues(_.toSeq).toMap == Map(
+      bx2.path -> Seq(bx2),
+      by2.path -> Seq(by2)))
+    assert(testRepo.pathToItems(BItem)(by2.path).toSeq == Seq(by2))
   }
 
   "exists" in {

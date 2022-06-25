@@ -302,21 +302,26 @@ final case class Repo private(
       .map(_.value)
 
   def pathToItems[I <: VersionedItem](I: VersionedItem.Companion[I])
-  : MapView[I.Path, Iterable[I]] =
-    new MapView[I.Path, Iterable[I]] {
-      def get(path: I.Path): Option[Seq[I]] =
+  : MapView[I.Path, View[I]] =
+    new MapView[I.Path, View[I]] {
+      def get(path: I.Path): Option[View[I]] =
         pathToVersionToSignedItems
           .get(path)
-          .map(_.collect {
+          .map(_.view.collect {
             case Add(signedItem) => signedItem.value.asInstanceOf[I]
           })
 
-      def iterator: Iterator[(I.Path, Seq[I])] =
+      override def contains(path: I.Path) =
+        pathToVersionToSignedItems contains path
+
+      def iterator: Iterator[(I.Path, View[I])] =
         pathToVersionToSignedItems
           .iterator
           .collect { case (path, versions) if path.companion eq I.Path =>
             path.asInstanceOf[I.Path] ->
-              versions.collect { case Add(signedItem) => signedItem.value.asInstanceOf[I] }
+              versions.view.collect {
+                case Add(signedItem) => signedItem.value.asInstanceOf[I]
+              }
           }
     }
 
