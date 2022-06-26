@@ -658,7 +658,7 @@ with ItemContainer.Companion[ControllerState]
     implicit val snapshotObjectJsonCodec = ControllerState.snapshotObjectJsonCodec
   }
 
-  private[controller] def singleWorkflowPathControlToIgnorantAgents(
+  private def singleWorkflowPathControlToIgnorantAgents(
     workflowPathControlState: WorkflowPathControlState,
     idToOrder: Map[OrderId, Order[Order.State]])
   : Set[AgentPath] = {
@@ -681,7 +681,7 @@ with ItemContainer.Companion[ControllerState]
   }
 
   /** The Agents for each WorkflowPathControl which have not attached the current revision. */
-  private[controller] def workflowPathControlToIgnorantAgents(
+  private def workflowPathControlToIgnorantAgents(
     pathToWorkflowPathControlState: Map[WorkflowPath, WorkflowPathControlState],
     idToOrder: Map[OrderId, Order[Order.State]])
   : Map[WorkflowPath, Set[AgentPath]] =

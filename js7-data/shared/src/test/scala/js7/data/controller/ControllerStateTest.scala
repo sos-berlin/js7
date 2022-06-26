@@ -17,7 +17,6 @@ import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import js7.data.board.{Board, BoardPath, BoardPathExpression, BoardState, Notice, NoticeExpectation, NoticeId, NoticePlace}
 import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterStateSnapshot, ClusterTiming}
-import js7.data.controller.ControllerState.{singleWorkflowPathControlToIgnorantAgents, workflowPathControlToIgnorantAgents}
 import js7.data.controller.ControllerStateTest._
 import js7.data.delegate.DelegateCouplingState
 import js7.data.event.SnapshotMeta.SnapshotEventId
@@ -450,7 +449,7 @@ final class ControllerStateTest extends AsyncFreeSpec
   }
 
   "workflowPathControlToIgnorantAgents, singleWorkflowPathControlToIgnorantAgents" in {
-    assert(workflowPathControlToIgnorantAgents(Map.empty, Map.empty) == Map.empty)
+    assert(ControllerState.empty.workflowPathControlToIgnorantAgents == Map.empty)
 
     val aWorkflowPath = WorkflowPath("A")
     val bWorkflowPath = WorkflowPath("B")
@@ -461,64 +460,67 @@ final class ControllerStateTest extends AsyncFreeSpec
     val bAgentPath = AgentPath("B")
     val cAgentPath = AgentPath("C")
     val dAgentPath = AgentPath("D")
+    val v1 = VersionId("1")
+    val controllerState = ControllerState.empty.copy(
+      repo = Repo.fromItems(
+        Seq(aWorkflowPath, bWorkflowPath, cWorkflowPath, dWorkflowPath)
+          .map(path => Workflow.of(path ~ v1))),
+      idToOrder = Seq(
+        Order(OrderId("A"), aWorkflowPath ~ v1, Order.Ready,
+          attachedState = Some(Order.Attaching(aAgentPath))),
+        Order(OrderId("A2"), aWorkflowPath ~ v1, Order.Ready,
+          attachedState = Some(Order.Attached(a2AgentPath))),
+        Order(OrderId("B"), bWorkflowPath ~ v1, Order.Ready,
+          attachedState = Some(Order.Attached(bAgentPath))),
+        Order(OrderId("C"), cWorkflowPath ~ v1, Order.Ready,
+          attachedState = Some(Order.Detaching(cAgentPath))),
+        Order(OrderId("D"), dWorkflowPath ~ v1, Order.Ready,
+          attachedState = Some(Order.Attached(dAgentPath)))
+      ).toKeyedMap(_.id))
 
-    val idToOrder = Seq(
-      Order(OrderId("A"), aWorkflowPath ~ "1", Order.Ready,
-        attachedState = Some(Order.Attaching(aAgentPath))),
-      Order(OrderId("A2"), aWorkflowPath ~ "1", Order.Ready,
-        attachedState = Some(Order.Attached(a2AgentPath))),
-      Order(OrderId("B"), bWorkflowPath ~ "1", Order.Ready,
-        attachedState = Some(Order.Attached(bAgentPath))),
-      Order(OrderId("C"), cWorkflowPath ~ "1", Order.Ready,
-        attachedState = Some(Order.Detaching(cAgentPath))),
-      Order(OrderId("D"), dWorkflowPath ~ "1", Order.Ready,
-        attachedState = Some(Order.Attached(dAgentPath)))
-    ).toKeyedMap(_.id)
+    def makeControllerState(workflowPathControlStates: WorkflowPathControlState*) =
+      controllerState.copy(
+        pathToWorkflowPathControlState_ = workflowPathControlStates
+          .toKeyedMap(_.workflowPath))
 
     assert(
-      workflowPathControlToIgnorantAgents(
-        Seq(
-          WorkflowPathControlState(WorkflowPathControl(aWorkflowPath)),
-          WorkflowPathControlState(WorkflowPathControl(bWorkflowPath)),
-        ).toKeyedMap(_.workflowPath),
-        idToOrder
-      ) ==
+      makeControllerState(
+        WorkflowPathControlState(WorkflowPathControl(aWorkflowPath)),
+        WorkflowPathControlState(WorkflowPathControl(bWorkflowPath))
+      ).workflowPathControlToIgnorantAgents ==
         Map(
           aWorkflowPath -> Set(aAgentPath, a2AgentPath),
           bWorkflowPath -> Set(bAgentPath)))
 
     assert(
-      singleWorkflowPathControlToIgnorantAgents(
-        WorkflowPathControlState(WorkflowPathControl(aWorkflowPath)),
-        idToOrder
-      ) == Set(aAgentPath, a2AgentPath))
+      makeControllerState(
+        WorkflowPathControlState(WorkflowPathControl(aWorkflowPath))
+      ).singleWorkflowPathControlToIgnorantAgents(aWorkflowPath)
+        == Set(aAgentPath, a2AgentPath))
 
     assert(
-      singleWorkflowPathControlToIgnorantAgents(
-        WorkflowPathControlState(WorkflowPathControl(bWorkflowPath)),
-        idToOrder
-      ) == Set(bAgentPath))
+      makeControllerState(
+        WorkflowPathControlState(WorkflowPathControl(bWorkflowPath))
+      ).singleWorkflowPathControlToIgnorantAgents(bWorkflowPath)
+        == Set(bAgentPath))
 
     assert(
-      singleWorkflowPathControlToIgnorantAgents(
-        WorkflowPathControlState(WorkflowPathControl(cWorkflowPath)),
-        idToOrder
-      ) == Set.empty)
+      makeControllerState(
+        WorkflowPathControlState(WorkflowPathControl(cWorkflowPath))
+      ).singleWorkflowPathControlToIgnorantAgents(cWorkflowPath)
+        == Set.empty)
 
     assert(
-      singleWorkflowPathControlToIgnorantAgents(
-        WorkflowPathControlState(WorkflowPathControl(dWorkflowPath)),
-        idToOrder
-      ) == Set(dAgentPath))
+      makeControllerState(
+        WorkflowPathControlState(WorkflowPathControl(dWorkflowPath))
+      ).singleWorkflowPathControlToIgnorantAgents(dWorkflowPath)
+        == Set(dAgentPath))
 
     assert(
-      workflowPathControlToIgnorantAgents(
-        Seq(
-          WorkflowPathControlState(WorkflowPathControl(aWorkflowPath), Set(aAgentPath, bAgentPath)),
-          WorkflowPathControlState(WorkflowPathControl(bWorkflowPath), Set(aAgentPath)),
-        ).toKeyedMap(_.workflowPath),
-        idToOrder
-      ) ==
+      makeControllerState(
+        WorkflowPathControlState(WorkflowPathControl(aWorkflowPath), Set(aAgentPath, bAgentPath)),
+        WorkflowPathControlState(WorkflowPathControl(bWorkflowPath), Set(aAgentPath))
+      ).workflowPathControlToIgnorantAgents ==
         Map(
           aWorkflowPath -> Set(a2AgentPath),
           bWorkflowPath -> Set(bAgentPath)))
@@ -553,7 +555,8 @@ final class ControllerStateTest extends AsyncFreeSpec
           controllerState.singleWorkflowPathControlToIgnorantAgents(
             workflowIds(i % workflowIds.size).path)
         }
-        logger.info(itemsPerSecondString(t.elapsed, tries))
+        logger.info("singleWorkflowPathControlToIgnorantAgents " +
+          itemsPerSecondString(t.elapsed, tries, "calls"))
       }
       succeed
     }
@@ -565,7 +568,8 @@ final class ControllerStateTest extends AsyncFreeSpec
         for (_ <- 1 to tries) {
           controllerState.workflowPathControlToIgnorantAgents
         }
-        logger.info(itemsPerSecondString(t.elapsed, tries))
+        logger.info("workflowPathControlToIgnorantAgents " +
+          itemsPerSecondString(t.elapsed, tries, "calls"))
       }
       succeed
     }
