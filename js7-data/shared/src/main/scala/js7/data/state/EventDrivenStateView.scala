@@ -8,7 +8,7 @@ import js7.data.event.{Event, EventDrivenState}
 import js7.data.item.{UnsignedSimpleItemPath, UnsignedSimpleItemState}
 import js7.data.lock.LockState
 import js7.data.order.Order.ExpectingNotices
-import js7.data.order.OrderEvent.{OrderAdded, OrderAddedX, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderForked, OrderJoined, OrderLockEvent, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesExpected, OrderNoticesRead, OrderOrderAdded, OrderStdWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderForked, OrderJoined, OrderLockEvent, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesExpected, OrderNoticesRead, OrderOrderAdded, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 
 // TODO Replace F-type polymorphism with a typeclass ? https://tpolecat.github.io/2015/04/29/f-bounds.html
@@ -28,7 +28,7 @@ with StateView
   protected def applyOrderEvent(orderId: OrderId, event: OrderEvent): Checked[Self] =
     event match {
       case orderAdded: OrderAdded =>
-        addOrder(orderId, orderAdded)
+        addOrder(Order.fromOrderAdded(orderId, orderAdded))
 
       case event: OrderEvent.OrderAttachedToAgent =>
         if (idToOrder isDefinedAt orderId)
@@ -100,7 +100,7 @@ with StateView
                     addItemStates = updatedBoardStates)))
 
         case orderAdded: OrderOrderAdded =>
-          addOrder(orderAdded.orderId, orderAdded)
+          addOrder(Order.fromOrderAdded(orderAdded.orderId, orderAdded))
 
         case OrderDeletionMarked =>
           update(addOrders = updatedOrder :: Nil)
@@ -117,10 +117,9 @@ with StateView
       }
     } yield result
 
-  protected def addOrder(addedOrderId: OrderId, orderAdded: OrderAddedX): Checked[Self] =
+  protected def addOrder(order: Order[Order.State]): Checked[Self] =
     for {
-      _ <- idToOrder.checkNoDuplicate(addedOrderId)
-      order = Order.fromOrderAdded(addedOrderId, orderAdded)
+      _ <- idToOrder.checkNoDuplicate(order.id)
       self <- update(addOrders = order :: Nil)
     } yield self
 

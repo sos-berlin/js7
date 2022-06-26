@@ -29,7 +29,6 @@ import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedS
 import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemPath, ItemAttachedState, ItemRevision, Repo, SignableItem, SignableItemKey, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, SimpleItem, SimpleItemPath, UnsignedSimpleItem, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, UnsignedSimpleItemState, VersionedEvent, VersionedItemId_, VersionedItemPath}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath, LockState}
-import js7.data.order.OrderEvent.OrderAddedX
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
 import js7.data.state.EventDrivenStateView
@@ -38,7 +37,7 @@ import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentI
 import js7.data.value.Value
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath, WorkflowPathControlEvent, WorkflowPathControlState, WorkflowPathControlStateHandler}
 import monix.reactive.Observable
-import scala.collection.{MapView, View, mutable}
+import scala.collection.{MapView, View}
 import scala.util.chaining.scalaUtilChainingOps
 
 /**
@@ -55,7 +54,8 @@ final case class ControllerState(
   pathToWorkflowPathControlState_ : Map[WorkflowPath, WorkflowPathControlState],
   /** Used for OrderWatch to allow to attach it from Agent. */
   deletionMarkedItems: Set[InventoryItemKey],
-  idToOrder: Map[OrderId, Order[Order.State]])
+  idToOrder: Map[OrderId, Order[Order.State]],
+  workflowIdToOrders: Map[WorkflowId, Set[OrderId]])
 extends SignedItemContainer
 with EventDrivenStateView[ControllerState, Event]
 with OrderWatchStateHandler[ControllerState]
@@ -340,15 +340,46 @@ with SnapshotableState[ControllerState]
       pathToWorkflowPathControlState_ = pathToWorkflowPathControlState_.updated(state.workflowPath, state))
 
   /** The Agents for each WorkflowPathControl which have not attached the current revision. */
-  def workflowPathControlToIgnorantAgents: Map[WorkflowPath, Set[AgentPath]] =
-    ControllerState.workflowPathControlToIgnorantAgents(pathToWorkflowPathControlState_, idToOrder)
+  def workflowPathControlToIgnorantAgents: Map[WorkflowPath, Set[AgentPath]] = {
+    val pathToWorkflows = repo.pathToItems(Workflow)
+    pathToWorkflowPathControlState_.values
+      .view
+      .flatMap { workflowPathControlState =>
+        import workflowPathControlState.workflowPath
+        val agentPaths = workflowPathControlStateToIgnorantAgents(
+          workflowPathControlState,
+          pathToWorkflows.get(workflowPath))
+        agentPaths.nonEmpty ? (workflowPath -> agentPaths)
+      }
+      .toMap
+  }
 
   def singleWorkflowPathControlToIgnorantAgents(workflowPath: WorkflowPath): Set[AgentPath] =
     pathToWorkflowPathControlState.get(workflowPath) match {
       case None => Set.empty
-      case Some(control) =>
-        ControllerState.singleWorkflowPathControlToIgnorantAgents(control, idToOrder)
+      case Some(workflowPathControlState) =>
+        workflowPathControlStateToIgnorantAgents(
+          workflowPathControlState,
+          repo.pathToItems(Workflow).get(workflowPath))
     }
+
+  private def workflowPathControlStateToIgnorantAgents(
+    workflowPathControlState: WorkflowPathControlState,
+    maybeWorkflows: Option[View[Workflow]])
+  : Set[AgentPath] = {
+    var agentPaths = Set.empty[AgentPath]
+    for (workflows <- maybeWorkflows;
+         workflow <- workflows;
+         orderIds <- workflowIdToOrders.get(workflow.id);
+         orderId <- orderIds) {
+      idToOrder(orderId).attachedState match {
+        case Some(a: Order.AttachedState.AttachingOrAttached) =>
+          agentPaths += a.agentPath
+        case _ =>
+      }
+    }
+    agentPaths diff workflowPathControlState.attachedToAgents
+  }
 
   protected def pathToOrderWatchState = pathTo(OrderWatchState)
 
@@ -361,31 +392,72 @@ with SnapshotableState[ControllerState]
     orders: Iterable[Order[Order.State]],
     removeOrders: Iterable[OrderId],
     addItemStates: Iterable[UnsignedSimpleItemState],
-    removeItemStates: Iterable[UnsignedSimpleItemPath]) =
-    Right(copy(
-      idToOrder = idToOrder -- removeOrders ++ orders.map(o => o.id -> o),
-      pathToItemState_ = pathToItemState_ -- removeItemStates ++ addItemStates.map(o => o.path -> o)))
+    removeItemStates: Iterable[UnsignedSimpleItemPath])
+  : Checked[ControllerState] = {
+    var result: Checked[ControllerState] = Right(this)
+    for (order <- orders; controllerState <- result) {
+      result = controllerState.addOrUpdateOrder(order)
+    }
+    for (orderId <- removeOrders; order <- idToOrder.get(orderId); controllerState <- result) {
+      result = controllerState.deleteOrder(order)
+    }
+    for (controllerState <- result) {
+      result = Right(controllerState.copy(
+        pathToItemState_ = pathToItemState_
+          -- removeItemStates
+          ++ addItemStates.view.map(o => o.path -> o)))
+    }
+    result
+  }
 
-  override protected def addOrder(addedOrderId: OrderId, orderAdded: OrderAddedX)
-  : Checked[ControllerState] =
+  private def addOrUpdateOrder(order: Order[Order.State]): Checked[ControllerState] =
+    if (idToOrder contains order.id)
+      Right(copy(
+        idToOrder = idToOrder.updated(order.id, order)))
+    else
+      continueAddOrder(order)
+
+  override protected def addOrder(order: Order[Order.State]): Checked[ControllerState] =
     for {
-      _ <- idToOrder.checkNoDuplicate(addedOrderId)
-      order = Order.fromOrderAdded(addedOrderId, orderAdded)
-      updated <- ow.onOrderAdded(addedOrderId <-: orderAdded)
-        .map(_.copy(
-          idToOrder = idToOrder.updated(order.id, order)))
+      _ <- idToOrder.checkNoDuplicate(order.id)
+      updated <- continueAddOrder(order)
     } yield updated
 
-  override protected def deleteOrder(order: Order[Order.State]): Checked[ControllerState] =
+  private def continueAddOrder(order: Order[Order.State]): Checked[ControllerState] =
+    for (updated <- ow.onOrderAdded(order)) yield
+      updated.copy(
+        idToOrder = idToOrder.updated(order.id, order),
+        workflowIdToOrders = updated.addOrderToWorkflowIdToOrders(order))
+
+  private def addOrderToWorkflowIdToOrders(order: Order[Order.State])
+  : Map[WorkflowId, Set[OrderId]] =
+    workflowIdToOrders.updated(
+      order.workflowId,
+      workflowIdToOrders.getOrElse(order.workflowId, Set.empty) + order.id)
+
+  override protected def deleteOrder(order: Order[Order.State]): Checked[ControllerState] = {
+    val idToOrder_ = idToOrder - order.id
+    val workflowToOrders_ = {
+      val orderIds = workflowIdToOrders(order.workflowId) - order.id
+      if (orderIds.isEmpty)
+        workflowIdToOrders - order.workflowId
+      else
+        workflowIdToOrders.updated(order.workflowId, orderIds)
+    }
+
     order.externalOrderKey match {
       case None =>
-        Right(copy(idToOrder = idToOrder - order.id))
+        Right(copy(
+          idToOrder = idToOrder_,
+          workflowIdToOrders = workflowToOrders_))
       case Some(externalOrderKey) =>
         ow
           .onOrderDeleted(externalOrderKey, order.id)
           .map(_.copy(
-            idToOrder = idToOrder - order.id))
+            idToOrder = idToOrder_,
+            workflowIdToOrders = workflowToOrders_))
     }
+  }
 
   /** The named values as seen at the current workflow position. */
   def orderNamedValues(orderId: OrderId): Checked[MapView[String, Value]] =
@@ -590,6 +662,19 @@ with SnapshotableState[ControllerState]
 
   def orders = idToOrder.values
 
+  def finish: ControllerState =
+    copy(
+      workflowIdToOrders = calculateWorkflowToOrders)
+
+  private def calculateWorkflowToOrders =
+    idToOrder.values.view
+      .map(o => o.workflowId -> o.id)
+      .toVector
+      .groupMap[WorkflowId, OrderId](_._1)(_._2)
+      .view
+      .mapValues(_.toSet)
+      .toMap
+
   override def toString = s"ControllerState(${EventId.toString(eventId)} ${idToOrder.size} orders, " +
     s"Repo(${repo.currentVersionSize} objects, ...))"
 }
@@ -612,6 +697,7 @@ with ItemContainer.Companion[ControllerState]
     ClientAttachments.empty,
     Map.empty,
     Set.empty,
+    Map.empty,
     Map.empty)
 
   val empty = Undefined
@@ -657,59 +743,4 @@ with ItemContainer.Companion[ControllerState]
   object implicits {
     implicit val snapshotObjectJsonCodec = ControllerState.snapshotObjectJsonCodec
   }
-
-  private def singleWorkflowPathControlToIgnorantAgents(
-    workflowPathControlState: WorkflowPathControlState,
-    idToOrder: Map[OrderId, Order[Order.State]])
-  : Set[AgentPath] = {
-    // Optimized
-    val result = mutable.HashSet.empty[AgentPath]
-    val workflowPath = workflowPathControlState.workflowPath
-    idToOrder foreachEntry { case (_, order) =>
-      if (order.workflowPath == workflowPath) {
-        order.attachedState match {
-          case Some(a: Order.AttachedState.AttachingOrAttached) =>
-            result += a.agentPath
-            // We remove already updated Agents later
-          case _ =>
-        }
-      }
-    }
-    result.view
-      .filterNot(workflowPathControlState.attachedToAgents)
-      .toSet
-  }
-
-  /** The Agents for each WorkflowPathControl which have not attached the current revision. */
-  private def workflowPathControlToIgnorantAgents(
-    pathToWorkflowPathControlState: Map[WorkflowPath, WorkflowPathControlState],
-    idToOrder: Map[OrderId, Order[Order.State]])
-  : Map[WorkflowPath, Set[AgentPath]] =
-    if (pathToWorkflowPathControlState.isEmpty)
-      Map.empty
-    else {
-      val workflowPathToIgnorant = mutable.Map.empty[WorkflowPath, mutable.Set[AgentPath]]
-      for (workflowPath <- pathToWorkflowPathControlState.keys) {
-        workflowPathToIgnorant(workflowPath) = mutable.HashSet.empty
-      }
-      idToOrder foreachEntry { case (_, order) =>
-        workflowPathToIgnorant.get(order.workflowPath) match {
-          case None =>
-          case Some(agentPaths) =>
-            order.attachedState match {
-              case Some(a: Order.AttachedState.AttachingOrAttached) =>
-                agentPaths += a.agentPath
-                // We remove already updated Agents later
-              case _ =>
-            }
-        }
-      }
-      for (case (workflowPath, agentPaths) <- workflowPathToIgnorant) {
-        agentPaths --= pathToWorkflowPathControlState(workflowPath).attachedToAgents
-      }
-      workflowPathToIgnorant.view
-        .filter(_._2.nonEmpty)
-        .mapValues(_.toSet)
-        .toMap
-    }
 }

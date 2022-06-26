@@ -5,8 +5,7 @@ import cats.syntax.traverse._
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.event.KeyedEvent
-import js7.data.order.OrderEvent.OrderAddedX
-import js7.data.order.{OrderEvent, OrderId}
+import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.OrderWatchState.ToOrderAdded
 import scala.collection.{MapView, View}
 
@@ -48,10 +47,10 @@ trait OrderWatchStateHandler[Self]
         .flatMap(updated => updateOrderWatchState(
           updated))
 
-    def onOrderAdded(keyedEvent: KeyedEvent[OrderAddedX]): Checked[Self] =
-      keyedEvent.event.externalOrderKey match {
+    def onOrderAdded(order: Order[Order.State]): Checked[Self] =
+      order.externalOrderKey match {
         case None => Right(self)
-        case Some(externalOrderKey) => onOrderAdded(externalOrderKey, keyedEvent.key)
+        case Some(externalOrderKey) => onOrderAdded(externalOrderKey, order.id)
       }
 
     private def onOrderAdded(externalOrderKey: ExternalOrderKey, orderId: OrderId): Checked[Self] = {

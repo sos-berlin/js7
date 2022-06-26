@@ -13,6 +13,9 @@ final case class OrderId private(string: String) extends GenericString
 
   if (string.isEmpty) throw new IllegalArgumentException("OrderId must not be empty")
 
+  // Faster than generic hashCode of the case class:
+  override def hashCode = string.hashCode
+
   override def toString = s"Order:$string"
 
   def pretty = s"Order $string"

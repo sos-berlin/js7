@@ -346,8 +346,8 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
           aOrderId <-: OrderAdded(aWorkflow.id),
           bOrderId <-: OrderAdded(bWorkflow.id)
         )) == Right(Seq(
-          aOrderId <-: OrderAttachable(aAgentRef.path),
           bOrderId <-: OrderStarted,
+          aOrderId <-: OrderAttachable(aAgentRef.path),
           bOrderId <-: OrderLockAcquired(lock.path),
           bOrderId <-: OrderAttachable(bAgentRef.path))))
 
@@ -379,8 +379,8 @@ final class ControllerStateExecutorTest extends AnyFreeSpec
           aOrderId <-: OrderDetached,
           bOrderId <-: OrderDetached
         )) == Right(Seq(
-          aOrderId <-: OrderStarted,
           bOrderId <-: OrderFinished,
+          aOrderId <-: OrderStarted,
           aOrderId <-: OrderFinished)))
 
       assert(

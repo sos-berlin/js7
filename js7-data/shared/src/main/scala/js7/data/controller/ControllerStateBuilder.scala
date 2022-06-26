@@ -20,7 +20,7 @@ import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedS
 import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItemEvent, InventoryItemKey, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, UnsignedSimpleItem, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, UnsignedSimpleItemState, VersionedEvent}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockState}
-import js7.data.order.OrderEvent.{OrderAddedX, OrderNoticesExpected}
+import js7.data.order.OrderEvent.OrderNoticesExpected
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
 import js7.data.state.EventDrivenStateView
@@ -357,9 +357,9 @@ with WorkflowPathControlStateHandler[ControllerStateBuilder]
       case _ => eventNotApplicable(keyedEvent).orThrow
     }
 
-  override protected def addOrder(orderId: OrderId, orderAdded: OrderAddedX) = {
-    _idToOrder.insert(orderId, Order.fromOrderAdded(orderId, orderAdded))
-    ow.onOrderAdded(orderId <-: orderAdded).orThrow
+  override protected def addOrder(order: Order[Order.State]) = {
+    _idToOrder.insert(order.id, order)
+    ow.onOrderAdded(order).orThrow
     Right(this)
   }
 
@@ -413,7 +413,9 @@ with WorkflowPathControlStateHandler[ControllerStateBuilder]
       agentAttachments,
       _pathToWorkflowPathControlState.toMap,
       deletionMarkedItems.toSet,
-      _idToOrder.toMap)
+      _idToOrder.toMap,
+      workflowIdToOrders = Map.empty
+    ).finish
 
   def journalState = standards.journalState
 

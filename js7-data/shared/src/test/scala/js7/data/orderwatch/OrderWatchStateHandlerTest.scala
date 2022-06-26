@@ -7,10 +7,10 @@ import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
 import js7.data.item.VersionId
 import js7.data.order.OrderEvent.{OrderAdded, OrderDeletionMarked}
-import js7.data.order.{FreshOrder, OrderId}
+import js7.data.order.{FreshOrder, Order, OrderId}
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
-import js7.data.orderwatch.OrderWatchStateHandlerTest.TestState
 import js7.data.orderwatch.OrderWatchState.{Arised, ArisedOrHasOrder, HasOrder, Vanished}
+import js7.data.orderwatch.OrderWatchStateHandlerTest.TestState
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
@@ -109,11 +109,11 @@ final class OrderWatchStateHandlerTest extends AnyFreeSpec
     "OrderAdded A and B" in {
       assert(state.ow.nextEvents(toOrderAdded, bothOrders).toSeq == Seq(orderAdded("B"), orderAdded("A")))
 
-      update(state.ow.onOrderAdded(orderAdded("A")).orThrow)
+      update(state.ow.onOrderAdded(toOrder("A")).orThrow)
       assert(state("A") == Some(HasOrder(orderId("A"))))
       assert(state.ow.nextEvents(toOrderAdded, bothOrders).toSeq == Seq(orderAdded("B")))
 
-      update(state.ow.onOrderAdded(orderAdded("B")).orThrow)
+      update(state.ow.onOrderAdded(toOrder("B")).orThrow)
       assert(state("B") == Some(HasOrder(orderId("B"))))
       assert(state.ow.nextEvents(toOrderAdded, bothOrders).isEmpty)
     }
@@ -150,7 +150,7 @@ final class OrderWatchStateHandlerTest extends AnyFreeSpec
       assert(state("B") == Some(arised("B")))
       assert(state.ow.nextEvents(toOrderAdded, bothOrders).toSeq == Seq(orderAdded("B")))
 
-      update(state.ow.onOrderAdded(orderAdded("B")).orThrow)
+      update(state.ow.onOrderAdded(toOrder("B")).orThrow)
       assert(state("B") == Some(HasOrder(orderId("B"))))
     }
 
@@ -186,7 +186,7 @@ final class OrderWatchStateHandlerTest extends AnyFreeSpec
     var a = TestState(Map.empty)
     a = a.ow.addOrderWatch(aOrderWatch.toInitialItemState).orThrow
     a = a.ow.onOrderWatchEvent(externalOrderArised("C")).orThrow
-    a = a.ow.onOrderAdded(orderAdded("C")).orThrow
+    a = a.ow.onOrderAdded(toOrder("C")).orThrow
 
     a = a.ow.onOrderDeleted(externalOrderKey("C"), orderId("C")).orThrow
     assert(a.ow.nextEvents(toOrderAdded, bothOrders).isEmpty)
@@ -213,7 +213,7 @@ final class OrderWatchStateHandlerTest extends AnyFreeSpec
 
     "Arised after OrderAdded" in {
       update(state.ow.onOrderWatchEvent(externalOrderArised("A")).orThrow)
-      update(state.ow.onOrderAdded(orderAdded("A")).orThrow)
+      update(state.ow.onOrderAdded(toOrder("A")).orThrow)
 
       assert(state.ow.onOrderWatchEvent(externalOrderArised("A")) == Left(Problem(
         "Duplicate ExternalOrderArised(A, Map(file -> '/DIR/A')): HasOrder(Order:file:A-SOURCE:A,None)")))
@@ -255,6 +255,14 @@ final class OrderWatchStateHandlerTest extends AnyFreeSpec
   private def orderAdded(name: String) =
     orderId(name) <-:
       OrderAdded(workflowId,Map("file" -> StringValue(s"/DIR/$name")),
+        externalOrderKey = Some(ExternalOrderKey(aOrderWatch.path, ExternalOrderName(name))))
+
+  private def toOrder(name: String) =
+    Order(
+      orderId(name),
+      workflowId,
+      Order.Ready,
+      Map("file" -> StringValue(s"/DIR/$name")),
         externalOrderKey = Some(ExternalOrderKey(aOrderWatch.path, ExternalOrderName(name))))
 }
 

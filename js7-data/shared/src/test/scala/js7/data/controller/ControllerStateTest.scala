@@ -461,6 +461,7 @@ final class ControllerStateTest extends AsyncFreeSpec
     val cAgentPath = AgentPath("C")
     val dAgentPath = AgentPath("D")
     val v1 = VersionId("1")
+
     val controllerState = ControllerState.empty.copy(
       repo = Repo.fromItems(
         Seq(aWorkflowPath, bWorkflowPath, cWorkflowPath, dWorkflowPath)
@@ -479,9 +480,10 @@ final class ControllerStateTest extends AsyncFreeSpec
       ).toKeyedMap(_.id))
 
     def makeControllerState(workflowPathControlStates: WorkflowPathControlState*) =
-      controllerState.copy(
-        pathToWorkflowPathControlState_ = workflowPathControlStates
-          .toKeyedMap(_.workflowPath))
+      controllerState
+        .copy(
+          pathToWorkflowPathControlState_ = workflowPathControlStates.toKeyedMap(_.workflowPath))
+        .finish
 
     assert(
       makeControllerState(
@@ -533,21 +535,37 @@ final class ControllerStateTest extends AsyncFreeSpec
     val workflowPathControlN = 100
     lazy val workflowIds = for (i <- 0 until workflowN) yield
       WorkflowPath(s"MEDIUM-LONG-WORKFLOW-PATH-$i") ~ VersionId("1")
-    val tries = 10
     lazy val controllerState = {
       val attachedState = Order.Attached(AgentPath("AGENT"))
-      ControllerState.empty.copy(
-        repo = Repo.fromItems(workflowIds.map(workflow.withId)),
-        idToOrder = (0 until orderN)
-          .map(i => Order(OrderId(s"ORDER-$i"), workflowIds(i % workflowIds.size), Order.Ready,
-            attachedState = (i % attachedOrderQuote == 0) ? attachedState))
-          .toKeyedMap(_.id),
-        pathToWorkflowPathControlState_ = (0 until workflowPathControlN)
-          .map(i => WorkflowPathControlState(WorkflowPathControl(workflowIds(i).path)))
-          .toKeyedMap(_.workflowPath))
+      ControllerState.empty
+        .copy(
+          repo = Repo.fromItems(workflowIds.map(workflow.withId)),
+          idToOrder = (0 until orderN)
+            .map(i => Order(OrderId(s"MEDIUM-LONG-ORDER-$i"), workflowIds(i % workflowIds.size), Order.Ready,
+              attachedState = (i % attachedOrderQuote == 0) ? attachedState))
+            .toKeyedMap(_.id),
+          pathToWorkflowPathControlState_ = (0 until workflowPathControlN)
+            .map(i => WorkflowPathControlState(WorkflowPathControl(workflowIds(i).path)))
+            .toKeyedMap(_.workflowPath))
+        .finish
+    }
+
+    "workflowPathControlToIgnorantAgents" in {
+      val tries = 100
+      controllerState
+      for (_ <- 1 to 5) {
+        val t = now
+        for (_ <- 1 to tries) {
+          controllerState.workflowPathControlToIgnorantAgents
+        }
+        logger.info("workflowPathControlToIgnorantAgents " +
+          itemsPerSecondString(t.elapsed, tries, "calls"))
+      }
+      succeed
     }
 
     "singleWorkflowPathControlToIgnorantAgents" in {
+      val tries = 1000
       controllerState
       for (_ <- 1 to 5) {
         val t = now
@@ -556,19 +574,6 @@ final class ControllerStateTest extends AsyncFreeSpec
             workflowIds(i % workflowIds.size).path)
         }
         logger.info("singleWorkflowPathControlToIgnorantAgents " +
-          itemsPerSecondString(t.elapsed, tries, "calls"))
-      }
-      succeed
-    }
-
-    "workflowPathControlToIgnorantAgents" in {
-      controllerState
-      for (_ <- 1 to 5) {
-        val t = now
-        for (_ <- 1 to tries) {
-          controllerState.workflowPathControlToIgnorantAgents
-        }
-        logger.info("workflowPathControlToIgnorantAgents " +
           itemsPerSecondString(t.elapsed, tries, "calls"))
       }
       succeed
@@ -686,5 +691,7 @@ object ControllerStateTest
         externalOrderKey = Some(ExternalOrderKey(fileWatch.path, ExternalOrderName("ORDER-NAME")))),
       Order(expectingNoticeOrderId, workflow.id /: Position(1),
         Order.ExpectingNotices(Vector(OrderNoticesExpected.Expected(board.path, noticeExpectation.id))))
-    ).toKeyedMap(_.id))
+    ).toKeyedMap(_.id),
+    workflowIdToOrders = Map.empty
+  ).finish
 }
