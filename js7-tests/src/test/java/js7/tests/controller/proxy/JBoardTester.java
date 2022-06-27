@@ -106,7 +106,7 @@ public class JBoardTester
             .idToNotice(postedNoticeId)
             .get();
         assert noticePlace.notice().isPresent();
-        assertThat(noticePlace.id(), equalTo(postedNoticeId));
+        assertThat(noticePlace.noticeId(), equalTo(postedNoticeId));
         assertThat(noticePlace.notice().get().endOfLife(), Matchers.greaterThan(Instant.now()));
     }
 
@@ -128,7 +128,7 @@ public class JBoardTester
                 .pathToBoardState().get(board.path())
             .idToNotice(expectedNoticeId)
             .get();
-        assertThat(noticePlace.id(), equalTo(expectedNoticeId));
+        assertThat(noticePlace.noticeId(), equalTo(expectedNoticeId));
         assertThat(noticePlace.expectation().get().orderIds(),
             equalTo(new HashSet<>(asList(expectingOrderId))));
     }

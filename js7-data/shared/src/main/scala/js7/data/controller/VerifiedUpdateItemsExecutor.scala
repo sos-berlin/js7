@@ -166,7 +166,7 @@ object VerifiedUpdateItemsExecutor
     controllerState.repo
       .pathToVersionToSignedItems(path)
       .tail.headOption
-      // Now we have the overriden item
+      // Now we have the overridden item
       .flatMap(_.maybeSignedItem)
       .map(_.value.id)
       .flatMap(itemId => !controllerState.isInUse(itemId) ? (NoKey <-: ItemDeleted(itemId)))

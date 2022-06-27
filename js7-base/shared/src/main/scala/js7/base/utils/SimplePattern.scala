@@ -3,7 +3,7 @@ package js7.base.utils
 import java.util.regex.Pattern
 import js7.base.generic.GenericString
 
-/** This class implements equals (Java's Pattern do not). */
+/** This class implements equals (Java's Pattern does not). */
 final case class SimplePattern private(pattern: Pattern)
 extends GenericString
 {

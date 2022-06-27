@@ -619,7 +619,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       .orThrow)
     assert(controllerState.pathTo(LockState).isEmpty)
 
-    // No Lock is atteched to any Agent
+    // No Lock is attached to any Agent
     assert(controllerState.itemToAgentToAttachedState == Map(
       SubagentId("AGENT-0") -> Map(
         AgentPath("AGENT") -> Attached(Some(ItemRevision(0)))),
