@@ -107,7 +107,7 @@ final class EventRouteTest extends AnyFreeSpec with AgentTester
     eventId = stampedEvents.head.eventId
 
     def journalFiles = listJournalFiles(agentConfiguration.stateDirectory / "agent")
-    assert(journalFiles.head.afterEventId == EventId.BeforeFirst)
+    assert(journalFiles.head.fileEventId == EventId.BeforeFirst)
 
     // Remove obsolete journal files
     agentClient.commandExecute(ReleaseEvents(eventId)).await(99.s).orThrow
@@ -122,7 +122,7 @@ final class EventRouteTest extends AnyFreeSpec with AgentTester
 
     // Wait until ReleaseEvents takes effect (otherwise CoupleController may succeed or
     // fail with watch.ClosedException)
-    waitForCondition(9.s, 10.ms) { journalFiles.head.afterEventId > EventId.BeforeFirst }
+    waitForCondition(9.s, 10.ms) { journalFiles.head.fileEventId > EventId.BeforeFirst }
 
     assert(agentClient.commandExecute(CoupleController(agentPath, agentRunId, EventId.BeforeFirst))
       .await(99.s) == Left(UnknownEventIdProblem(EventId.BeforeFirst)))

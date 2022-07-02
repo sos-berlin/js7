@@ -11,6 +11,7 @@ import js7.data.event.{AnyKeyedEvent, Event, EventId, JournalHeaders, JournalId,
 import js7.journal.data.JournalMeta
 import js7.journal.write.EventJournalWriter
 import monix.execution.Scheduler
+import org.jetbrains.annotations.TestOnly
 import scala.reflect.ClassTag
 
 final class SimpleEventCollector(
@@ -42,6 +43,7 @@ extends AutoCloseable
     deleteDirectoryRecursively(directory)
   }
 
+  @TestOnly
   def addStamped(stamped: Stamped[AnyKeyedEvent]): Unit = {
     eventWriter.writeEvent(stamped)
     eventWriter.flush(sync = false)
@@ -51,6 +53,7 @@ extends AutoCloseable
 
 object SimpleEventCollector
 {
+  @TestOnly
   def apply[E <: Event: ClassTag](config: Config = ConfigFactory.empty)
   (implicit ke: Encoder[E#Key], kd: Decoder[E#Key], codec: TypedJsonCodec[E], scheduler: Scheduler)
   : SimpleEventCollector = {

@@ -14,7 +14,7 @@ import monix.eval.Task
 private[journal] final class HistoricEventReader(
   protected val journalMeta: JournalMeta,
   protected val expectedJournalId: JournalId,
-  val tornEventId: EventId,
+  val fileEventId: EventId,
   protected val journalFile: Path,
   protected val config: Config)
 extends AutoCloseable
@@ -23,7 +23,7 @@ with EventReader
   protected def isHistoric = true
 
   /** Position of the first event in `journalFile`. */
-  protected lazy val tornPosition = iteratorPool.firstEventPosition
+  protected lazy val firstEventPosition = iteratorPool.firstEventPosition
 
   protected lazy val committedLength = Files.size(journalFile)
 
@@ -35,4 +35,6 @@ with EventReader
 
   protected def whenDataAvailableAfterPosition(position: Long, until: MonixDeadline) =
     Task.True/*EOF counts as data*/
+
+  override def toString = s"HistoricEventReader:${journalFile.getFileName}"
 }

@@ -20,7 +20,7 @@ private[watch] class FileEventIterator(
   journalMeta: JournalMeta,
   val journalFile: Path,
   expectedJournalId: JournalId,
-  tornEventId: EventId,
+  fileEventId: EventId,
   committedLength: () => Long)
 extends CloseableIterator[Stamped[KeyedEvent[Event]]]
 {
@@ -30,7 +30,9 @@ extends CloseableIterator[Stamped[KeyedEvent[Event]]]
   private var closed = false
 
   closeOnError(journalReader) {
-    if (journalReader.tornEventId != tornEventId) sys.error(s"Journal file '$journalFile': found eventId=${journalReader.tornEventId}, expected was: $tornEventId")
+    if (journalReader.fileEventId != fileEventId) sys.error(
+      s"Journal file '$journalFile': found fileEventId=${journalReader.fileEventId}, " +
+        s"expected was: $fileEventId")
   }
 
   def close(): Unit =
@@ -88,7 +90,8 @@ extends CloseableIterator[Stamped[KeyedEvent[Event]]]
   final def isClosed = closed
 
   override def toString =
-    s"FileEventIterator(${journalFile.getFileName} tornEventId=${EventId.toString(tornEventId)} eventId=$eventId)"
+    s"FileEventIterator(${journalFile.getFileName} fileEventId=${EventId.toString(fileEventId)} " +
+      s"eventId=$eventId)"
 
   private class TimeWatch(after: EventId) {
     private val PositionAnd(startPosition, startEventId) = positionAndEventId

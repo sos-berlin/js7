@@ -113,7 +113,7 @@ final class StrictEventWatch(val underlying: FileEventWatch)
 
   def tornEventId = underlying.tornEventId
 
-  def lastFileTornEventId = underlying.lastFileTornEventId
+  def lastFileTornEventId = underlying.lastFileEventId
 
   def lastAddedEventId = underlying.lastAddedEventId
 }

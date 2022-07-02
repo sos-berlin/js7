@@ -50,8 +50,11 @@ with AutoCloseable
   def onJournalingStarted(fileLengthBeforeEvents: Long = jsonWriter.fileLength): Unit = {
     assertThat(fileLengthBeforeEvents <= jsonWriter.fileLength)
     for (o <- observer) {
-      val lengthAndEventId = PositionAnd(fileLengthBeforeEvents, lastWrittenEventId)
-      o.onJournalingStarted(file, journalId, lengthAndEventId, lengthAndEventId, isActiveNode = true)
+      val firstEventPositionAndFileEventId = PositionAnd(fileLengthBeforeEvents, lastWrittenEventId)
+      o.onJournalingStarted(file, journalId,
+        firstEventPositionAndFileEventId,
+        firstEventPositionAndFileEventId,
+        isActiveNode = true)
       o.onFileWritten(jsonWriter.fileLength)
     }
   }

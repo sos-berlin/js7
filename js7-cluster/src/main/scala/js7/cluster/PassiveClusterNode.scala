@@ -275,7 +275,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
 
       continuation match {
         case FirstPartialFile(recoveredJournalFile) =>
-          logger.info(s"Start replicating '${file.getFileName()}' file after " +
+          logger.info(s"Start replicating '${file.getFileName}' file after " +
             s"${EventId.toString(recoveredJournalFile.eventId)}, position ${recoveredJournalFile.length}")
           builder.startWithState(JournalProgress.InCommittedEventsSection, Some(recoveredJournalFile.journalHeader),
             eventId = recoveredJournalFile.eventId,
@@ -283,8 +283,10 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
             recoveredJournalFile.state)
           eventWatch.onJournalingStarted(file,
             recoveredJournalFile.journalId,
-            tornLengthAndEventId = PositionAnd(recoveredJournalFile.firstEventPosition, continuation.fileEventId),
-            flushedLengthAndEventId = PositionAnd(recoveredJournalFile.length, recoveredJournalFile.eventId),
+            firstEventPositionAndFileEventId =
+              PositionAnd(recoveredJournalFile.firstEventPosition, continuation.fileEventId),
+            flushedLengthAndEventId =
+              PositionAnd(recoveredJournalFile.length, recoveredJournalFile.eventId),
             isActiveNode = false)
 
         case _ =>
@@ -310,7 +312,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
 
       locally {
         val f = maybeTmpFile getOrElse file
-        logger.trace(s"replicateJournalFile($continuation) size(${f.getFileName()})=${size(f)} ${builder.clusterState}")
+        logger.trace(s"replicateJournalFile($continuation) size(${f.getFileName})=${size(f)} ${builder.clusterState}")
         assertThat(continuation.fileLength == size(f))
       }
 
@@ -345,7 +347,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                       s"because cluster is coupled but nodes have not yet recoupled: clusterState=$clusterState")
                   Observable.empty  // Ignore
                 } else {
-                  logger.warn(s"No heartbeat from the currently active cluster node '$activeId' " +
+                  logger.warn(s"❗️No heartbeat from the currently active cluster node '$activeId' " +
                     s"since ${noHeartbeatSince.elapsed.pretty} - trying to fail-over")
                   Observable.fromTask(
                     if (isReplicatingHeadOfFile) {
@@ -356,7 +358,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                       val failedOver = failedOverStamped.value.event
                       common.ifClusterWatchAllowsActivation(clusterState, failedOver, checkOnly = false,
                         Task {
-                          logger.warn("Failover")
+                          logger.warn("❗️Failover")
                           val fileSize = {
                             val file = recoveredJournalFile.file
                             assertThat(exists(file))
@@ -394,7 +396,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                       val failedOver = failedOverStamped.value.event
                       common.ifClusterWatchAllowsActivation(clusterState, failedOver, checkOnly = false,
                         Task {
-                          logger.warn("Failover")
+                          logger.warn("❗️Failover")
                           builder.rollbackToEventSection()
                           builder.put(failedOverStamped)
                           if (out.size > lastProperEventPosition) {
@@ -467,13 +469,13 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                 out = FileChannel.open(file, APPEND)
                 // replicatedLength is between EventHeader and SnapshotTaken
                 eventWatch.onJournalingStarted(file, journalId,
-                  tornLengthAndEventId = PositionAnd(replicatedFileLength, continuation.fileEventId),
+                  firstEventPositionAndFileEventId = PositionAnd(replicatedFileLength, continuation.fileEventId),
                   flushedLengthAndEventId = PositionAnd(fileLength, builder.eventId),
                   isActiveNode = false)
                 if (journalConf.deleteObsoleteFiles) {
                   eventWatch.releaseEvents(
                     builder.journalState
-                      .toReleaseEventId(eventWatch.lastFileTornEventId, journalConf.releaseEventsUserIds))
+                      .toReleaseEventId(eventWatch.lastFileEventId, journalConf.releaseEventsUserIds))
                 }
               }
             }
@@ -504,7 +506,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                       if (journalConf.deleteObsoleteFiles) {
                         eventWatch.releaseEvents(
                           builder.journalState
-                            .toReleaseEventId(eventWatch.lastFileTornEventId, journalConf.releaseEventsUserIds))
+                            .toReleaseEventId(eventWatch.lastFileEventId, journalConf.releaseEventsUserIds))
                       }
                       Observable.pure(Right(()))
 

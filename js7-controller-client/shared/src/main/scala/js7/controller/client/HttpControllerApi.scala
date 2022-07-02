@@ -137,7 +137,7 @@ extends EventApi with ClusterNodeApi with HttpSessionApi with HasIsIgnorableStac
     ).map(_.map(_.utf8String.stripSuffix("\n").toLong))
 
   final def journalInfo: Task[JournalInfo] =
-      httpClient.get[JournalInfo](uris.api("/journalInfo"))
+    httpClient.get[JournalInfo](uris.api("/journalInfo"))
 
   override def toString = s"HttpControllerApi($baseUri)"
 

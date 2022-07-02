@@ -52,7 +52,8 @@ final class AppointNodesLatelyClusterTest extends AnyFreeSpec with ControllerClu
       }
 
       primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
-        assert(listJournalFiles(primary.controller.dataDir / "state" / "controller").head.afterEventId > EventId.BeforeFirst)
+        assert(listJournalFiles(primary.controller.dataDir / "state" / "controller").head
+          .fileEventId > EventId.BeforeFirst)
 
         var backupController = backup.startController(httpPort = Some(backupControllerPort)) await 99.s
 

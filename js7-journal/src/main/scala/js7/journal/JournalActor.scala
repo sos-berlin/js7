@@ -655,7 +655,7 @@ extends Actor with Stash with JournalLogging
       case None =>
         // Without a JournalingObserver, we can delete all previous journal files (for Agent)
         val until = untilEventId min journalHeader.eventId
-        for (j <- listJournalFiles(journalFileBase = journalMeta.fileBase) if j.afterEventId < until) {
+        for (j <- listJournalFiles(journalFileBase = journalMeta.fileBase) if j.fileEventId < until) {
           val file = j.file
           assertThat(file != eventWriter.file)
           try delete(file)

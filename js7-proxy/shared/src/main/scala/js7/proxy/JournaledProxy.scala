@@ -314,8 +314,8 @@ object JournaledProxy
 
       case _ =>
         import proxyConf.recouplingStreamReaderConf.failureDelay
-        Task.tailRecM(())(_ =>
-          apis
+        Task
+          .tailRecM(())(_ => apis
             .traverse(api =>
               fetchClusterNodeState(api, onCouplingError(api))
                 .materializeIntoChecked  /*don't let the whole operation fail*/
@@ -352,12 +352,11 @@ object JournaledProxy
                       .map(_.fiber.cancel)
                       .sequence
                       .map(_ => ())
-                })
-        )
-        .onErrorRestartLoop(()) { (throwable, _, tryAgain) =>
-          logger.warn(throwable.toStringWithCauses)
-          if (throwable.getStackTrace.nonEmpty) logger.debug(throwable.toString, throwable)
-          tryAgain(()).delayExecution(failureDelay)
+                }))
+          .onErrorRestartLoop(()) { (throwable, _, tryAgain) =>
+            logger.warn(throwable.toStringWithCauses)
+            if (throwable.getStackTrace.nonEmpty) logger.debug(throwable.toString, throwable)
+            tryAgain(()).delayExecution(failureDelay)
       }
       .map { case (api, clusterNodeState) =>
         val x = if (clusterNodeState.isActive) "active" else "maybe passive"

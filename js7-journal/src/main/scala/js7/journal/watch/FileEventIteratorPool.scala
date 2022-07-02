@@ -18,7 +18,7 @@ private[watch] final class FileEventIteratorPool(
   journalMeta: JournalMeta,
   expectedJournalId: JournalId,
   journalFile: Path,
-  tornEventId: EventId,
+  fileEventId: EventId,
   committedLength: () => Long)
 {
   private val freeIterators = mutable.ArrayBuffer.empty[FileEventIterator]
@@ -46,7 +46,7 @@ private[watch] final class FileEventIteratorPool(
       iterator.close()
       throw t
     }
-    finally returnIterator(iterator)   // JsonSeqReader is positioned after tornEventId
+    finally returnIterator(iterator)   // JsonSeqReader is positioned after fileEventId
   }
 
   def borrowIterator(): FileEventIterator = {
@@ -68,7 +68,11 @@ private[watch] final class FileEventIteratorPool(
     synchronized {
       if (closed.get()) throw new ClosedException(journalFile)
       // Exception when file has been deleted
-      val result = new FileEventIterator(journalMeta, journalFile, expectedJournalId, tornEventId = tornEventId, committedLength) {
+      val result = new FileEventIterator(
+        journalMeta, journalFile, expectedJournalId,
+        fileEventId = fileEventId,
+        committedLength
+      ) {
         private val number = lentIterators.size + 1
         logger.debug(s"Opened $toString")
 

@@ -10,8 +10,11 @@ import monix.execution.Scheduler
   */
 private[journal] trait JournalingObserver
 {
-  protected[journal] def onJournalingStarted(file: Path, expectedJournalId: JournalId,
-    tornLengthAndEventId: PositionAnd[EventId], flushedLengthAndEventId: PositionAnd[EventId],
+  protected[journal] def onJournalingStarted(
+    file: Path,
+    expectedJournalId: JournalId,
+    firstEventPositionAndFileEventId: PositionAnd[EventId],
+    flushedLengthAndEventId: PositionAnd[EventId],
     isActiveNode: Boolean): Unit
 
   protected[journal] def onJournalingEnded(fileLength: Long): Unit
@@ -22,7 +25,8 @@ private[journal] trait JournalingObserver
 
   protected[journal] def releaseEvents(untilEventId: EventId)(implicit s: Scheduler): Unit
 
-  final def onFileWrittenAndEventsCommitted(positionAndEventId: PositionAnd[EventId], n: Int): Unit = {
+  final def onFileWrittenAndEventsCommitted(positionAndEventId: PositionAnd[EventId], n: Int)
+  : Unit = {
     onFileWritten(positionAndEventId.position)
     onEventsCommitted(positionAndEventId, n)
   }

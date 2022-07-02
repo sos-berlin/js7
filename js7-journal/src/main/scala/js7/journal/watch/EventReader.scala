@@ -38,8 +38,8 @@ extends AutoCloseable
   protected def expectedJournalId: JournalId
   protected def isHistoric: Boolean
   protected def journalFile: Path
-  protected def tornEventId: EventId
-  protected def tornPosition: Long
+  protected def fileEventId: EventId
+  protected def firstEventPosition: Long
   protected def isFlushedAfterPosition(position: Long): Boolean
   protected def committedLength: Long
   protected def isEOF(position: Long): Boolean
@@ -48,11 +48,12 @@ extends AutoCloseable
   protected def config: Config
 
   private lazy val logger = Logger.withPrefix[this.type](journalFile.getFileName.toString)
-  protected lazy val journalIndex = new JournalIndex(PositionAnd(tornPosition, tornEventId),
+  protected lazy val journalIndex = new JournalIndex(PositionAnd(firstEventPosition, fileEventId),
     size = config.getInt("js7.journal.watch.index-size"))
   private lazy val journalIndexFactor = config.getInt("js7.journal.watch.index-factor")
   private lazy val limitTailRecM = config.getInt("js7.monix.tailrecm-limit")
-  protected final lazy val iteratorPool = new FileEventIteratorPool(journalMeta, expectedJournalId, journalFile, tornEventId, () => committedLength)
+  protected final lazy val iteratorPool = new FileEventIteratorPool(
+    journalMeta, expectedJournalId, journalFile, fileEventId, () => committedLength)
   @volatile
   private var _closeAfterUse = false
   @volatile

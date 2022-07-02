@@ -16,16 +16,16 @@ private[watch] final class CurrentEventReader(
   protected val journalMeta: JournalMeta,
   protected val expectedJournalId: JournalId,
   /** Length and after-EventId of initialized and empty journal. */
-  tornLengthAndEventId: PositionAnd[EventId],
+  firstEventPositionAndFileEventId: PositionAnd[EventId],
   flushedLengthAndEventId: PositionAnd[EventId],
   val isActiveNode: Boolean,
   protected val config: Config)
 extends EventReader
 {
   protected def isHistoric = false
-  protected def tornPosition = tornLengthAndEventId.position
-  def tornEventId = tornLengthAndEventId.value
-  val journalFile = journalMeta.file(after = tornEventId)
+  protected def firstEventPosition = firstEventPositionAndFileEventId.position
+  def fileEventId = firstEventPositionAndFileEventId.value
+  val journalFile = journalMeta.file(after = fileEventId)
 
   /** May contain size(file) + 1 to allow EOF detection. */
   private val flushedLengthSync = new IncreasingNumberSync(initial = 0, o => s"position $o")
@@ -39,7 +39,7 @@ extends EventReader
 
   protected[journal] def journalPosition: JournalPosition =
     synchronized {
-      JournalPosition(tornEventId, _committedLength)
+      JournalPosition(fileEventId, _committedLength)
     }
 
   protected def isEOF(position: Long) =

@@ -28,7 +28,7 @@ final class HistoricEventReaderTest extends AnyFreeSpec
         writer.endEventSection(sync = false)
       }
 
-      autoClosing(new HistoricEventReader(journalMeta, journalId, tornEventId = After, journalMeta.file(After), JournalEventWatch.TestConfig)) { reader =>
+      autoClosing(new HistoricEventReader(journalMeta, journalId, fileEventId = After, journalMeta.file(After), JournalEventWatch.TestConfig)) { reader =>
         assert(reader.eventsAfter(After + 5) == None)
         assert(reader.eventsAfter(After + 15) == None)
         assert(reader.eventsAfter(After + 25) == None)

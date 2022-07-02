@@ -5,8 +5,7 @@ import io.circe.generic.semiauto.deriveCodec
 final case class JournalInfo(
   lastEventId: EventId,
   tornEventId: EventId,
-  journalFiles: Seq[JournalPosition]
-)
+  journalFiles: Seq[JournalPosition])
 
 object JournalInfo
 {

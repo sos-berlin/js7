@@ -309,11 +309,11 @@ object Cluster
     var truncated = false
     val lastTwoJournalFiles = JournalFiles.listJournalFiles(journalFileBase) takeRight 2
     val journalFile =
-      if (lastTwoJournalFiles.last.afterEventId == failedAt.fileEventId)
+      if (lastTwoJournalFiles.last.fileEventId == failedAt.fileEventId)
         lastTwoJournalFiles.last
       else if (lastTwoJournalFiles.lengthIs == 2 &&
-        lastTwoJournalFiles.head.afterEventId == failedAt.fileEventId &&
-        lastTwoJournalFiles.last.afterEventId > failedAt.fileEventId)
+        lastTwoJournalFiles.head.fileEventId == failedAt.fileEventId &&
+        lastTwoJournalFiles.last.fileEventId > failedAt.fileEventId)
       {
         truncated = true
         val deleteFile = lastTwoJournalFiles.last.file
@@ -325,7 +325,7 @@ object Cluster
       } else
         sys.error(s"Failed-over node's JournalPosition does not match local journal files:" +
           s" $failedAt <-> ${lastTwoJournalFiles.map(_.file.getFileName).mkString(", ")}")
-    assertThat(journalFile.afterEventId == failedAt.fileEventId)
+    assertThat(journalFile.fileEventId == failedAt.fileEventId)
 
     val file = journalFile.file
     val fileSize = Files.size(file)

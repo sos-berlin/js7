@@ -9,15 +9,17 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax._
 import js7.data.event.EventId
+import org.jetbrains.annotations.TestOnly
 
 /**
-  * @author Joacim Zschimmer
+  * @param fileEventId EventId of the last Event before this journal file
   */
-private[journal] final case class JournalFile private[journal](afterEventId: EventId, file: Path)
+private[journal] final case class JournalFile private[journal](fileEventId: EventId, file: Path)
 {
   override def toString = file.getFileName.toString
 
-  def properLength: Long =
+  @TestOnly // Not used
+  private[files] def properLength: Long =
     autoClosing(new RandomAccessFile(file.toFile, "r")) { f =>
       var truncated = f.length
       while (truncated > 0) {
@@ -31,17 +33,12 @@ private[journal] final case class JournalFile private[journal](afterEventId: Eve
 
 object JournalFile
 {
-  def fromFileBase(fileBase: Path, afterEventId: EventId) =
-    JournalFile(afterEventId, toFile(fileBase, afterEventId))
-
-  def toFile(fileBase: Path, afterEventId: EventId): Path =
-    fileBase resolveSibling s"${fileBase.getFileName}--$afterEventId.journal"
-
-  def checkedEventId(fileBase: Path, file: Path): Checked[EventId] =
-    new Matcher(fileBase).checkedEventId(file)
+  def toFile(fileBase: Path, fileEventId: EventId): Path =
+    fileBase resolveSibling s"${fileBase.getFileName}--$fileEventId.journal"
 
   private[files] def anyJournalFilePattern(fileBase: Path): Pattern =
-    Pattern.compile(Pattern.quote(fileBase.toString) + """-(-[0-9]+\.journal(\.tmp|(~.*))?|journal)""")
+    Pattern.compile(
+      Pattern.quote(fileBase.toString) + """-(-[0-9]+\.journal(\.tmp|(~.*))?|journal)""")
 
   private[files] def garbagePattern(fileBase: Path): Pattern =
     Pattern.compile(Pattern.quote(fileBase.toString) +
@@ -49,12 +46,13 @@ object JournalFile
     // Keep truncated data: """--([0-9]+)\.journal(?:\.tmp|~.*)""")
 
   final class Matcher(fileBase: Path) {
-    private val pattern = Pattern.compile(Pattern.quote(fileBase.toString) + """--([0-9]+)\.journal""")
+    private val pattern = Pattern.compile(
+      Pattern.quote(fileBase.toString) + """--([0-9]+)\.journal""")
 
     def checkedJournalFile(file: Path): Checked[JournalFile] =
-      checkedEventId(file).map(JournalFile(_, file))
+      checkedFileEventId(file).map(JournalFile(_, file))
 
-    def checkedEventId(file: Path): Checked[EventId] =
+    def checkedFileEventId(file: Path): Checked[EventId] =
       file.getFileName match {
         case null => Left(EmptyStringProblem("File"))
         case filename =>

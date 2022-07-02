@@ -77,7 +77,7 @@ final class JournalReaderTest extends AnyFreeSpec with TestJournalMixin
       //Without: writer.endEventSection(sync = false)
     }
     autoClosing(new JournalReader(journalMeta, journalId, JournalFiles.currentFile(journalMeta.fileBase).orThrow)) { journalReader =>
-      assert(journalReader.tornEventId == 0)
+      assert(journalReader.fileEventId == 0)
       assert(journalReader.eventId == EventId.BeforeFirst)
       assert(journalReader.readSnapshot.toListL.await(99.s) == journalReader.journalHeader :: Nil)
       assert(journalReader.readEvents().toList == Stamped(1000L, NoKey <-: SnapshotTaken) :: Stamped(1001L, "X" <-: TestEvent.Removed) :: Nil)

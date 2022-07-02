@@ -31,20 +31,20 @@ object JournalFiles
       val matcher = new JournalFile.Matcher(journalFileBase.getFileName)
       iterator
         .flatMap(file => matcher.checkedJournalFile(file).toOption)
-        .toVector.sortBy(_.afterEventId)
+        .toVector.sortBy(_.fileEventId)
     }
 
-  def listGarbageFiles(journalFileBase: Path, untilEventId: EventId): Vector[Path] =
-    listFiles(journalFileBase) { iterator =>
-      val pattern = JournalFile.garbagePattern(journalFileBase.getFileName)
-      iterator.filter { file =>
+  def listGarbageFiles(journalFileBase: Path, untilFileEventId: EventId): Vector[Path] = {
+    val pattern = JournalFile.garbagePattern(journalFileBase.getFileName)
+    listFiles(journalFileBase)(_
+      .filter { file =>
         val matcher = pattern.matcher(file.getFileName.toString)
         matcher.matches() &&
-          Try(matcher.group(1).toLong < untilEventId).getOrElse(false)
+          Try(matcher.group(1).toLong < untilFileEventId).getOrElse(false)
       }
       .toVector
-      .sorted
-    }
+      .sorted)
+  }
 
   private def listFiles[A](journalFileBase: Path)(body: Iterator[Path] => Vector[A]): Vector[A] = {
     val directory = journalFileBase.getParent

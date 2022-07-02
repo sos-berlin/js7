@@ -325,7 +325,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff: TypeTag](
             clusterState.passiveUri,
             ClusterStartBackupNode(
               clusterState.setting,
-              fileEventId = persistence.eventWatch.lastFileTornEventId)))
+              fileEventId = persistence.eventWatch.lastFileEventId)))
         .runToFuture
     sending.onComplete {
       case Success(()) =>

@@ -40,11 +40,11 @@ extends AutoCloseable
     JournalHeader.checkedHeader(json, journalFile, expectedJournalId).orThrow
   }
 
-  val tornEventId = journalHeader.eventId
+  val fileEventId = journalHeader.eventId
   private var _totalEventCount = journalHeader.totalEventCount
   private var snapshotHeaderRead = false
   private var eventHeaderRead = false
-  private var _eventId = tornEventId
+  private var _eventId = fileEventId
 
   private val transaction = new TransactionReader
 
@@ -113,7 +113,7 @@ extends AutoCloseable
   /** For FileEventIterator */
   def seekEvent(positionAndEventId: PositionAnd[EventId]): Unit =
     synchronized {
-      require(positionAndEventId.value >= tornEventId, s"seek($positionAndEventId) but tornEventId=$tornEventId")
+      require(positionAndEventId.value >= fileEventId, s"seek($positionAndEventId) but fileEventId=$fileEventId")
       jsonReader.seek(positionAndEventId.position)
       _eventId = positionAndEventId.value
       eventHeaderRead = true
@@ -228,10 +228,12 @@ extends AutoCloseable
 
 object JournalReader
 {
-  def snapshot(journalMeta: JournalMeta, expectedJournalId: JournalId, journalFile: Path): Observable[Any] =
+  def snapshot(journalMeta: JournalMeta, expectedJournalId: JournalId, journalFile: Path)
+  : Observable[Any] =
     snapshot_(_.readSnapshot)(journalMeta, expectedJournalId, journalFile)
 
-  def rawSnapshot(journalMeta: JournalMeta, expectedJournalId: JournalId, journalFile: Path): Observable[ByteArray] =
+  def rawSnapshot(journalMeta: JournalMeta, expectedJournalId: JournalId, journalFile: Path)
+  : Observable[ByteArray] =
     snapshot_(_.readSnapshotRaw)(journalMeta, expectedJournalId, journalFile)
 
   private def snapshot_[A](f: JournalReader => Observable[A])
@@ -242,7 +244,10 @@ object JournalReader
         new JournalReader(journalMeta, expectedJournalId, journalFile))))
       .flatMap(f)
 
-  private final class CorruptJournalException(message: String, journalFile: Path, positionAndJson: PositionAnd[ByteArray])
+  private final class CorruptJournalException(
+    message: String,
+    journalFile: Path,
+    positionAndJson: PositionAnd[ByteArray])
   extends RuntimeException(
     s"Journal file '$journalFile' has an error at byte position ${positionAndJson.position}:" +
       s" $message - JSON=${positionAndJson.value.utf8String.truncateWithEllipsis(50)}")

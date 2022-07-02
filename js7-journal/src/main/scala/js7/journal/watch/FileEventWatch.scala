@@ -23,7 +23,7 @@ trait FileEventWatch extends EventWatch
   final def tornEventId =
     fileEventIds.headOption getOrElse EventId.BeforeFirst
 
-  final def lastFileTornEventId =
+  final def lastFileEventId =
     fileEventIds.last
 
   def strict: StrictEventWatch =
