@@ -34,40 +34,21 @@ final class ControllerMain
     logger.info(s"${conf.controllerId} config=${conf.configDirectory} data=${conf.dataDirectory}")
     logConfig(conf.config)
     logJavaSettings()
-    var restartInProcess = false
-    var terminate = ProgramTermination()
-    /** val restartJvmWhenDeactivated = conf.config.getBoolean("js7.journal.cluster.when-deactivated-restart-jvm")
-       - Erste HTTP-Anforderungen an deaktivierten Knoten können in ins Leere laufen (mit Timeout abgefangen)
-       - Heap platzt nach vielen Deaktivierungen */
-    val restartJvmWhenDeactivated = true
-    do {
+
+    val termination =
       autoClosing(RunningController(conf).awaitInfinite) { runningController =>
         import runningController.scheduler
         withShutdownHooks(conf.config, "ControllerMain", () => onJavaShutdown(runningController)) {
-          runningController.terminated.awaitInfinite match {
-            case t: ProgramTermination =>
-              if (!t.restart) {
-                terminate = t
-              } else {
-                if (restartJvmWhenDeactivated) {
-                  terminate = t
-                } else {
-                  // Does not work
-                  logger.info("------- JS7 Controller restarts -------")
-                  restartInProcess = true
-                }
-              }
-          }
+          runningController.terminated.awaitInfinite
         }
       }
-    } while (restartInProcess)
 
     // Log complete timestamp in case of short log timestamp
     val msg = "JS7 Controller terminates now" +
-      (terminate.restart ?? " and is expected to restart") + s" ($nowString)"
+      (termination.restart ?? " and is expected to restart") + s" ($nowString)"
     logger.info(msg)
     printlnWithClock(msg)
-    terminate
+    termination
   }
 
   private def onJavaShutdown(controller: RunningController)(implicit s: Scheduler): Unit = {
