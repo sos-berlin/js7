@@ -177,7 +177,7 @@ object InputStreamJsonSeqReader
 
   private def throwCorrupt2(lineNumber: Long, position: Long, extra: String) = {
     val where = if (lineNumber >= 0) s"line $lineNumber" else s"file position $position"
-    sys.error(s"Read JSON sequence is corrupt at $where: $extra")
+    sys.error(s"JSON sequence is corrupt at $where: $extra")
   }
 
   final class ClosedException private[InputStreamJsonSeqReader](file: String)

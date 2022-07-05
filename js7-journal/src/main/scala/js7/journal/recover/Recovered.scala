@@ -1,7 +1,6 @@
 package js7.journal.recover
 
 import com.typesafe.config.Config
-import js7.base.utils.SetOnce
 import js7.data.cluster.ClusterState
 import js7.data.event.{EventId, JournalId, SnapshotableState}
 import js7.journal.data.JournalMeta
@@ -13,13 +12,10 @@ final class Recovered[S <: SnapshotableState[S]] private(
   val recoveredJournalFile: Option[RecoveredJournalFile[S]],
   val totalRunningSince: Deadline,
   config: Config,
-  val eventWatch: JournalEventWatch,
-  journalId_ : Option[JournalId])
+  val eventWatch: JournalEventWatch)
   (implicit S: SnapshotableState.Companion[S])
 extends AutoCloseable
 {
-  private val journalIdOnce = SetOnce.fromOption(journalId_)
-
   def close() =
     eventWatch.close()
 
@@ -28,9 +24,7 @@ extends AutoCloseable
     * because JournalEventWatch remains the same.
     */
   def changeRecoveredJournalFile(recoveredJournalFile: Option[RecoveredJournalFile[S]]) =
-    new Recovered(journalMeta, recoveredJournalFile, totalRunningSince, config, eventWatch, journalIdOnce.toOption)
-
-  def maybeJournalId = recoveredJournalFile.map(_.journalId)
+    new Recovered(journalMeta, recoveredJournalFile, totalRunningSince, config, eventWatch)
 
   def eventId: EventId =
     recoveredJournalFile.fold(EventId.BeforeFirst)(_.eventId)
@@ -45,28 +39,38 @@ extends AutoCloseable
     recoveredJournalFile.map(_.state)
 
   def journalId: Option[JournalId] =
-    journalIdOnce.toOption
+    recoveredJournalFile.map(_.journalId)
 
   // Suppresses Config (which may contain secrets)
-  override def toString = s"Recovered($journalMeta,$recoveredJournalFile,$eventWatch,Config)"
-
-  def onJournalIdReplicated(journalId: JournalId): Unit =
-    journalIdOnce := journalId
+  override def toString = s"Recovered($journalMeta,$recoveredJournalFile,$eventWatch)"
 }
 
 object Recovered
 {
-  def apply[S <: SnapshotableState[S]](
+  def fromJournalFile[S <: SnapshotableState[S]](
     journalMeta: JournalMeta,
-    recoveredJournalFile: Option[RecoveredJournalFile[S]],
+    recoveredJournalFile: RecoveredJournalFile[S],
     totalRunningSince: Deadline,
     config: Config)
     (implicit S: SnapshotableState.Companion[S])
-  : Recovered[S] = {
-    val recoveredEventId = recoveredJournalFile.fold(EventId.BeforeFirst)(_.eventId)
+  : Recovered[S] =
     new Recovered(
-      journalMeta, recoveredJournalFile, totalRunningSince, config,
-      new JournalEventWatch(journalMeta, config, Some(recoveredEventId)),
-      recoveredJournalFile.map(_.journalId))
-  }
+      journalMeta,
+      Some(recoveredJournalFile),
+      totalRunningSince,
+      config,
+      new JournalEventWatch(journalMeta, config, Some(recoveredJournalFile.eventId)))
+
+  def noJournalFile[S <: SnapshotableState[S]](
+    journalMeta: JournalMeta,
+    totalRunningSince: Deadline,
+    config: Config)
+    (implicit S: SnapshotableState.Companion[S])
+  : Recovered[S] =
+    new Recovered(
+      journalMeta,
+      recoveredJournalFile = None,
+      totalRunningSince,
+      config,
+      new JournalEventWatch(journalMeta, config, Some(EventId.BeforeFirst)))
 }

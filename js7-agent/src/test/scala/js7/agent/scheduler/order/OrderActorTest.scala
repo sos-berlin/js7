@@ -190,7 +190,7 @@ private object OrderActorTest {
       AlarmClock())
 
     private val journalMeta = JournalMeta(AgentState, dir / "data" / "state" / "agent")
-    private val recovered = Recovered[AgentState](journalMeta, None, now, config)
+    private val recovered = Recovered.noJournalFile[AgentState](journalMeta, now, config)
     private val persistence = FileStatePersistence
       .start(recovered, JournalConf.fromConfig(config))
       .await(99.s)

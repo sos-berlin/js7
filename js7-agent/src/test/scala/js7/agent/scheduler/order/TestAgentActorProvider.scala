@@ -67,7 +67,7 @@ object TestAgentActorProvider {
 
     val persistence = FileStatePersistence
       .start(
-        Recovered[AgentState](journalMeta, None, now, config),
+        Recovered.noJournalFile[AgentState](journalMeta, now, config),
         journalConf,
         injector.instance[EventIdGenerator],
         injector.instance[StampedKeyedEventBus])

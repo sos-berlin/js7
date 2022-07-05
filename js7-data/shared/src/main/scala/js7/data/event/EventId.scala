@@ -10,7 +10,7 @@ object EventId
   // represent all integers between 0 and 2**53 (9.007.199.254.740.992).
   // 2 ** 53 = 9.007.199.254.740.992µs = 285 years. This is good until year 2255, for a million events/s.
   private[event] val JavascriptMaxValue = EventId(1L << 53)  // 2^53 == 9007199254740992L
-  private[js7] val MaxValue = EventId(Long.MaxValue)
+  private[js7] val MaxValue = EventId(JavascriptMaxValue)
 
   def apply(eventId: String) = eventId.toLong
 

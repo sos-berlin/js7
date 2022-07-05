@@ -51,7 +51,7 @@ final class AgentActorTest extends AnyFreeSpec
         }
 
         (provider.agentActor ?
-          AgentActor.Input.Start(Recovered[AgentState](journalMeta, None, now, config))
+          AgentActor.Input.Start(Recovered.noJournalFile[AgentState](journalMeta, now, config))
         ).mapTo[AgentActor.Output.Ready.type] await 99.s
 
 

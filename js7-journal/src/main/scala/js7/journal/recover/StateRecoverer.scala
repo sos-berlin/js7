@@ -82,9 +82,9 @@ object StateRecoverer
         recoverer.recoverAll()
         val nextJournalHeader = fileJournaledStateBuilder.nextJournalHeader
           .getOrElse(sys.error(s"Missing JournalHeader in file '${file.getFileName}'"))
-        Recovered(
+        Recovered.fromJournalFile(
           journalMeta,
-          Some(RecoveredJournalFile(
+          RecoveredJournalFile(
             file,
             length = recoverer.position,
             lastProperEventPosition = recoverer.lastProperEventPosition,
@@ -93,14 +93,14 @@ object StateRecoverer
             nextJournalHeader,
             firstEventPosition = recoverer.firstEventPosition
               .getOrElse(sys.error(s"Missing JournalHeader in file '${file.getFileName}'")),
-            fileJournaledStateBuilder.result())),
+            fileJournaledStateBuilder.result()),
           totalRunningSince = runningSince - nextJournalHeader.totalRunningTime,
           config)
 
       case None =>
         // An active cluster node will start a new journal
         // A passive cluster node will provide the JournalId later
-        Recovered[S](journalMeta, None, runningSince, config)
+        Recovered.noJournalFile(journalMeta, runningSince, config)
     }
   }
 }
