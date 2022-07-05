@@ -94,7 +94,7 @@ final class ControllerAgentWithoutAuthenticationTest extends AnyFreeSpec
       val agentRef = AgentRef(agentPath, directors = Seq(subagentId))
       val subagentItem = SubagentItem(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort"))
       val agent = RunningAgent(agentConfiguration) await 99.s
-      val controller = RunningController(controllerConfiguration) await 99.s
+      val controller = RunningController.start(controllerConfiguration) await 99.s
       controller.waitUntilReady()
 
       controller.updateItemsAsSystemUser(Observable(

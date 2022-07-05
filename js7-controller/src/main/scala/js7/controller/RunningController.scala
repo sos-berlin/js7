@@ -240,8 +240,8 @@ object RunningController
 {
   private val logger = Logger(getClass)
 
-  def run[A](configuration: ControllerConfiguration, timeout: Option[FiniteDuration] = None)(body: RunningController => Unit)(implicit s: Scheduler): Unit =
-    autoClosing(apply(configuration) await timeout) { controller =>
+  def run(configuration: ControllerConfiguration, timeout: Option[FiniteDuration] = None)(body: RunningController => Unit)(implicit s: Scheduler): Unit =
+    autoClosing(start(configuration) await timeout) { controller =>
       for (t <- controller.terminated.failed) logger.error(t.toStringWithCauses, t)
       body(controller)
       controller.terminated await timeout
@@ -265,7 +265,14 @@ object RunningController
         commonScheduler = scheduler)
       `with` module)
 
-  def apply(configuration: ControllerConfiguration): Future[RunningController] =
+  def blockingRun(conf: ControllerConfiguration)(whileRunning: RunningController => Unit)
+  : ProgramTermination =
+    autoClosing(RunningController.start(conf).awaitInfinite) { runningController =>
+      whileRunning(runningController)
+      runningController.terminated.awaitInfinite
+    }
+
+  def start(configuration: ControllerConfiguration): Future[RunningController] =
     fromInjector(Guice.createInjector(PRODUCTION, new ControllerModule(configuration)))
 
   def fromInjector(injector: Injector): Future[RunningController] = {

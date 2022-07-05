@@ -4,7 +4,6 @@ import js7.base.BuildInfo
 import js7.base.configutils.Configs.logConfig
 import js7.base.log.Logger
 import js7.base.thread.Futures.implicits.SuccessFuture
-import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ProgramTermination
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.common.commandline.CommandLineArguments
@@ -36,10 +35,10 @@ final class ControllerMain
     logJavaSettings()
 
     val termination =
-      autoClosing(RunningController(conf).awaitInfinite) { runningController =>
-        import runningController.scheduler
-        withShutdownHooks(conf.config, "ControllerMain", () => onJavaShutdown(runningController)) {
-          runningController.terminated.awaitInfinite
+      RunningController.blockingRun(conf) { controller =>
+        import controller.scheduler
+        withShutdownHooks(conf.config, "ControllerMain", () => onJavaShutdown(controller)) {
+          controller.terminated.awaitInfinite
         }
       }
 
