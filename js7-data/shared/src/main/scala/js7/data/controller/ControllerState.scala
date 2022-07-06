@@ -35,7 +35,7 @@ import js7.data.state.EventDrivenStateView
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent, SubagentSelection, SubagentSelectionId, SubagentSelectionState}
 import js7.data.value.Value
-import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath, WorkflowPathControlEvent, WorkflowPathControlState, WorkflowPathControlStateHandler}
+import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import monix.reactive.Observable
 import scala.collection.{MapView, View}
 import scala.util.chaining.scalaUtilChainingOps
@@ -51,7 +51,6 @@ final case class ControllerState(
   repo: Repo,
   pathToSignedSimpleItem: Map[SignableSimpleItemPath, Signed[SignableSimpleItem]],
   agentAttachments: ClientAttachments[AgentPath],
-  pathToWorkflowPathControlState_ : Map[WorkflowPath, WorkflowPathControlState],
   /** Used for OrderWatch to allow to attach it from Agent. */
   deletionMarkedItems: Set[InventoryItemKey],
   idToOrder: Map[OrderId, Order[Order.State]],
@@ -59,7 +58,6 @@ final case class ControllerState(
 extends SignedItemContainer
 with EventDrivenStateView[ControllerState, Event]
 with OrderWatchStateHandler[ControllerState]
-with WorkflowPathControlStateHandler[ControllerState]
 with SnapshotableState[ControllerState]
 {
   def isAgent = false
@@ -78,7 +76,6 @@ with SnapshotableState[ControllerState]
     pathTo(BoardState).values.view.map(_.noticeCount).sum +
     pathToSignedSimpleItem.size +
     agentAttachments.estimatedSnapshotSize +
-    pathToWorkflowPathControlState_.size +
     deletionMarkedItems.size +
     idToOrder.size
 
@@ -87,6 +84,7 @@ with SnapshotableState[ControllerState]
       Observable.pure(SnapshotEventId(eventId)),
       standards.toSnapshotObservable,
       Observable.fromIterable(controllerMetaState.isDefined ? controllerMetaState),
+      Observable.fromIterable(pathTo(WorkflowPathControl).values).flatMap(_.toSnapshotObservable),
       Observable.fromIterable(pathTo(AgentRefState).values).flatMap(_.toSnapshotObservable),
       Observable.fromIterable(pathTo(SubagentItemState).values).flatMap(_.toSnapshotObservable),
       Observable.fromIterable(pathTo(SubagentSelectionState).values).flatMap(_.toSnapshotObservable),
@@ -96,7 +94,6 @@ with SnapshotableState[ControllerState]
       Observable.fromIterable(pathTo(OrderWatchState).values).flatMap(_.toSnapshotObservable),
       Observable.fromIterable(pathToSignedSimpleItem.values).map(SignedItemAdded(_)),
       Observable.fromIterable(repo.toEvents),
-      Observable.fromIterable(pathToWorkflowPathControlState_.values),
       agentAttachments.toSnapshotObservable,
       Observable.fromIterable(deletionMarkedItems.map(ItemDeletionMarked(_))),
       Observable.fromIterable(idToOrder.values)
@@ -232,42 +229,29 @@ with SnapshotableState[ControllerState]
                   for (repo <- repo.deleteItem(workflowId)) yield
                     updated.copy(
                       repo = repo,
-                      pathToWorkflowPathControlState_ =
+                      pathToItemState_ =
                         if (!repo.pathToItems(Workflow).contains(workflowId.path))
-                          pathToWorkflowPathControlState_ - workflowId.path
+                          pathToItemState_ - WorkflowPathControlPath(workflowId.path)
                         else
-                          pathToWorkflowPathControlState_)
-
-                case lockPath: LockPath =>
-                  Right(updated.copy(
-                    pathToItemState_ = pathToItemState_ - lockPath))
-
-                case agentPath: AgentPath =>
-                  Right(updated.copy(
-                    pathToItemState_ = pathToItemState_ - agentPath))
-
-                case subagentId: SubagentId =>
-                  Right(updated.copy(
-                    pathToItemState_ = pathToItemState_ - subagentId))
-
-                case id: SubagentSelectionId =>
-                  Right(updated.copy(
-                    pathToItemState_ = pathToItemState_ - id))
+                          pathToItemState_)
 
                 case path: OrderWatchPath =>
                   updated.ow.removeOrderWatch(path)
 
-                case boardPath: BoardPath =>
-                  Right(updated.copy(
-                    pathToItemState_ = pathToItemState_ - boardPath))
-
-                case calendarPath: CalendarPath =>
-                  Right(updated.copy(
-                    pathToItemState_ = pathToItemState_ - calendarPath))
-
                 case jobResourcePath: JobResourcePath =>
                   Right(updated.copy(
                     pathToSignedSimpleItem = pathToSignedSimpleItem - jobResourcePath))
+
+                case path: UnsignedSimpleItemPath =>
+                  path match {
+                    case _: AgentPath | _: SubagentId | _: SubagentSelectionId |
+                         _: LockPath | _: BoardPath | _: CalendarPath |
+                         _: WorkflowPathControlPath =>
+                      Right(updated.copy(
+                        pathToItemState_ = pathToItemState_ - path))
+                    case _ =>
+                      Left(Problem(s"A '${ itemKey.companion.itemTypeName }' is not deletable"))
+                  }
 
                 case _ =>
                   Left(Problem(s"A '${itemKey.companion.itemTypeName}' is not deletable"))
@@ -320,9 +304,6 @@ with SnapshotableState[ControllerState]
             pathToItemState_ = pathToItemState_.updated(subagentId, o))
       }
 
-    case KeyedEvent(workflowPath: WorkflowPath, event: WorkflowPathControlEvent) =>
-      applyWorkflowPathControlEvent(workflowPath, event)
-
     case KeyedEvent(_, _: ControllerShutDown) =>
       Right(this)
 
@@ -332,54 +313,29 @@ with SnapshotableState[ControllerState]
     case _ => applyStandardEvent(keyedEvent)
   }
 
-  def pathToWorkflowPathControlState =
-    pathToWorkflowPathControlState_.view
-
-  protected def updateWorkflowPathControlState(state: WorkflowPathControlState): ControllerState =
-    copy(
-      pathToWorkflowPathControlState_ = pathToWorkflowPathControlState_.updated(state.workflowPath, state))
-
-  /** The Agents for each WorkflowPathControl which have not attached the current revision. */
-  def workflowPathControlToIgnorantAgents: Map[WorkflowPath, Set[AgentPath]] = {
-    val pathToWorkflows = repo.pathToItems(Workflow)
-    pathToWorkflowPathControlState_.values
+  /** The Agents for each WorkflowPathControl which have not attached the current itemRevision. */
+  def workflowPathControlToIgnorantAgents: View[(WorkflowPathControlPath, Set[AgentPath])] =
+    pathTo(WorkflowPathControl).values
       .view
-      .flatMap { workflowPathControlState =>
-        import workflowPathControlState.workflowPath
-        val agentPaths = workflowPathControlStateToIgnorantAgents(
-          workflowPathControlState,
-          pathToWorkflows.get(workflowPath))
-        agentPaths.nonEmpty ? (workflowPath -> agentPaths)
+      .flatMap { workflowPathControl =>
+        val agentPaths = agentAttachments.itemToDelegateToAttachedState
+          .get(workflowPathControl.path)
+          .view
+          .flatMap(_.collect {
+            case (agentPath, Attachable) => agentPath
+          })
+          .toSet
+        agentPaths.nonEmpty ? (workflowPathControl.path -> agentPaths)
       }
-      .toMap
-  }
 
-  def singleWorkflowPathControlToIgnorantAgents(workflowPath: WorkflowPath): Set[AgentPath] =
-    pathToWorkflowPathControlState.get(workflowPath) match {
-      case None => Set.empty
-      case Some(workflowPathControlState) =>
-        workflowPathControlStateToIgnorantAgents(
-          workflowPathControlState,
-          repo.pathToItems(Workflow).get(workflowPath))
-    }
-
-  private def workflowPathControlStateToIgnorantAgents(
-    workflowPathControlState: WorkflowPathControlState,
-    maybeWorkflows: Option[View[Workflow]])
-  : Set[AgentPath] = {
-    var agentPaths = Set.empty[AgentPath]
-    for (workflows <- maybeWorkflows;
-         workflow <- workflows;
-         orderIds <- workflowIdToOrders.get(workflow.id);
-         orderId <- orderIds) {
-      idToOrder(orderId).attachedState match {
-        case Some(a: Order.AttachedState.AttachingOrAttached) =>
-          agentPaths += a.agentPath
-        case _ =>
-      }
-    }
-    agentPaths diff workflowPathControlState.attachedToAgents
-  }
+  def singleWorkflowPathControlToIgnorantAgents(path: WorkflowPathControlPath): Set[AgentPath] =
+    agentAttachments.itemToDelegateToAttachedState
+      .get(path)
+      .view
+      .flatMap(_.collect {
+        case (agentPath, Attachable) => agentPath
+      })
+      .toSet
 
   protected def pathToOrderWatchState = pathTo(OrderWatchState)
 
@@ -695,7 +651,6 @@ with ItemContainer.Companion[ControllerState]
     Repo.empty,
     Map.empty,
     ClientAttachments.empty,
-    Map.empty,
     Set.empty,
     Map.empty,
     Map.empty)
@@ -705,7 +660,7 @@ with ItemContainer.Companion[ControllerState]
   def newBuilder() = new ControllerStateBuilder
 
   protected val inventoryItems = Vector(
-    AgentRef, SubagentItem, SubagentSelection, Lock, Board, Calendar, FileWatch, JobResource, Workflow)
+    AgentRef, SubagentItem, SubagentSelection, Lock, Board, Calendar, FileWatch, JobResource, Workflow, WorkflowPathControl)
 
   lazy val snapshotObjectJsonCodec = TypedJsonCodec[Any](
     Subtype[JournalHeader],
@@ -724,7 +679,7 @@ with ItemContainer.Companion[ControllerState]
     Subtype[InventoryItemEvent],  // For Repo and SignedItemAdded
     Subtype[OrderWatchState.Snapshot],
     Subtype[Order[Order.State]],
-    WorkflowPathControlState.subtype)
+    WorkflowPathControl.subtype)
 
   implicit lazy val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] =
     KeyedEventTypedJsonCodec/*.named("ControllerState.keyedEventJsonCodec"*/(
@@ -737,8 +692,7 @@ with ItemContainer.Companion[ControllerState]
       KeyedSubtype[SubagentItemStateEvent],
       KeyedSubtype[OrderWatchEvent],
       KeyedSubtype[OrderEvent],
-      KeyedSubtype[BoardEvent],
-      KeyedSubtype[WorkflowPathControlEvent])
+      KeyedSubtype[BoardEvent])
 
   object implicits {
     implicit val snapshotObjectJsonCodec = ControllerState.snapshotObjectJsonCodec

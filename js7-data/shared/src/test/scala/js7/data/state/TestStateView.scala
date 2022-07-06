@@ -10,7 +10,7 @@ import js7.data.event.{Event, EventDrivenState, KeyedEvent}
 import js7.data.item.{InventoryItem, InventoryItemKey, UnsignedSimpleItemPath, UnsignedSimpleItemState}
 import js7.data.lock.LockPath
 import js7.data.order.{Order, OrderEvent, OrderId}
-import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath, WorkflowPathControlState}
+import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import scala.collection.MapView
 
 case class TestStateView(
@@ -18,8 +18,7 @@ case class TestStateView(
   controllerId: ControllerId = ControllerId("CONTROLLER"),
   idToOrder: Map[OrderId, Order[Order.State]] = new NotImplementedMap,
   idToWorkflow: PartialFunction[WorkflowId, Workflow] = new NotImplementedMap,
-  pathToItemState_ : Map[UnsignedSimpleItemPath, UnsignedSimpleItemState] = new NotImplementedMap,
-  pathToWorkflowPathControlState_ : Map[WorkflowPath, WorkflowPathControlState] = Map.empty)
+  pathToItemState_ : Map[UnsignedSimpleItemPath, UnsignedSimpleItemState] = Map.empty)
 extends EventDrivenStateView[TestStateView, Event]
 {
   val companion = TestStateView
@@ -36,8 +35,6 @@ extends EventDrivenStateView[TestStateView, Event]
 
   def workflowPathToId(workflowPath: WorkflowPath) =
     Left(Problem.pure("workflowPathToId is not implemented"))
-
-  def pathToWorkflowPathControlState = pathToWorkflowPathControlState_.view
 
   def pathToItemState = pathToItemState_.view
 
@@ -77,10 +74,10 @@ object TestStateView extends EventDrivenState.Companion[TestStateView, Event]
     controllerId: ControllerId = ControllerId("CONTROLLER"),
     orders: Option[Iterable[Order[Order.State]]] = None,
     workflows: Option[Iterable[Workflow]] = None,
-    itemStates: Option[Iterable[UnsignedSimpleItemState]] = None)
+    itemStates: Iterable[UnsignedSimpleItemState] = Nil)
   = new TestStateView(
     isAgent, controllerId,
     idToOrder = orders.fold_(new NotImplementedMap, _.toKeyedMap(_.id)),
     idToWorkflow = workflows.fold_(new NotImplementedMap, _.toKeyedMap(_.id)),
-    pathToItemState_ = itemStates.fold_(new NotImplementedMap, _.toKeyedMap(_.path)))
+    pathToItemState_ = itemStates.toKeyedMap(_.path))
 }

@@ -24,7 +24,7 @@ import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.orderwatch.ExternalOrderKey
 import js7.data.value.expression.scopes.NowScope
 import js7.data.workflow.position.{Position, PositionOrLabel}
-import js7.data.workflow.{Workflow, WorkflowId}
+import js7.data.workflow.{Workflow, WorkflowId, WorkflowPathControl}
 import scala.annotation.tailrec
 import scala.collection.{View, mutable}
 import scala.language.implicitConversions
@@ -314,6 +314,23 @@ final case class ControllerStateExecutor private(
         else
           item.dedicatedAgentPath.map(ItemAttachable(item.key, _))
     }
+
+  def updatedWorkflowPathControlAttachedEvents(workflowPathControl: WorkflowPathControl)
+  : Iterable[ItemAttachable] = {
+    import workflowPathControl.{path, workflowPath}
+    controllerState
+      .repo.pathToItems(Workflow)
+      .getOrElse(workflowPath, View.empty)
+      .view
+      .flatMap(workflow =>
+        controllerState.itemToAgentToAttachedState
+          .getOrElse(workflow.id, Map.empty)
+          .collect {
+            case (agentPath, Attachable | Attached(_)) => agentPath
+          })
+      .toSet
+      .map(ItemAttachable(path, _))
+  }
 
   def nextOrderWatchOrderEvents: View[KeyedEvent[OrderCoreEvent]] =
     controllerState.ow.nextEvents(addOrder(_, _), isDeletionMarkable)

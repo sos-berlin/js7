@@ -18,7 +18,7 @@ import js7.data.value.expression.scopes.{JobResourceScope, NowScope, OrderScopes
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{BoardInstruction, End}
 import js7.data.workflow.position.{Label, WorkflowPosition}
-import js7.data.workflow.{Instruction, Workflow, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlState}
+import js7.data.workflow.{Instruction, Workflow, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import scala.collection.MapView
 import scala.reflect.ClassTag
 
@@ -48,10 +48,8 @@ trait StateView extends ItemContainer
 
   def workflowPathToId(workflowPath: WorkflowPath): Checked[WorkflowId]
 
-  def pathToWorkflowPathControlState: MapView[WorkflowPath, WorkflowPathControlState]
-
-  final def pathToWorkflowPathControl: MapView[WorkflowPath, WorkflowPathControl] =
-    pathToWorkflowPathControlState.view.mapValues(_.workflowPathControl)
+  final def pathToWorkflowPathControl: MapView[WorkflowPathControlPath, WorkflowPathControl] =
+    pathTo(WorkflowPathControl).mapValues(_.item)
 
   def pathToItemState: MapView[UnsignedSimpleItemPath, UnsignedSimpleItemState]
 
@@ -61,7 +59,7 @@ trait StateView extends ItemContainer
       .filter { case (_, v) => v.companion eq A }
       .asInstanceOf[MapView[A.Path, A]]
 
-  final def pathTo[A <: UnsignedSimpleItem](A: UnsignedSimpleItem.Companion[A])
+  final def pathToUnsignedSimple[A <: UnsignedSimpleItem](A: UnsignedSimpleItem.Companion[A])
   : MapView[A.Path, A] =
     pathToItemState
       .filter { case (_, v) => v.item.companion eq A }
@@ -150,8 +148,9 @@ trait StateView extends ItemContainer
   }
 
   final def isWorkflowSuspended(workflowPath: WorkflowPath): Boolean =
-    pathToWorkflowPathControlState.get(workflowPath)
-      .exists(_.workflowPathControl.suspended)
+    pathTo(WorkflowPathControl)
+      .get(WorkflowPathControlPath(workflowPath))
+      .exists(_.item.suspended)
 
   /** A pure (stable, repeatable) Scope. */
   final def toPureScope(order: Order[Order.State]): Checked[Scope] =

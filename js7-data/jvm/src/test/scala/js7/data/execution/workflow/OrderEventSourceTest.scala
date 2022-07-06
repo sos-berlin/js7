@@ -752,7 +752,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
           isAgent = false,
           orders = Some(Seq(order)),
           workflows = Some(Seq(workflow)),
-          itemStates = Some(Seq(LockState(Lock(lockPath))))))
+          itemStates = Seq(LockState(Lock(lockPath)))))
         eventSource.resume(order.id, Some(to), Nil)
       }
     }
@@ -981,10 +981,10 @@ final class OrderEventSourceTest extends AnyFreeSpec
         isAgent = false,
         orders = Some(Seq(forkingOrder, aChild, bChild)),
         workflows = Some(Seq(workflow)),
-        itemStates = Some(Seq(
+        itemStates = Seq(
           LockState(Lock(LockPath("LOCK"))),
           LockState(Lock(LockPath("LOCK-1"))),
-          LockState(Lock(LockPath("LOCK-2")))))))
+          LockState(Lock(LockPath("LOCK-2"))))))
 
       val orderFailedInFork = OrderFailedInFork(Position(0) / BranchId.Lock % 0 / BranchId.try_(0) % 0 / BranchId.fork("🥕") % 0)
       assert(liveEventSource.nextEvents(aChild.id) == Seq(aChild.id <-: orderFailedInFork))

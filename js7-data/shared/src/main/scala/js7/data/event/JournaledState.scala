@@ -1,7 +1,6 @@
 package js7.data.event
 
-import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.problem.Checked
 
 /** An EventDrivenState with EventId. An aggregate. */
 trait JournaledState[S <: JournaledState[S]]
@@ -27,12 +26,6 @@ extends EventDrivenState[S, Event]
 
 object JournaledState
 {
-  final case class EventNotApplicableProblem(keyedEvent: KeyedEvent[Event], state: Any) extends Problem.Coded {
-    def arguments = Map(
-      "event" -> keyedEvent.toString.truncateWithEllipsis(100),
-      "state" -> state.toString.truncateWithEllipsis(100))
-  }
-
   trait Companion[S <: JournaledState[S]]
   extends EventDrivenState.Companion[S, Event]
   {

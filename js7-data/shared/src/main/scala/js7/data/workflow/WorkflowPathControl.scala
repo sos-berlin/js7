@@ -1,25 +1,47 @@
 package js7.data.workflow
 
-import io.circe.generic.semiauto.deriveEncoder
-import io.circe.{Codec, Decoder}
-import js7.data.item.ItemRevision
+import io.circe.Codec
+import io.circe.generic.semiauto.deriveCodec
+import js7.data.item.{ItemRevision, UnsignedSimpleItem, UnsignedSimpleItemState}
 import js7.data.workflow.position.Label
 
 final case class WorkflowPathControl(
-  path: WorkflowPath,
+  override val path: WorkflowPathControlPath,
   suspended: Boolean = false,
   skip: Set[Label] = Set.empty,
-  revision: ItemRevision = ItemRevision(0))
+  itemRevision: Option[ItemRevision] = Some(ItemRevision(0)))
+extends UnsignedSimpleItem with UnsignedSimpleItemState
+{
+  protected type Self = WorkflowPathControl
+  val companion = WorkflowPathControl
+  val item = this
+
+  def toInitialItemState = this
+
+  def rename(path: WorkflowPathControlPath) =
+    copy(path = path)
+
+  def withRevision(revision: Option[ItemRevision]) =
+    copy(itemRevision = revision)
+
+  def workflowPath = path.workflowPath
+
+  def updateItem(item: WorkflowPathControl) =
+    Right(item)
+}
 
 object WorkflowPathControl
+extends UnsignedSimpleItem.Companion[WorkflowPathControl]
+with UnsignedSimpleItemState.Companion[WorkflowPathControl]
 {
-  private val jsonDecoder: Decoder[WorkflowPathControl] =
-    c => for {
-      path <- c.get[WorkflowPath]("path")
-      suspended <- c.get[Boolean]("suspended")
-      skip <- c.getOrElse[Set[Label]]("skip")(Set.empty)
-      revision <- c.get[ItemRevision]("revision")
-    } yield WorkflowPathControl(path, suspended, skip, revision)
+  type Key = WorkflowPathControlPath
+  val Key = WorkflowPathControlPath
 
-  implicit val jsonCodec = Codec.from(jsonDecoder, deriveEncoder[WorkflowPathControl])
+  val Path = WorkflowPathControlPath
+  val cls = classOf[WorkflowPathControl]
+
+  type ItemState = WorkflowPathControl
+
+  implicit val jsonCodec: Codec.AsObject[WorkflowPathControl] =
+    deriveCodec[WorkflowPathControl]
 }

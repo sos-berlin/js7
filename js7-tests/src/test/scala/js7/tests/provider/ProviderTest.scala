@@ -28,7 +28,7 @@ import js7.data.item.{InventoryItemDiff, InventoryItemKey, InventoryItemPath, Re
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderAdded
 import js7.data.subagent.SubagentId
-import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
+import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath, WorkflowPathControlPath}
 import js7.provider.Provider
 import js7.provider.configuration.ProviderConfiguration
 import js7.tests.provider.ProviderTest._
@@ -147,7 +147,11 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
         BWorkflowPath -> List(
           Repo.Add(sign(TestWorkflow.withId(BWorkflowPath ~ V1))))))
 
-      assert(provider.testControllerDiff.await(99.s).orThrow.isEmpty)
+      assert(provider.testControllerDiff.await(99.s).orThrow == InventoryItemDiff(
+        Nil,
+        Vector(
+          WorkflowPathControlPath(AWorkflowPath),
+          WorkflowPathControlPath(BWorkflowPath))))
     }
 
     "An unknown and some invalid files" in {
@@ -209,7 +213,12 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
         InventoryItemDiff(addedOrChanged = Seq(workflow)))
 
       provider.updateControllerConfiguration(V4.some).await(99.s).orThrow
-      assert(provider.testControllerDiff.await(99.s).orThrow.isEmpty)
+      assert(provider.testControllerDiff.await(99.s).orThrow == InventoryItemDiff(
+        Nil,
+        Vector(
+          WorkflowPathControlPath(AWorkflowPath),
+          WorkflowPathControlPath(CWorkflowPath),
+          WorkflowPathControlPath(workflowPath))))
     }
 
     "stop" in {

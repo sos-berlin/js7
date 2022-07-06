@@ -13,6 +13,7 @@ import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemAddedOrChanged,
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemAddedOrChanged, UnsignedSimpleItemChanged}
 import js7.data.item.VersionedEvent.VersionedItemRemoved
 import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemPath, ItemRevision, SignableSimpleItem, SimpleItemPath, UnsignedSimpleItem, VersionedEvent, VersionedItemPath}
+import js7.data.workflow.{Workflow, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import scala.collection.View
 
 object VerifiedUpdateItemsExecutor
@@ -40,11 +41,12 @@ object VerifiedUpdateItemsExecutor
     checkItem: PartialFunction[InventoryItem, Checked[Unit]] = PartialFunction.empty)
   : Checked[Seq[KeyedEvent[NoKeyEvent]]] =
   {
-    def result: Checked[Seq[KeyedEvent[NoKeyEvent]]] =
+    def result: Checked[Seq[KeyedEvent[NoKeyEvent]]] = {
       (for {
         versionedEvents <- versionedEvents(controllerState)
         updatedState <- controllerState.applyEvents(versionedEvents)
-        simpleItemEvents <- simpleItemEvents(updatedState)
+        derivedEvents = derivedWorkflowPathControlEvents(updatedState)
+        simpleItemEvents <- simpleItemEvents(updatedState).map(_ ++ derivedEvents)
         updatedState <- updatedState.applyEvents(simpleItemEvents)
         updatedState <- updatedState.applyEvents(
           versionedEvents.view
@@ -58,6 +60,7 @@ object VerifiedUpdateItemsExecutor
           duplicateKey
         case o => o
       }
+    }
 
     def versionedEvents(controllerState: ControllerState)
     : Checked[Seq[KeyedEvent[VersionedEvent]]] =
@@ -88,6 +91,20 @@ object VerifiedUpdateItemsExecutor
                 .view ++ signedEvents ++ unsignedEvents
             }
           .map(_.map(NoKey <-: _)))
+    }
+
+    def derivedWorkflowPathControlEvents(controllerState: ControllerState): View[KeyedEvent[InventoryItemEvent]] = {
+      verifiedUpdateItems.maybeVersioned.view
+        .flatMap(_.remove)
+        .collect {
+          case workflowPath: WorkflowPath
+            if controllerState.pathTo(WorkflowPathControl)
+              .contains(WorkflowPathControlPath(workflowPath))
+              && controllerState.repo.pathToItems(Workflow).contains(workflowPath) =>
+            NoKey <-: ItemDeleted(WorkflowPathControlPath(workflowPath))
+        }
+      // Agents delete automatically WorkflowPathControl with last WorkflowPath,
+      // so not ItemDetachable is required.
     }
 
     def verifiedSimpleItemToEvent(

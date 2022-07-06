@@ -45,10 +45,9 @@ import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.state.OrderEventHandler.FollowUp
 import js7.data.state.{OrderEventHandler, StateView}
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
-import js7.data.workflow.WorkflowPathControlEvent.WorkflowPathControlUpdated
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
+import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath, WorkflowPathControl}
 import js7.journal.recover.Recovered
 import js7.journal.state.FileStatePersistence
 import js7.journal.{JournalActor, MainJournalingActor}
@@ -80,7 +79,7 @@ final class AgentOrderKeeper(
   conf: AgentConfiguration)
   (implicit protected val scheduler: Scheduler, iox: IOExecutor)
   extends MainJournalingActor[AgentState, Event]
-with Stash
+  with Stash
 {
   import conf.akkaAskTimeout
   import context.{actorOf, watch}
@@ -210,7 +209,7 @@ with Stash
             .recoverSubagents(state.idToSubagentItemState.values.toVector)
             .flatMapT(_ =>
               subagentKeeper.recoverSubagentSelections(
-                state.pathTo(SubagentSelection).values.toVector))
+                state.pathToUnsignedSimple(SubagentSelection).values.toVector))
             .map(_.orThrow))
         .materialize
         .foreach { tried =>
@@ -425,23 +424,6 @@ with Stash
         .rightAs(AgentCommand.Response.Accepted)
         .runToFuture
 
-    case AgentCommand.ControlWorkflowPath(workflowPath, suspend, skip, revision) =>
-      if (!persistence.currentState.idToWorkflow.keys.exists(_.path == workflowPath))
-        Future.successful(Left(Problem(s"Unknown $workflowPath")))
-      else
-        persistKeyedEvent(workflowPath <-: WorkflowPathControlUpdated(suspend, skip, revision)) {
-          (stampedEvent, journaledState) =>
-            if (!suspend) {
-              // Event it Workflow was already suspended.
-              // This allows the used to force continuation of Orders (just in case)
-              for (order <- persistence.currentState.orders
-                   if order.workflowPath == workflowPath) {
-                proceedWithOrder(order)
-              }
-            }
-            Right(AgentCommand.Response.Accepted)
-        }
-
     case AgentCommand.TakeSnapshot =>
       (journalActor ? JournalActor.Input.TakeSnapshot)
         .mapTo[JournalActor.Output.SnapshotTaken.type]
@@ -460,7 +442,7 @@ with Stash
             .map(_.rightAs(AgentCommand.Response.Accepted))
             .runToFuture
 
-      case item @ (_: Calendar | _: SubagentItem | _: SubagentSelection) =>
+      case item @ (_: Calendar | _: SubagentItem | _: SubagentSelection | _: WorkflowPathControl) =>
         persist(ItemAttachedToMe(item)) { (stampedEvent, journaledState) =>
           proceedWithItem(item).runToFuture
         }.flatten
@@ -519,6 +501,16 @@ with Stash
 
       case subagentSelection: SubagentSelection =>
         subagentKeeper.addOrReplaceSubagentSelection(subagentSelection)
+
+      case workflowPathControl: WorkflowPathControl =>
+        if (!workflowPathControl.suspended) {
+          // Slow !!!
+          for (order <- persistence.currentState.orders
+               if order.workflowPath == workflowPathControl.workflowPath) {
+            proceedWithOrder(order)
+          }
+        }
+        Task.right(())
 
       case _ => Task.right(())
     }
@@ -824,8 +816,6 @@ with Stash
 
       def workflowPathToId(workflowPath: WorkflowPath) =
         persistence.currentState.workflowPathToId(workflowPath)
-
-      def pathToWorkflowPathControlState = persistence.currentState.pathToWorkflowPathControlState
 
       def pathToItemState = persistence.currentState.pathToItemState
 

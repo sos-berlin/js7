@@ -213,7 +213,6 @@ object ControllerCommand extends CommonCommand.Companion
   }
 
   /** Command to control all Workflows (all versions) of a WorkflowPath. */
-  /** Command to control all Workflows (all versions) of a WorkflowPath. */
   final case class ControlWorkflowPath(
     workflowPath: WorkflowPath,
     suspend: Option[Boolean] = None,

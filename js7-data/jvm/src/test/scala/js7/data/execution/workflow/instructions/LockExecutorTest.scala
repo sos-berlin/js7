@@ -20,9 +20,9 @@ final class LockExecutorTest extends AnyFreeSpec
     isAgent = false,
     orders = Some(Seq(freeLockOrder, freeLockedOrder, occupiedLockOrder)),
     workflows = Some(Seq(workflow)),
-    itemStates = Some(Seq(
+    itemStates = Seq(
       LockState(Lock(freeLockPath, limit = 1)),
-      LockState(Lock(occupiedLockPath, limit = 1), Acquired.Exclusive(OrderId("OCCUPANT"))))))
+      LockState(Lock(occupiedLockPath, limit = 1), Acquired.Exclusive(OrderId("OCCUPANT")))))
 
   private lazy val service = new InstructionExecutorService(WallClock)
 

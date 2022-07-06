@@ -7,13 +7,13 @@ import js7.data.event.ItemContainer
 
 sealed trait UnsignedSimpleItemEvent extends InventoryItemEvent
 {
-  def key: SimpleItemPath
+  def key: UnsignedSimpleItemPath
 }
 
 object UnsignedSimpleItemEvent
 {
   sealed trait UnsignedSimpleItemAddedOrChanged extends UnsignedSimpleItemEvent with ItemAddedOrChanged {
-    def item: SimpleItem
+    def item: UnsignedSimpleItem
     assertThat(item.itemRevision.isDefined)
   }
   object UnsignedSimpleItemAddedOrChanged {

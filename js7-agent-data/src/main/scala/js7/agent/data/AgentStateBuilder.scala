@@ -11,7 +11,7 @@ import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.item.{SignableItem, SignableItemKey, SignedItemEvent, UnsignedSimpleItem, UnsignedSimpleItemPath, UnsignedSimpleItemState}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.{Order, OrderId}
-import js7.data.workflow.{Workflow, WorkflowPathControlState, WorkflowId, WorkflowPath}
+import js7.data.workflow.{Workflow, WorkflowId}
 import scala.collection.mutable
 
 final class AgentStateBuilder
@@ -29,7 +29,6 @@ extends SnapshotableStateBuilder[AgentState]
   private val fileWatchStateBuilder = new FileWatchStateHandler.Builder
   private val pathToJobResource = mutable.Map.empty[JobResourcePath, JobResource]
   private val keyToSignedItem = mutable.Map.empty[SignableItemKey, Signed[SignableItem]]
-  private val pathToWorkflowPathControlState = mutable.Map.empty[WorkflowPath, WorkflowPathControlState]
   private var _state = AgentState.empty
 
   protected def onInitializeState(state: AgentState) =
@@ -64,9 +63,6 @@ extends SnapshotableStateBuilder[AgentState]
 
     case o: AgentMetaState =>
       agentMetaState = o
-
-    case o: WorkflowPathControlState =>
-      pathToWorkflowPathControlState(o.workflowPath) = o
   }
 
   private def onSignedItemAdded(added: SignedItemEvent.SignedItemAdded): Unit = {
@@ -89,7 +85,6 @@ extends SnapshotableStateBuilder[AgentState]
       (pathToItemState.view ++ fileWatchStateBuilder.result).toMap,
       idToOrder.toMap,
       idToWorkflow.toMap,
-      pathToWorkflowPathControlState.toMap,
       pathToJobResource.toMap,
       keyToSignedItem.toMap)
   }

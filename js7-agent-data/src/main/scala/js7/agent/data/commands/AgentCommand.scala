@@ -23,11 +23,9 @@ import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.command.CommonCommand
 import js7.data.controller.ControllerId
 import js7.data.event.{EventId, ItemContainer}
-import js7.data.item.{InventoryItemKey, ItemRevision, SignableItem, UnsignedSimpleItem}
+import js7.data.item.{InventoryItemKey, SignableItem, UnsignedSimpleItem}
 import js7.data.order.{Order, OrderId, OrderMark}
 import js7.data.subagent.SubagentId
-import js7.data.workflow.WorkflowPath
-import js7.data.workflow.position.Label
 
 /**
  * @author Joacim Zschimmer
@@ -206,15 +204,6 @@ object AgentCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
 
-  final case class ControlWorkflowPath(
-    workflowPath: WorkflowPath,
-    suspend: Boolean,
-    skip: Set[Label],
-    revision: ItemRevision)
-  extends AgentCommand {
-    type Response = Response.Accepted
-  }
-
   final case class ResetSubagent(subagentId: SubagentId, force: Boolean)
   extends AgentCommand {
     type Response = Response.Accepted
@@ -237,7 +226,6 @@ object AgentCommand extends CommonCommand.Companion
       Subtype(deriveCodec[DetachItem]),
       Subtype(deriveCodec[AttachOrder]),
       Subtype(deriveCodec[DetachOrder]),
-      Subtype(deriveCodec[ControlWorkflowPath]),
       Subtype(TakeSnapshot),
       Subtype(deriveCodec[ResetSubagent]))
   }

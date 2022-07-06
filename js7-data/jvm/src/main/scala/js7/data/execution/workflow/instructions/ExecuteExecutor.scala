@@ -13,6 +13,7 @@ import js7.data.order.OrderObstacle.{WaitingForAdmission, jobParallelismLimitRea
 import js7.data.order.Outcome.Disrupted.ProcessLost
 import js7.data.order.{Order, OrderId, OrderObstacle, OrderObstacleCalculator, Outcome}
 import js7.data.state.StateView
+import js7.data.workflow.WorkflowPathControlPath
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import scala.util.Try
@@ -94,7 +95,7 @@ extends EventInstructionExecutor with PositionInstructionExecutor
 
   private def isSkippedDueToWorkflowPathControl(order: Order[Order.State], state: StateView)
   : Boolean =
-    state.pathToWorkflowPathControl.get(order.workflowPath)
+    state.pathToWorkflowPathControl.get(WorkflowPathControlPath(order.workflowPath))
       .exists(control => state.workflowPositionToLabel(order.workflowPosition)
         .toOption
         .flatten

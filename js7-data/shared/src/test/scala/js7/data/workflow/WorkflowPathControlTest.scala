@@ -11,15 +11,15 @@ final class WorkflowPathControlTest extends AnyFreeSpec
   "JSON" in {
     testJson(
       WorkflowPathControl(
-        WorkflowPath("WORKFLOW"),
+        WorkflowPathControlPath(WorkflowPath("WORKFLOW")),
         suspended = true,
-       skip = Set(Label("LABEL")),
-        ItemRevision(1)),
+        skip = Set(Label("LABEL")),
+        Some(ItemRevision(1))),
       json"""{
         "path": "WORKFLOW",
         "suspended": true,
         "skip": [ "LABEL" ],
-        "revision": 1
+        "itemRevision": 1
       }""")
   }
 }

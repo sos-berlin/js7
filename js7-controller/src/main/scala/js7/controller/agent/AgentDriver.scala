@@ -37,13 +37,11 @@ import js7.data.controller.ControllerState
 import js7.data.delegate.DelegateCouplingState.{Coupled, Resetting}
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
 import js7.data.item.ItemAttachedState.{Attachable, Attached}
-import js7.data.item.{InventoryItemEvent, InventoryItemKey, ItemRevision, SignableItem, UnsignedSimpleItem}
+import js7.data.item.{InventoryItemEvent, InventoryItemKey, SignableItem, UnsignedSimpleItem}
 import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetached}
 import js7.data.order.{Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.OrderWatchEvent
 import js7.data.subagent.{SubagentId, SubagentItemStateEvent}
-import js7.data.workflow.position.Label
-import js7.data.workflow.{WorkflowPath, WorkflowPathControlEvent}
 import js7.journal.state.StatePersistence
 import monix.eval.Task
 import monix.execution.atomic.AtomicInt
@@ -591,8 +589,7 @@ private[controller] object AgentDriver
     classOf[AgentEvent.AgentShutDown],
     classOf[SubagentItemStateEvent],
     classOf[InventoryItemEvent],
-    classOf[OrderWatchEvent],
-    classOf[WorkflowPathControlEvent])
+    classOf[OrderWatchEvent])
   private val DecoupledProblem = Problem.pure("Agent has been decoupled")
 
   def props(agentRef: AgentRef, agentRunId: Option[AgentRunId], eventId: EventId,
@@ -644,13 +641,6 @@ private[controller] object AgentDriver
     final case class Reset(force: Boolean) extends DeadLetterSuppression
 
     final case class ResetSubagent(subagentId: SubagentId, force: Boolean) extends Queueable
-
-    final case class ControlWorkflowPath(
-      workflowPath: WorkflowPath,
-      suspend: Boolean,
-      skip: Set[Label],
-      revision: ItemRevision)
-    extends Queueable
   }
 
   object Output {

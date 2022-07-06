@@ -23,7 +23,7 @@ import js7.data.order.{Order, OrderId, OrderObstacleCalculator}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentSelection, SubagentSelectionId}
 import js7.data.value.Value
-import js7.data.workflow.WorkflowPath
+import js7.data.workflow.{WorkflowPath, WorkflowPathControlPath}
 import js7.data_for_java.agent.{JAgentRef, JAgentRefState}
 import js7.data_for_java.board.{JBoard, JBoardState}
 import js7.data_for_java.calendar.JCalendar
@@ -65,7 +65,7 @@ extends JJournaledState[JControllerState, ControllerState]
   /** Looks up an AgentRef Item. */
   @Nonnull
   def pathToAgentRef: java.util.Map[AgentPath, JAgentRef] =
-    asScala.pathTo(AgentRef)
+    asScala.pathToUnsignedSimple(AgentRef)
       .mapValues(JAgentRef(_))
       .asJava
 
@@ -84,7 +84,7 @@ extends JJournaledState[JControllerState, ControllerState]
 
   @Nonnull
   def idToSubagentItem: java.util.Map[SubagentId, JSubagentItem] =
-    asScala.pathTo(SubagentItem)
+    asScala.pathToUnsignedSimple(SubagentItem)
       .mapValues(JSubagentItem(_))
       .asJava
 
@@ -96,7 +96,7 @@ extends JJournaledState[JControllerState, ControllerState]
 
   @Nonnull
   def idToSubagentSelection: java.util.Map[SubagentSelectionId, JSubagentSelection] =
-    asScala.pathTo(SubagentSelection)
+    asScala.pathToUnsignedSimple(SubagentSelection)
       .mapValues(JSubagentSelection(_))
       .asJava
 
@@ -159,15 +159,19 @@ extends JJournaledState[JControllerState, ControllerState]
       .mapValues(toJava)
       .asJava
 
-  // SLOW !!!
   @Nonnull
   def workflowPathControlToIgnorantAgent: JMap[WorkflowPath, JSet[AgentPath]] =
-    asScala.workflowPathControlToIgnorantAgents.view.mapValues(_.asJava).asJava
+    asScala
+      .workflowPathControlToIgnorantAgents
+      .map { case (k, v) => k.workflowPath -> v.asJava }
+      .toMap
+      .asJava
 
-  // SLOW !!!
   @Nonnull
   def singleWorkflowPathControlToIgnorantAgents(workflowPath: WorkflowPath): JSet[AgentPath] =
-    asScala.singleWorkflowPathControlToIgnorantAgents(workflowPath).asJava
+    asScala
+      .singleWorkflowPathControlToIgnorantAgents(WorkflowPathControlPath(workflowPath))
+      .asJava
 
   @Nonnull
   def deletionMarkedItems: java.util.Set[InventoryItemKey] =

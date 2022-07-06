@@ -62,7 +62,7 @@ import js7.data.item.BasicItemEvent.{ItemAttached, ItemAttachedToMe, ItemDeleted
 import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemEvent}
-import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, ItemAddedOrChanged, SignableItemKey, UnsignedSimpleItemPath}
+import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, ItemAddedOrChanged, ItemRevision, SignableItemKey, UnsignedSimpleItem, UnsignedSimpleItemPath}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderNoticePosted, OrderNoticePostedV2_3, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath, OrderWatchState}
@@ -72,9 +72,8 @@ import js7.data.state.OrderEventHandler.FollowUp
 import js7.data.subagent.SubagentItemStateEvent.{SubagentEventsObserved, SubagentResetStartedByController}
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
 import js7.data.value.expression.scopes.NowScope
-import js7.data.workflow.WorkflowPathControlEvent.{WorkflowPathControlAttached, WorkflowPathControlUpdated}
 import js7.data.workflow.position.WorkflowPosition
-import js7.data.workflow.{Instruction, Workflow, WorkflowPath, WorkflowPathControl, WorkflowPathControlState}
+import js7.data.workflow.{Instruction, Workflow, WorkflowPathControl, WorkflowPathControlPath}
 import js7.journal.recover.Recovered
 import js7.journal.state.FileStatePersistence
 import js7.journal.{CommitOptions, JournalActor, MainJournalingActor}
@@ -82,7 +81,7 @@ import monix.eval.Task
 import monix.execution.cancelables.SerialCancelable
 import monix.execution.{Cancelable, Scheduler}
 import scala.collection.immutable.VectorBuilder
-import scala.collection.mutable
+import scala.collection.{View, mutable}
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success, Try}
@@ -306,7 +305,7 @@ with MainJournalingActor[ControllerState, Event]
         ).throwable
       this._controllerState = controllerState
       //controllerMetaState = controllerState.controllerMetaState.copy(totalRunningTime = recovered.totalRunningTime)
-      for (agentRef <- controllerState.pathTo(AgentRef).values) {
+      for (agentRef <- controllerState.pathToUnsignedSimple(AgentRef).values) {
         val agentRefState = controllerState.pathTo(AgentRefState).getOrElse(agentRef.path, AgentRefState(agentRef))
         registerAgent(agentRef, agentRefState.agentRunId, eventId = agentRefState.eventId)
       }
@@ -376,7 +375,8 @@ with MainJournalingActor[ControllerState, Event]
           Timezone(ZoneId.systemDefault.getId),
           totalRunningTime = journalHeader.totalRunningTime)
 
-        val events = maybeControllerInitialized :+ controllerReady :++
+        val events = maybeControllerInitialized :+
+          controllerReady :++
           _controllerState.nextOrderWatchOrderEvents
 
         persistMultiple(events) { (_, updatedState) =>
@@ -386,6 +386,10 @@ with MainJournalingActor[ControllerState, Event]
             .runToFuture
             .map(Internal.Ready.apply)
             .pipeTo(self)
+
+          for (path <- _controllerState.pathTo(WorkflowPathControl).keys) {
+            proceedWithItem(path)
+          }
         }
       }
 
@@ -402,15 +406,6 @@ with MainJournalingActor[ControllerState, Event]
       // Any ordering when continuing orders???
       proceedWithOrders(_controllerState.idToOrder.keys)
       orderQueue.enqueue(_controllerState.idToOrder.keys)
-
-      _controllerState.workflowPathControlToIgnorantAgents
-        .foreach { case (workflowPath, agentPaths) =>
-          for (agentPath <- agentPaths) {
-            attachWorkflowPathControlToAgent(
-              _controllerState.pathToWorkflowPathControl(workflowPath),
-              agentPath)
-          }
-        }
 
       // Start fetching events from Agents after AttachOrder has been sent to AgentDrivers.
       // This is to handle race-condition: An Agent may have already completed an order.
@@ -543,13 +538,6 @@ with MainJournalingActor[ControllerState, Event]
                           case _: SubagentEventsObserved => Nil  // Not needed
                           case _ => Timestamped(keyedEvent) :: Nil
                         }
-
-                      case KeyedEvent(workflowPath: WorkflowPath, event: WorkflowPathControlUpdated) =>
-                        // If event.revision != WorkflowPathControl.revision,
-                        // then the event is informational only.
-                        Timestamped(
-                          workflowPath <-: WorkflowPathControlAttached(agentPath, event.revision)
-                        ) :: Nil
 
                       case _ =>
                         logger.error(s"Unknown event received from ${agentEntry.agentPath}: $keyedEvent")
@@ -982,53 +970,39 @@ with MainJournalingActor[ControllerState, Event]
     _controllerState.repo.pathToItems(Workflow).checked(cmd.workflowPath) match {
       case Left(problem) => Future.successful(Left(problem))
       case Right(_) =>
-        val control = _controllerState.pathToWorkflowPathControl
-          .getOrElse(cmd.workflowPath, WorkflowPathControl(cmd.workflowPath))
-        // Continue even if WorkflowPathControl is not changed.
-        // This allows the caller to force the redistribution of the WorkflowPathControl.
-        val event = WorkflowPathControlUpdated(
-          suspended = cmd.suspend getOrElse control.suspended,
-          control.skip
+        val path = WorkflowPathControlPath(cmd.workflowPath)
+        val (itemState, isNew) = _controllerState
+          .pathToUnsignedSimple(WorkflowPathControl)
+          .get(path) match {
+            case None => WorkflowPathControl(path) -> true
+            case Some(o) => o -> false
+          }
+        var item = itemState.item
+        item = item.copy(
+          suspended = cmd.suspend.fold(item.suspended)(identity),
+          skip = item.skip
             -- cmd.skip.filterNot(_._2).keys
             ++ cmd.skip.filter(_._2).keys,
-          control.revision.next)
-        persistKeyedEvent(cmd.workflowPath <-: event) { (stamped, updated) =>
-          handleEvents(stamped :: Nil, updated)
-          val controlState = updated.pathToWorkflowPathControlState_(cmd.workflowPath)
-          attachWorkflowPathControlToAgents(controlState)
-          if (!controlState.workflowPathControl.suspended) {
+          itemRevision = Some(item.itemRevision.fold(ItemRevision.Initial/*not expected*/)(_.next)))
+        val event = if (isNew) UnsignedSimpleItemAdded(item) else UnsignedSimpleItemChanged(item)
+
+        val keyedEvents = Vector(event)
+          .concat(_controllerState.updatedWorkflowPathControlAttachedEvents(item))
+          .map(NoKey <-: _)
+
+        // Continue even if WorkflowPathControl is not changed.
+        // This allows the caller to force the redistribution of the WorkflowPathControl.
+        persistTransactionAndSubsequentEvents(keyedEvents) { (stamped, updated) =>
+          handleEvents(stamped, updated)
+          proceedWithItem(path)
+          val workflowPathControl = updated.pathTo(WorkflowPathControl)(path)
+          if (!workflowPathControl.item.suspended) {
             orderQueue.enqueue(
-              updated.orders.filter(_.workflowPath == controlState.workflowPath).map(_.id))
+              updated.orders.filter(_.workflowPath == workflowPathControl.workflowPath).map(_.id))
           }
           Right(ControllerCommand.Response.Accepted)
         }
       }
-
-  private def attachWorkflowPathControlToAgents(controlState: WorkflowPathControlState): Unit =
-    // For each Workflow version of controlState.workflowPath
-    _controllerState.repo.pathToItems(Workflow).checked(controlState.workflowPath)
-      .foreach { workflows =>
-        // Send WorkflowPathControl to each Agent that is referenced by an attached Workflow.
-        for (
-          workflow <- workflows.view;
-          agentPath <- workflow.referencedAgentPaths
-          if _controllerState.agentAttachments.itemToDelegateToAttachedState.get(workflow.id)
-            .exists(_.get(agentPath).exists(_.isAttachableOrAttached))
-          if !controlState.attachedToAgents.contains(agentPath)
-        ) {
-          attachWorkflowPathControlToAgent(controlState.workflowPathControl, agentPath)
-        }
-      }
-
-  private def attachWorkflowPathControlToAgent(control: WorkflowPathControl, agentPath: AgentPath): Unit = {
-    // WorkflowPathControlAttaching event, damit Control nicht mit jedem Auftrag geschickt wird, bis
-    // WorkflowPathControlAttached.
-    agentRegister(agentPath).actor ! AgentDriver.Input.ControlWorkflowPath(
-      control.path,
-      control.suspended,
-      control.skip,
-      control.revision)
-  }
 
   private def logEvent(event: Event): Unit =
     event match {
@@ -1404,20 +1378,10 @@ with MainJournalingActor[ControllerState, Event]
               actor ! AgentDriver.Input.AttachSignedItem(signedItem)
             }
 
-          // Maybe attach WorkflowPathControl
-          _controllerState.pathToWorkflowPathControlState.get(workflow.path)
-            .filterNot(_.attachedToAgents contains agentPath)
-            .map(_.workflowPathControl)
-            .foreach(
-              attachWorkflowPathControlToAgent(_, agentPath))
-
           // Maybe attach more required Items
-          workflow.referencedAttachableToAgentUnsignedPaths
-            .flatMap(_controllerState.pathToUnsignedSimpleItem.get)
-            .filter(isDetachedOrAttachable(_, agentPath))
-            .foreach { item =>
-                actor ! AgentDriver.Input.AttachUnsignedItem(item)
-            }
+          unsignedItemsToBeAttached(workflow, agentPath).foreach { item =>
+            actor ! AgentDriver.Input.AttachUnsignedItem(item)
+          }
 
           orderEntry.triedToAttached = true
           // TODO AttachOrder mit parent orders!
@@ -1427,6 +1391,23 @@ with MainJournalingActor[ControllerState, Event]
         }
       }
     }
+
+  private def unsignedItemsToBeAttached(workflow: Workflow, agentPath: AgentPath)
+  : View[UnsignedSimpleItem] = {
+    var result = workflow
+      .referencedAttachableToAgentUnsignedPaths
+      .view
+      .flatMap(_controllerState.pathToUnsignedSimpleItem.get)
+      .filter(isDetachedOrAttachable(_, agentPath))
+
+    if (_controllerState.workflowIdToOrders contains workflow.id) {
+      _controllerState.keyTo(WorkflowPathControl)
+        .get(WorkflowPathControlPath(workflow.path))
+        .foreach(result +:= _)
+    }
+
+    result
+  }
 
   private def checkedWorkflowAndAgentEntry(order: Order[Order.State]): Option[(Signed[Workflow], AgentEntry)] =
     order.attachedState match {

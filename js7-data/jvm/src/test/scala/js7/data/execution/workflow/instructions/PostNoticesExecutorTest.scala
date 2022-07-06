@@ -24,7 +24,7 @@ final class PostNoticesExecutorTest extends AnyFreeSpec
       isAgent = false,
       orders = Some(Nil),
       workflows = Some(Seq(postingWorkflow, expecting02or13Workflow, expecting0Workflow)),
-      itemStates = Some(boards.map(BoardState(_))))
+      itemStates = boards.map(BoardState(_)))
 
     // PostNotice board0, board1
     locally {

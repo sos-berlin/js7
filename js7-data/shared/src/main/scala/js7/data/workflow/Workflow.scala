@@ -140,13 +140,13 @@ extends VersionedItem
       ) !! Problem("Cycle instruction requires calendarPath"))
 
   lazy val referencedAttachableToAgentUnsignedPaths
-  : Seq[InventoryItemPath.AttachableToAgent with UnsignedSimpleItemPath] =
+  : Vector[InventoryItemPath.AttachableToAgent with UnsignedSimpleItemPath] =
     referencedItemPaths
       .collect { case o: InventoryItemPath.AttachableToAgent with UnsignedSimpleItemPath => o }
       .toVector
 
   lazy val referencedAttachableToAgentSignablePaths
-  : Seq[InventoryItemPath.AttachableToAgent with SignableSimpleItemPath] =
+  : Vector[InventoryItemPath.AttachableToAgent with SignableSimpleItemPath] =
     referencedItemPaths
       .collect { case o: InventoryItemPath.AttachableToAgent with SignableSimpleItemPath => o }
       .toVector

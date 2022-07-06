@@ -13,17 +13,19 @@ import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
-import js7.data.controller.ControllerCommand
+import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, ControlWorkflowPath}
 import js7.data.event.EventId
-import js7.data.item.BasicItemEvent.ItemDetached
+import js7.data.event.KeyedEvent.NoKey
+import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemDetached}
+import js7.data.item.ItemAttachedState.Attached
 import js7.data.item.ItemOperation.{AddVersion, RemoveVersioned}
+import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemAddedOrChanged, UnsignedSimpleItemChanged}
 import js7.data.item.{ItemRevision, VersionId}
 import js7.data.order.OrderEvent.{OrderAttached, OrderFinished, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderId, OrderObstacle, OrderObstacleCalculator}
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.workflow.WorkflowPathControlEvent.{WorkflowPathControlAttached, WorkflowPathControlUpdated}
 import js7.data.workflow.instructions.Prompt
-import js7.data.workflow.{Workflow, WorkflowPath, WorkflowPathControl, WorkflowPathControlState}
+import js7.data.workflow.{Workflow, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import js7.proxy.ControllerApi
 import js7.tests.ControlWorkflowPathSuspendWorkflowTest._
 import js7.tests.jobs.SemaphoreJob
@@ -61,11 +63,16 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
   }
 
   "ControlWorkflowPath suspend=true" in {
-    aAgent = directoryProvider.startAgent(aAgentPath).await(99.s)
     controller = directoryProvider.startController().await(99.s)
+    def controllerState = controller.controllerState.await(99.s)
     implicit val controllerApi = directoryProvider.newControllerApi(controller)
 
-    var eventId = suspendWorkflow(aWorkflow.path, true, ItemRevision(1))
+    var eventId = suspendWorkflow(aWorkflow.path, true, ItemRevision(1),
+      UnsignedSimpleItemAdded.apply)
+
+    assert(controllerState.workflowPathControlToIgnorantAgents.isEmpty)
+    assert(controllerState
+      .singleWorkflowPathControlToIgnorantAgents(WorkflowPathControlPath(aWorkflow.path)).isEmpty)
 
     val aOrderId = OrderId("A")
     controllerApi.addOrder(FreshOrder(aOrderId, aWorkflow.path, deleteWhenTerminated = true))
@@ -73,20 +80,22 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
     intercept[TimeoutException](
       eventWatch.await[OrderStarted](_.key == aOrderId, after = eventId, timeout = 500.ms))
 
-    eventId = suspendWorkflow(aWorkflow.path, false, ItemRevision(2))
+    eventId = suspendWorkflow(aWorkflow.path, false, ItemRevision(2),
+      UnsignedSimpleItemChanged.apply)
     eventId = eventWatch.await[OrderPrompted](_.key == aOrderId, after = eventId).head.eventId
 
     def orderObstacles: Checked[Seq[(OrderId, Set[OrderObstacle])]] =
-      new OrderObstacleCalculator(controller.controllerState.await(99.s))
+      new OrderObstacleCalculator(controllerState)
         .ordersToObstacles(Seq(aOrderId), Timestamp.now)
         .map(_.toSeq)
 
     assert(orderObstacles == Right(Seq(
       aOrderId -> Set[OrderObstacle](OrderObstacle.WaitingForCommand))))
 
-    eventId = suspendWorkflow(aWorkflow.path, true, ItemRevision(3))
+    eventId = suspendWorkflow(aWorkflow.path, true, ItemRevision(3),
+      UnsignedSimpleItemChanged.apply)
 
-    controllerApi.executeCommand(ControllerCommand.AnswerOrderPrompt(aOrderId)).await(99.s)
+    controllerApi.executeCommand(AnswerOrderPrompt(aOrderId)).await(99.s)
     // OrderPromptAnswered happens despite suspended Workflow
     eventId = eventWatch.await[OrderPromptAnswered](_.key == aOrderId, after = eventId)
       .head.eventId
@@ -94,87 +103,137 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
     assert(orderObstacles == Right(Seq(
       aOrderId -> Set[OrderObstacle](OrderObstacle.WorkflowSuspended))))
 
+    aAgent = directoryProvider.startAgent(aAgentPath).await(99.s)
     intercept[TimeoutException] {
       eventWatch.await[OrderAttached](_.key == aOrderId, after = eventId, timeout = 500.ms)
     }
 
-    eventId = suspendWorkflow(aWorkflow.path, false, ItemRevision(4))
+    eventId = suspendWorkflow(aWorkflow.path, false, ItemRevision(4),
+      UnsignedSimpleItemChanged.apply)
 
     eventId = eventWatch
       .await[OrderStdoutWritten](_ == aOrderId <-: OrderStdoutWritten("ASemaphoreJob\n"), after = eventId)
       .head.eventId
 
-    eventId = suspendWorkflow(aWorkflow.path, true, ItemRevision(5))
-    assert(eventWatch.await[WorkflowPathControlAttached](after = eventId).map(_.value) == Seq(
-      aWorkflow.path <-: WorkflowPathControlAttached(aAgentPath, ItemRevision(5))))
+    eventId = suspendWorkflow(aWorkflow.path, true, ItemRevision(5),
+      UnsignedSimpleItemChanged.apply)
+    assert(eventWatch.await[ItemAttached](after = eventId).map(_.value) == Seq(
+      NoKey <-:
+        ItemAttached(WorkflowPathControlPath(aWorkflow.path), Some(ItemRevision(5)), aAgentPath)))
 
     ASemaphoreJob.continue()
     intercept[TimeoutException] {
       eventWatch.await[OrderProcessingStarted](_.key == aOrderId, after = eventId, timeout = 500.ms)
     }
 
-    eventId = suspendWorkflow(aWorkflow.path, false, ItemRevision(6))
+    eventId = suspendWorkflow(aWorkflow.path, false, ItemRevision(6),
+      UnsignedSimpleItemChanged.apply)
     eventWatch.await[OrderFinished](_.key == aOrderId, after = eventId)
 
-    controller.controllerState.await(99.s).pathToWorkflowPathControlState_(aWorkflow.path) ==
-      WorkflowPathControlState(
-        WorkflowPathControl(
-          aWorkflow.path,
-          suspended = false,
-          revision = ItemRevision(6)),
-        attachedToAgents = Set(aAgentPath))
+    assert(controller.controllerState.await(99.s)
+      .pathTo(WorkflowPathControl)(WorkflowPathControlPath(aWorkflow.path)) ==
+      WorkflowPathControl(
+        WorkflowPathControlPath(aWorkflow.path),
+        suspended = false,
+        itemRevision = Some(ItemRevision(6))))
 
-    suspendWorkflow(aWorkflow.path, true, ItemRevision(7))
+    assert(controller.controllerState.await(99.s)
+      .itemToAgentToAttachedState(WorkflowPathControlPath(aWorkflow.path)) ==
+      Map(aAgentPath -> Attached(Some(ItemRevision(6)))))
+
+    aAgent.terminate().await(99.s)
+
+    eventId = suspendWorkflow(aWorkflow.path, true, ItemRevision(7),
+      UnsignedSimpleItemChanged.apply)
+    eventWatch.await[ItemAttachable](
+      _.event.key == WorkflowPathControlPath(aWorkflow.path),
+      after = eventId)
+
+    assert(controllerState.workflowPathControlToIgnorantAgents.toMap == Map(
+      WorkflowPathControlPath(aWorkflow.path) -> Set(aAgentPath)))
+    assert(controllerState
+      .singleWorkflowPathControlToIgnorantAgents(WorkflowPathControlPath(aWorkflow.path)) ==
+      Set(aAgentPath))
+
     controllerApi.stop.await(99.s)
   }
 
+  "After Agent recouples, the attachable WorkflowPathControl is attached" in {
+    def controllerState = controller.controllerState.await(99.s)
+    val eventId = eventWatch.lastAddedEventId
+    aAgent = directoryProvider.startAgent(aAgentPath).await(99.s)
+
+    eventWatch.await[ItemAttached](
+      _.event.key == WorkflowPathControlPath(aWorkflow.path),
+      after = eventId)
+
+    assert(controllerState.workflowPathControlToIgnorantAgents.toMap.isEmpty)
+    assert(controllerState
+      .singleWorkflowPathControlToIgnorantAgents(WorkflowPathControlPath(aWorkflow.path)).isEmpty)
+  }
+
   "After Controller recovery, the WorkflowPathControl is attached to the remaining Agents" in {
-    val bOrderId = OrderId("B")
     bAgent = directoryProvider.startAgent(bAgentPath).await(99.s)
     var agentEventId = bAgent.eventWatch.await[AgentReady]().last.eventId
+    var eventId = eventWatch.lastAddedEventId
+    val bOrderId = OrderId("B")
 
     locally {
-      val eventWatch = controller.eventWatch
-      val eventId = eventWatch.lastAddedEventId
       implicit val controllerApi = directoryProvider.newControllerApi(controller)
       controllerApi.addOrder(FreshOrder(bOrderId, bWorkflow.path, deleteWhenTerminated = true))
         .await(99.s)
-      eventWatch
-        .await[OrderStdoutWritten](_ == bOrderId <-: OrderStdoutWritten("B1SemaphoreJob\n"), after = eventId)
+      eventWatch.await[OrderStdoutWritten](
+        _ == bOrderId <-: OrderStdoutWritten("B1SemaphoreJob\n"),
+        after = eventId)
 
       val terminated = bAgent.terminate().runToFuture
+      sleep(500.ms)  // Wait until AgentCommand.ShutDown takes effect
       B1SemaphoreJob.continue()
       terminated.await(99.s)
 
-      suspendWorkflow(bWorkflow.path, false, ItemRevision(1))
+      suspendWorkflow(bWorkflow.path, true, ItemRevision(1),
+        UnsignedSimpleItemAdded.apply)
+      eventWatch.await[ItemAttachable](
+        _.event.key == WorkflowPathControlPath(bWorkflow.path),
+        after = eventId)
+
+      controllerApi.stop.await(99.s)
     }
 
     controller.terminate().await(99.s)
 
     bAgent = directoryProvider.startAgent(bAgentPath).await(99.s)
-    bAgent.eventWatch.await[AgentReady](after = agentEventId)
+    agentEventId = bAgent.eventWatch.await[AgentReady](after = agentEventId).head.eventId
     agentEventId = bAgent.eventWatch
-      .await[OrderStdoutWritten](_ == bOrderId <-: OrderStdoutWritten("B2SemaphoreJob\n"), after = agentEventId)
+      .await[OrderStdoutWritten](
+        _ == bOrderId <-: OrderStdoutWritten("B2SemaphoreJob\n"),
+        after = agentEventId)
       .head.eventId
 
     controller = directoryProvider.startController().await(99.s)
     implicit val controllerApi = directoryProvider.newControllerApi(controller)
-    val eventWatch = controller.eventWatch
-    val eventId = eventWatch.lastAddedEventId
+    eventId = eventWatch.lastFileTornEventId
 
+    // Events at recovery
     assert(
-      eventWatch.await[WorkflowPathControlAttached](_.key == bWorkflow.path, after = eventId)
+      eventWatch
+        .await[ItemAttached](_.event.key == WorkflowPathControlPath(bWorkflow.path), after = eventId)
         .map(_.value) ==
-        Seq(bWorkflow.path <-: WorkflowPathControlAttached(bAgentPath, ItemRevision(1))))
+        Seq(NoKey <-: ItemAttached(WorkflowPathControlPath(bWorkflow.path), Some(ItemRevision(1)), bAgentPath)))
 
-    suspendWorkflow(bWorkflow.path, false, ItemRevision(2))
+    suspendWorkflow(bWorkflow.path, false, ItemRevision(2), UnsignedSimpleItemChanged.apply)
     B2SemaphoreJob.continue()
     eventWatch.await[OrderFinished](_.key == bOrderId)
 
-    controller.controllerState.await(99.s).pathToWorkflowPathControlState_(bWorkflow.path) ==
-      WorkflowPathControlState(
-        WorkflowPathControl(bWorkflow.path, suspended = true, revision = ItemRevision(1)),
-        attachedToAgents = Set(bAgentPath))
+    controller.controllerState.await(99.s)
+      .pathTo(WorkflowPathControl)(WorkflowPathControlPath(bWorkflow.path)) ==
+        WorkflowPathControl(
+          WorkflowPathControlPath(bWorkflow.path),
+          suspended = true,
+          itemRevision = Some(ItemRevision(1)))
+    controller.controllerState.await(99.s)
+      .itemToAgentToAttachedState(WorkflowPathControlPath(bWorkflow.path)) ==
+      Map(bAgentPath -> Attached(Some(ItemRevision(1))))
   }
 
   "WorkflowPathControl disappears with the last Workflow version" in {
@@ -194,20 +253,26 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
       .head.value.event
       == ItemDetached(bWorkflow.id, bAgentPath))
 
-    assert(aAgent.currentAgentState().pathToWorkflowPathControlState.isEmpty)
-    assert(controller.controllerState.await(99.s).pathToWorkflowPathControlState.isEmpty)
+    // Agent has implicitly deleted WorkflowPathControl
+    assert(bAgent.currentAgentState().pathTo(WorkflowPathControl).isEmpty)
+    // Controller has implicitly deleted WorkflowPathControl
+    assert(controller.controllerState.await(99.s).pathTo(WorkflowPathControl).isEmpty)
   }
 
-  private def suspendWorkflow(workflowPath: WorkflowPath, suspend: Boolean, revision: ItemRevision)
+  private def suspendWorkflow(workflowPath: WorkflowPath, suspend: Boolean, revision: ItemRevision,
+    workflowPathControlToEvent: WorkflowPathControl => UnsignedSimpleItemAddedOrChanged)
     (implicit controllerApi: ControllerApi)
   : EventId = {
     val eventId = eventWatch.lastAddedEventId
     controllerApi
-      .executeCommand(ControllerCommand.ControlWorkflowPath(workflowPath, suspend = Some(suspend)))
+      .executeCommand(ControlWorkflowPath(workflowPath, suspend = Some(suspend)))
       .await(99.s).orThrow
-    val keyedEvents = eventWatch.await[WorkflowPathControlUpdated](after = eventId)
+    val keyedEvents = eventWatch.await[UnsignedSimpleItemAddedOrChanged](after = eventId)
     assert(keyedEvents.map(_.value) == Seq(
-      workflowPath <-: WorkflowPathControlUpdated(suspend, Set.empty, revision)))
+      NoKey <-: workflowPathControlToEvent(
+        WorkflowPathControl(WorkflowPathControlPath(workflowPath),
+          suspended = suspend,
+          itemRevision = Some(revision)))))
     keyedEvents.last.eventId
   }
 }

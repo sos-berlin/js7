@@ -7,16 +7,17 @@ import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.ControlWorkflowPath
 import js7.data.event.EventId
+import js7.data.event.KeyedEvent.NoKey
 import js7.data.item.BasicItemEvent.ItemDetached
 import js7.data.item.ItemOperation.{AddVersion, RemoveVersioned}
+import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemAddedOrChanged}
 import js7.data.item.{ItemRevision, VersionId}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.workflow.WorkflowPathControlEvent.WorkflowPathControlUpdated
 import js7.data.workflow.instructions.If
 import js7.data.workflow.position.{Label, Position}
-import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.data.workflow.{Workflow, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import js7.tests.ControlWorkflowPathSkipJobTest._
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
@@ -96,8 +97,8 @@ extends AnyFreeSpec with ControllerAgentForScalaTest
       .head.value.event
       == ItemDetached(bWorkflow.id, agentPath))
 
-    assert(agent.currentAgentState().pathToWorkflowPathControlState.isEmpty)
-    assert(controller.controllerState.await(99.s).pathToWorkflowPathControlState.isEmpty)
+    assert(agent.currentAgentState().pathTo(WorkflowPathControl).isEmpty)
+    assert(controller.controllerState.await(99.s).pathTo(WorkflowPathControl).isEmpty)
   }
 
   private def skipJob(workflowPath: WorkflowPath, skip: Boolean, revision: ItemRevision)
@@ -107,9 +108,13 @@ extends AnyFreeSpec with ControllerAgentForScalaTest
       .executeCommand(ControlWorkflowPath(workflowPath, skip = Map(
         label -> skip)))
       .await(99.s).orThrow
-    val keyedEvents = eventWatch.await[WorkflowPathControlUpdated](after = eventId)
+    val keyedEvents = eventWatch.await[UnsignedSimpleItemAddedOrChanged](after = eventId)
     assert(keyedEvents.map(_.value) == Seq(
-      workflowPath <-: WorkflowPathControlUpdated(false, Set(label).filter(_ => skip), revision)))
+      NoKey <-: UnsignedSimpleItemAdded(
+        WorkflowPathControl(
+          WorkflowPathControlPath(workflowPath),
+          skip = Set(label).filter(_ => skip),
+          itemRevision = Some(revision)))))
     keyedEvents.last.eventId
   }
 }

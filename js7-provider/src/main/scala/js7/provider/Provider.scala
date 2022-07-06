@@ -28,7 +28,7 @@ import js7.data.controller.ControllerState.signableItemJsonCodec
 import js7.data.item.ItemOperation.AddVersion
 import js7.data.item.{InventoryItem, InventoryItemDiff, InventoryItemDiff_, InventoryItemPath, ItemOperation, ItemSigner, SignableItem, UnsignedSimpleItem, VersionId, VersionedItem, VersionedItemPath}
 import js7.data.subagent.SubagentItem
-import js7.data.workflow.WorkflowPath
+import js7.data.workflow.{WorkflowPath, WorkflowPathControl}
 import js7.provider.Provider._
 import js7.provider.configuration.ProviderConfiguration
 import js7.proxy.ControllerApi
@@ -190,7 +190,7 @@ extends HasCloser with Observing with ProvideActorSystem
 
   private def fetchControllerItems: Task[Iterable[InventoryItem]] =
     httpControllerApi.snapshot()
-      .map(_.items)
+      .map(_.items.filterNot(_.isInstanceOf[WorkflowPathControl]))
 
   private def readDirectory(): Vector[DirectoryReader.Entry] =
     DirectoryReader.entries(conf.liveDirectory).toVector

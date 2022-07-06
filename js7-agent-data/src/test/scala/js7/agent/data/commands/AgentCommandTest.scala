@@ -22,7 +22,7 @@ import js7.data.subagent.SubagentId
 import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.WorkflowPath
-import js7.data.workflow.position.{Label, Position}
+import js7.data.workflow.position.Position
 import js7.data.workflow.test.TestSetting.SimpleTestWorkflow
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 import org.scalatest.freespec.AnyFreeSpec
@@ -299,22 +299,6 @@ final class AgentCommandTest extends AnyFreeSpec
           }
         }""")
     }
-  }
-
-  "ControlWorkflowPath" in {
-    check(
-      AgentCommand.ControlWorkflowPath(
-        WorkflowPath("WORKFLOW"),
-        suspend = true,
-        skip = Set(Label("LABEL")),
-        ItemRevision(1)),
-      json"""{
-        "TYPE": "ControlWorkflowPath",
-        "workflowPath": "WORKFLOW",
-        "suspend": true,
-        "skip": [ "LABEL" ],
-        "revision": 1
-      }""")
   }
 
   "ResetSubagent" in {

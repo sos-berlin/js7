@@ -9,7 +9,7 @@ trait InventoryItemState
 
   val item: companion.Item
 
-  final def path: item.companion.Path =
+  def path: item.companion.Path =
     item.path
 
   def toSnapshotObservable: Observable[Any] =
