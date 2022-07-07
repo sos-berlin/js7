@@ -53,7 +53,7 @@ object CatsExpressionParser
       .map(ListExpression(_))
 
   private val parenthesizedExpression: Parser[Expression] =
-    inParentheses(expression) | listExpr
+    inParentheses(expression)
 
   private val trueConstant: Parser[BooleanConstant] =
     keyword("true").as(BooleanConstant(true))
