@@ -4,6 +4,7 @@ import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.time.Timestamp
 import js7.base.utils.Big
+import js7.data.order.OrderEvent.OrderNoticesExpected
 import js7.data.order.OrderId
 
 /** A NoticePlace may contain both a notice and an expectation,
@@ -24,6 +25,9 @@ object NoticePlace
 }
 
 final case class Notice(id: NoticeId, boardPath: BoardPath, endOfLife: Timestamp)
+{
+  def toExpected = OrderNoticesExpected.Expected(boardPath, id)
+}
 object Notice
 {
   implicit val jsonCodec: Codec.AsObject[Notice] = deriveCodec[Notice]

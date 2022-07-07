@@ -75,7 +75,14 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
     ).await(99.s).orThrow
     for (orderId <- expecting01OrderIds) eventWatch.await[OrderNoticesExpected](_.key == orderId)
 
+    assert(controllerState.orderToAvailableNotices(expecting01OrderIds(0)).isEmpty)
+    assert(controllerState.orderToStillExpectedNotices(expecting01OrderIds(0)).toSet ==
+      Set(notice0.toExpected, notice1.toExpected))
+
     controller.runOrder(FreshOrder(OrderId(s"#$qualifier#POSTING-1-2"), posting12Workflow.path))
+
+    assert(controllerState.orderToAvailableNotices(expecting01OrderIds(0)) == Seq(notice1))
+    assert(controllerState.orderToStillExpectedNotices(expecting01OrderIds(0)) == Seq(notice0.toExpected))
 
     assert(controllerState.pathTo(BoardState).toMap == Map(
       board0.path -> BoardState(

@@ -25,7 +25,7 @@ import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentS
 import js7.data.value.Value
 import js7.data.workflow.{WorkflowPath, WorkflowPathControlPath}
 import js7.data_for_java.agent.{JAgentRef, JAgentRefState}
-import js7.data_for_java.board.{JBoard, JBoardState}
+import js7.data_for_java.board.{JBoard, JBoardState, JNotice}
 import js7.data_for_java.calendar.JCalendar
 import js7.data_for_java.cluster.JClusterState
 import js7.data_for_java.common.JJournaledState
@@ -33,6 +33,7 @@ import js7.data_for_java.common.MoreJavaConverters.MapViewHasAsJava
 import js7.data_for_java.item.{JInventoryItem, JRepo}
 import js7.data_for_java.jobresource.JJobResource
 import js7.data_for_java.lock.{JLock, JLockState}
+import js7.data_for_java.order.JOrderEvent.JExpectedNotice
 import js7.data_for_java.order.JOrderPredicates.any
 import js7.data_for_java.order.{JOrder, JOrderObstacle}
 import js7.data_for_java.orderwatch.JFileWatch
@@ -125,6 +126,16 @@ extends JJournaledState[JControllerState, ControllerState]
     asScala.pathTo(BoardState)
       .view
       .mapValues(JBoardState.apply)
+      .asJava
+
+  def orderToAvailableNotices(orderId: OrderId): java.util.List[JNotice] =
+    asScala.orderToAvailableNotices(orderId)
+      .map(JNotice(_))
+      .asJava
+
+  def orderToStillExpectedNotices(orderId: OrderId): java.util.List[JExpectedNotice] =
+    asScala.orderToStillExpectedNotices(orderId)
+      .map(JExpectedNotice(_))
       .asJava
 
   @Nonnull

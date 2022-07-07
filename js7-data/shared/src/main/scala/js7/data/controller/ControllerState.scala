@@ -29,6 +29,7 @@ import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedS
 import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemPath, ItemAttachedState, ItemRevision, Repo, SignableItem, SignableItemKey, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, SimpleItem, SimpleItemPath, UnsignedSimpleItem, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, UnsignedSimpleItemState, VersionedEvent, VersionedItemId_, VersionedItemPath}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath, LockState}
+import js7.data.order.OrderEvent.OrderNoticesExpected
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
 import js7.data.state.EventDrivenStateView
@@ -336,6 +337,34 @@ with SnapshotableState[ControllerState]
         case (agentPath, Attachable) => agentPath
       })
       .toSet
+
+  def orderToAvailableNotices(orderId: OrderId): Seq[Notice] = {
+    val pathToBoardState = pathTo(BoardState)
+    orderToExpectedNotices(orderId)
+      .flatMap(expected =>
+        pathToBoardState
+          .get(expected.boardPath)
+          .flatMap(_
+            .idToNotice.get(expected.noticeId)
+            .flatMap(_.notice)))
+  }
+
+  def orderToStillExpectedNotices(orderId: OrderId): Seq[OrderNoticesExpected.Expected] = {
+    val pathToBoardState = pathTo(BoardState)
+    orderToExpectedNotices(orderId)
+      .filter(expected =>
+        pathToBoardState
+          .get(expected.boardPath)
+          .forall(boardState => !boardState
+            .idToNotice.get(expected.noticeId)
+            .exists(_.notice.isDefined)))
+  }
+
+  private def orderToExpectedNotices(orderId: OrderId): Seq[OrderNoticesExpected.Expected] =
+    idToOrder.get(orderId)
+      .flatMap(_.ifState[Order.ExpectingNotices])
+      .toVector
+      .flatMap(_.state.expected)
 
   protected def pathToOrderWatchState = pathTo(OrderWatchState)
 
