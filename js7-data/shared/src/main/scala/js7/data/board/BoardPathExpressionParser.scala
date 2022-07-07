@@ -22,8 +22,11 @@ object BoardPathExpressionParser
   private val expectNotice: Parser[ExpectNotice] =
     path(BoardPath).map(ExpectNotice)
 
+  private val factor: Parser[BoardPathExpression] =
+    inParentheses(noticeExpression) | expectNotice
+
   private val and: Parser[BoardPathExpression] =
-    leftRecurse[BoardPathExpression, Unit](expectNotice, string("&&"), expectNotice) {
+    leftRecurse[BoardPathExpression, Unit](factor, string("&&"), factor) {
       case (a, ((), b)) => And(a, b)
     }
 
@@ -32,6 +35,6 @@ object BoardPathExpressionParser
       case (a, ((), b)) => Or(a, b)
     }
 
-  private val noticeExpression: Parser[BoardPathExpression] =
-    or
+  private lazy val noticeExpression: Parser[BoardPathExpression] =
+    Parser.defer(or)
 }
