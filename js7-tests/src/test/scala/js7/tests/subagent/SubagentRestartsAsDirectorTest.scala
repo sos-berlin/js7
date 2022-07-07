@@ -3,7 +3,7 @@ package js7.tests.subagent
 import java.nio.file.Files.createDirectories
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{CoupleController, DedicateAgentDirector}
-import js7.base.BuildInfo
+import js7.base.Js7Version
 import js7.base.auth.SessionToken
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.syntax._
@@ -16,7 +16,6 @@ import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.RichEither
-import js7.base.version.Version
 import js7.base.web.{HttpClient, Uri}
 import js7.common.akkautils.ProvideActorSystem
 import js7.common.configuration.Js7Configuration
@@ -74,7 +73,7 @@ with ProvideActorSystem
               .liftProblem(client
                 .post[SessionCommand, SessionCommand.Response](
                   uri / "agent/api/session",
-                  Login(None, Some(Version(BuildInfo.version))))
+                  Login(None, Some(Js7Version)))
                 .onErrorRestartLoop(99) {
                   case (t, n, retry) if n > 0 && t.getMessage.contains("Connection refused") =>
                     assert(subagentTerminated.value == None)

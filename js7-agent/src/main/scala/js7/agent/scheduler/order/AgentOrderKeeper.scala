@@ -10,6 +10,7 @@ import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSign
 import js7.agent.data.event.AgentEvent.{AgentReady, AgentShutDown}
 import js7.agent.main.AgentMain
 import js7.agent.scheduler.order.AgentOrderKeeper._
+import js7.base.Js7Version
 import js7.base.crypt.{SignatureVerifier, Signed}
 import js7.base.generic.Completed
 import js7.base.log.{CorrelId, Logger}
@@ -240,6 +241,7 @@ final class AgentOrderKeeper(
         // TODO AgentReady should be the first event ?
         persist(
           AgentReady(
+            Some(Js7Version),
             ZoneId.systemDefault.getId,
             totalRunningTime = totalRunningSince.elapsed.roundUpToNext(1.ms))
         ) { (_, _) =>

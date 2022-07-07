@@ -3,6 +3,7 @@ package js7.tests.filewatch
 import java.nio.file.Files.{createDirectories, createDirectory, delete, exists}
 import js7.agent.client.AgentClient
 import js7.agent.data.event.AgentEvent.AgentReady
+import js7.base.Js7Version
 import js7.base.configutils.Configs._
 import js7.base.io.file.FileUtils.syntax._
 import js7.base.problem.Checked._
@@ -321,7 +322,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
         .map(e => ke.copy(event = e))))
       .toListL.await(99.s)
     assert(keyedEvents == Seq[AnyKeyedEvent](
-      NoKey <-: AgentReady("UTC", 1.s),
+      NoKey <-: AgentReady(Some(Js7Version), "UTC", 1.s),
       NoKey <-: ItemAttachedToMe(aFileWatch.copy(itemRevision = Some(ItemRevision(0)))),
 
       orderWatchPath <-: ExternalOrderArised(ExternalOrderName("1"),
@@ -337,7 +338,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
       orderWatchPath <-: ExternalOrderArised(ExternalOrderName("3"),
         OrderId("file:FILE-WATCH:3"),
         Map("file" -> StringValue(s"$aDirectory/3"))),
-      NoKey <-: AgentReady("UTC", 1.s),
+      NoKey <-: AgentReady(Some(Js7Version), "UTC", 1.s),
       orderWatchPath <-: ExternalOrderVanished(ExternalOrderName("3")),
 
       orderWatchPath <-: ExternalOrderArised(ExternalOrderName("4"),

@@ -526,7 +526,7 @@ object ControllerStateTest
       Timezone("Europe/Berlin")),
     Map(
       agentRef.path -> AgentRefState(
-        agentRef, None, None, DelegateCouplingState.Coupled, EventId(7), None),
+        agentRef, None, None, None, DelegateCouplingState.Coupled, EventId(7), None),
       lock.path -> LockState(lock),
       boardState.path -> boardState,
       subagentItem.id -> subagentItemState,

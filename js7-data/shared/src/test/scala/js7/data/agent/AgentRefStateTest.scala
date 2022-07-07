@@ -3,6 +3,8 @@ package js7.data.agent
 import java.util.UUID
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Problem
+import js7.base.utils.ScalaUtils.syntax._
+import js7.base.version.Version
 import js7.data.delegate.DelegateCouplingState
 import js7.data.event.JournalId
 import js7.data.item.ItemRevision
@@ -19,6 +21,7 @@ final class AgentRefStateTest extends AnyFreeSpec
           AgentPath("AGENT"),
           directors = Seq(SubagentId("SUBAGENT-1")),
           itemRevision = Some(ItemRevision(0))),
+        None,
         None,
         None,
         DelegateCouplingState.Coupled,
@@ -46,6 +49,7 @@ final class AgentRefStateTest extends AnyFreeSpec
           itemRevision = Some(ItemRevision(0))),
         Some(agentRunId),
         Some("UTC"),
+        Some(Version.checked("2.4.0-TEST").orThrow),
         DelegateCouplingState.Resetting(force = true),
         123L,
         Some(Problem("PROBLEM"))),
@@ -57,6 +61,7 @@ final class AgentRefStateTest extends AnyFreeSpec
         },
         "agentRunId": "ABEiM0RVZneImaq7zN3u_w",
         "timezone": "UTC",
+        "version": "2.4.0-TEST",
         "couplingState": {
           "TYPE": "Resetting",
           "force": true

@@ -4,6 +4,7 @@ import io.vavr.control.{Either => VEither}
 import java.util.Optional
 import javax.annotation.Nonnull
 import js7.base.problem.Problem
+import js7.base.version.Version
 import js7.data.agent.{AgentPath, AgentRefState}
 import js7.data_for_java.common.JJsonable
 import scala.jdk.OptionConverters._
@@ -21,6 +22,14 @@ extends JJsonable[JAgentRefState]
   @Nonnull
   def agentRef: JAgentRef =
     JAgentRef(asScala.agentRef)
+
+  @Nonnull
+  def timezoneString: Optional[String] =
+    asScala.timezone.toJava
+
+  @Nonnull
+  def version: Optional[Version] =
+    asScala.version.toJava
 
   @Nonnull
   def problem: Optional[Problem] =

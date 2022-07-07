@@ -1,5 +1,6 @@
 package js7.tests.controller.proxy
 
+import js7.base.Js7Version
 import js7.base.configutils.Configs._
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
@@ -11,7 +12,7 @@ import js7.base.time.ScalaTime._
 import js7.common.akkautils.ProvideActorSystem
 import js7.controller.client.AkkaHttpControllerApi
 import js7.data.Problems.ItemVersionDoesNotMatchProblem
-import js7.data.agent.AgentPath
+import js7.data.agent.{AgentPath, AgentRefState}
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion}
 import js7.data.item.VersionId
@@ -133,6 +134,10 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with Controll
             OrderFinished))
           .toMap)
     }
+  }
+
+  "AgentRefState.version" in {
+    assert(proxy.currentState.pathTo(AgentRefState)(agentPath).version == Some(Js7Version))
   }
 }
 

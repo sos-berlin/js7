@@ -3,6 +3,7 @@ package js7.agent.data.event
 import java.util.UUID
 import js7.agent.data.event.AgentEvent.{AgentDedicated, AgentReady, AgentShutDown}
 import js7.base.circeutils.CirceUtils._
+import js7.base.version.Version
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
 import js7.data.event.{JournalId, KeyedEvent}
@@ -29,9 +30,10 @@ final class AgentEventTest extends AnyFreeSpec
   }
 
   "AgentReady" in {
-    testJson[KeyedEvent[AgentEvent]](AgentReady("Europe/Berlin", 1.hour),
+    testJson[KeyedEvent[AgentEvent]](AgentReady(Some(Version("2.4.0-TEST")), "Europe/Berlin", 1.hour),
       json"""{
         "TYPE": "AgentReady",
+        "version": "2.4.0-TEST",
         "timezone": "Europe/Berlin",
         "totalRunningTime": 3600
       }""")
