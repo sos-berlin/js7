@@ -5,5 +5,5 @@ data="/var/opt/js7/agent/data"
 dumpFile="$data/logs/agent.hprof"
 rm -f "$dumpFile"
 
-jmap "-dump:live,format=b,file=$dumpFile" "$(cat $data/state/pid)"
+jmap "-dump:live,format=b,file=$dumpFile" "$(cat $data/state/lock)"
 ls -l "$dumpFile"

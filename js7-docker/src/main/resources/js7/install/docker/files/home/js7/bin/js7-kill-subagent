@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-kill "$@" "$(cat /var/opt/js7/agent/data/state/pid)"
+kill "$@" "$(cat /var/opt/js7/agent/data/state/lock)"

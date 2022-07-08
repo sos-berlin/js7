@@ -27,7 +27,7 @@ object JavaMainLockfileSupport
       val state = data.resolve("state")
       if (!exists(state)) createDirectory(state)
       // The lockFile secures the state directory against double use.
-      val lockFile = state.resolve("pid")
+      val lockFile = state.resolve("lock")
       lock(lockFile) {
         JavaMain.runMain {
           cleanWorkDirectory(data.resolve("work"))

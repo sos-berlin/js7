@@ -2,5 +2,5 @@
 # Shows the thread dump of the running JS7
 set -euo pipefail
 
-pid="$(cat "$HOME"/data/state/pid)"
+pid="$(cat "$HOME"/data/state/lock)"
 jstack "$pid"
