@@ -22,6 +22,8 @@ import js7.data.order.Order.State
 import js7.data.order.OrderEvent.{OrderAdded, OrderAwoke, OrderBroken, OrderCoreEvent, OrderDeleted, OrderDetached, OrderForked, OrderLockEvent, OrderOrderAdded, OrderProcessed}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.orderwatch.ExternalOrderKey
+import js7.data.subagent.SubagentItemState
+import js7.data.subagent.SubagentItemStateEvent.SubagentReset
 import js7.data.value.expression.scopes.NowScope
 import js7.data.workflow.position.{Position, PositionOrLabel}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPathControl}
@@ -85,17 +87,26 @@ final case class ControllerStateExecutor private(
 
   def resetAgent(agentPath: AgentPath, force: Boolean): Checked[Seq[AnyKeyedEvent]] = {
     val agentResetStarted = View(agentPath <-: AgentResetStarted(force = force))
+
+    val subagentReset = controllerState
+      .pathTo(SubagentItemState).values.view
+      .filter(_.item.agentPath == agentPath)
+      .map(_.path <-: SubagentReset)
+      .toVector
+
     val itemsDetached = controllerState.itemToAgentToAttachedState.to(View)
       .filter(_._2.contains(agentPath))
       .map(_._1)
       .map(itemKey => NoKey <-: ItemDetached(itemKey, agentPath))
+
     controllerState
       .idToOrder.values.view
       .filter(_.isAtAgent(agentPath))
       .map(forciblyDetachOrder(_, agentPath))
       .toVector.sequence
       .map(_.view.flatten)
-      .map(ordersDetached => (agentResetStarted ++ ordersDetached ++ itemsDetached))
+      .map(ordersDetached =>
+        agentResetStarted ++ subagentReset ++ ordersDetached ++ itemsDetached)
       .map(_.toVector)
   }
 
