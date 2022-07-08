@@ -1,0 +1,43 @@
+package js7.data.platform
+
+import js7.base.circeutils.CirceUtils._
+import js7.base.version.Version
+import js7.data.system.JavaInformation
+import js7.tester.CirceJsonTester.testJson
+import org.scalatest.freespec.AnyFreeSpec
+
+final class PlatformInfoTest extends AnyFreeSpec {
+
+  "PlatformInfo" in {
+    testJson(
+      PlatformInfo(
+        Version("2.4.0-TEST"),
+        hostname = "HOST",
+        operatingSystemDistribution = Some("DISTRIBUTION"),
+        cpuModel = Some("CPU"),
+        JavaInformation(
+          version = "x.y.z",
+          availableProcessors = 8,
+          JavaInformation.Memory(maximum = 3, total = 2, free = 1),
+          systemProperties = Map("test" -> "TEST"))),
+
+    json"""{
+      "js7Version": "2.4.0-TEST",
+      "hostname": "HOST",
+      "operatingSystemDistribution": "DISTRIBUTION",
+      "cpuModel": "CPU",
+      "java": {
+        "version": "x.y.z",
+        "availableProcessors": 8,
+        "memory": {
+          "maximum": 3,
+          "total": 2,
+          "free": 1
+        },
+        "systemProperties": {
+          "test": "TEST"
+        }
+      }
+    }""")
+  }
+}
