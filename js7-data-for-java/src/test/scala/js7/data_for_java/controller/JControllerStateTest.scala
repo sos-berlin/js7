@@ -93,7 +93,7 @@ private object JControllerStateTest
     pathToItemState_ = Map(AgentPath("AGENT") ->
       AgentRefState(
         AgentRef(AgentPath("AGENT"), Seq(SubagentId("SUBAGENT"))),
-        None, None, None, DelegateCouplingState.Reset.fresh, EventId(7), None)),
+        None, None, DelegateCouplingState.Reset.fresh, EventId(7), None, None)),
     repo = Repo.empty
       .applyEvents(List(
         VersionAdded(v1),

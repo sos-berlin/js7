@@ -3,8 +3,8 @@ package js7.data.subagent
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Problem
-import js7.base.version.Version
 import js7.data.event.{Event, EventId}
+import js7.data.platform.PlatformInfo
 
 trait SubagentItemStateEvent extends Event.ForScala3[SubagentItemStateEvent]
 {
@@ -16,7 +16,9 @@ object SubagentItemStateEvent extends Event.Companion[SubagentItemStateEvent]
   type Key = SubagentId
 
   /** Subagent has been named. */
-  final case class SubagentDedicated(subagentRunId: SubagentRunId, version: Option[Version])
+  final case class SubagentDedicated(
+    subagentRunId: SubagentRunId,
+    platformInfo: Option[PlatformInfo])
   extends SubagentItemStateEvent
 
   type SubagentCoupled = SubagentCoupled.type

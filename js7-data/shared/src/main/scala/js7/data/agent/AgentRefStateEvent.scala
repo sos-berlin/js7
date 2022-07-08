@@ -4,8 +4,8 @@ import io.circe.generic.extras.Configuration.default.withDefaults
 import io.circe.generic.extras.semiauto.deriveConfiguredCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Problem
-import js7.base.version.Version
 import js7.data.event.{Event, EventId}
+import js7.data.platform.PlatformInfo
 
 /**
   * @author Joacim Zschimmer
@@ -30,8 +30,8 @@ object AgentRefStateEvent
 
   /** Agent is up and running. */
   final case class AgentReady(
-    version: Option/*COMPATIBLE with v2.3*/[Version],
-    timezone: String)
+    timezone: String/*COMPATIBLE with v2.3*/,
+    platformInfo: Option/*COMPATIBLE with v2.3*/[PlatformInfo])
   extends AgentRefStateEvent
 
   final case class AgentEventsObserved(untilEventId: EventId) extends AgentRefStateEvent

@@ -503,8 +503,9 @@ with MainJournalingActor[ControllerState, Event]
                         }
                         Timestamped(orderId <-: ownEvent, Some(timestampMillis)) :: Nil
 
-                      case KeyedEvent(_: NoKey, AgentEvent.AgentReady(version, timezone, _)) =>
-                        Timestamped(agentEntry.agentPath <-: AgentReady(version, timezone), Some(timestampMillis)) :: Nil
+                      case KeyedEvent(_: NoKey, AgentEvent.AgentReady(timezone, _, platformInfo)) =>
+                        Timestamped(agentEntry.agentPath <-: AgentReady(timezone, platformInfo),
+                          Some(timestampMillis)) :: Nil
 
                       case KeyedEvent(_: NoKey, AgentEvent.AgentShutDown) =>
                         Timestamped(

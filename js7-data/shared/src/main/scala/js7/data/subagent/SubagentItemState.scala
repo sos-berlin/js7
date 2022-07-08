@@ -9,17 +9,18 @@ import js7.data.delegate.DelegateCouplingState
 import js7.data.delegate.DelegateCouplingState.{Coupled, Reset, Resetting}
 import js7.data.event.EventId
 import js7.data.item.UnsignedSimpleItemState
+import js7.data.platform.PlatformInfo
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentCouplingFailed, SubagentDedicated, SubagentEventsObserved, SubagentReset, SubagentResetStarted, SubagentResetStartedByController, SubagentRestarted, SubagentShutdown}
 
 final case class SubagentItemState(
   subagentItem: SubagentItem,
   subagentRunId: Option[SubagentRunId],
-  version: Option[Version],
   couplingState: DelegateCouplingState,
   isDetaching: Boolean = false,  // Agent only
   isResettingForcibly: Option[Boolean] = None,  // Controller only
   eventId: EventId,
-  problem: Option[Problem] = None)
+  problem: Option[Problem] = None,
+  platformInfo: Option[PlatformInfo])
 extends UnsignedSimpleItemState
 {
   protected type Self = SubagentItemState
@@ -46,7 +47,7 @@ extends UnsignedSimpleItemState
         Right(copy(
           problem = Some(problem)))
 
-      case SubagentDedicated(subagentRunId, version) =>
+      case SubagentDedicated(subagentRunId, platformInfo) =>
         if (this.subagentRunId.exists(_ != subagentRunId))
           Left(Problem.pure("Duplicate SubagentDedicated event: " + (item.id <-: event) +
             ", this.subagentRunId=" + this.subagentRunId))
@@ -54,7 +55,7 @@ extends UnsignedSimpleItemState
           Right(copy(
             couplingState = Coupled,
             subagentRunId = Some(subagentRunId),
-            version = version,
+            platformInfo = platformInfo,
             problem = None))
 
       case SubagentCoupled =>
@@ -104,8 +105,8 @@ object SubagentItemState extends UnsignedSimpleItemState.Companion[SubagentItemS
   type Item = SubagentItem
 
   def initial(subagentItem: SubagentItem) =
-    SubagentItemState(subagentItem, None, None, DelegateCouplingState.Reset.fresh,
-      eventId = EventId.BeforeFirst)
+    SubagentItemState(subagentItem, None, DelegateCouplingState.Reset.fresh,
+      eventId = EventId.BeforeFirst, platformInfo = None)
 
   implicit val jsonDecoder: Decoder[SubagentItemState] =
    c => for {
@@ -117,20 +118,22 @@ object SubagentItemState extends UnsignedSimpleItemState.Companion[SubagentItemS
      isResettingForcibly <- c.get[Option[Boolean]]("isResettingForcibly")
      eventId <- c.get[EventId]("eventId")
      problem <- c.get[Option[Problem]]("problem")
+     platformInfo <- c.get[Option[PlatformInfo]]("platformInfo")
    } yield SubagentItemState(
-     subagentItem, subagentRunId, version, couplingState,
+     subagentItem, subagentRunId, couplingState,
      isDetaching = isDetaching, isResettingForcibly = isResettingForcibly,
      eventId = eventId,
-     problem)
+     problem,
+     platformInfo)
 
   implicit val jsonEncoder: Encoder.AsObject[SubagentItemState] =
     o => JsonObject(
       "subagentItem" -> o.subagentItem.asJson,
       "subagentRunId" -> o.subagentRunId.asJson,
-      "version" -> o.version.asJson,
       "couplingState" -> o.couplingState.asJson,
       "isDetaching" -> o.isDetaching.?.asJson,
       "isResettingForcibly" -> o.isResettingForcibly.asJson,
       "eventId" -> o.eventId.asJson,
-      "problem" -> o.problem.asJson)
+      "problem" -> o.problem.asJson,
+      "platformInfo" -> o.platformInfo.asJson)
 }

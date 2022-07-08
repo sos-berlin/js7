@@ -34,7 +34,8 @@ final class SubagentTest extends AnyFreeSpec with SubagentTester
     eventWatch.await[SubagentCoupled](_.key == localSubagentId)
     assert(waitForCondition(10.s, 10.ms)(
       controllerState.pathTo(SubagentItemState)(localSubagentId).couplingState == Coupled))
-    assert(controllerState.pathTo(SubagentItemState)(localSubagentId).version == Some(Js7Version))
+    assert(controllerState.pathTo(SubagentItemState)(localSubagentId)
+      .platformInfo.map(_.js7Version) contains Js7Version)
   }
 
   "Reject items if no signature keys are installed" in {
@@ -65,8 +66,9 @@ final class SubagentTest extends AnyFreeSpec with SubagentTester
     runSubagent(bareSubagentItem) { _ =>
       val subagentDedicated = eventWatch.await[SubagentDedicated](_.key == bareSubagentId, after = eventId)
         .head.value.event
-      assert(subagentDedicated.version == Some(Js7Version))
-      assert(controllerState.pathTo(SubagentItemState)(bareSubagentId).version == Some(Js7Version))
+      assert(subagentDedicated.platformInfo.map(_.js7Version) contains Js7Version)
+      assert(controllerState.pathTo(SubagentItemState)(bareSubagentId)
+        .platformInfo.map(_.js7Version) contains Js7Version)
 
       controller.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
 

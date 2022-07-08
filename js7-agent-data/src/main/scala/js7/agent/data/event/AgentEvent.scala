@@ -4,10 +4,10 @@ import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.ScalaJsonCodecs._
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.IntelliJUtils.intelliJuseImport
-import js7.base.version.Version
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
 import js7.data.event.NoKeyEvent
+import js7.data.platform.PlatformInfo
 import js7.data.subagent.SubagentId
 import scala.concurrent.duration.FiniteDuration
 
@@ -30,9 +30,9 @@ object AgentEvent
 
   /** Agent is up and running. */
   final case class AgentReady(
-    version: Option/*COMPATIBLE with v2.3*/[Version],
     timezone: String,
-    totalRunningTime: FiniteDuration)
+    totalRunningTime: FiniteDuration,
+    platformInfo: Option/*COMPATIBLE with v2.3*/[PlatformInfo])
   extends AgentEvent
 
   type AgentShutDown = AgentShutDown.type

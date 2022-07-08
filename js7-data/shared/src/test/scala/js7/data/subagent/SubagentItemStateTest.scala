@@ -3,11 +3,11 @@ package js7.data.subagent
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Problem
 import js7.base.utils.Base64UUID
-import js7.base.version.Version
 import js7.base.web.Uri
 import js7.data.agent.AgentPath
 import js7.data.delegate.DelegateCouplingState
 import js7.data.item.ItemRevision
+import js7.data.platform.PlatformInfo
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -22,12 +22,12 @@ final class SubagentItemStateTest extends AnyFreeSpec
           Uri("https://example.com"),
           itemRevision = Some(ItemRevision(1))),
         Some(SubagentRunId(Base64UUID.zero)),
-        Some(Version("2.4.0-TEST")),
         DelegateCouplingState.Coupled,
         isDetaching = false,
         isResettingForcibly = None,
         eventId = 1001L,
-        Some(Problem("PROBLEM"))),
+        Some(Problem("PROBLEM")),
+        Some(PlatformInfo.test)),
       json"""{
         "subagentItem": {
           "agentPath": "AGENT",
@@ -37,13 +37,32 @@ final class SubagentItemStateTest extends AnyFreeSpec
           "uri": "https://example.com"
         },
         "subagentRunId": "AAAAAAAAAAAAAAAAAAAAAA",
-        "version": "2.4.0-TEST",
         "couplingState": {
           "TYPE": "Coupled"
         },
         "eventId": 1001,
         "problem": {
           "message": "PROBLEM"
+        },
+        "platformInfo": {
+          "timestamp": 1657281600000,
+          "timezone": "Europe/Berlin",
+          "js7Version": "2.4.0-TEST",
+          "hostname": "HOST",
+          "operatingSystemDistribution": "DISTRIBUTION",
+          "cpuModel": "CPU",
+          "java": {
+            "version": "x.y.z",
+            "availableProcessors": 8,
+            "memory": {
+              "maximum": 3,
+              "total": 2,
+              "free": 1
+            },
+            "systemProperties": {
+              "test": "TEST"
+            }
+          }
         }
       }""")
 
@@ -55,11 +74,11 @@ final class SubagentItemStateTest extends AnyFreeSpec
           Uri("https://example.com"),
           itemRevision = Some(ItemRevision(1))),
         None,
-        None,
         DelegateCouplingState.Coupled,
         /*Agent only*/isDetaching = true,
         /*Controller only*/isResettingForcibly = Some(false),
         1001L,
+        None,
         None),
       json"""{
         "subagentItem": {
@@ -86,10 +105,10 @@ final class SubagentItemStateTest extends AnyFreeSpec
           Uri("https://example.com"),
           itemRevision = Some(ItemRevision(1))),
         Some(SubagentRunId(Base64UUID.zero)),
-        None,
         DelegateCouplingState.Coupled,
         eventId = 1001L,
-        problem = Some(Problem("PROBLEM"))),
+        problem = Some(Problem("PROBLEM")),
+        platformInfo = None),
       json"""{
         "subagentRef": {
           "agentPath": "AGENT",

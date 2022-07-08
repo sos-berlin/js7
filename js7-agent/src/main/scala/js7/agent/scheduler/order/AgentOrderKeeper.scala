@@ -10,7 +10,6 @@ import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSign
 import js7.agent.data.event.AgentEvent.{AgentReady, AgentShutDown}
 import js7.agent.main.AgentMain
 import js7.agent.scheduler.order.AgentOrderKeeper._
-import js7.base.Js7Version
 import js7.base.crypt.{SignatureVerifier, Signed}
 import js7.base.generic.Completed
 import js7.base.log.{CorrelId, Logger}
@@ -28,6 +27,7 @@ import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.utils.{DuplicateKeyException, SetOnce}
 import js7.common.akkautils.Akkas.{encodeAsActorName, uniqueActorName}
 import js7.common.akkautils.SupervisorStrategies
+import js7.common.system.PlatformInfos.currentPlatformInfo
 import js7.common.utils.Exceptions.wrapException
 import js7.core.problems.ReverseReleaseEventsProblem
 import js7.data.agent.Problems.{AgentDuplicateOrder, AgentIsShuttingDown}
@@ -241,9 +241,9 @@ final class AgentOrderKeeper(
         // TODO AgentReady should be the first event ?
         persist(
           AgentReady(
-            Some(Js7Version),
             ZoneId.systemDefault.getId,
-            totalRunningTime = totalRunningSince.elapsed.roundUpToNext(1.ms))
+            totalRunningTime = totalRunningSince.elapsed.roundUpToNext(1.ms),
+            Some(currentPlatformInfo()))
         ) { (_, _) =>
           self ! Internal.OrdersRecovered(recoveredState)
         }

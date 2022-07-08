@@ -3,7 +3,6 @@ package js7.subagent
 import cats.syntax.foldable._
 import cats.syntax.parallel._
 import cats.syntax.traverse._
-import js7.base.Js7Version
 import js7.base.io.process.{ProcessSignal, Stderr, Stdout, StdoutOrStderr}
 import js7.base.log.Logger.syntax._
 import js7.base.log.{CorrelId, Logger}
@@ -12,6 +11,7 @@ import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.{Checked, ProblemException}
 import js7.base.utils.ScalaUtils.chunkStrings
 import js7.base.utils.ScalaUtils.syntax._
+import js7.common.system.PlatformInfos.currentPlatformInfo
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.job.{JobConf, JobKey}
@@ -60,8 +60,9 @@ extends SubagentDriver
   def start = Task.defer {
     logger.debug("Start LocalSubagentDriver")
     val runId = SubagentRunId.fromJournalId(persistence.journalId)
-    persistence.persistKeyedEvent(subagentId <-: SubagentDedicated(runId, Some(Js7Version)))
-      .map(_.orThrow)
+    persistence.persistKeyedEvent(
+      subagentId <-: SubagentDedicated(runId, Some(currentPlatformInfo()))
+    ).map(_.orThrow)
   }
 
   def stop(signal: Option[ProcessSignal]) =

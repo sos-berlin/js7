@@ -3,11 +3,10 @@ package js7.data.agent
 import java.util.UUID
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Problem
-import js7.base.utils.ScalaUtils.syntax._
-import js7.base.version.Version
 import js7.data.delegate.DelegateCouplingState
 import js7.data.event.JournalId
 import js7.data.item.ItemRevision
+import js7.data.platform.PlatformInfo
 import js7.data.subagent.SubagentId
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
@@ -23,9 +22,9 @@ final class AgentRefStateTest extends AnyFreeSpec
           itemRevision = Some(ItemRevision(0))),
         None,
         None,
-        None,
         DelegateCouplingState.Coupled,
         123L,
+        None,
         None),
       json"""{
         "agentRef": {
@@ -49,10 +48,10 @@ final class AgentRefStateTest extends AnyFreeSpec
           itemRevision = Some(ItemRevision(0))),
         Some(agentRunId),
         Some("UTC"),
-        Some(Version.checked("2.4.0-TEST").orThrow),
         DelegateCouplingState.Resetting(force = true),
         123L,
-        Some(Problem("PROBLEM"))),
+        Some(Problem("PROBLEM")),
+        Some(PlatformInfo.test)),
       json"""{
         "agentRef": {
           "path": "AGENT",
@@ -61,7 +60,6 @@ final class AgentRefStateTest extends AnyFreeSpec
         },
         "agentRunId": "ABEiM0RVZneImaq7zN3u_w",
         "timezone": "UTC",
-        "version": "2.4.0-TEST",
         "couplingState": {
           "TYPE": "Resetting",
           "force": true
@@ -69,6 +67,26 @@ final class AgentRefStateTest extends AnyFreeSpec
         "eventId": 123,
         "problem": {
           "message": "PROBLEM"
+        },
+        "platformInfo": {
+          "timestamp": 1657281600000,
+          "timezone": "Europe/Berlin",
+          "js7Version": "2.4.0-TEST",
+          "hostname": "HOST",
+          "operatingSystemDistribution": "DISTRIBUTION",
+          "cpuModel": "CPU",
+          "java": {
+            "version": "x.y.z",
+            "availableProcessors": 8,
+            "memory": {
+              "maximum": 3,
+              "total": 2,
+              "free": 1
+            },
+            "systemProperties": {
+              "test": "TEST"
+            }
+          }
         }
       }""")
   }

@@ -1,6 +1,5 @@
 package js7.tests.subagent
 
-import js7.base.Js7Version
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Problem
 import js7.base.thread.MonixBlocking.syntax.RichTask
@@ -11,6 +10,7 @@ import js7.data.controller.ControllerCommand.ResetSubagent
 import js7.data.event.KeyedEvent
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId}
+import js7.data.platform.PlatformInfo
 import js7.data.subagent.Problems.SubagentAlreadyDedicatedProblem
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentCouplingFailed, SubagentDedicated, SubagentReset, SubagentResetStarted, SubagentResetStartedByController}
 import js7.data.subagent.{SubagentItemStateEvent, SubagentRunId}
@@ -83,10 +83,13 @@ final class ResetSubagentWhileRunning2Test extends AnyFreeSpec with SubagentTest
         case KeyedEvent(`bareSubagentId`, event @ SubagentCouplingFailed(problem)) =>
           !problem.toString.contains("Connection refused") ? event
 
+        case KeyedEvent(`bareSubagentId`, SubagentDedicated(runId, _)) =>
+          Some(SubagentDedicated(runId, Some(PlatformInfo.test)))
+
         case KeyedEvent(`bareSubagentId`, event) => Some(event)
       }.flatten ==
       Seq(
-        SubagentDedicated(firstSubagentRunId, Some(Js7Version)),
+        SubagentDedicated(firstSubagentRunId, Some(PlatformInfo.test)),
         SubagentCoupled,
         SubagentResetStartedByController(false),
         SubagentResetStarted(false),

@@ -1,6 +1,7 @@
 package js7.data.platform
 
 import js7.base.circeutils.CirceUtils._
+import js7.base.time.Timestamp
 import js7.base.version.Version
 import js7.data.system.JavaInformation
 import js7.tester.CirceJsonTester.testJson
@@ -11,6 +12,8 @@ final class PlatformInfoTest extends AnyFreeSpec {
   "PlatformInfo" in {
     testJson(
       PlatformInfo(
+        Timestamp("2022-07-08T12:00:00Z"),
+        timezone = "Europe/Berlin",
         Version("2.4.0-TEST"),
         hostname = "HOST",
         operatingSystemDistribution = Some("DISTRIBUTION"),
@@ -22,6 +25,8 @@ final class PlatformInfoTest extends AnyFreeSpec {
           systemProperties = Map("test" -> "TEST"))),
 
     json"""{
+      "timestamp": 1657281600000,
+      "timezone": "Europe/Berlin",
       "js7Version": "2.4.0-TEST",
       "hostname": "HOST",
       "operatingSystemDistribution": "DISTRIBUTION",

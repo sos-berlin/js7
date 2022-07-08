@@ -4,7 +4,6 @@ import akka.actor.ActorSystem
 import cats.syntax.flatMap._
 import cats.syntax.traverse._
 import com.typesafe.config.ConfigUtil
-import js7.base.Js7Version
 import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.crypt.Signed
@@ -25,6 +24,7 @@ import js7.base.utils.{AsyncLock, SetOnce}
 import js7.base.web.HttpClient
 import js7.base.web.HttpClient.HttpException
 import js7.common.http.configuration.RecouplingStreamReaderConf
+import js7.common.system.PlatformInfos.currentPlatformInfo
 import js7.data.controller.ControllerId
 import js7.data.delegate.DelegateCouplingState.Coupled
 import js7.data.event.EventId
@@ -216,7 +216,7 @@ extends SubagentDriver with SubagentEventListener[S0]
       postCommandUntilSucceeded(cmd) // TODO Cancelable, whenStoppedCancelAndFail?
         .flatMap(response => persistence
           .persistKeyedEvent(
-            subagentId <-: SubagentDedicated(response.subagentRunId, Some(Js7Version)))
+            subagentId <-: SubagentDedicated(response.subagentRunId, Some(currentPlatformInfo())))
           .tapEval(checked => Task.when(checked.isRight)(Task {
             lastSubagentRunId = Some(response.subagentRunId)
             shuttingDown = false

@@ -3,9 +3,9 @@ package js7.data.agent
 import java.util.UUID
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Problem
-import js7.base.version.Version
 import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentEventsObserved, AgentReady, AgentResetStarted}
 import js7.data.event.{JournalId, KeyedEvent}
+import js7.data.platform.PlatformInfo
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -34,12 +34,31 @@ final class AgentRefStateEventTest extends AnyFreeSpec
     "AgentReady" in {
       testJson[KeyedEvent[AgentRefStateEvent]](
         AgentPath("AGENT") <-:
-          AgentReady(Some(Version("2.4.0-TEST")), "Europe/Berlin"),
+          AgentReady("Europe/Berlin", Some(PlatformInfo.test)),
         json"""{
           "TYPE": "AgentReady",
           "Key": "AGENT",
           "timezone": "Europe/Berlin",
-          "version": "2.4.0-TEST"
+          "platformInfo": {
+            "timestamp": 1657281600000,
+            "timezone": "Europe/Berlin",
+            "js7Version": "2.4.0-TEST",
+            "hostname": "HOST",
+            "operatingSystemDistribution": "DISTRIBUTION",
+            "cpuModel": "CPU",
+            "java": {
+              "version": "x.y.z",
+              "availableProcessors": 8,
+              "memory": {
+                "maximum": 3,
+                "total": 2,
+                "free": 1
+              },
+              "systemProperties": {
+                "test": "TEST"
+              }
+            }
+          }
         }""")
     }
 

@@ -1,6 +1,5 @@
 package js7.tests.subagent
 
-import js7.base.Js7Version
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
@@ -10,6 +9,7 @@ import js7.data.controller.ControllerCommand.ResetSubagent
 import js7.data.event.{Event, KeyedEvent}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
+import js7.data.platform.PlatformInfo
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentCouplingFailed, SubagentDedicated, SubagentReset, SubagentResetStarted, SubagentResetStartedByController}
 import js7.data.subagent.SubagentRunId
 import js7.data.workflow.position.Position
@@ -57,12 +57,14 @@ final class ResetSubagentTest extends AnyFreeSpec with SubagentTester
     assert(eventWatch.allKeyedEvents[Event]
       .collect {
         case KeyedEvent(`bareSubagentId`, SubagentCouplingFailed(_)) => None
+        case KeyedEvent(`bareSubagentId`, SubagentDedicated(runId, _)) =>
+          Some(SubagentDedicated(runId, Some(PlatformInfo.test)))
         case KeyedEvent(`bareSubagentId`, event) => Some(event)
         case KeyedEvent(`orderId`, event) => Some(event)
         case _ => None
       }.flatten ==
       Seq(
-        SubagentDedicated(firstSubagentRunId, Some(Js7Version)),
+        SubagentDedicated(firstSubagentRunId, Some(PlatformInfo.test)),
         SubagentCoupled,
         OrderAdded(workflow.id),
         OrderAttachable(agentPath),
