@@ -3,9 +3,10 @@ package js7.subagent
 import cats.syntax.foldable._
 import cats.syntax.parallel._
 import cats.syntax.traverse._
+import js7.base.Js7Version
 import js7.base.io.process.{ProcessSignal, Stderr, Stdout, StdoutOrStderr}
-import js7.base.log.{CorrelId, Logger}
 import js7.base.log.Logger.syntax._
+import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.AsyncMap
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.{Checked, ProblemException}
@@ -17,7 +18,8 @@ import js7.data.job.{JobConf, JobKey}
 import js7.data.order.OrderEvent.{OrderProcessed, OrderStdWritten}
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.subagent.Problems.SubagentShutDownBeforeProcessStartProblem
-import js7.data.subagent.{SubagentDriverState, SubagentId}
+import js7.data.subagent.SubagentItemStateEvent.SubagentDedicated
+import js7.data.subagent.{SubagentDriverState, SubagentId, SubagentRunId}
 import js7.data.value.expression.Expression
 import js7.data.value.expression.scopes.FileValueState
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -55,7 +57,12 @@ extends SubagentDriver
 
   protected def isShuttingDown = false
 
-  def start = Task(logger.debug("Start LocalSubagentDriver"))
+  def start = Task.defer {
+    logger.debug("Start LocalSubagentDriver")
+    val runId = SubagentRunId.fromJournalId(persistence.journalId)
+    persistence.persistKeyedEvent(subagentId <-: SubagentDedicated(runId, Some(Js7Version)))
+      .map(_.orThrow)
+  }
 
   def stop(signal: Option[ProcessSignal]) =
     Task.defer {

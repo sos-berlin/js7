@@ -3,6 +3,7 @@ package js7.data.subagent
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Problem
 import js7.base.utils.Base64UUID
+import js7.base.version.Version
 import js7.data.event.KeyedEvent
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
@@ -33,11 +34,14 @@ final class SubagentItemStateEventTest extends AnyFreeSpec
 
     "SubagentDedicated" in {
       testJson[KeyedEvent[SubagentItemStateEvent]](
-        SubagentId("SUBAGENT") <-: SubagentItemStateEvent.SubagentDedicated(SubagentRunId(Base64UUID.zero)),
+        SubagentId("SUBAGENT") <-: SubagentItemStateEvent.SubagentDedicated(
+          SubagentRunId(Base64UUID.zero),
+          Some(Version("2.4.0-TEST"))),
         json"""{
           "Key": "SUBAGENT",
           "TYPE": "SubagentDedicated",
-          "subagentRunId": "AAAAAAAAAAAAAAAAAAAAAA"
+          "subagentRunId": "AAAAAAAAAAAAAAAAAAAAAA",
+          "version": "2.4.0-TEST"
         }""")
     }
 

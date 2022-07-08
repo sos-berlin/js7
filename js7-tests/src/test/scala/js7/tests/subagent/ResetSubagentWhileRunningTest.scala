@@ -1,5 +1,6 @@
 package js7.tests.subagent
 
+import js7.base.Js7Version
 import js7.base.problem.Problem
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
@@ -82,7 +83,7 @@ final class ResetSubagentWhileRunningTest extends AnyFreeSpec with SubagentTeste
         case KeyedEvent(`bareSubagentId`, event) => Some(event)
       }.flatten ==
       Seq(
-        SubagentDedicated(firstSubagentRunId),
+        SubagentDedicated(firstSubagentRunId, Some(Js7Version)),
         SubagentCoupled,
         SubagentResetStartedByController(false),
         SubagentResetStarted(false),

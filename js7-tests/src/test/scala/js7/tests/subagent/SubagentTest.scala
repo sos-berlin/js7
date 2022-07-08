@@ -1,6 +1,7 @@
 package js7.tests.subagent
 
 import java.util.concurrent.TimeoutException
+import js7.base.Js7Version
 import js7.base.Problems.MessageSignedByUnknownProblem
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
@@ -12,7 +13,7 @@ import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.delegate.DelegateCouplingState.Coupled
 import js7.data.order.OrderEvent.{OrderAttached, OrderCancelled, OrderFinished, OrderProcessed, OrderProcessingStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
-import js7.data.subagent.SubagentItemStateEvent.SubagentCoupled
+import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentDedicated}
 import js7.data.subagent.{SubagentId, SubagentItemState}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.SemaphoreJob
@@ -33,6 +34,7 @@ final class SubagentTest extends AnyFreeSpec with SubagentTester
     eventWatch.await[SubagentCoupled](_.key == localSubagentId)
     assert(waitForCondition(10.s, 10.ms)(
       controllerState.pathTo(SubagentItemState)(localSubagentId).couplingState == Coupled))
+    assert(controllerState.pathTo(SubagentItemState)(localSubagentId).version == Some(Js7Version))
   }
 
   "Reject items if no signature keys are installed" in {
@@ -61,6 +63,11 @@ final class SubagentTest extends AnyFreeSpec with SubagentTester
     TestSemaphoreJob.reset()
 
     runSubagent(bareSubagentItem) { _ =>
+      val subagentDedicated = eventWatch.await[SubagentDedicated](_.key == bareSubagentId, after = eventId)
+        .head.value.event
+      assert(subagentDedicated.version == Some(Js7Version))
+      assert(controllerState.pathTo(SubagentItemState)(bareSubagentId).version == Some(Js7Version))
+
       controller.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
 
       val processingStarted = eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)

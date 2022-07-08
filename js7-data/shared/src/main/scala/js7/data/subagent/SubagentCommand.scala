@@ -12,6 +12,7 @@ import js7.base.log.CorrelIdWrapped
 import js7.base.problem.Checked
 import js7.base.utils.Big
 import js7.base.utils.ScalaUtils.syntax._
+import js7.base.version.Version
 import js7.data.agent.AgentPath
 import js7.data.command.CommonCommand
 import js7.data.controller.ControllerId
@@ -60,7 +61,10 @@ object SubagentCommand extends CommonCommand.Companion
     type Response = DedicateSubagent.Response
   }
   object DedicateSubagent {
-    final case class Response(subagentRunId: SubagentRunId, subagentEventId: EventId)
+    final case class Response(
+      subagentRunId: SubagentRunId,
+      subagentEventId: EventId,
+      version/*COMPATIBLE with v2.3*/: Option[Version])
     extends SubagentCommand.Response
   }
 

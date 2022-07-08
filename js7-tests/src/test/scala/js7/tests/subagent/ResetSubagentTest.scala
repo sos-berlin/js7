@@ -1,5 +1,6 @@
 package js7.tests.subagent
 
+import js7.base.Js7Version
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
@@ -61,7 +62,7 @@ final class ResetSubagentTest extends AnyFreeSpec with SubagentTester
         case _ => None
       }.flatten ==
       Seq(
-        SubagentDedicated(firstSubagentRunId),
+        SubagentDedicated(firstSubagentRunId, Some(Js7Version)),
         SubagentCoupled,
         OrderAdded(workflow.id),
         OrderAttachable(agentPath),

@@ -1,6 +1,7 @@
 package js7.subagent
 
 import cats.effect.ExitCase
+import js7.base.Js7Version
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax._
 import js7.base.monixutils.AsyncMap
@@ -10,7 +11,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.RightUnit
 import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.{Base64UUID, ProgramTermination, SetOnce}
+import js7.base.utils.{ProgramTermination, SetOnce}
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.event.EventId
@@ -37,7 +38,7 @@ trait SubagentExecutor
   protected val subagentConf: SubagentConf
   protected val jobLauncherConf: JobLauncherConf
 
-  val subagentRunId = SubagentRunId(Base64UUID.random())
+  val subagentRunId = SubagentRunId.fromJournalId(journal.journalId)
   private val subagentDriverConf = SubagentDriver.Conf.fromConfig(subagentConf.config,
     commitDelay = 0.s)
   private val orderToProcessing = AsyncMap.stoppable[OrderId, Processing]()
@@ -110,7 +111,7 @@ trait SubagentExecutor
       } else {
         // TODO Check agentPath, controllerId (handle in SubagentState?)
         logger.info(s"Subagent dedicated to be ${cmd.subagentId} in ${cmd.agentPath}, is ready")
-        Task.right(DedicateSubagent.Response(subagentRunId, EventId.BeforeFirst))
+        Task.right(DedicateSubagent.Response(subagentRunId, EventId.BeforeFirst, Some(Js7Version)))
       }
     }
 

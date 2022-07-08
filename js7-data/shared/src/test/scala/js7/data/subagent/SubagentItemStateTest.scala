@@ -3,6 +3,7 @@ package js7.data.subagent
 import js7.base.circeutils.CirceUtils._
 import js7.base.problem.Problem
 import js7.base.utils.Base64UUID
+import js7.base.version.Version
 import js7.base.web.Uri
 import js7.data.agent.AgentPath
 import js7.data.delegate.DelegateCouplingState
@@ -21,6 +22,7 @@ final class SubagentItemStateTest extends AnyFreeSpec
           Uri("https://example.com"),
           itemRevision = Some(ItemRevision(1))),
         Some(SubagentRunId(Base64UUID.zero)),
+        Some(Version("2.4.0-TEST")),
         DelegateCouplingState.Coupled,
         isDetaching = false,
         isResettingForcibly = None,
@@ -35,6 +37,7 @@ final class SubagentItemStateTest extends AnyFreeSpec
           "uri": "https://example.com"
         },
         "subagentRunId": "AAAAAAAAAAAAAAAAAAAAAA",
+        "version": "2.4.0-TEST",
         "couplingState": {
           "TYPE": "Coupled"
         },
@@ -51,6 +54,7 @@ final class SubagentItemStateTest extends AnyFreeSpec
           AgentPath("AGENT"),
           Uri("https://example.com"),
           itemRevision = Some(ItemRevision(1))),
+        None,
         None,
         DelegateCouplingState.Coupled,
         /*Agent only*/isDetaching = true,
@@ -82,6 +86,7 @@ final class SubagentItemStateTest extends AnyFreeSpec
           Uri("https://example.com"),
           itemRevision = Some(ItemRevision(1))),
         Some(SubagentRunId(Base64UUID.zero)),
+        None,
         DelegateCouplingState.Coupled,
         eventId = 1001L,
         problem = Some(Problem("PROBLEM"))),

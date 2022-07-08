@@ -8,7 +8,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.BinarySearch.binarySearch
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{AsyncLock, CloseableIterator}
-import js7.data.event.{Event, EventId, JournalInfo, JournaledState, KeyedEvent, Stamped}
+import js7.data.event.{Event, EventId, JournalId, JournalInfo, JournaledState, KeyedEvent, Stamped}
 import js7.journal.log.JournalLogger
 import js7.journal.log.JournalLogger.SimpleLoggable
 import js7.journal.state.StatePersistence
@@ -27,6 +27,8 @@ final class InMemoryJournal[S <: JournaledState[S]](
   (implicit protected val S: JournaledState.Companion[S])
 extends StatePersistence[S] with RealEventWatch
 {
+  val journalId = JournalId.random()
+
   private val stateLock = AsyncLock("InMemoryJournal.state")
   private val queueLock = AsyncLock("InMemoryJournal.queue")
   // TODO Pause journal if queue is events are not released for a long time, despite length of queue?

@@ -4,6 +4,7 @@ import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
+import js7.base.version.Version
 import js7.data.delegate.DelegateCouplingState
 import js7.data.delegate.DelegateCouplingState.{Coupled, Reset, Resetting}
 import js7.data.event.EventId
@@ -13,6 +14,7 @@ import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentCoupli
 final case class SubagentItemState(
   subagentItem: SubagentItem,
   subagentRunId: Option[SubagentRunId],
+  version: Option[Version],
   couplingState: DelegateCouplingState,
   isDetaching: Boolean = false,  // Agent only
   isResettingForcibly: Option[Boolean] = None,  // Controller only
@@ -44,14 +46,15 @@ extends UnsignedSimpleItemState
         Right(copy(
           problem = Some(problem)))
 
-      case SubagentDedicated(subagentRunId) =>
+      case SubagentDedicated(subagentRunId, version) =>
         if (this.subagentRunId.exists(_ != subagentRunId))
-          Left(Problem.pure(
-            s"Duplicate SubagentDedicated event: " + this.subagentRunId + " -> " + pathRev))
+          Left(Problem.pure("Duplicate SubagentDedicated event: " + (item.id <-: event) +
+            ", this.subagentRunId=" + this.subagentRunId))
         else
           Right(copy(
             couplingState = Coupled,
             subagentRunId = Some(subagentRunId),
+            version = version,
             problem = None))
 
       case SubagentCoupled =>
@@ -101,20 +104,21 @@ object SubagentItemState extends UnsignedSimpleItemState.Companion[SubagentItemS
   type Item = SubagentItem
 
   def initial(subagentItem: SubagentItem) =
-    SubagentItemState(subagentItem, None, DelegateCouplingState.Reset.fresh,
+    SubagentItemState(subagentItem, None, None, DelegateCouplingState.Reset.fresh,
       eventId = EventId.BeforeFirst)
 
   implicit val jsonDecoder: Decoder[SubagentItemState] =
    c => for {
      subagentItem <- c.get[SubagentItem]("subagentItem") orElse c.get[SubagentItem]("subagentRef")
      subagentRunId <- c.get[Option[SubagentRunId]]("subagentRunId")
+     version <- c.get[Option[Version]]("version")
      couplingState <- c.get[DelegateCouplingState]("couplingState")
      isDetaching <- c.getOrElse[Boolean]("isDetaching")(false)
      isResettingForcibly <- c.get[Option[Boolean]]("isResettingForcibly")
      eventId <- c.get[EventId]("eventId")
      problem <- c.get[Option[Problem]]("problem")
    } yield SubagentItemState(
-     subagentItem, subagentRunId, couplingState,
+     subagentItem, subagentRunId, version, couplingState,
      isDetaching = isDetaching, isResettingForcibly = isResettingForcibly,
      eventId = eventId,
      problem)
@@ -123,6 +127,7 @@ object SubagentItemState extends UnsignedSimpleItemState.Companion[SubagentItemS
     o => JsonObject(
       "subagentItem" -> o.subagentItem.asJson,
       "subagentRunId" -> o.subagentRunId.asJson,
+      "version" -> o.version.asJson,
       "couplingState" -> o.couplingState.asJson,
       "isDetaching" -> o.isDetaching.?.asJson,
       "isResettingForcibly" -> o.isResettingForcibly.asJson,

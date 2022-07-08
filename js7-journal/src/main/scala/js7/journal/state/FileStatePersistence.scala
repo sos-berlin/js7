@@ -45,7 +45,7 @@ final class FileStatePersistence[S <: SnapshotableState[S]: TypeTag](
     timeout: akka.util.Timeout)
 extends StatePersistence[S] with AutoCloseable
 {
-  lazy val journalId = recoveredJournalId getOrElse JournalId.random()
+  val journalId = recoveredJournalId getOrElse JournalId.random()
 
   private val persistPromise = Promise[PersistFunction[S, Event]]()
   private val persistTask: Task[PersistFunction[S, Event]] = Task.fromFuture(persistPromise.future)
