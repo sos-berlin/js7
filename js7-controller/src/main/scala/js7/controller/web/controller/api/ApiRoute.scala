@@ -46,7 +46,7 @@ with LogRoute
         case "log"         => logRoute
         case _ => complete(NotFound)
       } ~
-      pathEnd {
+      pathEndOrSingleSlash {
         apiRootRoute
       }
     }

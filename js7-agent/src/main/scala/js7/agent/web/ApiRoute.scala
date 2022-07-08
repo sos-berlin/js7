@@ -30,7 +30,7 @@ with ClusterWatchRoute
       case "session" => sessionRoute
       case _ => complete(NotFound)
     } ~
-    pathEnd {
+    pathEndOrSingleSlash {
       apiRootRoute
     }
 }
