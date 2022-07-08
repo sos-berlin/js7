@@ -191,14 +191,15 @@ final case class MonthlyLastWeekdayPeriod(
 extends AdmissionPeriod
 {
   def checked: Checked[this.type] =
-    if (secondOfWeeks <= -3*WeekSeconds || secondOfWeeks >= WeekSeconds)
+    if (secondOfWeeks <= -4*WeekSeconds || secondOfWeeks >= 0)
       Left(Problem(s"Invalid time in a month: $toString"))
     else if (!duration.isPositive)
       Left(Problem(s"Duration must be positive: $toString"))
     else
       Right(this)
 
-  def shiftWeeks = (secondOfWeeks - WeekSeconds + 1) / WeekSeconds
+  /** 0: last week. */
+  private[time] def shiftWeeks = (secondOfWeeks + 1) / WeekSeconds
 
   def dayOfWeek = ((secondOfWeeks + 5*WeekSeconds) / DaySeconds) % 7
 
@@ -224,7 +225,7 @@ object MonthlyLastWeekdayPeriod {
     duration: FiniteDuration)
   : MonthlyLastWeekdayPeriod =
     apply(
-      (week + 1) * WeekSeconds + weekdayToSeconds(weekday) + localTime.toSecondOfDay,
+      week * WeekSeconds + weekdayToSeconds(weekday) + localTime.toSecondOfDay,
       duration
     ).checked.orThrow
 }

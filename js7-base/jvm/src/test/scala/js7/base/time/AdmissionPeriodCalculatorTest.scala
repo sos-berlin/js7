@@ -1,6 +1,6 @@
 package js7.base.time
 
-import java.time.DayOfWeek.{FRIDAY, MONDAY, SATURDAY, TUESDAY}
+import java.time.DayOfWeek.{FRIDAY, MONDAY, SATURDAY, SUNDAY, TUESDAY}
 import java.time.LocalTime.MIDNIGHT
 import java.time.{LocalDate, LocalDateTime, LocalTime}
 import js7.base.time.AdmissionPeriod.WeekSeconds
@@ -600,9 +600,17 @@ final class AdmissionPeriodCalculatorTest extends AnyFreeSpec
       val period4 = MonthlyLastWeekdayPeriod(-4, FRIDAY, LocalTime.of(3, 0), 1.h)
 
       "secondOfWeeks" in {
-        assert(period.secondOfWeeks == (4*24 + 3)*3600 - WeekSeconds)
-        assert(period1.secondOfWeeks == (4*24 + 3)*3600)
-        assert(period4.secondOfWeeks == (4*24 + 3)*3600 - 3*WeekSeconds)
+        assert(period.secondOfWeeks == (4*24 + 3)*3600 - 2*WeekSeconds)
+        assert(period1.secondOfWeeks == (4*24 + 3)*3600 - 1*WeekSeconds)
+        assert(period4.secondOfWeeks == (4*24 + 3)*3600 - 4*WeekSeconds)
+
+        assert(period == MonthlyLastWeekdayPeriod((4*24 + 3)*3600 - 2*WeekSeconds, 1.h))
+        assert(period1 == MonthlyLastWeekdayPeriod((4*24 + 3)*3600 - 1*WeekSeconds, 1.h))
+        assert(period4 == MonthlyLastWeekdayPeriod((4*24 + 3)*3600 - 4*WeekSeconds, 1.h))
+
+        // Last second of last Sunday:
+        assert(MonthlyLastWeekdayPeriod(-1, SUNDAY, LocalTime.of(23, 59, 59), 1.h) ==
+          MonthlyLastWeekdayPeriod(-1, 1.h))
       }
 
       "secondOfDay" in {
@@ -621,6 +629,9 @@ final class AdmissionPeriodCalculatorTest extends AnyFreeSpec
         assert(period.shiftWeeks == -1)
         assert(period1.shiftWeeks == 0)
         assert(period4.shiftWeeks == -3)
+
+        assert(MonthlyLastWeekdayPeriod(-1, MONDAY, LocalTime.MIDNIGHT, 1.h).shiftWeeks == 0)
+        assert(MonthlyLastWeekdayPeriod(-1, SUNDAY, LocalTime.of(0, 0, 1), 1.h).shiftWeeks == 0)
       }
     }
 
