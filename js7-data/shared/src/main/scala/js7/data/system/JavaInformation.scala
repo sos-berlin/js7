@@ -6,9 +6,9 @@ import js7.data.system.JavaInformation._
 @JsonCodec
 final case class JavaInformation(
   version: String,
+  availableProcessors: Int,
   memory: Memory,
-  systemProperties: Map[String, String],
-)
+  systemProperties: Map[String, String])
 
 object JavaInformation {
 

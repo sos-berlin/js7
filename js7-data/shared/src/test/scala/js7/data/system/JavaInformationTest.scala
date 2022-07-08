@@ -12,6 +12,7 @@ final class JavaInformationTest extends AnyFreeSpec {
   "JSON 1" in {
     testJson(JavaInformation(
       version = "x.y.z",
+      availableProcessors = 8,
       JavaInformation.Memory(maximum = 3, total = 2, free = 1),
       systemProperties = Map("test" -> "TEST")),
     json"""{
@@ -21,6 +22,7 @@ final class JavaInformationTest extends AnyFreeSpec {
         "total": 2,
         "free": 1
       },
+      "availableProcessors": 8,
       "systemProperties": {
         "test": "TEST"
       }

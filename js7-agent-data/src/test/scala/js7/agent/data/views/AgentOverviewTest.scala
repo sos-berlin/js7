@@ -22,6 +22,7 @@ final class AgentOverviewTest extends AnyFreeSpec {
         system = SystemInformation(hostname = "TEST-HOSTNAME"),
         java = JavaInformation(
           version = "x.y.z",
+          availableProcessors = 8,
           JavaInformation.Memory(maximum = 3, total = 2, free = 1),
           systemProperties = Map("test" -> "TEST"))),
       json"""{
@@ -31,6 +32,7 @@ final class AgentOverviewTest extends AnyFreeSpec {
         "isTerminating": false,
         "java": {
           "version": "x.y.z",
+          "availableProcessors": 8,
           "memory": {
             "maximum": 3,
             "total": 2,

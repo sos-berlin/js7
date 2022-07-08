@@ -24,6 +24,7 @@ object JavaInformations
 
   val javaInformation = JavaInformation(
     version = implementationVersion,
+    availableProcessors = sys.runtime.availableProcessors,
     Memory(
       maximum = sys.runtime.maxMemory,
       total = sys.runtime.totalMemory,
