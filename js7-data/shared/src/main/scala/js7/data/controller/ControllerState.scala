@@ -229,12 +229,7 @@ with SnapshotableState[ControllerState]
                 case WorkflowId.as(workflowId) =>
                   for (repo <- repo.deleteItem(workflowId)) yield
                     updated.copy(
-                      repo = repo,
-                      pathToItemState_ =
-                        if (!repo.pathToItems(Workflow).contains(workflowId.path))
-                          pathToItemState_ - WorkflowPathControlPath(workflowId.path)
-                        else
-                          pathToItemState_)
+                      repo = repo)
 
                 case path: OrderWatchPath =>
                   updated.ow.removeOrderWatch(path)

@@ -247,13 +247,21 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
         RemoveVersioned(bWorkflow.path)))
       .await(99.s)
     assert(eventWatch.await[ItemDetached](_.event.key == aWorkflow.id, after = eventId)
-      .head.value.event
-      == ItemDetached(aWorkflow.id, aAgentPath))
-    assert(eventWatch.await[ItemDetached](_.event.key == bWorkflow.id, after = eventId)
-      .head.value.event
-      == ItemDetached(bWorkflow.id, bAgentPath))
+      .head.value.event == ItemDetached(aWorkflow.id, aAgentPath))
 
-    // Agent has implicitly deleted WorkflowPathControl
+    assert(eventWatch.await[ItemDetached](
+      _.event.key == WorkflowPathControlPath(aWorkflow.path),
+      after = eventId
+    ).head.value.event == ItemDetached(WorkflowPathControlPath(aWorkflow.path), aAgentPath))
+
+    assert(eventWatch.await[ItemDetached](_.event.key == bWorkflow.id, after = eventId)
+      .head.value.event == ItemDetached(bWorkflow.id, bAgentPath))
+
+    assert(eventWatch.await[ItemDetached](
+      _.event.key == WorkflowPathControlPath(bWorkflow.path),
+      after = eventId
+    ).head.value.event == ItemDetached(WorkflowPathControlPath(bWorkflow.path), bAgentPath))
+
     assert(bAgent.currentAgentState().pathTo(WorkflowPathControl).isEmpty)
     // Controller has implicitly deleted WorkflowPathControl
     assert(controller.controllerState.await(99.s).pathTo(WorkflowPathControl).isEmpty)

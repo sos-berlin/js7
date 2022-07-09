@@ -4,7 +4,7 @@ import cats.syntax.apply._
 import cats.syntax.traverse._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
-import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEither}
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.Problems.AgentResetProblem
 import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.AgentResetStarted
@@ -26,7 +26,7 @@ import js7.data.subagent.SubagentItemState
 import js7.data.subagent.SubagentItemStateEvent.SubagentReset
 import js7.data.value.expression.scopes.NowScope
 import js7.data.workflow.position.{Position, PositionOrLabel}
-import js7.data.workflow.{Workflow, WorkflowId, WorkflowPathControl}
+import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import scala.annotation.tailrec
 import scala.collection.{View, mutable}
 import scala.language.implicitConversions
@@ -289,21 +289,20 @@ final case class ControllerStateExecutor private(
       case Some(agentPathToAttached) =>
         agentPathToAttached.view.flatMap {
           case (agentPath, Attached(revision)) =>
-            def detachable =
-              if (controllerState.pathToItemState_.contains(agentPath))
-                ItemDetachable(item.key, agentPath)
-              else // shortcut in case, the Agent has been deleted (reset)
-                ItemDetached(item.key, agentPath)
+            def detachEvent = detach(item.key, agentPath)
 
             item.key match {
               case itemId: VersionedItemId_ =>
-                controllerState.isObsoleteItem(itemId) ? detachable
+                if (controllerState.isObsoleteItem(itemId))
+                  derivedWorkflowPathControlEvents(itemId, agentPath).toList :+ detachEvent
+                else
+                  Nil
 
               case path: SimpleItemPath =>
                 if (controllerState.deletionMarkedItems.contains(path))
-                  Some(detachable)
+                  detachEvent :: Nil
                 else
-                  (item.itemRevision != revision) ?
+                  (item.itemRevision != revision).thenList(
                     (item.dedicatedAgentPath match {
                       case Some(`agentPath`) | None =>
                         // Item is dedicated to this Agent or is required by an Order.
@@ -311,12 +310,12 @@ final case class ControllerStateExecutor private(
                         ItemAttachable(path, agentPath)
                       case Some(_) =>
                         // Item's Agent dedication has changed, so we detach it
-                        detachable
-                    })
+                        detachEvent
+                    }))
             }
 
           case (_, Attachable | Detachable) =>
-            None
+            Nil
         }
 
       case None =>
@@ -325,6 +324,41 @@ final case class ControllerStateExecutor private(
         else
           item.dedicatedAgentPath.map(ItemAttachable(item.key, _))
     }
+
+  private def derivedWorkflowPathControlEvents(itemId: VersionedItemId_, agentPath: AgentPath)
+  : Option[ItemAttachedStateEvent] =
+    itemId.path match {
+      case workflowPath: WorkflowPath =>
+        // Implicitly detach WorkflowPathControl from agentPath
+        // when last version of WorkflowPath is being detached
+        val otherWorkflowWillStillBeAttached = controllerState.repo
+          .pathToItems(Workflow)(workflowPath)
+          .map(_.id)
+          .filter(_ != itemId) // itemId is going to be detached
+          .exists(workflowId => controllerState
+            .itemToAgentToAttachedState.get(workflowId)
+            .exists(_ contains agentPath))
+        if (otherWorkflowWillStillBeAttached)
+          None
+        else {
+          val controlPath = WorkflowPathControlPath(workflowPath)
+          controllerState.itemToAgentToAttachedState
+            .get(controlPath)
+            .flatMap(_
+              .get(agentPath)
+              .collect {
+                case Attachable | Attached(_) => detach(controlPath, agentPath)
+              })
+        }
+
+      case _ => None
+    }
+
+  private def detach(itemKey: InventoryItemKey, agentPath: AgentPath): ItemAttachedStateEvent =
+    if (controllerState.pathToItemState_.contains(agentPath))
+      ItemDetachable(itemKey, agentPath)
+    else // shortcut in case, the Agent has been deleted (reset)
+      ItemDetached(itemKey, agentPath)
 
   def updatedWorkflowPathControlAttachedEvents(workflowPathControl: WorkflowPathControl)
   : Iterable[ItemAttachable] = {

@@ -27,7 +27,7 @@ import js7.data.state.EventDrivenStateView
 import js7.data.state.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent, SubagentSelection, SubagentSelectionState}
-import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
+import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath, WorkflowPathControl}
 import scala.collection.mutable
 
 final class ControllerStateBuilder
@@ -292,9 +292,6 @@ with OrderWatchStateHandler[ControllerStateBuilder]
                 event.key match {
                   case WorkflowId.as(workflowId) =>
                     repo = repo.deleteItem(workflowId).orThrow
-                    if (!repo.pathToItems(Workflow).contains(workflowId.path)) {
-                      _pathToItemState -= WorkflowPathControlPath(workflowId.path)
-                    }
 
                   case jobResourcePath: JobResourcePath =>
                     pathToSignedSimpleItem -= jobResourcePath

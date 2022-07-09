@@ -45,15 +45,16 @@ object VerifiedUpdateItemsExecutor
       (for {
         versionedEvents <- versionedEvents(controllerState)
         updatedState <- controllerState.applyEvents(versionedEvents)
-        derivedEvents = derivedWorkflowPathControlEvents(updatedState)
-        simpleItemEvents <- simpleItemEvents(updatedState).map(_ ++ derivedEvents)
+        simpleItemEvents <- simpleItemEvents(updatedState)
         updatedState <- updatedState.applyEvents(simpleItemEvents)
         updatedState <- updatedState.applyEvents(
           versionedEvents.view
             .collect { case KeyedEvent(_, e: VersionedItemRemoved) => e.path }
             .flatMap(deleteRemovedVersionedItem(_, updatedState)))
+        derivedEvents = derivedWorkflowPathControlEvents(updatedState)
+        updatedState <- updatedState.applyEvents(derivedEvents)
         _ <- checkVerifiedUpdateConsistency(verifiedUpdateItems, updatedState)
-      } yield (simpleItemEvents ++ versionedEvents).toVector
+      } yield (simpleItemEvents ++ versionedEvents ++ derivedEvents).toVector
       ).left.map {
         case prblm @ Problem.Combined(Seq(_, duplicateKey: DuplicateKey)) =>
           scribe.debug(prblm.toString)
@@ -93,18 +94,23 @@ object VerifiedUpdateItemsExecutor
           .map(_.map(NoKey <-: _)))
     }
 
-    def derivedWorkflowPathControlEvents(controllerState: ControllerState): View[KeyedEvent[InventoryItemEvent]] = {
+    def derivedWorkflowPathControlEvents(controllerState: ControllerState)
+    : View[KeyedEvent[InventoryItemEvent]] =
       verifiedUpdateItems.maybeVersioned.view
         .flatMap(_.remove)
-        .collect {
-          case workflowPath: WorkflowPath
-            if controllerState.pathTo(WorkflowPathControl)
-              .contains(WorkflowPathControlPath(workflowPath))
-              && controllerState.repo.pathToItems(Workflow).contains(workflowPath) =>
-            NoKey <-: ItemDeleted(WorkflowPathControlPath(workflowPath))
-        }
-      // Agents delete automatically WorkflowPathControl with last WorkflowPath,
-      // so not ItemDetachable is required.
+        .collect { case o: WorkflowPath => o }
+        .flatMap(derivedWorkflowPathControlEvent(controllerState, _))
+
+    def derivedWorkflowPathControlEvent(
+      controllerState: ControllerState,
+      workflowPath: WorkflowPath)
+    : Option[KeyedEvent[InventoryItemEvent]] = {
+      val path = WorkflowPathControlPath(workflowPath)
+
+      (controllerState.pathTo(WorkflowPathControl).contains(path)
+        && !controllerState.repo.pathToItems(Workflow).contains(workflowPath)
+        && !controllerState.itemToAgentToAttachedState.contains(path)
+      ).thenSome(NoKey <-: ItemDeleted(path))
     }
 
     def verifiedSimpleItemToEvent(

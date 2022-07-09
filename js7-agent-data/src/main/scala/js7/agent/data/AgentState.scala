@@ -175,13 +175,7 @@ with SnapshotableState[AgentState]
                   val updatedIdToWorkflow = idToWorkflow - workflowId
                   copy(
                     keyToSignedItem = keyToSignedItem - workflowId,
-                    idToWorkflow = updatedIdToWorkflow,
-                    pathToItemState_ =
-                      if (updatedIdToWorkflow.keys.forall/*Slow???*/(_.path != workflowId.path))
-                        // Implicitly delete WorkflowPathControl
-                        pathToItemState_ - WorkflowPathControlPath(workflowId.path)
-                      else
-                        pathToItemState_)
+                    idToWorkflow = updatedIdToWorkflow)
                 }
 
               case path: OrderWatchPath =>
