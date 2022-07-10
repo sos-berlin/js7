@@ -2,7 +2,7 @@ package js7.data.workflow
 
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
-import js7.data.item.{ItemRevision, UnsignedSimpleItem, UnsignedSimpleItemState}
+import js7.data.item.{ItemRevision, TrivialItemState, UnsignedSimpleItem, UnsignedSimpleItemState}
 import js7.data.workflow.position.Label
 
 final case class WorkflowPathControl(
@@ -10,7 +10,7 @@ final case class WorkflowPathControl(
   suspended: Boolean = false,
   skip: Set[Label] = Set.empty,
   itemRevision: Option[ItemRevision] = Some(ItemRevision(0)))
-extends UnsignedSimpleItem with UnsignedSimpleItemState
+extends UnsignedSimpleItem with TrivialItemState
 {
   protected type Self = WorkflowPathControl
   val companion = WorkflowPathControl
@@ -25,9 +25,6 @@ extends UnsignedSimpleItem with UnsignedSimpleItemState
     copy(itemRevision = revision)
 
   def workflowPath = path.workflowPath
-
-  def updateItem(item: WorkflowPathControl) =
-    Right(item)
 }
 
 object WorkflowPathControl
