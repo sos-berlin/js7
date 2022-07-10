@@ -13,7 +13,10 @@ object SignableSimpleItem
 {
   type Companion_ = Companion[_ <: SignableSimpleItem]
 
-  trait Companion[A <: SignableSimpleItem] extends SimpleItem.Companion[A] with SignableItem.Companion[A] {
+  trait Companion[A <: SignableSimpleItem]
+  extends SimpleItem.Companion[A]
+  with SignableItem.Companion[A]
+  {
     type Key <: SignableSimpleItemPath
     val Key: js7.data.item.SignableSimpleItemPath.Companion[Key]
   }

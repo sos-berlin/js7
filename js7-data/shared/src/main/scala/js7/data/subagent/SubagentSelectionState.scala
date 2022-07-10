@@ -1,10 +1,10 @@
 package js7.data.subagent
 
-import js7.data.item.{TrivialItemState, UnsignedSimpleItemState}
+import js7.data.item.{SeparateTrivialItemState, UnsignedSimpleItemState}
 
 /** Just for orthogonality. SubagentSelection has no State. */
 final case class SubagentSelectionState(item: SubagentSelection)
-extends UnsignedSimpleItemState with TrivialItemState {
+extends UnsignedSimpleItemState with SeparateTrivialItemState[SubagentSelectionState] {
   protected type Self = SubagentSelectionState
   val companion = SubagentSelectionState
 }
@@ -12,6 +12,5 @@ extends UnsignedSimpleItemState with TrivialItemState {
 object SubagentSelectionState extends UnsignedSimpleItemState.Companion[SubagentSelectionState]
 {
   type Path = SubagentSelectionId
-  type ItemState = SubagentSelectionState
   type Item = SubagentSelection
 }

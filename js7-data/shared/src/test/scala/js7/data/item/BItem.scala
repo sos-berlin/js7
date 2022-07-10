@@ -5,15 +5,22 @@ import io.circe.generic.semiauto.deriveCodec
 /**
   * @author Joacim Zschimmer
   */
-final case class BItem(id: VersionedItemId[BPath], content: String) extends VersionedItem {
+final case class BItem(id: VersionedItemId[BPath], content: String)
+extends VersionedItem
+with TrivialItemState[BItem]
+{
   type Self = BItem
+  val item = this
 
   val companion = BItem
 
   def withId(id: VersionedItemId[BPath]) = copy(id = id)
 }
 
-object BItem extends VersionedItem.Companion[BItem] {
+object BItem
+extends VersionedItem.Companion[BItem]
+with TrivialItemState.Companion[BItem]
+ {
   type Item = BItem
   type Path = BPath
 

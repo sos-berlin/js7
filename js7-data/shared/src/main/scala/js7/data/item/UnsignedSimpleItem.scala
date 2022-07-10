@@ -5,8 +5,6 @@ trait UnsignedSimpleItem extends SimpleItem
   protected type Self <: UnsignedSimpleItem
 
   val companion: UnsignedSimpleItem.Companion[Self]
-
-  def toInitialItemState: companion.ItemState
 }
 
 object UnsignedSimpleItem

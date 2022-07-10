@@ -24,6 +24,7 @@ extends UnsignedSimpleItemState
   val companion = FileWatchState
 
   val item = fileWatch
+  def path = item.path
 
   def updateItem(item: FileWatch) =
     Right(copy(fileWatch = item))
@@ -69,7 +70,6 @@ extends UnsignedSimpleItemState
 object FileWatchState extends UnsignedSimpleItemState.Companion[FileWatchState]
 {
   type Path = OrderWatchPath
-  type ItemState = FileWatchState
   type Item = FileWatch
 
   sealed trait Snapshot {

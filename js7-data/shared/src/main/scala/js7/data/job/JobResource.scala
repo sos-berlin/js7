@@ -3,7 +3,7 @@ package js7.data.job
 import io.circe.Codec
 import io.circe.generic.extras.Configuration.default.withDefaults
 import io.circe.generic.extras.semiauto.deriveConfiguredCodec
-import js7.data.item.{ItemRevision, SignableSimpleItem}
+import js7.data.item.{ItemRevision, SignableSimpleItem, TrivialItemState}
 import js7.data.value.expression.Expression
 
 /** Job resources, for example environment variables. */
@@ -13,9 +13,11 @@ final case class JobResource(
   env: Map[String, Expression] = Map.empty,
   itemRevision: Option[ItemRevision] = None)
 extends SignableSimpleItem
+with TrivialItemState[JobResource]
 {
   type Self = JobResource
   val companion = JobResource
+  val item = this
 
   def withId(id: JobResourcePath) =
     copy(path = id)
@@ -27,7 +29,9 @@ extends SignableSimpleItem
     copy(itemRevision = revision)
 }
 
-object JobResource extends SignableSimpleItem.Companion[JobResource]
+object JobResource
+extends SignableSimpleItem.Companion[JobResource]
+with TrivialItemState.Companion[JobResource]
 {
   type Key = JobResourcePath
   val Key = JobResourcePath

@@ -62,7 +62,8 @@ extends EventDrivenStateView[TestStateView, Event]
     if (removeOrders.nonEmpty) x = x.copy(idToOrder = idToOrder -- removeOrders)
     if (orders.nonEmpty) x = x.copy(idToOrder = idToOrder ++ orders.map(o => o.id -> o))
     if (removeItemStates.nonEmpty) x = x.copy(pathToItemState_ = pathToItemState_ -- removeItemStates)
-    if (addItemStates.nonEmpty) x = x.copy(pathToItemState_ = pathToItemState_ ++ addItemStates.map(o => o.path -> o))
+    if (addItemStates.nonEmpty) x = x.copy(
+      pathToItemState_ = pathToItemState_ ++ addItemStates.map(o => o.path -> o))
     Right(x)
   }
 }

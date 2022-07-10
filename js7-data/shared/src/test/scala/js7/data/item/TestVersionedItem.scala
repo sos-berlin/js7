@@ -12,14 +12,21 @@ object TestPath extends VersionedItemPath.Companion[TestPath] {
 }
 
 
-final case class TestVersionedItem(id: TestVersionedItem.Key, content: String) extends VersionedItem {
+final case class TestVersionedItem(id: TestVersionedItem.Key, content: String)
+extends VersionedItem
+with TrivialItemState[TestVersionedItem]
+{
   type Self = TestVersionedItem
+  val item = this
   val companion = TestVersionedItem
 
   def withId(id: VersionedItemId[Path]) = copy(id)
 }
 
-object TestVersionedItem extends VersionedItem.Companion[TestVersionedItem] {
+object TestVersionedItem
+extends VersionedItem.Companion[TestVersionedItem]
+with TrivialItemState.Companion[TestVersionedItem]
+{
   type Item = TestVersionedItem
   val cls = classOf[TestVersionedItem]
 

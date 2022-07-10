@@ -9,9 +9,6 @@ trait InventoryItemState
 
   val item: companion.Item
 
-  def path: item.companion.Path =
-    item.path
-
   def toSnapshotObservable: Observable[Any] =
     Observable.pure(this)
 }
@@ -23,5 +20,6 @@ object InventoryItemState
   trait Companion[A <: InventoryItemState] {
     type Path <: InventoryItemPath
     type Item <: InventoryItem
+    type ItemState = A
   }
 }

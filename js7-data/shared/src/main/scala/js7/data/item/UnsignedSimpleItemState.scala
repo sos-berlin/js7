@@ -8,6 +8,7 @@ trait UnsignedSimpleItemState extends SimpleItemState
   val companion: UnsignedSimpleItemState.Companion[Self]
 
   val item: companion.Item
+  def path: item.companion.Path
 
   def updateItem(item: companion.Item): Checked[companion.ItemState]
 }

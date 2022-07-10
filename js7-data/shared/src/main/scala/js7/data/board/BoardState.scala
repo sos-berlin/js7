@@ -18,6 +18,7 @@ extends UnsignedSimpleItemState
   val companion = BoardState
 
   val item = board
+  def path = item.path
 
   def updateItem(item: Board) =
     Right(copy(board = item))
@@ -140,6 +141,5 @@ extends UnsignedSimpleItemState
 
 object BoardState extends UnsignedSimpleItemState.Companion[BoardState] {
   type Path = BoardPath
-  type ItemState = BoardState
   type Item = Board
 }

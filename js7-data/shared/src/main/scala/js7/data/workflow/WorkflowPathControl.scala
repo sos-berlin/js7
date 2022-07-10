@@ -10,13 +10,13 @@ final case class WorkflowPathControl(
   suspended: Boolean = false,
   skip: Set[Label] = Set.empty,
   itemRevision: Option[ItemRevision] = Some(ItemRevision(0)))
-extends UnsignedSimpleItem with TrivialItemState
+extends UnsignedSimpleItem
+with UnsignedSimpleItemState
+with TrivialItemState[WorkflowPathControl]
 {
   protected type Self = WorkflowPathControl
   val companion = WorkflowPathControl
   val item = this
-
-  def toInitialItemState = this
 
   def rename(path: WorkflowPathControlPath) =
     copy(path = path)
@@ -30,6 +30,7 @@ extends UnsignedSimpleItem with TrivialItemState
 object WorkflowPathControl
 extends UnsignedSimpleItem.Companion[WorkflowPathControl]
 with UnsignedSimpleItemState.Companion[WorkflowPathControl]
+with TrivialItemState.Companion[WorkflowPathControl]
 {
   type Key = WorkflowPathControlPath
   val Key = WorkflowPathControlPath
@@ -37,7 +38,6 @@ with UnsignedSimpleItemState.Companion[WorkflowPathControl]
   val Path = WorkflowPathControlPath
   val cls = classOf[WorkflowPathControl]
 
-  type ItemState = WorkflowPathControl
 
   implicit val jsonCodec: Codec.AsObject[WorkflowPathControl] =
     deriveCodec[WorkflowPathControl]

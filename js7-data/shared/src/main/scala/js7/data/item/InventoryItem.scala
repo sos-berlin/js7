@@ -23,6 +23,8 @@ trait InventoryItem
   final def keyAndRevision: (InventoryItemKey, Option[ItemRevision]) =
     (key, itemRevision)
 
+  def toInitialItemState: companion.ItemState
+
   /** Only if this Item is dedicated to an Agent.
     * An Item may be
     * <ul>
@@ -54,6 +56,8 @@ object InventoryItem
 
     type Path <: InventoryItemPath
     val Path: InventoryItemPath.Companion[Path]
+
+    type ItemState <: InventoryItemState
 
     implicit def jsonCodec: Codec.AsObject[A]
 

@@ -24,6 +24,7 @@ extends UnsignedSimpleItemState with Big/*acquired and queue get big with many o
   val companion = LockState
 
   val item = lock
+  def path = item.path
 
   def updateItem(lock: Lock) =
     Right(copy(lock = lock))
@@ -124,7 +125,6 @@ extends UnsignedSimpleItemState with Big/*acquired and queue get big with many o
 object LockState extends UnsignedSimpleItemState.Companion[LockState]
 {
   type Path = LockPath
-  type ItemState = LockState
   type Item = Lock
 
   implicit val jsonCodec = deriveCodec[LockState]

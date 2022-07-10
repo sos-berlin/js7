@@ -27,6 +27,7 @@ extends UnsignedSimpleItemState
   val companion = SubagentItemState
 
   val item = subagentItem
+  def path = item.path
 
   def updateItem(item: SubagentItem) =
     for (_ <- item.agentPath == subagentItem.agentPath !! Problem.pure(
@@ -101,7 +102,6 @@ extends UnsignedSimpleItemState
 object SubagentItemState extends UnsignedSimpleItemState.Companion[SubagentItemState]
 {
   type Path = SubagentId
-  type ItemState = SubagentItemState
   type Item = SubagentItem
 
   def initial(subagentItem: SubagentItem) =

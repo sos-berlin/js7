@@ -15,7 +15,7 @@ trait VersionedItem extends SignableItem
 
   final def itemRevision = None
 
-  final def path: Path = key.path
+  def path: Path = key.path
 
   final def isAnonymous = key.isAnonymous
 

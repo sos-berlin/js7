@@ -27,7 +27,7 @@ object SimpleItem
 
   trait Companion[A <: SimpleItem] extends InventoryItem.Companion[A]
   {
-    type Item  = A
+    type Item = A
 
     type Key <: SimpleItemPath
     val Key: SimpleItemPath.Companion[Key]

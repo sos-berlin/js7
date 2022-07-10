@@ -15,7 +15,7 @@ import js7.base.utils.ScalaUtils.{implicitClass, reuseIfEqual}
 import js7.base.utils.typeclasses.IsEmpty.syntax._
 import js7.data.agent.AgentPath
 import js7.data.calendar.CalendarPath
-import js7.data.item.{InventoryItemPath, SignableSimpleItemPath, SimpleItemPath, UnsignedSimpleItemPath, VersionedItem, VersionedItemId}
+import js7.data.item.{InventoryItemPath, SignableSimpleItemPath, SimpleItemPath, TrivialItemState, UnsignedSimpleItemPath, VersionedItem, VersionedItemId}
 import js7.data.job.{JobKey, JobResourcePath}
 import js7.data.order.Order
 import js7.data.value.expression.{Expression, PositionSearch}
@@ -44,6 +44,7 @@ final case class Workflow private(
   source: Option[String],
   outer: Option[Workflow])
 extends VersionedItem
+with TrivialItemState[Workflow]
 {
   override def equals(o: Any) = o match {
     case o: Workflow =>
@@ -74,6 +75,8 @@ extends VersionedItem
         s"Duplicate labels in Workflow: ${labels mkString ","}"))
 
   def withId(id: VersionedItemId[WorkflowPath]) = reuseIfEqual(this, copy(id = id))
+
+  val item = this
 
   /** Checks a complete workflow including subworkflows using jobs in its outer workflows. */
   def completelyChecked: Checked[Workflow] = {
@@ -462,6 +465,7 @@ extends VersionedItem
 }
 
 object Workflow extends VersionedItem.Companion[Workflow]
+with TrivialItemState.Companion[Workflow]
 {
   type Item = Workflow
   type Path = WorkflowPath
