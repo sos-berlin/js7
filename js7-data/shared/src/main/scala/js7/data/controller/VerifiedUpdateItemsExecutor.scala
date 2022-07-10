@@ -107,7 +107,7 @@ object VerifiedUpdateItemsExecutor
     : Option[KeyedEvent[InventoryItemEvent]] = {
       val path = WorkflowPathControlPath(workflowPath)
 
-      (controllerState.pathTo(WorkflowPathControl).contains(path)
+      (controllerState.keyTo(WorkflowPathControl).contains(path)
         && !controllerState.repo.pathToItems(Workflow).contains(workflowPath)
         && !controllerState.itemToAgentToAttachedState.contains(path)
       ).thenSome(NoKey <-: ItemDeleted(path))

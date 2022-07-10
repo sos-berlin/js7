@@ -306,12 +306,12 @@ with MainJournalingActor[ControllerState, Event]
       this._controllerState = controllerState
       //controllerMetaState = controllerState.controllerMetaState.copy(totalRunningTime = recovered.totalRunningTime)
       for (agentRef <- controllerState.pathToUnsignedSimple(AgentRef).values) {
-        val agentRefState = controllerState.pathTo(AgentRefState).getOrElse(agentRef.path, AgentRefState(agentRef))
+        val agentRefState = controllerState.keyTo(AgentRefState).getOrElse(agentRef.path, AgentRefState(agentRef))
         registerAgent(agentRef, agentRefState.agentRunId, eventId = agentRefState.eventId)
       }
 
       for (
-        boardState <- controllerState.pathTo(BoardState).values;
+        boardState <- controllerState.keyTo(BoardState).values;
         notice <- boardState.notices)
       {
         notices.schedule(notice)
@@ -387,13 +387,13 @@ with MainJournalingActor[ControllerState, Event]
             .map(Internal.Ready.apply)
             .pipeTo(self)
 
-          for (path <- _controllerState.pathTo(WorkflowPathControl).keys) {
+          for (path <- _controllerState.keyTo(WorkflowPathControl).keys) {
             proceedWithItem(path)
           }
         }
       }
 
-      _controllerState.pathTo(OrderWatchState).keys foreach proceedWithItem
+      _controllerState.keyTo(OrderWatchState).keys foreach proceedWithItem
 
       // Proceed order before starting AgentDrivers, so AgentDrivers may match recovered OrderIds with Agent's OrderIds
       orderRegister ++= _controllerState.idToOrder.keys.map(_ -> new OrderEntry(scheduler.now))
@@ -401,7 +401,7 @@ with MainJournalingActor[ControllerState, Event]
       if (persistedEventId > EventId.BeforeFirst) {  // Recovered?
         logger.info(s"${_controllerState.idToOrder.size} Orders, " +
           s"${_controllerState.repo.typedCount[Workflow]} Workflows and " +
-          s"${_controllerState.pathTo(AgentRefState).size} AgentRefs recovered")
+          s"${_controllerState.keyTo(AgentRefState).size} AgentRefs recovered")
       }
       // Any ordering when continuing orders???
       proceedWithOrders(_controllerState.idToOrder.keys)
@@ -481,7 +481,7 @@ with MainJournalingActor[ControllerState, Event]
     case AgentDriver.Output.EventsFromAgent(agentRunId, stampedAgentEvents, committedPromise) =>
       for (agentEntry <- agentRegister.get(sender())) {
         import agentEntry.agentPath
-        for (agentRefState <- persistence.currentState.pathTo(AgentRefState).get(agentPath)) {
+        for (agentRefState <- persistence.currentState.keyTo(AgentRefState).get(agentPath)) {
           if (!agentRefState.couplingState.isInstanceOf[Resetting]) {
             if (!agentRefState.agentRunId.forall(_ == agentRunId)) {
               logger.debug(s"AgentDriver.Output.EventsFromAgent: Unknown agentRunId=$agentRunId")
@@ -559,7 +559,7 @@ with MainJournalingActor[ControllerState, Event]
                 orderQueue.enqueue(subseqEvents.view.collect { case KeyedEvent(orderId: OrderId, _) => orderId })  // For OrderSourceEvents
                 timestampedEvents ++= subseqEvents.map(Timestamped(_))
 
-                persistence.currentState.pathTo(AgentRefState).get(agentPath).map(_.couplingState) match {
+                persistence.currentState.keyTo(AgentRefState).get(agentPath).map(_.couplingState) match {
                   case Some(DelegateCouplingState.Resetting(_) | DelegateCouplingState.Reset(_)) =>
                     // Ignore the events, because orders are already marked as detached (and Failed)
                     // TODO Avoid race-condition and guard with persistence.lock!
@@ -599,7 +599,7 @@ with MainJournalingActor[ControllerState, Event]
     case Internal.NoticeIsDue(boardPath, noticeId) =>
       notices.deleteSchedule(boardPath, noticeId)
       for (
-        boardState <- _controllerState.pathTo(BoardState).checked(boardPath);
+        boardState <- _controllerState.keyTo(BoardState).checked(boardPath);
         notice <- boardState.notice(noticeId);
         keyedEvent <- boardState.deleteNoticeEvent(noticeId))
       {
@@ -633,7 +633,7 @@ with MainJournalingActor[ControllerState, Event]
         shutdown.continue()
       } else {
         agentRegister -= actor
-        for (agentRefState <- persistence.currentState.pathTo(AgentRefState).checked(agentPath)) {
+        for (agentRefState <- persistence.currentState.keyTo(AgentRefState).checked(agentPath)) {
           agentRefState.couplingState match {
             case Resetting(_) | Reset(_) =>
               agentEntry = registerAgent(agentRefState.agentRef,
@@ -751,7 +751,7 @@ with MainJournalingActor[ControllerState, Event]
       case ControllerCommand.PostNotice(boardPath, noticeId, maybeEndOfLife) =>
         val scope = NowScope(alarmClock.now())
         val checked = for {
-          boardState <- _controllerState.pathTo(BoardState).checked(boardPath)
+          boardState <- _controllerState.keyTo(BoardState).checked(boardPath)
           notice <- boardState.board.toNotice(noticeId, maybeEndOfLife)(scope)
           _ <- boardState.addNotice(notice) // Check
           expectingOrderEvents <- PostNoticesExecutor
@@ -768,7 +768,7 @@ with MainJournalingActor[ControllerState, Event]
 
       case ControllerCommand.DeleteNotice(boardPath, noticeId) =>
         (for {
-          boardState <- _controllerState.pathTo(BoardState).checked(boardPath)
+          boardState <- _controllerState.keyTo(BoardState).checked(boardPath)
           keyedEvent <- boardState.deleteNoticeEvent(noticeId)
         } yield keyedEvent)
         match {
@@ -861,7 +861,7 @@ with MainJournalingActor[ControllerState, Event]
         agentRegister.checked(agentPath) match {
           case Left(problem) => Future.successful(Left(problem))
           case Right(agentEntry) =>
-            persistence.currentState.pathTo(AgentRefState).checked(agentEntry.agentPath) match {
+            persistence.currentState.keyTo(AgentRefState).checked(agentEntry.agentPath) match {
               case Left(problem) => Future.successful(Left(problem))
               case Right(agentRefState) =>
                 // TODO persistence.lock(agentPath), to avoid race with AgentCoupled, too
@@ -893,7 +893,7 @@ with MainJournalingActor[ControllerState, Event]
                                 .flatMapT {
                                   case true =>
                                     persistence.persist(_
-                                      .pathTo(AgentRefState).checked(agentPath)
+                                      .keyTo(AgentRefState).checked(agentPath)
                                       .map(_.couplingState)
                                       .map {
                                         case Resetting(_) => (agentPath <-: AgentReset) :: Nil
@@ -912,7 +912,7 @@ with MainJournalingActor[ControllerState, Event]
         }
 
       case ControllerCommand.ResetSubagent(subagentId, force) =>
-        persistence.currentState.pathTo(SubagentItemState).checked(subagentId)
+        persistence.currentState.keyTo(SubagentItemState).checked(subagentId)
           .map(subagentItemState =>
             (subagentItemState.couplingState != DelegateCouplingState.Resetting(force))
               .thenList((subagentId <-: SubagentResetStartedByController(force = force))))
@@ -996,7 +996,7 @@ with MainJournalingActor[ControllerState, Event]
         persistTransactionAndSubsequentEvents(keyedEvents) { (stamped, updated) =>
           handleEvents(stamped, updated)
           proceedWithItem(path)
-          val workflowPathControl = updated.pathTo(WorkflowPathControl)(path)
+          val workflowPathControl = updated.keyTo(WorkflowPathControl)(path)
           if (!workflowPathControl.item.suspended) {
             orderQueue.enqueue(
               updated.orders.filter(_.workflowPath == workflowPathControl.workflowPath).map(_.id))
@@ -1144,7 +1144,7 @@ with MainJournalingActor[ControllerState, Event]
         }
 
       case UnsignedSimpleItemChanged(subagentItem: SubagentItem) =>
-        for (agentRef <- persistence.currentState.keyTo(AgentRef).get(subagentItem.agentPath)) {
+        for (agentRef <- persistence.currentState.keyToItem(AgentRef).get(subagentItem.agentPath)) {
           for (uri <- persistence.currentState.agentToUri(agentRef.path)) {
             agentRegister(agentRef.path).actor ! AgentDriver.Input.ChangeUri(agentRef, uri)
           }
@@ -1210,7 +1210,7 @@ with MainJournalingActor[ControllerState, Event]
     // ResetSubagent
     itemKey match {
       case subagentId: SubagentId =>
-        for (subagentItemState <- _controllerState.pathTo(SubagentItemState).get(subagentId)) {
+        for (subagentItemState <- _controllerState.keyTo(SubagentItemState).get(subagentId)) {
           subagentItemState.isResettingForcibly match {
             case Some(force) =>
               for (actor <- agentRegister.get(subagentItemState.item.agentPath).map(_.actor)) {
@@ -1402,7 +1402,7 @@ with MainJournalingActor[ControllerState, Event]
       .filter(isDetachedOrAttachable(_, agentPath))
 
     if (_controllerState.workflowIdToOrders contains workflow.id) {
-      _controllerState.keyTo(WorkflowPathControl)
+      _controllerState.keyToItem(WorkflowPathControl)
         .get(WorkflowPathControlPath(workflow.path))
         .foreach(result +:= _)
     }

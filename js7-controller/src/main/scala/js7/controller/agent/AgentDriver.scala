@@ -101,7 +101,7 @@ extends ReceiveLoggingActor.WithStash
     private var attachedOrderIds: Set[OrderId] = null
 
     override protected def couple(eventId: EventId) =
-      Task(persistence.currentState.pathTo(AgentRefState).checked(agentPath))
+      Task(persistence.currentState.keyTo(AgentRefState).checked(agentPath))
         .flatMapT(agentRefState =>
           ((agentRefState.couplingState, agentRefState.agentRunId) match {
             case (Resetting(false), None) =>
@@ -128,7 +128,7 @@ extends ReceiveLoggingActor.WithStash
               persistence
                 .lock(agentPath)(
                   persistence.persist(controllerState =>
-                    for (a <- controllerState.pathTo(AgentRefState).checked(agentPath)) yield
+                    for (a <- controllerState.keyTo(AgentRefState).checked(agentPath)) yield
                       (a.couplingState != Coupled || a.problem.nonEmpty)
                         .thenList(agentPath <-: AgentCoupled)))
                 .rightAs(agentEventId)

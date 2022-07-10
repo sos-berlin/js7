@@ -49,12 +49,11 @@ trait StateView extends ItemContainer
   def workflowPathToId(workflowPath: WorkflowPath): Checked[WorkflowId]
 
   final def pathToWorkflowPathControl: MapView[WorkflowPathControlPath, WorkflowPathControl] =
-    pathTo(WorkflowPathControl).mapValues(_.item)
+    keyTo(WorkflowPathControl).mapValues(_.item)
 
   def keyToItemState: MapView[InventoryItemKey, InventoryItemState]
 
-  // TODO Rename as keyTo
-  final def pathTo[A <: InventoryItemState](A: InventoryItemState.Companion[A])
+  final def keyTo[A <: InventoryItemState](A: InventoryItemState.Companion[A])
   : MapView[A.Key, A] =
     keyToItemState
       .filter { case (_, v) => v.companion eq A }
@@ -75,7 +74,7 @@ trait StateView extends ItemContainer
   def availableNotices(expectedSeq: Iterable[OrderNoticesExpected.Expected]): Set[BoardPath] =
     expectedSeq
       .collect {
-        case x if pathTo(BoardState).get(x.boardPath).exists(_ containsNotice x.noticeId) =>
+        case x if keyTo(BoardState).get(x.boardPath).exists(_ containsNotice x.noticeId) =>
           x.boardPath
       }
       .toSet
@@ -84,7 +83,7 @@ trait StateView extends ItemContainer
   final def workflowPositionToBoardState(workflowPosition: WorkflowPosition): Checked[BoardState] =
     for {
       boardPath <- workflowPositionToBoardPath(workflowPosition)
-      boardState <- pathTo(BoardState).checked(boardPath)
+      boardState <- keyTo(BoardState).checked(boardPath)
     } yield boardState
 
   // COMPATIBLE with v2.3
@@ -117,7 +116,7 @@ trait StateView extends ItemContainer
         case Vector(o) => Right(o)
         case _ => Left(Problem.pure("Legacy orderIdToBoardState, but instruction has multiple BoardPaths"))
       }
-      boardState <- pathTo(BoardState).checked(boardPath)
+      boardState <- keyTo(BoardState).checked(boardPath)
     } yield boardState
 
   def instruction(workflowPosition: WorkflowPosition): Instruction =
@@ -149,7 +148,7 @@ trait StateView extends ItemContainer
   }
 
   final def isWorkflowSuspended(workflowPath: WorkflowPath): Boolean =
-    pathTo(WorkflowPathControl)
+    keyTo(WorkflowPathControl)
       .get(WorkflowPathControlPath(workflowPath))
       .exists(_.item.suspended)
 
@@ -163,7 +162,7 @@ trait StateView extends ItemContainer
     for (orderScopes <- toOrderScopes(order)) yield {
       val nowScope = NowScope(now)
       orderScopes.pureOrderScope |+| nowScope |+|
-        JobResourceScope(pathTo(JobResource),
+        JobResourceScope(keyTo(JobResource),
           useScope = orderScopes.variablelessOrderScope |+| nowScope)
     }
 

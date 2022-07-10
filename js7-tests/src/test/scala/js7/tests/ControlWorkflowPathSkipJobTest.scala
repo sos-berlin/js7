@@ -97,8 +97,8 @@ extends AnyFreeSpec with ControllerAgentForScalaTest
       .head.value.event
       == ItemDetached(bWorkflow.id, agentPath))
 
-    assert(agent.currentAgentState().pathTo(WorkflowPathControl).isEmpty)
-    assert(controller.controllerState.await(99.s).pathTo(WorkflowPathControl).isEmpty)
+    assert(agent.currentAgentState().keyTo(WorkflowPathControl).isEmpty)
+    assert(controller.controllerState.await(99.s).keyTo(WorkflowPathControl).isEmpty)
   }
 
   private def skipJob(workflowPath: WorkflowPath, skip: Boolean, revision: ItemRevision)

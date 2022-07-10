@@ -77,7 +77,7 @@ with StateView
         case event: OrderLockEvent =>
           event.lockPaths
             .toList
-            .traverse(lockPath => pathTo(LockState)
+            .traverse(lockPath => keyTo(LockState)
               .checked(lockPath)
               .flatMap(_.applyEvent(orderId <-: event)))
             .flatMap(lockStates =>
@@ -139,7 +139,7 @@ with StateView
             .map(_ :: Nil)
 
         case OrderNoticePosted(notice) =>
-          pathTo(BoardState)
+          keyTo(BoardState)
             .checked(notice.boardPath)
             .flatMap(_.addNotice(notice))
             .map(_ :: Nil)
@@ -151,7 +151,7 @@ with StateView
 
         case OrderNoticesExpected(expectedSeq) =>
           expectedSeq.traverse(expected =>
-            pathTo(BoardState)
+            keyTo(BoardState)
               .checked(expected.boardPath)
               .flatMap(_.addExpectation(expected.noticeId, orderId)))
 
@@ -168,7 +168,7 @@ with StateView
       case None => Right(Nil)
       case Some(order) =>
         order.state.expected
-          .traverse(expected => pathTo(BoardState)
+          .traverse(expected => keyTo(BoardState)
             .checked(expected.boardPath)
             .flatMap(_.removeExpectation(expected.noticeId, order.id)))
     }

@@ -22,7 +22,7 @@ extends EventInstructionExecutor
       .getOrElse(
         if (order.isState[Order.Ready] || order.isState[Order.WaitingForLock])
           for {
-            lockState <- state.pathTo(LockState).checked(lockPath)
+            lockState <- state.keyTo(LockState).checked(lockPath)
             event <- lockState.checkAcquire(order.id, count) match {
               case Right(()) =>
                 Right(Some(OrderLockAcquired(lockPath, count)))

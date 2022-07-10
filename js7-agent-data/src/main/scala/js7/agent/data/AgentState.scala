@@ -79,14 +79,14 @@ with SnapshotableState[AgentState]
   def toSnapshotObservable = Observable(
     standards.toSnapshotObservable,
     Observable.fromIterable(meta != AgentMetaState.empty thenList meta),
-    Observable.fromIterable(pathTo(SubagentItemState).values).flatMap(_.toSnapshotObservable),
-    Observable.fromIterable(pathTo(SubagentSelectionState).values).flatMap(_.toSnapshotObservable),
-    Observable.fromIterable(pathTo(FileWatchState).values).flatMap(_.toSnapshotObservable),
+    Observable.fromIterable(keyTo(SubagentItemState).values).flatMap(_.toSnapshotObservable),
+    Observable.fromIterable(keyTo(SubagentSelectionState).values).flatMap(_.toSnapshotObservable),
+    Observable.fromIterable(keyTo(FileWatchState).values).flatMap(_.toSnapshotObservable),
     Observable.fromIterable(keyToSignedItem.values.view.map(SignedItemAdded(_))),
     Observable.fromIterable(idToWorkflow.view.filterKeys(isWithoutSignature).values),
     Observable.fromIterable(pathToJobResource.view.filterKeys(isWithoutSignature).values),
-    Observable.fromIterable(pathTo(CalendarState).values).flatMap(_.toSnapshotObservable),
-    Observable.fromIterable(pathTo(WorkflowPathControl).values).flatMap(_.toSnapshotObservable),
+    Observable.fromIterable(keyTo(CalendarState).values).flatMap(_.toSnapshotObservable),
+    Observable.fromIterable(keyTo(WorkflowPathControl).values).flatMap(_.toSnapshotObservable),
     Observable.fromIterable(idToOrder.values)
   ).flatten
 
@@ -149,7 +149,7 @@ with SnapshotableState[AgentState]
             // May replace an existing SubagentItem
             Right(copy(
               keyToItemState_ = keyToItemState_.updated(subagentItem.id,
-                pathTo(SubagentItemState)
+                keyTo(SubagentItemState)
                   .get(subagentItem.id)
                   .match_ {
                     case None => SubagentItemState.initial(subagentItem)
@@ -202,7 +202,7 @@ with SnapshotableState[AgentState]
             }
 
           case ItemDetachingFromMe(id: SubagentId) =>
-            for (subagentItemState <- pathTo(SubagentItemState).checked(id)) yield
+            for (subagentItemState <- keyTo(SubagentItemState).checked(id)) yield
               copy(
                 keyToItemState_ = keyToItemState_.updated(id,
                   subagentItemState.copy(isDetaching = true)))
@@ -218,7 +218,7 @@ with SnapshotableState[AgentState]
 
           case _ =>
             for {
-              subagentItemState <- pathTo(SubagentItemState).checked(subagentId)
+              subagentItemState <- keyTo(SubagentItemState).checked(subagentId)
               subagentItemState <- subagentItemState.applyEvent(event)
             } yield copy(
               keyToItemState_ = keyToItemState_.updated(subagentId, subagentItemState))
@@ -236,9 +236,9 @@ with SnapshotableState[AgentState]
 
   def keyToItemState = keyToItemState_.view
 
-  def idToSubagentItemState = pathTo(SubagentItemState)
+  def idToSubagentItemState = keyTo(SubagentItemState)
 
-  protected def pathToFileWatchState = pathTo(FileWatchState)
+  protected def pathToFileWatchState = keyTo(FileWatchState)
 
   protected def updateFileWatchStates(
     fileWatchStates: Iterable[FileWatchState],

@@ -341,7 +341,7 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
       NoKey <-: ItemDetached(fileWatch.path, bAgentPath),
       NoKey <-: ItemDeleted(fileWatch.path)))
     sleep(100.ms)   // Wait until controllerState has been updated
-    assert(controllerState.pathTo(OrderWatchState).isEmpty)
+    assert(controllerState.keyTo(OrderWatchState).isEmpty)
   }
 }
 

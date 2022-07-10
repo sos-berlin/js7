@@ -69,7 +69,7 @@ final case class ControllerStateExecutor private(
       for {
         workflow <- controllerState.repo.pathTo(Workflow)(freshOrder.workflowPath)
         preparedArguments <- workflow.orderParameterList.prepareOrderArguments(
-          freshOrder, controllerId, controllerState.keyTo(JobResource), nowScope)
+          freshOrder, controllerId, controllerState.keyToItem(JobResource), nowScope)
         startPosition <- freshOrder.startPosition.traverse(checkStartOrStopPosition(_, workflow))
         _ <- freshOrder.stopPositions.toSeq.traverse(checkStartOrStopPosition(_, workflow))
       } yield Some(
@@ -89,7 +89,7 @@ final case class ControllerStateExecutor private(
     val agentResetStarted = View(agentPath <-: AgentResetStarted(force = force))
 
     val subagentReset = controllerState
-      .pathTo(SubagentItemState).values.view
+      .keyTo(SubagentItemState).values.view
       .filter(_.item.agentPath == agentPath)
       .map(_.path <-: SubagentReset)
       .toVector
@@ -418,7 +418,7 @@ final case class ControllerStateExecutor private(
     View(keyedEvent.key) ++ (keyedEvent.event match {
       case OrderLockEvent(lockPaths) =>
         lockPaths.view
-          .flatMap(controllerState.pathTo(LockState).get)
+          .flatMap(controllerState.keyTo(LockState).get)
           .flatMap(_.firstQueuedOrderId)
 
       case OrderForked(children) =>

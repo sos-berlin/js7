@@ -137,7 +137,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with Controll
   }
 
   "AgentRefState.version" in {
-    assert(proxy.currentState.pathTo(AgentRefState)(agentPath)
+    assert(proxy.currentState.keyTo(AgentRefState)(agentPath)
       .platformInfo.map(_.js7Version) contains Js7Version)
   }
 }

@@ -79,7 +79,7 @@ extends JJournaledState[JControllerState, ControllerState]
   /** Looks up an AgentRefState. */
   @Nonnull
   def pathToAgentRefState: java.util.Map[AgentPath, JAgentRefState] =
-    asScala.pathTo(AgentRefState)
+    asScala.keyTo(AgentRefState)
       .mapValues(JAgentRefState.apply)
       .asJava
 
@@ -91,7 +91,7 @@ extends JJournaledState[JControllerState, ControllerState]
 
   @Nonnull
   def idToSubagentItemState: java.util.Map[SubagentId, JSubagentItemState] =
-    asScala.pathTo(SubagentItemState)
+    asScala.keyTo(SubagentItemState)
       .mapValues(JSubagentItemState(_))
       .asJava
 
@@ -104,14 +104,14 @@ extends JJournaledState[JControllerState, ControllerState]
   /** Looks up a Lock item in the current version. */
   @Nonnull
   def pathToLock: java.util.Map[LockPath, JLock] =
-    asScala.keyTo(Lock)
+    asScala.keyToItem(Lock)
       .mapValues(JLock.apply)
       .asJava
 
   /** Looks up a LockState. */
   @Nonnull
   def pathToLockState: java.util.Map[LockPath, JLockState] =
-    asScala.pathTo(LockState)
+    asScala.keyTo(LockState)
       .mapValues(JLockState.apply)
       .asJava
 
@@ -123,7 +123,7 @@ extends JJournaledState[JControllerState, ControllerState]
   /** Looks up a BoardState. */
   @Nonnull
   def pathToBoardState: java.util.Map[BoardPath, JBoardState] =
-    asScala.pathTo(BoardState)
+    asScala.keyTo(BoardState)
       .view
       .mapValues(JBoardState.apply)
       .asJava
@@ -151,7 +151,7 @@ extends JJournaledState[JControllerState, ControllerState]
   @Deprecated
   @Nonnull
   def fileWatches(): java.util.Collection[JFileWatch] =
-    asScala.keyTo(FileWatch)
+    asScala.keyToItem(FileWatch)
       .values
       .view
       .map(JFileWatch(_))
@@ -165,7 +165,7 @@ extends JJournaledState[JControllerState, ControllerState]
   @Nonnull
   private def keyToItem[I <: InventoryItem, J](I: InventoryItem.Companion[I], toJava: I => J)
   : java.util.Map[I.Key, J] =
-    asScala.keyTo(I)
+    asScala.keyToItem(I)
       .view
       .mapValues(toJava)
       .asJava

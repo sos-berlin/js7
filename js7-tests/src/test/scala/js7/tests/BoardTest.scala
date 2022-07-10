@@ -84,7 +84,7 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
     assert(controllerState.orderToAvailableNotices(expecting01OrderIds(0)) == Seq(notice1))
     assert(controllerState.orderToStillExpectedNotices(expecting01OrderIds(0)) == Seq(notice0.toExpected))
 
-    assert(controllerState.pathTo(BoardState).toMap == Map(
+    assert(controllerState.keyTo(BoardState).toMap == Map(
       board0.path -> BoardState(
         board0.withRevision(Some(ItemRevision(0))),
         Map(
@@ -122,7 +122,7 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderMoved(Position(1)),
       OrderFinished))
 
-    assert(controllerState.pathTo(BoardState).toMap == Map(
+    assert(controllerState.keyTo(BoardState).toMap == Map(
       board0.path -> BoardState(
         board0.withRevision(Some(ItemRevision(0))),
         Map(notice0.id -> NoticePlace(Some(notice0)))),
@@ -153,7 +153,7 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderMoved(Position(1)),
       OrderFinished))
 
-    assert(controllerState.pathTo(BoardState)(board0.path) ==
+    assert(controllerState.keyTo(BoardState)(board0.path) ==
       BoardState(
         board0.withRevision(Some(ItemRevision(0))),
         Map(
@@ -172,7 +172,7 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
         OrderFinished))
     }
 
-    assert(controllerState.pathTo(BoardState)(board0.path) ==
+    assert(controllerState.keyTo(BoardState)(board0.path) ==
       BoardState(
         board0.withRevision(Some(ItemRevision(0))),
         View(
@@ -239,7 +239,7 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
       ControllerCommand.PostNotice(board0.path, notice2.id)
     ).await(99.s).orThrow
     sleep(100.ms)
-    assert(controllerState.pathTo(BoardState)(board0.path).idToNotice(notice2.id) == NoticePlace(Some(notice2)))
+    assert(controllerState.keyTo(BoardState)(board0.path).idToNotice(notice2.id) == NoticePlace(Some(notice2)))
   }
 
   "PostNotices command without expecting order" in {
@@ -256,8 +256,8 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
     ).await(99.s).orThrow
 
     sleep(100.ms)
-    assert(controllerState.pathTo(BoardState)(board0.path).idToNotice(notice.id) == NoticePlace(Some(notice)))
-    assert(controllerState.pathTo(BoardState)(board0.path).idToNotice(notice2.id) == NoticePlace(Some(notice2)))
+    assert(controllerState.keyTo(BoardState)(board0.path).idToNotice(notice.id) == NoticePlace(Some(notice)))
+    assert(controllerState.keyTo(BoardState)(board0.path).idToNotice(notice2.id) == NoticePlace(Some(notice2)))
   }
 
   "DeleteNotice command" in {
@@ -352,12 +352,12 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
   }
 
   "Update Board" in {
-    val boardState = controllerState.pathTo(BoardState)(board0.path)
+    val boardState = controllerState.keyTo(BoardState)(board0.path)
 
     val updatedBoard = board0.copy(postOrderToNoticeId = expr("$jsOrderId"))
     controllerApi.updateUnsignedSimpleItems(Seq(updatedBoard)).await(99.s).orThrow
 
-    assert(controllerState.pathTo(BoardState)(board0.path) ==
+    assert(controllerState.keyTo(BoardState)(board0.path) ==
       boardState.copy(
         board = updatedBoard.withRevision(Some(ItemRevision(1)))))
   }
@@ -406,7 +406,7 @@ final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
         RemoveVersioned(postingAgentWorkflow.path)))
       .await(99.s).orThrow
 
-    assert(!controllerState.pathTo(BoardState).contains(board0.path))
+    assert(!controllerState.keyTo(BoardState).contains(board0.path))
   }
 }
 

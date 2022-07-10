@@ -20,7 +20,7 @@ trait ItemContainer
       .filter(_._2.isInstanceOf[UnsignedSimpleItem])
       .asInstanceOf[MapView[UnsignedSimpleItemPath, UnsignedSimpleItem]]
 
-  final def keyTo[I <: InventoryItem](I: InventoryItem.Companion[I]): MapView[I.Key, I] =
+  final def keyToItem[I <: InventoryItem](I: InventoryItem.Companion[I]): MapView[I.Key, I] =
     keyToItem
       .filter { case (_, v) => v.companion eq I }
       .asInstanceOf[MapView[I.Key, I]]

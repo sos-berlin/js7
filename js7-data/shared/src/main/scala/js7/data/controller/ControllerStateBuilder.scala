@@ -76,7 +76,7 @@ with OrderWatchStateHandler[ControllerStateBuilder]
   def keyToItem =
     throw new NotImplementedError("ControllerStateBuilder.keyToItem")
 
-  def pathToJobResource = keyTo(JobResource)
+  def pathToJobResource = keyToItem(JobResource)
 
   protected def onInitializeState(state: ControllerState): Unit = {
     standards = state.standards
@@ -106,7 +106,7 @@ with OrderWatchStateHandler[ControllerStateBuilder]
         case Order.ExpectingNotices(expectedSeq) =>
           _keyToItemState ++= expectedSeq
             .map(expected => expected.boardPath ->
-              pathTo(BoardState)
+              keyTo(BoardState)
                 .checked(expected.boardPath)
                 .flatMap(_.addExpectation(expected.noticeId, order.id))
                 .orThrow)
@@ -126,7 +126,7 @@ with OrderWatchStateHandler[ControllerStateBuilder]
       }
 
     case notice: Notice =>
-      _keyToItemState(notice.boardPath) = pathTo(BoardState)(notice.boardPath)
+      _keyToItemState(notice.boardPath) = keyTo(BoardState)(notice.boardPath)
         .addNotice(notice).orThrow
 
     case signedItemAdded: SignedItemAdded =>
@@ -214,13 +214,13 @@ with OrderWatchStateHandler[ControllerStateBuilder]
               case UnsignedSimpleItemChanged(item) =>
                 item match {
                   case lock: Lock =>
-                    _keyToItemState(lock.path) = pathTo(LockState)(lock.path).copy(
+                    _keyToItemState(lock.path) = keyTo(LockState)(lock.path).copy(
                       lock = lock)
 
                   case changedAgentRef: AgentRef =>
                     val (agentRef, maybeSubagentItem) = changedAgentRef.convertFromV2_1.orThrow
 
-                    _keyToItemState(agentRef.path) = pathTo(AgentRefState)(agentRef.path).copy(
+                    _keyToItemState(agentRef.path) = keyTo(AgentRefState)(agentRef.path).copy(
                       agentRef = agentRef)
 
                     for (subagentItem <- maybeSubagentItem) {
@@ -241,7 +241,7 @@ with OrderWatchStateHandler[ControllerStateBuilder]
 
                   case subagentItem: SubagentItem =>
                     _keyToItemState(subagentItem.id) =
-                      pathTo(SubagentItemState)(subagentItem.id).copy(
+                      keyTo(SubagentItemState)(subagentItem.id).copy(
                         subagentItem = subagentItem)
 
                   case orderWatch: OrderWatch =>
@@ -250,7 +250,7 @@ with OrderWatchStateHandler[ControllerStateBuilder]
                   case board: Board =>
                     _keyToItemState.update(
                       board.path,
-                      pathTo(BoardState)
+                      keyTo(BoardState)
                         .checked(board.path)
                         .map(boardState => boardState.copy(
                           board = board))
@@ -260,7 +260,7 @@ with OrderWatchStateHandler[ControllerStateBuilder]
                     _keyToItemState.update(calendar.path, CalendarState(calendar))
 
                   case item: WorkflowPathControl =>
-                    _keyToItemState(item.path) = pathTo(WorkflowPathControl)(item.path)
+                    _keyToItemState(item.path) = keyTo(WorkflowPathControl)(item.path)
                       .updateItem(item).orThrow
                 }
             }
@@ -306,7 +306,7 @@ with OrderWatchStateHandler[ControllerStateBuilder]
         }
 
       case KeyedEvent(path: AgentPath, event: AgentRefStateEvent) =>
-        _keyToItemState.update(path, pathTo(AgentRefState)(path).applyEvent(event).orThrow)
+        _keyToItemState.update(path, keyTo(AgentRefState)(path).applyEvent(event).orThrow)
 
       case KeyedEvent(id: SubagentId, event: SubagentItemStateEvent) =>
         event match {
@@ -314,7 +314,7 @@ with OrderWatchStateHandler[ControllerStateBuilder]
             // May arrive when SubagentItem has been deleted
 
           case _ =>
-          _keyToItemState.update(id, pathTo(SubagentItemState)(id).applyEvent(event).orThrow)
+          _keyToItemState.update(id, keyTo(SubagentItemState)(id).applyEvent(event).orThrow)
         }
 
       case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
@@ -324,13 +324,13 @@ with OrderWatchStateHandler[ControllerStateBuilder]
         ow.onOrderWatchEvent(orderWatchPath <-: event).orThrow
 
       case KeyedEvent(boardPath: BoardPath, NoticePosted(notice)) =>
-        for (boardState <- pathTo(BoardState).get(boardPath)) {
+        for (boardState <- keyTo(BoardState).get(boardPath)) {
           _keyToItemState(boardState.path) =
             boardState.addNotice(notice.toNotice(boardState.path)).orThrow
         }
 
       case KeyedEvent(boardPath: BoardPath, NoticeDeleted(noticeId)) =>
-        for (boardState <- pathTo(BoardState).get(boardPath)) {
+        for (boardState <- keyTo(BoardState).get(boardPath)) {
           _keyToItemState(boardState.path) = boardState.removeNotice(noticeId).orThrow
         }
 
@@ -368,7 +368,7 @@ with OrderWatchStateHandler[ControllerStateBuilder]
         pathToSignedSimpleItem.insert(jobResource.path, Signed(jobResource, added.signedString))
     }
 
-  protected def pathToOrderWatchState = pathTo(OrderWatchState)
+  protected def pathToOrderWatchState = keyTo(OrderWatchState)
 
   protected def updateOrderWatchStates(
     orderWatchStates: Iterable[OrderWatchState],

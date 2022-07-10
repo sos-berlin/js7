@@ -158,8 +158,8 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
       case _ => false
     }
     waitForCondition(10.s, 10.ms)(isResettingOrReset(
-      controllerState.pathTo(AgentRefState)(agentPath).couplingState))
-    assert(isResettingOrReset(controllerState.pathTo(AgentRefState)(agentPath).couplingState))
+      controllerState.keyTo(AgentRefState)(agentPath).couplingState))
+    assert(isResettingOrReset(controllerState.keyTo(AgentRefState)(agentPath).couplingState))
   }
 
   "Simulate journal deletion at restart" in {

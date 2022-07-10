@@ -33,8 +33,8 @@ final class SubagentTest extends AnyFreeSpec with SubagentTester
     val localSubagentId = SubagentId("AGENT-0")
     eventWatch.await[SubagentCoupled](_.key == localSubagentId)
     assert(waitForCondition(10.s, 10.ms)(
-      controllerState.pathTo(SubagentItemState)(localSubagentId).couplingState == Coupled))
-    assert(controllerState.pathTo(SubagentItemState)(localSubagentId)
+      controllerState.keyTo(SubagentItemState)(localSubagentId).couplingState == Coupled))
+    assert(controllerState.keyTo(SubagentItemState)(localSubagentId)
       .platformInfo.map(_.js7Version) contains Js7Version)
   }
 
@@ -67,7 +67,7 @@ final class SubagentTest extends AnyFreeSpec with SubagentTester
       val subagentDedicated = eventWatch.await[SubagentDedicated](_.key == bareSubagentId, after = eventId)
         .head.value.event
       assert(subagentDedicated.platformInfo.map(_.js7Version) contains Js7Version)
-      assert(controllerState.pathTo(SubagentItemState)(bareSubagentId)
+      assert(controllerState.keyTo(SubagentItemState)(bareSubagentId)
         .platformInfo.map(_.js7Version) contains Js7Version)
 
       controller.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
@@ -96,7 +96,7 @@ final class SubagentTest extends AnyFreeSpec with SubagentTester
 
     // Be sure that BareSubagent's shutdown has been detected
     assert(waitForCondition(10.s, 10.ms)(
-      controllerState.pathTo(SubagentItemState)(bareSubagentId).problem.isDefined))
+      controllerState.keyTo(SubagentItemState)(bareSubagentId).problem.isDefined))
 
     val orderId = OrderId("WAIT-FOR-SUBAGENT")
     controller.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow

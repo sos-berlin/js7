@@ -73,8 +73,8 @@ with SnapshotableState[ControllerState]
     controllerMetaState.isDefined.toInt +
     repo.estimatedEventCount +
     keyToItemState_.size +
-    pathTo(OrderWatchState).values.view.map(_.estimatedSnapshotSize - 1).sum +
-    pathTo(BoardState).values.view.map(_.noticeCount).sum +
+    keyTo(OrderWatchState).values.view.map(_.estimatedSnapshotSize - 1).sum +
+    keyTo(BoardState).values.view.map(_.noticeCount).sum +
     pathToSignedSimpleItem.size +
     agentAttachments.estimatedSnapshotSize +
     deletionMarkedItems.size +
@@ -85,14 +85,14 @@ with SnapshotableState[ControllerState]
       Observable.pure(SnapshotEventId(eventId)),
       standards.toSnapshotObservable,
       Observable.fromIterable(controllerMetaState.isDefined ? controllerMetaState),
-      Observable.fromIterable(pathTo(WorkflowPathControl).values).flatMap(_.toSnapshotObservable),
-      Observable.fromIterable(pathTo(AgentRefState).values).flatMap(_.toSnapshotObservable),
-      Observable.fromIterable(pathTo(SubagentItemState).values).flatMap(_.toSnapshotObservable),
-      Observable.fromIterable(pathTo(SubagentSelectionState).values).flatMap(_.toSnapshotObservable),
-      Observable.fromIterable(pathTo(LockState).values).flatMap(_.toSnapshotObservable),
-      Observable.fromIterable(pathTo(BoardState).values).flatMap(_.toSnapshotObservable),
-      Observable.fromIterable(pathTo(CalendarState).values).flatMap(_.toSnapshotObservable),
-      Observable.fromIterable(pathTo(OrderWatchState).values).flatMap(_.toSnapshotObservable),
+      Observable.fromIterable(keyTo(WorkflowPathControl).values).flatMap(_.toSnapshotObservable),
+      Observable.fromIterable(keyTo(AgentRefState).values).flatMap(_.toSnapshotObservable),
+      Observable.fromIterable(keyTo(SubagentItemState).values).flatMap(_.toSnapshotObservable),
+      Observable.fromIterable(keyTo(SubagentSelectionState).values).flatMap(_.toSnapshotObservable),
+      Observable.fromIterable(keyTo(LockState).values).flatMap(_.toSnapshotObservable),
+      Observable.fromIterable(keyTo(BoardState).values).flatMap(_.toSnapshotObservable),
+      Observable.fromIterable(keyTo(CalendarState).values).flatMap(_.toSnapshotObservable),
+      Observable.fromIterable(keyTo(OrderWatchState).values).flatMap(_.toSnapshotObservable),
       Observable.fromIterable(pathToSignedSimpleItem.values).map(SignedItemAdded(_)),
       Observable.fromIterable(repo.toEvents),
       agentAttachments.toSnapshotObservable,
@@ -160,7 +160,7 @@ with SnapshotableState[ControllerState]
                     .convertFromV2_1
                     .flatMap { case (agentRef, maybeSubagentItem) =>
                       for {
-                        agentRefState <- pathTo(AgentRefState).checked(agentRef.path)
+                        agentRefState <- keyTo(AgentRefState).checked(agentRef.path)
                         _ <- (agentRef.directors == agentRefState.agentRef.directors) !!
                           Problem.pure("Agent Director cannot not be changed")
                         updatedAgentRef <- agentRefState.updateItem(agentRef)
@@ -170,7 +170,7 @@ with SnapshotableState[ControllerState]
                             .updated(agentRef.path, updatedAgentRef)
                             .pipeMaybe(maybeSubagentItem)((pathToItemState, changedSubagentItem) =>
                               // COMPATIBLE with v2.2.2
-                              pathTo(SubagentItemState)
+                              keyTo(SubagentItemState)
                                 .get(changedSubagentItem.id)
                                 .fold(pathToItemState)(subagentItemState =>
                                   pathToItemState.updated(changedSubagentItem.id,
@@ -261,7 +261,7 @@ with SnapshotableState[ControllerState]
 
     case KeyedEvent(agentPath: AgentPath, event: AgentRefStateEvent) =>
       for {
-        agentRefState <- pathTo(AgentRefState).checked(agentPath)
+        agentRefState <- keyTo(AgentRefState).checked(agentPath)
         agentRefState <- agentRefState.applyEvent(event)
       } yield copy(
         keyToItemState_ = keyToItemState_ + (agentPath -> agentRefState))
@@ -271,14 +271,14 @@ with SnapshotableState[ControllerState]
 
     case KeyedEvent(boardPath: BoardPath, NoticePosted(notice)) =>
       for {
-        boardState <- pathTo(BoardState).checked(boardPath)
+        boardState <- keyTo(BoardState).checked(boardPath)
         o <- boardState.addNotice(notice.toNotice(boardPath))
       } yield copy(
         keyToItemState_ = keyToItemState_.updated(o.path, o))
 
     case KeyedEvent(boardPath: BoardPath, NoticeDeleted(noticeId)) =>
       for {
-        boardState <- pathTo(BoardState).checked(boardPath)
+        boardState <- keyTo(BoardState).checked(boardPath)
         o <- boardState.removeNotice(noticeId)
       } yield copy(
         keyToItemState_ = keyToItemState_.updated(o.path, o))
@@ -294,7 +294,7 @@ with SnapshotableState[ControllerState]
 
         case _ =>
           for {
-            o <- pathTo(SubagentItemState).checked(subagentId)
+            o <- keyTo(SubagentItemState).checked(subagentId)
             o <- o.applyEvent(event)
           } yield copy(
             keyToItemState_ = keyToItemState_.updated(subagentId, o))
@@ -311,7 +311,7 @@ with SnapshotableState[ControllerState]
 
   /** The Agents for each WorkflowPathControl which have not attached the current itemRevision. */
   def workflowPathControlToIgnorantAgents: View[(WorkflowPathControlPath, Set[AgentPath])] =
-    pathTo(WorkflowPathControl).values
+    keyTo(WorkflowPathControl).values
       .view
       .flatMap { workflowPathControl =>
         val agentPaths = agentAttachments.itemToDelegateToAttachedState
@@ -334,7 +334,7 @@ with SnapshotableState[ControllerState]
       .toSet
 
   def orderToAvailableNotices(orderId: OrderId): Seq[Notice] = {
-    val pathToBoardState = pathTo(BoardState)
+    val pathToBoardState = keyTo(BoardState)
     orderToExpectedNotices(orderId)
       .flatMap(expected =>
         pathToBoardState
@@ -345,7 +345,7 @@ with SnapshotableState[ControllerState]
   }
 
   def orderToStillExpectedNotices(orderId: OrderId): Seq[OrderNoticesExpected.Expected] = {
-    val pathToBoardState = pathTo(BoardState)
+    val pathToBoardState = keyTo(BoardState)
     orderToExpectedNotices(orderId)
       .filter(expected =>
         pathToBoardState
@@ -361,7 +361,7 @@ with SnapshotableState[ControllerState]
       .toVector
       .flatMap(_.state.expected)
 
-  protected def pathToOrderWatchState = pathTo(OrderWatchState)
+  protected def pathToOrderWatchState = keyTo(OrderWatchState)
 
   protected def updateOrderWatchStates(
     orderWatchStates: Iterable[OrderWatchState],
@@ -543,11 +543,11 @@ with SnapshotableState[ControllerState]
       .tap(o => logger.trace(s"${idToOrder.size} orders => isWorkflowUsedByOrders size=${o.size}"))
 
   def agentToUri(agentPath: AgentPath): Option[Uri] =
-    keyTo(AgentRef)
+    keyToItem(AgentRef)
       .get(agentPath)
       .flatMap(agentRef =>
         agentRef.director match {
-          case Some(director) => keyTo(SubagentItem).get(director).map(_.uri)
+          case Some(director) => keyToItem(SubagentItem).get(director).map(_.uri)
           case None => agentRef.uri
         })
 
@@ -622,7 +622,7 @@ with SnapshotableState[ControllerState]
     repo.pathToId(workflowPath)
       .toRight(UnknownKeyProblem("WorkflowPath", workflowPath.string))
 
-  def pathToJobResource = pathTo(JobResource)
+  def pathToJobResource = keyTo(JobResource)
 
   lazy val keyToSignedItem: MapView[SignableItemKey, Signed[SignableItem]] =
     new MapView[SignableItemKey, Signed[SignableItem]] {

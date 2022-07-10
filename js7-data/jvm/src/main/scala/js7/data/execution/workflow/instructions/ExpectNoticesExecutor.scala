@@ -26,7 +26,7 @@ extends EventInstructionExecutor
         .map(order =>
           expectNotices.referencedBoardPaths
             .toVector
-            .traverse(state.pathTo(BoardState).checked)
+            .traverse(state.keyTo(BoardState).checked)
             .flatMap { boardStates =>
               for {
                 scope <- state.toPureScope(order)

@@ -66,7 +66,7 @@ final class CoupleControllerTest extends AnyFreeSpec with DirectoryProviderForSc
 
       controller.eventWatch.await[AgentShutDown](after = lastEventId)
       sleep(100.ms)
-      assert(controller.controllerState.await(99.s).pathTo(AgentRefState)(agentPath).couplingState ==
+      assert(controller.controllerState.await(99.s).keyTo(AgentRefState)(agentPath).couplingState ==
         DelegateCouplingState.ShutDown)
 
       // DELETE OLD AGENTS'S EVENTS THE CONTROLLER HAS NOT READ => UnknownEventIdProblem

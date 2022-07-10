@@ -131,7 +131,7 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
     eventWatch.await[OrderFinished](_.key == aOrderId, after = eventId)
 
     assert(controller.controllerState.await(99.s)
-      .pathTo(WorkflowPathControl)(WorkflowPathControlPath(aWorkflow.path)) ==
+      .keyTo(WorkflowPathControl)(WorkflowPathControlPath(aWorkflow.path)) ==
       WorkflowPathControl(
         WorkflowPathControlPath(aWorkflow.path),
         suspended = false,
@@ -226,7 +226,7 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
     eventWatch.await[OrderFinished](_.key == bOrderId)
 
     controller.controllerState.await(99.s)
-      .pathTo(WorkflowPathControl)(WorkflowPathControlPath(bWorkflow.path)) ==
+      .keyTo(WorkflowPathControl)(WorkflowPathControlPath(bWorkflow.path)) ==
         WorkflowPathControl(
           WorkflowPathControlPath(bWorkflow.path),
           suspended = true,
@@ -262,9 +262,9 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
       after = eventId
     ).head.value.event == ItemDetached(WorkflowPathControlPath(bWorkflow.path), bAgentPath))
 
-    assert(bAgent.currentAgentState().pathTo(WorkflowPathControl).isEmpty)
+    assert(bAgent.currentAgentState().keyTo(WorkflowPathControl).isEmpty)
     // Controller has implicitly deleted WorkflowPathControl
-    assert(controller.controllerState.await(99.s).pathTo(WorkflowPathControl).isEmpty)
+    assert(controller.controllerState.await(99.s).keyTo(WorkflowPathControl).isEmpty)
   }
 
   private def suspendWorkflow(workflowPath: WorkflowPath, suspend: Boolean, revision: ItemRevision,

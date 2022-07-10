@@ -81,10 +81,10 @@ final class ControllerStateTest extends AsyncFreeSpec
             WorkflowPathControlPath(workflow.path), suspended = true, skip = Set("LABEL"),
             itemRevision = Some(ItemRevision(0)))
         ) ++
-          controllerState.pathTo(AgentRefState).values ++
-          controllerState.pathTo(SubagentItemState).values ++
+          controllerState.keyTo(AgentRefState).values ++
+          controllerState.keyTo(SubagentItemState).values ++
           controllerState.pathToUnsignedSimple(SubagentSelection).values ++
-          controllerState.pathTo(LockState).values ++
+          controllerState.keyTo(LockState).values ++
           Seq(board) ++
           boardState.notices ++
           Seq(calendar) ++
@@ -414,10 +414,10 @@ final class ControllerStateTest extends AsyncFreeSpec
     "UnsignedSimpleItemAdded" in {
       applyEvent(UnsignedSimpleItemAdded(agentRef))
 
-      assert(cs.pathTo(AgentRefState)(agentRef.path).agentRef == agentRef.copy(
+      assert(cs.keyTo(AgentRefState)(agentRef.path).agentRef == agentRef.copy(
         directors = Seq(subagentId),
         uri = None))
-      assert(cs.pathTo(SubagentItemState)(subagentId).subagentItem == generatedSubagentItem)
+      assert(cs.keyTo(SubagentItemState)(subagentId).subagentItem == generatedSubagentItem)
     }
 
     "AgentRefState snapshot object" in {
@@ -434,11 +434,11 @@ final class ControllerStateTest extends AsyncFreeSpec
         uri = Some(changedUri),
         itemRevision = Some(ItemRevision(8)))
       applyEvent(UnsignedSimpleItemChanged(changedAgentRef))
-      assert(cs.pathTo(AgentRefState)(agentRef.path).agentRef == agentRef.copy(
+      assert(cs.keyTo(AgentRefState)(agentRef.path).agentRef == agentRef.copy(
         directors = Seq(subagentId),
         uri = None,
         itemRevision = Some(ItemRevision(8))))
-      assert(cs.pathTo(SubagentItemState)(subagentId).subagentItem == generatedSubagentItem.copy(
+      assert(cs.keyTo(SubagentItemState)(subagentId).subagentItem == generatedSubagentItem.copy(
         uri = changedUri,
         itemRevision = Some(ItemRevision(2))))
     }

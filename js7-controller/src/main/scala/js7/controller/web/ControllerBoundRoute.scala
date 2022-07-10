@@ -61,7 +61,7 @@ with WebLogDirectives
   protected val config              = controllerConfiguration.config
   protected val clusterNodeIsBackup = controllerConfiguration.clusterConf.isBackup
   protected val currentLogFile      = config.as[Path]("js7.log.file")
-  protected val pathToAgentRefState = controllerState.map(_.map(_.pathTo(AgentRefState)))
+  protected val pathToAgentRefState = controllerState.map(_.map(_.keyTo(AgentRefState)))
   protected val checkedClusterState = controllerState.map(_.map(_.clusterState))
   protected val routeServiceContext = RouteServiceContext(filteredSnapshotRoute, filteredEventRoute)
   protected val actorRefFactory     = actorSystem
