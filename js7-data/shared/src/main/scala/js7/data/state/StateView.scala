@@ -8,7 +8,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.board.{BoardPath, BoardState}
 import js7.data.controller.ControllerId
 import js7.data.event.ItemContainer
-import js7.data.item.{UnsignedSimpleItem, UnsignedSimpleItemPath, UnsignedSimpleItemState}
+import js7.data.item.{InventoryItemKey, InventoryItemState, UnsignedSimpleItem}
 import js7.data.job.{JobKey, JobResource}
 import js7.data.order.Order.{FailedInFork, Processing}
 import js7.data.order.OrderEvent.OrderNoticesExpected
@@ -51,13 +51,14 @@ trait StateView extends ItemContainer
   final def pathToWorkflowPathControl: MapView[WorkflowPathControlPath, WorkflowPathControl] =
     pathTo(WorkflowPathControl).mapValues(_.item)
 
-  def pathToItemState: MapView[UnsignedSimpleItemPath, UnsignedSimpleItemState]
+  def pathToItemState: MapView[InventoryItemKey, InventoryItemState]
 
-  final def pathTo[A <: UnsignedSimpleItemState](A: UnsignedSimpleItemState.Companion[A])
-  : MapView[A.Path, A] =
+  // TODO Rename as keyTo
+  final def pathTo[A <: InventoryItemState](A: InventoryItemState.Companion[A])
+  : MapView[A.Key, A] =
     pathToItemState
       .filter { case (_, v) => v.companion eq A }
-      .asInstanceOf[MapView[A.Path, A]]
+      .asInstanceOf[MapView[A.Key, A]]
 
   final def pathToUnsignedSimple[A <: UnsignedSimpleItem](A: UnsignedSimpleItem.Companion[A])
   : MapView[A.Path, A] =
@@ -162,7 +163,7 @@ trait StateView extends ItemContainer
     for (orderScopes <- toOrderScopes(order)) yield {
       val nowScope = NowScope(now)
       orderScopes.pureOrderScope |+| nowScope |+|
-        JobResourceScope(keyTo(JobResource),
+        JobResourceScope(pathTo(JobResource),
           useScope = orderScopes.variablelessOrderScope |+| nowScope)
     }
 

@@ -26,7 +26,7 @@ import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeleted, ItemDe
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detached, NotDetached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
-import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemPath, ItemAttachedState, ItemRevision, Repo, SignableItem, SignableItemKey, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, SimpleItem, SimpleItemPath, UnsignedSimpleItem, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, UnsignedSimpleItemState, VersionedEvent, VersionedItemId_, VersionedItemPath}
+import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemPath, InventoryItemState, ItemAttachedState, ItemRevision, Repo, SignableItem, SignableItemKey, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, SimpleItem, SimpleItemPath, UnsignedSimpleItem, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, UnsignedSimpleItemState, VersionedEvent, VersionedItemId_, VersionedItemPath}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.OrderEvent.OrderNoticesExpected
@@ -48,7 +48,7 @@ final case class ControllerState(
   eventId: EventId,
   standards: SnapshotableState.Standards,
   controllerMetaState: ControllerMetaState,
-  pathToItemState_ : Map[UnsignedSimpleItemPath, UnsignedSimpleItemState],
+  pathToItemState_ : Map[InventoryItemKey, InventoryItemState],
   repo: Repo,
   pathToSignedSimpleItem: Map[SignableSimpleItemPath, Signed[SignableSimpleItem]],
   agentAttachments: ClientAttachments[AgentPath],
@@ -575,7 +575,7 @@ with SnapshotableState[ControllerState]
       override def values = items
     }
 
-  def pathToItemState: MapView[UnsignedSimpleItemPath, UnsignedSimpleItemState] =
+  def pathToItemState: MapView[InventoryItemKey, InventoryItemState] =
     pathToItemState_.view
 
   private lazy val pathToItem: MapView[InventoryItemPath, InventoryItem] =
@@ -622,7 +622,7 @@ with SnapshotableState[ControllerState]
     repo.pathToId(workflowPath)
       .toRight(UnknownKeyProblem("WorkflowPath", workflowPath.string))
 
-  def pathToJobResource = keyTo(JobResource)
+  def pathToJobResource = pathTo(JobResource)
 
   lazy val keyToSignedItem: MapView[SignableItemKey, Signed[SignableItem]] =
     new MapView[SignableItemKey, Signed[SignableItem]] {

@@ -7,7 +7,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.board.BoardPath
 import js7.data.controller.ControllerId
 import js7.data.event.{Event, EventDrivenState, KeyedEvent}
-import js7.data.item.{InventoryItem, InventoryItemKey, UnsignedSimpleItemPath, UnsignedSimpleItemState}
+import js7.data.item.{InventoryItem, InventoryItemKey, InventoryItemState, UnsignedSimpleItemPath, UnsignedSimpleItemState}
 import js7.data.lock.LockPath
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
@@ -18,7 +18,7 @@ case class TestStateView(
   controllerId: ControllerId = ControllerId("CONTROLLER"),
   idToOrder: Map[OrderId, Order[Order.State]] = new NotImplementedMap,
   idToWorkflow: PartialFunction[WorkflowId, Workflow] = new NotImplementedMap,
-  pathToItemState_ : Map[UnsignedSimpleItemPath, UnsignedSimpleItemState] = Map.empty)
+  pathToItemState_ : Map[InventoryItemKey, InventoryItemState] = Map.empty)
 extends EventDrivenStateView[TestStateView, Event]
 {
   val companion = TestStateView

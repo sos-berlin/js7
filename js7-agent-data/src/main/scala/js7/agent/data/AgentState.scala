@@ -37,7 +37,7 @@ final case class AgentState(
   eventId: EventId,
   standards: SnapshotableState.Standards,
   meta: AgentMetaState,
-  pathToItemState_ : Map[UnsignedSimpleItemPath, UnsignedSimpleItemState],
+  pathToItemState_ : Map[InventoryItemKey, InventoryItemState],
   idToOrder: Map[OrderId, Order[Order.State]],
   idToWorkflow: Map[WorkflowId, Workflow/*reduced for this Agent!!!*/],
   pathToJobResource: Map[JobResourcePath, JobResource],

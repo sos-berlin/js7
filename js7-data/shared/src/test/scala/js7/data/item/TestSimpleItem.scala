@@ -45,7 +45,7 @@ with TrivialItemState.Companion[TestSimpleItem]
   override type Path = TestSimplePath
   override val Path = TestSimplePath
 
-  type Key = TestSimplePath
+  override type Key = TestSimplePath
   val Key = TestSimplePath
 
   implicit val jsonCodec: Codec.AsObject[TestSimpleItem] = deriveCodec[TestSimpleItem]
