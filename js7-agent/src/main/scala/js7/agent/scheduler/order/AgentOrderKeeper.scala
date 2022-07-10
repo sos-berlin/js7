@@ -819,7 +819,7 @@ final class AgentOrderKeeper(
       def workflowPathToId(workflowPath: WorkflowPath) =
         persistence.currentState.workflowPathToId(workflowPath)
 
-      def pathToItemState = persistence.currentState.pathToItemState
+      def keyToItemState = persistence.currentState.keyToItemState
 
       def keyToItem = persistence.currentState.keyToItem
     })

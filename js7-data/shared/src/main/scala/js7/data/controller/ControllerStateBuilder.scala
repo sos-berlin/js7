@@ -42,7 +42,7 @@ with OrderWatchStateHandler[ControllerStateBuilder]
   private var controllerMetaState = ControllerMetaState.Undefined
   private var repo = Repo.empty
   private val _idToOrder = mutable.Map.empty[OrderId, Order[Order.State]]
-  private val _pathToItemState = mutable.Map.empty[InventoryItemKey, InventoryItemState]
+  private val _keyToItemState = mutable.Map.empty[InventoryItemKey, InventoryItemState]
   private var agentAttachments = ClientAttachments.empty[AgentPath]
   private val deletionMarkedItems = mutable.Set[InventoryItemKey]()
   private val pathToSignedSimpleItem = mutable.Map.empty[SignableSimpleItemPath, Signed[SignableSimpleItem]]
@@ -67,7 +67,7 @@ with OrderWatchStateHandler[ControllerStateBuilder]
     repo.pathToId(workflowPath)
       .toRight(UnknownKeyProblem("WorkflowPath", workflowPath.string))
 
-  val pathToItemState = _pathToItemState.view
+  val keyToItemState = _keyToItemState.view
 
   def controllerId = controllerMetaState.controllerId
 
@@ -83,7 +83,7 @@ with OrderWatchStateHandler[ControllerStateBuilder]
     controllerMetaState = state.controllerMetaState
     repo = state.repo
     _idToOrder ++= state.idToOrder
-    _pathToItemState ++= state.pathToItemState_
+    _keyToItemState ++= state.keyToItemState_
     pathToSignedSimpleItem ++= state.pathToSignedSimpleItem
     agentAttachments = state.agentAttachments
     deletionMarkedItems ++= state.deletionMarkedItems
@@ -96,7 +96,7 @@ with OrderWatchStateHandler[ControllerStateBuilder]
       order.state match {
         case Order.ExpectingNotice(noticeId) =>
           val boardState = workflowPositionToBoardState(order.workflowPosition).orThrow
-          _pathToItemState(boardState.path) = boardState.addExpectation(noticeId, order.id).orThrow
+          _keyToItemState(boardState.path) = boardState.addExpectation(noticeId, order.id).orThrow
 
           // Change ExpectingNotice (Orders of v2.3) to ExpectingNotices
           _idToOrder.update(order.id, order.copy(
@@ -104,7 +104,7 @@ with OrderWatchStateHandler[ControllerStateBuilder]
               OrderNoticesExpected.Expected(boardState.path, noticeId)))))
 
         case Order.ExpectingNotices(expectedSeq) =>
-          _pathToItemState ++= expectedSeq
+          _keyToItemState ++= expectedSeq
             .map(expected => expected.boardPath ->
               pathTo(BoardState)
                 .checked(expected.boardPath)
@@ -120,13 +120,13 @@ with OrderWatchStateHandler[ControllerStateBuilder]
     case agentRefState: AgentRefState =>
       val (agentRef, maybeSubagentItem) = agentRefState.agentRef.convertFromV2_1.orThrow
 
-      _pathToItemState.insert(agentRef.path, agentRefState.copy(agentRef = agentRef))
+      _keyToItemState.insert(agentRef.path, agentRefState.copy(agentRef = agentRef))
       for (subagentItem <- maybeSubagentItem) {
-        _pathToItemState.insert(subagentItem.id, SubagentItemState.initial(subagentItem))
+        _keyToItemState.insert(subagentItem.id, SubagentItemState.initial(subagentItem))
       }
 
     case notice: Notice =>
-      _pathToItemState(notice.boardPath) = pathTo(BoardState)(notice.boardPath)
+      _keyToItemState(notice.boardPath) = pathTo(BoardState)(notice.boardPath)
         .addNotice(notice).orThrow
 
     case signedItemAdded: SignedItemAdded =>
@@ -136,10 +136,10 @@ with OrderWatchStateHandler[ControllerStateBuilder]
       ow.addOrderWatch(orderWatch.toInitialItemState).orThrow
 
     case itemState: UnsignedSimpleItemState =>
-      _pathToItemState.insert(itemState.path, itemState)
+      _keyToItemState.insert(itemState.path, itemState)
 
     case item: UnsignedSimpleItem =>
-      _pathToItemState.insert(item.path, item.toInitialItemState)
+      _keyToItemState.insert(item.path, item.toInitialItemState)
 
     case snapshot: OrderWatchState.ExternalOrderSnapshot =>
       ow.applySnapshot(snapshot).orThrow
@@ -199,32 +199,32 @@ with OrderWatchStateHandler[ControllerStateBuilder]
                   case addedAgentRef: AgentRef =>
                     val (agentRef, maybeSubagentItem) = addedAgentRef.convertFromV2_1.orThrow
 
-                    _pathToItemState.insert(agentRef.path, agentRef.toInitialItemState)
+                    _keyToItemState.insert(agentRef.path, agentRef.toInitialItemState)
                     for (subagentItem <- maybeSubagentItem) {
-                      _pathToItemState.insert(subagentItem.id, SubagentItemState.initial(subagentItem))
+                      _keyToItemState.insert(subagentItem.id, SubagentItemState.initial(subagentItem))
                     }
 
                   case orderWatch: OrderWatch =>
                     ow.addOrderWatch(orderWatch.toInitialItemState).orThrow
 
                   case item: UnsignedSimpleItem =>
-                    _pathToItemState.insert(item.path, item.toInitialItemState)
+                    _keyToItemState.insert(item.path, item.toInitialItemState)
                 }
 
               case UnsignedSimpleItemChanged(item) =>
                 item match {
                   case lock: Lock =>
-                    _pathToItemState(lock.path) = pathTo(LockState)(lock.path).copy(
+                    _keyToItemState(lock.path) = pathTo(LockState)(lock.path).copy(
                       lock = lock)
 
                   case changedAgentRef: AgentRef =>
                     val (agentRef, maybeSubagentItem) = changedAgentRef.convertFromV2_1.orThrow
 
-                    _pathToItemState(agentRef.path) = pathTo(AgentRefState)(agentRef.path).copy(
+                    _keyToItemState(agentRef.path) = pathTo(AgentRefState)(agentRef.path).copy(
                       agentRef = agentRef)
 
                     for (subagentItem <- maybeSubagentItem) {
-                      _pathToItemState.updateWith(subagentItem.id) {
+                      _keyToItemState.updateWith(subagentItem.id) {
                         case None =>
                           Some(SubagentItemState.initial(subagentItem))
 
@@ -237,10 +237,10 @@ with OrderWatchStateHandler[ControllerStateBuilder]
                     }
 
                   case selection: SubagentSelection =>
-                    _pathToItemState(selection.id) = SubagentSelectionState(selection)
+                    _keyToItemState(selection.id) = SubagentSelectionState(selection)
 
                   case subagentItem: SubagentItem =>
-                    _pathToItemState(subagentItem.id) =
+                    _keyToItemState(subagentItem.id) =
                       pathTo(SubagentItemState)(subagentItem.id).copy(
                         subagentItem = subagentItem)
 
@@ -248,7 +248,7 @@ with OrderWatchStateHandler[ControllerStateBuilder]
                     ow.changeOrderWatch(orderWatch).orThrow
 
                   case board: Board =>
-                    _pathToItemState.update(
+                    _keyToItemState.update(
                       board.path,
                       pathTo(BoardState)
                         .checked(board.path)
@@ -257,10 +257,10 @@ with OrderWatchStateHandler[ControllerStateBuilder]
                         .orThrow)
 
                   case calendar: Calendar =>
-                    _pathToItemState.update(calendar.path, CalendarState(calendar))
+                    _keyToItemState.update(calendar.path, CalendarState(calendar))
 
                   case item: WorkflowPathControl =>
-                    _pathToItemState(item.path) = pathTo(WorkflowPathControl)(item.path)
+                    _keyToItemState(item.path) = pathTo(WorkflowPathControl)(item.path)
                       .updateItem(item).orThrow
                 }
             }
@@ -300,21 +300,21 @@ with OrderWatchStateHandler[ControllerStateBuilder]
                     ow.removeOrderWatch(path)
 
                   case path: UnsignedSimpleItemPath =>
-                    _pathToItemState -= path
+                    _keyToItemState -= path
                 }
             }
         }
 
       case KeyedEvent(path: AgentPath, event: AgentRefStateEvent) =>
-        _pathToItemState.update(path, pathTo(AgentRefState)(path).applyEvent(event).orThrow)
+        _keyToItemState.update(path, pathTo(AgentRefState)(path).applyEvent(event).orThrow)
 
       case KeyedEvent(id: SubagentId, event: SubagentItemStateEvent) =>
         event match {
-          case SubagentShutdown if !_pathToItemState.contains(id) =>
+          case SubagentShutdown if !_keyToItemState.contains(id) =>
             // May arrive when SubagentItem has been deleted
 
           case _ =>
-          _pathToItemState.update(id, pathTo(SubagentItemState)(id).applyEvent(event).orThrow)
+          _keyToItemState.update(id, pathTo(SubagentItemState)(id).applyEvent(event).orThrow)
         }
 
       case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
@@ -325,13 +325,13 @@ with OrderWatchStateHandler[ControllerStateBuilder]
 
       case KeyedEvent(boardPath: BoardPath, NoticePosted(notice)) =>
         for (boardState <- pathTo(BoardState).get(boardPath)) {
-          _pathToItemState(boardState.path) =
+          _keyToItemState(boardState.path) =
             boardState.addNotice(notice.toNotice(boardState.path)).orThrow
         }
 
       case KeyedEvent(boardPath: BoardPath, NoticeDeleted(noticeId)) =>
         for (boardState <- pathTo(BoardState).get(boardPath)) {
-          _pathToItemState(boardState.path) = boardState.removeNotice(noticeId).orThrow
+          _keyToItemState(boardState.path) = boardState.removeNotice(noticeId).orThrow
         }
 
       case KeyedEvent(_, _: ControllerShutDown) =>
@@ -383,8 +383,8 @@ with OrderWatchStateHandler[ControllerStateBuilder]
   : Checked[ControllerStateBuilder] = {
     _idToOrder --= removeOrders
     _idToOrder ++= addOrders.map(o => o.id -> o)
-    _pathToItemState --= removeItemStates
-    _pathToItemState ++= addItemStates.map(o => o.path -> o)
+    _keyToItemState --= removeItemStates
+    _keyToItemState ++= addItemStates.map(o => o.path -> o)
     Right(this)
   }
 
@@ -393,7 +393,7 @@ with OrderWatchStateHandler[ControllerStateBuilder]
       eventId = eventId,
       standards,
       controllerMetaState,
-      _pathToItemState.toMap,
+      _keyToItemState.toMap,
       repo,
       pathToSignedSimpleItem.toMap,
       agentAttachments,

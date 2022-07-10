@@ -90,7 +90,7 @@ private object JControllerStateTest
       ControllerId("CONTROLLER-ID"),
       Timestamp("2019-05-24T12:00:00Z"),
       Timezone("Europe/Berlin")),
-    pathToItemState_ = Map(AgentPath("AGENT") ->
+    keyToItemState_ = Map(AgentPath("AGENT") ->
       AgentRefState(
         AgentRef(AgentPath("AGENT"), Seq(SubagentId("SUBAGENT"))),
         None, None, DelegateCouplingState.Reset.fresh, EventId(7), None, None)),

@@ -18,7 +18,7 @@ case class TestStateView(
   controllerId: ControllerId = ControllerId("CONTROLLER"),
   idToOrder: Map[OrderId, Order[Order.State]] = new NotImplementedMap,
   idToWorkflow: PartialFunction[WorkflowId, Workflow] = new NotImplementedMap,
-  pathToItemState_ : Map[InventoryItemKey, InventoryItemState] = Map.empty)
+  keyToItemState_ : Map[InventoryItemKey, InventoryItemState] = Map.empty)
 extends EventDrivenStateView[TestStateView, Event]
 {
   val companion = TestStateView
@@ -36,15 +36,15 @@ extends EventDrivenStateView[TestStateView, Event]
   def workflowPathToId(workflowPath: WorkflowPath) =
     Left(Problem.pure("workflowPathToId is not implemented"))
 
-  def pathToItemState = pathToItemState_.view
+  def keyToItemState = keyToItemState_.view
 
   lazy val keyToItem: MapView[InventoryItemKey, InventoryItem] =
     new MapView[InventoryItemKey, InventoryItem] {
       def get(itemKey: InventoryItemKey): Option[InventoryItem] =
         itemKey match {
           case WorkflowId.as(id) => idToWorkflow.get(id)
-          case path: LockPath => pathToItemState.get(path).map(_.item)
-          case path: BoardPath => pathToItemState.get(path).map(_.item)
+          case path: LockPath => keyToItemState.get(path).map(_.item)
+          case path: BoardPath => keyToItemState.get(path).map(_.item)
         }
 
       def iterator: Iterator[(InventoryItemKey, InventoryItem)] =
@@ -61,9 +61,9 @@ extends EventDrivenStateView[TestStateView, Event]
     var x = this
     if (removeOrders.nonEmpty) x = x.copy(idToOrder = idToOrder -- removeOrders)
     if (orders.nonEmpty) x = x.copy(idToOrder = idToOrder ++ orders.map(o => o.id -> o))
-    if (removeItemStates.nonEmpty) x = x.copy(pathToItemState_ = pathToItemState_ -- removeItemStates)
+    if (removeItemStates.nonEmpty) x = x.copy(keyToItemState_ = keyToItemState_ -- removeItemStates)
     if (addItemStates.nonEmpty) x = x.copy(
-      pathToItemState_ = pathToItemState_ ++ addItemStates.map(o => o.path -> o))
+      keyToItemState_ = keyToItemState_ ++ addItemStates.map(o => o.path -> o))
     Right(x)
   }
 }
@@ -80,5 +80,5 @@ object TestStateView extends EventDrivenState.Companion[TestStateView, Event]
     isAgent, controllerId,
     idToOrder = orders.fold_(new NotImplementedMap, _.toKeyedMap(_.id)),
     idToWorkflow = workflows.fold_(new NotImplementedMap, _.toKeyedMap(_.id)),
-    pathToItemState_ = itemStates.toKeyedMap(_.path))
+    keyToItemState_ = itemStates.toKeyedMap(_.path))
 }

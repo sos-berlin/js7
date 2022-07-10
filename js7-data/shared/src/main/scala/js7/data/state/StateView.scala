@@ -51,18 +51,18 @@ trait StateView extends ItemContainer
   final def pathToWorkflowPathControl: MapView[WorkflowPathControlPath, WorkflowPathControl] =
     pathTo(WorkflowPathControl).mapValues(_.item)
 
-  def pathToItemState: MapView[InventoryItemKey, InventoryItemState]
+  def keyToItemState: MapView[InventoryItemKey, InventoryItemState]
 
   // TODO Rename as keyTo
   final def pathTo[A <: InventoryItemState](A: InventoryItemState.Companion[A])
   : MapView[A.Key, A] =
-    pathToItemState
+    keyToItemState
       .filter { case (_, v) => v.companion eq A }
       .asInstanceOf[MapView[A.Key, A]]
 
   final def pathToUnsignedSimple[A <: UnsignedSimpleItem](A: UnsignedSimpleItem.Companion[A])
   : MapView[A.Path, A] =
-    pathToItemState
+    keyToItemState
       .filter { case (_, v) => v.item.companion eq A }
       .mapValues(_.item)
       .asInstanceOf[MapView[A.Path, A]]
@@ -70,7 +70,7 @@ trait StateView extends ItemContainer
   //final def pathToCheckedItem[P <: UnsignedSimpleItemPath](path: P)
   //  (implicit P: UnsignedSimpleItemPath.Companion[P])
   //: Checked[P.Item] =
-  //  pathToItemState.checked(path).asInstanceOf[Checked[P.Item]]
+  //  keyToItemState.checked(path).asInstanceOf[Checked[P.Item]]
 
   def availableNotices(expectedSeq: Iterable[OrderNoticesExpected.Expected]): Set[BoardPath] =
     expectedSeq

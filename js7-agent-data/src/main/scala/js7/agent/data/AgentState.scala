@@ -37,7 +37,7 @@ final case class AgentState(
   eventId: EventId,
   standards: SnapshotableState.Standards,
   meta: AgentMetaState,
-  pathToItemState_ : Map[InventoryItemKey, InventoryItemState],
+  keyToItemState_ : Map[InventoryItemKey, InventoryItemState],
   idToOrder: Map[OrderId, Order[Order.State]],
   idToWorkflow: Map[WorkflowId, Workflow/*reduced for this Agent!!!*/],
   pathToJobResource: Map[JobResourcePath, JobResource],
@@ -71,7 +71,7 @@ with SnapshotableState[AgentState]
       1 +
       idToWorkflow.size +
       idToOrder.size +
-      pathToItemState_.size +
+      keyToItemState_.size +
       fw.estimatedExtraSnapshotSize +
       pathToJobResource.size
       //keyToSignedItem.size +  // == idToWorkflow.size + pathToJobResource.size
@@ -148,7 +148,7 @@ with SnapshotableState[AgentState]
           case ItemAttachedToMe(subagentItem: SubagentItem) =>
             // May replace an existing SubagentItem
             Right(copy(
-              pathToItemState_ = pathToItemState_.updated(subagentItem.id,
+              keyToItemState_ = keyToItemState_.updated(subagentItem.id,
                 pathTo(SubagentItemState)
                   .get(subagentItem.id)
                   .match_ {
@@ -163,7 +163,7 @@ with SnapshotableState[AgentState]
                    _: SubagentSelection =>
                 // May replace an existing Item
                 Right(copy(
-                  pathToItemState_ = pathToItemState_.updated(item.path, item.toInitialItemState)))
+                  keyToItemState_ = keyToItemState_.updated(item.path, item.toInitialItemState)))
 
               case _ => eventNotApplicable(keyedEvent)
             }
@@ -191,9 +191,9 @@ with SnapshotableState[AgentState]
                 path match {
                   case _: WorkflowPathControlPath | _: CalendarPath |
                        _: SubagentId | _: SubagentSelectionId =>
-                    for (_ <- pathToItemState_.checked(path)) yield
+                    for (_ <- keyToItemState_.checked(path)) yield
                       copy(
-                        pathToItemState_ = pathToItemState_ - path)
+                        keyToItemState_ = keyToItemState_ - path)
                   case _ =>
                     eventNotApplicable(keyedEvent)
                 }
@@ -204,7 +204,7 @@ with SnapshotableState[AgentState]
           case ItemDetachingFromMe(id: SubagentId) =>
             for (subagentItemState <- pathTo(SubagentItemState).checked(id)) yield
               copy(
-                pathToItemState_ = pathToItemState_.updated(id,
+                keyToItemState_ = keyToItemState_.updated(id,
                   subagentItemState.copy(isDetaching = true)))
 
           case _ => applyStandardEvent(keyedEvent)
@@ -212,7 +212,7 @@ with SnapshotableState[AgentState]
 
       case KeyedEvent(subagentId: SubagentId, event: SubagentItemStateEvent) =>
         event match {
-          case SubagentShutdown if !pathToItemState_.contains(subagentId) =>
+          case SubagentShutdown if !keyToItemState_.contains(subagentId) =>
             // May arrive when SubagentItem has been deleted
             Right(this)
 
@@ -221,7 +221,7 @@ with SnapshotableState[AgentState]
               subagentItemState <- pathTo(SubagentItemState).checked(subagentId)
               subagentItemState <- subagentItemState.applyEvent(event)
             } yield copy(
-              pathToItemState_ = pathToItemState_.updated(subagentId, subagentItemState))
+              keyToItemState_ = keyToItemState_.updated(subagentId, subagentItemState))
         }
 
       case KeyedEvent(_: NoKey, AgentDedicated(subagentId, agentPath, agentRunId, controllerId)) =>
@@ -234,7 +234,7 @@ with SnapshotableState[AgentState]
       case _ => applyStandardEvent(keyedEvent)
     }
 
-  def pathToItemState = pathToItemState_.view
+  def keyToItemState = keyToItemState_.view
 
   def idToSubagentItemState = pathTo(SubagentItemState)
 
@@ -256,7 +256,7 @@ with SnapshotableState[AgentState]
     else
       Right(copy(
         idToOrder = idToOrder -- removeOrders ++ orders.map(o => o.id -> o),
-        pathToItemState_ = pathToItemState_
+        keyToItemState_ = keyToItemState_
           -- removeItemStates ++ addItemStates.map(o => o.path -> o)))
 
   def agentPath = meta.agentPath
@@ -267,13 +267,13 @@ with SnapshotableState[AgentState]
         itemKey match {
           case path: JobResourcePath => pathToJobResource.get(path)
           case WorkflowId.as(id) => idToWorkflow.get(id)
-          case path: UnsignedSimpleItemPath => pathToItemState_.get(path).map(_.item)
+          case path: UnsignedSimpleItemPath => keyToItemState_.get(path).map(_.item)
         }
 
       def iterator: Iterator[(InventoryItemKey, InventoryItem)] =
         pathToJobResource.iterator ++
           idToWorkflow.iterator ++
-          pathToItemState.mapValues(_.item).iterator
+          keyToItemState.mapValues(_.item).iterator
     }
 
   def keyToSigned[I <: SignableItem](I: SignableItem.Companion[I]): MapView[I.Key, Signed[I]] =
