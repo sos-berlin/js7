@@ -212,7 +212,7 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
 
     controller = directoryProvider.startController().await(99.s)
     implicit val controllerApi = directoryProvider.newControllerApi(controller)
-    eventId = eventWatch.lastFileTornEventId
+    eventId = eventWatch.lastFileEventId
 
     // Events at recovery
     assert(

@@ -132,7 +132,7 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
   "Heartbeat" in {
     var lines = Vector.empty[String]
     var observedLines = Vector.empty[String]
-    val fileAfter = controller.eventWatch.lastFileTornEventId
+    val fileAfter = controller.eventWatch.lastFileEventId
     val u = Uri(s"$uri/controller/api/journal?markEOF=true&file=$fileAfter&position=0")
     httpClient.getRawLinesObservable(u).await(99.s)
       .foreach {

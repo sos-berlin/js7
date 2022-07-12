@@ -104,7 +104,7 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
   "Add AgentRef again: Agent's journal should be new due to implicit Reset" in {
     agent = RunningAgent.startForTest(agentFileTree.agentConfiguration) await 99.s
 
-    val eventId = controller.eventWatch.lastFileTornEventId
+    val eventId = controller.eventWatch.lastFileEventId
     val versionId = VersionId("AGAIN")
     val subagentItem = SubagentItem(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort1"))
     controllerApi
@@ -136,7 +136,7 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
   "Coupling fails with outdated Director" in {
     deleteDirectoryRecursively(agentFileTree.stateDir)
     move(outdatedState, agentFileTree.stateDir)
-    val eventId = controller.eventWatch.lastFileTornEventId
+    val eventId = controller.eventWatch.lastFileEventId
 
     agent = RunningAgent.startForTest(
       agentFileTree.agentConfiguration.copy(
@@ -161,7 +161,7 @@ final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForSca
         webServerPorts = List(WebServerPort.localhost(agentPort3)))
     ) await 99.s
 
-    val eventId = controller.eventWatch.lastFileTornEventId
+    val eventId = controller.eventWatch.lastFileEventId
     controllerApi.updateUnsignedSimpleItems(Seq(subagentItem)).await(99.s).orThrow
     controller.eventWatch.await[AgentCouplingFailed](
       _.event.problem == AgentNotDedicatedProblem,

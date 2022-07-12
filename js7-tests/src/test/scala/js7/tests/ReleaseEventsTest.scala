@@ -71,7 +71,7 @@ final class ReleaseEventsTest extends AnyFreeSpec with DirectoryProviderForScala
     assert(agentJournalFiles.size == 2)
 
     directoryProvider.run { case (controller, Seq(agent)) =>
-      import controller.eventWatch.{lastFileTornEventId, tornEventId}
+      import controller.eventWatch.{lastFileEventId, tornEventId}
 
       val finished = controller.eventWatch.await[OrderFinished](predicate = _.key == aOrder.id)
       assert(finished.size == 1)
@@ -108,20 +108,20 @@ final class ReleaseEventsTest extends AnyFreeSpec with DirectoryProviderForScala
       b.executeCommand(ReleaseEvents(bAdded)).await(99.s)
       assertControllerJournalFileCount(4)
 
-      a.executeCommand(ReleaseEvents(lastFileTornEventId)).await(99.s)
+      a.executeCommand(ReleaseEvents(lastFileEventId)).await(99.s)
       assertControllerJournalFileCount(3)
       assert(tornEventId <= bAdded)
 
-      b.executeCommand(ReleaseEvents(lastFileTornEventId)).await(99.s)
+      b.executeCommand(ReleaseEvents(lastFileEventId)).await(99.s)
       assertControllerJournalFileCount(1)
 
       // TakeSnapshot and KeepSnapshot on last event written should tear this event
       controller.executeCommandAsSystemUser(TakeSnapshot).await(99.s).orThrow
-      assert(tornEventId < lastFileTornEventId)
-      a.executeCommand(ReleaseEvents(lastFileTornEventId)).await(99.s)
-      b.executeCommand(ReleaseEvents(lastFileTornEventId)).await(99.s)
-      waitForCondition(5.s, 10.ms) { tornEventId == lastFileTornEventId }
-      assert(tornEventId == lastFileTornEventId)
+      assert(tornEventId < lastFileEventId)
+      a.executeCommand(ReleaseEvents(lastFileEventId)).await(99.s)
+      b.executeCommand(ReleaseEvents(lastFileEventId)).await(99.s)
+      waitForCondition(5.s, 10.ms) { tornEventId == lastFileEventId }
+      assert(tornEventId == lastFileEventId)
 
       // Agent's journal file count should be 1 after TakeSnapshot and after Controller has read all events
       agent.executeCommand(AgentCommand.TakeSnapshot, CommandMeta(SimpleUser(UserId("Controller"))))

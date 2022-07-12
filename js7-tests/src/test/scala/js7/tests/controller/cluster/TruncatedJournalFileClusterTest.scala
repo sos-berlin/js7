@@ -33,7 +33,7 @@ final class TruncatedJournalFileClusterTest extends ControllerClusterTester
 
       primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
         backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { _ =>
-          primaryController.eventWatch.await[ClusterCoupled](after = primaryController.eventWatch.lastFileTornEventId).head.eventId
+          primaryController.eventWatch.await[ClusterCoupled](after = primaryController.eventWatch.lastFileEventId).head.eventId
           //assertEqualJournalFiles(primary.controller, backup.controller, n = 2)
           primaryController.runOrder(FreshOrder(OrderId("🔷"), TestWorkflow.path))
           assert(primaryController.clusterState.await(99.s).isInstanceOf[Coupled])

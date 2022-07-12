@@ -82,7 +82,7 @@ final class ShutDownClusterTest extends ControllerClusterTester
           }
           primary.runController(httpPort = Some(primaryControllerPort), dontWaitUntilReady = true) { primaryController =>
             // Restarted Primary should have become passive
-            primaryController.eventWatch.await[ClusterCoupled](after = primaryController.eventWatch.lastFileTornEventId)
+            primaryController.eventWatch.await[ClusterCoupled](after = primaryController.eventWatch.lastFileEventId)
             waitForCondition(3.s, 10.ms)(primaryController.clusterState.await(99.s).isInstanceOf[Coupled])
             assert(primaryController.clusterState.await(99.s) == backupController.clusterState.await(99.s))
             assert(primaryController.clusterState.await(99.s) == Coupled(clusterSetting.copy(activeId = backupId)))
