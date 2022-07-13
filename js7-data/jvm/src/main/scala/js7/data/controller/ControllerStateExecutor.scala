@@ -265,7 +265,7 @@ final case class ControllerStateExecutor private(
             }
             .toVector
 
-        val deleteItems: Set[KeyedEvent[ItemDeleted]] =
+        val deleteItems0: Set[KeyedEvent[ItemDeleted]] =
           (detachWorkflowCandidates.view ++ detachedItems)
             .filter(controllerState.keyToItem.contains)
             .filterNot(controllerState.itemToAgentToAttachedState.contains)
@@ -290,7 +290,7 @@ final case class ControllerStateExecutor private(
             .map(itemKey => NoKey <-: ItemDeleted(itemKey))
             .toSet
 
-        val deleteWorkflowControls1: Set[KeyedEvent[ItemDeleted]] =
+        val deleteControls1: View[KeyedEvent[ItemDeleted]] =
           detachedItems
             .view
             .filterNot(controllerState.keyToItem.contains)
@@ -307,9 +307,8 @@ final case class ControllerStateExecutor private(
                 false
             }
             .map(itemKey => NoKey <-: ItemDeleted(itemKey))
-            .toSet
 
-        val deleteWorkflowControls2: Set[KeyedEvent[ItemDeleted]] =
+        val deleteControls2: View[KeyedEvent[ItemDeleted]] =
           deletedWorkflows
             .view
             .filterNot(controllerState.keyToItem.contains)
@@ -338,10 +337,12 @@ final case class ControllerStateExecutor private(
               case _ =>
                 Nil
             }
-            .toSet
+
+        val deleteItems: Set[KeyedEvent[ItemDeleted]] =
+          deleteItems0 ++ deleteControls1 ++ deleteControls2
 
         controllerState = controllerState
-          .applyEvents(detachWorkflows.view ++ detachWorkflowControls ++ deleteItems ++ deleteWorkflowControls1 ++ deleteWorkflowControls2)
+          .applyEvents(detachWorkflows.view ++ detachWorkflowControls ++ deleteItems)
           .orThrow
 
         val eventsAndState = controllerState.nextOrderEvents(touchedOrderIds)
@@ -357,8 +358,6 @@ final case class ControllerStateExecutor private(
           detachWorkflows,
           detachWorkflowControls,
           deleteItems,
-          deleteWorkflowControls1,
-          deleteWorkflowControls2,
           orderEvents,
           orderWatchEvents)
 
