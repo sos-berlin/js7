@@ -2,8 +2,8 @@
 -J-enableassertions
 -J-Xmx3G
 -J-XX:MaxMetaspaceSize=1500M
+-J-XX:ReservedCodeCacheSize=400m
 -J-XX:+UseG1GC
 -J-XX:+UseStringDeduplication
--J-XX:ReservedCodeCacheSize=256m
 -J-XX:+HeapDumpOnOutOfMemoryError
 -J-XX:HeapDumpPath=target/OutOfMemoryError.hprof
