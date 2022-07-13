@@ -338,7 +338,7 @@ with SnapshotableState[ControllerState]
         agentPaths.nonEmpty ? (workflowPathControl.path -> agentPaths)
       }
 
-  def singleItemKeyToIgnorantAgents(itemKey: InventoryItemKey): Set[AgentPath] =
+  def singleItemToIgnorantAgents(itemKey: InventoryItemKey): Set[AgentPath] =
     agentAttachments.itemToDelegateToAttachedState
       .get(itemKey)
       .view

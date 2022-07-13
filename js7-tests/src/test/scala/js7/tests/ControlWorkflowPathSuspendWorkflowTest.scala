@@ -72,7 +72,7 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
 
     assert(controllerState.workflowPathControlToIgnorantAgents.isEmpty)
     assert(controllerState
-      .singleItemKeyToIgnorantAgents(WorkflowPathControlPath(aWorkflow.path)).isEmpty)
+      .singleItemToIgnorantAgents(WorkflowPathControlPath(aWorkflow.path)).isEmpty)
 
     val aOrderId = OrderId("A")
     controllerApi.addOrder(FreshOrder(aOrderId, aWorkflow.path, deleteWhenTerminated = true))
@@ -152,7 +152,7 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
     assert(controllerState.workflowPathControlToIgnorantAgents.toMap == Map(
       WorkflowPathControlPath(aWorkflow.path) -> Set(aAgentPath)))
     assert(controllerState
-      .singleItemKeyToIgnorantAgents(WorkflowPathControlPath(aWorkflow.path)) ==
+      .singleItemToIgnorantAgents(WorkflowPathControlPath(aWorkflow.path)) ==
       Set(aAgentPath))
 
     controllerApi.stop.await(99.s)
@@ -169,7 +169,7 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
 
     assert(controllerState.workflowPathControlToIgnorantAgents.toMap.isEmpty)
     assert(controllerState
-      .singleItemKeyToIgnorantAgents(WorkflowPathControlPath(aWorkflow.path)).isEmpty)
+      .singleItemToIgnorantAgents(WorkflowPathControlPath(aWorkflow.path)).isEmpty)
   }
 
   "After Controller recovery, the WorkflowPathControl is attached to the remaining Agents" in {

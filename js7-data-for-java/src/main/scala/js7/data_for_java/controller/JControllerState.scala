@@ -185,7 +185,7 @@ extends JJournaledState[JControllerState, ControllerState]
     @Nonnull workflowPath: WorkflowPath)
   : JSet[AgentPath] =
     asScala
-      .singleItemKeyToIgnorantAgents(WorkflowPathControlPath(requireNonNull(workflowPath)))
+      .singleItemToIgnorantAgents(WorkflowPathControlPath(requireNonNull(workflowPath)))
       .asJava
 
   @Nonnull
@@ -193,7 +193,7 @@ extends JJournaledState[JControllerState, ControllerState]
     @Nonnull workflowId: JWorkflowId)
   : JSet[AgentPath] =
     asScala
-      .singleItemKeyToIgnorantAgents(WorkflowControlId(workflowId.asScala))
+      .singleItemToIgnorantAgents(WorkflowControlId(workflowId.asScala))
       .asJava
 
   @Nonnull
