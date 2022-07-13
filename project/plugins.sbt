@@ -7,7 +7,7 @@ addSbtPlugin("org.scala-js" % "sbt-scalajs" % "1.8.0")
 addSbtPlugin("com.github.sbt" % "sbt-release" % "1.1.0")
 //addSbtPlugin("com.thoughtworks.sbt-scala-js-map" % "sbt-scala-js-map" % "2.0.0")
 
-libraryDependencies += "org.apache.logging.log4j" % "log4j-api" % "2.17.2"
-libraryDependencies += "org.apache.logging.log4j" % "log4j-core" % "2.17.2"
-libraryDependencies += "org.apache.logging.log4j" % "log4j-slf4j-impl" % "2.17.2"
+libraryDependencies += "org.apache.logging.log4j" % "log4j-api" % "2.18.0"
+libraryDependencies += "org.apache.logging.log4j" % "log4j-core" % "2.18.0"
+libraryDependencies += "org.apache.logging.log4j" % "log4j-slf4j-impl" % "2.18.0"
 libraryDependencies += "org.slf4j" % "slf4j-api" % "1.7.36"

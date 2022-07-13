@@ -7,7 +7,7 @@ RUN microdnf install procps
 #———————————————————————————————————————————————————————————————————————————————
 
 RUN \
-  sbtVersion=1.6.2 &&\
+  sbtVersion=1.7.1 &&\
   \
   : microdnf upgrade `# may take several minutes` &&\
   microdnf install git unzip which sudo openssl nodejs &&\
