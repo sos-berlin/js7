@@ -130,12 +130,12 @@ extends JJournaledState[JControllerState, ControllerState]
       .mapValues(JBoardState.apply)
       .asJava
 
-  def orderToAvailableNotices(orderId: OrderId): java.util.List[JNotice] =
+  def orderToAvailableNotices(@Nonnull orderId: OrderId): java.util.List[JNotice] =
     asScala.orderToAvailableNotices(orderId)
       .map(JNotice(_))
       .asJava
 
-  def orderToStillExpectedNotices(orderId: OrderId): java.util.List[JExpectedNotice] =
+  def orderToStillExpectedNotices(@Nonnull orderId: OrderId): java.util.List[JExpectedNotice] =
     asScala.orderToStillExpectedNotices(orderId)
       .map(JExpectedNotice(_))
       .asJava
@@ -247,7 +247,7 @@ extends JJournaledState[JControllerState, ControllerState]
     orderStateToCount(any)
 
   @Nonnull
-  def orderStateToCount(predicate: Order[Order.State] => Boolean)
+  def orderStateToCount(@Nonnull predicate: Order[Order.State] => Boolean)
   : JMap[Class[_ <: Order.State], java.lang.Integer] =
     asScala.idToOrder.values.view
       .filter(predicate)
@@ -277,7 +277,7 @@ extends JJournaledState[JControllerState, ControllerState]
       .toVavr
 
   @Nonnull
-  def waitingForAdmissionOrderCount(now: Instant): Int =
+  def waitingForAdmissionOrderCount(@Nonnull now: Instant): Int =
     orderObstacleCalculator
       .waitingForAdmissionOrderCount(now.toTimestamp)
 

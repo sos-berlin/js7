@@ -2,6 +2,7 @@ package js7.data_for_java.controller
 
 import io.vavr.control.{Either => VEither}
 import java.time.Instant
+import java.util.Objects.requireNonNull
 import java.util.Optional
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
@@ -36,29 +37,34 @@ object JControllerCommand extends JJsonable.Companion[JControllerCommand]
     JControllerCommand(AddOrder(jFreshOrder.asScala))
 
   @Nonnull
-  def postNotice(boardPath: BoardPath, noticeId: NoticeId, endOfLife: Optional[Instant])
+  def postNotice(
+    @Nonnull boardPath: BoardPath,
+    @Nonnull noticeId: NoticeId,
+    @Nonnull endOfLife: Optional[Instant])
   : JControllerCommand =
     JControllerCommand(
       PostNotice(
-        boardPath,
-        noticeId,
+        requireNonNull(boardPath),
+        requireNonNull(noticeId),
         endOfLife.toScala
           .map(JavaTimestamp.ofInstant)))
 
   @Nonnull
   def controlWorkflowPath(
-    workflowPath: WorkflowPath,
-    suspend: Optional[Boolean],
-    skip: java.util.Map[Label, java.lang.Boolean])
+    @Nonnull workflowPath: WorkflowPath,
+    @Nonnull suspend: Optional[Boolean],
+    @Nonnull skip: java.util.Map[Label, java.lang.Boolean])
   : JControllerCommand =
     JControllerCommand(
-      ControlWorkflowPath( workflowPath, suspend = suspend.toScala,
+      ControlWorkflowPath(
+        requireNonNull(workflowPath),
+        suspend = suspend.toScala,
         skip.asScala.view.mapValues(_.booleanValue).toMap))
 
   @Nonnull
   def controlWorkflow(
-    workflowId: JWorkflowId,
-    breakpoints: java.util.Map[JPosition, java.lang.Boolean])
+    @Nonnull workflowId: JWorkflowId,
+    @Nonnull breakpoints: java.util.Map[JPosition, java.lang.Boolean])
   : JControllerCommand =
     JControllerCommand(
       ControlWorkflow(
