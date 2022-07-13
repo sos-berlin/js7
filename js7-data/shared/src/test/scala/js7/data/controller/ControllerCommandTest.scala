@@ -386,14 +386,16 @@ final class ControllerCommandTest extends AnyFreeSpec
     testJson[ControllerCommand](
       ControlWorkflow(
         WorkflowPath("WORKFLOW") ~ "VERSION",
-        breakpoints = Set(Position(1))),
+        addBreakpoints = Set(Position(1)),
+        removeBreakpoints = Set(Position(2))),
       json"""{
         "TYPE": "ControlWorkflow",
         "workflowId": {
           "path": "WORKFLOW",
           "versionId": "VERSION"
         },
-        "breakpoints": [ [ 1 ] ]
+        "addBreakpoints": [ [ 1 ] ],
+        "removeBreakpoints": [ [ 2 ] ]
       }""")
   }
 

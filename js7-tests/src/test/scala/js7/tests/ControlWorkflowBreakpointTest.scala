@@ -12,7 +12,7 @@ import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
-import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, ControlWorkflow, ResumeOrder}
+import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, ResumeOrder}
 import js7.data.event.EventId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemDetached}
@@ -27,6 +27,9 @@ import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.Prompt
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath}
+import js7.data_for_java.controller.JControllerCommand
+import js7.data_for_java.workflow.JWorkflowId
+import js7.data_for_java.workflow.position.JPosition
 import js7.proxy.ControllerApi
 import js7.tests.ControlWorkflowBreakpointTest._
 import js7.tests.jobs.{EmptyJob, SemaphoreJob}
@@ -35,6 +38,7 @@ import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
+import scala.jdk.CollectionConverters._
 
 final class ControlWorkflowBreakpointTest
 extends AnyFreeSpec with DirectoryProviderForScalaTest
@@ -43,6 +47,7 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.controller.agent-driver.command-batch-delay = 0ms
     js7.controller.agent-driver.event-buffer-delay = 0ms
+    js7.controller.agent-driver.command-error-delay = 1s
     """
   override protected val agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
@@ -71,7 +76,15 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
 
     aAgent = directoryProvider.startAgent(aAgentPath).await(99.s)
 
-    var eventId = setBreakpoints(aWorkflow.id, Set(Position(0), Position(1)), ItemRevision(0),
+    var eventId = setBreakpoints(
+      aWorkflow.id,
+      Map(
+        Position(0) -> true,
+        Position(1) -> true),
+      resultBreakpoints = Set(
+        Position(0),
+        Position(1)),
+      revision = ItemRevision(0),
       VersionedControlAdded.apply)
 
     assert(controllerState.workflowPathControlToIgnorantAgents.isEmpty)
@@ -102,7 +115,11 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
     // Breakpoint at Position(1)
     eventWatch.await[OrderSuspended](_.key == aOrderId, after = eventId)
 
-    eventId = setBreakpoints(aWorkflow.id, Set(Position(3)), ItemRevision(1),
+    eventId = setBreakpoints(
+      aWorkflow.id,
+      Map(Position(3) -> true),
+      Set(Position(0), Position(1), Position(3)),
+      ItemRevision(1),
       VersionedControlChanged.apply)
     controllerApi.executeCommand(ResumeOrder(aOrderId)).await(99.s).orThrow
 
@@ -146,7 +163,13 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
 
     aAgent.terminate().await(99.s)
 
-    setBreakpoints(aWorkflow.id, Set(Position(3)), ItemRevision(2),
+    setBreakpoints(
+      aWorkflow.id,
+      Map(
+        Position(1) -> false,
+        Position(3) -> true),
+      Set(Position(0), Position(3)),
+      ItemRevision(2),
       VersionedControlChanged.apply)
 
     controllerApi.stop.await(99.s)
@@ -185,7 +208,11 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
       B1SemaphoreJob.continue()
       terminated.await(99.s)
 
-      setBreakpoints(bWorkflow.id, Set(Position(1)), ItemRevision(0/*1???*/),
+      setBreakpoints(
+        bWorkflow.id,
+        Map(Position(1) -> true),
+        Set(Position(1)),
+        ItemRevision(0),
         VersionedControlAdded.apply)
       eventWatch.await[ItemAttachable](
         _.event.key == bWorkflowControlId,
@@ -215,7 +242,12 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
         .map(_.value) ==
         Seq(NoKey <-: ItemAttached(bWorkflowControlId, Some(ItemRevision(0)), bAgentPath)))
 
-    setBreakpoints(bWorkflow.id, Set.empty, ItemRevision(1), VersionedControlChanged.apply)
+    setBreakpoints(
+      bWorkflow.id,
+      Map(Position(1) -> false),
+      Set(),
+      ItemRevision(1),
+      VersionedControlChanged.apply)
     B2SemaphoreJob.continue()
     eventWatch.await[OrderFinished](_.key == bOrderId)
 
@@ -261,19 +293,29 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
     assert(controller.controllerState.await(99.s).keyTo(WorkflowControl).isEmpty)
   }
 
-  private def setBreakpoints(workflowId: WorkflowId, positions: Set[Position], revision: ItemRevision,
+  private def setBreakpoints(
+    workflowId: WorkflowId,
+    breakpoints: Map[Position, Boolean],
+    resultBreakpoints: Set[Position],
+    revision: ItemRevision,
     workflowControlToEvent: WorkflowControl => VersionedControlEvent)
     (implicit controllerApi: ControllerApi)
   : EventId = {
     val eventId = eventWatch.lastAddedEventId
-    controllerApi
-      .executeCommand(ControlWorkflow(workflowId, breakpoints = positions))
-      .await(99.s).orThrow
+    val jCmd = JControllerCommand
+      .controlWorkflow(
+        JWorkflowId(workflowId),
+        breakpoints.view
+          .map { case (k, v) => JPosition(k) -> Boolean.box(v) }
+          .toMap
+          .asJava)
+    controllerApi.executeCommand(jCmd.asScala).await(99.s).orThrow
     val keyedEvents = eventWatch.await[VersionedControlAddedOrChanged](after = eventId)
     assert(keyedEvents.map(_.value) == Seq(
       NoKey <-: workflowControlToEvent(
-        WorkflowControl(WorkflowControlId(workflowId),
-          breakpoints = positions,
+        WorkflowControl(
+          WorkflowControlId(workflowId),
+          breakpoints = resultBreakpoints,
           itemRevision = Some(revision)))))
     keyedEvents.last.eventId
   }

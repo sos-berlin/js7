@@ -224,7 +224,8 @@ object ControllerCommand extends CommonCommand.Companion
   /** Command to control a Workflow (a specific version). */
   final case class ControlWorkflow(
     workflowId: WorkflowId,
-    breakpoints: Set[Position] = Set.empty)
+    addBreakpoints: Set[Position] = Set.empty,
+    removeBreakpoints: Set[Position] = Set.empty)
   extends ControllerCommand {
     type Response = Response.Accepted
   }

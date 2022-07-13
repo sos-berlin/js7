@@ -1018,15 +1018,15 @@ with MainJournalingActor[ControllerState, Event]
       case Left(problem) => Future.successful(Left(problem))
       case Right(_) =>
         val workflowControlId = WorkflowControlId(cmd.workflowId)
-        val (itemState, isNew) = _controllerState
+        val (item0, isNew) = _controllerState
           .keyTo(WorkflowControl)
           .get(workflowControlId) match {
             case None => WorkflowControl(workflowControlId) -> true
             case Some(o) => o -> false
           }
-        val item = itemState.item.copy(
-          breakpoints = cmd.breakpoints,
-          itemRevision = Some(itemState.item.itemRevision.fold(ItemRevision.Initial)(_.next)))
+        val item = item0.copy(
+          breakpoints = item0.breakpoints -- cmd.removeBreakpoints ++ cmd.addBreakpoints,
+          itemRevision = Some(item0.itemRevision.fold(ItemRevision.Initial)(_.next)))
 
         val event = if (isNew) VersionedControlAdded(item) else VersionedControlChanged(item)
         val keyedEvents = Vector(event)

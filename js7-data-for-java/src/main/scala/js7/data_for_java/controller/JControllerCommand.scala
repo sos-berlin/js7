@@ -2,7 +2,6 @@ package js7.data_for_java.controller
 
 import io.vavr.control.{Either => VEither}
 import java.time.Instant
-import java.util.Collections.emptyMap
 import java.util.Optional
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
@@ -11,10 +10,11 @@ import js7.base.time.JavaTimestamp
 import js7.data.board.{BoardPath, NoticeId}
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{AddOrder, ControlWorkflow, ControlWorkflowPath, PostNotice}
-import js7.data.workflow.{WorkflowId, WorkflowPath}
+import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Label
 import js7.data_for_java.common.JJsonable
 import js7.data_for_java.order.JFreshOrder
+import js7.data_for_java.workflow.JWorkflowId
 import js7.data_for_java.workflow.position.JPosition
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters.RichOptional
@@ -45,12 +45,6 @@ object JControllerCommand extends JJsonable.Companion[JControllerCommand]
         endOfLife.toScala
           .map(JavaTimestamp.ofInstant)))
 
-  @Deprecated
-  @deprecated("Use controlWorkflowPath")
-  @Nonnull
-  def controlWorkflow(workflowPath: WorkflowPath, suspend: Boolean): JControllerCommand =
-    controlWorkflowPath(workflowPath, Optional.of(suspend), emptyMap)
-
   @Nonnull
   def controlWorkflowPath(
     workflowPath: WorkflowPath,
@@ -63,13 +57,20 @@ object JControllerCommand extends JJsonable.Companion[JControllerCommand]
 
   @Nonnull
   def controlWorkflow(
-    workflowId: WorkflowId,
-    breakpoints: java.util.Set[JPosition])
+    workflowId: JWorkflowId,
+    breakpoints: java.util.Map[JPosition, java.lang.Boolean])
   : JControllerCommand =
     JControllerCommand(
       ControlWorkflow(
-        workflowId,
-        breakpoints.asScala.view.map(_.asScala).toSet))
+        workflowId.asScala,
+        removeBreakpoints = breakpoints.asScala.view
+          .collect { case (k, java.lang.Boolean.FALSE) => k }
+          .map(_.asScala)
+          .toSet,
+        addBreakpoints = breakpoints.asScala.view
+          .collect { case (k, java.lang.Boolean.TRUE) => k }
+          .map(_.asScala)
+          .toSet))
 
   @Nonnull
   override def fromJson(@Nonnull jsonString: String): VEither[Problem, JControllerCommand] =
