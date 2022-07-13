@@ -15,7 +15,7 @@ import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttachedStateEvent, ItemDeleted, ItemDetachable, ItemDetached}
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable}
 import js7.data.item.VersionedEvent.VersionedItemEvent
-import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, SimpleItemPath, VersionedItemId_}
+import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, SimpleItemPath}
 import js7.data.job.JobResource
 import js7.data.lock.LockState
 import js7.data.order.Order.State
@@ -25,8 +25,9 @@ import js7.data.orderwatch.ExternalOrderKey
 import js7.data.subagent.SubagentItemState
 import js7.data.subagent.SubagentItemStateEvent.SubagentReset
 import js7.data.value.expression.scopes.NowScope
+import js7.data.workflow.WorkflowControlId.syntax._
 import js7.data.workflow.position.{Position, PositionOrLabel}
-import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
+import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPathControl, WorkflowPathControlPath}
 import scala.annotation.tailrec
 import scala.collection.{View, mutable}
 import scala.language.implicitConversions
@@ -143,12 +144,16 @@ final case class ControllerStateExecutor private(
     collection.Set[OrderId],
     collection.Set[WorkflowId],
     collection.Set[InventoryItemKey],
+    collection.Seq[(WorkflowId, AgentPath)],
+    collection.Seq[WorkflowId],
     ControllerState)] =
   {
     val touchedItemKeys = mutable.Set.empty[InventoryItemKey]
     val touchedOrderIds = mutable.Set.empty[OrderId]
     val detachWorkflowCandidates = mutable.Set.empty[WorkflowId]
     val detachedItems = mutable.Set.empty[InventoryItemKey]
+    val detachedWorkflows = mutable.Buffer.empty[(WorkflowId, AgentPath)]
+    val deletedWorkflows = mutable.Buffer.empty[WorkflowId]
 
     var controllerState = this.controllerState
     var checked: Checked[Unit] = Checked.unit
@@ -179,8 +184,17 @@ final case class ControllerStateExecutor private(
               touchedItemKeys += event.key
 
               event match {
-                case ItemDetached(itemKey, _) =>
+                case ItemDetached(itemKey, agentPath: AgentPath) =>
                   detachedItems += itemKey
+                  itemKey match {
+                    case WorkflowId.as(workflowId: WorkflowId) =>
+                      detachedWorkflows += workflowId -> agentPath
+                    case _ =>
+                  }
+
+                case ItemDeleted(WorkflowId.as(workflowId)) =>
+                  deletedWorkflows += workflowId
+
                 case _ =>
               }
 
@@ -198,14 +212,17 @@ final case class ControllerStateExecutor private(
     }
 
     for (_ <- checked) yield
-      (touchedItemKeys, touchedOrderIds, detachWorkflowCandidates, detachedItems, controllerState)
+      (touchedItemKeys, touchedOrderIds, detachWorkflowCandidates, detachedItems, detachedWorkflows,
+        deletedWorkflows, controllerState)
   }
 
   private def subsequentEvents(
-    touchedItemKeys: collection.Set[InventoryItemKey],
-    touchedOrderIds: collection.Set[OrderId],
-    detachWorkflowCandidates: collection.Set[WorkflowId],
-    detachedItems1: collection.Set[InventoryItemKey],
+    touchedItemKeys: Iterable[InventoryItemKey],
+    touchedOrderIds: Iterable[OrderId],
+    detachWorkflowCandidates: Iterable[WorkflowId],
+    detachedItems1: Iterable[InventoryItemKey],
+    detachedWorkflows: Iterable[(WorkflowId, AgentPath)],
+    deletedWorkflows: Iterable[WorkflowId],
     controllerState: ControllerState)
   : Checked[ControllerStateExecutor] = {
     // Slow ???
@@ -214,40 +231,117 @@ final case class ControllerStateExecutor private(
     val itemEvents = ControllerStateExecutor(controllerState)
       .nextItemAttachedStateEvents(touchedItemKeys)
       .toVector
+
     controllerState
       .applyEvents(itemEvents)
       .flatMap { controllerState_ =>
         var controllerState = controllerState_
-        val makeWorkflowsDetachable = detachWorkflowCandidates
-          .view
-          .filter(controllerState.keyToItem.keySet.contains)
-          .filter(controllerState.isObsoleteItem)
-          .flatMap(workflowId =>
-            controllerState.itemToAgentToAttachedState
-              .get(workflowId)
-              .view
-              .flatMap(_.collect {
-                // Workflows are never Attachable, only Attached or Detachable
-                case (agentPath, Attached(_)) =>
-                  detachedItems += workflowId
-                  NoKey <-: ItemDetachable(workflowId, agentPath)
-              }))
-          .toVector
 
-        val deleteItemKeys = (detachWorkflowCandidates.view ++ detachedItems)
-          .filter(controllerState.keyToItem.contains)
-          .filterNot(controllerState.itemToAgentToAttachedState.contains)
-          .filter {
-            case WorkflowId.as(workflowId) =>
-              controllerState.isObsoleteItem(workflowId)
-            case path: SimpleItemPath =>
-              !controllerState.isReferenced(path)
-            case _ =>
-              false
-          }
-          .map(itemKey => NoKey <-: ItemDeleted(itemKey))
-          .toVector
-        controllerState = controllerState.applyEvents(makeWorkflowsDetachable.view ++ deleteItemKeys)
+        val detachWorkflows: Seq[KeyedEvent[ItemDetachable]] =
+          detachWorkflowCandidates
+            .view
+            .filter(controllerState.keyToItem.keySet.contains)
+            .filter(controllerState.isObsoleteItem)
+            .flatMap(workflowId =>
+              controllerState.itemToAgentToAttachedState
+                .get(workflowId)
+                .view
+                .flatMap(_.collect {
+                  // Workflows are never Attachable, only Attached or Detachable
+                  case (agentPath, Attached(_)) =>
+                    detachedItems += workflowId
+                    NoKey <-: ItemDetachable(workflowId, agentPath)
+                }))
+            .toVector
+
+        val detachWorkflowControls: Seq[KeyedEvent[ItemDetachable]] =
+          detachedWorkflows.view
+            .flatMap { case (workflowId, agentPath) =>
+              val workflowControlId = WorkflowControlId(workflowId)
+              controllerState.itemToAgentToAttachedState.get(workflowControlId)
+                .flatMap(_.get(agentPath))
+                .exists(_.isAttachableOrAttached)
+                .thenList(NoKey <-: ItemDetachable(workflowControlId, agentPath))
+            }
+            .toVector
+
+        val deleteItems: Set[KeyedEvent[ItemDeleted]] =
+          (detachWorkflowCandidates.view ++ detachedItems)
+            .filter(controllerState.keyToItem.contains)
+            .filterNot(controllerState.itemToAgentToAttachedState.contains)
+            .filter {
+              case WorkflowId.as(workflowId) =>
+                controllerState.isObsoleteItem(workflowId)
+
+              case path: WorkflowPathControlPath =>
+                // Delete when no Workflow version exists
+                !controllerState.repo.pathToItems(Workflow).contains(path.workflowPath)
+
+              case WorkflowControlId.as(workflowControlId) =>
+                // Delete when Workflow no longer exists
+                !controllerState.idToWorkflow.isDefinedAt(workflowControlId.workflowPath)
+
+              case path: SimpleItemPath =>
+                !controllerState.isReferenced(path)
+
+              case _ =>
+                false
+            }
+            .map(itemKey => NoKey <-: ItemDeleted(itemKey))
+            .toSet
+
+        val deleteWorkflowControls1: Set[KeyedEvent[ItemDeleted]] =
+          detachedItems
+            .view
+            .filterNot(controllerState.keyToItem.contains)
+            .filter {
+              case path: WorkflowPathControlPath =>
+                // Delete when no Workflow version exists
+                !controllerState.repo.pathToItems(Workflow).contains(path.workflowPath)
+
+              case WorkflowControlId.as(workflowControlId) =>
+                // Delete when Workflow no longer exists
+                !controllerState.idToWorkflow.isDefinedAt(workflowControlId.workflowPath)
+
+              case _ =>
+                false
+            }
+            .map(itemKey => NoKey <-: ItemDeleted(itemKey))
+            .toSet
+
+        val deleteWorkflowControls2: Set[KeyedEvent[ItemDeleted]] =
+          deletedWorkflows
+            .view
+            .filterNot(controllerState.keyToItem.contains)
+            .flatMap {
+              case WorkflowId.as(workflowId) =>
+                // Delete when no Workflow version exists
+                val deleteWorkflowPathControl = {
+                  val workflowPathControlPath = WorkflowPathControlPath(workflowId.path)
+                  (controllerState.keyTo(WorkflowPathControl).contains(workflowPathControlPath) &&
+                    !controllerState.itemToAgentToAttachedState.contains(workflowPathControlPath) &&
+                    !controllerState.repo.pathToItems(Workflow).contains(workflowId.path)
+                  ) ? (NoKey <-: ItemDeleted(workflowPathControlPath))
+                }
+
+                // Delete WorkflowControl when Workflow no longer exists
+                val deleteWorkflowControl = {
+                  val workflowControlId = WorkflowControlId(workflowId)
+                  (controllerState.keyTo(WorkflowControl).contains(workflowControlId) &&
+                    !controllerState.itemToAgentToAttachedState.contains(workflowControlId) &&
+                    !controllerState.idToWorkflow.isDefinedAt(workflowControlId.workflowPath)
+                  ) ? (NoKey <-: ItemDeleted(workflowControlId))
+                }
+
+                deleteWorkflowPathControl ++ deleteWorkflowControl
+
+              case _ =>
+                Nil
+            }
+            .toSet
+
+        controllerState = controllerState
+          .applyEvents(detachWorkflows.view ++ detachWorkflowControls ++ deleteItems ++ deleteWorkflowControls1 ++ deleteWorkflowControls2)
           .orThrow
 
         val eventsAndState = controllerState.nextOrderEvents(touchedOrderIds)
@@ -259,9 +353,12 @@ final case class ControllerStateExecutor private(
           .orThrow
 
         val subsequentKeyedEvents = Vector.concat(
-          itemEvents.view,
-          makeWorkflowsDetachable,
-          deleteItemKeys,
+          itemEvents,
+          detachWorkflows,
+          detachWorkflowControls,
+          deleteItems,
+          deleteWorkflowControls1,
+          deleteWorkflowControls2,
           orderEvents,
           orderWatchEvents)
 
@@ -292,14 +389,16 @@ final case class ControllerStateExecutor private(
             def detachEvent = detach(item.key, agentPath)
 
             item.key match {
-              case itemId: VersionedItemId_ =>
-                if (controllerState.isObsoleteItem(itemId))
-                  derivedWorkflowPathControlEvents(itemId, agentPath).toList :+ detachEvent
+              case WorkflowId.as(workflowId) =>
+                if (controllerState.isObsoleteItem(workflowId))
+                  derivedWorkflowPathControlEvent(workflowId, agentPath).toList ++
+                    derivedWorkflowControlEvent(workflowId, agentPath) :+
+                    detachEvent
                 else
                   Nil
 
-              case path: SimpleItemPath =>
-                if (controllerState.deletionMarkedItems.contains(path))
+              case itemKey =>
+                if (controllerState.deletionMarkedItems contains itemKey)
                   detachEvent :: Nil
                 else
                   (item.itemRevision != revision).thenList(
@@ -307,7 +406,7 @@ final case class ControllerStateExecutor private(
                       case Some(`agentPath`) | None =>
                         // Item is dedicated to this Agent or is required by an Order.
                         // Attach again without detaching, and let Agent change the item while in flight
-                        ItemAttachable(path, agentPath)
+                        ItemAttachable(itemKey, agentPath)
                       case Some(_) =>
                         // Item's Agent dedication has changed, so we detach it
                         detachEvent
@@ -325,33 +424,46 @@ final case class ControllerStateExecutor private(
           item.dedicatedAgentPath.map(ItemAttachable(item.key, _))
     }
 
-  private def derivedWorkflowPathControlEvents(itemId: VersionedItemId_, agentPath: AgentPath)
-  : Option[ItemAttachedStateEvent] =
-    itemId.path match {
-      case workflowPath: WorkflowPath =>
-        // Implicitly detach WorkflowPathControl from agentPath
-        // when last version of WorkflowPath is being detached
-        val otherWorkflowWillStillBeAttached = controllerState.repo
-          .pathToItems(Workflow)(workflowPath)
-          .map(_.id)
-          .filter(_ != itemId) // itemId is going to be detached
-          .exists(workflowId => controllerState
-            .itemToAgentToAttachedState.get(workflowId)
-            .exists(_ contains agentPath))
-        if (otherWorkflowWillStillBeAttached)
-          None
-        else {
-          val controlPath = WorkflowPathControlPath(workflowPath)
-          controllerState.itemToAgentToAttachedState
-            .get(controlPath)
-            .flatMap(_
-              .get(agentPath)
-              .collect {
-                case Attachable | Attached(_) => detach(controlPath, agentPath)
-              })
-        }
+  private def derivedWorkflowPathControlEvent(workflowId: WorkflowId, agentPath: AgentPath)
+  : Option[ItemAttachedStateEvent] = {
+    // Implicitly detach WorkflowPathControl from agentPath
+    // when last version of WorkflowPath has been detached
+    val otherWorkflowWillStillBeAttached = controllerState.repo
+      .pathToItems(Workflow)(workflowId.path)
+      .map(_.id)
+      .filter(_ != workflowId) // workflowId is going to be detached
+      .exists(workflowId => controllerState
+        .itemToAgentToAttachedState.get(workflowId)
+        .exists(_ contains agentPath))
 
-      case _ => None
+      if (otherWorkflowWillStillBeAttached)
+        None
+      else {
+        val controlPath = WorkflowPathControlPath(workflowId.path)
+        controllerState.itemToAgentToAttachedState
+          .get(controlPath)
+          .flatMap(_
+            .get(agentPath)
+            .collect {
+              case Attachable | Attached(_) => detach(controlPath, agentPath)
+            })
+      }
+  }
+
+  private def derivedWorkflowControlEvent(workflowId: WorkflowId, agentPath: AgentPath)
+  : Option[ItemAttachedStateEvent] =
+    // Implicitly detach WorkflowControl from agentPath when Workflow has been detached
+    if (controllerState.itemToAgentToAttachedState.contains(workflowId))
+      None
+    else {
+      val controlId = WorkflowControlId(workflowId)
+      controllerState.itemToAgentToAttachedState
+        .get(controlId)
+        .flatMap(_
+          .get(agentPath)
+          .collect {
+            case Attachable | Attached(_) => detach(controlId, agentPath)
+          })
     }
 
   private def detach(itemKey: InventoryItemKey, agentPath: AgentPath): ItemAttachedStateEvent =
@@ -361,11 +473,10 @@ final case class ControllerStateExecutor private(
       ItemDetached(itemKey, agentPath)
 
   def updatedWorkflowPathControlAttachedEvents(workflowPathControl: WorkflowPathControl)
-  : Iterable[ItemAttachable] = {
-    import workflowPathControl.{path, workflowPath}
+  : Iterable[ItemAttachable] =
     controllerState
       .repo.pathToItems(Workflow)
-      .getOrElse(workflowPath, View.empty)
+      .getOrElse(workflowPathControl.workflowPath, View.empty)
       .view
       .flatMap(workflow =>
         controllerState.itemToAgentToAttachedState
@@ -374,8 +485,21 @@ final case class ControllerStateExecutor private(
             case (agentPath, Attachable | Attached(_)) => agentPath
           })
       .toSet
-      .map(ItemAttachable(path, _))
-  }
+      .map(ItemAttachable(workflowPathControl.path, _))
+
+  def updatedWorkflowControlAttachedEvents(workflowControl: WorkflowControl)
+  : Iterable[ItemAttachable] =
+    controllerState
+      .repo.idTo[Workflow](workflowControl.workflowId)
+      .toOption.view
+      .flatMap(workflow =>
+        controllerState.itemToAgentToAttachedState
+          .getOrElse(workflow.id, Map.empty)
+          .collect {
+            case (agentPath, Attachable | Attached(_)) => agentPath
+          })
+      .toSet
+      .map(ItemAttachable(workflowControl.id, _))
 
   def nextOrderWatchOrderEvents: View[KeyedEvent[OrderCoreEvent]] =
     controllerState.ow.nextEvents(addOrder(_, _), isDeletionMarkable)

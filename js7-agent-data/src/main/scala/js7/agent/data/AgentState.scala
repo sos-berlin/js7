@@ -19,14 +19,14 @@ import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, ItemContainer, JournalEvent, JournalState, KeyedEvent, KeyedEventTypedJsonCodec, SignedItemContainer, SnapshotableState}
 import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached, ItemDetachingFromMe, SignedItemAttachedToMe}
 import js7.data.item.SignedItemEvent.SignedItemAdded
-import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemState, SignableItem, SignableItemKey, UnsignedSimpleItem, UnsignedSimpleItemPath, UnsignedSimpleItemState}
+import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemState, SignableItem, SignableItemKey, UnsignedItem, UnsignedItemKey, UnsignedSimpleItemPath, UnsignedSimpleItemState}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchEvent, OrderWatchPath}
 import js7.data.state.EventDrivenStateView
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentDirectorState, SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent, SubagentSelection, SubagentSelectionId, SubagentSelectionState}
-import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
+import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import monix.reactive.Observable
 import scala.collection.MapView
 
@@ -87,6 +87,7 @@ with SnapshotableState[AgentState]
     Observable.fromIterable(pathToJobResource.view.filterKeys(isWithoutSignature).values),
     Observable.fromIterable(keyTo(CalendarState).values).flatMap(_.toSnapshotObservable),
     Observable.fromIterable(keyTo(WorkflowPathControl).values).flatMap(_.toSnapshotObservable),
+    Observable.fromIterable(keyTo(WorkflowControl).values).flatMap(_.toSnapshotObservable),
     Observable.fromIterable(idToOrder.values)
   ).flatten
 
@@ -156,14 +157,15 @@ with SnapshotableState[AgentState]
                     case Some(subagentState) => subagentState.copy(subagentItem = subagentItem)
                   })))
 
-          case ItemAttachedToMe(item: UnsignedSimpleItem) =>
+          case ItemAttachedToMe(item: UnsignedItem) =>
             item match {
               case _: WorkflowPathControl |
+                   _: WorkflowControl |
                    _: Calendar |
                    _: SubagentSelection =>
                 // May replace an existing Item
                 Right(copy(
-                  keyToItemState_ = keyToItemState_.updated(item.path, item.toInitialItemState)))
+                  keyToItemState_ = keyToItemState_.updated(item.key, item.toInitialItemState)))
 
               case _ => eventNotApplicable(keyedEvent)
             }
@@ -187,13 +189,14 @@ with SnapshotableState[AgentState]
                     keyToSignedItem = keyToSignedItem - path,
                     pathToJobResource = pathToJobResource - path)
 
-              case path: UnsignedSimpleItemPath =>
-                path match {
-                  case _: WorkflowPathControlPath | _: CalendarPath |
+              case itemKey: InventoryItemKey =>
+                itemKey match {
+                  case _: WorkflowPathControlPath | WorkflowControlId.as(_) |
+                       _: CalendarPath |
                        _: SubagentId | _: SubagentSelectionId =>
-                    for (_ <- keyToItemState_.checked(path)) yield
+                    for (_ <- keyToItemState_.checked(itemKey)) yield
                       copy(
-                        keyToItemState_ = keyToItemState_ - path)
+                        keyToItemState_ = keyToItemState_ - itemKey)
                   case _ =>
                     eventNotApplicable(keyedEvent)
                 }
@@ -267,7 +270,7 @@ with SnapshotableState[AgentState]
         itemKey match {
           case path: JobResourcePath => pathToJobResource.get(path)
           case WorkflowId.as(id) => idToWorkflow.get(id)
-          case path: UnsignedSimpleItemPath => keyToItemState_.get(path).map(_.item)
+          case itemKey: UnsignedItemKey => keyToItemState_.get(itemKey).map(_.item)
         }
 
       def iterator: Iterator[(InventoryItemKey, InventoryItem)] =
@@ -316,7 +319,7 @@ with ItemContainer.Companion[AgentState]
   def newBuilder() = new AgentStateBuilder
 
   protected val inventoryItems = Vector(
-    FileWatch, JobResource, Calendar, Workflow, WorkflowPathControl,
+    FileWatch, JobResource, Calendar, Workflow, WorkflowPathControl, WorkflowControl,
     SubagentItem, SubagentSelection)
 
   override lazy val itemPaths =
@@ -347,7 +350,7 @@ with ItemContainer.Companion[AgentState]
     Subtype[FileWatchState.Snapshot],
     Subtype(SignedItemAdded.jsonCodec(this)),  // For Repo and SignedItemAdded
     Subtype(signableSimpleItemJsonCodec),
-    Subtype(unsignedSimpleItemJsonCodec),
+    Subtype(unsignedItemJsonCodec),
     Subtype[BasicItemEvent])
 
   implicit val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] = {

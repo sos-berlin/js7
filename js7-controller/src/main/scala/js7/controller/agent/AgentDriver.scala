@@ -37,7 +37,7 @@ import js7.data.controller.ControllerState
 import js7.data.delegate.DelegateCouplingState.{Coupled, Resetting}
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
 import js7.data.item.ItemAttachedState.{Attachable, Attached}
-import js7.data.item.{InventoryItemEvent, InventoryItemKey, SignableItem, UnsignedSimpleItem}
+import js7.data.item.{InventoryItemEvent, InventoryItemKey, SignableItem, UnsignedItem}
 import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetached}
 import js7.data.order.{Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.OrderWatchEvent
@@ -612,7 +612,7 @@ private[controller] object AgentDriver
 
     final case class ChangeUri(agentRef: AgentRef, uri: Uri)
 
-    final case class AttachUnsignedItem(item: UnsignedSimpleItem)
+    final case class AttachUnsignedItem(item: UnsignedItem)
     extends Input with Queueable
 
     final case class AttachSignedItem(signed: Signed[SignableItem])

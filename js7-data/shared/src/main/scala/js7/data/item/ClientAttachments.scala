@@ -31,27 +31,27 @@ final case class ClientAttachments[D <: DelegateId: ClassTag](
   def applyEvent(event: ItemAttachedStateEvent): Checked[ClientAttachments[D]] = {
     val delegateId = cast[D](event.delegateId)
     import event.{attachedState, key => itemKey}
-      attachedState match {
-        case attachedState: NotDetached =>
-          Right(copy(
-            itemToDelegateToAttachedState = itemToDelegateToAttachedState +
-              (itemKey ->
-                (itemToDelegateToAttachedState.getOrElse(itemKey, Map.empty) +
-                  (delegateId -> attachedState)))))
+    attachedState match {
+      case attachedState: NotDetached =>
+        Right(copy(
+          itemToDelegateToAttachedState = itemToDelegateToAttachedState +
+            (itemKey ->
+              (itemToDelegateToAttachedState.getOrElse(itemKey, Map.empty) +
+                (delegateId -> attachedState)))))
 
-        case Detached =>
-          for {
-            agentToAttachedState <- itemToDelegateToAttachedState.checked(itemKey)
-            _ <- agentToAttachedState.checked(delegateId)
-          } yield
-            copy(itemToDelegateToAttachedState = {
-              val updated = agentToAttachedState - delegateId
-              if (updated.isEmpty)
-                itemToDelegateToAttachedState - itemKey
-              else
-                itemToDelegateToAttachedState + (itemKey -> updated)
-            })
-      }
+      case Detached =>
+        for {
+          agentToAttachedState <- itemToDelegateToAttachedState.checked(itemKey)
+          _ <- agentToAttachedState.checked(delegateId)
+        } yield
+          copy(itemToDelegateToAttachedState = {
+            val updated = agentToAttachedState - delegateId
+            if (updated.isEmpty)
+              itemToDelegateToAttachedState - itemKey
+            else
+              itemToDelegateToAttachedState + (itemKey -> updated)
+          })
+    }
   }
 
   def applyItemDeleted(event: ItemDeleted): ClientAttachments[D] =

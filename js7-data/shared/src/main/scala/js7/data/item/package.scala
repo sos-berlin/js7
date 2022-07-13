@@ -8,4 +8,6 @@ package object item
   type VersionedItemId_ = VersionedItemId[_ <: VersionedItemPath]
 
   type InventoryItemDiff_ = InventoryItemDiff[InventoryItemPath, InventoryItem]
+
+  type VersionedControlId_ = UnsignedVersionedItemId[_ <: VersionedControlPath]
 }

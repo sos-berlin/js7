@@ -39,6 +39,7 @@ final case class Order[+S <: Order.State](
   parent: Option[OrderId] = None,
   mark: Option[OrderMark] = None,
   isSuspended: Boolean = false,
+  isResumed: Boolean = false,
   deleteWhenTerminated: Boolean = false,
   stopPositions: Set[PositionOrLabel] = Set.empty)
 {
@@ -146,6 +147,7 @@ final case class Order[+S <: Order.State](
           copy(
             state = FailedInFork,
             workflowPosition = workflowPosition.copy(position = movedTo),
+            isResumed = false,
             historicOutcomes =
               outcome_.fold(historicOutcomes)(o => historicOutcomes :+ HistoricOutcome(position, o))))
 
@@ -157,6 +159,7 @@ final case class Order[+S <: Order.State](
           copy(
             state = Ready,
             workflowPosition = workflowPosition.copy(position = movedTo),
+            isResumed = false,
             historicOutcomes =
               outcome_.fold(historicOutcomes)(o => historicOutcomes :+ HistoricOutcome(position, o))))
 
@@ -187,13 +190,15 @@ final case class Order[+S <: Order.State](
         check((isState[IsFreshOrReady]/*before Try*/ || isState[Processed] || isState[BetweenCycles])
           && (isDetached || isAttached),
           withPosition(to).copy(
+            isResumed = false,
             state = if (isState[Fresh]) state else Ready))
 
       case OrderFinished =>
         check(isState[Ready] && isDetached && !isSuspended,
           copy(
             state = Finished,
-            mark = None))
+            mark = None,
+            isResumed = false))
 
       case OrderDeletionMarked =>
         check(parent.isEmpty,
@@ -267,14 +272,20 @@ final case class Order[+S <: Order.State](
         if (!force && !isMarkable)
           inapplicable
         else if (isSuspended)
-          Right(copy(mark = Some(OrderMark.Resuming(position, historyOperations))))
+          Right(copy(
+            mark = Some(OrderMark.Resuming(position, historyOperations)),
+            isResumed = true))
         else if (!force && (position.isDefined || historyOperations.nonEmpty))
             // Inhibited because we cannot be sure wether order will pass a fork barrier
           inapplicable
         else if (!isSuspended && isSuspending)
-          Right(copy(mark = None/*revert OrderSuspensionMarked*/))
+          Right(copy(
+            mark = None/*revert OrderSuspensionMarked*/,
+            isResumed = true))
         else
-          Right(copy(mark = Some(OrderMark.Resuming(None))))
+          Right(copy(
+            mark = Some(OrderMark.Resuming(None)),
+            isResumed = true))
 
       case OrderResumed(maybePosition, historyOps) =>
         import OrderResumed.{AppendHistoricOutcome, DeleteHistoricOutcome, InsertHistoricOutcome, ReplaceHistoricOutcome}
@@ -342,6 +353,7 @@ final case class Order[+S <: Order.State](
           check(isResumable,
             copy(
               isSuspended = false,
+              isResumed = true,
               mark = None,
               state = if (isState[Failed] || isState[Broken]) Ready else state,
               historicOutcomes = historicOutcomes
@@ -653,6 +665,7 @@ object Order
       Some(Attached(event.agentPath)),
       event.parent, event.mark,
       isSuspended = event.isSuspended,
+      isResumed = event.isResumed,
       deleteWhenTerminated = event.deleteWhenTerminated,
       stopPositions = event.stopPositions)
 
@@ -817,6 +830,7 @@ object Order
       "mark" -> order.mark.asJson,
       "isSuspended" -> order.isSuspended.?.asJson,
       "deleteWhenTerminated" -> order.deleteWhenTerminated.?.asJson,
+      "isResumed" -> order.isResumed.?.asJson,
       "stopPositions" -> (order.stopPositions.nonEmpty ? order.stopPositions).asJson,
       "historicOutcomes" -> order.historicOutcomes.??.asJson)
 
@@ -832,12 +846,17 @@ object Order
       parent <- cursor.get[Option[OrderId]]("parent")
       mark <- cursor.get[Option[OrderMark]]("mark")
       isSuspended <- cursor.getOrElse[Boolean]("isSuspended")(false)
+      isResumed <- cursor.getOrElse[Boolean]("isResumed")(false)
       deleteWhenTerminated <- cursor.getOrElse[Boolean]("deleteWhenTerminated")(false)
       stopPositions <- cursor.getOrElse[Set[PositionOrLabel]]("stopPositions")(Set.empty)
       historicOutcomes <- cursor.getOrElse[Vector[HistoricOutcome]]("historicOutcomes")(Vector.empty)
     } yield
       Order(id, workflowPosition, state, arguments, scheduledFor, externalOrderKey, historicOutcomes,
-        attachedState, parent, mark, isSuspended, deleteWhenTerminated, stopPositions)
+        attachedState, parent, mark,
+        isSuspended = isSuspended,
+        isResumed = isResumed,
+        deleteWhenTerminated = deleteWhenTerminated,
+        stopPositions)
 
   implicit val FreshOrReadyOrderJsonEncoder: Encoder.AsObject[Order[IsFreshOrReady]] =
     o => jsonEncoder.encodeObject(o)

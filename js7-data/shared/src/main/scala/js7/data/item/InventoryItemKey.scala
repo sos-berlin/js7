@@ -15,6 +15,8 @@ trait InventoryItemKey
   def path: InventoryItemPath
 
   def toTypedString: String
+
+  def isAssignableToAgent: Boolean
 }
 
 object InventoryItemKey
@@ -60,5 +62,9 @@ object InventoryItemKey
             .flatMap(_.checked(idString).toDecoderResult(cursor.history))
         } yield itemKey
     }
+  }
+
+  trait AttachableToAgent {
+    this: InventoryItemPath =>
   }
 }

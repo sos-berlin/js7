@@ -104,6 +104,7 @@ final class OrderEventTest extends AnyFreeSpec
         Some(OrderId("PARENT")),
         Some(OrderMark.Suspending()),
         isSuspended = true,
+        isResumed = true,
         deleteWhenTerminated = true,
         Set(Position(9), Label("LABEL"))),
       json"""{
@@ -141,6 +142,7 @@ final class OrderEventTest extends AnyFreeSpec
           "mode": {}
         },
         "isSuspended": true,
+        "isResumed": true,
         "deleteWhenTerminated": true,
         "stopPositions": [ [ 9 ], "LABEL" ]
       }""")

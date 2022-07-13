@@ -10,12 +10,13 @@ import js7.base.problem.Problem
 import js7.base.time.JavaTimestamp
 import js7.data.board.{BoardPath, NoticeId}
 import js7.data.controller.ControllerCommand
-import js7.data.controller.ControllerCommand.{AddOrder, ControlWorkflowPath, PostNotice}
-import js7.data.workflow.WorkflowPath
+import js7.data.controller.ControllerCommand.{AddOrder, ControlWorkflow, ControlWorkflowPath, PostNotice}
+import js7.data.workflow.{WorkflowId, WorkflowPath}
 import js7.data.workflow.position.Label
 import js7.data_for_java.common.JJsonable
 import js7.data_for_java.order.JFreshOrder
-import scala.jdk.CollectionConverters.MapHasAsScala
+import js7.data_for_java.workflow.position.JPosition
+import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters.RichOptional
 
 @javaApi
@@ -54,12 +55,21 @@ object JControllerCommand extends JJsonable.Companion[JControllerCommand]
   def controlWorkflowPath(
     workflowPath: WorkflowPath,
     suspend: Optional[Boolean],
-    skip: java.util.Map[Label, java.lang.Boolean],
-  )
+    skip: java.util.Map[Label, java.lang.Boolean])
   : JControllerCommand =
     JControllerCommand(
       ControlWorkflowPath( workflowPath, suspend = suspend.toScala,
         skip.asScala.view.mapValues(_.booleanValue).toMap))
+
+  @Nonnull
+  def controlWorkflow(
+    workflowId: WorkflowId,
+    breakpoints: java.util.Set[JPosition])
+  : JControllerCommand =
+    JControllerCommand(
+      ControlWorkflow(
+        workflowId,
+        breakpoints.asScala.view.map(_.asScala).toSet))
 
   @Nonnull
   override def fromJson(@Nonnull jsonString: String): VEither[Problem, JControllerCommand] =

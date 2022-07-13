@@ -130,7 +130,8 @@ final class OrderTest extends AnyFreeSpec
         check(
           Order(OrderId("ID"), WorkflowPath("WORKFLOW") ~ "VERSION", Fresh,
             mark = Some(OrderMark.Cancelling(CancellationMode.FreshOnly)),
-            isSuspended = true),
+            isSuspended = true,
+            isResumed = true),
           json"""{
             "id": "ID",
             "workflowPosition": {
@@ -149,7 +150,8 @@ final class OrderTest extends AnyFreeSpec
                 "TYPE": "FreshOnly"
               }
             },
-            "isSuspended": true
+            "isSuspended": true,
+            "isResumed": true
           }""")
       }
 

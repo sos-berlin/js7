@@ -4,7 +4,7 @@ import io.circe.{Codec, Decoder}
 import js7.base.circeutils.typed.TypedJsonCodec
 import js7.data.agent.AgentPath
 import js7.data.delegate.DelegateId
-import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemPath, SignableItem, SignableItemKey, SignableSimpleItem, SimpleItem, SimpleItemPath, UnsignedSimpleItem, UnsignedSimpleItemPath, VersionedItem, VersionedItemPath}
+import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemPath, SignableItem, SignableItemKey, SignableSimpleItem, SimpleItem, SimpleItemPath, UnsignedItem, UnsignedSimpleItem, UnsignedSimpleItemPath, VersionedControl, VersionedItem, VersionedItemPath}
 import scala.collection.MapView
 
 trait ItemContainer
@@ -43,12 +43,17 @@ object ItemContainer
     final lazy val versionedItemPaths: Seq[VersionedItemPath.AnyCompanion] =
       inventoryItems.collect { case o: VersionedItem.Companion_ => o.Path }
 
+    final lazy val versionedControls: Seq[VersionedControl.Companion_] =
+      inventoryItems.collect { case o: VersionedControl.Companion_ => o }
 
     final lazy val simpleItems: Seq[SimpleItem.Companion_] =
       inventoryItems.collect { case o: SimpleItem.Companion_ => o }
 
     final lazy val unsignedSimpleItems: Seq[UnsignedSimpleItem.Companion_] =
       inventoryItems.collect { case o: UnsignedSimpleItem.Companion_ => o }
+
+    final lazy val unsignedItems: Seq[UnsignedItem.Companion_] =
+      inventoryItems.collect { case o: UnsignedItem.Companion_ => o }
 
     final lazy val signableItems: Seq[SignableItem.Companion_] =
       inventoryItems.collect { case o: SignableItem.Companion_ => o }
@@ -72,7 +77,10 @@ object ItemContainer
       SimpleItemPath.jsonCodec(simpleItems.map(_.Key))
 
     implicit final lazy val unsignedSimpleItemJsonCodec: TypedJsonCodec[UnsignedSimpleItem] =
-    TypedJsonCodec[UnsignedSimpleItem](unsignedSimpleItems.map(_.subtype): _*)
+      TypedJsonCodec[UnsignedSimpleItem](unsignedSimpleItems.map(_.subtype): _*)
+
+    implicit final lazy val unsignedItemJsonCodec: TypedJsonCodec[UnsignedItem] =
+      TypedJsonCodec[UnsignedItem](unsignedItems.map(_.subtype): _*)
 
     implicit final lazy val signableSimpleItemJsonCodec: TypedJsonCodec[SignableSimpleItem] =
       TypedJsonCodec[SignableSimpleItem](signableSimpleItems.map(_.subtype): _*)
@@ -88,6 +96,9 @@ object ItemContainer
 
     implicit final lazy val versionedItemPathJsonCodec: Codec[VersionedItemPath] =
       InventoryItemPath.jsonCodec(versionedItemPaths)
+
+    implicit final lazy val versionedControlJsonCodec: TypedJsonCodec[VersionedControl] =
+    TypedJsonCodec[VersionedControl](versionedControls.map(_.subtype): _*)
 
     implicit final lazy val basicItemEventJsonCodec: TypedJsonCodec[BasicItemEvent] =
       BasicItemEvent.jsonCodec(this)

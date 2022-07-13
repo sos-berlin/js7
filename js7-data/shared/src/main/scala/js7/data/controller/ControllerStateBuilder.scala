@@ -17,7 +17,8 @@ import js7.data.event.{Event, EventDrivenState, JournalEvent, JournalState, Keye
 import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeleted, ItemDeletionMarked}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
-import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItemEvent, InventoryItemKey, InventoryItemState, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, UnsignedSimpleItem, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, UnsignedSimpleItemState, VersionedEvent}
+import js7.data.item.VersionedControlEvent.{VersionedControlAdded, VersionedControlChanged}
+import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItemEvent, InventoryItemKey, InventoryItemState, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, UnsignedItemKey, UnsignedSimpleItem, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, UnsignedSimpleItemState, VersionedControl, VersionedEvent}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockState}
 import js7.data.order.OrderEvent.OrderNoticesExpected
@@ -27,7 +28,7 @@ import js7.data.state.EventDrivenStateView
 import js7.data.state.WorkflowAndOrderRecovering.followUpRecoveredWorkflowsAndOrders
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent, SubagentSelection, SubagentSelectionState}
-import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath, WorkflowPathControl}
+import js7.data.workflow.{Workflow, WorkflowControl, WorkflowId, WorkflowPath, WorkflowPathControl}
 import scala.collection.mutable
 
 final class ControllerStateBuilder
@@ -140,6 +141,9 @@ with OrderWatchStateHandler[ControllerStateBuilder]
 
     case item: UnsignedSimpleItem =>
       _keyToItemState.insert(item.path, item.toInitialItemState)
+
+    case item: VersionedControl =>
+      _keyToItemState.insert(item.key, item.toInitialItemState)
 
     case snapshot: OrderWatchState.ExternalOrderSnapshot =>
       ow.applySnapshot(snapshot).orThrow
@@ -265,6 +269,16 @@ with OrderWatchStateHandler[ControllerStateBuilder]
                 }
             }
 
+          case VersionedControlAdded(item) =>
+            _keyToItemState.insert(item.key, item.toInitialItemState)
+
+          case VersionedControlChanged(item) =>
+            item match {
+              case item: WorkflowControl =>
+                _keyToItemState(item.key) = keyTo(WorkflowControl)(item.key)
+                  .updateItem(item).orThrow
+            }
+
           case event: SignedItemEvent =>
             event match {
               case event: SignedItemAdded =>
@@ -299,8 +313,8 @@ with OrderWatchStateHandler[ControllerStateBuilder]
                   case path: OrderWatchPath =>
                     ow.removeOrderWatch(path)
 
-                  case path: UnsignedSimpleItemPath =>
-                    _keyToItemState -= path
+                  case itemKey: UnsignedItemKey =>
+                    _keyToItemState -= itemKey
                 }
             }
         }

@@ -47,7 +47,7 @@ import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.board.BoardEvent.{NoticeDeleted, NoticePosted}
 import js7.data.board.{BoardPath, BoardState, Notice, NoticeId}
 import js7.data.calendar.{Calendar, CalendarExecutor}
-import js7.data.controller.ControllerCommand.ControlWorkflowPath
+import js7.data.controller.ControllerCommand.{ControlWorkflow, ControlWorkflowPath}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.data.controller.ControllerStateExecutor.convertImplicitly
 import js7.data.controller.{ControllerCommand, ControllerEvent, ControllerState, VerifiedUpdateItems, VerifiedUpdateItemsExecutor}
@@ -61,8 +61,9 @@ import js7.data.execution.workflow.instructions.{InstructionExecutorService, Pos
 import js7.data.item.BasicItemEvent.{ItemAttached, ItemAttachedToMe, ItemDeleted, ItemDetached, ItemDetachingFromMe, SignedItemAttachedToMe}
 import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
+import js7.data.item.VersionedControlEvent.{VersionedControlAdded, VersionedControlChanged}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemEvent}
-import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, ItemAddedOrChanged, ItemRevision, SignableItemKey, UnsignedSimpleItem, UnsignedSimpleItemPath}
+import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, ItemAddedOrChanged, ItemRevision, SignableItemKey, UnsignedItem, UnsignedSimpleItemPath}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderNoticePosted, OrderNoticePostedV2_3, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath, OrderWatchState}
@@ -73,7 +74,7 @@ import js7.data.subagent.SubagentItemStateEvent.{SubagentEventsObserved, Subagen
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
 import js7.data.value.expression.scopes.NowScope
 import js7.data.workflow.position.WorkflowPosition
-import js7.data.workflow.{Instruction, Workflow, WorkflowPathControl, WorkflowPathControlPath}
+import js7.data.workflow.{Instruction, Workflow, WorkflowControl, WorkflowControlId, WorkflowPathControl, WorkflowPathControlPath}
 import js7.journal.recover.Recovered
 import js7.journal.state.FileStatePersistence
 import js7.journal.{CommitOptions, JournalActor, MainJournalingActor}
@@ -81,7 +82,7 @@ import monix.eval.Task
 import monix.execution.cancelables.SerialCancelable
 import monix.execution.{Cancelable, Scheduler}
 import scala.collection.immutable.VectorBuilder
-import scala.collection.{View, mutable}
+import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success, Try}
@@ -389,6 +390,9 @@ with MainJournalingActor[ControllerState, Event]
 
           for (path <- _controllerState.keyTo(WorkflowPathControl).keys) {
             proceedWithItem(path)
+          }
+          for (itemKey <- _controllerState.keyTo(WorkflowControl).keys) {
+            proceedWithItem(itemKey)
           }
         }
       }
@@ -745,6 +749,9 @@ with MainJournalingActor[ControllerState, Event]
       case cmd: ControllerCommand.ControlWorkflowPath =>
         controlWorkflowPath(cmd)
 
+      case cmd: ControllerCommand.ControlWorkflow =>
+        controlWorkflow(cmd)
+
       case ControllerCommand.ResumeOrders(orderIds) =>
         executeOrderMarkCommands(orderIds.toVector)(orderEventSource.resume(_, None, Nil))
 
@@ -984,7 +991,7 @@ with MainJournalingActor[ControllerState, Event]
           skip = item.skip
             -- cmd.skip.filterNot(_._2).keys
             ++ cmd.skip.filter(_._2).keys,
-          itemRevision = Some(item.itemRevision.fold(ItemRevision.Initial/*not expected*/)(_.next)))
+          itemRevision = Some(item.itemRevision.fold(ItemRevision.Initial)(_.next)))
         val event = if (isNew) UnsignedSimpleItemAdded(item) else UnsignedSimpleItemChanged(item)
 
         val keyedEvents = Vector(event)
@@ -1003,7 +1010,35 @@ with MainJournalingActor[ControllerState, Event]
           }
           Right(ControllerCommand.Response.Accepted)
         }
-      }
+    }
+
+  private def controlWorkflow(cmd: ControlWorkflow)
+  : Future[Checked[ControllerCommand.Response]] =
+    _controllerState.repo.idTo[Workflow](cmd.workflowId) match {
+      case Left(problem) => Future.successful(Left(problem))
+      case Right(_) =>
+        val workflowControlId = WorkflowControlId(cmd.workflowId)
+        val (itemState, isNew) = _controllerState
+          .keyTo(WorkflowControl)
+          .get(workflowControlId) match {
+            case None => WorkflowControl(workflowControlId) -> true
+            case Some(o) => o -> false
+          }
+        val item = itemState.item.copy(
+          breakpoints = cmd.breakpoints,
+          itemRevision = Some(itemState.item.itemRevision.fold(ItemRevision.Initial)(_.next)))
+
+        val event = if (isNew) VersionedControlAdded(item) else VersionedControlChanged(item)
+        val keyedEvents = Vector(event)
+          .concat(_controllerState.updatedWorkflowControlAttachedEvents(item))
+          .map(NoKey <-: _)
+
+        persistTransactionAndSubsequentEvents(keyedEvents) { (stamped, updated) =>
+          handleEvents(stamped, updated)
+          proceedWithItem(workflowControlId)
+          Right(ControllerCommand.Response.Accepted)
+        }
+    }
 
   private def logEvent(event: Event): Unit =
     event match {
@@ -1183,6 +1218,11 @@ with MainJournalingActor[ControllerState, Event]
                       case itemKey: SignableItemKey =>
                         for (signedItem <- _controllerState.keyToSignedItem.get(itemKey)) {
                           agentEntry.actor ! AgentDriver.Input.AttachSignedItem(signedItem)
+                        }
+
+                      case id: WorkflowControlId/*UnsignedItemKey?*/ =>
+                        for (item <- _controllerState.keyTo(WorkflowControl).get(id)) {
+                          agentEntry.actor ! AgentDriver.Input.AttachUnsignedItem(item)
                         }
 
                       case path: UnsignedSimpleItemPath =>
@@ -1394,18 +1434,25 @@ with MainJournalingActor[ControllerState, Event]
     }
 
   private def unsignedItemsToBeAttached(workflow: Workflow, agentPath: AgentPath)
-  : View[UnsignedSimpleItem] = {
-    var result = workflow
+  : Vector[UnsignedItem] = {
+    var result: Vector[UnsignedItem] = workflow
       .referencedAttachableToAgentUnsignedPaths
       .view
       .flatMap(_controllerState.pathToUnsignedSimpleItem.get)
       .filter(isDetachedOrAttachable(_, agentPath))
+      .toVector
 
     if (_controllerState.workflowIdToOrders contains workflow.id) {
       _controllerState.keyToItem(WorkflowPathControl)
         .get(WorkflowPathControlPath(workflow.path))
         .foreach(result +:= _)
     }
+
+    _controllerState.keyTo(WorkflowControl)
+      .get(WorkflowControlId(workflow.id))
+      .foreach { workflowControl =>
+        result +:= workflowControl
+      }
 
     result
   }

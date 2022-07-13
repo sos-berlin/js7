@@ -43,7 +43,7 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
 
         case attach: Input.AttachUnsignedItem =>
           val duplicates = queue.collect {
-            case o: Input.AttachUnsignedItem if o.item.path == attach.item.path => o
+            case o: Input.AttachUnsignedItem if o.item.key == attach.item.key => o
           }
           queue --= duplicates
           queueSet --= duplicates

@@ -1,6 +1,8 @@
 package js7.data.item
 
-trait UnsignedSimpleItemState extends SimpleItemState
+trait UnsignedSimpleItemState
+extends UnsignedItemState
+with SimpleItemState
 {
   protected type Self <: UnsignedSimpleItemState
   val companion: UnsignedSimpleItemState.Companion[Self]
@@ -11,7 +13,9 @@ trait UnsignedSimpleItemState extends SimpleItemState
 
 object UnsignedSimpleItemState
 {
-  trait Companion[A <: UnsignedSimpleItemState] extends SimpleItemState.Companion[A]
+  trait Companion[A <: UnsignedSimpleItemState]
+  extends UnsignedItemState.Companion[A]
+  with SimpleItemState.Companion[A]
   {
     type Key = Path
     type Path <: UnsignedSimpleItemPath

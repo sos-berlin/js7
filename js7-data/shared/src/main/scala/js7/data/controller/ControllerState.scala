@@ -26,7 +26,8 @@ import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeleted, ItemDe
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detached, NotDetached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
-import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemPath, InventoryItemState, ItemAttachedState, ItemRevision, Repo, SignableItem, SignableItemKey, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, SimpleItem, SimpleItemPath, UnsignedSimpleItem, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, UnsignedSimpleItemState, VersionedEvent, VersionedItemId_, VersionedItemPath}
+import js7.data.item.VersionedControlEvent.{VersionedControlAdded, VersionedControlChanged}
+import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemPath, InventoryItemState, ItemAttachedState, ItemRevision, Repo, SignableItem, SignableItemKey, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, SimpleItem, SimpleItemPath, UnsignedSimpleItem, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, UnsignedSimpleItemState, VersionedControlEvent, VersionedControlId_, VersionedEvent, VersionedItemId_, VersionedItemPath}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.OrderEvent.OrderNoticesExpected
@@ -36,7 +37,7 @@ import js7.data.state.EventDrivenStateView
 import js7.data.subagent.SubagentItemStateEvent.SubagentShutdown
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent, SubagentSelection, SubagentSelectionId, SubagentSelectionState}
 import js7.data.value.Value
-import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
+import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import monix.reactive.Observable
 import scala.collection.{MapView, View}
 import scala.util.chaining.scalaUtilChainingOps
@@ -86,6 +87,7 @@ with SnapshotableState[ControllerState]
       standards.toSnapshotObservable,
       Observable.fromIterable(controllerMetaState.isDefined ? controllerMetaState),
       Observable.fromIterable(keyTo(WorkflowPathControl).values).flatMap(_.toSnapshotObservable),
+      Observable.fromIterable(keyTo(WorkflowControl).values).flatMap(_.toSnapshotObservable),
       Observable.fromIterable(keyTo(AgentRefState).values).flatMap(_.toSnapshotObservable),
       Observable.fromIterable(keyTo(SubagentItemState).values).flatMap(_.toSnapshotObservable),
       Observable.fromIterable(keyTo(SubagentSelectionState).values).flatMap(_.toSnapshotObservable),
@@ -210,6 +212,18 @@ with SnapshotableState[ControllerState]
               }
           }
 
+        case event: VersionedControlEvent =>
+          event match {
+            case VersionedControlAdded(item) =>
+              keyToItemState_
+                .insert(item.key, item.toInitialItemState)
+                .map(o => copy(keyToItemState_ = o))
+
+            case VersionedControlChanged(item) =>
+              Right(copy(
+                keyToItemState_ = keyToItemState_.updated(item.key, item.toInitialItemState)))
+          }
+
         case event: BasicItemEvent.ForClient =>
           event match {
             case event: ItemAttachedStateEvent =>
@@ -238,13 +252,13 @@ with SnapshotableState[ControllerState]
                   Right(updated.copy(
                     pathToSignedSimpleItem = pathToSignedSimpleItem - jobResourcePath))
 
-                case path: UnsignedSimpleItemPath =>
-                  path match {
+                case key: InventoryItemKey =>
+                  key match {
                     case _: AgentPath | _: SubagentId | _: SubagentSelectionId |
                          _: LockPath | _: BoardPath | _: CalendarPath |
-                         _: WorkflowPathControlPath =>
+                         _: WorkflowPathControlPath | WorkflowControlId.as(_) =>
                       Right(updated.copy(
-                        keyToItemState_ = keyToItemState_ - path))
+                        keyToItemState_ = keyToItemState_ - key))
                     case _ =>
                       Left(Problem(s"A '${ itemKey.companion.itemTypeName }' is not deletable"))
                   }
@@ -324,9 +338,9 @@ with SnapshotableState[ControllerState]
         agentPaths.nonEmpty ? (workflowPathControl.path -> agentPaths)
       }
 
-  def singleWorkflowPathControlToIgnorantAgents(path: WorkflowPathControlPath): Set[AgentPath] =
+  def singleItemKeyToIgnorantAgents(itemKey: InventoryItemKey): Set[AgentPath] =
     agentAttachments.itemToDelegateToAttachedState
-      .get(path)
+      .get(itemKey)
       .view
       .flatMap(_.collect {
         case (agentPath, Attachable) => agentPath
@@ -568,6 +582,7 @@ with SnapshotableState[ControllerState]
         itemKey match {
           case id: VersionedItemId_ => repo.anyIdToItem(id).toOption
           case path: SimpleItemPath => pathToItem.get(path)
+          case key: VersionedControlId_ => keyToItemState_.get(key).map(_.item)
         }
 
       def iterator = items.map(o => o.key -> o).iterator
@@ -683,8 +698,9 @@ with ItemContainer.Companion[ControllerState]
 
   def newBuilder() = new ControllerStateBuilder
 
-  protected val inventoryItems = Vector(
-    AgentRef, SubagentItem, SubagentSelection, Lock, Board, Calendar, FileWatch, JobResource, Workflow, WorkflowPathControl)
+  protected val inventoryItems = Vector[InventoryItem.Companion_](
+    AgentRef, SubagentItem, SubagentSelection, Lock, Board, Calendar, FileWatch, JobResource,
+    Workflow, WorkflowPathControl, WorkflowControl)
 
   lazy val snapshotObjectJsonCodec = TypedJsonCodec[Any](
     Subtype[JournalHeader],
@@ -703,7 +719,8 @@ with ItemContainer.Companion[ControllerState]
     Subtype[InventoryItemEvent],  // For Repo and SignedItemAdded
     Subtype[OrderWatchState.Snapshot],
     Subtype[Order[Order.State]],
-    WorkflowPathControl.subtype)
+    WorkflowPathControl.subtype,
+    WorkflowControl.subtype)
 
   implicit lazy val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] =
     KeyedEventTypedJsonCodec/*.named("ControllerState.keyedEventJsonCodec"*/(

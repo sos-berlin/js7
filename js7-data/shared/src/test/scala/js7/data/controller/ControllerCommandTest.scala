@@ -382,6 +382,21 @@ final class ControllerCommandTest extends AnyFreeSpec
       }""")
   }
 
+  "ControlWorkflow" in {
+    testJson[ControllerCommand](
+      ControlWorkflow(
+        WorkflowPath("WORKFLOW") ~ "VERSION",
+        breakpoints = Set(Position(1))),
+      json"""{
+        "TYPE": "ControlWorkflow",
+        "workflowId": {
+          "path": "WORKFLOW",
+          "versionId": "VERSION"
+        },
+        "breakpoints": [ [ 1 ] ]
+      }""")
+  }
+
   "ClusterAppointNodes" in {
     testJson[ControllerCommand](
       ClusterAppointNodes(

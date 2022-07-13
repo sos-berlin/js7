@@ -117,7 +117,7 @@ final class ForkTest extends AnyFreeSpec with ControllerAgentForScalaTest
     val expectedFailed = OrderFailed(
       Position(0),
       Some(Outcome.Disrupted(Problem(
-      "Forked OrderIds duplicate existing Order(Order:DUPLICATE|🥕,DUPLICATE~INITIAL:0,Processing(Subagent:AGENT-A-0),Map(),None,None,Vector(),Some(Attached(AGENT-A)),None,None,false,false,Set())"))))
+      "Forked OrderIds duplicate existing Order(Order:DUPLICATE|🥕,DUPLICATE~INITIAL:0,Processing(Subagent:AGENT-A-0),Map(),None,None,Vector(),Some(Attached(AGENT-A)),None,None,false,false,false,Set())"))))
     assert(eventWatch.await[OrderFailed](_.key == order.id).head.value.event == expectedFailed)
 
     controller.executeCommandAsSystemUser(CancelOrders(Set(order.id), CancellationMode.FreshOrStarted())).await(99.s).orThrow

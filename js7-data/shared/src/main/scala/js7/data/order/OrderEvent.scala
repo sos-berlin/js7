@@ -129,6 +129,7 @@ object OrderEvent
     parent: Option[OrderId] = None,
     mark: Option[OrderMark] = None,
     isSuspended: Boolean = false,
+    isResumed: Boolean = false,
     deleteWhenTerminated: Boolean = false,
     stopPositions: Set[PositionOrLabel] = Set.empty)
   extends OrderCoreEvent {
@@ -525,6 +526,7 @@ object OrderEvent
     Subtype(deriveCodec[OrderSuspensionMarked]),
     Subtype(OrderSuspensionMarkedOnAgent),
     Subtype(OrderSuspended),
+    //Subtype(OrderBreakpointSuspended),
     Subtype(deriveCodec[OrderResumptionMarked]),
     Subtype(deriveCodec[OrderResumed]),
     Subtype(OrderFinished),

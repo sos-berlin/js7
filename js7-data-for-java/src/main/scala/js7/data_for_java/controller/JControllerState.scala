@@ -2,6 +2,7 @@ package js7.data_for_java.controller
 
 import io.vavr.control.{Either => VEither}
 import java.time.Instant
+import java.util.Objects.requireNonNull
 import java.util.{Map => JMap, Optional => JOptional, Set => JSet}
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
@@ -23,7 +24,7 @@ import js7.data.order.{Order, OrderId, OrderObstacleCalculator}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentSelection, SubagentSelectionId}
 import js7.data.value.Value
-import js7.data.workflow.{WorkflowPath, WorkflowPathControlPath}
+import js7.data.workflow.{WorkflowControlId, WorkflowPath, WorkflowPathControlPath}
 import js7.data_for_java.agent.{JAgentRef, JAgentRefState}
 import js7.data_for_java.board.{JBoard, JBoardState, JNotice}
 import js7.data_for_java.calendar.JCalendar
@@ -39,6 +40,7 @@ import js7.data_for_java.order.{JOrder, JOrderObstacle}
 import js7.data_for_java.orderwatch.JFileWatch
 import js7.data_for_java.subagent.{JSubagentItem, JSubagentItemState, JSubagentSelection}
 import js7.data_for_java.vavr.VavrConverters._
+import js7.data_for_java.workflow.JWorkflowId
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
 import scala.jdk.StreamConverters._
@@ -179,9 +181,19 @@ extends JJournaledState[JControllerState, ControllerState]
       .asJava
 
   @Nonnull
-  def singleWorkflowPathControlToIgnorantAgents(workflowPath: WorkflowPath): JSet[AgentPath] =
+  def singleWorkflowPathControlToIgnorantAgents(
+    @Nonnull workflowPath: WorkflowPath)
+  : JSet[AgentPath] =
     asScala
-      .singleWorkflowPathControlToIgnorantAgents(WorkflowPathControlPath(workflowPath))
+      .singleItemKeyToIgnorantAgents(WorkflowPathControlPath(requireNonNull(workflowPath)))
+      .asJava
+
+  @Nonnull
+  def singleWorkflowControlToIgnorantAgents(
+    @Nonnull workflowId: JWorkflowId)
+  : JSet[AgentPath] =
+    asScala
+      .singleItemKeyToIgnorantAgents(WorkflowControlId(workflowId.asScala))
       .asJava
 
   @Nonnull

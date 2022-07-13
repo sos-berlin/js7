@@ -8,7 +8,7 @@ import js7.base.utils.Collections.implicits._
 import js7.data.cluster.ClusterState
 import js7.data.event.{EventId, JournalState, SnapshotableState, SnapshotableStateBuilder, Stamped}
 import js7.data.item.SignedItemEvent.SignedItemAdded
-import js7.data.item.{SignableItem, SignableItemKey, SignedItemEvent, UnsignedSimpleItem, UnsignedSimpleItemPath, UnsignedSimpleItemState}
+import js7.data.item.{SignableItem, SignableItemKey, SignedItemEvent, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItem}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.{Order, OrderId}
 import js7.data.workflow.{Workflow, WorkflowId}
@@ -23,7 +23,7 @@ extends SnapshotableStateBuilder[AgentState]
   private var _journalState = JournalState.empty
   private var _eventId = EventId.BeforeFirst
   private var agentMetaState = AgentMetaState.empty
-  private val pathToItemState = mutable.Map.empty[UnsignedSimpleItemPath, UnsignedSimpleItemState]
+  private val keyToItemState = mutable.Map.empty[UnsignedItemKey, UnsignedItemState]
   private val idToOrder = mutable.Map.empty[OrderId, Order[Order.State]]
   private val idToWorkflow = mutable.Map.empty[WorkflowId, Workflow]
   private val fileWatchStateBuilder = new FileWatchStateHandler.Builder
@@ -52,11 +52,11 @@ extends SnapshotableStateBuilder[AgentState]
     case snapshot: FileWatchState.Snapshot =>
       fileWatchStateBuilder.addSnapshot(snapshot)
 
-    case itemState: UnsignedSimpleItemState =>
-      pathToItemState.insert(itemState.path, itemState)
+    case itemState: UnsignedItemState =>
+      keyToItemState.insert(itemState.item.key, itemState)
 
     case item: UnsignedSimpleItem =>
-      pathToItemState.insert(item.path, item.toInitialItemState)
+      keyToItemState.insert(item.path, item.toInitialItemState)
 
     case o: JournalState =>
       _journalState = o
@@ -82,7 +82,7 @@ extends SnapshotableStateBuilder[AgentState]
       _eventId,
       SnapshotableState.Standards(_journalState, ClusterState.Empty),
       agentMetaState,
-      (pathToItemState.view ++ fileWatchStateBuilder.result).toMap,
+      (keyToItemState.view ++ fileWatchStateBuilder.result).toMap,
       idToOrder.toMap,
       idToWorkflow.toMap,
       pathToJobResource.toMap,

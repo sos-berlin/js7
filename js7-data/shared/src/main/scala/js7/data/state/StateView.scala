@@ -18,7 +18,7 @@ import js7.data.value.expression.scopes.{JobResourceScope, NowScope, OrderScopes
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{BoardInstruction, End}
 import js7.data.workflow.position.{Label, WorkflowPosition}
-import js7.data.workflow.{Instruction, Workflow, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
+import js7.data.workflow.{Instruction, Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import scala.collection.MapView
 import scala.reflect.ClassTag
 
@@ -96,6 +96,14 @@ trait StateView extends ItemContainer
 
   def isOrderAtStopPosition(order: Order[Order.State]): Boolean =
     Workflow.isOrderAtStopPosition(order, idToWorkflow.get(order.workflowId))
+
+  def isOrderAtBreakpoint(order: Order[Order.State]): Boolean =
+    order.isState[Order.IsFreshOrReady] &&
+      order.isSuspendible &&
+      !order.isResumed &&
+      keyTo(WorkflowControl)
+        .get(WorkflowControlId(order.workflowId))
+        .exists(_.breakpoints contains order.position)
 
   final def workflowJob(workflowPosition: WorkflowPosition): Checked[WorkflowJob] =
     for {

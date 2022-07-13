@@ -23,7 +23,7 @@ import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.command.CommonCommand
 import js7.data.controller.ControllerId
 import js7.data.event.{EventId, ItemContainer}
-import js7.data.item.{InventoryItemKey, SignableItem, UnsignedSimpleItem}
+import js7.data.item.{InventoryItemKey, SignableItem, UnsignedItem}
 import js7.data.order.{Order, OrderId, OrderMark}
 import js7.data.subagent.SubagentId
 
@@ -150,7 +150,7 @@ object AgentCommand extends CommonCommand.Companion
 
   sealed trait OrderCommand extends AgentCommand
 
-  final case class AttachItem(item: UnsignedSimpleItem)
+  final case class AttachItem(item: UnsignedItem)
   extends AgentCommand
   {
     type Response = Response.Accepted
@@ -211,6 +211,7 @@ object AgentCommand extends CommonCommand.Companion
 
   implicit val jsonCodec: TypedJsonCodec[AgentCommand] = {
     implicit val S = AgentState
+    implicit val x = S.unsignedItemJsonCodec
     TypedJsonCodec[AgentCommand](
       Subtype(deriveCodec[Batch]),
       Subtype(deriveCodec[MarkOrder]),

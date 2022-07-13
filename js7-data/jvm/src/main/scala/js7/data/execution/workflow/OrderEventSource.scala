@@ -57,6 +57,11 @@ final class OrderEventSource(state: StateView)
             case Right(None) =>
               if (state.isOrderAtStopPosition(order))
                 executorService.finishExecutor.toEvents(Finish(), order, state)
+              else if (state.isOrderAtBreakpoint(order))
+                if (isAgent) // OrderSuspended must not be executed at Agent
+                  Right((order.id <-: OrderDetachable) :: Nil)
+                else
+                  Right((order.id <-: OrderSuspended) :: Nil)
               else
                 executorService.toEvents(instruction(order.workflowPosition), order, state)
                   // Multiple returned events are expected to be independent

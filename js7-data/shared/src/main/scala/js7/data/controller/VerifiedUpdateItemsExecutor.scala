@@ -13,7 +13,7 @@ import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemAddedOrChanged,
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemAddedOrChanged, UnsignedSimpleItemChanged}
 import js7.data.item.VersionedEvent.VersionedItemRemoved
 import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemPath, ItemRevision, SignableSimpleItem, SimpleItemPath, UnsignedSimpleItem, VersionedEvent, VersionedItemPath}
-import js7.data.workflow.{Workflow, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
+import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import scala.collection.View
 
 object VerifiedUpdateItemsExecutor
@@ -41,7 +41,7 @@ object VerifiedUpdateItemsExecutor
     checkItem: PartialFunction[InventoryItem, Checked[Unit]] = PartialFunction.empty)
   : Checked[Seq[KeyedEvent[NoKeyEvent]]] =
   {
-    def result: Checked[Seq[KeyedEvent[NoKeyEvent]]] = {
+    def result: Checked[Seq[KeyedEvent[NoKeyEvent]]] =
       (for {
         versionedEvents <- versionedEvents(controllerState)
         updatedState <- controllerState.applyEvents(versionedEvents)
@@ -51,17 +51,22 @@ object VerifiedUpdateItemsExecutor
           versionedEvents.view
             .collect { case KeyedEvent(_, e: VersionedItemRemoved) => e.path }
             .flatMap(deleteRemovedVersionedItem(_, updatedState)))
-        derivedEvents = derivedWorkflowPathControlEvents(updatedState)
-        updatedState <- updatedState.applyEvents(derivedEvents)
+        derivedWorkflowPathControlEvents = toDerivedWorkflowPathControlEvents(updatedState)
+        updatedState <- updatedState.applyEvents(derivedWorkflowPathControlEvents)
+        derivedWorkflowControlEvents = toDerivedWorkflowControlEvents(updatedState)
+        updatedState <- updatedState.applyEvents(derivedWorkflowControlEvents)
         _ <- checkVerifiedUpdateConsistency(verifiedUpdateItems, updatedState)
-      } yield (simpleItemEvents ++ versionedEvents ++ derivedEvents).toVector
+      } yield simpleItemEvents
+        .concat(versionedEvents)
+        .concat(derivedWorkflowPathControlEvents)
+        .concat(derivedWorkflowControlEvents)
+        .toVector
       ).left.map {
         case prblm @ Problem.Combined(Seq(_, duplicateKey: DuplicateKey)) =>
           scribe.debug(prblm.toString)
           duplicateKey
         case o => o
       }
-    }
 
     def versionedEvents(controllerState: ControllerState)
     : Checked[Seq[KeyedEvent[VersionedEvent]]] =
@@ -94,16 +99,14 @@ object VerifiedUpdateItemsExecutor
           .map(_.map(NoKey <-: _)))
     }
 
-    def derivedWorkflowPathControlEvents(controllerState: ControllerState)
+    def toDerivedWorkflowPathControlEvents(controllerState: ControllerState)
     : View[KeyedEvent[InventoryItemEvent]] =
       verifiedUpdateItems.maybeVersioned.view
         .flatMap(_.remove)
         .collect { case o: WorkflowPath => o }
-        .flatMap(derivedWorkflowPathControlEvent(controllerState, _))
+        .flatMap(toDerivedWorkflowPathControlEvent(controllerState, _))
 
-    def derivedWorkflowPathControlEvent(
-      controllerState: ControllerState,
-      workflowPath: WorkflowPath)
+    def toDerivedWorkflowPathControlEvent(controllerState: ControllerState, workflowPath: WorkflowPath)
     : Option[KeyedEvent[InventoryItemEvent]] = {
       val path = WorkflowPathControlPath(workflowPath)
 
@@ -111,6 +114,22 @@ object VerifiedUpdateItemsExecutor
         && !controllerState.repo.pathToItems(Workflow).contains(workflowPath)
         && !controllerState.itemToAgentToAttachedState.contains(path)
       ).thenSome(NoKey <-: ItemDeleted(path))
+    }
+
+    def toDerivedWorkflowControlEvents(controllerState: ControllerState)
+    : View[KeyedEvent[InventoryItemEvent]] =
+      verifiedUpdateItems.maybeVersioned.view
+        .flatMap(_.remove)
+        .collect { case o: WorkflowPath => o }
+        .flatMap(toDerivedWorkflowControlEvent(controllerState, _))
+
+    def toDerivedWorkflowControlEvent(controllerState: ControllerState, workflowId: WorkflowId)
+    : Option[KeyedEvent[InventoryItemEvent]] = {
+      val id = WorkflowControlId(workflowId)
+      (controllerState.keyTo(WorkflowControl).contains(id)
+        && controllerState.idToWorkflow.isDefinedAt(workflowId)
+        && !controllerState.itemToAgentToAttachedState.contains(id)
+      ).thenSome(NoKey <-: ItemDeleted(id))
     }
 
     def verifiedSimpleItemToEvent(

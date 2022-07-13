@@ -38,7 +38,7 @@ import js7.data.event.{<-:, Event, EventId, JournalState, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.instructions.{ExecuteAdmissionTimeSwitch, InstructionExecutorService}
 import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached, ItemDetachingFromMe, SignedItemAttachedToMe}
-import js7.data.item.{InventoryItem, InventoryItemPath, SignableItem, UnsignedSimpleItem}
+import js7.data.item.{InventoryItem, SignableItem, UnsignedItem}
 import js7.data.job.{JobKey, JobResource}
 import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderBroken, OrderCoreEvent, OrderDetached, OrderProcessed}
 import js7.data.order.{Order, OrderEvent, OrderId}
@@ -48,7 +48,7 @@ import js7.data.state.{OrderEventHandler, StateView}
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath, WorkflowPathControl}
+import js7.data.workflow.{Workflow, WorkflowControl, WorkflowPath, WorkflowPathControl}
 import js7.journal.recover.Recovered
 import js7.journal.state.FileStatePersistence
 import js7.journal.{JournalActor, MainJournalingActor}
@@ -386,7 +386,7 @@ final class AgentOrderKeeper(
     case AttachSignedItem(signed: Signed[SignableItem]) =>
       attachSignedItem(signed)
 
-    case DetachItem(itemKey @ (_: InventoryItemPath.AttachableToAgent | WorkflowId.as(_))) =>
+    case DetachItem(itemKey) if itemKey.isAssignableToAgent =>
       if (!persistence.currentState.keyToItem.contains(itemKey)) {
         logger.warn(s"DetachItem($itemKey) but item is unknown")
         Future.successful(Right(AgentCommand.Response.Accepted))
@@ -434,7 +434,7 @@ final class AgentOrderKeeper(
     case _ => Future.successful(Left(Problem(s"Unknown command: ${cmd.getClass.simpleScalaName}")))  // Should not happen
   }
 
-  private def attachUnsignedItem(item: UnsignedSimpleItem): Future[Checked[Response.Accepted]] =
+  private def attachUnsignedItem(item: UnsignedItem): Future[Checked[Response.Accepted]] =
     item match {
       case fileWatch: FileWatch =>
         if (!conf.scriptInjectionAllowed)
@@ -444,7 +444,8 @@ final class AgentOrderKeeper(
             .map(_.rightAs(AgentCommand.Response.Accepted))
             .runToFuture
 
-      case item @ (_: Calendar | _: SubagentItem | _: SubagentSelection | _: WorkflowPathControl) =>
+      case item @ (_: Calendar | _: SubagentItem | _: SubagentSelection |
+                   _: WorkflowPathControl | _: WorkflowControl) =>
         persist(ItemAttachedToMe(item)) { (stampedEvent, journaledState) =>
           proceedWithItem(item).runToFuture
         }.flatten

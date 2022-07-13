@@ -13,6 +13,7 @@ object InventoryItemEvent
   def jsonCodec[S: ItemContainer.Companion] =
     (BasicItemEvent.jsonCodec |
       UnsignedSimpleItemEvent.jsonCodec |
-      SignedItemEvent.jsonCodec
+      SignedItemEvent.jsonCodec |
+      VersionedControlEvent.jsonCodec
     ).asInstanceOf[TypedJsonCodec[InventoryItemEvent]]
 }
