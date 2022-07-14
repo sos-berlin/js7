@@ -27,7 +27,7 @@ import scala.util.control.NoStackTrace
 abstract class RecouplingStreamReader[
   @specialized(Long/*EventId or file position*/) I,
   V,
-  Api <: SessionApi.HasUserAndPassword with HasIsIgnorableStackTrace
+  Api <: SessionApi.HasUserAndPassword & HasIsIgnorableStackTrace
 ](toIndex: V => I,
   conf: RecouplingStreamReaderConf)
 {
@@ -284,7 +284,7 @@ object RecouplingStreamReader
   private val PauseGranularity = 500.ms
   private val logger = scribe.Logger[this.type]
 
-  def observe[@specialized(Long/*EventId or file position*/) I, V, Api <: SessionApi.HasUserAndPassword with HasIsIgnorableStackTrace](
+  def observe[@specialized(Long/*EventId or file position*/) I, V, Api <: SessionApi.HasUserAndPassword & HasIsIgnorableStackTrace](
     toIndex: V => I,
     api: Api,
     conf: RecouplingStreamReaderConf,

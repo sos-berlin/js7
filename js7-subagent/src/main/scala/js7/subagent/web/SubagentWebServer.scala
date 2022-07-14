@@ -18,7 +18,7 @@ object SubagentWebServer
     restartAsDirector: Task[Unit],
     conf: SubagentConf)
     (implicit actorSystem: ActorSystem)
-  : Resource[Task, AkkaWebServer with AkkaWebServer.HasUri] =
+  : Resource[Task, AkkaWebServer & AkkaWebServer.HasUri] =
     AkkaWebServer.resource(
       conf.webServerBindings,
       conf.config,

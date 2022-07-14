@@ -7,6 +7,6 @@ import _root_.io.circe.{Decoder, Encoder}
   */
 package object circeutils {
 
-  type CirceCodec[A] = Encoder[A] with Decoder[A]
-  type CirceObjectCodec[A] = Encoder.AsObject[A] with Decoder[A]
+  type CirceCodec[A] = Encoder[A] & Decoder[A]
+  type CirceObjectCodec[A] = Encoder.AsObject[A] & Decoder[A]
 }

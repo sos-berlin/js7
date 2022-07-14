@@ -57,7 +57,7 @@ extends ju.AbstractMap[K, V] { self =>
               (if (v == null) 0 else v.hashCode())
 
             override def equals(other: Any) = other match {
-              case e: ju.Map.Entry[_, _] => k == e.getKey && v == e.getValue
+              case e: ju.Map.Entry[?, ?] => k == e.getKey && v == e.getValue
               case _ => false
             }
           }

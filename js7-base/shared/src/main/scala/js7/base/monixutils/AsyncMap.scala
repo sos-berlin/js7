@@ -173,7 +173,7 @@ object AsyncMap
     new AsyncMap(Map.empty[K, V])
 
   trait Stoppable {
-    this: AsyncMap[_, _] =>
+    this: AsyncMap[?, ?] =>
 
     @volatile private var stoppingProblem: Problem = null
     private val whenEmptyPromise = Promise[Unit]()

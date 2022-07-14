@@ -81,7 +81,7 @@ import shapeless.tag.@@
  */
 final class RunningController private(
   val eventWatch: StrictEventWatch,
-  webServer: AkkaWebServer with AkkaWebServer.HasUri,
+  webServer: AkkaWebServer & AkkaWebServer.HasUri,
   val recoveredEventId: EventId,
   val orderApi: OrderApi,
   val controllerState: Task[ControllerState],

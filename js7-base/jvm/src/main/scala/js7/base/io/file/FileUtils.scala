@@ -251,7 +251,7 @@ object FileUtils
       }
     }
 
-  def nestedPathsIterator(directory: Path, options: FileVisitOption*): AutoCloseable with Iterator[Path] =
+  def nestedPathsIterator(directory: Path, options: FileVisitOption*): AutoCloseable & Iterator[Path] =
     new AbstractIterator[Path] with AutoCloseable {
       private val javaStream = Files.walk(directory, options*)
       private val underlyingIterator = javaStream.asScala

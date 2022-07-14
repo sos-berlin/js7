@@ -410,7 +410,7 @@ extends AnyFreeSpec with SessionRouteTester
   private def withSessionApi(
     userAndPassword_ : Option[UserAndPassword],
     idsOrUserOrHeaders: Either[Either[Set[UserId], Session#User], List[HttpHeader]] = Right(Nil))
-    (body: HttpSessionApi with AkkaHttpClient with SessionApi.HasUserAndPassword => Unit)
+    (body: HttpSessionApi & AkkaHttpClient & SessionApi.HasUserAndPassword => Unit)
   : Unit = {
     val api = new HttpSessionApi with AkkaHttpClient with SessionApi.HasUserAndPassword {
       protected val name = "SessionRouteTest"

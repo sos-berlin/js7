@@ -40,10 +40,10 @@ extends StringMap
       case _ => null.asInstanceOf[V]
     }
 
-  def forEach[V](action: BiConsumer[String, _ >: V]): Unit =
+  def forEach[V](action: BiConsumer[String, ? >: V]): Unit =
     action.accept(CorrelIdKey, correlIdString.asInstanceOf[V])
 
-  def forEach[V, S](action: TriConsumer[String, _ >: V, S], state: S): Unit = {
+  def forEach[V, S](action: TriConsumer[String, ? >: V, S], state: S): Unit = {
     _forEachCount += 1
     action.accept(CorrelIdKey, correlIdString.asInstanceOf[V], state)
   }

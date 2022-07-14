@@ -134,7 +134,7 @@ trait JournaledProxy[S <: SnapshotableState[S]]
 object JournaledProxy
 {
   private type Api_[S <: JournaledState[S]] =
-    EventApi with SessionApi.HasUserAndPassword {type State = S}
+    EventApi & SessionApi.HasUserAndPassword {type State = S}
 
   private val logger = scribe.Logger[this.type]
 
@@ -287,7 +287,7 @@ object JournaledProxy
     * @return (EventApi, None) iff apis.size == 1
     *         (EventApi, Some(NodeId)) iff apis.size > 1
     */
-  final def selectActiveNodeApi[Api <: EventApi with SessionApi.HasUserAndPassword](
+  final def selectActiveNodeApi[Api <: EventApi & SessionApi.HasUserAndPassword](
     apiResources: Seq[Resource[Task, Api]],
     onCouplingError: EventApi => Throwable => Task[Unit],
     proxyConf: ProxyConf)
@@ -299,7 +299,7 @@ object JournaledProxy
           (api: EventApi) => throwable => onCouplingError(api)(throwable),
           proxyConf)))
 
-  private def selectActiveNodeApiOnly[Api <: EventApi with SessionApi.HasUserAndPassword](
+  private def selectActiveNodeApiOnly[Api <: EventApi & SessionApi.HasUserAndPassword](
     apis: Seq[Api],
     onCouplingError: Api => Throwable => Task[Unit],
     proxyConf: ProxyConf)
@@ -365,22 +365,22 @@ object JournaledProxy
       }
     }
 
-  private case class ApiWithFiber[Api <: EventApi with SessionApi.HasUserAndPassword](
+  private case class ApiWithFiber[Api <: EventApi & SessionApi.HasUserAndPassword](
     api: Api,
     fiber: Fiber[Checked[ClusterNodeState]])
 
-  private case class ApiWithNodeState[Api <: EventApi with SessionApi.HasUserAndPassword](
+  private case class ApiWithNodeState[Api <: EventApi & SessionApi.HasUserAndPassword](
     api: Api,
     clusterNodeState: Checked[ClusterNodeState])
 
-  private def fetchClusterNodeState[Api <: EventApi with SessionApi.HasUserAndPassword](api: Api, onError: Throwable => Task[Unit])
+  private def fetchClusterNodeState[Api <: EventApi & SessionApi.HasUserAndPassword](api: Api, onError: Throwable => Task[Unit])
   : Task[Checked[ClusterNodeState]] =
     HttpClient
       .liftProblem(
         api.retryIfSessionLost(onError)(
           api.clusterNodeState))
 
-  private def logProblems[Api <: EventApi with SessionApi.HasUserAndPassword](
+  private def logProblems[Api <: EventApi & SessionApi.HasUserAndPassword](
     list: List[ApiWithNodeState[Api]],
     maybeActive: Option[(Api, ClusterNodeState)])
   : Unit = {

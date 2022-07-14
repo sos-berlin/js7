@@ -1,7 +1,7 @@
 package js7.base.time
 
 import js7.base.time.AlarmClock.{ClockChecking, Simple}
-import js7.base.time.ScalaTime.{ZeroDuration, _}
+import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import monix.execution.Cancelable
 import monix.execution.atomic.AtomicLong

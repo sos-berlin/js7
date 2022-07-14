@@ -22,7 +22,7 @@ object AgentWebServer
     clusterWatchRegister: ClusterWatchRegister,
     eventWatch: EventWatch)
     (implicit actorSystem: ActorSystem)
-  : AkkaWebServer with AkkaWebServer.HasUri =
+  : AkkaWebServer & AkkaWebServer.HasUri =
     new AkkaWebServer.Standard(
       agentConfiguration.webServerBindings,
       agentConfiguration.config,

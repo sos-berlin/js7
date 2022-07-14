@@ -5,7 +5,7 @@ import fastparse.*
 import js7.base.problem.Problem
 import js7.data.parser.Parsers.checkedParse
 import js7.data.value.expression.Expression.*
-import js7.data.value.expression.ExpressionParser.{parse as _, _}
+import js7.data.value.expression.ExpressionParser.{parse as _, *}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import org.scalactic.source
 import org.scalatest.freespec.AnyFreeSpec

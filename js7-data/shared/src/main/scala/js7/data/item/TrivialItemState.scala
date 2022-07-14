@@ -3,7 +3,7 @@ package js7.data.item
 import monix.reactive.Observable
 
 /** For orthogonality, for Items which are the (empty) ItemState. */
-trait TrivialItemState[A <: TrivialItemState[A] with InventoryItem]
+trait TrivialItemState[A <: TrivialItemState[A] & InventoryItem]
 extends InventoryItemState
 {
   this: A =>
@@ -24,7 +24,7 @@ extends InventoryItemState
 
 object TrivialItemState
 {
-  trait Companion[A <: TrivialItemState[A] with InventoryItem]
+  trait Companion[A <: TrivialItemState[A] & InventoryItem]
   extends InventoryItemState.Companion[A] {
     //type Item = A
   }

@@ -271,7 +271,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff: TypeTag](
           Right(Some(ClusterActiveNodeShutDown))
         case _ =>
           Right(None)
-      } .map(_.map { case (_: (Seq[Stamped[?]], _)) =>
+      } .map(_.map { case (_: (Seq[Stamped[?]], ?)) =>
         noMoreJournaling = true
         Completed
       }))

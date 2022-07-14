@@ -4,7 +4,7 @@ import java.nio.file.Files.createDirectory
 import java.nio.file.Paths
 import java.util.Comparator
 import js7.base.io.file.FileUtils.syntax.*
-import js7.base.io.file.FileUtils.{touchFile, _}
+import js7.base.io.file.FileUtils.*
 import js7.base.log.Logger
 import js7.base.time.JavaTimeConverters.*
 import js7.base.time.ScalaTime.*

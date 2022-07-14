@@ -68,7 +68,7 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll with H
     }.closeWithCloser
 
     "toCheckedAgentUri, checkAgentUri and apply, failing" - {
-      for ((uri, None) <- Setting) s"$uri" in {
+      for (case (uri, None) <- Setting) s"$uri" in {
         assert(httpClient.checkAgentUri(uri).isLeft)
         assert(httpClient.toCheckedAgentUri(uri).isLeft)
         implicit val s = Task.pure(none[SessionToken])
@@ -78,7 +78,7 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll with H
     }
 
     "normalizeAgentUri" - {
-      for ((uri, Some(converted)) <- Setting) s"$uri" in {
+      for (case (uri, Some(converted)) <- Setting) s"$uri" in {
         assert(httpClient.normalizeAgentUri(uri) == converted)
         assert(httpClient.toCheckedAgentUri(uri) == Right(converted))
       }

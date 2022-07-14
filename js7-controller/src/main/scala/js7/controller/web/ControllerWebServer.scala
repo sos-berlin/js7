@@ -34,7 +34,7 @@ object ControllerWebServer
       controllerState: Task[Checked[ControllerState]],
       totalRunningSince: Deadline,
       eventWatch: FileEventWatch)
-    : AkkaWebServer with AkkaWebServer.HasUri =
+    : AkkaWebServer & AkkaWebServer.HasUri =
       new AkkaWebServer.Standard(
         controllerConfiguration.webServerBindings,
         controllerConfiguration.config,

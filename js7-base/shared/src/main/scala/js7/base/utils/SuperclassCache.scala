@@ -9,8 +9,8 @@ final class SuperclassCache[U](upperClass: Class[U])
   )(showMemoizer)
 
   /** Returns a Set of class, and all superclasses and interfaces below `U`. */
-  def assignableClasses[A <: U](cls: Class[A]): Set[Class[_ >: A <: U]] =
-    memoizer(cls).asInstanceOf[Set[Class[_ >: A <: U]]]
+  def assignableClasses[A <: U](cls: Class[A]): Set[Class[? >: A <: U]] =
+    memoizer(cls).asInstanceOf[Set[Class[? >: A <: U]]]
 
   override def toString = memoizer.toString
 

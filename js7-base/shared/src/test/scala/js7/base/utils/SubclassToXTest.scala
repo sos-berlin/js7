@@ -18,7 +18,7 @@ final class SubclassToXTest extends AnyFreeSpec
     assert(toSuperClass.checked(classOf[Set[?]]) == Right("Set"))
     assert(toSuperClass.checked(classOf[HashSet[?]]) == Right("Set"))
 
-    assert(toSuperClass.checked(classOf[Map[_, _]]) == Left(Problem(
+    assert(toSuperClass.checked(classOf[Map[?, ?]]) == Left(Problem(
       "Unknown scala.collection.Iterable class: scala.collection.immutable.Map")))
   }
 }

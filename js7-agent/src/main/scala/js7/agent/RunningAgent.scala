@@ -56,7 +56,7 @@ import scala.util.{Failure, Success, Try}
  */
 final class RunningAgent private(
   val persistence: ReadableStatePersistence[AgentState],
-  val webServer: AkkaWebServer with AkkaWebServer.HasUri,
+  val webServer: AkkaWebServer & AkkaWebServer.HasUri,
   mainActor: ActorRef,
   terminated1: Future[ProgramTermination],
   val api: CommandMeta => DirectAgentApi,

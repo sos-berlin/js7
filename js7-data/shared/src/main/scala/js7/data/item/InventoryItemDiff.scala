@@ -8,7 +8,7 @@ final case class InventoryItemDiff[P <: InventoryItemPath, I <: InventoryItem](
 {
   /** For tests: ordering is irrelevant. */
   override def equals(other: Any) = other match {
-    case o: InventoryItemDiff[_, _] =>
+    case o: InventoryItemDiff[?, ?] =>
       addedOrChanged.toSet == o.addedOrChanged.toSet &&
         removed.toSet == removed.toSet
     case _ => false

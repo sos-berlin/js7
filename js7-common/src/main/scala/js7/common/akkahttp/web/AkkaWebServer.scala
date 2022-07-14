@@ -171,20 +171,20 @@ object AkkaWebServer
     """
 
   @TestOnly
-  def forTest()(route: Route)(implicit as: ActorSystem): AkkaWebServer with HasUri =
+  def forTest()(route: Route)(implicit as: ActorSystem): AkkaWebServer & HasUri =
     forTest(ConfigFactory.empty)(route)
 
   @TestOnly
-  def forTest(config: Config)(route: Route)(implicit as: ActorSystem): AkkaWebServer with HasUri =
+  def forTest(config: Config)(route: Route)(implicit as: ActorSystem): AkkaWebServer & HasUri =
     forTest(findFreeTcpPort(), config, route = route)
 
   @TestOnly
   def forTest(port: Int = findFreeTcpPort(), config: Config = ConfigFactory.empty, route: Route)(implicit as: ActorSystem)
-  : AkkaWebServer with HasUri =
+  : AkkaWebServer & HasUri =
     http(port = port, config, route)
 
   def http(port: Int = findFreeTcpPort(), config: Config = testConfig, route: Route)(implicit as: ActorSystem)
-  : AkkaWebServer with HasUri =
+  : AkkaWebServer & HasUri =
     new Standard(
       WebServerBinding.http(port) :: Nil,
       config.withFallback(testConfig),
@@ -206,7 +206,7 @@ object AkkaWebServer
     route: Route,
     config: Config)
     (implicit actorSystem: ActorSystem)
-  : Resource[Task, AkkaWebServer with HasUri] =
+  : Resource[Task, AkkaWebServer & HasUri] =
     resource(
       WebServerBinding.http(httpPort) :: Nil,
       config,
@@ -217,7 +217,7 @@ object AkkaWebServer
     config: Config,
     route: (WebServerBinding, Future[Deadline]) => Task[BoundRoute])
     (implicit actorSystem: ActorSystem)
-  : Resource[Task, AkkaWebServer with HasUri] =
+  : Resource[Task, AkkaWebServer & HasUri] =
     Resource.make(
       acquire =
         Task.defer {

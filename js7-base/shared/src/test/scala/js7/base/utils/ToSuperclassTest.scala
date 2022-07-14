@@ -18,7 +18,7 @@ final class ToSuperclassTest extends AnyFreeSpec
     assert(toSuperClass.checked(classOf[Set[?]]) == Right(classOf[Set[?]]))
     assert(toSuperClass.checked(classOf[HashSet[?]]) == Right(classOf[Set[?]]))
 
-    assert(toSuperClass.checked(classOf[Map[_, _]]) == Left(Problem(
+    assert(toSuperClass.checked(classOf[Map[?, ?]]) == Left(Problem(
       "Unknown scala.collection.Iterable class: scala.collection.immutable.Map")))
 
     assert(toSuperClass.inspect == Map(
@@ -26,6 +26,6 @@ final class ToSuperclassTest extends AnyFreeSpec
       classOf[List[?]]    -> Some(classOf[Seq[?]]),
       classOf[Set[?]]     -> Some(classOf[Set[?]]),
       classOf[HashSet[?]] -> Some(classOf[Set[?]]),
-      classOf[Map[_, _]]  -> None))
+      classOf[Map[?, ?]]  -> None))
   }
 }
