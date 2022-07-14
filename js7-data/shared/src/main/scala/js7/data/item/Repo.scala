@@ -21,7 +21,7 @@ import scala.collection.{MapView, View, mutable}
   * @param versionIdSet `versionIdSet == versionIds.toSet`
   * @author Joacim Zschimmer
   */
-final case class Repo private(
+final case class Repo(
   versionIds: List[VersionId],
   versionIdSet: Set[VersionId],
   pathToVersionToSignedItems: Map[VersionedItemPath, List[Version]],
@@ -599,14 +599,14 @@ object Repo
     def unapply(version: Version) = Some(version.versionId -> version.maybeSignedItem)
   }
   /** Add or updated. */
-  final case class Add private(signedItem: Signed[VersionedItem])
+  final case class Add(signedItem: Signed[VersionedItem])
   extends Version {
     def versionId = signedItem.value.id.versionId
     val maybeSignedItem = Some(signedItem)
     def isRemoved = false
     override def toString = s"+${signedItem.value.id.versionId.string}"
   }
-  final case class Remove private(versionId: VersionId)
+  final case class Remove(versionId: VersionId)
   extends Version {
     def isRemoved = true
     def maybeSignedItem = None

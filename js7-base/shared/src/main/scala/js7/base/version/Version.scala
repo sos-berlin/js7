@@ -8,7 +8,7 @@ import scala.annotation.tailrec
 import scala.math.Ordered.orderingToOrdered
 
 /** Semantic version. */
-final case class Version private(
+final case class Version(
   string: String,
   major: Int,
   minor: Int,

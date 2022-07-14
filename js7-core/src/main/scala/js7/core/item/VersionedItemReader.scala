@@ -40,6 +40,6 @@ trait VersionedItemReader extends ItemReader
 
 object VersionedItemReader
 {
-  final case class SourceProblem private(path: VersionedItemPath, sourceType: SourceType, underlying: Problem)
+  final case class SourceProblem(path: VersionedItemPath, sourceType: SourceType, underlying: Problem)
     extends Problem.Lazy(s"Problem with '$path' ($sourceType)", Some(underlying))
 }

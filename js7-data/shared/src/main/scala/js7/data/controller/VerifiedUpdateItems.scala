@@ -14,7 +14,7 @@ import monix.eval.Task
 import monix.reactive.Observable
 import scala.collection.View
 
-final case class VerifiedUpdateItems private(
+final case class VerifiedUpdateItems private[controller](
   simple: VerifiedUpdateItems.Simple,
   maybeVersioned: Option[VerifiedUpdateItems.Versioned] = None)
 {
