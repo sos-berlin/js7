@@ -198,7 +198,7 @@ object Problem extends Semigroup[Problem]
     trait Companion {
       val code = codeOf(getClass)
     }
-    private[problem] def codeOf(clas: Class[_]) =
+    private[problem] def codeOf(clas: Class[?]) =
       ProblemCode(clas.simpleScalaName stripSuffix "Problem")
   }
 

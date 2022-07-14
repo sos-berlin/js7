@@ -1,6 +1,6 @@
 package js7.data_for_java.order
 
-import io.vavr.control.{Either => VEither}
+import io.vavr.control.Either as VEither
 import java.time.Instant
 import java.util.Optional
 import javax.annotation.Nonnull
@@ -90,7 +90,7 @@ object JOrder extends JJsonable.Companion[JOrder]
 
   sealed class StateType[S <: State](
     clas: Class[S],
-    private[JOrder] val scalaClass: Class[_ <: Order.State])
+    private[JOrder] val scalaClass: Class[? <: Order.State])
 
   final case class Forked(asScala: Order.Forked) extends State {
     protected type AsScala = Order.Forked

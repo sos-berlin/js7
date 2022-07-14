@@ -14,7 +14,7 @@
 
 package js7.data_for_java.common
 
-import java.{util => ju}
+import java.util as ju
 import scala.collection.MapView
 
 final class JMapViewWrapper[K, V](mapView: MapView[K, V])

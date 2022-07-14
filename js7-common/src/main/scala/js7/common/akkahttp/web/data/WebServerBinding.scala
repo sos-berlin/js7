@@ -1,6 +1,6 @@
 package js7.common.akkahttp.web.data
 
-import akka.http.scaladsl.model.{Uri => AkkaUri}
+import akka.http.scaladsl.model.Uri as AkkaUri
 import cats.syntax.either.*
 import cats.syntax.show.*
 import java.net.{InetAddress, InetSocketAddress}

@@ -4,7 +4,7 @@ import java.time.{Duration, Instant, ZonedDateTime}
 import java.util.concurrent.TimeUnit.NANOSECONDS
 import js7.base.log.Logger
 import js7.base.time.ScalaTime.*
-import scala.concurrent.duration.{FiniteDuration, Duration => ScalaDuration}
+import scala.concurrent.duration.{FiniteDuration, Duration as ScalaDuration}
 
 object JavaTimeConverters
 {

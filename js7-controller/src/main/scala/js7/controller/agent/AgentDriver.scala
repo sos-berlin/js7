@@ -583,7 +583,7 @@ extends ReceiveLoggingActor.WithStash
 
 private[controller] object AgentDriver
 {
-  private val EventClasses = Set[Class[_ <: Event]](
+  private val EventClasses = Set[Class[? <: Event]](
     classOf[OrderEvent],
     classOf[AgentEvent.AgentReady],
     classOf[AgentEvent.AgentShutDown],

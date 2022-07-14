@@ -13,7 +13,7 @@ trait UnsignedItem extends InventoryItem
 
 object UnsignedItem
 {
-  type Companion_ = Companion[_ <: UnsignedItem]
+  type Companion_ = Companion[? <: UnsignedItem]
 
   trait Companion[A <: UnsignedItem] extends InventoryItem.Companion[A]
   {

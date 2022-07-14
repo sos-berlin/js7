@@ -19,7 +19,7 @@ private[process] sealed trait OperatingSystemSpecific {
     */
   def shellFileExtension: String
 
-  def shellFileAttributes: Seq[FileAttribute[java.util.Set[_]]]
+  def shellFileAttributes: Seq[FileAttribute[java.util.Set[?]]]
 
   def newTemporaryShellFile(name: String) = createTempFile(filenamePrefix(name), shellFileExtension, shellFileAttributes: _*)
 
@@ -32,7 +32,7 @@ private[process] sealed trait OperatingSystemSpecific {
     file
   }
 
-  protected def outputFileAttributes: Seq[FileAttribute[java.util.Set[_]]]
+  protected def outputFileAttributes: Seq[FileAttribute[java.util.Set[?]]]
 
   def directShellCommandArguments(argument: String): Seq[String]
 
@@ -48,9 +48,9 @@ private object OperatingSystemSpecific
   private object Unix extends OperatingSystemSpecific {
     val shellFileExtension = ".sh"
     val shellFileAttributes = List(asFileAttribute(PosixFilePermissions fromString "rwx------"))
-      .asInstanceOf[Seq[FileAttribute[java.util.Set[_]]]]
+      .asInstanceOf[Seq[FileAttribute[java.util.Set[?]]]]
     val outputFileAttributes = List(asFileAttribute(PosixFilePermissions fromString "rw-------"))
-      .asInstanceOf[Seq[FileAttribute[java.util.Set[_]]]]
+      .asInstanceOf[Seq[FileAttribute[java.util.Set[?]]]]
 
     def directShellCommandArguments(argument: String) = Vector("/bin/sh", "-c", argument)
   }

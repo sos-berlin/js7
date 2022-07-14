@@ -38,7 +38,7 @@ extends ClusterWatchApi
       .map(_.map(_.clusterState) toChecked Problem(s"ClusterWatch not yet started for Controller '$controllerId'"))
 
   def applyEvents(clusterWatchEvents: ClusterWatchEvents): Task[Checked[Completed]] = {
-    import clusterWatchEvents.{checkOnly, events, from, clusterState => reportedClusterState}
+    import clusterWatchEvents.{checkOnly, events, from, clusterState as reportedClusterState}
     val fromMustBeActive = clusterWatchEvents.events match {
       case Seq(_: ClusterSwitchedOver) => false
       case _ => true

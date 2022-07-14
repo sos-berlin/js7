@@ -53,7 +53,7 @@ object EventDirectives
       })
 
   private def eventRequestRoute[E <: Event](
-    eventClasses: Set[Class[_ <: E]],
+    eventClasses: Set[Class[? <: E]],
     defaultAfter: Option[EventId],
     defaultTimeout: FiniteDuration,
     defaultDelay: FiniteDuration,

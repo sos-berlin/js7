@@ -11,10 +11,10 @@ import scala.collection.{BufferedIterator, Factory, mutable}
 
 object Collections
 {
-  private def defaultDuplicatesToProblem[K](duplicates: Map[K, Iterable[_]]) =
+  private def defaultDuplicatesToProblem[K](duplicates: Map[K, Iterable[?]]) =
     duplicatesToProblem("Unexpected duplicates", duplicates)
 
-  def duplicatesToProblem[K](prefix: String, duplicates: Map[K, Iterable[_]]) =
+  def duplicatesToProblem[K](prefix: String, duplicates: Map[K, Iterable[?]]) =
     Problem(s"$prefix: ${duplicates.map { case (k, v) => s"${v.size}×$k" }.mkString("; ")}")
 
   object implicits {
@@ -249,7 +249,7 @@ object Collections
   def emptyToNone(@Nullable o: String): Option[String] =
     if (o == null || o.isEmpty) None else Some(o)
 
-  def emptyToNone[A <: Iterable[_]](@Nullable o: A): Option[A] =
+  def emptyToNone[A <: Iterable[?]](@Nullable o: A): Option[A] =
     if (o == null || o.isEmpty) None else Some(o)
 
   def emptyToNone[A](@Nullable o: Array[A]): Option[Array[A]] =

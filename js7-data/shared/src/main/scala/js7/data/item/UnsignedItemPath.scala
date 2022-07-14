@@ -7,7 +7,7 @@ trait UnsignedItemPath extends InventoryItemPath
 {
   protected type Self <: UnsignedItemPath
 
-  def companion: Companion[_ <: UnsignedItemPath]
+  def companion: Companion[? <: UnsignedItemPath]
 }
 
 object UnsignedItemPath
@@ -18,7 +18,7 @@ object UnsignedItemPath
     implicit def implicitCompanion = this
   }
 
-  type AnyCompanion = Companion[_ <: UnsignedItemPath]
+  type AnyCompanion = Companion[? <: UnsignedItemPath]
 
   def jsonCodec(companions: Iterable[AnyCompanion]): Codec[UnsignedItemPath] =
     InventoryItemPath.jsonCodec(companions)

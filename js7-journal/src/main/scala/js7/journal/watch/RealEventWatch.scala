@@ -141,7 +141,7 @@ trait RealEventWatch extends EventWatch
 
   final def whenAny[E <: Event](
     request: EventRequest[E],
-    eventClasses: Set[Class[_ <: E]],
+    eventClasses: Set[Class[? <: E]],
     predicate: KeyedEvent[E] => Boolean)
   : Task[TearableEventSeq[CloseableIterator, KeyedEvent[E]]] =
     whenAnyKeyedEvents(

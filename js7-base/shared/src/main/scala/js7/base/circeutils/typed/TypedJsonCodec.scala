@@ -12,29 +12,29 @@ import scala.reflect.ClassTag
   */
 final class TypedJsonCodec[A](
   private val printName: String,
-  private val subtypes: Seq[Subtype[_ <: A]])
+  private val subtypes: Seq[Subtype[? <: A]])
 extends Codec.AsObject[A]
 {
-  val classToEncoder: Map[Class[_], Encoder.AsObject[_ <: A]] =
+  val classToEncoder: Map[Class[?], Encoder.AsObject[? <: A]] =
     subtypes
       .flatMap(_.classToEncoder)
       .uniqueToMap
       .withDefault(o => throw new UnknownClassForJsonException(o.shortClassName, printName))
 
-  val nameToDecoder: Map[String, Decoder[_ <: A]] =
+  val nameToDecoder: Map[String, Decoder[? <: A]] =
     subtypes
       .flatMap(_.nameToDecoder)
       .uniqueToMap
 
-  val nameToClass: Map[String, Class[_ <: A]] =
+  val nameToClass: Map[String, Class[? <: A]] =
     subtypes
       .flatMap(_.nameToClass)
       .uniqueToMap
 
-  private val _classToName: Map[Class[_ <: A], String] =
+  private val _classToName: Map[Class[? <: A], String] =
     nameToClass.map(o => o._2 -> o._1)
 
-  private val classToNameJson: Map[Class[_ <: A], Json/*String*/] =
+  private val classToNameJson: Map[Class[? <: A], Json/*String*/] =
     _classToName.view.mapValues(Json.fromString).toMap
 
   /** Union. */
@@ -80,19 +80,19 @@ extends Codec.AsObject[A]
   def typeName[A1 <: A](a: A1): String =
     _classToName(a.getClass)
 
-  def classToName(getClass: Class[_ <: A]): String =
+  def classToName(getClass: Class[? <: A]): String =
     _classToName(getClass)
 
-  def classes[A2 <: A: ClassTag]: Set[Class[_ <: A2]] =
+  def classes[A2 <: A: ClassTag]: Set[Class[? <: A2]] =
     classToEncoder.keySet collect {
-      case c if implicitClass[A2] isAssignableFrom c => c.asInstanceOf[Class[_ <: A2]]
+      case c if implicitClass[A2] isAssignableFrom c => c.asInstanceOf[Class[? <: A2]]
     }
 
   def isOfType[A1 <: A: ClassTag](json: Json): Boolean =
     json.asObject
       .flatMap(_(TypeFieldName)) contains classToNameJson(implicitClass[A1])
 
-  def jsonToClass(json: Json): Option[Class[_ <: A]] =
+  def jsonToClass(json: Json): Option[Class[? <: A]] =
     json.asObject
       .flatMap(_(TypeFieldName)).flatMap(_.asString).flatMap(nameToClass.get)
 
@@ -109,21 +109,21 @@ object TypedJsonCodec
   def typeName[A: ClassTag]: String =
     typeName(implicitClass[A])
 
-  def typeName(cls: Class[_]): String =
+  def typeName(cls: Class[?]): String =
     cls.simpleScalaName
 
-  def apply[A: ClassTag](subtypes: Subtype[_ <: A]*)
+  def apply[A: ClassTag](subtypes: Subtype[? <: A]*)
     (implicit enclosing: sourcecode.Enclosing)
   : TypedJsonCodec[A] =
     fromIterable(
       enclosing.value + ": TypedJsonCodec[" + implicitClass[A].shortClassName + "]",
       subtypes)
 
-  def named[A: ClassTag](name: String, subtypes: Subtype[_ <: A]*)
+  def named[A: ClassTag](name: String, subtypes: Subtype[? <: A]*)
   : TypedJsonCodec[A] =
     fromIterable(name, subtypes)
 
-  def fromIterable[A: ClassTag](name: String, subtypes: Iterable[Subtype[_ <: A]])
+  def fromIterable[A: ClassTag](name: String, subtypes: Iterable[Subtype[? <: A]])
   : TypedJsonCodec[A] =
     new TypedJsonCodec[A](name, subtypes.toSeq)
 
@@ -131,7 +131,7 @@ object TypedJsonCodec
     def isOfType[A: TypedJsonCodec, A1 <: A: ClassTag]: Boolean =
       implicitly[TypedJsonCodec[A]].isOfType[A1](underlying)
 
-    def toClass[A: TypedJsonCodec]: Option[Class[_ <: A]] =
+    def toClass[A: TypedJsonCodec]: Option[Class[? <: A]] =
       implicitly[TypedJsonCodec[A]].jsonToClass(underlying)
   }
 

@@ -130,7 +130,7 @@ object X509SignatureVerifier extends SignatureVerifier.Companion
               origin)
           })
 
-  private def duplicateDNsToProblem(duplicates: Map[DistinguishedName, Iterable[_]]) =
+  private def duplicateDNsToProblem(duplicates: Map[DistinguishedName, Iterable[?]]) =
     duplicatesToProblem("Duplicate X.509 certificates", duplicates)
 
   def genericSignatureToSignature(signature: GenericSignature): Checked[X509Signature] = {

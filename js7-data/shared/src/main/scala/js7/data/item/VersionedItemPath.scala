@@ -10,7 +10,7 @@ import scala.reflect.ClassTag
 
 trait VersionedItemPath extends InventoryItemPath
 {
-  def companion: Companion[_ <: VersionedItemPath]
+  def companion: Companion[? <: VersionedItemPath]
 
   final lazy val name: String =
     string.substring(string.lastIndexOf('/') + 1)
@@ -38,7 +38,7 @@ object VersionedItemPath
       case o => o
     }
 
-  type AnyCompanion = Companion[_ <: VersionedItemPath]
+  type AnyCompanion = Companion[? <: VersionedItemPath]
 
   implicit final class ImplicitItemPath[P <: VersionedItemPath](private val underlying: P) extends AnyVal {
     def ~(version: String): VersionedItemId[P] =

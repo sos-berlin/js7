@@ -14,7 +14,7 @@ import scala.reflect.ClassTag
 
 trait InventoryItemPath extends GenericString
 {
-  def companion: Companion[_ <: InventoryItemPath]
+  def companion: Companion[? <: InventoryItemPath]
 
   final def isAssignableToAgent =
     this.isInstanceOf[InventoryItemPath.AttachableToAgent]
@@ -61,13 +61,13 @@ object InventoryItemPath
       sourceTypeToFilenameExtension.values.map(path.toString + _)
   }
 
-  type AnyCompanion = Companion[_ <: InventoryItemPath]
+  type AnyCompanion = Companion[? <: InventoryItemPath]
 
   trait AttachableToAgent {
     this: InventoryItemPath =>
   }
 
-  def jsonCodec[P <: InventoryItemPath: ClassTag](companions: Iterable[Companion[_ <: P]]): Codec[P] =
+  def jsonCodec[P <: InventoryItemPath: ClassTag](companions: Iterable[Companion[? <: P]]): Codec[P] =
     new Codec[P] {
       private val typeToCompanion = companions.toKeyedMap(_.pathTypeName)
 

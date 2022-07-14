@@ -8,7 +8,7 @@ sealed trait JOrderObstacle
 
 object JOrderObstacle
 {
-  val toScalaClass = Map[Class[_ <: JOrderObstacle], Class[_ <: OrderObstacle]](
+  val toScalaClass = Map[Class[? <: JOrderObstacle], Class[? <: OrderObstacle]](
     classOf[WaitingForCommand] -> classOf[OrderObstacle.WaitingForTime],
     classOf[WaitingForTime] -> classOf[OrderObstacle.WaitingForTime])
 

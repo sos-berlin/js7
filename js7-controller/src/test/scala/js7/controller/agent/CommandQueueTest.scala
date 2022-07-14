@@ -1,6 +1,6 @@
 package js7.controller.agent
 
-import com.typesafe.scalalogging.{Logger => ScalaLogger}
+import com.typesafe.scalalogging.{Logger as ScalaLogger}
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.Batch
 import js7.base.log.Logger

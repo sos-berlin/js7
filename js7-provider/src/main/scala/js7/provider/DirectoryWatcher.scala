@@ -103,6 +103,6 @@ object DirectoryWatcher
 {
   private val logger = Logger(getClass)
 
-  private implicit val watchEventShow: Show[WatchEvent[_]] = e =>
+  private implicit val watchEventShow: Show[WatchEvent[?]] = e =>
     s"${e.kind.name} ${e.count}× ${e.context}"
 }

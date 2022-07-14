@@ -22,7 +22,7 @@ extends AutoCloseable
 
   @javaApi @Nonnull
   final def subscribe[E <: Event](
-    @Nonnull eventClasses: java.lang.Iterable[Class[_ <: Event]],
+    @Nonnull eventClasses: java.lang.Iterable[Class[? <: Event]],
     @Nonnull callback: java.util.function.BiConsumer[Stamped[KeyedEvent[E]], JS])
   : EventSubscription = {
     val subscription = newSubscription(eventClasses, callback)
@@ -32,7 +32,7 @@ extends AutoCloseable
 
   @javaApi @Nonnull
   final def newSubscription[E <: Event](
-    @Nonnull eventClasses: java.lang.Iterable[Class[_ <: Event]],
+    @Nonnull eventClasses: java.lang.Iterable[Class[? <: Event]],
     @Nonnull callback: java.util.function.BiConsumer[Stamped[KeyedEvent[E]], JS])
   : EventSubscription = {
     requireNonNull(callback)

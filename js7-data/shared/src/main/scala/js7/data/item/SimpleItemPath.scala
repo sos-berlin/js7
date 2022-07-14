@@ -7,7 +7,7 @@ trait SimpleItemPath extends InventoryItemKey with InventoryItemPath
 {
   protected type Self <: SimpleItemPath
 
-  def companion: Companion[_ <: SimpleItemPath]
+  def companion: Companion[? <: SimpleItemPath]
 
   final def path = this
 }
@@ -21,7 +21,7 @@ object SimpleItemPath
     implicit def implicitCompanion = this
   }
 
-  type AnyCompanion = Companion[_ <: SimpleItemPath]
+  type AnyCompanion = Companion[? <: SimpleItemPath]
 
   def jsonCodec(companions: Iterable[AnyCompanion]): Codec[SimpleItemPath] =
     InventoryItemKey.jsonCodec(companions)

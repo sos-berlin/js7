@@ -1,6 +1,6 @@
 package js7.launcher.forjava.internal
 
-import io.vavr.control.{Either => VEither}
+import io.vavr.control.Either as VEither
 import java.lang.reflect.Modifier.isPublic
 import java.lang.reflect.{Constructor, InvocationTargetException}
 import js7.base.monixutils.MonixBase.syntax.*
@@ -52,11 +52,11 @@ private[internal] final class InternalJobAdapterHelper[J: ClassTag: TypeTag]
     if (!implicitClass[J].isAssignableFrom(cls))
       Left(Problem.pure(s"Class '${cls.getName}' must be a ${implicitClass[J].getName}"))
     else
-      getConstructor(cls.asInstanceOf[Class[_ <: J]], jJobContext.getClass)
+      getConstructor(cls.asInstanceOf[Class[? <: J]], jJobContext.getClass)
         .flatMap(construct(_, jJobContext))
   }
 
-  private def getConstructor(clas: Class[_ <: J], jJobContextClass: Class[_ <: JavaJobContext])
+  private def getConstructor(clas: Class[? <: J], jJobContextClass: Class[? <: JavaJobContext])
   : Checked[Constructor[J]] =
     Checked.catchNonFatal {
       val constructors = clas

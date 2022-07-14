@@ -5,12 +5,12 @@ import js7.data.item.SignableSimpleItemPath.*
 
 trait SignableSimpleItemPath extends SimpleItemPath with SignableItemKey
 {
-  def companion: Companion[_ <: SignableSimpleItemPath]
+  def companion: Companion[? <: SignableSimpleItemPath]
 }
 
 object SignableSimpleItemPath
 {
-  type Companion_ = Companion[_ <: SignableSimpleItemPath]
+  type Companion_ = Companion[? <: SignableSimpleItemPath]
 
   trait Companion[A <: SignableSimpleItemPath]
   extends SimpleItemPath.Companion[A]

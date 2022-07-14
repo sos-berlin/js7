@@ -5,7 +5,7 @@ import js7.base.auth.{SimpleUser, UserAndPassword, UserId}
 import js7.base.configutils.Configs.*
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.*
-import js7.base.io.process.Processes.{ShellFileExtension => sh}
+import js7.base.io.process.Processes.{ShellFileExtension as sh}
 import js7.base.problem.Checked.Ops
 import js7.base.session.SessionApi
 import js7.base.thread.MonixBlocking.syntax.*

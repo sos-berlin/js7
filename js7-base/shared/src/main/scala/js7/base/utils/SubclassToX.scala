@@ -4,7 +4,7 @@ import js7.base.problem.Checked
 import scala.reflect.ClassTag
 
 /** Map for subclasses to X, derived from the given superclass Map. */
-final class SubclassToX[C, X](superclassToX: Map[Class[_ <: C], X])(implicit C: ClassTag[C])
+final class SubclassToX[C, X](superclassToX: Map[Class[? <: C], X])(implicit C: ClassTag[C])
 {
   private val toSuperclass = new ToSuperclass[C](superclassToX.keySet)
 

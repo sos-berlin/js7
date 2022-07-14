@@ -3,7 +3,7 @@ package js7.data.value.expression
 import cats.parse.Parser.end
 import js7.base.problem.Problem
 import js7.data.parser.CatsParsers.checkedParse
-import js7.data.value.expression.CatsExpressionParser.{parse => _, _}
+import js7.data.value.expression.CatsExpressionParser.{parse as _, _}
 import js7.data.value.expression.Expression.*
 import js7.data.workflow.instructions.executable.WorkflowJob
 import org.scalactic.source

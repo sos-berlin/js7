@@ -10,12 +10,12 @@ with SimpleItemPath
 {
   protected type Self <: UnsignedSimpleItemPath
 
-  def companion: Companion[_ <: UnsignedSimpleItemPath]
+  def companion: Companion[? <: UnsignedSimpleItemPath]
 }
 
 object UnsignedSimpleItemPath
 {
-  type Companion_ = Companion[_ <: UnsignedSimpleItemPath]
+  type Companion_ = Companion[? <: UnsignedSimpleItemPath]
 
   trait Companion[A <: UnsignedSimpleItemPath]
   extends UnsignedItemPath.Companion[A]

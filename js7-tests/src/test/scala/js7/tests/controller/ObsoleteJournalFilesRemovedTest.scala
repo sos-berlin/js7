@@ -2,7 +2,7 @@ package js7.tests.controller
 
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.syntax.*
-import js7.base.io.process.Processes.{ShellFileExtension => sh}
+import js7.base.io.process.Processes.{ShellFileExtension as sh}
 import js7.base.problem.Checked.Ops
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*

@@ -1,6 +1,6 @@
 package js7.data_for_java.order
 
-import io.vavr.control.{Either => VEither}
+import io.vavr.control.Either as VEither
 import java.time.Instant
 import java.util.Optional
 import javax.annotation.Nonnull

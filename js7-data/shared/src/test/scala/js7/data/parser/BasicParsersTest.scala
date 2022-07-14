@@ -146,7 +146,7 @@ final class BasicParsersTest extends AnyFreeSpec
   }
 
   "specificKeyValue 2" in {
-    def myKeyInt(name: String)(implicit ctx: P[_]): P[Int] =
+    def myKeyInt(name: String)(implicit ctx: P[?]): P[Int] =
       P(name ~ w ~ "=" ~ w ~/ int)
     def parser[x: P] = myKeyInt("key")
     assert(checkedParse("key=123", parser(_)) == Right(123))

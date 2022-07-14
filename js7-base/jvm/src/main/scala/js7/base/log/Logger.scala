@@ -1,7 +1,7 @@
 package js7.base.log
 
 import cats.effect.ExitCase.{Canceled, Completed, Error}
-import com.typesafe.scalalogging.{Logger => ScalaLogger}
+import com.typesafe.scalalogging.Logger as ScalaLogger
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime.{DurationRichLong, RichDuration}
 import js7.base.utils.ScalaUtils.implicitClass
@@ -25,7 +25,7 @@ object Logger
   def apply[A: ClassTag]: ScalaLogger =
     apply(implicitClass[A])
 
-  def apply(c: Class[_]): ScalaLogger =
+  def apply(c: Class[?]): ScalaLogger =
     ScalaLogger(normalizeClassName(c))
 
   def apply(name: String): ScalaLogger =
@@ -34,7 +34,7 @@ object Logger
   def withPrefix[A: ClassTag](prefix: String): ScalaLogger =
     withPrefix(implicitClass[A], prefix)
 
-  def withPrefix(c: Class[_], prefix: String): ScalaLogger =
+  def withPrefix(c: Class[?], prefix: String): ScalaLogger =
     if (prefix.isEmpty)
       apply(c)
     else
@@ -43,7 +43,7 @@ object Logger
         LoggerFactory.getLogger(normalizeClassName(c))))
 
   /** Removes '$' from Scala's companion object class. */
-  def normalizeClassName(c: Class[_]): String =
+  def normalizeClassName(c: Class[?]): String =
     c.getName stripSuffix "$"
 
   object ops {

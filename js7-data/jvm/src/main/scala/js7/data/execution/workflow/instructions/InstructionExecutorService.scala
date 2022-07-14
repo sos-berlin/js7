@@ -39,7 +39,7 @@ final class InstructionExecutorService(val clock: WallClock)
       new RetryExecutor(this),
       new AddOrderExecutor(this),
       cycleExecutor
-    ).toKeyedMap(_.instructionClass: Class[_ <: Instruction]))
+    ).toKeyedMap(_.instructionClass: Class[? <: Instruction]))
 
   private[instructions] val forkCache = new ForkInstructionExecutor.Cache
 

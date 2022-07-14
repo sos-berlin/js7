@@ -27,7 +27,7 @@ object JavaUtils
       case o: java.lang.Long => Right(NumberValue(o.longValue))
       case o: java.math.BigDecimal => Right(NumberValue(o))
       case o: String => Right(StringValue(o))
-      case values: java.util.List[_] =>
+      case values: java.util.List[?] =>
         values.asInstanceOf[java.util.List[AnyRef]]
           .asScala
           .toVector

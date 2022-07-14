@@ -16,7 +16,7 @@ import scala.reflect.ClassTag
 abstract class SemaphoreJob(semaphore: Task[Semaphore[Task]])
 extends InternalJob
 {
-  def this(companion: SemaphoreJob.Companion[_ <: SemaphoreJob]) =
+  def this(companion: SemaphoreJob.Companion[? <: SemaphoreJob]) =
     this(companion.semaphore)
 
   final def toOrderProcess(step: Step) = {

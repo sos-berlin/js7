@@ -1,7 +1,7 @@
 package js7.launcher.forjava.internal
 
 import cats.effect.Resource
-import java.lang.System.{lineSeparator => nl}
+import java.lang.System.{lineSeparator as nl}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Paths
 import js7.base.io.file.FileUtils.temporaryDirectoryResource

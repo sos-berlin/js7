@@ -52,8 +52,8 @@ object IsEmpty
   implicit def monoidIsEmpty[A](implicit monoid: Monoid[A], eq: Eq[A]): IsEmpty[A] =
     IsEmpty[A](monoid.isEmpty)
 
-  private val erasedIterableIsEmpty: IsEmpty[Iterable[_]] = _.isEmpty
+  private val erasedIterableIsEmpty: IsEmpty[Iterable[?]] = _.isEmpty
 
-  @inline implicit def iterableIsEmpty[A <: Iterable[_]]: IsEmpty[A] =
+  @inline implicit def iterableIsEmpty[A <: Iterable[?]]: IsEmpty[A] =
     erasedIterableIsEmpty.asInstanceOf[IsEmpty[A]]
 }

@@ -8,7 +8,7 @@ import scala.reflect.ClassTag
  * A mapper providing the bean properties of
  * @author Joacim Zschimmer
  */
-final class BeanPropertyReader[A](clas: Class[_ <: A], nameToConverter: NameToConverter) {
+final class BeanPropertyReader[A](clas: Class[? <: A], nameToConverter: NameToConverter) {
   private val methods = (
       for (d <- java.beans.Introspector.getBeanInfo(clas).getPropertyDescriptors if nameToConverter isDefinedAt d.getName;
            m <- Option(d.getReadMethod) if m.getParameterCount == 0)

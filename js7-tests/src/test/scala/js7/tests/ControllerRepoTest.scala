@@ -4,7 +4,7 @@ import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.*
-import js7.base.io.process.Processes.{ShellFileExtension => sh}
+import js7.base.io.process.Processes.{ShellFileExtension as sh}
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked.*

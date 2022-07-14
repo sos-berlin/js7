@@ -347,7 +347,7 @@ lazy val `js7-build-info` = (project in file("target/project-js7-build-info"))
         file,
         BuildInfos.buildInfoMap.value
           .mapValues {
-            case v: Option[_] => v.fold("")(_.toString)
+            case v: Option[?] => v.fold("")(_.toString)
             case v => v.toString
           }
           .map { case (k, v) => s"$k=${v.trim.replace('\n', '⏎')}\n"}

@@ -16,7 +16,7 @@ trait SignableItem extends InventoryItem
 
 object SignableItem
 {
-  type Companion_ = Companion[_ <: SignableItem]
+  type Companion_ = Companion[? <: SignableItem]
 
   trait Companion[A <: SignableItem] extends InventoryItem.Companion[A]
   {

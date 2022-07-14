@@ -7,25 +7,25 @@ import scala.collection.immutable.HashSet
 final class ToSuperclassTest extends AnyFreeSpec
 {
   "checked" in {
-    val superclasses = Set[Class[_ <: Iterable[_]]](
-      classOf[Seq[_]],
-      classOf[Set[_]])
+    val superclasses = Set[Class[? <: Iterable[?]]](
+      classOf[Seq[?]],
+      classOf[Set[?]])
     val toSuperClass = new ToSuperclass(superclasses)
 
-    assert(toSuperClass.checked(classOf[Seq[_]]) == Right(classOf[Seq[_]]))
-    assert(toSuperClass.checked(classOf[List[_]]) == Right(classOf[Seq[_]]))
+    assert(toSuperClass.checked(classOf[Seq[?]]) == Right(classOf[Seq[?]]))
+    assert(toSuperClass.checked(classOf[List[?]]) == Right(classOf[Seq[?]]))
 
-    assert(toSuperClass.checked(classOf[Set[_]]) == Right(classOf[Set[_]]))
-    assert(toSuperClass.checked(classOf[HashSet[_]]) == Right(classOf[Set[_]]))
+    assert(toSuperClass.checked(classOf[Set[?]]) == Right(classOf[Set[?]]))
+    assert(toSuperClass.checked(classOf[HashSet[?]]) == Right(classOf[Set[?]]))
 
     assert(toSuperClass.checked(classOf[Map[_, _]]) == Left(Problem(
       "Unknown scala.collection.Iterable class: scala.collection.immutable.Map")))
 
     assert(toSuperClass.inspect == Map(
-      classOf[Seq[_]]     -> Some(classOf[Seq[_]]),
-      classOf[List[_]]    -> Some(classOf[Seq[_]]),
-      classOf[Set[_]]     -> Some(classOf[Set[_]]),
-      classOf[HashSet[_]] -> Some(classOf[Set[_]]),
+      classOf[Seq[?]]     -> Some(classOf[Seq[?]]),
+      classOf[List[?]]    -> Some(classOf[Seq[?]]),
+      classOf[Set[?]]     -> Some(classOf[Set[?]]),
+      classOf[HashSet[?]] -> Some(classOf[Set[?]]),
       classOf[Map[_, _]]  -> None))
   }
 }

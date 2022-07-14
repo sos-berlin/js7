@@ -1,7 +1,7 @@
 package js7.base.io.https
 
 import java.io.InputStream
-import java.lang.{ProcessBuilder => JavaProcessBuilder}
+import java.lang.{ProcessBuilder as JavaProcessBuilder}
 import java.nio.file.Path
 import java.security.KeyStore
 import java.security.cert.X509Certificate

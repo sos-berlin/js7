@@ -71,7 +71,7 @@ extends JobLauncher
             tryAdapter(cls))
     ).flatten
 
-  private def tryAdapter(cls: Class[_]): Checked[() => Checked[InternalJob]] = {
+  private def tryAdapter(cls: Class[?]): Checked[() => Checked[InternalJob]] = {
     val internalJobs = superclassesOf(cls)
       .flatMap(cls =>
         Option(cls.getAnnotation(classOf[InternalJobAdapter])))
@@ -87,7 +87,7 @@ extends JobLauncher
           () => construct(con, toJobContext(cls)))
   }
 
-  private def toJobContext(cls: Class[_]) =
+  private def toJobContext(cls: Class[?]) =
     JobContext(cls, executable, jobArguments, jobConf, scheduler, iox, blockingJobScheduler, clock,
       jobConf.systemEncoding)
 
@@ -98,8 +98,8 @@ object InternalJobLauncher
 {
   private val logger = Logger(getClass)
 
-  private def loadClass(className: String): Checked[Class[_ <: AnyRef]] =
-    try Right(Class.forName(className).asInstanceOf[Class[_ <: AnyRef]])
+  private def loadClass(className: String): Checked[Class[? <: AnyRef]] =
+    try Right(Class.forName(className).asInstanceOf[Class[? <: AnyRef]])
     catch {
       case t: ExceptionInInitializerError =>
         Left(Problem.pure(Option(t.getCause).getOrElse(t).toStringWithCauses))
@@ -109,10 +109,10 @@ object InternalJobLauncher
         Left(Problem.pure(t.toStringWithCauses))
     }
 
-  private val isAllowedConstructorParamameterClass = Set[Class[_]](
+  private val isAllowedConstructorParamameterClass = Set[Class[?]](
     classOf[InternalJob.JobContext])
 
-  private def getConstructor(clas: Class[_ <: InternalJob]): Checked[Constructor[InternalJob]] =
+  private def getConstructor(clas: Class[? <: InternalJob]): Checked[Constructor[InternalJob]] =
     Checked.catchNonFatal {
       val constructors = clas
         .getConstructors.asInstanceOf[Array[Constructor[InternalJob]]]

@@ -1,6 +1,6 @@
 package js7.data_for_java.item
 
-import io.vavr.control.{Either => VEither}
+import io.vavr.control.Either as VEither
 import javax.annotation.Nonnull
 import js7.base.problem.Problem
 import js7.data.item.{Repo, VersionId}

@@ -34,7 +34,7 @@ trait VersionedItem extends SignableItem
 
 object VersionedItem
 {
-  type Companion_ = Companion[_ <: VersionedItem]
+  type Companion_ = Companion[? <: VersionedItem]
 
   trait Companion[A <: VersionedItem] extends SignableItem.Companion[A]
   {

@@ -7,7 +7,7 @@ import js7.agent.configuration.inject.AgentModule
 import js7.agent.tests.ProcessDriverTest.TestScript
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.RichPath
-import js7.base.io.process.Processes.{ShellFileExtension => sh}
+import js7.base.io.process.Processes.{ShellFileExtension as sh}
 import js7.base.io.process.ReturnCode
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.Futures.implicits.SuccessFuture

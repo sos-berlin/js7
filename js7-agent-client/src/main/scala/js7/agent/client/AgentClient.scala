@@ -57,7 +57,7 @@ with SessionApi.HasUserAndPassword
     //TODO Use Akka http connection level request with Akka streams and .withIdleTimeout()
     // See https://gist.github.com/burakbala/49617745ead702b4c83cf89699c266ff
     //val timeout = request match {
-    //  case o: EventRequest[_] => o.timeout + 10.s
+    //  case o: EventRequest[?] => o.timeout + 10.s
     //  case _ => akka configured default value
     //}
     liftProblem(

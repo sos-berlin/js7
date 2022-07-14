@@ -160,9 +160,9 @@ object JournalLogger
   extends Loggable
 
   private final class SubclassCache(superclassNames: Set[String]) {
-    private val cache = mutable.Map.empty[Class[_], Boolean]
+    private val cache = mutable.Map.empty[Class[?], Boolean]
 
-    def contains(cls: Class[_ <: Event]) =
+    def contains(cls: Class[? <: Event]) =
       cache.getOrElseUpdate(cls,
         superclassesOf(cls)
           .iterator

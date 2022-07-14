@@ -105,7 +105,7 @@ object ControllerUris
   private def encodeClass[A: ClassTag]: String =
     encodeClass(implicitClass[A])
 
-  private def encodeClass(cls: Class[_]): String = {
+  private def encodeClass(cls: Class[?]): String = {
     require(cls != classOf[Nothing], "Missing return=CLASS")
     cls.simpleScalaName
   }

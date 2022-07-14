@@ -1,7 +1,7 @@
 package js7.data_for_java.calendar
 
-import io.vavr.control.{Either => VEither}
-import java.time.{ZoneId, Duration => JDuration}
+import io.vavr.control.Either as VEither
+import java.time.{ZoneId, Duration as JDuration}
 import java.util.Optional
 import javax.annotation.Nonnull
 import js7.base.problem.Problem

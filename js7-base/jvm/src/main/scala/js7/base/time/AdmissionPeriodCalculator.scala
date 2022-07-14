@@ -2,7 +2,7 @@ package js7.base.time
 
 import java.time.LocalTime.MIDNIGHT
 import java.time.temporal.ChronoField.DAY_OF_WEEK
-import java.time.{LocalDate, LocalDateTime, LocalTime, ZoneOffset, Duration => JDuration}
+import java.time.{LocalDate, LocalDateTime, LocalTime, ZoneOffset, Duration as JDuration}
 import js7.base.time.AdmissionPeriod.{DaySeconds, WeekSeconds}
 import js7.base.time.JavaTime.*
 import js7.base.time.ScalaTime.*

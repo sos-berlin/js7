@@ -42,7 +42,7 @@ object Processes
     */
   val ShellFileExtension = OS.shellFileExtension
 
-  val ShellFileAttributes: Seq[FileAttribute[java.util.Set[_]]] = OS.shellFileAttributes
+  val ShellFileAttributes: Seq[FileAttribute[java.util.Set[?]]] = OS.shellFileAttributes
 
   def newTemporaryShellFile(name: String): Path = OS.newTemporaryShellFile(name)
 

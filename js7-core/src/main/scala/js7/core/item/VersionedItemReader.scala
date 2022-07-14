@@ -13,7 +13,7 @@ trait VersionedItemReader extends ItemReader
 {
   val companion: VersionedItem.Companion_
 
-  import companion.{Item, Path => ThisItemPath}
+  import companion.{Item, Path as ThisItemPath}
 
   protected def read(id: VersionedItemId[ThisItemPath], byteArray: ByteArray): PartialFunction[SourceType, Checked[Item]]
 

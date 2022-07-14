@@ -131,41 +131,41 @@ object BasicParsers
 
   def pathString[x: P] = P[String](quotedString)
 
-  def path[A <: VersionedItemPath](implicit ctx: P[_], A: VersionedItemPath.Companion[A]) = P[A](
+  def path[A <: VersionedItemPath](implicit ctx: P[?], A: VersionedItemPath.Companion[A]) = P[A](
     pathString.flatMap(p => checkedToP(A.checked(p))))
 
-  def agentPath(implicit ctx: P[_]) = P[AgentPath](
+  def agentPath(implicit ctx: P[?]) = P[AgentPath](
     pathString.flatMap(string =>
       AgentPath.checked(string) match {
         case Left(problem) => Fail.opaque(problem.toString)
         case Right(name) => Pass(name)
       }))
 
-  def quotedLockPath(implicit ctx: P[_]) = P[LockPath](
+  def quotedLockPath(implicit ctx: P[?]) = P[LockPath](
     quotedString.flatMap(string =>
       LockPath.checked(string) match {
         case Left(problem) => Fail.opaque(problem.toString)
         case Right(name) => Pass(name)
       }))
 
-  def keyValues[A](namedValueParser: => P[(String, A)])(implicit ctx: P[_]) = P[KeyToValue[A]](
+  def keyValues[A](namedValueParser: => P[(String, A)])(implicit ctx: P[?]) = P[KeyToValue[A]](
     commaSequence(namedValueParser).flatMap(namedValues =>
       namedValues.duplicateKeys(_._1) match {
         case Some(dups) => Fail.opaque("unique keywords (duplicates: " + dups.keys.mkString(", ") + ")")
         case None => Pass(KeyToValue(namedValues.toMap))
       }))
 
-  def keyValue[A](name: String, parser: => P[A])(implicit ctx: P[_]): P[(String, A)] =
+  def keyValue[A](name: String, parser: => P[A])(implicit ctx: P[?]): P[(String, A)] =
     keyValueConvert(name, parser)(Checked.apply[A])
 
-  def keyValueConvert[A, B](name: String, parser: => P[A])(toValue: A => Checked[B])(implicit ctx: P[_]) = P[(String, B)](
+  def keyValueConvert[A, B](name: String, parser: => P[A])(toValue: A => Checked[B])(implicit ctx: P[?]) = P[(String, B)](
     w ~ specificKeyValue(name, parser).flatMap(o => checkedToP(toValue(o))).map(name.->))
 
   final case class KeyToValue[A](nameToValue: Map[String, A]) {
-    def apply[A1 <: A](key: String, default: => A1)(implicit ctx: P[_]): P[A1] =
+    def apply[A1 <: A](key: String, default: => A1)(implicit ctx: P[?]): P[A1] =
       Pass(nameToValue.get(key).fold(default)(_.asInstanceOf[A1]))
 
-    def apply[A1 <: A: ClassTag](key: String)(implicit ctx: P[_]): P[A1] =
+    def apply[A1 <: A: ClassTag](key: String)(implicit ctx: P[?]): P[A1] =
       nameToValue.get(key) match {
         case None => Fail.opaque(s"keyword $key=")
         case Some(o) =>
@@ -175,13 +175,13 @@ object BasicParsers
             Pass(o.asInstanceOf[A1])
       }
 
-    def get[A1 <: A](key: String)(implicit ctx: P[_]): P[Option[A1]] =
+    def get[A1 <: A](key: String)(implicit ctx: P[?]): P[Option[A1]] =
       Pass(nameToValue.get(key).map(_.asInstanceOf[A1]))
 
-    def noneOrOneOf[A1 <: A](keys: String*)(implicit ctx: P[_]): P[Option[(String, A1)]] =
+    def noneOrOneOf[A1 <: A](keys: String*)(implicit ctx: P[?]): P[Option[(String, A1)]] =
       noneOrOneOf[A1](keys.toSet)
 
-    def noneOrOneOf[A1 <: A](keys: Set[String])(implicit ctx: P[_]): P[Option[(String, A1)]] = {
+    def noneOrOneOf[A1 <: A](keys: Set[String])(implicit ctx: P[?]): P[Option[(String, A1)]] = {
       val intersection = nameToValue.keySet & keys
       intersection.size match {
         case 0 => Pass(None)
@@ -190,10 +190,10 @@ object BasicParsers
       }
     }
 
-    def oneOf[A1 <: A](keys: String*)(implicit ctx: P[_]): P[(String, A1)] =
+    def oneOf[A1 <: A](keys: String*)(implicit ctx: P[?]): P[(String, A1)] =
       oneOf[A1](keys.toSet)
 
-    def oneOf[A1 <: A](keys: Set[String])(implicit ctx: P[_]): P[(String, A1)] = {
+    def oneOf[A1 <: A](keys: Set[String])(implicit ctx: P[?]): P[(String, A1)] = {
       val intersection = nameToValue.keySet & keys
       intersection.size match {
         // TODO Better messages for empty key (no keyword, positional argument)
@@ -203,7 +203,7 @@ object BasicParsers
       }
     }
 
-    def oneOfOr[A1 <: A](keys: Set[String], default: A1)(implicit ctx: P[_]): P[A1] = {
+    def oneOfOr[A1 <: A](keys: Set[String], default: A1)(implicit ctx: P[?]): P[A1] = {
       val intersection = nameToValue.keySet & keys
       intersection.size match {
         case 0 => Pass(default)
@@ -216,31 +216,31 @@ object BasicParsers
     val empty = KeyToValue[Any](Map.empty)
   }
 
-  def specificKeyValue[V](name: String, valueParser: => P[V])(implicit ctx: P[_]) = P[V] {
+  def specificKeyValue[V](name: String, valueParser: => P[V])(implicit ctx: P[?]) = P[V] {
     def keywordPart = if (name.isEmpty) Pass else keyword(name) ~ w ~ "=" ~/ w
     P(keywordPart ~ valueParser)
   }
 
-  def curly[A](parser: => P[A])(implicit ctx: P[_]) = P[A](
+  def curly[A](parser: => P[A])(implicit ctx: P[?]) = P[A](
     h ~ "{" ~ w ~/ parser ~ w ~ "}")
 
-  def inParentheses[A](parser: => P[A])(implicit ctx: P[_]) = P[A](
+  def inParentheses[A](parser: => P[A])(implicit ctx: P[?]) = P[A](
     h ~ "(" ~ w ~/ parser ~ w ~ ")")
 
-  def bracketCommaSequence[A](parser: => P[A])(implicit ctx: P[_]) = P[Seq[A]](
+  def bracketCommaSequence[A](parser: => P[A])(implicit ctx: P[?]) = P[Seq[A]](
     "[" ~ w ~/ commaSequence(parser) ~ w ~ "]")
 
-  def commaSequence[A](parser: => P[A])(implicit ctx: P[_]) = P[Seq[A]](
+  def commaSequence[A](parser: => P[A])(implicit ctx: P[?]) = P[Seq[A]](
     nonEmptyCommaSequence(parser).?.map(_ getOrElse Nil))
 
-  def nonEmptyCommaSequence[A](parser: => P[A])(implicit ctx: P[_]) = P[Seq[A]](
+  def nonEmptyCommaSequence[A](parser: => P[A])(implicit ctx: P[?]) = P[Seq[A]](
     parser ~ (comma ~/ parser).rep map {
       case (head, tail) => head +: tail
     })
 
-  def leftRecurse[A, O](initial: A, operator: => P[O], operand: => P[A])(operation: (A, O, A) => P[A])(implicit ctx: P[_]): P[A] = {
+  def leftRecurse[A, O](initial: A, operator: => P[O], operand: => P[A])(operation: (A, O, A) => P[A])(implicit ctx: P[?]): P[A] = {
     // Separate function variable to work around a crash (fastparse 2.1.0)
-    def more(implicit ctx: P[_]) = (w ~ operator ~ w ~/ operand).rep
+    def more(implicit ctx: P[?]) = (w ~ operator ~ w ~/ operand).rep
     more.flatMap { tail =>
       def loop(left: A, tail: List[(O, A)]): P[A] =
         tail match {
@@ -253,11 +253,11 @@ object BasicParsers
     }
   }
 
-  def valid[A](a: A)(implicit ctx: P[_]): P[A] = checkedToP(Right(a))
+  def valid[A](a: A)(implicit ctx: P[?]): P[A] = checkedToP(Right(a))
 
   def invalid[x: P](message: String): P[Nothing] = checkedToP(Problem.pure(message))
 
-  def checkedToP[A](checked: Checked[A])(implicit ctx: P[_]): P[A] =
+  def checkedToP[A](checked: Checked[A])(implicit ctx: P[?]): P[A] =
     checked match {
       case Right(a) => Pass(a)
       case Left(problem) => Fail.opaque(problem.toString)

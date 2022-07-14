@@ -1,6 +1,6 @@
 package js7.data_for_java.vavr
 
-import io.vavr.control.{Either => VEither}
+import io.vavr.control.Either as VEither
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit.SECONDS
 import javax.annotation.Nonnull

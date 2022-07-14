@@ -20,7 +20,7 @@ final class EventRequestTest extends AnyFreeSpec {
           "tornOlder" -> "10",
           "after" -> "3"))
     assert(EventRequest[Event](
-      Set[Class[_ <: Event]](classOf[AEvent], classOf[BEvent]),
+      Set[Class[? <: Event]](classOf[AEvent], classOf[BEvent]),
       after = EventId(3),
       timeout = Some(0.s),
       limit = Int.MaxValue)

@@ -100,7 +100,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
 
   def orderIsLocal(orderId: OrderId): Boolean =
     orderToSubagent.toMap.get(orderId)
-      .exists(_.isInstanceOf[LocalSubagentDriver[_]])
+      .exists(_.isInstanceOf[LocalSubagentDriver[?]])
 
   def processOrder(
     order: Order[Order.IsFreshOrReady],
@@ -331,7 +331,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
         .logWhenItTakesLonger("SubagentKeeper.initialized?")
         .flatMap(initialized =>
           stateVar.get.idToDriver.get(subagentItem.id) match {
-            case Some(_: LocalSubagentDriver[_]) =>
+            case Some(_: LocalSubagentDriver[?]) =>
               stateVar
                 .updateChecked(state => Task(
                   state.disable(subagentItem.id, subagentItem.disabled)))
@@ -382,7 +382,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
                 .startAndForget
                 .as(Right(None)))
 
-          case Some((None, newDriver: LocalSubagentDriver[_])) =>
+          case Some((None, newDriver: LocalSubagentDriver[?])) =>
             coupleLocalSubagent
               .as(Right(Some(newDriver)))
 

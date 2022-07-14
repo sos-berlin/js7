@@ -7,7 +7,7 @@ import akka.http.scaladsl.model.{AttributeKey, AttributeKeys, HttpEntity, HttpHe
 import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.{Directive0, Route}
 import com.typesafe.config.Config
-import io.circe.parser.{parse => parseJson}
+import io.circe.parser.parse as parseJson
 import java.lang.System.nanoTime
 import js7.base.auth.SessionToken
 import js7.base.configutils.Configs.*

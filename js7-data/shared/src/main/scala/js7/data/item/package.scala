@@ -5,9 +5,9 @@ package js7.data
   */
 package object item
 {
-  type VersionedItemId_ = VersionedItemId[_ <: VersionedItemPath]
+  type VersionedItemId_ = VersionedItemId[? <: VersionedItemPath]
 
   type InventoryItemDiff_ = InventoryItemDiff[InventoryItemPath, InventoryItem]
 
-  type VersionedControlId_ = UnsignedVersionedItemId[_ <: VersionedControlPath]
+  type VersionedControlId_ = UnsignedVersionedItemId[? <: VersionedControlPath]
 }

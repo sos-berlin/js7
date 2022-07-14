@@ -23,7 +23,7 @@ trait SimpleItem extends InventoryItem
 
 object SimpleItem
 {
-  type Companion_ = Companion[_ <: SimpleItem]
+  type Companion_ = Companion[? <: SimpleItem]
 
   trait Companion[A <: SimpleItem] extends InventoryItem.Companion[A]
   {

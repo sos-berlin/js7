@@ -49,7 +49,7 @@ object TearableEventSeq {
 sealed trait EventSeq[+M[_], +E] extends TearableEventSeq[M, E]
 
 object EventSeq {
-  final case class NonEmpty[M[_] <: IterableOnce[_], E](stamped: M[Stamped[E]])
+  final case class NonEmpty[M[_] <: IterableOnce[?], E](stamped: M[Stamped[E]])
   extends EventSeq[M, E] {
     assertThat(stamped.knownSize != 0)
 

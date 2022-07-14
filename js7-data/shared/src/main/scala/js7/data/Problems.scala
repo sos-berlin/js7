@@ -75,7 +75,7 @@ object Problems
     def arguments = Map("path" -> path.toString)
   }
 
-  final case class ItemVersionDoesNotMatchProblem(versionId: VersionId, itemId: VersionedItemId[_ <: VersionedItemPath]) extends Problem.Coded {
+  final case class ItemVersionDoesNotMatchProblem(versionId: VersionId, itemId: VersionedItemId[? <: VersionedItemPath]) extends Problem.Coded {
     def arguments = Map("versionId" -> versionId.string, "id" -> itemId.toString)
   }
 

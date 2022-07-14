@@ -115,6 +115,6 @@ private[state] object StateJournalingActor
       persistPromise, persistLaterPromise)
     }
 
-  //private final class IllegalStateChangeWhilePersistingException(stamped: Stamped[KeyedEvent[_]], problem: Problem)
+  //private final class IllegalStateChangeWhilePersistingException(stamped: Stamped[KeyedEvent[?]], problem: Problem)
   //extends RuntimeException(s"Application of event failed after persisted: $stamped: $problem")
 }

@@ -121,7 +121,7 @@ object IdToUser
                   Option(value.get("distinguished-names"))
                     .view
                     .flatMap(_.unwrapped match {
-                      case list: java.util.List[_] =>
+                      case list: java.util.List[?] =>
                         list.asScala.flatMap {
                           case o: String =>
                             DistinguishedName.checked(o)

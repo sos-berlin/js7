@@ -9,10 +9,10 @@ import js7.base.problem.{Checked, Problem}
 object Parsers
 {
   /** Parses the whole string, return a `Checked`. */
-  def checkedParse[T, V, R](string: String, parser: P[_] => P[T])
-    (implicit whitespace: P[_] => P[Unit])
+  def checkedParse[T, V, R](string: String, parser: P[?] => P[T])
+    (implicit whitespace: P[?] => P[Unit])
   : Checked[T] = {
-    def complete(implicit ctx: P[_]): P[T] = parser(ctx) ~ End
+    def complete(implicit ctx: P[?]): P[T] = parser(ctx) ~ End
     parse(string, complete(_)) match {
       case Parsed.Success(expr, _) => Right(expr)
       case o: Parsed.Failure => Left(Problem.pure(o.trace().msg))

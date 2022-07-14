@@ -1,6 +1,6 @@
 package js7.base.log
 
-import org.slf4j.{Marker, Logger => Slf4jLogger}
+import org.slf4j.{Marker, Logger as Slf4jLogger}
 
 /**
   * @author Joacim Zschimmer

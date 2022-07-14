@@ -30,7 +30,7 @@ final case class ClientAttachments[D <: DelegateId: ClassTag](
 
   def applyEvent(event: ItemAttachedStateEvent): Checked[ClientAttachments[D]] = {
     val delegateId = cast[D](event.delegateId)
-    import event.{attachedState, key => itemKey}
+    import event.{attachedState, key as itemKey}
     attachedState match {
       case attachedState: NotDetached =>
         Right(copy(

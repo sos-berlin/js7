@@ -51,7 +51,7 @@ extends AutoCloseable
     Resource.make(
       repeatWhileIOException(options, Task {
         logger.debug(s"register watchService $kinds, ${highSensitivity.mkString(",")} $directory")
-        directory.register(watchService, kinds.toArray: Array[WatchEvent.Kind[_]], highSensitivity: _*)
+        directory.register(watchService, kinds.toArray: Array[WatchEvent.Kind[?]], highSensitivity: _*)
       })
     )(release = watchKey => Task {
       logger.debug(s"watchKey.cancel() $directory")
@@ -118,7 +118,7 @@ object BasicDirectoryWatcher
           directoryWatcher.stop(
             canceled = exitCase == ExitCase.Canceled))
 
-  //private implicit val watchEventShow: Show[WatchEvent[_]] = e =>
+  //private implicit val watchEventShow: Show[WatchEvent[?]] = e =>
   //  s"${e.kind.name} ${e.count}× ${e.context}"
 
   def repeatWhileIOException[A](options: WatchOptions, task: Task[A]): Task[A] =

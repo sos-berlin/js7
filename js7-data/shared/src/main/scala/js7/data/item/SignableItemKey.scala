@@ -5,12 +5,12 @@ import js7.data.item.InventoryItemKey.Companion
 
 trait SignableItemKey extends InventoryItemKey
 {
-  def companion: Companion[_ <: SignableItemKey]
+  def companion: Companion[? <: SignableItemKey]
 }
 
 object SignableItemKey
 {
-  type Companion_ = Companion[_ <: SignableItemKey]
+  type Companion_ = Companion[? <: SignableItemKey]
 
   trait Companion[A <: SignableItemKey] extends InventoryItemKey.Companion[A]
 

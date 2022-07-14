@@ -43,7 +43,7 @@ trait InventoryItem
 
 object InventoryItem
 {
-  type Companion_ = Companion[_ <: InventoryItem]
+  type Companion_ = Companion[? <: InventoryItem]
 
   trait Companion[A <: InventoryItem]
   {

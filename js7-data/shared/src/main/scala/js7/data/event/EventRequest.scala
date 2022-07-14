@@ -14,7 +14,7 @@ import scala.reflect.ClassTag
   * @author Joacim Zschimmer
   */
 final case class EventRequest[E <: Event](
-  eventClasses: Set[Class[_ <: E]],
+  eventClasses: Set[Class[? <: E]],
   after: EventId,
   timeout: Option[FiniteDuration],
   delay: FiniteDuration = DefaultDelay,
@@ -35,7 +35,7 @@ final case class EventRequest[E <: Event](
     builder.result()
   }
 
-  def matchesClass(clazz: Class[_ <: Event]): Boolean =
+  def matchesClass(clazz: Class[? <: Event]): Boolean =
     eventClasses.exists(_ isAssignableFrom clazz)
 
   @TestOnly

@@ -9,7 +9,7 @@ trait UnsignedSimpleItem extends SimpleItem with UnsignedItem
 
 object UnsignedSimpleItem
 {
-  type Companion_ = Companion[_ <: UnsignedSimpleItem]
+  type Companion_ = Companion[? <: UnsignedSimpleItem]
 
   trait Companion[A <: UnsignedSimpleItem]
   extends SimpleItem.Companion[A]

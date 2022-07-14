@@ -1,6 +1,6 @@
 package js7.launcher.forjava.internal
 
-import io.vavr.control.{Either => VEither}
+import io.vavr.control.Either as VEither
 import java.io.IOException
 import java.util.concurrent.{CompletableFuture, CompletionStage}
 import javax.annotation.Nonnull

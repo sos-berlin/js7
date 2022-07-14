@@ -6,7 +6,7 @@ trait DelegateId extends SimpleItemPath
 
 object DelegateId
 {
-  type Companion_ = Companion[_ <: DelegateId]
+  type Companion_ = Companion[? <: DelegateId]
 
   trait Companion[A <: DelegateId]
   extends SimpleItemPath.Companion[A]

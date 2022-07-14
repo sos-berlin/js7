@@ -51,8 +51,8 @@ private[guice] object Lings {
     m.typeArguments match {
       case Nil => toWrapper(m.runtimeClass)
       case args => m.runtimeClass match {
-        case c: Class[_] if c.getEnclosingClass == null => Types.newParameterizedType(c, args.map(typeOf(_)): _*)
-        case c: Class[_] => Types.newParameterizedTypeWithOwner(c.getEnclosingClass, c, args.map(typeOf(_)): _*)
+        case c: Class[?] if c.getEnclosingClass == null => Types.newParameterizedType(c, args.map(typeOf(_)): _*)
+        case c: Class[?] => Types.newParameterizedTypeWithOwner(c.getEnclosingClass, c, args.map(typeOf(_)): _*)
       }
     }
   }

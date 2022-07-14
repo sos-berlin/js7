@@ -3,7 +3,7 @@ package js7.controller.web.controller.api
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.HttpMethods.GET
 import akka.http.scaladsl.model.headers.{Accept, `Cache-Control`}
-import akka.http.scaladsl.model.{HttpEntity, HttpHeader, HttpRequest, HttpResponse, headers, Uri => AkkaUri}
+import akka.http.scaladsl.model.{HttpEntity, HttpHeader, HttpRequest, HttpResponse, headers, Uri as AkkaUri}
 import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route
 import js7.agent.client.AgentClient
@@ -88,11 +88,11 @@ trait AgentProxyRoute extends ControllerRouteProvider
 }
 
 object AgentProxyRoute {
-  private val isForwardableHeaderClass = Set[Class[_ <: HttpHeader]](
+  private val isForwardableHeaderClass = Set[Class[? <: HttpHeader]](
     classOf[Accept],
     classOf[`Cache-Control`])
 
-  private val IsIgnoredAgentHeader: Set[Class[_ <: HttpHeader]] = Set(
+  private val IsIgnoredAgentHeader: Set[Class[? <: HttpHeader]] = Set(
     //classOf[headers.Server],
     //classOf[headers.Date],
     classOf[headers.`Cache-Control`])

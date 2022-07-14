@@ -54,6 +54,6 @@ object KeyedEvent {
       event <- cursor.as[E]
     } yield KeyedEvent(key, event)
 
-  def typedJsonCodec[E <: Event: ClassTag](subtypes: KeyedEventTypedJsonCodec.KeyedSubtype[_ <: E]*) =
+  def typedJsonCodec[E <: Event: ClassTag](subtypes: KeyedEventTypedJsonCodec.KeyedSubtype[? <: E]*) =
     KeyedEventTypedJsonCodec[E](subtypes: _*)
 }

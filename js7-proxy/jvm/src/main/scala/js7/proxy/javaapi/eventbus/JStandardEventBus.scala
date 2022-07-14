@@ -27,7 +27,7 @@ extends JavaWrapper with AutoCloseable
 
   @javaApi @Nonnull
   def subscribe[E1 <: E](
-    @Nonnull eventClasses: java.lang.Iterable[Class[_ <: E1]],
+    @Nonnull eventClasses: java.lang.Iterable[Class[? <: E1]],
     @Nonnull callback: java.util.function.Consumer[E1])
   : EventSubscription = {
     val subscription = newSubscription(eventClasses, callback)
@@ -37,7 +37,7 @@ extends JavaWrapper with AutoCloseable
 
   @javaApi @Nonnull
   def newSubscription[E1 <: E](
-    @Nonnull eventClasses: java.lang.Iterable[Class[_ <: E1]],
+    @Nonnull eventClasses: java.lang.Iterable[Class[? <: E1]],
     @Nonnull callback: java.util.function.Consumer[E1])
   : EventSubscription = {
     requireNonNull(callback)

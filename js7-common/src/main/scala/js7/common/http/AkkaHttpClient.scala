@@ -8,7 +8,7 @@ import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, GatewayTimeout, Unauthorized}
 import akka.http.scaladsl.model.headers.CacheDirectives.{`no-cache`, `no-store`}
 import akka.http.scaladsl.model.headers.{Accept, ModeledCustomHeader, ModeledCustomHeaderCompanion, `Cache-Control`}
-import akka.http.scaladsl.model.{ContentTypes, ErrorInfo, HttpEntity, HttpHeader, HttpMethod, HttpRequest, HttpResponse, RequestEntity, StatusCode, Uri => AkkaUri}
+import akka.http.scaladsl.model.{ContentTypes, ErrorInfo, HttpEntity, HttpHeader, HttpMethod, HttpRequest, HttpResponse, RequestEntity, StatusCode, Uri as AkkaUri}
 import akka.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, Unmarshal}
 import akka.http.scaladsl.{ConnectionContext, Http}
 import akka.stream.Materializer

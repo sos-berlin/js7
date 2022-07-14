@@ -259,7 +259,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff: TypeTag](
         case state =>
           Left(Problem.pure("Switchover is possible only for the active and coupled cluster node," +
             s" but cluster state is: $state"))
-      } .map(_.map { case (_: Seq[Stamped[_]], _) =>
+      } .map(_.map { case (_: Seq[Stamped[?]], _) =>
           noMoreJournaling = true
           Completed
         }))
@@ -271,7 +271,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff: TypeTag](
           Right(Some(ClusterActiveNodeShutDown))
         case _ =>
           Right(None)
-      } .map(_.map { case (_: (Seq[Stamped[_]], _)) =>
+      } .map(_.map { case (_: (Seq[Stamped[?]], _)) =>
         noMoreJournaling = true
         Completed
       }))

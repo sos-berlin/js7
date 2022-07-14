@@ -1,6 +1,6 @@
 package js7.common.http
 
-import akka.http.scaladsl.model.{Uri => AkkaUri}
+import akka.http.scaladsl.model.{Uri as AkkaUri}
 import js7.base.web.Uri
 import js7.common.http.AkkaHttpUtils.*
 import org.scalatest.freespec.AnyFreeSpec

@@ -59,7 +59,7 @@ final class FuturesTest extends AnyFreeSpec
       assert(Await.result(future, 9.s) == "x")
     }.toString)
     val future = namedThreadFuture("FuturesTest") { sys.error("TEST-ERROR") }
-    assert(Await.ready(future, 9.s).value.get.asInstanceOf[Failure[_]].exception.getMessage contains "TEST-ERROR")
+    assert(Await.ready(future, 9.s).value.get.asInstanceOf[Failure[?]].exception.getMessage contains "TEST-ERROR")
   }
 
   "promiseFuture" in {

@@ -10,7 +10,7 @@ import scala.math.Ordering.*
 
 trait InventoryItemKey
 {
-  def companion: Companion[_ <: InventoryItemKey]
+  def companion: Companion[? <: InventoryItemKey]
 
   def path: InventoryItemPath
 
@@ -30,7 +30,7 @@ object InventoryItemKey
       case o => o
     }
 
-  type Companion_ = Companion[_ <: InventoryItemKey]
+  type Companion_ = Companion[? <: InventoryItemKey]
 
   trait Companion[A <: InventoryItemKey]
   {

@@ -18,7 +18,7 @@ trait InventoryItemState
 
 object InventoryItemState
 {
-  type AnyCompanion = Companion[_ <: InventoryItemState]
+  type AnyCompanion = Companion[? <: InventoryItemState]
 
   trait Companion[A <: InventoryItemState] {
     type Key <: InventoryItemKey

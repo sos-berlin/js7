@@ -1,7 +1,7 @@
 package js7.agent.data.web
 
 import akka.http.scaladsl.model.Uri.{Path, Query}
-import akka.http.scaladsl.model.{Uri => AkkaUri}
+import akka.http.scaladsl.model.Uri as AkkaUri
 import js7.agent.data.web.AgentUris.*
 import js7.base.web.Uri
 import js7.data.event.{Event, EventRequest}

@@ -1,6 +1,6 @@
 package js7.launcher.forjava.internal
 
-import io.vavr.control.{Either => VEither}
+import io.vavr.control.Either as VEither
 import java.util.Optional
 import javax.annotation.Nonnull
 import js7.base.problem.Problem

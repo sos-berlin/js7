@@ -1,9 +1,9 @@
 package js7.data_for_java.controller
 
-import io.vavr.control.{Either => VEither}
+import io.vavr.control.Either as VEither
 import java.time.Instant
 import java.util.Collections.emptySet
-import java.util.{Map => JMap, Optional => JOptional, Set => JSet}
+import java.util.{Map as JMap, Optional as JOptional, Set as JSet}
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.circeutils.CirceUtils.RichJson
@@ -261,12 +261,12 @@ extends JJournaledState[JControllerState, ControllerState]
     _.workflowId.versionId == asScala.repo.currentVersionId
 
   @Nonnull
-  def orderStateToCount(): JMap[Class[_ <: Order.State], java.lang.Integer] =
+  def orderStateToCount(): JMap[Class[? <: Order.State], java.lang.Integer] =
     orderStateToCount(any)
 
   @Nonnull
   def orderStateToCount(@Nonnull predicate: Order[Order.State] => Boolean)
-  : JMap[Class[_ <: Order.State], java.lang.Integer] =
+  : JMap[Class[? <: Order.State], java.lang.Integer] =
     asScala.idToOrder.values.view
       .filter(predicate)
       .groupBy(_.state.getClass)

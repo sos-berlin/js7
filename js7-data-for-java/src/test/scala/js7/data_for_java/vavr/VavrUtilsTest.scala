@@ -1,6 +1,6 @@
 package js7.data_for_java.vavr
 
-import io.vavr.control.{Either => VEither}
+import io.vavr.control.Either as VEither
 import js7.base.problem.{Problem, ProblemException}
 import js7.data_for_java.vavr.VavrUtils.getOrThrow
 import org.scalatest.freespec.AnyFreeSpec

@@ -4,7 +4,7 @@ import akka.http.scaladsl.coding.Coder
 import akka.http.scaladsl.coding.Coders.{Deflate, Gzip, NoCoding}
 import akka.http.scaladsl.model.headers.HttpEncodings.gzip
 import akka.http.scaladsl.model.headers.{HttpEncoding, HttpEncodings, `Accept-Encoding`}
-import akka.http.scaladsl.model.{HttpEntity, HttpRequest, HttpResponse, Uri => AkkaUri}
+import akka.http.scaladsl.model.{HttpEntity, HttpRequest, HttpResponse, Uri as AkkaUri}
 import akka.stream.Materializer
 import akka.util.ByteString
 import js7.base.monixutils.MonixBase.syntax.*

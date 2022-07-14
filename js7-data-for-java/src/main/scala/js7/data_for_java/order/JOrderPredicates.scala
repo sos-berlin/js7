@@ -42,7 +42,7 @@ object JOrderPredicates
   }
 
   @Nonnull
-  def byOrderState(@Nonnull stateClass: Class[_ <: Order.State]): Predicate = {
+  def byOrderState(@Nonnull stateClass: Class[? <: Order.State]): Predicate = {
     requireNonNull(stateClass)
     order => stateClass isAssignableFrom order.state.getClass
   }
@@ -50,7 +50,7 @@ object JOrderPredicates
   @Nonnull
   def byOrderObstacleClass(
     state: JControllerState,
-    @Nonnull obstacleClass: Class[_ <: JOrderObstacle],
+    @Nonnull obstacleClass: Class[? <: JOrderObstacle],
     now: Instant)
   : Predicate = {
     val cls = JOrderObstacle.toScalaClass(obstacleClass)

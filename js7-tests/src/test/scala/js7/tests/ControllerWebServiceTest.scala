@@ -4,7 +4,7 @@ import akka.http.scaladsl.model.ContentTypes.`text/plain(UTF-8)`
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, NotFound, OK}
 import akka.http.scaladsl.model.headers.{Accept, Location, RawHeader}
-import akka.http.scaladsl.model.{HttpEntity, HttpHeader, Uri => AkkaUri}
+import akka.http.scaladsl.model.{HttpEntity, HttpHeader, Uri as AkkaUri}
 import com.google.inject.{AbstractModule, Provides}
 import io.circe.syntax.EncoderOps
 import io.circe.{Json, JsonObject}
@@ -14,7 +14,7 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.crypt.silly.{SillySignature, SillySigner}
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.RichPath
-import js7.base.io.process.Processes.{ShellFileExtension => sh}
+import js7.base.io.process.Processes.{ShellFileExtension as sh}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.problem.Problems.UnknownKeyProblem

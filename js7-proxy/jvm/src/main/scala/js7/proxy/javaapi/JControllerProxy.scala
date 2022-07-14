@@ -1,6 +1,6 @@
 package js7.proxy.javaapi
 
-import io.vavr.control.{Either => VEither}
+import io.vavr.control.Either as VEither
 import java.util.Objects.requireNonNull
 import java.util.concurrent.CompletableFuture
 import javax.annotation.Nonnull

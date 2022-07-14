@@ -1,6 +1,6 @@
 package js7.common.akkahttp.web.session
 
-import js7.base.auth.{User => User_}
+import js7.base.auth.User as User_
 import monix.execution.atomic.AtomicAny
 
 /**

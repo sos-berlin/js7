@@ -28,7 +28,7 @@ final class ClassEventBusTest extends AsyncFreeSpec
   }
 
   "oneShot" in {
-    val events = mutable.Buffer.empty[Event[_ <: Classifier]]
+    val events = mutable.Buffer.empty[Event[? <: Classifier]]
     val eventBus = new TestEventBus
     eventBus.oneShot[BClassifier]((event: Event[BClassifier]) => events += event)
     eventBus.publish(Event(AClassifier("1"), "IGNORE"))
@@ -93,7 +93,7 @@ private object ClassEventBusTest
     protected def classifierSuperclass = classOf[ClassEventBusTest.this.Classifier]
 
     protected def classify(event: Event[Classifier]) =
-      event.classifier.getClass.asInstanceOf[Class[_ <: Classifier]]
+      event.classifier.getClass.asInstanceOf[Class[? <: Classifier]]
   }
   private case class Event[+C <: Classifier](classifier: C, more: String = "")
   private sealed trait Classifier

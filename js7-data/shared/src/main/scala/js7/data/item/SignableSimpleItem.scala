@@ -11,7 +11,7 @@ trait SignableSimpleItem extends SimpleItem with SignableItem
 
 object SignableSimpleItem
 {
-  type Companion_ = Companion[_ <: SignableSimpleItem]
+  type Companion_ = Companion[? <: SignableSimpleItem]
 
   trait Companion[A <: SignableSimpleItem]
   extends SimpleItem.Companion[A]

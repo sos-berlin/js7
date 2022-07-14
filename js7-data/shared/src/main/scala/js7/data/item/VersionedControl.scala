@@ -14,7 +14,7 @@ trait VersionedControl extends UnsignedItem
 
 object VersionedControl
 {
-  type Companion_ = Companion[_ <: VersionedControl]
+  type Companion_ = Companion[? <: VersionedControl]
 
   trait Companion[A <: VersionedControl] extends UnsignedItem.Companion[A]
   {

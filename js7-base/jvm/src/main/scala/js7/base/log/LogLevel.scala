@@ -1,6 +1,6 @@
 package js7.base.log
 
-import com.typesafe.scalalogging.{Logger => ScalaLogger}
+import com.typesafe.scalalogging.Logger as ScalaLogger
 import js7.base.convert.As
 import org.slf4j
 import org.slf4j.Marker

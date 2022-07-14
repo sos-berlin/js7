@@ -1,6 +1,6 @@
 package js7.tests
 
-import js7.base.io.process.Processes.{ShellFileExtension => sh}
+import js7.base.io.process.Processes.{ShellFileExtension as sh}
 import js7.base.io.process.ReturnCode
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem

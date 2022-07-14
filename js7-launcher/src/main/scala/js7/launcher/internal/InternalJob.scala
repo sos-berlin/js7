@@ -40,7 +40,7 @@ trait InternalJob
 object InternalJob
 {
   final case class JobContext(
-    implementationClass: Class[_],
+    implementationClass: Class[?],
     executable: InternalExecutable,
     jobArguments: NamedValues,
     jobConf: JobConf,

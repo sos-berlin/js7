@@ -18,7 +18,7 @@ object JournaledProxyObservableTester
     {
       def awaitEvent[E <: Event: ClassTag](
         predicate: EventAndState[E, S] => Boolean = (_: EventAndState[E, S]) => true)
-        (body: Task[_])
+        (body: Task[?])
         (implicit s: Scheduler)
       : Task[EventAndState[E, S]] =
         JournaledProxyObservableTester.this.awaitEvent(underlying, predicate)(body)
@@ -28,7 +28,7 @@ object JournaledProxyObservableTester
   private def awaitEvent[E <: Event: ClassTag, S <: SnapshotableState[S]](
     proxy: JournaledProxy[S],
     predicate: EventAndState[E, S] => Boolean = (_: EventAndState[E, S]) => true)
-    (body: Task[_])
+    (body: Task[?])
     (implicit s: Scheduler)
   : Task[EventAndState[E, S]] = {
     // The observing promise tries to avoid the race condition between start of observable and body.

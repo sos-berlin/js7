@@ -194,7 +194,7 @@ object FileUtils
 
   def withTemporaryFile[A](body: Path => A): A = withTemporaryFile(prefix = "", suffix = ".tmp")(body)
 
-  def withTemporaryFile[A](prefix: String, suffix: String, attributes: FileAttribute[_]*)(body: Path => A): A =
+  def withTemporaryFile[A](prefix: String, suffix: String, attributes: FileAttribute[?]*)(body: Path => A): A =
     autoDeleting(Files.createTempFile(prefix, suffix, attributes: _*))(body)
 
   def autoDeleting[A](file: Path)(body: Path => A): A =

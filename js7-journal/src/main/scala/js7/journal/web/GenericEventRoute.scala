@@ -71,7 +71,7 @@ trait GenericEventRoute extends RouteProvider
 
     protected def isRelevantEvent(keyedEvent: KeyedEvent[Event]) = true
 
-    protected def defaultReturnType: Option[Class[_ <: Event]] = Some(classOf[Event])
+    protected def defaultReturnType: Option[Class[? <: Event]] = Some(classOf[Event])
 
     protected def filterObservable: StampedEventFilter =
       identity

@@ -1,6 +1,6 @@
 package js7.data_for_java.workflow
 
-import io.vavr.control.{Either => VEither}
+import io.vavr.control.Either as VEither
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.problem.Problem

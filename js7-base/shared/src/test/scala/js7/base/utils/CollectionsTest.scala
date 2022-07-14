@@ -197,7 +197,7 @@ final class CollectionsTest extends AnyFreeSpec
     emptyToNone(null: String) shouldEqual None
     emptyToNone("x") shouldEqual Some("x")
     emptyToNone(Nil) shouldEqual None
-    emptyToNone(null: Iterable[_]) shouldEqual None
+    emptyToNone(null: Iterable[?]) shouldEqual None
     emptyToNone(List(1)) shouldEqual Some(List(1))
     emptyToNone(Array.empty[Int]) shouldEqual None
     emptyToNone(null: Array[Int]) shouldEqual None

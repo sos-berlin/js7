@@ -2,7 +2,7 @@ package js7.data_for_java.orderwatch
 
 import cats.instances.option.*
 import cats.syntax.traverse.*
-import io.vavr.control.{Either => VEither}
+import io.vavr.control.Either as VEither
 import java.nio.file.Path
 import java.util.Optional
 import java.util.regex.Pattern

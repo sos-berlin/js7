@@ -9,12 +9,12 @@ object Classes
   def superclassesOf[A <: U, U](cls: Class[A], upperClass: Class[U]): Set[Class[_ >: A <: U]] =
     superOf(cls, upperClass).asInstanceOf[Set[Class[_ >: A <: U]]]
 
-  private def superOf[U](cls: Class[_], upperClass: Class[U]): Set[Class[_ <: U]] =
+  private def superOf[U](cls: Class[?], upperClass: Class[U]): Set[Class[? <: U]] =
     if (cls == null || !upperClass.isAssignableFrom(cls))
       Set.empty
     else
       (cls.getInterfaces :+ cls.getSuperclass)
         .flatMap(superOf(_, upperClass))
         .toSet ++
-        Set(cls.asInstanceOf[Class[_ <: U]])
+        Set(cls.asInstanceOf[Class[? <: U]])
 }

@@ -11,9 +11,9 @@ import scala.reflect.ClassTag
   * @author Joacim Zschimmer
   */
 final class Subtype[A](
-  val classToEncoder: Map[Class[_], Encoder.AsObject[_ <: A]],
-  val nameToDecoder: Map[String, Decoder[_ <: A]],
-  val nameToClass: Map[String, Class[_ <: A]])
+  val classToEncoder: Map[Class[?], Encoder.AsObject[? <: A]],
+  val nameToDecoder: Map[String, Decoder[? <: A]],
+  val nameToClass: Map[String, Class[? <: A]])
 
 object Subtype {
   /**
@@ -26,7 +26,7 @@ object Subtype {
       typeName[A], implicitly[Encoder.AsObject[A]], implicitly[Decoder[A]])
 
   def apply[A: ClassTag: Encoder.AsObject: Decoder](
-    subclasses: Iterable[Class[_ <: A]] = Nil,
+    subclasses: Iterable[Class[? <: A]] = Nil,
     aliases: Seq[String] = Nil)
   : Subtype[A] =
     make[A](Seq(implicitClass[A]) ++ subclasses, Some(implicitClass[A]),
@@ -82,7 +82,7 @@ object Subtype {
     */
   def named[A: ClassTag: Encoder.AsObject: Decoder](
     typeName: String,
-    subclasses: Iterable[Class[_ <: A]] = Nil,
+    subclasses: Iterable[Class[? <: A]] = Nil,
     aliases: Seq[String] = Nil)
   : Subtype[A] =
     make(
@@ -106,8 +106,8 @@ object Subtype {
     _ => throw new UnsupportedOperationException(s"No Encoder")
 
   private def make[A](
-    encodingClasses: Iterable[Class[_]],
-    decodingSuperclass: Option[Class[_]],
+    encodingClasses: Iterable[Class[?]],
+    decodingSuperclass: Option[Class[?]],
     typeName: String,
     encoder: Encoder.AsObject[A],
     decoder: Decoder[A],
@@ -117,7 +117,7 @@ object Subtype {
     val names = typeName +: aliases
     val myNamesToDecoder = names.map(_ -> decoder).uniqueToMap
     val myNamesToClass = decodingSuperclass.view
-      .flatMap(cls => names.map(_ -> cls.asInstanceOf[Class[_ <: A]]))
+      .flatMap(cls => names.map(_ -> cls.asInstanceOf[Class[? <: A]]))
       .uniqueToMap
     new Subtype[A](
       classToEncoder = encoder match {

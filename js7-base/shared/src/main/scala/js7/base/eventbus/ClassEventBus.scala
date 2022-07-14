@@ -14,7 +14,7 @@ trait ClassEventBus[E] extends EventPublisher[E] with AutoCloseable
 {
   protected type Classifier
   protected type ClassifierToEvent[C <: Classifier] <: E
-  private type Cls = Class[_ <: Classifier]
+  private type Cls = Class[? <: Classifier]
 
   protected def classifierSuperclass: Class[Classifier]
   protected def classify(event: E): Cls

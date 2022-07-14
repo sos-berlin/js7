@@ -1,6 +1,6 @@
 package js7.data_for_java.controller
 
-import io.vavr.control.{Either => VEither}
+import io.vavr.control.Either as VEither
 import java.time.Instant
 import java.util.Objects.requireNonNull
 import java.util.Optional

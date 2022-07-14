@@ -19,7 +19,7 @@ import scala.util.Try
  */
 trait ServerOperatingSystem {
 
-  def secretFileAttributes: Seq[FileAttribute[java.util.Set[_]]]
+  def secretFileAttributes: Seq[FileAttribute[java.util.Set[?]]]
 
   def makeExecutableFilename(name: String): String
 
@@ -73,7 +73,7 @@ object ServerOperatingSystem {
 
   final class Unix private[system] extends ServerOperatingSystem {
     val secretFileAttributes = List(asFileAttribute(PosixFilePermissions fromString "rw-------"))
-      .asInstanceOf[Seq[FileAttribute[java.util.Set[_]]]]
+      .asInstanceOf[Seq[FileAttribute[java.util.Set[?]]]]
 
     def makeExecutableFilename(name: String): String = name
 

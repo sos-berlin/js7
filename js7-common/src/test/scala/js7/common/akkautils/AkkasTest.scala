@@ -70,7 +70,7 @@ final class AkkasTest extends AnyFreeSpec
     try {
       actorSystem.actorOf(Props { new Actor {
         def receive = {
-          case body: Function0[_] => body()
+          case body: Function0[?] => body()
         }
       }})
     }

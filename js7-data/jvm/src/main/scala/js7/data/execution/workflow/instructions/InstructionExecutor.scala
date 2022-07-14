@@ -19,7 +19,7 @@ trait InstructionExecutor
 {
   type Instr <: Instruction
 
-  def instructionClass: Class[_ <: Instr]
+  def instructionClass: Class[? <: Instr]
 
   def toObstacles(order: Order[Order.State], calculator: OrderObstacleCalculator)
   : Checked[Set[OrderObstacle]] =

@@ -4,8 +4,8 @@ import js7.base.utils.Classes.superclassesOf
 
 final class SuperclassCache[U](upperClass: Class[U])
 {
-  val memoizer = Memoizer.nonStrict1[Class[_], Set[Class[_]]](
-    cls => superclassesOf[U, U](cls.asInstanceOf[Class[U]], upperClass).asInstanceOf[Set[Class[_]]]
+  val memoizer = Memoizer.nonStrict1[Class[?], Set[Class[?]]](
+    cls => superclassesOf[U, U](cls.asInstanceOf[Class[U]], upperClass).asInstanceOf[Set[Class[?]]]
   )(showMemoizer)
 
   /** Returns a Set of class, and all superclasses and interfaces below `U`. */
@@ -14,7 +14,7 @@ final class SuperclassCache[U](upperClass: Class[U])
 
   override def toString = memoizer.toString
 
-  private def showMemoizer: Memoizer.Show[Class[_], Set[Class[_]]] =
+  private def showMemoizer: Memoizer.Show[Class[?], Set[Class[?]]] =
     memoizer => {
       val map = memoizer.toMap
       s"SuperclassCache(${map.size} classes) ⏎" +

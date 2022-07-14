@@ -1,8 +1,8 @@
 package js7.launcher.forjava.internal
 
-import io.vavr.control.{Either => VEither}
+import io.vavr.control.Either as VEither
 import java.io.{PrintWriter, Writer}
-import java.util.{Map => JMap}
+import java.util.Map as JMap
 import javax.annotation.Nonnull
 import js7.base.problem.Problem
 import js7.base.utils.Lazy

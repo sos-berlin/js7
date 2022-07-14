@@ -4,7 +4,7 @@ import akka.actor.ActorRef
 import akka.event.{EventBus, SubchannelClassification}
 import akka.util.Subclassification
 import javax.inject.Singleton
-import js7.data.event.{AnyKeyedEvent, Stamped, Event => EngineEvent}
+import js7.data.event.{AnyKeyedEvent, Stamped, Event as EngineEvent}
 
 /**
   * @author Joacim Zschimmer
@@ -13,7 +13,7 @@ import js7.data.event.{AnyKeyedEvent, Stamped, Event => EngineEvent}
 final class StampedKeyedEventBus extends EventBus with SubchannelClassification {
 
   type Event = Stamped[AnyKeyedEvent]
-  type Classifier = Class[_ <: EngineEvent]
+  type Classifier = Class[? <: EngineEvent]
   type Subscriber = ActorRef
 
   protected val subclassification = new Subclassification[Classifier] {

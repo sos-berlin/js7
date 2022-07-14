@@ -32,9 +32,9 @@ object AnyJsonCodecs
       case null => Json.Null
       case v: Map[_, _] => mapToJson(v.asInstanceOf[Map[String, Any]])
       case v: java.util.Map[_, _] => mapToJson(v.asInstanceOf[java.util.Map[String, Any]].asScala.toMap)
-      case v: Array[_] => Json.fromValues(v.map(anyToJson(_, unknownToString)))
-      case v: Iterable[_] => Json.fromValues(v.map(anyToJson(_, unknownToString)))
-      case v: java.lang.Iterable[_] => Json.fromValues(v.asScala.map(anyToJson(_, unknownToString)))
+      case v: Array[?] => Json.fromValues(v.map(anyToJson(_, unknownToString)))
+      case v: Iterable[?] => Json.fromValues(v.map(anyToJson(_, unknownToString)))
+      case v: java.lang.Iterable[?] => Json.fromValues(v.asScala.map(anyToJson(_, unknownToString)))
       case v: Json => v
       case v: BigDecimal => Json.fromBigDecimal(v)
       case v: java.math.BigDecimal => Json.fromBigDecimal(v)
