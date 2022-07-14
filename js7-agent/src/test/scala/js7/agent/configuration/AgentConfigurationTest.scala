@@ -98,7 +98,7 @@ final class AgentConfigurationTest extends AnyFreeSpec
   }
 
   private def dummyDirectoriesConf(args: String*) =
-    conf(List("--config-directory=CONFIG", "--data-directory=DATA") ++ args: _*)
+    conf((List("--config-directory=CONFIG", "--data-directory=DATA") ++ args)*)
 
   private def conf(args: String*) = {
     AgentConfiguration.fromCommandLine(

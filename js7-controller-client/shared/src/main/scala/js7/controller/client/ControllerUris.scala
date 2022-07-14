@@ -80,16 +80,16 @@ final class ControllerUris private(controllerUri: Uri)
       list(None)
 
     def list(eventId: Option[EventId]) =
-      api("/" + encodePath("snapshot", ""), eventId.toList.map("eventId" -> _.toString): _*)
+      api("/" + encodePath("snapshot", ""), eventId.toList.map("eventId" -> _.toString)*)
   }
 
   def api(query: (String, String)*): Uri =
-    api("", query: _*)
+    api("", query*)
 
   def api(path: String, query: (String, String)*): Uri = {
     if (path.nonEmpty && !path.startsWith("/")) throw new IllegalArgumentException("Controller URI path must start with a slash")
     Uri(
-      controller("api" + path).string + encodeQuery(query: _*))
+      controller("api" + path).string + encodeQuery(query*))
   }
 
   def controller(path: String) = Uri(s"$controllerUri$path")

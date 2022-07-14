@@ -49,7 +49,7 @@ final case class JavaResource(classLoader: ClassLoader, path: String)
   def copyToFiles(resourceNames: Iterable[String], directory: Path, copyOptions: CopyOption*): Seq[Path] = {
     val resourcePathAndDllFiles = for (name <- resourceNames) yield (this / name, directory resolve name)
     for ((resourcePath, file) <- resourcePathAndDllFiles) {
-      resourcePath.copyToFile(file, copyOptions: _*)   // After an exception here, already created files are left !!!
+      resourcePath.copyToFile(file, copyOptions*)   // After an exception here, already created files are left !!!
     }
     resourcePathAndDllFiles.toVector.map(_._2)
   }
@@ -66,7 +66,7 @@ final case class JavaResource(classLoader: ClassLoader, path: String)
     */
   def copyToFile(file: Path, copyOptions: CopyOption*): Path = {
     autoClosing(openStream()) { in =>
-      Files.copy(in, file, copyOptions: _*)
+      Files.copy(in, file, copyOptions*)
     }
     file
   }

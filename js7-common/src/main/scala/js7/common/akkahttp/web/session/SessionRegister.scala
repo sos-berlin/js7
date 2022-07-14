@@ -70,7 +70,7 @@ final class SessionRegister[S <: Session] private[session](
     provideSessionTokenFile(user, sessionTokenFile)
       .flatTap(sessionToken => provideFile[Task](headersFile)
         .*>(Resource.eval(Task {
-          createFile(headersFile, operatingSystem.secretFileAttributes: _*)
+          createFile(headersFile, operatingSystem.secretFileAttributes*)
           headersFile := `x-js7-session`.name + ": " + sessionToken.secret.string + "\n"
         })))
   }
@@ -83,7 +83,7 @@ final class SessionRegister[S <: Session] private[session](
     for (checked <- login(user, Some(Js7Version), isEternalSession = true)) yield {
       val sessionToken = checked.orThrow
       deleteIfExists(file)
-      createFile(file, operatingSystem.secretFileAttributes: _*)
+      createFile(file, operatingSystem.secretFileAttributes*)
       file := sessionToken.secret.string
       //logger.info(s"Session token for internal user '${user.id.string}' placed in file $file")
       systemSessionPromise.completeWith(sessionFuture(sessionToken, Right(user)))

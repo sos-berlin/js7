@@ -51,7 +51,7 @@ extends AutoCloseable
     Resource.make(
       repeatWhileIOException(options, Task {
         logger.debug(s"register watchService $kinds, ${highSensitivity.mkString(",")} $directory")
-        directory.register(watchService, kinds.toArray: Array[WatchEvent.Kind[?]], highSensitivity: _*)
+        directory.register(watchService, kinds.toArray: Array[WatchEvent.Kind[?]], highSensitivity*)
       })
     )(release = watchKey => Task {
       logger.debug(s"watchKey.cancel() $directory")

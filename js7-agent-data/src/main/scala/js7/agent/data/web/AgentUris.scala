@@ -20,7 +20,7 @@ final class AgentUris private(agentUri: Uri)
   val command = toUri("api/command")
 
   def controllersEvents[E <: Event](request: EventRequest[E]) =
-    toUri("api/event", Query(request.toQueryParameters: _*))
+    toUri("api/event", Query(request.toQueryParameters*))
 
   def apply(relativeUri: String) = toUri(stripLeadingSlash(relativeUri))
 

@@ -69,7 +69,7 @@ final class HttpsTest extends AnyFreeSpec
     }
 
   private def executeCommand[A](command: Seq[String])(body: InputStream => A): A = {
-    val p = new JavaProcessBuilder(command: _*)
+    val p = new JavaProcessBuilder(command*)
     val process = p.start()
     Future { autoClosing(process.getErrorStream) { stderr => while (stderr.read() != -1) {} } }
     try

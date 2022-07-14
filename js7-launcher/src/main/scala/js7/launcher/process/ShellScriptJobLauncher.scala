@@ -76,7 +76,7 @@ object ShellScriptJobLauncher
   : Checked[Path] =
     Checked.catchNonFatal {
       val ext = if (isWindows) ".cmd" else ".sh"
-      createTempFile(tmpDir, "script-", ext, ShellFileAttributes: _*)
+      createTempFile(tmpDir, "script-", ext, ShellFileAttributes*)
     }.flatMap { file =>
       Checked.catchNonFatal {
         val scrpt = if (isWindows) crRegex.replaceAllIn(script, "\r\n") else script

@@ -51,7 +51,7 @@ final class ConvertibleMultiPartialFunctionTest extends AnyFreeSpec {
 
   private def convertible[K, V](kvs: (K, Seq[V])*) =
     new PartialFunction[K, Seq[V]] with ConvertibleMultiPartialFunction[K, V] {
-      private val m = Map(kvs: _*)
+      private val m = Map(kvs*)
       def isDefinedAt(key: K) = m isDefinedAt key
       def apply(key: K) = m(key)
     }

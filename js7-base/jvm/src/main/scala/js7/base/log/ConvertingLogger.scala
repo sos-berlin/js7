@@ -20,7 +20,7 @@ trait ConvertingLogger extends Slf4jLogger
     delegate.warn(convertFormat(format), arg)
 
   final def warn(format: String, args: AnyRef*) =
-    delegate.warn(convertFormat(format), args: _*)
+    delegate.warn(convertFormat(format), args*)
 
   final def warn(format: String, arg1: Any, arg2: Any) =
     delegate.warn(convertFormat(format), arg1, arg2)
@@ -38,7 +38,7 @@ trait ConvertingLogger extends Slf4jLogger
     delegate.warn(marker, convertFormat(format), arg1, arg2)
 
   final def warn(marker: Marker, format: String, args: AnyRef*) =
-    delegate.warn(marker, convertFormat(format), args: _*)
+    delegate.warn(marker, convertFormat(format), args*)
 
   final def warn(marker: Marker, msg: String, t: Throwable) =
     delegate.warn(marker, convertMessage(msg), t)
@@ -80,7 +80,7 @@ trait ConvertingLogger extends Slf4jLogger
     delegate.error(convertFormat(format), arg1, arg2)
 
   final def error(format: String, args: AnyRef*) =
-    delegate.error(convertFormat(format), args: _*)
+    delegate.error(convertFormat(format), args*)
 
   final def error(msg: String, t: Throwable) =
     delegate.error(convertMessage(msg), t)
@@ -95,7 +95,7 @@ trait ConvertingLogger extends Slf4jLogger
     delegate.error(marker, convertFormat(format), arg1, arg2)
 
   final def error(marker: Marker, format: String, args: AnyRef*) =
-    delegate.error(marker, convertFormat(format), args: _*)
+    delegate.error(marker, convertFormat(format), args*)
 
   final def error(marker: Marker, msg: String, t: Throwable) =
     delegate.error(marker, convertMessage(msg), t)
@@ -110,7 +110,7 @@ trait ConvertingLogger extends Slf4jLogger
     delegate.debug(convertFormat(format), arg1, arg2)
 
   final def debug(format: String, args: AnyRef*) =
-    delegate.debug(convertFormat(format), args: _*)
+    delegate.debug(convertFormat(format), args*)
 
   final def debug(msg: String, t: Throwable) =
     delegate.debug(convertMessage(msg), t)
@@ -125,7 +125,7 @@ trait ConvertingLogger extends Slf4jLogger
     delegate.debug(marker, convertFormat(format), arg1: Any, arg2: Any)
 
   final def debug(marker: Marker, format: String, args: AnyRef*) =
-    delegate.debug(marker, convertFormat(format), args: _*)
+    delegate.debug(marker, convertFormat(format), args*)
 
   final def debug(marker: Marker, msg: String, t: Throwable) =
     delegate.debug(marker, convertMessage(msg), t: Throwable)
@@ -146,7 +146,7 @@ trait ConvertingLogger extends Slf4jLogger
     delegate.trace(convertFormat(format), arg1, arg2)
 
   final def trace(format: String, args: AnyRef*) =
-    delegate.trace(convertFormat(format), args: _*)
+    delegate.trace(convertFormat(format), args*)
 
   final def trace(msg: String, t: Throwable) =
     delegate.trace(convertMessage(msg), t)
@@ -176,7 +176,7 @@ trait ConvertingLogger extends Slf4jLogger
     delegate.info(convertFormat(format), arg1, arg2)
 
   final def info(format: String, args: AnyRef*) =
-    delegate.info(convertFormat(format), args: _*)
+    delegate.info(convertFormat(format), args*)
 
   final def info(msg: String, t: Throwable) =
     delegate.info(convertMessage(msg), t)
@@ -191,7 +191,7 @@ trait ConvertingLogger extends Slf4jLogger
     delegate.info(marker, convertFormat(format), arg1, arg2)
 
   final def info(marker: Marker, format: String, args: AnyRef*) =
-    delegate.info(marker, convertFormat(format), args: _*)
+    delegate.info(marker, convertFormat(format), args*)
 
   final def info(marker: Marker, msg: String, t: Throwable) =
     delegate.info(marker, convertMessage(msg), t)

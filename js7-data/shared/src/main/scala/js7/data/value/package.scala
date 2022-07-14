@@ -11,7 +11,7 @@ package object value
     val empty = Map.empty[String, Value]
 
     def apply(kv: (String, Value)*): NamedValues =
-      Map(kv: _*)
+      Map(kv*)
 
     def rc(number: Int): NamedValues =
       Map("returnCode" -> NumberValue(number))

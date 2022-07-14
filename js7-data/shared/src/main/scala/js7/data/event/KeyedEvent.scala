@@ -55,5 +55,5 @@ object KeyedEvent {
     } yield KeyedEvent(key, event)
 
   def typedJsonCodec[E <: Event: ClassTag](subtypes: KeyedEventTypedJsonCodec.KeyedSubtype[? <: E]*) =
-    KeyedEventTypedJsonCodec[E](subtypes: _*)
+    KeyedEventTypedJsonCodec[E](subtypes*)
 }

@@ -150,7 +150,7 @@ final class FailTest extends AnyFreeSpec with ControllerAgentForScalaTest
       orderId,
       WorkflowParser.parse(workflowId, workflowNotation).orThrow,
       expectedEvents,
-      moreExpectedEvents: _*)
+      moreExpectedEvents*)
 
   private def runUntil[E <: OrderEvent: ClassTag: TypeTag](
     orderId: OrderId,

@@ -96,7 +96,7 @@ trait AkkaWebServer extends AutoCloseable
           ServerSettings(actorSystem)
             .withParserSettings(
               ParserSettings(actorSystem)
-                .withCustomMediaTypes(JsonStreamingSupport.CustomMediaTypes: _*)
+                .withCustomMediaTypes(JsonStreamingSupport.CustomMediaTypes*)
                 .withMaxContentLength(JsonStreamingSupport.JsonObjectMaxSize/*js7.conf ???*/)))
 
       val whenTerminating = Promise[Deadline]()

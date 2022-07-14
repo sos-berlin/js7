@@ -21,11 +21,11 @@ private[process] sealed trait OperatingSystemSpecific {
 
   def shellFileAttributes: Seq[FileAttribute[java.util.Set[?]]]
 
-  def newTemporaryShellFile(name: String) = createTempFile(filenamePrefix(name), shellFileExtension, shellFileAttributes: _*)
+  def newTemporaryShellFile(name: String) = createTempFile(filenamePrefix(name), shellFileExtension, shellFileAttributes*)
 
   def newLogFile(directory: Path, name: String, outerr: StdoutOrStderr) = {
     val file = directory resolve s"$name-$outerr.log"
-    try createFile(file, outputFileAttributes: _*)
+    try createFile(file, outputFileAttributes*)
     catch { case t: FileAlreadyExistsException =>
       logger.debug(t.toString)  // Should rarely happen
     }

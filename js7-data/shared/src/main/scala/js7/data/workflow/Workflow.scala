@@ -531,7 +531,7 @@ with TrivialItemState.Companion[Workflow]
     if (instructions.isEmpty)
       empty
     else
-      of(WorkflowPath.NoId, instructions: _*)
+      of(WorkflowPath.NoId, instructions*)
 
   def of(id: WorkflowId, instructions: Instruction.Labeled*): Workflow =
     Workflow(id, instructions.toVector, jobResourcePaths = Nil)

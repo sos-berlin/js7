@@ -28,7 +28,7 @@ private[provider] trait Observing extends OrderProvider {
   def observe(stop: Task[Unit])(implicit s: Scheduler, iox: IOExecutor): Observable[Completed] = {
     val observables = observeLive ::
       exists(conf.orderGeneratorsDirectory).thenList(observeOrderGenerators)
-    Observable.combineLatestList(observables: _*)
+    Observable.combineLatestList(observables*)
       .takeUntilEval(stop)
       .map((_: Seq[Completed]) => Completed)
   }

@@ -59,20 +59,20 @@ object FileUtils
         if (isDirectory(file))
           copyDirectoryContent(file, destination)
         else
-          copy(file, destination, options: _*)
+          copy(file, destination, options*)
       }
     }
   }
 
   // COMPATIBLE with Java 11 Files.writeString
   def writeString(path: Path, chars: CharSequence, options: OpenOption*): Path =
-    writeString(path, chars, UTF_8, options: _*)
+    writeString(path, chars, UTF_8, options*)
 
   // COMPATIBLE with Java 11 Files.writeString
   def writeString(path: Path, chars: CharSequence, charset: Charset, options: OpenOption*)
   : Path = {
     requireNonNull(chars)
-    autoClosing(new OutputStreamWriter(newOutputStream(path, options: _*), charset)) {
+    autoClosing(new OutputStreamWriter(newOutputStream(path, options*), charset)) {
       _.append(chars)
     }
     path
@@ -126,7 +126,7 @@ object FileUtils
 
       def write(string: String, encoding: Charset = UTF_8, append: Boolean = false): Unit = {
         val options = Vector(CREATE, WRITE, if (append) APPEND else TRUNCATE_EXISTING)
-        writeString(delegate, string, encoding, options: _*)
+        writeString(delegate, string, encoding, options*)
       }
 
       def ++=[B: ByteSequence](byteSeq: B): Unit=
@@ -195,7 +195,7 @@ object FileUtils
   def withTemporaryFile[A](body: Path => A): A = withTemporaryFile(prefix = "", suffix = ".tmp")(body)
 
   def withTemporaryFile[A](prefix: String, suffix: String, attributes: FileAttribute[?]*)(body: Path => A): A =
-    autoDeleting(Files.createTempFile(prefix, suffix, attributes: _*))(body)
+    autoDeleting(Files.createTempFile(prefix, suffix, attributes*))(body)
 
   def autoDeleting[A](file: Path)(body: Path => A): A =
     withCloser { closer =>
@@ -253,7 +253,7 @@ object FileUtils
 
   def nestedPathsIterator(directory: Path, options: FileVisitOption*): AutoCloseable with Iterator[Path] =
     new AbstractIterator[Path] with AutoCloseable {
-      private val javaStream = Files.walk(directory, options: _*)
+      private val javaStream = Files.walk(directory, options*)
       private val underlyingIterator = javaStream.asScala
 
       def close() = javaStream.close()

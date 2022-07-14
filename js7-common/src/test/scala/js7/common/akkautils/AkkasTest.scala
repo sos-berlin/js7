@@ -21,7 +21,7 @@ final class AkkasTest extends AnyFreeSpec
   }
 
   "Big byteStringToTruncatedString" in {
-    val byteString = ByteString.fromInts(0 until 1000: _*)
+    val byteString = ByteString.fromInts((0 until 1000)*)
     val string = byteStringToTruncatedString(byteString)
     assert(string startsWith "1000 bytes 00 01 02 03 04 ")
     assert(string endsWith " ...")

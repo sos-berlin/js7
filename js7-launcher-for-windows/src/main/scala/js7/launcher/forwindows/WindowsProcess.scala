@@ -293,7 +293,7 @@ private[launcher] object WindowsProcess
 
   def execute(executable: Path, args: String*): Vector[String] = {
     logger.debug(executable.toString + args.mkString(" [", ", ", "]"))
-    val process = new ProcessBuilder(executable.toString +: args: _*).redirectErrorStream(true).start()
+    val process = new ProcessBuilder((executable.toString +: args)*).redirectErrorStream(true).start()
     process.getOutputStream.close()  // stdin
     val lines = {
       val commandCodec = new Codec(Charset.forName("cp850"))  // 850 contains all characters of ISO-8859-1

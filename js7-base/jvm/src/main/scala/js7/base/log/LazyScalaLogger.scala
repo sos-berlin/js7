@@ -19,7 +19,7 @@ final class LazyScalaLogger(delegate: Logger) {
     delegate.error(message, t)
 
   def error(message: => String, args: AnyRef*) =
-    delegate.error(message, args: _*)
+    delegate.error(message, args*)
 
   def error(marker: Marker, message: => String) =
     delegate.error(marker, message)
@@ -28,7 +28,7 @@ final class LazyScalaLogger(delegate: Logger) {
     delegate.error(marker, message, t)
 
   def error(marker: Marker, message: String, args: AnyRef*) =
-    delegate.error(marker, message, args: _*)
+    delegate.error(marker, message, args*)
 
 
   def warn(message: => String) =
@@ -38,7 +38,7 @@ final class LazyScalaLogger(delegate: Logger) {
     delegate.warn(message, t)
 
   def warn(message: => String, args: AnyRef*) =
-    delegate.warn(message, args: _*)
+    delegate.warn(message, args*)
 
   def warn(marker: Marker, message: => String) =
     delegate.warn(marker, message)
@@ -47,7 +47,7 @@ final class LazyScalaLogger(delegate: Logger) {
     delegate.warn(marker, message, t)
 
   def warn(marker: Marker, message: String, args: AnyRef*) =
-    delegate.warn(marker, message, args: _*)
+    delegate.warn(marker, message, args*)
 
 
   def info(message: => String) =
@@ -57,7 +57,7 @@ final class LazyScalaLogger(delegate: Logger) {
     delegate.info(message, t)
 
   def info(message: => String, args: AnyRef*) =
-    delegate.info(message, args: _*)
+    delegate.info(message, args*)
 
   def info(marker: Marker, message: => String) =
     delegate.info(marker, message)
@@ -66,7 +66,7 @@ final class LazyScalaLogger(delegate: Logger) {
     delegate.info(marker, message, t)
 
   def info(marker: Marker, message: String, args: AnyRef*) =
-    delegate.info(marker, message, args: _*)
+    delegate.info(marker, message, args*)
 
 
   def debug(message: => String) =
@@ -76,7 +76,7 @@ final class LazyScalaLogger(delegate: Logger) {
     delegate.debug(message, t)
 
   def debug(message: => String, args: AnyRef*) =
-    delegate.debug(message, args: _*)
+    delegate.debug(message, args*)
 
   def debug(marker: Marker, message: => String) =
     delegate.debug(marker, message)
@@ -85,7 +85,7 @@ final class LazyScalaLogger(delegate: Logger) {
     delegate.debug(marker, message, t)
 
   def debug(marker: Marker, message: String, args: AnyRef*) =
-    delegate.debug(marker, message, args: _*)
+    delegate.debug(marker, message, args*)
 
 
   def trace(message: => String) =
@@ -95,7 +95,7 @@ final class LazyScalaLogger(delegate: Logger) {
     delegate.trace(message, t)
 
   def trace(message: => String, args: AnyRef*) =
-    delegate.trace(message, args: _*)
+    delegate.trace(message, args*)
 
   def trace(marker: Marker, message: => String) =
     delegate.trace(marker, message)
@@ -104,7 +104,7 @@ final class LazyScalaLogger(delegate: Logger) {
     delegate.trace(marker, message, t)
 
   def trace(marker: Marker, message: String, args: AnyRef*) =
-    delegate.debug(marker, message, args: _*)
+    delegate.debug(marker, message, args*)
 }
 
 object LazyScalaLogger {

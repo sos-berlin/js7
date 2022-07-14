@@ -74,5 +74,5 @@ object InventoryItem
   }
 
   def jsonCodec(companions: Seq[Companion_]): TypedJsonCodec[InventoryItem] =
-    TypedJsonCodec(companions.map(_.subtype): _*)
+    TypedJsonCodec(companions.map(_.subtype)*)
 }

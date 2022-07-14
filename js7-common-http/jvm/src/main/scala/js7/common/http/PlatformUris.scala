@@ -20,5 +20,5 @@ trait PlatformUris extends Uris {
     if (kvs.isEmpty)
       ""
     else
-      "?" + Uri.Query(kvs.toSeq: _*).toString
+      "?" + Uri.Query(kvs.toSeq*).toString
 }

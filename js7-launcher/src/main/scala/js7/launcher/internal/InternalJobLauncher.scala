@@ -132,7 +132,7 @@ object InternalJobLauncher
         else
           sys.error(s"Unsupported constructor parameter: ${cls.getName}"))  // Should not happen
     try
-      Right(constructor.newInstance(args: _*))
+      Right(constructor.newInstance(args*))
     catch {
       case t @ (_: InvocationTargetException | _: ExceptionInInitializerError) =>
         Left(Problem.fromThrowable(Option(t.getCause) getOrElse t))

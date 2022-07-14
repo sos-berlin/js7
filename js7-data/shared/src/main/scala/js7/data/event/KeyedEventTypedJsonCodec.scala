@@ -102,7 +102,7 @@ object KeyedEventTypedJsonCodec
   : KeyedEventTypedJsonCodec[E] =
     named[E](
       enclosing.value + ": KeyedEventTypedJsonCodec[" + implicitClass[E].shortClassName + "]",
-      subtypes: _*)
+      subtypes*)
 
   def named[E <: Event: ClassTag](name: String, subtypes: KeyedSubtype[? <: E]*)
   : KeyedEventTypedJsonCodec[E] =
