@@ -7,14 +7,14 @@ import java.io.File
 import java.nio.file.Paths
 import java.time.format.DateTimeParseException
 import java.time.{Duration, Instant}
-import js7.base.circeutils.CirceUtils._
-import js7.base.circeutils.JavaJsonCodecs._
-import js7.base.time.ScalaTime._
+import js7.base.circeutils.CirceUtils.*
+import js7.base.circeutils.JavaJsonCodecs.*
+import js7.base.time.ScalaTime.*
 import js7.base.utils.IntelliJUtils.intelliJuseImport
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer

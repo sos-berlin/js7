@@ -2,7 +2,7 @@ package js7.data.workflow.position
 
 import io.circe.{Decoder, DecodingFailure, HCursor, Json}
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import scala.annotation.tailrec
 import scala.collection.mutable
 

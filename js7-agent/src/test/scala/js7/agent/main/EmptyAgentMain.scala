@@ -3,7 +3,7 @@ package js7.agent.main
 import js7.agent.RunningAgent
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.tests.TestAgentDirectoryProvider
-import js7.base.thread.Futures.implicits._
+import js7.base.thread.Futures.implicits.*
 import monix.execution.Scheduler.Implicits.traced
 
 /** For testing only.

@@ -3,20 +3,20 @@ package js7.journal.recover
 import cats.effect.Resource
 import io.circe.Json
 import java.nio.file.Path
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.data.ByteArray
-import js7.base.data.ByteSequence.ops._
+import js7.base.data.ByteSequence.ops.*
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.utils.AutoClosing.closeOnError
 import js7.base.utils.IntelliJUtils.intelliJuseImport
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.jsonseq.{InputStreamJsonSeqReader, PositionAnd}
 import js7.common.utils.untilNoneIterator
 import js7.data.event.JournalSeparators.{Commit, EventHeader, EventHeaderLine, SnapshotFooterLine, SnapshotHeaderLine, Transaction}
 import js7.data.event.{Event, EventId, JournalHeader, JournalId, KeyedEvent, Stamped}
 import js7.journal.data.JournalMeta
-import js7.journal.recover.JournalReader._
+import js7.journal.recover.JournalReader.*
 import monix.eval.Task
 import monix.reactive.Observable
 import scala.annotation.tailrec

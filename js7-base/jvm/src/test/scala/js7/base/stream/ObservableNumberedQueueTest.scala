@@ -1,11 +1,11 @@
 package js7.base.stream
 
 import js7.base.problem.{Problem, ProblemException}
-import js7.base.stream.ObservableNumberedQueueTest._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.stream.ObservableNumberedQueueTest.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable

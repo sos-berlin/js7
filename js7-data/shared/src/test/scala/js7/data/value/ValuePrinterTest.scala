@@ -1,6 +1,6 @@
 package js7.data.value
 
-import fastparse.NoWhitespace._
+import fastparse.NoWhitespace.*
 import fastparse.{End, P}
 import js7.data.parser.Parsers
 import js7.data.value.ValuePrinter.quoteString

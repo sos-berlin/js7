@@ -1,11 +1,11 @@
 package js7.data.execution.workflow.instructions
 
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.{TestWallClock, Timestamp}
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.board.BoardPathExpressionParser.boardPathExpr
 import js7.data.board.{Board, BoardPath, BoardState, Notice, NoticeExpectation, NoticeId, NoticePlace}
-import js7.data.execution.workflow.instructions.PostNoticesExecutorTest._
+import js7.data.execution.workflow.instructions.PostNoticesExecutorTest.*
 import js7.data.order.OrderEvent.{OrderAdded, OrderMoved, OrderNoticePosted, OrderNoticesExpected, OrderNoticesRead, OrderStarted}
 import js7.data.order.OrderId
 import js7.data.state.TestStateView

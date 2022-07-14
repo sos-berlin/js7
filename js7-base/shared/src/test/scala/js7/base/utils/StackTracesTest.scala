@@ -1,7 +1,7 @@
 package js7.base.utils
 
-import js7.base.utils.StackTraces._
-import js7.base.utils.StackTracesTest._
+import js7.base.utils.StackTraces.*
+import js7.base.utils.StackTracesTest.*
 import org.scalatest.freespec.AnyFreeSpec
 import scala.util.Try
 

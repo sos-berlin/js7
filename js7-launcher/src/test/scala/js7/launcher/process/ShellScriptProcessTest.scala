@@ -2,7 +2,7 @@ package js7.launcher.process
 
 import cats.effect.Resource
 import java.io.{BufferedOutputStream, FileOutputStream, OutputStreamWriter}
-import java.nio.file.Files._
+import java.nio.file.Files.*
 import java.nio.file.Path
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.FileUtils.temporaryDirectory
@@ -13,10 +13,10 @@ import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.system.OperatingSystem.{isMac, isSolaris, isUnix, isWindows}
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.Closer.withCloser
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.system.ServerOperatingSystem.KernelSupportsNestedShebang
 import js7.data.job.{CommandLine, TaskId}
 import js7.launcher.StdObservers

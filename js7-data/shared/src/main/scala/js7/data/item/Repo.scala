@@ -1,16 +1,16 @@
 package js7.data.item
 
-import cats.instances.either._
-import cats.syntax.traverse._
+import cats.instances.either.*
+import cats.syntax.traverse.*
 import js7.base.crypt.{GenericSignature, SignatureVerifier, Signed, SignedString}
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.Collections.implicits._
+import js7.base.utils.Collections.implicits.*
 import js7.base.utils.Memoizer
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.Problems.{EventVersionDoesNotMatchProblem, ItemVersionDoesNotMatchProblem, UnknownItemPathProblem, VersionedItemRemovedProblem}
-import js7.data.item.Repo._
+import js7.data.item.Repo.*
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemAddedOrChanged, VersionedItemChanged, VersionedItemEvent, VersionedItemRemoved}
 import org.jetbrains.annotations.TestOnly
 import scala.collection.mutable.ListBuffer
@@ -38,7 +38,7 @@ final case class Repo(
     case _ => false
   }
 
-  import Repo._
+  import Repo.*
 
   lazy val currentVersionId: VersionId = versionIds.headOption getOrElse VersionId.Anonymous
 

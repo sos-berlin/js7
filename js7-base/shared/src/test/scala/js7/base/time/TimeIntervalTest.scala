@@ -1,6 +1,6 @@
 package js7.base.time
 
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import org.scalatest.freespec.AnyFreeSpec
 
 final class TimeIntervalTest extends AnyFreeSpec

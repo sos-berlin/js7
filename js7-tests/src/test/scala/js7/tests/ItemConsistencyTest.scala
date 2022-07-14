@@ -3,7 +3,7 @@ package js7.tests
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Problem
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.web.Uri
 import js7.data.Problems.MissingReferencedItemProblem
@@ -17,7 +17,7 @@ import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.LockInstruction
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.ItemConsistencyTest._
+import js7.tests.ItemConsistencyTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.traced

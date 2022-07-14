@@ -1,7 +1,7 @@
 package js7.base.log
 
 import js7.base.log.CorrelIdLog4JThreadContextMap.CorrelIdKey
-import js7.base.log.CorrelIdLog4jStringMap._
+import js7.base.log.CorrelIdLog4jStringMap.*
 import js7.base.utils.Tests.isTest
 import org.apache.logging.log4j.util.{BiConsumer, ReadOnlyStringMap, StringMap, TriConsumer}
 

@@ -3,8 +3,8 @@ package js7.data.workflow.instructions
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import js7.base.utils.typeclasses.IsEmpty._
-import js7.base.utils.typeclasses.IsEmpty.syntax._
+import js7.base.utils.typeclasses.IsEmpty.*
+import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.source.SourcePos
 import js7.data.value.expression.Expression

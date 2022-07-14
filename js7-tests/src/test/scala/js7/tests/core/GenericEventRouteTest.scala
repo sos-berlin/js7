@@ -3,11 +3,11 @@ package js7.tests.core
 import io.circe.Decoder
 import java.net.{InetAddress, InetSocketAddress}
 import js7.base.auth.{SessionToken, SimpleUser}
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.io.https.HttpsConfig
-import js7.base.thread.Futures.implicits._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.Futures.implicits.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
@@ -29,7 +29,7 @@ import js7.data.order.{OrderEvent, OrderId}
 import js7.data.workflow.WorkflowPath
 import js7.journal.watch.SimpleEventCollector
 import js7.journal.web.GenericEventRoute
-import js7.tests.core.GenericEventRouteTest._
+import js7.tests.core.GenericEventRouteTest.*
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
@@ -37,9 +37,9 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline.now
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.concurrent.{Future, Promise}
-import scala.reflect.runtime.universe._
+import scala.reflect.runtime.universe.*
 
 final class GenericEventRouteTest
 extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with GenericEventRoute

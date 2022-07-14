@@ -1,9 +1,9 @@
 package js7.provider.scheduledorder.oldruntime
 
-import java.time.DayOfWeek._
+import java.time.DayOfWeek.*
 import java.time.{Duration, LocalTime, ZoneId}
 import js7.common.scalautil.xmls.ScalaXMLEventReader
-import js7.common.scalautil.xmls.XmlSources._
+import js7.common.scalautil.xmls.XmlSources.*
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

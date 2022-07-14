@@ -1,7 +1,7 @@
 package js7.data.item
 
 import io.circe.Codec
-import js7.data.item.SimpleItem._
+import js7.data.item.SimpleItem.*
 
 /** Unversioned item. */
 trait SimpleItem extends InventoryItem

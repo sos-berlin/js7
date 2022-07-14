@@ -7,8 +7,8 @@ import cats.parse.{Parser, Parser0}
 import java.lang.Character.isUnicodeIdentifierPart
 import js7.base.problem.Checked
 import js7.base.utils.Collections.implicits.RichIterable
-import js7.base.utils.ScalaUtils._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.*
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.parser.BasicPrinter.{isIdentifierPart, isIdentifierStart}
 import scala.reflect.ClassTag
 
@@ -33,7 +33,7 @@ object CatsBasicParsers
         (parser <* w).with1 ~ other
     }
   }
-  import syntax._
+  import syntax.*
 
   private val inlineCommentUntilStar: Parser[Unit] =
     charsWhile0(_ != '*').with1 *> char('*')

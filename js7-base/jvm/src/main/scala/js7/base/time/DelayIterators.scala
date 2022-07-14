@@ -4,7 +4,7 @@ import com.typesafe.config.Config
 import js7.base.problem.Checked.catchNonFatal
 import js7.base.problem.{Checked, Problem}
 import monix.execution.Scheduler
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.jdk.DurationConverters.JavaDurationOps
 import scala.util.Try
 

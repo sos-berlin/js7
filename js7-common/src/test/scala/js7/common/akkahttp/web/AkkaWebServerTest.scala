@@ -3,24 +3,24 @@ package js7.common.akkahttp.web
 import akka.http.scaladsl.model.HttpMethods.GET
 import akka.http.scaladsl.model.HttpRequest
 import akka.http.scaladsl.model.StatusCodes.OK
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.{ConnectionContext, Http}
 import java.net.{InetAddress, InetSocketAddress}
 import java.nio.file.Files.{createDirectory, createTempDirectory}
 import javax.net.ssl.SSLHandshakeException
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.generic.SecretString
 import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.https.Https.loadSSLContext
 import js7.base.io.https.{KeyStoreRef, TrustStoreRef}
 import js7.base.problem.Checked.Ops
-import js7.base.thread.Futures.implicits._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.Futures.implicits.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.common.akkahttp.web.AkkaWebServer.HasUri
-import js7.common.akkahttp.web.AkkaWebServerTest._
+import js7.common.akkahttp.web.AkkaWebServerTest.*
 import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkautils.Akkas
 import js7.common.akkautils.Akkas.newActorSystem
@@ -31,7 +31,7 @@ import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer

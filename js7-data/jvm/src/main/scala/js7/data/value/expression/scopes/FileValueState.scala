@@ -13,7 +13,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichThrowable}
 import js7.data.value.expression.scopes.FileValueScope.functionName
-import js7.data.value.expression.scopes.FileValueState._
+import js7.data.value.expression.scopes.FileValueState.*
 import monix.execution.atomic.Atomic
 
 final class FileValueState(

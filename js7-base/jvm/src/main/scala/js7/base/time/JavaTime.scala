@@ -1,7 +1,7 @@
 package js7.base.time
 
 import cats.Show
-import java.time._
+import java.time.*
 import js7.base.problem.Checked
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.RichFiniteDuration

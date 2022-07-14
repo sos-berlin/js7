@@ -1,6 +1,6 @@
 package js7.base.eventbus
 
-import js7.base.eventbus.ClassEventBusTest._
+import js7.base.eventbus.ClassEventBusTest.*
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AsyncFreeSpec
 import scala.collection.mutable

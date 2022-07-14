@@ -10,7 +10,7 @@ import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
 import java.nio.file.{CopyOption, FileAlreadyExistsException, FileVisitOption, Files, OpenOption, Path, Paths}
 import java.util.Objects.requireNonNull
 import java.util.concurrent.ThreadLocalRandom
-import js7.base.data.Writable.ops._
+import js7.base.data.Writable.ops.*
 import js7.base.data.{ByteArray, ByteSequence, Writable}
 import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
@@ -18,9 +18,9 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.isUnix
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer
-import js7.base.utils.Closer.syntax._
+import js7.base.utils.Closer.syntax.*
 import js7.base.utils.Closer.withCloser
-import js7.base.utils.JavaCollections.syntax._
+import js7.base.utils.JavaCollections.syntax.*
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import monix.eval.Task
 import scala.annotation.tailrec
@@ -175,7 +175,7 @@ object FileUtils
     }
   }
 
-  import syntax._
+  import syntax.*
 
   @tailrec
   def createShortNamedDirectory(directory: Path, prefix: String): Path = {

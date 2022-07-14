@@ -1,8 +1,8 @@
 package js7.data.workflow
 
-import io.circe.syntax._
+import io.circe.syntax.*
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceEither}
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.Problem
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.time.Timezone
@@ -16,13 +16,13 @@ import js7.data.value.NumberValue
 import js7.data.value.expression.Expression.{BooleanConstant, Equal, JobResourceVariable, LastReturnCode, NumericConstant, StringConstant}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.expression.PositionSearch
-import js7.data.workflow.WorkflowTest._
+import js7.data.workflow.WorkflowTest.*
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, ExpectNotices, Fail, Fork, Gap, If, ImplicitEnd, LockInstruction, PostNotices, Retry, TryInstruction}
 import js7.data.workflow.position.BranchId.{Catch_, Else, Then, Try_, fork, try_}
-import js7.data.workflow.position._
+import js7.data.workflow.position.*
 import js7.data.workflow.test.ForkTestSetting
-import js7.data.workflow.test.TestSetting._
+import js7.data.workflow.test.TestSetting.*
 import js7.tester.CirceJsonTester.{normalizeJson, removeJNull, testJson}
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -961,7 +961,7 @@ final class WorkflowTest extends AnyFreeSpec
   }
 
   "reduceForAgent" - {
-    import js7.data.workflow.test.ForkTestSetting._
+    import js7.data.workflow.test.ForkTestSetting.*
 
     "reduceForAgent A" in {
       assert(TestWorkflow.reduceForAgent(AAgentPath) == Workflow(

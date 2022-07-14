@@ -4,15 +4,15 @@ import js7.agent.client.AgentClient
 import js7.agent.data.commands.AgentCommand.{CoupleController, DedicateAgentDirector, ReleaseEvents, TakeSnapshot}
 import js7.agent.data.event.AgentEvent.AgentReady
 import js7.agent.tests.AgentTester
-import js7.agent.tests.TestAgentDirectoryProvider._
-import js7.agent.web.EventRouteTest._
+import js7.agent.tests.TestAgentDirectoryProvider.*
+import js7.agent.web.EventRouteTest.*
 import js7.base.io.file.FileUtils.syntax.RichPath
-import js7.base.problem.Checked._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.problem.Checked.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
-import js7.base.utils.Closer.syntax._
-import js7.common.guice.GuiceImplicits._
+import js7.base.utils.Closer.syntax.*
+import js7.common.guice.GuiceImplicits.*
 import js7.data.agent.Problems.{AgentPathMismatchProblem, AgentRunIdMismatchProblem}
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId

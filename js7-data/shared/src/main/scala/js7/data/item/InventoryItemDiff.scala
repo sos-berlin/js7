@@ -1,6 +1,6 @@
 package js7.data.item
 
-import js7.data.item.InventoryItemDiff._
+import js7.data.item.InventoryItemDiff.*
 
 final case class InventoryItemDiff[P <: InventoryItemPath, I <: InventoryItem](
   addedOrChanged: Seq[I] = Nil,

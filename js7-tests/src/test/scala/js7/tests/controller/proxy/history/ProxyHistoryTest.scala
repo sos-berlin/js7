@@ -1,7 +1,7 @@
 package js7.tests.controller.proxy.history
 
-import com.softwaremill.diffx.generic.auto._
-import com.softwaremill.diffx.scalatest.DiffShouldMatcher._
+import com.softwaremill.diffx.generic.auto.*
+import com.softwaremill.diffx.scalatest.DiffShouldMatcher.*
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.eventbus.StandardEventBus
@@ -10,11 +10,11 @@ import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
 import js7.base.problem.ProblemException
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.ScalaUtils._
+import js7.base.utils.ScalaUtils.*
 import js7.common.akkautils.ProvideActorSystem
 import js7.data.Problems.SnapshotForUnknownEventIdProblem
 import js7.data.agent.AgentPath
@@ -34,7 +34,7 @@ import js7.proxy.data.event.{EventAndState, ProxyStarted}
 import js7.proxy.javaapi.JProxyContext
 import js7.tests.controller.proxy.ClusterProxyTest
 import js7.tests.controller.proxy.history.JControllerApiHistoryTester.TestWorkflowId
-import js7.tests.controller.proxy.history.ProxyHistoryTest._
+import js7.tests.controller.proxy.history.ProxyHistoryTest.*
 import js7.tests.testenv.ControllerClusterForScalaTest.TestPathExecutable
 import js7.tests.testenv.DirectoryProvider.{StdoutOutput, toLocalSubagentId}
 import monix.eval.Task
@@ -42,7 +42,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalactic.source
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 final class ProxyHistoryTest extends AnyFreeSpec with ProvideActorSystem with ClusterProxyTest
 {

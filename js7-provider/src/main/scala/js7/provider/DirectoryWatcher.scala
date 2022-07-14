@@ -1,22 +1,22 @@
 package js7.provider
 
 import cats.Show
-import java.nio.file.StandardWatchEventKinds._
+import java.nio.file.StandardWatchEventKinds.*
 import java.nio.file.{ClosedWatchServiceException, Path, WatchEvent}
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.thread.IOExecutor
 import js7.base.thread.IOExecutor.ioFuture
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.closeOnError
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
-import js7.provider.DirectoryWatcher._
+import js7.provider.DirectoryWatcher.*
 import monix.execution.atomic.AtomicBoolean
 import monix.execution.{Ack, Cancelable, Scheduler}
 import monix.reactive.Observable
 import scala.concurrent.Future
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Success}
 
 /**

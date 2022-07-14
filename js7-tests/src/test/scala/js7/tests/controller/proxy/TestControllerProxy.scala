@@ -8,7 +8,7 @@ import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.eventbus.StandardEventBus
 import js7.base.generic.SecretString
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkahttp.StandardMarshallers.monixObservableToMarshallable
@@ -21,7 +21,7 @@ import js7.data.controller.ControllerState
 import js7.data.event.{Event, EventId}
 import js7.proxy.data.event.ProxyEvent
 import js7.proxy.{ControllerApi, JournaledStateEventBus}
-import js7.tests.controller.proxy.TestControllerProxy._
+import js7.tests.controller.proxy.TestControllerProxy.*
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.util.Try

@@ -1,10 +1,10 @@
 package js7.data.workflow
 
-import cats.syntax.show._
-import com.softwaremill.diffx.generic.auto._
-import js7.base.problem.Checked._
+import cats.syntax.show.*
+import com.softwaremill.diffx.generic.auto.*
+import js7.base.problem.Checked.*
 import js7.base.problem.Problem
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.job.{CommandLineExecutable, PathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
 import js7.data.lock.LockPath

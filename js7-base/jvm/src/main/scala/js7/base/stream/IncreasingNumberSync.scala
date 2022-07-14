@@ -1,17 +1,17 @@
 package js7.base.stream
 
 import js7.base.log.Logger
-import js7.base.log.Logger.syntax._
-import js7.base.monixutils.MonixBase.syntax._
+import js7.base.log.Logger.syntax.*
+import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.monixutils.MonixDeadline
-import js7.base.stream.IncreasingNumberSync._
-import js7.base.time.ScalaTime._
+import js7.base.stream.IncreasingNumberSync.*
+import js7.base.time.ScalaTime.*
 import monix.eval.Task
 import org.jetbrains.annotations.TestOnly
 import scala.collection.mutable
 import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /**
   * Synchronizer for increasing numbers.

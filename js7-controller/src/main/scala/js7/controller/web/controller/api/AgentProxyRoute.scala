@@ -4,19 +4,19 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.model.HttpMethods.GET
 import akka.http.scaladsl.model.headers.{Accept, `Cache-Control`}
 import akka.http.scaladsl.model.{HttpEntity, HttpHeader, HttpRequest, HttpResponse, headers, Uri => AkkaUri}
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route
 import js7.agent.client.AgentClient
 import js7.base.auth.{SessionToken, ValidUserPermission}
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
-import js7.common.akkahttp.StandardMarshallers._
+import js7.common.akkahttp.StandardMarshallers.*
 import js7.common.http.AkkaHttpUtils.RichAkkaUri
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.web.common.ControllerRouteProvider
-import js7.controller.web.controller.api.AgentProxyRoute._
+import js7.controller.web.controller.api.AgentProxyRoute.*
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import js7.data.controller.ControllerState
 import monix.eval.Task

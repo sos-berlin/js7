@@ -1,7 +1,7 @@
 package js7.data.workflow
 
-import cats.syntax.show._
-import js7.base.time.ScalaTime._
+import cats.syntax.show.*
+import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.job.{PathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
 import js7.data.value.expression.Expression.{BooleanConstant, Equal, In, LastReturnCode, ListExpression, NamedValue, NumericConstant, Or, StringConstant}

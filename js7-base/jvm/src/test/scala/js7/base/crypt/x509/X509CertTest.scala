@@ -3,10 +3,10 @@ package js7.base.crypt.x509
 import js7.base.auth.DistinguishedName
 import js7.base.crypt.SignerId
 import js7.base.crypt.x509.Openssl.openssl
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.io.process.Processes.runProcess
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import org.scalatest.freespec.AnyFreeSpec
 
 final class X509CertTest extends AnyFreeSpec

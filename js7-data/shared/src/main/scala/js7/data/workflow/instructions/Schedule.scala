@@ -2,8 +2,8 @@ package js7.data.workflow.instructions
 
 import io.circe.Decoder
 import io.circe.generic.semiauto.{deriveCodec, deriveEncoder}
-import js7.base.circeutils.CirceUtils._
-import js7.base.circeutils.ScalaJsonCodecs._
+import js7.base.circeutils.CirceUtils.*
+import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.AdmissionTimeScheme
@@ -12,7 +12,7 @@ import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.data.workflow.instructions.Schedule.Scheme
 import scala.collection.View
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 final case class Schedule(schemes: Seq[Scheme])
 

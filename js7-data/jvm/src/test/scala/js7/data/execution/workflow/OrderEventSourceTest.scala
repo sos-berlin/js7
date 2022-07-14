@@ -1,17 +1,17 @@
 package js7.data.execution.workflow
 
-import cats.syntax.option._
+import cats.syntax.option.*
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
 import js7.base.time.WallClock
-import js7.base.utils.Collections.implicits._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.Collections.implicits.*
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.Problems.CancelStartedOrderProblem
 import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode.FreshOrStarted
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.event.{<-:, KeyedEvent}
-import js7.data.execution.workflow.OrderEventSourceTest._
+import js7.data.execution.workflow.OrderEventSourceTest.*
 import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.job.{PathExecutable, ShellScriptExecutable}
 import js7.data.lock.{Lock, LockPath, LockState}

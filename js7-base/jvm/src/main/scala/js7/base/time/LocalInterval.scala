@@ -1,8 +1,8 @@
 package js7.base.time
 
 import java.time.{LocalDateTime, ZoneId, ZonedDateTime}
-import js7.base.time.JavaTime._
-import js7.base.time.ScalaTime._
+import js7.base.time.JavaTime.*
+import js7.base.time.ScalaTime.*
 import scala.concurrent.duration.FiniteDuration
 
 sealed trait LocalInterval extends Ordered[LocalInterval]

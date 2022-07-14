@@ -2,7 +2,7 @@ package js7.tests
 
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.ControlWorkflowPath
@@ -18,7 +18,7 @@ import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.If
 import js7.data.workflow.position.{Label, Position}
 import js7.data.workflow.{Workflow, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
-import js7.tests.ControlWorkflowPathSkipJobTest._
+import js7.tests.ControlWorkflowPathSkipJobTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId

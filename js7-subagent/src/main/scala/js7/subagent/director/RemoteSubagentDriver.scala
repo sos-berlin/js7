@@ -1,8 +1,8 @@
 package js7.subagent.director
 
 import akka.actor.ActorSystem
-import cats.syntax.flatMap._
-import cats.syntax.traverse._
+import cats.syntax.flatMap.*
+import cats.syntax.traverse.*
 import com.typesafe.config.ConfigUtil
 import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.configutils.Configs.ConvertibleConfig
@@ -11,15 +11,15 @@ import js7.base.generic.SecretString
 import js7.base.io.https.HttpsConfig
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGKILL
-import js7.base.log.Logger.syntax._
+import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, CorrelIdWrapped, Logger}
-import js7.base.monixutils.MonixBase.syntax._
+import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.monixutils.{AsyncMap, AsyncVariable, Switch}
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.stream.Numbered
-import js7.base.time.ScalaTime._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, SetOnce}
 import js7.base.web.HttpClient
 import js7.base.web.HttpClient.HttpException
@@ -41,7 +41,7 @@ import js7.data.workflow.position.WorkflowPosition
 import js7.journal.state.StatePersistence
 import js7.subagent.SubagentDriver
 import js7.subagent.configuration.SubagentConf
-import js7.subagent.director.RemoteSubagentDriver._
+import js7.subagent.director.RemoteSubagentDriver.*
 import monix.catnap.MVar
 import monix.eval.Task
 import scala.annotation.unused

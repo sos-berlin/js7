@@ -1,7 +1,7 @@
 package js7.data.event
 
 import io.circe.{Decoder, Encoder, Json}
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.time.Timestamp
 import js7.tester.CirceJsonTester.testJson

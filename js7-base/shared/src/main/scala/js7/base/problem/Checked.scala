@@ -1,12 +1,12 @@
 package js7.base.problem
 
 import cats.Monoid
-import cats.syntax.monoid._
+import cats.syntax.monoid.*
 import io.circe.{Decoder, Encoder, Json}
 import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.generic.Completed
-import js7.base.problem.Problem._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.problem.Problem.*
+import js7.base.utils.ScalaUtils.syntax.*
 import scala.collection.immutable.VectorBuilder
 import scala.collection.mutable
 import scala.util.control.NonFatal

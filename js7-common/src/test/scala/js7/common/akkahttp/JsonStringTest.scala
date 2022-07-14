@@ -1,16 +1,16 @@
 package js7.common.akkahttp
 
 import akka.http.scaladsl.model.HttpCharsets.`UTF-8`
-import akka.http.scaladsl.model.MediaTypes._
+import akka.http.scaladsl.model.MediaTypes.*
 import akka.http.scaladsl.model.StatusCodes.OK
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.model.{ContentType, HttpEntity}
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
-import js7.common.akkahttp.JsonStringTest._
+import js7.common.akkahttp.JsonStringTest.*
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
@@ -53,7 +53,7 @@ final class JsonStringTest extends AnyFreeSpec with ScalatestRouteTest
 }
 
 private object JsonStringTest {
-  import org.scalatest.Assertions._
+  import org.scalatest.Assertions.*
 
   private def testRoute(expected: String): Route =
     entity(as[JsonString]) { jsonString =>

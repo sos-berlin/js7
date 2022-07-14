@@ -3,7 +3,7 @@ package js7.agent.scheduler.order
 import akka.actor.{ActorRef, DeadLetterSuppression, Props, Status}
 import akka.pattern.pipe
 import js7.agent.data.AgentState
-import js7.agent.scheduler.order.OrderActor._
+import js7.agent.scheduler.order.OrderActor.*
 import js7.base.generic.Completed
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
@@ -11,9 +11,9 @@ import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.RichCheckedTask
 import js7.base.problem.Checked.Ops
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.command.{CancellationMode, SuspensionMode}
-import js7.data.order.OrderEvent._
+import js7.data.order.OrderEvent.*
 import js7.data.order.{Order, OrderEvent, OrderId, OrderMark}
 import js7.journal.configuration.JournalConf
 import js7.journal.{JournalActor, KeyedJournalingActor}

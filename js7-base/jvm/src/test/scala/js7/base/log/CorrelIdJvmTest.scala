@@ -1,11 +1,11 @@
 package js7.base.log
 
-import cats.syntax.parallel._
+import cats.syntax.parallel.*
 import js7.base.log.CorrelId.current
-import js7.base.log.CorrelIdJvmTest._
-import js7.base.thread.Futures.implicits._
+import js7.base.log.CorrelIdJvmTest.*
+import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import monix.eval.{Task, TaskLocal}

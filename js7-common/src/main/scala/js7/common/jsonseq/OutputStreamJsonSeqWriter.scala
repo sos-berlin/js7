@@ -2,9 +2,9 @@ package js7.common.jsonseq
 
 import io.circe.Json
 import java.io.{BufferedOutputStream, OutputStream}
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.data.ByteArray
-import js7.base.data.ByteSequence.ops._
+import js7.base.data.ByteSequence.ops.*
 import js7.base.utils.Ascii.RS
 import js7.base.utils.Assertions.assertThat
 import org.jetbrains.annotations.TestOnly

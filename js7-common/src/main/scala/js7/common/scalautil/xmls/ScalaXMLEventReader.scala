@@ -9,7 +9,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.{cast, implicitClass}
 import js7.common.scalautil.AssignableFrom.assignableFrom
 import js7.common.scalautil.xmls.ScalaStax.{RichStartElement, getCommonXMLInputFactory}
-import js7.common.scalautil.xmls.ScalaXMLEventReader._
+import js7.common.scalautil.xmls.ScalaXMLEventReader.*
 import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.language.implicitConversions

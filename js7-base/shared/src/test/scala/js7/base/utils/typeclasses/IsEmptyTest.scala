@@ -1,9 +1,9 @@
 package js7.base.utils.typeclasses
 
-import cats.instances.option._
+import cats.instances.option.*
 import cats.{Eq, Monoid}
-import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.typeclasses.IsEmpty.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import org.scalatest.freespec.AnyFreeSpec
 
 final class IsEmptyTest extends AnyFreeSpec

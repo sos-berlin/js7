@@ -2,11 +2,11 @@ package js7.data.item
 
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.cast
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
 import js7.data.delegate.DelegateId
 import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeleted}
-import js7.data.item.ClientAttachments._
+import js7.data.item.ClientAttachments.*
 import js7.data.item.ItemAttachedState.{Detached, NotDetached}
 import monix.reactive.Observable
 import scala.collection.View

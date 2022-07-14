@@ -4,14 +4,14 @@ import js7.base.circeutils.CirceUtils.RichCirceString
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.JavaResource
 import js7.base.log.{CorrelId, Logger}
-import js7.base.problem.Checked._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.problem.Checked.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.durationAndPerSecondString
 import js7.data.agent.AgentPath
 import js7.data.order.OrderEvent.OrderDeleted
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.addOrders.TestAddOrdersTest._
+import js7.tests.addOrders.TestAddOrdersTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec

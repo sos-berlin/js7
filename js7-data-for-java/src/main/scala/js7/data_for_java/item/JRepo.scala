@@ -5,10 +5,10 @@ import javax.annotation.Nonnull
 import js7.base.problem.Problem
 import js7.data.item.{Repo, VersionId}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.data_for_java.vavr.VavrConverters._
+import js7.data_for_java.vavr.VavrConverters.*
 import js7.data_for_java.workflow.{JWorkflow, JWorkflowId}
-import scala.jdk.CollectionConverters._
-import scala.jdk.OptionConverters._
+import scala.jdk.CollectionConverters.*
+import scala.jdk.OptionConverters.*
 
 final class JRepo(asScala: Repo)
 {

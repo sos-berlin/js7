@@ -1,7 +1,7 @@
 package js7.data.job
 
 import js7.base.problem.Checked
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.data.value.expression.Scope
 import js7.data.value.{NumberValue, StringValue}
 import org.scalatest.freespec.AnyFreeSpec

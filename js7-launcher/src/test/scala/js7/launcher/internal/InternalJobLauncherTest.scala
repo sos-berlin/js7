@@ -1,12 +1,12 @@
 package js7.launcher.internal
 
 import java.nio.charset.StandardCharsets.UTF_8
-import js7.base.problem.Checked._
-import js7.base.thread.Futures.implicits._
+import js7.base.problem.Checked.*
+import js7.base.thread.Futures.implicits.*
 import js7.base.thread.IOExecutor.globalIOX
-import js7.base.thread.MonixBlocking.syntax._
+import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.AlarmClock
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.{RichAny, RichPartialFunction}
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
@@ -19,7 +19,7 @@ import js7.data.value.{NamedValues, NumberValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.{Position, WorkflowBranchPath}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.launcher.internal.InternalJobLauncherTest._
+import js7.launcher.internal.InternalJobLauncherTest.*
 import js7.launcher.{OrderProcess, ProcessOrder, StdObservers}
 import monix.eval.Task
 import monix.execution.Scheduler

@@ -2,7 +2,7 @@ package js7.common.scalautil
 
 import js7.common.scalautil.AssignableFrom.assignableFrom
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import scala.reflect.ClassTag
 
 

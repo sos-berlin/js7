@@ -1,10 +1,10 @@
 package js7.tests.controller.cluster
 
-import js7.base.configutils.Configs._
-import js7.base.problem.Checked._
+import js7.base.configutils.Configs.*
+import js7.base.problem.Checked.*
 import js7.base.problem.ProblemException
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.data.Problems.PrimaryClusterNodeMayNotBecomeBackupProblem
 import js7.data.controller.ControllerCommand.ClusterAppointNodes
 import monix.execution.Scheduler.Implicits.global

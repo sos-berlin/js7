@@ -1,6 +1,6 @@
 package js7.core.cluster
 
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route
 import com.typesafe.config.ConfigFactory
 import js7.base.Js7Version
@@ -9,14 +9,14 @@ import js7.base.generic.{Completed, SecretString}
 import js7.base.io.https.HttpsConfig
 import js7.base.session.SessionCommand
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
-import js7.base.utils.Closer.syntax._
+import js7.base.time.ScalaTime.*
+import js7.base.utils.Closer.syntax.*
 import js7.base.web.Uri
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkautils.ProvideActorSystem
-import js7.core.cluster.HttpClusterWatchTest._
+import js7.core.cluster.HttpClusterWatchTest.*
 import js7.data.cluster.ClusterEvent.ClusterNodesAppointed
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterTiming}
 import js7.data.controller.ControllerId

@@ -2,7 +2,7 @@ package js7.base.crypt
 
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.annotation.javaApi
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import org.jetbrains.annotations.TestOnly
 
 /**

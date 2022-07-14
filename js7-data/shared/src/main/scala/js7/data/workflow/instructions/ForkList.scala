@@ -1,6 +1,6 @@
 package js7.data.workflow.instructions
 
-import io.circe._
+import io.circe.*
 import io.circe.generic.extras.Configuration.default.withDefaults
 import io.circe.generic.extras.semiauto.{deriveConfiguredDecoder, deriveConfiguredEncoder}
 import js7.base.problem.Checked
@@ -12,7 +12,7 @@ import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Instruction, Workflow}
 
 /** Fork a list. */
-final case class ForkList private(
+final case class ForkList(
   children: Expression,
   childToId: ExprFunction,
   childToArguments: ExprFunction,

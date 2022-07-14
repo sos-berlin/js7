@@ -6,7 +6,7 @@ import javax.annotation.Nonnull
 import js7.base.problem.Problem
 import js7.data.subagent.{SubagentId, SubagentItemState, SubagentRunId}
 import js7.data_for_java.common.JJsonable
-import scala.jdk.OptionConverters._
+import scala.jdk.OptionConverters.*
 
 final case class JSubagentItemState(asScala: SubagentItemState)
 extends JJsonable[JSubagentItemState]

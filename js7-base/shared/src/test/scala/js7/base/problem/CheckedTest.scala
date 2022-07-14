@@ -1,19 +1,19 @@
 package js7.base.problem
 
-import cats.instances.either._
-import cats.instances.int._
-import cats.instances.list._
-import cats.syntax.apply._
-import cats.syntax.either._
-import cats.syntax.foldable._
-import cats.syntax.monoid._
-import cats.syntax.option._
-import cats.syntax.traverse._
+import cats.instances.either.*
+import cats.instances.int.*
+import cats.instances.list.*
+import cats.syntax.apply.*
+import cats.syntax.either.*
+import cats.syntax.foldable.*
+import cats.syntax.monoid.*
+import cats.syntax.option.*
+import cats.syntax.traverse.*
 import cats.{Applicative, Apply}
 import io.circe.generic.JsonCodec
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.Completed
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.tester.CirceJsonTester.testJson
 import monix.eval.Coeval
 import org.scalatest.freespec.AnyFreeSpec

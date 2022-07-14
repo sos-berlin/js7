@@ -5,12 +5,12 @@ import akka.http.scaladsl.model.DateTime
 import akka.http.scaladsl.model.Uri.Path
 import akka.http.scaladsl.model.headers.CacheDirectives.{`max-age`, `public`, immutableDirective}
 import akka.http.scaladsl.model.headers.{ETag, `Cache-Control`, `Last-Modified`}
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.PathMatcher.{Matched, Unmatched}
 import akka.http.scaladsl.server.{Directive0, PathMatcher1, Route}
 import js7.base.BuildInfo
 import js7.base.problem.{Checked, CheckedString}
-import js7.base.utils.Collections.implicits._
+import js7.base.utils.Collections.implicits.*
 import js7.data.item.VersionedItemPath
 import monix.eval.Task
 import monix.execution.Scheduler

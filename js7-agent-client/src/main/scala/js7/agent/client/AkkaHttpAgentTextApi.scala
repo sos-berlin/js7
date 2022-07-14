@@ -2,11 +2,11 @@ package js7.agent.client
 
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Path
-import js7.agent.client.AkkaHttpAgentTextApi._
+import js7.agent.client.AkkaHttpAgentTextApi.*
 import js7.agent.data.web.AgentUris
 import js7.base.auth.UserAndPassword
-import js7.base.configutils.Configs._
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.configutils.Configs.*
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.https.{HttpsConfig, KeyStoreRef, TrustStoreRef}
 import js7.base.session.SessionApi
 import js7.base.utils.HasCloser

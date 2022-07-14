@@ -3,7 +3,7 @@ package js7.data.orderwatch
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.data.agent.AgentPath
 import js7.data.item.UnsignedSimpleItem
-import js7.data.orderwatch.OrderWatch._
+import js7.data.orderwatch.OrderWatch.*
 import js7.data.workflow.WorkflowPath
 
 trait OrderWatch extends UnsignedSimpleItem

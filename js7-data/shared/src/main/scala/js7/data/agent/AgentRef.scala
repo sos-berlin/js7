@@ -3,7 +3,7 @@ package js7.data.agent
 import io.circe.generic.extras.Configuration.default.withDefaults
 import io.circe.generic.extras.semiauto.deriveConfiguredEncoder
 import io.circe.{Codec, Decoder}
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.web.Uri
 import js7.data.item.{ItemRevision, UnsignedSimpleItem}

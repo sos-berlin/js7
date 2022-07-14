@@ -1,12 +1,12 @@
 package js7.base.thread
 
-import js7.base.thread.Futures.implicits._
+import js7.base.thread.Futures.implicits.*
 import js7.base.utils.StackTraces.StackTraceThrowable
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.collection.BuildFrom
-import scala.concurrent.duration._
-import scala.reflect.runtime.universe._
+import scala.concurrent.duration.*
+import scala.reflect.runtime.universe.*
 import scala.util.control.NonFatal
 
 /**

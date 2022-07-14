@@ -3,12 +3,12 @@ package js7.launcher.process
 import java.nio.charset.Charset
 import java.nio.file.Files.{createTempFile, deleteIfExists}
 import java.nio.file.Path
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.data.value.{NamedValues, StringValue}
-import js7.launcher.process.ShellReturnValuesProvider._
+import js7.launcher.process.ShellReturnValuesProvider.*
 import scala.util.control.NonFatal
 
 /**

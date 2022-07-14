@@ -10,22 +10,22 @@ import js7.base.log.CorrelId
 import js7.base.monixutils.RefCountedResource
 import js7.base.problem.Checked
 import js7.base.session.SessionApi
-import js7.base.time.ScalaTime._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.HttpClient.HttpException
 import js7.base.web.{HttpClient, Uri}
 import js7.controller.client.HttpControllerApi
 import js7.data.cluster.ClusterSetting
 import js7.data.controller.ControllerCommand.Response.Accepted
 import js7.data.controller.ControllerCommand.{AddOrder, AddOrders, ReleaseEvents}
-import js7.data.controller.ControllerState._
+import js7.data.controller.ControllerState.*
 import js7.data.controller.{ControllerCommand, ControllerState}
 import js7.data.event.{Event, EventId, JournalInfo}
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, RemoveVersioned}
 import js7.data.item.{ItemOperation, SignableItem, UnsignedSimpleItem, VersionId, VersionedItemPath}
 import js7.data.node.NodeId
 import js7.data.order.{FreshOrder, OrderId}
-import js7.proxy.ControllerApi._
+import js7.proxy.ControllerApi.*
 import js7.proxy.JournaledProxy.EndOfEventStreamException
 import js7.proxy.configuration.ProxyConf
 import js7.proxy.data.event.{EventAndState, ProxyEvent}

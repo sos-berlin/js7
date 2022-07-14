@@ -7,7 +7,7 @@ import js7.data.job.{JobResource, JobResourcePath}
 import js7.data_for_java.common.JJsonable
 import js7.data_for_java.item.JSignableItem
 import js7.data_for_java.value.JExpression
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 final case class JJobResource(asScala: JobResource)
 extends JJsonable[JJobResource] with JSignableItem

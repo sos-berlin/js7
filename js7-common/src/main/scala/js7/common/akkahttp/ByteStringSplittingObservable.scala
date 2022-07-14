@@ -1,7 +1,7 @@
 package js7.common.akkahttp
 
 import akka.util.ByteString
-import js7.common.akkahttp.ByteStringSplittingObservable._
+import js7.common.akkahttp.ByteStringSplittingObservable.*
 import monix.execution.Ack.{Continue, Stop}
 import monix.execution.cancelables.CompositeCancelable
 import monix.execution.{Ack, Cancelable}

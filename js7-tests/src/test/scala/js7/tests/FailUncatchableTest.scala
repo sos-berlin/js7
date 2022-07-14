@@ -1,7 +1,7 @@
 package js7.tests
 
 import js7.base.problem.Checked.Ops
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
@@ -12,13 +12,13 @@ import js7.data.value.NamedValues
 import js7.data.workflow.instructions.Fork
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
-import js7.tests.FailUncatchableTest._
+import js7.tests.FailUncatchableTest.*
 import js7.tests.testenv.DirectoryProvider
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec
 import scala.reflect.ClassTag
-import scala.reflect.runtime.universe._
+import scala.reflect.runtime.universe.*
 
 final class FailUncatchableTest extends AnyFreeSpec
 {

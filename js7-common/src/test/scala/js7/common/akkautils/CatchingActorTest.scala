@@ -5,12 +5,12 @@ import akka.pattern.ask
 import akka.util.Timeout
 import js7.base.generic.Completed
 import js7.base.thread.Futures.implicits.SuccessFuture
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.common.akkautils.Akkas.newActorSystem
-import js7.common.akkautils.CatchingActorTest._
+import js7.common.akkautils.CatchingActorTest.*
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, Promise}
 import scala.util.control.NoStackTrace

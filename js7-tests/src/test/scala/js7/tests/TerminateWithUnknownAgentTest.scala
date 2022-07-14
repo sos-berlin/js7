@@ -1,14 +1,14 @@
 package js7.tests
 
 import java.net.ServerSocket
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.data.agent.AgentRefStateEvent.AgentCouplingFailed
 import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.TerminateWithUnknownAgentTest._
+import js7.tests.TerminateWithUnknownAgentTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.traced

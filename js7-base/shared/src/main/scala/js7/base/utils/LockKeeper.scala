@@ -2,9 +2,9 @@ package js7.base.utils
 
 import cats.effect.Resource
 import js7.base.log.CorrelId
-import js7.base.monixutils.MonixBase.syntax._
-import js7.base.utils.LockKeeper._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.monixutils.MonixBase.syntax.*
+import js7.base.utils.LockKeeper.*
+import js7.base.utils.ScalaUtils.syntax.*
 import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean
 import scala.collection.mutable

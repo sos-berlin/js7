@@ -2,7 +2,7 @@ package js7.common.akkahttp
 
 import akka.http.scaladsl.marshalling.{Marshaller, ToEntityMarshaller}
 import akka.http.scaladsl.model.HttpEntity
-import akka.http.scaladsl.model.MediaTypes._
+import akka.http.scaladsl.model.MediaTypes.*
 import akka.http.scaladsl.unmarshalling.{FromEntityUnmarshaller, Unmarshaller}
 import java.nio.charset.StandardCharsets.UTF_8
 

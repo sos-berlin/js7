@@ -1,11 +1,11 @@
 package js7.controller.client
 
-import js7.base.time.ScalaTime._
-import js7.base.utils.ScalaUtils._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.*
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.common.http.Uris.{encodePath, encodeQuery}
-import js7.controller.client.ControllerUris._
+import js7.controller.client.ControllerUris.*
 import js7.data.event.{Event, EventId, EventRequest, JournalPosition}
 import js7.data.order.OrderId
 import scala.concurrent.duration.FiniteDuration

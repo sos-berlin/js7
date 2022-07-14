@@ -1,11 +1,11 @@
 package js7.tests
 
-import cats.instances.vector._
-import cats.syntax.traverse._
+import cats.instances.vector.*
+import cats.syntax.traverse.*
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.AnswerOrderPrompt
 import js7.data.event.EventRequest
@@ -16,7 +16,7 @@ import js7.data.value.{ListValue, StringValue}
 import js7.data.workflow.instructions.{ForkList, Prompt}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.ForkListRecoveryTest._
+import js7.tests.ForkListRecoveryTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.DirectoryProviderForScalaTest

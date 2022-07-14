@@ -1,33 +1,33 @@
 package js7.journal.watch
 
-import cats.syntax.semigroup._
+import cats.syntax.semigroup.*
 import com.typesafe.config.Config
 import java.io.IOException
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.{delete, exists, size}
 import java.nio.file.Path
 import js7.base.circeutils.CirceUtils.RichCirceString
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.data.ByteArray
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked.{CheckedOption, Ops}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.JavaTimeConverters.AsScalaDuration
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ByteUnits.toKBGB
-import js7.base.utils.Collections.implicits._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.Collections.implicits.*
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{CloseableIterator, SetOnce}
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.{Event, EventId, JournalHeader, JournalId, JournalInfo, JournalPosition, KeyedEvent, Stamped}
 import js7.journal.data.JournalMeta
 import js7.journal.files.JournalFiles
 import js7.journal.files.JournalFiles.listGarbageFiles
-import js7.journal.watch.JournalEventWatch._
+import js7.journal.watch.JournalEventWatch.*
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.atomic.AtomicAny

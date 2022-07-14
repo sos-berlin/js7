@@ -1,17 +1,17 @@
 package js7.tests.filewatch
 
-import cats.instances.vector._
-import cats.syntax.parallel._
+import cats.instances.vector.*
+import cats.syntax.parallel.*
 import java.nio.file.Files.{createDirectories, exists}
 import js7.agent.scheduler.order.FileWatchManager
-import js7.base.configutils.Configs._
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.configutils.Configs.*
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.system.OperatingSystem.isMac
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.event.EventRequest
 import js7.data.item.BasicItemEvent.ItemAttached
@@ -21,7 +21,7 @@ import js7.data.orderwatch.OrderWatchEvent.ExternalOrderArised
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath}
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.filewatch.FileWatchDelayTest._
+import js7.tests.filewatch.FileWatchDelayTest.*
 import js7.tests.jobs.DeleteFileJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.eval.Task

@@ -1,12 +1,12 @@
 package js7.tests
 
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.io.process.Processes.{ShellFileExtension => sh}
 import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.event.{EventId, EventRequest, EventSeq}
 import js7.data.job.RelativePathExecutable
@@ -16,14 +16,14 @@ import js7.data.value.NamedValues
 import js7.data.workflow.position.BranchId.{Else, Then, catch_, try_}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
-import js7.tests.RetryTest._
+import js7.tests.RetryTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.reflect.ClassTag
-import scala.reflect.runtime.universe._
+import scala.reflect.runtime.universe.*
 
 final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {

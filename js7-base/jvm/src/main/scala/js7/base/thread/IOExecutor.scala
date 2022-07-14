@@ -6,10 +6,10 @@ import java.lang.Thread.currentThread
 import java.util.concurrent.{Executor, ThreadPoolExecutor}
 import js7.base.log.{CorrelId, Logger}
 import js7.base.thread.Futures.promiseFuture
-import js7.base.thread.IOExecutor._
+import js7.base.thread.IOExecutor.*
 import js7.base.thread.ThreadPoolsBase.newUnlimitedThreadPool
-import js7.base.time.ScalaTime._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.*
 import monix.eval.Task
 import monix.execution.ExecutionModel.SynchronousExecution
 import monix.execution.{Scheduler, UncaughtExceptionReporter}

@@ -1,7 +1,7 @@
 package js7.base.monixutils
 
 import js7.base.monixutils.MonixDeadline.{monotonicClock, now}
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import monix.execution.schedulers.TestScheduler
 import org.scalatest.freespec.AsyncFreeSpec
 

@@ -1,7 +1,7 @@
 package js7.data.workflow.instructions
 
-import cats.syntax.semigroup._
-import js7.base.circeutils.CirceUtils._
+import cats.syntax.semigroup.*
+import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Problem
 import js7.data.agent.AgentPath
 import js7.data.job.PathExecutable

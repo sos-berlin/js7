@@ -1,26 +1,26 @@
 package js7.base.io.process
 
-import cats.instances.future._
-import cats.instances.vector._
-import cats.syntax.traverse._
+import cats.instances.future.*
+import cats.instances.vector.*
+import cats.syntax.traverse.*
 import java.io.IOException
 import java.lang.ProcessBuilder.Redirect.PIPE
 import java.nio.file.Files.exists
 import java.nio.file.Paths
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{autoDeleting, temporaryDirectory, withTemporaryFile}
-import js7.base.io.process.Processes._
-import js7.base.io.process.ProcessesTest._
+import js7.base.io.process.Processes.*
+import js7.base.io.process.ProcessesTest.*
 import js7.base.system.OperatingSystem.{isMac, isSolaris, isWindows}
-import js7.base.thread.Futures.implicits._
+import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future
 import scala.concurrent.duration.Deadline.now
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
 /**

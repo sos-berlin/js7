@@ -9,7 +9,7 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.Signed
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.RichMap
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest
 import js7.data.agent.{AgentPath, AgentRefState, AgentRunId}
 import js7.data.calendar.{Calendar, CalendarPath, CalendarState}

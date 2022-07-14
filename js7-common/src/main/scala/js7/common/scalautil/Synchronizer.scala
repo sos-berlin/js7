@@ -2,10 +2,10 @@ package js7.common.scalautil
 
 import java.util.concurrent.locks.ReentrantLock
 import js7.base.log.Logger
-import js7.base.time.ScalaTime._
-import js7.common.scalautil.Synchronizer._
+import js7.base.time.ScalaTime.*
+import js7.common.scalautil.Synchronizer.*
 import scala.concurrent.blocking
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer

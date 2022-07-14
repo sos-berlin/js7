@@ -5,7 +5,7 @@ import js7.data.lock.Acquired.Available
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.OrderId
 import js7.data_for_java.common.JJsonable
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 final case class JLockState(asScala: LockState)
 extends JJsonable[JLockState]

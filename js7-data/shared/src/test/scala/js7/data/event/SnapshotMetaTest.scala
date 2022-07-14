@@ -1,8 +1,8 @@
 package js7.data.event
 
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.data.event.SnapshotMeta.SnapshotEventId
-import js7.tester.CirceJsonTester._
+import js7.tester.CirceJsonTester.*
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

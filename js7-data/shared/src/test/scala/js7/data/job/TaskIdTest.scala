@@ -1,7 +1,7 @@
 package js7.data.job
 
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 
 /**
  * @author Joacim Zschimmer

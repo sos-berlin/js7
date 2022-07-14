@@ -7,7 +7,7 @@ import js7.base.auth.Admission
 import js7.base.problem.Problem
 import js7.base.web.Uri
 import js7.data_for_java.common.JavaWrapper
-import js7.data_for_java.vavr.VavrConverters._
+import js7.data_for_java.vavr.VavrConverters.*
 
 @javaApi
 final case class JAdmission(asScala: Admission)

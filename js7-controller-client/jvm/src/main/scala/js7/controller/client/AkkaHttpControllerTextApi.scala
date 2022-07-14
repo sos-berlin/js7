@@ -3,15 +3,15 @@ package js7.controller.client
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Path
 import js7.base.auth.UserAndPassword
-import js7.base.configutils.Configs._
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.configutils.Configs.*
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.https.{HttpsConfig, KeyStoreRef, TrustStoreRef}
 import js7.base.session.SessionApi
 import js7.base.utils.HasCloser
 import js7.base.web.Uri
 import js7.common.akkautils.ProvideActorSystem
 import js7.common.http.{AkkaHttpClient, TextApi}
-import js7.controller.client.AkkaHttpControllerTextApi._
+import js7.controller.client.AkkaHttpControllerTextApi.*
 import js7.data.session.HttpSessionApi
 
 /**

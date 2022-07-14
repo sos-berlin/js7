@@ -1,10 +1,10 @@
 package js7.data.execution.workflow.instructions
 
-import js7.base.circeutils.CirceUtils._
-import js7.base.problem.Checked._
+import js7.base.circeutils.CirceUtils.*
+import js7.base.problem.Checked.*
 import js7.base.time.WallClock
 import js7.data.agent.AgentPath
-import js7.data.execution.workflow.instructions.TryExecutorTest._
+import js7.data.execution.workflow.instructions.TryExecutorTest.*
 import js7.data.job.PathExecutable
 import js7.data.order.OrderEvent.OrderMoved
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
@@ -13,7 +13,7 @@ import js7.data.value.NamedValues
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, TryInstruction}
 import js7.data.workflow.position.BranchId.try_
-import js7.data.workflow.position._
+import js7.data.workflow.position.*
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec

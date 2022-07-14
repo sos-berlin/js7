@@ -1,6 +1,6 @@
 package js7.tests.jobresource
 
-import cats.implicits._
+import cats.implicits.*
 import io.circe.syntax.EncoderOps
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -8,11 +8,11 @@ import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.system.OperatingSystem.{isMac, isWindows}
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.JavaTimestamp.specific._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.JavaTimestamp.specific.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.Problems.MissingReferencedItemProblem
 import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode
@@ -33,12 +33,12 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
-import js7.tests.jobresource.JobResourceTest._
+import js7.tests.jobresource.JobResourceTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
-import org.scalatest.Assertions._
+import org.scalatest.Assertions.*
 import org.scalatest.freespec.AnyFreeSpec
 
 class JobResourceTest extends AnyFreeSpec with ControllerAgentForScalaTest

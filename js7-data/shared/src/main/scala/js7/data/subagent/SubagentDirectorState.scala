@@ -2,7 +2,7 @@ package js7.data.subagent
 
 import js7.base.crypt.Signed
 import js7.base.problem.Checked
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.item.SignableItem
 import js7.data.job.{JobKey, JobResource, JobResourcePath}
 import js7.data.order.{Order, OrderId}

@@ -12,8 +12,8 @@ import js7.data.value.Value
 import js7.data.workflow.WorkflowPath
 import js7.data_for_java.common.JJsonable
 import js7.data_for_java.workflow.position.JPositionOrLabel
-import scala.jdk.CollectionConverters._
-import scala.jdk.OptionConverters._
+import scala.jdk.CollectionConverters.*
+import scala.jdk.OptionConverters.*
 
 @javaApi
 final case class JFreshOrder(asScala: FreshOrder)

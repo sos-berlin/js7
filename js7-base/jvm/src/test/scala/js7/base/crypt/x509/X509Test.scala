@@ -5,22 +5,22 @@ import java.nio.file.Path
 import js7.base.Problems.{MessageSignedByUnknownProblem, TamperedWithSignedMessageProblem}
 import js7.base.crypt.x509.Openssl.{assertPemFile, openssl, quote}
 import js7.base.crypt.x509.X509Algorithm.SHA512withRSA
-import js7.base.crypt.x509.X509Test._
+import js7.base.crypt.x509.X509Test.*
 import js7.base.crypt.{GenericSignature, SignedString, SignerId}
 import js7.base.data.ByteArray
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.io.process.Processes.runProcess
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
-import org.scalatest.Assertions._
+import org.scalatest.Assertions.*
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.Deadline.now
 import scala.util.Random

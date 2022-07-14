@@ -12,7 +12,7 @@ import js7.base.io.process.ReturnCode
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.measureTime
 import js7.base.utils.Closer
 import js7.common.guice.GuiceImplicits.RichInjector

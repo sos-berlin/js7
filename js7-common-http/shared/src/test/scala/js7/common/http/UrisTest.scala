@@ -1,6 +1,6 @@
 package js7.common.http
 
-import js7.common.http.Uris._
+import js7.common.http.Uris.*
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

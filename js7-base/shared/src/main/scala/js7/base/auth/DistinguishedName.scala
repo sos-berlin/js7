@@ -3,7 +3,7 @@ package js7.base.auth
 import javax.security.auth.x500.X500Principal
 import js7.base.convert.As
 import js7.base.generic.GenericString.EmptyStringProblem
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import scala.util.{Failure, Success, Try}
 

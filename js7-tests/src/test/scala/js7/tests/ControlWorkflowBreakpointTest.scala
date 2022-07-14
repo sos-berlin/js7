@@ -1,14 +1,14 @@
 package js7.tests
 
-import cats.syntax.parallel._
-import js7.data.workflow.WorkflowControlId.syntax._
+import cats.syntax.parallel.*
+import js7.data.workflow.WorkflowControlId.syntax.*
 import js7.agent.RunningAgent
 import js7.agent.data.event.AgentEvent.AgentReady
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Checked
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.ScalaUtils.syntax.RichEither
@@ -33,14 +33,14 @@ import js7.data_for_java.controller.{JControllerCommand, JControllerState}
 import js7.data_for_java.workflow.position.JPosition
 import js7.data_for_java.workflow.{JWorkflowControl, JWorkflowControlId, JWorkflowId}
 import js7.proxy.ControllerApi
-import js7.tests.ControlWorkflowBreakpointTest._
+import js7.tests.ControlWorkflowBreakpointTest.*
 import js7.tests.jobs.{EmptyJob, SemaphoreJob}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 final class ControlWorkflowBreakpointTest
 extends AnyFreeSpec with DirectoryProviderForScalaTest

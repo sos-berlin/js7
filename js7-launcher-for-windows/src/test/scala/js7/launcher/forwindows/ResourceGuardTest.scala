@@ -1,7 +1,7 @@
 package js7.launcher.forwindows
 
-import js7.base.thread.Futures.implicits._
-import js7.base.time.ScalaTime._
+import js7.base.thread.Futures.implicits.*
+import js7.base.time.ScalaTime.*
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future

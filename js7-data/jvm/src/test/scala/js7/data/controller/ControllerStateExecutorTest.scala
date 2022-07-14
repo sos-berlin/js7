@@ -7,7 +7,7 @@ import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.Problems.{ItemIsStillReferencedProblem, MissingReferencedItemProblem, UnknownItemPathProblem}
 import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.controller.ControllerStateExecutor.convertImplicitly
-import js7.data.controller.ControllerStateExecutorTest._
+import js7.data.controller.ControllerStateExecutorTest.*
 import js7.data.crypt.SignedItemVerifier.Verified
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.SnapshotMeta.SnapshotEventId

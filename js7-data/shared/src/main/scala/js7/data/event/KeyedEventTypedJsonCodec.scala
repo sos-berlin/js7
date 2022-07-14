@@ -4,10 +4,10 @@ import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, HCursor, Json}
 import js7.base.circeutils.typed.TypedJsonCodec.{TypeFieldName, UnknownClassForJsonException, typeName, unknownJsonTypeFailure}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import js7.base.utils.Collections._
+import js7.base.utils.Collections.*
 import js7.base.utils.Collections.implicits.RichPairTraversable
 import js7.base.utils.ScalaUtils.implicitClass
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import scala.reflect.ClassTag
 

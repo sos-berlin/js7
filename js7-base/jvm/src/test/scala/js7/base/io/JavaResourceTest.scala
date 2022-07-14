@@ -7,12 +7,12 @@ import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files.{createTempDirectory, createTempFile, delete}
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import js7.base.data.ByteArray
-import js7.base.io.JavaResourceTest._
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.JavaResourceTest.*
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.ProblemException
 import js7.base.utils.AutoClosing.autoClosing
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 
 /**
  * @author Joacim Zschimmer

@@ -5,11 +5,11 @@ import java.nio.file.Paths
 import js7.agent.RunningAgent
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.{copyDirectoryContent, deleteDirectoryContentRecursively, deleteDirectoryRecursively}
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.Problem
-import js7.base.thread.Futures.implicits._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.Futures.implicits.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
@@ -23,7 +23,7 @@ import js7.data.item.VersionId
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.UpdateAgentRefsTest._
+import js7.tests.UpdateAgentRefsTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerTestUtils.newControllerApi
 import js7.tests.testenv.{DirectoryProvider, DirectoryProviderForScalaTest}

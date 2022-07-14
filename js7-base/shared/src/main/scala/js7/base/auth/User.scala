@@ -1,8 +1,8 @@
 package js7.base.auth
 
-import cats.instances.vector._
-import cats.syntax.traverse._
-import js7.base.auth.User._
+import cats.instances.vector.*
+import cats.syntax.traverse.*
+import js7.base.auth.User.*
 import js7.base.problem.{Checked, Problem}
 
 /**

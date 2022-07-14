@@ -1,8 +1,8 @@
 package js7.data.value.expression
 
-import cats.syntax.semigroup._
+import cats.syntax.semigroup.*
 import io.circe.{Decoder, Encoder, Json}
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichString

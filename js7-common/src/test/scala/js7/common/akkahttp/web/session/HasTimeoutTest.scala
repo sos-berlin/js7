@@ -2,7 +2,7 @@ package js7.common.akkahttp.web.session
 
 import monix.execution.schedulers.TestScheduler
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer

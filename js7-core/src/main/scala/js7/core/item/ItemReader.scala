@@ -1,10 +1,10 @@
 package js7.core.item
 
 import js7.base.data.ByteArray
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
-import js7.core.item.ItemReader._
+import js7.core.item.ItemReader.*
 import js7.data.item.{InventoryItem, InventoryItemPath, SourceType}
 
 trait ItemReader
@@ -33,6 +33,9 @@ trait ItemReader
 
 object ItemReader
 {
-  final case class SourceProblem private(path: InventoryItemPath, sourceType: SourceType, underlying: Problem)
-    extends Problem.Lazy(s"Problem with '$path' ($sourceType)", Some(underlying))
+  final case class SourceProblem(
+    path: InventoryItemPath,
+    sourceType: SourceType,
+    underlying: Problem)
+  extends Problem.Lazy(s"Problem with '$path' ($sourceType)", Some(underlying))
 }

@@ -4,13 +4,13 @@ import java.nio.file.Files.{createDirectories, createDirectory}
 import js7.agent.RunningAgent
 import js7.agent.configuration.AgentConfiguration
 import js7.base.crypt.silly.{SillySignature, SillySigner}
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
-import js7.base.thread.Futures.implicits._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.Futures.implicits.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.common.commandline.CommandLineArguments
 import js7.common.utils.FreeTcpPortFinder
@@ -27,7 +27,7 @@ import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.ControllerAgentWithoutAuthenticationTest._
+import js7.tests.ControllerAgentWithoutAuthenticationTest.*
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec

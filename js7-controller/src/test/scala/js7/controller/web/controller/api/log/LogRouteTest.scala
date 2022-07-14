@@ -10,20 +10,20 @@ import java.nio.file.Files.delete
 import java.nio.file.Path
 import java.util.Objects.requireNonNull
 import java.util.concurrent.ArrayBlockingQueue
-import js7.base.configutils.Configs._
-import js7.base.io.file.FileUtils.implicits._
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.configutils.Configs.*
+import js7.base.io.file.FileUtils.implicits.*
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryFile
-import js7.base.thread.Futures.implicits._
-import js7.base.time.ScalaTime._
+import js7.base.thread.Futures.implicits.*
+import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
-import js7.common.http.StreamingSupport._
+import js7.common.http.StreamingSupport.*
 import js7.controller.web.controller.api.test.RouteTester
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer

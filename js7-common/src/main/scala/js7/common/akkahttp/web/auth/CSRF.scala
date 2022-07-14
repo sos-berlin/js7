@@ -5,7 +5,7 @@ import akka.http.scaladsl.model.HttpRequest
 import akka.http.scaladsl.model.MediaTypes.{`application/x-www-form-urlencoded`, `multipart/form-data`, `text/plain`}
 import akka.http.scaladsl.model.StatusCodes.Forbidden
 import akka.http.scaladsl.server.Directive0
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives.*
 
 /**
   * Simplistic check agains some CSRF attacks, especially HTML 5 form POST.

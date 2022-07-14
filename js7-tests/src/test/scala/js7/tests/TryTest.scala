@@ -13,7 +13,7 @@ import js7.data.value.NamedValues
 import js7.data.workflow.position.BranchId.{Then, try_}
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
-import js7.tests.TryTest._
+import js7.tests.TryTest.*
 import js7.tests.testenv.DirectoryProvider
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.traced

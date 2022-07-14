@@ -1,7 +1,7 @@
 package js7.data_for_java.orderwatch
 
-import cats.instances.option._
-import cats.syntax.traverse._
+import cats.instances.option.*
+import cats.syntax.traverse.*
 import io.vavr.control.{Either => VEither}
 import java.nio.file.Path
 import java.util.Optional
@@ -20,7 +20,7 @@ import js7.data_for_java.common.JJsonable
 import js7.data_for_java.item.JUnsignedSimpleItem
 import js7.data_for_java.value.JExpression
 import js7.data_for_java.vavr.VavrConverters.RichVavrOption
-import scala.jdk.OptionConverters._
+import scala.jdk.OptionConverters.*
 
 final case class JFileWatch(asScala: FileWatch)
 extends JJsonable[JFileWatch] with JUnsignedSimpleItem

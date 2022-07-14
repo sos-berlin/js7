@@ -6,13 +6,13 @@ import js7.agent.client.SimpleAgentClient
 import js7.agent.command.CommandHandler
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{EmergencyStop, ShutDown}
-import js7.agent.tests.AgentClientCommandMarshallingTest._
+import js7.agent.tests.AgentClientCommandMarshallingTest.*
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.problem.Checked
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
-import js7.base.utils.Closer.syntax._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
+import js7.base.utils.Closer.syntax.*
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SideEffect.ImplicitSideEffect
 import js7.core.command.CommandMeta
 import monix.eval.Task

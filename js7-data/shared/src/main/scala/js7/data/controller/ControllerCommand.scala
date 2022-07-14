@@ -13,13 +13,13 @@ import js7.base.problem.Checked.implicits.{checkedJsonDecoder, checkedJsonEncode
 import js7.base.time.Timestamp
 import js7.base.utils.Big
 import js7.base.utils.IntelliJUtils.intelliJuseImport
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.data.agent.AgentPath
 import js7.data.board.{BoardPath, NoticeId}
 import js7.data.cluster.{ClusterCommand, ClusterSetting}
 import js7.data.command.{CancellationMode, CommonCommand, SuspensionMode}
-import js7.data.controller.ControllerState._
+import js7.data.controller.ControllerState.*
 import js7.data.event.EventId
 import js7.data.node.NodeId
 import js7.data.order.OrderEvent.OrderResumed

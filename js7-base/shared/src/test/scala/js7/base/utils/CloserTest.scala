@@ -1,11 +1,11 @@
 package js7.base.utils
 
 import java.util.concurrent.ConcurrentLinkedQueue
-import js7.base.utils.CloserTest._
+import js7.base.utils.CloserTest.*
 import monix.execution.atomic.AtomicBoolean
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.util.control.NoStackTrace
 
 /**
@@ -85,7 +85,7 @@ final class CloserTest extends AnyFreeSpec
   }
 
   "syntax" - {
-    import Closer.syntax._
+    import Closer.syntax.*
 
     "closeWithCloser AutoClosable" in {
       implicit val closer = new Closer
@@ -111,7 +111,7 @@ final class CloserTest extends AnyFreeSpec
   }
 
   "object methods" - {
-    import Closer._
+    import Closer.*
 
     "withCloser" in {
       val ctx = new Context

@@ -3,18 +3,18 @@ package js7.subagent.configuration
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Paths
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.log.Logger
 import js7.base.problem.Problem
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.View
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 final class SubagentConfTest extends AnyFreeSpec
 {

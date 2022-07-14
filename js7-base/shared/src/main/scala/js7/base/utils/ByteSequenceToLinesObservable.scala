@@ -1,7 +1,7 @@
 package js7.base.utils
 
-import cats.syntax.monoid._
-import js7.base.data.ByteSequence.ops._
+import cats.syntax.monoid.*
+import js7.base.data.ByteSequence.ops.*
 import js7.base.data.{ByteArray, ByteSequence}
 import monix.reactive.Observable
 import scala.collection.mutable

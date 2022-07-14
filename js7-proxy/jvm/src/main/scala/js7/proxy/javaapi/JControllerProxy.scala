@@ -5,18 +5,18 @@ import java.util.Objects.requireNonNull
 import java.util.concurrent.CompletableFuture
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.Problem
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.data.controller.ControllerCommand.AddOrdersResponse
 import js7.data.event.{Event, EventId, KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.OrderTerminated
 import js7.data_for_java.common.JavaUtils.Void
 import js7.data_for_java.controller.JControllerState
 import js7.data_for_java.order.JFreshOrder
-import js7.data_for_java.reactor.ReactorConverters._
-import js7.data_for_java.vavr.VavrConverters._
+import js7.data_for_java.reactor.ReactorConverters.*
+import js7.data_for_java.vavr.VavrConverters.*
 import js7.proxy.ControllerProxy
 import js7.proxy.data.event.EventAndState
 import js7.proxy.javaapi.data.controller.JEventAndControllerState

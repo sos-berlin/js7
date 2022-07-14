@@ -3,7 +3,7 @@ package js7.agent.configuration
 import akka.actor.ActorSystem
 import com.typesafe.config.{Config, ConfigFactory}
 import js7.base.utils.Closer
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.akkautils.Akkas.terminateAndWait
 import js7.common.akkautils.DeadLetterActor
 import scala.concurrent.ExecutionContext

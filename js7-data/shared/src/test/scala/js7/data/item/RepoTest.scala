@@ -5,12 +5,12 @@ import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.silly.{SillySignatureVerifier, SillySigner}
 import js7.base.crypt.{GenericSignature, Signed, SignedString}
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.Problem
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.time.Stopwatch
 import js7.data.Problems.{EventVersionDoesNotMatchProblem, ItemVersionDoesNotMatchProblem, VersionedItemRemovedProblem}
-import js7.data.item.RepoTest._
+import js7.data.item.RepoTest.*
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemChanged, VersionedItemRemoved}
 import org.scalatest.freespec.AnyFreeSpec
 

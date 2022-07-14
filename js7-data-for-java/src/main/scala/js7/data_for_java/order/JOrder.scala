@@ -6,25 +6,25 @@ import java.util.Optional
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.problem.Problem
-import js7.base.time.JavaTimestamp.specific._
+import js7.base.time.JavaTimestamp.specific.*
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.data.agent.AgentPath
 import js7.data.order.{Order, OrderId}
 import js7.data.subagent.SubagentId
 import js7.data.value.Value
 import js7.data_for_java.common.{JJsonable, JavaWrapper}
-import js7.data_for_java.vavr.VavrConverters._
+import js7.data_for_java.vavr.VavrConverters.*
 import js7.data_for_java.workflow.JWorkflowId
 import js7.data_for_java.workflow.position.JWorkflowPosition
-import scala.jdk.CollectionConverters._
-import scala.jdk.OptionConverters._
+import scala.jdk.CollectionConverters.*
+import scala.jdk.OptionConverters.*
 import scala.reflect.ClassTag
 
 @javaApi
 final case class JOrder(asScala: Order[Order.State])
 extends JJsonable[JOrder]
 {
-  import JOrder._
+  import JOrder.*
 
   protected type AsScala = Order[Order.State]
 

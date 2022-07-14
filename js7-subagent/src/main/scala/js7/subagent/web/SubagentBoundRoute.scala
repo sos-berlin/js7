@@ -4,7 +4,7 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes.NotFound
 import akka.http.scaladsl.server.Directives.{Segment, complete, pathEndOrSingleSlash, pathPrefix}
 import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.server.RouteConcatenation._
+import akka.http.scaladsl.server.RouteConcatenation.*
 import akka.http.scaladsl.server.directives.CodingDirectives.{decodeRequest, encodeResponse}
 import com.typesafe.config.Config
 import js7.base.BuildInfo

@@ -5,7 +5,7 @@ import js7.base.problem.Checked
 import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.SnapshotableState._
+import js7.data.event.SnapshotableState.*
 import monix.eval.Task
 import monix.reactive.Observable
 

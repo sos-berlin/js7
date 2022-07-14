@@ -1,7 +1,7 @@
 package js7.common.utils
 
-import js7.base.utils.ScalaUtils._
-import js7.common.utils.BeanPropertyReader._
+import js7.base.utils.ScalaUtils.*
+import js7.common.utils.BeanPropertyReader.*
 import scala.reflect.ClassTag
 
 /**

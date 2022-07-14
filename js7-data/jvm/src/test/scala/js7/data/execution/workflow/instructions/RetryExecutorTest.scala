@@ -1,9 +1,9 @@
 package js7.data.execution.workflow.instructions
 
 import js7.base.problem.Problem
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.{Timestamp, WallClock}
-import js7.data.execution.workflow.instructions.RetryExecutorTest._
+import js7.data.execution.workflow.instructions.RetryExecutorTest.*
 import js7.data.order.OrderEvent.OrderRetrying
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.state.TestStateView
@@ -12,7 +12,7 @@ import js7.data.workflow.instructions.{Gap, Retry, TryInstruction}
 import js7.data.workflow.position.{Position, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer

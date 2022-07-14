@@ -1,6 +1,6 @@
 package js7.base.utils
 
-import js7.base.utils.JavaCollections.syntax._
+import js7.base.utils.JavaCollections.syntax.*
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

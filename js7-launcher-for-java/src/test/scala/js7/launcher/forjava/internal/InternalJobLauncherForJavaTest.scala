@@ -5,13 +5,13 @@ import java.lang.System.{lineSeparator => nl}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Paths
 import js7.base.io.file.FileUtils.temporaryDirectoryResource
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.thread.Futures.implicits._
+import js7.base.thread.Futures.implicits.*
 import js7.base.thread.IOExecutor.Implicits.globalIOX
-import js7.base.thread.MonixBlocking.syntax._
+import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.AlarmClock
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.{RichEitherF, RichEitherIterable, RichPartialFunction}
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.common.system.ThreadPools.newUnlimitedScheduler
@@ -28,7 +28,7 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.{Position, WorkflowBranchPath}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.launcher.configuration.JobLauncherConf
-import js7.launcher.forjava.internal.InternalJobLauncherForJavaTest._
+import js7.launcher.forjava.internal.InternalJobLauncherForJavaTest.*
 import js7.launcher.forjava.internal.tests.{TestBlockingInternalJob, TestJInternalJob}
 import js7.launcher.internal.{InternalJobLauncher, JobLauncher}
 import js7.launcher.process.ProcessConfiguration

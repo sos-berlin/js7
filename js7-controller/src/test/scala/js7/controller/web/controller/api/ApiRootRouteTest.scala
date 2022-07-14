@@ -18,7 +18,7 @@ import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future
 import scala.concurrent.duration.Deadline.now
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer

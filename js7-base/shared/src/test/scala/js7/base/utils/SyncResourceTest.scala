@@ -1,7 +1,7 @@
 package js7.base.utils
 
 import cats.effect.{Resource, SyncIO}
-import js7.base.utils.SyncResource.syntax._
+import js7.base.utils.SyncResource.syntax.*
 import monix.execution.atomic.AtomicAny
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable

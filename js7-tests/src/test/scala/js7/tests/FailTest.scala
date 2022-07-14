@@ -3,7 +3,7 @@ package js7.tests
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
 import js7.data.job.RelativePathExecutable
@@ -12,13 +12,13 @@ import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowParser, WorkflowPath}
-import js7.tests.FailTest._
+import js7.tests.FailTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec
 import scala.reflect.ClassTag
-import scala.reflect.runtime.universe._
+import scala.reflect.runtime.universe.*
 
 final class FailTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {

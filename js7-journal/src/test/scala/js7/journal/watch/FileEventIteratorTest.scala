@@ -9,10 +9,10 @@ import js7.common.jsonseq.PositionAnd
 import js7.data.event.{EventId, JournalSeparators, Stamped}
 import js7.journal.data.JournalMeta
 import js7.journal.files.JournalFiles.JournalMetaOps
-import js7.journal.watch.FileEventIteratorTest._
+import js7.journal.watch.FileEventIteratorTest.*
 import js7.journal.watch.TestData.{AEvent, TestKeyedEventJsonCodec, journalId, writeJournal}
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 
 /**
   * @author Joacim Zschimmer

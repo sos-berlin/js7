@@ -1,18 +1,18 @@
 package js7.proxy
 
 import cats.effect.{ExitCase, Resource}
-import cats.syntax.option._
-import cats.syntax.traverse._
+import cats.syntax.option.*
+import cats.syntax.traverse.*
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixBase.durationOfTask
-import js7.base.monixutils.MonixBase.syntax._
-import js7.base.problem.Checked._
+import js7.base.monixutils.MonixBase.syntax.*
+import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.session.SessionApi
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.checkedCast
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SetOnce
 import js7.base.web.HttpClient
 import js7.common.http.RecouplingStreamReader
@@ -20,7 +20,7 @@ import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.data.cluster.ClusterNodeState
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventApi, EventId, EventRequest, EventSeqTornProblem, JournaledState, SnapshotableState, Stamped}
-import js7.proxy.JournaledProxy._
+import js7.proxy.JournaledProxy.*
 import js7.proxy.configuration.ProxyConf
 import js7.proxy.data.event.ProxyEvent.{ProxyCoupled, ProxyCouplingError, ProxyDecoupled}
 import js7.proxy.data.event.{EventAndState, ProxyEvent, ProxyStarted}

@@ -2,10 +2,10 @@ package js7.base.log
 
 import io.circe.Decoder
 import java.security.SecureRandom
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.GenericString
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest
 import monix.execution.Scheduler
 import monix.execution.misc.Local
@@ -142,7 +142,7 @@ object CorrelId extends GenericString.Checked_[CorrelId]
       TracingScheduler(scheduler)
 
   private[log] sealed case class LongCorrelId(long: Long) extends CorrelId {
-    import LongCorrelId._
+    import LongCorrelId.*
 
     assert((long & ~bitMask) == 0)
 

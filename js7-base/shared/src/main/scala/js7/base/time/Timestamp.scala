@@ -4,9 +4,9 @@ import cats.Show
 import io.circe.{Decoder, Encoder, Json}
 import js7.base.number.Numbers.{addSaturating, subtractSaturating}
 import js7.base.problem.Checked
-import js7.base.time.ScalaTime._
-import js7.base.time.Timestamp._
-import scala.concurrent.duration._
+import js7.base.time.ScalaTime.*
+import js7.base.time.Timestamp.*
+import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer

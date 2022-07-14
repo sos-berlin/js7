@@ -1,9 +1,9 @@
 package js7.data.event
 
 import js7.base.auth.UserId
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
-import js7.tester.CirceJsonTester._
+import js7.tester.CirceJsonTester.*
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

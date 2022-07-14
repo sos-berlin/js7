@@ -6,10 +6,10 @@ import cats.effect.Resource
 import js7.agent.client.AgentClient
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand._
-import js7.agent.web.CommandWebServerTest._
+import js7.agent.data.commands.AgentCommand.*
+import js7.agent.web.CommandWebServerTest.*
 import js7.base.auth.SimpleUser
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.web.Uri
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments

@@ -2,12 +2,12 @@ package js7.base.io.file.watch
 
 import java.nio.file.Path
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted, FileModified}
-import js7.base.io.file.watch.DirectoryEventDelayer._
+import js7.base.io.file.watch.DirectoryEventDelayer.*
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixAckFuture
 import js7.base.monixutils.MonixDeadline
 import js7.base.monixutils.MonixDeadline.now
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import monix.execution.Ack.{Continue, Stop}
 import monix.execution.atomic.Atomic
 import monix.execution.{Ack, Cancelable}
@@ -17,7 +17,7 @@ import scala.annotation.tailrec
 import scala.collection.immutable.VectorBuilder
 import scala.collection.mutable
 import scala.concurrent.Future
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /** A special delay line for DirectoryEvents.
   *

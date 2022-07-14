@@ -1,10 +1,10 @@
 package js7.base.monixutils
 
 import cats.effect.ExitCase
-import js7.base.monixutils.MonixBase._
-import js7.base.monixutils.MonixBase.syntax._
+import js7.base.monixutils.MonixBase.*
+import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.{Checked, Problem, ProblemException}
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.CloseableIterator
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -14,7 +14,7 @@ import monix.execution.schedulers.TestScheduler
 import monix.reactive.Observable
 import org.scalatest.freespec.AsyncFreeSpec
 import scala.concurrent.duration.Deadline.now
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.concurrent.{Future, TimeoutException}
 import scala.language.reflectiveCalls
 

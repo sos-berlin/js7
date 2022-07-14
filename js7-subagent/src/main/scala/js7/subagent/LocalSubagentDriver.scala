@@ -1,16 +1,16 @@
 package js7.subagent
 
-import cats.syntax.foldable._
-import cats.syntax.parallel._
-import cats.syntax.traverse._
+import cats.syntax.foldable.*
+import cats.syntax.parallel.*
+import cats.syntax.traverse.*
 import js7.base.io.process.{ProcessSignal, Stderr, Stdout, StdoutOrStderr}
-import js7.base.log.Logger.syntax._
+import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.AsyncMap
-import js7.base.monixutils.MonixBase.syntax._
+import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.{Checked, ProblemException}
 import js7.base.utils.ScalaUtils.chunkStrings
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.system.PlatformInfos.currentPlatformInfo
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
@@ -29,7 +29,7 @@ import js7.journal.state.StatePersistence
 import js7.launcher.StdObservers
 import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.internal.JobLauncher
-import js7.subagent.LocalSubagentDriver._
+import js7.subagent.LocalSubagentDriver.*
 import js7.subagent.configuration.SubagentConf
 import monix.eval.Task
 import monix.reactive.Observable

@@ -1,16 +1,16 @@
 package js7.tests.https
 
 import js7.base.log.Logger
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.AgentCouplingFailed
 import js7.data.event.KeyedEvent
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.WorkflowPath
-import js7.tests.https.AgentClientSideHttpsWithoutCertificateTest._
+import js7.tests.https.AgentClientSideHttpsWithoutCertificateTest.*
 import monix.execution.Scheduler.Implicits.global
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer

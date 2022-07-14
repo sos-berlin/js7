@@ -1,19 +1,19 @@
 package js7.subagent.director
 
-import cats.syntax.flatMap._
-import cats.syntax.foldable._
-import cats.syntax.traverse._
+import cats.syntax.flatMap.*
+import cats.syntax.foldable.*
+import cats.syntax.traverse.*
 import js7.base.generic.Completed
 import js7.base.log.Logger
-import js7.base.log.Logger.syntax._
-import js7.base.monixutils.MonixBase.syntax._
+import js7.base.log.Logger.syntax.*
+import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.monixutils.ObservablePauseDetector.RichPauseObservable
 import js7.base.monixutils.Switch
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.Problem
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.AsyncLock
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.http.RecouplingStreamReader
 import js7.data.event.JournalEvent.StampedHeartbeat
 import js7.data.event.KeyedEvent.NoKey
@@ -26,7 +26,7 @@ import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentEvents
 import js7.data.subagent.SubagentState.keyedEventJsonCodec
 import js7.data.subagent.{SubagentDirectorState, SubagentEvent, SubagentRunId}
 import js7.journal.CommitOptions
-import js7.subagent.director.SubagentEventListener._
+import js7.subagent.director.SubagentEventListener.*
 import monix.catnap.MVar
 import monix.eval.{Fiber, Task}
 import monix.execution.atomic.Atomic

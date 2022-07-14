@@ -1,11 +1,11 @@
 package js7.data_for_java.common
 
-import cats.instances.vector._
-import cats.syntax.traverse._
+import cats.instances.vector.*
+import cats.syntax.traverse.*
 import java.util.Optional
 import js7.base.problem.{Checked, Problem}
 import js7.data.value.{BooleanValue, ErrorValue, FunctionValue, ListValue, MissingValue, NamedValues, NullValue, NumberValue, ObjectValue, StringValue, Value}
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 object JavaUtils
 {

@@ -1,14 +1,14 @@
 package js7.data.order
 
-import io.circe._
+import io.circe.*
 import io.circe.generic.semiauto.deriveCodec
-import io.circe.syntax._
+import io.circe.syntax.*
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.io.process.{ProcessSignal, ReturnCode}
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.typeclasses.IsEmpty.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.order.Outcome.Disrupted.ProcessLost
 import js7.data.subagent.Problems.ProcessLostDueToUnknownReasonProblem
 import js7.data.value.{NamedValues, NumberValue}

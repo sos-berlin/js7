@@ -1,10 +1,10 @@
 package js7.launcher.process
 
 import java.nio.file.Files
-import java.nio.file.Files._
+import java.nio.file.Files.*
 import java.nio.file.attribute.PosixFileAttributes
 import java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{deleteDirectoryRecursively, touchFile}
 import js7.base.io.process.Processes.ShellFileExtension
 import js7.base.system.OperatingSystem.isUnix

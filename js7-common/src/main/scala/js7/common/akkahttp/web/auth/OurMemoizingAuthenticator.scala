@@ -5,8 +5,8 @@ import akka.http.scaladsl.server.directives.SecurityDirectives.Authenticator
 import js7.base.auth.{User, UserAndPassword, UserId}
 import js7.base.generic.SecretString
 import js7.base.utils.Memoizer
-import js7.base.utils.ScalaUtils.syntax._
-import js7.common.akkahttp.web.auth.OurMemoizingAuthenticator._
+import js7.base.utils.ScalaUtils.syntax.*
+import js7.common.akkahttp.web.auth.OurMemoizingAuthenticator.*
 
 /**
   * Rejects authentication (returning None) only if provided credentials are invalid or user is `Anonymous`.

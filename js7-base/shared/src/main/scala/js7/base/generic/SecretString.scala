@@ -3,7 +3,7 @@ package js7.base.generic
 import io.circe.{Codec, Decoder, Encoder, Json}
 import java.util.Objects.requireNonNull
 import js7.base.convert.As
-import js7.base.generic.SecretString._
+import js7.base.generic.SecretString.*
 import scala.annotation.tailrec
 
 /**

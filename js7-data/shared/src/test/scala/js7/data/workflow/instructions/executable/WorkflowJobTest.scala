@@ -2,11 +2,11 @@ package js7.data.workflow.instructions.executable
 
 import java.time.DayOfWeek.{MONDAY, TUESDAY}
 import java.time.LocalTime
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.io.process.{KeyLogin, ReturnCode}
 import js7.base.problem.Problems.InvalidNameProblem
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.{AdmissionTimeScheme, WeekdayPeriod}
 import js7.data.agent.AgentPath
 import js7.data.job.{JobResourcePath, RelativePathExecutable, ReturnCodeMeaning}

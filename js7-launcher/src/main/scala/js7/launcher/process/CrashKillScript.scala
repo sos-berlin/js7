@@ -12,7 +12,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.common.utils.Exceptions.ignoreException
 import js7.data.job.TaskId
 import js7.launcher.configuration.ProcessKillScript
-import js7.launcher.process.CrashKillScript._
+import js7.launcher.process.CrashKillScript.*
 import scala.collection.mutable
 
 /**

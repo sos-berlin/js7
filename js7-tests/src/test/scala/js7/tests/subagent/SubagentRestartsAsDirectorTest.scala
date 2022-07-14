@@ -6,14 +6,14 @@ import js7.agent.data.commands.AgentCommand.{CoupleController, DedicateAgentDire
 import js7.base.Js7Version
 import js7.base.auth.SessionToken
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.problem.Problem
 import js7.base.session.SessionCommand
 import js7.base.session.SessionCommand.Login
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.web.{HttpClient, Uri}

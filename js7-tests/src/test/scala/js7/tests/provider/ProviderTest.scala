@@ -1,24 +1,24 @@
 package js7.tests.provider
 
-import cats.syntax.option._
+import cats.syntax.option.*
 import java.nio.file.Files.{createDirectories, delete}
 import java.nio.file.Paths
-import js7.base.circeutils.CirceUtils._
-import js7.base.configutils.Configs._
+import js7.base.circeutils.CirceUtils.*
+import js7.base.configutils.Configs.*
 import js7.base.crypt.silly.SillySigner
 import js7.base.data.ByteArray
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isMac
-import js7.base.thread.Futures.implicits._
+import js7.base.thread.Futures.implicits.*
 import js7.base.thread.IOExecutor.Implicits.globalIOX
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.core.item.{ItemPaths, VersionedItemReader}
 import js7.data.agent.AgentPath
 import js7.data.event.EventId
@@ -31,14 +31,14 @@ import js7.data.subagent.SubagentId
 import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath, WorkflowPathControlPath}
 import js7.provider.Provider
 import js7.provider.configuration.ProviderConfiguration
-import js7.tests.provider.ProviderTest._
+import js7.tests.provider.ProviderTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer

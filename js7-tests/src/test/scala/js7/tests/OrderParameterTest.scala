@@ -1,6 +1,6 @@
 package js7.tests
 
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.AgentPath
 import js7.data.job.{JobResource, JobResourcePath}
@@ -12,7 +12,7 @@ import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
 import js7.data.workflow.{OrderParameter, OrderParameterList, OrderPreparation, Workflow, WorkflowPath}
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
-import js7.tests.OrderParameterTest._
+import js7.tests.OrderParameterTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import org.scalatest.freespec.AnyFreeSpec
 

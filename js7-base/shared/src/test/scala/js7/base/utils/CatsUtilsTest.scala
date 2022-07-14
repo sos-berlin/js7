@@ -2,10 +2,10 @@ package js7.base.utils
 
 import cats.data.Validated
 import cats.data.Validated.{Invalid, Valid}
-import cats.instances.int._
-import cats.instances.string._
+import cats.instances.int.*
+import cats.instances.string.*
 import js7.base.problem.{Problem, ProblemException}
-import js7.base.utils.CatsUtils._
+import js7.base.utils.CatsUtils.*
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

@@ -21,7 +21,7 @@
 
 package js7.base.monixutils
 
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import monix.execution.Ack.{Continue, Stop}
 import monix.execution.cancelables.{CompositeCancelable, SerialCancelable}
 import monix.execution.{Ack, Cancelable}

@@ -3,7 +3,7 @@ package js7.base.time
 import java.time.{Duration, Instant, ZonedDateTime}
 import java.util.concurrent.TimeUnit.NANOSECONDS
 import js7.base.log.Logger
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import scala.concurrent.duration.{FiniteDuration, Duration => ScalaDuration}
 
 object JavaTimeConverters

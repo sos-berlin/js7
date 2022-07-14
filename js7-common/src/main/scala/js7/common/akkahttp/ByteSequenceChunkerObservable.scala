@@ -1,7 +1,7 @@
 package js7.common.akkahttp
 
 import js7.base.data.ByteSequence
-import js7.base.data.ByteSequence.ops._
+import js7.base.data.ByteSequence.ops.*
 import monix.reactive.Observable
 
 object ByteSequenceChunkerObservable

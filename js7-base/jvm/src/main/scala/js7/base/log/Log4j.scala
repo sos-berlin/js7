@@ -2,7 +2,7 @@ package js7.base.log
 
 import java.lang.reflect.Method
 import java.time.LocalDateTime
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import monix.execution.atomic.AtomicBoolean
 import scala.concurrent.duration.Deadline

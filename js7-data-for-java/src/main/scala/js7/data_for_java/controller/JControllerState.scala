@@ -25,7 +25,7 @@ import js7.data.order.{Order, OrderId, OrderObstacleCalculator}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentSelection, SubagentSelectionId}
 import js7.data.value.Value
-import js7.data.workflow.WorkflowControlId.syntax._
+import js7.data.workflow.WorkflowControlId.syntax.*
 import js7.data.workflow.{WorkflowControl, WorkflowControlId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import js7.data_for_java.agent.{JAgentRef, JAgentRefState}
 import js7.data_for_java.board.{JBoard, JBoardState, JNotice}
@@ -41,11 +41,11 @@ import js7.data_for_java.order.JOrderPredicates.any
 import js7.data_for_java.order.{JOrder, JOrderObstacle}
 import js7.data_for_java.orderwatch.JFileWatch
 import js7.data_for_java.subagent.{JSubagentItem, JSubagentItemState, JSubagentSelection}
-import js7.data_for_java.vavr.VavrConverters._
+import js7.data_for_java.vavr.VavrConverters.*
 import js7.data_for_java.workflow.{JWorkflowControl, JWorkflowControlId, JWorkflowId}
-import scala.jdk.CollectionConverters._
-import scala.jdk.OptionConverters._
-import scala.jdk.StreamConverters._
+import scala.jdk.CollectionConverters.*
+import scala.jdk.OptionConverters.*
+import scala.jdk.StreamConverters.*
 
 @javaApi
 final case class JControllerState(asScala: ControllerState)

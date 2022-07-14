@@ -1,11 +1,11 @@
 package js7.tests.controller
 
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.process.Processes.{ShellFileExtension => sh}
 import js7.base.problem.Checked.Ops
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.TakeSnapshot
 import js7.data.controller.ControllerEvent
@@ -15,7 +15,7 @@ import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.journal.files.JournalFiles.listJournalFiles
-import js7.tests.controller.ObsoleteJournalFilesRemovedTest._
+import js7.tests.controller.ObsoleteJournalFilesRemovedTest.*
 import js7.tests.testenv.DirectoryProvider.script
 import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler.Implicits.global

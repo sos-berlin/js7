@@ -9,7 +9,7 @@ import scala.util.matching.Regex
 
 final case class OrderId private(string: String) extends GenericString
 {
-  import OrderId._
+  import OrderId.*
 
   if (string.isEmpty) throw new IllegalArgumentException("OrderId must not be empty")
 

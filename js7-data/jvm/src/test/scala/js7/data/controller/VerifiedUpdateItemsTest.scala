@@ -5,10 +5,10 @@ import js7.base.auth.User.UserDoesNotHavePermissionProblem
 import js7.base.auth.{SimpleUser, UpdateItemPermission, UserId, ValidUserPermission}
 import js7.base.crypt.SignedString
 import js7.base.crypt.x509.X509Signer
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.data.controller.ControllerState.signableItemJsonCodec
 import js7.data.crypt.SignedItemVerifier
 import js7.data.crypt.SignedItemVerifier.Verified

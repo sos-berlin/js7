@@ -3,19 +3,19 @@ package js7.tests.controller.commands
 import io.circe.syntax.EncoderOps
 import java.nio.file.Files.{copy, createDirectory, createTempDirectory}
 import js7.base.Problems.{MessageSignedByUnknownProblem, TamperedWithSignedMessageProblem}
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.crypt.x509.Openssl
 import js7.base.crypt.{GenericSignature, Signed, SignedString}
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Checked.Ops
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.data.controller.ControllerState.signableItemJsonCodec
 import js7.data.item.{SignableItem, VersionId}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.controller.commands.UpdateRepoX509RootTest._
+import js7.tests.controller.commands.UpdateRepoX509RootTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec

@@ -3,7 +3,7 @@ package js7.data.state
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.NotImplementedMap
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.board.BoardPath
 import js7.data.controller.ControllerId
 import js7.data.event.{Event, EventDrivenState, KeyedEvent}

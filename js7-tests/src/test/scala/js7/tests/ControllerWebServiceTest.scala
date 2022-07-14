@@ -10,7 +10,7 @@ import io.circe.syntax.EncoderOps
 import io.circe.{Json, JsonObject}
 import javax.inject.Singleton
 import js7.base.auth.SessionToken
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.crypt.silly.{SillySignature, SillySigner}
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.RichPath
@@ -18,9 +18,9 @@ import js7.base.io.process.Processes.{ShellFileExtension => sh}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.problem.Problems.UnknownKeyProblem
-import js7.base.thread.Futures.implicits._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.Futures.implicits.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.{Timestamp, WaitForCondition}
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.web.Uri
@@ -40,7 +40,7 @@ import js7.data.workflow.test.TestSetting.TestAgentPath
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.journal.EventIdClock
 import js7.tester.CirceJsonTester.testJson
-import js7.tests.ControllerWebServiceTest._
+import js7.tests.ControllerWebServiceTest.*
 import js7.tests.testenv.{ControllerAgentForScalaTest, DirectoryProvider}
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global

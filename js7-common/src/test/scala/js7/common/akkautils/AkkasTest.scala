@@ -2,9 +2,9 @@ package js7.common.akkautils
 
 import akka.actor.{Actor, ActorPath, ActorSystem, Props}
 import akka.util.ByteString
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
-import js7.common.akkautils.Akkas._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
+import js7.common.akkautils.Akkas.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec

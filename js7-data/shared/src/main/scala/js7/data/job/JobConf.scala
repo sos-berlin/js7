@@ -2,7 +2,7 @@ package js7.data.job
 
 import java.nio.charset.Charset
 import js7.data.controller.ControllerId
-import js7.data.job.JobConf._
+import js7.data.job.JobConf.*
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.executable.WorkflowJob
 import scala.concurrent.duration.FiniteDuration

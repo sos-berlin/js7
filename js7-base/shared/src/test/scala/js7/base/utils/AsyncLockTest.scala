@@ -1,6 +1,6 @@
 package js7.base.utils
 
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced

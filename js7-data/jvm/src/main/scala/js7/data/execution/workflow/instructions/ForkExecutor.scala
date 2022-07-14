@@ -1,7 +1,7 @@
 package js7.data.execution.workflow.instructions
 
-import cats.instances.list._
-import cats.syntax.traverse._
+import cats.instances.list.*
+import cats.syntax.traverse.*
 import js7.base.time.Timestamp
 import js7.data.order.OrderEvent.{OrderFailedIntermediate_, OrderForked, OrderMoved}
 import js7.data.order.{Order, Outcome}

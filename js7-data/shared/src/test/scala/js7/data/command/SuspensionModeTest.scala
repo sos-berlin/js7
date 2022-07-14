@@ -1,6 +1,6 @@
 package js7.data.command
 
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.data.item.VersionId
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position

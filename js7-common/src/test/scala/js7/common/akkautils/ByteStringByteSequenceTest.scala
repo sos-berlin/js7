@@ -1,9 +1,9 @@
 package js7.common.akkautils
 
 import akka.util.ByteString
-import js7.base.data.ByteSequence.ops._
+import js7.base.data.ByteSequence.ops.*
 import js7.base.data.ByteSequenceTester
-import js7.common.akkautils.ByteStrings.syntax._
+import js7.common.akkautils.ByteStrings.syntax.*
 
 final class ByteStringByteSequenceTest extends ByteSequenceTester[ByteString]
 {

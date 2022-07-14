@@ -2,26 +2,26 @@ package js7.common.akkahttp.web.session
 
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, OK, Unauthorized}
 import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials}
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import js7.base.Js7Version
 import js7.base.auth.{HashedPassword, SessionToken, SimpleUser, UserId}
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.generic.SecretString
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
-import js7.base.problem.Checked._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.problem.Checked.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.data.WebServerBinding
-import js7.common.akkahttp.web.session.RouteProviderTest._
+import js7.common.akkahttp.web.session.RouteProviderTest.*
 import js7.common.auth.IdToUser
 import js7.common.http.AkkaHttpClient.`x-js7-session`
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer

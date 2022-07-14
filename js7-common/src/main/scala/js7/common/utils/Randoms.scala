@@ -1,6 +1,6 @@
 package js7.common.utils
 
-import scala.math._
+import scala.math.*
 import scala.util.Random
 
 object Randoms {

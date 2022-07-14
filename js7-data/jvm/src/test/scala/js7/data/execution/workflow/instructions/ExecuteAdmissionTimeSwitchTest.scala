@@ -6,10 +6,10 @@ import java.time.{LocalTime, ZoneId}
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.{AdmissionTimeScheme, TestAlarmClock, TimeInterval, Timestamp, WeekdayPeriod}
-import js7.base.utils.ScalaUtils.syntax._
-import js7.data.execution.workflow.instructions.ExecuteAdmissionTimeSwitchTest._
+import js7.base.utils.ScalaUtils.syntax.*
+import js7.data.execution.workflow.instructions.ExecuteAdmissionTimeSwitchTest.*
 import org.scalatest.Assertions.assert
 import org.scalatest.freespec.AnyFreeSpec
 

@@ -3,7 +3,7 @@ package js7.data_for_java.board
 import java.util.Optional
 import javax.annotation.Nonnull
 import js7.data.board.{BoardPath, BoardState, NoticeId}
-import scala.jdk.OptionConverters._
+import scala.jdk.OptionConverters.*
 
 final case class JBoardState(asScala: BoardState)
 {

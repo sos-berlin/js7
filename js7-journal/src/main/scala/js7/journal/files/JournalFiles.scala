@@ -6,14 +6,14 @@ import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.{Files, Path, Paths}
 import js7.base.io.file.FileUtils.touchFile
 import js7.base.log.Logger
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.data.event.EventId
 import js7.journal.data.JournalMeta
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
 /**

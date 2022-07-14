@@ -6,7 +6,7 @@ import js7.base.io.file.FileUtils
 import js7.data.event.{EventId, Stamped}
 import js7.journal.data.JournalMeta
 import js7.journal.files.JournalFiles.JournalMetaOps
-import js7.journal.watch.FileEventIteratorPoolTest._
+import js7.journal.watch.FileEventIteratorPoolTest.*
 import js7.journal.watch.TestData.{AEvent, TestKeyedEventJsonCodec, journalId, writeJournal}
 import org.scalatest.freespec.AnyFreeSpec
 

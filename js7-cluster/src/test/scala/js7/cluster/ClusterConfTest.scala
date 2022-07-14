@@ -1,9 +1,9 @@
 package js7.cluster
 
 import js7.base.auth.{UserAndPassword, UserId}
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.generic.SecretString
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.common.message.ProblemCodeMessages

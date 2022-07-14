@@ -5,7 +5,7 @@ import js7.base.convert.As
 import js7.base.utils.Ascii.isAsciiDigit
 import scala.annotation.tailrec
 import scala.concurrent.blocking
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.math.{abs, floor}
 import scala.util.Random
 

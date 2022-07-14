@@ -3,8 +3,8 @@ package js7.tests.controller.proxy
 import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.generic.SecretString
-import js7.base.problem.Checked._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.problem.Checked.*
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.common.akkautils.ProvideActorSystem
 import js7.controller.client.AkkaHttpControllerApi
@@ -12,7 +12,7 @@ import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.data_for_java.auth.JCredentials
 import js7.proxy.ControllerApi
 import js7.proxy.configuration.ProxyConfs
-import js7.tests.controller.proxy.ClusterProxyTest._
+import js7.tests.controller.proxy.ClusterProxyTest.*
 import js7.tests.testenv.ControllerClusterForScalaTest
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.{BeforeAndAfterAll, TestSuite}

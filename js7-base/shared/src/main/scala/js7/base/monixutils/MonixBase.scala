@@ -2,13 +2,13 @@ package js7.base.monixutils
 
 import cats.Monoid
 import cats.effect.{ExitCase, Resource}
-import cats.syntax.flatMap._
+import cats.syntax.flatMap.*
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixDeadline.monotonicClock
-import js7.base.monixutils.MonixDeadline.syntax._
+import js7.base.monixutils.MonixDeadline.syntax.*
 import js7.base.problem.Checked
-import js7.base.problem.Checked._
-import js7.base.time.ScalaTime._
+import js7.base.problem.Checked.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.CloseableIterator
 import monix.eval.Task
@@ -20,7 +20,7 @@ import monix.reactive.OverflowStrategy.BackPressure
 import scala.annotation.unchecked.uncheckedVariance
 import scala.collection.{IterableFactory, IterableOps}
 import scala.concurrent.duration.Deadline.now
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.concurrent.{Future, Promise, TimeoutException}
 
 object MonixBase
@@ -336,7 +336,7 @@ object MonixBase
     }
   }
 
-  import syntax._
+  import syntax.*
 
   def promiseTask[A](body: Promise[A] => Unit): Task[A] =
     Task.deferFuture {

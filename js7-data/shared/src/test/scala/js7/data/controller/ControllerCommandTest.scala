@@ -1,16 +1,16 @@
 package js7.data.controller
 
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.log.{CorrelId, CorrelIdWrapped}
 import js7.base.problem.Problem
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.web.Uri
 import js7.data.agent.AgentPath
 import js7.data.board.{BoardPath, NoticeId}
 import js7.data.cluster.{ClusterCommand, ClusterSetting}
 import js7.data.command.{CancellationMode, SuspensionMode}
-import js7.data.controller.ControllerCommand._
+import js7.data.controller.ControllerCommand.*
 import js7.data.item.VersionId
 import js7.data.node.NodeId
 import js7.data.order.OrderEvent.OrderResumed

@@ -3,15 +3,15 @@ package js7.data.calendar
 import io.circe.Codec
 import io.circe.generic.extras.Configuration.default.withDefaults
 import io.circe.generic.extras.semiauto.deriveConfiguredCodec
-import js7.base.circeutils.ScalaJsonCodecs._
+import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.Timezone
 import js7.base.utils.IntelliJUtils.intelliJuseImport
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.item.{ItemRevision, UnsignedSimpleItem}
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 final case class Calendar(
   path: CalendarPath,

@@ -4,7 +4,7 @@ import com.google.inject.{AbstractModule, Provides}
 import java.time.{LocalTime, ZoneId}
 import java.util.concurrent.TimeoutException
 import javax.inject.Singleton
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
@@ -25,14 +25,14 @@ import js7.data.workflow.instructions.Schedule.{Periodic, Scheme}
 import js7.data.workflow.instructions.{Cycle, Fail, Schedule, TryInstruction}
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.CycleTest._
+import js7.tests.CycleTest.*
 import js7.tests.jobs.{EmptyJob, SemaphoreJob}
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.immutable.VectorBuilder
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with ScheduleTester
 {

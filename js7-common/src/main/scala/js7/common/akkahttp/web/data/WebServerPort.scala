@@ -1,6 +1,6 @@
 package js7.common.akkahttp.web.data
 
-import cats.syntax.show._
+import cats.syntax.show.*
 import java.net.InetSocketAddress
 import js7.common.internet.IP.inetSocketAddressShow
 

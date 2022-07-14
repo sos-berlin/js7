@@ -1,6 +1,6 @@
 package js7.launcher.utils
 
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.launcher.configuration.JobLauncherConf.ErrLineLengthMaximum
 
 private[utils] final class LastLineKeeper

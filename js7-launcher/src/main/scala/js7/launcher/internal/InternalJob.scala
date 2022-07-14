@@ -50,7 +50,7 @@ object InternalJob
     clock: AlarmClock,
     systemEncoding: Charset)
 
-  final case class Step private(processOrder: ProcessOrder, arguments: NamedValues) {
+  final case class Step private[internal](processOrder: ProcessOrder, arguments: NamedValues) {
     self =>
 
     lazy val jobResourceToVariables: ListMap[JobResourcePath, MapView[String, Checked[Value]]] =

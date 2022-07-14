@@ -1,7 +1,7 @@
 package js7.base.utils
 
-import js7.base.utils.ScalaUtils.syntax._
-import scala.jdk.CollectionConverters._
+import js7.base.utils.ScalaUtils.syntax.*
+import scala.jdk.CollectionConverters.*
 
 object Threads
 {

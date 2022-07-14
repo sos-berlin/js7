@@ -8,7 +8,7 @@ import js7.base.convert.As
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, CheckedString, Problem}
 import js7.base.standards.Js7NameValidator
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 
 trait GenericString
 {

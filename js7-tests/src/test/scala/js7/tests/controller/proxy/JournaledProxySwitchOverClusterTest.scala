@@ -3,9 +3,9 @@ package js7.tests.controller.proxy
 import java.net.URI
 import js7.base.auth.Admission
 import js7.base.problem.Checked.Ops
-import js7.base.thread.Futures.implicits._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.Futures.implicits.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.cluster.ClusterEvent.ClusterFailedOver
 import js7.data.controller.ControllerCommand.ShutDown.ClusterAction
@@ -19,7 +19,7 @@ import js7.proxy.data.event.EventAndState
 import js7.tests.controller.proxy.ClusterProxyTest.{backupUserAndPassword, primaryUserAndPassword, workflow}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 final class JournaledProxySwitchOverClusterTest extends AnyFreeSpec with ClusterProxyTest
 {

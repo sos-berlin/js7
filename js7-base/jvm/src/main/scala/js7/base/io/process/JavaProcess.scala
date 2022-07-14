@@ -1,7 +1,7 @@
 package js7.base.io.process
 
 import js7.base.io.process.Processes.{processToPidOption, processToString}
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 
 final class JavaProcess(process: Process) extends Js7Process

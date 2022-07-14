@@ -1,7 +1,7 @@
 package js7.cluster
 
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.cluster.ActivationInhibitor.{Active, Inhibited, Initial, Passive, State}
 import monix.eval.Task
 import monix.execution.schedulers.TestScheduler

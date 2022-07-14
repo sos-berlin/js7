@@ -1,6 +1,6 @@
 package js7.tests
 
-import cats.syntax.parallel._
+import cats.syntax.parallel.*
 import java.util.concurrent.TimeoutException
 import js7.agent.RunningAgent
 import js7.agent.data.event.AgentEvent.AgentReady
@@ -8,7 +8,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Checked
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.controller.RunningController
@@ -27,7 +27,7 @@ import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.Prompt
 import js7.data.workflow.{Workflow, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import js7.proxy.ControllerApi
-import js7.tests.ControlWorkflowPathSuspendWorkflowTest._
+import js7.tests.ControlWorkflowPathSuspendWorkflowTest.*
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler.Implicits.traced

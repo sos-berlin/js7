@@ -1,6 +1,6 @@
 package js7.common.configuration
 
-import cats.syntax.semigroup._
+import cats.syntax.semigroup.*
 import com.typesafe.config.Config
 import java.nio.file.Path
 import js7.base.configutils.Configs.RichConfig
@@ -11,7 +11,7 @@ import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.common.akkahttp.web.data.{WebServerBinding, WebServerPort}
 import js7.common.commandline.CommandLineArguments
-import js7.common.configuration.CommonConfiguration._
+import js7.common.configuration.CommonConfiguration.*
 import js7.common.internet.IP.StringToServerInetSocketAddress
 
 /**

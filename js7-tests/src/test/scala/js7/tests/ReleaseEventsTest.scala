@@ -2,14 +2,14 @@ package js7.tests
 
 import js7.agent.data.commands.AgentCommand
 import js7.base.auth.{SimpleUser, UserAndPassword, UserId}
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.generic.SecretString
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.process.Processes.{ShellFileExtension => sh}
 import js7.base.problem.Checked.Ops
 import js7.base.session.SessionApi
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.controller.RunningController
 import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
@@ -25,7 +25,7 @@ import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.journal.files.JournalFiles.listJournalFiles
-import js7.tests.ReleaseEventsTest._
+import js7.tests.ReleaseEventsTest.*
 import js7.tests.testenv.DirectoryProvider.script
 import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler.Implicits.global

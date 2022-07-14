@@ -1,13 +1,13 @@
 package js7.controller.web.controller.api
 
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route
 import com.typesafe.config.Config
 import js7.base.auth.ValidUserPermission
 import js7.base.problem.Checked
 import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
 import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
-import js7.common.akkahttp.StandardMarshallers._
+import js7.common.akkahttp.StandardMarshallers.*
 import js7.controller.web.common.ControllerRouteProvider
 import js7.core.command.CommandMeta
 import js7.data.controller.ControllerCommand

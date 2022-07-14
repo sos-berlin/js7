@@ -1,12 +1,12 @@
 package js7.data.value.expression
 
-import fastparse.NoWhitespace._
+import fastparse.NoWhitespace.*
 import fastparse.{End, P}
 import js7.base.problem.{Checked, Problem}
 import js7.data.job.JobResourcePath
 import js7.data.parser.Parsers.checkedParse
 import js7.data.value.ValueType.{MissingValueProblem, UnexpectedValueTypeProblem}
-import js7.data.value.expression.Expression._
+import js7.data.value.expression.Expression.*
 import js7.data.value.expression.ExpressionParser.{expressionOnly, expressionOrFunction}
 import js7.data.value.expression.scopes.NameToCheckedValueScope
 import js7.data.value.{BooleanValue, ListValue, NullValue, NumberValue, ObjectValue, StringValue, Value}
@@ -14,7 +14,7 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Label
 import org.scalactic.source
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks._
+import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks.*
 import scala.collection.MapView
 
 final class ExpressionTest extends AnyFreeSpec

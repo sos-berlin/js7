@@ -4,15 +4,15 @@ import java.nio.file.Files.exists
 import js7.agent.RunningAgent
 import js7.base.auth.Admission
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.touchFile
 import js7.base.problem.Problem
 import js7.base.thread.Futures.implicits.SuccessFuture
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
 import js7.data.Problems.AgentResetProblem
 import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentReset}
@@ -33,7 +33,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
 import js7.proxy.ControllerApi
-import js7.tests.agent.ResetAgentTest._
+import js7.tests.agent.ResetAgentTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{ControllerAgentForScalaTest, DirectoryProvider}

@@ -1,8 +1,8 @@
 package js7.tests.controller.cluster
 
 import js7.base.problem.Checked.Ops
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
 import js7.data.cluster.ClusterEvent
 import js7.data.controller.ControllerCommand.{CancelOrders, DeleteOrdersWhenTerminated}
@@ -10,7 +10,7 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.workflow.instructions.Prompt
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.controller.cluster.ClusterSpeedTest._
+import js7.tests.controller.cluster.ClusterSpeedTest.*
 import js7.tests.testenv.ControllerClusterForScalaTest
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global

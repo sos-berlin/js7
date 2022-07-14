@@ -1,8 +1,8 @@
 package js7.subagent.director
 
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.subagent.director.Prioritized.prioritySort
-import js7.subagent.director.PrioritizedTest._
+import js7.subagent.director.PrioritizedTest.*
 import org.scalatest.freespec.AnyFreeSpec
 
 final class PrioritizedTest extends AnyFreeSpec

@@ -1,6 +1,6 @@
 package js7.data.value.expression.scopes
 
-import cats.syntax.semigroup._
+import cats.syntax.semigroup.*
 import js7.base.problem.Checked
 import js7.base.time.Timestamp
 import js7.base.utils.CatsUtils.combine
@@ -9,7 +9,7 @@ import js7.data.controller.ControllerId
 import js7.data.job.{JobKey, JobResource, JobResourcePath}
 import js7.data.order.{FreshOrder, Order, OrderId}
 import js7.data.value.expression.Scope.evalLazilyExpressions
-import js7.data.value.expression.scopes.OrderScopes._
+import js7.data.value.expression.scopes.OrderScopes.*
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{NumberValue, StringValue, Value}
 import js7.data.workflow.position.Label

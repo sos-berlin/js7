@@ -1,7 +1,7 @@
 package js7.agent.web
 
 import akka.http.scaladsl.model.StatusCodes.NotFound
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route
 import js7.agent.web.views.RootWebService
 import js7.base.auth.ValidUserPermission

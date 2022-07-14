@@ -6,13 +6,13 @@ import java.security.cert.{Certificate, CertificateFactory, X509Certificate}
 import javax.net.ssl.{KeyManager, KeyManagerFactory, SSLContext, TrustManagerFactory, X509TrustManager}
 import js7.base.crypt.x509.X509Cert
 import js7.base.data.ByteArray
-import js7.base.data.ByteSequence.ops._
+import js7.base.data.ByteSequence.ops.*
 import js7.base.generic.SecretString
 import js7.base.log.Logger
-import js7.base.utils.AutoClosing._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.AutoClosing.*
+import js7.base.utils.ScalaUtils.syntax.*
 import scala.collection.mutable
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
 
 /**

@@ -6,11 +6,11 @@ import js7.base.problem.Checked
 import js7.base.time.JavaTimestamp.dateTimeFormatter
 import js7.base.utils.ScalaUtils.syntax.RichAny
 import org.jetbrains.annotations.TestOnly
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 final case class JavaTimestamp private(toEpochMilli: Long) extends Timestamp
 {
-  import JavaTimestamp.specific._
+  import JavaTimestamp.specific.*
 
   def companion = JavaTimestamp
 

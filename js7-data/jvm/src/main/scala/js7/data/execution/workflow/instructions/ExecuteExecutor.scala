@@ -2,9 +2,9 @@ package js7.data.execution.workflow.instructions
 
 import java.time.LocalDate
 import js7.base.problem.Checked
-import js7.base.time.AdmissionTimeSchemeForJavaTime._
+import js7.base.time.AdmissionTimeSchemeForJavaTime.*
 import js7.base.time.JavaTime.JavaTimeZone
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichPartialFunction}
 import js7.data.execution.workflow.instructions.ExecuteExecutor.{noDateOffset, orderIdToDate}
 import js7.data.order.Order.{IsFreshOrReady, Processed}

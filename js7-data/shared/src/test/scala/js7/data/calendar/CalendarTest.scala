@@ -1,7 +1,7 @@
 package js7.data.calendar
 
-import js7.base.circeutils.CirceUtils._
-import js7.base.time.ScalaTime._
+import js7.base.circeutils.CirceUtils.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.Timezone
 import js7.data.item.ItemRevision
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}

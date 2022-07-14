@@ -8,15 +8,15 @@ import javax.annotation.Nonnull
 import js7.base.generic.GenericString
 import js7.base.io.process.StdoutOrStderr
 import js7.base.problem.Problem
-import js7.base.time.JavaTimestamp.specific._
+import js7.base.time.JavaTimestamp.specific.*
 import js7.data.board.{BoardPath, NoticeId}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderDeleted, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderNoticesExpected, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.subagent.SubagentId
 import js7.data.value.Value
 import js7.data_for_java.common.JJsonable
-import scala.jdk.CollectionConverters._
-import scala.jdk.OptionConverters._
+import scala.jdk.CollectionConverters.*
+import scala.jdk.OptionConverters.*
 
 trait JOrderEvent
 extends JJsonable[JOrderEvent]
@@ -69,7 +69,7 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
       asScala.scheduledFor.map(o => o.toInstant).toJava
   }
 
-  final case class JOrderProcessingStarted private(asScala: OrderProcessingStarted)
+  final case class JOrderProcessingStarted private[JOrderEvent](asScala: OrderProcessingStarted)
   extends JOrderEvent
   {
     protected type AsScala = OrderProcessingStarted
@@ -129,7 +129,7 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
     def outcome = asScala.outcome
   }
 
-  final case class JOrderFailed private(asScala: OrderFailed)
+  final case class JOrderFailed(asScala: OrderFailed)
   extends JOrderEvent
   {
     protected type AsScala = OrderFailed

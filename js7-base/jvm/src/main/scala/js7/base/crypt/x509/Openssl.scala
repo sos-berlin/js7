@@ -4,13 +4,13 @@ import java.nio.file.Files.{delete, exists}
 import java.nio.file.{Path, Paths}
 import js7.base.auth.Pem
 import js7.base.crypt.SignerId
-import js7.base.crypt.x509.Openssl._
+import js7.base.crypt.x509.Openssl.*
 import js7.base.data.ByteArray
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.process.Processes.runProcess
 import js7.base.log.Logger
 import js7.base.problem.Checked
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.system.OperatingSystem.{isMac, isWindows}
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 

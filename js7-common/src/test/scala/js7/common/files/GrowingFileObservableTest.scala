@@ -2,13 +2,13 @@ package js7.common.files
 
 import java.util.concurrent.ArrayBlockingQueue
 import js7.base.data.ByteArray
-import js7.base.io.file.FileUtils._
-import js7.base.io.file.FileUtils.syntax._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.io.file.FileUtils.*
+import js7.base.io.file.FileUtils.syntax.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.util.Random
 
 /**

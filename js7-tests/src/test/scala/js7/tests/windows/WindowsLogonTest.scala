@@ -5,7 +5,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.process.KeyLogin
 import js7.base.log.Logger
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.utils.Collections.implicits._
+import js7.base.utils.Collections.implicits.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.job.ShellScriptExecutable
@@ -17,7 +17,7 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.launcher.forwindows.{WindowsProcessCredential, WindowsProcessTest}
 import js7.tests.testenv.ControllerAgentForScalaTest
-import js7.tests.windows.WindowsLogonTest._
+import js7.tests.windows.WindowsLogonTest.*
 import org.scalatest.freespec.AnyFreeSpec
 
 final class WindowsLogonTest extends AnyFreeSpec with ControllerAgentForScalaTest

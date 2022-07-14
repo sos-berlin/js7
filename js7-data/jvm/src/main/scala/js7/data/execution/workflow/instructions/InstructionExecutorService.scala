@@ -3,7 +3,7 @@ package js7.data.execution.workflow.instructions
 import js7.base.problem.Checked
 import js7.base.time.WallClock
 import js7.base.utils.Collections.implicits.RichIterable
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SubclassToX
 import js7.data.event.KeyedEvent
 import js7.data.order.OrderEvent.OrderActorEvent

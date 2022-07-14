@@ -1,9 +1,9 @@
 package js7.data.value.expression.scopes
 
-import cats.syntax.traverse._
+import cats.syntax.traverse.*
 import js7.base.problem.Checked
 import js7.base.problem.Problems.UnknownKeyProblem
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.Problems.InvalidFunctionArgumentsProblem
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.value.expression.Expression.{Argument, FunctionCall, JobResourceVariable}

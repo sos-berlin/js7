@@ -5,18 +5,18 @@ import com.typesafe.config.{Config, ConfigFactory}
 import java.net.InetSocketAddress
 import java.nio.file.Files.{createDirectory, exists}
 import java.nio.file.{Path, Paths}
-import js7.agent.configuration.AgentConfiguration._
+import js7.agent.configuration.AgentConfiguration.*
 import js7.agent.data.AgentState
 import js7.base.configutils.Configs
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.convert.AsJava.asAbsolutePath
 import js7.base.io.JavaResource
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{EmptyPath, WorkingDirectory}
 import js7.base.problem.Checked
 import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
-import js7.base.time.JavaTimeConverters._
+import js7.base.time.JavaTimeConverters.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.utils.Tests.isTest
@@ -30,7 +30,7 @@ import js7.journal.data.JournalMeta
 import js7.launcher.configuration.{JobLauncherConf, ProcessKillScript}
 import js7.subagent.configuration.{DirectorConf, SubagentConf}
 import monix.execution.Scheduler
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 /**
  * @author Joacim Zschimmer

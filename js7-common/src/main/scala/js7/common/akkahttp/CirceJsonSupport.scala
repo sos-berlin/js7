@@ -7,11 +7,11 @@ import akka.http.scaladsl.unmarshalling.{FromEntityUnmarshaller, Unmarshaller}
 import akka.util.ByteString
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json, Printer, jawn}
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.CirceUtils.implicits.CompactPrinter
 import js7.base.log.Logger
-import js7.base.problem.Checked._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.problem.Checked.*
+import js7.base.utils.ScalaUtils.syntax.*
 import scala.util.control.NonFatal
 
 object CirceJsonSupport

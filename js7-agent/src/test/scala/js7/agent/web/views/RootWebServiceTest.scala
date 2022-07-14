@@ -5,13 +5,13 @@ import akka.http.scaladsl.model.headers.Accept
 import io.circe.Json
 import js7.agent.data.views.AgentOverview
 import js7.agent.web.test.WebServiceTest
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.system.SystemInformation
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import js7.common.akkahttp.CirceJsonSupport._
+import js7.common.akkahttp.CirceJsonSupport.*
 import js7.common.http.AkkaHttpUtils.RichHttpResponse
 import js7.data.system.JavaInformation
 import monix.eval.Task

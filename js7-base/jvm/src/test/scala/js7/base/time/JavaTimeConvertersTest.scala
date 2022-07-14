@@ -1,9 +1,9 @@
 package js7.base.time
 
 import java.time.Duration
-import js7.base.time.JavaTimeConverters._
+import js7.base.time.JavaTimeConverters.*
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer

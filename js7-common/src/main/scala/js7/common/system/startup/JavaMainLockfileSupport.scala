@@ -2,7 +2,7 @@ package js7.common.system.startup
 
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
-import java.nio.charset.StandardCharsets._
+import java.nio.charset.StandardCharsets.*
 import java.nio.file.Files.{createDirectory, exists}
 import java.nio.file.StandardOpenOption.{CREATE, WRITE}
 import java.nio.file.{Path, Paths}

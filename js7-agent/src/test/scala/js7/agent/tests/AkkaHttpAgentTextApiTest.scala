@@ -1,6 +1,6 @@
 package js7.agent.tests
 
-import akka.http.scaladsl.model.StatusCodes._
+import akka.http.scaladsl.model.StatusCodes.*
 import akka.http.scaladsl.server.directives.SecurityDirectives.Authenticator
 import com.google.inject.{AbstractModule, Provides}
 import javax.inject.Singleton
@@ -8,16 +8,16 @@ import js7.agent.client.AkkaHttpAgentTextApi
 import js7.agent.command.CommandHandler
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.commands.AgentCommand
-import js7.agent.tests.AkkaHttpAgentTextApiTest._
+import js7.agent.tests.AkkaHttpAgentTextApiTest.*
 import js7.agent.tests.TestAgentDirectoryProvider.TestUserAndPassword
 import js7.base.auth.{HashedPassword, SimpleUser, UserAndPassword}
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceString}
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.generic.SecretString
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.problem.Checked
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.HasCloser
 import js7.base.web.Uri
@@ -27,7 +27,7 @@ import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.core.command.CommandMeta
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
-import org.scalatest.Assertions._
+import org.scalatest.Assertions.*
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable

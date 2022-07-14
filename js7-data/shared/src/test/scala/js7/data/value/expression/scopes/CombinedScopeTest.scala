@@ -1,6 +1,6 @@
 package js7.data.value.expression.scopes
 
-import cats.syntax.semigroup._
+import cats.syntax.semigroup.*
 import js7.data.value.NumberValue
 import js7.data.value.expression.Scope
 import org.scalatest.freespec.AnyFreeSpec

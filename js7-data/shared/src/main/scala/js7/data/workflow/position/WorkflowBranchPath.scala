@@ -1,6 +1,6 @@
 package js7.data.workflow.position
 
-import cats.syntax.show._
+import cats.syntax.show.*
 import js7.data.workflow.WorkflowId
 import scala.language.implicitConversions
 

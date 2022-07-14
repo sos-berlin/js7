@@ -1,14 +1,14 @@
 package js7.tests.controller.cluster
 
-import js7.base.problem.Checked._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.problem.Checked.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.data.cluster.ClusterEvent
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterPassiveLost}
 import js7.data.controller.ControllerCommand.ClusterAppointNodes
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
-import js7.tests.controller.cluster.ControllerClusterTester._
+import js7.tests.controller.cluster.ControllerClusterTester.*
 import monix.execution.Scheduler.Implicits.global
 
 final class PassiveLostClusterTest extends ControllerClusterTester

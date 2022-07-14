@@ -3,12 +3,12 @@ package js7.tests.controller.commands
 import io.circe.syntax.EncoderOps
 import js7.base.auth.SimpleUser
 import js7.base.circeutils.CirceUtils.RichJson
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.core.command.CommandMeta
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.{AddOrder, DeleteOrdersWhenTerminated}
@@ -21,7 +21,7 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.{OrderParameter, OrderParameterList, OrderPreparation, Workflow, WorkflowPath}
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
-import js7.tests.controller.commands.AddOrderTest._
+import js7.tests.controller.commands.AddOrderTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId

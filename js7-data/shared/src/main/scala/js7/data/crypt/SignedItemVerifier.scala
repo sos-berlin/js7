@@ -1,11 +1,11 @@
 package js7.data.crypt
 
 import io.circe.Decoder
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.crypt.{SignatureVerifier, Signed, SignedString, SignerId}
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.implicitClass
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.crypt.SignedItemVerifier.Verified
 import js7.data.item.SignableItem
 import scala.reflect.ClassTag

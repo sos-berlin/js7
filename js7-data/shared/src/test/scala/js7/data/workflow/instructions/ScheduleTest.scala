@@ -2,15 +2,15 @@ package js7.data.workflow.instructions
 
 import java.time.DayOfWeek.{SATURDAY, SUNDAY, TUESDAY}
 import java.time.LocalTime
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Problem
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.{AdmissionTimeScheme, DailyPeriod, WeekdayPeriod}
 import js7.data.workflow.instructions.Schedule.{Continuous, Periodic, Scheme, Ticking}
-import js7.data.workflow.instructions.ScheduleTest._
+import js7.data.workflow.instructions.ScheduleTest.*
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 final class ScheduleTest extends AnyFreeSpec
 {

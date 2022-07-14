@@ -1,7 +1,7 @@
 package js7.tests.testenv
 
 import cats.effect.Resource
-import cats.syntax.traverse._
+import cats.syntax.traverse.*
 import com.google.inject.Module
 import com.google.inject.util.Modules.EMPTY_MODULE
 import com.typesafe.config.ConfigUtil.quoteString
@@ -16,19 +16,19 @@ import js7.base.crypt.{DocumentSigner, SignatureVerifier, Signed, SignedString}
 import js7.base.generic.SecretString
 import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.https.TrustStoreRef
 import js7.base.log.Logger
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.thread.Futures.implicits._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.Futures.implicits.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.{closeOnError, multipleAutoClosing}
 import js7.base.utils.Closer.syntax.RichClosersAny
 import js7.base.utils.HasCloser
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.crypt.pgp.PgpSigner
@@ -46,7 +46,7 @@ import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.proxy.ControllerApi
 import js7.subagent.BareSubagent
 import js7.subagent.configuration.SubagentConf
-import js7.tests.testenv.DirectoryProvider._
+import js7.tests.testenv.DirectoryProvider.*
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.traced
@@ -55,7 +55,7 @@ import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.Iterable
 import scala.concurrent.Future
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.util.Random
 import scala.util.control.NonFatal
 

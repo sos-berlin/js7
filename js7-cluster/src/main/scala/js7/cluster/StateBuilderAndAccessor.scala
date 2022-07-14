@@ -2,8 +2,8 @@ package js7.cluster
 
 import js7.base.log.Logger
 import js7.base.thread.Futures.syntax.RichFuture
-import js7.base.utils.ScalaUtils.syntax._
-import js7.cluster.StateBuilderAndAccessor._
+import js7.base.utils.ScalaUtils.syntax.*
+import js7.cluster.StateBuilderAndAccessor.*
 import js7.data.event.{SnapshotableState, SnapshotableStateBuilder}
 import monix.catnap.MVar
 import monix.eval.Task

@@ -1,7 +1,7 @@
 package js7.base.standards
 
 import org.scalatest.freespec.AnyFreeSpec
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 /**
   * @author Joacim Zschimmer

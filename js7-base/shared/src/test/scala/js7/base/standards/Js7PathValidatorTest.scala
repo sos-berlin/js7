@@ -4,7 +4,7 @@ import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.problem.Checked
 import js7.base.problem.Problems.InvalidNameProblem
 import js7.base.standards.Js7PathValidatorTest.checkInvalid
-import org.scalatest.Assertions._
+import org.scalatest.Assertions.*
 import org.scalatest.freespec.AnyFreeSpec
 
 final class Js7PathValidatorTest extends AnyFreeSpec

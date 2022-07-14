@@ -1,7 +1,7 @@
 package js7.data.workflow.instructions
 
 import io.circe.generic.semiauto.deriveCodec
-import js7.base.circeutils.ScalaJsonCodecs._
+import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.data.agent.AgentPath
 import js7.data.source.SourcePos

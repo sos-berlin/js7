@@ -6,20 +6,20 @@ import akka.http.scaladsl.settings.{ParserSettings, ServerSettings}
 import akka.http.scaladsl.{ConnectionContext, Http, HttpsConnectionContext}
 import akka.stream.TLSClientAuth
 import cats.effect.Resource
-import cats.instances.vector._
-import cats.syntax.show._
-import cats.syntax.traverse._
+import cats.instances.vector.*
+import cats.syntax.show.*
+import cats.syntax.traverse.*
 import com.typesafe.config.{Config, ConfigFactory}
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.generic.Completed
 import js7.base.io.https.Https.loadSSLContext
 import js7.base.log.Logger
-import js7.base.thread.Futures.implicits._
+import js7.base.thread.Futures.implicits.*
 import js7.base.time.JavaTimeConverters.AsScalaDuration
-import js7.base.time.ScalaTime._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SetOnce
-import js7.common.akkahttp.web.AkkaWebServer._
+import js7.common.akkahttp.web.AkkaWebServer.*
 import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.http.JsonStreamingSupport
 import js7.common.internet.IP.inetSocketAddressShow

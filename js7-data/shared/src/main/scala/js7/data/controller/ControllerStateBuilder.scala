@@ -2,9 +2,9 @@ package js7.data.controller
 
 import js7.base.crypt.Signed
 import js7.base.problem.Checked
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.Problems.UnknownKeyProblem
-import js7.base.utils.Collections.implicits._
+import js7.base.utils.Collections.implicits.*
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRefStateEvent}
 import js7.data.board.BoardEvent.{NoticeDeleted, NoticePosted}

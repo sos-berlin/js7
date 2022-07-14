@@ -1,6 +1,6 @@
 package js7.launcher.forwindows
 
-import cats.syntax.traverse._
+import cats.syntax.traverse.*
 import js7.base.problem.{Checked, Problem}
 import scala.collection.immutable.Seq
 

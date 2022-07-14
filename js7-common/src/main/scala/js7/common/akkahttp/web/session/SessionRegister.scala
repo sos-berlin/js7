@@ -4,27 +4,27 @@ import akka.actor.{ActorRef, ActorRefFactory}
 import akka.pattern.ask
 import akka.util.Timeout
 import cats.effect.Resource
-import cats.syntax.apply._
-import cats.syntax.flatMap._
+import cats.syntax.apply.*
+import cats.syntax.flatMap.*
 import com.typesafe.config.Config
 import java.nio.file.Files.{createFile, deleteIfExists}
 import java.nio.file.Path
 import js7.base.Js7Version
 import js7.base.auth.{SessionToken, UserId}
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.generic.Completed
 import js7.base.io.file.FileUtils.provideFile
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
-import js7.base.monixutils.MonixBase.syntax._
-import js7.base.problem.Checked._
+import js7.base.monixutils.MonixBase.syntax.*
+import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.time.JavaTimeConverters._
-import js7.base.time.ScalaTime._
+import js7.base.time.JavaTimeConverters.*
+import js7.base.time.ScalaTime.*
 import js7.base.utils.Closer
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.version.Version
-import js7.common.akkahttp.web.session.SessionRegister._
+import js7.common.akkahttp.web.session.SessionRegister.*
 import js7.common.http.AkkaHttpClient.`x-js7-session`
 import js7.common.system.ServerOperatingSystem.operatingSystem
 import monix.eval.Task

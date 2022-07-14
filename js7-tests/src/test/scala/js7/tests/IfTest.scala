@@ -15,7 +15,7 @@ import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.position.BranchId.{Else, Then}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
-import js7.tests.IfTest._
+import js7.tests.IfTest.*
 import js7.tests.testenv.DirectoryProvider
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.traced

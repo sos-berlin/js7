@@ -5,7 +5,7 @@ import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.base.utils.typeclasses.IsEmpty
 import js7.data.job.JobResourcePath
-import js7.data.workflow.OrderPreparation._
+import js7.data.workflow.OrderPreparation.*
 import scala.collection.View
 
 final case class OrderPreparation(parameterList: OrderParameterList)

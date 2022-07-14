@@ -2,7 +2,7 @@ package js7.cluster
 
 import java.nio.file.Files.exists
 import java.nio.file.Paths
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.data.event.JournalPosition
 import org.scalatest.freespec.AnyFreeSpec

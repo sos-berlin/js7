@@ -1,7 +1,7 @@
 package js7.base.auth
 
 import js7.base.auth.User.UserDoesNotHavePermissionProblem
-import js7.base.auth.UserTest._
+import js7.base.auth.UserTest.*
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

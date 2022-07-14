@@ -2,14 +2,14 @@ package js7.common.akkahttp.web.session
 
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, ServiceUnavailable, Unauthorized}
 import akka.http.scaladsl.model.headers.{HttpChallenges, `WWW-Authenticate`}
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import js7.base.auth.{SessionToken, UserId, ValidUserPermission}
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import js7.common.akkahttp.web.AkkaWebServer
@@ -18,7 +18,7 @@ import js7.common.akkautils.Akkas
 import js7.common.http.AkkaHttpClient
 import js7.common.http.AkkaHttpClient.HttpException
 import monix.eval.Task
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import scala.concurrent.Future
 

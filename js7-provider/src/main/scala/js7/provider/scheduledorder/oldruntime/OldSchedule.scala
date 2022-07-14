@@ -1,9 +1,9 @@
 package js7.provider.scheduledorder.oldruntime
 
-import java.time._
+import java.time.*
 import java.util.NoSuchElementException
-import js7.base.time.JavaTime._
-import js7.provider.scheduledorder.oldruntime.OldSchedule._
+import js7.base.time.JavaTime.*
+import js7.provider.scheduledorder.oldruntime.OldSchedule.*
 import scala.annotation.tailrec
 
 final case class OldSchedule(

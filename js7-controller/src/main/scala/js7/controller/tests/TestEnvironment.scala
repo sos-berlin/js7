@@ -4,9 +4,9 @@ import java.io.IOException
 import java.nio.file.Files.{createDirectories, createDirectory, deleteIfExists, exists}
 import java.nio.file.Path
 import js7.base.io.file.FileUtils.deleteDirectoryContentRecursively
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
-import js7.controller.tests.TestEnvironment._
+import js7.controller.tests.TestEnvironment.*
 import js7.data.agent.AgentPath
 import js7.data.item.{SourceType, VersionedItemPath}
 

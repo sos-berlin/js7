@@ -2,7 +2,7 @@ package js7.tests.subagent
 
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.ResetSubagent
@@ -15,7 +15,7 @@ import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentReset,
 import js7.data.subagent.{SubagentId, SubagentRunId}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.SemaphoreJob
-import js7.tests.subagent.StealAndResetSubagentTest._
+import js7.tests.subagent.StealAndResetSubagentTest.*
 import js7.tests.subagent.SubagentMultipleOrdersTest.agentPath
 import monix.execution.Scheduler
 import monix.reactive.Observable

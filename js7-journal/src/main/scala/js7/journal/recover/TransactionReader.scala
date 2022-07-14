@@ -1,7 +1,7 @@
 package js7.journal.recover
 
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.{Event, EventId, KeyedEvent, Stamped}
 import scala.collection.mutable

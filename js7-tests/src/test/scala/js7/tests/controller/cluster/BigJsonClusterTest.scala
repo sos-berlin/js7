@@ -3,8 +3,8 @@ package js7.tests.controller.cluster
 import js7.base.auth.Admission
 import js7.base.configutils.Configs.RichConfig
 import js7.base.problem.Checked.Ops
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.common.configuration.Js7Configuration
 import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
 import js7.data.agent.AgentPath
@@ -18,7 +18,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
 import js7.proxy.ControllerApi
-import js7.tests.controller.cluster.BigJsonClusterTest._
+import js7.tests.controller.cluster.BigJsonClusterTest.*
 import js7.tests.testenv.ControllerClusterForScalaTest
 import js7.tests.testenv.ControllerClusterForScalaTest.assertEqualJournalFiles
 import monix.execution.Scheduler.Implicits.global

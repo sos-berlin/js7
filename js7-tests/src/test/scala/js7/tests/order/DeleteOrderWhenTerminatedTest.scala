@@ -1,8 +1,8 @@
 package js7.tests.order
 
 import js7.base.problem.Checked.Ops
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.DeleteOrdersWhenTerminated
@@ -14,7 +14,7 @@ import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.order.DeleteOrderWhenTerminatedTest._
+import js7.tests.order.DeleteOrderWhenTerminatedTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.{script, toLocalSubagentId}
 import monix.execution.Scheduler.Implicits.global

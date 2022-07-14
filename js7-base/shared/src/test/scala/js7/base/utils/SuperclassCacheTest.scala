@@ -1,6 +1,6 @@
 package js7.base.utils
 
-import js7.base.utils.SuperclassCacheTest._
+import js7.base.utils.SuperclassCacheTest.*
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

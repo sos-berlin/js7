@@ -1,7 +1,7 @@
 package js7.data.job
 
-import cats.instances.list._
-import cats.syntax.traverse._
+import cats.instances.list.*
+import cats.syntax.traverse.*
 import js7.base.problem.Checked
 import js7.data.value.expression.Scope
 

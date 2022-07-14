@@ -7,9 +7,9 @@ import javax.xml.namespace.QName
 import javax.xml.stream.XMLInputFactory
 import javax.xml.stream.events.{EndDocument, StartDocument}
 import javax.xml.transform.Source
-import js7.common.scalautil.xmls.XmlSources._
+import js7.common.scalautil.xmls.XmlSources.*
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 
 /**
  * @author Joacim Zschimmer

@@ -8,7 +8,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.controller.agent.AgentDriver.{Input, Queueable, ReleaseEventsQueueable}
-import js7.controller.agent.CommandQueue._
+import js7.controller.agent.CommandQueue.*
 import js7.data.order.OrderId
 import monix.eval.Task
 import monix.execution.Scheduler

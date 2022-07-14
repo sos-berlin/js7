@@ -1,12 +1,12 @@
 package js7.data.item
 
 import io.circe.{Codec, DecodingFailure, HCursor, Json}
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Checked
 import js7.base.utils.Collections.implicits.RichIterable
-import js7.data.item.InventoryItemKey._
+import js7.data.item.InventoryItemKey.*
 import scala.math.Ordered.orderingToOrdered
-import scala.math.Ordering._
+import scala.math.Ordering.*
 
 trait InventoryItemKey
 {

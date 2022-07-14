@@ -1,10 +1,10 @@
 package js7.data.job
 
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.{Position, WorkflowBranchPath}
-import js7.tester.CirceJsonTester._
+import js7.tester.CirceJsonTester.*
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

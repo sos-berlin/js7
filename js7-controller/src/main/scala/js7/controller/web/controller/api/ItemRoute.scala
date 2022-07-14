@@ -11,21 +11,21 @@ import js7.base.auth.{Permission, UpdateItemPermission, ValidUserPermission}
 import js7.base.crypt.SignedString
 import js7.base.generic.Completed
 import js7.base.log.Logger
-import js7.base.monixutils.MonixBase.syntax._
-import js7.base.problem.Checked._
+import js7.base.monixutils.MonixBase.syntax.*
+import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
 import js7.base.utils.ScalaUtils.syntax.{RichAny, RichEitherF}
 import js7.base.utils.{ByteSequenceToLinesObservable, FutureCompletion}
 import js7.common.akkahttp.CirceJsonSupport.jsonMarshaller
-import js7.common.akkautils.ByteStrings.syntax._
-import js7.common.http.StreamingSupport._
+import js7.common.akkautils.ByteStrings.syntax.*
+import js7.common.http.StreamingSupport.*
 import js7.controller.item.ItemUpdater
 import js7.controller.web.common.ControllerRouteProvider
-import js7.controller.web.controller.api.ItemRoute._
+import js7.controller.web.controller.api.ItemRoute.*
 import js7.core.web.EntitySizeLimitProvider
-import js7.data.controller.ControllerState._
+import js7.data.controller.ControllerState.*
 import js7.data.controller.VerifiedUpdateItems
 import js7.data.crypt.SignedItemVerifier.Verified
 import js7.data.item.{ItemOperation, SignableItem}

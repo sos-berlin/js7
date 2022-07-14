@@ -6,20 +6,20 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.delete
 import java.nio.file.Path
 import js7.base.io.process.ProcessSignal.SIGKILL
-import js7.base.io.process.Processes._
+import js7.base.io.process.Processes.*
 import js7.base.io.process.{JavaProcess, Js7Process, Pid, ProcessSignal, ReturnCode, StdoutOrStderr}
-import js7.base.log.LogLevel.syntax._
+import js7.base.log.LogLevel.syntax.*
 import js7.base.log.{LogLevel, Logger}
 import js7.base.system.OperatingSystem.{isMac, isWindows}
 import js7.base.thread.IOExecutor
 import js7.base.thread.IOExecutor.ioTask
-import js7.base.time.ScalaTime._
-import js7.base.utils.ScalaUtils.syntax._
-import js7.launcher.process.RichProcess._
+import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.*
+import js7.launcher.process.RichProcess.*
 import monix.eval.Task
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.Deadline.now
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
 
 /**

@@ -5,31 +5,31 @@ import akka.http.scaladsl.model.HttpMethods.POST
 import akka.http.scaladsl.model.StatusCodes.{BadRequest, InternalServerError, OK}
 import akka.http.scaladsl.model.headers.`Content-Type`
 import akka.http.scaladsl.model.{HttpEntity, HttpResponse}
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives.*
 import akka.util.ByteString
-import cats.syntax.option._
+import cats.syntax.option.*
 import io.circe.generic.semiauto.deriveCodec
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.auth.SessionToken
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.https.HttpsConfig
 import js7.base.log.CorrelId
 import js7.base.problem.Problem
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.HasCloser
 import js7.base.web.HttpClient.liftProblem
 import js7.base.web.Uri
 import js7.common.akkahttp.CirceJsonSupport
-import js7.common.akkahttp.StandardMarshallers._
+import js7.common.akkahttp.StandardMarshallers.*
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkautils.Akkas
 import js7.common.akkautils.Akkas.newActorSystem
 import js7.common.http.AkkaHttpClient.{HttpException, `x-js7-correlation-id`, toPrettyProblem}
-import js7.common.http.AkkaHttpClientTest._
+import js7.common.http.AkkaHttpClientTest.*
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.StreamingSupport.AkkaObservable
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
@@ -40,7 +40,7 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Await
 import scala.concurrent.duration.Deadline.now
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.util.{Failure, Success}
 
 /**

@@ -1,9 +1,9 @@
 package js7.data.execution.workflow.instructions
 
 import java.util.NoSuchElementException
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.{TimeInterval, Timestamp}
-import js7.data.execution.workflow.instructions.ScheduleSimulator._
+import js7.data.execution.workflow.instructions.ScheduleSimulator.*
 import js7.data.order.CycleState
 import scala.collection.View
 import scala.concurrent.duration.FiniteDuration

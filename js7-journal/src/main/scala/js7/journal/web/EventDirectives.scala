@@ -1,14 +1,14 @@
 package js7.journal.web
 
 import akka.http.scaladsl.model.headers.`Timeout-Access`
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.{Directive, Directive1, Route, ValidationRejection}
-import cats.syntax.option._
-import js7.base.time.ScalaTime._
+import cats.syntax.option.*
+import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.implicitClass
-import js7.common.akkahttp.StandardMarshallers._
-import js7.data.event._
-import scala.concurrent.duration._
+import js7.common.akkahttp.StandardMarshallers.*
+import js7.data.event.*
+import scala.concurrent.duration.*
 import scala.reflect.ClassTag
 
 /**

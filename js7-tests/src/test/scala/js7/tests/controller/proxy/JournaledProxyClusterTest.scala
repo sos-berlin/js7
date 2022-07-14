@@ -1,16 +1,16 @@
 package js7.tests.controller.proxy
 
 import io.circe.Encoder
-import io.circe.syntax._
-import js7.base.circeutils.CirceUtils._
+import io.circe.syntax.*
+import js7.base.circeutils.CirceUtils.*
 import js7.base.eventbus.StandardEventBus
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
-import js7.base.thread.Futures.implicits._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.Futures.implicits.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.{itemsPerSecondString, measureTimeOfSingleRun}
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.time.{Stopwatch, Timestamp}
@@ -34,14 +34,14 @@ import js7.journal.watch.StrictEventWatch
 import js7.proxy.ControllerApi
 import js7.proxy.data.event.{ProxyEvent, ProxyStarted}
 import js7.tests.controller.proxy.ClusterProxyTest.{backupUserAndPassword, primaryCredentials, primaryUserAndPassword, workflow}
-import js7.tests.controller.proxy.JournaledProxyClusterTest._
+import js7.tests.controller.proxy.JournaledProxyClusterTest.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.Deadline.now
-import scala.jdk.CollectionConverters._
-import scala.reflect.runtime.universe._
+import scala.jdk.CollectionConverters.*
+import scala.reflect.runtime.universe.*
 
 final class JournaledProxyClusterTest extends AnyFreeSpec with ClusterProxyTest
 {

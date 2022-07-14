@@ -1,7 +1,7 @@
 package js7.data.cluster
 
 import io.circe.generic.semiauto.deriveCodec
-import js7.base.circeutils.ScalaJsonCodecs._
+import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.IntelliJUtils.intelliJuseImport

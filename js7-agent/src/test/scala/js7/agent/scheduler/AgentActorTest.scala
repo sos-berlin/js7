@@ -5,17 +5,17 @@ import akka.util.Timeout
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSignedItem, CoupleController, DedicateAgentDirector, DetachOrder}
-import js7.agent.scheduler.AgentActorTest._
+import js7.agent.scheduler.AgentActorTest.*
 import js7.agent.scheduler.order.TestAgentActorProvider
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.thread.Futures.implicits._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.Futures.implicits.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
 import js7.base.time.WaitForCondition.waitForCondition
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.data.agent.AgentPath
 import js7.data.agent.Problems.AgentDuplicateOrder
@@ -25,7 +25,7 @@ import js7.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.position.Position
-import js7.data.workflow.test.TestSetting._
+import js7.data.workflow.test.TestSetting.*
 import js7.journal.recover.Recovered
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec

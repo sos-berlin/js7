@@ -3,13 +3,13 @@ package js7.data.item
 import io.circe.{Codec, DecodingFailure, HCursor, Json}
 import java.nio.file.{Path, Paths}
 import java.util.Locale
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.GenericString
 import js7.base.problem.{Checked, Problem}
 import js7.base.standards.Js7PathValidating
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.{checkedCast, implicitClass}
-import js7.data.item.InventoryItemPath._
+import js7.data.item.InventoryItemPath.*
 import scala.reflect.ClassTag
 
 trait InventoryItemPath extends GenericString

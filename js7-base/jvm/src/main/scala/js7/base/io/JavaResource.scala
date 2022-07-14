@@ -6,11 +6,11 @@ import java.net.{URI, URL}
 import java.nio.file.{CopyOption, Files, Path}
 import java.util.Objects.requireNonNull
 import js7.base.data.{ByteArray, ByteSequence, Writable}
-import js7.base.io.JavaResource._
+import js7.base.io.JavaResource.*
 import js7.base.log.Logger
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.system.Java8Polyfill._
+import js7.base.system.Java8Polyfill.*
 import js7.base.utils.AutoClosing.autoClosing
 import scala.language.implicitConversions
 

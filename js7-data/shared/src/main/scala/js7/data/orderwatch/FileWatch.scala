@@ -5,8 +5,8 @@ import io.circe.generic.extras.JsonKey
 import io.circe.generic.extras.semiauto.deriveConfiguredEncoder
 import io.circe.{Codec, Decoder}
 import java.util.regex.Pattern
-import js7.base.circeutils.ScalaJsonCodecs._
-import js7.base.time.ScalaTime._
+import js7.base.circeutils.ScalaJsonCodecs.*
+import js7.base.time.ScalaTime.*
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.SimplePattern
 import js7.data.agent.AgentPath

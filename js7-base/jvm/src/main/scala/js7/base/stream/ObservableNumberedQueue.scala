@@ -1,17 +1,17 @@
 package js7.base.stream
 
-import cats.syntax.apply._
+import cats.syntax.apply.*
 import izumi.reflect.Tag
 import js7.base.log.Logger
 import js7.base.monixutils.Latch
-import js7.base.monixutils.MonixBase.syntax._
+import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.stream.ObservableNumberedQueue._
-import js7.base.time.ScalaTime._
+import js7.base.stream.ObservableNumberedQueue.*
+import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AsyncLock
 import js7.base.utils.BinarySearch.binarySearch
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import monix.eval.Task
 import monix.execution.Ack
 import monix.execution.Ack.Continue

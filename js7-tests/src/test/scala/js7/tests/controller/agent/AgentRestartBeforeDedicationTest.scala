@@ -1,13 +1,13 @@
 package js7.tests.controller.agent
 
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.AgentDedicated
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.controller.agent.AgentRestartBeforeDedicationTest._
+import js7.tests.controller.agent.AgentRestartBeforeDedicationTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler.Implicits.global

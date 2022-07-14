@@ -1,17 +1,17 @@
 package js7.subagent
 
-import cats.syntax.foldable._
-import cats.syntax.traverse._
+import cats.syntax.foldable.*
+import cats.syntax.traverse.*
 import java.util.Objects.requireNonNull
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.log.Logger
-import js7.base.monixutils.MonixBase.syntax._
+import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.monixutils.MonixDeadline.syntax.DeadlineSchedule
 import js7.base.monixutils.{AsyncMap, MonixDeadline}
 import js7.base.problem.Checked
-import js7.base.time.ScalaTime._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.job.{JobConf, JobResource, JobResourcePath}
 import js7.data.order.Outcome.Succeeded
 import js7.data.order.{Order, OrderId, Outcome}
@@ -19,7 +19,7 @@ import js7.data.value.expression.Expression
 import js7.data.value.expression.scopes.FileValueState
 import js7.launcher.internal.JobLauncher
 import js7.launcher.{OrderProcess, ProcessOrder, StdObservers}
-import js7.subagent.JobDriver._
+import js7.subagent.JobDriver.*
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.cancelables.SerialCancelable

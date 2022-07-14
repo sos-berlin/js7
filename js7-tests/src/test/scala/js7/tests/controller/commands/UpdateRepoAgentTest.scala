@@ -4,13 +4,13 @@ import js7.agent.RunningAgent
 import js7.agent.configuration.AgentConfiguration
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
-import js7.base.thread.Futures.implicits._
+import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.web.HttpClient.HttpException
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
@@ -21,11 +21,11 @@ import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
-import js7.tests.controller.commands.UpdateRepoAgentTest._
+import js7.tests.controller.commands.UpdateRepoAgentTest.*
 import js7.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer

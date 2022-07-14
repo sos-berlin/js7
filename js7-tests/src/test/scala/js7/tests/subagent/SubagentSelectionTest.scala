@@ -1,11 +1,11 @@
 package js7.tests.subagent
 
-import cats.syntax.traverse._
+import cats.syntax.traverse.*
 import js7.agent.RunningAgent
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.web.Uri
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
@@ -21,7 +21,7 @@ import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentCoupli
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.EmptyJob
-import js7.tests.subagent.SubagentSelectionTest._
+import js7.tests.subagent.SubagentSelectionTest.*
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec

@@ -1,7 +1,7 @@
 package js7.common.system
 
-import js7.base.configutils.Configs._
-import js7.common.system.ThreadPools._
+import js7.base.configutils.Configs.*
+import js7.common.system.ThreadPools.*
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

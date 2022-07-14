@@ -4,10 +4,10 @@ import java.time.LocalTime.MIDNIGHT
 import java.time.temporal.ChronoField.DAY_OF_WEEK
 import java.time.{LocalDate, LocalDateTime, LocalTime, ZoneOffset, Duration => JDuration}
 import js7.base.time.AdmissionPeriod.{DaySeconds, WeekSeconds}
-import js7.base.time.JavaTime._
-import js7.base.time.ScalaTime._
-import js7.base.utils.ScalaUtils.syntax._
-import scala.concurrent.duration._
+import js7.base.time.JavaTime.*
+import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.*
+import scala.concurrent.duration.*
 import scala.jdk.DurationConverters.ScalaDurationOps
 
 sealed trait AdmissionPeriodCalculator

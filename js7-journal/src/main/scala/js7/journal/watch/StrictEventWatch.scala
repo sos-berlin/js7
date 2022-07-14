@@ -1,7 +1,7 @@
 package js7.journal.watch
 
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.CloseableIterator
 import js7.data.event.{Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import js7.journal.watch.EventWatch.Every
@@ -9,9 +9,9 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.reflect.ClassTag
-import scala.reflect.runtime.universe._
+import scala.reflect.runtime.universe.*
 
 /**
   * Strict delegator for lazy `CloseableIterator` `EventWatch`.

@@ -1,10 +1,10 @@
 package js7.tests
 
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.io.process.Stdout
 import js7.base.log.Logger
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.item.VersionId
 import js7.data.job.{Executable, ShellScriptExecutable}
@@ -16,7 +16,7 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath, WorkflowPrinter}
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
-import js7.tests.StdoutTest._
+import js7.tests.StdoutTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.eval.Task
 import org.scalatest.freespec.AnyFreeSpec

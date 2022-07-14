@@ -1,24 +1,24 @@
 package js7.data.value.expression.scopes
 
-import cats.instances.vector._
-import cats.syntax.parallel._
+import cats.instances.vector.*
+import cats.syntax.parallel.*
 import java.io.IOException
 import java.nio.file.Files.{isRegularFile, newOutputStream}
 import java.nio.file.StandardOpenOption.{APPEND, WRITE}
 import java.nio.file.{AccessDeniedException, Path, Paths}
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.value.expression.Expression
 import js7.data.value.expression.Expression.{Argument, StringConstant}
 import js7.data.value.expression.scopes.FileValueScope.functionName
-import js7.data.value.expression.scopes.FileValueScopeTest._
+import js7.data.value.expression.scopes.FileValueScopeTest.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec

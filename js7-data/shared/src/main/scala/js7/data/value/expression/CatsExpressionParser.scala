@@ -7,10 +7,10 @@ import js7.base.problem.Checked
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.job.JobResourcePath
-import js7.data.parser.CatsBasicParsers._
-import js7.data.parser.CatsBasicParsers.syntax._
+import js7.data.parser.CatsBasicParsers.*
+import js7.data.parser.CatsBasicParsers.syntax.*
 import js7.data.parser.CatsParsers.checkedParse
-import js7.data.value.expression.Expression._
+import js7.data.value.expression.Expression.*
 import js7.data.value.expression.ExpressionOptimizer.optimizeExpression
 import js7.data.workflow.instructions.executable.WorkflowJob
 import org.jetbrains.annotations.TestOnly

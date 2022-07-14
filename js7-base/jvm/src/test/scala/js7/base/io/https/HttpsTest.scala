@@ -13,7 +13,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.sys.process._
+import scala.sys.process.*
 
 /**
   * @author Joacim Zschimmer

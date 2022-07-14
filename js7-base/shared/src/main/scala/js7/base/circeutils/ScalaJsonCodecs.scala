@@ -1,7 +1,7 @@
 package js7.base.circeutils
 
 import io.circe.{Decoder, DecodingFailure, Encoder, Json}
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer

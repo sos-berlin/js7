@@ -1,11 +1,11 @@
 package js7.data.controller
 
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.time.{Timestamp, Timezone}
-import js7.data.controller.ControllerEvent._
+import js7.data.controller.ControllerEvent.*
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer

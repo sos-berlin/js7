@@ -2,14 +2,14 @@ package js7.agent.scheduler.order
 
 import akka.actor.{ActorRef, ActorSystem, Props}
 import com.google.inject.Guice
-import com.softwaremill.diffx.generic.auto._
+import com.softwaremill.diffx.generic.auto.*
 import java.nio.file.Path
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.inject.AgentModule
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
 import js7.agent.scheduler.AgentActor
-import js7.agent.scheduler.order.TestAgentActorProvider._
+import js7.agent.scheduler.order.TestAgentActorProvider.*
 import js7.agent.tests.TestAgentDirectoryProvider
 import js7.base.auth.UserId
 import js7.base.log.CorrelId

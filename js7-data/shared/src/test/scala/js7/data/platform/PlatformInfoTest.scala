@@ -1,6 +1,6 @@
 package js7.data.platform
 
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.time.Timestamp
 import js7.base.version.Version
 import js7.data.system.JavaInformation

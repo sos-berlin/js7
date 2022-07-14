@@ -4,9 +4,9 @@ import akka.http.scaladsl.server.Directives.{get, pathEndOrSingleSlash}
 import akka.http.scaladsl.server.Route
 import js7.base.BuildInfo
 import js7.base.problem.Checked
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
-import js7.common.akkahttp.CirceJsonSupport._
+import js7.common.akkahttp.CirceJsonSupport.*
 import js7.common.system.JavaInformations.javaInformation
 import js7.common.system.SystemInformations.systemInformation
 import js7.common.system.startup.StartUp

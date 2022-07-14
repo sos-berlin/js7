@@ -2,7 +2,7 @@ package js7.base.time
 
 import js7.base.monixutils.MonixDeadline
 import js7.base.time.TimeoutWithSteps.deadlineIterator
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /** Eine in Schritte unterteilte Frist.
   */

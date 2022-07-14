@@ -6,7 +6,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.RightUnit
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.license.{LicenseCheck, LicenseCheckContext}
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
 
 final class LicenseChecker(licenseCheckContext: LicenseCheckContext)

@@ -2,17 +2,17 @@ package js7.data.workflow
 
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, Encoder, JsonObject}
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.typed.Subtype
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timezone
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.implicits.{RichIndexedSeq, RichPairTraversable}
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.ScalaUtils.{implicitClass, reuseIfEqual}
-import js7.base.utils.typeclasses.IsEmpty.syntax._
+import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.calendar.CalendarPath
 import js7.data.item.{InventoryItemPath, SignableSimpleItemPath, SimpleItemPath, TrivialItemState, UnsignedSimpleItemPath, VersionedItem, VersionedItemId}
@@ -32,7 +32,7 @@ import scala.reflect.ClassTag
 /**
   * @author Joacim Zschimmer
   */
-final case class Workflow private(
+final case class Workflow(
   id: WorkflowId,
   rawLabeledInstructions: IndexedSeq[Instruction.Labeled],
   nameToJob: Map[WorkflowJob.Name, WorkflowJob],

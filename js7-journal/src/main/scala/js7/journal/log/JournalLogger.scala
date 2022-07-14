@@ -3,12 +3,12 @@ package js7.journal.log
 import com.typesafe.scalalogging.Logger
 import java.util.Locale.ROOT
 import js7.base.log.CorrelId
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.Classes.superclassesOf
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, Stamped}
-import js7.journal.log.JournalLogger._
+import js7.journal.log.JournalLogger.*
 import scala.collection.{IndexedSeqView, mutable}
 import scala.concurrent.duration.Deadline
 import scala.concurrent.duration.Deadline.now
@@ -78,7 +78,7 @@ private[journal] final class JournalLogger(
     }
 
   private def traceLogPersist(ack: Boolean)(frame: Frame, stamped: Stamped[AnyKeyedEvent]): Unit = {
-    import frame._
+    import frame.*
     sb.clear()
     sb.append(':')  // Something simple to grep
     //? sb.fillRight(5) { sb.append(nr) }
@@ -122,7 +122,7 @@ private[journal] final class JournalLogger(
   }
 
   private def infoLogPersist(frame: Frame, stamped: Stamped[AnyKeyedEvent]): Unit = {
-    import frame._
+    import frame.*
     import stamped.value.{event, key}
     sb.clear()
     sb.append("Event ")

@@ -3,10 +3,10 @@ package js7.data.parser
 import cats.Show
 import cats.data.NonEmptyList
 import cats.parse.Parser.{Error, Expectation, end}
-import cats.parse._
-import cats.syntax.show._
+import cats.parse.*
+import cats.syntax.show.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.parser.BasicPrinter.isIdentifierStart
 import js7.data.value.ValuePrinter.quoteString
 import scala.util.control.NonFatal

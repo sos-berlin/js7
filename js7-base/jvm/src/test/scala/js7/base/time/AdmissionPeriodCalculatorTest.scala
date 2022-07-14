@@ -5,7 +5,7 @@ import java.time.LocalTime.MIDNIGHT
 import java.time.{LocalDate, LocalDateTime, LocalTime}
 import js7.base.time.AdmissionPeriod.WeekSeconds
 import js7.base.time.AdmissionPeriodCalculator.{AlwaysPeriodCalculator, DailyPeriodCalculator, MonthlyDatePeriodCalculator, MonthlyLastDatePeriodCalculator, MonthlyLastWeekdayPeriodCalculator, MonthlyWeekdayPeriodCalculator, NoOffset, WeekdayPeriodCalculator, startOfWeek}
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import org.scalatest.freespec.AnyFreeSpec
 import scala.jdk.DurationConverters.{JavaDurationOps, ScalaDurationOps}
 

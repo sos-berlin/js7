@@ -4,8 +4,8 @@ import java.util.Optional
 import javax.annotation.Nonnull
 import js7.base.io.https.{HttpsConfig, KeyStoreRef, TrustStoreRef}
 import js7.data_for_java.common.JavaWrapper
-import scala.jdk.CollectionConverters._
-import scala.jdk.OptionConverters._
+import scala.jdk.CollectionConverters.*
+import scala.jdk.OptionConverters.*
 
 final case class JHttpsConfig(asScala: HttpsConfig) extends JavaWrapper
 {

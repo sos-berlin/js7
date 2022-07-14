@@ -2,7 +2,7 @@ package js7.base.crypt.x509
 
 import java.util.Base64
 import js7.base.crypt.x509.X509Cert.CertificatePem
-import js7.base.crypt.x509.X509Signature._
+import js7.base.crypt.x509.X509Signature.*
 import js7.base.crypt.{GenericSignature, Signature, SignerId}
 import js7.base.data.ByteArray
 import js7.base.problem.{Checked, Problem}

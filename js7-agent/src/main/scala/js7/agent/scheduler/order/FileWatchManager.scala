@@ -1,30 +1,30 @@
 package js7.agent.scheduler.order
 
-import cats.instances.vector._
-import cats.syntax.foldable._
-import cats.syntax.monoid._
-import cats.syntax.parallel._
-import cats.syntax.traverse._
+import cats.instances.vector.*
+import cats.syntax.foldable.*
+import cats.syntax.monoid.*
+import cats.syntax.parallel.*
+import cats.syntax.traverse.*
 import com.typesafe.config.Config
 import java.nio.file.StandardWatchEventKinds.{ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY}
 import java.nio.file.{Path, Paths}
 import java.util.regex.Matcher
 import js7.agent.data.AgentState
 import js7.agent.data.orderwatch.FileWatchState
-import js7.agent.scheduler.order.FileWatchManager._
+import js7.agent.scheduler.order.FileWatchManager.*
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted}
 import js7.base.io.file.watch.DirectoryEventDelayer.syntax.RichDelayLineObservable
 import js7.base.io.file.watch.{DirectoryWatcher, WatchOptions}
 import js7.base.log.Logger
-import js7.base.log.Logger.syntax._
+import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.AsyncMap
-import js7.base.monixutils.MonixBase.syntax._
+import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked
 import js7.base.thread.IOExecutor
 import js7.base.time.JavaTimeConverters.AsScalaDuration
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.LockKeeper
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached}
@@ -40,7 +40,7 @@ import monix.eval.Task
 import monix.reactive.Observable
 import monix.reactive.subjects.PublishSubject
 import scala.concurrent.duration.Deadline.now
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 /** Persists, recovers and runs FileWatches. */
 final class FileWatchManager(

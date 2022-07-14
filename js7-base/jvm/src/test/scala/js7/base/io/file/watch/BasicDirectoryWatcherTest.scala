@@ -3,13 +3,13 @@ package js7.base.io.file.watch
 import java.nio.file.Files.createDirectory
 import java.nio.file.Paths
 import java.nio.file.StandardWatchEventKinds.{ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY}
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileModified}
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.thread.IOExecutor.Implicits.globalIOX
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.AutoClosing.autoClosing
 import monix.eval.Task

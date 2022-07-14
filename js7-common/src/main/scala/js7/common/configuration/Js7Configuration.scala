@@ -4,7 +4,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import js7.base.BuildInfo
 import js7.base.configutils.Configs
 import js7.base.io.JavaResource
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 object Js7Configuration
 {

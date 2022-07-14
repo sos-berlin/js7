@@ -7,7 +7,7 @@ import js7.base.BuildInfo
 import js7.base.annotation.javaApi
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.log.{CorrelId, Logger}
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{HasCloser, Lazy}
 import js7.common.akkautils.Akkas
 import js7.common.akkautils.Akkas.newActorSystem
@@ -18,9 +18,9 @@ import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
 import js7.data_for_java.auth.{JAdmission, JHttpsConfig}
 import js7.proxy.ControllerApi
 import js7.proxy.configuration.ProxyConfs
-import js7.proxy.javaapi.JProxyContext._
+import js7.proxy.javaapi.JProxyContext.*
 import monix.execution.Scheduler
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 /** The class to start. */
 final class JProxyContext(config: Config)

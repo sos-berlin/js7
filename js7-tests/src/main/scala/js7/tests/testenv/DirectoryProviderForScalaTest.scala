@@ -1,6 +1,6 @@
 package js7.tests.testenv
 
-import cats.syntax.option._
+import cats.syntax.option.*
 import com.google.inject.Module
 import com.google.inject.util.Modules.EMPTY_MODULE
 import com.typesafe.config.{Config, ConfigFactory}
@@ -8,7 +8,7 @@ import js7.base.crypt.{DocumentSigner, SignatureVerifier, Signed, SignedString}
 import js7.base.io.JavaResource
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.utils.HasCloser
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.message.ProblemCodeMessages
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.agent.AgentPath

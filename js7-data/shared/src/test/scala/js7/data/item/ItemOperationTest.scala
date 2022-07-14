@@ -3,7 +3,7 @@ package js7.data.item
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.crypt.silly.SillySigner
 import js7.data.controller.ControllerState
-import js7.data.controller.ControllerState._
+import js7.data.controller.ControllerState.*
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVersion, DeleteSimple, RemoveVersioned}
 import js7.data.lock.{Lock, LockPath}
 import js7.data.workflow.{Workflow, WorkflowPath}

@@ -3,14 +3,14 @@ package js7.data.workflow.instructions
 import cats.implicits.catsKernelStdCommutativeMonoidForOption
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
-import js7.base.circeutils.CirceUtils._
-import js7.base.circeutils.ScalaJsonCodecs._
+import js7.base.circeutils.CirceUtils.*
+import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.ZeroDuration
-import js7.base.utils.typeclasses.IsEmpty.syntax._
+import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.source.SourcePos
-import js7.data.workflow.instructions.TryInstruction._
+import js7.data.workflow.instructions.TryInstruction.*
 import js7.data.workflow.position.{BranchId, CatchBranchId, Position, TryBranchId, TryCatchBranchId}
 import js7.data.workflow.{Instruction, Workflow}
 import scala.concurrent.duration.FiniteDuration

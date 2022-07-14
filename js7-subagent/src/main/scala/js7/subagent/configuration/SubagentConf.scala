@@ -1,6 +1,6 @@
 package js7.subagent.configuration
 
-import cats.syntax.semigroup._
+import cats.syntax.semigroup.*
 import com.typesafe.config.Config
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets.UTF_8
@@ -9,13 +9,13 @@ import java.nio.file.Path
 import js7.base.configutils.Configs
 import js7.base.configutils.Configs.{ConvertibleConfig, RichConfig}
 import js7.base.io.JavaResource
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{EmptyPath, WorkingDirectory}
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.configuration.{CommonConfiguration, Js7Configuration}
 import js7.common.http.configuration.RecouplingStreamReaderConfs
@@ -23,7 +23,7 @@ import js7.launcher.configuration.{JobLauncherConf, ProcessKillScript}
 import js7.launcher.forwindows.configuration.WindowsConf
 import js7.launcher.process.ProcessKillScriptProvider
 import js7.subagent.SubagentDriver.StdouterrConf
-import js7.subagent.configuration.SubagentConf._
+import js7.subagent.configuration.SubagentConf.*
 import monix.execution.Scheduler
 import scala.concurrent.duration.FiniteDuration
 

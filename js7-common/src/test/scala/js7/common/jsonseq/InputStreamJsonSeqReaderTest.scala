@@ -5,11 +5,11 @@ import java.io.{ByteArrayInputStream, InputStream}
 import java.nio.charset.StandardCharsets.{US_ASCII, UTF_8}
 import js7.base.io.file.FileUtils.withTemporaryFile
 import js7.base.utils.Ascii.{LF, RS}
-import js7.base.utils.ScalaUtils.syntax._
-import js7.common.jsonseq.InputStreamJsonSeqReaderTest._
+import js7.base.utils.ScalaUtils.syntax.*
+import js7.common.jsonseq.InputStreamJsonSeqReaderTest.*
 import js7.common.message.ProblemCodeMessages
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import scala.language.reflectiveCalls
 
 /**

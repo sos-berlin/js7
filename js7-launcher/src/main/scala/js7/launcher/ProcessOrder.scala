@@ -1,8 +1,8 @@
 package js7.launcher
 
 import cats.effect.Resource
-import cats.syntax.semigroup._
-import cats.syntax.traverse._
+import cats.syntax.semigroup.*
+import cats.syntax.traverse.*
 import js7.base.problem.Checked
 import js7.data.controller.ControllerId
 import js7.data.job.{JobKey, JobResource}

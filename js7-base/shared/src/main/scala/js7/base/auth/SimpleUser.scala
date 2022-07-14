@@ -1,12 +1,12 @@
 package js7.base.auth
 
-import js7.base.utils.ScalaUtils._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.*
+import js7.base.utils.ScalaUtils.syntax.*
 
 /**
   * @author Joacim Zschimmer
   */
-final case class SimpleUser private(
+final case class SimpleUser(
   id: UserId,
   hashedPassword: HashedPassword,
   grantedPermissions: Set[Permission],

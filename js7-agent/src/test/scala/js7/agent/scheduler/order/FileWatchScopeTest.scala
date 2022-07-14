@@ -1,6 +1,6 @@
 package js7.agent.scheduler.order
 
-import cats.syntax.semigroup._
+import cats.syntax.semigroup.*
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, LocalDateTime, ZoneId}
 import js7.base.problem.Problem

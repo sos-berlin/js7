@@ -1,8 +1,8 @@
 package js7.data.value.expression
 
-import fastparse.NoWhitespace._
+import fastparse.NoWhitespace.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.parser.Parsers.checkedParse
 import js7.data.value.ValueType.UnexpectedValueTypeProblem
 import js7.data.value.expression.Expression.{Add, FunctionExpr, Multiply, NamedValue, NumericConstant}

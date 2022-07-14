@@ -3,9 +3,9 @@ package js7.tests
 import js7.base.BuildInfo
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString
-import js7.base.io.file.FileUtils.syntax._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.io.file.FileUtils.syntax.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.web.Uri
 import js7.controller.client.AkkaHttpControllerApi
@@ -17,7 +17,7 @@ import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.AkkaHttpControllerApiTest._
+import js7.tests.AkkaHttpControllerApiTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global

@@ -3,12 +3,12 @@ package js7.provider.scheduledorder
 import com.typesafe.config.Config
 import js7.base.generic.Completed
 import js7.base.log.Logger
-import js7.base.time.JavaTimeConverters._
-import js7.base.time.JavaTimestamp.specific._
+import js7.base.time.JavaTimeConverters.*
+import js7.base.time.JavaTimestamp.specific.*
 import js7.base.time.Timestamp
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.order.FreshOrder
-import js7.provider.scheduledorder.OrderScheduleGenerator._
+import js7.provider.scheduledorder.OrderScheduleGenerator.*
 import js7.provider.scheduledorder.oldruntime.InstantInterval
 import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean

@@ -3,7 +3,7 @@ package js7.data.orderwatch
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.SimplePattern
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerState

@@ -1,6 +1,6 @@
 package js7.base.utils
 
-import js7.base.utils.Assertions._
+import js7.base.utils.Assertions.*
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

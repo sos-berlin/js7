@@ -13,9 +13,9 @@ import js7.base.io.JavaResource
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.JavaTimeConverters.AsScalaDuration
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import scala.concurrent.duration.FiniteDuration
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 /**
   * @author Joacim Zschimmer

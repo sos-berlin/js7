@@ -10,7 +10,7 @@ import js7.data.item.ItemRevision
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data_for_java.common.JJsonable
 import js7.data_for_java.item.JUnsignedSimpleItem
-import scala.jdk.OptionConverters._
+import scala.jdk.OptionConverters.*
 
 final case class JSubagentItem(asScala: SubagentItem)
 extends JJsonable[JSubagentItem] with JUnsignedSimpleItem

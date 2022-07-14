@@ -3,9 +3,9 @@ package js7.data_for_java.controller
 import js7.base.auth.UserId
 import js7.base.crypt.silly.SillySigner
 import js7.base.problem.Checked.Ops
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.{Timestamp, Timezone}
-import js7.base.utils.Collections.implicits._
+import js7.base.utils.Collections.implicits.*
 import js7.base.web.Uri
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterTiming}
@@ -21,7 +21,7 @@ import js7.data.subagent.SubagentId
 import js7.data.value.StringValue
 import js7.data.workflow.position.Position
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
-import js7.data_for_java.controller.JControllerStateTest._
+import js7.data_for_java.controller.JControllerStateTest.*
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

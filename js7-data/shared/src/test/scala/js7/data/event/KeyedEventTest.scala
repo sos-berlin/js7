@@ -2,9 +2,9 @@ package js7.data.event
 
 import io.circe.Json
 import io.circe.generic.semiauto.deriveCodec
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import js7.data.event.KeyedEventTest._
+import js7.data.event.KeyedEventTest.*
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 

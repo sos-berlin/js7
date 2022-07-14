@@ -1,7 +1,7 @@
 package js7.base.time
 
-import js7.base.time.ScalaTime._
-import js7.base.time.Stopwatch._
+import js7.base.time.ScalaTime.*
+import js7.base.time.Stopwatch.*
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

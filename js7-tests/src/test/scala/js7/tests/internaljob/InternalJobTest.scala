@@ -1,10 +1,10 @@
 package js7.tests.internaljob
 
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichPartialFunction}
@@ -26,7 +26,7 @@ import js7.launcher.OrderProcess
 import js7.launcher.forjava.internal.tests.{EmptyBlockingInternalJob, EmptyJInternalJob, TestBlockingInternalJob, TestJInternalJob}
 import js7.launcher.internal.InternalJob
 import js7.launcher.internal.InternalJob.JobContext
-import js7.tests.internaljob.InternalJobTest._
+import js7.tests.internaljob.InternalJobTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.catnap.Semaphore
@@ -35,7 +35,7 @@ import monix.execution.Scheduler.Implicits.traced
 import monix.execution.atomic.{Atomic, AtomicInt}
 import monix.reactive.Observable
 import org.scalactic.source
-import org.scalatest.Assertions._
+import org.scalatest.Assertions.*
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 import scala.reflect.ClassTag

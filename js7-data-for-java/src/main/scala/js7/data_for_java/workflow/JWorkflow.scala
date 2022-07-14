@@ -9,9 +9,9 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.data_for_java.common.JJsonable
 import js7.data_for_java.item.JVersionedItem
-import js7.data_for_java.vavr.VavrConverters._
+import js7.data_for_java.vavr.VavrConverters.*
 import js7.data_for_java.workflow.position.JPosition
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 @javaApi
 final case class JWorkflow(asScala: Workflow)

@@ -17,7 +17,7 @@ import js7.data_for_java.common.JJsonable
 import js7.data_for_java.order.JFreshOrder
 import js7.data_for_java.workflow.JWorkflowId
 import js7.data_for_java.workflow.position.JPosition
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.RichOptional
 
 @javaApi

@@ -3,10 +3,10 @@ package js7.data.cluster
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Checked
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSettingUpdated, ClusterSwitchedOver}
-import js7.data.cluster.ClusterSetting.syntax._
+import js7.data.cluster.ClusterSetting.syntax.*
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventDrivenState, JournalPosition, KeyedEvent}
 import js7.data.node.NodeId
@@ -15,7 +15,7 @@ import monix.reactive.Observable
 sealed trait ClusterState
 extends EventDrivenState[ClusterState, ClusterEvent]
 {
-  import ClusterState._
+  import ClusterState.*
 
   def companion = ClusterState
 

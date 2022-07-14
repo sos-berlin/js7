@@ -1,12 +1,12 @@
 package js7.subagent.director
 
 import js7.base.problem.Problem
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.utils.Base64UUID
 import js7.data.command.CommonCommand
 import js7.data.subagent.SubagentRunId
-import js7.subagent.director.CommandDispatcherTest._
+import js7.subagent.director.CommandDispatcherTest.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec

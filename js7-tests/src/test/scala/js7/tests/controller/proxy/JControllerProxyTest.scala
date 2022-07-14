@@ -5,10 +5,10 @@ import java.nio.file.Files.createDirectory
 import java.util.concurrent.TimeUnit.SECONDS
 import java.util.concurrent.TimeoutException
 import js7.base.circeutils.CirceUtils.RichJson
-import js7.base.configutils.Configs._
-import js7.base.io.file.FileUtils.syntax._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.configutils.Configs.*
+import js7.base.io.file.FileUtils.syntax.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Lazy
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
@@ -28,7 +28,7 @@ import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.CancellationException
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Try}
 
 final class JControllerProxyTest extends AnyFreeSpec with DirectoryProviderForScalaTest

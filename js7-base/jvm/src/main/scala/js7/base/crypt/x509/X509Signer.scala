@@ -7,7 +7,7 @@ import js7.base.crypt.{DocumentSigner, SignerId}
 import js7.base.data.ByteArray
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.withTemporaryDirectory
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 
 final class X509Signer private(

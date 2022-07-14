@@ -1,9 +1,9 @@
 package js7.data.execution.workflow.instructions
 
-import cats.instances.either._
-import cats.instances.vector._
-import cats.syntax.semigroup._
-import cats.syntax.traverse._
+import cats.instances.either.*
+import cats.instances.vector.*
+import cats.syntax.semigroup.*
+import cats.syntax.traverse.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
 import js7.base.utils.Collections.implicits.RichIterable

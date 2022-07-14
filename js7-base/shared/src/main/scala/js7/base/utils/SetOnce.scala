@@ -4,7 +4,7 @@ import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import monix.eval.Task
 import scala.concurrent.{Future, Promise}
-import scala.reflect.runtime.universe._
+import scala.reflect.runtime.universe.*
 import scala.util.Success
 
 // TODO Avoid scala.reflect.runtime.universe._

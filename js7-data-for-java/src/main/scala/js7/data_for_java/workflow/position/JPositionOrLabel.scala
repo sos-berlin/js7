@@ -6,8 +6,8 @@ import js7.base.annotation.javaApi
 import js7.base.problem.Problem
 import js7.data.workflow.position.{Label, Position, PositionOrLabel}
 import js7.data_for_java.common.{JJsonable, JavaWrapper}
-import js7.data_for_java.vavr.VavrConverters._
-import scala.jdk.CollectionConverters._
+import js7.data_for_java.vavr.VavrConverters.*
+import scala.jdk.CollectionConverters.*
 
 sealed trait JPositionOrLabel extends JavaWrapper {
   protected type AsScala <: PositionOrLabel

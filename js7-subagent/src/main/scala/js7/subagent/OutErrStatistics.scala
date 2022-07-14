@@ -1,11 +1,11 @@
 package js7.subagent
 
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.ByteUnits.toKBGB
-import js7.subagent.OutErrStatistics._
+import js7.subagent.OutErrStatistics.*
 import monix.eval.Task
 import scala.concurrent.duration.Deadline.now
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 private final class OutErrStatistics
 {

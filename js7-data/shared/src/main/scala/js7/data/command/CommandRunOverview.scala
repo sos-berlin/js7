@@ -3,7 +3,7 @@ package js7.data.command
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.{Decoder, Encoder}
 import js7.base.circeutils.CirceObjectCodec
-import js7.base.circeutils.ScalaJsonCodecs._
+import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.log.CorrelId
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import scala.concurrent.duration.FiniteDuration

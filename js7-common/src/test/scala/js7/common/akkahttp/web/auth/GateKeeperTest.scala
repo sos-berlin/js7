@@ -4,7 +4,7 @@ import akka.http.scaladsl.model.MediaTypes.`text/plain`
 import akka.http.scaladsl.model.StatusCodes.{OK, Unauthorized}
 import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials, HttpChallenges, `WWW-Authenticate`}
 import akka.http.scaladsl.model.{HttpMethods, HttpRequest, StatusCode, Uri}
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.{ExceptionHandler, Route}
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import akka.http.scaladsl.unmarshalling.Unmarshaller
@@ -13,21 +13,21 @@ import io.circe.Json
 import js7.base.auth.Permission.toStringToPermission
 import js7.base.auth.User.UserDoesNotHavePermissionProblem
 import js7.base.auth.{GetPermission, HashedPassword, Permission, SimpleUser, SuperPermission, User, UserAndPassword, UserId, ValidUserPermission}
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.generic.SecretString
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Problem
 import js7.base.thread.Futures.implicits.SuccessFuture
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.akkahttp.web.auth.GateKeeper.{GetIsPublic, IsPublic, LoopbackIsPublic}
-import js7.common.akkahttp.web.auth.GateKeeperTest._
+import js7.common.akkahttp.web.auth.GateKeeperTest.*
 import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.auth.IdToUser
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.Deadline.now
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.language.implicitConversions
 
 /**

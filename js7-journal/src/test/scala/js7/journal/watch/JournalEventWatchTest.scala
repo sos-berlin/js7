@@ -1,32 +1,32 @@
 package js7.journal.watch
 
-import io.circe._
+import io.circe.*
 import io.circe.generic.semiauto.deriveCodec
-import io.circe.syntax._
+import io.circe.syntax.*
 import java.nio.file.Files
 import java.util.UUID
 import js7.base.BuildInfo
 import js7.base.circeutils.CirceUtils
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.FileUtils.withTemporaryDirectory
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.thread.Futures.implicits._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.Futures.implicits.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, EventRequest, EventSeq, JournalEvent, JournalHeader, JournalHeaders, JournalId, JournalPosition, JournalSeparators, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
 import js7.journal.data.JournalMeta
 import js7.journal.files.JournalFiles
 import js7.journal.files.JournalFiles.JournalMetaOps
-import js7.journal.watch.JournalEventWatchTest._
+import js7.journal.watch.JournalEventWatchTest.*
 import js7.journal.watch.TestData.{writeJournal, writeJournalSnapshot}
 import js7.journal.write.EventJournalWriter
 import monix.execution.Scheduler.Implicits.traced
@@ -35,7 +35,7 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 import scala.reflect.ClassTag
-import scala.reflect.runtime.universe._
+import scala.reflect.runtime.universe.*
 
 /**
   * @author Joacim Zschimmer

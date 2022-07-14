@@ -1,8 +1,8 @@
 package js7.base.crypt.pgp
 
-import js7.base.crypt.pgp.PgpSignature._
+import js7.base.crypt.pgp.PgpSignature.*
 import js7.base.crypt.{GenericSignature, Signature}
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 
 /**
   * @author Joacim Zschimmer

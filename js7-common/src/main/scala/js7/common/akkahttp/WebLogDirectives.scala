@@ -4,24 +4,24 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.model.ContentTypes.{`application/json`, `text/plain(UTF-8)`}
 import akka.http.scaladsl.model.headers.{Referer, `User-Agent`}
 import akka.http.scaladsl.model.{AttributeKey, AttributeKeys, HttpEntity, HttpHeader, HttpRequest, HttpResponse, StatusCode}
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.{Directive0, Route}
 import com.typesafe.config.Config
 import io.circe.parser.{parse => parseJson}
 import java.lang.System.nanoTime
 import js7.base.auth.SessionToken
-import js7.base.configutils.Configs._
-import js7.base.log.LogLevel.syntax._
+import js7.base.configutils.Configs.*
+import js7.base.log.LogLevel.syntax.*
 import js7.base.log.{CorrelId, LogLevel, Logger}
 import js7.base.problem.Problem
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.ByteUnits.toKBGB
-import js7.base.utils.ScalaUtils.syntax._
-import js7.common.akkahttp.WebLogDirectives._
+import js7.base.utils.ScalaUtils.syntax.*
+import js7.common.akkahttp.WebLogDirectives.*
 import js7.common.http.AkkaHttpClient.{`x-js7-correlation-id`, `x-js7-request-id`, `x-js7-session`}
 import scala.concurrent.duration.Deadline.now
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.reflect.ClassTag
 
 /**

@@ -5,7 +5,7 @@ import io.circe.{Decoder, Encoder}
 import java.nio.file.Files.createTempDirectory
 import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{AnyKeyedEvent, Event, EventId, JournalHeaders, JournalId, KeyedEventTypedJsonCodec, Stamped}
 import js7.journal.data.JournalMeta

@@ -5,7 +5,7 @@ import js7.data.cluster.ClusterState
 import js7.data.event.{EventId, JournalId, SnapshotableState}
 import js7.journal.data.JournalMeta
 import js7.journal.watch.JournalEventWatch
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 final class Recovered[S <: SnapshotableState[S]] private(
   val journalMeta: JournalMeta,

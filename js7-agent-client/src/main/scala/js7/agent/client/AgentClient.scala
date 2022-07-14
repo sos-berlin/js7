@@ -4,7 +4,7 @@ import akka.actor.ActorSystem
 import js7.agent.data.AgentApi
 import js7.agent.data.AgentState.keyedEventJsonCodec
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand._
+import js7.agent.data.commands.AgentCommand.*
 import js7.agent.data.views.AgentOverview
 import js7.agent.data.web.AgentUris
 import js7.base.auth.UserAndPassword

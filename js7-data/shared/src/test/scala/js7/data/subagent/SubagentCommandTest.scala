@@ -3,7 +3,7 @@ package js7.data.subagent
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.crypt.silly.SillySigner
 import js7.base.io.process.ProcessSignal.SIGTERM
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.Base64UUID
 import js7.data.agent.AgentPath
 import js7.data.controller.{ControllerId, ControllerState}

@@ -1,16 +1,16 @@
 package js7.tests.filewatch
 
-import js7.base.configutils.Configs._
-import js7.base.io.file.FileUtils.syntax._
-import js7.base.problem.Checked._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.configutils.Configs.*
+import js7.base.io.file.FileUtils.syntax.*
+import js7.base.problem.Checked.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.filewatch.FileWatchInjectionTest._
+import js7.tests.filewatch.FileWatchInjectionTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec

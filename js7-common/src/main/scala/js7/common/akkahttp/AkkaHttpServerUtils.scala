@@ -3,7 +3,7 @@ package js7.common.akkahttp
 import akka.http.scaladsl.marshalling.ToResponseMarshaller
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.model.{HttpHeader, MediaType, Uri}
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.PathMatcher.{Matched, Unmatched}
 import akka.http.scaladsl.server.{ContentNegotiator, Directive, Directive0, Directive1, PathMatcher, PathMatcher0, Route, UnacceptedResponseContentTypeRejection, ValidationRejection}
 import akka.shapeless.HNil
@@ -169,7 +169,7 @@ object AkkaHttpServerUtils
   //  }
 
   implicit final class RichPath(private val delegate: Uri.Path) extends AnyVal {
-    import Uri.Path._
+    import Uri.Path.*
 
     /**
       * Matches complete segments (not characters, as `startWith`).
@@ -228,7 +228,7 @@ object AkkaHttpServerUtils
     * A `PathMatcher` for Directive `pathPrefix` matching complete segments.
     */
   private def matchSegments(prefix: Uri.Path): PathMatcher0 = {
-    import akka.http.scaladsl.server.PathMatcher._
+    import akka.http.scaladsl.server.PathMatcher.*
     if (prefix.isEmpty)
       provide(HNil)
     else

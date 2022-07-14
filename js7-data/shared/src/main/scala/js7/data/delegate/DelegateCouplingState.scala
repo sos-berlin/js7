@@ -12,7 +12,7 @@ sealed trait DelegateCouplingState
 
 object DelegateCouplingState
 {
-  final case class Reset private(reason: Reset.Reason) extends DelegateCouplingState
+  final case class Reset(reason: Reset.Reason) extends DelegateCouplingState
   object Reset {
     val fresh = Reset(Fresh)
     val shutdown = Reset(Shutdown)

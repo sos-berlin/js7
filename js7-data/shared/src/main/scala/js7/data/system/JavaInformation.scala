@@ -1,7 +1,7 @@
 package js7.data.system
 
 import io.circe.generic.JsonCodec
-import js7.data.system.JavaInformation._
+import js7.data.system.JavaInformation.*
 
 @JsonCodec
 final case class JavaInformation(

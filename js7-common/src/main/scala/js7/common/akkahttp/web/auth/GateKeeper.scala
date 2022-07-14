@@ -6,26 +6,26 @@ import akka.http.scaladsl.model.StatusCodes.{Forbidden, Unauthorized}
 import akka.http.scaladsl.model.headers.{HttpChallenges, `Tls-Session-Info`, `WWW-Authenticate`}
 import akka.http.scaladsl.model.{HttpMethod, HttpRequest}
 import akka.http.scaladsl.server.AuthenticationFailedRejection.CredentialsMissing
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route.seal
 import akka.http.scaladsl.server.{AuthenticationFailedRejection, Directive, Directive1, ExceptionHandler, RejectionHandler, Route}
 import com.typesafe.config.{Config, ConfigFactory}
 import java.security.cert.X509Certificate
 import js7.base.auth.{DistinguishedName, GetPermission, HashedPassword, Permission, SimpleUser, SuperPermission, User, UserAndPassword, UserId, ValidUserPermission}
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
-import js7.base.time.JavaTimeConverters._
-import js7.base.time.ScalaTime._
-import js7.base.utils.ScalaUtils.syntax._
-import js7.common.akkahttp.StandardMarshallers._
-import js7.common.akkahttp.web.auth.GateKeeper._
+import js7.base.time.JavaTimeConverters.*
+import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.*
+import js7.common.akkahttp.StandardMarshallers.*
+import js7.common.akkahttp.web.auth.GateKeeper.*
 import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.auth.IdToUser
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.collection.immutable.Set
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer

@@ -4,14 +4,14 @@ import java.time.DayOfWeek.MONDAY
 import java.time.ZoneOffset.UTC
 import java.time.{LocalDateTime, ZoneId}
 import js7.base.problem.Checked
-import js7.base.time.AdmissionTimeSchemeForJavaTime._
-import js7.base.time.JavaTimestamp.specific._
+import js7.base.time.AdmissionTimeSchemeForJavaTime.*
+import js7.base.time.JavaTimestamp.specific.*
 import js7.base.time.{JavaTimestamp, TimeInterval, Timestamp}
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.order.CycleState
 import js7.data.workflow.instructions.Schedule
 import js7.data.workflow.instructions.Schedule.{Continuous, Periodic, Ticking}
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 final class ScheduleCalculator(schedule: Schedule, zone: ZoneId, dateOffset: FiniteDuration)
 extends ScheduleSimulator

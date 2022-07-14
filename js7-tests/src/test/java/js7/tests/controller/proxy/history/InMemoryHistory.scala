@@ -2,7 +2,7 @@ package js7.tests.controller.proxy.history
 
 import java.time.Instant
 import java.util.Optional
-import js7.base.time.JavaTimestamp.specific._
+import js7.base.time.JavaTimestamp.specific.*
 import js7.base.web.Uri
 import js7.data.event.{Event, EventId, KeyedEvent}
 import js7.data.order.{OrderEvent, OrderId}
@@ -14,11 +14,11 @@ import js7.data_for_java.order.{JOrder, JOrderEvent}
 import js7.data_for_java.vavr.VavrUtils.getOrThrow
 import js7.data_for_java.workflow.position.JWorkflowPosition
 import js7.proxy.javaapi.data.controller.JEventAndControllerState
-import js7.tests.controller.proxy.history.InMemoryHistory._
+import js7.tests.controller.proxy.history.InMemoryHistory.*
 import js7.tests.controller.proxy.history.JControllerApiHistoryTester.{TestOrderId, TestWorkflowId}
 import js7.tests.testenv.DirectoryProvider.StdoutOutput
 import scala.collection.mutable
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 private[history] final class InMemoryHistory
 {

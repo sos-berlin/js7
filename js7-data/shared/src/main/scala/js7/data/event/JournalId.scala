@@ -6,7 +6,7 @@ import js7.base.generic.GenericString
 import js7.base.utils.Base64UUID
 
 /** The ID of a journal, identifying the event stream. */
-final case class JournalId private(base64UUID: Base64UUID) extends GenericString {
+final case class JournalId(base64UUID: Base64UUID) extends GenericString {
   def string = base64UUID.string
 }
 

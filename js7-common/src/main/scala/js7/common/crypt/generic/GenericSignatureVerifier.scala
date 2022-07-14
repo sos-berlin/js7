@@ -1,9 +1,9 @@
 package js7.common.crypt.generic
 
 import cats.Applicative
-import cats.instances.either._
-import cats.instances.vector._
-import cats.syntax.traverse._
+import cats.instances.either.*
+import cats.instances.vector.*
+import cats.syntax.traverse.*
 import com.typesafe.config.Config
 import java.nio.file.Files.exists
 import java.nio.file.{Files, Paths}
@@ -13,10 +13,10 @@ import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.Collections._
-import js7.base.utils.JavaCollections.syntax._
+import js7.base.utils.Collections.*
+import js7.base.utils.JavaCollections.syntax.*
 import js7.base.utils.ScalaUtils.checkedCast
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 /** A `SignatureVerifier` that verifies different types of signatures.
   * @author Joacim Zschimmer

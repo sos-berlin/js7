@@ -1,7 +1,7 @@
 package js7.common.utils
 
 import org.scalatest.funsuite.AnyFunSuite
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 
 final class RandomsTest extends AnyFunSuite {
   test("randomInt") {

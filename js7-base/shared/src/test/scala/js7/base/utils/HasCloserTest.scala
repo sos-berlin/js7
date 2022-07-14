@@ -1,7 +1,7 @@
 package js7.base.utils
 
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 
 final class HasCloserTest extends AnyFreeSpec {
 

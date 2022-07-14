@@ -1,13 +1,13 @@
 package js7.launcher.internal
 
-import cats.syntax.semigroup._
+import cats.syntax.semigroup.*
 import java.nio.file.Files.{exists, getPosixFilePermissions}
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.system.OperatingSystem.isUnix
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.job.{AbsolutePathExecutable, CommandLineExecutable, InternalExecutable, JobConf, RelativePathExecutable, ShellScriptExecutable}
 import js7.data.value.expression.Scope.evalExpressionMap
 import js7.data.value.expression.scopes.{EnvScope, NowScope}

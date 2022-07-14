@@ -3,16 +3,16 @@ package js7.agent.tests
 import java.nio.file.Files.{createDirectories, createDirectory, createTempDirectory, delete}
 import java.nio.file.Path
 import js7.agent.data.AgentState
-import js7.agent.tests.TestAgentDirectoryProvider._
+import js7.agent.tests.TestAgentDirectoryProvider.*
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.crypt.silly.{SillySignature, SillySigner}
 import js7.base.generic.SecretString
 import js7.base.io.JavaResource
-import js7.base.io.file.FileUtils._
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.*
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer.syntax.RichClosersAny
 import js7.base.utils.HasCloser

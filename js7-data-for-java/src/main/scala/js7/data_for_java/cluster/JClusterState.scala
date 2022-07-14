@@ -4,7 +4,7 @@ import js7.base.web.Uri
 import js7.data.cluster.ClusterState
 import js7.data.node.NodeId
 import js7.data_for_java.common.JJsonable
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 sealed trait JClusterState
 extends JJsonable[JClusterState]

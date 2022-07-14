@@ -1,6 +1,6 @@
 package js7.data.workflow.position
 
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.workflow.position.BranchId.{Catch_, Try_}
 
 private[workflow] object TryCatchBranchId

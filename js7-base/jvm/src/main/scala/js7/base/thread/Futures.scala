@@ -2,13 +2,13 @@ package js7.base.thread
 
 import java.util.concurrent.TimeoutException
 import js7.base.log.Logger
-import js7.base.time.ScalaTime._
-import js7.base.utils.StackTraces._
+import js7.base.time.ScalaTime.*
+import js7.base.utils.StackTraces.*
 import monix.execution.CancelableFuture
 import scala.collection.BuildFrom
-import scala.concurrent._
-import scala.concurrent.duration._
-import scala.reflect.runtime.universe._
+import scala.concurrent.*
+import scala.concurrent.duration.*
+import scala.reflect.runtime.universe.*
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 

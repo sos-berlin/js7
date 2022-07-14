@@ -1,9 +1,9 @@
 package js7.common.http
 
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.common.akkautils.Akkas
 import js7.common.akkautils.Akkas.newActorSystem
-import js7.common.http.StreamingSupport._
+import js7.common.http.StreamingSupport.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable

@@ -1,14 +1,14 @@
 package js7.common.akkahttp.web.data
 
 import akka.http.scaladsl.model.{Uri => AkkaUri}
-import cats.syntax.either._
-import cats.syntax.show._
+import cats.syntax.either.*
+import cats.syntax.show.*
 import java.net.{InetAddress, InetSocketAddress}
 import js7.base.io.https.{KeyStoreRef, TrustStoreRef}
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.CatsUtils._
+import js7.base.utils.CatsUtils.*
 import js7.base.web.Uri
 import js7.common.http.AkkaHttpUtils.RichAkkaAsUri
 import js7.common.internet.IP.inetSocketAddressShow

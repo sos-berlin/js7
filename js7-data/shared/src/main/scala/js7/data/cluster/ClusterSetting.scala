@@ -1,18 +1,18 @@
 package js7.data.cluster
 
-import cats.instances.either._
-import cats.syntax.flatMap._
+import cats.instances.either.*
+import cats.syntax.flatMap.*
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.annotation.javaApi
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.web.Uri
-import js7.data.cluster.ClusterSetting._
-import js7.data.cluster.ClusterSetting.syntax._
+import js7.data.cluster.ClusterSetting.*
+import js7.data.cluster.ClusterSetting.syntax.*
 import js7.data.node.NodeId
 
-final case class ClusterSetting private(
+final case class ClusterSetting(
   idToUri: Map[NodeId, Uri],
   activeId: NodeId,
   clusterWatches: Seq[ClusterSetting.Watch],

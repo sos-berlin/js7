@@ -4,7 +4,7 @@ import io.circe.Json
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.{RichCirceString, RichJson}
 import js7.base.data.ByteArray
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.data.event.JournalEvent.StampedHeartbeat
 
 /**

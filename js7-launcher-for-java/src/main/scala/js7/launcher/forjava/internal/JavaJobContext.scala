@@ -5,7 +5,7 @@ import js7.data.job.JobKey
 import js7.data.value.Value
 import js7.data_for_java.common.JavaWrapper
 import js7.launcher.internal.InternalJob.JobContext
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 trait JavaJobContext extends JavaWrapper
 {

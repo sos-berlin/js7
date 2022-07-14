@@ -1,7 +1,7 @@
 package js7.data.agent
 
 import java.util.UUID
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Problem
 import js7.data.delegate.DelegateCouplingState
 import js7.data.event.JournalId

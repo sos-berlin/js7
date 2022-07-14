@@ -1,8 +1,8 @@
 package js7.common.crypt.pgp
 
-import cats.instances.vector._
-import cats.syntax.foldable._
-import cats.syntax.show._
+import cats.instances.vector.*
+import cats.syntax.foldable.*
+import cats.syntax.show.*
 import java.util.Base64
 import js7.base.crypt.pgp.PgpSignature
 import js7.base.crypt.{DocumentSigner, SignerId}
@@ -10,11 +10,11 @@ import js7.base.data.ByteArray
 import js7.base.generic.SecretString
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
-import js7.common.crypt.pgp.PgpCommons._
+import js7.common.crypt.pgp.PgpCommons.*
 import org.bouncycastle.bcpg.HashAlgorithmTags
 import org.bouncycastle.openpgp.operator.jcajce.{JcaPGPContentSignerBuilder, JcePBESecretKeyDecryptorBuilder}
 import org.bouncycastle.openpgp.{PGPSecretKey, PGPSecretKeyRingCollection, PGPSignature, PGPSignatureGenerator, PGPSignatureSubpacketGenerator, PGPUtil}
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.util.Random
 
 /**
@@ -27,7 +27,7 @@ extends DocumentSigner
 
   def companion = PgpSigner
 
-  import PgpSigner._
+  import PgpSigner.*
 
   registerBouncyCastle()
   //logger.debug(pgpSecretKey.show)

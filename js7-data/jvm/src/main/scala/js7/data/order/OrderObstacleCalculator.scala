@@ -1,10 +1,10 @@
 package js7.data.order
 
-import cats.syntax.traverse._
+import cats.syntax.traverse.*
 import java.util.concurrent.ConcurrentHashMap
 import js7.base.problem.Checked
 import js7.base.time.{Timestamp, WallClock}
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.job.JobKey
 import js7.data.order.Order.Processing

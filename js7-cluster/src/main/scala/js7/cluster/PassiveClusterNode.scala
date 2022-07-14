@@ -2,7 +2,7 @@ package js7.cluster
 
 import com.softwaremill.diffx
 import com.typesafe.config.Config
-import io.circe.syntax._
+import io.circe.syntax.*
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.charset.StandardCharsets.UTF_8
@@ -10,27 +10,27 @@ import java.nio.file.Files.{exists, move, size}
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import java.nio.file.StandardOpenOption.{APPEND, CREATE, TRUNCATE_EXISTING, WRITE}
 import java.nio.file.{Path, Paths}
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.data.ByteArray
-import js7.base.data.ByteSequence.ops._
+import js7.base.data.ByteSequence.ops.*
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.monixutils.MonixDeadline.now
 import js7.base.monixutils.ObservablePauseDetector.RichPauseObservable
 import js7.base.monixutils.RefCountedResource
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SetOnce
-import js7.base.utils.StackTraces._
+import js7.base.utils.StackTraces.*
 import js7.base.web.HttpClient
 import js7.cluster.ClusterCommon.clusterEventAndStateToString
 import js7.cluster.ClusterConf.ClusterProductName
-import js7.cluster.PassiveClusterNode._
+import js7.cluster.PassiveClusterNode.*
 import js7.common.http.RecouplingStreamReader
 import js7.common.jsonseq.PositionAnd
 import js7.data.cluster.ClusterCommand.{ClusterCouple, ClusterPassiveDown, ClusterPrepareCoupling, ClusterRecouple}
@@ -45,7 +45,7 @@ import js7.data.node.NodeId
 import js7.journal.EventIdGenerator
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
-import js7.journal.files.JournalFiles._
+import js7.journal.files.JournalFiles.*
 import js7.journal.recover.{FileSnapshotableStateBuilder, JournalProgress, Recovered, RecoveredJournalFile}
 import monix.eval.Task
 import monix.execution.Scheduler

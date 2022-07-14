@@ -2,7 +2,7 @@ package js7.journal.watch
 
 import java.nio.file.Path
 import js7.base.log.Logger
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.closeOnError
 import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.CloseableIterator
@@ -10,7 +10,7 @@ import js7.common.jsonseq.PositionAnd
 import js7.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
 import js7.journal.data.JournalMeta
 import js7.journal.recover.JournalReader
-import js7.journal.watch.FileEventIterator._
+import js7.journal.watch.FileEventIterator.*
 import scala.concurrent.duration.Deadline.now
 
 /**

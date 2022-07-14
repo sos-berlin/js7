@@ -3,12 +3,12 @@ package js7.common.akkautils
 import akka.actor.SupervisorStrategy.{Decider, Directive, Escalate, Restart, Resume, Stop, defaultDecider}
 import akka.actor.{ActorContext, ActorInitializationException, ActorRef, OneForOneStrategy, SupervisorStrategy}
 import java.lang.reflect.InvocationTargetException
-import js7.base.log.LogLevel.syntax._
+import js7.base.log.LogLevel.syntax.*
 import js7.base.log.LogLevel.{Debug, Error, Warn}
 import js7.base.log.Logger
-import js7.base.utils.ScalaUtils.syntax._
-import js7.common.akkautils.Akkas._
-import js7.common.akkautils.LoggingOneForOneStrategy._
+import js7.base.utils.ScalaUtils.syntax.*
+import js7.common.akkautils.Akkas.*
+import js7.common.akkautils.LoggingOneForOneStrategy.*
 
 /**
   * @author Joacim Zschimmer

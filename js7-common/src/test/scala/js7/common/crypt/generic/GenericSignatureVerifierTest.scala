@@ -1,10 +1,10 @@
 package js7.common.crypt.generic
 
 import js7.base.Problems.TamperedWithSignedMessageProblem
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.crypt.SignedString
 import js7.base.data.ByteArray
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.problem.Checked.Ops
 import js7.common.crypt.pgp.{PgpSigner, PgpTest}

@@ -9,12 +9,12 @@ import js7.base.configutils.Configs.RichConfig
 import js7.base.generic.SecretString
 import js7.base.log.Logger
 import js7.base.problem.Problem
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.common.akkahttp.ExceptionHandling
-import js7.common.akkahttp.StandardMarshallers._
+import js7.common.akkahttp.StandardMarshallers.*
 import js7.common.akkahttp.web.auth.GateKeeper
-import js7.common.akkahttp.web.session.RouteProvider._
+import js7.common.akkahttp.web.session.RouteProvider.*
 import js7.common.akkahttp.web.session.{Session => Session_}
 import js7.common.http.AkkaHttpClient.`x-js7-session`
 import js7.data.problems.InvalidLoginProblem

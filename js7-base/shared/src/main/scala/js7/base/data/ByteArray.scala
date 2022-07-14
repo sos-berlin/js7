@@ -7,8 +7,8 @@ import java.lang.System.arraycopy
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.Base64
 import java.util.Objects.requireNonNull
-import js7.base.circeutils.CirceUtils._
-import js7.base.data.ByteSequence.ops._
+import js7.base.circeutils.CirceUtils.*
+import js7.base.data.ByteSequence.ops.*
 import js7.base.problem.Checked
 import scala.collection.mutable
 

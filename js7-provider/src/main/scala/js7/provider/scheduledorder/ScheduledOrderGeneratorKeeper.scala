@@ -1,10 +1,10 @@
 package js7.provider.scheduledorder
 
-import js7.base.time.JavaTimeConverters._
+import js7.base.time.JavaTimeConverters.*
 import js7.base.time.Timestamp
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.data.order.{FreshOrder, OrderId}
-import js7.provider.scheduledorder.ScheduledOrderGeneratorKeeper._
+import js7.provider.scheduledorder.ScheduledOrderGeneratorKeeper.*
 import js7.provider.scheduledorder.oldruntime.InstantInterval
 
 /**

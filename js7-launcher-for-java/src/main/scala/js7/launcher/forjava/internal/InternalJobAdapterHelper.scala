@@ -3,18 +3,18 @@ package js7.launcher.forjava.internal
 import io.vavr.control.{Either => VEither}
 import java.lang.reflect.Modifier.isPublic
 import java.lang.reflect.{Constructor, InvocationTargetException}
-import js7.base.monixutils.MonixBase.syntax._
+import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked.CheckedOption
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichEitherF}
 import js7.base.utils.SetOnce
 import js7.data.order.Outcome
-import js7.data_for_java.vavr.VavrConverters._
+import js7.data_for_java.vavr.VavrConverters.*
 import js7.launcher.OrderProcess
 import monix.eval.Task
 import scala.reflect.ClassTag
-import scala.reflect.runtime.universe._
+import scala.reflect.runtime.universe.*
 import scala.util.control.NonFatal
 
 private[internal] final class InternalJobAdapterHelper[J: ClassTag: TypeTag]

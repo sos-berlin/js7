@@ -6,7 +6,7 @@ import js7.data.command.CancellationMode
 import js7.data.command.CancellationMode.Kill
 import js7.data_for_java.common.JavaWrapper
 import js7.data_for_java.workflow.position.JWorkflowPosition
-import scala.jdk.OptionConverters._
+import scala.jdk.OptionConverters.*
 
 final case class JCancellationMode(asScala: CancellationMode)
 extends JavaWrapper

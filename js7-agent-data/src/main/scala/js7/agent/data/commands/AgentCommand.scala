@@ -8,17 +8,17 @@ import js7.agent.data.AgentState
 import js7.agent.data.AgentState.{inventoryItemKeyJsonCodec, signableItemJsonCodec, unsignedSimpleItemJsonCodec}
 import js7.base.circeutils.CirceCodec
 import js7.base.circeutils.CirceUtils.singletonCodec
-import js7.base.circeutils.ScalaJsonCodecs._
+import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.Signed
 import js7.base.io.process.ProcessSignal
 import js7.base.log.CorrelIdWrapped
 import js7.base.problem.Checked
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.Checked.implicits.{checkedJsonDecoder, checkedJsonEncoder}
 import js7.base.utils.Big
 import js7.base.utils.IntelliJUtils.intelliJuseImport
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.command.CommonCommand
 import js7.data.controller.ControllerId

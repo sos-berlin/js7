@@ -5,30 +5,30 @@ import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.model.StatusCodes.{Conflict, Created, NotFound, UnsupportedMediaType}
 import akka.http.scaladsl.model.headers.Location
 import akka.http.scaladsl.model.{HttpEntity, Uri}
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.{Directive, Route}
-import cats.syntax.flatMap._
-import cats.syntax.traverse._
+import cats.syntax.flatMap.*
+import cats.syntax.traverse.*
 import io.circe.Json
 import js7.base.auth.{SimpleUser, ValidUserPermission}
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
 import js7.base.utils.ByteSequenceToLinesObservable
 import js7.base.utils.ScalaUtils.syntax.{RichAny, RichEitherF}
 import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
 import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
-import js7.common.akkahttp.StandardMarshallers._
-import js7.common.akkautils.ByteStrings.syntax._
+import js7.common.akkahttp.StandardMarshallers.*
+import js7.common.akkautils.ByteStrings.syntax.*
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
-import js7.common.http.StreamingSupport._
+import js7.common.http.StreamingSupport.*
 import js7.controller.OrderApi
 import js7.controller.web.common.ControllerRouteProvider
-import js7.controller.web.controller.api.order.OrderRoute._
+import js7.controller.web.controller.api.order.OrderRoute.*
 import js7.core.command.CommandMeta
 import js7.core.web.EntitySizeLimitProvider
 import js7.data.controller.ControllerCommand

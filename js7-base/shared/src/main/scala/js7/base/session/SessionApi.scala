@@ -2,16 +2,16 @@ package js7.base.session
 
 import js7.base.auth.UserAndPassword
 import js7.base.generic.Completed
-import js7.base.monixutils.MonixBase.syntax._
+import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Problems.InvalidSessionTokenProblem
-import js7.base.session.SessionApi._
-import js7.base.time.ScalaTime._
+import js7.base.session.SessionApi.*
+import js7.base.time.ScalaTime.*
 import js7.base.utils.AsyncLock
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.HttpClient
 import js7.base.web.HttpClient.HttpException
 import monix.eval.Task
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 // Test in SessionRouteTest
 /**

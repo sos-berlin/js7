@@ -1,14 +1,14 @@
 package js7.tests
 
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode
 import js7.data.controller.ControllerCommand.{CancelOrders, DeleteOrdersWhenTerminated, ResumeOrder}
-import js7.data.order.OrderEvent._
+import js7.data.order.OrderEvent.*
 import js7.data.order.{FreshOrder, HistoricOutcome, OrderEvent, OrderId, Outcome}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NumberValue, StringValue}
@@ -17,7 +17,7 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
-import js7.tests.ForkTest._
+import js7.tests.ForkTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId

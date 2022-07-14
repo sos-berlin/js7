@@ -2,23 +2,23 @@ package js7.common.crypt.pgp
 
 import cats.Show
 import cats.effect.{Resource, SyncIO}
-import cats.instances.vector._
-import cats.syntax.foldable._
-import cats.syntax.show._
+import cats.instances.vector.*
+import cats.syntax.foldable.*
+import cats.syntax.show.*
 import java.io.{ByteArrayOutputStream, InputStream, OutputStream}
 import java.nio.charset.StandardCharsets.US_ASCII
 import java.security.Security
 import js7.base.data.ByteArray
-import js7.base.data.ByteSequence.ops._
-import js7.base.time.JavaTime._
-import js7.base.utils.SyncResource.syntax._
+import js7.base.data.ByteSequence.ops.*
+import js7.base.time.JavaTime.*
+import js7.base.utils.SyncResource.syntax.*
 import org.bouncycastle.bcpg.{ArmoredOutputStream, HashAlgorithmTags, PublicKeyAlgorithmTags}
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.openpgp.examples.PubringDump
 import org.bouncycastle.openpgp.operator.KeyFingerPrintCalculator
 import org.bouncycastle.openpgp.operator.jcajce.JcaKeyFingerprintCalculator
 import org.bouncycastle.openpgp.{PGPPublicKey, PGPPublicKeyRing, PGPPublicKeyRingCollection, PGPSecretKey, PGPSecretKeyRing, PGPSecretKeyRingCollection, PGPSignature, PGPUtil}
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
 
 /**
@@ -36,7 +36,7 @@ object PgpCommons
       " fingerprint=" + fingerPrintAsString(key)
 
   implicit val PGPPublicKeyShow = Show[PGPPublicKey] { key =>
-    import key._
+    import key.*
     f"PGPPublicKey($getKeyID%08X" +
       " userIDs=" + getUserIDs.asScala.mkString("'", "', '", "'") +
       " fingerprint=" + fingerPrintAsString(key) +
@@ -57,7 +57,7 @@ object PgpCommons
     _.asScala.toVector.mkString_("", ", ", ""))
 
   implicit val PGPSecretKeyShow = Show[PGPSecretKey] { key =>
-    import key._
+    import key.*
     f"PGPSecretKey(" +
       getPublicKey.show +
       " cipher=" + cipherToString(getKeyEncryptionAlgorithm) +
@@ -73,7 +73,7 @@ object PgpCommons
     f"PGPSecretKeyRingCollection(${o.asScala.toVector.mkString_("", ", ", "")})")
 
   implicit val PGPSignatureShow = Show[PGPSignature] { sig =>
-    import sig._
+    import sig.*
     f"PGPSignature(" +
       signatureTypeToString(getSignatureType) +
       //PGPUtil.getSignatureName(getKeyAlgorithm, getHashAlgorithm)

@@ -8,7 +8,7 @@ import scala.language.implicitConversions
   */
 final case class InstructionNr(number: Int) extends GenericInt
 {
-  import InstructionNr._
+  import InstructionNr.*
 
   require(number >= InstructionNr.FirstInt, s"Negative Index? $number")
 

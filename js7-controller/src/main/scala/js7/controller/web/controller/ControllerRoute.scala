@@ -1,6 +1,6 @@
 package js7.controller.web.controller
 
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route
 import js7.common.akkahttp.AkkaHttpServerUtils.{passIf, pathSegment}
 import js7.common.akkahttp.WebLogDirectives

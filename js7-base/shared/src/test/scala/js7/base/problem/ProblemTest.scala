@@ -1,10 +1,10 @@
 package js7.base.problem
 
-import cats.syntax.semigroup._
+import cats.syntax.semigroup.*
 import io.circe.Decoder
-import js7.base.circeutils.CirceUtils._
-import js7.base.problem.ProblemTest._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.circeutils.CirceUtils.*
+import js7.base.problem.ProblemTest.*
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.exceptions.TestFailedException
 import org.scalatest.freespec.AnyFreeSpec

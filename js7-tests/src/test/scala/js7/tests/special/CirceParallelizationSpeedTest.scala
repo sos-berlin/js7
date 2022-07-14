@@ -1,24 +1,24 @@
 package js7.tests.special
 
-import io.circe._
+import io.circe.*
 import io.circe.generic.semiauto.deriveCodec
-import io.circe.syntax._
+import io.circe.syntax.*
 import js7.base.circeutils.CirceObjectCodec
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.data.ByteArray
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.monixutils.MonixBase
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
-import js7.base.problem.Checked._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.problem.Checked.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.measureTimeOfSingleRun
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.value.{ListValue, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.BranchId.Then
 import js7.data.workflow.position.Position
-import js7.tests.special.CirceParallelizationSpeedTest._
+import js7.tests.special.CirceParallelizationSpeedTest.*
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec

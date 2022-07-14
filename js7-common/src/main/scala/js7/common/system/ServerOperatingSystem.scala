@@ -7,11 +7,11 @@ import java.nio.file.attribute.PosixFilePermissions.asFileAttribute
 import java.nio.file.attribute.{FileAttribute, PosixFilePermissions}
 import java.nio.file.{Path, Paths}
 import js7.base.system.OperatingSystem.{isMac, isSolaris, isWindows}
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.io.Source.fromInputStream
-import scala.sys.process._
+import scala.sys.process.*
 import scala.util.Try
 
 /**

@@ -1,16 +1,16 @@
 package js7.data.workflow
 
-import cats.instances.vector._
-import cats.syntax.semigroup._
-import cats.syntax.traverse._
+import cats.instances.vector.*
+import cats.syntax.semigroup.*
+import cats.syntax.traverse.*
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, DecodingFailure, Encoder, Json, JsonObject}
-import js7.base.circeutils.CirceUtils._
-import js7.base.problem.Checked._
+import js7.base.circeutils.CirceUtils.*
+import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.CatsUtils.combine
 import js7.base.utils.Collections.implicits.RichIterable
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.Problems.EvaluationFailedProblem
 import js7.data.controller.ControllerId
 import js7.data.job.{JobResource, JobResourcePath}
@@ -21,10 +21,10 @@ import js7.data.value.expression.scopes.{EnvScope, JobResourceScope, NameToCheck
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{ListType, ListValue, NamedValues, ObjectType, ObjectValue, Value, ValueType}
 import js7.data.workflow.OrderParameter.{Final, Optional, Required}
-import js7.data.workflow.OrderParameterList._
+import js7.data.workflow.OrderParameterList.*
 import scala.collection.{MapView, View}
 
-final case class OrderParameterList private(
+final case class OrderParameterList private[workflow](
   nameToParameter: Map[String, OrderParameter],
   allowUndeclared: Boolean)
 {

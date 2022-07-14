@@ -1,7 +1,7 @@
 package js7.base.io.file.watch
 
 import java.nio.file.Paths
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted}
 import js7.base.io.file.watch.DirectoryState.Entry

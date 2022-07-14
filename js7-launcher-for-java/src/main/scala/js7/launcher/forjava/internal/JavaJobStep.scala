@@ -9,11 +9,11 @@ import js7.data.value.Value
 import js7.data.workflow.position.Label
 import js7.data_for_java.common.JavaWrapper
 import js7.data_for_java.order.JOrder
-import js7.data_for_java.vavr.VavrConverters._
+import js7.data_for_java.vavr.VavrConverters.*
 import js7.data_for_java.workflow.JWorkflow
 import js7.launcher.internal.InternalJob.Step
-import scala.jdk.CollectionConverters._
-import scala.jdk.OptionConverters._
+import scala.jdk.CollectionConverters.*
+import scala.jdk.OptionConverters.*
 
 trait JavaJobStep extends JavaWrapper
 {

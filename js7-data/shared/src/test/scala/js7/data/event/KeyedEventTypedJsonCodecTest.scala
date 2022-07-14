@@ -3,15 +3,15 @@ package js7.data.event
 import io.circe.DecodingFailure
 import io.circe.generic.JsonCodec
 import io.circe.syntax.EncoderOps
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.typed.TypedJsonCodec.UnknownClassForJsonException
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import js7.data.event.KeyedEventTypedJsonCodecTest._
+import js7.data.event.KeyedEventTypedJsonCodecTest.*
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 
 /**
   * @author Joacim Zschimmer

@@ -1,6 +1,6 @@
 package js7.base.time
 
-import js7.base.monixutils.MonixDeadline.syntax._
+import js7.base.monixutils.MonixDeadline.syntax.*
 import monix.execution.Scheduler
 import scala.concurrent.duration.{Duration, FiniteDuration}
 

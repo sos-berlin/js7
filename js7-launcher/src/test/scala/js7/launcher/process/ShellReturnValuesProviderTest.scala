@@ -2,8 +2,8 @@ package js7.launcher.process
 
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.exists
-import js7.base.io.file.FileUtils._
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.*
+import js7.base.io.file.FileUtils.syntax.*
 import js7.data.value.{NamedValues, StringValue}
 import org.scalatest.freespec.AnyFreeSpec
 

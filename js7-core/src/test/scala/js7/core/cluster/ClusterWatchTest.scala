@@ -2,12 +2,12 @@ package js7.core.cluster
 
 import js7.base.generic.Completed
 import js7.base.problem.Checked
-import js7.base.problem.Checked._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.problem.Checked.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.common.message.ProblemCodeMessages
-import js7.core.cluster.ClusterWatch._
+import js7.core.cluster.ClusterWatch.*
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterPassiveLost, ClusterSwitchedOver}
 import js7.data.cluster.{ClusterEvent, ClusterSetting, ClusterState, ClusterTiming}
 import js7.data.controller.ControllerId

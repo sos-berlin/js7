@@ -1,11 +1,11 @@
 package js7.data.folder
 
 import js7.base.problem.Checked
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.data.item.{SourceType, VersionedItemPath}
 
 final case class FolderPath private(string: String) extends VersionedItemPath {
-  import FolderPath._
+  import FolderPath.*
 
   def companion = FolderPath
 

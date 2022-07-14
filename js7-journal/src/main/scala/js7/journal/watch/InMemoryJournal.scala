@@ -1,12 +1,12 @@
 package js7.journal.watch
 
-import cats.syntax.traverse._
+import cats.syntax.traverse.*
 import js7.base.log.CorrelId
-import js7.base.monixutils.MonixBase.syntax._
+import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.BinarySearch.binarySearch
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, CloseableIterator}
 import js7.data.event.{Event, EventId, JournalId, JournalInfo, JournaledState, KeyedEvent, Stamped}
 import js7.journal.log.JournalLogger

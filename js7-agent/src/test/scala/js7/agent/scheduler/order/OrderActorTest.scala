@@ -3,7 +3,7 @@ package js7.agent.scheduler.order
 import akka.actor.{Actor, ActorRef, PoisonPill, Props, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
-import com.softwaremill.diffx.generic.auto._
+import com.softwaremill.diffx.generic.auto.*
 import com.typesafe.config.{Config, ConfigValueFactory}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.{createDirectory, exists}
@@ -11,22 +11,22 @@ import java.nio.file.{Files, Path}
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.Akkas.newAgentActorSystem
 import js7.agent.data.AgentState
-import js7.agent.scheduler.order.OrderActorTest._
+import js7.agent.scheduler.order.OrderActorTest.*
 import js7.agent.tests.TestAgentDirectoryProvider
 import js7.base.generic.Completed
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.process.Processes.{ShellFileExtension => sh}
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
 import js7.base.log.CorrelId
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.thread.Futures.implicits._
+import js7.base.thread.Futures.implicits.*
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.AlarmClock
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.HasCloser
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.akkautils.{CatchingActor, SupervisorStrategies}
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.common.utils.Exceptions.repeatUntilNoException
@@ -51,13 +51,13 @@ import js7.launcher.configuration.JobLauncherConf
 import js7.launcher.process.ProcessConfiguration
 import js7.subagent.director.SubagentKeeper
 import monix.execution.Scheduler.Implicits.traced
-import org.scalatest.Assertions._
+import org.scalatest.Assertions.*
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer

@@ -1,10 +1,10 @@
 package js7.base.circeutils.typed
 
 import io.circe.{Codec, CursorOp, Decoder, DecodingFailure, Encoder, HCursor, Json, JsonObject}
-import js7.base.circeutils.typed.TypedJsonCodec._
-import js7.base.utils.Collections.implicits._
-import js7.base.utils.ScalaUtils._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.circeutils.typed.TypedJsonCodec.*
+import js7.base.utils.Collections.implicits.*
+import js7.base.utils.ScalaUtils.*
+import js7.base.utils.ScalaUtils.syntax.*
 import scala.reflect.ClassTag
 
 /**

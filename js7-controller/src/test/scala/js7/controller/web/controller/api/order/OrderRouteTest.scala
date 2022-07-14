@@ -5,17 +5,17 @@ import akka.http.scaladsl.model.StatusCodes.{BadRequest, Conflict, Created, OK}
 import akka.http.scaladsl.model.headers.{Accept, Location}
 import akka.http.scaladsl.server.Route
 import io.circe.Json
-import io.circe.syntax._
+import io.circe.syntax.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
-import js7.base.utils.Collections.implicits._
+import js7.base.utils.Collections.implicits.*
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
-import js7.common.http.AkkaHttpUtils._
+import js7.common.http.AkkaHttpUtils.*
 import js7.controller.OrderApi
-import js7.controller.web.controller.api.order.OrderRouteTest._
+import js7.controller.web.controller.api.order.OrderRouteTest.*
 import js7.controller.web.controller.api.test.RouteTester
 import js7.core.command.CommandMeta
 import js7.data.controller.ControllerCommand

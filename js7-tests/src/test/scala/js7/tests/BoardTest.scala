@@ -6,7 +6,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Problem
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.{AlarmClock, TestAlarmClock, Timestamp}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichEither
@@ -26,7 +26,7 @@ import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{ExpectNotices, PostNotices}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.BoardTest._
+import js7.tests.BoardTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
@@ -34,7 +34,7 @@ import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.View
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 final class BoardTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {

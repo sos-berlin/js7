@@ -7,7 +7,7 @@ import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.model.HttpEntity.Chunk
 import akka.http.scaladsl.model.StatusCodes.{BadRequest, ServiceUnavailable}
 import akka.http.scaladsl.model.{HttpEntity, HttpRequest}
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.{Directive, Directive1, ExceptionHandler, Route}
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
@@ -20,34 +20,34 @@ import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Problem
 import js7.base.problem.Problems.ShuttingDownProblem
 import js7.base.time.JavaTimeConverters.AsScalaDuration
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.FutureCompletion
-import js7.base.utils.FutureCompletion.syntax._
+import js7.base.utils.FutureCompletion.syntax.*
 import js7.base.utils.IntelliJUtils.intelliJuseImport
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.akkahttp.AkkaHttpServerUtils.{accept, completeTask}
-import js7.common.akkahttp.ByteSequenceChunkerObservable.syntax._
+import js7.common.akkahttp.ByteSequenceChunkerObservable.syntax.*
 import js7.common.akkahttp.CirceJsonSupport.jsonMarshaller
 import js7.common.akkahttp.EventSeqStreamingSupport.NonEmptyEventSeqJsonStreamingSupport
-import js7.common.akkahttp.StandardMarshallers._
+import js7.common.akkahttp.StandardMarshallers.*
 import js7.common.akkahttp.html.HtmlDirectives.htmlPreferred
 import js7.common.akkahttp.web.session.RouteProvider
-import js7.common.akkautils.ByteStrings.syntax._
-import js7.common.http.JsonStreamingSupport._
+import js7.common.akkautils.ByteStrings.syntax.*
+import js7.common.http.JsonStreamingSupport.*
 import js7.common.http.StreamingSupport.AkkaObservable
 import js7.data.event.JournalEvent.StampedHeartbeat
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, EventSeqTornProblem, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
 import js7.journal.watch.{ClosedException, EventWatch}
 import js7.journal.web.EventDirectives.eventRequest
-import js7.journal.web.GenericEventRoute._
+import js7.journal.web.GenericEventRoute.*
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import scala.concurrent.duration.Deadline.now
-import scala.concurrent.duration._
-import scala.reflect.runtime.universe._
-import scala.util.chaining._
+import scala.concurrent.duration.*
+import scala.reflect.runtime.universe.*
+import scala.util.chaining.*
 import scala.util.control.{NoStackTrace, NonFatal}
 
 /**

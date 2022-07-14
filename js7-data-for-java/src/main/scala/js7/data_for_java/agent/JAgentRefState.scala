@@ -7,7 +7,7 @@ import js7.base.problem.Problem
 import js7.data.agent.{AgentPath, AgentRefState}
 import js7.data.platform.PlatformInfo
 import js7.data_for_java.common.JJsonable
-import scala.jdk.OptionConverters._
+import scala.jdk.OptionConverters.*
 
 final case class JAgentRefState(asScala: AgentRefState)
 extends JJsonable[JAgentRefState]

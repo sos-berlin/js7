@@ -1,7 +1,7 @@
 package js7.data.cluster
 
-import js7.base.circeutils.CirceUtils._
-import js7.base.time.ScalaTime._
+import js7.base.circeutils.CirceUtils.*
+import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.data.cluster.ClusterState.{ActiveShutDown, Coupled, Empty, FailedOver, NodesAppointed, PassiveLost, PreparedToBeCoupled, SwitchedOver}
 import js7.data.event.{EventId, JournalPosition}

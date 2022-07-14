@@ -2,7 +2,7 @@ package js7.common.akkahttp.web.session
 
 import js7.base.time.Timestamp
 import monix.execution.Scheduler
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer

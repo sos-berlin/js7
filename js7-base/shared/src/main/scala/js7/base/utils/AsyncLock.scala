@@ -1,9 +1,9 @@
 package js7.base.utils
 
 import js7.base.monixutils.MonixBase.DefaultWorryDurations
-import js7.base.monixutils.MonixBase.syntax._
-import js7.base.time.ScalaTime._
-import js7.base.utils.AsyncLock._
+import js7.base.monixutils.MonixBase.syntax.*
+import js7.base.time.ScalaTime.*
+import js7.base.utils.AsyncLock.*
 import monix.catnap.MVar
 import monix.eval.Task
 import scala.concurrent.duration.Deadline.now

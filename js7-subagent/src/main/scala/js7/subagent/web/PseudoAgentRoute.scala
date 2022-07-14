@@ -3,8 +3,8 @@ package js7.subagent.web
 import akka.http.scaladsl.model.StatusCodes.{BadRequest, NotFound, ServiceUnavailable}
 import akka.http.scaladsl.server.Directives.{Segment, as, complete, entity, get, pathEnd, pathEndOrSingleSlash, pathPrefix, post, withSizeLimit}
 import akka.http.scaladsl.server.Route
-import akka.http.scaladsl.server.RouteConcatenation._
-import cats.syntax.traverse._
+import akka.http.scaladsl.server.RouteConcatenation.*
+import cats.syntax.traverse.*
 import io.circe.{Json, JsonObject}
 import js7.base.auth.ValidUserPermission
 import js7.base.circeutils.CirceUtils.RichCirceEither
@@ -13,7 +13,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.stream.Numbered
 import js7.common.akkahttp.AkkaHttpServerUtils.{completeTask, pathSegment}
 import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
-import js7.common.akkahttp.StandardMarshallers._
+import js7.common.akkahttp.StandardMarshallers.*
 import js7.common.akkahttp.web.session.SessionRoute
 import js7.core.web.EntitySizeLimitProvider
 import js7.data.agent.Problems.AgentNotDedicatedProblem

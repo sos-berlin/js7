@@ -4,7 +4,7 @@ import io.circe.{Codec, Decoder, DecodingFailure, Encoder, HCursor, Json}
 import js7.base.circeutils.CirceUtils.CirceUtilsChecked
 import js7.base.problem.Checked.Ops
 import js7.base.utils.Collections.implicits.RichIterable
-import js7.data.item.VersionedControlPath._
+import js7.data.item.VersionedControlPath.*
 import scala.reflect.ClassTag
 
 trait VersionedControlPath extends UnsignedItemPath

@@ -1,10 +1,10 @@
 package js7.cluster
 
-import cats.instances.either._
-import cats.syntax.traverse._
+import cats.instances.either.*
+import cats.syntax.traverse.*
 import com.typesafe.config.Config
 import js7.base.auth.{UserAndPassword, UserId}
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.generic.SecretString
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.JavaTimeConverters.AsScalaDuration
@@ -12,7 +12,7 @@ import js7.base.web.Uri
 import js7.common.http.configuration.{RecouplingStreamReaderConf, RecouplingStreamReaderConfs}
 import js7.data.cluster.{ClusterSetting, ClusterTiming}
 import js7.data.node.NodeId
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 final case class ClusterConf(
   ownId: NodeId,

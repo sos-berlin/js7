@@ -1,7 +1,7 @@
 package js7.base.utils
 
-import cats.syntax.foldable._
-import cats.syntax.option._
+import cats.syntax.foldable.*
+import cats.syntax.option.*
 import cats.{Functor, Monad, Monoid, Semigroup}
 import java.io.{ByteArrayInputStream, InputStream, PrintWriter, StringWriter}
 import java.nio.charset.StandardCharsets.UTF_8
@@ -16,7 +16,7 @@ import scala.collection.{Factory, MapView, View, mutable}
 import scala.math.max
 import scala.reflect.ClassTag
 import scala.util.Try
-import scala.util.chaining._
+import scala.util.chaining.*
 
 object ScalaUtils
 {

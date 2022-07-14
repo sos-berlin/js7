@@ -2,7 +2,7 @@ package js7.data.execution.workflow.instructions
 
 import js7.base.time.WallClock
 import js7.data.agent.AgentPath
-import js7.data.execution.workflow.instructions.FailExecutorTest._
+import js7.data.execution.workflow.instructions.FailExecutorTest.*
 import js7.data.order.OrderEvent.{OrderFailedIntermediate_, OrderStarted}
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.state.TestStateView

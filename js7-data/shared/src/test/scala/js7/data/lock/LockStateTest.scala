@@ -1,6 +1,6 @@
 package js7.data.lock
 
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Problem
 import js7.data.event.KeyedEvent
 import js7.data.item.ItemRevision

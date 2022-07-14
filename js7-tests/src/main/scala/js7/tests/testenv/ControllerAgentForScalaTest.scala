@@ -1,12 +1,12 @@
 package js7.tests.testenv
 
-import cats.syntax.traverse._
+import cats.syntax.traverse.*
 import js7.agent.RunningAgent
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.problem.Checked
-import js7.base.thread.Futures.implicits._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.Futures.implicits.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.WallClock
 import js7.base.utils.Lazy
 import js7.controller.RunningController

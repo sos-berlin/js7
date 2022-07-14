@@ -2,7 +2,7 @@ package js7.journal.test
 
 import java.nio.file.Path
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.common.configuration.Js7Configuration
 import js7.journal.data.JournalMeta
 

@@ -4,7 +4,7 @@ import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.CirceUtils.RichCirceCodec
 import js7.base.circeutils.ScalaJsonCodecs.{FiniteDurationJsonDecoder, FiniteDurationJsonEncoder}
 import js7.base.problem.{Checked, Problem}
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import scala.concurrent.duration.FiniteDuration
 

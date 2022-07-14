@@ -5,7 +5,7 @@ import java.nio.charset.StandardCharsets.US_ASCII
 import java.util.Base64
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.log.CorrelId.LongCorrelId
-import js7.base.log.CorrelIdTest._
+import js7.base.log.CorrelIdTest.*
 import js7.base.time.ScalaTime.RichDeadline
 import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.tester.CirceJsonTester.testJson

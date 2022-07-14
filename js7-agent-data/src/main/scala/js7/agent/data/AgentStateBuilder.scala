@@ -3,8 +3,8 @@ package js7.agent.data
 import js7.agent.data.AgentState.AgentMetaState
 import js7.agent.data.orderwatch.{FileWatchState, FileWatchStateHandler}
 import js7.base.crypt.Signed
-import js7.base.problem.Checked._
-import js7.base.utils.Collections.implicits._
+import js7.base.problem.Checked.*
+import js7.base.utils.Collections.implicits.*
 import js7.data.cluster.ClusterState
 import js7.data.event.{EventId, JournalState, SnapshotableState, SnapshotableStateBuilder, Stamped}
 import js7.data.item.SignedItemEvent.SignedItemAdded

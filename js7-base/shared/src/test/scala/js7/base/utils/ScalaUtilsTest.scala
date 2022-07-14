@@ -1,18 +1,18 @@
 package js7.base.utils
 
-import cats.instances.either._
-import cats.instances.list._
-import cats.instances.option._
-import cats.syntax.option._
+import cats.instances.either.*
+import cats.instances.list.*
+import cats.instances.option.*
+import cats.syntax.option.*
 import java.util.concurrent.atomic.AtomicBoolean
 import js7.base.exceptions.StandardPublicException
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.*
+import js7.base.utils.ScalaUtils.syntax.*
 import monix.eval.Coeval
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import scala.collection.{MapView, View}
 import scala.reflect.ClassTag
 import scala.util.control.NoStackTrace

@@ -7,7 +7,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.data.event.{Event, JournaledState, KeyedEvent, Stamped}
 import js7.data_for_java.common.{JJournaledState, JavaWrapper}
 import js7.proxy.JournaledStateEventBus
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 class JJournaledStateEventBus[JS <: JJournaledState[JS, S], S <: JournaledState[S]]
   (val asScala: JournaledStateEventBus[S])

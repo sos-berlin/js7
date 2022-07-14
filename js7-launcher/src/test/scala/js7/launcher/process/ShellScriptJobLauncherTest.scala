@@ -3,7 +3,7 @@ package js7.launcher.process
 import java.nio.charset.StandardCharsets.ISO_8859_1
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.FileUtils.withTemporaryDirectory
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import org.scalatest.freespec.AnyFreeSpec
 
 final class ShellScriptJobLauncherTest extends AnyFreeSpec

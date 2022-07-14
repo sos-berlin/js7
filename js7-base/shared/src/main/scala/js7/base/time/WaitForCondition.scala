@@ -1,10 +1,10 @@
 package js7.base.time
 
 import js7.base.monixutils.MonixDeadline
-import js7.base.monixutils.MonixDeadline.syntax._
+import js7.base.monixutils.MonixDeadline.syntax.*
 import monix.execution.Scheduler
 import scala.concurrent.blocking
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.util.control.NonFatal
 import scala.util.{Success, Try}
 

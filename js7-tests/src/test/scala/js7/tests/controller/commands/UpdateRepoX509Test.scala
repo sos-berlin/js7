@@ -3,22 +3,22 @@ package js7.tests.controller.commands
 import io.circe.syntax.EncoderOps
 import java.nio.file.Files.createTempDirectory
 import js7.base.Problems.TamperedWithSignedMessageProblem
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.crypt.x509.Openssl.{openssl, quote}
 import js7.base.crypt.x509.X509SignatureVerifier
 import js7.base.crypt.{GenericSignature, Signed, SignedString, SignerId}
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{deleteDirectoryRecursively, withTemporaryDirectory}
 import js7.base.io.process.Processes.runProcess
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.data.controller.ControllerState.{signableItemJsonCodec, versionedItemJsonCodec}
 import js7.data.item.{SignableItem, VersionId, VersionedItem}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.controller.commands.UpdateRepoX509Test._
+import js7.tests.controller.commands.UpdateRepoX509Test.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec

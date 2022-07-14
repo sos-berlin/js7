@@ -3,7 +3,7 @@ package js7.base.time
 import monix.execution.schedulers.SchedulerService
 import monix.execution.{Cancelable, ExecutionModel, UncaughtExceptionReporter}
 import scala.concurrent.ExecutionContext
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 // NOT USED
 private final class AlarmClockScheduler(underlying: SchedulerService, val alarmClock: AlarmClock)

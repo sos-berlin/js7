@@ -1,6 +1,6 @@
 package js7.data.subagent
 
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.web.Uri
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerState.inventoryItemJsonCodec

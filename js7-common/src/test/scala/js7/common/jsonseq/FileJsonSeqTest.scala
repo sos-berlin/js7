@@ -6,13 +6,13 @@ import io.circe.syntax.EncoderOps
 import java.io.FileOutputStream
 import java.nio.file.Files
 import js7.base.circeutils.CirceUtils.RichJson
-import js7.base.io.file.FileUtils.implicits._
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.implicits.*
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{touchFile, withTemporaryFile}
 import js7.base.time.{Stopwatch, Timestamp}
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.ScalaUtils.syntax._
-import js7.common.jsonseq.FileJsonSeqTest._
+import js7.base.utils.ScalaUtils.syntax.*
+import js7.common.jsonseq.FileJsonSeqTest.*
 import js7.data.event.{Event, KeyedEvent, KeyedEventTypedJsonCodec, Stamped}
 import org.scalatest.freespec.AnyFreeSpec
 

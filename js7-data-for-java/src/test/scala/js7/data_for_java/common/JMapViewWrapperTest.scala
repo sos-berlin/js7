@@ -3,7 +3,7 @@ package js7.data_for_java.common
 import js7.data_for_java.common.MoreJavaConverters.MapViewHasAsJava
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.{MapView, mutable}
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 final class JMapViewWrapperTest extends AnyFreeSpec
 {

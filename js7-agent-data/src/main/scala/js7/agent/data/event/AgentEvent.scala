@@ -1,7 +1,7 @@
 package js7.agent.data.event
 
 import io.circe.generic.semiauto.deriveCodec
-import js7.base.circeutils.ScalaJsonCodecs._
+import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.data.agent.{AgentPath, AgentRunId}

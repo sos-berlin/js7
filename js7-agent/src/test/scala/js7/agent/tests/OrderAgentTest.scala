@@ -7,20 +7,20 @@ import js7.agent.configuration.Akkas.newAgentActorSystem
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSignedItem, Batch, DedicateAgentDirector, DetachOrder}
-import js7.agent.tests.OrderAgentTest._
+import js7.agent.tests.OrderAgentTest.*
 import js7.agent.tests.TestAgentDirectoryProvider.{TestUserAndPassword, provideAgentDirectory}
 import js7.base.Problems.TamperedWithSignedMessageProblem
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.crypt.Signed
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.{CorrelId, CorrelIdWrapped}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
-import js7.base.utils.Closer.syntax._
+import js7.base.utils.Closer.syntax.*
 import js7.base.utils.Closer.withCloser
 import js7.base.web.Uri
 import js7.common.crypt.pgp.PgpSigner
@@ -33,12 +33,12 @@ import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.position.Position
-import js7.data.workflow.test.TestSetting._
+import js7.data.workflow.test.TestSetting.*
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import scala.collection.mutable
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer

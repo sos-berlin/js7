@@ -1,11 +1,11 @@
 package js7.tests.jobs
 
-import cats.syntax.traverse._
+import cats.syntax.traverse.*
 import java.nio.file.Files.deleteIfExists
 import java.nio.file.{Path, Paths}
 import js7.base.io.process.Stderr
 import js7.base.log.Logger
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.order.Outcome
 import js7.data.orderwatch.FileWatch.FileArgumentName
 import js7.launcher.OrderProcess

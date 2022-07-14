@@ -2,7 +2,7 @@ package js7.data.execution.workflow.instructions
 
 import js7.base.time.WallClock
 import js7.data.agent.AgentPath
-import js7.data.execution.workflow.instructions.LockExecutorTest._
+import js7.data.execution.workflow.instructions.LockExecutorTest.*
 import js7.data.job.PathExecutable
 import js7.data.lock.{Acquired, Lock, LockPath, LockState}
 import js7.data.order.OrderEvent.{OrderLockAcquired, OrderLockEvent, OrderLockQueued, OrderLockReleased}

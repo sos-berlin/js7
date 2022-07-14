@@ -2,11 +2,11 @@ package js7.base.io.file.watch
 
 import java.nio.file.Paths
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted, FileModified}
-import js7.base.io.file.watch.DirectoryEventDelayer.syntax._
-import js7.base.io.file.watch.DirectoryEventDelayerTest._
+import js7.base.io.file.watch.DirectoryEventDelayer.syntax.*
+import js7.base.io.file.watch.DirectoryEventDelayerTest.*
 import js7.base.log.Logger
 import js7.base.thread.Futures.implicits.SuccessFuture
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.base.time.WaitForCondition.waitForCondition
 import monix.execution.Ack.Continue
@@ -16,7 +16,7 @@ import monix.execution.{Ack, Scheduler}
 import monix.reactive.subjects.PublishSubject
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline
 import scala.util.Random

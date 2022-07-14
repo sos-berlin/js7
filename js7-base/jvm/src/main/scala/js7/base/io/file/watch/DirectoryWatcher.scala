@@ -1,12 +1,12 @@
 package js7.base.io.file.watch
 
 import js7.base.io.file.watch.BasicDirectoryWatcher.repeatWhileIOException
-import js7.base.io.file.watch.DirectoryWatcher._
+import js7.base.io.file.watch.DirectoryWatcher.*
 import js7.base.log.Logger
-import js7.base.monixutils.MonixBase.syntax._
+import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.thread.IOExecutor
 import js7.base.thread.IOExecutor.ioTask
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import monix.eval.Task
 import monix.reactive.Observable
 import scala.concurrent.duration.Deadline.now

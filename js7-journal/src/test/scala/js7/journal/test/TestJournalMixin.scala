@@ -14,26 +14,26 @@ import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
 import js7.base.circeutils.CirceUtils.RichCirceEither
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
-import js7.base.io.file.FileUtils.syntax._
-import js7.base.log.LogLevel.syntax._
+import js7.base.io.file.FileUtils.syntax.*
+import js7.base.log.LogLevel.syntax.*
 import js7.base.log.Logger
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
-import js7.base.problem.Checked._
-import js7.base.thread.Futures.implicits._
-import js7.base.time.ScalaTime._
+import js7.base.problem.Checked.*
+import js7.base.thread.Futures.implicits.*
+import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.akkautils.Akkas.newActorSystem
 import js7.common.akkautils.{Akkas, DeadLetterActor}
 import js7.common.jsonseq.InputStreamJsonSeqReader
 import js7.data.event.{Event, JournalId, KeyedEvent}
 import js7.journal.files.JournalFiles
 import js7.journal.test.TestData.{TestConfig, testJournalMeta}
-import js7.journal.test.TestJournalMixin._
+import js7.journal.test.TestJournalMixin.*
 import js7.journal.test.TestState.keyedEventJsonCodec
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import scala.collection.immutable.VectorBuilder
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.concurrent.{Future, Promise}
 import scala.util.control.NonFatal
 

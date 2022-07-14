@@ -2,7 +2,7 @@ package js7.common.internet
 
 import java.net.{InetAddress, InetSocketAddress, UnknownHostException}
 import js7.base.convert.As.convert
-import js7.common.internet.IP._
+import js7.common.internet.IP.*
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

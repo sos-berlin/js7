@@ -3,7 +3,7 @@ package js7.tests.subagent
 import java.util.concurrent.TimeoutException
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.web.Uri
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
@@ -16,7 +16,7 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.EmptyJob
-import js7.tests.subagent.SubagentDisabledTest._
+import js7.tests.subagent.SubagentDisabledTest.*
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable

@@ -24,7 +24,7 @@ package js7.base.monixutils
 import java.io.Reader
 import monix.eval.Task
 import monix.execution.Ack.{Continue, Stop}
-import monix.execution._
+import monix.execution.*
 import monix.execution.atomic.Atomic
 import monix.execution.cancelables.BooleanCancelable
 import monix.execution.exceptions.APIContractViolationException

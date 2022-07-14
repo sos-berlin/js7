@@ -1,15 +1,15 @@
 package js7.tests.controller.cluster
 
 import java.io.RandomAccessFile
-import js7.base.io.file.FileUtils.syntax._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.io.file.FileUtils.syntax.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterPassiveLost}
 import js7.data.cluster.ClusterState.Coupled
 import js7.data.order.{FreshOrder, OrderId}
 import js7.journal.files.JournalFiles.listJournalFiles
-import js7.tests.controller.cluster.ControllerClusterTester._
+import js7.tests.controller.cluster.ControllerClusterTester.*
 import js7.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global
 

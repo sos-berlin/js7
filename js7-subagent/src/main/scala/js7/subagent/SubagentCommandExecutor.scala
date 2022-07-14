@@ -1,11 +1,11 @@
 package js7.subagent
 
-import cats.syntax.traverse._
+import cats.syntax.traverse.*
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.stream.Numbered
-import js7.base.time.ScalaTime._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SetOnce
 import js7.common.crypt.generic.GenericSignatureVerifier
 import js7.data.event.KeyedEvent.NoKey
@@ -15,7 +15,7 @@ import js7.data.subagent.SubagentEvent.SubagentItemAttached
 import js7.data.subagent.{SubagentCommand, SubagentState}
 import js7.journal.watch.InMemoryJournal
 import js7.launcher.configuration.JobLauncherConf
-import js7.subagent.SubagentCommandExecutor._
+import js7.subagent.SubagentCommandExecutor.*
 import js7.subagent.SubagentExecutor.Dedicated
 import js7.subagent.configuration.SubagentConf
 import monix.eval.Task

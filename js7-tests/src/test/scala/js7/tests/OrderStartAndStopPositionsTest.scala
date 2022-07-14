@@ -2,8 +2,8 @@ package js7.tests
 
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Problem
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCatched, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
@@ -11,7 +11,7 @@ import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{Fail, Fork, If, TryInstruction}
 import js7.data.workflow.position.{BranchId, Label, Position, PositionOrLabel}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.OrderStartAndStopPositionsTest._
+import js7.tests.OrderStartAndStopPositionsTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId

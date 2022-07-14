@@ -1,6 +1,6 @@
 package js7.data_for_java.cluster
 
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterTiming}
 import js7.data.event.JournalPosition

@@ -3,14 +3,14 @@ package js7.data.execution.workflow.instructions
 import java.time.{LocalTime, ZoneId}
 import js7.base.log.Logger
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.{AdmissionTimeScheme, AlwaysPeriod, DailyPeriod, TestWallClock, TimeInterval, Timestamp, Timezone, WallClock}
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.data.calendar.{Calendar, CalendarPath}
-import js7.data.execution.workflow.instructions.CycleExecutorTest._
+import js7.data.execution.workflow.instructions.CycleExecutorTest.*
 import js7.data.order.Order.{BetweenCycles, Finished, Ready}
 import js7.data.order.OrderEvent.{OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderMoved}
 import js7.data.order.{CycleState, Order, OrderEvent, OrderId}
@@ -22,7 +22,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.MapView
 import scala.collection.immutable.VectorBuilder
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 final class CycleExecutorTest extends AnyFreeSpec with ScheduleTester
 {

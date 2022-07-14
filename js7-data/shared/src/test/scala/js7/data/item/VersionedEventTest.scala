@@ -2,7 +2,7 @@ package js7.data.item
 
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceCodec
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.{Signed, SignedString}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, VersionedItemChanged, VersionedItemRemoved}

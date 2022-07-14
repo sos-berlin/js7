@@ -1,9 +1,9 @@
 package js7.data.cluster
 
-import js7.base.circeutils.CirceUtils._
-import js7.base.time.ScalaTime._
+import js7.base.circeutils.CirceUtils.*
+import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
-import js7.data.cluster.ClusterCommand._
+import js7.data.cluster.ClusterCommand.*
 import js7.data.cluster.ClusterState.FailedOver
 import js7.data.event.JournalPosition
 import js7.data.node.NodeId

@@ -2,12 +2,12 @@ package js7.data.execution.workflow.instructions
 
 import java.time.DayOfWeek.FRIDAY
 import java.time.{LocalDate, LocalTime}
-import js7.base.problem.Checked._
-import js7.base.time.ScalaTime._
+import js7.base.problem.Checked.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.{AdmissionTimeScheme, WallClock, WeekdayPeriod}
 import js7.data.agent.AgentPath
 import js7.data.execution.workflow.instructions.ExecuteExecutor.orderIdToDate
-import js7.data.execution.workflow.instructions.ExecuteExecutorTest._
+import js7.data.execution.workflow.instructions.ExecuteExecutorTest.*
 import js7.data.job.InternalExecutable
 import js7.data.order.OrderEvent.{OrderAttachable, OrderMoved}
 import js7.data.order.{Order, OrderId}

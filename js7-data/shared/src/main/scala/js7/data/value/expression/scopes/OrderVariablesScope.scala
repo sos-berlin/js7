@@ -4,7 +4,7 @@ import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.RichMapView
 import js7.data.order.{HistoricOutcome, Order, Outcome}
 import js7.data.value.Value
-import js7.data.value.expression.scopes.OrderVariablesScope._
+import js7.data.value.expression.scopes.OrderVariablesScope.*
 import js7.data.value.expression.{Scope, ValueSearch}
 import js7.data.workflow.Workflow
 import scala.collection.MapView

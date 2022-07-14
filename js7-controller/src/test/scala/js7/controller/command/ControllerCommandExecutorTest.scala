@@ -3,8 +3,8 @@ package js7.controller.command
 import js7.base.auth.{SimpleUser, UserId}
 import js7.base.log.{CorrelId, CorrelIdWrapped}
 import js7.base.problem.Problem
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.core.command.{CommandExecutor, CommandMeta}
 import js7.data.command.CancellationMode
 import js7.data.controller.ControllerCommand

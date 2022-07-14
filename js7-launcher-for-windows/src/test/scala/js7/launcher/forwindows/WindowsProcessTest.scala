@@ -6,16 +6,16 @@ import java.nio.charset.StandardCharsets.US_ASCII
 import java.nio.file.Files.{createTempFile, delete}
 import java.nio.file.{Files, Path}
 import java.util.Locale
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.process.ReturnCode
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.launcher.forwindows.WindowsApi.windowsDirectory
 import js7.launcher.forwindows.WindowsProcess.StartWindowsProcess
-import js7.launcher.forwindows.WindowsProcessTest._
+import js7.launcher.forwindows.WindowsProcessTest.*
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import scala.util.{Failure, Try}
 
 final class WindowsProcessTest extends AnyFreeSpec

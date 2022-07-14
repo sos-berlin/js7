@@ -1,24 +1,24 @@
 package js7.data.value
 
-import cats.instances.vector._
-import cats.syntax.traverse._
-import io.circe.syntax._
+import cats.instances.vector.*
+import cats.syntax.traverse.*
+import io.circe.syntax.*
 import io.circe.{Decoder, DecodingFailure, Encoder, Json, JsonObject}
 import java.util.Objects.requireNonNull
 import javax.annotation.{Nonnull, Nullable}
 import js7.base.annotation.javaApi
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.Collections.implicits.RichIterable
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.value.ValuePrinter.quoteString
 import js7.data.value.ValueType.{MissingValueProblem, UnexpectedValueTypeProblem}
 import js7.data.value.expression.ExprFunction
 import monix.eval.Task
 import scala.collection.View
 import scala.concurrent.duration.FiniteDuration
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.language.implicitConversions
 import scala.math.BigDecimal.RoundingMode
 import scala.util.control.NonFatal

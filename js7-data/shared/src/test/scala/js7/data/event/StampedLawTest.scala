@@ -1,10 +1,10 @@
 package js7.data.event
 
-import cats.instances.int._
-import cats.instances.string._
+import cats.instances.int.*
+import cats.instances.string.*
 import cats.laws.discipline.FunctorTests
 import js7.base.time.Timestamp
-import js7.data.event.Stamped._
+import js7.data.event.Stamped.*
 import org.scalacheck.Arbitrary
 import org.scalacheck.Arbitrary.arbitrary
 import org.scalatest.funsuite.AnyFunSuite

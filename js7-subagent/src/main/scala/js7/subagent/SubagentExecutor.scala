@@ -3,14 +3,14 @@ package js7.subagent
 import cats.effect.ExitCase
 import js7.base.Js7Version
 import js7.base.log.Logger
-import js7.base.log.Logger.syntax._
+import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.AsyncMap
-import js7.base.monixutils.MonixBase.syntax._
-import js7.base.problem.Checked._
+import js7.base.monixutils.MonixBase.syntax.*
+import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.RightUnit
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{ProgramTermination, SetOnce}
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
@@ -26,7 +26,7 @@ import js7.data.value.expression.Expression
 import js7.data.workflow.position.WorkflowPosition
 import js7.journal.watch.InMemoryJournal
 import js7.launcher.configuration.JobLauncherConf
-import js7.subagent.SubagentExecutor._
+import js7.subagent.SubagentExecutor.*
 import js7.subagent.configuration.SubagentConf
 import monix.eval.Task
 import monix.execution.atomic.Atomic

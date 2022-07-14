@@ -1,14 +1,14 @@
 package js7.common.scalautil.xmls
 
 import javax.xml.transform.Source
-import js7.base.convert.ConvertiblePartialFunctions._
+import js7.base.convert.ConvertiblePartialFunctions.*
 import js7.base.time.Stopwatch.measureTime
-import js7.base.utils.ScalaUtils.syntax._
-import js7.common.scalautil.xmls.ScalaXMLEventReader._
-import js7.common.scalautil.xmls.ScalaXMLEventReaderTest._
-import js7.common.scalautil.xmls.XmlSources._
+import js7.base.utils.ScalaUtils.syntax.*
+import js7.common.scalautil.xmls.ScalaXMLEventReader.*
+import js7.common.scalautil.xmls.ScalaXMLEventReaderTest.*
+import js7.common.scalautil.xmls.XmlSources.*
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 
 /**
  * @author Joacim Zschimmer
@@ -21,7 +21,7 @@ final class ScalaXMLEventReaderTest extends AnyFreeSpec {
     case class Y() extends T
     case class Z() extends T
     val x = parseDocument("""<X><Y/><Z/><Z/></X>""") { eventReader =>
-      import eventReader._
+      import eventReader.*
       parseElement("X") {
         val children = forEachStartElement {
           case "Y" => parseElement() { Y() }
@@ -93,7 +93,7 @@ final class ScalaXMLEventReaderTest extends AnyFreeSpec {
 
   "as and optionAs" in {
     parseDocument("""<X int="1" empty="" wrong="xx"/>""") { eventReader =>
-      import eventReader._
+      import eventReader.*
       parseElement("X") {
         assertResult(1) { attributeMap.as[Int]("int") }
         assertResult(Some(1)) { attributeMap.optionAs[Int]("int") }
@@ -132,7 +132,7 @@ final class ScalaXMLEventReaderTest extends AnyFreeSpec {
     val testXmlString = """<C x="xx" y="yy" z="zz"/>"""
     assertResult("xx") {
       parseDocument(testXmlString) { eventReader: ScalaXMLEventReader =>
-        import eventReader._
+        import eventReader.*
         parseElement("C") {
           attributeMap.ignoreUnread()
           attributeMap("x")
@@ -145,7 +145,7 @@ final class ScalaXMLEventReaderTest extends AnyFreeSpec {
     val testXmlString = """<C x="xx" y="yy"/>"""
     assertResult("xx") {
       parseDocument(testXmlString) { eventReader: ScalaXMLEventReader =>
-        import eventReader._
+        import eventReader.*
         parseElement("C") {
           attributeMap.ignore("y")
           attributeMap("x")
@@ -179,7 +179,7 @@ final class ScalaXMLEventReaderTest extends AnyFreeSpec {
   "parseStartElementAlternative" in {
     val testXmlString = """<A><Y/></A>"""
     parseDocument(testXmlString) { eventReader =>
-      import eventReader._
+      import eventReader.*
       parseElement("A") {
         parseStartElementAlternative {
           case "X" => Some(parseElement() { "XX" })
@@ -227,7 +227,7 @@ private object ScalaXMLEventReaderTest {
   private case class D()
 
   private def parseA(eventReader: ScalaXMLEventReader): A = {
-    import eventReader._
+    import eventReader.*
 
     def parseC(): C =
       parseElement("C") {

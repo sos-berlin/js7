@@ -2,7 +2,7 @@ package js7.base.version
 
 import js7.base.generic.GenericString
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.version.Version.compareLists
 import scala.annotation.tailrec
 import scala.math.Ordered.orderingToOrdered

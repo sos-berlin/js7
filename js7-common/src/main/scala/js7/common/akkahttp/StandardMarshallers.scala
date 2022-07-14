@@ -10,19 +10,19 @@ import akka.http.scaladsl.unmarshalling.{FromStringUnmarshaller, Unmarshaller}
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import io.circe.Encoder
-import io.circe.syntax._
-import js7.base.circeutils.CirceUtils._
+import io.circe.syntax.*
+import js7.base.circeutils.CirceUtils.*
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.{Checked, Problem}
 import js7.common.akkahttp.CirceJsonSupport.jsonMarshaller
-import js7.common.akkautils.ByteStrings.syntax._
+import js7.common.akkautils.ByteStrings.syntax.*
 import js7.common.http.StreamingSupport.AkkaObservable
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import scala.concurrent.Future
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.language.implicitConversions
-import scala.reflect.runtime.universe._
+import scala.reflect.runtime.universe.*
 
 /**
   * @author Joacim Zschimmer

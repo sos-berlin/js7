@@ -5,11 +5,11 @@ import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.Batch
 import js7.base.log.Logger
 import js7.base.problem.Problem
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.controller.agent.AgentDriver.{Input, Queueable}
 import js7.controller.agent.CommandQueue.QueuedInputResponse
-import js7.controller.agent.CommandQueueTest._
+import js7.controller.agent.CommandQueueTest.*
 import js7.data.agent.AgentPath
 import js7.data.job.PathExecutable
 import js7.data.order.{Order, OrderId, OrderMark}
@@ -20,7 +20,7 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.execution.atomic.AtomicInt
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import scala.collection.mutable
 import scala.language.reflectiveCalls
 

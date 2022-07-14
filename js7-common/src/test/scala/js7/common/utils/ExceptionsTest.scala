@@ -3,11 +3,11 @@ package js7.common.utils
 import java.io.IOException
 import js7.base.log.LazyScalaLogger.AsLazyScalaLogger
 import js7.base.log.Logger
-import js7.base.time.ScalaTime._
-import js7.common.utils.Exceptions._
-import js7.common.utils.ExceptionsTest._
+import js7.base.time.ScalaTime.*
+import js7.common.utils.Exceptions.*
+import js7.common.utils.ExceptionsTest.*
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import scala.concurrent.duration.Deadline.now
 import scala.util.{Success, Try}
 

@@ -1,13 +1,13 @@
 package js7.launcher.process
 
 import java.lang.ProcessBuilder.Redirect.PIPE
-import js7.base.io.process.Processes._
+import js7.base.io.process.Processes.*
 import js7.base.io.process.{JavaProcess, Js7Process, Stderr, Stdout, StdoutOrStderr}
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.thread.IOExecutor
 import js7.base.time.ScalaTime.DurationRichInt
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.job.CommandLine
 import js7.launcher.StdObservers
 import js7.launcher.forwindows.WindowsProcess
@@ -15,7 +15,7 @@ import js7.launcher.forwindows.WindowsProcess.StartWindowsProcess
 import js7.launcher.process.InputStreamToObservable.copyInputStreamToObservable
 import monix.eval.{Fiber, Task}
 import scala.concurrent.Promise
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
 
 class ShellScriptProcess private(

@@ -2,7 +2,7 @@ package js7.tests.controller.proxy
 
 import java.util.Arrays.asList
 import js7.base.auth.{Admission, UserAndPassword, UserId}
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.generic.SecretString
 import js7.data.agent.AgentPath
 import js7.data_for_java.auth.{JAdmission, JHttpsConfig}

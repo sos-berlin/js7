@@ -1,8 +1,8 @@
 package js7.controller.web.controller.api
 
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route
-import js7.common.akkahttp.CirceJsonSupport._
+import js7.common.akkahttp.CirceJsonSupport.*
 import js7.controller.web.common.ControllerRouteProvider
 import js7.journal.watch.EventWatch
 

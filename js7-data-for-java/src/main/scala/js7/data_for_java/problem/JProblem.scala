@@ -5,7 +5,7 @@ import java.util.Optional
 import javax.annotation.Nonnull
 import js7.base.problem.{Problem, ProblemCode}
 import js7.data_for_java.common.JJsonable
-import scala.jdk.OptionConverters._
+import scala.jdk.OptionConverters.*
 
 final case class JProblem(asScala: Problem)
 extends JJsonable[JProblem]

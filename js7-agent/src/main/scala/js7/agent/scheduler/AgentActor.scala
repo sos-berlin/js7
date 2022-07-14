@@ -10,19 +10,19 @@ import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.CoupleController
 import js7.agent.data.event.AgentEvent.AgentDedicated
 import js7.agent.data.views.AgentOverview
-import js7.agent.scheduler.AgentActor._
+import js7.agent.scheduler.AgentActor.*
 import js7.agent.scheduler.order.AgentOrderKeeper
 import js7.base.BuildInfo
 import js7.base.auth.UserId
 import js7.base.generic.Completed
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.{CorrelId, Logger}
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
 import js7.base.utils.ScalaUtils.RightUnit
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{ProgramTermination, SetOnce}
 import js7.common.akkautils.{SimpleStateActor, SupervisorStrategies}
 import js7.common.crypt.generic.GenericSignatureVerifier

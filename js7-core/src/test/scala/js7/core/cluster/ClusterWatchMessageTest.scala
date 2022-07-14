@@ -1,7 +1,7 @@
 package js7.core.cluster
 
-import js7.base.circeutils.CirceUtils._
-import js7.base.time.ScalaTime._
+import js7.base.circeutils.CirceUtils.*
+import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.data.cluster.ClusterEvent.ClusterNodesAppointed
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterTiming}

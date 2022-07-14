@@ -3,7 +3,7 @@ package js7.data.value.expression.scopes
 import java.util.concurrent.ConcurrentHashMap
 import js7.base.problem.Checked
 import js7.base.problem.Problems.UnknownKeyProblem
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.Problems.InvalidFunctionArgumentsProblem
 import js7.data.value.expression.Expression.{Argument, FunctionCall}
 import js7.data.value.expression.{Expression, Scope}

@@ -2,7 +2,7 @@ package js7.tests.subagent
 
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.web.Uri
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
@@ -14,7 +14,7 @@ import js7.data.subagent.Problems.ProcessLostDueSubagentUriChangeProblem
 import js7.data.subagent.SubagentItemStateEvent.SubagentCouplingFailed
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.SemaphoreJob
-import js7.tests.subagent.SubagentMoveTwiceTest._
+import js7.tests.subagent.SubagentMoveTwiceTest.*
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec

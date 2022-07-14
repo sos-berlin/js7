@@ -2,28 +2,28 @@ package js7.launcher.process
 
 import java.io.InputStream
 import java.lang.ProcessBuilder.Redirect.INHERIT
-import java.nio.file.Files._
+import java.nio.file.Files.*
 import java.nio.file.Path
 import js7.base.io.JavaResource
-import js7.base.io.file.FileUtils.implicits._
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.implicits.*
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{deleteDirectoryRecursively, temporaryDirectory}
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.io.process.Processes.{RobustlyStartProcess, processToPidOption}
 import js7.base.io.process.{Pid, Processes}
 import js7.base.log.Logger
 import js7.base.system.OperatingSystem.{isMac, isSolaris, isUnix, isWindows}
-import js7.base.thread.Futures.implicits._
+import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.job.TaskId
-import js7.launcher.process.ProcessKillScriptTest._
+import js7.launcher.process.ProcessKillScriptTest.*
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.concurrent.{Future, blocking}
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 /**
   * JS-1558 Agent includes kill scripts

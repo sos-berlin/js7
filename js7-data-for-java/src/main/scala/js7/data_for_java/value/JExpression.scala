@@ -6,8 +6,8 @@ import js7.base.problem.Problem
 import js7.data.value.expression.Expression.{BooleanConstant, ListExpression, NumericConstant, ObjectExpression, StringConstant}
 import js7.data.value.expression.{Expression, ExpressionParser}
 import js7.data_for_java.common.JJsonable
-import js7.data_for_java.vavr.VavrConverters._
-import scala.jdk.CollectionConverters._
+import js7.data_for_java.vavr.VavrConverters.*
+import scala.jdk.CollectionConverters.*
 
 final case class JExpression(asScala: Expression) extends JJsonable[JExpression]
 {

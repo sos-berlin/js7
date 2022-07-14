@@ -2,21 +2,21 @@ package js7.cluster
 
 import akka.pattern.ask
 import akka.util.Timeout
-import cats.syntax.flatMap._
-import cats.syntax.monoid._
+import cats.syntax.flatMap.*
+import cats.syntax.monoid.*
 import com.softwaremill.diffx
 import js7.base.generic.Completed
 import js7.base.log.Logger
-import js7.base.monixutils.MonixBase.syntax._
-import js7.base.monixutils.ObservablePauseDetector._
-import js7.base.problem.Checked._
+import js7.base.monixutils.MonixBase.syntax.*
+import js7.base.monixutils.ObservablePauseDetector.*
+import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AsyncLock
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.{HttpClient, Uri}
-import js7.cluster.ActiveClusterNode._
+import js7.cluster.ActiveClusterNode.*
 import js7.common.http.RecouplingStreamReader
 import js7.common.system.startup.Halt.haltJava
 import js7.data.Problems.{ClusterCommandInapplicableProblem, ClusterSettingNotUpdatable, MissingPassiveClusterNodeHeartbeatProblem}
@@ -35,8 +35,8 @@ import monix.execution.cancelables.SerialCancelable
 import monix.execution.{CancelableFuture, Scheduler}
 import monix.reactive.{Observable, OverflowStrategy}
 import scala.concurrent.Promise
-import scala.concurrent.duration._
-import scala.reflect.runtime.universe._
+import scala.concurrent.duration.*
+import scala.reflect.runtime.universe.*
 import scala.util.{Failure, Success}
 
 final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff: TypeTag](

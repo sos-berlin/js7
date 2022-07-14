@@ -2,7 +2,7 @@ package js7.base.generic
 
 import io.circe.{Decoder, Encoder, Json}
 import js7.base.convert.As
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 
 /**
   * @author Joacim Zschimmer

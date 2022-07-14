@@ -2,7 +2,7 @@ package js7.data.board
 
 import javax.annotation.Nonnull
 import js7.base.generic.GenericString
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 
 final case class NoticeId(string: String)
 extends GenericString

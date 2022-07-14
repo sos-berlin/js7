@@ -1,7 +1,7 @@
 package js7.base.session
 
 import js7.base.auth.{SessionToken, UserAndPassword, UserId}
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.SecretString
 import js7.base.version.Version
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder, testJsonEncoder}

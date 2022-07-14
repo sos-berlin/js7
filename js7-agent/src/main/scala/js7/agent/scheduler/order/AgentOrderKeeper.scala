@@ -9,7 +9,7 @@ import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSignedItem, DetachItem, DetachOrder, MarkOrder, OrderCommand, ReleaseEvents, Response}
 import js7.agent.data.event.AgentEvent.{AgentReady, AgentShutDown}
 import js7.agent.main.AgentMain
-import js7.agent.scheduler.order.AgentOrderKeeper._
+import js7.agent.scheduler.order.AgentOrderKeeper.*
 import js7.base.crypt.{SignatureVerifier, Signed}
 import js7.base.generic.Completed
 import js7.base.log.{CorrelId, Logger}
@@ -18,11 +18,11 @@ import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.thread.IOExecutor
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.JavaTime._
-import js7.base.time.ScalaTime._
+import js7.base.time.JavaTime.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.{AdmissionTimeScheme, AlarmClock, TimeInterval}
 import js7.base.utils.Collections.implicits.InsertableMutableMap
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.utils.{DuplicateKeyException, SetOnce}
 import js7.common.akkautils.Akkas.{encodeAsActorName, uniqueActorName}
@@ -59,7 +59,7 @@ import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline.now
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.concurrent.{Await, Future, Promise}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}

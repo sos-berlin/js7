@@ -1,11 +1,11 @@
 package js7.data.execution.workflow.instructions
 
-import cats.syntax.traverse._
+import cats.syntax.traverse.*
 import js7.base.problem.Checked
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.board.{BoardState, Notice}
 import js7.data.event.KeyedEvent
-import js7.data.execution.workflow.instructions.PostNoticesExecutor._
+import js7.data.execution.workflow.instructions.PostNoticesExecutor.*
 import js7.data.order.OrderEvent.{OrderMoved, OrderNoticePosted}
 import js7.data.order.{Order, OrderEvent}
 import js7.data.state.StateView

@@ -7,9 +7,9 @@ import java.nio.file.Path
 import js7.base.circeutils.CirceUtils.{RichCirceEither, RichJsonObject}
 import js7.base.data.ByteArray
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Checked.Ops
-import js7.controller.tests.InventoryItemDiffTest._
+import js7.controller.tests.InventoryItemDiffTest.*
 import js7.core.item.VersionedItemReader
 import js7.data.item.InventoryItemDiff.diffItems
 import js7.data.item.ItemChange.{AddedOrChanged, Removed}

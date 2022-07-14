@@ -4,7 +4,7 @@ import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString
-import js7.data_for_java.auth.JCredentials._
+import js7.data_for_java.auth.JCredentials.*
 
 @javaApi
 sealed trait JCredentials

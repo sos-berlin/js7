@@ -2,7 +2,7 @@ package js7.common.commandline
 
 import js7.common.commandline.CommandLineArguments.parse
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 
 /**
  * @author Joacim Zschimmer

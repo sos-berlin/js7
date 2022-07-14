@@ -2,7 +2,7 @@ package js7.tester
 
 import io.circe.generic.JsonCodec
 import js7.tester.CirceJsonTester.testJsonString
-import js7.tester.CirceJsonTesterTest._
+import js7.tester.CirceJsonTesterTest.*
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

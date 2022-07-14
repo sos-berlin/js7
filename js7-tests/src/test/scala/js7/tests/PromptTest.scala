@@ -1,7 +1,7 @@
 package js7.tests
 
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, ResumeOrder, SuspendOrders}
 import js7.data.order.OrderEvent.{OrderCancelled, OrderFinished, OrderPromptAnswered, OrderPrompted, OrderSuspended, OrderSuspensionMarked}
@@ -10,7 +10,7 @@ import js7.data.value.StringValue
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.workflow.instructions.Prompt
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.PromptTest._
+import js7.tests.PromptTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec

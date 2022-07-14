@@ -1,16 +1,16 @@
 package js7.subagent.director
 
-import cats.syntax.traverse._
+import cats.syntax.traverse.*
 import js7.base.log.{CorrelId, Logger}
-import js7.base.log.Logger.syntax._
+import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.Switch
 import js7.base.problem.{Checked, Problem}
 import js7.base.stream.{Numbered, ObservableNumberedQueue}
 import js7.base.utils.AsyncLock
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.command.CommonCommand
 import js7.data.subagent.SubagentRunId
-import js7.subagent.director.CommandDispatcher._
+import js7.subagent.director.CommandDispatcher.*
 import monix.eval.Task
 import monix.reactive.Observable
 import scala.concurrent.{Future, Promise}

@@ -1,7 +1,7 @@
 package js7.base.time
 
 import java.time.{LocalDateTime, ZoneId}
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import org.scalatest.freespec.AnyFreeSpec
 
 final class LocalIntervalTest extends AnyFreeSpec

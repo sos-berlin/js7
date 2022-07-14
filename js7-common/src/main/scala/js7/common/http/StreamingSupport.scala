@@ -10,7 +10,7 @@ import js7.common.akkahttp.ExceptionHandling.webLogger
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
-import scala.reflect.runtime.universe._
+import scala.reflect.runtime.universe.*
 
 /**
   * @author Joacim Zschimmer

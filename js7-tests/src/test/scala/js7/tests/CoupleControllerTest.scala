@@ -3,10 +3,10 @@ package js7.tests
 import java.nio.file.Files.{delete, move}
 import java.nio.file.Paths
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentReady, AgentShutDown}
 import js7.data.agent.{AgentPath, AgentRefState}
 import js7.data.delegate.DelegateCouplingState
@@ -19,7 +19,7 @@ import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.journal.files.JournalFiles.listJournalFiles
-import js7.tests.CoupleControllerTest._
+import js7.tests.CoupleControllerTest.*
 import js7.tests.testenv.DirectoryProvider.script
 import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler.Implicits.global

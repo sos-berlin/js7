@@ -3,7 +3,7 @@ package js7.provider.scheduledorder.oldruntime
 import java.time.{DayOfWeek, LocalTime, ZoneId}
 import javax.xml.stream.XMLEventReader
 import js7.base.convert.As
-import js7.base.time.JavaTime._
+import js7.base.time.JavaTime.*
 import js7.common.scalautil.xmls.ScalaXMLEventReader
 
 object OldScheduleXmlParser{
@@ -23,7 +23,7 @@ object OldScheduleXmlParser{
 
   def parse(xmlEventReader: XMLEventReader, defaultTimeZone: ZoneId): OldSchedule = {
     val eventReader = new ScalaXMLEventReader(xmlEventReader)
-    import eventReader._
+    import eventReader.*
 
     def parsePeriodSeq(): PeriodSeq =
       PeriodSeq(parseElements[Period] { case _ =>

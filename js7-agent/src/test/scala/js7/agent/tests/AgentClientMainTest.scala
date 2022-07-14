@@ -4,7 +4,7 @@ import js7.agent.client.main.AgentClientMain
 import js7.agent.command.CommandHandler
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.ShutDown
-import js7.agent.tests.AgentClientMainTest._
+import js7.agent.tests.AgentClientMainTest.*
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceString, RichJson}
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j

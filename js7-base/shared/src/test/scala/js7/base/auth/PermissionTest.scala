@@ -1,7 +1,7 @@
 package js7.base.auth
 
-import js7.base.auth.Permission._
-import js7.base.auth.PermissionTest._
+import js7.base.auth.Permission.*
+import js7.base.auth.PermissionTest.*
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

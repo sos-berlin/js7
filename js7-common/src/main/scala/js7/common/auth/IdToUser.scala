@@ -3,14 +3,14 @@ package js7.common.auth
 import com.typesafe.config.{Config, ConfigObject}
 import java.util.Locale
 import js7.base.auth.{DistinguishedName, HashedPassword, Permission, User, UserId}
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.generic.SecretString
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Memoizer
-import js7.base.utils.ScalaUtils.syntax._
-import js7.common.auth.IdToUser._
-import scala.jdk.CollectionConverters._
+import js7.base.utils.ScalaUtils.syntax.*
+import js7.common.auth.IdToUser.*
+import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Success, Try}
 
 /**

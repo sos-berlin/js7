@@ -1,7 +1,7 @@
 package js7.data.event
 
 import js7.base.BuildInfo
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.data.event.JournalHeader.Version
 import scala.concurrent.duration.FiniteDuration

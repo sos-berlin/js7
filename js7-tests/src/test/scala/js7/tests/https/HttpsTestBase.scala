@@ -1,20 +1,20 @@
 package js7.tests.https
 
-import cats.syntax.option._
+import cats.syntax.option.*
 import com.typesafe.config.ConfigFactory
 import java.nio.file.Files.{createTempFile, delete}
 import js7.base.auth.{UserAndPassword, UserId}
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.generic.SecretString
 import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.https.{HttpsConfig, KeyStoreRef}
 import js7.base.io.process.Processes.{ShellFileExtension => sh}
 import js7.base.problem.Checked.Ops
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.akkautils.ProvideActorSystem
 import js7.common.system.ServerOperatingSystem.operatingSystem
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
@@ -22,13 +22,13 @@ import js7.controller.client.AkkaHttpControllerApi
 import js7.data.agent.AgentPath
 import js7.data.job.RelativePathExecutable
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
-import js7.tests.https.HttpsTestBase._
+import js7.tests.https.HttpsTestBase.*
 import js7.tests.testenv.DirectoryProvider.{ExportedControllerTrustStoreRef, ExportedControllerTrustStoreResource}
 import js7.tests.testenv.{ControllerAgentForScalaTest, DirectoryProvider}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /**
   * Controller and Agent with server-side HTTPS.

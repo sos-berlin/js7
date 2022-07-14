@@ -11,12 +11,12 @@ import js7.data.value.Value
 import js7.data_for_java.common.JavaUtils.Void
 import js7.data_for_java.order.JOutcome
 import js7.data_for_java.value.JExpression
-import js7.data_for_java.vavr.VavrConverters._
-import js7.launcher.forjava.internal.BlockingInternalJob._
+import js7.data_for_java.vavr.VavrConverters.*
+import js7.launcher.forjava.internal.BlockingInternalJob.*
 import js7.launcher.internal.{InternalJob, InternalJobAdapter}
 import monix.execution.Scheduler
 import scala.collection.immutable.ListMap
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 /** For non-asynchronous thread-blocking internal Jobs written in Java.
   * Constructor and methods are executed in (from call to call changing) threads

@@ -1,6 +1,6 @@
 package js7.data.subagent
 
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.data.controller.ControllerState.inventoryItemJsonCodec
 import js7.data.item.InventoryItem
 import js7.tester.CirceJsonTester.testJson

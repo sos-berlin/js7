@@ -1,6 +1,6 @@
 package js7.common.concurrent
 
-import java.lang.Math._
+import java.lang.Math.*
 import java.util.concurrent.atomic.AtomicInteger
 
 /**

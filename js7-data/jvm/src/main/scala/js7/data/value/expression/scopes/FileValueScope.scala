@@ -5,7 +5,7 @@ import js7.base.problem.Checked
 import js7.data.Problems.InvalidFunctionArgumentsProblem
 import js7.data.value.StringValue
 import js7.data.value.expression.Expression.{Argument, FunctionCall}
-import js7.data.value.expression.scopes.FileValueScope._
+import js7.data.value.expression.scopes.FileValueScope.*
 import js7.data.value.expression.{Expression, Scope}
 import monix.eval.Task
 

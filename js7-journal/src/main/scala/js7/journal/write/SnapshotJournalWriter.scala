@@ -1,18 +1,18 @@
 package js7.journal.write
 
 import java.nio.file.Path
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.data.ByteArray
 import js7.base.log.Logger
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
 import js7.data.event.EventId
 import js7.data.event.JournalSeparators.{SnapshotFooter, SnapshotHeader}
 import js7.journal.data.JournalMeta
-import js7.journal.files.JournalFiles._
+import js7.journal.files.JournalFiles.*
 import monix.execution.Scheduler
 import scala.concurrent.duration.Deadline.now
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer

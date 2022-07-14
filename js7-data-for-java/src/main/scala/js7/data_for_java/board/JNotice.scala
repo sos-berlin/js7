@@ -4,11 +4,11 @@ import java.time.Instant
 import java.util.Optional
 import javax.annotation.Nonnull
 import js7.base.time.JavaTimeConverters.AsScalaInstant
-import js7.base.time.JavaTimestamp.specific._
+import js7.base.time.JavaTimestamp.specific.*
 import js7.data.board.{BoardPath, Notice, NoticeExpectation, NoticeId, NoticePlace}
 import js7.data.order.OrderId
-import scala.jdk.CollectionConverters._
-import scala.jdk.OptionConverters._
+import scala.jdk.CollectionConverters.*
+import scala.jdk.OptionConverters.*
 
 final case class JNoticePlace(asScala: NoticePlace)
 {

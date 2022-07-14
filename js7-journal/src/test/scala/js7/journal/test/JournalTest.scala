@@ -3,20 +3,20 @@ package js7.journal.test
 import akka.pattern.ask
 import java.nio.file.Files.{delete, deleteIfExists}
 import js7.base.BuildInfo
-import js7.base.circeutils.CirceUtils._
-import js7.base.configutils.Configs._
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.circeutils.CirceUtils.*
+import js7.base.configutils.Configs.*
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.thread.Futures.blockingThreadFuture
-import js7.base.thread.Futures.implicits._
-import js7.base.time.ScalaTime._
+import js7.base.thread.Futures.implicits.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
 import js7.data.event.JournalHeader
 import js7.journal.JournalActor
 import js7.journal.files.JournalFiles.listJournalFiles
-import js7.journal.test.JournalTest._
+import js7.journal.test.JournalTest.*
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import scala.concurrent.ExecutionContext.Implicits.global
 
 /**

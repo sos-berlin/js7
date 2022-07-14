@@ -2,7 +2,7 @@ package js7.data.value.expression.scopes
 
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import js7.base.time.JavaTimestamp.specific._
+import js7.base.time.JavaTimestamp.specific.*
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.value.{NumberValue, StringValue}

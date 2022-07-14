@@ -1,12 +1,12 @@
 package js7.subagent.director
 
 import js7.base.log.Logger
-import js7.base.log.Logger.syntax._
+import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.Switch
 import js7.base.problem.Checked
 import js7.base.stream.Numbered
 import js7.data.subagent.{SubagentCommand, SubagentId, SubagentRunId}
-import js7.subagent.director.SubagentDispatcher._
+import js7.subagent.director.SubagentDispatcher.*
 import monix.eval.Task
 
 private final class SubagentDispatcher(

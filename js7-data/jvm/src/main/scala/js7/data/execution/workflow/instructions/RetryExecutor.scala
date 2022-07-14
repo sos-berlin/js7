@@ -1,17 +1,17 @@
 package js7.data.execution.workflow.instructions
 
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.Problem
-import js7.base.time.ScalaTime._
-import js7.base.utils.ScalaUtils.syntax._
-import js7.data.execution.workflow.instructions.RetryExecutor._
+import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.*
+import js7.data.execution.workflow.instructions.RetryExecutor.*
 import js7.data.order.OrderEvent.{OrderFailedIntermediate_, OrderRetrying}
 import js7.data.order.OrderObstacle.WaitingForOtherTime
 import js7.data.order.{Order, OrderObstacleCalculator}
 import js7.data.state.StateView
 import js7.data.workflow.instructions.{Retry, TryInstruction}
 import js7.data.workflow.position.{BranchPath, TryBranchId}
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer

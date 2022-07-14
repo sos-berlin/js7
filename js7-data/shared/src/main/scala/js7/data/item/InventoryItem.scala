@@ -2,7 +2,7 @@ package js7.data.item
 
 import io.circe.{Codec, Decoder, Encoder}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.item.InventoryItem.Companion
 import scala.collection.View

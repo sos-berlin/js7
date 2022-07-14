@@ -6,9 +6,9 @@ import js7.base.io.process.StdoutOrStderr
 import js7.data.order.{OrderId, Outcome}
 import js7.data.value.Value
 import js7.data_for_java.workflow.position.JWorkflowPosition
-import js7.tests.controller.proxy.history.OrderEntry._
-import scala.jdk.CollectionConverters._
-import scala.jdk.OptionConverters._
+import js7.tests.controller.proxy.history.OrderEntry.*
+import scala.jdk.CollectionConverters.*
+import scala.jdk.OptionConverters.*
 
 final case class OrderEntry(
   orderId: OrderId,

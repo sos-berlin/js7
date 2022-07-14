@@ -4,9 +4,9 @@ import akka.Done
 import akka.actor.{ActorRef, Status}
 import js7.base.generic.Accepted
 import js7.base.log.Logger
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.journal.configuration.JournalConf
-import js7.journal.test.TestAggregateActor._
+import js7.journal.test.TestAggregateActor.*
 import js7.journal.{JournalActor, KeyedJournalingActor}
 import monix.execution.Scheduler
 import scala.util.{Failure, Success}
@@ -131,7 +131,7 @@ extends KeyedJournalingActor[TestState, TestEvent] {
     event match {
       case event: TestEvent.Added =>
         assert(aggregate == null)
-        import event._
+        import event.*
         aggregate = TestAggregate(key, string, a, b, c, d, e, f, g, h, i, k, l, m, n, o, p, q, r)
 
       case TestEvent.Removed =>

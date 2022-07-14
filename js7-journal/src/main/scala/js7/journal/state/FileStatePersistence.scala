@@ -5,9 +5,9 @@ import akka.pattern.ask
 import akka.util.Timeout
 import com.softwaremill.diffx
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixutils.MonixBase.syntax._
+import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.SetOnce
 import js7.common.akkautils.Akkas.encodeAsActorName
@@ -23,7 +23,7 @@ import js7.journal.{CommitOptions, EventIdGenerator, JournalActor, StampedKeyedE
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.{Future, Promise}
-import scala.reflect.runtime.universe._
+import scala.reflect.runtime.universe.*
 import shapeless.tag
 import shapeless.tag.@@
 

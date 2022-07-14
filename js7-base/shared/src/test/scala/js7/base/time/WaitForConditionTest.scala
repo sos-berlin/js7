@@ -1,13 +1,13 @@
 package js7.base.time
 
 import js7.base.monixutils.MonixDeadline.syntax.DeadlineSchedule
-import js7.base.time.ScalaTime._
-import js7.base.time.WaitForCondition._
-import js7.base.time.WaitForConditionTest._
+import js7.base.time.ScalaTime.*
+import js7.base.time.WaitForCondition.*
+import js7.base.time.WaitForConditionTest.*
 import monix.execution.schedulers.TestScheduler
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.should.Matchers._
-import scala.concurrent.duration._
+import org.scalatest.matchers.should.Matchers.*
+import scala.concurrent.duration.*
 
 final class WaitForConditionTest extends AnyFreeSpec
 {

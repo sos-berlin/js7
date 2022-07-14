@@ -4,7 +4,7 @@ import java.util.concurrent.TimeoutException
 import js7.base.Js7Version
 import js7.base.Problems.MessageSignedByUnknownProblem
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
@@ -17,7 +17,7 @@ import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentDedica
 import js7.data.subagent.{SubagentId, SubagentItemState}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.SemaphoreJob
-import js7.tests.subagent.SubagentTest._
+import js7.tests.subagent.SubagentTest.*
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
 

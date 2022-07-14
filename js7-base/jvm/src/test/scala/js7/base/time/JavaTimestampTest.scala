@@ -1,7 +1,7 @@
 package js7.base.time
 
 import java.time.{Instant, LocalDateTime, OffsetDateTime, ZoneId, ZoneOffset, ZonedDateTime}
-import js7.base.time.JavaTimestamp.specific._
+import js7.base.time.JavaTimestamp.specific.*
 import org.scalatest.freespec.AnyFreeSpec
 
 final class JavaTimestampTest extends AnyFreeSpec

@@ -1,7 +1,7 @@
 package js7.base.utils
 
 import js7.base.problem.{Problem, ProblemException}
-import js7.base.utils.SetOnceTest._
+import js7.base.utils.SetOnceTest.*
 import monix.execution.atomic.AtomicInt
 import org.scalatest.freespec.AnyFreeSpec
 

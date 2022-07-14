@@ -3,8 +3,8 @@ package js7.common.auth
 import java.nio.charset.StandardCharsets.UTF_8
 import java.security.MessageDigest
 import js7.base.log.Logger
-import js7.base.utils.ScalaUtils._
-import js7.common.auth.Hasher._
+import js7.base.utils.ScalaUtils.*
+import js7.common.auth.Hasher.*
 
 final class Hasher(algorithm: String) extends (String => String)
 {

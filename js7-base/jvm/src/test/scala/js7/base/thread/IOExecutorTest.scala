@@ -1,11 +1,11 @@
 package js7.base.thread
 
-import js7.base.thread.Futures.implicits._
+import js7.base.thread.Futures.implicits.*
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.thread.IOExecutor.ioFuture
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Await
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer

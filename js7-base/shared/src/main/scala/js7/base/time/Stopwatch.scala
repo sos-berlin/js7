@@ -1,10 +1,10 @@
 package js7.base.time
 
 import java.lang.System.nanoTime
-import js7.base.time.ScalaTime._
-import js7.base.time.Stopwatch._
-import js7.base.utils.ScalaUtils.syntax._
-import scala.concurrent.duration._
+import js7.base.time.ScalaTime.*
+import js7.base.time.Stopwatch.*
+import js7.base.utils.ScalaUtils.syntax.*
+import scala.concurrent.duration.*
 import scala.language.implicitConversions
 import scala.util.control.NonFatal
 

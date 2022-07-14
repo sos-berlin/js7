@@ -1,20 +1,20 @@
 package js7.data.workflow.instructions
 
-import io.circe._
+import io.circe.*
 import io.circe.generic.extras.Configuration.default.withDefaults
 import io.circe.generic.extras.semiauto.deriveConfiguredCodec
-import io.circe.syntax._
-import js7.base.circeutils.CirceUtils._
+import io.circe.syntax.*
+import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.GenericString
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.Collections.implicits._
+import js7.base.utils.Collections.implicits.*
 import js7.base.utils.ScalaUtils.reuseIfEqual
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEitherIterable}
 import js7.data.agent.AgentPath
 import js7.data.source.SourcePos
 import js7.data.value.expression.Expression
-import js7.data.workflow.instructions.Fork._
+import js7.data.workflow.instructions.Fork.*
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Instruction, Workflow}
 import scala.language.implicitConversions
@@ -22,7 +22,7 @@ import scala.language.implicitConversions
 /**
   * @author Joacim Zschimmer
   */
-final case class Fork private(
+final case class Fork(
   branches: Vector[Fork.Branch],
   agentPath: Option[AgentPath] = None,
   joinIfFailed: Boolean = false,

@@ -1,11 +1,11 @@
 package js7.base.circeutils
 
-import js7.base.circeutils.CirceUtils._
-import js7.base.circeutils.ScalaJsonCodecs._
-import js7.base.time.ScalaTime._
+import js7.base.circeutils.CirceUtils.*
+import js7.base.circeutils.ScalaJsonCodecs.*
+import js7.base.time.ScalaTime.*
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer

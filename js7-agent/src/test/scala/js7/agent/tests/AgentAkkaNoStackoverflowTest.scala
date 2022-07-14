@@ -2,10 +2,10 @@ package js7.agent.tests
 
 import js7.agent.RunningAgent
 import js7.agent.configuration.AgentConfiguration
-import js7.agent.tests.AgentAkkaNoStackoverflowTest._
+import js7.agent.tests.AgentAkkaNoStackoverflowTest.*
 import js7.agent.tests.TestAgentDirectoryProvider.provideAgentDirectory
 import js7.base.log.Logger
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec
 

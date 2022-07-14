@@ -1,20 +1,20 @@
 package js7.provider
 
-import cats.implicits._
+import cats.implicits.*
 import com.typesafe.config.ConfigUtil
 import java.nio.file.{Path, Paths}
 import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.configutils.Configs.ConvertibleConfig
-import js7.base.convert.As._
+import js7.base.convert.As.*
 import js7.base.generic.{Completed, SecretString}
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
-import js7.base.monixutils.MonixBase.syntax._
-import js7.base.problem.Checked._
+import js7.base.monixutils.MonixBase.syntax.*
+import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.thread.IOExecutor
-import js7.base.time.JavaTimeConverters._
-import js7.base.time.ScalaTime._
+import js7.base.time.JavaTimeConverters.*
+import js7.base.time.ScalaTime.*
 import js7.base.utils.HasCloser
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.common.akkautils.ProvideActorSystem
@@ -29,7 +29,7 @@ import js7.data.item.ItemOperation.AddVersion
 import js7.data.item.{InventoryItem, InventoryItemDiff, InventoryItemDiff_, InventoryItemPath, ItemOperation, ItemSigner, SignableItem, UnsignedSimpleItem, VersionId, VersionedItem, VersionedItemPath}
 import js7.data.subagent.SubagentItem
 import js7.data.workflow.{WorkflowControl, WorkflowPath, WorkflowPathControl}
-import js7.provider.Provider._
+import js7.provider.Provider.*
 import js7.provider.configuration.ProviderConfiguration
 import js7.proxy.ControllerApi
 import monix.eval.Task
@@ -37,8 +37,8 @@ import monix.execution.Scheduler
 import monix.execution.atomic.AtomicAny
 import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
 
 // Test in js7.tests.provider.ProviderTest
 /**

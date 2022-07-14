@@ -2,15 +2,15 @@ package js7.tests
 
 import java.nio.file.Files.{createTempFile, delete}
 import java.util.regex.Pattern
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.process.ReturnCode
 import js7.base.log.Logger
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.WallClock
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.AgentPath
@@ -29,7 +29,7 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{OrderParameter, OrderParameterList, OrderPreparation, Workflow, WorkflowId, WorkflowParser, WorkflowPath, WorkflowPrinter}
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
-import js7.tests.ExecuteTest._
+import js7.tests.ExecuteTest.*
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.eval.Task

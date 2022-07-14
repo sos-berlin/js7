@@ -1,17 +1,17 @@
 package js7.data.event
 
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.Problem
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.{itemsPerSecondString, perSecondStringOnly}
 import js7.base.time.Timestamp
 import js7.base.utils.ByteUnits.toKBGB
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SetOnce
-import js7.base.utils.StackTraces._
+import js7.base.utils.StackTraces.*
 import js7.data.cluster.ClusterState
 import js7.data.event.SnapshotMeta.SnapshotEventId
-import js7.data.event.SnapshotableStateBuilder._
+import js7.data.event.SnapshotableStateBuilder.*
 import monix.eval.Task
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.{Future, Promise}

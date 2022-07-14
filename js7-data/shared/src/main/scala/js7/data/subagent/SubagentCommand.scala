@@ -11,7 +11,7 @@ import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.CorrelIdWrapped
 import js7.base.problem.Checked
 import js7.base.utils.Big
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.version.Version
 import js7.data.agent.AgentPath
 import js7.data.command.CommonCommand
@@ -20,7 +20,7 @@ import js7.data.event.EventId
 import js7.data.item.SignableItem
 import js7.data.order.{Order, OrderId}
 import js7.data.other.HeartbeatTiming
-import js7.data.subagent.SubagentState._
+import js7.data.subagent.SubagentState.*
 import js7.data.value.expression.Expression
 
 sealed trait SubagentCommand extends CommonCommand

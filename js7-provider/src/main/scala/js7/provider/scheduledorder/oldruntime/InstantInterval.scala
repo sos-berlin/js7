@@ -1,7 +1,7 @@
 package js7.provider.scheduledorder.oldruntime
 
-import java.time._
-import js7.base.time.JavaTime._
+import java.time.*
+import js7.base.time.JavaTime.*
 import scala.language.implicitConversions
 
 /**

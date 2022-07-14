@@ -5,7 +5,7 @@ import js7.base.time.WallClock
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
-import js7.data.execution.workflow.instructions.InstructionExecutor._
+import js7.data.execution.workflow.instructions.InstructionExecutor.*
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAttachable, OrderDetachable, OrderStarted}
 import js7.data.order.{Order, OrderObstacle, OrderObstacleCalculator}
 import js7.data.state.StateView

@@ -3,7 +3,7 @@ package js7.base.utils
 import java.util.concurrent.ConcurrentHashMap
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Classes.superclassesOf
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.reflect.ClassTag
 
 /** Map for subclasses to any of the given superclasses. */

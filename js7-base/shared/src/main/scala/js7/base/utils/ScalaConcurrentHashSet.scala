@@ -1,7 +1,7 @@
 package js7.base.utils
 
 import scala.collection.mutable
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.runtime.BoxedUnit
 import scala.runtime.BoxedUnit.UNIT
 

@@ -1,7 +1,7 @@
 package js7.agent.data
 
 import com.softwaremill.diffx
-import com.softwaremill.diffx.generic.auto._
+import com.softwaremill.diffx.generic.auto.*
 import io.circe.syntax.EncoderOps
 import java.io.File.separator
 import java.util.UUID
@@ -10,9 +10,9 @@ import js7.agent.data.event.AgentEvent.AgentDedicated
 import js7.base.auth.UserId
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceEither}
 import js7.base.crypt.silly.SillySigner
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.Problem
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.Timezone
 import js7.base.utils.SimplePattern
 import js7.base.web.Uri
@@ -33,7 +33,7 @@ import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath}
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
 import js7.data.value.expression.Expression
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.workflow.position._
+import js7.data.workflow.position.*
 import js7.data.workflow.{Workflow, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import js7.tester.CirceJsonTester.removeJNull
 import monix.execution.Scheduler.Implicits.traced

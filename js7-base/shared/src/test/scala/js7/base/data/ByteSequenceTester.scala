@@ -1,13 +1,13 @@
 package js7.base.data
 
-import cats.syntax.monoid._
+import cats.syntax.monoid.*
 import io.circe.generic.semiauto.deriveCodec
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 import java.nio.ReadOnlyBufferException
-import js7.base.data.ByteSequence.ops._
-import js7.base.data.ByteSequenceTester._
+import js7.base.data.ByteSequence.ops.*
+import js7.base.data.ByteSequenceTester.*
 import js7.base.problem.Problem
-import js7.base.system.Java8Polyfill._
+import js7.base.system.Java8Polyfill.*
 import js7.base.utils.SyncResource.syntax.RichResource
 import org.scalatest.freespec.AnyFreeSpec
 import scala.util.Random

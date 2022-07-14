@@ -1,6 +1,6 @@
 package js7.base.utils
 
-import js7.base.utils.FutureCompletion.syntax._
+import js7.base.utils.FutureCompletion.syntax.*
 import monix.execution.CancelablePromise
 import monix.execution.schedulers.TestScheduler
 import org.scalatest.freespec.AsyncFreeSpec

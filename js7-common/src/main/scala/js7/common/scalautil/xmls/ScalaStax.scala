@@ -4,8 +4,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 import javax.xml.stream.XMLInputFactory
 import javax.xml.stream.events.{Attribute, StartElement}
 import js7.base.log.Logger
-import js7.common.scalautil.ScalaThreadLocal._
-import scala.jdk.CollectionConverters._
+import js7.common.scalautil.ScalaThreadLocal.*
+import scala.jdk.CollectionConverters.*
 
 object ScalaStax {
   private val logger = Logger(getClass)

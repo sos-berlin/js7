@@ -1,7 +1,7 @@
 package js7.data.job
 
-import fastparse.NoWhitespace._
-import fastparse._
+import fastparse.NoWhitespace.*
+import fastparse.*
 import js7.base.problem.Checked
 import js7.data.job.CommandLineExpression.optimizeCommandLine
 import js7.data.parser.BasicParsers.singleQuoted

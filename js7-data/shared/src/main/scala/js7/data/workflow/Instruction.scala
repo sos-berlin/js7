@@ -2,13 +2,13 @@ package js7.data.workflow
 
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.source.SourcePos
 import js7.data.workflow.Instruction.{Labeled, showSourcePos}
-import js7.data.workflow.position._
+import js7.data.workflow.position.*
 import scala.collection.View
 import scala.language.implicitConversions
 
@@ -77,7 +77,7 @@ object Instruction
   implicit def toLabeled(instruction: Instruction): Labeled =
     Labeled(None, instruction)
 
-  final case class Labeled private(
+  final case class Labeled(
     maybeLabel: Option[Label],
     instruction: Instruction,
     maybePosition: Option[Position] = None)

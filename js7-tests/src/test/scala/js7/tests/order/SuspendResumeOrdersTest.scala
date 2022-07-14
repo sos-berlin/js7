@@ -8,8 +8,8 @@ import js7.base.log.{CorrelId, CorrelIdWrapped}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.data.Problems.UnknownOrderProblem
 import js7.data.agent.AgentPath
@@ -29,7 +29,7 @@ import js7.data.workflow.position.BranchId.{Try_, catch_, try_}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.EmptyJob
-import js7.tests.order.SuspendResumeOrdersTest._
+import js7.tests.order.SuspendResumeOrdersTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.{toLocalSubagentId, waitingForFileScript}
 import monix.execution.Scheduler.Implicits.global

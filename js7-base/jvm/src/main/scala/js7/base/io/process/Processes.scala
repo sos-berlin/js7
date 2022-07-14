@@ -7,15 +7,15 @@ import js7.base.data.ByteArray
 import js7.base.io.process.OperatingSystemSpecific.OS
 import js7.base.io.process.Processes.RobustlyStartProcess.TextFileBusyIOException
 import js7.base.log.Logger
-import js7.base.system.Java8Polyfill._
+import js7.base.system.Java8Polyfill.*
 import js7.base.thread.IOExecutor
 import js7.base.thread.IOExecutor.ioFuture
-import js7.base.time.ScalaTime._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.*
 import monix.eval.Task
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.Await
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 object Processes
 {
@@ -52,7 +52,7 @@ object Processes
 
   @TestOnly
   def runProcess(commandLine: String): String = {
-    import scala.sys.process._
+    import scala.sys.process.*
     logger.debug(commandLine)
 
     val stdout = new StringBuilder

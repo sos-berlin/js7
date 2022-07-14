@@ -1,6 +1,6 @@
 package js7.base.utils
 
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import scala.math.{multiplyExact, toIntExact}
 

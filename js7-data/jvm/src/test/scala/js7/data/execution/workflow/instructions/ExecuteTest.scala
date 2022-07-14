@@ -1,7 +1,7 @@
 package js7.data.execution.workflow.instructions
 
 import js7.base.io.process.ReturnCode
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.Problem
 import js7.base.time.WallClock
 import js7.data.agent.AgentPath

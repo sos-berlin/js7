@@ -4,7 +4,7 @@ import cats.Show
 import java.net.{InetAddress, InetSocketAddress}
 import js7.base.convert.As
 import js7.base.convert.As.convert
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import scala.util.control.NonFatal
 
 /**
@@ -25,7 +25,7 @@ object IP
   val StringToServerInetSocketAddress = new StringToInetSocketAddress(defaultHost = "0.0.0.0", defaultPort = None)
 
   final class StringToInetSocketAddress(defaultHost: String, defaultPort: Option[Int]) extends As[String, InetSocketAddress] {
-    import StringToInetSocketAddress._
+    import StringToInetSocketAddress.*
 
     def apply(string: String) =
       try string match {

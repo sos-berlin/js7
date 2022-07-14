@@ -3,8 +3,8 @@ package js7.data.item
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils.syntax._
-import js7.data.item.VersionedItemId._
+import js7.base.utils.ScalaUtils.syntax.*
+import js7.data.item.VersionedItemId.*
 import scala.language.implicitConversions
 
 /**

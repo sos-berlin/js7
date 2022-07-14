@@ -2,7 +2,7 @@ package js7.launcher
 
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
 import js7.base.monixutils.TaskObserver
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.launcher.utils.KeepLastLineObserver
 import monix.eval.Task
 import monix.reactive.Observer

@@ -2,12 +2,12 @@ package js7.tests.jobs
 
 import cats.effect.ExitCase
 import js7.base.log.Logger
-import js7.base.monixutils.MonixBase.syntax._
+import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.data.order.Outcome
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
-import js7.tests.jobs.SemaphoreJob._
+import js7.tests.jobs.SemaphoreJob.*
 import monix.catnap.Semaphore
 import monix.eval.Task
 import monix.execution.Scheduler

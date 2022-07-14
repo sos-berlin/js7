@@ -8,7 +8,7 @@ import js7.data.item.ItemRevision
 import js7.data.lock.{Lock, LockPath}
 import js7.data_for_java.common.JJsonable
 import js7.data_for_java.item.JUnsignedSimpleItem
-import scala.jdk.OptionConverters._
+import scala.jdk.OptionConverters.*
 
 final case class JLock(asScala: Lock)
 extends JJsonable[JLock] with JUnsignedSimpleItem

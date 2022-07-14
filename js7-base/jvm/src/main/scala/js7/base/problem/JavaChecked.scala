@@ -2,7 +2,7 @@ package js7.base.problem
 
 import java.util.Optional
 import js7.base.problem.Checked.Ops
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 
 /**
   * @author Joacim Zschimmer

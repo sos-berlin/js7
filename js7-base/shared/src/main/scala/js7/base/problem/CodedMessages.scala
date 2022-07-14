@@ -1,7 +1,7 @@
 package js7.base.problem
 
 import java.lang.Character.{isUnicodeIdentifierPart, isUnicodeIdentifierStart}
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import monix.execution.atomic.AtomicAny
 import scala.collection.mutable
 

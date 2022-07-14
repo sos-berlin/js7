@@ -1,6 +1,6 @@
 package js7.common.http.configuration
 
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import scala.concurrent.duration.FiniteDuration
 
 final case class RecouplingStreamReaderConf(

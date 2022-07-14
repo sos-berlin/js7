@@ -2,7 +2,7 @@ package js7.base.io.file.watch
 
 import java.nio.file.StandardWatchEventKinds.{ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY, OVERFLOW}
 import java.nio.file.{Path, WatchEvent}
-import js7.base.io.file.watch.DirectoryEvent._
+import js7.base.io.file.watch.DirectoryEvent.*
 
 sealed trait DirectoryWatchEvent
 

@@ -1,11 +1,11 @@
 package js7.data.cluster
 
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.ProblemException
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
-import js7.data.cluster.ClusterSetting._
-import js7.data.cluster.ClusterSetting.syntax._
+import js7.data.cluster.ClusterSetting.*
+import js7.data.cluster.ClusterSetting.syntax.*
 import js7.data.node.NodeId
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec

@@ -3,11 +3,11 @@ package js7.base.io.process
 import java.nio.file.Files.delete
 import java.nio.file.Path
 import js7.base.io.file.FileUtils.syntax.RichPath
-import js7.base.io.process.ProcessTextFileBusyTest._
-import js7.base.io.process.Processes._
+import js7.base.io.process.ProcessTextFileBusyTest.*
+import js7.base.io.process.Processes.*
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import monix.eval.Task

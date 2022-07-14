@@ -5,10 +5,10 @@ import cats.effect.ExitCase
 import java.util.ConcurrentModificationException
 import js7.base.generic.Completed
 import js7.base.log.Logger
-import js7.base.monixutils.MonixBase.syntax._
+import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked
-import js7.base.utils.ScalaUtils.syntax._
-import js7.cluster.ClusterWatchSynchronizer._
+import js7.base.utils.ScalaUtils.syntax.*
+import js7.cluster.ClusterWatchSynchronizer.*
 import js7.common.system.startup.Halt.haltJava
 import js7.core.cluster.{ClusterWatchEvents, HttpClusterWatch}
 import js7.data.cluster.ClusterState.HasNodes

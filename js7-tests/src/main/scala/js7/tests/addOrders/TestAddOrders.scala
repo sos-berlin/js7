@@ -1,18 +1,18 @@
 package js7.tests.addOrders
 
-import cats.syntax.flatMap._
+import cats.syntax.flatMap.*
 import com.typesafe.config.ConfigFactory
-import js7.base.monixutils.MonixBase.syntax._
-import js7.base.problem.Checked._
+import js7.base.monixutils.MonixBase.syntax.*
+import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.time.ScalaTime._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.akkautils.Akkas
 import js7.controller.client.AkkaHttpControllerApi.admissionToApiResource
 import js7.data.order.{FreshOrder, OrderId}
 import js7.proxy.ControllerApi
 import js7.proxy.configuration.ProxyConfs
-import js7.tests.addOrders.TestAddOrders._
+import js7.tests.addOrders.TestAddOrders.*
 import monix.catnap.MVar
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced

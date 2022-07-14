@@ -4,7 +4,7 @@ import akka.http.scaladsl.model.StatusCodes.NotFound
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.common.http.AkkaHttpUtils.RichHttpResponse
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec

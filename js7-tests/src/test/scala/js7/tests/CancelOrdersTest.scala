@@ -5,8 +5,8 @@ import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.io.process.{ProcessSignal, ReturnCode}
 import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.data.Problems.{CancelStartedOrderProblem, UnknownOrderProblem}
 import js7.data.agent.AgentPath
@@ -19,21 +19,21 @@ import js7.data.item.VersionId
 import js7.data.job.ShellScriptExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderStdoutWritten, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
-import js7.data.value.Value.convenience._
+import js7.data.value.Value.convenience.*
 import js7.data.value.expression.Expression.NamedValue
 import js7.data.value.{NamedValues, NumberValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fork}
 import js7.data.workflow.position.{Position, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.CancelOrdersTest._
+import js7.tests.CancelOrdersTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.Deadline.now
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer

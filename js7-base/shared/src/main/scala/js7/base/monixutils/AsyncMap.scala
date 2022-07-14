@@ -1,11 +1,11 @@
 package js7.base.monixutils
 
-import cats.syntax.apply._
+import cats.syntax.apply.*
 import izumi.reflect.Tag
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.implicitClass
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, LockKeeper}
 import monix.eval.Task
 import scala.concurrent.Promise

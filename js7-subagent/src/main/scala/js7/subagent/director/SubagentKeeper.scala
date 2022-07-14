@@ -3,22 +3,22 @@ package js7.subagent.director
 import akka.actor.ActorSystem
 import cats.effect.Resource
 import cats.implicits.catsSyntaxParallelUnorderedTraverse
-import cats.instances.option._
-import cats.syntax.flatMap._
-import cats.syntax.foldable._
-import cats.syntax.traverse._
+import cats.instances.option.*
+import cats.syntax.flatMap.*
+import cats.syntax.foldable.*
+import cats.syntax.traverse.*
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.{CorrelId, Logger}
-import js7.base.log.Logger.syntax._
-import js7.base.monixutils.MonixBase.syntax._
+import js7.base.log.Logger.syntax.*
+import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.monixutils.{AsyncMap, AsyncVariable}
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.{DelayIterator, DelayIterators}
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.checkedCast
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{LockKeeper, SetOnce}
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
@@ -33,7 +33,7 @@ import js7.data.subagent.{SubagentDirectorState, SubagentId, SubagentItem, Subag
 import js7.journal.state.StatePersistence
 import js7.launcher.configuration.JobLauncherConf
 import js7.subagent.configuration.DirectorConf
-import js7.subagent.director.SubagentKeeper._
+import js7.subagent.director.SubagentKeeper.*
 import js7.subagent.{LocalSubagentDriver, SubagentDriver}
 import monix.eval.{Coeval, Task}
 import monix.reactive.Observable

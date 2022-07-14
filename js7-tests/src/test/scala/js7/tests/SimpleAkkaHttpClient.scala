@@ -1,7 +1,7 @@
 package js7.tests
 
 import js7.base.io.https.HttpsConfig
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.common.akkautils.Akkas
 import js7.common.akkautils.Akkas.newActorSystem

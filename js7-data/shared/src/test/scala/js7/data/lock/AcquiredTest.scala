@@ -1,6 +1,6 @@
 package js7.data.lock
 
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.data.lock.Acquired.{Available, Exclusive, NonExclusive}
 import js7.data.order.OrderId
 import js7.tester.CirceJsonTester.testJson

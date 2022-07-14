@@ -1,11 +1,11 @@
 package js7.common.akkautils
 
 import js7.base.configutils.Configs.ConvertibleConfig
-import js7.base.log.LogLevel.syntax._
+import js7.base.log.LogLevel.syntax.*
 import js7.base.log.{LogLevel, Logger}
-import js7.base.utils.ScalaUtils.syntax._
-import js7.common.akkautils.Akkas._
-import js7.common.akkautils.ReceiveLoggingActor._
+import js7.base.utils.ScalaUtils.syntax.*
+import js7.common.akkautils.Akkas.*
+import js7.common.akkautils.ReceiveLoggingActor.*
 
 /**
   * @author Joacim Zschimmer

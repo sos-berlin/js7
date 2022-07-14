@@ -1,7 +1,7 @@
 package js7.base.io.file.watch
 
 import java.nio.file.{Path, WatchEvent}
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import scala.concurrent.duration.FiniteDuration
 
 final case class WatchOptions(

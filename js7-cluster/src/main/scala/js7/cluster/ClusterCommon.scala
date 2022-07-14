@@ -9,19 +9,19 @@ import java.nio.file.StandardOpenOption.{CREATE, READ, TRUNCATE_EXISTING, WRITE}
 import java.nio.file.{Path, Paths}
 import java.util.ConcurrentModificationException
 import js7.base.auth.UserAndPassword
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.eventbus.EventPublisher
 import js7.base.generic.{Completed, SecretString}
 import js7.base.io.https.HttpsConfig
 import js7.base.log.Logger
-import js7.base.monixutils.MonixBase.syntax._
+import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
-import js7.cluster.ClusterCommon._
+import js7.cluster.ClusterCommon.*
 import js7.core.cluster.ClusterWatch.ClusterWatchInactiveNodeProblem
 import js7.core.cluster.HttpClusterWatch
 import js7.core.license.LicenseChecker

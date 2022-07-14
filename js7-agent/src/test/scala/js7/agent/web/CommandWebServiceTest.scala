@@ -6,14 +6,14 @@ import akka.http.scaladsl.model.headers.Accept
 import io.circe.Json
 import io.circe.syntax.EncoderOps
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand._
-import js7.agent.web.CommandWebServiceTest._
+import js7.agent.data.commands.AgentCommand.*
+import js7.agent.web.CommandWebServiceTest.*
 import js7.agent.web.test.WebServiceTest
-import js7.base.circeutils.CirceUtils._
-import js7.base.circeutils.CirceUtils.implicits._
+import js7.base.circeutils.CirceUtils.*
+import js7.base.circeutils.CirceUtils.implicits.*
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.CorrelId
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.core.command.CommandMeta

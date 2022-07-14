@@ -1,17 +1,17 @@
 package js7.tests.controller.commands
 
 import akka.http.scaladsl.model.StatusCodes.InternalServerError
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.problem.Checked.Ops
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.common.http.AkkaHttpClient.HttpException
 import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
-import js7.tests.controller.commands.AddOrderTimeoutTest._
+import js7.tests.controller.commands.AddOrderTimeoutTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec

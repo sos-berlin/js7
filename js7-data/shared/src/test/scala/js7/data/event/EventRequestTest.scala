@@ -1,7 +1,7 @@
 package js7.data.event
 
-import js7.base.time.ScalaTime._
-import js7.data.event.EventRequestTest._
+import js7.base.time.ScalaTime.*
+import js7.data.event.EventRequestTest.*
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

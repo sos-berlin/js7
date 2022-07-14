@@ -1,6 +1,6 @@
 package js7.common.crypt.pgp
 
-import cats.syntax.show._
+import cats.syntax.show.*
 import java.io.ByteArrayOutputStream
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.Problems.{MessageSignedByUnknownProblem, TamperedWithSignedMessageProblem}
@@ -11,8 +11,8 @@ import js7.base.generic.SecretString
 import js7.base.io.JavaResource
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
-import js7.common.crypt.pgp.PgpCommons._
-import js7.common.crypt.pgp.PgpTest._
+import js7.common.crypt.pgp.PgpCommons.*
+import js7.common.crypt.pgp.PgpTest.*
 import org.bouncycastle.openpgp.PGPSignature
 import org.scalatest.freespec.AnyFreeSpec
 

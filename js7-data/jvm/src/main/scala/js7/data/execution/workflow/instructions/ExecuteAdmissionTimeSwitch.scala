@@ -1,9 +1,9 @@
 package js7.data.execution.workflow.instructions
 
 import java.time.ZoneId
-import js7.base.time.AdmissionTimeSchemeForJavaTime._
+import js7.base.time.AdmissionTimeSchemeForJavaTime.*
 import js7.base.time.{AdmissionTimeScheme, AlarmClock, TimeInterval, Timestamp}
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import monix.execution.cancelables.SerialCancelable
 import org.jetbrains.annotations.TestOnly
 

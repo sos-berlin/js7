@@ -6,9 +6,9 @@ import java.time.{LocalTime, ZoneId}
 import javax.inject.Singleton
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.AdmissionTimeSchemeForJavaTime._
+import js7.base.time.AdmissionTimeSchemeForJavaTime.*
 import js7.base.time.JavaTimestamp.local
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.{AdmissionTimeScheme, AlarmClock, TestAlarmClock, Timezone, WeekdayPeriod}
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
@@ -20,12 +20,12 @@ import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.AdmissionTimeTest._
+import js7.tests.AdmissionTimeTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 final class AdmissionTimeTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {

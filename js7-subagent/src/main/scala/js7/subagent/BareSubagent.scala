@@ -5,14 +5,14 @@ import java.nio.file.Path
 import js7.base.auth.SimpleUser
 import js7.base.configutils.Configs.RichConfig
 import js7.base.io.file.FileUtils.provideFile
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.process.ProcessSignal
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixutils.MonixBase.syntax._
+import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked
 import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{ProgramTermination, SetOnce}
 import js7.base.web.Uri
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}

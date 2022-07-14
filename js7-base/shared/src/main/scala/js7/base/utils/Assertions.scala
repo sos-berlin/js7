@@ -1,7 +1,7 @@
 package js7.base.utils
 
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 
 object Assertions
 {

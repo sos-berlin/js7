@@ -8,14 +8,14 @@ import cats.effect.Resource
 import com.typesafe.config.{Config, ConfigException, ConfigFactory}
 import js7.base.log.Logger
 import js7.base.thread.Futures.implicits.SuccessFuture
-import js7.base.time.JavaTimeConverters._
-import js7.base.time.ScalaTime._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.time.JavaTimeConverters.*
+import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.configuration.Js7Configuration
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.duration.Deadline.now
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.control.NonFatal
 

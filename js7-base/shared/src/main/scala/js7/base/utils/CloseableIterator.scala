@@ -1,7 +1,7 @@
 package js7.base.utils
 
 import java.util.NoSuchElementException
-import js7.base.utils.CloseableIterator._
+import js7.base.utils.CloseableIterator.*
 import scala.util.control.NonFatal
 
 /**

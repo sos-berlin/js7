@@ -3,7 +3,7 @@ package js7.tests
 import com.google.inject.{AbstractModule, Provides}
 import java.time.ZoneId
 import javax.inject.Singleton
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.problem.Problem
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.JavaTimestamp.local
@@ -22,7 +22,7 @@ import js7.data.workflow.instructions.Schedule.Scheme
 import js7.data.workflow.instructions.{Cycle, Schedule}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.CalendarTest._
+import js7.tests.CalendarTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId

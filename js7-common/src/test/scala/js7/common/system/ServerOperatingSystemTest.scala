@@ -3,7 +3,7 @@ package js7.common.system
 import java.io.File
 import java.io.File.pathSeparator
 import js7.base.system.OperatingSystem.{isMac, isWindows}
-import js7.common.system.ServerOperatingSystem._
+import js7.common.system.ServerOperatingSystem.*
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

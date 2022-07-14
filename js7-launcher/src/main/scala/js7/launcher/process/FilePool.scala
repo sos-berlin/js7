@@ -4,7 +4,7 @@ import java.nio.charset.Charset
 import java.nio.file.Path
 import js7.base.log.Logger
 import js7.data.job.JobKey
-import js7.launcher.process.FilePool._
+import js7.launcher.process.FilePool.*
 import js7.launcher.process.RichProcess.tryDeleteFiles
 import scala.collection.mutable
 

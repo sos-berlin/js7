@@ -1,16 +1,16 @@
 package js7.data.execution.workflow
 
-import cats.instances.either._
-import cats.syntax.traverse._
+import cats.instances.either.*
+import cats.syntax.traverse.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.checkedCast
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.Problems.CancelStartedOrderProblem
 import js7.data.agent.AgentPath
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.event.{<-:, KeyedEvent}
-import js7.data.execution.workflow.OrderEventSource._
+import js7.data.execution.workflow.OrderEventSource.*
 import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.order.Order.{Cancelled, Failed, FailedInFork, IsTerminated, ProcessingKilled}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderFailed, OrderFailedInFork, OrderFailedIntermediate_, OrderLockDequeued, OrderLockReleased, OrderMoved, OrderPromptAnswered, OrderResumed, OrderResumptionMarked, OrderSuspended, OrderSuspensionMarked}

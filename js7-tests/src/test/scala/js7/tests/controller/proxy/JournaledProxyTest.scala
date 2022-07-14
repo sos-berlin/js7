@@ -1,14 +1,14 @@
 package js7.tests.controller.proxy
 
 import js7.base.Js7Version
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.Problem
 import js7.base.thread.Futures.implicits.SuccessFuture
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.common.akkautils.ProvideActorSystem
 import js7.controller.client.AkkaHttpControllerApi
 import js7.data.Problems.ItemVersionDoesNotMatchProblem
@@ -27,8 +27,8 @@ import js7.proxy.ControllerApi
 import js7.proxy.configuration.ProxyConfs
 import js7.proxy.data.event.EventAndState
 import js7.tests.controller.proxy.ClusterProxyTest.{primaryUserAndPassword, workflow}
-import js7.tests.controller.proxy.JournaledProxyObservableTester.syntax._
-import js7.tests.controller.proxy.JournaledProxyTest._
+import js7.tests.controller.proxy.JournaledProxyObservableTester.syntax.*
+import js7.tests.controller.proxy.JournaledProxyTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.{script, toLocalSubagentId}
 import monix.execution.Scheduler.Implicits.global

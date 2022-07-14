@@ -1,16 +1,16 @@
 package js7.journal.watch
 
-import cats.instances.try_._
-import cats.syntax.foldable._
-import js7.base.problem.Checked._
+import cats.instances.try_.*
+import cats.syntax.foldable.*
+import js7.base.problem.Checked.*
 import js7.base.problem.Problem
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.data.event.{EventId, EventRequest, KeyedEvent, Stamped}
 import js7.journal.test.{TestAggregate, TestEvent, TestState}
-import js7.journal.watch.InMemoryJournalTest._
+import js7.journal.watch.InMemoryJournalTest.*
 import js7.journal.{EventIdClock, EventIdGenerator}
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec

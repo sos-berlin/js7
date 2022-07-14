@@ -3,7 +3,7 @@ package js7.data.workflow
 import cats.Show
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json}
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import scala.collection.View
 
 /**

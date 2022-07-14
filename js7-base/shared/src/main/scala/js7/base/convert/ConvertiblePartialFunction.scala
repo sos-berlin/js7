@@ -1,8 +1,8 @@
 package js7.base.convert
 
-import js7.base.convert.ConvertiblePartialFunction._
+import js7.base.convert.ConvertiblePartialFunction.*
 import js7.base.convert.ConvertiblePartialFunctions.wrappedConvert
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 
 /**

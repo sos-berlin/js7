@@ -2,8 +2,8 @@ package js7.base.time
 
 import com.typesafe.config.ConfigFactory
 import js7.base.problem.Problem
-import js7.base.time.ScalaTime._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.*
 import monix.execution.schedulers.TestScheduler
 import org.scalatest.freespec.AnyFreeSpec
 

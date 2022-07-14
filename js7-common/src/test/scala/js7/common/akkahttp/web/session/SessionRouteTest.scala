@@ -11,15 +11,15 @@ import js7.base.io.https.HttpsConfig
 import js7.base.log.Logger
 import js7.base.problem.Problem
 import js7.base.session.SessionApi
-import js7.base.thread.Futures.implicits._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.Futures.implicits.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.{HttpClient, Uri}
 import js7.common.akkahttp.StandardDirectives.lazyRoute
-import js7.common.akkahttp.web.session.SessionRouteTest._
+import js7.common.akkahttp.web.session.SessionRouteTest.*
 import js7.common.http.AkkaHttpClient
 import js7.common.http.AkkaHttpClient.HttpException
 import js7.data.problems.InvalidLoginProblem
@@ -27,7 +27,7 @@ import js7.data.session.HttpSessionApi
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import scala.collection.immutable.Set
 import scala.concurrent.duration.Deadline.now
 

@@ -1,7 +1,7 @@
 package js7.base.system
 
 import io.circe.generic.semiauto.deriveCodec
-import js7.base.circeutils.AnyJsonCodecs.implicits._
+import js7.base.circeutils.AnyJsonCodecs.implicits.*
 
 final case class SystemInformation(
   hostname: String,

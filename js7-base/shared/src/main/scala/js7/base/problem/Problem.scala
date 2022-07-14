@@ -1,14 +1,14 @@
 package js7.base.problem
 
-import cats.syntax.semigroup._
+import cats.syntax.semigroup.*
 import cats.{Eq, Semigroup}
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json, JsonObject}
 import javax.annotation.Nullable
 import js7.base.annotation.javaApi
-import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.StackTraces._
-import js7.base.utils.typeclasses.IsEmpty.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.StackTraces.*
+import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import scala.collection.immutable
 import scala.language.implicitConversions
 
@@ -207,7 +207,7 @@ object Problem extends Semigroup[Problem]
     final def arguments = Map.empty
   }
 
-  private[problem] case class HasCodeAndMessage private[Problem](
+  private[problem] case class HasCodeAndMessage(
     code: ProblemCode,
     arguments: Map[String, String],
     override val rawMessage: String)

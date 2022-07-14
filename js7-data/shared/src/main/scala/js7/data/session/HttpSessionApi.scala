@@ -3,8 +3,8 @@ package js7.data.session
 import js7.base.Js7Version
 import js7.base.auth.{SessionToken, UserAndPassword}
 import js7.base.generic.Completed
-import js7.base.monixutils.MonixBase.syntax._
-import js7.base.problem.Checked._
+import js7.base.monixutils.MonixBase.syntax.*
+import js7.base.problem.Checked.*
 import js7.base.session.SessionCommand.{Login, Logout}
 import js7.base.session.{HasSessionToken, SessionApi, SessionCommand}
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
@@ -13,7 +13,7 @@ import js7.base.version.Js7Versions.checkNonMatchingVersion
 import js7.base.version.Version
 import js7.base.web.{HttpClient, Uri}
 import js7.data.event.SnapshotableState
-import js7.data.session.HttpSessionApi._
+import js7.data.session.HttpSessionApi.*
 import monix.eval.Task
 import monix.execution.atomic.AtomicAny
 import scala.concurrent.duration.Deadline.now

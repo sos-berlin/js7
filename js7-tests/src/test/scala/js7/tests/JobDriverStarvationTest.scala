@@ -1,18 +1,18 @@
 package js7.tests
 
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.log.Logger
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
 import js7.data.order.OrderEvent.{OrderDeleted, OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.JobDriverStarvationTest._
+import js7.tests.JobDriverStarvationTest.*
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.traced

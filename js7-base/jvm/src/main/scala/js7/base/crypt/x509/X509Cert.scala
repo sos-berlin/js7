@@ -4,16 +4,16 @@ import java.security.MessageDigest
 import java.security.cert.{CertificateFactory, X509Certificate}
 import js7.base.auth.{DistinguishedName, Pem}
 import js7.base.crypt.SignerId
-import js7.base.crypt.x509.X509Cert._
+import js7.base.crypt.x509.X509Cert.*
 import js7.base.data.ByteArray
-import js7.base.data.ByteSequence.ops._
+import js7.base.data.ByteSequence.ops.*
 import js7.base.problem.Checked
-import js7.base.utils.ScalaUtils.syntax._
-import scala.jdk.CollectionConverters._
+import js7.base.utils.ScalaUtils.syntax.*
+import scala.jdk.CollectionConverters.*
 
 private[x509] final case class X509Cert(x509Certificate: X509Certificate)
 {
-  import x509Certificate._
+  import x509Certificate.*
 
   lazy val signersDistinguishedName = new DistinguishedName(getSubjectX500Principal)
   lazy val signerId = SignerId(signersDistinguishedName.toString)

@@ -2,7 +2,7 @@ package js7.agent
 
 import akka.actor.{Actor, Props, Terminated}
 import com.google.inject.Injector
-import js7.agent.MainActor._
+import js7.agent.MainActor.*
 import js7.agent.command.{CommandActor, CommandHandler}
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState

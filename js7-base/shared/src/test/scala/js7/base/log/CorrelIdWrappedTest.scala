@@ -3,8 +3,8 @@ package js7.base.log
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
-import js7.base.log.CorrelIdWrappedTest._
-import js7.tester.CirceJsonTester._
+import js7.base.log.CorrelIdWrappedTest.*
+import js7.tester.CirceJsonTester.*
 import org.scalatest.freespec.AnyFreeSpec
 
 final class CorrelIdWrappedTest extends AnyFreeSpec

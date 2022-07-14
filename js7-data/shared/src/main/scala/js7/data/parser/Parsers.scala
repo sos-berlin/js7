@@ -1,6 +1,6 @@
 package js7.data.parser
 
-import fastparse._
+import fastparse.*
 import js7.base.problem.{Checked, Problem}
 
 /**

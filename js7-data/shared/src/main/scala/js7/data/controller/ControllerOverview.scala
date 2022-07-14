@@ -1,7 +1,7 @@
 package js7.data.controller
 
 import io.circe.generic.semiauto.deriveCodec
-import js7.base.circeutils.ScalaJsonCodecs._
+import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.system.SystemInformation
 import js7.base.time.Timestamp
 import js7.base.utils.IntelliJUtils.intelliJuseImport

@@ -5,7 +5,7 @@ import java.util.stream.Stream
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
 import js7.data.execution.workflow.instructions.ScheduleSimulator
-import js7.data_for_java.schedule.JScheduleSimulator._
+import js7.data_for_java.schedule.JScheduleSimulator.*
 import scala.jdk.StreamConverters.IterableHasSeqStream
 
 trait JScheduleSimulator {

@@ -22,8 +22,8 @@ import js7.data_for_java.common.JavaUtils.Void
 import js7.data_for_java.controller.{JControllerCommand, JControllerState}
 import js7.data_for_java.item.JUpdateItemOperation
 import js7.data_for_java.order.{JFreshOrder, JHistoryOperation}
-import js7.data_for_java.reactor.ReactorConverters._
-import js7.data_for_java.vavr.VavrConverters._
+import js7.data_for_java.reactor.ReactorConverters.*
+import js7.data_for_java.vavr.VavrConverters.*
 import js7.data_for_java.workflow.position.JPosition
 import js7.proxy.ControllerApi
 import js7.proxy.data.event.ProxyEvent
@@ -33,8 +33,8 @@ import monix.eval.Task
 import monix.execution.FutureUtils.Java8Extensions
 import monix.execution.Scheduler
 import reactor.core.publisher.Flux
-import scala.jdk.CollectionConverters._
-import scala.jdk.OptionConverters._
+import scala.jdk.CollectionConverters.*
+import scala.jdk.OptionConverters.*
 
 @javaApi
 final class JControllerApi(val asScala: ControllerApi)(implicit scheduler: Scheduler)

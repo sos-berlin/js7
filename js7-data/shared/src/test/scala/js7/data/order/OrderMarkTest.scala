@@ -1,6 +1,6 @@
 package js7.data.order
 
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.workflow.position.Position
 import js7.tester.CirceJsonTester.testJson

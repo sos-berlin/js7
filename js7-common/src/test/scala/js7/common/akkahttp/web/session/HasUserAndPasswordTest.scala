@@ -1,13 +1,13 @@
 package js7.common.akkahttp.web.session
 
 import cats.effect.Resource
-import cats.syntax.flatMap._
+import cats.syntax.flatMap.*
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString
 import js7.base.io.https.HttpsConfig
 import js7.base.session.SessionApi
-import js7.base.thread.Futures.implicits._
-import js7.base.time.ScalaTime._
+import js7.base.thread.Futures.implicits.*
+import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.common.http.AkkaHttpClient
 import js7.data.session.HttpSessionApi

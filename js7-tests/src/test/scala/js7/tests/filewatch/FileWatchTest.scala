@@ -4,17 +4,17 @@ import java.io.File
 import java.nio.file.Files.{createDirectory, delete, exists}
 import java.nio.file.Paths
 import js7.agent.scheduler.order.FileWatchManager
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.generic.Completed
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.log.Logger
 import js7.base.monixutils.MonixDeadline.now
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.system.OperatingSystem.isMac
 import js7.base.thread.Futures.implicits.SuccessFuture
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.data.Problems.{CannotDeleteWatchingOrderProblem, ItemIsStillReferencedProblem}
 import js7.data.agent.AgentPath
@@ -33,7 +33,7 @@ import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.expression.scopes.EnvScope
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.filewatch.FileWatchTest._
+import js7.tests.filewatch.FileWatchTest.*
 import js7.tests.jobs.{DeleteFileJob, SemaphoreJob}
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global

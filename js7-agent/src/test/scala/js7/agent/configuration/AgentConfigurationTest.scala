@@ -4,18 +4,18 @@ import java.net.InetSocketAddress
 import java.nio.file.Files.createTempDirectory
 import java.nio.file.{Path, Paths}
 import js7.agent.configuration.AgentConfiguration.DefaultConfig
-import js7.agent.configuration.AgentConfigurationTest._
-import js7.base.configutils.Configs._
+import js7.agent.configuration.AgentConfigurationTest.*
+import js7.base.configutils.Configs.*
 import js7.base.convert.As.StringAsBoolean
-import js7.base.io.file.FileUtils._
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.*
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.system.OperatingSystem.isWindows
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.commandline.CommandLineArguments
 import js7.journal.configuration.JournalConf
 import js7.launcher.configuration.ProcessKillScript
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /**
  * @author Joacim Zschimmer

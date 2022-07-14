@@ -6,15 +6,15 @@ import com.typesafe.config.Config
 import javax.inject.Singleton
 import js7.base.eventbus.StandardEventBus
 import js7.base.log.{CorrelId, Logger}
-import js7.base.time.JavaTimeConverters._
+import js7.base.time.JavaTimeConverters.*
 import js7.base.time.{AlarmClock, WallClock}
 import js7.base.utils.Closer
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.akkautils.{Akkas, DeadLetterActor}
 import js7.common.system.ThreadPools
 import js7.controller.configuration.ControllerConfiguration
-import js7.controller.configuration.inject.ControllerModule._
+import js7.controller.configuration.inject.ControllerModule.*
 import js7.journal.{EventIdClock, EventIdGenerator}
 import monix.execution.Scheduler
 import scala.concurrent.ExecutionContext

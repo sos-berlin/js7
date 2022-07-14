@@ -1,9 +1,9 @@
 package js7.tests.controller.load
 
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.problem.Checked.Ops
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
 import js7.base.utils.ByteUnits.toKBGB
 import js7.data.agent.AgentPath
@@ -13,7 +13,7 @@ import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.StringValue
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
-import js7.tests.controller.load.ManyOrdersTest._
+import js7.tests.controller.load.ManyOrdersTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable

@@ -2,7 +2,7 @@ package js7.tests
 
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.OrderEvent.OrderFinished
@@ -14,12 +14,12 @@ import js7.data.workflow.OrderParameterList.FinalOrderArgumentProblem
 import js7.data.workflow.{OrderParameter, OrderParameterList, OrderPreparation, Workflow, WorkflowPath}
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
-import js7.tests.WorkflowDefinedOrderVariablesTest._
+import js7.tests.WorkflowDefinedOrderVariablesTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
-import org.scalatest.Assertions._
+import org.scalatest.Assertions.*
 import org.scalatest.freespec.AnyFreeSpec
 
 final class WorkflowDefinedOrderVariablesTest extends AnyFreeSpec with ControllerAgentForScalaTest

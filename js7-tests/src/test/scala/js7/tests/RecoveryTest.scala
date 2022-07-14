@@ -1,15 +1,15 @@
 package js7.tests
 
-import cats.syntax.traverse._
+import cats.syntax.traverse.*
 import js7.agent.RunningAgent
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.crypt.silly.{SillySignature, SillySignatureVerifier, SillySigner}
 import js7.base.log.Logger
-import js7.base.thread.Futures.implicits._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.Futures.implicits.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.{autoClosing, multipleAutoClosing}
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.akkautils.Akkas
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
@@ -27,12 +27,12 @@ import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.RecoveryTest._
+import js7.tests.RecoveryTest.*
 import js7.tests.testenv.DirectoryProvider
 import js7.tests.testenv.DirectoryProvider.{StdoutOutput, script, toLocalSubagentId}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 import scala.collection.mutable
 import scala.util.control.NonFatal
 

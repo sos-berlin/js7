@@ -1,12 +1,12 @@
 package js7.tests
 
 import java.nio.file.Files.delete
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.io.file.FileUtils.{touchFile, withTemporaryFile}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.data.Problems.ItemIsStillReferencedProblem
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, DeleteOrdersWhenTerminated}
@@ -17,7 +17,7 @@ import js7.data.item.VersionedEvent.VersionAdded
 import js7.data.item.{ItemRevision, Repo, VersionId}
 import js7.data.lock.Acquired.Available
 import js7.data.lock.{Lock, LockPath, LockState}
-import js7.data.order.OrderEvent._
+import js7.data.order.OrderEvent.*
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.subagent.SubagentId
 import js7.data.value.StringValue
@@ -27,7 +27,7 @@ import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{LockInstruction, Prompt}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowParser, WorkflowPath}
-import js7.tests.LockTest._
+import js7.tests.LockTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.{script, toLocalSubagentId, waitingForFileScript}
 import monix.execution.Scheduler.Implicits.traced

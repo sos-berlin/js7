@@ -1,8 +1,8 @@
 package js7.base.utils
 
 import java.util.concurrent.atomic.AtomicInteger
-import js7.base.time.ScalaTime._
-import js7.base.utils.MemoizerTest._
+import js7.base.time.ScalaTime.*
+import js7.base.utils.MemoizerTest.*
 import org.scalatest.freespec.AsyncFreeSpec
 import scala.collection.mutable
 import scala.concurrent.Future

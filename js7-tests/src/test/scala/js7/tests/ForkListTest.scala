@@ -2,20 +2,20 @@ package js7.tests
 
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.RichJson
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.thread.Futures.implicits.SuccessFuture
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.job.ShellScriptExecutable
-import js7.data.order.OrderEvent._
+import js7.data.order.OrderEvent.*
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.value.expression.ExpressionParser.{expr, exprFunction}
 import js7.data.value.{ListValue, NumberValue, ObjectValue, StringValue}
@@ -26,7 +26,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
 import js7.proxy.data.event.EventAndState
-import js7.tests.ForkListTest._
+import js7.tests.ForkListTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId

@@ -1,8 +1,8 @@
 package js7.common.concurrent
 
 import java.util.concurrent.Executors.newFixedThreadPool
-import js7.base.thread.Futures.implicits._
-import js7.base.time.ScalaTime._
+import js7.base.thread.Futures.implicits.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.measureTime
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec

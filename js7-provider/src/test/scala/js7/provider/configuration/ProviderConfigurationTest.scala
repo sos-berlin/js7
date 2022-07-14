@@ -1,7 +1,7 @@
 package js7.provider.configuration
 
 import com.typesafe.config.ConfigFactory
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.io.https.HttpsConfig
 import js7.base.web.Uri

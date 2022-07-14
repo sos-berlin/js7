@@ -4,11 +4,11 @@ import java.io.File.separator
 import java.nio.file.Files.{createDirectories, createTempDirectory}
 import java.nio.file.Path
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Problem
 import js7.common.files.DirectoryReader
 import js7.core.item.InventoryItemFile.checkUniqueness
-import js7.core.item.InventoryItemFileTest._
+import js7.core.item.InventoryItemFileTest.*
 import js7.data.item.SourceType
 import js7.data.workflow.WorkflowPath
 import org.scalatest.freespec.AnyFreeSpec

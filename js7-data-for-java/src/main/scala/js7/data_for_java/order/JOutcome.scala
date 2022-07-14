@@ -4,11 +4,11 @@ import io.vavr.control.{Either => VEither}
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.problem.Problem
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.order.Outcome
 import js7.data.value.Value
 import js7.data_for_java.common.JJsonable
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 sealed trait JOutcome extends JJsonable[JOutcome]
 {

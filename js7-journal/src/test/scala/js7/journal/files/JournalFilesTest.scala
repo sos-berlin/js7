@@ -1,7 +1,7 @@
 package js7.journal.files
 
 import java.nio.file.Paths
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{deleteDirectoryContentRecursively, touchFile, withTemporaryDirectory}
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Problem

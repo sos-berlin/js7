@@ -1,16 +1,16 @@
 package js7.common.http
 
-import cats.syntax.apply._
+import cats.syntax.apply.*
 import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.generic.Completed
-import js7.base.monixutils.MonixBase.syntax._
+import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.session.SessionApi
-import js7.base.time.ScalaTime._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.HttpClient.HttpException
-import js7.common.http.RecouplingStreamReader._
+import js7.common.http.RecouplingStreamReader.*
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.data.event.EventSeqTornProblem
 import monix.catnap.MVar
@@ -20,7 +20,7 @@ import monix.execution.exceptions.UpstreamTimeoutException
 import monix.reactive.Observable
 import scala.concurrent.TimeoutException
 import scala.concurrent.duration.Deadline.now
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.util.control.NoStackTrace
 
 /** Logs in, couples and fetches objects from a (HTTP) stream, and recouples after error. */

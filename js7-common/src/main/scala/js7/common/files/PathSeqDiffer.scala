@@ -1,6 +1,6 @@
 package js7.common.files
 
-import js7.base.utils.Collections.implicits._
+import js7.base.utils.Collections.implicits.*
 import js7.common.files.DirectoryReader.Entry
 
 /**

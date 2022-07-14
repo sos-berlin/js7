@@ -4,12 +4,12 @@ import js7.base.Problems.TamperedWithSignedMessageProblem
 import js7.base.auth.User.UserDoesNotHavePermissionProblem
 import js7.base.auth.{UpdateItemPermission, UserId}
 import js7.base.generic.SecretString
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.thread.Futures.implicits.RichFutures
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.common.system.ServerOperatingSystem.operatingSystem.sleepingShellScript
 import js7.data.Problems.{ItemVersionDoesNotMatchProblem, VersionedItemRemovedProblem}
 import js7.data.agent.AgentPath
@@ -22,7 +22,7 @@ import js7.data.lock.{Lock, LockPath}
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
-import js7.tests.controller.UpdateItemsTest._
+import js7.tests.controller.UpdateItemsTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.ControllerTestUtils.syntax.RichRunningController
 import monix.execution.Scheduler.Implicits.global
@@ -30,7 +30,7 @@ import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer

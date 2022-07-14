@@ -1,13 +1,13 @@
 package js7.launcher.process
 
-import cats.syntax.traverse._
+import cats.syntax.traverse.*
 import js7.base.generic.Completed
 import js7.base.io.process.ProcessSignal
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.time.ScalaTime._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, SetOnce}
 import js7.data.job.TaskId.newGenerator
 import js7.data.job.{ProcessExecutable, TaskId}
@@ -16,7 +16,7 @@ import js7.data.value.NamedValues
 import js7.launcher.StdObservers
 import js7.launcher.configuration.{JobLauncherConf, TaskConfiguration}
 import js7.launcher.forwindows.{WindowsLogon, WindowsProcess}
-import js7.launcher.process.ProcessDriver._
+import js7.launcher.process.ProcessDriver.*
 import js7.launcher.process.ShellScriptProcess.startPipedShellScript
 import monix.eval.{Fiber, Task}
 import scala.concurrent.Promise

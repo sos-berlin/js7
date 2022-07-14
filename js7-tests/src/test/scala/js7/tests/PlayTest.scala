@@ -2,9 +2,9 @@ package js7.tests
 
 import io.circe.Json
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceEither}
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.log.Logger
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.AgentPath
 import js7.data.item.VersionId

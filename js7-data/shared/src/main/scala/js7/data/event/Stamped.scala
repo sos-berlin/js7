@@ -5,8 +5,8 @@ import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json, JsonObject}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
-import js7.base.utils.ScalaUtils.syntax._
-import js7.data.event.Stamped._
+import js7.base.utils.ScalaUtils.syntax.*
+import js7.data.event.Stamped.*
 import scala.collection.mutable
 
 /**

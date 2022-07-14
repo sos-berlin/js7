@@ -2,7 +2,7 @@ package js7.common.scalautil
 
 import cats.effect.SyncIO
 import java.io.{BufferedReader, InputStreamReader}
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryFile
 import js7.common.scalautil.JavaSyncResources.fileAsResource
 import org.scalatest.freespec.AnyFreeSpec

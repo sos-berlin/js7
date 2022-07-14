@@ -1,6 +1,6 @@
 package js7.journal
 
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 final case class CommitOptions(
   transaction: Boolean = false,

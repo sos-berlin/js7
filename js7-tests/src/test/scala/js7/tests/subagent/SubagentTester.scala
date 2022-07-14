@@ -4,9 +4,9 @@ import cats.effect.Resource
 import com.typesafe.config.{Config, ConfigFactory}
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.log.Logger
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.item.BasicItemEvent.ItemAttached
@@ -15,7 +15,7 @@ import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentDedica
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.subagent.BareSubagent
 import js7.tests.subagent.SubagentMultipleOrdersTest.agentPath
-import js7.tests.subagent.SubagentTester._
+import js7.tests.subagent.SubagentTester.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.eval.Task
 import monix.execution.Scheduler

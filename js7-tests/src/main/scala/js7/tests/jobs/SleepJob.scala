@@ -1,8 +1,8 @@
 package js7.tests.jobs
 
-import cats.syntax.traverse._
+import cats.syntax.traverse.*
 import js7.base.time.ScalaTime.RichFiniteDuration
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.order.Outcome
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob

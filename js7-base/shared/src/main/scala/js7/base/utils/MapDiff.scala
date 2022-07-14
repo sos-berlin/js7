@@ -2,7 +2,7 @@ package js7.base.utils
 
 import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
 import io.circe.{Decoder, Encoder}
-import js7.base.utils.MapDiff._
+import js7.base.utils.MapDiff.*
 
 final case class MapDiff[K, V] private(
   added: Map[K, V],

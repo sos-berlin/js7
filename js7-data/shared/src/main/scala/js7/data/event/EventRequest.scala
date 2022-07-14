@@ -1,12 +1,12 @@
 package js7.data.event
 
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.implicitClass
-import js7.base.utils.ScalaUtils.syntax._
-import js7.data.event.EventRequest._
+import js7.base.utils.ScalaUtils.syntax.*
+import js7.data.event.EventRequest.*
 import org.jetbrains.annotations.TestOnly
 import scala.annotation.tailrec
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.concurrent.{Await, Future}
 import scala.reflect.ClassTag
 

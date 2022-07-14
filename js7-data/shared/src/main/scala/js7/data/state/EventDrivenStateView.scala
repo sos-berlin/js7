@@ -1,8 +1,8 @@
 package js7.data.state
 
-import cats.syntax.traverse._
+import cats.syntax.traverse.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.board.BoardState
 import js7.data.event.{Event, EventDrivenState}
 import js7.data.item.{UnsignedSimpleItemPath, UnsignedSimpleItemState}

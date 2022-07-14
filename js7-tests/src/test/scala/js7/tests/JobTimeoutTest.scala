@@ -4,8 +4,8 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.Logger
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.time.ScalaTime._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.job.{RelativePathExecutable, ShellScriptExecutable}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderProcessed, OrderProcessingStarted, OrderStarted}
@@ -16,7 +16,7 @@ import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.JobTimeoutTest._
+import js7.tests.JobTimeoutTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.{sleepingScript, toLocalSubagentId}
 import org.scalatest.freespec.AnyFreeSpec

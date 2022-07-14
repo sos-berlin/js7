@@ -3,8 +3,8 @@ package js7.common.http
 import io.circe.Json
 import js7.base.auth.SessionToken
 import js7.base.circeutils.CirceUtils.{RichCirceString, RichJson}
-import js7.base.time.ScalaTime._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.web.{HttpClient, Uri}
 import monix.eval.Task

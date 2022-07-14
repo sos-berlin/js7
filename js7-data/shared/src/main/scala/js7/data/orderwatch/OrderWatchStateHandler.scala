@@ -1,9 +1,9 @@
 package js7.data.orderwatch
 
-import cats.instances.vector._
-import cats.syntax.traverse._
+import cats.instances.vector.*
+import cats.syntax.traverse.*
 import js7.base.problem.Checked
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.KeyedEvent
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.OrderWatchState.ToOrderAdded

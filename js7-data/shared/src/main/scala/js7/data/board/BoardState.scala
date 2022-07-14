@@ -1,7 +1,7 @@
 package js7.data.board
 
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.board.BoardEvent.NoticeDeleted
 import js7.data.event.KeyedEvent
 import js7.data.item.UnsignedSimpleItemState

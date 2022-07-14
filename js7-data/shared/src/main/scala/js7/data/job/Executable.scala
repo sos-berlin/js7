@@ -5,16 +5,16 @@ import io.circe.generic.extras.semiauto.deriveConfiguredCodec
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
 import java.nio.file.Path
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.io.process.{KeyLogin, ReturnCode}
 import js7.base.problem.Checked
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.Problems.InvalidNameProblem
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.typeclasses.IsEmpty.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.order.Outcome
 import js7.data.value.expression.Expression
 import js7.data.value.{NamedValues, NumberValue}
@@ -126,7 +126,7 @@ object PathExecutable
     } yield pathExecutable
 }
 
-final case class AbsolutePathExecutable private(
+final case class AbsolutePathExecutable(
   path: String,
   env: Map[String, Expression] = Map.empty,
   login: Option[KeyLogin] = None,
@@ -155,7 +155,7 @@ object AbsolutePathExecutable {
       Right(new AbsolutePathExecutable(path, env, login, returnCodeMeaning, v1Compatible))
 }
 
-final case class RelativePathExecutable private(
+final case class RelativePathExecutable(
   path: String,
   env: Map[String, Expression] = Map.empty,
   login: Option[KeyLogin] = None,

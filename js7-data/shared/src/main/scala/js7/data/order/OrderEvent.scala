@@ -8,14 +8,14 @@ import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
 import js7.base.problem.Problem
 import js7.base.time.Timestamp
 import js7.base.utils.Big
-import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.typeclasses.IsEmpty.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.board.{BoardPath, Notice, NoticeId, NoticeV2_3}
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.event.Event
 import js7.data.lock.LockPath
-import js7.data.order.Order._
+import js7.data.order.Order.*
 import js7.data.orderwatch.ExternalOrderKey
 import js7.data.subagent.Problems.{ProcessLostDueToResetProblem, ProcessLostDueToRestartProblem}
 import js7.data.subagent.SubagentId

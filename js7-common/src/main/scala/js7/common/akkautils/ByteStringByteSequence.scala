@@ -4,7 +4,7 @@ import akka.util.ByteString
 import cats.Eq
 import io.circe.Json
 import java.nio.charset.StandardCharsets.UTF_8
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.data.{ByteArray, ByteSequence}
 import js7.base.problem.Checked
 

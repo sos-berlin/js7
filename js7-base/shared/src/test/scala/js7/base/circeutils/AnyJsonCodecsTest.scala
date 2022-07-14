@@ -2,12 +2,12 @@ package js7.base.circeutils
 
 import io.circe.syntax.EncoderOps
 import io.circe.{Json, JsonObject}
-import js7.base.circeutils.AnyJsonCodecs._
-import js7.base.circeutils.AnyJsonCodecsTest._
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.AnyJsonCodecs.*
+import js7.base.circeutils.AnyJsonCodecsTest.*
+import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.GenericString
 import org.scalatest.freespec.AnyFreeSpec
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 /**
   * @author Joacim Zschimmer

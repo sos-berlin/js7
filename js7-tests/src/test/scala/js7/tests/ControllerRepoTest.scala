@@ -3,20 +3,20 @@ package js7.tests
 import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.generic.SecretString
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.process.Processes.{ShellFileExtension => sh}
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.Problems.DuplicateKey
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.thread.Futures.implicits._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.Futures.implicits.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
 import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.common.akkautils.Akkas.actorSystemResource
 import js7.common.http.AkkaHttpClient.HttpException
@@ -36,7 +36,7 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Prompt}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import js7.proxy.ControllerApi
-import js7.tests.testenv.ControllerTestUtils.syntax._
+import js7.tests.testenv.ControllerTestUtils.syntax.*
 import js7.tests.testenv.DirectoryProvider
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
@@ -48,7 +48,7 @@ import scala.util.Try
 
 final class ControllerRepoTest extends AnyFreeSpec
 {
-  import ControllerRepoTest._
+  import ControllerRepoTest.*
 
   "test" in {
     val provider = new DirectoryProvider(

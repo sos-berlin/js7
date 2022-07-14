@@ -3,13 +3,13 @@ package js7.common.configuration
 import com.typesafe.config.Config
 import java.net.InetSocketAddress
 import java.nio.file.{Path, Paths}
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.generic.SecretString
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.https.{KeyStoreRef, TrustStoreRef}
 import js7.common.akkahttp.web.data.{WebServerBinding, WebServerPort}
 import js7.common.commandline.CommandLineArguments
-import js7.common.configuration.CommonConfigurationTest._
+import js7.common.configuration.CommonConfigurationTest.*
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

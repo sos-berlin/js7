@@ -3,8 +3,8 @@ package js7.data.item
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils.syntax._
-import js7.data.item.UnsignedVersionedItemId._
+import js7.base.utils.ScalaUtils.syntax.*
+import js7.data.item.UnsignedVersionedItemId.*
 import scala.language.implicitConversions
 
 final case class UnsignedVersionedItemId[P <: VersionedControlPath](path: P, versionId: VersionId)

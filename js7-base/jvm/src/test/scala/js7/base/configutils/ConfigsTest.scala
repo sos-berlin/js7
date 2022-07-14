@@ -1,16 +1,16 @@
 package js7.base.configutils
 
 import cats.Monoid
-import cats.syntax.semigroup._
+import cats.syntax.semigroup.*
 import com.typesafe.config.{Config, ConfigException, ConfigFactory}
-import js7.base.configutils.Configs._
-import js7.base.configutils.ConfigsTest._
+import js7.base.configutils.Configs.*
+import js7.base.configutils.ConfigsTest.*
 import js7.base.generic.GenericString
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.problem.Problem
 import org.scalatest.freespec.AnyFreeSpec
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 /**
   * @author Joacim Zschimmer

@@ -2,9 +2,9 @@ package js7.launcher.forwindows
 
 import com.sun.jna.platform.win32.Advapi32Util.getEnvironmentBlock
 import com.sun.jna.platform.win32.Kernel32Util.closeHandle
-import com.sun.jna.platform.win32.WinBase._
+import com.sun.jna.platform.win32.WinBase.*
 import com.sun.jna.platform.win32.WinError.ERROR_ACCESS_DENIED
-import com.sun.jna.platform.win32.WinNT._
+import com.sun.jna.platform.win32.WinNT.*
 import com.sun.jna.platform.win32.Wincon.{STD_ERROR_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE}
 import com.sun.jna.ptr.IntByReference
 import com.sun.jna.{Structure, WString}
@@ -22,11 +22,11 @@ import js7.base.problem.Checked
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.SetOnce
 import js7.launcher.forwindows.WindowsApi.{advapi32, call, handleCall, kernel32, myUserenv, openProcessToken, waitForSingleObject, windowsDirectory}
-import js7.launcher.forwindows.WindowsProcess._
+import js7.launcher.forwindows.WindowsProcess.*
 import scala.collection.immutable.Seq
 import scala.concurrent.duration.FiniteDuration
 import scala.io.Codec
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.util.Try
 import scala.util.control.NonFatal
 

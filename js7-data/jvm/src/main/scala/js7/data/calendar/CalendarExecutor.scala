@@ -10,9 +10,9 @@ import js7.base.problem.Checked.CheckedOption
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.JavaTime.JavaTimeZone
 import js7.base.time.JavaTimeConverters.RichZonedDateTime
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.TimeInterval
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.order.OrderId
 import scala.concurrent.duration.FiniteDuration
 import scala.util.matching.Regex

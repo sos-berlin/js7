@@ -14,15 +14,15 @@ import akka.http.scaladsl.{ConnectionContext, Http}
 import akka.stream.Materializer
 import akka.util.ByteString
 import cats.effect.ExitCase
-import io.circe.syntax._
+import io.circe.syntax.*
 import io.circe.{Decoder, Encoder, Json}
 import java.util.Locale
 import js7.base.auth.SessionToken
 import js7.base.circeutils.CirceUtils.RichJson
-import js7.base.circeutils.CirceUtils.implicits._
+import js7.base.circeutils.CirceUtils.implicits.*
 import js7.base.configutils.Configs.RichConfig
 import js7.base.data.ByteArray
-import js7.base.data.ByteSequence.ops._
+import js7.base.data.ByteSequence.ops.*
 import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.generic.SecretString
 import js7.base.io.https.Https.loadSSLContext
@@ -30,29 +30,29 @@ import js7.base.io.https.HttpsConfig
 import js7.base.log.LogLevel.syntax.LevelLogger
 import js7.base.log.LogLevel.{Debug, Trace}
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixutils.MonixBase.syntax._
-import js7.base.problem.Checked._
+import js7.base.monixutils.MonixBase.syntax.*
+import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.bytesPerSecondString
 import js7.base.utils.ByteSequenceToLinesObservable
 import js7.base.utils.MonixAntiBlocking.executeOn
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.{HttpClient, Uri}
-import js7.common.akkahttp.ByteSequenceChunkerObservable.syntax._
+import js7.common.akkahttp.ByteSequenceChunkerObservable.syntax.*
 import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
-import js7.common.akkautils.ByteStrings.syntax._
-import js7.common.http.AkkaHttpClient._
+import js7.common.akkautils.ByteStrings.syntax.*
+import js7.common.http.AkkaHttpClient.*
 import js7.common.http.AkkaHttpUtils.{RichAkkaAsUri, RichAkkaUri, decompressResponse, encodeGzip}
 import js7.common.http.JsonStreamingSupport.{StreamingJsonHeader, StreamingJsonHeaders, `application/x-ndjson`}
-import js7.common.http.StreamingSupport._
+import js7.common.http.StreamingSupport.*
 import monix.eval.Task
 import monix.execution.atomic.AtomicLong
 import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.Future
 import scala.concurrent.duration.Deadline.now
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.reflect.ClassTag
 import scala.util.Success
 import scala.util.control.NoStackTrace

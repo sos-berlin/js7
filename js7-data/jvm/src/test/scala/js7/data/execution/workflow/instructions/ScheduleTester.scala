@@ -7,14 +7,14 @@ import java.util.Locale
 import js7.base.log.Logger
 import js7.base.time.JavaTimeConverters.RichZonedDateTime
 import js7.base.time.JavaTimestamp.local
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.{TimeInterval, Timestamp}
 import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
-import js7.data.execution.workflow.instructions.ScheduleTester._
+import js7.data.execution.workflow.instructions.ScheduleTester.*
 import js7.data.order.CycleState
 import org.scalactic.source
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.jdk.DurationConverters.ScalaDurationOps
 
 trait ScheduleTester extends AnyFreeSpec

@@ -1,6 +1,6 @@
 package js7.data.workflow.instructions
 
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.data.agent.AgentPath
 import js7.data.job.{PathExecutable, ShellScriptExecutable}
 import js7.data.source.SourcePos

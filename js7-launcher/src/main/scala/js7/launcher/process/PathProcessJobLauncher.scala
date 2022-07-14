@@ -7,7 +7,7 @@ import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.data.job.{CommandLine, ProcessExecutable}
 import js7.launcher.ProcessOrder
 import js7.launcher.internal.JobLauncher.warnIfNotExecutable
-import js7.launcher.process.PathProcessJobLauncher._
+import js7.launcher.process.PathProcessJobLauncher.*
 import js7.launcher.process.ProcessJobLauncher.StartProcess
 import monix.eval.Task
 

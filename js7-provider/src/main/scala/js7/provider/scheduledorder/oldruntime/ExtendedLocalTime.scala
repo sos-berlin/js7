@@ -2,7 +2,7 @@ package js7.provider.scheduledorder.oldruntime
 
 import java.time.{Duration, LocalDate, LocalDateTime, LocalTime, ZoneId}
 import js7.base.convert.As
-import js7.provider.scheduledorder.oldruntime.ExtendedLocalTime._
+import js7.provider.scheduledorder.oldruntime.ExtendedLocalTime.*
 import scala.language.implicitConversions
 
 /**

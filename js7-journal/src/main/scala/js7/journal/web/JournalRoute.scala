@@ -1,7 +1,7 @@
 package js7.journal.web
 
 import akka.http.scaladsl.model.HttpEntity
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route
 import js7.base.auth.ValidUserPermission
 import js7.base.data.ByteArray
@@ -10,20 +10,20 @@ import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.utils.FutureCompletion
-import js7.base.utils.FutureCompletion.syntax._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.FutureCompletion.syntax.*
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.akkahttp.AkkaHttpServerUtils.accept
-import js7.common.akkahttp.ByteSequenceChunkerObservable.syntax._
-import js7.common.akkahttp.StandardMarshallers._
+import js7.common.akkahttp.ByteSequenceChunkerObservable.syntax.*
+import js7.common.akkahttp.StandardMarshallers.*
 import js7.common.akkahttp.web.session.RouteProvider
-import js7.common.akkautils.ByteStrings.syntax._
+import js7.common.akkautils.ByteStrings.syntax.*
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.StreamingSupport.AkkaObservable
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.JournalSeparators.{EndOfJournalFileMarker, HeartbeatMarker}
 import js7.data.event.{EventId, JournalPosition}
 import js7.journal.watch.FileEventWatch
-import js7.journal.web.JournalRoute._
+import js7.journal.web.JournalRoute.*
 import monix.eval.Task
 import scala.concurrent.duration.FiniteDuration
 

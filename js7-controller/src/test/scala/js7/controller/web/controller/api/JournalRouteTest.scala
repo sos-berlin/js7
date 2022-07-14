@@ -6,11 +6,11 @@ import java.util.UUID
 import js7.base.auth.SessionToken
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Problem
-import js7.base.thread.Futures.implicits._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.Futures.implicits.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.web.{HttpClient, Uri}
@@ -29,7 +29,7 @@ import js7.data.order.OrderEvent.OrderAdded
 import js7.data.order.OrderId
 import js7.data.workflow.WorkflowPath
 import js7.journal.data.JournalMeta
-import js7.journal.files.JournalFiles._
+import js7.journal.files.JournalFiles.*
 import js7.journal.watch.JournalEventWatch
 import js7.journal.web.JournalRoute
 import js7.journal.write.{EventJournalWriter, SnapshotJournalWriter}

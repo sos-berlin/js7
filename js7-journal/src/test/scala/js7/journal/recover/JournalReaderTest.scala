@@ -7,11 +7,11 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.delete
 import java.util.UUID
 import js7.base.circeutils.CirceUtils.{RichCirceString, RichJson}
-import js7.base.monixutils.MonixBase.syntax._
-import js7.base.problem.Checked._
-import js7.base.thread.Futures.implicits._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.monixutils.MonixBase.syntax.*
+import js7.base.problem.Checked.*
+import js7.base.thread.Futures.implicits.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.event.JournalEvent.SnapshotTaken
 import js7.data.event.KeyedEvent.NoKey

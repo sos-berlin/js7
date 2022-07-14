@@ -1,11 +1,11 @@
 package js7.controller.client
 
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.data.event.{EventRequest, JournalPosition}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer

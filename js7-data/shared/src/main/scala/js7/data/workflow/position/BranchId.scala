@@ -4,7 +4,7 @@ import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, Json}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.order.CycleState
 import scala.collection.View
 import scala.language.implicitConversions

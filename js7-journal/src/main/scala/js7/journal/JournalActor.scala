@@ -6,16 +6,16 @@ import io.circe.syntax.EncoderOps
 import java.nio.file.Files.{delete, exists, move}
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.Completed
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixutils.MonixBase.syntax._
-import js7.base.problem.Checked._
+import js7.base.monixutils.MonixBase.syntax.*
+import js7.base.problem.Checked.*
 import js7.base.problem.Problem
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ByteUnits.toKBGB
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SetOnce
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.common.akkautils.SupervisorStrategies
@@ -23,11 +23,11 @@ import js7.common.jsonseq.PositionAnd
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeShutDown, ClusterCoupled, ClusterFailedOver, ClusterPassiveLost, ClusterSwitchedOver}
 import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
-import js7.data.event.JournalHeaders._
+import js7.data.event.JournalHeaders.*
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{AnyKeyedEvent, EventId, JournalEvent, JournalHeader, JournalHeaders, JournalId, KeyedEvent, SnapshotableState, Stamped}
-import js7.journal.JournalActor._
+import js7.journal.JournalActor.*
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.journal.files.JournalFiles.{JournalMetaOps, listJournalFiles}

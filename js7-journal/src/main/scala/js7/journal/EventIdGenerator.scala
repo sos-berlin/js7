@@ -3,7 +3,7 @@ package js7.journal
 import java.util.concurrent.atomic.AtomicLong
 import javax.inject.{Inject, Singleton}
 import js7.base.time.WallClock
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.{EventId, Stamped}
 import scala.annotation.tailrec
 

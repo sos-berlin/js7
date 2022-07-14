@@ -1,7 +1,7 @@
 package js7.data.value.expression
 
-import cats.syntax.traverse._
-import io.circe.syntax._
+import cats.syntax.traverse.*
+import io.circe.syntax.*
 import io.circe.{Decoder, Encoder, Json, JsonObject}
 import java.lang.Character.{isUnicodeIdentifierPart, isUnicodeIdentifierStart}
 import java.util.regex.Pattern
@@ -462,7 +462,7 @@ object Expression
 
   final case class NamedValue(where: NamedValue.Where, nameExpr: Expression, default: Option[Expression] = None)
   extends Expression {
-    import NamedValue._
+    import NamedValue.*
     def precedence = Precedence.Factor
     def subexpressions = Nil
     protected def isPure = false

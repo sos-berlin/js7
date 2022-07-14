@@ -2,7 +2,7 @@ package js7.core.common
 
 import js7.base.time.Stopwatch.measureTime
 import js7.common.scalautil.xmls.ScalaXMLEventReader
-import js7.common.scalautil.xmls.XmlSources._
+import js7.common.scalautil.xmls.XmlSources.*
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

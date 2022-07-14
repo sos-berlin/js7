@@ -2,39 +2,39 @@ package js7.controller
 
 import akka.actor.{ActorRef, DeadLetterSuppression, Stash, Status, Terminated}
 import akka.pattern.{ask, pipe}
-import cats.instances.either._
-import cats.instances.future._
-import cats.instances.vector._
-import cats.syntax.flatMap._
-import cats.syntax.option._
-import cats.syntax.traverse._
+import cats.instances.either.*
+import cats.instances.future.*
+import cats.instances.vector.*
+import cats.syntax.flatMap.*
+import cats.syntax.option.*
+import cats.syntax.traverse.*
 import java.time.ZoneId
 import js7.agent.data.event.AgentEvent
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.crypt.Signed
 import js7.base.eventbus.EventPublisher
 import js7.base.generic.Completed
-import js7.base.log.Logger.ops._
+import js7.base.log.Logger.ops.*
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixutils.MonixBase.syntax._
+import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.monixutils.MonixDeadline
 import js7.base.monixutils.MonixDeadline.now
-import js7.base.monixutils.MonixDeadline.syntax._
-import js7.base.problem.Checked._
+import js7.base.monixutils.MonixDeadline.syntax.*
+import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.JavaTimeConverters.AsScalaDuration
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.base.time.{AlarmClock, Timezone}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.IntelliJUtils.intelliJuseImport
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.utils.{ProgramTermination, SetOnce}
 import js7.cluster.WorkingClusterNode
 import js7.common.akkautils.Akkas.encodeAsActorName
 import js7.common.akkautils.SupervisorStrategies
-import js7.controller.ControllerOrderKeeper._
+import js7.controller.ControllerOrderKeeper.*
 import js7.controller.agent.{AgentDriver, AgentDriverConfiguration}
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.problems.ControllerIsNotReadyProblem
@@ -83,7 +83,7 @@ import monix.execution.cancelables.SerialCancelable
 import monix.execution.{Cancelable, Scheduler}
 import scala.collection.immutable.VectorBuilder
 import scala.collection.mutable
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success, Try}
 

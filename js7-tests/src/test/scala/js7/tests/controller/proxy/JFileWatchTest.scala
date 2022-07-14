@@ -4,7 +4,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.data.agent.AgentPath
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.proxy.javaapi.JControllerApi
-import js7.tests.controller.proxy.JFileWatchTest._
+import js7.tests.controller.proxy.JFileWatchTest.*
 import js7.tests.jobs.DeleteFileJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global

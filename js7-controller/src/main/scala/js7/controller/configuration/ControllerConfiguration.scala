@@ -7,11 +7,11 @@ import java.nio.file.Files.createDirectory
 import java.nio.file.{Files, Path}
 import java.time.ZoneId
 import js7.base.configutils.Configs
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.io.JavaResource
-import js7.base.io.file.FileUtils.syntax._
-import js7.base.problem.Checked._
-import js7.base.time.JavaTimeConverters._
+import js7.base.io.file.FileUtils.syntax.*
+import js7.base.problem.Checked.*
+import js7.base.time.JavaTimeConverters.*
 import js7.base.utils.Tests.isTest
 import js7.cluster.ClusterConf
 import js7.common.akkahttp.web.data.WebServerPort
@@ -21,7 +21,7 @@ import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.controller.{ControllerId, ControllerState}
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 /**
   * @author Joacim Zschimmer

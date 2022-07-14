@@ -5,15 +5,15 @@ import js7.agent.client.AgentClient
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.Akkas.newAgentActorSystem
 import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSignedItem, DedicateAgentDirector, ShutDown}
-import js7.agent.tests.AgentShutDownTest._
+import js7.agent.tests.AgentShutDownTest.*
 import js7.base.auth.UserId
 import js7.base.generic.SecretString
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.problem.Checked.Ops
-import js7.base.thread.Futures.implicits._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.Futures.implicits.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.common.akkautils.Akkas
 import js7.common.system.ServerOperatingSystem.operatingSystem
 import js7.data.agent.AgentPath
@@ -22,7 +22,7 @@ import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.value.StringValue
-import js7.data.workflow.test.TestSetting._
+import js7.data.workflow.test.TestSetting.*
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec

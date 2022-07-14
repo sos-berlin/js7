@@ -8,7 +8,7 @@ import js7.data.order.Outcome
 import js7.data.value.StringValue
 import js7.launcher.configuration.{JobLauncherConf, TaskConfiguration}
 import js7.launcher.internal.JobLauncher
-import js7.launcher.process.ProcessJobLauncher._
+import js7.launcher.process.ProcessJobLauncher.*
 import js7.launcher.{OrderProcess, ProcessOrder}
 import monix.eval.{Fiber, Task}
 

@@ -9,7 +9,7 @@ import js7.data.item.ItemRevision
 import js7.data_for_java.common.JJsonable
 import js7.data_for_java.item.JUnsignedSimpleItem
 import js7.data_for_java.value.JExpression
-import scala.jdk.OptionConverters._
+import scala.jdk.OptionConverters.*
 
 final case class JBoard(asScala: Board)
 extends JJsonable[JBoard] with JUnsignedSimpleItem

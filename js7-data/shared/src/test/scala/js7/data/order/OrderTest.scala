@@ -1,14 +1,14 @@
 package js7.data.order
 
-import cats.syntax.option._
+import cats.syntax.option.*
 import io.circe.Json
 import io.circe.syntax.EncoderOps
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.{Problem, ProblemException}
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.{TimeInterval, Timestamp}
 import js7.base.utils.ScalaUtils.implicitClass
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.board.{BoardPath, Notice, NoticeId, NoticeV2_3}
 import js7.data.command.{CancellationMode, SuspensionMode}

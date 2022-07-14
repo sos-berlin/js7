@@ -8,7 +8,7 @@ import js7.data.workflow.{WorkflowControl, WorkflowControlPath}
 import js7.data_for_java.common.JJsonable
 import js7.data_for_java.item.JUnsignedVersionedItem
 import js7.data_for_java.workflow.position.JPosition
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 @javaApi
 final case class JWorkflowControl(asScala: WorkflowControl)

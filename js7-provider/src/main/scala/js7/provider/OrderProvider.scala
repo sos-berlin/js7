@@ -2,7 +2,7 @@ package js7.provider
 
 import java.time.ZoneId
 import js7.base.generic.Completed
-import js7.base.monixutils.MonixBase.syntax._
+import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked
 import js7.base.utils.HasCloser
 import js7.common.files.DirectoryReader

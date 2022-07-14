@@ -1,7 +1,7 @@
 package js7.controller.web.controller
 
 import akka.http.scaladsl.model.StatusCodes.OK
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route
 
 /**

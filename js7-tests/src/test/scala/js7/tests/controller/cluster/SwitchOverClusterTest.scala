@@ -3,10 +3,10 @@ package js7.tests.controller.cluster
 import js7.base.auth.UserId
 import js7.base.generic.SecretString
 import js7.base.log.Logger
-import js7.base.problem.Checked._
-import js7.base.thread.Futures.implicits._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.problem.Checked.*
+import js7.base.thread.Futures.implicits.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.controller.RunningController
@@ -15,8 +15,8 @@ import js7.data.controller.ControllerCommand.ClusterSwitchOver
 import js7.data.event.EventId
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
-import js7.tests.controller.cluster.ControllerClusterTester._
-import js7.tests.controller.cluster.SwitchOverClusterTest._
+import js7.tests.controller.cluster.ControllerClusterTester.*
+import js7.tests.controller.cluster.SwitchOverClusterTest.*
 import monix.execution.Scheduler.Implicits.global
 import scala.util.Try
 

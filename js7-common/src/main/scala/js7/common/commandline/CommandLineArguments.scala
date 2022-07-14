@@ -2,7 +2,7 @@ package js7.common.commandline
 
 import java.util.NoSuchElementException
 import js7.base.convert.ConvertibleMultiPartialFunction
-import js7.common.commandline.CommandLineArguments._
+import js7.common.commandline.CommandLineArguments.*
 import scala.collection.mutable
 
 /**

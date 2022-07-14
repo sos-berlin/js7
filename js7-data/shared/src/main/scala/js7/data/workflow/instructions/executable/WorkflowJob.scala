@@ -3,14 +3,14 @@ package js7.data.workflow.instructions.executable
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.circeutils.CirceUtils.CirceUtilsChecked
-import js7.base.circeutils.ScalaJsonCodecs._
+import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.generic.GenericString
 import js7.base.io.process.KeyLogin
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
 import js7.base.time.AdmissionTimeScheme
 import js7.base.utils.Collections.implicits.RichIterable
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
 import js7.data.agent.AgentPath
 import js7.data.job.{CommandLineExecutable, Executable, InternalExecutable, JobResourcePath, PathExecutable, ShellScriptExecutable}
@@ -22,7 +22,7 @@ import scala.concurrent.duration.FiniteDuration
 /**
   * @author Joacim Zschimmer
   */
-final case class WorkflowJob private(
+final case class WorkflowJob(
   agentPath: AgentPath,
   executable: Executable,
   defaultArguments: Map[String, Expression],

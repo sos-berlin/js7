@@ -2,7 +2,7 @@ package js7.common.utils
 
 import js7.base.log.Logger
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
-import js7.common.utils.JavaShutdownHook._
+import js7.common.utils.JavaShutdownHook.*
 import scala.util.control.NonFatal
 
 /**

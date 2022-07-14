@@ -9,7 +9,7 @@ import js7.common.scalautil.xmls.ScalaXMLEventReader
 object VariablesXmlParser {
 
   def parse(eventReader: ScalaXMLEventReader): Map[String, String] = {
-    import eventReader._
+    import eventReader.*
 
     def parseVariable(): (String, String) = {
       // Low-level StAX to be faster

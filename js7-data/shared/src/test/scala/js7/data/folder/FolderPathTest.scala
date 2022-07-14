@@ -1,6 +1,6 @@
 package js7.data.folder
 
-import js7.data.folder.FolderPathTest._
+import js7.data.folder.FolderPathTest.*
 import js7.data.item.VersionedItemPath
 import org.scalatest.freespec.AnyFreeSpec
 

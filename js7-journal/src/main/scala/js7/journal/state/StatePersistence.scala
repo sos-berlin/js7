@@ -2,7 +2,7 @@ package js7.journal.state
 
 import js7.base.problem.Checked
 import js7.base.utils.LockKeeper
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.{Event, JournalId, JournaledState, KeyedEvent, Stamped}
 import js7.journal.CommitOptions
 import monix.eval.Task

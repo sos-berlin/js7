@@ -2,7 +2,7 @@ package js7.data_for_java.vavr
 
 import io.vavr.control.{Either => VEither}
 import js7.base.annotation.javaApi
-import js7.data_for_java.vavr.VavrConverters._
+import js7.data_for_java.vavr.VavrConverters.*
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

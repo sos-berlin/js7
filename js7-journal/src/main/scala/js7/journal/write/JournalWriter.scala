@@ -6,13 +6,13 @@ import java.nio.file.{Files, Path}
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.data.ByteArray
 import js7.base.monixutils.MonixBase.DefaultBatchSize
-import js7.base.monixutils.MonixBase.syntax._
+import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.utils.ByteUnits.toMB
 import js7.data.event.JournalSeparators.EventHeader
 import js7.data.event.{Event, EventId, JournalHeader, KeyedEvent, Stamped}
 import js7.journal.data.JournalMeta
 import js7.journal.write.EventJournalWriter.SerializationException
-import js7.journal.write.JournalWriter._
+import js7.journal.write.JournalWriter.*
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import scala.concurrent.duration.FiniteDuration

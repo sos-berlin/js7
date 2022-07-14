@@ -1,8 +1,8 @@
 package js7.base.crypt.x509
 
 import cats.Show
-import cats.instances.vector._
-import cats.syntax.traverse._
+import cats.instances.vector.*
+import cats.syntax.traverse.*
 import java.security.cert.X509Certificate
 import java.security.{PublicKey, Signature, SignatureException}
 import js7.base.Problems.{MessageSignedByUnknownProblem, TamperedWithSignedMessageProblem}
@@ -15,7 +15,7 @@ import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Collections.duplicatesToProblem
-import js7.base.utils.Collections.implicits._
+import js7.base.utils.Collections.implicits.*
 import js7.base.utils.ScalaUtils.syntax.{RichPartialFunction, RichThrowable}
 import org.jetbrains.annotations.TestOnly
 import scala.util.control.NonFatal

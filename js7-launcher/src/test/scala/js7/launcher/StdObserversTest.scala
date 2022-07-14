@@ -1,7 +1,7 @@
 package js7.launcher
 
 import js7.base.thread.Futures.implicits.SuccessFuture
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import monix.reactive.subjects.PublishSubject
 import org.scalatest.freespec.AnyFreeSpec
 

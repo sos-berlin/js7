@@ -3,15 +3,15 @@ package js7.common.files
 import java.nio.file.Files.createDirectory
 import java.nio.file.Paths
 import java.util.Comparator
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{touchFile, _}
 import js7.base.log.Logger
-import js7.base.time.JavaTimeConverters._
-import js7.base.time.ScalaTime._
+import js7.base.time.JavaTimeConverters.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.measureTime
 import js7.base.time.Timestamp
 import js7.common.files.DirectoryReader.Entry
-import js7.common.files.DirectoryReaderTest._
+import js7.common.files.DirectoryReaderTest.*
 import org.scalatest.freespec.AnyFreeSpec
 import scala.util.Random
 

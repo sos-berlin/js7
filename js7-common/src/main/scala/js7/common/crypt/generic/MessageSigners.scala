@@ -4,8 +4,8 @@ import js7.base.crypt.DocumentSigner
 import js7.base.crypt.silly.SillySigner
 import js7.base.crypt.x509.X509Signer
 import js7.base.problem.Checked
-import js7.base.utils.Collections._
-import js7.base.utils.Collections.implicits._
+import js7.base.utils.Collections.*
+import js7.base.utils.Collections.implicits.*
 import js7.common.crypt.pgp.PgpSigner
 import js7.data.Problems.UnknownSignatureTypeProblem
 

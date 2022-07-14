@@ -1,16 +1,16 @@
 package js7.data.execution.workflow.instructions
 
-import cats.instances.either._
-import cats.instances.vector._
-import cats.syntax.traverse._
+import cats.instances.either.*
+import cats.instances.vector.*
+import cats.syntax.traverse.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.OrderEventSource
-import js7.data.execution.workflow.instructions.ForkInstructionExecutor._
+import js7.data.execution.workflow.instructions.ForkInstructionExecutor.*
 import js7.data.order.Order.Cancelled
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAttachable, OrderDetachable, OrderFailedIntermediate_, OrderForked, OrderJoined}
 import js7.data.order.{Order, OrderId, Outcome}

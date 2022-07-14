@@ -2,13 +2,13 @@ package js7.journal.configuration
 
 import com.typesafe.config.Config
 import js7.base.auth.UserId
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.convert.As.StringAsByteCountWithDecimalPrefix
 import js7.base.log.Logger
-import js7.base.time.JavaTimeConverters._
-import js7.base.time.ScalaTime._
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
+import js7.base.time.JavaTimeConverters.*
+import js7.base.time.ScalaTime.*
+import scala.concurrent.duration.*
+import scala.jdk.CollectionConverters.*
 
 final case class JournalConf(
   syncOnCommit: Boolean,

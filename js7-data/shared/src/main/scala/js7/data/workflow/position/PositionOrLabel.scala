@@ -9,8 +9,8 @@ import js7.base.utils.ScalaUtils.reuseIfEqual
 import js7.data.workflow.WorkflowId
 import js7.data.workflow.position.BranchId.nextTryBranchId
 import js7.data.workflow.position.BranchPath.Segment
-import js7.data.workflow.position.BranchPath.syntax._
-import js7.data.workflow.position.Position._
+import js7.data.workflow.position.BranchPath.syntax.*
+import js7.data.workflow.position.Position.*
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
 

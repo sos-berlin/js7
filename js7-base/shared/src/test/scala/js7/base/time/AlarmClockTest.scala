@@ -1,9 +1,9 @@
 package js7.base.time
 
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import monix.execution.atomic.Atomic
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 final class AlarmClockTest extends AnyFreeSpec
 {

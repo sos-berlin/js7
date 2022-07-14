@@ -2,12 +2,12 @@ package js7.data.order
 
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Checked
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
-import js7.base.utils.typeclasses.IsEmpty.syntax._
+import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.event.KeyedEvent
 import js7.data.item.VersionId
 import js7.data.order.OrderEvent.OrderAdded
@@ -20,7 +20,7 @@ import org.jetbrains.annotations.TestOnly
 /**
   * @author Joacim Zschimmer
   */
-final case class FreshOrder private(
+final case class FreshOrder(
   id: OrderId,
   workflowPath: WorkflowPath,
   arguments: NamedValues = Map.empty,

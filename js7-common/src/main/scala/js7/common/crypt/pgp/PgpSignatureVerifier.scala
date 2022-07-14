@@ -1,7 +1,7 @@
 package js7.common.crypt.pgp
 
 import cats.implicits.toBifunctorOps
-import cats.syntax.show._
+import cats.syntax.show.*
 import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.Problems.{MessageSignedByUnknownProblem, TamperedWithSignedMessageProblem}
@@ -12,12 +12,12 @@ import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.IntelliJUtils.intelliJuseImport
-import js7.common.crypt.pgp.PgpCommons._
+import js7.common.crypt.pgp.PgpCommons.*
 import org.bouncycastle.openpgp.jcajce.JcaPGPObjectFactory
 import org.bouncycastle.openpgp.operator.jcajce.JcaPGPContentVerifierBuilderProvider
 import org.bouncycastle.openpgp.{PGPPublicKey, PGPPublicKeyRingCollection, PGPSignature, PGPSignatureList, PGPUtil}
 import org.jetbrains.annotations.TestOnly
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 /**
   * @author Joacim Zschimmer
@@ -25,7 +25,7 @@ import scala.jdk.CollectionConverters._
 final class PgpSignatureVerifier(publicKeyRingCollection: PGPPublicKeyRingCollection, val publicKeyOrigin: String)
 extends SignatureVerifier
 {
-  import js7.common.crypt.pgp.PgpSignatureVerifier._
+  import js7.common.crypt.pgp.PgpSignatureVerifier.*
 
   protected type MySignature = PgpSignature
   def companion = PgpSignatureVerifier

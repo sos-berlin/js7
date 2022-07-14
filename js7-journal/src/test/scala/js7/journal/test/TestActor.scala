@@ -4,17 +4,17 @@ import akka.Done
 import akka.actor.{Actor, ActorRef, Props, Stash, Terminated}
 import akka.pattern.{ask, pipe}
 import akka.util.Timeout
-import com.softwaremill.diffx.generic.auto._
+import com.softwaremill.diffx.generic.auto.*
 import com.typesafe.config.Config
-import js7.base.thread.Futures.implicits._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.Futures.implicits.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.common.akkautils.SupervisorStrategies
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.journal.recover.StateRecoverer
 import js7.journal.state.FileStatePersistence
-import js7.journal.test.TestActor._
+import js7.journal.test.TestActor.*
 import js7.journal.{EventIdClock, EventIdGenerator, JournalActor}
 import monix.execution.Scheduler.Implicits.traced
 import scala.collection.mutable

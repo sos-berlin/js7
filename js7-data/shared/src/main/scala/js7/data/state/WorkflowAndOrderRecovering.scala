@@ -1,7 +1,7 @@
 package js7.data.state
 
 import js7.base.problem.Checked
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.data.order.OrderEvent.{OrderDeleted, OrderForked}
 import js7.data.order.{Order, OrderEvent, OrderId}

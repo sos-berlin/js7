@@ -6,12 +6,12 @@ import js7.base.configutils.Configs
 import js7.base.configutils.Configs.parseConfigIfExists
 import js7.base.convert.AsJava.StringAsPath
 import js7.base.io.JavaResource
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.https.HttpsConfig
 import js7.base.web.Uri
 import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.Js7Configuration
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 /**
   * @author Joacim Zschimmer

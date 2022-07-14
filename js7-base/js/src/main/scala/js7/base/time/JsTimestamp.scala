@@ -9,7 +9,7 @@ import scala.scalajs.js
   */
 final case class JsTimestamp private(toEpochMilli: Long) extends Timestamp
 {
-  import JsTimestamp.specific._
+  import JsTimestamp.specific.*
 
   def companion = JsTimestamp
 

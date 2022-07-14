@@ -2,10 +2,10 @@ package js7.controller.command
 
 import js7.base.log.{CorrelId, CorrelIdWrapped, Logger}
 import js7.base.problem.Checked
-import js7.base.time.ScalaTime._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.system.startup.Halt
-import js7.controller.command.ControllerCommandExecutor._
+import js7.controller.command.ControllerCommandExecutor.*
 import js7.core.command.{CommandExecutor, CommandMeta, CommandRegister, CommandRun}
 import js7.data.command.{CommandHandlerDetailed, CommandHandlerOverview}
 import js7.data.controller.ControllerCommand

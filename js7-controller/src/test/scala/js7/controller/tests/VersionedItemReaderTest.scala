@@ -3,9 +3,9 @@ package js7.controller.tests
 import io.circe.syntax.EncoderOps
 import java.io.File.separator
 import java.nio.file.Files.{createDirectories, createDirectory, createTempDirectory, delete}
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Problem
 import js7.common.files.DirectoryReader
 import js7.controller.tests.InventoryItemDiffTest.{ATestItem, AWorkflow, BTestItem, BWorkflow, CWorkflow, TestItemReader}

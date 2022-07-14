@@ -5,7 +5,7 @@ import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.convert.As.StringAsPercentage
 import js7.base.log.Logger
 import js7.base.utils.ByteUnits.toKBGB
-import js7.core.web.EntitySizeLimitProvider._
+import js7.core.web.EntitySizeLimitProvider.*
 
 trait EntitySizeLimitProvider
 {

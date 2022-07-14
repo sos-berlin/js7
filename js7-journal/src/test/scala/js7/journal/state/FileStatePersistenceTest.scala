@@ -2,32 +2,32 @@ package js7.journal.state
 
 import akka.pattern.ask
 import akka.util.Timeout
-import com.softwaremill.diffx.generic.auto._
+import com.softwaremill.diffx.generic.auto.*
 import io.circe.generic.JsonCodec
 import io.circe.generic.semiauto.deriveCodec
 import java.nio.file.Files.createTempDirectory
 import java.nio.file.Path
 import java.util.concurrent.Executors
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.generic.GenericString
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.thread.Futures.implicits._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.Futures.implicits.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.utils.Collections.RichMap
-import js7.base.utils.Collections.implicits._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.Collections.implicits.*
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.akkautils.ProvideActorSystem
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, JournalEvent, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState, SnapshotableStateBuilder, Stamped}
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.journal.recover.StateRecoverer
-import js7.journal.state.FileStatePersistenceTest._
+import js7.journal.state.FileStatePersistenceTest.*
 import js7.journal.test.TestData
 import js7.journal.watch.JournalEventWatch
 import js7.journal.{EventIdClock, EventIdGenerator, JournalActor}

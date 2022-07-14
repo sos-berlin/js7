@@ -1,7 +1,7 @@
 package js7.controller.web
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route
 import com.google.inject.Injector
 import java.nio.file.Path

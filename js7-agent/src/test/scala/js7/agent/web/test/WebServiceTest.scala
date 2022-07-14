@@ -9,9 +9,9 @@ import js7.agent.web.common.AgentRouteProvider
 import js7.base.Js7Version
 import js7.base.auth.{HashedPassword, SimpleUser, UserId}
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.problem.Checked._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.problem.Checked.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.utils.HasCloser
 import js7.common.akkahttp.WebLogDirectives
 import js7.common.akkahttp.web.auth.GateKeeper

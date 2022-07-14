@@ -3,9 +3,9 @@ package js7.common.akkautils
 import akka.actor.SupervisorStrategy.{Decider, Stop}
 import akka.actor.{ActorContext, ActorRef, ChildRestartStats, SupervisorStrategy}
 import js7.base.log.Logger
-import js7.base.utils.ScalaUtils.syntax._
-import js7.common.akkautils.Akkas._
-import js7.common.akkautils.CatchingSupervisorStrategy._
+import js7.base.utils.ScalaUtils.syntax.*
+import js7.common.akkautils.Akkas.*
+import js7.common.akkautils.CatchingSupervisorStrategy.*
 import scala.concurrent.Promise
 
 /**

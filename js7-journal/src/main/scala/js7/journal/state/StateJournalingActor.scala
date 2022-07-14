@@ -8,12 +8,12 @@ import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.common.akkautils.SupervisorStrategies
 import js7.data.event.{Event, JournaledState, KeyedEvent, Stamped}
 import js7.journal.configuration.JournalConf
-import js7.journal.state.StateJournalingActor._
+import js7.journal.state.StateJournalingActor.*
 import js7.journal.{CommitOptions, JournalActor, MainJournalingActor}
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.Promise
-import scala.reflect.runtime.universe._
+import scala.reflect.runtime.universe.*
 import scala.util.{Failure, Success, Try}
 import shapeless.tag.@@
 

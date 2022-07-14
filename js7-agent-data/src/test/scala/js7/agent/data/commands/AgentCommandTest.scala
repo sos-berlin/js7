@@ -4,7 +4,7 @@ import io.circe.Json
 import java.util.UUID
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand.{Batch, DetachOrder, NoOperation, ShutDown}
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.crypt.silly.SillySigner
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.{CorrelId, CorrelIdWrapped}

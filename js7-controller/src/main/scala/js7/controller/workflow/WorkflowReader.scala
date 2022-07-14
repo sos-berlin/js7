@@ -1,7 +1,7 @@
 package js7.controller.workflow
 
 import io.circe.Json
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.data.ByteArray
 import js7.base.problem.Checked
 import js7.core.item.VersionedItemReader

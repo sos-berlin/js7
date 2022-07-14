@@ -1,7 +1,7 @@
 package js7.data.item
 
 import io.circe.Codec
-import js7.data.item.SignableSimpleItemPath._
+import js7.data.item.SignableSimpleItemPath.*
 
 trait SignableSimpleItemPath extends SimpleItemPath with SignableItemKey
 {

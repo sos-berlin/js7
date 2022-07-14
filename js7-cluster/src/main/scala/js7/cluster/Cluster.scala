@@ -11,11 +11,11 @@ import js7.base.generic.Completed
 import js7.base.io.https.HttpsConfig
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SetOnce
-import js7.cluster.Cluster._
+import js7.cluster.Cluster.*
 import js7.cluster.ClusterCommon.truncateFile
 import js7.core.license.LicenseChecker
 import js7.data.Problems.{BackupClusterNodeNotAppointed, ClusterNodeIsNotBackupProblem, PrimaryClusterNodeMayNotBecomeBackupProblem}
@@ -33,7 +33,7 @@ import js7.journal.state.FileStatePersistence
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.Promise
-import scala.reflect.runtime.universe._
+import scala.reflect.runtime.universe.*
 
 final class Cluster[S <: SnapshotableState[S]: diffx.Diff: TypeTag](
   journalMeta: JournalMeta,

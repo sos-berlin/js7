@@ -3,11 +3,11 @@ package js7.base.utils
 import cats.data.Validated
 import cats.effect.{Resource, SyncIO}
 import cats.kernel.Monoid
-import cats.syntax.foldable._
+import cats.syntax.foldable.*
 import java.io.{ByteArrayInputStream, InputStream}
 import java.util.Base64
 import js7.base.problem.Problem
-import js7.base.utils.StackTraces._
+import js7.base.utils.StackTraces.*
 
 /**
   * @author Joacim Zschimmer

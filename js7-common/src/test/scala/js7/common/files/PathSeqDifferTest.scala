@@ -1,7 +1,7 @@
 package js7.common.files
 
 import java.nio.file.Files.delete
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{touchFile, withTemporaryDirectory}
 import org.scalatest.freespec.AnyFreeSpec
 

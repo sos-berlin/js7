@@ -1,6 +1,6 @@
 package js7.proxy.configuration
 
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.common.http.configuration.RecouplingStreamReaderConf
 
 object ProxyConfs

@@ -3,7 +3,7 @@ package js7.base.session
 import js7.base.auth.{SessionToken, UserAndPassword}
 import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.generic.{Completed, SecretString}
-import js7.base.session.TestSessionApi._
+import js7.base.session.TestSessionApi.*
 import monix.eval.Task
 import monix.execution.atomic.{AtomicAny, AtomicLong}
 

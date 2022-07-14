@@ -2,7 +2,7 @@ package js7.journal.watch
 
 import js7.common.jsonseq.PositionAnd
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 
 /**
   * @author Joacim Zschimmer

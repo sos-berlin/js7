@@ -2,7 +2,7 @@ package js7.data.event
 
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.auth.UserId
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.JournalEvent.{Heartbeat, JournalEventsReleased, SnapshotTaken}
 import monix.reactive.Observable
 

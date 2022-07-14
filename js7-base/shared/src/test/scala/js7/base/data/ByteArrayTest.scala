@@ -1,6 +1,6 @@
 package js7.base.data
 
-import js7.base.data.ByteSequence.ops._
+import js7.base.data.ByteSequence.ops.*
 import scala.collection.immutable.ArraySeq
 
 final class ByteArrayTest extends ByteSequenceTester[ByteArray]

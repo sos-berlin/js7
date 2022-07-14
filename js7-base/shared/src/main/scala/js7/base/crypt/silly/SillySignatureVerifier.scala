@@ -13,7 +13,7 @@ import org.jetbrains.annotations.TestOnly
 final class SillySignatureVerifier(signatures: Seq[SillySignature], val publicKeyOrigin: String)
 extends SignatureVerifier
 {
-  import SillySignatureVerifier._
+  import SillySignatureVerifier.*
 
   def this() = this(SillySignature.Default :: Nil, publicKeyOrigin = "Silly")
 

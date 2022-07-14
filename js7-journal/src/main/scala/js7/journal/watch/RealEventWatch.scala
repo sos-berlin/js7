@@ -1,6 +1,6 @@
 package js7.journal.watch
 
-import cats.syntax.option._
+import cats.syntax.option.*
 import java.util.concurrent.TimeoutException
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.closeableIteratorToObservable
@@ -8,22 +8,22 @@ import js7.base.monixutils.MonixDeadline
 import js7.base.monixutils.MonixDeadline.now
 import js7.base.problem.{Checked, Problem}
 import js7.base.stream.IncreasingNumberSync
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.CloseableIterator
-import js7.base.utils.ScalaUtils._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.*
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import js7.data.problems.UnknownEventIdProblem
-import js7.journal.watch.RealEventWatch._
+import js7.journal.watch.RealEventWatch.*
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.reflect.ClassTag
-import scala.reflect.runtime.universe._
+import scala.reflect.runtime.universe.*
 
 /**
   * @author Joacim Zschimmer

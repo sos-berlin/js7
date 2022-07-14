@@ -1,15 +1,15 @@
 package js7.data.workflow
 
-import fastparse.NoWhitespace._
-import fastparse._
+import fastparse.NoWhitespace.*
+import fastparse.*
 import js7.base.io.process.ReturnCode
 import js7.base.problem.Checked
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.data.agent.AgentPath
 import js7.data.job.{CommandLineExecutable, CommandLineParser, InternalExecutable, JobResourcePath, PathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
 import js7.data.lock.LockPath
-import js7.data.parser.BasicParsers._
+import js7.data.parser.BasicParsers.*
 import js7.data.parser.Parsers.checkedParse
 import js7.data.source.SourcePos
 import js7.data.value.expression.Expression.{BooleanConstant, ObjectExpression}
@@ -18,9 +18,9 @@ import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{NamedValues, ObjectValue}
 import js7.data.workflow.Instruction.Labeled
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{Execute, ExplicitEnd, Finish, Fork, If, ImplicitEnd, LockInstruction, Prompt, Retry, TryInstruction, End => EndInstr, Fail => FailInstr}
+import js7.data.workflow.instructions.{Execute, ExplicitEnd, Finish, Fork, If, ImplicitEnd, LockInstruction, Prompt, Retry, TryInstruction, End as EndInstr, Fail as FailInstr}
 import js7.data.workflow.position.Label
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer

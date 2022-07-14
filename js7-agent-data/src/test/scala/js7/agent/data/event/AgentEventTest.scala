@@ -2,7 +2,7 @@ package js7.agent.data.event
 
 import java.util.UUID
 import js7.agent.data.event.AgentEvent.{AgentDedicated, AgentReady, AgentShutDown}
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
 import js7.data.event.{JournalId, KeyedEvent}
@@ -10,7 +10,7 @@ import js7.data.platform.PlatformInfo
 import js7.data.subagent.SubagentId
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 final class AgentEventTest extends AnyFreeSpec
 {

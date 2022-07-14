@@ -4,9 +4,9 @@ import io.circe.{Decoder, Encoder}
 import io.vavr.control.{Either => VEither}
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Problem
-import js7.data_for_java.vavr.VavrConverters._
+import js7.data_for_java.vavr.VavrConverters.*
 
 @javaApi
 trait JJsonable[A <: JJsonable[A]] extends JavaWrapper

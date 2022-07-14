@@ -1,7 +1,7 @@
 package js7.tests.addOrders
 
 import java.nio.charset.StandardCharsets.UTF_8
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.data.event.{Event, KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.{OrderAddedX, OrderCancelled, OrderDeleted, OrderFailed, OrderFailedInFork, OrderForked, OrderJoined, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderTerminated}

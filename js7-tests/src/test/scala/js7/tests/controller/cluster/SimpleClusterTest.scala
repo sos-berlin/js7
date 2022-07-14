@@ -1,19 +1,19 @@
 package js7.tests.controller.cluster
 
-import cats.instances.vector._
-import cats.syntax.traverse._
+import cats.instances.vector.*
+import cats.syntax.traverse.*
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Problem, ProblemException}
-import js7.base.thread.Futures.implicits._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.Futures.implicits.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.data.Problems.ClusterNodeIsNotActiveProblem
 import js7.data.cluster.ClusterEvent
 import js7.data.controller.ControllerCommand
 import js7.data.event.EventRequest
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
-import js7.tests.controller.cluster.ControllerClusterTester._
+import js7.tests.controller.cluster.ControllerClusterTester.*
 import js7.tests.testenv.ControllerClusterForScalaTest.assertEqualJournalFiles
 import monix.execution.Scheduler.Implicits.global
 

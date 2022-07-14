@@ -7,14 +7,14 @@ import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.testkit.RouteTestTimeout
 import akka.util.ByteString
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkahttp.CirceJsonSupport.jsonUnmarshaller
 import js7.common.http.AkkaHttpUtils.RichHttpResponse
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
-import js7.controller.web.controller.api.EventRouteTest._
+import js7.controller.web.controller.api.EventRouteTest.*
 import js7.controller.web.controller.api.test.RouteTester
 import js7.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
 import js7.data.order.OrderEvent.{OrderAdded, OrderFinished}
@@ -26,7 +26,7 @@ import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future
 import scala.concurrent.duration.Deadline.now
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer

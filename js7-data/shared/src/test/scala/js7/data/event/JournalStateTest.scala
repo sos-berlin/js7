@@ -1,7 +1,7 @@
 package js7.data.event
 
 import js7.base.auth.UserId
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 

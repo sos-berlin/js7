@@ -8,10 +8,10 @@ import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.generic.Completed
 import js7.base.problem.Checked
 import js7.base.session.SessionApi
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.HttpClient.liftProblem
 import js7.base.web.{HttpClient, Uri}
-import js7.controller.client.HttpControllerApi._
+import js7.controller.client.HttpControllerApi.*
 import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterNodeState, ClusterState}
 import js7.data.controller.ControllerCommand.{DeleteOrdersWhenTerminated, InternalClusterCommand}
 import js7.data.controller.{ControllerCommand, ControllerOverview, ControllerState}
@@ -21,9 +21,9 @@ import js7.data.session.HttpSessionApi
 import monix.eval.Task
 import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.reflect.ClassTag
-import scala.reflect.runtime.universe._
+import scala.reflect.runtime.universe.*
 
 trait HttpControllerApi
 extends EventApi with ClusterNodeApi with HttpSessionApi with HasIsIgnorableStackTrace

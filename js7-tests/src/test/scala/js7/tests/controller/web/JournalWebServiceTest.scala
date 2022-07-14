@@ -3,16 +3,16 @@ package js7.tests.controller.web
 import akka.http.scaladsl.model.StatusCodes.Unauthorized
 import java.nio.file.Files
 import js7.base.auth.{UserAndPassword, UserId}
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.data.ByteArray
-import js7.base.data.ByteSequence.ops._
+import js7.base.data.ByteSequence.ops.*
 import js7.base.generic.SecretString
-import js7.base.io.file.FileUtils.syntax._
-import js7.base.thread.Futures.implicits._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.io.file.FileUtils.syntax.*
+import js7.base.thread.Futures.implicits.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
-import js7.base.utils.Closer.syntax._
+import js7.base.utils.Closer.syntax.*
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.web.Uri
 import js7.common.guice.GuiceImplicits.RichInjector
@@ -30,7 +30,7 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.controller.web.JournalWebServiceTest._
+import js7.tests.controller.web.JournalWebServiceTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.script
 import monix.eval.Task

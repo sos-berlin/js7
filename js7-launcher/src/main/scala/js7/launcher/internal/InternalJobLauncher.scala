@@ -3,19 +3,19 @@ package js7.launcher.internal
 import java.lang.reflect.Modifier.isPublic
 import java.lang.reflect.{Constructor, InvocationTargetException}
 import js7.base.log.Logger
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
 import js7.base.utils.Classes.superclassesOf
 import js7.base.utils.Lazy
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.job.{InternalExecutable, JobConf}
 import js7.data.value.NamedValues
 import js7.data.value.expression.Scope.evalExpressionMap
 import js7.launcher.ProcessOrder
 import js7.launcher.internal.InternalJob.{JobContext, Step}
-import js7.launcher.internal.InternalJobLauncher._
+import js7.launcher.internal.InternalJobLauncher.*
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.util.control.NonFatal

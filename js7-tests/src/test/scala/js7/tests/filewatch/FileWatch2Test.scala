@@ -3,12 +3,12 @@ package js7.tests.filewatch
 import java.nio.file.Files.{createDirectories, createDirectory, delete, exists}
 import js7.agent.client.AgentClient
 import js7.agent.data.event.AgentEvent.AgentReady
-import js7.base.configutils.Configs._
-import js7.base.io.file.FileUtils.syntax._
-import js7.base.problem.Checked._
+import js7.base.configutils.Configs.*
+import js7.base.io.file.FileUtils.syntax.*
+import js7.base.problem.Checked.*
 import js7.base.system.OperatingSystem.isMac
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerEvent.ControllerShutDown
 import js7.data.event.KeyedEvent.NoKey
@@ -26,7 +26,7 @@ import js7.data.subagent.SubagentId
 import js7.data.value.StringValue
 import js7.data.value.expression.Expression.{MkString, StringConstant}
 import js7.data.workflow.{OrderParameter, OrderParameterList, OrderPreparation, Workflow, WorkflowPath}
-import js7.tests.filewatch.FileWatch2Test._
+import js7.tests.filewatch.FileWatch2Test.*
 import js7.tests.jobs.{DeleteFileJob, SemaphoreJob}
 import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler.Implicits.global

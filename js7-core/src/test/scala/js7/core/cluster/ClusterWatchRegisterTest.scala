@@ -1,7 +1,7 @@
 package js7.core.cluster
 
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.data.controller.ControllerId
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global

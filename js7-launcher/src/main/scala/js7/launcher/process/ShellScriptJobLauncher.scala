@@ -1,6 +1,6 @@
 package js7.launcher.process
 
-import cats.syntax.traverse._
+import cats.syntax.traverse.*
 import java.nio.charset.Charset
 import java.nio.file.Files.createTempFile
 import java.nio.file.Path

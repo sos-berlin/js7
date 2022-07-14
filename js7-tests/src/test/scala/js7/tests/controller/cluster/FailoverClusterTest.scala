@@ -3,9 +3,9 @@ package js7.tests.controller.cluster
 import java.nio.file.Files.size
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Checked.Ops
-import js7.base.thread.Futures.implicits._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.Futures.implicits.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.cluster.ClusterCommon.{ClusterWatchAgreedToActivation, ClusterWatchDisagreedToActivation}
 import js7.common.guice.GuiceImplicits.RichInjector
@@ -14,12 +14,12 @@ import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, Cluster
 import js7.data.cluster.ClusterState.{Coupled, FailedOver}
 import js7.data.controller.ControllerCommand.{ClusterSwitchOver, ShutDown}
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event._
+import js7.data.event.*
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.StringValue
 import js7.journal.files.JournalFiles.JournalMetaOps
-import js7.tests.controller.cluster.ControllerClusterTester._
+import js7.tests.controller.cluster.ControllerClusterTester.*
 import js7.tests.testenv.ControllerClusterForScalaTest.assertEqualJournalFiles
 import monix.execution.Scheduler.Implicits.global
 import scala.concurrent.duration.Deadline.now

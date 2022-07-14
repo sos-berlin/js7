@@ -8,18 +8,18 @@ import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Path
 import java.util.Base64
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.data.ByteSequence.{byteToPrintable, maxShowLength}
 import js7.base.problem.{Checked, Problem}
-import js7.base.system.Java8Polyfill._
+import js7.base.system.Java8Polyfill.*
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import scala.collection.immutable
 import scala.collection.immutable.ArraySeq
 import scala.language.implicitConversions
 import scala.reflect.ClassTag
 import scala.util.Random
-import simulacrum._
+import simulacrum.*
 
 @typeclass(excludeParents = List("Writable", "Monoid", "Eq", "Show"))
 trait ByteSequence[ByteSeq] extends Writable[ByteSeq]

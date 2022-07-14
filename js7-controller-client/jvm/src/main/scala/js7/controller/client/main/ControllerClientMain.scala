@@ -9,7 +9,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.web.Uri
 import js7.common.commandline.CommandLineArguments
 import js7.controller.client.AkkaHttpControllerTextApi
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
 
 /**

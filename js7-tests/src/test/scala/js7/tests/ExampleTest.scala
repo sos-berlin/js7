@@ -1,17 +1,17 @@
 package js7.tests
 
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.problem.Checked.Ops
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
-import js7.data.order.OrderEvent._
+import js7.data.order.OrderEvent.*
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.Workflow
 import js7.data.workflow.position.Position
-import js7.tests.ExampleTest._
+import js7.tests.ExampleTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.global

@@ -1,15 +1,15 @@
 package js7.data.workflow
 
 import cats.Show
-import js7.base.time.ScalaTime._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.job.{CommandLineExecutable, InternalExecutable, PathExecutable, ProcessExecutable, ReturnCodeMeaning, ShellScriptExecutable}
 import js7.data.lock.LockPath
 import js7.data.parser.BasicPrinter
 import js7.data.value.ValuePrinter.{appendQuoted, appendValue}
 import js7.data.value.expression.Expression
 import js7.data.value.{NamedValues, ValuePrinter}
-import js7.data.workflow.WorkflowPrinter._
+import js7.data.workflow.WorkflowPrinter.*
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, ExplicitEnd, Fail, Finish, Fork, Gap, If, ImplicitEnd, LockInstruction, Retry, TryInstruction}
 import scala.annotation.tailrec

@@ -7,10 +7,10 @@ import js7.agent.RunningAgent
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.inject.AgentModule
 import js7.base.io.process.ProcessSignal.SIGKILL
-import js7.base.thread.Futures.implicits._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
-import js7.base.utils.Closer.syntax._
+import js7.base.thread.Futures.implicits.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
+import js7.base.utils.Closer.syntax.*
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import monix.execution.Scheduler.Implicits.traced
 

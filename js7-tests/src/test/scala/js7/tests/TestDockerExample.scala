@@ -1,6 +1,6 @@
 package js7.tests
 
-import cats.syntax.traverse._
+import cats.syntax.traverse.*
 import com.google.inject.Guice
 import java.nio.file.Files.{createDirectories, createDirectory, setPosixFilePermissions}
 import java.nio.file.attribute.PosixFilePermissions
@@ -10,12 +10,12 @@ import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.ShutDown
 import js7.base.io.JavaResource
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{deleteDirectoryContentRecursively, temporaryDirectory}
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.Log4j
-import js7.base.thread.Futures.implicits._
-import js7.base.time.ScalaTime._
+import js7.base.thread.Futures.implicits.*
+import js7.base.time.ScalaTime.*
 import js7.base.utils.Closer
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.Closer.withCloser

@@ -1,7 +1,7 @@
 package js7.base.eventbus
 
 import java.util.concurrent.ConcurrentHashMap
-import js7.base.eventbus.ClassEventBus._
+import js7.base.eventbus.ClassEventBus.*
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.SuperclassCache
 import monix.eval.Task

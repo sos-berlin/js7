@@ -2,9 +2,9 @@ package js7.base.io.https
 
 import java.security.cert.{CertificateException, X509Certificate}
 import javax.net.ssl.X509TrustManager
-import js7.base.io.https.CompositeX509TrustManager._
+import js7.base.io.https.CompositeX509TrustManager.*
 import js7.base.log.Logger
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import scala.util.{Failure, Success}
 
 /**

@@ -1,6 +1,6 @@
 package js7.base.io.process
 
-import js7.base.io.process.ProcessPidRetriever._
+import js7.base.io.process.ProcessPidRetriever.*
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

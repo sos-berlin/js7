@@ -2,18 +2,18 @@ package js7.base.time
 
 import io.circe.generic.semiauto.deriveCodec
 import java.time.{DayOfWeek, LocalTime}
-import js7.base.circeutils.CirceUtils._
-import js7.base.circeutils.ScalaJsonCodecs._
+import js7.base.circeutils.CirceUtils.*
+import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.{Checked, Problem}
-import js7.base.time.AdmissionPeriod._
-import js7.base.time.ScalaTime._
+import js7.base.time.AdmissionPeriod.*
+import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.ordinalToString
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /** Periodical admission time expressed in local time. */
 sealed trait AdmissionPeriod

@@ -3,7 +3,7 @@ package js7.journal.recover
 import com.typesafe.config.Config
 import java.nio.file.{Files, Path}
 import js7.base.log.Logger
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.SetOnce
@@ -14,7 +14,7 @@ import js7.journal.data.JournalMeta
 import js7.journal.files.JournalFiles
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.recover.JournalProgress.{AfterSnapshotSection, InCommittedEventsSection}
-import js7.journal.recover.StateRecoverer._
+import js7.journal.recover.StateRecoverer.*
 import scala.concurrent.duration.Deadline
 import scala.concurrent.duration.Deadline.now
 

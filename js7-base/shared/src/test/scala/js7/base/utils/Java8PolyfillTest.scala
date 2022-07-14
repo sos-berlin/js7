@@ -2,7 +2,7 @@ package js7.base.utils
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 import java.nio.charset.StandardCharsets.UTF_8
-import js7.base.system.Java8Polyfill._
+import js7.base.system.Java8Polyfill.*
 import org.scalatest.freespec.AnyFreeSpec
 import scala.util.Random
 

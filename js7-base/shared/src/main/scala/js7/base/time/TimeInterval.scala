@@ -1,8 +1,8 @@
 package js7.base.time
 
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.language.implicitConversions
 
 sealed trait TimeInterval

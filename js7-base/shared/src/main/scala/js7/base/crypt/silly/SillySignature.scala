@@ -1,6 +1,6 @@
 package js7.base.crypt.silly
 
-import js7.base.crypt.silly.SillySignature._
+import js7.base.crypt.silly.SillySignature.*
 import js7.base.crypt.{GenericSignature, Signature}
 
 /**

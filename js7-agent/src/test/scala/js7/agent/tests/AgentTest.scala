@@ -6,15 +6,15 @@ import js7.agent.RunningAgent
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSignedItem, DedicateAgentDirector}
-import js7.agent.tests.AgentTest._
+import js7.agent.tests.AgentTest.*
 import js7.agent.tests.TestAgentDirectoryProvider.provideAgentDirectory
 import js7.base.auth.SimpleUser
 import js7.base.io.file.FileUtils.WorkingDirectory
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.process.Processes.{ShellFileExtension => sh}
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.web.Uri
 import js7.core.command.CommandMeta

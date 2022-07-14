@@ -3,10 +3,10 @@ package js7.base.io.https
 import com.typesafe.config.Config
 import java.net.URL
 import java.nio.file.Path
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.convert.AsJava.StringAsPath
 import js7.base.generic.SecretString
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 /** To trust the server's certificate.
   * @author Joacim Zschimmer

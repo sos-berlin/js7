@@ -2,13 +2,13 @@ package js7.base.circeutils.typed
 
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.EncoderOps
-import js7.base.circeutils.CirceUtils._
-import js7.base.circeutils.typed.TypedJsonCodec._
-import js7.base.circeutils.typed.TypedJsonCodecTest._
+import js7.base.circeutils.CirceUtils.*
+import js7.base.circeutils.typed.TypedJsonCodec.*
+import js7.base.circeutils.typed.TypedJsonCodecTest.*
 import js7.base.problem.Problem
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
-import org.scalatest.matchers.should.Matchers._
+import org.scalatest.matchers.should.Matchers.*
 
 /**
   * @author Joacim Zschimmer

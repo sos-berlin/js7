@@ -1,15 +1,15 @@
 package js7.tests.controller.cluster
 
-import cats.syntax.traverse._
+import cats.syntax.traverse.*
 import com.typesafe.config.ConfigUtil.quoteString
 import js7.agent.RunningAgent
 import js7.base.auth.UserId
 import js7.base.generic.SecretString
-import js7.base.io.file.FileUtils.syntax._
-import js7.base.problem.Checked._
-import js7.base.thread.Futures.implicits._
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.io.file.FileUtils.syntax.*
+import js7.base.problem.Checked.*
+import js7.base.thread.Futures.implicits.*
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.web.Uri
 import js7.cluster.ClusterCommon.ClusterWatchAgreedToActivation
@@ -24,7 +24,7 @@ import js7.data.event.EventId
 import js7.data.order.OrderEvent.{OrderFinished, OrderStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.journal.files.JournalFiles.listJournalFiles
-import js7.tests.controller.cluster.ControllerClusterTester._
+import js7.tests.controller.cluster.ControllerClusterTester.*
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec
 

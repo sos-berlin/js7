@@ -1,8 +1,8 @@
 package js7.tests.controller.cluster
 
 import js7.base.problem.Checked.Ops
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.cluster.ClusterEvent
 import js7.data.controller.ControllerEvent.ControllerReady
@@ -12,7 +12,7 @@ import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.OrderEvent.{OrderFinished, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.controller.cluster.JobResourceClusterTest._
+import js7.tests.controller.cluster.JobResourceClusterTest.*
 import js7.tests.jobs.EmptyJob
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable

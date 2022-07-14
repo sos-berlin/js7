@@ -4,7 +4,7 @@ import java.time.ZoneOffset.UTC
 import java.time.{LocalTime, ZoneId}
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.time.JavaTimestamp.local
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.time.{AdmissionTimeScheme, AlwaysPeriod, DailyPeriod, TimeInterval, Timestamp}
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.order.CycleState
@@ -12,7 +12,7 @@ import js7.data.workflow.instructions.Schedule
 import js7.data.workflow.instructions.Schedule.{Periodic, Scheme, Ticking}
 import js7.data.workflow.instructions.ScheduleTest.exampleSchedule
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 final class ScheduleCalculatorTest extends AnyFreeSpec with ScheduleTester
 {

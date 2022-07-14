@@ -2,14 +2,14 @@ package js7.base.io.file.watch
 
 import java.nio.file.{Files, Path}
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted, FileModified}
-import js7.base.io.file.watch.DirectoryState._
+import js7.base.io.file.watch.DirectoryState.*
 import js7.base.log.Logger
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.Collections.implicits._
-import js7.base.utils.JavaCollections.syntax._
+import js7.base.utils.Collections.implicits.*
+import js7.base.utils.JavaCollections.syntax.*
 import js7.base.utils.MapDiff
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import scala.collection.{View, mutable}
 import scala.concurrent.duration.Deadline.now
 

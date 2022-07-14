@@ -7,15 +7,15 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Checked.{CheckedOption, Ops}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
-import js7.base.utils.ScalaUtils._
-import js7.base.utils.ScalaUtils.syntax._
-import js7.base.utils.typeclasses.IsEmpty.syntax._
+import js7.base.utils.ScalaUtils.*
+import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.board.NoticeId
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.job.JobKey
-import js7.data.order.Order._
-import js7.data.order.OrderEvent._
+import js7.data.order.Order.*
+import js7.data.order.OrderEvent.*
 import js7.data.orderwatch.ExternalOrderKey
 import js7.data.subagent.SubagentId
 import js7.data.value.{NamedValues, Value}

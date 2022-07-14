@@ -1,6 +1,6 @@
 package js7.data.subagent
 
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Problem
 import js7.base.utils.Base64UUID
 import js7.data.event.KeyedEvent

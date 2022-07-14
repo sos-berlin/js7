@@ -12,7 +12,7 @@ import io.circe.Encoder
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.utils.Ascii
-import js7.common.akkautils.ByteStrings.syntax._
+import js7.common.akkautils.ByteStrings.syntax.*
 
 /**
   * @author Joacim Zschimmer

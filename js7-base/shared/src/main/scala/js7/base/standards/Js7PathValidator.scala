@@ -1,6 +1,6 @@
 package js7.base.standards
 
-import cats.syntax.traverse._
+import cats.syntax.traverse.*
 import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.problem.Checked
 import js7.base.problem.Problems.InvalidNameProblem

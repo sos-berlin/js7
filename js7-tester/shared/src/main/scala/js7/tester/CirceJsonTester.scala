@@ -6,7 +6,7 @@ import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, DecodingFailure, Encoder, Json, ParsingFailure, Printer}
 import org.scalactic.source
 import org.scalatest.Assertion
-import org.scalatest.Assertions._
+import org.scalatest.Assertions.*
 
 /**
   * @author Joacim Zschimmer

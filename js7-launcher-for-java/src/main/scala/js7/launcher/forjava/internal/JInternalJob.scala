@@ -6,12 +6,12 @@ import java.util.concurrent.{CompletableFuture, CompletionStage}
 import javax.annotation.Nonnull
 import js7.base.problem.Problem
 import js7.data_for_java.common.JavaUtils.Void
-import js7.launcher.forjava.internal.JInternalJob._
+import js7.launcher.forjava.internal.JInternalJob.*
 import js7.launcher.internal.{InternalJob, InternalJobAdapter}
 import monix.execution.Ack.{Continue, Stop}
 import monix.execution.Scheduler
 import monix.reactive.Observer
-import scala.compat.java8.FutureConverters._
+import scala.compat.java8.FutureConverters.*
 import scala.concurrent.Future
 
 @InternalJobAdapter(classOf[JInternalJobAdapter])

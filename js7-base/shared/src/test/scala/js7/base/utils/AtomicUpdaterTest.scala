@@ -1,7 +1,7 @@
 package js7.base.utils
 
-import cats.syntax.foldable._
-import js7.base.utils.AtomicUpdaterTest._
+import cats.syntax.foldable.*
+import js7.base.utils.AtomicUpdaterTest.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AsyncFreeSpec

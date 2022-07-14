@@ -1,11 +1,11 @@
 package js7.tests.order
 
-import cats.instances.vector._
-import cats.syntax.traverse._
-import js7.base.circeutils.CirceUtils._
+import cats.instances.vector.*
+import cats.syntax.traverse.*
+import js7.base.circeutils.CirceUtils.*
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichThrowableEither
 import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.AgentReady
@@ -17,7 +17,7 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.order.ManyAddOrdersTest._
+import js7.tests.order.ManyAddOrdersTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.script
 import monix.eval.Task

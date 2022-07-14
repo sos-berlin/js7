@@ -5,7 +5,7 @@ import js7.base.circeutils.CirceUtils.CirceUtilsChecked
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
-import js7.data.item.VersionedItemPath._
+import js7.data.item.VersionedItemPath.*
 import scala.reflect.ClassTag
 
 trait VersionedItemPath extends InventoryItemPath

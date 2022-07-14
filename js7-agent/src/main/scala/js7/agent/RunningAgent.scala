@@ -1,38 +1,38 @@
 package js7.agent
 
 import akka.actor.{ActorRef, ActorSystem, Props}
-import cats.syntax.traverse._
+import cats.syntax.traverse.*
 import com.google.inject.Stage.PRODUCTION
 import com.google.inject.util.Modules
 import com.google.inject.util.Modules.EMPTY_MODULE
 import com.google.inject.{Guice, Injector, Module}
-import com.softwaremill.diffx.generic.auto._
+import com.softwaremill.diffx.generic.auto.*
 import com.typesafe.config.Config
-import js7.agent.RunningAgent._
+import js7.agent.RunningAgent.*
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.inject.AgentModule
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
 import js7.agent.web.AgentWebServer
 import js7.base.auth.{SessionToken, SimpleUser, UserId}
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.process.ProcessSignal
 import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.Checked
-import js7.base.problem.Checked._
-import js7.base.thread.Futures.implicits._
+import js7.base.problem.Checked.*
+import js7.base.thread.Futures.implicits.*
 import js7.base.thread.Futures.promiseFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Closer, ProgramTermination}
 import js7.base.web.Uri
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import js7.common.guice.GuiceImplicits._
+import js7.common.guice.GuiceImplicits.*
 import js7.common.system.startup.StartUp
 import js7.core.cluster.ClusterWatchRegister
 import js7.core.command.CommandMeta
@@ -43,7 +43,7 @@ import js7.journal.{EventIdGenerator, StampedKeyedEventBus}
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success, Try}
 

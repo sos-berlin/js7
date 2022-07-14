@@ -1,16 +1,16 @@
 package js7.journal.web
 
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import io.circe.generic.JsonCodec
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, EventRequest, KeyedEvent}
 import js7.journal.web.EventDirectives.eventRequest
-import js7.journal.web.EventDirectivesTest._
+import js7.journal.web.EventDirectivesTest.*
 import org.scalatest.freespec.AnyFreeSpec
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer

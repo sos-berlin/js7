@@ -1,8 +1,8 @@
 package js7.tests
 
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceString, RichJson}
-import js7.base.thread.Futures.implicits._
-import js7.base.time.ScalaTime._
+import js7.base.thread.Futures.implicits.*
+import js7.base.time.ScalaTime.*
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.client.main.ControllerClientMain
 import js7.tests.testenv.ControllerAgentForScalaTest

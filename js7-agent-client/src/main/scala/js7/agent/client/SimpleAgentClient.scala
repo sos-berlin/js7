@@ -1,9 +1,9 @@
 package js7.agent.client
 
 import js7.base.auth.UserAndPassword
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.io.https.HttpsConfig
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.Closer.syntax.RichClosersAny
 import js7.base.utils.HasCloser
 import js7.base.web.Uri

@@ -1,20 +1,20 @@
 package js7.data.controller
 
-import com.softwaremill.diffx.generic.auto._
+import com.softwaremill.diffx.generic.auto.*
 import js7.base.auth.UserId
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.crypt.silly.SillySigner
-import js7.base.problem.Checked._
-import js7.base.time.ScalaTime._
+import js7.base.problem.Checked.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.{Timestamp, Timezone}
 import js7.base.utils.Collections.RichMap
-import js7.base.utils.Collections.implicits._
+import js7.base.utils.Collections.implicits.*
 import js7.base.web.Uri
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import js7.data.board.{Board, BoardPath, BoardPathExpression, BoardState, Notice, NoticeExpectation, NoticeId, NoticePlace}
 import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterStateSnapshot, ClusterTiming}
-import js7.data.controller.ControllerStateTest._
+import js7.data.controller.ControllerStateTest.*
 import js7.data.delegate.DelegateCouplingState
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.{EventId, JournalState, SnapshotableState, Stamped}

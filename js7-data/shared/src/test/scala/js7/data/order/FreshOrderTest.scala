@@ -1,6 +1,6 @@
 package js7.data.order
 
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Problem
 import js7.base.time.Timestamp
 import js7.data.value.{BooleanValue, ListValue, NumberValue, StringValue}

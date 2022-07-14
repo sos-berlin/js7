@@ -4,7 +4,7 @@ import io.circe.{Decoder, Encoder, Json}
 import js7.base.annotation.javaApi
 import js7.base.circeutils.CirceUtils.CirceUtilsChecked
 import js7.base.generic.GenericString
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
 

@@ -5,7 +5,7 @@ import io.circe.DecodingFailure.Reason.MissingField
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, DecodingFailure, Json, JsonObject}
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.GenericString
 import js7.base.problem.{Problem, ProblemException}
 import js7.tester.CirceJsonTester.testJson

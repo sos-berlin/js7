@@ -6,7 +6,7 @@ import akka.http.scaladsl.model.StatusCodes.TemporaryRedirect
 import akka.http.scaladsl.model.headers.CacheDirectives.{`max-age`, `no-cache`, `no-store`}
 import akka.http.scaladsl.model.headers.{Accept, `Cache-Control`}
 import akka.http.scaladsl.model.{HttpRequest, MediaRange, Uri}
-import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.{Directive0, RejectionHandler, Route}
 import js7.common.akkahttp.AkkaHttpServerUtils.passIf
 

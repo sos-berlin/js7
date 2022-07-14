@@ -4,15 +4,15 @@ import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import js7.base.auth.{UserAndPassword, UserId}
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.generic.SecretString
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
-import js7.base.problem.Checked._
-import js7.base.time.ScalaTime._
+import js7.base.problem.Checked.*
+import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.CatsUtils.combine
-import js7.base.utils.Closer.syntax._
+import js7.base.utils.Closer.syntax.*
 import js7.base.utils.Closer.withCloser
 import js7.base.utils.ProgramTermination
 import js7.base.web.Uri
@@ -33,7 +33,7 @@ import js7.tests.testenv.DirectoryProvider.script
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import org.scalactic.source
-import org.scalatest.Assertions._
+import org.scalatest.Assertions.*
 import org.scalatest.TestSuite
 
 trait ControllerClusterForScalaTest

@@ -1,10 +1,10 @@
 package js7.data.controller
 
-import cats.syntax.apply._
-import cats.syntax.traverse._
+import cats.syntax.apply.*
+import cats.syntax.traverse.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.Problems.AgentResetProblem
 import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.AgentResetStarted
@@ -25,7 +25,7 @@ import js7.data.orderwatch.ExternalOrderKey
 import js7.data.subagent.SubagentItemState
 import js7.data.subagent.SubagentItemStateEvent.SubagentReset
 import js7.data.value.expression.scopes.NowScope
-import js7.data.workflow.WorkflowControlId.syntax._
+import js7.data.workflow.WorkflowControlId.syntax.*
 import js7.data.workflow.position.{Position, PositionOrLabel}
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPathControl, WorkflowPathControlPath}
 import scala.annotation.tailrec

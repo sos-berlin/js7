@@ -3,7 +3,7 @@ package js7.tests.subagent
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.event.{EventId, KeyedEvent, Stamped}
@@ -14,7 +14,7 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
-import js7.tests.subagent.SubagentMultipleOrdersTest._
+import js7.tests.subagent.SubagentMultipleOrdersTest.*
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable

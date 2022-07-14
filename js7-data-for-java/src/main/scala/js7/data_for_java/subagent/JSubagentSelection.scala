@@ -8,7 +8,7 @@ import js7.data.item.ItemRevision
 import js7.data.subagent.{SubagentId, SubagentSelection, SubagentSelectionId}
 import js7.data_for_java.common.JJsonable
 import js7.data_for_java.item.JUnsignedSimpleItem
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.RichOptional
 
 final case class JSubagentSelection(asScala: SubagentSelection)

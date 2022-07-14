@@ -14,7 +14,7 @@ import js7.data.value.expression.Scope
 import js7.data.value.expression.scopes.NowScope
 import js7.data.value.{BooleanValue, ListType, ListValue, NamedValues, NumberValue, ObjectType, ObjectValue, StringValue}
 import js7.data.workflow.OrderParameterList.{MissingObjectFieldsProblem, MissingOrderArgumentProblem, UndeclaredObjectFieldsProblem, UndeclaredOrderArgumentProblem, WrongValueTypeProblem}
-import js7.data.workflow.OrderParameterListTest._
+import js7.data.workflow.OrderParameterListTest.*
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.View

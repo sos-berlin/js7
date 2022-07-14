@@ -3,10 +3,10 @@ package js7.controller.configuration
 import java.net.InetSocketAddress
 import java.nio.file.Files.{createDirectories, createTempDirectory, delete}
 import java.time.ZoneId
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.convert.As.StringAsBoolean
-import js7.base.io.file.FileUtils.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.io.file.FileUtils.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.cluster.ClusterConf
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.commandline.CommandLineArguments

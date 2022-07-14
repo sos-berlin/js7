@@ -11,7 +11,7 @@ import scala.util.Random
  */
 final case class TaskId private(string: String) extends GenericString
 {
-  import js7.data.job.TaskId._
+  import js7.data.job.TaskId.*
 
   if (!pattern.matcher(string).matches)
     throw new IllegalArgumentException(s"Invalid TaskId($string)")

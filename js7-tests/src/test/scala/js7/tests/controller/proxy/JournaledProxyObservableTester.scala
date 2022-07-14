@@ -1,6 +1,6 @@
 package js7.tests.controller.proxy
 
-import js7.base.utils.ScalaUtils._
+import js7.base.utils.ScalaUtils.*
 import js7.data.event.{Event, KeyedEvent, SnapshotableState, Stamped}
 import js7.proxy.JournaledProxy
 import js7.proxy.data.event.EventAndState

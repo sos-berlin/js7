@@ -1,15 +1,15 @@
 package js7.data.execution.workflow.instructions
 
-import js7.base.circeutils.CirceUtils._
-import js7.base.problem.Checked._
+import js7.base.circeutils.CirceUtils.*
+import js7.base.problem.Checked.*
 import js7.base.problem.Problem
 import js7.base.time.WallClock
 import js7.data.agent.AgentPath
-import js7.data.execution.workflow.instructions.IfExecutorTest._
+import js7.data.execution.workflow.instructions.IfExecutorTest.*
 import js7.data.job.PathExecutable
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.state.TestStateView
-import js7.data.value.expression.Expression._
+import js7.data.value.expression.Expression.*
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, If}

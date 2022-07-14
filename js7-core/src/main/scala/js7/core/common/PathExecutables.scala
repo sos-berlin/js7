@@ -1,7 +1,7 @@
 package js7.core.common
 
 import java.nio.file.Path
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.data.job.PathExecutable
 
 /**

@@ -1,19 +1,19 @@
 package js7.journal.watch
 
 import js7.base.problem.Checked
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.CloseableIterator
 import js7.base.utils.ScalaUtils.function1WithToString
 import js7.data.event.{Event, EventId, EventRequest, JournalInfo, KeyedEvent, Stamped, TearableEventSeq}
-import js7.journal.watch.EventWatch._
+import js7.journal.watch.EventWatch.*
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.Future
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.reflect.ClassTag
-import scala.reflect.runtime.universe._
+import scala.reflect.runtime.universe.*
 
 /**
   * @author Joacim Zschimmer

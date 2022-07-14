@@ -2,7 +2,7 @@ package js7.core.item
 
 import java.io.File.separator
 import java.nio.file.Path
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.data.item.{InventoryItemPath, SourceType, VersionedItemPath}

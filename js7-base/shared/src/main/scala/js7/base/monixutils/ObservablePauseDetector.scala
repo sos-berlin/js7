@@ -1,11 +1,11 @@
 package js7.base.monixutils
 
-import js7.base.monixutils.MonixBase.syntax._
+import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.monixutils.MonixDeadline.now
 import monix.eval.Task
 import monix.reactive.subjects.PublishSubject
 import monix.reactive.{Observable, OverflowStrategy}
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 object ObservablePauseDetector
 {

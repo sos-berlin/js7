@@ -2,7 +2,7 @@ package js7.controller.workflow
 
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.RichJson
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.problem.Checked.Ops
 import js7.core.item.TypedSourceReader

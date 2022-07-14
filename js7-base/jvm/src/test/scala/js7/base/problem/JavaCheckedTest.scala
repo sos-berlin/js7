@@ -1,6 +1,6 @@
 package js7.base.problem
 
-import js7.base.problem.JavaCheckedTester._
+import js7.base.problem.JavaCheckedTester.*
 import org.scalatest.freespec.AnyFreeSpec
 
 /**

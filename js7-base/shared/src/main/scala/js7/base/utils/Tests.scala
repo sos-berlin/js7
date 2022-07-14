@@ -1,6 +1,6 @@
 package js7.base.utils
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 
 object Tests
 {

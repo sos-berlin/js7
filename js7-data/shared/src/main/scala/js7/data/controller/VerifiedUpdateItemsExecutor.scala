@@ -1,6 +1,6 @@
 package js7.data.controller
 
-import cats.syntax.traverse._
+import cats.syntax.traverse.*
 import js7.base.problem.Problems.DuplicateKey
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEither, RichPartialFunction}

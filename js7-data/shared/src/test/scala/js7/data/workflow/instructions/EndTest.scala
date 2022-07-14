@@ -1,6 +1,6 @@
 package js7.data.workflow.instructions
 
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.data.source.SourcePos
 import js7.data.workflow.Instruction
 import js7.data.workflow.instructions.Instructions.jsonCodec

@@ -1,9 +1,9 @@
 package js7.tests
 
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.job.ShellScriptExecutable
 import js7.data.order.OrderEvent.{OrderProcessed, OrderTerminated}
@@ -12,7 +12,7 @@ import js7.data.value.StringValue
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.FailOnErrWrittenTest._
+import js7.tests.FailOnErrWrittenTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec

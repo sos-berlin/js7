@@ -2,7 +2,7 @@ package js7.base.standards
 
 import java.lang.Character.isSurrogate
 import js7.base.problem.Problems.InvalidNameProblem
-import js7.base.standards.Js7NameValidator._
+import js7.base.standards.Js7NameValidator.*
 
 final class Js7NameValidator(val typeName: String)
 extends NameValidator

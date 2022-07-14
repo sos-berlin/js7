@@ -4,17 +4,17 @@ import cats.effect.{ExitCase, Resource}
 import java.io.IOException
 import java.nio.file.{ClosedWatchServiceException, NotDirectoryException, Path, WatchEvent, WatchKey}
 import java.util.concurrent.TimeUnit.MILLISECONDS
-import js7.base.io.file.watch.BasicDirectoryWatcher._
+import js7.base.io.file.watch.BasicDirectoryWatcher.*
 import js7.base.io.file.watch.DirectoryWatchEvent.Overflow
 import js7.base.log.Logger
 import js7.base.system.OperatingSystem.isMac
 import js7.base.thread.IOExecutor
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.{RichAny, RichThrowable}
 import monix.eval.Task
 import monix.reactive.Observable
 import scala.concurrent.duration.Deadline.now
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
 
 final class BasicDirectoryWatcher(options: WatchOptions)(implicit iox: IOExecutor)

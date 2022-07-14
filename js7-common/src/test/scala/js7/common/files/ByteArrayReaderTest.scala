@@ -1,7 +1,7 @@
 package js7.common.files
 
 import js7.base.data.ByteArray
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryFile
 import js7.base.utils.AutoClosing.autoClosing
 import org.scalatest.freespec.AnyFreeSpec

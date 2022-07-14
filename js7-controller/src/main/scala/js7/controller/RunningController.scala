@@ -3,32 +3,32 @@ package js7.controller
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.pattern.ask
 import akka.util.Timeout
-import cats.syntax.flatMap._
-import cats.syntax.traverse._
+import cats.syntax.flatMap.*
+import cats.syntax.traverse.*
 import com.google.inject.Stage.{DEVELOPMENT, PRODUCTION}
 import com.google.inject.util.Modules
 import com.google.inject.util.Modules.EMPTY_MODULE
 import com.google.inject.{Guice, Injector, Module}
-import com.softwaremill.diffx.generic.auto._
+import com.softwaremill.diffx.generic.auto.*
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Path
 import js7.base.auth.{SimpleUser, UserAndPassword}
 import js7.base.eventbus.{EventPublisher, StandardEventBus}
 import js7.base.generic.Completed
-import js7.base.io.file.FileUtils.syntax._
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixutils.MonixBase.syntax._
-import js7.base.problem.Checked._
+import js7.base.monixutils.MonixBase.syntax.*
+import js7.base.problem.Checked.*
 import js7.base.problem.Problems.ShuttingDownProblem
 import js7.base.problem.{Checked, Problem}
-import js7.base.thread.Futures.implicits._
-import js7.base.thread.MonixBlocking.syntax._
+import js7.base.thread.Futures.implicits.*
+import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.AlarmClock
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Closer, ProgramTermination, SetOnce}
 import js7.base.web.Uri
 import js7.cluster.{Cluster, ClusterContext, ClusterFollowUp, WorkingClusterNode}
@@ -37,7 +37,7 @@ import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.crypt.generic.GenericSignatureVerifier
 import js7.common.guice.GuiceImplicits.RichInjector
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import js7.controller.RunningController._
+import js7.controller.RunningController.*
 import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
 import js7.controller.command.ControllerCommandExecutor
 import js7.controller.configuration.ControllerConfiguration
@@ -65,7 +65,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.concurrent.{Await, Future, Promise}
 import scala.util.control.NoStackTrace
 import scala.util.{Failure, Success}

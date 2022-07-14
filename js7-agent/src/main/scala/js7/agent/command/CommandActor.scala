@@ -3,16 +3,16 @@ package js7.agent.command
 import akka.actor.{Actor, ActorRef}
 import akka.pattern.ask
 import akka.util.Timeout
-import cats.instances.future._
-import cats.syntax.traverse._
-import js7.agent.command.CommandActor._
+import cats.instances.future.*
+import cats.syntax.traverse.*
+import js7.agent.command.CommandActor.*
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{AttachItem, AttachSignedItem, Batch, CoupleController, DedicateAgentDirector, DetachItem, EmergencyStop, NoOperation, OrderCommand, Reset, ResetSubagent, Response, ShutDown, TakeSnapshot}
 import js7.agent.scheduler.AgentHandle
 import js7.base.circeutils.JavaJsonCodecs.instant.StringInstantJsonCodec
 import js7.base.log.{CorrelId, CorrelIdWrapped, Logger}
 import js7.base.problem.{Checked, Problem}
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.common.system.startup.Halt
 import js7.core.command.{CommandMeta, CommandRegister, CommandRun}

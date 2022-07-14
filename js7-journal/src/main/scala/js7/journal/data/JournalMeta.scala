@@ -4,7 +4,7 @@ import cats.implicits.toShow
 import com.typesafe.scalalogging.Logger
 import io.circe.{Decoder, Json}
 import java.nio.file.Path
-import js7.base.circeutils.CirceUtils._
+import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.RichString

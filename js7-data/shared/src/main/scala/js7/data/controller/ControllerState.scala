@@ -1,6 +1,6 @@
 package js7.data.controller
 
-import cats.syntax.traverse._
+import cats.syntax.traverse.*
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.Signed
@@ -8,7 +8,7 @@ import js7.base.problem.Checked.{CheckedOption, RichCheckedIterable}
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.RichMap
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.data.Problems.{ItemIsStillReferencedProblem, MissingReferencedItemProblem}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRefStateEvent}
