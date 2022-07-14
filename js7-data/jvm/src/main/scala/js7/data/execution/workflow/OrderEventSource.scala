@@ -35,52 +35,52 @@ final class OrderEventSource(state: StateView)
   def nextEvents(orderId: OrderId): Seq[KeyedEvent[OrderActorEvent]] = {
     val order = idToOrder(orderId)
     if (order.isState[Order.Broken])
-      Nil  // Avoid issuing a second OrderBroken (would be a loop)
-    else if (state.isWorkflowSuspended(order.workflowPath))
+      Nil // Avoid issuing a second OrderBroken (would be a loop)
+    else if (!weHave(order))
       Nil
     else
-      checkedNextEvents(order) |> (invalidToEvent(order, _))
+      orderMarkKeyedEvent(order).getOrElse(
+        if (order.isSuspended)
+          Nil
+        else if (state.isOrderAtBreakpoint(order))
+          List(
+            order.id <-: (if (isAgent) OrderDetachable else OrderSuspended))
+        else if (state.isWorkflowSuspended(order.workflowPath))
+          Nil
+        else
+          checkedNextEvents(order) |> (invalidToEvent(order, _)))
   }
 
   private def checkedNextEvents(order: Order[Order.State])
   : Checked[Seq[KeyedEvent[OrderActorEvent]]] = {
     def ifDefinedElse(o: Option[List[OrderActorEvent]], orElse: Checked[List[KeyedEvent[OrderActorEvent]]]) =
       o.fold(orElse)(events => Right(events.map(order.id <-: _)))
-    ifDefinedElse(orderMarkEvent(order),
-      if (!weHave(order) || order.isSuspended)
-        Right(Nil)
-      else
-        ifDefinedElse(awokeEvent(order).map(_ :: Nil),
-          joinedEvent(order) match {
-            case Left(problem) => Left(problem)
-            case Right(Some(event)) => Right(event :: Nil)
-            case Right(None) =>
-              if (state.isOrderAtStopPosition(order))
-                executorService.finishExecutor.toEvents(Finish(), order, state)
-              else if (state.isOrderAtBreakpoint(order))
-                if (isAgent) // OrderSuspended must not be executed at Agent
-                  Right((order.id <-: OrderDetachable) :: Nil)
-                else
-                  Right((order.id <-: OrderSuspended) :: Nil)
-              else
-                executorService.toEvents(instruction(order.workflowPosition), order, state)
-                  // Multiple returned events are expected to be independent
-                  // and are applied to the same idToOrder !!!
-                  .flatMap(_
-                    .flatTraverse {
-                      case orderId <-: (moved: OrderMoved) =>
-                        applyMoveInstructions(order, moved)
-                          .map(event => (orderId <-: event) :: Nil)
+      ifDefinedElse(awokeEvent(order).map(_ :: Nil),
+        joinedEvent(order) match {
+          case Left(problem) => Left(problem)
+          case Right(Some(event)) => Right(event :: Nil)
+          case Right(None) =>
+            if (state.isOrderAtStopPosition(order))
+              executorService.finishExecutor.toEvents(Finish(), order, state)
+            else
+              executorService.toEvents(instruction(order.workflowPosition), order, state)
+                // Multiple returned events are expected to be independent
+                // and are applied to the same idToOrder !!!
+                .flatMap(_
+                  .flatTraverse {
+                    case orderId <-: (moved: OrderMoved) =>
+                      applyMoveInstructions(order, moved)
+                        .map(event => (orderId <-: event) :: Nil)
 
-                      case orderId <-: OrderFailedIntermediate_(outcome, uncatchable) =>
-                        // OrderFailedIntermediate_ is used internally only
-                        assertThat(orderId == order.id)
-                        failOrDetach(order, outcome, uncatchable)
-                          .map(_.map(orderId <-: _))
+                    case orderId <-: OrderFailedIntermediate_(outcome, uncatchable) =>
+                      // OrderFailedIntermediate_ is used internally only
+                      assertThat(orderId == order.id)
+                      failOrDetach(order, outcome, uncatchable)
+                        .map(_.map(orderId <-: _))
 
                       case o => Right(o :: Nil)
                     })
-          }))
+          })
       .flatMap(checkEvents)
   }
 
@@ -194,7 +194,7 @@ final class OrderEventSource(state: StateView)
         case Nil =>
           callToEvent(None, failPosition)
 
-        case Segment(_, branchId @ (BranchId.IsFailureBoundary(_))) :: _ =>
+        case Segment(_, branchId @ BranchId.IsFailureBoundary(_)) :: _ =>
           callToEvent(Some(branchId), failPosition)
 
         case Segment(_, BranchId.Lock) :: prefix =>
@@ -240,6 +240,11 @@ final class OrderEventSource(state: StateView)
   private def awokeEvent(order: Order[Order.State]): Option[OrderActorEvent] =
     ((order.isDetached || order.isAttached) && order.isState[Order.DelayedAfterError]) ?
       OrderAwoke  // AgentOrderKeeper has already checked time
+
+  private def orderMarkKeyedEvent(order: Order[Order.State])
+  : Option[List[KeyedEvent[OrderActorEvent]]] =
+    orderMarkEvent(order)
+      .map(_.map(order.id <-: _))
 
   private def orderMarkEvent(order: Order[Order.State]): Option[List[OrderActorEvent]] =
     if (order.deleteWhenTerminated && order.isState[IsTerminated] && order.parent.isEmpty)
@@ -460,11 +465,11 @@ final class OrderEventSource(state: StateView)
   private def applySingleMoveInstruction(order: Order[Order.State]): Checked[Option[Position]] =
     for {
       workflow <- idToWorkflow.checked(order.workflowId)
-      maybePosition <- (
+      maybePosition <-
         if (workflow.isOrderAtStopPosition(order))
           Right(None)
         else
-          executorService.nextPosition(workflow.instruction(order.position), order, state))
+          executorService.nextPosition(workflow.instruction(order.position), order, state)
     } yield maybePosition
 
   private def instruction_[A <: Instruction: ClassTag](orderId: OrderId): Checked[A] = {
