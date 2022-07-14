@@ -67,7 +67,7 @@ extends JJournaledState[JControllerState, ControllerState]
 
   /** Looks up an AgentRef Item. */
   @Nonnull
-  def pathToAgentRef: java.util.Map[AgentPath, JAgentRef] =
+  def pathToAgentRef: JMap[AgentPath, JAgentRef] =
     asScala.pathToUnsignedSimple(AgentRef)
       .mapValues(JAgentRef(_))
       .asJava
@@ -80,51 +80,51 @@ extends JJournaledState[JControllerState, ControllerState]
 
   /** Looks up an AgentRefState. */
   @Nonnull
-  def pathToAgentRefState: java.util.Map[AgentPath, JAgentRefState] =
+  def pathToAgentRefState: JMap[AgentPath, JAgentRefState] =
     asScala.keyTo(AgentRefState)
       .mapValues(JAgentRefState.apply)
       .asJava
 
   @Nonnull
-  def idToSubagentItem: java.util.Map[SubagentId, JSubagentItem] =
+  def idToSubagentItem: JMap[SubagentId, JSubagentItem] =
     asScala.pathToUnsignedSimple(SubagentItem)
       .mapValues(JSubagentItem(_))
       .asJava
 
   @Nonnull
-  def idToSubagentItemState: java.util.Map[SubagentId, JSubagentItemState] =
+  def idToSubagentItemState: JMap[SubagentId, JSubagentItemState] =
     asScala.keyTo(SubagentItemState)
       .mapValues(JSubagentItemState(_))
       .asJava
 
   @Nonnull
-  def idToSubagentSelection: java.util.Map[SubagentSelectionId, JSubagentSelection] =
+  def idToSubagentSelection: JMap[SubagentSelectionId, JSubagentSelection] =
     asScala.pathToUnsignedSimple(SubagentSelection)
       .mapValues(JSubagentSelection(_))
       .asJava
 
   /** Looks up a Lock item in the current version. */
   @Nonnull
-  def pathToLock: java.util.Map[LockPath, JLock] =
+  def pathToLock: JMap[LockPath, JLock] =
     asScala.keyToItem(Lock)
       .mapValues(JLock.apply)
       .asJava
 
   /** Looks up a LockState. */
   @Nonnull
-  def pathToLockState: java.util.Map[LockPath, JLockState] =
+  def pathToLockState: JMap[LockPath, JLockState] =
     asScala.keyTo(LockState)
       .mapValues(JLockState.apply)
       .asJava
 
   /** Looks up a Board item. */
   @Nonnull
-  def pathToBoard: java.util.Map[BoardPath, JBoard] =
+  def pathToBoard: JMap[BoardPath, JBoard] =
     keyToItem(Board, JBoard.apply)
 
   /** Looks up a BoardState. */
   @Nonnull
-  def pathToBoardState: java.util.Map[BoardPath, JBoardState] =
+  def pathToBoardState: JMap[BoardPath, JBoardState] =
     asScala.keyTo(BoardState)
       .view
       .mapValues(JBoardState.apply)
@@ -141,12 +141,12 @@ extends JJournaledState[JControllerState, ControllerState]
       .asJava
 
   @Nonnull
-  def pathToCalendar: java.util.Map[CalendarPath, JCalendar] =
+  def pathToCalendar: JMap[CalendarPath, JCalendar] =
     keyToItem(Calendar, JCalendar.apply)
 
   /** Looks up a JFileWatch. */
   @Nonnull
-  def pathToFileWatch: java.util.Map[OrderWatchPath, JFileWatch] =
+  def pathToFileWatch: JMap[OrderWatchPath, JFileWatch] =
     keyToItem(FileWatch, JFileWatch.apply)
 
   @deprecated("Use pathToFileWatch.values instead", "2.3")
@@ -161,12 +161,12 @@ extends JJournaledState[JControllerState, ControllerState]
 
   /** Looks up a JJobResource. */
   @Nonnull
-  def pathToJobResource: java.util.Map[JobResourcePath, JJobResource] =
+  def pathToJobResource: JMap[JobResourcePath, JJobResource] =
     keyToItem(JobResource, JJobResource.apply)
 
   @Nonnull
   private def keyToItem[I <: InventoryItem, J](I: InventoryItem.Companion[I], toJava: I => J)
-  : java.util.Map[I.Key, J] =
+  : JMap[I.Key, J] =
     asScala.keyToItem(I)
       .view
       .mapValues(toJava)
@@ -205,7 +205,7 @@ extends JJournaledState[JControllerState, ControllerState]
     asScala.idToOrder.keySet.asJava
 
   @Nonnull
-  def idToOrder: java.util.Map[OrderId, JOrder] =
+  def idToOrder: JMap[OrderId, JOrder] =
     asScala.idToOrder
       .view
       .mapValues(JOrder.apply)
@@ -268,7 +268,7 @@ extends JJournaledState[JControllerState, ControllerState]
 
   @Nonnull
   def ordersToObstacles(@Nonnull orderIds: java.lang.Iterable[OrderId], @Nonnull now: Instant)
-  : VEither[Problem, java.util.Map[OrderId, java.util.Set[JOrderObstacle]]] =
+  : VEither[Problem, JMap[OrderId, java.util.Set[JOrderObstacle]]] =
     orderObstacleCalculator
       .ordersToObstacles(orderIds.asScala, now.toTimestamp)
       .map(_

@@ -4,7 +4,6 @@ import com.softwaremill.diffx.generic.auto._
 import js7.base.auth.UserId
 import js7.base.circeutils.CirceUtils._
 import js7.base.crypt.silly.SillySigner
-import js7.base.log.Logger
 import js7.base.problem.Checked._
 import js7.base.time.ScalaTime._
 import js7.base.time.{Timestamp, Timezone}
@@ -447,7 +446,6 @@ final class ControllerStateTest extends AsyncFreeSpec
 
 object ControllerStateTest
 {
-  private val logger = Logger[this.type]
   private val jobResource = JobResource(JobResourcePath("JOB-RESOURCE"))
   private lazy val itemSigner = new ItemSigner(SillySigner.Default, ControllerState.signableItemJsonCodec)
   private lazy val signedJobResource = itemSigner.sign(jobResource)
