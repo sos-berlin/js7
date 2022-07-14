@@ -15,6 +15,7 @@ import scala.annotation.tailrec
 import scala.collection.{Factory, MapView, View, mutable}
 import scala.math.max
 import scala.reflect.ClassTag
+import scala.util.Try
 import scala.util.chaining._
 
 object ScalaUtils
@@ -303,10 +304,39 @@ object ScalaUtils
       /** concat reversly, left side has overrides right side. */
       def orElseMapView[V1 >: V](other: MapView[K, V1]): MapView[K, V1] =
         new MapView[K, V1] {
-          def get(key: K) = mapView.get(key) orElse other.get(key)
+          def get(key: K) =
+            mapView.get(key) orElse other.get(key)
 
           def iterator =
             mapView.iterator ++ other.filterKeys(k => !mapView.contains(k))
+        }
+
+      /** K1 and K must be isomorphic, fromK1(toK1(k)) == k), maybe keeping the ordering.
+       * @param fromK1 A NonFatal exception will be ignored
+       */
+      def mapIsomorphic[K1, V1](toK1: K => K1, toV1: V => V1)(fromK1: K1 => K): MapView[K1, V1] =
+        new MapView[K1, V1] {
+          def get(k1: K1) =
+            tryFromK1(k1)
+              .flatMap(mapView.get)
+              .map(toV1)
+
+          override def contains(k1: K1) =
+            tryFromK1(k1)
+              .map(mapView.contains)
+              .getOrElse(false)
+
+          private def tryFromK1(k1: K1) =
+            Try { fromK1(k1) }.toOption
+
+          def iterator =
+            mapView.iterator.map { case (k, v) => toK1(k) -> toV1(v) }
+
+          override def keys =
+            mapView.keys.view.map(toK1)
+
+          override def values =
+            mapView.values.view.map(toV1)
         }
     }
 

@@ -307,6 +307,32 @@ final class ScalaUtilsTest extends AnyFreeSpec
       assert(c.toSeq == Seq(1 -> "ONE", 2 -> "TWO", 3 -> "tri"))
       assert(c.toMap == Map(1 -> "ONE", 2 -> "TWO", 3 -> "tri"))
     }
+
+    "mapIsomorphic" in {
+      val morphed: MapView[String, Boolean] =
+        Map(1 -> "true", 2 -> "false")
+          .view
+          .mapIsomorphic(_.toString, _.toBoolean)(_.toInt)
+
+      assert(morphed.toMap == Map(
+        "1" -> true,
+        "2" -> false))
+
+      assert(morphed.get("?") == None)
+      assert(morphed("1") == true)
+      assert(morphed("2") == false)
+
+      assert(!morphed.contains("?"))
+      assert(!morphed.contains("0"))
+      assert(morphed.contains("1"))
+      assert(morphed.contains("2"))
+
+      assert(morphed.keys.toSeq == Seq("1", "2"))
+
+      assert(morphed.keySet == Set("1", "2"))
+
+      assert(morphed.values.toSeq == Seq(true, false))
+    }
   }
 
   "View" - {
