@@ -466,7 +466,7 @@ final case class ControllerStateExecutor private(
     }
 
   private def detach(itemKey: InventoryItemKey, agentPath: AgentPath): ItemAttachedStateEvent =
-    if (controllerState.keyToItemState_.contains(agentPath))
+    if (controllerState.keyToUnsignedItemState_.contains(agentPath))
       ItemDetachable(itemKey, agentPath)
     else // shortcut in case, the Agent has been deleted (reset)
       ItemDetached(itemKey, agentPath)

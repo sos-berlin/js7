@@ -19,7 +19,7 @@ import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, ItemContainer, JournalEvent, JournalState, KeyedEvent, KeyedEventTypedJsonCodec, SignedItemContainer, SnapshotableState}
 import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached, ItemDetachingFromMe, SignedItemAttachedToMe}
 import js7.data.item.SignedItemEvent.SignedItemAdded
-import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemState, SignableItem, SignableItemKey, UnsignedItem, UnsignedItemKey, UnsignedSimpleItemPath, UnsignedSimpleItemState}
+import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemState, SignableItem, SignableItemKey, UnsignedItem, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItemPath, UnsignedSimpleItemState}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchEvent, OrderWatchPath}
@@ -37,7 +37,7 @@ final case class AgentState(
   eventId: EventId,
   standards: SnapshotableState.Standards,
   meta: AgentMetaState,
-  keyToItemState_ : Map[InventoryItemKey, InventoryItemState],
+  keyToUnsignedItemState_ : Map[UnsignedItemKey, UnsignedItemState],
   idToOrder: Map[OrderId, Order[Order.State]],
   idToWorkflow: Map[WorkflowId, Workflow/*reduced for this Agent!!!*/],
   pathToJobResource: Map[JobResourcePath, JobResource],
@@ -71,7 +71,7 @@ with SnapshotableState[AgentState]
       1 +
       idToWorkflow.size +
       idToOrder.size +
-      keyToItemState_.size +
+      keyToUnsignedItemState_.size +
       fw.estimatedExtraSnapshotSize +
       pathToJobResource.size
       //keyToSignedItem.size +  // == idToWorkflow.size + pathToJobResource.size
@@ -149,7 +149,7 @@ with SnapshotableState[AgentState]
           case ItemAttachedToMe(subagentItem: SubagentItem) =>
             // May replace an existing SubagentItem
             Right(copy(
-              keyToItemState_ = keyToItemState_.updated(subagentItem.id,
+              keyToUnsignedItemState_ = keyToUnsignedItemState_.updated(subagentItem.id,
                 keyTo(SubagentItemState)
                   .get(subagentItem.id)
                   .match_ {
@@ -165,7 +165,7 @@ with SnapshotableState[AgentState]
                    _: SubagentSelection =>
                 // May replace an existing Item
                 Right(copy(
-                  keyToItemState_ = keyToItemState_.updated(item.key, item.toInitialItemState)))
+                  keyToUnsignedItemState_ = keyToUnsignedItemState_.updated(item.key, item.toInitialItemState)))
 
               case _ => eventNotApplicable(keyedEvent)
             }
@@ -189,14 +189,14 @@ with SnapshotableState[AgentState]
                     keyToSignedItem = keyToSignedItem - path,
                     pathToJobResource = pathToJobResource - path)
 
-              case itemKey: InventoryItemKey =>
+              case itemKey: UnsignedItemKey =>
                 itemKey match {
                   case _: WorkflowPathControlPath | WorkflowControlId.as(_) |
                        _: CalendarPath |
                        _: SubagentId | _: SubagentSelectionId =>
-                    for (_ <- keyToItemState_.checked(itemKey)) yield
+                    for (_ <- keyToUnsignedItemState_.checked(itemKey)) yield
                       copy(
-                        keyToItemState_ = keyToItemState_ - itemKey)
+                        keyToUnsignedItemState_ = keyToUnsignedItemState_ - itemKey)
                   case _ =>
                     eventNotApplicable(keyedEvent)
                 }
@@ -207,7 +207,7 @@ with SnapshotableState[AgentState]
           case ItemDetachingFromMe(id: SubagentId) =>
             for (subagentItemState <- keyTo(SubagentItemState).checked(id)) yield
               copy(
-                keyToItemState_ = keyToItemState_.updated(id,
+                keyToUnsignedItemState_ = keyToUnsignedItemState_.updated(id,
                   subagentItemState.copy(isDetaching = true)))
 
           case _ => applyStandardEvent(keyedEvent)
@@ -215,7 +215,7 @@ with SnapshotableState[AgentState]
 
       case KeyedEvent(subagentId: SubagentId, event: SubagentItemStateEvent) =>
         event match {
-          case SubagentShutdown if !keyToItemState_.contains(subagentId) =>
+          case SubagentShutdown if !keyToUnsignedItemState_.contains(subagentId) =>
             // May arrive when SubagentItem has been deleted
             Right(this)
 
@@ -224,7 +224,7 @@ with SnapshotableState[AgentState]
               subagentItemState <- keyTo(SubagentItemState).checked(subagentId)
               subagentItemState <- subagentItemState.applyEvent(event)
             } yield copy(
-              keyToItemState_ = keyToItemState_.updated(subagentId, subagentItemState))
+              keyToUnsignedItemState_ = keyToUnsignedItemState_.updated(subagentId, subagentItemState))
         }
 
       case KeyedEvent(_: NoKey, AgentDedicated(subagentId, agentPath, agentRunId, controllerId)) =>
@@ -237,7 +237,7 @@ with SnapshotableState[AgentState]
       case _ => applyStandardEvent(keyedEvent)
     }
 
-  def keyToItemState = keyToItemState_.view
+  def keyToUnsignedItemState = keyToUnsignedItemState_.view
 
   def idToSubagentItemState = keyTo(SubagentItemState)
 
@@ -259,7 +259,7 @@ with SnapshotableState[AgentState]
     else
       Right(copy(
         idToOrder = idToOrder -- removeOrders ++ orders.map(o => o.id -> o),
-        keyToItemState_ = keyToItemState_
+        keyToUnsignedItemState_ = keyToUnsignedItemState_
           -- removeItemStates ++ addItemStates.map(o => o.path -> o)))
 
   def agentPath = meta.agentPath
@@ -270,13 +270,13 @@ with SnapshotableState[AgentState]
         itemKey match {
           case path: JobResourcePath => pathToJobResource.get(path)
           case WorkflowId.as(id) => idToWorkflow.get(id)
-          case itemKey: UnsignedItemKey => keyToItemState_.get(itemKey).map(_.item)
+          case itemKey: UnsignedItemKey => keyToUnsignedItemState_.get(itemKey).map(_.item)
         }
 
       def iterator: Iterator[(InventoryItemKey, InventoryItem)] =
         pathToJobResource.iterator ++
           idToWorkflow.iterator ++
-          keyToItemState.mapValues(_.item).iterator
+          keyToUnsignedItemState.mapValues(_.item).iterator
     }
 
   def keyToSigned[I <: SignableItem](I: SignableItem.Companion[I]): MapView[I.Key, Signed[I]] =

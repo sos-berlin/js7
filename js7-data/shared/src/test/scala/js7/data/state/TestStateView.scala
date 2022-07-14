@@ -7,7 +7,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.board.BoardPath
 import js7.data.controller.ControllerId
 import js7.data.event.{Event, EventDrivenState, KeyedEvent}
-import js7.data.item.{InventoryItem, InventoryItemKey, InventoryItemState, UnsignedSimpleItemPath, UnsignedSimpleItemState}
+import js7.data.item.{InventoryItem, InventoryItemKey, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItemPath, UnsignedSimpleItemState}
 import js7.data.lock.LockPath
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
@@ -18,7 +18,7 @@ case class TestStateView(
   controllerId: ControllerId = ControllerId("CONTROLLER"),
   idToOrder: Map[OrderId, Order[Order.State]] = new NotImplementedMap,
   idToWorkflow: PartialFunction[WorkflowId, Workflow] = new NotImplementedMap,
-  keyToItemState_ : Map[InventoryItemKey, InventoryItemState] = Map.empty)
+  keyToUnsignedItemState_ : Map[UnsignedItemKey, UnsignedItemState] = Map.empty)
 extends EventDrivenStateView[TestStateView, Event]
 {
   val companion = TestStateView
@@ -36,15 +36,15 @@ extends EventDrivenStateView[TestStateView, Event]
   def workflowPathToId(workflowPath: WorkflowPath) =
     Left(Problem.pure("workflowPathToId is not implemented"))
 
-  def keyToItemState = keyToItemState_.view
+  def keyToUnsignedItemState = keyToUnsignedItemState_.view
 
   lazy val keyToItem: MapView[InventoryItemKey, InventoryItem] =
     new MapView[InventoryItemKey, InventoryItem] {
       def get(itemKey: InventoryItemKey): Option[InventoryItem] =
         itemKey match {
           case WorkflowId.as(id) => idToWorkflow.get(id)
-          case path: LockPath => keyToItemState.get(path).map(_.item)
-          case path: BoardPath => keyToItemState.get(path).map(_.item)
+          case path: LockPath => keyToUnsignedItemState.get(path).map(_.item)
+          case path: BoardPath => keyToUnsignedItemState.get(path).map(_.item)
         }
 
       def iterator: Iterator[(InventoryItemKey, InventoryItem)] =
@@ -61,9 +61,9 @@ extends EventDrivenStateView[TestStateView, Event]
     var x = this
     if (removeOrders.nonEmpty) x = x.copy(idToOrder = idToOrder -- removeOrders)
     if (orders.nonEmpty) x = x.copy(idToOrder = idToOrder ++ orders.map(o => o.id -> o))
-    if (removeItemStates.nonEmpty) x = x.copy(keyToItemState_ = keyToItemState_ -- removeItemStates)
+    if (removeItemStates.nonEmpty) x = x.copy(keyToUnsignedItemState_ = keyToUnsignedItemState_ -- removeItemStates)
     if (addItemStates.nonEmpty) x = x.copy(
-      keyToItemState_ = keyToItemState_ ++ addItemStates.map(o => o.path -> o))
+      keyToUnsignedItemState_ = keyToUnsignedItemState_ ++ addItemStates.map(o => o.path -> o))
     Right(x)
   }
 }
@@ -80,5 +80,5 @@ object TestStateView extends EventDrivenState.Companion[TestStateView, Event]
     isAgent, controllerId,
     idToOrder = orders.fold_(new NotImplementedMap, _.toKeyedMap(_.id)),
     idToWorkflow = workflows.fold_(new NotImplementedMap, _.toKeyedMap(_.id)),
-    keyToItemState_ = itemStates.toKeyedMap(_.path))
+    keyToUnsignedItemState_ = itemStates.toKeyedMap(_.path))
 }

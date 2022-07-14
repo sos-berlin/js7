@@ -27,7 +27,7 @@ import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detach
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.VersionedControlEvent.{VersionedControlAdded, VersionedControlChanged}
-import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemPath, InventoryItemState, ItemAttachedState, ItemRevision, Repo, SignableItem, SignableItemKey, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, SimpleItem, SimpleItemPath, UnsignedSimpleItem, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, UnsignedSimpleItemState, VersionedControlEvent, VersionedControlId_, VersionedEvent, VersionedItemId_, VersionedItemPath}
+import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemPath, ItemAttachedState, ItemRevision, Repo, SignableItem, SignableItemKey, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, SimpleItem, SimpleItemPath, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItem, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, UnsignedSimpleItemState, VersionedControlEvent, VersionedControlId_, VersionedEvent, VersionedItemId_, VersionedItemPath}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.OrderEvent.OrderNoticesExpected
@@ -49,7 +49,7 @@ final case class ControllerState(
   eventId: EventId,
   standards: SnapshotableState.Standards,
   controllerMetaState: ControllerMetaState,
-  keyToItemState_ : Map[InventoryItemKey, InventoryItemState],
+  keyToUnsignedItemState_ : Map[UnsignedItemKey, UnsignedItemState],
   repo: Repo,
   pathToSignedSimpleItem: Map[SignableSimpleItemPath, Signed[SignableSimpleItem]],
   agentAttachments: ClientAttachments[AgentPath],
@@ -73,7 +73,7 @@ with SnapshotableState[ControllerState]
     standards.snapshotSize +
     controllerMetaState.isDefined.toInt +
     repo.estimatedEventCount +
-    keyToItemState_.size +
+    keyToUnsignedItemState_.size +
     keyTo(OrderWatchState).values.view.map(_.estimatedSnapshotSize - 1).sum +
     keyTo(BoardState).values.view.map(_.noticeCount).sum +
     pathToSignedSimpleItem.size +
@@ -136,7 +136,7 @@ with SnapshotableState[ControllerState]
                     .flatMap { case (agentRef, maybeSubagentItem) =>
                       for {
                         pathToItemState <-
-                          keyToItemState_.insert(agentRef.path, AgentRefState(agentRef))
+                          keyToUnsignedItemState_.insert(agentRef.path, AgentRefState(agentRef))
                         pathToItemState <-
                           maybeSubagentItem match {
                             case None => Right(pathToItemState)
@@ -144,15 +144,15 @@ with SnapshotableState[ControllerState]
                               .insert(subagentItem.id, SubagentItemState.initial(subagentItem))
                           }
                       } yield copy(
-                        keyToItemState_ = pathToItemState)
+                        keyToUnsignedItemState_ = pathToItemState)
                     }
 
                 case orderWatch: OrderWatch =>
                   ow.addOrderWatch(orderWatch.toInitialItemState)
 
                 case item: UnsignedSimpleItem =>
-                  for (o <- keyToItemState_.insert(item.path, item.toInitialItemState)) yield
-                    copy(keyToItemState_ = o)
+                  for (o <- keyToUnsignedItemState_.insert(item.path, item.toInitialItemState)) yield
+                    copy(keyToUnsignedItemState_ = o)
               }
 
             case UnsignedSimpleItemChanged(item) =>
@@ -168,7 +168,7 @@ with SnapshotableState[ControllerState]
                         updatedAgentRef <- agentRefState.updateItem(agentRef)
                       } yield
                         copy(
-                          keyToItemState_ = keyToItemState_
+                          keyToUnsignedItemState_ = keyToUnsignedItemState_
                             .updated(agentRef.path, updatedAgentRef)
                             .pipeMaybe(maybeSubagentItem)((pathToItemState, changedSubagentItem) =>
                               // COMPATIBLE with v2.2.2
@@ -186,12 +186,12 @@ with SnapshotableState[ControllerState]
 
                 case item: UnsignedSimpleItem =>
                   for {
-                    itemState <- keyToItemState_.checked(item.path)
+                    itemState <- keyToUnsignedItemState_.checked(item.path)
                     updated <- itemState.updateItem(item.asInstanceOf[itemState.companion.Item])
                   } yield
                     copy(
-                      keyToItemState_ =
-                        keyToItemState_.updated(item.path, updated))
+                      keyToUnsignedItemState_ =
+                        keyToUnsignedItemState_.updated(item.path, updated))
               }
           }
 
@@ -215,13 +215,13 @@ with SnapshotableState[ControllerState]
         case event: VersionedControlEvent =>
           event match {
             case VersionedControlAdded(item) =>
-              keyToItemState_
+              keyToUnsignedItemState_
                 .insert(item.key, item.toInitialItemState)
-                .map(o => copy(keyToItemState_ = o))
+                .map(o => copy(keyToUnsignedItemState_ = o))
 
             case VersionedControlChanged(item) =>
               Right(copy(
-                keyToItemState_ = keyToItemState_.updated(item.key, item.toInitialItemState)))
+                keyToUnsignedItemState_ = keyToUnsignedItemState_.updated(item.key, item.toInitialItemState)))
           }
 
         case event: BasicItemEvent.ForClient =>
@@ -252,13 +252,13 @@ with SnapshotableState[ControllerState]
                   Right(updated.copy(
                     pathToSignedSimpleItem = pathToSignedSimpleItem - jobResourcePath))
 
-                case key: InventoryItemKey =>
+                case key: UnsignedItemKey =>
                   key match {
                     case _: AgentPath | _: SubagentId | _: SubagentSelectionId |
                          _: LockPath | _: BoardPath | _: CalendarPath |
                          _: WorkflowPathControlPath | WorkflowControlId.as(_) =>
                       Right(updated.copy(
-                        keyToItemState_ = keyToItemState_ - key))
+                        keyToUnsignedItemState_ = keyToUnsignedItemState_ - key))
                     case _ =>
                       Left(Problem(s"A '${ itemKey.companion.itemTypeName }' is not deletable"))
                   }
@@ -278,7 +278,7 @@ with SnapshotableState[ControllerState]
         agentRefState <- keyTo(AgentRefState).checked(agentPath)
         agentRefState <- agentRefState.applyEvent(event)
       } yield copy(
-        keyToItemState_ = keyToItemState_ + (agentPath -> agentRefState))
+        keyToUnsignedItemState_ = keyToUnsignedItemState_ + (agentPath -> agentRefState))
 
     case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
       applyOrderEvent(orderId, event)
@@ -288,21 +288,21 @@ with SnapshotableState[ControllerState]
         boardState <- keyTo(BoardState).checked(boardPath)
         o <- boardState.addNotice(notice.toNotice(boardPath))
       } yield copy(
-        keyToItemState_ = keyToItemState_.updated(o.path, o))
+        keyToUnsignedItemState_ = keyToUnsignedItemState_.updated(o.path, o))
 
     case KeyedEvent(boardPath: BoardPath, NoticeDeleted(noticeId)) =>
       for {
         boardState <- keyTo(BoardState).checked(boardPath)
         o <- boardState.removeNotice(noticeId)
       } yield copy(
-        keyToItemState_ = keyToItemState_.updated(o.path, o))
+        keyToUnsignedItemState_ = keyToUnsignedItemState_.updated(o.path, o))
 
     case KeyedEvent(orderWatchPath: OrderWatchPath, event: OrderWatchEvent) =>
       ow.onOrderWatchEvent(orderWatchPath <-: event)
 
     case KeyedEvent(subagentId: SubagentId, event: SubagentItemStateEvent) =>
       event match {
-        case SubagentShutdown if !keyToItemState_.contains(subagentId) =>
+        case SubagentShutdown if !keyToUnsignedItemState_.contains(subagentId) =>
           // May arrive when SubagentItem has been deleted
           Right(this)
 
@@ -311,7 +311,7 @@ with SnapshotableState[ControllerState]
             o <- keyTo(SubagentItemState).checked(subagentId)
             o <- o.applyEvent(event)
           } yield copy(
-            keyToItemState_ = keyToItemState_.updated(subagentId, o))
+            keyToUnsignedItemState_ = keyToUnsignedItemState_.updated(subagentId, o))
       }
 
     case KeyedEvent(_, _: ControllerShutDown) =>
@@ -324,19 +324,63 @@ with SnapshotableState[ControllerState]
   }
 
   /** The Agents for each WorkflowPathControl which have not attached the current itemRevision. */
-  def workflowPathControlToIgnorantAgents: View[(WorkflowPathControlPath, Set[AgentPath])] =
-    keyTo(WorkflowPathControl).values
-      .view
-      .flatMap { workflowPathControl =>
-        val agentPaths = agentAttachments.itemToDelegateToAttachedState
+  def workflowPathControlToIgnorantAgents: MapView[WorkflowPathControlPath, Set[AgentPath]] =
+    new MapView[WorkflowPathControlPath, Set[AgentPath]] {
+      private val pathToWorkflowPathControl = keyTo(WorkflowPathControl)
+
+      def get(key: WorkflowPathControlPath): Option[Set[AgentPath]] =
+        pathToWorkflowPathControl.get(key).map(attachableToAgents)
+
+      def iterator: Iterator[(WorkflowPathControlPath, Set[AgentPath])] =
+        pathToWorkflowPathControl.iterator
+          .flatMap { case (k, v) =>
+            val agents = attachableToAgents(v)
+            agents.nonEmpty ? (k -> agents)
+          }
+
+      override def values: Iterable[Set[AgentPath]] =
+        pathToWorkflowPathControl.values.view.map(attachableToAgents)
+
+      private def attachableToAgents(workflowPathControl: WorkflowPathControl): Set[AgentPath] =
+        itemToAgentToAttachedState
           .get(workflowPathControl.path)
           .view
           .flatMap(_.collect {
             case (agentPath, Attachable) => agentPath
           })
           .toSet
-        agentPaths.nonEmpty ? (workflowPathControl.path -> agentPaths)
-      }
+    }
+
+  /** The Agents for each InventoryItemKey which have not attached the current Item. */
+  def itemToIgnorantAgents[I <: InventoryItem](I: InventoryItem.Companion[I])
+  : MapView[I.Key, Set[AgentPath]] =
+    filteredItemToIgnorantAgents[I.Key](_.companion eq I.Key)
+
+  def anyItemToIgnorantAgents: MapView[InventoryItemKey, Set[AgentPath]] =
+    filteredItemToIgnorantAgents[InventoryItemKey](_ => true)
+
+  /** The Agents for each InventoryItemKey which have not attached the current Item. */
+  private def filteredItemToIgnorantAgents[K <: InventoryItemKey](filter_ : InventoryItemKey => Boolean)
+  : MapView[K, Set[AgentPath]] =
+    new MapView[K, Set[AgentPath]] {
+      def get(key: K): Option[Set[AgentPath]] =
+        itemToAgentToAttachedState.get(key).map(toAgents)
+
+      def iterator: Iterator[(K, Set[AgentPath])] =
+        itemToAgentToAttachedState.iterator
+          .flatMap {
+            case (k: K @unchecked, v) if filter_(k) =>
+              val agents = toAgents(v)
+              agents.nonEmpty ? (k -> agents)
+            case _ => None
+          }
+
+      private def toAgents(agentToAttachedState: Map[AgentPath, ItemAttachedState])
+      : Set[AgentPath] =
+        agentToAttachedState
+          .collect { case (agentPath, Attachable) => agentPath }
+          .toSet
+    }
 
   def singleItemToIgnorantAgents(itemKey: InventoryItemKey): Set[AgentPath] =
     agentAttachments.itemToDelegateToAttachedState
@@ -397,7 +441,7 @@ with SnapshotableState[ControllerState]
     }
     for (controllerState <- result) {
       result = Right(controllerState.copy(
-        keyToItemState_ = keyToItemState_
+        keyToUnsignedItemState_ = keyToUnsignedItemState_
           -- removeItemStates
           ++ addItemStates.view.map(o => o.path -> o)))
     }
@@ -581,8 +625,8 @@ with SnapshotableState[ControllerState]
       def get(itemKey: InventoryItemKey) =
         itemKey match {
           case id: VersionedItemId_ => repo.anyIdToItem(id).toOption
+          case key: VersionedControlId_ => keyToUnsignedItemState_.get(key).map(_.item)
           case path: SimpleItemPath => pathToItem.get(path)
-          case key: VersionedControlId_ => keyToItemState_.get(key).map(_.item)
         }
 
       def iterator = items.map(o => o.key -> o).iterator
@@ -590,14 +634,14 @@ with SnapshotableState[ControllerState]
       override def values = items
     }
 
-  def keyToItemState: MapView[InventoryItemKey, InventoryItemState] =
-    keyToItemState_.view
+  def keyToUnsignedItemState: MapView[UnsignedItemKey, UnsignedItemState] =
+    keyToUnsignedItemState_.view
 
   private lazy val pathToItem: MapView[InventoryItemPath, InventoryItem] =
     new MapView[InventoryItemPath, InventoryItem] {
       def get(path: InventoryItemPath): Option[InventoryItem] = {
         path match {
-          case path: UnsignedSimpleItemPath => keyToItemState_.get(path).map(_.item)
+          case path: UnsignedSimpleItemPath => keyToUnsignedItemState_.get(path).map(_.item)
           case path: SignableSimpleItemPath => pathToSignedSimpleItem.get(path).map(_.value)
           case path: VersionedItemPath => repo.pathToVersionedItem(path).toOption
         }
@@ -609,16 +653,16 @@ with SnapshotableState[ControllerState]
     }
 
   def items: View[InventoryItem] =
-    simpleItems ++ repo.items
+    keyToUnsignedItemState_.values.view.map(_.item) ++
+      signableItems
 
   def simpleItems: View[SimpleItem] =
-    unsignedSimpleItems ++ pathToSignedSimpleItem.values.view.map(_.value)
+    unsignedSimpleItems ++ signableSimpleItems
 
   private def unsignedSimpleItems: View[UnsignedSimpleItem] =
-    unsignedSimpleItemStates.map(_.item)
-
-  private def unsignedSimpleItemStates: View[UnsignedSimpleItemState] =
-    keyToItemState_.values.view.collect { case o: UnsignedSimpleItemState => o }
+    keyToUnsignedItemState_.values.view
+      .collect { case o: UnsignedSimpleItemState => o }
+      .map(_.item)
 
   lazy val idToWorkflow: PartialFunction[WorkflowId, Workflow] =
     new PartialFunction[WorkflowId, Workflow] {
@@ -650,6 +694,12 @@ with SnapshotableState[ControllerState]
       def iterator: Iterator[(SignableItemKey, Signed[SignableItem])] =
         signedItems.iterator.map(o => o.value.key -> o)
     }
+
+  def signableSimpleItems: View[SignableSimpleItem] =
+    pathToSignedSimpleItem.values.view.map(_.value)
+
+  private def signableItems: View[SignableItem] =
+    signedItems.view.map(_.value)
 
   private def signedItems: View[Signed[SignableItem]] =
     pathToSignedSimpleItem.values.view ++

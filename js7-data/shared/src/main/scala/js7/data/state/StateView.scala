@@ -8,7 +8,7 @@ import js7.base.utils.ScalaUtils.syntax._
 import js7.data.board.{BoardPath, BoardState}
 import js7.data.controller.ControllerId
 import js7.data.event.ItemContainer
-import js7.data.item.{InventoryItemKey, InventoryItemState, UnsignedSimpleItem}
+import js7.data.item.{InventoryItemState, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItem}
 import js7.data.job.{JobKey, JobResource}
 import js7.data.order.Order.{FailedInFork, Processing}
 import js7.data.order.OrderEvent.OrderNoticesExpected
@@ -51,25 +51,20 @@ trait StateView extends ItemContainer
   final def pathToWorkflowPathControl: MapView[WorkflowPathControlPath, WorkflowPathControl] =
     keyTo(WorkflowPathControl).mapValues(_.item)
 
-  def keyToItemState: MapView[InventoryItemKey, InventoryItemState]
+  def keyToUnsignedItemState: MapView[UnsignedItemKey, UnsignedItemState]
 
   final def keyTo[A <: InventoryItemState](A: InventoryItemState.Companion[A])
   : MapView[A.Key, A] =
-    keyToItemState
+    keyToUnsignedItemState
       .filter { case (_, v) => v.companion eq A }
       .asInstanceOf[MapView[A.Key, A]]
 
   final def pathToUnsignedSimple[A <: UnsignedSimpleItem](A: UnsignedSimpleItem.Companion[A])
   : MapView[A.Path, A] =
-    keyToItemState
+    keyToUnsignedItemState
       .filter { case (_, v) => v.item.companion eq A }
       .mapValues(_.item)
       .asInstanceOf[MapView[A.Path, A]]
-
-  //final def pathToCheckedItem[P <: UnsignedSimpleItemPath](path: P)
-  //  (implicit P: UnsignedSimpleItemPath.Companion[P])
-  //: Checked[P.Item] =
-  //  keyToItemState.checked(path).asInstanceOf[Checked[P.Item]]
 
   def availableNotices(expectedSeq: Iterable[OrderNoticesExpected.Expected]): Set[BoardPath] =
     expectedSeq

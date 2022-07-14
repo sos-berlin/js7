@@ -25,5 +25,7 @@ object UnsignedItem
 
     type Path <: UnsignedItemPath
     val Path: UnsignedItemPath.Companion[Path]
+
+    type ItemState <: UnsignedItemState
   }
 }

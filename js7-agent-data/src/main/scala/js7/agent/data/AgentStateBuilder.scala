@@ -23,7 +23,7 @@ extends SnapshotableStateBuilder[AgentState]
   private var _journalState = JournalState.empty
   private var _eventId = EventId.BeforeFirst
   private var agentMetaState = AgentMetaState.empty
-  private val keyToItemState = mutable.Map.empty[UnsignedItemKey, UnsignedItemState]
+  private val keyToUnsignedItemState = mutable.Map.empty[UnsignedItemKey, UnsignedItemState]
   private val idToOrder = mutable.Map.empty[OrderId, Order[Order.State]]
   private val idToWorkflow = mutable.Map.empty[WorkflowId, Workflow]
   private val fileWatchStateBuilder = new FileWatchStateHandler.Builder
@@ -53,10 +53,10 @@ extends SnapshotableStateBuilder[AgentState]
       fileWatchStateBuilder.addSnapshot(snapshot)
 
     case itemState: UnsignedItemState =>
-      keyToItemState.insert(itemState.item.key, itemState)
+      keyToUnsignedItemState.insert(itemState.item.key, itemState)
 
     case item: UnsignedSimpleItem =>
-      keyToItemState.insert(item.path, item.toInitialItemState)
+      keyToUnsignedItemState.insert(item.path, item.toInitialItemState)
 
     case o: JournalState =>
       _journalState = o
@@ -82,7 +82,7 @@ extends SnapshotableStateBuilder[AgentState]
       _eventId,
       SnapshotableState.Standards(_journalState, ClusterState.Empty),
       agentMetaState,
-      (keyToItemState.view ++ fileWatchStateBuilder.result).toMap,
+      (keyToUnsignedItemState.view ++ fileWatchStateBuilder.result).toMap,
       idToOrder.toMap,
       idToWorkflow.toMap,
       pathToJobResource.toMap,
