@@ -17,7 +17,7 @@ import js7.data.event.{Event, EventDrivenState, JournalEvent, JournalState, Keye
 import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeleted, ItemDeletionMarked}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
-import js7.data.item.VersionedControlEvent.{VersionedControlAdded, VersionedControlChanged}
+import js7.data.item.UnsignedItemEvent.{UnsignedItemAdded, UnsignedItemChanged}
 import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItemEvent, InventoryItemKey, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItem, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, UnsignedSimpleItemState, VersionedControl, VersionedEvent}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockState}
@@ -269,10 +269,10 @@ with OrderWatchStateHandler[ControllerStateBuilder]
                 }
             }
 
-          case VersionedControlAdded(item) =>
+          case UnsignedItemAdded(item: VersionedControl) =>
             _keyToUnsignedItemState.insert(item.key, item.toInitialItemState)
 
-          case VersionedControlChanged(item) =>
+          case UnsignedItemChanged(item: VersionedControl) =>
             item match {
               case item: WorkflowControl =>
                 _keyToUnsignedItemState(item.key) = keyTo(WorkflowControl)(item.key)

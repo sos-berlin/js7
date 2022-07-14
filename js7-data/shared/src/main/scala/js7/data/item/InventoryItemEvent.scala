@@ -14,6 +14,6 @@ object InventoryItemEvent
     (BasicItemEvent.jsonCodec |
       UnsignedSimpleItemEvent.jsonCodec |
       SignedItemEvent.jsonCodec |
-      VersionedControlEvent.jsonCodec
+      UnsignedItemEvent.jsonCodec
     ).asInstanceOf[TypedJsonCodec[InventoryItemEvent]]
 }

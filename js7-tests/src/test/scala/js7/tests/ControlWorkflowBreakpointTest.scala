@@ -20,8 +20,8 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemDetached}
 import js7.data.item.ItemAttachedState.Attached
 import js7.data.item.ItemOperation.{AddVersion, RemoveVersioned}
-import js7.data.item.VersionedControlEvent.{VersionedControlAdded, VersionedControlAddedOrChanged, VersionedControlChanged}
-import js7.data.item.{ItemRevision, VersionId, VersionedControlEvent}
+import js7.data.item.UnsignedItemEvent.{UnsignedItemAdded, UnsignedItemAddedOrChanged, UnsignedItemChanged}
+import js7.data.item.{ItemRevision, VersionId, UnsignedItemEvent}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderStarted, OrderStdoutWritten, OrderSuspended}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderObstacle, OrderObstacleCalculator, Outcome}
 import js7.data.value.StringValue
@@ -87,7 +87,7 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
         Position(0),
         Position(1)),
       revision = ItemRevision(0),
-      VersionedControlAdded.apply)
+      UnsignedItemAdded.apply)
 
     assert(controllerState.itemToIgnorantAgents(WorkflowControl).isEmpty)
     assert(!controllerState.itemToIgnorantAgents(WorkflowControl).contains(aWorkflowControlId))
@@ -137,7 +137,7 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
       Map(Position(3) -> true),
       Set(Position(0), Position(1), Position(3)),
       ItemRevision(1),
-      VersionedControlChanged.apply)
+      UnsignedItemChanged.apply)
 
     controllerApi.executeCommand(ResumeOrder(aOrderId)).await(99.s).orThrow
 
@@ -188,7 +188,7 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
         Position(3) -> true),
       Set(Position(0), Position(3)),
       ItemRevision(2),
-      VersionedControlChanged.apply)
+      UnsignedItemChanged.apply)
 
     waitForCondition(10.s, 10.ms)(
       controllerState.itemToIgnorantAgents(WorkflowControl).contains(aWorkflowControlId))
@@ -238,7 +238,7 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
         Map(Position(1) -> true),
         Set(Position(1)),
         ItemRevision(0),
-        VersionedControlAdded.apply)
+        UnsignedItemAdded.apply)
       eventWatch.await[ItemAttachable](
         _.event.key == bWorkflowControlId,
         after = eventId)
@@ -272,7 +272,7 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
       Map(Position(1) -> false),
       Set(),
       ItemRevision(1),
-      VersionedControlChanged.apply)
+      UnsignedItemChanged.apply)
     B2SemaphoreJob.continue()
     eventWatch.await[OrderFinished](_.key == bOrderId)
 
@@ -323,7 +323,7 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
     breakpoints: Map[Position, Boolean],
     resultBreakpoints: Set[Position],
     revision: ItemRevision,
-    workflowControlToEvent: WorkflowControl => VersionedControlEvent)
+    workflowControlToEvent: WorkflowControl => UnsignedItemEvent)
     (implicit controllerApi: ControllerApi)
   : EventId = {
     val eventId = eventWatch.lastAddedEventId
@@ -335,7 +335,7 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
           .toMap
           .asJava)
     controllerApi.executeCommand(jCmd.asScala).await(99.s).orThrow
-    val keyedEvents = eventWatch.await[VersionedControlAddedOrChanged](after = eventId)
+    val keyedEvents = eventWatch.await[UnsignedItemAddedOrChanged](after = eventId)
     assert(keyedEvents.map(_.value) == Seq(
       NoKey <-: workflowControlToEvent(
         WorkflowControl(

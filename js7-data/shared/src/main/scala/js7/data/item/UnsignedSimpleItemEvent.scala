@@ -5,6 +5,7 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.Assertions.assertThat
 import js7.data.event.ItemContainer
 
+// May be replaced by UnsignedItemEvent !!!
 sealed trait UnsignedSimpleItemEvent extends InventoryItemEvent
 {
   def key: UnsignedSimpleItemPath

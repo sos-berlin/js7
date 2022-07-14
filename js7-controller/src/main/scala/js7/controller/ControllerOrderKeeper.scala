@@ -61,7 +61,7 @@ import js7.data.execution.workflow.instructions.{InstructionExecutorService, Pos
 import js7.data.item.BasicItemEvent.{ItemAttached, ItemAttachedToMe, ItemDeleted, ItemDetached, ItemDetachingFromMe, SignedItemAttachedToMe}
 import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
-import js7.data.item.VersionedControlEvent.{VersionedControlAdded, VersionedControlChanged}
+import js7.data.item.UnsignedItemEvent.{UnsignedItemAdded, UnsignedItemChanged}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemEvent}
 import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, ItemAddedOrChanged, ItemRevision, SignableItemKey, UnsignedItem, UnsignedSimpleItemPath}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderNoticePosted, OrderNoticePostedV2_3, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
@@ -1028,7 +1028,7 @@ with MainJournalingActor[ControllerState, Event]
           breakpoints = item0.breakpoints -- cmd.removeBreakpoints ++ cmd.addBreakpoints,
           itemRevision = Some(item0.itemRevision.fold(ItemRevision.Initial)(_.next)))
 
-        val event = if (isNew) VersionedControlAdded(item) else VersionedControlChanged(item)
+        val event = if (isNew) UnsignedItemAdded(item) else UnsignedItemChanged(item)
         val keyedEvents = Vector(event)
           .concat(_controllerState.updatedWorkflowControlAttachedEvents(item))
           .map(NoKey <-: _)

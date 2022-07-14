@@ -26,8 +26,8 @@ import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeleted, ItemDe
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detached, NotDetached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
-import js7.data.item.VersionedControlEvent.{VersionedControlAdded, VersionedControlChanged}
-import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemPath, ItemAttachedState, ItemRevision, Repo, SignableItem, SignableItemKey, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, SimpleItem, SimpleItemPath, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItem, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, UnsignedSimpleItemState, VersionedControlEvent, VersionedControlId_, VersionedEvent, VersionedItemId_, VersionedItemPath}
+import js7.data.item.UnsignedItemEvent.{UnsignedItemAdded, UnsignedItemChanged}
+import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemPath, ItemAttachedState, ItemRevision, Repo, SignableItem, SignableItemKey, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, SimpleItem, SimpleItemPath, UnsignedItemEvent, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItem, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, UnsignedSimpleItemState, VersionedControl, VersionedControlId_, VersionedEvent, VersionedItemId_, VersionedItemPath}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.OrderEvent.OrderNoticesExpected
@@ -212,14 +212,14 @@ with SnapshotableState[ControllerState]
               }
           }
 
-        case event: VersionedControlEvent =>
+        case event: UnsignedItemEvent =>
           event match {
-            case VersionedControlAdded(item) =>
+            case UnsignedItemAdded(item: VersionedControl) =>
               keyToUnsignedItemState_
                 .insert(item.key, item.toInitialItemState)
                 .map(o => copy(keyToUnsignedItemState_ = o))
 
-            case VersionedControlChanged(item) =>
+            case UnsignedItemChanged(item: VersionedControl) =>
               Right(copy(
                 keyToUnsignedItemState_ = keyToUnsignedItemState_.updated(item.key, item.toInitialItemState)))
           }
