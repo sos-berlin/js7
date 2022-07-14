@@ -1,6 +1,7 @@
 package js7.tests
 
 import cats.syntax.parallel._
+import js7.data.workflow.WorkflowControlId.syntax._
 import js7.agent.RunningAgent
 import js7.agent.data.event.AgentEvent.AgentReady
 import js7.base.configutils.Configs.HoconStringInterpolator
@@ -9,6 +10,7 @@ import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
+import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
@@ -27,9 +29,9 @@ import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.Prompt
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath}
-import js7.data_for_java.controller.JControllerCommand
-import js7.data_for_java.workflow.JWorkflowId
+import js7.data_for_java.controller.{JControllerCommand, JControllerState}
 import js7.data_for_java.workflow.position.JPosition
+import js7.data_for_java.workflow.{JWorkflowControl, JWorkflowControlId, JWorkflowId}
 import js7.proxy.ControllerApi
 import js7.tests.ControlWorkflowBreakpointTest._
 import js7.tests.jobs.{EmptyJob, SemaphoreJob}
@@ -87,9 +89,24 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
       revision = ItemRevision(0),
       VersionedControlAdded.apply)
 
-    assert(controllerState.workflowPathControlToIgnorantAgents.isEmpty)
-    assert(controllerState
-      .singleItemToIgnorantAgents(aWorkflowControlId).isEmpty)
+    assert(controllerState.itemToIgnorantAgents(WorkflowControl).isEmpty)
+    assert(!controllerState.itemToIgnorantAgents(WorkflowControl).contains(aWorkflowControlId))
+
+    locally {
+      val expectedWorkflowControl = WorkflowControl(
+        aWorkflowControlId,
+        Set(Position(0), Position(1)),
+        itemRevision = Some(ItemRevision(0)))
+
+      assert(controllerState.keyTo(WorkflowControl).toMap == Map(
+        expectedWorkflowControl.id -> expectedWorkflowControl))
+
+      assert(controllerState.keyToItem(WorkflowControl).toMap == Map(
+        expectedWorkflowControl.id -> expectedWorkflowControl))
+
+      assert(JControllerState(controllerState).idToWorkflowControl.asScala.toMap == Map(
+        JWorkflowControlId(expectedWorkflowControl.id) -> JWorkflowControl(expectedWorkflowControl)))
+    }
 
     val aOrderId = OrderId("A")
 
@@ -112,7 +129,7 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
 
     controllerApi.executeCommand(AnswerOrderPrompt(aOrderId)).await(99.s).orThrow
 
-    // Breakpoint at Position(1)
+    // Breakpoint at Position(1) reached
     eventWatch.await[OrderSuspended](_.key == aOrderId, after = eventId)
 
     eventId = setBreakpoints(
@@ -121,9 +138,10 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
       Set(Position(0), Position(1), Position(3)),
       ItemRevision(1),
       VersionedControlChanged.apply)
+
     controllerApi.executeCommand(ResumeOrder(aOrderId)).await(99.s).orThrow
 
-    // Breakpoint at Position(3)
+    // Breakpoint at Position(3) reached
     eventWatch.await[OrderSuspended](_.key == aOrderId, after = eventId)
 
     controllerApi.executeCommand(ResumeOrder(aOrderId)).await(99.s).orThrow
@@ -172,6 +190,15 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
       ItemRevision(2),
       VersionedControlChanged.apply)
 
+    waitForCondition(10.s, 10.ms)(
+      controllerState.itemToIgnorantAgents(WorkflowControl).contains(aWorkflowControlId))
+    assert(controllerState.itemToIgnorantAgents(WorkflowControl).toMap == Map(
+      aWorkflowControlId -> Set(aAgentPath)))
+    assert(controllerState.itemToIgnorantAgents(WorkflowControl)
+      .get(aWorkflowControlId) contains Set(aAgentPath))
+    assert(JControllerState(controllerState).workflowControlToIgnorantAgent
+      .get(JWorkflowId(aWorkflowControlId.workflowId)).asScala == Set(aAgentPath))
+
     controllerApi.stop.await(99.s)
   }
 
@@ -184,9 +211,7 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
       _.event.key == aWorkflowControlId,
       after = eventId)
 
-    assert(controllerState.workflowPathControlToIgnorantAgents.toMap.isEmpty)
-    assert(controllerState
-      .singleItemToIgnorantAgents(aWorkflowControlId).isEmpty)
+    assert(controllerState.itemToIgnorantAgents(WorkflowControl).toMap.isEmpty)
   }
 
   "After Controller recovery, the WorkflowControl is attached to the remaining Agents" in {

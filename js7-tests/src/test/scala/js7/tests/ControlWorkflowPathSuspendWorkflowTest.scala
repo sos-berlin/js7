@@ -41,6 +41,7 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.controller.agent-driver.command-batch-delay = 0ms
     js7.controller.agent-driver.event-buffer-delay = 0ms
+    js7.controller.agent-driver.command-error-delay = 1s
     """
   override protected val agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
@@ -72,7 +73,7 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
 
     assert(controllerState.workflowPathControlToIgnorantAgents.isEmpty)
     assert(controllerState
-      .singleItemToIgnorantAgents(WorkflowPathControlPath(aWorkflow.path)).isEmpty)
+      .itemToIgnorantAgents(WorkflowPathControl).get(WorkflowPathControlPath(aWorkflow.path)) == None)
 
     val aOrderId = OrderId("A")
     controllerApi.addOrder(FreshOrder(aOrderId, aWorkflow.path, deleteWhenTerminated = true))
@@ -152,7 +153,7 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
     assert(controllerState.workflowPathControlToIgnorantAgents.toMap == Map(
       WorkflowPathControlPath(aWorkflow.path) -> Set(aAgentPath)))
     assert(controllerState
-      .singleItemToIgnorantAgents(WorkflowPathControlPath(aWorkflow.path)) ==
+      .itemToIgnorantAgents(WorkflowPathControl)(WorkflowPathControlPath(aWorkflow.path)) ==
       Set(aAgentPath))
 
     controllerApi.stop.await(99.s)
@@ -169,7 +170,7 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
 
     assert(controllerState.workflowPathControlToIgnorantAgents.toMap.isEmpty)
     assert(controllerState
-      .singleItemToIgnorantAgents(WorkflowPathControlPath(aWorkflow.path)).isEmpty)
+      .itemToIgnorantAgents(WorkflowPathControl).get(WorkflowPathControlPath(aWorkflow.path)) == None)
   }
 
   "After Controller recovery, the WorkflowPathControl is attached to the remaining Agents" in {

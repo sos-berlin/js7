@@ -364,32 +364,24 @@ with SnapshotableState[ControllerState]
   : MapView[K, Set[AgentPath]] =
     new MapView[K, Set[AgentPath]] {
       def get(key: K): Option[Set[AgentPath]] =
-        itemToAgentToAttachedState.get(key).map(toAgents)
+        itemToAgentToAttachedState.get(key).flatMap(toAgents)
 
       def iterator: Iterator[(K, Set[AgentPath])] =
         itemToAgentToAttachedState.iterator
           .flatMap {
             case (k: K @unchecked, v) if filter_(k) =>
-              val agents = toAgents(v)
-              agents.nonEmpty ? (k -> agents)
+              toAgents(v).map(k -> _)
             case _ => None
           }
 
       private def toAgents(agentToAttachedState: Map[AgentPath, ItemAttachedState])
-      : Set[AgentPath] =
-        agentToAttachedState
+      : Option[Set[AgentPath]] = {
+        val agents = agentToAttachedState
           .collect { case (agentPath, Attachable) => agentPath }
           .toSet
+        agents.nonEmpty ? agents
+      }
     }
-
-  def singleItemToIgnorantAgents(itemKey: InventoryItemKey): Set[AgentPath] =
-    agentAttachments.itemToDelegateToAttachedState
-      .get(itemKey)
-      .view
-      .flatMap(_.collect {
-        case (agentPath, Attachable) => agentPath
-      })
-      .toSet
 
   def orderToAvailableNotices(orderId: OrderId): Seq[Notice] = {
     val pathToBoardState = keyTo(BoardState)

@@ -12,8 +12,9 @@ trait ItemContainer
   def keyToItem: MapView[InventoryItemKey, InventoryItem]
 
   final lazy val pathToSimpleItem: MapView[SimpleItemPath, SimpleItem] =
-    keyToItem.asInstanceOf[MapView[SimpleItemPath, SimpleItem]]
+    keyToItem
       .filter(_._2.isInstanceOf[SimpleItem])
+      .asInstanceOf[MapView[SimpleItemPath, SimpleItem]]
 
   lazy val pathToUnsignedSimpleItem: MapView[UnsignedSimpleItemPath, UnsignedSimpleItem] =
     keyToItem
@@ -22,7 +23,7 @@ trait ItemContainer
 
   final def keyToItem[I <: InventoryItem](I: InventoryItem.Companion[I]): MapView[I.Key, I] =
     keyToItem
-      .filter { case (_, v) => v.companion eq I }
+      .filter(_._2.companion eq I)
       .asInstanceOf[MapView[I.Key, I]]
 }
 

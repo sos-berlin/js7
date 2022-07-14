@@ -2,7 +2,7 @@ package js7.data_for_java.controller
 
 import io.vavr.control.{Either => VEither}
 import java.time.Instant
-import java.util.Objects.requireNonNull
+import java.util.Collections.emptySet
 import java.util.{Map => JMap, Optional => JOptional, Set => JSet}
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
@@ -10,6 +10,7 @@ import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.problem.Problem
 import js7.base.time.JavaTimeConverters.AsScalaInstant
 import js7.base.time.WallClock
+import js7.base.utils.ScalaUtils.syntax.RichMapView
 import js7.base.web.Uri
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import js7.data.board.{Board, BoardPath, BoardState}
@@ -24,7 +25,8 @@ import js7.data.order.{Order, OrderId, OrderObstacleCalculator}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentSelection, SubagentSelectionId}
 import js7.data.value.Value
-import js7.data.workflow.{WorkflowControlId, WorkflowPath, WorkflowPathControlPath}
+import js7.data.workflow.WorkflowControlId.syntax._
+import js7.data.workflow.{WorkflowControl, WorkflowControlId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import js7.data_for_java.agent.{JAgentRef, JAgentRefState}
 import js7.data_for_java.board.{JBoard, JBoardState, JNotice}
 import js7.data_for_java.calendar.JCalendar
@@ -40,7 +42,7 @@ import js7.data_for_java.order.{JOrder, JOrderObstacle}
 import js7.data_for_java.orderwatch.JFileWatch
 import js7.data_for_java.subagent.{JSubagentItem, JSubagentItemState, JSubagentSelection}
 import js7.data_for_java.vavr.VavrConverters._
-import js7.data_for_java.workflow.JWorkflowId
+import js7.data_for_java.workflow.{JWorkflowControl, JWorkflowControlId, JWorkflowId}
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
 import scala.jdk.StreamConverters._
@@ -165,6 +167,12 @@ extends JJournaledState[JControllerState, ControllerState]
     keyToItem(JobResource, JJobResource.apply)
 
   @Nonnull
+  def idToWorkflowControl: JMap[JWorkflowControlId, JWorkflowControl] =
+    asScala.keyToItem(WorkflowControl)
+      .mapIsomorphic(JWorkflowControlId(_), JWorkflowControl(_))(_.asScala)
+      .asJava
+
+  @Nonnull
   private def keyToItem[I <: InventoryItem, J](I: InventoryItem.Companion[I], toJava: I => J)
   : JMap[I.Key, J] =
     asScala.keyToItem(I)
@@ -175,26 +183,36 @@ extends JJournaledState[JControllerState, ControllerState]
   @Nonnull
   def workflowPathControlToIgnorantAgent: JMap[WorkflowPath, JSet[AgentPath]] =
     asScala
-      .workflowPathControlToIgnorantAgents
-      .map { case (k, v) => k.workflowPath -> v.asJava }
-      .toMap
+      .itemToIgnorantAgents(WorkflowPathControl)
+      .mapIsomorphic(_.workflowPath, _.asJava)(WorkflowPathControlPath(_))
       .asJava
 
+  @Nonnull
+  def workflowControlToIgnorantAgent: JMap[JWorkflowId, JSet[AgentPath]] =
+    asScala
+      .itemToIgnorantAgents(WorkflowControl)
+      .mapIsomorphic(o => JWorkflowId(o.workflowId), _.asJava)(id => WorkflowControlId(id.asScala))
+      .asJava
+
+  @Deprecated
+  @deprecated("Use workflowPathControlToIgnorantAgent")
   @Nonnull
   def singleWorkflowPathControlToIgnorantAgents(
     @Nonnull workflowPath: WorkflowPath)
   : JSet[AgentPath] =
-    asScala
-      .singleItemToIgnorantAgents(WorkflowPathControlPath(requireNonNull(workflowPath)))
-      .asJava
+    JOptional
+      .ofNullable(workflowPathControlToIgnorantAgent.get(workflowPath))
+      .orElseGet(() => emptySet[AgentPath])
 
+  @Deprecated
+  @deprecated("Use workflowControlToIgnorantAgent")
   @Nonnull
   def singleWorkflowControlToIgnorantAgents(
     @Nonnull workflowId: JWorkflowId)
   : JSet[AgentPath] =
-    asScala
-      .singleItemToIgnorantAgents(WorkflowControlId(workflowId.asScala))
-      .asJava
+    JOptional
+      .ofNullable(workflowControlToIgnorantAgent.get(workflowId))
+      .orElseGet(() => emptySet[AgentPath])
 
   @Nonnull
   def deletionMarkedItems: java.util.Set[InventoryItemKey] =
