@@ -60,10 +60,10 @@ import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.instructions.{InstructionExecutorService, PostNoticesExecutor}
 import js7.data.item.BasicItemEvent.{ItemAttached, ItemAttachedToMe, ItemDeleted, ItemDetached, ItemDetachingFromMe, SignedItemAttachedToMe}
 import js7.data.item.ItemAttachedState.{Attachable, Detachable, Detached}
-import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.UnsignedItemEvent.{UnsignedItemAdded, UnsignedItemChanged}
+import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemEvent}
-import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, ItemAddedOrChanged, ItemRevision, SignableItemKey, UnsignedItem, UnsignedSimpleItemPath}
+import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, ItemAddedOrChanged, ItemRevision, SignableItemKey, UnsignedItem, UnsignedItemKey}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderNoticePosted, OrderNoticePostedV2_3, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.{OrderWatchEvent, OrderWatchPath, OrderWatchState}
@@ -1220,14 +1220,10 @@ with MainJournalingActor[ControllerState, Event]
                           agentEntry.actor ! AgentDriver.Input.AttachSignedItem(signedItem)
                         }
 
-                      case id: WorkflowControlId/*UnsignedItemKey?*/ =>
-                        for (item <- _controllerState.keyTo(WorkflowControl).get(id)) {
-                          agentEntry.actor ! AgentDriver.Input.AttachUnsignedItem(item)
-                        }
-
-                      case path: UnsignedSimpleItemPath =>
-                        for (item <- _controllerState.pathToUnsignedSimpleItem.get(path)) {
-                          agentEntry.actor ! AgentDriver.Input.AttachUnsignedItem(item)
+                      case itemKey: UnsignedItemKey =>
+                        for (item <- _controllerState.keyToItem.get(itemKey)) {
+                          val unsignedItem = item.asInstanceOf[UnsignedItem]
+                          agentEntry.actor ! AgentDriver.Input.AttachUnsignedItem(unsignedItem)
                         }
                     }
 
