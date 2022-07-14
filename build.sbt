@@ -73,6 +73,7 @@ addCommandAlias("quickPublishLocal", "; compile; publishLocal; project js7JS; co
 val jdkVersion = "1.8"
 
 ThisBuild / scalacOptions ++= Seq(
+  "-Xsource:3",
   "-Ymacro-annotations",
   "-explaintypes",
   "-feature",
