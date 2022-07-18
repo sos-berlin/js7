@@ -3,8 +3,9 @@ package js7.data_for_java.value
 import io.vavr.control.Either as VEither
 import javax.annotation.Nonnull
 import js7.base.problem.Problem
+import js7.data.value.expression.Expression
 import js7.data.value.expression.Expression.{BooleanConstant, ListExpression, NumericConstant, ObjectExpression, StringConstant}
-import js7.data.value.expression.{Expression, ExpressionParser}
+import js7.data.value.expression.ExpressionParser.parseExpression
 import js7.data_for_java.common.JJsonable
 import js7.data_for_java.vavr.VavrConverters.*
 import scala.jdk.CollectionConverters.*
@@ -20,8 +21,7 @@ object JExpression extends JJsonable.Companion[JExpression]
 {
   @Nonnull
   def parse(expression: String): VEither[Problem, JExpression] =
-    ExpressionParser
-      .parse(expression)
+    parseExpression(expression)
       .map(JExpression(_))
       .toVavr
 

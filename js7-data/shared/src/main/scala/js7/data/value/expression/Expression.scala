@@ -15,6 +15,7 @@ import js7.data.job.JobResourcePath
 import js7.data.parser.BasicPrinter.{appendIdentifier, appendIdentifierWithBackticks, identifierToString, isIdentifierPart}
 import js7.data.value.ValuePrinter.appendQuotedContent
 import js7.data.value.ValueType.MissingValueProblem
+import js7.data.value.expression.ExpressionParser.parseExpression
 import js7.data.value.{BooleanValue, FunctionValue, IsErrorValue, ListValue, MissingValue, NullValue, NumberValue, ObjectValue, StringValue, Value, ValuePrinter}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Label
@@ -69,7 +70,7 @@ object Expression
   implicit val jsonEncoder: Encoder[Expression] = expr => Json.fromString(expr.toString)
   implicit val jsonDecoder: Decoder[Expression] =
     c => c.as[String]
-      .flatMap(ExpressionParser.parse(_).toDecoderResult(c.history))
+      .flatMap(parseExpression(_).toDecoderResult(c.history))
 
   // Experimental
   sealed trait PurityDependsOnSubexpressions extends Expression {

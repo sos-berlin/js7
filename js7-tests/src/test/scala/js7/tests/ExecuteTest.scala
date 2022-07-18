@@ -22,7 +22,7 @@ import js7.data.order.OrderEvent.{OrderAttached, OrderCancelled, OrderFailed, Or
 import js7.data.order.OrderObstacle.jobParallelismLimitReached
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.expression.Expression.{NamedValue, NumericConstant, StringConstant}
-import js7.data.value.expression.ExpressionParser
+import js7.data.value.expression.ExpressionParser.parseExpression
 import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -265,16 +265,16 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   "Special $js7 variables" - {
     val nameToExpression = Map(
-      "ORDER_ID"            -> ExpressionParser.parse("$js7OrderId").orThrow,
-      "WORKFLOW_NAME"       -> ExpressionParser.parse("$js7WorkflowPath").orThrow,
-      "WORKFLOW_POSITION"   -> ExpressionParser.parse("$js7WorkflowPosition").orThrow,
-      "LABEL"               -> ExpressionParser.parse("$js7Label").orThrow,
-      "JOB_NAME"            -> ExpressionParser.parse("$js7JobName").orThrow,
-      "JOB_EXECUTION_COUNT" -> ExpressionParser.parse("$js7JobExecutionCount").orThrow,
-      "CONTROLLER_ID"       -> ExpressionParser.parse("$js7ControllerId").orThrow,
-      "SCHEDULED_DATE"      -> ExpressionParser.parse("scheduledOrEmpty(format='yyyy-MM-dd HH:mm:ssZ')").orThrow,
-      "JOBSTART_DATE"       -> ExpressionParser.parse("now(format='yyyy-MM-dd HH:mm:ssZ')").orThrow,
-      "JOB_RESOURCE_VARIABLE" -> ExpressionParser.parse("JobResource:JOB-RESOURCE:VARIABLE").orThrow)
+      "ORDER_ID"            -> parseExpression("$js7OrderId").orThrow,
+      "WORKFLOW_NAME"       -> parseExpression("$js7WorkflowPath").orThrow,
+      "WORKFLOW_POSITION"   -> parseExpression("$js7WorkflowPosition").orThrow,
+      "LABEL"               -> parseExpression("$js7Label").orThrow,
+      "JOB_NAME"            -> parseExpression("$js7JobName").orThrow,
+      "JOB_EXECUTION_COUNT" -> parseExpression("$js7JobExecutionCount").orThrow,
+      "CONTROLLER_ID"       -> parseExpression("$js7ControllerId").orThrow,
+      "SCHEDULED_DATE"      -> parseExpression("scheduledOrEmpty(format='yyyy-MM-dd HH:mm:ssZ')").orThrow,
+      "JOBSTART_DATE"       -> parseExpression("now(format='yyyy-MM-dd HH:mm:ssZ')").orThrow,
+      "JOB_RESOURCE_VARIABLE" -> parseExpression("JobResource:JOB-RESOURCE:VARIABLE").orThrow)
 
     "Special variables in InternalExecutable arguments" in {
       testWithSpecialVariables(

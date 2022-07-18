@@ -7,7 +7,7 @@ import js7.data.job.JobResourcePath
 import js7.data.parser.Parsers.checkedParse
 import js7.data.value.ValueType.{MissingValueProblem, UnexpectedValueTypeProblem}
 import js7.data.value.expression.Expression.*
-import js7.data.value.expression.ExpressionParser.{expressionOnly, expressionOrFunction}
+import js7.data.value.expression.ExpressionParser.{expressionOnly, expressionOrFunction, parseExpression}
 import js7.data.value.expression.scopes.NameToCheckedValueScope
 import js7.data.value.{BooleanValue, ListValue, NullValue, NumberValue, ObjectValue, StringValue, Value}
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -716,7 +716,7 @@ final class ExpressionTest extends AnyFreeSpec
 
   private def testSyntaxError(exprString: String, problem: String)(implicit pos: source.Position): Unit =
     registerTest(s"$exprString - should fail") {
-      assert(ExpressionParser.parse(exprString) == Left(Problem(problem)))
+      assert(parseExpression(exprString) == Left(Problem(problem)))
     }
 
   private def testEval(exprString: String, result: Boolean, expression: Checked[Expression])

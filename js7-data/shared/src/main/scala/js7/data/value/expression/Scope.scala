@@ -7,6 +7,7 @@ import js7.base.utils.Lazy
 import js7.data.Problems.RecursiveEvaluationProblem
 import js7.data.value.Value
 import js7.data.value.expression.Expression.{FunctionCall, JobResourceVariable}
+import js7.data.value.expression.ExpressionParser.parseExpression
 import js7.data.value.expression.Scope.evalLazilyExpressions
 import js7.data.value.expression.scopes.CombinedScope
 import scala.annotation.unused
@@ -46,7 +47,7 @@ trait Scope
     findValue(ValueSearch(ValueSearch.LastOccurred, ValueSearch.Name(name)))
 
   def parseAndEval(expression: String): Checked[Value] =
-    ExpressionParser.parse(expression)
+    parseExpression(expression)
       .flatMap(_.eval(this))
 
   final def evalExpressionMap(nameToExpr: Map[String, Expression]): Checked[Map[String, Value]] =

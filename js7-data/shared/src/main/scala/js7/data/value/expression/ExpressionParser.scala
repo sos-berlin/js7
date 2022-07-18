@@ -1,7 +1,7 @@
 package js7.data.value.expression
 
-import fastparse.NoWhitespace.*
 import fastparse.*
+import fastparse.NoWhitespace.*
 import js7.base.problem.Checked
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichEither
@@ -21,9 +21,9 @@ object ExpressionParser
 {
   @TestOnly
   def expr(expressionString: String): Expression =
-    parse(expressionString).orThrow
+    parseExpression(expressionString).orThrow
 
-  def parse(string: String): Checked[Expression] =
+  def parseExpression(string: String): Checked[Expression] =
     checkedParse(string, expressionOnly(_))
       .left.map(_.withPrefix("Error in expression:"))
 

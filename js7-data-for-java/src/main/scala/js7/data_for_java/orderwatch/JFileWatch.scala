@@ -14,7 +14,7 @@ import js7.data.agent.AgentPath
 import js7.data.item.ItemRevision
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.value.expression.Expression.StringConstant
-import js7.data.value.expression.ExpressionParser
+import js7.data.value.expression.ExpressionParser.parseExpression
 import js7.data.workflow.WorkflowPath
 import js7.data_for_java.common.JJsonable
 import js7.data_for_java.item.JUnsignedSimpleItem
@@ -68,7 +68,7 @@ object JFileWatch extends JJsonable.Companion[JFileWatch]
   : VEither[Problem, JFileWatch] =
     ( for {
         pattern <- pattern.toScala.traverse(SimplePattern.checked(_))
-        orderIdExpression <- orderIdExpression.toScala.traverse(ExpressionParser.parse(_))
+        orderIdExpression <- orderIdExpression.toScala.traverse(parseExpression(_))
       } yield
         JFileWatch(FileWatch(
             id, workflowPath, agentPath, StringConstant(directory.toString),
@@ -89,7 +89,7 @@ object JFileWatch extends JJsonable.Companion[JFileWatch]
   : VEither[Problem, JFileWatch] =
     (for {
       pattern <- pattern.toScala.traverse(SimplePattern.checked(_))
-      orderIdExpression <- orderIdExpression.toScala.traverse(ExpressionParser.parse(_))
+      orderIdExpression <- orderIdExpression.toScala.traverse(parseExpression(_))
     } yield
       JFileWatch(FileWatch(
         id, workflowPath, agentPath,

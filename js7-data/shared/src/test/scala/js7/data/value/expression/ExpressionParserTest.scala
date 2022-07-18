@@ -1,11 +1,11 @@
 package js7.data.value.expression
 
-import fastparse.NoWhitespace.*
 import fastparse.*
+import fastparse.NoWhitespace.*
 import js7.base.problem.Problem
 import js7.data.parser.Parsers.checkedParse
 import js7.data.value.expression.Expression.*
-import js7.data.value.expression.ExpressionParser.{parse as _, *}
+import js7.data.value.expression.ExpressionParser.*
 import js7.data.workflow.instructions.executable.WorkflowJob
 import org.scalactic.source
 import org.scalatest.freespec.AnyFreeSpec
@@ -153,11 +153,11 @@ final class ExpressionParserTest extends AnyFreeSpec
           .filterNot(escapedChars.map(_._1).toSet)
         for (escaped <- invalidEscaped) {
           // With ' to render as "-string
-          assert(ExpressionParser.parse(s""" "'\\$escaped" """.trim) == Left(Problem(
+          assert(parseExpression(s""" "'\\$escaped" """.trim) == Left(Problem(
             """Error in expression: Expected blackslash (\) and one of the following characters: [\"trn$]:1:5, found "\""""")))
 
           // Without ' to render as '-string
-          assert(ExpressionParser.parse(s""" "\\$escaped" """.trim) == Left(Problem(
+          assert(parseExpression(s""" "\\$escaped" """.trim) == Left(Problem(
             """Error in expression: Expected blackslash (\) and one of the following characters: [\"trn$]:1:4, found "\""""")))
         }
       }

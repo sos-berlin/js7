@@ -6,6 +6,7 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichString
+import js7.data.value.expression.ExpressionParser.parseFunction
 import js7.data.value.expression.scopes.NamedValueScope
 import js7.data.value.{MissingValue, Value}
 import org.jetbrains.annotations.TestOnly
@@ -90,7 +91,7 @@ object ExprFunction
   implicit val jsonEncoder: Encoder[ExprFunction] = o => Json.fromString(o.toString)
   implicit val jsonDecoder: Decoder[ExprFunction] =
     c => c.as[String]
-      .flatMap(o => ExpressionParser.parseFunction(o).toDecoderResult(c.history))
+      .flatMap(o => parseFunction(o).toDecoderResult(c.history))
 }
 
 final case class VariableDeclaration(name: String/*, valueType: Option[ValueType] = None*/)

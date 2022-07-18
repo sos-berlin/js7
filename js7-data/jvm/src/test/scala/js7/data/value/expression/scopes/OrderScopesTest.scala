@@ -386,5 +386,5 @@ object OrderScopesTest
         "f" -> StringValue("f from position 1"))))))
 
   private def expr(string: String) =
-    ExpressionParser.parse(string).orThrow
+    ExpressionParser.parseExpression(string).orThrow
 }
