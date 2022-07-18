@@ -26,7 +26,7 @@ import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{LockInstruction, Prompt}
 import js7.data.workflow.position.Position
-import js7.data.workflow.{Workflow, WorkflowId, WorkflowParser, WorkflowPath}
+import js7.data.workflow.{Workflow, WorkflowId, FastparseWorkflowParser, WorkflowPath}
 import js7.tests.LockTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.{script, toLocalSubagentId, waitingForFileScript}
@@ -632,7 +632,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   private def defineWorkflow(workflowPath: WorkflowPath, workflowNotation: String): Workflow = {
     val versionId = versionIdIterator.next()
-    val workflow = WorkflowParser.parse(workflowPath ~ versionId, workflowNotation).orThrow
+    val workflow = FastparseWorkflowParser.parse(workflowPath ~ versionId, workflowNotation).orThrow
     directoryProvider.updateVersionedItems(controller, versionId, Seq(workflow))
     workflow
   }

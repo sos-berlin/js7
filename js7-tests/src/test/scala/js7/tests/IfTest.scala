@@ -1,6 +1,6 @@
 package js7.tests
 
-import js7.base.io.process.Processes.{ShellFileExtension as sh}
+import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.io.process.ReturnCode
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
@@ -14,7 +14,7 @@ import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.position.BranchId.{Else, Then}
 import js7.data.workflow.position.Position
-import js7.data.workflow.{WorkflowParser, WorkflowPath}
+import js7.data.workflow.{FastparseWorkflowParser, WorkflowPath}
 import js7.tests.IfTest.*
 import js7.tests.testenv.DirectoryProvider
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
@@ -48,7 +48,7 @@ final class IfTest extends AnyFreeSpec
        |    execute executable="TEST$sh", agent="AGENT";
        |  }
        |}""".stripMargin
-    val workflow = WorkflowParser.parse(WorkflowPath("WORKFLOW") ~ "INITIAL", workflowNotation).orThrow
+    val workflow = FastparseWorkflowParser.parse(WorkflowPath("WORKFLOW") ~ "INITIAL", workflowNotation).orThrow
     val directoryProvider = new DirectoryProvider(agentPath :: Nil, items = Seq(workflow),
       testName = Some("IfTest"))
     autoClosing(directoryProvider) { directoryProvider =>
@@ -116,7 +116,7 @@ object IfTest {
      |    execute executable="TEST-RC$sh", agent="AGENT", v1Compatible=true, successReturnCodes=[0, 1];
      |  }
      |}""".stripMargin
-  private val TestWorkflow = WorkflowParser.parse(WorkflowPath("WORKFLOW") ~ "INITIAL", workflowNotation).orThrow
+  private val TestWorkflow = FastparseWorkflowParser.parse(WorkflowPath("WORKFLOW") ~ "INITIAL", workflowNotation).orThrow
 
   private val ExpectedEvents = Map(
     ReturnCode(0) -> Vector(

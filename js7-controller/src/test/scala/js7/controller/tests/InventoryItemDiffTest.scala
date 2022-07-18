@@ -15,7 +15,7 @@ import js7.data.item.InventoryItemDiff.diffItems
 import js7.data.item.ItemChange.{AddedOrChanged, Removed}
 import js7.data.item.{InventoryItemDiff, SourceType, TestPath, TestVersionedItem, VersionId, VersionedItem, VersionedItemPath}
 import js7.data.workflow.instructions.{ExplicitEnd, Fail}
-import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
+import js7.data.workflow.{Workflow, FastparseWorkflowParser, WorkflowPath}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
@@ -131,10 +131,10 @@ object InventoryItemDiffTest
 
   private[tests] val AWorkflow = Workflow.of(WorkflowPath("A"))
   private[tests] val BWorkflow = Workflow(WorkflowPath("B"), Vector("B-END" @: ExplicitEnd()))
-  private[tests] val CWorkflow = WorkflowParser.parse(WorkflowPath("C"), "define workflow { /*EMPTY*/ }").orThrow
+  private[tests] val CWorkflow = FastparseWorkflowParser.parse(WorkflowPath("C"), "define workflow { /*EMPTY*/ }").orThrow
   private[tests] val DWorkflow = Workflow(WorkflowPath("D"), Vector("D-END" @: ExplicitEnd()))
   private[tests] val EWorkflow = Workflow(WorkflowPath("E"), Vector(Fail(None)))
-  private[tests] val D1Workflow = WorkflowParser.parse(WorkflowPath("D"), "define workflow { `CHANGED-D-END`: end; }").orThrow
+  private[tests] val D1Workflow = FastparseWorkflowParser.parse(WorkflowPath("D"), "define workflow { `CHANGED-D-END`: end; }").orThrow
   private[tests] val ATestItem = TestVersionedItem(TestPath("A"), "A")
   private[tests] val BTestItem = TestVersionedItem(TestPath("folder/B"), "B")
 

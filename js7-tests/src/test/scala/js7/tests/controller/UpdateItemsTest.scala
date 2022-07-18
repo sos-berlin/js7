@@ -21,7 +21,7 @@ import js7.data.job.{JobResource, JobResourcePath, RelativePathExecutable}
 import js7.data.lock.{Lock, LockPath}
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
-import js7.data.workflow.{WorkflowParser, WorkflowPath}
+import js7.data.workflow.{FastparseWorkflowParser, WorkflowPath}
 import js7.tests.controller.UpdateItemsTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.ControllerTestUtils.syntax.RichRunningController
@@ -148,14 +148,14 @@ object UpdateItemsTest
     }"""
 
   private val V1 = VersionId("1")
-  private val workflow1 = WorkflowParser.parse(workflowPath ~ V1, script1).orThrow
+  private val workflow1 = FastparseWorkflowParser.parse(workflowPath ~ V1, script1).orThrow
 
   private val V2 = VersionId("2")
   private val script2 = """
     define workflow {
       execute executable="SCRIPT2.cmd", agent="AGENT";
     }"""
-  private val workflow2 = WorkflowParser.parse(workflowPath ~ V2, script2).orThrow
+  private val workflow2 = FastparseWorkflowParser.parse(workflowPath ~ V2, script2).orThrow
 
   private val V3 = VersionId("3")
 
@@ -164,7 +164,7 @@ object UpdateItemsTest
     define workflow {
       execute executable="SCRIPT4.cmd", agent="AGENT";
     }"""
-  private val otherWorkflow4 = WorkflowParser.parse(WorkflowPath("OTHER-WORKFLOW") ~ V4, script4).orThrow
+  private val otherWorkflow4 = FastparseWorkflowParser.parse(WorkflowPath("OTHER-WORKFLOW") ~ V4, script4).orThrow
 
   private val jobResource = JobResource(JobResourcePath("JOB-RESOURCE"))
 }

@@ -1,7 +1,7 @@
 package js7.tests
 
 import js7.base.configutils.Configs.*
-import js7.base.io.process.Processes.{ShellFileExtension as sh}
+import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.isWindows
@@ -15,7 +15,7 @@ import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
 import js7.data.workflow.position.BranchId.{Else, Then, catch_, try_}
 import js7.data.workflow.position.Position
-import js7.data.workflow.{WorkflowParser, WorkflowPath}
+import js7.data.workflow.{FastparseWorkflowParser, WorkflowPath}
 import js7.tests.RetryTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
@@ -50,7 +50,7 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
        |      try retry;                                        // :0/catch:0/then:0/try:0
        |      catch {}                                          // :0/catch:0/then:0/catch
        |}""".stripMargin
-    val workflow = WorkflowParser.parse(WorkflowPath("TEST"), workflowNotation).orThrow
+    val workflow = FastparseWorkflowParser.parse(WorkflowPath("TEST"), workflowNotation).orThrow
     val versionId = updateVersionedItems(change = workflow :: Nil)
 
     val expectedEvents = Vector(
@@ -96,7 +96,7 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
        |    } catch if (catchCount < 2) retry else fail;
        |  } catch execute executable="OKAY$sh", agent="AGENT";   // :0/catch:0
        |}""".stripMargin
-    val workflow = WorkflowParser.parse(WorkflowPath("TEST"), workflowNotation).orThrow
+    val workflow = FastparseWorkflowParser.parse(WorkflowPath("TEST"), workflowNotation).orThrow
     val versionId = updateVersionedItems(change = workflow :: Nil)
 
     val expectedEvents = Vector(
@@ -180,7 +180,7 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
        |  try (retryDelays=[2, 0]) execute executable="FAIL-1$sh", agent="AGENT";
        |  catch if (catchCount < 4) retry else fail;
        |}""".stripMargin
-    val workflow = WorkflowParser.parse(WorkflowPath("TEST"), workflowNotation).orThrow
+    val workflow = FastparseWorkflowParser.parse(WorkflowPath("TEST"), workflowNotation).orThrow
     updateVersionedItems(change = workflow :: Nil)
 
     val orderId = OrderId("⭕")
@@ -201,7 +201,7 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
        |  try (maxTries=3) fail;
        |  catch retry;
        |}""".stripMargin
-    val workflow = WorkflowParser.parse(WorkflowPath("TEST"), workflowNotation).orThrow
+    val workflow = FastparseWorkflowParser.parse(WorkflowPath("TEST"), workflowNotation).orThrow
     val versionId = updateVersionedItems(change = workflow :: Nil)
 
     val expectedEvents = Vector(
@@ -230,7 +230,7 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
        |  try (maxTries=3) fail;
        |  catch if (true) retry;
        |}""".stripMargin
-    val workflow = WorkflowParser.parse(WorkflowPath("TEST"), workflowNotation).orThrow
+    val workflow = FastparseWorkflowParser.parse(WorkflowPath("TEST"), workflowNotation).orThrow
     val versionId = updateVersionedItems(change = workflow :: Nil)
 
     val expectedEvents = Vector(

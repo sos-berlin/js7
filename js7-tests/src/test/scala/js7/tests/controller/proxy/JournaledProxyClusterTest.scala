@@ -28,7 +28,7 @@ import js7.data.item.{ItemOperation, VersionId, VersionedItem}
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.value.StringValue
-import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
+import js7.data.workflow.{Workflow, FastparseWorkflowParser, WorkflowPath}
 import js7.data_for_java.auth.{JAdmission, JHttpsConfig}
 import js7.journal.watch.StrictEventWatch
 import js7.proxy.ControllerApi
@@ -80,7 +80,7 @@ final class JournaledProxyClusterTest extends AnyFreeSpec with ClusterProxyTest
 
   "updateItems" in {
     val versionId = VersionId("MY-VERSION")
-    val workflow = WorkflowParser.parse(s"""
+    val workflow = FastparseWorkflowParser.parse(s"""
       define workflow {
         execute executable="path-to-my-script", agent="AGENT",
           defaultArguments = { "A": "${"A" * 700}" };

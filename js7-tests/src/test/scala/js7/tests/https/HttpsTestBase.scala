@@ -9,7 +9,7 @@ import js7.base.generic.SecretString
 import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.https.{HttpsConfig, KeyStoreRef}
-import js7.base.io.process.Processes.{ShellFileExtension as sh}
+import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.problem.Checked.Ops
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -21,7 +21,7 @@ import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.client.AkkaHttpControllerApi
 import js7.data.agent.AgentPath
 import js7.data.job.RelativePathExecutable
-import js7.data.workflow.{WorkflowParser, WorkflowPath}
+import js7.data.workflow.{FastparseWorkflowParser, WorkflowPath}
 import js7.tests.https.HttpsTestBase.*
 import js7.tests.testenv.DirectoryProvider.{ExportedControllerTrustStoreRef, ExportedControllerTrustStoreResource}
 import js7.tests.testenv.{ControllerAgentForScalaTest, DirectoryProvider}
@@ -191,7 +191,7 @@ private[https] object HttpsTestBase
   private val BackupKeyStoreResource = JavaResource("js7/tests/https/resources/private/backup-controller-https-keystore.p12")
   private val ExportedBackupTrustStoreResource = JavaResource("js7/tests/https/resources/export/backup-controller-https-truststore.p12")
 
-  private val TestWorkflow = WorkflowParser.parse(WorkflowPath("TEST-WORKFLOW"), s"""
+  private val TestWorkflow = FastparseWorkflowParser.parse(WorkflowPath("TEST-WORKFLOW"), s"""
     define workflow {
       execute executable="TEST$sh", agent="TEST-AGENT";
     }""").orThrow

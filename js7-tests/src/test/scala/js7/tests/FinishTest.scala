@@ -12,7 +12,7 @@ import js7.data.value.NamedValues
 import js7.data.workflow.instructions.Fork
 import js7.data.workflow.position.BranchId.Then
 import js7.data.workflow.position.Position
-import js7.data.workflow.{WorkflowParser, WorkflowPath}
+import js7.data.workflow.{FastparseWorkflowParser, WorkflowPath}
 import js7.tests.FinishTest.*
 import js7.tests.testenv.DirectoryProvider
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
@@ -178,7 +178,7 @@ final class FinishTest extends AnyFreeSpec
     assert(runUntil[E](workflowNotation).map(_.event) == expectedEvents)
 
   private def runUntil[E <: OrderEvent: ClassTag: TypeTag](workflowNotation: String): Vector[KeyedEvent[OrderEvent]] = {
-    val workflow = WorkflowParser.parse(TestWorkflowId, workflowNotation).orThrow
+    val workflow = FastparseWorkflowParser.parse(TestWorkflowId, workflowNotation).orThrow
     autoClosing(new DirectoryProvider(Seq(TestAgentPath), Seq(workflow), testName = Some("FinishTest"))) { directoryProvider =>
       directoryProvider.agents.head.writeExecutable(RelativePathExecutable("test.cmd"), "exit 3")
       directoryProvider.agents.head.writeExecutable(RelativePathExecutable("sleep.cmd"), DirectoryProvider.script(100.ms))

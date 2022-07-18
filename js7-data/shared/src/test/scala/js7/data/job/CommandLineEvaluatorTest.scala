@@ -64,5 +64,5 @@ final class CommandLineEvaluatorTest extends AnyFreeSpec
 
   private def eval(commandLine: String): Checked[CommandLine] =
     commandLineEvaluator.eval(
-      CommandLineParser.parse(commandLine).orThrow)
+      FastparseCommandLineParser.parse(commandLine).orThrow)
 }

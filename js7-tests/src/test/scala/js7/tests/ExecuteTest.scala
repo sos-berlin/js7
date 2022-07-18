@@ -17,7 +17,7 @@ import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode
 import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.item.VersionId
-import js7.data.job.{AbsolutePathExecutable, CommandLineExecutable, CommandLineParser, Executable, JobResource, JobResourcePath, ProcessExecutable, RelativePathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
+import js7.data.job.{AbsolutePathExecutable, CommandLineExecutable, FastparseCommandLineParser, Executable, JobResource, JobResourcePath, ProcessExecutable, RelativePathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
 import js7.data.order.OrderEvent.{OrderAttached, OrderCancelled, OrderFailed, OrderFinished, OrderProcessed, OrderProcessingStarted, OrderStdWritten, OrderStdoutWritten}
 import js7.data.order.OrderObstacle.jobParallelismLimitReached
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
@@ -26,7 +26,7 @@ import js7.data.value.expression.ExpressionParser.parseExpression
 import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.{OrderParameter, OrderParameterList, OrderPreparation, Workflow, WorkflowId, WorkflowParser, WorkflowPath, WorkflowPrinter}
+import js7.data.workflow.{OrderParameter, OrderParameterList, OrderPreparation, Workflow, WorkflowId, FastparseWorkflowParser, WorkflowPath, WorkflowPrinter}
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
 import js7.tests.ExecuteTest.*
@@ -153,14 +153,14 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
     WorkflowJob(
       agentPath,
       CommandLineExecutable(
-        CommandLineParser.parse(s"""'$argScriptFile' ARG1-DUMMY 44""").orThrow))),
+        FastparseCommandLineParser.parse(s"""'$argScriptFile' ARG1-DUMMY 44""").orThrow))),
     expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
 
   addExecuteTest(Execute(
     WorkflowJob(
       agentPath,
       CommandLineExecutable(
-        CommandLineParser.parse(s"""'$myReturnCodeScriptFile'""").orThrow,
+        FastparseCommandLineParser.parse(s"""'$myReturnCodeScriptFile'""").orThrow,
         env = Map("myExitCode" -> NamedValue("orderValue"))))),
     orderArguments = Map("orderValue" -> NumberValue(44)),
     expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
@@ -392,7 +392,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
   "Jobs in nested workflow" in {
     // TODO Forbid this?
     testWithWorkflow(
-      WorkflowParser.parse("""
+      FastparseWorkflowParser.parse("""
         define workflow {
           job aJob;
           job bJob;
@@ -427,7 +427,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
         Execute(WorkflowJob(
           agentPath,
           CommandLineExecutable(
-            CommandLineParser.parse(s"""'$argScriptFile' 1 'two' "three" $$ARG""").orThrow)))),
+            FastparseCommandLineParser.parse(s"""'$argScriptFile' 1 'two' "three" $$ARG""").orThrow)))),
         orderArguments = Map("ARG" -> StringValue("ARG-VALUE")))
     val stdout = events.collect { case OrderStdoutWritten(chunk) => chunk }.mkString
     assert(removeTaskId(stdout)
@@ -510,7 +510,7 @@ final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   private def testPrintAndParse(anonymousWorkflow: Workflow): Unit = {
     val workflowNotation = WorkflowPrinter.print(anonymousWorkflow.withoutSource)
-    val reparsedWorkflow = WorkflowParser.parse(workflowNotation).map(_.withoutSource)
+    val reparsedWorkflow = FastparseWorkflowParser.parse(workflowNotation).map(_.withoutSource)
     logger.debug(workflowNotation)
     assert(reparsedWorkflow == Right(anonymousWorkflow.withoutSource))
   }

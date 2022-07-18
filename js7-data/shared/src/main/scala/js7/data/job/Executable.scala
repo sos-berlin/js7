@@ -202,7 +202,7 @@ extends ProcessExecutable {
 object CommandLineExecutable
 {
   def fromString(commandLine: String, env: Map[String, Expression] = Map.empty) =
-    CommandLineParser.parse(commandLine).map(apply(_, env))
+    FastparseCommandLineParser.parse(commandLine).map(apply(_, env))
 
   implicit val jsonEncoder: Encoder.AsObject[CommandLineExecutable] =
     o => JsonObject(
@@ -214,7 +214,7 @@ object CommandLineExecutable
   implicit val jsonDecoder: Decoder[CommandLineExecutable] =
     cursor => for {
       commandLine <- cursor.get[String]("command")
-      commandExpr <- CommandLineParser.parse(commandLine).toDecoderResult(cursor.history)
+      commandExpr <- FastparseCommandLineParser.parse(commandLine).toDecoderResult(cursor.history)
       env <- cursor.getOrElse[Map[String, Expression]]("env")(Map.empty)
       login <- cursor.get[Option[KeyLogin]]("login")
       returnCodeMeaning <- cursor.getOrElse[ReturnCodeMeaning]("returnCodeMeaning")(ReturnCodeMeaning.Default)

@@ -10,7 +10,7 @@ import js7.common.http.AkkaHttpClient.HttpException
 import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.subagent.{SubagentId, SubagentItem}
-import js7.data.workflow.{WorkflowParser, WorkflowPath}
+import js7.data.workflow.{FastparseWorkflowParser, WorkflowPath}
 import js7.tests.controller.commands.AddOrderTimeoutTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global
@@ -42,7 +42,7 @@ object AddOrderTimeoutTest
   private val subagentItem = SubagentItem(SubagentId("SUBAGENT"), AgentPath("AGENT"),
     Uri("https://localhost:0"))
 
-  private val workflow = WorkflowParser.parse(
+  private val workflow = FastparseWorkflowParser.parse(
     WorkflowPath("WORKFLOW") ~ "1","""
       define workflow {
         execute executable="SCRIPT1.cmd", agent="AGENT";

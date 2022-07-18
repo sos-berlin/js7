@@ -26,7 +26,7 @@ import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, Or
 import js7.data.order.Outcome.{Succeeded, succeeded}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId}
 import js7.data.value.{NamedValues, StringValue}
-import js7.data.workflow.WorkflowParser
+import js7.data.workflow.FastparseWorkflowParser
 import js7.data.workflow.position.Position
 import js7.data_for_java.auth.{JAdmission, JHttpsConfig}
 import js7.journal.files.JournalFiles.listJournalFiles
@@ -233,7 +233,7 @@ object ProxyHistoryTest
   private val BAgentPath = AgentPath("AGENT-B")
   private val aSubagentId = toLocalSubagentId(AAgentPath)
   private val bSubagentId = toLocalSubagentId(BAgentPath)
-  private val TestWorkflow = WorkflowParser.parse(TestWorkflowId.asScala, s"""
+  private val TestWorkflow = FastparseWorkflowParser.parse(TestWorkflowId.asScala, s"""
      |define workflow {
      |  execute executable="${TestPathExecutable.path}", agent="AGENT-A";
      |  fork {

@@ -11,7 +11,7 @@ import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, Or
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
 import js7.data.workflow.position.{BranchId, Position}
-import js7.data.workflow.{Workflow, WorkflowId, WorkflowParser, WorkflowPath}
+import js7.data.workflow.{Workflow, WorkflowId, FastparseWorkflowParser, WorkflowPath}
 import js7.tests.FailTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
@@ -148,7 +148,7 @@ final class FailTest extends AnyFreeSpec with ControllerAgentForScalaTest
   : Unit =
     runUntil[E](
       orderId,
-      WorkflowParser.parse(workflowId, workflowNotation).orThrow,
+      FastparseWorkflowParser.parse(workflowId, workflowNotation).orThrow,
       expectedEvents,
       moreExpectedEvents*)
 

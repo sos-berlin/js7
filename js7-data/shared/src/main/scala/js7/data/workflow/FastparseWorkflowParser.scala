@@ -7,7 +7,7 @@ import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.data.agent.AgentPath
-import js7.data.job.{CommandLineExecutable, CommandLineParser, InternalExecutable, JobResourcePath, PathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
+import js7.data.job.{CommandLineExecutable, FastparseCommandLineParser, InternalExecutable, JobResourcePath, PathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
 import js7.data.lock.LockPath
 import js7.data.parser.FastparseBasicParsers.*
 import js7.data.parser.FastparseParsers.checkedParse
@@ -25,7 +25,7 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-object WorkflowParser
+object FastparseWorkflowParser
 {
   // TODO Add OrderPreparation, also in WorkflowPrinter
 
@@ -126,7 +126,7 @@ object WorkflowParser
             Pass(PathExecutable(path, env.nameToExpr, returnCodeMeaning = returnCodeMeaning, v1Compatible = v1Compatible))
           case ("command", command: String) =>
             if (v1Compatible) Fail.opaque(s"v1Compatible=true is inappropriate for a command")
-            else checkedToP(CommandLineParser.parse(command)
+            else checkedToP(FastparseCommandLineParser.parse(command)
               .map(CommandLineExecutable(_, env.nameToExpr, returnCodeMeaning = returnCodeMeaning)))
           case ("script", script: Expression) =>
             checkedToP(script.eval(Scope.empty).flatMap(_.asStringValue)
