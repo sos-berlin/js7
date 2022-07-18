@@ -23,7 +23,7 @@ import js7.data.subagent.SubagentId
 import js7.data.value.StringValue
 import js7.data.value.ValuePrinter.quoteString
 import js7.data.value.expression.Expression.StringConstant
-import js7.data.value.expression.ExpressionParser.expr
+import js7.data.value.expression.FastparseExpressionParser.expr
 import js7.data.workflow.instructions.{LockInstruction, Prompt}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowParser, WorkflowPath}

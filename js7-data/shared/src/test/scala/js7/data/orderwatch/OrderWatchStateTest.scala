@@ -12,7 +12,7 @@ import js7.data.item.{ItemRevision, UnsignedSimpleItemEvent}
 import js7.data.order.OrderId
 import js7.data.orderwatch.OrderWatchState.{Arised, ArisedOrHasOrder, ExternalOrderSnapshot, HasOrder, Vanished}
 import js7.data.value.expression.Expression.NamedValue
-import js7.data.value.expression.ExpressionParser.expr
+import js7.data.value.expression.FastparseExpressionParser.expr
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}

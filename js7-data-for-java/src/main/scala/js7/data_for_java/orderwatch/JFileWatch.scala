@@ -14,7 +14,7 @@ import js7.data.agent.AgentPath
 import js7.data.item.ItemRevision
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.value.expression.Expression.StringConstant
-import js7.data.value.expression.ExpressionParser.parseExpression
+import js7.data.value.expression.FastparseExpressionParser.parseExpression
 import js7.data.workflow.WorkflowPath
 import js7.data_for_java.common.JJsonable
 import js7.data_for_java.item.JUnsignedSimpleItem

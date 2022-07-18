@@ -4,7 +4,7 @@ import fastparse.NoWhitespace.*
 import fastparse.{End, P}
 import js7.data.parser.Parsers
 import js7.data.value.ValuePrinter.quoteString
-import js7.data.value.expression.ExpressionParser
+import js7.data.value.expression.FastparseExpressionParser
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks.forAll
 
@@ -39,7 +39,7 @@ final class ValuePrinterTest extends AnyFreeSpec
     "»" + quoteString(string) + "«"
 
   def parser[x: P] =
-    ExpressionParser.quotedString ~ End
+    FastparseExpressionParser.quotedString ~ End
 
   def parse(quotedString: String) =
     Parsers.checkedParse(quotedString, parser(_))

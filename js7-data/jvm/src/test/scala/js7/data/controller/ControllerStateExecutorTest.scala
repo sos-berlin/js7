@@ -23,7 +23,7 @@ import js7.data.lock.{Lock, LockPath}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderLockAcquired, OrderMoved, OrderStarted}
 import js7.data.order.{FreshOrder, Order, OrderId}
 import js7.data.value.expression.Expression.StringConstant
-import js7.data.value.expression.ExpressionParser.expr
+import js7.data.value.expression.FastparseExpressionParser.expr
 import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.OrderParameterList.{MissingOrderArgumentProblem, WrongValueTypeProblem}
 import js7.data.workflow.instructions.executable.WorkflowJob

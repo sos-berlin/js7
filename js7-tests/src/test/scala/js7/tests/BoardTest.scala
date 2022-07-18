@@ -22,7 +22,7 @@ import js7.data.item.{ItemRevision, VersionId}
 import js7.data.order.Order.Fresh
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderNoticePosted, OrderNoticesExpected, OrderNoticesRead, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderSuspended, OrderSuspensionMarked}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
-import js7.data.value.expression.ExpressionParser.expr
+import js7.data.value.expression.FastparseExpressionParser.expr
 import js7.data.workflow.instructions.{ExpectNotices, PostNotices}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}

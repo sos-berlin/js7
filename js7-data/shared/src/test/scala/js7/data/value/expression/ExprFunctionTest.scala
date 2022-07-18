@@ -6,7 +6,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.parser.Parsers.checkedParse
 import js7.data.value.ValueType.UnexpectedValueTypeProblem
 import js7.data.value.expression.Expression.{Add, FunctionExpr, Multiply, NamedValue, NumericConstant}
-import js7.data.value.expression.ExpressionParser.{expressionOrFunction, functionOnly}
+import js7.data.value.expression.FastparseExpressionParser.{expressionOrFunction, functionOnly}
 import js7.data.value.expression.scopes.NamedValueScope
 import js7.data.value.{FunctionValue, NumberValue, StringValue, Value}
 import org.scalactic.source

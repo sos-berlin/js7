@@ -6,7 +6,7 @@ import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.utils.SimplePattern
 import js7.data.agent.AgentPath
 import js7.data.value.expression.Expression.StringConstant
-import js7.data.value.expression.ExpressionParser.{expr, parseExpression}
+import js7.data.value.expression.FastparseExpressionParser.{expr, parseExpression}
 import js7.data.workflow.WorkflowPath
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec

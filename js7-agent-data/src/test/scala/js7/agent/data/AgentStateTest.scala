@@ -32,7 +32,7 @@ import js7.data.orderwatch.OrderWatchEvent.ExternalOrderArised
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath}
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
 import js7.data.value.expression.Expression
-import js7.data.value.expression.ExpressionParser.expr
+import js7.data.value.expression.FastparseExpressionParser.expr
 import js7.data.workflow.position.*
 import js7.data.workflow.{Workflow, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import js7.tester.CirceJsonTester.removeJNull

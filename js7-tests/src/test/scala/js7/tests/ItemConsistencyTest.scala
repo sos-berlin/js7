@@ -14,7 +14,7 @@ import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.subagent.{SubagentId, SubagentItem}
-import js7.data.value.expression.ExpressionParser.expr
+import js7.data.value.expression.FastparseExpressionParser.expr
 import js7.data.workflow.instructions.LockInstruction
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.ItemConsistencyTest.*

@@ -22,7 +22,7 @@ import js7.data.order.OrderEvent.{OrderAttached, OrderCancelled, OrderFailed, Or
 import js7.data.order.OrderObstacle.jobParallelismLimitReached
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.expression.Expression.{NamedValue, NumericConstant, StringConstant}
-import js7.data.value.expression.ExpressionParser.parseExpression
+import js7.data.value.expression.FastparseExpressionParser.parseExpression
 import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob

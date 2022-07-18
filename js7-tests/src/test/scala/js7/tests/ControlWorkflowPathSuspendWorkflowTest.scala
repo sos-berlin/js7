@@ -23,7 +23,7 @@ import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedS
 import js7.data.item.{ItemRevision, VersionId}
 import js7.data.order.OrderEvent.{OrderAttached, OrderFinished, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderId, OrderObstacle, OrderObstacleCalculator}
-import js7.data.value.expression.ExpressionParser.expr
+import js7.data.value.expression.FastparseExpressionParser.expr
 import js7.data.workflow.instructions.Prompt
 import js7.data.workflow.{Workflow, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import js7.proxy.ControllerApi

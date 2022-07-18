@@ -13,7 +13,7 @@ import js7.data.parser.BasicParsers.*
 import js7.data.parser.Parsers.checkedParse
 import js7.data.source.SourcePos
 import js7.data.value.expression.Expression.{BooleanConstant, ObjectExpression}
-import js7.data.value.expression.ExpressionParser.{booleanConstant, constantExpression, expression}
+import js7.data.value.expression.FastparseExpressionParser.{booleanConstant, constantExpression, expression}
 import js7.data.value.expression.{Expression, Scope}
 import js7.data.value.{NamedValues, ObjectValue}
 import js7.data.workflow.Instruction.Labeled

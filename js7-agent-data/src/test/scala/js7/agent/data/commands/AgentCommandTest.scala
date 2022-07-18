@@ -20,7 +20,7 @@ import js7.data.order.{Order, OrderId, OrderMark}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.subagent.SubagentId
 import js7.data.value.StringValue
-import js7.data.value.expression.ExpressionParser.expr
+import js7.data.value.expression.FastparseExpressionParser.expr
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
 import js7.data.workflow.test.TestSetting.SimpleTestWorkflow

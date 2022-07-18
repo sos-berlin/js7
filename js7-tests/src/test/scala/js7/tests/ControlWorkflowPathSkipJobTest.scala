@@ -14,7 +14,7 @@ import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedS
 import js7.data.item.{ItemRevision, VersionId}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
-import js7.data.value.expression.ExpressionParser.expr
+import js7.data.value.expression.FastparseExpressionParser.expr
 import js7.data.workflow.instructions.If
 import js7.data.workflow.position.{Label, Position}
 import js7.data.workflow.{Workflow, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}

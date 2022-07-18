@@ -9,7 +9,7 @@ import js7.data.controller.ControllerId
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.expression.Expression.{NamedValue, StringConstant}
-import js7.data.value.expression.ExpressionParser.expr
+import js7.data.value.expression.FastparseExpressionParser.expr
 import js7.data.value.expression.Scope
 import js7.data.value.expression.scopes.NowScope
 import js7.data.value.{BooleanValue, ListType, ListValue, NamedValues, NumberValue, ObjectType, ObjectValue, StringValue}

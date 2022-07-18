@@ -17,7 +17,7 @@ import org.jetbrains.annotations.TestOnly
 /**
   * @author Joacim Zschimmer
   */
-object ExpressionParser
+object FastparseExpressionParser
 {
   @TestOnly
   def expr(expressionString: String): Expression =

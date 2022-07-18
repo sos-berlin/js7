@@ -8,7 +8,7 @@ import js7.data.parser.BasicParsers.singleQuoted
 import js7.data.parser.Parsers
 import js7.data.value.expression.Expression
 import js7.data.value.expression.Expression.{ListExpression, MkString, StringConstant, StringExpression}
-import js7.data.value.expression.ExpressionParser.dollarNamedValue
+import js7.data.value.expression.FastparseExpressionParser.dollarNamedValue
 
 object CommandLineParser
 {

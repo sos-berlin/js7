@@ -7,7 +7,7 @@ import js7.base.utils.Lazy
 import js7.data.Problems.RecursiveEvaluationProblem
 import js7.data.value.Value
 import js7.data.value.expression.Expression.{FunctionCall, JobResourceVariable}
-import js7.data.value.expression.ExpressionParser.parseExpression
+import js7.data.value.expression.FastparseExpressionParser.parseExpression
 import js7.data.value.expression.Scope.evalLazilyExpressions
 import js7.data.value.expression.scopes.CombinedScope
 import scala.annotation.unused

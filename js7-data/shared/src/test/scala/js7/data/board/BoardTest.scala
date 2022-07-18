@@ -1,7 +1,7 @@
 package js7.data.board
 
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
-import js7.data.value.expression.ExpressionParser.expr
+import js7.data.value.expression.FastparseExpressionParser.expr
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.freespec.AnyFreeSpec
 

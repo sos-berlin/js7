@@ -7,7 +7,7 @@ import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCatched, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
-import js7.data.value.expression.ExpressionParser.expr
+import js7.data.value.expression.FastparseExpressionParser.expr
 import js7.data.workflow.instructions.{Fail, Fork, If, TryInstruction}
 import js7.data.workflow.position.{BranchId, Label, Position, PositionOrLabel}
 import js7.data.workflow.{Workflow, WorkflowPath}

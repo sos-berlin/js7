@@ -11,7 +11,7 @@ import js7.data.order.{FreshOrder, Order, OrderId}
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
 import js7.data.orderwatch.OrderWatchState.{Arised, ArisedOrHasOrder, HasOrder, Vanished}
 import js7.data.orderwatch.OrderWatchStateHandlerTest.TestState
-import js7.data.value.expression.ExpressionParser.expr
+import js7.data.value.expression.FastparseExpressionParser.expr
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
 import org.scalatest.freespec.AnyFreeSpec

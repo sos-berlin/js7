@@ -14,7 +14,7 @@ import js7.data.job.{JobKey, JobResourcePath, PathExecutable, ShellScriptExecuta
 import js7.data.lock.LockPath
 import js7.data.value.NumberValue
 import js7.data.value.expression.Expression.{BooleanConstant, Equal, JobResourceVariable, LastReturnCode, NumericConstant, StringConstant}
-import js7.data.value.expression.ExpressionParser.expr
+import js7.data.value.expression.FastparseExpressionParser.expr
 import js7.data.value.expression.PositionSearch
 import js7.data.workflow.WorkflowTest.*
 import js7.data.workflow.instructions.executable.WorkflowJob
