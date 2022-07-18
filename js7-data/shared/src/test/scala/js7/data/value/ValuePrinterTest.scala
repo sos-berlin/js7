@@ -1,7 +1,7 @@
 package js7.data.value
 
 import js7.data.value.ValuePrinter.quoteString
-import js7.data.value.expression.FastparseExpressionParser.parseQuotedString
+import js7.data.value.expression.ExpressionParser.parseQuotedString
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks.forAll
 

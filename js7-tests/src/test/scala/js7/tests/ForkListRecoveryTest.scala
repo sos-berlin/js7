@@ -11,7 +11,7 @@ import js7.data.controller.ControllerCommand.AnswerOrderPrompt
 import js7.data.event.EventRequest
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderStarted, OrderTerminated}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
-import js7.data.value.expression.FastparseExpressionParser.{expr, exprFunction}
+import js7.data.value.expression.ExpressionParser.{expr, exprFunction}
 import js7.data.value.{ListValue, StringValue}
 import js7.data.workflow.instructions.{ForkList, Prompt}
 import js7.data.workflow.position.Position

@@ -36,6 +36,10 @@ object CatsExpressionParser
   def parseExpressionOrFunction(string: String): Checked[Expression] =
     checkedParse(string, expressionOrFunction.surroundedBy(w) <* end)
 
+  @TestOnly
+  def parseQuotedString(string: String): Checked[String] =
+    checkedParse(string, quotedString.surroundedBy(w) <* end)
+
   private val parameterList: Parser[List[String]] =
     inParentheses(commaSequence(identifier))
 

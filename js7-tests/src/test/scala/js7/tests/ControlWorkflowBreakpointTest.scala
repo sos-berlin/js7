@@ -25,7 +25,7 @@ import js7.data.item.{ItemRevision, VersionId, UnsignedItemEvent}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderStarted, OrderStdoutWritten, OrderSuspended}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderObstacle, OrderObstacleCalculator, Outcome}
 import js7.data.value.StringValue
-import js7.data.value.expression.FastparseExpressionParser.expr
+import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.Prompt
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath}

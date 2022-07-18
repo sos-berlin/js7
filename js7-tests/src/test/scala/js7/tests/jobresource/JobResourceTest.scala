@@ -26,7 +26,7 @@ import js7.data.order.OrderEvent.{OrderFinished, OrderProcessed, OrderStdWritten
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.StringValue
 import js7.data.value.expression.Expression.{NamedValue, StringConstant}
-import js7.data.value.expression.FastparseExpressionParser.{expr, parseExpression}
+import js7.data.value.expression.ExpressionParser.{expr, parseExpression}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}

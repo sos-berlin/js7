@@ -20,7 +20,7 @@ import js7.data.item.VersionId
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCatched, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.OrderObstacle.WaitingForOtherTime
 import js7.data.order.{CycleState, FreshOrder, OrderEvent, OrderId, OrderObstacle, Outcome}
-import js7.data.value.expression.FastparseExpressionParser.expr
+import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.Schedule.{Periodic, Scheme}
 import js7.data.workflow.instructions.{Cycle, Fail, Schedule, TryInstruction}
 import js7.data.workflow.position.{BranchId, Position}

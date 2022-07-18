@@ -10,7 +10,7 @@ import js7.data.command.CancellationMode
 import js7.data.controller.ControllerCommand.{CancelOrders, DeleteOrdersWhenTerminated, ResumeOrder}
 import js7.data.order.OrderEvent.*
 import js7.data.order.{FreshOrder, HistoricOutcome, OrderEvent, OrderId, Outcome}
-import js7.data.value.expression.FastparseExpressionParser.expr
+import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.instructions.{Fail, Fork}
 import js7.data.workflow.position.Position

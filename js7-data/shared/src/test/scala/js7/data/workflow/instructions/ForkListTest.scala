@@ -5,7 +5,7 @@ import js7.base.problem.Problem
 import js7.data.agent.AgentPath
 import js7.data.job.PathExecutable
 import js7.data.source.SourcePos
-import js7.data.value.expression.FastparseExpressionParser.{expr, exprFunction}
+import js7.data.value.expression.ExpressionParser.{expr, exprFunction}
 import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position

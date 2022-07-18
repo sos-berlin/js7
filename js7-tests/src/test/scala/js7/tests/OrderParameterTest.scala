@@ -7,7 +7,7 @@ import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.OrderEvent.{OrderFailed, OrderFinished, OrderProcessed}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.expression.Expression.StringConstant
-import js7.data.value.expression.FastparseExpressionParser.expr
+import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
 import js7.data.workflow.{OrderParameter, OrderParameterList, OrderPreparation, Workflow, WorkflowPath}
 import js7.launcher.OrderProcess

@@ -7,7 +7,7 @@ import js7.data.agent.AgentPath
 import js7.data.job.PathExecutable
 import js7.data.source.SourcePos
 import js7.data.value.expression.Expression.StringConstant
-import js7.data.value.expression.FastparseExpressionParser.expr
+import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.Fork.DuplicatedBranchIdsInForkProblem
 import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.data.workflow.instructions.executable.WorkflowJob

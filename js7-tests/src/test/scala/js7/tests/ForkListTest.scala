@@ -17,7 +17,7 @@ import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.job.ShellScriptExecutable
 import js7.data.order.OrderEvent.*
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
-import js7.data.value.expression.FastparseExpressionParser.{expr, exprFunction}
+import js7.data.value.expression.ExpressionParser.{expr, exprFunction}
 import js7.data.value.{ListValue, NumberValue, ObjectValue, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fail, ForkList, If}

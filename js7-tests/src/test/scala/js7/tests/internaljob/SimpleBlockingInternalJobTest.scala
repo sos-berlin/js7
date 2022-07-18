@@ -5,7 +5,7 @@ import js7.data.agent.AgentPath
 import js7.data.job.{InternalExecutable, JobResource, JobResourcePath}
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{FreshOrder, OrderId, Outcome}
-import js7.data.value.expression.FastparseExpressionParser.expr
+import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}

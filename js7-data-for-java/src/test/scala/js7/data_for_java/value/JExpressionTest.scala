@@ -1,7 +1,7 @@
 package js7.data_for_java.value
 
 import js7.data.value.expression.Expression.StringConstant
-import js7.data.value.expression.FastparseExpressionParser.parseExpression
+import js7.data.value.expression.ExpressionParser.parseExpression
 import org.scalatest.freespec.AnyFreeSpec
 
 final class JExpressionTest extends AnyFreeSpec

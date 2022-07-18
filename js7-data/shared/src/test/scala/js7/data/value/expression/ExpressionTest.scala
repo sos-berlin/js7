@@ -4,7 +4,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.data.job.JobResourcePath
 import js7.data.value.ValueType.{MissingValueProblem, UnexpectedValueTypeProblem}
 import js7.data.value.expression.Expression.*
-import js7.data.value.expression.FastparseExpressionParser.{parseExpression, parseExpressionOrFunction}
+import js7.data.value.expression.ExpressionParser.{parseExpression, parseExpressionOrFunction}
 import js7.data.value.expression.scopes.NameToCheckedValueScope
 import js7.data.value.{BooleanValue, ListValue, NullValue, NumberValue, ObjectValue, StringValue, Value}
 import js7.data.workflow.instructions.executable.WorkflowJob
