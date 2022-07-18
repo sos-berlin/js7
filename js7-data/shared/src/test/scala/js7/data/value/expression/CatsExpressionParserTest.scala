@@ -1,9 +1,7 @@
 package js7.data.value.expression
 
-import cats.parse.Parser.end
 import js7.base.problem.Problem
-import js7.data.parser.CatsParsers.checkedParse
-import js7.data.value.expression.CatsExpressionParser.{parse as _, *}
+import js7.data.value.expression.CatsExpressionParser.*
 import js7.data.value.expression.Expression.*
 import js7.data.workflow.instructions.executable.WorkflowJob
 import org.scalactic.source
@@ -36,20 +34,20 @@ final class CatsExpressionParserTest extends AnyFreeSpec
     //testExpression("""${A.SOME-KEY}""", NamedValue(NamedValue.LastOccurredByPrefix("A"), StringConstant("SOME-KEY")))
 
     "variable()" in {
-      assert(checkedParse("""variable("clé")""", expression) ==
+      assert(parseExpression("""variable("clé")""") ==
         Right(NamedValue("clé")))
-      assert(checkedParse("""variable ( "clé", default = "DEFAULT" )""", expression) ==
+      assert(parseExpression("""variable ( "clé", default = "DEFAULT" )""") ==
         Right(NamedValue("clé", StringConstant("DEFAULT"))))
-      assert(checkedParse("""variable(key="clé", label=LABEL)""", expression) ==
+      assert(parseExpression("""variable(key="clé", label=LABEL)""") ==
         Right(NamedValue(NamedValue.ByLabel("LABEL"), StringConstant("clé"))))
-      assert(checkedParse("""variable(key="clé", job=JOB)""", expression) ==
+      assert(parseExpression("""variable(key="clé", job=JOB)""") ==
         Right(NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), StringConstant("clé"))))
     }
 
     "argument()" in {
-      assert(checkedParse("""argument("clé")""", expression) ==
+      assert(parseExpression("""argument("clé")""") ==
         Right(NamedValue(NamedValue.Argument, StringConstant("clé"))))
-      assert(checkedParse("""argument ( "clé", default = "DEFAULT" )""", expression) ==
+      assert(parseExpression("""argument ( "clé", default = "DEFAULT" )""") ==
         Right(NamedValue(NamedValue.Argument, StringConstant("clé"), Some(StringConstant("DEFAULT")))))
     }
   }
@@ -143,12 +141,12 @@ final class CatsExpressionParserTest extends AnyFreeSpec
           .filterNot(escapedChars.map(_._1).toSet)
         for (escaped <- invalidEscaped) {
           // With ' to render as "-string
-          assert(CatsExpressionParser.parse(s""" "'\\$escaped" """.trim) == Left(Problem(
+          assert(parseExpression(s""" "'\\$escaped" """.trim) == Left(Problem(
             s"""Error in expression: Parsing failed at position 4 “"'\\❓$escaped"”""" +
             """ · Expected blackslash (\) and one of the following characters: [\"trn$]""")))
 
           // Without ' to render as '-string
-          assert(CatsExpressionParser.parse(s""" "\\$escaped" """.trim) == Left(Problem(
+          assert(parseExpression(s""" "\\$escaped" """.trim) == Left(Problem(
             s"""Error in expression: Parsing failed at position 3 “"\\❓$escaped"”""" +
             """ · Expected blackslash (\) and one of the following characters: [\"trn$]""")))
         }
@@ -163,21 +161,21 @@ final class CatsExpressionParserTest extends AnyFreeSpec
     testExpression(""""$A:B"""", InterpolatedString(List(NamedValue("A"), StringConstant(":B"))))
 
     "Interpolated string" in {
-      assert(checkedParse(""""$A"""", expression) == Right(InterpolatedString(NamedValue("A") :: Nil)))
-      assert(checkedParse(""""-->$A$BB<--"""", expression) ==
+      assert(parseExpression(""""$A"""") == Right(InterpolatedString(NamedValue("A") :: Nil)))
+      assert(parseExpression(""""-->$A$BB<--"""") ==
         Right(InterpolatedString(List(StringConstant("-->"), NamedValue("A"), NamedValue("BB"), StringConstant("<--")))))
-      assert(checkedParse(""""-->${AB}${CD}<--"""", expression) ==
+      assert(parseExpression(""""-->${AB}${CD}<--"""") ==
         Right(InterpolatedString(List(StringConstant("-->"), NamedValue("AB"), NamedValue("CD"), StringConstant("<--")))))
-      assert(checkedParse(""""-->$("A")<--"""", expression) ==
+      assert(parseExpression(""""-->$("A")<--"""") ==
         Right(StringConstant("-->A<--")))
-      assert(checkedParse("""""""", expression) == Right(StringConstant.empty))
-      assert(checkedParse(""""\\\t\"\r\n"""", expression) == Right(StringConstant("\\\t\"\r\n")))
+      assert(parseExpression("""""""") == Right(StringConstant.empty))
+      assert(parseExpression(""""\\\t\"\r\n"""") == Right(StringConstant("\\\t\"\r\n")))
     }
 
     "Invalid strings" in {
-      assert(checkedParse("''", expression).isLeft)
-      assert(checkedParse(""" "\" """.trim, expression).isLeft)
-      // We do not reject any string - assert(checkedParse(" \"\t\" ".trim, expression).isLeft)
+      assert(parseExpression("''").isLeft)
+      assert(parseExpression(""" "\" """.trim).isLeft)
+      // We do not reject any string - assert(parseExpression(" \"\t\" ".trim).isLeft)
     }
   }
 
@@ -224,7 +222,7 @@ final class CatsExpressionParserTest extends AnyFreeSpec
         ListExpression(List(NumericConstant(0), NumericConstant(3), NumericConstant(50)))))
 
     testError("""$returnCode in [0, 3, 50] || $result == "1"""",
-      """Parsing failed at position 44 “…ult == "1"❓”""" +
+      """Error in expression: Parsing failed at position 44 “…ult == "1"❓”""" +
        """ · Expected boolean operans for operator ||: [0, 3, 50] || $result == '1'""")
 
     testBooleanExpression("""($returnCode in [0, 3, 50]) || $result == "1"""",
@@ -289,22 +287,19 @@ final class CatsExpressionParserTest extends AnyFreeSpec
   }
 
   "Unknown numeric function" in {
-    val parser = expression <* end
-    assert(checkedParse(""""123".toNumber""", parser) ==
+    assert(parseExpression(""""123".toNumber""") ==
       Right(ToNumber(StringConstant("123"))))
   }
 
   "Unknown boolean function" in {
-    val parser = expression <* end
-    assert(checkedParse(""""true".toBoolean""", parser) ==
+    assert(parseExpression(""""true".toBoolean""") ==
       Right(ToBoolean(StringConstant("true"))))
   }
 
   private def testBooleanExpression(exprString: String, expr: BooleanExpression)(implicit pos: source.Position) =
     registerTest(exprString) {
-      val parser = expression <* end
-      assert(checkedParse(exprString, parser) == Right(expr))
-      assert(checkedParse(expr.toString, parser) == Right(expr), " - toString")
+        assert(parseExpression(exprString) == Right(expr))
+      assert(parseExpression(expr.toString) == Right(expr), " - toString")
     }
 
   private def testExpression(exprString: String, expr: Expression)(implicit pos: source.Position) =
@@ -313,9 +308,8 @@ final class CatsExpressionParserTest extends AnyFreeSpec
     }
 
   private def testExpressionRaw(exprString: String, expr: Expression)(implicit pos: source.Position) = {
-    val parser = expression <* end
-    assert(checkedParse(exprString, parser) == Right(expr))
-    assert(checkedParse(expr.toString, parser) == Right(expr), " - toString")
+    assert(parseExpression(exprString) == Right(expr))
+    assert(parseExpression(expr.toString) == Right(expr), " - toString")
   }
 
   private def testError(exprString: String, errorMessage: String)(implicit pos: source.Position) =
@@ -324,7 +318,6 @@ final class CatsExpressionParserTest extends AnyFreeSpec
     }
 
   private def testErrorRaw(exprString: String, errorMessage: String)(implicit pos: source.Position) = {
-    val parser = expression <* end
-    assert(checkedParse(exprString, parser) == Left(Problem(errorMessage)))
+    assert(parseExpression(exprString) == Left(Problem(errorMessage)))
   }
 }

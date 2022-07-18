@@ -1,12 +1,10 @@
 package js7.data.value.expression
 
-import fastparse.NoWhitespace.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.data.parser.Parsers.checkedParse
 import js7.data.value.ValueType.UnexpectedValueTypeProblem
 import js7.data.value.expression.Expression.{Add, FunctionExpr, Multiply, NamedValue, NumericConstant}
-import js7.data.value.expression.FastparseExpressionParser.{expressionOrFunction, functionOnly}
+import js7.data.value.expression.FastparseExpressionParser.{parseExpressionOrFunction, parseFunction}
 import js7.data.value.expression.scopes.NamedValueScope
 import js7.data.value.{FunctionValue, NumberValue, StringValue, Value}
 import org.scalactic.source
@@ -51,19 +49,19 @@ final class ExprFunctionTest extends AnyFreeSpec
     checkedFunction: Checked[ExprFunction])
     (implicit pos: source.Position): Unit =
     registerTest(exprString) {
-      val checked = checkedParse(exprString, functionOnly(_))
+      val checked = parseFunction(exprString)
       assert(checked == checkedFunction)
       for (function <- checkedFunction) {
-        assert(checkedParse(function.toString, functionOnly(_)) == checkedFunction, " in toString❗")
+        assert(parseFunction(function.toString) == checkedFunction, " in toString❗")
         assert(function.eval(args)(scope) == result)
-        assert(checkedParse(exprString, expressionOrFunction(_)) == Right(FunctionExpr(function)))
+        assert(parseExpressionOrFunction(exprString) == Right(FunctionExpr(function)))
       }
     }
 
   "FunctionExpr and FunctionValue" - {
     "() => 7" in {
       val fun: ExprFunction = ExprFunction(Nil, NumericConstant(7))
-      val expr = checkedParse("() => 7", expressionOrFunction(_)).orThrow
+      val expr = parseExpressionOrFunction("() => 7").orThrow
       assert(expr == FunctionExpr(fun))
       implicit val scope = Scope.empty
       assert(expr.eval.orThrow.asInstanceOf[FunctionValue].function.eval(Nil) == Right(
@@ -73,7 +71,7 @@ final class ExprFunctionTest extends AnyFreeSpec
     }
 
     "(x) => x + 7" in {
-      val expr = checkedParse("(x) => $x + 7", expressionOrFunction(_)).orThrow
+      val expr = parseExpressionOrFunction("(x) => $x + 7").orThrow
       assert(expr == FunctionExpr(ExprFunction(
         Seq(VariableDeclaration("x")),
         Add(NamedValue("x"), NumericConstant(7)))))
@@ -86,7 +84,7 @@ final class ExprFunctionTest extends AnyFreeSpec
   "restrict" in {
     def restrict(min: Int, max: Int): Checked[ExprFunction] =
       for {
-        function <- checkedParse("""(a, b) => "$a,$b"""", functionOnly(_))
+        function <- parseFunction("""(a, b) => "$a,$b"""")
         function <- function.restrict("myFunction", minimum = min, maximum = max)
       } yield function
 

@@ -13,9 +13,9 @@ import js7.data.job.{JobKey, JobResource, JobResourcePath, ShellScriptExecutable
 import js7.data.order.{FreshOrder, HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.subagent.SubagentId
 import js7.data.value.expression.Expression.{NamedValue, StringConstant}
-import js7.data.value.expression.FastparseExpressionParser.parseExpression
-import js7.data.value.expression.scopes.OrderScopesTest.*
+import js7.data.value.expression.FastparseExpressionParser.expr
 import js7.data.value.expression.Scope
+import js7.data.value.expression.scopes.OrderScopesTest.*
 import js7.data.value.{NumberValue, ObjectValue, StringValue}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -385,7 +385,4 @@ object OrderScopesTest
       HistoricOutcome(Position(1), Outcome.Succeeded(Map(
         "e" -> StringValue("e from position 1"),
         "f" -> StringValue("f from position 1"))))))
-
-  private def expr(string: String) =
-    parseExpression(string).orThrow
 }

@@ -19,9 +19,9 @@ object CatsExpressionParser
 {
   @TestOnly
   def expr(expressionString: String): Expression =
-    parse(expressionString).orThrow
+    parseExpression(expressionString).orThrow
 
-  def parse(string: String): Checked[Expression] =
+  def parseExpression(string: String): Checked[Expression] =
     checkedParse(string, expression.surroundedBy(w) <* end)
       .left.map(_.withPrefix("Error in expression:"))
 
@@ -32,6 +32,9 @@ object CatsExpressionParser
   def parseFunction(string: String): Checked[ExprFunction] =
     checkedParse(string, functionDefinition.surroundedBy(w) <* end)
       .left.map(_.withPrefix("Error in functionDefinition:"))
+
+  def parseExpressionOrFunction(string: String): Checked[Expression] =
+    checkedParse(string, expressionOrFunction.surroundedBy(w) <* end)
 
   private val parameterList: Parser[List[String]] =
     inParentheses(commaSequence(identifier))
@@ -45,7 +48,7 @@ object CatsExpressionParser
   private val functionExpr: Parser[FunctionExpr] =
     functionDefinition.map(FunctionExpr(_))
 
-  val expressionOrFunction: Parser[Expression] =
+  private val expressionOrFunction: Parser[Expression] =
     functionExpr | expression
 
   private val listExpr: Parser[ListExpression] =

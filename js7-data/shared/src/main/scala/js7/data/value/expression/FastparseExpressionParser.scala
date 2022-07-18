@@ -6,9 +6,9 @@ import js7.base.problem.Checked
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.job.JobResourcePath
-import js7.data.parser.BasicParsers
-import js7.data.parser.BasicParsers.*
-import js7.data.parser.Parsers.checkedParse
+import js7.data.parser.FastparseBasicParsers
+import js7.data.parser.FastparseBasicParsers.*
+import js7.data.parser.FastparseParsers.checkedParse
 import js7.data.value.expression.Expression.*
 import js7.data.value.expression.ExpressionOptimizer.optimizeExpression
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -35,13 +35,25 @@ object FastparseExpressionParser
     checkedParse(string, functionOnly(_))
       .left.map(_.withPrefix("Error in function:"))
 
+  def parseExpressionOrFunction(string: String): Checked[Expression] =
+    checkedParse(string, expressionOrFunctionOnly(_))
+
+  @TestOnly
+  def parseQuotedString(quoted: String): Checked[String] = {
+    def quotedStringOnly[x: P] = quotedString ~ End
+    checkedParse(quoted, quotedStringOnly(_))
+  }
+
   def constantExpression[x: P]: P[Expression] =
     expression
 
-  def expressionOnly[x: P]: P[Expression] =
+  private def expressionOnly[x: P]: P[Expression] =
     P(w ~~ expression ~ End)
 
-  def expressionOrFunction[x: P]: P[Expression] =
+  private def expressionOrFunctionOnly[x: P]: P[Expression] =
+    P(expressionOrFunction ~~ End)
+
+  private def expressionOrFunction[x: P]: P[Expression] =
     P(functionExpr | expression)
 
   def expression[x: P]: P[Expression] =
@@ -88,7 +100,7 @@ object FastparseExpressionParser
   private def singleQuotedStringConstant[x: P] = P[StringConstant](singleQuoted
     .map(StringConstant.apply))
 
-  def quotedString[x: P] = P[String](BasicParsers.quotedString)  // Public
+  def quotedString[x: P] = P[String](FastparseBasicParsers.quotedString)  // Public
 
   private def interpolatedString[x: P] = P[StringExpression](
     "\"" ~~/

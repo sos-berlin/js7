@@ -1,11 +1,11 @@
 package js7.data.job
 
-import fastparse.NoWhitespace.*
 import fastparse.*
+import fastparse.NoWhitespace.*
 import js7.base.problem.Checked
 import js7.data.job.CommandLineExpression.optimizeCommandLine
-import js7.data.parser.BasicParsers.singleQuoted
-import js7.data.parser.Parsers
+import js7.data.parser.FastparseBasicParsers.singleQuoted
+import js7.data.parser.FastparseParsers
 import js7.data.value.expression.Expression
 import js7.data.value.expression.Expression.{ListExpression, MkString, StringConstant, StringExpression}
 import js7.data.value.expression.FastparseExpressionParser.dollarNamedValue
@@ -13,7 +13,7 @@ import js7.data.value.expression.FastparseExpressionParser.dollarNamedValue
 object CommandLineParser
 {
   def parse(source: String): Checked[CommandLineExpression] =
-    Parsers.checkedParse(source,
+    FastparseParsers.checkedParse(source,
       commandLine(_).map(CommandLineExpression(source, _)).map(optimizeCommandLine))
 
   private def commandLine[x: P]: P[List[Expression]] = P(

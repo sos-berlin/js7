@@ -3,7 +3,6 @@ package js7.data.value.expression
 import fastparse.*
 import fastparse.NoWhitespace.*
 import js7.base.problem.Problem
-import js7.data.parser.Parsers.checkedParse
 import js7.data.value.expression.Expression.*
 import js7.data.value.expression.FastparseExpressionParser.*
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -44,20 +43,20 @@ final class FastparseExpressionParserTest extends AnyFreeSpec
     //testExpression("""${A.SOME-KEY}""", NamedValue(NamedValue.LastOccurredByPrefix("A"), StringConstant("SOME-KEY")))
 
     "variable()" in {
-      assert(checkedParse("""variable("clé")""", expression(_)) ==
+      assert(parseExpression("""variable("clé")""") ==
         Right(NamedValue("clé")))
-      assert(checkedParse("""variable ( "clé", default = "DEFAULT" )""", expression(_)) ==
+      assert(parseExpression("""variable ( "clé", default = "DEFAULT" )""") ==
         Right(NamedValue("clé", StringConstant("DEFAULT"))))
-      assert(checkedParse("""variable(key="clé", label=LABEL)""", expression(_)) ==
+      assert(parseExpression("""variable(key="clé", label=LABEL)""") ==
         Right(NamedValue(NamedValue.ByLabel("LABEL"), StringConstant("clé"))))
-      assert(checkedParse("""variable(key="clé", job=JOB)""", expression(_)) ==
+      assert(parseExpression("""variable(key="clé", job=JOB)""") ==
         Right(NamedValue(NamedValue.LastExecutedJob(WorkflowJob.Name("JOB")), StringConstant("clé"))))
     }
 
     "argument()" in {
-      assert(checkedParse("""argument("clé")""", expression(_)) ==
+      assert(parseExpression("""argument("clé")""") ==
         Right(NamedValue(NamedValue.Argument, StringConstant("clé"))))
-      assert(checkedParse("""argument ( "clé", default = "DEFAULT" )""", expression(_)) ==
+      assert(parseExpression("""argument ( "clé", default = "DEFAULT" )""") ==
         Right(NamedValue(NamedValue.Argument, StringConstant("clé"), Some(StringConstant("DEFAULT")))))
     }
   }
@@ -144,7 +143,8 @@ final class FastparseExpressionParserTest extends AnyFreeSpec
         testExpression(s"'''->''<-'''".trim, StringConstant("->''<-"))
         testExpression(s"''''->'''<-''''".trim, StringConstant("->'''<-"))
         testExpression(s"'''''->''''<-'''''".trim, StringConstant("->''''<-"))
-        testError(s"''''''->'''''<-''''''".trim, """Expected (not | argumentExpression):1:15, found "-''''''"""")
+        testError(s"''''''->'''''<-''''''".trim,
+        """Error in expression: Expected (not | argumentExpression):1:15, found "-''''''"""")
       }
 
       "Invalid escaped characters" in {
@@ -171,21 +171,21 @@ final class FastparseExpressionParserTest extends AnyFreeSpec
     testExpression(""""$A:B"""", InterpolatedString(List(NamedValue("A"), StringConstant(":B"))))
 
     "Interpolated string" in {
-      assert(checkedParse(""""$A"""", expression(_)) == Right(InterpolatedString(NamedValue("A") :: Nil)))
-      assert(checkedParse(""""-->$A$BB<--"""", expression(_)) ==
+      assert(parseExpression(""""$A"""") == Right(InterpolatedString(NamedValue("A") :: Nil)))
+      assert(parseExpression(""""-->$A$BB<--"""") ==
         Right(InterpolatedString(List(StringConstant("-->"), NamedValue("A"), NamedValue("BB"), StringConstant("<--")))))
-      assert(checkedParse(""""-->${AB}${CD}<--"""", expression(_)) ==
+      assert(parseExpression(""""-->${AB}${CD}<--"""") ==
         Right(InterpolatedString(List(StringConstant("-->"), NamedValue("AB"), NamedValue("CD"), StringConstant("<--")))))
-      assert(checkedParse(""""-->$("A")<--"""", expression(_)) ==
+      assert(parseExpression(""""-->$("A")<--"""") ==
         Right(StringConstant("-->A<--")))
-      assert(checkedParse("""""""", expression(_)) == Right(StringConstant.empty))
-      assert(checkedParse(""""\\\t\"\r\n"""", expression(_)) == Right(StringConstant("\\\t\"\r\n")))
+      assert(parseExpression("""""""") == Right(StringConstant.empty))
+      assert(parseExpression(""""\\\t\"\r\n"""") == Right(StringConstant("\\\t\"\r\n")))
     }
 
     "Invalid strings" in {
-      assert(checkedParse("''", expression(_)).isLeft)
-      assert(checkedParse(""" "\" """.trim, expression(_)).isLeft)
-      // We do not reject any string - assert(checkedParse(" \"\t\" ".trim, expression(_)).isLeft)
+      assert(parseExpression("''").isLeft)
+      assert(parseExpression(""" "\" """.trim).isLeft)
+      // We do not reject any string - assert(parseExpression(" \"\t\" ".trim).isLeft)
     }
   }
 
@@ -232,7 +232,8 @@ final class FastparseExpressionParserTest extends AnyFreeSpec
         ListExpression(List(NumericConstant(0), NumericConstant(3), NumericConstant(50)))))
 
     testError("""$returnCode in [0, 3, 50] || $result == "1"""",
-      """Expected boolean operarands for operator ||: [0, 3, 50] || $result == '1':1:44, found """"")
+      "Error in expression: Expected boolean operarands for operator ||: " +
+       """[0, 3, 50] || $result == '1':1:44, found """"")
 
     testBooleanExpression("""($returnCode in [0, 3, 50]) || $result == "1"""",
       Or(
@@ -293,22 +294,21 @@ final class FastparseExpressionParserTest extends AnyFreeSpec
   }
 
   "Unknown numeric function" in {
-    def parser[x: P] = expression ~ End
-    assert(checkedParse(""""123".toNumber""", parser(_)) ==
+    assert(parseExpression(""""123".toNumber""") ==
       Right(ToNumber(StringConstant("123"))))
   }
 
   "Unknown boolean function" in {
     def parser[x: P] = expression ~ End
-    assert(checkedParse(""""true".toBoolean""", parser(_)) ==
+    assert(parseExpression(""""true".toBoolean""") ==
       Right(ToBoolean(StringConstant("true"))))
   }
 
   private def testBooleanExpression(exprString: String, expr: BooleanExpression)(implicit pos: source.Position) =
     registerTest(exprString) {
       def parser[x: P] = expression ~ End
-      assert(checkedParse(exprString, parser(_)) == Right(expr))
-      assert(checkedParse(expr.toString, parser(_)) == Right(expr), " - toString")
+      assert(parseExpression(exprString) == Right(expr))
+      assert(parseExpression(expr.toString) == Right(expr), " - toString")
     }
 
   private def testExpression(exprString: String, expr: Expression)(implicit pos: source.Position) =
@@ -318,8 +318,8 @@ final class FastparseExpressionParserTest extends AnyFreeSpec
 
   private def testExpressionRaw(exprString: String, expr: Expression)(implicit pos: source.Position) = {
     def parser[x: P] = expression ~ End
-    assert(checkedParse(exprString, parser(_)) == Right(expr))
-    assert(checkedParse(expr.toString, parser(_)) == Right(expr), " - toString")
+    assert(parseExpression(exprString) == Right(expr))
+    assert(parseExpression(expr.toString) == Right(expr), " - toString")
   }
 
   private def testError(exprString: String, errorMessage: String)(implicit pos: source.Position) =
@@ -329,6 +329,6 @@ final class FastparseExpressionParserTest extends AnyFreeSpec
 
   private def testErrorRaw(exprString: String, errorMessage: String)(implicit pos: source.Position) = {
     def parser[x: P] = expression ~ End
-    assert(checkedParse(exprString, parser(_)) == Left(Problem(errorMessage)))
+    assert(parseExpression(exprString) == Left(Problem(errorMessage)))
   }
 }

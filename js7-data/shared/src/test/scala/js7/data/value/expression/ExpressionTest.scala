@@ -1,13 +1,10 @@
 package js7.data.value.expression
 
-import fastparse.NoWhitespace.*
-import fastparse.{End, P}
 import js7.base.problem.{Checked, Problem}
 import js7.data.job.JobResourcePath
-import js7.data.parser.Parsers.checkedParse
 import js7.data.value.ValueType.{MissingValueProblem, UnexpectedValueTypeProblem}
 import js7.data.value.expression.Expression.*
-import js7.data.value.expression.FastparseExpressionParser.{expressionOnly, expressionOrFunction, parseExpression}
+import js7.data.value.expression.FastparseExpressionParser.{parseExpression, parseExpressionOrFunction}
 import js7.data.value.expression.scopes.NameToCheckedValueScope
 import js7.data.value.{BooleanValue, ListValue, NullValue, NumberValue, ObjectValue, StringValue, Value}
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -738,14 +735,13 @@ final class ExpressionTest extends AnyFreeSpec
     (implicit scope: Scope, pos: source.Position)
   : Unit =
     registerTest(exprString) {
-      def expressionOrFunctionOnly[x: P] = P(expressionOrFunction ~ End)
-      val checked = checkedParse(exprString.trim, expressionOrFunctionOnly(_))
+      val checked = parseExpressionOrFunction(exprString.trim)
       assert(checked == expression)
       //if (checked != expression) {
       //  fail(diffx.Diff.compare(checked, expression).toString)
       //}
       for (e <- expression) {
-        assert(checkedParse(e.toString, expressionOnly(_)) == expression, " in toString❗")
+        assert(parseExpression(e.toString) == expression, s" in -->toString=${e.toString}")
         assert(e.eval == result)
       }
     }

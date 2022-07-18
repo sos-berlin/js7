@@ -1,7 +1,7 @@
 package js7.data.workflow
 
-import fastparse.NoWhitespace.*
 import fastparse.*
+import fastparse.NoWhitespace.*
 import js7.base.io.process.ReturnCode
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
@@ -9,8 +9,8 @@ import js7.base.utils.Collections.implicits.RichIterable
 import js7.data.agent.AgentPath
 import js7.data.job.{CommandLineExecutable, CommandLineParser, InternalExecutable, JobResourcePath, PathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
 import js7.data.lock.LockPath
-import js7.data.parser.BasicParsers.*
-import js7.data.parser.Parsers.checkedParse
+import js7.data.parser.FastparseBasicParsers.*
+import js7.data.parser.FastparseParsers.checkedParse
 import js7.data.source.SourcePos
 import js7.data.value.expression.Expression.{BooleanConstant, ObjectExpression}
 import js7.data.value.expression.FastparseExpressionParser.{booleanConstant, constantExpression, expression}
