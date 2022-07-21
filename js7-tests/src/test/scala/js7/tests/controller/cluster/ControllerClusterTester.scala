@@ -2,7 +2,7 @@ package js7.tests.controller.cluster
 
 import js7.base.problem.Checked.*
 import js7.base.system.OperatingSystem.isWindows
-import js7.data.workflow.{FastparseWorkflowParser, WorkflowPath}
+import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.controller.cluster.ControllerClusterTester.*
 import js7.tests.testenv.ControllerClusterForScalaTest
 import js7.tests.testenv.ControllerClusterForScalaTest.TestPathExecutable
@@ -16,7 +16,7 @@ private[cluster] trait ControllerClusterTester extends AnyFreeSpec with Controll
 
 object ControllerClusterTester
 {
-  private[cluster] val TestWorkflow = FastparseWorkflowParser.parse(
+  private[cluster] val TestWorkflow = WorkflowParser.parse(
     WorkflowPath("WORKFLOW"),
     s"""define workflow {
       |  execute executable="${TestPathExecutable.path}", agent="AGENT", v1Compatible=true, parallelism=2;

@@ -129,9 +129,9 @@ final class CatsBasicParsersTest extends AnyFreeSpec
 
     "String interpolation is not supported at this level" in {
       assert(checkedParse(""""$variable"""", quotedString) == Left(Problem(
-        """Parsing failed at position 2 “"❓$variable"” · Expected character out of ["\\]""")))
+        """Parsing failed at position 2 “"❓$variable"” · Expected a character out of ["\\]""")))
       assert(checkedParse(""""x$variable"""", quotedString) == Left(Problem(
-        """Parsing failed at position 3 “"x❓$variable"” · Expected character out of ["\\]""")))
+        """Parsing failed at position 3 “"x❓$variable"” · Expected a character out of ["\\]""")))
     }
 
     "Valid" in {

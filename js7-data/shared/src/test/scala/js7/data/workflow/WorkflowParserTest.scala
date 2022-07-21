@@ -8,6 +8,7 @@ import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.job.{CommandLineExecutable, PathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
 import js7.data.lock.LockPath
+import js7.data.parser.UseFastparse
 import js7.data.source.SourcePos
 import js7.data.value.NumberValue
 import js7.data.value.expression.Expression.{Equal, In, LastReturnCode, ListExpression, NamedValue, NumericConstant, Or, StringConstant}
@@ -35,8 +36,12 @@ final class WorkflowParserTest extends AnyFreeSpec
           job A;
         }
       }"""
-    assert(FastparseWorkflowParser.parse(source)
-      == Left(Problem("""Expected Unknown job name 'A':6:8, found """"")))  // TODO Wrong position in error message, should be 4:12
+    assert(WorkflowParser.parse(source) == Left(Problem(
+      // TODO Wrong position in error message, should be 4:12
+      if (UseFastparse)
+        """Expected Unknown job name 'A':6:8, found """""
+      else
+        """Parsing failed at position 6:8 “      }❓” · Unknown job name 'A'""")))
   }
 
   "Execute anonymous" in {
@@ -178,7 +183,7 @@ final class WorkflowParserTest extends AnyFreeSpec
   }
 
   "Execute named with duplicate jobs" in {
-    assert(FastparseWorkflowParser.parse("""
+    assert(WorkflowParser.parse("""
       define workflow {
         job DUPLICATE;
         define job DUPLICATE {
@@ -187,8 +192,11 @@ final class WorkflowParserTest extends AnyFreeSpec
         define job DUPLICATE {
           execute executable="my/executable", agent="AGENT"
         }
-      }""")
-      == Left(Problem("""Expected unique job definitions (duplicates: DUPLICATE):10:8, found """"")))
+      }""") == Left(Problem(
+      if (UseFastparse)
+        """Expected unique job definitions (duplicates: DUPLICATE):10:8, found """""
+      else
+        """Parsing failed at position 10:8 “      }❓” · Expected unique job definitions (duplicates: DUPLICATE)""")))
   }
 
   "Single instruction with relative job path" in {
@@ -419,21 +427,29 @@ final class WorkflowParserTest extends AnyFreeSpec
     }
 
     "try with retryDelays but retry is missing" in {
-      assert(FastparseWorkflowParser.parse("""
+      assert(WorkflowParser.parse("""
         define workflow {
           try (retryDelays=[1, 2, 3]) fail;
           catch {}
         }""") ==
-        Left(Problem("""Expected Missing a retry instruction in the catch block to make sense of retryDelays or maxTries:5:9, found "}"""")))
+        Left(Problem(
+          if (UseFastparse)
+            """Expected Missing a retry instruction in the catch block to make sense of retryDelays or maxTries:5:9, found "}""""
+          else
+            """Parsing failed at position 5:9 “        ❓}” · Missing a retry instruction in the catch block to make sense of retryDelays or maxTries""")))
     }
 
     "try with maxRetries but retry is missing" in {
-      assert(FastparseWorkflowParser.parse("""
+      assert(WorkflowParser.parse("""
         define workflow {
           try (maxTries=3) fail;
           catch {}
         }""") ==
-        Left(Problem("""Expected Missing a retry instruction in the catch block to make sense of retryDelays or maxTries:5:9, found "}"""")))
+        Left(Problem(
+          if (UseFastparse)
+            """Expected Missing a retry instruction in the catch block to make sense of retryDelays or maxTries:5:9, found "}""""
+          else
+            """Parsing failed at position 5:9 “        ❓}” · Missing a retry instruction in the catch block to make sense of retryDelays or maxTries""")))
     }
   }
 
@@ -541,16 +557,16 @@ final class WorkflowParserTest extends AnyFreeSpec
     check2(source, workflow, withSourcePos = false)
 
   private def check2(source: String, workflow: Workflow, withSourcePos: Boolean): Unit = {
-    val parsedWorkflow = FastparseWorkflowParser.parse(source).map(o => if (withSourcePos) o else o.withoutSourcePos)
+    val parsedWorkflow = WorkflowParser.parse(source).map(o => if (withSourcePos) o else o.withoutSourcePos)
     assertEqual(parsedWorkflow.orThrow, workflow.copy(source = Some(source)))
     val generatedSource = workflow.show
-    assert(FastparseWorkflowParser.parse(generatedSource).map(_.withoutSourcePos)
+    assert(WorkflowParser.parse(generatedSource).map(_.withoutSourcePos)
       == Right(workflow.copy(source = Some(generatedSource)).withoutSourcePos),
       s"(generated source: $generatedSource)")
   }
 
   private def parse(workflowString: String): Workflow =
-    FastparseWorkflowParser.parse(workflowString) match {
+    WorkflowParser.parse(workflowString) match {
       case Right(workflow) => workflow
       case Left(problem) => throw new AssertionError(problem.toString, problem.throwableOption.orNull) with NoStackTrace
     }

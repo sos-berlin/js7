@@ -5,7 +5,7 @@ import js7.base.problem.Checked.Ops
 import js7.data.agent.AgentPath
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{FreshOrder, OrderId, Outcome}
-import js7.data.workflow.{FastparseWorkflowParser, WorkflowPath}
+import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.launcher.configuration.Problems.SignedInjectionNotAllowed
 import js7.tests.ExecuteNoScriptInjectionTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
@@ -52,25 +52,25 @@ object ExecuteNoScriptInjectionTest
 {
   private val agentPath = AgentPath("AGENT")
 
-  private val scriptWorkflow = FastparseWorkflowParser.parse(
+  private val scriptWorkflow = WorkflowParser.parse(
     WorkflowPath("SCRIPT-WORKFLOW"),
     """define workflow {
          execute agent="AGENT", script=":";
        }""").orThrow
 
-  private val absolutePathWorkflow = FastparseWorkflowParser.parse(
+  private val absolutePathWorkflow = WorkflowParser.parse(
     WorkflowPath("ABSOLUTE-PATH-WORKFLOW"),
     """define workflow {
         execute agent="AGENT", executable="/ABSOLUTE";
       }""").orThrow
 
-  private val commandLineWorkflow = FastparseWorkflowParser.parse(
+  private val commandLineWorkflow = WorkflowParser.parse(
     WorkflowPath("ABSOLUTE-PATH-WORKFLOW"),
     """define workflow {
         execute agent="AGENT", command="COMMAND LINE";
       }""").orThrow
 
-  private val internalJobWorkflow = FastparseWorkflowParser.parse(
+  private val internalJobWorkflow = WorkflowParser.parse(
     WorkflowPath("ABSOLUTE-PATH-WORKFLOW"),
     """define workflow {
         execute agent="AGENT", internalJobClass="js7.executor.forjava.internal.tests.EmptyJInternalJob";

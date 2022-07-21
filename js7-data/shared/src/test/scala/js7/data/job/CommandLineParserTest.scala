@@ -1,25 +1,34 @@
 package js7.data.job
 
 import js7.base.problem.Problem
+import js7.data.parser.UseFastparse
 import js7.data.value.expression.Expression.{ListExpression, MkString, NamedValue, StringConstant}
 import org.scalatest.freespec.AnyFreeSpec
 
 final class CommandLineParserTest extends AnyFreeSpec
 {
   "Empty commandline is rejected" in {
-    assert(FastparseCommandLineParser.parse("") ==
-      Left(Problem("""Expected The command line must not be empty:1:1, found """"")))
-    assert(FastparseCommandLineParser.parse("  ") ==
-      Left(Problem("""Expected The command line must not be empty:1:3, found """"")))
+    assert(CommandLineParser.parse("") ==
+      Left(Problem(
+      if (UseFastparse)
+        """Expected The command line must not be empty:1:1, found """""
+      else
+        """Parsing failed at position 1 “❓” · Unexpected "" · The command line must not be empty""")))
+    assert(CommandLineParser.parse("  ") ==
+      Left(Problem(
+        if (UseFastparse)
+          """Expected The command line must not be empty:1:3, found """""
+        else
+          """Parsing failed at position 3 “  ❓” · Unexpected "" · The command line must not be empty""")))
   }
 
   "Constant" in {
-    assert(FastparseCommandLineParser.parse("ABC") ==
+    assert(CommandLineParser.parse("ABC") ==
       Right(CommandLineExpression("ABC", List(StringConstant("ABC")))))
   }
 
   "Reference" in {
-    assert(FastparseCommandLineParser.parse("XX $NAME YY $END") ==
+    assert(CommandLineParser.parse("XX $NAME YY $END") ==
       Right(CommandLineExpression("XX $NAME YY $END",
         List(
           StringConstant("XX"),
@@ -29,12 +38,12 @@ final class CommandLineParserTest extends AnyFreeSpec
   }
 
   "Constant in quotes" in {
-    assert(FastparseCommandLineParser.parse(""""CONSTANT"""") ==
+    assert(CommandLineParser.parse(""""CONSTANT"""") ==
       Right(CommandLineExpression(""""CONSTANT"""", List(StringConstant("CONSTANT")))))
   }
 
   "Reference in quotes" in {
-    assert(FastparseCommandLineParser.parse(""">> "$NAME" <<""") ==
+    assert(CommandLineParser.parse(""">> "$NAME" <<""") ==
       Right(CommandLineExpression(
         """>> "$NAME" <<""",
         List(
@@ -44,7 +53,7 @@ final class CommandLineParserTest extends AnyFreeSpec
   }
 
   "Reference and escaped characters in quotes" in {
-    assert(FastparseCommandLineParser.parse("""XX "$NAME-\"QUOTED\"\\\$"""") ==
+    assert(CommandLineParser.parse("""XX "$NAME-\"QUOTED\"\\\$"""") ==
       Right(CommandLineExpression(
         """XX "$NAME-\"QUOTED\"\\\$"""",
         List(

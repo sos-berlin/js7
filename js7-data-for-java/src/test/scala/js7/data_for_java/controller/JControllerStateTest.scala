@@ -20,7 +20,7 @@ import js7.data.order.{Order, OrderId}
 import js7.data.subagent.SubagentId
 import js7.data.value.StringValue
 import js7.data.workflow.position.Position
-import js7.data.workflow.{FastparseWorkflowParser, WorkflowPath}
+import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.data_for_java.controller.JControllerStateTest.*
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -61,12 +61,12 @@ private object JControllerStateTest
 {
   private val v1 = VersionId("1.0")
   private val v2 = VersionId("2.0")
-  private val aWorkflow = FastparseWorkflowParser.parse(WorkflowPath("A-WORKFLOW") ~ v1,
+  private val aWorkflow = WorkflowParser.parse(WorkflowPath("A-WORKFLOW") ~ v1,
     """|define workflow {
        |  execute agent='AGENT', executable='A-EXECUTABLE';
        |}
        |""".stripMargin).orThrow
-  private val bWorkflow = FastparseWorkflowParser.parse(WorkflowPath("B-WORKFLOW") ~ v1,
+  private val bWorkflow = WorkflowParser.parse(WorkflowPath("B-WORKFLOW") ~ v1,
     """|define workflow {
        |  execute agent='AGENT', executable='B-EXECUTABLE';
        |}

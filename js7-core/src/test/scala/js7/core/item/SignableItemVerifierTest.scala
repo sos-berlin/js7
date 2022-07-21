@@ -12,7 +12,7 @@ import js7.common.crypt.pgp.{PgpKeyGenerator, PgpSignatureVerifier, PgpSigner}
 import js7.core.item.SignableItemVerifierTest.*
 import js7.data.crypt.SignedItemVerifier
 import js7.data.item.{ItemSigner, VersionedItem}
-import js7.data.workflow.{Workflow, FastparseWorkflowParser, WorkflowPath}
+import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
 import org.scalatest.freespec.AnyFreeSpec
 
 /**
@@ -58,7 +58,7 @@ object SignableItemVerifierTest
 {
   private val workflow = {
     val workflowScript = """define workflow { execute executable="SCRIPT.cmd", agent="AGENT"; }"""
-    FastparseWorkflowParser.parse(WorkflowPath("WORKFLOW") ~ "1.0", workflowScript).orThrow
+    WorkflowParser.parse(WorkflowPath("WORKFLOW") ~ "1.0", workflowScript).orThrow
   }
 
   private val signerIds = SignerId("SignableItemVerifierTest") :: Nil

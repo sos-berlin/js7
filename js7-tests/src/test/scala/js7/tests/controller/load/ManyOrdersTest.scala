@@ -12,7 +12,7 @@ import js7.data.event.{EventId, EventRequest}
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.StringValue
-import js7.data.workflow.{FastparseWorkflowParser, WorkflowPath}
+import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.controller.load.ManyOrdersTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global
@@ -87,7 +87,7 @@ object ManyOrdersTest
   private val defaultSize = 4_000_000
   private val longTimeout = 999.s
   private val agentPath = AgentPath("AGENT")
-  private val workflow = FastparseWorkflowParser.parse(
+  private val workflow = WorkflowParser.parse(
     WorkflowPath("WORKFLOW") ~ "1", s"""
       define workflow {
         execute agent="AGENT", internalJobClass="js7.tests.jobs.EmptyJob", parallelism=32;

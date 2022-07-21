@@ -13,7 +13,7 @@ import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.position.BranchId.Then
 import js7.data.workflow.position.Position
-import js7.data.workflow.{FastparseWorkflowParser, WorkflowPath}
+import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.ExpressionsTest.*
 import js7.tests.testenv.DirectoryProvider
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
@@ -78,7 +78,7 @@ object ExpressionsTest {
      |    execute executable="TEST-RC$sh", agent="AGENT", v1Compatible=true, successReturnCodes=[0, 1];
      |  }
      |}""".stripMargin
-  private val TestWorkflow = FastparseWorkflowParser.parse(WorkflowPath("WORKFLOW") ~ "INITIAL", workflowNotation).orThrow
+  private val TestWorkflow = WorkflowParser.parse(WorkflowPath("WORKFLOW") ~ "INITIAL", workflowNotation).orThrow
 
   private val orders = Vector(
     FreshOrder(OrderId("❌"), TestWorkflow.id.path),

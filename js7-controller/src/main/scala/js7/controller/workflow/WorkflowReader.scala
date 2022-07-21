@@ -6,7 +6,7 @@ import js7.base.data.ByteArray
 import js7.base.problem.Checked
 import js7.core.item.VersionedItemReader
 import js7.data.item.SourceType
-import js7.data.workflow.{Workflow, WorkflowId, FastparseWorkflowParser}
+import js7.data.workflow.{Workflow, WorkflowId, WorkflowParser}
 
 /**
   * @author Joacim Zschimmer
@@ -20,7 +20,7 @@ object WorkflowReader extends VersionedItemReader
       readAnonymousJsonLike(t, source).map(_ withId workflowId)
 
     case SourceType.Txt =>
-      FastparseWorkflowParser.parse(source.utf8String).map(_ withId workflowId)
+      WorkflowParser.parse(source.utf8String).map(_ withId workflowId)
   }
 
   override def convertFromJson(json: Json): Checked[Workflow] =

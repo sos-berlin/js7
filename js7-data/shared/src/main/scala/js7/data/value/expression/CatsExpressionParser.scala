@@ -1,15 +1,15 @@
 package js7.data.value.expression
 
 import cats.parse.Numbers.digits
-import cats.parse.Parser.{char, charWhere, charsWhile, charsWhile0, end, failWith, pure, string, stringIn}
+import cats.parse.Parser.{char, charIn, charWhere, charsWhile, charsWhile0, end, failWith, pure, string, stringIn}
 import cats.parse.{Parser, Parser0}
 import js7.base.problem.Checked
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.job.JobResourcePath
 import js7.data.parser.CatsBasicParsers.*
-import js7.data.parser.CatsBasicParsers.syntax.*
 import js7.data.parser.CatsParsers.checkedParse
+import js7.data.parser.CatsParsers.syntax.*
 import js7.data.value.expression.Expression.*
 import js7.data.value.expression.ExpressionOptimizer.optimizeExpression
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -44,7 +44,7 @@ object CatsExpressionParser
     inParentheses(commaSequence(identifier))
 
   private val functionDefinition: Parser[ExprFunction] =
-    (parameterList ~ ((w ~ string("=>") ~ w) *> expression))
+    (parameterList.backtrack ~ ((w ~ string("=>") ~ w) *> expression))
       .map { case (names, expression) =>
         ExprFunction(names.map(VariableDeclaration(_)), expression)
       }
@@ -156,7 +156,6 @@ object CatsExpressionParser
     keyValueConvert("job", identifier)(o => Right(NamedValue.LastExecutedJob(WorkflowJob.Name(o)))) |
     keyValue("default", expression)
 
-
   private val variableFunctionCall: Parser[NamedValue] =
     (keyword("variable") ~ w) *>
       inParentheses(
@@ -247,12 +246,14 @@ object CatsExpressionParser
         case _ => failWith("Operator '!' requires a Boolean expression")
       })
 
-  private val multiplication: Parser[Expression] =
-    leftRecurse(bFactor, stringIn(List("*", "/")).string, bFactor) {
-      case (a, ("*", b)) => Multiply(a, b)
-      case (a, ("/", b)) => Divide(a, b)
+  private val multiplication: Parser[Expression] = {
+    val slash = (char('/').as('/') <* !charIn('/', '*')).backtrack
+    leftRecurse(bFactor, char('*').as('*') | slash, bFactor) {
+      case (a, ('*', b)) => Multiply(a, b)
+      case (a, ('/', b)) => Divide(a, b)
       case (_, (x, _)) => throw new MatchError(x)
     }
+  }
 
   private val addition: Parser[Expression] =
     leftRecurse(multiplication, stringIn(List("++", "+", "-")).string, multiplication) {

@@ -207,7 +207,7 @@ final class WorkflowPrinterTest extends AnyFreeSpec
 
   private def check(workflow: Workflow, source: String): Unit = {
     assert(workflow.show == source)
-    val result = FastparseWorkflowParser.parse(source).map(_.withoutSourcePos)
+    val result = WorkflowParser.parse(source).map(_.withoutSourcePos)
     val expected = Right(workflow.copy(source = Some(source)).withoutSourcePos)
     assert(result == expected)
   }

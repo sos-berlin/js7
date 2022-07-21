@@ -1,11 +1,10 @@
 package js7.data.value.expression
 
 import js7.base.problem.Checked
+import js7.data.parser.UseFastparse
 
 object ExpressionParser
 {
-  val UseFastparse = true
-
   def expr(expressionString: String): Expression =
     if (UseFastparse)
       FastparseExpressionParser.expr(expressionString)

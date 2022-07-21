@@ -10,7 +10,7 @@ import js7.data.agent.AgentPath
 import js7.data.job.RelativePathExecutable
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.{Workflow, FastparseWorkflowParser, WorkflowPath}
+import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 
@@ -31,7 +31,7 @@ final class WorkflowReaderTest extends AnyFreeSpec {
       // SCRIPT
       val script = """define workflow { execute executable="TEST.sh", agent="AGENT"; }"""
       dir / "TXT.workflow.txt" := script
-      expected += FastparseWorkflowParser.parse(script).orThrow.withId(WorkflowPath("TXT"))
+      expected += WorkflowParser.parse(script).orThrow.withId(WorkflowPath("TXT"))
 
       val typedSourceReader = new TypedSourceReader(dir, WorkflowReader :: Nil)
       assert(typedSourceReader.readCompleteDirectory().map(_.toSet) == Right(expected.toSet))

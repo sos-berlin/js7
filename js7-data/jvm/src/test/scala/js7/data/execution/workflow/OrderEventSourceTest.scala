@@ -30,7 +30,7 @@ import js7.data.workflow.instructions.{Execute, Fail, Fork, If, LockInstruction,
 import js7.data.workflow.position.BranchId.{Else, Then, catch_, try_}
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.test.ForkTestSetting
-import js7.data.workflow.{Workflow, FastparseWorkflowParser, WorkflowPath}
+import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 
@@ -774,7 +774,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
   }
 
   "Try catch" - {
-    val workflow = FastparseWorkflowParser.parse(
+    val workflow = WorkflowParser.parse(
        """define workflow {
          |  try {                                     // 0
          |    try {                                   // 0/try:0
@@ -889,7 +889,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
     }
 
     "Try catch and fork" in {
-      val workflow = FastparseWorkflowParser.parse(
+      val workflow = WorkflowParser.parse(
          """define workflow {
            |  try
            |    fork(joinIfFailed = true) {
@@ -940,7 +940,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
     }
 
     "Try catch, fork and lock" in {
-      val workflow = FastparseWorkflowParser.parse(
+      val workflow = WorkflowParser.parse(
          """define workflow {
            |  lock (lock="LOCK") {
            |    try

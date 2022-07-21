@@ -20,7 +20,7 @@ import js7.data.controller.ControllerCommand
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
-import js7.data.workflow.{FastparseWorkflowParser, WorkflowPath}
+import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.controller.commands.UpdateRepoAgentTest.*
 import js7.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.global
@@ -89,7 +89,7 @@ final class UpdateRepoAgentTest extends AnyFreeSpec
 object UpdateRepoAgentTest
 {
   private val agentPath = AgentPath("AGENT")
-  private val workflow = FastparseWorkflowParser.parse(WorkflowPath("WORKFLOW"),
+  private val workflow = WorkflowParser.parse(WorkflowPath("WORKFLOW"),
      """define workflow {
           execute executable="SCRIPT.cmd", agent="AGENT";
         }"""

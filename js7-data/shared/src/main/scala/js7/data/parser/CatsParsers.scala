@@ -2,17 +2,104 @@ package js7.data.parser
 
 import cats.Show
 import cats.data.NonEmptyList
-import cats.parse.Parser.{Error, Expectation, end}
 import cats.parse.*
+import cats.parse.Parser.{Error, Expectation, end}
 import cats.syntax.show.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.parser.BasicPrinter.isIdentifierStart
+import js7.data.parser.CatsBasicParsers.w
 import js7.data.value.ValuePrinter.quoteString
 import scala.util.control.NonFatal
 
 object CatsParsers
 {
+  object syntax {
+    implicit final class RichParser0[+A](private val parser0: Parser0[A]) extends AnyVal
+    {
+      //def ignore: IgnoredParser0 =
+      //  IgnoredParser0(parser0.void)
+
+      def ~~[B](other: Parser0[B]): Parser0[(A, B)] =
+        parser0 ~ (w *> other)
+
+      //def ~>(ignore: IgnoredParser): Parser[A] =
+      //  parser0.with1 <* ignore.parser
+      //
+      //def ~>(ignore: IgnoredParser0): Parser0[A] =
+      //  parser0 <* ignore.parser0
+
+      def ~~[B](other: Parser[B]): Parser[(A, B)] =
+        (parser0 <* w).with1 ~ other
+
+      //def ~~>(ignore: IgnoredParser0): Parser0[A] =
+      //  parser0 <* w <* ignore.parser0
+      //
+      //def ~~>(ignore: IgnoredParser): Parser0[A] =
+      //  parser0 <* w <* ignore.parser
+
+      def ~*>[B](other: Parser0[B]): Parser0[B] =
+        parser0 *> other
+
+      def ~*>[B](other: Parser[B]): Parser[B] =
+        parser0.with1 *> other
+
+      def ~~*>[B](other: Parser0[B]): Parser0[B] =
+        (parser0 ~ w) *> other
+
+      def ~~*>[B](other: Parser[B]): Parser[B] =
+        (parser0 ~ w).with1 *> other
+
+      def ~<*[B](skip: Parser0[B]): Parser0[A] =
+        parser0 <* skip
+
+      def ~<*[B](skip: Parser[B]): Parser[A] =
+        parser0.with1 <* skip
+
+      def ~~<*[B](skip: Parser0[B]): Parser0[A] =
+        parser0 <* (w ~ skip)
+
+      def ~~<*[B](skip: Parser[B]): Parser[A] =
+        parser0.with1 <* (w.with1 ~ skip)
+    }
+
+    implicit final class RichParser[+A](private val parser: Parser[A]) extends AnyVal
+    {
+      //def ignore: IgnoredParser =
+      //  IgnoredParser(parser.void)
+      //
+      //def ignore1: IgnoredParser =
+      //  IgnoredParser(parser.void)
+      //
+      //def ~(ignore: IgnoredParser0): Parser[A] =
+      //  parser <* ignore.parser0
+      //
+      //def ~>(ignore: IgnoredParser): Parser0[A] =
+      //  parser <* ignore.parser
+      //
+      //def ~>(ignore: IgnoredParser0): Parser[A] =
+      //  parser <* ignore.parser0
+
+      def ~~[B](other: Parser0[B]): Parser[(A, B)] =
+        parser ~ (w *> other)
+
+      //def ~~(ignore: IgnoredParser0): Parser[A] =
+      //  parser <* w <* ignore.parser0
+
+      def ~*>[B](other: Parser0[B]): Parser0[B] =
+        parser *> other
+
+      def ~*>[B](other: Parser[B]): Parser[B] =
+        parser *> other
+
+      def ~<*[B](skip: Parser0[B]): Parser[A] =
+        parser <* skip
+
+      def ~~<*[B](skip: Parser0[B]): Parser[A] =
+        parser <* (w ~ skip)
+    }
+  }
+
   /** Parses the whole string, return a `Checked`. */
   def checkedParse[A](string: String, parser: Parser0[A]): Checked[A] =
     (parser <* end).parse(string) match {
@@ -124,7 +211,7 @@ object CatsParsers
             Some(s"Expected character '$s'")
           case _ =>
             val s = expectedCharsAsString.replace("]", "\\]")
-            Some(s"Expected character out of [$s]")
+            Some(s"Expected a character out of [$s]")
         }
       }
       .mkString(" · ")
@@ -147,6 +234,52 @@ object CatsParsers
   //  val remainder = locationMap.getLine(row0).getOrElse("").slice(col0, col0 + 10)
   //  val row = if (locationMap.lineCount <= 1) "" else s"${row0 + 1}:"
   //  row + (col0 + 1) + ": " + expectation.show + ": " + remainder
+  //}
+
+  //final case class IgnoredParser0(parser0: Parser0[Unit]) {
+  //  def ~[B](o: Parser0[B]): Parser0[B] =
+  //    parser0 *> o
+  //
+  //  def ~(o: IgnoredParser0): IgnoredParser0 =
+  //    IgnoredParser0((parser0 ~ o.parser0).void)
+  //
+  //  def ~(o: IgnoredParser): IgnoredParser =
+  //    IgnoredParser((parser0.with1 ~ o.parser).void)
+  //
+  //  def ~[B](o: Parser[B]): Parser[B] =
+  //    parser0.with1 *> o
+  //
+  //  def ~~[B](other: Parser0[B]): Parser0[B] =
+  //    parser0 *> w *> other
+  //
+  //  def ~~[B](other: Parser[B]): Parser[B] =
+  //    (parser0 *> w).with1 *> other
+  //}
+  //
+  //final case class IgnoredParser(parser: Parser[Unit]) {
+  //  def ~[B](o: Parser0[B]): Parser0[B] =
+  //    parser *> o
+  //
+  //  def ~[B](o: Parser[B]): Parser[B] =
+  //    parser.with1 *> o
+  //
+  //  def ~(o: IgnoredParser0): IgnoredParser =
+  //    IgnoredParser((parser ~ o.parser0).void)
+  //
+  //  def ~(o: IgnoredParser): IgnoredParser =
+  //    IgnoredParser((parser ~ o.parser).void)
+  //
+  //  def ~~[B](other: Parser0[B]): Parser0[B] =
+  //    parser *> w *> other
+  //
+  //  def ~~[B](other: Parser[B]): Parser[B] =
+  //    (parser *> w).with1 *> other
+  //
+  //  def ~~(ignored: IgnoredParser0): IgnoredParser0 =
+  //    IgnoredParser0((parser ~~ ignored.parser0).void)
+  //
+  //  def ~~(ignored: IgnoredParser): IgnoredParser =
+  //    IgnoredParser((parser ~~ ignored.parser).void)
   //}
 
   final case class ParsingProblem(source: String, error: Error)

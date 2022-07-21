@@ -2,61 +2,41 @@ package js7.data.parser
 
 import cats.data.NonEmptyList
 import cats.parse.Numbers.digits
-import cats.parse.Parser.{anyChar, char, charWhere, charsWhile, charsWhile0, end, failWith, peek, pure, string}
+import cats.parse.Parser.{anyChar, char, charIn, charWhere, charsWhile, charsWhile0, end, failWith, peek, pure, string}
 import cats.parse.{Parser, Parser0}
 import java.lang.Character.isUnicodeIdentifierPart
 import js7.base.problem.Checked
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.*
-import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.data.parser.BasicPrinter.{isIdentifierPart, isIdentifierStart}
+import js7.data.parser.CatsParsers.syntax.*
 import scala.reflect.ClassTag
 
 object CatsBasicParsers
 {
-  object syntax {
-    implicit final class RichParser[A](private val parser: Parser[A]) extends AnyVal
-    {
-      def ~~[B](other: Parser0[B]): Parser[(A, B)] =
-        parser ~ (w *> other)
-
-      def ~*>[B](other: Parser0[B]): Parser[B] =
-        parser *> (w *> other)
-    }
-
-    implicit final class RichParser0[A](private val parser: Parser0[A]) extends AnyVal
-    {
-      def ~~[B](other: Parser0[B]): Parser0[(A, B)] =
-        parser ~ (w *> other)
-
-      def ~~[B](other: Parser[B]): Parser[(A, B)] =
-        (parser <* w).with1 ~ other
-    }
-  }
-  import syntax.*
-
-  private val inlineCommentUntilStar: Parser[Unit] =
-    charsWhile0(_ != '*').with1 *> char('*')
-
-  private val inlineComment: Parser[Unit] =
+  private val inlineComment: Parser[Unit] = {
+    val untilStar = charsWhile0(_ != '*').with1 ~ char('*')
     (string("/*") ~
-      inlineCommentUntilStar ~
-      ((!char('/')).with1 ~ inlineCommentUntilStar).rep ~
-      char('/')).void
+      untilStar ~
+      ((!char('/')).with1 ~ untilStar).rep0 ~
+      char('/')
+    ).void
+  }
 
   private val lineEndComment: Parser[Unit] =
-    (string("//") ~ charsWhile0(_ != '\n')).void
+    string("//") <* charsWhile0(_ != '\n')
 
   private val comment: Parser[Unit] =
     inlineComment | lineEndComment
 
   /** Optional whitespace including line ends */
   val w: Parser0[Unit] =
-    (charsWhile(" \t\r\n".toSet) | comment).rep0.void
+    (charIn(" \t\r\n").rep | comment).rep0.void
 
   /** Optional horizontal whitespace */
   val h: Parser0[Unit] =
-    (charsWhile(" \t".toSet) | comment).rep0.void
+    (charIn(" \t").rep | comment).rep0.void
 
   val int: Parser[Int] =
     (char('-').string.?.with1 ~ digits).string
@@ -257,19 +237,13 @@ object CatsBasicParsers
     ((left ~ w) ~ parser ~ (w ~ right))
       .map { case ((_, a), _) => a }
 
-  //def between[A](left: Parser[Any], right: Parser[Any]): Parser0[A] => Parser[A] = {
-  //  val left_ = left ~ w
-  //  val _right = w ~ right
-  //  parser => (left_ ~ parser ~ _right).map { case ((_, a), _) => a }
-  //}
-
   def commaSequence[A](parser: Parser[A]): Parser0[List[A]] =
     nonEmptyCommaSequence(parser).?
       .map(_.fold(List.empty[A])(_.toList))
 
   def nonEmptyCommaSequence[A](parser: Parser[A]): Parser[NonEmptyList[A]] =
-    (parser ~ w ~ ((char(',') ~ w) ~ parser ~ w).map(_._1._2).rep0)
-      .map { case ((head, _), tail) => NonEmptyList(head, tail) }
+    (parser ~ (((w ~ char(',')).backtrack ~~*> parser).rep0))
+      .map { case (head, tail) => NonEmptyList(head, tail) }
 
   def leftRecurse[A, O](initial: Parser[A], operator: Parser[O], operand: Parser[A])
     (operation: (A, (O, A)) => A)

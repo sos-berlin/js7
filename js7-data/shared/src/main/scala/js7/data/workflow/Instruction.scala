@@ -5,9 +5,10 @@ import io.circe.{Decoder, Encoder, JsonObject}
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.Tests.isTest
 import js7.data.agent.AgentPath
 import js7.data.source.SourcePos
-import js7.data.workflow.Instruction.{Labeled, showSourcePos}
+import js7.data.workflow.Instruction.Labeled
 import js7.data.workflow.position.*
 import scala.collection.View
 import scala.language.implicitConversions
@@ -63,13 +64,11 @@ trait Instruction
   final def @:(unit: Unit) = Labeled(None, this)
 
   protected final def sourcePosToString: String =
-    showSourcePos ?? s" /*$sourcePos*/"
+    isTest ?? s" /*$sourcePos*/"
 }
 
 object Instruction
 {
-  private val showSourcePos = sys.props contains "js7.show-source-pos"  // For Debugging
-
   object @: {
     def unapply(labeled: Labeled) = Some((labeled.maybeLabel, labeled.instruction))
   }

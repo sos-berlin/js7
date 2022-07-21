@@ -13,7 +13,7 @@ import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.Value
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.{Workflow, FastparseWorkflowParser, WorkflowPath, WorkflowPrinter}
+import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath, WorkflowPrinter}
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
 import js7.tests.StdoutTest.*
@@ -143,7 +143,7 @@ final class StdoutTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
   private def testPrintAndParse(anonymousWorkflow: Workflow): Unit = {
     val workflowNotation = WorkflowPrinter.print(anonymousWorkflow.withoutSource)
-    val reparsedWorkflow = FastparseWorkflowParser.parse(workflowNotation).map(_.withoutSource)
+    val reparsedWorkflow = WorkflowParser.parse(workflowNotation).map(_.withoutSource)
     logger.debug(workflowNotation)
     assert(reparsedWorkflow == Right(anonymousWorkflow.withoutSource))
   }

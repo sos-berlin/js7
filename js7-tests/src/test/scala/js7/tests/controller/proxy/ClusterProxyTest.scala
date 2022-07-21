@@ -8,7 +8,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.common.akkautils.ProvideActorSystem
 import js7.controller.client.AkkaHttpControllerApi
-import js7.data.workflow.{FastparseWorkflowParser, WorkflowPath}
+import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.data_for_java.auth.JCredentials
 import js7.proxy.ControllerApi
 import js7.proxy.configuration.ProxyConfs
@@ -71,7 +71,7 @@ private[proxy] object ClusterProxyTest
   private[proxy] val backupUserAndPassword = UserAndPassword(UserId("Proxy"), SecretString("PROXYS-PASSWORD-FOR-BACKUP"))
   private[proxy] val backupCredentials = UserAndPassword(UserId("Proxy"), SecretString("PROXYS-PASSWORD-FOR-BACKUP"))
 
-  private[proxy] val workflow = FastparseWorkflowParser.parse(
+  private[proxy] val workflow = WorkflowParser.parse(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     s"""
       define workflow {
