@@ -1,6 +1,6 @@
 package js7.base.circeutils
 
-import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json}
+import io.circe.{Codec, Decoder, DecodingFailure, Encoder, HCursor, Json}
 import java.nio.file.{Path, Paths}
 import java.time.format.DateTimeFormatter
 import java.time.{Duration, Instant, ZoneId}
@@ -12,7 +12,7 @@ import scala.util.control.NonFatal
   */
 object JavaJsonCodecs
 {
-  implicit val PathJsonCodec: CirceCodec[Path] = toStringJsonCodec(o => Paths.get(o))
+  implicit val PathJsonCodec: Codec[Path] = toStringJsonCodec(o => Paths.get(o))
 
   implicit val DurationEncoder: Encoder[Duration] =
     o => o.getNano match {
@@ -33,15 +33,13 @@ object JavaJsonCodecs
 
   private val dateTimeFormatter = DateTimeFormatter.ISO_INSTANT
 
-  trait StringInstantEncoder extends Encoder[Instant] {
+  object StringInstantEncoder extends Encoder[Instant] {
     def apply(o: Instant) = Json.fromString(dateTimeFormatter.format(o))
   }
-  object StringInstantEncoder extends StringInstantEncoder
 
-  trait NumericInstantEncoder extends Encoder[Instant] {
+  object NumericInstantEncoder extends Encoder[Instant] {
     def apply(o: Instant) = Json.fromLong(o.toEpochMilli)
   }
-  object NumericInstantEncoder extends NumericInstantEncoder
 
   trait InstantDecoder extends Decoder[Instant] {
     def apply(cursor: HCursor) =
@@ -53,8 +51,11 @@ object JavaJsonCodecs
   object InstantDecoder extends InstantDecoder
 
   object instant {
-    implicit val NumericInstantJsonCodec: CirceCodec[Instant] = new NumericInstantEncoder with InstantDecoder
-    implicit val StringInstantJsonCodec: CirceCodec[Instant] = new StringInstantEncoder with InstantDecoder
+    implicit val NumericInstantJsonCodec: Codec[Instant] =
+      Codec.from(InstantDecoder, NumericInstantEncoder)
+
+    implicit val StringInstantJsonCodec: Codec[Instant] =
+      Codec.from(InstantDecoder, StringInstantEncoder)
 
     implicit val InstantJsonCodec = NumericInstantJsonCodec
   }

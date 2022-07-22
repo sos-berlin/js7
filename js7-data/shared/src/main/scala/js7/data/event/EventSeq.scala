@@ -2,8 +2,7 @@ package js7.data.event
 
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder, JsonObject}
-import js7.base.circeutils.CirceObjectCodec
+import io.circe.{Codec, Decoder, Encoder, JsonObject}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CloseableIterator
@@ -39,7 +38,7 @@ object TearableEventSeq {
     }
   }
 
-  implicit def jsonCodec[E: Encoder: Decoder]: CirceObjectCodec[TearableEventSeq[Seq, E]] =
+  implicit def jsonCodec[E: Encoder: Decoder]: Codec.AsObject[TearableEventSeq[Seq, E]] =
     TypedJsonCodec[TearableEventSeq[Seq, E]](
       Subtype[EventSeq[Seq, E]],
       Subtype(deriveCodec[Torn]))
@@ -67,7 +66,7 @@ object EventSeq {
   implicit def nonEmptyJsonDecoder[E: Decoder]: Decoder[NonEmpty[Seq, E]] =
     _.get[Seq[Stamped[E]]]("stamped") map NonEmpty.apply
 
-  implicit def jsonCodec[E: Encoder: Decoder]: CirceObjectCodec[EventSeq[Seq, E]] =
+  implicit def jsonCodec[E: Encoder: Decoder]: Codec.AsObject[EventSeq[Seq, E]] =
     TypedJsonCodec[EventSeq[Seq, E]](
       Subtype[NonEmpty[Seq, E]],
       Subtype(deriveCodec[Empty]))

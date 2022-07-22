@@ -3,7 +3,6 @@ package js7.tests.special
 import io.circe.*
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.*
-import js7.base.circeutils.CirceObjectCodec
 import js7.base.circeutils.CirceUtils.*
 import js7.base.data.ByteArray
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
@@ -147,11 +146,11 @@ private object CirceParallelizationSpeedTest
 {
   case class Small(int: Int, string: String = "STRING", boolean: Boolean = true)
   object Small {
-    implicit val jsonCodec: CirceObjectCodec[Small] = deriveCodec[Small]
+    implicit val jsonCodec: Codec.AsObject[Small] = deriveCodec[Small]
   }
 
   case class Big(fakeOrder: Order[Order.State])
   object Big {
-    implicit val jsonCodec: CirceObjectCodec[Big] = deriveCodec[Big]
+    implicit val jsonCodec: Codec.AsObject[Big] = deriveCodec[Big]
   }
 }
