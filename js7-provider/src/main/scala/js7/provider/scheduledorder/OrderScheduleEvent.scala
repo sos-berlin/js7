@@ -15,6 +15,6 @@ object OrderScheduleEvent {
   final case class GeneratedUntil(until: Timestamp)
   extends OrderScheduleEvent
 
-  implicit val jsonCodec = TypedJsonCodec[OrderScheduleEvent](
+  implicit val jsonCodec: TypedJsonCodec[OrderScheduleEvent] = TypedJsonCodec(
     Subtype.named[GeneratedUntil]("OrderScheduleEvent.GeneratedUntil"))
 }

@@ -1,5 +1,6 @@
 package js7.data.event
 
+import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.auth.UserId
 import js7.base.utils.ScalaUtils.syntax.*
@@ -34,5 +35,5 @@ final case class JournalState(userIdToReleasedEventId: Map[UserId, EventId])
 object JournalState
 {
   val empty = JournalState(Map.empty)
-  implicit val jsonCodec = deriveCodec[JournalState]
+  implicit val jsonCodec: Codec.AsObject[JournalState] = deriveCodec[JournalState]
 }

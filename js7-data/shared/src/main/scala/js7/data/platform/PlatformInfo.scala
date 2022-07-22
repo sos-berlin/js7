@@ -1,5 +1,6 @@
 package js7.data.platform
 
+import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.time.Timestamp
 import js7.base.version.Version
@@ -16,7 +17,7 @@ final case class PlatformInfo(
   java: JavaInformation)
 
 object PlatformInfo {
-  implicit val jsonCodec = deriveCodec[PlatformInfo]
+  implicit val jsonCodec: Codec.AsObject[PlatformInfo] = deriveCodec[PlatformInfo]
 
   @TestOnly
   val test = PlatformInfo(

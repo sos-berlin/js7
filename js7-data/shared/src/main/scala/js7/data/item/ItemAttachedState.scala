@@ -1,5 +1,6 @@
 package js7.data.item
 
+import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
@@ -23,7 +24,7 @@ object ItemAttachedState
   object Attached {
     private val none = new Attached(None)
 
-    implicit val jsonCodec = deriveCodec[Attached]
+    implicit val jsonCodec: Codec.AsObject[Attached] = deriveCodec[Attached]
 
     def apply(itemRevision: Option[ItemRevision]): Attached =
       if (itemRevision.isEmpty)
@@ -49,7 +50,7 @@ object ItemAttachedState
       getClass.simpleScalaName
   }
   object NotDetached {
-    implicit val jsonCodec = TypedJsonCodec[NotDetached](
+    implicit val jsonCodec: TypedJsonCodec[NotDetached] = TypedJsonCodec(
       Subtype(Attachable),
       Subtype[Attached],
       Subtype(Detachable))
@@ -57,7 +58,7 @@ object ItemAttachedState
 
   sealed trait AttachableOrAttached extends NotDetached
   object AttachableOrAttached {
-    implicit val jsonCodec = TypedJsonCodec[NotDetached](
+    implicit val jsonCodec: TypedJsonCodec[NotDetached] = TypedJsonCodec(
       Subtype(Attachable),
       Subtype[Attached])
   }

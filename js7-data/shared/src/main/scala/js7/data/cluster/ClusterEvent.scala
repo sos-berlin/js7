@@ -63,7 +63,7 @@ object ClusterEvent
     assertThat(passiveUri.nonEmpty || clusterWatches.nonEmpty)
   }
 
-  implicit val jsonCodec = TypedJsonCodec[ClusterEvent](
+  implicit val jsonCodec: TypedJsonCodec[ClusterEvent] = TypedJsonCodec(
     Subtype(deriveCodec[ClusterNodesAppointed]),
     Subtype(deriveCodec[ClusterCouplingPrepared]),
     Subtype(deriveCodec[ClusterCoupled]),

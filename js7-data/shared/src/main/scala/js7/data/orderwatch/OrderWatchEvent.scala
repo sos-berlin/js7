@@ -27,7 +27,7 @@ object OrderWatchEvent
   final case class ExternalOrderVanished(externalOrderName: ExternalOrderName)
   extends OrderWatchEvent
 
-  implicit val jsonCodec = TypedJsonCodec[OrderWatchEvent](
+  implicit val jsonCodec: TypedJsonCodec[OrderWatchEvent] = TypedJsonCodec(
     Subtype(deriveCodec[ExternalOrderArised]),
     Subtype(deriveCodec[ExternalOrderVanished]))
 }

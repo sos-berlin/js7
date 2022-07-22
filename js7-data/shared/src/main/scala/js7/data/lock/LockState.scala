@@ -1,5 +1,6 @@
 package js7.data.lock
 
+import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
@@ -127,5 +128,5 @@ object LockState extends UnsignedSimpleItemState.Companion[LockState]
   type Path = LockPath
   type Item = Lock
 
-  implicit val jsonCodec = deriveCodec[LockState]
+  implicit val jsonCodec: Codec.AsObject[LockState] = deriveCodec[LockState]
 }

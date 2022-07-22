@@ -4,7 +4,7 @@ import io.circe.generic.extras.Configuration.default.withDefaults
 import io.circe.generic.extras.semiauto.deriveConfiguredCodec
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder, Json, JsonObject}
+import io.circe.{Codec, Decoder, Encoder, Json, JsonObject}
 import js7.base.circeutils.ScalaJsonCodecs.{FiniteDurationJsonDecoder, FiniteDurationJsonEncoder}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.log.CorrelIdWrapped
@@ -76,7 +76,7 @@ object ControllerCommand extends CommonCommand.Companion
   }
   final case class AddOrdersResponse(eventId: EventId) extends ControllerCommand.Response
   object AddOrdersResponse {
-    implicit val jsonCodec = deriveCodec[AddOrdersResponse]
+    implicit val jsonCodec: Codec.AsObject[AddOrdersResponse] = deriveCodec
   }
 
   final case class CancelOrders(

@@ -21,7 +21,7 @@ final case class NoticePlace(
 }
 object NoticePlace
 {
-  implicit val jsonCodec = deriveCodec[NoticePlace]
+  implicit val jsonCodec: Codec.AsObject[NoticePlace] = deriveCodec[NoticePlace]
 }
 
 final case class Notice(id: NoticeId, boardPath: BoardPath, endOfLife: Timestamp)

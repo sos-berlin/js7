@@ -180,7 +180,7 @@ extends EventDrivenState.Companion[ClusterState, ClusterEvent]
     override def toString = s"FailedOver($nodesString, $failedAt)"
   }
 
-  implicit val jsonCodec = TypedJsonCodec[ClusterState](
+  implicit val jsonCodec: TypedJsonCodec[ClusterState] = TypedJsonCodec(
     Subtype(Empty),
     Subtype(deriveCodec[NodesAppointed]),
     Subtype(deriveCodec[PreparedToBeCoupled]),

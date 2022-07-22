@@ -38,7 +38,7 @@ object AgentEvent
   type AgentShutDown = AgentShutDown.type
   case object AgentShutDown extends AgentEvent
 
-  implicit val jsonCodec = TypedJsonCodec[AgentEvent](
+  implicit val jsonCodec: TypedJsonCodec[AgentEvent] = TypedJsonCodec(
     Subtype(deriveCodec[AgentDedicated], aliases = Seq("AgentCreated")),
     Subtype(deriveCodec[AgentReady]),
     Subtype(AgentShutDown))

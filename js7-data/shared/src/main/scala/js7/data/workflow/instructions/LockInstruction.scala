@@ -1,5 +1,6 @@
 package js7.data.workflow.instructions
 
+import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.problem.Problem
 import js7.base.utils.Assertions.assertThat
@@ -50,7 +51,7 @@ extends Instruction {
 }
 
 object LockInstruction {
-  implicit val jsonCodec = deriveCodec[LockInstruction]
+  implicit val jsonCodec: Codec.AsObject[LockInstruction] = deriveCodec[LockInstruction]
 
   def checked(lockPath: LockPath, count: Option[Int], lockedWorkflow: Workflow, sourcePos: Option[SourcePos] = None) =
     if (count.exists(_ < 1))

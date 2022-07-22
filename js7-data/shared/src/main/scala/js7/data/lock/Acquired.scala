@@ -94,7 +94,7 @@ object Acquired {
 
   sealed trait ReleaseError
 
-  implicit val jsonCodec = TypedJsonCodec[Acquired](
+  implicit val jsonCodec: TypedJsonCodec[Acquired] = TypedJsonCodec(
     Subtype(deriveCodec[Exclusive]),
     Subtype(deriveCodec[NonExclusive]),
     Subtype(Available))

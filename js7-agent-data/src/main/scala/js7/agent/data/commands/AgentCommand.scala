@@ -3,10 +3,9 @@ package js7.agent.data.commands
 import io.circe.generic.extras.Configuration.default.withDefaults
 import io.circe.generic.extras.semiauto.deriveConfiguredCodec
 import io.circe.generic.semiauto.deriveCodec
-import io.circe.{Decoder, Encoder, Json, JsonObject}
+import io.circe.{Codec, Decoder, Encoder, Json, JsonObject}
 import js7.agent.data.AgentState
 import js7.agent.data.AgentState.{inventoryItemKeyJsonCodec, signableItemJsonCodec, unsignedSimpleItemJsonCodec}
-import js7.base.circeutils.CirceCodec
 import js7.base.circeutils.CirceUtils.singletonCodec
 import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
@@ -42,7 +41,7 @@ object AgentCommand extends CommonCommand.Companion
   object Response {
     type Accepted = Accepted.type
     case object Accepted extends Response {
-      implicit val jsonCodec: CirceCodec[Accepted] = singletonCodec(Accepted)
+      implicit val jsonCodec: Codec[Accepted] = singletonCodec(Accepted)
     }
   }
 

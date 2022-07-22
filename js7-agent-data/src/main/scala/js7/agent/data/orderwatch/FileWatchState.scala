@@ -89,7 +89,7 @@ object FileWatchState extends UnsignedSimpleItemState.Companion[FileWatchState]
     override def productPrefix = "FileWatchState.File"
   }
 
-  implicit val jsonCodec = TypedJsonCodec[Snapshot](
+  implicit val jsonCodec: TypedJsonCodec[Snapshot] = TypedJsonCodec(
     Subtype.named(deriveCodec[HeaderSnapshot], "FileWatchState"),
     Subtype.named(deriveCodec[EntrySnapshot], "FileWatchState.File"))
 

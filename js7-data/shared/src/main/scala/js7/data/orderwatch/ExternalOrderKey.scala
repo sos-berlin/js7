@@ -1,5 +1,6 @@
 package js7.data.orderwatch
 
+import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 
 final case class ExternalOrderKey(
@@ -8,5 +9,5 @@ final case class ExternalOrderKey(
 
 object ExternalOrderKey
 {
-  implicit val jsonCodec = deriveCodec[ExternalOrderKey]
+  implicit val jsonCodec: Codec.AsObject[ExternalOrderKey] = deriveCodec
 }

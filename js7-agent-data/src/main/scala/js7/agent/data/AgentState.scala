@@ -1,5 +1,6 @@
 package js7.agent.data
 
+import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.agent.data.AgentState.{AgentMetaState, allowedItemStates}
 import js7.agent.data.event.AgentEvent
@@ -338,7 +339,7 @@ with ItemContainer.Companion[AgentState]
       AgentRunId.empty,
       ControllerId("NOT-YET-INITIALIZED"))
 
-    implicit val jsonCodec = deriveCodec[AgentMetaState]
+    implicit val jsonCodec: Codec.AsObject[AgentMetaState] = deriveCodec
   }
 
   val snapshotObjectJsonCodec = TypedJsonCodec[Any](

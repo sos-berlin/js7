@@ -21,7 +21,7 @@ extends ClusterWatchMessage
 
 object ClusterWatchMessage
 {
-  implicit val jsonCodec = TypedJsonCodec[ClusterWatchMessage](
+  implicit val jsonCodec: TypedJsonCodec[ClusterWatchMessage] = TypedJsonCodec(
     Subtype(deriveCodec[ClusterWatchEvents]),
     Subtype(deriveCodec[ClusterWatchHeartbeat]))
 

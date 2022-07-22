@@ -1,6 +1,6 @@
 package js7.data.workflow.instructions
 
-import io.circe.Decoder
+import io.circe.{Codec, Decoder}
 import io.circe.generic.semiauto.{deriveCodec, deriveEncoder}
 import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.ScalaJsonCodecs.*
@@ -100,7 +100,7 @@ object Schedule
   }
 
   object Repeat {
-    implicit val jsonCodec = TypedJsonCodec[Repeat](
+    implicit val jsonCodec: TypedJsonCodec[Repeat] = TypedJsonCodec(
       Subtype[Periodic],
       Subtype[Ticking],
       Subtype[Continuous])
@@ -108,10 +108,10 @@ object Schedule
 
   final case class Scheme(admissionTimeScheme: AdmissionTimeScheme, repeat: Repeat)
   object Scheme {
-    implicit val jsonCodec = deriveCodec[Scheme]
+    implicit val jsonCodec: Codec.AsObject[Scheme] = deriveCodec[Scheme]
   }
 
-  implicit val jsonCodec = deriveCodec[Schedule]
+  implicit val jsonCodec: Codec.AsObject[Schedule] = deriveCodec[Schedule]
 
   intelliJuseImport(FiniteDurationJsonDecoder)
 }

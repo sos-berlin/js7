@@ -249,7 +249,7 @@ object AdmissionPeriod
     f"$hh%02d:$mm%02d" + ((ss != 0) ?? f":$ss%02d")
   }
 
-  implicit val jsonCodec = TypedJsonCodec[AdmissionPeriod](
+  implicit val jsonCodec: TypedJsonCodec[AdmissionPeriod] = TypedJsonCodec(
     Subtype(AlwaysPeriod),
     Subtype(deriveCodec[WeekdayPeriod].checked(_.checked)),
     Subtype(deriveCodec[DailyPeriod].checked(_.checked)),

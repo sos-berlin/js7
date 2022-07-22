@@ -53,7 +53,7 @@ object AgentRefStateEvent
 
   private implicit val customConfig = withDefaults
 
-  implicit val jsonCodec = TypedJsonCodec[AgentRefStateEvent](
+  implicit val jsonCodec: TypedJsonCodec[AgentRefStateEvent] = TypedJsonCodec(
     Subtype(deriveConfiguredCodec[AgentDedicated], aliases = Seq("AgentCreated")),
     Subtype(AgentCoupled),
     Subtype(deriveConfiguredCodec[AgentCouplingFailed]),

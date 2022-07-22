@@ -1,5 +1,6 @@
 package js7.base.crypt
 
+import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.annotation.javaApi
 import js7.base.utils.ScalaUtils.syntax.*
@@ -42,5 +43,5 @@ object SignedString
       GenericSignature("X509", base64, algorithm = Some(algorithm),
         signerCertificate = Some(signerCertificate)))
 
-  implicit val jsonCodec = deriveCodec[SignedString]
+  implicit val jsonCodec: Codec.AsObject[SignedString] = deriveCodec[SignedString]
 }

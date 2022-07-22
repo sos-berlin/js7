@@ -2,9 +2,8 @@ package js7.base.session
 
 import io.circe.generic.semiauto
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder, Json, JsonObject}
+import io.circe.{Codec, Decoder, Encoder, Json, JsonObject}
 import js7.base.auth.{SessionToken, UserAndPassword}
-import js7.base.circeutils.CirceCodec
 import js7.base.circeutils.CirceUtils.singletonCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.generic.SecretString
@@ -75,10 +74,10 @@ object SessionCommand
   object Response {
     sealed trait Accepted extends Response
     case object Accepted extends Accepted {
-      implicit val jsonCodec: CirceCodec[Accepted.type] = singletonCodec(Accepted)
+      implicit val jsonCodec: Codec[Accepted.type] = singletonCodec(Accepted)
     }
 
-    implicit val jsonCodec = TypedJsonCodec[Response](
+    implicit val jsonCodec: TypedJsonCodec[Response] = TypedJsonCodec(
       Subtype(Response.Accepted),
       Subtype[Login.LoggedIn])
   }

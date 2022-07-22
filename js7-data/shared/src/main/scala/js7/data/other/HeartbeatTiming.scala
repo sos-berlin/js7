@@ -1,5 +1,6 @@
 package js7.data.other
 
+import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.CirceUtils.RichCirceCodec
 import js7.base.circeutils.ScalaJsonCodecs.{FiniteDurationJsonDecoder, FiniteDurationJsonEncoder}
@@ -29,7 +30,7 @@ object HeartbeatTiming
   : Checked[HeartbeatTiming] =
     new HeartbeatTiming(heartbeat, heartbeatTimeout).checked
 
-  implicit val jsonCodec = deriveCodec[HeartbeatTiming].checked(_.checked)
+  implicit val jsonCodec: Codec.AsObject[HeartbeatTiming] = deriveCodec[HeartbeatTiming].checked(_.checked)
 
   intelliJuseImport((FiniteDurationJsonEncoder, FiniteDurationJsonDecoder))
 }

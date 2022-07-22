@@ -219,7 +219,7 @@ private object FileStatePersistenceTest
     type Key = NumberKey
   }
   object NumberEvent {
-    implicit val jsonCodec = TypedJsonCodec[NumberEvent](
+    implicit val jsonCodec: TypedJsonCodec[NumberEvent] = TypedJsonCodec(
       Subtype(NumberAdded),
       Subtype(NumberRemoved),
       Subtype(NumberIncremented),

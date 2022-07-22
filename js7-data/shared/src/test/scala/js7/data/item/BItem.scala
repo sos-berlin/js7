@@ -1,5 +1,6 @@
 package js7.data.item
 
+import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 
 /**
@@ -27,7 +28,7 @@ with TrivialItemState.Companion[BItem]
   val cls = classOf[BItem]
   val Path = BPath
 
-  implicit val jsonCodec = deriveCodec[BItem]
+  implicit val jsonCodec: Codec.AsObject[BItem] = deriveCodec[BItem]
 }
 
 case class BPath(string: String) extends VersionedItemPath {

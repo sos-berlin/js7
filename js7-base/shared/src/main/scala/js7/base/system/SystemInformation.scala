@@ -1,5 +1,6 @@
 package js7.base.system
 
+import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.AnyJsonCodecs.implicits.*
 
@@ -14,5 +15,5 @@ object SystemInformation {
 
   val ForTest = SystemInformation(hostname = "HOSTNAME")
 
-  implicit val jsonCodec = deriveCodec[SystemInformation]
+  implicit val jsonCodec: Codec.AsObject[SystemInformation] = deriveCodec[SystemInformation]
 }

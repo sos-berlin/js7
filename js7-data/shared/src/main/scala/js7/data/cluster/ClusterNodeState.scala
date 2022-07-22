@@ -1,5 +1,6 @@
 package js7.data.cluster
 
+import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.data.node.NodeId
 
@@ -17,5 +18,5 @@ final case class ClusterNodeState(
 
 object ClusterNodeState
 {
-  implicit val jsonCodec = deriveCodec[ClusterNodeState]
+  implicit val jsonCodec: Codec.AsObject[ClusterNodeState] = deriveCodec
 }

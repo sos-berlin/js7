@@ -1,6 +1,7 @@
 package js7.base.data
 
 import cats.syntax.monoid.*
+import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 import java.nio.ReadOnlyBufferException
@@ -302,7 +303,7 @@ extends AnyFreeSpec
 
   "parseJsonAs" in {
     final case class A(value: Int)
-    implicit val jsonCodec = deriveCodec[A]
+    implicit val jsonCodec: Codec.AsObject[A] = deriveCodec[A]
 
     val byteSeq = ByteSeq("""{ "value": 7 }""")
     assert(byteSeq.parseJsonAs[A] == Right(A(7)))

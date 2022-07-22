@@ -1,5 +1,6 @@
 package js7.data.workflow
 
+import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 
 /**
@@ -11,5 +12,5 @@ final case class WorkflowOverview(
 object WorkflowOverview {
   def fromWorkflow(workflow: Workflow) = WorkflowOverview(path = workflow.path)
 
-  implicit val jsonCodec = deriveCodec[WorkflowOverview]
+  implicit val jsonCodec: Codec.AsObject[WorkflowOverview] = deriveCodec[WorkflowOverview]
 }

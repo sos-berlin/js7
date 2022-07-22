@@ -23,7 +23,7 @@ object SubagentEvent extends Event.Companion[SubagentEvent]
   case object SubagentShutdown
   extends SubagentEvent
 
-  implicit val jsonCodec = TypedJsonCodec[SubagentEvent](
+  implicit val jsonCodec: TypedJsonCodec[SubagentEvent] = TypedJsonCodec(
     Subtype(deriveCodec[SubagentItemAttached]),
     Subtype(SubagentShutdown))
 

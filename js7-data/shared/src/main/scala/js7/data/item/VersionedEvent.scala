@@ -85,7 +85,7 @@ object VersionedEvent {
     require(!path.isAnonymous, "VersionedItemRemoved event requires a path")
   }
 
-  implicit val jsonCodec = TypedJsonCodec[VersionedEvent](
+  implicit val jsonCodec: TypedJsonCodec[VersionedEvent] = TypedJsonCodec(
     Subtype(deriveCodec[VersionAdded]),
     Subtype[VersionedItemAdded],
     Subtype[VersionedItemChanged],

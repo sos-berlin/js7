@@ -10,6 +10,6 @@ object SnapshotMeta
   final case class SnapshotEventId(eventId: EventId)
   extends SnapshotMeta
 
-  implicit val jsonCodec = TypedJsonCodec[SnapshotMeta](
+  implicit val jsonCodec: TypedJsonCodec[SnapshotMeta] = TypedJsonCodec(
     Subtype(deriveCodec[SnapshotEventId]))
 }

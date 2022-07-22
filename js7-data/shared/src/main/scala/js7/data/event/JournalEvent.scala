@@ -20,7 +20,7 @@ object JournalEvent
   final val StampedHeartbeat: Stamped[KeyedEvent[JournalEvent]] =
     Stamped(0, Heartbeat)
 
-  implicit val jsonCodec = TypedJsonCodec[JournalEvent](
+  implicit val jsonCodec: TypedJsonCodec[JournalEvent] = TypedJsonCodec(
     Subtype(SnapshotTaken),
     Subtype(deriveCodec[JournalEventsReleased]),
     Subtype(Heartbeat))

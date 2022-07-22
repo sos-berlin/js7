@@ -1,5 +1,6 @@
 package js7.data.board
 
+import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.time.Timestamp
@@ -24,14 +25,14 @@ object BoardEvent
         Notice(id, boardPath, endOfLife)
     }
     object PostedNotice {
-      implicit val jsonCodec = deriveCodec[PostedNotice]
+      implicit val jsonCodec: Codec.AsObject[PostedNotice] = deriveCodec
     }
   }
 
   final case class NoticeDeleted(noticeId: NoticeId)
   extends BoardEvent
 
-  implicit val jsonCodec = TypedJsonCodec[BoardEvent](
+  implicit val jsonCodec: TypedJsonCodec[BoardEvent] = TypedJsonCodec(
     Subtype(deriveCodec[NoticePosted]),
     Subtype(deriveCodec[NoticeDeleted]))
 }

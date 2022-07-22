@@ -1,5 +1,6 @@
 package js7.data.event
 
+import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 
 /** A byte-position in a journal consisting of multiple files.
@@ -10,5 +11,5 @@ import io.circe.generic.semiauto.deriveCodec
 final case class JournalPosition(fileEventId: EventId, position: Long)
 
 object JournalPosition {
-  implicit val jsonCodec = deriveCodec[JournalPosition]
+  implicit val jsonCodec: Codec.AsObject[JournalPosition] = deriveCodec[JournalPosition]
 }

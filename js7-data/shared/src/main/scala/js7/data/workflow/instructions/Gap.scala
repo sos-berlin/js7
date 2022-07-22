@@ -1,5 +1,6 @@
 package js7.data.workflow.instructions
 
+import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.data.source.SourcePos
 import js7.data.workflow.Instruction
@@ -22,5 +23,5 @@ object Gap
   def apply(sourcePos: Option[SourcePos] = None): Gap =
     sourcePos.fold(empty)(_ => new Gap(sourcePos))
 
-  implicit val jsonCodec = deriveCodec[Gap]
+  implicit val jsonCodec: Codec.AsObject[Gap] = deriveCodec
 }

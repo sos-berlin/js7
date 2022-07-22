@@ -32,6 +32,6 @@ object OrderWatch
     type ItemState = OrderWatchState
   }
 
-  implicit val jsonCodec = TypedJsonCodec[OrderWatch](
+  implicit val jsonCodec: TypedJsonCodec[OrderWatch] = TypedJsonCodec(
     Subtype[FileWatch])
 }

@@ -28,7 +28,7 @@ object CancellationMode
     implicit val jsonCodec = deriveConfiguredCodec[Kill]
   }
 
-  implicit val jsonCodec = TypedJsonCodec[CancellationMode](
+  implicit val jsonCodec: TypedJsonCodec[CancellationMode] = TypedJsonCodec(
     Subtype(FreshOnly),
     Subtype(deriveCodec[FreshOrStarted]))
 }

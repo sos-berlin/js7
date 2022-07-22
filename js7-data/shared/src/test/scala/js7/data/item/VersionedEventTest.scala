@@ -1,7 +1,7 @@
 package js7.data.item
 
+import io.circe.Codec
 import io.circe.syntax.EncoderOps
-import js7.base.circeutils.CirceCodec
 import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.{Signed, SignedString}
@@ -87,7 +87,7 @@ final class VersionedEventTest extends AnyFreeSpec
 
 object VersionedEventTest
 {
-  implicit private val itemPathJsonCodec: CirceCodec[VersionedItemPath] =
+  implicit private val itemPathJsonCodec: Codec[VersionedItemPath] =
     InventoryItemPath.jsonCodec(Set(WorkflowPath))
 
   implicit private val itemJsonCodec: TypedJsonCodec[VersionedItem] = TypedJsonCodec(

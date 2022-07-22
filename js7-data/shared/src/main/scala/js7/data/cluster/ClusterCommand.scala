@@ -1,5 +1,6 @@
 package js7.data.cluster
 
+import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
@@ -58,7 +59,7 @@ object ClusterCommand
     extends ClusterCommand.Response
 
     private implicit val x = deriveCodec[ClusterState.FailedOver]
-    implicit val jsonCodec = deriveCodec[Response]
+    implicit val jsonCodec: Codec.AsObject[Response] = deriveCodec
   }
 
   sealed trait Response

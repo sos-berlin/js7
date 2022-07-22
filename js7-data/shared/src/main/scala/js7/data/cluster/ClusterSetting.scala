@@ -2,6 +2,7 @@ package js7.data.cluster
 
 import cats.instances.either.*
 import cats.syntax.flatMap.*
+import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.annotation.javaApi
 import js7.base.problem.Checked.*
@@ -82,7 +83,7 @@ object ClusterSetting
     @javaApi
     def of(uri: Uri) = Watch(uri)
 
-    implicit val jsonCodec = deriveCodec[Watch]
+    implicit val jsonCodec: Codec.AsObject[Watch] = deriveCodec
   }
 
   object syntax {
@@ -94,5 +95,5 @@ object ClusterSetting
     }
   }
 
-  implicit val jsonCodec = deriveCodec[ClusterSetting]
+  implicit val jsonCodec: Codec.AsObject[ClusterSetting] = deriveCodec
 }

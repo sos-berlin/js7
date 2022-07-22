@@ -1,5 +1,6 @@
 package js7.data.cluster
 
+import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.ScalaJsonCodecs.{FiniteDurationJsonDecoder, FiniteDurationJsonEncoder}
 import js7.base.problem.Checked.*
@@ -32,7 +33,7 @@ object ClusterTiming
     else
       Right(())
 
-  implicit val jsonCodec = deriveCodec[ClusterTiming]
+  implicit val jsonCodec: Codec.AsObject[ClusterTiming] = deriveCodec
 
   intelliJuseImport((FiniteDurationJsonEncoder, FiniteDurationJsonDecoder))
 }

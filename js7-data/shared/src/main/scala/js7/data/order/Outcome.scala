@@ -87,7 +87,7 @@ object Outcome
         make(namedValues)
     }
 
-    implicit val jsonCodec = TypedJsonCodec[Completed](
+    implicit val jsonCodec: TypedJsonCodec[Completed] = TypedJsonCodec(
       Subtype(deriveCodec[Failed]),
       Subtype(deriveCodec[Succeeded]))
   }
@@ -210,7 +210,7 @@ object Outcome
     final case class Other(problem: Problem) extends Reason
 
     object Reason {
-      implicit val jsonCodec = TypedJsonCodec[Reason](
+      implicit val jsonCodec: TypedJsonCodec[Reason] = TypedJsonCodec(
         Subtype[ProcessLost](aliases = Seq("JobSchedulerRestarted")),
         Subtype(deriveCodec[Other]))
     }
@@ -221,7 +221,7 @@ object Outcome
 
   sealed trait NotSucceeded extends Outcome
   object NotSucceeded {
-    implicit val jsonCodec = TypedJsonCodec[NotSucceeded](
+    implicit val jsonCodec: TypedJsonCodec[NotSucceeded] = TypedJsonCodec(
       Subtype[Failed],
       Subtype(deriveCodec[Disrupted]))
   }

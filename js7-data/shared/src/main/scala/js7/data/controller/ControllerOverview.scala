@@ -1,5 +1,6 @@
 package js7.data.controller
 
+import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.system.SystemInformation
@@ -24,6 +25,6 @@ final case class ControllerOverview(
 
 object ControllerOverview
 {
-  implicit val jsonCodec = deriveCodec[ControllerOverview]
+  implicit val jsonCodec: Codec.AsObject[ControllerOverview] = deriveCodec
   intelliJuseImport(FiniteDurationJsonEncoder)
 }

@@ -2,7 +2,7 @@ package js7.data.order
 
 import io.circe.generic.semiauto.{deriveCodec, deriveEncoder}
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder, JsonObject}
+import io.circe.{Codec, Decoder, Encoder, JsonObject}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
 import js7.base.problem.Problem
@@ -188,7 +188,7 @@ object OrderEvent
     override def toString = super.toString
   }
   object OrderStdoutWritten {
-    implicit val jsonCodec = deriveCodec[OrderStdoutWritten]
+    implicit val jsonCodec: Codec.AsObject[OrderStdoutWritten] = deriveCodec[OrderStdoutWritten]
   }
 
   final case class OrderStderrWritten(chunk: String) extends OrderStdWritten {
@@ -196,7 +196,7 @@ object OrderEvent
     override def toString = super.toString
   }
   object OrderStderrWritten {
-    implicit val jsonCodec = deriveCodec[OrderStderrWritten]
+    implicit val jsonCodec: Codec.AsObject[OrderStderrWritten] = deriveCodec[OrderStderrWritten]
   }
 
   final case class OrderProcessed(outcome: Outcome) extends OrderCoreEvent
@@ -210,7 +210,7 @@ object OrderEvent
     def processLost(problem: Problem) =
       OrderProcessed(Outcome.Disrupted(Outcome.Disrupted.ProcessLost(problem)))
 
-    implicit val jsonCodec = deriveCodec[OrderProcessed]
+    implicit val jsonCodec: Codec.AsObject[OrderProcessed] = deriveCodec[OrderProcessed]
   }
 
   final case class OrderForked(children: Vector[OrderForked.Child]) extends OrderActorEvent
@@ -286,7 +286,7 @@ object OrderEvent
         boardPath == notice.boardPath && noticeId == notice.id
     }
     object Expected {
-      implicit val jsonCodec = deriveCodec[Expected]
+      implicit val jsonCodec: Codec.AsObject[Expected] = deriveCodec[Expected]
     }
   }
 
@@ -462,7 +462,7 @@ object OrderEvent
     }
 
     object HistoryOperation {
-      implicit val jsonCodec = TypedJsonCodec[HistoryOperation](
+      implicit val jsonCodec: TypedJsonCodec[HistoryOperation] = TypedJsonCodec(
         Subtype.named(deriveCodec[ReplaceHistoricOutcome], "Replace"),
         Subtype.named(deriveCodec[InsertHistoricOutcome], "Insert"),
         Subtype.named(deriveCodec[DeleteHistoricOutcome], "Delete"),
@@ -506,7 +506,7 @@ object OrderEvent
   final case class OrderCycleFinished(cycleState: Option[CycleState])
   extends OrderActorEvent
 
-  implicit val jsonCodec = TypedJsonCodec[OrderEvent](
+  implicit val jsonCodec: TypedJsonCodec[OrderEvent] = TypedJsonCodec(
     Subtype[OrderAdded],
     Subtype[OrderOrderAdded],
     Subtype(OrderDeletionMarked),

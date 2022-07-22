@@ -91,7 +91,7 @@ object Execute
       } yield Anonymous(job, sourcePos)
   }
 
-  implicit val jsonCodec = TypedJsonCodec[Execute](
+  implicit val jsonCodec: TypedJsonCodec[Execute] = TypedJsonCodec(
     Subtype.named[Named]("Execute.Named"),
     Subtype.named[Anonymous]("Execute.Anonymous"))
 }

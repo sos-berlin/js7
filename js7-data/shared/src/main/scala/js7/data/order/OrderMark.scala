@@ -22,7 +22,7 @@ object OrderMark
     historicOperations: Seq[OrderResumed.HistoryOperation] = Nil)
   extends OrderMark with Big
 
-  implicit val jsonCodec = TypedJsonCodec[OrderMark](
+  implicit val jsonCodec: TypedJsonCodec[OrderMark] = TypedJsonCodec(
     Subtype(deriveCodec[Cancelling]),
     Subtype(deriveCodec[Suspending]),
     Subtype(deriveCodec[Resuming]))

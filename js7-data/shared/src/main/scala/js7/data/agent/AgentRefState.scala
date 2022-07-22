@@ -1,5 +1,6 @@
 package js7.data.agent
 
+import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.problem.{Checked, Problem}
 import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentEventsObserved, AgentReady, AgentReset, AgentResetStarted, AgentShutDown}
@@ -105,7 +106,7 @@ object AgentRefState extends UnsignedSimpleItemState.Companion[AgentRefState]
   type Path = AgentPath
   type Item = AgentRef
 
-  implicit val jsonCodec = deriveCodec[AgentRefState]
+  implicit val jsonCodec: Codec.AsObject[AgentRefState] = deriveCodec
 
   def apply(agentRef: AgentRef) =
     new AgentRefState(agentRef, None, None, Reset.fresh, EventId.BeforeFirst, None, None)

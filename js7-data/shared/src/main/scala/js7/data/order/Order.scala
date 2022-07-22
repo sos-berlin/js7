@@ -677,7 +677,7 @@ object Order
     object HasAgentPath {
       def unapply(o: HasAgentPath) = Some(o.agentPath)
     }
-    implicit val jsonCodec = TypedJsonCodec[AttachedState](
+    implicit val jsonCodec: TypedJsonCodec[AttachedState] = TypedJsonCodec(
       Subtype(deriveCodec[Attaching]),
       Subtype(deriveCodec[Attached]),
       Subtype(deriveCodec[Detaching]))

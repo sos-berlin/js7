@@ -1,5 +1,6 @@
 package js7.data.workflow.instructions
 
+import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.data.source.SourcePos
 import js7.data.workflow.Instruction
@@ -14,5 +15,5 @@ extends Instruction
 }
 
 object Finish {
-  implicit val jsonCodec = deriveCodec[Finish]
+  implicit val jsonCodec: Codec.AsObject[Finish] = deriveCodec
 }

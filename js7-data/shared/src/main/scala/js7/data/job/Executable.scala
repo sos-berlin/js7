@@ -265,7 +265,7 @@ object Executable
 {
   private implicit val customConfig = withDefaults
 
-  implicit val jsonCodec = TypedJsonCodec[Executable](
+  implicit val jsonCodec: TypedJsonCodec[Executable] = TypedJsonCodec(
     Subtype[PathExecutable](
       subclasses = Seq(
         classOf[AbsolutePathExecutable],

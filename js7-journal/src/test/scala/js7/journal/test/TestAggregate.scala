@@ -1,5 +1,6 @@
 package js7.journal.test
 
+import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.journal.test.TestEvent.{Appended, NothingDone}
 
@@ -35,5 +36,5 @@ private[journal] final case class TestAggregate(key: String, string: String,
 }
 
 private[journal] object TestAggregate {
-  implicit val jsonCodec = deriveCodec[TestAggregate]
+  implicit val jsonCodec: Codec.AsObject[TestAggregate] = deriveCodec[TestAggregate]
 }

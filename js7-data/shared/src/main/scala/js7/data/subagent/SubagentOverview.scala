@@ -1,7 +1,7 @@
 package js7.data.subagent
 
+import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
-import js7.base.circeutils.CirceCodec
 import js7.base.system.SystemInformation
 import js7.base.time.Timestamp
 import js7.data.delegate.DelegateOverview
@@ -17,5 +17,5 @@ final case class SubagentOverview(
 extends DelegateOverview
 
 object SubagentOverview {
-  implicit val jsonCodec: CirceCodec[SubagentOverview] = deriveCodec[SubagentOverview]
+  implicit val jsonCodec: Codec.AsObject[SubagentOverview] = deriveCodec[SubagentOverview]
 }

@@ -284,7 +284,7 @@ object OrderWatchState extends UnsignedSimpleItemState.Companion[OrderWatchState
   }
 
   object Snapshot {
-    implicit val jsonCodec = TypedJsonCodec[Snapshot](
+    implicit val jsonCodec: TypedJsonCodec[Snapshot] = TypedJsonCodec(
       Subtype.named(deriveCodec[ExternalOrderSnapshot], "ExternalOrder"))
   }
 
