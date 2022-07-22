@@ -20,11 +20,11 @@ object Dependencies
   val circeGenericExtrasVersion = "0.14.1"
   val scalaJava8Version = "1.0.0"
   val scalaTestVersion = "3.2.12"
-  val scalaTestCheckVersion = "3.2.2.0"
-  val scalaCheckVersion= "1.14.3"
+  val scalaTestCheckVersion = "3.2.12.0"
+  val scalaCheckVersion= "1.16.0"
   val sourcecodeVersion = "0.3.0"
-  val disciplineVersion = "1.0.3"
-  val disciplineScalaTestVersion = "2.0.0"
+  val disciplineVersion = "1.5.1"
+  val disciplineScalaTestVersion = "2.2.0"
   val monixVersion = "3.4.1"
   val monocleVersion = "1.5.0"
   val scribeVersion = "3.6.7" // TODO "3.8.2"
@@ -49,7 +49,7 @@ object Dependencies
   val scalaTest           = "org.scalatest" %% "scalatest" % scalaTestVersion ::
                             /*"org.scalatest" %% "scalatest-freespec" % scalaTestVersion ::*/ Nil
   val scalactic           = "org.scalactic" %% "scalactic" % scalaTestVersion
-  val scalaCheck          = "org.scalatestplus" %% "scalacheck-1-14" % scalaTestCheckVersion ::
+  val scalaCheck          = "org.scalatestplus" %% "scalacheck-1-16" % scalaTestCheckVersion ::
                             "org.scalacheck" %% "scalacheck" % scalaCheckVersion :: Nil
   val scalaLogging        = "com.typesafe.scala-logging" %% "scala-logging" % "3.9.4" :: slf4j :: Nil
   val cats                = "org.typelevel" %% "cats-core" % catsVersion

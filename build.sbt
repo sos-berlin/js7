@@ -311,7 +311,7 @@ lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
       intelliJAnnotations % "compile" ++
       "org.scalatest" %%% "scalatest" % scalaTestVersion % "test" ++
     //"org.scalatest" %%% "scalatest-freespec" % scalaTestVersion % "test" ++
-      "org.scalatestplus" %%% "scalacheck-1-14" % scalaTestCheckVersion % "test" ++
+      "org.scalatestplus" %%% "scalacheck-1-16" % scalaTestCheckVersion % "test" ++
       "org.scalacheck" %%% "scalacheck" % scalaCheckVersion % "test"
   }
   .jvmSettings {
