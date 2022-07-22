@@ -22,7 +22,6 @@ object Dependencies
   val scalaTestVersion = "3.2.12"
   val scalaTestCheckVersion = "3.2.2.0"
   val scalaCheckVersion= "1.14.3"
-  val simulacrumVersion = "0.19.0"
   val sourcecodeVersion = "0.3.0"
   val disciplineVersion = "1.0.3"
   val disciplineScalaTestVersion = "2.0.0"
