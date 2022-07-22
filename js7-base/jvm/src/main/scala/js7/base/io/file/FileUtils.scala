@@ -110,9 +110,9 @@ object FileUtils
 
       def :=[W: Writable](w: W) = write(w)
 
-      def write[W: Writable](byteSeq: W): Unit =
+      def write[W: Writable](writable: W): Unit =
         autoClosing(new BufferedOutputStream(new FileOutputStream(delegate.toFile)))(
-          byteSeq.writeToStream(_))
+          writable.writeToStream(_))
 
       /** Appends `string` encoded with UTF-8 to file. */
       def ++=(string: String): Unit =
@@ -129,9 +129,9 @@ object FileUtils
         writeString(delegate, string, encoding, options*)
       }
 
-      def ++=[B: ByteSequence](byteSeq: B): Unit=
+      def ++=[W: Writable](writable: W): Unit =
         autoClosing(new BufferedOutputStream(new FileOutputStream(delegate.toFile, true)))(
-          byteSeq.writeToStream(_))
+          writable.writeToStream(_))
 
       def byteArray: ByteArray =
         readAs[ByteArray]
