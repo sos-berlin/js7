@@ -3,7 +3,7 @@ package js7.journal.state
 import akka.pattern.ask
 import akka.util.Timeout
 import com.softwaremill.diffx.generic.auto.*
-import io.circe.generic.JsonCodec
+import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import java.nio.file.Files.createTempDirectory
 import java.nio.file.Path
@@ -207,11 +207,15 @@ private object FileStatePersistenceTest
 
   final case class StringThing(key: StringKey, string: String)
 
-  @JsonCodec
   final case class NumberKey(string: String) extends GenericString
+  object NumberKey {
+    implicit val jsonCodec: Codec.AsObject[NumberKey] = deriveCodec
+  }
 
-  @JsonCodec
   final case class StringKey(string: String) extends GenericString
+  object StringKey {
+    implicit val jsonCodec: Codec.AsObject[StringKey] = deriveCodec
+  }
 
   sealed trait TestEvent extends Event
 

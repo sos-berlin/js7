@@ -1,8 +1,8 @@
 package js7.data.event
 
-import io.circe.DecodingFailure
-import io.circe.generic.JsonCodec
+import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.EncoderOps
+import io.circe.{Codec, DecodingFailure}
 import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.typed.TypedJsonCodec.UnknownClassForJsonException
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
@@ -97,17 +97,25 @@ object KeyedEventTypedJsonCodecTest
     type Key = Int
   }
 
-  @JsonCodec
   final case class E1(int: Int) extends StringEvent
+  object E1 {
+    implicit val jsonCodec: Codec.AsObject[E1] = deriveCodec
+  }
 
-  @JsonCodec
   final case class E2(string: String) extends StringEvent
+  object E2 {
+    implicit val jsonCodec: Codec.AsObject[E2] = deriveCodec
+  }
 
-  @JsonCodec
   final case class NotRegistered(int: Int) extends TestEvent with NoKeyEvent
+  object NotRegistered {
+    implicit val jsonCodec: Codec.AsObject[NotRegistered] = deriveCodec
+  }
 
-  @JsonCodec
   final case class E3(int: Int) extends IntEvent
+  object E3 {
+    implicit val jsonCodec: Codec.AsObject[E3] = deriveCodec
+  }
 
   private implicit val StringEventJsonCodec: TypedJsonCodec[StringEvent] =
     TypedJsonCodec(

@@ -1,5 +1,6 @@
 package js7.data_for_java.workflow.position
 
+import io.circe.{Decoder, Encoder}
 import io.vavr.control.Either as VEither
 import javax.annotation.Nonnull
 import js7.base.problem.Problem
@@ -33,6 +34,9 @@ object JWorkflowPosition extends JJsonable.Companion[JWorkflowPosition]
   override def fromJson(@Nonnull jsonString: String): VEither[Problem, JWorkflowPosition] =
     super.fromJson(jsonString)
 
-  protected def jsonEncoder = WorkflowPosition.jsonEncoder
-  protected def jsonDecoder = WorkflowPosition.jsonDecoder
+  protected def jsonEncoder: Encoder.AsObject[WorkflowPosition] =
+    WorkflowPosition.jsonCodec
+
+  protected def jsonDecoder: Decoder[WorkflowPosition] =
+    WorkflowPosition.jsonCodec
 }

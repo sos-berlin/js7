@@ -2,7 +2,8 @@ package js7.journal.web
 
 import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import io.circe.generic.JsonCodec
+import io.circe.Codec
+import io.circe.generic.semiauto.deriveCodec
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.time.ScalaTime.*
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
@@ -66,6 +67,14 @@ object EventDirectivesTest {
   sealed trait MyEvent extends Event {
     type Key = String
   }
-  @JsonCodec final case class AEvent() extends MyEvent
-  @JsonCodec final case class BEvent() extends MyEvent
+
+  final case class AEvent() extends MyEvent
+  object AEvent {
+      implicit val jsonCodec: Codec.AsObject[AEvent] = deriveCodec
+  }
+
+  final case class BEvent() extends MyEvent
+  object BEvent {
+      implicit val jsonCodec: Codec.AsObject[BEvent] = deriveCodec
+  }
 }

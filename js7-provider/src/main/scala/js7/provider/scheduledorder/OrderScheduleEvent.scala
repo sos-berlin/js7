@@ -1,6 +1,7 @@
 package js7.provider.scheduledorder
 
-import io.circe.generic.JsonCodec
+import io.circe.Codec
+import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.time.Timestamp
 import js7.data.event.NoKeyEvent
@@ -11,9 +12,11 @@ import js7.data.event.NoKeyEvent
 sealed trait OrderScheduleEvent extends NoKeyEvent
 
 object OrderScheduleEvent {
-  @JsonCodec
   final case class GeneratedUntil(until: Timestamp)
   extends OrderScheduleEvent
+  object GeneratedUntil {
+    implicit val jsonCodec: Codec.AsObject[GeneratedUntil] = deriveCodec
+  }
 
   implicit val jsonCodec: TypedJsonCodec[OrderScheduleEvent] = TypedJsonCodec(
     Subtype.named[GeneratedUntil]("OrderScheduleEvent.GeneratedUntil"))

@@ -10,7 +10,8 @@ import cats.syntax.monoid.*
 import cats.syntax.option.*
 import cats.syntax.traverse.*
 import cats.{Applicative, Apply}
-import io.circe.generic.JsonCodec
+import io.circe.Codec
+import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.Completed
 import js7.base.problem.Checked.*
@@ -27,8 +28,8 @@ final class CheckedTest extends AnyFreeSpec
   "JSON" - {
     import Checked.implicits.{checkedJsonDecoder, checkedJsonEncoder}
 
-    @JsonCodec
     case class A(number: Int)
+    implicit val aJsonCodec: Codec.AsObject[A] = deriveCodec
 
     "Valid" in {
       testJson[Checked[A]](Right(A(1)),

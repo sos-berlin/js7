@@ -1,8 +1,8 @@
 package js7.common.jsonseq
 
-import io.circe.Json
-import io.circe.generic.JsonCodec
+import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.EncoderOps
+import io.circe.{Codec, Json}
 import java.io.FileOutputStream
 import java.nio.file.Files
 import js7.base.circeutils.CirceUtils.RichJson
@@ -62,10 +62,11 @@ final class FileJsonSeqTest extends AnyFreeSpec {
   if (sys.props contains "test.speed") {
     val m = 3
     val n = 10000
-    @JsonCodec
     case class X(a: Int, b: Long, c: Boolean, d: String, e: String, f: String) extends Event {
       type Key = String
     }
+    implicit val XJsonCodec: Codec.AsObject[X] = deriveCodec
+
     implicit val keyedEventJsonCodec = KeyedEvent.typedJsonCodec[X](KeyedEventTypedJsonCodec.KeyedSubtype.singleEvent[X])
 
     val x = X(1, 1112223334445556667L, true, "ddddddddddddddddddddd", "eeeeeeeeeeeeeeeeeee", "ffffffffffffffffffffffffff")
@@ -161,6 +162,8 @@ final class FileJsonSeqTest extends AnyFreeSpec {
 }
 
 object FileJsonSeqTest {
-  @JsonCodec
   final case class A(number: Int, string: String)
+  object A {
+    implicit val jsonCodec: Codec.AsObject[A] = deriveCodec
+  }
 }

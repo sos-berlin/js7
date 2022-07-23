@@ -1,9 +1,9 @@
 package js7.data.system
 
-import io.circe.generic.JsonCodec
+import io.circe.Codec
+import io.circe.generic.semiauto.deriveCodec
 import js7.data.system.JavaInformation.*
 
-@JsonCodec
 final case class JavaInformation(
   version: String,
   availableProcessors: Int,
@@ -12,9 +12,13 @@ final case class JavaInformation(
 
 object JavaInformation {
 
-  @JsonCodec
   final case class Memory(maximum: Long, total: Long, free: Long) {
     def reserve = maximum - total
     def used = total - free
   }
+  object Memory {
+    implicit val jsonCodec: Codec.AsObject[Memory] = deriveCodec
+  }
+
+  implicit val jsonCodec: Codec.AsObject[JavaInformation] = deriveCodec
 }
