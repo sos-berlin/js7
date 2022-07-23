@@ -85,7 +85,7 @@ final class FileWatchManager(
                   // If the directory changes, all arisen files vanish now.
                   // Beware that directory is an (EnvScope-only) Expression.
                   val vanished =
-                    if (watchState.fileWatch.directory == fileWatch.directory)
+                    if (watchState.fileWatch.directoryExpr == fileWatch.directoryExpr)
                       Nil
                     else
                       watchState.allFilesVanished
@@ -159,7 +159,7 @@ final class FileWatchManager(
   private def watch(fileWatchState: FileWatchState, stop: Observable[Unit]): Checked[Task[Unit]] = {
     import fileWatchState.fileWatch
 
-    fileWatch.directory
+    fileWatch.directoryExpr
       .eval(EnvScope)
       .flatMap(_.asString)
       .map(Paths.get(_))

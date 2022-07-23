@@ -59,7 +59,7 @@ final class FileWatch2Test extends AnyFreeSpec with DirectoryProviderForScalaTes
     workflow.path,
     aAgentPath,
     StringConstant(aDirectory.toString))
-  private lazy val bFileWatch = aFileWatch.copy(directory = StringConstant(bDirectory.toString))
+  private lazy val bFileWatch = aFileWatch.copy(directoryExpr = StringConstant(bDirectory.toString))
 
   private val orderId1 = OrderId("file:FILE-WATCH:1")
   private val orderId2 = OrderId("file:FILE-WATCH:2")

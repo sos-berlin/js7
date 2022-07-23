@@ -51,7 +51,7 @@ final class OrderWatchStateHandlerTest extends AnyFreeSpec
   }
 
   "changeOrderWatch" in {
-    val a1 = aOrderWatch.copy(directory = expr("'CHANGED'"))
+    val a1 = aOrderWatch.copy(directoryExpr = expr("'CHANGED'"))
     val all1 = state.ow.changeOrderWatch(a1).orThrow
     assert(all1.pathToOrderWatchStateMap(a1.path) == OrderWatchState(a1))
   }

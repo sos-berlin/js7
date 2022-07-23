@@ -1,17 +1,13 @@
 package js7.base.crypt
 
-import io.circe.Codec
-import io.circe.generic.extras.JsonKey
-import io.circe.generic.extras.defaults.defaultGenericConfiguration
-import io.circe.generic.extras.semiauto.deriveConfiguredCodec
+import io.circe.{Codec, Decoder, Encoder}
 import js7.base.annotation.javaApi
-import js7.base.utils.IntelliJUtils.intelliJuseImport
 
 /**
   * @author Joacim Zschimmer
   */
 final case class GenericSignature(
-  @JsonKey("TYPE") typeName: String,
+  typeName: String,
   signatureString: String,
   algorithm: Option[String] = None,
   signerId: Option[SignerId] = None,
@@ -36,7 +32,21 @@ object GenericSignature
   def of(typeName: String, signatureString: String) =
     new GenericSignature(typeName, signatureString)
 
-  implicit val jsonCodec: Codec.AsObject[GenericSignature] = deriveConfiguredCodec
-
-  intelliJuseImport(defaultGenericConfiguration)
+  implicit val jsonCodec: Codec.AsObject[GenericSignature] = {
+    Codec.AsObject.from[GenericSignature](
+      Decoder.forProduct5(
+        "TYPE",
+        "signatureString",
+        "algorithm",
+        "signerId",
+        "signerCertificate"
+      )(GenericSignature.apply),
+      Encoder.forProduct5(
+        "TYPE",
+        "signatureString",
+        "algorithm",
+        "signerId",
+        "signerCertificate"
+      )((o: GenericSignature) => (o.typeName, o.signatureString, o.algorithm, o.signerId, o.signerCertificate)))
+  }
 }

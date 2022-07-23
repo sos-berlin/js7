@@ -1,7 +1,6 @@
 package js7.data.orderwatch
 
 import io.circe.generic.extras.Configuration.default.withDefaults
-import io.circe.generic.extras.JsonKey
 import io.circe.generic.extras.semiauto.deriveConfiguredEncoder
 import io.circe.{Codec, Decoder}
 import java.util.regex.Pattern
@@ -21,7 +20,7 @@ final case class FileWatch(
   path: OrderWatchPath,
   workflowPath: WorkflowPath,
   agentPath: AgentPath,
-  @JsonKey("directoryExpr") directory: Expression,
+  directoryExpr: Expression,
   pattern: Option[SimplePattern] = None,
   orderIdExpression: Option[Expression] = None,
   delay: FiniteDuration = ZeroDuration,

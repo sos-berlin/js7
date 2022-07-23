@@ -1,10 +1,8 @@
 package js7.data.workflow.instructions
 
-import io.circe.generic.extras.defaults.defaultGenericConfiguration
-import io.circe.generic.extras.{ConfiguredJsonCodec, JsonKey}
+import io.circe.{Codec, Decoder, Encoder}
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem
-import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.data.agent.AgentPath
 import js7.data.source.SourcePos
 import js7.data.value.expression.Expression
@@ -14,12 +12,9 @@ import js7.data.workflow.{Instruction, Workflow}
 /**
   * @author Joacim Zschimmer
   */
-@ConfiguredJsonCodec
 final case class If(
   predicate: Expression,
-  @JsonKey("then")
   thenWorkflow: Workflow,
-  @JsonKey("else")
   elseWorkflow: Option[Workflow] = None,
   sourcePos: Option[SourcePos] = None)
 extends Instruction
@@ -56,5 +51,19 @@ extends Instruction
 }
 
 object If {
-  intelliJuseImport(defaultGenericConfiguration)
+  implicit val jsonCodec: Codec.AsObject[If] = {
+    Codec.AsObject.from[If](
+      Decoder.forProduct4(
+        "predicate",
+        "then",
+        "else",
+        "sourcePos"
+      )(If.apply),
+      Encoder.forProduct4(
+        "predicate",
+        "then",
+        "else",
+        "sourcePos"
+      )((o: If) => (o.predicate, o.thenWorkflow, o.elseWorkflow, o.sourcePos)))
+  }
 }

@@ -42,7 +42,7 @@ extends JJsonable[JFileWatch] with JUnsignedSimpleItem
 
   @Nonnull
   lazy val directory: JExpression =
-    JExpression(asScala.directory)
+    JExpression(asScala.directoryExpr)
 
   @Nonnull
   def pattern: Optional[Pattern] =

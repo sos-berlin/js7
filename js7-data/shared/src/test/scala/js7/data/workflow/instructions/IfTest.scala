@@ -5,6 +5,7 @@ import js7.data.agent.AgentPath
 import js7.data.job.PathExecutable
 import js7.data.source.SourcePos
 import js7.data.value.expression.Expression.*
+import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.BranchId.{Else, Then}
@@ -25,6 +26,18 @@ final class IfTest extends AnyFreeSpec
     Some(SourcePos(1, 2)))
 
   "JSON" in {
+    testJson[Instruction.Labeled](
+      If(
+        expr("true"),
+        thenWorkflow = Workflow.empty),
+      json"""{
+        "TYPE": "If",
+        "predicate": "true",
+        "then": {
+          "instructions": []
+        }
+      }""")
+
     testJson[Instruction.Labeled](if_,
       json"""{
         "TYPE": "If",

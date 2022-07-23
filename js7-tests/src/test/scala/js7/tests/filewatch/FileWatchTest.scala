@@ -251,7 +251,7 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
       val eventId = eventWatch.lastAddedEventId
 
       val changedFileWatch = waitingFileWatch.copy(
-        directory = expr(StringConstant.quote(newDirectory.toString)))
+        directoryExpr = expr(StringConstant.quote(newDirectory.toString)))
       controllerApi.updateUnsignedSimpleItems(Seq(changedFileWatch)).await(99.s).orThrow
       eventWatch.await[ItemAttached](after = eventId)
       eventWatch.await[OrderDeleted](_.key == singletonOrderId, after = eventId)
