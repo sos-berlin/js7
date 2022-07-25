@@ -355,9 +355,9 @@ object ScalaUtils
         if (fallbackOccurred(b)) None else Some(b)
       }
 
-      def checked(key: A)(implicit A: ClassTag[A]): Checked[B] =
+      def checked(key: A)(implicit A: Tag[A]): Checked[B] =
         underlying.lift(key) match {
-          case None => Left(UnknownKeyProblem(A.runtimeClass.shortClassName, key))
+          case None => Left(UnknownKeyProblem(A.tag.shortName, key))
           case Some(a) => Right(a)
         }
 

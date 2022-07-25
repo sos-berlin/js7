@@ -1,7 +1,6 @@
 package js7.data.workflow.instructions
 
 import io.circe.*
-import io.circe.generic.extras.Configuration.default.withDefaults
 import io.circe.syntax.*
 import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.GenericString
@@ -131,7 +130,7 @@ object Fork
       implicit def fromString(string: String) = apply(string)
     }
 
-    private implicit val customConfig = withDefaults
+    private implicit val customConfig: Configuration = Configuration.default.withDefaults
     implicit val jsonCodec = deriveConfiguredCodec[Branch]
   }
 

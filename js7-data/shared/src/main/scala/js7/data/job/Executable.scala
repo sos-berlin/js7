@@ -1,6 +1,5 @@
 package js7.data.job
 
-import io.circe.generic.extras.Configuration.default.withDefaults
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
 import java.nio.file.Path
@@ -262,7 +261,7 @@ extends Executable
 
 object Executable
 {
-  private implicit val customConfig = withDefaults
+  private implicit val customConfig: Configuration = Configuration.default.withDefaults
 
   implicit val jsonCodec: TypedJsonCodec[Executable] = TypedJsonCodec(
     Subtype[PathExecutable](

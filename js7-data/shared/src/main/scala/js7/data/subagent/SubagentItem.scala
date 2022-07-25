@@ -1,7 +1,6 @@
 package js7.data.subagent
 
 import io.circe.Codec
-import io.circe.generic.extras.Configuration.default.withDefaults
 import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
 import js7.base.circeutils.typed.Subtype
 import js7.base.web.Uri
@@ -58,7 +57,7 @@ extends UnsignedSimpleItem.Companion[SubagentItem]
   val cls = classOf[SubagentItem]
 
   implicit val jsonCodec: Codec.AsObject[SubagentItem] = {
-    implicit val x = withDefaults
+    implicit val x: Configuration = Configuration.default.withDefaults
     deriveConfiguredCodec[SubagentItem]
   }
 

@@ -1,6 +1,5 @@
 package js7.data.subagent
 
-import io.circe.generic.extras.Configuration.default.withDefaults
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.{Decoder, Encoder}
 import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
@@ -143,7 +142,7 @@ object SubagentCommand extends CommonCommand.Companion
         ")"
   }
   object ShutDown {
-    private implicit val x = withDefaults
+    private implicit val x: Configuration = Configuration.default.withDefaults
     implicit val jsonCodec = deriveConfiguredCodec[ShutDown]
   }
 

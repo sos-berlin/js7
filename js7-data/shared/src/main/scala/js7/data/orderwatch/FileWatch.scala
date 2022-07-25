@@ -1,6 +1,5 @@
 package js7.data.orderwatch
 
-import io.circe.generic.extras.Configuration.default.withDefaults
 import io.circe.generic.semiauto.deriveEncoder
 import io.circe.{Codec, Decoder}
 import java.util.regex.Pattern
@@ -68,7 +67,7 @@ object FileWatch extends OrderWatch.Companion[FileWatch]
       } yield FileWatch(path, workflowPath, agentPath,
         directoryExpr, pattern, orderIdExpression, delay, itemRevision)
 
-    implicit val configuration = withDefaults
+    implicit val configuration: Configuration = Configuration.default.withDefaults
     Codec.AsObject.from(
       decoder,
       deriveEncoder[FileWatch])

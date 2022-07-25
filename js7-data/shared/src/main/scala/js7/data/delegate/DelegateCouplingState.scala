@@ -1,6 +1,5 @@
 package js7.data.delegate
 
-import io.circe.generic.extras.Configuration.default.withDefaults
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.{Decoder, Encoder, Json}
 import js7.base.annotation.javaApi
@@ -50,7 +49,7 @@ object DelegateCouplingState
 
   final case class Resetting(force: Boolean = false) extends DelegateCouplingState
 
-  private implicit val configuration = withDefaults
+  private implicit val configuration: Configuration = Configuration.default.withDefaults
   val typedJsonCodec: TypedJsonCodec[DelegateCouplingState] = TypedJsonCodec(
     Subtype(deriveCodec[Reset]),
     Subtype(Coupled),

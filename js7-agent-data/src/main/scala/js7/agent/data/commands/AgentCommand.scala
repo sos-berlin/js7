@@ -1,7 +1,6 @@
 package js7.agent.data.commands
 
 import io.circe.generic.extras.Configuration
-import io.circe.generic.extras.Configuration.default.withDefaults
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.{Codec, Decoder, Encoder, Json, JsonObject}
 import js7.agent.data.AgentState
@@ -143,7 +142,8 @@ object AgentCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
   object ShutDown {
-    private implicit val customConfig: Configuration = withDefaults
+    private implicit val configuration: Configuration = Configuration.default.withDefaults
+
     implicit val jsonCodec: Codec.AsObject[ShutDown] =
       deriveConfiguredCodec[ShutDown]
   }

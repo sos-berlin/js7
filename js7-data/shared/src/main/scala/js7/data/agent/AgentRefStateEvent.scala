@@ -1,6 +1,5 @@
 package js7.data.agent
 
-import io.circe.generic.extras.Configuration.default.withDefaults
 import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Problem
@@ -51,7 +50,7 @@ object AgentRefStateEvent
   type AgentReset = AgentReset.type
   case object AgentReset extends AgentRefStateEvent
 
-  private implicit val customConfig = withDefaults
+  private implicit val customConfig: Configuration = Configuration.default.withDefaults
 
   implicit val jsonCodec: TypedJsonCodec[AgentRefStateEvent] = TypedJsonCodec(
     Subtype(deriveConfiguredCodec[AgentDedicated], aliases = Seq("AgentCreated")),

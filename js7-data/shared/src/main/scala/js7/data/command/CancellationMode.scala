@@ -1,6 +1,5 @@
 package js7.data.command
 
-import io.circe.generic.extras.Configuration.default.withDefaults
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
@@ -24,7 +23,7 @@ object CancellationMode
 
   final case class Kill(immediately: Boolean = false, workflowPosition: Option[WorkflowPosition] = None)
   object Kill {
-    private implicit val customConfig = withDefaults
+    private implicit val customConfig: Configuration = Configuration.default.withDefaults
     implicit val jsonCodec = deriveConfiguredCodec[Kill]
   }
 

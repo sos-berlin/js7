@@ -45,7 +45,6 @@ object Dependencies
                             "org.apache.logging.log4j" % "log4j-slf4j-impl" % log4jVersion ::
                             /*jansi ::*/ Nil
 
-  val scalaReflect        = "org.scala-lang" % "scala-reflect" % scalaVersion
   val scalaTest           = "org.scalatest" %% "scalatest" % scalaTestVersion ::
                             /*"org.scalatest" %% "scalatest-freespec" % scalaTestVersion ::*/ Nil
   val scalactic           = "org.scalactic" %% "scalactic" % scalaTestVersion

@@ -1,6 +1,5 @@
 package js7.data.lock
 
-import io.circe.generic.extras.Configuration.default.withDefaults
 import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
 import js7.base.utils.Assertions.assertThat
 import js7.data.item.{ItemRevision, UnsignedSimpleItem}
@@ -38,7 +37,7 @@ object Lock extends UnsignedSimpleItem.Companion[Lock]
   type ItemState = LockState
 
   val jsonCodec = {
-    implicit val configuration = withDefaults
+    implicit val configuration: Configuration = Configuration.default.withDefaults
     deriveConfiguredCodec[Lock]
   }
 }

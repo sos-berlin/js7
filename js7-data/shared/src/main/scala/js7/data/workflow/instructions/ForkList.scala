@@ -1,7 +1,6 @@
 package js7.data.workflow.instructions
 
 import io.circe.*
-import io.circe.generic.extras.Configuration.default.withDefaults
 import io.circe.generic.semiauto.deriveEncoder
 import js7.base.circeutils.CirceUtils.deriveConfiguredDecoder
 import js7.base.problem.Checked
@@ -79,7 +78,7 @@ object ForkList
       joinIfFailed = joinIfFailed,sourcePos
     ).checked
 
-  private implicit val circeConfiguration = withDefaults
+  private implicit val circeConfiguration: Configuration = Configuration.default.withDefaults
   implicit val jsonEncoder: Encoder.AsObject[ForkList] = deriveEncoder[ForkList]
   implicit val jsonDecoder: Decoder[ForkList] = deriveConfiguredDecoder[ForkList]
     .emap(_.checked.left.map(_.toString))
