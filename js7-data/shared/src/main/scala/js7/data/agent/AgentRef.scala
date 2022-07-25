@@ -1,7 +1,6 @@
 package js7.data.agent
 
-import io.circe.generic.extras.Configuration.default.withDefaults
-import io.circe.generic.extras.semiauto.deriveConfiguredEncoder
+import io.circe.generic.semiauto.deriveEncoder
 import io.circe.{Codec, Decoder}
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.{Checked, Problem}
@@ -93,7 +92,6 @@ object AgentRef extends UnsignedSimpleItem.Companion[AgentRef]
           .checked.toDecoderResult(c.history)
       } yield agentRef
 
-    implicit val configuration = withDefaults
-    Codec.AsObject.from(jsonDecoder, deriveConfiguredEncoder[AgentRef])
+    Codec.AsObject.from(jsonDecoder, deriveEncoder[AgentRef])
   }
 }

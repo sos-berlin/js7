@@ -1,7 +1,7 @@
 package js7.data.orderwatch
 
 import io.circe.generic.extras.Configuration.default.withDefaults
-import io.circe.generic.extras.semiauto.deriveConfiguredEncoder
+import io.circe.generic.semiauto.deriveEncoder
 import io.circe.{Codec, Decoder}
 import java.util.regex.Pattern
 import js7.base.circeutils.ScalaJsonCodecs.*
@@ -71,7 +71,7 @@ object FileWatch extends OrderWatch.Companion[FileWatch]
     implicit val configuration = withDefaults
     Codec.AsObject.from(
       decoder,
-      deriveConfiguredEncoder[FileWatch])
+      deriveEncoder[FileWatch])
   }
 
   intelliJuseImport(FiniteDurationJsonEncoder)
