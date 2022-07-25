@@ -371,7 +371,8 @@ object ByteSequence
   }
 
   trait ToByteSequenceOps {
-    implicit def toByteSequenceOps[ByteSeq](target: ByteSeq)(implicit tc: ByteSequence[ByteSeq]) =
+    implicit def toByteSequenceOps[ByteSeq](target: ByteSeq)(implicit tc: ByteSequence[ByteSeq])
+    : Ops[ByteSeq] =
       new Ops[ByteSeq] {
         val self = target
         val typeClassInstance = tc

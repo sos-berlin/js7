@@ -1,5 +1,6 @@
 package js7.agent.data.commands
 
+import io.circe.generic.extras.Configuration
 import io.circe.generic.extras.Configuration.default.withDefaults
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.{Codec, Decoder, Encoder, Json, JsonObject}
@@ -142,8 +143,9 @@ object AgentCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
   object ShutDown {
-    private implicit val customConfig = withDefaults
-    implicit val jsonCodec = deriveConfiguredCodec[ShutDown]
+    private implicit val customConfig: Configuration = withDefaults
+    implicit val jsonCodec: Codec.AsObject[ShutDown] =
+      deriveConfiguredCodec[ShutDown]
   }
 
   sealed trait OrderCommand extends AgentCommand
@@ -208,8 +210,8 @@ object AgentCommand extends CommonCommand.Companion
   }
 
   implicit val jsonCodec: TypedJsonCodec[AgentCommand] = {
-    implicit val S = AgentState
-    implicit val x = S.unsignedItemJsonCodec
+    import AgentState.{implicitItemContainer, unsignedItemJsonCodec}
+    intelliJuseImport(unsignedItemJsonCodec)
     TypedJsonCodec[AgentCommand](
       Subtype(deriveCodec[Batch]),
       Subtype(deriveCodec[MarkOrder]),

@@ -24,7 +24,7 @@ package js7.base.monixutils
 import js7.base.time.ScalaTime.*
 import monix.execution.Ack.{Continue, Stop}
 import monix.execution.cancelables.{CompositeCancelable, SerialCancelable}
-import monix.execution.{Ack, Cancelable}
+import monix.execution.{Ack, Cancelable, Scheduler}
 import monix.reactive.Observable
 import monix.reactive.observers.Subscriber
 import scala.collection.mutable.ListBuffer
@@ -42,7 +42,7 @@ extends Observable[Seq[A]]
     val timer = SerialCancelable()
 
     val connection = source.unsafeSubscribeFn(new Subscriber[A] with Runnable { self =>
-      implicit val scheduler = out.scheduler
+      implicit val scheduler: Scheduler = out.scheduler
 
       private[this] val timespanMillis = timespan.map(_.toMillis max 1)
       // MUST BE synchronized by `self`

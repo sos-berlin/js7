@@ -30,7 +30,8 @@ object LogLevel
       case _ => throw new IllegalArgumentException(s"Invalid LogLevel '$string'")
     }
 
-  implicit val StringAsLogLevel = As[String, LogLevel](LogLevel.apply)
+  implicit val StringAsLogLevel: As[String, LogLevel] =
+    As[String, LogLevel](LogLevel.apply)
 
   object syntax
   {

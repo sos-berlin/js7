@@ -88,7 +88,8 @@ final class AgentOrderKeeper(
   private val ownAgentPath = persistence.currentState.meta.agentPath
   private val localSubagentId = persistence.currentState.meta.subagentId
   private val controllerId = persistence.currentState.meta.controllerId
-  private implicit val instructionExecutorService = new InstructionExecutorService(clock)
+  private implicit val instructionExecutorService: InstructionExecutorService =
+    new InstructionExecutorService(clock)
 
   override val supervisorStrategy = SupervisorStrategies.escalate
 

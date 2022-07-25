@@ -92,7 +92,8 @@ object CirceUtils
   val PrettyPrinter = Printer.spaces2.copy(dropNullValues = true/*Suppress None*/, colonLeft = "", lrbracketsEmpty = "")
 
   object implicits {
-    implicit val CompactPrinter = CirceUtils.CompactPrinter
+    implicit val CompactPrinter: Printer =
+      CirceUtils.CompactPrinter
   }
 
   implicit final class RichCirceObjectCodec[A](private val codec: Codec.AsObject[A]) extends AnyVal {

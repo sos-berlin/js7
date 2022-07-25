@@ -96,7 +96,7 @@ object BareSubagent
   : Resource[Task, BareSubagent] =
     Resource.suspend(Task {
       import conf.config
-      implicit val s = js7Scheduler
+      implicit val s: Scheduler = js7Scheduler
 
       val alarmClockCheckingInterval = config.finiteDuration("js7.time.clock-setting-check-interval")
         .orThrow

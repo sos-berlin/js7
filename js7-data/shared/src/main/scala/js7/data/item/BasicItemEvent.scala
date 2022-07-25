@@ -144,10 +144,15 @@ object BasicItemEvent
   }
 
   def jsonCodec[S](implicit S: ItemContainer.Companion[S]): TypedJsonCodec[BasicItemEvent] = {
-    implicit val x = S.inventoryItemJsonCodec
-    implicit val y = S.inventoryItemKeyJsonCodec
-    implicit val z = S.delegateIdJsonCodec
-    implicit val q = S.signableItemJsonCodec
+    import S.inventoryItemJsonCodec
+    import S.inventoryItemKeyJsonCodec
+    import S.delegateIdJsonCodec
+    import S.signableItemJsonCodec
+    intelliJuseImport((
+      inventoryItemJsonCodec,
+      inventoryItemKeyJsonCodec,
+      delegateIdJsonCodec,
+      signableItemJsonCodec))
 
     TypedJsonCodec(
       Subtype(deriveCodec[ItemDeletionMarked]),

@@ -778,6 +778,7 @@ with ItemContainer.Companion[ControllerState]
       KeyedSubtype[BoardEvent])
 
   object implicits {
-    implicit val snapshotObjectJsonCodec = ControllerState.snapshotObjectJsonCodec
+    implicit val snapshotObjectJsonCodec: TypedJsonCodec[Any] =
+      ControllerState.snapshotObjectJsonCodec
   }
 }

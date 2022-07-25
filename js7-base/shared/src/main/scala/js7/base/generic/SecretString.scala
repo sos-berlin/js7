@@ -46,7 +46,7 @@ object SecretString
 
     private val jsonEncoder: Encoder[SecretString] = o => Json.fromString(o.string)
     private val jsonDecoder: Decoder[SecretString] = _.as[String] map SecretString.apply
-    implicit val jsonCodec = Codec.from(jsonDecoder, jsonEncoder)
+    implicit val jsonCodec: Codec[SecretString] = Codec.from(jsonDecoder, jsonEncoder)
   }
   val jsonCodec = implicits.jsonCodec
 

@@ -112,6 +112,7 @@ object Stopwatch
         s"$perSecondString$gapOps/s"
   }
   object Result {
-    implicit def resultToString(result: Result) = result.toString
+    implicit def resultToString(result: Result): String =
+      result.toString
   }
 }

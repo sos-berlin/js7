@@ -48,7 +48,7 @@ object EventDrivenState
 {
   trait Companion[S <: EventDrivenState[S, E], E <: Event]
   {
-    implicit final val implicitEventDrivvenStateCompanion: Companion[S, E] =
+    implicit final val implicitEventDrivenStateCompanion: Companion[S, E] =
       this
 
     def name: String =

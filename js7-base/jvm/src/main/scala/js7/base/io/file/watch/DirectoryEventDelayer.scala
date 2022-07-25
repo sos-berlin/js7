@@ -10,7 +10,7 @@ import js7.base.monixutils.MonixDeadline.now
 import js7.base.time.ScalaTime.*
 import monix.execution.Ack.{Continue, Stop}
 import monix.execution.atomic.Atomic
-import monix.execution.{Ack, Cancelable}
+import monix.execution.{Ack, Cancelable, Scheduler}
 import monix.reactive.Observable
 import monix.reactive.observers.Subscriber
 import scala.annotation.tailrec
@@ -34,7 +34,7 @@ extends Observable[Seq[DirectoryEvent]]
 {
   def unsafeSubscribeFn(out: Subscriber[Seq[DirectoryEvent]]): Cancelable =
     source.subscribe(new Subscriber[DirectoryEvent] { self =>
-      implicit val scheduler = out.scheduler
+      implicit val scheduler: Scheduler = out.scheduler
       private val roundUp = (delay / 10) max 10.ms min 1.s
       private var timerCount = 0L
       private var timer: Option[Cancelable] = None

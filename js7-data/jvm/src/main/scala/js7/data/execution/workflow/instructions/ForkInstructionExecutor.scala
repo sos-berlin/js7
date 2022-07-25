@@ -25,7 +25,7 @@ trait ForkInstructionExecutor extends EventInstructionExecutor
   type Instr <: ForkInstruction
 
   protected val service: InstructionExecutorService
-  private implicit val implicitService = service
+  private implicit val implicitService: InstructionExecutorService = service
 
   private[execution] final def tryJoinChildOrder(
     fork: Instr,

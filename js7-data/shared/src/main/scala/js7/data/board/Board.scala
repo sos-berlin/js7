@@ -1,5 +1,6 @@
 package js7.data.board
 
+import io.circe.Codec
 import io.circe.generic.extras.Configuration.default.withDefaults
 import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
 import js7.base.circeutils.ScalaJsonCodecs.*
@@ -66,7 +67,7 @@ object Board extends UnsignedSimpleItem.Companion[Board]
 
   type ItemState = BoardState
 
-  implicit val jsonCodec = {
+  implicit val jsonCodec: Codec.AsObject[Board] = {
     intelliJuseImport(FiniteDurationJsonEncoder)
     implicit val configuration = withDefaults
     deriveConfiguredCodec[Board]

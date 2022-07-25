@@ -81,7 +81,7 @@ object AgentRef extends UnsignedSimpleItem.Companion[AgentRef]
 
   type ItemState = AgentRefState
 
-  implicit val jsonCodec = {
+  implicit val jsonCodec: Codec.AsObject[AgentRef] = {
     val jsonDecoder: Decoder[AgentRef] =
       c => for {
         path <- c.get[AgentPath]("path")

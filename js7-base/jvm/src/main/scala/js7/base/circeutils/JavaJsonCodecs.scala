@@ -57,7 +57,8 @@ object JavaJsonCodecs
     implicit val StringInstantJsonCodec: Codec[Instant] =
       Codec.from(InstantDecoder, StringInstantEncoder)
 
-    implicit val InstantJsonCodec = NumericInstantJsonCodec
+    implicit val InstantJsonCodec: Codec[Instant] =
+      NumericInstantJsonCodec
   }
 
   implicit val zoneIdJsonEncoder: Encoder[ZoneId] =

@@ -41,7 +41,7 @@ object IOExecutor
   val globalIOX = new IOExecutor(newUnlimitedThreadPool(name = "JS7 global I/O", keepAlive = 10.s))
 
   object Implicits {
-    implicit val globalIOX = IOExecutor.globalIOX
+    implicit val globalIOX: IOExecutor = IOExecutor.globalIOX
   }
 
   def resource[F[_]](config: Config, name: String)(implicit F: Sync[F]): Resource[F, IOExecutor] =

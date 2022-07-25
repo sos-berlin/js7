@@ -2,6 +2,7 @@ package js7.base.time
 
 import cats.Show
 import java.time.*
+import java.util.Date
 import js7.base.problem.Checked
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.RichFiniteDuration
@@ -101,6 +102,7 @@ object JavaTime
 
   def dateToInstant(date: java.util.Date): Instant = Instant.ofEpochMilli(date.getTime)
 
-  implicit val JavaUtilDateShow = Show[java.util.Date](o =>
-    JavaTimestamp(o).show)
+  implicit val JavaUtilDateShow: Show[Date] =
+    Show[java.util.Date](o =>
+      JavaTimestamp(o).show)
 }

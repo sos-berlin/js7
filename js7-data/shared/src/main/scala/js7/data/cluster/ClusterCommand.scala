@@ -58,7 +58,8 @@ object ClusterCommand
     final case class Response(failedOver: Option[ClusterState.FailedOver])
     extends ClusterCommand.Response
 
-    private implicit val x = deriveCodec[ClusterState.FailedOver]
+    private implicit val x: Codec.AsObject[ClusterState.FailedOver] =
+      deriveCodec[ClusterState.FailedOver]
     implicit val jsonCodec: Codec.AsObject[Response] = deriveCodec
   }
 

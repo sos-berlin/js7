@@ -109,7 +109,8 @@ with MainJournalingActor[ControllerState, Event]
   protected def journalConf = controllerConfiguration.journalConf
   protected def journalActor = persistence.journalActor
 
-  private implicit val instructionExecutorService = new InstructionExecutorService(alarmClock)
+  private implicit val instructionExecutorService: InstructionExecutorService =
+    new InstructionExecutorService(alarmClock)
   private val agentDriverConfiguration = AgentDriverConfiguration.fromConfig(config, controllerConfiguration.journalConf).orThrow
   private var _controllerState: ControllerState = ControllerState.Undefined
 
