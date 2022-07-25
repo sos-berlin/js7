@@ -1,7 +1,7 @@
 package js7.data.lock
 
 import io.circe.generic.extras.Configuration.default.withDefaults
-import io.circe.generic.extras.semiauto.deriveConfiguredCodec
+import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
 import js7.base.utils.Assertions.assertThat
 import js7.data.item.{ItemRevision, UnsignedSimpleItem}
 

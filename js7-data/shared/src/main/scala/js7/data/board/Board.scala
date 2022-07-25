@@ -1,7 +1,7 @@
 package js7.data.board
 
 import io.circe.generic.extras.Configuration.default.withDefaults
-import io.circe.generic.extras.semiauto.deriveConfiguredCodec
+import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
 import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.problem.Checked
 import js7.base.time.Timestamp

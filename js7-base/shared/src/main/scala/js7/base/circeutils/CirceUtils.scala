@@ -3,6 +3,8 @@ package js7.base.circeutils
 import cats.syntax.show.*
 import io.circe.generic.decoding.DerivedDecoder
 import io.circe.generic.encoding.DerivedAsObjectEncoder
+import io.circe.generic.extras.codec.ConfiguredAsObjectCodec
+import io.circe.generic.extras.decoding.ConfiguredDecoder
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, CursorOp, Decoder, DecodingFailure, Encoder, HCursor, Json, JsonNumber, JsonObject, ParsingFailure, Printer}
 import java.io.{OutputStream, OutputStreamWriter}
@@ -52,6 +54,14 @@ object CirceUtils
       catch { case NonFatal(t) =>
         Left(DecodingFailure(t.toStringWithCauses, c.history))
       })
+
+  final def deriveConfiguredDecoder[A](implicit decode: Lazy[ConfiguredDecoder[A]])
+  : Decoder[A] =
+    decode.value
+
+  final def deriveConfiguredCodec[A](implicit codec: Lazy[ConfiguredAsObjectCodec[A]])
+  : Codec.AsObject[A] =
+    codec.value
 
   def deriveRenamingCodec[A](rename: Map[String, String])
     (implicit encoder: Lazy[DerivedAsObjectEncoder[A]], decoder: Lazy[DerivedDecoder[A]])
@@ -229,22 +239,6 @@ object CirceUtils
         def apply(c: HCursor) = codec(c).flatMap(a => check(a).toDecoderResult(c.history))
       }
   }
-
-  //import io.circe.generic.extras.Configuration.default.withDefaults
-  //import io.circe.generic.extras.semiauto.deriveConfiguredDecoder
-  //import io.circe.generic.extras.semiauto.deriveConfiguredDecoder
-  //private val withDefaultsConfiguration = withDefaults
-  //
-  //final def deriveCodecWithDefaults[A](implicit encode: Lazy[DerivedAsObjectEncoder[A]], decode: Lazy[DerivedDecoder[A]])
-  //: CirceObjectCodec[A] =
-  //  new Encoder.AsObject[A] with Decoder[A] {
-  //    private val decodeWithDefaults = new ConfiguredDecoder[A](withDefaultsConfiguration) {
-  //      todo: apply configuration
-  //      override def apply(c: HCursor) = decode.value.apply(c)
-  //    }
-  //    def encodeObject(a: A) = encode.value.encodeObject(a)
-  //    def apply(c: HCursor) = decodeWithDefaults.tryDecode(c)
-  //  }
 
   def singletonCodec[A](singleton: A): Codec.AsObject[A] =
     new Codec.AsObject[A] {

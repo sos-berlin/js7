@@ -1,7 +1,6 @@
 package js7.data.job
 
 import io.circe.generic.extras.Configuration.default.withDefaults
-import io.circe.generic.extras.semiauto.deriveConfiguredCodec
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder, JsonObject}
 import java.nio.file.Path

@@ -2,7 +2,7 @@ package js7.data.workflow.instructions
 
 import io.circe.Codec
 import io.circe.generic.extras.Configuration.default.withDefaults
-import io.circe.generic.extras.semiauto.deriveConfiguredCodec
+import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
 import js7.data.board.{BoardPath, BoardPathExpression}
 import js7.data.source.SourcePos
 

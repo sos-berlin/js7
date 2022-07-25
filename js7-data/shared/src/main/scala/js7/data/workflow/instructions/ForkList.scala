@@ -2,8 +2,8 @@ package js7.data.workflow.instructions
 
 import io.circe.*
 import io.circe.generic.extras.Configuration.default.withDefaults
-import io.circe.generic.extras.semiauto.deriveConfiguredDecoder
 import io.circe.generic.semiauto.deriveEncoder
+import js7.base.circeutils.CirceUtils.deriveConfiguredDecoder
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.reuseIfEqual
 import js7.data.agent.AgentPath

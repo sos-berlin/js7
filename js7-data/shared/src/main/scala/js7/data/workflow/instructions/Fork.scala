@@ -2,7 +2,6 @@ package js7.data.workflow.instructions
 
 import io.circe.*
 import io.circe.generic.extras.Configuration.default.withDefaults
-import io.circe.generic.extras.semiauto.deriveConfiguredCodec
 import io.circe.syntax.*
 import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.GenericString

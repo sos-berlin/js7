@@ -1,10 +1,10 @@
 package js7.data.controller
 
 import io.circe.generic.extras.Configuration.default.withDefaults
-import io.circe.generic.extras.semiauto.deriveConfiguredCodec
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, Encoder, Json, JsonObject}
+import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
 import js7.base.circeutils.ScalaJsonCodecs.{FiniteDurationJsonDecoder, FiniteDurationJsonEncoder}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.log.CorrelIdWrapped
@@ -25,8 +25,8 @@ import js7.data.node.NodeId
 import js7.data.order.OrderEvent.OrderResumed
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.subagent.SubagentId
-import js7.data.workflow.{WorkflowId, WorkflowPath}
 import js7.data.workflow.position.{Label, Position}
+import js7.data.workflow.{WorkflowId, WorkflowPath}
 import scala.collection.immutable
 import scala.concurrent.duration.FiniteDuration
 

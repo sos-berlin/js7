@@ -1,9 +1,9 @@
 package js7.data.subagent
 
 import io.circe.generic.extras.Configuration.default.withDefaults
-import io.circe.generic.extras.semiauto.deriveConfiguredCodec
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.{Decoder, Encoder}
+import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.Signed
 import js7.base.io.process.ProcessSignal
