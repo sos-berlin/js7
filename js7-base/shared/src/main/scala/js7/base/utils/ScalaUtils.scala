@@ -3,6 +3,8 @@ package js7.base.utils
 import cats.syntax.foldable.*
 import cats.syntax.option.*
 import cats.{Functor, Monad, Monoid, Semigroup}
+import izumi.reflect.Tag
+import izumi.reflect.macrortti.LightTypeTag
 import java.io.{ByteArrayInputStream, InputStream, PrintWriter, StringWriter}
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.concurrent.atomic.AtomicBoolean
@@ -282,8 +284,8 @@ object ScalaUtils
     implicit final class RichScalaUtilsMap[K, V](private val underlying: Map[K, V])
     extends AnyVal
     {
-      def checked(key: K)(implicit A: ClassTag[K]): Checked[V] =
-        rightOr(key, UnknownKeyProblem(A.runtimeClass.shortClassName, key))
+      def checked(key: K)(implicit K: Tag[K]): Checked[V] =
+        rightOr(key, UnknownKeyProblem(K.tag.shortName, key))
 
       def rightOr(key: K, notFound: => Problem): Checked[V] =
         underlying.get(key) match {
@@ -676,7 +678,11 @@ object ScalaUtils
   def reuseIfEqual[A <: AnyRef](a: A, b: A): A =
     if (a == b) a else b
 
-  def implicitClass[A : ClassTag]: Class[A] = implicitly[ClassTag[A]].runtimeClass.asInstanceOf[Class[A]]
+  def implicitClass[A: ClassTag]: Class[A] =
+    implicitly[ClassTag[A]].runtimeClass.asInstanceOf[Class[A]]
+
+  def implicitTypeTag[A](implicit A: Tag[A]): LightTypeTag =
+    A.tag
 
   private val removePackageRegex = """^([a-z0-9]*\.)*""".r
 

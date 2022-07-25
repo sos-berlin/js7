@@ -1,5 +1,6 @@
 package js7.tests
 
+import izumi.reflect.Tag
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.isWindows
@@ -18,7 +19,6 @@ import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec
 import scala.reflect.ClassTag
-import scala.reflect.runtime.universe.*
 
 final class FailTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
@@ -139,7 +139,7 @@ final class FailTest extends AnyFreeSpec with ControllerAgentForScalaTest
           Some(Outcome.failed))))
   }
 
-  private def runUntil[E <: OrderEvent: ClassTag: TypeTag](
+  private def runUntil[E <: OrderEvent: ClassTag: Tag](
     orderId: OrderId,
     workflowId: WorkflowId,
     workflowNotation: String,
@@ -152,7 +152,7 @@ final class FailTest extends AnyFreeSpec with ControllerAgentForScalaTest
       expectedEvents,
       moreExpectedEvents*)
 
-  private def runUntil[E <: OrderEvent: ClassTag: TypeTag](
+  private def runUntil[E <: OrderEvent: ClassTag: Tag](
     orderId: OrderId,
     workflow: Workflow,
     expectedEvents: Vector[OrderEvent],

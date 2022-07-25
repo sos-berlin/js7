@@ -1,10 +1,10 @@
 package js7.base.utils
 
+import izumi.reflect.Tag
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import monix.eval.Task
 import scala.concurrent.{Future, Promise}
-import scala.reflect.runtime.universe.*
 import scala.util.Success
 
 // TODO Avoid scala.reflect.runtime.universe._
@@ -94,13 +94,13 @@ class SetOnce[A](label: => String, notYetSetProblem: Problem)
 
 object SetOnce
 {
-  def apply[A](implicit A: TypeTag[A]): SetOnce[A] = {
-    lazy val label = A.tpe.toString  // Seems to be slow
+  def apply[A](implicit A: Tag[A]): SetOnce[A] = {
+    lazy val label = A.tag.toString
     SetOnce[A](label)
   }
 
-  def apply[A](problem: Problem)(implicit A: TypeTag[A]): SetOnce[A] = {
-    lazy val label = A.tpe.toString  // Seems to be slow
+  def apply[A](problem: Problem)(implicit A: Tag[A]): SetOnce[A] = {
+    lazy val label = A.tag.toString  // Seems to be slow
     new SetOnce[A](label, problem)
   }
 
@@ -110,8 +110,8 @@ object SetOnce
   def apply[A](label: String, problem: Problem): SetOnce[A] =
     new SetOnce[A](label, problem)
 
-  def fromOption[A](option: Option[A])(implicit A: TypeTag[A]) = {
-    val setOnce = SetOnce[A](A.tpe.toString)
+  def fromOption[A](option: Option[A])(implicit A: Tag[A]) = {
+    val setOnce = SetOnce[A](A.tag.toString)
     option foreach setOnce.:=
     setOnce
   }

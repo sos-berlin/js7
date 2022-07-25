@@ -1,6 +1,7 @@
 package js7.launcher.forjava.internal
 
 import io.vavr.control.Either as VEither
+import izumi.reflect.Tag
 import java.lang.reflect.Modifier.isPublic
 import java.lang.reflect.{Constructor, InvocationTargetException}
 import js7.base.monixutils.MonixBase.syntax.*
@@ -14,10 +15,9 @@ import js7.data_for_java.vavr.VavrConverters.*
 import js7.launcher.OrderProcess
 import monix.eval.Task
 import scala.reflect.ClassTag
-import scala.reflect.runtime.universe.*
 import scala.util.control.NonFatal
 
-private[internal] final class InternalJobAdapterHelper[J: ClassTag: TypeTag]
+private[internal] final class InternalJobAdapterHelper[J: ClassTag: Tag]
 {
   private val checkedJobOnce = SetOnce[Checked[J]]  // SetOnce for late arriving Scheduler
 

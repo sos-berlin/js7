@@ -4,14 +4,12 @@ import cats.syntax.apply.*
 import izumi.reflect.Tag
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, LockKeeper}
 import monix.eval.Task
 import scala.concurrent.Promise
-import scala.reflect.ClassTag
 
-class AsyncMap[K: Tag: ClassTag, V: Tag](initial: Map[K, V] = Map.empty[K, V])
+class AsyncMap[K: Tag, V: Tag](initial: Map[K, V] = Map.empty[K, V])
 {
   private val lockKeeper = new LockKeeper[K]
   protected val name =
@@ -43,7 +41,7 @@ class AsyncMap[K: Tag: ClassTag, V: Tag](initial: Map[K, V] = Map.empty[K, V])
   final def insert(key: K, value: V)(implicit src: sourcecode.Enclosing): Task[Checked[V]] =
     updateChecked(key, {
       case None => Task.pure(Right(value))
-      case Some(_) => Task.pure(Left(DuplicateKey(implicitClass[K].simpleScalaName, key.toString)))
+      case Some(_) => Task.pure(Left(DuplicateKey(implicitly[Tag[K]].tag.shortName, key.toString)))
     }).rightAs(value)
 
   /** Not synchronized with other updates! */
@@ -73,7 +71,7 @@ class AsyncMap[K: Tag: ClassTag, V: Tag](initial: Map[K, V] = Map.empty[K, V])
     (implicit src: sourcecode.Enclosing)
   : Task[Checked[V]] =
     updateChecked(key, {
-      case None => Task.pure(Left(UnknownKeyProblem(implicitClass[K].simpleScalaName, key)))
+      case None => Task.pure(Left(UnknownKeyProblem(implicitly[Tag[K]].tag.shortName, key)))
       case Some(existing) => update(existing)
     })
 
@@ -163,13 +161,13 @@ object AsyncMap
 {
   private val logger = scribe.Logger[this.type]
 
-  def apply[K: Tag: ClassTag, V: Tag](initial: Map[K, V] = Map.empty[K, V]) =
+  def apply[K: Tag, V: Tag](initial: Map[K, V] = Map.empty[K, V]) =
     new AsyncMap(initial)
 
-  def stoppable[K: Tag: ClassTag, V: Tag](initial: Map[K, V] = Map.empty[K, V]) =
+  def stoppable[K: Tag, V: Tag](initial: Map[K, V] = Map.empty[K, V]) =
     new AsyncMap(initial) with Stoppable
 
-  def empty[K: Tag: ClassTag, V: Tag] =
+  def empty[K: Tag, V: Tag] =
     new AsyncMap(Map.empty[K, V])
 
   trait Stoppable {

@@ -11,6 +11,7 @@ import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import io.circe.Encoder
 import io.circe.syntax.*
+import izumi.reflect.Tag
 import js7.base.circeutils.CirceUtils.*
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.{Checked, Problem}
@@ -22,7 +23,6 @@ import monix.reactive.Observable
 import scala.concurrent.Future
 import scala.concurrent.duration.*
 import scala.language.implicitConversions
-import scala.reflect.runtime.universe.*
 
 /**
   * @author Joacim Zschimmer
@@ -48,12 +48,12 @@ object StandardMarshallers
   private def stringToFiniteDuration(string: String) =
     (BigDecimal(string) * 1000).toLong.millis
 
-  def monixObservableToMarshallable[A: TypeTag](observable: Observable[A])
+  def monixObservableToMarshallable[A: Tag](observable: Observable[A])
     (implicit s: Scheduler, q: Source[A, NotUsed] => ToResponseMarshallable)
   : ToResponseMarshallable =
     observable.toAkkaSourceForHttpResponse
 
-  def observableToJsonArrayHttpEntity[A: Encoder: TypeTag](observable: Observable[A])(implicit s: Scheduler): HttpEntity.Chunked =
+  def observableToJsonArrayHttpEntity[A: Encoder: Tag](observable: Observable[A])(implicit s: Scheduler): HttpEntity.Chunked =
     HttpEntity(
       `application/json`,
       observable

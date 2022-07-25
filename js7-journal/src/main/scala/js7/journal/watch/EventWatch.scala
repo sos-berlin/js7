@@ -1,5 +1,6 @@
 package js7.journal.watch
 
+import izumi.reflect.Tag
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CloseableIterator
@@ -13,7 +14,6 @@ import org.jetbrains.annotations.TestOnly
 import scala.concurrent.Future
 import scala.concurrent.duration.*
 import scala.reflect.ClassTag
-import scala.reflect.runtime.universe.*
 
 /**
   * @author Joacim Zschimmer
@@ -52,7 +52,7 @@ trait EventWatch
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def await[E <: Event: ClassTag: TypeTag](
+  def await[E <: Event: ClassTag: Tag](
     predicate: KeyedEvent[E] => Boolean = Every,
     after: EventId = EventId.BeforeFirst,
     timeout: FiniteDuration = 99.s)
@@ -60,7 +60,7 @@ trait EventWatch
   : Vector[Stamped[KeyedEvent[E]]]
 
   @TestOnly
-  def awaitAsync[E <: Event: ClassTag: TypeTag](
+  def awaitAsync[E <: Event: ClassTag](
     predicate: KeyedEvent[E] => Boolean = Every,
     after: EventId = EventId.BeforeFirst,
     timeout: FiniteDuration = 99.s)

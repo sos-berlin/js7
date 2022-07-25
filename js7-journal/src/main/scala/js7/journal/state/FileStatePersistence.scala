@@ -4,6 +4,7 @@ import akka.actor.{ActorRef, ActorRefFactory}
 import akka.pattern.ask
 import akka.util.Timeout
 import com.softwaremill.diffx
+import izumi.reflect.Tag
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked
@@ -23,7 +24,6 @@ import js7.journal.{CommitOptions, EventIdGenerator, JournalActor, StampedKeyedE
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.{Future, Promise}
-import scala.reflect.runtime.universe.*
 import shapeless.tag
 import shapeless.tag.@@
 
@@ -32,7 +32,7 @@ import shapeless.tag.@@
 //  FileStatePersistence stellt dazu LockKeeper bereit
 //  Wir werden vielleicht mehrere Schlüssel auf einmal sperren wollen (für fork/join?)
 
-final class FileStatePersistence[S <: SnapshotableState[S]: TypeTag](
+final class FileStatePersistence[S <: SnapshotableState[S]: Tag](
   val recoveredJournalId: Option[JournalId],
   val eventWatch: FileEventWatch,
   val journalActor: ActorRef @@ JournalActor.type,
@@ -203,7 +203,7 @@ object FileStatePersistence
 {
   private val logger = Logger[this.type]
 
-  def start[S <: SnapshotableState[S]: SnapshotableState.Companion: diffx.Diff: TypeTag](
+  def start[S <: SnapshotableState[S]: SnapshotableState.Companion: diffx.Diff: Tag](
     recovered: Recovered[S],
     journalConf: JournalConf,
     eventIdGenerator: EventIdGenerator = new EventIdGenerator,
@@ -220,7 +220,7 @@ object FileStatePersistence
       .as(persistence)
   }
 
-  def prepare[S <: SnapshotableState[S]: SnapshotableState.Companion: diffx.Diff: TypeTag](
+  def prepare[S <: SnapshotableState[S]: SnapshotableState.Companion: diffx.Diff: Tag](
     recoveredJournalId: Option[JournalId],
     eventWatch: FileEventWatch,
     journalMeta: JournalMeta,

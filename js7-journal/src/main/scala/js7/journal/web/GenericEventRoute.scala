@@ -12,6 +12,7 @@ import akka.http.scaladsl.server.{Directive, Directive1, ExceptionHandler, Route
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import io.circe.syntax.EncoderOps
+import izumi.reflect.Tag
 import js7.base.auth.{UserId, ValidUserPermission}
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.log.Logger
@@ -44,9 +45,8 @@ import js7.journal.web.GenericEventRoute.*
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
-import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.*
-import scala.reflect.runtime.universe.*
+import scala.concurrent.duration.Deadline.now
 import scala.util.chaining.*
 import scala.util.control.{NoStackTrace, NonFatal}
 
@@ -292,7 +292,7 @@ trait GenericEventRoute extends RouteProvider
         .apply(eventRequest => inner(Tuple1(eventRequest))))
   }
 
-  private def observableToMarshallable[A: TypeTag](observable: Observable[A])
+  private def observableToMarshallable[A: Tag](observable: Observable[A])
     (implicit q: Source[A, NotUsed] => ToResponseMarshallable)
   : ToResponseMarshallable =
     monixObservableToMarshallable(

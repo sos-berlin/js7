@@ -36,10 +36,9 @@ import monix.execution.{CancelableFuture, Scheduler}
 import monix.reactive.{Observable, OverflowStrategy}
 import scala.concurrent.Promise
 import scala.concurrent.duration.*
-import scala.reflect.runtime.universe.*
 import scala.util.{Failure, Success}
 
-final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff: TypeTag](
+final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
   initialClusterState: ClusterState.HasNodes,
   persistence: FileStatePersistence[S],
   common: ClusterCommon,

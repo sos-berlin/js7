@@ -2,6 +2,7 @@ package js7.cluster
 
 import akka.util.Timeout
 import com.softwaremill.diffx
+import izumi.reflect.Tag
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.*
@@ -22,7 +23,6 @@ import js7.data.node.NodeId
 import js7.journal.state.FileStatePersistence
 import monix.eval.Task
 import monix.execution.Scheduler
-import scala.reflect.runtime.universe.*
 
 /** A WorkingClusterNode may be in Empty (no cluster) or HasNodes ClusterState.
   *
@@ -32,7 +32,7 @@ import scala.reflect.runtime.universe.*
   * WorkingClusterNode also starts ActiveClusterNodes after
   * the ClusterNodesAppointed event.
   */
-final class WorkingClusterNode[S <: SnapshotableState[S]: SnapshotableState.Companion: diffx.Diff: TypeTag](
+final class WorkingClusterNode[S <: SnapshotableState[S]: SnapshotableState.Companion: diffx.Diff: Tag](
   persistence: FileStatePersistence[S],
   common: ClusterCommon,
   clusterConf: ClusterConf)

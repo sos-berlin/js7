@@ -3,6 +3,7 @@ package js7.journal.watch
 import io.circe.*
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.*
+import izumi.reflect.Tag
 import java.nio.file.Files
 import java.util.UUID
 import js7.base.BuildInfo
@@ -35,7 +36,6 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 import scala.reflect.ClassTag
-import scala.reflect.runtime.universe.*
 
 /**
   * @author Joacim Zschimmer
@@ -200,7 +200,7 @@ final class JournalEventWatchTest extends AnyFreeSpec with BeforeAndAfterAll
         writer.flush(sync = false)
         writer.onCommitted(writer.fileLengthAndEventId, stampedSeq.length)
 
-        def eventsForKey[E <: MyEvent: ClassTag: TypeTag](key: E#Key) = {
+        def eventsForKey[E <: MyEvent: ClassTag: Tag](key: E#Key) = {
           val EventSeq.NonEmpty(eventIterator) = eventWatch
             .whenKey[E](EventRequest.singleClass(timeout = Some(99.s)), key)
             .await(10.s).strict
@@ -210,7 +210,7 @@ final class JournalEventWatchTest extends AnyFreeSpec with BeforeAndAfterAll
         assert(eventsForKey[AEvent]("2") == Vector(A2))
         assert(eventsForKey[BEvent]("1") == Vector(B1, B2))
 
-        def keyedEvent[E <: MyEvent: ClassTag: TypeTag](key: E#Key) =
+        def keyedEvent[E <: MyEvent: ClassTag: Tag](key: E#Key) =
           eventWatch.whenKeyedEvent[E](EventRequest.singleClass(timeout = Some(99.s)), key) await 10.s
         assert(keyedEvent[AEvent]("1") == A1)
         assert(keyedEvent[AEvent]("2") == A2)

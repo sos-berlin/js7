@@ -1,6 +1,7 @@
 package js7.journal.state
 
 import akka.actor.{ActorRef, Props}
+import izumi.reflect.Tag
 import js7.base.log.CorrelId
 import js7.base.monixutils.MonixBase.promiseTask
 import js7.base.problem.Checked
@@ -13,7 +14,6 @@ import js7.journal.{CommitOptions, JournalActor, MainJournalingActor}
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.Promise
-import scala.reflect.runtime.universe.*
 import scala.util.{Failure, Success, Try}
 import shapeless.tag.@@
 
@@ -23,7 +23,7 @@ private[state] final class StateJournalingActor[S <: JournaledState[S], E <: Eve
   protected val journalConf: JournalConf,
   persistPromise: Promise[PersistFunction[S, E]],
   persistLaterPromise: Promise[PersistLaterFunction[E]])
-  (implicit S: TypeTag[S], protected val scheduler: Scheduler)
+  (implicit S: Tag[S], protected val scheduler: Scheduler)
 extends MainJournalingActor[S, E]
 {
   override def supervisorStrategy = SupervisorStrategies.escalate
@@ -76,7 +76,7 @@ extends MainJournalingActor[S, E]
           .runToFuture)
   }
 
-  override lazy val toString = s"StateJournalingActor[${S.tpe.toString.replaceAll("""^.*\.""", "")}]"
+  override lazy val toString = s"StateJournalingActor[${S.tag.toString.replaceAll("""^.*\.""", "")}]"
 
   private case class Persist(
     stateToEvents: StateToEvents[S, E],
@@ -108,7 +108,7 @@ private[state] object StateJournalingActor
     journalConf: JournalConf,
     persistPromise: Promise[PersistFunction[S, E]],
     persistLaterPromise: Promise[PersistLaterFunction[E]])
-    (implicit S: TypeTag[S], s: Scheduler)
+    (implicit S: Tag[S], s: Scheduler)
   =
     Props {
       new StateJournalingActor(currentState, journalActor, journalConf,

@@ -2,6 +2,7 @@ package js7.controller.client
 
 import cats.effect.Resource
 import io.circe.{Decoder, Encoder, Json}
+import izumi.reflect.Tag
 import js7.base.auth.UserAndPassword
 import js7.base.data.ByteArray
 import js7.base.exceptions.HasIsIgnorableStackTrace
@@ -23,7 +24,6 @@ import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.*
 import scala.reflect.ClassTag
-import scala.reflect.runtime.universe.*
 
 trait HttpControllerApi
 extends EventApi with ClusterNodeApi with HttpSessionApi with HasIsIgnorableStackTrace
@@ -46,7 +46,7 @@ extends EventApi with ClusterNodeApi with HttpSessionApi with HasIsIgnorableStac
   final def post[A: Encoder, B: Decoder](uriTail: String, data: A): Task[B] =
     httpClient.post[A, B](baseUri /? uriTail, data)
 
-  final def postObservable[A: Encoder: TypeTag, B: Decoder](uriTail: String, data: Observable[A]): Task[B] =
+  final def postObservable[A: Encoder: Tag, B: Decoder](uriTail: String, data: Observable[A]): Task[B] =
     httpClient.postObservable[A, B](baseUri /? uriTail, data)
 
   @TestOnly

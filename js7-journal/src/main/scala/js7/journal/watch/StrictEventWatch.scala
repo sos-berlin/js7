@@ -1,5 +1,6 @@
 package js7.journal.watch
 
+import izumi.reflect.Tag
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CloseableIterator
@@ -11,7 +12,6 @@ import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.*
 import scala.reflect.ClassTag
-import scala.reflect.runtime.universe.*
 
 /**
   * Strict delegator for lazy `CloseableIterator` `EventWatch`.
@@ -48,12 +48,12 @@ final class StrictEventWatch(val underlying: FileEventWatch)
     predicate: KeyedEvent[E] => Boolean = Every,
     after: EventId = tornEventId,
     timeout: FiniteDuration = 99.s)
-    (implicit s: Scheduler, E: TypeTag[E])
+    (implicit s: Scheduler, E: Tag[E])
   : Vector[Stamped[KeyedEvent[E]]] =
     underlying.await(predicate, after, timeout)
 
   @TestOnly
-  def awaitAsync[E <: Event: ClassTag: TypeTag](
+  def awaitAsync[E <: Event: ClassTag](
     predicate: KeyedEvent[E] => Boolean = Every,
     after: EventId = EventId.BeforeFirst,
     timeout: FiniteDuration = 99.s)
@@ -63,7 +63,7 @@ final class StrictEventWatch(val underlying: FileEventWatch)
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def eventsByKey[E <: Event: ClassTag: TypeTag](key: E#Key, after: EventId = tornEventId)
+  def eventsByKey[E <: Event: ClassTag: Tag](key: E#Key, after: EventId = tornEventId)
     (implicit s: Scheduler)
   : Seq[E] =
     keyedEvents[E](after = after)
@@ -73,30 +73,30 @@ final class StrictEventWatch(val underlying: FileEventWatch)
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def keyedEvents[E <: Event: ClassTag: TypeTag](implicit s: Scheduler): Seq[KeyedEvent[E]] =
+  def keyedEvents[E <: Event: ClassTag: Tag](implicit s: Scheduler): Seq[KeyedEvent[E]] =
     keyedEvents[E](after = tornEventId)
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def keyedEvents[E <: Event: ClassTag: TypeTag](after: EventId)(implicit s: Scheduler)
+  def keyedEvents[E <: Event: ClassTag: Tag](after: EventId)(implicit s: Scheduler)
   : Seq[KeyedEvent[E]] =
     allAfter[E](after = after).await(99.s)
       .map(_.value)
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def allKeyedEvents[E <: Event: ClassTag](implicit s: Scheduler, E: TypeTag[E])
+  def allKeyedEvents[E <: Event: ClassTag](implicit s: Scheduler, E: Tag[E])
   : Seq[KeyedEvent[E]] =
     allStamped[E].map(_.value)
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def allStamped[E <: Event: ClassTag](implicit s: Scheduler, E: TypeTag[E])
+  def allStamped[E <: Event: ClassTag](implicit s: Scheduler, E: Tag[E])
   : Seq[Stamped[KeyedEvent[E]]] =
     allAfter[E]().await(99.s)
 
   @TestOnly
-  private def allAfter[E <: Event: ClassTag: TypeTag](after: EventId = EventId.BeforeFirst)
+  private def allAfter[E <: Event: ClassTag: Tag](after: EventId = EventId.BeforeFirst)
   : Task[Seq[Stamped[KeyedEvent[E]]]] =
     when[E](EventRequest.singleClass[E](after = after), _ => true)
       .map {

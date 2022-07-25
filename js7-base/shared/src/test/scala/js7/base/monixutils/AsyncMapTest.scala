@@ -94,7 +94,7 @@ final class AsyncMapTest extends AsyncFreeSpec
 
   "insert duplicate" in {
     asyncMap.insert(3, "DUPLICATE")
-      .map(o => assert(o == Left(DuplicateKey("int", "3"))))
+      .map(o => assert(o == Left(DuplicateKey("Int", "3"))))
       .runToFuture
   }
 

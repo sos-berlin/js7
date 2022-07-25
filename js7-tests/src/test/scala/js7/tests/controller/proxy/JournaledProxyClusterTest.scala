@@ -2,6 +2,7 @@ package js7.tests.controller.proxy
 
 import io.circe.Encoder
 import io.circe.syntax.*
+import izumi.reflect.Tag
 import js7.base.circeutils.CirceUtils.*
 import js7.base.eventbus.StandardEventBus
 import js7.base.generic.Completed
@@ -41,7 +42,6 @@ import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.Deadline.now
 import scala.jdk.CollectionConverters.*
-import scala.reflect.runtime.universe.*
 
 final class JournaledProxyClusterTest extends AnyFreeSpec with ClusterProxyTest
 {
@@ -190,10 +190,10 @@ final class JournaledProxyClusterTest extends AnyFreeSpec with ClusterProxyTest
     }
   }
 
-  private def calculateNumberOf[A: Encoder: TypeTag](n: Int, sample: A): Int =
+  private def calculateNumberOf[A: Encoder: Tag](n: Int, sample: A): Int =
     if (sys.props.contains("test.speed") && sys.runtime.maxMemory >= 16_000_000_000L) {
       val sampleSize = sample.asJson.toByteArray.length
-      logger.info(s"$n× ${implicitly[TypeTag[A]].tpe} à $sampleSize bytes = ${n * sampleSize} bytes")
+      logger.info(s"$n× ${implicitly[Tag[A]].tag} à $sampleSize bytes = ${n * sampleSize} bytes")
       logger.info(sample.asJson.compactPrint)
       n
     } else

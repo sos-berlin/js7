@@ -1,6 +1,7 @@
 package js7.journal.watch
 
 import cats.syntax.option.*
+import izumi.reflect.Tag
 import java.util.concurrent.TimeoutException
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.closeableIteratorToObservable
@@ -23,7 +24,6 @@ import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.*
 import scala.reflect.ClassTag
-import scala.reflect.runtime.universe.*
 
 /**
   * @author Joacim Zschimmer
@@ -291,7 +291,7 @@ trait RealEventWatch extends EventWatch
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  final def await[E <: Event: ClassTag: TypeTag](
+  final def await[E <: Event: ClassTag: Tag](
     predicate: KeyedEvent[E] => Boolean,
     after: EventId,
     timeout: FiniteDuration)
@@ -301,7 +301,7 @@ trait RealEventWatch extends EventWatch
       .await(timeout + 1.s)
 
   @TestOnly
-  final def awaitAsync[E <: Event: ClassTag: TypeTag](
+  final def awaitAsync[E <: Event: ClassTag](
     predicate: KeyedEvent[E] => Boolean,
     after: EventId,
     timeout: FiniteDuration)

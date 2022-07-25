@@ -1,5 +1,6 @@
 package js7.tests
 
+import izumi.reflect.Tag
 import js7.base.configutils.Configs.*
 import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.log.Logger
@@ -23,7 +24,6 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.*
 import scala.reflect.ClassTag
-import scala.reflect.runtime.universe.*
 
 final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
@@ -256,7 +256,7 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
     awaitAndCheckEventSeq[OrderFailed](afterEventId, orderId, expectedEvents)
   }
 
-  private def awaitAndCheckEventSeq[E <: OrderEvent: ClassTag: TypeTag](after: EventId, orderId: OrderId, expected: Vector[OrderEvent]): Unit =
+  private def awaitAndCheckEventSeq[E <: OrderEvent: ClassTag: Tag](after: EventId, orderId: OrderId, expected: Vector[OrderEvent]): Unit =
   {
     eventWatch.await[E](_.key == orderId, after = after)
     sleep(50.millis)  // No more events should arrive

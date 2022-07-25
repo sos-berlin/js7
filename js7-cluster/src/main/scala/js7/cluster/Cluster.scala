@@ -4,6 +4,7 @@ import akka.actor.ActorSystem
 import akka.util.Timeout
 import com.softwaremill.diffx
 import com.typesafe.config.Config
+import izumi.reflect.Tag
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.nio.file.{Files, Path, Paths}
 import js7.base.eventbus.EventPublisher
@@ -33,9 +34,8 @@ import js7.journal.state.FileStatePersistence
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.Promise
-import scala.reflect.runtime.universe.*
 
-final class Cluster[S <: SnapshotableState[S]: diffx.Diff: TypeTag](
+final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag](
   journalMeta: JournalMeta,
   persistence: FileStatePersistence[S],
   clusterContext: ClusterContext,

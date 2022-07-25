@@ -1,6 +1,7 @@
 package js7.tests.core
 
 import io.circe.Decoder
+import izumi.reflect.Tag
 import java.net.{InetAddress, InetSocketAddress}
 import js7.base.auth.{SessionToken, SimpleUser}
 import js7.base.configutils.Configs.*
@@ -36,10 +37,9 @@ import monix.reactive.Observable
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
-import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.*
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.{Future, Promise}
-import scala.reflect.runtime.universe.*
 
 final class GenericEventRouteTest
 extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with GenericEventRoute
@@ -291,7 +291,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with GenericE
   private def getEventsByUri(uri: Uri): Seq[Stamped[KeyedEvent[OrderEvent]]] =
     getDecodedLinesObservable[Stamped[KeyedEvent[OrderEvent]]](uri)
 
-  private def getDecodedLinesObservable[A: Decoder: TypeTag](uri: Uri): Seq[A] =
+  private def getDecodedLinesObservable[A: Decoder: Tag](uri: Uri): Seq[A] =
     Observable.fromTask(api.getDecodedLinesObservable[A](uri, responsive = true))
       .flatten
       .toListL

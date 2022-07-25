@@ -1,5 +1,6 @@
 package js7.data.item
 
+import izumi.reflect.Tag
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.cast
 import js7.base.utils.ScalaUtils.syntax.*
@@ -13,7 +14,7 @@ import scala.collection.View
 import scala.reflect.ClassTag
 
 /** Client side bookkeeping of attachments. */
-final case class ClientAttachments[D <: DelegateId: ClassTag](
+final case class ClientAttachments[D <: DelegateId: ClassTag: Tag](
   itemToDelegateToAttachedState: Map[InventoryItemKey, Map[D, ItemAttachedState.NotDetached]])
 {
   def estimatedSnapshotSize: Int =

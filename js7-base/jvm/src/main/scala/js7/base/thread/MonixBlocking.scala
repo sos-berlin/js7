@@ -1,12 +1,12 @@
 package js7.base.thread
 
+import izumi.reflect.Tag
 import js7.base.thread.Futures.implicits.*
 import js7.base.utils.StackTraces.StackTraceThrowable
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.collection.BuildFrom
 import scala.concurrent.duration.*
-import scala.reflect.runtime.universe.*
 import scala.util.control.NonFatal
 
 /**
@@ -35,7 +35,11 @@ object MonixBlocking
 
     implicit final class RichTaskTraversable[A, M[X] <: Iterable[X]](private val underlying: M[Task[A]]) extends AnyVal
     {
-      def await(duration: FiniteDuration)(implicit s: Scheduler, cbf: BuildFrom[M[Task[A]], A, M[A]], MA: WeakTypeTag[M[A]]): M[A] =
+      def await(duration: FiniteDuration)
+        (implicit
+          s: Scheduler,
+          cbf: BuildFrom[M[Task[A]], A, M[A]], MA: Tag[M[A]])
+      : M[A] =
         Task.sequence(underlying)(cbf).runToFuture await duration
 
       def awaitInfinite(implicit s: Scheduler, cbf: BuildFrom[M[Task[A]], A, M[A]]): M[A] =

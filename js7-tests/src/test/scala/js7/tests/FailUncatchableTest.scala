@@ -1,5 +1,6 @@
 package js7.tests
 
+import izumi.reflect.Tag
 import js7.base.problem.Checked.Ops
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
@@ -18,7 +19,6 @@ import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec
 import scala.reflect.ClassTag
-import scala.reflect.runtime.universe.*
 
 final class FailUncatchableTest extends AnyFreeSpec
 {
@@ -183,10 +183,10 @@ final class FailUncatchableTest extends AnyFreeSpec
         OrderDetached))
   }
 
-  private def checkEvents[E <: OrderEvent: ClassTag: TypeTag](workflowNotation: String, expectedEvents: Vector[OrderEvent]): Unit =
+  private def checkEvents[E <: OrderEvent: ClassTag: Tag](workflowNotation: String, expectedEvents: Vector[OrderEvent]): Unit =
     assert(runUntil[E](workflowNotation).map(_.event) == expectedEvents)
 
-  private def runUntil[E <: OrderEvent: ClassTag: TypeTag](workflowNotation: String): Vector[KeyedEvent[OrderEvent]] = {
+  private def runUntil[E <: OrderEvent: ClassTag: Tag](workflowNotation: String): Vector[KeyedEvent[OrderEvent]] = {
     val workflow = WorkflowParser.parse(TestWorkflowId, workflowNotation).orThrow
     autoClosing(new DirectoryProvider(TestAgentPath :: Nil, workflow :: Nil, testName = Some("FailUncatchableTest"))) { directoryProvider =>
       directoryProvider.agents.head.writeExecutable(RelativePathExecutable("test.cmd"), "exit 3")
