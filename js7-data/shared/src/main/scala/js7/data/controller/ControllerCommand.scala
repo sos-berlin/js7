@@ -1,5 +1,6 @@
 package js7.data.controller
 
+import js7.base.circeutils.CirceUtils.DecodeWithDefaults
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, Encoder, Json, JsonObject}
@@ -280,8 +281,6 @@ object ControllerCommand extends CommonCommand.Companion
       Subtype.named(deriveCodec[InternalClusterCommand.Response], "InternalClusterCommand.Response"))
   }
 
-  private implicit val customConfig: Configuration = Configuration.default.withDefaults
-
   implicit val jsonCodec: TypedJsonCodec[ControllerCommand] = TypedJsonCodec[ControllerCommand](
     Subtype(deriveConfiguredCodec[Batch]),
     Subtype(deriveConfiguredCodec[AddOrder]),
@@ -307,4 +306,6 @@ object ControllerCommand extends CommonCommand.Companion
     Subtype(deriveConfiguredCodec[ResetAgent]),
     Subtype(deriveConfiguredCodec[ResetSubagent]),
     Subtype(TakeSnapshot))
+
+  intelliJuseImport(DecodeWithDefaults)
 }

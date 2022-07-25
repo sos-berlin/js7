@@ -3,6 +3,7 @@ package js7.data.orderwatch
 import io.circe.generic.semiauto.deriveEncoder
 import io.circe.{Codec, Decoder}
 import java.util.regex.Pattern
+import js7.base.circeutils.CirceUtils.DecodeWithDefaults
 import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.IntelliJUtils.intelliJuseImport
@@ -67,11 +68,10 @@ object FileWatch extends OrderWatch.Companion[FileWatch]
       } yield FileWatch(path, workflowPath, agentPath,
         directoryExpr, pattern, orderIdExpression, delay, itemRevision)
 
-    implicit val configuration: Configuration = Configuration.default.withDefaults
     Codec.AsObject.from(
       decoder,
       deriveEncoder[FileWatch])
   }
 
-  intelliJuseImport(FiniteDurationJsonEncoder)
+  intelliJuseImport((FiniteDurationJsonEncoder, DecodeWithDefaults))
 }

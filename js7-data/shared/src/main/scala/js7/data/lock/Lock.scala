@@ -1,7 +1,9 @@
 package js7.data.lock
 
-import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
+import io.circe.Codec
+import js7.base.circeutils.CirceUtils.{DecodeWithDefaults, deriveConfiguredCodec}
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.data.item.{ItemRevision, UnsignedSimpleItem}
 
 final case class Lock(
@@ -36,8 +38,7 @@ object Lock extends UnsignedSimpleItem.Companion[Lock]
 
   type ItemState = LockState
 
-  val jsonCodec = {
-    implicit val configuration: Configuration = Configuration.default.withDefaults
-    deriveConfiguredCodec[Lock]
-  }
+  val jsonCodec: Codec.AsObject[Lock] = deriveConfiguredCodec[Lock]
+
+  intelliJuseImport(DecodeWithDefaults)
 }

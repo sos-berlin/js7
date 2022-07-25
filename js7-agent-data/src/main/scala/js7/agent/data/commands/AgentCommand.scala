@@ -1,11 +1,10 @@
 package js7.agent.data.commands
 
-import io.circe.generic.extras.Configuration
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.{Codec, Decoder, Encoder, Json, JsonObject}
 import js7.agent.data.AgentState
 import js7.agent.data.AgentState.{inventoryItemKeyJsonCodec, signableItemJsonCodec, unsignedSimpleItemJsonCodec}
-import js7.base.circeutils.CirceUtils.{deriveConfiguredCodec, singletonCodec}
+import js7.base.circeutils.CirceUtils.{DecodeWithDefaults, deriveConfiguredCodec, singletonCodec}
 import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.Signed
@@ -142,8 +141,6 @@ object AgentCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
   object ShutDown {
-    private implicit val configuration: Configuration = Configuration.default.withDefaults
-
     implicit val jsonCodec: Codec.AsObject[ShutDown] =
       deriveConfiguredCodec[ShutDown]
   }
@@ -240,5 +237,6 @@ object AgentCommand extends CommonCommand.Companion
 
   intelliJuseImport((FiniteDurationJsonDecoder,
     checkedJsonEncoder[Int], checkedJsonDecoder[Int],
+    DecodeWithDefaults,
     signableItemJsonCodec, unsignedSimpleItemJsonCodec, inventoryItemKeyJsonCodec))
 }

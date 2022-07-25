@@ -1,8 +1,7 @@
 package js7.data.calendar
 
 import io.circe.Codec
-import io.circe.generic.extras.Configuration
-import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
+import js7.base.circeutils.CirceUtils.{DecodeWithDefaults, deriveConfiguredCodec}
 import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
@@ -102,9 +101,7 @@ object Calendar extends UnsignedSimpleItem.Companion[Calendar]
         new Calendar(path, timezone, dateOffset, orderIdToDatePattern, periodDatePattern,
           itemRevision))
 
-  implicit val jsonCodec: Codec.AsObject[Calendar] = {
-    intelliJuseImport(FiniteDurationJsonEncoder)
-    implicit val configuration: Configuration = Configuration.default.withDefaults
-    deriveConfiguredCodec[Calendar]
-  }
+  implicit val jsonCodec: Codec.AsObject[Calendar] = deriveConfiguredCodec[Calendar]
+
+  intelliJuseImport((FiniteDurationJsonEncoder, DecodeWithDefaults))
 }

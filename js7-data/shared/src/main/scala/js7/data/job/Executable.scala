@@ -11,6 +11,7 @@ import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.InvalidNameProblem
 import js7.base.system.OperatingSystem.isWindows
+import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.order.Outcome
@@ -261,8 +262,6 @@ extends Executable
 
 object Executable
 {
-  private implicit val customConfig: Configuration = Configuration.default.withDefaults
-
   implicit val jsonCodec: TypedJsonCodec[Executable] = TypedJsonCodec(
     Subtype[PathExecutable](
       subclasses = Seq(
@@ -272,4 +271,6 @@ object Executable
     Subtype[ShellScriptExecutable](aliases = Seq("ExecutableScript", "ScriptExecutable")),
     Subtype[CommandLineExecutable],
     Subtype(deriveConfiguredCodec[InternalExecutable]))
+
+  intelliJuseImport(DecodeWithDefaults)
 }

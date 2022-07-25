@@ -3,6 +3,7 @@ package js7.base.circeutils
 import cats.syntax.show.*
 import io.circe.generic.decoding.DerivedDecoder
 import io.circe.generic.encoding.DerivedAsObjectEncoder
+import io.circe.generic.extras.Configuration
 import io.circe.generic.extras.codec.ConfiguredAsObjectCodec
 import io.circe.generic.extras.decoding.ConfiguredDecoder
 import io.circe.syntax.EncoderOps
@@ -26,6 +27,9 @@ import shapeless.Lazy
 object CirceUtils
 {
   val UnitDecoderResult: Decoder.Result[Unit] = Right(())
+
+  implicit val DecodeWithDefaults: Configuration =
+    Configuration.default.withDefaults
 
   def requireJson(requirement: Boolean, failure: => DecodingFailure): Decoder.Result[Unit] =
     if (!requirement)

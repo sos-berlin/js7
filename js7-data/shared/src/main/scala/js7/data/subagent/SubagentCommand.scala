@@ -2,7 +2,7 @@ package js7.data.subagent
 
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.{Decoder, Encoder}
-import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
+import js7.base.circeutils.CirceUtils.{DecodeWithDefaults, deriveConfiguredCodec}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.Signed
 import js7.base.io.process.ProcessSignal
@@ -10,6 +10,7 @@ import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.CorrelIdWrapped
 import js7.base.problem.Checked
 import js7.base.utils.Big
+import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.version.Version
 import js7.data.agent.AgentPath
@@ -142,7 +143,6 @@ object SubagentCommand extends CommonCommand.Companion
         ")"
   }
   object ShutDown {
-    private implicit val x: Configuration = Configuration.default.withDefaults
     implicit val jsonCodec = deriveConfiguredCodec[ShutDown]
   }
 
@@ -177,4 +177,6 @@ object SubagentCommand extends CommonCommand.Companion
   implicit val responseJsonCodec = TypedJsonCodec[Response](
     Subtype(Accepted),
     Subtype(deriveCodec[DedicateSubagent.Response]))
+
+  intelliJuseImport(DecodeWithDefaults)
 }

@@ -7,6 +7,7 @@ import js7.base.generic.GenericString
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.*
+import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.reuseIfEqual
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichEitherIterable}
 import js7.data.agent.AgentPath
@@ -130,7 +131,6 @@ object Fork
       implicit def fromString(string: String) = apply(string)
     }
 
-    private implicit val customConfig: Configuration = Configuration.default.withDefaults
     implicit val jsonCodec = deriveConfiguredCodec[Branch]
   }
 
@@ -157,4 +157,6 @@ object Fork
       "branchIds" -> branchIds.mkString(", ")
     )
   }
+
+  intelliJuseImport(DecodeWithDefaults)
 }
