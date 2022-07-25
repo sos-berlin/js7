@@ -60,20 +60,20 @@ object CirceUtils
 
   def deriveRenamingDecoder[A](rename: Map[String, String])
     (implicit decode: Lazy[DerivedDecoder[A]])
-  : Decoder[A] =
+  : Decoder[A] = {
+    // Precalculate efficient keySet
+    val keySet: Set[String] = Set.empty ++ rename.keys
     c => c.as[JsonObject]
-      .flatMap { jsonObject =>
-        val map = jsonObject.toMap
-        if (!map.keys.exists(rename.keySet))
+      .flatMap(jsonObject =>
+        if (!jsonObject.keys.exists(keySet))
           decode.value(c)
         else
           decode.value.decodeJson(
             Json.fromJsonObject(
-              JsonObject.fromMap(map
-                .view
-                .map { case (k, v) => rename.getOrElse(k, k) -> v }
-                .toMap)))
-      }
+              JsonObject.fromMap(jsonObject
+                .toMap
+                .map { case (k, v) => rename.getOrElse(k, k) -> v }))))
+  }
 
   val CompactPrinter = Printer.noSpaces.copy(
     dropNullValues = true/*Suppress None*/,
