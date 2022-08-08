@@ -27,12 +27,12 @@ object Dependencies
   val monixVersion = "3.4.1"
   val monocleVersion = "1.5.0"
   val scribeVersion = "3.6.7" // TODO "3.8.2"
-  val scalaJsDomVersion = "1.2.0"
+  val scalaJsDomVersion = "2.2.0"
   val shapelessVersion = "2.3.7"
   val diffxVersion = "0.7.1"
   val reactorVersion = "3.4.21"
   val vavrVersion = "0.10.4"
-  val jnaVersion = "5.10.0"
+  val jnaVersion = "5.12.1"
 
   val slf4j               = "org.slf4j" % "slf4j-api"    % slf4jVersion
   val slf4jNop            = "org.slf4j" % "slf4j-nop"    % slf4jVersion
