@@ -241,11 +241,11 @@ final class CatsBasicParsersTest extends AnyFreeSpec
     }
 
     "oneOf" in {
-      assert(checkedParse("", keyToValue.oneOf[String](Set("string", "string2"))) == Left(Problem(
+      assert(checkedParse("", keyToValue.oneOf[String]("string", "string2")) == Left(Problem(
         """Parsing failed at position 1 “❓” · Expected non-contradicting keywords: string; string2""")))
-      assert(checkedParse("", keyToValue.oneOf[String](Set("string", "x"))) == Right("string" -> "STRING"))
-      assert(checkedParse("", keyToValue.oneOf[String](Set("string2", "x"))) == Right("string2" -> "STRING2"))
-      assert(checkedParse("", keyToValue.oneOf[String](Set("y", "x"))) == Left(Problem(
+      assert(checkedParse("", keyToValue.oneOf[String]("string", "x")) == Right("string" -> "STRING"))
+      assert(checkedParse("", keyToValue.oneOf[String]("string2", "x")) == Right("string2" -> "STRING2"))
+      assert(checkedParse("", keyToValue.oneOf[String]("y", "x")) == Left(Problem(
         "Parsing failed at position 1 “❓” · Expected one of keywords y=, x=")))
     }
 

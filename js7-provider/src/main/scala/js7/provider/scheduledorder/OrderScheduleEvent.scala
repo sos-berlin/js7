@@ -19,5 +19,5 @@ object OrderScheduleEvent {
   }
 
   implicit val jsonCodec: TypedJsonCodec[OrderScheduleEvent] = TypedJsonCodec(
-    Subtype.named[GeneratedUntil]("OrderScheduleEvent.GeneratedUntil"))
+    Subtype.named1[GeneratedUntil]("OrderScheduleEvent.GeneratedUntil"))
 }

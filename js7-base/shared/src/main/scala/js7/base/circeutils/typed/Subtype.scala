@@ -25,8 +25,11 @@ object Subtype {
     make[A](implicitClass[A] :: Nil, Some(implicitClass[A]),
       typeName[A], implicitly[Encoder.AsObject[A]], implicitly[Decoder[A]])
 
+  def apply[A: ClassTag: Encoder.AsObject: Decoder](aliases: Seq[String]): Subtype[A] =
+    apply(Nil, aliases)
+
   def apply[A: ClassTag: Encoder.AsObject: Decoder](
-    subclasses: Iterable[Class[? <: A]] = Nil,
+    subclasses: Iterable[Class[? <: A]],
     aliases: Seq[String] = Nil)
   : Subtype[A] =
     make[A](Seq(implicitClass[A]) ++ subclasses, Some(implicitClass[A]),
@@ -80,7 +83,7 @@ object Subtype {
     * <p>
     * Usage: Subtype.named[A]("name")
     */
-  def named[A: ClassTag: Encoder.AsObject: Decoder](
+  def named1[A: ClassTag: Encoder.AsObject: Decoder](
     typeName: String,
     subclasses: Iterable[Class[? <: A]] = Nil,
     aliases: Seq[String] = Nil)

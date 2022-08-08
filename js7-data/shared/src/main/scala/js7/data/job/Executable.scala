@@ -268,7 +268,7 @@ object Executable
         classOf[AbsolutePathExecutable],
         classOf[RelativePathExecutable]),
       aliases = Seq("ExecutablePath")),
-    Subtype[ShellScriptExecutable](aliases = Seq("ExecutableScript", "ScriptExecutable")),
+    Subtype[ShellScriptExecutable](Nil, aliases = Seq("ExecutableScript", "ScriptExecutable")),
     Subtype[CommandLineExecutable],
     Subtype(deriveConfiguredCodec[InternalExecutable]))
 

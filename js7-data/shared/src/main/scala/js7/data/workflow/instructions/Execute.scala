@@ -92,6 +92,6 @@ object Execute
   }
 
   implicit val jsonCodec: TypedJsonCodec[Execute] = TypedJsonCodec(
-    Subtype.named[Named]("Execute.Named"),
-    Subtype.named[Anonymous]("Execute.Anonymous"))
+    Subtype.named1[Named]("Execute.Named"),
+    Subtype.named1[Anonymous]("Execute.Anonymous"))
 }

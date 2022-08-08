@@ -18,10 +18,8 @@ object IsEmpty
 {
   def apply[A](implicit o: IsEmpty[A]): IsEmpty[A] = o
 
-  //def fromIsEmpty[A](empty: A => Boolean): IsEmpty[A] =
-  //  new IsEmpty[A] {
-  //    def isEmpty(a: A) = empty(a)
-  //  }
+  def fromIsEmpty[A](empty: A => Boolean): IsEmpty[A] =
+    empty(_)
 
   trait Ops[A] {
     def typeClassInstance: IsEmpty[A]
@@ -50,7 +48,7 @@ object IsEmpty
   implicit val booleanIsEmpty: IsEmpty[Boolean] = _ == false
 
   implicit def monoidIsEmpty[A](implicit monoid: Monoid[A], eq: Eq[A]): IsEmpty[A] =
-    IsEmpty[A](monoid.isEmpty)
+    IsEmpty.fromIsEmpty[A](monoid.isEmpty)
 
   private val erasedIterableIsEmpty: IsEmpty[Iterable[?]] = _.isEmpty
 

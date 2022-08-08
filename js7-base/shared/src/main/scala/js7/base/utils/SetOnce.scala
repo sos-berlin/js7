@@ -99,15 +99,21 @@ object SetOnce
     SetOnce[A](label)
   }
 
-  def apply[A](problem: Problem)(implicit A: Tag[A]): SetOnce[A] = {
-    lazy val label = A.tag.toString  // Seems to be slow
-    new SetOnce[A](label, problem)
-  }
+  def apply[A](problem: Problem)(implicit A: Tag[A]): SetOnce[A] =
+    undefined[A](problem)
 
   def apply[A](label: => String): SetOnce[A] =
     new SetOnce[A](label, Problem(s"SetOnce[$label] promise has not been kept so far"))
 
   def apply[A](label: String, problem: Problem): SetOnce[A] =
+    new SetOnce[A](label, problem)
+
+  def undefined[A](problem: Problem)(implicit A: Tag[A]): SetOnce[A] = {
+    lazy val label = A.tag.toString  // Seems to be slow
+    new SetOnce[A](label, problem)
+  }
+
+  def undefined[A](label: => String, problem: Problem): SetOnce[A] =
     new SetOnce[A](label, problem)
 
   def fromOption[A](option: Option[A])(implicit A: Tag[A]) = {

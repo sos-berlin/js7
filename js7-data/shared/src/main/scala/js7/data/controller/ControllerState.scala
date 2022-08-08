@@ -751,7 +751,7 @@ with ItemContainer.Companion[ControllerState]
     Subtype(deriveCodec[ClusterStateSnapshot]),
     Subtype[ControllerMetaState],
     Subtype[AgentRefState],
-    Subtype[SubagentItemState](aliases = Seq("SubagentRefState")),
+    Subtype[SubagentItemState](Nil, aliases = Seq("SubagentRefState")),
     Subtype[SubagentSelection],
     Subtype[LockState],
     Subtype[Board],

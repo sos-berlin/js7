@@ -190,9 +190,9 @@ object CatsBasicParsers
     }
 
     def oneOf[A1 <: A](keys: String*): Parser0[(String, A1)] =
-      oneOf[A1](keys.toSet)
+      oneOfSet[A1](keys.toSet)
 
-    def oneOf[A1 <: A](keys: Set[String]): Parser0[(String, A1)] = {
+    def oneOfSet[A1 <: A](keys: Set[String]): Parser0[(String, A1)] = {
       val intersection = nameToValue.keySet & keys
       intersection.size match {
         // TODO Better messages for empty key (no keyword, positional argument)

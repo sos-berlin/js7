@@ -70,7 +70,7 @@ object ClusterCommand
 
     implicit val ResponseJsonCodec: TypedJsonCodec[Response] = TypedJsonCodec[Response](
       Subtype(Accepted),
-      Subtype.named[ClusterInhibitActivation.Response]("ClusterInhibitActivation.Response"))
+      Subtype.named1[ClusterInhibitActivation.Response]("ClusterInhibitActivation.Response"))
   }
 
   implicit val jsonCodec: TypedJsonCodec[ClusterCommand] = TypedJsonCodec[ClusterCommand](

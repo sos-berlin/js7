@@ -10,7 +10,7 @@ object Instructions
 {
   implicit val jsonCodec: TypedJsonCodec[Instruction] = TypedJsonCodec[Instruction](
     Subtype[Execute],
-    Subtype.named[ExplicitEnd]("End"),
+    Subtype.named1[ExplicitEnd]("End"),
     Subtype[ImplicitEnd],  // Serialized for easier external use of Workflow
     Subtype[Finish],
     Subtype[Fail],
@@ -23,8 +23,8 @@ object Instructions
     ExpectNotice.compatibleSubtype,
     Subtype[ExpectNotices],
     Subtype[Retry],
-    Subtype.named[TryInstruction]("Try"),
-    Subtype.named[LockInstruction]("Lock"),
+    Subtype.named1[TryInstruction]("Try"),
+    Subtype.named1[LockInstruction]("Lock"),
     Subtype[Cycle],
     Subtype[AddOrder],
     Subtype[Gap])

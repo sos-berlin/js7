@@ -276,7 +276,7 @@ object ControllerCommand extends CommonCommand.Companion
     implicit val ResponseJsonCodec: TypedJsonCodec[Response] = TypedJsonCodec[Response](
       Subtype(Accepted),
       Subtype.named(deriveCodec[AddOrder.Response], "AddOrder.Response"),
-      Subtype.named[AddOrders.Response]("AddOrders.Response"),
+      Subtype.named1[AddOrders.Response]("AddOrders.Response"),
       Subtype.named(deriveCodec[Batch.Response], "BatchResponse"),
       Subtype.named(deriveCodec[InternalClusterCommand.Response], "InternalClusterCommand.Response"))
   }
