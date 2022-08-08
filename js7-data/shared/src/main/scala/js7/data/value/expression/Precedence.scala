@@ -5,7 +5,7 @@ trait Precedence {
 
   protected def inParentheses(o: Precedence): String = Precedence.inParentheses(o, precedence)
 
-  protected def toString(a: Precedence, op: String, b: Precedence) =
+  protected def makeString(a: Precedence, op: String, b: Precedence): String =
     Precedence.toString(a, op, precedence, b)
 }
 

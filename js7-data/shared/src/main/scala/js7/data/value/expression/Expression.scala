@@ -122,7 +122,7 @@ object Expression
         case true => b.evalAsBoolean.map(b => BooleanValue(b.booleanValue))
       }
 
-    override def toString = toString(a, "&&", b)
+    override def toString = makeString(a, "&&", b)
   }
 
   final case class Or(a: BooleanExpression, b: BooleanExpression)
@@ -136,7 +136,7 @@ object Expression
         case true => Right(BooleanValue.True)
       }
 
-    override def toString = toString(a, "||", b)
+    override def toString = makeString(a, "||", b)
   }
 
   final case class Equal(a: Expression, b: Expression)
@@ -147,7 +147,7 @@ object Expression
     protected def evalAllowError(implicit scope: Scope) =
       for (a <- a.eval; b <- b.eval) yield BooleanValue(a == b)
 
-    override def toString = toString(a, "==", b)
+    override def toString = makeString(a, "==", b)
   }
 
   final case class NotEqual(a: Expression, b: Expression)
@@ -158,7 +158,7 @@ object Expression
     protected def evalAllowError(implicit scope: Scope) =
       for (a <- a.eval; b <- b.eval) yield BooleanValue(a != b)
 
-    override def toString = toString(a, "!=", b)
+    override def toString = makeString(a, "!=", b)
   }
 
   final case class LessOrEqual(a: Expression, b: Expression)
@@ -170,7 +170,7 @@ object Expression
       for (a <- a.evalAsNumber; b <- b.evalAsNumber) yield
         BooleanValue(a <= b)
 
-    override def toString = toString(a, "<=", b)
+    override def toString = makeString(a, "<=", b)
   }
 
   final case class GreaterOrEqual(a: Expression, b: Expression)
@@ -181,7 +181,7 @@ object Expression
     protected def evalAllowError(implicit scope: Scope) =
       for (a <- a.evalAsNumber; b <- b.evalAsNumber) yield BooleanValue(a >= b)
 
-    override def toString = toString(a, ">=", b)
+    override def toString = makeString(a, ">=", b)
   }
 
   final case class LessThan(a: Expression, b: Expression)
@@ -192,7 +192,7 @@ object Expression
     protected def evalAllowError(implicit scope: Scope) =
       for (a <- a.evalAsNumber; b <- b.evalAsNumber) yield BooleanValue(a < b)
 
-    override def toString = toString(a, "<", b)
+    override def toString = makeString(a, "<", b)
   }
 
   final case class GreaterThan(a: Expression, b: Expression)
@@ -203,7 +203,7 @@ object Expression
     protected def evalAllowError(implicit scope: Scope) =
       for (a <- a.evalAsNumber; b <- b.evalAsNumber) yield BooleanValue(a > b)
 
-    override def toString = toString(a, ">", b)
+    override def toString = makeString(a, ">", b)
   }
 
   final case class Concat(a: Expression, b: Expression)
@@ -223,7 +223,7 @@ object Expression
         }
       } yield result
 
-    override def toString = toString(a, "++", b)
+    override def toString = makeString(a, "++", b)
   }
 
   sealed trait NumericBinaryOperation
@@ -247,7 +247,8 @@ object Expression
 
     protected def op(a: BigDecimal, b: BigDecimal) = a * b
 
-    override def toString = toString(a, "*", b)
+    override def toString: String =
+      makeString(a, "*", b)
   }
 
   final case class Divide(a: Expression, b: Expression)
@@ -256,7 +257,7 @@ object Expression
 
     protected def op(a: BigDecimal, b: BigDecimal) = a / b
 
-    override def toString = toString(a, "/", b)
+    override def toString = makeString(a, "/", b)
   }
 
   final case class Add(a: Expression, b: Expression)
@@ -265,7 +266,7 @@ object Expression
 
     protected def op(a: BigDecimal, b: BigDecimal) = a + b
 
-    override def toString = toString(a, "+", b)
+    override def toString = makeString(a, "+", b)
   }
 
   final case class Substract(a: Expression, b: Expression)
@@ -274,7 +275,7 @@ object Expression
 
     protected def op(a: BigDecimal, b: BigDecimal) = a - b
 
-    override def toString = toString(a, "-", b)
+    override def toString = makeString(a, "-", b)
   }
 
   final case class In(a: Expression, b: ListExpression)
@@ -285,7 +286,7 @@ object Expression
     protected def evalAllowError(implicit scope: Scope) =
       for (a <- a.eval; b <- b.evalAsVector) yield BooleanValue(b contains a)
 
-    override def toString = toString(a, "in", b)
+    override def toString = makeString(a, "in", b)
   }
 
   final case class Matches(a: Expression, b: Expression)
@@ -300,7 +301,7 @@ object Expression
         result <- catchNonFatal(BooleanValue(a matches b))
       } yield result
 
-    override def toString = toString(a, "matches", b)
+    override def toString = makeString(a, "matches", b)
   }
 
   final case class OrElse(a: Expression, default: Expression)
@@ -314,7 +315,7 @@ object Expression
         case o => Right(o)
       }
 
-    override def toString = toString(a, "orElse", default)
+    override def toString = makeString(a, "orElse", default)
   }
 
   final case class OrNull(a: Expression)
@@ -391,7 +392,10 @@ object Expression
   }
   object ObjectExpression {
     val empty = ObjectExpression(Map.empty)
-    implicit val objectExpressionIsEmpty = IsEmpty[ObjectExpression](_.isEmpty)
+
+    implicit val objectExpressionIsEmpty: IsEmpty[ObjectExpression] =
+      IsEmpty[ObjectExpression](_.isEmpty)
+
     implicit val jsonEncoder: Encoder.AsObject[ObjectExpression] =
       o => JsonObject.fromIterable(o.nameToExpr.view.mapValues(_.asJson).toSeq)
 

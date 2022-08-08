@@ -36,7 +36,7 @@ object BoardPathExpression
     def eval(isNoticeAvailable: BoardPath => Boolean) =
       a.eval(isNoticeAvailable) && b.eval(isNoticeAvailable)
 
-    override def toString = toString(a, "&&", b)
+    override def toString = makeString(a, "&&", b)
   }
 
   final case class Or(a: BoardPathExpression, b: BoardPathExpression)
@@ -48,7 +48,7 @@ object BoardPathExpression
     def eval(isNoticeAvailable: BoardPath => Boolean) =
       a.eval(isNoticeAvailable) || b.eval(isNoticeAvailable)
 
-    override def toString = toString(a, "||", b)
+    override def toString = makeString(a, "||", b)
   }
 
   implicit val jsonEncoder: Encoder[BoardPathExpression] =
