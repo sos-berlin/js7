@@ -49,7 +49,7 @@ object UnsignedVersionedItemId
 {
   val VersionSeparator = "~"  // Can be used in an Akka actor name
 
-  // TODO Use this implicit convertion only for tests
+  // TODO Use this implicit conversion only for tests
   implicit def pathToItemId[P <: VersionedControlPath: js7.data.item.VersionedControlPath.Companion](path: P): UnsignedVersionedItemId[P] =
     UnsignedVersionedItemId(path, VersionId.Anonymous)
 

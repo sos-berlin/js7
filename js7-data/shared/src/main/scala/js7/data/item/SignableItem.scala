@@ -24,7 +24,7 @@ object SignableItem
     val Key: SignableItemKey.Companion[Key]
   }
 
-  // Common JSON serializationfor AgentCommand.AttachSignableItem and SignedItemAdded
+  // Common JSON serialization for AgentCommand.AttachSignableItem and SignedItemAdded
 
   def signedEncodeJson(signedString: SignedString, itemRevision: Option[ItemRevision]) =
     JsonObject(
