@@ -10,6 +10,7 @@ import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.version.Version
+import js7.common.akkahttp.web.session.RouteProviderTest.MySession
 import js7.common.akkahttp.web.session.SessionRegisterTest.*
 import js7.common.akkautils.Akkas
 import js7.common.akkautils.Akkas.newActorSystem
@@ -29,7 +30,7 @@ final class SessionRegisterTest extends AnyFreeSpec with ScalatestRouteTest
 
   private val testScheduler = TestScheduler()
   private val unknownSessionToken = SessionToken(SecretString("UNKNOWN"))
-  private lazy val sessionRegister = SessionRegister.start[MySession](system, MySession.apply, SessionRegister.TestConfig)(testScheduler)
+  private lazy val sessionRegister = SessionRegister.start(system, MySession.apply, SessionRegister.TestConfig)(testScheduler)
   private var sessionToken = SessionToken(SecretString("INVALID"))
 
   "Logout unknown SessionToken" in {
@@ -70,7 +71,7 @@ final class SessionRegisterTest extends AnyFreeSpec with ScalatestRouteTest
 
   "But late authentication is allowed, changing from anonymous to non-anonymous User" in {
     val mySystem = newActorSystem("SessionRegisterTest")
-    val mySessionRegister = SessionRegister.start[MySession](mySystem, MySession.apply, SessionRegister.TestConfig)(testScheduler)
+    val mySessionRegister = SessionRegister.start(mySystem, MySession.apply, SessionRegister.TestConfig)(testScheduler)
     val sessionToken = mySessionRegister.login(SimpleUser.TestAnonymous, Some(Js7Version))
       .await(99.s).orThrow
 
@@ -121,7 +122,5 @@ private object SessionRegisterTest
   private val AUser = SimpleUser(UserId("A"), HashedPassword.newEmpty())
   private val BUser = SimpleUser(UserId("B"), HashedPassword.newEmpty())
 
-  final case class MySession(sessionInit: SessionInit[SimpleUser]) extends Session {
-    type User = SimpleUser
-  }
+  final case class MySession(sessionInit: SessionInit) extends Session
 }

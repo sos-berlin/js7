@@ -44,7 +44,7 @@ import scala.concurrent.Future
   */
 final class JournalRouteTest extends AnyFreeSpec with RouteTester with JournalRoute
 {
-  protected type Session = SimpleSession
+  protected type OurSession = SimpleSession
 
   private implicit val timeout = 99.s
   private implicit val routeTestTimeout = RouteTestTimeout(timeout)

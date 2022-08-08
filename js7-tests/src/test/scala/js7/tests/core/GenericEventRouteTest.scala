@@ -44,7 +44,7 @@ import scala.concurrent.{Future, Promise}
 final class GenericEventRouteTest
 extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with GenericEventRoute
 {
-  protected type Session = SimpleSession
+  protected type OurSession = SimpleSession
 
   protected def actorRefFactory = actorSystem
   protected implicit def scheduler = Scheduler.traced
@@ -84,7 +84,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with GenericE
 
   protected lazy val gateKeeper = new GateKeeper(WebServerBinding.Http,
     GateKeeper.Configuration.fromConfig(config, SimpleUser.apply))
-  protected final lazy val sessionRegister = SessionRegister.start[SimpleSession](
+  protected final lazy val sessionRegister = SessionRegister.start(
     actorSystem, SimpleSession.apply, SessionRegister.TestConfig)
   private val shuttingDown = Promise[Deadline]()
   protected val whenShuttingDown = shuttingDown.future

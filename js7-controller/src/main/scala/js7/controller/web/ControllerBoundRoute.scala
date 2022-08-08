@@ -54,8 +54,6 @@ with ServiceProviderRoute
 with ControllerRoute
 with WebLogDirectives
 {
-  override protected type Session = SimpleSession
-
   protected val controllerId        = controllerConfiguration.controllerId
   protected val nodeId              = controllerConfiguration.clusterConf.ownId
   protected val config              = controllerConfiguration.config

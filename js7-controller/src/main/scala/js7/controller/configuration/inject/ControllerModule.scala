@@ -39,7 +39,7 @@ extends AbstractModule
 
   @Provides @Singleton
   def sessionRegister(actorSystem: ActorSystem, config: Config)(implicit s: Scheduler): SessionRegister[SimpleSession] =
-    SessionRegister.start[SimpleSession](actorSystem, SimpleSession.apply, config)
+    SessionRegister.start(actorSystem, SimpleSession.apply, config)
 
   @Provides @Singleton
   def executionContext(scheduler: Scheduler): ExecutionContext =

@@ -11,7 +11,6 @@ import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
-import js7.common.akkahttp.web.session.SimpleSession
 import js7.data.cluster.ClusterEvent.ClusterNodesAppointed
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterTiming}
 import js7.data.controller.ControllerId
@@ -26,12 +25,10 @@ final class ClusterWatchRouteTest extends AnyFreeSpec with ScalatestRouteTest wi
 {
   coupleScribeWithSlf4j()
 
-  protected type Session = SimpleSession
-
   protected implicit val scheduler = Scheduler.traced
   protected val clusterWatchRegister = new ClusterWatchRegister(scheduler)
 
-  private implicit val routeTestTimeout = RouteTestTimeout(10.s)
+  private implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(10.s)
   private val controllerId = ControllerId("CONTROLLER")
 
   private val route = pathSegment("cluster") {

@@ -11,5 +11,5 @@ import js7.common.akkahttp.web.session.{RouteProvider, SimpleSession}
  */
 trait AgentRouteProvider extends RouteProvider
 {
-  protected type Session = SimpleSession
+  protected type OurSession = SimpleSession
 }

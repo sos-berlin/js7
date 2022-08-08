@@ -10,7 +10,7 @@ import com.typesafe.config.Config
 import java.nio.file.Files.{createFile, deleteIfExists}
 import java.nio.file.Path
 import js7.base.Js7Version
-import js7.base.auth.{SessionToken, UserId}
+import js7.base.auth.{SessionToken, SimpleUser, UserId}
 import js7.base.configutils.Configs.*
 import js7.base.generic.Completed
 import js7.base.io.file.FileUtils.provideFile
@@ -43,9 +43,10 @@ final class SessionRegister[S <: Session] private[session](
 {
   private val systemSessionPromise = Promise[Checked[S]]()
   val systemSession: Task[Checked[S]] = Task.fromFuture(systemSessionPromise.future)
-  val systemUser: Task[Checked[S#User]] = systemSession.map(_.map(_.currentUser))
+  val systemUser: Task[Checked[SimpleUser]] =
+    systemSession.map(_.map(_.currentUser./*???*/asInstanceOf[SimpleUser]))
 
-  def placeSessionTokenInDirectoryLegacy(user: S#User, workDirectory: Path, closer: Closer)
+  def placeSessionTokenInDirectoryLegacy(user: SimpleUser, workDirectory: Path, closer: Closer)
   : Task[SessionToken] =
     Task.deferAction(implicit s =>
       placeSessionTokenInDirectory(user, workDirectory)
@@ -63,7 +64,7 @@ final class SessionRegister[S <: Session] private[session](
           }
         })
 
-  def placeSessionTokenInDirectory(user: S#User, workDirectory: Path)
+  def placeSessionTokenInDirectory(user: SimpleUser, workDirectory: Path)
   : Resource[Task, SessionToken] = {
     val sessionTokenFile = workDirectory / "session-token"
     val headersFile = workDirectory / "secret-http-headers"
@@ -75,11 +76,11 @@ final class SessionRegister[S <: Session] private[session](
         })))
   }
 
-  private def provideSessionTokenFile(user: S#User, file: Path): Resource[Task, SessionToken] =
+  private def provideSessionTokenFile(user: SimpleUser, file: Path): Resource[Task, SessionToken] =
     provideFile[Task](file)
       .flatMap(file => Resource.eval(createSystemSession(user, file)))
 
-  private def createSystemSession(user: S#User, file: Path): Task[SessionToken] =
+  private def createSystemSession(user: SimpleUser, file: Path): Task[SessionToken] =
     for (checked <- login(user, Some(Js7Version), isEternalSession = true)) yield {
       val sessionToken = checked.orThrow
       deleteIfExists(file)
@@ -91,7 +92,7 @@ final class SessionRegister[S <: Session] private[session](
     }
 
   def login(
-    user: S#User,
+    user: SimpleUser,
     clientVersion: Option[Version],
     sessionTokenOption: Option[SessionToken] = None,
     isEternalSession: Boolean = false)
@@ -120,11 +121,11 @@ final class SessionRegister[S <: Session] private[session](
     Task.deferFuture(
       (actor ? SessionActor.Command.Logout(sessionToken)).mapTo[Completed])
 
-  private[session] def session(sessionToken: SessionToken, idsOrUser: Either[Set[UserId], S#User]): Task[Checked[S]] =
+  private[session] def session(sessionToken: SessionToken, idsOrUser: Either[Set[UserId], SimpleUser]): Task[Checked[S]] =
     Task.deferFuture(
       sessionFuture(sessionToken, idsOrUser))
 
-  private[session] def sessionFuture(sessionToken: SessionToken, idsOrUser: Either[Set[UserId], S#User]) =
+  private[session] def sessionFuture(sessionToken: SessionToken, idsOrUser: Either[Set[UserId], SimpleUser]) =
     (actor ? SessionActor.Command.Get(sessionToken, idsOrUser)).mapTo[Checked[S]]
 
   @TestOnly
@@ -137,10 +138,11 @@ object SessionRegister
 {
   private val logger = Logger[this.type]
 
-  def start[S <: Session](actorRefFactory: ActorRefFactory, newSession: SessionInit[S#User] => S, config: Config)
+  def start[S <: Session]
+    (actorRefFactory: ActorRefFactory, newSession: SessionInit => S, config: Config)
     (implicit scheduler: Scheduler)
   : SessionRegister[S] = {
-    val sessionActor = actorRefFactory.actorOf(SessionActor.props[S](newSession, config), "session")
+    val sessionActor = actorRefFactory.actorOf(SessionActor.props(newSession, config), "session")
     new SessionRegister[S](sessionActor,
       akkaAskTimeout = config.getDuration("js7.akka.ask-timeout").toFiniteDuration,
       componentName = config.getString("js7.component.name"))

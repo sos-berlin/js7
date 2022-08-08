@@ -3,7 +3,7 @@ package js7.common.akkahttp.web.session
 import akka.actor.{Actor, DeadLetterSuppression, Props}
 import com.typesafe.config.Config
 import js7.base.Js7Version
-import js7.base.auth.{SessionToken, User, UserId}
+import js7.base.auth.{SessionToken, SimpleUser, User, UserId}
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.problem.Checked
@@ -24,7 +24,8 @@ import scala.collection.mutable
  *
  * @author Joacim Zschimmer
  */
-final class SessionActor[S <: Session] private(newSession: SessionInit[S#User] => S, config: Config)
+final class SessionActor[S <: Session] private
+  (newSession: SessionInit => S, config: Config)
   (implicit scheduler: Scheduler)
 extends Actor {
 
@@ -48,7 +49,7 @@ extends Actor {
 
   def receive = {
     case Command.Login(_user: User, clientVersion, tokenOption, isEternalSession) =>
-      val user = _user.asInstanceOf[S#User]
+      val user = _user.asInstanceOf[SimpleUser]
       for (t <- tokenOption) delete(t, reason = "second login")
       val token = SessionToken.generateFromSecretString(SecretStringGenerator.newSecretString())
       assertThat(!tokenToSession.contains(token), s"Duplicate generated SessionToken")  // Must not happen
@@ -86,8 +87,7 @@ extends Actor {
       }
       sender() ! Completed
 
-    case Command.Get(token, _idsOrUser: Either[Set[UserId], User]) =>
-      val idsOrUser = _idsOrUser.map(_.asInstanceOf[S#User])
+    case Command.Get(token, idsOrUser: Either[Set[UserId], SimpleUser]) =>
       val checkedSession = (tokenToSession.get(token), idsOrUser) match {
         case (None, _) =>
           val users = idsOrUser.fold(_.mkString("|"), _.id)
@@ -132,9 +132,9 @@ extends Actor {
     * The session is updated with the authenticated user.
     * This may happen only once and the original user must be Anonymous.
     */
-  private def tryUpdateLatelyAuthenticatedUser(newUser: S#User, session: Session): Checked[Session] = {
+  private def tryUpdateLatelyAuthenticatedUser(newUser: SimpleUser, session: Session): Checked[Session] = {
     if (session.sessionInit.loginUser.isAnonymous &&
-        session.tryUpdateUser(newUser.asInstanceOf[session.User]))  // Mutate session!
+        session.tryUpdateUser(newUser))  // Mutate session!
     {
       logger.info(s"${session.sessionToken} for ${session.sessionInit.loginUser.id} switched to ${newUser.id}")
       Right(session)
@@ -169,8 +169,10 @@ object SessionActor
 {
   private val logger = Logger(getClass)
 
-  private[session] def props[S <: Session](newSession: SessionInit[S#User] => S, config: Config)(implicit s: Scheduler) =
-    Props { new SessionActor[S](newSession, config) }
+  private[session] def props[S <: Session]
+    (newSession: SessionInit => S, config: Config)
+    (implicit s: Scheduler) =
+    Props { new SessionActor(newSession, config) }
 
   private[session] sealed trait Command
   private[session] object Command {

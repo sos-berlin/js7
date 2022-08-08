@@ -30,13 +30,13 @@ final class RouteProviderTest extends AnyFreeSpec with RouteProvider with Scalat
 {
   coupleScribeWithSlf4j()
 
-  protected type Session = MySession
+  protected type OurSession = SimpleSession
 
   protected def whenShuttingDown = Future.never
   implicit protected def scheduler = Scheduler.traced
   protected val config = config"js7.web.server.verbose-error-messages = on"
-  protected lazy val sessionRegister = SessionRegister.start[MySession](system, MySession.apply, SessionRegister.TestConfig)
-  private implicit val routeTestTimeout = RouteTestTimeout(99.s)
+  protected lazy val sessionRegister = SessionRegister.start(system, SimpleSession.apply, SessionRegister.TestConfig)
+  private implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(99.s)
 
   protected val gateKeeper = new GateKeeper(
     WebServerBinding.Http,
@@ -117,7 +117,5 @@ final class RouteProviderTest extends AnyFreeSpec with RouteProvider with Scalat
 object RouteProviderTest {
   private val TestUser = SimpleUser(UserId("TEST-USER"), HashedPassword(SecretString("321"), _.reverse))
 
-  final case class MySession(sessionInit: SessionInit[SimpleUser]) extends Session {
-    type User = SimpleUser
-  }
+  final case class MySession(sessionInit: SessionInit) extends Session
 }

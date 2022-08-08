@@ -4,7 +4,7 @@ import akka.http.scaladsl.model.StatusCodes.Unauthorized
 import akka.http.scaladsl.server.Directive1
 import akka.http.scaladsl.server.Directives.*
 import js7.base.Js7Version
-import js7.base.auth.{SessionToken, UserAndPassword, UserId}
+import js7.base.auth.{SessionToken, SimpleUser, UserAndPassword, UserId}
 import js7.base.generic.Completed
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
@@ -26,7 +26,7 @@ trait SessionRoute extends RouteProvider
 {
   private implicit def implictScheduler: Scheduler = scheduler
   protected[session] val specificLoginRequiredProblem: Problem = InvalidLoginProblem
-  protected[session] lazy val preAuthenticate: Directive1[Either[Set[UserId], Session#User]] =
+  protected[session] lazy val preAuthenticate: Directive1[Either[Set[UserId], SimpleUser]] =
     gateKeeper.preAuthenticate
 
   protected final lazy val sessionRoute =
@@ -48,7 +48,7 @@ trait SessionRoute extends RouteProvider
       }
     }
 
-  private def execute(command: SessionCommand, idsOrUser: Either[Set[UserId], Session#User], sessionTokenOption: Option[SessionToken])
+  private def execute(command: SessionCommand, idsOrUser: Either[Set[UserId], SimpleUser], sessionTokenOption: Option[SessionToken])
   : Task[Checked[SessionCommand.Response]] =
     command match {
       case Login(userAndPasswordOption, version) =>
@@ -63,7 +63,7 @@ trait SessionRoute extends RouteProvider
     }
 
   private def authenticateOrUseHttpUser(
-    idsOrUser: Either[Set[UserId], Session#User],
+    idsOrUser: Either[Set[UserId], SimpleUser],
     userAndPasswordOption: Option[UserAndPassword])
   =
     userAndPasswordOption match {

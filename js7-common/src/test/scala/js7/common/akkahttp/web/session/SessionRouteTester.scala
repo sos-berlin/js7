@@ -30,7 +30,7 @@ trait SessionRouteTester extends BeforeAndAfterAll with ScalatestRouteTest with 
 
   protected def isPublic = false
 
-  protected type Session = SimpleSession
+  protected type OurSession = SimpleSession
 
   protected final def whenShuttingDown = Future.never
   protected final val config = config"js7.web.server.verbose-error-messages = on"
@@ -51,7 +51,7 @@ trait SessionRouteTester extends BeforeAndAfterAll with ScalatestRouteTest with 
       }""")
 
   protected final lazy val sessionRegister =
-    SessionRegister.start[SimpleSession](system, SimpleSession.apply, SessionRegister.TestConfig)
+    SessionRegister.start(system, SimpleSession.apply, SessionRegister.TestConfig)
 
   protected def route =
     Route.seal(

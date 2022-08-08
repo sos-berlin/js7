@@ -50,7 +50,7 @@ extends AnyFreeSpec with SessionRouteTester
       })
     })
 
-  private var preAuthenticateResult: Option[Either[Set[UserId], Session#User]] = None
+  private var preAuthenticateResult: Option[Either[Set[UserId], SimpleUser]] = None
 
   import gateKeeper.invalidAuthenticationDelay
 
@@ -409,7 +409,7 @@ extends AnyFreeSpec with SessionRouteTester
 
   private def withSessionApi(
     userAndPassword_ : Option[UserAndPassword],
-    idsOrUserOrHeaders: Either[Either[Set[UserId], Session#User], List[HttpHeader]] = Right(Nil))
+    idsOrUserOrHeaders: Either[Either[Set[UserId], SimpleUser], List[HttpHeader]] = Right(Nil))
     (body: HttpSessionApi & AkkaHttpClient & SessionApi.HasUserAndPassword => Unit)
   : Unit = {
     val api = new HttpSessionApi with AkkaHttpClient with SessionApi.HasUserAndPassword {

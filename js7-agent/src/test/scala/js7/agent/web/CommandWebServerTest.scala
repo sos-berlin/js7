@@ -72,7 +72,7 @@ final class CommandWebServerTest extends AsyncFreeSpec
             WebServerBinding.Http,
             GateKeeper.Configuration.fromConfig(config, SimpleUser.apply))
 
-          protected val sessionRegister = SessionRegister.start[SimpleSession](
+          protected val sessionRegister = SessionRegister.start(
             actorSystem, SimpleSession.apply, SessionRegister.TestConfig)
         }.commandRoute
       }
