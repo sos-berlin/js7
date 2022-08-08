@@ -45,7 +45,7 @@ final class CorrelIdTest extends AnyFreeSpec
       val array = new Array[Byte](CorrelId.longByteCount)
       val buffer = ByteBuffer.wrap(array)
       buffer.putShort(((long >>> 32) & 0xffff).toShort)
-      buffer.putInt((long & 0xffffffff).toInt)
+      buffer.putInt((long & 0xffffffffL).toInt)
       val encoded = base64Encoder.encode(array.take(CorrelId.width))
       new String(encoded, US_ASCII)
     }

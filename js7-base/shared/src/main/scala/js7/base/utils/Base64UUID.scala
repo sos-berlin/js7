@@ -10,7 +10,7 @@ final case class Base64UUID private(uuid: UUID, string: String) extends GenericS
 object Base64UUID extends GenericString.Checked_[Base64UUID]
 {
   val zero = apply(new UUID(0, 0))
-  val ffff = apply(new UUID(0xffffffff, 0xffffffff))
+  val ffff = apply(new UUID(-1, -1))
 
   def apply(uuid: UUID) = new Base64UUID(uuid, uuidToBase64(uuid))
 
