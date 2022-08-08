@@ -3,7 +3,7 @@ package js7.data.value
 import cats.instances.vector.*
 import cats.syntax.traverse.*
 import io.circe.syntax.*
-import io.circe.{Decoder, DecodingFailure, Encoder, Json, JsonObject}
+import io.circe.{Decoder, DecodingFailure, Encoder, Json, JsonNumber, JsonObject}
 import java.util.Objects.requireNonNull
 import javax.annotation.{Nonnull, Nullable}
 import js7.base.annotation.javaApi
@@ -136,8 +136,8 @@ object Value
         Right(StringValue(j.asString.get))
       else if (j.isNumber)
         j.asNumber.get match {
-          case NumberValue.ZeroJson => Zero
-          case NumberValue.OneJson => One
+          case NumberValue.ZeroJsonNumber => Zero
+          case NumberValue.OneJsonNumber => One
           case number => number.toBigDecimal match {
             case Some(o) => Right(NumberValue(o))
             case None => Left(DecodingFailure(s"JSON number is not representable as a Java BigDecimal: $j", c.history))
@@ -232,8 +232,10 @@ object NumberValue extends ValueType.Simple
   val name = "Number"
   val Zero = NumberValue(0)
   val One = NumberValue(1)
-  val ZeroJson = 0.asJson
-  val OneJson = 1.asJson
+  private[value] val ZeroJson: Json = 0.asJson
+  private[value] val OneJson: Json = 1.asJson
+  private[value] val ZeroJsonNumber: JsonNumber = ZeroJson.asNumber.get
+  private[value] val OneJsonNumber: JsonNumber = OneJson.asNumber.get
 
   def fromString(number: String): Checked[NumberValue] =
     try
