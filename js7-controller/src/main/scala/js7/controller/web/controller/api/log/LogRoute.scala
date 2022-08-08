@@ -30,7 +30,7 @@ trait LogRoute extends ControllerRouteProvider
   protected def config: Config
   protected def currentLogFile: Path
 
-  private implicit def implicitScheduler = scheduler
+  private implicit def implicitScheduler: Scheduler = scheduler
 
   private lazy val whenShuttingDownCompletion = new FutureCompletion(whenShuttingDown)
   private lazy val pollDuration = config.getDuration("js7.web.server.services.log.poll-interval").toFiniteDuration

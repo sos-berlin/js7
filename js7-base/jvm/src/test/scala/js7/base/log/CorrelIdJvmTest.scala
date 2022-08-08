@@ -31,8 +31,8 @@ final class CorrelIdJvmTest extends AnyFreeSpec with BeforeAndAfterAll
       reporter = t => println("CorrelIdJvmTest: " + t.toStringWithCauses),
       ExecutionModel.BatchedExecution(taskBatchSize))
 
-  private implicit lazy val scheduler = TracingScheduler(
-    underlyingScheduler)
+  private implicit lazy val scheduler: TracingScheduler =
+    TracingScheduler(underlyingScheduler)
 
   override def afterAll() = {
     super.afterAll()

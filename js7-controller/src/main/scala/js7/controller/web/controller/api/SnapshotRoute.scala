@@ -29,6 +29,7 @@ import js7.data.controller.ControllerState
 import js7.data.event.EventId
 import js7.journal.watch.FileEventWatch
 import monix.eval.Task
+import monix.execution.Scheduler
 import monix.reactive.Observable
 
 trait SnapshotRoute extends ControllerRouteProvider
@@ -37,7 +38,7 @@ trait SnapshotRoute extends ControllerRouteProvider
   protected def eventWatch: FileEventWatch
   protected def controllerConfiguration: ControllerConfiguration
 
-  private implicit def implicitScheduler = scheduler
+  private implicit def implicitScheduler: Scheduler = scheduler
 
   private lazy val whenShuttingDownCompletion = new FutureCompletion(whenShuttingDown)
 

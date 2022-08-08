@@ -43,7 +43,7 @@ trait ScheduleTester extends AnyFreeSpec
 
 object ScheduleTester
 {
-  implicit val zone = ZoneId.of("Europe/Mariehamn")
+  implicit val zone: ZoneId = ZoneId.of("Europe/Mariehamn")
   val dateOffset = 6.h  // Business day starts at 6:00 (i.e., switching from monday to tuesday)
   private val logger = Logger[this.type]
 

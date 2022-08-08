@@ -11,13 +11,14 @@ import js7.common.akkahttp.StandardMarshallers.checkedToResponseMarshaller
 import js7.core.web.EntitySizeLimitProvider
 import js7.data.subagent.SubagentCommand
 import monix.eval.Task
+import monix.execution.Scheduler
 
 private trait CommandRoute extends SubagentRouteProvider with EntitySizeLimitProvider
 {
   protected def executeCommand(command: Numbered[SubagentCommand])
   : Task[Checked[SubagentCommand.Response]]
 
-  private implicit def implicitScheduler = scheduler
+  private implicit def implicitScheduler: Scheduler = scheduler
 
   protected final lazy val commandRoute: Route =
     (pathEnd & post & withSizeLimit(entitySizeLimit))(

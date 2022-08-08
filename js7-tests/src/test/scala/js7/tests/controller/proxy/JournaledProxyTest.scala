@@ -1,5 +1,6 @@
 package js7.tests.controller.proxy
 
+import akka.actor.ActorSystem
 import js7.base.Js7Version
 import js7.base.configutils.Configs.*
 import js7.base.generic.Completed
@@ -52,7 +53,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with Controll
     }
     """
 
-  private implicit def implicitActorSystem = actorSystem
+  private implicit def implicitActorSystem: ActorSystem = actorSystem
   private val versionId = VersionId("MY-VERSION")
   private lazy val api = new ControllerApi(
     AkkaHttpControllerApi.resource(controller.localUri, Some(primaryUserAndPassword), name = "JournaledProxyTest") :: Nil)

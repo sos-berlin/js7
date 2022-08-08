@@ -8,6 +8,7 @@ import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.orderwatch.OrderWatchPath
 import js7.data.value.StringValue
 import js7.data.value.expression.Expression.NamedValue
+import js7.data.value.expression.Scope
 import js7.data.value.expression.scopes.NowScope
 import org.scalatest.freespec.AnyFreeSpec
 
@@ -44,7 +45,7 @@ final class FileWatchScopeTest extends AnyFreeSpec
   }
 
   "Complete" in {
-    implicit val scope = fileWatchScope |+| NowScope()
+    implicit val scope: Scope = fileWatchScope |+| NowScope()
     val checkedValue = scope.parseAndEval(
       "'#' ++ now(format='yyyy-MM-dd', " +
         "timezone='Antarctica/Troll') ++ \"#F$js7EpochSecond-$orderWatchPath:$1\"")

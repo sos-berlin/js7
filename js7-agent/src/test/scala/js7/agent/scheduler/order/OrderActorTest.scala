@@ -160,7 +160,7 @@ private object OrderActorTest {
       |echo "result=TEST-RESULT-$SCHEDULER_PARAM_VAR1" >>"$SCHEDULER_RETURN_VALUES"
       |""".stripMargin
 
-  private implicit val TestAkkaTimeout = Timeout(99.s)
+  private implicit val TestAkkaTimeout: Timeout = Timeout(99.s)
 
   private case class Result(events: Seq[OrderEvent], stdoutStderr: Map[StdoutOrStderr, String], duration: FiniteDuration)
 

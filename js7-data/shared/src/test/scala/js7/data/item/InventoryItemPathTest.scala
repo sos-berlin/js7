@@ -1,6 +1,6 @@
 package js7.data.item
 
-import io.circe.Json
+import io.circe.{Codec, Json}
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPath
 import js7.data.calendar.CalendarPath
@@ -13,8 +13,8 @@ import org.scalatest.freespec.AnyFreeSpec
 final class InventoryItemPathTest extends AnyFreeSpec
 {
   "JSON" in {
-    implicit val x = InventoryItemPath.jsonCodec[InventoryItemPath](
-      Seq(AgentPath, BoardPath, CalendarPath, LockPath, WorkflowPath, OrderWatchPath))
+    implicit val x: Codec[InventoryItemPath] = InventoryItemPath.jsonCodec(Seq(
+      AgentPath, BoardPath, CalendarPath, LockPath, WorkflowPath, OrderWatchPath))
     testJson[InventoryItemPath](AgentPath("AGENT"), Json.fromString("Agent:AGENT"))
     testJson[InventoryItemPath](BoardPath("BOARD"), Json.fromString("Board:BOARD"))
     testJson[InventoryItemPath](CalendarPath("CALENDAR"), Json.fromString("Calendar:CALENDAR"))

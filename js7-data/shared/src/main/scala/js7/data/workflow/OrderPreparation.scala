@@ -19,7 +19,9 @@ final case class OrderPreparation(parameterList: OrderParameterList)
 object OrderPreparation
 {
   val default = OrderPreparation(OrderParameterList.default)
-  implicit val orderPreparationIsEmpty = IsEmpty[OrderPreparation](_.isEmpty)
+
+  implicit val orderPreparationIsEmpty: IsEmpty[OrderPreparation] =
+    IsEmpty(_.isEmpty)
 
   implicit val jsonEncoder: Encoder.AsObject[OrderPreparation] =
     o => JsonObject(

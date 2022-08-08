@@ -1,7 +1,7 @@
 package js7.data.subagent
 
 import io.circe.generic.semiauto.deriveCodec
-import io.circe.{Decoder, Encoder}
+import io.circe.{Codec, Decoder, Encoder}
 import js7.base.circeutils.CirceUtils.{DecodeWithDefaults, deriveConfiguredCodec}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.Signed
@@ -143,7 +143,7 @@ object SubagentCommand extends CommonCommand.Companion
         ")"
   }
   object ShutDown {
-    implicit val jsonCodec = deriveConfiguredCodec[ShutDown]
+    implicit val jsonCodec: Codec.AsObject[ShutDown] = deriveConfiguredCodec
   }
 
   /** Some outer component no longer needs the events until (including) the given `untilEventId`.
@@ -174,7 +174,7 @@ object SubagentCommand extends CommonCommand.Companion
     Subtype(deriveCodec[KillProcess]),
     Subtype(NoOperation))
 
-  implicit val responseJsonCodec = TypedJsonCodec[Response](
+  implicit val responseJsonCodec: TypedJsonCodec[Response] = TypedJsonCodec(
     Subtype(Accepted),
     Subtype(deriveCodec[DedicateSubagent.Response]))
 

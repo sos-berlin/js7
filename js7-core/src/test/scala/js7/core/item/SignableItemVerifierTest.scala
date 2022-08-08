@@ -71,8 +71,10 @@ object SignableItemVerifierTest
     (signer, verifier)
   }
 
-  private implicit val jsonCodec = TypedJsonCodec[VersionedItem](
-    Subtype(Workflow.jsonEncoder, Workflow.topJsonDecoder))
+  private implicit val jsonCodec: TypedJsonCodec[VersionedItem] =
+    TypedJsonCodec(
+      Subtype(Workflow.jsonEncoder, Workflow.topJsonDecoder))
+
   private val itemSigner = new ItemSigner(signer, jsonCodec)
   private val itemVerifier = new SignedItemVerifier(verifier, jsonCodec)
 }

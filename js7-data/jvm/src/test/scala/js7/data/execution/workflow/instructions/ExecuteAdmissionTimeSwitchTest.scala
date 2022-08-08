@@ -139,7 +139,7 @@ object ExecuteAdmissionTimeSwitchTest
 {
   private final class Tester(admissionTimeScheme: AdmissionTimeScheme)(implicit zone: ZoneId)
   {
-    private implicit val clock = TestAlarmClock(Timestamp.Epoch)
+    private implicit val clock: TestAlarmClock = TestAlarmClock(Timestamp.Epoch)
     private var _switched: Option[TimeInterval] = null
     private val switch = new ExecuteAdmissionTimeSwitch(admissionTimeScheme, zone,
       onSwitch = _switched = _)

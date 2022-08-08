@@ -2,7 +2,7 @@ package js7.base.circeutils
 
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, Encoder, Json}
+import io.circe.{Codec, Decoder, Encoder, Json}
 import java.io.File
 import java.nio.file.Paths
 import java.time.format.DateTimeParseException
@@ -51,7 +51,7 @@ final class JavaJsonCodecsTest extends AnyFreeSpec {
     "String" - {
       import JavaJsonCodecs.instant.StringInstantJsonCodec
       intelliJuseImport(StringInstantJsonCodec)
-      implicit val aJsonCodec = deriveCodec[A]
+      implicit val aJsonCodec: Codec.AsObject[A] = deriveCodec
 
       "No second fraction" in {
         val t = "2015-06-09T12:22:33Z"
@@ -135,7 +135,7 @@ final class JavaJsonCodecsTest extends AnyFreeSpec {
 
   "Duration" - {
     case class A(duration: Duration)
-    implicit val aJsonCodec = deriveCodec[A]
+    implicit val aJsonCodec: Codec.AsObject[A] = deriveCodec
 
     "Seconds" in {
       val a = A(Duration.ofSeconds(3))

@@ -44,7 +44,7 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
 
   coupleScribeWithSlf4j()
 
-  protected implicit val askTimeout = Timeout(99.seconds)
+  protected implicit val askTimeout: Timeout = Timeout(99.seconds)
   protected lazy val directory = createTempDirectory("JournalTest-")
   private val disturbanceCounter = new AtomicInteger
 

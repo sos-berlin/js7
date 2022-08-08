@@ -15,7 +15,7 @@ final class EventSeqTest extends AnyFreeSpec {
   private object TestEvent extends Event {
     type Key = String
   }
-  private implicit val jsonCodec = TypedJsonCodec[TestEvent.type](
+  private implicit val jsonCodec: TypedJsonCodec[TestEvent.type] = TypedJsonCodec(
     Subtype(TestEvent))
 
   "JSON EventSeq.NonEmpty" in {

@@ -1,10 +1,13 @@
 package js7.tests.controller.proxy
 
+import akka.http.scaladsl.common.JsonEntityStreamingSupport
+import akka.http.scaladsl.marshalling.ToEntityMarshaller
 import akka.http.scaladsl.server.Directives.{complete, get, pathSingleSlash}
 import com.typesafe.config.ConfigFactory
 import java.time.LocalDateTime
 import js7.base.BuildInfo
 import js7.base.auth.{UserAndPassword, UserId}
+import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.eventbus.StandardEventBus
 import js7.base.generic.SecretString
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
@@ -63,7 +66,7 @@ object TestControllerProxy
   private val userAndPassword = Some(UserAndPassword(UserId("demo"), SecretString("demo")))
 
   def main(args: Array[String]): Unit = {
-    implicit def scheduler = Scheduler.traced
+    implicit val scheduler: Scheduler = Scheduler.traced
     println(s"${LocalDateTime.now.toString.replace('T', ' ')} " +
       s"JS7 TestControllerProxy ${BuildInfo.longVersion}")
     coupleScribeWithSlf4j()
@@ -82,9 +85,9 @@ object TestControllerProxy
         get {
           complete(
             snapshot.map { controllerState =>
-              implicit val x = NdJsonStreamingSupport
-              implicit val y = ControllerState.snapshotObjectJsonCodec
-              implicit val z = jsonSeqMarshaller[Any]
+              implicit val x: JsonEntityStreamingSupport = NdJsonStreamingSupport
+              implicit val y: TypedJsonCodec[Any] = ControllerState.snapshotObjectJsonCodec
+              implicit val z: ToEntityMarshaller[Any] = jsonSeqMarshaller
               monixObservableToMarshallable(controllerState.toSnapshotObservable)
             }.runToFuture)
         }

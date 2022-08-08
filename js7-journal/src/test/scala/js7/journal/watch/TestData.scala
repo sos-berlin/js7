@@ -28,9 +28,10 @@ private[watch] object TestData
   final case object AEvent extends TestEvent
   final case object BEvent extends TestEvent
 
-  implicit val jsonFormat = TypedJsonCodec[TestEvent](
-    Subtype(AEvent),
-    Subtype(BEvent))
+  implicit val jsonFormat: TypedJsonCodec[TestEvent] =
+    TypedJsonCodec(
+      Subtype(AEvent),
+      Subtype(BEvent))
 
   val TestKeyedEventJsonCodec = KeyedEventTypedJsonCodec[Event](
     KeyedSubtype[JournalEvent],

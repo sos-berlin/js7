@@ -204,7 +204,8 @@ object Outcome
         c => for (problem <- c.getOrElse[Problem]("problem")(ProcessLostDueToUnknownReasonProblem)) yield
           ProcessLost(problem)
 
-      implicit val jsonCodec = Codec.AsObject.from(jsonDecoder, jsonEncoder)
+      implicit val jsonCodec: Codec.AsObject[ProcessLost] =
+        Codec.AsObject.from(jsonDecoder, jsonEncoder)
     }
 
     final case class Other(problem: Problem) extends Reason

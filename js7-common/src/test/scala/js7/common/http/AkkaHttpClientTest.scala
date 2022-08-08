@@ -1,5 +1,6 @@
 package js7.common.http
 
+import akka.actor.ActorSystem
 import akka.http.scaladsl.model.ContentTypes.{`application/json`, `text/plain(UTF-8)`}
 import akka.http.scaladsl.model.HttpMethods.POST
 import akka.http.scaladsl.model.StatusCodes.{BadRequest, InternalServerError, OK}
@@ -8,6 +9,7 @@ import akka.http.scaladsl.model.{HttpEntity, HttpResponse}
 import akka.http.scaladsl.server.Directives.*
 import akka.util.ByteString
 import cats.syntax.option.*
+import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.auth.SessionToken
@@ -48,8 +50,8 @@ import scala.util.{Failure, Success}
   */
 final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll with HasCloser
 {
-  implicit private lazy val actorSystem = newActorSystem("AkkaHttpClientTest",
-    config"""akka.http.client.idle-timeout = 2s""")
+  implicit private lazy val actorSystem: ActorSystem =
+    newActorSystem("AkkaHttpClientTest", config"""akka.http.client.idle-timeout = 2s""")
 
   override def afterAll() = {
     closer.close()
@@ -94,7 +96,7 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll with H
   }
 
   "With a server" - {
-    implicit val aJsonCodec = deriveCodec[A]
+    implicit val aJsonCodec: Codec.AsObject[A] = deriveCodec
     lazy val webServer = {
       val server = AkkaWebServer.forTest() {
         decodeRequest {

@@ -18,7 +18,8 @@ object SimpleItemPath
   extends InventoryItemPath.Companion[A]
   with InventoryItemKey.Companion[A]
   {
-    implicit def implicitCompanion = this
+    implicit def implicitCompanion: Companion[A] =
+      this
   }
 
   type AnyCompanion = Companion[? <: SimpleItemPath]

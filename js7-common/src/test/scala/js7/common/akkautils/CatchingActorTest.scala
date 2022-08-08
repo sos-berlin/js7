@@ -1,6 +1,6 @@
 package js7.common.akkautils
 
-import akka.actor.{Actor, Props}
+import akka.actor.{Actor, ActorSystem, Props}
 import akka.pattern.ask
 import akka.util.Timeout
 import js7.base.generic.Completed
@@ -20,7 +20,8 @@ import scala.util.control.NoStackTrace
   */
 final class CatchingActorTest extends AnyFreeSpec with BeforeAndAfterAll {
 
-  private implicit lazy val actorSystem = newActorSystem("CatchingActorTest")
+  private implicit lazy val actorSystem: ActorSystem =
+    newActorSystem("CatchingActorTest")
 
   override protected def afterAll() = {
     Akkas.terminateAndWait(actorSystem, 99.s)
@@ -50,7 +51,7 @@ final class CatchingActorTest extends AnyFreeSpec with BeforeAndAfterAll {
 }
 
 object CatchingActorTest {
-  private implicit val timeout = Timeout(99.seconds)
+  private implicit val timeout: Timeout = Timeout(99.seconds)
 
   private class TestActor(finished: Promise[Completed]) extends Actor {
     val (a, terminated) = CatchingActor.actorOf(props)

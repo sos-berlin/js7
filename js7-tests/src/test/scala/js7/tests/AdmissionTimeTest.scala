@@ -41,8 +41,8 @@ final class AdmissionTimeTest extends AnyFreeSpec with ControllerAgentForScalaTe
   protected def agentPaths = Seq(agentPath)
   protected def items = Seq(mondayWorkflow, sundayWorkflow)
 
-  private implicit val timeZone = AdmissionTimeTest.timeZone
-  private implicit val clock = TestAlarmClock(local("2021-03-20T00:00"))
+  private implicit val timeZone: ZoneId = AdmissionTimeTest.timeZone
+  private implicit val clock: TestAlarmClock = TestAlarmClock(local("2021-03-20T00:00"))
 
   override protected def agentModule = new AbstractModule {
     @Provides @Singleton def provideAlarmClock(): AlarmClock = clock

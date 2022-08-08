@@ -15,7 +15,9 @@ sealed trait ReturnCodeMeaning {
 object ReturnCodeMeaning {
   val Default: ReturnCodeMeaning = Success(Set(ReturnCode(0)))
   val NoFailure: ReturnCodeMeaning = Failure(Set())
-  implicit val ReturnCodeMeaningIsEmpty = IsEmpty[ReturnCodeMeaning](_ == Default)
+
+  implicit val ReturnCodeMeaningIsEmpty: IsEmpty[ReturnCodeMeaning] =
+    IsEmpty(_ == Default)
 
   final case class Success(returnCodes: Set[ReturnCode]) extends ReturnCodeMeaning {
     def isSuccess(returnCode: ReturnCode) = returnCodes contains returnCode

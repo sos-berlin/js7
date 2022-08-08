@@ -1,5 +1,6 @@
 package js7.data.item
 
+import io.circe.Codec
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.GenericString.EmptyStringProblem
@@ -28,7 +29,8 @@ final class VersionedItemPathTest extends AnyFreeSpec
   }
 
   "JSON with generic VersionedItemPath.jsonCodec" in {
-    implicit val itemPathCodec = InventoryItemPath.jsonCodec[VersionedItemPath](List(APath, BPath))
+    implicit val itemPathCodec: Codec[VersionedItemPath] =
+      InventoryItemPath.jsonCodec(List(APath, BPath))
     testJson[VersionedItemPath](APath("a"), json""" "A:a" """)
     testJson[VersionedItemPath](BPath("b"), json""" "B:b" """)
   }

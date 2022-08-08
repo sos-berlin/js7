@@ -134,7 +134,7 @@ object KeyedEventTypedJsonCodec
     def apply[E <: Event: ClassTag](singleton: E)
       (implicit ke: Encoder[E#Key], kd: Decoder[E#Key])
     : KeyedSubtype[E] = {
-      implicit val typedJsonCodec = TypedJsonCodec[E](Subtype(singleton))
+      implicit val typedJsonCodec: TypedJsonCodec[E] = TypedJsonCodec[E](Subtype(singleton))
       make[E](typeName[E])
     }
 
@@ -142,14 +142,17 @@ object KeyedEventTypedJsonCodec
       implicit ke: Encoder[E#Key], kd: Decoder[E#Key],
       eventEncoder: Encoder.AsObject[E], eventDecoder: Decoder[E])
     : KeyedSubtype[E] = {
-      implicit val typedJsonCodec = TypedJsonCodec[E](Subtype[E])
-      make[E](typeName[E])
+      val subtype = Subtype[E]
+      locally {
+        implicit val typedJsonCodec: TypedJsonCodec[E] = TypedJsonCodec(subtype)
+        make[E](typeName[E])
+      }
     }
 
     def singleEvent[E <: Event: ClassTag](singleton: E)
       (implicit ke: Encoder[E#Key], kd: Decoder[E#Key])
     : KeyedSubtype[E] = {
-      implicit val typedJsonCodec = TypedJsonCodec[E](Subtype(singleton))
+      implicit val typedJsonCodec: TypedJsonCodec[E] = TypedJsonCodec(Subtype(singleton))
       make[E](typeName[E])
     }
 

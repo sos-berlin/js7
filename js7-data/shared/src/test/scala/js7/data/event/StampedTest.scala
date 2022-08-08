@@ -1,5 +1,6 @@
 package js7.data.event
 
+import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.*
@@ -21,7 +22,7 @@ final class StampedTest extends AnyFreeSpec {
 
   "JSON with object" in {
     case class A(number: Int)
-    implicit val codec = deriveCodec[A]
+    implicit val codec: Codec.AsObject[A] = deriveCodec
     testJson(Stamped(EventId(777), Timestamp.ofEpochMilli(123), A(111)),
       json"""{
         "eventId": 777,

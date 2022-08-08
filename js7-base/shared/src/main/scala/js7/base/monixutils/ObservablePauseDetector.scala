@@ -9,7 +9,8 @@ import scala.concurrent.duration.*
 
 object ObservablePauseDetector
 {
-  private implicit val overflowStrategy = OverflowStrategy.BackPressure(bufferSize = 2/*minimum*/)
+  private implicit val overflowStrategy: OverflowStrategy.BackPressure =
+    OverflowStrategy.BackPressure(bufferSize = 2/*minimum*/)
 
   implicit final class RichPauseObservable[A](private val underlying: Observable[A]) extends AnyVal
   {

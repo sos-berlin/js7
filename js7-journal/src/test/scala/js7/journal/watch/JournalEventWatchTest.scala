@@ -42,7 +42,8 @@ import scala.reflect.ClassTag
   */
 final class JournalEventWatchTest extends AnyFreeSpec with BeforeAndAfterAll
 {
-  private implicit val keyedEventTypedJsonCodec = JournalEventWatchTest.keyedEventTypedJsonCodec
+  private implicit val keyedEventTypedJsonCodec: KeyedEventTypedJsonCodec[Event] =
+    JournalEventWatchTest.keyedEventTypedJsonCodec
 
   "JournalId is checked" in {
     withJournalMeta { journalMeta =>
@@ -470,21 +471,22 @@ private object JournalEventWatchTest
   private case object B1 extends BEvent
   private case object B2 extends BEvent
 
-  private implicit val A1Codec = CirceUtils.singletonCodec(A1)
-  private implicit val A2Codec = CirceUtils.singletonCodec(A2)
-  private implicit val B1Codec = CirceUtils.singletonCodec(B1)
-  private implicit val B2Codec = CirceUtils.singletonCodec(B2)
+  private implicit val A1Codec: Codec.AsObject[A1.type] = CirceUtils.singletonCodec(A1)
+  private implicit val A2Codec: Codec.AsObject[A2.type] = CirceUtils.singletonCodec(A2)
+  private implicit val B1Codec: Codec.AsObject[B1.type] = CirceUtils.singletonCodec(B1)
+  private implicit val B2Codec: Codec.AsObject[B2.type] = CirceUtils.singletonCodec(B2)
 
-  private implicit val keyedEventTypedJsonCodec = KeyedEventTypedJsonCodec[Event](
-    KeyedSubtype[JournalEvent],
-    KeyedSubtype.singleEvent[A1.type],
-    KeyedSubtype.singleEvent[A2.type],
-    KeyedSubtype.singleEvent[B1.type],
-    KeyedSubtype.singleEvent[B2.type])
+  private implicit val keyedEventTypedJsonCodec: KeyedEventTypedJsonCodec[Event] =
+    KeyedEventTypedJsonCodec(
+      KeyedSubtype[JournalEvent],
+      KeyedSubtype.singleEvent[A1.type],
+      KeyedSubtype.singleEvent[A2.type],
+      KeyedSubtype.singleEvent[B1.type],
+      KeyedSubtype.singleEvent[B2.type])
 
   private case class ASnapshot(string: String)
 
-  implicit private val SnapshotJsonCodec = TypedJsonCodec[Any](
+  implicit private val SnapshotJsonCodec: TypedJsonCodec[Any] = TypedJsonCodec[Any](
     Subtype[JournalHeader],
     Subtype(deriveCodec[ASnapshot]))
 }

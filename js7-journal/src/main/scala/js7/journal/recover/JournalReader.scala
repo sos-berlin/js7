@@ -208,8 +208,8 @@ extends AutoCloseable
     }
 
   private def deserialize(json: Json) = {
-    import journalMeta.eventJsonCodec
-    intelliJuseImport(eventJsonCodec)
+    import journalMeta.implicitEventJsonCodec
+    intelliJuseImport(implicitEventJsonCodec)
     json.as[Stamped[KeyedEvent[Event]]].toChecked.orThrow
   }
 

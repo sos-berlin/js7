@@ -2,6 +2,7 @@ package js7.data.value.expression.scopes
 
 import js7.base.problem.Problem
 import js7.data.value.expression.Expression.NamedValue
+import js7.data.value.expression.Scope
 import js7.data.value.{NumberValue, StringValue}
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.MapView
@@ -9,7 +10,7 @@ import scala.collection.MapView
 final class NamedValueScopeTest extends AnyFreeSpec
 {
   private var a = 0
-  private implicit lazy val scope =
+  private implicit lazy val scope: Scope =
     NameToCheckedValueScope(MapView(
       "A" -> {
         a += 1

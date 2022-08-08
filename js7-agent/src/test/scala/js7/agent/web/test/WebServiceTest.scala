@@ -44,7 +44,7 @@ trait WebServiceTest extends HasCloser with BeforeAndAfterAll with ScalatestRout
   protected val config = config"js7.web.server.services.streaming-post-size-limit-factor = 50%"
     .withFallback(WebLogDirectives.TestConfig)
 
-  implicit val routeTestTimeout = RouteTestTimeout(5.s)
+  implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(5.s)
 
   protected lazy val testSessionHeader: HttpHeader = {
     val token = sessionRegister

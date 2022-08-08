@@ -51,7 +51,7 @@ final class CalendarTest extends AnyFreeSpec with ControllerAgentForScalaTest
     @Provides @Singleton def provideAlarmClock(): AlarmClock = clock
   }
 
-  private implicit val zone = CalendarTest.zone
+  private implicit val zone: ZoneId = CalendarTest.zone
 
   "Reject invalid Calendar" in {
     // Falsches Datumsformat
@@ -118,7 +118,7 @@ object CalendarTest
 {
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
-  private implicit val zone = ZoneId.of("Europe/Mariehamn")
+  private implicit val zone: ZoneId = ZoneId.of("Europe/Mariehamn")
   private val clock = TestAlarmClock(local("2021-10-01T00:00"))
 
   private val calendar = Calendar(

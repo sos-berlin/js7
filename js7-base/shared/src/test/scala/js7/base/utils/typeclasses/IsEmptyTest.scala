@@ -26,7 +26,7 @@ final class IsEmptyTest extends AnyFreeSpec
       val empty = Special(0)
       def combine(x: Special, y: Special) = Special(x.number + y.number)
     }
-    implicit val specialEq = Eq.fromUniversalEquals[Special]
+    implicit val specialEq: Eq[Special] = Eq.fromUniversalEquals
   }
 
   private def testIsEmpty[A](what: A)(implicit A: IsEmpty[A]): Boolean =

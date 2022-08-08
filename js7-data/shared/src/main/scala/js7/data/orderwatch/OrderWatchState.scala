@@ -273,13 +273,13 @@ object OrderWatchState extends UnsignedSimpleItemState.Companion[OrderWatchState
   extends VanishedOrArised
 
   object VanishedOrArised {
-    private[orderwatch] implicit val jsonCodec = TypedJsonCodec[VanishedOrArised](
+    private[orderwatch] implicit val jsonCodec: TypedJsonCodec[VanishedOrArised] = TypedJsonCodec(
       Subtype.singleton(Vanished, aliases = Seq("VanishedAck")/*COMPATIBLE with v2.2.1*/),
       Subtype(deriveCodec[Arised]))
   }
 
   object ArisedOrHasOrder {
-    private[orderwatch] implicit val jsonCodec = TypedJsonCodec[ArisedOrHasOrder](
+    private[orderwatch] implicit val jsonCodec: TypedJsonCodec[ArisedOrHasOrder] = TypedJsonCodec(
       Subtype(deriveCodec[Arised]),
       Subtype(deriveCodec[HasOrder]))
   }

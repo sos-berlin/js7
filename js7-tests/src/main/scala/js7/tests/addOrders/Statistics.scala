@@ -47,5 +47,5 @@ private final case class Statistics(
 
 private object Statistics
 {
-  implicit val eq = Eq.fromUniversalEquals[Statistics]
+  implicit val eq: Eq[Statistics] = Eq.fromUniversalEquals
 }

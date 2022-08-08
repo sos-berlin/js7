@@ -38,7 +38,7 @@ object JournalHeader
   val Version = "1"
   private val compatibility = Map("0.42" -> "1")
 
-  implicit val jsonCodec = {
+  implicit val jsonCodec: TypedJsonCodec[JournalHeader] = {
     intelliJuseImport(FiniteDurationJsonEncoder)
     implicit val x = Timestamp.StringTimestampJsonEncoder
 

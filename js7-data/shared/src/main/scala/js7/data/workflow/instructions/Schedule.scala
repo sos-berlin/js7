@@ -1,6 +1,6 @@
 package js7.data.workflow.instructions
 
-import io.circe.{Codec, Decoder}
+import io.circe.{Codec, Decoder, Encoder}
 import io.circe.generic.semiauto.{deriveCodec, deriveEncoder}
 import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.ScalaJsonCodecs.*
@@ -36,7 +36,7 @@ object Schedule
       else
         Left(Problem.pure("Invalid Periodic arguments"))
 
-    implicit val jsonEncoder = deriveEncoder[Periodic]
+    implicit val jsonEncoder: Encoder.AsObject[Periodic] = deriveEncoder
     implicit val jsonDecoder: Decoder[Periodic] =
       c => for {
         period <- c.get[FiniteDuration]("period")
@@ -58,7 +58,7 @@ object Schedule
       else
         Right(Ticking(interval))
 
-    implicit val jsonEncoder = deriveEncoder[Ticking]
+    implicit val jsonEncoder: Encoder.AsObject[Ticking] = deriveEncoder
     implicit val jsonDecoder: Decoder[Ticking] =
       c => for {
         interval <- c.get[FiniteDuration]("interval")
@@ -90,7 +90,7 @@ object Schedule
       else
         Right(Continuous(pause, limit))
 
-    implicit val jsonEncoder = deriveEncoder[Continuous]
+    implicit val jsonEncoder: Encoder.AsObject[Continuous] = deriveEncoder
     implicit val jsonDecoder: Decoder[Continuous] =
       c => for {
         pause <- c.get[FiniteDuration]("pause")

@@ -17,7 +17,7 @@ import scala.collection.MapView
 final class ExpressionTest extends AnyFreeSpec
 {
   "NamedValue expressions" - {
-    implicit val scope =
+    implicit val scope: Scope =
       new Scope {
         import PositionSearch.{ByLabel, ByPrefix, ByWorkflowJob}
         import ValueSearch.{LastExecuted, Name}
@@ -657,7 +657,7 @@ final class ExpressionTest extends AnyFreeSpec
   }
 
   "ListValue" - {
-    implicit val scope = NameToCheckedValueScope(MapView(
+    implicit val scope: Scope = NameToCheckedValueScope(MapView(
       "list" -> Right(ListValue(Seq(NumberValue(-1), NumberValue(111), NumberValue(222))))))
 
     testEval("$list(0)",

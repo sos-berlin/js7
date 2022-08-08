@@ -37,7 +37,7 @@ extends Actor {
 
   override val supervisorStrategy = CatchingSupervisorStrategy(terminationPromise)
 
-  private implicit val scheduler = injector.instance[Scheduler]
+  private implicit val scheduler: Scheduler = injector.instance[Scheduler]
   private val agentActor = watch(actorOf(
     Props {
       injector.instance[AgentActor.Factory]

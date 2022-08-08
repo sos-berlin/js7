@@ -1,5 +1,6 @@
 package js7.tests.controller.proxy
 
+import akka.actor.ActorSystem
 import io.circe.Encoder
 import io.circe.syntax.*
 import izumi.reflect.Tag
@@ -45,7 +46,7 @@ import scala.jdk.CollectionConverters.*
 
 final class JournaledProxyClusterTest extends AnyFreeSpec with ClusterProxyTest
 {
-  private implicit def implicitActorSystem = actorSystem
+  private implicit def implicitActorSystem: ActorSystem = actorSystem
 
   "JournaledProxy[ControllerState]" in {
     runControllerAndBackup() { (_, primaryController, _, backupController, _) =>

@@ -25,6 +25,7 @@ import js7.data.event.{EventId, JournalPosition}
 import js7.journal.watch.FileEventWatch
 import js7.journal.web.JournalRoute.*
 import monix.eval.Task
+import monix.execution.Scheduler
 import scala.concurrent.duration.FiniteDuration
 
 // TODO Similar to GenericEventRoute
@@ -40,7 +41,7 @@ trait JournalRoute extends RouteProvider
 {
   protected def eventWatch: FileEventWatch
 
-  private implicit def implicitScheduler = scheduler
+  private implicit def implicitScheduler: Scheduler = scheduler
 
   private lazy val whenShuttingDownCompletion = new FutureCompletion(whenShuttingDown)
   private lazy val defaultJsonSeqChunkTimeout = config

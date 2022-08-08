@@ -47,7 +47,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with GenericE
   protected type OurSession = SimpleSession
 
   protected def actorRefFactory = actorSystem
-  protected implicit def scheduler = Scheduler.traced
+  protected implicit def scheduler: Scheduler = Scheduler.traced
   protected val config = config"""
     js7 {
       auth.users {}

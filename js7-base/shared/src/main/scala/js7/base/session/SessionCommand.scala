@@ -1,6 +1,6 @@
 package js7.base.session
 
-import io.circe.generic.semiauto
+import io.circe.generic.semiauto.deriveDecoder
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, Encoder, Json, JsonObject}
 import js7.base.auth.{SessionToken, UserAndPassword}
@@ -29,13 +29,13 @@ object SessionCommand
   }
 
   object Login {
-    implicit val x = UserAndPassword.jsonCodec
+    implicit val x: Codec.AsObject[UserAndPassword] = UserAndPassword.jsonCodec
     implicit val jsonEncoder: Encoder.AsObject[Login] =
       o => JsonObject(
         "userAndPassword" -> o.userAndPassword.asJson,
         "version" -> o.js7Version.asJson,  // COMPATIBLE with v2.2
         "js7Version" -> o.js7Version.asJson)
-    implicit val jsonDecoder = semiauto.deriveDecoder[Login]
+    implicit val jsonDecoder: Decoder[Login] = deriveDecoder
 
     final case class LoggedIn(sessionToken: SessionToken, js7Version: Version)
     extends SessionCommand.Response
@@ -82,7 +82,7 @@ object SessionCommand
       Subtype[Login.LoggedIn])
   }
 
-  implicit val jsonCodec = {
+  implicit val jsonCodec: TypedJsonCodec[SessionCommand] = {
     implicit val x = UserAndPassword.jsonCodec
     TypedJsonCodec[SessionCommand](
       Subtype[Login],

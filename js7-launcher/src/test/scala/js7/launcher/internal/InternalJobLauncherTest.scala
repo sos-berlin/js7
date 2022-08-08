@@ -28,7 +28,7 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class InternalJobLauncherTest extends AnyFreeSpec
 {
-  private implicit val scheduler = Scheduler.traced
+  private implicit val scheduler: Scheduler = Scheduler.traced
 
   "InternalJobLauncher" in {
     val executable = InternalExecutable(

@@ -5,6 +5,7 @@ import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, NotFound, OK}
 import akka.http.scaladsl.model.headers.{Accept, Location, RawHeader}
 import akka.http.scaladsl.model.{HttpEntity, HttpHeader, Uri as AkkaUri}
+import akka.stream.Materializer
 import com.google.inject.{AbstractModule, Provides}
 import io.circe.syntax.EncoderOps
 import io.circe.{Json, JsonObject}
@@ -71,7 +72,8 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest
 
   private var sessionToken: String = "INVALID"
 
-  private implicit def implicitSessionToken = Task(Some(SessionToken(SecretString(sessionToken))))
+  private implicit def implicitSessionToken: Task[Some[SessionToken]] =
+    Task(Some(SessionToken(SecretString(sessionToken))))
 
   override val agentModule = new AbstractModule {
     @Provides @Singleton def eventIdClock(): EventIdClock = EventIdClock.fixed(2000)
@@ -81,7 +83,7 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest
     @Provides @Singleton def eventIdClock(): EventIdClock = EventIdClock.fixed(1000)
   }
 
-  private implicit def materializer = httpClient.materializer
+  private implicit def materializer: Materializer = httpClient.materializer
 
   override def beforeAll() = {
     directoryProvider.controller.configDir / "controller.conf" ++=

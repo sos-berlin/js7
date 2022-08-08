@@ -36,7 +36,7 @@ import scala.concurrent.duration.Deadline.now
   */
 final class AgentActorTest extends AnyFreeSpec
 {
-  private implicit val askTimeout = Timeout(60.s)
+  private implicit val askTimeout: Timeout = Timeout(60.s)
 
   for (n <- List(10) ++ (sys.props.contains("test.speed") ? 1000 /*needs Job.parallelism=100 !!!*/)) {
     s"AgentActorTest, $n orders" in {

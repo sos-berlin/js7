@@ -1,5 +1,6 @@
 package js7.common.akkahttp.web
 
+import akka.actor.ActorSystem
 import akka.http.scaladsl.model.HttpMethods.GET
 import akka.http.scaladsl.model.HttpRequest
 import akka.http.scaladsl.model.StatusCodes.OK
@@ -38,7 +39,8 @@ import scala.concurrent.duration.*
   */
 final class AkkaWebServerTest extends AnyFreeSpec with BeforeAndAfterAll
 {
-  private implicit lazy val actorSystem = newActorSystem("AkkaWebServerTest")
+  private implicit lazy val actorSystem: ActorSystem =
+    newActorSystem("AkkaWebServerTest")
   private lazy val List(httpPort, httpsPort) = findFreeTcpPorts(2)
   private lazy val directory = createTempDirectory("AkkaWebServerTest-")
   private lazy val http = Http()

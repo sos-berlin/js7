@@ -93,7 +93,7 @@ final class RunningController private(
   val injector: Injector)
 extends AutoCloseable
 {
-  implicit val scheduler = injector.instance[Scheduler]
+  implicit val scheduler: Scheduler = injector.instance[Scheduler]
   val config: Config = injector.instance[Config]
   val sessionRegister: SessionRegister[SimpleSession] = injector.instance[SessionRegister[SimpleSession]]
   private lazy val controllerConfiguration = injector.instance[ControllerConfiguration]
@@ -275,7 +275,7 @@ object RunningController
     fromInjector(Guice.createInjector(PRODUCTION, new ControllerModule(configuration)))
 
   def fromInjector(injector: Injector): Future[RunningController] = {
-    implicit val scheduler = injector.instance[Scheduler]
+    implicit val scheduler: Scheduler = injector.instance[Scheduler]
     // Run under scheduler from start (and let debugger show Controller's thread names)
     Future {
       new Starter(injector).start()
@@ -285,9 +285,9 @@ object RunningController
   private class Starter(injector: Injector)
   {
     private val controllerConfiguration = injector.instance[ControllerConfiguration]
-    private implicit val scheduler = injector.instance[Scheduler]
-    private implicit lazy val closer = injector.instance[Closer]
-    private implicit lazy val actorSystem = injector.instance[ActorSystem]
+    private implicit val scheduler: Scheduler = injector.instance[Scheduler]
+    private implicit lazy val closer: Closer = injector.instance[Closer]
+    private implicit lazy val actorSystem: ActorSystem = injector.instance[ActorSystem]
     private lazy val itemVerifier = new SignedItemVerifier(
       GenericSignatureVerifier(controllerConfiguration.config).orThrow,
       ControllerState.signableItemJsonCodec)

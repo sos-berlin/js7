@@ -35,54 +35,60 @@ object PgpCommons
       " userIDs=" + key.getUserIDs.asScala.mkString("'", "', '", "'") +
       " fingerprint=" + fingerPrintAsString(key)
 
-  implicit val PGPPublicKeyShow = Show[PGPPublicKey] { key =>
-    import key.*
-    f"PGPPublicKey($getKeyID%08X" +
-      " userIDs=" + getUserIDs.asScala.mkString("'", "', '", "'") +
-      " fingerprint=" + fingerPrintAsString(key) +
-      " created=" + getCreationTime.show +
-      " algorithm=" + publicKeyAlgorithmToString(getAlgorithm) +
-      " isEncryptionKey=" + isEncryptionKey +
-      " isMasterKey=" + isMasterKey +
-      ")"
-  }
+  implicit val PGPPublicKeyShow: Show[PGPPublicKey] =
+    Show[PGPPublicKey] { key =>
+      import key.*
+      f"PGPPublicKey($getKeyID%08X" +
+        " userIDs=" + getUserIDs.asScala.mkString("'", "', '", "'") +
+        " fingerprint=" + fingerPrintAsString(key) +
+        " created=" + getCreationTime.show +
+        " algorithm=" + publicKeyAlgorithmToString(getAlgorithm) +
+        " isEncryptionKey=" + isEncryptionKey +
+        " isMasterKey=" + isMasterKey +
+        ")"
+    }
 
   private def fingerPrintAsString(key: PGPPublicKey): String =
     Option(key.getFingerprint).fold(ByteArray.empty)(ByteArray(_)).toHexRaw
 
-  implicit val PGPPublicKeyRingShow = Show[PGPPublicKeyRing](
-    _.asScala.toVector.mkString_("PGPPublicKeyRing(", ", ", ")"))
+  implicit val PGPPublicKeyRingShow: Show[PGPPublicKeyRing] =
+    Show(_.asScala.toVector.mkString_("PGPPublicKeyRing(", ", ", ")"))
 
-  implicit val PGPPublicKeyRingCollectionShow = Show[PGPPublicKeyRingCollection](
-    _.asScala.toVector.mkString_("", ", ", ""))
+  implicit val PGPPublicKeyRingCollectionShow: Show[PGPPublicKeyRingCollection] =
+    Show[PGPPublicKeyRingCollection](_
+      .asScala.toVector.mkString_("", ", ", ""))
 
-  implicit val PGPSecretKeyShow = Show[PGPSecretKey] { key =>
-    import key.*
-    f"PGPSecretKey(" +
-      getPublicKey.show +
-      " cipher=" + cipherToString(getKeyEncryptionAlgorithm) +
-      " isSigningKey=" + isSigningKey +
-      " isMasterKey=" + isMasterKey +
-      ")"
-  }
+  implicit val PGPSecretKeyShow: Show[PGPSecretKey] =
+    Show { key =>
+      import key.*
+      f"PGPSecretKey(" +
+        getPublicKey.show +
+        " cipher=" + cipherToString(getKeyEncryptionAlgorithm) +
+        " isSigningKey=" + isSigningKey +
+        " isMasterKey=" + isMasterKey +
+        ")"
+    }
 
-  implicit val PGPSecretKeyRingShow = Show[PGPSecretKeyRing](o =>
-    "PGPSecretKeyRing(" + o.getPublicKey.show + ")")
+  implicit val PGPSecretKeyRingShow: Show[PGPSecretKeyRing] =
+    Show(o =>
+      "PGPSecretKeyRing(" + o.getPublicKey.show + ")")
 
-  implicit val PGPSecretKeyRingCollectionShow = Show[PGPSecretKeyRingCollection](o =>
-    f"PGPSecretKeyRingCollection(${o.asScala.toVector.mkString_("", ", ", "")})")
+  implicit val PGPSecretKeyRingCollectionShow: Show[PGPSecretKeyRingCollection] =
+    Show(o =>
+      f"PGPSecretKeyRingCollection(${o.asScala.toVector.mkString_("", ", ", "")})")
 
-  implicit val PGPSignatureShow = Show[PGPSignature] { sig =>
-    import sig.*
-    f"PGPSignature(" +
-      signatureTypeToString(getSignatureType) +
-      //PGPUtil.getSignatureName(getKeyAlgorithm, getHashAlgorithm)
-      ", created=" + getCreationTime.show +
-      " hash=" + hashAlgorithmToString(getHashAlgorithm) +
-      //" keyAlgorithm=" + publicKeyAlgorithmToString(getKeyAlgorithm) +
-      f" publicKeyID=$getKeyID%08X" +
-      ")"
-  }
+  implicit val PGPSignatureShow: Show[PGPSignature] =
+    Show { sig =>
+      import sig.*
+      f"PGPSignature(" +
+        signatureTypeToString(getSignatureType) +
+        //PGPUtil.getSignatureName(getKeyAlgorithm, getHashAlgorithm)
+        ", created=" + getCreationTime.show +
+        " hash=" + hashAlgorithmToString(getHashAlgorithm) +
+        //" keyAlgorithm=" + publicKeyAlgorithmToString(getKeyAlgorithm) +
+        f" publicKeyID=$getKeyID%08X" +
+        ")"
+    }
 
   private def signatureTypeToString(t: Int) = t match {
     case PGPSignature.BINARY_DOCUMENT          => "binary document"

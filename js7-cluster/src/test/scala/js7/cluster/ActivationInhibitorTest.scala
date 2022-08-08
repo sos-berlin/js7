@@ -13,7 +13,7 @@ import scala.util.Success
   */
 final class ActivationInhibitorTest extends AnyFreeSpec
 {
-  private implicit val scheduler = TestScheduler()
+  private implicit val scheduler: TestScheduler = TestScheduler()
 
   "startActive, startPassive" - {
     lazy val inhibitor = new ActivationInhibitor

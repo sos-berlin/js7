@@ -33,8 +33,8 @@ import scala.concurrent.duration.*
   */
 final class EventRouteTest extends AnyFreeSpec with RouteTester with EventRoute
 {
-  private implicit val timeout = 99.s
-  private implicit val routeTestTimeout = RouteTestTimeout(timeout - 1.s)
+  private implicit val timeout: FiniteDuration = 99.s
+  private implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(timeout - 1.s)
   protected def whenShuttingDown = Future.never
   protected def actorRefFactory = system
   protected implicit def scheduler: Scheduler = Scheduler.traced

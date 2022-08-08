@@ -52,7 +52,7 @@ final class KeyedEventTest extends AnyFreeSpec {
   }
 
   private def check(event: KeyedEvent[TestEvent], json: Json): Unit = {
-    implicit val testEventJsonFormat = TypedJsonCodec[TestEvent](
+    implicit val testEventJsonFormat: TypedJsonCodec[TestEvent] = TypedJsonCodec(
       Subtype(deriveCodec[StringEvent]),
       Subtype(deriveCodec[IntEvent]),
       Subtype(SimpleEvent))
@@ -67,8 +67,9 @@ final class KeyedEventTest extends AnyFreeSpec {
   }
 
   private def checkSingletonKey(event: KeyedEvent[AEvent.type], json: Json): Unit = {
-    implicit val testEventJsonFormat = TypedJsonCodec[AEvent.type](
-      Subtype(AEvent))
+    implicit val testEventJsonFormat: TypedJsonCodec[KeyedEventTest.AEvent.type] =
+      TypedJsonCodec[AEvent.type](
+        Subtype(AEvent))
     testJson(event, json)
   }
 }

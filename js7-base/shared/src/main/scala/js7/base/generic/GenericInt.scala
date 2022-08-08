@@ -17,7 +17,7 @@ object GenericInt {
 
     def apply(number: Int): A
 
-    implicit val self = this
+    implicit val self: Companion[A] = this
 
     implicit val ordering: Ordering[A] = Ordering.by(_.number)
 

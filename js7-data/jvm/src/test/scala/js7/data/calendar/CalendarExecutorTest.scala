@@ -11,7 +11,7 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class CalendarExecutorTest extends AnyFreeSpec
 {
-  private implicit val zoneId = ZoneId.of("Europe/Mariehamn")
+  private implicit val zoneId: ZoneId = ZoneId.of("Europe/Mariehamn")
 
   private val calendar = Calendar.daily(
     CalendarPath("CALENDAR"),

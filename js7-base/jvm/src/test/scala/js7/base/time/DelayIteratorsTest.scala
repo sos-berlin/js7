@@ -9,7 +9,7 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class DelayIteratorsTest extends AnyFreeSpec
 {
-  private implicit val scheduler = TestScheduler()
+  private implicit val scheduler: TestScheduler = TestScheduler()
 
   "Wrong type" in {
     val config = ConfigFactory.parseString("""durations = true""")

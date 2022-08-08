@@ -10,7 +10,7 @@ import org.scalatest.freespec.AsyncFreeSpec
   */
 final class MonixDeadlineTest extends AsyncFreeSpec
 {
-  private implicit val scheduler = TestScheduler()
+  private implicit val scheduler: TestScheduler = TestScheduler()
 
   "now" in {
     implicit val scheduler = TestScheduler()

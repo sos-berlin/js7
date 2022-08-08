@@ -8,9 +8,12 @@ import js7.common.scalautil.xmls.ScalaXMLEventReader
 
 object OldScheduleXmlParser{
 
-  private implicit val StringAsDayOfWeek = As[String, DayOfWeek](
-    (for (dayOfWeek <- DayOfWeek.values) yield dayOfWeek.toString.toLowerCase -> dayOfWeek).toMap)
-  private implicit val StringAsZoneId = As[String, ZoneId](o => ZoneId.of(o))
+  private implicit val StringAsDayOfWeek: As[String, DayOfWeek] =
+    As(
+      (for (dayOfWeek <- DayOfWeek.values) yield dayOfWeek.toString.toLowerCase -> dayOfWeek).toMap)
+
+  private implicit val StringAsZoneId: As[String, ZoneId] =
+    As(o => ZoneId.of(o))
 
   private implicit val StringAsLocalTime: As[String, LocalTime] = {
     val ParseRegex = """([0-9]{1,2}):([0-9]{2})(?::([0-9]{2}))?""".r

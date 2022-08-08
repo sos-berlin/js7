@@ -40,7 +40,7 @@ final class AdmissionTimeSkipJobTest extends AnyFreeSpec with ControllerAgentFor
   protected def agentPaths = Seq(agentPath)
   protected def items = Seq(singleJobWorkflow, multipleJobsWorkflow)
 
-  private implicit val timeZone = AdmissionTimeSkipJobTest.timeZone
+  private implicit val timeZone: ZoneId = AdmissionTimeSkipJobTest.timeZone
   private val clock = TestAlarmClock(local("2021-09-09T00:00"))
 
   override protected def controllerModule = new AbstractModule {

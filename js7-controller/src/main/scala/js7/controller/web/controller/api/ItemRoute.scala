@@ -40,7 +40,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
   protected def itemUpdater: ItemUpdater
 
   private implicit def implicitScheduler: Scheduler = scheduler
-  private implicit def implicitActorsystem = actorSystem
+  private implicit def implicitActorsystem: ActorSystem = actorSystem
 
   // TODO Abort POST with error when shutting down
   private lazy val whenShuttingDownCompletion = new FutureCompletion(whenShuttingDown)

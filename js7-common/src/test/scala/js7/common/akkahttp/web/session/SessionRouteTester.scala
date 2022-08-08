@@ -18,6 +18,7 @@ import js7.common.akkautils.Akkas
 import js7.common.http.AkkaHttpClient
 import js7.common.http.AkkaHttpClient.HttpException
 import monix.eval.Task
+import monix.execution.Scheduler
 import org.scalatest.matchers.should.Matchers.*
 import org.scalatest.{BeforeAndAfterAll, Suite}
 import scala.concurrent.Future
@@ -40,7 +41,7 @@ trait SessionRouteTester extends BeforeAndAfterAll with ScalatestRouteTest with 
     akka.http.host-connection-pool.max-connection-backoff = 10ms
   """.withFallback(super.testConfig)
 
-  private implicit def implicitScheduler = scheduler
+  private implicit def implicitScheduler: Scheduler = scheduler
 
   protected final lazy val gateKeeper = GateKeeper.forTest(
     isPublic = isPublic,

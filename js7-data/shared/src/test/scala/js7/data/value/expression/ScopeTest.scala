@@ -1,9 +1,9 @@
 package js7.data.value.expression
 
-import js7.base.problem.Problem
+import js7.base.problem.{Checked, Problem}
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.Scope.evalLazilyExpressions
-import js7.data.value.{NumberValue, StringValue}
+import js7.data.value.{NumberValue, StringValue, Value}
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.MapView
 
@@ -12,7 +12,7 @@ final class ScopeTest extends AnyFreeSpec
   "evalLazilyExpressions" - {
     var a = 0
     var failed = 0
-    implicit lazy val nameToValue =
+    implicit lazy val nameToValue: MapView[String, Checked[Value]] =
       evalLazilyExpressions(MapView(
         "A" -> new Expression.ImpureTest(() => {
           a += 1

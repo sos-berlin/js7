@@ -10,10 +10,11 @@ import js7.controller.web.common.ControllerRouteProvider
 import js7.data.cluster.{ClusterNodeState, ClusterState}
 import js7.data.node.NodeId
 import monix.eval.Task
+import monix.execution.Scheduler
 
 trait ClusterRoute extends ControllerRouteProvider
 {
-  private implicit def implicitScheduler = scheduler
+  private implicit def implicitScheduler: Scheduler = scheduler
 
   protected def checkedClusterState: Task[Checked[ClusterState]]
   protected def clusterNodeIsBackup: Boolean

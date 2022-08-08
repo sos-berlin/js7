@@ -29,7 +29,7 @@ final class DirectoryEventDelayerTest extends AnyFreeSpec with BeforeAndAfterAll
   private val bFileDeleted = FileDeleted(Paths.get("B"))
   private val cFileAdded = FileAdded(Paths.get("C"))
 
-  implicit private lazy val scheduler = TestScheduler()
+  implicit private lazy val scheduler: TestScheduler = TestScheduler()
   private lazy val buffer = mutable.Buffer[DirectoryEvent]()
   private lazy val publishSubject = PublishSubject[DirectoryEvent]()
   private val cancelable = SerialCancelable()

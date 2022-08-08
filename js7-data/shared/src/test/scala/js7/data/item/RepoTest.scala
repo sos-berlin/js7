@@ -499,7 +499,7 @@ object RepoTest
   private val a3 = AItem(APath("A") ~ v3, "A-3")
   private val a5 = AItem(APath("A") ~ v4, "A-5")
 
-  private implicit val itemJsonCodec = TypedJsonCodec[VersionedItem](
+  private implicit val itemJsonCodec: TypedJsonCodec[VersionedItem] = TypedJsonCodec(
     Subtype[AItem],
     Subtype[BItem])
 

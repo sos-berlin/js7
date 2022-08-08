@@ -48,8 +48,9 @@ extends HasCloser
   private val useJavaThreadPool = config_.getBoolean("js7.thread-pools.use-java-thread-pool")
   private val ownScheduler = !useJavaThreadPool ?
     ThreadPools.newStandardScheduler("JControllerProxy", config_, closer)
-  private[proxy] implicit val scheduler = CorrelId.enableScheduler(
-    ownScheduler getOrElse Scheduler(ForkJoinPool.commonPool))
+  private[proxy] implicit val scheduler: Scheduler =
+    CorrelId.enableScheduler(
+      ownScheduler getOrElse Scheduler(ForkJoinPool.commonPool))
 
   private val actorSystemLazy = Lazy(newActorSystem(
     "JS7-Proxy",

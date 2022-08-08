@@ -21,6 +21,7 @@ import js7.data.subagent.Problems.SubagentAlreadyDedicatedProblem
 import js7.data.subagent.SubagentCommand
 import js7.subagent.SubagentCommandExecutor
 import monix.eval.Task
+import monix.execution.Scheduler
 
 /** Looks like Agent Director web service to detect a client's request for an Director. */
 private trait PseudoAgentRoute extends SessionRoute with EntitySizeLimitProvider
@@ -32,7 +33,7 @@ private trait PseudoAgentRoute extends SessionRoute with EntitySizeLimitProvider
   protected def restartAsDirector: Task[Unit]
   protected def overviewRoute: Route
 
-  private implicit def implicitScheduler = scheduler
+  private implicit def implicitScheduler: Scheduler = scheduler
 
   protected final lazy val pseudoAgentRoute: Route =
     pathSegment("api")(

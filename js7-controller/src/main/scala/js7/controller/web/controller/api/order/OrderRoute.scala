@@ -49,7 +49,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
   protected def actorSystem: ActorSystem
 
   private implicit def implicitScheduler: Scheduler = scheduler
-  private implicit def implicitActorsystem = actorSystem
+  private implicit def implicitActorsystem: ActorSystem = actorSystem
 
   final lazy val orderRoute: Route =
     authorizedUser(ValidUserPermission) { user =>

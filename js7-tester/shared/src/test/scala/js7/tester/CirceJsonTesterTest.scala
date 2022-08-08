@@ -1,5 +1,6 @@
 package js7.tester
 
+import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.tester.CirceJsonTester.testJsonString
 import js7.tester.CirceJsonTesterTest.*
@@ -11,7 +12,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class CirceJsonTesterTest extends AnyFreeSpec
 {
   "Case class" in {
-    implicit val codec = deriveCodec[A]
+    implicit val codec: Codec.AsObject[A] = deriveCodec
     testJsonString(a, JsonString)
   }
 }

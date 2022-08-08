@@ -53,7 +53,7 @@ final class AdmissionTimeSchemeTest extends AnyFreeSpec
 
     "WeekdayPeriod" - {
       "Simple" in {
-        implicit val admissionTimeScheme = AdmissionTimeScheme(Seq(
+        implicit val admissionTimeScheme: AdmissionTimeScheme = AdmissionTimeScheme(Seq(
           WeekdayPeriod(TUESDAY, LocalTime.of(8, 0), 2.h),
           WeekdayPeriod(SUNDAY, LocalTime.of(22, 0), 1.h)))
 
@@ -71,7 +71,7 @@ final class AdmissionTimeSchemeTest extends AnyFreeSpec
       }
 
       "WeekdayPeriod overlap from previous week" in {
-        implicit val admissionTimeScheme = AdmissionTimeScheme(Seq(
+        implicit val admissionTimeScheme: AdmissionTimeScheme = AdmissionTimeScheme(Seq(
           WeekdayPeriod(TUESDAY, LocalTime.of(8, 0), 2.h),
           WeekdayPeriod(SUNDAY, LocalTime.of(22, 0), 3.h)))
 
@@ -86,7 +86,7 @@ final class AdmissionTimeSchemeTest extends AnyFreeSpec
     }
 
     "WeekdayPeriod and DailyPeriod" in {
-      implicit val admissionTimeScheme = AdmissionTimeScheme(Seq(
+      implicit val admissionTimeScheme: AdmissionTimeScheme = AdmissionTimeScheme(Seq(
         WeekdayPeriod(TUESDAY, LocalTime.of(8, 0), 2.h),
         WeekdayPeriod(SUNDAY, LocalTime.of(22, 0), 1.h),
         DailyPeriod(LocalTime.of(12, 0), 1.h)))

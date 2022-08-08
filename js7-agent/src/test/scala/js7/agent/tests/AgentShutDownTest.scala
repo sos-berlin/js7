@@ -1,5 +1,6 @@
 package js7.agent.tests
 
+import akka.actor.ActorSystem
 import js7.agent.RunningAgent
 import js7.agent.client.AgentClient
 import js7.agent.configuration.AgentConfiguration
@@ -43,7 +44,7 @@ final class AgentShutDownTest extends AnyFreeSpec with BeforeAndAfterAll with Te
     val agentConfiguration = AgentConfiguration.forTest(agentDirectory, "AgentShutDownTest")
     var agent = RunningAgent.startForTest(agentConfiguration).await(10.s)
 
-    implicit val actorSystem = newAgentActorSystem("AgentShutDownTest")
+    implicit val actorSystem: ActorSystem = newAgentActorSystem("AgentShutDownTest")
     val userId = UserId("TEST-USER")
     closer onClose Akkas.terminateAndWait(actorSystem, 10.s)
 

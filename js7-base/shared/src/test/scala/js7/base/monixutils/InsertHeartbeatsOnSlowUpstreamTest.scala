@@ -13,7 +13,7 @@ import scala.concurrent.Await
   */
 final class InsertHeartbeatsOnSlowUpstreamTest extends AnyFreeSpec
 {
-  private implicit val scheduler = TestScheduler()
+  private implicit val scheduler: TestScheduler = TestScheduler()
   private val heartbeat = -1
 
   "insertHeartbeatsOnSlowUpstream" in {

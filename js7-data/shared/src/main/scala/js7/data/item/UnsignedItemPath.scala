@@ -15,7 +15,8 @@ object UnsignedItemPath
   trait Companion[A <: UnsignedItemPath]
   extends InventoryItemPath.Companion[A]
   {
-    implicit def implicitCompanion = this
+    implicit def implicitCompanion: Companion[A] =
+      this
   }
 
   type AnyCompanion = Companion[? <: UnsignedItemPath]

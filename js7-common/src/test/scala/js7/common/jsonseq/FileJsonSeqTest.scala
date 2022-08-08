@@ -67,7 +67,8 @@ final class FileJsonSeqTest extends AnyFreeSpec {
     }
     implicit val XJsonCodec: Codec.AsObject[X] = deriveCodec
 
-    implicit val keyedEventJsonCodec = KeyedEvent.typedJsonCodec[X](KeyedEventTypedJsonCodec.KeyedSubtype.singleEvent[X])
+    implicit val keyedEventJsonCodec: KeyedEventTypedJsonCodec[X] =
+      KeyedEvent.typedJsonCodec(KeyedEventTypedJsonCodec.KeyedSubtype.singleEvent[X])
 
     val x = X(1, 1112223334445556667L, true, "ddddddddddddddddddddd", "eeeeeeeeeeeeeeeeeee", "ffffffffffffffffffffffffff")
 

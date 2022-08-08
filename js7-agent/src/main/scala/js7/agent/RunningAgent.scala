@@ -66,7 +66,7 @@ final class RunningAgent private(
   val injector: Injector)
 extends AutoCloseable
 {
-  implicit val scheduler = injector.instance[Scheduler]
+  implicit val scheduler: Scheduler = injector.instance[Scheduler]
   val config: Config = injector.instance[Config]
   lazy val localUri: Uri = webServer.localUri
   @TestOnly
@@ -169,7 +169,7 @@ object RunningAgent {
         "\n" + "┈" * 80)
     }
     val injector = Guice.createInjector(PRODUCTION, module)
-    implicit val scheduler = injector.instance[Scheduler]
+    implicit val scheduler: Scheduler = injector.instance[Scheduler]
 
     // Run under scheduler from start (and let debugger show Controller's thread names)
     Future {
@@ -179,7 +179,7 @@ object RunningAgent {
         .orThrow
       val whenRecovered = Future(StateRecoverer.recover[AgentState](journalMeta, config))
 
-      implicit val actorSystem = injector.instance[ActorSystem]
+      implicit val actorSystem: ActorSystem = injector.instance[ActorSystem]
       val closer = injector.instance[Closer]
 
       val recovered = whenRecovered.awaitInfinite

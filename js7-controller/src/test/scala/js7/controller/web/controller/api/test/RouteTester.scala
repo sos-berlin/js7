@@ -27,7 +27,7 @@ trait RouteTester extends ScalatestRouteTest with ExceptionHandling
 
   /** For RouteTest responseAs[]. */
   private implicit val routeTestDuration: Duration = 9.s
-  private implicit val routeTestTimeout = RouteTestTimeout(9.s)
+  private implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(9.s)
 
   protected final lazy val gateKeeper = new GateKeeper(
     WebServerBinding.Http,

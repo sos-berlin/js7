@@ -28,7 +28,7 @@ final class CycleExecutorTest extends AnyFreeSpec with ScheduleTester
 {
   coupleScribeWithSlf4j()
 
-  private implicit val zone = CycleExecutorTest.zone
+  private implicit val zone: ZoneId = CycleExecutorTest.zone
 
   "Cycle with no Scheme is skipped" in {
     val stepper = new Stepper(

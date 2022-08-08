@@ -1,5 +1,6 @@
 package js7.agent.tests
 
+import akka.actor.ActorSystem
 import js7.agent.RunningAgent
 import js7.agent.client.AgentClient
 import js7.agent.configuration.AgentConfiguration
@@ -59,7 +60,7 @@ final class OrderAgentTest extends AnyFreeSpec
       val agentConf = AgentConfiguration.forTest(directory, name = "OrderAgentTest")
       RunningAgent.run(agentConf, timeout = Some(99.s)) { agent =>
         withCloser { implicit closer =>
-          implicit val actorSystem = newAgentActorSystem(getClass.getSimpleName)
+          implicit val actorSystem: ActorSystem = newAgentActorSystem(getClass.getSimpleName)
           val agentClient = AgentClient(agent.localUri, Some(TestUserAndPassword)).closeWithCloser
           assert(agentClient
             .commandExecute(
@@ -134,7 +135,7 @@ final class OrderAgentTest extends AnyFreeSpec
       val timeout = 1.hour
       RunningAgent.run(agentConf, timeout = Some(timeout)) { agent =>
         withCloser { implicit closer =>
-          implicit val actorSystem = newAgentActorSystem(getClass.getSimpleName)
+          implicit val actorSystem: ActorSystem = newAgentActorSystem(getClass.getSimpleName)
           val agentClient = AgentClient(agent.localUri, Some(TestUserAndPassword)).closeWithCloser
           agentClient.login() await 99.s
           assert(

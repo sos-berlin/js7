@@ -3,7 +3,7 @@ package js7.journal.web
 import akka.NotUsed
 import akka.actor.ActorRefFactory
 import akka.http.scaladsl.common.JsonEntityStreamingSupport
-import akka.http.scaladsl.marshalling.ToResponseMarshallable
+import akka.http.scaladsl.marshalling.{ToEntityMarshaller, ToResponseMarshallable}
 import akka.http.scaladsl.model.HttpEntity.Chunk
 import akka.http.scaladsl.model.StatusCodes.{BadRequest, ServiceUnavailable}
 import akka.http.scaladsl.model.{HttpEntity, HttpRequest}
@@ -76,16 +76,17 @@ trait GenericEventRoute extends RouteProvider
     protected def filterObservable: StampedEventFilter =
       identity
 
-    implicit private val exceptionHandler = ExceptionHandler {
-      case t: ClosedException if t.getMessage != null =>
-        if (whenShuttingDown.isCompleted)
-          complete(ServiceUnavailable -> ShuttingDownProblem)
-        else
-          complete(ServiceUnavailable -> Problem.pure(t.getMessage))
-      //case t: akka.pattern.AskTimeoutException =>  // When getting EventWatch (Actor maybe terminated)
-      //  logger.debug(t.toStringWithCauses, t)
-      //  complete(ServiceUnavailable -> Problem.pure(t.toString))
-    }
+    implicit private val exceptionHandler: ExceptionHandler =
+      ExceptionHandler {
+        case t: ClosedException if t.getMessage != null =>
+          if (whenShuttingDown.isCompleted)
+            complete(ServiceUnavailable -> ShuttingDownProblem)
+          else
+            complete(ServiceUnavailable -> Problem.pure(t.getMessage))
+        //case t: akka.pattern.AskTimeoutException =>  // When getting EventWatch (Actor maybe terminated)
+        //  logger.debug(t.toStringWithCauses, t)
+        //  complete(ServiceUnavailable -> Problem.pure(t.toString))
+      }
 
     final lazy val route: Route =
       get {
@@ -159,7 +160,7 @@ trait GenericEventRoute extends RouteProvider
           case _/*Duration.Inf only*/ => None
         }
         complete {
-          implicit val x = jsonSeqMarshaller[EventId]
+          implicit val x: ToEntityMarshaller[EventId] = jsonSeqMarshaller
           observableToMarshallable(
             eventWatch.observeEventIds(maybeTimeout).pipe(o => maybeHeartbeat.fold(o)(o.echoRepeated)))
         }
@@ -231,7 +232,7 @@ trait GenericEventRoute extends RouteProvider
 
     private def emptyResponseMarshallable(implicit s: JsonEntityStreamingSupport)
     : ToResponseMarshallable = {
-      implicit val x = jsonSeqMarshaller[Unit]
+      implicit val x: ToEntityMarshaller[Unit] = jsonSeqMarshaller
       observableToMarshallable(
         Observable.empty[Unit])
     }

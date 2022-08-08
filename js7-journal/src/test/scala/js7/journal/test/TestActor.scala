@@ -28,7 +28,7 @@ private[journal] final class TestActor(config: Config, journalMeta: JournalMeta,
 extends Actor with Stash
 {
   override val supervisorStrategy = SupervisorStrategies.escalate
-  private implicit val askTimeout = Timeout(99.seconds)
+  private implicit val askTimeout: Timeout = Timeout(99.seconds)
   private val journalConf = JournalConf.fromConfig(config)
   private val keyToAggregate = mutable.Map[String, ActorRef]()
   private var terminator: ActorRef = null

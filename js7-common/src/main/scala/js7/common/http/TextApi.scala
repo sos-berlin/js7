@@ -24,7 +24,7 @@ trait TextApi
   protected def httpClient: HttpClient
   protected def sessionToken: Option[SessionToken]
 
-  implicit private def implicitSessionToken = Task(sessionToken)
+  implicit private def implicitSessionToken: Task[Option[SessionToken]] = Task(sessionToken)
 
   def executeCommand(command: String): Unit = {
     val response = awaitResult(

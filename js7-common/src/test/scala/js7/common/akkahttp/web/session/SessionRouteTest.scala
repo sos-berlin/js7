@@ -5,7 +5,7 @@ import akka.http.scaladsl.model.StatusCodes.{BadRequest, Unauthorized}
 import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials, HttpChallenges, `WWW-Authenticate`}
 import akka.http.scaladsl.server.Directive
 import akka.http.scaladsl.testkit.RouteTestTimeout
-import js7.base.auth.{SessionToken, UserAndPassword, UserId}
+import js7.base.auth.{SessionToken, SimpleUser, UserAndPassword, UserId}
 import js7.base.generic.{Completed, SecretString}
 import js7.base.io.https.HttpsConfig
 import js7.base.log.Logger
@@ -38,7 +38,7 @@ sealed abstract class SessionRouteTest(override protected val isPublic: Boolean)
 extends AnyFreeSpec with SessionRouteTester
 {
   protected final implicit def scheduler = Scheduler.traced
-  private implicit val routeTestTimeout = RouteTestTimeout(10.s)
+  private implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(10.s)
 
   override protected[session] val specificLoginRequiredProblem = Problem.pure("specificLoginRequired")
 

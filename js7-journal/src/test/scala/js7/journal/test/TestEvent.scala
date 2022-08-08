@@ -42,7 +42,7 @@ private[journal] object TestEvent extends Event.Companion[TestEvent] {
 
   final case object Removed extends TestEvent
 
-  implicit val jsonFormat = TypedJsonCodec[TestEvent](
+  implicit val jsonFormat: TypedJsonCodec[TestEvent] = TypedJsonCodec(
     Subtype(deriveCodec[Added]),
     Subtype(deriveCodec[Appended]),
     Subtype(NothingDone),

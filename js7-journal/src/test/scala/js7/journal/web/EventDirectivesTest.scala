@@ -7,7 +7,7 @@ import io.circe.generic.semiauto.deriveCodec
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.time.ScalaTime.*
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import js7.data.event.{Event, EventId, EventRequest, KeyedEvent}
+import js7.data.event.{Event, EventId, EventRequest, KeyedEvent, KeyedEventTypedJsonCodec}
 import js7.journal.web.EventDirectives.eventRequest
 import js7.journal.web.EventDirectivesTest.*
 import org.scalatest.freespec.AnyFreeSpec
@@ -20,11 +20,10 @@ final class EventDirectivesTest extends AnyFreeSpec with ScalatestRouteTest
 {
   coupleScribeWithSlf4j()
 
-  private implicit val myKeyedEventJsonFormat = {
-    KeyedEvent.typedJsonCodec[MyEvent](
+  private implicit val myKeyedEventJsonFormat: KeyedEventTypedJsonCodec[MyEvent] =
+    KeyedEvent.typedJsonCodec(
       KeyedSubtype.singleEvent[AEvent],
       KeyedSubtype.singleEvent[BEvent])
-  }
 
   private def route =
     path("test") {

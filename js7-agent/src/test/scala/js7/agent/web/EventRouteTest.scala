@@ -1,5 +1,6 @@
 package js7.agent.web
 
+import akka.actor.ActorSystem
 import js7.agent.client.AgentClient
 import js7.agent.data.commands.AgentCommand.{CoupleController, DedicateAgentDirector, ReleaseEvents, TakeSnapshot}
 import js7.agent.data.event.AgentEvent.AgentReady
@@ -30,8 +31,8 @@ final class EventRouteTest extends AnyFreeSpec with AgentTester
 {
   protected val akkaAskTimeout = 99.s
 
-  implicit private lazy val scheduler = agent.injector.instance[Scheduler]
-  implicit private lazy val actorSystem = agent.actorSystem
+  implicit private lazy val scheduler: Scheduler = agent.injector.instance[Scheduler]
+  implicit private lazy val actorSystem: ActorSystem = agent.actorSystem
   private val agentClient = AgentClient(agent.localUri, Some(TestUserAndPassword)).closeWithCloser
   private var agentRunId: AgentRunId = _
   private var eventId = EventId.BeforeFirst

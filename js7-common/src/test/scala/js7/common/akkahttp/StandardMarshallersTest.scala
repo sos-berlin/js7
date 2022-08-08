@@ -1,5 +1,6 @@
 package js7.common.akkahttp
 
+import akka.actor.ActorSystem
 import akka.http.scaladsl.marshalling.Marshal
 import akka.http.scaladsl.model.ContentTypes.`text/plain(UTF-8)`
 import akka.http.scaladsl.model.MediaTypes.`application/json`
@@ -7,6 +8,7 @@ import akka.http.scaladsl.model.StatusCodes.{BadRequest, OK}
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpRequest, HttpResponse, MessageEntity}
 import akka.util.ByteString
+import io.circe.Encoder
 import io.circe.generic.semiauto.deriveEncoder
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.{Checked, Problem}
@@ -25,7 +27,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
   */
 final class StandardMarshallersTest extends AnyFreeSpec with BeforeAndAfterAll {
 
-  implicit private val actorSystem = newActorSystem("StandardMarshallersTest")
+  implicit private val actorSystem: ActorSystem =
+    newActorSystem("StandardMarshallersTest")
 
   override def afterAll(): Unit =
     Akkas.terminateAndWait(actorSystem, 10.s)
@@ -53,7 +56,7 @@ final class StandardMarshallersTest extends AnyFreeSpec with BeforeAndAfterAll {
 
   "checkedToResponseMarshaller" - {
     case class A(number: Int)
-    implicit val encoder = deriveEncoder[A]
+    implicit val encoder: Encoder.AsObject[A] = deriveEncoder
 
     "Valid" in {
       val response = Marshal(Right(A(7)): Checked[A]).to[HttpResponse] await 99.s

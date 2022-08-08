@@ -62,7 +62,7 @@ extends AutoCloseable
           s" <= lastEventId ${EventId.toString(_lastEventId)}")
       _lastEventId = stamped.eventId
     }
-    import journalMeta.eventJsonCodec
+    import journalMeta.implicitEventJsonCodec
     if (sys.runtime.availableProcessors > 1 && stampedEvents.sizeIs >= JsonParallelizationThreshold)
       writeJsonInParallel(stampedEvents)
     else

@@ -48,7 +48,7 @@ final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with 
     js7.job.execution.signed-script-injection-allowed = on
     """
 
-  private implicit val clock = CycleTest.clock
+  private implicit val clock: TestAlarmClock = CycleTest.clock
 
   override protected def controllerModule = new AbstractModule {
     @Provides @Singleton def provideAlarmClock(): AlarmClock = clock
@@ -57,7 +57,7 @@ final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with 
     @Provides @Singleton def provideAlarmClock(): AlarmClock = clock
   }
 
-  private implicit val zone = CycleTest.zone
+  private implicit val zone: ZoneId = CycleTest.zone
   private lazy val versionIdIterator = Iterator.from(1).map(i => VersionId(i.toString))
 
   "Cycle with empty Schedule" in {
@@ -427,7 +427,7 @@ object CycleTest
 {
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
-  private implicit val zone = ZoneId.of("Europe/Mariehamn")
+  private implicit val zone: ZoneId = ZoneId.of("Europe/Mariehamn")
   private val clock = TestAlarmClock(local("2021-10-01T04:00"))
 
   private val calendar = Calendar.jocStandard(

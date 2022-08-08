@@ -32,6 +32,7 @@ import js7.journal.test.TestData
 import js7.journal.watch.JournalEventWatch
 import js7.journal.{EventIdClock, EventIdGenerator, JournalActor}
 import monix.execution.Scheduler
+import monix.execution.schedulers.SchedulerService
 import monix.reactive.Observable
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
@@ -44,7 +45,8 @@ final class FileStatePersistenceTest extends AnyFreeSpec with BeforeAndAfterAll
 {
   coupleScribeWithSlf4j()
 
-  private implicit lazy val scheduler = Scheduler(Executors.newCachedThreadPool())  // Scheduler.Implicits.global blocks on 2-processor machine
+  private implicit lazy val scheduler: SchedulerService =
+    Scheduler(Executors.newCachedThreadPool())  // Scheduler.Implicits.global blocks on 2-processor machine
   protected lazy val directory = createTempDirectory("FileStatePersistenceTest-")
   private lazy val journalMeta = testJournalMeta(fileBase = directory)
 

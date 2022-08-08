@@ -1,5 +1,6 @@
 package js7.agent.tests
 
+import akka.actor.ActorSystem
 import js7.agent.client.AgentClient
 import js7.agent.configuration.Akkas
 import js7.base.BuildInfo
@@ -17,7 +18,8 @@ final class AgentClientTest extends AnyFreeSpec with ScalaFutures with AgentTest
   override implicit val patienceConfig = PatienceConfig(timeout = 10.s)
 
   override lazy val agentConfiguration = newAgentConfiguration()
-  private implicit lazy val actorSystem = Akkas.newAgentActorSystem("AgentClientTest")(closer)
+  private implicit lazy val actorSystem: ActorSystem =
+    Akkas.newAgentActorSystem("AgentClientTest")(closer)
   private lazy val client = AgentClient(agentUri = agent.localUri, userAndPassword = None)
 
   "get /" in {

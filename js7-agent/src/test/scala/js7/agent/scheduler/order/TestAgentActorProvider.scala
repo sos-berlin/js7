@@ -62,8 +62,8 @@ object TestAgentActorProvider {
     val injector = Guice.createInjector(new AgentModule(agentConfiguration))
 
     // Initialize Akka here to solve a classloader problem when Akka reads its reference.conf
-    implicit val actorSystem = injector.instance[ActorSystem]
-    implicit val scheduler = injector.instance[Scheduler]
+    implicit val actorSystem: ActorSystem = injector.instance[ActorSystem]
+    implicit val scheduler: Scheduler = injector.instance[Scheduler]
 
     val persistence = FileStatePersistence
       .start(

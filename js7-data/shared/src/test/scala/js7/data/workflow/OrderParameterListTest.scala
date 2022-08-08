@@ -76,7 +76,7 @@ final class OrderParameterListTest extends AnyFreeSpec
       }""")
   }
 
-  private implicit val scope = Scope.empty
+  private implicit val scope: Scope = Scope.empty
 
   "prepareOrderArguments" - {
     implicit val orderParameterList = OrderParameterListTest.orderParameterList

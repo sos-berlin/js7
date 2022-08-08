@@ -264,13 +264,13 @@ object OrderEvent
   final case class OrderNoticePostedV2_3(notice: NoticeV2_3)
   extends OrderNoticePosted_
   object OrderNoticePostedV2_3 {
-    implicit val jsonEncoder = deriveEncoder[OrderNoticePostedV2_3]
+    implicit val jsonEncoder: Encoder.AsObject[OrderNoticePostedV2_3] = deriveEncoder
   }
 
   final case class OrderNoticePosted(notice: Notice)
   extends OrderNoticePosted_
   object OrderNoticePosted {
-    implicit val jsonEncoder = deriveEncoder[OrderNoticePosted]
+    implicit val jsonEncoder: Encoder.AsObject[OrderNoticePosted] = deriveEncoder
   }
 
   // COMPATIBLE with v2.3

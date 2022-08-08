@@ -15,10 +15,12 @@ import js7.data.event.{Event, JournalHeader, KeyedEvent, KeyedEventTypedJsonCode
   */
 final case class JournalMeta(
   snapshotJsonCodec: TypedJsonCodec[Any],
-  implicit val eventJsonCodec: KeyedEventTypedJsonCodec[Event],
+  eventJsonCodec: KeyedEventTypedJsonCodec[Event],
   /** Path without extension, like "/directory/test". */
   fileBase: Path)
 {
+  implicit val implicitEventJsonCodec: KeyedEventTypedJsonCodec[Event] = eventJsonCodec
+
   private val logger = Logger(getClass)
   val name = fileBase.getFileName.toString
 

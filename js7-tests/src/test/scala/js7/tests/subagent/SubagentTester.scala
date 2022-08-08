@@ -47,7 +47,7 @@ trait SubagentTester extends ControllerAgentForScalaTest
 
   protected val scheduler: Scheduler
 
-  implicit private def implicitScheduler = scheduler
+  implicit private def implicitScheduler: Scheduler = scheduler
 
   protected final def runSubagent[A](
     subagentItem: SubagentItem,

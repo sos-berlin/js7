@@ -4,7 +4,7 @@ import io.circe.CursorOp.DownField
 import io.circe.DecodingFailure.Reason.MissingField
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, DecodingFailure, Json, JsonObject}
+import io.circe.{Codec, Decoder, DecodingFailure, Json, JsonObject}
 import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.GenericString
 import js7.base.problem.{Problem, ProblemException}
@@ -21,8 +21,8 @@ final class CirceUtilsTest extends AnyFreeSpec
   private case class A(a: Int, b: B)
   private case class B(string: String, array: Seq[Int], empty: Seq[Int])
 
-  private implicit val BCodec = deriveCodec[B]
-  private implicit val ACodec = deriveCodec[A]
+  private implicit val BCodec: Codec.AsObject[B] = deriveCodec
+  private implicit val ACodec: Codec.AsObject[A] = deriveCodec
 
   "deriveRenamingCodec" in {
     val myCodec = deriveRenamingCodec[Simple](Map("old" -> "string"))
@@ -51,8 +51,13 @@ final class CirceUtilsTest extends AnyFreeSpec
 
   "listMapCodec" in {
     final case class A(a: Int, listMap: SeqMap[Int, String])
-    implicit val mySeqMapCodec = listMapCodec[Int, String]()
-    implicit val aCodec = deriveCodec[A]
+
+    implicit val mySeqMapCodec: Codec[SeqMap[Int, String]] =
+      listMapCodec[Int, String]()
+
+    implicit val aCodec: Codec.AsObject[A] =
+      deriveCodec[A]
+
     testJson(A(0, SeqMap(1 -> "eins", 2 -> "zwei", 3 -> "drei", 4 -> "vier")),
       json"""{
         "a": 0,
@@ -147,7 +152,8 @@ final class CirceUtilsTest extends AnyFreeSpec
       else
         Right(simple.copy(string = simple.string + "🔵"))
 
-    implicit val simpleCodec = deriveCodec[Simple].check(checkSimple)
+    implicit val simpleCodec: Codec.AsObject[Simple] =
+      deriveCodec[Simple].check(checkSimple)
 
     assert(json"""{ "int": 0, "string": "B" }""".as[Simple] == Left(
       DecodingFailure("PROBLEM", Nil)))

@@ -1,6 +1,7 @@
 package js7.data.item
 
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
+import js7.base.circeutils.typed.TypedJsonCodec
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerState
 import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttached, ItemAttachedToMe, ItemDeleted, ItemDeletionMarked, ItemDetachable, ItemDetached, ItemDetachingFromMe}
@@ -13,7 +14,8 @@ import org.scalatest.freespec.AnyFreeSpec
 
 final class BasicItemEventTest extends AnyFreeSpec
 {
-  implicit private val jsonCodec = BasicItemEvent.jsonCodec(ControllerState)
+  implicit private val jsonCodec: TypedJsonCodec[BasicItemEvent] =
+    BasicItemEvent.jsonCodec(ControllerState)
 
   "JSON" - {
     "ItemDeletionMarked" in {
