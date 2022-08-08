@@ -501,9 +501,10 @@ extends Actor with Stash with JournalLogging
         responseAfterSnapshotTaken()
       } else if (lastAcknowledgedEventId < lastWrittenEventId) {
         logger.debug(s"Delaying snapshot until last event has been committed and acknowledged (lastAcknowledgedEventId=$lastAcknowledgedEventId lastWrittenEventId=$lastWrittenEventId)")
-      } else
+      } else {
         takeSnapshot()
         logReady()
+      }
     }
 
   private def responseAfterSnapshotTaken(): Unit = {
