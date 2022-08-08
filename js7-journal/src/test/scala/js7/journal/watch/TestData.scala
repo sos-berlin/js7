@@ -25,8 +25,8 @@ private[watch] object TestData
     type Key = String
   }
 
-  final case object AEvent extends TestEvent
-  final case object BEvent extends TestEvent
+  case object AEvent extends TestEvent
+  case object BEvent extends TestEvent
 
   implicit val jsonFormat: TypedJsonCodec[TestEvent] =
     TypedJsonCodec(

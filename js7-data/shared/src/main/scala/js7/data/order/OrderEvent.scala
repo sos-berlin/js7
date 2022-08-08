@@ -299,7 +299,7 @@ object OrderEvent
   extends OrderNoticeEvent
 
   type OrderProcessingKilled = OrderProcessingKilled.type
-  final case object OrderProcessingKilled
+  case object OrderProcessingKilled
   extends OrderActorEvent
 
   final case class OrderMoved(to: Position)
@@ -504,7 +504,7 @@ object OrderEvent
   extends OrderActorEvent
 
   type OrderCycleStarted = OrderCycleStarted.type
-  final case object OrderCycleStarted
+  case object OrderCycleStarted
   extends OrderActorEvent
 
   final case class OrderCycleFinished(cycleState: Option[CycleState])

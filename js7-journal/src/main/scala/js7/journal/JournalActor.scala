@@ -744,10 +744,10 @@ object JournalActor
       commitLater: Boolean = false,
       callersItem: CallersItem)
 
-    final case object TakeSnapshot
+    case object TakeSnapshot
     final case class PassiveNodeAcknowledged(eventId: EventId)
     final case class PassiveLost(passiveLost: ClusterPassiveLost)
-    final case object Terminate
+    case object Terminate
     case object GetJournalActorState
     case object GetJournaledState
   }
@@ -770,15 +770,15 @@ object JournalActor
     private[journal] final case class Accepted(callersItem: CallersItem) extends Output
     //final case class SerializationFailure(throwable: Throwable) extends Output
     final case class StoreFailure(problem: Problem, callersItem: CallersItem) extends Output
-    final case object SnapshotTaken
+    case object SnapshotTaken
     final case class JournalActorState(isFlushed: Boolean, isSynced: Boolean, isRequiringClusterAcknowledgement: Boolean)
   }
 
   type Stopped = Stopped.type
-  final case object Stopped
+  case object Stopped
 
   private object Internal {
-    final case object Commit
+    case object Commit
     case object StillWaitingForAcknowledge extends DeadLetterSuppression
   }
 

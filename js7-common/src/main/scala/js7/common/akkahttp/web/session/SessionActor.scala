@@ -184,7 +184,7 @@ object SessionActor
     ) extends Command
     final case class Logout(token: SessionToken) extends Command
     final case class Get[U <: User](token: SessionToken, idsOrUser: Either[Set[UserId], U]) extends Command
-    final case object GetCount extends Command
+    case object GetCount extends Command
   }
 
   private case object CleanUp extends DeadLetterSuppression

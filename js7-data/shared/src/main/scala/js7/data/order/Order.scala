@@ -796,10 +796,10 @@ object Order
   }
 
   type Failed = Failed.type
-  final case object Failed extends IsStarted
+  case object Failed extends IsStarted
 
   type FailedInFork = FailedInFork.type
-  final case object FailedInFork extends IsStarted //with IsTerminated
+  case object FailedInFork extends IsStarted //with IsTerminated
 
   type Finished = Finished.type
   case object Finished extends IsStarted with IsTerminated

@@ -124,8 +124,8 @@ object CommandActor {
   private val logger = Logger(getClass)
 
   object Command {
-    final case object GetOverview
-    final case object GetDetailed
+    case object GetOverview
+    case object GetDetailed
   }
 
   object Input {

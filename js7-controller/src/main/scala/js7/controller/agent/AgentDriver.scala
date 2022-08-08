@@ -653,18 +653,18 @@ private[controller] object AgentDriver
   }
 
   private object Internal {
-    final case object CommandQueueReady extends DeadLetterSuppression
+    case object CommandQueueReady extends DeadLetterSuppression
     final case class BatchSucceeded(responses: Seq[QueuedInputResponse]) extends DeadLetterSuppression
     final case class BatchFailed(inputs: Seq[Queueable], problem: Problem) extends DeadLetterSuppression
-    final case object FetchEvents extends DeadLetterSuppression
+    case object FetchEvents extends DeadLetterSuppression
     final case class FetchedEvents(events: Seq[Stamped[AnyKeyedEvent]], promise: Promise[Completed])
       extends DeadLetterSuppression
     final case class FetchFinished(tried: Try[Completed]) extends DeadLetterSuppression
     final case class OnCoupled(promise: Promise[Completed], orderIds: Set[OrderId]) extends DeadLetterSuppression
-    final case object OnDecoupled extends DeadLetterSuppression
+    case object OnDecoupled extends DeadLetterSuppression
     final case class ReleaseEvents(lastEventId: EventId, promise: Promise[Completed]) extends DeadLetterSuppression
-    final case object ReleaseEventsNow extends DeadLetterSuppression
-    final case object UriChanged extends DeadLetterSuppression
+    case object ReleaseEventsNow extends DeadLetterSuppression
+    case object UriChanged extends DeadLetterSuppression
     case object Terminate
   }
 

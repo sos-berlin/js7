@@ -132,11 +132,11 @@ extends Actor with Stash
 private[journal] object TestActor
 {
   object Input {
-    final case object WaitUntilReady
-    final case object TakeSnapshot
+    case object WaitUntilReady
+    case object TakeSnapshot
     final case class Forward(key: String, command: TestAggregateActor.Command)
-    final case object GetJournalState
-    final case object GetAll
-    final case object Terminate
+    case object GetJournalState
+    case object GetAll
+    case object Terminate
   }
 }

@@ -18,7 +18,7 @@ object DirectoryWatchEvent
       case ENTRY_DELETE => FileDeleted(watchEvent.context)
     }
 
-  final case object Overflow extends DirectoryWatchEvent
+  case object Overflow extends DirectoryWatchEvent
 }
 
 sealed trait DirectoryEvent extends DirectoryWatchEvent {

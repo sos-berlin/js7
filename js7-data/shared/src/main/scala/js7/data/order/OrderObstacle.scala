@@ -18,7 +18,7 @@ object OrderObstacle
   val jobParallelismLimitReached: OrderObstacle =
     JobParallelismLimitReached
 
-  final case object WaitingForCommand extends OrderObstacle
+  case object WaitingForCommand extends OrderObstacle
 
   sealed trait WaitingForTime extends OrderObstacle
   {
@@ -31,10 +31,10 @@ object OrderObstacle
   final case class WaitingForOtherTime(until: Timestamp)
   extends WaitingForTime
 
-  final case object JobParallelismLimitReached
+  case object JobParallelismLimitReached
   extends OrderObstacle
 
   type WorkflowSuspended = WorkflowSuspended.type
-  final case object WorkflowSuspended
+  case object WorkflowSuspended
   extends OrderObstacle
 }

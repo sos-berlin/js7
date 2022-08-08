@@ -94,7 +94,7 @@ object CalendarExecutor
     def next(zoned: ZonedDateTime) = zoned.plusDays(7)
   }
 
-  private final object DateOfWeekBasedYearQuery extends TemporalQuery[LocalDate]()
+  private object DateOfWeekBasedYearQuery extends TemporalQuery[LocalDate]()
   {
     def queryFrom(temporal: TemporalAccessor): LocalDate =
       if (!temporal.isSupported(WEEK_OF_WEEK_BASED_YEAR)

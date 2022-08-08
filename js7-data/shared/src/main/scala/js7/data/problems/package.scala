@@ -20,7 +20,7 @@ package object problems
     override val httpStatusCode = 401/*Unauthorized*/
   }
 
-  final object UnreachableOrderPositionProblem extends Problem.ArgumentlessCoded
+  object UnreachableOrderPositionProblem extends Problem.ArgumentlessCoded
 
   case object CannotResumeOrderProblem extends Problem.ArgumentlessCoded
 

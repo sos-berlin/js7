@@ -13,6 +13,6 @@ object ProxyEvent
   final case class ProxyCoupled(after: EventId)
   extends ProxyEvent
 
-  final case object ProxyDecoupled
+  case object ProxyDecoupled
   extends ProxyEvent
 }

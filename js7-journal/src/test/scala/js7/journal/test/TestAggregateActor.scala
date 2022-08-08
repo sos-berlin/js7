@@ -150,26 +150,26 @@ private[journal] object TestAggregateActor
 
   object Input {
     final case class RecoverFromSnapshot(snapshot: TestAggregate)
-    final case object Get
+    case object Get
   }
 
   object Output {
-    final case object Ready
+    case object Ready
   }
 
   sealed trait Command
-  final object Command {
+  object Command {
     sealed trait IsAsync
     final case class Disturb(int: Int) extends Command
-    final case object DisturbAndRespond extends Command
+    case object DisturbAndRespond extends Command
     final case class Add(string: String) extends Command
     final case class Append(string: String) extends Command
     case object AppendEmpty extends Command
-    final case object AcceptEarly extends Command
+    case object AcceptEarly extends Command
     final case class AppendAsync(string: String) extends Command with IsAsync
     final case class AppendNested(string: String) extends Command
     final case class AppendNestedAsync(string: String) extends Command with IsAsync
-    final case object Remove extends Command
+    case object Remove extends Command
   }
 
   object Response {

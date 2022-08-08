@@ -478,7 +478,7 @@ object ValueType
         Left(DecodingFailure("ValueType expected", c.history))
     }
 
-  final case object MissingValueProblem extends Problem.ArgumentlessCoded
+  case object MissingValueProblem extends Problem.ArgumentlessCoded
 
   final case class UnexpectedValueTypeProblem(valueType: ValueType, value: Value)
   extends Problem.Coded {

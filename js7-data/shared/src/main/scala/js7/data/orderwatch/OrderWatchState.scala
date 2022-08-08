@@ -269,7 +269,7 @@ object OrderWatchState extends UnsignedSimpleItemState.Companion[OrderWatchState
     queued: Option[VanishedOrArised] = None)
   extends ArisedOrHasOrder
 
-  final case object Vanished
+  case object Vanished
   extends VanishedOrArised
 
   object VanishedOrArised {

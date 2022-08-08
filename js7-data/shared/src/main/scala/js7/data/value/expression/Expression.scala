@@ -609,7 +609,7 @@ object Expression
 
   val LastReturnCode: NamedValue = NamedValue("returnCode")
 
-  final case object OrderCatchCount extends NumericExpression {
+  case object OrderCatchCount extends NumericExpression {
     def precedence = Precedence.Factor
     def subexpressions = Nil
     override def isPure = false

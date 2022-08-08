@@ -24,7 +24,7 @@ object AgentRefStateEvent
 
   /** Controller is coupled with Agent, ready for receiving events. */
   type AgentCoupled = AgentCoupled.type
-  final case object AgentCoupled extends AgentRefStateEvent
+  case object AgentCoupled extends AgentRefStateEvent
 
   final case class AgentCouplingFailed(problem: Problem) extends AgentRefStateEvent
 

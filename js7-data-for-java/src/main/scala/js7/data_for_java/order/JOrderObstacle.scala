@@ -22,7 +22,7 @@ object JOrderObstacle
     }
 
   type WaitingForCommand = WaitingForCommand.type
-  final case object WaitingForCommand
+  case object WaitingForCommand
   extends JOrderObstacle
 
   sealed trait WaitingForTime extends JOrderObstacle
