@@ -20,7 +20,7 @@ object BoardPathExpressionParser
     checkedParse(expr, noticeExpression)
 
   private val expectNotice: Parser[ExpectNotice] =
-    path(BoardPath).map(ExpectNotice)
+    path(BoardPath).map(ExpectNotice(_))
 
   private val factor: Parser[BoardPathExpression] =
     inParentheses(noticeExpression) | expectNotice

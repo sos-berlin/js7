@@ -29,7 +29,7 @@ final class ConvertibleMultiPartialFunctionTest extends AnyFreeSpec {
 
   "as X" in {
     case class X(s: String)
-    assert(convertible("KEY" -> List("111")).as[X]("KEY")(As(X)) == X("111"))
+    assert(convertible("KEY" -> List("111")).as[X]("KEY")(As(X(_))) == X("111"))
   }
 
   "optionAs" in {

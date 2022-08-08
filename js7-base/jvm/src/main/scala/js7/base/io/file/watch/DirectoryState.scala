@@ -37,7 +37,7 @@ final case class DirectoryState(fileToEntry: Map[Path, Entry])
 
     val updatedState = copy(fileToEntry -- deleted ++ added)
     val reducedEvents = diffTo(updatedState) ++
-      modified.filter(updatedState.fileToEntry.keySet).map(FileModified)
+      modified.filter(updatedState.fileToEntry.keySet).map(FileModified(_))
     reducedEvents -> updatedState
   }
 
@@ -78,7 +78,7 @@ object DirectoryState
   final case class Entry(path: Path)
 
   private def diffToDirectoryEvents(diff: MapDiff[Path, Entry]): View[DirectoryEvent] =
-    diff.deleted.view.map(FileDeleted) ++
-      diff.updated.keys.view.map(FileModified) ++
-      diff.added.keySet.view.map(FileAdded)
+    diff.deleted.view.map(FileDeleted(_)) ++
+      diff.updated.keys.view.map(FileModified(_)) ++
+      diff.added.keySet.view.map(FileAdded(_))
 }

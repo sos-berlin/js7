@@ -27,7 +27,7 @@ final class ConvertiblePartialFunctionTest extends AnyFreeSpec {
 
   "as X" in {
     case class X(s: String)
-    assert(convertible("KEY" -> "111").as[X]("KEY")(As(X)) == X("111"))
+    assert(convertible("KEY" -> "111").as[X]("KEY")(As(X(_))) == X("111"))
   }
 
   "checkedAs" in {
