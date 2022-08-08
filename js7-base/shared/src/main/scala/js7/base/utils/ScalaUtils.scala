@@ -684,6 +684,9 @@ object ScalaUtils
   def implicitTypeTag[A](implicit A: Tag[A]): LightTypeTag =
     A.tag
 
+  def implicitTypeRepr[A](implicit A: Tag[A]): String =
+    A.tag.repr.replace("[=", "[")
+
   private val removePackageRegex = """^([a-z0-9]*\.)*""".r
 
   private[utils] def simpleClassName[A](name: String): String = {
