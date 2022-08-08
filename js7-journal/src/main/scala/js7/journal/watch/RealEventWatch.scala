@@ -246,7 +246,7 @@ trait RealEventWatch extends EventWatch
             Task.pure(o)
         })
 
-      untilNonEmpty(after)
+    untilNonEmpty(after)
   }
 
   private def collectEventsSince[A](

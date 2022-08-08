@@ -55,33 +55,34 @@ final class OrderEventSource(state: StateView)
   : Checked[Seq[KeyedEvent[OrderActorEvent]]] = {
     def ifDefinedElse(o: Option[List[OrderActorEvent]], orElse: Checked[List[KeyedEvent[OrderActorEvent]]]) =
       o.fold(orElse)(events => Right(events.map(order.id <-: _)))
-      ifDefinedElse(awokeEvent(order).map(_ :: Nil),
-        joinedEvent(order) match {
-          case Left(problem) => Left(problem)
-          case Right(Some(event)) => Right(event :: Nil)
-          case Right(None) =>
-            if (state.isOrderAtStopPosition(order))
-              executorService.finishExecutor.toEvents(Finish(), order, state)
-            else
-              executorService.toEvents(instruction(order.workflowPosition), order, state)
-                // Multiple returned events are expected to be independent
-                // and are applied to the same idToOrder !!!
-                .flatMap(_
-                  .flatTraverse {
-                    case orderId <-: (moved: OrderMoved) =>
-                      applyMoveInstructions(order, moved)
-                        .map(event => (orderId <-: event) :: Nil)
 
-                    case orderId <-: OrderFailedIntermediate_(outcome, uncatchable) =>
-                      // OrderFailedIntermediate_ is used internally only
-                      assertThat(orderId == order.id)
-                      failOrDetach(order, outcome, uncatchable)
-                        .map(_.map(orderId <-: _))
+    ifDefinedElse(awokeEvent(order).map(_ :: Nil),
+      joinedEvent(order) match {
+        case Left(problem) => Left(problem)
+        case Right(Some(event)) => Right(event :: Nil)
+        case Right(None) =>
+          if (state.isOrderAtStopPosition(order))
+            executorService.finishExecutor.toEvents(Finish(), order, state)
+          else
+            executorService.toEvents(instruction(order.workflowPosition), order, state)
+              // Multiple returned events are expected to be independent
+              // and are applied to the same idToOrder !!!
+              .flatMap(_
+                .flatTraverse {
+                  case orderId <-: (moved: OrderMoved) =>
+                    applyMoveInstructions(order, moved)
+                      .map(event => (orderId <-: event) :: Nil)
 
-                      case o => Right(o :: Nil)
-                    })
-          })
-      .flatMap(checkEvents)
+                  case orderId <-: OrderFailedIntermediate_(outcome, uncatchable) =>
+                    // OrderFailedIntermediate_ is used internally only
+                    assertThat(orderId == order.id)
+                    failOrDetach(order, outcome, uncatchable)
+                      .map(_.map(orderId <-: _))
+
+                    case o => Right(o :: Nil)
+                  })
+        })
+    .flatMap(checkEvents)
   }
 
   private def checkEvents(keyedEvents: Seq[KeyedEvent[OrderActorEvent]]) = {

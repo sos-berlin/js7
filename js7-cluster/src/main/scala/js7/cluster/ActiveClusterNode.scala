@@ -401,7 +401,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
             fetchingAcks := false
           })
           .runToFuture
-        fetchingAcksCancelable := future
+      fetchingAcksCancelable := future
       future.onComplete {
         case Success(Left(_: MissingPassiveClusterNodeHeartbeatProblem)) =>
         case tried =>
