@@ -382,7 +382,6 @@ lazy val `js7-data-for-java` = project
       "io.vavr" % "vavr" % vavrVersion ++
       "io.projectreactor" % "reactor-core" % reactorVersion ++
       "org.scalatest" %% "scalatest" % scalaTestVersion % "test" ++
-      "org.scala-lang.modules" %% "scala-java8-compat" % scalaJava8Version ++
       hamcrest % "test" ++
       log4j % "test" ++
       lmaxDisruptor % "test"
@@ -486,7 +485,6 @@ lazy val `js7-proxy` = crossProject(JSPlatform, JVMPlatform)
     libraryDependencies ++= {
       import Dependencies._
       akkaHttp ++
-      "org.scala-lang.modules" %% "scala-java8-compat" % scalaJava8Version ++
       hamcrest % "test" ++
       log4j % "test" ++
       lmaxDisruptor % "test"

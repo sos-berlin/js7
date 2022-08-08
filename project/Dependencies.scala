@@ -18,7 +18,6 @@ object Dependencies
   val fastparseVersion = "2.2.4"
   val circeVersion = "0.14.2"
   val circeGenericExtrasVersion = "0.14.1"
-  val scalaJava8Version = "1.0.0"
   val scalaTestVersion = "3.2.12"
   val scalaTestCheckVersion = "3.2.12.0"
   val scalaCheckVersion= "1.16.0"
