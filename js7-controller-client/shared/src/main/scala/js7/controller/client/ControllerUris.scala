@@ -24,12 +24,12 @@ final class ControllerUris private(controllerUri: Uri)
 
   val session = api("/session")
 
-  def events[E <: Event: ClassTag](request: EventRequest[E],
+  def events[E <: Event](request: EventRequest[E],
     heartbeat: Option[FiniteDuration] = None)
   : Uri =
     events_[E]("/event", request, heartbeat = heartbeat)
 
-  private def events_[E <: Event: ClassTag](
+  private def events_[E <: Event](
     path: String,
     request: EventRequest[E],
     heartbeat: Option[FiniteDuration])

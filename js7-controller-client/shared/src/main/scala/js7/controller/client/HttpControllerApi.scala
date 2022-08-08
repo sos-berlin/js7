@@ -23,7 +23,6 @@ import monix.eval.Task
 import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.*
-import scala.reflect.ClassTag
 
 trait HttpControllerApi
 extends EventApi with ClusterNodeApi with HttpSessionApi with HasIsIgnorableStackTrace
@@ -102,7 +101,7 @@ extends EventApi with ClusterNodeApi with HttpSessionApi with HasIsIgnorableStac
       uris.events(request),
       responsive = true)
 
-  final def eventIdObservable[E <: Event: ClassTag](
+  final def eventIdObservable[E <: Event](
     timeout: Option[FiniteDuration] = None,
     heartbeat: Option[FiniteDuration] = None)
   : Task[Observable[EventId]] =

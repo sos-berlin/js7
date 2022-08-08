@@ -7,7 +7,6 @@ import js7.data.event.{Event, EventId, JournalPosition}
 import monix.eval.Task
 import monix.reactive.Observable
 import scala.concurrent.duration.FiniteDuration
-import scala.reflect.ClassTag
 
 trait ClusterNodeApi
 extends SessionApi.HasUserAndPassword
@@ -25,7 +24,7 @@ with HasIsIgnorableStackTrace
     returnAck: Boolean = false)
   : Task[Observable[ByteArray]]
 
-  def eventIdObservable[E <: Event: ClassTag](
+  def eventIdObservable[E <: Event](
     timeout: Option[FiniteDuration] = None,
     heartbeat: Option[FiniteDuration] = None)
   : Task[Observable[EventId]]

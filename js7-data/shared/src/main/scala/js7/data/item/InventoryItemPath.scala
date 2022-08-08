@@ -8,7 +8,7 @@ import js7.base.generic.GenericString
 import js7.base.problem.{Checked, Problem}
 import js7.base.standards.Js7PathValidating
 import js7.base.utils.Collections.implicits.RichIterable
-import js7.base.utils.ScalaUtils.{checkedCast, implicitClass}
+import js7.base.utils.ScalaUtils.checkedCast
 import js7.data.item.InventoryItemPath.*
 import scala.reflect.ClassTag
 
@@ -46,8 +46,6 @@ object InventoryItemPath
 
     def sourceTypeToFilenameExtension: Map[SourceType, String] =
       defaultSourceTypeToFilenameExtension
-
-    final val itemPathClass: Class[P] = implicitClass[P]
 
     /** Converts a relative file path with normalized slahes (/) to a `VersionedItemPath`. */
     final def fromFile(normalized: String): Option[Checked[(P, SourceType)]] =

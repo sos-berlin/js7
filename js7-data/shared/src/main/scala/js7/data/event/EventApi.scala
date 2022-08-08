@@ -8,7 +8,6 @@ import js7.base.web.{HttpClient, Uri}
 import js7.data.cluster.ClusterNodeState
 import monix.eval.Task
 import monix.reactive.Observable
-import scala.reflect.ClassTag
 
 trait EventApi
 extends SessionApi
@@ -20,7 +19,7 @@ with HasIsIgnorableStackTrace
 
   def clusterNodeState: Task[ClusterNodeState]
 
-  def eventObservable[E <: Event: ClassTag](request: EventRequest[E])
+  def eventObservable[E <: Event](request: EventRequest[E])
     (implicit kd: Decoder[KeyedEvent[E]])
   : Task[Observable[Stamped[KeyedEvent[E]]]]
 
