@@ -83,8 +83,9 @@ object X509Cert
     "1.3.6.1.5.5.7.3.1" -> "serverAuth",
     "1.3.6.1.5.5.7.3.2" -> "clientAuth")
 
-  private def subjectAlternativeNamesToString(collection: java.util.Collection[java.util.List[?]]): String =
-    collection.asScala.map(_.asScala.to(Array) match {
+  private def subjectAlternativeNamesToString(collection: java.util.Collection[java.util.List[?]])
+  : String =
+    collection.asScala.map(_.asScala.toArray[Any] match {
       case Array(i, value) =>
         (i match {
           case i: java.lang.Integer => subjectAlternativeKeys.getOrElse(i, i.toString)

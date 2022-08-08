@@ -71,10 +71,11 @@ final class ExceptionsTest extends AnyFreeSpec {
   }
 
   "andRethrow" in {
-    intercept[IllegalArgumentException] {
-      try throw new IllegalArgumentException
-      catch andRethrow {}
-    } .getSuppressed shouldEqual Array()
+    assert(
+      intercept[IllegalArgumentException] {
+        try throw new IllegalArgumentException
+        catch andRethrow {}
+      }.getSuppressed.isEmpty)
     intercept[IllegalArgumentException] {
       try throw new IllegalArgumentException
       catch andRethrow { throw new IllegalStateException }
