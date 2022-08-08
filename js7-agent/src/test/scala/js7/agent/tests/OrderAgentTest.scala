@@ -97,10 +97,17 @@ final class OrderAgentTest extends AnyFreeSpec
 
           attachOrder(signedSimpleWorkflow) shouldEqual Right(AgentCommand.Response.Accepted)
 
-          EventRequest.singleClass[Event](timeout = Some(10.s))
-            .repeat(eventRequest => agentClient.tearableEventSeq(eventRequest).map(_.orThrow).runToFuture) {
-              case Stamped(_, _, KeyedEvent(order.id, OrderDetachable)) =>
-            }
+          // Await OrderDetachable
+          agentClient
+            .eventObservable(EventRequest.singleClass[Event](timeout = Some(10.s)))
+            .map(_.orThrow)
+            .map(_.find {
+                case Stamped(_, _, KeyedEvent(order.id, OrderDetachable)) =>  true
+                case _ => false
+              })
+            .flatMap(_.headL)
+            .await(99.s)
+
           val processedOrder = agent.currentAgentState().idToOrder(order.id)
           assert(processedOrder == toExpectedOrder(order))
           assert(agentClient.commandExecute(DetachOrder(order.id)).await(99.s) ==

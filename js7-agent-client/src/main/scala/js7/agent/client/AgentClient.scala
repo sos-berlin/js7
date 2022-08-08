@@ -13,11 +13,10 @@ import js7.base.problem.Checked
 import js7.base.session.SessionApi
 import js7.base.web.Uri
 import js7.common.http.AkkaHttpClient
-import js7.data.event.{Event, EventRequest, KeyedEvent, Stamped, TearableEventSeq}
+import js7.data.event.{Event, EventRequest, KeyedEvent, Stamped}
 import js7.data.session.HttpSessionApi
 import monix.eval.Task
 import monix.reactive.Observable
-import org.jetbrains.annotations.TestOnly
 
 /**
  * Client for JS7 Agent.
@@ -50,19 +49,6 @@ with SessionApi.HasUserAndPassword
       getDecodedLinesObservable[Stamped[KeyedEvent[Event]]](
         agentUris.controllersEvents(request),
         responsive = true))
-
-  @TestOnly
-  final def tearableEventSeq(request: EventRequest[Event])
-  : Task[Checked[TearableEventSeq[Seq, KeyedEvent[Event]]]] = {
-    //TODO Use Akka http connection level request with Akka streams and .withIdleTimeout()
-    // See https://gist.github.com/burakbala/49617745ead702b4c83cf89699c266ff
-    //val timeout = request match {
-    //  case o: EventRequest[?] => o.timeout + 10.s
-    //  case _ => akka configured default value
-    //}
-    liftProblem(
-      get[TearableEventSeq[Seq, KeyedEvent[Event]]](agentUris.controllersEvents(request)))
-  }
 }
 
 object AgentClient

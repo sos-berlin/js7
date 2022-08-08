@@ -16,7 +16,6 @@ import izumi.reflect.Tag
 import js7.base.auth.{UserId, ValidUserPermission}
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.log.Logger
-import js7.base.monixutils.MonixBase.closeableIteratorToObservable
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Problem
 import js7.base.problem.Problems.ShuttingDownProblem
@@ -25,14 +24,10 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.FutureCompletion
 import js7.base.utils.FutureCompletion.syntax.*
-import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.common.akkahttp.AkkaHttpServerUtils.{accept, completeTask}
+import js7.common.akkahttp.AkkaHttpServerUtils.accept
 import js7.common.akkahttp.ByteSequenceChunkerObservable.syntax.*
-import js7.common.akkahttp.CirceJsonSupport.jsonMarshaller
-import js7.common.akkahttp.EventSeqStreamingSupport.NonEmptyEventSeqJsonStreamingSupport
 import js7.common.akkahttp.StandardMarshallers.*
-import js7.common.akkahttp.html.HtmlDirectives.htmlPreferred
 import js7.common.akkahttp.web.session.RouteProvider
 import js7.common.akkautils.ByteStrings.syntax.*
 import js7.common.http.JsonStreamingSupport.*
@@ -99,39 +94,15 @@ trait GenericEventRoute extends RouteProvider
               onSuccess(eventWatch.whenStarted) { eventWatch =>
                 for (o <- waitingSince) logger.debug("Journal has become ready after " +
                   o.elapsed.pretty + ", continuing event web service")
-                htmlPreferred {
+                accept(`application/x-ndjson`) {
+                  implicit val s = NdJsonStreamingSupport
                   Route.seal(
-                    oneShot(eventWatch))
-                } ~
-                  accept(`application/x-ndjson`) {
-                    implicit val s = NdJsonStreamingSupport
-                    Route.seal(
-                      jsonSeqEvents(eventWatch))
-                  } ~
-                  Route.seal(
-                    oneShot(eventWatch))
+                    jsonSeqEvents(eventWatch))
+                }
               }
             }
           }
         }
-      }
-
-    private def oneShot(eventWatch: EventWatch): Route =
-      eventDirective(eventWatch.lastAddedEventId) { request =>
-        intelliJuseImport(jsonMarshaller)
-        completeTask(
-          eventWatch.when[Event](request, predicate = isRelevantEvent).map {
-            case o: TearableEventSeq.Torn =>
-              ToResponseMarshallable(o: TearableEventSeq[Seq, KeyedEvent[Event]])
-
-            case o: EventSeq.Empty =>
-              ToResponseMarshallable(o: TearableEventSeq[Seq, KeyedEvent[Event]])
-
-            case EventSeq.NonEmpty(events) =>
-              implicit val x = NonEmptyEventSeqJsonStreamingSupport
-              observableToMarshallable(
-                closeableIteratorToObservable(events))
-          })
       }
 
     private def jsonSeqEvents(eventWatch: EventWatch)

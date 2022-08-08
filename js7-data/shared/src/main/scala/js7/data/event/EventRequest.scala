@@ -4,10 +4,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.EventRequest.*
-import org.jetbrains.annotations.TestOnly
-import scala.annotation.tailrec
 import scala.concurrent.duration.*
-import scala.concurrent.{Await, Future}
 import scala.reflect.ClassTag
 
 /**
@@ -37,31 +34,6 @@ final case class EventRequest[E <: Event](
 
   def matchesClass(clazz: Class[? <: Event]): Boolean =
     eventClasses.exists(_ isAssignableFrom clazz)
-
-  @TestOnly
-  /**
-    * Helper to repeatedly fetch events until a condition (PartialFunction) is met.
-    * Blocking - for testing.
-    */
-  @tailrec
-  def repeat[A](
-    fetchEvents: EventRequest[E] => Future[TearableEventSeq[Seq, KeyedEvent[E]]])
-    (collect: PartialFunction[Stamped[KeyedEvent[E]], A])
-  : Seq[A] = {
-    val waitTimeout = timeout.map(_ + 10.s)
-    Await.result(fetchEvents(this), waitTimeout getOrElse Duration.Inf) match {
-      case EventSeq.NonEmpty(stampeds) =>
-        stampeds.collect(collect) match {
-          case Seq() => copy[E](after = stampeds.last.eventId).repeat(fetchEvents)(collect)
-          case o => o
-        }
-      case EventSeq.Empty(lastEventId) =>
-        copy[E](after = lastEventId).repeat(fetchEvents)(collect)
-
-      case torn: TearableEventSeq.Torn =>
-        sys.error(s"Unexpected $torn")
-    }
-  }
 }
 
 object EventRequest

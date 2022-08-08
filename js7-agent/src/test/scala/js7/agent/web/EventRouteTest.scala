@@ -17,7 +17,7 @@ import js7.common.guice.GuiceImplicits.*
 import js7.data.agent.Problems.{AgentPathMismatchProblem, AgentRunIdMismatchProblem}
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
-import js7.data.event.{Event, EventId, EventRequest, EventSeq, EventSeqTornProblem, JournalEvent, JournalId}
+import js7.data.event.{Event, EventId, EventRequest, EventSeqTornProblem, JournalEvent, JournalId}
 import js7.data.problems.UnknownEventIdProblem
 import js7.data.subagent.SubagentId
 import js7.journal.files.JournalFiles.listJournalFiles
@@ -144,9 +144,12 @@ final class EventRouteTest extends AnyFreeSpec with AgentTester
   }
 
   "Continue fetching events" in {
-    val Right(EventSeq.Empty(lastEventId)) =
-      agentClient.tearableEventSeq(EventRequest.singleClass[Event](after = eventId)).await(99.s)
-    assert(lastEventId == eventId)
+    val events = agentClient
+      .eventObservable(EventRequest.singleClass[Event](after = eventId))
+        .map(_.orThrow)
+        .flatMap(_.toListL)
+        .await(99.s)
+    assert(events.isEmpty)
   }
 
   "Torn EventSeq" in {
@@ -159,9 +162,12 @@ final class EventRouteTest extends AnyFreeSpec with AgentTester
   "Future event (not used by Controller)" in {
     // Controller does not use this feature provided by GenericEventRoute. We test anyway.
     val futureEventId = eventId + 1
-    val Right(EventSeq.Empty(lastEventId)) =
-      agentClient.tearableEventSeq(EventRequest.singleClass[Event](after = futureEventId)).await(99.s)
-    assert(lastEventId == eventId)
+    val events = agentClient
+      .eventObservable(EventRequest.singleClass[Event](after = futureEventId))
+      .map(_.orThrow)
+      .flatMap(_.toListL)
+      .await(99.s)
+    assert(events.isEmpty)
   }
 }
 

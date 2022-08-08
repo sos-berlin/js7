@@ -1,7 +1,6 @@
 package js7.controller.web.controller.api
 
 import akka.http.scaladsl.model.ContentType
-import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.{BadRequest, OK}
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.testkit.RouteTestTimeout
@@ -10,13 +9,17 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
+import js7.base.utils.ByteSequenceToLinesObservable
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
-import js7.common.akkahttp.CirceJsonSupport.jsonUnmarshaller
+import js7.common.akkautils.ByteStrings.syntax.*
 import js7.common.http.AkkaHttpUtils.RichHttpResponse
+import js7.common.http.JsonStreamingSupport
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
+import js7.common.http.StreamingSupport.ObservableAkkaSource
 import js7.controller.web.controller.api.EventRouteTest.*
 import js7.controller.web.controller.api.test.RouteTester
-import js7.data.event.{EventId, EventSeq, KeyedEvent, Stamped, TearableEventSeq}
+import js7.data.event.{EventId, KeyedEvent, Stamped}
 import js7.data.order.OrderEvent.{OrderAdded, OrderFinished}
 import js7.data.order.{OrderEvent, OrderId}
 import js7.data.workflow.WorkflowPath
@@ -25,8 +28,8 @@ import js7.journal.web.EventDirectives
 import monix.execution.Scheduler
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future
-import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.*
+import scala.concurrent.duration.Deadline.now
 
 /**
   * @author Joacim Zschimmer
@@ -62,15 +65,11 @@ final class EventRouteTest extends AnyFreeSpec with RouteTester with EventRoute
   }
 
   for (uri <- List(
-    "/event?return=OrderEvent&timeout=60&after=0",
-    "/event?timeout=60&after=0"))
+    "/event?return=OrderEvent&timeout=0&after=0",
+    "/event?timeout=0&after=0"))
   {
     s"$uri" in {
-      Get(uri) ~> Accept(`application/json`) ~> route ~> check {
-        if (status != OK) fail(s"$status - ${responseEntity.toStrict(timeout).value}")
-        val EventSeq.NonEmpty(stampeds) = responseAs[TearableEventSeq[Seq, KeyedEvent[OrderEvent]]]
-        assert(stampeds == TestEvents)
-      }
+      assert(getEvents(uri) == TestEvents)
     }
   }
 
@@ -154,12 +153,12 @@ final class EventRouteTest extends AnyFreeSpec with RouteTester with EventRoute
     }
 
     "/event?after=180 no more events" in {
-      assert(getEventSeq("/event?after=180") == EventSeq.Empty(180L))
+      assert(getEvents("/event?after=180&timeout=0").isEmpty)
     }
 
     "/event?after=180 no more events, with timeout" in {
       val runningSince = now
-      assert(getEventSeq("/event?after=180&timeout=0.2") == EventSeq.Empty(180L))
+      assert(getEvents("/event?after=180&timeout=0.2").isEmpty)
       assert(runningSince.elapsed >= 200.millis)
     }
 
@@ -169,7 +168,7 @@ final class EventRouteTest extends AnyFreeSpec with RouteTester with EventRoute
       scheduler.scheduleOnce(100.millis) {
         eventCollector.addStamped(stamped)
       }
-      val stampedSeq = getEvents("/event?timeout=30&after=180")
+      val stampedSeq = getEvents("/event?timeout=1&after=180")
       assert(stampedSeq == stamped :: Nil)
       assert(runningSince.elapsed >= 100.millis + EventDirectives.DefaultDelay)
     }
@@ -180,7 +179,7 @@ final class EventRouteTest extends AnyFreeSpec with RouteTester with EventRoute
       scheduler.scheduleOnce(100.millis) {
         eventCollector.addStamped(stamped)
       }
-      val stampedSeq = getEvents("/event?delay=0&timeout=30&after=190")
+      val stampedSeq = getEvents("/event?delay=0&timeout=1&after=190")
       assert(stampedSeq == stamped :: Nil)
       assert(runningSince.elapsed >= 100.millis + EventDirectives.MinimumDelay)
     }
@@ -191,7 +190,7 @@ final class EventRouteTest extends AnyFreeSpec with RouteTester with EventRoute
       scheduler.scheduleOnce(100.millis) {
         eventCollector.addStamped(stamped)
       }
-      val stampedSeq = getEvents("/event?delay=0.2&timeout=30&after=200")
+      val stampedSeq = getEvents("/event?delay=0.2&timeout=1&after=200")
       assert(stampedSeq == stamped :: Nil)
       assert(runningSince.elapsed >= 100.millis + 200.millis)
     }
@@ -200,18 +199,15 @@ final class EventRouteTest extends AnyFreeSpec with RouteTester with EventRoute
   }
 
   private def getEvents(uri: String): Seq[Stamped[KeyedEvent[OrderEvent]]] =
-    getEventSeq(uri) match {
-      case EventSeq.NonEmpty(stampedSeq) =>
-        assert(stampedSeq.nonEmpty)
-        stampedSeq
-
-      case x => fail(s"Unexpected response: $x")
-    }
-
-  private def getEventSeq(uri: String): TearableEventSeq[Seq, KeyedEvent[OrderEvent]] =
-    Get(uri) ~> Accept(`application/json`) ~> route ~> check {
+    Get(uri) ~> Accept(`application/x-ndjson`) ~> route ~> check {
       if (status != OK) fail(s"$status - ${responseEntity.toStrict(timeout).value}")
-      responseAs[TearableEventSeq[Seq, KeyedEvent[OrderEvent]]]
+      implicit val x = JsonStreamingSupport.NdJsonStreamingSupport
+      response.entity.withoutSizeLimit.dataBytes
+        .toObservable
+        .flatMap(new ByteSequenceToLinesObservable)
+        .map(_.parseJsonAs[Stamped[KeyedEvent[OrderEvent]]].orThrow)
+        .toListL
+        .await(99.s)
     }
 }
 
