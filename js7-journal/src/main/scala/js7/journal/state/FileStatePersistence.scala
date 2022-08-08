@@ -4,6 +4,7 @@ import akka.actor.{ActorRef, ActorRefFactory}
 import akka.pattern.ask
 import akka.util.Timeout
 import com.softwaremill.diffx
+import com.softwaremill.tagging.{@@, Tagger}
 import izumi.reflect.Tag
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.*
@@ -24,8 +25,6 @@ import js7.journal.{CommitOptions, EventIdGenerator, JournalActor, StampedKeyedE
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.{Future, Promise}
-import shapeless.tag
-import shapeless.tag.@@
 
 // TODO Lock for NoKey is to wide. Restrict to a set of Event superclasses, like ClusterEvent, ControllerEvent?
 //  Der Aufrufer kann sich um die Sperren uns dessen Granularität kümmern.
@@ -233,9 +232,12 @@ object FileStatePersistence
       timeout: akka.util.Timeout)
   : FileStatePersistence[S] = {
     val journalActorStopped = Promise[JournalActor.Stopped]()
-    val journalActor = tag[JournalActor.type](actorRefFactory.actorOf(
-      JournalActor.props[S](journalMeta, journalConf, keyedEventBus, scheduler, eventIdGenerator, journalActorStopped),
-      "Journal"))
+    val journalActor = actorRefFactory
+      .actorOf(
+        JournalActor.props[S](journalMeta, journalConf, keyedEventBus, scheduler,
+          eventIdGenerator, journalActorStopped),
+        "Journal")
+      .taggedWith[JournalActor.type]
 
     new FileStatePersistence[S](recoveredJournalId, eventWatch, journalActor, journalConf,
       journalActorStopped.future.map(_ => ()))

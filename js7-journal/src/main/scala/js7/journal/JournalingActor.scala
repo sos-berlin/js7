@@ -1,6 +1,7 @@
 package js7.journal
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Stash}
+import com.softwaremill.tagging.@@
 import js7.base.circeutils.typed.TypedJsonCodec.typeName
 import js7.base.generic.Accepted
 import js7.base.log.{CorrelId, Logger}
@@ -24,7 +25,6 @@ import scala.concurrent.duration.Deadline.now
 import scala.concurrent.{Future, Promise}
 import scala.util.Success
 import scala.util.control.NonFatal
-import shapeless.tag.@@
 
 /**
   * @author Joacim Zschimmer

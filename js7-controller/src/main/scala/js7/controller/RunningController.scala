@@ -10,6 +10,7 @@ import com.google.inject.util.Modules
 import com.google.inject.util.Modules.EMPTY_MODULE
 import com.google.inject.{Guice, Injector, Module}
 import com.softwaremill.diffx.generic.auto.*
+import com.softwaremill.tagging.{@@, Tagger}
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Path
 import js7.base.auth.{SimpleUser, UserAndPassword}
@@ -69,8 +70,6 @@ import scala.concurrent.duration.*
 import scala.concurrent.{Await, Future, Promise}
 import scala.util.control.NoStackTrace
 import scala.util.{Failure, Success}
-import shapeless.tag
-import shapeless.tag.@@
 
 /**
  * JS7 Controller.
@@ -469,7 +468,7 @@ object RunningController
           val termination = terminationPromise.future
             .andThen { case Failure(t) => logger.error(t.toStringWithCauses, t) }
             .andThen { case _ => closer.close() }  // Close automatically after termination
-          Right(OrderKeeperStarted(tag[ControllerOrderKeeper](actor), termination))
+          Right(OrderKeeperStarted(actor.taggedWith[ControllerOrderKeeper], termination))
       }
   }
 

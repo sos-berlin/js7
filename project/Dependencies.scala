@@ -1,3 +1,4 @@
+import sbt.CrossVersion.for3Use2_13
 import sbt._
 import scala.language.implicitConversions
 
@@ -28,7 +29,7 @@ object Dependencies
   val monocleVersion = "1.5.0"
   val scribeVersion = "3.6.7" // TODO "3.8.2"
   val scalaJsDomVersion = "2.2.0"
-  val shapelessVersion = "2.3.7"
+  val softwaremillTaggingVersion = "2.3.3"
   val diffxVersion = "0.7.1"
   val reactorVersion = "3.4.21"
   val vavrVersion = "0.10.4"
@@ -51,7 +52,7 @@ object Dependencies
                             "org.scalacheck" %% "scalacheck" % scalaCheckVersion :: Nil
   val scalaLogging        = "com.typesafe.scala-logging" %% "scala-logging" % "3.9.4" :: slf4j :: Nil
   val cats                = "org.typelevel" %% "cats-core" % catsVersion
-  val shapeless           = "com.chuusai" %% "shapeless" % shapelessVersion
+  val tagging             = "com.softwaremill.common" %% "tagging" % softwaremillTaggingVersion
   val diffx               = "com.softwaremill.diffx" %% "diffx-core" % diffxVersion
   val diffxScalaTest      = "com.softwaremill.diffx" %% "diffx-scalatest-should" % diffxVersion
 

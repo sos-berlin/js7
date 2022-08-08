@@ -515,7 +515,7 @@ lazy val `js7-core` = project
   .settings {
     import Dependencies._
     libraryDependencies ++=
-      shapeless ++
+      tagging ++
       diffx ++
       akkaHttpTestkit % "test" ++
       scalaTest % "test" ++
@@ -570,6 +570,7 @@ lazy val `js7-journal` = project
       akkaHttp ++
       akkaHttpTestkit % "test" ++
       guice ++
+      tagging ++
       diffx ++
       scalaTest % "test" ++
       scalaCheck % "test" ++

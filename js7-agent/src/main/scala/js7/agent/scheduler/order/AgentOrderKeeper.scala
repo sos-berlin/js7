@@ -2,6 +2,7 @@ package js7.agent.scheduler.order
 
 import akka.actor.{ActorRef, DeadLetterSuppression, Stash, Terminated}
 import akka.pattern.ask
+import com.softwaremill.tagging.{@@, Tagger}
 import java.time.ZoneId
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
@@ -58,12 +59,11 @@ import js7.subagent.director.SubagentKeeper
 import monix.eval.Task
 import monix.execution.{Cancelable, Scheduler}
 import scala.collection.mutable
-import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.*
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.{Await, Future, Promise}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
-import shapeless.tag
 
 /**
  * Keeper of one Controller's orders.
@@ -93,7 +93,8 @@ final class AgentOrderKeeper(
 
   override val supervisorStrategy = SupervisorStrategies.escalate
 
-  protected val journalActor = tag[JournalActor.type](persistence.journalActor: ActorRef)
+  protected val journalActor: ActorRef @@ JournalActor.type =
+    persistence.journalActor.taggedWith[JournalActor.type]
   protected def journalConf = conf.journalConf
 
   private var journalState = JournalState.empty

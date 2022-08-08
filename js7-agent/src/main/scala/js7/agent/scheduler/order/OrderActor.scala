@@ -2,6 +2,7 @@ package js7.agent.scheduler.order
 
 import akka.actor.{ActorRef, DeadLetterSuppression, Props, Status}
 import akka.pattern.pipe
+import com.softwaremill.tagging.@@
 import js7.agent.data.AgentState
 import js7.agent.scheduler.order.OrderActor.*
 import js7.base.generic.Completed
@@ -22,7 +23,6 @@ import js7.subagent.director.SubagentKeeper
 import monix.execution.Scheduler
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
-import shapeless.tag.@@
 
 /**
   * @author Joacim Zschimmer

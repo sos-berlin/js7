@@ -1,6 +1,7 @@
 package js7.journal.state
 
 import akka.actor.{ActorRef, Props}
+import com.softwaremill.tagging.@@
 import izumi.reflect.Tag
 import js7.base.log.CorrelId
 import js7.base.monixutils.MonixBase.promiseTask
@@ -15,7 +16,6 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.Promise
 import scala.util.{Failure, Success, Try}
-import shapeless.tag.@@
 
 private[state] final class StateJournalingActor[S <: JournaledState[S], E <: Event](
   currentState: => S,
