@@ -7,7 +7,6 @@ import js7.base.utils.CollectionsTest.*
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers.*
 import scala.collection.mutable
-import scala.language.reflectiveCalls
 
 final class CollectionsTest extends AnyFreeSpec
 {
@@ -81,8 +80,8 @@ final class CollectionsTest extends AnyFreeSpec
   }
 
   "mapValuesStrict" - {
-    def newF = new (Int => Int) {
-      var called = 0
+    var called = 0
+    def newF() = new (Int => Int) {
       def apply(i: Int) = {
         called += 1
         2 * i
@@ -90,11 +89,11 @@ final class CollectionsTest extends AnyFreeSpec
     }
 
     "mapValuesStrict is strict" in {
-      val f = newF
+      val f = newF()
       val a = Map(1 -> 10).mapValuesStrict(f)
-      assert(f.called == 1)
+      assert(called == 1)
       a(1)
-      assert(f.called == 1)
+      assert(called == 1)
     }
   }
 

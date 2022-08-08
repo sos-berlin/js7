@@ -2,7 +2,6 @@ package js7.base.utils
 
 import js7.base.utils.CloseableIteratorTest.*
 import org.scalatest.freespec.AnyFreeSpec
-import scala.language.reflectiveCalls
 
 /**
   * @author Joacim Zschimmer
@@ -103,7 +102,6 @@ final class CloseableIteratorTest extends AnyFreeSpec
     assert(a.closed && !b.closed)
     assert(!c.hasNext)
     assert(a.closed && b.closed)
-
   }
 
   "closeAtEnd is idempotent" in {
@@ -123,19 +121,19 @@ final class CloseableIteratorTest extends AnyFreeSpec
   }
 
   "fromCloseable" in {
+    var closed = false
+    val iterator = Iterator(1)
     val closeable = new AutoCloseable {
-      var closed = false
       def close() = closed = true
-      val iterator = Iterator(1)
     }
-    val closeableIterator = CloseableIterator.fromCloseable(closeable)(_.iterator)
-    assert(!closeable.closed)
+    val closeableIterator = CloseableIterator.fromCloseable(closeable)(_ => iterator)
+    assert(!closed)
 
     assert(closeableIterator.toList == 1 :: Nil)
-    assert(!closeable.closed)
+    assert(!closed)
 
     closeableIterator.close()
-    assert(closeable.closed)
+    assert(closed)
   }
 }
 

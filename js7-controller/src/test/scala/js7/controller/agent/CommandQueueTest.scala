@@ -1,6 +1,6 @@
 package js7.controller.agent
 
-import com.typesafe.scalalogging.{Logger as ScalaLogger}
+import com.typesafe.scalalogging.Logger as ScalaLogger
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.Batch
 import js7.base.log.Logger
@@ -22,7 +22,6 @@ import monix.execution.atomic.AtomicInt
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers.*
 import scala.collection.mutable
-import scala.language.reflectiveCalls
 
 /**
   * @author Joacim Zschimmer
@@ -30,15 +29,14 @@ import scala.language.reflectiveCalls
 final class CommandQueueTest extends AnyFreeSpec
 {
   "test" in {
+    val commandQueueSucceeded = mutable.Buffer[Seq[QueuedInputResponse]]()
+    val commandQueueFailed = mutable.Buffer[(Vector[Queueable], Problem)]()
     val commandQueue = new MyCommandQueue(logger, batchSize = 3) {
-      val succeeded = mutable.Buffer[Seq[QueuedInputResponse]]()
-      val failed = mutable.Buffer[(Vector[Queueable], Problem)]()
-
       protected def asyncOnBatchSucceeded(queuedInputResponses: Seq[QueuedInputResponse]) =
-        succeeded += queuedInputResponses
+        commandQueueSucceeded += queuedInputResponses
 
       protected def asyncOnBatchFailed(inputs: Vector[Queueable], problem: Problem) =
-        failed += ((inputs, problem))
+        commandQueueFailed += ((inputs, problem))
     }
 
     val expected = mutable.Buffer[Seq[QueuedInputResponse]]()
@@ -55,38 +53,38 @@ final class CommandQueueTest extends AnyFreeSpec
     assert(!ok)
 
     expected += toQueuedInputResponse(aOrder) :: Nil
-    waitForCondition(99.s, 10.ms) { commandQueue.succeeded == expected }
-    assert(commandQueue.succeeded == expected)
+    waitForCondition(99.s, 10.ms) { commandQueueSucceeded == expected }
+    assert(commandQueueSucceeded == expected)
 
     val twoOrders = toOrder("B") :: toOrder("C") :: Nil
     for (o <- twoOrders) commandQueue.enqueue(AgentDriver.Input.AttachOrder(o, TestAgentPath))
-    waitForCondition(99.s, 10.ms) { commandQueue.succeeded == expected }
-    assert(commandQueue.succeeded == expected)
+    waitForCondition(99.s, 10.ms) { commandQueueSucceeded == expected }
+    assert(commandQueueSucceeded == expected)
 
     // After the Agent has processed the Input, the two queued commands are sent as a Batch to the Agent
-    commandQueue.handleBatchSucceeded(commandQueue.succeeded.last) shouldEqual List(Input.AttachOrder(aOrder, TestAgentPath))
+    commandQueue.handleBatchSucceeded(commandQueueSucceeded.last) shouldEqual List(Input.AttachOrder(aOrder, TestAgentPath))
     expected += twoOrders map toQueuedInputResponse
-    waitForCondition(99.s, 10.ms) { commandQueue.succeeded == expected }
-    assert(commandQueue.succeeded == expected)
+    waitForCondition(99.s, 10.ms) { commandQueueSucceeded == expected }
+    assert(commandQueueSucceeded == expected)
 
     val fiveOrders = toOrder("D") :: toOrder("E") :: toOrder("F") :: toOrder("G") :: toOrder("H") :: Nil
     for (o <- fiveOrders) commandQueue.enqueue(AgentDriver.Input.AttachOrder(o, TestAgentPath))
     expected += fiveOrders take 1 map toQueuedInputResponse
-    waitForCondition(99.s, 10.ms) { commandQueue.succeeded == expected }
-    assert(commandQueue.succeeded == expected)
+    waitForCondition(99.s, 10.ms) { commandQueueSucceeded == expected }
+    assert(commandQueueSucceeded == expected)
 
     // After the Agent has processed the Input, three of the queued commands are sent as a Batch to the Agent
-    commandQueue.handleBatchSucceeded(commandQueue.succeeded.last) shouldEqual fiveOrders.take(1).map(o => Input.AttachOrder(o, TestAgentPath))
+    commandQueue.handleBatchSucceeded(commandQueueSucceeded.last) shouldEqual fiveOrders.take(1).map(o => Input.AttachOrder(o, TestAgentPath))
     expected += fiveOrders drop 1 take 3 map toQueuedInputResponse
-    waitForCondition(99.s, 10.ms) { commandQueue.succeeded == expected }
-    assert(commandQueue.succeeded == expected)
+    waitForCondition(99.s, 10.ms) { commandQueueSucceeded == expected }
+    assert(commandQueueSucceeded == expected)
 
     // Finally, the last queued Input is processed
-    commandQueue.handleBatchSucceeded(commandQueue.succeeded.last)
+    commandQueue.handleBatchSucceeded(commandQueueSucceeded.last)
     expected += fiveOrders drop 4 map toQueuedInputResponse
-    waitForCondition(99.s, 10.ms) { commandQueue.succeeded == expected }
-    assert(commandQueue.succeeded == expected)
-    assert(commandQueue.failed.isEmpty)
+    waitForCondition(99.s, 10.ms) { commandQueueSucceeded == expected }
+    assert(commandQueueSucceeded == expected)
+    assert(commandQueueFailed.isEmpty)
   }
 
   "Duplicate MarkOrder" in {
@@ -108,11 +106,11 @@ final class CommandQueueTest extends AnyFreeSpec
     // Run with -DCommandQueueTest=10000000 (10 million) -Xmx3g
     val n = sys.props.get("CommandQueueTest").map(_.toInt) getOrElse 10000
     val orders = for (i <- 1 to n) yield toOrder(i.toString)
+    val commandQueueSucceeded = AtomicInt(0)
     val commandQueue = new MyCommandQueue(logger, batchSize = 100) {
-      val succeeded = AtomicInt(0)
       protected def asyncOnBatchSucceeded(queuedInputResponses: Seq[QueuedInputResponse]) = {
         handleBatchSucceeded(queuedInputResponses)
-        succeeded += queuedInputResponses.size
+        commandQueueSucceeded += queuedInputResponses.size
       }
       protected def asyncOnBatchFailed(inputs: Vector[Queueable], problem: Problem) = {}
     }
@@ -121,8 +119,8 @@ final class CommandQueueTest extends AnyFreeSpec
       commandQueue.enqueue(AgentDriver.Input.AttachOrder(order, TestAgentPath))
     }
     commandQueue.maySend()
-    waitForCondition(9.s, 10.ms) { commandQueue.succeeded.get() == n }
-    assert(commandQueue.succeeded.get() == n)
+    waitForCondition(9.s, 10.ms) { commandQueueSucceeded.get() == n }
+    assert(commandQueueSucceeded.get() == n)
   }
 }
 

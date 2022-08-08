@@ -13,7 +13,6 @@ import js7.data.order.OrderId
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec
-import scala.language.reflectiveCalls
 
 /**
   * @author Joacim Zschimmer
@@ -23,9 +22,8 @@ final class ControllerCommandExecutorTest extends AnyFreeSpec
   private val cancelOrder = CancelOrders(Set(OrderId("ORDER-ID")), CancellationMode.FreshOnly)
   private val meta = CommandMeta(SimpleUser(UserId("USER")))
 
+  private var cancelled = 0
   private val otherCommandExecutor = new CommandExecutor[ControllerCommand] {
-    var cancelled = 0
-
     def executeCommand(command: ControllerCommand, meta: CommandMeta): Task[Either[Problem, command.Response]] =
       (command, meta) match {
         case (`cancelOrder`, `meta`) =>
@@ -46,7 +44,7 @@ final class ControllerCommandExecutorTest extends AnyFreeSpec
 
   "CancelOrders" in {
     assert(commandExecutor.executeCommand(cancelOrder, meta).await(99.s) == Right(Response.Accepted))
-    assert(otherCommandExecutor.cancelled == 1)
+    assert(cancelled == 1)
   }
 
   "Batch" in {
@@ -58,7 +56,7 @@ final class ControllerCommandExecutorTest extends AnyFreeSpec
         Right(Response.Accepted),
         Left(Problem("COMMAND NOT IMPLEMENTED")),
         Right(Response.Accepted)))))
-    assert(otherCommandExecutor.cancelled == 2)
+    assert(cancelled == 2)
   }
 
   "detailed" in {

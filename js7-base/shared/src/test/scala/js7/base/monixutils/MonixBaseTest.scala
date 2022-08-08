@@ -16,7 +16,6 @@ import org.scalatest.freespec.AsyncFreeSpec
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.*
 import scala.concurrent.{Future, TimeoutException}
-import scala.language.reflectiveCalls
 
 /**
   * @author Joacim Zschimmer
@@ -241,18 +240,18 @@ final class MonixBaseTest extends AsyncFreeSpec
   }
 
   "closeableIteratorToObservable" in {
+    var closed = false
     val iterator = new CloseableIterator[Int] {
-      var closed = false
       private val it = List(1, 2, 3).iterator
       def close() = closed = true
       def hasNext = it.hasNext
       def next() = it.next()
     }
-    assert(!iterator.closed)
+    assert(!closed)
     closeableIteratorToObservable(iterator).toListL
       .runToFuture.map { result =>
         assert(result == List(1, 2, 3))
-        assert(iterator.closed)
+        assert(closed)
       }
   }
 

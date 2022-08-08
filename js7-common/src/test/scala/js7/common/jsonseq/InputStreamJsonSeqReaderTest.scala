@@ -10,7 +10,6 @@ import js7.common.jsonseq.InputStreamJsonSeqReaderTest.*
 import js7.common.message.ProblemCodeMessages
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers.*
-import scala.language.reflectiveCalls
 
 /**
   * @author Joacim Zschimmer
@@ -29,9 +28,9 @@ final class InputStreamJsonSeqReaderTest extends AnyFreeSpec
   }
 
   "read, seek" in {
+    var seekCount = 0
     val in = new InputStream with SeekableInputStream {
       var pos = 0
-      var seekCount = 0
       def read(): Int =
         if (pos == ChunkBytes.length)
           -1
@@ -50,26 +49,26 @@ final class InputStreamJsonSeqReaderTest extends AnyFreeSpec
     assert(reader.read() == Some(Chunk(2)._2))
     assert(reader.read() == Some(Chunk(3)._2))
     assert(reader.read() == None)
-    assert(in.seekCount == 0)
+    assert(seekCount == 0)
     assert(reader.read() == None)
 
     // seek
     reader.seek(3+4)
-    assert(in.seekCount == 1)
+    assert(seekCount == 1)
     assert(reader.read() == Some(Chunk(2)._2))
     reader.seek(0)
-    assert(in.seekCount == 2)
+    assert(seekCount == 2)
     assert(reader.read() == Some(Chunk(0)._2))
 
     // optimized seek
     reader.seek(0)
-    assert(in.seekCount == 2)  // No seek!
+    assert(seekCount == 2)  // No seek!
     assert(reader.read() == Some(Chunk(0)._2))
     reader.seek(3)
-    assert(in.seekCount == 2)  // No seek!
+    assert(seekCount == 2)  // No seek!
     assert(reader.read() == Some(Chunk(1)._2))
     reader.seek(3+4)
-    assert(in.seekCount == 2)  // No seek!
+    assert(seekCount == 2)  // No seek!
     assert(reader.read() == Some(Chunk(2)._2))
   }
 
@@ -84,14 +83,14 @@ final class InputStreamJsonSeqReaderTest extends AnyFreeSpec
     }
 
     "Truncated file before LF" in {
+      var _seek = -1L
       val in = new ByteArrayInputStream(Array[Byte](RS, '{')) with SeekableInputStream {
-        var _seek = -1L
         def seek(pos: Long) = _seek = pos
       }
       val reader = newInputStreamJsonSeqReader(in, blockSize = 1)
       assert(reader.read().isEmpty)
       assert(reader.position == 0)  // Position unchanged, before the truncated record
-      assert(in._seek == 0)
+      assert(_seek == 0)
     }
 
     "Truncated file after RS" in {
