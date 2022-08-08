@@ -12,7 +12,7 @@ import scala.jdk.CollectionConverters.*
 
 final case class JExpression(asScala: Expression) extends JJsonable[JExpression]
 {
-  protected type AsScala = Expression
+  type AsScala = Expression
 
   protected def companion = JExpression
 }

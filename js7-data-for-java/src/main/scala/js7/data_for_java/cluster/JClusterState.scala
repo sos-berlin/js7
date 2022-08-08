@@ -9,7 +9,7 @@ import scala.jdk.CollectionConverters.*
 sealed trait JClusterState
 extends JJsonable[JClusterState]
 {
-  protected type AsScala = ClusterState
+  type AsScala = ClusterState
 
   def companion = JClusterState
 }

@@ -19,7 +19,7 @@ import scala.jdk.OptionConverters.*
 final case class JFreshOrder(asScala: FreshOrder)
 extends JJsonable[JFreshOrder]
 {
-  protected type AsScala = FreshOrder
+  type AsScala = FreshOrder
 
   protected def companion = JFreshOrder
 

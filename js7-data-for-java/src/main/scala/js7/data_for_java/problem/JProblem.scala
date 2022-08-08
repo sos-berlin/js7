@@ -10,7 +10,7 @@ import scala.jdk.OptionConverters.*
 final case class JProblem(asScala: Problem)
 extends JJsonable[JProblem]
 {
-  protected type AsScala = Problem
+  type AsScala = Problem
   def companion = JProblem
 
   @Nonnull

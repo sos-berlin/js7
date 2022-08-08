@@ -5,7 +5,7 @@ import js7.data.item.{SignableSimpleItem, SignableSimpleItemPath}
 
 trait JSignableSimpleItem extends JSignableItem
 {
-  protected type AsScala = SignableSimpleItem
+  type AsScala = SignableSimpleItem
 
   def asScala: SignableSimpleItem
 

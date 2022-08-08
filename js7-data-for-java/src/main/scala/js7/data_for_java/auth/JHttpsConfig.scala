@@ -9,7 +9,7 @@ import scala.jdk.OptionConverters.*
 
 final case class JHttpsConfig(asScala: HttpsConfig) extends JavaWrapper
 {
-  protected type AsScala = HttpsConfig
+  type AsScala = HttpsConfig
 }
 
 object JHttpsConfig

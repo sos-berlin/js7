@@ -13,7 +13,7 @@ import scala.reflect.ClassTag
 final class JStandardEventBus[E](val asScala: StandardEventBus[E])
 extends JavaWrapper with AutoCloseable
 {
-  protected type AsScala = StandardEventBus[E]
+  type AsScala = StandardEventBus[E]
 
   def this()(implicit e: ClassTag[E]) =
     this(new StandardEventBus[E])
@@ -63,7 +63,7 @@ extends JavaWrapper with AutoCloseable
   with JavaWrapper
   with AutoCloseable
   {
-    protected type AsScala = JStandardEventBus.this.asScala.EventSubscription
+    type AsScala = JStandardEventBus.this.asScala.EventSubscription
 
     /** For internal use only. */
     private[JStandardEventBus] def eventBus = JStandardEventBus.this.asScala

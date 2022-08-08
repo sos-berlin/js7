@@ -12,7 +12,7 @@ import scala.jdk.OptionConverters.*
 final case class JAgentRefState(asScala: AgentRefState)
 extends JJsonable[JAgentRefState]
 {
-  protected type AsScala = AgentRefState
+  type AsScala = AgentRefState
   protected def companion = JAgentRefState
 
   @Nonnull

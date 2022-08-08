@@ -67,7 +67,7 @@ extends AutoCloseable
   with JavaWrapper
   with AutoCloseable
   {
-    protected type AsScala = JJournaledStateEventBus.this.asScala.EventSubscription
+    type AsScala = JJournaledStateEventBus.this.asScala.EventSubscription
 
     /** For internal use only. */
     private[JJournaledStateEventBus] def eventBus = JJournaledStateEventBus.this.asScala

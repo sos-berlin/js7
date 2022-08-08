@@ -12,7 +12,7 @@ import js7.data_for_java.workflow.position.JPosition
 final case class JHistoricOutcome(asScala: HistoricOutcome)
 extends JJsonable[JHistoricOutcome]
 {
-  protected type AsScala = HistoricOutcome
+  type AsScala = HistoricOutcome
   protected def companion = JHistoricOutcome
 }
 

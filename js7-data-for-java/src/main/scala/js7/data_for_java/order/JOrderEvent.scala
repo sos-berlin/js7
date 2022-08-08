@@ -21,7 +21,7 @@ import scala.jdk.OptionConverters.*
 trait JOrderEvent
 extends JJsonable[JOrderEvent]
 {
-  protected type AsScala <: OrderEvent
+  type AsScala <: OrderEvent
   protected def companion = JOrderEvent
 }
 
@@ -53,12 +53,12 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
 
   final case class JOrderEventOther(asScala: OrderEvent)
   extends JOrderEvent {
-    protected type AsScala = OrderEvent
+    type AsScala = OrderEvent
   }
 
   final case class JOrderAdded(asScala: OrderAdded)
   extends JOrderEvent {
-    protected type AsScala = OrderAdded
+    type AsScala = OrderAdded
 
     @Nonnull
     def arguments: java.util.Map[String, Value] =
@@ -72,7 +72,7 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
   final case class JOrderProcessingStarted private[JOrderEvent](asScala: OrderProcessingStarted)
   extends JOrderEvent
   {
-    protected type AsScala = OrderProcessingStarted
+    type AsScala = OrderProcessingStarted
 
     /** @return empty iff written by v2.2 */
     def maybeSubagentId: Optional[SubagentId] =
@@ -81,7 +81,7 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
 
   final case class JOrderStdWritten(asScala: OrderStdWritten)
   extends JOrderEvent {
-    protected type AsScala = OrderStdWritten
+    type AsScala = OrderStdWritten
 
     @Nonnull
     def stdoutOrStderr: StdoutOrStderr =
@@ -94,7 +94,7 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
 
   final case class JOrderProcessed(asScala: OrderProcessed)
   extends JOrderEvent {
-    protected type AsScala = OrderProcessed
+    type AsScala = OrderProcessed
 
     @Nonnull
     def outcome = asScala.outcome
@@ -102,7 +102,7 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
 
   final case class JOrderForked(asScala: OrderForked)
   extends JOrderEvent {
-    protected type AsScala = OrderForked
+    type AsScala = OrderForked
 
     @Nonnull
     def children: java.util.List[JOrderForked.ForkedChild] =
@@ -124,7 +124,7 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
 
   final case class JOrderJoined(asScala: OrderJoined)
   extends JOrderEvent {
-    protected type AsScala = OrderJoined
+    type AsScala = OrderJoined
 
     def outcome = asScala.outcome
   }
@@ -132,7 +132,7 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
   final case class JOrderFailed(asScala: OrderFailed)
   extends JOrderEvent
   {
-    protected type AsScala = OrderFailed
+    type AsScala = OrderFailed
 
     @Nonnull
     def outcome = asScala.outcome
@@ -141,7 +141,7 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
   final case class JOrderFinished private(asScala: OrderFinished)
   extends JOrderEvent
   {
-    protected type AsScala = OrderFinished
+    type AsScala = OrderFinished
   }
   object JOrderFinished {
     val singleton = new JOrderFinished(OrderFinished)
@@ -151,7 +151,7 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
   final case class JOrderDeleted private(asScala: OrderDeleted)
   extends JOrderEvent
   {
-    protected type AsScala = OrderDeleted
+    type AsScala = OrderDeleted
   }
   object JOrderDeleted {
     val singleton = new JOrderDeleted(OrderDeleted)
@@ -161,7 +161,7 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
   final case class JOrderCancelled private(asScala: OrderCancelled)
   extends JOrderEvent
   {
-    protected type AsScala = OrderCancelled
+    type AsScala = OrderCancelled
   }
   object JOrderCancelled {
     val singleton = JOrderCancelled(OrderCancelled)

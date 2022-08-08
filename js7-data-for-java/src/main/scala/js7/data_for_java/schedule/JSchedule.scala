@@ -8,7 +8,7 @@ import js7.data_for_java.vavr.Standards.VEither
 
 final case class JSchedule(asScala: Schedule) extends JJsonable[JSchedule]
 {
-  protected type AsScala = Schedule
+  type AsScala = Schedule
   protected val companion = JSchedule
 }
 

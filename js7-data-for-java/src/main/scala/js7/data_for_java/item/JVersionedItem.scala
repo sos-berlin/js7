@@ -8,7 +8,7 @@ import js7.data_for_java.common.JJsonable
 trait JVersionedItem[A <: JVersionedItem[A, P], P <: VersionedItemPath]
 extends JSignableItem with JJsonable[A]
 {
-  protected type AsScala <: VersionedItem
+  type AsScala <: VersionedItem
 
   def id: JVersionedItemId[P]
 }

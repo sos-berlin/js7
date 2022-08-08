@@ -9,7 +9,7 @@ trait JUnsignedVersionedItemId[P <: VersionedControlPath]
 {
   final type Path = P
   protected type ScalaPath <: VersionedControlPath
-  protected type AsScala <: UnsignedVersionedItemId[ScalaPath]
+  type AsScala <: UnsignedVersionedItemId[ScalaPath]
 
   def asScala: AsScala
 

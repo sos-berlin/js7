@@ -14,7 +14,7 @@ class AsyncMap[K: Tag, V: Tag](initial: Map[K, V] = Map.empty[K, V])
   private val lockKeeper = new LockKeeper[K]
   protected val name =
     s"AsyncMap[${implicitly[Tag[K]].tag}, ${implicitly[Tag[V]].tag}]"
-  private val shortLock = AsyncLock(s"$name.shortLock", suppressLog = true)
+  protected final val shortLock = AsyncLock(s"$name.shortLock", suppressLog = true)
   @volatile private var _map = initial
 
   protected[AsyncMap] def onEntryInsert() = Checked.unit
@@ -195,10 +195,10 @@ object AsyncMap
         shortLock
           .lock(Task {
             stoppingProblem = problem
-            _map.isEmpty
+            isEmpty
           })
-          .map { isEmpty =>
-            if (isEmpty) whenEmptyPromise.success(())
+          .map { isEmpty_ =>
+            if (isEmpty_) whenEmptyPromise.success(())
           }
       }
 

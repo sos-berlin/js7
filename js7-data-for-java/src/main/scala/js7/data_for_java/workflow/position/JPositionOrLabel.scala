@@ -10,7 +10,7 @@ import js7.data_for_java.vavr.VavrConverters.*
 import scala.jdk.CollectionConverters.*
 
 sealed trait JPositionOrLabel extends JavaWrapper {
-  protected type AsScala <: PositionOrLabel
+  type AsScala <: PositionOrLabel
   def toJson: String
 }
 object JPositionOrLabel
@@ -29,7 +29,7 @@ object JPositionOrLabel
 final case class JPosition(asScala: Position)
 extends JJsonable[JPosition] with JPositionOrLabel
 {
-  protected type AsScala = Position
+  type AsScala = Position
   protected def companion = JPosition
 
   /** The Position as a List of uneven size of Integers and Strings.
@@ -57,8 +57,8 @@ object JPosition extends JJsonable.Companion[JPosition]
 final case class JLabel(asScala: Label)
 extends JJsonable[JLabel] with JPositionOrLabel
 {
-  protected type AsScala = Label
-  protected val companion = JLabel
+  type AsScala = Label
+  protected val companion: JLabel.type = JLabel
 }
 object JLabel extends JJsonable.Companion[JLabel] {
   def of(label: String): JLabel =

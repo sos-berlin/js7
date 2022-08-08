@@ -13,7 +13,7 @@ import scala.jdk.OptionConverters.*
 final case class JLock(asScala: Lock)
 extends JJsonable[JLock] with JUnsignedSimpleItem
 {
-  protected type AsScala = Lock
+  type AsScala = Lock
   protected def companion = JLock
 
   @Nonnull

@@ -12,7 +12,7 @@ import scala.jdk.CollectionConverters.*
 final case class JJobResource(asScala: JobResource)
 extends JJsonable[JJobResource] with JSignableItem
 {
-  protected type AsScala = JobResource
+  type AsScala = JobResource
   protected def companion = JJobResource
 
   @Nonnull

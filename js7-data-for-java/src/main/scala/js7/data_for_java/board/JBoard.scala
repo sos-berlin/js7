@@ -14,7 +14,7 @@ import scala.jdk.OptionConverters.*
 final case class JBoard(asScala: Board)
 extends JJsonable[JBoard] with JUnsignedSimpleItem
 {
-  protected type AsScala = Board
+  type AsScala = Board
   protected def companion = JBoard
 
   @Nonnull

@@ -13,7 +13,7 @@ import js7.data_for_java.vavr.VavrConverters.*
 final case class JAdmission(asScala: Admission)
 extends JavaWrapper
 {
-  protected type AsScala = Admission
+  type AsScala = Admission
 }
 
 object JAdmission

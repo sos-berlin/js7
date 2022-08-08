@@ -66,7 +66,7 @@ trait JournaledProxy[S <: SnapshotableState[S]]
   final def observable: Observable[EventAndState[Event, S]] =
     connectableObservable
 
-  protected final def startObserving: Task[Unit] = {
+  final def startObserving: Task[Unit] = {
     val cancelable = SerialCancelable()
     Task.deferFutureAction { implicit scheduler =>
       assertThat(observing.isEmpty)

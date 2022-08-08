@@ -11,7 +11,7 @@ import scala.jdk.OptionConverters.*
 final case class JCancellationMode(asScala: CancellationMode)
 extends JavaWrapper
 {
-  protected type AsScala = CancellationMode
+  type AsScala = CancellationMode
 }
 
 object JCancellationMode

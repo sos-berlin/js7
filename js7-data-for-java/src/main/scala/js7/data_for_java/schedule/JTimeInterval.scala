@@ -10,7 +10,7 @@ import scala.jdk.DurationConverters.ScalaDurationOps
 
 final case class JTimeInterval(asScala: TimeInterval) extends JavaWrapper
 {
-  protected type AsScala = TimeInterval
+  type AsScala = TimeInterval
 
   def start: Instant =
     asScala.start.toInstant

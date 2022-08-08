@@ -26,7 +26,7 @@ extends JJsonable[JOrder]
 {
   import JOrder.*
 
-  protected type AsScala = Order[Order.State]
+  type AsScala = Order[Order.State]
 
   protected def companion = JOrder
 
@@ -93,7 +93,7 @@ object JOrder extends JJsonable.Companion[JOrder]
     private[JOrder] val scalaClass: Class[? <: Order.State])
 
   final case class Forked(asScala: Order.Forked) extends State {
-    protected type AsScala = Order.Forked
+    type AsScala = Order.Forked
 
     @Nonnull
     def childOrderIds: java.util.List[OrderId] =
@@ -101,7 +101,7 @@ object JOrder extends JJsonable.Companion[JOrder]
   }
 
   final case class Processing(asScala: Order.Processing) extends State {
-    protected type AsScala = Order.Processing
+    type AsScala = Order.Processing
 
     /** @return empty iff written by v2.2 */
     def maybeSubagentId: Optional[SubagentId] =
@@ -109,12 +109,12 @@ object JOrder extends JJsonable.Companion[JOrder]
   }
 
   case object Finished extends State {
-    protected type AsScala = Order.Finished
+    type AsScala = Order.Finished
     val asScala = Order.Finished
   }
 
   case object Deleted extends State {
-    protected type AsScala = Order.Deleted
+    type AsScala = Order.Deleted
     val asScala = Order.Deleted
   }
 }

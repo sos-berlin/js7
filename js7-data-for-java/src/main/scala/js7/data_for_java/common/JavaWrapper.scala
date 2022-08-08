@@ -5,7 +5,7 @@ import js7.base.annotation.javaApi
 @javaApi
 trait JavaWrapper
 {
-  protected type AsScala
+  type AsScala
 
   def asScala: AsScala
 

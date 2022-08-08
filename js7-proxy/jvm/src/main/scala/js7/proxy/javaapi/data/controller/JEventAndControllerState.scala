@@ -12,7 +12,7 @@ import js7.proxy.data.event.EventAndState
 final case class JEventAndControllerState[E <: Event](asScala: EventAndState[E, ControllerState])
 extends JavaWrapper
 {
-  protected type AsScala = EventAndState[E, ControllerState]
+  type AsScala = EventAndState[E, ControllerState]
 
   @Nonnull
   def stampedEvent: Stamped[KeyedEvent[E]] =

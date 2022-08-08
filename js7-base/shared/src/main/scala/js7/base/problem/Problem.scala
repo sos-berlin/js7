@@ -213,12 +213,12 @@ object Problem extends Semigroup[Problem]
     override val rawMessage: String)
   extends HasCode
 
-  class Eager protected[problem](protected val rawMessage: String, val cause: Option[Problem] = None)
+  class Eager(protected val rawMessage: String, val cause: Option[Problem] = None)
   extends Simple {
     override final def hashCode = super.hashCode  // Derived case class should not override
   }
 
-  class Lazy protected[problem](messageFunction: => String, val cause: Option[Problem] = None)
+  class Lazy(messageFunction: => String, val cause: Option[Problem] = None)
   extends Simple {
     protected def rawMessage = messageFunction
     override final def hashCode = super.hashCode  // Derived case class should not override

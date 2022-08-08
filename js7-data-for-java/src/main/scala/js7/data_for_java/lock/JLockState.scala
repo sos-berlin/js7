@@ -10,7 +10,7 @@ import scala.jdk.CollectionConverters.*
 final case class JLockState(asScala: LockState)
 extends JJsonable[JLockState]
 {
-  protected type AsScala = LockState
+  type AsScala = LockState
   protected def companion = JLockState
 
   @Nonnull

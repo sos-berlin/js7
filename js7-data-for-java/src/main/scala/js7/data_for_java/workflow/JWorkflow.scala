@@ -17,7 +17,7 @@ import scala.jdk.CollectionConverters.*
 final case class JWorkflow(asScala: Workflow)
 extends JVersionedItem[JWorkflow, WorkflowPath]
 {
-  protected type AsScala = Workflow
+  type AsScala = Workflow
 
   def companion = JWorkflow
 
