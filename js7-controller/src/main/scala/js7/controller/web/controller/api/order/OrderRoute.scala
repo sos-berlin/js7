@@ -123,16 +123,6 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
               complete(Problem.pure("Parameter return is not supported here"))
           }
         } ~
-        pathSingleSlash {
-          parameter("return".?) {
-            case None =>
-              complete(orderApi.orderIds.runToFuture)  // TODO Should be streamed
-            case Some("Order") =>
-              complete(orderApi.orders.runToFuture)   // TODO Should be streamed
-            case Some(unrecognized) =>
-              complete(Problem.pure(s"Unrecognized return=$unrecognized"))
-          }
-        } ~
         matchOrderId { orderId =>
           singleOrder(orderId)
         }

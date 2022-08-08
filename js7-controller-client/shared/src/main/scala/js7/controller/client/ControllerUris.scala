@@ -5,7 +5,6 @@ import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.common.http.Uris.{encodePath, encodeQuery}
-import js7.controller.client.ControllerUris.*
 import js7.data.event.{Event, EventId, EventRequest, JournalPosition}
 import js7.data.order.OrderId
 import scala.concurrent.duration.FiniteDuration
@@ -67,9 +66,6 @@ final class ControllerUris private(controllerUri: Uri)
     def overview = api("/order")
 
     def add = api("/order")
-
-    def list[A: ClassTag]: Uri =
-      api("/" + encodePath("order", ""), "return" -> encodeClass[A])
 
     def apply(orderId: OrderId): Uri =
       api("/" + encodePath("order", orderId.string))

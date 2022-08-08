@@ -46,6 +46,7 @@ import js7.tests.testenv.{ControllerAgentForScalaTest, DirectoryProvider}
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
+import org.scalactic.source
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.freespec.AnyFreeSpec
 import scala.util.Try
@@ -318,18 +319,6 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest
         "count": 1
       }""")
 
-    testGet("controller/api/order/",
-      RawHeader("x-js7-session", sessionToken) :: Nil,
-      json"""[ "ORDER-ID" ]""")
-
-    "controller/api/order/?return=Order" in {
-      val headers = RawHeader("x-js7-session", sessionToken) :: Accept(`application/json`) :: Nil
-      val response = httpClient.get[Json](Uri(s"$uri/controller/api/order/?return=Order"), headers) await 99.s
-      val orders = response.asArray.get
-      assert(orders.length == 1)
-      assert(orders(0).fieldOrThrow("id").stringOrThrow == "ORDER-ID")
-    }
-
     "controller/api/order/ORDER-ID" in {
       val headers = RawHeader("x-js7-session", sessionToken) :: Nil
       val order = httpClient.get[Json](Uri(s"$uri/controller/api/order/ORDER-ID"), headers) await 99.s
@@ -416,7 +405,13 @@ extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest
   private def testGets(suburis: Iterable[String], headers: => List[HttpHeader], expected: => Json, manipulateResponse: Json => Json = identity): Unit =
     for (suburi <- suburis) testGet(suburi, headers, expected, manipulateResponse)
 
-  private def testGet(suburi: String, headers: => List[HttpHeader], expected: => Json, manipulateResponse: Json => Json = identity): Unit =
+  private def testGet(
+    suburi: String,
+    headers: => List[HttpHeader],
+    expected: => Json,
+    manipulateResponse: Json => Json = identity)
+    (implicit pos: source.Position)
+  : Unit =
     suburi - {
       "JSON" in {
         testJson(

@@ -17,7 +17,7 @@ import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterNodeState, Clust
 import js7.data.controller.ControllerCommand.{DeleteOrdersWhenTerminated, InternalClusterCommand}
 import js7.data.controller.{ControllerCommand, ControllerOverview, ControllerState}
 import js7.data.event.{Event, EventApi, EventId, EventRequest, JournalInfo, JournalPosition, KeyedEvent, Stamped}
-import js7.data.order.{FreshOrder, Order, OrderId, OrdersOverview}
+import js7.data.order.{FreshOrder, OrderId, OrdersOverview}
 import js7.data.session.HttpSessionApi
 import monix.eval.Task
 import monix.reactive.Observable
@@ -90,11 +90,7 @@ extends EventApi with ClusterNodeApi with HttpSessionApi with HasIsIgnorableStac
   final def ordersOverview: Task[OrdersOverview] =
     httpClient.get[OrdersOverview](uris.order.overview)
 
-  final def orders: Task[Checked[Seq[Order[Order.State]]]] =
-    liftProblem(
-      httpClient.get[Seq[Order[Order.State]]](uris.order.list[Order[Order.State]]))
-
-  final def eventObservable[E <: Event: ClassTag](request: EventRequest[E])
+  final def eventObservable[E <: Event](request: EventRequest[E])
     (implicit kd: Decoder[KeyedEvent[E]])
   : Task[Observable[Stamped[KeyedEvent[E]]]] =
     httpClient.getDecodedLinesObservable[Stamped[KeyedEvent[E]]](

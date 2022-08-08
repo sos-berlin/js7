@@ -11,6 +11,7 @@ import js7.base.web.Uri
 import js7.controller.client.AkkaHttpControllerApi
 import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.controller.ControllerCommand.AddOrder
+import js7.data.controller.ControllerOverview
 import js7.data.job.PathExecutable
 import js7.data.order.{FreshOrder, Order, OrderId}
 import js7.data.subagent.{SubagentId, SubagentItem}
@@ -71,10 +72,6 @@ final class AkkaHttpControllerApiTest extends AnyFreeSpec with ControllerAgentFo
     assert(api.ordersOverview.await(99.s).count == 2)
   }
 
-  "orders" in {
-    assert(api.orders.await(99.s).map(_.toSet) == Right(attachedOrders))
-  }
-
   "logout" in {
     assert(controller.sessionRegister.count.await(99.s) == 2)
     api.logout() await 99.s
@@ -86,7 +83,7 @@ final class AkkaHttpControllerApiTest extends AnyFreeSpec with ControllerAgentFo
       .use(api => Task {
         api.login() await 99.s
         assert(controller.sessionRegister.count.await(99.s) == 2)
-        assert(api.orders.await(99.s).map(_.toSet) == Right(attachedOrders))
+        api.overview.await(99.s): ControllerOverview
       })
       .map(_ => controller.sessionRegister.count.await(99.s) == 1)
       .await(99.s)

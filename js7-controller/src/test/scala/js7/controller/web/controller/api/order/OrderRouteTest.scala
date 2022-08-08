@@ -6,6 +6,7 @@ import akka.http.scaladsl.model.StatusCodes.{BadRequest, Conflict, Created, OK}
 import akka.http.scaladsl.model.headers.{Accept, Location}
 import akka.http.scaladsl.server.Route
 import io.circe.syntax.*
+import io.circe.{Encoder, Json}
 import js7.base.problem.{Checked, Problem}
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -59,26 +60,6 @@ final class OrderRouteTest extends AnyFreeSpec with RouteTester with OrderRoute
   "/controller/api/order" in {
     Get("/controller/api/order") ~> Accept(`application/json`) ~> route ~> check {
       assert(responseAs[OrdersOverview] == OrdersOverview(count = TestOrders.size))
-    }
-  }
-
-  // Seq[OrderId]
-  for (uri <- List("/controller/api/order/")) {
-    s"$uri" in {
-      Get(uri) ~> Accept(`application/json`) ~> route ~> check {
-        val Right(orders) = responseAs[Checked[Seq[OrderId]]]
-        assert(status == OK && orders == TestOrders.values.map(_.id).toList)
-      }
-    }
-  }
-
-  // Seq[Order]
-  for (uri <- List("/controller/api/order/?return=Order")) {
-    s"$uri" in {
-      Get(uri) ~> Accept(`application/json`) ~> route ~> check {
-        val Right(orders) = responseAs[Checked[Seq[Order[Order.State]]]]
-        assert(status == OK && orders == TestOrders.values.toList)
-      }
     }
   }
 
