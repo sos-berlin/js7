@@ -586,7 +586,7 @@ private[controller] object AgentDriver
   private val EventClasses = Set[Class[? <: Event]](
     classOf[OrderEvent],
     classOf[AgentEvent.AgentReady],
-    classOf[AgentEvent.AgentShutDown],
+    AgentEvent.AgentShutDown.getClass,
     classOf[SubagentItemStateEvent],
     classOf[InventoryItemEvent],
     classOf[OrderWatchEvent])
