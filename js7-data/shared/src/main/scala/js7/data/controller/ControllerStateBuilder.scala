@@ -54,13 +54,13 @@ with OrderWatchStateHandler[ControllerStateBuilder]
   lazy val idToWorkflow: PartialFunction[WorkflowId, Workflow] =
     new PartialFunction[WorkflowId, Workflow] {
       def isDefinedAt(workflowId: WorkflowId) =
-        repo.idToSigned[Workflow](workflowId).isRight
+        repo.idToSigned(Workflow)(workflowId).isRight
 
       def apply(workflowId: WorkflowId): Workflow =
-        repo.idToSigned[Workflow](workflowId).orThrow.value
+        repo.idToSigned(Workflow)(workflowId).orThrow.value
 
       override def applyOrElse[K <: WorkflowId, V >: Workflow](workflowId: K, default: K => V): V =
-        repo.idToSigned[Workflow](workflowId)
+        repo.idToSigned(Workflow)(workflowId)
           .fold(_ => default(workflowId), _.value)
     }
 
@@ -165,7 +165,7 @@ with OrderWatchStateHandler[ControllerStateBuilder]
   }
 
   override protected def onOnAllSnapshotsAdded() = {
-    val (added, deleted) = followUpRecoveredWorkflowsAndOrders(repo.idTo[Workflow], _idToOrder.toMap)
+    val (added, deleted) = followUpRecoveredWorkflowsAndOrders(repo.idTo(Workflow), _idToOrder.toMap)
     _idToOrder ++= added
     _idToOrder --= deleted
     ow.finishRecovery.orThrow

@@ -1015,7 +1015,7 @@ with MainJournalingActor[ControllerState, Event]
 
   private def controlWorkflow(cmd: ControlWorkflow)
   : Future[Checked[ControllerCommand.Response]] =
-    _controllerState.repo.idTo[Workflow](cmd.workflowId) match {
+    _controllerState.repo.idTo(Workflow)(cmd.workflowId) match {
       case Left(problem) => Future.successful(Left(problem))
       case Right(_) =>
         val workflowControlId = WorkflowControlId(cmd.workflowId)
@@ -1276,7 +1276,7 @@ with MainJournalingActor[ControllerState, Event]
             Set.empty
 
           case Some(order) =>
-            val orderEventHandler = new OrderEventHandler(_controllerState.repo.idTo[Workflow])
+            val orderEventHandler = new OrderEventHandler(_controllerState.repo.idTo(Workflow))
             val checkedFollowUps = orderEventHandler.handleEvent(order, keyedEvent.event)
             val dependentOrderIds = mutable.Set.empty[OrderId]
             for (followUps <- checkedFollowUps.onProblem(p => logger.error(p))) {  // TODO OrderBroken on error?
@@ -1458,7 +1458,7 @@ with MainJournalingActor[ControllerState, Event]
     order.attachedState match {
       case Some(Order.AttachedState.HasAgentPath(agentPath)) =>
         ( for {
-            signedWorkflow <- _controllerState.repo.idToSigned[Workflow](order.workflowId)
+            signedWorkflow <- _controllerState.repo.idToSigned(Workflow)(order.workflowId)
             agentEntry <- agentRegister.checked(agentPath)
           } yield (signedWorkflow, agentEntry)
         ).onProblem(p => logger.error(p.withPrefix("checkedWorkflowAndAgentEntry:")))
@@ -1489,7 +1489,7 @@ with MainJournalingActor[ControllerState, Event]
     }
 
   private def instruction(workflowPosition: WorkflowPosition): Instruction =
-    _controllerState.repo.idTo[Workflow](workflowPosition.workflowId).orThrow
+    _controllerState.repo.idTo(Workflow)(workflowPosition.workflowId).orThrow
       .instruction(workflowPosition.position)
 
   private def clusterSwitchOver(restart: Boolean)

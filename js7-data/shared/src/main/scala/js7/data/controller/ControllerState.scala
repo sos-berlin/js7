@@ -493,7 +493,7 @@ with SnapshotableState[ControllerState]
   def orderNamedValues(orderId: OrderId): Checked[MapView[String, Value]] =
     for {
       order <- idToOrder.checked(orderId)
-      workflow <- repo.idTo[Workflow](order.workflowId)
+      workflow <- repo.idTo(Workflow)(order.workflowId)
     } yield order.namedValues(workflow)
 
   private[controller] def checkAddedOrChangedItems(itemKeys: Iterable[InventoryItemKey]): Checked[Unit] =
@@ -659,13 +659,13 @@ with SnapshotableState[ControllerState]
   lazy val idToWorkflow: PartialFunction[WorkflowId, Workflow] =
     new PartialFunction[WorkflowId, Workflow] {
       def isDefinedAt(workflowId: WorkflowId) =
-        repo.idToSigned[Workflow](workflowId).isRight
+        repo.idToSigned(Workflow)(workflowId).isRight
 
       def apply(workflowId: WorkflowId): Workflow =
-        repo.idToSigned[Workflow](workflowId).orThrow.value
+        repo.idToSigned(Workflow)(workflowId).orThrow.value
 
       override def applyOrElse[K <: WorkflowId, V >: Workflow](workflowId: K, default: K => V): V =
-        repo.idToSigned[Workflow](workflowId)
+        repo.idToSigned(Workflow)(workflowId)
           .fold(_ => default(workflowId), _.value)
     }
 

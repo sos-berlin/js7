@@ -34,7 +34,7 @@ final class JRepo(asScala: Repo)
 
   @Nonnull
   def idToCheckedWorkflow(@Nonnull workflowId: JWorkflowId): VEither[Problem, JWorkflow] =
-    asScala.idTo[Workflow](workflowId.asScala)
+    asScala.idTo(Workflow)(workflowId.asScala)
       .map(JWorkflow.apply)
       .toVavr
 

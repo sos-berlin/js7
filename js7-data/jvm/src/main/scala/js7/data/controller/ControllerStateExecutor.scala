@@ -489,7 +489,7 @@ final case class ControllerStateExecutor private(
   def updatedWorkflowControlAttachedEvents(workflowControl: WorkflowControl)
   : Iterable[ItemAttachable] =
     controllerState
-      .repo.idTo[Workflow](workflowControl.workflowId)
+      .repo.idTo(Workflow)(workflowControl.workflowId)
       .toOption.view
       .flatMap(workflow =>
         controllerState.itemToAgentToAttachedState

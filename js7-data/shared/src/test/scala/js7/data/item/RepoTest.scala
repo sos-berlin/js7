@@ -26,7 +26,7 @@ final class RepoTest extends AnyFreeSpec
   "empty" in {
     assert(emptyRepo.historyBefore(v("UNKNOWN")) == Left(UnknownKeyProblem("VersionId", VersionId("UNKNOWN"))))
 
-    assert(emptyRepo.idTo[AItem](APath("UNKNOWN-PATH") ~ "UNKNOWN-VERSION") ==
+    assert(emptyRepo.idTo(AItem)(APath("UNKNOWN-PATH") ~ "UNKNOWN-VERSION") ==
       Left(UnknownKeyProblem("VersionedItemPath", APath("UNKNOWN-PATH"))))
 
     assert(emptyRepo.applyEvent(VersionedItemAdded(Signed(a1, SignedString(a1.asJson.compactPrint, GenericSignature("SILLY", "SIGNED"))))) ==
@@ -40,10 +40,10 @@ final class RepoTest extends AnyFreeSpec
     assert(repo.historyBefore(v("INITIAL")) == Right(Nil))
     assert(repo.historyBefore(v("UNKNOWN")) == Left(UnknownKeyProblem("VersionId", VersionId("UNKNOWN"))))
 
-    assert(repo.idTo[AItem](APath("UNKNOWN") ~ "INITIAL") ==
+    assert(repo.idTo(AItem)(APath("UNKNOWN") ~ "INITIAL") ==
       Left(UnknownKeyProblem("VersionedItemPath", APath("UNKNOWN"))))
 
-    assert(repo.idTo[AItem](APath("UNKNOWN-PATH") ~ "UNKNOWN-VERSION") ==
+    assert(repo.idTo(AItem)(APath("UNKNOWN-PATH") ~ "UNKNOWN-VERSION") ==
       Left(UnknownKeyProblem("VersionedItemPath", APath("UNKNOWN-PATH"))))
 
     assert(repo.applyEvent(VersionAdded(v("INITIAL"))) ==
@@ -78,16 +78,16 @@ final class RepoTest extends AnyFreeSpec
   }
 
   "Event input" in {
-    assert(testRepo.idTo[AItem](APath("A") ~ "UNKNOWN") == Left(UnknownKeyProblem("VersionId", VersionId("UNKNOWN"))))
-    assert(testRepo.idTo[AItem](APath("X") ~ v1) == Left(UnknownKeyProblem("VersionedItemPath", APath("X"))))
-    assert(testRepo.idTo[AItem](APath("X") ~ v1) == Left(UnknownKeyProblem("VersionedItemPath", APath("X"))))
-    assert(testRepo.idTo[BItem](BPath("Bx") ~ v1) == Left(UnknownKeyProblem("VersionedItemId", BPath("Bx") ~ v1)))
-    assert(testRepo.idTo[BItem](BPath("Bx") ~ v3) == Left(VersionedItemRemovedProblem(BPath("Bx"))))
-    assert(testRepo.idTo[AItem](APath("A") ~ v1) == Right(a1))
-    assert(testRepo.idTo[AItem](APath("A") ~ v2) == Right(a2))
-    assert(testRepo.idTo[AItem](APath("A") ~ v3) == Right(a3))
-    assert(testRepo.idTo[BItem](BPath("Bx") ~ v2) == Right(bx2))
-    assert(testRepo.idTo[BItem](BPath("By") ~ v3) == Right(by2))
+    assert(testRepo.idTo(AItem)(APath("A") ~ "UNKNOWN") == Left(UnknownKeyProblem("VersionId", VersionId("UNKNOWN"))))
+    assert(testRepo.idTo(AItem)(APath("X") ~ v1) == Left(UnknownKeyProblem("VersionedItemPath", APath("X"))))
+    assert(testRepo.idTo(AItem)(APath("X") ~ v1) == Left(UnknownKeyProblem("VersionedItemPath", APath("X"))))
+    assert(testRepo.idTo(BItem)(BPath("Bx") ~ v1) == Left(UnknownKeyProblem("VersionedItemId", BPath("Bx") ~ v1)))
+    assert(testRepo.idTo(BItem)(BPath("Bx") ~ v3) == Left(VersionedItemRemovedProblem(BPath("Bx"))))
+    assert(testRepo.idTo(AItem)(APath("A") ~ v1) == Right(a1))
+    assert(testRepo.idTo(AItem)(APath("A") ~ v2) == Right(a2))
+    assert(testRepo.idTo(AItem)(APath("A") ~ v3) == Right(a3))
+    assert(testRepo.idTo(BItem)(BPath("Bx") ~ v2) == Right(bx2))
+    assert(testRepo.idTo(BItem)(BPath("By") ~ v3) == Right(by2))
   }
 
   "Event output" in {
@@ -114,7 +114,7 @@ final class RepoTest extends AnyFreeSpec
   }
 
   "idTo" in {
-    assert(testRepo.idTo[AItem](a1.id) == Right(a1))
+    assert(testRepo.idTo(AItem)(a1.id) == Right(a1))
   }
 
   "typedCount" in {

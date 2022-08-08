@@ -336,14 +336,15 @@ final case class Repo(
     anyIdToSigned(id).map(_.value)
 
   /** Returns the VersionedItem to a VersionedItemId. */
-  def idTo[A <: VersionedItem](id: VersionedItemId[A#Path])(implicit A: VersionedItem.Companion[A])
+  def idTo[A <: VersionedItem](A: VersionedItem.Companion[A])(id: VersionedItemId[A.Path])
   : Checked[A] =
-    idToSigned[A](id).map(_.value)
+    idToSigned(A)(id).map(_.value)
 
   /** Returns the VersionedItem for a VersionedItemId. */
-  def idToSigned[A <: VersionedItem](id: VersionedItemId[A#Path])(implicit A: VersionedItem.Companion[A])
+  def idToSigned[A <: VersionedItem](A: VersionedItem.Companion[A])(id: VersionedItemId[A.Path])
   : Checked[Signed[A]] =
-    anyIdToSigned(id).map(signed => signed.copy(signed.value.cast[A]))
+    for (signed <- anyIdToSigned(id)) yield
+      signed.copy(signed.value.cast(A))
 
   /** Returns the VersionedItem for a VersionedItemId. */
   def anyIdToSigned(id: VersionedItemId_): Checked[Signed[VersionedItem]] =
