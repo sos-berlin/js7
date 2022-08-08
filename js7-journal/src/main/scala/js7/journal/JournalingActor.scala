@@ -267,11 +267,11 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
     callback: (Stamped[KeyedEvent[E]], S) => A,
     promise: Promise[Checked[A]])
 
-  private case class PersistAcceptEarly[A](
+  private case class PersistAcceptEarly(
     keyedEvents: Seq[KeyedEvent[E]],
     timestampMillis: Option[Long],
     options: CommitOptions,
-    promise: Promise[Checked[A]])
+    promise: Promise[Checked[Accepted]])
 
   private class PersistStatistics {
     private var persistStartedAt = now/*dummy*/

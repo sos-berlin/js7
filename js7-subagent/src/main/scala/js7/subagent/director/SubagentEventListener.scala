@@ -33,9 +33,10 @@ import monix.execution.atomic.Atomic
 import monix.reactive.Observable
 import scala.util.chaining.scalaUtilChainingOps
 
-private trait SubagentEventListener[S <: SubagentDirectorState[S]]
+private trait SubagentEventListener[S_ <: SubagentDirectorState[S_]]
 {
-  this: RemoteSubagentDriver[S] =>
+  // S_ == S
+  this: RemoteSubagentDriver[S_] =>
 
   private val logger = Logger.withPrefix[SubagentEventListener[S]](subagentItem.pathRev.toString)
   private lazy val stdoutCommitOptions = CommitOptions(delay = subagentConf.stdoutCommitDelay)  // TODO Use it!

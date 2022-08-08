@@ -60,12 +60,17 @@ object Dependencies
   val guice               = ("com.google.inject" % "guice" % "5.1.0") :: javaxInject :: Nil
 
   val typesafeConfig      = "com.typesafe" % "config" % "1.4.2"
-  val akkaActor           = "com.typesafe.akka" %% "akka-actor" % akkaVersion
-  val akkaStream          = "com.typesafe.akka" %% "akka-stream" % akkaVersion
-  val akkaSlf4j           = "com.typesafe.akka" %% "akka-slf4j" % akkaVersion
-  val akkaHttp            = "com.typesafe.akka" %% "akka-http" % akkaHttpVersion :: akkaStream :: akkaActor/*force version*/ :: Nil
-  val akkaHttpTestkit     = "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion ::
-                            "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion/*force version*/ :: Nil
+
+  val akkaActor           = "com.typesafe.akka" %% "akka-actor" % akkaVersion cross for3Use2_13
+  val akkaStream          = "com.typesafe.akka" %% "akka-stream" % akkaVersion cross for3Use2_13
+  val akkaSlf4j           = "com.typesafe.akka" %% "akka-slf4j" % akkaVersion cross for3Use2_13
+  val akkaHttp            = List(
+    "com.typesafe.akka" %% "akka-http" % akkaHttpVersion cross for3Use2_13,
+    akkaStream,
+    akkaActor/*force version*/)
+  val akkaHttpTestkit     = List(
+    "com.typesafe.akka" %% "akka-http-testkit" % akkaHttpVersion cross for3Use2_13,
+    "com.typesafe.akka" %% "akka-stream-testkit" % akkaVersion/*force version*/ cross for3Use2_13)
 
   val circe               = "io.circe" %% "circe-core" % circeVersion ::
                             "io.circe" %% "circe-parser" % circeVersion ::

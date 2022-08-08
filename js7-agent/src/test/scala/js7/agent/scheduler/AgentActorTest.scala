@@ -41,7 +41,9 @@ final class AgentActorTest extends AnyFreeSpec
   for (n <- List(10) ++ (sys.props.contains("test.speed") ? 1000 /*needs Job.parallelism=100 !!!*/)) {
     s"AgentActorTest, $n orders" in {
       TestAgentActorProvider.provide("AgentActorTest") { provider =>
-        import provider.{agentConfiguration, agentDirectory, executeCommand, persistence}
+        import provider.{agentDirectory, executeCommand}
+        val agentConfiguration = provider.agentConfiguration
+        val persistence = provider.persistence
         import agentConfiguration.{config, journalMeta}
         import persistence.eventWatch
 

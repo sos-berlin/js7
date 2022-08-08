@@ -103,8 +103,10 @@ object VersionedItemPath
           }
           prefix = prefixAndPath._1
           path = prefixAndPath._2
-          itemPath <- typeToCompanion.get(prefix).map(_.apply(path))
-            .toRight(DecodingFailure(s"Unrecognized type prefix in VersionedItemPath: $prefix", c.history))
-        } yield itemPath
+          itemPath <- typeToCompanion.get(prefix)
+            .toRight(Problem.pure(s"Unrecognized type prefix in VersionedItemPath: $prefix"))
+            .flatMap(_.checked(path))
+            .toDecoderResult(c.history)
+        } yield itemPath.asInstanceOf[VersionedItemPath]/*???*/
     }
 }

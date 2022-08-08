@@ -103,7 +103,7 @@ trait JournaledProxy[S <: SnapshotableState[S]]
         Observable(
           observable.dropWhile(_.stampedEvent.eventId < eventId),
           Observable.timerRepeated(proxyConf.syncPolling, proxyConf.syncPolling, ())
-        ) .merge
+        ).merge(implicitly[Observable[Any] <:< Observable[Any]]/*required for Scala 3???*/)
           .dropWhile(_ => currentState.eventId < eventId)
           .headL
           .void
@@ -321,10 +321,13 @@ object JournaledProxy
                 .materializeIntoChecked  /*don't let the whole operation fail*/
                 .start
                 .map(ApiWithFiber(api, _)))
-            .flatMap(apisWithClusterNodeStateFibers =>
+            .flatMap((apisWithClusterNodeStateFibers: Seq[ApiWithFiber[Api]]) =>
               Observable.fromIterable(apisWithClusterNodeStateFibers)
-                .map(o => Observable.fromTask(o.fiber.join).map(ApiWithNodeState(o.api, _)))
-                .merge /*query nodes in parallel and continue with first response first*/
+                .map(o => Observable
+                  .fromTask(o.fiber.join)
+                  .map(ApiWithNodeState(o.api, _)))
+                // Query nodes in parallel and continue with first response first
+                .merge(implicitly[Observable[ApiWithNodeState[Api]] <:< Observable[ApiWithNodeState[Api]]]/*required for Scala 3???*/)
                 .takeWhileInclusive(o => !o.clusterNodeState.forall(_.isActive))
                 .toListL
                 .flatMap { list =>

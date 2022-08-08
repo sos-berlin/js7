@@ -35,7 +35,10 @@ public final class TestBlockingInternalJob implements BlockingInternalJob
     private boolean startCalled = false;
 
     public TestBlockingInternalJob(JobContext jobContext) {
-        expectedBlockingThreadPoolName = jobContext.jobArguments().get("blockingThreadPoolName").convertToString();
+        java.util.Map<String, js7.data.value.Value> a = jobContext.jobArguments();
+        Value b = a.get("blockingThreadPoolName");
+        expectedBlockingThreadPoolName = b.convertToString();
+        //expectedBlockingThreadPoolName = jobContext.jobArguments().get("blockingThreadPoolName").convertToString();
         assertSpecialThread();
         if (!jobContext.jobKey().name().equals("WORKFLOW~1:JOB") &&
             !jobContext.jobKey().name().equals("WORKFLOW-9~v9:0"))
@@ -89,7 +92,9 @@ public final class TestBlockingInternalJob implements BlockingInternalJob
             step.errWriter().write('\n');
 
             // The recommened way is to access the declared job arguments:
-            Value argOrNull = step.arguments().get("STEP_ARG");
+            Map<String,Value> arguments = step.arguments();
+            Value argOrNull = arguments.get("STEP_ARG");
+            //Value argOrNull = step.arguments().get("STEP_ARG");
 
             // Access any (maybe undeclared) named values
             // like $ORDER_ARG in the expression language.

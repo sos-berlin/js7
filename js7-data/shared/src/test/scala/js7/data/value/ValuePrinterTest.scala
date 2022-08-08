@@ -19,7 +19,7 @@ final class ValuePrinterTest extends AnyFreeSpec
   }
 
   "quoteString - random values" in {
-    forAll { string: String =>
+    forAll { (string: String) =>
       val cleansedString = string.map(c => if ((c & 0xffff) >= 0x20 || c == '\t' || c == '\r'|| c == '\n') c else '¿')
       assert(parseQuotedString(quoteString(cleansedString)) == Right(cleansedString))
     }

@@ -11,6 +11,7 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import js7.base.problem.Problem;
 import js7.data.value.NumberValue;
+import js7.data.value.Value;
 import js7.data_for_java.order.JOutcome;
 import js7.launcher.forjava.internal.JInternalJob;
 import js7.launcher.forjava.internal.JOrderProcess;
@@ -43,8 +44,8 @@ public final class TestJInternalJob implements JInternalJob
     }
 
     public TestJInternalJob(JobContext jobContext) {
-        blockingThreadPoolName = jobContext.jobArguments().get("blockingThreadPoolName")
-            .convertToString();
+        Map<String,Value> arguments = jobContext.jobArguments();
+        blockingThreadPoolName = arguments.get("blockingThreadPoolName").convertToString();
     }
 
     @Override

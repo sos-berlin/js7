@@ -153,7 +153,7 @@ trait AkkaWebServer extends AutoCloseable
     activeBindings.toVector
       .traverse(_.flatMap(binding =>
         Task.deferFuture(binding.terminate(hardDeadline = timeout))
-          .map { _: Http.HttpTerminated =>
+          .map { (_: Http.HttpTerminated) =>
             logger.debug(s"$binding terminated")
             Completed
           }))

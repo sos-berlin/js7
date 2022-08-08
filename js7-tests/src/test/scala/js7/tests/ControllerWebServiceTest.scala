@@ -15,7 +15,7 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.crypt.silly.{SillySignature, SillySigner}
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.RichPath
-import js7.base.io.process.Processes.{ShellFileExtension as sh}
+import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.problem.Problems.UnknownKeyProblem

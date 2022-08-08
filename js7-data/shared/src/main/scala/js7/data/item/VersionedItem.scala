@@ -5,7 +5,7 @@ package js7.data.item
   */
 trait VersionedItem extends SignableItem
 {
-  type Self <: VersionedItem
+  protected type Self <: VersionedItem
   type Path = companion.Path
 
   val companion: VersionedItem.Companion[Self]

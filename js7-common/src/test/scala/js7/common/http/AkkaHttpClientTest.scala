@@ -103,7 +103,7 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll with H
           import CirceJsonSupport.jsonMarshaller
           post {
             import CirceJsonSupport.jsonUnmarshaller
-            entity(as[A]) { a =>
+            entity(as[A])(a =>
               path("OK") {
                 complete(OK -> A(a.int + 1))
               } ~
@@ -115,8 +115,7 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll with H
               } ~
               path("SERVER-ERROR") {
                 complete(InternalServerError -> "SERVER ERROR")
-              }
-            }
+              })
           } ~
             get {
               path("STREAM") {

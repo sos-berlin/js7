@@ -1,5 +1,6 @@
 package js7.journal.web
 
+import akka.http.scaladsl.server.Directive1
 import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import io.circe.Codec
@@ -27,7 +28,8 @@ final class EventDirectivesTest extends AnyFreeSpec with ScalatestRouteTest
 
   private def route =
     path("test") {
-      eventRequest[MyEvent].apply { eventReq =>
+      val x: Directive1[EventRequest[MyEvent]] = eventRequest[MyEvent]
+      x.apply((eventReq: EventRequest[MyEvent]) =>
         if (eventReq == EventRequest[MyEvent](Set(classOf[AEvent]), after = EventId(1), delay = EventDirectives.DefaultDelay, timeout = Some(0.s)))
           complete("DEFAULT")
         else
@@ -42,8 +44,7 @@ final class EventDirectivesTest extends AnyFreeSpec with ScalatestRouteTest
         else {
           println(eventReq)
           reject
-        }
-      }
+        })
     }
 
   "eventRequest" in {

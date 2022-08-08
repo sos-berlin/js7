@@ -144,7 +144,8 @@ object IdToUser
     new IdToUser(userIdToRaw, dn => distinguishedNameToUserIds.getOrElse(dn, Set.empty), toUser, toPermission)
   }
 
-  private val identityHasher = { o: String => identity(o) } withToString "identity"
+  private val identityHasher: String => String =
+    ((o: String) => identity(o)).withToString("identity")
 
   private def toHashedPassword(userId: UserId, encodedPassword: SecretString) =
     encodedPassword.string match {

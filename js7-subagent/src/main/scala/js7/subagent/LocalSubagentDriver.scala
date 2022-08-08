@@ -135,11 +135,11 @@ extends SubagentDriver
     Task.defer {
       import subagentConf.{outerrCharBufferSize, stdouterr}
 
-      val outErrStatistics = Map(
+      val outErrStatistics = Map[StdoutOrStderr, OutErrStatistics](
         Stdout -> new OutErrStatistics,
         Stderr -> new OutErrStatistics)
 
-      val observingStarted = Map(
+      val observingStarted = Map[StdoutOrStderr, Promise[Unit]](
         Stdout -> Promise[Unit](),
         Stderr -> Promise[Unit]())
 

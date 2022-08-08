@@ -1,8 +1,9 @@
 package js7.data.item
 
 import io.circe.{Codec, Decoder, DecodingFailure, Encoder, HCursor, Json}
-import js7.base.circeutils.CirceUtils.CirceUtilsChecked
+import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Checked.Ops
+import js7.base.problem.Problem
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.data.item.VersionedControlPath.*
 import scala.reflect.ClassTag
@@ -66,6 +67,7 @@ object VersionedControlPath
       c => c.as[String].flatMap(o => checked(o).toDecoderResult(c.history))
   }
 
+  // TODO Same as VersionedItemPath.jsonCodec
   def jsonCodec(companions: Iterable[AnyCompanion]): Codec[VersionedControlPath] =
     new Codec[VersionedControlPath] {
       private val typeToCompanion = companions.toKeyedMap(_.itemTypeName)
@@ -81,8 +83,10 @@ object VersionedControlPath
           }
           prefix = prefixAndPath._1
           path = prefixAndPath._2
-          itemPath <- typeToCompanion.get(prefix).map(_.apply(path))
-            .toRight(DecodingFailure(s"Unrecognized type prefix in VersionedControlPath: $prefix", c.history))
-        } yield itemPath
+          itemPath <- typeToCompanion.get(prefix)
+            .toRight(Problem.pure(s"Unrecognized type prefix in VersionedControlPath: $prefix"))
+            .flatMap(_.checked(path))
+            .toDecoderResult(c.history)
+        } yield itemPath.asInstanceOf[VersionedControlPath]/*???*/
     }
 }

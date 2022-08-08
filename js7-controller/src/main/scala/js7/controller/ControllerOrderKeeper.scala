@@ -1565,7 +1565,7 @@ private[controller] object ControllerOrderKeeper
     override def -=(a: ActorRef) = super.-=(a)
 
     def update(agentRef: AgentRef): Unit = {
-      val oldEntry = apply(agentRef.path)
+      val oldEntry = super.apply(agentRef.path)
       super.update(agentRef.path -> oldEntry.copy(agentRef = agentRef))
     }
 

@@ -40,9 +40,9 @@ final class ActorTest extends AnyFreeSpec with BeforeAndAfterAll with ProvideAct
           super.postRestart(t)
         }
 
-        override def preStart = startCounter.increment()
+        override def preStart() = startCounter.increment()
 
-        override def postStop = stopped.success(())
+        override def postStop() = stopped.success(())
 
         def receive = {
           case "CRASH" => throw new RuntimeException("TEST-CRASH") with NoStackTrace

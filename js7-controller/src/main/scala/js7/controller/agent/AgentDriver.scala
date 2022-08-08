@@ -201,7 +201,7 @@ extends ReceiveLoggingActor.WithStash
                 // TODO Still a small possibility for race-condition? May log a AgentDuplicateOrder
                 api.commandExecute(command))
           } yield response).value
-      } yield response
+      } yield response.map(_.asInstanceOf[AgentCommand.Batch.Response]/*???*/)
     }
 
     protected def asyncOnBatchSucceeded(queuedInputResponses: Seq[QueuedInputResponse]) =

@@ -15,7 +15,7 @@ import js7.agent.scheduler.order.OrderActorTest.*
 import js7.agent.tests.TestAgentDirectoryProvider
 import js7.base.generic.Completed
 import js7.base.io.file.FileUtils.syntax.*
-import js7.base.io.process.Processes.{ShellFileExtension as sh}
+import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
 import js7.base.log.CorrelId
 import js7.base.system.OperatingSystem.isWindows

@@ -14,7 +14,7 @@ import scala.util.Success
  *
  * @author Joacim Zschimmer
  */
-class SetOnce[A](label: => String, notYetSetProblem: Problem)
+final class SetOnce[A](label: => String, notYetSetProblem: Problem)
 {
   protected[this] val promise = Promise[A]()
 

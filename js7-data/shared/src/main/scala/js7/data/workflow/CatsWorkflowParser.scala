@@ -84,7 +84,7 @@ object CatsWorkflowParser
         .map(ObjectExpression.apply)
 
     private val anonymousWorkflowJob: Parser0[WorkflowJob] = for {
-      kv <- keyValues(
+      kv <- keyValues[Any](
         keyValue("env", objectExpression) |
         keyValue("v1Compatible", booleanConstant) |
         keyValue("executable", quotedString) |

@@ -6,7 +6,7 @@ import js7.data.item.{ItemRevision, TrivialItemState, UnsignedSimpleItem, Unsign
 import js7.data.workflow.position.Label
 
 final case class WorkflowPathControl(
-  override val path: WorkflowPathControlPath,
+  path: WorkflowPathControlPath,
   suspended: Boolean = false,
   skip: Set[Label] = Set.empty,
   itemRevision: Option[ItemRevision] = Some(ItemRevision(0)))
