@@ -16,7 +16,7 @@ trait CloseableIterator[+A] extends Iterator[A] with AutoCloseable
   /** Automatically closes the `CloseableIterator` when `hasNext` becomes false. */
   def closeAtEnd: CloseableIterator[A] =
     this match {
-      case _: CloseAtEnd[A] =>
+      case _: CloseAtEnd[A @unchecked] =>
         this
 
       case _ =>

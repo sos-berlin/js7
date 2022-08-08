@@ -252,9 +252,9 @@ object Problem extends Semigroup[Problem]
     override def equals(o: Any) = o match {
       case o: Combined =>
         (problems, o.problems) match {
-          case (problems: Set[Problem], _) => problems == o.problems.toSet  // Ignore ordering (used in tests)
-          case (_, o: Set[Problem])        => problems.toSet == o           // Ignore ordering (used in tests)
-          case _                           => problems == o.problems
+          case (problems: Set[Problem @unchecked], _) => problems == o.problems.toSet  // Ignore ordering (used in tests)
+          case (_, o: Set[Problem @unchecked]) => problems.toSet == o // Ignore ordering (used in tests)
+          case _ => problems == o.problems
         }
         case _ => super.equals(o)
       }
