@@ -20,9 +20,12 @@ final case class JobLauncherConf(
   killScript: Option[ProcessKillScript],
   scriptInjectionAllowed: Boolean,
   recouplingStreamReaderConf: RecouplingStreamReaderConf,
-  implicit val iox: IOExecutor,
+  iox: IOExecutor,
   blockingJobScheduler: Scheduler,
   clock: AlarmClock)
+{
+  implicit def implicitIox: IOExecutor = iox
+}
 
 object JobLauncherConf
 {

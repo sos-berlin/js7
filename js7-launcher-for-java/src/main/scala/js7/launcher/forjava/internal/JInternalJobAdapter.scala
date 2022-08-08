@@ -21,7 +21,7 @@ extends InternalJob
       job => Task.fromFuture(job.stop.asScala).void)
 
   def toOrderProcess(step: Step) = {
-    import jobContext.js7Scheduler
+    import jobContext.implicitJs7Scheduler
     val jStep = JInternalJob.Step(step)
     helper.callProcessOrder(_
       .toOrderProcess(jStep).asScala)

@@ -174,7 +174,7 @@ object RunningAgent {
     // Run under scheduler from start (and let debugger show Controller's thread names)
     Future {
       val agentConfiguration = injector.instance[AgentConfiguration]
-      import agentConfiguration.{akkaAskTimeout, config, journalConf, journalMeta}
+      import agentConfiguration.{config, implicitAkkaAskTimeout, journalConf, journalMeta}
       agentConfiguration.journalMeta.deleteJournalIfMarked()
         .orThrow
       val whenRecovered = Future(StateRecoverer.recover[AgentState](journalMeta, config))

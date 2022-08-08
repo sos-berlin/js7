@@ -82,7 +82,7 @@ final class AgentOrderKeeper(
   extends MainJournalingActor[AgentState, Event]
   with Stash
 {
-  import conf.akkaAskTimeout
+  import conf.implicitAkkaAskTimeout
   import context.{actorOf, watch}
 
   private val ownAgentPath = persistence.currentState.meta.agentPath

@@ -1,10 +1,10 @@
 package js7.controller.web.controller.api.order
 
+import akka.http.scaladsl.marshalling.ToEntityMarshaller
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.{BadRequest, Conflict, Created, OK}
 import akka.http.scaladsl.model.headers.{Accept, Location}
 import akka.http.scaladsl.server.Route
-import io.circe.Json
 import io.circe.syntax.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.thread.MonixBlocking.syntax.*
@@ -123,6 +123,8 @@ final class OrderRouteTest extends AnyFreeSpec with RouteTester with OrderRoute
 
   "POST multiple orders" in {
     val orders = FreshOrder(OrderId("ORDER-ID"), WorkflowPath("WORKFLOW")) :: FreshOrder(DuplicateOrderId, WorkflowPath("WORKFLOW")) :: Nil
+    implicit val toEntityMarshaller: ToEntityMarshaller[Seq[FreshOrder]] =
+      jsonMarshaller(implicitly[Encoder[Seq[FreshOrder]]])
     Post("/controller/api/order", orders) ~> Accept(`application/json`) ~> route ~> check {
       assert(status == OK)
       assert(response.header[Location].isEmpty)

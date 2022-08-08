@@ -42,7 +42,7 @@ final case class AgentConfiguration(
   logDirectory: Path,
   jobWorkingDirectory: Path = WorkingDirectory,
   killScript: Option[ProcessKillScript],  // TODO Duplicate with SubagentConf
-  implicit val akkaAskTimeout: Timeout,
+  akkaAskTimeout: Timeout,
   journalConf: JournalConf,
   name: String,
   config: Config)  // Should not be the first argument to avoid the misleading call AgentConfiguration(config)
@@ -51,6 +51,8 @@ extends CommonConfiguration
   require(jobWorkingDirectory.isAbsolute)
 
   val recouplingStreamReaderConf = RecouplingStreamReaderConfs.fromConfig(config).orThrow
+
+  implicit def implicitAkkaAskTimeout: Timeout = akkaAskTimeout
 
   private def withCommandLineArguments(a: CommandLineArguments): AgentConfiguration = {
     val common = CommonConfiguration.Common.fromCommandLineArguments(a)

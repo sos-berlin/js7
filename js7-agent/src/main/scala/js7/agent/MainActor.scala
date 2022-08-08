@@ -32,7 +32,7 @@ final class MainActor(
   terminationPromise: Promise[ProgramTermination])
 extends Actor {
 
-  import agentConfiguration.akkaAskTimeout
+  import agentConfiguration.implicitAkkaAskTimeout
   import context.{actorOf, watch}
 
   override val supervisorStrategy = CatchingSupervisorStrategy(terminationPromise)
@@ -44,12 +44,12 @@ extends Actor {
         .apply(persistence, terminationPromise)
     },
     "agent"))
-  private val agentHandle = new AgentHandle(agentActor)(akkaAskTimeout)
+  private val agentHandle = new AgentHandle(agentActor)
 
   private val commandHandler = injector.option[CommandHandler]/*Only tests bind a CommandHandler*/
     .getOrElse {
       val actor = actorOf(Props { new CommandActor(agentHandle) }, "command")
-      new CommandActor.Handle(actor)(akkaAskTimeout)
+      new CommandActor.Handle(actor)
     }
 
   private def api(meta: CommandMeta) = new DirectAgentApi(commandHandler, agentHandle, meta)

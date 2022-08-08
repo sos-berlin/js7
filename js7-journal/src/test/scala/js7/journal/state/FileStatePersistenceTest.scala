@@ -138,7 +138,7 @@ final class FileStatePersistenceTest extends AnyFreeSpec with BeforeAndAfterAll
     def start() = {
       val recovered = StateRecoverer.recover[TestState](journalMeta, JournalEventWatch.TestConfig)
       implicit val a = actorSystem
-      implicit val timeout = Timeout(99.s)
+      implicit val timeout: Timeout = Timeout(99.s)
       persistence = FileStatePersistence
         .start(recovered, JournalConf.fromConfig(TestConfig),
           new EventIdGenerator(EventIdClock.fixed(epochMilli = 1000/*EventIds start at 1000000*/)))

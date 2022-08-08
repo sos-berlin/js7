@@ -830,8 +830,8 @@ with MainJournalingActor[ControllerState, Event]
         Future.successful(Left(Problem.pure("THIS SHOULD NOT HAPPEN")))  // Never called
 
       case ControllerCommand.TakeSnapshot =>
-        import controllerConfiguration.akkaAskTimeout  // We need several seconds or even minutes
-        intelliJuseImport(akkaAskTimeout)
+        import controllerConfiguration.implicitAkkaAskTimeout  // We need several seconds or even minutes
+        intelliJuseImport(implicitAkkaAskTimeout)
         (journalActor ? JournalActor.Input.TakeSnapshot)
           .mapTo[JournalActor.Output.SnapshotTaken.type]
           .map(_ => Right(ControllerCommand.Response.Accepted))

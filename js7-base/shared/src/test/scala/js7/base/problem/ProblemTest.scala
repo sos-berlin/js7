@@ -1,7 +1,6 @@
 package js7.base.problem
 
 import cats.syntax.semigroup.*
-import io.circe.Decoder
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.ProblemTest.*
 import js7.base.utils.ScalaUtils.syntax.*
@@ -26,7 +25,6 @@ final class ProblemTest extends AnyFreeSpec
 
       "with TYPE" in {
         implicit val x = Problem.typedJsonEncoder
-        implicit val y = implicitly[Decoder[Problem]]
         testJson(Problem("A problem"),
           json"""{
             "TYPE": "Problem",

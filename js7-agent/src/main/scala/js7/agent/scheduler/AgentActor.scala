@@ -54,7 +54,7 @@ private[agent] final class AgentActor private(
 
   extends Actor with Stash with SimpleStateActor
 {
-  import agentConf.{akkaAskTimeout, journalMeta}
+  import agentConf.{implicitAkkaAskTimeout, journalMeta}
   import context.{actorOf, watch}
   import persistence.eventWatch
 

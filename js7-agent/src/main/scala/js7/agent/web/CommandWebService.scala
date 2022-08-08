@@ -1,9 +1,11 @@
 package js7.agent.web
 
+import akka.http.scaladsl.marshalling.{ToResponseMarshallable, ToResponseMarshaller}
 import akka.http.scaladsl.model.headers.CacheDirectives.`max-age`
 import akka.http.scaladsl.model.headers.`Cache-Control`
 import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route
+import io.circe.Codec
 import js7.agent.data.commands.AgentCommand
 import js7.agent.web.common.AgentRouteProvider
 import js7.base.auth.ValidUserPermission
@@ -13,7 +15,7 @@ import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.akkahttp.StandardMarshallers.*
 import js7.core.command.CommandMeta
 import js7.core.web.EntitySizeLimitProvider
-import js7.data.command.{CommandHandlerDetailed, CommandHandlerOverview}
+import js7.data.command.{CommandHandlerDetailed, CommandHandlerOverview, CommandRunOverview}
 import monix.eval.Task
 import monix.execution.Scheduler
 
@@ -49,8 +51,14 @@ extends AgentRouteProvider with EntitySizeLimitProvider
               commandOverview)
           } ~
           pathSingleSlash {
+            val marshaller: ToResponseMarshaller[Seq[CommandRunOverview[AgentCommand]]] = {
+              implicit val jsonCodec: Codec.AsObject[CommandRunOverview[AgentCommand]] =
+                CommandRunOverview.jsonCodec[AgentCommand]
+              implicitly[ToResponseMarshaller[Seq[CommandRunOverview[AgentCommand]]]]
+            }
             completeTask(
-              commandDetailed.map(_.commandRuns))
+              commandDetailed.map(_.commandRuns)
+                .map(ToResponseMarshallable(_)(marshaller)))
           }
         }
       }

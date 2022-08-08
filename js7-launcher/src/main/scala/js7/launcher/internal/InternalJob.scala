@@ -44,11 +44,14 @@ object InternalJob
     executable: InternalExecutable,
     jobArguments: NamedValues,
     jobConf: JobConf,
-    implicit val js7Scheduler: Scheduler,
+    js7Scheduler: Scheduler,
     ioExecutor: IOExecutor,
     blockingJobScheduler: Scheduler,
     clock: AlarmClock,
     systemEncoding: Charset)
+  {
+    implicit def implicitJs7Scheduler: Scheduler = js7Scheduler
+  }
 
   final case class Step private[internal](processOrder: ProcessOrder, arguments: NamedValues) {
     self =>

@@ -69,7 +69,7 @@ object JobLauncher
         if (!launcherConf.scriptInjectionAllowed)
           Left(SignedInjectionNotAllowed)
         else {
-          import launcherConf.iox
+          import launcherConf.implicitIox
           lazy val scope = NowScope() |+| EnvScope
           for (jobArguments <- evalExpressionMap(executable.jobArguments, scope))
             yield new InternalJobLauncher(executable, jobConf, jobArguments,

@@ -249,15 +249,19 @@ object OrderEvent
 
   sealed trait OrderNoticePosted_ extends OrderNoticeEvent
   object OrderNoticePosted_ {
-    implicit val jsonEncoder: Encoder.AsObject[OrderNoticePosted_] = {
+    private val jsonEncoder: Encoder.AsObject[OrderNoticePosted_] = {
       case o: OrderNoticePostedV2_3 => OrderNoticePostedV2_3.jsonEncoder.encodeObject(o)
       case o: OrderNoticePosted => OrderNoticePosted.jsonEncoder.encodeObject(o)
     }
-    implicit val jsonDecoder: Decoder[OrderNoticePosted_] = c =>
+
+    private val jsonDecoder: Decoder[OrderNoticePosted_] = c =>
       if (c.value.asObject.flatMap(_("notice")).flatMap(_.asObject).exists(_.contains("boardPath")))
         c.get[Notice]("notice").map(OrderNoticePosted(_))
       else
         c.get[NoticeV2_3]("notice").map(OrderNoticePostedV2_3(_))
+
+    implicit val jsonCodec: Codec.AsObject[OrderNoticePosted_] =
+      Codec.AsObject.from(jsonDecoder, jsonEncoder)
   }
 
   // COMPATIBLE with v2.3

@@ -32,13 +32,15 @@ final case class ControllerConfiguration(
   configDirectory: Path,
   webServerPorts: Seq[WebServerPort],
   timeZone: ZoneId,
-  implicit val akkaAskTimeout: Timeout,
+  akkaAskTimeout: Timeout,
   journalConf: JournalConf,
   clusterConf: ClusterConf,
   name: String,
   config: Config)
 extends CommonConfiguration
 {
+  implicit def implicitAkkaAskTimeout: Timeout = akkaAskTimeout
+
   def itemDirectory: Path = configDirectory / "live"
 
   def stateDirectory: Path = dataDirectory / "state"

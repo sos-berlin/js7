@@ -250,9 +250,10 @@ object AkkaHttpServerUtils
 
       case Some(correlId) =>
         complete {
+          import js7.base.log.CanBindCorrelId.cancelableFuture
           correlId.bind {
             task.runToFuture
-          }
+          } (cancelableFuture)
         }
     }
 }

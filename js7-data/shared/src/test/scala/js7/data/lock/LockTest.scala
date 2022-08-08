@@ -7,6 +7,7 @@ import org.scalatest.freespec.AnyFreeSpec
 final class LockTest extends AnyFreeSpec
 {
   "JSON" in {
+    implicit val x = Lock.jsonCodec
     testJson(Lock(LockPath("LOCK"), limit = 3), json"""
       {
         "path": "LOCK",

@@ -58,7 +58,7 @@ object TestAgentActorProvider {
   private def start(configAndData: Path, testName: String)
   : (AgentConfiguration, StatePersistence[AgentState], ActorRef) = {
     implicit val agentConfiguration = AgentConfiguration.forTest(configAndData = configAndData, name = testName)
-    import agentConfiguration.{akkaAskTimeout, config, journalConf, journalMeta}
+    import agentConfiguration.{config, implicitAkkaAskTimeout, journalConf, journalMeta}
     val injector = Guice.createInjector(new AgentModule(agentConfiguration))
 
     // Initialize Akka here to solve a classloader problem when Akka reads its reference.conf

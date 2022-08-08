@@ -291,7 +291,7 @@ object RunningController
     private lazy val itemVerifier = new SignedItemVerifier(
       GenericSignatureVerifier(controllerConfiguration.config).orThrow,
       ControllerState.signableItemJsonCodec)
-    import controllerConfiguration.{akkaAskTimeout, journalMeta}
+    import controllerConfiguration.{implicitAkkaAskTimeout, journalMeta}
     @volatile private var clusterStartupTermination = ProgramTermination()
 
     private[RunningController] def start(): Future[RunningController] = {

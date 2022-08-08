@@ -49,11 +49,11 @@ object StandardMarshallers
     (BigDecimal(string) * 1000).toLong.millis
 
   def monixObservableToMarshallable[A: Tag](observable: Observable[A])
-    (implicit s: Scheduler, q: Source[A, NotUsed] => ToResponseMarshallable)
+    (implicit s: Scheduler, toMarshallable: Source[A, NotUsed] => ToResponseMarshallable)
   : ToResponseMarshallable =
-    observable.toAkkaSourceForHttpResponse
+    toMarshallable(observable.toAkkaSourceForHttpResponse)
 
-  def observableToJsonArrayHttpEntity[A: Encoder: Tag](observable: Observable[A])(implicit s: Scheduler): HttpEntity.Chunked =
+  private def observableToJsonArrayHttpEntity[A: Encoder: Tag](observable: Observable[A])(implicit s: Scheduler): HttpEntity.Chunked =
     HttpEntity(
       `application/json`,
       observable
@@ -95,5 +95,4 @@ object StandardMarshallers
     Marshaller {
       _ => _ => Future.successful(List(Marshalling.Opaque(() => HttpResponse(OK))))
     }
-
 }
