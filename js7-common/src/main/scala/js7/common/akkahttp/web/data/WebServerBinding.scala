@@ -31,7 +31,9 @@ object WebServerBinding
   def http(port: Int): Http =
     WebServerBinding.Http(new InetSocketAddress("0.0.0.0", port))
 
-  sealed trait Scheme
+  sealed trait Scheme {
+    def name: String
+  }
 
   final case class Http(address: InetSocketAddress)
   extends WebServerBinding {
@@ -40,7 +42,8 @@ object WebServerBinding
 
   }
   object Http extends Scheme {
-    override def toString = "http"
+    val name = "http"
+    // Scala 3: "Double definition"??? override def toString = "http"
   }
 
   final case class Https(
@@ -55,7 +58,8 @@ object WebServerBinding
       s" ($keyStoreRef, " + (trustStoreRefs.map(_.toString).mkString(", ")) + ")"
   }
   object Https extends Scheme {
-    override def toString = "https"
+    val name = "https"
+    // Scala 3: "Double definition"??? override def toString = "https"
   }
 
   trait HasLocalUris
@@ -87,7 +91,7 @@ object WebServerBinding
         case o => o
       }
       val port = address.getPort
-      AkkaUri(scheme.toString, AkkaUri.Authority(AkkaUri.Host(host), port)).asUri
+      AkkaUri(scheme.name, AkkaUri.Authority(AkkaUri.Host(host), port)).asUri
     }
   }
 }

@@ -246,7 +246,7 @@ object ShellScriptExecutable
       v1Compatible <- cursor.getOrElse[Boolean]("v1Compatible")(false)
     } yield ShellScriptExecutable(script, env, login, returnCodeMeaning, v1Compatible)
 
-  override def toString = "ShellScriptExecutable"
+  //override def toString = "ShellScriptExecutable"
 }
 
 final case class InternalExecutable(
