@@ -13,6 +13,7 @@ with SeparateTrivialItemState[CalendarState]
 
 object CalendarState extends UnsignedSimpleItemState.Companion[CalendarState]
 {
-  type Path = CalendarPath
+  type Key = CalendarPath
   type Item = Calendar
+  override type ItemState = CalendarState
 }

@@ -219,8 +219,9 @@ extends UnsignedSimpleItemState
 
 object OrderWatchState extends UnsignedSimpleItemState.Companion[OrderWatchState]
 {
-  type Path = OrderWatchPath
+  type Key = OrderWatchPath
   type Item = OrderWatch
+  override type ItemState = OrderWatchState
 
   type ToOrderAdded = (FreshOrder, Option[ExternalOrderKey]) => Checked[Option[KeyedEvent[OrderAdded]]]
 

@@ -17,9 +17,8 @@ object UnsignedSimpleItemState
   extends UnsignedItemState.Companion[A]
   with SimpleItemState.Companion[A]
   {
-    type Key = Path
-    type Path <: UnsignedSimpleItemPath
-    type ItemState <: UnsignedSimpleItemState
+    type Key <: UnsignedSimpleItemPath
+    type Path = Key
     type Item <: UnsignedSimpleItem
   }
 }

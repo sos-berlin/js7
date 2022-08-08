@@ -140,6 +140,7 @@ extends UnsignedSimpleItemState
 }
 
 object BoardState extends UnsignedSimpleItemState.Companion[BoardState] {
-  type Path = BoardPath
+  type Key = BoardPath
   type Item = Board
+  override type ItemState = BoardState
 }

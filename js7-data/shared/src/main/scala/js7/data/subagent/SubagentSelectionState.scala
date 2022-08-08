@@ -11,6 +11,7 @@ extends UnsignedSimpleItemState with SeparateTrivialItemState[SubagentSelectionS
 
 object SubagentSelectionState extends UnsignedSimpleItemState.Companion[SubagentSelectionState]
 {
-  type Path = SubagentSelectionId
+  type Key = SubagentSelectionId
   type Item = SubagentSelection
+  override type ItemState = SubagentSelectionState
 }

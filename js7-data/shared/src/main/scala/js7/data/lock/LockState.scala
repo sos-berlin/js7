@@ -125,8 +125,9 @@ extends UnsignedSimpleItemState with Big/*acquired and queue get big with many o
 
 object LockState extends UnsignedSimpleItemState.Companion[LockState]
 {
-  type Path = LockPath
+  type Key = LockPath
   type Item = Lock
+  override type ItemState = LockState
 
   implicit val jsonCodec: Codec.AsObject[LockState] = deriveCodec[LockState]
 }

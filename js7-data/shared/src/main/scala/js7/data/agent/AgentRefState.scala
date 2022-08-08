@@ -103,8 +103,9 @@ extends UnsignedSimpleItemState
 
 object AgentRefState extends UnsignedSimpleItemState.Companion[AgentRefState]
 {
-  type Path = AgentPath
+  type Key = AgentPath
   type Item = AgentRef
+  override type ItemState = AgentRefState
 
   implicit val jsonCodec: Codec.AsObject[AgentRefState] = deriveCodec
 

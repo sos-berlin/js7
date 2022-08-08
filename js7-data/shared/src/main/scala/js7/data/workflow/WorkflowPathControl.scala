@@ -38,6 +38,7 @@ with TrivialItemState.Companion[WorkflowPathControl]
   val Path = WorkflowPathControlPath
   val cls = classOf[WorkflowPathControl]
 
+  override type ItemState = WorkflowPathControl
 
   implicit val jsonCodec: Codec.AsObject[WorkflowPathControl] =
     deriveCodec[WorkflowPathControl]

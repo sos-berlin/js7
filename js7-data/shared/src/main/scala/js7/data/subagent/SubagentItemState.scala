@@ -101,8 +101,9 @@ extends UnsignedSimpleItemState
 
 object SubagentItemState extends UnsignedSimpleItemState.Companion[SubagentItemState]
 {
-  type Path = SubagentId
+  type Key = SubagentId
   type Item = SubagentItem
+  override type ItemState = SubagentItemState
 
   def initial(subagentItem: SubagentItem) =
     SubagentItemState(subagentItem, None, DelegateCouplingState.Reset.fresh,

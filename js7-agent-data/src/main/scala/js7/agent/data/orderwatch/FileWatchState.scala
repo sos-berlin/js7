@@ -69,8 +69,9 @@ extends UnsignedSimpleItemState
 
 object FileWatchState extends UnsignedSimpleItemState.Companion[FileWatchState]
 {
-  type Path = OrderWatchPath
+  type Key = OrderWatchPath
   type Item = FileWatch
+  override type ItemState = FileWatchState
 
   sealed trait Snapshot {
     def orderWatchPath: OrderWatchPath
