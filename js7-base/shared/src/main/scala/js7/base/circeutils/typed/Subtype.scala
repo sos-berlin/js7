@@ -11,9 +11,9 @@ import scala.reflect.ClassTag
   * @author Joacim Zschimmer
   */
 final class Subtype[A](
-  val classToEncoder: Map[Class[?], Encoder.AsObject[? <: A]],
-  val nameToDecoder: Map[String, Decoder[? <: A]],
-  val nameToClass: Map[String, Class[? <: A]])
+  val classToEncoder: Map[Class[?], Encoder.AsObject[A]],
+  val nameToDecoder: Map[String, Decoder[A]],
+  val nameToClass: Map[String, Class[A]])
 
 object Subtype {
   /**
@@ -117,7 +117,7 @@ object Subtype {
     val names = typeName +: aliases
     val myNamesToDecoder = names.map(_ -> decoder).uniqueToMap
     val myNamesToClass = decodingSuperclass.view
-      .flatMap(cls => names.map(_ -> cls.asInstanceOf[Class[? <: A]]))
+      .flatMap(cls => names.map(_ -> cls.asInstanceOf[Class[A]]))
       .uniqueToMap
     new Subtype[A](
       classToEncoder = encoder match {
