@@ -56,7 +56,7 @@ final class JournalRouteTest extends AnyFreeSpec with RouteTester with JournalRo
   override protected def config = config"js7.web.chunk-size = 1MiB"
     .withFallback(JournalEventWatch.TestConfig)
     .withFallback(super.config)
-  protected var eventWatch = new JournalEventWatch(journalMeta, config)
+  protected var eventWatch: JournalEventWatch = new JournalEventWatch(journalMeta, config)
   private val journalId = JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))
   private var eventWriter: EventJournalWriter = null
 

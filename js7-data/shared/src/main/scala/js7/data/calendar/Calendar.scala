@@ -23,12 +23,13 @@ extends UnsignedSimpleItem
 {
   protected type Self = Calendar
 
-  val companion = Calendar
+  val companion: Calendar.type = Calendar
 
   def rename(path: CalendarPath) =
     copy(path = path)
 
-  def toInitialItemState = CalendarState(this)
+  def toInitialItemState: CalendarState =
+    CalendarState(this)
 
   def withRevision(revision: Option[ItemRevision]) =
     copy(itemRevision = revision)

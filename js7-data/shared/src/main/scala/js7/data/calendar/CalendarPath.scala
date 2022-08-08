@@ -9,7 +9,7 @@ with InventoryItemPath.AttachableToAgent
 {
   protected type Self = CalendarPath
 
-  val companion = CalendarPath
+  val companion: CalendarPath.type = CalendarPath
 }
 
 object CalendarPath extends UnsignedSimpleItemPath.Companion[CalendarPath]

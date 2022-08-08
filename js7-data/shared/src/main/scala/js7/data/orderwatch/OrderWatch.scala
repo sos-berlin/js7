@@ -8,11 +8,12 @@ import js7.data.workflow.WorkflowPath
 
 trait OrderWatch extends UnsignedSimpleItem
 {
-  type Self <: OrderWatch
+  protected type Self <: OrderWatch
 
   val companion: Companion[Self] { type Key <: OrderWatchPath }
 
-  def toInitialItemState = OrderWatchState(this)
+  def toInitialItemState: OrderWatchState =
+    OrderWatchState(this)
 
   val agentPath: AgentPath
 

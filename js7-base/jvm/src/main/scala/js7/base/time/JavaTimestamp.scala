@@ -12,6 +12,8 @@ final case class JavaTimestamp private(toEpochMilli: Long) extends Timestamp
 {
   import JavaTimestamp.specific.*
 
+  protected type Self = JavaTimestamp
+
   def companion = JavaTimestamp
 
   /** Returns an ISO-8601 string with milliseconds.
@@ -25,7 +27,7 @@ final case class JavaTimestamp private(toEpochMilli: Long) extends Timestamp
       this.toOffsetDateTime(zone).format(DateTimeFormatter.ofPattern(format))
     }
 
-  def copy(epochMilli: Long): JavaTimestamp =
+  def copy(epochMilli: Long) =
     JavaTimestamp.ofEpochMilli(epochMilli)
 }
 

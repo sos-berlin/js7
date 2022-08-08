@@ -3,13 +3,12 @@ package js7.data.item
 trait VersionedControl extends UnsignedItem
 {
   protected type Self <: VersionedControl
-  type Path = companion.Path
 
   val companion: VersionedControl.Companion[Self]
-  final def key = id
-  def id: UnsignedVersionedItemId[Path]
+  final def key: companion.Key = id
+  def id: UnsignedVersionedItemId[companion.Path]
 
-  final def path: Path = key.path
+  final def path: companion.Path = key.path
 }
 
 object VersionedControl

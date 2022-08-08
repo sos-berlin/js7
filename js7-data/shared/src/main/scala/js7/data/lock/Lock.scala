@@ -13,7 +13,7 @@ final case class Lock(
 extends UnsignedSimpleItem
 {
   protected type Self = Lock
-  val companion = Lock
+  val companion: Lock.type = Lock
 
   assertThat(limit >= 0)
 
@@ -23,7 +23,8 @@ extends UnsignedSimpleItem
   def withRevision(revision: Option[ItemRevision]) =
     copy(itemRevision = revision)
 
-  def toInitialItemState = LockState(this)
+  def toInitialItemState: LockState =
+    LockState(this)
 }
 
 object Lock extends UnsignedSimpleItem.Companion[Lock]

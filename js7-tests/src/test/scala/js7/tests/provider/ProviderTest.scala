@@ -52,7 +52,8 @@ final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
   private lazy val subagentItem = directoryProvider.subagentItems.head
   private lazy val privateKeyPassword = SecretString("")
   private val privateKey = ByteArray("SILLY")
-  override protected val signer = SillySigner.checked(privateKey, privateKeyPassword).orThrow
+  override protected val signer: SillySigner =
+    SillySigner.checked(privateKey, privateKeyPassword).orThrow
   override protected val verifier = signer.toVerifier
 
   private lazy val providerDirectory = directoryProvider.directory / "provider"

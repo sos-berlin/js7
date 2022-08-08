@@ -16,9 +16,9 @@ final case class TestVersionedItem(id: TestVersionedItem.Key, content: String)
 extends VersionedItem
 with TrivialItemState[TestVersionedItem]
 {
-  type Self = TestVersionedItem
-  val item = this
-  val companion = TestVersionedItem
+  protected type Self = TestVersionedItem
+  val item: TestVersionedItem = this
+  val companion: TestVersionedItem.type = TestVersionedItem
 
   def withId(id: VersionedItemId[Path]) = copy(id)
 }

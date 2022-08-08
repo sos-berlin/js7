@@ -13,7 +13,7 @@ import js7.data.workflow.{Workflow, WorkflowId, WorkflowParser}
   */
 object WorkflowReader extends VersionedItemReader
 {
-  val companion = Workflow
+  val companion: Workflow.type = Workflow
 
   def read(workflowId: WorkflowId, source: ByteArray) = {
     case t: SourceType.JsonLike =>

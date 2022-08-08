@@ -80,14 +80,14 @@ object BasicItemEvent
   /** Agent only. */
   final case class ItemAttachedToMe(item: InventoryItem)
   extends ForDelegate {
-    def key = item.key
+    def key: InventoryItemKey = item.key
   }
 
   /** Agent and Subagent only. */
   final case class SignedItemAttachedToMe(signed: Signed[SignableItem])
   extends ForDelegate {
     def item = signed.value
-    def key = item.key
+    def key: SignableItemKey = item.key
   }
   object SignedItemAttachedToMe {
     def jsonCodec[S: ItemContainer.Companion]: Codec.AsObject[SignedItemAttachedToMe] =

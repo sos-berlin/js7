@@ -54,10 +54,11 @@ extends HasCloser with Observing with ProvideActorSystem
       password <- conf.config.optionAs[String]("js7.provider.controller.password")
     } yield UserAndPassword(UserId(userName), SecretString(password))
 
-  protected val httpControllerApi = new AkkaHttpControllerApi(
-    conf.controllerUri, userAndPassword,
-    actorSystem = actorSystem,
-    conf.config, conf.httpsConfig)
+  protected val httpControllerApi: AkkaHttpControllerApi =
+    new AkkaHttpControllerApi(
+      conf.controllerUri, userAndPassword,
+      actorSystem = actorSystem,
+      conf.config, conf.httpsConfig)
 
   private val controllerApi = new ControllerApi(Seq(AkkaHttpControllerApi.admissionToApiResource(
     Admission(conf.controllerUri, userAndPassword), conf.httpsConfig)(actorSystem)))

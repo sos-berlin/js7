@@ -18,7 +18,7 @@ final case class Board(
 extends UnsignedSimpleItem
 {
   protected type Self = Board
-  val companion = Board
+  val companion: Board.type = Board
 
   def withRevision(revision: Option[ItemRevision]) =
     copy(itemRevision = revision)
@@ -26,7 +26,8 @@ extends UnsignedSimpleItem
   def rename(path: BoardPath) =
     copy(path = path)
 
-  def toInitialItemState = BoardState(this)
+  def toInitialItemState: BoardState =
+    BoardState(this)
 
   def postingOrderToNotice(scope: Scope): Checked[Notice] =
     for {

@@ -18,7 +18,7 @@ final case class SubagentState(
 extends SubagentDriverState[SubagentState]
 with ItemContainer
 {
-  val companion = SubagentState
+  val companion: SubagentState.type = SubagentState
 
   def withEventId(eventId: EventId) =
     copy(eventId = eventId)

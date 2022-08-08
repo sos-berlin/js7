@@ -15,12 +15,12 @@ final case class BoardState(
 extends UnsignedSimpleItemState
 {
   protected type Self = BoardState
-  val companion = BoardState
+  val companion: BoardState.type = BoardState
 
-  val item = board
-  def path = item.path
+  val item: Board = board
+  def path: BoardPath = item.path
 
-  def updateItem(item: Board) =
+  def updateItem(item: Board): Checked[BoardState] =
     Right(copy(board = item))
 
   override def toString = s"BoardState(${board.pathRev} $idToNotice)"

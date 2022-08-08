@@ -8,7 +8,7 @@ import js7.data.event.Event
   * @author Joacim Zschimmer
   */
 private[journal] sealed trait TestEvent extends Event.ForScala3[TestEvent] {
-  val companion = TestEvent
+  val companion: TestEvent.type = TestEvent
 }
 
 private[journal] object TestEvent extends Event.Companion[TestEvent] {

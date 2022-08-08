@@ -24,12 +24,12 @@ final case class SubagentItemState(
 extends UnsignedSimpleItemState
 {
   protected type Self = SubagentItemState
-  val companion = SubagentItemState
+  val companion: SubagentItemState.type = SubagentItemState
 
-  val item = subagentItem
-  def path = item.path
+  val item: SubagentItem = subagentItem
+  def path: SubagentId = item.path
 
-  def updateItem(item: SubagentItem) =
+  def updateItem(item: SubagentItem): Checked[SubagentItemState] =
     for (_ <- item.agentPath == subagentItem.agentPath !! Problem.pure(
       "A Subagent's AgentPath cannot be changed"))
     yield copy(subagentItem = item)

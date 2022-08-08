@@ -40,12 +40,12 @@ final case class OrderWatchState(
 extends UnsignedSimpleItemState
 {
   protected type Self = OrderWatchState
-  val companion = OrderWatchState
+  val companion: OrderWatchState.type = OrderWatchState
 
-  val item = orderWatch
-  def path = item.path
+  val item: OrderWatch = orderWatch
+  def path: OrderWatchPath = item.path
 
-  def updateItem(item: OrderWatch) =
+  def updateItem(item: OrderWatch): Checked[OrderWatchState] =
     Right(copy(orderWatch = item))
 
   def id: OrderWatchPath = orderWatch.key

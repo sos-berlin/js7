@@ -21,10 +21,10 @@ final case class FileWatchState(
 extends UnsignedSimpleItemState
 {
   protected type Self = FileWatchState
-  val companion = FileWatchState
+  val companion: FileWatchState.type = FileWatchState
 
-  val item = fileWatch
-  def path = item.path
+  val item: FileWatch = fileWatch
+  def path: OrderWatchPath = item.path
 
   def updateItem(item: FileWatch) =
     Right(copy(fileWatch = item))

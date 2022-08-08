@@ -56,7 +56,7 @@ import scala.util.Try
 final class ControllerWebServiceTest
 extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest
 {
-  override lazy val signer = new SillySigner(SillySignature("MY-SILLY-SIGNATURE"))
+  override lazy val signer: SillySigner = new SillySigner(SillySignature("MY-SILLY-SIGNATURE"))
   override lazy val verifier = signer.toVerifier
 
   private val testStartedAt = Timestamp.now - 24.h

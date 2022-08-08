@@ -10,7 +10,7 @@ final case class LockPath private(string: String) extends UnsignedSimpleItemPath
 {
   protected type Self = LockPath
 
-  val companion = LockPath
+  val companion: LockPath.type = LockPath
 }
 
 object LockPath extends UnsignedSimpleItemPath.Companion[LockPath]

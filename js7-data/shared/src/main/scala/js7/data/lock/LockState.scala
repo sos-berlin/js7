@@ -22,12 +22,12 @@ extends UnsignedSimpleItemState with Big/*acquired and queue get big with many o
   import lock.limit
 
   protected type Self = LockState
-  val companion = LockState
+  val companion: LockState.type = LockState
 
-  val item = lock
-  def path = item.path
+  val item: Lock = lock
+  def path: LockPath = item.path
 
-  def updateItem(lock: Lock) =
+  def updateItem(lock: Lock): Checked[LockState] =
     Right(copy(lock = lock))
 
   def agentPathToAttachedState = Map.empty

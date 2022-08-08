@@ -187,7 +187,8 @@ object Problem extends Semigroup[Problem]
         val arguments = a
       }
     }
-    def unapply(coded: HasCode) = Some((coded.code, coded.arguments))
+    def unapply(coded: HasCode): Option[(ProblemCode, Map[String, String])] =
+      Some((coded.code, coded.arguments))
   }
 
   trait Coded extends HasCode {

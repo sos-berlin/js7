@@ -18,10 +18,10 @@ final case class ScheduledOrderGenerator(
 extends VersionedItem
 with TrivialItemState[ScheduledOrderGenerator]
 {
-  type Self = ScheduledOrderGenerator
-  val item = this
+  protected type Self = ScheduledOrderGenerator
+  val item: ScheduledOrderGenerator = this
 
-  val companion = ScheduledOrderGenerator
+  val companion: ScheduledOrderGenerator.type = ScheduledOrderGenerator
 
   def withId(id: VersionedItemId[ScheduledOrderGeneratorPath]) =
     reuseIfEqual(this, copy(id = id))

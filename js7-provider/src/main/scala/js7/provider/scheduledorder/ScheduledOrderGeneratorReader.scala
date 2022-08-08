@@ -13,7 +13,7 @@ import js7.data.item.{SourceType, VersionedItemId}
   */
 final class ScheduledOrderGeneratorReader(timeZone: ZoneId) extends VersionedItemReader
 {
-  val companion = ScheduledOrderGenerator
+  val companion: ScheduledOrderGenerator.type = ScheduledOrderGenerator
 
   def read(id: VersionedItemId[ScheduledOrderGeneratorPath], source: ByteArray) = {
     case SourceType.Xml => ScheduledOrderGeneratorXmlParser.parseXml(id, source.utf8String, timeZone)

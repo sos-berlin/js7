@@ -148,7 +148,7 @@ object InventoryItemDiffTest
 
   private[tests] object TestItemReader extends VersionedItemReader
   {
-    val companion = TestVersionedItem
+    val companion: TestVersionedItem.type = TestVersionedItem
 
     protected def read(testId: TestVersionedItem.Key, byteArray: ByteArray) = {
       case t: SourceType.JsonLike =>

@@ -22,9 +22,9 @@ extends UnsignedSimpleItem
 with UnsignedSimpleItemState
 with TrivialItemState[TestSimpleItem]
 {
-  type Self = TestSimpleItem
-  val item = this
-  val companion = TestSimpleItem
+  protected type Self = TestSimpleItem
+  val item: TestSimpleItem = this
+  val companion: TestSimpleItem.type = TestSimpleItem
 
   def withId(id: TestSimplePath) = copy(id)
 

@@ -14,7 +14,7 @@ extends UnsignedSimpleItemPath with DelegateId
 {
   protected type Self = AgentPath
 
-  val companion = AgentPath
+  val companion: AgentPath.type = AgentPath
 
   def toUserId: Checked[UserId] =
     UserId.checked(string)

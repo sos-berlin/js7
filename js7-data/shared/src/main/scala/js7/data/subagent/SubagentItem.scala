@@ -19,7 +19,7 @@ extends UnsignedSimpleItem
 {
   protected type Self = SubagentItem
 
-  val companion = SubagentItem
+  val companion: SubagentItem.type = SubagentItem
 
   def rename(id: SubagentId) =
     copy(id = id)
@@ -27,9 +27,10 @@ extends UnsignedSimpleItem
   def withRevision(revision: Option[ItemRevision]) =
     copy(itemRevision = revision)
 
-  def path = id
+  def path: SubagentId = id
 
-  def toInitialItemState = SubagentItemState.initial(this)
+  def toInitialItemState: SubagentItemState =
+    SubagentItemState.initial(this)
 
   override def dedicatedAgentPath = Some(agentPath)
 

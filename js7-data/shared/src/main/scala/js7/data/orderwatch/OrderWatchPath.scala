@@ -9,7 +9,7 @@ with InventoryItemPath.AttachableToAgent
 {
   protected type Self = OrderWatchPath
 
-  val companion = OrderWatchPath
+  val companion: OrderWatchPath.type = OrderWatchPath
 }
 
 object OrderWatchPath extends UnsignedSimpleItemPath.Companion[OrderWatchPath]

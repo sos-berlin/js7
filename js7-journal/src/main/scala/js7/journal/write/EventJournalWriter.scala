@@ -32,7 +32,8 @@ extends JournalWriter(after = after, append = !withoutSnapshots)
 with AutoCloseable
 {
   private val logger = Logger.withPrefix(getClass, file.getFileName.toString)
-  protected val statistics = new EventStatisticsCounter(initialEventCount)
+  protected val statistics: EventStatisticsCounter =
+    new EventStatisticsCounter(initialEventCount)
   private var _eventWritten = false
 
   def closeProperly(sync: Boolean): Unit =

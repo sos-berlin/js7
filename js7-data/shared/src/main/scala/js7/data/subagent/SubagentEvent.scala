@@ -9,7 +9,7 @@ import js7.data.item.InventoryItem
 import js7.data.subagent.SubagentState.inventoryItemJsonCodec
 
 trait SubagentEvent extends Event.ForScala3[SubagentEvent] {
-  val companion = SubagentEvent
+  val companion: SubagentEvent.type = SubagentEvent
 }
 
 object SubagentEvent extends Event.Companion[SubagentEvent]

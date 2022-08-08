@@ -16,7 +16,7 @@ final case class AgentRef(
 extends UnsignedSimpleItem
 {
   protected type Self = AgentRef
-  val companion = AgentRef
+  val companion: AgentRef.type = AgentRef
 
   private def checked: Checked[this.type] =
     for {
@@ -38,7 +38,8 @@ extends UnsignedSimpleItem
   def withRevision(revision: Option[ItemRevision]) =
     copy(itemRevision = revision)
 
-  def toInitialItemState = AgentRefState(this)
+  def toInitialItemState: AgentRefState =
+    AgentRefState(this)
 
   override def referencedItemPaths = directors.view
 

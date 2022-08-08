@@ -8,7 +8,7 @@ trait UnsignedItem extends InventoryItem
 
   val companion: Companion[Self]
 
-  def key: UnsignedItemKey
+  def key: companion.Key
 }
 
 object UnsignedItem

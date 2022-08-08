@@ -21,10 +21,10 @@ final case class AgentRefState(
 extends UnsignedSimpleItemState
 {
   protected type Self = AgentRefState
-  val companion = AgentRefState
+  val companion: AgentRefState.type = AgentRefState
 
-  val item = agentRef
-  def path = item.path
+  val item: AgentRef = agentRef
+  def path: AgentPath = item.path
 
   def updateItem(item: AgentRef): Checked[AgentRefState] =
     Right(copy(agentRef = item))

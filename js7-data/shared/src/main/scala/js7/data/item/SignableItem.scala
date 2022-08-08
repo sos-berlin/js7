@@ -10,8 +10,6 @@ trait SignableItem extends InventoryItem
   protected type Self <: SignableItem
 
   val companion: SignableItem.Companion[Self]
-
-  def key: SignableItemKey
 }
 
 object SignableItem

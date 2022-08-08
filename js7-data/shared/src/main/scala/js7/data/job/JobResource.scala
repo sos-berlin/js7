@@ -15,9 +15,9 @@ final case class JobResource(
 extends SignableSimpleItem
 with TrivialItemState[JobResource]
 {
-  type Self = JobResource
-  val companion = JobResource
-  val item = this
+  protected type Self = JobResource
+  val companion: JobResource.type = JobResource
+  val item: JobResource = this
 
   def withId(id: JobResourcePath) =
     copy(path = id)

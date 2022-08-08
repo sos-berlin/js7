@@ -15,8 +15,8 @@ with UnsignedItemState
 with TrivialItemState[WorkflowControl]
 {
   protected type Self = WorkflowControl
-  val companion = WorkflowControl
-  val item = this
+  val companion: WorkflowControl.type = WorkflowControl
+  val item: WorkflowControl = this
 
   def workflowId: WorkflowId =
     id.workflowId

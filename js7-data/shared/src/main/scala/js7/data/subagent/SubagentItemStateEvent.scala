@@ -8,7 +8,7 @@ import js7.data.platform.PlatformInfo
 
 trait SubagentItemStateEvent extends Event.ForScala3[SubagentItemStateEvent]
 {
-  val companion = SubagentItemStateEvent
+  val companion: SubagentItemStateEvent.type = SubagentItemStateEvent
 }
 
 object SubagentItemStateEvent extends Event.Companion[SubagentItemStateEvent]

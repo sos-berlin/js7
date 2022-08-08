@@ -37,7 +37,7 @@ with EventDrivenStateView[ControllerStateBuilder, Event]
 with OrderWatchStateHandler[ControllerStateBuilder]
 {
   protected val S = ControllerState
-  val companion = ControllerStateBuilder
+  val companion: ControllerStateBuilder.type = ControllerStateBuilder
 
   private var standards: SnapshotableState.Standards = SnapshotableState.Standards.empty
   private var controllerMetaState = ControllerMetaState.Undefined

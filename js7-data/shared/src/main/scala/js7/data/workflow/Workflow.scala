@@ -60,9 +60,11 @@ with TrivialItemState[Workflow]
 
   assertThat(isCorrectlyEnded(rawLabeledInstructions), "Missing implicit end instruction")
 
-  type Self = Workflow
+  protected type Self = Workflow
 
-  val companion = Workflow
+  val companion: Workflow.type = Workflow
+
+  override def path: WorkflowPath = super.path
 
   val labeledInstructions: IndexedSeq[Labeled] = rawLabeledInstructions
     .map(o => o.copy(
@@ -76,7 +78,7 @@ with TrivialItemState[Workflow]
 
   def withId(id: VersionedItemId[WorkflowPath]) = reuseIfEqual(this, copy(id = id))
 
-  val item = this
+  val item: Workflow = this
 
   /** Checks a complete workflow including subworkflows using jobs in its outer workflows. */
   def completelyChecked: Checked[Workflow] = {

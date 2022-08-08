@@ -26,7 +26,7 @@ final class SnapshotJournalWriter(
 extends JournalWriter(after = after, append = false)
 {
   private val logger = Logger.withPrefix(getClass, file.getFileName.toString)
-  protected val statistics = new SnapshotStatisticsCounter
+  protected val statistics: SnapshotStatisticsCounter = new SnapshotStatisticsCounter
   private var snapshotStarted = false
   private var snapshotCount = 0
   private val runningSince = now

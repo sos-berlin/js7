@@ -8,7 +8,7 @@ extends UnsignedSimpleItemState
 with SeparateTrivialItemState[CalendarState]
 {
   protected type Self = CalendarState
-  val companion = CalendarState
+  val companion: CalendarState.type = CalendarState
 }
 
 object CalendarState extends UnsignedSimpleItemState.Companion[CalendarState]

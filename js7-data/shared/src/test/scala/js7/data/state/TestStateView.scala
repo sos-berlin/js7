@@ -21,7 +21,7 @@ case class TestStateView(
   keyToUnsignedItemState_ : Map[UnsignedItemKey, UnsignedItemState] = Map.empty)
 extends EventDrivenStateView[TestStateView, Event]
 {
-  val companion = TestStateView
+  val companion: TestStateView.type = TestStateView
 
   def applyEvent(keyedEvent: KeyedEvent[Event]) =
     keyedEvent match {

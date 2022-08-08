@@ -11,9 +11,9 @@ final case class SubagentSelection(
 extends UnsignedSimpleItem
 {
   protected type Self = SubagentSelection
-  val companion = SubagentSelection
+  val companion: SubagentSelection.type = SubagentSelection
 
-  def path = id
+  def path: SubagentSelectionId = id
 
   def rename(id: SubagentSelectionId) =
     copy(id = id)
@@ -21,7 +21,8 @@ extends UnsignedSimpleItem
   def withRevision(revision: Option[ItemRevision]) =
     copy(itemRevision = revision)
 
-  def toInitialItemState = SubagentSelectionState(this)
+  def toInitialItemState: SubagentSelectionState =
+    SubagentSelectionState(this)
 
   //override def dedicatedAgentPath = AgentPath cannot be determined here ???
 

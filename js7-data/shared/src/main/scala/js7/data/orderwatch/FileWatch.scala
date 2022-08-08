@@ -27,8 +27,8 @@ final case class FileWatch(
   itemRevision: Option[ItemRevision] = None)
 extends OrderWatch
 {
-  type Self = FileWatch
-  val companion = FileWatch
+  protected type Self = FileWatch
+  val companion: FileWatch.type = FileWatch
 
   def resolvedPattern: Pattern =
     pattern.fold(defaultPattern)(_.pattern)

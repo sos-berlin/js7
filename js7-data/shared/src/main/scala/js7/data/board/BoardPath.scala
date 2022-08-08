@@ -7,7 +7,7 @@ final case class BoardPath private(string: String) extends UnsignedSimpleItemPat
 {
   protected type Self = BoardPath
 
-  val companion = BoardPath
+  val companion: BoardPath.type = BoardPath
 }
 
 object BoardPath extends UnsignedSimpleItemPath.Companion[BoardPath]

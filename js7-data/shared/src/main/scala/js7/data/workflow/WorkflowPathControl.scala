@@ -15,8 +15,8 @@ with UnsignedSimpleItemState
 with TrivialItemState[WorkflowPathControl]
 {
   protected type Self = WorkflowPathControl
-  val companion = WorkflowPathControl
-  val item = this
+  val companion: WorkflowPathControl.type = WorkflowPathControl
+  val item: WorkflowPathControl = this
 
   def rename(path: WorkflowPathControlPath) =
     copy(path = path)
@@ -24,7 +24,8 @@ with TrivialItemState[WorkflowPathControl]
   def withRevision(revision: Option[ItemRevision]) =
     copy(itemRevision = revision)
 
-  def workflowPath = path.workflowPath
+  def workflowPath: WorkflowPath =
+    path.workflowPath
 }
 
 object WorkflowPathControl
@@ -35,7 +36,8 @@ with TrivialItemState.Companion[WorkflowPathControl]
   override type Key = WorkflowPathControlPath
   val Key = WorkflowPathControlPath
 
-  val Path = WorkflowPathControlPath
+  override type Path = WorkflowPathControlPath
+  val Path: WorkflowPathControlPath.type = WorkflowPathControlPath
   val cls = classOf[WorkflowPathControl]
 
   override type ItemState = WorkflowPathControl

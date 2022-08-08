@@ -14,7 +14,7 @@ trait InventoryItem
 
   val companion: Companion[Self]
 
-  def key: InventoryItemKey
+  def key: companion.Key
 
   def path: companion.Path
 
