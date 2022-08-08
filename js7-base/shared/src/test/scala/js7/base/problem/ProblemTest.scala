@@ -233,9 +233,9 @@ final class ProblemTest extends AnyFreeSpec
     }
     val NoArguments = Map.empty[String, String]
     problem match {
-      case Problem.HasCode(ProblemCode("OTHER"), problem.arguments) => fail()
+      case Problem.HasCode(ProblemCode("OTHER"), args) if args == problem.arguments => fail()
       case Problem.HasCode(ProblemCode("PROBLEM"), NoArguments) => fail()
-      case Problem.HasCode(ProblemCode("PROBLEM"), problem.arguments) =>  // okay
+      case Problem.HasCode(ProblemCode("PROBLEM"), args) if args == problem.arguments =>  // okay
     }
   }
 
