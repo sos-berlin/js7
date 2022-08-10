@@ -21,9 +21,7 @@ import scala.util.{Failure, Success, Try}
   */
 sealed trait Outcome
 {
-  def isSucceeded: Boolean
-
-  final def isFailed = !isSucceeded
+  final def isSucceeded = isInstanceOf[Outcome.Succeeded]
 }
 
 object Outcome
@@ -93,8 +91,6 @@ object Outcome
   }
 
   final case class Succeeded(namedValues: NamedValues) extends Completed {
-    def isSucceeded = true
-
     override def toString =
       if (namedValues.isEmpty) "Succeeded" else s"Succeeded($namedValues)"
   }
@@ -123,15 +119,11 @@ object Outcome
   final case class Failed(errorMessage: Option[String], namedValues: NamedValues)
   extends Completed with NotSucceeded
   {
-    def isSucceeded = false
-
     override def toString =
       View(errorMessage, namedValues.??).mkString("⚠️ Failed(", ", ", ")")
   }
   object Failed extends Completed.Companion[Failed]
   {
-    val DefaultErrorMessage = "Failed"
-
     def apply(errorMessage: Option[String]): Failed =
       Failed(errorMessage, Map.empty)
 
@@ -162,14 +154,11 @@ object Outcome
 
   final case class TimedOut(outcome: Outcome.Completed)
   extends Outcome {
-    def isSucceeded = false
-
     override def toString = s"⚠️ TimedOut($outcome)"
   }
 
   final case class Killed(outcome: Outcome.Completed)
   extends Outcome {
-    def isSucceeded = false
     override def toString = s"⚠️ Killed($outcome)"
   }
 
@@ -183,7 +172,6 @@ object Outcome
 
   /** No response from job - some other error has occurred. */
   final case class Disrupted(reason: Disrupted.Reason) extends Outcome with NotSucceeded {
-    def isSucceeded = false
     override def toString = s"💥 Disrupted($reason)"
   }
   object Disrupted {

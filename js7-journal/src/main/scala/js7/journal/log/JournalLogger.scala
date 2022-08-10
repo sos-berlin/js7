@@ -36,7 +36,7 @@ private[journal] final class JournalLogger(
 
       def isLoggable(stamped: Stamped[AnyKeyedEvent]) = {
         val event = stamped.value.event
-        infoLoggableEventClasses.contains(event.getClass) || event.isFailed
+        infoLoggableEventClasses.contains(event.getClass) || !event.isSucceeded
       }
 
       val loggablePersists = myPersists.filter(_.stampedSeq.exists(isLoggable))

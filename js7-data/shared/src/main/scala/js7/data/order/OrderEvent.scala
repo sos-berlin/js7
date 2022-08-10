@@ -201,7 +201,7 @@ object OrderEvent
 
   final case class OrderProcessed(outcome: Outcome) extends OrderCoreEvent
   {
-    override def isFailed = outcome.isFailed
+    override def isSucceeded = outcome.isSucceeded
   }
   object OrderProcessed {
     val processLostDueToRestart = processLost(ProcessLostDueToRestartProblem)
@@ -242,7 +242,7 @@ object OrderEvent
   final case class OrderJoined(outcome: Outcome)
   extends OrderActorEvent
   {
-    override def isFailed = outcome.isFailed
+    override def isSucceeded = outcome.isSucceeded
   }
 
   sealed trait OrderNoticeEvent extends OrderActorEvent

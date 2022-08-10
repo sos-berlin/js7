@@ -13,7 +13,7 @@ trait Event {
     */
   type Key
 
-  def isFailed: Boolean = false
+  def isSucceeded: Boolean = true
 
   def toShortString = toString
 
