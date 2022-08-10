@@ -1,24 +1,29 @@
 package js7.tests
 
+import js7.base.problem.Problem
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
 import js7.base.utils.ScalaUtils.syntax.RichEither
-import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, ResumeOrder, SuspendOrders}
-import js7.data.order.OrderEvent.{OrderCancelled, OrderFinished, OrderPromptAnswered, OrderPrompted, OrderSuspended, OrderSuspensionMarked}
-import js7.data.order.{FreshOrder, Order, OrderId}
+import js7.data.agent.AgentPath
+import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, ControlWorkflowPath, ResumeOrder, SuspendOrders}
+import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderFailed, OrderFinished, OrderMoved, OrderPromptAnswered, OrderPrompted, OrderStarted, OrderSuspended, OrderSuspensionMarked, OrderTerminated}
+import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.value.StringValue
 import js7.data.value.expression.Expression.StringConstant
-import js7.data.workflow.instructions.Prompt
+import js7.data.value.expression.ExpressionParser.expr
+import js7.data.workflow.instructions.{If, Prompt}
+import js7.data.workflow.position.{Label, Position}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.PromptTest._
+import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec
 
 final class PromptTest extends AnyFreeSpec with ControllerAgentForScalaTest
 {
-  protected val agentPaths = Nil
-  protected val items = Seq(workflow)
+  protected val agentPaths = Seq(agentPath)
+  protected val items = Seq(workflow, failingWorkflow, skippedWorkflow)
 
   "Prompt" in {
     val orderId = OrderId("PROMPT")
@@ -34,6 +39,43 @@ final class PromptTest extends AnyFreeSpec with ControllerAgentForScalaTest
       AnswerOrderPrompt(orderId/*, Outcome.Succeeded(NamedValues("myAnswer" -> StringValue("MY ANSWER")))*/)
     ).await(99.s).orThrow
     eventWatch.await[OrderFinished](_.key == orderId)
+  }
+
+  "AnswerOrderPrompt does not execute following If statement" in {
+    val orderId = OrderId("FAILING")
+    controllerApi.addOrder(FreshOrder(orderId, failingWorkflow.path))
+      .await(99.s).orThrow
+    eventWatch.await[OrderPrompted](_.key == orderId).head.value.event
+    controllerApi.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
+    eventWatch.await[OrderTerminated](_.key == orderId)
+    assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
+      OrderAdded(failingWorkflow.id),
+      OrderStarted, OrderPrompted(StringValue("MY QUESTION")),
+      OrderPromptAnswered(),
+      OrderMoved(Position(1)),
+      OrderFailed(Position(1), Some(Outcome.Disrupted(Problem("No such named value: UNKNOWN"))))))
+  }
+
+  "Prompt followed by a skipped statement" in {
+    val workflowId = skippedWorkflow.id
+    val orderId = OrderId("SKIPPED")
+    val order = FreshOrder(OrderId("SKIPPED"), workflowId.path)
+    controllerApi
+      .executeCommand(ControlWorkflowPath(workflowId.path, skip = Map(
+        Label("LABEL") -> true)))
+      .await(99.s).orThrow
+    controllerApi.addOrder(order)
+      .await(99.s).orThrow
+    eventWatch.await[OrderPrompted](_.key == orderId).head.value.event
+    controllerApi.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
+    eventWatch.await[OrderTerminated](_.key == orderId)
+    assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
+      OrderAdded(workflowId),
+      OrderStarted, OrderPrompted(StringValue("MY QUESTION")),
+      OrderPromptAnswered(),
+      OrderMoved(Position(1)),
+      OrderFailed(Position(1)/*???*/, Some(Outcome.Disrupted(Problem(
+        "No such named value: UNKNOWN"))))))
   }
 
   "Order.Prompting is suspendible" in {
@@ -67,6 +109,17 @@ final class PromptTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
 object PromptTest
 {
+  private val agentPath = AgentPath("AGENT")
+
   private val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "INITIAL", Seq(
     Prompt(StringConstant("MY QUESTION"))))
+
+  private val failingWorkflow = Workflow(WorkflowPath("FAILING-WORKFLOW") ~ "INITIAL", Seq(
+    Prompt(StringConstant("MY QUESTION")),
+    If(expr("$UNKNOWN"), Workflow.empty)))
+
+  private val skippedWorkflow = Workflow(WorkflowPath("SKIPPED-WORKFLOW") ~ "INITIAL", Seq(
+    Prompt(StringConstant("MY QUESTION")),
+    "LABEL" @: EmptyJob.execute(agentPath),
+    If(expr("$UNKNOWN"), Workflow.empty)))
 }
