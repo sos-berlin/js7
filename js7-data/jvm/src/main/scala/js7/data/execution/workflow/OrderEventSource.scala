@@ -418,11 +418,10 @@ final class OrderEventSource(state: StateView)
     for {
       order <- idToOrder.checked(orderId)
       _ <- order.checkedState[Order.Prompting]
-      moved <- applyMoveInstructions(order, OrderMoved(order.position.increment))
     } yield
       Seq(
         orderId <-: OrderPromptAnswered(),
-        orderId <-: moved)
+        orderId <-: OrderMoved(order.position.increment))
 
   private def weHave(order: Order[Order.State]) =
     order.isDetached && !isAgent ||
