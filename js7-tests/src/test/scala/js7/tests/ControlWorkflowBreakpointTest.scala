@@ -8,7 +8,7 @@ import js7.base.time.Timestamp
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
-import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, ResumeOrder}
+import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, ControlWorkflow, ResumeOrder}
 import js7.data.event.EventId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.item.UnsignedItemEvent.{UnsignedItemAdded, UnsignedItemAddedOrChanged, UnsignedItemChanged}
@@ -19,6 +19,7 @@ import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.WorkflowControlId.syntax._
 import js7.data.workflow.instructions.{Prompt, TryInstruction}
+import js7.data.workflow.position.BranchId.Try_
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath}
 import js7.data_for_java.controller.{JControllerCommand, JControllerState}
@@ -26,7 +27,7 @@ import js7.data_for_java.workflow.position.JPosition
 import js7.data_for_java.workflow.{JWorkflowControl, JWorkflowControlId, JWorkflowId}
 import js7.journal.watch.StrictEventWatch
 import js7.proxy.ControllerApi
-import js7.tests.ControlWorkflowBreakpoint2Test._
+import js7.tests.ControlWorkflowBreakpointTest._
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
@@ -34,7 +35,7 @@ import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec
 import scala.jdk.CollectionConverters._
 
-final class ControlWorkflowBreakpoint2Test
+final class ControlWorkflowBreakpointTest
 extends AnyFreeSpec with ControllerAgentForScalaTest
 {
   override protected val controllerConfig = config"""
@@ -172,9 +173,23 @@ extends AnyFreeSpec with ControllerAgentForScalaTest
     assert(JControllerState(controllerState).workflowControlToIgnorantAgent
       .get(JWorkflowId(aWorkflowControlId.workflowId)).asScala == Set(agentPath))
   }
+
+  "Breakpoint in a Try block" in {
+    val orderId = OrderId("🔵")
+    controllerApi
+      .executeCommand(ControlWorkflow(tryWorkflow.id, addBreakpoints = Set(
+        Position(1) / Try_ % 0)))
+      .await(99.s).orThrow
+
+    controllerApi.addOrder(FreshOrder(orderId, tryWorkflow.id.path)).await(99.s).orThrow
+    eventWatch.await[OrderSuspended](_.key == orderId)
+
+    controllerApi.executeCommand(ResumeOrder(orderId)).await(99.s).orThrow
+    eventWatch.await[OrderFinished](_.key == orderId)
+  }
 }
 
-object ControlWorkflowBreakpoint2Test
+object ControlWorkflowBreakpointTest
 {
   private val agentPath = AgentPath("A-AGENT")
   private val subagentId = toLocalSubagentId(agentPath)

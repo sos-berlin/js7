@@ -22,7 +22,7 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowPath}
 import js7.journal.watch.StrictEventWatch
-import js7.tests.ControlWorkflowBreakpoint2Test.setBreakpoints
+import js7.tests.ControlWorkflowBreakpointTest.setBreakpoints
 import js7.tests.ControlWorkflowRecoveryTest._
 import js7.tests.jobs.{EmptyJob, SemaphoreJob}
 import js7.tests.testenv.DirectoryProviderForScalaTest

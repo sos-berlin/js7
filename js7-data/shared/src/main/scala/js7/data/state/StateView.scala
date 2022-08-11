@@ -98,7 +98,7 @@ trait StateView extends ItemContainer
       !order.isResumed &&
       keyTo(WorkflowControl)
         .get(WorkflowControlId(order.workflowId))
-        .exists(_.breakpoints contains order.position)
+        .exists(_.breakpoints contains order.position.normalized)
 
   final def workflowJob(workflowPosition: WorkflowPosition): Checked[WorkflowJob] =
     for {
