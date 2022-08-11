@@ -1,7 +1,7 @@
 package js7.tests.filewatch
 
 import java.io.File
-import java.nio.file.Files.{createDirectory, delete, exists}
+import java.nio.file.Files.{createDirectories, createDirectory, delete, exists}
 import java.nio.file.Paths
 import js7.agent.scheduler.order.FileWatchManager
 import js7.base.configutils.Configs._
@@ -35,13 +35,14 @@ import js7.data.value.expression.scopes.EnvScope
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.filewatch.FileWatchTest._
 import js7.tests.jobs.{DeleteFileJob, SemaphoreJob}
-import js7.tests.testenv.ControllerAgentForScalaTest
+import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.TimeoutException
 
-final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
+final class FileWatchTest
+extends AnyFreeSpec with ControllerAgentForScalaTest with BlockingItemUpdater
 {
   protected val agentPaths = Seq(aAgentPath, bAgentPath)
   protected val items = Seq(workflow, waitingWorkflow)
@@ -84,18 +85,13 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
       // Create FileWatch and test with an already waiting Order
       createDirectory(watchDirectory)
       createDirectory(waitingWatchDirectory)
-      val file = watchDirectory / "1"
-      val orderId = fileToOrderId("1")
-      file := ""
-      controllerApi.updateUnsignedSimpleItems(Seq(fileWatch, waitingFileWatch)).await(99.s).orThrow
+      updateItems(fileWatch, waitingFileWatch)
       eventWatch.await[ItemAttached](_.event.key == fileWatch.path)
       eventWatch.await[ItemAttached](_.event.key == waitingFileWatch.path)
-      eventWatch.await[OrderDeleted](_.key == orderId)
-      assert(!exists(file))
     }
   }
 
-  def watchedFileToOrderId(filename: String): OrderId =
+  private def watchedFileToOrderId(filename: String): OrderId =
     FileWatchManager.relativePathToOrderId(waitingFileWatch, filename).get.orThrow
 
   "referencedItemPaths" in {
@@ -103,6 +99,23 @@ final class FileWatchTest extends AnyFreeSpec with ControllerAgentForScalaTest
   }
 
   "Start with existing file" in {
+    // Create FileWatch and test with an already waiting Order
+    val myDirectory = Paths.get(watchPrefix + "existing")
+    val file = myDirectory / "1"
+    createDirectories(myDirectory)
+    file := ""
+
+    val myFileWatch = FileWatch(
+      OrderWatchPath("EXISTING"),
+      workflow.path,
+      aAgentPath,
+      StringConstant(myDirectory.toString))
+    updateItems(myFileWatch)
+
+    val orderId = FileWatchManager.relativePathToOrderId(myFileWatch, "1").get.orThrow
+    eventWatch.await[OrderDeleted](_.key == orderId)
+    assert(!exists(file))
+    controllerApi.updateItems(Observable(DeleteSimple(myFileWatch.path))).await(99.s).orThrow
   }
 
   "Add a file" in {
