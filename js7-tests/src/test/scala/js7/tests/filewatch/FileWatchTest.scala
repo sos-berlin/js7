@@ -29,10 +29,11 @@ import js7.data.order.OrderEvent.{OrderCancellationMarkedOnAgent, OrderDeleted, 
 import js7.data.order.OrderId
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
 import js7.data.orderwatch.{ExternalOrderName, FileWatch, OrderWatchPath, OrderWatchState}
+import js7.data.value.StringValue
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.expression.scopes.EnvScope
-import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.data.workflow.{OrderParameter, OrderParameterList, OrderPreparation, Workflow, WorkflowPath}
 import js7.tests.filewatch.FileWatchTest._
 import js7.tests.jobs.{DeleteFileJob, SemaphoreJob}
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
@@ -98,7 +99,7 @@ extends AnyFreeSpec with ControllerAgentForScalaTest with BlockingItemUpdater
     assert(fileWatch.referencedItemPaths.toSet == Set(aAgentPath, workflow.path))
   }
 
-  "Start with existing file" in {
+  "Start with existing file; check Workflow's Order declarations" in {
     // Create FileWatch and test with an already waiting Order
     val myDirectory = Paths.get(watchPrefix + "existing")
     val file = myDirectory / "1"
@@ -107,14 +108,23 @@ extends AnyFreeSpec with ControllerAgentForScalaTest with BlockingItemUpdater
 
     val myFileWatch = FileWatch(
       OrderWatchPath("EXISTING"),
-      workflow.path,
+      waitingWorkflow.path,
       aAgentPath,
       StringConstant(myDirectory.toString))
     updateItems(myFileWatch)
 
     val orderId = FileWatchManager.relativePathToOrderId(myFileWatch, "1").get.orThrow
+    eventWatch.await[OrderProcessingStarted](_.key == orderId)
+    assert(controllerState.idToOrder(orderId).namedValues(waitingWorkflow).toMap == Map(
+      "file" -> StringValue(file.toString),
+      "DEFAULT" -> StringValue("DEFAULT-VALUE")))
+
+    TestJob.continue()
+    eventWatch.await[OrderFinished](_.key == orderId)
+
+    delete(file)
     eventWatch.await[OrderDeleted](_.key == orderId)
-    assert(!exists(file))
+
     controllerApi.updateItems(Observable(DeleteSimple(myFileWatch.path))).await(99.s).orThrow
   }
 
@@ -371,7 +381,10 @@ object FileWatchTest
   private val waitingWorkflow = Workflow(
     WorkflowPath("WAITING-WORKFLOW") ~ "INITIAL",
     Vector(
-      TestJob.execute(aAgentPath)))
+      TestJob.execute(aAgentPath)),
+    orderPreparation = OrderPreparation(OrderParameterList(
+      OrderParameter("file", StringValue),
+      OrderParameter("DEFAULT", StringConstant("DEFAULT-VALUE")))))
 
   private class TestJob extends SemaphoreJob(TestJob)
   private object TestJob extends SemaphoreJob.Companion[TestJob]
