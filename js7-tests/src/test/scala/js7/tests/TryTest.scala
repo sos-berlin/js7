@@ -7,7 +7,7 @@ import js7.base.system.OperatingSystem.isWindows
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
 import js7.data.job.RelativePathExecutable
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCatched, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCaught, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
 import js7.data.value.expression.ExpressionParser.expr
@@ -56,10 +56,10 @@ with TestItemUpdater
           |define workflow {
           |  try {                                                // :0
           |    try {                                              // :0/try:0
-          |      execute executable="FAIL-1$sh", agent="AGENT";   // :0/try:0/try:0   OrderCatched
+          |      execute executable="FAIL-1$sh", agent="AGENT";   // :0/try:0/try:0   OrderCaught
           |      execute executable="OKAY$sh", agent="AGENT";     // :0/try:0/try:1   skipped
           |    } catch {
-          |      execute executable="FAIL-2$sh", agent="AGENT";   // :0/try:0/catch:0   OrderCatched
+          |      execute executable="FAIL-2$sh", agent="AGENT";   // :0/try:0/catch:0   OrderCaught
           |    }
           |    execute executable="OKAY$sh", agent="AGENT";       // :0/try:1
           |  } catch {}
@@ -80,11 +80,11 @@ with TestItemUpdater
       OrderStarted,
       OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.Failed.rc(1)),
-      OrderCatched(Position(0) / "try+0" % 0 / "catch+0" % 0),
+      OrderCaught(Position(0) / "try+0" % 0 / "catch+0" % 0),
 
       OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.Failed.rc(2)),
-      OrderCatched(Position(0) / "catch+0" % 0),
+      OrderCaught(Position(0) / "catch+0" % 0),
       OrderMoved(Position(1)),
 
       OrderProcessingStarted(subagentId),
@@ -116,9 +116,32 @@ with TestItemUpdater
         OrderAdded(workflowPath ~ v),
         OrderMoved(Position(0) / "try+0" % 0),
         OrderStarted,
-        OrderCatched(Position(0) / "catch+0" % 0, Some(Outcome.failed)),
+        OrderCaught(Position(0) / "catch+0" % 0, Some(Outcome.failed)),
         OrderFailed(Position(0) / "catch+0" % 0, Some(Outcome.failed))))
     assert(controllerState.idToOrder(orderId).lastOutcome == Outcome.failed)
+  }
+
+  "Empty catch" in {
+    val workflowPath = WorkflowPath("TRY-IF")
+    val Some(v) = updateItems(Workflow(
+      workflowPath,
+      Seq(
+        TryInstruction(
+          tryWorkflow = Workflow.of(Fail()),
+          catchWorkflow = Workflow.empty))))
+
+    val orderId = OrderId("🟥")
+    controller.addOrderBlocking(FreshOrder(orderId, workflowPath))
+    controller.eventWatch.await[OrderFinished](_.key == orderId)
+
+    checkEventSeq(orderId, controller.eventWatch.allKeyedEvents[OrderEvent], Vector(
+      OrderAdded(workflowPath ~ v),
+      OrderMoved(Position(0) / try_(0) % 0),
+      OrderStarted,
+      OrderCaught(Position(0) / "catch+0" % 0, Some(Outcome.failed)),
+      OrderMoved(Position(1)),
+      OrderFinished))
+    assert(controllerState.idToOrder(orderId).lastOutcome == Outcome.succeeded)
   }
 
   "try - if - fail" in {
@@ -148,7 +171,7 @@ with TestItemUpdater
       OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(0) / try_(0) % 1 / Then % 0),
-      OrderCatched(Position(0) / "catch+0" % 0, Some(Outcome.failed)),
+      OrderCaught(Position(0) / "catch+0" % 0, Some(Outcome.failed)),
       OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(1)),
@@ -193,7 +216,7 @@ with TestItemUpdater
       OrderDetachable,
       OrderDetached,
       OrderJoined(Outcome.Failed(Some("Order:🔴|🍋 failed;\nOrder:🔴|🌶 failed"))),
-      OrderCatched(Position(0) / "catch+0" % 0),
+      OrderCaught(Position(0) / "catch+0" % 0),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderProcessingStarted(subagentId),

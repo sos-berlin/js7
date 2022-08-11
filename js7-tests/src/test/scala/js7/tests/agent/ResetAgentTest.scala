@@ -24,7 +24,7 @@ import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVer
 import js7.data.item.VersionId
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCatched, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLockAcquired, OrderLockReleased, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCaught, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLockAcquired, OrderLockReleased, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.subagent.SubagentItem
 import js7.data.workflow.instructions.{Fork, LockInstruction, TryInstruction}
@@ -139,7 +139,7 @@ final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderStarted,
       OrderForked(Vector(OrderForked.Child("FORK", childOrderId))),
       OrderJoined(Outcome.Failed(None,Map())),
-      OrderCatched(Position(0) / "catch+0" % 0),
+      OrderCaught(Position(0) / "catch+0" % 0),
       OrderMoved(Position(1)),
       OrderFinished))
 

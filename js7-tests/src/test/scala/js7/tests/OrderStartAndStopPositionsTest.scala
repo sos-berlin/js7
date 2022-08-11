@@ -5,7 +5,7 @@ import js7.base.problem.Problem
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCatched, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCaught, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{Fail, Fork, If, TryInstruction}
@@ -178,7 +178,7 @@ final class OrderStartAndStopPositionsTest extends AnyFreeSpec with ControllerAg
       OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(1) / "try" % 3 / "then" % 0),
 
-      OrderCatched(Position(1) / "catch+0" % 0, Some(Outcome.failed)),
+      OrderCaught(Position(1) / "catch+0" % 0, Some(Outcome.failed)),
 
       OrderDetachable,
       OrderDetached,

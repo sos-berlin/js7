@@ -17,7 +17,7 @@ import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.execution.workflow.instructions.ScheduleTester
 import js7.data.item.VersionId
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCatched, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCaught, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.OrderObstacle.WaitingForOtherTime
 import js7.data.order.{CycleState, FreshOrder, OrderEvent, OrderId, OrderObstacle, Outcome}
 import js7.data.value.expression.ExpressionParser.expr
@@ -207,7 +207,7 @@ final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with 
       OrderStarted,
       OrderCyclingPrepared(cycleState),
       OrderCycleStarted,
-      OrderCatched(
+      OrderCaught(
         Position(0) / "catch+0" % 0,
         Some(Outcome.Failed(Some("TEST FAILURE")))),
       OrderMoved(Position(1)),

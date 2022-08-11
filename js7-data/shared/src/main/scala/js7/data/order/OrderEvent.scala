@@ -332,6 +332,7 @@ object OrderEvent
     def moveTo(movedTo: Position) = copy(movedTo = movedTo)
   }
 
+  // COMPATIBLE with v2.4
   final case class OrderCatched(
     movedTo: Position,
     outcome: Option[Outcome.NotSucceeded] = None)
@@ -339,7 +340,14 @@ object OrderEvent
     def moveTo(movedTo: Position) = copy(movedTo = movedTo)
   }
 
-  /** Only intermediate, not persisted. Will be converted to `OrderFailed` or `OrderCatched`. */
+  final case class OrderCaught(
+    movedTo: Position,
+    outcome: Option[Outcome.NotSucceeded] = None)
+  extends OrderFailedEvent {
+    def moveTo(movedTo: Position) = copy(movedTo = movedTo)
+  }
+
+  /** Only intermediate, not persisted. Will be converted to `OrderFailed` or `OrderCaught`. */
   final case class OrderFailedIntermediate_(outcome: Option[Outcome.NotSucceeded] = None, uncatchable: Boolean = false)
   extends OrderActorEvent
 
@@ -521,6 +529,7 @@ object OrderEvent
     Subtype[OrderStderrWritten],
     Subtype[OrderProcessed],
     Subtype(deriveCodec[OrderCatched]),
+    Subtype(deriveCodec[OrderCaught]),
     Subtype(deriveCodec[OrderRetrying]),
     Subtype(OrderAwoke),
     Subtype(deriveCodec[OrderProcessingKilled]),

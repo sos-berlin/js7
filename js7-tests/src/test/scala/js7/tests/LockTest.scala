@@ -278,7 +278,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderMoved(Position(0) / "lock" % 0 / "try+0" % 0),
       OrderLockAcquired(lock2Path, None),
       OrderLockReleased(lock2Path),
-      OrderCatched(Position(0) / "lock" % 0 / "catch+0" % 0, Some(Outcome.failed)),
+      OrderCaught(Position(0) / "lock" % 0 / "catch+0" % 0, Some(Outcome.failed)),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderProcessingStarted(subagentId),

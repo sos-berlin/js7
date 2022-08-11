@@ -11,7 +11,7 @@ import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.event.{EventId, EventRequest, EventSeq}
 import js7.data.job.RelativePathExecutable
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCatched, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCaught, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
 import js7.data.workflow.position.BranchId.{Else, Then, catch_, try_}
@@ -62,14 +62,14 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
       OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.Failed(NamedValues.rc(1))),
-      OrderCatched(Position(0) / catch_(0) % 0),
+      OrderCaught(Position(0) / catch_(0) % 0),
       OrderMoved(Position(0) / catch_(0) % 0 / Then % 0 / try_(0) % 0),
 
       OrderRetrying(Position(0) / try_(1) % 0),
 
       OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.Failed(NamedValues.rc(1))),
-      OrderCatched(Position(0) / catch_(1) % 0),   // Retry limit reached
+      OrderCaught(Position(0) / catch_(1) % 0),   // Retry limit reached
       OrderMoved(Position(1)),
 
       OrderDetachable,
@@ -89,7 +89,7 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
        |    try {                                                 // :0/try:0
        |      execute executable="OKAY$sh", agent="AGENT";       // :0/try:0/try:0
        |      try {                                               // :0/try:0/try:1
-       |        execute executable="FAIL-1$sh", agent="AGENT";   // :0/try:0/try:1/try:0   OrderCatched
+       |        execute executable="FAIL-1$sh", agent="AGENT";   // :0/try:0/try:1/try:0   OrderCaught
        |        execute executable="OKAY$sh", agent="AGENT";     // :0/try:0/try:1/try:1   skipped
        |      } catch if (catchCount < 3) retry else fail;        // :0/try:0/try:1/catch:0
        |      execute executable="OKAY$sh", agent="AGENT";       // :0/try:0/try:2
@@ -112,24 +112,24 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
       OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.Failed(NamedValues.rc(1))),
-      OrderCatched(Position(0) / try_(0) % 0 / try_(0) % 1 / catch_(0) % 0),
+      OrderCaught(Position(0) / try_(0) % 0 / try_(0) % 1 / catch_(0) % 0),
       OrderMoved(Position(0) / try_(0) % 0 / try_(0) % 1 / catch_(0) % 0 / Then % 0),
 
       OrderRetrying(Position(0) / try_(0) % 0 / try_(0) % 1 / try_(1) % 0),
 
       OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.Failed(NamedValues.rc(1))),
-      OrderCatched(Position(0) / try_(0) % 0 / try_(0) % 1 / catch_(1) % 0),
+      OrderCaught(Position(0) / try_(0) % 0 / try_(0) % 1 / catch_(1) % 0),
       OrderMoved(Position(0) / try_(0) % 0 / try_(0) % 1 / catch_(1) % 0 / Then % 0),
 
       OrderRetrying(Position(0) / try_(0) % 0 / try_(0) % 1 / try_(2) % 0),
 
       OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.Failed(NamedValues.rc(1))),
-      OrderCatched(Position(0) / try_(0) % 0 / try_(0) % 1 / catch_(2) % 0),   // Retry limit reached
+      OrderCaught(Position(0) / try_(0) % 0 / try_(0) % 1 / catch_(2) % 0),   // Retry limit reached
       OrderMoved(Position(0) / try_(0) % 0 / try_(0) % 1 / catch_(2) % 0 / Else % 0),
 
-      OrderCatched(Position(0) / try_(0) % 0 / catch_(0) % 0, Some(Outcome.failed)),
+      OrderCaught(Position(0) / try_(0) % 0 / catch_(0) % 0, Some(Outcome.failed)),
       OrderMoved(Position(0) / try_(0) % 0 / catch_(0) % 0 / Then % 0),
 
       OrderRetrying(Position(0) / try_(0) % 0 / try_(1) % 0),
@@ -140,25 +140,25 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
 
       OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.Failed(NamedValues.rc(1))),
-      OrderCatched(Position(0) / try_(0) % 0 / try_(1) % 1 / catch_(0) % 0),
+      OrderCaught(Position(0) / try_(0) % 0 / try_(1) % 1 / catch_(0) % 0),
       OrderMoved(Position(0) / try_(0) % 0 / try_(1) % 1 / catch_(0) % 0 / Then % 0),
       OrderRetrying(Position(0) / try_(0) % 0 / try_(1) % 1 / try_(1) % 0),
 
       OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.Failed(NamedValues.rc(1))),
-      OrderCatched(Position(0) / try_(0) % 0 / try_(1) % 1 / catch_(1) % 0),
+      OrderCaught(Position(0) / try_(0) % 0 / try_(1) % 1 / catch_(1) % 0),
       OrderMoved(Position(0) / try_(0) % 0 / try_(1) % 1 / catch_(1) % 0 / Then % 0),
       OrderRetrying(Position(0) / try_(0) % 0 / try_(1) % 1 / try_(2) % 0),
 
       OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.Failed(NamedValues.rc(1))),
-      OrderCatched(Position(0) / try_(0) % 0 / try_(1) % 1 / catch_(2) % 0),  // Retry limit reached
+      OrderCaught(Position(0) / try_(0) % 0 / try_(1) % 1 / catch_(2) % 0),  // Retry limit reached
       OrderMoved(Position(0) / try_(0) % 0 / try_(1) % 1 / catch_(2) % 0 / Else % 0),
 
-      OrderCatched(Position(0) / try_(0) % 0 / catch_(1) % 0, Some(Outcome.failed)),  // Retry limit reached
+      OrderCaught(Position(0) / try_(0) % 0 / catch_(1) % 0, Some(Outcome.failed)),  // Retry limit reached
       OrderMoved(Position(0) / try_(0) % 0 / catch_(1) % 0 / Else % 0),
 
-      OrderCatched(Position(0) / catch_(0) % 0, Some(Outcome.failed)),
+      OrderCaught(Position(0) / catch_(0) % 0, Some(Outcome.failed)),
 
       OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.succeededRC0),
@@ -209,13 +209,13 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderMoved(Position(0) / try_(0) % 0),
       OrderStarted,
 
-      OrderCatched(Position(0) / catch_(0) % 0, Some(Outcome.failed)),
+      OrderCaught(Position(0) / catch_(0) % 0, Some(Outcome.failed)),
       OrderRetrying(Position(0) / try_(1) % 0),
 
-      OrderCatched(Position(0) / catch_(1) % 0, Some(Outcome.failed)),
+      OrderCaught(Position(0) / catch_(1) % 0, Some(Outcome.failed)),
       OrderRetrying(Position(0) / try_(2) % 0),
 
-      // No OrderCatched here! OrderFailed has Outcome of last failed instruction in try block
+      // No OrderCaught here! OrderFailed has Outcome of last failed instruction in try block
       OrderFailed(Position(0) / try_(2) % 0, Some(Outcome.failed)))
 
     val orderId = OrderId("🔶")
@@ -238,15 +238,15 @@ final class RetryTest extends AnyFreeSpec with ControllerAgentForScalaTest
       OrderMoved(Position(0) / try_(0) % 0),
       OrderStarted,
 
-      OrderCatched(Position(0) / catch_(0) % 0, Some(Outcome.failed)),
+      OrderCaught(Position(0) / catch_(0) % 0, Some(Outcome.failed)),
       OrderMoved(Position(0) / catch_(0) % 0 / Then % 0),
       OrderRetrying(Position(0) / try_(1) % 0),
 
-      OrderCatched(Position(0) / catch_(1) % 0, Some(Outcome.failed)),
+      OrderCaught(Position(0) / catch_(1) % 0, Some(Outcome.failed)),
       OrderMoved(Position(0) / catch_(1) % 0 / Then % 0),
       OrderRetrying(Position(0) / try_(2) % 0),
 
-      OrderCatched(Position(0) / catch_(2) % 0, Some(Outcome.failed)),
+      OrderCaught(Position(0) / catch_(2) % 0, Some(Outcome.failed)),
       OrderMoved(Position(0) / catch_(2) % 0 / Then % 0),
       OrderFailed(Position(0) / catch_(2) % 0 / Then % 0))
 

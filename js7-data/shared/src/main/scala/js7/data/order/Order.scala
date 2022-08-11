@@ -163,6 +163,18 @@ final case class Order[+S <: Order.State](
             historicOutcomes =
               outcome_.fold(historicOutcomes)(o => historicOutcomes :+ HistoricOutcome(position, o))))
 
+      case OrderCaught(movedTo, outcome_) =>
+        check((isState[Ready] || isState[Processed]) && !isSuspended && (isAttached | isDetached), {
+          var h = outcome_.fold(historicOutcomes)(o => historicOutcomes :+ HistoricOutcome(position, o))
+          if (!h.lastOption.exists(_.outcome.isSucceeded))
+            h :+= HistoricOutcome(movedTo, Outcome.succeeded)
+          copy(
+            state = Ready,
+            workflowPosition = workflowPosition.copy(position = movedTo),
+            isResumed = false,
+            historicOutcomes = h)
+        })
+
       case OrderRetrying(to, maybeDelayUntil) =>
         check(isState[Ready] && !isSuspended && (isDetached || isAttached),
           maybeDelayUntil

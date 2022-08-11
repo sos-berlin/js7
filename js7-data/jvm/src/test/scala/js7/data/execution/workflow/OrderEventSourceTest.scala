@@ -16,7 +16,7 @@ import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.job.{PathExecutable, ShellScriptExecutable}
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.OrderEvent.OrderResumed.ReplaceHistoricOutcome
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancelled, OrderCatched, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLockReleased, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderResumed, OrderResumptionMarked, OrderStarted, OrderSuspended, OrderSuspensionMarked}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancelled, OrderCaught, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLockReleased, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderResumed, OrderResumptionMarked, OrderStarted, OrderSuspended, OrderSuspensionMarked}
 import js7.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, OrderMark, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.state.OrderEventHandler.FollowUp
@@ -808,21 +808,21 @@ final class OrderEventSourceTest extends AnyFreeSpec
 
       assert(failToPosition(Position(0)) == Right(OrderFailed(Position(0)) :: Nil))
       assert(failToPosition(Position(0) / BranchId.try_(0) % 0) ==
-        Right(OrderCatched(Position(0) / BranchId.catch_(0) % 0) :: Nil))
+        Right(OrderCaught(Position(0) / BranchId.catch_(0) % 0) :: Nil))
 
       var pos = Position(0) / BranchId.try_(0) % 0
       assert(failToPosition(pos / BranchId.try_(0) % 0) ==
-        Right(OrderCatched(pos / BranchId.catch_(0) % 0) :: Nil))
+        Right(OrderCaught(pos / BranchId.catch_(0) % 0) :: Nil))
 
       assert(failToPosition(pos / BranchId.catch_(0) % 0) ==
-        Right(OrderCatched(Position(0) / BranchId.catch_(0) % 0) :: Nil))
+        Right(OrderCaught(Position(0) / BranchId.catch_(0) % 0) :: Nil))
 
       pos = Position(0) / BranchId.catch_(0) % 1
       assert(failToPosition(pos / BranchId.try_(0) % 0) ==
-        Right(OrderCatched(pos / BranchId.catch_(0) % 0) :: Nil))
+        Right(OrderCaught(pos / BranchId.catch_(0) % 0) :: Nil))
 
       assert(failToPosition(pos / BranchId.try_(1) % 0) ==
-        Right(OrderCatched(pos / BranchId.catch_(1) % 0) :: Nil))
+        Right(OrderCaught(pos / BranchId.catch_(1) % 0) :: Nil))
 
       assert(failToPosition(pos / BranchId.try_(2) % 0) ==
         Right(OrderFailed(pos / BranchId.try_(2) % 0) :: Nil))
@@ -843,20 +843,20 @@ final class OrderEventSourceTest extends AnyFreeSpec
         OrderMoved(Position(0) / try_(0) % 0 / try_(0) % 0)))
     }
 
-    "Processed failed in inner try-block -> OrderCatched" in {
+    "Processed failed in inner try-block -> OrderCaught" in {
       val pos = Position(0) / try_(0) % 0 / try_(0) % 0
       val order = Order(OrderId("ORDER"), workflow.id /: pos, Order.Processed,
         historicOutcomes = Vector(HistoricOutcome(pos, failed7)))
       assert(eventSource(order).nextEvents(order.id) == Seq(order.id <-:
-        OrderCatched(Position(0) / try_(0) % 0 / catch_(0) % 0)))
+        OrderCaught(Position(0) / try_(0) % 0 / catch_(0) % 0)))
     }
 
-    "Processed failed in inner catch-block -> OrderCatched" in {
+    "Processed failed in inner catch-block -> OrderCaught" in {
       val pos = Position(0) / try_(0) % 0 / catch_(0) % 0
       val order = Order(OrderId("ORDER"), workflow.id /: pos, Order.Processed,
         historicOutcomes = Vector(HistoricOutcome(pos, failed7)))
       assert(eventSource(order).nextEvents(order.id) == Seq(order.id <-:
-        OrderCatched(Position(0) / catch_(0) % 0)))
+        OrderCaught(Position(0) / catch_(0) % 0)))
     }
 
     "Processed failed in outer catch-block -> OrderFailed" in {
@@ -866,12 +866,12 @@ final class OrderEventSourceTest extends AnyFreeSpec
       assert(eventSource(order).nextEvents(order.id) == Seq(order.id <-: OrderFailed(pos)))
     }
 
-    "Processed failed in try in catch -> OrderCatched" in {
+    "Processed failed in try in catch -> OrderCaught" in {
       val pos = Position(0) / catch_(0) % 1 / try_(0) % 0
       val order = Order(OrderId("ORDER"), workflow.id /: pos, Order.Processed,
         historicOutcomes = Vector(HistoricOutcome(pos, failed7)))
       assert(eventSource(order).nextEvents(order.id) == Seq(order.id <-:
-        OrderCatched(Position(0) / catch_(0) % 1 / catch_(0) % 0)))
+        OrderCaught(Position(0) / catch_(0) % 1 / catch_(0) % 0)))
     }
 
     "Processed failed in catch in catch -> OrderFailed" in {

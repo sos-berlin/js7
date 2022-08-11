@@ -236,6 +236,32 @@ final class OrderEventTest extends AnyFreeSpec
       }""")
   }
 
+  "OrderCaught" in {
+    check(OrderCaught(Position(1)), json"""
+      {
+        "TYPE": "OrderCaught",
+        "movedTo": [ 1 ]
+      }""")
+  }
+
+  "OrderCaught complete" in {
+    check(OrderCaught(
+      Position(1),
+      Some(Outcome.Failed(Some("FAILED"), NamedValues.rc(1)))),
+      json"""
+      {
+        "TYPE": "OrderCaught",
+        "outcome": {
+          "TYPE": "Failed",
+          "namedValues": {
+            "returnCode": 1
+          },
+          "message": "FAILED"
+        },
+        "movedTo": [ 1 ]
+      }""")
+  }
+
   "OrderFailed" in {
     check(OrderFailed(Position(1)),
       json"""
