@@ -67,8 +67,6 @@ private object SnapshotableStateTest
     def withEventId(eventId: EventId) = copy(eventId = eventId)
   }
   private object MyState extends SnapshotableState.Companion[MyState] {
-    type StateEvent = Event
-
     val empty = MyState(EventId.BeforeFirst, SnapshotableState.Standards.empty)
 
     // TODO Refactor this into a separate common trait

@@ -308,8 +308,6 @@ object AgentState
 extends SnapshotableState.Companion[AgentState]
 with ItemContainer.Companion[AgentState]
 {
-  type StateEvent = Event
-
   val empty = AgentState(EventId.BeforeFirst, SnapshotableState.Standards.empty,
     AgentMetaState.empty,
     Map.empty, Map.empty, Map.empty, Map.empty, Map.empty)

@@ -275,8 +275,6 @@ private object FileStatePersistenceTest
   }
   object TestState extends SnapshotableState.Companion[TestState]
   {
-    type StateEvent = Event
-
     val empty = TestState(EventId.BeforeFirst, NumberThingCollection(Map.empty))
 
     def newBuilder(): SnapshotableStateBuilder[TestState] =

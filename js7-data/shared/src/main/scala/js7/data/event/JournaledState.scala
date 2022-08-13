@@ -29,8 +29,6 @@ object JournaledState
   trait Companion[S <: JournaledState[S]]
   extends EventDrivenState.Companion[S, Event]
   {
-    type StateEvent <: Event
-
     implicit final val implicitJournalStateCompanion: Companion[S] =
       this
 
