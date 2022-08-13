@@ -193,7 +193,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
 
       case ClusterCommand.ClusterCouple(activeId, passiveId) =>
         requireOwnNodeId(command, activeId)(
-          persistence.waitUntilStarted >>
+          persistence.waitUntilStarted *>
             clusterStateLock.lock(
               persist() {
                 case s: PassiveLost if s.activeId == activeId && s.passiveId == passiveId =>
@@ -220,7 +220,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
 
       case ClusterCommand.ClusterRecouple(activeId, passiveId) =>
         requireOwnNodeId(command, activeId)(
-          persistence.waitUntilStarted >>
+          persistence.waitUntilStarted *>
             clusterStateLock.lock(
               persist() {
                 case s: Coupled if s.activeId == activeId && s.passiveId == passiveId =>
@@ -518,7 +518,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
   private def stopHeartbeatingTemporarily[A](task: Task[Checked[A]])
     (implicit enclosing: sourcecode.Enclosing)
   : Task[Checked[A]] =
-    clusterWatchSynchronizer.stopHeartbeating >>
+    clusterWatchSynchronizer.stopHeartbeating *>
       task
         .guarantee(
           persistence.clusterState.flatMap {

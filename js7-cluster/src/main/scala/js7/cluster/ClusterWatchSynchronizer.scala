@@ -33,8 +33,9 @@ private final class ClusterWatchSynchronizer(
     if (events.isEmpty)
       Task.pure(Right(Completed))
     else
-      stopHeartbeating.unless(checkOnly) >>
-        clusterWatch.applyEvents(ClusterWatchEvents(from = ownId, events, clusterState, checkOnly = checkOnly))
+      stopHeartbeating.unless(checkOnly) *>
+        clusterWatch
+          .applyEvents(ClusterWatchEvents(from = ownId, events, clusterState, checkOnly = checkOnly))
           .flatMapT { completed =>
             clusterState match {
               case clusterState: HasNodes if clusterState.activeId == ownId
@@ -54,7 +55,7 @@ private final class ClusterWatchSynchronizer(
       val h = new Heartbeat(clusterState)
       heartbeat.getAndSet(Some(h))
         .fold(Task.completed)(_.stop) /*just in case*/
-        .flatMap(_ => h.doAHeartbeat.unless(dontWait) >> h.startDontWait)
+        .flatMap(_ => h.doAHeartbeat.unless(dontWait) *> h.startDontWait)
     }
 
   def stopHeartbeating(implicit enclosing: sourcecode.Enclosing): Task[Completed] =
@@ -93,7 +94,7 @@ private final class ClusterWatchSynchronizer(
             heartbeat.flatMap(_.tryPut(fiber))
           .flatMap { ok =>
             if (ok) Task.unit
-            else fiber.cancel >> Task.raiseError(new ConcurrentModificationException(
+            else fiber.cancel *> Task.raiseError(new ConcurrentModificationException(
               "Tried to stat Cluster heartbeating twice"))
           })
           .as(Completed)

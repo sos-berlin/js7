@@ -69,7 +69,7 @@ final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag](
         case Some(Left(passiveClusterNode)) => passiveClusterNode.onShutDown
         case Some(Right(workingClusterNode)) => workingClusterNode.stop
         case _ => Task.unit
-      }) >>
+      }) *>
         common.stop
     }
 
@@ -102,7 +102,7 @@ final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag](
         if (clusterConf.isPrimary) {
           logger.debug(s"Active primary cluster node '${ownId.string}', no backup node appointed")
           Task.pure(None) ->
-            (activationInhibitor.startActive >>
+            (activationInhibitor.startActive *>
               Task.pure(Right(ClusterFollowUp.BecomeActive(recovered))))
         } else if (recovered.eventId != EventId.BeforeFirst)
           Task.pure(Some(Left(PrimaryClusterNodeMayNotBecomeBackupProblem))) ->
@@ -137,7 +137,7 @@ final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag](
         Task.pure(Some(Left(BackupClusterNodeNotAppointed)))
     }
     val followUp = passiveClusterNode.flatMap(passive =>
-      activationInhibitor.startPassive >>
+      activationInhibitor.startPassive *>
         passive.run(recovered.state))
     passiveState -> followUp
   }
@@ -173,7 +173,7 @@ final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag](
       case _ =>
         logger.info("Remaining the active cluster node, not coupled with passive node")
         Task.pure(None) ->
-          (activationInhibitor.startActive >>
+          (activationInhibitor.startActive *>
             Task.pure(Right(ClusterFollowUp.BecomeActive(recovered))))
     }
   }

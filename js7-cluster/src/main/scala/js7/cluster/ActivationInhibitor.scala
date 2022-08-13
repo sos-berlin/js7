@@ -31,8 +31,9 @@ private[cluster] final class ActivationInhibitor
         case Some(Initial) =>
           mvar.put(state)
         case s =>
-          s.fold(Task.unit)(mvar.put) >>
-            Task.raiseError(new IllegalStateException(s"ActivationInhibitor markAs($state): Already '$s''"))
+          s.fold(Task.unit)(mvar.put) *>
+            Task.raiseError(new IllegalStateException(
+              s"ActivationInhibitor markAs($state): Already '$s''"))
       })
 
   def tryToActivate[A](ifInhibited: Task[A], activate: Task[A]): Task[A] =
@@ -46,8 +47,8 @@ private[cluster] final class ActivationInhibitor
             }
 
         case o: Inhibited =>
-          mvar.put(o) >>
-            Task { logger.info("Activation inhibited") } >>
+          mvar.put(o) *>
+            Task { logger.info("Activation inhibited") } *>
             ifInhibited
       })
 
