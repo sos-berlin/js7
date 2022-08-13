@@ -400,19 +400,20 @@ object RunningController
     = {
       val cluster = {
         import controllerConfiguration.{clusterConf, config, controllerId, httpsConfig, journalConf}
-        new Cluster(
-          journalMeta,
+        Cluster[ControllerState](
           persistence,
+          journalMeta,
+          journalConf,
+          injector.instance[EventIdGenerator],
           (uri, name) => AkkaHttpControllerApi
             .resource(uri, clusterConf.peersUserAndPassword, httpsConfig, name = name),
-          controllerId,
-          journalConf,
           clusterConf,
+          controllerId,
           httpsConfig,
           config,
-          injector.instance[EventIdGenerator],
           new LicenseChecker(LicenseCheckContext(controllerConfiguration.configDirectory)),
-          testEventBus)
+          testEventBus,
+          implicitAkkaAskTimeout)
       }
 
       // clusterFollowUpFuture terminates when this cluster node becomes active or terminates

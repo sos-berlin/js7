@@ -1,7 +1,6 @@
 package js7.cluster
 
 import akka.pattern.ask
-import akka.util.Timeout
 import cats.syntax.flatMap.*
 import cats.syntax.monoid.*
 import com.softwaremill.diffx
@@ -44,10 +43,9 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
   persistence: FileStatePersistence[S],
   common: ClusterCommon,
   clusterConf: ClusterConf)
-  (implicit
-    scheduler: Scheduler,
-    journalActorAskTimeout: Timeout)
+  (implicit scheduler: Scheduler)
 {
+  private implicit val askTimeout = common.journalActorAskTimeout
   private val clusterStateLock = AsyncLock("ClusterState")
   private val journalActor = persistence.journalActor
   private val fetchingAcks = AtomicBoolean(false)
@@ -419,7 +417,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
       logger.info(s"Fetching acknowledgements from passive cluster node")
       Observable
         .fromResource(
-          common.clusterContext.clusterNodeApi(passiveUri, "acknowledgements"))
+          common.clusterNodeApi(passiveUri, "acknowledgements"))
         .flatMap(api =>
           observeEventIds(api, Some(timing.heartbeat))
             .whileBusyBuffer(OverflowStrategy.DropOld(bufferSize = 2))
@@ -456,7 +454,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
   : Task[Checked[Completed]] =
     Observable
       .fromResource(
-        common.clusterContext.clusterNodeApi(passiveUri, "awaitAcknowledgement"))
+        common.clusterNodeApi(passiveUri, "awaitAcknowledgement"))
       .flatMap(api => observeEventIds(api, heartbeat = None))
       .dropWhile(_ != eventId)
       .headOptionL

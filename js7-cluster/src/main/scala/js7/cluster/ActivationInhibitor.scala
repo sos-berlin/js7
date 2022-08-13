@@ -1,14 +1,15 @@
 package js7.cluster
 
-import cats.effect.ExitCase
+import cats.effect.{ExitCase, Resource}
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
+import js7.base.web.Uri
 import js7.cluster.ActivationInhibitor.*
 import js7.data.cluster.ClusterCommand.ClusterInhibitActivation
-import js7.data.cluster.ClusterSetting
+import js7.data.cluster.{ClusterNodeApi, ClusterSetting}
 import js7.data.cluster.ClusterState.FailedOver
 import monix.catnap.MVar
 import monix.eval.Task
@@ -105,11 +106,13 @@ private[cluster] object ActivationInhibitor
 {
   private val logger = Logger(getClass)
 
-  def inhibitActivationOfPassiveNode(setting: ClusterSetting, ctx: ClusterContext)
+  def inhibitActivationOfPassiveNode(
+    setting: ClusterSetting,
+    clusterNodeApi: (Uri, String) => Resource[Task, ClusterNodeApi])
   : Task[Option[FailedOver]] =
     Task.defer {
       val retryDelay = 5.s  // TODO
-      ctx.clusterNodeApi(setting.passiveUri, "inhibitActivationOfPassiveNode")
+      clusterNodeApi(setting.passiveUri, "inhibitActivationOfPassiveNode")
         .evalTap(_.loginUntilReachable())
         .use(_
           .executeClusterCommand(ClusterInhibitActivation(2 * setting.timing.heartbeat/*???*/))

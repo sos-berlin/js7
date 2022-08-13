@@ -1,6 +1,7 @@
 package js7.cluster
 
 import akka.actor.ActorSystem
+import akka.util.Timeout
 import cats.effect.Resource
 import com.typesafe.config.{Config, ConfigUtil}
 import java.nio.ByteBuffer
@@ -35,11 +36,12 @@ import monix.execution.atomic.AtomicAny
 private[cluster] final class ClusterCommon(
   controllerId: ControllerId,
   ownId: NodeId,
-  val clusterContext: ClusterContext,
+  val clusterNodeApi: (Uri, String) => Resource[Task, ClusterNodeApi],
   httpsConfig: HttpsConfig,
-  config: Config,
+  val config: Config,
   val licenseChecker: LicenseChecker,
-  testEventPublisher: EventPublisher[Any])
+  testEventPublisher: EventPublisher[Any],
+  val journalActorAskTimeout: Timeout)
   (implicit actorSystem: ActorSystem)
 {
   val activationInhibitor = new ActivationInhibitor
@@ -103,7 +105,7 @@ private[cluster] final class ClusterCommon(
 
   def tryEndlesslyToSendCommand(uri: Uri, command: ClusterCommand): Task[Unit] = {
     val name = command.getClass.simpleScalaName
-    tryEndlesslyToSendCommand(clusterContext.clusterNodeApi(uri, name = name), command)
+    tryEndlesslyToSendCommand(clusterNodeApi(uri, name), command)
   }
 
   def tryEndlesslyToSendCommand(
@@ -126,7 +128,7 @@ private[cluster] final class ClusterCommon(
   }
 
   def inhibitActivationOfPeer(clusterState: HasNodes): Task[Option[FailedOver]] =
-    ActivationInhibitor.inhibitActivationOfPassiveNode(clusterState.setting, clusterContext)
+    ActivationInhibitor.inhibitActivationOfPassiveNode(clusterState.setting, clusterNodeApi)
 
   def ifClusterWatchAllowsActivation(
     clusterState: ClusterState.HasNodes,
