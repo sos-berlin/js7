@@ -51,7 +51,9 @@ private[cluster] final class ClusterCommon(
   private val _clusterWatchSynchronizer = SetOnce[ClusterWatchSynchronizer]
 
   def stop: Task[Completed] =
-    _clusterWatchSynchronizer.toOption.fold(Task.completed)(_.stop)
+    Task.defer {
+      _clusterWatchSynchronizer.toOption.fold(Task.completed)(_.stop)
+    }
 
   def clusterWatchSynchronizer(clusterState: ClusterState.HasNodes): Task[ClusterWatchSynchronizer] =
     Task {

@@ -63,7 +63,9 @@ final class WorkingClusterNode[S <: SnapshotableState[S]: SnapshotableState.Comp
     }
 
   def stop: Task[Completed] =
-    _activeClusterNode.toOption.fold(Task.completed)(_.stop)
+    Task.defer {
+      _activeClusterNode.toOption.fold(Task.completed)(_.stop)
+    }
 
   def beforeJournalingStarts: Task[Checked[Completed]] =
     _activeClusterNode.toOption match {
