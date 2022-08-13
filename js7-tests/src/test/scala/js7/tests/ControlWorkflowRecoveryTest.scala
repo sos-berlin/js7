@@ -1,12 +1,13 @@
 package js7.tests
 
-import cats.syntax.parallel._
+import js7.base.time.WaitForCondition.waitForCondition
+import cats.syntax.parallel.*
 import js7.agent.RunningAgent
 import js7.agent.data.event.AgentEvent.AgentReady
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
@@ -21,14 +22,18 @@ import js7.data.order.OrderEvent.{OrderFinished, OrderStdoutWritten, OrderSuspen
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowPath}
+import js7.data_for_java.controller.JControllerState
+import js7.data_for_java.workflow.JWorkflowId
 import js7.journal.watch.StrictEventWatch
 import js7.tests.ControlWorkflowBreakpointTest.setBreakpoints
-import js7.tests.ControlWorkflowRecoveryTest._
+import js7.tests.ControlWorkflowRecoveryTest.*
 import js7.tests.jobs.{EmptyJob, SemaphoreJob}
 import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
+import js7.data.workflow.WorkflowControlId.syntax.*
+import scala.jdk.CollectionConverters.*
 
 final class ControlWorkflowRecoveryTest
 extends AnyFreeSpec with DirectoryProviderForScalaTest
@@ -97,6 +102,16 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
       Set(Position(1), Position(3)),
       ItemRevision(1),
       UnsignedItemChanged.apply)
+
+    def controllerState = controller.controllerState.await(99.s)
+    waitForCondition(10.s, 10.ms)(
+      controllerState.itemToIgnorantAgents(WorkflowControl).contains(aWorkflowControlId))
+    assert(controllerState.itemToIgnorantAgents(WorkflowControl).toMap == Map(
+      aWorkflowControlId -> Set(aAgentPath)))
+    assert(controllerState.itemToIgnorantAgents(WorkflowControl)
+      .get(aWorkflowControlId) contains Set(aAgentPath))
+    assert(JControllerState(controllerState).workflowControlToIgnorantAgent
+      .get(JWorkflowId(aWorkflowControlId.workflowId)).asScala == Set(aAgentPath))
 
     controllerApi.stop.await(99.s)
   }

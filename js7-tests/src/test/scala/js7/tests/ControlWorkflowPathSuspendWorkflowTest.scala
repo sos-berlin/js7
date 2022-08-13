@@ -10,6 +10,7 @@ import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
+import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
@@ -168,6 +169,8 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
       _.event.key == WorkflowPathControlPath(aWorkflow.path),
       after = eventId)
 
+    waitForCondition(10.s, 10.ms)(
+      controllerState.workflowPathControlToIgnorantAgents.toMap.isEmpty)
     assert(controllerState.workflowPathControlToIgnorantAgents.toMap.isEmpty)
     assert(controllerState
       .itemToIgnorantAgents(WorkflowPathControl).get(WorkflowPathControlPath(aWorkflow.path)) == None)
