@@ -317,7 +317,7 @@ final class JournalEventWatchTest extends AnyFreeSpec with BeforeAndAfterAll
 
   "snapshotAfter" in {
     withJournalMeta { journalMeta_ =>
-      val journalMeta = journalMeta_.copy(snapshotJsonCodec = SnapshotJsonCodec)
+      val journalMeta = journalMeta_.copy(snapshotObjectJsonCodec = SnapshotJsonCodec)
 
       autoClosing(new JournalEventWatch(journalMeta, JournalEventWatch.TestConfig)) { eventWatch =>
         // --0.journal with no snapshot objects

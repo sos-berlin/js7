@@ -7,7 +7,7 @@ import org.scalatest.freespec.AnyFreeSpec
   */
 final class StateRecovererTest extends AnyFreeSpec
 {
-  //import StateRecovererTest.snapshotJsonCodec
+  //import StateRecovererTest.snapshotObjectJsonCodec
   //import StateRecovererTest.eventJsonCodec
   //
   //"Test is missing" in {
@@ -15,7 +15,7 @@ final class StateRecovererTest extends AnyFreeSpec
   //  // Lesen einer abgebrochenen Transaktion liefert korrekten Zustand und Datei-Position (vor der Transaktion)
   //  val config = ConfigFactory.empty
   //  FileUtils.withTemporaryFile("StateRecovererTest", ".tmp") { file =>
-  //    val journalMeta = JournalMeta(snapshotJsonCodec, keyedEventJsonCodec, Paths.get(file.toString + "-test"))
+  //    val journalMeta = JournalMeta(snapshotObjectJsonCodec, keyedEventJsonCodec, Paths.get(file.toString + "-test"))
   //    StateRecoverer.recover[TestState, TestEvent](journalMeta, newStateBuilder, config)
   //  }
   //}
