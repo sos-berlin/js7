@@ -22,6 +22,7 @@ private final class StateRecoverer[S <: SnapshotableState[S]](
   protected val file: Path,
   journalMeta: JournalMeta,
   newFileJournaledStateBuilder: () => FileSnapshotableStateBuilder[S])
+  (implicit S: SnapshotableState.Companion[S])
 {
   private val fileJournaledStateBuilder = newFileJournaledStateBuilder()
 
@@ -34,7 +35,7 @@ private final class StateRecoverer[S <: SnapshotableState[S]](
     // TODO Use HistoricEventReader (and build JournalIndex only once, and reuse it for event reading)
     autoClosing(InputStreamJsonSeqReader.open(file)) { jsonReader =>
       for (json <- UntilNoneIterator(jsonReader.read()).map(_.value)) {
-        fileJournaledStateBuilder.put(journalMeta.decodeJson(json).orThrow)
+        fileJournaledStateBuilder.put(S.decodeJournalJson(json).orThrow)
         fileJournaledStateBuilder.journalProgress match {
           case AfterSnapshotSection =>
             _position = jsonReader.position
