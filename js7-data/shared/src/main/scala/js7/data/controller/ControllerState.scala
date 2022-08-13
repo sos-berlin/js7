@@ -731,8 +731,6 @@ object ControllerState
 extends SnapshotableState.Companion[ControllerState]
 with ItemContainer.Companion[ControllerState]
 {
-  type StateEvent = Event
-
   private val logger = scribe.Logger[this.type]
 
   val Undefined = ControllerState(

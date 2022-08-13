@@ -61,8 +61,6 @@ object SubagentState
 extends JournaledState.Companion[SubagentState]
 with ItemContainer.Companion[SubagentState]
 {
-  type StateEvent = Event
-
   val empty = SubagentState(EventId.BeforeFirst, Map.empty, Map.empty)
 
   protected def inventoryItems =
