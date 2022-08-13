@@ -5,6 +5,7 @@ import cats.effect.ExitCase
 import java.util.ConcurrentModificationException
 import js7.base.generic.Completed
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.*
@@ -58,7 +59,7 @@ private final class ClusterWatchSynchronizer(
 
   def stopHeartbeating(implicit enclosing: sourcecode.Enclosing): Task[Completed] =
     Task.defer {
-      logger.trace("stopHearbeating called by " + enclosing.value)
+      logger.trace(s"stopHearbeating called by ${enclosing.value}")
       heartbeat.getAndSet(None)
         .fold(Task.completed)(_.stop)
     }
@@ -70,17 +71,17 @@ private final class ClusterWatchSynchronizer(
     private val heartbeat = MVar.empty[Task, Fiber[Completed]]().memoize
 
     def startDontWait =
-      Task.defer {
-        logger.debug(s"Heartbeat ($nr) continues with $clusterState")
+      logger.traceTask(s"startDontWait: Heartbeat ($nr) continues with $clusterState") {
         sendHeartbeats
           .guaranteeCase {
             case ExitCase.Error(t) =>
-              logger.warn(s"Sending heartbeat to ClusterWatch failed: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
-              haltJava(s"HALT after sending heartbeat to ClusterWatch failed: ${t.toStringWithCauses}",
+              logger.warn(s"Sending heartbeat to ClusterWatch failed: ${t.toStringWithCauses}",
+                t.nullIfNoStackTrace)
+              haltJava(
+                s"HALT after sending heartbeat to ClusterWatch failed: ${t.toStringWithCauses}",
                 restart = true)
-            case ExitCase.Canceled => Task {
-              logger.debug("Canceled")
-            }
+            case ExitCase.Canceled =>
+              Task { logger.debug("Canceled") }
             case ExitCase.Completed =>
               stopping.flatMap(_.tryRead).map { maybe =>
                 logger.debug(s"Heartbeat ($nr) stopped")
@@ -99,8 +100,7 @@ private final class ClusterWatchSynchronizer(
       }
 
     def stop: Task[Completed] =
-      Task.defer {
-        logger.trace(s"Heartbeat ($nr) stop")
+      logger.traceTask(s"Heartbeat ($nr) stop") {
         stopping
           .flatMap(_.tryPut(()))
           .flatMap(_ => heartbeat)

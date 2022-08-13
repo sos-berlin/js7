@@ -7,6 +7,7 @@ import cats.syntax.monoid.*
 import com.softwaremill.diffx
 import js7.base.generic.Completed
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.monixutils.ObservablePauseDetector.*
 import js7.base.problem.Checked.*
@@ -83,13 +84,16 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
   private def requestAcknowledgmentIfCoupled(eventId: EventId): Task[Checked[Completed]] =
     initialClusterState match {
       case clusterState @ (_: Coupled | _: ActiveShutDown) =>
-        Task(logger.info("Requesting acknowledgement for the last recovered event")) >>
+        Task.defer {
+          logger.info("Requesting acknowledgement for the last recovered event")
           awaitAcknowledgement(clusterState.passiveUri, eventId)
             .logWhenItTakesLonger("acknowledgement")
             .flatTap {
               case Left(problem) => Task(logger.debug(problem.toString))
-              case Right(Completed) => Task(logger.info("Passive node acknowledged the recovered state"))
+              case Right(Completed) => Task(logger.info(
+                "Passive node acknowledged the recovered state"))
             }
+        }
       case _ => Task.pure(Right(Completed))
     }
 
@@ -102,8 +106,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
     }
 
   def beforeJournalingStarts: Task[Checked[Completed]] =
-    Task.defer {
-      logger.trace("beforeJournalingStarts")
+    logger.traceTask {
       initialClusterState match {
         case clusterState: Coupled =>
           // Inhibit activation of peer again. If recovery or asking ClusterWatch took a long time,
@@ -361,14 +364,14 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
                     val passiveLost = ClusterPassiveLost(id)
                     stopHeartbeatingTemporarily(
                       common.ifClusterWatchAllowsActivation(clusterState, passiveLost, checkOnly = true,
-                        Task.deferFuture {
-                          // Release a concurrent persist operation, which waits for the missing acknowledgement and
-                          // blocks the persist lock. Avoid a deadlock.
-                          // This does not hurt if the concurrent persist operation is a ClusterEvent, too,
-                          // because we are leaving ClusterState.Coupled anyway.
-                          logger.debug(s"JournalActor.Input.PassiveLost($passiveLost)")
-                          journalActor ? JournalActor.Input.PassiveLost(passiveLost)
-                        } >>
+                        logger.debugTask(s"JournalActor.Input.PassiveLost($passiveLost)")(
+                          Task.deferFuture {
+                            // Release a concurrent persist operation, which waits for the missing acknowledgement and
+                            // blocks the persist lock. Avoid a deadlock.
+                            // This does not hurt if the concurrent persist operation is a ClusterEvent, too,
+                            // because we are leaving ClusterState.Coupled anyway.
+                            journalActor ? JournalActor.Input.PassiveLost(passiveLost)
+                          }) *>
                           persist() {
                             case `initialState` => Right(Some(passiveLost))
                             case _ => Right(None)  // Ignore when ClusterState has changed (no longer Coupled)
@@ -412,9 +415,8 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
 
   private def fetchAndHandleAcknowledgedEventIds(passiveId: NodeId, passiveUri: Uri, timing: ClusterTiming)
   : Task[Checked[Completed]] =
-    Task {
+    Task.defer {
       logger.info(s"Fetching acknowledgements from passive cluster node")
-    } >>
       Observable
         .fromResource(
           common.clusterContext.clusterNodeApi(passiveUri, "acknowledgements"))
@@ -448,6 +450,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
         }
         .guaranteeCase(exitCase => Task(
           logger.debug(s"fetchAndHandleAcknowledgedEventIds ended => $exitCase")))
+    }
 
   private def awaitAcknowledgement(passiveUri: Uri, eventId: EventId)
   : Task[Checked[Completed]] =

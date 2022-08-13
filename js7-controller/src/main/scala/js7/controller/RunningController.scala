@@ -31,8 +31,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Closer, ProgramTermination, SetOnce}
-import js7.base.web.Uri
-import js7.cluster.{Cluster, ClusterContext, ClusterFollowUp, WorkingClusterNode}
+import js7.cluster.{Cluster, ClusterFollowUp, WorkingClusterNode}
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.crypt.generic.GenericSignatureVerifier
@@ -404,10 +403,8 @@ object RunningController
         new Cluster(
           journalMeta,
           persistence,
-          new ClusterContext {
-            def clusterNodeApi(uri: Uri, name: String) =
-              AkkaHttpControllerApi.resource(uri, clusterConf.peersUserAndPassword, httpsConfig, name = name)
-          },
+          (uri, name) => AkkaHttpControllerApi
+            .resource(uri, clusterConf.peersUserAndPassword, httpsConfig, name = name),
           controllerId,
           journalConf,
           clusterConf,

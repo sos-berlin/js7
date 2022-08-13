@@ -127,7 +127,10 @@ private[cluster] final class ClusterCommon(
   def inhibitActivationOfPeer(clusterState: HasNodes): Task[Option[FailedOver]] =
     ActivationInhibitor.inhibitActivationOfPassiveNode(clusterState.setting, clusterContext)
 
-  def ifClusterWatchAllowsActivation[A](clusterState: ClusterState.HasNodes, event: ClusterEvent, checkOnly: Boolean,
+  def ifClusterWatchAllowsActivation(
+    clusterState: ClusterState.HasNodes,
+    event: ClusterEvent,
+    checkOnly: Boolean,
     body: Task[Checked[Boolean]])
   : Task[Checked[Boolean]] =
     activationInhibitor.tryToActivate(
@@ -158,7 +161,10 @@ private[js7] object ClusterCommon
 
   private[cluster] def truncateFile(file: Path, position: Long): Unit =
     autoClosing(FileChannel.open(file, READ, WRITE)) { f =>
-      autoClosing(FileChannel.open(Paths.get(s"$file~TRUNCATED-AFTER-FAILOVER"), WRITE, CREATE, TRUNCATE_EXISTING)) { out =>
+      // Safe the truncated part for debugging
+      val out = FileChannel.open(Paths.get(s"$file~TRUNCATED-AFTER-FAILOVER"),
+        WRITE, CREATE, TRUNCATE_EXISTING)
+      autoClosing(out) { _ =>
         val buffer = ByteBuffer.allocate(4096)
         f.position(position - 1)
         f.read(buffer)
@@ -166,7 +172,6 @@ private[js7] object ClusterCommon
         if (!buffer.hasRemaining || buffer.get() != '\n')
           sys.error(s"Invalid failed-over position=$position in '${file.getFileName} journal file")
 
-        // Safe the truncated part for debugging
         var eof = false
         while(!eof) {
           if (buffer.hasRemaining) out.write(buffer)

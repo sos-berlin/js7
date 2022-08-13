@@ -96,14 +96,13 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
           })
 
     val notifyActive =
-      activeApiResource
-        .use(api =>
-          api.login(onlyIfNotLoggedIn = true)
-            .*>(api.executeClusterCommand(ClusterPassiveDown(activeId = activeId, passiveId = ownId)))
-            .void
-            .onErrorHandle(throwable =>
-              logger.debug(s"ClusterCommand.ClusterPassiveDown failed: ${throwable.toStringWithCauses}",
-                throwable.nullIfNoStackTrace)))
+      activeApiResource.use(api =>
+        api.login(onlyIfNotLoggedIn = true)
+          .*>(api.executeClusterCommand(ClusterPassiveDown(activeId = activeId, passiveId = ownId)))
+          .void
+          .onErrorHandle(throwable => logger.debug(
+            s"ClusterCommand.ClusterPassiveDown failed: ${throwable.toStringWithCauses}",
+            throwable.nullIfNoStackTrace)))
 
     Task.race(untilDecoupled, notifyActive.delayExecution(50.ms))
       .tapEval {
