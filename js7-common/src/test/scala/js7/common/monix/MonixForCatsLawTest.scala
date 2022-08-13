@@ -2,7 +2,7 @@
 //
 //import cats.laws.discipline.ApplicativeTests
 //import cats.laws.discipline.SemigroupalTests.Isomorphisms
-//import js7.base.monix.MonixForCats._
+//import js7.base.monix.MonixForCats.*
 //import monix.eval.Task
 //import org.scalacheck.Arbitrary
 //import org.scalacheck.Arbitrary.arbitrary

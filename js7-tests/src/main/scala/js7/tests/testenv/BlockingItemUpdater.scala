@@ -1,10 +1,10 @@
 package js7.tests.testenv
 
 import js7.base.crypt.Signed
-import js7.base.thread.MonixBlocking.syntax._
-import js7.base.time.ScalaTime._
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.*
 import js7.base.utils.Lazy
-import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.item.ItemOperation.{AddOrChangeOperation, AddOrChangeSigned, AddOrChangeSimple, AddVersion}
 import js7.data.item.{InventoryItem, SignableItem, UnsignedSimpleItem, VersionId, VersionedItem}
 import js7.proxy.ControllerApi

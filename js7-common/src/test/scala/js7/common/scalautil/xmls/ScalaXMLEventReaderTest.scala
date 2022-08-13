@@ -109,7 +109,7 @@ final class ScalaXMLEventReaderTest extends AnyFreeSpec {
 //    val testXmlString = <A><AA><B b="b">text<C/></B><B/></AA></A>.toString()
 //    assertResult("""<B b="b">text<C/></B>, <B/>""") {
 //      parseDocument(testXmlString) { eventReader =>
-//        import eventReader._
+//        import eventReader.*
 //        parseElement("A") {
 //          val children = forEachStartElement {
 //            case "B" => parseElementAsXmlString()
