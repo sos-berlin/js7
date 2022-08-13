@@ -14,6 +14,7 @@ import js7.base.configutils.Configs.*
 import js7.base.generic.Completed
 import js7.base.io.https.Https.loadSSLContext
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.*
@@ -145,19 +146,21 @@ trait AkkaWebServer extends AutoCloseable
       else if (activeBindings == null)
         Task.unit
       else
-        Task { logger.debug("terminate") } >>
-          terminateBindings(timeout)
+        terminateBindings(timeout)
     }
 
-  private def terminateBindings(timeout: FiniteDuration): Task[Unit] =
-    activeBindings.toVector
-      .traverse(_.flatMap(binding =>
-        Task.deferFuture(binding.terminate(hardDeadline = timeout))
-          .map { (_: Http.HttpTerminated) =>
-            logger.debug(s"$binding terminated")
-            Completed
-          }))
-      .map((_: Seq[Completed]) => ())
+  private def terminateBindings(timeout: FiniteDuration): Task[Unit] = {
+    logger.debugTask {
+      activeBindings.toVector
+        .traverse(_.flatMap(binding =>
+          Task.deferFuture(binding.terminate(hardDeadline = timeout))
+            .map { (_: Http.HttpTerminated) =>
+              logger.debug(s"$binding terminated")
+              Completed
+            }))
+        .map((_: Seq[Completed]) => ())
+    }
+  }
 
   override def toString = s"${getClass.simpleScalaName}"
 }
