@@ -44,7 +44,6 @@ import js7.data.event.{EventId, JournalId, JournalPosition, JournalSeparators, K
 import js7.data.node.NodeId
 import js7.journal.EventIdGenerator
 import js7.journal.configuration.JournalConf
-import js7.journal.data.JournalMeta
 import js7.journal.files.JournalFiles.*
 import js7.journal.recover.{FileSnapshotableStateBuilder, JournalProgress, Recovered, RecoveredJournalFile}
 import monix.eval.Task
@@ -55,19 +54,18 @@ import scala.annotation.nowarn
 private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
   ownId: NodeId,
   setting: ClusterSetting,
-  journalMeta: JournalMeta,
+  recovered: Recovered[S]/*TODO The maybe big SnapshotableState at start sticks here*/,
+  journalConf: JournalConf,
+  eventIdGenerator: EventIdGenerator,
   /** For backup initialization, only when ClusterState.Empty. */
   initialFileEventId: Option[EventId],
-  recovered: Recovered[S]/*TODO The maybe big SnapshotableState at start sticks here*/,
   otherFailed: Boolean,
-  journalConf: JournalConf,
   clusterConf: ClusterConf,
   config: Config,
-  eventIdGenerator: EventIdGenerator,
   common: ClusterCommon)
   (implicit S: SnapshotableState.Companion[S])
 {
-  import recovered.eventWatch
+  import recovered.{eventWatch, journalMeta}
   import setting.{activeId, idToUri}
 
   private val jsonReadAhead = config.getInt("js7.web.client.json-read-ahead")

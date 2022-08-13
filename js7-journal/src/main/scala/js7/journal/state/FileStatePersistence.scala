@@ -35,7 +35,7 @@ final class FileStatePersistence[S <: SnapshotableState[S]: Tag](
   val recoveredJournalId: Option[JournalId],
   val eventWatch: FileEventWatch,
   val journalActor: ActorRef @@ JournalActor.type,
-  journalConf: JournalConf,
+  val journalConf: JournalConf,
   journalActorStopped: Future[Unit])
   (implicit
     protected val S: SnapshotableState.Companion[S],

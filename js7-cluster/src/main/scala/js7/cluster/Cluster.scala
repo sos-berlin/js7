@@ -28,7 +28,6 @@ import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterSetting}
 import js7.data.controller.ControllerId
 import js7.data.event.{EventId, JournalPosition, SnapshotableState}
 import js7.journal.EventIdGenerator
-import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.journal.files.JournalFiles
 import js7.journal.recover.{Recovered, StateRecoverer}
@@ -40,7 +39,6 @@ import scala.concurrent.Promise
 final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
   persistence: FileStatePersistence[S],
   journalMeta: JournalMeta,
-  journalConf: JournalConf,
   eventIdGenerator: EventIdGenerator,
   common: ClusterCommon,
   val clusterConf: ClusterConf)
@@ -50,6 +48,7 @@ final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
 {
   import clusterConf.ownId
   import common.{activationInhibitor, config}
+  import persistence.journalConf
   @volatile private var _passiveOrWorkingNode: Option[Either[PassiveClusterNode[S], WorkingClusterNode[S]]] = None
   private val expectingStartBackupCommand = SetOnce[Promise[ClusterStartBackupNode]]
 
@@ -228,8 +227,10 @@ final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
     initialFileEventId: Option[EventId] = None)
   : PassiveClusterNode[S] = {
     assertThat(!_passiveOrWorkingNode.exists(_.isLeft))
-    val node = new PassiveClusterNode(ownId, setting, journalMeta, initialFileEventId, recovered,
-      otherFailedOver, journalConf, clusterConf, config, eventIdGenerator, common)
+    val node = new PassiveClusterNode(ownId, setting,
+      recovered, journalConf, eventIdGenerator,
+      initialFileEventId, otherFailedOver,
+      clusterConf, config, common)
     _passiveOrWorkingNode = Some(Left(node))
     node
   }
@@ -302,7 +303,6 @@ object Cluster
   def apply[S <: SnapshotableState[S]: diffx.Diff: Tag](
     persistence: FileStatePersistence[S],
     journalMeta: JournalMeta,
-    journalConf: JournalConf,
     eventIdGenerator: EventIdGenerator,
     clusterNodeApi: (Uri, String) => Resource[Task, ClusterNodeApi],
     clusterConf: ClusterConf,
@@ -320,7 +320,6 @@ object Cluster
     new Cluster(
       persistence: FileStatePersistence[S],
       journalMeta: JournalMeta,
-      journalConf: JournalConf,
       eventIdGenerator: EventIdGenerator,
       new ClusterCommon(controllerId, clusterConf.ownId, clusterNodeApi,
         httpsConfig, config, licenseChecker, testEventPublisher, journalActorAskTimeout),

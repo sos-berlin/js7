@@ -399,11 +399,10 @@ object RunningController
       Task[Either[ProgramTermination, ClusterFollowUp[ControllerState]]])
     = {
       val cluster = {
-        import controllerConfiguration.{clusterConf, config, controllerId, httpsConfig, journalConf}
+        import controllerConfiguration.{clusterConf, config, controllerId, httpsConfig}
         Cluster[ControllerState](
           persistence,
           journalMeta,
-          journalConf,
           injector.instance[EventIdGenerator],
           (uri, name) => AkkaHttpControllerApi
             .resource(uri, clusterConf.peersUserAndPassword, httpsConfig, name = name),
