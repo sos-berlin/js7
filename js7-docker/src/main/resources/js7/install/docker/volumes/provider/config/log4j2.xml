@@ -6,14 +6,14 @@
 
   <appenders>
     <console name="stderr" target="SYSTEM_ERR">
-      <patternLayout pattern="%highlight{%d{DEFAULT} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %message}{INFO=blue,WARN=red bold}%n"/>
+      <patternLayout pattern="%highlight{%d{DEFAULT} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger - %message}{INFO=blue,WARN=red bold}%n"/>
     </console>
 
     <rollingRandomAccessFile name="file-info"
                              fileName="${logDirectory}/provider.log"
                              filePattern="${logDirectory}/provider-%d{yyyy-MM-dd}-%i.log.gz"
                              immediateFlush="${sys:js7.log4j.immediateFlush:-true}">
-      <patternLayout pattern="%d{DEFAULT_MICROS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger %message%n"
+      <patternLayout pattern="%d{DEFAULT_MICROS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger - %message%n"
                      charset="UTF-8"/>
       <policies>
         <timeBasedTriggeringPolicy/>
