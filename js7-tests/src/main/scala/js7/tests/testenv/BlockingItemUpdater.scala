@@ -18,6 +18,15 @@ trait BlockingItemUpdater {
   protected def sign[A <: SignableItem](item: A): Signed[A]
   protected def controllerApi: ControllerApi
 
+  protected final def updateItem[I <: InventoryItem](item: I)(implicit s: Scheduler)
+  : I = {
+    val v = updateItems(item)
+    (item, v) match {
+      case (item: VersionedItem, Some(v)) => item.withVersion(v).asInstanceOf[I]
+      case _ => item
+    }
+  }
+
   protected final def updateItems(items: InventoryItem*)(implicit s: Scheduler)
   : Option[VersionId] = {
     val versionId = Lazy(VersionId(nextVersionId.getAndIncrement().toString))

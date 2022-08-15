@@ -5,6 +5,7 @@ import js7.base.configutils.Configs._
 import js7.base.io.file.FileUtils.{touchFile, withTemporaryFile}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
 import js7.data.Problems.ItemIsStillReferencedProblem
@@ -28,15 +29,14 @@ import js7.data.workflow.instructions.{LockInstruction, Prompt}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowParser, WorkflowPath}
 import js7.tests.LockTest._
-import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.{script, toLocalSubagentId, waitingForFileScript}
+import js7.tests.testenv.{ControllerAgentForScalaTest, BlockingItemUpdater}
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
-import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.immutable.Queue
 import scala.util.Random
 
-final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
+final class LockTest extends Test with ControllerAgentForScalaTest with BlockingItemUpdater
 {
   protected val agentPaths = Seq(agentPath, bAgentPath)
   protected val items = Seq(
@@ -411,7 +411,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       .await(99.s).orThrow
     controller.eventWatch.await[OrderPrompted](_.key == lockingOrderId)
 
-    val queueingWorkflow = addWorkflow(Workflow(
+    val queueingWorkflow = updateItem(Workflow(
       WorkflowPath("CANCEL-WHILE-QUEUING-FOR-LOCKING"),
       Seq(
         LockInstruction(lockPath,
@@ -453,7 +453,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
         Queue.empty))
 
     controllerApi.updateItems(Observable(
-      AddVersion(versionIdIterator.next()),
+      AddVersion(VersionId("DELETE")),
       RemoveVersioned(queueingWorkflow.path)
     )).await(99.s).orThrow
   }
@@ -483,13 +483,13 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
   }
 
   "Use Lock both exclusivly and non-exclusively" in {
-    val exclusiveWorkflow = addWorkflow(Workflow(
+    val exclusiveWorkflow = updateItem(Workflow(
       WorkflowPath("EXCLUSIVE-WORKFLOW"),
       Seq(
         LockInstruction(limit2LockPath,
           count = None,
           lockedWorkflow = Workflow.of(Prompt(expr("'?'")))))))
-    val nonExclusiveWorkflow = addWorkflow(Workflow(
+    val nonExclusiveWorkflow = updateItem(Workflow(
       WorkflowPath("NON-EXCLUSIVE-WORKFLOW"),
       Seq(
         LockInstruction(limit2LockPath,
@@ -631,17 +631,8 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     defineWorkflow(workflowPath, workflowNotation)
 
   private def defineWorkflow(workflowPath: WorkflowPath, workflowNotation: String): Workflow = {
-    val versionId = versionIdIterator.next()
-    val workflow = WorkflowParser.parse(workflowPath ~ versionId, workflowNotation).orThrow
-    directoryProvider.updateVersionedItems(controller, versionId, Seq(workflow))
-    workflow
-  }
-
-  private def addWorkflow(workflow: Workflow): Workflow = {
-    val v = versionIdIterator.next()
-    val w = workflow.withVersion(v)
-    directoryProvider.updateVersionedItems(controller, v, Seq(workflow))
-    w
+    val workflow = WorkflowParser.parse(workflowPath, workflowNotation).orThrow
+    updateItem(workflow)
   }
 }
 
