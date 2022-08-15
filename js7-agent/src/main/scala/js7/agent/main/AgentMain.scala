@@ -16,7 +16,7 @@ import js7.common.system.startup.JavaMain.withShutdownHooks
 import js7.common.system.startup.JavaMainLockfileSupport.lockAndRunMain
 import js7.common.system.startup.StartUp.{nowString, printlnWithClock}
 import js7.common.system.startup.{Js7ReturnCodes, StartUp}
-import js7.journal.files.JournalFiles
+import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.subagent.BareSubagent
 import scala.concurrent.duration.{Deadline, Duration, NANOSECONDS}
 
@@ -53,7 +53,7 @@ final class AgentMain
 
   /** Run as an Agent Director or as a bare Subagent. */
   private def blockingRun(agentConf: AgentConfiguration): ProgramTermination =
-    JournalFiles.currentFile(agentConf.journalMeta.fileBase) match {
+    agentConf.journalMeta.currentFile match {
       case Left(_) =>
         BareSubagent
           .blockingRun(agentConf.subagentConf)

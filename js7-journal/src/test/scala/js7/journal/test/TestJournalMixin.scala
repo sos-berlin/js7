@@ -27,7 +27,7 @@ import js7.common.akkautils.Akkas.newActorSystem
 import js7.common.akkautils.{Akkas, DeadLetterActor}
 import js7.common.jsonseq.InputStreamJsonSeqReader
 import js7.data.event.{Event, JournalId, KeyedEvent}
-import js7.journal.files.JournalFiles
+import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.test.TestData.{TestConfig, testJournalMeta}
 import js7.journal.test.TestJournalMixin.*
 import js7.journal.test.TestState.keyedEventJsonCodec
@@ -136,7 +136,7 @@ private[journal] trait TestJournalMixin extends BeforeAndAfterAll { this: Suite 
     }).toSet
 
   protected final def journalJsons: Vector[Json] =
-    journalJsons(JournalFiles.currentFile(journalMeta.fileBase).orThrow)
+    journalJsons(journalMeta.currentFile.orThrow)
 
   protected final def journalJsons(file: Path): Vector[Json] =
     autoClosing(InputStreamJsonSeqReader.open(file)) { reader =>

@@ -25,8 +25,7 @@ import js7.base.utils.{CloseableIterator, SetOnce}
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.{Event, EventId, JournalHeader, JournalId, JournalInfo, JournalPosition, KeyedEvent, Stamped}
 import js7.journal.data.JournalMeta
-import js7.journal.files.JournalFiles
-import js7.journal.files.JournalFiles.listGarbageFiles
+import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.watch.JournalEventWatch.*
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -60,7 +59,7 @@ with JournalingObserver
   // Read journal file names from directory while constructing
   @volatile private var fileEventIdToHistoric: SortedMap[EventId, HistoricJournalFile] =
     SortedMap.empty[EventId, HistoricJournalFile] ++
-      JournalFiles.listJournalFiles(journalMeta.fileBase)
+      journalMeta.listJournalFiles
         .map(o => new HistoricJournalFile(o.fileEventId, o.file))
         .toKeyedMap(_.fileEventId)
   for (historic <- fileEventIdToHistoric.values) logger.debug(historic.toString)
@@ -146,7 +145,9 @@ with JournalingObserver
         fileEventIdToHistoric += current.fileEventId -> historic
       }
 
-      val currentEventReader = new CurrentEventReader(journalMeta, expectedJournalId,
+      val currentEventReader = new CurrentEventReader(
+        journalMeta,
+        expectedJournalId,
         firstEventPositionAndFileEventId, flushedLengthAndEventId,
         isActiveNode = isActiveNode, config)
       maybeCurrentEventReader = Some(currentEventReader)
@@ -228,7 +229,7 @@ with JournalingObserver
   }
 
   private def deleteGarbageFiles(untilFileEventId: EventId): Unit =
-    for (file <- listGarbageFiles(journalMeta.fileBase, untilFileEventId = untilFileEventId)) {
+    for (file <- journalMeta.listGarbageFiles(untilFileEventId = untilFileEventId)) {
       logger.info(s"Delete garbage journal file '${file.getFileName}'")
       try delete(file)
       catch { case e: IOException =>

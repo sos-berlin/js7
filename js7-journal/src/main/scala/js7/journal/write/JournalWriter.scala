@@ -9,8 +9,7 @@ import js7.base.monixutils.MonixBase.DefaultBatchSize
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.utils.ByteUnits.toMB
 import js7.data.event.JournalSeparators.EventHeader
-import js7.data.event.{Event, EventId, JournalHeader, KeyedEvent, Stamped}
-import js7.journal.data.JournalMeta
+import js7.data.event.{Event, EventId, JournalHeader, JournaledState, KeyedEvent, Stamped}
 import js7.journal.write.EventJournalWriter.SerializationException
 import js7.journal.write.JournalWriter.*
 import monix.execution.Scheduler
@@ -21,10 +20,12 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-private[journal] abstract class JournalWriter(after: EventId, append: Boolean)
+private[journal] abstract class JournalWriter(
+  S: JournaledState.HasEventCodec,
+  after: EventId,
+  append: Boolean)
 extends AutoCloseable
 {
-  protected val journalMeta: JournalMeta
   def file: Path
   protected def simulateSync: Option[FiniteDuration]
   protected val statistics: StatisticsCounter
@@ -62,7 +63,7 @@ extends AutoCloseable
           s" <= lastEventId ${EventId.toString(_lastEventId)}")
       _lastEventId = stamped.eventId
     }
-    import journalMeta.implicitEventJsonCodec
+    import S.keyedEventJsonCodec
     if (sys.runtime.availableProcessors > 1 && stampedEvents.sizeIs >= JsonParallelizationThreshold)
       writeJsonInParallel(stampedEvents)
     else

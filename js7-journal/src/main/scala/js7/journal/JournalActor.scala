@@ -30,7 +30,7 @@ import js7.data.event.{AnyKeyedEvent, EventId, JournalEvent, JournalHeader, Jour
 import js7.journal.JournalActor.*
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
-import js7.journal.files.JournalFiles.{JournalMetaOps, listJournalFiles}
+import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.log.JournalLogger.Loggable
 import js7.journal.watch.JournalingObserver
 import js7.journal.write.{EventJournalWriter, SnapshotJournalWriter}
@@ -55,6 +55,8 @@ final class JournalActor[S <: SnapshotableState[S]: diffx.Diff] private(
   (implicit S: SnapshotableState.Companion[S])
 extends Actor with Stash with JournalLogging
 {
+  assert(journalMeta.S eq S)
+
   import context.{become, stop}
 
   override val supervisorStrategy = SupervisorStrategies.escalate
@@ -535,7 +537,7 @@ extends Actor with Stash with JournalLogging
     logger.info(s"Starting new journal file #${journalHeader.generation} '${file.getFileName}' with a snapshot")
     logger.debug(journalHeader.toString)
 
-    snapshotWriter = new SnapshotJournalWriter(journalMeta, toSnapshotTemporary(file), after = lastWrittenEventId,
+    snapshotWriter = new SnapshotJournalWriter(journalMeta.S, toSnapshotTemporary(file), after = lastWrittenEventId,
       simulateSync = conf.simulateSync)(scheduler)
     snapshotWriter.writeHeader(journalHeader)
     snapshotWriter.beginSnapshotSection()
@@ -605,7 +607,8 @@ extends Actor with Stash with JournalLogging
   private def newEventJsonWriter(after: EventId, withoutSnapshots: Boolean = false) = {
     assertThat(journalHeader != null)
     val file = journalMeta.file(after = after)
-    val w = new EventJournalWriter(journalMeta, file, after = after, journalHeader.journalId,
+    val w = new EventJournalWriter(journalMeta.S, file,
+      after = after, journalHeader.journalId,
       journalingObserver.orThrow, simulateSync = conf.simulateSync,
       withoutSnapshots = withoutSnapshots, initialEventCount = 1/*SnapshotTaken*/)(scheduler)
     journalMeta.updateSymbolicLink(file)
@@ -656,7 +659,7 @@ extends Actor with Stash with JournalLogging
       case None =>
         // Without a JournalingObserver, we can delete all previous journal files (for Agent)
         val until = untilEventId min journalHeader.eventId
-        for (j <- listJournalFiles(journalFileBase = journalMeta.fileBase) if j.fileEventId < until) {
+        for (j <- journalMeta.listJournalFiles if j.fileEventId < until) {
           val file = j.file
           assertThat(file != eventWriter.file)
           try delete(file)

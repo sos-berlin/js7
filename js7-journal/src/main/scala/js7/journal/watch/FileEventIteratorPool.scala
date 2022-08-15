@@ -69,7 +69,8 @@ private[watch] final class FileEventIteratorPool(
       if (closed.get()) throw new ClosedException(journalFile)
       // Exception when file has been deleted
       val result = new FileEventIterator(
-        journalMeta, journalFile, expectedJournalId,
+        journalMeta.S, journalFile,
+        expectedJournalId,
         fileEventId = fileEventId,
         committedLength
       ) {

@@ -11,7 +11,6 @@ import js7.common.jsonseq.InputStreamJsonSeqReader
 import js7.common.utils.UntilNoneIterator
 import js7.data.event.{EventId, SnapshotableState}
 import js7.journal.data.JournalMeta
-import js7.journal.files.JournalFiles
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.recover.JournalProgress.{AfterSnapshotSection, InCommittedEventsSection}
 import js7.journal.recover.StateRecoverer.*
@@ -72,7 +71,7 @@ object StateRecoverer
     runningSince: Deadline = now)
     (implicit S: SnapshotableState.Companion[S])
   : Recovered[S] = {
-    val file = JournalFiles.currentFile(journalMeta.fileBase).toOption
+    val file = journalMeta.currentFile.toOption
     val fileJournaledStateBuilder = new FileSnapshotableStateBuilder(
       journalFileForInfo = file getOrElse journalMeta.file(EventId.BeforeFirst)/*the expected new filename*/,
       expectedJournalId = None)
