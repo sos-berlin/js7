@@ -25,8 +25,8 @@ import js7.data.value.StringValue
 import js7.data.value.ValuePrinter.quoteString
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.workflow.instructions.{LockInstruction, Prompt}
-import js7.data.workflow.position.Position
+import js7.data.workflow.instructions.{Finish, Fork, LockInstruction, Prompt}
+import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowParser, WorkflowPath}
 import js7.tests.LockTest._
 import js7.tests.testenv.DirectoryProvider.{script, toLocalSubagentId, waitingForFileScript}
@@ -52,7 +52,6 @@ final class LockTest extends Test with ControllerAgentForScalaTest with Blocking
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
     """
-  private lazy val versionIdIterator = Iterator.from(1).map(i => VersionId(i.toString))
 
   "Run some orders at different agents with a lock with limit=1" in {
     withTemporaryFile("LockTest-", ".tmp") { file =>
@@ -377,6 +376,77 @@ final class LockTest extends Test with ControllerAgentForScalaTest with Blocking
         Lock(lockPath, itemRevision = Some(ItemRevision(0))),
         Available,
         Queue.empty))
+  }
+
+  "Finish instruction" in {
+    val workflow = updateItem(Workflow(
+      WorkflowPath("FINISH"),
+      Seq(
+        LockInstruction(
+          lockPath,
+          count = None,
+          lockedWorkflow = Workflow.of(Finish())))))
+    assert(workflow.referencedItemPaths.toSet == Set(lockPath))
+
+    val orderId = OrderId("🟫")
+    controllerApi.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+      .await(99.s).orThrow
+    controller.eventWatch.await[OrderFinished](_.key == orderId)
+
+    assert(controller.eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
+      OrderAdded(workflow.id, deleteWhenTerminated = true),
+      OrderStarted,
+      OrderLockAcquired(lockPath, None),
+      OrderLockReleased(lockPath),
+      OrderFinished,
+      OrderDeleted))
+
+    assert(controllerState.keyTo(LockState)(lockPath) ==
+      LockState(
+        Lock(lockPath, itemRevision = Some(ItemRevision(0))),
+        Available,
+        Queue.empty))
+
+    controllerApi
+      .updateItems(Observable(
+        AddVersion(VersionId("FINISH-REMOVED")),
+        RemoveVersioned(workflow.path)))
+      .await(99.s).orThrow
+  }
+
+  "Finish instruction in Fork" in {
+    val workflow = updateItem(Workflow(
+      WorkflowPath("FINISH-IN-FORK"),
+      Seq(
+        Fork.forTest(Seq(Fork.Branch(
+          Fork.Branch.Id("BRANCH"),
+          Workflow.of(
+            LockInstruction(
+              lockPath,
+              count = None,
+              lockedWorkflow = Workflow.of(Finish())))))))))
+
+    val orderId = OrderId("🟣")
+    controllerApi.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+      .await(99.s).orThrow
+    controller.eventWatch.await[OrderFinished](_.key == orderId)
+
+    assert(controller.eventWatch.eventsByKey[OrderEvent](orderId / "BRANCH") == Seq(
+      OrderLockAcquired(lockPath, None),
+      OrderLockReleased(lockPath),
+      OrderMoved(Position(0) / BranchId.fork("BRANCH") % 1)))
+
+    assert(controllerState.keyTo(LockState)(lockPath) ==
+      LockState(
+        Lock(lockPath, itemRevision = Some(ItemRevision(0))),
+        Available,
+        Queue.empty))
+
+    controllerApi
+      .updateItems(Observable(
+        AddVersion(VersionId("FINISH-IN-FORK-REMOVED")),
+        RemoveVersioned(workflow.path)))
+      .await(99.s).orThrow
   }
 
   "Acquire too much" in {

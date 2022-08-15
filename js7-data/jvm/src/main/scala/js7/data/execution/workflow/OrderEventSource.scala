@@ -175,7 +175,7 @@ final class OrderEventSource(state: StateView)
         OrderCatched(catchPos, outcome)
     }
 
-  private def leaveBlocks(
+  def leaveBlocks(
     workflow: Workflow,
     order: Order[Order.State],
     catchable: Boolean = false)
