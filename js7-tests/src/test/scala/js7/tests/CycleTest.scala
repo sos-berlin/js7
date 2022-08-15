@@ -5,6 +5,7 @@ import java.time.{LocalTime, ZoneId}
 import java.util.concurrent.TimeoutException
 import javax.inject.Singleton
 import js7.base.configutils.Configs._
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
@@ -16,7 +17,6 @@ import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.execution.workflow.instructions.ScheduleTester
-import js7.data.item.VersionId
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCatched, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.OrderObstacle.WaitingForOtherTime
 import js7.data.order.{CycleState, FreshOrder, OrderEvent, OrderId, OrderObstacle, Outcome}
@@ -27,14 +27,14 @@ import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.CycleTest._
 import js7.tests.jobs.{EmptyJob, SemaphoreJob}
-import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
+import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration._
 
-final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with ScheduleTester
+final class CycleTest extends Test
+with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
 {
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(calendar, cycleTestExampleCalendar, cycleTestExampleWorkflow)
@@ -57,8 +57,7 @@ final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with 
     @Provides @Singleton def provideAlarmClock(): AlarmClock = clock
   }
 
-  private implicit val zone = CycleTest.zone
-  private lazy val versionIdIterator = Iterator.from(1).map(i => VersionId(i.toString))
+  private implicit val zone: ZoneId = CycleTest.zone
 
   "Cycle with empty Schedule" in {
     val workflow = addWorkflow(Workflow(
@@ -96,7 +95,7 @@ final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with 
       .map(_.value)
     val until = local("2021-10-02T00:00")
     val cycleState =
-      CycleState(end = until, schemeIndex = 0, index = 1, next = Timestamp.Epoch)
+      CycleState(end = until, index = 1, next = Timestamp.Epoch)
     assert(events == Seq(
       OrderAdded(workflow.id),
       OrderAttachable(agentPath),
@@ -166,7 +165,6 @@ final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with 
       .map(_.value)
     val cycleState = CycleState(
       end = local("2021-10-02T00:00"),
-      schemeIndex = 0,
       index = 1,
       next = Timestamp.Epoch)
     assert(events == Seq(
@@ -198,7 +196,6 @@ final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with 
       .map(_.value)
     val cycleState = CycleState(
       end = local("2021-10-02T00:00"),
-      schemeIndex = 0,
       index = 1,
       next = Timestamp.Epoch)
     assert(events == Seq(
@@ -242,7 +239,6 @@ final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with 
       OrderStarted,
       OrderCyclingPrepared(CycleState(
         end = local("2021-10-02T00:00"),
-        schemeIndex = 0,
         index = 1,
         next = local("2021-10-01T18:00"))),
       OrderCancelled))
@@ -416,10 +412,8 @@ final class CycleTest extends AnyFreeSpec with ControllerAgentForScalaTest with 
   }
 
   private def addWorkflow(workflow: Workflow): Workflow = {
-    val v = versionIdIterator.next()
-    val w = workflow.withVersion(v)
-    directoryProvider.updateVersionedItems(controller, v, Seq(workflow))
-    w
+    val Some(v) = updateItems(workflow)
+    workflow.withVersion(v)
   }
 }
 

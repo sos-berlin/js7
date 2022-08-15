@@ -4,6 +4,7 @@ import java.time.{LocalTime, ZoneId}
 import js7.base.log.Logger
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Checked._
+import js7.base.test.Test
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
 import js7.base.time.ScalaTime._
@@ -19,12 +20,11 @@ import js7.data.workflow.instructions.Schedule.{Periodic, Scheme, Ticking}
 import js7.data.workflow.instructions.{Cycle, CycleTest, ImplicitEnd, Schedule}
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.MapView
 import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration._
 
-final class CycleExecutorTest extends AnyFreeSpec with ScheduleTester
+final class CycleExecutorTest extends Test with ScheduleTester
 {
   coupleScribeWithSlf4j()
 
@@ -42,8 +42,7 @@ final class CycleExecutorTest extends AnyFreeSpec with ScheduleTester
         calendarPath = Some(calendar.path)),
       WallClock)
 
-    stepper.step()
-    assert(stepper.events == Seq(OrderMoved(Position(1))))
+    assert(stepper.step() == Seq(OrderMoved(Position(1))))
     assert(stepper.order == stepper.initialOrder.copy(
       state = Ready,
       workflowPosition = workflowId /: Position(1)))
@@ -67,30 +66,26 @@ final class CycleExecutorTest extends AnyFreeSpec with ScheduleTester
       clock)
 
     val initialCycleState = CycleState(
-      end = local("2021-10-02T06:00"),
-      schemeIndex = 0,
-      index = 1,
-      next = Timestamp.Epoch)
-    stepper.step()
-    assert(stepper.events == Seq(OrderCyclingPrepared(initialCycleState)))
+      next = Timestamp.Epoch,
+      end  = local("2021-10-02T06:00"),
+      index = 1)
+    assert(stepper.step() == Seq(OrderCyclingPrepared(initialCycleState)))
     assert(stepper.order == stepper.initialOrder.copy(
       state = BetweenCycles(Some(initialCycleState))))
 
     for (i <- 1 to 3) withClue(s"#$i ") {
       // Endless empty loop. Caller must detect this (see test below)!
-      stepper.step()
-      assert(stepper.events == Seq(OrderCycleStarted))
+      assert(stepper.step() == Seq(OrderCycleStarted))
       assert(stepper.order == stepper.initialOrder.withPosition(
         Position(0) / BranchId.cycle(initialCycleState.copy(index = i)) % 0))
 
       assert(stepper.nextInstruction == ImplicitEnd())
       assert(stepper.nextPosition == Right(None))
 
-      stepper.step()
-      assert(stepper.events == Seq(OrderCycleFinished(Some(
+      assert(stepper.step() == Seq(OrderCycleFinished(Some(
         initialCycleState.copy(
-          index = i + 1,
-          next = Timestamp.Epoch/*immediately*/)))))
+          next = Timestamp.Epoch,
+          index = i + 1/*immediately*/)))))
       assert(stepper.order == stepper.initialOrder
         .withPosition(Position(0))
         .copy(
@@ -118,44 +113,37 @@ final class CycleExecutorTest extends AnyFreeSpec with ScheduleTester
         calendarPath = Some(calendar.path)),
       clock)
 
-    stepper.step()
     val initialCycleState = CycleState(
-      end = local("2021-10-02T06:00"),
-      schemeIndex = 0,
-      index = 1,
-      next = Timestamp.Epoch)
-    assert(stepper.events == Seq(OrderCyclingPrepared(initialCycleState)))
+      next = Timestamp.Epoch,
+      end  = local("2021-10-02T06:00"),
+      index = 1)
+    assert(stepper.step() == Seq(OrderCyclingPrepared(initialCycleState)))
     assert(stepper.order == stepper.initialOrder
       .withPosition(Position(0))
       .copy(state = BetweenCycles(Some(initialCycleState))))
 
     var nextString = ""
     for (i <- 1 to 3) withClue(s"#$i ") {
-      stepper.step()
-      assert(stepper.events == Seq(OrderCycleStarted))
+      assert(stepper.step() == Seq(OrderCycleStarted))
       assert(stepper.order == stepper.initialOrder
         .withPosition(Position(0) /
           s"cycle+end=${initialCycleState.end.toEpochMilli},i=$i$nextString" % 0)
         .copy(state = Order.Ready))
 
-      stepper.step()
-      assert(stepper.events == Seq(OrderCycleFinished(Some(initialCycleState.copy(
-        index = i + 1,
-        next = clock.now() + 60.s)))))
+      assert(stepper.step() == Seq(OrderCycleFinished(Some(initialCycleState.copy(
+        next = clock.now() + 60.s,
+        index = i + 1)))))
       assert(stepper.order == stepper.initialOrder
         .withPosition(Position(0))
         .copy(
           state = BetweenCycles(Some(initialCycleState.copy(
-            schemeIndex = 0,
-            index = i + 1,
-            next = clock.now() + 60.s)))))
+            next = clock.now() + 60.s,
+            index = i + 1)))))
 
-      stepper.step()
-      assert(stepper.events == Nil)
+      assert(stepper.step() == Nil)
 
       clock += 59.s
-      stepper.step()
-      assert(stepper.events == Nil)
+      assert(stepper.step() == Nil)
 
       clock += 1.s
 
@@ -181,55 +169,46 @@ final class CycleExecutorTest extends AnyFreeSpec with ScheduleTester
         calendarPath = Some(calendar.path)),
       clock)
 
-    stepper.step()
-
     val cycleState = CycleState(
-      end = local("2021-10-02T06:00"),
-      schemeIndex = 0,
-      index = 1,
-      next = local("2021-10-01T09:00"))
-    assert(stepper.events == Seq(OrderCyclingPrepared(cycleState)))
+      next = local("2021-10-01T09:00"),
+      end  = local("2021-10-02T06:00"),
+      index = 1)
+    assert(stepper.step() == Seq(OrderCyclingPrepared(cycleState)))
     assert(stepper.order == stepper.initialOrder
       .withPosition(Position(0))
       .copy(state = BetweenCycles(Some(cycleState))))
 
-    stepper.step()
-    assert(stepper.events.isEmpty)
+    assert(stepper.step().isEmpty)
 
     clock += 9.h - 30*60.s/*because it was half past midnight*/
 
     val n = 3
     var i = 1
     while (i <= n) withClue(s"#$i ") {
-      stepper.step()
-      assert(stepper.events == Seq(OrderCycleStarted))
+      assert(stepper.step() == Seq(OrderCycleStarted))
       assert(stepper.order == stepper.initialOrder.withPosition(Position(0) /
         s"cycle+end=1633143600000,i=$i,next=${clock.now().toEpochMilli}" % 0))
 
-      stepper.step()
       i += 1
       val next = (i <= n) ? (clock.now() + 1.h)
-      assert(stepper.events == Seq(OrderCycleFinished(
+      assert(stepper.step() == Seq(OrderCycleFinished(
         for (next <- next) yield cycleState.copy(
-          index = i,
-          next = next))))
+          next = next,
+          index = i))))
       assert(stepper.order == stepper.initialOrder
         .copy(
           state = BetweenCycles(
             next.map(next => cycleState.copy(
-              schemeIndex = 0,
-              index = i,
-              next = next)))))
+              next = next,
+              index = i)))))
 
       if (next.isDefined) {
-        stepper.step()
-        assert(stepper.events == Nil)
+        assert(stepper.step() == Nil)
         clock += 1.h
       }
     }
 
-    stepper.step()
-    assert(stepper.events == Seq(OrderMoved(Position(1))))
+    assert(stepper.step() == Seq(OrderMoved(Position(1))))
     assert(stepper.order == stepper.initialOrder
       .withPosition(Position(1))
       .copy(state = Order.Ready))
@@ -269,32 +248,26 @@ final class CycleExecutorTest extends AnyFreeSpec with ScheduleTester
         calendarPath = Some(calendar.path)),
       clock)
 
-    stepper.step()
     val initialCycleState = CycleState(
-      end = local("2020-10-26T00:00"),
-      schemeIndex = 0,
-      index = 1,
-      next = Timestamp("2020-10-24T23:30:00Z"))
-    assert(stepper.events == Seq(OrderCyclingPrepared(initialCycleState)))
+      next = Timestamp("2020-10-24T23:30:00Z"),
+      end  = local("2020-10-26T00:00"),
+      index = 1)
+    assert(stepper.step() == Seq(OrderCyclingPrepared(initialCycleState)))
     assert(stepper.order == stepper.initialOrder
       .withPosition(Position(0))
       .copy(state = BetweenCycles(Some(initialCycleState))))
 
     for (i <- 1 to 3) withClue(s"#$i ") {
-      stepper.step()
-      assert(stepper.events == Seq(OrderCycleStarted))
+      assert(stepper.step() == Seq(OrderCycleStarted))
 
-      stepper.step()
-      assert(stepper.events == Seq(OrderCycleFinished(Some(initialCycleState.copy(
-        index = i + 1,
-        next = clock.now() + 60.s)))))
+      assert(stepper.step() == Seq(OrderCycleFinished(Some(initialCycleState.copy(
+        next = clock.now() + 60.s,
+        index = i + 1)))))
 
-      stepper.step()
-      assert(stepper.events == Nil)
+      assert(stepper.step() == Nil)
 
       clock += 59.s
-      stepper.step()
-      assert(stepper.events == Nil)
+      assert(stepper.step() == Nil)
 
       clock += 1.s
     }
@@ -326,9 +299,9 @@ final class CycleExecutorTest extends AnyFreeSpec with ScheduleTester
       var i = 1
       while (!stepper.order.isState[Finished] && i <= 10000) withClue(s"#i") {
         i += 1
-        stepper.step()
-        assert(stepper.events.nonEmpty)
-        if (stepper.events.contains(OrderCycleStarted)) {
+        val events = stepper.step()
+        assert(events.nonEmpty)
+        if (events.contains(OrderCycleStarted)) {
           builder += clock.now()
 
           // Time to execute the instruction block
@@ -379,22 +352,21 @@ final class CycleExecutorTest extends AnyFreeSpec with ScheduleTester
       OrderId("2021-10-02"),
       (WorkflowPath("WORKFLOW") ~ "1") /: Position(0),
       BetweenCycles(Some(CycleState(
-        end = local("2021-10-02T00:00"),
         next = local("2021-10-01T07:44"),
-        index = 1,
-        schemeIndex = 0))))
+        end  = local("2021-10-02T00:00"),
+        index = 1))))
 
-    "now < next => OrderCylceStarted" in {
+    "now < next => OrderCycleStarted" in {
       assert(executorService(local("2021-10-01T07:44")).toEvents(order, stateView) ==
         Right(List(order.id <-: OrderCycleStarted)))
     }
 
-    "now == next => OrderCylceStarted" in {
+    "now == next => OrderCycleStarted" in {
       assert(executorService(local("2021-10-01T07:45")).toEvents(order, stateView) ==
         Right(List(order.id <-: OrderCycleStarted)))
     }
 
-    "now > next => OrderCylceStarted" in {
+    "now > next => OrderCycleStarted" in {
       assert(executorService(local("2021-10-01T07:46")).toEvents(order, stateView) ==
         Right(List(order.id <-: OrderCycleStarted)))
     }
@@ -402,8 +374,8 @@ final class CycleExecutorTest extends AnyFreeSpec with ScheduleTester
     "now >= end => OrderCyclingPrepared to change the scheme" in {
       assert(executorService(local("2021-10-01T08:00")).toEvents(order, stateView) ==
         Right(List(order.id <-: OrderCyclingPrepared(CycleState(
-          end = local("2021-10-02T00:00"),
           next = local("2021-10-01T12:20"),
+          end  = local("2021-10-02T00:00"),
           index = 1,
           schemeIndex = 1)))))
     }
@@ -412,28 +384,22 @@ final class CycleExecutorTest extends AnyFreeSpec with ScheduleTester
       val clock = TestWallClock(local("2021-10-01T07:46"))
       val stepper = new Stepper(OrderId("#2021-10-01#"), workflow, clock)
 
-      stepper.step()
-      assert(stepper.events == Seq(OrderCyclingPrepared(CycleState(
-        end = local("2021-10-02T06:00"),
+      assert(stepper.step() == Seq(OrderCyclingPrepared(CycleState(
         next = local("2021-10-01T07:00"),
-        index = 1,
-        schemeIndex = 0))))
+        end  = local("2021-10-02T06:00"),
+        index = 1))))
 
-      stepper.step()
-      assert(stepper.events == Seq(OrderCycleStarted))
-      stepper.step()
-      assert(stepper.events == Seq(OrderCycleFinished(Some(CycleState(
-        end = local("2021-10-02T06:00"),
+      assert(stepper.step() == Seq(OrderCycleStarted))
+      assert(stepper.step() == Seq(OrderCycleFinished(Some(CycleState(
         next = local("2021-10-01T07:45"),
-        index = 2,
-        schemeIndex = 0)))))
+        end  = local("2021-10-02T06:00"),
+        index = 2)))))
 
       // Reaching and of AdmissionTimeScheme
       clock := local("2021-10-01T08:00")
-      stepper.step()
-      assert(stepper.events == Seq(OrderCyclingPrepared(CycleState(
-        end = local("2021-10-02T06:00"),
+      assert(stepper.step() == Seq(OrderCyclingPrepared(CycleState(
         next = local("2021-10-01T12:20"),
+        end  = local("2021-10-02T06:00"),
         index = 1,
         schemeIndex = 1))))
     }
@@ -453,7 +419,7 @@ object CycleExecutorTest
 
   final class Stepper(orderId: OrderId, workflow: Workflow, val clock: WallClock)
   {
-    private lazy val stateView = new TestStateView(
+    private val stateView = new TestStateView(
       isAgent = true,
       idToWorkflow = Map(workflow.id -> workflow)
     ) {
@@ -464,13 +430,10 @@ object CycleExecutorTest
 
     val initialOrder: Order[Order.State] = Order(
       orderId,
-      (WorkflowPath("WORKFLOW") ~ "1") /: Position(0),
+      workflow.id /: Position(0),
       Ready)
 
     var order: Order[Order.State] = initialOrder
-    var events: Seq[OrderEvent] = Nil
-
-    logger.debug("—" * 80)
 
     def nextInstruction =
       stateView.instruction(order.workflowPosition)
@@ -478,13 +441,13 @@ object CycleExecutorTest
     def nextPosition =
       executorService.nextPosition(nextInstruction, order, stateView)
 
-    def step() = {
+    def step(): Seq[OrderEvent.OrderActorEvent] = {
       val keyedEvents = executorService.toEvents(nextInstruction, order, stateView).orThrow
       for (ke <- keyedEvents) logger.debug(s"${clock.now()} $ke")
       assert(keyedEvents.forall(_.key == order.id))
       val events = keyedEvents.map(_.event)
       order = order.applyEvents(events).orThrow
-      this.events = events
+      events
     }
   }
 }

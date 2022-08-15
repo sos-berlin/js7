@@ -3,6 +3,7 @@ package js7.data.execution.workflow.instructions
 import java.time.ZoneOffset.UTC
 import java.time.{LocalTime, ZoneId}
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
+import js7.base.test.Test
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.ScalaTime._
 import js7.base.time.{AdmissionTimeScheme, AlwaysPeriod, DailyPeriod, TimeInterval, Timestamp}
@@ -11,10 +12,9 @@ import js7.data.order.CycleState
 import js7.data.workflow.instructions.Schedule
 import js7.data.workflow.instructions.Schedule.{Periodic, Scheme, Ticking}
 import js7.data.workflow.instructions.ScheduleTest.exampleSchedule
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration._
 
-final class ScheduleCalculatorTest extends AnyFreeSpec with ScheduleTester
+final class ScheduleCalculatorTest extends Test with ScheduleTester
 {
   coupleScribeWithSlf4j()
 
@@ -34,49 +34,54 @@ final class ScheduleCalculatorTest extends AnyFreeSpec with ScheduleTester
       val cs = CycleState(
         next = Timestamp.Epoch/*not used*/,
         end  = Timestamp("2021-10-02T00:00:00Z"),
-        index = 0,
-        schemeIndex = 0)
+        index = 0)
 
       "First cycle (OrderCyclingPrepared)" - {
         val initialCycleState = cs.copy(schemeIndex = -1)
-        val first = cs.copy(next = Timestamp("2021-10-01T09:05:00Z"), index = 1)
+        val first = cs.copy(
+          next = Timestamp("2021-10-01T09:05:00Z"),
+          index = 1)
 
-        "now < first" in {
+        "now < first cycle start" in {
           assert(calculator.nextCycleState(Timestamp("2021-10-01T08:00:00Z"), initialCycleState) ==
             Some(first))
         }
 
-        "now == first" in {
+        "now == first cycle start" in {
           assert(calculator.nextCycleState(Timestamp("2021-10-01T09:05:00Z"), initialCycleState) ==
             Some(first))
         }
 
-        "now > first" in {
+        "now > first cycle start" in {
           assert(calculator.nextCycleState(Timestamp("2021-10-01T09:06:00Z"), initialCycleState) ==
             Some(first))
         }
 
-        "now == second" in {
+        "now == second cycle start" in {
           assert(calculator.nextCycleState(Timestamp("2021-10-01T09:10:00Z"), initialCycleState) ==
-            Some(cs.copy(next = Timestamp("2021-10-01T09:10:00Z"), index = 1)))
+            Some(first.copy(
+              next = Timestamp("2021-10-01T09:10:00Z"))))
         }
 
-        "now > second" in {
+        "now > second cycle start" in {
           assert(calculator.nextCycleState(Timestamp("2021-10-01T09:59:00Z"), initialCycleState) ==
-            Some(cs.copy(next = Timestamp("2021-10-01T09:10:00Z"), index = 1)))
+            Some(first.copy(
+              next = Timestamp("2021-10-01T09:10:00Z"))))
         }
 
-        "now >>> first" in {
+        "now >> second cycle start" in {
           assert(calculator.nextCycleState(Timestamp("2021-10-01T10:05:00Z"), initialCycleState) ==
-            Some(cs.copy(next = Timestamp("2021-10-01T10:05:00Z"), index = 1)))
+            Some(first.copy(
+              next = Timestamp("2021-10-01T10:05:00Z"))))
           assert(calculator.nextCycleState(Timestamp("2021-10-01T10:06:00Z"), initialCycleState) ==
-            Some(cs.copy(next = Timestamp("2021-10-01T10:05:00Z"), index = 1)))
+            Some(first.copy(
+              next = Timestamp("2021-10-01T10:05:00Z"))))
         }
       }
 
       "Next cycle (OrderCycleFinished)" - {
-        val last = cs.copy(next = Timestamp("2021-10-01T09:05:00Z"), index = 1)
-        val next = cs.copy(next = Timestamp("2021-10-01T09:10:00Z"), index = 2)
+        val last = cs.copy(index = 1, next = Timestamp("2021-10-01T09:05:00Z"))
+        val next = cs.copy(index = 2, next = Timestamp("2021-10-01T09:10:00Z"))
 
         "now < first (only if clock has been manipulated)" in {
           assert(calculator.nextCycleState(Timestamp("2021-10-01T08:00:00Z"), last) == Some(next))
@@ -100,20 +105,20 @@ final class ScheduleCalculatorTest extends AnyFreeSpec with ScheduleTester
 
         "now >> next" in {
           assert(calculator.nextCycleState(Timestamp("2021-10-01T10:05:00Z"), last) ==
-            Some(cs.copy(next = Timestamp("2021-10-01T10:05:00Z"), index = 2)))
+            Some(next.copy(next = Timestamp("2021-10-01T10:05:00Z"))))
           assert(calculator.nextCycleState(Timestamp("2021-10-01T10:06:00Z"), last) ==
-            Some(cs.copy(next = Timestamp("2021-10-01T10:05:00Z"), index = 2)))
+            Some(next.copy(next = Timestamp("2021-10-01T10:05:00Z"))))
         }
 
         "now >>> next" in {
           assert(calculator.nextCycleState(Timestamp("2021-10-01T10:10:00Z"), last) ==
-            Some(cs.copy(next = Timestamp("2021-10-01T10:10:00Z"), index = 2)))
+            Some(next.copy(next = Timestamp("2021-10-01T10:10:00Z"))))
           assert(calculator.nextCycleState(Timestamp("2021-10-01T10:11:00Z"), last) ==
-            Some(cs.copy(next = Timestamp("2021-10-01T10:10:00Z"), index = 2)))
+            Some(next.copy(next = Timestamp("2021-10-01T10:10:00Z"))))
         }
 
         "At end of this scheme, change to next 12:00 Ticking scheme" in {
-          val last = cs.copy(next = Timestamp("2021-10-01T10:10:00Z"), index = 2)
+          val last = next.copy(next = Timestamp("2021-10-01T10:10:00Z"))
           assert(calculator.nextCycleState(Timestamp("2021-10-01T10:11:00Z"), last) ==
             Some(cs.copy(next = Timestamp("2021-10-01T12:00:00Z"), index = 1, schemeIndex = 1)))
         }

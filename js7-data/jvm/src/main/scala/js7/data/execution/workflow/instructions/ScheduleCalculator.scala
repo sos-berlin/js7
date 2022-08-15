@@ -39,7 +39,7 @@ extends ScheduleSimulator
         nextCycleState(now, cycleState)
 
   /** Returns schemeIndex and Timestamp. */
-  private def nextCycle(now: Timestamp, cycleState: CycleState) =
+  private def nextCycle(now: Timestamp, cycleState: CycleState): Option[(Int, Timestamp)] =
     schedule.schemes.view.zipWithIndex
       // For each Scheme
       .flatMap { case (scheme, schemeIndex) =>
@@ -62,7 +62,8 @@ extends ScheduleSimulator
                   lastScheduledCycleStart
                 else if (now > lastScheduledCycleStart + interval) {
                   // Late, return the last scheduled time before now
-                  val n = (now.toEpochMilli - lastScheduledCycleStart.toEpochMilli) / interval.toMillis
+                  val n = (now.toEpochMilli - lastScheduledCycleStart.toEpochMilli) /
+                    interval.toMillis
                   lastScheduledCycleStart + n * interval
                 } else
                   lastScheduledCycleStart + interval)

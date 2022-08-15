@@ -30,10 +30,10 @@ extends EventInstructionExecutor with PositionInstructionExecutor
           timeInterval <- calendarExecutor.orderIdToTimeInterval(order.id)
         } yield {
           val cycleState = calculator.nextCycleState(now, CycleState(
-                        next = timeInterval.start,
-                        end = timeInterval.end,
-                        schemeIndex = -1,
-                        index = 0))
+            next = timeInterval.start,
+            end = timeInterval.end,
+            schemeIndex = -1,
+            index = 0))
           nextCycleStateToEvent(cycleState, order)
         }))
       .orElse(order.ifState[BetweenCycles].map(order =>
