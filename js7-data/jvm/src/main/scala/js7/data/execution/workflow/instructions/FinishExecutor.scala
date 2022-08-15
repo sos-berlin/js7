@@ -34,7 +34,7 @@ extends EventInstructionExecutor
         order.position.forkBranchReversed match {
           case Nil =>
             // Not in a fork
-            leaveBlocks(order, workflow, state, OrderFinished)
+            leaveBlocks(order, workflow, OrderFinished)
 
           case BranchPath.Segment(nr, branchId) :: reverseInit =>
             // In a fork
@@ -45,18 +45,16 @@ extends EventInstructionExecutor
               endPos <- branchWorkflow.instructions.iterator.zipWithIndex
                 .collectFirst { case (_: End, index) => forkPosition / branchId % InstructionNr(index) }
                 .toChecked(Problem(s"Missing End instruction in branch ${ forkPosition / branchId }")) // Does not happen
-              events <- leaveBlocks(order, workflow, state, OrderMoved(endPos))
+              events <- leaveBlocks(order, workflow, OrderMoved(endPos))
             } yield events
         }
 
       case _ => Right(Nil)
     }
 
-  private def leaveBlocks(
-    order: Order[Order.State],
-    workflow: Workflow,
-    state: StateView, event: OrderActorEvent) =
-    new OrderEventSource(state)(service)
+  private def leaveBlocks(order: Order[Order.State], workflow: Workflow, event: OrderActorEvent)
+  : Checked[List[KeyedEvent[OrderActorEvent]]] =
+    OrderEventSource
       .leaveBlocks(workflow, order) {
         case _ => event
       }

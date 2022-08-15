@@ -20,7 +20,7 @@ import js7.data.state.StateView
 import js7.data.workflow.instructions.{End, Finish, ForkInstruction, Gap, LockInstruction, Retry, TryInstruction}
 import js7.data.workflow.position.BranchPath.Segment
 import js7.data.workflow.position.{BranchId, Position, TryBranchId, WorkflowPosition}
-import js7.data.workflow.{Instruction, Workflow, WorkflowId}
+import js7.data.workflow.{Instruction, Workflow}
 import scala.annotation.tailrec
 import scala.reflect.ClassTag
 
@@ -96,19 +96,6 @@ final class OrderEventSource(state: StateView)
     problem.toLeft(keyedEvents)
   }
 
-  // Special handling for try with maxRetries and catch block with retry instruction only:
-  // try (maxRetries=n) ... catch retry
-  // In this case, OrderFailed event must have original failures's position, not failed retry's position.
-  private def isMaxRetriesReached(workflowId: WorkflowId, firstCatchPos: Position): Boolean =
-    catchStartsWithRetry(workflowId /: firstCatchPos) &&
-      firstCatchPos.parent.forall(parentPos =>
-        instruction(workflowId /: parentPos) match {  // Parent must be a TryInstruction
-          case t: TryInstruction => t.maxTries.forall(firstCatchPos.tryCount >= _)
-        })
-
-  private def catchStartsWithRetry(firstCatchPos: WorkflowPosition) =
-    instruction(firstCatchPos).withoutSourcePos == Retry()
-
   private def invalidToEvent(order: Order[Order.State], checkedEvents: Checked[Seq[KeyedEvent[OrderActorEvent]]])
   : Seq[KeyedEvent[OrderActorEvent]] =
     checkedEvents match {
@@ -174,56 +161,6 @@ final class OrderEventSource(state: StateView)
       case (Some(TryBranchId(_)), catchPos) =>
         OrderCatched(catchPos, outcome)
     }
-
-  def leaveBlocks(
-    workflow: Workflow,
-    order: Order[Order.State],
-    catchable: Boolean = false)
-    (toEvent: PartialFunction[(Option[BranchId], Position), OrderActorEvent])
-  : Checked[List[OrderActorEvent]] =
-  {
-    def callToEvent(branchId: Option[BranchId], pos: Position) =
-      toEvent.lift((branchId, pos))
-        .map(event => Right(event :: Nil))
-        .getOrElse(Left(Problem(
-          s"Unexpected Branchid '$branchId' while leaving instruction blocks")))
-
-    def loop(reverseBranchPath: List[Segment], failPosition: Position)
-    : Checked[List[OrderActorEvent]] =
-      reverseBranchPath match {
-        case Nil =>
-          callToEvent(None, failPosition)
-
-        case Segment(_, branchId @ BranchId.IsFailureBoundary(_)) :: _ =>
-          callToEvent(Some(branchId), failPosition)
-
-        case Segment(_, BranchId.Lock) :: prefix =>
-          val pos = prefix.reverse % 0
-          for {
-            lock <- checkedCast[LockInstruction](workflow.instruction(pos))
-            events <- loop(prefix, pos)
-          } yield OrderLockReleased(lock.lockPath) :: events
-
-        case Segment(nr, branchId @ TryBranchId(retry)) :: prefix if catchable =>
-          val catchPos = prefix.reverse % nr / BranchId.catch_(retry) % 0
-          if (isMaxRetriesReached(workflow.id, catchPos))
-            loop(prefix, failPosition)
-          else
-            callToEvent(Some(branchId), catchPos)
-
-        case Segment(_, _) :: prefix =>
-          loop(prefix, failPosition)
-      }
-
-    order
-      .ifState[Order.WaitingForLock]
-      .traverse(order =>
-        for (lock <- workflow.instruction_[LockInstruction](order.position)) yield
-          OrderLockDequeued(lock.lockPath))
-      .flatMap(maybeEvent =>
-        loop(order.position.branchPath.reverse, order.position)
-          .map(maybeEvent.toList ::: _))
-  }
 
   private def joinedEvent(order: Order[Order.State]): Checked[Option[KeyedEvent[OrderActorEvent]]] = {
     if (order.parent.isDefined
@@ -497,4 +434,66 @@ final class OrderEventSource(state: StateView)
 
 object OrderEventSource {
   private val logger = scribe.Logger[this.type]
+
+  def leaveBlocks(
+    workflow: Workflow,
+    order: Order[Order.State],
+    catchable: Boolean = false)
+    (toEvent: PartialFunction[(Option[BranchId], Position), OrderActorEvent])
+  : Checked[List[OrderActorEvent]] = {
+    def callToEvent(branchId: Option[BranchId], pos: Position) =
+      toEvent.lift((branchId, pos))
+        .map(event => Right(event :: Nil))
+        .getOrElse(Left(Problem(
+          s"Unexpected Branchid '$branchId' while leaving instruction blocks")))
+
+    def loop(reverseBranchPath: List[Segment], failPosition: Position)
+    : Checked[List[OrderActorEvent]] =
+      reverseBranchPath match {
+        case Nil =>
+          callToEvent(None, failPosition)
+
+        case Segment(_, branchId @ BranchId.IsFailureBoundary(_)) :: _ =>
+          callToEvent(Some(branchId), failPosition)
+
+        case Segment(_, BranchId.Lock) :: prefix =>
+          val pos = prefix.reverse % 0
+          for {
+            lock <- checkedCast[LockInstruction](workflow.instruction(pos))
+            events <- loop(prefix, pos)
+          } yield OrderLockReleased(lock.lockPath) :: events
+
+        case Segment(nr, branchId @ TryBranchId(retry)) :: prefix if catchable =>
+          val catchPos = prefix.reverse % nr / BranchId.catch_(retry) % 0
+          if (isMaxRetriesReached(workflow, catchPos))
+            loop(prefix, failPosition)
+          else
+            callToEvent(Some(branchId), catchPos)
+
+        case Segment(_, _) :: prefix =>
+          loop(prefix, failPosition)
+      }
+
+    order
+      .ifState[Order.WaitingForLock]
+      .traverse(order =>
+        for (lock <- workflow.instruction_[LockInstruction](order.position)) yield
+          OrderLockDequeued(lock.lockPath))
+      .flatMap(maybeEvent =>
+        loop(order.position.branchPath.reverse, order.position)
+          .map(maybeEvent.toList ::: _))
+  }
+
+  // Special handling for try with maxRetries and catch block with retry instruction only:
+  // try (maxRetries=n) ... catch retry
+  // In this case, OrderFailed event must have original failures's position, not failed retry's position.
+  private def isMaxRetriesReached(workflow: Workflow, firstCatchPos: Position): Boolean = {
+    val catchStartsWithRetry =
+      workflow.instruction(firstCatchPos).withoutSourcePos == Retry()
+    catchStartsWithRetry &&
+      firstCatchPos.parent.forall(parentPos =>
+        workflow.instruction(parentPos) match { // Parent must be a TryInstruction
+          case t: TryInstruction => t.maxTries.forall(firstCatchPos.tryCount >= _)
+        })
+  }
 }
