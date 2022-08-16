@@ -1,9 +1,10 @@
 package js7.base.test
 
-import js7.base.log.{AnsiEscapeCodes, Logger}
-import js7.base.test.LoggingAnyFreeSpec._
-import js7.base.time.ScalaTime._
-import js7.base.utils.ScalaUtils.syntax._
+import org.slf4j.LoggerFactory
+import js7.base.log.AnsiEscapeCodes
+import js7.base.test.LoggingAnyFreeSpec.*
+import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.{isIntelliJIdea, isSbt}
 import org.scalactic.source
 import org.scalatest.exceptions.TestPendingException
@@ -111,7 +112,7 @@ trait LoggingAnyFreeSpec extends AnyFreeSpec {
 }
 
 object LoggingAnyFreeSpec {
-  private val logger = Logger("TEST")
+  private val logger = LoggerFactory.getLogger("TEST")
   private val droppableStackTracePrefixes = Set(
     "java.",
     "scala.",
