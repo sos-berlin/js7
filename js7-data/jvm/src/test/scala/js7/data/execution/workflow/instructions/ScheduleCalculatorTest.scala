@@ -38,9 +38,7 @@ final class ScheduleCalculatorTest extends Test with ScheduleTester
 
       "First cycle (OrderCyclingPrepared)" - {
         val initialCycleState = cs.copy(schemeIndex = -1)
-        val first = cs.copy(
-          next = Timestamp("2021-10-01T09:05:00Z"),
-          index = 1)
+        val first = cs.copy(index = 1, next = Timestamp("2021-10-01T09:05:00Z"))
 
         "now < first cycle start" in {
           assert(calculator.nextCycleState(Timestamp("2021-10-01T08:00:00Z"), initialCycleState) ==
@@ -157,7 +155,7 @@ final class ScheduleCalculatorTest extends Test with ScheduleTester
 
         "now >>> first" in {
           assert(calculator.nextCycleState(Timestamp("2021-10-01T12:59:00Z"), initialCycleState) ==
-            Some(cs.copy(next = Timestamp("2021-10-01T12:00:00Z"), index = 1)))
+            Some(cs.copy(next = Timestamp("2021-10-01T12:45:00Z"), index = 1)))
         }
       }
 

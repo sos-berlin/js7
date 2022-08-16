@@ -56,17 +56,13 @@ extends ScheduleSimulator
             case periodic: Periodic =>
               nextPeriod(periodic, lastScheduledCycleStart, now, first = first, end)
 
-            case Ticking(interval) =>
+            case Ticking(tickDuration) =>
+              val n = (now - lastScheduledCycleStart).toMillis / tickDuration.toMillis
               Some(
-                if (first)
-                  lastScheduledCycleStart
-                else if (now > lastScheduledCycleStart + interval) {
-                  // Late, return the last scheduled time before now
-                  val n = (now.toEpochMilli - lastScheduledCycleStart.toEpochMilli) /
-                    interval.toMillis
-                  lastScheduledCycleStart + n * interval
-                } else
-                  lastScheduledCycleStart + interval)
+                if (n > 0) // Late?
+                  lastScheduledCycleStart + n * tickDuration
+                else
+                  lastScheduledCycleStart + tickDuration * (!first).toInt)
 
             case Continuous(pause, limit) =>
               val index = if (first) 0 else cycleState.index

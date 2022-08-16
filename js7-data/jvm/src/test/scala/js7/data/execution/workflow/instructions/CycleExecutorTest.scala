@@ -381,11 +381,11 @@ final class CycleExecutorTest extends Test with ScheduleTester
     }
 
     "Same with Stepper" in {
-      val clock = TestWallClock(local("2021-10-01T07:46"))
+      val clock = TestWallClock(local("2021-10-01T07:31"))
       val stepper = new Stepper(OrderId("#2021-10-01#"), workflow, clock)
 
       assert(stepper.step() == Seq(OrderCyclingPrepared(CycleState(
-        next = local("2021-10-01T07:00"),
+        next = local("2021-10-01T07:30"),
         end  = local("2021-10-02T06:00"),
         index = 1))))
 
@@ -403,6 +403,42 @@ final class CycleExecutorTest extends Test with ScheduleTester
         index = 1,
         schemeIndex = 1))))
     }
+  }
+
+  "Only one first cycle (bug JS-2012)" in {
+    val workflow = Workflow(
+      WorkflowPath("NO-DOUBLE-EXECUTION") ~ "1",
+      Seq(
+        Cycle(
+          Schedule(Seq(Scheme(
+            AdmissionTimeScheme(Seq(AlwaysPeriod)),
+            Ticking(1.h)))),
+          Workflow.empty)),
+      calendarPath = Some(calendar.path))
+    val clock = TestWallClock(local("2022-08-13T08:10"))
+    val stepper = new Stepper(OrderId("#2022-08-13#"), workflow, clock)
+
+    assert(stepper.step() == Seq(OrderCyclingPrepared(CycleState(
+      index = 1,
+      next = local("2022-08-13T08:00"),
+      end  = local("2022-08-14T06:00")))))
+
+    assert(stepper.step() == Seq(OrderCycleStarted))
+
+    assert(stepper.step() == Seq(OrderCycleFinished(Some(CycleState(
+      index = 2,
+      next = local("2022-08-13T09:00"),
+      end  = local("2022-08-14T06:00"))))))
+
+    assert(stepper.step().isEmpty)
+
+    clock := local("2022-08-13T09:00")
+    assert(stepper.step() == Seq(OrderCycleStarted))
+
+    assert(stepper.step() == Seq(OrderCycleFinished(Some(CycleState(
+      index = 3,
+      next = local("2022-08-13T10:00"),
+      end  = local("2022-08-14T06:00"))))))
   }
 }
 

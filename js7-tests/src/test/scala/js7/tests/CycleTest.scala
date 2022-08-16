@@ -21,7 +21,7 @@ import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, Or
 import js7.data.order.OrderObstacle.WaitingForOtherTime
 import js7.data.order.{CycleState, FreshOrder, OrderEvent, OrderId, OrderObstacle, Outcome}
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.workflow.instructions.Schedule.{Periodic, Scheme}
+import js7.data.workflow.instructions.Schedule.{Periodic, Scheme, Ticking}
 import js7.data.workflow.instructions.{Cycle, Fail, Schedule, TryInstruction}
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -409,6 +409,39 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
       }
       eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
     }
+  }
+
+  "One first cycle in mid of period (bug JS-2012)" in {
+    // Fixed bug:
+    // Cycle executes the block twice, when starting after the first period of the calendar day.
+    clock.resetTo(local("2021-10-01T01:30"))
+    val workflow = addWorkflow(Workflow(
+      WorkflowPath("ONCE-AN-HOUR"),
+      Seq(
+        Cycle(
+          Schedule(Seq(Scheme(
+            AdmissionTimeScheme(Seq(AlwaysPeriod)),
+            Ticking(1.h)))),
+          Workflow.empty)),
+      calendarPath = Some(calendar.path)))
+    val orderId = OrderId("#2021-10-01#ONCE-A-DAY")
+    controllerApi.addOrder(FreshOrder(orderId, workflow.path))
+      .await(99.s).orThrow
+
+    clock.tick()
+    assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 1)
+
+    clock.tick(30.minutes - 1.s)
+    assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 1)
+
+    clock.tick(1.s)
+    assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 2)
+
+    clock.tick(1.h - 1.s)
+    assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 2)
+
+    clock.tick(1.s)
+    assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 3)
   }
 
   private def addWorkflow(workflow: Workflow): Workflow = {
