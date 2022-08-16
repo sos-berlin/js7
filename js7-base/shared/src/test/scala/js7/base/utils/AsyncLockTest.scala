@@ -6,15 +6,15 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.execution.atomic.Atomic
 import monix.reactive.Observable
-import org.scalatest.freespec.AsyncFreeSpec
 import scala.concurrent.Promise
+import js7.base.test.OurAsyncTestSuite
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Random
 
 /**
   * @author Joacim Zschimmer
   */
-final class AsyncLockTest extends AsyncFreeSpec
+final class AsyncLockTest extends OurAsyncTestSuite
 {
   private val initial = 1
 

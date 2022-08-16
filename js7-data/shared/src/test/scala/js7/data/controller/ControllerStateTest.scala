@@ -40,12 +40,12 @@ import js7.data.workflow.{Workflow, WorkflowPath, WorkflowPathControl, WorkflowP
 import js7.tester.CirceJsonTester.testJson
 import js7.tester.DiffxAssertions.assertEqual
 import monix.execution.Scheduler.Implicits.traced
-import org.scalatest.freespec.AsyncFreeSpec
+import js7.base.test.OurAsyncTestSuite
 
 /**
   * @author Joacim Zschimmer
   */
-final class ControllerStateTest extends AsyncFreeSpec
+final class ControllerStateTest extends OurAsyncTestSuite
 {
   "estimatedSnapshotSize" in {
     assert(controllerState.estimatedSnapshotSize == 21)

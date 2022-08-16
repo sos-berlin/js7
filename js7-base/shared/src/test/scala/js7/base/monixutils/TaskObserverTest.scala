@@ -3,9 +3,9 @@ package js7.base.monixutils
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.subjects.PublishSubject
-import org.scalatest.freespec.AsyncFreeSpec
+import js7.base.test.OurAsyncTestSuite
 
-final class TaskObserverTest extends AsyncFreeSpec
+final class TaskObserverTest extends OurAsyncTestSuite
 {
   "send" in {
     val subject = PublishSubject[Int]()

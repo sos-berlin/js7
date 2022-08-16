@@ -4,13 +4,13 @@ import js7.base.problem.Problem
 import js7.base.web.HttpClient.liftProblem
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
-import org.scalatest.freespec.AsyncFreeSpec
+import js7.base.test.OurAsyncTestSuite
 import scala.util.{Failure, Success}
 
 /**
   * @author Joacim Zschimmer
   */
-final class HttpClientTest extends AsyncFreeSpec
+final class HttpClientTest extends OurAsyncTestSuite
 {
   private val problem = Problem.pure("PROBLEM")
   private val withProblem = new HttpClient.HttpException {

@@ -17,9 +17,9 @@ import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 import monix.execution.Scheduler.Implicits.traced
-import org.scalatest.freespec.AsyncFreeSpec
+import js7.base.test.OurAsyncTestSuite
 
-final class OrderWatchStateTest extends AsyncFreeSpec
+final class OrderWatchStateTest extends OurAsyncTestSuite
 {
   private val orderWatchState = OrderWatchState(
     FileWatch(

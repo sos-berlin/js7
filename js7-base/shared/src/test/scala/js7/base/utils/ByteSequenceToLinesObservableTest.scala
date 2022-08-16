@@ -2,9 +2,9 @@ package js7.base.utils
 
 import js7.base.data.ByteArray
 import monix.execution.Scheduler.Implicits.traced
-import org.scalatest.freespec.AsyncFreeSpec
+import js7.base.test.OurAsyncTestSuite
 
-final class ByteSequenceToLinesObservableTest extends AsyncFreeSpec
+final class ByteSequenceToLinesObservableTest extends OurAsyncTestSuite
 {
   "empty" in {
     val obs = new ByteSequenceToLinesObservable[ByteArray]

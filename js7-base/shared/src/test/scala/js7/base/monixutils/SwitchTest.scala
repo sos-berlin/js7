@@ -3,10 +3,10 @@ package js7.base.monixutils
 import js7.base.time.ScalaTime.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
-import org.scalatest.freespec.AsyncFreeSpec
+import js7.base.test.OurAsyncTestSuite
 import scala.annotation.nowarn
 
-final class SwitchTest extends AsyncFreeSpec
+final class SwitchTest extends OurAsyncTestSuite
 {
   "Initially off" in {
     val switch = Switch(false)

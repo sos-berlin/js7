@@ -4,11 +4,11 @@ import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem}
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
-import org.scalatest.freespec.AsyncFreeSpec
+import js7.base.test.OurAsyncTestSuite
 import scala.collection.View
 import scala.util.{Failure, Success}
 
-final class AsyncMapTest extends AsyncFreeSpec
+final class AsyncMapTest extends OurAsyncTestSuite
 {
   private val asyncMap = AsyncMap(Map(1 -> "EINS"))
 

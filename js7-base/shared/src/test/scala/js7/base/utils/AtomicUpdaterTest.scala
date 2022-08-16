@@ -4,9 +4,9 @@ import cats.syntax.foldable.*
 import js7.base.utils.AtomicUpdaterTest.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
-import org.scalatest.freespec.AsyncFreeSpec
+import js7.base.test.OurAsyncTestSuite
 
-final class AtomicUpdaterTest extends AsyncFreeSpec
+final class AtomicUpdaterTest extends OurAsyncTestSuite
 {
   "update" in {
     val n = 1000

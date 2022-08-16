@@ -6,10 +6,10 @@ import js7.base.time.Stopwatch
 import js7.base.utils.LockKeeperTest.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
-import org.scalatest.freespec.AsyncFreeSpec
+import js7.base.test.OurAsyncTestSuite
 import scala.jdk.CollectionConverters.*
 
-final class LockKeeperTest extends AsyncFreeSpec
+final class LockKeeperTest extends OurAsyncTestSuite
 {
   "LockKeeper.lockResource" in {
     val keys = 0 until 8

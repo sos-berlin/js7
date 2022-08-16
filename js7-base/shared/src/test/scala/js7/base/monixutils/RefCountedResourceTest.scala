@@ -4,9 +4,9 @@ import cats.effect.Resource
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.execution.atomic.Atomic
-import org.scalatest.freespec.AsyncFreeSpec
+import js7.base.test.OurAsyncTestSuite
 
-final class RefCountedResourceTest extends AsyncFreeSpec
+final class RefCountedResourceTest extends OurAsyncTestSuite
 {
   "RefCountedResource" in {
     val count = Atomic(0)

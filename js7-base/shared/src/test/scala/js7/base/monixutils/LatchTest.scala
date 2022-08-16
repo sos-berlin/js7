@@ -3,10 +3,10 @@ package js7.base.monixutils
 import js7.base.time.ScalaTime.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.freespec.AsyncFreeSpec
+import js7.base.test.OurAsyncTestSuite
 import scala.concurrent.Promise
 
-final class LatchTest extends AsyncFreeSpec
+final class LatchTest extends OurAsyncTestSuite
 {
   "Initially isNot" in {
     val latch = new Latch

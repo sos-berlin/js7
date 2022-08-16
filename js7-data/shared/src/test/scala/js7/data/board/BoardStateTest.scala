@@ -7,10 +7,10 @@ import js7.data.board.BoardStateTest.*
 import js7.data.order.OrderId
 import js7.data.value.expression.ExpressionParser.expr
 import monix.execution.Scheduler.Implicits.traced
-import org.scalatest.freespec.AsyncFreeSpec
+import js7.base.test.OurAsyncTestSuite
 import scala.collection.View
 
-final class BoardStateTest extends AsyncFreeSpec
+final class BoardStateTest extends OurAsyncTestSuite
 {
   "addNoticeV2_3 (1)" in {
     var boardState = BoardState(board)

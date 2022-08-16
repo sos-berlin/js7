@@ -1,12 +1,12 @@
 package js7.base.monixutils
 
 import cats.effect.Resource
+import js7.base.test.OurAsyncTestSuite
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.traced
-import org.scalatest.freespec.AsyncFreeSpec
 
-final class MonixBaseJvmTest extends AsyncFreeSpec
+final class MonixBaseJvmTest extends OurAsyncTestSuite
 {
   "Resource" - {
     "executeOn" in {
