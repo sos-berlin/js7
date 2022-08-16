@@ -3,9 +3,9 @@ package js7.base.monixutils
 import js7.base.problem.Problem
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
-import org.scalatest.freespec.AsyncFreeSpec
+import js7.base.test.OurAsyncTestSuite
 
-final class AsyncVariableTest extends AsyncFreeSpec
+final class AsyncVariableTest extends OurAsyncTestSuite
 {
   private val asyncVariable = AsyncVariable(1)
 

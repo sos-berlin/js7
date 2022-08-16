@@ -2,13 +2,13 @@ package js7.base.eventbus
 
 import js7.base.eventbus.ClassEventBusTest.*
 import monix.execution.Scheduler.Implicits.traced
-import org.scalatest.freespec.AsyncFreeSpec
+import js7.base.test.OurAsyncTestSuite
 import scala.collection.mutable
 
 /**
   * @author Joacim Zschimmer
   */
-final class ClassEventBusTest extends AsyncFreeSpec
+final class ClassEventBusTest extends OurAsyncTestSuite
 {
   "subscribe" in {
     val events = mutable.Buffer.empty[AnyRef]

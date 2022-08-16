@@ -3,14 +3,14 @@ package js7.base.utils
 import java.util.concurrent.atomic.AtomicInteger
 import js7.base.time.ScalaTime.*
 import js7.base.utils.MemoizerTest.*
-import org.scalatest.freespec.AsyncFreeSpec
+import js7.base.test.OurAsyncTestSuite
 import scala.collection.mutable
 import scala.concurrent.Future
 
 /**
   * @author Joacim Zschimmer
   */
-final class MemoizerTest extends AsyncFreeSpec
+final class MemoizerTest extends OurAsyncTestSuite
 {
   "Unary" in {
     val called = mutable.Buffer.empty[Int]

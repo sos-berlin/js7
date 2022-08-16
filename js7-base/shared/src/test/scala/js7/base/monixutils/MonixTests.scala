@@ -3,10 +3,10 @@ package js7.base.monixutils
 import monix.eval.{Task, TaskLocal}
 import monix.execution.Scheduler.Implicits.traced
 import monix.execution.misc.Local
-import org.scalatest.freespec.AsyncFreeSpec
+import js7.base.test.OurAsyncTestSuite
 
 /** Some tests to show how Monix works. */
-final class MonixTests extends AsyncFreeSpec
+final class MonixTests extends OurAsyncTestSuite
 {
   "Local" in {
     val local = Local("")

@@ -26,13 +26,13 @@ import js7.data.order.OrderId
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.traced
-import org.scalatest.freespec.AsyncFreeSpec
+import js7.base.test.OurAsyncTestSuite
 import scala.concurrent.Future
 
 /**
  * @author Joacim Zschimmer
  */
-final class CommandWebServerTest extends AsyncFreeSpec
+final class CommandWebServerTest extends OurAsyncTestSuite
 {
   coupleScribeWithSlf4j()
 

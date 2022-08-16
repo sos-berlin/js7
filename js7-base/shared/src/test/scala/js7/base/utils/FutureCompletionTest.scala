@@ -3,14 +3,14 @@ package js7.base.utils
 import js7.base.utils.FutureCompletion.syntax.*
 import monix.execution.CancelablePromise
 import monix.execution.schedulers.TestScheduler
-import org.scalatest.freespec.AsyncFreeSpec
+import js7.base.test.OurAsyncTestSuite
 import scala.concurrent.Promise
 import scala.util.Success
 
 /**
   * @author Joacim Zschimmer
   */
-final class FutureCompletionTest extends AsyncFreeSpec
+final class FutureCompletionTest extends OurAsyncTestSuite
 {
   "FutureCompletion" in {
     val promise = Promise[Int]()

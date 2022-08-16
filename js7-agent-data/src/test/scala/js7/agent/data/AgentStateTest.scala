@@ -38,12 +38,12 @@ import js7.data.workflow.{Workflow, WorkflowPath, WorkflowPathControl, WorkflowP
 import js7.tester.CirceJsonTester.removeJNull
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
-import org.scalatest.freespec.AsyncFreeSpec
+import js7.base.test.OurAsyncTestSuite
 
 /**
   * @author Joacim Zschimmer
   */
-final class AgentStateTest extends AsyncFreeSpec
+final class AgentStateTest extends OurAsyncTestSuite
 {
   private val subagentItem = SubagentItem(
     SubagentId("SUBAGENT"),

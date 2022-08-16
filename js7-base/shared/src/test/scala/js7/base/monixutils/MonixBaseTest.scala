@@ -12,7 +12,7 @@ import monix.execution.Scheduler.Implicits.traced
 import monix.execution.atomic.AtomicInt
 import monix.execution.schedulers.TestScheduler
 import monix.reactive.Observable
-import org.scalatest.freespec.AsyncFreeSpec
+import js7.base.test.OurAsyncTestSuite
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.*
 import scala.concurrent.{Future, TimeoutException}
@@ -20,7 +20,7 @@ import scala.concurrent.{Future, TimeoutException}
 /**
   * @author Joacim Zschimmer
   */
-final class MonixBaseTest extends AsyncFreeSpec
+final class MonixBaseTest extends OurAsyncTestSuite
 {
   "maybeTimeout" - {
     "Duration.Inf" in {

@@ -9,13 +9,13 @@ import js7.common.http.configuration.RecouplingStreamReaderConf
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
-import org.scalatest.freespec.AsyncFreeSpec
+import js7.base.test.OurAsyncTestSuite
 import scala.concurrent.Await
 
 /**
   * @author Joacim Zschimmer
   */
-final class RecouplingStreamReaderTest extends AsyncFreeSpec
+final class RecouplingStreamReaderTest extends OurAsyncTestSuite
 {
   "RecouplingStreamReader" in {
     val userAndPassword = UserAndPassword(UserId("USER"), SecretString("PASSWORD"))

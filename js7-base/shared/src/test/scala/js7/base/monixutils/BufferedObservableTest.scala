@@ -5,9 +5,9 @@ import js7.base.time.ScalaTime.*
 import monix.execution.Scheduler.Implicits.traced
 import monix.execution.schedulers.TestScheduler
 import monix.reactive.Observable
-import org.scalatest.freespec.AsyncFreeSpec
+import js7.base.test.OurAsyncTestSuite
 
-final class BufferedObservableTest extends AsyncFreeSpec
+final class BufferedObservableTest extends OurAsyncTestSuite
 {
   private val delay = 1.s
   private val shortDelay = 1.s - 100.ms
