@@ -6,13 +6,13 @@ import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.process.ProcessTextFileBusyTest.*
 import js7.base.io.process.Processes.*
 import js7.base.system.OperatingSystem.isWindows
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import monix.eval.Task
 import monix.execution.Scheduler
-import org.scalatest.freespec.AnyFreeSpec
 import scala.util.control.NonFatal
 
 /**
@@ -21,7 +21,7 @@ import scala.util.control.NonFatal
   * @author Joacim Zschimmer
   * @see https://bugs.openjdk.java.net/browse/JDK-8068370
   */
-final class ProcessTextFileBusyTest extends AnyFreeSpec {
+final class ProcessTextFileBusyTest extends Test {
 
   private val n = 1000
   private val threadCount = 10 * sys.runtime.availableProcessors

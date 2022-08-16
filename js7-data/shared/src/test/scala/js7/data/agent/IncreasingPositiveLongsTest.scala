@@ -1,12 +1,12 @@
 package js7.data.agent
 
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 import org.scalatest.matchers.should.Matchers.*
 
 /**
  * @author Joacim Zschimmer
  */
-final class IncreasingPositiveLongsTest extends AnyFreeSpec
+final class IncreasingPositiveLongsTest extends Test
 {
   "Only positives" in {
     val iterator = new IncreasingPositiveLongs()

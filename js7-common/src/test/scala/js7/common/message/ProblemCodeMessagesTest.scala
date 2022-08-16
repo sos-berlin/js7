@@ -1,12 +1,12 @@
 package js7.common.message
 
 import js7.base.problem.{ProblemCode, TestCodeProblem}
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
 /**
   * @author Joacim Zschimmer
   */
-final class ProblemCodeMessagesTest extends AnyFreeSpec
+final class ProblemCodeMessagesTest extends Test
 {
   ProblemCodeMessages.initialize()
 

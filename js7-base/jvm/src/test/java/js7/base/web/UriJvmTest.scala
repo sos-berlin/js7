@@ -1,9 +1,9 @@
 package js7.base.web
 
 import js7.base.problem.Problem
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
-final class UriJvmTest extends AnyFreeSpec
+final class UriJvmTest extends Test
 {
   "port" in {
     assert(Uri("http://").port.left.toOption.get.toString.contains("URI"))

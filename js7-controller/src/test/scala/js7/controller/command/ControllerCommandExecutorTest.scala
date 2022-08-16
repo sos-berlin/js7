@@ -3,6 +3,7 @@ package js7.controller.command
 import js7.base.auth.{SimpleUser, UserId}
 import js7.base.log.{CorrelId, CorrelIdWrapped}
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.core.command.{CommandExecutor, CommandMeta}
@@ -12,12 +13,11 @@ import js7.data.controller.ControllerCommand.{Batch, CancelOrders, NoOperation, 
 import js7.data.order.OrderId
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ControllerCommandExecutorTest extends AnyFreeSpec
+final class ControllerCommandExecutorTest extends Test
 {
   private val cancelOrder = CancelOrders(Set(OrderId("ORDER-ID")), CancellationMode.FreshOnly)
   private val meta = CommandMeta(SimpleUser(UserId("USER")))

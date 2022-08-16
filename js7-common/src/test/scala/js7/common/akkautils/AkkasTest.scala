@@ -2,18 +2,18 @@ package js7.common.akkautils
 
 import akka.actor.{Actor, ActorPath, ActorSystem, Props}
 import akka.util.ByteString
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.common.akkautils.Akkas.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
-import org.scalatest.freespec.AnyFreeSpec
 import scala.util.Random
 
 /**
  * @author Joacim Zschimmer
  */
-final class AkkasTest extends AnyFreeSpec
+final class AkkasTest extends Test
 {
   "byteStringToTruncatedString" in {
     val byteString = ByteString(0, 1, 30, 31)

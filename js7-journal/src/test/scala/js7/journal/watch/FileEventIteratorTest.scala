@@ -4,19 +4,19 @@ import io.circe.syntax.EncoderOps
 import java.nio.file.Files
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.io.file.FileUtils
+import js7.base.test.Test
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.{EventId, JournalSeparators, Stamped}
 import js7.journal.data.JournalMeta
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.watch.FileEventIteratorTest.*
 import js7.journal.watch.TestData.{AEvent, TestState, journalId, writeJournal}
-import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class FileEventIteratorTest extends AnyFreeSpec
+final class FileEventIteratorTest extends Test
 {
   "FileEventIterator" in {
     FileUtils.withTemporaryDirectory("FileEventIteratorPoolTest-") { dir =>

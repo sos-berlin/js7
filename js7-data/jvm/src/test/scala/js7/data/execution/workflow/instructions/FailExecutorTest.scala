@@ -1,5 +1,6 @@
 package js7.data.execution.workflow.instructions
 
+import js7.base.test.Test
 import js7.base.time.WallClock
 import js7.data.agent.AgentPath
 import js7.data.execution.workflow.instructions.FailExecutorTest.*
@@ -10,12 +11,11 @@ import js7.data.workflow.instructions.{Fail, Fork}
 import js7.data.workflow.position.BranchId.Then
 import js7.data.workflow.position.{InstructionNr, Position, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class FailExecutorTest extends AnyFreeSpec
+final class FailExecutorTest extends Test
 {
   private val failExecutor = new FailExecutor(new InstructionExecutorService(WallClock))
 

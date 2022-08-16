@@ -3,14 +3,14 @@ package js7.data.event
 import io.circe.{Decoder, Encoder, Json}
 import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
+import js7.base.test.Test
 import js7.base.time.Timestamp
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class EventSeqTest extends AnyFreeSpec {
+final class EventSeqTest extends Test {
 
   private object TestEvent extends Event {
     type Key = String

@@ -2,15 +2,15 @@ package js7.base.circeutils
 
 import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.ScalaJsonCodecs.*
+import js7.base.test.Test
 import js7.base.time.ScalaTime.*
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class ScalaJsonCodecsTest extends AnyFreeSpec
+final class ScalaJsonCodecsTest extends Test
 {
   "FiniteDuration" - {
     "1s" in {

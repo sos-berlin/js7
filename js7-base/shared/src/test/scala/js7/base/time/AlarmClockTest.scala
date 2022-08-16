@@ -1,11 +1,11 @@
 package js7.base.time
 
+import js7.base.test.Test
 import js7.base.time.ScalaTime.*
 import monix.execution.atomic.Atomic
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.*
 
-final class AlarmClockTest extends AnyFreeSpec
+final class AlarmClockTest extends Test
 {
   private val start = Timestamp("2021-01-01T00:00:00Z")
   private val clockCheckInterval = 1.minute

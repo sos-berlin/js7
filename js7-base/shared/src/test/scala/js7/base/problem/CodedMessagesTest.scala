@@ -1,12 +1,12 @@
 package js7.base.problem
 
 import js7.base.problem.CodedMessages.patternToMessage
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
 /**
   * @author Joacim Zschimmer
   */
-final class CodedMessagesTest extends AnyFreeSpec
+final class CodedMessagesTest extends Test
 {
   "patternToMessage" - {
     "without arguments" in {

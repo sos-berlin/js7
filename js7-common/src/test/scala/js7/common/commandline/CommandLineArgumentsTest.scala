@@ -1,13 +1,13 @@
 package js7.common.commandline
 
+import js7.base.test.Test
 import js7.common.commandline.CommandLineArguments.parse
-import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers.*
 
 /**
  * @author Joacim Zschimmer
  */
-final class CommandLineArgumentsTest extends AnyFreeSpec {
+final class CommandLineArgumentsTest extends Test {
 
   "Flag" - {
     "boolean" in {

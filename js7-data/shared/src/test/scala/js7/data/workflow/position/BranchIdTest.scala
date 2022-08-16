@@ -1,15 +1,15 @@
 package js7.data.workflow.position
 
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.base.time.Timestamp
 import js7.data.order.CycleState
 import js7.data.workflow.position.BranchId.{Else, Then, catch_, fork, try_}
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class BranchIdTest extends AnyFreeSpec
+final class BranchIdTest extends Test
 {
   "then" in {
     assert(Then == BranchId.Named("then"))

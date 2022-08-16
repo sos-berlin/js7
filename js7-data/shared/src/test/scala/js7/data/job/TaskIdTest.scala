@@ -1,12 +1,12 @@
 package js7.data.job
 
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 import org.scalatest.matchers.should.Matchers.*
 
 /**
  * @author Joacim Zschimmer
  */
-final class TaskIdTest extends AnyFreeSpec
+final class TaskIdTest extends Test
 {
   "toString" in {
     assert(TaskId(123, 789).toString == "TaskId(123-789)")

@@ -1,14 +1,14 @@
 package js7.data.workflow
 
+import js7.base.test.Test
 import js7.data.workflow.Instruction.*
 import js7.data.workflow.instructions.ExplicitEnd
 import js7.data.workflow.position.Label
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class InstructionTest extends AnyFreeSpec {
+final class InstructionTest extends Test {
 
   "@:" in {
     assert("LABEL" @: ExplicitEnd() == Instruction.Labeled(Some("LABEL"), ExplicitEnd()))

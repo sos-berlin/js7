@@ -1,11 +1,11 @@
 package js7.data.workflow.position
 
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
 /**
   * @author Joacim Zschimmer
   */
-final class InstructionNrTest extends AnyFreeSpec
+final class InstructionNrTest extends Test
 {
   "Some instances are predefined" in {
     for (i <- 0 to 999) assert(InstructionNr(i) eq InstructionNr(i))

@@ -1,12 +1,12 @@
 package js7.base.problem
 
 import js7.base.problem.JavaCheckedTester.*
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
 /**
   * @author Joacim Zschimmer
   */
-final class JavaCheckedTest extends AnyFreeSpec {
+final class JavaCheckedTest extends Test {
 
   "isValid" in testIsValid
   "isInvalid" in testIsInvalid

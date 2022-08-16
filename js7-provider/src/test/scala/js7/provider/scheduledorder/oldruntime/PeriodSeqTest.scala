@@ -1,12 +1,12 @@
 package js7.provider.scheduledorder.oldruntime
 
 import java.time.{Duration, LocalTime}
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
 /**
   * @author Joacim Zschimmer
   */
-final class PeriodSeqTest extends AnyFreeSpec {
+final class PeriodSeqTest extends Test {
 
   private val periodSeq = PeriodSeq(List(
     RepeatPeriod(LocalTime.of( 9, 0), ExtendedLocalTime.of(10,  0), absoluteRepeat = Duration.ofMinutes(20)),

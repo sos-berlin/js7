@@ -19,6 +19,7 @@ import js7.base.io.https.{KeyStoreRef, TrustStoreRef}
 import js7.base.problem.Checked.Ops
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.test.Test
 import js7.base.time.ScalaTime.*
 import js7.common.akkahttp.web.AkkaWebServer.HasUri
 import js7.common.akkahttp.web.AkkaWebServerTest.*
@@ -30,14 +31,13 @@ import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.BeforeAndAfterAll
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future
 import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class AkkaWebServerTest extends AnyFreeSpec with BeforeAndAfterAll
+final class AkkaWebServerTest extends Test with BeforeAndAfterAll
 {
   private implicit lazy val actorSystem: ActorSystem =
     newActorSystem("AkkaWebServerTest")

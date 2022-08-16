@@ -1,9 +1,9 @@
 package js7.base.number
 
 import js7.base.number.Numbers.{addSaturating, subtractSaturating}
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
-final class NumbersTest extends AnyFreeSpec
+final class NumbersTest extends Test
 {
   "addSaturating" in {
     assert(addSaturating(Long.MaxValue, 1) == Long.MaxValue)

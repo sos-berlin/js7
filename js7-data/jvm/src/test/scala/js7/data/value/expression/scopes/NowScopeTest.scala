@@ -2,13 +2,13 @@ package js7.data.value.expression.scopes
 
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import js7.base.test.Test
 import js7.base.time.JavaTimestamp.specific.*
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.value.{NumberValue, StringValue}
-import org.scalatest.freespec.AnyFreeSpec
 
-final class NowScopeTest extends AnyFreeSpec
+final class NowScopeTest extends Test
 {
   private lazy val nowScope = new NowScope(Timestamp("2021-08-16T12:00:00Z"))
 

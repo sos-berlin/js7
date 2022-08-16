@@ -7,6 +7,7 @@ import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.base.thread.Futures.implicits.RichFutures
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
@@ -27,15 +28,14 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.ControllerTestUtils.syntax.RichRunningController
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Promise
-import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.*
+import scala.concurrent.duration.Deadline.now
 
 /**
   * @author Joacim Zschimmer
   */
-final class UpdateItemsTest extends AnyFreeSpec with ControllerAgentForScalaTest
+final class UpdateItemsTest extends Test with ControllerAgentForScalaTest
 {
   protected val agentPaths = agentPath :: Nil
   protected val items = Nil

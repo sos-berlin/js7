@@ -4,13 +4,13 @@ import java.io.IOException
 import java.nio.file.Files.{createTempDirectory, createTempFile, delete}
 import js7.base.data.ByteArray
 import js7.base.io.file.FileUtils.syntax.RichPath
+import js7.base.test.Test
 import org.scalatest.BeforeAndAfterAll
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class FileJsonWriterTest extends AnyFreeSpec with BeforeAndAfterAll
+final class FileJsonWriterTest extends Test with BeforeAndAfterAll
 {
   private lazy val file = createTempFile("FileJsonWriterTest-", ".tmp")
   private lazy val writer = new FileJsonWriter(file)

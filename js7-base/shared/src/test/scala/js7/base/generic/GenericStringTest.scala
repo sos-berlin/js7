@@ -3,12 +3,12 @@ package js7.base.generic
 import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.generic.GenericStringTest.*
 import js7.base.problem.Problems.InvalidNameProblem
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
 /**
   * @author Joacim Zschimmer
   */
-final class GenericStringTest extends AnyFreeSpec
+final class GenericStringTest extends Test
 {
   "NonEmpty.checked" in {
     assert(NonEmptyA.checked("") == Left(EmptyStringProblem("NonEmptyA")))

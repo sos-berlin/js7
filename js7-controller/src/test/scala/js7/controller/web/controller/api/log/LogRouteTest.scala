@@ -14,6 +14,7 @@ import js7.base.configutils.Configs.*
 import js7.base.io.file.FileUtils.implicits.*
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryFile
+import js7.base.test.Test
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
@@ -21,14 +22,13 @@ import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import js7.common.http.StreamingSupport.*
 import js7.controller.web.controller.api.test.RouteTester
 import monix.execution.Scheduler
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future
 import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class LogRouteTest extends AnyFreeSpec with RouteTester with LogRoute
+final class LogRouteTest extends Test with RouteTester with LogRoute
 {
   protected def whenShuttingDown = Future.never
   protected def currentLogFile = requireNonNull/*call lazily!*/(_currentLogFile)

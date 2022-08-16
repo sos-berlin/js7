@@ -3,6 +3,7 @@ package js7.tests.subagent
 import java.util.concurrent.TimeoutException
 import js7.base.Js7Version
 import js7.base.Problems.MessageSignedByUnknownProblem
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
@@ -19,9 +20,8 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.subagent.SubagentTest.*
 import monix.execution.Scheduler
-import org.scalatest.freespec.AnyFreeSpec
 
-final class SubagentTest extends AnyFreeSpec with SubagentTester
+final class SubagentTest extends Test with SubagentTester
 {
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Seq(workflow, bareSubagentItem)

@@ -1,10 +1,10 @@
 package js7.base.utils
 
 import js7.base.problem.Problem
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 import scala.collection.immutable.HashSet
 
-final class ToSuperclassTest extends AnyFreeSpec
+final class ToSuperclassTest extends Test
 {
   "checked" in {
     val superclasses = Set[Class[? <: Iterable[?]]](

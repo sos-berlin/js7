@@ -1,9 +1,9 @@
 package js7.data.lock
 
 import js7.base.standards.Js7PathValidatorTest
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
-final class LockPathTest extends AnyFreeSpec
+final class LockPathTest extends Test
 {
   "Invalid path" in {
     Js7PathValidatorTest.checkInvalid("LockPath", LockPath.checked)

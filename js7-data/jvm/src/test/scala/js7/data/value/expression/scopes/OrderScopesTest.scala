@@ -3,6 +3,7 @@ package js7.data.value.expression.scopes
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Problem
 import js7.base.problem.Problems.UnknownKeyProblem
+import js7.base.test.Test
 import js7.base.time.Stopwatch.measureTime
 import js7.base.time.Timestamp
 import js7.base.utils.Collections.implicits.RichIterable
@@ -21,10 +22,9 @@ import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.{Label, Position}
 import js7.data.workflow.{OrderParameter, OrderParameterList, OrderPreparation, Workflow, WorkflowPath}
-import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.{MapView, View}
 
-final class OrderScopesTest extends AnyFreeSpec
+final class OrderScopesTest extends Test
 {
   coupleScribeWithSlf4j()
 

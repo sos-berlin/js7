@@ -9,6 +9,7 @@ import java.util.UUID
 import js7.base.circeutils.CirceUtils.{RichCirceString, RichJson}
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked.*
+import js7.base.test.Test
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -21,12 +22,11 @@ import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.test.{TestActor, TestAggregate, TestAggregateActor, TestEvent, TestJournalMixin}
 import js7.journal.write.{EventJournalWriter, FileJsonWriter, SnapshotJournalWriter}
 import monix.execution.Scheduler.Implicits.traced
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class JournalReaderTest extends AnyFreeSpec with TestJournalMixin
+final class JournalReaderTest extends Test with TestJournalMixin
 {
   private val journalId = JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))
 

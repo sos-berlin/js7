@@ -1,9 +1,9 @@
 package js7.launcher.utils
 
+import js7.base.test.Test
 import js7.launcher.configuration.JobLauncherConf.ErrLineLengthMaximum
-import org.scalatest.freespec.AnyFreeSpec
 
-final class LastLineKeeperTest extends AnyFreeSpec
+final class LastLineKeeperTest extends Test
 {
   "Empty" in {
     val lastLineKeeper = new LastLineKeeper

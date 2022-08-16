@@ -10,16 +10,16 @@ import java.time.{Duration, Instant}
 import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.JavaJsonCodecs.*
 import js7.base.time.ScalaTime.*
+import js7.base.test.Test
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class JavaJsonCodecsTest extends AnyFreeSpec {
+final class JavaJsonCodecsTest extends Test {
 
   "Path" in {
     if (File.separatorChar == '\\') {

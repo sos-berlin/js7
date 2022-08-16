@@ -1,12 +1,12 @@
 package js7.base.utils
 
+import js7.base.test.Test
 import js7.base.utils.SuperclassCacheTest.*
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class SuperclassCacheTest extends AnyFreeSpec
+final class SuperclassCacheTest extends Test
 {
   "test" in {
     val cache = new SuperclassCache(classOf[Super])

@@ -10,14 +10,14 @@ import js7.base.data.ByteArray
 import js7.base.io.JavaResourceTest.*
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.ProblemException
+import js7.base.test.Test
 import js7.base.utils.AutoClosing.autoClosing
-import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers.*
 
 /**
  * @author Joacim Zschimmer
  */
-final class JavaResourceTest extends AnyFreeSpec
+final class JavaResourceTest extends Test
 {
   "Macro derives ClassLoader" in {
     assert(JavaResource(getClass.getClassLoader, "MISSING").classLoader eq getClass.getClassLoader)

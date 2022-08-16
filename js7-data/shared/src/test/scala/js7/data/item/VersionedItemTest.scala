@@ -1,11 +1,11 @@
 package js7.data.item
 
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
 /**
   * @author Joacim Zschimmer
   */
-final class VersionedItemTest extends AnyFreeSpec
+final class VersionedItemTest extends Test
 {
   "Companion" in {
     assert(AItem.typeName == "AItem")

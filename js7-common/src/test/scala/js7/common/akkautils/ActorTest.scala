@@ -4,15 +4,15 @@ import akka.actor.{Actor, Props}
 import js7.base.configutils.Configs.*
 import js7.base.log.Logger
 import js7.base.thread.Futures.implicits.SuccessFuture
+import js7.base.test.Test
 import js7.base.time.ScalaTime.*
 import js7.common.akkautils.ActorTest.*
 import monix.execution.atomic.{AtomicBoolean, AtomicInt}
 import org.scalatest.BeforeAndAfterAll
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Promise
 import scala.util.control.NoStackTrace
 
-final class ActorTest extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem
+final class ActorTest extends Test with BeforeAndAfterAll with ProvideActorSystem
 {
   protected def config = config"akka.actor.guardian-supervisor-strategy = akka.actor.StoppingSupervisorStrategy"
 

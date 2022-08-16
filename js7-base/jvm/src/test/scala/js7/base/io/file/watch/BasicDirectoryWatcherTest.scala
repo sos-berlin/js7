@@ -7,6 +7,7 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileModified}
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
+import js7.base.test.Test
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -14,10 +15,9 @@ import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.AutoClosing.autoClosing
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
-import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 
-final class BasicDirectoryWatcherTest extends AnyFreeSpec
+final class BasicDirectoryWatcherTest extends Test
 {
   coupleScribeWithSlf4j()
 

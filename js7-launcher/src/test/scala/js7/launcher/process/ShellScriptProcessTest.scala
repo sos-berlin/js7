@@ -11,6 +11,7 @@ import js7.base.io.process.Processes.newTemporaryShellFile
 import js7.base.io.process.{ReturnCode, Stderr, Stdout, StdoutOrStderr}
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.system.OperatingSystem.{isMac, isSolaris, isUnix, isWindows}
+import js7.base.test.Test
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
@@ -27,13 +28,12 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import monix.reactive.subjects.PublishSubject
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future
 
 /**
  * @author Joacim Zschimmer
  */
-final class ShellScriptProcessTest extends AnyFreeSpec
+final class ShellScriptProcessTest extends Test
 {
   coupleScribeWithSlf4j()
 

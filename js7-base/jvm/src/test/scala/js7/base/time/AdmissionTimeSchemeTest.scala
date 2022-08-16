@@ -3,14 +3,14 @@ package js7.base.time
 import java.time.DayOfWeek.{SUNDAY, TUESDAY}
 import java.time.{LocalDateTime, LocalTime}
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
+import js7.base.test.Test
 import js7.base.time.AdmissionTimeSchemeForJavaTime.*
 import js7.base.time.AdmissionTimeSchemeTest.*
 import js7.base.time.ScalaTime.*
 import js7.tester.CirceJsonTester.*
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.FiniteDuration
 
-final class AdmissionTimeSchemeTest extends AnyFreeSpec
+final class AdmissionTimeSchemeTest extends Test
 {
   "JSON" in {
     testJson(

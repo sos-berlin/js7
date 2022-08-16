@@ -1,11 +1,11 @@
 package js7.journal.recover
 
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
 /**
   * @author Joacim Zschimmer
   */
-final class StateRecovererTest extends AnyFreeSpec
+final class StateRecovererTest extends Test
 {
   //import StateRecovererTest.snapshotObjectJsonCodec
   //import StateRecovererTest.eventJsonCodec

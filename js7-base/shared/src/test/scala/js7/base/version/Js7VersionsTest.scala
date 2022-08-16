@@ -1,9 +1,9 @@
 package js7.base.version
 
 import js7.base.problem.Problem
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
-final class Js7VersionsTest extends AnyFreeSpec
+final class Js7VersionsTest extends Test
 {
   "checkNonMatchingVersion" - {
     val ourVersion = Version("2.2.2")

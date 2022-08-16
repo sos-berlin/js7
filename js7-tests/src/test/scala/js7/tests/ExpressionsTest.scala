@@ -4,6 +4,7 @@ import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
+import js7.base.test.Test
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
@@ -18,9 +19,8 @@ import js7.tests.ExpressionsTest.*
 import js7.tests.testenv.DirectoryProvider
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.traced
-import org.scalatest.freespec.AnyFreeSpec
 
-final class ExpressionsTest extends AnyFreeSpec
+final class ExpressionsTest extends Test
 {
   "test" in {
     autoClosing(new DirectoryProvider(TestAgentPath :: Nil, items = Seq(TestWorkflow), testName = Some("ExpressionsTest"))) { directoryProvider =>

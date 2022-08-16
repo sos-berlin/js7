@@ -2,11 +2,11 @@ package js7.data.other
 
 import io.circe.DecodingFailure
 import js7.base.circeutils.CirceUtils.*
+import js7.base.test.Test
 import js7.base.time.ScalaTime.*
 import js7.tester.CirceJsonTester.*
-import org.scalatest.freespec.AnyFreeSpec
 
-final class HeartbeatTimingTest extends AnyFreeSpec
+final class HeartbeatTimingTest extends Test
 {
   "JSON" in {
     testJson(HeartbeatTiming(1111.ms, 3333.ms),json"""

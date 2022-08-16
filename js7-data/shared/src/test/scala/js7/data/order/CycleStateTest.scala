@@ -1,11 +1,11 @@
 package js7.data.order
 
 import js7.base.circeutils.CirceUtils.*
+import js7.base.test.Test
 import js7.base.time.Timestamp
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 
-final class CycleStateTest extends AnyFreeSpec
+final class CycleStateTest extends Test
 {
   "JSON" in {
     testJson(

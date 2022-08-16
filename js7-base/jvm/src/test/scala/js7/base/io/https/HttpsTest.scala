@@ -1,7 +1,7 @@
 package js7.base.io.https
 
 import java.io.InputStream
-import java.lang.{ProcessBuilder as JavaProcessBuilder}
+import java.lang.ProcessBuilder as JavaProcessBuilder
 import java.nio.file.Path
 import java.security.KeyStore
 import java.security.cert.X509Certificate
@@ -9,8 +9,8 @@ import js7.base.crypt.x509.Openssl.openssl
 import js7.base.data.ByteArray
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.{withTemporaryDirectory, withTemporaryFile}
+import js7.base.test.Test
 import js7.base.utils.AutoClosing.autoClosing
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.sys.process.*
@@ -18,7 +18,7 @@ import scala.sys.process.*
 /**
   * @author Joacim Zschimmer
   */
-final class HttpsTest extends AnyFreeSpec
+final class HttpsTest extends Test
 {
   private val nullLogger = ProcessLogger(_ => ())
 

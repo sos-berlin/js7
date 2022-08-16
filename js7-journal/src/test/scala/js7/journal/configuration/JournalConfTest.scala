@@ -1,14 +1,14 @@
 package js7.journal.configuration
 
 import js7.base.configutils.Configs.*
+import js7.base.test.Test
 import js7.base.time.ScalaTime.*
 import js7.journal.configuration.JournalConfTest.*
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class JournalConfTest extends AnyFreeSpec
+final class JournalConfTest extends Test
 {
   "JournalConf" in {
     assert(JournalConf.fromConfig(config) == journalConf)

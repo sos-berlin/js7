@@ -1,6 +1,7 @@
 package js7.tests
 
 import js7.base.configutils.Configs.*
+import js7.base.test.Test
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.AgentPath
 import js7.data.job.{JobResource, JobResourcePath}
@@ -14,9 +15,8 @@ import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
 import js7.tests.OrderParameterTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
-import org.scalatest.freespec.AnyFreeSpec
 
-final class OrderParameterTest extends AnyFreeSpec with ControllerAgentForScalaTest
+final class OrderParameterTest extends Test with ControllerAgentForScalaTest
 {
   override protected def controllerConfig = config"""
     js7.journal.remove-obsolete-files = false

@@ -2,17 +2,17 @@ package js7.provider.scheduledorder
 
 import java.time.{Duration, ZoneId}
 import js7.base.problem.Checked.Ops
+import js7.base.test.Test
 import js7.common.scalautil.xmls.XmlSources.*
 import js7.data.value.StringValue
 import js7.data.workflow.WorkflowPath
 import js7.provider.scheduledorder.oldruntime.OldSchedule.EveryDay
 import js7.provider.scheduledorder.oldruntime.{OldSchedule, PeriodSeq, RepeatPeriod}
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ScheduledOrderGeneratorXmlParserTest extends AnyFreeSpec {
+final class ScheduledOrderGeneratorXmlParserTest extends Test {
 
   "parse" in {
     val id = ScheduledOrderGeneratorPath("TEST") ~ "VERSION"

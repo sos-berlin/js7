@@ -2,6 +2,7 @@ package js7.tests.subagent
 
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
@@ -20,10 +21,9 @@ import js7.tests.jobs.SemaphoreJob
 import js7.tests.subagent.ResetSubagentWhileRunning2Test.*
 import js7.tests.subagent.ResetSubagentWhileRunningTest.agentPath
 import monix.execution.Scheduler
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.TimeoutException
 
-final class ResetSubagentWhileRunning2Test extends AnyFreeSpec with SubagentTester
+final class ResetSubagentWhileRunning2Test extends Test with SubagentTester
 {
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Seq(workflow, bareSubagentItem)

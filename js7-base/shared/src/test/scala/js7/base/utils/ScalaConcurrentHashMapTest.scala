@@ -1,11 +1,11 @@
 package js7.base.utils
 
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
 /**
  * @author Joacim Zschimmer
  */
-final class ScalaConcurrentHashMapTest extends AnyFreeSpec
+final class ScalaConcurrentHashMapTest extends Test
 {
   private val m = new ScalaConcurrentHashMap[Int, String]
 

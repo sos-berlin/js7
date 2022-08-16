@@ -2,6 +2,7 @@ package js7.data.execution.workflow.instructions
 
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Checked.*
+import js7.base.test.Test
 import js7.base.time.WallClock
 import js7.data.agent.AgentPath
 import js7.data.execution.workflow.instructions.TryExecutorTest.*
@@ -12,16 +13,15 @@ import js7.data.state.TestStateView
 import js7.data.value.NamedValues
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, TryInstruction}
-import js7.data.workflow.position.BranchId.try_
 import js7.data.workflow.position.*
+import js7.data.workflow.position.BranchId.try_
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class TryExecutorTest extends AnyFreeSpec
+final class TryExecutorTest extends Test
 {
   private val tryExecutor = new TryExecutor(new InstructionExecutorService(WallClock))
   private lazy val stateView = TestStateView.of(

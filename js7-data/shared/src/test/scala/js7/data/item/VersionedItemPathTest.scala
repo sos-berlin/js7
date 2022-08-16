@@ -6,15 +6,15 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.problem.Problems.InvalidNameProblem
 import js7.base.problem.{Problem, ProblemException}
+import js7.base.test.Test
 import js7.data.item.VersionedItemId.VersionSeparator
 import js7.data.item.VersionedItemPathTest.*
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class VersionedItemPathTest extends AnyFreeSpec
+final class VersionedItemPathTest extends Test
 {
   "JSON" in {
     testJson(APath("PATH"), json""" "PATH" """)

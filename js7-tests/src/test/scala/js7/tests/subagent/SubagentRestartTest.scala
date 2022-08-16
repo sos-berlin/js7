@@ -4,6 +4,7 @@ import js7.agent.RunningAgent
 import js7.base.Problems.MessageSignedByUnknownProblem
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger
+import js7.base.test.Test
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
@@ -17,10 +18,9 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.subagent.SubagentRestartTest.*
 import monix.execution.Scheduler
-import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.View
 
-final class SubagentRestartTest extends AnyFreeSpec with SubagentTester
+final class SubagentRestartTest extends Test with SubagentTester
 {
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Seq(workflow, bareSubagentItem)

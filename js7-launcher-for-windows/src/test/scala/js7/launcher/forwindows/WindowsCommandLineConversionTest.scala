@@ -1,9 +1,9 @@
 package js7.launcher.forwindows
 
+import js7.base.test.Test
 import js7.launcher.forwindows.WindowsCommandLineConversion.argsToCommandLine
-import org.scalatest.freespec.AnyFreeSpec
 
-final class WindowsCommandLineConversionTest extends AnyFreeSpec
+final class WindowsCommandLineConversionTest extends Test
 {
   "argsToCommandLine" in {
     assert(argsToCommandLine(Seq("""a"b""")).isLeft)

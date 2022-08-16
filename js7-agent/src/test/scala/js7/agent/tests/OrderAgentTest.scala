@@ -18,6 +18,7 @@ import js7.base.log.{CorrelId, CorrelIdWrapped}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.isWindows
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
@@ -36,7 +37,6 @@ import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.position.Position
 import js7.data.workflow.test.TestSetting.*
 import monix.execution.Scheduler.Implicits.traced
-import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers.*
 import scala.collection.mutable
 import scala.concurrent.duration.*
@@ -44,7 +44,7 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-final class OrderAgentTest extends AnyFreeSpec
+final class OrderAgentTest extends Test
 {
   "AgentCommand AttachOrder" in {
     provideAgentDirectory { directory =>

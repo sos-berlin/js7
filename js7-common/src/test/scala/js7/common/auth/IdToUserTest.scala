@@ -5,11 +5,11 @@ import js7.base.auth.{DistinguishedName, SimpleUser, UserId}
 import js7.base.configutils.Configs.*
 import js7.base.generic.SecretString
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.common.auth.IdToUser.RawUserAccount
 import js7.common.auth.IdToUserTest.*
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.jdk.CollectionConverters.*
@@ -17,7 +17,7 @@ import scala.jdk.CollectionConverters.*
 /**
   * @author Joacim Zschimmer
   */
-final class IdToUserTest extends AnyFreeSpec
+final class IdToUserTest extends Test
 {
   "Unknown user" in {
     assert(idToUser(UserId("UNKNOWN")) == None)

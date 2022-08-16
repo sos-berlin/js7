@@ -2,13 +2,13 @@ package js7.data.system
 
 import js7.base.circeutils.CirceUtils.*
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
+import js7.base.test.Test
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class StdoutOrStderrTest extends AnyFreeSpec {
+final class StdoutOrStderrTest extends Test {
   "JSON" in {
     testJson[StdoutOrStderr](Stdout, json""" "stdout" """)
     testJson[StdoutOrStderr](Stderr, json""" "stderr" """)

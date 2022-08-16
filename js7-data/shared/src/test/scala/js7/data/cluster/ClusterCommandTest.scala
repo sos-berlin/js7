@@ -1,6 +1,7 @@
 package js7.data.cluster
 
 import js7.base.circeutils.CirceUtils.*
+import js7.base.test.Test
 import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.data.cluster.ClusterCommand.*
@@ -8,9 +9,8 @@ import js7.data.cluster.ClusterState.FailedOver
 import js7.data.event.JournalPosition
 import js7.data.node.NodeId
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 
-final class ClusterCommandTest extends AnyFreeSpec
+final class ClusterCommandTest extends Test
 {
   "ClusterStartBackupNode" in {
     testJson[ClusterCommand](

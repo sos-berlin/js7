@@ -1,12 +1,12 @@
 package js7.common.utils
 
+import js7.base.test.Test
 import js7.common.utils.BeanPropertyReader.Keep
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
-final class BeanPropertyReaderTest extends AnyFreeSpec {
+final class BeanPropertyReaderTest extends Test {
 
   "toMap" in {
     class Bean {

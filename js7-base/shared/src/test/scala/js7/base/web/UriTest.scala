@@ -1,11 +1,11 @@
 package js7.base.web
 
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
 /**
   * @author Joacim Zschimmer
   */
-final class UriTest extends AnyFreeSpec
+final class UriTest extends Test
 {
   "/" in {
     assert(Uri("/") / "" == Uri("/"))

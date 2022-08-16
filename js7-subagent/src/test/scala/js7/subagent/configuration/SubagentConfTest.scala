@@ -6,17 +6,17 @@ import java.nio.file.Paths
 import js7.base.configutils.Configs.*
 import js7.base.log.Logger
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
-import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.View
 import scala.jdk.CollectionConverters.*
 
-final class SubagentConfTest extends AnyFreeSpec
+final class SubagentConfTest extends Test
 {
   private lazy val logger = Logger[this.type]
 

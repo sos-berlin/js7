@@ -1,12 +1,12 @@
 package js7.base.io.process
 
 import js7.base.io.process.ProcessPidRetriever.*
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
 /**
   * @author Joacim Zschimmer
   */
-final class ProcessPidRetrieverTest extends AnyFreeSpec
+final class ProcessPidRetrieverTest extends Test
 {
   "maybeOwnPid" in {
     assert(maybeOwnPid.isDefined == hasJava9)

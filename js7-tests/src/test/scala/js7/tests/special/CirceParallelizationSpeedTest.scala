@@ -9,6 +9,7 @@ import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.monixutils.MonixBase
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked.*
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.measureTimeOfSingleRun
@@ -20,9 +21,8 @@ import js7.data.workflow.position.Position
 import js7.tests.special.CirceParallelizationSpeedTest.*
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
-import org.scalatest.freespec.AnyFreeSpec
 
-final class CirceParallelizationSpeedTest extends AnyFreeSpec
+final class CirceParallelizationSpeedTest extends Test
 {
   if (sys.props.contains("test.speed")) {
     coupleScribeWithSlf4j()

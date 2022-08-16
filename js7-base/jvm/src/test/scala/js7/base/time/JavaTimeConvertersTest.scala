@@ -1,14 +1,14 @@
 package js7.base.time
 
 import java.time.Duration
+import js7.base.test.Test
 import js7.base.time.JavaTimeConverters.*
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class JavaTimeConvertersTest extends AnyFreeSpec
+final class JavaTimeConvertersTest extends Test
 {
   "toScala" in {
     assert(Duration.ofMillis(1234).toScala == 1234.millis)

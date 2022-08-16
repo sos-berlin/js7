@@ -2,12 +2,12 @@ package js7.base.auth
 
 import js7.base.auth.User.UserDoesNotHavePermissionProblem
 import js7.base.auth.UserTest.*
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
 /**
   * @author Joacim Zschimmer
   */
-final class UserTest extends AnyFreeSpec
+final class UserTest extends Test
 {
   "checkPermissions" in {
     assert(testUser(Set.empty).checkPermissions() == Right(()))

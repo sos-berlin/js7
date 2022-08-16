@@ -1,12 +1,12 @@
 package js7.data_for_java.lock
 
+import js7.base.test.Test
 import js7.data.lock.Acquired.{Available, Exclusive, NonExclusive}
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.OrderId
-import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.immutable.Queue
 
-final class JLockStateTest extends AnyFreeSpec
+final class JLockStateTest extends Test
 {
   private val lock = Lock(LockPath("LOCK"), limit = 1)
   private val availableLockState = JLockState(LockState(lock, Available))

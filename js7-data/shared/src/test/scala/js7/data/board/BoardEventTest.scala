@@ -1,12 +1,12 @@
 package js7.data.board
 
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
+import js7.base.test.Test
 import js7.base.time.Timestamp
 import js7.data.board.BoardEvent.{NoticeDeleted, NoticePosted}
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 
-final class BoardEventTest extends AnyFreeSpec
+final class BoardEventTest extends Test
 {
   "NoticePosted" in {
     testJson[BoardEvent](

@@ -3,6 +3,7 @@ package js7.tests.internaljob
 import js7.base.configutils.Configs.*
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
@@ -36,11 +37,10 @@ import monix.execution.atomic.{Atomic, AtomicInt}
 import monix.reactive.Observable
 import org.scalactic.source
 import org.scalatest.Assertions.*
-import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 import scala.reflect.ClassTag
 
-final class InternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
+final class InternalJobTest extends Test with ControllerAgentForScalaTest
 {
   protected val agentPaths = agentPath :: Nil
   protected val items = Nil

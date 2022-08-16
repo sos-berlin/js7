@@ -4,6 +4,7 @@ import cats.instances.vector.*
 import cats.syntax.traverse.*
 import js7.base.circeutils.CirceUtils.*
 import js7.base.configutils.Configs.HoconStringInterpolator
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichThrowableEither
@@ -23,11 +24,10 @@ import js7.tests.testenv.DirectoryProvider.script
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
-import org.scalatest.freespec.AnyFreeSpec
 import scala.util.Random
 
 // Try to resemble a failed manual test
-final class ManyAddOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTest
+final class ManyAddOrdersTest extends Test with ControllerAgentForScalaTest
 {
   protected val agentPaths = Seq(agentPath1, agentPath2)
   protected val items = Seq(workflow, workflow2)

@@ -1,9 +1,9 @@
 package js7.common.auth
 
+import js7.base.test.Test
 import js7.common.auth.Hasher.sha512
-import org.scalatest.freespec.AnyFreeSpec
 
-final class HasherTest extends AnyFreeSpec
+final class HasherTest extends Test
 {
   "SHA-512" in {
     assert(sha512.apply("") ==

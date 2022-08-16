@@ -2,16 +2,16 @@ package js7.common.akkahttp
 
 import akka.util.ByteString
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.common.akkahttp.ByteSequenceChunkerObservable.syntax.*
 import js7.common.akkautils.ByteStrings.syntax.*
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
-import org.scalatest.freespec.AnyFreeSpec
 import scala.util.Random
 
-final class ByteSequenceChunkerObservableTest extends AnyFreeSpec
+final class ByteSequenceChunkerObservableTest extends Test
 {
   "ByteSequenceChunkerObservable" in {
     val maxSize = 2

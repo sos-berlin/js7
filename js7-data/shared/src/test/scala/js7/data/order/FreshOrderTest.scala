@@ -2,17 +2,17 @@ package js7.data.order
 
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.base.time.Timestamp
 import js7.data.value.{BooleanValue, ListValue, NumberValue, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.{BranchId, Label, Position}
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class FreshOrderTest extends AnyFreeSpec
+final class FreshOrderTest extends Test
 {
   "JSON" in {
     testJson(

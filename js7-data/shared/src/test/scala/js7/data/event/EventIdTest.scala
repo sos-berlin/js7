@@ -1,12 +1,12 @@
 package js7.data.event
 
+import js7.base.test.Test
 import js7.base.time.Timestamp
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class EventIdTest extends AnyFreeSpec
+final class EventIdTest extends Test
 {
   private val MaximumJsonLosslessEventIdInstant = Timestamp.parse("2255-06-05T23:47:34.740Z")
 //private val MaximumJsonLosslessEventIdInstant = Timestamp.parse("2255-06-05T23:47:34.740992Z")

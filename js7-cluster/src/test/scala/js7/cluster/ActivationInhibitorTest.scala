@@ -1,17 +1,17 @@
 package js7.cluster
 
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.cluster.ActivationInhibitor.{Active, Inhibited, Initial, Passive, State}
 import monix.eval.Task
 import monix.execution.schedulers.TestScheduler
-import org.scalatest.freespec.AnyFreeSpec
 import scala.util.Success
 
 /**
   * @author Joacim Zschimmer
   */
-final class ActivationInhibitorTest extends AnyFreeSpec
+final class ActivationInhibitorTest extends Test
 {
   private implicit val scheduler: TestScheduler = TestScheduler()
 

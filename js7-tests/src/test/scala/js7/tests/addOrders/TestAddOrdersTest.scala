@@ -5,6 +5,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.JavaResource
 import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.Checked.*
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.durationAndPerSecondString
@@ -14,10 +15,9 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.addOrders.TestAddOrdersTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.FiniteDuration
 
-final class TestAddOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTest
+final class TestAddOrdersTest extends Test with ControllerAgentForScalaTest
 {
   protected val agentPaths = Seq(AgentPath("agent-1"), AgentPath("agent-2"))
   protected val items = Seq(workflow)

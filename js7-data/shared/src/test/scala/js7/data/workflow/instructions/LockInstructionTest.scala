@@ -1,14 +1,14 @@
 package js7.data.workflow.instructions
 
 import js7.base.circeutils.CirceUtils.*
+import js7.base.test.Test
 import js7.data.lock.LockPath
 import js7.data.source.SourcePos
 import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.data.workflow.{Instruction, Workflow}
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 
-final class LockInstructionTest extends AnyFreeSpec {
+final class LockInstructionTest extends Test {
 
   "JSON" in {
     testJson[Instruction.Labeled](

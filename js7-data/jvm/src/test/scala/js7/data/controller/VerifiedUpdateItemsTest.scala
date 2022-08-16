@@ -7,6 +7,7 @@ import js7.base.crypt.SignedString
 import js7.base.crypt.x509.X509Signer
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.controller.ControllerState.signableItemJsonCodec
@@ -19,9 +20,8 @@ import js7.data.workflow.instructions.Fail
 import js7.data.workflow.{Workflow, WorkflowPath}
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
-import org.scalatest.freespec.AnyFreeSpec
 
-final class VerifiedUpdateItemsTest extends AnyFreeSpec
+final class VerifiedUpdateItemsTest extends Test
 {
   private lazy val (signer, signatureVerifier) = X509Signer.forTest
   private lazy val itemVerifier = new SignedItemVerifier(signatureVerifier, signableItemJsonCodec)

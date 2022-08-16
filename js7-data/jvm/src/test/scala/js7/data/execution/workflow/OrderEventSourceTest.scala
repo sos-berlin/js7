@@ -3,6 +3,7 @@ package js7.data.execution.workflow
 import cats.syntax.option.*
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
+import js7.base.test.Test
 import js7.base.time.WallClock
 import js7.base.utils.Collections.implicits.*
 import js7.base.utils.ScalaUtils.syntax.*
@@ -31,13 +32,12 @@ import js7.data.workflow.position.BranchId.{Else, Then, catch_, try_}
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.test.ForkTestSetting
 import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
-import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 
 /**
   * @author Joacim Zschimmer
   */
-final class OrderEventSourceTest extends AnyFreeSpec
+final class OrderEventSourceTest extends Test
 {
   import OrderEventSourceTest.instructionExecutorService
 

@@ -3,6 +3,7 @@ package js7.data.execution.workflow.instructions
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.base.time.WallClock
 import js7.data.agent.AgentPath
 import js7.data.execution.workflow.instructions.IfExecutorTest.*
@@ -17,12 +18,11 @@ import js7.data.workflow.position.BranchId.{Else, Then}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class IfExecutorTest extends AnyFreeSpec {
+final class IfExecutorTest extends Test {
 
   private val ifExecutor = new IfExecutor(new InstructionExecutorService(WallClock))
   private lazy val stateView = TestStateView.of(

@@ -1,6 +1,7 @@
 package js7.data.value.expression
 
 import js7.base.problem.{Checked, Problem}
+import js7.base.test.Test
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.value.ValueType.UnexpectedValueTypeProblem
 import js7.data.value.expression.Expression.{Add, FunctionExpr, Multiply, NamedValue, NumericConstant}
@@ -8,9 +9,8 @@ import js7.data.value.expression.ExpressionParser.{parseExpressionOrFunction, pa
 import js7.data.value.expression.scopes.NamedValueScope
 import js7.data.value.{FunctionValue, NumberValue, StringValue, Value}
 import org.scalactic.source
-import org.scalatest.freespec.AnyFreeSpec
 
-final class ExprFunctionTest extends AnyFreeSpec
+final class ExprFunctionTest extends Test
 {
   testEval("() => 1", Scope.empty,
     args = Nil,

@@ -4,12 +4,12 @@ import akka.actor.{Actor, ActorSystem, Props}
 import akka.pattern.ask
 import akka.util.Timeout
 import js7.base.generic.Completed
+import js7.base.test.Test
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime.*
 import js7.common.akkautils.Akkas.newActorSystem
 import js7.common.akkautils.CatchingActorTest.*
 import org.scalatest.BeforeAndAfterAll
-import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers.*
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, Promise}
@@ -18,7 +18,7 @@ import scala.util.control.NoStackTrace
 /**
   * @author Joacim Zschimmer
   */
-final class CatchingActorTest extends AnyFreeSpec with BeforeAndAfterAll {
+final class CatchingActorTest extends Test with BeforeAndAfterAll {
 
   private implicit lazy val actorSystem: ActorSystem =
     newActorSystem("CatchingActorTest")

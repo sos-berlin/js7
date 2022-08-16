@@ -1,13 +1,13 @@
 package js7.data.system
 
 import js7.base.circeutils.CirceUtils.*
+import js7.base.test.Test
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class JavaInformationTest extends AnyFreeSpec {
+final class JavaInformationTest extends Test {
 
   "JSON 1" in {
     testJson(JavaInformation(

@@ -7,18 +7,18 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.common.files.DirectoryReader
 import js7.controller.tests.InventoryItemDiffTest.{ATestItem, AWorkflow, BTestItem, BWorkflow, CWorkflow, TestItemReader}
 import js7.controller.workflow.WorkflowReader
 import js7.core.item.TypedSourceReader
 import js7.data.parser.UseFastparse
 import org.scalatest.BeforeAndAfterAll
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class VersionedItemReaderTest extends AnyFreeSpec with BeforeAndAfterAll
+final class VersionedItemReaderTest extends Test with BeforeAndAfterAll
 {
   private lazy val directory = createTempDirectory("test-")
 

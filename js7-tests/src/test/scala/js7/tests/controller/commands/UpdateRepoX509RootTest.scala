@@ -10,6 +10,7 @@ import js7.base.crypt.{GenericSignature, Signed, SignedString}
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Checked.Ops
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.data.controller.ControllerState.signableItemJsonCodec
@@ -18,12 +19,11 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.controller.commands.UpdateRepoX509RootTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class UpdateRepoX509RootTest extends AnyFreeSpec with ControllerAgentForScalaTest
+final class UpdateRepoX509RootTest extends Test with ControllerAgentForScalaTest
 {
   protected val agentPaths = Nil
   protected val items = Nil

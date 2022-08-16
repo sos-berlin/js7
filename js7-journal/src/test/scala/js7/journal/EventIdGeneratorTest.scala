@@ -1,10 +1,10 @@
 package js7.journal
 
 import java.util.concurrent.ConcurrentHashMap
+import js7.base.test.Test
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.data.event.EventId
-import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -13,7 +13,7 @@ import scala.jdk.CollectionConverters.*
 /**
   * @author Joacim Zschimmer
   */
-final class EventIdGeneratorTest extends AnyFreeSpec
+final class EventIdGeneratorTest extends Test
 {
   "test" in {
     val eventIds: mutable.Map[EventId, Unit] = new ConcurrentHashMap[EventId, Unit].asScala

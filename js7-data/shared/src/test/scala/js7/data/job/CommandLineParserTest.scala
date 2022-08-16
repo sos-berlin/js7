@@ -1,11 +1,11 @@
 package js7.data.job
 
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.data.parser.UseFastparse
 import js7.data.value.expression.Expression.{ListExpression, MkString, NamedValue, StringConstant}
-import org.scalatest.freespec.AnyFreeSpec
 
-final class CommandLineParserTest extends AnyFreeSpec
+final class CommandLineParserTest extends Test
 {
   "Empty commandline is rejected" in {
     assert(CommandLineParser.parse("") ==

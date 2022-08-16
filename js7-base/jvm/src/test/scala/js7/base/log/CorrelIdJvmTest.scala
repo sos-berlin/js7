@@ -3,6 +3,7 @@ package js7.base.log
 import cats.syntax.parallel.*
 import js7.base.log.CorrelId.current
 import js7.base.log.CorrelIdJvmTest.*
+import js7.base.test.Test
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
@@ -13,11 +14,10 @@ import monix.execution.schedulers.{ExecutorScheduler, TracingScheduler}
 import monix.execution.{CancelableFuture, ExecutionModel}
 import org.apache.logging.log4j.ThreadContext
 import org.scalatest.BeforeAndAfterAll
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future
 import scala.concurrent.duration.Deadline.now
 
-final class CorrelIdJvmTest extends AnyFreeSpec with BeforeAndAfterAll
+final class CorrelIdJvmTest extends Test with BeforeAndAfterAll
 {
   Log4j.initialize()
 

@@ -1,9 +1,9 @@
 package js7.base.utils
 
+import js7.base.test.Test
 import js7.base.utils.Tests.isTest
-import org.scalatest.freespec.AnyFreeSpec
 
-final class TestsTest extends AnyFreeSpec
+final class TestsTest extends Test
 {
   "isTest" in {
     assert(isTest)

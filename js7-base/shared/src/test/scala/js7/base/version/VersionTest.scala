@@ -1,9 +1,9 @@
 package js7.base.version
 
 import js7.base.problem.Problem
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
-final class VersionTest extends AnyFreeSpec
+final class VersionTest extends Test
 {
   "Parser" in {
     assert(Version.checked("") == Left(Problem("Unrecognized version: ")))

@@ -1,13 +1,13 @@
 package js7.data.item
 
 import js7.base.circeutils.CirceUtils.*
+import js7.base.test.Test
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class VersionedItemIdTest extends AnyFreeSpec {
+final class VersionedItemIdTest extends Test {
 
   "JSON" in {
     testJson[VersionedItemId[APath]](

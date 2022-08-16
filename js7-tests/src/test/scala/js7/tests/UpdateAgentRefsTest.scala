@@ -7,6 +7,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.{copyDirectoryContent, deleteDirectoryContentRecursively, deleteDirectoryRecursively}
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -29,9 +30,8 @@ import js7.tests.testenv.ControllerTestUtils.newControllerApi
 import js7.tests.testenv.{DirectoryProvider, DirectoryProviderForScalaTest}
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
-import org.scalatest.freespec.AnyFreeSpec
 
-final class UpdateAgentRefsTest extends AnyFreeSpec with DirectoryProviderForScalaTest
+final class UpdateAgentRefsTest extends Test with DirectoryProviderForScalaTest
 {
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]

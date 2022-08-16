@@ -7,6 +7,7 @@ import js7.base.configutils.Configs.*
 import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.core.command.CommandMeta
@@ -26,9 +27,8 @@ import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.freespec.AnyFreeSpec
 
-final class AddOrderTest extends AnyFreeSpec with ControllerAgentForScalaTest
+final class AddOrderTest extends Test with ControllerAgentForScalaTest
 {
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(emptyWorkflow, unknownArgWorkflow, paramWorkflow)

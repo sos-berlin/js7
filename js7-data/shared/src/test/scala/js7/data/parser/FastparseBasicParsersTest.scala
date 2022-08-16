@@ -3,16 +3,16 @@ package js7.data.parser
 import fastparse.*
 import fastparse.NoWhitespace.*
 import js7.base.problem.{Checked, Problem}
+import js7.base.test.Test
 import js7.base.utils.ScalaUtils.withStringBuilder
 import js7.data.parser.BasicPrinter.appendIdentifier
 import js7.data.parser.FastparseBasicParsers.*
 import js7.data.parser.FastparseParsers.checkedParse
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class FastparseBasicParsersTest extends AnyFreeSpec
+final class FastparseBasicParsersTest extends Test
 {
   "checkedParse" - {
     "End" in {

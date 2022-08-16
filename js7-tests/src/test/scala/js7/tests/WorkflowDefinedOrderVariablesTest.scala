@@ -1,6 +1,7 @@
 package js7.tests
 
 import js7.base.configutils.Configs.HoconStringInterpolator
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
@@ -20,9 +21,8 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import org.scalatest.Assertions.*
-import org.scalatest.freespec.AnyFreeSpec
 
-final class WorkflowDefinedOrderVariablesTest extends AnyFreeSpec with ControllerAgentForScalaTest
+final class WorkflowDefinedOrderVariablesTest extends Test with ControllerAgentForScalaTest
 {
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on"""

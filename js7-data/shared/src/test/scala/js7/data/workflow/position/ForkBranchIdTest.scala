@@ -1,9 +1,9 @@
 package js7.data.workflow.position
 
+import js7.base.test.Test
 import js7.data.workflow.instructions.Fork
-import org.scalatest.freespec.AnyFreeSpec
 
-final class ForkBranchIdTest extends AnyFreeSpec {
+final class ForkBranchIdTest extends Test {
   "unapply" in {
     BranchId("A") match {
       case ForkBranchId(_) => fail()

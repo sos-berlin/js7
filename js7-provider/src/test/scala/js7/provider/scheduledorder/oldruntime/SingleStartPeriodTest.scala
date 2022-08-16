@@ -1,12 +1,12 @@
 package js7.provider.scheduledorder.oldruntime
 
 import java.time.LocalTime
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
 /**
   * @author Joacim Zschimmer
   */
-final class SingleStartPeriodTest extends AnyFreeSpec {
+final class SingleStartPeriodTest extends Test {
 
   "nextLocalTime" - {
     "00:00" in {

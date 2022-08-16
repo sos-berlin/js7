@@ -2,14 +2,14 @@ package js7.data.calendar
 
 import java.time.ZoneId
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.ScalaTime.*
 import js7.base.time.{TimeInterval, Timestamp, Timezone}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.order.OrderId
-import org.scalatest.freespec.AnyFreeSpec
 
-final class CalendarExecutorTest extends AnyFreeSpec
+final class CalendarExecutorTest extends Test
 {
   private implicit val zoneId: ZoneId = ZoneId.of("Europe/Mariehamn")
 

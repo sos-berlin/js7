@@ -1,5 +1,6 @@
 package js7.common.http
 
+import js7.base.test.Test
 import js7.base.time.ScalaTime.*
 import js7.common.akkautils.Akkas
 import js7.common.akkautils.Akkas.newActorSystem
@@ -7,13 +8,12 @@ import js7.common.http.StreamingSupport.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Await
 
 /**
   * @author Joacim Zschimmer
   */
-final class StreamingSupportTest extends AnyFreeSpec
+final class StreamingSupportTest extends Test
 {
   "Observable toAkkaSource" in {
     implicit val actorSystem = newActorSystem("StreamingSupportTest")

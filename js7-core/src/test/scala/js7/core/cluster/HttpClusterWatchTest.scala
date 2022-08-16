@@ -8,6 +8,7 @@ import js7.base.auth.SessionToken
 import js7.base.generic.{Completed, SecretString}
 import js7.base.io.https.HttpsConfig
 import js7.base.session.SessionCommand
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Closer.syntax.*
@@ -24,9 +25,8 @@ import js7.data.node.NodeId
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.BeforeAndAfterAll
-import org.scalatest.freespec.AnyFreeSpec
 
-final class HttpClusterWatchTest extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem
+final class HttpClusterWatchTest extends Test with BeforeAndAfterAll with ProvideActorSystem
 {
   override protected def config = ConfigFactory.empty
   private val controllerId = ControllerId("CONTROLLER")

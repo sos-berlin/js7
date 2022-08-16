@@ -1,13 +1,13 @@
 package js7.data.value.expression
 
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.data.value.expression.CatsExpressionParser.*
 import js7.data.value.expression.Expression.*
 import js7.data.workflow.instructions.executable.WorkflowJob
 import org.scalactic.source
-import org.scalatest.freespec.AnyFreeSpec
 
-final class CatsExpressionParserTest extends AnyFreeSpec
+final class CatsExpressionParserTest extends Test
 {
   // See also ExpressionTest
 

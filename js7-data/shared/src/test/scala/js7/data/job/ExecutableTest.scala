@@ -4,14 +4,14 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.io.process.KeyLogin
 import js7.base.problem.Problems.InvalidNameProblem
+import js7.base.test.Test
 import js7.data.value.expression.Expression.{Add, NamedValue, NumericConstant, StringConstant}
 import js7.tester.CirceJsonTester.*
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ExecutableTest extends AnyFreeSpec
+final class ExecutableTest extends Test
 {
   "JSON" - {
     "RelativePathExecutable, minimum" in {

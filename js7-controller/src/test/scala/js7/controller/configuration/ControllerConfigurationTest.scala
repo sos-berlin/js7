@@ -6,6 +6,7 @@ import java.time.ZoneId
 import js7.base.configutils.Configs.*
 import js7.base.convert.As.StringAsBoolean
 import js7.base.io.file.FileUtils.syntax.*
+import js7.base.test.Test
 import js7.base.time.ScalaTime.*
 import js7.cluster.ClusterConf
 import js7.common.akkahttp.web.data.WebServerPort
@@ -17,12 +18,11 @@ import js7.data.controller.ControllerId
 import js7.data.node.NodeId
 import js7.journal.configuration.JournalConf
 import org.scalatest.BeforeAndAfterAll
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ControllerConfigurationTest extends AnyFreeSpec with BeforeAndAfterAll
+final class ControllerConfigurationTest extends Test with BeforeAndAfterAll
 {
   private lazy val directory = createTempDirectory("ControllerConfigurationTest-")
 

@@ -11,6 +11,7 @@ import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.https.{HttpsConfig, KeyStoreRef}
 import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.problem.Checked.Ops
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
@@ -27,7 +28,6 @@ import js7.tests.testenv.DirectoryProvider.{ExportedControllerTrustStoreRef, Exp
 import js7.tests.testenv.{ControllerAgentForScalaTest, DirectoryProvider}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.BeforeAndAfterAll
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.*
 
 /**
@@ -36,7 +36,7 @@ import scala.concurrent.duration.*
   * @author Joacim Zschimmer
   */
 private[https] trait HttpsTestBase
-extends AnyFreeSpec with BeforeAndAfterAll with ControllerAgentForScalaTest with ProvideActorSystem
+extends Test with BeforeAndAfterAll with ControllerAgentForScalaTest with ProvideActorSystem
 {
   override protected final def provideAgentHttpsCertificate = true
   protected def provideControllerClientCertificate = false

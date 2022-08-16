@@ -7,7 +7,8 @@ import js7.agent.configuration.inject.AgentModule
 import js7.agent.tests.ProcessDriverTest.TestScript
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.RichPath
-import js7.base.io.process.Processes.{ShellFileExtension as sh}
+import js7.base.test.Test
+import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.io.process.ReturnCode
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.Futures.implicits.SuccessFuture
@@ -28,12 +29,11 @@ import js7.launcher.process.{ProcessDriver, RichProcess}
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.subjects.PublishSubject
 import org.scalatest.BeforeAndAfterAll
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ProcessDriverTest extends AnyFreeSpec with BeforeAndAfterAll with TestAgentDirectoryProvider
+final class ProcessDriverTest extends Test with BeforeAndAfterAll with TestAgentDirectoryProvider
 {
   private lazy val injector = Guice.createInjector(new AgentModule(
     AgentConfiguration.forTest(agentDirectory, name = "ProcessDriverTest")))

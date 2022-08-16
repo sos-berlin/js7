@@ -4,6 +4,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.isWindows
+import js7.base.test.Test
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
 import js7.data.job.RelativePathExecutable
@@ -15,16 +16,15 @@ import js7.data.workflow.instructions.{Fail, If, TryInstruction}
 import js7.data.workflow.position.BranchId.{Then, try_}
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
-import js7.tests.jobs.EmptyJob
 import js7.tests.TryTest.*
+import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{ControllerAgentForScalaTest, TestItemUpdater}
 import monix.execution.Scheduler.Implicits.traced
 import org.scalactic.source
-import org.scalatest.freespec.AnyFreeSpec
 
 final class TryTest
-extends AnyFreeSpec
+extends Test
 with ControllerAgentForScalaTest
 with TestItemUpdater
 {

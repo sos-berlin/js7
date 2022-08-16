@@ -7,16 +7,16 @@ import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import js7.base.configutils.Configs.*
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.common.akkahttp.CirceJsonSupport.jsonUnmarshaller
 import js7.common.akkahttp.ExceptionHandlingTest.*
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future
 import scala.util.control.NoStackTrace
 
 /**
   * @author Joacim Zschimmer
   */
-final class ExceptionHandlingTest extends AnyFreeSpec with ScalatestRouteTest with ExceptionHandling
+final class ExceptionHandlingTest extends Test with ScalatestRouteTest with ExceptionHandling
 {
   protected val config = config"js7.web.server.verbose-error-messages = true"
   protected def whenShuttingDown = Future.never

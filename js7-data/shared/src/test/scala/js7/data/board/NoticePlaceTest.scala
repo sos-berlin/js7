@@ -1,12 +1,12 @@
 package js7.data.board
 
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
+import js7.base.test.Test
 import js7.base.time.Timestamp
 import js7.data.order.OrderId
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 
-final class NoticePlaceTest extends AnyFreeSpec
+final class NoticePlaceTest extends Test
 {
   "JSON" in {
     testJson(

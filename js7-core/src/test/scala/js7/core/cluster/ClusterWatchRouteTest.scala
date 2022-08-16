@@ -7,6 +7,7 @@ import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import io.circe.JsonObject
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
@@ -16,12 +17,11 @@ import js7.data.cluster.{ClusterSetting, ClusterState, ClusterTiming}
 import js7.data.controller.ControllerId
 import js7.data.node.NodeId
 import monix.execution.Scheduler
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ClusterWatchRouteTest extends AnyFreeSpec with ScalatestRouteTest with ClusterWatchRoute
+final class ClusterWatchRouteTest extends Test with ScalatestRouteTest with ClusterWatchRoute
 {
   coupleScribeWithSlf4j()
 

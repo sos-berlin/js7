@@ -1,12 +1,12 @@
 package js7.base.convert
 
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 import org.scalatest.matchers.should.Matchers.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class ConvertibleMultiPartialFunctionTest extends AnyFreeSpec {
+final class ConvertibleMultiPartialFunctionTest extends Test {
 
   "as with default" in {
     assert(convertible("KEY" -> List("111")).as[Int]("KEY", default = 999) == 111)

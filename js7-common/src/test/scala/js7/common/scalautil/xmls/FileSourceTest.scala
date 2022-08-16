@@ -3,12 +3,12 @@ package js7.common.scalautil.xmls
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.{createTempFile, delete}
 import js7.base.io.file.FileUtils.syntax.RichPath
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
 /**
   * @author Joacim Zschimmer
   */
-final class FileSourceTest extends AnyFreeSpec {
+final class FileSourceTest extends Test {
 
   "FileSource" in {
     val file = createTempFile("test-", ".tmp")

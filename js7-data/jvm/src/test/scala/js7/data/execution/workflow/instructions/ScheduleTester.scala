@@ -4,6 +4,7 @@ import java.time.DayOfWeek.{FRIDAY, MONDAY, SATURDAY, SUNDAY, THURSDAY, TUESDAY,
 import java.time.LocalTime.MIDNIGHT
 import java.time.{DayOfWeek, LocalDate, LocalDateTime, ZoneId, ZonedDateTime}
 import java.util.Locale
+import js7.base.test.Test
 import js7.base.time.JavaTimeConverters.RichZonedDateTime
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.ScalaTime.*
@@ -12,11 +13,10 @@ import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
 import js7.data.execution.workflow.instructions.ScheduleTester.*
 import js7.data.order.CycleState
 import org.scalactic.source
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.*
 import scala.jdk.DurationConverters.ScalaDurationOps
 
-trait ScheduleTester extends AnyFreeSpec
+trait ScheduleTester extends Test
 {
   /** For testing the example in `js7.data.workflow.instructions.CycleTest`. */
   protected final def addStandardScheduleTests(

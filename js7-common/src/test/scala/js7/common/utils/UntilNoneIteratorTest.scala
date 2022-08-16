@@ -1,11 +1,11 @@
 package js7.common.utils
 
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
 /**
   * @author Joacim Zschimmer
   */
-final class UntilNoneIteratorTest extends AnyFreeSpec {
+final class UntilNoneIteratorTest extends Test {
 
   "test" in {
     assert(!untilNoneIterator[Int](None).hasNext)

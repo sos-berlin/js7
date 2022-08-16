@@ -2,13 +2,13 @@ package js7.common.system
 
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.RichJson
+import js7.base.test.Test
 import js7.data.system.JavaInformation
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class JavaInformationsTest extends AnyFreeSpec {
+final class JavaInformationsTest extends Test {
 
   "JSON" in {
     val javaInformation = JavaInformations.javaInformation

@@ -1,6 +1,7 @@
 package js7.data.workflow
 
 import cats.syntax.show.*
+import js7.base.test.Test
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.job.{PathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
@@ -8,12 +9,11 @@ import js7.data.value.expression.Expression.{BooleanConstant, Equal, In, LastRet
 import js7.data.workflow.WorkflowPrinter.WorkflowShow
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fork, If}
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class WorkflowPrinterTest extends AnyFreeSpec
+final class WorkflowPrinterTest extends Test
 {
   // Also tested by WorkflowParserTest.
 

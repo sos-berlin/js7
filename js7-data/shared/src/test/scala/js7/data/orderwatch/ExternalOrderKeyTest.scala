@@ -1,10 +1,10 @@
 package js7.data.orderwatch
 
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
+import js7.base.test.Test
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 
-final class ExternalOrderKeyTest extends AnyFreeSpec
+final class ExternalOrderKeyTest extends Test
 {
   "JSON" in {
     testJson(

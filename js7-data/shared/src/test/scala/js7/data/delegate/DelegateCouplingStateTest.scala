@@ -1,10 +1,10 @@
 package js7.data.delegate
 
 import js7.base.circeutils.CirceUtils.*
+import js7.base.test.Test
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
-import org.scalatest.freespec.AnyFreeSpec
 
-final class DelegateCouplingStateTest extends AnyFreeSpec
+final class DelegateCouplingStateTest extends Test
 {
   "JSON" in {
     testJsonDecoder[DelegateCouplingState](

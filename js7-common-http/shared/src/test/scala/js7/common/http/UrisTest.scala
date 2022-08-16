@@ -1,12 +1,12 @@
 package js7.common.http
 
+import js7.base.test.Test
 import js7.common.http.Uris.*
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class UrisTest extends AnyFreeSpec {
+final class UrisTest extends Test {
 
   "encodePath" in {
     assert(encodePath("") == "")

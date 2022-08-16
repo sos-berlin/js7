@@ -1,18 +1,18 @@
 package js7.core.cluster
 
 import js7.base.circeutils.CirceUtils.*
+import js7.base.test.Test
 import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.data.cluster.ClusterEvent.ClusterNodesAppointed
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterTiming}
 import js7.data.node.NodeId
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ClusterWatchMessageTest extends AnyFreeSpec
+final class ClusterWatchMessageTest extends Test
 {
   "JSON" - {
     "ClusterWatchEvents" in {

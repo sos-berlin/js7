@@ -4,6 +4,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.Logger
 import js7.base.system.OperatingSystem.isWindows
+import js7.base.test.Test
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
@@ -19,10 +20,9 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.JobTimeoutTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.{sleepingScript, toLocalSubagentId}
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.Deadline.now
 
-final class JobTimeoutTest extends AnyFreeSpec with ControllerAgentForScalaTest
+final class JobTimeoutTest extends Test with ControllerAgentForScalaTest
 {
   override protected val controllerConfig = config"""
     js7.controller.agent-driver.command-batch-delay = 0ms

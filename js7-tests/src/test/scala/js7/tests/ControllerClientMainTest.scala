@@ -1,18 +1,18 @@
 package js7.tests
 
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceString, RichJson}
+import js7.base.test.Test
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.client.main.ControllerClientMain
 import js7.tests.testenv.ControllerAgentForScalaTest
-import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 
 /**
  * @author Joacim Zschimmer
  */
-final class ControllerClientMainTest extends AnyFreeSpec with ControllerAgentForScalaTest
+final class ControllerClientMainTest extends Test with ControllerAgentForScalaTest
 {
   protected val agentPaths = Nil
   protected val items = Nil

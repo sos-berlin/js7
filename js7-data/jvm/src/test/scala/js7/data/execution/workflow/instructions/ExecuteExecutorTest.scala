@@ -3,6 +3,7 @@ package js7.data.execution.workflow.instructions
 import java.time.DayOfWeek.FRIDAY
 import java.time.{LocalDate, LocalTime}
 import js7.base.problem.Checked.*
+import js7.base.test.Test
 import js7.base.time.ScalaTime.*
 import js7.base.time.{AdmissionTimeScheme, WallClock, WeekdayPeriod}
 import js7.data.agent.AgentPath
@@ -16,13 +17,12 @@ import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
-import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.View
 
 /**
   * @author Joacim Zschimmer
   */
-final class ExecuteExecutorTest extends AnyFreeSpec
+final class ExecuteExecutorTest extends Test
 {
   private lazy val stateView = TestStateView.of(
     isAgent = false,

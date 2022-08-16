@@ -1,6 +1,7 @@
 package js7.data.workflow.instructions
 
 import js7.base.circeutils.CirceUtils.*
+import js7.base.test.Test
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.job.PathExecutable
@@ -12,13 +13,12 @@ import js7.data.workflow.position.BranchId.{Catch_, Try_}
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Instruction, Workflow}
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class TryInstructionTest extends AnyFreeSpec
+final class TryInstructionTest extends Test
 {
   private val try_ = TryInstruction(
     tryWorkflow = Workflow.of(Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("TRY")))),

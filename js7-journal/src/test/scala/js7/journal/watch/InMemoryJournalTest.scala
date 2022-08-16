@@ -4,6 +4,7 @@ import cats.instances.try_.*
 import cats.syntax.foldable.*
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
@@ -13,10 +14,9 @@ import js7.journal.test.{TestAggregate, TestEvent, TestState}
 import js7.journal.watch.InMemoryJournalTest.*
 import js7.journal.{EventIdClock, EventIdGenerator}
 import monix.execution.Scheduler.Implicits.traced
-import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 
-final class InMemoryJournalTest extends AnyFreeSpec
+final class InMemoryJournalTest extends Test
 {
   "Initial values" in {
     val journal = newJournal()

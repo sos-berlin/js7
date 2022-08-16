@@ -3,6 +3,7 @@ package js7.tests
 import js7.base.configutils.Configs.*
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
@@ -23,9 +24,8 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
-import org.scalatest.freespec.AnyFreeSpec
 
-final class ForkTest extends AnyFreeSpec with ControllerAgentForScalaTest
+final class ForkTest extends Test with ControllerAgentForScalaTest
 {
   override protected val controllerConfig = config"""
     js7.TEST-ONLY.suppress-order-id-check-for = "DUPLICATE|🥕"

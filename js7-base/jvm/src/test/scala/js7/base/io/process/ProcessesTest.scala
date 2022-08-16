@@ -12,12 +12,12 @@ import js7.base.io.file.FileUtils.{autoDeleting, temporaryDirectory, withTempora
 import js7.base.io.process.Processes.*
 import js7.base.io.process.ProcessesTest.*
 import js7.base.system.OperatingSystem.{isMac, isSolaris, isWindows}
+import js7.base.test.Test
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
 import monix.execution.Scheduler.Implicits.traced
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future
 import scala.concurrent.duration.Deadline.now
 import scala.jdk.CollectionConverters.*
@@ -26,7 +26,7 @@ import scala.util.Try
 /**
  * @author Joacim Zschimmer
  */
-final class ProcessesTest extends AnyFreeSpec {
+final class ProcessesTest extends Test {
 
   "processToPidOption, toShellCommandArguments" in {
     if (isWindows) {

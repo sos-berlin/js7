@@ -3,16 +3,16 @@ package js7.base.problem
 import cats.syntax.semigroup.*
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.ProblemTest.*
+import js7.base.test.Test
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.exceptions.TestFailedException
-import org.scalatest.freespec.AnyFreeSpec
 import scala.util.Try
 
 /**
   * @author Joacim Zschimmer
   */
-final class ProblemTest extends AnyFreeSpec
+final class ProblemTest extends Test
 {
   "JSON" - {
     "without ProblemCode" - {

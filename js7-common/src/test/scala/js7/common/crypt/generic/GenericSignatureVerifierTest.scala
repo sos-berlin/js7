@@ -7,13 +7,13 @@ import js7.base.data.ByteArray
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.problem.Checked.Ops
+import js7.base.test.Test
 import js7.common.crypt.pgp.{PgpSigner, PgpTest}
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class GenericSignatureVerifierTest extends AnyFreeSpec
+final class GenericSignatureVerifierTest extends Test
 {
   "Directory of public keys (recommended usage)" in {
     withTemporaryDirectory("GenericSignatureVerifierTest-") { directory =>

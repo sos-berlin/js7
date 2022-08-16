@@ -4,12 +4,13 @@ import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.*
-import js7.base.io.process.Processes.{ShellFileExtension as sh}
+import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.DuplicateKey
 import js7.base.system.OperatingSystem.isWindows
+import js7.base.test.Test
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -42,11 +43,10 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.atomic.AtomicInt
 import monix.reactive.Observable
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.Deadline.now
 import scala.util.Try
 
-final class ControllerRepoTest extends AnyFreeSpec
+final class ControllerRepoTest extends Test
 {
   import ControllerRepoTest.*
 

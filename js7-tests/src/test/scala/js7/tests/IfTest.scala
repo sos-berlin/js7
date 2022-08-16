@@ -5,6 +5,7 @@ import js7.base.io.process.ReturnCode
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
+import js7.base.test.Test
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
@@ -19,9 +20,8 @@ import js7.tests.IfTest.*
 import js7.tests.testenv.DirectoryProvider
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.traced
-import org.scalatest.freespec.AnyFreeSpec
 
-final class IfTest extends AnyFreeSpec
+final class IfTest extends Test
 {
   "test" in {
     autoClosing(new DirectoryProvider(agentPath :: Nil, items = Seq(TestWorkflow), testName = Some("IfTest"))) { directoryProvider =>

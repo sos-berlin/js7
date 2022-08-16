@@ -7,6 +7,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.touchFile
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -41,9 +42,8 @@ import monix.catnap.MVar
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
-import org.scalatest.freespec.AnyFreeSpec
 
-final class ResetAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
+final class ResetAgentTest extends Test with ControllerAgentForScalaTest
 {
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]

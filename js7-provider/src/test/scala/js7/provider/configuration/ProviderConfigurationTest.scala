@@ -4,13 +4,13 @@ import com.typesafe.config.ConfigFactory
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.io.https.HttpsConfig
+import js7.base.test.Test
 import js7.base.web.Uri
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ProviderConfigurationTest extends AnyFreeSpec
+final class ProviderConfigurationTest extends Test
 {
   "Empty command line" in {
     intercept[NoSuchElementException] { ProviderConfiguration.fromCommandLine(Nil) }

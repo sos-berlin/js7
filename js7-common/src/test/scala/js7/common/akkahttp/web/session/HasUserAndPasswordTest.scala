@@ -6,6 +6,7 @@ import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString
 import js7.base.io.https.HttpsConfig
 import js7.base.session.SessionApi
+import js7.base.test.Test
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
@@ -14,9 +15,8 @@ import js7.data.session.HttpSessionApi
 import monix.catnap.MVar
 import monix.eval.Task
 import monix.execution.Scheduler
-import org.scalatest.freespec.AnyFreeSpec
 
-final class HasUserAndPasswordTest extends AnyFreeSpec with SessionRouteTester
+final class HasUserAndPasswordTest extends Test with SessionRouteTester
 {
   protected implicit def scheduler = Scheduler.traced
 

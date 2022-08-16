@@ -1,13 +1,13 @@
 package js7.provider.scheduledorder.oldruntime
 
 import java.time.{DayOfWeek, Duration, LocalTime, ZoneId, ZonedDateTime}
+import js7.base.test.Test
 import js7.provider.scheduledorder.oldruntime.OldSchedule.EveryDay
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class OldScheduleTest extends AnyFreeSpec {
+final class OldScheduleTest extends Test {
 
   private val timeZone = ZoneId.of("Europe/Helsinki")
 

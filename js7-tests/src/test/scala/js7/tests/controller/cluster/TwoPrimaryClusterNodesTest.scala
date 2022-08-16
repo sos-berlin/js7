@@ -3,14 +3,14 @@ package js7.tests.controller.cluster
 import js7.base.configutils.Configs.*
 import js7.base.problem.Checked.*
 import js7.base.problem.ProblemException
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.Problems.PrimaryClusterNodeMayNotBecomeBackupProblem
 import js7.data.controller.ControllerCommand.ClusterAppointNodes
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.freespec.AnyFreeSpec
 
-final class TwoPrimaryClusterNodesTest extends AnyFreeSpec with ControllerClusterTester
+final class TwoPrimaryClusterNodesTest extends Test with ControllerClusterTester
 {
   override protected def configureClusterNodes = false
 

@@ -1,6 +1,7 @@
 package js7.tests
 
 import java.net.ServerSocket
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
@@ -12,12 +13,11 @@ import js7.tests.TerminateWithUnknownAgentTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.traced
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class TerminateWithUnknownAgentTest extends AnyFreeSpec with ControllerAgentForScalaTest
+final class TerminateWithUnknownAgentTest extends Test with ControllerAgentForScalaTest
 {
   private lazy val socket = new ServerSocket(0, /*backlog=*/1)
   protected val items = Seq(agentRef, workflow)

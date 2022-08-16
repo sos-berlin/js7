@@ -18,6 +18,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.https.HttpsConfig
 import js7.base.log.CorrelId
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
@@ -39,16 +40,15 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import org.scalatest.BeforeAndAfterAll
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Await
-import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.*
+import scala.concurrent.duration.Deadline.now
 import scala.util.{Failure, Success}
 
 /**
   * @author Joacim Zschimmer
   */
-final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll with HasCloser
+final class AkkaHttpClientTest extends Test with BeforeAndAfterAll with HasCloser
 {
   implicit private lazy val actorSystem: ActorSystem =
     newActorSystem("AkkaHttpClientTest", config"""akka.http.client.idle-timeout = 2s""")

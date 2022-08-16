@@ -2,10 +2,10 @@ package js7.base.stream
 
 import io.circe.DecodingFailure
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
+import js7.base.test.Test
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
-import org.scalatest.freespec.AnyFreeSpec
 
-final class NumberedTest extends AnyFreeSpec
+final class NumberedTest extends Test
 {
   "JSON" in {
     testJson(Numbered(1L, "ONE"),json""" [ 1, "ONE" ]""")

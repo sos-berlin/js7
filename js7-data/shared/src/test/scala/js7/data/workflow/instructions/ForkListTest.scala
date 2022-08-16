@@ -2,6 +2,7 @@ package js7.data.workflow.instructions
 
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.data.agent.AgentPath
 import js7.data.job.PathExecutable
 import js7.data.source.SourcePos
@@ -11,9 +12,8 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Instruction, Workflow}
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
-import org.scalatest.freespec.AnyFreeSpec
 
-final class ForkListTest extends AnyFreeSpec
+final class ForkListTest extends Test
 {
   private val fork = ForkList(
     expr("$children"),

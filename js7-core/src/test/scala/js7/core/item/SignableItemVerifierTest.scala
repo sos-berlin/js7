@@ -7,18 +7,18 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.{Signed, SignedString, SignerId}
 import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
+import js7.base.test.Test
 import js7.common.crypt.pgp.PgpCommons.RichPGPPublicKey
 import js7.common.crypt.pgp.{PgpKeyGenerator, PgpSignatureVerifier, PgpSigner}
 import js7.core.item.SignableItemVerifierTest.*
 import js7.data.crypt.SignedItemVerifier
 import js7.data.item.{ItemSigner, VersionedItem}
 import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class SignableItemVerifierTest extends AnyFreeSpec
+final class SignableItemVerifierTest extends Test
 {
   "ItemSigner.sign" in {
     implicit val jsonCodec = SignableItemVerifierTest.jsonCodec

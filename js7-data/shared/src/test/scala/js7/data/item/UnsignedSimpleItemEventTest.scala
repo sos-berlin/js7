@@ -2,13 +2,13 @@ package js7.data.item
 
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.circeutils.typed.TypedJsonCodec
+import js7.base.test.Test
 import js7.data.controller.ControllerState
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.lock.{Lock, LockPath}
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 
-final class UnsignedSimpleItemEventTest extends AnyFreeSpec
+final class UnsignedSimpleItemEventTest extends Test
 {
   implicit private val jsonCodec: TypedJsonCodec[UnsignedSimpleItemEvent] =
     UnsignedSimpleItemEvent.jsonCodec(ControllerState)

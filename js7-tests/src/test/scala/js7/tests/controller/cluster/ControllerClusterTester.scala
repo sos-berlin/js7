@@ -2,13 +2,13 @@ package js7.tests.controller.cluster
 
 import js7.base.problem.Checked.*
 import js7.base.system.OperatingSystem.isWindows
+import js7.base.test.Test
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.controller.cluster.ControllerClusterTester.*
 import js7.tests.testenv.ControllerClusterForScalaTest
 import js7.tests.testenv.ControllerClusterForScalaTest.TestPathExecutable
-import org.scalatest.freespec.AnyFreeSpec
 
-private[cluster] trait ControllerClusterTester extends AnyFreeSpec with ControllerClusterForScalaTest
+private[cluster] trait ControllerClusterTester extends Test with ControllerClusterForScalaTest
 {
   protected def items = Seq(TestWorkflow)
   override protected def shellScript = ControllerClusterTester.shellScript

@@ -1,13 +1,13 @@
 package js7.base.utils
 
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.base.utils.DecimalPrefixes.{toInt, toLong}
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class DecimalPrefixesTest extends AnyFreeSpec
+final class DecimalPrefixesTest extends Test
 {
   "toInt" in {
     assert(toInt("") == Left(Problem("NumberFormatException: For input string: \"\"")))

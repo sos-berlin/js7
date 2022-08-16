@@ -1,11 +1,11 @@
 package js7.base.utils
 
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
 /**
   * @author Joacim Zschimmer
   */
-final class LazyTest extends AnyFreeSpec
+final class LazyTest extends Test
 {
   "Lazy" in {
     var counter = 0

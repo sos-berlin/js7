@@ -5,6 +5,7 @@ import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceEither}
 import js7.base.configutils.Configs.*
 import js7.base.log.Logger
 import js7.base.problem.Checked.*
+import js7.base.test.Test
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.AgentPath
 import js7.data.item.VersionId
@@ -15,10 +16,9 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
 import js7.tests.testenv.ControllerAgentForScalaTest
-import org.scalatest.freespec.AnyFreeSpec
 
 /* A test to play with. */
-final class PlayTest extends AnyFreeSpec with ControllerAgentForScalaTest
+final class PlayTest extends Test with ControllerAgentForScalaTest
 {
   protected val agentPaths = PlayTest.agentPaths
   protected val items = Nil
