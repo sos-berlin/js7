@@ -35,7 +35,7 @@
                              filePattern="${logDirectory}/provider-debug-%d{yyyy-MM-dd}-%i.log.gz"
                              immediateFlush="${sys:js7.log4j.immediateFlush:-true}">
       <patternLayout charset="UTF-8" pattern=
-        "%d{DEFAULT_MICROS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %notEmpty{%X{js7.correlId} }%-2threadId %notEmpty{»%marker« }%logger - %message%n"
+        "%d{DEFAULT_MICROS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %notEmpty{%X{js7.correlId} }%-2threadId %logger %notEmpty{»%marker« }- %message%n"
       />
       <policies>
         <timeBasedTriggeringPolicy/>
