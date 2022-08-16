@@ -3,7 +3,7 @@ package js7.data.order
 import js7.base.circeutils.CirceUtils.*
 import js7.base.io.process.ReturnCode
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data.order.Outcome.Completed
 import js7.data.subagent.Problems.{ProcessLostDueToRestartProblem, ProcessLostDueToUnknownReasonProblem}
 import js7.data.value.{NamedValues, NumberValue, StringValue}
@@ -12,7 +12,7 @@ import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 /**
   * @author Joacim Zschimmer
   */
-final class OutcomeTest extends Test
+final class OutcomeTest extends OurTestSuite
 {
   "isSucceeded" in {
     assert(Outcome.Succeeded(NamedValues.rc(0)).isSucceeded)

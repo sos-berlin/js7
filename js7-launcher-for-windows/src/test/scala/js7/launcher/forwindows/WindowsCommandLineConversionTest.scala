@@ -1,9 +1,9 @@
 package js7.launcher.forwindows
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.launcher.forwindows.WindowsCommandLineConversion.argsToCommandLine
 
-final class WindowsCommandLineConversionTest extends Test
+final class WindowsCommandLineConversionTest extends OurTestSuite
 {
   "argsToCommandLine" in {
     assert(argsToCommandLine(Seq("""a"b""")).isLeft)

@@ -1,14 +1,14 @@
 package js7.journal.configuration
 
 import js7.base.configutils.Configs.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.journal.configuration.JournalConfTest.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class JournalConfTest extends Test
+final class JournalConfTest extends OurTestSuite
 {
   "JournalConf" in {
     assert(JournalConf.fromConfig(config) == journalConf)

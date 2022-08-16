@@ -9,7 +9,7 @@ import js7.base.crypt.x509.Openssl.openssl
 import js7.base.data.ByteArray
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.{withTemporaryDirectory, withTemporaryFile}
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.utils.AutoClosing.autoClosing
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -18,7 +18,7 @@ import scala.sys.process.*
 /**
   * @author Joacim Zschimmer
   */
-final class HttpsTest extends Test
+final class HttpsTest extends OurTestSuite
 {
   private val nullLogger = ProcessLogger(_ => ())
 

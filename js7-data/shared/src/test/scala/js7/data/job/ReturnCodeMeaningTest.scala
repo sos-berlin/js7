@@ -2,13 +2,13 @@ package js7.data.job
 
 import js7.base.circeutils.CirceUtils.*
 import js7.base.io.process.ReturnCode
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.tester.CirceJsonTester.testJson
 
 /**
   * @author Joacim Zschimmer
   */
-final class ReturnCodeMeaningTest extends Test
+final class ReturnCodeMeaningTest extends OurTestSuite
 {
   "Success" in {
     val success0 = ReturnCodeMeaning.Success(Set(ReturnCode(0)))

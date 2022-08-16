@@ -1,12 +1,12 @@
 package js7.base.auth
 
 import js7.base.generic.SecretString
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 
 /**
   * @author Joacim Zschimmer
   */
-final class HashedPasswordTest extends Test {
+final class HashedPasswordTest extends OurTestSuite {
 
   "equalsClearText" in {
     val a = HashedPassword(SecretString("321"), _.reverse)

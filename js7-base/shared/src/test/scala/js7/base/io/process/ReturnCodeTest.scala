@@ -1,12 +1,12 @@
 package js7.base.io.process
 
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 
 /**
  * @author Joacim Zschimmer
  */
-final class ReturnCodeTest extends Test {
+final class ReturnCodeTest extends OurTestSuite {
 
   "Int ReturnCode" in {
     assert(ReturnCode(0).isSuccess)

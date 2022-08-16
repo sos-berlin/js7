@@ -2,12 +2,12 @@ package js7.common.system
 
 import io.circe.syntax.EncoderOps
 import js7.base.system.SystemInformation
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 
 /**
   * @author Joacim Zschimmer
   */
-final class SystemInformationsTest extends Test {
+final class SystemInformationsTest extends OurTestSuite {
 
   // See also js7.base.system.SystemInformationTest
 

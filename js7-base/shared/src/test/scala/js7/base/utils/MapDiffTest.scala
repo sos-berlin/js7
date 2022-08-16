@@ -1,10 +1,10 @@
 package js7.base.utils
 
 import js7.base.circeutils.CirceUtils.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.tester.CirceJsonTester.testJson
 
-final class MapDiffTest extends Test
+final class MapDiffTest extends OurTestSuite
 {
   "applyTo" in {
     assert(MapDiff.empty.applyTo(Map.empty) == Map.empty)

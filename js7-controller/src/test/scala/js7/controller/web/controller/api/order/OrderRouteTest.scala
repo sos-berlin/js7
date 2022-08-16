@@ -8,7 +8,7 @@ import akka.http.scaladsl.server.Route
 import io.circe.syntax.*
 import io.circe.{Encoder, Json}
 import js7.base.problem.{Checked, Problem}
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
@@ -33,7 +33,7 @@ import scala.concurrent.Future
 /**
   * @author Joacim Zschimmer
   */
-final class OrderRouteTest extends Test with RouteTester with OrderRoute
+final class OrderRouteTest extends OurTestSuite with RouteTester with OrderRoute
 {
   protected def whenShuttingDown = Future.never
   protected implicit def scheduler: Scheduler = Scheduler.traced

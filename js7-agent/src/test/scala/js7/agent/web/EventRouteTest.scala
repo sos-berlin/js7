@@ -9,7 +9,7 @@ import js7.agent.tests.TestAgentDirectoryProvider.*
 import js7.agent.web.EventRouteTest.*
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.problem.Checked.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
@@ -27,7 +27,7 @@ import monix.execution.Scheduler
 /**
   * @author Joacim Zschimmer
   */
-final class EventRouteTest extends Test with AgentTester
+final class EventRouteTest extends OurTestSuite with AgentTester
 {
   protected val akkaAskTimeout = 99.s
 

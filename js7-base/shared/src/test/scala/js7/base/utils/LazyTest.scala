@@ -1,11 +1,11 @@
 package js7.base.utils
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 
 /**
   * @author Joacim Zschimmer
   */
-final class LazyTest extends Test
+final class LazyTest extends OurTestSuite
 {
   "Lazy" in {
     var counter = 0

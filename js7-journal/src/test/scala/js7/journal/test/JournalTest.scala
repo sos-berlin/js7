@@ -6,7 +6,7 @@ import js7.base.BuildInfo
 import js7.base.circeutils.CirceUtils.*
 import js7.base.configutils.Configs.*
 import js7.base.io.file.FileUtils.syntax.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.blockingThreadFuture
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
@@ -22,7 +22,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 /**
   * @author Joacim Zschimmer
   */
-final class JournalTest extends Test with BeforeAndAfterAll with TestJournalMixin
+final class JournalTest extends OurTestSuite with BeforeAndAfterAll with TestJournalMixin
 {
   "First run" in {
     withTestActor() { (actorSystem, actor) =>

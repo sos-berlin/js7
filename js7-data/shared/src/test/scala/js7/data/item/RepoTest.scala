@@ -8,7 +8,7 @@ import js7.base.crypt.{GenericSignature, Signed, SignedString}
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.Stopwatch
 import js7.data.Problems.{EventVersionDoesNotMatchProblem, ItemVersionDoesNotMatchProblem, VersionedItemRemovedProblem}
 import js7.data.item.RepoTest.*
@@ -17,7 +17,7 @@ import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, Versioned
 /**
   * @author Joacim Zschimmer
   */
-final class RepoTest extends Test
+final class RepoTest extends OurTestSuite
 {
   import itemSigner.sign
 

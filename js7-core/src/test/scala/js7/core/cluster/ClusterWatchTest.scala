@@ -3,7 +3,7 @@ package js7.core.cluster
 import js7.base.generic.Completed
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
@@ -21,7 +21,7 @@ import monix.execution.schedulers.TestScheduler
 /**
   * @author Joacim Zschimmer
   */
-final class ClusterWatchTest extends Test
+final class ClusterWatchTest extends OurTestSuite
 {
   ProblemCodeMessages.initialize()
 

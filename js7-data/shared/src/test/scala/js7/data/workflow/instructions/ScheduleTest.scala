@@ -4,7 +4,7 @@ import java.time.DayOfWeek.{SATURDAY, SUNDAY, TUESDAY}
 import java.time.LocalTime
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.{AdmissionTimeScheme, DailyPeriod, WeekdayPeriod}
 import js7.data.workflow.instructions.Schedule.{Continuous, Periodic, Scheme, Ticking}
@@ -12,7 +12,7 @@ import js7.data.workflow.instructions.ScheduleTest.*
 import js7.tester.CirceJsonTester.testJson
 import scala.concurrent.duration.*
 
-final class ScheduleTest extends Test
+final class ScheduleTest extends OurTestSuite
 {
   "JSON" in {
     testJson(exampleSchedule,

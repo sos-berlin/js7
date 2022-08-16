@@ -4,7 +4,7 @@ import cats.syntax.option.catsSyntaxOptionId
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data.workflow.position.BranchId.{Then, catch_, try_}
 import js7.tester.CirceJsonTester.testJson
 
@@ -12,7 +12,7 @@ import js7.tester.CirceJsonTester.testJson
 /**
   * @author Joacim Zschimmer
   */
-final class PositionOrLabelTest extends Test
+final class PositionOrLabelTest extends OurTestSuite
 {
   "Position" - {
     "JSON" in {

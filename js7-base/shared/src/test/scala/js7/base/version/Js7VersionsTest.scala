@@ -1,9 +1,9 @@
 package js7.base.version
 
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 
-final class Js7VersionsTest extends Test
+final class Js7VersionsTest extends OurTestSuite
 {
   "checkNonMatchingVersion" - {
     val ourVersion = Version("2.2.2")

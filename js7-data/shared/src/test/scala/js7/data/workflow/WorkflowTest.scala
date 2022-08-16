@@ -5,7 +5,7 @@ import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceEither}
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem
 import js7.base.problem.Problems.UnknownKeyProblem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.Timezone
 import js7.data.agent.AgentPath
 import js7.data.board.{BoardPath, BoardPathExpression}
@@ -29,7 +29,7 @@ import js7.tester.CirceJsonTester.{normalizeJson, removeJNull, testJson}
 /**
   * @author Joacim Zschimmer
   */
-final class WorkflowTest extends Test
+final class WorkflowTest extends OurTestSuite
 {
   "JSON" - {
     "Minimum readable Workflow" in {

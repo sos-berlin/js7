@@ -7,7 +7,7 @@ import js7.base.generic.Completed
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -38,7 +38,7 @@ import monix.reactive.Observable
 import org.scalatest.BeforeAndAfterAll
 
 final class JournaledProxyTest
-extends Test with BeforeAndAfterAll with ProvideActorSystem with ControllerAgentForScalaTest
+extends OurTestSuite with BeforeAndAfterAll with ProvideActorSystem with ControllerAgentForScalaTest
 {
   override protected def agentPaths = agentPath :: Nil
   protected val items = Nil

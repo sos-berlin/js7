@@ -9,12 +9,12 @@ import js7.base.data.ByteSequence.ops.*
 import js7.base.data.ByteSequenceTester.*
 import js7.base.problem.Problem
 import js7.base.system.Java8Polyfill.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.utils.SyncResource.syntax.RichResource
 import scala.util.Random
 
 abstract class ByteSequenceTester[ByteSeq](implicit ByteSeq: ByteSequence[ByteSeq])
-extends Test
+extends OurTestSuite
 {
   "empty" in {
     assert(ByteSeq.empty.length == 0)

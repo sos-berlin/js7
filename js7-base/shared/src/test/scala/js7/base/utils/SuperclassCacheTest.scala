@@ -1,12 +1,12 @@
 package js7.base.utils
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.utils.SuperclassCacheTest.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class SuperclassCacheTest extends Test
+final class SuperclassCacheTest extends OurTestSuite
 {
   "test" in {
     val cache = new SuperclassCache(classOf[Super])

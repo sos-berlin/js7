@@ -11,12 +11,12 @@ import js7.base.generic.SecretString
 import js7.base.io.JavaResource
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.common.crypt.pgp.PgpCommons.*
 import js7.common.crypt.pgp.PgpTest.*
 import org.bouncycastle.openpgp.PGPSignature
 
-final class PgpTest extends Test
+final class PgpTest extends OurTestSuite
 {
   private lazy val verifier = new PgpSignatureVerifier(readPublicKeyRingCollection(publicKeyResource.readAs[ByteArray] :: Nil),
     publicKeyOrigin = "PgpTest")

@@ -1,13 +1,13 @@
 package js7.data.calendar
 
 import js7.base.circeutils.CirceUtils.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timezone
 import js7.data.item.ItemRevision
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
-final class CalendarTest extends Test
+final class CalendarTest extends OurTestSuite
 {
   "JSON" in {
     testJson(

@@ -1,7 +1,7 @@
 package js7.base.monixutils
 
 import js7.base.monixutils.MonixBase.syntax.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import monix.eval.Task
 import monix.execution.schedulers.TestScheduler
@@ -11,7 +11,7 @@ import scala.concurrent.Await
 /**
   * @author Joacim Zschimmer
   */
-final class InsertHeartbeatsOnSlowUpstreamTest extends Test
+final class InsertHeartbeatsOnSlowUpstreamTest extends OurTestSuite
 {
   private implicit val scheduler: TestScheduler = TestScheduler()
   private val heartbeat = -1

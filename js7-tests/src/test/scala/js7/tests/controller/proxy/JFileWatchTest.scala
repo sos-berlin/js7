@@ -1,7 +1,7 @@
 package js7.tests.controller.proxy
 
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data.agent.AgentPath
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.proxy.javaapi.JControllerApi
@@ -10,7 +10,7 @@ import js7.tests.jobs.DeleteFileJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global
 
-final class JFileWatchTest extends Test with ControllerAgentForScalaTest
+final class JFileWatchTest extends OurTestSuite with ControllerAgentForScalaTest
 {
   protected def agentPaths = Seq(agentPath)
   protected def items = Seq(workflow)

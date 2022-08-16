@@ -10,7 +10,7 @@ import js7.base.convert.As.StringAsBoolean
 import js7.base.io.file.FileUtils.*
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.commandline.CommandLineArguments
 import js7.journal.configuration.JournalConf
@@ -20,7 +20,7 @@ import scala.concurrent.duration.*
 /**
  * @author Joacim Zschimmer
  */
-final class AgentConfigurationTest extends Test
+final class AgentConfigurationTest extends OurTestSuite
 {
   private val shellExt = if (isWindows) "cmd" else "sh"
 

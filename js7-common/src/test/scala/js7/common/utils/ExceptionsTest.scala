@@ -3,7 +3,7 @@ package js7.common.utils
 import java.io.IOException
 import js7.base.log.LazyScalaLogger.AsLazyScalaLogger
 import js7.base.log.Logger
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.common.utils.Exceptions.*
 import js7.common.utils.ExceptionsTest.*
@@ -14,7 +14,7 @@ import scala.util.{Success, Try}
 /**
   * @author Joacim Zschimmer
   */
-final class ExceptionsTest extends Test {
+final class ExceptionsTest extends OurTestSuite {
 
   "repeatUntilNoException" in {
     // Warm-up

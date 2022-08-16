@@ -1,11 +1,11 @@
 package js7.common.utils
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 
 /**
   * @author Joacim Zschimmer
   */
-final class UntilNoneIteratorTest extends Test {
+final class UntilNoneIteratorTest extends OurTestSuite {
 
   "test" in {
     assert(!untilNoneIterator[Int](None).hasNext)

@@ -1,9 +1,9 @@
 package js7.base.number
 
 import js7.base.number.Numbers.{addSaturating, subtractSaturating}
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 
-final class NumbersTest extends Test
+final class NumbersTest extends OurTestSuite
 {
   "addSaturating" in {
     assert(addSaturating(Long.MaxValue, 1) == Long.MaxValue)

@@ -1,9 +1,9 @@
 package js7.data.session
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.version.Version
 
-final class HttpSessionApiTest extends Test
+final class HttpSessionApiTest extends OurTestSuite
 {
   "checkNonMatchingVersion" - {
     // Check log output manually!

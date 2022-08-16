@@ -5,7 +5,7 @@ import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.problem.Checked.Ops
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.core.item.TypedSourceReader
 import js7.data.agent.AgentPath
 import js7.data.job.RelativePathExecutable
@@ -17,7 +17,7 @@ import scala.collection.mutable
 /**
   * @author Joacim Zschimmer
   */
-final class WorkflowReaderTest extends Test {
+final class WorkflowReaderTest extends OurTestSuite {
 
   "Different Workflow file formats" in {
     withTemporaryDirectory("WorkflowReaderTest-") { dir =>

@@ -3,7 +3,7 @@ package js7.data.subagent
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.crypt.silly.SillySigner
 import js7.base.io.process.ProcessSignal.SIGTERM
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Base64UUID
 import js7.data.agent.AgentPath
@@ -17,7 +17,7 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
-final class SubagentCommandTest extends Test
+final class SubagentCommandTest extends OurTestSuite
 {
   "JSON" - {
     "DedicateSubagent" in {

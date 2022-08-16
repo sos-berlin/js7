@@ -5,7 +5,7 @@ import cats.syntax.parallel.*
 import java.nio.file.Files.{createDirectories, exists}
 import js7.agent.scheduler.order.FileWatchManager
 import js7.base.configutils.Configs.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
 import js7.base.problem.Checked.*
@@ -29,7 +29,7 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import scala.concurrent.duration.Deadline.now
 
-final class FileWatchDelayTest extends Test with ControllerAgentForScalaTest
+final class FileWatchDelayTest extends OurTestSuite with ControllerAgentForScalaTest
 {
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]

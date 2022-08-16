@@ -9,7 +9,7 @@ import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.io.file.FileUtils.implicits.*
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{touchFile, withTemporaryFile}
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.{Stopwatch, Timestamp}
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*
@@ -19,7 +19,7 @@ import js7.data.event.{Event, KeyedEvent, KeyedEventTypedJsonCodec, Stamped}
 /**
   * @author Joacim Zschimmer
   */
-final class FileJsonSeqTest extends Test {
+final class FileJsonSeqTest extends OurTestSuite {
 
   "Empty file" in {
     withTemporaryFile { file =>

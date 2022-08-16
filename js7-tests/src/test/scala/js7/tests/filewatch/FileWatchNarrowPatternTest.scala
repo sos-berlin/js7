@@ -5,7 +5,7 @@ import js7.agent.scheduler.order.FileWatchManager
 import js7.base.configutils.Configs.*
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Checked.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.SimplePattern
@@ -23,7 +23,7 @@ import js7.tests.jobs.{DeleteFileJob, SemaphoreJob}
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global
 
-final class FileWatchNarrowPatternTest extends Test with ControllerAgentForScalaTest
+final class FileWatchNarrowPatternTest extends OurTestSuite with ControllerAgentForScalaTest
 {
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(workflow)

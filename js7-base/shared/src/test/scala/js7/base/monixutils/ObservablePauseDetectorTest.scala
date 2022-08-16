@@ -1,14 +1,14 @@
 package js7.base.monixutils
 
 import js7.base.monixutils.ObservablePauseDetector.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import monix.eval.Task
 import monix.execution.schedulers.TestScheduler
 import monix.reactive.Observable
 import scala.util.Success
 
-final class ObservablePauseDetectorTest extends Test
+final class ObservablePauseDetectorTest extends OurTestSuite
 {
   private val pausingObservable = Observable.fromIterable(1 to 5)
     .doOnNext(i =>

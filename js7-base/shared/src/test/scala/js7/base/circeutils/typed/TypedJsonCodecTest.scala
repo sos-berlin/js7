@@ -6,14 +6,14 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.typed.TypedJsonCodec.*
 import js7.base.circeutils.typed.TypedJsonCodecTest.*
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.matchers.should.Matchers.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class TypedJsonCodecTest extends Test
+final class TypedJsonCodecTest extends OurTestSuite
 {
   "encode and decode" in {
     testJson[A](A0     , json"""{ "TYPE": "A0" }""")

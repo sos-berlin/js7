@@ -1,6 +1,6 @@
 package js7.core.common
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.Stopwatch.measureTime
 import js7.common.scalautil.xmls.ScalaXMLEventReader
 import js7.common.scalautil.xmls.XmlSources.*
@@ -8,7 +8,7 @@ import js7.common.scalautil.xmls.XmlSources.*
 /**
   * @author Joacim Zschimmer
   */
-final class VariablesXmlParserTest extends Test {
+final class VariablesXmlParserTest extends OurTestSuite {
 
   "variables" in {
     for (variablesXml <- Array(

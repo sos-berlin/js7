@@ -1,9 +1,9 @@
 package js7.base.utils
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.utils.BinarySearch.binarySearch
 
-final class BinarySearchTest extends Test
+final class BinarySearchTest extends OurTestSuite
 {
   "binarySearch" in {
     assert(binarySearch(Vector.empty, 7) == (0, false))

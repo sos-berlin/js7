@@ -1,12 +1,12 @@
 package js7.base.time
 
 import js7.base.monixutils.MonixDeadline.syntax.DeadlineSchedule
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.TimeoutWithSteps.deadlineIterator
 import monix.execution.schedulers.TestScheduler
 
-final class TimeoutWithStepsTest extends Test
+final class TimeoutWithStepsTest extends OurTestSuite
 {
   private val scheduler = TestScheduler()
 

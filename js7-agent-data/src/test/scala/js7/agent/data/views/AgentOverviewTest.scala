@@ -2,7 +2,7 @@ package js7.agent.data.views
 
 import js7.base.circeutils.CirceUtils.*
 import js7.base.system.SystemInformation
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.Timestamp
 import js7.data.system.JavaInformation
 import js7.tester.CirceJsonTester.testJson
@@ -10,7 +10,7 @@ import js7.tester.CirceJsonTester.testJson
 /**
  * @author Joacim Zschimmer
  */
-final class AgentOverviewTest extends Test {
+final class AgentOverviewTest extends OurTestSuite {
 
   "JSON" in {
     testJson(

@@ -1,13 +1,13 @@
 package js7.data.event
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.data.event.EventRequestTest.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class EventRequestTest extends Test {
+final class EventRequestTest extends OurTestSuite {
 
   "toQueryParameters" in {
     assert(EventRequest.singleClass[AEvent](after = EventId(3), timeout = Some(123.s), delay = 500.ms, limit = 999, tornOlder = Some(10.s))

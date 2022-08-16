@@ -1,9 +1,9 @@
 package js7.base.web
 
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 
-final class UriJvmTest extends Test
+final class UriJvmTest extends OurTestSuite
 {
   "port" in {
     assert(Uri("http://").port.left.toOption.get.toString.contains("URI"))

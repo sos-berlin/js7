@@ -1,6 +1,6 @@
 package js7.data.execution.workflow.instructions
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.{TestWallClock, Timestamp}
 import js7.base.utils.ScalaUtils.syntax.*
@@ -15,7 +15,7 @@ import js7.data.workflow.instructions.{ExpectNotices, PostNotices}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 
-final class PostNoticesExecutorTest extends Test
+final class PostNoticesExecutorTest extends OurTestSuite
 {
   private lazy val executorService = new InstructionExecutorService(TestWallClock(clockTimestamp))
 

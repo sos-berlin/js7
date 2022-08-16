@@ -9,13 +9,13 @@ import js7.base.generic.GenericString
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import scala.jdk.CollectionConverters.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class ConfigsTest extends Test
+final class ConfigsTest extends OurTestSuite
 {
   "Config syntax" in {
     assert(TestConfig.getString("string") == "STRING")

@@ -1,12 +1,12 @@
 package js7.base.standards
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import scala.jdk.CollectionConverters.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class Js7NameValidatorTest extends Test
+final class Js7NameValidatorTest extends OurTestSuite
 {
   private val nameValidator = new Js7NameValidator("TEST")
   private def isValid(name: String) = nameValidator.checked(name).isRight

@@ -1,7 +1,7 @@
 package js7.core.cluster
 
 import js7.base.circeutils.CirceUtils.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.data.cluster.ClusterEvent.ClusterNodesAppointed
@@ -12,7 +12,7 @@ import js7.tester.CirceJsonTester.testJson
 /**
   * @author Joacim Zschimmer
   */
-final class ClusterWatchMessageTest extends Test
+final class ClusterWatchMessageTest extends OurTestSuite
 {
   "JSON" - {
     "ClusterWatchEvents" in {

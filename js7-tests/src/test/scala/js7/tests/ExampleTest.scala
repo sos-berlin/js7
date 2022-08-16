@@ -3,7 +3,7 @@ package js7.tests
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.configutils.Configs.*
 import js7.base.problem.Checked.Ops
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
@@ -17,7 +17,7 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.global
 
-final class ExampleTest extends Test with ControllerAgentForScalaTest
+final class ExampleTest extends OurTestSuite with ControllerAgentForScalaTest
 {
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(workflow)

@@ -1,11 +1,11 @@
 package js7.base.utils
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 
 /**
  * @author Joacim Zschimmer
  */
-final class ScalaConcurrentHashMapTest extends Test
+final class ScalaConcurrentHashMapTest extends OurTestSuite
 {
   private val m = new ScalaConcurrentHashMap[Int, String]
 

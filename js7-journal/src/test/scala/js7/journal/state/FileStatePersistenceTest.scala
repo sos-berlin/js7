@@ -15,7 +15,7 @@ import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -41,7 +41,7 @@ import scala.concurrent.Future
 /**
   * @author Joacim Zschimmer
   */
-final class FileStatePersistenceTest extends Test with BeforeAndAfterAll
+final class FileStatePersistenceTest extends OurTestSuite with BeforeAndAfterAll
 {
   coupleScribeWithSlf4j()
 

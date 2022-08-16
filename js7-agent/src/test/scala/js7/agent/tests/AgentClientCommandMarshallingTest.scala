@@ -9,7 +9,7 @@ import js7.agent.data.commands.AgentCommand.{EmergencyStop, ShutDown}
 import js7.agent.tests.AgentClientCommandMarshallingTest.*
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.problem.Checked
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Closer.syntax.*
@@ -24,7 +24,7 @@ import org.scalatest.concurrent.ScalaFutures
  * @author Joacim Zschimmer
  */
 final class AgentClientCommandMarshallingTest
-extends Test with ScalaFutures with AgentTester {
+extends OurTestSuite with ScalaFutures with AgentTester {
 
   override protected def extraAgentModule = new AbstractModule {
     @Provides @Singleton

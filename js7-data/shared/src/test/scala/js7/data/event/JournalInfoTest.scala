@@ -1,10 +1,10 @@
 package js7.data.event
 
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.tester.CirceJsonTester
 
-final class JournalInfoTest extends Test
+final class JournalInfoTest extends OurTestSuite
 {
   "JSON" in {
     CirceJsonTester.testJson(

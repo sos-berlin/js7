@@ -14,7 +14,7 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{autoDeleting, checkRelativePath, copyDirectoryContent, deleteDirectoryRecursively, provideFile, temporaryDirectoryResource, touchFile, withTemporaryDirectory, withTemporaryFile}
 import js7.base.io.file.FileUtilsTest.*
 import js7.base.problem.ProblemException
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import monix.eval.{Coeval, Task}
 import monix.execution.Scheduler.Implicits.traced
@@ -24,7 +24,7 @@ import org.scalatest.matchers.should.Matchers.*
 /**
  * @author Joacim Zschimmer
  */
-final class FileUtilsTest extends Test with BeforeAndAfterAll
+final class FileUtilsTest extends OurTestSuite with BeforeAndAfterAll
 {
   private lazy val path = createTempFile("FileUtilTest-", ".tmp")
 

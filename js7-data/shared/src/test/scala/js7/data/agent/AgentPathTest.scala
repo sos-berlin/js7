@@ -2,9 +2,9 @@ package js7.data.agent
 
 import js7.base.problem.ProblemException
 import js7.base.standards.Js7PathValidatorTest
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 
-final class AgentPathTest extends Test
+final class AgentPathTest extends OurTestSuite
 {
   "AgentPath" in {
     // See NameValidating

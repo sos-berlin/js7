@@ -1,13 +1,13 @@
 package js7.journal.watch
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.common.jsonseq.PositionAnd
 import org.scalatest.matchers.should.Matchers.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class JournalIndexTest extends Test {
+final class JournalIndexTest extends OurTestSuite {
 
   private val index = new JournalIndex(PositionAnd(100, 1), size = 6)
 

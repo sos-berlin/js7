@@ -5,7 +5,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.process.KeyLogin
 import js7.base.log.Logger
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.utils.Collections.implicits.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
@@ -20,7 +20,7 @@ import js7.launcher.forwindows.{WindowsProcessCredential, WindowsProcessTest}
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.windows.WindowsLogonTest.*
 
-final class WindowsLogonTest extends Test with ControllerAgentForScalaTest
+final class WindowsLogonTest extends OurTestSuite with ControllerAgentForScalaTest
 {
   protected def agentPaths = Seq(agentPath)
   protected def items = Seq(workflow)

@@ -4,13 +4,13 @@ import com.typesafe.config.ConfigFactory
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.io.https.HttpsConfig
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.web.Uri
 
 /**
   * @author Joacim Zschimmer
   */
-final class ProviderConfigurationTest extends Test
+final class ProviderConfigurationTest extends OurTestSuite
 {
   "Empty command line" in {
     intercept[NoSuchElementException] { ProviderConfiguration.fromCommandLine(Nil) }

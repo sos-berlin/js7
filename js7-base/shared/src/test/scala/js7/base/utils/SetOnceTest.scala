@@ -1,14 +1,14 @@
 package js7.base.utils
 
 import js7.base.problem.{Problem, ProblemException}
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.utils.SetOnceTest.*
 import monix.execution.atomic.AtomicInt
 
 /**
  * @author Joacim Zschimmer
  */
-final class SetOnceTest extends Test
+final class SetOnceTest extends OurTestSuite
 {
   "SetOnce" in {
     val a = SetOnce[Int]

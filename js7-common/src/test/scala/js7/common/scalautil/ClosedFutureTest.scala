@@ -1,13 +1,13 @@
 package js7.common.scalautil
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.utils.HasCloser
 import scala.util.Success
 
 /**
  * @author Joacim Zschimmer
  */
-final class ClosedFutureTest extends Test {
+final class ClosedFutureTest extends OurTestSuite {
 
   "closed future succeeds" in {
     object o extends HasCloser with ClosedFuture

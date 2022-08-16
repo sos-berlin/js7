@@ -1,13 +1,13 @@
 package js7.data.folder
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data.folder.FolderPathTest.*
 import js7.data.item.VersionedItemPath
 
 /**
   * @author Joacim Zschimmer
   */
-final class FolderPathTest extends Test
+final class FolderPathTest extends OurTestSuite
 {
   "subfolder" in {
     assert(FolderPath("").subfolder("x") == FolderPath(""))

@@ -1,13 +1,13 @@
 package js7.data.item
 
 import js7.base.circeutils.CirceUtils.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.tester.CirceJsonTester.testJson
 
 /**
   * @author Joacim Zschimmer
   */
-final class VersionedItemIdTest extends Test {
+final class VersionedItemIdTest extends OurTestSuite {
 
   "JSON" in {
     testJson[VersionedItemId[APath]](

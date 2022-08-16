@@ -1,13 +1,13 @@
 package js7.data_for_java.order
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data.order.{Order, OrderId}
 import js7.data.workflow.WorkflowPath
 
 /**
   * @author Joacim Zschimmer
   */
-final class JOrderPredicatesTest extends Test
+final class JOrderPredicatesTest extends OurTestSuite
 {
   "JOrderPredicates" in {
     new JOrderPredicatesTester(

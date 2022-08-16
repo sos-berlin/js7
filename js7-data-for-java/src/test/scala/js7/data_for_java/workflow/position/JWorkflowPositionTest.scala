@@ -1,11 +1,11 @@
 package js7.data_for_java.workflow.position
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.BranchId.{Then, fork}
 import js7.data.workflow.position.Position
 
-final class JWorkflowPositionTest extends Test
+final class JWorkflowPositionTest extends OurTestSuite
 {
   "JWorkflowPosition.toString" in {
     val workflowId = WorkflowPath("WORKFLOW") ~ "1.0"

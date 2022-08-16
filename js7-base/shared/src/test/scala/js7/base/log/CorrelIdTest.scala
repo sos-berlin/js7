@@ -6,14 +6,14 @@ import java.util.Base64
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.log.CorrelId.LongCorrelId
 import js7.base.log.CorrelIdTest.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.RichDeadline
 import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.tester.CirceJsonTester.testJson
 import scala.concurrent.duration.Deadline
 import scala.util.Random
 
-final class CorrelIdTest extends Test
+final class CorrelIdTest extends OurTestSuite
 {
   "JSON" in {
     testJson(CorrelId(0xba9876543210L), json""" "uph2VDIQ"  """)

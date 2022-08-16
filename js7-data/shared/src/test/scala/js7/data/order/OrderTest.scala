@@ -5,7 +5,7 @@ import io.circe.Json
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.{Problem, ProblemException}
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.{TimeInterval, Timestamp}
 import js7.base.utils.ScalaUtils.implicitClass
@@ -33,7 +33,7 @@ import scala.reflect.ClassTag
 /**
   * @author Joacim Zschimmer
   */
-final class OrderTest extends Test
+final class OrderTest extends OurTestSuite
 {
   private val testOrder = Order(
     OrderId("ID"),

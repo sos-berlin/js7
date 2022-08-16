@@ -1,12 +1,12 @@
 package js7.common.http
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.common.http.Uris.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class UrisTest extends Test {
+final class UrisTest extends OurTestSuite {
 
   "encodePath" in {
     assert(encodePath("") == "")

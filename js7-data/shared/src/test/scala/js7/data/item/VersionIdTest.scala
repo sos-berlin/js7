@@ -4,13 +4,13 @@ import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.problem.ProblemException
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.tester.CirceJsonTester.testJson
 
 /**
   * @author Joacim Zschimmer
   */
-final class VersionIdTest extends Test
+final class VersionIdTest extends OurTestSuite
 {
   "JSON" in {
     testJson(VersionId("X"), json""" "X" """)

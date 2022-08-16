@@ -6,7 +6,7 @@ import java.util.concurrent.TimeUnit.SECONDS
 import java.util.concurrent.TimeoutException
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.configutils.Configs.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -31,7 +31,7 @@ import scala.concurrent.CancellationException
 import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Try}
 
-final class JControllerProxyTest extends Test with DirectoryProviderForScalaTest
+final class JControllerProxyTest extends OurTestSuite with DirectoryProviderForScalaTest
 {
   override protected def controllerConfig = config"""
     js7.auth.users {

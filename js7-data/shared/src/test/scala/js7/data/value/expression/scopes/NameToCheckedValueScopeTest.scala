@@ -1,13 +1,13 @@
 package js7.data.value.expression.scopes
 
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data.value.expression.Expression.NamedValue
 import js7.data.value.expression.{Scope, ValueSearch}
 import js7.data.value.{NumberValue, StringValue}
 import scala.collection.MapView
 
-final class NameToCheckedValueScopeTest extends Test
+final class NameToCheckedValueScopeTest extends OurTestSuite
 {
   private var a = 0
   private implicit lazy val scope: Scope =

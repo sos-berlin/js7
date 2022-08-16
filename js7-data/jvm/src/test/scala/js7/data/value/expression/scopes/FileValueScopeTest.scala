@@ -10,7 +10,7 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
@@ -25,7 +25,7 @@ import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.Deadline.now
 import scala.util.Random
 
-final class FileValueScopeTest extends Test
+final class FileValueScopeTest extends OurTestSuite
 {
   "IOException" in {
     val dir = Paths.get("/tmp/FileValueScopeTest-NonExistant")

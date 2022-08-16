@@ -1,12 +1,12 @@
 package js7.provider.scheduledorder.oldruntime
 
 import java.time.{Instant, LocalDate, LocalDateTime, LocalTime, ZoneId}
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 
 /**
   * @author Joacim Zschimmer
   */
-final class ExtendedLocalTimeTest extends Test {
+final class ExtendedLocalTimeTest extends OurTestSuite {
 
   "fromString" - {
     "Invalid times" in {

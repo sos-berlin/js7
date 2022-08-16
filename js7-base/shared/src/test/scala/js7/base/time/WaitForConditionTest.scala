@@ -1,7 +1,7 @@
 package js7.base.time
 
 import js7.base.monixutils.MonixDeadline.syntax.DeadlineSchedule
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.*
 import js7.base.time.WaitForConditionTest.*
@@ -9,7 +9,7 @@ import monix.execution.schedulers.TestScheduler
 import org.scalatest.matchers.should.Matchers.*
 import scala.concurrent.duration.*
 
-final class WaitForConditionTest extends Test
+final class WaitForConditionTest extends OurTestSuite
 {
   "retryUntil" - {
     class Fun(n: Int) {

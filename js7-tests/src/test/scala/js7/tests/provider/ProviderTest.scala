@@ -15,7 +15,7 @@ import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isMac
 import js7.base.thread.Futures.implicits.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -43,7 +43,7 @@ import scala.concurrent.duration.Deadline.now
 /**
   * @author Joacim Zschimmer
   */
-final class ProviderTest extends Test with ControllerAgentForScalaTest
+final class ProviderTest extends OurTestSuite with ControllerAgentForScalaTest
 {
   override protected def doNotAddItems = true
   protected val agentPaths = agentPath :: Nil

@@ -5,7 +5,7 @@ import js7.base.configutils.Configs.*
 import js7.base.io.file.FileUtils.{touchFile, withTemporaryFile}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.Problems.ItemIsStillReferencedProblem
@@ -36,7 +36,7 @@ import monix.reactive.Observable
 import scala.collection.immutable.Queue
 import scala.util.Random
 
-final class LockTest extends Test with ControllerAgentForScalaTest with BlockingItemUpdater
+final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
 {
   protected val agentPaths = Seq(agentPath, bAgentPath)
   protected val items = Seq(

@@ -2,7 +2,7 @@ package js7.provider.scheduledorder
 
 import java.time.{Duration, ZoneId}
 import js7.base.problem.Checked.Ops
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.common.scalautil.xmls.XmlSources.*
 import js7.data.value.StringValue
 import js7.data.workflow.WorkflowPath
@@ -12,7 +12,7 @@ import js7.provider.scheduledorder.oldruntime.{OldSchedule, PeriodSeq, RepeatPer
 /**
   * @author Joacim Zschimmer
   */
-final class ScheduledOrderGeneratorXmlParserTest extends Test {
+final class ScheduledOrderGeneratorXmlParserTest extends OurTestSuite {
 
   "parse" in {
     val id = ScheduledOrderGeneratorPath("TEST") ~ "VERSION"

@@ -17,7 +17,7 @@ import js7.base.configutils.Configs.*
 import js7.base.generic.SecretString
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime.*
 import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
@@ -33,7 +33,7 @@ import scala.language.implicitConversions
 /**
   * @author Joacim Zschimmer
   */
-final class GateKeeperTest extends Test with ScalatestRouteTest
+final class GateKeeperTest extends OurTestSuite with ScalatestRouteTest
 {
   coupleScribeWithSlf4j()
 

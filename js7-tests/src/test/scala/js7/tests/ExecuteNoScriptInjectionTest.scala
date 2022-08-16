@@ -2,7 +2,7 @@ package js7.tests
 
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Checked.Ops
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data.agent.AgentPath
 import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{FreshOrder, OrderId, Outcome}
@@ -12,7 +12,7 @@ import js7.tests.ExecuteNoScriptInjectionTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 
-final class ExecuteNoScriptInjectionTest extends Test with ControllerAgentForScalaTest
+final class ExecuteNoScriptInjectionTest extends OurTestSuite with ControllerAgentForScalaTest
 {
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(scriptWorkflow, absolutePathWorkflow)

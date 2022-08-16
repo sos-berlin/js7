@@ -1,9 +1,9 @@
 package js7.common.auth
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.common.auth.Hasher.sha512
 
-final class HasherTest extends Test
+final class HasherTest extends OurTestSuite
 {
   "SHA-512" in {
     assert(sha512.apply("") ==

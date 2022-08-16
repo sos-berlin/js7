@@ -6,7 +6,7 @@ import js7.base.io.file.FileUtils.implicits.*
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.process.Pid
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.HasCloser
@@ -19,7 +19,7 @@ import org.scalatest.BeforeAndAfterAll
   *
   * @author Joacim Zschimmer
   */
-final class CrashKillScriptTest extends Test with HasCloser with BeforeAndAfterAll
+final class CrashKillScriptTest extends OurTestSuite with HasCloser with BeforeAndAfterAll
 {
   override protected def afterAll() = closer.close()
 

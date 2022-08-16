@@ -1,12 +1,12 @@
 package js7.common.message
 
 import js7.base.problem.{ProblemCode, TestCodeProblem}
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 
 /**
   * @author Joacim Zschimmer
   */
-final class ProblemCodeMessagesTest extends Test
+final class ProblemCodeMessagesTest extends OurTestSuite
 {
   ProblemCodeMessages.initialize()
 

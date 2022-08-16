@@ -1,8 +1,8 @@
 package js7.base.problem
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 
-final class ProblemExceptionTest extends Test
+final class ProblemExceptionTest extends OurTestSuite
 {
   "NoStackStrace" in {
     assert(Problem("PROBLEM").throwable.isInstanceOf[ProblemException.NoStackTrace])

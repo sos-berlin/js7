@@ -3,7 +3,7 @@ package js7.data.execution.workflow.instructions
 import java.time.ZoneOffset.UTC
 import java.time.{LocalTime, ZoneId}
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.ScalaTime.*
 import js7.base.time.{AdmissionTimeScheme, AlwaysPeriod, DailyPeriod, TimeInterval, Timestamp}
@@ -14,7 +14,7 @@ import js7.data.workflow.instructions.Schedule.{Periodic, Scheme, Ticking}
 import js7.data.workflow.instructions.ScheduleTest.exampleSchedule
 import scala.concurrent.duration.*
 
-final class ScheduleCalculatorTest extends Test with ScheduleTester
+final class ScheduleCalculatorTest extends OurTestSuite with ScheduleTester
 {
   coupleScribeWithSlf4j()
 

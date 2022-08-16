@@ -5,13 +5,13 @@ import cats.data.Validated.{Invalid, Valid}
 import cats.instances.int.*
 import cats.instances.string.*
 import js7.base.problem.{Problem, ProblemException}
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.utils.CatsUtils.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class CatsUtilsTest extends Test
+final class CatsUtilsTest extends OurTestSuite
 {
   "combine" in {
     assert(combine(1, 2, 3, 4) == 10)

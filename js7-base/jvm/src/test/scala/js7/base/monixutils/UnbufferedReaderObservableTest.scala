@@ -1,12 +1,12 @@
 package js7.base.monixutils
 
 import java.io.{PipedReader, PipedWriter}
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.execution.schedulers.TestScheduler
 
-final class UnbufferedReaderObservableTest extends Test
+final class UnbufferedReaderObservableTest extends OurTestSuite
 {
   "UnbufferedReaderObservable" in {
     val scheduler = TestScheduler()

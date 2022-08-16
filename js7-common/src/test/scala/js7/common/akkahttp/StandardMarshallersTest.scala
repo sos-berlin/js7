@@ -12,7 +12,7 @@ import io.circe.Encoder
 import io.circe.generic.semiauto.deriveEncoder
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.common.akkahttp.CirceJsonSupport.*
@@ -25,7 +25,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 /**
   * @author Joacim Zschimmer
   */
-final class StandardMarshallersTest extends Test with BeforeAndAfterAll {
+final class StandardMarshallersTest extends OurTestSuite with BeforeAndAfterAll {
 
   implicit private val actorSystem: ActorSystem =
     newActorSystem("StandardMarshallersTest")

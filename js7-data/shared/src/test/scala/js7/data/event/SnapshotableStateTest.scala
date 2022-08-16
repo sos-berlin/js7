@@ -1,7 +1,7 @@
 package js7.data.event
 import js7.base.auth.UserId
 import js7.base.problem.Checked.Ops
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.data.cluster.{ClusterEvent, ClusterSetting, ClusterState, ClusterTiming}
@@ -13,7 +13,7 @@ import js7.data.node.NodeId
 /**
   * @author Joacim Zschimmer
   */
-final class SnapshotableStateTest extends Test
+final class SnapshotableStateTest extends OurTestSuite
 {
   private var s = MyState.empty
 

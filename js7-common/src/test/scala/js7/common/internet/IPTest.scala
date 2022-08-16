@@ -2,13 +2,13 @@ package js7.common.internet
 
 import java.net.{InetAddress, InetSocketAddress, UnknownHostException}
 import js7.base.convert.As.convert
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.common.internet.IP.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class IPTest extends Test {
+final class IPTest extends OurTestSuite {
 
   "InetAddress" in {
     intercept[IllegalArgumentException] { convert[String, InetAddress]("") }

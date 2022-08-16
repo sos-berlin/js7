@@ -1,13 +1,13 @@
 package js7.base.generic
 
 import java.lang.System.nanoTime
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import scala.util.Random
 
 /**
   * @author Joacim Zschimmer
   */
-final class SecretStringTest extends Test
+final class SecretStringTest extends OurTestSuite
 {
   "provideCharArray deletes provided characters" in {
     var a: Array[Char] = null

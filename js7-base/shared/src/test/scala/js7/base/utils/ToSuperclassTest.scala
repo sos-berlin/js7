@@ -1,10 +1,10 @@
 package js7.base.utils
 
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import scala.collection.immutable.HashSet
 
-final class ToSuperclassTest extends Test
+final class ToSuperclassTest extends OurTestSuite
 {
   "checked" in {
     val superclasses = Set[Class[? <: Iterable[?]]](

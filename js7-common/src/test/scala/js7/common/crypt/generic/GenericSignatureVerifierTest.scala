@@ -7,13 +7,13 @@ import js7.base.data.ByteArray
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.problem.Checked.Ops
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.common.crypt.pgp.{PgpSigner, PgpTest}
 
 /**
   * @author Joacim Zschimmer
   */
-final class GenericSignatureVerifierTest extends Test
+final class GenericSignatureVerifierTest extends OurTestSuite
 {
   "Directory of public keys (recommended usage)" in {
     withTemporaryDirectory("GenericSignatureVerifierTest-") { directory =>

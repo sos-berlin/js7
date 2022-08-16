@@ -6,13 +6,13 @@ import akka.http.scaladsl.model.{HttpEntity, Uri}
 import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.common.akkahttp.web.auth.CSRF.forbidCSRF
 
 /**
   * @author Joacim Zschimmer
   */
-final class CSRFTest extends Test with ScalatestRouteTest {
+final class CSRFTest extends OurTestSuite with ScalatestRouteTest {
 
   private val route: Route =
     forbidCSRF {

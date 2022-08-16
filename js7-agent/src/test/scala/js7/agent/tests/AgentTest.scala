@@ -13,7 +13,7 @@ import js7.base.io.file.FileUtils.WorkingDirectory
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
@@ -35,7 +35,7 @@ import monix.execution.Scheduler.Implicits.traced
 /**
   * @author Joacim Zschimmer
   */
-final class AgentTest extends Test with AgentTester
+final class AgentTest extends OurTestSuite with AgentTester
 {
   "work/http-uri" in {
     assert((agentConfiguration.workDirectory / "http-uri").contentString == s"${agent.localUri}/agent")

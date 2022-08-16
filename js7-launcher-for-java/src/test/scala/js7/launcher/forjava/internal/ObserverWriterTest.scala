@@ -1,12 +1,12 @@
 package js7.launcher.forjava.internal
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime.*
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.subjects.PublishSubject
 
-final class ObserverWriterTest extends Test
+final class ObserverWriterTest extends OurTestSuite
 {
   "ObserverWriter" in {
     val subject = PublishSubject[String]()

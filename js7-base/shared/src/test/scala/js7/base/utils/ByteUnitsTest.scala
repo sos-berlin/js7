@@ -1,12 +1,12 @@
 package js7.base.utils
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.utils.ByteUnits.{formatNumber, toKBGB, toKiBGiB, toMB}
 
 /**
   * @author Joacim Zschimmer
   */
-final class ByteUnitsTest extends Test
+final class ByteUnitsTest extends OurTestSuite
 {
   "formatNumber" in {
     for (i <- 0 to 9) {

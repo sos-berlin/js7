@@ -5,7 +5,7 @@ import java.time.ZoneId
 import javax.inject.Singleton
 import js7.base.configutils.Configs.*
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.ScalaTime.DurationRichInt
@@ -30,7 +30,7 @@ import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 
-final class CalendarTest extends Test with ControllerAgentForScalaTest
+final class CalendarTest extends OurTestSuite with ControllerAgentForScalaTest
 {
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(calendar, workflow)

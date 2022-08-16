@@ -1,7 +1,7 @@
 package js7.data.value.expression
 
 import js7.base.problem.{Checked, Problem}
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data.job.JobResourcePath
 import js7.data.value.ValueType.{MissingValueProblem, UnexpectedValueTypeProblem}
 import js7.data.value.expression.Expression.*
@@ -14,7 +14,7 @@ import org.scalactic.source
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks.*
 import scala.collection.MapView
 
-final class ExpressionTest extends Test
+final class ExpressionTest extends OurTestSuite
 {
   "NamedValue expressions" - {
     implicit val scope: Scope =

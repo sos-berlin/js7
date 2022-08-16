@@ -1,11 +1,11 @@
 package js7.data_for_java.common
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data_for_java.common.MoreJavaConverters.MapViewHasAsJava
 import scala.collection.{MapView, mutable}
 import scala.jdk.CollectionConverters.*
 
-final class JMapViewWrapperTest extends Test
+final class JMapViewWrapperTest extends OurTestSuite
 {
   "test" in {
     assert(MapView.empty.asJava.isEmpty)

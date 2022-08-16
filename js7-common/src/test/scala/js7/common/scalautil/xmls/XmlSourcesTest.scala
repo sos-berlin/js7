@@ -7,14 +7,14 @@ import javax.xml.namespace.QName
 import javax.xml.stream.XMLInputFactory
 import javax.xml.stream.events.{EndDocument, StartDocument}
 import javax.xml.transform.Source
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.common.scalautil.xmls.XmlSources.*
 import org.scalatest.matchers.should.Matchers.*
 
 /**
  * @author Joacim Zschimmer
  */
-final class XmlSourcesTest extends Test {
+final class XmlSourcesTest extends OurTestSuite {
 
   "stringToSource" in {
     check("<A B='1'/>")

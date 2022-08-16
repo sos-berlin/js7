@@ -8,7 +8,7 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{deleteDirectoryRecursively, touchFile}
 import js7.base.io.process.Processes.ShellFileExtension
 import js7.base.system.OperatingSystem.isUnix
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import org.scalatest.BeforeAndAfterAll
 
 /**
@@ -16,7 +16,7 @@ import org.scalatest.BeforeAndAfterAll
   *
   * @author Joacim Zschimmer
   */
-final class ProcessKillScriptProviderTest extends Test with BeforeAndAfterAll {
+final class ProcessKillScriptProviderTest extends OurTestSuite with BeforeAndAfterAll {
 
   private lazy val tmp = createTempDirectory("test-")
   private val expectedFile = tmp / s"kill_task$ShellFileExtension"

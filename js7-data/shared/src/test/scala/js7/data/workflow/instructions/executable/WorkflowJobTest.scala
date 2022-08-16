@@ -6,7 +6,7 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.io.process.{KeyLogin, ReturnCode}
 import js7.base.problem.Problems.InvalidNameProblem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.{AdmissionTimeScheme, WeekdayPeriod}
 import js7.data.agent.AgentPath
@@ -18,7 +18,7 @@ import js7.tester.CirceJsonTester.testJson
 /**
   * @author Joacim Zschimmer
   */
-final class WorkflowJobTest extends Test
+final class WorkflowJobTest extends OurTestSuite
 {
   "JSON" - {
     "default" in {

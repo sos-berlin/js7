@@ -7,9 +7,9 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.io.process.Processes.runProcess
 import js7.base.problem.Checked.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 
-final class X509CertTest extends Test
+final class X509CertTest extends OurTestSuite
 {
   "signerId" in {
     withTemporaryDirectory("X509CertTest-") { dir =>

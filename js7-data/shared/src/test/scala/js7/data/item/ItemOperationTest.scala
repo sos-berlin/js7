@@ -2,7 +2,7 @@ package js7.data.item
 
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.crypt.silly.SillySigner
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data.controller.ControllerState
 import js7.data.controller.ControllerState.*
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVersion, DeleteSimple, RemoveVersioned}
@@ -10,7 +10,7 @@ import js7.data.lock.{Lock, LockPath}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tester.CirceJsonTester.testJson
 
-final class ItemOperationTest extends Test
+final class ItemOperationTest extends OurTestSuite
 {
   "JSON" - {
     "AddOrChangeSimple" in {

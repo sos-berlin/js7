@@ -1,11 +1,11 @@
 package js7.journal.recover
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 
 /**
   * @author Joacim Zschimmer
   */
-final class StateRecovererTest extends Test
+final class StateRecovererTest extends OurTestSuite
 {
   //import StateRecovererTest.snapshotObjectJsonCodec
   //import StateRecovererTest.eventJsonCodec

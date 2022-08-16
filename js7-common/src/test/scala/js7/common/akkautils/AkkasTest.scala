@@ -2,7 +2,7 @@ package js7.common.akkautils
 
 import akka.actor.{Actor, ActorPath, ActorSystem, Props}
 import akka.util.ByteString
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.common.akkautils.Akkas.*
@@ -13,7 +13,7 @@ import scala.util.Random
 /**
  * @author Joacim Zschimmer
  */
-final class AkkasTest extends Test
+final class AkkasTest extends OurTestSuite
 {
   "byteStringToTruncatedString" in {
     val byteString = ByteString(0, 1, 30, 31)

@@ -3,7 +3,7 @@ package js7.data.agent
 import java.util.UUID
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data.delegate.DelegateCouplingState
 import js7.data.event.JournalId
 import js7.data.item.ItemRevision
@@ -11,7 +11,7 @@ import js7.data.platform.PlatformInfo
 import js7.data.subagent.SubagentId
 import js7.tester.CirceJsonTester.testJson
 
-final class AgentRefStateTest extends Test
+final class AgentRefStateTest extends OurTestSuite
 {
   "JSON" in {
     testJson(

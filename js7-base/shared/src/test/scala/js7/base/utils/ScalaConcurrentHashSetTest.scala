@@ -1,11 +1,11 @@
 package js7.base.utils
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 
 /**
  * @author Joacim Zschimmer
  */
-final class ScalaConcurrentHashSetTest extends Test
+final class ScalaConcurrentHashSetTest extends OurTestSuite
 {
   private val m = new ScalaConcurrentHashSet[Int]
 

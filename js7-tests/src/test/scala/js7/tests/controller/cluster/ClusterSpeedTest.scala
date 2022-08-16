@@ -1,7 +1,7 @@
 package js7.tests.controller.cluster
 
 import js7.base.problem.Checked.Ops
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
@@ -17,7 +17,7 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import scala.concurrent.duration.Deadline.now
 
-final class ClusterSpeedTest extends Test with ControllerClusterForScalaTest
+final class ClusterSpeedTest extends OurTestSuite with ControllerClusterForScalaTest
 {
   val items = Seq(workflow)
 

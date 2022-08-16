@@ -1,6 +1,6 @@
 package js7.controller.client
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.data.event.{EventRequest, JournalPosition}
@@ -10,7 +10,7 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-final class ControllerUrisTest extends Test
+final class ControllerUrisTest extends OurTestSuite
 {
   private val controllerUris = ControllerUris(Uri("https://example.com/controller"))
 

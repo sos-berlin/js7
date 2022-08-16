@@ -2,7 +2,7 @@ package js7.data.execution.workflow.instructions
 
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Checked.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.WallClock
 import js7.data.agent.AgentPath
 import js7.data.execution.workflow.instructions.TryExecutorTest.*
@@ -21,7 +21,7 @@ import js7.tester.CirceJsonTester.testJson
 /**
   * @author Joacim Zschimmer
   */
-final class TryExecutorTest extends Test
+final class TryExecutorTest extends OurTestSuite
 {
   private val tryExecutor = new TryExecutor(new InstructionExecutorService(WallClock))
   private lazy val stateView = TestStateView.of(

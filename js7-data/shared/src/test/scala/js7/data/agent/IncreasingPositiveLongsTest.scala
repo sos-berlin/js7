@@ -1,12 +1,12 @@
 package js7.data.agent
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import org.scalatest.matchers.should.Matchers.*
 
 /**
  * @author Joacim Zschimmer
  */
-final class IncreasingPositiveLongsTest extends Test
+final class IncreasingPositiveLongsTest extends OurTestSuite
 {
   "Only positives" in {
     val iterator = new IncreasingPositiveLongs()

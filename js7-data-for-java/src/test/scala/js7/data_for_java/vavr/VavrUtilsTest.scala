@@ -2,13 +2,13 @@ package js7.data_for_java.vavr
 
 import io.vavr.control.Either as VEither
 import js7.base.problem.{Problem, ProblemException}
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data_for_java.vavr.VavrUtils.getOrThrow
 
 /**
   * @author Joacim Zschimmer
   */
-final class VavrUtilsTest extends Test
+final class VavrUtilsTest extends OurTestSuite
 {
   "getOrThrow" - {
     "Left" in {

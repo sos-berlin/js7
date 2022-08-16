@@ -3,7 +3,7 @@ package js7.tests.controller.cluster
 import js7.base.auth.Admission
 import js7.base.configutils.Configs.RichConfig
 import js7.base.problem.Checked.Ops
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.common.configuration.Js7Configuration
@@ -25,7 +25,7 @@ import js7.tests.testenv.ControllerClusterForScalaTest.assertEqualJournalFiles
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 
-final class BigJsonClusterTest extends Test with ControllerClusterForScalaTest
+final class BigJsonClusterTest extends OurTestSuite with ControllerClusterForScalaTest
 {
   protected val items = Seq(workflow)
   override protected val clusterTiming = ClusterTiming(1.s, 10.s)

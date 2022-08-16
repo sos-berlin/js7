@@ -1,14 +1,14 @@
 package js7.data.subagent
 
 import js7.base.circeutils.CirceUtils.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.web.Uri
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerState.inventoryItemJsonCodec
 import js7.data.item.{InventoryItem, ItemRevision}
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
-final class SubagentItemTest extends Test
+final class SubagentItemTest extends OurTestSuite
 {
   "JSON" in {
     testJson[InventoryItem](

@@ -3,13 +3,13 @@ package js7.journal.files
 import java.nio.file.Files.{createTempFile, delete, size}
 import java.nio.file.Paths
 import js7.base.io.file.FileUtils.syntax.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.journal.files.JournalFile.{anyJournalFilePattern, garbagePattern}
 
 /**
   * @author Joacim Zschimmer
   */
-final class JournalFileTest extends Test
+final class JournalFileTest extends OurTestSuite
 {
   "properLength" in {
     val file = createTempFile("JournalFileTest-", ".tmp")

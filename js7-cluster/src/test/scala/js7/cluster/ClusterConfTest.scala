@@ -3,7 +3,7 @@ package js7.cluster
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.configutils.Configs.*
 import js7.base.generic.SecretString
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.common.http.configuration.RecouplingStreamReaderConf
@@ -14,7 +14,7 @@ import js7.data.node.NodeId
 /**
   * @author Joacim Zschimmer
   */
-final class ClusterConfTest extends Test
+final class ClusterConfTest extends OurTestSuite
 {
   ProblemCodeMessages.initialize()
 

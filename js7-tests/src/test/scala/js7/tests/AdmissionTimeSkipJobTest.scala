@@ -5,7 +5,7 @@ import java.time.DayOfWeek.{FRIDAY, THURSDAY}
 import java.time.{LocalTime, ZoneId}
 import javax.inject.Singleton
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.ScalaTime.*
@@ -26,7 +26,7 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.global
 
-final class AdmissionTimeSkipJobTest extends Test with ControllerAgentForScalaTest
+final class AdmissionTimeSkipJobTest extends OurTestSuite with ControllerAgentForScalaTest
 {
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]

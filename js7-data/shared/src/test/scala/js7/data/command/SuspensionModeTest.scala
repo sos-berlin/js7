@@ -1,7 +1,7 @@
 package js7.data.command
 
 import js7.base.circeutils.CirceUtils.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data.item.VersionId
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
@@ -10,7 +10,7 @@ import js7.tester.CirceJsonTester.testJson
 /**
   * @author Joacim Zschimmer
   */
-final class SuspensionModeTest extends Test
+final class SuspensionModeTest extends OurTestSuite
 {
   "JSON" - {
     "SuspensionMode(Kill())" in {

@@ -4,7 +4,7 @@ import cats.instances.vector.*
 import cats.syntax.traverse.*
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Checked.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
@@ -24,7 +24,7 @@ import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 
-final class ForkListRecoveryTest extends Test with DirectoryProviderForScalaTest
+final class ForkListRecoveryTest extends OurTestSuite with DirectoryProviderForScalaTest
 {
   override protected val agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = yes

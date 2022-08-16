@@ -2,7 +2,7 @@ package js7.data.order
 
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.Timestamp
 import js7.data.value.{BooleanValue, ListValue, NumberValue, StringValue}
 import js7.data.workflow.WorkflowPath
@@ -12,7 +12,7 @@ import js7.tester.CirceJsonTester.testJson
 /**
   * @author Joacim Zschimmer
   */
-final class FreshOrderTest extends Test
+final class FreshOrderTest extends OurTestSuite
 {
   "JSON" in {
     testJson(

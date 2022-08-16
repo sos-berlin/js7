@@ -4,14 +4,14 @@ import io.circe.Json
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data.event.KeyedEventTest.*
 import js7.tester.CirceJsonTester.testJson
 
 /**
   * @author Joacim Zschimmer
   */
-final class KeyedEventTest extends Test {
+final class KeyedEventTest extends OurTestSuite {
 
   "KeyedEvent apply 1" in {
     val e = KeyedEvent[StringEvent](100, StringEvent("HUNDRED"))

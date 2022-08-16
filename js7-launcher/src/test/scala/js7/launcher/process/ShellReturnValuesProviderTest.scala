@@ -4,10 +4,10 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.exists
 import js7.base.io.file.FileUtils.*
 import js7.base.io.file.FileUtils.syntax.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data.value.{NamedValues, StringValue}
 
-final class ShellReturnValuesProviderTest extends Test
+final class ShellReturnValuesProviderTest extends OurTestSuite
 {
   "ShellReturnValuesProvider" in {
     withTemporaryDirectory("ShellReturnValuesProviderTest-") { dir =>

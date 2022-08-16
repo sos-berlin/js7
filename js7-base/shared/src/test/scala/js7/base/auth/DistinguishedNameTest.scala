@@ -2,12 +2,12 @@ package js7.base.auth
 
 import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 
 /**
   * @author Joacim Zschimmer
   */
-final class DistinguishedNameTest extends Test
+final class DistinguishedNameTest extends OurTestSuite
 {
   "check" in {
     assert(DistinguishedName.checked("") == Left(EmptyStringProblem("DistinguishedName")))

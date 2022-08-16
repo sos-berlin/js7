@@ -1,6 +1,6 @@
 package js7.base.thread
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.thread.IOExecutor.ioFuture
@@ -10,7 +10,7 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-final class IOExecutorTest extends Test
+final class IOExecutorTest extends OurTestSuite
 {
   "Success" in {
     assert(ioFuture(7).await(10.seconds) == 7)

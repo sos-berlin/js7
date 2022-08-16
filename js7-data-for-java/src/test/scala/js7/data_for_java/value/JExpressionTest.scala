@@ -1,10 +1,10 @@
 package js7.data_for_java.value
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.ExpressionParser.parseExpression
 
-final class JExpressionTest extends Test
+final class JExpressionTest extends OurTestSuite
 {
   "quoteString" in {
     def check(string: String, quotedString: String) = {

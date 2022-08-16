@@ -2,7 +2,7 @@ package js7.tests.subagent
 
 import java.util.concurrent.TimeoutException
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
@@ -22,7 +22,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
 
-final class SubagentDisabledTest extends Test with SubagentTester
+final class SubagentDisabledTest extends OurTestSuite with SubagentTester
 {
   override protected def agentConfig = config"""
     js7.auth.subagents.A-SUBAGENT = "AGENT-PASSWORD"

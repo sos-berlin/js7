@@ -1,11 +1,11 @@
 package js7.launcher
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime.*
 import monix.reactive.subjects.PublishSubject
 
-final class StdObserversTest extends Test
+final class StdObserversTest extends OurTestSuite
 {
   "errorLine keepLastErrLine=false" in {
     val out = PublishSubject[String]()

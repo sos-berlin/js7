@@ -4,13 +4,13 @@ import cats.effect.SyncIO
 import java.io.{BufferedReader, InputStreamReader}
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryFile
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.common.scalautil.JavaSyncResources.fileAsResource
 
 /**
   * @author Joacim Zschimmer
   */
-final class JavaSyncResourcesTest extends Test
+final class JavaSyncResourcesTest extends OurTestSuite
 {
   "use" in {
     withTemporaryFile { file =>

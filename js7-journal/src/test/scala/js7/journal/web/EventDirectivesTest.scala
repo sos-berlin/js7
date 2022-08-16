@@ -6,7 +6,7 @@ import akka.http.scaladsl.testkit.ScalatestRouteTest
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.{Event, EventId, EventRequest, KeyedEvent, KeyedEventTypedJsonCodec}
@@ -17,7 +17,7 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-final class EventDirectivesTest extends Test with ScalatestRouteTest
+final class EventDirectivesTest extends OurTestSuite with ScalatestRouteTest
 {
   coupleScribeWithSlf4j()
 

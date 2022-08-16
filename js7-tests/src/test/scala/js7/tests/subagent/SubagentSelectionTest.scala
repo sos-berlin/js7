@@ -3,7 +3,7 @@ package js7.tests.subagent
 import cats.syntax.traverse.*
 import js7.agent.RunningAgent
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
@@ -26,7 +26,7 @@ import js7.tests.subagent.SubagentSelectionTest.*
 import monix.execution.Scheduler
 import monix.reactive.Observable
 
-final class SubagentSelectionTest extends Test with SubagentTester
+final class SubagentSelectionTest extends OurTestSuite with SubagentTester
 {
   override protected def agentConfig = config"""
     js7.auth.subagents.A-SUBAGENT = "AGENT-PASSWORD"

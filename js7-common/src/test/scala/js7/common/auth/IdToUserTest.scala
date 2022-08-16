@@ -5,7 +5,7 @@ import js7.base.auth.{DistinguishedName, SimpleUser, UserId}
 import js7.base.configutils.Configs.*
 import js7.base.generic.SecretString
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.common.auth.IdToUser.RawUserAccount
@@ -17,7 +17,7 @@ import scala.jdk.CollectionConverters.*
 /**
   * @author Joacim Zschimmer
   */
-final class IdToUserTest extends Test
+final class IdToUserTest extends OurTestSuite
 {
   "Unknown user" in {
     assert(idToUser(UserId("UNKNOWN")) == None)

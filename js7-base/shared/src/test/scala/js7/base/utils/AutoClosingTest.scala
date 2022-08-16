@@ -1,11 +1,11 @@
 package js7.base.utils
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.utils.AutoClosing.*
 import js7.base.utils.AutoClosingTest.*
 import org.scalatest.matchers.should.Matchers.*
 
-final class AutoClosingTest extends Test
+final class AutoClosingTest extends OurTestSuite
 {
   "autoClosing" - {
     "without Exception" in {

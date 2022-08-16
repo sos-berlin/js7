@@ -1,9 +1,9 @@
 package js7.base.utils
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import org.scalatest.matchers.should.Matchers.*
 
-final class HasCloserTest extends Test {
+final class HasCloserTest extends OurTestSuite {
 
   "onClose" in {
     class A extends HasCloser {

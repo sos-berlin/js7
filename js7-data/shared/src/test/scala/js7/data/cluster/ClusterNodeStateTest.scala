@@ -1,14 +1,14 @@
 package js7.data.cluster
 
 import js7.base.circeutils.CirceUtils.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data.node.NodeId
 import js7.tester.CirceJsonTester.testJson
 
 /**
   * @author Joacim Zschimmer
   */
-final class ClusterNodeStateTest extends Test
+final class ClusterNodeStateTest extends OurTestSuite
 {
   "JSON" in {
     testJson[ClusterNodeState](

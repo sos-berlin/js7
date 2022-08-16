@@ -2,13 +2,13 @@ package js7.base.convert
 
 import js7.base.convert.ConvertiblePartialFunction.MissingConfigurationKeyProblem
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import org.scalatest.matchers.should.Matchers.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class ConvertiblePartialFunctionTest extends Test {
+final class ConvertiblePartialFunctionTest extends OurTestSuite {
 
   "as with default" in {
     assert(convertible("KEY" -> "111").as[Int]("KEY", default = 999) == 111)

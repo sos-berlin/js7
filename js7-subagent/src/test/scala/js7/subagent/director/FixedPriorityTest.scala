@@ -1,8 +1,8 @@
 package js7.subagent.director
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 
-final class FixedPriorityTest extends Test
+final class FixedPriorityTest extends OurTestSuite
 {
   "next, same priority" in {
     def isEquivalent(i: Int, j: Int) = true

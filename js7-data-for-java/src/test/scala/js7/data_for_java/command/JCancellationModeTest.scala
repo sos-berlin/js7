@@ -2,7 +2,7 @@ package js7.data_for_java.command
 
 import java.util.Arrays.asList
 import java.util.Optional
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data.command.CancellationMode
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
@@ -10,7 +10,7 @@ import js7.data_for_java.vavr.VavrUtils.getOrThrow
 import js7.data_for_java.workflow.JWorkflowId
 import js7.data_for_java.workflow.position.{JPosition, JWorkflowPosition}
 
-final class JCancellationModeTest extends Test
+final class JCancellationModeTest extends OurTestSuite
 {
   "JCancellationMode" in {
     assert(JCancellationMode.freshOnly.asScala == CancellationMode.FreshOnly)

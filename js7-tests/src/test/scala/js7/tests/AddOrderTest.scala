@@ -4,7 +4,7 @@ import com.google.inject.{AbstractModule, Provides}
 import javax.inject.Singleton
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Problems.DuplicateKey
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.{AlarmClock, TestAlarmClock, Timestamp}
 import js7.data.agent.AgentPath
 import js7.data.order.OrderEvent.{OrderAdded, OrderFailed, OrderFinished, OrderMoved, OrderOrderAdded, OrderPrompted, OrderStarted}
@@ -18,7 +18,7 @@ import js7.tests.AddOrderTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 
-final class AddOrderTest extends Test with ControllerAgentForScalaTest
+final class AddOrderTest extends OurTestSuite with ControllerAgentForScalaTest
 {
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]

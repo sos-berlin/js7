@@ -4,7 +4,7 @@ import java.time.{LocalTime, ZoneId}
 import js7.base.log.Logger
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Checked.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
 import js7.base.time.ScalaTime.*
@@ -24,7 +24,7 @@ import scala.collection.MapView
 import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration.*
 
-final class CycleExecutorTest extends Test with ScheduleTester
+final class CycleExecutorTest extends OurTestSuite with ScheduleTester
 {
   coupleScribeWithSlf4j()
 

@@ -3,7 +3,7 @@ package js7.data.workflow.instructions
 import cats.syntax.semigroup.*
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data.agent.AgentPath
 import js7.data.job.PathExecutable
 import js7.data.source.SourcePos
@@ -19,7 +19,7 @@ import js7.tester.CirceJsonTester.testJson
 /**
   * @author Joacim Zschimmer
   */
-final class ForkTest extends Test
+final class ForkTest extends OurTestSuite
 {
   private val fork =
     Fork(

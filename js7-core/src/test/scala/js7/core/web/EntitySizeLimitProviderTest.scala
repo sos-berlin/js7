@@ -1,12 +1,12 @@
 package js7.core.web
 
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 
 /**
   * @author Joacim Zschimmer
   */
-final class EntitySizeLimitProviderTest extends Test
+final class EntitySizeLimitProviderTest extends OurTestSuite
 {
   "entitySizeLimit" in {
     val maxMemory_ = 1000L

@@ -2,14 +2,14 @@ package js7.provider.scheduledorder.oldruntime
 
 import java.time.DayOfWeek.*
 import java.time.{Duration, LocalTime, ZoneId}
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.common.scalautil.xmls.ScalaXMLEventReader
 import js7.common.scalautil.xmls.XmlSources.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class OldScheduleXmlParserTest extends Test {
+final class OldScheduleXmlParserTest extends OurTestSuite {
 
   private val timeZone = ZoneId.of("Europe/Berlin")
 

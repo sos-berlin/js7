@@ -1,12 +1,12 @@
 package js7.provider.scheduledorder.oldruntime
 
 import java.time.{Duration, LocalTime}
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 
 /**
   * @author Joacim Zschimmer
   */
-final class PeriodSeqTest extends Test {
+final class PeriodSeqTest extends OurTestSuite {
 
   private val periodSeq = PeriodSeq(List(
     RepeatPeriod(LocalTime.of( 9, 0), ExtendedLocalTime.of(10,  0), absoluteRepeat = Duration.ofMinutes(20)),

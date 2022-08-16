@@ -14,7 +14,7 @@ import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
@@ -34,7 +34,7 @@ import scala.concurrent.duration.Deadline.now
 /**
   * @author Joacim Zschimmer
   */
-final class AgentActorTest extends Test
+final class AgentActorTest extends OurTestSuite
 {
   private implicit val askTimeout: Timeout = Timeout(60.s)
 

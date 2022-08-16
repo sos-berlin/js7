@@ -1,7 +1,7 @@
 package js7.base.thread
 
 import java.util.concurrent.TimeoutException
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.Futures.{FutureNotSucceededException, catchInFuture, namedThreadFuture, promiseFuture}
 import js7.base.time.ScalaTime.*
@@ -15,7 +15,7 @@ import scala.util.Failure
 /**
  * @author Joacim Zschimmer
  */
-final class FuturesTest extends Test
+final class FuturesTest extends OurTestSuite
 {
   "successValue" in {
     val promise = Promise[Int]()

@@ -3,7 +3,7 @@ package js7.data_for_java.controller
 import js7.base.auth.UserId
 import js7.base.crypt.silly.SillySigner
 import js7.base.problem.Checked.Ops
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.{Timestamp, Timezone}
 import js7.base.utils.Collections.implicits.*
@@ -27,7 +27,7 @@ import js7.data_for_java.controller.JControllerStateTest.*
 /**
   * @author Joacim Zschimmer
   */
-final class JControllerStateTest extends Test
+final class JControllerStateTest extends OurTestSuite
 {
   private val jControllerState = JControllerState(controllerState)
   private val tester = new JControllerStateTester(jControllerState)

@@ -1,13 +1,13 @@
 package js7.common.commandline
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.common.commandline.CommandLineArguments.parse
 import org.scalatest.matchers.should.Matchers.*
 
 /**
  * @author Joacim Zschimmer
  */
-final class CommandLineArgumentsTest extends Test {
+final class CommandLineArgumentsTest extends OurTestSuite {
 
   "Flag" - {
     "boolean" in {

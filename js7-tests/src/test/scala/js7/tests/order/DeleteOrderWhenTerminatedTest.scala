@@ -1,7 +1,7 @@
 package js7.tests.order
 
 import js7.base.problem.Checked.Ops
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
@@ -20,7 +20,7 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.{script, toLocalSubagentId}
 import monix.execution.Scheduler.Implicits.global
 
-final class DeleteOrderWhenTerminatedTest extends Test with ControllerAgentForScalaTest
+final class DeleteOrderWhenTerminatedTest extends OurTestSuite with ControllerAgentForScalaTest
 {
   protected val agentPaths = agentPath :: Nil
   protected val items = Seq(quickWorkflow)

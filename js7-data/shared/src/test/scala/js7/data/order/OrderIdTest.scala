@@ -2,12 +2,12 @@ package js7.data.order
 
 import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 
 /**
   * @author Joacim Zschimmer
   */
-final class OrderIdTest extends Test {
+final class OrderIdTest extends OurTestSuite {
 
   "checkedNameSyntax" in {
     assert(OrderId.checked("") == Left(EmptyStringProblem("OrderId")))

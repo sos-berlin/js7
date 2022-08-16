@@ -1,6 +1,6 @@
 package js7.common.scalautil
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.common.scalautil.AssignableFrom.assignableFrom
 import org.scalatest.matchers.should.Matchers.*
 import scala.reflect.ClassTag
@@ -9,7 +9,7 @@ import scala.reflect.ClassTag
 /**
  * @author Joacim Zschimmer
  */
-final class AssignableFromTest extends Test {
+final class AssignableFromTest extends OurTestSuite {
 
   "AssignableFrom" in {
     trait I

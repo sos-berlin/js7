@@ -7,7 +7,7 @@ import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -38,7 +38,7 @@ import org.scalatest.Assertions.assert
 import scala.collection.View
 import scala.concurrent.duration.Deadline.now
 
-final class ForkListTest extends Test with ControllerAgentForScalaTest
+final class ForkListTest extends OurTestSuite with ControllerAgentForScalaTest
 {
   override protected val agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = yes

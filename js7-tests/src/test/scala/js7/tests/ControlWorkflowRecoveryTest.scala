@@ -5,7 +5,7 @@ import cats.syntax.parallel.*
 import js7.agent.RunningAgent
 import js7.agent.data.event.AgentEvent.AgentReady
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
@@ -36,7 +36,7 @@ import js7.data.workflow.WorkflowControlId.syntax.*
 import scala.jdk.CollectionConverters.*
 
 final class ControlWorkflowRecoveryTest
-extends Test with DirectoryProviderForScalaTest
+extends OurTestSuite with DirectoryProviderForScalaTest
 {
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]

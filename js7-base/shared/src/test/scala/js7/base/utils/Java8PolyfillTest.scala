@@ -3,10 +3,10 @@ package js7.base.utils
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.system.Java8Polyfill.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import scala.util.Random
 
-final class Java8PolyfillTest extends Test
+final class Java8PolyfillTest extends OurTestSuite
 {
   "InputStream transferTo" in {
     val bytes = Random.nextString(10001).getBytes(UTF_8)
