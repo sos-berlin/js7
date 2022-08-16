@@ -5,6 +5,7 @@ import js7.base.configutils.Configs.*
 import js7.base.io.file.FileUtils.{touchFile, withTemporaryFile}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.Problems.ItemIsStillReferencedProblem
@@ -24,19 +25,18 @@ import js7.data.value.StringValue
 import js7.data.value.ValuePrinter.quoteString
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.workflow.instructions.{LockInstruction, Prompt}
-import js7.data.workflow.position.Position
+import js7.data.workflow.instructions.{Finish, Fork, LockInstruction, Prompt}
+import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowParser, WorkflowPath}
 import js7.tests.LockTest.*
-import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.{script, toLocalSubagentId, waitingForFileScript}
+import js7.tests.testenv.{ControllerAgentForScalaTest, BlockingItemUpdater}
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
-import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.immutable.Queue
 import scala.util.Random
 
-final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
+final class LockTest extends Test with ControllerAgentForScalaTest with BlockingItemUpdater
 {
   protected val agentPaths = Seq(agentPath, bAgentPath)
   protected val items = Seq(
@@ -52,7 +52,6 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
     """
-  private lazy val versionIdIterator = Iterator.from(1).map(i => VersionId(i.toString))
 
   "Run some orders at different agents with a lock with limit=1" in {
     withTemporaryFile("LockTest-", ".tmp") { file =>
@@ -379,6 +378,77 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
         Queue.empty))
   }
 
+  "Finish instruction" in {
+    val workflow = updateItem(Workflow(
+      WorkflowPath("FINISH"),
+      Seq(
+        LockInstruction(
+          lockPath,
+          count = None,
+          lockedWorkflow = Workflow.of(Finish())))))
+    assert(workflow.referencedItemPaths.toSet == Set(lockPath))
+
+    val orderId = OrderId("🟫")
+    controllerApi.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+      .await(99.s).orThrow
+    controller.eventWatch.await[OrderFinished](_.key == orderId)
+
+    assert(controller.eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
+      OrderAdded(workflow.id, deleteWhenTerminated = true),
+      OrderStarted,
+      OrderLockAcquired(lockPath, None),
+      OrderLockReleased(lockPath),
+      OrderFinished,
+      OrderDeleted))
+
+    assert(controllerState.keyTo(LockState)(lockPath) ==
+      LockState(
+        Lock(lockPath, itemRevision = Some(ItemRevision(0))),
+        Available,
+        Queue.empty))
+
+    controllerApi
+      .updateItems(Observable(
+        AddVersion(VersionId("FINISH-REMOVED")),
+        RemoveVersioned(workflow.path)))
+      .await(99.s).orThrow
+  }
+
+  "Finish instruction in Fork" in {
+    val workflow = updateItem(Workflow(
+      WorkflowPath("FINISH-IN-FORK"),
+      Seq(
+        Fork.forTest(Seq(Fork.Branch(
+          Fork.Branch.Id("BRANCH"),
+          Workflow.of(
+            LockInstruction(
+              lockPath,
+              count = None,
+              lockedWorkflow = Workflow.of(Finish())))))))))
+
+    val orderId = OrderId("🟣")
+    controllerApi.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+      .await(99.s).orThrow
+    controller.eventWatch.await[OrderFinished](_.key == orderId)
+
+    assert(controller.eventWatch.eventsByKey[OrderEvent](orderId / "BRANCH") == Seq(
+      OrderLockAcquired(lockPath, None),
+      OrderLockReleased(lockPath),
+      OrderMoved(Position(0) / BranchId.fork("BRANCH") % 1)))
+
+    assert(controllerState.keyTo(LockState)(lockPath) ==
+      LockState(
+        Lock(lockPath, itemRevision = Some(ItemRevision(0))),
+        Available,
+        Queue.empty))
+
+    controllerApi
+      .updateItems(Observable(
+        AddVersion(VersionId("FINISH-IN-FORK-REMOVED")),
+        RemoveVersioned(workflow.path)))
+      .await(99.s).orThrow
+  }
+
   "Acquire too much" in {
     val workflow = defineWorkflow(workflowNotation = """
       define workflow {
@@ -411,7 +481,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
       .await(99.s).orThrow
     controller.eventWatch.await[OrderPrompted](_.key == lockingOrderId)
 
-    val queueingWorkflow = addWorkflow(Workflow(
+    val queueingWorkflow = updateItem(Workflow(
       WorkflowPath("CANCEL-WHILE-QUEUING-FOR-LOCKING"),
       Seq(
         LockInstruction(lockPath,
@@ -453,7 +523,7 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
         Queue.empty))
 
     controllerApi.updateItems(Observable(
-      AddVersion(versionIdIterator.next()),
+      AddVersion(VersionId("DELETE")),
       RemoveVersioned(queueingWorkflow.path)
     )).await(99.s).orThrow
   }
@@ -483,13 +553,13 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
   }
 
   "Use Lock both exclusivly and non-exclusively" in {
-    val exclusiveWorkflow = addWorkflow(Workflow(
+    val exclusiveWorkflow = updateItem(Workflow(
       WorkflowPath("EXCLUSIVE-WORKFLOW"),
       Seq(
         LockInstruction(limit2LockPath,
           count = None,
           lockedWorkflow = Workflow.of(Prompt(expr("'?'")))))))
-    val nonExclusiveWorkflow = addWorkflow(Workflow(
+    val nonExclusiveWorkflow = updateItem(Workflow(
       WorkflowPath("NON-EXCLUSIVE-WORKFLOW"),
       Seq(
         LockInstruction(limit2LockPath,
@@ -631,17 +701,8 @@ final class LockTest extends AnyFreeSpec with ControllerAgentForScalaTest
     defineWorkflow(workflowPath, workflowNotation)
 
   private def defineWorkflow(workflowPath: WorkflowPath, workflowNotation: String): Workflow = {
-    val versionId = versionIdIterator.next()
-    val workflow = WorkflowParser.parse(workflowPath ~ versionId, workflowNotation).orThrow
-    directoryProvider.updateVersionedItems(controller, versionId, Seq(workflow))
-    workflow
-  }
-
-  private def addWorkflow(workflow: Workflow): Workflow = {
-    val v = versionIdIterator.next()
-    val w = workflow.withVersion(v)
-    directoryProvider.updateVersionedItems(controller, v, Seq(workflow))
-    w
+    val workflow = WorkflowParser.parse(workflowPath, workflowNotation).orThrow
+    updateItem(workflow)
   }
 }
 

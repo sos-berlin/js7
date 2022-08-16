@@ -143,7 +143,6 @@ object CalendarTest
     OrderCyclingPrepared(CycleState(
       next = Timestamp.Epoch,
       index = 1,
-      schemeIndex = 0,
       end = local("2021-10-02T00:00"))),
     OrderCycleStarted,
     OrderAttachable(agentPath),
