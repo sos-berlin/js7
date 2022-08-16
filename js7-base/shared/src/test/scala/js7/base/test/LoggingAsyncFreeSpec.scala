@@ -2,7 +2,9 @@ package js7.base.test
 
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import org.scalactic.source
-import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.Assertion
+import org.scalatest.freespec.AsyncFreeSpec
+import scala.concurrent.Future
 import scala.language.implicitConversions
 import scala.util.Try
 
@@ -11,20 +13,24 @@ import scala.util.Try
  * The log lines are colored, so use `less` with `LESS=-R` to let the escape sequences
  * take effect on your terminal.
  **/
-trait LoggingAnyFreeSpec extends AnyFreeSpec {
+trait LoggingAsyncFreeSpec extends AsyncFreeSpec {
 
   private val testAdder = new LoggingTestAdder(getClass.simpleScalaName)
 
   protected implicit def implicitToFreeSpecStringWrapper(name: String)
     (implicit pos: source.Position)
-  : LoggingFreeSpecStringWrapper[Any] =
+  : LoggingFreeSpecStringWrapper[Future[Assertion]] =
     testAdder.toStringWrapper(
       name,
       super.convertToFreeSpecStringWrapper(name)(pos),
-      (ctx, testBody) => {
-        ctx.beforeTest()
-        val tried = Try(testBody)
-        ctx.afterTest(tried)
-        for (t <- tried.failed) throw t
-      })
+      (ctx, testBody) =>
+        Future(ctx.beforeTest())
+          .flatMap(_ =>
+            catchInFuture(testBody))
+          .andThen { case tried =>
+            ctx.afterTest(tried)
+          })
+
+  private def catchInFuture[A](startFuture: => Future[A]): Future[A] =
+    Future.fromTry(Try(startFuture)).flatten
 }
