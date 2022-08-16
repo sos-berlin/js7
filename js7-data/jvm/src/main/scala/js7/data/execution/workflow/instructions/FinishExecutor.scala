@@ -55,8 +55,6 @@ extends EventInstructionExecutor
   private def leaveBlocks(order: Order[Order.State], workflow: Workflow, event: OrderActorEvent)
   : Checked[List[KeyedEvent[OrderActorEvent]]] =
     OrderEventSource
-      .leaveBlocks(workflow, order) {
-        case _ => event
-      }
+      .leaveBlocks(workflow, order, event)
       .map(_.map(order.id <-: _))
 }

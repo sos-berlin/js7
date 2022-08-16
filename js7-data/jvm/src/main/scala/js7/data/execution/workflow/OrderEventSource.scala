@@ -236,10 +236,7 @@ final class OrderEventSource(state: StateView)
     else if (order.isAttached && isAgent)
       Some(OrderDetachable :: Nil)
     else if (order.isDetached && !isAgent)
-      Some(
-        leaveBlocks(idToWorkflow(order.workflowId), order) {
-          case (None | Some(BranchId.IsFailureBoundary(_)), _) => OrderCancelled
-        }.orThrow/*???*/)
+      Some(leaveBlocks(idToWorkflow(order.workflowId), order, OrderCancelled).orThrow/*???*/)
     else
       None
 
@@ -435,10 +432,13 @@ final class OrderEventSource(state: StateView)
 object OrderEventSource {
   private val logger = scribe.Logger[this.type]
 
-  def leaveBlocks(
-    workflow: Workflow,
-    order: Order[Order.State],
-    catchable: Boolean = false)
+  def leaveBlocks(workflow: Workflow, order: Order[Order.State], event: OrderActorEvent)
+  : Checked[List[OrderActorEvent]] =
+    leaveBlocks(workflow,order, catchable = false) {
+      case _ => event
+    }
+
+  def leaveBlocks(workflow: Workflow, order: Order[Order.State], catchable: Boolean)
     (toEvent: PartialFunction[(Option[BranchId], Position), OrderActorEvent])
   : Checked[List[OrderActorEvent]] = {
     def callToEvent(branchId: Option[BranchId], pos: Position) =
