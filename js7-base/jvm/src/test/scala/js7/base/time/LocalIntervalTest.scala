@@ -1,10 +1,10 @@
 package js7.base.time
 
 import java.time.{LocalDateTime, ZoneId}
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 
-final class LocalIntervalTest extends Test
+final class LocalIntervalTest extends OurTestSuite
 {
   private val localInterval = LocalInterval(LocalDateTime.parse("2021-08-30T01:00"), 2.h)
 

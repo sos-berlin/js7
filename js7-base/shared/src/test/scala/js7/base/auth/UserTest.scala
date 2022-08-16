@@ -2,12 +2,12 @@ package js7.base.auth
 
 import js7.base.auth.User.UserDoesNotHavePermissionProblem
 import js7.base.auth.UserTest.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 
 /**
   * @author Joacim Zschimmer
   */
-final class UserTest extends Test
+final class UserTest extends OurTestSuite
 {
   "checkPermissions" in {
     assert(testUser(Set.empty).checkPermissions() == Right(()))

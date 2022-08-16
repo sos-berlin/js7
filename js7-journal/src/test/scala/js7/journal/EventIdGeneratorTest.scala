@@ -1,7 +1,7 @@
 package js7.journal
 
 import java.util.concurrent.ConcurrentHashMap
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.data.event.EventId
@@ -13,7 +13,7 @@ import scala.jdk.CollectionConverters.*
 /**
   * @author Joacim Zschimmer
   */
-final class EventIdGeneratorTest extends Test
+final class EventIdGeneratorTest extends OurTestSuite
 {
   "test" in {
     val eventIds: mutable.Map[EventId, Unit] = new ConcurrentHashMap[EventId, Unit].asScala

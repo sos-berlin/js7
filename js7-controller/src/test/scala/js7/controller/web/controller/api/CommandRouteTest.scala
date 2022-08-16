@@ -6,7 +6,7 @@ import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Checked
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.akkahttp.JsonString
@@ -20,7 +20,7 @@ import scala.concurrent.Future
 /**
   * @author Joacim Zschimmer
   */
-final class CommandRouteTest extends Test with RouteTester with CommandRoute
+final class CommandRouteTest extends OurTestSuite with RouteTester with CommandRoute
 {
   coupleScribeWithSlf4j()
 

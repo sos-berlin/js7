@@ -1,6 +1,6 @@
 package js7.data.execution.workflow.instructions
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.WallClock
 import js7.data.agent.AgentPath
 import js7.data.execution.workflow.instructions.LockExecutorTest.*
@@ -14,7 +14,7 @@ import js7.data.workflow.instructions.{Execute, LockInstruction}
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowPath}
 
-final class LockExecutorTest extends Test
+final class LockExecutorTest extends OurTestSuite
 {
   private lazy val stateView = TestStateView.of(
     isAgent = false,

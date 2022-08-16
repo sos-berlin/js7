@@ -1,7 +1,7 @@
 package js7.data.workflow.position
 
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.Timestamp
 import js7.data.order.CycleState
 import js7.data.workflow.position.BranchId.{Else, Then, catch_, fork, try_}
@@ -9,7 +9,7 @@ import js7.data.workflow.position.BranchId.{Else, Then, catch_, fork, try_}
 /**
   * @author Joacim Zschimmer
   */
-final class BranchIdTest extends Test
+final class BranchIdTest extends OurTestSuite
 {
   "then" in {
     assert(Then == BranchId.Named("then"))

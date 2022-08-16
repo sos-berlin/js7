@@ -3,12 +3,12 @@ package js7.common.files
 import java.nio.file.Files.delete
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{touchFile, withTemporaryDirectory}
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 
 /**
   * @author Joacim Zschimmer
   */
-final class PathSeqDifferTest extends Test
+final class PathSeqDifferTest extends OurTestSuite
 {
   "diff" in {
     withTemporaryDirectory("Z-") { dir =>

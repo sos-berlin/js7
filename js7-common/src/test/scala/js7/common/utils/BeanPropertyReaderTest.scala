@@ -1,12 +1,12 @@
 package js7.common.utils
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.common.utils.BeanPropertyReader.Keep
 
 /**
  * @author Joacim Zschimmer
  */
-final class BeanPropertyReaderTest extends Test {
+final class BeanPropertyReaderTest extends OurTestSuite {
 
   "toMap" in {
     class Bean {

@@ -1,9 +1,9 @@
 package js7.data.workflow
 
 import js7.base.standards.Js7PathValidatorTest
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 
-final class WorkflowPathTest extends Test
+final class WorkflowPathTest extends OurTestSuite
 {
   "Invalid path" in {
     Js7PathValidatorTest.checkInvalid("WorkflowPath", WorkflowPath.checked)

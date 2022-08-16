@@ -7,7 +7,7 @@ import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.RichFutures
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
@@ -35,7 +35,7 @@ import scala.concurrent.duration.Deadline.now
 /**
   * @author Joacim Zschimmer
   */
-final class UpdateItemsTest extends Test with ControllerAgentForScalaTest
+final class UpdateItemsTest extends OurTestSuite with ControllerAgentForScalaTest
 {
   protected val agentPaths = agentPath :: Nil
   protected val items = Nil

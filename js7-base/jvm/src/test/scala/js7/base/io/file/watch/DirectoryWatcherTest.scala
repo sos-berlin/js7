@@ -8,7 +8,7 @@ import js7.base.io.file.FileUtils.{touchFile, withTemporaryDirectory}
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted}
 import js7.base.io.file.watch.DirectoryState.Entry
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.thread.MonixBlocking.syntax.RichTask
@@ -21,7 +21,7 @@ import monix.reactive.subjects.PublishSubject
 import scala.concurrent.Promise
 import scala.math.Ordering.Int
 
-final class DirectoryWatcherTest extends Test
+final class DirectoryWatcherTest extends OurTestSuite
 {
   coupleScribeWithSlf4j()
 

@@ -2,12 +2,12 @@ package js7.base.time
 
 import cats.syntax.show.*
 import java.time.{Duration, Instant, LocalDateTime, LocalTime, ZoneId}
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.JavaTime.*
 import js7.base.time.JavaTimestamp.specific.*
 import org.scalatest.matchers.should.Matchers.*
 
-final class JavaTimeTest extends Test
+final class JavaTimeTest extends OurTestSuite
 {
   import JavaTimeTest.ImplicitDurationInt
 

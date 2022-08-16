@@ -1,10 +1,10 @@
 package js7.base.time
 
 import java.time.{Instant, LocalDateTime, OffsetDateTime, ZoneId, ZoneOffset, ZonedDateTime}
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.JavaTimestamp.specific.*
 
-final class JavaTimestampTest extends Test
+final class JavaTimestampTest extends OurTestSuite
 {
   private val timestamp = JavaTimestamp.parse("2021-08-29T22:00:00Z")
   private val local = LocalDateTime.parse("2021-08-30T01:00")

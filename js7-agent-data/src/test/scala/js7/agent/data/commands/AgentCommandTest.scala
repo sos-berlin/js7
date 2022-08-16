@@ -9,7 +9,7 @@ import js7.base.crypt.silly.SillySigner
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.{CorrelId, CorrelIdWrapped}
 import js7.base.problem.TestCodeProblem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.common.message.ProblemCodeMessages
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.command.CancellationMode
@@ -30,7 +30,7 @@ import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 /**
   * @author Joacim Zschimmer
   */
-final class AgentCommandTest extends Test
+final class AgentCommandTest extends OurTestSuite
 {
   ProblemCodeMessages.initialize()
 

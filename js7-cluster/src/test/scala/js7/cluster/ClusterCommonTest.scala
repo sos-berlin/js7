@@ -4,12 +4,12 @@ import java.nio.file.Files.{delete, exists, size}
 import java.nio.file.Paths
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryFile
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 
 /**
   * @author Joacim Zschimmer
   */
-final class ClusterCommonTest extends Test
+final class ClusterCommonTest extends OurTestSuite
 {
   "truncateFile keep=true" in {
     withTemporaryFile("ClusterCommonTest", ".tmp") { file =>

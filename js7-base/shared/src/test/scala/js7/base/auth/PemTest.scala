@@ -2,9 +2,9 @@ package js7.base.auth
 
 import js7.base.data.ByteArray
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 
-final class PemTest extends Test
+final class PemTest extends OurTestSuite
 {
   private val pem = Pem("TEST")
   private val byteArray = ByteArray("ЙС7 · and more and more text to get two base64 lines ...")

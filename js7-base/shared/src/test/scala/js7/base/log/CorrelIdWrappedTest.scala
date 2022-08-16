@@ -4,10 +4,10 @@ import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.log.CorrelIdWrappedTest.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.tester.CirceJsonTester.*
 
-final class CorrelIdWrappedTest extends Test
+final class CorrelIdWrappedTest extends OurTestSuite
 {
   "JSON" in {
     testJson(

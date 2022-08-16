@@ -3,12 +3,12 @@ package js7.data.event
 import java.util.UUID
 import js7.base.BuildInfo
 import js7.base.circeutils.CirceUtils.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.Timestamp
 import js7.tester.CirceJsonTester.testJson
 import scala.concurrent.duration.*
 
-final class JournalHeadersTest extends Test
+final class JournalHeadersTest extends OurTestSuite
 {
   "JSON" in {
     testJson[JournalHeader](

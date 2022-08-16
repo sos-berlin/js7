@@ -2,7 +2,7 @@ package js7.data.cluster
 
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.ProblemException
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.data.cluster.ClusterSetting.*
@@ -13,7 +13,7 @@ import js7.tester.CirceJsonTester.testJson
 /**
   * @author Joacim Zschimmer
   */
-final class ClusterSettingTest extends Test
+final class ClusterSettingTest extends OurTestSuite
 {
   private val idToUri = Map(
     NodeId("A") -> Uri("https://A"),

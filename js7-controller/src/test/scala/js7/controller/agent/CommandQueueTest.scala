@@ -5,7 +5,7 @@ import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.Batch
 import js7.base.log.Logger
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.controller.agent.AgentDriver.{Input, Queueable}
@@ -27,7 +27,7 @@ import scala.collection.mutable
 /**
   * @author Joacim Zschimmer
   */
-final class CommandQueueTest extends Test
+final class CommandQueueTest extends OurTestSuite
 {
   "test" in {
     val commandQueueSucceeded = mutable.Buffer[Seq[QueuedInputResponse]]()

@@ -13,7 +13,7 @@ import js7.base.io.process.Processes.{RobustlyStartProcess, processToPidOption}
 import js7.base.io.process.{Pid, Processes}
 import js7.base.log.Logger
 import js7.base.system.OperatingSystem.{isMac, isSolaris, isUnix, isWindows}
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
@@ -30,7 +30,7 @@ import scala.jdk.CollectionConverters.*
   *
   * @author Joacim Zschimmer
   */
-final class ProcessKillScriptTest extends Test {
+final class ProcessKillScriptTest extends OurTestSuite {
 
   "Kill script kills descendants" in {
     if (isMac) {

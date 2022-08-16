@@ -3,12 +3,12 @@ package js7.base.generic
 import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.generic.GenericStringTest.*
 import js7.base.problem.Problems.InvalidNameProblem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 
 /**
   * @author Joacim Zschimmer
   */
-final class GenericStringTest extends Test
+final class GenericStringTest extends OurTestSuite
 {
   "NonEmpty.checked" in {
     assert(NonEmptyA.checked("") == Left(EmptyStringProblem("NonEmptyA")))

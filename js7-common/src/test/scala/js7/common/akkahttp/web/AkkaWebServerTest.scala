@@ -19,7 +19,7 @@ import js7.base.io.https.{KeyStoreRef, TrustStoreRef}
 import js7.base.problem.Checked.Ops
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.common.akkahttp.web.AkkaWebServer.HasUri
 import js7.common.akkahttp.web.AkkaWebServerTest.*
@@ -37,7 +37,7 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-final class AkkaWebServerTest extends Test with BeforeAndAfterAll
+final class AkkaWebServerTest extends OurTestSuite with BeforeAndAfterAll
 {
   private implicit lazy val actorSystem: ActorSystem =
     newActorSystem("AkkaWebServerTest")

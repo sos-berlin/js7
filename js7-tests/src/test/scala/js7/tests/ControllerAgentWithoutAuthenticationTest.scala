@@ -8,7 +8,7 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -35,7 +35,7 @@ import monix.reactive.Observable
 /**
   * @author Joacim Zschimmer
   */
-final class ControllerAgentWithoutAuthenticationTest extends Test
+final class ControllerAgentWithoutAuthenticationTest extends OurTestSuite
 {
   "js7.web.server.auth.public = true" in {
     runMyTest(isPublic = true) { (controller, _) =>

@@ -5,13 +5,13 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{deleteDirectoryContentRecursively, touchFile, withTemporaryDirectory}
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.journal.files.JournalFiles.{deleteJournal, deleteJournalIfMarked, deletionMarkerFile}
 
 /**
   * @author Joacim Zschimmer
   */
-final class JournalFilesTest extends Test
+final class JournalFilesTest extends OurTestSuite
 {
   coupleScribeWithSlf4j()
 

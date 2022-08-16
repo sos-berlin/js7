@@ -3,7 +3,7 @@ package js7.journal.watch
 import java.nio.file.Files
 import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.io.file.FileUtils
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data.event.{EventId, Stamped}
 import js7.journal.data.JournalMeta
 import js7.journal.files.JournalFiles.JournalMetaOps
@@ -13,7 +13,7 @@ import js7.journal.watch.TestData.{AEvent, TestKeyedEventJsonCodec, journalId, w
 /**
   * @author Joacim Zschimmer
   */
-final class FileEventIteratorPoolTest extends Test
+final class FileEventIteratorPoolTest extends OurTestSuite
 {
   "FileEventIteratorPool" in {
     FileUtils.withTemporaryDirectory("FileEventIteratorPoolTest-") { dir =>

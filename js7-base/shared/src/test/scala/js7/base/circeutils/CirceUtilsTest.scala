@@ -8,14 +8,14 @@ import io.circe.{Codec, Decoder, DecodingFailure, Json, JsonObject}
 import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.GenericString
 import js7.base.problem.{Problem, ProblemException}
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.tester.CirceJsonTester.testJson
 import scala.collection.immutable.SeqMap
 
 /**
   * @author Joacim Zschimmer
   */
-final class CirceUtilsTest extends Test
+final class CirceUtilsTest extends OurTestSuite
 {
   private case class Simple(int: Int, string: String)
   private case class A(a: Int, b: B)

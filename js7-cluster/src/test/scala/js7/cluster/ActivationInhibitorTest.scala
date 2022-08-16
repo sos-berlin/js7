@@ -1,6 +1,6 @@
 package js7.cluster
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.problem.{Checked, Problem}
@@ -12,7 +12,7 @@ import scala.util.Success
 /**
   * @author Joacim Zschimmer
   */
-final class ActivationInhibitorTest extends Test
+final class ActivationInhibitorTest extends OurTestSuite
 {
   private implicit val scheduler: TestScheduler = TestScheduler()
 

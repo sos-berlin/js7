@@ -1,13 +1,13 @@
 package js7.common.akkahttp.web.session
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import monix.execution.schedulers.TestScheduler
 import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class HasTimeoutTest extends Test
+final class HasTimeoutTest extends OurTestSuite
 {
   private val t = new HasTimeout {}
 

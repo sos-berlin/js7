@@ -1,13 +1,13 @@
 package js7.data.job
 
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data.controller.ControllerState.signableSimpleItemJsonCodec
 import js7.data.item.{ItemRevision, SignableSimpleItem}
 import js7.data.value.expression.Expression.{Argument, Concat, FunctionCall, StringConstant}
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
-final class JobResourceTest extends Test
+final class JobResourceTest extends OurTestSuite
 {
   "JSON" in {
     testJsonDecoder[SignableSimpleItem](

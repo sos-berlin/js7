@@ -5,14 +5,14 @@ import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.Timestamp
 import js7.tester.CirceJsonTester.testJson
 
 /**
   * @author Joacim Zschimmer
   */
-final class StampedTest extends Test {
+final class StampedTest extends OurTestSuite {
 
   "map" in {
     val eventId = EventId(100)

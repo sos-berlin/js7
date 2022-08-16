@@ -1,7 +1,7 @@
 package js7.tests.subagent
 
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
@@ -22,7 +22,7 @@ import monix.execution.Scheduler
 import monix.reactive.Observable
 import scala.concurrent.TimeoutException
 
-final class StealAndResetSubagentTest extends Test with SubagentTester
+final class StealAndResetSubagentTest extends OurTestSuite with SubagentTester
 {
   override protected def agentConfig = config"""
     js7.auth.subagents.STOLEN-SUBAGENT = "THIEVE-AGENT-PASSWORD"

@@ -1,8 +1,8 @@
 package js7.launcher.forwindows
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 
-final class WindowsUserNameTest extends Test
+final class WindowsUserNameTest extends OurTestSuite
 {
   "equals" in {
     assert(WindowsUserName("a") != WindowsUserName("b"))

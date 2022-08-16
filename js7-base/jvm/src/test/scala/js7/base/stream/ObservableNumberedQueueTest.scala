@@ -2,7 +2,7 @@ package js7.base.stream
 
 import js7.base.problem.{Problem, ProblemException}
 import js7.base.stream.ObservableNumberedQueueTest.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
@@ -12,7 +12,7 @@ import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import scala.collection.mutable
 
-final class ObservableNumberedQueueTest extends Test
+final class ObservableNumberedQueueTest extends OurTestSuite
 {
   private val queue = new ObservableNumberedQueue[X]
 

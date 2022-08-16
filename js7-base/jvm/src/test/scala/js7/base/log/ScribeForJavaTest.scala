@@ -1,6 +1,6 @@
 package js7.base.log
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.{durationOf, measureTimeOfSingleRun}
 import scala.concurrent.duration.FiniteDuration
@@ -8,7 +8,7 @@ import scala.concurrent.duration.FiniteDuration
 /**
   * @author Joacim Zschimmer
   */
-final class ScribeForJavaTest extends Test
+final class ScribeForJavaTest extends OurTestSuite
 {
   ScribeForJava.coupleScribeWithSlf4j()
 

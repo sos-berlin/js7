@@ -10,7 +10,7 @@ import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
 import js7.base.problem.ProblemException
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
@@ -44,7 +44,7 @@ import org.scalactic.source
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 
-final class ProxyHistoryTest extends Test with ProvideActorSystem with ClusterProxyTest
+final class ProxyHistoryTest extends OurTestSuite with ProvideActorSystem with ClusterProxyTest
 {
   private val maxRounds = 100
 

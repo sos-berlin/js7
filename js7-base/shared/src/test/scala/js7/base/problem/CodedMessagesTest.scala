@@ -1,12 +1,12 @@
 package js7.base.problem
 
 import js7.base.problem.CodedMessages.patternToMessage
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 
 /**
   * @author Joacim Zschimmer
   */
-final class CodedMessagesTest extends Test
+final class CodedMessagesTest extends OurTestSuite
 {
   "patternToMessage" - {
     "without arguments" in {

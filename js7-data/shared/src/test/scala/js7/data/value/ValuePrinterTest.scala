@@ -1,11 +1,11 @@
 package js7.data.value
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data.value.ValuePrinter.quoteString
 import js7.data.value.expression.ExpressionParser.parseQuotedString
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks.forAll
 
-final class ValuePrinterTest extends Test
+final class ValuePrinterTest extends OurTestSuite
 {
   "quoteString" in {
     assert(q("") == """»""«""")

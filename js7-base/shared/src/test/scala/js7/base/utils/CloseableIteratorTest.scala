@@ -1,12 +1,12 @@
 package js7.base.utils
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.utils.CloseableIteratorTest.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class CloseableIteratorTest extends Test
+final class CloseableIteratorTest extends OurTestSuite
 {
   "strict" in {
     val a = new TestIterator(Iterator(1, 2, 3))

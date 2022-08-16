@@ -2,7 +2,7 @@ package js7.common.akkautils
 
 import akka.actor.{Actor, DeadLetterSuppression, Props}
 import js7.base.configutils.Configs.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.common.akkautils.Akkas.newActorSystem
@@ -12,7 +12,7 @@ import scala.collection.mutable
 /**
   * @author Joacim Zschimmer
   */
-final class DeadLetterActorTest extends Test {
+final class DeadLetterActorTest extends OurTestSuite {
 
   "DeadLetterActor.subscribe" in {
     val actorSystem = newActorSystem(classOf[DeadLetterActorTest].getSimpleName, config"akka.log-dead-letters = 0")

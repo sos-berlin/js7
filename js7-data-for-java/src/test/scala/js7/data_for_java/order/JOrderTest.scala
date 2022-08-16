@@ -1,6 +1,6 @@
 package js7.data_for_java.order
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode
 import js7.data.order.{Order, OrderId, OrderMark}
@@ -9,7 +9,7 @@ import js7.data.workflow.WorkflowPath
 import js7.data.workflow.instructions.Fork
 import js7.data.workflow.position.Position
 
-final class JOrderTest extends Test
+final class JOrderTest extends OurTestSuite
 {
   private val forkedOrder = Order(
     OrderId("ORDER-ID|A"),

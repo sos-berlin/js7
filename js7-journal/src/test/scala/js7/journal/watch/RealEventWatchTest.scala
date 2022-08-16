@@ -1,6 +1,6 @@
 package js7.journal.watch
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CloseableIterator
@@ -12,7 +12,7 @@ import scala.collection.mutable
 /**
   * @author Joacim Zschimmer
   */
-final class RealEventWatchTest extends Test
+final class RealEventWatchTest extends OurTestSuite
 {
   "tornOlder" in {
     val events = Stamped(1L, 1L <-: TestEvent(1)) :: Nil  // Event 1 = 1970-01-01, very old

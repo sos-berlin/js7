@@ -1,7 +1,7 @@
 package js7.data.workflow.instructions
 
 import js7.base.circeutils.CirceUtils.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.job.PathExecutable
@@ -18,7 +18,7 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-final class TryInstructionTest extends Test
+final class TryInstructionTest extends OurTestSuite
 {
   private val try_ = TryInstruction(
     tryWorkflow = Workflow.of(Execute(WorkflowJob(AgentPath("AGENT"), PathExecutable("TRY")))),

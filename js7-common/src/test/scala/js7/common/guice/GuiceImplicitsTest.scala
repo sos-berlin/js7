@@ -2,13 +2,13 @@ package js7.common.guice
 
 import com.google.inject.{AbstractModule, Guice, Provides}
 import javax.inject.Singleton
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.common.guice.GuiceImplicits.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class GuiceImplicitsTest extends Test {
+final class GuiceImplicitsTest extends OurTestSuite {
 
   private val injector = Guice.createInjector(new AbstractModule {
     @Provides @Singleton

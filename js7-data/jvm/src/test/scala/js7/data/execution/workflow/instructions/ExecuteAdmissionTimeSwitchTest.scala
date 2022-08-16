@@ -4,7 +4,7 @@ import java.time.DayOfWeek.{MONDAY, SUNDAY}
 import java.time.ZoneOffset.UTC
 import java.time.{LocalTime, ZoneId}
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
 import js7.base.time.ScalaTime.*
@@ -13,7 +13,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.execution.workflow.instructions.ExecuteAdmissionTimeSwitchTest.*
 import org.scalatest.Assertions.assert
 
-final class ExecuteAdmissionTimeSwitchTest extends Test
+final class ExecuteAdmissionTimeSwitchTest extends OurTestSuite
 {
   coupleScribeWithSlf4j()
 

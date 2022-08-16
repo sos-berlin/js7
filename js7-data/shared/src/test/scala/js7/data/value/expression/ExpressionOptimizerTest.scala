@@ -1,10 +1,10 @@
 package js7.data.value.expression
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data.value.expression.Expression.{ListExpression, MkString, NumericConstant, StringConstant}
 import js7.data.value.expression.ExpressionOptimizer.optimizeExpression
 
-final class ExpressionOptimizerTest extends Test
+final class ExpressionOptimizerTest extends OurTestSuite
 {
   "[].mkString" in {
     assert(optimizeExpression(MkString(ListExpression(Nil))) == StringConstant.empty)

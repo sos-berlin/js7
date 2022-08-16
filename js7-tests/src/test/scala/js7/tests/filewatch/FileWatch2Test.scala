@@ -7,7 +7,7 @@ import js7.base.configutils.Configs.*
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Checked.*
 import js7.base.system.OperatingSystem.isMac
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
@@ -33,7 +33,7 @@ import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 
-final class FileWatch2Test extends Test with DirectoryProviderForScalaTest
+final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTest
 {
   protected val agentPaths = Seq(aAgentPath, bAgentPath)
   protected val items = Seq(workflow)

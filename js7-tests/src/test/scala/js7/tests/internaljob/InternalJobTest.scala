@@ -3,7 +3,7 @@ package js7.tests.internaljob
 import js7.base.configutils.Configs.*
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
@@ -40,7 +40,7 @@ import org.scalatest.Assertions.*
 import scala.collection.mutable
 import scala.reflect.ClassTag
 
-final class InternalJobTest extends Test with ControllerAgentForScalaTest
+final class InternalJobTest extends OurTestSuite with ControllerAgentForScalaTest
 {
   protected val agentPaths = agentPath :: Nil
   protected val items = Nil

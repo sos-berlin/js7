@@ -10,7 +10,7 @@ import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.DuplicateKey
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -46,7 +46,7 @@ import monix.reactive.Observable
 import scala.concurrent.duration.Deadline.now
 import scala.util.Try
 
-final class ControllerRepoTest extends Test
+final class ControllerRepoTest extends OurTestSuite
 {
   import ControllerRepoTest.*
 

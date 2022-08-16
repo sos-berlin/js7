@@ -3,7 +3,7 @@ package js7.data.value.expression.scopes
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Problem
 import js7.base.problem.Problems.UnknownKeyProblem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.Stopwatch.measureTime
 import js7.base.time.Timestamp
 import js7.base.utils.Collections.implicits.RichIterable
@@ -24,7 +24,7 @@ import js7.data.workflow.position.{Label, Position}
 import js7.data.workflow.{OrderParameter, OrderParameterList, OrderPreparation, Workflow, WorkflowPath}
 import scala.collection.{MapView, View}
 
-final class OrderScopesTest extends Test
+final class OrderScopesTest extends OurTestSuite
 {
   coupleScribeWithSlf4j()
 

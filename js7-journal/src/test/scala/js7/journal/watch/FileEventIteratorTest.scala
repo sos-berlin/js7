@@ -5,7 +5,7 @@ import java.nio.file.Files
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.io.file.FileUtils
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.{EventId, JournalSeparators, Stamped}
 import js7.journal.data.JournalMeta
@@ -17,7 +17,7 @@ import org.scalatest.matchers.should.Matchers.*
 /**
   * @author Joacim Zschimmer
   */
-final class FileEventIteratorTest extends Test
+final class FileEventIteratorTest extends OurTestSuite
 {
   "FileEventIterator" in {
     FileUtils.withTemporaryDirectory("FileEventIteratorPoolTest-") { dir =>

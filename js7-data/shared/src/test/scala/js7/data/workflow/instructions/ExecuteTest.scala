@@ -1,7 +1,7 @@
 package js7.data.workflow.instructions
 
 import js7.base.circeutils.CirceUtils.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data.agent.AgentPath
 import js7.data.job.{PathExecutable, ShellScriptExecutable}
 import js7.data.source.SourcePos
@@ -14,7 +14,7 @@ import js7.tester.CirceJsonTester.testJson
 /**
   * @author Joacim Zschimmer
   */
-final class ExecuteTest extends Test
+final class ExecuteTest extends OurTestSuite
 {
   "JSON" - {
     "Named with defaults" in {

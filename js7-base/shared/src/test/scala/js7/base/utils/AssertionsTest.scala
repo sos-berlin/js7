@@ -1,12 +1,12 @@
 package js7.base.utils
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.utils.Assertions.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class AssertionsTest extends Test
+final class AssertionsTest extends OurTestSuite
 {
   "assertThat" in {
     assertThat(true)

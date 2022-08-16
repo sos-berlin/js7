@@ -1,13 +1,13 @@
 package js7.common.scalautil
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.common.scalautil.ScalaThreadLocal.threadLocal
 import org.scalatest.concurrent.Waiters.Waiter
 
 /**
  * @author Joacim Zschimmer
  */
-final class ScalaThreadLocalTest extends Test {
+final class ScalaThreadLocalTest extends OurTestSuite {
 
   "ScalaThreadLocal" in {
     @volatile var count = 0

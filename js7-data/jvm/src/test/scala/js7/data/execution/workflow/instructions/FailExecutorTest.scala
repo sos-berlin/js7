@@ -1,6 +1,6 @@
 package js7.data.execution.workflow.instructions
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.WallClock
 import js7.data.agent.AgentPath
 import js7.data.execution.workflow.instructions.FailExecutorTest.*
@@ -15,7 +15,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 /**
   * @author Joacim Zschimmer
   */
-final class FailExecutorTest extends Test
+final class FailExecutorTest extends OurTestSuite
 {
   private val failExecutor = new FailExecutor(new InstructionExecutorService(WallClock))
 

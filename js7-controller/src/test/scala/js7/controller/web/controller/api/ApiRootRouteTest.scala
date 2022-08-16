@@ -5,7 +5,7 @@ import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
 import js7.base.BuildInfo
 import js7.base.auth.UserId
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.{Timestamp, Timezone}
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import js7.common.akkahttp.CirceJsonSupport.jsonUnmarshaller
@@ -23,7 +23,7 @@ import scala.concurrent.duration.Deadline.now
 /**
   * @author Joacim Zschimmer
   */
-final class ApiRootRouteTest extends Test with RouteTester with ApiRootRoute
+final class ApiRootRouteTest extends OurTestSuite with RouteTester with ApiRootRoute
 {
   protected val controllerId = ControllerId("TEST-CONTROLLER")
   protected def whenShuttingDown = Future.never

@@ -1,11 +1,11 @@
 package js7.data.board
 
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data.value.expression.ExpressionParser.expr
 import js7.tester.CirceJsonTester.testJson
 
-final class BoardTest extends Test
+final class BoardTest extends OurTestSuite
 {
   "JSON" in {
     testJson(

@@ -8,7 +8,7 @@ import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -39,7 +39,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.mutable
 
-final class JournalWebServiceTest extends Test with BeforeAndAfterAll with ControllerAgentForScalaTest
+final class JournalWebServiceTest extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest
 {
   protected val agentPaths = agentPath :: Nil
   protected val items = Seq(workflow)

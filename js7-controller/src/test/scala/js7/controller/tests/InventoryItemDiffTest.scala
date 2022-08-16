@@ -9,7 +9,7 @@ import js7.base.data.ByteArray
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Checked.Ops
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.controller.tests.InventoryItemDiffTest.*
 import js7.core.item.VersionedItemReader
 import js7.data.item.InventoryItemDiff.diffItems
@@ -21,7 +21,7 @@ import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
 /**
   * @author Joacim Zschimmer
   */
-final class InventoryItemDiffTest extends Test
+final class InventoryItemDiffTest extends OurTestSuite
 {
   "diffItems" - {
     "empty" in {

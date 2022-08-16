@@ -8,7 +8,7 @@ import js7.base.log.{CorrelId, CorrelIdWrapped}
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
@@ -35,7 +35,7 @@ import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.{toLocalSubagentId, waitingForFileScript}
 import monix.execution.Scheduler.Implicits.global
 
-final class SuspendResumeOrdersTest extends Test with ControllerAgentForScalaTest
+final class SuspendResumeOrdersTest extends OurTestSuite with ControllerAgentForScalaTest
 {
   override def controllerConfig = config"""
     js7.journal.remove-obsolete-files = false

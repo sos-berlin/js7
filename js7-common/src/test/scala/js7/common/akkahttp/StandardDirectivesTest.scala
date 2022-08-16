@@ -3,14 +3,14 @@ package js7.common.akkahttp
 import akka.http.scaladsl.model.Uri.Path
 import akka.http.scaladsl.server.PathMatcher.{Matched, Unmatched}
 import js7.base.generic.GenericString
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.common.akkahttp.StandardDirectives.*
 import js7.data.item.APath
 
 /**
   * @author Joacim Zschimmer
   */
-final class StandardDirectivesTest extends Test
+final class StandardDirectivesTest extends OurTestSuite
 {
   private val matched = Matched(Path.Empty, Tuple1(APath("FOLDER/NAME")))
 

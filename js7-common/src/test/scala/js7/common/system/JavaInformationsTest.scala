@@ -2,13 +2,13 @@ package js7.common.system
 
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.RichJson
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data.system.JavaInformation
 
 /**
   * @author Joacim Zschimmer
   */
-final class JavaInformationsTest extends Test {
+final class JavaInformationsTest extends OurTestSuite {
 
   "JSON" in {
     val javaInformation = JavaInformations.javaInformation

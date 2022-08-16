@@ -5,11 +5,11 @@ import java.util.regex.Pattern
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceEither}
 import js7.base.circeutils.StandardJsonCodecs.{PatternJsonCodec, RegexJsonCodec}
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import scala.util.matching.Regex
 
-final class StandardJsonCodecsTest extends Test
+final class StandardJsonCodecsTest extends OurTestSuite
 {
   "Pattern" in {
     // Pattern does not implement `equals`

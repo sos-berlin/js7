@@ -3,7 +3,7 @@ package js7.data.value.expression
 import fastparse.*
 import fastparse.NoWhitespace.*
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data.value.expression.Expression.*
 import js7.data.value.expression.FastparseExpressionParser.*
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -12,7 +12,7 @@ import org.scalactic.source
 /**
   * @author Joacim Zschimmer
   */
-final class FastparseExpressionParserTest extends Test
+final class FastparseExpressionParserTest extends OurTestSuite
 {
   // See also ExpressionTest
 

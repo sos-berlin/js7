@@ -1,7 +1,7 @@
 package js7.data.workflow
 
 import cats.syntax.show.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.job.{PathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
@@ -13,7 +13,7 @@ import js7.data.workflow.instructions.{Execute, Fork, If}
 /**
   * @author Joacim Zschimmer
   */
-final class WorkflowPrinterTest extends Test
+final class WorkflowPrinterTest extends OurTestSuite
 {
   // Also tested by WorkflowParserTest.
 

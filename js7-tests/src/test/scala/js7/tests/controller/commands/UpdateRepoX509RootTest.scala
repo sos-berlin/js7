@@ -10,7 +10,7 @@ import js7.base.crypt.{GenericSignature, Signed, SignedString}
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Checked.Ops
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.data.controller.ControllerState.signableItemJsonCodec
@@ -23,7 +23,7 @@ import monix.execution.Scheduler.Implicits.global
 /**
   * @author Joacim Zschimmer
   */
-final class UpdateRepoX509RootTest extends Test with ControllerAgentForScalaTest
+final class UpdateRepoX509RootTest extends OurTestSuite with ControllerAgentForScalaTest
 {
   protected val agentPaths = Nil
   protected val items = Nil

@@ -1,11 +1,11 @@
 package js7.data.order
 
 import js7.base.circeutils.CirceUtils.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.Timestamp
 import js7.tester.CirceJsonTester.testJson
 
-final class CycleStateTest extends Test
+final class CycleStateTest extends OurTestSuite
 {
   "JSON" in {
     testJson(

@@ -4,7 +4,7 @@ import cats.instances.vector.*
 import cats.syntax.traverse.*
 import js7.base.circeutils.CirceUtils.*
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichThrowableEither
@@ -27,7 +27,7 @@ import monix.reactive.Observable
 import scala.util.Random
 
 // Try to resemble a failed manual test
-final class ManyAddOrdersTest extends Test with ControllerAgentForScalaTest
+final class ManyAddOrdersTest extends OurTestSuite with ControllerAgentForScalaTest
 {
   protected val agentPaths = Seq(agentPath1, agentPath2)
   protected val items = Seq(workflow, workflow2)

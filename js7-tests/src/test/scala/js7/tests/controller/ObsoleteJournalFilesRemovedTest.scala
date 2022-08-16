@@ -4,7 +4,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.problem.Checked.Ops
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
@@ -24,7 +24,7 @@ import monix.execution.Scheduler.Implicits.global
 /**
   * @author Joacim Zschimmer
   */
-final class ObsoleteJournalFilesRemovedTest extends Test with DirectoryProviderForScalaTest
+final class ObsoleteJournalFilesRemovedTest extends OurTestSuite with DirectoryProviderForScalaTest
 {
   protected val agentPaths = agentPath :: Nil
   protected val items = Seq(workflow)

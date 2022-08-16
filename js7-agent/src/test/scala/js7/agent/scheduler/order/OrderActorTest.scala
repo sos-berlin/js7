@@ -19,7 +19,7 @@ import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
 import js7.base.log.CorrelId
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.thread.MonixBlocking.syntax.RichTask
@@ -62,7 +62,7 @@ import scala.concurrent.duration.Deadline.now
 /**
   * @author Joacim Zschimmer
   */
-final class OrderActorTest extends Test with HasCloser with BeforeAndAfterAll
+final class OrderActorTest extends OurTestSuite with HasCloser with BeforeAndAfterAll
 {
   private lazy val directoryProvider = TestAgentDirectoryProvider()
   private lazy val config = AgentConfiguration

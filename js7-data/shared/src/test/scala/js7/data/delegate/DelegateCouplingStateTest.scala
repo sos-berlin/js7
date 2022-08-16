@@ -1,10 +1,10 @@
 package js7.data.delegate
 
 import js7.base.circeutils.CirceUtils.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
-final class DelegateCouplingStateTest extends Test
+final class DelegateCouplingStateTest extends OurTestSuite
 {
   "JSON" in {
     testJsonDecoder[DelegateCouplingState](

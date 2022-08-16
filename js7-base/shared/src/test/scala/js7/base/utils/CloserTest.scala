@@ -1,7 +1,7 @@
 package js7.base.utils
 
 import java.util.concurrent.ConcurrentLinkedQueue
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.utils.CloserTest.*
 import monix.execution.atomic.AtomicBoolean
 import scala.collection.mutable
@@ -11,7 +11,7 @@ import scala.util.control.NoStackTrace
 /**
   * @author Joacim Zschimmer
   */
-final class CloserTest extends Test
+final class CloserTest extends OurTestSuite
 {
   "TestCloseable" in {
     val ctx = new Context

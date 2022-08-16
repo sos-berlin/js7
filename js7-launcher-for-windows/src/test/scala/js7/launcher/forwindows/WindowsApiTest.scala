@@ -4,10 +4,10 @@ import com.sun.jna.platform.win32.Kernel32Util.closeHandle
 import com.sun.jna.platform.win32.WinNT.TOKEN_ALL_ACCESS
 import java.nio.file.Paths
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.launcher.forwindows.WindowsApi.{kernel32, messageIdToString, openProcessToken}
 
-final class WindowsApiTest extends Test
+final class WindowsApiTest extends OurTestSuite
 {
   if (isWindows) {
     "processHandleCount" in {

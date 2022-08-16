@@ -1,13 +1,13 @@
 package js7.data.value.expression
 
 import js7.base.problem.{Checked, Problem}
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.Scope.evalLazilyExpressions
 import js7.data.value.{NumberValue, StringValue, Value}
 import scala.collection.MapView
 
-final class ScopeTest extends Test
+final class ScopeTest extends OurTestSuite
 {
   "evalLazilyExpressions" - {
     var a = 0

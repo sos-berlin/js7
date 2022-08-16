@@ -1,7 +1,7 @@
 package js7.data.execution.workflow.instructions
 
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.{Timestamp, WallClock}
 import js7.data.execution.workflow.instructions.RetryExecutorTest.*
@@ -17,7 +17,7 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-final class RetryExecutorTest extends Test
+final class RetryExecutorTest extends OurTestSuite
 {
   "toEvents" in {
     assert(toEvents(Position(1)) == Left(Problem("Retry, but not in a catch-block")))

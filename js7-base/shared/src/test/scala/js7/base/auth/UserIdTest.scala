@@ -1,11 +1,11 @@
 package js7.base.auth
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 
 /**
   * @author Joacim Zschimmer
   */
-final class UserIdTest extends Test {
+final class UserIdTest extends OurTestSuite {
 
   "Invalid UserId" in {
     assert(UserId.checked("").isLeft)

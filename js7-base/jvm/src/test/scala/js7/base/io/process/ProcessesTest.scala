@@ -12,7 +12,7 @@ import js7.base.io.file.FileUtils.{autoDeleting, temporaryDirectory, withTempora
 import js7.base.io.process.Processes.*
 import js7.base.io.process.ProcessesTest.*
 import js7.base.system.OperatingSystem.{isMac, isSolaris, isWindows}
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
@@ -26,7 +26,7 @@ import scala.util.Try
 /**
  * @author Joacim Zschimmer
  */
-final class ProcessesTest extends Test {
+final class ProcessesTest extends OurTestSuite {
 
   "processToPidOption, toShellCommandArguments" in {
     if (isWindows) {

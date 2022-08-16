@@ -3,7 +3,7 @@ package js7.data.execution.workflow.instructions
 import java.time.DayOfWeek.FRIDAY
 import java.time.{LocalDate, LocalTime}
 import js7.base.problem.Checked.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.{AdmissionTimeScheme, WallClock, WeekdayPeriod}
 import js7.data.agent.AgentPath
@@ -22,7 +22,7 @@ import scala.collection.View
 /**
   * @author Joacim Zschimmer
   */
-final class ExecuteExecutorTest extends Test
+final class ExecuteExecutorTest extends OurTestSuite
 {
   private lazy val stateView = TestStateView.of(
     isAgent = false,

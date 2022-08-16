@@ -5,14 +5,14 @@ import js7.agent.configuration.AgentConfiguration
 import js7.agent.tests.AgentAkkaNoStackoverflowTest.*
 import js7.agent.tests.TestAgentDirectoryProvider.provideAgentDirectory
 import js7.base.log.Logger
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import monix.execution.Scheduler.Implicits.traced
 
 /**
   * @author Joacim Zschimmer
   */
-final class AgentAkkaNoStackoverflowTest extends Test with AgentTester
+final class AgentAkkaNoStackoverflowTest extends OurTestSuite with AgentTester
 {
   "Job working directory" in {
     val exception = intercept[RuntimeException] {

@@ -1,12 +1,12 @@
 package js7.data.event
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.Timestamp
 
 /**
   * @author Joacim Zschimmer
   */
-final class EventIdTest extends Test
+final class EventIdTest extends OurTestSuite
 {
   private val MaximumJsonLosslessEventIdInstant = Timestamp.parse("2255-06-05T23:47:34.740Z")
 //private val MaximumJsonLosslessEventIdInstant = Timestamp.parse("2255-06-05T23:47:34.740992Z")

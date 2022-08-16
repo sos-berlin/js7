@@ -11,7 +11,7 @@ import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.problem.Problem
 import js7.base.session.SessionCommand
 import js7.base.session.SessionCommand.Login
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
@@ -31,7 +31,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.Future
 
-final class SubagentRestartsAsDirectorTest extends Test
+final class SubagentRestartsAsDirectorTest extends OurTestSuite
 with BeforeAndAfterAll
 with ProvideActorSystem
 {

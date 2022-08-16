@@ -1,6 +1,6 @@
 package js7.launcher
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -11,7 +11,7 @@ import monix.eval.{Fiber, Task}
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.subjects.PublishSubject
 
-final class OrderProcessTest extends Test
+final class OrderProcessTest extends OurTestSuite
 {
   "Run an OrderProcess" in {
     val orderProcess = OrderProcess(Task(Outcome.succeeded))

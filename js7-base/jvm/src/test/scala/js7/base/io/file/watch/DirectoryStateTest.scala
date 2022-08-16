@@ -6,9 +6,9 @@ import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted}
 import js7.base.io.file.watch.DirectoryState.Entry
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 
-final class DirectoryStateTest extends Test
+final class DirectoryStateTest extends OurTestSuite
 {
   coupleScribeWithSlf4j()
 

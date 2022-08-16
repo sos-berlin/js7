@@ -6,7 +6,7 @@ import java.nio.file.Paths
 import js7.base.configutils.Configs.*
 import js7.base.log.Logger
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
@@ -16,7 +16,7 @@ import monix.reactive.Observable
 import scala.collection.View
 import scala.jdk.CollectionConverters.*
 
-final class SubagentConfTest extends Test
+final class SubagentConfTest extends OurTestSuite
 {
   private lazy val logger = Logger[this.type]
 

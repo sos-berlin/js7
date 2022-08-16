@@ -1,11 +1,11 @@
 package js7.data.job
 
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data.parser.UseFastparse
 import js7.data.value.expression.Expression.{ListExpression, MkString, NamedValue, StringConstant}
 
-final class CommandLineParserTest extends Test
+final class CommandLineParserTest extends OurTestSuite
 {
   "Empty commandline is rejected" in {
     assert(CommandLineParser.parse("") ==

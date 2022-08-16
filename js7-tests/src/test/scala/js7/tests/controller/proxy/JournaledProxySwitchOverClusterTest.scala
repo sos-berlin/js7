@@ -3,7 +3,7 @@ package js7.tests.controller.proxy
 import java.net.URI
 import js7.base.auth.Admission
 import js7.base.problem.Checked.Ops
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -21,7 +21,7 @@ import js7.tests.controller.proxy.ClusterProxyTest.{backupUserAndPassword, prima
 import monix.execution.Scheduler.Implicits.global
 import scala.jdk.CollectionConverters.*
 
-final class JournaledProxySwitchOverClusterTest extends Test with ClusterProxyTest
+final class JournaledProxySwitchOverClusterTest extends OurTestSuite with ClusterProxyTest
 {
   override protected val removeObsoleteJournalFiles = false
 

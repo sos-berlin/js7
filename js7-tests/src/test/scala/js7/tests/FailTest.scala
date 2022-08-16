@@ -4,7 +4,7 @@ import izumi.reflect.Tag
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
@@ -20,7 +20,7 @@ import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.traced
 import scala.reflect.ClassTag
 
-final class FailTest extends Test with ControllerAgentForScalaTest
+final class FailTest extends OurTestSuite with ControllerAgentForScalaTest
 {
   protected val agentPaths = Seq(agentPath)
   protected val items = Nil

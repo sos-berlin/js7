@@ -1,9 +1,9 @@
 package js7.launcher.utils
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.launcher.configuration.JobLauncherConf.ErrLineLengthMaximum
 
-final class LastLineKeeperTest extends Test
+final class LastLineKeeperTest extends OurTestSuite
 {
   "Empty" in {
     val lastLineKeeper = new LastLineKeeper

@@ -1,7 +1,7 @@
 package js7.subagent.director
 
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Base64UUID
@@ -11,7 +11,7 @@ import js7.subagent.director.CommandDispatcherTest.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 
-final class CommandDispatcherTest extends Test
+final class CommandDispatcherTest extends OurTestSuite
 {
   "test" in {
     val dispatcher = new CommandDispatcher {

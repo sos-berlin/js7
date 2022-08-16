@@ -15,7 +15,7 @@ import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
@@ -25,7 +25,7 @@ import org.scalatest.Assertions.*
 import scala.concurrent.duration.Deadline.now
 import scala.util.Random
 
-final class X509Test extends Test
+final class X509Test extends OurTestSuite
 {
   "Sign programmatically and verify" in {
     val (signer, verifier) = X509Signer.forTest

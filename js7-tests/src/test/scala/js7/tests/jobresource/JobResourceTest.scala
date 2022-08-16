@@ -8,7 +8,7 @@ import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.system.OperatingSystem.{isMac, isWindows}
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.JavaTimestamp.specific.*
 import js7.base.time.ScalaTime.*
@@ -40,7 +40,7 @@ import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import org.scalatest.Assertions.*
 
-class JobResourceTest extends Test with ControllerAgentForScalaTest
+class JobResourceTest extends OurTestSuite with ControllerAgentForScalaTest
 {
   override protected final val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]

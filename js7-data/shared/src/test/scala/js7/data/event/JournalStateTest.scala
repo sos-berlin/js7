@@ -2,13 +2,13 @@ package js7.data.event
 
 import js7.base.auth.UserId
 import js7.base.circeutils.CirceUtils.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.tester.CirceJsonTester.testJson
 
 /**
   * @author Joacim Zschimmer
   */
-final class JournalStateTest extends Test
+final class JournalStateTest extends OurTestSuite
 {
   "JSON" in {
     testJson(

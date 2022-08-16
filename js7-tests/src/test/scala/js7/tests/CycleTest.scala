@@ -5,7 +5,7 @@ import java.time.{LocalTime, ZoneId}
 import java.util.concurrent.TimeoutException
 import javax.inject.Singleton
 import js7.base.configutils.Configs.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
@@ -34,7 +34,7 @@ import monix.execution.Scheduler.Implicits.global
 import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration.*
 
-final class CycleTest extends Test
+final class CycleTest extends OurTestSuite
 with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
 {
   protected val agentPaths = Seq(agentPath)

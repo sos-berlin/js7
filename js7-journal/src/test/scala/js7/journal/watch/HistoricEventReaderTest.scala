@@ -2,7 +2,7 @@ package js7.journal.watch
 
 import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.io.file.FileUtils.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.event.{JournalHeaders, Stamped}
 import js7.journal.data.JournalMeta
@@ -15,7 +15,7 @@ import monix.execution.Scheduler.Implicits.traced
 /**
   * @author Joacim Zschimmer
   */
-final class HistoricEventReaderTest extends Test
+final class HistoricEventReaderTest extends OurTestSuite
 {
   "eventsAfter" in {
     withTemporaryDirectory("HistoricEventReaderTest-") { dir =>

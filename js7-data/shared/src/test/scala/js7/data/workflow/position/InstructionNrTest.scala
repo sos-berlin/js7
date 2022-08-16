@@ -1,11 +1,11 @@
 package js7.data.workflow.position
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 
 /**
   * @author Joacim Zschimmer
   */
-final class InstructionNrTest extends Test
+final class InstructionNrTest extends OurTestSuite
 {
   "Some instances are predefined" in {
     for (i <- 0 to 999) assert(InstructionNr(i) eq InstructionNr(i))

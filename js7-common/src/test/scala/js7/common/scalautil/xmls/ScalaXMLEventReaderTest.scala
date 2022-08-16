@@ -2,7 +2,7 @@ package js7.common.scalautil.xmls
 
 import javax.xml.transform.Source
 import js7.base.convert.ConvertiblePartialFunctions.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.Stopwatch.measureTime
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.scalautil.xmls.ScalaXMLEventReader.*
@@ -13,7 +13,7 @@ import org.scalatest.matchers.should.Matchers.*
 /**
  * @author Joacim Zschimmer
  */
-final class ScalaXMLEventReaderTest extends Test {
+final class ScalaXMLEventReaderTest extends OurTestSuite {
 
   "Methods" in {
     case class X(y: Y, z: Seq[Z])

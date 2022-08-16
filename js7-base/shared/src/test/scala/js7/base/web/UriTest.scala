@@ -1,11 +1,11 @@
 package js7.base.web
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 
 /**
   * @author Joacim Zschimmer
   */
-final class UriTest extends Test
+final class UriTest extends OurTestSuite
 {
   "/" in {
     assert(Uri("/") / "" == Uri("/"))

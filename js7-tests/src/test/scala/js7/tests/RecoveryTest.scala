@@ -5,7 +5,7 @@ import js7.agent.RunningAgent
 import js7.base.configutils.Configs.*
 import js7.base.crypt.silly.{SillySignature, SillySignatureVerifier, SillySigner}
 import js7.base.log.Logger
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -39,7 +39,7 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-final class RecoveryTest extends Test
+final class RecoveryTest extends OurTestSuite
 {
   // TODO Starte Controller und Agenten in eigenen Prozessen, die wir abbrechen können.
 

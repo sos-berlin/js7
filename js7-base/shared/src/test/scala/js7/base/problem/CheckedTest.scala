@@ -15,7 +15,7 @@ import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.Completed
 import js7.base.problem.Checked.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.tester.CirceJsonTester.testJson
 import monix.eval.Coeval
 import scala.util.{Failure, Success}
@@ -23,7 +23,7 @@ import scala.util.{Failure, Success}
 /**
   * @author Joacim Zschimmer
   */
-final class CheckedTest extends Test
+final class CheckedTest extends OurTestSuite
 {
   "JSON" - {
     import Checked.implicits.{checkedJsonDecoder, checkedJsonEncoder}

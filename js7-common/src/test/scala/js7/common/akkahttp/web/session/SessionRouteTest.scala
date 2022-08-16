@@ -11,7 +11,7 @@ import js7.base.io.https.HttpsConfig
 import js7.base.log.Logger
 import js7.base.problem.Problem
 import js7.base.session.SessionApi
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -35,7 +35,7 @@ import scala.concurrent.duration.Deadline.now
   * @author Joacim Zschimmer
   */
 sealed abstract class SessionRouteTest(override protected val isPublic: Boolean)
-extends Test with SessionRouteTester
+extends OurTestSuite with SessionRouteTester
 {
   protected final implicit def scheduler = Scheduler.traced
   private implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(10.s)

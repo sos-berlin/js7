@@ -1,11 +1,11 @@
 package js7.data.workflow
 
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data.workflow.OrderParameterListTest.orderParameterList
 import js7.tester.CirceJsonTester.testJson
 
-final class OrderPreparationTest extends Test
+final class OrderPreparationTest extends OurTestSuite
 {
   "JSON" in {
     testJson(OrderPreparation(OrderParameterList()),

@@ -2,11 +2,11 @@ package js7.base.time
 
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichJson}
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.tester.CirceJsonTester.testJson
 
-final class AdmissionPeriodTest extends Test
+final class AdmissionPeriodTest extends OurTestSuite
 {
   "JSON" - {
     "Always" in {

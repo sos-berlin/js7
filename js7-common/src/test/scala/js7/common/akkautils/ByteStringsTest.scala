@@ -3,10 +3,10 @@ package js7.common.akkautils
 import akka.util.ByteString
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.common.akkautils.ByteStrings.syntax.*
 
-final class ByteStringsTest extends Test
+final class ByteStringsTest extends OurTestSuite
 {
   "ByteString and ByteArray" in {
     assert((ByteString('A', 'B')).toByteArray == ByteArray('A', 'B'))

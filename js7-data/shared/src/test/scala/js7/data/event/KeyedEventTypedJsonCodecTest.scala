@@ -6,7 +6,7 @@ import io.circe.{Codec, DecodingFailure}
 import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.typed.TypedJsonCodec.UnknownClassForJsonException
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.KeyedEventTypedJsonCodecTest.*
@@ -16,7 +16,7 @@ import org.scalatest.matchers.should.Matchers.*
 /**
   * @author Joacim Zschimmer
   */
-final class KeyedEventTypedJsonCodecTest extends Test
+final class KeyedEventTypedJsonCodecTest extends OurTestSuite
 {
   "encode and decode" in {
     testJson[KeyedEvent[TestEvent]](NoKey <-: E0,      json"""{ "TYPE": "E0" }""")

@@ -1,7 +1,7 @@
 package js7.tests.controller.agent
 
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.AgentDedicated
@@ -13,7 +13,7 @@ import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler.Implicits.global
 
-final class AgentRestartBeforeDedicationTest extends Test with DirectoryProviderForScalaTest
+final class AgentRestartBeforeDedicationTest extends OurTestSuite with DirectoryProviderForScalaTest
 {
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on"""

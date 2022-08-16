@@ -10,13 +10,13 @@ import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.common.akkahttp.JsonStringTest.*
 
 /**
  * @author Joacim Zschimmer
  */
-final class JsonStringTest extends Test with ScalatestRouteTest
+final class JsonStringTest extends OurTestSuite with ScalatestRouteTest
 {
   coupleScribeWithSlf4j()
 

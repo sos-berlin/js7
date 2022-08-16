@@ -13,7 +13,7 @@ import js7.base.io.file.FileUtils.{deleteDirectoryRecursively, withTemporaryDire
 import js7.base.io.process.Processes.runProcess
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.data.controller.ControllerState.{signableItemJsonCodec, versionedItemJsonCodec}
@@ -26,7 +26,7 @@ import monix.execution.Scheduler.Implicits.global
 /**
   * @author Joacim Zschimmer
   */
-final class UpdateRepoX509Test extends Test with ControllerAgentForScalaTest
+final class UpdateRepoX509Test extends OurTestSuite with ControllerAgentForScalaTest
 {
   protected val agentPaths = Nil
   protected val items = Nil

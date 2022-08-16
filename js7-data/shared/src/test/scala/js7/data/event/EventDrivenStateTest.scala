@@ -1,7 +1,7 @@
 package js7.data.event
 
 import js7.base.problem.Checked.Ops
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.Timestamp
 import js7.data.event.EventDrivenState.EventNotApplicableProblem
 import js7.data.event.EventDrivenStateTest.*
@@ -10,7 +10,7 @@ import js7.data.event.KeyedEvent.NoKey
 /**
   * @author Joacim Zschimmer
   */
-final class EventDrivenStateTest extends Test
+final class EventDrivenStateTest extends OurTestSuite
 {
   private var s = TestState("")
 

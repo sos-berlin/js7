@@ -3,7 +3,7 @@ package js7.data.execution.workflow.instructions
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.WallClock
 import js7.data.agent.AgentPath
 import js7.data.execution.workflow.instructions.IfExecutorTest.*
@@ -22,7 +22,7 @@ import js7.tester.CirceJsonTester.testJson
 /**
   * @author Joacim Zschimmer
   */
-final class IfExecutorTest extends Test {
+final class IfExecutorTest extends OurTestSuite {
 
   private val ifExecutor = new IfExecutor(new InstructionExecutorService(WallClock))
   private lazy val stateView = TestStateView.of(

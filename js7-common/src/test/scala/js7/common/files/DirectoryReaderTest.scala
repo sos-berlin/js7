@@ -6,7 +6,7 @@ import java.util.Comparator
 import js7.base.io.file.FileUtils.*
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.JavaTimeConverters.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.measureTime
@@ -18,7 +18,7 @@ import scala.util.Random
 /**
   * @author Joacim Zschimmer
   */
-final class DirectoryReaderTest extends Test
+final class DirectoryReaderTest extends OurTestSuite
 {
   "entries" in {
     withTemporaryDirectory("Z-") { dir =>

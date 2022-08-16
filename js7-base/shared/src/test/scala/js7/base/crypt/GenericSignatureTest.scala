@@ -1,13 +1,13 @@
 package js7.base.crypt
 
 import js7.base.circeutils.CirceUtils.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.tester.CirceJsonTester.testJson
 
 /**
   * @author Joacim Zschimmer
   */
-final class GenericSignatureTest extends Test
+final class GenericSignatureTest extends OurTestSuite
 {
   "JSON" in {
     testJson(GenericSignature("SIGNATURE-TYPE", "SIGNATURE"), json"""

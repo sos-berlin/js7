@@ -1,7 +1,7 @@
 package js7.data.workflow.instructions
 
 import js7.base.circeutils.CirceUtils.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data.source.SourcePos
 import js7.data.value.NamedValues
 import js7.data.value.expression.Expression.StringConstant
@@ -12,7 +12,7 @@ import js7.tester.CirceJsonTester.testJson
 /**
   * @author Joacim Zschimmer
   */
-final class FailTest extends Test
+final class FailTest extends OurTestSuite
 {
   "JSON" - {
     "with defaults" in {

@@ -13,7 +13,7 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.CirceUtils.implicits.*
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.CorrelId
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
@@ -27,7 +27,7 @@ import scala.concurrent.Future
 /**
  * @author Joacim Zschimmer
  */
-final class CommandWebServiceTest extends Test with WebServiceTest with CommandWebService
+final class CommandWebServiceTest extends OurTestSuite with WebServiceTest with CommandWebService
 {
   protected def whenShuttingDown = Future.never
   protected def scheduler = Scheduler.traced

@@ -3,7 +3,7 @@ package js7.base.time
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder}
 import js7.base.circeutils.CirceUtils.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.tester.CirceJsonTester.testJson
 import scala.concurrent.duration.*
@@ -11,7 +11,7 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-final class TimestampTest extends Test
+final class TimestampTest extends OurTestSuite
 {
   private val isoString = "2017-12-04T11:22:33.456Z"
   private val millis = 1512386553456L

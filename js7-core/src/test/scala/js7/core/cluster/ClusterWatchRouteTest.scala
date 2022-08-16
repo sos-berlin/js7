@@ -9,7 +9,7 @@ import js7.base.auth.{SessionToken, SimpleUser}
 import js7.base.generic.SecretString
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
@@ -25,7 +25,7 @@ import monix.execution.Scheduler
 /**
   * @author Joacim Zschimmer
   */
-final class ClusterWatchRouteTest extends Test with ScalatestRouteTest with ClusterWatchRoute
+final class ClusterWatchRouteTest extends OurTestSuite with ScalatestRouteTest with ClusterWatchRoute
 {
   coupleScribeWithSlf4j()
 

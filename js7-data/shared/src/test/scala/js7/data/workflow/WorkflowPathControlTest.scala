@@ -1,12 +1,12 @@
 package js7.data.workflow
 
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data.item.ItemRevision
 import js7.data.workflow.position.Label
 import js7.tester.CirceJsonTester.testJson
 
-final class WorkflowPathControlTest extends Test
+final class WorkflowPathControlTest extends OurTestSuite
 {
   "JSON" in {
     testJson(

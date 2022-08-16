@@ -3,7 +3,7 @@ package js7.agent.data.event
 import java.util.UUID
 import js7.agent.data.event.AgentEvent.{AgentDedicated, AgentReady, AgentShutDown}
 import js7.base.circeutils.CirceUtils.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
 import js7.data.event.{JournalId, KeyedEvent}
@@ -12,7 +12,7 @@ import js7.data.subagent.SubagentId
 import js7.tester.CirceJsonTester.testJson
 import scala.concurrent.duration.*
 
-final class AgentEventTest extends Test
+final class AgentEventTest extends OurTestSuite
 {
   "AgentDedicated" in {
     testJson[KeyedEvent[AgentEvent]](AgentDedicated(

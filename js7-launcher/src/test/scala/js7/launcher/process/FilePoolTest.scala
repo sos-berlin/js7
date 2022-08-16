@@ -4,13 +4,13 @@ import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.exists
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.temporaryDirectory
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data.job.JobKey
 
 /**
   * @author Joacim Zschimmer
   */
-final class FilePoolTest extends Test
+final class FilePoolTest extends OurTestSuite
 {
   private val filePool = new FilePool(JobKey.forTest, temporaryDirectory, UTF_8)
   private var a: FilePool.FileSet = null

@@ -1,6 +1,6 @@
 package js7.base.utils
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -9,7 +9,7 @@ import scala.concurrent.{Await, Future, Promise}
 /**
   * @author Joacim Zschimmer
   */
-final class MonixAntiBlockingTest extends Test
+final class MonixAntiBlockingTest extends OurTestSuite
 {
   if (sys.props.get("scala.concurrent.context.numThreads") contains "1") {
     "Trying to minimize blocking error ..." in {

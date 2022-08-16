@@ -4,12 +4,12 @@ import cats.instances.list.*
 import cats.kernel.Monoid
 import cats.syntax.foldable.*
 import cats.syntax.monoid.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 
 /**
   * @author Joacim Zschimmer
   */
-final class CompletedTest extends Test
+final class CompletedTest extends OurTestSuite
 {
   "empty" in {
     assert(Monoid[Completed].empty eq Completed)

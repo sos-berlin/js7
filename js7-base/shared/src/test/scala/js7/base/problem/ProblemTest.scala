@@ -3,7 +3,7 @@ package js7.base.problem
 import cats.syntax.semigroup.*
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.ProblemTest.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.tester.CirceJsonTester.testJson
 import org.scalatest.exceptions.TestFailedException
@@ -12,7 +12,7 @@ import scala.util.Try
 /**
   * @author Joacim Zschimmer
   */
-final class ProblemTest extends Test
+final class ProblemTest extends OurTestSuite
 {
   "JSON" - {
     "without ProblemCode" - {

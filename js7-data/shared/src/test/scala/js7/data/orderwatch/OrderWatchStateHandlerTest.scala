@@ -2,7 +2,7 @@ package js7.data.orderwatch
 
 import js7.base.problem.Problems.DuplicateKey
 import js7.base.problem.{Checked, Problem}
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
@@ -17,7 +17,7 @@ import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
 
-final class OrderWatchStateHandlerTest extends Test
+final class OrderWatchStateHandlerTest extends OurTestSuite
 {
   private val v1 = VersionId("1")
   private val workflowPath = WorkflowPath("WORKFLOW")

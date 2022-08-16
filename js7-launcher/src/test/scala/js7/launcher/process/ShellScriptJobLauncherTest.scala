@@ -3,10 +3,10 @@ package js7.launcher.process
 import java.nio.charset.StandardCharsets.ISO_8859_1
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.FileUtils.withTemporaryDirectory
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.utils.ScalaUtils.syntax.*
 
-final class ShellScriptJobLauncherTest extends Test
+final class ShellScriptJobLauncherTest extends OurTestSuite
 {
   "writeScriptToFile" in {
     withTemporaryDirectory("ShellScriptJobLauncherTest-") { dir =>

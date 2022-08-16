@@ -4,7 +4,7 @@ import java.util.concurrent.ArrayBlockingQueue
 import js7.base.data.ByteArray
 import js7.base.io.file.FileUtils.*
 import js7.base.io.file.FileUtils.syntax.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import monix.execution.Scheduler.Implicits.traced
@@ -14,7 +14,7 @@ import scala.util.Random
 /**
   * @author Joacim Zschimmer
   */
-final class GrowingFileObservableTest extends Test
+final class GrowingFileObservableTest extends OurTestSuite
 {
   "GrowingFileObservable, not growing" in {
     withTemporaryFile("GrowingFileObservableTest", ".tmp") { file =>

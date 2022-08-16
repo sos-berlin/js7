@@ -5,7 +5,7 @@ import javax.inject.Singleton
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Problem
 import js7.base.problem.Problems.UnknownKeyProblem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.time.{AlarmClock, TestAlarmClock, Timestamp}
@@ -36,7 +36,7 @@ import monix.reactive.Observable
 import scala.collection.View
 import scala.concurrent.duration.*
 
-final class BoardTest extends Test with ControllerAgentForScalaTest
+final class BoardTest extends OurTestSuite with ControllerAgentForScalaTest
 {
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]

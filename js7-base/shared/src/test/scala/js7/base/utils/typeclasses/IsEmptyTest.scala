@@ -2,11 +2,11 @@ package js7.base.utils.typeclasses
 
 import cats.instances.option.*
 import cats.{Eq, Monoid}
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
 
-final class IsEmptyTest extends Test
+final class IsEmptyTest extends OurTestSuite
 {
   private val emptyMap = Map.empty[Int, String]
   private val nonEmptyMap = Map(1 -> "")

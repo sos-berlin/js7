@@ -1,7 +1,7 @@
 package js7.data.job
 
 import js7.base.circeutils.CirceUtils.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.{Position, WorkflowBranchPath}
@@ -10,7 +10,7 @@ import js7.tester.CirceJsonTester.*
 /**
   * @author Joacim Zschimmer
   */
-final class JobKeyTest extends Test
+final class JobKeyTest extends OurTestSuite
 {
   "JSON" - {
     "JobKey.Anonymous" in {

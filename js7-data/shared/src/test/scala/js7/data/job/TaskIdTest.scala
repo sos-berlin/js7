@@ -1,12 +1,12 @@
 package js7.data.job
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import org.scalatest.matchers.should.Matchers.*
 
 /**
  * @author Joacim Zschimmer
  */
-final class TaskIdTest extends Test
+final class TaskIdTest extends OurTestSuite
 {
   "toString" in {
     assert(TaskId(123, 789).toString == "TaskId(123-789)")

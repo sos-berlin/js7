@@ -1,13 +1,13 @@
 package js7.common.system
 
 import js7.base.configutils.Configs.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.common.system.ThreadPools.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class ThreadPoolsTest extends Test
+final class ThreadPoolsTest extends OurTestSuite
 {
   "ThreadCount" - {
     val config = config"""

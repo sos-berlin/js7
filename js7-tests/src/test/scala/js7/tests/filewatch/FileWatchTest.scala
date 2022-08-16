@@ -12,7 +12,7 @@ import js7.base.log.Logger
 import js7.base.monixutils.MonixDeadline.now
 import js7.base.problem.Checked.*
 import js7.base.system.OperatingSystem.isMac
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -43,7 +43,7 @@ import monix.reactive.Observable
 import scala.concurrent.TimeoutException
 
 final class FileWatchTest
-extends Test with ControllerAgentForScalaTest with BlockingItemUpdater
+extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
 {
   protected val agentPaths = Seq(aAgentPath, bAgentPath)
   protected val items = Seq(workflow, waitingWorkflow)

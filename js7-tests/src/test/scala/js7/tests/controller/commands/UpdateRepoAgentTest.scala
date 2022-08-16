@@ -8,7 +8,7 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
@@ -30,7 +30,7 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-final class UpdateRepoAgentTest extends Test
+final class UpdateRepoAgentTest extends OurTestSuite
 {
   coupleScribeWithSlf4j()
 

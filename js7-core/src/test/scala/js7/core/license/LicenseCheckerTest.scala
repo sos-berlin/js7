@@ -1,10 +1,10 @@
 package js7.core.license
 
 import java.nio.file.Paths
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.license.{LicenseCheck, LicenseCheckContext}
 
-final class LicenseCheckerTest extends Test
+final class LicenseCheckerTest extends OurTestSuite
 {
   private val licenseCheckContext = LicenseCheckContext(Paths.get("/CONFIG"))
 

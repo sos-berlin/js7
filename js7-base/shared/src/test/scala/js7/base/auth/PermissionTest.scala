@@ -2,12 +2,12 @@ package js7.base.auth
 
 import js7.base.auth.Permission.*
 import js7.base.auth.PermissionTest.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 
 /**
   * @author Joacim Zschimmer
   */
-final class PermissionTest extends Test
+final class PermissionTest extends OurTestSuite
 {
   "toStringToPermission" in {
     assert(toStringToPermission(Set(TestPermission, AnotherPermission)) ==

@@ -6,7 +6,7 @@ import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
@@ -25,7 +25,7 @@ import monix.execution.Scheduler.Implicits.global
 import scala.concurrent.duration.*
 import scala.reflect.ClassTag
 
-final class RetryTest extends Test with ControllerAgentForScalaTest
+final class RetryTest extends OurTestSuite with ControllerAgentForScalaTest
 {
   override protected val controllerConfig = config"js7.journal.simulate-sync = 10ms"  // Avoid excessive syncs in case of test failure
   override protected val agentConfig = config"js7.journal.simulate-sync = 10ms"  // Avoid excessive syncs in case of test failure

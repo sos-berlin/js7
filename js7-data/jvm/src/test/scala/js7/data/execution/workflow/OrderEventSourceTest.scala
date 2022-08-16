@@ -3,7 +3,7 @@ package js7.data.execution.workflow
 import cats.syntax.option.*
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.WallClock
 import js7.base.utils.Collections.implicits.*
 import js7.base.utils.ScalaUtils.syntax.*
@@ -37,7 +37,7 @@ import scala.collection.mutable
 /**
   * @author Joacim Zschimmer
   */
-final class OrderEventSourceTest extends Test
+final class OrderEventSourceTest extends OurTestSuite
 {
   import OrderEventSourceTest.instructionExecutorService
 

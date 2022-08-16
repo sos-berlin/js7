@@ -19,7 +19,7 @@ import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.problem.Problems.UnknownKeyProblem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -55,7 +55,7 @@ import scala.util.Try
   * @author Joacim Zschimmer
   */
 final class ControllerWebServiceTest
-extends Test with BeforeAndAfterAll with ControllerAgentForScalaTest
+extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest
 {
   override lazy val signer: SillySigner = new SillySigner(SillySignature("MY-SILLY-SIGNATURE"))
   override lazy val verifier = signer.toVerifier

@@ -1,13 +1,13 @@
 package js7.base.utils
 
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.utils.DecimalPrefixes.{toInt, toLong}
 
 /**
   * @author Joacim Zschimmer
   */
-final class DecimalPrefixesTest extends Test
+final class DecimalPrefixesTest extends OurTestSuite
 {
   "toInt" in {
     assert(toInt("") == Left(Problem("NumberFormatException: For input string: \"\"")))

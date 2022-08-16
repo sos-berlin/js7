@@ -4,7 +4,7 @@ import io.circe.Json
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.*
@@ -27,7 +27,7 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-final class OrderEventTest extends Test
+final class OrderEventTest extends OurTestSuite
 {
   "OrderAdded" in {
     check(

@@ -1,6 +1,6 @@
 package js7.core.cluster
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.controller.ControllerId
@@ -10,7 +10,7 @@ import monix.execution.Scheduler.Implicits.global
 /**
   * @author Joacim Zschimmer
   */
-final class ClusterWatchRegisterTest extends Test
+final class ClusterWatchRegisterTest extends OurTestSuite
 {
   private val clusterWatchRegister = new ClusterWatchRegister(Scheduler.traced)
 

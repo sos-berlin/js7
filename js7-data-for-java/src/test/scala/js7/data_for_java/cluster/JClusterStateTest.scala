@@ -1,6 +1,6 @@
 package js7.data_for_java.cluster
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterTiming}
@@ -10,7 +10,7 @@ import js7.data.node.NodeId
 /**
   * @author Joacim Zschimmer
   */
-final class JClusterStateTest extends Test
+final class JClusterStateTest extends OurTestSuite
 {
   private val setting = ClusterSetting(
     Map(

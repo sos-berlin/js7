@@ -1,10 +1,10 @@
 package js7.base.utils
 
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import scala.collection.immutable.HashSet
 
-final class SubclassToXTest extends Test
+final class SubclassToXTest extends OurTestSuite
 {
   "checked" in {
     val superclassToX = Map[Class[? <: Iterable[?]], String](

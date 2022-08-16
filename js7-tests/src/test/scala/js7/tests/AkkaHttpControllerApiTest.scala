@@ -6,7 +6,7 @@ import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.web.Uri
 import js7.controller.client.AkkaHttpControllerApi
@@ -28,7 +28,7 @@ import monix.execution.Scheduler.Implicits.global
 /**
   * @author Joacim Zschimmer
   */
-final class AkkaHttpControllerApiTest extends Test with ControllerAgentForScalaTest
+final class AkkaHttpControllerApiTest extends OurTestSuite with ControllerAgentForScalaTest
 {
   protected val agentPaths = Nil
   protected val items = Seq(agentRef, subagentItem, workflow)

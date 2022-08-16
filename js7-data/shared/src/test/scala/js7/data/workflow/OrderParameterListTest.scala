@@ -2,7 +2,7 @@ package js7.data.workflow
 
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.Timestamp
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.data.Problems.{EvaluationFailedProblem, RecursiveEvaluationProblem}
@@ -19,7 +19,7 @@ import js7.data.workflow.OrderParameterListTest.*
 import js7.tester.CirceJsonTester.testJson
 import scala.collection.View
 
-final class OrderParameterListTest extends Test
+final class OrderParameterListTest extends OurTestSuite
 {
   "JSON" in {
     testJson(orderParameterList,

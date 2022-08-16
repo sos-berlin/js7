@@ -3,7 +3,7 @@ package js7.controller.command
 import js7.base.auth.{SimpleUser, UserId}
 import js7.base.log.{CorrelId, CorrelIdWrapped}
 import js7.base.problem.Problem
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.core.command.{CommandExecutor, CommandMeta}
@@ -17,7 +17,7 @@ import monix.execution.Scheduler.Implicits.traced
 /**
   * @author Joacim Zschimmer
   */
-final class ControllerCommandExecutorTest extends Test
+final class ControllerCommandExecutorTest extends OurTestSuite
 {
   private val cancelOrder = CancelOrders(Set(OrderId("ORDER-ID")), CancellationMode.FreshOnly)
   private val meta = CommandMeta(SimpleUser(UserId("USER")))

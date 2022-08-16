@@ -1,13 +1,13 @@
 package js7.base.convert
 
 import js7.base.convert.ConvertiblePartialFunctions.ImplicitConvertablePF
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import org.scalatest.matchers.should.Matchers.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class ConvertiblePartialFunctionsTest extends Test {
+final class ConvertiblePartialFunctionsTest extends OurTestSuite {
 
   private val pf: PartialFunction[String, String] = Map("KEY" -> "111", "other" -> "000")
 

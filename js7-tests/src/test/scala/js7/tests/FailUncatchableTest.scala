@@ -2,7 +2,7 @@ package js7.tests
 
 import izumi.reflect.Tag
 import js7.base.problem.Checked.Ops
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.agent.AgentPath
@@ -20,7 +20,7 @@ import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.traced
 import scala.reflect.ClassTag
 
-final class FailUncatchableTest extends Test
+final class FailUncatchableTest extends OurTestSuite
 {
   "fail" in {
     checkEvents[OrderFailed]("""

@@ -1,12 +1,12 @@
 package js7.provider.scheduledorder.oldruntime
 
 import java.time.{Duration, LocalTime}
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 
 /**
   * @author Joacim Zschimmer
   */
-final class RepeatPeriodTest extends Test {
+final class RepeatPeriodTest extends OurTestSuite {
 
   "nextLocalTime" - {
     "Easy case" in {

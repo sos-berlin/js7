@@ -1,12 +1,12 @@
 package js7.agent.data.web
 
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 import js7.base.web.Uri
 
 /**
  * @author Joacim Zschimmer
  */
-final class AgentUrisTest extends Test
+final class AgentUrisTest extends OurTestSuite
 {
   private val agentUris = AgentUris(Uri("https://example.com:9999/testPrefix"))
 

@@ -1,9 +1,9 @@
 package js7.base.auth
 
 import js7.base.generic.SecretString
-import js7.base.test.Test
+import js7.base.test.OurTestSuite
 
-final class SessionTokenTest extends Test
+final class SessionTokenTest extends OurTestSuite
 {
   "toString" in {
     assert(SessionToken(SecretString("123,SECRET")).toString == "Session:123")
