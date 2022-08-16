@@ -9,59 +9,83 @@ import org.scalactic.source
 import org.scalatest.exceptions.TestPendingException
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.{PendingStatement, Tag}
+import scala.collection.mutable
 import scala.language.implicitConversions
 import scala.util.control.NonFatal
 
+/**
+ * Extends `AnyFreeSpec` with logging of test names and their outcomes.
+ * The log lines are colored, so use `less` with `LESS=-R` to let the escape sequences
+ * take effect on your terminal.
+ **/
 trait LoggingAnyFreeSpec extends AnyFreeSpec {
   self =>
 
-  protected implicit def implicitToFreeSpecStringWrapper(s: String)
+  private val outerNames = new mutable.Stack[String]
+
+  protected implicit def implicitToFreeSpecStringWrapper(testName: String)
     (implicit pos: source.Position)
-  : MyFreeSpecStringWrapper =
-    new MyFreeSpecStringWrapper(s, pos)
+  : OurFreeSpecStringWrapper =
+    new OurFreeSpecStringWrapper(testName, pos)
 
-  private def wrappedConvertToFreeSpecStringWrapper(s: String, pos: source.Position) =
-    super.convertToFreeSpecStringWrapper(s)(pos)
+  private def callConvertToFreeSpecStringWrapper(testName: String, pos: source.Position) =
+    super.convertToFreeSpecStringWrapper(testName)(pos)
 
-  protected final class MyFreeSpecStringWrapper(testName: String, pos: source.Position)
+  protected final class OurFreeSpecStringWrapper(testName: String, pos: source.Position)
   {
-    private val underlying: FreeSpecStringWrapper = wrappedConvertToFreeSpecStringWrapper(testName, pos)
+    private val underlying: FreeSpecStringWrapper =
+      callConvertToFreeSpecStringWrapper(testName, pos)
 
     def -(f: => Unit): Unit =
-      underlying - f
+      underlying - {
+        outerNames.push(testName)
+        try f
+        finally {
+          outerNames.pop()
+        }
+      }
 
-    def in(f: => Unit): Unit =
-      underlying in executeTest(f)
+    def in(f: => Unit): Unit = {
+      val outer = outerNames.toVector
+      underlying in executeTest(outer, f)
+    }
 
-    def ignore(f: => Unit): Unit =
-      underlying ignore f
+    //def ignore(f: => Unit): Unit =
+    //  underlying ignore f
 
-    def is(f: => PendingStatement): Unit =
-      underlying is f
+    //def is(f: => PendingStatement): Unit =
+    //  underlying is f
 
     def taggedAs(firstTag: Tag, more: Tag*): TaggedAsResult =
       new TaggedAsResult(firstTag, more)
 
-    private def executeTest(f: => Unit): Unit = {
+    private def executeTest(outer: Seq[String], f: => Unit): Unit = {
       import AnsiEscapeCodes.{black, bold, green, red, reset}
-      val msg = s"${self.getClass.simpleScalaName} · $testName"
-      logger.info(eager(s"$black$bold↘︎ $msg$reset"))
+      val prefix = (self.getClass.simpleScalaName +: outer).mkString("", " — ", " — ")
+      delayBeforeEnd()
+      logger.info(eager(s"↘︎ $prefix$black$bold$testName$reset"))
       delayBeforeEnd()
       try {
         f
-        logger.info(eager(s"$green$bold↙︎ $msg$reset\n"))
+        val markup = green + bold
+        logger.info(eager(s"↙︎ $prefix$markup$testName$reset"))
+        logger.info(eager(markup + "⎯" * 80))
         delayBeforeEnd()
       } catch {
         case NonFatal(t: TestPendingException) =>
-          logger.error(eager(s"\u001B[31m🚫$msg · PENDING$reset\n"))
+          val markup = red
+          logger.error(eager(s"🚫 $prefix${markup}$testName (PENDING)$reset\n"))
+          logger.info(eager(markup + "⎯" * 80))
           delayBeforeEnd()
           throw t
 
         case NonFatal(t) =>
-          reduceStackTrace(t)
+          clipStackTrace(t)
 
-          val s = s"$red$bold💥︎$msg 💥$reset"
+          val markup = red + bold
+          val s = s"💥 $prefix$markup$testName 💥$reset"
           logger.error(s, t)
+          logger.info(eager(markup + "⎯" * 80))
           if (isSbt) System.err.println(s)
           delayBeforeEnd()
 
@@ -69,17 +93,13 @@ trait LoggingAnyFreeSpec extends AnyFreeSpec {
       }
     }
 
-    private def delayBeforeEnd() =
-      if (isIntelliJIdea) sleep(3.ms)
-
-    /** Because ScalaLogging String interpolation may let ScalaTest intersperse a '\n'. */
-    private def eager(s: String) = s
-
     protected final class TaggedAsResult(tag: Tag, more: Seq[Tag]) {
       val tagged = underlying.taggedAs(tag, more: _*)
 
-      def in(f: => Unit): Unit =
-        tagged in executeTest(f)
+      def in(f: => Unit): Unit = {
+        val outer = outerNames.toVector
+        tagged in executeTest(outer, f)
+      }
 
       def is(f: => PendingStatement): Unit =
         tagged is f
@@ -100,18 +120,26 @@ object LoggingAnyFreeSpec {
     "org.jetbrains.plugins.scala.",
     "js7.base.test.")
 
-  private def reduceStackTrace(t: Throwable): Unit = {
+  private def clipStackTrace(t: Throwable): Unit = {
     val st = t.getStackTrace
-    var dropEnd = st.lastIndexWhere { o =>
+    val dropTop = st.indexWhere(o => !o.getClassName.startsWith("org.scalatest."))
+    val dropBottom = st.lastIndexWhere { o =>
       val c = o.getClassName
       !droppableStackTracePrefixes.exists(c startsWith _)
+    } match {
+      case -1 => st.length
+      case i => i + 1
     }
-    dropEnd = if (dropEnd == -1) st.length else dropEnd + 1
 
-    val dropStart = st.indexWhere(o => !o.getClassName.startsWith("org.scalatest."))
-
-    if (dropStart < dropEnd) {
-      t.setStackTrace(st.slice(dropStart, dropEnd))
+    if (dropTop < dropBottom) {
+      t.setStackTrace(st.slice(dropTop, dropBottom))
     }
   }
+
+  private def delayBeforeEnd() =
+    if (isIntelliJIdea) sleep(1.ms)
+
+  /** Because ScalaLogging String interpolation may let the
+   * IntellijJScala plugin intersperse a '\n'. */
+  private def eager(s: String) = s
 }
