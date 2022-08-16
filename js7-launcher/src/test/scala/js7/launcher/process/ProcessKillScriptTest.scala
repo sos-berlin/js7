@@ -13,6 +13,7 @@ import js7.base.io.process.Processes.{RobustlyStartProcess, processToPidOption}
 import js7.base.io.process.{Pid, Processes}
 import js7.base.log.Logger
 import js7.base.system.OperatingSystem.{isMac, isSolaris, isUnix, isWindows}
+import js7.base.test.Test
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
@@ -20,7 +21,6 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.data.job.TaskId
 import js7.launcher.process.ProcessKillScriptTest.*
 import monix.execution.Scheduler.Implicits.traced
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.*
 import scala.concurrent.{Future, blocking}
 import scala.jdk.CollectionConverters.*
@@ -30,7 +30,7 @@ import scala.jdk.CollectionConverters.*
   *
   * @author Joacim Zschimmer
   */
-final class ProcessKillScriptTest extends AnyFreeSpec {
+final class ProcessKillScriptTest extends Test {
 
   "Kill script kills descendants" in {
     if (isMac) {

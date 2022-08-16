@@ -3,14 +3,14 @@ package js7.base.session
 import js7.base.auth.{SessionToken, UserAndPassword, UserId}
 import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.SecretString
+import js7.base.test.Test
 import js7.base.version.Version
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder, testJsonEncoder}
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class SessionCommandTest extends AnyFreeSpec {
+final class SessionCommandTest extends Test {
 
   "JSON" - {
     "Login" in {

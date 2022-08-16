@@ -2,6 +2,7 @@ package js7.data.subagent
 
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.base.utils.Base64UUID
 import js7.base.web.Uri
 import js7.data.agent.AgentPath
@@ -9,9 +10,8 @@ import js7.data.delegate.DelegateCouplingState
 import js7.data.item.ItemRevision
 import js7.data.platform.PlatformInfo
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
-import org.scalatest.freespec.AnyFreeSpec
 
-final class SubagentItemStateTest extends AnyFreeSpec
+final class SubagentItemStateTest extends Test
 {
   "JSON" in {
     testJson[SubagentItemState](

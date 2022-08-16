@@ -2,13 +2,13 @@ package js7.common.internet
 
 import java.net.{InetAddress, InetSocketAddress, UnknownHostException}
 import js7.base.convert.As.convert
+import js7.base.test.Test
 import js7.common.internet.IP.*
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class IPTest extends AnyFreeSpec {
+final class IPTest extends Test {
 
   "InetAddress" in {
     intercept[IllegalArgumentException] { convert[String, InetAddress]("") }

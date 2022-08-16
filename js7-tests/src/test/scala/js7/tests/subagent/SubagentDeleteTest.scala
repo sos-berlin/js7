@@ -3,6 +3,7 @@ package js7.tests.subagent
 import java.util.concurrent.TimeoutException
 import js7.agent.RunningAgent
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
@@ -20,9 +21,8 @@ import js7.tests.subagent.SubagentDeleteTest.*
 import js7.tests.subagent.SubagentRestartTest.agentPath
 import monix.execution.Scheduler
 import monix.reactive.Observable
-import org.scalatest.freespec.AnyFreeSpec
 
-final class SubagentDeleteTest extends AnyFreeSpec with SubagentTester
+final class SubagentDeleteTest extends Test with SubagentTester
 {
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Seq(workflow, bareSubagentItem)

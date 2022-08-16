@@ -2,12 +2,12 @@ package js7.data.order
 
 import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.problem.Problem
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
 /**
   * @author Joacim Zschimmer
   */
-final class OrderIdTest extends AnyFreeSpec {
+final class OrderIdTest extends Test {
 
   "checkedNameSyntax" in {
     assert(OrderId.checked("") == Left(EmptyStringProblem("OrderId")))

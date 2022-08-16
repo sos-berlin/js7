@@ -1,6 +1,7 @@
 package js7.data.execution.workflow.instructions
 
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.base.time.ScalaTime.*
 import js7.base.time.{Timestamp, WallClock}
 import js7.data.execution.workflow.instructions.RetryExecutorTest.*
@@ -11,13 +12,12 @@ import js7.data.value.NamedValues
 import js7.data.workflow.instructions.{Gap, Retry, TryInstruction}
 import js7.data.workflow.position.{Position, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class RetryExecutorTest extends AnyFreeSpec
+final class RetryExecutorTest extends Test
 {
   "toEvents" in {
     assert(toEvents(Position(1)) == Left(Problem("Retry, but not in a catch-block")))

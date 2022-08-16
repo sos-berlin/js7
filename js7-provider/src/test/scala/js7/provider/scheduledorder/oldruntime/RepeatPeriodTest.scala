@@ -1,12 +1,12 @@
 package js7.provider.scheduledorder.oldruntime
 
 import java.time.{Duration, LocalTime}
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
 /**
   * @author Joacim Zschimmer
   */
-final class RepeatPeriodTest extends AnyFreeSpec {
+final class RepeatPeriodTest extends Test {
 
   "nextLocalTime" - {
     "Easy case" in {

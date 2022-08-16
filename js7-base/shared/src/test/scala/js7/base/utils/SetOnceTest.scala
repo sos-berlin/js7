@@ -1,14 +1,14 @@
 package js7.base.utils
 
 import js7.base.problem.{Problem, ProblemException}
+import js7.base.test.Test
 import js7.base.utils.SetOnceTest.*
 import monix.execution.atomic.AtomicInt
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
-final class SetOnceTest extends AnyFreeSpec
+final class SetOnceTest extends Test
 {
   "SetOnce" in {
     val a = SetOnce[Int]

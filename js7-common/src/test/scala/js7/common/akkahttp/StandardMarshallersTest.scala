@@ -12,20 +12,20 @@ import io.circe.Encoder
 import io.circe.generic.semiauto.deriveEncoder
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.{Checked, Problem}
+import js7.base.test.Test
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
+import js7.common.akkahttp.CirceJsonSupport.*
 import js7.common.akkahttp.StandardMarshallers.*
 import js7.common.akkautils.Akkas
 import js7.common.akkautils.Akkas.newActorSystem
-import js7.common.akkahttp.CirceJsonSupport.*
 import org.scalatest.BeforeAndAfterAll
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
   * @author Joacim Zschimmer
   */
-final class StandardMarshallersTest extends AnyFreeSpec with BeforeAndAfterAll {
+final class StandardMarshallersTest extends Test with BeforeAndAfterAll {
 
   implicit private val actorSystem: ActorSystem =
     newActorSystem("StandardMarshallersTest")

@@ -2,6 +2,7 @@ package js7.tests.subagent
 
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
@@ -19,9 +20,8 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.scalatest.Assertion
-import org.scalatest.freespec.AnyFreeSpec
 
-final class SubagentMultipleOrdersTest extends AnyFreeSpec with SubagentTester
+final class SubagentMultipleOrdersTest extends Test with SubagentTester
 {
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Seq(workflow, bareSubagentItem)

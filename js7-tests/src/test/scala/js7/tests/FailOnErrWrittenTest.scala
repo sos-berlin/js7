@@ -1,6 +1,7 @@
 package js7.tests
 
 import js7.base.configutils.Configs.HoconStringInterpolator
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
@@ -15,9 +16,8 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.FailOnErrWrittenTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.freespec.AnyFreeSpec
 
-final class FailOnErrWrittenTest extends AnyFreeSpec with ControllerAgentForScalaTest
+final class FailOnErrWrittenTest extends Test with ControllerAgentForScalaTest
 {
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]

@@ -8,6 +8,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -35,7 +36,6 @@ import js7.journal.web.JournalRoute
 import js7.journal.write.{EventJournalWriter, SnapshotJournalWriter}
 import monix.eval.Task
 import monix.execution.{CancelableFuture, Scheduler}
-import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.concurrent.duration.*
@@ -43,7 +43,7 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-final class JournalRouteTest extends AnyFreeSpec with RouteTester with JournalRoute
+final class JournalRouteTest extends Test with RouteTester with JournalRoute
 {
   protected type OurSession = SimpleSession
 

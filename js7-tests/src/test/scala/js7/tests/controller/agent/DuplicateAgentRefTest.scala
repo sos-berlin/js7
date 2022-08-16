@@ -4,6 +4,7 @@ import com.typesafe.config.ConfigUtil.quoteString
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Checked.*
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentReady}
@@ -12,9 +13,8 @@ import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.tests.controller.agent.DuplicateAgentRefTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
-import org.scalatest.freespec.AnyFreeSpec
 
-final class DuplicateAgentRefTest extends AnyFreeSpec with ControllerAgentForScalaTest
+final class DuplicateAgentRefTest extends Test with ControllerAgentForScalaTest
 {
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]

@@ -3,6 +3,7 @@ package js7.data.controller
 import js7.base.circeutils.CirceUtils.*
 import js7.base.log.{CorrelId, CorrelIdWrapped}
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.web.Uri
@@ -19,9 +20,8 @@ import js7.data.value.NamedValues
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.{Label, Position}
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
-import org.scalatest.freespec.AnyFreeSpec
 
-final class ControllerCommandTest extends AnyFreeSpec
+final class ControllerCommandTest extends Test
 {
   "Batch" - {
     "Batch" in {

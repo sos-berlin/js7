@@ -2,12 +2,12 @@ package js7.data.job
 
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
+import js7.base.test.Test
 import js7.data.value.expression.Scope
 import js7.data.value.{NumberValue, StringValue}
-import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.MapView
 
-final class CommandLineEvaluatorTest extends AnyFreeSpec
+final class CommandLineEvaluatorTest extends Test
 {
   "Constant" in {
     assert(eval("ÄBC") ==

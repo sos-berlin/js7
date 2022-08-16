@@ -1,6 +1,7 @@
 package js7.tests.internaljob
 
 import js7.base.configutils.Configs.*
+import js7.base.test.Test
 import js7.data.agent.AgentPath
 import js7.data.job.{InternalExecutable, JobResource, JobResourcePath}
 import js7.data.order.OrderEvent.OrderProcessed
@@ -11,9 +12,8 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.internaljob.SimpleBlockingInternalJobTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
-import org.scalatest.freespec.AnyFreeSpec
 
-final class SimpleBlockingInternalJobTest extends AnyFreeSpec with ControllerAgentForScalaTest
+final class SimpleBlockingInternalJobTest extends Test with ControllerAgentForScalaTest
 {
   protected val agentPaths = agentPath :: Nil
   protected val items = Seq(workflow, jobResource)

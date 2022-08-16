@@ -1,16 +1,16 @@
 package js7.data.workflow.instructions
 
 import js7.base.circeutils.CirceUtils.*
+import js7.base.test.Test
 import js7.data.source.SourcePos
 import js7.data.workflow.Instruction
 import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.tester.CirceJsonTester.*
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class RetryTest extends AnyFreeSpec
+final class RetryTest extends Test
 {
   "JSON" in {
     testJson[Instruction.Labeled](Retry(Some(SourcePos(1, 2))),

@@ -1,16 +1,16 @@
 package js7.data.agent
 
 import js7.base.circeutils.CirceUtils.*
+import js7.base.test.Test
 import js7.base.web.Uri
 import js7.data.item.ItemRevision
 import js7.data.subagent.SubagentId
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class AgentRefTest extends AnyFreeSpec
+final class AgentRefTest extends Test
 {
   "JSON" in {
     testJson(AgentRef(

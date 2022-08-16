@@ -3,10 +3,10 @@ package js7.common.utils
 import java.io.IOException
 import js7.base.log.LazyScalaLogger.AsLazyScalaLogger
 import js7.base.log.Logger
+import js7.base.test.Test
 import js7.base.time.ScalaTime.*
 import js7.common.utils.Exceptions.*
 import js7.common.utils.ExceptionsTest.*
-import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers.*
 import scala.concurrent.duration.Deadline.now
 import scala.util.{Success, Try}
@@ -14,7 +14,7 @@ import scala.util.{Success, Try}
 /**
   * @author Joacim Zschimmer
   */
-final class ExceptionsTest extends AnyFreeSpec {
+final class ExceptionsTest extends Test {
 
   "repeatUntilNoException" in {
     // Warm-up

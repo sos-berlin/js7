@@ -4,15 +4,15 @@ import cats.syntax.semigroup.*
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, LocalDateTime, ZoneId}
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.orderwatch.OrderWatchPath
 import js7.data.value.StringValue
 import js7.data.value.expression.Expression.NamedValue
 import js7.data.value.expression.Scope
 import js7.data.value.expression.scopes.NowScope
-import org.scalatest.freespec.AnyFreeSpec
 
-final class FileWatchScopeTest extends AnyFreeSpec
+final class FileWatchScopeTest extends Test
 {
   private val orderWatchPath = OrderWatchPath("FILE-WATCH")
   private val pattern = """file-(.*((A)|(B)))\.csv""".r.pattern

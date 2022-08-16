@@ -1,6 +1,7 @@
 package js7.tests.subagent
 
 import js7.base.io.process.ProcessSignal.SIGKILL
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
@@ -17,9 +18,8 @@ import js7.tests.jobs.SemaphoreJob
 import js7.tests.subagent.SubagentMoveTwiceTest.*
 import monix.execution.Scheduler
 import monix.reactive.Observable
-import org.scalatest.freespec.AnyFreeSpec
 
-final class SubagentMoveTwiceTest extends AnyFreeSpec with SubagentTester
+final class SubagentMoveTwiceTest extends Test with SubagentTester
 {
   protected val agentPaths = Seq(agentPath)
   protected lazy val items = Seq(workflow, bareSubagentItem)

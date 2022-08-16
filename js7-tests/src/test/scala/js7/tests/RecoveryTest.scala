@@ -5,6 +5,7 @@ import js7.agent.RunningAgent
 import js7.base.configutils.Configs.*
 import js7.base.crypt.silly.{SillySignature, SillySignatureVerifier, SillySigner}
 import js7.base.log.Logger
+import js7.base.test.Test
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -31,7 +32,6 @@ import js7.tests.RecoveryTest.*
 import js7.tests.testenv.DirectoryProvider
 import js7.tests.testenv.DirectoryProvider.{StdoutOutput, script, toLocalSubagentId}
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers.*
 import scala.collection.mutable
 import scala.util.control.NonFatal
@@ -39,7 +39,7 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-final class RecoveryTest extends AnyFreeSpec
+final class RecoveryTest extends Test
 {
   // TODO Starte Controller und Agenten in eigenen Prozessen, die wir abbrechen können.
 

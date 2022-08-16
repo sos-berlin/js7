@@ -1,12 +1,12 @@
 package js7.base.io.process
 
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
 /**
  * @author Joacim Zschimmer
  */
-final class ReturnCodeTest extends AnyFreeSpec {
+final class ReturnCodeTest extends Test {
 
   "Int ReturnCode" in {
     assert(ReturnCode(0).isSuccess)

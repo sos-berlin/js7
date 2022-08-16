@@ -7,6 +7,7 @@ import js7.agent.data.views.AgentOverview
 import js7.agent.web.test.WebServiceTest
 import js7.base.circeutils.CirceUtils.*
 import js7.base.system.SystemInformation
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
@@ -17,13 +18,12 @@ import js7.data.system.JavaInformation
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.traced
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future
 
 /**
  * @author Joacim Zschimmer
  */
-final class RootWebServiceTest extends AnyFreeSpec with WebServiceTest with RootWebService
+final class RootWebServiceTest extends Test with WebServiceTest with RootWebService
 {
   protected def whenShuttingDown = Future.never
   protected def scheduler = Scheduler.traced

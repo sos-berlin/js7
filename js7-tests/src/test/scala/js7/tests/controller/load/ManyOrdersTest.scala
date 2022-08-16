@@ -2,6 +2,7 @@ package js7.tests.controller.load
 
 import js7.base.configutils.Configs.*
 import js7.base.problem.Checked.Ops
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
@@ -17,9 +18,8 @@ import js7.tests.controller.load.ManyOrdersTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
-import org.scalatest.freespec.AnyFreeSpec
 
-final class ManyOrdersTest extends AnyFreeSpec with ControllerAgentForScalaTest
+final class ManyOrdersTest extends Test with ControllerAgentForScalaTest
 {
   protected val agentPaths = agentPath :: Nil
   protected val items = Seq(workflow)

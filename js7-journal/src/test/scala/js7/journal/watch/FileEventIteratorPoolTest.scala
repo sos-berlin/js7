@@ -3,17 +3,17 @@ package js7.journal.watch
 import java.nio.file.Files
 import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.io.file.FileUtils
+import js7.base.test.Test
 import js7.data.event.{EventId, Stamped}
 import js7.journal.data.JournalMeta
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.watch.FileEventIteratorPoolTest.*
 import js7.journal.watch.TestData.{AEvent, TestKeyedEventJsonCodec, journalId, writeJournal}
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class FileEventIteratorPoolTest extends AnyFreeSpec
+final class FileEventIteratorPoolTest extends Test
 {
   "FileEventIteratorPool" in {
     FileUtils.withTemporaryDirectory("FileEventIteratorPoolTest-") { dir =>

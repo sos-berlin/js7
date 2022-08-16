@@ -1,9 +1,9 @@
 package js7.base.utils
 
+import js7.base.test.Test
 import js7.base.utils.BinarySearch.binarySearch
-import org.scalatest.freespec.AnyFreeSpec
 
-final class BinarySearchTest extends AnyFreeSpec
+final class BinarySearchTest extends Test
 {
   "binarySearch" in {
     assert(binarySearch(Vector.empty, 7) == (0, false))

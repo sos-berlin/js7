@@ -2,6 +2,7 @@ package js7.tests
 
 import izumi.reflect.Tag
 import js7.base.problem.Checked.Ops
+import js7.base.test.Test
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.data.agent.AgentPath
@@ -18,10 +19,9 @@ import js7.tests.FinishTest.*
 import js7.tests.testenv.DirectoryProvider
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.traced
-import org.scalatest.freespec.AnyFreeSpec
 import scala.reflect.ClassTag
 
-final class FinishTest extends AnyFreeSpec
+final class FinishTest extends Test
 {
   "finish" in {
     checkEvents[OrderFinished]("""

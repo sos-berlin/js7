@@ -1,14 +1,14 @@
 package js7.base.utils
 
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.base.utils.Collections.*
 import js7.base.utils.Collections.implicits.*
 import js7.base.utils.CollectionsTest.*
-import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers.*
 import scala.collection.mutable
 
-final class CollectionsTest extends AnyFreeSpec
+final class CollectionsTest extends Test
 {
   "IndexSeq get" in {
     assert(Vector.empty.get(0) == None)

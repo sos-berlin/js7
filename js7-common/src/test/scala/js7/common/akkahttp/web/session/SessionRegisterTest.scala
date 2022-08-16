@@ -7,6 +7,7 @@ import js7.base.generic.{Completed, SecretString}
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problems.InvalidSessionTokenProblem
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.version.Version
@@ -16,13 +17,12 @@ import js7.common.akkautils.Akkas
 import js7.common.akkautils.Akkas.newActorSystem
 import monix.execution.Scheduler.Implicits.traced
 import monix.execution.schedulers.TestScheduler
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class SessionRegisterTest extends AnyFreeSpec with ScalatestRouteTest
+final class SessionRegisterTest extends Test with ScalatestRouteTest
 {
   coupleScribeWithSlf4j()
 

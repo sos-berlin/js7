@@ -276,6 +276,7 @@ lazy val `js7-tester` = crossProject(JSPlatform, JVMPlatform)
     import Dependencies._
     libraryDependencies ++=
       diffx ++
+      slf4j ++
       "com.outr" %%% "scribe" % scribeVersion ++
       "io.circe" %%% "circe-core" % circeVersion ++
       "io.circe" %%% "circe-parser" % circeVersion ++
@@ -415,7 +416,7 @@ lazy val `js7-common-http` = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
   .dependsOn(
     `js7-data`, `js7-data` % "test->test",
-    `js7-base`,
+    `js7-base`, `js7-base` % "test",
     `js7-tester` % "test")
   .jvmConfigure(_.dependsOn(`js7-common`))
   .settings(commonSettings)
@@ -457,7 +458,9 @@ lazy val `js7-controller` = project
   }
 
 lazy val `js7-provider` = project
-  .dependsOn(`js7-proxy`.jvm, `js7-controller`, `js7-controller-client`.jvm, `js7-core`, `js7-common`, `js7-tester`.jvm % "test")
+  .dependsOn(`js7-proxy`.jvm, `js7-controller`, `js7-controller-client`.jvm, `js7-core`, `js7-common`,
+    `js7-base`.jvm % "test->test",
+    `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings(
     Compile / packageDoc / mappings := Seq.empty)
@@ -471,7 +474,7 @@ lazy val `js7-provider` = project
 
 lazy val `js7-proxy` = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
-  .dependsOn(`js7-controller-client`, `js7-tester` % "test")
+  .dependsOn(`js7-controller-client`, `js7-base` % "test->test", `js7-tester` % "test")
   .jvmConfigure(_.dependsOn(`js7-data-for-java`))
   .settings(commonSettings)
   .settings(
@@ -492,7 +495,7 @@ lazy val `js7-proxy` = crossProject(JSPlatform, JVMPlatform)
 
 lazy val `js7-controller-client` = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
-  .dependsOn(`js7-common-http`, `js7-tester` % "test")
+  .dependsOn(`js7-common-http`, `js7-base` % "test->test", `js7-tester` % "test")
   .jvmConfigure(_.dependsOn(`js7-common`))
   .settings(commonSettings)
   .settings(
@@ -510,7 +513,8 @@ lazy val `js7-controller-client` = crossProject(JSPlatform, JVMPlatform)
     })
 
 lazy val `js7-core` = project
-  .dependsOn(`js7-journal`, `js7-common`, `js7-license`, `js7-tester`.jvm % "test")
+  .dependsOn(`js7-journal`, `js7-common`, `js7-license`,
+    `js7-base`.jvm % "test->test", `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
     import Dependencies._
@@ -524,7 +528,7 @@ lazy val `js7-core` = project
   }
 
 lazy val `js7-launcher` = project
-  .dependsOn(`js7-launcher-for-windows`, `js7-core`, `js7-tester`.jvm % "test")
+  .dependsOn(`js7-launcher-for-windows`, `js7-core`, `js7-base`.jvm % "test->test", `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
     import Dependencies._
@@ -536,7 +540,7 @@ lazy val `js7-launcher` = project
   }
 
 lazy val `js7-launcher-for-java` = project
-  .dependsOn(`js7-launcher`, `js7-data-for-java`, `js7-tester`.jvm % "test")
+  .dependsOn(`js7-launcher`, `js7-data-for-java`, `js7-base`.jvm % "test->test", `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
     import Dependencies._
@@ -550,7 +554,7 @@ lazy val `js7-launcher-for-java` = project
   }
 
 lazy val `js7-launcher-for-windows` = project
-  .dependsOn(`js7-base`.jvm, `js7-tester`.jvm % "test")
+  .dependsOn(`js7-base`.jvm, `js7-base`.jvm % "test->test", `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
     import Dependencies._
@@ -562,7 +566,7 @@ lazy val `js7-launcher-for-windows` = project
   }
 
 lazy val `js7-journal` = project
-  .dependsOn(`js7-common-http`.jvm, `js7-common`, `js7-tester`.jvm % "test")
+  .dependsOn(`js7-common-http`.jvm, `js7-common`, `js7-base`.jvm % "test->test", `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
     import Dependencies._
@@ -579,7 +583,8 @@ lazy val `js7-journal` = project
   }
 
 lazy val `js7-cluster` = project
-  .dependsOn(`js7-core`, `js7-common-http`.jvm, `js7-common`, `js7-tester`.jvm % "test", `js7-license-fake` % "test")
+  .dependsOn(`js7-core`, `js7-common-http`.jvm, `js7-common`,
+    `js7-base`.jvm % "test->test", `js7-tester`.jvm % "test", `js7-license-fake` % "test")
   .settings(commonSettings)
   .settings {
     import Dependencies._
@@ -595,7 +600,7 @@ lazy val `js7-agent` = project
   .dependsOn(
     `js7-subagent`,
     `js7-agent-data`, `js7-launcher`, `js7-core`, `js7-common`, `js7-data`.jvm,
-    `js7-agent-client` % "test", `js7-tester`.jvm % "test")
+    `js7-base`.jvm % "test->test", `js7-agent-client` % "test", `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
     import Dependencies._
@@ -618,6 +623,7 @@ lazy val `js7-subagent` = project
     `js7-launcher`,
     `js7-common`,
     `js7-data`.jvm,
+    `js7-base`.jvm % "test->test",
     `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
@@ -631,6 +637,7 @@ lazy val `js7-subagent` = project
 
 lazy val `js7-agent-client` = project
   .dependsOn(`js7-data`.jvm, `js7-common-http`.jvm, `js7-common`, `js7-agent-data`,
+    `js7-base`.jvm % "test->test",
     `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings(description := "JS7 Agent - Client")
@@ -647,7 +654,7 @@ lazy val `js7-agent-client` = project
   }
 
 lazy val `js7-agent-data` = project
-  .dependsOn(`js7-common`, `js7-data`.jvm, `js7-tester`.jvm % "test")
+  .dependsOn(`js7-common`, `js7-data`.jvm, `js7-base`.jvm % "test->test", `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings(description := "JS7 Agent - Value Classes")
   .settings {
@@ -673,6 +680,7 @@ lazy val `js7-tests` = project
     `js7-data`.jvm % "test->test",
     `js7-base`.jvm,
     `js7-provider`,
+    `js7-base`.jvm % "test->test",
     `js7-tester`.jvm % "test",
     `js7-docker` % "test",
     `js7-launcher-for-java` % "test->test",

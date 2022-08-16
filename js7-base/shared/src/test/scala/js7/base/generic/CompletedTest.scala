@@ -4,12 +4,12 @@ import cats.instances.list.*
 import cats.kernel.Monoid
 import cats.syntax.foldable.*
 import cats.syntax.monoid.*
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
 /**
   * @author Joacim Zschimmer
   */
-final class CompletedTest extends AnyFreeSpec
+final class CompletedTest extends Test
 {
   "empty" in {
     assert(Monoid[Completed].empty eq Completed)

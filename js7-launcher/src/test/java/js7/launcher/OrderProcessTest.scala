@@ -1,5 +1,6 @@
 package js7.launcher
 
+import js7.base.test.Test
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -9,9 +10,8 @@ import monix.catnap.Semaphore
 import monix.eval.{Fiber, Task}
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.subjects.PublishSubject
-import org.scalatest.freespec.AnyFreeSpec
 
-final class OrderProcessTest extends AnyFreeSpec
+final class OrderProcessTest extends Test
 {
   "Run an OrderProcess" in {
     val orderProcess = OrderProcess(Task(Outcome.succeeded))

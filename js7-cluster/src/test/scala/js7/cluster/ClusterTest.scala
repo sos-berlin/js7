@@ -4,10 +4,10 @@ import java.nio.file.Files.exists
 import java.nio.file.Paths
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
+import js7.base.test.Test
 import js7.data.event.JournalPosition
-import org.scalatest.freespec.AnyFreeSpec
 
-final class ClusterTest extends AnyFreeSpec
+final class ClusterTest extends Test
 {
   "truncateFile" in {
     withTemporaryDirectory("ClusterTest-") { dir =>

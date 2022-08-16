@@ -3,22 +3,22 @@ package js7.common.files
 import java.nio.file.Files.createDirectory
 import java.nio.file.Paths
 import java.util.Comparator
-import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.*
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
+import js7.base.test.Test
 import js7.base.time.JavaTimeConverters.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.measureTime
 import js7.base.time.Timestamp
 import js7.common.files.DirectoryReader.Entry
 import js7.common.files.DirectoryReaderTest.*
-import org.scalatest.freespec.AnyFreeSpec
 import scala.util.Random
 
 /**
   * @author Joacim Zschimmer
   */
-final class DirectoryReaderTest extends AnyFreeSpec
+final class DirectoryReaderTest extends Test
 {
   "entries" in {
     withTemporaryDirectory("Z-") { dir =>

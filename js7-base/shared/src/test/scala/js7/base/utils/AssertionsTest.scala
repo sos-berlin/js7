@@ -1,12 +1,12 @@
 package js7.base.utils
 
+import js7.base.test.Test
 import js7.base.utils.Assertions.*
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class AssertionsTest extends AnyFreeSpec
+final class AssertionsTest extends Test
 {
   "assertThat" in {
     assertThat(true)

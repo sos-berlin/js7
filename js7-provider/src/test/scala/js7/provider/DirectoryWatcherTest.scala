@@ -4,19 +4,19 @@ import java.nio.file.Files.{createTempDirectory, delete}
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{deleteDirectoryRecursively, touchFile}
 import js7.base.system.OperatingSystem.isMac
+import js7.base.test.Test
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.BeforeAndAfterAll
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class DirectoryWatcherTest extends AnyFreeSpec with BeforeAndAfterAll
+final class DirectoryWatcherTest extends Test with BeforeAndAfterAll
 {
   private val timeout = if (isMac) 100.ms else 5.minutes
   private lazy val dir = createTempDirectory("DirectoryWatcherTest-")

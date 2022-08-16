@@ -1,13 +1,13 @@
 package js7.common.scalautil
 
+import js7.base.test.Test
 import js7.base.utils.HasCloser
-import org.scalatest.freespec.AnyFreeSpec
 import scala.util.Success
 
 /**
  * @author Joacim Zschimmer
  */
-final class ClosedFutureTest extends AnyFreeSpec {
+final class ClosedFutureTest extends Test {
 
   "closed future succeeds" in {
     object o extends HasCloser with ClosedFuture

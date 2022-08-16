@@ -1,8 +1,8 @@
 package js7.subagent.director
 
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
-final class FixedPriorityTest extends AnyFreeSpec
+final class FixedPriorityTest extends Test
 {
   "next, same priority" in {
     def isEquivalent(i: Int, j: Int) = true

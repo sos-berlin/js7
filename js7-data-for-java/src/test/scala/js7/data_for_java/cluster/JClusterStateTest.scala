@@ -1,16 +1,16 @@
 package js7.data_for_java.cluster
 
+import js7.base.test.Test
 import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterTiming}
 import js7.data.event.JournalPosition
 import js7.data.node.NodeId
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class JClusterStateTest extends AnyFreeSpec
+final class JClusterStateTest extends Test
 {
   private val setting = ClusterSetting(
     Map(

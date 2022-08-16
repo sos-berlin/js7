@@ -1,13 +1,13 @@
 package js7.data.workflow.instructions
 
 import js7.base.circeutils.CirceUtils.*
+import js7.base.test.Test
 import js7.data.workflow.instructions.CycleTest.*
 import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.data.workflow.{Instruction, Workflow}
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 
-final class CycleTest extends AnyFreeSpec
+final class CycleTest extends Test
 {
   "JSON" in {
     testJson[Instruction](exampleCycle,

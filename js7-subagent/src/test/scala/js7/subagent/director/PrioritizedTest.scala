@@ -1,11 +1,11 @@
 package js7.subagent.director
 
+import js7.base.test.Test
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.subagent.director.Prioritized.prioritySort
 import js7.subagent.director.PrioritizedTest.*
-import org.scalatest.freespec.AnyFreeSpec
 
-final class PrioritizedTest extends AnyFreeSpec
+final class PrioritizedTest extends Test
 {
   "prioritySort" in {
     assert(prioritySort(Vector.empty[String])(_ => 0).isEmpty)

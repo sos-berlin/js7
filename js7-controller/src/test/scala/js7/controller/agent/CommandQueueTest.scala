@@ -5,6 +5,7 @@ import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.Batch
 import js7.base.log.Logger
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.controller.agent.AgentDriver.{Input, Queueable}
@@ -20,14 +21,13 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.execution.atomic.AtomicInt
-import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers.*
 import scala.collection.mutable
 
 /**
   * @author Joacim Zschimmer
   */
-final class CommandQueueTest extends AnyFreeSpec
+final class CommandQueueTest extends Test
 {
   "test" in {
     val commandQueueSucceeded = mutable.Buffer[Seq[QueuedInputResponse]]()

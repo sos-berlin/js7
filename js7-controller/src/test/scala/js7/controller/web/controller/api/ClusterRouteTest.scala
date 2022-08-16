@@ -5,6 +5,7 @@ import akka.http.scaladsl.model.StatusCodes.OK
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
+import js7.base.test.Test
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import js7.common.akkahttp.CirceJsonSupport.jsonUnmarshaller
 import js7.controller.web.controller.api.test.RouteTester
@@ -12,13 +13,12 @@ import js7.data.cluster.{ClusterNodeState, ClusterState}
 import js7.data.node.NodeId
 import monix.eval.Task
 import monix.execution.Scheduler
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future
 
 /**
   * @author Joacim Zschimmer
   */
-final class ClusterRouteTest extends AnyFreeSpec with RouteTester with ClusterRoute
+final class ClusterRouteTest extends Test with RouteTester with ClusterRoute
 {
   coupleScribeWithSlf4j()
 

@@ -1,12 +1,12 @@
 package js7.base.utils
 
+import js7.base.test.Test
 import js7.base.utils.CloseableIteratorTest.*
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class CloseableIteratorTest extends AnyFreeSpec
+final class CloseableIteratorTest extends Test
 {
   "strict" in {
     val a = new TestIterator(Iterator(1, 2, 3))

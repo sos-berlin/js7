@@ -1,12 +1,12 @@
 package js7.base.auth
 
 import js7.base.generic.SecretString
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
 /**
   * @author Joacim Zschimmer
   */
-final class SimpleUserTest extends AnyFreeSpec
+final class SimpleUserTest extends Test
 {
   "Anonymous" in {
     assert(SimpleUser.TestAnonymous.hashedPassword equalsClearText SecretString(""))

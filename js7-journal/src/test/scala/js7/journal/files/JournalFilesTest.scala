@@ -5,13 +5,13 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{deleteDirectoryContentRecursively, touchFile, withTemporaryDirectory}
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.journal.files.JournalFiles.{deleteJournal, deleteJournalIfMarked, deletionMarkerFile}
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class JournalFilesTest extends AnyFreeSpec
+final class JournalFilesTest extends Test
 {
   coupleScribeWithSlf4j()
 

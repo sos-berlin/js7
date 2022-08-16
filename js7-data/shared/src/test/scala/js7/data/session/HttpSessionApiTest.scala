@@ -1,9 +1,9 @@
 package js7.data.session
 
+import js7.base.test.Test
 import js7.base.version.Version
-import org.scalatest.freespec.AnyFreeSpec
 
-final class HttpSessionApiTest extends AnyFreeSpec
+final class HttpSessionApiTest extends Test
 {
   "checkNonMatchingVersion" - {
     // Check log output manually!

@@ -1,6 +1,7 @@
 package js7.data.event
 import js7.base.auth.UserId
 import js7.base.problem.Checked.Ops
+import js7.base.test.Test
 import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.data.cluster.{ClusterEvent, ClusterSetting, ClusterState, ClusterTiming}
@@ -8,12 +9,11 @@ import js7.data.event.EventDrivenState.EventNotApplicableProblem
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.SnapshotableStateTest.*
 import js7.data.node.NodeId
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class SnapshotableStateTest extends AnyFreeSpec
+final class SnapshotableStateTest extends Test
 {
   private var s = MyState.empty
 

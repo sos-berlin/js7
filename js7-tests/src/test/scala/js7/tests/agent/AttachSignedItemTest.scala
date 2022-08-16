@@ -4,6 +4,7 @@ import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{AttachSignedItem, DedicateAgentDirector}
 import js7.base.Problems.TamperedWithSignedMessageProblem
 import js7.base.auth.SimpleUser
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.core.command.CommandMeta
@@ -17,9 +18,8 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.agent.AttachSignedItemTest.*
 import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.freespec.AnyFreeSpec
 
-final class AttachSignedItemTest extends AnyFreeSpec with DirectoryProviderForScalaTest
+final class AttachSignedItemTest extends Test with DirectoryProviderForScalaTest
 {
   protected val agentPaths = Seq(agentPath)
   protected val items = Nil

@@ -2,12 +2,12 @@ package js7.data.value.expression.scopes
 
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.system.OperatingSystem.isJVM
+import js7.base.test.Test
 import js7.data.value.StringValue
-import org.scalatest.freespec.AnyFreeSpec
 import scala.PartialFunction.condOpt
 import scala.util.Random
 
-final class EnvScopeTest extends AnyFreeSpec
+final class EnvScopeTest extends Test
 {
   if (isJVM) {
     "Env" - {

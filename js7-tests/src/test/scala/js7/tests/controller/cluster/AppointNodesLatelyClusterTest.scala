@@ -8,6 +8,7 @@ import js7.base.generic.SecretString
 import js7.base.log.CorrelId
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Checked.*
+import js7.base.test.Test
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -27,9 +28,8 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.journal.files.JournalFiles.listJournalFiles
 import js7.tests.controller.cluster.ControllerClusterTester.*
 import monix.execution.Scheduler.Implicits.traced
-import org.scalatest.freespec.AnyFreeSpec
 
-final class AppointNodesLatelyClusterTest extends AnyFreeSpec with ControllerClusterTester
+final class AppointNodesLatelyClusterTest extends Test with ControllerClusterTester
 {
   override protected def configureClusterNodes = false
 

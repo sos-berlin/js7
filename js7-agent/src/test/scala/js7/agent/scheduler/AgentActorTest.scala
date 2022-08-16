@@ -14,6 +14,7 @@ import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
+import js7.base.test.Test
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
@@ -28,13 +29,12 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.test.TestSetting.*
 import js7.journal.recover.Recovered
 import monix.execution.Scheduler.Implicits.traced
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.Deadline.now
 
 /**
   * @author Joacim Zschimmer
   */
-final class AgentActorTest extends AnyFreeSpec
+final class AgentActorTest extends Test
 {
   private implicit val askTimeout: Timeout = Timeout(60.s)
 

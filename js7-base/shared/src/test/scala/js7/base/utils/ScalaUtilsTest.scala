@@ -8,16 +8,16 @@ import java.util.concurrent.atomic.AtomicBoolean
 import js7.base.exceptions.StandardPublicException
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem}
+import js7.base.test.Test
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
 import monix.eval.Coeval
-import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers.*
 import scala.collection.{MapView, View}
 import scala.reflect.ClassTag
 import scala.util.control.NoStackTrace
 
-final class ScalaUtilsTest extends AnyFreeSpec
+final class ScalaUtilsTest extends Test
 {
   "Monad transforming funtions" - {
     def ignored = throw new RuntimeException("Nothing")

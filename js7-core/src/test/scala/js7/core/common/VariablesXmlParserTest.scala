@@ -1,14 +1,14 @@
 package js7.core.common
 
+import js7.base.test.Test
 import js7.base.time.Stopwatch.measureTime
 import js7.common.scalautil.xmls.ScalaXMLEventReader
 import js7.common.scalautil.xmls.XmlSources.*
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class VariablesXmlParserTest extends AnyFreeSpec {
+final class VariablesXmlParserTest extends Test {
 
   "variables" in {
     for (variablesXml <- Array(

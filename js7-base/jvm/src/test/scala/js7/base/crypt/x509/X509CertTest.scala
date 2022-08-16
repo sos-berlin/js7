@@ -7,9 +7,9 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.io.process.Processes.runProcess
 import js7.base.problem.Checked.*
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
-final class X509CertTest extends AnyFreeSpec
+final class X509CertTest extends Test
 {
   "signerId" in {
     withTemporaryDirectory("X509CertTest-") { dir =>

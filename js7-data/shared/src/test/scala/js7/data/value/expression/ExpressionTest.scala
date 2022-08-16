@@ -1,6 +1,7 @@
 package js7.data.value.expression
 
 import js7.base.problem.{Checked, Problem}
+import js7.base.test.Test
 import js7.data.job.JobResourcePath
 import js7.data.value.ValueType.{MissingValueProblem, UnexpectedValueTypeProblem}
 import js7.data.value.expression.Expression.*
@@ -10,11 +11,10 @@ import js7.data.value.{BooleanValue, ListValue, NullValue, NumberValue, ObjectVa
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Label
 import org.scalactic.source
-import org.scalatest.freespec.AnyFreeSpec
 import org.scalatestplus.scalacheck.ScalaCheckDrivenPropertyChecks.*
 import scala.collection.MapView
 
-final class ExpressionTest extends AnyFreeSpec
+final class ExpressionTest extends Test
 {
   "NamedValue expressions" - {
     implicit val scope: Scope =

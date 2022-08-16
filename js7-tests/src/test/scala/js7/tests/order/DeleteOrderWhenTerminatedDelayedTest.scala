@@ -2,6 +2,7 @@ package js7.tests.order
 
 import js7.base.configutils.Configs.*
 import js7.base.problem.Checked.Ops
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
@@ -17,9 +18,8 @@ import js7.tests.order.DeleteOrderWhenTerminatedDelayedTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.script
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.freespec.AnyFreeSpec
 
-final class DeleteOrderWhenTerminatedDelayedTest extends AnyFreeSpec with ControllerAgentForScalaTest
+final class DeleteOrderWhenTerminatedDelayedTest extends Test with ControllerAgentForScalaTest
 {
   protected val agentPaths = agentPath :: Nil
   protected val items = workflow:: Nil

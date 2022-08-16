@@ -1,16 +1,16 @@
 package js7.base.thread
 
+import js7.base.test.Test
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.thread.IOExecutor.ioFuture
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Await
 import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class IOExecutorTest extends AnyFreeSpec
+final class IOExecutorTest extends Test
 {
   "Success" in {
     assert(ioFuture(7).await(10.seconds) == 7)

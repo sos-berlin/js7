@@ -2,13 +2,13 @@ package js7.data.subagent
 
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.base.utils.Base64UUID
 import js7.data.event.KeyedEvent
 import js7.data.platform.PlatformInfo
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 
-final class SubagentItemStateEventTest extends AnyFreeSpec
+final class SubagentItemStateEventTest extends Test
 {
   "JSON" - {
     "SubagentCoupled" in {

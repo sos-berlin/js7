@@ -1,9 +1,9 @@
 package js7.data_for_java.controller
 
+import js7.base.test.Test
 import js7.data.controller.ControllerCommand.ShutDown
-import org.scalatest.freespec.AnyFreeSpec
 
-final class JControllerCommandTest extends AnyFreeSpec
+final class JControllerCommandTest extends Test
 {
   "fromJson" in {
     val command = JControllerCommand

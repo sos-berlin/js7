@@ -1,10 +1,10 @@
 package js7.data_for_java.order
 
+import js7.base.test.Test
 import js7.data.order.Outcome
 import js7.data.value.{BooleanValue, ListValue, NumberValue, StringValue}
-import org.scalatest.freespec.AnyFreeSpec
 
-final class JOutcomeTest extends AnyFreeSpec {
+final class JOutcomeTest extends Test {
 
   "JOutcome.Succeeded()" in {
     JOutcomeTester.testSucceeded(JOutcome(Outcome.Succeeded()))

@@ -2,16 +2,16 @@ package js7.common.auth
 
 import js7.base.generic.SecretString
 import js7.base.log.Logger
+import js7.base.test.Test
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.measureTime
 import js7.common.auth.SecretStringGenerator.newSecretString
 import js7.common.auth.SecretStringGeneratorTest.*
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
-final class SecretStringGeneratorTest extends AnyFreeSpec {
+final class SecretStringGeneratorTest extends Test {
 
   "newSecretString returns different secrets" in {
     logger.debug(newSecretString().string)

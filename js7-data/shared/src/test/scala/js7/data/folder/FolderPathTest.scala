@@ -1,13 +1,13 @@
 package js7.data.folder
 
+import js7.base.test.Test
 import js7.data.folder.FolderPathTest.*
 import js7.data.item.VersionedItemPath
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class FolderPathTest extends AnyFreeSpec
+final class FolderPathTest extends Test
 {
   "subfolder" in {
     assert(FolderPath("").subfolder("x") == FolderPath(""))

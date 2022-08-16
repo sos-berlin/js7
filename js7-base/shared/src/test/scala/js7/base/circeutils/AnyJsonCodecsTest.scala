@@ -6,13 +6,13 @@ import js7.base.circeutils.AnyJsonCodecs.*
 import js7.base.circeutils.AnyJsonCodecsTest.*
 import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.GenericString
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 import scala.jdk.CollectionConverters.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class AnyJsonCodecsTest extends AnyFreeSpec
+final class AnyJsonCodecsTest extends Test
 {
   "anyToJson" in {
     assert(anyToJson(Map("key" -> 333).asJava) == Json.fromJsonObject(JsonObject.fromMap(Map("key" -> 333.asJson))))

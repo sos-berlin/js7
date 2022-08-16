@@ -1,12 +1,12 @@
 package js7.base.tests
 
+import js7.base.test.Test
 import js7.base.time.ScalaTime.RichDeadline
 import js7.base.time.Stopwatch.itemsPerSecondString
-import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.Deadline.now
 
-final class ListVectorPerformanceTest extends AnyFreeSpec
+final class ListVectorPerformanceTest extends Test
 {
   if (sys.props.contains("test.speed")) {
     "Vector" in {

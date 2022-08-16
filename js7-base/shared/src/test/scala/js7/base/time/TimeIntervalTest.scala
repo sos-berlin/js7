@@ -1,9 +1,9 @@
 package js7.base.time
 
+import js7.base.test.Test
 import js7.base.time.ScalaTime.*
-import org.scalatest.freespec.AnyFreeSpec
 
-final class TimeIntervalTest extends AnyFreeSpec
+final class TimeIntervalTest extends Test
 {
   private val timeInterval = TimeInterval(Timestamp("2021-08-23T00:00:00Z"), 1.h)
 

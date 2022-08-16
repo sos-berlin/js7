@@ -1,6 +1,7 @@
 package js7.data.item
 
 import io.circe.{Codec, Json}
+import js7.base.test.Test
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPath
 import js7.data.calendar.CalendarPath
@@ -8,9 +9,8 @@ import js7.data.lock.LockPath
 import js7.data.orderwatch.OrderWatchPath
 import js7.data.workflow.WorkflowPath
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 
-final class InventoryItemPathTest extends AnyFreeSpec
+final class InventoryItemPathTest extends Test
 {
   "JSON" in {
     implicit val x: Codec[InventoryItemPath] = InventoryItemPath.jsonCodec(Seq(

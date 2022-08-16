@@ -10,15 +10,15 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.process.ReturnCode
 import js7.base.problem.Checked.*
 import js7.base.system.OperatingSystem.isWindows
+import js7.base.test.Test
 import js7.base.time.ScalaTime.*
 import js7.launcher.forwindows.WindowsApi.windowsDirectory
 import js7.launcher.forwindows.WindowsProcess.StartWindowsProcess
 import js7.launcher.forwindows.WindowsProcessTest.*
-import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers.*
 import scala.util.{Failure, Try}
 
-final class WindowsProcessTest extends AnyFreeSpec
+final class WindowsProcessTest extends Test
 {
   if (isWindows) {
     // TODO Test fails

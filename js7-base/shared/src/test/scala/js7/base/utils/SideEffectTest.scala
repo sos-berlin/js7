@@ -1,10 +1,10 @@
 package js7.base.utils
 
+import js7.base.test.Test
 import js7.base.utils.SideEffect.*
-import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers.*
 
-final class SideEffectTest extends AnyFreeSpec {
+final class SideEffectTest extends Test {
 
   "sideEffect" in {
     val a = A(1) sideEffect { _.x = 2 }

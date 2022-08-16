@@ -6,6 +6,7 @@ import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.testkit.RouteTestTimeout
 import akka.util.ByteString
 import js7.base.configutils.Configs.HoconStringInterpolator
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
@@ -26,7 +27,6 @@ import js7.data.workflow.WorkflowPath
 import js7.journal.watch.SimpleEventCollector
 import js7.journal.web.EventDirectives
 import monix.execution.Scheduler
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
@@ -34,7 +34,7 @@ import scala.concurrent.duration.Deadline.now
 /**
   * @author Joacim Zschimmer
   */
-final class EventRouteTest extends AnyFreeSpec with RouteTester with EventRoute
+final class EventRouteTest extends Test with RouteTester with EventRoute
 {
   private implicit val timeout: FiniteDuration = 99.s
   private implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(timeout - 1.s)

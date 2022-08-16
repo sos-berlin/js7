@@ -1,9 +1,9 @@
 package js7.base.auth
 
 import js7.base.generic.SecretString
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
-final class SessionTokenTest extends AnyFreeSpec
+final class SessionTokenTest extends Test
 {
   "toString" in {
     assert(SessionToken(SecretString("123,SECRET")).toString == "Session:123")

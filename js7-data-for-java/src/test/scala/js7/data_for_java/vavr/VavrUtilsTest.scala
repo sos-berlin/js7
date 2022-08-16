@@ -2,13 +2,13 @@ package js7.data_for_java.vavr
 
 import io.vavr.control.Either as VEither
 import js7.base.problem.{Problem, ProblemException}
+import js7.base.test.Test
 import js7.data_for_java.vavr.VavrUtils.getOrThrow
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class VavrUtilsTest extends AnyFreeSpec
+final class VavrUtilsTest extends Test
 {
   "getOrThrow" - {
     "Left" in {

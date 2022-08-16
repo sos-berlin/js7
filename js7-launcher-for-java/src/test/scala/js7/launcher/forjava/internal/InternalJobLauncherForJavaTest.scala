@@ -1,7 +1,8 @@
 package js7.launcher.forjava.internal
 
 import cats.effect.Resource
-import java.lang.System.{lineSeparator as nl}
+import js7.base.test.Test
+import java.lang.System.lineSeparator as nl
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Paths
 import js7.base.io.file.FileUtils.temporaryDirectoryResource
@@ -37,10 +38,9 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.subjects.PublishSubject
 import org.scalatest.BeforeAndAfterAll
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future
 
-final class InternalJobLauncherForJavaTest extends AnyFreeSpec with BeforeAndAfterAll
+final class InternalJobLauncherForJavaTest extends Test with BeforeAndAfterAll
 {
   private val blockingThreadPoolName = "InternalJobLauncherForJavaTest"
   private val blockingJobScheduler = newUnlimitedScheduler(name = blockingThreadPoolName)

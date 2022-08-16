@@ -1,11 +1,11 @@
 package js7.data_for_java.workflow.position
 
+import js7.base.test.Test
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.BranchId.{Then, fork}
 import js7.data.workflow.position.Position
-import org.scalatest.freespec.AnyFreeSpec
 
-final class JWorkflowPositionTest extends AnyFreeSpec
+final class JWorkflowPositionTest extends Test
 {
   "JWorkflowPosition.toString" in {
     val workflowId = WorkflowPath("WORKFLOW") ~ "1.0"

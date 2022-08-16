@@ -3,6 +3,7 @@ package js7.data.execution.workflow.instructions
 import js7.base.io.process.ReturnCode
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.base.time.WallClock
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
@@ -15,12 +16,11 @@ import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ExecuteTest extends AnyFreeSpec
+final class ExecuteTest extends Test
 {
   private val executable = RelativePathExecutable("EXECUTABLE", returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 3, 9))
   private val executeAnonymous = Execute(WorkflowJob(AgentPath("AGENT"), executable))

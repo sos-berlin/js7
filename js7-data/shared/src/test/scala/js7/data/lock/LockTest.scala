@@ -1,10 +1,10 @@
 package js7.data.lock
 
 import js7.base.circeutils.CirceUtils.*
+import js7.base.test.Test
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 
-final class LockTest extends AnyFreeSpec
+final class LockTest extends Test
 {
   "JSON" in {
     implicit val x = Lock.jsonCodec

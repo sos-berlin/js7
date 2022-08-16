@@ -9,6 +9,7 @@ import js7.base.data.ByteArray
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Checked.Ops
+import js7.base.test.Test
 import js7.controller.tests.InventoryItemDiffTest.*
 import js7.core.item.VersionedItemReader
 import js7.data.item.InventoryItemDiff.diffItems
@@ -16,12 +17,11 @@ import js7.data.item.ItemChange.{AddedOrChanged, Removed}
 import js7.data.item.{InventoryItemDiff, SourceType, TestPath, TestVersionedItem, VersionId, VersionedItem, VersionedItemPath}
 import js7.data.workflow.instructions.{ExplicitEnd, Fail}
 import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class InventoryItemDiffTest extends AnyFreeSpec
+final class InventoryItemDiffTest extends Test
 {
   "diffItems" - {
     "empty" in {

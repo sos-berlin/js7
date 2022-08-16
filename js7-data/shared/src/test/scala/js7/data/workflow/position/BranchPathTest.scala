@@ -3,14 +3,14 @@ package js7.data.workflow.position
 import cats.syntax.show.*
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.data.workflow.position.BranchPath.Segment
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class BranchPathTest extends AnyFreeSpec
+final class BranchPathTest extends Test
 {
   "JSON" in {
     testJson(Nil: BranchPath                          , json"""[]""")

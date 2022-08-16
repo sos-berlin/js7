@@ -1,12 +1,12 @@
 package js7.base.standards
 
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 import scala.jdk.CollectionConverters.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class Js7NameValidatorTest extends AnyFreeSpec
+final class Js7NameValidatorTest extends Test
 {
   private val nameValidator = new Js7NameValidator("TEST")
   private def isValid(name: String) = nameValidator.checked(name).isRight

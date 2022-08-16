@@ -1,12 +1,12 @@
 package js7.launcher.forwindows
 
+import js7.base.test.Test
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-final class ResourceGuardTest extends AnyFreeSpec
+final class ResourceGuardTest extends Test
 {
   "ResourceGuard immediately" in {
     var released = 0

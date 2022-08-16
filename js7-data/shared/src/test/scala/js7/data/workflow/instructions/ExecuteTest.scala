@@ -1,6 +1,7 @@
 package js7.data.workflow.instructions
 
 import js7.base.circeutils.CirceUtils.*
+import js7.base.test.Test
 import js7.data.agent.AgentPath
 import js7.data.job.{PathExecutable, ShellScriptExecutable}
 import js7.data.source.SourcePos
@@ -9,12 +10,11 @@ import js7.data.workflow.Instruction
 import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ExecuteTest extends AnyFreeSpec
+final class ExecuteTest extends Test
 {
   "JSON" - {
     "Named with defaults" in {

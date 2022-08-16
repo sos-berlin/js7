@@ -5,6 +5,7 @@ import io.circe.Json
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.{Problem, ProblemException}
+import js7.base.test.Test
 import js7.base.time.ScalaTime.*
 import js7.base.time.{TimeInterval, Timestamp}
 import js7.base.utils.ScalaUtils.implicitClass
@@ -25,7 +26,6 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tester.CirceJsonTester.testJson
 import org.scalactic.source
-import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.View
 import scala.collection.immutable.ListSet
 import scala.reflect.ClassTag
@@ -33,7 +33,7 @@ import scala.reflect.ClassTag
 /**
   * @author Joacim Zschimmer
   */
-final class OrderTest extends AnyFreeSpec
+final class OrderTest extends Test
 {
   private val testOrder = Order(
     OrderId("ID"),

@@ -2,11 +2,11 @@ package js7.data.cluster
 
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.ProblemException
+import js7.base.test.Test
 import js7.base.time.ScalaTime.*
 import js7.tester.CirceJsonTester.*
-import org.scalatest.freespec.AnyFreeSpec
 
-final class ClusterTimingTest extends AnyFreeSpec
+final class ClusterTimingTest extends Test
 {
   "JSON" in {
     testJson(ClusterTiming(1111.ms, 3333.ms),json"""

@@ -1,5 +1,6 @@
 package js7.data_for_java.order
 
+import js7.base.test.Test
 import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode
 import js7.data.order.{Order, OrderId, OrderMark}
@@ -7,9 +8,8 @@ import js7.data.value.StringValue
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.instructions.Fork
 import js7.data.workflow.position.Position
-import org.scalatest.freespec.AnyFreeSpec
 
-final class JOrderTest extends AnyFreeSpec
+final class JOrderTest extends Test
 {
   private val forkedOrder = Order(
     OrderId("ORDER-ID|A"),

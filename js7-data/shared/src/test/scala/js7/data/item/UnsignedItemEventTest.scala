@@ -1,13 +1,13 @@
 package js7.data.item
 
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
+import js7.base.test.Test
 import js7.data.item.UnsignedItemEvent.{UnsignedItemAdded, UnsignedItemChanged}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{WorkflowControl, WorkflowControlPath}
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 
-final class UnsignedItemEventTest extends AnyFreeSpec
+final class UnsignedItemEventTest extends Test
 {
   import js7.data.controller.ControllerState.implicitItemContainer
 

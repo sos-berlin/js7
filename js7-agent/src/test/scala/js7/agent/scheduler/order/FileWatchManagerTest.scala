@@ -3,6 +3,7 @@ package js7.agent.scheduler.order
 import java.time.format.DateTimeFormatter
 import java.time.{ZoneId, ZonedDateTime}
 import js7.agent.scheduler.order.FileWatchManager.relativePathToOrderId
+import js7.base.test.Test
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.utils.SimplePattern
 import js7.data.agent.AgentPath
@@ -10,9 +11,8 @@ import js7.data.order.OrderId
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.value.expression.ExpressionParser.{expr, parseExpression}
 import js7.data.workflow.WorkflowPath
-import org.scalatest.freespec.AnyFreeSpec
 
-final class FileWatchManagerTest extends AnyFreeSpec
+final class FileWatchManagerTest extends Test
 {
   private lazy val fileWatch = FileWatch(
     OrderWatchPath("FILE-WATCH"),

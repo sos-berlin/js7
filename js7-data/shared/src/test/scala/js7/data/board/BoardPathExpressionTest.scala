@@ -1,11 +1,11 @@
 package js7.data.board
 
+import js7.base.test.Test
 import js7.data.board.BoardPathExpression.{And, ExpectNotice, Or}
 import js7.data.board.BoardPathExpressionParser.parse
 import org.scalactic.source
-import org.scalatest.freespec.AnyFreeSpec
 
-final class BoardPathExpressionTest extends AnyFreeSpec
+final class BoardPathExpressionTest extends Test
 {
   private val A = BoardPath("A")
   private val B = BoardPath("B")

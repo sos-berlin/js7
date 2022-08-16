@@ -15,6 +15,7 @@ import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isMac
 import js7.base.thread.Futures.implicits.*
+import js7.base.test.Test
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -35,15 +36,14 @@ import js7.tests.provider.ProviderTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Promise
-import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.*
+import scala.concurrent.duration.Deadline.now
 
 /**
   * @author Joacim Zschimmer
   */
-final class ProviderTest extends AnyFreeSpec with ControllerAgentForScalaTest
+final class ProviderTest extends Test with ControllerAgentForScalaTest
 {
   override protected def doNotAddItems = true
   protected val agentPaths = agentPath :: Nil

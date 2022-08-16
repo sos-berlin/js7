@@ -1,16 +1,16 @@
 package js7.data.event
 
 import js7.base.problem.Checked.Ops
+import js7.base.test.Test
 import js7.base.time.Timestamp
 import js7.data.event.EventDrivenState.EventNotApplicableProblem
 import js7.data.event.EventDrivenStateTest.*
 import js7.data.event.KeyedEvent.NoKey
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class EventDrivenStateTest extends AnyFreeSpec
+final class EventDrivenStateTest extends Test
 {
   private var s = TestState("")
 

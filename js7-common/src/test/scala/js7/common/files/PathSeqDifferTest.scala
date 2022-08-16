@@ -3,12 +3,12 @@ package js7.common.files
 import java.nio.file.Files.delete
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{touchFile, withTemporaryDirectory}
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
 /**
   * @author Joacim Zschimmer
   */
-final class PathSeqDifferTest extends AnyFreeSpec
+final class PathSeqDifferTest extends Test
 {
   "diff" in {
     withTemporaryDirectory("Z-") { dir =>

@@ -1,13 +1,13 @@
 package js7.common.system
 
 import js7.base.configutils.Configs.*
+import js7.base.test.Test
 import js7.common.system.ThreadPools.*
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ThreadPoolsTest extends AnyFreeSpec
+final class ThreadPoolsTest extends Test
 {
   "ThreadCount" - {
     val config = config"""

@@ -6,6 +6,7 @@ import java.net.{InetAddress, InetSocketAddress}
 import js7.base.auth.{SessionToken, SimpleUser}
 import js7.base.configutils.Configs.*
 import js7.base.io.https.HttpsConfig
+import js7.base.test.Test
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -35,14 +36,13 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.scalatest.BeforeAndAfterAll
-import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.{Future, Promise}
 
 final class GenericEventRouteTest
-extends AnyFreeSpec with BeforeAndAfterAll with ProvideActorSystem with GenericEventRoute
+extends Test with BeforeAndAfterAll with ProvideActorSystem with GenericEventRoute
 {
   protected type OurSession = SimpleSession
 

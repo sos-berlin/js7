@@ -1,14 +1,14 @@
 package js7.data_for_java.order
 
+import js7.base.test.Test
 import js7.data.order.{Order, OrderId}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class JOrderPredicatesTest extends AnyFreeSpec
+final class JOrderPredicatesTest extends Test
 {
   "JOrderPredicates" in {
     new JOrderPredicatesTester(

@@ -6,6 +6,7 @@ import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Checked
+import js7.base.test.Test
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.akkahttp.JsonString
@@ -14,13 +15,12 @@ import js7.core.command.CommandMeta
 import js7.data.controller.{ControllerCommand, ControllerId}
 import monix.eval.Task
 import monix.execution.Scheduler
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future
 
 /**
   * @author Joacim Zschimmer
   */
-final class CommandRouteTest extends AnyFreeSpec with RouteTester with CommandRoute
+final class CommandRouteTest extends Test with RouteTester with CommandRoute
 {
   coupleScribeWithSlf4j()
 

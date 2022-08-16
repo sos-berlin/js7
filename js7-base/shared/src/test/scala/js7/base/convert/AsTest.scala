@@ -1,13 +1,13 @@
 package js7.base.convert
 
 import js7.base.convert.As.{StringAsIntOrUnlimited, StringAsPercentage}
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 import org.scalatest.matchers.should.Matchers.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class AsTest extends AnyFreeSpec {
+final class AsTest extends Test {
 
   "StringAsInt" in {
     val conv = implicitly[As[String, Int]]

@@ -7,6 +7,7 @@ import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -34,11 +35,10 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import org.scalatest.Assertions.assert
-import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.View
 import scala.concurrent.duration.Deadline.now
 
-final class ForkListTest extends AnyFreeSpec with ControllerAgentForScalaTest
+final class ForkListTest extends Test with ControllerAgentForScalaTest
 {
   override protected val agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = yes

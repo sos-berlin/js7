@@ -10,6 +10,7 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
@@ -21,11 +22,10 @@ import js7.data.value.expression.scopes.FileValueScope.functionName
 import js7.data.value.expression.scopes.FileValueScopeTest.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.Deadline.now
 import scala.util.Random
 
-final class FileValueScopeTest extends AnyFreeSpec
+final class FileValueScopeTest extends Test
 {
   "IOException" in {
     val dir = Paths.get("/tmp/FileValueScopeTest-NonExistant")

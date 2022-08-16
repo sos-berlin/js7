@@ -1,12 +1,12 @@
 package js7.data.workflow
 
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
+import js7.base.test.Test
 import js7.data.item.ItemRevision
 import js7.data.workflow.position.Label
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 
-final class WorkflowPathControlTest extends AnyFreeSpec
+final class WorkflowPathControlTest extends Test
 {
   "JSON" in {
     testJson(

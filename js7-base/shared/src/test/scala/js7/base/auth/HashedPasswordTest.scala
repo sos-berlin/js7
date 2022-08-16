@@ -1,12 +1,12 @@
 package js7.base.auth
 
 import js7.base.generic.SecretString
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
 /**
   * @author Joacim Zschimmer
   */
-final class HashedPasswordTest extends AnyFreeSpec {
+final class HashedPasswordTest extends Test {
 
   "equalsClearText" in {
     val a = HashedPassword(SecretString("321"), _.reverse)

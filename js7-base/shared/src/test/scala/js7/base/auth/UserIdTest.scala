@@ -1,11 +1,11 @@
 package js7.base.auth
 
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
 /**
   * @author Joacim Zschimmer
   */
-final class UserIdTest extends AnyFreeSpec {
+final class UserIdTest extends Test {
 
   "Invalid UserId" in {
     assert(UserId.checked("").isLeft)

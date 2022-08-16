@@ -1,10 +1,10 @@
 package js7.base.time
 
 import java.time.{LocalDateTime, ZoneId}
+import js7.base.test.Test
 import js7.base.time.ScalaTime.*
-import org.scalatest.freespec.AnyFreeSpec
 
-final class LocalIntervalTest extends AnyFreeSpec
+final class LocalIntervalTest extends Test
 {
   private val localInterval = LocalInterval(LocalDateTime.parse("2021-08-30T01:00"), 2.h)
 

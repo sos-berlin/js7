@@ -2,9 +2,9 @@ package js7.base.auth
 
 import js7.base.data.ByteArray
 import js7.base.problem.Problem
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
-final class PemTest extends AnyFreeSpec
+final class PemTest extends Test
 {
   private val pem = Pem("TEST")
   private val byteArray = ByteArray("ЙС7 · and more and more text to get two base64 lines ...")

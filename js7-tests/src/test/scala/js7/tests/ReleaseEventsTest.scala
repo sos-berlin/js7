@@ -8,6 +8,7 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.process.Processes.{ShellFileExtension as sh}
 import js7.base.problem.Checked.Ops
 import js7.base.session.SessionApi
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
@@ -29,12 +30,11 @@ import js7.tests.ReleaseEventsTest.*
 import js7.tests.testenv.DirectoryProvider.script
 import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ReleaseEventsTest extends AnyFreeSpec with DirectoryProviderForScalaTest
+final class ReleaseEventsTest extends Test with DirectoryProviderForScalaTest
 {
   protected val agentPaths = TestAgentPath :: Nil
   protected val items = Seq(TestWorkflow)

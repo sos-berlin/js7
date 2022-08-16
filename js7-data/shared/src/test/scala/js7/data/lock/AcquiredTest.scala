@@ -1,12 +1,12 @@
 package js7.data.lock
 
 import js7.base.circeutils.CirceUtils.*
+import js7.base.test.Test
 import js7.data.lock.Acquired.{Available, Exclusive, NonExclusive}
 import js7.data.order.OrderId
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 
-final class AcquiredTest extends AnyFreeSpec
+final class AcquiredTest extends Test
 {
   "JSON" in {
     testJson[Acquired](Available, json"""

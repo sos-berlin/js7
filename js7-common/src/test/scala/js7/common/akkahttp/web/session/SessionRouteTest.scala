@@ -11,6 +11,7 @@ import js7.base.io.https.HttpsConfig
 import js7.base.log.Logger
 import js7.base.problem.Problem
 import js7.base.session.SessionApi
+import js7.base.test.Test
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -26,7 +27,6 @@ import js7.data.problems.InvalidLoginProblem
 import js7.data.session.HttpSessionApi
 import monix.eval.Task
 import monix.execution.Scheduler
-import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers.*
 import scala.collection.immutable.Set
 import scala.concurrent.duration.Deadline.now
@@ -35,7 +35,7 @@ import scala.concurrent.duration.Deadline.now
   * @author Joacim Zschimmer
   */
 sealed abstract class SessionRouteTest(override protected val isPublic: Boolean)
-extends AnyFreeSpec with SessionRouteTester
+extends Test with SessionRouteTester
 {
   protected final implicit def scheduler = Scheduler.traced
   private implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(10.s)

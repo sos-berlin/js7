@@ -4,10 +4,10 @@ import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.problem.Checked
 import js7.base.problem.Problems.InvalidNameProblem
 import js7.base.standards.Js7PathValidatorTest.checkInvalid
+import js7.base.test.Test
 import org.scalatest.Assertions.*
-import org.scalatest.freespec.AnyFreeSpec
 
-final class Js7PathValidatorTest extends AnyFreeSpec
+final class Js7PathValidatorTest extends Test
 {
   private val validator = new Js7PathValidator("TEST")
   import validator.checked

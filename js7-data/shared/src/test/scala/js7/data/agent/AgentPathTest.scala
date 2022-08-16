@@ -2,9 +2,9 @@ package js7.data.agent
 
 import js7.base.problem.ProblemException
 import js7.base.standards.Js7PathValidatorTest
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
-final class AgentPathTest extends AnyFreeSpec
+final class AgentPathTest extends Test
 {
   "AgentPath" in {
     // See NameValidating

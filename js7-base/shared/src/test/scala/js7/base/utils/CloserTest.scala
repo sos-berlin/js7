@@ -1,9 +1,9 @@
 package js7.base.utils
 
 import java.util.concurrent.ConcurrentLinkedQueue
+import js7.base.test.Test
 import js7.base.utils.CloserTest.*
 import monix.execution.atomic.AtomicBoolean
-import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 import scala.util.control.NoStackTrace
@@ -11,7 +11,7 @@ import scala.util.control.NoStackTrace
 /**
   * @author Joacim Zschimmer
   */
-final class CloserTest extends AnyFreeSpec
+final class CloserTest extends Test
 {
   "TestCloseable" in {
     val ctx = new Context

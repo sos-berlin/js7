@@ -1,16 +1,16 @@
 package js7.base.utils
 
 import cats.effect.{Resource, SyncIO}
+import js7.base.test.Test
 import js7.base.utils.SyncResource.syntax.*
 import monix.execution.atomic.AtomicAny
-import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 import scala.util.Random
 
 /**
   * @author Joacim Zschimmer
   */
-final class SyncResourceTest extends AnyFreeSpec
+final class SyncResourceTest extends Test
 {
   "SyncIO useSync" in {
     val opened = mutable.Set.empty[MySimpleResource]

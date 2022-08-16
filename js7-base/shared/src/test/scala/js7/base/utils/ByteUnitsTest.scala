@@ -1,12 +1,12 @@
 package js7.base.utils
 
+import js7.base.test.Test
 import js7.base.utils.ByteUnits.{formatNumber, toKBGB, toKiBGiB, toMB}
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ByteUnitsTest extends AnyFreeSpec
+final class ByteUnitsTest extends Test
 {
   "formatNumber" in {
     for (i <- 0 to 9) {

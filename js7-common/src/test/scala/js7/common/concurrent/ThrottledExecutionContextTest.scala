@@ -1,18 +1,18 @@
 package js7.common.concurrent
 
 import java.util.concurrent.Executors.newFixedThreadPool
+import js7.base.test.Test
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.measureTime
 import org.scalatest.BeforeAndAfterAll
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Random
 
 /**
   * @author Joacim Zschimmer
   */
-final class ThrottledExecutionContextTest extends AnyFreeSpec with BeforeAndAfterAll {
+final class ThrottledExecutionContextTest extends Test with BeforeAndAfterAll {
 
   private lazy val threadPool = newFixedThreadPool(3)
   private lazy val executionContext = ExecutionContext.fromExecutorService(threadPool)

@@ -1,12 +1,12 @@
 package js7.data.subagent
 
 import js7.base.circeutils.CirceUtils.*
+import js7.base.test.Test
 import js7.data.controller.ControllerState.inventoryItemJsonCodec
 import js7.data.item.InventoryItem
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 
-final class SubagentSelectionTest extends AnyFreeSpec
+final class SubagentSelectionTest extends Test
 {
   "JSON" in {
     testJson[InventoryItem](

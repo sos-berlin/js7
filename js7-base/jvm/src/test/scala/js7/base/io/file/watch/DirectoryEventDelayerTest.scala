@@ -5,6 +5,7 @@ import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted, FileModifi
 import js7.base.io.file.watch.DirectoryEventDelayer.syntax.*
 import js7.base.io.file.watch.DirectoryEventDelayerTest.*
 import js7.base.log.Logger
+import js7.base.test.Test
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
@@ -15,13 +16,12 @@ import monix.execution.schedulers.TestScheduler
 import monix.execution.{Ack, Scheduler}
 import monix.reactive.subjects.PublishSubject
 import org.scalatest.BeforeAndAfterAll
-import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers.*
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline
 import scala.util.Random
 
-final class DirectoryEventDelayerTest extends AnyFreeSpec with BeforeAndAfterAll
+final class DirectoryEventDelayerTest extends Test with BeforeAndAfterAll
 {
   private val aFileAdded = FileAdded(Paths.get("A"))
   private val aFileModified = FileModified(Paths.get("A"))

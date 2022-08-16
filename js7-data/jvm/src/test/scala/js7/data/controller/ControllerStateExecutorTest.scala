@@ -2,6 +2,7 @@ package js7.data.controller
 
 import js7.base.crypt.silly.SillySigner
 import js7.base.problem.{Checked, Problem}
+import js7.base.test.Test
 import js7.base.time.WallClock
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.Problems.{ItemIsStillReferencedProblem, MissingReferencedItemProblem, UnknownItemPathProblem}
@@ -31,10 +32,9 @@ import js7.data.workflow.instructions.{Execute, LockInstruction}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{OrderParameter, OrderParameterList, OrderPreparation, Workflow, WorkflowPath}
 import monix.execution.Scheduler.Implicits.traced
-import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.View
 
-final class ControllerStateExecutorTest extends AnyFreeSpec
+final class ControllerStateExecutorTest extends Test
 {
   import ControllerStateExecutorTest.instructionExecutorService
   import ControllerStateExecutorTest.itemSigner.sign

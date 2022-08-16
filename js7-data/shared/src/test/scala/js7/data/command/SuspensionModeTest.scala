@@ -1,16 +1,16 @@
 package js7.data.command
 
 import js7.base.circeutils.CirceUtils.*
+import js7.base.test.Test
 import js7.data.item.VersionId
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class SuspensionModeTest extends AnyFreeSpec
+final class SuspensionModeTest extends Test
 {
   "JSON" - {
     "SuspensionMode(Kill())" in {

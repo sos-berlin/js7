@@ -1,16 +1,16 @@
 package js7.core.cluster
 
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.controller.ControllerId
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ClusterWatchRegisterTest extends AnyFreeSpec
+final class ClusterWatchRegisterTest extends Test
 {
   private val clusterWatchRegister = new ClusterWatchRegister(Scheduler.traced)
 

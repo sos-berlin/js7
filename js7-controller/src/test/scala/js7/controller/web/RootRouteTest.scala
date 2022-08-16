@@ -3,16 +3,16 @@ package js7.controller.web
 import akka.http.scaladsl.model.StatusCodes.NotFound
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.common.http.AkkaHttpUtils.RichHttpResponse
 import monix.execution.Scheduler.Implicits.traced
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class RootRouteTest extends AnyFreeSpec with ScalatestRouteTest with RootRoute
+final class RootRouteTest extends Test with ScalatestRouteTest with RootRoute
 {
   coupleScribeWithSlf4j()
 

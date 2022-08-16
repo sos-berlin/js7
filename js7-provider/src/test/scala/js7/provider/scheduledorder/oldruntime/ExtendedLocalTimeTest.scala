@@ -1,12 +1,12 @@
 package js7.provider.scheduledorder.oldruntime
 
 import java.time.{Instant, LocalDate, LocalDateTime, LocalTime, ZoneId}
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
 /**
   * @author Joacim Zschimmer
   */
-final class ExtendedLocalTimeTest extends AnyFreeSpec {
+final class ExtendedLocalTimeTest extends Test {
 
   "fromString" - {
     "Invalid times" in {

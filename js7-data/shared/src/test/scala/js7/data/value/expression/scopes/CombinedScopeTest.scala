@@ -1,11 +1,11 @@
 package js7.data.value.expression.scopes
 
 import cats.syntax.semigroup.*
+import js7.base.test.Test
 import js7.data.value.NumberValue
 import js7.data.value.expression.Scope
-import org.scalatest.freespec.AnyFreeSpec
 
-final class CombinedScopeTest extends AnyFreeSpec
+final class CombinedScopeTest extends Test
 {
   "Monoid combine" in {
     val aScope: Scope = NamedValueScope(

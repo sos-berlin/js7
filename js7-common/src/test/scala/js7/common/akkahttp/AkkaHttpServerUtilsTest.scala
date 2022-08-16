@@ -3,13 +3,13 @@ package js7.common.akkahttp
 import akka.http.scaladsl.model.Uri
 import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.testkit.ScalatestRouteTest
+import js7.base.test.Test
 import js7.common.akkahttp.AkkaHttpServerUtils.*
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class AkkaHttpServerUtilsTest extends AnyFreeSpec with ScalatestRouteTest {
+final class AkkaHttpServerUtilsTest extends Test with ScalatestRouteTest {
 
   "Path" - {
     import Uri.Path

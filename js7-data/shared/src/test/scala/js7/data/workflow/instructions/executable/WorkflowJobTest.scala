@@ -6,6 +6,7 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.io.process.{KeyLogin, ReturnCode}
 import js7.base.problem.Problems.InvalidNameProblem
+import js7.base.test.Test
 import js7.base.time.ScalaTime.*
 import js7.base.time.{AdmissionTimeScheme, WeekdayPeriod}
 import js7.data.agent.AgentPath
@@ -13,12 +14,11 @@ import js7.data.job.{JobResourcePath, RelativePathExecutable, ReturnCodeMeaning}
 import js7.data.subagent.SubagentSelectionId
 import js7.data.value.expression.Expression.{NumericConstant, StringConstant}
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class WorkflowJobTest extends AnyFreeSpec
+final class WorkflowJobTest extends Test
 {
   "JSON" - {
     "default" in {

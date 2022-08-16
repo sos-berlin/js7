@@ -4,6 +4,7 @@ import js7.base.generic.Completed
 import js7.base.monixutils.MonixDeadline.now
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
@@ -18,10 +19,9 @@ import js7.data.event.{EventId, JournalPosition}
 import js7.data.node.NodeId
 import monix.execution.Scheduler.Implicits.global
 import monix.execution.schedulers.TestScheduler
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.FiniteDuration
 
-final class ClusterWatchTest extends AnyFreeSpec
+final class ClusterWatchTest extends Test
 {
   ProblemCodeMessages.initialize()
 

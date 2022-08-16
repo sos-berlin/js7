@@ -4,6 +4,7 @@ import cats.instances.vector.*
 import cats.syntax.traverse.*
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Checked.*
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
@@ -22,9 +23,8 @@ import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
-import org.scalatest.freespec.AnyFreeSpec
 
-final class ForkListRecoveryTest extends AnyFreeSpec with DirectoryProviderForScalaTest
+final class ForkListRecoveryTest extends Test with DirectoryProviderForScalaTest
 {
   override protected val agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = yes

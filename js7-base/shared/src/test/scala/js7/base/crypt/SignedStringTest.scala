@@ -1,10 +1,10 @@
 package js7.base.crypt
 
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
+import js7.base.test.Test
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 
-final class SignedStringTest extends AnyFreeSpec
+final class SignedStringTest extends Test
 {
   "JSON" in {
     testJson(SignedString(

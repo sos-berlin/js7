@@ -1,8 +1,8 @@
 package js7.launcher.forwindows
 
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
-final class WindowsUserNameTest extends AnyFreeSpec
+final class WindowsUserNameTest extends Test
 {
   "equals" in {
     assert(WindowsUserName("a") != WindowsUserName("b"))

@@ -5,16 +5,16 @@ import java.nio.file.Paths
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Problem
 import js7.base.problem.Problems.InvalidNameProblem
+import js7.base.test.Test
 import js7.base.time.Stopwatch.measureTime
 import js7.core.item.ItemPaths.*
 import js7.data.item.SourceType
 import js7.data.workflow.WorkflowPath
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class VersionedItemPathsTest extends AnyFreeSpec {
+final class VersionedItemPathsTest extends Test {
 
   "fileToItemPathAndSourceType" in {
     val dir = Paths.get("DIR")

@@ -2,18 +2,18 @@ package js7.data.cluster
 
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.ProblemException
+import js7.base.test.Test
 import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.data.cluster.ClusterSetting.*
 import js7.data.cluster.ClusterSetting.syntax.*
 import js7.data.node.NodeId
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ClusterSettingTest extends AnyFreeSpec
+final class ClusterSettingTest extends Test
 {
   private val idToUri = Map(
     NodeId("A") -> Uri("https://A"),

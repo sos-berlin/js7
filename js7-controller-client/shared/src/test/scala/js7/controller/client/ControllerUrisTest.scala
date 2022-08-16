@@ -1,16 +1,16 @@
 package js7.controller.client
 
+import js7.base.test.Test
 import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.data.event.{EventRequest, JournalPosition}
 import js7.data.order.{OrderEvent, OrderId}
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class ControllerUrisTest extends AnyFreeSpec
+final class ControllerUrisTest extends Test
 {
   private val controllerUris = ControllerUris(Uri("https://example.com/controller"))
 

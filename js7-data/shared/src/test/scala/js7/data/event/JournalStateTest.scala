@@ -2,13 +2,13 @@ package js7.data.event
 
 import js7.base.auth.UserId
 import js7.base.circeutils.CirceUtils.*
+import js7.base.test.Test
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class JournalStateTest extends AnyFreeSpec
+final class JournalStateTest extends Test
 {
   "JSON" in {
     testJson(

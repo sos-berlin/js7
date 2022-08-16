@@ -2,6 +2,7 @@ package js7.base.stream
 
 import js7.base.problem.{Problem, ProblemException}
 import js7.base.stream.ObservableNumberedQueueTest.*
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
@@ -9,10 +10,9 @@ import js7.base.utils.ScalaUtils.syntax.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
-import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 
-final class ObservableNumberedQueueTest extends AnyFreeSpec
+final class ObservableNumberedQueueTest extends Test
 {
   private val queue = new ObservableNumberedQueue[X]
 

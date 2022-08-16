@@ -1,6 +1,7 @@
 package js7.data.workflow.instructions
 
 import js7.base.circeutils.CirceUtils.*
+import js7.base.test.Test
 import js7.data.agent.AgentPath
 import js7.data.job.PathExecutable
 import js7.data.source.SourcePos
@@ -12,12 +13,11 @@ import js7.data.workflow.position.BranchId.{Else, Then}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Instruction, Workflow}
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class IfTest extends AnyFreeSpec
+final class IfTest extends Test
 {
   private val if_ = If(
     GreaterOrEqual(LastReturnCode, NumericConstant(3)),

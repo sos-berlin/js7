@@ -2,15 +2,15 @@ package js7.agent.data.views
 
 import js7.base.circeutils.CirceUtils.*
 import js7.base.system.SystemInformation
+import js7.base.test.Test
 import js7.base.time.Timestamp
 import js7.data.system.JavaInformation
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
-final class AgentOverviewTest extends AnyFreeSpec {
+final class AgentOverviewTest extends Test {
 
   "JSON" in {
     testJson(

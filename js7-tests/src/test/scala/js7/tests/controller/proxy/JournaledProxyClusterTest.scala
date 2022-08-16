@@ -10,6 +10,7 @@ import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -40,11 +41,10 @@ import js7.tests.controller.proxy.JournaledProxyClusterTest.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.Deadline.now
 import scala.jdk.CollectionConverters.*
 
-final class JournaledProxyClusterTest extends AnyFreeSpec with ClusterProxyTest
+final class JournaledProxyClusterTest extends Test with ClusterProxyTest
 {
   private implicit def implicitActorSystem: ActorSystem = actorSystem
 

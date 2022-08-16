@@ -16,6 +16,7 @@ import js7.base.configutils.Configs.*
 import js7.base.generic.SecretString
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.problem.Checked
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
@@ -29,14 +30,13 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.Assertions.*
 import org.scalatest.BeforeAndAfterAll
-import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 
 /**
  * @author Joacim Zschimmer
  */
 final class AkkaHttpAgentTextApiTest
-extends AnyFreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider
+extends Test with BeforeAndAfterAll with HasCloser with TestAgentProvider
 {
   override protected lazy val agentConfiguration = AgentConfiguration.forTest(
     configAndData = agentDirectory,

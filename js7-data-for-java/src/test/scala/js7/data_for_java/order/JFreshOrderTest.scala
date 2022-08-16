@@ -1,8 +1,8 @@
 package js7.data_for_java.order
 
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
-final class JFreshOrderTest extends AnyFreeSpec
+final class JFreshOrderTest extends Test
 {
   "test" in {
     JFreshOrderTester.test()

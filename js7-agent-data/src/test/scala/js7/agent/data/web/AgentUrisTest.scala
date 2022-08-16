@@ -1,12 +1,12 @@
 package js7.agent.data.web
 
+import js7.base.test.Test
 import js7.base.web.Uri
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
-final class AgentUrisTest extends AnyFreeSpec
+final class AgentUrisTest extends Test
 {
   private val agentUris = AgentUris(Uri("https://example.com:9999/testPrefix"))
 

@@ -3,10 +3,10 @@ package js7.common.guice
 import com.google.inject.TypeLiteral
 import com.google.inject.util.Types
 import izumi.reflect.Tag
+import js7.base.test.Test
 import js7.common.guice.Guices.typeLiteral
-import org.scalatest.freespec.AnyFreeSpec
 
-final class GuicesTest extends AnyFreeSpec
+final class GuicesTest extends Test
 {
   "Izumi reflect" - {
     "Array" in {

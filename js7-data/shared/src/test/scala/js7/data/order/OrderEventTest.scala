@@ -4,6 +4,7 @@ import io.circe.Json
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.*
@@ -12,8 +13,8 @@ import js7.data.board.{BoardPath, Notice, NoticeId, NoticeV2_3}
 import js7.data.command.CancellationMode
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.lock.LockPath
-import js7.data.order.OrderEvent.OrderResumed.{AppendHistoricOutcome, DeleteHistoricOutcome, InsertHistoricOutcome, ReplaceHistoricOutcome}
 import js7.data.order.OrderEvent.*
+import js7.data.order.OrderEvent.OrderResumed.{AppendHistoricOutcome, DeleteHistoricOutcome, InsertHistoricOutcome, ReplaceHistoricOutcome}
 import js7.data.orderwatch.{ExternalOrderKey, ExternalOrderName, OrderWatchPath}
 import js7.data.subagent.SubagentId
 import js7.data.value.{NamedValues, StringValue}
@@ -21,13 +22,12 @@ import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.{BranchId, Label, Position}
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 import org.scalactic.source
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class OrderEventTest extends AnyFreeSpec
+final class OrderEventTest extends Test
 {
   "OrderAdded" in {
     check(

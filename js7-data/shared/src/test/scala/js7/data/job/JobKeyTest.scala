@@ -1,16 +1,16 @@
 package js7.data.job
 
 import js7.base.circeutils.CirceUtils.*
+import js7.base.test.Test
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.{Position, WorkflowBranchPath}
 import js7.tester.CirceJsonTester.*
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class JobKeyTest extends AnyFreeSpec
+final class JobKeyTest extends Test
 {
   "JSON" - {
     "JobKey.Anonymous" in {

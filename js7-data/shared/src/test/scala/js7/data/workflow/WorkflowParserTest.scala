@@ -4,6 +4,7 @@ import cats.syntax.show.*
 import com.softwaremill.diffx.generic.auto.*
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.job.{CommandLineExecutable, PathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
@@ -17,13 +18,12 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fail, Finish, Fork, If, ImplicitEnd, LockInstruction, Retry, TryInstruction}
 import js7.data.workflow.test.ForkTestSetting.{TestWorkflow, TestWorkflowSource}
 import js7.tester.DiffxAssertions.assertEqual
-import org.scalatest.freespec.AnyFreeSpec
 import scala.util.control.NoStackTrace
 
 /**
   * @author Joacim Zschimmer
   */
-final class WorkflowParserTest extends AnyFreeSpec
+final class WorkflowParserTest extends Test
 {
   "parse" in {
     assert(parse(TestWorkflowSource).withoutSourcePos == TestWorkflow.withId(WorkflowPath.NoId))

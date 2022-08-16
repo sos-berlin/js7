@@ -9,6 +9,7 @@ import js7.base.log.Logger
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.time.WallClock
@@ -36,9 +37,8 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import org.scalactic.source
-import org.scalatest.freespec.AnyFreeSpec
 
-final class ExecuteTest extends AnyFreeSpec with ControllerAgentForScalaTest
+final class ExecuteTest extends Test with ControllerAgentForScalaTest
 {
   // TODO Test separate Subagent, too
 

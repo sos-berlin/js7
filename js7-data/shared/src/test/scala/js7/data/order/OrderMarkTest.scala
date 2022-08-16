@@ -1,12 +1,12 @@
 package js7.data.order
 
 import js7.base.circeutils.CirceUtils.*
+import js7.base.test.Test
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.workflow.position.Position
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 
-final class OrderMarkTest extends AnyFreeSpec
+final class OrderMarkTest extends Test
 {
   "Cancelling" in {
     testJson[OrderMark](OrderMark.Cancelling(CancellationMode.FreshOnly), json"""

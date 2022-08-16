@@ -3,10 +3,10 @@ package js7.data.value
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 
-final class ValueTest extends AnyFreeSpec
+final class ValueTest extends Test
 {
   private val bigNumber = "111222333444555666777888999.9998887776665555444333222111e99"
 

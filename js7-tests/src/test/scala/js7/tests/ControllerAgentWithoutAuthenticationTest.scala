@@ -8,6 +8,7 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
+import js7.base.test.Test
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -30,12 +31,11 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.ControllerAgentWithoutAuthenticationTest.*
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class ControllerAgentWithoutAuthenticationTest extends AnyFreeSpec
+final class ControllerAgentWithoutAuthenticationTest extends Test
 {
   "js7.web.server.auth.public = true" in {
     runMyTest(isPublic = true) { (controller, _) =>

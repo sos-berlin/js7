@@ -9,17 +9,17 @@ import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.io.file.FileUtils.implicits.*
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{touchFile, withTemporaryFile}
+import js7.base.test.Test
 import js7.base.time.{Stopwatch, Timestamp}
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.jsonseq.FileJsonSeqTest.*
 import js7.data.event.{Event, KeyedEvent, KeyedEventTypedJsonCodec, Stamped}
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class FileJsonSeqTest extends AnyFreeSpec {
+final class FileJsonSeqTest extends Test {
 
   "Empty file" in {
     withTemporaryFile { file =>

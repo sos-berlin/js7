@@ -3,14 +3,14 @@ package js7.common.files
 import js7.base.data.ByteArray
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryFile
+import js7.base.test.Test
 import js7.base.utils.AutoClosing.autoClosing
-import org.scalatest.freespec.AnyFreeSpec
 import scala.util.Random
 
 /**
   * @author Joacim Zschimmer
   */
-final class ByteArrayReaderTest extends AnyFreeSpec
+final class ByteArrayReaderTest extends Test
 {
   "ByteArrayReader" in {
     withTemporaryFile("ByteArrayReaderTest", ".tmp") { file =>

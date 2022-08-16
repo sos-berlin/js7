@@ -4,6 +4,7 @@ import java.time.DayOfWeek.{MONDAY, SUNDAY}
 import java.time.ZoneOffset.UTC
 import java.time.{LocalTime, ZoneId}
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
+import js7.base.test.Test
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
 import js7.base.time.ScalaTime.*
@@ -11,9 +12,8 @@ import js7.base.time.{AdmissionTimeScheme, TestAlarmClock, TimeInterval, Timesta
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.execution.workflow.instructions.ExecuteAdmissionTimeSwitchTest.*
 import org.scalatest.Assertions.assert
-import org.scalatest.freespec.AnyFreeSpec
 
-final class ExecuteAdmissionTimeSwitchTest extends AnyFreeSpec
+final class ExecuteAdmissionTimeSwitchTest extends Test
 {
   coupleScribeWithSlf4j()
 

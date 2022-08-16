@@ -3,6 +3,7 @@ package js7.tests
 import js7.base.configutils.Configs.*
 import js7.base.log.Logger
 import js7.base.problem.Checked.*
+import js7.base.test.Test
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
@@ -17,10 +18,9 @@ import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.duration.Deadline.now
 
-final class JobDriverStarvationTest extends AnyFreeSpec with ControllerAgentForScalaTest
+final class JobDriverStarvationTest extends Test with ControllerAgentForScalaTest
 {
   override protected def controllerConfig = config"""
     js7.journal.slow-check-state = off

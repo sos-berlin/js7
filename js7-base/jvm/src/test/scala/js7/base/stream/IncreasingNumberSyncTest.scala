@@ -1,20 +1,20 @@
 package js7.base.stream
 
 import js7.base.monixutils.MonixDeadline.now
+import js7.base.test.Test
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.schedulers.TestScheduler
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future
 import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class IncreasingNumberSyncTest extends AnyFreeSpec
+final class IncreasingNumberSyncTest extends Test
 {
   "test" in {
     implicit val scheduler = TestScheduler()

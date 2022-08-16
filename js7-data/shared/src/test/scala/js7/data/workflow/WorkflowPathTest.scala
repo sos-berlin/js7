@@ -1,9 +1,9 @@
 package js7.data.workflow
 
 import js7.base.standards.Js7PathValidatorTest
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
-final class WorkflowPathTest extends AnyFreeSpec
+final class WorkflowPathTest extends Test
 {
   "Invalid path" in {
     Js7PathValidatorTest.checkInvalid("WorkflowPath", WorkflowPath.checked)

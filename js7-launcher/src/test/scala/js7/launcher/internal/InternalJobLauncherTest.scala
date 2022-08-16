@@ -2,6 +2,7 @@ package js7.launcher.internal
 
 import java.nio.charset.StandardCharsets.UTF_8
 import js7.base.problem.Checked.*
+import js7.base.test.Test
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.IOExecutor.globalIOX
 import js7.base.thread.MonixBlocking.syntax.*
@@ -24,9 +25,8 @@ import js7.launcher.{OrderProcess, ProcessOrder, StdObservers}
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.subjects.PublishSubject
-import org.scalatest.freespec.AnyFreeSpec
 
-final class InternalJobLauncherTest extends AnyFreeSpec
+final class InternalJobLauncherTest extends Test
 {
   private implicit val scheduler: Scheduler = Scheduler.traced
 

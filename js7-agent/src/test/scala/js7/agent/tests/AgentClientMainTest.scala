@@ -9,18 +9,18 @@ import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceString, 
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Checked
+import js7.base.test.Test
 import js7.common.guice.ScalaAbstractModule
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.core.command.CommandMeta
 import monix.eval.Task
 import org.scalatest.BeforeAndAfterAll
-import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 
 /**
  * @author Joacim Zschimmer
  */
-final class AgentClientMainTest extends AnyFreeSpec with BeforeAndAfterAll with TestAgentProvider
+final class AgentClientMainTest extends Test with BeforeAndAfterAll with TestAgentProvider
 {
   coupleScribeWithSlf4j()
 

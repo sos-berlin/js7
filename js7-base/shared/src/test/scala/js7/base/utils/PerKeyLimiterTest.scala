@@ -1,11 +1,11 @@
 package js7.base.utils
 
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
 /**
   * @author Joacim Zschimmer
   */
-final class PerKeyLimiterTest extends AnyFreeSpec {
+final class PerKeyLimiterTest extends Test {
 
   "PerKeyLimiter" in {
     def perKeyLimiter(limit: Int) = new PerKeyLimiter(limit, (v: (Int, Int)) => v._1)

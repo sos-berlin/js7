@@ -5,6 +5,7 @@ import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
 import js7.base.BuildInfo
 import js7.base.auth.UserId
+import js7.base.test.Test
 import js7.base.time.{Timestamp, Timezone}
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import js7.common.akkahttp.CirceJsonSupport.jsonUnmarshaller
@@ -15,15 +16,14 @@ import js7.data.controller.{ControllerId, ControllerMetaState, ControllerOvervie
 import js7.data.event.{EventId, JournalState, SnapshotableState}
 import monix.eval.Task
 import monix.execution.Scheduler
-import org.scalatest.freespec.AnyFreeSpec
 import scala.concurrent.Future
-import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.*
+import scala.concurrent.duration.Deadline.now
 
 /**
   * @author Joacim Zschimmer
   */
-final class ApiRootRouteTest extends AnyFreeSpec with RouteTester with ApiRootRoute
+final class ApiRootRouteTest extends Test with RouteTester with ApiRootRoute
 {
   protected val controllerId = ControllerId("TEST-CONTROLLER")
   protected def whenShuttingDown = Future.never

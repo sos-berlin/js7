@@ -1,7 +1,7 @@
 package js7.common.scalautil
 
+import js7.base.test.Test
 import js7.common.scalautil.AssignableFrom.assignableFrom
-import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers.*
 import scala.reflect.ClassTag
 
@@ -9,7 +9,7 @@ import scala.reflect.ClassTag
 /**
  * @author Joacim Zschimmer
  */
-final class AssignableFromTest extends AnyFreeSpec {
+final class AssignableFromTest extends Test {
 
   "AssignableFrom" in {
     trait I

@@ -9,6 +9,7 @@ import js7.agent.tests.TestAgentDirectoryProvider.*
 import js7.agent.web.EventRouteTest.*
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.problem.Checked.*
+import js7.base.test.Test
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
@@ -22,12 +23,11 @@ import js7.data.problems.UnknownEventIdProblem
 import js7.data.subagent.SubagentId
 import js7.journal.files.JournalFiles.listJournalFiles
 import monix.execution.Scheduler
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
   * @author Joacim Zschimmer
   */
-final class EventRouteTest extends AnyFreeSpec with AgentTester
+final class EventRouteTest extends Test with AgentTester
 {
   protected val akkaAskTimeout = 99.s
 

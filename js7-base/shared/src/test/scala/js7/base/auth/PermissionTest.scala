@@ -2,12 +2,12 @@ package js7.base.auth
 
 import js7.base.auth.Permission.*
 import js7.base.auth.PermissionTest.*
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
 /**
   * @author Joacim Zschimmer
   */
-final class PermissionTest extends AnyFreeSpec
+final class PermissionTest extends Test
 {
   "toStringToPermission" in {
     assert(toStringToPermission(Set(TestPermission, AnotherPermission)) ==

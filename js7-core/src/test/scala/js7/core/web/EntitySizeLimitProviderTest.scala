@@ -1,12 +1,12 @@
 package js7.core.web
 
 import js7.base.configutils.Configs.HoconStringInterpolator
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
 /**
   * @author Joacim Zschimmer
   */
-final class EntitySizeLimitProviderTest extends AnyFreeSpec
+final class EntitySizeLimitProviderTest extends Test
 {
   "entitySizeLimit" in {
     val maxMemory_ = 1000L

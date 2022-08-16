@@ -1,12 +1,12 @@
 package js7.base.time
 
 import js7.base.convert.As
+import js7.base.test.Test
 import js7.base.time.ScalaTime.*
-import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers.*
 import scala.concurrent.duration.*
 
-final class ScalaTimeTest extends AnyFreeSpec
+final class ScalaTimeTest extends Test
 {
   "ZeroDuration" in {
     assert(ZeroDuration.toString == "0 seconds")

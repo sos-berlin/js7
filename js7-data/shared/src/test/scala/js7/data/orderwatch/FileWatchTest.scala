@@ -1,6 +1,7 @@
 package js7.data.orderwatch
 
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
+import js7.base.test.Test
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.utils.SimplePattern
@@ -9,9 +10,8 @@ import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.ExpressionParser.{expr, parseExpression}
 import js7.data.workflow.WorkflowPath
 import js7.tester.CirceJsonTester.testJson
-import org.scalatest.freespec.AnyFreeSpec
 
-final class FileWatchTest extends AnyFreeSpec
+final class FileWatchTest extends Test
 {
   "JSON" - {
     "FileWatch minimum" in {

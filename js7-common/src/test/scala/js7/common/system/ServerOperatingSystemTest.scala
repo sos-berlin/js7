@@ -3,13 +3,13 @@ package js7.common.system
 import java.io.File
 import java.io.File.pathSeparator
 import js7.base.system.OperatingSystem.{isMac, isWindows}
+import js7.base.test.Test
 import js7.common.system.ServerOperatingSystem.*
-import org.scalatest.freespec.AnyFreeSpec
 
 /**
  * @author Joacim Zschimmer
  */
-final class ServerOperatingSystemTest extends AnyFreeSpec {
+final class ServerOperatingSystemTest extends Test {
 
   "makeModuleFilename" in {
     assert(makeModuleFilename("xx") == (if (isWindows) "xx.dll" else if (isMac) "libxx.dylib" else "libxx.so"))

@@ -15,6 +15,7 @@ import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isWindows
+import js7.base.test.Test
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -33,14 +34,13 @@ import js7.journal.write.EventJournalWriter
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import org.scalatest.BeforeAndAfterAll
-import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.mutable
 import scala.reflect.ClassTag
 
 /**
   * @author Joacim Zschimmer
   */
-final class JournalEventWatchTest extends AnyFreeSpec with BeforeAndAfterAll
+final class JournalEventWatchTest extends Test with BeforeAndAfterAll
 {
   private implicit val keyedEventTypedJsonCodec: KeyedEventTypedJsonCodec[Event] =
     JournalEventWatchTest.keyedEventTypedJsonCodec

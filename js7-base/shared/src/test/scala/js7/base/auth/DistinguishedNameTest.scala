@@ -2,12 +2,12 @@ package js7.base.auth
 
 import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.problem.Problem
-import org.scalatest.freespec.AnyFreeSpec
+import js7.base.test.Test
 
 /**
   * @author Joacim Zschimmer
   */
-final class DistinguishedNameTest extends AnyFreeSpec
+final class DistinguishedNameTest extends Test
 {
   "check" in {
     assert(DistinguishedName.checked("") == Left(EmptyStringProblem("DistinguishedName")))
