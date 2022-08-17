@@ -138,7 +138,8 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
       OrderMoved(Position(0) / "try+0" % 0),
       OrderStarted,
       OrderForked(Vector(OrderForked.Child("FORK", childOrderId))),
-      OrderJoined(Outcome.Failed(None,Map())),
+      OrderJoined(Outcome.Failed(Some(
+        "Order:FORKING|FORK Disrupted(Other(AgentReset: Agent:AGENT has been reset))"))),
       OrderCaught(Position(0) / "catch+0" % 0),
       OrderMoved(Position(1)),
       OrderFinished))

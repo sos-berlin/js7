@@ -353,7 +353,7 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
       OrderForked(Vector(OrderForked.Child("BRANCH", orderId / "BRANCH"))),
-      OrderJoined(Outcome.Failed(Some("Order:🟩|BRANCH failed"))),
+      OrderJoined(Outcome.Failed(Some("Order:🟩|BRANCH Failed"))),
       OrderFailed(Position(0)),
       OrderCancelled,
       OrderDeleted))

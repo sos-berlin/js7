@@ -6,7 +6,6 @@ import cats.syntax.traverse.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.OrderEventSource
@@ -58,13 +57,14 @@ trait ForkInstructionExecutor extends EventInstructionExecutor
       withCacheAccess(order, state) { cache =>
         (order.state.children.sizeIs == cache.numberOfJoinables) ? {
           cache.onJoined()
-          val allSucceeded = order.state.children.view
+          val failedChildren = order.state.children.view
             .map(child => state.idToOrder(child.orderId))
-            .forall(_.lastOutcome.isSucceeded)
+            .filterNot(_.lastOutcome.isSucceeded)
+            .toVector
           val now = clock.now()
           order.id <-: OrderJoined(
-            if (!allSucceeded)
-              Outcome.Failed(toJoinFailedMessage(order, state))
+            if (failedChildren.nonEmpty)
+              Outcome.Failed(Some(toJoinFailedMessage(failedChildren)))
             else
               forkResult(fork, order, state, now))
         }
@@ -87,25 +87,15 @@ trait ForkInstructionExecutor extends EventInstructionExecutor
             } yield name -> value
           })
 
-  private def toJoinFailedMessage(order: Order[Order.Forked], state: StateView): Option[String] = {
-    order.state.children.view
-      .flatMap { child =>
-        val childOrder = state.idToOrder(child.orderId)
-        if (childOrder.isState[Cancelled])
-          Some(s"${child.orderId} has been cancelled")
-        else
-          state.idToOrder(child.orderId)
-            .lastOutcome
-            .match_ {
-              case Outcome.Failed(maybeErr, _) =>
-                Some(child.orderId.toString + " failed" + (maybeErr.fold("")(": " + _)))
-              case _ => None
-            }
-      }
+  private def toJoinFailedMessage(failedChildren: Seq[Order[Order.State]]): String =
+    failedChildren.view
       .take(3)  // Avoid huge error message
-      .emptyToNone
-      .map(_.mkString(";\n"))
-  }
+      .flatMap(order =>
+        if (order.isState[Cancelled])
+          Some(s"${order.id} has been cancelled")
+        else
+          Some(s"${order.id} ${order.lastOutcome.show}"))
+      .mkString(";\n")
 
   private def withCacheAccess[A](order: Order[Order.Forked], state: StateView)
     (body: service.forkCache.Access => A)
@@ -177,8 +167,7 @@ trait ForkInstructionExecutor extends EventInstructionExecutor
             case _ =>
               None
           }
-        } else {
-          // Child orders may start at different agents
+        } else // Child orders may start at different agents
           order.attachedState match {
             case Some(Order.Attached(parentsAgentPath)) =>
               // We prefer to detach
@@ -189,7 +178,6 @@ trait ForkInstructionExecutor extends EventInstructionExecutor
             case _ =>
               fork.agentPath.map(OrderAttachable(_))
           }
-        }
     }
   }
 }
