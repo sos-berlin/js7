@@ -2,7 +2,6 @@ package js7.data_for_java.controller
 
 import io.vavr.control.Either as VEither
 import java.time.Instant
-import java.util.Collections.emptySet
 import java.util.{Map as JMap, Optional as JOptional, Set as JSet}
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
@@ -151,16 +150,6 @@ extends JJournaledState[JControllerState, ControllerState]
   def pathToFileWatch: JMap[OrderWatchPath, JFileWatch] =
     keyToItem(FileWatch, JFileWatch.apply)
 
-  @deprecated("Use pathToFileWatch.values instead", "2.3")
-  @Deprecated
-  @Nonnull
-  def fileWatches(): java.util.Collection[JFileWatch] =
-    asScala.keyToItem(FileWatch)
-      .values
-      .view
-      .map(JFileWatch(_))
-      .asJavaCollection
-
   /** Looks up a JJobResource. */
   @Nonnull
   def pathToJobResource: JMap[JobResourcePath, JJobResource] =
@@ -194,26 +183,6 @@ extends JJournaledState[JControllerState, ControllerState]
       .mapIsomorphic(o => JWorkflowId(o.workflowId), _.asJava)(id => WorkflowControlId(id.asScala))
       .asJava
 
-  @Deprecated
-  @deprecated("Use workflowPathControlToIgnorantAgent")
-  @Nonnull
-  def singleWorkflowPathControlToIgnorantAgents(
-    @Nonnull workflowPath: WorkflowPath)
-  : JSet[AgentPath] =
-    JOptional
-      .ofNullable(workflowPathControlToIgnorantAgent.get(workflowPath))
-      .orElseGet(() => emptySet[AgentPath])
-
-  @Deprecated
-  @deprecated("Use workflowControlToIgnorantAgent")
-  @Nonnull
-  def singleWorkflowControlToIgnorantAgents(
-    @Nonnull workflowId: JWorkflowId)
-  : JSet[AgentPath] =
-    JOptional
-      .ofNullable(workflowControlToIgnorantAgent.get(workflowId))
-      .orElseGet(() => emptySet[AgentPath])
-
   @Nonnull
   def deletionMarkedItems: java.util.Set[InventoryItemKey] =
     asScala.deletionMarkedItems.asJava
@@ -228,17 +197,6 @@ extends JJournaledState[JControllerState, ControllerState]
       .view
       .mapValues(JOrder.apply)
       .asJava
-
-  /** Looks up an OrderId and returns a Left(Problem) if the OrderId is unknown. */
-  @deprecated("Use idToOrder instread", "2.3.0")
-  @Deprecated
-  @Nonnull
-  def idToCheckedOrder(@Nonnull orderId: OrderId): VEither[Problem, JOrder] =
-    asScala.idToOrder.get(orderId)
-      .map(JOrder.apply) match {
-        case None => VEither.left(Problem(s"Unknown OrderId in JControllerState: ${orderId.string}"))
-        case Some(o) => VEither.right(o)
-      }
 
   @Nonnull
   def ordersBy(@Nonnull predicate: Order[Order.State] => Boolean)

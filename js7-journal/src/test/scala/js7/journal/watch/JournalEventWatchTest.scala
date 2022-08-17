@@ -470,11 +470,6 @@ private object JournalEventWatchTest
 
   private case class ASnapshot(string: String)
 
-  @deprecated
-  implicit private val SnapshotJsonCodec: TypedJsonCodec[Any] = TypedJsonCodec[Any](
-    Subtype[JournalHeader],
-    Subtype(deriveCodec[ASnapshot]))
-
   private object TestState extends SnapshotableState.HasCodec {
     implicit val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] =
       KeyedEventTypedJsonCodec(

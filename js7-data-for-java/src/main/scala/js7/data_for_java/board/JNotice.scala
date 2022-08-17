@@ -12,12 +12,6 @@ import scala.jdk.OptionConverters.*
 
 final case class JNoticePlace(asScala: NoticePlace)
 {
-  @deprecated("Use noticeId", "2.4.0")
-  @Deprecated
-  @Nonnull
-  def id: NoticeId =
-    noticeId
-
   @Nonnull
   def noticeId: NoticeId =
     asScala.noticeId

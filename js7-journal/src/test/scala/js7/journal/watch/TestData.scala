@@ -9,7 +9,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.data.event.JournalEvent.SnapshotTaken
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import js7.data.event.{Event, EventId, JournalEvent, JournalHeaders, JournalId, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState, Stamped}
+import js7.data.event.{Event, EventId, JournalHeaders, JournalId, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState, Stamped}
 import js7.journal.data.JournalMeta
 import js7.journal.write.{EventJournalWriter, SnapshotJournalWriter}
 import monix.execution.Scheduler.Implicits.traced
@@ -27,18 +27,6 @@ private[watch] object TestData
 
   case object AEvent extends TestEvent
   case object BEvent extends TestEvent
-
-
-  @deprecated
-  val TestKeyedEventJsonCodec = {
-    implicit val testEventJsonCodec: TypedJsonCodec[TestEvent] =
-      TypedJsonCodec(
-        Subtype(AEvent),
-        Subtype(BEvent))
-    KeyedEventTypedJsonCodec[Event](
-      KeyedSubtype[JournalEvent],
-      KeyedSubtype[TestEvent])
-  }
 
   object TestState extends SnapshotableState.HasCodec {
     implicit val snapshotObjectJsonCodec = TypedJsonCodec(
