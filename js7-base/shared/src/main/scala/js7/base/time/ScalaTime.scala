@@ -20,27 +20,31 @@ object ScalaTime
 
   implicit final class DurationRichInt(private val delegate: Int) extends AnyVal {
     /** Duration, counted in nanoseconds. */
-    def ns = Duration(delegate, NANOSECONDS)
+    def ns: FiniteDuration =
+      Duration(delegate, NANOSECONDS)
 
     /** Duration, counted in microseconds. */
-    def µs = Duration(delegate, MICROSECONDS)
+    def µs: FiniteDuration =
+      Duration(delegate, MICROSECONDS)
 
     /**
      * Duration, counted in milliseconds.
      */
-    def ms = Duration(delegate, MILLISECONDS)
+    def ms: FiniteDuration =
+      Duration(delegate, MILLISECONDS)
 
     /**
      * Duration, counted in seconds.
      */
-    def s =
+    def s: FiniteDuration =
       if (delegate == 0) ZeroDuration
       else Duration(delegate, SECONDS)
 
     /**
      * Duration, counted in hours.
      */
-    def h = Duration(delegate, HOURS)
+    def h: FiniteDuration =
+      Duration(delegate, HOURS)
   }
 
   implicit final class DurationRichLong(private val delegate: Long) extends AnyVal {

@@ -38,9 +38,9 @@ final class ResourceGuardTest extends OurTestSuite
   }
 
   "ResourceGuard parallel" in {
-    var released = 0
+    @volatile var notReleased = 0
+    @volatile var released = 0
     val g = ResourceGuard("RESOURCE") { _ => released += 1 }
-    var notReleased = 0
     val futures = for (_ <- 1 to (Runtime.getRuntime.availableProcessors / 2).min(1)) yield
       Future {
         var stop = false

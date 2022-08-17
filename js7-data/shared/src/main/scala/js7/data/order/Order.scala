@@ -468,9 +468,6 @@ final case class Order[+S <: Order.State](
       isDetached &&
       (isState[IsFreshOrReady] || isState[Processed])
 
-  def withInstructionNr(to: InstructionNr): Order[S] =
-    withPosition(position.copy(nr = to))
-
   def withPosition(to: Position): Order[S] = copy(
     workflowPosition = workflowPosition.copy(position = to))
 
@@ -481,7 +478,7 @@ final case class Order[+S <: Order.State](
       state.maybeDelayedUntil
 
   def lastOutcome: Outcome =
-    historicOutcomes.lastOption.map(_.outcome) getOrElse Outcome.succeeded
+    historicOutcomes.lastOption.fold_(Outcome.succeeded, _.outcome)
 
   // Test in OrderScopesTest
   /** The named values as seen at the current workflow position. */

@@ -71,8 +71,8 @@ object Guices {
         standardClassToType(tag, name)
     }
 
-  private def maybeClass(name: String) =
-    try Some(Class.forName(name))
+  private def maybeClass(name: String): Option[Class[Any]] =
+    try Some(Class.forName(name).asInstanceOf[Class[Any]])
     catch { case _: ClassNotFoundException =>
       None
     }

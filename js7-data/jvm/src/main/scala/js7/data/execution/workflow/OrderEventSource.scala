@@ -442,20 +442,21 @@ object OrderEventSource {
   def leaveBlocks(workflow: Workflow, order: Order[Order.State], catchable: Boolean)
     (toEvent: PartialFunction[(Option[BranchId], Position), OrderActorEvent])
   : Checked[List[OrderActorEvent]] = {
-    def callToEvent(branchId: Option[BranchId], pos: Position) =
+    def callToEvent(branchId: Option[BranchId], pos: Position): Checked[OrderActorEvent] =
       toEvent.lift((branchId, pos))
-        .map(event => Right(event :: Nil))
-        .getOrElse(Left(Problem(
-          s"Unexpected Branchid '$branchId' while leaving instruction blocks")))
+        .toRight(Problem(
+          s"Unexpected Branchid '$branchId' while leaving instruction blocks"))
 
     def loop(reverseBranchPath: List[Segment], failPosition: Position)
     : Checked[List[OrderActorEvent]] =
       reverseBranchPath match {
         case Nil =>
           callToEvent(None, failPosition)
+            .map(_ :: Nil)
 
         case Segment(_, branchId @ BranchId.IsFailureBoundary(_)) :: _ =>
           callToEvent(Some(branchId), failPosition)
+            .map(_ :: Nil)
 
         case Segment(_, BranchId.Lock) :: prefix =>
           val pos = prefix.reverse % 0
@@ -470,6 +471,7 @@ object OrderEventSource {
             loop(prefix, failPosition)
           else
             callToEvent(Some(branchId), catchPos)
+              .map(_ :: Nil)
 
         case Segment(_, _) :: prefix =>
           loop(prefix, failPosition)

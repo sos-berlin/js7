@@ -36,7 +36,8 @@ object JavaTimestamp extends Timestamp.Companion
   object specific {
     implicit class RichJavaTimestamp(private val timestamp: Timestamp) extends AnyVal
     {
-      def toInstant = Instant.ofEpochMilli(timestamp.toEpochMilli)
+      def toInstant: Instant =
+        Instant.ofEpochMilli(timestamp.toEpochMilli)
 
       def toZonedDateTime(implicit zone: ZoneId): ZonedDateTime =
         ZonedDateTime.ofInstant(toInstant, zone)
