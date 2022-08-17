@@ -146,7 +146,7 @@ object Checked
 
     def toUnit: Either[Problem, Unit] =
       underlying match {
-        case Right(_) => Right(())
+        case Right(_) => Checked.unit
         case Left(problem) => Left(problem)
       }
 
@@ -163,7 +163,6 @@ object Checked
 
     def orThrowWithoutStacktrace: A =
       underlying.left.map(_.throwable).orThrow
-
   }
 
   implicit final class RichCheckedIterable[A](private val underlying: IterableOnce[Checked[A]]) extends AnyVal {
