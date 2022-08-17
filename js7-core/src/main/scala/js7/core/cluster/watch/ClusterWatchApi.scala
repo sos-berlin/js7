@@ -1,4 +1,4 @@
-package js7.core.cluster
+package js7.core.cluster.watch
 
 import js7.base.generic.Completed
 import js7.base.problem.Checked
@@ -8,7 +8,8 @@ import monix.eval.Task
 
 trait ClusterWatchApi
 {
-  def get: Task[Checked[ClusterState]]
+  // HttpSessionApi may implement this method
+  def logout(): Task[Completed]
 
   def applyEvents(clusterWatchEvents: ClusterWatchEvents): Task[Checked[Completed]]
 

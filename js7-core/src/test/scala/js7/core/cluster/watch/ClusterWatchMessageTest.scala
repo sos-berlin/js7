@@ -1,4 +1,4 @@
-package js7.core.cluster
+package js7.core.cluster.watch
 
 import js7.base.circeutils.CirceUtils.*
 import js7.base.test.OurTestSuite

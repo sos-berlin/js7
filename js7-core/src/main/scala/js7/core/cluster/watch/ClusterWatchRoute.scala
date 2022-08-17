@@ -1,4 +1,4 @@
-package js7.core.cluster
+package js7.core.cluster.watch
 
 import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route
@@ -45,7 +45,7 @@ trait ClusterWatchRoute
               case None =>
                 Task.pure(Problem(s"No ClusterState registered for '$controllerId'"))
               case Some(clusterWatch) =>
-                clusterWatch.get
+                clusterWatch.clusterState
             }.runToFuture)
       }
     }

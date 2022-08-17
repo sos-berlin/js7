@@ -34,7 +34,7 @@ import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.guice.GuiceImplicits.*
 import js7.common.system.startup.StartUp
-import js7.core.cluster.ClusterWatchRegister
+import js7.core.cluster.watch.ClusterWatchRegister
 import js7.core.command.CommandMeta
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.recover.StateRecoverer

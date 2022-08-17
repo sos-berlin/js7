@@ -1,4 +1,4 @@
-package js7.core.cluster
+package js7.core.cluster.watch
 
 import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route
@@ -17,7 +17,7 @@ import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkautils.ProvideActorSystem
-import js7.core.cluster.HttpClusterWatchTest.*
+import js7.core.cluster.watch.HttpClusterWatchTest.*
 import js7.data.cluster.ClusterEvent.ClusterNodesAppointed
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterTiming}
 import js7.data.controller.ControllerId
@@ -76,7 +76,7 @@ final class HttpClusterWatchTest extends OurTestSuite with BeforeAndAfterAll wit
       clusterWatch.applyEvents(
         ClusterWatchEvents(primaryId, ClusterNodesAppointed(setting) :: Nil, expectedClusterState)
       ).await(99.s) == Right(Completed))
-    assert(clusterWatch.get.await(99.s) == Right(expectedClusterState))
+    assert(clusterWatch.clusterState.await(99.s) == Right(expectedClusterState))
   }
 }
 

@@ -1,4 +1,4 @@
-package js7.core.cluster
+package js7.core.cluster.watch
 
 import javax.inject.{Inject, Singleton}
 import js7.data.controller.ControllerId

@@ -18,9 +18,10 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.cluster.ClusterCommon.*
-import js7.core.cluster.ClusterWatch.ClusterWatchInactiveNodeProblem
-import js7.core.cluster.HttpClusterWatch
+import js7.core.cluster.watch.ClusterWatch.ClusterWatchInactiveNodeProblem
+import js7.core.cluster.watch.HttpClusterWatch
 import js7.core.license.LicenseChecker
+import js7.data.cluster.ClusterEvent.ClusterNodeLostEvent
 import js7.data.cluster.ClusterState.{FailedOver, HasNodes, SwitchedOver}
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterState}
 import js7.data.controller.ControllerId
@@ -126,7 +127,7 @@ private[cluster] final class ClusterCommon(
 
   def ifClusterWatchAllowsActivation(
     clusterState: ClusterState.HasNodes,
-    event: ClusterEvent,
+    event: ClusterNodeLostEvent,
     checkOnly: Boolean,
     body: Task[Checked[Boolean]])
   : Task[Checked[Boolean]] =

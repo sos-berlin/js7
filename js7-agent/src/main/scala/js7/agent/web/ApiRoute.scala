@@ -6,7 +6,7 @@ import akka.http.scaladsl.server.Route
 import js7.agent.web.views.RootWebService
 import js7.base.auth.ValidUserPermission
 import js7.common.akkahttp.web.session.SessionRoute
-import js7.core.cluster.ClusterWatchRoute
+import js7.core.cluster.watch.ClusterWatchRoute
 import js7.data.controller.ControllerId
 
 /**
