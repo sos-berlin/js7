@@ -6,7 +6,10 @@ import cats.effect.Resource
 import com.softwaremill.diffx
 import com.typesafe.config.Config
 import izumi.reflect.Tag
+import java.nio.ByteBuffer
+import java.nio.channels.FileChannel
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
+import java.nio.file.StandardOpenOption.{CREATE, READ, TRUNCATE_EXISTING, WRITE}
 import java.nio.file.{Files, Path, Paths}
 import js7.base.eventbus.EventPublisher
 import js7.base.generic.Completed
@@ -15,11 +18,11 @@ import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SetOnce
 import js7.base.web.Uri
 import js7.cluster.Cluster.*
-import js7.cluster.ClusterCommon.truncateFile
 import js7.core.license.LicenseChecker
 import js7.data.Problems.{BackupClusterNodeNotAppointed, ClusterNodeIsNotBackupProblem, PrimaryClusterNodeMayNotBecomeBackupProblem}
 import js7.data.cluster.ClusterCommand.{ClusterInhibitActivation, ClusterStartBackupNode}
@@ -359,4 +362,29 @@ object Cluster
     }
     truncated ? file
   }
+
+  private[cluster] def truncateFile(file: Path, position: Long): Unit =
+    autoClosing(FileChannel.open(file, READ, WRITE)) { f =>
+      // Safe the truncated part for debugging
+      val out = FileChannel.open(Paths.get(s"$file~TRUNCATED-AFTER-FAILOVER"),
+        WRITE, CREATE, TRUNCATE_EXISTING)
+      autoClosing(out) { _ =>
+        val buffer = ByteBuffer.allocate(4096)
+        f.position(position - 1)
+        f.read(buffer)
+        buffer.flip()
+        if (!buffer.hasRemaining || buffer.get() != '\n')
+          sys.error(s"Invalid failed-over position=$position in '${ file.getFileName } journal file")
+
+        var eof = false
+        while (!eof) {
+          if (buffer.hasRemaining) out.write(buffer)
+          buffer.clear()
+          eof = f.read(buffer) <= 0
+          buffer.flip()
+        }
+
+        f.truncate(position)
+      }
+    }
 }

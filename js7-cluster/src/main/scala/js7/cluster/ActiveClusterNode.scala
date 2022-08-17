@@ -55,7 +55,8 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
   private val sendingClusterStartBackupNode = SerialCancelable()
   @volatile private var noMoreJournaling = false
   @volatile private var stopRequested = false
-  @volatile private var clusterWatchSynchronizer = common.initialClusterWatchSynchronizer(initialClusterState)
+  @volatile private var clusterWatchSynchronizer =
+    common.initialClusterWatchSynchronizer(initialClusterState)
 
   import clusterConf.ownId
 

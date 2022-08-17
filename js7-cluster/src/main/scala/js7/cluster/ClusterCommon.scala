@@ -4,10 +4,6 @@ import akka.actor.ActorSystem
 import akka.util.Timeout
 import cats.effect.Resource
 import com.typesafe.config.{Config, ConfigUtil}
-import java.nio.ByteBuffer
-import java.nio.channels.FileChannel
-import java.nio.file.StandardOpenOption.{CREATE, READ, TRUNCATE_EXISTING, WRITE}
-import java.nio.file.{Path, Paths}
 import java.util.ConcurrentModificationException
 import js7.base.auth.UserAndPassword
 import js7.base.configutils.Configs.*
@@ -19,7 +15,6 @@ import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.cluster.ClusterCommon.*
@@ -59,8 +54,7 @@ private[cluster] final class ClusterCommon(
     import clusterState.setting
     _clusterWatchSynchronizer.get() match {
       case None =>
-        val result = initialClusterWatchSynchronizer(clusterState)
-        Task.pure(result)
+        Task.pure(initialClusterWatchSynchronizer(clusterState))
       case some @ Some(synchronizer) =>
         if (synchronizer.uri != setting.clusterWatchUri) {
           logger.debug(s"Starting new ClusterWatchSynchronizer for updated URI ${setting.clusterWatchUri}")
@@ -161,31 +155,6 @@ private[cluster] final class ClusterCommon(
 private[js7] object ClusterCommon
 {
   private val logger = Logger(getClass)
-
-  private[cluster] def truncateFile(file: Path, position: Long): Unit =
-    autoClosing(FileChannel.open(file, READ, WRITE)) { f =>
-      // Safe the truncated part for debugging
-      val out = FileChannel.open(Paths.get(s"$file~TRUNCATED-AFTER-FAILOVER"),
-        WRITE, CREATE, TRUNCATE_EXISTING)
-      autoClosing(out) { _ =>
-        val buffer = ByteBuffer.allocate(4096)
-        f.position(position - 1)
-        f.read(buffer)
-        buffer.flip()
-        if (!buffer.hasRemaining || buffer.get() != '\n')
-          sys.error(s"Invalid failed-over position=$position in '${file.getFileName} journal file")
-
-        var eof = false
-        while(!eof) {
-          if (buffer.hasRemaining) out.write(buffer)
-          buffer.clear()
-          eof = f.read(buffer) <= 0
-          buffer.flip()
-        }
-
-        f.truncate(position)
-      }
-    }
 
   def clusterEventAndStateToString(event: ClusterEvent, state: ClusterState): String =
     s"ClusterEvent: $event --> $state"
