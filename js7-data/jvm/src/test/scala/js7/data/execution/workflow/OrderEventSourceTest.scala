@@ -933,7 +933,7 @@ final class OrderEventSourceTest extends OurTestSuite
       aChild = aChild.applyEvent(orderFailedInFork).orThrow
 
       val orderJoined = OrderJoined(Outcome.Failed(Some(
-        "Order:ORDER|🥕 failed;\nOrder:ORDER|🍋 failed")))
+        "Order:ORDER|🥕 Failed;\nOrder:ORDER|🍋 Failed")))
       assert(eventSource.nextEvents(aChild.id      ) == Seq(forkingOrder.id <-: orderJoined))
       assert(eventSource.nextEvents(bChild.id      ) == Seq(forkingOrder.id <-: orderJoined))
       assert(eventSource.nextEvents(forkingOrder.id) == Seq(forkingOrder.id <-: orderJoined))

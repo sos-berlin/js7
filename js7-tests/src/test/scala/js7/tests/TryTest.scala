@@ -203,6 +203,7 @@ with TestItemUpdater
     val orderId = OrderId("🔴")
     controller.addOrderBlocking(FreshOrder(orderId, workflow.path))
     controller.eventWatch.await[OrderTerminated](_.key == orderId)
+
     checkEventSeq(orderId, controller.eventWatch.allKeyedEvents[OrderEvent], Vector(
       OrderAdded(workflow.path ~ v),
       OrderMoved(Position(0) / "try+0" % 0),
@@ -215,7 +216,7 @@ with TestItemUpdater
         OrderForked.Child("🌶", OrderId("🔴|🌶")))),
       OrderDetachable,
       OrderDetached,
-      OrderJoined(Outcome.Failed(Some("Order:🔴|🍋 failed;\nOrder:🔴|🌶 failed"))),
+      OrderJoined(Outcome.Failed(Some("Order:🔴|🍋 Failed;\nOrder:🔴|🌶 Failed"))),
       OrderCaught(Position(0) / "catch+0" % 0),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
@@ -225,12 +226,14 @@ with TestItemUpdater
       OrderDetachable,
       OrderDetached,
       OrderFinished))
+
     checkEventSeq(OrderId("🔴|🍋"), controller.eventWatch.allKeyedEvents[OrderEvent], Vector(
       OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.Failed(None, NamedValues.rc(1))),
       OrderDetachable,
       OrderDetached,
       OrderFailedInFork(Position(0) / BranchId.try_(0) % 0 / BranchId.fork("🍋") % 0)))
+
     assert(controllerState.idToOrder(orderId).lastOutcome == Outcome.succeededRC0)
   }
 

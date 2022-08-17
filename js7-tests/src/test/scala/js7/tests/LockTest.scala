@@ -30,7 +30,7 @@ import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowParser, WorkflowPath}
 import js7.tests.LockTest.*
 import js7.tests.testenv.DirectoryProvider.{script, toLocalSubagentId, waitingForFileScript}
-import js7.tests.testenv.{ControllerAgentForScalaTest, BlockingItemUpdater}
+import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import scala.collection.immutable.Queue
@@ -319,7 +319,7 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
       OrderForked(Vector(OrderForked.Child("BRANCH", orderId / "BRANCH"))),
-      OrderJoined(Outcome.Failed(Some("Order:🟩|BRANCH failed"))),
+      OrderJoined(Outcome.Failed(Some("Order:🟩|BRANCH Failed"))),
       OrderFailed(Position(0)),
       OrderCancelled,
       OrderDeleted))

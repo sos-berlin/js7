@@ -100,7 +100,7 @@ final class FailUncatchableTest extends OurTestSuite
         OrderForked(Vector(
           OrderForked.Child(Fork.Branch.Id("🥕"), OrderId("🔺|🥕")),
           OrderForked.Child(Fork.Branch.Id("🍋"), OrderId("🔺|🍋")))),
-        OrderJoined(Outcome.Failed(Some("Order:🔺|🥕 failed: TEST-ERROR"))),
+        OrderJoined(Outcome.Failed(Some("Order:🔺|🥕 Failed(TEST-ERROR)"))),
         OrderFailed(Position(0))))
 
     assert(events.filter(_.key == orderId / "🥕").map(_.event) ==
@@ -152,7 +152,7 @@ final class FailUncatchableTest extends OurTestSuite
         OrderForked(Vector(
           OrderForked.Child(Fork.Branch.Id("🥕"), OrderId("🔺|🥕")),
           OrderForked.Child(Fork.Branch.Id("🍋"), OrderId("🔺|🍋")))),
-        OrderJoined(Outcome.Failed(Some("Order:🔺|🥕 failed: TEST-ERROR"))),
+        OrderJoined(Outcome.Failed(Some("Order:🔺|🥕 Failed(TEST-ERROR)"))),
         OrderFailed(Position(0))))
 
     assert(events.filter(_.key == orderId / "🥕").map(_.event) ==

@@ -22,6 +22,8 @@ import scala.util.{Failure, Success, Try}
 sealed trait Outcome
 {
   final def isSucceeded = isInstanceOf[Outcome.Succeeded]
+
+  def show: String
 }
 
 object Outcome
@@ -91,8 +93,8 @@ object Outcome
   }
 
   final case class Succeeded(namedValues: NamedValues) extends Completed {
-    override def toString =
-      if (namedValues.isEmpty) "Succeeded" else s"Succeeded($namedValues)"
+    def show = if (namedValues.isEmpty) "Succeeded" else s"Succeeded($namedValues)"
+    override def toString = show
   }
   object Succeeded extends Completed.Companion[Succeeded]
   {
@@ -121,6 +123,8 @@ object Outcome
   {
     override def toString =
       View(errorMessage, namedValues.??).mkString("⚠️ Failed(", ", ", ")")
+
+    def show = "Failed" + (errorMessage.fold("")("(" + _ + ")"))
   }
   object Failed extends Completed.Companion[Failed]
   {
@@ -154,12 +158,14 @@ object Outcome
 
   final case class TimedOut(outcome: Outcome.Completed)
   extends Outcome {
-    override def toString = s"⚠️ TimedOut($outcome)"
+    def show = s"TimedOut($outcome)"
+    override def toString = "⚠️ " + show
   }
 
   final case class Killed(outcome: Outcome.Completed)
   extends Outcome {
-    override def toString = s"⚠️ Killed($outcome)"
+    def show = s"Killed($outcome)"
+    override def toString = "⚠️ " + show
   }
 
   @TestOnly
@@ -172,7 +178,8 @@ object Outcome
 
   /** No response from job - some other error has occurred. */
   final case class Disrupted(reason: Disrupted.Reason) extends Outcome with NotSucceeded {
-    override def toString = s"💥 Disrupted($reason)"
+    def show = s"Disrupted($reason)"
+    override def toString = "💥 " + show
   }
   object Disrupted {
     def apply(problem: Problem): Disrupted =
@@ -182,8 +189,7 @@ object Outcome
       def problem: Problem
     }
 
-    final case class ProcessLost(problem: Problem) extends Reason {
-    }
+    final case class ProcessLost(problem: Problem) extends Reason
     object ProcessLost {
       private val jsonEncoder: Encoder.AsObject[ProcessLost] =
         o => JsonObject("problem" -> ((o.problem != ProcessLostDueToUnknownReasonProblem) ? o.problem).asJson)

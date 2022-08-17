@@ -18,6 +18,7 @@ import js7.tests.FailTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.traced
+import org.scalactic.source
 import scala.reflect.ClassTag
 
 final class FailTest extends OurTestSuite with ControllerAgentForScalaTest
@@ -106,7 +107,7 @@ final class FailTest extends OurTestSuite with ControllerAgentForScalaTest
         OrderForked(Vector(
           OrderForked.Child("🥕", OrderId("🔺|🥕")),
           OrderForked.Child("🍋", OrderId("🔺|🍋")))),
-        OrderJoined(Outcome.Failed(Some("Order:🔺|🍋 failed"))),
+        OrderJoined(Outcome.Failed(Some("Order:🔺|🍋 Failed"))),
         OrderFailed(Position(0))),
       OrderId("🔺|🍋") -> Vector(
         OrderFailedInFork(
@@ -130,7 +131,7 @@ final class FailTest extends OurTestSuite with ControllerAgentForScalaTest
         OrderForked(Vector(
           OrderForked.Child("🥕", OrderId("🟥|🥕")),
           OrderForked.Child("🍋", OrderId("🟥|🍋")))),
-        OrderJoined(Outcome.Failed(Some("Order:🟥|🍋 failed"))),
+        OrderJoined(Outcome.Failed(Some("Order:🟥|🍋 Failed"))),
         OrderFailed(Position(0))),
       OrderId("🟥|🍋") -> Vector(
         OrderMoved(Position(0) / "fork+🍋" % 0 / "try+0" % 0),
@@ -171,6 +172,7 @@ final class FailTest extends OurTestSuite with ControllerAgentForScalaTest
     orderId: OrderId,
     keyedEvents: Seq[KeyedEvent[OrderEvent]],
     expected: Vector[OrderEvent])
+    (implicit pos: source.Position)
   : Unit = {
     val events = keyedEvents.view.filter(_.key == orderId).map(_.event).to(Vector)
     assert(events == expected)
