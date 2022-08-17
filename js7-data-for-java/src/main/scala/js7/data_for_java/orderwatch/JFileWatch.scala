@@ -3,7 +3,6 @@ package js7.data_for_java.orderwatch
 import cats.instances.option.*
 import cats.syntax.traverse.*
 import io.vavr.control.Either as VEither
-import java.nio.file.Path
 import java.util.Optional
 import java.util.regex.Pattern
 import javax.annotation.Nonnull
@@ -13,7 +12,6 @@ import js7.base.utils.SimplePattern
 import js7.data.agent.AgentPath
 import js7.data.item.ItemRevision
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
-import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.ExpressionParser.parseExpression
 import js7.data.workflow.WorkflowPath
 import js7.data_for_java.common.JJsonable
@@ -55,28 +53,6 @@ extends JJsonable[JFileWatch] with JUnsignedSimpleItem
 
 object JFileWatch extends JJsonable.Companion[JFileWatch]
 {
-  @Deprecated
-  @Nonnull
-  def checked(
-    @Nonnull id: OrderWatchPath,
-    @Nonnull workflowPath: WorkflowPath,
-    @Nonnull agentPath: AgentPath,
-    @Nonnull directory: Path,
-    @Nonnull pattern: Optional[String],
-    @Nonnull orderIdExpression: Optional[String],
-    @Nonnull delay: java.time.Duration)
-  : VEither[Problem, JFileWatch] =
-    ( for {
-        pattern <- pattern.toScala.traverse(SimplePattern.checked(_))
-        orderIdExpression <- orderIdExpression.toScala.traverse(parseExpression(_))
-      } yield
-        JFileWatch(FileWatch(
-            id, workflowPath, agentPath, StringConstant(directory.toString),
-            pattern,
-            orderIdExpression,
-            delay.toFiniteDuration))
-    ).toVavr
-
   @Nonnull
   def checked(
     @Nonnull id: OrderWatchPath,

@@ -26,23 +26,11 @@ final class JRepo(asScala: Repo)
   def versionIds: java.util.Collection[VersionId] =
     asScala.versionIds.asJavaCollection
 
-  @deprecated("Renamed as idToCheckedWorkflow", "2.3")
-  @Deprecated
-  @Nonnull
-  def idToWorkflow(@Nonnull workflowId: JWorkflowId): VEither[Problem, JWorkflow] =
-    idToCheckedWorkflow(workflowId)
-
   @Nonnull
   def idToCheckedWorkflow(@Nonnull workflowId: JWorkflowId): VEither[Problem, JWorkflow] =
     asScala.idTo(Workflow)(workflowId.asScala)
       .map(JWorkflow.apply)
       .toVavr
-
-  @deprecated("Renamed as idToCheckedWorkflow", "2.3")
-  @Deprecated
-  @Nonnull
-  def pathToWorkflow(@Nonnull workflowPath: WorkflowPath): VEither[Problem, JWorkflow] =
-    pathToCheckedWorkflow(workflowPath)
 
   @Nonnull
   def pathToCheckedWorkflow(@Nonnull workflowPath: WorkflowPath): VEither[Problem, JWorkflow] =
