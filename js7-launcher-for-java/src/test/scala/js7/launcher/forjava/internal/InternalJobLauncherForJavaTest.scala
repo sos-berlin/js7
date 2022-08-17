@@ -104,7 +104,7 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite with BeforeAndAf
           Right(indices.map(_ + 1).map(NumberValue(_))))
       }
 
-      "Exception is catched and returned as Left" in {
+      "Exception is caught and returned as Left" in {
         val (outcome, out, err) = processOrder(StringConstant("INVALID TYPE")).await(99.s).orThrow
         assert(outcome.asInstanceOf[Outcome.Failed]
           .errorMessage.get startsWith "java.lang.ClassCastException")
