@@ -70,10 +70,16 @@ extends ClusterWatchApi
                     reportedClusterState = reportedClusterState))
               }
             case Right(clusterState) =>
-              if (isLastHeartbeatStillValid(current) && clusterState != reportedClusterState)
-                logger.error(s"Node '$from': " +
-                  ClusterWatchEventMismatchProblem(events, clusterState,
-                    reportedClusterState = reportedClusterState))
+              if (clusterState != reportedClusterState) {
+                val problem = ClusterWatchEventMismatchProblem(events, clusterState,
+                  reportedClusterState = reportedClusterState)
+                if (isLastHeartbeatStillValid(current)) {
+                  // TODO Should we reject `applyEvents`?
+                  logger.error(s"Node '$from': $problem")
+                } else {
+                  logger.warn(s"Node '$from': $problem")
+                }
+              }
           }
         }
         Right(reportedClusterState)
