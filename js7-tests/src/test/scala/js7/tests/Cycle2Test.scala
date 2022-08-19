@@ -1,7 +1,7 @@
 package js7.tests
 
 import java.time.{LocalDate, LocalTime, ZoneId}
-import js7.base.configutils.Configs._
+import js7.base.configutils.Configs.*
 import js7.base.log.Logger
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
@@ -15,10 +15,10 @@ import js7.data.order.{FreshOrder, OrderEvent, OrderId}
 import js7.data.workflow.instructions.Schedule.{Scheme, Ticking}
 import js7.data.workflow.instructions.{Cycle, Schedule}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.Cycle2Test._
+import js7.tests.Cycle2Test.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.execution.Scheduler.Implicits.global
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 // Repeats the JS-2012 test case in CycleTest with the real wall clock, to be sure.
 final class Cycle2Test extends OurTestSuite with ControllerAgentForScalaTest with ScheduleTester
