@@ -678,6 +678,14 @@ object ScalaUtils
   def reuseIfEqual[A <: AnyRef](a: A, b: A): A =
     if (a == b) a else b
 
+  @inline
+  def reuseIfIdentical[A <: AnyRef](a: A)(f: A => A): A =
+    reuseIfIdentical(a, f(a))
+
+  @inline
+  def reuseIfIdentical[A <: AnyRef](a: A, b: A): A =
+    if (a eq b) a else b
+
   def implicitClass[A: ClassTag]: Class[A] =
     implicitly[ClassTag[A]].runtimeClass.asInstanceOf[Class[A]]
 
