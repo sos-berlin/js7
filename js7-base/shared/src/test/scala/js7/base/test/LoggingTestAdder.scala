@@ -1,12 +1,12 @@
 package js7.base.test
 
-import js7.base.log.AnsiEscapeCodes.{black, bold, green, red, reset}
 import js7.base.log.Log4j
-import org.apache.logging.log4j.LogManager
+import js7.base.log.LoggingEscapeCodes.{black, bold, green, orange, resetColor}
 import js7.base.test.LoggingFreeSpecStringWrapper.{StringWrapper, TaggedAs}
 import js7.base.test.LoggingTestAdder.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Tests.{isIntelliJIdea, isSbt}
+import org.apache.logging.log4j.LogManager
 import org.scalatest.exceptions.TestPendingException
 import scala.collection.mutable
 import scala.util.{Failure, Success, Try}
@@ -50,7 +50,7 @@ private object LoggingTestAdder {
   final class TestContext(val prefix: String, testName: String) {
     def beforeTest(): Unit = {
       delayBeforeEnd()
-      logger.info(eager(s"↘︎ $prefix$black$bold$testName$reset"))
+      logger.info(eager(s"↘︎ $prefix$black$bold$testName$resetColor"))
       delayBeforeEnd()
     }
 
@@ -58,21 +58,21 @@ private object LoggingTestAdder {
       result match {
         case Success(_) =>
           val markup = green + bold
-          logger.info(eager(s"↙︎ $prefix$markup$testName$reset"))
+          logger.info(eager(s"↙︎ $prefix$markup$testName$resetColor"))
           logger.info(eager(markup + "⎯" * 80))
           delayBeforeEnd()
 
         case Failure(_: TestPendingException) =>
-          val markup = red
-          logger.error(eager(s"🚫 $prefix$markup$testName (PENDING)$reset\n"))
+          val markup = ""
+          logger.error(eager(s"🚫 $prefix$markup$testName (PENDING)$resetColor\n"))
           logger.info(eager(markup + "⎯" * 80))
           delayBeforeEnd()
 
         case Failure(t) =>
           clipStackTrace(t)
 
-          val markup = red + bold
-          val s = s"💥 $prefix$markup$testName 💥$reset"
+          val markup = orange + bold
+          val s = s"💥 $prefix$markup$testName 💥$resetColor"
           logger.error(s, t)
           logger.info(eager(markup + "⎯" * 80))
           if (isSbt) System.err.println(s)
