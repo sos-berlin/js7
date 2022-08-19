@@ -3,11 +3,12 @@ package js7.journal.log
 import com.typesafe.scalalogging.Logger
 import java.util.Locale.ROOT
 import js7.base.log.CorrelId
+import js7.base.log.LoggingEscapeCodes.{bold, resetColor}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Classes.superclassesOf
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{AnyKeyedEvent, Event, Stamped}
+import js7.data.event.{AnyKeyedEvent, Event, KeyedEvent, Stamped}
 import js7.journal.log.JournalLogger.*
 import scala.collection.{IndexedSeqView, mutable}
 import scala.concurrent.duration.Deadline
@@ -117,7 +118,13 @@ private[journal] final class JournalLogger(
     sb.append(transactionMarker(true))
     sb.append(stamped.eventId)
     sb.append(' ')
-    sb.append(stamped.value.toString.truncateWithEllipsis(200, firstLineOnly = true))
+    if (stamped.value.key != NoKey) {
+      sb.append(stamped.value.key)
+      sb.append(KeyedEvent.Arrow)
+    }
+    sb.append(bold)
+    sb.append(stamped.value.event.toString.truncateWithEllipsis(200, firstLineOnly = true))
+    sb.append(resetColor)
     logger.trace(sb.toString)
   }
 
