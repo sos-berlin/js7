@@ -1,6 +1,7 @@
 package js7.core.cluster.watch
 
 import javax.inject.{Inject, Singleton}
+import js7.base.monixutils.MonixDeadline
 import js7.data.controller.ControllerId
 import monix.catnap.MVar
 import monix.eval.Task
@@ -24,7 +25,8 @@ final class ClusterWatchRegister @Inject private[cluster](scheduler: Scheduler)
                   mvar.put(map)
                     .map(_ => custerWatch)
                 case None =>
-                  val custerWatch = new ClusterWatch(controllerId, scheduler)
+                  val custerWatch = new ClusterWatch(controllerId,
+                    () => MonixDeadline.now(scheduler))
                   mvar.put(map + (controllerId -> custerWatch))
                     .map(_ => custerWatch)
               }
