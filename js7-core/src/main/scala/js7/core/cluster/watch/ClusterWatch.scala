@@ -9,8 +9,8 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.core.cluster.watch.ClusterWatch.*
-import js7.data.cluster.ClusterEvent.ClusterSwitchedOver
-import js7.data.cluster.ClusterState.HasNodes
+import js7.data.cluster.ClusterEvent.{ClusterFailedOver, ClusterNodeLostEvent, ClusterPassiveLost, ClusterSwitchedOver}
+import js7.data.cluster.ClusterState.{Coupled, HasNodes}
 import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
@@ -19,11 +19,16 @@ import monix.eval.Task
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
 
-final class ClusterWatch(controllerId: ControllerId, now: () => MonixDeadline)
+final class ClusterWatch(
+  controllerId: ControllerId,
+  now: () => MonixDeadline,
+  requireLostAck: Boolean = false,
+  initialClusterState: Option[ClusterState] = None)
 extends ClusterWatchApi
 {
   private val lock = AsyncLock("ClusterWatch")
-  @volatile private var _state: Option[State] = None
+  @volatile private var _state: Option[State] =
+    initialClusterState.map(State(_, now(), None))
 
   logger.trace(toString)
 
@@ -49,24 +54,32 @@ extends ClusterWatchApi
       state.clusterState.applyEvents(events.map(NoKey <-: _)) match {
         case Left(problem) =>
           if (!checkOnly) {
-            logger.error(s"Node '$from': $problem")
+            logger.error(s"$from: $problem")
             val prblm = ClusterWatchEventMismatchProblem(events, state.clusterState,
               reportedClusterState)
-            logger.error(s"Node '$from': $prblm")
+            logger.error(s"$from: $prblm")
           }
+          Right(Completed)
 
         case Right(clusterState) =>
           if (clusterState != reportedClusterState) {
             val problem = ClusterWatchEventMismatchProblem(events, clusterState,
               reportedClusterState)
             if (state.isLastHeartbeatStillValid) {
-              logger.error(s"Node '$from': $problem")
+              logger.error(s"$from: $problem")
             } else {
-              logger.warn(s"Node '$from': $problem")
+              logger.warn(s"$from: $problem")
             }
+            Right(Completed)
+          } else events match {
+            case Seq(event: ClusterNodeLostEvent)
+              if requireLostAck && !state.isLostNodeAcknowledged =>
+              _state = Some(state.copy(rejected = Some(Rejected(event))))
+              Left(ExplicitClusterNodeLostAckRequiredProblem)
+
+            case _ => Right(Completed)
           }
       }
-      Right(Completed)
     }
   }
 
@@ -85,7 +98,7 @@ extends ClusterWatchApi
             // and the active node is restarted within the heartbeatValidDuration !!!
             val problem = ClusterWatchHeartbeatMismatchProblem(hasNodes,
               reportedClusterState = reportedClusterState)
-            logger.error(s"Node '$from': $problem")
+            logger.error(s"$from: $problem")
             Left(problem)
 
           case _ =>
@@ -104,27 +117,39 @@ extends ClusterWatchApi
     lock.lock(Task {
       val maybeState = _state
       logger.trace(
-        s"Node '$from': $operationString${maybeState.fold("")(o =>
+        s"$from: $operationString${maybeState.fold("")(o =>
           ", after " + o.lastHeartbeat.elapsed.pretty)}")
       maybeState
         .match_ {
           case None =>
-            logger.info(s"Node '$from' initialized ClusterState to $operationString")
-            _state = Some(State(reportedClusterState, now()))
+            logger.info(s"$from initialized ClusterState to $operationString")
+            _state = Some(State(reportedClusterState, now(), rejected = None))
             Right(Completed)
 
           case Some(state) =>
             state.update(from, fromMustBeActive, operationString)(body(state))
         }
-        .map { _ =>
+        .map { completed =>
           if (!checkOnly) {
             if (!_state.map(_.clusterState).contains(reportedClusterState)) {
-              logger.info(s"Node '$from' changed ClusterState to $reportedClusterState")
+              logger.info(s"$from changed ClusterState to $reportedClusterState")
             }
-            _state = Some(State(reportedClusterState, now()))
+            _state = Some(State(reportedClusterState, now(), rejected = None))
           }
-          Completed
+          completed
         }
+    })
+
+  def acknowledgeLostNode(lostNodeId: NodeId): Task[Checked[Unit]] =
+    lock.lock(Task {
+      _state.match_ {
+        case None => Left(NoClusterNodeLostProblem)
+        case Some(state) =>
+          state.acknowledgeLostNode(lostNodeId)
+            .map { state =>
+              _state = Some(state)
+            }
+      }
     })
 
   override def toString = s"ClusterWatch($controllerId)"
@@ -154,19 +179,24 @@ object ClusterWatch
     ClusterWatchHeartbeatMismatchProblem.code,
     ClusterWatchEventMismatchProblem.code,
     ClusterWatchInactiveNodeProblem.code,
+    NoClusterNodeLostProblem.code,
     InvalidClusterWatchHeartbeatProblem.code)
 
   def isClusterWatchProblem(problem: Problem): Boolean =
     problem.maybeCode exists isClusterWatchProblemCode
 
-  private case class State(clusterState: ClusterState, lastHeartbeat: MonixDeadline) {
+  private case class State(
+    clusterState: ClusterState,
+    lastHeartbeat: MonixDeadline,
+    rejected: Option[Rejected])
+  {
     def update(
       from: NodeId,
       fromMustBeActive: Boolean,
       operationString: => String)
       (body: => Checked[Completed])
     : Checked[Completed] = {
-      logger.trace(s"Node '$from': $operationString after ${lastHeartbeat.elapsed.pretty}")
+      logger.trace(s"$from: $operationString after ${lastHeartbeat.elapsed.pretty}")
       mustBeStillActive(from, operationString).when(fromMustBeActive)
         .flatMap(_ => body) match {
           case Left(problem) => Left(problem)
@@ -179,7 +209,7 @@ object ClusterWatch
         case hasNodes: HasNodes if isLastHeartbeatStillValid && !hasNodes.isNonEmptyActive(from) =>
           val problem = ClusterWatchInactiveNodeProblem(from, hasNodes, lastHeartbeat.elapsed,
             logLine)
-          logger.error(s"Node '$from': $problem")
+          logger.error(s"$from: $problem")
           Left(problem)
         case _ =>
           Right(())
@@ -191,7 +221,39 @@ object ClusterWatch
           (lastHeartbeat + hasNodes.timing.heartbeatValidDuration).hasTimeLeft
         case _ => false
       }
+
+    def acknowledgeLostNode(lostNodeId: NodeId): Checked[State] =
+      matchRejectedNodeLostEvent(lostNodeId)
+        .toRight(NoClusterNodeLostProblem)
+        .map(rejected => copy(
+          rejected = Some(rejected.copy(
+            lostNodeAcknowledged = true))))
+
+    def matchRejectedNodeLostEvent(lostNodeId: NodeId): Option[Rejected] =
+      (clusterState, rejected) match {
+        case (Coupled(setting), Some(rejected @ Rejected(ClusterPassiveLost(passiveId), _)))
+          if lostNodeId == setting.passiveId && lostNodeId == passiveId =>
+          Some(rejected)
+
+        case (Coupled(setting), Some(rejected @ Rejected(failedOver: ClusterFailedOver, _)))
+          if lostNodeId == setting.activeId && lostNodeId == failedOver.lostNodeId =>
+          Some(rejected)
+
+        case _ => None
+      }
+
+    def isLostNodeAcknowledged =
+      rejected match {
+        case Some(Rejected(_, lostNodeAcknowledged)) => lostNodeAcknowledged
+        case _ => false
+      }
   }
+
+  case object NoClusterNodeLostProblem extends Problem.ArgumentlessCoded
+
+  private final case class Rejected(
+    event: ClusterNodeLostEvent,
+    lostNodeAcknowledged: Boolean = false)
 
   final case class ClusterWatchHeartbeatMismatchProblem(
     currentClusterState: ClusterState,
@@ -237,4 +299,6 @@ object ClusterWatch
       "clusterState" -> clusterState.toString)
   }
   object InvalidClusterWatchHeartbeatProblem extends Problem.Coded.Companion
+
+  case object ExplicitClusterNodeLostAckRequiredProblem extends Problem.ArgumentlessCoded
 }

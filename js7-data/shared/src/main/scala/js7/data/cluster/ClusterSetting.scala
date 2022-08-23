@@ -12,6 +12,7 @@ import js7.base.web.Uri
 import js7.data.cluster.ClusterSetting.*
 import js7.data.cluster.ClusterSetting.syntax.*
 import js7.data.node.NodeId
+import org.jetbrains.annotations.TestOnly
 
 final case class ClusterSetting(
   idToUri: Map[NodeId, Uri],
@@ -48,6 +49,13 @@ final case class ClusterSetting(
 
   def withPassiveUri(uri: Uri): ClusterSetting =
     copy(idToUri = idToUri + (passiveId -> uri))
+
+  @TestOnly
+  def other(nodeId: NodeId): NodeId = {
+    if (nodeId == activeId) passiveId
+    else if (nodeId == passiveId) activeId
+    else throw new IllegalArgumentException(s"Unknown $nodeId")
+  }
 }
 
 object ClusterSetting
