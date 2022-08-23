@@ -16,13 +16,21 @@ private final class LoggingTestAdder(suiteName: String) {
   Log4j.initialize()
 
   private val outerNames = Seq(suiteName).to(mutable.Stack)
+  private var firstTestCalled = false
 
   def toStringWrapper[R](
     name: String,
     wrapper: StringWrapper[R, TaggedAs[R]],
     executeTest: (LoggingTestAdder.TestContext, => R) => R)
   : LoggingFreeSpecStringWrapper[R] =
-    new LoggingFreeSpecStringWrapper(name, wrapper, this, executeTest)
+    new LoggingFreeSpecStringWrapper(name, wrapper, this,
+      (ctx, test) => {
+        if (!firstTestCalled) {
+          firstTestCalled = true
+          logger.info(bar)
+        }
+        executeTest(ctx, test)
+      })
 
   def addTests(name: String, addTests: => Unit): Unit = {
     outerNames.push(name)
@@ -38,6 +46,7 @@ private final class LoggingTestAdder(suiteName: String) {
 
 private object LoggingTestAdder {
   private val logger = LogManager.getLogger("TEST")
+  private val bar = "⎯" * 80
 
   private val droppableStackTracePrefixes = Set(
     "java.",
@@ -59,13 +68,13 @@ private object LoggingTestAdder {
         case Success(_) =>
           val markup = green + bold
           logger.info(eager(s"↙︎ $prefix$markup$testName$resetColor"))
-          logger.info(eager(markup + "⎯" * 80))
+          logger.info(eager(markup + bar))
           delayBeforeEnd()
 
         case Failure(_: TestPendingException) =>
           val markup = ""
-          logger.error(eager(s"🚫 $prefix$markup$testName (PENDING)$resetColor\n"))
-          logger.info(eager(markup + "⎯" * 80))
+          logger.warn(eager(s"🚫 $prefix$markup$testName (PENDING)$resetColor\n"))
+          logger.info(eager(markup + bar))
           delayBeforeEnd()
 
         case Failure(t) =>
@@ -74,7 +83,7 @@ private object LoggingTestAdder {
           val markup = orange + bold
           val s = s"💥 $prefix$markup$testName 💥$resetColor"
           logger.error(s, t)
-          logger.info(eager(markup + "⎯" * 80))
+          logger.info(eager(markup + bar))
           if (isSbt) System.err.println(s)
           delayBeforeEnd()
       }
@@ -88,7 +97,7 @@ private object LoggingTestAdder {
       val c = o.getClassName
       !droppableStackTracePrefixes.exists(c startsWith _)
     }
-    t.setStackTrace(st.slice(dropTop, dropBottom - 1 max dropTop + 1))
+    t.setStackTrace(st.slice(dropTop, dropBottom + 1 max dropTop + 1))
   }
 
   private def delayBeforeEnd() =
