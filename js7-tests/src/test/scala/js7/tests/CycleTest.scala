@@ -25,7 +25,6 @@ import js7.data.workflow.instructions.Schedule.{Periodic, Scheme, Ticking}
 import js7.data.workflow.instructions.{Cycle, Fail, Schedule, TryInstruction}
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.CycleTest.*
 import js7.tests.jobs.{EmptyJob, SemaphoreJob}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
@@ -425,24 +424,29 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
             Ticking(1.h)))),
           Workflow.empty)),
       calendarPath = Some(calendar.path)))
+
+    var eventId = eventWatch.lastAddedEventId
     val orderId = OrderId("#2021-10-01#ONCE-A-DAY")
     controllerApi.addOrder(FreshOrder(orderId, workflow.path))
       .await(99.s).orThrow
 
     clock.tick()
-    awaitAndAssert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 1)
+    eventId = eventWatch.await[OrderCycleStarted](_.key == orderId, after = eventId).head.eventId
+    assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 1)
 
     clock.tick(30.minutes - 1.s)
-    awaitAndAssert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 1)
+    assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 1)
 
     clock.tick(1.s)
-    awaitAndAssert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 2)
+    eventId = eventWatch.await[OrderCycleStarted](_.key == orderId, after = eventId).head.eventId
+    assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 2)
 
     clock.tick(1.h - 1.s)
-    awaitAndAssert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 2)
+    assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 2)
 
     clock.tick(1.s)
-    awaitAndAssert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 3)
+    eventId = eventWatch.await[OrderCycleStarted](_.key == orderId, after = eventId).head.eventId
+    assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 3)
   }
 
   private def addWorkflow(workflow: Workflow): Workflow = {
