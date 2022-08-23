@@ -94,7 +94,7 @@ final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
     recovered.clusterState match {
       case Empty =>
         if (clusterConf.isPrimary) {
-          logger.debug(s"Active primary cluster node '${ownId.string}', no backup node appointed")
+          logger.debug(s"Active primary cluster $ownId, no backup node appointed")
           Task.pure(None) ->
             (activationInhibitor.startActive *>
               Task.pure(Right(ClusterFollowUp.BecomeActive(recovered))))
@@ -111,13 +111,13 @@ final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
           startAsPassiveNode(recovered, clusterState)
         else
           Task.pure(None) ->
-            Task.pure(Left(Problem.pure(s"Own cluster node id '${ownId.string} " +
+            Task.pure(Left(Problem.pure(s"Own cluster $ownId " +
               s"does not match clusterState=${recovered.clusterState}")))
     }
 
   private def startAsBackupNodeWithEmptyClusterState(recovered: Recovered[S])
   : (Task[Option[Checked[S]]], Task[Checked[ClusterFollowUp[S]]]) = {
-    logger.info(s"Backup cluster node '$ownId', awaiting appointment from a primary node")
+    logger.info(s"Backup cluster $ownId, awaiting appointment from a primary node")
     val startedPromise = Promise[ClusterStartBackupNode]()
     expectingStartBackupCommand := startedPromise
     val passiveClusterNode = Task.deferFuture(startedPromise.future)
@@ -141,7 +141,7 @@ final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
     recovered.clusterState match {
       case recoveredClusterState: Coupled =>
         import recoveredClusterState.passiveId
-        logger.info(s"This cluster node '$ownId' was active and coupled before restart - " +
+        logger.info(s"This cluster $ownId was active and coupled before restart - " +
           s"asking '${passiveId.string}' node about its state")
         val failedOver = common.inhibitActivationOfPeer(recoveredClusterState).map {
           case None/*Other node has not failed-over*/ =>
@@ -174,7 +174,7 @@ final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
 
   def startPassiveAfterFailover(recovered: Recovered[S], coupled: Coupled, otherFailedOver: FailedOver)
   : (Recovered[S], PassiveClusterNode[S]) = {
-    logger.warn(s"The other '${otherFailedOver.activeId.string}' cluster node failed-over and " +
+    logger.warn(s"The other ${otherFailedOver.activeId} failed-over and " +
       s"became active while this node was absent")
     assertThat(otherFailedOver.idToUri == coupled.idToUri &&
                otherFailedOver.activeId == coupled.passiveId)
@@ -215,9 +215,9 @@ final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
   private def startAsPassiveNode(recovered: Recovered[S], clusterState: HasNodes) = {
     logger.info(
       if (clusterState.isInstanceOf[Coupled])
-        s"Remaining a passive cluster node following the active node '${clusterState.activeId}'"
+        s"Remaining a passive cluster node following the active ${clusterState.activeId}"
       else
-        s"Remaining a passive cluster node trying to follow the active node '${clusterState.activeId}'")
+        s"Remaining a passive cluster node trying to follow the active ${clusterState.activeId}")
     val passive = newPassiveClusterNode(recovered, clusterState.setting)
     passive.state.map(s => Some(Right(s))) ->
       passive.run(recovered.state)
@@ -241,7 +241,7 @@ final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
   def workingClusterNode: Checked[WorkingClusterNode[S]] =
     _passiveOrWorkingNode
       .flatMap(_.toOption)
-      .toRight(Problem.pure(s"This cluster node '$ownId' is not active"))
+      .toRight(Problem.pure(s"This cluster $ownId is not active"))
 
   def executeCommand(command: ClusterCommand): Task[Checked[ClusterCommand.Response]] =
     command match {
@@ -255,7 +255,7 @@ final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
                 Left(Problem.pure("Cluster node is not ready to accept a backup node configuration"))
             case Some(promise) =>
               if (command.setting.passiveId != ownId)
-                Left(Problem.pure(s"$command sent to wrong node '$ownId'"))
+                Left(Problem.pure(s"$command sent to wrong $ownId"))
               else if (command.setting.activeId == ownId)
                 Left(Problem.pure(s"$command must not be sent to the active node"))
               else {

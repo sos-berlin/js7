@@ -41,7 +41,7 @@ final class WorkingClusterNode[S <: SnapshotableState[S]: SnapshotableState.Comp
 
   private val _activeClusterNode = SetOnce.undefined[ActiveClusterNode[S]](
     "ActiveClusterNode[S]",
-    Problem.pure(s"This cluster node '$ownId' is not active now"))
+    Problem.pure(s"This cluster $ownId is not active now"))
   private val activeClusterNodeTask = Task { _activeClusterNode.checked }
   private val currentClusterState = persistence.clusterState
 
