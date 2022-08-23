@@ -7,6 +7,9 @@ import js7.base.problem.Checked
 
 final case class NodeId private(string: String)
 extends GenericString
+{
+  override def toString = s"Node:$string"
+}
 
 object NodeId extends GenericString.NonEmpty[NodeId]
 {

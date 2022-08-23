@@ -45,7 +45,8 @@ object ClusterEvent
   {
     def lostNodeId = failedActiveId
 
-    override def toString = s"ClusterFailedOver($failedActiveId --> $activatedId, $failedAt)"
+    override def toString =
+      s"ClusterFailedOver(${failedActiveId.string} --> ${activatedId.string}, $failedAt)"
   }
 
   final case class ClusterPassiveLost(id: Id)

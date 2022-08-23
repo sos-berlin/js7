@@ -64,7 +64,8 @@ object ClusterSetting
   private def checkedUnit(idToUri: Map[NodeId, Uri], activeId: NodeId, clusterWatches: Seq[Watch]) =
     checkUris(idToUri) >>
       (if (!idToUri.contains(activeId))
-        Left(Problem(s"Unknown NodeId: '$activeId', expected one of ${idToUri.keys.mkString("'", "', '", "'")}"))
+        Left(Problem(
+          s"Unknown $activeId, expected one of ${idToUri.keys.mkString("'", "', '", "'")}"))
       else if (clusterWatches.sizeIs != 1)
         Left(Problem.pure("Exactly one cluster watch URI is required"))
       else

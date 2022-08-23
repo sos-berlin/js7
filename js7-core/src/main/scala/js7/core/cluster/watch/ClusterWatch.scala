@@ -63,7 +63,7 @@ extends ClusterWatchApi
 
         if (state.clusterState == reportedClusterState) {
           logger.info(
-            s"Node '$from': Ignore probably duplicate events for already reached clusterState=${
+            s"$from: Ignore probably duplicate events for already reached clusterState=${
               state.clusterState}")
           Right(reportedClusterState)
         } else
@@ -98,14 +98,14 @@ extends ClusterWatchApi
               state.clusterState.applyEvents(events.map(NoKey <-: _))
                 .match_ {
                   case Left(problem) =>
-                    logger.warn(s"Node '$from': $problem")
+                    logger.warn(s"$from: $problem")
                     Left(ClusterWatchEventMismatchProblem(
                       events, state.clusterState, reportedClusterState = reportedClusterState))
 
                   case Right(clusterState) =>
-                    for (event <- events) logger.info(s"Node '$from': $event")
+                    for (event <- events) logger.info(s"$from: $event")
                     if (clusterState == reportedClusterState) {
-                      logger.info(s"Node '$from' changed ClusterState to $reportedClusterState")
+                      logger.info(s"$from changed ClusterState to $reportedClusterState")
                       Right(reportedClusterState)
                     } else {
                       // The node may have died just between sending the event to ClusterWatch and
@@ -114,15 +114,15 @@ extends ClusterWatchApi
                         case o: HasNodes => o.activeId.string
                         case ClusterState.Empty => "Empty"
                       }
-                      logger.warn(s"Node '$from' forced ClusterState to $reportedClusterState " +
-                        s"because heartbeat of up to now active node '$previouslyActive' is " +
+                      logger.warn(s"$from forced ClusterState to $reportedClusterState " +
+                        s"because heartbeat of up to now active $previouslyActive is " +
                         s"too long ago (${state.lastHeartbeat.elapsed.pretty})")
                       Right(reportedClusterState)
                     }
                   }
             }
           .tap {
-            case Left(problem) => logger.warn(s"Node '$from': $problem")
+            case Left(problem) => logger.warn(s"$from: $problem")
             case Right(_) =>
           }
     }.rightAs(Completed)
@@ -147,7 +147,7 @@ extends ClusterWatchApi
               else {
                 val problem = ClusterWatchInactiveNodeProblem(from,
                   state.clusterState, state.lastHeartbeat.elapsed, opString)
-                val msg = s"Node '$from': $problem"
+                val msg = s"$from: $problem"
                 logger.warn(msg)
                 Left(problem)
               }
@@ -158,7 +158,7 @@ extends ClusterWatchApi
                 if (reportedClusterState == clusterState)
                   Right(reportedClusterState)
                 else if (!state.isLastHeartbeatStillValid) {
-                  logger.warn(s"Node '$from': Heartbeat changed $clusterState")
+                  logger.warn(s"$from: Heartbeat changed $clusterState")
                   Right(reportedClusterState)
                 } else {
                   // May occur also when active node terminates after
@@ -166,7 +166,7 @@ extends ClusterWatchApi
                   // and the active node is restarted within the clusterWatchReactionTimeout !!!
                   val problem = ClusterWatchHeartbeatMismatchProblem(clusterState,
                     reportedClusterState = reportedClusterState)
-                  logger.warn(s"Node '$from': $problem")
+                  logger.warn(s"$from: $problem")
                   Left(problem)
                 }
 
@@ -177,7 +177,7 @@ extends ClusterWatchApi
   }
 
   private def teach(from: NodeId, clusterState: ClusterState) = {
-    logger.info(s"Node '$from' teaches clusterState=$clusterState")
+    logger.info(s"$from teaches clusterState=$clusterState")
     Right(clusterState)
   }
 
@@ -186,7 +186,7 @@ extends ClusterWatchApi
   : Task[Checked[ClusterState]] =
     stateMVar.flatMap(mvar =>
       mvar.take.flatMap { current =>
-        logger.trace(s"Node '$from': $operationString${
+        logger.trace(s"$from: $operationString${
           current.fold("")(o => ", after " + o.lastHeartbeat.elapsed.pretty)}")
         body(current) match {
           case Left(problem) =>

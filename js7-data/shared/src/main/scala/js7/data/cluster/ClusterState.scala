@@ -112,8 +112,9 @@ extends EventDrivenState.Companion[ClusterState, ClusterEvent]
     final def peerOf(nodeId: NodeId) = idToUri.peerOf(nodeId)
 
     protected final def nodesString =
-      (for ((id, uri) <- idToUri) yield (if (activeId == id) "active " else "passive ") + s"$id: $uri")
-        .mkString(", ")
+      (for ((id, uri) <- idToUri) yield
+        (if (activeId == id) "active " else "passive ") + s"${id.string}: $uri"
+      ).mkString(", ")
 
     override def toString = s"$productPrefix($nodesString)"
   }

@@ -352,7 +352,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                       s"because cluster is coupled but nodes have not yet recoupled: clusterState=$clusterState")
                   Observable.empty  // Ignore
                 } else {
-                  logger.warn(s"❗️No heartbeat from the currently active cluster node '$activeId' " +
+                  logger.warn(s"❗️No heartbeat from the currently active cluster $activeId " +
                     s"since ${noHeartbeatSince.elapsed.pretty} - trying to fail-over")
                   Observable.fromTask(
                     if (isReplicatingHeadOfFile) {
