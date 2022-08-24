@@ -101,7 +101,7 @@ final class ClusterWatchTest extends OurTestSuite
       assert(applyEvents(bId, ClusterFailedOver(aId, bId, failedAt) :: Nil) ==
         Left(ClusterWatchInactiveNodeProblem(bId, clusterState, 1.s,
           "event ClusterFailedOver(A --> B, JournalPosition(0,0)) --> " +
-            "FailedOver(passive A: http://A, active B: http://B, JournalPosition(0,0))")))
+            "FailedOver(A --> B at JournalPosition(0,0))")))
       assert(watch.isActive(aId).await(99.s).orThrow)
     }
 

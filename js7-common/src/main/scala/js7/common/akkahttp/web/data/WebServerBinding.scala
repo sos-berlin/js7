@@ -33,6 +33,8 @@ object WebServerBinding
 
   sealed trait Scheme {
     def name: String
+    // Workaround for Scala 3, which does not allow to override toString in subclasses (?)
+    override def toString = name
   }
 
   final case class Http(address: InetSocketAddress)
