@@ -36,7 +36,7 @@ private final class ClusterWatchSynchronizer(
       stopHeartbeating.unless(checkOnly) *>
         clusterWatch
           .applyEvents(ClusterWatchEvents(from = ownId, events, clusterState, checkOnly = checkOnly))
-          .flatMapT { completed =>
+          .flatMapT(completed =>
             clusterState match {
               case clusterState: HasNodes if clusterState.activeId == ownId
                 && !checkOnly
@@ -47,8 +47,7 @@ private final class ClusterWatchSynchronizer(
                 // The ClusterSwitchedOver event will be written to the journal after applyEvents.
                 // So persistence.clusterState will reflect the outdated ClusterState for a short while.
                 Task.pure(Right(completed))
-            }
-          }
+            })
 
   def startHeartbeating(clusterState: HasNodes, dontWait: Boolean = false): Task[Completed] =
     Task.defer {
