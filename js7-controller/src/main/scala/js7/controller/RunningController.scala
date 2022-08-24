@@ -510,7 +510,7 @@ object RunningController
               }
 
         case ControllerCommand.ClusterAppointNodes(idToUri, activeId, clusterWatches) =>
-          Task.pure(cluster.workingClusterNode)
+          Task(cluster.workingClusterNode)
             .flatMapT(_.appointNodes(idToUri, activeId, clusterWatches))
             .map(_.map((_: Completed) => ControllerCommand.Response.Accepted))
 
