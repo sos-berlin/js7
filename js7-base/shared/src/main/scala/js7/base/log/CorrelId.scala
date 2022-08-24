@@ -6,8 +6,9 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.generic.GenericString
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.Tests.isTest
+import js7.base.utils.Tests.{isIntelliJIdea, isTest}
 import monix.execution.Scheduler
+import monix.execution.atomic.Atomic
 import monix.execution.misc.Local
 import monix.execution.schedulers.TracingScheduler
 
@@ -48,10 +49,24 @@ object CorrelId extends GenericString.Checked_[CorrelId]
   private[log] val longByteCount = 6
   private[log] val width = (longByteCount + 2) / 3 * 4  // Base64 length
   private[log] val bitMask = (1L << (longByteCount * 8)) - 1
-  private[log] val emptyString = " " * width
   val empty: CorrelId = EmptyCorrelId
   private[log] val local = Local(CorrelId.empty)
-  private val random = new SecureRandom
+
+  private val nextLong =
+    if (isTest && isIntelliJIdea)
+      new NextLong {
+        private val next = Atomic(0)
+        def apply() = next.incrementAndGet()
+      }
+    else
+      new NextLong {
+        private val random = new SecureRandom()
+        def apply() = random.nextLong()
+      }
+
+  private trait NextLong {
+    def apply(): Long
+  }
 
   private var currentCorrelIdCount = 0L
   private var generateCount = 0L
@@ -94,7 +109,7 @@ object CorrelId extends GenericString.Checked_[CorrelId]
       CorrelId.empty
     else {
       generateCount += 1
-      LongCorrelId(random.nextLong & bitMask)
+      LongCorrelId(nextLong() & bitMask)
     }
 
   def current: CorrelId =
