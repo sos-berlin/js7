@@ -187,7 +187,8 @@ extends EventDrivenState.Companion[ClusterState, ClusterEvent]
   extends Decoupled {
     protected def withSetting(setting: ClusterSetting) = copy(setting = setting)
 
-    override def toString = s"FailedOver($nodesString, $failedAt)"
+    override def toString = s"FailedOver(" +
+      s"${setting.passiveId.string} --> ${setting.activeId.string} at $failedAt)"
   }
 
   implicit val jsonCodec: TypedJsonCodec[ClusterState] = TypedJsonCodec(
