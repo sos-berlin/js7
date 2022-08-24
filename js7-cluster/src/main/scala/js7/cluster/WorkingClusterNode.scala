@@ -71,15 +71,15 @@ final class WorkingClusterNode[S <: SnapshotableState[S]: SnapshotableState.Comp
     }
 
   def afterJournalingStarted: Task[Checked[Completed]] =
-    automaticallyAppointConfiguredBackupNode *>
+    automaticallyAppointConfiguredBackupNode.flatMapT(_ =>
       (_activeClusterNode.toOption match {
         case None => Task.right(Completed)
         case Some(o) => o.onRestartActiveNode
-      })
+      }))
 
   def appointNodes(idToUri: Map[NodeId, Uri], activeId: NodeId, clusterWatches: Seq[ClusterSetting.Watch])
   : Task[Checked[Completed]] =
-    Task.pure(ClusterSetting.checked(idToUri, activeId, clusterWatches, clusterConf.timing))
+    Task(ClusterSetting.checked(idToUri, activeId, clusterWatches, clusterConf.timing))
       .flatMapT(appointNodes)
 
   private def automaticallyAppointConfiguredBackupNode: Task[Checked[Completed]] =
