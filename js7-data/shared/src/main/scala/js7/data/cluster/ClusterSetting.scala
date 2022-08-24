@@ -39,10 +39,8 @@ final case class ClusterSetting(
         .sortBy(o => if (o._1 == activeId) 0 else 1)
         .toMap)
 
-  def clusterWatchUri: Uri = {
-    assertThat(clusterWatches.sizeIs == 1)
-    clusterWatches.head.uri
-  }
+  def clusterWatchUri: Option[Uri] =
+    clusterWatches.headOption.map(_.uri)
 
   def clusterWatchUris =
     clusterWatches.map(_.uri)
@@ -73,8 +71,8 @@ object ClusterSetting
     checkUris(idToUri) >>
       (if (!idToUri.contains(activeId))
         Left(Problem(s"Unknown $activeId, expected one of ${idToUri.keys.mkString("'", "', '", "'")}"))
-      else if (clusterWatches.sizeIs != 1)
-        Left(Problem.pure("Exactly one cluster watch URI is required"))
+      else if (clusterWatches.sizeIs > 1)
+        Left(Problem.pure("Only one or no cluster watch URI is allowed"))
       else
         Right(()))
 

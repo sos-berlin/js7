@@ -111,7 +111,7 @@ final class AppointNodesLatelyClusterTest extends OurTestSuite with ControllerCl
 
         // Start new ClusterWatch
         val bAgentUri = Uri(s"http://127.0.0.1:$otherClusterWatchPort")
-        assert(bAgentUri != updatedBackupSetting.clusterWatchUri)
+        assert(bAgentUri != updatedBackupSetting.clusterWatchUri.get)
         assert(bAgentUri != primary.agents.head.localUri)
         val watchSetting = updatedBackupSetting.copy(
           clusterWatches = updatedBackupSetting.clusterWatches.map(_ => ClusterSetting.Watch(bAgentUri)))

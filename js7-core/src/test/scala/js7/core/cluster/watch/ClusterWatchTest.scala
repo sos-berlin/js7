@@ -11,7 +11,7 @@ import js7.base.web.Uri
 import js7.common.message.ProblemCodeMessages
 import js7.core.cluster.watch.ClusterWatch.*
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodeLostEvent, ClusterPassiveLost, ClusterSwitchedOver}
-import js7.data.cluster.ClusterState.Coupled
+import js7.data.cluster.ClusterState.{Coupled, PassiveLost}
 import js7.data.cluster.{ClusterEvent, ClusterSetting, ClusterState, ClusterTiming}
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
@@ -210,16 +210,29 @@ final class ClusterWatchTest extends OurTestSuite
 
   "requireLostAck" - {
     "ClusterFailedOver" in {
+      // For ClusterFailedOver, ClusterWatch requires an acknowledge due to requireLostAck
       import setting.{activeId, passiveId}
-      checkRequireLostAck(ClusterFailedOver(activeId, activatedId = passiveId, failedAt))
+      checkRequireLostAck(
+        ClusterFailedOver(activeId, activatedId = passiveId, failedAt),
+        expectResponse = Left(ExplicitClusterNodeLostAckRequiredProblem),
+        expectClusterState = Coupled(setting))
     }
 
     "ClusterPassiveLost" in {
+      // For ClusterPassiveLost, ClusterWatch does not require an acknowledge (for now).
+      // requireLockAck=true is valid only for ClusterFailedOver.
       import setting.passiveId
-      checkRequireLostAck(ClusterPassiveLost(passiveId))
+      checkRequireLostAck(
+        ClusterPassiveLost(passiveId),
+        expectResponse = Right(Completed),
+        expectClusterState = PassiveLost(setting))
     }
 
-    def checkRequireLostAck(event: ClusterNodeLostEvent): Unit = {
+    def checkRequireLostAck(
+      event: ClusterNodeLostEvent,
+      expectResponse: Either[ExplicitClusterNodeLostAckRequiredProblem, Completed],
+      expectClusterState: ClusterState)
+    : Unit = {
       val coupled = Coupled(setting)
       val clusterState: ClusterState = coupled
       lazy val watch = new ClusterWatch(
@@ -241,20 +254,22 @@ final class ClusterWatchTest extends OurTestSuite
       val response = watch
         .applyEvents(ClusterWatchEvents(passiveId, Seq(event), expectedClusterState))
         .await(99.s)
-      assert(response == Left(ExplicitClusterNodeLostAckRequiredProblem))
-      assert(watch.test.clusterState == clusterState)
+      assert(response == expectResponse)
+      assert(watch.test.clusterState == expectClusterState)
 
       import event.lostNodeId
       val notLostNodeId = setting.other(lostNodeId)
       assert(watch.acknowledgeLostNode(notLostNodeId).await(99.s) ==
         Left(NoClusterNodeLostProblem))
 
-      watch.acknowledgeLostNode(lostNodeId).await(99.s).orThrow
-      watch
-        .applyEvents(ClusterWatchEvents(notLostNodeId, Seq(event), expectedClusterState))
-        .await(99.s)
-        .orThrow
-      assert(watch.test.clusterState == expectedClusterState)
+      if (expectResponse == Left(ExplicitClusterNodeLostAckRequiredProblem)) {
+        watch.acknowledgeLostNode(lostNodeId).await(99.s).orThrow
+        watch
+          .applyEvents(ClusterWatchEvents(notLostNodeId, Seq(event), expectedClusterState))
+          .await(99.s)
+          .orThrow
+        assert(watch.test.clusterState == expectedClusterState)
+      }
 
       assert(watch.acknowledgeLostNode(activeId).await(99.s) == Left(NoClusterNodeLostProblem))
       assert(watch.acknowledgeLostNode(passiveId).await(99.s) == Left(NoClusterNodeLostProblem))

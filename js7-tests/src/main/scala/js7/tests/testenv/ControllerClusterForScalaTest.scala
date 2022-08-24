@@ -15,6 +15,7 @@ import js7.base.utils.CatsUtils.combine
 import js7.base.utils.Closer.syntax.*
 import js7.base.utils.Closer.withCloser
 import js7.base.utils.ProgramTermination
+import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.base.web.Uri
 import js7.common.auth.SecretStringGenerator
 import js7.common.message.ProblemCodeMessages
@@ -35,6 +36,7 @@ import monix.execution.Scheduler.Implicits.global
 import org.scalactic.source
 import org.scalatest.Assertions.*
 import org.scalatest.TestSuite
+import scala.jdk.CollectionConverters.*
 
 trait ControllerClusterForScalaTest
 {
@@ -70,10 +72,10 @@ trait ControllerClusterForScalaTest
       }
     }
 
-  final def withControllerAndBackup()
+  final def withControllerAndBackup(noClusterWatch: Boolean = false)
     (body: (DirectoryProvider, DirectoryProvider, ClusterSetting) => Unit)
   : Unit =
-    withControllerAndBackupWithoutAgents() { (primary, backup, setting) =>
+    withControllerAndBackupWithoutAgents(noClusterWatch) { (primary, backup, setting) =>
       primary.runAgents() { _ =>
         body(primary, backup, setting)
       }
@@ -81,12 +83,21 @@ trait ControllerClusterForScalaTest
 
   val userAndPassword = UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))
 
-  final def withControllerAndBackupWithoutAgents()
+  final def withControllerAndBackupWithoutAgents(noClusterWatch: Boolean = false)
     (body: (DirectoryProvider, DirectoryProvider, ClusterSetting) => Unit)
   : Unit =
     withCloser { implicit closer =>
       val testName = ControllerClusterForScalaTest.this.getClass.getSimpleName
       val agentPorts = findFreeTcpPorts(agentPaths.size)
+      val setting = ClusterSetting(
+        Map(
+          primaryId -> Uri(s"http://127.0.0.1:$primaryControllerPort"),
+          backupId -> Uri(s"http://127.0.0.1:$backupControllerPort")),
+        activeId = primaryId,
+        clusterWatches = (!noClusterWatch).thenList(
+          ClusterSetting.Watch(Uri(s"http://127.0.0.1:${agentPorts.head}"))),
+        clusterTiming)
+
       val primary = new DirectoryProvider(agentPaths, items, testName = Some(s"$testName-Primary"),
         controllerConfig = combine(
           primaryControllerConfig,
@@ -95,10 +106,14 @@ trait ControllerClusterForScalaTest
               Primary: "http://127.0.0.1:$primaryControllerPort"
               Backup: "http://127.0.0.1:$backupControllerPort"
             }"""),
+          ConfigFactory.parseMap(
+            Map(
+              "js7.journal.cluster.watches" -> setting.clusterWatches.map(_.uri.string).asJava
+            ).asJava,
+            "ControllerClusterForScalaTest"),
           config"""
             js7.journal.cluster.heartbeat = ${clusterTiming.heartbeat.toSeconds}s
             js7.journal.cluster.heartbeat-timeout = ${clusterTiming.heartbeatTimeout.toSeconds}s
-            js7.journal.cluster.watches = [ "http://127.0.0.1:${agentPorts.head}" ]
             js7.journal.cluster.TEST-HEARTBEAT-LOSS = "$testHeartbeatLossPropertyKey"
             js7.journal.release-events-delay = 0s
             js7.journal.remove-obsolete-files = $removeObsoleteJournalFiles
@@ -129,14 +144,6 @@ trait ControllerClusterForScalaTest
         REPLACE_EXISTING)
 
       for (a <- primary.agents) a.writeExecutable(TestPathExecutable, shellScript)
-
-      val setting = ClusterSetting(
-        Map(
-          primaryId -> Uri(s"http://127.0.0.1:$primaryControllerPort"),
-          backupId -> Uri(s"http://127.0.0.1:$backupControllerPort")),
-        activeId = primaryId,
-        primary.subagentItems.take(1).map(o => ClusterSetting.Watch(o.uri)),
-        clusterTiming)
 
       body(primary, backup, setting)
     }

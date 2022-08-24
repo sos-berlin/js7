@@ -429,6 +429,14 @@ final class ControllerCommandTest extends OurTestSuite
       }""")
   }
 
+  "ClusterAcknowledgeLostNode" in {
+    testJson[ControllerCommand](ClusterAcknowledgeLostNode(NodeId("NODE")),
+      json"""{
+        "TYPE": "ClusterAcknowledgeLostNode",
+        "lostNodeId": "NODE"
+      }""")
+  }
+
   // Internal use only
   "InternalClusterCommand" in {
     testJson[ControllerCommand](InternalClusterCommand(

@@ -1,10 +1,9 @@
 package js7.data.controller
 
-import js7.base.circeutils.CirceUtils.DecodeWithDefaults
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, Encoder, Json, JsonObject}
-import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
+import js7.base.circeutils.CirceUtils.{DecodeWithDefaults, deriveConfiguredCodec}
 import js7.base.circeutils.ScalaJsonCodecs.{FiniteDurationJsonDecoder, FiniteDurationJsonEncoder}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.log.CorrelIdWrapped
@@ -247,6 +246,11 @@ object ControllerCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
 
+  final case class ClusterAcknowledgeLostNode(lostNodeId: NodeId)
+  extends ControllerCommand {
+    type Response = Response.Accepted
+  }
+
   /** For internal use between cluster nodes only. */
   final case class InternalClusterCommand(clusterCommand: ClusterCommand)
   extends ControllerCommand {
@@ -302,6 +306,7 @@ object ControllerCommand extends CommonCommand.Companion
     Subtype(deriveConfiguredCodec[ControlWorkflow]),
     Subtype(deriveConfiguredCodec[ClusterAppointNodes]),
     Subtype(ClusterSwitchOver),
+    Subtype(deriveConfiguredCodec[ClusterAcknowledgeLostNode]),
     Subtype(deriveConfiguredCodec[InternalClusterCommand]),
     Subtype(deriveConfiguredCodec[ResetAgent]),
     Subtype(deriveConfiguredCodec[ResetSubagent]),

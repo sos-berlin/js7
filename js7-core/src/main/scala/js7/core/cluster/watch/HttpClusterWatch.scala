@@ -76,6 +76,9 @@ with SessionApi.HasUserAndPassword
   def clusterState: Task[Checked[ClusterState]] =
     liftProblem(
       get[ClusterState](clusterUri))
+
+  def maybeUri: Option[Uri] =
+    Some(baseUri)
 }
 
 object HttpClusterWatch

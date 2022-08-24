@@ -9,9 +9,10 @@ import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.web.Uri
 import js7.cluster.ClusterWatchSynchronizer.*
 import js7.common.system.startup.Halt.haltJava
-import js7.core.cluster.watch.{ClusterWatchEvents, HttpClusterWatch}
+import js7.core.cluster.watch.{ClusterWatchApi, ClusterWatchEvents, HttpClusterWatch}
 import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.{ClusterEvent, ClusterState, ClusterTiming}
 import js7.data.node.NodeId
@@ -23,7 +24,7 @@ import monix.reactive.OverflowStrategy.DropNew
 
 private final class ClusterWatchSynchronizer(
   ownId: NodeId,
-  val clusterWatch: HttpClusterWatch,
+  val clusterWatch: ClusterWatchApi,
   timing: ClusterTiming)
 {
   private val heartbeat = AtomicAny[Option[Heartbeat]](None)
@@ -138,7 +139,11 @@ private final class ClusterWatchSynchronizer(
     clusterWatch.heartbeat(from = ownId, clusterState)
       .materializeIntoChecked
 
-  def uri = clusterWatch.baseUri
+  def uri: Option[Uri] =
+    clusterWatch match {
+      case o: HttpClusterWatch => Some(o.baseUri)
+      case _ => None
+    }
 }
 
 object ClusterWatchSynchronizer

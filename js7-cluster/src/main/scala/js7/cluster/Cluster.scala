@@ -297,6 +297,9 @@ final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
   def isActive = _passiveOrWorkingNode.exists(_.exists(_.isActive))
 
   def isPassive = _passiveOrWorkingNode.exists(_.isLeft)
+
+  def manualClusterWatch =
+    common.manualClusterWatch
 }
 
 object Cluster

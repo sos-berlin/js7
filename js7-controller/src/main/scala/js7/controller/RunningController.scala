@@ -310,7 +310,8 @@ object RunningController
         recovered.journalId, recovered.eventWatch,
         journalMeta, controllerConfiguration.journalConf,
         injector.instance[EventIdGenerator], injector.instance[StampedKeyedEventBus])
-      val (cluster, controllerState, clusterFollowUp) = startCluster(recovered, persistence, testEventBus)
+      val (cluster, controllerState, clusterFollowUp) =
+        startCluster(recovered, persistence, testEventBus)
 
       val clusterFollowUpFuture = clusterFollowUp.runToFuture
 
@@ -502,6 +503,10 @@ object RunningController
           Task(cluster.workingClusterNode)
             .flatMapT(_.appointNodes(idToUri, activeId, clusterWatches))
             .map(_.map((_: Completed) => ControllerCommand.Response.Accepted))
+
+        case ControllerCommand.ClusterAcknowledgeLostNode(nodeId) =>
+          cluster.manualClusterWatch.acknowledgeLostNode(nodeId)
+            .map(_ => Right(ControllerCommand.Response.Accepted))
 
         case ControllerCommand.InternalClusterCommand(clusterCommand) =>
           cluster.executeCommand(clusterCommand)

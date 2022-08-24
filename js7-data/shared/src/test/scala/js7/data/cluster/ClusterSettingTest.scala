@@ -52,7 +52,7 @@ final class ClusterSettingTest extends OurTestSuite
 
     assert(ClusterSetting.checked(idToUri, NodeId("X"), Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))), timing).isLeft)
 
-    assert(ClusterSetting.checked(idToUri, NodeId("A"), Nil, timing).isLeft)
+    assert(ClusterSetting.checked(idToUri, NodeId("A"), Nil, timing).isRight)
     assert(ClusterSetting.checked(idToUri, NodeId("A"), Seq(ClusterSetting.Watch(Uri("https://V")), ClusterSetting.Watch(Uri("https://W"))), timing).isLeft)
     assert(ClusterSetting.checked(idToUri, NodeId("A"), Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))), timing).isRight)
     assert(checkUris(idToUri).isRight)

@@ -2,6 +2,7 @@ package js7.cluster
 
 import com.softwaremill.diffx
 import com.typesafe.config.Config
+import cats.syntax.apply._
 import io.circe.syntax.*
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
@@ -495,47 +496,50 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                     case clusterEvent: ClusterEvent =>
                       // TODO Use JournalLogging
                       logger.info(clusterEventAndStateToString(clusterEvent, builder.clusterState))
-                      clusterEvent match {
-                        case _: ClusterNodesAppointed | _: ClusterPassiveLost | _: ClusterActiveNodeRestarted =>
-                          Observable.fromTask(
-                            tryEndlesslyToSendClusterPrepareCoupling
-                              .map(Right.apply))  // TODO Handle heartbeat timeout !
+                      Observable.fromTask(
+                        common.manualClusterWatch.updatePassiveClusterState(builder.clusterState)
+                      ) *>
+                        clusterEvent.match_ {
+                          case _: ClusterNodesAppointed | _: ClusterPassiveLost | _: ClusterActiveNodeRestarted =>
+                            Observable.fromTask(
+                              tryEndlesslyToSendClusterPrepareCoupling
+                                .map(Right.apply))  // TODO Handle heartbeat timeout !
 
-                        case _: ClusterFailedOver =>
-                          // Now, this node has switched from still-active (but failed for the other node) to passive.
-                          // It's time to recouple.
-                          // ClusterPrepareCoupling command requests an event acknowledgement.
-                          // To avoid a deadlock, we send ClusterPrepareCoupling command asynchronously and
-                          // continue immediately with acknowledgement of ClusterEvent.ClusterCoupled.
-                          if (!otherFailed)
-                            logger.error(s"Replicated unexpected FailedOver event")  // Should not happen
-                          dontActivateBecauseOtherFailedOver = false
-                          Observable.fromTask(
-                            tryEndlesslyToSendClusterPrepareCoupling
-                              .map(Right.apply))  // TODO Handle heartbeat timeout !
+                          case _: ClusterFailedOver =>
+                            // Now, this node has switched from still-active (but failed for the other node) to passive.
+                            // It's time to recouple.
+                            // ClusterPrepareCoupling command requests an event acknowledgement.
+                            // To avoid a deadlock, we send ClusterPrepareCoupling command asynchronously and
+                            // continue immediately with acknowledgement of ClusterEvent.ClusterCoupled.
+                            if (!otherFailed)
+                              logger.error(s"Replicated unexpected FailedOver event")  // Should not happen
+                            dontActivateBecauseOtherFailedOver = false
+                            Observable.fromTask(
+                              tryEndlesslyToSendClusterPrepareCoupling
+                                .map(Right.apply))  // TODO Handle heartbeat timeout !
 
-                        case switchedOver: ClusterSwitchedOver =>
-                          // Notify ClusterWatch before starting heartbeating
-                          Observable.fromTask(common
-                            .clusterWatchSynchronizer(
-                              builder.clusterState.asInstanceOf[ClusterState.HasNodes])
-                            .flatMap(_.applyEvents(switchedOver :: Nil, builder.clusterState))
-                            .map(_.toUnit))
+                          case switchedOver: ClusterSwitchedOver =>
+                            // Notify ClusterWatch before starting heartbeating
+                            Observable.fromTask(common
+                              .clusterWatchSynchronizer(
+                                builder.clusterState.asInstanceOf[ClusterState.HasNodes])
+                              .flatMap(_.applyEvents(switchedOver :: Nil, builder.clusterState))
+                              .map(_.toUnit))
 
-                        case ClusterCouplingPrepared(activeId) =>
-                          assertThat(activeId != ownId)
-                          Observable.fromTask(
-                            sendClusterCouple
-                              .map(Right.apply))  // TODO Handle heartbeat timeout !
+                          case ClusterCouplingPrepared(activeId) =>
+                            assertThat(activeId != ownId)
+                            Observable.fromTask(
+                              sendClusterCouple
+                                .map(Right.apply))  // TODO Handle heartbeat timeout !
 
-                        case ClusterCoupled(activeId) =>
-                          assertThat(activeId != ownId)
-                          awaitingCoupledEvent = false
-                          Observable.pure(Right(()))
+                          case ClusterCoupled(activeId) =>
+                            assertThat(activeId != ownId)
+                            awaitingCoupledEvent = false
+                            Observable.pure(Right(()))
 
-                        case _ =>
-                          Observable.pure(Right(()))
-                      }
+                          case _ =>
+                            Observable.pure(Right(()))
+                        }
                     case _ =>
                       Observable.pure(Right(()))
                   }

@@ -302,7 +302,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
         }
 
       case state: HasNodes =>
-        if (clusterWatchSynchronizer.clusterWatch.baseUri == state.setting.clusterWatchUri)
+        if (clusterWatchSynchronizer.clusterWatch.maybeUri == state.setting.clusterWatchUri)
           Task.completed
         else {
           logger.info(s"Changing ClusterWatch URI to ${state.setting.clusterWatchUri}")
@@ -377,8 +377,9 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
                           } .map(_.toCompleted.map(_ => true)))
                     ).map(_.flatMap { allowed =>
                       if (!allowed) {
-                        // Should not happen
-                        haltJava(s"ClusterWatch has unexpectedly forbidden activation after $passiveLost event", restart = true)
+                        // The lost node has become active? Bad. We must halt immediately!
+                        haltJava(s"ClusterWatch has unexpectedly forbidden $passiveLost event",
+                          restart = true)
                       }
                       Left(missingHeartbeatProblem)
                     })

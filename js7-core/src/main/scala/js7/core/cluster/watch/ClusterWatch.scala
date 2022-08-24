@@ -17,7 +17,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.node.NodeId
 import monix.eval.Task
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration.*
 
 final class ClusterWatch(
   controllerId: ControllerId,
@@ -33,6 +33,7 @@ extends ClusterWatchApi
   logger.trace(toString)
 
   def logout() = Task.pure(Completed)
+  val maybeUri = None
 
   @TestOnly
   private[cluster] def isActive(id: NodeId): Task[Checked[Boolean]] =
@@ -72,7 +73,11 @@ extends ClusterWatchApi
             }
             Right(Completed)
           } else events match {
-            case Seq(event: ClusterNodeLostEvent)
+            // Let ClusterPassiveLost always pass due to
+            // 1) a rejection would let the active node halt immediately
+            //   (fix: differentiate between "not yet decided" and "failure -> halt")
+            // 2) ClusterPassiveLost should work automatically anyway (for now)
+            case Seq(event: ClusterFailedOver/*ClusterNodeLostEvent*/)
               if requireLostAck && !state.isLostNodeAcknowledged =>
               _state = Some(state.copy(rejected = Some(Rejected(event))))
               Left(ExplicitClusterNodeLostAckRequiredProblem)
@@ -149,6 +154,19 @@ extends ClusterWatchApi
             .map { state =>
               _state = Some(state)
             }
+      }
+    })
+
+  def updatePassiveClusterState(clusterState: ClusterState): Task[Unit] =
+    lock.lock(Task {
+      _state match {
+        case None =>
+          _state = Some(State(
+            clusterState,
+            lastHeartbeat = now() - 365.days/* that means, no last heartbeat !!!*/,
+            rejected = None))
+        case Some(state) =>
+          _state = Some(state.copy(clusterState = clusterState))
       }
     })
 
@@ -300,5 +318,6 @@ object ClusterWatch
   }
   object InvalidClusterWatchHeartbeatProblem extends Problem.Coded.Companion
 
+  type ExplicitClusterNodeLostAckRequiredProblem = ExplicitClusterNodeLostAckRequiredProblem.type
   case object ExplicitClusterNodeLostAckRequiredProblem extends Problem.ArgumentlessCoded
 }

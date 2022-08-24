@@ -12,14 +12,15 @@ import js7.base.generic.{Completed, SecretString}
 import js7.base.io.https.HttpsConfig
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.*
+import js7.base.monixutils.MonixDeadline.*
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.cluster.ClusterCommon.*
-import js7.core.cluster.watch.ClusterWatch.ClusterWatchInactiveNodeProblem
-import js7.core.cluster.watch.HttpClusterWatch
+import js7.core.cluster.watch.ClusterWatch.{ClusterWatchInactiveNodeProblem, ExplicitClusterNodeLostAckRequiredProblem}
+import js7.core.cluster.watch.{ClusterWatch, ClusterWatchApi, HttpClusterWatch}
 import js7.core.license.LicenseChecker
 import js7.data.cluster.ClusterEvent.ClusterNodeLostEvent
 import js7.data.cluster.ClusterState.{FailedOver, HasNodes, SwitchedOver}
@@ -27,6 +28,7 @@ import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterSt
 import js7.data.controller.ControllerId
 import js7.data.node.NodeId
 import monix.eval.Task
+import monix.execution.Scheduler
 import monix.execution.atomic.AtomicAny
 
 private[cluster] final class ClusterCommon(
@@ -38,11 +40,15 @@ private[cluster] final class ClusterCommon(
   val licenseChecker: LicenseChecker,
   testEventPublisher: EventPublisher[Any],
   val journalActorAskTimeout: Timeout)
-  (implicit actorSystem: ActorSystem)
+  (implicit actorSystem: ActorSystem, scheduler: Scheduler)
 {
   val activationInhibitor = new ActivationInhibitor
 
   private val _clusterWatchSynchronizer = AtomicAny[Option[ClusterWatchSynchronizer]](None)
+  val manualClusterWatch = new ClusterWatch(
+    controllerId,
+    () => now,
+    requireLostAck = true)
 
   def stop: Task[Completed] =
     Task.defer {
@@ -58,7 +64,8 @@ private[cluster] final class ClusterCommon(
         Task.pure(initialClusterWatchSynchronizer(clusterState))
       case some @ Some(synchronizer) =>
         if (synchronizer.uri != setting.clusterWatchUri) {
-          logger.debug(s"Starting new ClusterWatchSynchronizer for updated URI ${setting.clusterWatchUri}")
+          logger.debug(
+            s"Starting new ClusterWatchSynchronizer for updated URI ${setting.clusterWatchUri getOrElse None}")
           if (!_clusterWatchSynchronizer.compareAndSet(some, None))
             throw new ConcurrentModificationException("clusterWatchSynchronizer")
           synchronizer.stopHeartbeating.map(_ =>
@@ -82,21 +89,25 @@ private[cluster] final class ClusterCommon(
           ownId,
           newClusterWatchApi(setting.clusterWatchUri),
           setting.timing)
-        assertThat(result.uri == setting.clusterWatchUri)
-
         if (_clusterWatchSynchronizer.getAndSet(Some(result)).isDefined)
           throw new IllegalStateException("initialClusterWatchSynchronizer")
 
         result
     }
 
-  private def newClusterWatchApi(uri: Uri): HttpClusterWatch =
-    new HttpClusterWatch(
-      uri,
-      userAndPassword = config.optionAs[SecretString]("js7.auth.agents."/*TODO*/ + ConfigUtil.joinPath(uri.string))
-        .map(password => UserAndPassword(controllerId.toUserId, password)),
-      httpsConfig = httpsConfig,
-      actorSystem)
+  private def newClusterWatchApi(uri: Option[Uri]): ClusterWatchApi =
+    uri match {
+      case None =>
+        manualClusterWatch
+
+      case Some(uri) =>
+        new HttpClusterWatch(
+          uri,
+          userAndPassword = config.optionAs[SecretString]("js7.auth.agents."/*TODO*/ + ConfigUtil.joinPath(uri.string))
+            .map(password => UserAndPassword(controllerId.toUserId, password)),
+          httpsConfig = httpsConfig,
+          actorSystem)
+    }
 
   def tryEndlesslyToSendCommand(uri: Uri, command: ClusterCommand): Task[Unit] = {
     val name = command.getClass.simpleScalaName
@@ -139,7 +150,8 @@ private[cluster] final class ClusterCommon(
             .flatMap(_.applyEvents(event :: Nil, updatedClusterState, checkOnly = checkOnly))
             .flatMap {
               case Left(problem) =>
-                if (problem is ClusterWatchInactiveNodeProblem) {
+                if (problem.is(ClusterWatchInactiveNodeProblem)
+                  || problem.is(ExplicitClusterNodeLostAckRequiredProblem)) {
                   logger.warn(s"ClusterWatch did not agree to '${event.getClass.simpleScalaName}' event: $problem")
                   testEventPublisher.publish(ClusterWatchDisagreedToActivation)
                   Task.pure(Right(false))  // Ignore heartbeat loss
