@@ -64,6 +64,16 @@ final class CorrelIdTest extends OurTestSuite
     assert(a == CorrelId("__SYNC__"))
   }
 
+  "bindNow" in {
+    var a: CorrelId = null
+    CorrelId("__SYNC__").bindNow {
+      a = CorrelId.current
+      7  // A type other than Unit requires bindNow
+    }
+    assert(CorrelId.current.isEmpty)
+    assert(a == CorrelId("__SYNC__"))
+  }
+
   "bind[String]" in {
     import CanBindCorrelId.implicits.synchronousAsDefault
     val result = CorrelId("__SYNC__").bind {
