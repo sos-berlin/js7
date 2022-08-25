@@ -9,6 +9,7 @@ import js7.base.utils.Tests.{isIntelliJIdea, isSbt}
 import org.apache.logging.log4j.LogManager
 import org.scalatest.exceptions.TestPendingException
 import scala.collection.mutable
+import scala.concurrent.duration.Deadline
 import scala.util.{Failure, Success, Try}
 
 private final class LoggingTestAdder(suiteName: String) {
@@ -57,31 +58,34 @@ private object LoggingTestAdder {
     "js7.base.test.")
 
   final class TestContext(val prefix: String, testName: String) {
+    var since = Deadline.now
+
     def beforeTest(): Unit = {
       delayBeforeEnd()
       logger.info(eager(s"↘︎ $prefix$black$bold$testName$resetColor"))
       delayBeforeEnd()
+      since = Deadline.now
     }
 
     def afterTest[A](result: Try[A]): Unit = {
+      val duration = Deadline.now - since
       result match {
         case Success(_) =>
           val markup = green + bold
-          logger.info(eager(s"↙︎ $prefix$markup$testName$resetColor"))
+          logger.info(eager(s"↙︎ $prefix$markup$testName ${duration.pretty}$resetColor"))
           logger.info(eager(markup + bar))
           delayBeforeEnd()
 
         case Failure(_: TestPendingException) =>
           val markup = ""
-          logger.warn(eager(s"🚫 $prefix$markup$testName (PENDING)$resetColor\n"))
+          logger.warn(eager(s"🚫 $prefix$markup$testName ${duration.pretty} (PENDING)$resetColor\n"))
           logger.info(eager(markup + bar))
           delayBeforeEnd()
 
         case Failure(t) =>
           clipStackTrace(t)
-
           val markup = orange + bold
-          val s = s"💥 $prefix$markup$testName 💥$resetColor"
+          val s = s"💥 $prefix$markup$testName ${duration.pretty} 💥$resetColor"
           logger.error(s, t)
           logger.info(eager(markup + bar))
           if (isSbt) System.err.println(s)
