@@ -31,13 +31,14 @@ import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.utils.{Closer, ProgramTermination, SetOnce}
 import js7.base.web.Uri
+import js7.cluster.Cluster.RestartAfterJournalTruncationException
 import js7.cluster.{Cluster, ClusterContext, ClusterFollowUp, WorkingClusterNode}
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.crypt.generic.GenericSignatureVerifier
 import js7.common.guice.GuiceImplicits.RichInjector
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import js7.controller.RunningController._
+import js7.controller.RunningController.logger
 import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
 import js7.controller.command.ControllerCommandExecutor
 import js7.controller.configuration.ControllerConfiguration
@@ -101,11 +102,17 @@ extends AutoCloseable
 
   lazy val actorSystem = injector.instance[ActorSystem]
 
-  val terminated: Future[ProgramTermination] =
-    for (o <- terminated1) yield {
+  val terminated: Future[ProgramTermination] = {
+    val t = terminated1
+      .recover { case t: RestartAfterJournalTruncationException =>
+        logger.info(t.getMessage)
+        ProgramTermination(restart = true)
+      }
+    for (o <- t) yield {
       close()
       o
     }
+  }
 
   def terminate(suppressSnapshot: Boolean = false): Task[ProgramTermination] =
     Task.defer {
@@ -269,7 +276,12 @@ object RunningController
   : ProgramTermination =
     autoClosing(RunningController.start(conf).awaitInfinite) { runningController =>
       whileRunning(runningController)
-      runningController.terminated.awaitInfinite
+      try runningController.terminated.awaitInfinite
+      catch {
+        case t: RestartAfterJournalTruncationException =>
+          logger.info(t.getMessage)
+          ProgramTermination(restart = true)
+      }
     }
 
   def start(configuration: ControllerConfiguration): Future[RunningController] =
