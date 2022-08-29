@@ -30,6 +30,9 @@ import scala.util.{Success, Try}
 final class CommandActor(agentHandle: AgentHandle)(implicit s: Scheduler)
 extends Actor {
 
+  // TODO Don't use CorrelId as command ID in the register
+  //  because CorrelId may be used for several commands!
+  //  The register is used for inspection via web service only
   private val register = new CommandRegister[AgentCommand]
 
   def receive = {
