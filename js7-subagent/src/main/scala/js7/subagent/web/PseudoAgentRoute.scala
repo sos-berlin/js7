@@ -23,7 +23,7 @@ import js7.subagent.SubagentCommandExecutor
 import monix.eval.Task
 import monix.execution.Scheduler
 
-/** Looks like Agent Director web service to detect a client's request for an Director. */
+/** Looks like Agent Director web service to detect a client's request for a Director. */
 private trait PseudoAgentRoute extends SessionRoute with EntitySizeLimitProvider
 {
   protected def executeCommand(command: Numbered[SubagentCommand])
