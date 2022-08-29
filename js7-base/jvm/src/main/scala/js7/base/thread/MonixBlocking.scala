@@ -17,6 +17,9 @@ object MonixBlocking
   object syntax {
     implicit class RichTask[A](private val underlying: Task[A]) extends AnyVal
     {
+      def await(duration: Option[FiniteDuration])(implicit s: Scheduler): A =
+        duration.fold(awaitInfinite)(await)
+
       def await(duration: Duration)(implicit s: Scheduler): A =
         try
           underlying

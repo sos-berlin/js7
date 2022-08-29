@@ -33,7 +33,7 @@ object JavaMain
   def withShutdownHooks[A](config: Config, name: String, onJavaShutdown: () => Unit)(body: => A): A = {
     val hooks = addJavaShutdownHooks(config, name, onJavaShutdown)
     try body
-    finally hooks foreach (_.close())
+    finally hooks.foreach(_.close())
   }
 
   private def addJavaShutdownHooks[A](config: Config, name: String, onJavaShutdown: () => Unit): Seq[JavaShutdownHook] = {

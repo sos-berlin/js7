@@ -17,7 +17,7 @@ trait ReadableStatePersistence[S <: JournaledState[S]]
     Task(currentState)
 
   final def awaitCurrentState: Task[S] =
-    waitUntilStarted *> Task(currentState)
+    waitUntilStarted *> state
 
   def waitUntilStarted: Task[Unit]
 
