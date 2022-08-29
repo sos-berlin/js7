@@ -17,6 +17,8 @@ trait LoggingAsyncFreeSpec extends AsyncFreeSpec {
 
   private val testAdder = new LoggingTestAdder(getClass.simpleScalaName)
 
+  protected def suppressTestCorrelId = false
+
   protected implicit def implicitToFreeSpecStringWrapper(name: String)
     (implicit pos: source.Position)
   : LoggingFreeSpecStringWrapper[Future[Assertion]] =
@@ -29,7 +31,8 @@ trait LoggingAsyncFreeSpec extends AsyncFreeSpec {
             catchInFuture(testBody))
           .andThen { case tried =>
             ctx.afterTest(tried)
-          })
+          },
+      suppressCorrelId = suppressTestCorrelId)
 
   private def catchInFuture[A](startFuture: => Future[A]): Future[A] =
     Future.fromTry(Try(startFuture)).flatten

@@ -15,6 +15,8 @@ import scala.util.Random
 
 final class CorrelIdTest extends OurTestSuite
 {
+  override protected def suppressTestCorrelId = true
+
   "JSON" in {
     testJson(CorrelId(0xba9876543210L), json""" "uph2VDIQ"  """)
     testJson(CorrelId(CorrelId.bitMask), json""" "________"  """)
@@ -56,6 +58,7 @@ final class CorrelIdTest extends OurTestSuite
   }
 
   "bind[Unit]" in {
+    assert(CorrelId.current.isEmpty)
     var a: CorrelId = null
     CorrelId("__SYNC__").bind {
       a = CorrelId.current
@@ -65,6 +68,7 @@ final class CorrelIdTest extends OurTestSuite
   }
 
   "bindNow" in {
+    assert(CorrelId.current.isEmpty)
     var a: CorrelId = null
     CorrelId("__SYNC__").bindNow {
       a = CorrelId.current
@@ -76,6 +80,7 @@ final class CorrelIdTest extends OurTestSuite
 
   "bind[String]" in {
     import CanBindCorrelId.implicits.synchronousAsDefault
+    assert(CorrelId.current.isEmpty)
     val result = CorrelId("__SYNC__").bind {
       CorrelId.current.string
     }

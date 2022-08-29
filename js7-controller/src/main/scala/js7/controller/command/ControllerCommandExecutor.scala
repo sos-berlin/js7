@@ -22,7 +22,8 @@ extends CommandExecutor[ControllerCommand]
   private val register = new CommandRegister[ControllerCommand]
 
   def executeCommand(command: ControllerCommand, meta: CommandMeta): Task[Checked[command.Response]] =
-    executeCommand(command, meta, None)
+    CorrelId.bind/*identify command for logging*/(
+      executeCommand(command, meta, None))
 
   private def executeCommand(command: ControllerCommand, meta: CommandMeta, batchId: Option[CorrelId])
   : Task[Checked[command.Response]] =
