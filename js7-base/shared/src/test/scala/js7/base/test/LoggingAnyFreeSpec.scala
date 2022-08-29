@@ -15,6 +15,8 @@ trait LoggingAnyFreeSpec extends AnyFreeSpec {
 
   private val testAdder = new LoggingTestAdder(getClass.simpleScalaName)
 
+  protected def suppressTestCorrelId = false
+
   protected implicit def implicitToFreeSpecStringWrapper(name: String)
     (implicit pos: source.Position)
   : LoggingFreeSpecStringWrapper[Any] =
@@ -26,5 +28,6 @@ trait LoggingAnyFreeSpec extends AnyFreeSpec {
         val tried = Try(testBody)
         ctx.afterTest(tried)
         for (t <- tried.failed) throw t
-      })
+      },
+      suppressCorrelId = suppressTestCorrelId)
 }

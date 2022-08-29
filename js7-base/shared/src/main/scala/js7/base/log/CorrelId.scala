@@ -151,6 +151,10 @@ object CorrelId extends GenericString.Checked_[CorrelId]
   def bind[R](body: => R)(implicit R: CanBindCorrelId[R]): R =
     R.bindNewIfNoCurrent(body)
 
+  /** Generate a CorrelId for the synchronously executable body if `current` isEmpty. */
+  def bindNow[R](body: => R): R =
+    CanBindCorrelId.synchronous.bindNewIfNoCurrent(body)
+
   def bindNew[R](body: => R)(implicit R: CanBindCorrelId[R]): R =
     R.bind(CorrelId.generate())(body)
 

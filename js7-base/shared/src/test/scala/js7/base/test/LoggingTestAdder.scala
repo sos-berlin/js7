@@ -1,6 +1,6 @@
 package js7.base.test
 
-import js7.base.log.Log4j
+import js7.base.log.{CorrelId, Log4j}
 import js7.base.log.LoggingEscapeCodes.{black, bold, green, orange, resetColor}
 import js7.base.test.LoggingFreeSpecStringWrapper.{StringWrapper, TaggedAs}
 import js7.base.test.LoggingTestAdder.*
@@ -21,7 +21,8 @@ private final class LoggingTestAdder(suiteName: String) {
   def toStringWrapper[R](
     name: String,
     wrapper: StringWrapper[R, TaggedAs[R]],
-    executeTest: (LoggingTestAdder.TestContext, => R) => R)
+    executeTest: (LoggingTestAdder.TestContext, => R) => R,
+    suppressCorrelId: Boolean)
   : LoggingFreeSpecStringWrapper[R] =
     new LoggingFreeSpecStringWrapper(name, wrapper, this,
       (ctx, test) => {
@@ -29,7 +30,12 @@ private final class LoggingTestAdder(suiteName: String) {
           firstTestCalled = true
           logger.info(bar)
         }
-        executeTest(ctx, test)
+        if (suppressCorrelId)
+          executeTest(ctx, test)
+        else
+          CorrelId.bindNow {
+            executeTest(ctx, test)
+          }
       })
 
   def addTests(name: String, addTests: => Unit): Unit = {
