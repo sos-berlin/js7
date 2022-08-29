@@ -38,6 +38,7 @@ import js7.journal.state.FileStatePersistence
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.Promise
+import scala.util.control.NoStackTrace
 
 final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
   persistence: FileStatePersistence[S],
@@ -198,6 +199,7 @@ final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
 
   private def recoverFromTruncated(file: Path, failedAt: JournalPosition): Recovered[S] = {
     logger.info("Recovering again after unacknowledged events have been deleted properly from journal file")
+    throw new RestartAfterJournalTruncationException
 
     // May take a long time !!!
     val recovered = StateRecoverer.recover[S](journalMeta, config)
@@ -390,4 +392,9 @@ object Cluster
         f.truncate(position)
       }
     }
+
+  @deprecated("Provisional fix for v2.14", "v2.15")
+  final class RestartAfterJournalTruncationException
+    extends RuntimeException("Restart after journal truncation")
+      with NoStackTrace
 }
