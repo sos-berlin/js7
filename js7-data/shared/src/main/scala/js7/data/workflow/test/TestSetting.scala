@@ -7,6 +7,7 @@ import js7.data.value.StringValue
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 
 /**
@@ -31,5 +32,9 @@ private[js7] object TestSetting
     AExecute,
     BExecute)
 
-  val TestOrder = Order(OrderId("TEST"), SimpleTestWorkflow.id, Order.Ready, Map("KEY" -> StringValue("VALUE")))
+  val TestOrder = Order(
+    OrderId("TEST"),
+    SimpleTestWorkflow.id /: Position(0),
+    Order.Ready,
+    Map("KEY" -> StringValue("VALUE")))
 }

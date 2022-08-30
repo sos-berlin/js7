@@ -79,8 +79,9 @@ final class OrderAgentTest extends AnyFreeSpec
               AttachItem(SubagentItem(subagentId, agentPath, Uri("http://127.0.0.1:0"))))
             .await(99.s).orThrow
 
-          val order = Order(OrderId("TEST-ORDER"), SimpleTestWorkflow.id, Order.Ready, Map(
-            "x" -> StringValue("X")))
+          val order = Order(OrderId("TEST-ORDER"), SimpleTestWorkflow.id /: Position(0),
+            Order.Ready, Map(
+              "x" -> StringValue("X")))
 
           def attachOrder(signedWorkflow: Signed[SignableItem])
           : Checked[AgentCommand.Response.Accepted] =
@@ -144,7 +145,7 @@ final class OrderAgentTest extends AnyFreeSpec
               .await(99.s).isRight)
 
           val orders = for (i <- 1 to n) yield
-            Order(OrderId(s"TEST-ORDER-$i"), SimpleTestWorkflow.id, Order.Ready,
+            Order(OrderId(s"TEST-ORDER-$i"), SimpleTestWorkflow.id /: Position(0), Order.Ready,
               Map("x" -> StringValue("X")),
               attachedState = Some(Order.Attached(AgentPath("AGENT"))))
 
