@@ -470,8 +470,8 @@ object OrderEventSource {
           case Segment(_, branchId @ BranchId.IsFailureBoundary(_)) :: _ =>
             callToEvent(Some(branchId), failPosition)
 
-          case Segment(_, BranchId.Lock) :: prefix =>
-            val pos = prefix.reverse % 0
+          case Segment(nr, BranchId.Lock) :: prefix =>
+            val pos = prefix.reverse % nr
             for {
               lock <- checkedCast[LockInstruction](workflow.instruction(pos))
               events <- loop(prefix, pos)
