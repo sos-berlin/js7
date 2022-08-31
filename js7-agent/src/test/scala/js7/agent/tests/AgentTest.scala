@@ -28,6 +28,7 @@ import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.position.Position
 import js7.data.workflow.test.TestSetting.TestAgentPath
 import js7.data.workflow.{Workflow, WorkflowPath}
 import monix.execution.Scheduler.Implicits.traced
@@ -69,7 +70,7 @@ final class AgentTest extends OurTestSuite with AgentTester
 
             assert(agentApi.commandExecute(AttachSignedItem(itemSigner.sign(TestWorkflow))).await(99.s)
               == Right(AgentCommand.Response.Accepted))
-            val order = Order(OrderId("TEST"), TestWorkflow.id, Order.Ready)
+            val order = Order(OrderId("TEST"), TestWorkflow.id /: Position(0), Order.Ready)
             assert(agentApi.commandExecute(AttachOrder(order, TestAgentPath)).await(99.s)
               == Right(AgentCommand.Response.Accepted))
             val orderProcessed = agent.eventWatch.await[OrderProcessed]().head.value.event

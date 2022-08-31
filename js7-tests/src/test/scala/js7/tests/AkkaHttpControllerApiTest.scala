@@ -18,6 +18,7 @@ import js7.data.order.{FreshOrder, Order, OrderId}
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.AkkaHttpControllerApiTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
@@ -97,8 +98,8 @@ private object AkkaHttpControllerApiTest
   private val subagentItem = SubagentItem(SubagentId("SUBAGENT"), agentRef.path, Uri("http://0.0.0.0:0"))
   private val workflow = Workflow.of(WorkflowPath("WORKFLOW") ~ "INITIAL",
     Execute(WorkflowJob(agentRef.path, PathExecutable("MISSING"))))
-  private val TestOrder = Order(OrderId("ORDER-ID"), workflow.id, Order.Fresh)
-  private val SecondOrder = Order(OrderId("SECOND-ORDER"), workflow.id, Order.Fresh)
+  private val TestOrder = Order(OrderId("ORDER-ID"), workflow.id /: Position(0), Order.Fresh)
+  private val SecondOrder = Order(OrderId("SECOND-ORDER"), workflow.id /: Position(0), Order.Fresh)
 
   private val attachedOrders = Set(TestOrder, SecondOrder)
     .map(_.copy(attachedState = Some(Order.Attaching(agentRef.path))))

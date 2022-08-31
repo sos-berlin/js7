@@ -54,14 +54,14 @@ object Checked
   def check[A](predicate: Boolean, a: => A, problem: => Problem): Checked[A] =
     if (predicate) Right(a) else Left(problem)
 
-  def flatCatchNonFatal[A](f: => Checked[A]): Checked[A] =
+  def catchNonFatalFlatten[A](f: => Checked[A]): Checked[A] =
     catchNonFatal(f).flatten
 
   def catchNonFatal[A](f: => A): Checked[A] =
     try Right(f)
     catch {
       case NonFatal(t) =>
-        for (t <- t.ifStackTrace) logger.debug(s"Checked.catchNonFatal: ${t.toStringWithCauses}", t)
+        for (t <- t.ifStackTrace) logger.debug(s"💥 Checked.catchNonFatal: ${t.toStringWithCauses}", t)
         Left(Problem.fromThrowable(t))
     }
 

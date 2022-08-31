@@ -25,9 +25,10 @@ import js7.data.value.StringValue
 import js7.data.value.ValuePrinter.quoteString
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.workflow.instructions.{Finish, Fork, LockInstruction, Prompt}
+import js7.data.workflow.instructions.{Fail, Finish, Fork, LockInstruction, Prompt}
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowParser, WorkflowPath}
+import js7.tests.jobs.{EmptyJob, SleepJob}
 import js7.tests.LockTest.*
 import js7.tests.testenv.DirectoryProvider.{script, toLocalSubagentId, waitingForFileScript}
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
@@ -151,18 +152,26 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
   }
 
   "After releasing a lock of 2, two orders with count=1 each start simultaneously" in {
-    val workflow1 = defineWorkflow(workflow1Path, s"""
-      define workflow {
-        lock (lock="${limit2LockPath.string}", count=1) {
-          execute agent="AGENT", script="${script(50.ms)}", parallelism=99
-        }
-      }""")
-    val workflow2 = defineWorkflow(WorkflowPath("WORKFLOW-2"), s"""
-      define workflow {
-        lock (lock="${limit2LockPath.string}", count=2) {
-          execute agent="AGENT", script="${script(100.ms)}", parallelism=99
-        }
-      }""")
+    val workflow1 = updateItem(Workflow(
+      WorkflowPath("FINISH-IN-FORK"),
+      Seq(
+        LockInstruction(
+          limit2LockPath,
+          count = Some(1),
+          lockedWorkflow = Workflow.of(
+            SleepJob.execute(agentPath, parallelism = 99, arguments = Map(
+              "sleep" -> expr("0.050"))))))))
+
+    val workflow2 = updateItem(Workflow(
+      WorkflowPath("WORKFLOW-2"),
+      Seq(
+        LockInstruction(
+          limit2LockPath,
+          count = Some(2),
+          lockedWorkflow = Workflow.of(
+            SleepJob.execute(agentPath, parallelism = 99, arguments = Map(
+              "sleep" -> expr("0.100"))))))))
+
     val order2Id = OrderId("🟥-TWO")
     val aOrderId = OrderId("🟥-A")
     val bOrderId = OrderId("🟥-B")
@@ -218,15 +227,22 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
   }
 
   "Failed order" in {
-    val workflow = defineWorkflow(workflowNotation = """
-      define workflow {
-        lock (lock = "LOCK") {
-          lock (lock = "LOCK-2") {
-            fail;
-          }
-        }
-      }""")
-    assert(workflow.referencedItemPaths.toSet == Set(lockPath, lock2Path))
+    val workflow = updateItem(Workflow(
+      WorkflowPath("FINISH-IN-FORK"),
+      Seq(
+        EmptyJob.execute(agentPath),  // Complicate with a Lock at non-first position
+        LockInstruction(
+          lockPath,
+          count = None,
+          lockedWorkflow = Workflow.of(
+            EmptyJob.execute(agentPath),  // Complicate with a Lock at non-first position
+            LockInstruction(
+              lock2Path,
+              count = None,
+              lockedWorkflow = Workflow.of(
+                Fail())))))))
+
+    assert(workflow.referencedItemPaths.toSet == Set(lockPath, lock2Path, agentPath))
 
     val orderId = OrderId("🟦")
     controllerApi.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
@@ -238,12 +254,30 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
 
     assert(controller.eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id, deleteWhenTerminated = true),
+
+      OrderAttachable(agentPath),
+      OrderAttached(agentPath),
       OrderStarted,
+      OrderProcessingStarted(subagentId),
+      OrderProcessed(Outcome.succeeded),
+      OrderMoved(Position(1)),
+      OrderDetachable,
+      OrderDetached,
+
       OrderLockAcquired(lockPath, None),
+
+      OrderAttachable(agentPath),
+      OrderAttached(agentPath),
+      OrderProcessingStarted(subagentId),
+      OrderProcessed(Outcome.succeeded),
+      OrderMoved(Position(1) / "lock" % 1),
+      OrderDetachable,
+      OrderDetached,
+
       OrderLockAcquired(lock2Path, None),
       OrderLockReleased(lock2Path),
       OrderLockReleased(lockPath),
-      OrderFailed(Position(0), Some(Outcome.failed)),
+      OrderFailed(Position(1), Some(Outcome.failed)),
       OrderCancelled,
       OrderDeleted))
 
@@ -382,11 +416,11 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
     val workflow = updateItem(Workflow(
       WorkflowPath("FINISH"),
       Seq(
+        EmptyJob.execute(agentPath),  // Complicate with a Lock at non-first position
         LockInstruction(
           lockPath,
           count = None,
           lockedWorkflow = Workflow.of(Finish())))))
-    assert(workflow.referencedItemPaths.toSet == Set(lockPath))
 
     val orderId = OrderId("🟫")
     controllerApi.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
@@ -395,7 +429,16 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
 
     assert(controller.eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id, deleteWhenTerminated = true),
+
+      OrderAttachable(agentPath),
+      OrderAttached(agentPath),
       OrderStarted,
+      OrderProcessingStarted(subagentId),
+      OrderProcessed(Outcome.succeeded),
+      OrderMoved(Position(1)),
+      OrderDetachable,
+      OrderDetached,
+
       OrderLockAcquired(lockPath, None),
       OrderLockReleased(lockPath),
       OrderFinished,

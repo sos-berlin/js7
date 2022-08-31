@@ -26,7 +26,7 @@ final class CalendarExecutor private(
   private val offsetSeconds = calendar.dateOffset.toSeconds
 
   def orderIdToTimeInterval(orderId: OrderId): Checked[TimeInterval] =
-    Checked.flatCatchNonFatal {
+    Checked.catchNonFatalFlatten {
       for (localDateTime <- orderIdToLocalDate(orderId)) yield {
         val zoned = localDateTime.plusSeconds(offsetSeconds).atZone(zone)
         val begin = zoned.toTimestamp
