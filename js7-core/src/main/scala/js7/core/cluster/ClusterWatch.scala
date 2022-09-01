@@ -57,7 +57,7 @@ extends ClusterWatchApi
                 ClusterWatchEventMismatchProblem(events, current.clusterState, reportedClusterState = reportedClusterState))
 
             case Right(clusterState) =>
-              if (isLastHeartbeatStillValid(current) && clusterState != reportedClusterState)
+              if (current.isLastHeartbeatStillValid && clusterState != reportedClusterState)
                 logger.error(s"Node '$from': " +
                   ClusterWatchEventMismatchProblem(events, clusterState, reportedClusterState = reportedClusterState))
           }
@@ -73,7 +73,7 @@ extends ClusterWatchApi
       else
         current match {
           case Some(state @ State(clusterState: HasNodes, _))
-            if isLastHeartbeatStillValid(state) && reportedClusterState != clusterState =>
+            if state.isLastHeartbeatStillValid && reportedClusterState != clusterState =>
             // May occur also when active node terminates after
             // emitting a ClusterEvent and before applyEvents to ClusterWatch,
             // and the active node is restarted within the heartbeatValidDuration !!!
@@ -109,20 +109,13 @@ extends ClusterWatchApi
   private def mustBeStillActive(from: NodeId, state: Option[State], logLine: => String): Checked[Completed] =
     state match {
       case Some(state @ State(clusterState: HasNodes, lastHeartbeat))
-      if isLastHeartbeatStillValid(state) && !clusterState.isNonEmptyActive(from) =>
+      if state.isLastHeartbeatStillValid && !clusterState.isNonEmptyActive(from) =>
         val problem = ClusterWatchInactiveNodeProblem(from, clusterState, lastHeartbeat.elapsed, logLine)
         val msg = s"Node '$from': $problem"
         logger.error(msg)
         Left(problem)
       case _ =>
         Right(Completed)
-    }
-
-  private def isLastHeartbeatStillValid(state: State) =
-    state match {
-      case State(clusterState: HasNodes, lastHeartbeat) =>
-        (lastHeartbeat + clusterState.timing.heartbeatValidDuration).hasTimeLeft
-      case _ => false
     }
 
   private def now = MonixDeadline.now(scheduler)
@@ -135,6 +128,15 @@ object ClusterWatch
   private val logger = Logger(getClass)
 
   private case class State(clusterState: ClusterState, lastHeartbeat: MonixDeadline)
+  {
+    def isLastHeartbeatStillValid =
+      this match {
+        case State(clusterState: HasNodes, lastHeartbeat) =>
+          (lastHeartbeat + clusterState.timing.heartbeatValidDuration).hasTimeLeft
+
+        case State(ClusterState.Empty, _) => false // Should not happen
+      }
+  }
 
   private lazy val isClusterWatchProblemCode = Set[ProblemCode](
     ClusterWatchHeartbeatMismatchProblem.code,
