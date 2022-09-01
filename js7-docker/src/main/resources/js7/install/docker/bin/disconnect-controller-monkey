@@ -1,0 +1,46 @@
+#!/bin/bash
+set -euo pipefail
+
+children=()
+
+onExit() {
+  echo kill "${children[@]}"
+  kill "${children[@]}"
+  wait
+  docker network connect js7_default js7-controller &>/dev/null || true
+  docker network connect js7_default js7-backup-controller &>/dev/null || true
+  exit
+}
+trap onExit EXIT
+
+toSeconds() {
+  local exp="$1"
+  local seconds=$((2 ** ((RANDOM + (32767 / $exp) - 2) / (32767 / $exp))))
+  echo $seconds
+}
+
+run() {
+  local container="$1"
+  local seconds
+
+  while true; do :
+    seconds=$(toSeconds 5)
+    echo "disconnect $container for ${seconds}s"
+    docker network disconnect js7_default $container && sleep $seconds || true
+
+    seconds=$(toSeconds 4)
+    echo "connect $container for ${seconds}s"
+    docker network connect js7_default $container && sleep $seconds || true
+  done
+}
+
+start() {
+  local container="$1"
+  run $container &
+  local pid=$!
+  children+=("$pid")
+}
+
+start js7-controller
+start js7-backup-controller
+wait
