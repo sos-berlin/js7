@@ -277,14 +277,24 @@ final class Cluster[S <: SnapshotableState[S]: diffx.Diff: TypeTag](
             else
               // Could not inhibit, so this node is already active.
               // awaitCurrentState will return (maybe almost?) immediately.
-              persistence.awaitCurrentState.map(_.clusterState).map {
-                case failedOver: FailedOver =>
-                  logger.debug(s"inhibitActivation(${duration.pretty}) => $failedOver")
-                  Right(ClusterInhibitActivation.Response(Some(failedOver)))
-                case clusterState =>
-                  Left(Problem.pure("ClusterInhibitActivation command failed " +
-                    s"because node is already active but not failed-over: $clusterState"))
-              })
+              persistence.awaitCurrentState
+                .map(_.clusterState)
+                .map(Some(_))
+                .timeoutTo(duration/*???*/ - 500.ms, Task.none)
+                .flatMap {
+                  case None =>
+                    // No persistence
+                    Task.left(Problem.pure(
+                      "ClusterInhibitActivation command failed — please try again"))
+
+                  case Some(failedOver: FailedOver) =>
+                    logger.debug(s"inhibitActivation(${duration.pretty}) => $failedOver")
+                    Task.right(ClusterInhibitActivation.Response(Some(failedOver)))
+
+                  case Some(clusterState) =>
+                    Task.left(Problem.pure("ClusterInhibitActivation command failed " +
+                      s"because node is already active but not failed-over: $clusterState"))
+                })
 
       case _: ClusterCommand.ClusterPrepareCoupling |
            _: ClusterCommand.ClusterCouple |
