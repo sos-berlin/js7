@@ -4,7 +4,8 @@ import akka.pattern.AskTimeoutException
 import cats.effect.ExitCase
 import java.util.ConcurrentModificationException
 import js7.base.generic.Completed
-import js7.base.log.Logger
+import js7.base.log.Logger.syntax._
+import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax._
@@ -47,16 +48,15 @@ private final class ClusterWatchSynchronizer(
           }
 
   def startHeartbeating(clusterState: HasNodes, dontWait: Boolean = false): Task[Completed] =
-    Task.defer {
+    logger.traceTask(Task.defer {
       val h = new Heartbeat(clusterState)
       heartbeat.getAndSet(Some(h))
         .fold(Task.completed)(_.stop) /*just in case*/
-        .flatMap(_ => h.doAHeartbeat.unless(dontWait) >> h.startDontWait)
-    }
+        .flatMap(_ => h.doAHeartbeat.unless(dontWait) *> h.startDontWait)
+    })
 
   def stopHeartbeating(implicit enclosing: sourcecode.Enclosing): Task[Completed] =
     Task.defer {
-      logger.trace("stopHearbeating called by " + enclosing.value)
       heartbeat.getAndSet(None)
         .fold(Task.completed)(_.stop)
     }
@@ -70,41 +70,43 @@ private final class ClusterWatchSynchronizer(
     def startDontWait =
       Task.defer {
         logger.debug(s"Heartbeat ($nr) continues with $clusterState")
-        sendHeartbeats
-          .guaranteeCase {
-            case ExitCase.Error(t) =>
-              logger.warn(s"Sending heartbeat to ClusterWatch failed: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
-              haltJava(s"HALT after sending heartbeat to ClusterWatch failed: ${t.toStringWithCauses}",
-                restart = true)
-            case ExitCase.Canceled => Task {
-              logger.debug("Canceled")
-            }
-            case ExitCase.Completed =>
-              stopping.flatMap(_.tryRead).map { maybe =>
-                logger.debug(s"Heartbeat ($nr) stopped")
-                if (maybe.isEmpty) logger.error("Heartbeat stopped by itself")
+        CorrelId
+          .bindNew(sendHeartbeats
+            .guaranteeCase {
+              case ExitCase.Error(t) =>
+                logger.warn(s"Sending heartbeat to ClusterWatch failed: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+                haltJava(
+                  s"💥 HALT after sending heartbeat to ClusterWatch failed: ${t.toStringWithCauses}",
+                  restart = true)
+              case ExitCase.Canceled => Task {
+                logger.debug("Canceled")
               }
-          }
+              case ExitCase.Completed =>
+                stopping.flatMap(_.tryRead).map { maybe =>
+                  logger.debug(s"Heartbeat ($nr) stopped")
+                  if (maybe.isEmpty) logger.error("Heartbeat stopped by itself")
+                }
+            })
           .start
           .tapEval(fiber =>
             heartbeat.flatMap(_.tryPut(fiber))
           .flatMap { ok =>
             if (ok) Task.unit
             else fiber.cancel >> Task.raiseError(new ConcurrentModificationException(
-              "Tried to stat Cluster heartbeating twice"))
+              "Tried to start Cluster heartbeating twice"))
           })
           .as(Completed)
       }
 
-    def stop: Task[Completed] =
-      Task.defer {
-        logger.trace(s"Heartbeat ($nr) stop")
+    def stop(implicit enclosing: sourcecode.Enclosing): Task[Completed] =
+      logger.traceTask(s"Heartbeat ($nr) stop, called by ${enclosing.value}")(
+        Task.defer {
         stopping
           .flatMap(_.tryPut(()))
           .flatMap(_ => heartbeat)
           .flatMap(_.tryTake)
           .flatMap(_.fold(Task.completed)(_.join))
-      }
+      })
 
     private def sendHeartbeats: Task[Completed] =
       Observable.intervalAtFixedRate(timing.heartbeat, timing.heartbeat)
@@ -126,7 +128,8 @@ private final class ClusterWatchSynchronizer(
         case None =>
           logger.trace(s"Heartbeat ($nr)")
           doACheckedHeartbeat(clusterState) map {
-            case Left(problem) => haltJava(s"HALT because ClusterWatch reported: $problem", restart = true)
+            case Left(problem) =>
+              haltJava(s"🔥 HALT because ClusterWatch reported: $problem", restart = true)
             case Right(Completed) => Completed
           }
       }

@@ -2,6 +2,7 @@ package js7.cluster
 
 import cats.effect.ExitCase
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax._
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
@@ -26,52 +27,65 @@ private[cluster] final class ActivationInhibitor
     startAs(Passive)
 
   private def startAs(state: State): Task[Unit] =
-    stateMvarTask.flatMap(mvar =>
-      mvar.tryTake.flatMap {
-        case Some(Initial) =>
-          mvar.put(state)
-        case s =>
-          s.fold(Task.unit)(mvar.put) >>
-            Task.raiseError(new IllegalStateException(s"ActivationInhibitor markAs($state): Already '$s''"))
-      })
+    Task.defer {
+      logger.debug(s"startAs $state")
+      stateMvarTask.flatMap(mvar =>
+        mvar.tryTake.flatMap {
+          case Some(Initial) =>
+            mvar.put(state)
+          case s =>
+            s.fold(Task.unit)(mvar.put) >>
+              Task.raiseError(new IllegalStateException(
+                s"ActivationInhibitor startAs($state): Already '$s''"))
+        })
+    }
 
   def tryToActivate[A](ifInhibited: Task[A], activate: Task[A]): Task[A] =
-    stateMvarTask.flatMap(mvar =>
-      mvar.take.flatMap {
-        case Initial | Passive | Active =>
-          activate
-            .guaranteeCase {
-              case ExitCase.Completed => mvar.put(Active)
-              case _ => mvar.put(Passive)
-            }
+    logger.debugTask("tryToActivate")(
+      Task.defer {
+        stateMvarTask.flatMap(mvar =>
+          mvar.take.flatMap {
+            case Initial | Passive | Active =>
+              activate
+                .guaranteeCase {
+                  case ExitCase.Completed =>
+                    logger.debug("tryToActivate: Active")
+                    mvar.put(Active)
+                  case _ =>
+                    logger.debug("tryToActivate: Passive")
+                    mvar.put(Passive)
+                }
 
-        case o: Inhibited =>
-          mvar.put(o) >>
-            Task { logger.info("Activation inhibited") } >>
-            ifInhibited
+            case o: Inhibited =>
+              logger.debug(s"tryToActivate: $o")
+              mvar.put(o) >>
+                Task { logger.info("Activation inhibited") } >>
+                ifInhibited
+          })
       })
 
   /** Tries to inhibit activation for `duration`.
     * @return true if activation is or has been inhibited, false if already active
     */
   def inhibitActivation(duration: FiniteDuration): Task[Checked[Boolean]] =
-    stateMvarTask.flatMap(mvar =>
-      mvar.take
-        .flatMap {
-          case state @ (Initial | Passive | _: Inhibited) =>
-            val depth = state match {
-              case Inhibited(n) => n + 1
-              case _ => 1
-            }
-            mvar
-              .put(Inhibited(depth))
-              .flatMap(_ => setInhibitionTimer(duration))
-              .map(_ => Right(true))
+    logger.debugTaskWithResult[Checked[Boolean]]("inhibitActivation")(
+      stateMvarTask.flatMap(mvar =>
+        mvar.take
+          .flatMap {
+            case state @ (Initial | Passive | _: Inhibited) =>
+              val depth = state match {
+                case Inhibited(n) => n + 1
+                case _ => 1
+              }
+              mvar
+                .put(Inhibited(depth))
+                .flatMap(_ => setInhibitionTimer(duration))
+                .map(_ => Right(true))
 
-          case Active =>
-            mvar.put(Active)
-              .map(_ => Right(false))
-        })
+            case Active =>
+              mvar.put(Active)
+                .map(_ => Right(false))
+          }))
 
   private def setInhibitionTimer(duration: FiniteDuration): Task[Unit] =
     Task.deferAction { implicit scheduler =>

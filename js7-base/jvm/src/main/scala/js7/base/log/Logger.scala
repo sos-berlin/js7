@@ -66,16 +66,24 @@ object Logger
         debugTask(src.value)(task)
 
       def debugTask[A](function: String, args: => Any = "")(task: Task[A]): Task[A] =
-        logTask(logger, function, args)(task)
+        logTask[A](logger, function, args)(task)
+
+      def debugTaskWithResult[A](
+        function: String,
+        args: => Any = "",
+        result: A => Any = identity[A](_))
+        (task: Task[A]): Task[A] =
+        logTask[A](logger, function, args, result)(task)
 
       def traceTask[A](task: Task[A])(implicit src: sourcecode.Name): Task[A] =
         traceTask(src.value)(task)
 
       def traceTask[A](function: String, args: => Any = "")(task: Task[A]): Task[A] =
-        logTask(logger, function, args, trace = true)(task)
+        logTask[A](logger, function, args, trace = true)(task)
     }
 
     private def logTask[A](logger: ScalaLogger, function: String, args: => Any = "",
+      resultToLoggable: A => Any = null,
       trace: Boolean = false)(task: Task[A])
     : Task[A] =
       Task.defer {
@@ -120,8 +128,13 @@ object Logger
             .tapEval {
               case left @ Left(_: Throwable | _: Problem) =>
                 logReturn("❓", left)
-              case _ =>
-                logReturn("", "Completed")
+              case result =>
+                logReturn(
+                  "",
+                  if (resultToLoggable eq null)
+                    "Completed"
+                  else
+                    resultToLoggable(result).toString)
             }
             .guaranteeCase {
               case Completed => Task.unit

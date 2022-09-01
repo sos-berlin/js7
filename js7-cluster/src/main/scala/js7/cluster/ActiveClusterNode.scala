@@ -377,7 +377,10 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff: TypeTag](
                     ).map(_.flatMap { allowed =>
                       if (!allowed) {
                         // Should not happen
-                        haltJava(s"ClusterWatch has unexpectedly forbidden activation after $passiveLost event", restart = true)
+                        haltJava(
+                          "🔥 ClusterWatch has unexpectedly forbidden activation " +
+                            s"after $passiveLost event",
+                          restart = true)
                       }
                       Left(missingHeartbeatProblem)
                     })
