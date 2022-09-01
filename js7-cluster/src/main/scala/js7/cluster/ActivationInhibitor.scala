@@ -111,7 +111,8 @@ private[cluster] object ActivationInhibitor
       ctx.clusterNodeApi(setting.passiveUri, "inhibitActivationOfPassiveNode")
         .evalTap(_.loginUntilReachable())
         .use(_
-          .executeClusterCommand(ClusterInhibitActivation(2 * setting.timing.heartbeat/*???*/))
+          .executeClusterCommand(
+            ClusterInhibitActivation(2 * setting.timing.heartbeatTimeout))
           .map(_.failedOver))
         .onErrorRestartLoop(()) { (throwable, _, retry) =>
           // TODO Code mit loginUntilReachable usw. zusammenfassen.
