@@ -27,17 +27,15 @@ private final class ClusterWatchSynchronizer(
 {
   private val heartbeat = AtomicAny[Option[Heartbeat]](None)
 
-  def applyEvents(events: Seq[ClusterEvent], clusterState: ClusterState, checkOnly: Boolean = false)
-  : Task[Checked[Completed]] =
+  def applyEvents(events: Seq[ClusterEvent], clusterState: ClusterState): Task[Checked[Completed]] =
     if (events.isEmpty)
       Task.pure(Right(Completed))
     else
-      stopHeartbeating.unless(checkOnly) >>
-        clusterWatch.applyEvents(ClusterWatchEvents(from = ownId, events, clusterState, checkOnly = checkOnly))
+      stopHeartbeating >>
+        clusterWatch.applyEvents(ClusterWatchEvents(from = ownId, events, clusterState))
           .flatMapT { completed =>
             clusterState match {
               case clusterState: HasNodes if clusterState.activeId == ownId
-                && !checkOnly
                 /*TODO && !events.forall(_.isInstanceOf[ClusterSettingUpdated])*/ =>
                 startHeartbeating(clusterState)
                   .map(Right(_))

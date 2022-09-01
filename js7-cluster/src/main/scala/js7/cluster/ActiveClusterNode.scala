@@ -361,7 +361,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff: TypeTag](
                   case clusterState: Coupled =>
                     val passiveLost = ClusterPassiveLost(id)
                     stopHeartbeatingTemporarily(
-                      common.ifClusterWatchAllowsActivation(clusterState, passiveLost, checkOnly = true,
+                      common.ifClusterWatchAllowsActivation(clusterState, passiveLost)(
                         Task.deferFuture {
                           // Release a concurrent persist operation, which waits for the missing acknowledgement and
                           // blocks the persist lock. Avoid a deadlock.

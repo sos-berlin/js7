@@ -356,7 +356,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                       val failedOverStamped = toStampedFailedOver(clusterState,
                         JournalPosition(recoveredJournalFile.fileEventId, lastProperEventPosition))
                       val failedOver = failedOverStamped.value.event
-                      common.ifClusterWatchAllowsActivation(clusterState, failedOver, checkOnly = false,
+                      common.ifClusterWatchAllowsActivation(clusterState, failedOver)(
                         Task {
                           logger.warn("❗️Failover")
                           val fileSize = {
@@ -394,7 +394,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                       val failedOverStamped = toStampedFailedOver(clusterState,
                         JournalPosition(continuation.fileEventId, lastProperEventPosition))
                       val failedOver = failedOverStamped.value.event
-                      common.ifClusterWatchAllowsActivation(clusterState, failedOver, checkOnly = false,
+                      common.ifClusterWatchAllowsActivation(clusterState, failedOver)(
                         Task {
                           logger.warn("❗️Failover")
                           builder.rollbackToEventSection()

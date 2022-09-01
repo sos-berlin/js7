@@ -13,6 +13,7 @@ final case class ClusterWatchEvents(
   from: NodeId,
   events: Seq[ClusterEvent],
   clusterState: ClusterState,
+  @deprecated("Always false", "v2.4.1")
   checkOnly: Boolean = false)
 extends ClusterWatchMessage
 

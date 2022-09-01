@@ -52,11 +52,10 @@ extends ClusterWatchApi
         } else {
           current.clusterState.applyEvents(events.map(NoKey <-: _)) match {
             case Left(problem) =>
-              if (!checkOnly) {
-                logger.error(s"Node '$from': $problem")
-                logger.error(s"Node '$from': " +
-                  ClusterWatchEventMismatchProblem(events, current.clusterState, reportedClusterState = reportedClusterState))
-              }
+              logger.error(s"Node '$from': $problem")
+              logger.error(s"Node '$from': " +
+                ClusterWatchEventMismatchProblem(events, current.clusterState, reportedClusterState = reportedClusterState))
+
             case Right(clusterState) =>
               if (isLastHeartbeatStillValid(current) && clusterState != reportedClusterState)
                 logger.error(s"Node '$from': " +
@@ -102,7 +101,7 @@ extends ClusterWatchApi
               if (!current.exists(_.clusterState == updated)) {
                 logger.info(s"Node '$from' changed ClusterState to $updated")
               }
-              mvar.put(if (checkOnly) current else Some(State(updated, now)))
+              mvar.put(Some(State(updated, now)))
                 .map(_ => Right(updated))
           }
       })

@@ -129,15 +129,15 @@ private[cluster] final class ClusterCommon(
   def inhibitActivationOfPeer(clusterState: HasNodes): Task[Option[FailedOver]] =
     ActivationInhibitor.inhibitActivationOfPassiveNode(clusterState.setting, clusterContext)
 
-  def ifClusterWatchAllowsActivation[A](clusterState: ClusterState.HasNodes, event: ClusterEvent, checkOnly: Boolean,
-    body: Task[Checked[Boolean]])
+  def ifClusterWatchAllowsActivation[A](clusterState: ClusterState.HasNodes, event: ClusterEvent)
+    (body: Task[Checked[Boolean]])
   : Task[Checked[Boolean]] =
     activationInhibitor.tryToActivate(
       ifInhibited = Task.pure(Right(false)),
       activate = Task.pure(clusterState.applyEvent(event))
         .flatMapT(updatedClusterState =>
           clusterWatchSynchronizer(clusterState)
-            .flatMap(_.applyEvents(event :: Nil, updatedClusterState, checkOnly = checkOnly))
+            .flatMap(_.applyEvents(event :: Nil, updatedClusterState))
             .flatMap {
               case Left(problem) =>
                 if (problem is ClusterWatchInactiveNodeProblem) {
