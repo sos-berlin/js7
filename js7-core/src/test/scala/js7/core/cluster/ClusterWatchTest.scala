@@ -119,7 +119,7 @@ final class ClusterWatchTest extends AnyFreeSpec
 
     "SwitchedOver before heartbeat" in {
       scheduler.tick(1.s)
-      assert(applyEvents(aId, ClusterSwitchedOver(aId) :: Nil) == Right(Completed))
+      assert(applyEvents(bId, ClusterSwitchedOver(aId) :: Nil) == Right(Completed))
       assert(watch.isActive(aId).await(99.s).orThrow)
     }
 

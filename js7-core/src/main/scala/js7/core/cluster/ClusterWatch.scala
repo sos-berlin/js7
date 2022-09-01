@@ -6,9 +6,10 @@ import js7.base.monixutils.MonixDeadline
 import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem, ProblemCode}
 import js7.base.time.ScalaTime._
+import js7.base.utils.ScalaUtils.syntax.RichAny
 import js7.core.cluster.ClusterWatch._
 import js7.data.cluster.ClusterEvent.ClusterSwitchedOver
-import js7.data.cluster.ClusterState.HasNodes
+import js7.data.cluster.ClusterState.{Coupled, HasNodes}
 import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
@@ -38,14 +39,18 @@ extends ClusterWatchApi
       .map(_.map(_.clusterState) toChecked Problem(s"ClusterWatch not yet started for Controller '$controllerId'"))
 
   def applyEvents(clusterWatchEvents: ClusterWatchEvents): Task[Checked[Completed]] = {
-    import clusterWatchEvents.{checkOnly, events, from, clusterState => reportedClusterState}
+    import clusterWatchEvents.{events, from, clusterState => reportedClusterState}
     val fromMustBeActive = clusterWatchEvents.events match {
-      case Seq(_: ClusterSwitchedOver) => false
+      case Seq(_: ClusterSwitchedOver) => false // Both nodes issue the (same) event
       case _ => true
     }
-    update(from, fromMustBeActive = fromMustBeActive, checkOnly = checkOnly, s"event ${events.mkString(", ")} --> $reportedClusterState") {
-      case None =>  // Not yet initialized: we accept anything
+    update(from, fromMustBeActive = fromMustBeActive,
+      s"event ${events.mkString(", ")} --> $reportedClusterState") {
+      case None =>
+        // Not yet initialized: we accept anything
+        // FIXME But we cannot safely rely on the first visitor!
         Right(reportedClusterState)
+
       case Some(current) =>
         if (current.clusterState == reportedClusterState) {
           logger.info(s"Node '$from': Ignore probably duplicate events for already reached clusterState=${current.clusterState}")
@@ -57,17 +62,18 @@ extends ClusterWatchApi
                 ClusterWatchEventMismatchProblem(events, current.clusterState, reportedClusterState = reportedClusterState))
 
             case Right(clusterState) =>
+              for (event <- events) logger.info(s"Node '$from': $event")
               if (current.isLastHeartbeatStillValid && clusterState != reportedClusterState)
                 logger.error(s"Node '$from': " +
                   ClusterWatchEventMismatchProblem(events, clusterState, reportedClusterState = reportedClusterState))
           }
         }
         Right(reportedClusterState)
-    } .map(_.toCompleted)
+    }.map(_.toCompleted)
   }
 
   def heartbeat(from: NodeId, reportedClusterState: ClusterState): Task[Checked[Completed]] =
-    update(from, fromMustBeActive = true, checkOnly = false, s"heartbeat $reportedClusterState")(current =>
+    update(from, fromMustBeActive = true, s"heartbeat $reportedClusterState")(current =>
       if (!reportedClusterState.isNonEmptyActive(from))
         Left(InvalidClusterWatchHeartbeatProblem(from, reportedClusterState))
       else
@@ -80,20 +86,36 @@ extends ClusterWatchApi
             val problem = ClusterWatchHeartbeatMismatchProblem(clusterState, reportedClusterState = reportedClusterState)
             logger.error(s"Node '$from': $problem")
             Left(problem)
+
           case _ =>
             Right(reportedClusterState)
         }
     ).map(_.toCompleted)
 
-  private def update(from: NodeId, fromMustBeActive: Boolean, checkOnly: Boolean, operationString: => String)
+  private def update(from: NodeId, fromMustBeActive: Boolean, operationString: => String)
     (body: Option[State] => Checked[ClusterState])
   : Task[Checked[ClusterState]] =
     stateMVar.flatMap(mvar =>
       mvar.take.flatMap { current =>
         logger.trace(s"Node '$from': $operationString${current.fold("")(o => ", after " + o.lastHeartbeat.elapsed.pretty)}")
-        (if (fromMustBeActive) mustBeStillActive(from, current, operationString)
-         else Right(Completed)
-        ) .flatMap(_ => body(current)) match {
+        current
+          .match_ {
+            case None =>
+              // Initial state, we known nothing. So we accept the first visitor (?)
+              // TODO But we cannot know whether the first visitor is right
+              Checked.unit
+
+            case Some(state) =>
+              if (fromMustBeActive && !couldBeActive(from, state)) {
+                val problem = ClusterWatchInactiveNodeProblem(from,
+                  state.clusterState, state.lastHeartbeat.elapsed, operationString)
+                val msg = s"Node '$from': $problem"
+                logger.error(msg)
+                Left(problem)
+              } else
+                Checked.unit
+          }
+          .flatMap(_ => body(current)) match {
             case Left(problem) =>
               mvar.put(current)
                 .map(_ => Left(problem))
@@ -106,16 +128,17 @@ extends ClusterWatchApi
           }
       })
 
-  private def mustBeStillActive(from: NodeId, state: Option[State], logLine: => String): Checked[Completed] =
+  private def couldBeActive(nodeId: NodeId, state: State): Boolean =
     state match {
-      case Some(state @ State(clusterState: HasNodes, lastHeartbeat))
-      if state.isLastHeartbeatStillValid && !clusterState.isNonEmptyActive(from) =>
-        val problem = ClusterWatchInactiveNodeProblem(from, clusterState, lastHeartbeat.elapsed, logLine)
-        val msg = s"Node '$from': $problem"
-        logger.error(msg)
-        Left(problem)
+      case State(clusterState: HasNodes, _)
+        if clusterState.isNonEmptyActive(nodeId) =>
+        true // Sure
+
+      case state @ State(_: Coupled, _) =>
+        !state.isLastHeartbeatStillValid // Not sure, because no heartbeat
+
       case _ =>
-        Right(Completed)
+        false // Sure
     }
 
   private def now = MonixDeadline.now(scheduler)
