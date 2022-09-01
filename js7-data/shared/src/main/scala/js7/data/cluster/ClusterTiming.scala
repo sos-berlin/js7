@@ -15,8 +15,6 @@ final case class ClusterTiming(heartbeat: FiniteDuration, heartbeatTimeout: Fini
 
   def longHeartbeatTimeout = heartbeat + heartbeatTimeout
 
-  def heartbeatValidDuration = heartbeat + heartbeatTimeout / 2
-
   override def toString = s"ClusterTiming(${heartbeat.pretty}, ${heartbeatTimeout.pretty})"
 }
 

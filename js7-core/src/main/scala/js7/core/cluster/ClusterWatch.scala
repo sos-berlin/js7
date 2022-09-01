@@ -132,7 +132,7 @@ object ClusterWatch
     def isLastHeartbeatStillValid =
       this match {
         case State(clusterState: HasNodes, lastHeartbeat) =>
-          (lastHeartbeat + clusterState.timing.heartbeatValidDuration).hasTimeLeft
+          (lastHeartbeat + clusterState.timing.heartbeat).hasTimeLeft
 
         case State(ClusterState.Empty, _) => false // Should not happen
       }
