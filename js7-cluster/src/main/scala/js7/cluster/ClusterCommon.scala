@@ -22,9 +22,11 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax._
 import js7.base.web.Uri
 import js7.cluster.ClusterCommon._
+import js7.common.system.startup.Halt.haltJava
 import js7.core.cluster.ClusterWatch.ClusterWatchInactiveNodeProblem
 import js7.core.cluster.HttpClusterWatch
 import js7.core.license.LicenseChecker
+import js7.data.cluster.ClusterEvent.ClusterPassiveLost
 import js7.data.cluster.ClusterState.{FailedOver, HasNodes, SwitchedOver}
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterState}
 import js7.data.controller.ControllerId
@@ -141,6 +143,13 @@ private[cluster] final class ClusterCommon(
                 if (problem is ClusterWatchInactiveNodeProblem) {
                   logger.warn(s"ClusterWatch did not agree to '${event.getClass.simpleScalaName}' event: $problem")
                   testEventPublisher.publish(ClusterWatchDisagreedToActivation)
+                  if (event.isInstanceOf[ClusterPassiveLost]) {
+                    haltJava(
+                      "While this node has lost the passive node" +
+                        " and is waiting for ClusterWatch's agreement, " +
+                        "the passive node failed over",
+                      restart = true)
+                  }
                   Task.pure(Right(false))  // Ignore heartbeat loss
                 } else
                   Task.pure(Left(problem))
