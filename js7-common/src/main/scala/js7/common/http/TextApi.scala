@@ -84,6 +84,8 @@ trait TextApi
        t match {
          case _: akka.stream.StreamTcpException =>
            true
+         case t: RuntimeException =>
+           t.toString contains "java.net.ConnectException: Connection refused"
          case _ if t.getMessage == "Connection was shutdown." =>  // akka.http.impl.engine.client.pool.SlotState$BusyState$$anon$1
            true
          case _ =>

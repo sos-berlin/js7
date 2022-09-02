@@ -56,6 +56,7 @@ import scala.concurrent.duration._
 import scala.reflect.ClassTag
 import scala.util.Success
 import scala.util.control.NoStackTrace
+import scala.util.matching.Regex
 
 /**
   * @author Joacim Zschimmer
@@ -292,6 +293,9 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
 
             case ExitCase.Completed => Task.unit
           }
+          .onErrorRecoverWith {
+            case t: akka.stream.StreamTcpException => Task.raiseError(makeAkkaExceptionLegible(t))
+          }
           .map(decompressResponse)
           .pipeIf(logger.underlying.isDebugEnabled)(
             _.whenItTakesLonger() {
@@ -461,6 +465,7 @@ object AkkaHttpClient
         connectionWasClosedUnexpectedly
 
       case t: akka.stream.StreamTcpException =>
+        // TODO Long longer active since makeAkkaExceptionLegible?
         t.getMessage match {
           case AkkaTcpCommandRegex(command, host_) =>
             val host = host_.replace("/<unresolved>", "")
@@ -478,6 +483,18 @@ object AkkaHttpClient
       case _ => default
     }
   }
+
+  private val akkaExceptionRegex = new Regex("akka.stream.StreamTcpException: Tcp command " +
+    """\[(Connect\([^,]+).+\)] failed because of ([a-zA-Z.]+Exception.*)""")
+
+  private def makeAkkaExceptionLegible(t: akka.stream.StreamTcpException): RuntimeException =
+    akkaExceptionRegex.findFirstMatchIn(t.toString)
+      .toList
+      .flatMap(_.subgroups)
+      .match_ {
+        case List(m1, m2) => new RuntimeException(s"$m1): $m2")
+        case _ => t
+      }
 
   final class HttpException private[http](
     method: HttpMethod,
