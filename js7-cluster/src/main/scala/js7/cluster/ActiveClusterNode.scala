@@ -370,7 +370,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff: TypeTag](
                           logger.debug(s"JournalActor.Input.PassiveLost($passiveLost)")
                           journalActor ? JournalActor.Input.PassiveLost(passiveLost)
                         } >>
-                          persist() {
+                          persistWithoutTouchingHeartbeat() {
                             case `initialState` => Right(Some(passiveLost))
                             case _ => Right(None)  // Ignore when ClusterState has changed (no longer Coupled)
                           } .map(_.toCompleted.map(_ => true)))
@@ -488,33 +488,37 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff: TypeTag](
 
   private def persistWithoutTouchingHeartbeat()(toEvents: ClusterState => Checked[Option[ClusterEvent]])
   : Task[Checked[(Seq[Stamped[KeyedEvent[ClusterEvent]]], ClusterState)]] =
-    persistence.persistTransaction[ClusterEvent](NoKey) { state =>
-      toEvents(state.clusterState).flatMap {
-        case Some(event) if !state.clusterState.isEmptyOrActive(ownId) =>
-          Left(Problem("ClusterEvent is only allowed on active cluster node: " + event))
-        case events =>
-          Right(events.toList)
-      }
-    } .flatMapT { case (stampedEvents, journaledState) =>
-        val clusterState = journaledState.clusterState
-        clusterState match {
-          case Empty | _: NodesAppointed =>
-          case _: HasNodes => sendingClusterStartBackupNode.cancel()
+    Task.defer {
+      assertThat(!clusterWatchSynchronizer.isHeartbeating)
+      persistence.persistTransaction[ClusterEvent](NoKey) { state =>
+        toEvents(state.clusterState).flatMap {
+          case Some(event) if !state.clusterState.isEmptyOrActive(ownId) =>
+            Left(Problem("ClusterEvent is only allowed on active cluster node: " + event))
+          case events =>
+            Right(events.toList)
         }
-        val events = stampedEvents.map(_.value.event)
-        (events, clusterState) match {
-          case (Seq(ClusterSettingUpdated(_, Some(uris))), clusterState: HasNodes)
-            if uris != clusterState.setting.clusterWatchUris =>
-            // Previous ClusterWatch is probably unreachable already
-            // Due to missing applyEvents the ClusterWatch must be restarted
-            logger.debug("ClusterWatch applyEvents not called because ClusterWatch URI changed")
-            Task.pure(Right(stampedEvents -> clusterState))
+      } .flatMapT { case (stampedEvents, journaledState) =>
+          assertThat(!clusterWatchSynchronizer.isHeartbeating)
+          val clusterState = journaledState.clusterState
+          clusterState match {
+            case Empty | _: NodesAppointed =>
+            case _: HasNodes => sendingClusterStartBackupNode.cancel()
+          }
+          val events = stampedEvents.map(_.value.event)
+          (events, clusterState) match {
+            case (Seq(ClusterSettingUpdated(_, Some(uris))), clusterState: HasNodes)
+              if uris != clusterState.setting.clusterWatchUris =>
+              // Previous ClusterWatch is probably unreachable already
+              // Due to missing applyEvents the ClusterWatch must be restarted
+              logger.debug("ClusterWatch applyEvents not called because ClusterWatch URI changed")
+              Task.pure(Right(stampedEvents -> clusterState))
 
-          case _ =>
-            clusterWatchSynchronizer.applyEvents(events, clusterState)
-              .map(_.map((_: Completed) => stampedEvents -> clusterState))
+            case _ =>
+              clusterWatchSynchronizer.applyEvents(events, clusterState)
+                .map(_.map((_: Completed) => stampedEvents -> clusterState))
+          }
         }
-      }
+    }
 
   private def stopHeartbeatingTemporarily[A](task: Task[Checked[A]])
     (implicit enclosing: sourcecode.Enclosing)
