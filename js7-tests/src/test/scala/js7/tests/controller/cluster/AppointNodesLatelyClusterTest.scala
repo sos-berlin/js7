@@ -6,6 +6,7 @@ import js7.agent.RunningAgent
 import js7.base.auth.UserId
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax._
+import js7.base.log.CorrelId
 import js7.base.problem.Checked._
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.MonixBlocking.syntax._
@@ -124,9 +125,10 @@ final class AppointNodesLatelyClusterTest extends AnyFreeSpec with ControllerClu
         assert(bAgent.localUri == bAgentUri)
 
         val eventId = primaryController.eventWatch.lastAddedEventId
-        primaryController.executeCommandForTest(
-          ClusterAppointNodes(watchSetting.idToUri, watchSetting.activeId, watchSetting.clusterWatches)
-        ).orThrow
+        CorrelId.bindNewNow(
+          primaryController.executeCommandForTest(
+            ClusterAppointNodes(watchSetting.idToUri, watchSetting.activeId, watchSetting.clusterWatches)
+          ).orThrow)
 
         primaryController.eventWatch.await[ClusterSettingUpdated](after = eventId)
         backupController.eventWatch.await[ClusterSettingUpdated](after = eventId)

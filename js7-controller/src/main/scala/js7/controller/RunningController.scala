@@ -290,9 +290,10 @@ object RunningController
   def fromInjector(injector: Injector): Future[RunningController] = {
     implicit val scheduler = injector.instance[Scheduler]
     // Run under scheduler from start (and let debugger show Controller's thread names)
-    Future {
-      new Starter(injector).start()
-    }.flatten
+    CorrelId.bindNew(
+      Future {
+        new Starter(injector).start()
+      }.flatten)
   }
 
   private class Starter(injector: Injector)

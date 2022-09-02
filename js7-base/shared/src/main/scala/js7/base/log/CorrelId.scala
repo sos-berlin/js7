@@ -135,6 +135,9 @@ object CorrelId extends GenericString.Checked_[CorrelId]
   def bindNew[R](body: => R)(implicit R: CanBindCorrelId[R]): R =
     R.bind(CorrelId.generate())(body)
 
+  def bindNewNow[R](body: => R): R =
+    CanBindCorrelId.synchronous.bind(CorrelId.generate())(body)
+
   def enableScheduler(scheduler: Scheduler): Scheduler =
     if (!CorrelId.couldBeEnabled)
       scheduler
