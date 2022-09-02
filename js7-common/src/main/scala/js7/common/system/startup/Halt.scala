@@ -21,7 +21,7 @@ object Halt
     System.err.println()
     printlnWithClockIgnoringException(msg)
     logger.error(msg)
-    Log4j.shutdown()
+    Log4j.shutdown(fast = true)
     sys.runtime.halt(exitCode)
     throw new Error("sys.runtime.halt failed")
   }
