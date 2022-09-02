@@ -7,7 +7,6 @@ import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.file.StandardOpenOption.{CREATE, READ, TRUNCATE_EXISTING, WRITE}
 import java.nio.file.{Path, Paths}
-import java.util.ConcurrentModificationException
 import js7.base.auth.UserAndPassword
 import js7.base.configutils.Configs._
 import js7.base.eventbus.EventPublisher
@@ -20,6 +19,7 @@ import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax._
+import js7.base.utils.SetOnce
 import js7.base.web.Uri
 import js7.cluster.ClusterCommon._
 import js7.common.system.startup.Halt.haltJava
@@ -32,7 +32,6 @@ import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterSt
 import js7.data.controller.ControllerId
 import js7.data.node.NodeId
 import monix.eval.Task
-import monix.execution.atomic.AtomicAny
 
 private[cluster] final class ClusterCommon(
   controllerId: ControllerId,
@@ -46,33 +45,20 @@ private[cluster] final class ClusterCommon(
 {
   val activationInhibitor = new ActivationInhibitor
 
-  private val _clusterWatchSynchronizer = AtomicAny[Option[ClusterWatchSynchronizer]](None)
+  private val _clusterWatchSynchronizer = SetOnce[ClusterWatchSynchronizer]
 
   def stop: Task[Completed] =
-    _clusterWatchSynchronizer.get().fold(Task.completed)(o =>
-      o.stopHeartbeating >>
-        o.clusterWatch.logout().onErrorHandle(_ => Completed))
+    _clusterWatchSynchronizer.toOption.fold(Task.completed)(_.stop)
 
-  def clusterWatchSynchronizer(clusterState: ClusterState.HasNodes): Task[ClusterWatchSynchronizer] = {
-    import clusterState.setting
-    _clusterWatchSynchronizer.get() match {
-      case None =>
-        val result = initialClusterWatchSynchronizer(clusterState)
-        Task.pure(result)
-      case some @ Some(synchronizer) =>
-        if (synchronizer.uri != setting.clusterWatchUri) {
-          logger.debug(s"Starting new ClusterWatchSynchronizer for updated URI ${setting.clusterWatchUri}")
-          if (!_clusterWatchSynchronizer.compareAndSet(some, None))
-            throw new ConcurrentModificationException("clusterWatchSynchronizer")
-          synchronizer.stopHeartbeating.map(_ =>
-            initialClusterWatchSynchronizer(clusterState))
-        } else
-          Task.pure(synchronizer)
+  def clusterWatchSynchronizer(clusterState: ClusterState.HasNodes): Task[ClusterWatchSynchronizer] =
+    Task {
+      _clusterWatchSynchronizer
+        .toOption
+        .getOrElse(initialClusterWatchSynchronizer(clusterState))
     }
-  }
 
   def initialClusterWatchSynchronizer(clusterState: ClusterState.HasNodes): ClusterWatchSynchronizer =
-    _clusterWatchSynchronizer.get() match {
+    _clusterWatchSynchronizer.toOption match {
       case Some(o) =>
         // Only after ClusterFailedOver or ClusterSwitchedOver,
         // because PassiveClusterNode has already started the ClusterWatchSynchronizer
@@ -87,11 +73,16 @@ private[cluster] final class ClusterCommon(
           setting.timing)
         assertThat(result.uri == setting.clusterWatchUri)
 
-        if (_clusterWatchSynchronizer.getAndSet(Some(result)).isDefined)
-          throw new IllegalStateException("initialClusterWatchSynchronizer")
-
+        _clusterWatchSynchronizer := result
         result
     }
+
+  def updateClusterWatchSynchronizer(clusterState: HasNodes): Task[Unit] =
+    clusterWatchSynchronizer(clusterState)
+      .flatMap(_
+        .change(
+          clusterState,
+          newClusterWatchApi(clusterState.setting.clusterWatchUri)))
 
   private def newClusterWatchApi(uri: Uri): HttpClusterWatch =
     new HttpClusterWatch(
@@ -112,24 +103,24 @@ private[cluster] final class ClusterCommon(
   : Task[Unit] = {
     val name = command.getClass.simpleScalaName
     apiResource
-      .use(api =>
-        api.loginUntilReachable(onlyIfNotLoggedIn = true) >>
-          api.executeClusterCommand(command)
-            .map((_: ClusterCommand.Response) => ())
-            .onErrorRestartLoop(()) { (throwable, _, retry) =>
-              logger.warn(s"'$name' command failed with ${throwable.toStringWithCauses}")
-              logger.debug(throwable.toString, throwable)
-              // TODO ClusterFailed event?
-              api.tryLogout >>
-                Task.sleep(1.s/*TODO*/) >>       // TODO Handle heartbeat timeout!
-                retry(())
-            })
+      .use(api => api
+          .loginUntilReachable(onlyIfNotLoggedIn = true)
+          .*>(api.executeClusterCommand(command))
+          .map((_: ClusterCommand.Response) => ())
+          .onErrorRestartLoop(()) { (throwable, _, retry) =>
+            logger.warn(s"'$name' command failed with ${throwable.toStringWithCauses}")
+            logger.debug(throwable.toString, throwable)
+            // TODO ClusterFailed event?
+            api.tryLogout >>
+              Task.sleep(1.s/*TODO*/) >>       // TODO Handle heartbeat timeout!
+              retry(())
+          })
   }
 
   def inhibitActivationOfPeer(clusterState: HasNodes): Task[Option[FailedOver]] =
     ActivationInhibitor.inhibitActivationOfPassiveNode(clusterState.setting, clusterContext)
 
-  def ifClusterWatchAllowsActivation[A](clusterState: ClusterState.HasNodes, event: ClusterEvent)
+  def ifClusterWatchAllowsActivation(clusterState: ClusterState.HasNodes, event: ClusterEvent)
     (body: Task[Checked[Boolean]])
   : Task[Checked[Boolean]] =
     activationInhibitor.tryToActivate(

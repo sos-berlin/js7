@@ -537,7 +537,9 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                           Observable.fromTask(common
                             .clusterWatchSynchronizer(
                               builder.clusterState.asInstanceOf[ClusterState.HasNodes])
-                            .flatMap(_.applyEvents(switchedOver :: Nil, builder.clusterState))
+                            .flatMap(_.applyEvents(
+                              switchedOver :: Nil,
+                              builder.clusterState))
                             .map(_.toUnit))
 
                         case ClusterCouplingPrepared(activeId) =>
