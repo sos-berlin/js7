@@ -113,14 +113,15 @@ final class FailoverClusterTest extends ControllerClusterTester
       backupController.eventWatch.await[ClusterCoupled](after = recoupledEventId)
       primaryController.eventWatch.await[ClusterCoupled](after = recoupledEventId)
 
+      val whenClusterWatchAgrees = backupController.testEventBus.when[ClusterWatchAgreedToActivation.type].runToFuture
+      val whenClusterWatchDoesNotAgree = backupController.testEventBus.when[ClusterWatchDisagreedToActivation.type].runToFuture
+      sys.props(testHeartbeatLossPropertyKey) = "true"
+
       // When heartbeat from passive to active node is broken, the ClusterWatch will nonetheless not agree to a failover
       val stillCoupled = Coupled(clusterSetting)
       assert(primaryController.clusterState.await(99.s) == stillCoupled)
       assert(backupController.clusterState.await(99.s) == stillCoupled)
 
-      val whenClusterWatchAgrees = backupController.testEventBus.when[ClusterWatchAgreedToActivation.type].runToFuture
-      val whenClusterWatchDoesNotAgree = backupController.testEventBus.when[ClusterWatchDisagreedToActivation.type].runToFuture
-      sys.props(testHeartbeatLossPropertyKey) = "true"
       whenClusterWatchDoesNotAgree await 99.s
       assert(!whenClusterWatchAgrees.isCompleted)
       assert(primaryController.clusterState.await(99.s) == stillCoupled)

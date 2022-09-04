@@ -54,21 +54,35 @@ extends ClusterWatchApi
       case Some(current) =>
         if (current.clusterState == reportedClusterState) {
           logger.info(s"Node '$from': Ignore probably duplicate events for already reached clusterState=${current.clusterState}")
-        } else {
+          Right(reportedClusterState)
+        } else
           current.clusterState.applyEvents(events.map(NoKey <-: _)) match {
             case Left(problem) =>
               logger.error(s"Node '$from': $problem")
-              logger.error(s"Node '$from': " +
-                ClusterWatchEventMismatchProblem(events, current.clusterState, reportedClusterState = reportedClusterState))
+              val problem2 = ClusterWatchEventMismatchProblem(
+                events, current.clusterState, reportedClusterState = reportedClusterState)
+              logger.error(s"Node '$from': $problem2")
+              Left(problem2)
 
             case Right(clusterState) =>
               for (event <- events) logger.info(s"Node '$from': $event")
-              if (current.isLastHeartbeatStillValid && clusterState != reportedClusterState)
-                logger.error(s"Node '$from': " +
-                  ClusterWatchEventMismatchProblem(events, clusterState, reportedClusterState = reportedClusterState))
+              if (clusterState == reportedClusterState) {
+                logger.info(s"Node '$from' changed ClusterState to $reportedClusterState")
+                Right(reportedClusterState)
+              } else
+              if (!current.isLastHeartbeatStillValid) {
+                // The node may have died just between sending the event to ClusterWatch and
+                // persisting it. The we have different state.
+                // TODO Maybe not safe.
+                logger.warn(s"Node '$from' forced ClusterState to $reportedClusterState")
+                Right(reportedClusterState)
+              } else {
+                val problem = ClusterWatchEventMismatchProblem(
+                  events, clusterState, reportedClusterState = reportedClusterState)
+                logger.error(s"Node '$from': $problem")
+                Left(problem)
+              }
           }
-        }
-        Right(reportedClusterState)
     }.map(_.toCompleted)
   }
 
@@ -78,14 +92,20 @@ extends ClusterWatchApi
         Left(InvalidClusterWatchHeartbeatProblem(from, reportedClusterState))
       else
         current match {
-          case Some(state @ State(clusterState: HasNodes, _))
-            if state.isLastHeartbeatStillValid && reportedClusterState != clusterState =>
-            // May occur also when active node terminates after
-            // emitting a ClusterEvent and before applyEvents to ClusterWatch,
-            // and the active node is restarted within the heartbeatValidDuration !!!
-            val problem = ClusterWatchHeartbeatMismatchProblem(clusterState, reportedClusterState = reportedClusterState)
-            logger.error(s"Node '$from': $problem")
-            Left(problem)
+          case Some(state @ State(clusterState: HasNodes, _)) =>
+            if (reportedClusterState == clusterState)
+              Right(reportedClusterState)
+            else if (!state.isLastHeartbeatStillValid) {
+              logger.warn(s"Node '$from': Heartbeat changed $clusterState")
+              Right(reportedClusterState)
+            } else {
+              // May occur also when active node terminates after
+              // emitting a ClusterEvent and before applyEvents to ClusterWatch,
+              // and the active node is restarted within the heartbeatValidDuration !!!
+              val problem = ClusterWatchHeartbeatMismatchProblem(clusterState, reportedClusterState = reportedClusterState)
+              logger.error(s"Node '$from': $problem")
+              Left(problem)
+            }
 
           case _ =>
             Right(reportedClusterState)
@@ -120,9 +140,9 @@ extends ClusterWatchApi
               mvar.put(current)
                 .map(_ => Left(problem))
             case Right(updated) =>
-              if (!current.exists(_.clusterState == updated)) {
-                logger.info(s"Node '$from' changed ClusterState to $updated")
-              }
+              //if (!current.exists(_.clusterState == updated)) {
+              //  logger.info(s"Node '$from' changed ClusterState to $updated")
+              //}
               mvar.put(Some(State(updated, now)))
                 .map(_ => Right(updated))
           }
