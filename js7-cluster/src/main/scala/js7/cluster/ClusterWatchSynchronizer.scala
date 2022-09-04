@@ -9,6 +9,7 @@ import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.AsyncVariable
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.ScalaTime._
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.syntax._
@@ -36,7 +37,9 @@ private final class ClusterWatchSynchronizer private(ownId: NodeId, initialInlay
 
   def start(clusterState: HasNodes): Task[Checked[Completed]] =
     inlay.value
-      .flatMap(_.doACheckedHeartbeat(clusterState))
+      .flatMap(inlay =>
+        inlay.repeatWhenTooLong(
+          inlay.doACheckedHeartbeat(clusterState)))
       .flatMapT(_ => Task.defer {
         logger.info("ClusterWatch agreed that this node is the active cluster node")
         inlay.value
@@ -73,7 +76,9 @@ private final class ClusterWatchSynchronizer private(ownId: NodeId, initialInlay
       inlay.value.flatMap(myInlay =>
         suspendHeartbeat(
           Task.pure(updatedClusterState),
-          myInlay.clusterWatch.applyEvents(ClusterWatchEvents(from = ownId, events, updatedClusterState)),
+          myInlay.repeatWhenTooLong(
+            myInlay.clusterWatch.applyEvents(
+              ClusterWatchEvents(from = ownId, events, updatedClusterState))),
           isFailover = isFailover
           // A ClusterSwitchedOver event will be written to the journal after applyEvents.
           // So persistence.clusterState will reflect the outdated ClusterState for a short while.
@@ -268,6 +273,21 @@ object ClusterWatchSynchronizer
                 }
               }
         }
+    }
+
+    def repeatWhenTooLong[A](task: Task[A]): Task[A] = {
+      // limit is a heartbeat shorter than longHeartbeatTimeout
+      val limit = timing.heartbeatTimeout / 2
+      Task.tailRecM(())(_ => task
+        .timed
+        .map { case (duration, result) =>
+          if (duration >= limit) {
+            logger.warn("ClusterWatch response time was too long: " + duration.pretty +
+              ", retry after discarding " + result)
+            Left(())
+          } else
+            Right(result)
+        })
     }
 
     def doACheckedHeartbeat(clusterState: HasNodes): Task[Checked[Completed]] =
