@@ -48,7 +48,7 @@ final class AsyncLock private(
                 mvar.tryRead.flatMap {
                   case Some(lockedBy) =>
                     log.debug(s"↘ $name enqueues ${acquirer()} (currently locked by ${lockedBy()}) ...")
-                    mvar.put(acquirer)
+                    mvar.put(lockedBy)
                       .whenItTakesLonger(warnTimeouts)(duration =>
                         for (lockedBy <- mvar.tryRead) yield logger.info(
                           s"$name: ⏳ ${acquirer()} is still waiting" +
