@@ -126,7 +126,7 @@ private[cluster] object ActivationInhibitor
         .evalTap(_.loginUntilReachable())
         .use(_
           .executeClusterCommand(
-            ClusterInhibitActivation(2 * setting.timing.heartbeatTimeout))
+            ClusterInhibitActivation(2 * setting.timing.longHeartbeatTimeout))
           .map(_.failedOver))
         .onErrorRestartLoop(()) { (throwable, _, retry) =>
           // TODO Code mit loginUntilReachable usw. zusammenfassen.
