@@ -73,7 +73,9 @@ object SessionApi
       throwable match {
         case _: javax.net.ssl.SSLException =>
         case _ =>
-          if (throwable.getStackTrace.nonEmpty && throwable.getClass.scalaName != "akka.stream.StreamTcpException") {
+          if (throwable.getStackTrace.nonEmpty
+            && throwable.getClass.scalaName != "akka.stream.StreamTcpException"
+            && Option(throwable.getCause).forall(_.getClass.scalaName != "akka.stream.StreamTcpException")) {
             logger.debug(s"$myToString: ${throwable.toString}", throwable)
           }
       }

@@ -379,6 +379,15 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
     case _ => true
   }
 
+  private def makeAkkaExceptionLegible(t: akka.stream.StreamTcpException): RuntimeException =
+    akkaExceptionRegex.findFirstMatchIn(t.toString)
+      .toList
+      .flatMap(_.subgroups)
+      .match_ {
+        case List(m1, m2) => new RuntimeException(s"$name $m1): $m2") with NoStackTrace
+        case _ => t
+      }
+
   override def toString = s"$baseUri${name.nonEmpty ?? s" »$name«"}"
 }
 
@@ -486,15 +495,6 @@ object AkkaHttpClient
 
   private val akkaExceptionRegex = new Regex("akka.stream.StreamTcpException: Tcp command " +
     """\[(Connect\([^,]+).+\)] failed because of ([a-zA-Z.]+Exception.*)""")
-
-  private def makeAkkaExceptionLegible(t: akka.stream.StreamTcpException): RuntimeException =
-    akkaExceptionRegex.findFirstMatchIn(t.toString)
-      .toList
-      .flatMap(_.subgroups)
-      .match_ {
-        case List(m1, m2) => new RuntimeException(s"$m1): $m2")
-        case _ => t
-      }
 
   final class HttpException private[http](
     method: HttpMethod,
