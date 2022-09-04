@@ -1,6 +1,6 @@
 package js7.agent.web.common
 
-import js7.common.akkahttp.web.session.{RouteProvider, SimpleSession}
+import js7.common.akkahttp.web.session.RouteProvider
 
 /**
  * Standard trait for Agent web services.
@@ -11,5 +11,5 @@ import js7.common.akkahttp.web.session.{RouteProvider, SimpleSession}
  */
 trait AgentRouteProvider extends RouteProvider
 {
-  protected type Session = SimpleSession
+  protected type Session = AgentSession
 }

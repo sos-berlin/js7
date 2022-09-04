@@ -5,13 +5,16 @@ import akka.http.scaladsl.model.StatusCodes.{BadRequest, OK}
 import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import io.circe.JsonObject
+import js7.base.auth.{SessionToken, SimpleUser}
+import js7.base.generic.SecretString
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime._
 import js7.base.web.Uri
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
-import js7.common.akkahttp.web.session.SimpleSession
+import js7.common.akkahttp.web.session.SessionInit
+import js7.common.http.AkkaHttpClient.`x-js7-request-id`
 import js7.data.cluster.ClusterEvent.ClusterNodesAppointed
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterTiming}
 import js7.data.controller.ControllerId
@@ -26,7 +29,7 @@ final class ClusterWatchRouteTest extends AnyFreeSpec with ScalatestRouteTest wi
 {
   coupleScribeWithSlf4j()
 
-  protected type Session = SimpleSession
+  protected type Session = ClusterWatchSession
 
   protected implicit val scheduler = Scheduler.traced
   protected val clusterWatchRegister = new ClusterWatchRegister(scheduler)
@@ -35,7 +38,11 @@ final class ClusterWatchRouteTest extends AnyFreeSpec with ScalatestRouteTest wi
   private val controllerId = ControllerId("CONTROLLER")
 
   private val route = pathSegment("cluster") {
-    clusterWatchRoute(controllerId)
+    clusterWatchRouteFor(controllerId, new ClusterWatchSession {
+      type User = SimpleUser
+      val sessionInit =
+        SessionInit(SessionToken(SecretString("?")), SimpleUser(controllerId.toUserId))
+    })
   }
 
   "Get for unknown ControllerId" in {
@@ -60,7 +67,9 @@ final class ClusterWatchRouteTest extends AnyFreeSpec with ScalatestRouteTest wi
         Seq(ClusterNodesAppointed(setting)),
         ClusterState.NodesAppointed(setting))
     ) ~>
-      Accept(`application/json`) ~> route ~>
+      Accept(`application/json`) ~>
+      addHeader(`x-js7-request-id`.name, "#1") ~>
+      route ~>
       check {
         assert(status == OK && entityAs[JsonObject] == JsonObject.empty)
       }

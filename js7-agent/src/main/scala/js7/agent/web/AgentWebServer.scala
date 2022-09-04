@@ -3,10 +3,11 @@ package js7.agent.web
 import akka.actor.ActorSystem
 import js7.agent.DirectAgentApi
 import js7.agent.configuration.AgentConfiguration
+import js7.agent.web.common.AgentSession
 import js7.base.auth.SimpleUser
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.auth.GateKeeper
-import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
+import js7.common.akkahttp.web.session.SessionRegister
 import js7.core.cluster.ClusterWatchRegister
 import js7.core.command.CommandMeta
 import js7.journal.watch.EventWatch
@@ -18,7 +19,7 @@ object AgentWebServer
     agentConfiguration: AgentConfiguration,
     gateKeeperConfiguration: GateKeeper.Configuration[SimpleUser],
     api: CommandMeta => DirectAgentApi,
-    sessionRegister: SessionRegister[SimpleSession],
+    sessionRegister: SessionRegister[AgentSession],
     clusterWatchRegister: ClusterWatchRegister,
     eventWatch: EventWatch)
     (implicit actorSystem: ActorSystem)

@@ -5,8 +5,10 @@ import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.model.{HttpHeader, MediaType, Uri}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.PathMatcher.{Matched, Unmatched}
-import akka.http.scaladsl.server.{ContentNegotiator, Directive, Directive0, Directive1, PathMatcher, PathMatcher0, Route, UnacceptedResponseContentTypeRejection, ValidationRejection}
+import akka.http.scaladsl.server.{ContentNegotiator, Directive, Directive0, Directive1, MalformedHeaderRejection, MissingHeaderRejection, PathMatcher, PathMatcher0, Route, UnacceptedResponseContentTypeRejection, ValidationRejection}
 import akka.shapeless.HNil
+import js7.base.utils.ScalaUtils.syntax._
+import js7.common.http.AkkaHttpClient.`x-js7-request-id`
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.annotation.tailrec
@@ -254,5 +256,26 @@ object AkkaHttpServerUtils
             task.runToFuture
           }
         }
+    }
+
+  val extractJs7RequestId: Directive1[Long] =
+    new Directive1[Long]
+    {
+      def tapply(inner: Tuple1[Long] => Route) =
+        extractRequest(_
+          .headers
+          .find(_.is(`x-js7-request-id`.lowercaseName))
+          .match_ {
+            case None => reject(MissingHeaderRejection(`x-js7-request-id`.toString))
+            case Some(h) =>
+              `x-js7-request-id`
+                .parseNumber(h.value())
+                .match_ {
+                  case Left(problem) =>
+                    reject(MalformedHeaderRejection(`x-js7-request-id`.toString, problem.toString))
+                  case Right(n) =>
+                    inner(Tuple1(n))
+                }
+          })
     }
 }
