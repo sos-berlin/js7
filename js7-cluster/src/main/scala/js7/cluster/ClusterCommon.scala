@@ -141,7 +141,8 @@ private[cluster] final class ClusterCommon(
                       "While this node has lost the passive node" +
                         " and is waiting for ClusterWatch's agreement, " +
                         "the passive node failed over",
-                      restart = true)
+                      restart = true,
+                      warnOnly = true)
                   }
                   Task.pure(Right(false))  // Ignore heartbeat loss
                 } else
