@@ -56,6 +56,7 @@ final class Cluster[S <: SnapshotableState[S]: diffx.Diff: TypeTag](
 {
   import clusterConf.ownId
 
+  private val keepTruncatedRest = config.getBoolean("js7.journal.cluster.keep-truncated-rest")
   private val common = new ClusterCommon(controllerId, ownId, clusterContext,
     httpsConfig, config, licenseChecker, testEventPublisher)
   import common.activationInhibitor
@@ -198,7 +199,7 @@ final class Cluster[S <: SnapshotableState[S]: diffx.Diff: TypeTag](
   }
 
   private def truncateJournalAndRecoverAgain(otherFailedOver: FailedOver): Option[Recovered[S]] =
-    for (file <- truncateJournal(journalMeta.fileBase, otherFailedOver.failedAt))
+    for (file <- truncateJournal(journalMeta.fileBase, otherFailedOver.failedAt, keepTruncatedRest))
       yield recoverFromTruncated(file, otherFailedOver.failedAt)
 
   private def recoverFromTruncated(file: Path, failedAt: JournalPosition): Recovered[S] = {
@@ -317,7 +318,11 @@ object Cluster
 {
   private val logger = Logger(getClass)
 
-  private[cluster] def truncateJournal(journalFileBase: Path, failedAt: JournalPosition): Option[Path] = {
+  private[cluster] def truncateJournal(
+    journalFileBase: Path,
+    failedAt: JournalPosition,
+    keepTruncatedRest: Boolean)
+  : Option[Path] = {
     var truncated = false
     val lastTwoJournalFiles = JournalFiles.listJournalFiles(journalFileBase) takeRight 2
     val journalFile =
@@ -347,7 +352,7 @@ object Cluster
       logger.info(s"Truncating journal file at failover position ${failedAt.position} " +
         s"(${fileSize - failedAt.position} bytes): ${journalFile.file.getFileName}")
       truncated = true
-      truncateFile(file, failedAt.position)
+      truncateFile(file, failedAt.position, keep = keepTruncatedRest)
     }
     truncated ? file
   }

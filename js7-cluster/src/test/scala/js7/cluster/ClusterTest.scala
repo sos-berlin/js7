@@ -20,29 +20,29 @@ final class ClusterTest extends AnyFreeSpec
       c := "FIVE\nSIX\n"
 
       intercept[RuntimeException] {
-        Cluster.truncateJournal(fileBase, JournalPosition(3333, 0))
+        Cluster.truncateJournal(fileBase, JournalPosition(3333, 0), false)
       }
       intercept[RuntimeException] {
-        Cluster.truncateJournal(fileBase, JournalPosition(3000, 7))
+        Cluster.truncateJournal(fileBase, JournalPosition(3000, 7), false)
       }
 
-      var maybeFile = Cluster.truncateJournal(fileBase, JournalPosition(3000, 9))
+      var maybeFile = Cluster.truncateJournal(fileBase, JournalPosition(3000, 9), false)
       assert(maybeFile.isEmpty)
       assert(a.contentString == "ONE\nTWO\n")
       assert(b.contentString == "THREE\nFOUR\n")
       assert(c.contentString == "FIVE\nSIX\n")
 
       intercept[RuntimeException] {
-        Cluster.truncateJournal(fileBase, JournalPosition(3000, 7))
+        Cluster.truncateJournal(fileBase, JournalPosition(3000, 7), false)
       }
 
-      maybeFile = Cluster.truncateJournal(fileBase, JournalPosition(3000, 5))
+      maybeFile = Cluster.truncateJournal(fileBase, JournalPosition(3000, 5), false)
       assert(maybeFile == Some(c))
       assert(a.contentString == "ONE\nTWO\n")
       assert(b.contentString == "THREE\nFOUR\n")
       assert(c.contentString == "FIVE\n")
 
-      maybeFile = Cluster.truncateJournal(fileBase, JournalPosition(2000, 6))
+      maybeFile = Cluster.truncateJournal(fileBase, JournalPosition(2000, 6), false)
       assert(maybeFile == Some(b))
       assert(a.contentString == "ONE\nTWO\n")
       assert(b.contentString == "THREE\n")

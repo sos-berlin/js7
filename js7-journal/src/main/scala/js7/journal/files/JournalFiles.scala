@@ -62,8 +62,8 @@ object JournalFiles
     try {
       val markerFile = deletionMarkerFile(fileBase)
       if (exists(markerFile)) {
-        logger.warn("DELETE JOURNAL DUE TO AGENT RESET IN PREVIOUS RUN" +
-          s" ($markerFile marker file found)")
+        logger.warn(
+          s"DELETE JOURNAL DUE TO JOURNAL RESET IN PREVIOUS RUN ($markerFile marker file found)")
         deleteJournal(fileBase)
       }
       Checked.unit
@@ -81,12 +81,12 @@ object JournalFiles
         logger.info(s"DELETE JOURNAL FILE: $file")
         delete(file)
       } catch { case e: IOException if ignoreFailure =>
-        scribe.warn(s"Delete journal file: $file => ${e.toStringWithCauses}")
+        logger.warn(s"Delete journal file: $file => ${e.toStringWithCauses}")
         failed = true
       }
     }
     if (failed) {
-      scribe.warn("Journal files will be deleted at next start of Agent")
+      logger.warn("Journal files will be deleted at next start")
     } else {
       delete(markerFile)
     }
