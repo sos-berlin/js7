@@ -41,21 +41,24 @@ final class AsyncLock private(
             Task.unit
           } else {
             val since = now
+            lazy val acquireString = acquirer()
             Task.tailRecM(())(_ =>
               if (suppressLog)
                 mvar.put(acquirer).as(Right(()))
               else
                 mvar.tryRead.flatMap {
                   case Some(lockedBy) =>
-                    log.debug(s"↘ $name enqueues ${acquirer()} (currently locked by ${lockedBy()}) ...")
+                    log.debug(
+                      s"↘ $name enqueues $acquireString (currently locked by ${lockedBy()}) ...")
                     mvar.put(lockedBy)
                       .whenItTakesLonger(warnTimeouts)(duration =>
                         for (lockedBy <- mvar.tryRead) yield logger.info(
-                          s"$name: ⏳ ${acquirer()} is still waiting" +
+                          s"$name: ⏳ $acquireString is still waiting" +
                             s" (currently locked by ${lockedBy.getOrElse("None")})" +
                             s" for ${duration.pretty} ..."))
                       .map { _ =>
-                        log.debug(s"↙ $name acquired by ${acquirer()} after ${since.elapsed.pretty}")
+                        log.debug(
+                          s"↙ $name acquired by $acquireString after ${since.elapsed.pretty}")
                         Right(())
                     }
                   case None =>  // Lock has just become available
@@ -63,7 +66,7 @@ final class AsyncLock private(
                       if (!hasAcquired)
                         Left(())  // Locked again by someone else, so try again
                       else {
-                        log.trace(s"$name acquired by ${acquirer()}")
+                        log.trace(s"$name acquired by $acquireString")
                         Right(())  // The lock is ours!
                       }
                     }
