@@ -6,7 +6,7 @@ import cats.syntax.flatMap._
 import cats.syntax.monoid._
 import com.softwaremill.diffx
 import js7.base.generic.Completed
-import js7.base.log.Logger
+import js7.base.log.{CorrelId, Logger}
 import js7.base.log.Logger.syntax._
 import js7.base.monixutils.MonixBase.syntax._
 import js7.base.monixutils.ObservablePauseDetector._
@@ -163,7 +163,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff: TypeTag](
       case ClusterCommand.ClusterPrepareCoupling(activeId, passiveId) =>
         requireOwnNodeId(command, activeId)(
           persistence.waitUntilStarted.flatMap(_ =>
-            clusterStateLock.lock(
+            clusterStateLock.lock(command.toShortString)(
               persist() {
                 case Empty =>
                   Left(ClusterCommandInapplicableProblem(command, Empty))
@@ -188,7 +188,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff: TypeTag](
       case ClusterCommand.ClusterCouple(activeId, passiveId) =>
         requireOwnNodeId(command, activeId)(
           persistence.waitUntilStarted >>
-            clusterStateLock.lock(
+            clusterStateLock.lock(command.toShortString)(
               persist() {
                 case s: PassiveLost if s.activeId == activeId && s.passiveId == passiveId =>
                   // Happens when this active node has restarted just before the passive one
@@ -215,7 +215,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff: TypeTag](
       case ClusterCommand.ClusterRecouple(activeId, passiveId) =>
         requireOwnNodeId(command, activeId)(
           persistence.waitUntilStarted >>
-            clusterStateLock.lock(
+            clusterStateLock.lock(command.toShortString)(
               persist() {
                 case s: Coupled if s.activeId == activeId && s.passiveId == passiveId =>
                   // ClusterPassiveLost leads to recoupling
@@ -228,7 +228,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff: TypeTag](
 
       case ClusterCommand.ClusterPassiveDown(activeId, passiveId) =>
         requireOwnNodeId(command, activeId)(
-          clusterStateLock.lock(
+          clusterStateLock.lock(command.toShortString)(
             persist() {
               case s: Coupled if s.activeId == activeId && s.passiveId == passiveId =>
                 Right(Some(ClusterPassiveLost(passiveId)))
@@ -336,7 +336,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff: TypeTag](
       logger.debug("fetchAndHandleAcknowledgedEventIds: already fetchingAcks")
     } else {
       def msg = s"observeEventIds(${initialState.passiveUri}, peersUserAndPassword=${clusterConf.peersUserAndPassword})"
-      val future: CancelableFuture[Checked[Completed]] =
+      val future: CancelableFuture[Checked[Completed]] = CorrelId.bindNew(
         fetchAndHandleAcknowledgedEventIds(initialState.passiveId, initialState.passiveUri, initialState.timing)
           .flatMap {
             case Left(missingHeartbeatProblem @ MissingPassiveClusterNodeHeartbeatProblem(id, duration)) =>
@@ -397,8 +397,8 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff: TypeTag](
             logger.debug("fetchingAcks := false")
             fetchingAcks := false
           })
-          .runToFuture
-        fetchingAcksCancelable := future
+          .runToFuture)
+      fetchingAcksCancelable := future
       future.onComplete {
         case Success(Left(_: MissingPassiveClusterNodeHeartbeatProblem)) =>
         case tried =>

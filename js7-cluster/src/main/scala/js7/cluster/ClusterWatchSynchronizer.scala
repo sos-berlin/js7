@@ -228,13 +228,12 @@ object ClusterWatchSynchronizer
 
       def stop(implicit enclosing: sourcecode.Enclosing): Task[Completed] =
         logger.traceTask(s"Heartbeat ($nr) stop, called by ${enclosing.value}")(
-          Task.defer {
-            stopping
-              .flatMap(_.tryPut(()))
-              .flatMap(_ => heartbeat)
-              .flatMap(_.tryTake)
-              .flatMap(_.fold(Task.completed)(_.join))
-          })
+          stopping
+            .flatMap(_.tryPut(()))
+            .flatMap(_ => heartbeat)
+            .flatMap(_.tryTake)
+            .flatMap(_.fold(Task.completed)(_.join))
+            .logWhenItTakesLonger)
 
       private def sendHeartbeats: Task[Completed] =
         Observable.intervalAtFixedRate(timing.heartbeat)

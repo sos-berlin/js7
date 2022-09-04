@@ -84,7 +84,8 @@ final class Cluster[S <: SnapshotableState[S]: diffx.Diff: TypeTag](
     *         and ClusterFollowUp.
     */
   def start(recovered: Recovered[S]): (Task[Option[Checked[S]]], Task[Checked[ClusterFollowUp[S]]]) = {
-    if (recovered.clusterState != Empty) logger.info(s"Recovered ClusterState is ${recovered.clusterState}")
+    if (recovered.clusterState != Empty) logger.info(
+      s"This cluster node '${ownId.string}', recovered ClusterState is ${recovered.clusterState}")
     val (currentPassiveReplicatedState, followUp) = startNode(recovered)
     val workingFollowUp = followUp.flatMapT {
       case followUp: ClusterFollowUp.BecomeActive[S] =>
