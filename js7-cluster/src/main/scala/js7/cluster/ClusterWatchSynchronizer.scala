@@ -239,6 +239,9 @@ object ClusterWatchSynchronizer
       private def sendHeartbeats: Task[Completed] =
         Observable.intervalAtFixedRate(timing.heartbeat)
           .whileBusyBuffer(DropNew(bufferSize = 2))
+          // takeUntilEval before doAHeartbeat otherwise a heartbeat sticking in network congestion
+          // would continue independently and arrive out of order (bad).
+          .takeUntilEval(stopping.flatMap(_.read))
           .flatMap(_ => Observable.fromTask(
             doAHeartbeat
               .onErrorHandleWith { t =>
@@ -246,7 +249,6 @@ object ClusterWatchSynchronizer
                   if (t.isInstanceOf[AskTimeoutException]) null else t.nullIfNoStackTrace)
                 Task.raiseError(t)
               }))
-          .takeUntilEval(stopping.flatMap(_.read))
           .completedL
           .as(Completed)
 
@@ -255,11 +257,17 @@ object ClusterWatchSynchronizer
           case Some(()) => Task.completed
           case None =>
             logger.trace(s"Heartbeat ($nr) $clusterState")
-            doACheckedHeartbeat(clusterState).map {
-              case Left(problem) =>
-                haltJava(s"🔥 HALT because ClusterWatch reported: $problem", restart = true)
-              case Right(Completed) => Completed
-            }
+            doACheckedHeartbeat(clusterState)
+              .flatMap {
+                case Right(Completed) => Task.pure(Completed)
+                case Left(problem) =>
+                stopping.flatMap(_.tryRead).map {
+                  case Some(()) => Completed
+                  case None =>
+                    haltJava(s"🔥 HALT because ClusterWatch reported: $problem",
+                      restart = true)
+                }
+              }
         }
     }
 
