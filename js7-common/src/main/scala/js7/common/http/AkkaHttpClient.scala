@@ -239,7 +239,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
         }
         val number = requestCounter.incrementAndGet()
         val headers = sessionToken.map(token => `x-js7-session`(token)).toList :::
-          `x-js7-request-id`(s"#$number") ::
+          `x-js7-request-id`(number) ::
           CorrelId.current.toOption.map(`x-js7-correlation-id`(_)).toList :::
           request.headers.toList :::
           standardHeaders
@@ -405,15 +405,30 @@ object AkkaHttpClient
     def parse(value: String) = Success(new `x-js7-session`(SessionToken(SecretString(value))))
   }
 
-  final case class `x-js7-request-id`(value: String)
+  final case class `x-js7-request-id`(number: Long)
   extends ModeledCustomHeader[`x-js7-request-id`] {
     val companion = `x-js7-request-id`
+    def value = "#" + number
     val renderInRequests = true
     val renderInResponses = false
   }
   object `x-js7-request-id` extends ModeledCustomHeaderCompanion[`x-js7-request-id`] {
     val name = "x-js7-request-id"
-    def parse(value: String) = Success(new `x-js7-request-id`(value))
+
+    def parse(value: String) =
+      parseNumber(value)
+        .map(`x-js7-request-id`(_))
+        .left.map(_.throwable)
+        .toTry
+
+    def parseNumber(value: String): Checked[Long] =
+      if (!value.startsWith("#"))
+        Left(Problem.pure("x-js7-request-id HTTP header must start with a #"))
+      else
+        try Right(value.substring(1).toLong)
+        catch { case t: NumberFormatException =>
+          Left(Problem.pure(t.toString))
+        }
   }
 
   final case class `x-js7-correlation-id`(correlId: CorrelId)
