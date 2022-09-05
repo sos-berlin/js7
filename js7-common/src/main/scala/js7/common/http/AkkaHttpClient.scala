@@ -465,6 +465,9 @@ object AkkaHttpClient
 
   private val AkkaTcpCommandRegex = """Tcp command \[([A-Za-z]+)\(([^,)]+).*""".r
 
+  private val akkaExceptionRegex = new Regex("akka.stream.StreamTcpException: Tcp command " +
+    """\[(Connect\([^,]+).+\)] failed because of ([a-zA-Z.]+Exception.*)""")
+
   def toPrettyProblem(problem: Problem): Problem =
     problem.throwableOption.fold(problem) { throwable =>
       val pretty = toPrettyProblem(throwable)
@@ -507,9 +510,6 @@ object AkkaHttpClient
       case _ => default
     }
   }
-
-  private val akkaExceptionRegex = new Regex("akka.stream.StreamTcpException: Tcp command " +
-    """\[(Connect\([^,]+).+\)] failed because of ([a-zA-Z.]+Exception.*)""")
 
   final class HttpException private[http](
     method: HttpMethod,
