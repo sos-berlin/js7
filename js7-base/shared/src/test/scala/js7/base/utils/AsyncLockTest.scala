@@ -7,6 +7,7 @@ import monix.execution.Scheduler.Implicits.traced
 import monix.execution.atomic.Atomic
 import monix.reactive.Observable
 import org.scalatest.freespec.AsyncFreeSpec
+import scala.concurrent.Promise
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Random
 
@@ -85,6 +86,65 @@ final class AsyncLockTest extends AsyncFreeSpec
           result
       }
     }
+  }
+
+  "Cancel releases lock only after task has been canceled" in {
+    val lock = AsyncLock("CANCEL", logWorryDurations = Nil)
+    val started = Promise[Unit]()
+    val lockCanceled = Promise[Unit]()
+    val taskCanceled = Promise[Unit]()
+    val continue = Promise[Unit]()
+    val taskCompleted = Promise[Unit]()
+
+    val future = lock
+      .lock(Task.defer {
+        started.success(())
+        Task.sleep(99.s)
+          .doOnCancel(
+            Task.sleep(500.ms)
+              .*>(Task.defer {
+                assert(!lockCanceled.isCompleted)
+                taskCanceled.success(())
+                  Task.fromFuture(continue.future)
+                    .*>(Task {
+                      assert(!lockCanceled.isCompleted)
+                      taskCompleted.success(())
+                    })
+              }))
+      })
+      .runToFuture
+
+    Task
+      .fromFuture(started.future)
+      .flatMap(_ => Task.defer {
+        future.cancel()
+
+        Task.parMap2(
+          lock.lock(Task.unit)
+            .*>(Task {
+              lockCanceled.success(())
+              assert(taskCompleted.isCompleted)
+            })
+            .timeoutWith(9.s, new RuntimeException("Cancel operation has not released the lock")),
+
+          Task.fromFuture(taskCanceled.future)
+            .*>(Task {
+              assert(!lockCanceled.isCompleted)
+              assert(!taskCompleted.isCompleted)
+            })
+            .*>(
+              Task {
+                continue.success(())
+              }.delayExecution(500.ms))
+        )((_, _) => ())
+          .*>(
+            Task
+              .fromFuture(taskCanceled.future)
+              .timeoutWith(9.s, new RuntimeException("Task has not been canceled"))
+          )
+          .as(succeed)
+      })
+      .runToFuture
   }
 
   private def idleNanos(duration: FiniteDuration): Unit = {

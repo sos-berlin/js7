@@ -30,10 +30,6 @@ final class AsyncLock private(
   private def lock2[A](acquirer: () => String)(task: Task[A]): Task[A] =
     acquire(acquirer)
       .bracket(_ => task)(_ => release(acquirer))
-      // Because cancel() is asynchronous, the use part may continue even though
-      // the lock is released (?). Better we make the whole operation uncancelable.
-      // TODO Make cancelable ?
-      .uncancelable
 
   private def acquire(acquirerToString: () => String): Task[Unit] =
     lockM
