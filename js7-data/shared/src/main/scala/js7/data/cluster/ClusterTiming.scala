@@ -13,7 +13,19 @@ final case class ClusterTiming(heartbeat: FiniteDuration, heartbeatTimeout: Fini
 {
   checkedUnit(heartbeat, heartbeatTimeout).orThrow
 
-  def longHeartbeatTimeout = heartbeat + heartbeatTimeout
+  def passiveLostTimeout =
+    heartbeat + heartbeatTimeout
+
+  /** failOverTimeout is longer than passiveLostTimeout.
+   * In case of a network lock-in, FailedOver must occur after PassiveLost
+   * Because PassiveLost is checked every ClusterWatch heartbeat,
+   * we add a heartbeat, and an additional heartbeat for timing variation.
+   */
+  def failoverTimeout =
+    passiveLostTimeout + 2 * heartbeat
+
+  def inhibitActivationDuration =
+    failoverTimeout + 2 * heartbeat
 
   override def toString = s"ClusterTiming(${heartbeat.pretty}, ${heartbeatTimeout.pretty})"
 }

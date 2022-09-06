@@ -24,6 +24,11 @@ final class ClusterTimingTest extends AnyFreeSpec
     assert(ClusterTiming.checked(3.s, 1.s).isRight)
   }
 
+  "PassiveLost is detected before FailedOver" in {
+    val t = ClusterTiming(3.s, 10.s)
+    assert(t.passiveLostTimeout + t.heartbeat < t.failoverTimeout)
+  }
+
   "apply" in {
     intercept[ProblemException](ClusterTiming(0.s, 0.s))
   }

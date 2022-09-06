@@ -56,7 +56,7 @@ final class FailoverClusterTest extends ControllerClusterTester
       primaryController.eventWatch.await[ClusterCoupled]()
 
       val since = now
-      val sleepWhileFailing = clusterTiming.longHeartbeatTimeout + 1.s
+      val sleepWhileFailing = clusterTiming.failoverTimeout + 1.s
       val orderId = OrderId("💥")
       primaryController.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path, arguments = Map(
         "SLEEP" -> StringValue(sleepWhileFailing.toSeconds.toString))))
