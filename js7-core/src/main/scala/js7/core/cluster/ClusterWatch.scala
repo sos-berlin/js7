@@ -53,7 +53,8 @@ extends ClusterWatchApi
 
       case Some(current) =>
         if (current.clusterState == reportedClusterState) {
-          logger.info(s"Node '$from': Ignore probably duplicate events for already reached clusterState=${current.clusterState}")
+          logger.info(
+            s"Node '$from': Ignore probably duplicate events for already reached clusterState=${current.clusterState}")
           Right(reportedClusterState)
         } else
           current.clusterState.applyEvents(events.map(NoKey <-: _)) match {
@@ -101,8 +102,9 @@ extends ClusterWatchApi
             } else {
               // May occur also when active node terminates after
               // emitting a ClusterEvent and before applyEvents to ClusterWatch,
-              // and the active node is restarted within the heartbeatValidDuration !!!
-              val problem = ClusterWatchHeartbeatMismatchProblem(clusterState, reportedClusterState = reportedClusterState)
+              // and the active node is restarted within the clusterWatchClientHeartbeatTimeout !!!
+              val problem = ClusterWatchHeartbeatMismatchProblem(clusterState,
+                reportedClusterState = reportedClusterState)
               logger.error(s"Node '$from': $problem")
               Left(problem)
             }
@@ -117,7 +119,8 @@ extends ClusterWatchApi
   : Task[Checked[ClusterState]] =
     stateMVar.flatMap(mvar =>
       mvar.take.flatMap { current =>
-        logger.trace(s"Node '$from': $operationString${current.fold("")(o => ", after " + o.lastHeartbeat.elapsed.pretty)}")
+        logger.trace(s"Node '$from': $operationString${
+          current.fold("")(o => ", after " + o.lastHeartbeat.elapsed.pretty)}")
         current
           .match_ {
             case None =>
@@ -126,14 +129,15 @@ extends ClusterWatchApi
               Checked.unit
 
             case Some(state) =>
-              if (fromMustBeActive && !couldBeActive(from, state)) {
+              if (!fromMustBeActive || state.couldBeActive(from))
+                Checked.unit
+              else {
                 val problem = ClusterWatchInactiveNodeProblem(from,
                   state.clusterState, state.lastHeartbeat.elapsed, operationString)
                 val msg = s"Node '$from': $problem"
                 logger.error(msg)
                 Left(problem)
-              } else
-                Checked.unit
+              }
           }
           .flatMap(_ => body(current)) match {
             case Left(problem) =>
@@ -147,19 +151,6 @@ extends ClusterWatchApi
                 .map(_ => Right(updated))
           }
       })
-
-  private def couldBeActive(nodeId: NodeId, state: State): Boolean =
-    state match {
-      case State(clusterState: HasNodes, _)
-        if clusterState.isNonEmptyActive(nodeId) =>
-        true // Sure
-
-      case state @ State(_: Coupled, _) =>
-        !state.isLastHeartbeatStillValid // Not sure, because no heartbeat
-
-      case _ =>
-        false // Sure
-    }
 
   private def now = MonixDeadline.now(scheduler)
 
@@ -178,6 +169,18 @@ object ClusterWatch
           (lastHeartbeat + clusterState.timing.heartbeat).hasTimeLeft
 
         case State(ClusterState.Empty, _) => false // Should not happen
+      }
+
+    def couldBeActive(nodeId: NodeId): Boolean =
+      this match {
+        case State(clusterState: HasNodes, _) if nodeId == clusterState.activeId =>
+          true // Sure
+
+        case state @ State(_: Coupled, _) =>
+          !state.isLastHeartbeatStillValid // Not sure, because no heartbeat
+
+        case _ =>
+          false // Sure
       }
   }
 
@@ -227,7 +230,8 @@ object ClusterWatch
   }
   object ClusterWatchInactiveNodeProblem extends Problem.Coded.Companion
 
-  final case class InvalidClusterWatchHeartbeatProblem(from: NodeId, clusterState: ClusterState) extends Problem.Coded {
+  final case class InvalidClusterWatchHeartbeatProblem(from: NodeId, clusterState: ClusterState)
+  extends Problem.Coded {
     def arguments = Map(
       "from" -> from.string,
       "clusterState" -> clusterState.toString)
