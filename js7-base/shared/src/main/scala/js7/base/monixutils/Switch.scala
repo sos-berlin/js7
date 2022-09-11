@@ -1,18 +1,32 @@
 package js7.base.monixutils
 
+import cats.syntax.flatMap._
 import monix.catnap.MVar
 import monix.eval.Task
 
 final class Switch private(initiallyOn: Boolean)
 extends Switch.ReadOnly
 {
-  private val switch: Task[MVar[Task, Unit]] =
+  private val lock = new SimpleLock
+
+  private val filledWhenOff: Task[MVar[Task, Unit]] =
     (if (initiallyOn) MVar[Task].empty[Unit]() else MVar[Task].of(()))
+      .memoize
+  private val filledWhenOn: Task[MVar[Task, Unit]] =
+    (if (!initiallyOn) MVar[Task].empty[Unit]() else MVar[Task].of(()))
       .memoize
 
   /** Returns true iff switch turned from off to on. */
   val switchOn: Task[Boolean] =
-    switch.flatMap(_.tryTake).map(_.nonEmpty)
+    lock.lock(
+      filledWhenOff
+        .flatMap(_.tryTake)
+        .flatTap(_ => filledWhenOn.flatMap(_.tryPut(())))
+        .map(_.nonEmpty))
+
+  // Not nestable !!!
+  def switchOnFor[A](task: Task[A]): Task[A] =
+    switchOn *> task.guarantee(switchOff.void)
 
   /** Switch on and return `task` iff switch was previously off. */
   def switchOnThen(task: => Task[Unit]): Task[Unit] =
@@ -20,19 +34,25 @@ extends Switch.ReadOnly
 
   /** Returns true iff switch turned from on to off. */
   val switchOff: Task[Boolean] =
-    switch.flatMap(_.tryPut(()))
+    lock.lock(
+      filledWhenOff
+        .flatMap(_.tryPut(()))
+        .flatTap(_ => filledWhenOn.flatMap(_.tryTake)))
 
   def switchOffThen(task: => Task[Unit]): Task[Unit] =
     switchOff.flatMap(Task.when(_)(task))
 
   val isOn: Task[Boolean] =
-    switch.flatMap(_.isEmpty)
+    filledWhenOff.flatMap(_.isEmpty)
 
   val isOff: Task[Boolean] =
     isOn.map(!_)
 
   val whenOff: Task[Unit] =
-    switch.flatMap(_.read).void
+    filledWhenOff.flatMap(_.read).void
+
+  val whenOn: Task[Unit] =
+    filledWhenOn.flatMap(_.read).void
 }
 
 object Switch

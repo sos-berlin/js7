@@ -55,10 +55,30 @@ final class SwitchTest extends AsyncFreeSpec
       .whenOff
       .*>(switch.switchOn)
       .*>(Task.race(
-        switch.whenOff.as(false),
-        Task.sleep(100.ms).as(true)))
+        switch.whenOff.map(_ => fail()),
+        Task.sleep(100.ms)))
       .map(_.fold(identity, identity))
-      .map(assert(_))
+      .*>(switch.switchOff)
+      .*>(Task.race(
+        switch.whenOff,
+        Task.sleep(100.ms).map(_ => fail())))
+      .as(succeed)
+      .runToFuture
+  }
+
+  "whenOn" in {
+    val switch = Switch(true)
+    switch
+      .whenOn
+      .*>(switch.switchOff)
+      .*>(Task.race(
+        switch.whenOn.map(_ => fail()),
+        Task.sleep(100.ms)))
+      .*>(switch.switchOn)
+      .*>(Task.race(
+        switch.whenOn,
+        Task.sleep(100.ms).map(_ => fail())))
+      .as(succeed)
       .runToFuture
   }
 }
