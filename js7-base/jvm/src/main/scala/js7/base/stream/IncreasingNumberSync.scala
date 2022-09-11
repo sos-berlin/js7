@@ -10,7 +10,6 @@ import monix.eval.Task
 import org.jetbrains.annotations.TestOnly
 import scala.collection.mutable
 import scala.concurrent.Promise
-import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration._
 
 /**
@@ -42,30 +41,22 @@ final class IncreasingNumberSync(initial: Long, valueToString: Long => String)
     * @param delay When waiting for events, don't succeed after the first event but wait for further events
     */
   def whenAvailable(after: Long, until: Option[MonixDeadline], delay: FiniteDuration = ZeroDuration)
-  : Task[Boolean] =
-    logger.traceTask(
+  : Task[Boolean] = {
+    def argsString =
+      s"$after delay=${delay.pretty}${until.fold("")(o => " until=" + o.timeLeft.pretty)}"
+    logger.traceTaskWithResult[Boolean]("whenAvailable", argsString)(
       Task.defer {
-        lazy val logPrefix =
-          s"whenAvailable($after delay=${delay.pretty}${until.fold("")(o => " until="+o.timeLeft.pretty)})"
-        if (after < _last) {
-          logger.trace(s"$logPrefix => fulfilled immediately")
+        if (after < _last)
           Task.True  // Event already waiting
-        } else if (until.exists(_.hasElapsed)) {
-          logger.trace(s"$logPrefix => timed out immediately")
+        else if (until.exists(_.hasElapsed))
           Task.False  // Timeout
-        } else {
-          lazy val since = now
-          logger.whenTraceEnabled { since; logger.trace(s"$logPrefix ...") }
+        else {
           val task = whenAvailable2(after)
             .delayResult(delay min until.fold(FiniteDuration.MaxValue)(_.timeLeftOrZero))
           until.fold(task)(u => task.timeoutTo(u.timeLeftOrZero, Task.False))
-            .map { isAvailable =>
-              logger.trace(
-                s"$logPrefix => ${if (isAvailable) "ok" else "timed out"} after ${since.elapsed.pretty}")
-              isAvailable
-            }
         }
       })
+  }
 
   private def whenAvailable2(after: Long): Task[Boolean] =
     Task.tailRecM(())(_ =>

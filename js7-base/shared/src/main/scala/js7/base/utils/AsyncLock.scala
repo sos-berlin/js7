@@ -37,8 +37,8 @@ final class AsyncLock private(
         val acquirer = new Acquirer(CorrelId.current, acquirerToString)
         mvar.tryPut(acquirer).flatMap(hasAcquired =>
           if (hasAcquired) {
+            log.trace(s"↘ $name acquired by $acquirer")
             acquirer.lockedSince = nanoTime()
-            log.trace(s"$name acquired by $acquirer")
             Task.unit
           } else
             if (suppressLog)
@@ -47,39 +47,39 @@ final class AsyncLock private(
             else {
               val waitingSince = now
               Task.tailRecM(())(_ =>
-                  mvar.tryRead.flatMap {
-                    case Some(lockedBy) =>
-                      log.debug(
-                        s"↘ $name enqueues $acquirer (currently locked by $lockedBy) ...")
-                      mvar.put(acquirer)
-                        .whenItTakesLonger(warnTimeouts)(_ =>
-                          for (lockedBy <- mvar.tryRead) yield logger.info(
-                            s"$name: ⏳ $acquirer is still waiting" +
-                              s" (currently locked by ${lockedBy getOrElse "None"})" +
-                              s" for ${waitingSince.elapsed.pretty} ..."))
-                        .map { _ =>
-                          log.debug(
-                            s"↙ $name acquired by $acquirer after ${waitingSince.elapsed.pretty}")
-                          acquirer.lockedSince = nanoTime()
-                          Right(())
-                      }
+                mvar.tryRead.flatMap {
+                  case Some(lockedBy) =>
+                    log.debug(
+                      s"⟲ $name enqueues $acquirer (currently locked by $lockedBy) ...")
+                    mvar.put(acquirer)
+                      .whenItTakesLonger(warnTimeouts)(_ =>
+                        for (lockedBy <- mvar.tryRead) yield logger.info(
+                          s"$name: ⏳ $acquirer is still waiting" +
+                            s" (currently locked by ${lockedBy getOrElse "None"})" +
+                            s" for ${waitingSince.elapsed.pretty} ..."))
+                      .map { _ =>
+                        log.debug(
+                          s"↘ $name acquired by $acquirer after ${waitingSince.elapsed.pretty}")
+                        acquirer.lockedSince = nanoTime()
+                        Right(())
+                    }
 
-                    case None =>  // Lock has just become available
-                      for (hasAcquired <- mvar.tryPut(acquirer)) yield
-                        if (!hasAcquired)
-                          Left(())  // Locked again by someone else, so try again
-                        else {
-                          log.trace(s"$name acquired by $acquirer")
-                          acquirer.lockedSince = nanoTime()
-                          Right(())  // The lock is ours!
-                        }
-                  })
+                  case None =>  // Lock has just become available
+                    for (hasAcquired <- mvar.tryPut(acquirer)) yield
+                      if (!hasAcquired)
+                        Left(())  // Locked again by someone else, so try again
+                      else {
+                        log.trace(s"↘ $name acquired by $acquirer")
+                        acquirer.lockedSince = nanoTime()
+                        Right(())  // The lock is ours!
+                      }
+                })
             })
       }
 
   private def release(acquirerToString: () => String): Task[Unit] =
     Task.defer {
-      log.trace(s"$name released by ${acquirerToString()}")
+      log.trace(s"↙︎ $name released by ${acquirerToString()}")
       lockM.flatMap(_.take).void
     }
 
@@ -107,7 +107,10 @@ object AsyncLock
     override def toString =
       if (lockedSince == 0)
         name
-      else
-        s"${correlId.fold("", _ + " ")}$name ${(nanoTime() - lockedSince).ns.pretty} ago"
+      else {
+        val c = correlId.fold("", o => s"$o ")
+        val duration = (nanoTime() - lockedSince).ns.pretty
+        s"$c$name $duration ago"
+      }
   }
 }

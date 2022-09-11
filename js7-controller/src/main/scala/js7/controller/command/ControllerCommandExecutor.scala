@@ -75,7 +75,7 @@ extends CommandExecutor[ControllerCommand]
   private def logCommand(run: CommandRun[ControllerCommand]): Unit =
     run.command match {
       case Batch(_) =>   // Log only individual commands
-      case _ => logger.debug(s"↘︎ $run")
+      case _ => logger.debug(s"↘ $run")
     }
 
   def overview: CommandHandlerOverview =

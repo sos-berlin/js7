@@ -41,7 +41,7 @@ trait SessionApi
 
   final def tryLogout: Task[Completed] =
     Task.defer {
-      logger.trace(s"$toString: tryLogout")
+      logger.trace(s"↘ $toString: tryLogout")
       tryLogoutLock.lock(
         logout()
           .onErrorRecover { case t =>
@@ -50,7 +50,7 @@ trait SessionApi
             Completed
           }
           .guaranteeCase(exitCase => Task {
-            logger.trace(s"$toString: tryLogout => $exitCase")
+            logger.trace(s"↙︎ $toString: tryLogout => $exitCase")
           }))
     }
 

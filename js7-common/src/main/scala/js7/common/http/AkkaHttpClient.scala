@@ -384,7 +384,10 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
       .toList
       .flatMap(_.subgroups)
       .match_ {
-        case List(m1, m2) => new RuntimeException(s"$name $m1): $m2") with NoStackTrace
+        case List(m1, m2) =>
+          new RuntimeException(s"$name $m1): $m2") with NoStackTrace {
+            override def toString = getMessage
+          }
         case _ => t
       }
 

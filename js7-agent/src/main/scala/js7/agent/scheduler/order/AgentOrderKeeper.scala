@@ -2,6 +2,7 @@ package js7.agent.scheduler.order
 
 import akka.actor.{ActorRef, DeadLetterSuppression, Stash, Terminated}
 import akka.pattern.ask
+import io.circe.syntax.EncoderOps
 import java.time.ZoneId
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
@@ -476,11 +477,15 @@ final class AgentOrderKeeper(
                     }
                 }
 
-              case Some(registeredWorkflow) if registeredWorkflow.withoutSource == workflow.withoutSource =>
-                Future.successful(Right(AgentCommand.Response.Accepted))
-
-              case Some(_) =>
-                Future.successful(Left(Problem.pure(s"Different duplicate ${workflow.id}")))
+              case Some(registeredWorkflow) =>
+                Future.successful(
+                  if (registeredWorkflow.withoutSource != workflow.withoutSource) {
+                    logger.warn(s"AttachSignedItem: Different duplicate ${workflow.id}:")
+                    logger.warn(s"AttachSignedItem  ${workflow.withoutSource.asJson}")
+                    logger.warn(s"But registered is ${registeredWorkflow.withoutSource.asJson}")
+                    Left(Problem.pure(s"Different duplicate ${workflow.id}"))
+                  } else
+                    Right(AgentCommand.Response.Accepted))
             }
 
           case _: JobResource =>

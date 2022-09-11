@@ -63,7 +63,7 @@ trait LoggingAnyFreeSpec extends AnyFreeSpec {
       import AnsiEscapeCodes.{black, bold, green, red, reset}
       val prefix = (self.getClass.simpleScalaName +: outer).mkString("", " — ", " — ")
       delayBeforeEnd()
-      logger.info(eager(s"↘︎ $prefix$black$bold$testName$reset"))
+      logger.info(eager(s"↘ $prefix$black$bold$testName$reset"))
       delayBeforeEnd()
       try {
         f
