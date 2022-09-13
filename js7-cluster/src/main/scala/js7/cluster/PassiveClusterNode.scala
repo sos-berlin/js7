@@ -274,6 +274,13 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
       val builder = new FileSnapshotableStateBuilder(journalFileForInfo = file.getFileName,
         continuation.maybeJournalId, newStateBuilder)
 
+      def releaseEvents(): Unit =
+        if (journalConf.deleteObsoleteFiles) {
+          eventWatch.releaseEvents(
+            builder.journalState
+              .toReleaseEventId(eventWatch.lastFileEventId, journalConf.releaseEventsUserIds))
+        }
+
       continuation match {
         case FirstPartialFile(recoveredJournalFile) =>
           logger.info(s"Start replicating '${file.getFileName}' file after " +
@@ -480,11 +487,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                   firstEventPositionAndFileEventId = PositionAnd(replicatedFileLength, continuation.fileEventId),
                   flushedLengthAndEventId = PositionAnd(fileLength, builder.eventId),
                   isActiveNode = false)
-                if (journalConf.deleteObsoleteFiles) {
-                  eventWatch.releaseEvents(
-                    builder.journalState
-                      .toReleaseEventId(eventWatch.lastFileEventId, journalConf.releaseEventsUserIds))
-                }
+                releaseEvents()
               }
             }
             //assertThat(fileLength == out.size, s"fileLength=$fileLength, out.size=${out.size}")  // Maybe slow
@@ -511,11 +514,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                 case Stamped(_, _, KeyedEvent(_, event)) =>
                   event match {
                     case _: JournalEventsReleased =>
-                      if (journalConf.deleteObsoleteFiles) {
-                        eventWatch.releaseEvents(
-                          builder.journalState
-                            .toReleaseEventId(eventWatch.lastFileEventId, journalConf.releaseEventsUserIds))
-                      }
+                      releaseEvents()
                       Observable.pure(Right(()))
 
                     case clusterEvent: ClusterEvent =>
@@ -559,6 +558,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                         case ClusterCoupled(activeId) =>
                           assertThat(activeId != ownId)
                           awaitingCoupledEvent = false
+                          releaseEvents()
                           Observable.pure(Right(()))
 
                         case _ =>

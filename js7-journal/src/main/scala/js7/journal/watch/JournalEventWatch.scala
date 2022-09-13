@@ -211,7 +211,6 @@ with JournalingObserver
       try {
         delete(historic.file)
         synchronized {
-          logger.debug(s"Remove $historic")
           fileEventIdToHistoric -= historic.fileEventId
         }
       } catch {
