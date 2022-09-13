@@ -33,6 +33,7 @@ import js7.cluster.ClusterConf.ClusterProductName
 import js7.cluster.PassiveClusterNode._
 import js7.common.http.RecouplingStreamReader
 import js7.common.jsonseq.PositionAnd
+import js7.core.cluster.ClusterWatch.{ClusterFailOverWhilePassiveLostProblem, UntaughtClusterWatchProblem}
 import js7.data.cluster.ClusterCommand.{ClusterCouple, ClusterPassiveDown, ClusterPrepareCoupling, ClusterRecouple}
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{Coupled, Decoupled, PreparedToBeCoupled}
@@ -416,7 +417,14 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                         })
                     }
                   ).flatMap {
-                    case Left(problem) => Observable.raiseError(problem.throwable.appendCurrentStackTrace)
+                    case Left(problem) =>
+                      if (problem.is(ClusterFailOverWhilePassiveLostProblem)
+                        || problem.is(UntaughtClusterWatchProblem)) {
+                        logger.info(s"No failover because ClusterWatch reponded: $problem")
+                        Observable.empty   // Ignore
+                      } else
+                        Observable.raiseError(problem.throwable.appendCurrentStackTrace)
+
                     case Right(false) => Observable.empty   // Ignore
                     case Right(true) => Observable.pure(Right(()))  // End observation
                   }

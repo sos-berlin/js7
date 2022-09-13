@@ -16,6 +16,7 @@ import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentDedicated}
 import js7.data.subagent.{SubagentId, SubagentItemState}
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.subagent.SubagentTest._
 import monix.execution.Scheduler
@@ -34,7 +35,7 @@ final class SubagentTest extends AnyFreeSpec with SubagentTester
     eventWatch.await[SubagentCoupled](_.key == localSubagentId)
     assert(waitForCondition(10.s, 10.ms)(
       controllerState.keyTo(SubagentItemState)(localSubagentId).couplingState == Coupled))
-    assert(controllerState.keyTo(SubagentItemState)(localSubagentId)
+    awaitAndAssert(controllerState.keyTo(SubagentItemState)(localSubagentId)
       .platformInfo.map(_.js7Version) contains Js7Version)
   }
 
