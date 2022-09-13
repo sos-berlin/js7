@@ -5,7 +5,6 @@ import js7.base.problem.Checked
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime._
 import js7.base.time.Timestamp
-import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, ControlWorkflow, ResumeOrder}
@@ -17,7 +16,6 @@ import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, Or
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderObstacle, OrderObstacleCalculator, Outcome}
 import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.workflow.WorkflowControlId.syntax._
 import js7.data.workflow.instructions.{Prompt, TryInstruction}
 import js7.data.workflow.position.BranchId.Try_
 import js7.data.workflow.position.Position
@@ -164,14 +162,13 @@ extends AnyFreeSpec with ControllerAgentForScalaTest
       ItemRevision(2),
       UnsignedItemChanged.apply)
 
-    waitForCondition(10.s, 10.ms)(
-      controllerState.itemToIgnorantAgents(WorkflowControl).contains(aWorkflowControlId))
-    assert(controllerState.itemToIgnorantAgents(WorkflowControl).toMap == Map(
-      aWorkflowControlId -> Set(agentPath)))
-    assert(controllerState.itemToIgnorantAgents(WorkflowControl)
-      .get(aWorkflowControlId) contains Set(agentPath))
-    assert(JControllerState(controllerState).workflowControlToIgnorantAgent
-      .get(JWorkflowId(aWorkflowControlId.workflowId)).asScala == Set(agentPath))
+    // TODO Unreliable, because WorkflowControl may have been attached to the Agent:
+    //waitForCondition(10.s, 10.ms)(
+    //  controllerState.itemToIgnorantAgents(WorkflowControl).contains(aWorkflowControlId))
+    //assert(controllerState.itemToIgnorantAgents(WorkflowControl).toMap == Map(
+    //  aWorkflowControlId -> Set(agentPath)))
+    //assert(JControllerState(controllerState).workflowControlToIgnorantAgent
+    //  .get(JWorkflowId(aWorkflowControlId.workflowId)).asScala == Set(agentPath))
   }
 
   "Breakpoint in a Try block" in {
