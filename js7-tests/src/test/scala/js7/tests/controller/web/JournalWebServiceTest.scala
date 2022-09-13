@@ -11,7 +11,6 @@ import js7.base.io.file.FileUtils.syntax._
 import js7.base.thread.Futures.implicits._
 import js7.base.thread.MonixBlocking.syntax._
 import js7.base.time.ScalaTime._
-import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.Closer.syntax._
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.web.Uri
@@ -30,6 +29,7 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.controller.web.JournalWebServiceTest._
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.script
@@ -94,14 +94,14 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
 
     val stateDir = controller.injector.instance[ControllerConfiguration].stateDirectory
     val controller0File = stateDir / "controller--0.journal"
-    waitForCondition(99.s, 10.ms)(replicated.length == Files.size(controller0File))
+    awaitAndAssert(replicated.length == Files.size(controller0File))
     //assert(replicated.utf8String endsWith EndOfJournalFileMarker.utf8String)
 
     //replicated = replicated.dropRight(EndOfJournalFileMarker.length)
     assert(replicated.utf8String == controller0File.contentString)  // Compare strings for a legible error message
     assert(replicated == controller0File.byteArray)
 
-    waitForCondition(99.s, 10.ms)(observedLengths.lastOption.map(_.stripSuffix("\n").toLong) contains Files.size(controller0File))
+    awaitAndAssert(observedLengths.lastOption.map(_.stripSuffix("\n").toLong) contains Files.size(controller0File))
     assert(observedLengths.last.stripSuffix("\n").toLong == Files.size(controller0File))
 
     // After a snapshot (a new journal file is started),
@@ -109,7 +109,7 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
     httpControllerApi.executeCommand(ControllerCommand.TakeSnapshot) await 99.s
 
     whenReplicated await 9.s
-    waitForCondition(10.s, 10.ms)(replicated endsWith EndOfJournalFileMarker)
+    awaitAndAssert(replicated endsWith EndOfJournalFileMarker)
     assert(replicated.utf8String == controller0File.contentString ++ EndOfJournalFileMarker.utf8String)  // Compare strings for legible error message
     assert(replicated == controller0File.byteArray ++ EndOfJournalFileMarker)
 
@@ -150,11 +150,11 @@ final class JournalWebServiceTest extends AnyFreeSpec with BeforeAndAfterAll wit
     val orderId = OrderId("🔵")
     httpControllerApi.addOrder(FreshOrder(orderId, workflow.path)) await 99.s
     controller.eventWatch.await[OrderFinished](_.key == orderId)
-    waitForCondition(9.s, 10.ms) { lines.exists(_ contains "OrderFinished") }
+    awaitAndAssert(lines.exists(_ contains "OrderFinished"))
     for (o <- observeWithHeartbeat.value; t <- o.failed) throw t.appendCurrentStackTrace
     assert(lines.exists(_ contains "OrderFinished"))
 
-    waitForCondition(9.s, 10.ms) { observedLines.exists(_ contains "OrderFinished") }
+    awaitAndAssert(observedLines.exists(_ contains "OrderFinished"))
     assert(observedLines.exists(_ contains "OrderFinished"))
 
     assert(observedLines.count(_ == JournalSeparators.HeartbeatMarker.utf8String) > 1)
