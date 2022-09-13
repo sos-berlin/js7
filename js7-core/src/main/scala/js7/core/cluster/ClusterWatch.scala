@@ -50,9 +50,11 @@ extends ClusterWatchApi
     update(from, fromMustBeActive = fromMustBeActive,
       s"event ${events.mkString(", ")} --> $reportedClusterState") {
       case None =>
-        // Not yet initialized: we accept anything
-        // FIXME But we cannot safely rely on the first visitor!
-        Right(reportedClusterState)
+        // Not yet initialized then no ClusterFailedOver
+        if (events.exists(_.event.isInstanceOf[ClusterFailedOver]))
+          Left(UntaughtClusterWatchProblem)
+        else
+          teach(from, reportedClusterState)
 
       case Some(current) =>
         if (current.clusterState == reportedClusterState) {
@@ -188,6 +190,7 @@ object ClusterWatch
   }
 
   private lazy val isClusterWatchProblemCode = Set[ProblemCode](
+    UntaughtClusterWatchProblem.code,
     ClusterWatchHeartbeatMismatchProblem.code,
     ClusterWatchEventMismatchProblem.code,
     ClusterWatchInactiveNodeProblem.code,
@@ -195,6 +198,8 @@ object ClusterWatch
 
   def isClusterWatchProblem(problem: Problem): Boolean =
     problem.maybeCode exists isClusterWatchProblemCode
+
+  final case object UntaughtClusterWatchProblem extends Problem.ArgumentlessCoded
 
   final case class ClusterWatchHeartbeatMismatchProblem(
     currentClusterState: ClusterState,
