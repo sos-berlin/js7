@@ -1,5 +1,6 @@
 package js7.subagent.web
 
+import PseudoAgentRoute._
 import akka.http.scaladsl.model.StatusCodes.{BadRequest, NotFound, ServiceUnavailable}
 import akka.http.scaladsl.server.Directives.{Segment, as, complete, entity, get, pathEnd, pathEndOrSingleSlash, pathPrefix, post, withSizeLimit}
 import akka.http.scaladsl.server.Route
@@ -9,8 +10,11 @@ import io.circe.{Json, JsonObject}
 import js7.base.auth.ValidUserPermission
 import js7.base.circeutils.CirceUtils.RichCirceEither
 import js7.base.circeutils.typed.TypedJsonCodec
+import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.stream.Numbered
+import js7.base.time.ScalaTime._
+import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.common.akkahttp.AkkaHttpServerUtils.{completeTask, pathSegment}
 import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.akkahttp.StandardMarshallers._
@@ -88,6 +92,16 @@ private trait PseudoAgentRoute extends SessionRoute with EntitySizeLimitProvider
   private def completeWithRestartAsDirector =
     completeTask(
       restartAsDirector
+        .delayExecution(200.ms) // Delay in background to allow to respond properly (for test)
+        .onErrorHandle(t => Task {
+          logger.error(s"restartAsDirector => ${t.toStringWithCauses}")
+        })
+        .start
         .as(ServiceUnavailable -> Problem(
           "Subagent becomes a fresh Agent Director - try again after a second")))
+}
+
+object PseudoAgentRoute
+{
+  private val logger = Logger[this.type]
 }
