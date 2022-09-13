@@ -25,6 +25,7 @@ import js7.data.workflow.instructions.Schedule.{Periodic, Scheme, Ticking}
 import js7.data.workflow.instructions.{Cycle, Fail, Schedule, TryInstruction}
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.tester.ScalaTestUtils.awaitAndAssert
 import js7.tests.CycleTest._
 import js7.tests.jobs.{EmptyJob, SemaphoreJob}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
@@ -429,19 +430,19 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
       .await(99.s).orThrow
 
     clock.tick()
-    assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 1)
+    awaitAndAssert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 1)
 
     clock.tick(30.minutes - 1.s)
-    assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 1)
+    awaitAndAssert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 1)
 
     clock.tick(1.s)
-    assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 2)
+    awaitAndAssert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 2)
 
     clock.tick(1.h - 1.s)
-    assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 2)
+    awaitAndAssert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 2)
 
     clock.tick(1.s)
-    assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 3)
+    awaitAndAssert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 3)
   }
 
   private def addWorkflow(workflow: Workflow): Workflow = {
