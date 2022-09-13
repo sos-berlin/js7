@@ -86,70 +86,55 @@ final class AsyncLockTest extends AsyncFreeSpec
           result
       }
     }
+
+    def idleNanos(duration: FiniteDuration): Unit = {
+      val t = System.nanoTime()
+      val nanos = duration.toNanos
+      while (System.nanoTime() - t < nanos) {}
+    }
   }
 
   "Cancel releases lock only after task has been canceled" in {
     val lock = AsyncLock("CANCEL", logWorryDurations = Nil)
-    val started = Promise[Unit]()
-    val lockCanceled = Promise[Unit]()
-    val taskCanceled = Promise[Unit]()
-    val continue = Promise[Unit]()
+    val taskStarted = Promise[Unit]()
+    val taskCancelationStarted = Promise[Unit]()
     val taskCompleted = Promise[Unit]()
+    val continue = Promise[Unit]()
 
     val future = lock
       .lock(Task.defer {
-        started.success(())
-        Task.sleep(99.s)
-          .doOnCancel(
-            Task.sleep(500.ms)
+        taskStarted.success(())
+        Task.never
+          .doOnCancel(Task.defer {
+            taskCancelationStarted.success(())
+            Task.sleep(100.ms)
               .*>(Task.defer {
-                assert(!lockCanceled.isCompleted)
-                taskCanceled.success(())
-                  Task.fromFuture(continue.future)
-                    .*>(Task {
-                      assert(!lockCanceled.isCompleted)
-                      taskCompleted.success(())
-                    })
-              }))
+                Task.fromFuture(continue.future)
+                  .*>(Task {
+                    taskCompleted.success(())
+                  })
+              })
+          })
       })
       .runToFuture
 
     Task
-      .fromFuture(started.future)
+      .fromFuture(taskStarted.future)
       .flatMap(_ => Task.defer {
         future.cancel()
 
-        Task.parMap2(
-          lock.lock(Task.unit)
-            .*>(Task {
-              lockCanceled.success(())
-              assert(taskCompleted.isCompleted)
-            })
-            .timeoutWith(9.s, new RuntimeException("Cancel operation has not released the lock")),
-
-          Task.fromFuture(taskCanceled.future)
-            .*>(Task {
-              assert(!lockCanceled.isCompleted)
-              assert(!taskCompleted.isCompleted)
-            })
-            .*>(
-              Task {
-                continue.success(())
-              }.delayExecution(500.ms))
-        )((_, _) => ())
-          .*>(
-            Task
-              .fromFuture(taskCanceled.future)
-              .timeoutWith(9.s, new RuntimeException("Task has not been canceled"))
-          )
+        Task
+          .fromFuture(taskCancelationStarted.future)
+          .*>(Task {
+            assert(!taskCompleted.isCompleted)
+            continue.success(())
+          })
+          .*>(lock
+            .lock(
+              Task.fromFuture(taskCompleted.future))
+            .timeoutWith(9.s, new RuntimeException("Cancel operation has not released the lock")))
           .as(succeed)
       })
       .runToFuture
-  }
-
-  private def idleNanos(duration: FiniteDuration): Unit = {
-    val t = System.nanoTime()
-    val nanos = duration.toNanos
-    while (System.nanoTime() - t < nanos) {}
   }
 }
