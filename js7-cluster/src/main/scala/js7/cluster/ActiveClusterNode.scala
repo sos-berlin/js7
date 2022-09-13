@@ -356,6 +356,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff: TypeTag](
         case Left(missingHeartbeatProblem @ MissingPassiveClusterNodeHeartbeatProblem(id, duration)) =>
           logger.warn(s"No heartbeat from passive cluster node since ${duration.pretty} - continuing as single active cluster node")
           assertThat(id != ownId)
+
           // FIXME (1) Exklusiver Zugriff (Lock) wegen parallelen ClusterCommand.ClusterRecouple,
           //  das ein ClusterPassiveLost auslöst, mit ClusterCouplingPrepared infolge.
           //  Dann können wir kein ClusterPassiveLost ausgeben.
@@ -363,37 +364,42 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff: TypeTag](
           //  -- Nicht nötig durch die Abfrage auf initialState ?
           // FIXME (2) Deadlock when called immediately after start of Controller, before Journal has been started ?
           //  persistence.awaitCurrentState may not response GetJournalState.
-          clusterStateLock.lock(
-            persistence.clusterState.flatMap {
-              case clusterState: Coupled =>
-                val passiveLost = ClusterPassiveLost(id)
-                suspendHeartbeat(
-                  common.ifClusterWatchAllowsActivation(clusterState, passiveLost)(
-                    Task.deferFuture {
-                      // Release a concurrent persist operation, which waits for the missing acknowledgement and
-                      // blocks the persist lock. Avoid a deadlock.
-                      // This does not hurt if the concurrent persist operation is a ClusterEvent, too,
-                      // because we are leaving ClusterState.Coupled anyway.
-                      logger.debug(s"JournalActor.Input.PassiveLost($passiveLost)")
-                      journalActor ? JournalActor.Input.PassiveLost(passiveLost)
-                    } >>
-                      persistWithoutTouchingHeartbeat() {
-                        case `initialState` => Right(Some(passiveLost))
-                        case _ => Right(None)  // Ignore when ClusterState has changed (no longer Coupled)
-                      } .map(_.toCompleted.map(_ => true)))
-                ).map(_.flatMap { allowed =>
-                  if (!allowed) {
-                    // Should not happen
-                    haltJava(
-                      "🔥 ClusterWatch has unexpectedly forbidden activation " +
-                        s"after $passiveLost event",
-                      restart = true)
-                  }
-                  Left(missingHeartbeatProblem)
-                })
-              case _ =>
-                Task.pure(Left(missingHeartbeatProblem))
-            })
+          /*
+            ClusterPassiveLost kann während eines persist passieren, dass auf Ack des Passiven
+            wartet.
+            Während eines ClusterCoupled ?
+            Kein lock hier, wegen möglichen Deadlocks !!!
+           */
+          persistence.clusterState.flatMap {
+            case clusterState: Coupled =>
+              val passiveLost = ClusterPassiveLost(id)
+              suspendHeartbeat(
+                common.ifClusterWatchAllowsActivation(clusterState, passiveLost)(
+                  Task.deferFuture {
+                    // Release a concurrent persist operation, which waits for the missing acknowledgement and
+                    // blocks the persist lock. Avoid a deadlock.
+                    // This does not hurt if the concurrent persist operation is a ClusterEvent, too,
+                    // because we are leaving ClusterState.Coupled anyway.
+                    logger.debug(s"JournalActor.Input.PassiveLost($passiveLost)")
+                    journalActor ? JournalActor.Input.PassiveLost(passiveLost)
+                  } >>
+                    persistWithoutTouchingHeartbeat() {
+                      case `initialState` => Right(Some(passiveLost))
+                      case _ => Right(None)  // Ignore when ClusterState has changed (no longer Coupled)
+                    } .map(_.toCompleted.map(_ => true)))
+              ).map(_.flatMap { allowed =>
+                if (!allowed) {
+                  // Should not happen
+                  haltJava(
+                    "🔥 ClusterWatch has unexpectedly forbidden activation " +
+                      s"after $passiveLost event",
+                    restart = true)
+                }
+                Left(missingHeartbeatProblem)
+              })
+            case _ =>
+              Task.pure(Left(missingHeartbeatProblem))
+          }
 
         case o => Task.pure(o)
       }
