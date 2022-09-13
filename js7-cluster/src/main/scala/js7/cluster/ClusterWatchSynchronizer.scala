@@ -37,9 +37,8 @@ private final class ClusterWatchSynchronizer private(ownId: NodeId, initialInlay
 
   def start(clusterState: HasNodes): Task[Checked[Completed]] =
     inlay.value
-      .flatMap(inlay =>
-        inlay.repeatWhenTooLong(
-          inlay.doACheckedHeartbeat(clusterState)))
+      .flatMap(_
+        .doACheckedHeartbeat(clusterState))
       .flatMapT(_ => Task.defer {
         logger.info("ClusterWatch agreed that this node is the active cluster node")
         inlay.value
@@ -259,23 +258,21 @@ object ClusterWatchSynchronizer
         }
     }
 
-    def repeatWhenTooLong[A](task: Task[A]): Task[A] = {
-      // limit is a heartbeat shorter than longHeartbeatTimeout
-      val limit = timing.heartbeatTimeout / 2
+    def doACheckedHeartbeat(clusterState: HasNodes): Task[Checked[Completed]] =
+      repeatWhenTooLong(clusterWatch
+        .heartbeat(from = ownId, clusterState)
+        .materializeIntoChecked)
+
+    def repeatWhenTooLong[A](task: Task[A]): Task[A] =
       Task.tailRecM(())(_ => task
         .timed
         .map { case (duration, result) =>
-          if (duration >= limit) {
-            logger.warn("ClusterWatch response time was too long: " + duration.pretty +
+          if (duration >= timing.clusterWatchReactionTimeout) {
+            logger.info("ClusterWatch response time was too long: " + duration.pretty +
               ", retry after discarding " + result)
             Left(())
           } else
             Right(result)
         })
-    }
-
-    def doACheckedHeartbeat(clusterState: HasNodes): Task[Checked[Completed]] =
-      clusterWatch.heartbeat(from = ownId, clusterState)
-        .materializeIntoChecked
   }
 }
