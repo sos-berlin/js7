@@ -20,9 +20,9 @@ final class ActivationInhibitorTest extends AnyFreeSpec
     lazy val inhibitor = new ActivationInhibitor
 
     "state is Initial" in {
-      val c = inhibitor.state.runToFuture
+      val a = inhibitor.state.runToFuture
       scheduler.tick()
-      assert(c.value == Some(Success(Some(Initial))))
+      assert(a.value == Some(Success(Some(Initial))))
     }
 
     "startActive" in {
@@ -32,21 +32,21 @@ final class ActivationInhibitorTest extends AnyFreeSpec
     }
 
     "Following startActive is rejected" in {
-      val b = inhibitor.startActive.runToFuture
+      val a = inhibitor.startActive.runToFuture
       scheduler.tick()
-      assert(b.value.get.isFailure)
+      assert(a.value.get.isFailure)
     }
 
     "Following startPassive is rejected" in {
-      val b = inhibitor.startPassive.runToFuture
+      val a = inhibitor.startPassive.runToFuture
       scheduler.tick()
-      assert(b.value.get.isFailure)
+      assert(a.value.get.isFailure)
     }
 
     "state is Active" in {
-      val c = inhibitor.state.runToFuture
+      val a = inhibitor.state.runToFuture
       scheduler.tick()
-      assert(c.value == Some(Success(Some(Active))))
+      assert(a.value == Some(Success(Some(Active))))
     }
   }
 

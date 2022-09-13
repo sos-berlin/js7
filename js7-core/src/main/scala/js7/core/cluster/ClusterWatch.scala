@@ -36,7 +36,10 @@ extends ClusterWatchApi
 
   def get: Task[Checked[ClusterState]] =
     stateMVar.flatMap(_.read)
-      .map(_.map(_.clusterState) toChecked Problem(s"ClusterWatch not yet started for Controller '$controllerId'"))
+      .map(_
+        .toChecked(Problem(
+          s"ClusterWatch not yet started for Controller '$controllerId'"))
+        .map(_.clusterState))
 
   def applyEvents(clusterWatchEvents: ClusterWatchEvents): Task[Checked[Completed]] = {
     import clusterWatchEvents.{events, from, clusterState => reportedClusterState}

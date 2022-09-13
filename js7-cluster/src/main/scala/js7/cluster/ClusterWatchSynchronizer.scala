@@ -140,22 +140,6 @@ private final class ClusterWatchSynchronizer private(ownId: NodeId, initialInlay
         inlay.value.flatMap(onZeroNesting))
     })
 
-  private def endNestedSuspensionX(getClusterState: Task[Option[HasNodes]]): Task[Unit] =
-    stopNestingLock.lock(Task.defer {
-      assertThat(!isHeartbeating)
-      if (stopNesting.decrementAndGet() == 0)
-        getClusterState.flatMap(_.fold(Task.unit)(clusterState =>
-          inlay.value.flatMap(_
-            .startHeartbeating(clusterState).void
-            .tapError(t => Task {
-              logger.warn(s"suspendHeartbeat: ${t.toStringWithCauses}",
-                t.nullIfNoStackTrace)
-              // Thread pool's reportFailure will report the exception ?
-            }))))
-      else
-        Task.unit
-    })
-
   def isHeartbeating =
     inlay.get.isHeartbeating
 

@@ -174,7 +174,7 @@ with JournalingObserver
     }
 
   def releaseEvents(untilEventId: EventId)(implicit scheduler: Scheduler): Unit = {
-    val delay = (EventId.toTimestamp(untilEventId) + releaseEventsDelay) - Timestamp.now
+    val delay = EventId.toTimestamp(untilEventId) + releaseEventsDelay - Timestamp.now
     if (delay.isZeroOrBelow) {
       releaseEventsNow(untilEventId)
     } else {
