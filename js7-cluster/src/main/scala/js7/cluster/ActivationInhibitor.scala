@@ -1,6 +1,8 @@
 package js7.cluster
 
 import cats.effect.ExitCase
+import cats.syntax.flatMap._
+import com.google.common.annotations.VisibleForTesting
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax._
 import js7.base.problem.Checked
@@ -40,26 +42,33 @@ private[cluster] final class ActivationInhibitor
         })
     }
 
-  def tryToActivate[A](ifInhibited: Task[A], activate: Task[A]): Task[A] =
-    logger.debugTask("tryToActivate")(
+  def tryToActivate(ifInhibited: Task[Checked[Boolean]], activate: Task[Checked[Boolean]])
+  : Task[Checked[Boolean]] =
+    logger.debugTask(
       Task.defer {
         stateMvarTask.flatMap(mvar =>
           mvar.take.flatMap {
             case Initial | Passive | Active =>
               activate
                 .guaranteeCase {
-                  case ExitCase.Completed =>
-                    logger.debug("tryToActivate: Active")
-                    mvar.put(Active)
-                  case _ =>
-                    logger.debug("tryToActivate: Passive")
+                  case ExitCase.Completed => Task.unit
+                  case exitCase =>
+                    logger.debug(s"tryToActivate: Passive — due to $exitCase")
                     mvar.put(Passive)
+                }
+                .flatTap {
+                  case o @ (Left(_) | Right(false)) =>
+                    logger.debug(s"tryToActivate: Passive — due to $o")
+                    mvar.put(Passive)
+                  case Right(true) =>
+                    logger.debug("tryToActivate: Active — due to Right(true)")
+                    mvar.put(Active)
                 }
 
             case o: Inhibited =>
               logger.debug(s"tryToActivate: $o")
-              mvar.put(o) >>
-                Task { logger.info("Activation inhibited") } >>
+              mvar.put(o) *>
+                Task { logger.info("Activation inhibited") } *>
                 ifInhibited
           })
       })
@@ -68,7 +77,7 @@ private[cluster] final class ActivationInhibitor
     * @return true if activation is or has been inhibited, false if already active
     */
   def inhibitActivation(duration: FiniteDuration): Task[Checked[Boolean]] =
-    logger.debugTaskWithResult[Checked[Boolean]]("inhibitActivation")(
+    logger.debugTaskWithResult[Checked[Boolean]](
       stateMvarTask.flatMap(mvar =>
         mvar.take
           .flatMap {
@@ -110,6 +119,7 @@ private[cluster] final class ActivationInhibitor
       }
     }
 
+  @VisibleForTesting
   private[cluster] def state: Task[Option[State]] =
     stateMvarTask.flatMap(_.tryRead)
 }
