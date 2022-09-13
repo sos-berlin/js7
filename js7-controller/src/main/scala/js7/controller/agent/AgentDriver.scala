@@ -46,6 +46,7 @@ import js7.journal.state.StatePersistence
 import monix.eval.Task
 import monix.execution.atomic.AtomicInt
 import monix.execution.{Cancelable, CancelableFuture, Scheduler}
+import monix.reactive.Observable
 import scala.concurrent.Promise
 import scala.concurrent.duration.Deadline.now
 import scala.util.chaining.scalaUtilChainingOps
@@ -497,6 +498,13 @@ extends ReceiveLoggingActor.WithStash
               Some(conf.eventBufferDelay max conf.commitDelay),
               maxCount = conf.eventBufferSize)  // ticks
             .filter(_.nonEmpty))   // Ignore empty ticks
+        .flatMap(o => Observable
+          // When the other cluster node may have failed-over,
+          // wait until we know that it hasn't (or this node is aborted).
+          // Avoids "Unknown OrderId" failures due to double activation.
+          .fromTask(persistence.whenNoFailoverByOtherNode
+            .logWhenItTakesLonger("whenNoFailoverByOtherNode"))
+          .map(_ => o))
         .mapEval(stampedEvents =>
           promiseTask[Completed] { promise =>
             self ! Internal.FetchedEvents(stampedEvents, promise)

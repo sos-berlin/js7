@@ -370,36 +370,37 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff: TypeTag](
             Während eines ClusterCoupled ?
             Kein lock hier, wegen möglichen Deadlocks !!!
            */
-          persistence.clusterState.flatMap {
-            case clusterState: Coupled =>
-              val passiveLost = ClusterPassiveLost(id)
-              suspendHeartbeat(
-                common.ifClusterWatchAllowsActivation(clusterState, passiveLost)(
-                  Task.deferFuture {
-                    // Release a concurrent persist operation, which waits for the missing acknowledgement and
-                    // blocks the persist lock. Avoid a deadlock.
-                    // This does not hurt if the concurrent persist operation is a ClusterEvent, too,
-                    // because we are leaving ClusterState.Coupled anyway.
-                    logger.debug(s"JournalActor.Input.PassiveLost($passiveLost)")
-                    journalActor ? JournalActor.Input.PassiveLost(passiveLost)
-                  } >>
-                    persistWithoutTouchingHeartbeat() {
-                      case `initialState` => Right(Some(passiveLost))
-                      case _ => Right(None)  // Ignore when ClusterState has changed (no longer Coupled)
-                    } .map(_.toCompleted.map(_ => true)))
-              ).map(_.flatMap { allowed =>
-                if (!allowed) {
-                  // Should not happen
-                  haltJava(
-                    "🔥 ClusterWatch has unexpectedly forbidden activation " +
-                      s"after $passiveLost event",
-                    restart = true)
-                }
-                Left(missingHeartbeatProblem)
-              })
-            case _ =>
-              Task.pure(Left(missingHeartbeatProblem))
-          }
+          persistence.forPossibleFailoverByOtherNode(
+            persistence.clusterState.flatMap {
+              case clusterState: Coupled =>
+                val passiveLost = ClusterPassiveLost(id)
+                suspendHeartbeat(
+                  common.ifClusterWatchAllowsActivation(clusterState, passiveLost)(
+                    Task.deferFuture {
+                      // Release a concurrent persist operation, which waits for the missing acknowledgement and
+                      // blocks the persist lock. Avoid a deadlock.
+                      // This does not hurt if the concurrent persist operation is a ClusterEvent, too,
+                      // because we are leaving ClusterState.Coupled anyway.
+                      logger.debug(s"JournalActor.Input.PassiveLost($passiveLost)")
+                      journalActor ? JournalActor.Input.PassiveLost(passiveLost)
+                    } >>
+                      persistWithoutTouchingHeartbeat() {
+                        case `initialState` => Right(Some(passiveLost))
+                        case _ => Right(None)  // Ignore when ClusterState has changed (no longer Coupled)
+                      } .map(_.toCompleted.map(_ => true)))
+                ).map(_.flatMap { allowed =>
+                  if (!allowed) {
+                    // Should not happen
+                    haltJava(
+                      "🔥 ClusterWatch has unexpectedly forbidden activation " +
+                        s"after $passiveLost event",
+                      restart = true)
+                  }
+                  Left(missingHeartbeatProblem)
+                })
+              case _ =>
+                Task.pure(Left(missingHeartbeatProblem))
+            })
 
         case o => Task.pure(o)
       }
@@ -436,7 +437,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff: TypeTag](
               case Left(noHeartbeatSince) =>
                 val problem = MissingPassiveClusterNodeHeartbeatProblem(passiveId, noHeartbeatSince.elapsed)
                 logger.trace(problem.toString)
-                Task.pure(Left(problem))
+                Task.left(problem)
 
               case Right(eventId) =>
                 Task.deferFuture {

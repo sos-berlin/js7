@@ -60,4 +60,6 @@ extends ReadableStatePersistence[S]
 
   def lock[A](key: Any)(body: Task[A])(implicit enclosing: sourcecode.Enclosing): Task[A] =
     keyLockKeeper.lock(key)(body)
+
+  val whenNoFailoverByOtherNode: Task[Unit]
 }
