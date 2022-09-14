@@ -709,12 +709,13 @@ with MainJournalingActor[ControllerState, Event]
 
     case Internal.ClusterModuleTerminatedUnexpectedly(tried) =>
       // Stacktrace has been debug-logged by Cluster
-      val msg = tried match {
-        case Success(Right(Completed)) => "Completed"
-        case Success(Left(problem)) => problem
-        case Failure(t) => t
+      tried match {
+        case Success(checked: Checked[Completed]) =>
+          val msg: Any = checked.fold(identity, identity)
+          logger.error(s"Cluster module terminated unexpectedly: $msg")
+        case Failure(t) =>
+          logger.error(s"Cluster module terminated unexpectedly: ${t.toStringWithCauses}", t)
       }
-      logger.error(s"Cluster module terminated unexpectedly: $msg ")
       context.stop(self)
   }
 

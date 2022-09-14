@@ -73,6 +73,11 @@ final class CorrelIdTest extends AnyFreeSpec
     assert(result == "__SYNC__")
   }
 
+  "fold" in {
+    assert(CorrelId.empty.fold("EMPTY", _ => fail()) == "EMPTY")
+    assert(CorrelId("_FILLED_").fold("EMPTY", o => s"*$o*") == "*_FILLED_*")
+  }
+
   "speed" - {
     val n = if (sys.props.contains("test.speed")) 1_000_000 else 100_000
 

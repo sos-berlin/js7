@@ -209,7 +209,7 @@ extends Actor with Stash with JournalLogging
               case Some(Stamped(eventId, _, KeyedEvent(_, _: ClusterCoupled))) =>
                 // Commit now to let Coupled event take effect on following events (avoids deadlock)
                 commit()
-                logger.info(s"Cluster is coupled: Start requiring acknowledgements from passive cluster node")
+                logger.info("Cluster is coupled: Start requiring acknowledgements from passive cluster node")
                 requireClusterAcknowledgement = true
                 releaseEventIdsAfterClusterCoupledAck = Some(eventId)
 
@@ -226,7 +226,7 @@ extends Actor with Stash with JournalLogging
 
               case Some(Stamped(_, _, KeyedEvent(_, event: ClusterActiveNodeShutDown))) =>
                 commit()
-                commitWithoutAcknowledgement(event)  // No events, only switch of acks
+                commitWithoutAcknowledgement(event)  // No events, only switch off acks
 
               case _ =>
                 if (persistBuffer.eventCount >= conf.coalesceEventLimit) {

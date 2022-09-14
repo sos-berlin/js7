@@ -4,7 +4,7 @@ import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route
 import com.typesafe.config.ConfigFactory
 import js7.base.Js7Version
-import js7.base.auth.SessionToken
+import js7.base.auth.{SessionToken, SimpleUser}
 import js7.base.generic.{Completed, SecretString}
 import js7.base.io.https.HttpsConfig
 import js7.base.session.SessionCommand
@@ -15,6 +15,7 @@ import js7.base.web.Uri
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.akkahttp.web.AkkaWebServer
+import js7.common.akkahttp.web.session.SessionInit
 import js7.common.akkautils.ProvideActorSystem
 import js7.core.cluster.HttpClusterWatchTest.*
 import js7.data.cluster.ClusterEvent.ClusterNodesAppointed
@@ -31,14 +32,24 @@ final class HttpClusterWatchTest extends AnyFreeSpec with BeforeAndAfterAll with
   override protected def config = ConfigFactory.empty
   private val controllerId = ControllerId("CONTROLLER")
 
-  private val clusterWatchRoute = {
+  private lazy val clusterWatchRoute = {
     trait HasRoute {
       def route: Route
     }
     new ClusterWatchRoute with HasRoute {
       protected def scheduler = Scheduler.traced
       protected val clusterWatchRegister = new ClusterWatchRegister(scheduler)
-      def route = clusterWatchRoute(controllerId)
+
+      def route = clusterWatchRouteFor(
+        controllerId,
+        new ClusterWatchSession
+        {
+          type User = SimpleUser
+
+          def sessionInit =
+            SessionInit(SessionToken(SecretString("?")), SimpleUser(controllerId.toUserId))
+        }
+      )
     }.route
   }
 

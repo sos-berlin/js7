@@ -32,6 +32,7 @@ import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Closer, ProgramTermination, SetOnce}
 import js7.base.web.Uri
+import js7.cluster.Cluster.RestartAfterJournalTruncationException
 import js7.cluster.{Cluster, ClusterContext, ClusterFollowUp, WorkingClusterNode}
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
@@ -100,11 +101,17 @@ extends AutoCloseable
 
   lazy val actorSystem = injector.instance[ActorSystem]
 
-  val terminated: Future[ProgramTermination] =
-    for (o <- terminated1) yield {
+  val terminated: Future[ProgramTermination] = {
+    val t = terminated1
+      .recover { case t: RestartAfterJournalTruncationException =>
+        logger.info(t.getMessage)
+        ProgramTermination(restart = true)
+      }
+    for (o <- t) yield {
       close()
       o
     }
+  }
 
   def terminate(suppressSnapshot: Boolean = false): Task[ProgramTermination] =
     Task.defer {
@@ -268,7 +275,12 @@ object RunningController
   : ProgramTermination =
     autoClosing(RunningController.start(conf).awaitInfinite) { runningController =>
       whileRunning(runningController)
-      runningController.terminated.awaitInfinite
+      try runningController.terminated.awaitInfinite
+      catch {
+        case t: RestartAfterJournalTruncationException =>
+          logger.info(t.getMessage)
+          ProgramTermination(restart = true)
+      }
     }
 
   def start(configuration: ControllerConfiguration): Future[RunningController] =
@@ -277,9 +289,10 @@ object RunningController
   def fromInjector(injector: Injector): Future[RunningController] = {
     implicit val scheduler: Scheduler = injector.instance[Scheduler]
     // Run under scheduler from start (and let debugger show Controller's thread names)
-    Future {
-      new Starter(injector).start()
-    }.flatten
+    CorrelId.bindNew(
+      Future {
+        new Starter(injector).start()
+      }.flatten)
   }
 
   private class Starter(injector: Injector)

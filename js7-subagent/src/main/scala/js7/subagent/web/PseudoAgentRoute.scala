@@ -9,8 +9,11 @@ import io.circe.{Json, JsonObject}
 import js7.base.auth.ValidUserPermission
 import js7.base.circeutils.CirceUtils.RichCirceEither
 import js7.base.circeutils.typed.TypedJsonCodec
+import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.stream.Numbered
+import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.common.akkahttp.AkkaHttpServerUtils.{completeTask, pathSegment}
 import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.akkahttp.StandardMarshallers.*
@@ -20,6 +23,7 @@ import js7.data.agent.Problems.AgentNotDedicatedProblem
 import js7.data.subagent.Problems.SubagentAlreadyDedicatedProblem
 import js7.data.subagent.SubagentCommand
 import js7.subagent.SubagentCommandExecutor
+import js7.subagent.web.PseudoAgentRoute.*
 import monix.eval.Task
 import monix.execution.Scheduler
 
@@ -89,6 +93,16 @@ private trait PseudoAgentRoute extends SessionRoute with EntitySizeLimitProvider
   private def completeWithRestartAsDirector =
     completeTask(
       restartAsDirector
+        .delayExecution(200.ms) // Delay in background to allow to respond properly (for test)
+        .onErrorHandle(t => Task {
+          logger.error(s"restartAsDirector => ${t.toStringWithCauses}")
+        })
+        .start
         .as(ServiceUnavailable -> Problem(
           "Subagent becomes a fresh Agent Director - try again after a second")))
+}
+
+object PseudoAgentRoute
+{
+  private val logger = Logger[this.type]
 }

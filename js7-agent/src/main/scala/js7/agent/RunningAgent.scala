@@ -14,6 +14,7 @@ import js7.agent.configuration.inject.AgentModule
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
 import js7.agent.web.AgentWebServer
+import js7.agent.web.common.AgentSession
 import js7.base.auth.{SessionToken, SimpleUser, UserId}
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.process.ProcessSignal
@@ -31,7 +32,7 @@ import js7.base.utils.{Closer, ProgramTermination}
 import js7.base.web.Uri
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.auth.GateKeeper
-import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
+import js7.common.akkahttp.web.session.SessionRegister
 import js7.common.guice.GuiceImplicits.*
 import js7.common.system.startup.StartUp
 import js7.core.cluster.ClusterWatchRegister
@@ -60,7 +61,7 @@ final class RunningAgent private(
   mainActor: ActorRef,
   terminated1: Future[ProgramTermination],
   val api: CommandMeta => DirectAgentApi,
-  sessionRegister: SessionRegister[SimpleSession],
+  sessionRegister: SessionRegister[AgentSession],
   val sessionToken: SessionToken,
   closer: Closer,
   val injector: Injector)
@@ -205,7 +206,7 @@ object RunningAgent {
 
       mainActor ! MainActor.Input.Start(recovered)
 
-      val sessionRegister = injector.instance[SessionRegister[SimpleSession]]
+      val sessionRegister = injector.instance[SessionRegister[AgentSession]]
 
       val task = for {
         ready <- Task.fromFuture(mainActorReadyPromise.future)
@@ -214,7 +215,7 @@ object RunningAgent {
           agentConfiguration,
           gateKeeperConf,
           api,
-          injector.instance[SessionRegister[SimpleSession]],
+          injector.instance[SessionRegister[AgentSession]],
           injector.instance[ClusterWatchRegister],
           persistence.eventWatch
         ).closeWithCloser(closer)

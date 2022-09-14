@@ -7,6 +7,7 @@ import monix.execution.Scheduler.Implicits.traced
 import monix.execution.atomic.Atomic
 import monix.reactive.Observable
 import org.scalatest.freespec.AsyncFreeSpec
+import scala.concurrent.Promise
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Random
 
@@ -85,11 +86,55 @@ final class AsyncLockTest extends AsyncFreeSpec
           result
       }
     }
+
+    def idleNanos(duration: FiniteDuration): Unit = {
+      val t = System.nanoTime()
+      val nanos = duration.toNanos
+      while (System.nanoTime() - t < nanos) {}
+    }
   }
 
-  private def idleNanos(duration: FiniteDuration): Unit = {
-    val t = System.nanoTime()
-    val nanos = duration.toNanos
-    while (System.nanoTime() - t < nanos) {}
+  "Cancel releases lock only after task has been canceled" in {
+    val lock = AsyncLock("CANCEL", logWorryDurations = Nil)
+    val taskStarted = Promise[Unit]()
+    val taskCancelationStarted = Promise[Unit]()
+    val taskCompleted = Promise[Unit]()
+    val continue = Promise[Unit]()
+
+    val future = lock
+      .lock(Task.defer {
+        taskStarted.success(())
+        Task.never
+          .doOnCancel(Task.defer {
+            taskCancelationStarted.success(())
+            Task.sleep(100.ms)
+              .*>(Task.defer {
+                Task.fromFuture(continue.future)
+                  .*>(Task {
+                    taskCompleted.success(())
+                  })
+              })
+          })
+      })
+      .runToFuture
+
+    Task
+      .fromFuture(taskStarted.future)
+      .flatMap(_ => Task.defer {
+        future.cancel()
+
+        Task
+          .fromFuture(taskCancelationStarted.future)
+          .*>(Task {
+            assert(!taskCompleted.isCompleted)
+            continue.success(())
+          })
+          .*>(lock
+            .lock(
+              Task.fromFuture(taskCompleted.future))
+            .timeoutWith(9.s, new RuntimeException("Cancel operation has not released the lock")))
+          .as(succeed)
+      })
+      .runToFuture
   }
 }

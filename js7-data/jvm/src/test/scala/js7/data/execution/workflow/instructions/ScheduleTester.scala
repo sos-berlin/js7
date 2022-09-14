@@ -4,7 +4,6 @@ import java.time.DayOfWeek.{FRIDAY, MONDAY, SATURDAY, SUNDAY, THURSDAY, TUESDAY,
 import java.time.LocalTime.MIDNIGHT
 import java.time.{DayOfWeek, LocalDate, LocalDateTime, ZoneId, ZonedDateTime}
 import java.util.Locale
-import js7.base.log.Logger
 import js7.base.time.JavaTimeConverters.RichZonedDateTime
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.ScalaTime.*
@@ -26,7 +25,6 @@ trait ScheduleTester extends AnyFreeSpec
   : Unit =
     for (day <- setting) {
       day.testName in {
-        logger.debug("—"*40 + day.testName)
         assert(day.dayOfWeek == day.date.getDayOfWeek, "Weekday does not match start date")
         val localStart = LocalDateTime.of(day.date, MIDNIGHT).plus(dateOffset.toJava)
         val localEnd = localStart.plusDays(1)
@@ -45,7 +43,6 @@ object ScheduleTester
 {
   implicit val zone: ZoneId = ZoneId.of("Europe/Mariehamn")
   val dateOffset = 6.h  // Business day starts at 6:00 (i.e., switching from monday to tuesday)
-  private val logger = Logger[this.type]
 
   private val setting = Seq(
     Day(MONDAY,

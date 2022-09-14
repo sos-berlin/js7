@@ -233,7 +233,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
       journalingTimer := Cancelable.empty
       unstashAll()
       persistStatistics.endStashing()
-      logger.trace(s"»$toString« unbecome")
+      if (TraceLog) logger.trace(s"»$toString« unbecome")
       context.unbecome()
     }
   }
@@ -305,7 +305,7 @@ object JournalingActor
 {
   private val Inhibited = -1
   private val logger = Logger(getClass)
-  private val TraceLog = true
+  private val TraceLog = false
   private val BigStoreThreshold = 1.s
 
   final case class Timestamped[+E <: Event](keyedEvent: KeyedEvent[E], timestampMillis: Option[Long] = None)

@@ -1,5 +1,7 @@
 package js7.base.utils
 
+import java.lang.System.nanoTime
+import js7.base.log.CorrelId
 import js7.base.monixutils.MonixBase.DefaultWorryDurations
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.time.ScalaTime.*
@@ -14,7 +16,7 @@ final class AsyncLock private(
   warnTimeouts: IterableOnce[FiniteDuration],
   suppressLog: Boolean)
 {
-  private val lockM = MVar[Task].empty[() => String]().memoize
+  private val lockM = MVar[Task].empty[Acquirer]().memoize
   private val log = if (suppressLog) ScribeUtils.emptyLogger else logger
 
   def lock[A](task: Task[A])(implicit src: sourcecode.Enclosing): Task[A] =
@@ -26,53 +28,58 @@ final class AsyncLock private(
   }
 
   private def lock2[A](acquirer: () => String)(task: Task[A]): Task[A] =
-    acquire(acquirer).bracket(_ => task)(_ => release(acquirer))
-      // Because cancel() is asynchronous, the use part may continue even though
-      // the lock is released (?). Better we make the whole operation uncancelable.
-      // TODO Make cancelable ?
-      .uncancelable
+    acquire(acquirer)
+      .bracket(_ => task)(_ => release(acquirer))
 
-  private def acquire(acquirer: () => String): Task[Unit] =
+  private def acquire(acquirerToString: () => String): Task[Unit] =
     lockM
-      .flatMap(mvar =>
+      .flatMap { mvar =>
+        val acquirer = new Acquirer(CorrelId.current, acquirerToString)
         mvar.tryPut(acquirer).flatMap(hasAcquired =>
           if (hasAcquired) {
-            log.trace(s"$name acquired by ${acquirer()}")
+            log.trace(s"↘ $name acquired by $acquirer")
+            acquirer.lockedSince = nanoTime()
             Task.unit
-          } else {
-            val since = now
-            Task.tailRecM(())(_ =>
-              if (suppressLog)
-                mvar.put(acquirer).as(Right(()))
-              else
+          } else
+            if (suppressLog)
+              mvar.put(acquirer)
+                .as(Right(()))
+            else {
+              val waitingSince = now
+              Task.tailRecM(())(_ =>
                 mvar.tryRead.flatMap {
                   case Some(lockedBy) =>
-                    log.debug(s"↘ $name enqueues ${acquirer()} (currently locked by ${lockedBy()}) ...")
+                    log.debug(
+                      s"⟲ $name enqueues $acquirer (currently locked by $lockedBy) ...")
                     mvar.put(acquirer)
-                      .whenItTakesLonger(warnTimeouts)(duration =>
+                      .whenItTakesLonger(warnTimeouts)(_ =>
                         for (lockedBy <- mvar.tryRead) yield logger.info(
-                          s"$name: ⏳ ${acquirer()} is still waiting" +
-                            s" (currently locked by ${lockedBy.getOrElse("None")})" +
-                            s" for ${duration.pretty} ..."))
+                          s"$name: ⏳ $acquirer is still waiting" +
+                            s" (currently locked by ${lockedBy getOrElse "None"})" +
+                            s" for ${waitingSince.elapsed.pretty} ..."))
                       .map { _ =>
-                        log.debug(s"↙ $name acquired by ${acquirer()} after ${since.elapsed.pretty}")
+                        log.debug(
+                          s"↘ $name acquired by $acquirer after ${waitingSince.elapsed.pretty}")
+                        acquirer.lockedSince = nanoTime()
                         Right(())
                     }
+
                   case None =>  // Lock has just become available
-                    for (hasAcquired <- mvar.tryPut(acquirer)) yield {
+                    for (hasAcquired <- mvar.tryPut(acquirer)) yield
                       if (!hasAcquired)
                         Left(())  // Locked again by someone else, so try again
                       else {
-                        log.trace(s"$name acquired by ${acquirer()}")
+                        log.trace(s"↘ $name acquired by $acquirer")
+                        acquirer.lockedSince = nanoTime()
                         Right(())  // The lock is ours!
                       }
-                    }
                 })
-          }))
+            })
+      }
 
-  private def release(acquirer: () => String): Task[Unit] =
+  private def release(acquirerToString: () => String): Task[Unit] =
     Task.defer {
-      log.trace(s"$name released by ${acquirer()}")
+      log.trace(s"↙︎ $name released by ${acquirerToString()}")
       lockM.flatMap(_.take).void
     }
 
@@ -92,4 +99,18 @@ object AsyncLock
     suppressLog: Boolean = false)
   =
     new AsyncLock(name, logWorryDurations, suppressLog)
+
+  private final class Acquirer(correlId: CorrelId, nameToString: () => String) {
+    private lazy val name = nameToString()
+    var lockedSince: Long = 0
+
+    override def toString =
+      if (lockedSince == 0)
+        name
+      else {
+        val c = correlId.fold("", o => s"$o ")
+        val duration = (nanoTime() - lockedSince).ns.pretty
+        s"$c$name $duration ago"
+      }
+  }
 }

@@ -6,6 +6,7 @@ import akka.http.scaladsl.server.directives.CodingDirectives.{decodeRequest, enc
 import js7.agent.DirectAgentApi
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.commands.AgentCommand
+import js7.agent.web.common.AgentSession
 import js7.base.auth.{SimpleUser, UserId}
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkahttp.WebLogDirectives
@@ -13,7 +14,7 @@ import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.auth.CSRF.forbidCSRF
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.data.WebServerBinding
-import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
+import js7.common.akkahttp.web.session.SessionRegister
 import js7.core.cluster.ClusterWatchRegister
 import js7.core.command.CommandMeta
 import js7.journal.watch.EventWatch
@@ -30,7 +31,7 @@ private final class AgentBoundRoute(
   api: CommandMeta => DirectAgentApi,
   protected val agentConfiguration: AgentConfiguration,
   gateKeeperConfiguration: GateKeeper.Configuration[SimpleUser],
-  protected val sessionRegister: SessionRegister[SimpleSession],
+  protected val sessionRegister: SessionRegister[AgentSession],
   protected val clusterWatchRegister: ClusterWatchRegister,
   protected val eventWatch: EventWatch)
   (implicit

@@ -56,6 +56,7 @@ import scala.concurrent.duration.*
 import scala.reflect.ClassTag
 import scala.util.Success
 import scala.util.control.NoStackTrace
+import scala.util.matching.Regex
 
 /**
   * @author Joacim Zschimmer
@@ -238,7 +239,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
         }
         val number = requestCounter.incrementAndGet()
         val headers = sessionToken.map(token => `x-js7-session`(token)).toList :::
-          `x-js7-request-id`(s"#$number") ::
+          `x-js7-request-id`(number) ::
           CorrelId.current.toOption.map(`x-js7-correlation-id`(_)).toList :::
           request.headers.toList :::
           standardHeaders
@@ -291,6 +292,9 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
             }
 
             case ExitCase.Completed => Task.unit
+          }
+          .onErrorRecoverWith {
+            case t: akka.stream.StreamTcpException => Task.raiseError(makeAkkaExceptionLegible(t))
           }
           .map(decompressResponse)
           .pipeIf(logger.underlying.isDebugEnabled)(
@@ -375,6 +379,18 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
     case _ => true
   }
 
+  private def makeAkkaExceptionLegible(t: akka.stream.StreamTcpException): RuntimeException =
+    akkaExceptionRegex.findFirstMatchIn(t.toString)
+      .toList
+      .flatMap(_.subgroups)
+      .match_ {
+        case List(m1, m2) =>
+          new RuntimeException(s"$name $m1): $m2") with NoStackTrace {
+            override def toString = getMessage
+          }
+        case _ => t
+      }
+
   override def toString = s"$baseUri${name.nonEmpty ?? s" »$name«"}"
 }
 
@@ -392,15 +408,30 @@ object AkkaHttpClient
     def parse(value: String) = Success(new `x-js7-session`(SessionToken(SecretString(value))))
   }
 
-  final case class `x-js7-request-id`(value: String)
+  final case class `x-js7-request-id`(number: Long)
   extends ModeledCustomHeader[`x-js7-request-id`] {
     val companion = `x-js7-request-id`
+    def value = "#" + number
     val renderInRequests = true
     val renderInResponses = false
   }
   object `x-js7-request-id` extends ModeledCustomHeaderCompanion[`x-js7-request-id`] {
     val name = "x-js7-request-id"
-    def parse(value: String) = Success(new `x-js7-request-id`(value))
+
+    def parse(value: String) =
+      parseNumber(value)
+        .map(`x-js7-request-id`(_))
+        .left.map(_.throwable)
+        .toTry
+
+    def parseNumber(value: String): Checked[Long] =
+      if (!value.startsWith("#"))
+        Left(Problem.pure("x-js7-request-id HTTP header must start with a #"))
+      else
+        try Right(value.substring(1).toLong)
+        catch { case t: NumberFormatException =>
+          Left(Problem.pure(t.toString))
+        }
   }
 
   final case class `x-js7-correlation-id`(correlId: CorrelId)
@@ -437,6 +468,9 @@ object AkkaHttpClient
 
   private val AkkaTcpCommandRegex = """Tcp command \[([A-Za-z]+)\(([^,)]+).*""".r
 
+  private val akkaExceptionRegex = new Regex("akka.stream.StreamTcpException: Tcp command " +
+    """\[(Connect\([^,]+).+\)] failed because of ([a-zA-Z.]+Exception.*)""")
+
   def toPrettyProblem(problem: Problem): Problem =
     problem.throwableOption.fold(problem) { throwable =>
       val pretty = toPrettyProblem(throwable)
@@ -461,6 +495,7 @@ object AkkaHttpClient
         connectionWasClosedUnexpectedly
 
       case t: akka.stream.StreamTcpException =>
+        // TODO Long longer active since makeAkkaExceptionLegible?
         t.getMessage match {
           case AkkaTcpCommandRegex(command, host_) =>
             val host = host_.replace("/<unresolved>", "")

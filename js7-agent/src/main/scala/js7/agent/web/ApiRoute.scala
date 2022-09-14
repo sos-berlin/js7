@@ -5,6 +5,8 @@ import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route
 import js7.agent.web.views.RootWebService
 import js7.base.auth.ValidUserPermission
+import js7.base.problem.Problem
+import js7.common.akkahttp.StandardMarshallers.*
 import js7.common.akkahttp.web.session.SessionRoute
 import js7.core.cluster.ClusterWatchRoute
 import js7.data.controller.ControllerId
@@ -23,14 +25,21 @@ with ClusterWatchRoute
     pathPrefix(Segment) {
       case "event" => eventRoute
       case "command" => commandRoute
-      case "clusterWatch" =>
-        authorizedUser(ValidUserPermission) { user =>
-          clusterWatchRoute(ControllerId.fromUserId(user.id))
-        }
+      case "clusterWatch" => clusterWatchRoute
       case "session" => sessionRoute
       case _ => complete(NotFound)
     } ~
     pathEndOrSingleSlash {
       apiRootRoute
+    }
+
+  protected val clusterWatchRoute =
+    pathEnd {
+      maybeSession(Set(ValidUserPermission)) {
+        case (_, None) =>
+          complete(Problem("ClusterWatch requires a login session")) // ???
+        case (user, Some(session)) =>
+          clusterWatchRouteFor(ControllerId.fromUserId(user.id), session)
+      }
     }
 }

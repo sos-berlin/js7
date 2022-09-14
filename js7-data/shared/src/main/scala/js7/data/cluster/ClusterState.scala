@@ -109,6 +109,7 @@ extends EventDrivenState.Companion[ClusterState, ClusterEvent]
     final def isEmptyOrActive(id: Id) = id == activeId
     final def passiveId = idToUri.peerOf(activeId)
     final def passiveUri = idToUri(passiveId)
+    final def peerOf(nodeId: NodeId) = idToUri.peerOf(nodeId)
 
     protected final def nodesString =
       (for ((id, uri) <- idToUri) yield (if (activeId == id) "active " else "passive ") + s"$id: $uri")
@@ -118,6 +119,15 @@ extends EventDrivenState.Companion[ClusterState, ClusterEvent]
   }
   object HasNodes {
     def unapply(clusterState: ClusterState.HasNodes) = Some(clusterState.setting)
+
+    implicit val jsonCodec: TypedJsonCodec[HasNodes] = TypedJsonCodec(
+      Subtype(deriveCodec[NodesAppointed]),
+      Subtype(deriveCodec[PreparedToBeCoupled]),
+      Subtype(deriveCodec[Coupled]),
+      Subtype(deriveCodec[ActiveShutDown]),
+      Subtype(deriveCodec[PassiveLost]),
+      Subtype(deriveCodec[SwitchedOver]),
+      Subtype(deriveCodec[FailedOver]))
   }
 
   sealed trait CoupledOrDecoupled extends HasNodes {
@@ -182,11 +192,5 @@ extends EventDrivenState.Companion[ClusterState, ClusterEvent]
 
   implicit val jsonCodec: TypedJsonCodec[ClusterState] = TypedJsonCodec(
     Subtype(Empty),
-    Subtype(deriveCodec[NodesAppointed]),
-    Subtype(deriveCodec[PreparedToBeCoupled]),
-    Subtype(deriveCodec[Coupled]),
-    Subtype(deriveCodec[ActiveShutDown]),
-    Subtype(deriveCodec[PassiveLost]),
-    Subtype(deriveCodec[SwitchedOver]),
-    Subtype(deriveCodec[FailedOver]))
+    Subtype[HasNodes])
 }

@@ -8,6 +8,7 @@ import com.softwaremill.tagging.{@@, Tagger}
 import izumi.reflect.Tag
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.*
+import js7.base.monixutils.Switch
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
@@ -42,7 +43,9 @@ final class FileStatePersistence[S <: SnapshotableState[S]: Tag](
     scheduler: Scheduler,
     actorRefFactory: ActorRefFactory,
     timeout: akka.util.Timeout)
-extends StatePersistence[S] with AutoCloseable
+extends StatePersistence[S]
+with FileStatePersistence.PossibleFailover
+with AutoCloseable
 {
   val journalId = recoveredJournalId getOrElse JournalId.random()
 
@@ -241,5 +244,16 @@ object FileStatePersistence
 
     new FileStatePersistence[S](recoveredJournalId, eventWatch, journalActor, journalConf,
       journalActorStopped.future.map(_ => ()))
+  }
+
+  sealed trait PossibleFailover {
+    private val tryingPassiveLostSwitch = Switch(false)
+
+    // Not nestable !!! (or use a readers-writer lock)
+    final def forPossibleFailoverByOtherNode[A](task: Task[A]): Task[A] =
+      tryingPassiveLostSwitch.switchOnFor(task)
+
+    final val whenNoFailoverByOtherNode: Task[Unit] =
+      tryingPassiveLostSwitch.whenOff
   }
 }

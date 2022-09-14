@@ -30,7 +30,7 @@ import js7.common.akkahttp.StandardMarshallers.*
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkautils.Akkas
 import js7.common.akkautils.Akkas.newActorSystem
-import js7.common.http.AkkaHttpClient.{HttpException, `x-js7-correlation-id`, toPrettyProblem}
+import js7.common.http.AkkaHttpClient.{HttpException, `x-js7-correlation-id`, `x-js7-request-id`, toPrettyProblem}
 import js7.common.http.AkkaHttpClientTest.*
 import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
 import js7.common.http.StreamingSupport.AkkaObservable
@@ -301,6 +301,16 @@ final class AkkaHttpClientTest extends AnyFreeSpec with BeforeAndAfterAll with H
       .throwable))
     assert(`x-js7-correlation-id`.parse("_CORREL?") == Failure(Problem("Invalid CorrelId")
       .throwable))
+  }
+
+  "Header x-js7-request-id" in {
+    val n = 111222333444555666L
+    val h = `x-js7-request-id`(n)
+    val string = s"#$n"
+    assert(h.value == string)
+    assert(`x-js7-request-id`.parse(string) == Success(h))
+    assert(`x-js7-request-id`.parse("123").isFailure)
+    assert(`x-js7-request-id`.parse("#123X").isFailure)
   }
 }
 

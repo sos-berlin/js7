@@ -1,7 +1,10 @@
 package js7.cluster
 
 import cats.effect.ExitCase
+import cats.syntax.flatMap.*
+import com.google.common.annotations.VisibleForTesting
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
@@ -26,52 +29,72 @@ private[cluster] final class ActivationInhibitor
     startAs(Passive)
 
   private def startAs(state: State): Task[Unit] =
-    stateMvarTask.flatMap(mvar =>
-      mvar.tryTake.flatMap {
-        case Some(Initial) =>
-          mvar.put(state)
-        case s =>
-          s.fold(Task.unit)(mvar.put) >>
-            Task.raiseError(new IllegalStateException(s"ActivationInhibitor markAs($state): Already '$s''"))
-      })
+    Task.defer {
+      logger.debug(s"startAs $state")
+      stateMvarTask.flatMap(mvar =>
+        mvar.tryTake.flatMap {
+          case Some(Initial) =>
+            mvar.put(state)
+          case s =>
+            s.fold(Task.unit)(mvar.put) >>
+              Task.raiseError(new IllegalStateException(
+                s"ActivationInhibitor startAs($state): Already '$s''"))
+        })
+    }
 
-  def tryToActivate[A](ifInhibited: Task[A], activate: Task[A]): Task[A] =
-    stateMvarTask.flatMap(mvar =>
-      mvar.take.flatMap {
-        case Initial | Passive | Active =>
-          activate
-            .guaranteeCase {
-              case ExitCase.Completed => mvar.put(Active)
-              case _ => mvar.put(Passive)
-            }
+  def tryToActivate(ifInhibited: Task[Checked[Boolean]], activate: Task[Checked[Boolean]])
+  : Task[Checked[Boolean]] =
+    logger.debugTask(
+      Task.defer {
+        stateMvarTask.flatMap(mvar =>
+          mvar.take.flatMap {
+            case Initial | Passive | Active =>
+              activate
+                .guaranteeCase {
+                  case ExitCase.Completed => Task.unit
+                  case exitCase =>
+                    logger.debug(s"tryToActivate: Passive — due to $exitCase")
+                    mvar.put(Passive)
+                }
+                .flatTap {
+                  case o @ (Left(_) | Right(false)) =>
+                    logger.debug(s"tryToActivate: Passive — due to $o")
+                    mvar.put(Passive)
+                  case Right(true) =>
+                    logger.debug("tryToActivate: Active — due to Right(true)")
+                    mvar.put(Active)
+                }
 
-        case o: Inhibited =>
-          mvar.put(o) >>
-            Task { logger.info("Activation inhibited") } >>
-            ifInhibited
+            case o: Inhibited =>
+              logger.debug(s"tryToActivate: $o")
+              mvar.put(o) *>
+                Task { logger.info("Activation inhibited") } *>
+                ifInhibited
+          })
       })
 
   /** Tries to inhibit activation for `duration`.
     * @return true if activation is or has been inhibited, false if already active
     */
   def inhibitActivation(duration: FiniteDuration): Task[Checked[Boolean]] =
-    stateMvarTask.flatMap(mvar =>
-      mvar.take
-        .flatMap {
-          case state @ (Initial | Passive | _: Inhibited) =>
-            val depth = state match {
-              case Inhibited(n) => n + 1
-              case _ => 1
-            }
-            mvar
-              .put(Inhibited(depth))
-              .flatMap(_ => setInhibitionTimer(duration))
-              .map(_ => Right(true))
+    logger.debugTaskWithResult[Checked[Boolean]](
+      stateMvarTask.flatMap(mvar =>
+        mvar.take
+          .flatMap {
+            case state @ (Initial | Passive | _: Inhibited) =>
+              val depth = state match {
+                case Inhibited(n) => n + 1
+                case _ => 1
+              }
+              mvar
+                .put(Inhibited(depth))
+                .flatMap(_ => setInhibitionTimer(duration))
+                .map(_ => Right(true))
 
-          case Active =>
-            mvar.put(Active)
-              .map(_ => Right(false))
-        })
+            case Active =>
+              mvar.put(Active)
+                .map(_ => Right(false))
+          }))
 
   private def setInhibitionTimer(duration: FiniteDuration): Task[Unit] =
     Task.deferAction { implicit scheduler =>
@@ -96,6 +119,7 @@ private[cluster] final class ActivationInhibitor
       }
     }
 
+  @VisibleForTesting
   private[cluster] def state: Task[Option[State]] =
     stateMvarTask.flatMap(_.tryRead)
 }
@@ -111,7 +135,8 @@ private[cluster] object ActivationInhibitor
       ctx.clusterNodeApi(setting.passiveUri, "inhibitActivationOfPassiveNode")
         .evalTap(_.loginUntilReachable())
         .use(_
-          .executeClusterCommand(ClusterInhibitActivation(2 * setting.timing.heartbeat/*???*/))
+          .executeClusterCommand(
+            ClusterInhibitActivation(setting.timing.inhibitActivationDuration))
           .map(_.failedOver))
         .onErrorRestartLoop(()) { (throwable, _, retry) =>
           // TODO Code mit loginUntilReachable usw. zusammenfassen.

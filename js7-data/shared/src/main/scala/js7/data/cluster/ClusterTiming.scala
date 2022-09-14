@@ -7,16 +7,42 @@ import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.IntelliJUtils.intelliJuseImport
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.cluster.ClusterTiming.*
 import scala.concurrent.duration.FiniteDuration
 
 final case class ClusterTiming(heartbeat: FiniteDuration, heartbeatTimeout: FiniteDuration)
 {
-  checkedUnit(heartbeat, longHeartbeatTimeout).orThrow
+  checkedUnit(heartbeat, heartbeatTimeout).orThrow
 
-  def longHeartbeatTimeout = heartbeat + heartbeatTimeout
+  /** Duration the ClusterWatch considers the last heartbeat valid. */
+  def clusterWatchHeartbeatValidDuration =
+    passiveLostTimeout + heartbeat
 
-  def heartbeatValidDuration = heartbeat + heartbeatTimeout / 2
+  /** Duration without heartbeat, after which the passive node may be lost.
+   * Shorter than `failoverTimeout`.
+   */
+  def passiveLostTimeout =
+    heartbeat + heartbeatTimeout
+
+  /** Duration without heartbeat, after which the active node may be lost.
+   * failOverTimeout is longer than passiveLostTimeout.
+   * In case of a network lock-in, FailedOver must occur after PassiveLost
+   * Because PassiveLost is checked every ClusterWatch heartbeat,
+   * we add a heartbeat (and an additional heartbeat for timing variation).
+   */
+  def failoverTimeout =
+    passiveLostTimeout + 2 * heartbeat
+
+  /** Duration, the ClusterWatch client must have received a response.
+   * Otherwise, the request will be repeated.
+   * Must be shorter then the difference between `passiveLostTimeout` and `failoverTimeout`.
+   */
+  def clusterWatchReactionTimeout  =
+    heartbeat
+
+  def inhibitActivationDuration =
+    failoverTimeout + heartbeat
 
   override def toString = s"ClusterTiming(${heartbeat.pretty}, ${heartbeatTimeout.pretty})"
 }
@@ -28,10 +54,8 @@ object ClusterTiming
       new ClusterTiming(heartbeat, heartbeatTimeout)
 
   private def checkedUnit(heartbeat: FiniteDuration, heartbeatTimeout: FiniteDuration) =
-    if (heartbeat.isZeroOrBelow || heartbeatTimeout.isZeroOrBelow)
-      Left(Problem.pure("Invalid cluster timing values"))
-    else
-      Right(())
+    (heartbeat.isPositive && heartbeatTimeout.isPositive) !!
+      Problem.pure("Invalid cluster timing values")
 
   implicit val jsonCodec: Codec.AsObject[ClusterTiming] = deriveCodec
 

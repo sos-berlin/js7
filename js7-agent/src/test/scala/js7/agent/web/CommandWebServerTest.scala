@@ -8,6 +8,7 @@ import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.*
 import js7.agent.web.CommandWebServerTest.*
+import js7.agent.web.common.AgentSession
 import js7.base.auth.SimpleUser
 import js7.base.configutils.Configs.*
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
@@ -16,7 +17,7 @@ import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.data.WebServerBinding
-import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
+import js7.common.akkahttp.web.session.SessionRegister
 import js7.common.akkautils.Akkas.actorSystemResource
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.core.command.CommandMeta
@@ -72,8 +73,8 @@ final class CommandWebServerTest extends AsyncFreeSpec
             WebServerBinding.Http,
             GateKeeper.Configuration.fromConfig(config, SimpleUser.apply))
 
-          protected val sessionRegister = SessionRegister.start(
-            actorSystem, SimpleSession.apply, SessionRegister.TestConfig)
+          protected val sessionRegister = SessionRegister.start[AgentSession](
+            actorSystem, AgentSession.apply, SessionRegister.TestConfig)
         }.commandRoute
       }
     }

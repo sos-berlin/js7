@@ -34,6 +34,7 @@ import js7.journal.state.FileStatePersistence
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.Promise
+import scala.util.control.NoStackTrace
 
 final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag](
   journalMeta: JournalMeta,
@@ -55,6 +56,7 @@ final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag](
 {
   import clusterConf.ownId
 
+  private val keepTruncatedRest = config.getBoolean("js7.journal.cluster.keep-truncated-rest")
   private val common = new ClusterCommon(controllerId, ownId, clusterContext,
     httpsConfig, config, licenseChecker, testEventPublisher)
   import common.activationInhibitor
@@ -82,7 +84,8 @@ final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag](
     *         and ClusterFollowUp.
     */
   def start(recovered: Recovered[S]): (Task[Option[Checked[S]]], Task[Checked[ClusterFollowUp[S]]]) = {
-    if (recovered.clusterState != Empty) logger.info(s"Recovered ClusterState is ${recovered.clusterState}")
+    if (recovered.clusterState != Empty) logger.info(
+      s"This cluster node '${ownId.string}', recovered ClusterState is ${recovered.clusterState}")
     val (currentPassiveReplicatedState, followUp) = startNode(recovered)
     val workingFollowUp = followUp.flatMapT {
       case followUp: ClusterFollowUp.BecomeActive[S] =>
@@ -197,11 +200,12 @@ final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag](
   }
 
   private def truncateJournalAndRecoverAgain(otherFailedOver: FailedOver): Option[Recovered[S]] =
-    for (file <- truncateJournal(journalMeta.fileBase, otherFailedOver.failedAt))
+    for (file <- truncateJournal(journalMeta.fileBase, otherFailedOver.failedAt, keepTruncatedRest))
       yield recoverFromTruncated(file, otherFailedOver.failedAt)
 
   private def recoverFromTruncated(file: Path, failedAt: JournalPosition): Recovered[S] = {
     logger.info("Recovering again after unacknowledged events have been deleted properly from journal file")
+    throw new RestartAfterJournalTruncationException
 
     // May take a long time !!!
     val recovered = StateRecoverer.recover[S](journalMeta, config)
@@ -275,14 +279,24 @@ final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag](
             else
               // Could not inhibit, so this node is already active.
               // awaitCurrentState will return (maybe almost?) immediately.
-              persistence.awaitCurrentState.map(_.clusterState).map {
-                case failedOver: FailedOver =>
-                  logger.debug(s"inhibitActivation(${duration.pretty}) => $failedOver")
-                  Right(ClusterInhibitActivation.Response(Some(failedOver)))
-                case clusterState =>
-                  Left(Problem.pure("ClusterInhibitActivation command failed " +
-                    s"because node is already active but not failed-over: $clusterState"))
-              })
+              persistence.awaitCurrentState
+                .map(_.clusterState)
+                .map(Some(_))
+                .timeoutTo(duration/*???*/ - 500.ms, Task.none)
+                .flatMap {
+                  case None =>
+                    // No persistence
+                    Task.left(Problem.pure(
+                      "ClusterInhibitActivation command failed — please try again"))
+
+                  case Some(failedOver: FailedOver) =>
+                    logger.debug(s"inhibitActivation(${duration.pretty}) => $failedOver")
+                    Task.right(ClusterInhibitActivation.Response(Some(failedOver)))
+
+                  case Some(clusterState) =>
+                    Task.left(Problem.pure("ClusterInhibitActivation command failed " +
+                      s"because node is already active but not failed-over: $clusterState"))
+                })
 
       case _: ClusterCommand.ClusterPrepareCoupling |
            _: ClusterCommand.ClusterCouple |
@@ -305,7 +319,11 @@ object Cluster
 {
   private val logger = Logger(getClass)
 
-  private[cluster] def truncateJournal(journalFileBase: Path, failedAt: JournalPosition): Option[Path] = {
+  private[cluster] def truncateJournal(
+    journalFileBase: Path,
+    failedAt: JournalPosition,
+    keepTruncatedRest: Boolean)
+  : Option[Path] = {
     var truncated = false
     val lastTwoJournalFiles = JournalFiles.listJournalFiles(journalFileBase) takeRight 2
     val journalFile =
@@ -335,8 +353,13 @@ object Cluster
       logger.info(s"Truncating journal file at failover position ${failedAt.position} " +
         s"(${fileSize - failedAt.position} bytes): ${journalFile.file.getFileName}")
       truncated = true
-      truncateFile(file, failedAt.position)
+      truncateFile(file, failedAt.position, keep = keepTruncatedRest)
     }
     truncated ? file
   }
+
+  @deprecated("Provisional fix for v2.14", "v2.15")
+  final class RestartAfterJournalTruncationException
+  extends RuntimeException("Restart after journal truncation")
+  with NoStackTrace
 }

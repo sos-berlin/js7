@@ -57,7 +57,7 @@ extends AnyFreeSpec with SessionRouteTester
   "login fails if server is unreachable" in {
     withSessionApi(None) { api =>
       // In the rare case of an already used TCP port (alien software) akka.http.scaladsl.model.IllegalResponseException may be returned, crashing the test.
-      val exception = intercept[akka.stream.StreamTcpException] {
+      val exception = intercept[RuntimeException] {
         api.login() await 99.s
       }
       assert(exception.getMessage contains "java.net.ConnectException")

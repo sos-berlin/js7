@@ -23,6 +23,7 @@ import js7.data.order.OrderEvent.OrderProcessed
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.value.StringValue
+import js7.data.workflow.position.Position
 import js7.data.workflow.test.TestSetting.*
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.BeforeAndAfterAll
@@ -65,7 +66,7 @@ final class AgentShutDownTest extends AnyFreeSpec with BeforeAndAfterAll with Te
       client.commandExecute(AttachOrder(
         Order(
           orderId,
-          SimpleTestWorkflow.id,
+          SimpleTestWorkflow.id /: Position(0),
           Order.Ready,
           Map("a" -> StringValue("A"))),
         TestAgentPath))

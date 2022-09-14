@@ -37,7 +37,7 @@ final class OrderTest extends AnyFreeSpec
 {
   private val testOrder = Order(
     OrderId("ID"),
-    WorkflowPath("WORKFLOW") ~ "VERSION",
+    WorkflowPath("WORKFLOW") ~ "VERSION" /: Position(0),
     Ready,
     arguments = Map(
       "key1" -> StringValue("value1"),
@@ -93,7 +93,10 @@ final class OrderTest extends AnyFreeSpec
 
       "Processing (extra Codec)" in {
         testJson[Order[Processing]](
-          Order(OrderId("ID"), WorkflowPath("WORKFLOW") ~ "VERSION", Processing(subagentId)),
+          Order(
+            OrderId("ID"),
+            WorkflowPath("WORKFLOW") ~ "VERSION" /: Position(0),
+            Processing(subagentId)),
           json"""{
             "id": "ID",
             "workflowPosition": {
@@ -110,7 +113,10 @@ final class OrderTest extends AnyFreeSpec
           }""")
 
         testJson[Order[Processing]](
-          Order(OrderId("ID"), WorkflowPath("WORKFLOW") ~ "VERSION", Processing(None)),
+          Order(
+            OrderId("ID"),
+            WorkflowPath("WORKFLOW") ~ "VERSION" /: Position(0),
+            Processing(None)),
           json"""{
             "id": "ID",
             "workflowPosition": {
@@ -128,7 +134,7 @@ final class OrderTest extends AnyFreeSpec
 
       "mark" in {
         check(
-          Order(OrderId("ID"), WorkflowPath("WORKFLOW") ~ "VERSION", Fresh,
+          Order(OrderId("ID"), WorkflowPath("WORKFLOW") ~ "VERSION" /: Position(0), Fresh,
             mark = Some(OrderMark.Cancelling(CancellationMode.FreshOnly)),
             isSuspended = true,
             isResumed = true),
@@ -439,7 +445,7 @@ final class OrderTest extends AnyFreeSpec
     }
 
     "Fresh" in {
-      checkAllEvents(Order(orderId, workflowId, Fresh),
+      checkAllEvents(Order(orderId, workflowId /: Position(0), Fresh),
         deletionMarkable[Fresh] orElse
         markable[Fresh] orElse
         attachingAllowed[Fresh] orElse
@@ -459,7 +465,7 @@ final class OrderTest extends AnyFreeSpec
     }
 
     "Ready" in {
-      checkAllEvents(Order(orderId, workflowId, Ready),
+      checkAllEvents(Order(orderId, workflowId /: Position(0), Ready),
         deletionMarkable[Ready] orElse
         markable[Ready] orElse
         attachingAllowed[Ready] orElse
@@ -494,7 +500,7 @@ final class OrderTest extends AnyFreeSpec
     }
 
     "WaitingForLock" in {
-      checkAllEvents(Order(orderId, workflowId, WaitingForLock),
+      checkAllEvents(Order(orderId, workflowId /: Position(0), WaitingForLock),
         deletionMarkable[WaitingForLock] orElse
         markable[WaitingForLock] orElse
         cancelMarkedAllowed[WaitingForLock] orElse
@@ -509,7 +515,7 @@ final class OrderTest extends AnyFreeSpec
     "ExpectingNotice" in {
       val expectingNotices = ExpectingNotices(Vector(
         OrderNoticesExpected.Expected(BoardPath("BOARD"), NoticeId("NOTICE"))))
-      checkAllEvents(Order(orderId, workflowId, expectingNotices),
+      checkAllEvents(Order(orderId, workflowId /: Position(0), expectingNotices),
         deletionMarkable[ExpectingNotices] orElse
         markable[ExpectingNotices] orElse
         cancelMarkedAllowed[ExpectingNotices] orElse
@@ -521,7 +527,7 @@ final class OrderTest extends AnyFreeSpec
     }
 
     "Processing" in {
-      checkAllEvents(Order(orderId, workflowId, Processing(subagentId)),
+      checkAllEvents(Order(orderId, workflowId /: Position(0), Processing(subagentId)),
         deletionMarkable[Processing] orElse
         markable[Processing] orElse
         cancelMarkedAllowed[Processing] orElse
@@ -532,7 +538,7 @@ final class OrderTest extends AnyFreeSpec
     }
 
     "Processed" in {
-      checkAllEvents(Order(orderId, workflowId, Processed,
+      checkAllEvents(Order(orderId, workflowId /: Position(0), Processed,
           historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(0))))),
         deletionMarkable[Processed] orElse
         markable[Processed] orElse
@@ -550,7 +556,7 @@ final class OrderTest extends AnyFreeSpec
     }
 
     "ProcessingKilled" in {
-      checkAllEvents(Order(orderId, workflowId, ProcessingKilled,
+      checkAllEvents(Order(orderId, workflowId /: Position(0), ProcessingKilled,
           historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(0))))),
         deletionMarkable[ProcessingKilled] orElse
         markable[ProcessingKilled] orElse
@@ -563,7 +569,7 @@ final class OrderTest extends AnyFreeSpec
     }
 
     "Prompting" in {
-      checkAllEvents(Order(orderId, workflowId, Prompting(StringValue("QUESTION")),
+      checkAllEvents(Order(orderId, workflowId /: Position(0), Prompting(StringValue("QUESTION")),
           historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(0))))),
         deletionMarkable[Prompting] orElse
         markable[Prompting] orElse
@@ -576,7 +582,7 @@ final class OrderTest extends AnyFreeSpec
     }
 
     "BetweenCycles" in {
-      checkAllEvents(Order(orderId, workflowId, BetweenCycles(Some(cycleState)),
+      checkAllEvents(Order(orderId, workflowId /: Position(0), BetweenCycles(Some(cycleState)),
           historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(0))))),
         deletionMarkable[BetweenCycles] orElse
         markable[BetweenCycles] orElse
@@ -593,7 +599,7 @@ final class OrderTest extends AnyFreeSpec
 
 
     "FailedWhileFresh" in {
-      checkAllEvents(Order(orderId, workflowId, FailedWhileFresh,
+      checkAllEvents(Order(orderId, workflowId /: Position(0), FailedWhileFresh,
           historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.Failed(NamedValues.rc(1))))),
         deletionMarkable[FailedWhileFresh] orElse
         markable[FailedWhileFresh] orElse
@@ -606,7 +612,7 @@ final class OrderTest extends AnyFreeSpec
     }
 
     "Failed" in {
-      checkAllEvents(Order(orderId, workflowId, Failed,
+      checkAllEvents(Order(orderId, workflowId /: Position(0), Failed,
           historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.failed))),
         deletionMarkable[Failed] orElse
         markable[Failed] orElse
@@ -619,7 +625,7 @@ final class OrderTest extends AnyFreeSpec
     }
 
     "FailedInFork" in {
-      checkAllEvents(Order(orderId, workflowId, FailedInFork, parent = Some(OrderId("PARENT")),
+      checkAllEvents(Order(orderId, workflowId /: Position(0), FailedInFork, parent = Some(OrderId("PARENT")),
           historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.Failed(NamedValues.rc(1))))),
         detachingAllowed[FailedInFork] orElse
         deletionMarkable[FailedInFork] orElse
@@ -631,7 +637,7 @@ final class OrderTest extends AnyFreeSpec
     }
 
     "DelayedAfterError" in {
-      checkAllEvents(Order(orderId, workflowId, DelayedAfterError(Timestamp("2019-03-07T12:00:00Z"))),
+      checkAllEvents(Order(orderId, workflowId /: Position(0), DelayedAfterError(Timestamp("2019-03-07T12:00:00Z"))),
         deletionMarkable[DelayedAfterError] orElse
         markable[DelayedAfterError] orElse
         cancelMarkedAllowed[DelayedAfterError] orElse
@@ -643,7 +649,7 @@ final class OrderTest extends AnyFreeSpec
     }
 
     "Broken" in {
-      checkAllEvents(Order(orderId, workflowId, Broken(Problem("PROBLEM"))),
+      checkAllEvents(Order(orderId, workflowId /: Position(0), Broken(Problem("PROBLEM"))),
         deletionMarkable[Broken] orElse
         markable[Broken] orElse
         detachingAllowed[Broken] orElse
@@ -656,7 +662,7 @@ final class OrderTest extends AnyFreeSpec
     }
 
     "Forked" in {
-      checkAllEvents(Order(orderId, workflowId, Forked(Vector(Forked.Child("BRANCH", orderId / "CHILD")))),
+      checkAllEvents(Order(orderId, workflowId /: Position(0), Forked(Vector(Forked.Child("BRANCH", orderId / "CHILD")))),
         deletionMarkable[Forked] orElse
         markable[Forked] orElse
         attachingAllowed[Forked] orElse
@@ -669,14 +675,14 @@ final class OrderTest extends AnyFreeSpec
     }
 
     "Cancelled" in {
-      checkAllEvents(Order(orderId, workflowId, Cancelled),
+      checkAllEvents(Order(orderId, workflowId /: Position(0), Cancelled),
         deletionMarkable[Cancelled] orElse {
           case (OrderDeleted, _, IsChild(false), IsDetached) => _.isInstanceOf[Order.Deleted]
         })
     }
 
     "Finished" in {
-      checkAllEvents(Order(orderId, workflowId, Finished),
+      checkAllEvents(Order(orderId, workflowId /: Position(0), Finished),
         deletionMarkable[Finished] orElse {
           case (OrderDeleted, _, IsChild(false), IsDetached) => _.isInstanceOf[Order.Deleted]
         })
@@ -684,7 +690,7 @@ final class OrderTest extends AnyFreeSpec
 
     "attachedState" - {
       "attachedState=None" in {
-        val order = Order(orderId, workflowId, Ready, attachedState = None)
+        val order = Order(orderId, workflowId /: Position(0), Ready, attachedState = None)
         assert(order.applyEvent(OrderAttachable(agentPath)) == Right(order.copy(attachedState = Some(Attaching(agentPath)))))
         assert(order.applyEvent(OrderAttached(agentPath)).isLeft)
         assert(order.applyEvent(OrderDetachable).isLeft)
@@ -692,7 +698,7 @@ final class OrderTest extends AnyFreeSpec
       }
 
       "attachedState=Attaching" in {
-        val order = Order(orderId, workflowId, Ready, attachedState = Some(Attaching(agentPath)))
+        val order = Order(orderId, workflowId /: Position(0), Ready, attachedState = Some(Attaching(agentPath)))
         assert(order.applyEvent(OrderAttachable(agentPath)).isLeft)
         assert(order.applyEvent(OrderAttached(agentPath)) == Right(order.copy(attachedState = Some(Attached(agentPath)))))
         assert(order.applyEvent(OrderAttached(AgentPath("OTHER"))).isLeft)
@@ -701,7 +707,7 @@ final class OrderTest extends AnyFreeSpec
       }
 
       "attachedState=Attached" in {
-        val order = Order(orderId, workflowId, Ready, attachedState = Some(Attached(agentPath)))
+        val order = Order(orderId, workflowId /: Position(0), Ready, attachedState = Some(Attached(agentPath)))
         assert(order.applyEvent(OrderAttachable(agentPath)).isLeft)
         assert(order.applyEvent(OrderAttached(agentPath)).isLeft)
         assert(order.applyEvent(OrderAttached(AgentPath("OTHER"))).isLeft)
@@ -710,7 +716,7 @@ final class OrderTest extends AnyFreeSpec
       }
 
       "attachedState=Detaching" in {
-        val order = Order(orderId, workflowId, Ready, attachedState = Some(Detaching(agentPath)))
+        val order = Order(orderId, workflowId /: Position(0), Ready, attachedState = Some(Detaching(agentPath)))
         assert(order.applyEvent(OrderAttachable(agentPath)).isLeft)
         assert(order.applyEvent(OrderAttached(agentPath)).isLeft)
         assert(order.applyEvent(OrderAttached(AgentPath("OTHER"))).isLeft)
@@ -818,7 +824,7 @@ final class OrderTest extends AnyFreeSpec
     }
 
     "isAttaching" in {
-      val order = Order(OrderId("ORDER-ID"), WorkflowPath("WORKFLOW") ~ "VERSION", Ready,
+      val order = Order(OrderId("ORDER-ID"), WorkflowPath("WORKFLOW") ~ "VERSION" /: Position(0), Ready,
         attachedState = Some(Detaching(AgentPath("AGENT"))))
       assert(order.detaching == Right(AgentPath("AGENT")))
 
@@ -836,7 +842,7 @@ final class OrderTest extends AnyFreeSpec
     "OrderResumed" - {
       import OrderResumed.{AppendHistoricOutcome, DeleteHistoricOutcome, HistoryOperation, InsertHistoricOutcome, ReplaceHistoricOutcome}
 
-      lazy val order = Order(OrderId("ORDER-ID"), WorkflowPath("WORKFLOW") ~ "VERSION", Ready,
+      lazy val order = Order(OrderId("ORDER-ID"), WorkflowPath("WORKFLOW") ~ "VERSION" /: Position(0), Ready,
         historicOutcomes = Vector(
           HistoricOutcome(Position(0), Outcome.succeeded),
           HistoricOutcome(Position(1), Outcome.succeeded),

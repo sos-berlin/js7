@@ -26,10 +26,11 @@ final case class JournalState(userIdToReleasedEventId: Map[UserId, EventId])
         this
     }
 
-  def toReleaseEventId(acknowledegedEventId: EventId, userIds: Iterable[UserId]): EventId =
-    (((userIds.map(_ -> EventId.BeforeFirst).toMap ++ userIdToReleasedEventId).values)
-      ++ Array(acknowledegedEventId)
-    ).min
+  def toReleaseEventId(acknowledegedEventId: EventId, userIds: Iterable[UserId]): EventId = {
+    val defaults = userIds.map(_ -> EventId.BeforeFirst).toMap
+    val userToEventId = defaults ++ userIdToReleasedEventId
+    (userToEventId.values.view :+ acknowledegedEventId).min
+  }
 }
 
 object JournalState

@@ -14,6 +14,7 @@ import js7.data.orderwatch.OrderWatchStateHandlerTest.TestState
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
+import js7.data.workflow.position.Position
 import org.scalatest.freespec.AnyFreeSpec
 
 final class OrderWatchStateHandlerTest extends AnyFreeSpec
@@ -260,7 +261,7 @@ final class OrderWatchStateHandlerTest extends AnyFreeSpec
   private def toOrder(name: String) =
     Order(
       orderId(name),
-      workflowId,
+      workflowId /: Position(0),
       Order.Ready,
       Map("file" -> StringValue(s"/DIR/$name")),
         externalOrderKey = Some(ExternalOrderKey(aOrderWatch.path, ExternalOrderName(name))))

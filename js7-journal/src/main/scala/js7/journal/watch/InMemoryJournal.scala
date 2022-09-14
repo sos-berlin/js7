@@ -46,6 +46,8 @@ extends StatePersistence[S] with RealEventWatch
 
   val waitUntilStarted = Task.unit
 
+  val whenNoFailoverByOtherNode = Task.unit
+
   def eventWatch = this
 
   protected def isActiveNode = true

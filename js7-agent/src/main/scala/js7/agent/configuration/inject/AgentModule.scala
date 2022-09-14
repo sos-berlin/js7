@@ -6,6 +6,7 @@ import com.typesafe.config.Config
 import javax.inject.Singleton
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.Akkas.newAgentActorSystem
+import js7.agent.web.common.AgentSession
 import js7.base.auth.SimpleUser
 import js7.base.log.CorrelId
 import js7.base.thread.IOExecutor
@@ -15,7 +16,7 @@ import js7.base.time.{AlarmClock, WallClock}
 import js7.base.utils.Closer
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.common.akkahttp.web.auth.GateKeeper
-import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
+import js7.common.akkahttp.web.session.SessionRegister
 import js7.common.system.ThreadPools
 import js7.common.system.ThreadPools.newUnlimitedScheduler
 import js7.journal.{EventIdClock, EventIdGenerator}
@@ -40,8 +41,8 @@ extends AbstractModule
     EventIdClock(clock)
 
   @Provides @Singleton
-  def sessionRegister(actorSystem: ActorSystem, config: Config)(implicit s: Scheduler): SessionRegister[SimpleSession] =
-    SessionRegister.start(actorSystem, SimpleSession.apply, config)
+  def sessionRegister(actorSystem: ActorSystem, config: Config)(implicit s: Scheduler): SessionRegister[AgentSession] =
+    SessionRegister.start[AgentSession](actorSystem, AgentSession.apply, config)
 
   @Provides @Singleton
   def gateKeeperConfiguration(config: Config): GateKeeper.Configuration[SimpleUser] =

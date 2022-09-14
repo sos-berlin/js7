@@ -48,10 +48,12 @@ object Log4j
   /**
     * Call in case the shutdown hook is disabled in log4j2.xml: &gt;configuration shutdownHook="disable">.
     */
-  def shutdown(): Unit =
+  def shutdown(fast: Boolean = false): Unit =
     if (!isShutdown.getAndSet(true)) {
-      CorrelId.logStatisticsIfEnabled()
-      CorrelIdLog4JThreadContextMap.logStatistics()
+      if (!fast) {
+        CorrelId.logStatisticsIfEnabled()
+        CorrelIdLog4JThreadContextMap.logStatistics()
+      }
       for (shutdown <- shutdownMethod) {
         // Log complete timestamp in case of short log timestamp
         logger.info("shutdown at " +

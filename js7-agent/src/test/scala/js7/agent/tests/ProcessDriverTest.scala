@@ -56,7 +56,7 @@ final class ProcessDriverTest extends AnyFreeSpec with BeforeAndAfterAll with Te
     info(measureTime(10, "TaskRunner") {
       val order = Order(
         OrderId("TEST"),
-        WorkflowPath("JOBCHAIN") ~ "VERSION",
+        WorkflowPath("JOBCHAIN") ~ "VERSION" /: Position(0),
         Order.Processing(SubagentId("SUBAGENT")),
         historicOutcomes = Vector(HistoricOutcome(Position(999), Outcome.Succeeded(Map("a" -> StringValue("A"))))))
       val taskRunner = new ProcessDriver(order.id, taskConfiguration,

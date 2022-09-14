@@ -15,7 +15,7 @@ import js7.base.utils.IntelliJUtils.intelliJuseImport
  */
 final case class CycleState(
   end: Timestamp,
-  schemeIndex: Int,
+  schemeIndex: Int = 0,
   index: Int,
   next: Timestamp)
 {

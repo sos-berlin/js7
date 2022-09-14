@@ -33,6 +33,7 @@ import js7.cluster.ClusterConf.ClusterProductName
 import js7.cluster.PassiveClusterNode.*
 import js7.common.http.RecouplingStreamReader
 import js7.common.jsonseq.PositionAnd
+import js7.core.cluster.ClusterWatch.{ClusterFailOverWhilePassiveLostProblem, UntaughtClusterWatchProblem}
 import js7.data.cluster.ClusterCommand.{ClusterCouple, ClusterPassiveDown, ClusterPrepareCoupling, ClusterRecouple}
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{Coupled, Decoupled, PreparedToBeCoupled}
@@ -273,6 +274,13 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
       val builder = new FileSnapshotableStateBuilder(journalFileForInfo = file.getFileName,
         continuation.maybeJournalId, newStateBuilder)
 
+      def releaseEvents(): Unit =
+        if (journalConf.deleteObsoleteFiles) {
+          eventWatch.releaseEvents(
+            builder.journalState
+              .toReleaseEventId(eventWatch.lastFileEventId, journalConf.releaseEventsUserIds))
+        }
+
       continuation match {
         case FirstPartialFile(recoveredJournalFile) =>
           logger.info(s"Start replicating '${file.getFileName}' file after " +
@@ -336,7 +344,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
               positionAndLine.value,
               positionAndLine.value.parseJson.flatMap(journalMeta.decodeJson).orThrow))
         .filter(testHeartbeatSuppressor) // for testing
-        .detectPauses(setting.timing.longHeartbeatTimeout)
+        .detectPauses(setting.timing.failoverTimeout)
         .flatMap[Checked[Unit]] {
           case Left(noHeartbeatSince) =>
             (if (isReplicatingHeadOfFile) continuation.clusterState else builder.clusterState) match {
@@ -356,7 +364,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                       val failedOverStamped = toStampedFailedOver(clusterState,
                         JournalPosition(recoveredJournalFile.fileEventId, lastProperEventPosition))
                       val failedOver = failedOverStamped.value.event
-                      common.ifClusterWatchAllowsActivation(clusterState, failedOver, checkOnly = false,
+                      common.ifClusterWatchAllowsActivation(clusterState, failedOver)(
                         Task {
                           logger.warn("❗️Failover")
                           val fileSize = {
@@ -394,7 +402,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                       val failedOverStamped = toStampedFailedOver(clusterState,
                         JournalPosition(continuation.fileEventId, lastProperEventPosition))
                       val failedOver = failedOverStamped.value.event
-                      common.ifClusterWatchAllowsActivation(clusterState, failedOver, checkOnly = false,
+                      common.ifClusterWatchAllowsActivation(clusterState, failedOver)(
                         Task {
                           logger.warn("❗️Failover")
                           builder.rollbackToEventSection()
@@ -416,7 +424,14 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                         })
                     }
                   ).flatMap {
-                    case Left(problem) => Observable.raiseError(problem.throwable.appendCurrentStackTrace)
+                    case Left(problem) =>
+                      if (problem.is(ClusterFailOverWhilePassiveLostProblem)
+                        || problem.is(UntaughtClusterWatchProblem)) {
+                        logger.info(s"No failover because ClusterWatch reponded: $problem")
+                        Observable.empty   // Ignore
+                      } else
+                        Observable.raiseError(problem.throwable.appendCurrentStackTrace)
+
                     case Right(false) => Observable.empty   // Ignore
                     case Right(true) => Observable.pure(Right(()))  // End observation
                   }
@@ -472,11 +487,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                   firstEventPositionAndFileEventId = PositionAnd(replicatedFileLength, continuation.fileEventId),
                   flushedLengthAndEventId = PositionAnd(fileLength, builder.eventId),
                   isActiveNode = false)
-                if (journalConf.deleteObsoleteFiles) {
-                  eventWatch.releaseEvents(
-                    builder.journalState
-                      .toReleaseEventId(eventWatch.lastFileEventId, journalConf.releaseEventsUserIds))
-                }
+                releaseEvents()
               }
             }
             //assertThat(fileLength == out.size, s"fileLength=$fileLength, out.size=${out.size}")  // Maybe slow
@@ -503,11 +514,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                 case Stamped(_, _, KeyedEvent(_, event)) =>
                   event match {
                     case _: JournalEventsReleased =>
-                      if (journalConf.deleteObsoleteFiles) {
-                        eventWatch.releaseEvents(
-                          builder.journalState
-                            .toReleaseEventId(eventWatch.lastFileEventId, journalConf.releaseEventsUserIds))
-                      }
+                      releaseEvents()
                       Observable.pure(Right(()))
 
                     case clusterEvent: ClusterEvent =>
@@ -537,7 +544,9 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                           Observable.fromTask(common
                             .clusterWatchSynchronizer(
                               builder.clusterState.asInstanceOf[ClusterState.HasNodes])
-                            .flatMap(_.applyEvents(switchedOver :: Nil, builder.clusterState))
+                            .flatMap(_.applyEvents(
+                              switchedOver :: Nil,
+                              builder.clusterState))
                             .map(_.toUnit))
 
                         case ClusterCouplingPrepared(activeId) =>
@@ -549,6 +558,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                         case ClusterCoupled(activeId) =>
                           assertThat(activeId != ownId)
                           awaitingCoupledEvent = false
+                          releaseEvents()
                           Observable.pure(Right(()))
 
                         case _ =>

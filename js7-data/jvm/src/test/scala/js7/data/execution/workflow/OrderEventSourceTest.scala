@@ -205,7 +205,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
     val historicOps = Seq(OrderResumed.ReplaceHistoricOutcome(Position(0), Outcome.failed))
 
     "Order.mark.isEmpty" - {
-      val unmarkedOrder = Order(OrderId("ORDER"), TestWorkflowId, Order.Fresh)
+      val unmarkedOrder = Order(OrderId("ORDER"), TestWorkflowId /: Position(0), Order.Fresh)
 
       "Fresh" - {
         val freshOrder = unmarkedOrder
@@ -341,7 +341,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
     }
 
     "OrderMark.Cancelling(FreshOnly)" - {
-      val cancellingOrder = Order(OrderId("ORDER"), TestWorkflowId, Order.Fresh,
+      val cancellingOrder = Order(OrderId("ORDER"), TestWorkflowId /: Position(0), Order.Fresh,
         mark = Some(OrderMark.Cancelling(CancellationMode.FreshOnly)))
 
       "Fresh" - {
@@ -373,7 +373,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
     }
 
     "OrderMark.Cancelling(FreshOrStarted)" - {
-      val cancellingOrder = Order(OrderId("ORDER"), TestWorkflowId, Order.Fresh, mark = Some(OrderMark.Cancelling(CancellationMode.FreshOnly)))
+      val cancellingOrder = Order(OrderId("ORDER"), TestWorkflowId /: Position(0), Order.Fresh, mark = Some(OrderMark.Cancelling(CancellationMode.FreshOnly)))
 
       "Ready" - {
         val readyOrder = cancellingOrder.copy(state = Order.Ready)
@@ -422,7 +422,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
     }
 
     "OrderMark.Suspending" - {
-      val suspendingOrder = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready, mark = Some(OrderMark.Suspending()))
+      val suspendingOrder = Order(OrderId("ORDER"), TestWorkflowId /: Position(0), Order.Ready, mark = Some(OrderMark.Suspending()))
 
       "Ready" - {
         val readyOrder = suspendingOrder
@@ -480,7 +480,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
     }
 
     "OrderMark.Resuming isSuspended" - {
-      val resumingOrder = Order(OrderId("ORDER"), TestWorkflowId, Order.Ready, mark = Some(OrderMark.Resuming()), isSuspended = true)
+      val resumingOrder = Order(OrderId("ORDER"), TestWorkflowId /: Position(0), Order.Ready, mark = Some(OrderMark.Resuming()), isSuspended = true)
 
       "Ready" - {
         val readyOrder = resumingOrder
@@ -516,7 +516,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
     }
 
     "Order.isSuspended" - {
-      val suspendedOrder = Order(OrderId("ORDER"), TestWorkflowId, Order.Fresh, isSuspended = true)
+      val suspendedOrder = Order(OrderId("ORDER"), TestWorkflowId /: Position(0), Order.Fresh, isSuspended = true)
 
       "Fresh" - {
         val freshOrder = suspendedOrder
@@ -802,7 +802,7 @@ final class OrderEventSourceTest extends AnyFreeSpec
     val failed7 = Outcome.Failed(NamedValues.rc(7))
 
     "failToPosition" in {
-      val order = Order(OrderId("ORDER"), workflow.id, Order.Fresh)
+      val order = Order(OrderId("ORDER"), workflow.id /: Position(0), Order.Fresh)
       def failToPosition(position: Position, uncatchable: Boolean = false) =
         eventSource(order).failToPosition(workflow, order.withPosition(position), outcome = None, uncatchable = uncatchable)
 
@@ -832,13 +832,13 @@ final class OrderEventSourceTest extends AnyFreeSpec
     }
 
     "Fresh at try instruction -> OrderMoved" in {
-      val order = Order(OrderId("ORDER"), workflow.id, Order.Fresh)
+      val order = Order(OrderId("ORDER"), workflow.id /: Position(0), Order.Fresh)
       assert(eventSource(order).nextEvents(order.id) == Seq(order.id <-:
         OrderMoved(Position(0) / try_(0) % 0 / try_(0) % 0)))
     }
 
     "Ready at instruction -> OrderMoved" in {
-      val order = Order(OrderId("ORDER"), workflow.id, Order.Ready)
+      val order = Order(OrderId("ORDER"), workflow.id /: Position(0), Order.Ready)
       assert(eventSource(order).nextEvents(order.id) == Seq(order.id <-:
         OrderMoved(Position(0) / try_(0) % 0 / try_(0) % 0)))
     }
@@ -1009,9 +1009,9 @@ object OrderEventSourceTest
   private val TestAgentPath = AgentPath("AGENT")
   private val subagentId = SubagentId("SUBAGENT")
   private val succeededOrderId = OrderId("SUCCESS")
-  private val succeededOrder = Order(succeededOrderId, TestWorkflowId, Order.Processed,
+  private val succeededOrder = Order(succeededOrderId, TestWorkflowId /: Position(0), Order.Processed,
     historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(0)))))
-  private val failedOrder = Order(OrderId("FAILED"), TestWorkflowId, Order.Processed,
+  private val failedOrder = Order(OrderId("FAILED"), TestWorkflowId /: Position(0), Order.Processed,
     historicOutcomes = Vector(HistoricOutcome(Position(0), Outcome.Failed(NamedValues.rc(1)))))
   private val orderForked = OrderForked(Vector(
     OrderForked.Child("🥕", OrderId("ORDER|🥕")),

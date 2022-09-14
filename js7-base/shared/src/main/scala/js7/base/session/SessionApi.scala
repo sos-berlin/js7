@@ -41,7 +41,7 @@ trait SessionApi
 
   final def tryLogout: Task[Completed] =
     Task.defer {
-      logger.trace(s"$toString: tryLogout")
+      logger.trace(s"↘ $toString: tryLogout")
       tryLogoutLock.lock(
         logout()
           .onErrorRecover { case t =>
@@ -50,7 +50,7 @@ trait SessionApi
             Completed
           }
           .guaranteeCase(exitCase => Task {
-            logger.trace(s"$toString: tryLogout => $exitCase")
+            logger.trace(s"↙︎ $toString: tryLogout => $exitCase")
           }))
     }
 
@@ -58,20 +58,25 @@ trait SessionApi
     Task {
       logger.debug(toString + ": " + throwable.toStringWithCauses)
     }
+
+  def logError(throwable: Throwable): Task[Boolean] =
+    SessionApi.logError(throwable, toString)
 }
 
 object SessionApi
 {
   private val logger = scribe.Logger[this.type]
 
-  def logError(throwable: Throwable): Task[Boolean] =
+  def logError(throwable: Throwable, myToString: String): Task[Boolean] =
     Task {
-      logger.warn(s"$toString: ${throwable.toStringWithCauses}")
+      logger.warn(s"$myToString: ${throwable.toStringWithCauses}")
       throwable match {
         case _: javax.net.ssl.SSLException =>
         case _ =>
-          if (throwable.getStackTrace.nonEmpty && throwable.getClass.scalaName != "akka.stream.StreamTcpException") {
-            logger.debug(s"$toString: ${throwable.toString}", throwable)
+          if (throwable.getStackTrace.nonEmpty
+            && throwable.getClass.scalaName != "akka.stream.StreamTcpException"
+            && Option(throwable.getCause).forall(_.getClass.scalaName != "akka.stream.StreamTcpException")) {
+            logger.debug(s"$myToString: ${throwable.toString}", throwable)
           }
       }
       true

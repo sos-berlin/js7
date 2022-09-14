@@ -37,6 +37,10 @@ sealed trait CorrelId extends GenericString
   /** For a synchronous non-Unit executable body only, uses `CanBindLocals.synchronous`. */
   def bindNow[R](body: => R): R =
     bind(body)(CanBindCorrelId.synchronous)
+
+  def fold[A](whenEmpty: => A, whenNonEmpty: CorrelId => A): A =
+    if (isEmpty) whenEmpty
+    else whenNonEmpty(this)
 }
 
 object CorrelId extends GenericString.Checked_[CorrelId]
@@ -134,6 +138,9 @@ object CorrelId extends GenericString.Checked_[CorrelId]
 
   def bindNew[R](body: => R)(implicit R: CanBindCorrelId[R]): R =
     R.bind(CorrelId.generate())(body)
+
+  def bindNewNow[R](body: => R): R =
+    CanBindCorrelId.synchronous.bind(CorrelId.generate())(body)
 
   def enableScheduler(scheduler: Scheduler): Scheduler =
     if (!CorrelId.couldBeEnabled)

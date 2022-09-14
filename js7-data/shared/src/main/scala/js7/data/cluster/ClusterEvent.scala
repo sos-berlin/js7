@@ -36,14 +36,22 @@ object ClusterEvent
   final case class ClusterSwitchedOver(activatedId: Id)
   extends ClusterEvent
 
+  sealed trait ClusterNodeLostEvent extends ClusterEvent {
+    def lostNodeId: Id
+  }
+
   final case class ClusterFailedOver(failedActiveId: Id, activatedId: Id, failedAt: JournalPosition)
-  extends ClusterEvent
+  extends ClusterNodeLostEvent
   {
+    def lostNodeId = failedActiveId
+
     override def toString = s"ClusterFailedOver($failedActiveId --> $activatedId, $failedAt)"
   }
 
   final case class ClusterPassiveLost(id: Id)
-  extends ClusterEvent
+  extends ClusterNodeLostEvent {
+    def lostNodeId = id
+  }
 
   type ClusterActiveNodeShutDown = ClusterActiveNodeShutDown.type
   case object ClusterActiveNodeShutDown

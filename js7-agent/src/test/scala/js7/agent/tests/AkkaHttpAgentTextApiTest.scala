@@ -116,7 +116,9 @@ extends AnyFreeSpec with BeforeAndAfterAll with HasCloser with TestAgentProvider
       val t = intercept[Exception] {
         client.requireIsResponding()
       }
-      assert(t.isInstanceOf[akka.stream.StreamTcpException] || t.getClass.getName.startsWith("akka.http"))
+      assert(t.isInstanceOf[akka.stream.StreamTcpException]
+        || t.getClass.getName.startsWith("akka.http")
+        || t.toString.contains("java.net.ConnectException"))
     }
   }
 

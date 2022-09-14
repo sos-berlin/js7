@@ -66,16 +66,39 @@ object Logger
         debugTask(src.value)(task)
 
       def debugTask[A](function: String, args: => Any = "")(task: Task[A]): Task[A] =
-        logTask(logger, function, args)(task)
+        logTask[A](logger, function, args)(task)
+
+      def debugTaskWithResult[A](task: Task[A])(implicit src: sourcecode.Name): Task[A] =
+        debugTaskWithResult[A](src.value)(task)
+
+      def debugTaskWithResult[A](
+        function: String,
+        args: => Any = "",
+        result: A => Any = identity[A](_))
+        (task: Task[A])
+      : Task[A] =
+        logTask[A](logger, function, args, result)(task)
 
       def traceTask[A](task: Task[A])(implicit src: sourcecode.Name): Task[A] =
         traceTask(src.value)(task)
 
       def traceTask[A](function: String, args: => Any = "")(task: Task[A]): Task[A] =
-        logTask(logger, function, args, trace = true)(task)
+        logTask[A](logger, function, args, trace = true)(task)
+
+      def traceTaskWithResult[A](task: Task[A])(implicit src: sourcecode.Name): Task[A] =
+        traceTaskWithResult[A](src.value)(task)
+
+      def traceTaskWithResult[A](
+        function: String,
+        args: => Any = "",
+        result: A => Any = identity[A](_))
+        (task: Task[A])
+      : Task[A] =
+        logTask[A](logger, function, args, result, trace = true)(task)
     }
 
     private def logTask[A](logger: ScalaLogger, function: String, args: => Any = "",
+      resultToLoggable: A => Any = null,
       trace: Boolean = false)(task: Task[A])
     : Task[A] =
       Task.defer {
@@ -86,16 +109,17 @@ object Logger
           // Are these optimizations justified ???
           if (argsString.isEmpty) {
             if (trace) {
-              logger.trace(s"↘︎ $function ...")
+              logger.trace(s"↘ $function ...")
             } else {
-              logger.debug(s"↘︎ $function ...")
+              logger.debug(s"↘ $function ...")
             }
-          } else
+          } else {
             if (trace) {
-              logger.trace(s"↘︎ $function($argsString) ...")
+              logger.trace(s"↘ $function($argsString) ...")
             } else {
-              logger.debug(s"↘︎ $function($argsString) ...")
+              logger.debug(s"↘ $function($argsString) ...")
             }
+          }
 
           val t = System.nanoTime()
 
@@ -104,15 +128,15 @@ object Logger
               val duration = if (t == 0) "" else (System.nanoTime() - t).ns.pretty + " "
               if (argsString.isEmpty) {
                 if (trace) {
-                  logger.trace(s"︎↙$marker $function => $duration$msg")
+                  logger.trace(s"↙$marker $function => $duration$msg")
                 } else {
-                  logger.debug(s"︎↙$marker $function => $duration$msg")
+                  logger.debug(s"↙$marker $function => $duration$msg")
                 }
               } else
                 if (trace) {
-                  logger.trace(s"︎↙$marker $function($argsString) => $duration$msg")
+                  logger.trace(s"↙$marker $function($argsString) => $duration$msg")
                 } else {
-                  logger.debug(s"︎↙$marker $function($argsString) => $duration$msg")
+                  logger.debug(s"↙$marker $function($argsString) => $duration$msg")
                 }
             }
 
@@ -120,8 +144,13 @@ object Logger
             .tapEval {
               case left @ Left(_: Throwable | _: Problem) =>
                 logReturn("❓", left)
-              case _ =>
-                logReturn("", "Completed")
+              case result =>
+                logReturn(
+                  "",
+                  if (resultToLoggable eq null)
+                    "Completed"
+                  else
+                    resultToLoggable(result).toString)
             }
             .guaranteeCase {
               case Completed => Task.unit

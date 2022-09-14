@@ -1,12 +1,12 @@
 package js7.tests
 
-import cats.syntax.parallel._
+import cats.syntax.parallel.*
 import js7.agent.RunningAgent
 import js7.agent.data.event.AgentEvent.AgentReady
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.time.ScalaTime._
+import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
@@ -23,7 +23,7 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowPath}
 import js7.journal.watch.StrictEventWatch
 import js7.tests.ControlWorkflowBreakpointTest.setBreakpoints
-import js7.tests.ControlWorkflowRecoveryTest._
+import js7.tests.ControlWorkflowRecoveryTest.*
 import js7.tests.jobs.{EmptyJob, SemaphoreJob}
 import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler.Implicits.traced

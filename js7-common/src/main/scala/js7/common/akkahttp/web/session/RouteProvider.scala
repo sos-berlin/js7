@@ -52,7 +52,8 @@ trait RouteProvider extends ExceptionHandling
         }
     }
 
-  private def maybeSession(requiredPermissions: Set[Permission]): Directive1[(SimpleUser, Option[OurSession])] =
+  protected final def maybeSession(requiredPermissions: Set[Permission])
+  : Directive1[(SimpleUser, Option[OurSession])] =
     new Directive[Tuple1[(SimpleUser, Option[OurSession])]]
     {
       def tapply(inner: Tuple1[(SimpleUser, Option[OurSession])] => Route) =

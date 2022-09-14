@@ -32,9 +32,15 @@ extends CommandExecutor[ControllerCommand]
       logCommand(run)
       executeCommand2(command, meta, correlId, batchId)
         .map { checkedResponse =>
-          if (run.batchInternalId.isEmpty || checkedResponse != Right(ControllerCommand.Response.Accepted)) {
-            logger.debug(s"Response to ${run.idString} ${ControllerCommand.jsonCodec.classToName(run.command.getClass)}" +
-              s" (${run.runningSince.elapsed.pretty}): $checkedResponse")
+          if (run.batchInternalId.isEmpty) {
+            checkedResponse match {
+              //case Right(ControllerCommand.Response.Accepted) =>
+              case Right(_) =>
+                logger.debug(s"↙︎ ${run.idString} " +
+                  ControllerCommand.jsonCodec.classToName(run.command.getClass) +
+                  s" (${run.runningSince.elapsed.pretty}): $checkedResponse")
+              case Left(problem) =>
+            }
           }
           for (problem <- checkedResponse.left) logger.warn(s"$run rejected: $problem")
           checkedResponse.map(_.asInstanceOf[command.Response])
@@ -69,7 +75,7 @@ extends CommandExecutor[ControllerCommand]
   private def logCommand(run: CommandRun[ControllerCommand]): Unit =
     run.command match {
       case Batch(_) =>   // Log only individual commands
-      case _ => logger.debug(run.toString)
+      case _ => logger.debug(s"↘ $run")
     }
 
   def overview: CommandHandlerOverview =

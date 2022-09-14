@@ -10,6 +10,7 @@ import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
+import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
@@ -90,6 +91,7 @@ extends AnyFreeSpec with DirectoryProviderForScalaTest
         .ordersToObstacles(Seq(aOrderId), Timestamp.now)
         .map(_.toSeq)
 
+    waitForCondition(10.s, 10.ms)(orderObstacles.exists(_.nonEmpty))
     assert(orderObstacles == Right(Seq(
       aOrderId -> Set[OrderObstacle](OrderObstacle.WaitingForCommand))))
 
