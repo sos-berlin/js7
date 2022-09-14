@@ -1,11 +1,29 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-bin/kill-and-restart-controller-monkey &
-controllerKillMonkey=$!
+bin=$(cd "${0%/*}" && pwd)
+pids=""
 
-bin/kill-and-restart-subagents-monkey &
-agentKillMonkey=$!
+"$bin"/kill-and-restart-monkey \
+  --container=js7-controller \
+  --up-exp=7 \
+  --down-exp=7 \
+  --cursor-line=1 &
+pids+="$pids $!"
 
-trap "kill -- -$$ >/dev/null || kill $controllerKillMonkey $agentKillMonkey" EXIT
+"$bin"/kill-and-restart-monkey \
+  --container=js7-backup-controller \
+  --up-exp=7  \
+  --down-exp=5 \
+  --cursor-line=2 &
+pids+="$pids $!"
+
+#"$bin"/kill-and-restart-monkey \
+#  --container=js7-subagent-1-a \
+#  --up-exp=7  \
+#  --down-exp=1 \
+#  --cursor-line=3 &
+#pids+="$pids $!"
+
+trap 'set +e; kill -- -$$ >/dev/null || kill $pids; echo -e "\n\n\n\n\e[J"' EXIT
 wait

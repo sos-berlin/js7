@@ -2,17 +2,30 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: $0 --container=DOCKERCONTAINER"
+  echo "Usage: $0 --container=DOCKERCONTAINER --down-exp=E --up-exp=E"
+  echo "E is the durations in seconds expressed as the exponent to two"
 }
 
 containers=()
+downDurationExponent=6
+upDurationExponent=6
+cursorLine=0
+
 for arg in "$@"; do :
   case "$arg" in
     --container=*)
       containers+=("${arg#*=}")
       ;;
+    --down-exp=*)
+      downDurationExponent="${arg#*=}"
+      ;;
+    --up-exp=*)
+      upDurationExponent="${arg#*=}"
+      ;;
+    --cursor-line=*)
+      cursorLine="${arg#*=}"
+      ;;
     -\?|-h|--help)
-      echo 1>&2 "Invalid argument: $arg"
       usage
       exit
       ;;
@@ -29,9 +42,20 @@ if [ "${#containers[@]}" -eq 0 ]; then
   exit
 fi
 
+#skipToLine="\e7\e[${cursorLine}B"
+skipToLine=""
+for ((i = 0; i < $cursorLine; i++)); do :
+  skipToLine="$skipToLine\eD"
+done
+skipBack="\e[${cursorLine}A\r"
+#skipBack="\e8"
+
 docker container inspect "${containers[@]}" >/dev/null
 
 sleepExp() {
+  local save="\e7"
+  local restore="\e8"
+  local gray="\e[0;37m"
   # $1 is the two-base exponent, should be a multitude of 2
   #local exp=$(($1 / 2 * 2))  # Round to lower probability of many small numbers
   local exp="$1"
@@ -39,27 +63,33 @@ sleepExp() {
   local seconds=$((2 ** ((RANDOM + (32767 / $exp) - 2) / (32767 / $exp))))
 
   # Paint shadow for completed duration
-  echo -en "\e7\e[0;37m"  # Save position, gray
-  for ((j = 0; j < $seconds; j++)); do :
-    echo -en "█"
+  tab="\e[40C"
+  a="$skipToLine$tab\e[K\e[1D$save$gray"
+  for ((i = 0; i < $seconds; i++)); do :
+    a="$a\e[$((i+1))C█\e[$((i+2))D"
   done
-  echo -en "\e8"  # Restore position
+  echo -en "$a$restore$skipBack"
 
   for ((i = 0; i < $seconds; i++)); do :
     sleep 1
-    echo -en "$2"
+    remaining=$((i - seconds + 1))
+    right="\e[${i}C"
+    if [ "$i" -eq 0 ]; then right=""; fi
+    length=${#remaining}
+    echo -en "$skipToLine$tab$right\e[4C\e[4D$2\e\r$tab\e[${seconds}C\e[${length}C\e[${length}D$remaining\e[K$skipBack"
   done
 }
 
 while true; do :
-  echo -n "$(date "+%H:%M:%S") start "
   # No quotes to combine multi-line output of docker
-  echo -n $(docker start "${containers[@]}") " "
-  sleepExp 5 "\e[0;32m█\e[0m"
-  echo
-  echo -n "$(date "+%H:%M:%S") kill  "
+  a=$(docker start "${containers[@]}")
+  echo -en "\e[K$skipToLine\r\e[K$(date "+%H:%M:%S") start $a $skipBack"
+
+  sleepExp $upDurationExponent "\e[0;32m█\e[0m"
+
   # No quotes to combine multi-line output of docker
-  echo -n $(docker kill "${containers[@]}") " "
-  sleepExp 5 "\e[0;31m█\e[0m"
-  echo
+  a=$(docker kill "${containers[@]}")
+  echo -en "\e[K$skipToLine\r\e[K$(date "+%H:%M:%S") kill  $a $skipBack"
+
+  sleepExp $downDurationExponent "\e[0;31m█\e[0m"
 done
