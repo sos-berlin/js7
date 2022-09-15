@@ -72,13 +72,11 @@ final class CirceParallelizationSpeedTest extends Test
     "encode sequential" in {
       testEncode(big, "Big")(seq => encodeSerial(seq))
       testEncode(small, "Small")(seq => encodeSerial(seq))
-      succeed
     }
 
     "decode sequential" in {
       testDecode[Big](bigJson, "Big")(decodeSerial[Big](_))
       testDecode[Small](smallJson, "Small")(decodeSerial[Small](_))
-      succeed
     }
   }
   }
