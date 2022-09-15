@@ -58,7 +58,7 @@ final class SwitchTest extends AsyncFreeSpec
       .*>(Task.race(
         switch.whenOff.map(_ => fail()),
         Task.sleep(100.ms)))
-      .map(_.fold(identity, identity))
+      .map(_.fold(identity _: @nowarn, identity))
       .*>(switch.switchOff)
       .*>(Task.race(
         switch.whenOff,

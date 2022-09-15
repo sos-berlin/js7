@@ -87,7 +87,7 @@ extends Actor {
       }
       sender() ! Completed
 
-    case Command.Get(token, idsOrUser: Either[Set[UserId], SimpleUser]) =>
+    case Command.Get(token, idsOrUser: Either[Set[UserId @unchecked], SimpleUser]) =>
       val checkedSession = (tokenToSession.get(token), idsOrUser) match {
         case (None, _) =>
           val users = idsOrUser.fold(_.mkString("|"), _.id)

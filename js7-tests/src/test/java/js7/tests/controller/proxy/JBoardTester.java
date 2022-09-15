@@ -39,9 +39,9 @@ public class JBoardTester
 {
     private static final VersionId versionId = JControllerProxyTest.boardVersion();
     private static final WorkflowPath postingBoardWorkflowPath =
-        (WorkflowPath)JControllerProxyTest.postingBoardWorkflow().path();
+        JControllerProxyTest.postingBoardWorkflow().path();
     private static final WorkflowPath expectingBoardWorkflowPath =
-        (WorkflowPath)JControllerProxyTest.expectingBoardWorkflow().path();
+        JControllerProxyTest.expectingBoardWorkflow().path();
     private static final JBoard board = JBoard.of(JControllerProxyTest.boardPath(),
         getOrThrow(JExpression.parse(
             "replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', \"\\$1\")")),

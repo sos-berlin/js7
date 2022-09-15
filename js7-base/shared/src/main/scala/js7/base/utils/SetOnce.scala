@@ -7,8 +7,6 @@ import monix.eval.Task
 import scala.concurrent.{Future, Promise}
 import scala.util.Success
 
-// TODO Avoid scala.reflect.runtime.universe._
-
 /**
  * Variable which can be set only once. Thread-safe.
  *
@@ -18,19 +16,19 @@ final class SetOnce[A](label: => String, notYetSetProblem: Problem)
 {
   protected[this] val promise = Promise[A]()
 
-  final lazy val task: Task[A] =
+  lazy val task: Task[A] =
     Task.fromFuture(future).memoize
 
-  final override def toString = toStringOr(s"SetOnce[$label](not yet set)")
+  override def toString = toStringOr(s"SetOnce[$label](not yet set)")
 
-  @inline final def toStringOr(or: => String): String =
+  @inline def toStringOr(or: => String): String =
     promise.future.value match {
       case None => or
       case Some(Success(o)) => o.toString
       case Some(o) => o.toString  // Never happens
     }
 
-  final def getOrUpdate(lazyValue: => A): A =
+  def getOrUpdate(lazyValue: => A): A =
     promise.future.value match {
       case Some(o) => o.get
       case None =>
@@ -45,22 +43,22 @@ final class SetOnce[A](label: => String, notYetSetProblem: Problem)
         }
     }
 
-  final def toOption: Option[A] =
+  def toOption: Option[A] =
     promise.future.value.map(_.get)
 
-  final def future: Future[A] =
+  def future: Future[A] =
     promise.future
 
-  final def isDefined = nonEmpty
+  def isDefined = nonEmpty
 
-  final def isEmpty = !nonEmpty
+  def isEmpty = !nonEmpty
 
-  final def nonEmpty = promise.future.isCompleted
+  def nonEmpty = promise.future.isCompleted
 
-  final def contains(a: A) =
+  def contains(a: A) =
     toOption contains a
 
-  final def foreach(f: A => Unit) =
+  def foreach(f: A => Unit) =
     toOption.foreach(f)
 
   /**
@@ -70,22 +68,22 @@ final class SetOnce[A](label: => String, notYetSetProblem: Problem)
    *
    * @throws IllegalStateException
    */
-  final def :=(value: A): A = {
+  def :=(value: A): A = {
     if (!trySet(value)) throw new IllegalStateException(s"SetOnce[$label] has already been set")
     value
   }
 
   /** @return true iff the value has not yet been set. */
-  final def trySet(value: A): Boolean =
+  def trySet(value: A): Boolean =
     promise.trySuccess(value)
 
   def orThrow: A =
     checked.orThrow
 
-  final def getOrElse[B >: A](els: => B): B =
+  def getOrElse[B >: A](els: => B): B =
     checked getOrElse els
 
-  final def checked: Checked[A] =
+  def checked: Checked[A] =
     promise.future.value match {
       case None => Left(notYetSetProblem)
       case Some(o) => Right(o.get)
