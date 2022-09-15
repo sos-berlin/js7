@@ -147,7 +147,7 @@ final class ClusterWatchTest extends OurTestSuite
       val clusterWatch2 = clusterState.applyEvents(events.map(NoKey <-: _)).orThrow
       assert(watch.applyEvents(ClusterWatchEvents(bId,  events, clusterWatch2)).await(99.s) ==
         Left(ClusterWatchInactiveNodeProblem(bId, clusterState, duration,
-          "event ClusterFailedOver(A --> B, JournalPosition(0,0)) --> FailedOver(passive A: http://A, active B: http://B, JournalPosition(0,0))")))
+          "event ClusterFailedOver(A --> B, JournalPosition(0,0)) --> FailedOver(A --> B at JournalPosition(0,0))")))
 
       assert(watch.isActive(aId).await(99.s).orThrow)
     }
