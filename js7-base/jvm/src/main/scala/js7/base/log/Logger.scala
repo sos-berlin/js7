@@ -15,6 +15,8 @@ object Logger
 {
   Slf4jUtils.initialize()
 
+  def initialize() = {}
+
   //val Timing: Marker = MarkerFactory.getMarker("Timing")
   //val Event: Marker = MarkerFactory.getMarker("Event")
   val Actor: Marker = MarkerFactory.getMarker("Actor")

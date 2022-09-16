@@ -1,19 +1,18 @@
 package js7.base.test
 
-import js7.base.log.{CorrelId, Log4j}
+import js7.base.log.{CorrelId, Logger}
 import js7.base.log.LoggingEscapeCodes.{black, bold, green, orange, resetColor}
 import js7.base.test.LoggingFreeSpecStringWrapper.{StringWrapper, TaggedAs}
 import js7.base.test.LoggingTestAdder.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Tests.{isIntelliJIdea, isSbt}
-import org.apache.logging.log4j.LogManager
 import org.scalatest.exceptions.TestPendingException
 import scala.collection.mutable
 import scala.util.{Failure, Success, Try}
 
 private final class LoggingTestAdder(suiteName: String) {
 
-  Log4j.initialize()
+  Logger.initialize()
 
   private val outerNames = Seq(suiteName).to(mutable.Stack)
   private var firstTestCalled = false
@@ -51,7 +50,7 @@ private final class LoggingTestAdder(suiteName: String) {
 }
 
 private object LoggingTestAdder {
-  private val logger = LogManager.getLogger("TEST")
+  private val logger = Logger("TEST")
   private val bar = "⎯" * 80
 
   private val droppableStackTracePrefixes = Set(

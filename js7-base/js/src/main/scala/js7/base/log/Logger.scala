@@ -5,6 +5,8 @@ import scala.reflect.ClassTag
 
 object Logger
 {
+  def initialize() = {}
+
   def apply[A: ClassTag]: scribe.Logger =
     apply(implicitClass[A])
 
