@@ -39,7 +39,11 @@ trait WebServiceTest extends HasCloser with BeforeAndAfterAll with ScalatestRout
   protected final val sessionRegister = SessionRegister.start[AgentSession](
     actorRefFactory, AgentSession.apply, SessionRegister.TestConfig)
 
-  override def testConfig = AgentConfiguration.DefaultConfig.resolve()
+  override def testConfig =
+    config"akka.loglevel = warning"
+      .withFallback(AgentConfiguration.DefaultConfig.resolve())
+      .withFallback(super.testConfig)
+
   protected final def actorSystem = system
   protected val config = config"js7.web.server.services.streaming-post-size-limit-factor = 50%"
     .withFallback(WebLogDirectives.TestConfig)

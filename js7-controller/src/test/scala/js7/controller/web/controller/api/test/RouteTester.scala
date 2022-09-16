@@ -44,6 +44,7 @@ trait RouteTester extends ScalatestRouteTest with ExceptionHandling
 
   protected def config = config"""
     akka.http.host-connection-pool.response-entity-subscription-timeout = 10s
+    akka.loglevel = warning
     js7.web.client.compression = off
     js7.web.server.verbose-error-messages = on
     js7.web.server.services.event.streaming.delay = 20ms

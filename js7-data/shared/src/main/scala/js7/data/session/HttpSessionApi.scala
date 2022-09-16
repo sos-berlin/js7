@@ -3,6 +3,7 @@ package js7.data.session
 import js7.base.Js7Version
 import js7.base.auth.{SessionToken, UserAndPassword}
 import js7.base.generic.Completed
+import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked.*
 import js7.base.session.SessionCommand.{Login, Logout}
@@ -112,7 +113,7 @@ trait HttpSessionApi extends SessionApi with HasSessionToken
 
 object HttpSessionApi
 {
-  private val logger = scribe.Logger[this.type]
+  private val logger = Logger[this.type]
 
   private[session] def logNonMatchingVersion(
     otherVersion: Version,

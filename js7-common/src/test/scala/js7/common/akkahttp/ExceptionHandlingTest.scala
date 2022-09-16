@@ -21,6 +21,9 @@ final class ExceptionHandlingTest extends OurTestSuite with ScalatestRouteTest w
   protected val config = config"js7.web.server.verbose-error-messages = true"
   protected def whenShuttingDown = Future.never
 
+  override def testConfig = config"akka.loglevel = warning"
+    .withFallback(super.testConfig)
+
   protected def actorSystem = system
 
   "RuntimeException" in {

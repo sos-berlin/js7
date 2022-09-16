@@ -5,6 +5,7 @@ import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
+import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
@@ -20,6 +21,9 @@ import scala.concurrent.duration.*
 final class EventDirectivesTest extends OurTestSuite with ScalatestRouteTest
 {
   coupleScribeWithSlf4j()
+
+  override def testConfig = config"akka.loglevel = warning"
+    .withFallback(super.testConfig)
 
   private implicit val myKeyedEventJsonFormat: KeyedEventTypedJsonCodec[MyEvent] =
     KeyedEvent.typedJsonCodec(

@@ -6,6 +6,7 @@ import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import io.circe.JsonObject
 import js7.base.auth.{SessionToken, SimpleUser}
+import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.generic.SecretString
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Problem
@@ -34,6 +35,9 @@ final class ClusterWatchRouteTest extends OurTestSuite with ScalatestRouteTest w
 
   private implicit val routeTestTimeout: RouteTestTimeout = RouteTestTimeout(10.s)
   private val controllerId = ControllerId("CONTROLLER")
+
+  override def testConfig = config"akka.loglevel = warning"
+    .withFallback(super.testConfig)
 
   private val route = pathSegment("cluster") {
     clusterWatchRouteFor(controllerId, new ClusterWatchSession {

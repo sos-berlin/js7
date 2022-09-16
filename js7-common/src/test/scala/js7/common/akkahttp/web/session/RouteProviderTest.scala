@@ -30,6 +30,9 @@ final class RouteProviderTest extends OurTestSuite with RouteProvider with Scala
 {
   coupleScribeWithSlf4j()
 
+  override def testConfig = config"akka.loglevel = warning"
+    .withFallback(super.testConfig)
+
   protected type OurSession = SimpleSession
 
   protected def whenShuttingDown = Future.never

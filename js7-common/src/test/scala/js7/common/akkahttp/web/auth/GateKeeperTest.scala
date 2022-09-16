@@ -39,6 +39,9 @@ final class GateKeeperTest extends OurTestSuite with ScalatestRouteTest
 
   import GateKeeperTest.ImplicitGateKeeper
 
+  override def testConfig = config"akka.loglevel = warning"
+    .withFallback(super.testConfig)
+
   private implicit val routeTestTimeout: RouteTestTimeout =
     RouteTestTimeout(10.seconds)
   private implicit def toSet(p: Permission): Set[Permission] = Set(p)

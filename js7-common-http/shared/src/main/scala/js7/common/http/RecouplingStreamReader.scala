@@ -3,6 +3,7 @@ package js7.common.http
 import cats.syntax.apply.*
 import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.generic.Completed
+import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.problem.{Checked, Problem, ProblemException}
@@ -19,8 +20,8 @@ import monix.execution.atomic.AtomicBoolean
 import monix.execution.exceptions.UpstreamTimeoutException
 import monix.reactive.Observable
 import scala.concurrent.TimeoutException
-import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.*
+import scala.concurrent.duration.Deadline.now
 import scala.util.control.NoStackTrace
 
 /** Logs in, couples and fetches objects from a (HTTP) stream, and recouples after error. */
@@ -282,7 +283,7 @@ object RecouplingStreamReader
   val TerminatedProblem = Problem.pure("RecouplingStreamReader has been stopped")
 
   private val PauseGranularity = 500.ms
-  private val logger = scribe.Logger[this.type]
+  private val logger = Logger[this.type]
 
   def observe[@specialized(Long/*EventId or file position*/) I, V, Api <: SessionApi.HasUserAndPassword & HasIsIgnorableStackTrace](
     toIndex: V => I,

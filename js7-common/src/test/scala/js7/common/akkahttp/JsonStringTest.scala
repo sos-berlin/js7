@@ -9,6 +9,7 @@ import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import java.nio.charset.StandardCharsets.UTF_8
+import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.test.OurTestSuite
 import js7.common.akkahttp.JsonStringTest.*
@@ -22,6 +23,9 @@ final class JsonStringTest extends OurTestSuite with ScalatestRouteTest
 
   private val testString = """{"Ä": "a"}"""
   private val jsonString = JsonString(testString)
+
+  override def testConfig = config"akka.loglevel = warning"
+    .withFallback(super.testConfig)
 
   "Marshal as application/json" in {
     val entity = HttpEntity(`application/json`, testString.getBytes(UTF_8))

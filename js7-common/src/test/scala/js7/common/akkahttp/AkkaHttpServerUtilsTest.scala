@@ -3,6 +3,7 @@ package js7.common.akkahttp
 import akka.http.scaladsl.model.Uri
 import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.testkit.ScalatestRouteTest
+import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurTestSuite
 import js7.common.akkahttp.AkkaHttpServerUtils.*
 
@@ -10,6 +11,9 @@ import js7.common.akkahttp.AkkaHttpServerUtils.*
   * @author Joacim Zschimmer
   */
 final class AkkaHttpServerUtilsTest extends OurTestSuite with ScalatestRouteTest {
+
+  override def testConfig = config"akka.loglevel = warning"
+    .withFallback(super.testConfig)
 
   "Path" - {
     import Uri.Path

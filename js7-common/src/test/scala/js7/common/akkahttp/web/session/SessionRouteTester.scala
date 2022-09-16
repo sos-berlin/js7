@@ -38,6 +38,7 @@ trait SessionRouteTester extends BeforeAndAfterAll with ScalatestRouteTest with 
 
   override def testConfig = config"""
     js7.web.client.compression = off
+    akka.loglevel = warning
     akka.http.host-connection-pool.max-connection-backoff = 10ms
   """.withFallback(super.testConfig)
 
