@@ -7,8 +7,8 @@ object Dependencies
 {
   val scalaVersion = "2.13.8"
 
-  val akkaVersion = "2.6.19"
-  val akkaHttpVersion = "10.2.9"
+  val akkaVersion = "2.6.20"
+  val akkaHttpVersion = "10.2.10"
   val slf4jVersion = "1.7.36"  // See also plugins.sbt
   val log4jVersion = "2.18.0"  // See also plugins.sbt
   val catsVersion = "2.8.0"
@@ -16,7 +16,7 @@ object Dependencies
   val izumiReflectVersion = "2.1.3"
   //val kittensVersion = "1.2.1"
   val catsParseVersion = "0.3.8"
-  val fastparseVersion = "2.2.4"
+  val fastparseVersion = "2.3.3"
   val circeVersion = "0.14.2"
   val circeGenericExtrasVersion = "0.14.1"
   val scalaTestVersion = "3.2.12"
@@ -31,7 +31,7 @@ object Dependencies
   val scalaJsDomVersion = "2.2.0"
   val softwaremillTaggingVersion = "2.3.3"
   val diffxVersion = "0.7.1"
-  val reactorVersion = "3.4.21"
+  val reactorVersion = "3.4.22"
   val vavrVersion = "0.10.4"
   val jnaVersion = "5.12.1"
 
@@ -50,7 +50,7 @@ object Dependencies
   val scalactic           = "org.scalactic" %% "scalactic" % scalaTestVersion
   val scalaCheck          = "org.scalatestplus" %% "scalacheck-1-16" % scalaTestCheckVersion ::
                             "org.scalacheck" %% "scalacheck" % scalaCheckVersion :: Nil
-  val scalaLogging        = "com.typesafe.scala-logging" %% "scala-logging" % "3.9.4" :: slf4j :: Nil
+  val scalaLogging        = "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5" :: slf4j :: Nil
   val cats                = "org.typelevel" %% "cats-core" % catsVersion
   val tagging             = "com.softwaremill.common" %% "tagging" % softwaremillTaggingVersion
   val diffx               = "com.softwaremill.diffx" %% "diffx-core" % diffxVersion
