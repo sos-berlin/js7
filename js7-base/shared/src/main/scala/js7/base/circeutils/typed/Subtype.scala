@@ -101,9 +101,12 @@ object Subtype {
   def named[A: ClassTag](codec: Codec.AsObject[A], typeName: String): Subtype[A] =
     make[A](implicitClass[A] :: Nil, Some(implicitClass[A]), typeName, codec, codec)
 
-  def decodeCompatible[Old: ClassTag, New: ClassTag](decoder: Decoder[Old])(toNew: Old => New)
+  def decodeCompatible[Old: ClassTag, New: ClassTag](decoder: Decoder[Old])(toNew: Old => Checked[New])
   : Subtype[New] =
-    make(Nil, Some(implicitClass[New]), typeName[Old], noEncoder, decoder.map(toNew))
+    make(Nil, Some(implicitClass[New]), typeName[Old],
+      noEncoder,
+      c => decoder(c)
+        .flatMap(old => toNew(old).toDecoderResult(c.history)))
 
   private def noEncoder[A]: Encoder.AsObject[A] =
     _ => throw new UnsupportedOperationException(s"No Encoder")

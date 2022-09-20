@@ -15,5 +15,5 @@ object PostNotice
 {
   val compatibleSubtype: Subtype[PostNotices] =
     Subtype.decodeCompatible(deriveDecoder[PostNotice])(postNotice =>
-      PostNotices(Vector(postNotice.boardPath), postNotice.sourcePos))
+      Right(PostNotices(Vector(postNotice.boardPath), postNotice.sourcePos)))
 }

@@ -14,7 +14,7 @@ private object ExpectNotice
 
   val compatibleSubtype: Subtype[ExpectNotices] =
     Subtype.decodeCompatible(deriveDecoder[ExpectNotice])(expectNotice =>
-      ExpectNotices(
+      Right(ExpectNotices(
         BoardPathExpression.ExpectNotice(expectNotice.boardPath),
-        expectNotice.sourcePos))
+        expectNotice.sourcePos)))
 }
