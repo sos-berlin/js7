@@ -522,34 +522,152 @@ final class OrderEventTest extends OurTestSuite
       }""")
   }
 
+  "OrderLocksAcquired" in {
+    check(OrderLocksAcquired(List(LockDemand(LockPath("LOCK"), Some(3)))), json"""
+      {
+        "TYPE": "OrderLocksAcquired",
+        "demands": [{
+          "lockPath": "LOCK",
+          "count": 3
+        }]
+      }""")
+
+    assert(
+      json"""{
+        "TYPE": "OrderLocksAcquired",
+        "demands": [
+          { "lockPath": "LOCK" },
+          { "lockPath": "LOCK" }
+        ]
+      }""".checkedAs[OrderEvent] == Left(Problem(
+        "JSON DecodingFailure at : Unexpected duplicates: 2×Lock:LOCK")))
+
+    assert(
+      json"""{
+        "TYPE": "OrderLocksAcquired",
+        "demands": [{
+          "lockPath": "LOCK",
+          "count": 0
+        }]
+      }""".checkedAs[OrderEvent] == Left(Problem(
+        "JSON DecodingFailure at : LockDemand.count must not be below 1 for Lock:LOCK")))
+  }
+
+  // COMPATIBLE with v2.4
   "OrderLockAcquired" in {
-    check(OrderLockAcquired(LockPath("LOCK"), Some(3)), json"""
+    testJsonDecoder[OrderEvent](OrderLocksAcquired(List(LockDemand(LockPath("LOCK"), Some(3)))),
+      json"""
       {
         "TYPE": "OrderLockAcquired",
         "lockPath": "LOCK",
         "count": 3
       }""")
+
+    assert(
+      json"""{
+        "TYPE": "OrderLockAcquired",
+        "lockPath": "LOCK",
+        "count": 0
+      }""".checkedAs[OrderEvent] == Left(Problem(
+        "JSON DecodingFailure at : LockDemand.count must not be below 1 for Lock:LOCK")))
   }
 
+  "OrderLocksQueued" in {
+    check(OrderLocksQueued(List(LockDemand(LockPath("LOCK"), Some(1)))), json"""
+      {
+        "TYPE": "OrderLocksQueued",
+        "demands": [
+          {
+            "lockPath": "LOCK",
+            "count": 1
+          }
+        ]
+      }""")
+
+    assert(
+      json"""{
+        "TYPE": "OrderLocksQueued",
+        "demands": [
+          { "lockPath": "LOCK" },
+          { "lockPath": "LOCK" }
+        ]
+      }""".checkedAs[OrderEvent] == Left(Problem(
+        "JSON DecodingFailure at : Unexpected duplicates: 2×Lock:LOCK")))
+
+    assert(
+      json"""{
+        "TYPE": "OrderLocksQueued",
+        "demands": [{
+          "lockPath": "LOCK",
+          "count": 0
+        }]
+      }""".checkedAs[OrderEvent] == Left(Problem(
+        "JSON DecodingFailure at : LockDemand.count must not be below 1 for Lock:LOCK")))
+  }
+
+  // COMPATIBLE with v2.4
   "OrderLockQueued" in {
-    check(OrderLockQueued(LockPath("LOCK"), Some(1)), json"""
+    testJsonDecoder[OrderEvent](OrderLocksQueued(List(LockDemand(LockPath("LOCK"), Some(1)))),
+      json"""
       {
         "TYPE": "OrderLockQueued",
         "lockPath": "LOCK",
         "count": 1
       }""")
+
+    assert(
+      json"""{
+        "TYPE": "OrderLockQueued",
+        "lockPath": "LOCK",
+        "count": 0
+      }""".checkedAs[OrderEvent] == Left(Problem(
+        "JSON DecodingFailure at : LockDemand.count must not be below 1 for Lock:LOCK")))
   }
 
+  "OrderLocksDequeued" in {
+    check(OrderLocksDequeued(List(LockPath("LOCK"))), json"""
+      {
+        "TYPE": "OrderLocksDequeued",
+        "lockPaths": [ "LOCK" ]
+      }""")
+
+    assert(
+      json"""{
+        "TYPE": "OrderLocksDequeued",
+        "lockPaths": [ "LOCK", "LOCK" ]
+      }""".checkedAs[OrderEvent] == Left(Problem(
+        "JSON DecodingFailure at : Unexpected duplicates: 2×Lock:LOCK")))
+  }
+
+  // COMPATIBLE with v2.4
   "OrderLockDequeued" in {
-    check(OrderLockDequeued(LockPath("LOCK")), json"""
+    testJsonDecoder[OrderEvent](OrderLocksDequeued(List(LockPath("LOCK"))),
+      json"""
       {
         "TYPE": "OrderLockDequeued",
         "lockPath": "LOCK"
       }""")
   }
 
+  "OrderLocksReleased" in {
+    check(OrderLocksReleased(List(LockPath("LOCK"))), json"""
+      {
+        "TYPE": "OrderLocksReleased",
+        "lockPaths": [ "LOCK" ]
+      }""")
+
+    assert(
+      json"""{
+        "TYPE": "OrderLocksReleased",
+        "lockPaths": [ "LOCK", "LOCK" ]
+      }""".checkedAs[OrderEvent] == Left(Problem(
+        "JSON DecodingFailure at : Unexpected duplicates: 2×Lock:LOCK")))
+  }
+
+  // COMPATIBLE with v2.4
   "OrderLockReleased" in {
-    check(OrderLockReleased(LockPath("LOCK")), json"""
+    testJsonDecoder[OrderEvent](OrderLocksReleased(List(LockPath("LOCK"))),
+      json"""
       {
         "TYPE": "OrderLockReleased",
         "lockPath": "LOCK"

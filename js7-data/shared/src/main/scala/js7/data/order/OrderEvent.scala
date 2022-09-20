@@ -1,13 +1,17 @@
 package js7.data.order
 
-import io.circe.generic.semiauto.{deriveCodec, deriveEncoder}
+import cats.syntax.flatMap.*
+import cats.syntax.traverse.*
+import io.circe.generic.semiauto.{deriveCodec, deriveDecoder, deriveEncoder}
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, Encoder, JsonObject}
+import js7.base.circeutils.CirceUtils.RichCirceCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.io.process.{Stderr, Stdout, StdoutOrStderr}
-import js7.base.problem.Problem
+import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
 import js7.base.utils.Big
+import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.agent.AgentPath
@@ -305,13 +309,6 @@ object OrderEvent
   final case class OrderMoved(to: Position)
   extends OrderActorEvent
 
-  sealed trait OrderLockEvent extends OrderActorEvent {
-    def lockPaths: Seq[LockPath]
-  }
-  object OrderLockEvent {
-    def unapply(event: OrderLockEvent) = Some(event.lockPaths)
-  }
-
   sealed trait OrderFailedEvent extends OrderActorEvent {
     def moveTo(movedTo: Position): OrderFailedEvent
 
@@ -482,24 +479,77 @@ object OrderEvent
     }
   }
 
-  final case class OrderLockAcquired(lockPath: LockPath, count: Option[Int] = None)
-  extends OrderLockEvent {
-    def lockPaths = lockPath :: Nil
+  sealed trait LegacyOrderLockEvent extends OrderActorEvent
+
+  // COMPATIBLE with v2.4
+  private final case class OrderLockAcquired(lockPath: LockPath, count: Option[Int])
+  extends LegacyOrderLockEvent
+
+  // COMPATIBLE with v2.4
+  private final case class OrderLockQueued(lockPath: LockPath, count: Option[Int])
+  extends LegacyOrderLockEvent
+
+  // COMPATIBLE with v2.4
+  private final case class OrderLockDequeued(lockPath: LockPath)
+  extends LegacyOrderLockEvent
+
+  // COMPATIBLE with v2.4
+  private final case class OrderLockReleased(lockPath: LockPath)
+  extends LegacyOrderLockEvent
+
+  sealed trait OrderLockEvent extends OrderActorEvent
+  {
+    def lockPaths: Seq[LockPath]
   }
 
-  final case class OrderLockQueued(lockPath: LockPath, count: Option[Int])
-  extends OrderLockEvent  {
-    def lockPaths = lockPath :: Nil
+  object OrderLockEvent
+  {
+    def unapply(event: OrderLockEvent) = Some(event.lockPaths)
   }
 
-  final case class OrderLockDequeued(lockPath: LockPath)
-  extends OrderLockEvent {
-    def lockPaths = lockPath :: Nil
+  sealed trait OrderLockAcquiredOrQueuedEvent extends OrderLockEvent {
+    def demands: Seq[LockDemand]
   }
 
-  final case class OrderLockReleased(lockPath: LockPath)
+  final case class OrderLocksQueued(demands: List[LockDemand])
+  extends OrderLockAcquiredOrQueuedEvent  {
+    def checked = LockDemand.checked(demands).rightAs(this)
+    def lockPaths = demands.map(_.lockPath)
+  }
+
+  final case class OrderLocksAcquired(demands: List[LockDemand])
+    extends OrderLockAcquiredOrQueuedEvent
+  {
+    def checked = LockDemand.checked(demands).rightAs(this)
+    def lockPaths = demands.map(_.lockPath)
+  }
+
+  final case class OrderLocksDequeued(lockPaths: Seq[LockPath])
   extends OrderLockEvent {
-    def lockPaths = lockPath :: Nil
+    def checked = lockPaths.checkUniqueness.rightAs(this)
+  }
+
+  final case class OrderLocksReleased(lockPaths: Seq[LockPath])
+  extends OrderLockEvent {
+    def checked = lockPaths.checkUniqueness.rightAs(this)
+  }
+
+  final case class LockDemand(lockPath: LockPath, count: Option[Int] = None) {
+    def checked: Checked[this.type] =
+      if (count.exists(_ < 1))
+        Left(Problem(s"LockDemand.count must not be below 1 for $lockPath"))
+      else
+        Right(this)
+  }
+  object LockDemand
+  {
+    def checked(demands: Seq[LockDemand]) =
+      demands
+        .checkUniqueness(_.lockPath)
+        .>>(demands.traverse(_.checked))
+        .rightAs(())
+
+    implicit val jsonCodec: Codec.AsObject[LockDemand] = deriveCodec
   }
 
   final case class OrderPrompted(question: Value)
@@ -554,10 +604,18 @@ object OrderEvent
     Subtype(OrderDetachable),
     Subtype(OrderDetached),
     Subtype(deriveCodec[OrderBroken]),
-    Subtype(deriveCodec[OrderLockAcquired]),
-    Subtype(deriveCodec[OrderLockQueued]),
-    Subtype(deriveCodec[OrderLockDequeued]),
-    Subtype(deriveCodec[OrderLockReleased]),
+    Subtype(deriveCodec[OrderLocksQueued].checked(_.checked)),
+    Subtype(deriveCodec[OrderLocksAcquired].checked(_.checked)),
+    Subtype(deriveCodec[OrderLocksDequeued].checked(_.checked)),
+    Subtype(deriveCodec[OrderLocksReleased].checked(_.checked)),
+    Subtype.decodeCompatible(deriveDecoder[OrderLockQueued])(e =>
+      OrderLocksQueued(LockDemand(e.lockPath, e.count) :: Nil).checked),
+    Subtype.decodeCompatible(deriveDecoder[OrderLockAcquired])(e =>
+      OrderLocksAcquired(LockDemand(e.lockPath, e.count) :: Nil).checked),
+    Subtype.decodeCompatible(deriveDecoder[OrderLockDequeued])(e =>
+      OrderLocksDequeued(e.lockPath :: Nil).checked),
+    Subtype.decodeCompatible(deriveDecoder[OrderLockReleased])(e =>
+      OrderLocksReleased(e.lockPath :: Nil).checked),
     Subtype.named1[OrderNoticePosted_](typeName = "OrderNoticePosted", subclasses = Seq(
       classOf[OrderNoticePostedV2_3],
       classOf[OrderNoticePosted])),

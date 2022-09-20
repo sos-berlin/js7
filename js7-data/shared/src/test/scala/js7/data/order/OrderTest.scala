@@ -16,7 +16,7 @@ import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.job.{InternalExecutable, JobKey}
 import js7.data.lock.LockPath
 import js7.data.order.Order.{Attached, AttachedState, Attaching, BetweenCycles, Broken, Cancelled, DelayedAfterError, Detaching, ExpectingNotice, ExpectingNotices, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, InapplicableOrderEventProblem, IsFreshOrReady, Processed, Processing, ProcessingKilled, Prompting, Ready, State, WaitingForLock}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCatched, OrderCaught, OrderCoreEvent, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLockAcquired, OrderLockDequeued, OrderLockQueued, OrderLockReleased, OrderMoved, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesExpected, OrderNoticesRead, OrderOrderAdded, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
+import js7.data.order.OrderEvent.{LegacyOrderLockEvent, LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCatched, OrderCaught, OrderCoreEvent, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLocksAcquired, OrderLocksDequeued, OrderLocksQueued, OrderLocksReleased, OrderMoved, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesExpected, OrderNoticesRead, OrderOrderAdded, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
 import js7.data.subagent.SubagentId
 import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -389,10 +389,10 @@ final class OrderTest extends OurTestSuite
       OrderResumptionMarked(),
       OrderResumed(),
 
-      OrderLockAcquired(LockPath("LOCK")),
-      OrderLockQueued(LockPath("LOCK"), None),
-      OrderLockDequeued(LockPath("LOCK")),
-      OrderLockReleased(LockPath("LOCK")),
+      OrderLocksAcquired(List(LockDemand(LockPath("LOCK")))),
+      OrderLocksQueued(List(LockDemand(LockPath("LOCK"), None))),
+      OrderLocksDequeued(List(LockPath("LOCK"))),
+      OrderLocksReleased(List(LockPath("LOCK"))),
 
       OrderNoticePostedV2_3(
         NoticeV2_3(NoticeId("NOTICE"), endOfLife = Timestamp.ofEpochSecond(1))),
@@ -417,7 +417,8 @@ final class OrderTest extends OurTestSuite
     "Event list is complete" in {
       assert(allEvents.map(_.getClass).toVector.sortBy(_.getName) ==
         OrderEvent.jsonCodec.classes[OrderCoreEvent]
-          .filter(_ != classOf[OrderNoticeExpected])
+          .filterNot(_ == classOf[OrderNoticeExpected])
+          .filterNot(classOf[LegacyOrderLockEvent] isAssignableFrom _)
           .toVector.sortBy(_.getName))
     }
 
@@ -486,8 +487,8 @@ final class OrderTest extends OurTestSuite
           case (OrderSuspended           , IsSuspended(true) , _            , IsAttached             ) => _.isInstanceOf[Ready]
           case (_: OrderResumptionMarked , _                 , _            , _                      ) => _.isInstanceOf[Ready]
           case (_: OrderResumed          , IsSuspended(true) , _            , IsDetached | IsAttached) => _.isInstanceOf[Ready]
-          case (_: OrderLockAcquired     , _                 , _            , IsDetached             ) => _.isInstanceOf[Ready]
-          case (_: OrderLockQueued       , _                 , _            , IsDetached             ) => _.isInstanceOf[WaitingForLock]
+          case (_: OrderLocksAcquired    , _                 , _            , IsDetached             ) => _.isInstanceOf[Ready]
+          case (_: OrderLocksQueued      , _                 , _            , IsDetached             ) => _.isInstanceOf[WaitingForLock]
           case (_: OrderNoticePostedV2_3 , IsSuspended(false), _            , IsDetached             ) => _.isInstanceOf[Ready]
           case (_: OrderNoticePosted     , IsSuspended(false), _            , IsDetached             ) => _.isInstanceOf[Ready]
           case (_: OrderNoticesExpected  , IsSuspended(false), _            , IsDetached             ) => _.isInstanceOf[ExpectingNotices]
@@ -505,8 +506,8 @@ final class OrderTest extends OurTestSuite
         markable[WaitingForLock] orElse
         cancelMarkedAllowed[WaitingForLock] orElse
         suspendMarkedAllowed[WaitingForLock] orElse {
-          case (_: OrderLockAcquired, _, _, IsDetached) => _.isInstanceOf[Ready]
-          case (_: OrderLockDequeued, _, _, IsDetached) => _.isInstanceOf[Ready]
+          case (_: OrderLocksAcquired, _, _, IsDetached) => _.isInstanceOf[Ready]
+          case (_: OrderLocksDequeued, _, _, IsDetached) => _.isInstanceOf[Ready]
           case (_: OrderCancelled   , _, _, IsDetached) => _.isInstanceOf[Cancelled]
           case (_: OrderBroken      , _, _, _         ) => _.isInstanceOf[Broken]
         })

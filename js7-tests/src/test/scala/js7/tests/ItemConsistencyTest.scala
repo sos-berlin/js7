@@ -84,7 +84,7 @@ object ItemConsistencyTest
   private val versionId = VersionId("1")
   private val workflow = Workflow(WorkflowPath("WORKFLOW") ~ versionId,
     Vector(
-      LockInstruction(lock.path, None, Workflow.of(
+      LockInstruction.single(lock.path, None, Workflow.of(
         EmptyJob.execute(agentPath,
           jobResourcePaths = Seq(jobResource.path))))))
 

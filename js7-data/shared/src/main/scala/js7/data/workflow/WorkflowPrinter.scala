@@ -1,15 +1,19 @@
 package js7.data.workflow
 
 import cats.Show
+import io.circe.syntax.EncoderOps
+import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.job.{CommandLineExecutable, InternalExecutable, PathExecutable, ProcessExecutable, ReturnCodeMeaning, ShellScriptExecutable}
 import js7.data.lock.LockPath
+import js7.data.order.OrderEvent.LockDemand
 import js7.data.parser.BasicPrinter
 import js7.data.value.ValuePrinter.{appendQuoted, appendValue}
 import js7.data.value.expression.Expression
 import js7.data.value.{NamedValues, ValuePrinter}
 import js7.data.workflow.WorkflowPrinter.*
+import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, ExplicitEnd, Fail, Finish, Fork, Gap, If, ImplicitEnd, LockInstruction, Retry, TryInstruction}
 import scala.annotation.tailrec
@@ -164,7 +168,7 @@ final class WorkflowPrinter(sb: StringBuilder) {
         }
         sb ++= ";\n"
 
-      case LockInstruction(LockPath(lockPath), maybeCount, lockedWorkflow, _) =>
+      case LockInstruction(Seq(LockDemand(LockPath(lockPath), maybeCount)), lockedWorkflow, _) =>
         sb ++= "lock (lock="
         appendQuoted(lockPath)
         for (n <- maybeCount) {
@@ -241,6 +245,9 @@ final class WorkflowPrinter(sb: StringBuilder) {
       case Retry(_) =>
         sb ++= "retry"
         sb ++= "\n"
+
+      case instruction =>
+        sb ++= instruction.asJson.compactPrint
     }
   }
 

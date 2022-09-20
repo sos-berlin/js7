@@ -161,7 +161,7 @@ with TrivialItemState[Workflow]
       flattenedInstructions.view
         .map(_._2.instruction)
         .collect {
-          case lock: LockInstruction => lock.lockPath :: Nil
+          case lock: LockInstruction => lock.lockPaths
           case board: BoardInstruction => board.referencedBoardPaths
         }
         .flatten

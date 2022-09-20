@@ -1,6 +1,7 @@
 package js7.data.state
 
 import cats.syntax.semigroup.*
+import cats.syntax.traverse.*
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
@@ -10,8 +11,9 @@ import js7.data.controller.ControllerId
 import js7.data.event.ItemContainer
 import js7.data.item.{InventoryItemState, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItem}
 import js7.data.job.{JobKey, JobResource}
+import js7.data.lock.{LockPath, LockState}
 import js7.data.order.Order.{FailedInFork, Processing}
-import js7.data.order.OrderEvent.OrderNoticesExpected
+import js7.data.order.OrderEvent.{LockDemand, OrderNoticesExpected}
 import js7.data.order.{Order, OrderId}
 import js7.data.value.expression.Scope
 import js7.data.value.expression.scopes.{JobResourceScope, NowScope, OrderScopes}
@@ -172,4 +174,18 @@ trait StateView extends ItemContainer
   final def toOrderScopes(order: Order[Order.State]): Checked[OrderScopes] =
     for (w <- idToWorkflow.checked(order.workflowId)) yield
       OrderScopes(order, w, controllerId)
+
+  final def foreachLockDemand[A](demands: Seq[LockDemand])(op: (LockState, Option[Int]) => Checked[A])
+  : Checked[Seq[A]] =
+    demands
+      .traverse(demand => keyTo(LockState)
+        .checked(demand.lockPath)
+        .flatMap(op(_, demand.count)))
+
+  final def foreachLock[A](lockPaths: Seq[LockPath])(op: LockState => Checked[A])
+  : Checked[Seq[A]] =
+    lockPaths
+      .traverse(lockPath => keyTo(LockState)
+        .checked(lockPath)
+        .flatMap(op))
 }

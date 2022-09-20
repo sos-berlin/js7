@@ -21,7 +21,7 @@ import js7.data.item.VersionedEvent.{VersionAdded, VersionedItemAdded, Versioned
 import js7.data.item.{ItemRevision, ItemSigner, VersionId}
 import js7.data.job.{InternalExecutable, JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderLockAcquired, OrderMoved, OrderStarted}
+import js7.data.order.OrderEvent.{LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderLocksAcquired, OrderMoved, OrderStarted}
 import js7.data.order.{FreshOrder, Order, OrderId}
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.ExpressionParser.expr
@@ -348,7 +348,7 @@ final class ControllerStateExecutorTest extends OurTestSuite
         )) == Right(Seq(
           bOrderId <-: OrderStarted,
           aOrderId <-: OrderAttachable(aAgentRef.path),
-          bOrderId <-: OrderLockAcquired(lock.path),
+          bOrderId <-: OrderLocksAcquired(List(LockDemand(lock.path))),
           bOrderId <-: OrderAttachable(bAgentRef.path))))
 
       assert(
@@ -533,7 +533,7 @@ object ControllerStateExecutorTest
   private val bWorkflow = Workflow(
     WorkflowPath("B-WORKFLOW") ~ v1,
     Seq(
-      LockInstruction(
+      LockInstruction.single(
         lock.path,
         None,
         Workflow.of(execute(bAgentRef.path)))),

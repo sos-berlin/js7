@@ -669,14 +669,14 @@ final class WorkflowTest extends OurTestSuite
     val workflow = Workflow(
       WorkflowPath("WORKFLOW") ~ "1",
       Vector(
-        LockInstruction(a, None, Workflow.of(
+        LockInstruction.single(a, None, Workflow.of(
           Execute(job),
           If(BooleanConstant(true), Workflow.of(
-            LockInstruction(b, None, Workflow.of(
+            LockInstruction.single(b, None, Workflow.of(
             Execute(job),
             Fork.of(
               "BRANCH" -> Workflow.of(
-                LockInstruction(c, None, Workflow.of(
+                LockInstruction.single(c, None, Workflow.of(
                   Execute(job)))))))))))))
     assert(workflow.referencedItemPaths.toSet == Set(a, b, c, AgentPath("AGENT")))
   }
@@ -849,7 +849,7 @@ final class WorkflowTest extends OurTestSuite
       lazy val lockWorkflow = Workflow(WorkflowPath("TEST") ~ "1",
         Vector(
           AExecute,
-          LockInstruction(LockPath("LOCK"), None, Workflow.of(
+          LockInstruction.single(LockPath("LOCK"), None, Workflow.of(
             If(BooleanConstant(true),
               Workflow.of(AExecute))))),
         Map(
@@ -951,7 +951,7 @@ final class WorkflowTest extends OurTestSuite
   "Workflow with a Lock and a Job" in {
     Workflow(WorkflowPath("WORKFLOW"),
         Vector(
-          LockInstruction(
+          LockInstruction.single(
             LockPath("LOCK"), count = None, Workflow.of(
               Execute.Named(WorkflowJob.Name("JOB"))))),
         Map(
@@ -1004,7 +1004,7 @@ final class WorkflowTest extends OurTestSuite
     "reduceForAgent with LockInstruction" in {
       val workflow = Workflow(WorkflowPath.Anonymous,
         Vector(
-          LockInstruction(LockPath("LOCK"), count=None, Workflow.of(
+          LockInstruction.single(LockPath("LOCK"), count=None, Workflow.of(
             AExecute,
             Fork.of(
               "🥕" -> Workflow.of(AExecute))))),
@@ -1016,7 +1016,7 @@ final class WorkflowTest extends OurTestSuite
     "reduceForAgent with LockInstruction and more (1)" in {
       val workflow = Workflow(WorkflowPath.Anonymous,
         Vector(
-          LockInstruction(LockPath("LOCK"), count=None, Workflow.of(
+          LockInstruction.single(LockPath("LOCK"), count=None, Workflow.of(
             If(BooleanConstant(true), Workflow.of(
               TryInstruction(Workflow.empty, Workflow.empty),
               Fail(),
@@ -1032,7 +1032,7 @@ final class WorkflowTest extends OurTestSuite
     "reduceForAgent with LockInstruction and if" in {
       val workflow = Workflow(WorkflowPath.Anonymous,
         Vector(
-          LockInstruction(LockPath("LOCK"), count=None, Workflow.of(
+          LockInstruction.single(LockPath("LOCK"), count=None, Workflow.of(
             AExecute,
             If(BooleanConstant(true),
               Workflow.of(
@@ -1049,7 +1049,7 @@ final class WorkflowTest extends OurTestSuite
       assert(workflow.reduceForAgent(AAgentPath) ==
         Workflow(WorkflowPath.Anonymous,
           Vector(
-            LockInstruction(LockPath("LOCK"), count=None, Workflow.of(
+            LockInstruction.single(LockPath("LOCK"), count=None, Workflow.of(
               AExecute,
               If(BooleanConstant(true),
                 Workflow.of(
@@ -1065,7 +1065,7 @@ final class WorkflowTest extends OurTestSuite
       assert(workflow.reduceForAgent(BAgentPath) ==
         Workflow(WorkflowPath.Anonymous,
           Vector(
-            LockInstruction(LockPath("LOCK"), count=None, Workflow.of(
+            LockInstruction.single(LockPath("LOCK"), count=None, Workflow.of(
               Gap(),
               If(BooleanConstant(true),
                 Workflow.of(

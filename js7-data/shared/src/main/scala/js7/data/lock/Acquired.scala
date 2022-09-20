@@ -92,8 +92,6 @@ object Acquired {
             copy(orderToCount = orderToCount - orderId))
   }
 
-  sealed trait ReleaseError
-
   implicit val jsonCodec: TypedJsonCodec[Acquired] = TypedJsonCodec(
     Subtype(deriveCodec[Exclusive]),
     Subtype(deriveCodec[NonExclusive]),

@@ -17,7 +17,7 @@ import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.job.{PathExecutable, ShellScriptExecutable}
 import js7.data.lock.{Lock, LockPath, LockState}
 import js7.data.order.OrderEvent.OrderResumed.ReplaceHistoricOutcome
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancelled, OrderCaught, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLockReleased, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderResumed, OrderResumptionMarked, OrderStarted, OrderSuspended, OrderSuspensionMarked}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancelled, OrderCaught, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLocksReleased, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderResumed, OrderResumptionMarked, OrderStarted, OrderSuspended, OrderSuspensionMarked}
 import js7.data.order.{HistoricOutcome, Order, OrderEvent, OrderId, OrderMark, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.state.OrderEventHandler.FollowUp
@@ -695,7 +695,7 @@ final class OrderEventSourceTest extends OurTestSuite
         /*3*/ Fork.of(
           "A" -> Workflow.of(execute),
           "B" -> Workflow.of(execute)),
-        /*4*/ LockInstruction(lockPath, count = None, Workflow.of(execute))))
+        /*4*/ LockInstruction.single(lockPath, count = None, Workflow.of(execute))))
 
       "Same level" in {
         assert(testResume(workflow, Position(0), Position(1)) == Right(Some(Seq(OrderResumed(Some(Position(1)))))))
@@ -991,8 +991,8 @@ final class OrderEventSourceTest extends OurTestSuite
       aChild = aChild.applyEvent(orderFailedInFork).orThrow
 
       assert(liveEventSource.nextEvents(bChild.id) == Seq(
-        bChild.id <-: OrderLockReleased(LockPath("LOCK-2")),
-        bChild.id <-: OrderLockReleased(LockPath("LOCK-1")),
+        bChild.id <-: OrderLocksReleased(List(LockPath("LOCK-2"))),
+        bChild.id <-: OrderLocksReleased(List(LockPath("LOCK-1"))),
         bChild.id <-: OrderFailedInFork(
           Position(0) / BranchId.Lock % 0 / BranchId.try_(0) % 0 / BranchId.fork("🍋") % 0)))
     }

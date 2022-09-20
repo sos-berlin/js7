@@ -6,9 +6,8 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.board.BoardState
 import js7.data.event.{Event, EventDrivenState}
 import js7.data.item.{UnsignedSimpleItemPath, UnsignedSimpleItemState}
-import js7.data.lock.LockState
 import js7.data.order.Order.ExpectingNotices
-import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderForked, OrderJoined, OrderLockEvent, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesExpected, OrderNoticesRead, OrderOrderAdded, OrderStdWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderForked, OrderJoined, OrderLockEvent, OrderLocksAcquired, OrderLocksDequeued, OrderLocksQueued, OrderLocksReleased, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesExpected, OrderNoticesRead, OrderOrderAdded, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
 
 // TODO Replace F-type polymorphism with a typeclass ? https://tpolecat.github.io/2015/04/29/f-bounds.html
@@ -75,11 +74,24 @@ with StateView
             }
 
         case event: OrderLockEvent =>
-          event.lockPaths
-            .toList
-            .traverse(lockPath => keyTo(LockState)
-              .checked(lockPath)
-              .flatMap(_.applyEvent(orderId <-: event)))
+          event
+            .match_ {
+              case OrderLocksQueued(demands) =>
+                foreachLockDemand(demands)(_
+                  .enqueue(orderId, _))
+
+              case OrderLocksAcquired(demands) =>
+                foreachLockDemand(demands)(_
+                  .acquire(orderId, _))
+
+              case OrderLocksDequeued(lockPaths) =>
+                foreachLock(lockPaths)(lockState => Right(lockState
+                  .dequeue(orderId)))
+
+              case OrderLocksReleased(lockPaths) =>
+                foreachLock(lockPaths)(_
+                  .release(orderId))
+            }
             .flatMap(lockStates =>
               update(
                 addOrders = updatedOrder :: Nil,

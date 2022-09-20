@@ -25,7 +25,7 @@ import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVer
 import js7.data.item.VersionId
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCaught, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLockAcquired, OrderLockReleased, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTerminated}
+import js7.data.order.OrderEvent.{LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderCaught, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLocksAcquired, OrderLocksReleased, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.subagent.SubagentItem
 import js7.data.workflow.instructions.{Fork, LockInstruction, TryInstruction}
@@ -73,13 +73,13 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
       OrderAdded(lockWorkflow.id),
       OrderMoved(Position(0) / "try+0" % 0),
       OrderStarted,
-      OrderLockAcquired(lock.path),
+      OrderLocksAcquired(List(LockDemand(lock.path))),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.Disrupted(AgentResetProblem(agentPath))),
       OrderDetached,
-      OrderLockReleased(lock.path),
+      OrderLocksReleased(List(lock.path)),
       OrderFailed(
         Position(0) / "try+0" % 0,
         Some(Outcome.Disrupted(AgentResetProblem(agentPath))))))
@@ -99,7 +99,7 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
       OrderAdded(lockWorkflow.id),
       OrderMoved(Position(0) / "try+0" % 0),
       OrderStarted,
-      OrderLockAcquired(lock.path),
+      OrderLocksAcquired(List(LockDemand(lock.path))),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderProcessingStarted(subagentId),
@@ -107,7 +107,7 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
       OrderMoved(Position(0) / "try+0" % 0 / "lock" % 1),
       OrderDetachable,
       OrderDetached,
-      OrderLockReleased(lock.path),
+      OrderLocksReleased(List(lock.path)),
       OrderMoved(Position(1)),
       OrderFinished))
   }
@@ -268,7 +268,7 @@ object ResetAgentTest
     Vector(
       TryInstruction(
         Workflow.of(
-          LockInstruction(lock.path, None, Workflow.of(
+          LockInstruction.single(lock.path, None, Workflow.of(
             TestJob.execute(
               agentPath,
               jobResourcePaths = Seq(jobResource.path))))),

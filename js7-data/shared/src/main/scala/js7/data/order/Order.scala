@@ -13,6 +13,7 @@ import js7.base.utils.typeclasses.IsEmpty.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.board.NoticeId
 import js7.data.command.{CancellationMode, SuspensionMode}
+import js7.data.event.EventDrivenState.EventNotApplicableProblem
 import js7.data.job.JobKey
 import js7.data.order.Order.*
 import js7.data.order.OrderEvent.*
@@ -371,12 +372,12 @@ final case class Order[+S <: Order.State](
               historicOutcomes = historicOutcomes
             ).withPosition(maybePosition getOrElse position)))
 
-      case _: OrderLockAcquired =>
+      case _: OrderLocksAcquired =>
         // LockState handles this event, too
         check(isDetached && (isState[Ready] || isState[WaitingForLock]),
           copy(state = Ready).withPosition(position / BranchId.Lock % 0))
 
-      case _: OrderLockReleased =>
+      case _: OrderLocksReleased =>
         // LockState handles this event, too
         if (force || isDetached /*&& isOrderFailedApplicable/*because it may come with OrderFailed*/*/)
           position.parent
@@ -385,15 +386,18 @@ final case class Order[+S <: Order.State](
         else
           inapplicable
 
-      case _: OrderLockQueued =>
+      case _: OrderLocksQueued =>
         check(isDetached && isState[Ready],
           copy(
             state = WaitingForLock))
 
-      case _: OrderLockDequeued =>
+      case _: OrderLocksDequeued =>
         check(isDetached && isState[WaitingForLock],
           copy(
             state = Ready))
+
+      case e: LegacyOrderLockEvent =>
+        Left(EventNotApplicableProblem(id <-: e, this))
 
       case _: OrderNoticePostedV2_3 =>
         check(isDetached && isState[Ready] && !isSuspended,

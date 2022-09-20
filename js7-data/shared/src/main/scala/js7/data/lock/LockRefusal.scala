@@ -8,19 +8,23 @@ sealed trait LockRefusal {
 
 object LockRefusal {
 
-  case object AlreadyAcquiredByThisOrder extends LockRefusal {
-    def toProblem(lockPath: LockPath) =
-      Problem(s"$lockPath has already been acquired by this order")
-  }
+  sealed trait NotAvailable extends LockRefusal
 
-  case object IsInUse extends LockRefusal {
+  case object IsInUse extends NotAvailable {
     def toProblem(lockPath: LockPath) =
       Problem(s"$lockPath is in use")
   }
 
-  final case class LimitReached(limit: Int, count: Int, requestedCount: Int) extends LockRefusal {
+  final case class LimitReached(limit: Int, count: Int, alreadyRequiredCount: Int)
+  extends NotAvailable {
     def toProblem(lockPath: LockPath) =
-      Problem(s"$lockPath: $count+$requestedCount would exceed limit=$limit")
+      Problem(
+        s"$lockPath: count=$count plus alreadyAcquired=$alreadyRequiredCount would exceed limit=$limit")
+  }
+
+  case object AlreadyAcquiredByThisOrder extends LockRefusal {
+    def toProblem(lockPath: LockPath) =
+      Problem(s"$lockPath has already been acquired by this order")
   }
 
   final case class InvalidCount(count: Int) extends LockRefusal {

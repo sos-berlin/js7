@@ -501,8 +501,8 @@ final class WorkflowParserTest extends OurTestSuite
         lock (lock="LOCK", count=3) {}
       }""",
       Workflow(WorkflowPath.NoId, Vector(
-        LockInstruction(LockPath("LOCK"), None, Workflow.of(Fail(sourcePos = sourcePos(52, 56))), sourcePos = sourcePos(33, 51)),
-        LockInstruction(LockPath("LOCK"), Some(3), Workflow.of(ImplicitEnd(sourcePos = sourcePos(95, 96))), sourcePos = sourcePos(66, 93)),
+        LockInstruction.single(LockPath("LOCK"), None, Workflow.of(Fail(sourcePos = sourcePos(52, 56))), sourcePos = sourcePos(33, 51)),
+        LockInstruction.single(LockPath("LOCK"), Some(3), Workflow.of(ImplicitEnd(sourcePos = sourcePos(95, 96))), sourcePos = sourcePos(66, 93)),
         ImplicitEnd(sourcePos = sourcePos(103, 104)))))
   }
 

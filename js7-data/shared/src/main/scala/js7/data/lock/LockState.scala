@@ -3,13 +3,10 @@ package js7.data.lock
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.Assertions.assertThat
 import js7.base.utils.Big
-import js7.data.event.KeyedEvent
 import js7.data.item.UnsignedSimpleItemState
 import js7.data.lock.Acquired.Available
 import js7.data.lock.LockRefusal.{InvalidCount, IsInUse, LimitReached}
-import js7.data.order.OrderEvent.{OrderLockAcquired, OrderLockDequeued, OrderLockEvent, OrderLockQueued, OrderLockReleased}
 import js7.data.order.OrderId
 import scala.collection.immutable.Queue
 
@@ -32,53 +29,32 @@ extends UnsignedSimpleItemState with Big/*acquired and queue get big with many o
 
   def agentPathToAttachedState = Map.empty
 
-  def applyEvent(keyedEvent: KeyedEvent[OrderLockEvent]): Checked[LockState] = {
-    assertThat(keyedEvent.event.lockPaths contains lock.path)
-    keyedEvent match {
-      case KeyedEvent(orderId, OrderLockAcquired(lock.path, count)) =>
-        for (lockState <- toLockState(tryAcquire(orderId, count))) yield
-          if (queue contains orderId)
-            lockState.copy(queue = queue.filterNot(_ == orderId)) /*TODO Slow with long order queue*/
-          else
-            lockState
-
-      case KeyedEvent(orderId, OrderLockReleased(lock.path)) =>
-        release(orderId)
-
-      case KeyedEvent(orderId, OrderLockQueued(lock.path, count)) =>
-        if (!count.forall(_ <= limit))
-          Left(Problem(s"Cannot fulfill lock count=${count getOrElse ""} with $lockPath limit=$limit"))
-        else if (acquired == Available)
-          Left(Problem(s"$lockPath is available an does not accept queuing"))
-        else if (acquired.isAcquiredBy(orderId))
-          Left(LockRefusal.AlreadyAcquiredByThisOrder.toProblem(lock.path))
-        else if (queue contains orderId)
-          Left(Problem(s"Order '${orderId.string}' already queues for $lockPath"))
-        else orderId.allParents.find(acquired.isAcquiredBy) match {
-          case Some(parentOrderId) =>
-            Left(Problem(s"$lockPath has already been acquired by parent $parentOrderId"))
-          case None =>
-            Right(enqueue(orderId))
-        }
-
-      case KeyedEvent(orderId, OrderLockDequeued(lock.path)) =>
-        Right(dequeue(orderId))
-
-      case _ => Left(Problem.pure(s"Invalid event for '$lockPath': $keyedEvent"))
+  def enqueue(orderId: OrderId, count: Option[Int]): Checked[LockState] =
+    if (!count.forall(_ <= limit))
+      Left(Problem(s"Cannot fulfill lock count=${count getOrElse ""} with $lockPath limit=$limit"))
+    else if (acquired.isAcquiredBy(orderId))
+      Left(LockRefusal.AlreadyAcquiredByThisOrder.toProblem(lock.path))
+    else if (queue contains orderId)
+      Left(Problem(s"Order '${orderId.string}' already queues for $lockPath"))
+    else orderId.allParents.find(acquired.isAcquiredBy) match {
+      case Some(parentOrderId) =>
+        Left(Problem(s"$lockPath has already been acquired by parent $parentOrderId"))
+      case None =>
+        Right(copy(
+          queue = queue.enqueue(orderId)))
     }
-  }
 
-  private def enqueue(orderId: OrderId): LockState =
-    copy(queue = queue.enqueue(orderId))
+  def isAvailable(orderId: OrderId, count: Option[Int] = None): Checked[Boolean] =
+    checkAcquire(orderId, count) match {
+      case Left(_: LockRefusal.NotAvailable) =>
+        Right(false)
 
-  private def dequeue(orderId: OrderId): LockState =
-    copy(queue = queue.filterNot(_ == orderId))
+      case Left(refusal) =>
+        Left(refusal.toProblem(lockPath))
 
-  def release(orderId: OrderId): Checked[LockState] =
-    toLockState(acquired.release(orderId))
-
-  def firstQueuedOrderId: Option[OrderId] =
-    queue.headOption
+      case Right(()) =>
+        Right(true)
+    }
 
   def checkAcquire(orderId: OrderId, count: Option[Int] = None): Either[LockRefusal, Unit] =
     tryAcquire(orderId, count)
@@ -89,6 +65,23 @@ extends UnsignedSimpleItemState with Big/*acquired and queue get big with many o
       a <- acquired.acquireFor(orderId, count)
       _ <- checkLimit(count)
     } yield a
+
+  def acquire(orderId: OrderId, count: Option[Int]): Checked[LockState] =
+    for (lockState <- toLockState(tryAcquire(orderId, count))) yield
+      if (queue contains orderId)
+        lockState.copy(
+          queue = queue.filterNot(_ == orderId)) /*TODO Slow with long order queue*/
+      else
+        lockState
+
+  def dequeue(orderId: OrderId): LockState =
+    copy(queue = queue.filterNot(_ == orderId))
+
+  def release(orderId: OrderId): Checked[LockState] =
+    toLockState(acquired.release(orderId))
+
+  def firstQueuedOrderId: Option[OrderId] =
+    queue.headOption
 
   private def checkLimit(count: Option[Int]): Either[LockRefusal, Unit] =
     count match {
@@ -108,7 +101,7 @@ extends UnsignedSimpleItemState with Big/*acquired and queue get big with many o
           if (ok)
             Right(())
           else
-            Left(LimitReached(limit = limit, count = acquired.lockCount, n))
+            Left(LimitReached(limit = limit, count = n, alreadyRequiredCount = acquired.lockCount))
         }
     }
 

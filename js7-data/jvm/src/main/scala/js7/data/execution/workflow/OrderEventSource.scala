@@ -14,7 +14,7 @@ import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.OrderEventSource.*
 import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.order.Order.{Cancelled, Failed, FailedInFork, IsTerminated, ProcessingKilled}
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCaught, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderFailed, OrderFailedInFork, OrderFailedIntermediate_, OrderLockDequeued, OrderLockReleased, OrderMoved, OrderPromptAnswered, OrderResumed, OrderResumptionMarked, OrderSuspended, OrderSuspensionMarked}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCaught, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderFailed, OrderFailedInFork, OrderFailedIntermediate_, OrderLocksDequeued, OrderLocksReleased, OrderMoved, OrderPromptAnswered, OrderResumed, OrderResumptionMarked, OrderSuspended, OrderSuspensionMarked}
 import js7.data.order.{Order, OrderId, OrderMark, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.state.StateView
@@ -476,7 +476,7 @@ object OrderEventSource {
             for {
               lock <- checkedCast[LockInstruction](workflow.instruction(pos))
               events <- loop(prefix, pos)
-            } yield OrderLockReleased(lock.lockPath) :: events
+            } yield OrderLocksReleased(lock.lockPaths) :: events
 
           case Segment(nr, branchId @ TryBranchId(retry)) :: prefix if catchable =>
             val catchPos = prefix.reverse % nr / BranchId.catch_(retry) % 0
@@ -493,7 +493,7 @@ object OrderEventSource {
         .ifState[Order.WaitingForLock]
         .traverse(order =>
           for (lock <- workflow.instruction_[LockInstruction](order.position)) yield
-            OrderLockDequeued(lock.lockPath))
+            OrderLocksDequeued(lock.lockPaths))
         .flatMap(maybeEvent =>
           loop(order.position.branchPath.reverse, order.position)
             .map(maybeEvent.toList ::: _))
