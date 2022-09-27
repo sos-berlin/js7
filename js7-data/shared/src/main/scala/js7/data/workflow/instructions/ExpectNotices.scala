@@ -1,7 +1,8 @@
 package js7.data.workflow.instructions
 
 import io.circe.Codec
-import js7.base.circeutils.CirceUtils.{DecodeWithDefaults, deriveConfiguredCodec}
+import io.circe.generic.semiauto.deriveCodec
+import js7.base.circeutils.CirceUtils.DecodeWithDefaults
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.data.board.{BoardPath, BoardPathExpression}
 import js7.data.source.SourcePos
@@ -21,7 +22,7 @@ extends BoardInstruction
 
 object ExpectNotices
 {
-  implicit val jsonCodec: Codec.AsObject[ExpectNotices] = deriveConfiguredCodec[ExpectNotices]
+  implicit val jsonCodec: Codec.AsObject[ExpectNotices] = deriveCodec
 
   intelliJuseImport(DecodeWithDefaults)
 }

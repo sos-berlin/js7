@@ -62,14 +62,7 @@ object SemaphoreJob
     }
 
     def continue(n: Int = 1)(implicit s: Scheduler): Unit = {
-      logger.debug(s"continue($n)")
-      semaphore
-        .flatMap(_.releaseN(n))
-        .runSyncUnsafe()
-    }
-
-    def continueN(n: Int)(implicit s: Scheduler): Unit = {
-      logger.debug(s"continue($n)")
+      logger.debug(s"$name.continue($n)")
       semaphore
         .flatMap(_.releaseN(n))
         .runSyncUnsafe()

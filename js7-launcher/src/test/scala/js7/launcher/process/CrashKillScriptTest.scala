@@ -21,7 +21,10 @@ import org.scalatest.BeforeAndAfterAll
   */
 final class CrashKillScriptTest extends OurTestSuite with HasCloser with BeforeAndAfterAll
 {
-  override protected def afterAll() = closer.close()
+  override protected def afterAll() = {
+    closer.close()
+    super.afterAll()
+  }
 
   private val killScript = ProcessKillScript(Paths.get("test-kill.sh"))
 

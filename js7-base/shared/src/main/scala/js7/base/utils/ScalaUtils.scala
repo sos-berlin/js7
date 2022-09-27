@@ -144,7 +144,7 @@ object ScalaUtils
         if (underlying.isPrimitive)
           underlying.getName.capitalize
         else {
-          // Change '$' inner class concationation character to '.'
+          // Change '$' inner class concatenation character to '.'
           val simpleName = simpleScalaName
           val prefix = scalaName stripSuffix simpleName
           val name = (if (prefix endsWith "$") prefix.init + '.' else prefix) + simpleName

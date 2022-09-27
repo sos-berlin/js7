@@ -364,18 +364,20 @@ final case class Order[+S <: Order.State](
 
         updatedHistoryOutcomes.flatMap(historicOutcomes =>
           check(isResumable,
-            copy(
-              isSuspended = false,
-              isResumed = true,
-              mark = None,
-              state = if (isState[Failed] || isState[Broken]) Ready else state,
-              historicOutcomes = historicOutcomes
-            ).withPosition(maybePosition getOrElse position)))
+            withPosition(maybePosition getOrElse position)
+              .copy(
+                isSuspended = false,
+                isResumed = true,
+                mark = None,
+                state = if (isState[Failed] || isState[Broken]) Ready else state,
+                historicOutcomes = historicOutcomes)))
 
       case _: OrderLocksAcquired =>
         // LockState handles this event, too
         check(isDetached && (isState[Ready] || isState[WaitingForLock]),
-          copy(state = Ready).withPosition(position / BranchId.Lock % 0))
+          withPosition(position / BranchId.Lock % 0)
+            .copy(
+              state = Ready))
 
       case _: OrderLocksReleased =>
         // LockState handles this event, too
@@ -407,7 +409,7 @@ final case class Order[+S <: Order.State](
         check(isDetached && isState[Ready] && !isSuspended,
           this)
 
-      case OrderNoticeExpected(noticeId) =>
+      case OrderNoticeExpected(_) =>
         // ControllerStateBuilder converts this State to OrderNoticesExpected
         throw new NotImplementedError("Order.OrderNoticeExpected")
 
@@ -450,9 +452,9 @@ final case class Order[+S <: Order.State](
               cycleState.copy(
                 next = cycleState.next))
             check((isDetached || isAttached) & !isSuspended,
-              copy(
-                state = Ready
-              ).withPosition(position / branchId % 0))
+              withPosition(position / branchId % 0)
+                .copy(
+                  state = Ready))
 
           case _ => inapplicable
         }
@@ -461,9 +463,9 @@ final case class Order[+S <: Order.State](
         position.parent
           .toChecked(inapplicableProblem)
           .map(cyclePosition =>
-            copy(
-              state = BetweenCycles(cycleState)
-            ).withPosition(cyclePosition))
+            withPosition(cyclePosition)
+              .copy(
+                state = BetweenCycles(cycleState)))
     }
   }
 

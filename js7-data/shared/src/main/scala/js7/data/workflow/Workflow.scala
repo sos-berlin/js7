@@ -368,7 +368,7 @@ with TrivialItemState[Workflow]
         })
 
   lazy val keyToJob: Map[JobKey, WorkflowJob] =
-    flattenedBranchToWorkflow flatMap { case (branchPath, workflow) =>
+    flattenedBranchToWorkflow.flatMap { case (branchPath, workflow) =>
       val workflowBranchPath = WorkflowBranchPath(id, branchPath)
       val namedJobKeys = workflow.nameToJob.view
         .map { case (k, v) => JobKey.Named(workflowBranchPath, k) -> v }

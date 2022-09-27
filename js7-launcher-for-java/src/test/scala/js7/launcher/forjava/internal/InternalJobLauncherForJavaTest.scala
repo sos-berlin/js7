@@ -45,7 +45,10 @@ final class InternalJobLauncherForJavaTest extends OurTestSuite with BeforeAndAf
   private val blockingThreadPoolName = "InternalJobLauncherForJavaTest"
   private val blockingJobScheduler = newUnlimitedScheduler(name = blockingThreadPoolName)
 
-  override def afterAll() = blockingJobScheduler.shutdown()
+  override def afterAll() = {
+    blockingJobScheduler.shutdown()
+    super.afterAll()
+  }
 
   for (testClass <- Seq(classOf[TestJInternalJob], classOf[TestBlockingInternalJob]))
     testClass.getSimpleName - {

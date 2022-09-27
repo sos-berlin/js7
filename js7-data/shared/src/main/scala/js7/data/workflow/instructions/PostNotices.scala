@@ -1,8 +1,8 @@
 package js7.data.workflow.instructions
 
 import io.circe.Codec
-import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
-import js7.base.circeutils.CirceUtils.RichCirceDecoder
+import io.circe.generic.semiauto.deriveCodec
+import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Checked
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichEither
@@ -38,7 +38,5 @@ object PostNotices
       new PostNotices(boardPaths, sourcePos)
 
   implicit val jsonCodec: Codec.AsObject[PostNotices] =
-    Codec.AsObject.from(
-      deriveDecoder[PostNotices].checked(_.checked),
-      deriveEncoder[PostNotices])
+    deriveCodec[PostNotices].checked(_.checked)
 }

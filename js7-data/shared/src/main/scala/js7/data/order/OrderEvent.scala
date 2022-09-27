@@ -289,12 +289,8 @@ object OrderEvent
   extends OrderNoticeEvent
   object OrderNoticesExpected {
     final case class Expected(boardPath: BoardPath, noticeId: NoticeId)
-    {
-      def matches(notice: Notice): Boolean =
-        boardPath == notice.boardPath && noticeId == notice.id
-    }
     object Expected {
-      implicit val jsonCodec: Codec.AsObject[Expected] = deriveCodec[Expected]
+      implicit val jsonCodec: Codec.AsObject[Expected] = deriveCodec
     }
   }
 
