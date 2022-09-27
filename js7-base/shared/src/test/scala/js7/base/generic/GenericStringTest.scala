@@ -11,13 +11,14 @@ import js7.base.test.OurTestSuite
 final class GenericStringTest extends OurTestSuite
 {
   "NonEmpty.checked" in {
-    assert(NonEmptyA.checked("") == Left(EmptyStringProblem("NonEmptyA")))
+    assert(NonEmptyA.checked("") == Left(EmptyStringProblem("GenericStringTest.NonEmptyA")))
   }
 
   "NameValidating.checked" in {
     assert(ValidatedA.checked("validated") == Right(ValidatedA("validated")))
-    assert(ValidatedA.checked("") == Left(EmptyStringProblem("ValidatedA")))
-    assert(ValidatedA.checked("/") == Left(InvalidNameProblem(typeName = "ValidatedA", name = "/")))
+    assert(ValidatedA.checked("") == Left(EmptyStringProblem("GenericStringTest.ValidatedA")))
+    assert(ValidatedA.checked("/") == Left(
+      InvalidNameProblem(typeName = "GenericStringTest.ValidatedA", name = "/")))
   }
 }
 

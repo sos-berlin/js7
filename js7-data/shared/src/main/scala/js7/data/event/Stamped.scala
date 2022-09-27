@@ -74,7 +74,7 @@ object Stamped
           fields ++= o.toIterable
         case None =>
           if (!json.isArray) sys.error(s"Stamped[A]: The A type must serialize to a JSON object or array, " +
-            s"but not: ${json.getClass.simpleScalaName}")
+            s"but not: ${json.getClass.shortClassName}")
           fields += "array" -> json
       }
       JsonObject.fromIterable(fields)

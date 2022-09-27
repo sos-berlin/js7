@@ -75,7 +75,7 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]
       case _ =>
         try onAddSnapshotObject.applyOrElse(obj, onSnapshotObjectNotApplicable)
         catch { case NonFatal(t) => throw new RuntimeException(
-          s"Application of snapshot object '${obj.getClass.simpleScalaName}' failed " +
+          s"Application of snapshot object '${obj.getClass.shortClassName}' failed " +
             s"in record #$recordCount for $S", t)
         }
     }

@@ -52,7 +52,7 @@ object EventDrivenState
       this
 
     def name: String =
-      getClass.simpleScalaName
+      getClass.shortClassName
 
     override def toString = name
   }

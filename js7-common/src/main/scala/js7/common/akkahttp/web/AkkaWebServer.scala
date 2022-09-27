@@ -162,7 +162,7 @@ trait AkkaWebServer extends AutoCloseable
     }
   }
 
-  override def toString = s"${getClass.simpleScalaName}"
+  override def toString = s"${getClass.shortClassName}"
 }
 
 object AkkaWebServer

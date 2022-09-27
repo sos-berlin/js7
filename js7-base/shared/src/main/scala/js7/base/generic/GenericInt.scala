@@ -13,7 +13,7 @@ trait GenericInt {
 
 object GenericInt {
   trait Companion[A <: GenericInt] {
-    val name = getClass.simpleScalaName
+    val name = getClass.shortClassName
 
     def apply(number: Int): A
 

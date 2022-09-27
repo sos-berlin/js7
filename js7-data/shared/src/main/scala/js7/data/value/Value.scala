@@ -154,7 +154,7 @@ object Value
       else if (j.isNull)
         Right(NullValue)
       else
-        Left(DecodingFailure(s"Unknown value JSON type: ${j.getClass.simpleScalaName}", c.history))
+        Left(DecodingFailure(s"Unknown value JSON type: ${j.getClass.shortClassName}", c.history))
     }
   }
 

@@ -15,7 +15,7 @@ import scala.util.Try
  **/
 trait LoggingAsyncFreeSpec extends AsyncFreeSpec {
 
-  private val testAdder = new LoggingTestAdder(getClass.simpleScalaName)
+  private val testAdder = new LoggingTestAdder(getClass.shortClassName)
 
   protected def suppressTestCorrelId = false
 

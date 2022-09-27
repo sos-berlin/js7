@@ -38,7 +38,7 @@ object GenericString
   {
     def apply(o: String): A
 
-    val name = getClass.simpleScalaName
+    val name = getClass.shortClassName
     implicit val ordering: Ordering[A] = Ordering.by(_.string)
 
     implicit def self: Companion[A] = this

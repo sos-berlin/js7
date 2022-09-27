@@ -232,7 +232,7 @@ object Collections
 
     def insert(key: K, value: V): Checked[Map[K, V]] =
       if (underlying contains key)
-        Left(DuplicateKey(key.getClass.simpleScalaName, key))
+        Left(DuplicateKey(key.getClass.shortClassName, key))
       else
         Right(underlying.updated(key, value))
   }

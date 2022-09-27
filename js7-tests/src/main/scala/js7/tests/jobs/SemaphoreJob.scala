@@ -28,7 +28,7 @@ extends InternalJob
             sema.count.flatMap(count =>
               Task(logger.debug(s"$orderId acquire ... (count=$count)"))))
           .flatMap(_.acquire)
-          .logWhenItTakesLonger(s"${getClass.simpleScalaName}.semaphore.acquire/${step.order.id}")
+          .logWhenItTakesLonger(s"${getClass.shortClassName}.semaphore.acquire/${step.order.id}")
           .tapEval(_ => Task(logger.debug(s"$orderId acquired")))
           .as(Outcome.succeeded))
     .guaranteeCase {
