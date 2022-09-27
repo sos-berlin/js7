@@ -298,6 +298,26 @@ object OrderEvent
   case object OrderNoticesRead
   extends OrderNoticeEvent
 
+  final case class OrderNoticesConsumptionStarted(
+    consuming: Vector[OrderNoticesConsumptionStarted.Consuming])
+  extends OrderNoticeEvent
+  {
+    def checked: Checked[this.type] =
+      consuming.checkUniqueness(_.boardPath).>>(
+        if (consuming.isEmpty)
+          Problem.pure("Invalid arguments for OrderNoticesConsumptionStarted")
+        else
+          Right(this))
+  }
+  object OrderNoticesConsumptionStarted {
+    implicit val jsonCodec: Codec.AsObject[OrderNoticesConsumptionStarted] =
+      deriveCodec[OrderNoticesConsumptionStarted].checked(_.checked)
+    type Consuming = OrderNoticesExpected.Expected
+  }
+
+  final case class OrderNoticesConsumed(failed: Boolean = false)
+  extends OrderNoticeEvent
+
   type OrderProcessingKilled = OrderProcessingKilled.type
   case object OrderProcessingKilled
   extends OrderActorEvent
@@ -618,6 +638,8 @@ object OrderEvent
     Subtype(deriveCodec[OrderNoticeExpected]),
     Subtype(deriveCodec[OrderNoticesExpected]),
     Subtype.singleton(OrderNoticesRead, aliases = Seq("OrderNoticeRead")),
+    Subtype[OrderNoticesConsumptionStarted],
+    Subtype(deriveCodec[OrderNoticesConsumed]),
     Subtype(deriveCodec[OrderPrompted]),
     Subtype(deriveCodec[OrderPromptAnswered]),
     Subtype(deriveCodec[OrderCyclingPrepared]),

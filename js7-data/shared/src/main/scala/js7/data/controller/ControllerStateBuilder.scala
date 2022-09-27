@@ -127,9 +127,10 @@ with OrderWatchStateHandler[ControllerStateBuilder]
       }
 
     case snapshot: BoardSnapshot =>
-      _keyToUnsignedItemState(snapshot.boardPath) = keyTo(BoardState)(snapshot.boardPath)
-        .recover(snapshot)
-        .orThrow
+      _keyToUnsignedItemState(snapshot.boardPath) =
+        keyTo(BoardState)(snapshot.boardPath)
+          .recover(snapshot)
+          .orThrow
 
     case signedItemAdded: SignedItemAdded =>
       onSignedItemAdded(signedItemAdded)

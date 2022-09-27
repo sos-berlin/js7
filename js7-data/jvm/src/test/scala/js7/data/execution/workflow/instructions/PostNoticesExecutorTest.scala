@@ -5,7 +5,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.{TestWallClock, Timestamp}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.board.BoardPathExpressionParser.boardPathExpr
-import js7.data.board.{Board, BoardPath, BoardState, Notice, NoticeExpectation, NoticeId, NoticePlace}
+import js7.data.board.{Board, BoardPath, BoardState, Notice, NoticeId, NoticePlace}
 import js7.data.execution.workflow.instructions.PostNoticesExecutorTest.*
 import js7.data.order.OrderEvent.{OrderAdded, OrderMoved, OrderNoticePosted, OrderNoticesExpected, OrderNoticesRead, OrderStarted}
 import js7.data.order.OrderId
@@ -43,9 +43,9 @@ final class PostNoticesExecutorTest extends OurTestSuite
       state = state.applyEvents(events).orThrow
       assert(state.keyTo(BoardState).toMap == Map(
         board0.path -> BoardState(board0, Map(
-          notice0.id -> NoticePlace(Some(notice0)))),
+          notice0.id -> NoticePlace(notice0.id, Some(notice0)))),
         board1.path -> BoardState(board1, Map(
-          notice1.id -> NoticePlace(Some(notice1)))),
+          notice1.id -> NoticePlace(notice1.id, Some(notice1)))),
         board2.path -> BoardState(board2),
         board3.path -> BoardState(board3)))
     }
@@ -70,20 +70,24 @@ final class PostNoticesExecutorTest extends OurTestSuite
       assert(state.keyTo(BoardState).toMap == Map(
         board0.path -> BoardState(board0, Map(
           notice0.id -> NoticePlace(
+            notice0.id,
             Some(notice0),
-            Some(NoticeExpectation(notice0.id, Set(expectingOrderId)))))),
+            Set(expectingOrderId)))),
         board1.path -> BoardState(board1, Map(
           notice1.id -> NoticePlace(
+            notice1.id,
             Some(notice1),
-            Some(NoticeExpectation(notice1.id, Set(expectingOrderId)))))),
+            Set(expectingOrderId)))),
         board2.path -> BoardState(board2, Map(
           notice2.id -> NoticePlace(
+            notice2.id,
             None,
-            Some(NoticeExpectation(notice2.id, Set(expectingOrderId)))))),
+            Set(expectingOrderId)))),
         board3.path -> BoardState(board3, Map(
           notice3.id -> NoticePlace(
+            notice3.id,
             None,
-            Some(NoticeExpectation(notice3.id, Set(expectingOrderId))))))))
+            Set(expectingOrderId))))))
     }
 
     // ExpectNotice with a different, never posted NoticeId
@@ -103,23 +107,28 @@ final class PostNoticesExecutorTest extends OurTestSuite
       assert(state.keyTo(BoardState).toMap == Map(
         board0.path -> BoardState(board0, Map(
           notice0.id -> NoticePlace(
+            notice0.id,
             Some(notice0),
-            Some(NoticeExpectation(notice0.id, Set(expectingOrderId)))),
+            Set(expectingOrderId)),
           otherNotice0.id -> NoticePlace(
+            otherNotice0.id,
             None,
-            Some(NoticeExpectation(otherNotice0.id, Set(otherExpectingOrderId)))))),
+            Set(otherExpectingOrderId)))),
         board1.path -> BoardState(board1, Map(
           notice1.id -> NoticePlace(
+            notice1.id,
             Some(notice1),
-            Some(NoticeExpectation(notice1.id, Set(expectingOrderId)))))),
+            Set(expectingOrderId)))),
         board2.path -> BoardState(board2, Map(
           notice2.id -> NoticePlace(
+            notice2.id,
             None,
-            Some(NoticeExpectation(notice2.id, Set(expectingOrderId)))))),
+            Set(expectingOrderId)))),
         board3.path -> BoardState(board3, Map(
           notice3.id -> NoticePlace(
+            notice3.id,
             None,
-            Some(NoticeExpectation(notice3.id, Set(expectingOrderId))))))))
+            Set(expectingOrderId))))))
     }
 
     // PostNotice board2
@@ -136,16 +145,18 @@ final class PostNoticesExecutorTest extends OurTestSuite
       assert(state.keyTo(BoardState).toMap == Map(
         board0.path -> BoardState(board0, Map(
           notice0.id -> NoticePlace(
+            notice0.id,
             Some(notice0)),
           otherNotice0.id -> NoticePlace(
+            otherNotice0.id,
             None,
-            Some(NoticeExpectation(otherNotice0.id, Set(otherExpectingOrderId)))))),
+            Set(otherExpectingOrderId)))),
         board1.path -> BoardState(board1, Map(
           notice1.id -> NoticePlace(
-            Some(notice1)))),
+            notice1.id, Some(notice1)))),
         board2.path -> BoardState(board2, Map(
           notice2.id -> NoticePlace(
-            Some(notice2)))),
+            notice2.id, Some(notice2)))),
         board3.path -> BoardState(board3)))
     }
   }

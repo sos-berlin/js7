@@ -3,7 +3,7 @@ package js7.data.execution.workflow.instructions
 import js7.data.order.Order
 import js7.data.order.OrderEvent.{OrderFinished, OrderMoved}
 import js7.data.state.StateView
-import js7.data.workflow.instructions.{Cycle, End, ForkInstruction, LockInstruction}
+import js7.data.workflow.instructions.{ConsumeNotices, Cycle, End, ForkInstruction, LockInstruction}
 
 private[instructions] final class EndExecutor(protected val service: InstructionExecutorService)
 extends EventInstructionExecutor with PositionInstructionExecutor
@@ -37,6 +37,9 @@ extends EventInstructionExecutor with PositionInstructionExecutor
                 service.cycleExecutor.onReturnFromSubworkflow(order, cycle, state)
                   .map(_ :: Nil)
 
+              case _: ConsumeNotices =>
+                Right(service.consumeNoticesExecutor.onReturnFromSubworkflow(order) :: Nil)
+
               case _ =>
                 Right((order.id <-: OrderMoved(returnPosition.increment)) :: Nil)
             }
@@ -52,6 +55,7 @@ extends EventInstructionExecutor with PositionInstructionExecutor
           case _: ForkListExecutor => None
           case _: LockExecutor => None
           case _: CycleExecutor => None
+          case _: ConsumeNoticesExecutor => None
           // Check PositionInstructionExecutor first for TryInstruction !!!
           case _: PositionInstructionExecutor => Some(returnPosition.increment)
           case _: EventInstructionExecutor => Some(returnPosition)

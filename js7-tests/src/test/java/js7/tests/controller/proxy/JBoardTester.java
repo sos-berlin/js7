@@ -131,6 +131,8 @@ public class JBoardTester
         assertThat(noticePlace.noticeId(), equalTo(expectedNoticeId));
         assertThat(noticePlace.expectation().get().orderIds(),
             equalTo(new HashSet<>(asList(expectingOrderId))));
+        assertThat(noticePlace.expectingOrderIds(),
+            equalTo(new HashSet<>(asList(expectingOrderId))));
     }
 
     private static boolean isItemAdded(KeyedEvent<Event> keyedEvent, InventoryItemPath path) {

@@ -4,10 +4,10 @@ import cats.syntax.traverse.*
 import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
-import js7.data.board.{BoardPath, BoardState}
-import js7.data.execution.workflow.instructions.ExpectNoticesExecutor.*
-import js7.data.order.OrderEvent.{OrderMoved, OrderNoticesExpected, OrderNoticesRead}
-import js7.data.order.{Order, OrderEvent}
+import js7.data.board.BoardState
+import js7.data.execution.workflow.instructions.ExpectOrConsumeNoticesExecutor.{tryFulfill, tryFulfillExpectingOrder}
+import js7.data.order.Order
+import js7.data.order.OrderEvent.OrderNoticesExpected
 import js7.data.state.StateView
 import js7.data.workflow.instructions.ExpectNotices
 
@@ -27,7 +27,7 @@ extends EventInstructionExecutor
           expectNotices.referencedBoardPaths
             .toVector
             .traverse(state.keyTo(BoardState).checked)
-            .flatMap { boardStates =>
+            .flatMap(boardStates =>
               for {
                 scope <- state.toPureScope(order)
                 expected <- boardStates.traverse(boardState =>
@@ -37,8 +37,7 @@ extends EventInstructionExecutor
               } yield
                 tryFulfill(expectNotices, order, expected, state)
                   .emptyToNone
-                  .getOrElse(OrderNoticesExpected(expected) :: Nil)
-            })
+                  .getOrElse(OrderNoticesExpected(expected) :: Nil)))
         .orElse(order
           .ifState[Order.ExpectingNotices]
           .map(order =>
@@ -49,27 +48,4 @@ extends EventInstructionExecutor
               Right(tryFulfillExpectingOrder(expectNotices, order, state))))
         .getOrElse(Right(Nil))
         .map(_.map(order.id <-: _)))
-}
-
-private object ExpectNoticesExecutor
-{
-  def tryFulfillExpectingOrder(
-    expectNotices: ExpectNotices,
-    order: Order[Order.ExpectingNotices],
-    state: StateView,
-    postedBoards: Set[BoardPath] = Set.empty)
-  : List[OrderEvent.OrderActorEvent] =
-    tryFulfill(expectNotices, order, order.state.expected, state, postedBoards)
-
-  private def tryFulfill(
-    expectNotices: ExpectNotices,
-    order: Order[Order.State],
-    expected: Vector[OrderNoticesExpected.Expected],
-    state: StateView,
-    postedBoards: Set[BoardPath] = Set.empty)
-  : List[OrderEvent.OrderActorEvent] =
-    if (expectNotices.isFulfilled(postedBoards ++ state.availableNotices(expected)))
-      OrderNoticesRead :: OrderMoved(order.position.increment) :: Nil
-    else
-      Nil
 }

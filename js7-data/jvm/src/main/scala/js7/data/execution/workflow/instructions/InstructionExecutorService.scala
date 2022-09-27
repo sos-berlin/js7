@@ -20,6 +20,7 @@ final class InstructionExecutorService(val clock: WallClock)
   private[workflow] val forkListExecutor = new ForkListExecutor(this)
   private[instructions] val lockExecutor = new LockExecutor(this)
   private[instructions] val cycleExecutor = new CycleExecutor(this)
+  private[instructions] val consumeNoticesExecutor = new ConsumeNoticesExecutor(this)
 
   private val classToExecutor = new SubclassToX(
     Seq(
@@ -35,6 +36,7 @@ final class InstructionExecutorService(val clock: WallClock)
       lockExecutor,
       new PostNoticesExecutor(this),
       new ExpectNoticesExecutor(this),
+      consumeNoticesExecutor,
       new PromptExecutor(this),
       new RetryExecutor(this),
       new AddOrderExecutor(this),

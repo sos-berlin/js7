@@ -22,6 +22,7 @@ object Instructions
     Subtype[PostNotices],
     ExpectNotice.compatibleSubtype,
     Subtype[ExpectNotices],
+    Subtype[ConsumeNotices],
     Subtype[Retry],
     Subtype.named1[TryInstruction]("Try"),
     Subtype.named1[LockInstruction]("Lock"),

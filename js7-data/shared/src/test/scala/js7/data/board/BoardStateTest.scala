@@ -1,5 +1,6 @@
 package js7.data.board
 
+import io.circe.Printer
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichJson, parseJson, reparseJson}
 import js7.base.test.OurAsyncTestSuite
@@ -17,24 +18,71 @@ final class BoardStateTest extends OurAsyncTestSuite
 {
   "JSON" - {
     val boardPath = BoardPath("BOARD")
-    lazy val boardState = BoardState(
-      Board(
-        boardPath,
-        postOrderToNoticeId =
-          expr("""replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"""),
-        expectOrderToNoticeId =
-          expr("""replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"""),
-        endOfLife = expr("$js7EpochMilli + 24 * 3600 * 1000")),
-      idToNotice = Map(
-        NoticeId("NOTICE") -> NoticePlace(
-          Some(Notice(NoticeId("NOTICE"), boardPath, endOfLife = Timestamp.ofEpochSecond(123))))))
 
-    "toSnapshotObservable JSON" in {
+    "v2.4 JSON compatibility" in {
+      val boardState = BoardState(
+        Board(
+          boardPath,
+          postOrderToNoticeId =
+            expr("""replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"""),
+          expectOrderToNoticeId =
+            expr("""replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"""),
+          endOfLife = expr("$js7EpochMilli + 24 * 3600 * 1000")),
+        idToNotice = Map(
+          NoticeId("NOTICE") -> NoticePlace(
+            NoticeId("NOTICE"),
+            Some(Notice(NoticeId("NOTICE"), boardPath, endOfLife = Timestamp.ofEpochSecond(123))))))
+
       boardState.toSnapshotObservable
         .map(_
           .asJson(ControllerState.snapshotObjectJsonCodec)
           .compactPrint)
         .map(s => parseJson(s).orThrow)
+        .toListL
+        .map(snapshots =>
+          assert(snapshots == List(
+            json"""{
+          "TYPE": "Board",
+          "path": "BOARD",
+          "postOrderToNoticeId":
+            "replaceAll($$js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')",
+          "expectOrderToNoticeId":
+            "replaceAll($$js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')",
+          "endOfLife": "$$js7EpochMilli + 24 * 3600 * 1000"
+        }""",
+            json"""{
+          "TYPE": "Notice",
+          "id": "NOTICE",
+          "boardPath": "BOARD",
+          "endOfLife": 123000
+        }""")))
+        .runToFuture
+    }
+
+  lazy val boardState = BoardState(
+    Board(
+      boardPath,
+      postOrderToNoticeId =
+        expr("""replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"""),
+      expectOrderToNoticeId =
+        expr("""replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"""),
+      endOfLife = expr("$js7EpochMilli + 24 * 3600 * 1000")),
+    idToNotice = Map(
+      NoticeId("NOTICE-1") -> NoticePlace(
+        NoticeId("NOTICE-1"),
+        noticeIsInConsumption = true),
+      NoticeId("NOTICE-2") -> NoticePlace(
+        NoticeId("NOTICE-2"),
+        Some(Notice(NoticeId("NOTICE-2"), boardPath, endOfLife = Timestamp.ofEpochSecond(123))),
+        expectingOrderIds = Set.empty /*Recovered by Order.ExpectingNotices*/ ,
+        consumptionCount = 7)))
+
+  "toSnapshotObservable JSON" in {
+      boardState.toSnapshotObservable
+        .map(_
+          .asJson(ControllerState.snapshotObjectJsonCodec)
+          .printWith(Printer.noSpaces.copy(dropNullValues = true)))
+        .map(s => io.circe.parser.parse(s).orThrow)
         .toListL
         .map(snapshots =>
           assert(snapshots == List(
@@ -46,12 +94,23 @@ final class BoardStateTest extends OurAsyncTestSuite
               "expectOrderToNoticeId":
                 "replaceAll($$js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')",
               "endOfLife": "$$js7EpochMilli + 24 * 3600 * 1000"
-            }""",
-            json"""{
+            }""", json"""{
               "TYPE": "Notice",
-              "id": "NOTICE",
+              "id": "NOTICE-2",
               "boardPath": "BOARD",
               "endOfLife": 123000
+            }""", json"""{
+              "TYPE": "NoticePlace",
+              "boardPath": "BOARD",
+              "noticeId": "NOTICE-1",
+              "noticeIsInConsumption": true,
+              "consumptionCount": 0
+            }""", json"""{
+              "TYPE": "NoticePlace",
+              "boardPath": "BOARD",
+              "noticeId": "NOTICE-2",
+              "noticeIsInConsumption": false,
+              "consumptionCount": 7
             }""")))
         .runToFuture
     }
@@ -80,18 +139,18 @@ final class BoardStateTest extends OurAsyncTestSuite
 
     boardState = boardState.addNoticeV2_3(aNotice).orThrow
     assert(boardState.idToNotice == Map(
-      aNotice.id -> NoticePlace(Some(aNotice.toNotice(board.path)))))
+      aNotice.id -> NoticePlace(aNotice.id, Some(aNotice.toNotice(board.path)))))
 
     val a1Notice = NoticeV2_3(aNotice.id, endOfLife)
     boardState = boardState.addNoticeV2_3(a1Notice).orThrow
     assert(boardState.idToNotice == Map(
-      aNotice.id -> NoticePlace(Some(a1Notice.toNotice(board.path)))))
+      aNotice.id -> NoticePlace(a1Notice.id, Some(a1Notice.toNotice(board.path)))))
 
     val bNotice = NoticeV2_3(NoticeId("B"), endOfLife)
     boardState = boardState.addNoticeV2_3(bNotice).orThrow
     assert(boardState.idToNotice == Map(
-      aNotice.id -> NoticePlace(Some(aNotice.toNotice(board.path))),
-      bNotice.id -> NoticePlace(Some(bNotice.toNotice(board.path)))))
+      aNotice.id -> NoticePlace(aNotice.id, Some(aNotice.toNotice(board.path))),
+      bNotice.id -> NoticePlace(bNotice.id, Some(bNotice.toNotice(board.path)))))
   }
 
   "addNoticeV2_3 (2)" in {
@@ -102,8 +161,9 @@ final class BoardStateTest extends OurAsyncTestSuite
     boardState = boardState.addNoticeV2_3(aNotice).orThrow
     assert(boardState.idToNotice == Map(
       aNotice.id -> NoticePlace(
+        aNotice.id,
         Some(aNotice.toNotice(board.path)),
-        Some(NoticeExpectation(aNotice.id, Set(aOrderId))))))
+        Set(aOrderId))))
   }
 
   "addNotice, removeNotice (1)" in {
@@ -112,17 +172,17 @@ final class BoardStateTest extends OurAsyncTestSuite
 
     boardState = boardState.addNotice(aNotice).orThrow
     assert(boardState.idToNotice == Map(
-      aNotice.id -> NoticePlace(Some(aNotice))))
+      aNotice.id -> NoticePlace(aNotice.id, Some(aNotice))))
 
     val a1Notice = Notice(aNotice.id, board.path, endOfLife)
     boardState = boardState.addNotice(a1Notice).orThrow
     assert(boardState.idToNotice == Map(
-      aNotice.id -> NoticePlace(Some(a1Notice))))
+      aNotice.id -> NoticePlace(a1Notice.id, Some(a1Notice))))
 
     boardState = boardState.addNotice(bNotice).orThrow
     assert(boardState.idToNotice == Map(
-      aNotice.id -> NoticePlace(Some(aNotice)),
-      bNotice.id -> NoticePlace(Some(bNotice))))
+      aNotice.id -> NoticePlace(aNotice.id, Some(aNotice)),
+      bNotice.id -> NoticePlace(bNotice.id, Some(bNotice))))
 
     assert(boardState.containsNotice(aNotice.id))
     assert(boardState.containsNotice(bNotice.id))
@@ -130,7 +190,7 @@ final class BoardStateTest extends OurAsyncTestSuite
 
     boardState = boardState.removeNotice(aNotice.id).orThrow
     assert(boardState.idToNotice == Map(
-      bNotice.id -> NoticePlace(Some(bNotice))))
+      bNotice.id -> NoticePlace(bNotice.id, Some(bNotice))))
 
     boardState = boardState.removeNotice(bNotice.id).orThrow
     assert(boardState.idToNotice == Map.empty)
@@ -142,14 +202,16 @@ final class BoardStateTest extends OurAsyncTestSuite
     boardState = boardState.addNotice(aNotice).orThrow
     assert(boardState.idToNotice == Map(
       aNotice.id -> NoticePlace(
+        aNotice.id,
         Some(aNotice),
-        Some(NoticeExpectation(aNotice.id, Set(aOrderId))))))
+        Set(aOrderId))))
 
     boardState = boardState.removeNotice(aNotice.id).orThrow
     assert(boardState.idToNotice == Map(
       aNotice.id -> NoticePlace(
+        aNotice.id,
         None,
-        Some(NoticeExpectation(aNotice.id, Set(aOrderId))))))
+        Set(aOrderId))))
   }
 
   "addExpectation, removeExpectation (1)" in {
@@ -157,8 +219,9 @@ final class BoardStateTest extends OurAsyncTestSuite
     boardState = boardState.addExpectation(aNotice.id, aOrderId).orThrow
     assert(boardState.idToNotice == Map(
       aNotice.id -> NoticePlace(
+        aNotice.id,
         None,
-        Some(NoticeExpectation(aNotice.id, Set(aOrderId))))))
+        Set(aOrderId))))
 
     assert(boardState.expectingOrders(aNotice.id) == Set(aOrderId))
     assert(!boardState.containsNotice(aNotice.id))
@@ -166,8 +229,9 @@ final class BoardStateTest extends OurAsyncTestSuite
     boardState = boardState.addExpectation(aNotice.id, bOrderId).orThrow
     assert(boardState.idToNotice == Map(
       aNotice.id -> NoticePlace(
+        aNotice.id,
         None,
-        Some(NoticeExpectation(aNotice.id, Set(aOrderId, bOrderId))))))
+        Set(aOrderId, bOrderId))))
 
     assert(boardState.expectingOrders(aNotice.id) == Set(aOrderId, bOrderId))
     assert(!boardState.containsNotice(aNotice.id))
@@ -177,23 +241,25 @@ final class BoardStateTest extends OurAsyncTestSuite
     boardState = boardState.addNotice(aNotice).orThrow
     assert(boardState.idToNotice == Map(
       aNotice.id -> NoticePlace(
+        aNotice.id,
         Some(aNotice),
-        Some(NoticeExpectation(aNotice.id, Set(aOrderId, bOrderId))))))
+        Set(aOrderId, bOrderId))))
     assert(boardState.notice(aNotice.id) == Right(aNotice))
     assert(boardState.notices.toSeq == Seq(aNotice))
-    assert(boardState.noticeCount == 1)
 
     boardState = boardState.removeExpectation(aNotice.id, aOrderId).orThrow
     assert(boardState.idToNotice == Map(
       aNotice.id -> NoticePlace(
+        aNotice.id,
         Some(aNotice),
-        Some(NoticeExpectation(aNotice.id, Set(bOrderId))))))
+        Set(bOrderId))))
 
     boardState = boardState.removeNotice(aNotice.id).orThrow
     assert(boardState.idToNotice == Map(
       aNotice.id -> NoticePlace(
+        aNotice.id,
         None,
-        Some(NoticeExpectation(aNotice.id, Set(bOrderId))))))
+        Set(bOrderId))))
 
     boardState = boardState.removeExpectation(aNotice.id, bOrderId).orThrow
     assert(boardState.idToNotice == Map.empty)
@@ -205,12 +271,13 @@ final class BoardStateTest extends OurAsyncTestSuite
     boardState = boardState.addExpectation(aNotice.id, aOrderId).orThrow
     assert(boardState.idToNotice == Map(
       aNotice.id -> NoticePlace(
+        aNotice.id,
         Some(aNotice),
-        Some(NoticeExpectation(aNotice.id, Set(aOrderId))))))
+        Set(aOrderId))))
 
     boardState = boardState.removeExpectation(aNotice.id, aOrderId).orThrow
     assert(boardState.idToNotice == Map(
-      aNotice.id -> NoticePlace(Some(aNotice))))
+      aNotice.id -> NoticePlace(aNotice.id, Some(aNotice))))
   }
 
   "BoardState snapshot" in {
@@ -253,7 +320,7 @@ private object BoardStateTest
   private val boardState = BoardState(
     board,
     View(
-      NoticePlace(Some(notice)),
-      NoticePlace(None, Some(NoticeExpectation(NoticeId("B"), Set(aOrderId, bOrderId))))
+      NoticePlace(notice.id, Some(notice)),
+      NoticePlace(NoticeId("B"), None, Set(aOrderId, bOrderId))
     ).toKeyedMap(_.noticeId))
 }

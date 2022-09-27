@@ -13,7 +13,7 @@ import js7.base.web.Uri
 import js7.data.Problems.{ItemIsStillReferencedProblem, MissingReferencedItemProblem}
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRefStateEvent}
 import js7.data.board.BoardEvent.{NoticeDeleted, NoticePosted}
-import js7.data.board.{Board, BoardEvent, BoardPath, BoardState, Notice}
+import js7.data.board.{Board, BoardEvent, BoardPath, BoardState, Notice, NoticePlace}
 import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
@@ -757,6 +757,8 @@ with ItemContainer.Companion[ControllerState]
     Subtype[Board],
     Subtype[Calendar],
     Subtype[Notice],
+    NoticePlace.Snapshot.subtype,
+    BoardState.Consumption.Snapshot.subtype,
     Subtype[VersionedEvent],  // These events describe complete objects
     Subtype[InventoryItemEvent],  // For Repo and SignedItemAdded
     Subtype[OrderWatchState.Snapshot],

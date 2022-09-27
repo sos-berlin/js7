@@ -5,7 +5,6 @@ import cats.syntax.traverse.*
 import js7.base.problem.Checked.catchNonFatalFlatten
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.ScalaUtils.checkedCast
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.Problems.CancelStartedOrderProblem
 import js7.data.agent.AgentPath
@@ -14,7 +13,7 @@ import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.OrderEventSource.*
 import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.order.Order.{Cancelled, Failed, FailedInFork, IsTerminated, ProcessingKilled}
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCaught, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderFailed, OrderFailedInFork, OrderFailedIntermediate_, OrderLocksDequeued, OrderLocksReleased, OrderMoved, OrderPromptAnswered, OrderResumed, OrderResumptionMarked, OrderSuspended, OrderSuspensionMarked}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCaught, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderFailed, OrderFailedInFork, OrderFailedIntermediate_, OrderLocksDequeued, OrderLocksReleased, OrderMoved, OrderNoticesConsumed, OrderPromptAnswered, OrderResumed, OrderResumptionMarked, OrderSuspended, OrderSuspensionMarked}
 import js7.data.order.{Order, OrderId, OrderMark, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.state.StateView
@@ -474,9 +473,14 @@ object OrderEventSource {
           case Segment(nr, BranchId.Lock) :: prefix =>
             val pos = prefix.reverse % nr
             for {
-              lock <- checkedCast[LockInstruction](workflow.instruction(pos))
+              lock <- workflow.instruction_[LockInstruction](pos)
               events <- loop(prefix, pos)
             } yield OrderLocksReleased(lock.lockPaths) :: events
+
+          case Segment(nr, BranchId.ConsumeNotices) :: prefix =>
+            val pos = prefix.reverse % nr
+            loop(prefix, pos)
+              .map(OrderNoticesConsumed(failed = true) :: _)
 
           case Segment(nr, branchId @ TryBranchId(retry)) :: prefix if catchable =>
             val catchPos = prefix.reverse % nr / BranchId.catch_(retry) % 0

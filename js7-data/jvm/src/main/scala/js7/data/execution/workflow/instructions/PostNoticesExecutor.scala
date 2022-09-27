@@ -9,7 +9,7 @@ import js7.data.execution.workflow.instructions.PostNoticesExecutor.*
 import js7.data.order.OrderEvent.{OrderMoved, OrderNoticePosted}
 import js7.data.order.{Order, OrderEvent}
 import js7.data.state.StateView
-import js7.data.workflow.instructions.{ExpectNotices, PostNotices}
+import js7.data.workflow.instructions.{ExpectOrConsumeNoticesInstruction, PostNotices}
 
 private[instructions] final class PostNoticesExecutor(
   protected val service: InstructionExecutorService)
@@ -62,7 +62,7 @@ object PostNoticesExecutor {
         .traverse(state.idToOrder.checked)
       events <- expectingOrders
         .traverse(expectingOrder => state
-          .instruction_[ExpectNotices](expectingOrder.workflowPosition)
+          .instruction_[ExpectOrConsumeNoticesInstruction](expectingOrder.workflowPosition)
           .map(expectingOrder -> _))
         .flatMap(_
           .traverse { case (expectingOrder, expectNoticesInstr) =>
@@ -70,7 +70,7 @@ object PostNoticesExecutor {
               .flatMap(_.checkedState[Order.ExpectingNotices])
               .map { expectingOrder =>
                 val postedBoards = postedNotices.map(_.boardState.path).toSet
-                ExpectNoticesExecutor
+                ExpectOrConsumeNoticesExecutor
                   .tryFulfillExpectingOrder(expectNoticesInstr, expectingOrder, state, postedBoards)
                   .map(expectingOrder.id <-: _)
               }

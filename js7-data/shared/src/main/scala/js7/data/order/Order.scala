@@ -16,7 +16,7 @@ import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.event.EventDrivenState.EventNotApplicableProblem
 import js7.data.job.JobKey
 import js7.data.order.Order.*
-import js7.data.order.OrderEvent.*
+import js7.data.order.OrderEvent.{OrderNoticesConsumed, *}
 import js7.data.orderwatch.ExternalOrderKey
 import js7.data.subagent.SubagentId
 import js7.data.value.{NamedValues, Value}
@@ -422,6 +422,20 @@ final case class Order[+S <: Order.State](
         check(isDetached && (isState[Ready] || isState[ExpectingNotices]) && !isSuspended,
           copy(
             state = Ready))
+
+      case OrderNoticesConsumptionStarted(_) =>
+        check(isDetached && (isState[Ready] || isState[ExpectingNotices]) && !isSuspended,
+          withPosition(position / BranchId.ConsumeNotices % 0)
+            .copy(
+              state = Ready))
+
+      case OrderNoticesConsumed(_) =>
+        check(isDetached && isState[Ready],
+          position.checkedParent.map(returnPosition =>
+            withPosition(returnPosition.increment)
+              .copy(
+                state = Ready))
+        ).flatten
 
       case OrderPrompted(question) =>
         check(isDetached && isState[Ready],

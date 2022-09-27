@@ -38,6 +38,7 @@ object BranchId
   val Lock = BranchId("lock")
   val Cycle = BranchId("cycle")
   val CyclePrefix = "cycle+"
+  val ConsumeNotices = BranchId("consumeNotices")
 
   implicit def apply(branchId: String): Named = Named(branchId)
 

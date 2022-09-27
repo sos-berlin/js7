@@ -7,8 +7,9 @@ import js7.data.board.BoardState
 import js7.data.event.{Event, EventDrivenState}
 import js7.data.item.{UnsignedSimpleItemPath, UnsignedSimpleItemState}
 import js7.data.order.Order.ExpectingNotices
-import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderForked, OrderJoined, OrderLockEvent, OrderLocksAcquired, OrderLocksDequeued, OrderLocksQueued, OrderLocksReleased, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesExpected, OrderNoticesRead, OrderOrderAdded, OrderStdWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDeletionMarked, OrderForked, OrderJoined, OrderLockEvent, OrderLocksAcquired, OrderLocksDequeued, OrderLocksQueued, OrderLocksReleased, OrderNoticeEvent, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead, OrderOrderAdded, OrderStdWritten}
 import js7.data.order.{Order, OrderEvent, OrderId}
+import js7.data.workflow.instructions.ConsumeNotices
 
 // TODO Replace F-type polymorphism with a typeclass ? https://tpolecat.github.io/2015/04/29/f-bounds.html
 trait EventDrivenStateView[Self <: EventDrivenStateView[Self, E], E <: Event]
@@ -172,8 +173,26 @@ with StateView
             case None => Right(Nil)
             case Some(previousOrder) => removeNoticeExpectation(previousOrder)
           }
+
+        case OrderNoticesConsumptionStarted(consumingSeq) =>
+          consumingSeq
+            .traverse(consuming =>
+              keyTo(BoardState)
+                .checked(consuming.boardPath)
+                .flatMap(_.addConsumption(consuming.noticeId, previousOrder, consumingSeq)))
+
+        case OrderNoticesConsumed(failed) =>
+          previousOrder.workflowPosition.checkedParent
+            .flatMap(consumeNoticesPosition =>
+              instruction_[ConsumeNotices](consumeNoticesPosition)
+                .traverse(instr => instr.referencedBoardPaths.toSeq
+                  .traverse(keyTo(BoardState).checked))
+                .flatten
+                .flatMap(_.traverse(_
+                  .removeConsumption(previousOrder.id, succeeded = !failed))))
       }
-    .flatMap(o => update(addItemStates = o))
+    .flatMap(o => update(
+      addItemStates = o))
 
   private def removeNoticeExpectation(order: Order[Order.State]): Checked[Seq[BoardState]] =
     order.ifState[Order.ExpectingNotices] match {

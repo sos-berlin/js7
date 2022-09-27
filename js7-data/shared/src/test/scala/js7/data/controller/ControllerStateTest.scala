@@ -5,13 +5,14 @@ import js7.base.auth.UserId
 import js7.base.circeutils.CirceUtils.*
 import js7.base.crypt.silly.SillySigner
 import js7.base.problem.Checked.*
+import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.{Timestamp, Timezone}
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.Collections.implicits.*
 import js7.base.web.Uri
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
-import js7.data.board.{Board, BoardPath, BoardPathExpression, BoardState, Notice, NoticeExpectation, NoticeId, NoticePlace}
+import js7.data.board.{Board, BoardPath, BoardPathExpression, BoardState, Notice, NoticeId, NoticePlace}
 import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
 import js7.data.cluster.{ClusterSetting, ClusterState, ClusterStateSnapshot, ClusterTiming}
 import js7.data.controller.ControllerStateTest.*
@@ -40,7 +41,6 @@ import js7.data.workflow.{Workflow, WorkflowPath, WorkflowPathControl, WorkflowP
 import js7.tester.CirceJsonTester.testJson
 import js7.tester.DiffxAssertions.assertEqual
 import monix.execution.Scheduler.Implicits.traced
-import js7.base.test.OurAsyncTestSuite
 
 /**
   * @author Joacim Zschimmer
@@ -476,13 +476,13 @@ object ControllerStateTest
     itemRevision = Some(ItemRevision(7)))
 
   private val notice = Notice(NoticeId("NOTICE-1"), board.path, Timestamp.ofEpochMilli(10_000_000_000L + 24*3600*1000))
-  private val noticeExpectation = NoticeExpectation(NoticeId("NOTICE-2"), Set(expectingNoticeOrderId))
+  private val expectedNoticeId = NoticeId("NOTICE-2")
 
   private val boardState = BoardState(
     board,
     Map(
-      notice.id -> NoticePlace(Some(notice)),
-      noticeExpectation.id -> NoticePlace(None, Some(noticeExpectation))))
+      notice.id -> NoticePlace(notice.id, Some(notice)),
+      expectedNoticeId -> NoticePlace(expectedNoticeId, None, Set(expectingNoticeOrderId))))
 
   private val calendar = Calendar(
     CalendarPath("Calendar"),
@@ -551,7 +551,7 @@ object ControllerStateTest
       Order(orderId, workflow.id /: Position(0), Order.Fresh,
         externalOrderKey = Some(ExternalOrderKey(fileWatch.path, ExternalOrderName("ORDER-NAME")))),
       Order(expectingNoticeOrderId, workflow.id /: Position(1),
-        Order.ExpectingNotices(Vector(OrderNoticesExpected.Expected(board.path, noticeExpectation.id))))
+        Order.ExpectingNotices(Vector(OrderNoticesExpected.Expected(board.path, expectedNoticeId))))
     ).toKeyedMap(_.id),
     workflowIdToOrders = Map.empty
   ).finish
