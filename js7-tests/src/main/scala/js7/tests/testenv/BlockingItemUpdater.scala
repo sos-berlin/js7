@@ -6,17 +6,20 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.Lazy
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.item.ItemOperation.{AddOrChangeOperation, AddOrChangeSigned, AddOrChangeSimple, AddVersion}
-import js7.data.item.{InventoryItem, SignableItem, UnsignedSimpleItem, VersionId, VersionedItem}
+import js7.data.item.{InventoryItem, InventoryItemPath, ItemOperation, SignableItem, UnsignedSimpleItem, VersionId, VersionedItem, VersionedItemPath}
 import js7.proxy.ControllerApi
 import monix.execution.Scheduler
 import monix.execution.atomic.Atomic
 import monix.reactive.Observable
 
 trait BlockingItemUpdater {
-  private val nextVersionId = Atomic(1)
+  private val nextVersionId_ = Atomic(1)
 
   protected def sign[A <: SignableItem](item: A): Signed[A]
   protected def controllerApi: ControllerApi
+
+  private def nextVersionId() =
+    VersionId(nextVersionId_.getAndIncrement().toString)
 
   protected final def updateItem[I <: InventoryItem](item: I)(implicit s: Scheduler)
   : I = {
@@ -29,11 +32,13 @@ trait BlockingItemUpdater {
 
   protected final def updateItems(items: InventoryItem*)(implicit s: Scheduler)
   : Option[VersionId] = {
-    val versionId = Lazy(VersionId(nextVersionId.getAndIncrement().toString))
+    val versionId = Lazy(nextVersionId())
     val operations: Vector[AddOrChangeOperation] = items
       .toVector
       .map {
-        case item: VersionedItem if item.id.versionId.isAnonymous => item withVersion versionId()
+        case item: VersionedItem if item.id.versionId.isAnonymous =>
+          // Update versionId as a side effect !
+          item withVersion versionId()
         case o => o
       }
       .map {
@@ -50,4 +55,13 @@ trait BlockingItemUpdater {
 
     versionId.toOption
   }
+
+  protected final def deleteItems(paths: InventoryItemPath*)(implicit s: Scheduler): Unit =
+    controllerApi
+      .updateItems(
+        Observable.fromIterable(
+          (paths.exists(_.isInstanceOf[VersionedItemPath]) ? AddVersion(nextVersionId())) ++
+            paths.map(ItemOperation.Remove(_))))
+      .await(99.s)
+      .orThrow
 }

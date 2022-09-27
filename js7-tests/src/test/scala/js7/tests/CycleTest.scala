@@ -60,7 +60,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
   private implicit val zone: ZoneId = CycleTest.zone
 
   "Cycle with empty Schedule" in {
-    val workflow = addWorkflow(Workflow(
+    val workflow = updateItem(Workflow(
       WorkflowPath("EMPTY"),
       Seq(
         Cycle(
@@ -78,7 +78,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
   }
 
   "Simple loop" in {
-    val workflow = addWorkflow(Workflow(
+    val workflow = updateItem(Workflow(
       WorkflowPath("SIMPLE-LOOP"),
       Seq(
         EmptyJob.execute(agentPath),  // Let start Cycle at Agent
@@ -136,7 +136,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
     // Wenn bei pause=0 zwischen OrderCycleStarted und OrderCycleFinished kein relevantes Event
     // aufgetreten ist, soll die Schleife abgebrochen werden.
     // Denn JS7 berechnet die Events alle im Voraus und platzt dabei.
-    val workflow = addWorkflow(Workflow(
+    val workflow = updateItem(Workflow(
       WorkflowPath("ENDLESS"),
       Seq(
         Cycle(
@@ -150,7 +150,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
   }
 
   "Failing cycle" in {
-    val workflow = addWorkflow(Workflow(
+    val workflow = updateItem(Workflow(
       WorkflowPath("FAILING"),
       Seq(
         Cycle(
@@ -178,7 +178,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
   }
 
   "Catching a failing cycle" in {
-    val workflow = addWorkflow(Workflow(
+    val workflow = updateItem(Workflow(
       WorkflowPath("CATCH"),
       Seq(
         TryInstruction(
@@ -214,7 +214,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
   "Cancel while in Order.BetweenCycle" in {
     clock.resetTo(local("2021-10-01T00:00"))
     val orderDate = "2021-10-01"
-    val workflow = addWorkflow(Workflow(
+    val workflow = updateItem(Workflow(
       WorkflowPath("CANCEL"),
       Seq(
         Cycle(
@@ -271,7 +271,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
       assert(local("2021-10-31T04:00") - local("2021-10-31T03:59:59") == 1.h + 1.s)
     }
 
-    val workflow = addWorkflow(Workflow(
+    val workflow = updateItem(Workflow(
       WorkflowPath("DST"),
       Seq(
         Cycle(
@@ -415,7 +415,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
     // Fixed bug:
     // Cycle executes the block twice, when starting after the first period of the calendar day.
     clock.resetTo(local("2021-10-01T01:30"))
-    val workflow = addWorkflow(Workflow(
+    val workflow = updateItem(Workflow(
       WorkflowPath("ONCE-AN-HOUR"),
       Seq(
         Cycle(
@@ -447,11 +447,6 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
     clock.tick(1.s)
     eventId = eventWatch.await[OrderCycleStarted](_.key == orderId, after = eventId).head.eventId
     assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 3)
-  }
-
-  private def addWorkflow(workflow: Workflow): Workflow = {
-    val Some(v) = updateItems(workflow)
-    workflow.withVersion(v)
   }
 }
 
