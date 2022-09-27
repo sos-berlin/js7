@@ -1,17 +1,79 @@
 package js7.data.board
 
+import io.circe.syntax.EncoderOps
+import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichJson, parseJson, reparseJson}
+import js7.base.test.OurAsyncTestSuite
 import js7.base.time.Timestamp
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.board.BoardStateTest.*
+import js7.data.controller.ControllerState
 import js7.data.order.OrderId
 import js7.data.value.expression.ExpressionParser.expr
 import monix.execution.Scheduler.Implicits.traced
-import js7.base.test.OurAsyncTestSuite
 import scala.collection.View
 
 final class BoardStateTest extends OurAsyncTestSuite
 {
+  "JSON" - {
+    val boardPath = BoardPath("BOARD")
+    lazy val boardState = BoardState(
+      Board(
+        boardPath,
+        postOrderToNoticeId =
+          expr("""replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"""),
+        expectOrderToNoticeId =
+          expr("""replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')"""),
+        endOfLife = expr("$js7EpochMilli + 24 * 3600 * 1000")),
+      idToNotice = Map(
+        NoticeId("NOTICE") -> NoticePlace(
+          Some(Notice(NoticeId("NOTICE"), boardPath, endOfLife = Timestamp.ofEpochSecond(123))))))
+
+    "toSnapshotObservable JSON" in {
+      boardState.toSnapshotObservable
+        .map(_
+          .asJson(ControllerState.snapshotObjectJsonCodec)
+          .compactPrint)
+        .map(s => parseJson(s).orThrow)
+        .toListL
+        .map(snapshots =>
+          assert(snapshots == List(
+            json"""{
+              "TYPE": "Board",
+              "path": "BOARD",
+              "postOrderToNoticeId":
+                "replaceAll($$js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')",
+              "expectOrderToNoticeId":
+                "replaceAll($$js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$$', '$$1')",
+              "endOfLife": "$$js7EpochMilli + 24 * 3600 * 1000"
+            }""",
+            json"""{
+              "TYPE": "Notice",
+              "id": "NOTICE",
+              "boardPath": "BOARD",
+              "endOfLife": 123000
+            }""")))
+        .runToFuture
+    }
+
+    "toSnapshotObservable and recover" in {
+      var recovered: BoardState = null
+      boardState.toSnapshotObservable
+        .map(o =>
+          reparseJson(o, ControllerState.snapshotObjectJsonCodec).orThrow)
+        .map {
+          case board: Board =>
+            recovered = BoardState(board)
+          case snapshot: BoardSnapshot =>
+            recovered = recovered.recover(snapshot).orThrow
+        }
+        .completedL
+        .map(_ =>
+          assert(recovered == boardState))
+        .runToFuture
+    }
+  }
+
   "addNoticeV2_3 (1)" in {
     var boardState = BoardState(board)
     val aNotice = NoticeV2_3(NoticeId("A"), endOfLife)

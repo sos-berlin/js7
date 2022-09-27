@@ -25,6 +25,7 @@ object NoticePlace
 }
 
 final case class Notice(id: NoticeId, boardPath: BoardPath, endOfLife: Timestamp)
+extends BoardSnapshot
 {
   def toExpected = OrderNoticesExpected.Expected(boardPath, id)
 }

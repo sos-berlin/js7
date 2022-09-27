@@ -1,6 +1,7 @@
 package js7.base.circeutils
 
 import cats.syntax.show.*
+import io.circe
 import io.circe.generic.decoding.DerivedDecoder
 import io.circe.generic.encoding.DerivedAsObjectEncoder
 import io.circe.generic.extras.Configuration
@@ -334,6 +335,17 @@ object CirceUtils
           anyToJson(arg, unknownToString = true).toString
       }
   }
+
+  def reparseJson[A](a: A, codec: Codec[A]): Either[circe.Error, A] =
+    reparseJson(a)(codec, codec)
+
+  def reparseJson[A](a: A)(implicit decoder: Decoder[A], encoder: Encoder[A])
+  : Either[circe.Error, A] =
+    parseJson(encoder(a).compactPrint)
+      .flatMap(decoder.decodeJson)
+
+  def parseJson(string: String): Either[ParsingFailure, Json] =
+    io.circe.parser.parse(string)
 
   private def throwUnexpected(expected: String, found: String) =
     throw new JsonException(s"JSON $expected expected instead of $found")

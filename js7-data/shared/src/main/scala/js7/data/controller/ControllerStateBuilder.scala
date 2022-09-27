@@ -8,7 +8,7 @@ import js7.base.utils.Collections.implicits.*
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRefStateEvent}
 import js7.data.board.BoardEvent.{NoticeDeleted, NoticePosted}
-import js7.data.board.{Board, BoardPath, BoardState, Notice}
+import js7.data.board.{Board, BoardPath, BoardSnapshot, BoardState}
 import js7.data.calendar.{Calendar, CalendarState}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
@@ -16,8 +16,8 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{Event, EventDrivenState, JournalEvent, JournalState, KeyedEvent, SnapshotableState, SnapshotableStateBuilder, Stamped}
 import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeleted, ItemDeletionMarked}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
-import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.UnsignedItemEvent.{UnsignedItemAdded, UnsignedItemChanged}
+import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItemEvent, InventoryItemKey, Repo, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItem, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, UnsignedSimpleItemState, VersionedControl, VersionedEvent}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockState}
@@ -126,9 +126,10 @@ with OrderWatchStateHandler[ControllerStateBuilder]
         _keyToUnsignedItemState.insert(subagentItem.id, SubagentItemState.initial(subagentItem))
       }
 
-    case notice: Notice =>
-      _keyToUnsignedItemState(notice.boardPath) = keyTo(BoardState)(notice.boardPath)
-        .addNotice(notice).orThrow
+    case snapshot: BoardSnapshot =>
+      _keyToUnsignedItemState(snapshot.boardPath) = keyTo(BoardState)(snapshot.boardPath)
+        .recover(snapshot)
+        .orThrow
 
     case signedItemAdded: SignedItemAdded =>
       onSignedItemAdded(signedItemAdded)

@@ -30,6 +30,12 @@ extends UnsignedSimpleItemState
     // NoticeExpectation are recovered from Order[Order.ExpectingNotice]
   }
 
+  def recover(snapshot: BoardSnapshot): Checked[BoardState] =
+    snapshot match {
+      case notice: Notice =>
+        addNotice(notice)
+    }
+
   // COMPATIBLE with v2.3
   def addNoticeV2_3(notice: NoticeV2_3): Checked[BoardState] =
     addNotice(notice.toNotice(board.path))
