@@ -8,14 +8,19 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.Tests.{isIntelliJIdea, isSbt}
 import org.scalatest.exceptions.TestPendingException
 import scala.collection.mutable
+import scala.concurrent.duration.Deadline.now
 import scala.util.{Failure, Success, Try}
 
 private final class LoggingTestAdder(suiteName: String) {
 
   Logger.initialize()
 
+  private val since = now
   private val outerNames = Seq(suiteName).to(mutable.Stack)
   private var firstTestCalled = false
+  private var succeededCount = 0
+  private var pendingCount = 0
+  private var failedCount = 0
 
   def toStringWrapper[R](
     name: String,
@@ -45,13 +50,27 @@ private final class LoggingTestAdder(suiteName: String) {
 
   def freezeContext(testName: String) =
     new TestContext(
-      outerNames.mkString("", " — ", " — "),
+      this,
+      outerNames.view.reverse.mkString("", " — ", " — "),
       testName)
+
+  def afterAll(): Unit = {
+    val duration =
+    logger.info(s"$suiteName — " +
+      s"$successMarkup$succeededCount tests succeeded$resetColor" +
+      (if (failedCount == 0) "" else s" · $failureMarkup💥 $failedCount failed$resetColor") +
+      (if (pendingCount == 0) "" else s" · $pendingMarkup🚫 $pendingCount pending$resetColor") +
+      (if (failedCount == 0 && pendingCount == 0) s"$successMarkup ✔︎$resetColor" else "") +
+      " · " + since.elapsed.pretty)
+  }
 }
 
 private object LoggingTestAdder {
-  private val logger = Logger("TEST")
+  val logger = Logger("TEST")
   private val bar = "⎯" * 80
+  private val successMarkup = green + bold
+  private val pendingMarkup = ""
+  private val failureMarkup = orange + bold
 
   private val droppableStackTracePrefixes = Set(
     "java.",
@@ -61,7 +80,7 @@ private object LoggingTestAdder {
     "org.jetbrains.plugins.scala.",
     "js7.base.test.")
 
-  final class TestContext(val prefix: String, testName: String) {
+  final class TestContext(adder: LoggingTestAdder, val prefix: String, testName: String) {
     def beforeTest(): Unit = {
       delayBeforeEnd()
       logger.info(eager(s"↘︎ $prefix$black$bold$testName$resetColor"))
@@ -71,24 +90,24 @@ private object LoggingTestAdder {
     def afterTest[A](result: Try[A]): Unit = {
       result match {
         case Success(_) =>
-          val markup = green + bold
-          logger.info(eager(s"↙︎ $prefix$markup$testName$resetColor"))
-          logger.info(eager(markup + bar))
+          adder.succeededCount += 1
+          logger.info(eager(s"↙︎ $prefix$successMarkup$testName$resetColor"))
+          logger.info(eager(successMarkup + bar))
           delayBeforeEnd()
 
         case Failure(_: TestPendingException) =>
-          val markup = ""
-          logger.warn(eager(s"🚫 $prefix$markup$testName (PENDING)$resetColor\n"))
-          logger.info(eager(markup + bar))
+          adder.pendingCount += 1
+          logger.warn(eager(s"🚫 $prefix$pendingMarkup$testName (PENDING)$resetColor\n"))
+          logger.info(eager(pendingMarkup + bar))
           delayBeforeEnd()
 
         case Failure(t) =>
+          adder.failedCount += 1
           clipStackTrace(t)
 
-          val markup = orange + bold
-          val s = s"💥 $prefix$markup$testName 💥$resetColor"
+          val s = s"💥 $prefix$failureMarkup$testName 💥$resetColor"
           logger.error(s, t)
-          logger.info(eager(markup + bar))
+          logger.info(eager(failureMarkup + bar))
           if (isSbt) System.err.println(s)
           delayBeforeEnd()
       }

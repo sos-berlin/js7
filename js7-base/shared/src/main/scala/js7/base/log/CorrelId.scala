@@ -52,20 +52,20 @@ object CorrelId extends GenericString.Checked_[CorrelId]
   val empty: CorrelId = EmptyCorrelId
   private[log] val local = Local(CorrelId.empty)
 
-  private val nextLong =
+  private val nextCorrelId: NextCorrelId =
     if (isTest && isIntelliJIdea)
-      new NextLong {
-        private val next = Atomic(0)
-        def apply() = next.incrementAndGet()
+      new NextCorrelId {
+        private val next = Atomic(LongCorrelId.checked("CorAAAAA").orThrow.long)
+        def apply() = LongCorrelId(next.incrementAndGet())
       }
     else
-      new NextLong {
+      new NextCorrelId {
         private val random = new SecureRandom()
-        def apply() = random.nextLong()
+        def apply() = LongCorrelId(random.nextLong())
       }
 
-  private trait NextLong {
-    def apply(): Long
+  private trait NextCorrelId {
+    def apply(): CorrelId
   }
 
   private var currentCorrelIdCount = 0L
@@ -109,7 +109,7 @@ object CorrelId extends GenericString.Checked_[CorrelId]
       CorrelId.empty
     else {
       generateCount += 1
-      LongCorrelId(nextLong() & bitMask)
+      nextCorrelId()
     }
 
   def current: CorrelId =
@@ -167,10 +167,8 @@ object CorrelId extends GenericString.Checked_[CorrelId]
     else
       TracingScheduler(scheduler)
 
-  private[log] sealed case class LongCorrelId(long: Long) extends CorrelId {
+  private[log] sealed case class LongCorrelId private(long: Long) extends CorrelId {
     import LongCorrelId.*
-
-    assert((long & ~bitMask) == 0)
 
     override def isEmpty = false
 
@@ -204,6 +202,9 @@ object CorrelId extends GenericString.Checked_[CorrelId]
       .scanLeft(Vector.fill(256)(-1))((v, iToChar) => v.updated(iToChar._2, iToChar._1))
       .last.toArray
     fromBase64_(code62Original) = 62
+
+    def apply(long: Long): LongCorrelId =
+      new LongCorrelId(long & bitMask)
 
     private[log] def toBase64(long: Long): String = {
       val array = new Array[Char](width)

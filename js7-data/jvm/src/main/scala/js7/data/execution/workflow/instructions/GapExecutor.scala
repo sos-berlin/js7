@@ -14,7 +14,7 @@ extends EventInstructionExecutor {
 
   def toEvents(instruction: Gap, order: Order[Order.State], state: StateView) =
     if (!order.isAttached)
-      Left(Problem.pure(s"Instruction Gap but order is not attached to an agent: $order"))
+      Left(Problem.pure(s"Gap instruction but order is not attached to an agent: $order"))
     else
       Right((order.id <-: OrderDetachable) :: Nil)
 }

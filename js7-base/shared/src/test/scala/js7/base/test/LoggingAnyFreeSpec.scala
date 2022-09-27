@@ -3,6 +3,7 @@ package js7.base.test
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import org.scalactic.source
 import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.{Args, Status}
 import scala.language.implicitConversions
 import scala.util.Try
 
@@ -30,4 +31,10 @@ trait LoggingAnyFreeSpec extends AnyFreeSpec {
         for (t <- tried.failed) throw t
       },
       suppressCorrelId = suppressTestCorrelId)
+
+  abstract override def run(testName: Option[String], args: Args): Status = {
+    val tried = Try(super.run(testName, args))
+    testAdder.afterAll()
+    tried.get
+  }
 }

@@ -46,9 +46,10 @@ object SemaphoreJob
   extends InternalJob.Companion[I]
   {
     val semaphore = Semaphore[Task](0).memoize
+    private val name = classTag.runtimeClass.shortClassName
 
     def reset()(implicit s: Scheduler): Unit = {
-      logger.debug("reset")
+      logger.debug(s"$name.reset")
       (for {
         sema <- semaphore
         count <- sema.count

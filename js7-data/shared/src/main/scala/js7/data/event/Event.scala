@@ -19,6 +19,8 @@ trait Event {
 
   final def <-:(key: Key) =
     new KeyedEvent[this.type](key, this)
+
+  def isMinor = false
 }
 
 object Event

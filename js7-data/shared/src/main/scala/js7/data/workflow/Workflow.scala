@@ -437,7 +437,7 @@ with TrivialItemState[Workflow]
       case o if implicitClass[A] isAssignableFrom o.getClass =>
         Right(o.asInstanceOf[A])
       case o =>
-        Left(Problem(s"An Instruction '${Instructions.jsonCodec.classToName(implicitClass[A])}' " +
+        Left(Problem(s"A '${Instructions.jsonCodec.classToName(implicitClass[A])}' Instruction " +
           s"is expected at position ${id /: position}, not: ${Instructions.jsonCodec.typeName(o)}"))
     }
 

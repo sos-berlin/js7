@@ -36,6 +36,7 @@ object AgentRefStateEvent
 
   final case class AgentEventsObserved(untilEventId: EventId) extends AgentRefStateEvent
   {
+    override def isMinor = true
     override def toString = s"AgentEventsObserved(${EventId.toString(untilEventId)})"
   }
 

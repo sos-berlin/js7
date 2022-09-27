@@ -122,9 +122,10 @@ private[journal] final class JournalLogger(
       sb.append(stamped.value.key)
       sb.append(KeyedEvent.Arrow)
     }
-    sb.append(bold)
-    sb.append(stamped.value.event.toString.truncateWithEllipsis(200, firstLineOnly = true))
-    sb.append(resetColor)
+    val event = stamped.value.event
+    if (!event.isMinor) sb.append(bold)
+    sb.append(event.toString.truncateWithEllipsis(200, firstLineOnly = true))
+    if (!event.isMinor) sb.append(resetColor)
     logger.trace(sb.toString)
   }
 
