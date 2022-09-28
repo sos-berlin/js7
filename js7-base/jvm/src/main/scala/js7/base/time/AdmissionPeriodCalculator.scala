@@ -53,6 +53,10 @@ object AdmissionPeriodCalculator
 
       case period: MonthlyLastWeekdayPeriod =>
         new MonthlyLastWeekdayPeriodCalculator(period, dateOffset.toJava)
+
+      case period: SpecificDatePeriod =>
+        new SpecificDatePeriodCalculator(period, dateOffset.toJava)
+
     }
 
   private[time] case object AlwaysPeriodCalculator extends AdmissionPeriodCalculator
@@ -77,7 +81,7 @@ object AdmissionPeriodCalculator
   extends AdmissionPeriodCalculator
   {
     /** The calendar period may be something like a whole day, week or month. */
-    private[time] def calendarPeriodStart(local: LocalDateTime): LocalDateTime =
+    private[time] final def calendarPeriodStart(local: LocalDateTime): LocalDateTime =
       calendarPeriodStartWithoutDateOffset(local minus dateOffset) plus dateOffset
 
     final def hasAdmissionPeriodForDay(localDate: LocalDate) = {
@@ -254,6 +258,29 @@ object AdmissionPeriodCalculator
         admissionPeriod.secondOfWeek
       LocalDateTime.ofEpochSecond(second, 0, NoOffset)
     }
+  }
+
+  private[time] final class SpecificDatePeriodCalculator(
+    val admissionPeriod: SpecificDatePeriod,
+    val dateOffset: JDuration)
+  extends DayPeriodCalculator
+  {
+    private val localDateTime =
+      LocalDateTime.ofEpochSecond(admissionPeriod.secondsSinceLocalEpoch, 0, NoOffset)
+
+    protected def duration =
+      admissionPeriod.duration
+
+    def calendarPeriodStartWithoutDateOffset(ignore: LocalDateTime) =
+      localDateTime
+
+    def nextCalendarPeriodStart(local: LocalDateTime) = {
+      val next = admissionPeriodStart(local) + dateOffset
+      (local <= next) ? next
+    }
+
+    private[time] def admissionPeriodStart(local: LocalDateTime) =
+      localDateTime
   }
 
   private def endOfMonth(local: LocalDateTime): LocalDateTime =

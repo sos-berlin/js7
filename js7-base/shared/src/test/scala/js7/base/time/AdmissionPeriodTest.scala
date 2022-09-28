@@ -134,5 +134,18 @@ final class AdmissionPeriodTest extends OurTestSuite
         }""".checkedAs[AdmissionPeriod] ==
           Left(Problem("JSON DecodingFailure at : Duration must be positive: MonthlyLastWeekdayPeriod(2nd last Friday 03:00, -1s)")))
     }
+
+    "SpecificDatePeriod" in {
+      val epochMillis = 1664366400000L
+      assert(epochMillis == Timestamp("2022-09-28T12:00:00Z").toEpochMilli)
+      testJson[AdmissionPeriod](
+        SpecificDatePeriod(1664366400000L, 600.s),
+        json"""
+          {
+            "TYPE": "SpecificDatePeriod",
+            "secondsSinceLocalEpoch": 1664366400000,
+            "duration": 600
+          }""")
+    }
   }
 }

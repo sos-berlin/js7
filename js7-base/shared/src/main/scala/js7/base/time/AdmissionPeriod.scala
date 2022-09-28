@@ -1,7 +1,7 @@
 package js7.base.time
 
 import io.circe.generic.semiauto.deriveCodec
-import java.time.{DayOfWeek, LocalTime}
+import java.time.{DayOfWeek, LocalDateTime, LocalTime, ZoneOffset}
 import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
@@ -230,6 +230,20 @@ object MonthlyLastWeekdayPeriod {
     ).checked.orThrow
 }
 
+final case class SpecificDatePeriod(secondsSinceLocalEpoch: Long, duration: FiniteDuration)
+extends AdmissionPeriod
+{
+  override def pretty =
+    s"at $toString, ${duration.pretty}"
+}
+object SpecificDatePeriod {
+  @TestOnly
+  def apply(date: String, duration: FiniteDuration): SpecificDatePeriod =
+    new SpecificDatePeriod(
+      LocalDateTime.parse(date).toEpochSecond(ZoneOffset.ofTotalSeconds(0)),
+      duration)
+}
+
 object AdmissionPeriod
 {
   private[time] val DaySeconds = 24 * 3600
@@ -256,7 +270,8 @@ object AdmissionPeriod
     Subtype(deriveCodec[MonthlyDatePeriod].checked(_.checked)),
     Subtype(deriveCodec[MonthlyLastDatePeriod].checked(_.checked)),
     Subtype(deriveCodec[MonthlyWeekdayPeriod].checked(_.checked)),
-    Subtype(deriveCodec[MonthlyLastWeekdayPeriod].checked(_.checked)))
+    Subtype(deriveCodec[MonthlyLastWeekdayPeriod].checked(_.checked)),
+    Subtype(deriveCodec[SpecificDatePeriod]))
 
   intelliJuseImport(FiniteDurationJsonEncoder)
 }
