@@ -7,21 +7,21 @@ object Dependencies
 {
   val scalaVersion = "2.13.8"
 
-  val akkaVersion = "2.6.20"
-  val akkaHttpVersion = "10.2.10"
-  val slf4jVersion = "1.7.36"  // See also plugins.sbt
-  val log4jVersion = "2.18.0"  // See also plugins.sbt
+  val akkaVersion = "2.6.20"      // Do not update to v2.7, due to restrictive Akka licences!
+  val akkaHttpVersion = "10.2.10" // Do not update to v10.4, due to restrictive Akka licences!
+  val slf4jVersion = "2.0.2"  // See also plugins.sbt
+  val log4jVersion = "2.19.0"  // See also plugins.sbt
   val catsVersion = "2.8.0"
   val catsEffectVersion = "2.5.5"
   val izumiReflectVersion = "2.1.3"
   //val kittensVersion = "1.2.1"
   val catsParseVersion = "0.3.8"
   val fastparseVersion = "2.3.3"
-  val circeVersion = "0.14.2"
+  val circeVersion = "0.14.3"
   val circeGenericExtrasVersion = "0.14.1"
   val scalaTestVersion = "3.2.12"
   val scalaTestCheckVersion = "3.2.12.0"
-  val scalaCheckVersion= "1.16.0"
+  val scalaCheckVersion= "1.17.0"
   val sourcecodeVersion = "0.3.0"
   val disciplineVersion = "1.5.1"
   val disciplineScalaTestVersion = "2.2.0"
@@ -42,7 +42,7 @@ object Dependencies
   val lmaxDisruptor       = "com.lmax" % "disruptor" % "3.4.4"
   val log4j               = "org.apache.logging.log4j" % "log4j-api" % log4jVersion ::
                             "org.apache.logging.log4j" % "log4j-core" % log4jVersion ::
-                            "org.apache.logging.log4j" % "log4j-slf4j-impl" % log4jVersion ::
+                            "org.apache.logging.log4j" % "log4j-slf4j2-impl" % log4jVersion ::
                             /*jansi ::*/ Nil
 
   val scalaTest           = "org.scalatest" %% "scalatest" % scalaTestVersion ::
