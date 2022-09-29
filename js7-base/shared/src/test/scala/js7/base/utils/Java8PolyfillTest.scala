@@ -17,5 +17,9 @@ final class Java8PolyfillTest extends OurTestSuite
     assert(n == bytes.length)
   }
 
+  "javaVersion" in {
+    assert(javaVersion >= 8)
+  }
+
   java8Polyfill()
 }

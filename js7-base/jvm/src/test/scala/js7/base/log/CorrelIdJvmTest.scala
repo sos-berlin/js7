@@ -1,8 +1,10 @@
 package js7.base.log
 
 import cats.syntax.parallel.*
+import java.lang.Thread.currentThread
 import js7.base.log.CorrelId.current
 import js7.base.log.CorrelIdJvmTest.*
+import js7.base.system.Java8Polyfill.*
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.RichTask
@@ -46,28 +48,28 @@ final class CorrelIdJvmTest extends OurTestSuite with BeforeAndAfterAll
     // %X{js7.correlId} should show the same value as $current in the same line.
 
     "raw" in {
-      logger.info(s"${Thread.currentThread.getId} $current First line")
+      logger.info(s"${currentThread.threadId} $current First line")
     }
 
     "Synchronous (Unit)" in {
       val correlId = CorrelId("AAAAAAAA")
       correlId.bind {
-        logger.info(s"${Thread.currentThread.getId} $current Synchronous (Unit)")
+        logger.info(s"${currentThread.threadId} $current Synchronous (Unit)")
       }
-      logger.info(s"${Thread.currentThread.getId} $current Synchronous (Unit) — not bound")
+      logger.info(s"${currentThread.threadId} $current Synchronous (Unit) — not bound")
     }
 
     "Task.runToFuture" in {
       val correlId = CorrelId("BBBBBBBB")
       val task = Task {
-        logger.info(s"${Thread.currentThread.getId} $current Task.runToFuture")
+        logger.info(s"${currentThread.threadId} $current Task.runToFuture")
         assert(current == correlId)
       }
       val future = correlId.bind {
         task.runToFuture
       }
       future.await(99.s)
-      logger.info(s"${Thread.currentThread.getId} $current Task.runToFuture — not bound")
+      logger.info(s"${currentThread.threadId} $current Task.runToFuture — not bound")
     }
 
     "Task.runToFuture with Task.parSequence" in {
@@ -77,12 +79,12 @@ final class CorrelIdJvmTest extends OurTestSuite with BeforeAndAfterAll
           Task {
             sleep(10.ms)
             logger.info(
-              s"${Thread.currentThread.getId} $current Task.runToFuture parSequence $i a")
+              s"${currentThread.threadId} $current Task.runToFuture parSequence $i a")
             assert(current == correlId)
           } *>
           Task {
             logger.info(
-              s"${Thread.currentThread.getId} $current Task.runToFuture parSequence $i b")
+              s"${currentThread.threadId} $current Task.runToFuture parSequence $i b")
             assert(current == correlId)
           }
       )
@@ -91,21 +93,21 @@ final class CorrelIdJvmTest extends OurTestSuite with BeforeAndAfterAll
       }
       future.await(99.s)
       logger.info(
-        s"${Thread.currentThread.getId} $current Task.runToFuture parSequence — not bound")
+        s"${currentThread.threadId} $current Task.runToFuture parSequence — not bound")
     }
 
     "Future" in {
       val correlId = CorrelId("DDDDDDDD")
       val future = correlId.bind(
         Future {
-          logger.info(s"${Thread.currentThread.getId} $current Future 1")
+          logger.info(s"${currentThread.threadId} $current Future 1")
           assert(current == correlId)
         }.flatMap(_ => Future {
-          logger.info(s"${Thread.currentThread.getId} $current Future 2")
+          logger.info(s"${currentThread.threadId} $current Future 2")
           assert(current == correlId)
         }))
       future.await(99.s)
-      logger.info(s"${Thread.currentThread.getId} $current Future — not bound")
+      logger.info(s"${currentThread.threadId} $current Future — not bound")
     }
 
     "Task" in {
@@ -114,14 +116,14 @@ final class CorrelIdJvmTest extends OurTestSuite with BeforeAndAfterAll
         CorrelId("_WRONG__").bind {
           val task: Task[Unit] =
             correlId.bind(Task {
-              logger.info(s"${Thread.currentThread.getId} $current Task")
+              logger.info(s"${currentThread.threadId} $current Task")
               assert(current == correlId)
               ()
             })
           task.runToFuture
         }
       future.await(99.s)
-      logger.info(s"${Thread.currentThread.getId} $current Task — not bound")
+      logger.info(s"${currentThread.threadId} $current Task — not bound")
     }
   }
 
@@ -182,4 +184,6 @@ final class CorrelIdJvmTest extends OurTestSuite with BeforeAndAfterAll
 
 object CorrelIdJvmTest {
   private val logger = Logger[this.type]
+  java8Polyfill()
+
 }

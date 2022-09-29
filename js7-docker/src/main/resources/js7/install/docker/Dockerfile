@@ -1,4 +1,4 @@
-FROM openjdk:18
+FROM openjdk:19
 
 # Directory structure according to the Filesystem Hierarchy Standard, https://refspecs.linuxfoundation.org/FHS_3.0/fhs-3.0.pdf
 #   /opt/js7-VERSION/bin/

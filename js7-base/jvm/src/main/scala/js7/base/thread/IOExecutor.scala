@@ -5,6 +5,7 @@ import com.typesafe.config.Config
 import java.lang.Thread.currentThread
 import java.util.concurrent.{Executor, ThreadPoolExecutor}
 import js7.base.log.{CorrelId, Logger}
+import js7.base.system.Java8Polyfill.*
 import js7.base.thread.Futures.promiseFuture
 import js7.base.thread.IOExecutor.*
 import js7.base.thread.ThreadPoolsBase.newUnlimitedThreadPool
@@ -68,7 +69,7 @@ object IOExecutor
     Task(body) executeOn iox.scheduler
 
   private val uncaughtExceptionReporter: UncaughtExceptionReporter = { throwable =>
-    def msg = s"Uncaught exception in thread ${currentThread.getId} '${currentThread.getName}': ${throwable.toStringWithCauses}"
+    def msg = s"Uncaught exception in thread ${currentThread.threadId} '${currentThread.getName}': ${throwable.toStringWithCauses}"
     throwable match {
       case NonFatal(_) =>
         logger.error(msg, throwable.nullIfNoStackTrace)
@@ -79,4 +80,6 @@ object IOExecutor
         UncaughtExceptionReporter.default.reportFailure(throwable)
     }
   }
+
+  java8Polyfill()
 }

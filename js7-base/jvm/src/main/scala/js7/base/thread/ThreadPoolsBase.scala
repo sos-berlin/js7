@@ -2,6 +2,7 @@ package js7.base.thread
 
 import com.typesafe.config.Config
 import java.util.concurrent.{ArrayBlockingQueue, LinkedBlockingQueue, SynchronousQueue, ThreadFactory, ThreadPoolExecutor}
+import js7.base.system.Java8Polyfill.*
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.*
 import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
@@ -48,8 +49,10 @@ object ThreadPoolsBase
   private def myThreadFactory(name: String): ThreadFactory =
     runnable => {
       val thread = new Thread(runnable)
-      thread.setName(s"$name ${thread.getId}")
+      thread.setName(s"$name ${thread.threadId}")
       thread.setDaemon(true)  // Do it like Monix and Akka
       thread
     }
+
+  java8Polyfill()
 }

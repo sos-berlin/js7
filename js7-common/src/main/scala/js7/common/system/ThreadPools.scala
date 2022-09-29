@@ -6,6 +6,7 @@ import java.lang.Thread.currentThread
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.convert.As
 import js7.base.log.{CorrelId, Logger}
+import js7.base.system.Java8Polyfill.*
 import js7.base.thread.ThreadPoolsBase.newUnlimitedThreadPool
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.*
@@ -33,7 +34,7 @@ object ThreadPools
   }
 
   private val uncaughtExceptionReporter: UncaughtExceptionReporter = { throwable =>
-    def msg = s"Uncaught exception in thread ${currentThread.getId} '${currentThread.getName}': ${throwable.toStringWithCauses}"
+    def msg = s"Uncaught exception in thread ${currentThread.threadId} '${currentThread.getName}': ${throwable.toStringWithCauses}"
     throwable match {
       case _: akka.stream.StreamTcpException | _: akka.http.scaladsl.model.EntityStreamException =>
         // TODO Not sure how to handle or ignore an unexpectedly closed connection while reading a stream.
@@ -116,9 +117,9 @@ object ThreadPools
             logger.debug(s"awaitTermination(${shutdownTimeout.pretty}) timed out")
             Thread.getAllStackTraces.asScala
               .filter(_._1.getName startsWith myName)
-              .toSeq.sortBy(_._1.getId)
+              .toSeq.sortBy(_._1.threadId)
               .foreach { case (thread, stacktrace) =>
-                logger.debug(s"Thread #${thread.getId} ${thread.getName} ⏎" +
+                logger.debug(s"Thread #${thread.threadId} ${thread.getName} ⏎" +
                   stacktrace.map(o => s"\n  $o").mkString)
               }
           }
@@ -130,4 +131,6 @@ object ThreadPools
 
     CorrelId.enableScheduler(scheduler)
   }
+
+  java8Polyfill()
 }

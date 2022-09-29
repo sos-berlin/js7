@@ -12,6 +12,7 @@ import js7.base.io.file.FileUtils.{deleteDirectoryContentRecursively, temporaryD
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.{Log4j, Logger}
 import js7.base.problem.Checked.Ops
+import js7.base.system.Java8Polyfill.*
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
@@ -142,7 +143,7 @@ object TestControllerAgent
                       val notFinished = added - finished
                       val throughput = stopwatch.itemsPerSecondString(finished, "orders")
                       val cpu = getOperatingSystemMXBean match {
-                        case mx: com.sun.management.OperatingSystemMXBean => f"  ${(mx.getSystemCpuLoad * 100 + 0.5).toInt}%3d%% CPU"
+                        case mx: com.sun.management.OperatingSystemMXBean => f"  ${(mx.getCpuLoad * 100 + 0.5).toInt}%3d%% CPU"
                         case _ => ""
                       }
                       val line = f"$duration%-7s Δ$delta%-3d $diff%-12s  [$notFinished]  $throughput$cpu"
@@ -234,4 +235,7 @@ object TestControllerAgent
          |       --orders=${conf.orderGeneratorCount}
          |""".stripMargin
   }
+
+
+  java8Polyfill()
 }
