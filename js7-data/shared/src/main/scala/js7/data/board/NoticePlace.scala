@@ -47,10 +47,11 @@ extends Big
   def removeNotice: NoticePlace =
     copy(notice = None)
 
-  def startConsuming: NoticePlace =
+  def startConsuming(orderId: OrderId): NoticePlace =
     copy(
       noticeIsInConsumption = true,
-      consumptionCount = consumptionCount + 1)
+      consumptionCount = consumptionCount + 1,
+      expectingOrderIds = expectingOrderIds - orderId)
 
   def finishConsuming(succeeded: Boolean): NoticePlace = {
     val isLast = consumptionCount == 1

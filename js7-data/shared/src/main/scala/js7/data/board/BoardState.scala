@@ -89,14 +89,12 @@ extends UnsignedSimpleItemState
     order: Order[Order.State],
     consumingSeq: Vector[OrderNoticesConsumptionStarted.Consuming])
   : Checked[BoardState] = {
+    // We can consume a non-existent NoticeId, too, due to BoardExpression's or-operator
     val noticePlace = idToNotice.getOrElse(noticeId, NoticePlace(noticeId))
-      .startConsuming
     val consumptions = orderToConsumptions.getOrElse(order.id, Nil)
-    val consumption = Consumption(/*order.workflowPosition, */consumingSeq)
+    val consumption = Consumption(consumingSeq)
     Right(copy(
-      idToNotice = idToNotice.updated(noticeId,
-        noticePlace.copy(
-          expectingOrderIds = noticePlace.expectingOrderIds - order.id)),
+      idToNotice = idToNotice.updated(noticeId, noticePlace.startConsuming(order.id)),
       orderToConsumptions = orderToConsumptions.updated(order.id, consumption :: consumptions)))
   }
 
