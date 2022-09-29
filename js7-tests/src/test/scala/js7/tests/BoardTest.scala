@@ -21,10 +21,10 @@ import js7.data.controller.ControllerCommand.{CancelOrders, DeleteNotice, Resume
 import js7.data.item.ItemOperation.{AddVersion, DeleteSimple, RemoveVersioned}
 import js7.data.item.{ItemRevision, VersionId}
 import js7.data.order.Order.Fresh
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderNoticePosted, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderSuspended, OrderSuspensionMarked}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderNoticePosted, OrderNoticesExpected, OrderNoticesRead, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderSuspended, OrderSuspensionMarked}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.workflow.instructions.{ConsumeNotices, ExpectNotices, Fail, PostNotices}
+import js7.data.workflow.instructions.{ExpectNotices, PostNotices}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.BoardTest.*
@@ -364,157 +364,6 @@ with BlockingItemUpdater with TestMixins
       controllerApi.executeCommand(CancelOrders(Seq(expectingOrderId))).await(99.s).orThrow
       eventWatch.await[OrderCancelled](_.key == expectingOrderId)
     }
-  }
-
-  "ConsumeNotices" - {
-    "A single Order" in {
-      val workflow = updateItem(
-        Workflow(WorkflowPath("CONSUMING-SINGLE"), Seq(
-          ConsumeNotices(
-            boardPathExpr(s"'${board0.path.string}'"),
-            Workflow.of(TestJob.execute(agentPath))))))
-
-      val qualifier = "3333-01-01"
-      val noticeId = NoticeId(qualifier)
-
-      TestJob.reset()
-      val orderId = OrderId(s"#$qualifier#CONSUMING")
-      controllerApi
-        .addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
-        .await(99.s).orThrow
-      eventWatch.await[OrderNoticesExpected](_.key == orderId)
-
-      controllerApi.executeCommand(
-        ControllerCommand.PostNotice(board0.path, noticeId)
-      ).await(99.s).orThrow
-
-      eventWatch.await[OrderNoticesConsumptionStarted](_.key == orderId)
-
-      TestJob.continue()
-      eventWatch.await[OrderNoticesConsumed](_.key == orderId)
-
-      sleep(100.ms)
-      assert(controllerState.keyTo(BoardState)(board0.path).idToNotice.get(noticeId).isEmpty)
-
-      deleteItems(workflow.path)
-    }
-
-    "PostNotice while consuming an earlier notice" in {
-      val workflow = updateItem(
-        Workflow(WorkflowPath("POST-WHILE-CONSUMING"), Seq(
-          ConsumeNotices(
-            boardPathExpr(s"'${board0.path.string}'"),
-            Workflow.of(TestJob.execute(agentPath))))))
-
-      val qualifier = "3333-02-02"
-      val noticeId = NoticeId(qualifier)
-
-      controllerApi.executeCommand(
-        ControllerCommand.PostNotice(board0.path, noticeId)
-      ).await(99.s).orThrow
-
-      TestJob.reset()
-      TestJob.continue()
-      val orderId = OrderId(s"#$qualifier#CONSUMING")
-      controllerApi
-        .addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
-        .await(99.s).orThrow
-      eventWatch.await[OrderNoticesConsumptionStarted](_.key == orderId)
-
-      controllerApi.executeCommand(
-        ControllerCommand.PostNotice(board0.path, noticeId)
-      ).await(99.s).orThrow
-      eventWatch.await[OrderNoticesConsumed](_.key == orderId)
-
-      sleep(100.ms)
-      // The secondly posted Notice still exists:
-      assert(controllerState.keyTo(BoardState)(board0.path).idToNotice(noticeId).notice.isDefined)
-      assert(!controllerState.keyTo(BoardState)(board0.path).idToNotice(noticeId).noticeIsInConsumption)
-      assert(controllerState.keyTo(BoardState)(board0.path).idToNotice(noticeId).consumptionCount == 0)
-
-      deleteItems(workflow.path)
-    }
-
-    "Two concurrent ConsumeNotices" in {
-      val workflow = updateItem(
-        Workflow(WorkflowPath("CONSUMING-TWO-ORDERS"), Seq(
-          ConsumeNotices(
-            boardPathExpr(s"'${board0.path.string}'"),
-            Workflow.of(TestJob.execute(agentPath))))))
-
-      val qualifier = "3333-03-03"
-      val noticeId = NoticeId(qualifier)
-
-      TestJob.reset()
-      val aOrderId = OrderId(s"#$qualifier#CONSUMING-A")
-      val bOrderId = OrderId(s"#$qualifier#CONSUMING-B")
-
-      controllerApi.executeCommand(
-        ControllerCommand.PostNotice(board0.path, noticeId)
-      ).await(99.s).orThrow
-
-      for (orderId <- View(aOrderId, bOrderId)) {
-        controllerApi
-          .addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
-          .await(99.s).orThrow
-        eventWatch.await[OrderNoticesConsumptionStarted](_.key == orderId)
-      }
-
-      sleep(100.ms)
-      assert(controllerState.keyTo(BoardState)(board0.path).idToNotice(noticeId).noticeIsInConsumption)
-      assert(controllerState.keyTo(BoardState)(board0.path).idToNotice(noticeId).consumptionCount == 2)
-
-      TestJob.continue()
-      eventWatch.await[OrderNoticesConsumed](_.key == aOrderId)
-      sleep(100.ms)
-      assert(controllerState.keyTo(BoardState)(board0.path).idToNotice(noticeId).noticeIsInConsumption)
-      assert(controllerState.keyTo(BoardState)(board0.path).idToNotice(noticeId).consumptionCount == 1)
-
-      TestJob.continue()
-      eventWatch.await[OrderNoticesConsumed](_.key == aOrderId)
-      sleep(100.ms)
-      assert(controllerState.keyTo(BoardState)(board0.path).idToNotice.get(noticeId).isEmpty)
-
-      deleteItems(workflow.path)
-    }
-
-    "Failing ConsumeNotices block does not consume the Notice" in {
-      val workflow = updateItem(
-        Workflow(WorkflowPath("CONSUMING-FAILING"), Seq(
-          ConsumeNotices(
-            boardPathExpr(s"'${board0.path.string}'"),
-            Workflow.of(Fail())))))
-
-      val qualifier = "3333-04-04"
-      val noticeId = NoticeId(qualifier)
-
-      TestJob.reset()
-      val orderId = OrderId(s"#$qualifier#CONSUMING-FAILING")
-      controllerApi
-        .addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
-        .await(99.s).orThrow
-
-      controllerApi.executeCommand(
-        ControllerCommand.PostNotice(board0.path, noticeId)
-      ).await(99.s).orThrow
-
-      eventWatch.await[OrderNoticesConsumptionStarted](_.key == orderId)
-
-      TestJob.continue()
-      eventWatch.await[OrderNoticesConsumed](_.key == orderId)
-      eventWatch.await[OrderFailed](_.key == orderId)
-
-      sleep(100.ms)
-      assert(controllerState.keyTo(BoardState)(board0.path).idToNotice(noticeId).notice.isDefined)
-      assert(!controllerState.keyTo(BoardState)(board0.path).idToNotice(noticeId).noticeIsInConsumption)
-      assert(controllerState.keyTo(BoardState)(board0.path).idToNotice(noticeId).consumptionCount == 0)
-
-      controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
-      deleteItems(workflow.path)
-    }
-
-    "Cancel while in ConsumeNotices block" is pending
-    "Throw in ConsumeNotices block" is pending
   }
 
   "Update Board" in {

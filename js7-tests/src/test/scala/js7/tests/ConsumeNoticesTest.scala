@@ -9,12 +9,13 @@ import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPathExpressionParser.boardPathExpr
 import js7.data.board.{Board, BoardPath, BoardState, NoticeId}
-import js7.data.controller.ControllerCommand.{CancelOrders, PostNotice}
+import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, PostNotice}
 import js7.data.order.OrderEvent.OrderNoticesExpected.Expected
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderOperationCancelled, OrderProcessed, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.workflow.instructions.{ConsumeNotices, Fail}
+import js7.data.workflow.instructions.{ConsumeNotices, Fail, Prompt}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.ConsumeNoticesTest.*
@@ -42,7 +43,7 @@ with BlockingItemUpdater with TestMixins
   protected def items = Seq(board, board2)
 
   private val qualifiers = for (i <- Iterator.from(0)) yield
-    LocalDate.of(3333, 3, 1).plusDays(i).toString
+    LocalDate.of(3333, 1, 1).plusDays(i).toString
 
   "A single Order" in {
     // board2 is referenced but not required to have a Notice
@@ -295,6 +296,82 @@ with BlockingItemUpdater with TestMixins
       OrderDeleted))
   }
 
+  "Nested ConsumeNtocies" in {
+    val workflow = updateItem(
+      Workflow(WorkflowPath("CONSUMING-NESTED"), Seq(
+        ConsumeNotices(
+          boardPathExpr(s"'${board.path.string}'"),
+          Workflow.of(
+            ConsumeNotices(
+              boardPathExpr(s"'${board.path.string}' || '${board2.path.string}'"),
+              Workflow.of(
+                TestJob.execute(agentPath))),
+            Prompt(expr("'PROMPT'")))))))
+
+    val qualifier = qualifiers.next()
+    val noticeId = NoticeId(qualifier)
+
+    TestJob.reset()
+    val orderId = OrderId(s"#$qualifier#NESTED")
+    controllerApi
+      .addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+      .await(99.s).orThrow
+    eventWatch.await[OrderNoticesExpected](_.key == orderId)
+
+    controllerApi.executeCommand(
+      PostNotice(board.path, noticeId)
+    ).await(99.s).orThrow
+
+    eventWatch.await[OrderStdoutWritten](_.key == orderId)
+
+    sleep(100.ms)
+    assert(controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).notice.isDefined)
+    assert(controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).noticeIsInConsumption)
+    assert(controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).consumptionCount == 2)
+
+    assert(controllerState.keyTo(BoardState)(board2.path).idToNotice(noticeId).notice.isEmpty)
+    assert(controllerState.keyTo(BoardState)(board2.path).idToNotice(noticeId).noticeIsInConsumption)
+    assert(controllerState.keyTo(BoardState)(board2.path).idToNotice(noticeId).consumptionCount == 1)
+
+    TestJob.continue()
+    eventWatch.await[OrderPrompted](_.key == orderId)
+    assert(controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).notice.isDefined)
+    assert(controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).noticeIsInConsumption)
+    assert(controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).consumptionCount == 1)
+
+    assert(controllerState.keyTo(BoardState)(board2.path).idToNotice.get(noticeId).isEmpty)
+
+    controllerApi.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
+    eventWatch.await[OrderNoticesConsumed](_.key == orderId)
+
+    deleteItems(workflow.path)
+
+    assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
+      OrderAdded(workflow.id, deleteWhenTerminated = true),
+      OrderStarted,
+      OrderNoticesExpected(Vector(
+        Expected(board.path, noticeId))),
+      OrderNoticesConsumptionStarted(Vector(
+        Expected(board.path, noticeId))),
+      OrderNoticesConsumptionStarted(Vector(
+        Expected(board.path, noticeId),
+        Expected(board2.path, noticeId))),
+      OrderAttachable(agentPath),
+      OrderAttached(agentPath),
+      OrderProcessingStarted(subagentId),
+      OrderStdoutWritten("TestJob\n"),
+      OrderProcessed(Outcome.succeeded),
+      OrderMoved(Position(0) / "consumeNotices" % 0 / "consumeNotices" % 1),
+      OrderDetachable, OrderDetached,
+      OrderNoticesConsumed(),
+      OrderPrompted(StringValue("PROMPT")),
+      OrderPromptAnswered(),
+      OrderMoved(Position(0) / "consumeNotices" % 2),
+      OrderNoticesConsumed(),
+      OrderFinished,
+      OrderDeleted))
+  }
+
   "Failing ConsumeNotices block does not consume the Notice" in {
     val workflow = updateItem(
       Workflow(WorkflowPath("CONSUMING-FAILING"), Seq(
@@ -335,6 +412,49 @@ with BlockingItemUpdater with TestMixins
       OrderNoticesConsumptionStarted(Vector(Expected(board.path, noticeId))),
       OrderNoticesConsumed(true),
       OrderFailed(Position(0), Some(Outcome.failed)),
+      OrderCancelled,
+      OrderDeleted))
+  }
+
+  "Cancel while consuming a Notice and sticking in Promting" in {
+    val workflow = updateItem(
+      Workflow(WorkflowPath("CANCEL-WHILE-PROMPTING"), Seq(
+        ConsumeNotices(
+          boardPathExpr(s"'${board.path.string}'"),
+          Workflow.of(Prompt(expr("'PROMPT'")))))))
+
+    val qualifier = qualifiers.next()
+    val noticeId = NoticeId(qualifier)
+
+    val orderId = OrderId(s"#$qualifier#CANCEL-WHILE-PROMTING")
+    controllerApi
+      .addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+      .await(99.s).orThrow
+
+    controllerApi.executeCommand(
+      PostNotice(board.path, noticeId)
+    ).await(99.s).orThrow
+
+    eventWatch.await[OrderPrompted](_.key == orderId)
+    controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+
+    eventWatch.await[OrderNoticesConsumed](_.key == orderId)
+    eventWatch.await[OrderCancelled](_.key == orderId)
+
+    sleep(100.ms)
+    assert(controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).notice.isDefined)
+    assert(!controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).noticeIsInConsumption)
+    assert(controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).consumptionCount == 0)
+
+    deleteItems(workflow.path)
+    assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
+      OrderAdded(workflow.id, deleteWhenTerminated = true),
+      OrderStarted,
+      OrderNoticesExpected(Vector(Expected(board.path, noticeId))),
+      OrderNoticesConsumptionStarted(Vector(Expected(board.path, noticeId))),
+      OrderPrompted(StringValue("PROMPT")),
+      OrderOperationCancelled,
+      OrderNoticesConsumed(true),
       OrderCancelled,
       OrderDeleted))
   }
