@@ -15,7 +15,7 @@ final case class NoticePlace(
   noticeId: NoticeId,
   notice: Option[Notice] = None,
   expectingOrderIds: Set[OrderId] = Set.empty,
-  noticeIsInConsumption: Boolean = false,
+  isInConsumption: Boolean = false,
   consumptionCount: Int = 0)
 extends Big
 {
@@ -27,29 +27,29 @@ extends Big
   def isEmpty =
     notice.isEmpty &&
       expectingOrderIds.isEmpty &&
-      !noticeIsInConsumption &&
+      !isInConsumption &&
       consumptionCount == 0
 
   def toSnapshot(boardPath: BoardPath): Option[Snapshot] =
-    (noticeIsInConsumption || consumptionCount != 0) ?
-      Snapshot(boardPath, noticeId, noticeIsInConsumption, consumptionCount)
+    (isInConsumption || consumptionCount != 0) ?
+      Snapshot(boardPath, noticeId, isInConsumption, consumptionCount)
 
   def withSnapshot(snapshot: Snapshot): NoticePlace =
     copy(
-      noticeIsInConsumption = snapshot.noticeIsInConsumption,
+      isInConsumption = snapshot.isInConsumption,
       consumptionCount = snapshot.consumptionCount)
 
   def post(notice: Notice): NoticePlace =
     copy(
       notice = Some(notice),
-      noticeIsInConsumption = false)
+      isInConsumption = false)
 
   def removeNotice: NoticePlace =
     copy(notice = None)
 
   def startConsuming(orderId: OrderId): NoticePlace =
     copy(
-      noticeIsInConsumption = true,
+      isInConsumption = true,
       consumptionCount = consumptionCount + 1,
       expectingOrderIds = expectingOrderIds - orderId)
 
@@ -57,11 +57,11 @@ extends Big
     val isLast = consumptionCount == 1
     copy(
       notice =
-        if (succeeded && noticeIsInConsumption && isLast)
+        if (succeeded && isInConsumption && isLast)
           None
         else
           notice,
-      noticeIsInConsumption = !isLast,
+      isInConsumption = !isLast,
       consumptionCount = consumptionCount - 1)
   }
 }
@@ -71,7 +71,7 @@ object NoticePlace
   final case class Snapshot(
     boardPath: BoardPath,
     noticeId: NoticeId,
-    noticeIsInConsumption: Boolean,
+    isInConsumption: Boolean,
     consumptionCount: Int)
   extends BoardSnapshot
   object Snapshot {

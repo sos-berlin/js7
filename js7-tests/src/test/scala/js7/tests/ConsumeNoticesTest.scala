@@ -124,12 +124,12 @@ with BlockingItemUpdater with TestMixins
 
     sleep(100.ms)
     assert(controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).notice.isDefined)
-    assert(controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).noticeIsInConsumption)
+    assert(controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).isInConsumption)
     assert(controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).consumptionCount == 1)
 
-    // Notice in board2 is noticeIsInConsumption despite there was no notice
+    // Notice in board2 is isInConsumption despite there was no notice
     assert(controllerState.keyTo(BoardState)(board2.path).idToNotice(noticeId).notice.isEmpty)
-    assert(controllerState.keyTo(BoardState)(board2.path).idToNotice(noticeId).noticeIsInConsumption)
+    assert(controllerState.keyTo(BoardState)(board2.path).idToNotice(noticeId).isInConsumption)
     assert(controllerState.keyTo(BoardState)(board2.path).idToNotice(noticeId).consumptionCount == 1)
 
     controllerApi.executeCommand(
@@ -145,7 +145,7 @@ with BlockingItemUpdater with TestMixins
 
     // Notices posted at board2 while ConsumeNotices still exists:
     assert(controllerState.keyTo(BoardState)(board2.path).idToNotice(noticeId).notice.isDefined)
-    assert(!controllerState.keyTo(BoardState)(board2.path).idToNotice(noticeId).noticeIsInConsumption)
+    assert(!controllerState.keyTo(BoardState)(board2.path).idToNotice(noticeId).isInConsumption)
     assert(controllerState.keyTo(BoardState)(board2.path).idToNotice(noticeId).consumptionCount == 0)
 
     deleteItems(workflow.path)
@@ -201,7 +201,7 @@ with BlockingItemUpdater with TestMixins
     sleep(100.ms)
     // The secondly posted Notice still exists:
     assert(controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).notice.isDefined)
-    assert(!controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).noticeIsInConsumption)
+    assert(!controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).isInConsumption)
     assert(controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).consumptionCount == 0)
 
     deleteItems(workflow.path)
@@ -248,13 +248,13 @@ with BlockingItemUpdater with TestMixins
     }
 
     sleep(100.ms)
-    assert(controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).noticeIsInConsumption)
+    assert(controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).isInConsumption)
     assert(controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).consumptionCount == 2)
 
     TestJob.continue()
     eventWatch.await[OrderNoticesConsumed](_.key == aOrderId)
     sleep(100.ms)
-    assert(controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).noticeIsInConsumption)
+    assert(controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).isInConsumption)
     assert(controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).consumptionCount == 1)
 
     TestJob.continue()
@@ -326,17 +326,17 @@ with BlockingItemUpdater with TestMixins
 
     sleep(100.ms)
     assert(controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).notice.isDefined)
-    assert(controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).noticeIsInConsumption)
+    assert(controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).isInConsumption)
     assert(controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).consumptionCount == 2)
 
     assert(controllerState.keyTo(BoardState)(board2.path).idToNotice(noticeId).notice.isEmpty)
-    assert(controllerState.keyTo(BoardState)(board2.path).idToNotice(noticeId).noticeIsInConsumption)
+    assert(controllerState.keyTo(BoardState)(board2.path).idToNotice(noticeId).isInConsumption)
     assert(controllerState.keyTo(BoardState)(board2.path).idToNotice(noticeId).consumptionCount == 1)
 
     TestJob.continue()
     eventWatch.await[OrderPrompted](_.key == orderId)
     assert(controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).notice.isDefined)
-    assert(controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).noticeIsInConsumption)
+    assert(controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).isInConsumption)
     assert(controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).consumptionCount == 1)
 
     assert(controllerState.keyTo(BoardState)(board2.path).idToNotice.get(noticeId).isEmpty)
@@ -400,7 +400,7 @@ with BlockingItemUpdater with TestMixins
 
     sleep(100.ms)
     assert(controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).notice.isDefined)
-    assert(!controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).noticeIsInConsumption)
+    assert(!controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).isInConsumption)
     assert(controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).consumptionCount == 0)
 
     controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
@@ -443,7 +443,7 @@ with BlockingItemUpdater with TestMixins
 
     sleep(100.ms)
     assert(controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).notice.isDefined)
-    assert(!controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).noticeIsInConsumption)
+    assert(!controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).isInConsumption)
     assert(controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).consumptionCount == 0)
 
     deleteItems(workflow.path)

@@ -70,7 +70,7 @@ final class BoardStateTest extends OurAsyncTestSuite
     idToNotice = Map(
       NoticeId("NOTICE-1") -> NoticePlace(
         NoticeId("NOTICE-1"),
-        noticeIsInConsumption = true),
+        isInConsumption = true),
       NoticeId("NOTICE-2") -> NoticePlace(
         NoticeId("NOTICE-2"),
         Some(Notice(NoticeId("NOTICE-2"), boardPath, endOfLife = Timestamp.ofEpochSecond(123))),
@@ -103,13 +103,13 @@ final class BoardStateTest extends OurAsyncTestSuite
               "TYPE": "NoticePlace",
               "boardPath": "BOARD",
               "noticeId": "NOTICE-1",
-              "noticeIsInConsumption": true,
+              "isInConsumption": true,
               "consumptionCount": 0
             }""", json"""{
               "TYPE": "NoticePlace",
               "boardPath": "BOARD",
               "noticeId": "NOTICE-2",
-              "noticeIsInConsumption": false,
+              "isInConsumption": false,
               "consumptionCount": 7
             }""")))
         .runToFuture
