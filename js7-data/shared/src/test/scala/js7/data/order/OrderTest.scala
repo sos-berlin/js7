@@ -16,7 +16,7 @@ import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.job.{InternalExecutable, JobKey}
 import js7.data.lock.LockPath
 import js7.data.order.Order.{Attached, AttachedState, Attaching, BetweenCycles, Broken, Cancelled, DelayedAfterError, Detaching, ExpectingNotice, ExpectingNotices, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, InapplicableOrderEventProblem, IsFreshOrReady, Processed, Processing, ProcessingKilled, Prompting, Ready, State, WaitingForLock}
-import js7.data.order.OrderEvent.{LegacyOrderLockEvent, LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCatched, OrderCaught, OrderCoreEvent, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLocksAcquired, OrderLocksDequeued, OrderLocksQueued, OrderLocksReleased, OrderMoved, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead, OrderOrderAdded, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
+import js7.data.order.OrderEvent.{LegacyOrderLockEvent, LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCatched, OrderCaught, OrderCoreEvent, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLocksAcquired, OrderLocksDequeued, OrderLocksQueued, OrderLocksReleased, OrderMoved, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead, OrderOperationCancelled, OrderOrderAdded, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
 import js7.data.subagent.SubagentId
 import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -382,6 +382,7 @@ final class OrderTest extends OurTestSuite
 
       OrderCancellationMarked(CancellationMode.FreshOnly),
       OrderCancellationMarkedOnAgent,
+      OrderOperationCancelled,
       OrderCancelled,
       OrderSuspensionMarked(),
       OrderSuspensionMarkedOnAgent,
@@ -581,7 +582,8 @@ final class OrderTest extends OurTestSuite
         cancelMarkedAllowed[Prompting] orElse
         suspendMarkedAllowed[Prompting] orElse {
           case (_: OrderPromptAnswered, _, _, IsDetached) => _.isInstanceOf[Ready]
-          case (OrderCancelled        , _, _, IsDetached) => _.isInstanceOf[Cancelled]
+          case (OrderCancelled        , _, _, IsDetached) => _.isInstanceOf[Cancelled]  // COMPATIBLE with v2.4
+          case (OrderOperationCancelled, _, _, IsDetached) => _.isInstanceOf[Ready]
           case (_: OrderBroken        , _, _, _         ) => _.isInstanceOf[Broken]
         })
     }

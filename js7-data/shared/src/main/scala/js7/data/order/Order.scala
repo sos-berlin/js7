@@ -261,6 +261,14 @@ final case class Order[+S <: Order.State](
       case OrderCancellationMarkedOnAgent =>
         Right(this)
 
+      case OrderOperationCancelled =>
+        // Event is followed by OrderCancelled in the same transaction,
+        // maybe after some block-leaving events which rely on state == Ready.
+        check(state.isOperationCancelable && isDetached,
+          copy(
+            state = Ready,
+            mark = None))
+
       case OrderCancelled =>
         check(isCancelable && isDetached,
           copy(
@@ -632,9 +640,6 @@ final case class Order[+S <: Order.State](
      isState[Broken]) &&
     (isDetached || isAttached)
 
-  def isCancelling =
-    mark.exists(_.isInstanceOf[OrderMark.Cancelling])
-
   private def cleanMark: Option[OrderMark] =
     mark match {
       case Some(OrderMark.Cancelling(CancellationMode.FreshOnly)) if isStarted => None
@@ -731,6 +736,9 @@ object Order
 
   sealed trait State {
     def maybeDelayedUntil: Option[Timestamp] = None
+
+    /** Only if OrderOperationCancellable applies. */
+    def isOperationCancelable = false
   }
 
   object State {
@@ -818,7 +826,9 @@ object Order
   extends IsStarted
 
   final case class Prompting(question: Value)
-  extends IsStarted
+  extends IsStarted {
+    override def isOperationCancelable = true
+  }
 
   final case class BetweenCycles(cycleState: Option[CycleState])
   extends IsStarted

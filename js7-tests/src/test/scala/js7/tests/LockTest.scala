@@ -801,6 +801,7 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
       OrderStarted,
       OrderLocksAcquired(List(LockDemand(lockPath))),
       OrderPrompted(StringValue("PROMPT")),
+      OrderOperationCancelled,
       OrderLocksReleased(List(lockPath)),
       OrderCancelled,
       OrderDeleted))

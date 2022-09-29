@@ -318,6 +318,8 @@ object OrderEvent
   final case class OrderNoticesConsumed(failed: Boolean = false)
   extends OrderNoticeEvent
 
+  // Similar to OrderProcessingCancelled, but only for the Processing state.
+  // Maybe we want to differentiate between cancellation of an order and killing of a process.
   type OrderProcessingKilled = OrderProcessingKilled.type
   case object OrderProcessingKilled
   extends OrderActorEvent
@@ -423,6 +425,9 @@ object OrderEvent
   type OrderCancellationMarkedOnAgent = OrderCancellationMarkedOnAgent.type
   /** No other use than notifying an external user. */
   case object OrderCancellationMarkedOnAgent extends OrderActorEvent
+
+  type OrderOperationCancelled = OrderOperationCancelled.type
+  case object OrderOperationCancelled extends OrderActorEvent
 
   type OrderCancelled = OrderCancelled.type
   case object OrderCancelled extends OrderActorEvent with OrderTerminated
@@ -612,6 +617,7 @@ object OrderEvent
     Subtype(deriveCodec[OrderFailed]),
     Subtype(deriveCodec[OrderFailedInFork]),
     Subtype(deriveCodec[OrderCancellationMarked]),
+    Subtype(OrderOperationCancelled),
     Subtype(OrderCancellationMarkedOnAgent),
     Subtype(OrderCancelled),
     Subtype(deriveCodec[OrderAttached]),
