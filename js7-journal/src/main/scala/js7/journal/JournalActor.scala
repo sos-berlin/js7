@@ -87,6 +87,7 @@ extends Actor with Stash with JournalLogging
   private val waitingForAcknowledgeTimer = SerialCancelable()
   private var waitingForAcknowledgeSince = now
   private var switchedOver = false
+  private val statistics = new Statistics
 
   for (o <- conf.simulateSync) logger.warn(s"Disk sync is simulated with a ${o.pretty} pause")
   logger.whenTraceEnabled { logger.debug("Logger isTraceEnabled=true") }
@@ -104,7 +105,7 @@ extends Actor with Stash with JournalLogging
       eventWriter.close()
     }
     waitingForAcknowledgeTimer.cancel()
-    logger.debug("Stopped")
+    logger.debug(s"Stopped · ${statistics.logLine}")
     super.postStop()
   }
 
@@ -403,6 +404,7 @@ extends Actor with Stash with JournalLogging
         committedState = committedState.withEventId(eventId)
       }
 
+    for (p <- persistBuffer.iterator.take(n)) statistics.onPersisted(p.eventCount, p.since)
     persistBuffer.removeFirst(n)
     assertThat((lastAcknowledgedEventId == lastWrittenEventId) == persistBuffer.isEmpty)
   }
@@ -865,5 +867,34 @@ object JournalActor
     def isTransaction = false
     def lastStamped = None
     def isLastOfFlushedOrSynced = false
+  }
+
+  private class Statistics {
+    private var eventCount = 0L
+    private var persistCount = 0L
+    private var persistDurationMin = FiniteDuration.MaxValue.toMillis
+    private var persistDurationMax = 0L
+    private var persistDurationSum = 0L
+
+    def onPersisted(eventCount: Int, since: Deadline): Unit = {
+      this.eventCount += eventCount
+      persistCount += 1
+      val duration = since.elapsed.toNanos
+      persistDurationSum += duration
+      if (persistDurationMin > duration) persistDurationMin = duration
+      if (persistDurationMax < duration) persistDurationMax = duration
+    }
+
+    def logLine: String =
+      if (persistCount == 0)
+        ""
+      else
+        s"$persistCount persists" +
+          f" · $eventCount events (${1.0 * eventCount / persistCount}%.1f/persist)" +
+          s" ${persistDurationMin.ns.pretty}" +
+          s" ... ∅ ${persistDurationAvg.pretty}" +
+          s" ... ${persistDurationMax.ns.pretty}"
+
+    private def persistDurationAvg = (persistDurationSum / persistCount).ns
   }
 }

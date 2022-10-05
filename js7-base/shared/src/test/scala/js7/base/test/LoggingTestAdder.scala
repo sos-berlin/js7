@@ -60,8 +60,8 @@ private final class LoggingTestAdder(suiteName: String) {
       s"$successMarkup$succeededCount tests succeeded$resetColor" +
       (if (failedCount == 0) "" else s" · $failureMarkup💥 $failedCount failed$resetColor") +
       (if (pendingCount == 0) "" else s" · $pendingMarkup🚫 $pendingCount pending$resetColor") +
-      (if (failedCount == 0 && pendingCount == 0) s"$successMarkup ✔︎$resetColor" else "") +
-      " · " + since.elapsed.pretty)
+      (if (failedCount == 0 && pendingCount == 0) s" $successMarkup✔︎$resetColor " else " · ") +
+      since.elapsed.pretty + "\n")
   }
 }
 
@@ -125,7 +125,7 @@ private object LoggingTestAdder {
   }
 
   private def delayBeforeEnd() =
-    if (isIntelliJIdea) sleep(1.ms)
+    if (false && isIntelliJIdea) sleep(1.ms)
 
   /** Because ScalaLogging String interpolation may let the
    * IntellijJScala plugin intersperse a '\n'. */
