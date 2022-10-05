@@ -455,7 +455,7 @@ object OrderEventSource {
       case _ => event
     }
 
-  def leaveBlocks(workflow: Workflow, order: Order[Order.State], catchable: Boolean)
+  private def leaveBlocks(workflow: Workflow, order: Order[Order.State], catchable: Boolean)
     (toEvent: PartialFunction[(Option[BranchId], Position), OrderActorEvent])
   : Checked[List[OrderActorEvent]] =
     catchNonFatalFlatten {

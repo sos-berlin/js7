@@ -46,8 +46,6 @@ trait OrderScopes
   /** For `Order[Order.State]`. */
   final lazy val pureOrderScope =
     OrderVariablesScope(order, workflow) |+| variablelessOrderScope
-
-  protected[scopes] lazy val nowScope = new NowScope()
 }
 
 object OrderScopes
@@ -101,6 +99,8 @@ trait ProcessingOrderScopes extends OrderScopes
   protected val jobResources: Seq[JobResource]
   protected val fileValueScope: Scope
 
+  protected[scopes] lazy val nowScope = new NowScope()
+
   final lazy val simpleJobName: String =
     jobKey match {
       case JobKey.Named(_, name) => name.string
@@ -137,8 +137,4 @@ trait ProcessingOrderScopes extends OrderScopes
   protected[scopes] final def evalLazilyJobDefaultArguments(expressionMap: MapView[String, Expression])
   : MapView[String, Checked[Value]] =
     evalLazilyExpressions(expressionMap.view)(scopeForOrderDefaultArguments)
-
-  final def evalLazilyJobResourceEnv(jobResource: JobResource): MapView[String, Checked[String]] =
-    evalLazilyExpressions(jobResource.env.view)(scopeForJobResources)
-      .mapValues(_.flatMap(_.toStringValueString))
 }

@@ -1,5 +1,6 @@
 package js7.subagent
 
+import cats.effect.Resource
 import cats.syntax.foldable.*
 import cats.syntax.traverse.*
 import java.util.Objects.requireNonNull
@@ -83,53 +84,60 @@ final class JobDriver(
       val entry = new Entry(order.id)
       Task.pure(checkedJobLauncher)
         .flatMapT(jobLauncher => orderToProcess.insert(order.id, entry)
-          // Read JobResources each time because they may change at any time
-          .flatMapT(_ => Task.pure(jobConf.jobResourcePaths.traverse(pathToJobResource)))
-          .flatMapT(jobResources =>
-            ProcessOrder
-              .resource(
-                order, workflow, jobKey, jobResources,
-                workflowJob.defaultArguments ++ defaultArguments,
-                jobConf.controllerId, stdObservers,
-                fileValueState)
-              .use(processOrder =>
-                jobLauncher.startIfNeeded
-                  .flatMapT(_ => jobLauncher.toOrderProcess(processOrder))
-                  .flatMapT { orderProcess =>
-                    entry.orderProcess = Some(orderProcess)
-                    // Start the orderProcess. The future completes the stdObservers (stdout, stderr)
-                    orderProcess.start(processOrder.stdObservers)
-                      .flatMap { runningProcess =>
-                        val whenCompleted = runningProcess.runToFuture
-                        entry.terminated.completeWith(whenCompleted)
-                        val maybeKillAfterStart = entry.killSignal.traverse(killOrder(entry, _))
-                        val awaitTermination = Task.defer {
-                          entry.runningSince = scheduler.now
-                          scheduleTimeout(entry)
-                          Task
-                            .fromFuture(whenCompleted)
-                            .map(entry.modifyOutcome)
-                            .map {
-                              case outcome: Succeeded =>
-                                readErrorLine(processOrder).getOrElse(outcome)
-                              case outcome => outcome
-                            }
+          .flatMapT(_ => Task.pure(processOrderResource(order, defaultArguments, stdObservers)))
+          .flatMapT(_.use(processOrder =>
+            jobLauncher.startIfNeeded
+              .flatMapT(_ => jobLauncher.toOrderProcess(processOrder))
+              .flatMapT { orderProcess =>
+                entry.orderProcess = Some(orderProcess)
+                // Start the orderProcess. The future completes the stdObservers (stdout, stderr)
+                orderProcess.start(processOrder.stdObservers)
+                  .flatMap { runningProcess =>
+                    val whenCompleted = runningProcess.runToFuture
+                    entry.terminated.completeWith(whenCompleted)
+                    val maybeKillAfterStart = entry.killSignal.traverse(killOrder(entry, _))
+                    val awaitTermination = Task.defer {
+                      entry.runningSince = scheduler.now
+                      scheduleTimeout(entry)
+                      Task
+                        .fromFuture(whenCompleted)
+                        .map(entry.modifyOutcome)
+                        .map {
+                          case outcome: Succeeded =>
+                            readErrorLine(processOrder).getOrElse(outcome)
+                          case outcome => outcome
                         }
-                        Task.parMap2(maybeKillAfterStart, awaitTermination)((_, outcome) => outcome)
-                      }
-                      .onErrorHandle { t =>
-                        logger.error(s"${order.id}: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
-                        Outcome.Failed.fromThrowable(t)
-                      }
-                      .map(Right(_))
-                  })))
-      .materializeIntoChecked
-      .map {
-        case Left(problem) => Outcome.Disrupted(problem)
-        case Right(outcome) => outcome
-      }
-      .guarantee(removeEntry(entry))
+                    }
+                    Task.parMap2(maybeKillAfterStart, awaitTermination)((_, outcome) => outcome)
+                  }
+                  .onErrorHandle { t =>
+                    logger.error(s"${order.id}: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+                    Outcome.Failed.fromThrowable(t)
+                  }
+                  .map(Right(_))
+              })))
+        .materializeIntoChecked
+        .map {
+          case Left(problem) => Outcome.Disrupted(problem)
+          case Right(outcome) => outcome
+        }
+        .guarantee(removeEntry(entry))
     }
+
+  private def processOrderResource(
+    order: Order[Order.Processing],
+    defaultArguments: Map[String, Expression],
+    stdObservers: StdObservers)
+  : Checked[Resource[Task, ProcessOrder]] =
+    checkedJobLauncher
+      // Read JobResources each time because they may change at any time
+      .flatMap(_ => jobConf.jobResourcePaths.traverse(pathToJobResource))
+      .map(jobResources =>
+        ProcessOrder.resource(
+          order, workflow, jobKey, jobResources,
+          workflowJob.defaultArguments ++ defaultArguments,
+          jobConf.controllerId, stdObservers,
+          fileValueState))
 
   private def scheduleTimeout(entry: Entry): Unit = {
     requireNonNull(entry.runningSince)

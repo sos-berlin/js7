@@ -296,7 +296,7 @@ with BlockingItemUpdater with TestMixins
       OrderDeleted))
   }
 
-  "Nested ConsumeNtocies" in {
+  "Nested ConsumeNotcies" in {
     val workflow = updateItem(
       Workflow(WorkflowPath("CONSUMING-NESTED"), Seq(
         ConsumeNotices(
@@ -335,6 +335,7 @@ with BlockingItemUpdater with TestMixins
 
     TestJob.continue()
     eventWatch.await[OrderPrompted](_.key == orderId)
+    sleep(100.ms)
     assert(controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).notice.isDefined)
     assert(controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).isInConsumption)
     assert(controllerState.keyTo(BoardState)(board.path).idToNotice(noticeId).consumptionCount == 1)

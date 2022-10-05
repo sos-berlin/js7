@@ -375,7 +375,7 @@ with TrivialItemState[Workflow]
       val anonymousJobKeys = workflow.numberedInstructions.view.collect {
         case (nr, _ @: (ex: Execute.Anonymous)) => JobKey.Anonymous(workflowBranchPath / nr) -> ex.job
       }
-      (namedJobKeys ++ anonymousJobKeys).toVector: Seq[(JobKey, WorkflowJob)]/*for IntelliJ*/
+      namedJobKeys ++ anonymousJobKeys
     }
 
   def checkedWorkflowJob(position: Position): Checked[WorkflowJob] =

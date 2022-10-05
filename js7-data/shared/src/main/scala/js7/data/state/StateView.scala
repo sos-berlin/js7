@@ -158,7 +158,7 @@ trait StateView extends ItemContainer
       .exists(_.item.suspended)
 
   /** A pure (stable, repeatable) Scope. */
-  final def toPureScope(order: Order[Order.State]): Checked[Scope] =
+  final def toPureOrderScope(order: Order[Order.State]): Checked[Scope] =
     for (orderScopes <- toOrderScopes(order)) yield
       orderScopes.pureOrderScope
 

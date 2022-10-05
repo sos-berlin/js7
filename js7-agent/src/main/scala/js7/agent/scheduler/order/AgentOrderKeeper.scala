@@ -710,7 +710,7 @@ final class AgentOrderKeeper(
             catch { case NonFatal(t) => logger.error(
               s"$orderId_ <-: ${event.toShortString} => ${t.toStringWithCauses}")
             }
-          // TODO Not awaiting the response may lead to duplicate events
+            // TODO Not awaiting the response may lead to duplicate events
             //  for example when OrderSuspensionMarked is emitted after OrderProcessed and before OrderMoved.
             //  Then, two OrderMoved are emitted, because the second event is based on the same Order state.
         }
