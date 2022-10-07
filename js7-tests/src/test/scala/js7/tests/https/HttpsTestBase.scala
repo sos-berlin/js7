@@ -98,6 +98,7 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest wit
   }
 
   private lazy val clientKeyStore = createTempFile(getClass.getSimpleName + "-keystore-", ".p12")
+  protected def clientKeyAlias: Option[String] = None
 
   private lazy val backupDirectoryProvider = new DirectoryProvider(
     Nil,
@@ -138,11 +139,13 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest wit
     config,
     HttpsConfig(
       keyStoreRef = Some(KeyStoreRef(clientKeyStore,
+        alias = clientKeyAlias,
         storePassword = SecretString("jobscheduler"),
         keyPassword = SecretString("jobscheduler"))),
-    trustStoreRefs = ExportedControllerTrustStoreRef :: Nil)
+      trustStoreRefs = ExportedControllerTrustStoreRef :: Nil)
   ).closeWithCloser
 
+  protected def serverKeyAlias: Option[String] = None
   override protected final def agentHttps = true
   protected final val agentPaths = AgentPath("TEST-AGENT") :: Nil
   protected final val items = Seq(TestWorkflow)

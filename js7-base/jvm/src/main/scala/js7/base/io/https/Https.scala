@@ -3,7 +3,7 @@ package js7.base.io.https
 import java.io.InputStream
 import java.security.KeyStore
 import java.security.cert.{Certificate, CertificateFactory, X509Certificate}
-import javax.net.ssl.{KeyManager, KeyManagerFactory, SSLContext, TrustManagerFactory, X509TrustManager}
+import javax.net.ssl.{KeyManager, KeyManagerFactory, SSLContext, TrustManagerFactory, X509ExtendedKeyManager, X509KeyManager, X509TrustManager}
 import js7.base.crypt.x509.X509Cert
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
@@ -35,22 +35,48 @@ object Https
   private val PemHeader = ByteArray("-----BEGIN CERTIFICATE-----")
   private val algorithm = KeyManagerFactory.getDefaultAlgorithm  // "SunX509", but for IBM Java: "IbmX509"
 
-  logger.debug("algorithm=" + algorithm)
+  logger.debug(s"algorithm=$algorithm")
 
   def loadSSLContext(
     keyStoreRef: Option[KeyStoreRef] = None,
     trustStoreRefs: Seq[TrustStoreRef] = Nil)
   : SSLContext = {
-    val keyManagers = keyStoreRef match {
-      case None => Array.empty[KeyManager]
-      case Some(ref) =>
-        val keyStore = loadKeyStore(ref, "private")
-        val factory = KeyManagerFactory.getInstance(algorithm)
-        ref.keyPassword.provideCharArray(
-          factory.init(keyStore, _))
-        factory.getKeyManagers
-    }
-    val trustManagers = trustStoreRefs
+    val keyManagers = keyStoreRef.fold(Array.empty[KeyManager])(keyStoreRefToKeyManagers)
+    val trustManagers = trustStoreRefToKeyManagers(trustStoreRefs)
+    val sslContext = SSLContext.getInstance("TLS")
+    sslContext.init(
+      keyManagers,
+      Array(CompositeX509TrustManager(trustManagers)),
+      null)
+    sslContext
+  }
+
+  private def keyStoreRefToKeyManagers(ref: KeyStoreRef): Array[KeyManager] = {
+    val keyStore = loadKeyStore(ref, "private")
+    for (a <- ref.alias) if (!keyStore.containsAlias(a)) throw new IllegalArgumentException(
+      s"Unknown alias=$a for $ref - known aliases: ${keyStore.aliases.asScala.mkString(", ")}")
+    val factory = KeyManagerFactory.getInstance(algorithm)
+    ref.keyPassword.provideCharArray(
+      factory.init(keyStore, _))
+    val keyManagers = factory.getKeyManagers
+
+    ref.alias.fold(keyManagers)(a =>
+      keyManagers.map {
+        case km: X509ExtendedKeyManager =>
+          new OneAliasX509ExtendedX509KeyManager(km, a)
+
+        case km: X509KeyManager =>
+          new OneAliasX509KeyManager
+          {
+            val keyManager = km
+            val alias = a
+          }
+        case o => o
+      })
+  }
+
+  private def trustStoreRefToKeyManagers(trustStoreRefs: Seq[TrustStoreRef]): Seq[X509TrustManager] =
+    trustStoreRefs
       .flatMap { trustStoreRef =>
         val factory = TrustManagerFactory.getInstance(algorithm)
         factory.init(loadKeyStore(trustStoreRef, "trust"))
@@ -63,10 +89,6 @@ object Https
           None
       }
       .flatten
-    val sslContext = SSLContext.getInstance("TLS")
-    sslContext.init(keyManagers, Array(CompositeX509TrustManager(trustManagers)), null)
-    sslContext
-  }
 
   private def loadKeyStore(storeRef: StoreRef, kind: String): KeyStore =
     autoClosing(storeRef.url.openStream())(

@@ -13,6 +13,7 @@ import js7.base.problem.Checked
   */
 final case class KeyStoreRef(
   url: URL,
+  alias: Option[String],
   /** Password for file */
   storePassword: SecretString,
   /** PKCS#12 key password */
@@ -26,11 +27,12 @@ object KeyStoreRef
 {
   def apply(
     file: Path,
+    alias: Option[String] = None,
     /** Password for file */
     storePassword: SecretString,
     /** PKCS#12 key password */
     keyPassword: SecretString)
-  = new KeyStoreRef(file.toUri.toURL, storePassword, keyPassword)
+  = new KeyStoreRef(file.toUri.toURL, alias, storePassword, keyPassword)
 
   def clientFromConfig(config: Config, configDirectory: Path): Checked[KeyStoreRef] =
     if (config.hasPath("js7.web.https.client-keystore"))
@@ -46,6 +48,7 @@ object KeyStoreRef
       Right(
         KeyStoreRef(
           subconfig.as[Path]("file", defaultFile).toAbsolutePath,
+          subconfig.optionAs[String]("alias"),
           storePassword = subconfig.as[SecretString](path),
           keyPassword = subconfig.as[SecretString]("key-password"))))
 }
