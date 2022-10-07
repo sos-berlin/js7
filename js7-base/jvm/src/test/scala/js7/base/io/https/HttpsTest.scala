@@ -47,7 +47,6 @@ final class HttpsTest extends OurTestSuite
     Seq("openssl", "req", "-batch", "-x509", "-newkey", "rsa:1024", "-days", "2", "-nodes",
               "-subj", principal, "-keyout", keyFile.toString)
 
-
   "Read PKCS #12" in {
     withTemporaryDirectory("HttpsTest-") { dir =>
       val cmd = s"$openssl req -batch -x509 -newkey rsa:1024 -days 2 -nodes -subj '/CN=localhost' " +

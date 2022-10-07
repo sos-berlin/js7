@@ -179,7 +179,6 @@ private[https] object HttpsTestBase
    */
   private val ClientKeyStoreResource = JavaResource("js7/tests/https/resources/private/client-https-keystore.p12")
   private val ExportedClientTrustStoreResource = JavaResource("js7/tests/https/resources/export/client-https-truststore.p12")
-  val ClientKeyStoreRef = KeyStoreRef(ClientKeyStoreResource.url, SecretString("jobscheduler"), SecretString("jobscheduler"))
 
   /* js7-common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh \
         --alias=backup-controller \

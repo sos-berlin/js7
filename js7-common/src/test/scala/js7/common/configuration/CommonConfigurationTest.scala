@@ -44,28 +44,28 @@ final class CommonConfigurationTest extends OurTestSuite
     assert(conf("--https-port=1234").webServerBindings == List(WebServerBinding.Https(
       new InetSocketAddress("0.0.0.0", 1234),
       KeyStoreRef(
-        url = (config / "private/https-keystore.p12").toUri.toURL,
+        (config / "private/https-keystore.p12"),
         storePassword = SecretString("KEYSTORE-STORE-PASSWORD"),
         keyPassword = SecretString("KEYSTORE-KEY-PASSWORD")),
       List(
         TrustStoreRef(
-          url = (config / "private/https-truststore.p12").toUri.toURL,
+          (config / "private/https-truststore.p12"),
           storePassword = SecretString("TRUSTSTORE-PASSWORD")),
         TrustStoreRef(
-          url = (config / "private/second-https-truststore.p12").toUri.toURL,
+          (config / "private/second-https-truststore.p12"),
           storePassword = SecretString("SECOND-TRUSTSTORE-PASSWORD"))))))
     assert(conf("--https-port=11.22.33.44:1234").webServerBindings == List(WebServerBinding.Https(
       new InetSocketAddress("11.22.33.44", 1234),
       KeyStoreRef(
-        url = (config / "private/https-keystore.p12").toUri.toURL,
+        (config / "private/https-keystore.p12"),
         storePassword = SecretString("KEYSTORE-STORE-PASSWORD"),
         keyPassword = SecretString("KEYSTORE-KEY-PASSWORD")),
       List(
         TrustStoreRef(
-          url = (config / "private/https-truststore.p12").toUri.toURL,
+          (config / "private/https-truststore.p12"),
           storePassword = SecretString("TRUSTSTORE-PASSWORD")),
         TrustStoreRef(
-          url = (config / "private/second-https-truststore.p12").toUri.toURL,
+          (config / "private/second-https-truststore.p12"),
           storePassword = SecretString("SECOND-TRUSTSTORE-PASSWORD"))))))
   }
 }

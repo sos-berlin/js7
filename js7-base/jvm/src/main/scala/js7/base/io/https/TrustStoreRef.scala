@@ -24,8 +24,8 @@ object TrustStoreRef
 {
   private val configKey = "js7.web.https.truststores"
 
-  def apply(file: Path, password: SecretString): TrustStoreRef =
-    new TrustStoreRef(file.toAbsolutePath.toUri.toURL, password)
+  def apply(file: Path, storePassword: SecretString): TrustStoreRef =
+    new TrustStoreRef(file.toAbsolutePath.toUri.toURL, storePassword)
 
   def fromConfig(config: Config): Seq[TrustStoreRef] =
     if (!config.hasPath(configKey))
@@ -37,7 +37,8 @@ object TrustStoreRef
         .map(obj =>
           TrustStoreRef(
             file = obj.toConfig.as[Path]("file"),
-            password = obj.toConfig.as[SecretString]("store-password", SecretString.empty)))
+            storePassword =
+              obj.toConfig.as[SecretString]("store-password", SecretString.empty)))
 
   def fromKeyStore(keyStoreRef: KeyStoreRef): TrustStoreRef =
     new TrustStoreRef(keyStoreRef.url, keyStoreRef.storePassword)

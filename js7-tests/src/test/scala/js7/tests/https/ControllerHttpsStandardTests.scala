@@ -38,7 +38,10 @@ private[https] trait ControllerHttpsStandardTests extends HttpsTestBase
     assert(controller.localUri.string startsWith "https://")
   }
 
-  protected def addTestsForCredentials(credentials: Option[UserAndPassword]): Unit = {
+  protected def addTestsForCredentials(
+    credentials: Option[UserAndPassword] = standardUserAndPassword)
+  : Unit =
+  "Standard tests" - {
     "overview" in {
       val overview = httpControllerApi.overview await 99.s
       assert(overview.buildId == BuildInfo.buildId)
@@ -56,9 +59,5 @@ private[https] trait ControllerHttpsStandardTests extends HttpsTestBase
     "logout" in {
       httpControllerApi.logout() await 99.s
     }
-  }
-
-  "Standard tests" - {
-    addTestsForCredentials(standardUserAndPassword)
   }
 }

@@ -33,4 +33,6 @@ final class ControllerClientSideHttpsTest extends ControllerHttpsStandardTests
       }
     }
   }
+
+  addTestsForCredentials()
 }

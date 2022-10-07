@@ -82,4 +82,6 @@ final class ControllerClientSideMultiUserHttpsTest extends ControllerHttpsStanda
         e.problem == Some(Problem("HTTP user does not match UserIds allowed by HTTPS client distinguished name")))
     }
   }
+
+  addTestsForCredentials()
 }
