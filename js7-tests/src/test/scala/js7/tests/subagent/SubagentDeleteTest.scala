@@ -154,7 +154,6 @@ final class SubagentDeleteTest extends OurTestSuite with SubagentTester
         .orThrow
 
       // RESTART DIRECTOR
-
       myAgent.terminate().await(99.s)
       eventId = eventWatch.lastAddedEventId
       myAgent = directoryProvider.startAgent(agentPath).await(99.s)

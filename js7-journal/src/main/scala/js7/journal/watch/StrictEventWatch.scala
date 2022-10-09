@@ -63,6 +63,19 @@ final class StrictEventWatch(val underlying: FileEventWatch)
 
   /** TEST ONLY - Blocking. */
   @TestOnly
+  def expect[E <: Event : ClassTag, A](
+    predicate: KeyedEvent[E] => Boolean = Every,
+    timeout: FiniteDuration = 99.s)
+    (body: => A)
+    (implicit s: Scheduler, E: Tag[E])
+  : Vector[Stamped[KeyedEvent[E]]] = {
+    val eventId = lastAddedEventId
+    body
+    await(predicate, after = eventId, timeout)
+  }
+
+  /** TEST ONLY - Blocking. */
+  @TestOnly
   def eventsByKey[E <: Event: ClassTag: Tag](key: E#Key, after: EventId = tornEventId)
     (implicit s: Scheduler)
   : Seq[E] =

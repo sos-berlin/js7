@@ -6,6 +6,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.log.Logger
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsTestUtils.BlockingTaskResource
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
@@ -56,22 +57,20 @@ trait SubagentTester extends ControllerAgentForScalaTest
     awaitDedicated: Boolean = true,
     suppressSignatureKeys: Boolean = false)
     (body: BareSubagent => A)
-  : A = {
-    val (subagent, release) = subagentResource(subagentItem,
+  : A =
+    subagentResource(subagentItem,
       config = config,
       suffix = suffix,
       awaitDedicated = awaitDedicated,
       suppressSignatureKeys = suppressSignatureKeys
-    ).allocated.await(99.s)
-
-    // body runs in the callers test thread
-    try body(subagent)
-    catch { case NonFatal(t) =>
-      logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)
-      throw t
-    } finally
-      release.await(99.s)
-  }
+    ).blockingUse(99.s) { subagent =>
+      // body runs in the callers test thread
+      try body(subagent)
+      catch { case NonFatal(t) =>
+        logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)
+        throw t
+      }
+    }
 
   protected final def subagentResource(
     subagentItem: SubagentItem,

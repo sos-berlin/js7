@@ -15,6 +15,7 @@ import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.CatsTestUtils.BlockingTaskResource
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.value.expression.Expression
 import js7.data.value.expression.Expression.{Argument, StringConstant}
@@ -30,12 +31,12 @@ final class FileValueScopeTest extends OurTestSuite
   "IOException" in {
     val dir = Paths.get("/tmp/FileValueScopeTest-NonExistant")
     autoClosing(new FileValueState(dir)) { fileValueState =>
-      val (fileValueScope, release) = FileValueScope.resource(fileValueState).allocated.await(99.s)
-      assert(
-        toFile(fileValueScope, Seq("CONTENT"))
-          .left
-          .exists(_.throwable.isInstanceOf[IOException]))
-      release.await(99.s)
+      FileValueScope.resource(fileValueState).blockingUse(99.s) { fileValueScope =>
+        assert(
+          toFile(fileValueScope, Seq("CONTENT"))
+            .left
+            .exists(_.throwable.isInstanceOf[IOException]))
+      }
     }
   }
 

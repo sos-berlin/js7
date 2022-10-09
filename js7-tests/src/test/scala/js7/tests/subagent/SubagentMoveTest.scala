@@ -30,66 +30,63 @@ final class SubagentMoveTest extends OurTestSuite with SubagentTester
     bareSubagentItem.copy(uri = Uri("http://localhost:" + findFreeTcpPort()))
 
   "Restart Subagent at another URI" in {
-    // Start bareSubagent
-    val (bareSubagent, bareSubagentRelease) = subagentResource(bareSubagentItem, awaitDedicated = false)
-      .allocated.await(99.s)
-
-    val aOrderId = OrderId("A-MOVE-SUBAGENT")
-    var eventId = eventWatch.lastAddedEventId
-    locally {
-      controllerApi.addOrder(FreshOrder(aOrderId, workflow.path)).await(99.s).orThrow
-      val processingStarted = eventWatch
-        .await[OrderProcessingStarted](_.key == aOrderId, after = eventId).head.value.event
-      assert(processingStarted == OrderProcessingStarted(bareSubagentItem.id))
-      eventWatch.await[OrderStdoutWritten](_.key == aOrderId, after = eventId)
-      // aOrderId is waiting for semaphore
-    }
-
-    eventId = eventWatch.lastAddedEventId
-    //val agentEventId = myAgent.eventWatch.lastAddedEventId
-    controllerApi.updateItems(Observable(AddOrChangeSimple(bare1SubagentItem)))
-      .await(99.s).orThrow
-    //myAgent.eventWatch.await[ItemAttachedToMe](_.event.item.key == bare1SubagentItem.id,
-    //  after = agentEventId)
-    //myAgent.eventWatch.await[SubagentCouplingFailed](_.key == bare1SubagentItem.id, after = agentEventId)
-
-    // Start the replacing c1Subagent while the previous bareSubagent is still running
-    runSubagent(bare1SubagentItem, suffix = "-1") { _ =>
-      val aProcessed = eventWatch.await[OrderProcessed](_.key == aOrderId, after = eventId).head
-      assert(aProcessed.value.event ==
-        OrderProcessed.processLost(ProcessLostDueSubagentUriChangeProblem))
-
-      // After ProcessLost at previous Subagent aOrderId restarts at current Subagent
-      TestSemaphoreJob.continue(1)  // aOrder still runs on bareSubagent (but it is ignored)
-      TestSemaphoreJob.continue(1)
-      val a2Processed = eventWatch
-        .await[OrderProcessed](_.key == aOrderId, after = aProcessed.eventId)
-        .head.value.event
-      assert(a2Processed == OrderProcessed(Outcome.succeeded))
-
-      eventWatch.await[OrderFinished](_.key == aOrderId, after = eventId)
-
+    runSubagent(bareSubagentItem, awaitDedicated = false) { bareSubagent =>
+      val aOrderId = OrderId("A-MOVE-SUBAGENT")
+      var eventId = eventWatch.lastAddedEventId
       locally {
-        // Start another order
-        val bOrderId = OrderId("B-MOVE-SUBAGENT")
-        TestSemaphoreJob.continue(1)
-        controllerApi.addOrder(FreshOrder(bOrderId, workflow.path)).await(99.s).orThrow
-        val bStarted = eventWatch.await[OrderProcessingStarted](_.key == bOrderId, after = eventId)
-          .head.value.event
-        assert(bStarted == OrderProcessingStarted(bare1SubagentItem.id))
-
-        eventWatch.await[OrderStdoutWritten](_.key == bOrderId, after = eventId)
-
-        eventWatch.await[OrderProcessed](_.key == bOrderId, after = eventId).head.value.event
-        val bProcessed = eventWatch.await[OrderProcessed](_.key == bOrderId, after = eventId)
-          .head.value.event
-        assert(bProcessed == OrderProcessed(Outcome.succeeded))
-        eventWatch.await[OrderFinished](_.key == bOrderId, after = eventId)
+        controllerApi.addOrder(FreshOrder(aOrderId, workflow.path)).await(99.s).orThrow
+        val processingStarted = eventWatch
+          .await[OrderProcessingStarted](_.key == aOrderId, after = eventId).head.value.event
+        assert(processingStarted == OrderProcessingStarted(bareSubagentItem.id))
+        eventWatch.await[OrderStdoutWritten](_.key == aOrderId, after = eventId)
+        // aOrderId is waiting for semaphore
       }
-    }
 
-    bareSubagent.shutdown(Some(SIGKILL), dontWaitForDirector = true).await(99.s)
-    bareSubagentRelease.await(99.s)
+      eventId = eventWatch.lastAddedEventId
+      //val agentEventId = myAgent.eventWatch.lastAddedEventId
+      controllerApi.updateItems(Observable(AddOrChangeSimple(bare1SubagentItem)))
+        .await(99.s).orThrow
+      //myAgent.eventWatch.await[ItemAttachedToMe](_.event.item.key == bare1SubagentItem.id,
+      //  after = agentEventId)
+      //myAgent.eventWatch.await[SubagentCouplingFailed](_.key == bare1SubagentItem.id, after = agentEventId)
+
+      // Start the replacing c1Subagent while the previous bareSubagent is still running
+      runSubagent(bare1SubagentItem, suffix = "-1") { _ =>
+        val aProcessed = eventWatch.await[OrderProcessed](_.key == aOrderId, after = eventId).head
+        assert(aProcessed.value.event ==
+          OrderProcessed.processLost(ProcessLostDueSubagentUriChangeProblem))
+
+        // After ProcessLost at previous Subagent aOrderId restarts at current Subagent
+        TestSemaphoreJob.continue(1)  // aOrder still runs on bareSubagent (but it is ignored)
+        TestSemaphoreJob.continue(1)
+        val a2Processed = eventWatch
+          .await[OrderProcessed](_.key == aOrderId, after = aProcessed.eventId)
+          .head.value.event
+        assert(a2Processed == OrderProcessed(Outcome.succeeded))
+
+        eventWatch.await[OrderFinished](_.key == aOrderId, after = eventId)
+
+        locally {
+          // Start another order
+          val bOrderId = OrderId("B-MOVE-SUBAGENT")
+          TestSemaphoreJob.continue(1)
+          controllerApi.addOrder(FreshOrder(bOrderId, workflow.path)).await(99.s).orThrow
+          val bStarted = eventWatch.await[OrderProcessingStarted](_.key == bOrderId, after = eventId)
+            .head.value.event
+          assert(bStarted == OrderProcessingStarted(bare1SubagentItem.id))
+
+          eventWatch.await[OrderStdoutWritten](_.key == bOrderId, after = eventId)
+
+          eventWatch.await[OrderProcessed](_.key == bOrderId, after = eventId).head.value.event
+          val bProcessed = eventWatch.await[OrderProcessed](_.key == bOrderId, after = eventId)
+            .head.value.event
+          assert(bProcessed == OrderProcessed(Outcome.succeeded))
+          eventWatch.await[OrderFinished](_.key == bOrderId, after = eventId)
+        }
+      }
+
+      bareSubagent.shutdown(Some(SIGKILL), dontWaitForDirector = true).await(99.s)
+    }
   }
 }
 
