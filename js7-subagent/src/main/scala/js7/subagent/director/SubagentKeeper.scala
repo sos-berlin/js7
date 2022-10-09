@@ -82,6 +82,11 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
     logger.debugTask(Task.defer {
       initialized.orThrow // Must be initialized!
 
+      // FIXME (?) continueDetaching AFTER recovered Orders has continueProcessingOrder
+      //  Using .startAndForget for both may result let continueProcessingOrder fail
+      //  due to stopped RemoteSubagentDriver
+      //  NO ACTORS!
+      // SubagentDeleteTest may fail occasionally
       continueDetaching *>
         stateVar.get.idToDriver.values
           .toVector
