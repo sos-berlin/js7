@@ -188,7 +188,7 @@ object AsyncMap
 
     /** Initiate stop. */
     final val initiateStop: Task[Unit] =
-      initiateStopWithProblem(Problem.pure(s"$name is being stopped"))
+      initiateStopWithProblem(Problem.pure(s"$name is been stopped"))
 
     final def initiateStopWithProblem(problem: Problem): Task[Unit] =
       Task.defer {

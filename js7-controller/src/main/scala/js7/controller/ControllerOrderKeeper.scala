@@ -1044,9 +1044,9 @@ with MainJournalingActor[ControllerState, Event]
 
   private def logEvent(event: Event): Unit =
     event match {
-      case e: InventoryItemEvent => logger.trace(s"${e.key} ${e.getClass.scalaName}")
       case VersionAdded(version) => logger.trace(s"Version '${version.string}' added")
-      case e: VersionedItemEvent => logger.trace(s"${e.path} ${e.getClass.scalaName}")
+      case e: VersionedItemEvent => logger.trace(s"${e.path} ${e.getClass.simpleScalaName}")
+      case e: InventoryItemEvent => logger.trace(s"${e.key} ${e.getClass.simpleScalaName}")
       case _ =>
     }
 
