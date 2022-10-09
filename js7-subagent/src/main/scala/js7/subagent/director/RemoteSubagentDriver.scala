@@ -321,7 +321,8 @@ extends SubagentDriver with SubagentEventListener[S0]
 
   def processOrder(order: Order[Order.Processing]): Task[Checked[OrderProcessed]] =
     logger.traceTask("processOrder", order.id)(
-      ifNotStopping.flatMapT(_ => runProcessingOrder(order)))
+      requireNotStopping.flatMapT(_ =>
+        runProcessingOrder(order)))
 
   private def runProcessingOrder(order: Order[Order.Processing]): Task[Checked[OrderProcessed]] =
     orderToPromise
@@ -398,7 +399,7 @@ extends SubagentDriver with SubagentEventListener[S0]
         case Right(_) =>
       }
 
-  private def ifNotStopping: Task[Checked[Unit]] =
+  private def requireNotStopping: Task[Checked[Unit]] =
     Task {
       !stopping !! Problem.pure(s"RemoteSubagentDriver $subagentId is stopping")
     }

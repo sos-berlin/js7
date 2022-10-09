@@ -148,12 +148,10 @@ final class SubagentDeleteTest extends OurTestSuite with SubagentTester
       }
 
       // Deleting a Subagent is ignored while it is being deleted
-      locally {
-        controllerApi
-          .updateItems(Observable(DeleteSimple(bareSubagentId)))
-          .await(99.s)
-          .orThrow
-      }
+      controllerApi
+        .updateItems(Observable(DeleteSimple(bareSubagentId)))
+        .await(99.s)
+        .orThrow
 
       // RESTART DIRECTOR
 
