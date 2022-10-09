@@ -136,14 +136,14 @@ final class AdmissionPeriodTest extends OurTestSuite
     }
 
     "SpecificDatePeriod" in {
-      val epochMillis = 1664366400000L
-      assert(epochMillis == Timestamp("2022-09-28T12:00:00Z").toEpochMilli)
+      val epochSeconds = 1664366400
+      assert(epochSeconds == Timestamp("2022-09-28T12:00:00Z").toEpochSecond)
       testJson[AdmissionPeriod](
-        SpecificDatePeriod(1664366400000L, 600.s),
+        SpecificDatePeriod(epochSeconds, 600.s),
         json"""
           {
             "TYPE": "SpecificDatePeriod",
-            "secondsSinceLocalEpoch": 1664366400000,
+            "secondsSinceLocalEpoch": 1664366400,
             "duration": 600
           }""")
     }
