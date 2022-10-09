@@ -111,7 +111,9 @@ while true; do
   if [[ "$JAVA_VERSION" =~ ([0-9]+).* && ${BASH_REMATCH[1]} -ge 13 ]]; then
     [ -d "$data/cache" ] || mkdir "$data/cache"
     jsaFile="$data/cache/js7-controller-$(cat "$JS7_HOME/VERSION").jsa"
-    if [ -f "$jsaFile" ]; then
+    if [[ "$JAVA_VERSION" =~ ([0-9]+).* && ${BASH_REMATCH[1]} -ge 17 ]]; then
+      loopJavaOptions+=("-XX:SharedArchiveFile=$jsaFile" -XX:+AutoCreateSharedArchive -Xshare:auto)
+    elif [ -f "$jsaFile" ]; then
       loopJavaOptions+=("-XX:SharedArchiveFile=$jsaFile" -Xshare:auto)
     else
       loopJavaOptions+=("-XX:ArchiveClassesAtExit=$jsaFile" -Xshare:auto)
