@@ -308,7 +308,8 @@ final class ControllerCommandTest extends OurTestSuite
         Some(Position(1)),
         Seq(
           OrderResumed.ReplaceHistoricOutcome(Position(0), Outcome.Succeeded(NamedValues.rc(0))),
-          OrderResumed.ReplaceHistoricOutcome(Position(1), Outcome.Failed(NamedValues.rc(1))))),
+          OrderResumed.ReplaceHistoricOutcome(Position(1), Outcome.Failed(NamedValues.rc(1)))),
+        asSucceeded = true),
       json"""{
         "TYPE": "ResumeOrder",
         "orderId": "ORDER",
@@ -333,12 +334,29 @@ final class ControllerCommandTest extends OurTestSuite
               }
             }
           }
-        ]
+        ],
+        "asSucceeded": true
+      }""")
+
+    testJsonDecoder[ControllerCommand](
+      ResumeOrder(OrderId("ORDER")),
+      json"""{
+        "TYPE": "ResumeOrder",
+        "orderId": "ORDER"
       }""")
   }
 
   "ResumeOrders" in {
-    testJson[ControllerCommand](ResumeOrders(Seq(OrderId("A"), OrderId("B"))), json"""
+    testJson[ControllerCommand](ResumeOrders(
+      Seq(OrderId("A"), OrderId("B")),
+      asSucceeded = true),
+      json"""{
+        "TYPE": "ResumeOrders",
+        "orderIds": [ "A", "B" ],
+        "asSucceeded": true
+      }""")
+
+    testJsonDecoder[ControllerCommand](ResumeOrders(Seq(OrderId("A"), OrderId("B"))), json"""
       {
         "TYPE": "ResumeOrders",
         "orderIds": [ "A", "B" ]

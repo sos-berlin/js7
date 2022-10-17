@@ -198,8 +198,8 @@ final class OrderEventSource(state: StateView)
             trySuspend(order)
               .map(_ :: Nil)
 
-          case OrderMark.Resuming(position, historyOperations) =>
-            tryResume(order, position, historyOperations)
+          case OrderMark.Resuming(position, historyOperations, asSucceeded) =>
+            tryResume(order, position, historyOperations, asSucceeded)
               .map(_ :: Nil)
 
           case _ => None
@@ -215,8 +215,8 @@ final class OrderEventSource(state: StateView)
         case OrderMark.Suspending(mode) =>
           suspend(orderId, mode)
 
-        case OrderMark.Resuming(position, historicOutcomes) =>
-          resume(orderId, position, historicOutcomes)
+        case OrderMark.Resuming(position, historicOutcomes, asSucceeded) =>
+          resume(orderId, position, historicOutcomes, asSucceeded)
       }
     }
 
@@ -293,7 +293,8 @@ final class OrderEventSource(state: StateView)
   def resume(
     orderId: OrderId,
     position: Option[Position],
-    historyOperations: Seq[OrderResumed.HistoryOperation])
+    historyOperations: Seq[OrderResumed.HistoryOperation],
+    asSucceeded: Boolean)
   : Checked[Option[List[OrderActorEvent]]] =
     catchNonFatalFlatten {
       withOrder(orderId) { order =>
@@ -316,11 +317,15 @@ final class OrderEventSource(state: StateView)
               case Some(_: OrderMark.Cancelling) =>
                 Left(CannotResumeOrderProblem)
 
-              case Some(OrderMark.Resuming(`position`, `historyOperations`)) =>
-                Right(order.isDetached ? (
-                  OrderResumed(position, historyOperations)/*should already have happened*/ :: Nil))
+              case Some(OrderMark.Resuming(`position`, `historyOperations`, asSucceeded)) =>
+                Right(order.isDetached ?
+                  // should already have happened
+                  List(OrderResumed(
+                    position,
+                    historyOperations,
+                    asSucceeded)))
 
-              case Some(OrderMark.Resuming(_, _)) =>
+              case Some(OrderMark.Resuming(_, _, _)) =>
                  Left(CannotResumeOrderProblem)
 
               case Some(OrderMark.Suspending(_)) if position.isDefined || historyOperations.nonEmpty =>
@@ -334,8 +339,8 @@ final class OrderEventSource(state: StateView)
                   Left(CannotResumeOrderProblem)
                 else
                   Right(Some(
-                    tryResume(order, position, historyOperations)
-                      .getOrElse(OrderResumptionMarked(position, historyOperations))
+                    tryResume(order, position, historyOperations, asSucceeded)
+                      .getOrElse(OrderResumptionMarked(position, historyOperations, asSucceeded))
                       :: Nil))
             })
       }
@@ -356,9 +361,10 @@ final class OrderEventSource(state: StateView)
   private def tryResume(
     order: Order[Order.State],
     position: Option[Position],
-    historyOperations: Seq[OrderResumed.HistoryOperation])
+    historyOperations: Seq[OrderResumed.HistoryOperation],
+    asSucceeded: Boolean)
   : Option[OrderActorEvent] =
-    (weHave(order) && order.isResumable) ? OrderResumed(position, historyOperations)
+    (weHave(order) && order.isResumable) ? OrderResumed(position, historyOperations, asSucceeded)
 
   def answer(orderId: OrderId): Checked[Seq[KeyedEvent[OrderCoreEvent]]] =
     catchNonFatalFlatten {

@@ -280,12 +280,12 @@ final case class Order[+S <: Order.State](
             mark = None,
             state = if (isSuspendingWithKill && isState[ProcessingKilled]) Ready else state))
 
-      case OrderResumptionMarked(position, historyOperations) =>
+      case OrderResumptionMarked(position, historyOperations, asSucceeded) =>
         if (!force && !isMarkable)
           inapplicable
         else if (isSuspended)
           Right(copy(
-            mark = Some(OrderMark.Resuming(position, historyOperations)),
+            mark = Some(OrderMark.Resuming(position, historyOperations, asSucceeded)),
             isResumed = true))
         else if (!force && (position.isDefined || historyOperations.nonEmpty))
             // Inhibited because we cannot be sure wether order will pass a fork barrier
@@ -296,10 +296,10 @@ final case class Order[+S <: Order.State](
             isResumed = true))
         else
           Right(copy(
-            mark = Some(OrderMark.Resuming(None)),
+            mark = Some(OrderMark.Resuming(None, Vector.empty, false)),
             isResumed = true))
 
-      case OrderResumed(maybePosition, historyOps) =>
+      case OrderResumed(maybePosition, historyOps, asSucceeded) =>
         import OrderResumed.{AppendHistoricOutcome, DeleteHistoricOutcome, InsertHistoricOutcome, ReplaceHistoricOutcome}
         val updatedHistoryOutcomes =
           if (maybePosition.isEmpty && historyOps.isEmpty)
@@ -309,6 +309,7 @@ final case class Order[+S <: Order.State](
             final class Entry(h: Option[HistoricOutcome]) {
               val inserted = mutable.Buffer.empty[HistoricOutcome]
               var current: Option[HistoricOutcome] = h
+              def result = inserted.view ++ current
             }
             var positionFound = false
             val array = historicOutcomes.view
@@ -323,7 +324,10 @@ final case class Order[+S <: Order.State](
               .concat(new Entry(None) :: Nil)
               .toArray
             val append = mutable.Buffer.empty[HistoricOutcome]
-            val pToi = historicOutcomes.view.zipWithIndex.map { case (h, i) => h.position -> i }.toMap
+            val pToi = historicOutcomes.view
+              .zipWithIndex
+              .map { case (h, i) => h.position -> i }
+              .toMap
             var checked: Checked[Unit] = Right(())
 
             def get(pos: Position): Option[Int] =
@@ -356,12 +360,15 @@ final case class Order[+S <: Order.State](
             }
             checked.map(_ =>
               array.view
-                .flatMap(entry => entry.inserted.view ++ entry.current)
+                .flatMap(_.result)
                 .concat(append)
                 .toVector)
           }
 
-        updatedHistoryOutcomes.flatMap(historicOutcomes =>
+        updatedHistoryOutcomes.flatMap { updatedHistoricOutcomes =>
+          val maybeSucceeded =
+            (asSucceeded && !historicOutcomes.lastOption.forall(_.outcome.isSucceeded)) ?
+              HistoricOutcome(position, Outcome.succeeded)
           check(isResumable,
             withPosition(maybePosition getOrElse position)
               .copy(
@@ -369,7 +376,8 @@ final case class Order[+S <: Order.State](
                 isResumed = true,
                 mark = None,
                 state = if (isState[Failed] || isState[Broken]) Ready else state,
-                historicOutcomes = historicOutcomes)))
+                historicOutcomes = updatedHistoricOutcomes ++ maybeSucceeded))
+        }
 
       case _: OrderLocksAcquired =>
         // LockState handles this event, too

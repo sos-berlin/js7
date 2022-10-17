@@ -191,12 +191,13 @@ object ControllerCommand extends CommonCommand.Companion
   final case class ResumeOrder(
     orderId: OrderId,
     position: Option[Position] = None,
-    historyOperations: Seq[OrderResumed.HistoryOperation] = Nil)
+    historyOperations: Seq[OrderResumed.HistoryOperation] = Nil,
+    asSucceeded: Boolean = false)
   extends ControllerCommand with Big {
     type Response = Response.Accepted
   }
 
-  final case class ResumeOrders(orderIds: immutable.Iterable[OrderId])
+  final case class ResumeOrders(orderIds: immutable.Iterable[OrderId], asSucceeded: Boolean = false)
   extends ControllerCommand with Big {
     type Response = Response.Accepted
   }

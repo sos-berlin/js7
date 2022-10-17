@@ -745,8 +745,9 @@ with MainJournalingActor[ControllerState, Event]
       case ControllerCommand.SuspendOrders(orderIds, mode) =>
         executeOrderMarkCommands(orderIds.toVector)(orderEventSource.suspend(_, mode))
 
-      case ControllerCommand.ResumeOrder(orderId, position, historicOps) =>
-        executeOrderMarkCommands(Vector(orderId))(orderEventSource.resume(_, position, historicOps))
+      case ControllerCommand.ResumeOrder(orderId, position, historicOps, asSucceeded) =>
+        executeOrderMarkCommands(Vector(orderId))(
+          orderEventSource.resume(_, position, historicOps, asSucceeded))
 
       case cmd: ControllerCommand.ControlWorkflowPath =>
         controlWorkflowPath(cmd)
@@ -754,8 +755,9 @@ with MainJournalingActor[ControllerState, Event]
       case cmd: ControllerCommand.ControlWorkflow =>
         controlWorkflow(cmd)
 
-      case ControllerCommand.ResumeOrders(orderIds) =>
-        executeOrderMarkCommands(orderIds.toVector)(orderEventSource.resume(_, None, Nil))
+      case ControllerCommand.ResumeOrders(orderIds, asSucceeded) =>
+        executeOrderMarkCommands(orderIds.toVector)(
+          orderEventSource.resume(_, None, Nil, asSucceeded))
 
       case ControllerCommand.PostNotice(boardPath, noticeId, maybeEndOfLife) =>
         val scope = NowScope(alarmClock.now())

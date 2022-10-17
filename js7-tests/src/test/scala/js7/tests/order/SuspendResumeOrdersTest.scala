@@ -523,11 +523,20 @@ final class SuspendResumeOrdersTest extends OurTestSuite with ControllerAgentFor
     assert(executeCommand(SuspendOrders(Seq(order.id))).await(99.s) == Left(CannotSuspendOrderProblem))
     executeCommand(ResumeOrder(order.id)).await(99.s).orThrow
     eventWatch.await[OrderFailed](_.key == order.id, after = eventId)
+    assert(controllerState.idToOrder(order.id).historicOutcomes == Seq(
+      HistoricOutcome(Position(0), Outcome.succeeded),
+      HistoricOutcome(Position(1), Outcome.failed),
+      HistoricOutcome(Position(1), Outcome.failed)))
 
     eventId = eventWatch.lastAddedEventId
-    executeCommand(ResumeOrder(order.id, Some(Position(0)))).await(99.s).orThrow
+    executeCommand(ResumeOrder(order.id, Some(Position(0)), asSucceeded = true)).await(99.s).orThrow
 
     eventWatch.await[OrderFailed](_.key == order.id, after = eventId)
+    assert(controllerState.idToOrder(order.id).historicOutcomes == Seq(
+      HistoricOutcome(Position(1), Outcome.succeeded)/*Resume asSucceeded*/,
+      HistoricOutcome(Position(0), Outcome.succeeded),
+      HistoricOutcome(Position(1), Outcome.failed)))
+
     assert(eventWatch.eventsByKey[OrderEvent](order.id) == Seq(
       OrderAdded(failingWorkflow.id, order.arguments, order.scheduledFor),
 
@@ -545,7 +554,7 @@ final class SuspendResumeOrdersTest extends OurTestSuite with ControllerAgentFor
       OrderResumed(),
       OrderFailed(Position(1), Some(Outcome.failed)),
 
-      OrderResumed(Some(Position(0))),
+      OrderResumed(Some(Position(0)), asSucceeded = true),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderProcessingStarted(subagentId),
