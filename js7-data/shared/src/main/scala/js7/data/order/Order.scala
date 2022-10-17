@@ -16,7 +16,7 @@ import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.event.EventDrivenState.EventNotApplicableProblem
 import js7.data.job.JobKey
 import js7.data.order.Order.*
-import js7.data.order.OrderEvent.{OrderNoticesConsumed, *}
+import js7.data.order.OrderEvent.*
 import js7.data.orderwatch.ExternalOrderKey
 import js7.data.subagent.SubagentId
 import js7.data.value.{NamedValues, Value}
@@ -92,17 +92,8 @@ final case class Order[+S <: Order.State](
     if (problem != null) Left(problem) else Right(order)
   }
 
-  def applyEvent(event: OrderEvent.OrderCoreEvent): Checked[Order[State]] =
-    applyEvent2(event, force = false)
-
-  /** Force the application of the `event` even if the the state does not match.
-    * Can be used when some events like `OrderAttachable` and `OrderDetachable` are left out.
-    * May still return `Left(Problem)` in some cases.
-    */
-  def forceEvent(event: OrderEvent.OrderCoreEvent): Checked[Order[State]] =
-    applyEvent2(event, force = true)
-
-  private def applyEvent2(event: OrderEvent.OrderCoreEvent, force: Boolean): Checked[Order[State]] = {
+  def applyEvent(event: OrderEvent.OrderCoreEvent): Checked[Order[State]] = {
+    val force = false
     def inapplicableProblem = InapplicableOrderEventProblem(event, this)
     def inapplicable = Left(inapplicableProblem)
 
@@ -140,7 +131,7 @@ final case class Order[+S <: Order.State](
             workflowPosition = workflowPosition.copy(position = movedTo),
             historicOutcomes = outcome_.fold(historicOutcomes)(o => historicOutcomes :+ HistoricOutcome(position, o))))
 
-      case OrderFailedInFork(movedTo, outcome_) =>
+      case OrderFailedInFork(movedTo, outcome) =>
         check(parent.nonEmpty
           && (isState[Ready] || isState[Processed])
           && !isSuspended
@@ -150,23 +141,23 @@ final case class Order[+S <: Order.State](
             workflowPosition = workflowPosition.copy(position = movedTo),
             isResumed = false,
             historicOutcomes =
-              outcome_.fold(historicOutcomes)(o => historicOutcomes :+ HistoricOutcome(position, o))))
+              outcome.fold(historicOutcomes)(o => historicOutcomes :+ HistoricOutcome(position, o))))
 
       case OrderFailedIntermediate_(_, _) =>
         inapplicable  // Intermediate event, internal only
 
-      case OrderCatched(movedTo, outcome_) =>
+      case OrderCatched(movedTo, outcome) =>
         check((isState[Ready] || isState[Processed]) && !isSuspended && (isAttached | isDetached),
           copy(
             state = Ready,
             workflowPosition = workflowPosition.copy(position = movedTo),
             isResumed = false,
             historicOutcomes =
-              outcome_.fold(historicOutcomes)(o => historicOutcomes :+ HistoricOutcome(position, o))))
+              outcome.fold(historicOutcomes)(o => historicOutcomes :+ HistoricOutcome(position, o))))
 
-      case OrderCaught(movedTo, outcome_) =>
+      case OrderCaught(movedTo, outcome) =>
         check((isState[Ready] || isState[Processed]) && !isSuspended && (isAttached | isDetached), {
-          var h = outcome_.fold(historicOutcomes)(o => historicOutcomes :+ HistoricOutcome(position, o))
+          var h = outcome.fold(historicOutcomes)(o => historicOutcomes :+ HistoricOutcome(position, o))
           if (!h.lastOption.exists(_.outcome.isSucceeded))
             h :+= HistoricOutcome(movedTo, Outcome.succeeded)
           copy(
@@ -193,11 +184,11 @@ final case class Order[+S <: Order.State](
             state = Forked(children),
             mark = cleanMark))
 
-      case OrderJoined(outcome_) =>
+      case OrderJoined(outcome) =>
         check(isState[Forked] && !isSuspended && isDetached,
           copy(
             state = Processed,
-            historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome_)))
+            historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome)))
 
       case OrderMoved(to) =>
         check((isState[IsFreshOrReady]/*before Try*/ || isState[Processed] || isState[BetweenCycles])
@@ -312,7 +303,7 @@ final case class Order[+S <: Order.State](
         import OrderResumed.{AppendHistoricOutcome, DeleteHistoricOutcome, InsertHistoricOutcome, ReplaceHistoricOutcome}
         val updatedHistoryOutcomes =
           if (maybePosition.isEmpty && historyOps.isEmpty)
-            Checked(historicOutcomes)
+            Right(historicOutcomes)
           else {
             // historyOutcomes positions should be unique, but is this sure?
             final class Entry(h: Option[HistoricOutcome]) {
@@ -495,9 +486,6 @@ final case class Order[+S <: Order.State](
     !isSuspended &&
       isDetached &&
       (isState[IsFreshOrReady] || isState[Processed])
-
-  def withInstructionNr(to: InstructionNr): Order[S] =
-    withPosition(position.copy(nr = to))
 
   def withPosition(to: Position): Order[S] = copy(
     workflowPosition = workflowPosition.copy(position = to))
@@ -770,10 +758,6 @@ object Order
 
   /** Terminal state — the order can only be removed. */
   sealed trait IsTerminated extends State
-
-  sealed trait DelayedUntil {
-    def delayedUntil: Timestamp
-  }
 
   type Fresh = Fresh.type
   case object Fresh extends IsFreshOrReady

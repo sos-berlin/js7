@@ -54,15 +54,13 @@ private final class LoggingTestAdder(suiteName: String) {
       outerNames.view.reverse.mkString("", " — ", " — "),
       testName)
 
-  def afterAll(): Unit = {
-    val duration =
+  def afterAll(): Unit =
     logger.info(s"$suiteName — " +
       s"$successMarkup$succeededCount tests succeeded$resetColor" +
       (if (failedCount == 0) "" else s" · $failureMarkup💥 $failedCount failed$resetColor") +
       (if (pendingCount == 0) "" else s" · $pendingMarkup🚫 $pendingCount pending$resetColor") +
       (if (failedCount == 0 && pendingCount == 0) s" $successMarkup✔︎$resetColor " else " · ") +
       since.elapsed.pretty + "\n")
-  }
 }
 
 private object LoggingTestAdder {

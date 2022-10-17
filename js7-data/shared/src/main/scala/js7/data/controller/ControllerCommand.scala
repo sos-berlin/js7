@@ -40,10 +40,6 @@ sealed trait ControllerCommand extends CommonCommand
 
 object ControllerCommand extends CommonCommand.Companion
 {
-  intelliJuseImport((FiniteDurationJsonEncoder, FiniteDurationJsonDecoder,
-    checkedJsonEncoder[Int], checkedJsonDecoder[Int],
-    versionedItemPathJsonCodec))
-
   protected type Command = ControllerCommand
 
   final case class Batch(commands: Seq[CorrelIdWrapped[ControllerCommand]])
@@ -308,4 +304,7 @@ object ControllerCommand extends CommonCommand.Companion
     Subtype(TakeSnapshot))
 
   intelliJuseImport(DecodeWithDefaults)
+  intelliJuseImport((FiniteDurationJsonEncoder, FiniteDurationJsonDecoder,
+    checkedJsonEncoder[Int], checkedJsonDecoder[Int],
+    versionedItemPathJsonCodec))
 }

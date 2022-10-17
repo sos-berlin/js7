@@ -35,13 +35,10 @@ extends EventInstructionExecutor with ForkInstructionExecutor
         .orElse(order.ifState[Order.Processed].map(order =>
           Right(
             order.id <-: (
-              order.lastOutcome match {
-                case _: Outcome.Succeeded =>
-                  OrderMoved(order.position.increment)
-
-                case _ =>
-                  OrderFailedIntermediate_()
-              }))))
+              if (order.lastOutcome.isSucceeded)
+                OrderMoved(order.position.increment)
+              else
+                OrderFailedIntermediate_()))))
         .toList
         .sequence)
 
