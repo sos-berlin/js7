@@ -15,7 +15,8 @@ import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, Or
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.workflow.instructions.{ConsumeNotices, Fail, Prompt}
+import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.instructions.{ConsumeNotices, Execute, Fail, Prompt}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.ConsumeNoticesTest.*
@@ -298,15 +299,19 @@ with BlockingItemUpdater with TestMixins
 
   "Nested ConsumeNotcies" in {
     val workflow = updateItem(
-      Workflow(WorkflowPath("CONSUMING-NESTED"), Seq(
-        ConsumeNotices(
-          boardPathExpr(s"'${board.path.string}'"),
-          Workflow.of(
-            ConsumeNotices(
-              boardPathExpr(s"'${board.path.string}' || '${board2.path.string}'"),
-              Workflow.of(
-                TestJob.execute(agentPath))),
-            Prompt(expr("'PROMPT'")))))))
+      Workflow(
+        WorkflowPath("CONSUMING-NESTED"),
+        Seq(
+          ConsumeNotices(
+            boardPathExpr(s"'${board.path.string}'"),
+            Workflow.of(
+              ConsumeNotices(
+                boardPathExpr(s"'${board.path.string}' || '${board2.path.string}'"),
+                Workflow.of(
+                  Execute(WorkflowJob.Name("JOB")))),
+              Prompt(expr("'PROMPT'"))))),
+        nameToJob = Map(
+          WorkflowJob.Name("JOB") -> TestJob.workflowJob(agentPath))))
 
     val qualifier = qualifiers.next()
     val noticeId = NoticeId(qualifier)

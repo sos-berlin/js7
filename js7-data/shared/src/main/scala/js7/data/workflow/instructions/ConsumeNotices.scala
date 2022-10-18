@@ -9,8 +9,8 @@ import js7.data.board.BoardPathExpression
 import js7.data.order.Order
 import js7.data.order.OrderEvent.OrderNoticesConsumptionStarted
 import js7.data.source.SourcePos
-import js7.data.workflow.Workflow
-import js7.data.workflow.position.BranchId
+import js7.data.workflow.{Instruction, Workflow}
+import js7.data.workflow.position.{BranchId, Position}
 
 final case class ConsumeNotices(
   boardPaths: BoardPathExpression,
@@ -20,6 +20,14 @@ extends ExpectOrConsumeNoticesInstruction
 {
   def withoutSourcePos =
     copy(sourcePos = None)
+
+  override def withPositions(position: Position): Instruction =
+    copy(
+      subworkflow = subworkflow.withPositions(position / BranchId.Cycle))
+
+  override def adopt(outer: Workflow) = copy(
+    subworkflow = subworkflow.copy(
+      outer = Some(outer)))
 
   def referencedBoardPaths =
     boardPaths.boardPaths
