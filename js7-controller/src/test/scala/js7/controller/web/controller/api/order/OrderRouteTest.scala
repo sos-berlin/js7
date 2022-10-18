@@ -98,7 +98,7 @@ final class OrderRouteTest extends OurTestSuite with RouteTester with OrderRoute
     Post("/controller/api/order", order) ~> Accept(`application/json`) ~> route ~> check {
       assert(status == Conflict)  // Duplicate order
       assert(response.header[Location] contains Location(s"http://example.com/controller/api/order/DUPLICATE"))
-      assert(responseAs[Json] == Problem("Order 'DUPLICATE' has already been added").asJson(Problem.typedJsonEncoder))
+      assert(responseAs[Json] == Problem("Order:DUPLICATE has already been added").asJson(Problem.typedJsonEncoder))
     }
   }
 

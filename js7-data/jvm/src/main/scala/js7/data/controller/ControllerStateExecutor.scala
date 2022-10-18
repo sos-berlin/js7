@@ -516,7 +516,7 @@ final case class ControllerStateExecutor private(
           if (controllerState.idToOrder contains orderId) {
             val keyedEvents = new OrderEventSource(controllerState).nextEvents(orderId)
             for (case KeyedEvent(orderId, OrderBroken(problem)) <- keyedEvents) {
-              scribe.error(s"Order '${orderId.string}' is broken: $problem") // ???
+              scribe.error(s"$orderId is broken: $problem") // ???
             }
             controllerState.applyEvents(keyedEvents) match {
               case Left(problem) =>

@@ -72,7 +72,7 @@ final case class Order[+S <: Order.State](
   def forkPosition: Checked[Position] = {
     val reversed = position.forkBranchReversed
     if (reversed.isEmpty)
-      Left(Problem.pure(s"Order '${id.string}' is in state FailedInFork but not below a Fork instruction"))
+      Left(Problem.pure(s"$id is in state FailedInFork but not below a Fork instruction"))
     else
       Right(reversed.tail.reverse % reversed.head.nr)
   }

@@ -91,7 +91,7 @@ final class LockStateTest extends OurTestSuite
         assert(LockState(lock, Exclusive(a), Queue(b, c)).enqueue(d, None) ==
           Right(LockState(lock, Exclusive(a), Queue(b, c, d))))
         assert(LockState(lock, Exclusive(a), Queue(b, c, d)).enqueue(c, None) ==
-          Left(Problem("Order 'C' already queues for Lock:LOCK")))
+          Left(Problem("Order:C already queues for Lock:LOCK")))
       }
 
       "Child order cannot lock if parent order has locked" in {

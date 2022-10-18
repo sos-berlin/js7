@@ -101,7 +101,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                               respondWithHeader(Location(uri.withPath(uri.path / order.id.string))) {
                                 complete(
                                   if (response.ignoredBecauseDuplicate)
-                                    Conflict -> Problem.pure(s"Order '${order.id.string}' has already been added")
+                                    Conflict -> Problem.pure(s"${order.id} has already been added")
                                   else
                                     Created -> emptyJsonObject)
                               }

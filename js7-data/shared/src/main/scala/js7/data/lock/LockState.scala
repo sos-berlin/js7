@@ -35,7 +35,7 @@ extends UnsignedSimpleItemState with Big/*acquired and queue get big with many o
     else if (acquired.isAcquiredBy(orderId))
       Left(LockRefusal.AlreadyAcquiredByThisOrder.toProblem(lock.path))
     else if (queue contains orderId)
-      Left(Problem(s"Order '${orderId.string}' already queues for $lockPath"))
+      Left(Problem(s"$orderId already queues for $lockPath"))
     else orderId.allParents.find(acquired.isAcquiredBy) match {
       case Some(parentOrderId) =>
         Left(Problem(s"$lockPath has already been acquired by parent $parentOrderId"))
