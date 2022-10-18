@@ -801,10 +801,10 @@ final class OrderEventSourceTest extends OurTestSuite
 
     val failed7 = Outcome.Failed(NamedValues.rc(7))
 
-    "failToPosition" in {
+    "fail" in {
       val order = Order(OrderId("ORDER"), workflow.id /: Position(0), Order.Fresh)
       def failToPosition(position: Position, uncatchable: Boolean = false) =
-        eventSource(order).failToPosition(workflow, order.withPosition(position), outcome = None, uncatchable = uncatchable)
+        eventSource(order).fail(workflow, order.withPosition(position), outcome = None, uncatchable = uncatchable)
 
       assert(failToPosition(Position(0)) == Right(OrderFailed(Position(0)) :: Nil))
       assert(failToPosition(Position(0) / BranchId.try_(0) % 0) ==
@@ -911,13 +911,14 @@ final class OrderEventSourceTest extends OurTestSuite
           historicOutcomes = Vector(HistoricOutcome(pos, failed7)),
           parent = Some(OrderId("ORDER")))
       }
-      val bChild = {
+      var bChild: Order[Order.State] = {
         val pos = Position(0) / BranchId.try_(0) % 0 / BranchId.fork("🍋") % 1   // End
         Order(OrderId("ORDER|🍋"), workflow.id /: pos, Order.Ready,
           historicOutcomes = Vector(HistoricOutcome(pos, failed7)),
           parent = Some(OrderId("ORDER")))
       }
-      val forkingOrder = Order(OrderId("ORDER"), workflow.id /: (Position(0) / BranchId.try_(0) % 0),  // Fork
+      val forkingOrder = Order(OrderId("ORDER"),
+        workflow.id /: (Position(0) / BranchId.try_(0) % 0),  // Fork
         Order.Forked(Vector(
           Order.Forked.Child("🥕", aChild.id),
           Order.Forked.Child("🍋", bChild.id))))
@@ -931,9 +932,13 @@ final class OrderEventSourceTest extends OurTestSuite
         Position(0) / BranchId.try_(0) % 0 / BranchId.fork("🥕") % 0)
       assert(eventSource.nextEvents(aChild.id) == Seq(aChild.id <-: orderFailedInFork))
       aChild = aChild.applyEvent(orderFailedInFork).orThrow
+      bChild = bChild.applyEvent(orderFailedInFork).orThrow
+      // TODO Is FailedInFork replaceable by Ready and !lastOutcome.isSucceeded?
 
       val orderJoined = OrderJoined(Outcome.Failed(Some(
-        "Order:ORDER|🥕 Failed;\nOrder:ORDER|🍋 Failed")))
+        """Order:ORDER|🥕 Failed;
+          |Order:ORDER|🍋 Failed"""
+          .stripMargin)))
       assert(eventSource.nextEvents(aChild.id      ) == Seq(forkingOrder.id <-: orderJoined))
       assert(eventSource.nextEvents(bChild.id      ) == Seq(forkingOrder.id <-: orderJoined))
       assert(eventSource.nextEvents(forkingOrder.id) == Seq(forkingOrder.id <-: orderJoined))

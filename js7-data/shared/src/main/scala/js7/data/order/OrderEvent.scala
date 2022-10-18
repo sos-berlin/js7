@@ -334,18 +334,37 @@ object OrderEvent
     def movedTo: Position
   }
 
+  final case class OrderStepFailed(outcome: Outcome.NotSucceeded)
+  extends OrderActorEvent
+
   final case class OrderFailed(
     movedTo: Position,
-    outcome: Option[Outcome.NotSucceeded] = None)
+    // COMPATIBLE with v2.4: outcome has been replaced by OrderStepFailed event
+    outcome: Option[Outcome.NotSucceeded])
   extends OrderFailedEvent with OrderTerminated {
     def moveTo(movedTo: Position) = copy(movedTo = movedTo)
+  }
+  object OrderFailed {
+    @deprecated
+    private[order] def apply(movedTo: Position, outcome: Option[Outcome.NotSucceeded]) =
+      new OrderFailed(movedTo, outcome)
+
+    def apply(movedTo: Position) = new OrderFailed(movedTo, None)
   }
 
   final case class OrderFailedInFork(
     movedTo: Position,
+    // outcome has been replaced by OrderStepFailed event. COMPATIBLE with v2.4
     outcome: Option[Outcome.NotSucceeded] = None)
   extends OrderFailedEvent {
     def moveTo(movedTo: Position) = copy(movedTo = movedTo)
+  }
+  object OrderFailedInFork {
+    @deprecated
+    private[order] def apply(movedTo: Position, outcome: Option[Outcome.NotSucceeded]) =
+      new OrderFailedInFork(movedTo, outcome)
+
+    def apply(movedTo: Position) = new OrderFailedInFork(movedTo, None)
   }
 
   // COMPATIBLE with v2.4
@@ -358,9 +377,17 @@ object OrderEvent
 
   final case class OrderCaught(
     movedTo: Position,
+    // COMPATIBLE with v2.4: outcome has been replaced by OrderStepFailed event
     outcome: Option[Outcome.NotSucceeded] = None)
   extends OrderFailedEvent {
     def moveTo(movedTo: Position) = copy(movedTo = movedTo)
+  }
+  object OrderCaught {
+    @deprecated
+    private[order] def apply(movedTo: Position, outcome: Option[Outcome.NotSucceeded]) =
+      new OrderCaught(movedTo, outcome)
+
+    def apply(movedTo: Position) = new OrderCaught(movedTo, None)
   }
 
   /** Only intermediate, not persisted. Will be converted to `OrderFailed` or `OrderCaught`. */
@@ -618,6 +645,7 @@ object OrderEvent
     Subtype(deriveConfiguredCodec[OrderResumptionMarked]),
     Subtype(deriveConfiguredCodec[OrderResumed]),
     Subtype(OrderFinished),
+    Subtype(deriveCodec[OrderStepFailed]),
     Subtype(deriveCodec[OrderFailed]),
     Subtype(deriveCodec[OrderFailedInFork]),
     Subtype(deriveCodec[OrderCancellationMarked]),

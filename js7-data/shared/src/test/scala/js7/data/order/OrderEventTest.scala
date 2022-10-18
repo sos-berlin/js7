@@ -22,11 +22,13 @@ import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.{BranchId, Label, Position}
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 import org.scalactic.source
+import scala.annotation.nowarn
 import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer
   */
+@nowarn("msg=method apply in object Order.* is deprecated")
 final class OrderEventTest extends OurTestSuite
 {
   "OrderAdded" in {

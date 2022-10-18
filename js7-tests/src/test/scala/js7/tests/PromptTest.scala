@@ -7,7 +7,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, ControlWorkflowPath, ResumeOrder, SuspendOrders}
-import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderFailed, OrderFinished, OrderMoved, OrderPromptAnswered, OrderPrompted, OrderStarted, OrderSuspended, OrderSuspensionMarked, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderFailed, OrderFinished, OrderMoved, OrderPromptAnswered, OrderPrompted, OrderStarted, OrderStepFailed, OrderSuspended, OrderSuspensionMarked, OrderTerminated}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.value.StringValue
 import js7.data.value.expression.Expression.StringConstant
@@ -53,7 +53,8 @@ final class PromptTest extends OurTestSuite with ControllerAgentForScalaTest
       OrderStarted, OrderPrompted(StringValue("MY QUESTION")),
       OrderPromptAnswered(),
       OrderMoved(Position(1)),
-      OrderFailed(Position(1), Some(Outcome.Disrupted(Problem("No such named value: UNKNOWN"))))))
+      OrderStepFailed(Outcome.Disrupted(Problem("No such named value: UNKNOWN"))),
+      OrderFailed(Position(1))))
   }
 
   "Prompt followed by a skipped statement" in {
@@ -74,8 +75,8 @@ final class PromptTest extends OurTestSuite with ControllerAgentForScalaTest
       OrderStarted, OrderPrompted(StringValue("MY QUESTION")),
       OrderPromptAnswered(),
       OrderMoved(Position(1)),
-      OrderFailed(Position(1)/*???*/, Some(Outcome.Disrupted(Problem(
-        "No such named value: UNKNOWN"))))))
+      OrderStepFailed(Outcome.Disrupted(Problem("No such named value: UNKNOWN"))),
+      OrderFailed(Position(1)/*???*/)))
   }
 
   "Order.Prompting is suspendible" in {

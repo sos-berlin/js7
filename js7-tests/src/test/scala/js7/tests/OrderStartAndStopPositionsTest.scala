@@ -6,7 +6,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCaught, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCaught, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStepFailed}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{Fail, Fork, If, TryInstruction}
@@ -178,7 +178,8 @@ final class OrderStartAndStopPositionsTest extends OurTestSuite with ControllerA
       OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(1) / "try" % 3 / "then" % 0),
 
-      OrderCaught(Position(1) / "catch+0" % 0, Some(Outcome.failed)),
+      OrderStepFailed(Outcome.failed),
+      OrderCaught(Position(1) / "catch+0" % 0),
 
       OrderDetachable,
       OrderDetached,

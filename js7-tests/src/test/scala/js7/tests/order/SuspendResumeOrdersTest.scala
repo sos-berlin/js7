@@ -20,10 +20,11 @@ import js7.data.controller.ControllerCommand.{Batch, CancelOrders, Response, Res
 import js7.data.item.VersionId
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderResumed.{AppendHistoricOutcome, DeleteHistoricOutcome, InsertHistoricOutcome, ReplaceHistoricOutcome}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCaught, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderStdWritten, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCaught, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderStdWritten, OrderStepFailed, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent, OrderTerminated}
 import js7.data.order.{FreshOrder, HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
-import js7.data.value.{BooleanValue, NamedValues}
+import js7.data.value.expression.ExpressionParser.expr
+import js7.data.value.{NamedValues, NumberValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fail, Fork, Retry, TryInstruction}
 import js7.data.workflow.position.BranchId.{Try_, catch_, try_}
@@ -174,11 +175,11 @@ final class SuspendResumeOrdersTest extends OurTestSuite with ControllerAgentFor
 
     val lastEventId = eventWatch.lastAddedEventId
     touchFile(triggerFile)
-    executeCommand(ResumeOrders(Set(order.id))).await(99.s).orThrow
-    eventWatch.await[OrderFinished](_.key == order.id)
+    executeCommand(ResumeOrders(Set(order.id), asSucceeded = true)).await(99.s).orThrow
+    eventWatch.await[OrderTerminated](_.key == order.id)
 
     assert(eventWatch.eventsByKey[OrderEvent](order.id, after = lastEventId) == Seq(
-      OrderResumed(),
+      OrderResumed(asSucceeded = true),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderProcessingStarted(subagentId),
@@ -489,8 +490,8 @@ final class SuspendResumeOrdersTest extends OurTestSuite with ControllerAgentFor
     val lastEventId = eventWatch.lastAddedEventId
     val newPosition = Position(2) / Try_ % 0
     val historicOutcomeOps = Seq(
-      ReplaceHistoricOutcome(Position(0), Outcome.Succeeded(Map("NEW" -> BooleanValue(true)))),
-      AppendHistoricOutcome(Position(1), Outcome.failed))
+      ReplaceHistoricOutcome(Position(0), Outcome.Succeeded(Map("NEW" -> NumberValue(1)))),
+      AppendHistoricOutcome(Position(1), Outcome.Succeeded(Map("NEW" -> NumberValue(2)))))
 
     executeCommand(ResumeOrder(order.id, Some(newPosition), historicOutcomeOps))
       .await(99.s).orThrow
@@ -499,19 +500,21 @@ final class SuspendResumeOrdersTest extends OurTestSuite with ControllerAgentFor
     assert(eventWatch.eventsByKey[OrderEvent](order.id, after = lastEventId)
       .filterNot(_.isInstanceOf[OrderStdWritten]) == Seq(
         OrderResumed(Some(newPosition), historicOutcomeOps),
-        OrderCaught(Position(2) / catch_(0) % 0, Some(Outcome.failed)),
+        OrderStepFailed(Outcome.Failed(Some("FAILURE"))),
+        OrderCaught(Position(2) / catch_(0) % 0),
         OrderRetrying(Position(2) / try_(1) % 0, None),
-        OrderFailed(Position(2) / try_(1) % 0, Some(Outcome.failed))))
+        OrderStepFailed(Outcome.Failed(Some("FAILURE"))),
+        OrderFailed(Position(2) / try_(1) % 0)))
 
     assert(controller.orderApi.order(order.id).await(99.s) == Right(Some(Order(
       order.id, order.workflowPath ~ "INITIAL" /: (Position(2) / try_(1) % 0),
       Order.Failed,
       historicOutcomes = Vector(
-        HistoricOutcome(Position(0), Outcome.Succeeded(Map("NEW" -> BooleanValue(true)))),
-        HistoricOutcome(Position(1), Outcome.failed),
-        HistoricOutcome(Position(2) / Try_ % 0, Outcome.failed),
+        HistoricOutcome(Position(0), Outcome.Succeeded(Map("NEW" -> NumberValue(1)))),
+        HistoricOutcome(Position(1), Outcome.Succeeded(Map("NEW" -> NumberValue(2)))),
+        HistoricOutcome(Position(2) / Try_ % 0, Outcome.Failed(Some("FAILURE"))),
         HistoricOutcome(Position(2) / catch_(0) % 0, Outcome.succeeded),
-        HistoricOutcome(Position(2) / try_(1) % 0, Outcome.failed))))))
+        HistoricOutcome(Position(2) / try_(1) % 0, Outcome.Failed(Some("FAILURE"))))))))
   }
 
   "Resume when Failed" in {
@@ -521,11 +524,12 @@ final class SuspendResumeOrdersTest extends OurTestSuite with ControllerAgentFor
 
     var eventId = eventWatch.lastAddedEventId
     assert(executeCommand(SuspendOrders(Seq(order.id))).await(99.s) == Left(CannotSuspendOrderProblem))
-    executeCommand(ResumeOrder(order.id)).await(99.s).orThrow
+    executeCommand(ResumeOrder(order.id, asSucceeded = true)).await(99.s).orThrow
     eventWatch.await[OrderFailed](_.key == order.id, after = eventId)
     assert(controllerState.idToOrder(order.id).historicOutcomes == Seq(
       HistoricOutcome(Position(0), Outcome.succeeded),
       HistoricOutcome(Position(1), Outcome.failed),
+      HistoricOutcome(Position(1), Outcome.succeeded)/*Resume asSucceeded*/,
       HistoricOutcome(Position(1), Outcome.failed)))
 
     eventId = eventWatch.lastAddedEventId
@@ -546,13 +550,15 @@ final class SuspendResumeOrdersTest extends OurTestSuite with ControllerAgentFor
       OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(1)),
+      OrderStepFailed(Outcome.failed),
       OrderDetachable,
       OrderDetached,
 
-      OrderFailed(Position(1), Some(Outcome.failed)),
+      OrderFailed(Position(1)),
 
-      OrderResumed(),
-      OrderFailed(Position(1), Some(Outcome.failed)),
+      OrderResumed(asSucceeded = true),
+      OrderStepFailed(Outcome.failed),
+      OrderFailed(Position(1)),
 
       OrderResumed(Some(Position(0)), asSucceeded = true),
       OrderAttachable(agentPath),
@@ -560,9 +566,10 @@ final class SuspendResumeOrdersTest extends OurTestSuite with ControllerAgentFor
       OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(1)),
+      OrderStepFailed(Outcome.failed),
       OrderDetachable,
       OrderDetached,
-      OrderFailed(Position(1), Some(Outcome.failed))))
+      OrderFailed(Position(1))))
   }
 }
 
@@ -596,7 +603,7 @@ object SuspendResumeOrdersTest
     executeJob,
     TryInstruction(
       Workflow.of(
-        Fail()),
+        Fail(Some(expr("'FAILURE'")))),
       Workflow.of(
         Retry()),
       maxTries = Some(2)))

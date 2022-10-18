@@ -7,7 +7,7 @@ import js7.base.problem.Problems.DuplicateKey
 import js7.base.test.OurTestSuite
 import js7.base.time.{AlarmClock, TestAlarmClock, Timestamp}
 import js7.data.agent.AgentPath
-import js7.data.order.OrderEvent.{OrderAdded, OrderFailed, OrderFinished, OrderMoved, OrderOrderAdded, OrderPrompted, OrderStarted}
+import js7.data.order.OrderEvent.{OrderAdded, OrderFailed, OrderFinished, OrderMoved, OrderOrderAdded, OrderPrompted, OrderStarted, OrderStepFailed}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.expr
@@ -61,10 +61,8 @@ final class AddOrderTest extends OurTestSuite with ControllerAgentForScalaTest
     assert(events.map(_.value) == Seq(
       OrderAdded(aWorkflow.id),
       OrderStarted,
-      OrderFailed(
-        Position(0),
-        Some(Outcome.Failed.fromProblem(
-          DuplicateKey("OrderId", "🟦"))))))
+      OrderStepFailed(Outcome.Failed.fromProblem(DuplicateKey("OrderId", "🟦"))),
+      OrderFailed(Position(0))))
   }
 
   "AddOrder with access to clock" in {
@@ -73,10 +71,8 @@ final class AddOrderTest extends OurTestSuite with ControllerAgentForScalaTest
     assert(events.map(_.value) == Seq(
       OrderAdded(aWorkflow.id),
       OrderStarted,
-      OrderFailed(
-        Position(0),
-        Some(Outcome.Failed.fromProblem(
-          DuplicateKey("OrderId", "🟦"))))))
+      OrderStepFailed(Outcome.Failed.fromProblem(DuplicateKey("OrderId", "🟦"))),
+      OrderFailed(Position(0))))
   }
 }
 

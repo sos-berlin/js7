@@ -11,7 +11,7 @@ import js7.data.board.BoardPathExpressionParser.boardPathExpr
 import js7.data.board.{Board, BoardPath, BoardState, NoticeId}
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, PostNotice}
 import js7.data.order.OrderEvent.OrderNoticesExpected.Expected
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderOperationCancelled, OrderProcessed, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderStarted, OrderStdoutWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderOperationCancelled, OrderProcessed, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderStarted, OrderStdoutWritten, OrderStepFailed}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.expr
@@ -411,8 +411,9 @@ with BlockingItemUpdater with TestMixins
       OrderStarted,
       OrderNoticesExpected(Vector(Expected(board.path, noticeId))),
       OrderNoticesConsumptionStarted(Vector(Expected(board.path, noticeId))),
+      OrderStepFailed(Outcome.failed),
       OrderNoticesConsumed(true),
-      OrderFailed(Position(0), Some(Outcome.failed)),
+      OrderFailed(Position(0)),
       OrderCancelled,
       OrderDeleted))
   }

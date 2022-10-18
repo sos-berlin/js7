@@ -9,7 +9,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
 import js7.data.job.RelativePathExecutable
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStepFailed}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
 import js7.data.workflow.position.{BranchId, Position}
@@ -52,9 +52,10 @@ final class FailTest extends OurTestSuite with ControllerAgentForScalaTest
         OrderProcessingStarted(subagentId),
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
         OrderMoved(Position(1)),
+        OrderStepFailed(Outcome.failed),
         OrderDetachable,
         OrderDetached,
-        OrderFailed(Position(1), Some(Outcome.failed))))
+        OrderFailed(Position(1))))
   }
 
   "Fail (returnCode=7)" in {
@@ -73,9 +74,10 @@ final class FailTest extends OurTestSuite with ControllerAgentForScalaTest
         OrderProcessingStarted(subagentId),
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
         OrderMoved(Position(1)),
+        OrderStepFailed(Outcome.Failed(NamedValues.rc(7))),
         OrderDetachable,
         OrderDetached,
-        OrderFailed(Position(1), Some(Outcome.Failed(NamedValues.rc(7))))))
+        OrderFailed(Position(1))))
   }
 
   "Fail (returnCode=7, message='ERROR')" in {
@@ -88,7 +90,8 @@ final class FailTest extends OurTestSuite with ControllerAgentForScalaTest
       Vector(
         OrderAdded(workflowId),
         OrderStarted,
-        OrderFailed(Position(0), Some(Outcome.Failed(Some("ERROR"), NamedValues.rc(7))))))
+        OrderStepFailed(Outcome.Failed(Some("ERROR"), NamedValues.rc(7))),
+        OrderFailed(Position(0))))
   }
 
   "Fail in fork" in {
@@ -110,9 +113,8 @@ final class FailTest extends OurTestSuite with ControllerAgentForScalaTest
         OrderJoined(Outcome.Failed(Some("Order:🔺|🍋 Failed"))),
         OrderFailed(Position(0))),
       OrderId("🔺|🍋") -> Vector(
-        OrderFailedInFork(
-          Position(0) / BranchId.fork("🍋") % 0,
-          Some(Outcome.failed))))
+        OrderStepFailed(Outcome.failed),
+        OrderFailedInFork(Position(0) / BranchId.fork("🍋") % 0)))
   }
 
   "Uncatchable fail in fork" in {
@@ -135,9 +137,8 @@ final class FailTest extends OurTestSuite with ControllerAgentForScalaTest
         OrderFailed(Position(0))),
       OrderId("🟥|🍋") -> Vector(
         OrderMoved(Position(0) / "fork+🍋" % 0 / "try+0" % 0),
-        OrderFailedInFork(
-          Position(0) / BranchId.fork("🍋") % 0 / BranchId.try_(0) % 0,
-          Some(Outcome.failed))))
+        OrderStepFailed(Outcome.failed),
+        OrderFailedInFork(Position(0) / BranchId.fork("🍋") % 0 / BranchId.try_(0) % 0)))
   }
 
   private def runUntil[E <: OrderEvent: ClassTag: Tag](

@@ -12,8 +12,8 @@ import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.OrderEventSource.*
 import js7.data.execution.workflow.instructions.InstructionExecutorService
-import js7.data.order.Order.{Cancelled, Failed, FailedInFork, IsTerminated, ProcessingKilled}
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCaught, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderFailed, OrderFailedInFork, OrderFailedIntermediate_, OrderLocksDequeued, OrderLocksReleased, OrderMoved, OrderNoticesConsumed, OrderOperationCancelled, OrderPromptAnswered, OrderResumed, OrderResumptionMarked, OrderSuspended, OrderSuspensionMarked}
+import js7.data.order.Order.{Cancelled, Failed, FailedInFork, IsFreshOrReady, IsTerminated, ProcessingKilled}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCaught, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderFailed, OrderFailedInFork, OrderFailedIntermediate_, OrderLocksDequeued, OrderLocksReleased, OrderMoved, OrderNoticesConsumed, OrderOperationCancelled, OrderPromptAnswered, OrderResumed, OrderResumptionMarked, OrderStepFailed, OrderSuspended, OrderSuspensionMarked}
 import js7.data.order.{Order, OrderId, OrderMark, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.state.StateView
@@ -53,38 +53,44 @@ final class OrderEventSource(state: StateView)
 
   private def checkedNextEvents(order: Order[Order.State])
   : Checked[Seq[KeyedEvent[OrderActorEvent]]] =
-    catchNonFatalFlatten {
-      def ifDefinedElse(o: Option[List[OrderActorEvent]], orElse: Checked[List[KeyedEvent[OrderActorEvent]]]) =
-        o.fold(orElse)(events => Right(events.map(order.id <-: _)))
+    if (!order.lastOutcome.isSucceeded && order.isDetached && order.isState[IsFreshOrReady])
+      // Do not go here when Order.Processed(Outcome.processLost) !
+      // ExecuteExecutor handles this to allow to retry execution.
+      fail(order)
+        .map(_.map(order.id <-: _))
+    else
+      catchNonFatalFlatten {
+        def ifDefinedElse(o: Option[List[OrderActorEvent]], orElse: Checked[List[KeyedEvent[OrderActorEvent]]]) =
+          o.fold(orElse)(events => Right(events.map(order.id <-: _)))
 
-      ifDefinedElse(awokeEvent(order).map(_ :: Nil),
-        joinedEvent(order) match {
-          case Left(problem) => Left(problem)
-          case Right(Some(event)) => Right(event :: Nil)
-          case Right(None) =>
-            if (state.isOrderAtStopPosition(order))
-              executorService.finishExecutor.toEvents(Finish(), order, state)
-            else
-              executorService.toEvents(instruction(order.workflowPosition), order, state)
-                // Multiple returned events are expected to be independent
-                // and are applied to the same idToOrder !!!
-                .flatMap(_
-                  .flatTraverse {
-                    case orderId <-: (moved: OrderMoved) =>
-                      applyMoveInstructions(order, moved)
-                        .map(event => (orderId <-: event) :: Nil)
+        ifDefinedElse(awokeEvent(order).map(_ :: Nil),
+          joinedEvent(order) match {
+            case Left(problem) => Left(problem)
+            case Right(Some(event)) => Right(event :: Nil)
+            case Right(None) =>
+              if (state.isOrderAtStopPosition(order))
+                executorService.finishExecutor.toEvents(Finish(), order, state)
+              else
+                executorService.toEvents(instruction(order.workflowPosition), order, state)
+                  // Multiple returned events are expected to be independent
+                  // and are applied to the same idToOrder !!!
+                  .flatMap(_
+                    .flatTraverse {
+                      case orderId <-: (moved: OrderMoved) =>
+                        applyMoveInstructions(order, moved)
+                          .map(event => (orderId <-: event) :: Nil)
 
-                    case orderId <-: OrderFailedIntermediate_(outcome, uncatchable) =>
-                      // OrderFailedIntermediate_ is used internally only
-                      assertThat(orderId == order.id)
-                      failOrDetach(order, outcome, uncatchable)
-                        .map(_.map(orderId <-: _))
+                      case orderId <-: OrderFailedIntermediate_(outcome, uncatchable) =>
+                        // OrderFailedIntermediate_ is used internally only
+                        assertThat(orderId == order.id)
+                        fail(order, outcome, uncatchable)
+                          .map(_.map(orderId <-: _))
 
-                    case o => Right(o :: Nil)
-                  })
-        })
-    .flatMap(checkEvents)
-  }
+                      case o => Right(o :: Nil)
+                    })
+          })
+      .flatMap(checkEvents)
+    }
 
   private def checkEvents(keyedEvents: Seq[KeyedEvent[OrderActorEvent]]) = {
     var id2o = Map.empty[OrderId, Checked[Order[Order.State]]]
@@ -104,7 +110,7 @@ final class OrderEventSource(state: StateView)
       case Left(problem) =>
         val events =
           if (order.isOrderFailedApplicable)
-            failOrDetach(order, Some(Outcome.Disrupted(problem)), uncatchable = true) match {
+            fail(order, Some(Outcome.Disrupted(problem)), uncatchable = true) match {
               case Left(prblm) =>
                 logger.debug(s"WARN ${order.id}: $prblm")
                 OrderBroken(problem) :: Nil
@@ -113,7 +119,8 @@ final class OrderEventSource(state: StateView)
           else if (order.isAttached && order.isInDetachableState
             && order.copy(attachedState = None).isOrderFailedApplicable) {
             logger.debug(s"Detaching ${order.id} after failure: $problem")
-            // Controller is expected to repeat this call and to reproduce the problem.
+            // Controller is expected to repeat this call and to reproduce the problem !!!
+            // TODO May loop
             OrderDetachable :: Nil
           } else
             OrderBroken(problem) :: Nil
@@ -122,47 +129,43 @@ final class OrderEventSource(state: StateView)
       case Right(o) => o
     }
 
-  private[data] def failOrDetach(
+  private[data] def fail(
     order: Order[Order.State],
-    outcome: Option[Outcome.NotSucceeded],
-    uncatchable: Boolean)
+    outcome: Option[Outcome.NotSucceeded] = None,
+    uncatchable: Boolean = false)
   : Checked[List[OrderActorEvent]] =
-    fail(order, outcome, uncatchable)
-      .map(events =>
-        if (events.view.collectFirst { case _: OrderFailed if order.isAttached => }.nonEmpty) {
-          logger.debug(s"Detaching ${order.id} to allow Controller emitting OrderFailed(${outcome getOrElse ""})")
-          // Controller is expected to reproduce the problem !!!
-          OrderDetachable :: Nil
-        } else
-          events)
+    for {
+      workflow <- idToWorkflow.checked(order.workflowId)
+      events <- fail(workflow, order, outcome, uncatchable = uncatchable)
+    } yield events
 
-  private def fail(order: Order[Order.State], outcome: Option[Outcome.NotSucceeded], uncatchable: Boolean)
-  : Checked[List[OrderActorEvent]] =
-    idToWorkflow
-      .checked(order.workflowId)
-      .flatMap(workflow => failToPosition(workflow, order, outcome, uncatchable = uncatchable))
-
-  private[workflow] def failToPosition(
+  private[workflow] def fail(
     workflow: Workflow,
     order: Order[Order.State],
     outcome: Option[Outcome.NotSucceeded],
     uncatchable: Boolean)
-  : Checked[List[OrderActorEvent]] =
+  : Checked[List[OrderActorEvent]] = {
+    val stepFailed = outcome.map(OrderStepFailed(_)).toList
     leaveBlocks(workflow, order, catchable = !uncatchable) {
       case (None | Some(BranchId.IsFailureBoundary(_)), failPosition) =>
-        // TODO Transfer parent order to Agent to access joinIfFailed there !
-        // For now, order will be moved to Controller, which joins the orders anyway.
-        lazy val joinIfFailed = order.parent
-          .flatMap(forkOrder => instruction_[ForkInstruction](forkOrder).toOption)
-          .fold(false)(_.joinIfFailed)
-        if (!isAgent && joinIfFailed/*false at Agent*/)
-          OrderFailedInFork(failPosition, outcome)
-        else
-          OrderFailed(failPosition, outcome)
+        if (isAgent)
+          OrderDetachable :: Nil
+        else {
+          // TODO Transfer parent order to Agent to access joinIfFailed there !
+          // For now, order will be moved to Controller, which joins the orders anyway.
+          lazy val joinIfFailed = order.parent
+            .flatMap(forkOrder => instruction_[ForkInstruction](forkOrder).toOption)
+            .fold(false)(_.joinIfFailed)
+          if (joinIfFailed)
+            OrderFailedInFork(failPosition) :: Nil
+          else
+            OrderFailed(failPosition) :: Nil
+        }
 
       case (Some(TryBranchId(_)), catchPos) =>
-        OrderCaught(catchPos, outcome)
-    }
+        OrderCaught(catchPos) :: Nil
+    }.map(stepFailed ++: _)
+  }
 
   private def joinedEvent(order: Order[Order.State]): Checked[Option[KeyedEvent[OrderActorEvent]]] =
     if (order.parent.isDefined
@@ -457,16 +460,16 @@ object OrderEventSource {
   def leaveBlocks(workflow: Workflow, order: Order[Order.State], event: OrderActorEvent)
   : Checked[List[OrderActorEvent]] =
     leaveBlocks(workflow, order, catchable = false) {
-      case _ => event
+      case _ => event :: Nil
     }
 
   private def leaveBlocks(workflow: Workflow, order: Order[Order.State], catchable: Boolean)
-    (toEvent: PartialFunction[(Option[BranchId], Position), OrderActorEvent])
+    (toEvent: PartialFunction[(Option[BranchId], Position), List[OrderActorEvent]])
   : Checked[List[OrderActorEvent]] =
     catchNonFatalFlatten {
       def callToEvent(branchId: Option[BranchId], pos: Position) =
         toEvent.lift((branchId, pos))
-          .map(event => Right(event :: Nil))
+          .map(Right(_))
           .getOrElse(Left(Problem(
             s"Unexpected BranchId '$branchId' while leaving instruction blocks")))
 

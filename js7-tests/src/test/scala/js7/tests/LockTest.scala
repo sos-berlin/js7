@@ -275,9 +275,10 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
       OrderDetached,
 
       OrderLocksAcquired(List(LockDemand(lock2Path))),
+      OrderStepFailed(Outcome.failed),
       OrderLocksReleased(List(lock2Path)),
       OrderLocksReleased(List(lockPath)),
-      OrderFailed(Position(1), Some(Outcome.failed)),
+      OrderFailed(Position(1)),
       OrderCancelled,
       OrderDeleted))
 
@@ -310,8 +311,9 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
       OrderLocksAcquired(List(LockDemand(lockPath))),
       OrderMoved(Position(0) / "lock" % 0 / "try+0" % 0),
       OrderLocksAcquired(List(LockDemand(lock2Path))),
+      OrderStepFailed(Outcome.failed),
       OrderLocksReleased(List(lock2Path)),
-      OrderCaught(Position(0) / "lock" % 0 / "catch+0" % 0, Some(Outcome.failed)),
+      OrderCaught(Position(0) / "lock" % 0 / "catch+0" % 0),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderProcessingStarted(subagentId),
@@ -360,8 +362,9 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
 
     assert(controller.eventWatch.eventsByKey[OrderEvent](orderId / "BRANCH") == Seq(
       OrderLocksAcquired(List(LockDemand(lockPath))),
+      OrderStepFailed(Outcome.failed),
       OrderLocksReleased(List(lockPath)),
-      OrderFailedInFork(Position(0) / "fork+BRANCH" % 0, Some(Outcome.failed))))
+      OrderFailedInFork(Position(0) / "fork+BRANCH" % 0)))
 
     assert(controllerState.keyTo(LockState)(lockPath) ==
       LockState(
@@ -401,8 +404,9 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
       OrderDeleted))
 
     assert(controller.eventWatch.eventsByKey[OrderEvent](orderId / "BRANCH") == Seq(
-      OrderFailed(Position(0) / "lock" % 0 / "fork+BRANCH" % 0, Some(Outcome.Disrupted(Problem(
-        "Lock:LOCK has already been acquired by parent Order:🟪")))),
+      OrderStepFailed(Outcome.Disrupted(Problem(
+        "Lock:LOCK has already been acquired by parent Order:🟪"))),
+      OrderFailed(Position(0) / "lock" % 0 / "fork+BRANCH" % 0),
       OrderCancelled))
 
     assert(controllerState.keyTo(LockState)(lockPath) ==
@@ -506,7 +510,9 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
     assert(controller.eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
-      OrderFailed(Position(0), Some(Outcome.Disrupted(Problem("Cannot fulfill lock count=2 with Lock:LOCK limit=1")))),
+      OrderStepFailed(Outcome.Disrupted(Problem(
+        "Cannot fulfill lock count=2 with Lock:LOCK limit=1"))),
+      OrderFailed(Position(0)),
       OrderCancelled,
       OrderDeleted))
 

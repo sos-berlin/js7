@@ -9,7 +9,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
 import js7.data.job.RelativePathExecutable
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStepFailed}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.position.BranchId.Then
@@ -91,7 +91,8 @@ object ExpressionsTest {
   private val ExpectedEvents = Map(
     OrderId("❌") -> Vector(
       OrderAdded(TestWorkflow.id),
-      OrderFailed(Position(0), Some(Outcome.Disrupted(Problem("No such named value: ARG"))))),
+      OrderStepFailed(Outcome.Disrupted(Problem("No such named value: ARG"))),
+      OrderFailed(Position(0))),
     OrderId("⭕️") -> Vector(
       OrderAdded(TestWorkflow.id, Map("ARG" -> StringValue("ARG-VALUE"))),
       OrderMoved(Position(0) / Then % 0),
@@ -102,7 +103,8 @@ object ExpressionsTest {
       OrderProcessed(Outcome.Succeeded(Map("JOB-KEY" -> StringValue("JOB-RESULT")) ++ NamedValues.rc(0))),
       OrderDetachable,
       OrderDetached,
-      OrderFailed(Position(0) / Then % 0, Some(Outcome.Disrupted(Problem("No such named value: ARG2"))))),
+      OrderStepFailed(Outcome.Disrupted(Problem("No such named value: ARG2"))),
+      OrderFailed(Position(0) / Then % 0)),
     OrderId("🔺") -> Vector(
       OrderAdded(TestWorkflow.id, Map(
         "ARG" -> StringValue("ARG-VALUE"),

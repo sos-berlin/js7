@@ -127,7 +127,7 @@ final case class ControllerStateExecutor private(
     for {
       detachedState <- controllerState.applyEvents(detached)
       fail <- new OrderEventSource(detachedState)
-        .failOrDetach(detachedState.idToOrder(order.id), Some(outcome), uncatchable = true)
+        .fail(detachedState.idToOrder(order.id), Some(outcome), uncatchable = true)
     } yield detached ++ fail.view.map(order.id <-: _)
   }
 

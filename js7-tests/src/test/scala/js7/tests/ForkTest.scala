@@ -70,7 +70,7 @@ final class ForkTest extends OurTestSuite with ControllerAgentForScalaTest
       OrderStarted,
       OrderForked(Vector(OrderForked.Child(Fork.Branch.Id("💥"), OrderId("💥|💥")))),
       OrderJoined(Outcome.Failed(Some("No such named value: UNKNOWN"))),
-      OrderFailed(Position(0), None)))
+      OrderFailed(Position(0))))
   }
 
   "joinIfFailed" in {
@@ -90,10 +90,12 @@ final class ForkTest extends OurTestSuite with ControllerAgentForScalaTest
     controllerApi
       .executeCommand(ResumeOrder(
         childOrderId,
-        position = Some(Position(0) / "fork+💥" % 1)))
+        position = Some(Position(0) / "fork+💥" % 1),
+        asSucceeded = true))
       .await(99.s).orThrow
     controller.eventWatch.await[OrderResumed](_.key == childOrderId)
-    controller.eventWatch.await[OrderFinished](_.key == orderId)
+    val terminated = controller.eventWatch.await[OrderTerminated](_.key == orderId).head.value
+    assert(terminated == orderId <-: OrderFinished)
   }
 
   "Failed, cancel failed child order" in {
@@ -114,10 +116,12 @@ final class ForkTest extends OurTestSuite with ControllerAgentForScalaTest
     eventWatch.await[OrderProcessingStarted](_.key == OrderId("DUPLICATE|🥕"))
 
     controller.addOrderBlocking(order)
-    val expectedFailed = OrderFailed(
-      Position(0),
-      Some(Outcome.Disrupted(Problem(
-      "Forked OrderIds duplicate existing Order(Order:DUPLICATE|🥕,DUPLICATE~INITIAL:0,Processing(Subagent:AGENT-A-0),Map(),None,None,Vector(),Some(Attached(AGENT-A)),None,None,false,false,false,Set())"))))
+
+    val expectedStepFailed = OrderStepFailed(Outcome.Disrupted(Problem(
+      "Forked OrderIds duplicate existing Order(Order:DUPLICATE|🥕,DUPLICATE~INITIAL:0,Processing(Subagent:AGENT-A-0),Map(),None,None,Vector(),Some(Attached(AGENT-A)),None,None,false,false,false,Set())")))
+    assert(eventWatch.await[OrderStepFailed](_.key == order.id).head.value.event == expectedStepFailed)
+
+    val expectedFailed = OrderFailed(Position(0))
     assert(eventWatch.await[OrderFailed](_.key == order.id).head.value.event == expectedFailed)
 
     controller.executeCommandAsSystemUser(CancelOrders(Set(order.id), CancellationMode.FreshOrStarted())).await(99.s).orThrow
@@ -125,6 +129,7 @@ final class ForkTest extends OurTestSuite with ControllerAgentForScalaTest
     assert(eventWatch.eventsByKey[OrderEvent](order.id) == Vector(
       OrderAdded(workflow.id, order.arguments),
       OrderStarted,
+      expectedStepFailed,
       expectedFailed,
       OrderCancelled))
 

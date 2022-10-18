@@ -86,7 +86,9 @@ final class ForkListTest extends OurTestSuite with ControllerAgentForScalaTest
       .runToFuture
 
     val eventId = eventWatch.lastAddedEventId
-    controllerApi.addOrder(newOrder(orderId, workflowId.path, n)).await(99.s).orThrow
+    controllerApi
+      .addOrder(newOrder(orderId, workflowId.path, n, deleteWhenTerminated = true))
+      .await(99.s).orThrow
 
     assert(eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
       .head.value.event == OrderFinished)
@@ -148,10 +150,9 @@ final class ForkListTest extends OurTestSuite with ControllerAgentForScalaTest
         Map("myList" -> ListValue(Seq(StringValue("DUPLICATE"), StringValue("DUPLICATE")))),
         deleteWhenTerminated = true),
       OrderStarted,
-      OrderFailed(
-        Position(0),
-        Some(Outcome.Disrupted(Problem(
-          "Duplicate child IDs in $myList: Unexpected duplicates: 2×DUPLICATE"))))))
+      OrderStepFailed(Outcome.Disrupted(Problem(
+        "Duplicate child IDs in $myList: Unexpected duplicates: 2×DUPLICATE"))),
+      OrderFailed(Position(0))))
   }
 
   "ForkList with invalid value" in {
@@ -178,9 +179,8 @@ final class ForkListTest extends OurTestSuite with ControllerAgentForScalaTest
           Map("myList" -> ListValue(Seq(StringValue(childId)))),
           deleteWhenTerminated = true),
         OrderStarted,
-        OrderFailed(
-          Position(0),
-          Some(Outcome.Disrupted(problem)))))
+        OrderStepFailed(Outcome.Disrupted(problem)),
+        OrderFailed(Position(0))))
     }
   }
 
@@ -234,28 +234,34 @@ final class ForkListTest extends OurTestSuite with ControllerAgentForScalaTest
   }
 
   "ForkList with failing child orders, joinIfFailed=true" in {
-    runOrder(joinFailingChildOrdersWorkflow.path, OrderId("FAIL-THEN-JOIN"), 2,
-      expectedChildOrderEvent = _ => OrderFailedInFork(
-        Position(0) / "fork" % 1,
-        Some(Outcome.Failed(Some("TEST FAILURE"), Map.empty))),
+    val order = runOrder(joinFailingChildOrdersWorkflow.path, OrderId("FAIL-THEN-JOIN"), 2,
+      expectedChildOrderEvent = _ => OrderFailedInFork(Position(0) / "fork" % 1),
       expectedTerminationEvent = OrderFailed(Position(0)))
+
+    assert(order.lastOutcome == Outcome.Failed(Some(
+      """Order:FAIL-THEN-JOIN|ELEMENT-1 Failed(TEST FAILURE);
+        |Order:FAIL-THEN-JOIN|ELEMENT-2 Failed(TEST FAILURE)"""
+        .stripMargin)))
   }
 
   "ForkList with failing child orders" in {
-    runOrder(failingChildOrdersWorkflow.path, OrderId("FAIL-THEN-STOP"), 2,
-      expectedChildOrderEvent = _ => OrderFailed(
-        Position(0) / "fork" % 1,
-        Some(Outcome.Failed(Some("TEST FAILURE"), Map.empty))),
+    val order = runOrder(failingChildOrdersWorkflow.path, OrderId("FAIL-THEN-STOP"), 2,
+      expectedChildOrderEvent = _ => OrderFailed(Position(0) / "fork" % 1),
       cancelChildOrders = true,
       expectedTerminationEvent = OrderFailed(Position(0)))
+
+    assert(order.lastOutcome == Outcome.Failed(Some(
+      """Order:FAIL-THEN-STOP|ELEMENT-1 has been cancelled;
+        |Order:FAIL-THEN-STOP|ELEMENT-2 has been cancelled"""
+        .stripMargin)))
   }
 
   private def runOrder(workflowPath: WorkflowPath, orderId: OrderId, n: Int,
     expectedChildOrderEvent: OrderId => OrderEvent =
-    orderId => OrderProcessed(Outcome.Succeeded(Map("result" -> StringValue("🔹" + orderId.string)))),
+      orderId => OrderProcessed(Outcome.Succeeded(Map("result" -> StringValue("🔹" + orderId.string)))),
     expectedTerminationEvent: OrderTerminated = OrderFinished,
-    cancelChildOrders: Boolean = false
-  ): Unit = {
+    cancelChildOrders: Boolean = false)
+  : Order[Order.State] = {
     val childOrderIds = (1 to n).map(i => orderId / s"ELEMENT-$i").toSet
     val eventId = eventWatch.lastAddedEventId
 
@@ -283,6 +289,9 @@ final class ForkListTest extends OurTestSuite with ControllerAgentForScalaTest
 
     assert(eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
       .head.value.event == expectedTerminationEvent)
+    val terminatedOrder = controllerState.idToOrder(orderId)
+    controllerApi.deleteOrdersWhenTerminated(Observable(orderId)).await(99.s).orThrow
+    terminatedOrder
   }
 
   "Mixed agents" in {
@@ -381,7 +390,8 @@ final class ForkListTest extends OurTestSuite with ControllerAgentForScalaTest
         Map("myList" -> ListValue(Seq(StringValue("SINGLE-ELEMENT")))),
         deleteWhenTerminated = true),
       OrderStarted,
-      OrderFailed(Position(0), Some(Outcome.Failed(Some("No such named value: UNKNOWN"))))))
+      OrderStepFailed(Outcome.Failed(Some("No such named value: UNKNOWN"))),
+      OrderFailed(Position(0))))
   }
 
   "Example with a simple script" in {
@@ -574,10 +584,11 @@ object ForkListTest
                 env = Map(
                   "ELEMENT_ID" -> expr("$elementId")))))))))
 
-  private def newOrder(orderId: OrderId, workflowPath: WorkflowPath, n: Int) =
+  private def newOrder(orderId: OrderId, workflowPath: WorkflowPath, n: Int,
+    deleteWhenTerminated: Boolean = false) =
     FreshOrder(
       orderId,
       workflowPath,
       Map("myList" -> ListValue(for (i <- 1 to n) yield StringValue(s"ELEMENT-$i"))),
-      deleteWhenTerminated = true)
+      deleteWhenTerminated = deleteWhenTerminated)
 }

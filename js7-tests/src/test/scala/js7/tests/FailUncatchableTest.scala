@@ -8,7 +8,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
 import js7.data.job.RelativePathExecutable
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderStepFailed}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
 import js7.data.workflow.instructions.Fork
@@ -36,9 +36,10 @@ final class FailUncatchableTest extends OurTestSuite
         OrderProcessingStarted(subagentId),
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
         OrderMoved(Position(1)),
+        OrderStepFailed(Outcome.failed),
         OrderDetachable,
         OrderDetached,
-        OrderFailed(Position(1), Some(Outcome.failed))))
+        OrderFailed(Position(1))))
   }
 
   "fail (uncatchable=true, returnCode=7)" in {
@@ -55,9 +56,10 @@ final class FailUncatchableTest extends OurTestSuite
         OrderProcessingStarted(subagentId),
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
         OrderMoved(Position(1)),
+        OrderStepFailed(Outcome.Failed(NamedValues.rc(7))),
         OrderDetachable,
         OrderDetached,
-        OrderFailed(Position(1), Some(Outcome.Failed(NamedValues.rc(7))))))
+        OrderFailed(Position(1))))
   }
 
   "fail (uncatchable=true, returnCode=7, message='ERROR')" in {
@@ -74,9 +76,10 @@ final class FailUncatchableTest extends OurTestSuite
         OrderProcessingStarted(subagentId),
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
         OrderMoved(Position(1)),
+        OrderStepFailed(Outcome.Failed(Some("TEST-ERROR"), NamedValues.rc(7))),
         OrderDetachable,
         OrderDetached,
-        OrderFailed(Position(1), Some(Outcome.Failed(Some("TEST-ERROR"), NamedValues.rc(7))))))
+        OrderFailed(Position(1))))
   }
 
   "fail in fork, fail first" in {
@@ -110,13 +113,12 @@ final class FailUncatchableTest extends OurTestSuite
         OrderProcessingStarted(subagentId),
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
         OrderMoved(Position(0) / "fork+🥕" % 1),
+        OrderStepFailed(Outcome.Failed(Some("TEST-ERROR"))),
         // TODO OrderDetached, because agent does not has parent order and
         // cannot look at Fork.joinIfFailed. Okay because we join at Controller, anyway.
         OrderDetachable,
         OrderDetached,
-        OrderFailedInFork(
-          Position(0) / BranchId.fork("🥕") % 1,
-          Some(Outcome.Failed(Some("TEST-ERROR"))))))
+        OrderFailedInFork(Position(0) / BranchId.fork("🥕") % 1)))
         //OrderDetachable,
         //OrderDetached))
 
@@ -162,15 +164,12 @@ final class FailUncatchableTest extends OurTestSuite
         OrderProcessingStarted(subagentId),
         OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
         OrderMoved(Position(0) / "fork+🥕" % 1),
-        // TODO OrderDetached, because agent does not has parent order and
+        OrderStepFailed(Outcome.Failed(Some("TEST-ERROR"))),
+        // TODO OrderDetached early, because agent does not has parent order and
         // cannot look at Fork.joinIfFailed. Okay because we join at Controller, anyway.
         OrderDetachable,
         OrderDetached,
-        OrderFailedInFork(
-          Position(0) / BranchId.fork("🥕") % 1,
-          Some(Outcome.Failed(Some("TEST-ERROR"))))))
-        //OrderDetachable,
-        //OrderDetached))
+        OrderFailedInFork(Position(0) / BranchId.fork("🥕") % 1)))
 
     assert(events.filter(_.key == orderId / "🍋").map(_.event) ==
       Vector(

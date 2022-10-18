@@ -124,6 +124,11 @@ final case class Order[+S <: Order.State](
         check(isState[Processed] && !isSuspended && isAttached,
           copy(state = ProcessingKilled))
 
+      case OrderStepFailed(outcome) =>
+        check(isOrderStepFailedApplicable,
+          copy(
+            historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome)))
+
       case OrderFailed(movedTo, outcome_) =>
         check(isOrderFailedApplicable,
           copy(
@@ -489,6 +494,16 @@ final case class Order[+S <: Order.State](
                 state = BetweenCycles(cycleState)))
     }
   }
+
+  private def isOrderStepFailedApplicable =
+    state match {
+      case _: Fresh
+           | _: Ready
+           | _: Processed
+           | _: ProcessingKilled
+        if isDetached || isAttached => true
+      case _ => false
+    }
 
   def isOrderFailedApplicable =
     !isSuspended &&
