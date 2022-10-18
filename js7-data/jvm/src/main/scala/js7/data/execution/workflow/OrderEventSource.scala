@@ -469,7 +469,7 @@ object OrderEventSource {
         toEvent.lift((branchId, pos))
           .map(event => Right(event :: Nil))
           .getOrElse(Left(Problem(
-            s"Unexpected Branchid '$branchId' while leaving instruction blocks")))
+            s"Unexpected BranchId '$branchId' while leaving instruction blocks")))
 
       def loop(reverseBranchPath: List[Segment], failPosition: Position)
       : Checked[List[OrderActorEvent]] =
@@ -515,7 +515,7 @@ object OrderEventSource {
 
   // Special handling for try with maxRetries and catch block with retry instruction only:
   // try (maxRetries=n) ... catch retry
-  // In this case, OrderFailed event must have original failures's position, not failed retry's position.
+  // In this case, OrderFailed event must have original failure's position, not failed retry's position.
   private def isMaxRetriesReached(workflow: Workflow, firstCatchPos: Position): Boolean = {
     val catchStartsWithRetry =
       workflow.instruction(firstCatchPos).withoutSourcePos == Retry()
