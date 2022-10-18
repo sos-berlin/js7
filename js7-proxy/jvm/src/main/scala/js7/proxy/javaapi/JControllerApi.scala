@@ -198,17 +198,21 @@ final class JControllerApi(val asScala: ControllerApi)(implicit scheduler: Sched
   def resumeOrder(
     @Nonnull orderId: OrderId,
     @Nonnull position: Optional[JPosition],
-    @Nonnull historyOperations: java.util.List[JHistoryOperation])
+    @Nonnull historyOperations: java.util.List[JHistoryOperation],
+    asSucceeded: Boolean)
   : CompletableFuture[VEither[Problem, Void]] =
     execute(ResumeOrder(
       requireNonNull(orderId),
       position.toScala.map(_.asScala),
-      historyOperations.asScala.view.map(_.asScala).toVector))
+      historyOperations.asScala.view.map(_.asScala).toVector,
+      asSucceeded = asSucceeded))
 
   @Nonnull
-  def resumeOrders(@Nonnull orderIds: java.lang.Iterable[OrderId])
+  def resumeOrders(@Nonnull orderIds: java.lang.Iterable[OrderId], asSucceeded: Boolean)
   : CompletableFuture[VEither[Problem, Void]] =
-    execute(ResumeOrders(orderIds.asScala.toVector))
+    execute(ResumeOrders(
+      orderIds.asScala.toVector,
+      asSucceeded = asSucceeded))
 
   @Nonnull
   def deleteOrdersWhenTerminated(@Nonnull orderIds: java.lang.Iterable[OrderId])
