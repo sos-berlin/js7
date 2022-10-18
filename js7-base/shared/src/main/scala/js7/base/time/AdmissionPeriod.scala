@@ -233,8 +233,10 @@ object MonthlyLastWeekdayPeriod {
 final case class SpecificDatePeriod(secondsSinceLocalEpoch: Long, duration: FiniteDuration)
 extends AdmissionPeriod
 {
-  override def pretty =
-    s"at $toString, ${duration.pretty}"
+  override def pretty = {
+    val ts = Timestamp.ofEpochSecond(secondsSinceLocalEpoch).toString.stripSuffix("Z")
+    s"$ts, ${duration.pretty}"
+  }
 }
 object SpecificDatePeriod {
   @TestOnly

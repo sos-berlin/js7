@@ -146,6 +146,8 @@ final class AdmissionPeriodTest extends OurTestSuite
             "secondsSinceLocalEpoch": 1664366400,
             "duration": 600
           }""")
+
+      assert(SpecificDatePeriod(epochSeconds, 600.s).toString == "SpecificDatePeriod(2022-09-28T12:00:00, 10min)")
     }
   }
 }
