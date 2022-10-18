@@ -1,10 +1,11 @@
 package js7.data.controller
 
+import cats.syntax.foldable.*
 import cats.syntax.traverse.*
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.Signed
-import js7.base.problem.Checked.{CheckedOption, RichCheckedIterable}
+import js7.base.problem.Checked.RichCheckedIterable
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.RichMap
@@ -25,8 +26,8 @@ import js7.data.event.{Event, EventId, ItemContainer, JournalEvent, JournalHeade
 import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeleted, ItemDeletionMarked, ItemDetachable}
 import js7.data.item.ItemAttachedState.{Attachable, Attached, Detachable, Detached, NotDetached}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
-import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.UnsignedItemEvent.{UnsignedItemAdded, UnsignedItemChanged}
+import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemChanged}
 import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemPath, ItemAttachedState, ItemRevision, Repo, SignableItem, SignableItemKey, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, SimpleItem, SimpleItemPath, UnsignedItemEvent, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItem, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, UnsignedSimpleItemState, VersionedControl, VersionedControlId_, VersionedEvent, VersionedItemId_, VersionedItemPath}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath, LockState}
@@ -502,12 +503,22 @@ with SnapshotableState[ControllerState]
         keyToItem.checked(itemKey)
           .flatTraverse(_
             .referencedItemPaths
-            .map(path => pathToItem
-              .get(path)
-              .toChecked(MissingReferencedItemProblem(itemKey, referencedItemKey = path)))
+            .map(path => referencedItemExists(path) !!
+              MissingReferencedItemProblem(itemKey, referencedItemKey = path))
             .toVector))
       .combineProblems
-      .rightAs(())
+      .map(_.combineAll)
+
+  private def referencedItemExists(path: InventoryItemPath) =
+    pathToItem.contains(path) ||
+      (path match {
+        case id: SubagentSelectionId =>
+          // A SubagentId may be given instead of a SubagentSelectionId.
+          // SubagentKeeper handles this.
+          pathToItem.contains(id.toSubagentId)
+        case _ => false
+      })
+
 
   private[controller] def checkRemovedVersionedItems(deletedPaths: Iterable[VersionedItemPath])
   : Checked[Unit] =

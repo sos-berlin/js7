@@ -23,10 +23,11 @@ import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentS
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.EmptyJob
 import js7.tests.subagent.SubagentSelectionTest.*
+import js7.tests.testenv.BlockingItemUpdater
 import monix.execution.Scheduler
 import monix.reactive.Observable
 
-final class SubagentSelectionTest extends OurTestSuite with SubagentTester
+final class SubagentSelectionTest extends OurTestSuite with SubagentTester with BlockingItemUpdater
 {
   override protected def agentConfig = config"""
     js7.auth.subagents.A-SUBAGENT = "AGENT-PASSWORD"
@@ -161,6 +162,17 @@ final class SubagentSelectionTest extends OurTestSuite with SubagentTester
       .head.value.event
     assert(started.subagentId.contains(aSubagentId))
     eventWatch.await[OrderDeleted](_.key == orderId, after = eventId)
+  }
+
+  "Use SubagentId as SubagentSelectionId" in {
+    val workflow = updateItem(Workflow(
+      WorkflowPath("SUBAGENT-ID-AS-SELECTION"),
+      Seq(
+        EmptyJob.execute(
+          agentPath,
+          subagentSelectionId = Some(SubagentSelectionId.fromSubagentId(bSubagentId))))))
+    val events = controller.runOrder(FreshOrder(OrderId("SUBAGENT-ID-AS-SELECTION"), workflow.path))
+    assert(events.map(_.value) contains OrderProcessingStarted(bSubagentId))
   }
 
   "Stop A-SUBAGENT" in {

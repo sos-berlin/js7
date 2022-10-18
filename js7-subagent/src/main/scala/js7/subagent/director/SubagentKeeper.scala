@@ -9,8 +9,8 @@ import cats.syntax.foldable.*
 import cats.syntax.traverse.*
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGKILL
-import js7.base.log.{CorrelId, Logger}
 import js7.base.log.Logger.syntax.*
+import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.monixutils.{AsyncMap, AsyncVariable}
 import js7.base.problem.Checked.*
@@ -533,11 +533,18 @@ object SubagentKeeper
               selectionToPrioritized = selToPrio)
         }
 
-    def selectNext(selectionId: Option[SubagentSelectionId]): Option[SubagentDriver] =
-      selectionToPrioritized.get(selectionId) // May be non-existent when stopping
-        .flatMap(_
-          .selectNext(subagentId => subagentToEntry.get(subagentId).fold(false)(_.driver.isCoupled)))
-        .flatMap(subagentId => subagentToEntry.get(subagentId).map(_.driver))
+    def selectNext(maybeSelectionId: Option[SubagentSelectionId]): Option[SubagentDriver] =
+      maybeSelectionId match {
+        case Some(selectionId) if !selectionToPrioritized.contains(maybeSelectionId) =>
+          // A SubagentSelectionId, if not defined, may denote a Subagent
+          subagentToEntry.get(selectionId.toSubagentId).map(_.driver)
+
+        case _ =>
+          selectionToPrioritized.get(maybeSelectionId) // May be non-existent when stopping
+            .flatMap(_
+              .selectNext(subagentId => subagentToEntry.get(subagentId).fold(false)(_.driver.isCoupled)))
+            .flatMap(subagentId => subagentToEntry.get(subagentId).map(_.driver))
+      }
   }
 
   private final case class Entry(

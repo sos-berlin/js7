@@ -14,6 +14,9 @@ with InventoryItemPath.AttachableToAgent
   def companion = SubagentSelectionId
 
   def toUserId = UserId(string)
+
+  // A SubagentId may be used as a SubagentSelectionId
+  def toSubagentId = SubagentId(string)
 }
 
 object SubagentSelectionId
@@ -27,6 +30,9 @@ with UnsignedSimpleItemPath.Companion[SubagentSelectionId]
 
   protected def unchecked(string: String) =
     new SubagentSelectionId(string)
+
+  def fromSubagentId(subagentId: SubagentId): SubagentSelectionId =
+    new SubagentSelectionId(subagentId.string)
 
   @javaApi
   def of(string: String): SubagentSelectionId =
