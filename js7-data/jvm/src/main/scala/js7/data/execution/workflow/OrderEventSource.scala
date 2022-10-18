@@ -164,7 +164,7 @@ final class OrderEventSource(state: StateView)
         OrderCaught(catchPos, outcome)
     }
 
-  private def joinedEvent(order: Order[Order.State]): Checked[Option[KeyedEvent[OrderActorEvent]]] = {
+  private def joinedEvent(order: Order[Order.State]): Checked[Option[KeyedEvent[OrderActorEvent]]] =
     if (order.parent.isDefined
       && (order.isDetached || order.isAttached)
       && (order.isState[FailedInFork] || order.isState[Cancelled]))
@@ -174,7 +174,6 @@ final class OrderEventSource(state: StateView)
       } yield executorService.tryJoinChildOrder(fork, order, state)
     else
       Right(None)
-  }
 
   private def awokeEvent(order: Order[Order.State]): Option[OrderActorEvent] =
     ((order.isDetached || order.isAttached) && order.isState[Order.DelayedAfterError]) ?
