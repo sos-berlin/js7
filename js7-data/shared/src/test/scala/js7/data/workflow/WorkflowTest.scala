@@ -13,6 +13,7 @@ import js7.data.calendar.CalendarPath
 import js7.data.item.VersionId
 import js7.data.job.{JobKey, JobResourcePath, PathExecutable, ShellScriptExecutable}
 import js7.data.lock.LockPath
+import js7.data.subagent.SubagentSelectionId
 import js7.data.value.NumberValue
 import js7.data.value.expression.Expression.{BooleanConstant, Equal, JobResourceVariable, LastReturnCode, NumericConstant, StringConstant}
 import js7.data.value.expression.ExpressionParser.expr
@@ -174,8 +175,8 @@ final class WorkflowTest extends OurTestSuite
                   "v1Compatible": true,
                   "path": "B.cmd"
                 },
-                "parallelism": 3,
-                "defaultArguments": { "JOB_B": "'B-VALUE'" }
+                "parallelism": 1,
+                "subagentSelectionIdExpr": "'SUBAGENT-SELECTION'"
               }
             }
           ],
@@ -361,8 +362,8 @@ final class WorkflowTest extends OurTestSuite
                   "v1Compatible": true,
                   "path": "B.cmd"
                 },
-                "parallelism": 3,
-                "defaultArguments": { "JOB_B": "'B-VALUE'" }
+                "parallelism": 1,
+                "subagentSelectionIdExpr" : "'SUBAGENT-SELECTION'"
               }
             }, {
               "position": [ 4 ],
@@ -561,7 +562,7 @@ final class WorkflowTest extends OurTestSuite
     assert(TestWorkflow.checkedExecute(Position(0)) == Right(AExecute))
     assert(TestWorkflow.checkedExecute(Position(1)) == Left(Problem("Expected 'Execute' statement at workflow position 1 (not: If)")))
     assert(TestWorkflow.checkedExecute(Position(2)) == Left(Problem("Expected 'Execute' statement at workflow position 2 (not: Fork)")))
-    assert(TestWorkflow.checkedExecute(Position(3)) == Right(BExecute))
+    assert(TestWorkflow.checkedExecute(Position(3)) == Right(lastExecute))
     assert(TestWorkflow.checkedExecute(Position(4)) == Left(Problem("Expected 'Execute' statement at workflow position 4 (not: ImplicitEnd)")))
     assert(TestWorkflow.checkedExecute(Position(999)) == Left(Problem("Expected 'Execute' statement at workflow position 999 (not: Gap)")))
   }
@@ -577,7 +578,7 @@ final class WorkflowTest extends OurTestSuite
       (InstructionNr(0), AExecute),
       (InstructionNr(1), "TEST-LABEL" @: TestWorkflow.instruction(1)),
       (InstructionNr(2), TestWorkflow.instruction(2)),
-      (InstructionNr(3), BExecute),
+      (InstructionNr(3), lastExecute),
       (InstructionNr(4), ImplicitEnd())))
   }
 
@@ -607,7 +608,7 @@ final class WorkflowTest extends OurTestSuite
       (Position(2) / "fork+🍋" % 0, TestWorkflow.instruction(2).asInstanceOf[Fork].branches(1).workflow.instructions(0)),
       (Position(2) / "fork+🍋" % 1, TestWorkflow.instruction(2).asInstanceOf[Fork].branches(1).workflow.instructions(1)),
       (Position(2) / "fork+🍋" % 2, ImplicitEnd()),
-      (Position(3), BExecute),
+      (Position(3), lastExecute),
       (Position(4), ImplicitEnd())))
   }
 
@@ -758,7 +759,7 @@ final class WorkflowTest extends OurTestSuite
       JobKey(TestWorkflow.id /: (Position(1) / Else % 0)) -> BExecute.job,
       JobKey(TestWorkflow.id /: (Position(2) / "fork+🥕" % 0)) -> AExecute.job,
       JobKey(TestWorkflow.id /: (Position(2) / "fork+🍋" % 0)) -> BExecute.job,
-      JobKey(TestWorkflow.id /: Position(3)) -> BExecute.job,
+      JobKey(TestWorkflow.id /: Position(3)) -> lastExecute.job,
       JobKey(TestWorkflow.id, AJobName) -> AJob,
       JobKey(TestWorkflow.id, BJobName) -> BJob))
   }
@@ -795,7 +796,7 @@ final class WorkflowTest extends OurTestSuite
       Position(2) / "fork+🍋" % 0 -> BExecute,
       Position(2) / "fork+🍋" % 1 -> Execute.Named(BJobName),
       Position(2) / "fork+🍋" % 2 -> ImplicitEnd(),
-      Position(3) -> BExecute,
+      Position(3) -> lastExecute,
       Position(4) -> ImplicitEnd())
 
     for ((address, instruction) <- addressToInstruction) {
@@ -1135,11 +1136,16 @@ final class WorkflowTest extends OurTestSuite
     //}
   }
 
+  "knownSubagentSelectionIds" in {
+    assert(TestWorkflow.knownSubagentSelectionIds == Set(SubagentSelectionId("SUBAGENT-SELECTION")))
+  }
+
   "referencedItemPaths" in {
     assert(TestWorkflow.referencedItemPaths.toSet == Set(
       TestAgentPath,
       JobResourcePath("JOB-RESOURCE"),
-      CalendarPath("CALENDAR")))
+      CalendarPath("CALENDAR"),
+      SubagentSelectionId("SUBAGENT-SELECTION")))
 
     assert(ForkTestSetting.TestWorkflow.referencedItemPaths.toSet == Set(
       ForkTestSetting.AAgentPath,
@@ -1149,6 +1155,9 @@ final class WorkflowTest extends OurTestSuite
 
 private object WorkflowTest
 {
+  private val lastExecute = Execute(WorkflowJob(TestAgentPath, BPathExecutable, subagentSelectionId =
+    Some(expr("'SUBAGENT-SELECTION'"))))
+
   private val TestWorkflow = Workflow(
     WorkflowPath("TEST") ~ "VERSION",
     Vector(
@@ -1172,7 +1181,7 @@ private object WorkflowTest
             Execute.Named(BJobName)),
           result = Some(Map(
             "RESULT" -> expr("$RESULT"))))),
-      BExecute),
+      lastExecute),
     Map(
       AJobName -> AJob,
       BJobName -> BJob),

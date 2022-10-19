@@ -1,5 +1,6 @@
 package js7.data.execution.workflow.instructions
 
+import cats.syntax.traverse.*
 import java.time.LocalDate
 import js7.base.problem.Checked
 import js7.base.time.AdmissionTimeSchemeForJavaTime.*
@@ -13,6 +14,7 @@ import js7.data.order.OrderObstacle.{WaitingForAdmission, jobParallelismLimitRea
 import js7.data.order.Outcome.Disrupted.ProcessLost
 import js7.data.order.{Order, OrderId, OrderObstacle, OrderObstacleCalculator, Outcome}
 import js7.data.state.StateView
+import js7.data.subagent.{SubagentItem, SubagentSelection, SubagentSelectionId}
 import js7.data.workflow.WorkflowPathControlPath
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -33,10 +35,27 @@ extends EventInstructionExecutor with PositionInstructionExecutor
             // If order should start, change nextPosition function, too!
             //? order.ifState[Fresh].map(_ => OrderStarted).toList :::
             Some(Right((order.id <-: OrderMoved(order.position.increment)) :: Nil))
-          else if (order.isProcessable)
+          else if (order.isProcessable && order.isDetached)
             attach(order, job.agentPath)
-          else
-            Some(Right(Nil)))
+          else {
+            val checked = for {
+              job <- state.workflowJob(order.workflowPosition)
+              scope <- state.toPureOrderScope(order)
+              maybeSubagentSelectionId <- job.subagentSelectionId.traverse(_
+                .evalAsString(scope)
+                .flatMap(SubagentSelectionId.checked))
+              maybeSubagentSelection <- maybeSubagentSelectionId
+                .traverse(o => state
+                  .keyToItem(SubagentSelection)
+                  .checked(o)
+                  .orElse(state
+                    .keyToItem(SubagentItem)
+                    .checked(o.toSubagentId)))
+            } yield Nil
+            Some(
+              checked.left.flatMap(problem => Right(
+                (order.id <-: OrderFailedIntermediate_(Some(Outcome.Disrupted(problem)))) :: Nil)))
+          })
         .orElse(
           // Order.Ready: Execution has to be started by the caller
           //order.ifState[Order.Fresh].map(order =>

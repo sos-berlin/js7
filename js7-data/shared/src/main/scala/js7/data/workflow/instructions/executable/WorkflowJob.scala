@@ -16,7 +16,8 @@ import js7.data.agent.AgentPath
 import js7.data.job.{CommandLineExecutable, Executable, InternalExecutable, JobResourcePath, PathExecutable, ShellScriptExecutable}
 import js7.data.subagent.SubagentSelectionId
 import js7.data.value.ValuePrinter
-import js7.data.value.expression.Expression
+import js7.data.value.expression.{Expression, Scope}
+import js7.data.value.expression.Expression.StringConstant
 import scala.concurrent.duration.FiniteDuration
 
 /**
@@ -26,7 +27,7 @@ final case class WorkflowJob(
   agentPath: AgentPath,
   executable: Executable,
   defaultArguments: Map[String, Expression],
-  subagentSelectionId: Option[SubagentSelectionId],
+  subagentSelectionId: Option[Expression],
   jobResourcePaths: Seq[JobResourcePath],
   parallelism: Int,
   sigkillDelay: Option[FiniteDuration],
@@ -51,6 +52,13 @@ final case class WorkflowJob(
           (jobArguments.nonEmpty ?? ("jobArguments=" + ValuePrinter.nameToExpressionToString(jobArguments))) ++
           (arguments.nonEmpty ?? ("arguments=" + ValuePrinter.nameToExpressionToString(arguments)))
     })
+
+  def checked: Checked[Unit] =
+    subagentSelectionId.fold(Checked.unit)(expr =>
+      if (expr.isConstant)
+        expr.evalAsString(Scope.empty).flatMap(SubagentSelectionId.checked).rightAs(())
+      else
+        Checked.unit)
 }
 
 object WorkflowJob
@@ -61,7 +69,7 @@ object WorkflowJob
     agentPath: AgentPath,
     executable: Executable,
     defaultArguments: Map[String, Expression] = Map.empty,
-    subagentSelectionId: Option[SubagentSelectionId] = None,
+    subagentSelectionId: Option[Expression] = None,
     jobResourcePaths: Seq[JobResourcePath] = Nil,
     parallelism: Int = DefaultParallelism,
     sigkillDelay: Option[FiniteDuration] = None,
@@ -80,7 +88,7 @@ object WorkflowJob
     agentPath: AgentPath,
     executable: Executable,
     defaultArguments: Map[String, Expression] = Map.empty,
-    subagentSelectionId: Option[SubagentSelectionId] = None,
+    subagentSelectionId: Option[Expression] = None,
     jobResourcePaths: Seq[JobResourcePath] = Nil,
     parallelism: Int = DefaultParallelism,
     sigkillDelay: Option[FiniteDuration] = None,
@@ -107,7 +115,7 @@ object WorkflowJob
   implicit val jsonEncoder: Encoder.AsObject[WorkflowJob] = workflowJob =>
     JsonObject(
       "agentPath" -> workflowJob.agentPath.asJson,
-      "subagentSelectionId" -> workflowJob.subagentSelectionId.asJson,
+      "subagentSelectionIdExpr" -> workflowJob.subagentSelectionId.asJson,
       "executable" -> workflowJob.executable.asJson,
       "defaultArguments" -> workflowJob.defaultArguments.??.asJson,
       "jobResourcePaths" -> workflowJob.jobResourcePaths.??.asJson,
@@ -121,7 +129,12 @@ object WorkflowJob
   implicit val jsonDecoder: Decoder[WorkflowJob] = c =>
     for {
       executable <- c.get[Executable]("executable")
-      subagentSelectionId <- c.get[Option[SubagentSelectionId]]("subagentSelectionId")
+      subagentSelectionId <-
+        c.get[Option[SubagentSelectionId]]("subagentSelectionId")
+          .flatMap {
+            case Some(id) => Right(Some(StringConstant(id.string)))
+            case None => c.get[Option[Expression]]("subagentSelectionIdExpr")
+          }
       agentPath <- c.get[AgentPath]("agentPath")
       arguments <- c.getOrElse[Map[String, Expression]]("defaultArguments")(Map.empty)
       jobResourcePaths <- c.getOrElse[Seq[JobResourcePath]]("jobResourcePaths")(Nil)

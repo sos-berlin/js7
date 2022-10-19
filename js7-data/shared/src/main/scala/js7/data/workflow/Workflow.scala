@@ -18,7 +18,8 @@ import js7.data.calendar.CalendarPath
 import js7.data.item.{InventoryItemPath, SignableSimpleItemPath, SimpleItemPath, TrivialItemState, UnsignedSimpleItemPath, VersionedItem, VersionedItemId}
 import js7.data.job.{JobKey, JobResourcePath}
 import js7.data.order.Order
-import js7.data.value.expression.{Expression, PositionSearch}
+import js7.data.subagent.SubagentSelectionId
+import js7.data.value.expression.{Expression, PositionSearch, Scope}
 import js7.data.workflow.Instruction.{@:, Labeled}
 import js7.data.workflow.Workflow.isCorrectlyEnded
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -84,6 +85,7 @@ with TrivialItemState[Workflow]
   def completelyChecked: Checked[Workflow] = {
     val chk =
       checkJobReferences ++
+      checkJobs ++
       checkRetry() ++
       checkLabels ++
       checkCalendar
@@ -110,6 +112,9 @@ with TrivialItemState[Workflow]
           nestedWorkflow(position.branchPath)
             .flatMap(_.findJob(o.name).map(_ => ()))
       }
+
+  private def checkJobs: View[Checked[Unit]] =
+    workflowJobs.map(_.checked)
 
   private def checkRetry(inCatch: Boolean = false): Seq[Checked[Unit]] =
     instructions flatMap {
@@ -178,8 +183,17 @@ with TrivialItemState[Workflow]
       referencedJobResourcePaths,
       calendarPath,
       referencedAgentPaths,
-      workflowJobs.view.flatMap(_.subagentSelectionId).toSet)
+      knownSubagentSelectionIds)
   }
+
+  private[workflow] def knownSubagentSelectionIds: Set[SubagentSelectionId] =
+    workflowJobs.view.flatMap(_
+      .subagentSelectionId
+      .flatMap(_
+        .evalAsString(Scope.empty)
+        .flatMap(SubagentSelectionId.checked)
+        .toOption))
+      .toSet
 
   def referencedAgentPaths: Set[AgentPath] =
     workflowJobs.map(_.agentPath).toSet

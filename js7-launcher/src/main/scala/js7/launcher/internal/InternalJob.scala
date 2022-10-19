@@ -11,7 +11,6 @@ import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.{RichJavaClass, RichPartialFunction}
 import js7.data.agent.AgentPath
 import js7.data.job.{InternalExecutable, JobConf, JobResourcePath}
-import js7.data.subagent.SubagentSelectionId
 import js7.data.value.expression.Expression
 import js7.data.value.{NamedValues, Value}
 import js7.data.workflow.instructions.Execute
@@ -107,7 +106,7 @@ object InternalJob
     final def execute(
       agentPath: AgentPath,
       arguments: Map[String, Expression] = Map.empty,
-      subagentSelectionId: Option[SubagentSelectionId] = None,
+      subagentSelectionId: Option[Expression] = None,
       parallelism: Int = 1,
       jobResourcePaths: Seq[JobResourcePath] = Nil)
     : Execute.Anonymous =
@@ -117,7 +116,7 @@ object InternalJob
     final def workflowJob(
       agentPath: AgentPath,
       arguments: Map[String, Expression] = Map.empty,
-      subagentSelectionId: Option[SubagentSelectionId] = None,
+      subagentSelectionId: Option[Expression] = None,
       parallelism: Int = 1,
       jobResourcePaths: Seq[JobResourcePath] = Nil)
     : WorkflowJob =

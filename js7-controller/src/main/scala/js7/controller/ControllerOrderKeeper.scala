@@ -71,7 +71,7 @@ import js7.data.problems.UserIsNotEnabledToReleaseEventsProblem
 import js7.data.state.OrderEventHandler
 import js7.data.state.OrderEventHandler.FollowUp
 import js7.data.subagent.SubagentItemStateEvent.{SubagentEventsObserved, SubagentResetStartedByController}
-import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent}
+import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentItemStateEvent, SubagentSelection}
 import js7.data.value.expression.scopes.NowScope
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow, WorkflowControl, WorkflowControlId, WorkflowPathControl, WorkflowPathControlPath}
@@ -1419,8 +1419,8 @@ with MainJournalingActor[ControllerState, Event]
               actor ! AgentDriver.Input.AttachSignedItem(signedItem)
             }
 
-          // Maybe attach more required Items
-          unsignedItemsToBeAttached(workflow, agentPath).foreach { item =>
+          // Attach more required Items
+          for (item <- unsignedItemsToBeAttached(workflow, agentPath)) {
             actor ! AgentDriver.Input.AttachUnsignedItem(item)
           }
 
@@ -1434,27 +1434,39 @@ with MainJournalingActor[ControllerState, Event]
     }
 
   private def unsignedItemsToBeAttached(workflow: Workflow, agentPath: AgentPath)
-  : Vector[UnsignedItem] = {
-    var result: Vector[UnsignedItem] = workflow
+  : Iterable[UnsignedItem] = {
+    // TODO Optimize: Remember the set of already assigned ItemPaths and
+    //  Items (which may change) for (workflow.id, agentPath)
+    // (and clear with ResetAgent)
+    val result = Map.newBuilder[UnsignedItemKey, UnsignedItem]
+
+    result ++= workflow
+      .reduceForAgent(agentPath)
       .referencedAttachableToAgentUnsignedPaths
       .view
       .flatMap(_controllerState.pathToUnsignedSimpleItem.get)
-      .filter(isDetachedOrAttachable(_, agentPath))
-      .toVector
+      .map(o => o.key -> o)
+
+    // Workflow does not return those SubagentSelections which are referenced via
+    // a variable expression.
+    // So we attach all SubagentSelections which contain a SubagentId of the Agent
+    result ++= _controllerState.keyToItem(SubagentSelection)
+      .filter(_
+        ._2.subagentIds
+        .flatMap(_controllerState.keyToItem(SubagentItem).get)
+        .exists(_.agentPath == agentPath))
 
     if (_controllerState.workflowIdToOrders contains workflow.id) {
-      _controllerState.keyToItem(WorkflowPathControl)
+      result ++= _controllerState.keyToItem(WorkflowPathControl)
         .get(WorkflowPathControlPath(workflow.path))
-        .foreach(result +:= _)
+        .map(o => o.key -> o)
     }
 
-    _controllerState.keyTo(WorkflowControl)
-      .get(WorkflowControlId(workflow.id))
-      .foreach { workflowControl =>
-        result +:= workflowControl
-      }
+    result ++= _controllerState.keyTo(WorkflowControl).get(WorkflowControlId(workflow.id))
+      .map(o => o.key -> o)
 
-    result
+    result.result().values.view
+      .filter(isDetachedOrAttachable(_, agentPath))
   }
 
   private def checkedWorkflowAndAgentEntry(order: Order[Order.State]): Option[(Signed[Workflow], AgentEntry)] =

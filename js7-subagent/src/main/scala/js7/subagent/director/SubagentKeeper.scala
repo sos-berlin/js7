@@ -111,13 +111,26 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
     order: Order[Order.IsFreshOrReady],
     onEvents: Seq[OrderCoreEvent] => Unit)
   : Task[Checked[Unit]] =
-    selectSubagentDriverCancelable(order.id).flatMapT {
-      case None =>
-        logger.debug(s"⚠️ ${order.id} has been canceled while selecting a Subagent")
-        Task.right(())
+    selectSubagentDriverCancelable(order)
+      .flatMap {
+        case Left(problem) =>
+          // Maybe suppress when this SubagentKeeper has been stopped ???
+          Task.defer {
+            // ExecuteExecutor should have prechecked this:
+            val events = order.isState[Order.Fresh].thenList(OrderStarted) :::
+              // TODO Emit OrderFailedIntermediate_ instead, but this is not handled by this version
+              OrderProcessingStarted(None) ::
+              OrderProcessed(Outcome.Disrupted(problem)) :: Nil
+            persist(order.id, events, onEvents)
+              .rightAs(())
+          }
 
-      case Some(driver) =>
-        processOrderAndForwardEvents(order, onEvents, driver)
+        case Right(None) =>
+          logger.debug(s"⚠️ ${order.id} has been canceled while selecting a Subagent")
+          Task.right(())
+
+        case Right(Some(driver)) =>
+          processOrderAndForwardEvents(order, onEvents, driver)
     }
 
   private def processOrderAndForwardEvents(
@@ -197,25 +210,28 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
             // OrderProcessed event has been persisted by SubagentDriver
             onEvents(orderProcessed :: Nil))))
 
-  private def selectSubagentDriverCancelable(orderId: OrderId)
+  private def selectSubagentDriverCancelable(order: Order[Order.IsFreshOrReady])
   : Task[Checked[Option[SubagentDriver]]] =
-    orderToSubagentSelectionId(orderId)
+    orderToSubagentSelectionId(order)
       .flatMapT(maybeSelectionId =>
-        cancelableWhileWaitingForSubagent(orderId)
+        cancelableWhileWaitingForSubagent(order.id)
           .use(canceledPromise =>
             Task.race(
               Task.fromFuture(CorrelId.current.bind(canceledPromise.future)),
               selectSubagentDriver(maybeSelectionId)))
-          .map(_.toOption)
-          .map(Right(_)))
+          .map(_.toOption.sequence))
 
-  private def orderToSubagentSelectionId(orderId: OrderId)
+  private def orderToSubagentSelectionId(order: Order[Order.IsFreshOrReady])
   : Task[Checked[Option[SubagentSelectionId]]] =
     for (agentState <- persistence.state) yield
       for {
-        order <- agentState.idToOrder.checked(orderId)
         job <- agentState.workflowJob(order.workflowPosition)
-      } yield job.subagentSelectionId
+        scope <- agentState.toPureOrderScope(order)
+        maybeSubagentSelectionId <- job.subagentSelectionId.traverse(_
+          .evalAsString(scope)
+          .flatMap(SubagentSelectionId.checked))
+      } yield
+        maybeSubagentSelectionId
 
   /** While waiting for a Subagent, the Order is cancelable. */
   private def cancelableWhileWaitingForSubagent(orderId: OrderId): Resource[Task, Promise[Unit]] =
@@ -227,18 +243,19 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
           release = _ => orderToWaitForSubagent.remove(orderId).void))
 
   private def selectSubagentDriver(maybeSelectionId: Option[SubagentSelectionId])
-  : Task[SubagentDriver] =
+  : Task[Checked[SubagentDriver]] =
     Observable
       .repeatEvalF(Coeval { stateVar.get.selectNext(maybeSelectionId) }
         .flatTap(o => Coeval(
           logger.trace(s"selectSubagentDriver($maybeSelectionId) => $o ${stateVar.get}"))))
       .delayOnNextBySelector {
         // TODO Do not poll (for each Order)
-        case None => Observable.unit.delayExecution(reconnectDelayer.next())
-        case Some(_) =>
+        case Right(None) => Observable.unit.delayExecution(reconnectDelayer.next())
+        case _ =>
           reconnectDelayer.reset()
           Observable.empty
       }
+      .map(_.sequence)
       .flatMap(Observable.fromIterable(_))
       .headL
 
@@ -533,25 +550,26 @@ object SubagentKeeper
               selectionToPrioritized = selToPrio)
         }
 
-    def selectNext(maybeSelectionId: Option[SubagentSelectionId]): Option[SubagentDriver] =
+    def selectNext(maybeSelectionId: Option[SubagentSelectionId]): Checked[Option[SubagentDriver]] =
       maybeSelectionId match {
         case Some(selectionId) if !selectionToPrioritized.contains(maybeSelectionId) =>
           // A SubagentSelectionId, if not defined, may denote a Subagent
-          subagentToEntry.get(selectionId.toSubagentId).map(_.driver)
+          subagentToEntry
+            .checked(selectionId.toSubagentId) // May be non-existent when stopping ???
+            .map(o => Some(o.driver))
 
         case _ =>
-          selectionToPrioritized.get(maybeSelectionId) // May be non-existent when stopping
+          Right(selectionToPrioritized
+            .get(maybeSelectionId) // May be non-existent when stopping
             .flatMap(_
-              .selectNext(subagentId => subagentToEntry.get(subagentId).fold(false)(_.driver.isCoupled)))
-            .flatMap(subagentId => subagentToEntry.get(subagentId).map(_.driver))
+              .selectNext(subagentId =>
+                subagentToEntry.get(subagentId).fold(false)(_.driver.isCoupled)))
+            .flatMap(subagentId =>
+              subagentToEntry.get(subagentId).map(_.driver)))
       }
   }
 
   private final case class Entry(
     driver: SubagentDriver,
     disabled: Boolean = false)
-
-  private final case class SelectionEntry(
-    subagentSelectionId: SubagentSelectionId,
-    fixedPriority: FixedPriority/*mutable*/)
 }

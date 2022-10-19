@@ -27,6 +27,9 @@ extends UnsignedSimpleItem
   //override def dedicatedAgentPath = AgentPath cannot be determined here ???
 
   override def referencedItemPaths =
+    subagentIds
+
+  def subagentIds =
     subagentToPriority.keySet.view
 }
 

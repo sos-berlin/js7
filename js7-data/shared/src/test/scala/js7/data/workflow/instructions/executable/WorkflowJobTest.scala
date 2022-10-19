@@ -11,9 +11,9 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.{AdmissionTimeScheme, WeekdayPeriod}
 import js7.data.agent.AgentPath
 import js7.data.job.{JobResourcePath, RelativePathExecutable, ReturnCodeMeaning}
-import js7.data.subagent.SubagentSelectionId
 import js7.data.value.expression.Expression.{NumericConstant, StringConstant}
-import js7.tester.CirceJsonTester.testJson
+import js7.data.value.expression.ExpressionParser.expr
+import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
 /**
   * @author Joacim Zschimmer
@@ -46,7 +46,7 @@ final class WorkflowJobTest extends OurTestSuite
           Map(
             "NAME" -> StringConstant("VALUE"),
             "NUMBER" -> NumericConstant(7)),
-          Some(SubagentSelectionId("SELECTION")),
+          Some(expr("'SELECTION'")),
           Seq(JobResourcePath("JOB-RESOURCE")),
           parallelism = 3,
           Some(10.s),
@@ -70,7 +70,7 @@ final class WorkflowJobTest extends OurTestSuite
             "NAME": "'VALUE'",
             "NUMBER": "7"
           },
-          "subagentSelectionId": "SELECTION",
+          "subagentSelectionIdExpr": "'SELECTION'",
           "jobResourcePaths": [
             "JOB-RESOURCE"
           ],
@@ -92,6 +92,22 @@ final class WorkflowJobTest extends OurTestSuite
             ]
           },
           "skipIfNoAdmissionForOrderDay": true
+        }""")
+    }
+
+    "Compatible with v2.4" in {
+      testJsonDecoder(
+        WorkflowJob(
+          AgentPath("AGENT"),
+          RelativePathExecutable("EXECUTABLE"),
+          subagentSelectionId = Some(expr("'SELECTION'"))),
+        json"""{
+          "agentPath": "AGENT",
+          "executable": {
+            "TYPE": "PathExecutable",
+            "path": "EXECUTABLE"
+          },
+          "subagentSelectionId": "SELECTION"
         }""")
     }
   }

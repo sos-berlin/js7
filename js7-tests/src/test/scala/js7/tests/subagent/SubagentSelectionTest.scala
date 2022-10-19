@@ -20,6 +20,7 @@ import js7.data.order.OrderEvent.{OrderDeleted, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentCouplingFailed}
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
+import js7.data.value.expression.Expression.StringConstant
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.EmptyJob
 import js7.tests.subagent.SubagentSelectionTest.*
@@ -170,7 +171,7 @@ final class SubagentSelectionTest extends OurTestSuite with SubagentTester with 
       Seq(
         EmptyJob.execute(
           agentPath,
-          subagentSelectionId = Some(SubagentSelectionId.fromSubagentId(bSubagentId))))))
+          subagentSelectionId = Some(StringConstant(bSubagentId.string))))))
     val events = controller.runOrder(FreshOrder(OrderId("SUBAGENT-ID-AS-SELECTION"), workflow.path))
     assert(events.map(_.value) contains OrderProcessingStarted(bSubagentId))
   }
@@ -251,7 +252,7 @@ object SubagentSelectionTest
     Seq(
       EmptyJob.execute(
         agentPath,
-        subagentSelectionId = Some(subagentSelection.id),
+        subagentSelectionId = Some(StringConstant(subagentSelection.id.string)),
         parallelism = 100)))
 
   private def toOrder(orderId: OrderId) =

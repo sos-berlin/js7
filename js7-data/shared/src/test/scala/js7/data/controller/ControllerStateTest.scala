@@ -33,6 +33,7 @@ import js7.data.order.{Order, OrderId}
 import js7.data.orderwatch.OrderWatchState.{HasOrder, Vanished}
 import js7.data.orderwatch.{ExternalOrderKey, ExternalOrderName, FileWatch, OrderWatchPath, OrderWatchState}
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentSelection, SubagentSelectionId, SubagentSelectionState}
+import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, ExpectNotices, LockInstruction}
@@ -306,7 +307,7 @@ final class ControllerStateTest extends OurAsyncTestSuite
             "TYPE": "Silly",
             "signatureString": "SILLY-SIGNATURE"
           },
-          "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"versionId\":\"1.0\",\"instructions\":[{\"TYPE\":\"Lock\",\"demands\":[{\"lockPath\":\"LOCK\"}],\"lockedWorkflow\":{\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"AGENT\",\"subagentSelectionId\":\"SELECTION\",\"executable\":{\"TYPE\":\"ShellScriptExecutable\",\"script\":\"\"},\"jobResourcePaths\":[\"JOB-RESOURCE\"],\"parallelism\":1}}]}},{\"TYPE\":\"ExpectNotices\",\"boardPaths\":\"'BOARD'\"}]}"
+          "string": "{\"TYPE\":\"Workflow\",\"path\":\"WORKFLOW\",\"versionId\":\"1.0\",\"instructions\":[{\"TYPE\":\"Lock\",\"demands\":[{\"lockPath\":\"LOCK\"}],\"lockedWorkflow\":{\"instructions\":[{\"TYPE\":\"Execute.Anonymous\",\"job\":{\"agentPath\":\"AGENT\",\"subagentSelectionIdExpr\":\"'SELECTION'\",\"executable\":{\"TYPE\":\"ShellScriptExecutable\",\"script\":\"\"},\"jobResourcePaths\":[\"JOB-RESOURCE\"],\"parallelism\":1}}]}},{\"TYPE\":\"ExpectNotices\",\"boardPaths\":\"'BOARD'\"}]}"
         }
       }, {
         "TYPE": "ItemAttachable",
@@ -496,7 +497,7 @@ object ControllerStateTest
   private[controller] val workflow = Workflow(WorkflowPath("WORKFLOW") ~ versionId, Seq(
     LockInstruction.single(lock.path, None, Workflow.of(
       Execute(WorkflowJob(agentRef.path, ShellScriptExecutable(""),
-        subagentSelectionId = Some(subagentSelection.id),
+        subagentSelectionId = Some(StringConstant(subagentSelection.id.string)),
         jobResourcePaths = Seq(jobResource.path))))),
     ExpectNotices(BoardPathExpression.ExpectNotice(board.path))))
   private val signedWorkflow = itemSigner.sign(workflow)

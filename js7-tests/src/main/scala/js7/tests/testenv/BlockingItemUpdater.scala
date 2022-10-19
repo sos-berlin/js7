@@ -21,6 +21,14 @@ trait BlockingItemUpdater {
   private def nextVersionId() =
     VersionId(nextVersionId_.getAndIncrement().toString)
 
+  protected final def withTemporaryItem[I <: InventoryItem, A](item: I)(body: I => A)
+    (implicit s: Scheduler)
+  : A = {
+    val realItem = updateItem(item)
+    try body(realItem)
+    finally deleteItems(realItem.path)
+  }
+
   protected final def updateItem[I <: InventoryItem](item: I)(implicit s: Scheduler)
   : I = {
     val v = updateItems(item)
