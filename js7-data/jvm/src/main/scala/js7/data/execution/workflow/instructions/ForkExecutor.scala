@@ -1,9 +1,9 @@
 package js7.data.execution.workflow.instructions
 
-import cats.instances.list.*
 import cats.syntax.traverse.*
+import js7.base.problem.Checked
 import js7.base.time.Timestamp
-import js7.data.order.OrderEvent.{OrderFailedIntermediate_, OrderForked, OrderMoved}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderForked}
 import js7.data.order.{Order, Outcome}
 import js7.data.state.StateView
 import js7.data.workflow.instructions.Fork
@@ -14,33 +14,16 @@ extends EventInstructionExecutor with ForkInstructionExecutor
   type Instr = Fork
   val instructionClass = classOf[Fork]
 
-  def toEvents(fork: Fork, order: Order[Order.State], state: StateView) =
-    start(order)
-      .getOrElse(order
-        .ifState[Order.Ready].map { order =>
-          for {
-            children <- fork.branches
-              .traverse(branch =>
-                order.id.withChild(branch.id.string)
-                  .map(childOrderId => OrderForked.Child(branch.id, childOrderId)))
-            orderForked = OrderForked(children)
-            event <- postprocessOrderForked(fork, order, orderForked, state)
-          } yield order.id <-: event
-        }
-        .orElse(
-          for {
-            order <- order.ifState[Order.Forked]
-            joined <- toJoined(order, fork, state)
-          } yield Right(joined))
-        .orElse(order.ifState[Order.Processed].map(order =>
-          Right(
-            order.id <-: (
-              if (order.lastOutcome.isSucceeded)
-                OrderMoved(order.position.increment)
-              else
-                OrderFailedIntermediate_()))))
-        .toList
-        .sequence)
+  protected def toForkedEvent(fork: Instr, order: Order[Order.Ready], state: StateView)
+  : Checked[OrderActorEvent] =
+    for {
+      children <- fork.branches
+        .traverse(branch =>
+          order.id.withChild(branch.id.string)
+            .map(childOrderId => OrderForked.Child(branch.id, childOrderId)))
+      orderForked = OrderForked(children)
+      event <- postprocessOrderForked(fork, order, orderForked, state)
+    } yield event
 
   protected def forkResult(fork: Fork, order: Order[Order.Forked], state: StateView, now: Timestamp)
   : Outcome.Completed =

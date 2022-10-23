@@ -7,8 +7,7 @@ import cats.syntax.traverse.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
 import js7.base.utils.Collections.implicits.*
-import js7.data.event.KeyedEvent
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderFailedIntermediate_, OrderForked, OrderMoved}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderForked}
 import js7.data.order.{Order, Outcome}
 import js7.data.state.{AgentsSubagentIdsScope, StateView}
 import js7.data.value.{ListValue, NumberValue}
@@ -16,37 +15,13 @@ import js7.data.workflow.instructions.ForkList
 import scala.collection.View
 
 private[instructions] final class ForkListExecutor(protected val service: InstructionExecutorService)
-extends EventInstructionExecutor with ForkInstructionExecutor
+extends ForkInstructionExecutor
 {
   type Instr = ForkList
   val instructionClass = classOf[ForkList]
 
-  def toEvents(fork: ForkList, order: Order[Order.State], state: StateView) =
-    order
-      .ifState[Order.IsFreshOrReady].map(order =>
-        fork.agentPath
-          .flatMap(attachOrDetach(order, _))
-          .orElse(
-            start(order))
-          .getOrElse(
-            toForkedEvent(fork, order.asInstanceOf[Order[Order.Ready]], state)
-              .map(_ :: Nil)))
-        .orElse(
-          for {
-            order <- order.ifState[Order.Forked]
-            joined <- toJoined(order, fork, state)
-          } yield Right(joined :: Nil))
-        .orElse(order.ifState[Order.Processed].map { order =>
-          val event = if (order.lastOutcome.isSucceeded)
-            OrderMoved(order.position.increment)
-          else
-            OrderFailedIntermediate_()
-          Right((order.id <-: event) :: Nil)
-        })
-        .getOrElse(Right(Nil))
-
-  private def toForkedEvent(fork: ForkList, order: Order[Order.Ready], state: StateView)
-  : Checked[KeyedEvent[OrderActorEvent]] =
+  protected def toForkedEvent(fork: ForkList, order: Order[Order.Ready], state: StateView)
+  : Checked[OrderActorEvent] =
     for {
       scope0 <- state.toImpureOrderExecutingScope(order, clock.now())
       scope =  scope0 |+| new AgentsSubagentIdsScope(state)
@@ -72,7 +47,7 @@ extends EventInstructionExecutor with ForkInstructionExecutor
         }
       orderForked = OrderForked(children)
       event <- postprocessOrderForked(fork, order, orderForked, state)
-    } yield order.id <-: event
+    } yield event
 
   protected def forkResult(fork: ForkList, order: Order[Order.Forked], state: StateView,
     now: Timestamp) =

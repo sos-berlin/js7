@@ -11,7 +11,7 @@ import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.instructions.ForkInstructionExecutor.*
 import js7.data.order.Order.Cancelled
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAttachable, OrderDetachable, OrderFailedIntermediate_, OrderForked, OrderJoined}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderAttachable, OrderDetachable, OrderFailedIntermediate_, OrderForked, OrderJoined, OrderMoved}
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.state.StateView
 import js7.data.value.Value
@@ -25,6 +25,36 @@ trait ForkInstructionExecutor extends EventInstructionExecutor
 
   protected val service: InstructionExecutorService
   private implicit val implicitService: InstructionExecutorService = service
+
+  protected def toForkedEvent(fork: Instr, order: Order[Order.Ready], state: StateView)
+  : Checked[OrderActorEvent]
+
+  protected def forkResult(fork: Instr, order: Order[Order.Forked], state: StateView,
+    now: Timestamp): Outcome.Completed
+
+  final def toEvents(fork: Instr, order: Order[Order.State], state: StateView) =
+    order
+      .ifState[Order.IsFreshOrReady].map(order =>
+        fork.agentPath
+          .flatMap(attachOrDetach(order, _))
+          .orElse(
+            start(order))
+          .getOrElse(
+            for (event <- toForkedEvent(fork, order.asInstanceOf[Order[Order.Ready]], state)) yield
+              (order.id <-: event) :: Nil))
+      .orElse(
+        for {
+          order <- order.ifState[Order.Forked]
+          joined <- toJoined(order, fork, state)
+        } yield Right(joined :: Nil))
+      .orElse(order.ifState[Order.Processed].map { order =>
+        val event = if (order.lastOutcome.isSucceeded)
+          OrderMoved(order.position.increment)
+        else
+          OrderFailedIntermediate_()
+        Right((order.id <-: event) :: Nil)
+      })
+      .getOrElse(Right(Nil))
 
   protected final def attachOrDetach(order: Order[Order.IsFreshOrReady], agentPath: AgentPath)
   : Option[Right[Problem, List[KeyedEvent[OrderActorEvent]]]] =
@@ -79,9 +109,6 @@ trait ForkInstructionExecutor extends EventInstructionExecutor
               forkResult(fork, order, state, now))
         }
       }
-
-  protected def forkResult(fork: Instr, order: Order[Order.Forked], state: StateView,
-    now: Timestamp): Outcome.Completed
 
   protected def calcResult(resultExpr: Map[String, Expression], childOrderId: OrderId,
     state: StateView, now: Timestamp)
@@ -170,7 +197,6 @@ trait ForkInstructionExecutor extends EventInstructionExecutor
                 OrderDetachable
 
             case (None, Some(childrensAgentPath)) =>
-              // TODO Redundant with OrderAttachable of ForkListExecutor and ForkExecutor ?
               // Attach the forking order to the children's agent
               (fork.agentPath.contains(childrensAgentPath) || enoughChildren) ?
                 OrderAttachable(childrensAgentPath)
