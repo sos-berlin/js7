@@ -119,9 +119,7 @@ final class OrderEventSource(state: StateView)
           else if (order.isAttached && order.isInDetachableState
             && order.copy(attachedState = None).isOrderFailedApplicable) {
             logger.debug(s"Detaching ${order.id} after failure: $problem")
-            // Controller is expected to repeat this call and to reproduce the problem !!!
-            // TODO May loop
-            OrderDetachable :: Nil
+            OrderStepFailed(Outcome.Disrupted(problem)) :: OrderDetachable :: Nil
           } else
             OrderBroken(problem) :: Nil
         events.map(order.id <-: _)

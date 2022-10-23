@@ -64,9 +64,9 @@ final class IfTest extends OurTestSuite
           OrderStarted,
           OrderProcessingStarted(subagentId),
           OrderProcessed(Outcome.succeededRC0),
+          OrderStepFailed(Outcome.Disrupted(Problem("No such named value: MISSING"))),
           OrderDetachable,
           OrderDetached,
-          OrderStepFailed(Outcome.Disrupted(Problem("No such named value: MISSING"))),
           OrderFailed(Position(0))))
       }
     }

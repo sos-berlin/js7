@@ -101,9 +101,9 @@ object ExpressionsTest {
       OrderStarted,
       OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.Succeeded(Map("JOB-KEY" -> StringValue("JOB-RESULT")) ++ NamedValues.rc(0))),
+      OrderStepFailed(Outcome.Disrupted(Problem("No such named value: ARG2"))),
       OrderDetachable,
       OrderDetached,
-      OrderStepFailed(Outcome.Disrupted(Problem("No such named value: ARG2"))),
       OrderFailed(Position(0) / Then % 0)),
     OrderId("🔺") -> Vector(
       OrderAdded(TestWorkflow.id, Map(
