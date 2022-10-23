@@ -13,21 +13,24 @@ import js7.data.Problems.{CancelStartedOrderProblem, UnknownOrderProblem}
 import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode
 import js7.data.command.CancellationMode.{FreshOrStarted, Kill}
-import js7.data.controller.ControllerCommand.{CancelOrders, Response}
+import js7.data.controller.ControllerCommand.{CancelOrders, Response, ResumeOrder}
 import js7.data.event.KeyedEvent
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion}
 import js7.data.item.VersionId
 import js7.data.job.ShellScriptExecutable
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderStdoutWritten, OrderTerminated}
-import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOperationCancelled, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPrompted, OrderStarted, OrderStdWritten, OrderStdoutWritten, OrderTerminated}
+import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
+import js7.data.problems.CannotResumeOrderProblem
 import js7.data.value.Value.convenience.*
 import js7.data.value.expression.Expression.NamedValue
-import js7.data.value.{NamedValues, NumberValue}
+import js7.data.value.expression.ExpressionParser.expr
+import js7.data.value.{NamedValues, NumberValue, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{Execute, Fork}
+import js7.data.workflow.instructions.{Execute, Fork, Prompt}
 import js7.data.workflow.position.{Position, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.CancelOrdersTest.*
+import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.traced
@@ -52,7 +55,7 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
 
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(singleJobWorkflow, sigkillDelayWorkflow, sigkillImmediatelyWorkflow,
-    twoJobsWorkflow, forkJoinIfFailedWorkflow, forkWorkflow)
+    twoJobsWorkflow, forkJoinIfFailedWorkflow, forkWorkflow, promptingWorkflow)
 
   "Cancel a fresh order" in {
     val order = FreshOrder(OrderId("🔹"), singleJobWorkflow.path, scheduledFor = Some(Timestamp.now + 99.seconds))
@@ -247,6 +250,31 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
         OrderId("CANCEL-CHILD") <-: OrderJoined(
           Outcome.Failed(Some("Order:CANCEL-CHILD|🥕 has been cancelled"))),
         OrderId("CANCEL-CHILD") <-: OrderFailed(Position(0))))
+  }
+
+  "A canceled Order is not resumable" in {
+    val order = FreshOrder(OrderId("⚫"), promptingWorkflow.path)
+    controller.addOrderBlocking(order)
+    eventWatch.await[OrderPrompted](_.key == order.id)
+
+    controllerApi.executeCommand(CancelOrders(Seq(order.id))).await(99.s).orThrow
+    eventWatch.await[OrderCancelled](_.key == order.id)
+    sleep(100.ms)
+    assert(controllerState.idToOrder(order.id).isState[Order.Cancelled])
+
+    assert(controllerApi
+      .executeCommand(
+        ResumeOrder(order.id, position = Some(Position(1)), asSucceeded = true))
+      .await(99.s) == Left(CannotResumeOrderProblem))
+
+    assert(controllerState.idToOrder(order.id).historicOutcomes.isEmpty)
+
+    assert(eventWatch.eventsByKey[OrderEvent](order.id) == Seq(
+      OrderAdded(promptingWorkflow.id, order.arguments, order.scheduledFor),
+      OrderStarted,
+      OrderPrompted(StringValue("PROMPT")),
+      OrderOperationCancelled,
+      OrderCancelled))
   }
 
   private def testCancel(order: FreshOrder, workflowPosition: Option[WorkflowPosition],
@@ -679,6 +707,11 @@ object CancelOrdersTest
       "🥕" -> Workflow.of(
         Execute(WorkflowJob(agentPath, sleepingExecutable)))),
     Execute(WorkflowJob(agentPath, sleepingExecutable)))
+
+  private val promptingWorkflow = Workflow.of(
+    WorkflowPath("WORKFLOW") ~ versionId,
+    Prompt(expr("'PROMPT'")),
+    EmptyJob.execute(agentPath))
 
   private def onlyRelevantEvents(events: Seq[OrderEvent]): Seq[OrderEvent] =
     events.filter {
