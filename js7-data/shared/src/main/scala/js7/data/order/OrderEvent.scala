@@ -28,6 +28,7 @@ import js7.data.value.{NamedValues, Value}
 import js7.data.workflow.WorkflowId
 import js7.data.workflow.instructions.Fork
 import js7.data.workflow.position.{Position, PositionOrLabel, WorkflowPosition}
+import scala.annotation.nowarn
 
 /**
   * @author Joacim Zschimmer
@@ -621,6 +622,7 @@ object OrderEvent
   final case class OrderCycleFinished(cycleState: Option[CycleState])
   extends OrderActorEvent
 
+  @nowarn("msg=deprecated")
   implicit val jsonCodec: TypedJsonCodec[OrderEvent] = TypedJsonCodec(
     Subtype[OrderAdded],
     Subtype[OrderOrderAdded],

@@ -31,9 +31,6 @@ with UnsignedSimpleItemPath.Companion[SubagentSelectionId]
   protected def unchecked(string: String) =
     new SubagentSelectionId(string)
 
-  def fromSubagentId(subagentId: SubagentId): SubagentSelectionId =
-    new SubagentSelectionId(subagentId.string)
-
   @javaApi
   def of(string: String): SubagentSelectionId =
     checked(string).orThrow

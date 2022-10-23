@@ -260,8 +260,8 @@ object ScalaUtils
         checkedCast[B](delegate)
 
       /** match operator as method (like in Scala 3?). */
-      def match_[B](f: A => B): B =
-        delegate.pipe(f)
+      @inline def match_[B](f: A => B): B =
+        f(delegate)
 
       @inline def substitute(when: A, _then: => A): A =
         if (delegate == when) _then else delegate

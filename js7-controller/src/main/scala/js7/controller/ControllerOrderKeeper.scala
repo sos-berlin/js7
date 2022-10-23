@@ -1442,7 +1442,7 @@ with MainJournalingActor[ControllerState, Event]
 
     result ++= workflow
       .reduceForAgent(agentPath)
-      .referencedAttachableToAgentUnsignedPaths
+      .referencedAttachableUnsignedPaths
       .view
       .flatMap(_controllerState.pathToUnsignedSimpleItem.get)
       .map(o => o.key -> o)

@@ -44,7 +44,8 @@ trait SubagentDriver
 
   def killProcess(orderId: OrderId, signal: ProcessSignal): Task[Unit]
 
-  final def orderToExecuteDefaultArguments(order: Order[Order.Processing]) =
+  final def orderToExecuteDefaultArguments(order: Order[Order.Processing])
+  : Task[Checked[Map[String, Expression]]] =
     persistence.state
       .map(_
         .idToWorkflow

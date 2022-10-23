@@ -149,7 +149,7 @@ with TrivialItemState[Workflow]
         || calendarPath.nonEmpty
       ) !! Problem("Cycle instruction requires calendarPath"))
 
-  lazy val referencedAttachableToAgentUnsignedPaths
+  lazy val referencedAttachableUnsignedPaths
   : Vector[InventoryItemPath.AttachableToAgent & UnsignedSimpleItemPath] =
     referencedItemPaths
       .collect { case o: InventoryItemPath.AttachableToAgent with UnsignedSimpleItemPath => o }
