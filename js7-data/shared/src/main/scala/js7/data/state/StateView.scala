@@ -6,6 +6,7 @@ import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.data.agent.AgentPath
 import js7.data.board.{BoardPath, BoardState}
 import js7.data.controller.ControllerId
 import js7.data.event.ItemContainer
@@ -28,6 +29,8 @@ import scala.reflect.ClassTag
 trait StateView extends ItemContainer
 {
   def isAgent: Boolean
+
+  def maybeAgentPath: Option[AgentPath] = None
 
   def controllerId: ControllerId
 

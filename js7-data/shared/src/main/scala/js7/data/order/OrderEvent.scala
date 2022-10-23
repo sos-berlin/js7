@@ -345,7 +345,7 @@ object OrderEvent
     def moveTo(movedTo: Position) = copy(movedTo = movedTo)
   }
   object OrderFailed {
-    @deprecated
+    @deprecated("outcome is deprecated", "v2.15")
     private[order] def apply(movedTo: Position, outcome: Option[Outcome.NotSucceeded]) =
       new OrderFailed(movedTo, outcome)
 
@@ -360,7 +360,7 @@ object OrderEvent
     def moveTo(movedTo: Position) = copy(movedTo = movedTo)
   }
   object OrderFailedInFork {
-    @deprecated
+    @deprecated("outcome is deprecated", "v2.15")
     private[order] def apply(movedTo: Position, outcome: Option[Outcome.NotSucceeded]) =
       new OrderFailedInFork(movedTo, outcome)
 
@@ -383,7 +383,7 @@ object OrderEvent
     def moveTo(movedTo: Position) = copy(movedTo = movedTo)
   }
   object OrderCaught {
-    @deprecated
+    @deprecated("outcome is deprecated", "v2.15")
     private[order] def apply(movedTo: Position, outcome: Option[Outcome.NotSucceeded]) =
       new OrderCaught(movedTo, outcome)
 

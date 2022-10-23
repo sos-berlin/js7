@@ -26,6 +26,16 @@ trait ForkInstructionExecutor extends EventInstructionExecutor
   protected val service: InstructionExecutorService
   private implicit val implicitService: InstructionExecutorService = service
 
+  protected final def attachOrDetach(order: Order[Order.IsFreshOrReady], agentPath: AgentPath)
+  : Option[Right[Problem, List[KeyedEvent[OrderActorEvent]]]] =
+    order.attachedState match {
+      case Some(Order.Attached(ordersAgentPath)) =>
+        (agentPath != ordersAgentPath) ?
+          Right((order.id <-: OrderDetachable) :: Nil)
+      case _ =>
+        Some(Right((order.id <-: OrderAttachable(agentPath)) :: Nil))
+    }
+
   private[execution] final def tryJoinChildOrder(
     fork: Instr,
     childOrder: Order[Order.State],
@@ -160,6 +170,7 @@ trait ForkInstructionExecutor extends EventInstructionExecutor
                 OrderDetachable
 
             case (None, Some(childrensAgentPath)) =>
+              // TODO Redundant with OrderAttachable of ForkListExecutor and ForkExecutor ?
               // Attach the forking order to the children's agent
               (fork.agentPath.contains(childrensAgentPath) || enoughChildren) ?
                 OrderAttachable(childrensAgentPath)

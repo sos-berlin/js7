@@ -820,6 +820,9 @@ final class AgentOrderKeeper(
     new OrderEventSource(new StateView {
       def isAgent = true
 
+      override def maybeAgentPath =
+        persistence.currentState.maybeAgentPath
+
       def controllerId = AgentOrderKeeper.this.controllerId
 
       def idToOrder = persistence.currentState.idToOrder

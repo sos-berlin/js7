@@ -49,7 +49,10 @@ with SubagentDirectorState[AgentState]
 with FileWatchStateHandler[AgentState]
 with SnapshotableState[AgentState]
 {
-  def isAgent = true
+  override def isAgent = true
+
+  override def maybeAgentPath =
+    Some(meta.agentPath)
 
   def controllerId = meta.controllerId
 

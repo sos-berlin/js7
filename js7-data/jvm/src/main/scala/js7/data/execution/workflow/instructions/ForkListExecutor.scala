@@ -6,11 +6,11 @@ import cats.syntax.semigroup.*
 import cats.syntax.traverse.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
-import js7.base.utils.Collections.implicits.RichIterable
+import js7.base.utils.Collections.implicits.*
 import js7.data.event.KeyedEvent
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderFailedIntermediate_, OrderForked, OrderMoved}
 import js7.data.order.{Order, Outcome}
-import js7.data.state.StateView
+import js7.data.state.{AgentsSubagentIdsScope, StateView}
 import js7.data.value.{ListValue, NumberValue}
 import js7.data.workflow.instructions.ForkList
 import scala.collection.View
@@ -22,10 +22,15 @@ extends EventInstructionExecutor with ForkInstructionExecutor
   val instructionClass = classOf[ForkList]
 
   def toEvents(fork: ForkList, order: Order[Order.State], state: StateView) =
-    start(order)
-      .getOrElse(order
-        .ifState[Order.Ready].map(
-          toForkedEvent(fork, _, state))
+    order
+      .ifState[Order.IsFreshOrReady].map(order =>
+        fork.agentPath
+          .flatMap(attachOrDetach(order, _))
+          .orElse(
+            start(order))
+          .getOrElse(
+            toForkedEvent(fork, order.asInstanceOf[Order[Order.Ready]], state)
+              .map(_ :: Nil)))
         .orElse(
           for {
             order <- order.ifState[Order.Forked]
@@ -38,12 +43,13 @@ extends EventInstructionExecutor with ForkInstructionExecutor
             OrderFailedIntermediate_()
           Right((order.id <-: event) :: Nil)
         })
-        .getOrElse(Right(Nil)))
+        .getOrElse(Right(Nil))
 
   private def toForkedEvent(fork: ForkList, order: Order[Order.Ready], state: StateView)
-  : Checked[List[KeyedEvent[OrderActorEvent]]] =
+  : Checked[KeyedEvent[OrderActorEvent]] =
     for {
-      scope <- state.toImpureOrderExecutingScope(order, clock.now())
+      scope0 <- state.toImpureOrderExecutingScope(order, clock.now())
+      scope =  scope0 |+| new AgentsSubagentIdsScope(state)
       elements <- fork.children.evalAsVector(scope)
       childIds <- elements
         .traverseWithIndexM { case (element, i) =>
@@ -66,7 +72,7 @@ extends EventInstructionExecutor with ForkInstructionExecutor
         }
       orderForked = OrderForked(children)
       event <- postprocessOrderForked(fork, order, orderForked, state)
-    } yield (order.id <-: event) :: Nil
+    } yield order.id <-: event
 
   protected def forkResult(fork: ForkList, order: Order[Order.Forked], state: StateView,
     now: Timestamp) =
