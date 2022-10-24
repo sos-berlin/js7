@@ -6,7 +6,8 @@ import java.time.temporal.IsoFields.{WEEK_BASED_YEAR, WEEK_OF_WEEK_BASED_YEAR}
 import java.time.temporal.{TemporalAccessor, TemporalQueries, TemporalQuery, WeekFields}
 import java.time.{LocalDate, LocalDateTime, ZoneId, ZonedDateTime}
 import java.util.Locale.ROOT
-import js7.base.problem.Checked.CheckedOption
+import java.util.regex.PatternSyntaxException
+import js7.base.problem.Checked.{CheckedOption, catchExpected}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.JavaTime.JavaTimeZone
 import js7.base.time.JavaTimeConverters.RichZonedDateTime
@@ -56,12 +57,13 @@ object CalendarExecutor
       _ <- (calendar.dateOffset >= 0.s && calendar.dateOffset < period.normalDuration) !!
         Problem("Invalid dateOffset")
       zoneId <- calendar.timezone.toZoneId
-      orderIdToDateRegex <- Checked.catchNonFatal(calendar.orderIdPattern.r)
+      orderIdToDateRegex <- catchExpected[PatternSyntaxException](
+        calendar.orderIdPattern.r)
     } yield new CalendarExecutor(calendar, zoneId, orderIdToDateRegex, period)
 
   private def toFormatterAndQuery(pattern: String)
   : Checked[Period] =
-    Checked.catchNonFatal {
+    catchExpected[Exception] {
       if (pattern.startsWith("Y"/*week based year*/)) {
         val formatter = new DateTimeFormatterBuilder()
           .appendPattern(pattern)

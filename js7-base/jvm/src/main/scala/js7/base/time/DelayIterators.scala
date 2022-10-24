@@ -1,7 +1,7 @@
 package js7.base.time
 
-import com.typesafe.config.Config
-import js7.base.problem.Checked.catchNonFatal
+import com.typesafe.config.{Config, ConfigException}
+import js7.base.problem.Checked.catchExpected
 import js7.base.problem.{Checked, Problem}
 import monix.execution.Scheduler
 import scala.jdk.CollectionConverters.*
@@ -18,7 +18,7 @@ object DelayIterators
   def fromConfig(config: Config, key: String)(implicit s: Scheduler): Checked[DelayIterator] = {
     Checked
       .fromTry(Try(config.getDuration(key).toScala :: Nil))
-      .orElse(catchNonFatal(
+      .orElse(catchExpected[ConfigException](
         config.getDurationList(key).asScala.view.map(_.toScala).toVector))
       .flatMap(durations =>
         if (durations.isEmpty)

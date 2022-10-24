@@ -3,6 +3,7 @@ package js7.base.utils
 import java.nio.ByteBuffer
 import java.util.{Base64, UUID}
 import js7.base.generic.GenericString
+import js7.base.problem.Checked.catchExpected
 import js7.base.problem.{Checked, Problem}
 
 final case class Base64UUID private(uuid: UUID, string: String) extends GenericString
@@ -34,7 +35,8 @@ object Base64UUID extends GenericString.Checked_[Base64UUID]
 
   def base64ToUUID(base64String: String): Checked[UUID] =
     for {
-      bytes <- Checked.catchNonFatal { Base64.getUrlDecoder.decode(base64String) }
+      bytes <- catchExpected[IllegalArgumentException](
+        Base64.getUrlDecoder.decode(base64String))
       uuid <-
         if (bytes.size != 16)
           Left(Problem(s"Not a Base64-encoded UUID: $base64String"))

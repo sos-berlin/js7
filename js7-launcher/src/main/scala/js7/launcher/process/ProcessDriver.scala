@@ -4,6 +4,7 @@ import cats.syntax.traverse.*
 import js7.base.generic.Completed
 import js7.base.io.process.ProcessSignal
 import js7.base.log.Logger
+import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.time.ScalaTime.*
@@ -57,12 +58,11 @@ final class ProcessDriver(
 
         case None =>
           Task(checkedWindowsLogon
-            .flatMap { maybeWindowsLogon => Checked
-              .catchNonFatal {
+            .flatMap { maybeWindowsLogon =>
+              catchNonFatal {
                 for (o <- maybeWindowsLogon)
                   WindowsProcess.makeFileAppendableForUser(returnValuesProvider.file, o.userName)
-              }
-              .map(_ =>
+              }.map(_ =>
                 ProcessConfiguration(
                   workingDirectory = Some(jobLauncherConf.workingDirectory),
                   encoding = jobLauncherConf.systemEncoding,
@@ -120,7 +120,7 @@ final class ProcessDriver(
       })
 
   private def fetchReturnValuesThenDeleteFile(): Checked[NamedValues] =
-    Checked.catchNonFatal {
+    catchNonFatal {
       val result = returnValuesProvider.read()
       returnValuesProvider.tryDeleteFile()
       result

@@ -4,7 +4,7 @@ import cats.syntax.traverse.*
 import io.circe.syntax.*
 import io.circe.{Decoder, Encoder, Json, JsonObject}
 import java.lang.Character.{isUnicodeIdentifierPart, isUnicodeIdentifierStart}
-import java.util.regex.Pattern
+import java.util.regex.{Pattern, PatternSyntaxException}
 import js7.base.circeutils.CirceUtils.CirceUtilsChecked
 import js7.base.problem.Checked.{CheckedOption, catchNonFatal}
 import js7.base.problem.{Checked, Problem}
@@ -53,7 +53,9 @@ sealed trait Expression extends Precedence
     eval.flatMap(_.asNumberValue).map(_.number)
 
   final def evalAsInt(implicit scope: Scope): Checked[Int] =
-    evalAsNumber.flatMap(o => catchNonFatal(o.toIntExact))
+    evalAsNumber
+      .flatMap(o => catchExpected[ArithmeticException](
+        o.toIntExact))
 
   final def evalToString(implicit scope: Scope): Checked[String] =
     eval.flatMap(_.toStringValue).map(_.string)
@@ -298,7 +300,8 @@ object Expression
       for {
         a <- a.evalToString
         b <- b.evalToString
-        result <- catchNonFatal(BooleanValue(a matches b))
+        result <- catchExpected[PatternSyntaxException](
+          BooleanValue(a matches b))
       } yield result
 
     override def toString = makeString(a, "matches", b)
@@ -694,7 +697,8 @@ object Expression
       for {
         string <- string.eval.flatMap(_.asString)
         pattern <- pattern.eval.flatMap(_.asString)
-        pattern <- catchNonFatal(Pattern.compile(pattern))
+        pattern <- catchExpected[PatternSyntaxException](
+          Pattern.compile(pattern))
         replacement <- replacement.eval.flatMap(_.asString)
         result <- catchNonFatal(StringValue(pattern.matcher(string).replaceAll(replacement)))
       } yield result

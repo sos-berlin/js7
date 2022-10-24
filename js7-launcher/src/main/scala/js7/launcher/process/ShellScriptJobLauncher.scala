@@ -6,6 +6,7 @@ import java.nio.file.Files.createTempFile
 import java.nio.file.Path
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.process.Processes.ShellFileAttributes
+import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem
 import js7.base.system.OperatingSystem.isWindows
@@ -74,11 +75,11 @@ object ShellScriptJobLauncher
   private[process] def writeScriptToFile(script: String, tmpDir: Path, encoding: Charset,
     userName: Option[WindowsUserName], isWindows: Boolean = OperatingSystem.isWindows)
   : Checked[Path] =
-    Checked.catchNonFatal {
+    catchNonFatal {
       val ext = if (isWindows) ".cmd" else ".sh"
       createTempFile(tmpDir, "script-", ext, ShellFileAttributes*)
     }.flatMap { file =>
-      Checked.catchNonFatal {
+      catchNonFatal {
         val scrpt = if (isWindows) crRegex.replaceAllIn(script, "\r\n") else script
         file.write(scrpt, encoding)
       }
@@ -93,7 +94,7 @@ object ShellScriptJobLauncher
   private def makeFileUserAccessible(userName: Option[WindowsUserName], file: Path): Either[Problem, Unit] =
     userName match {
       case Some(userName) if isWindows =>
-        Checked.catchNonFatal {
+        catchNonFatal {
           WindowsProcess.makeFileExecutableForUser(file, userName)
         }
       case _ =>

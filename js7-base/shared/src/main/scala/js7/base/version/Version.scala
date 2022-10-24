@@ -1,6 +1,7 @@
 package js7.base.version
 
 import js7.base.generic.GenericString
+import js7.base.problem.Checked.catchExpected
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.version.Version.compareLists
@@ -50,7 +51,7 @@ object Version extends GenericString.Checked_[Version]
       case VersionRegex(major, minor, patch, _, prereleaseGroup, _, buildGroup) =>
         val prerelease = Option(prereleaseGroup).fold[List[String]](Nil)(_.split("\\.").toList)
         val build = Option(buildGroup).fold[List[String]](Nil)(_.split("\\.").toList)
-        Checked.catchNonFatal(
+        catchExpected[NumberFormatException](
           new Version(string, major.toInt, minor.toInt, patch.toInt, prerelease, build))
 
       case _ =>

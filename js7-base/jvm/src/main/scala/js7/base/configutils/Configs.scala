@@ -2,7 +2,7 @@ package js7.base.configutils
 
 import cats.Monoid
 import com.typesafe.config.ConfigRenderOptions.concise
-import com.typesafe.config.{Config, ConfigFactory, ConfigParseOptions, ConfigValue}
+import com.typesafe.config.{Config, ConfigException, ConfigFactory, ConfigParseOptions, ConfigValue}
 import java.nio.file.Files.exists
 import java.nio.file.Path
 import java.time.Duration
@@ -11,6 +11,7 @@ import js7.base.convert.ConvertiblePartialFunctions.wrappedConvert
 import js7.base.convert.{As, ConvertiblePartialFunction}
 import js7.base.io.JavaResource
 import js7.base.log.Logger
+import js7.base.problem.Checked.catchExpected
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.utils.ScalaUtils.syntax.*
@@ -120,7 +121,7 @@ object Configs
       underlying.hasPath(path) ? f(path)
 
     def finiteDuration(path: String): Checked[FiniteDuration] =
-      Checked.catchNonFatal(
+      catchExpected[ConfigException](
         underlying.getDuration(path).toFiniteDuration)
 
     def memorySizeAsInt(path: String): Checked[Int] = {

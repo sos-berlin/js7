@@ -8,6 +8,7 @@ import java.util.Objects.requireNonNull
 import javax.annotation.{Nonnull, Nullable}
 import js7.base.annotation.javaApi
 import js7.base.circeutils.CirceUtils.*
+import js7.base.problem.Checked.catchExpected
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Collections.implicits.RichIterable
@@ -42,16 +43,19 @@ sealed trait Value
     Left(UnexpectedValueTypeProblem(StringValue, this))
 
   final def asInt: Checked[Int] =
-    asNumber.flatMap(o => Checked.catchNonFatal(o.toIntExact))
+    asNumber.flatMap(o => catchExpected[ArithmeticException](
+      o.toIntExact))
 
   final def asLong: Checked[Long] =
-    asNumber.flatMap(o => Checked.catchNonFatal(o.toLongExact))
+    asNumber.flatMap(o => catchExpected[ArithmeticException]
+      (o.toLongExact))
 
   final def asLongIgnoreFraction: Checked[Long] =
     asNumber
-      .flatMap(o => Checked.catchNonFatal(o
-        .setScale(0, RoundingMode.DOWN)
-        .toLongExact))
+      .flatMap(o =>
+        catchExpected[Exception](o
+          .setScale(0, RoundingMode.DOWN)
+          .toLongExact))
 
   final def asNumber: Checked[BigDecimal] =
     asNumberValue.map(_.number)

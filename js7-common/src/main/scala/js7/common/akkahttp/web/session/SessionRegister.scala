@@ -107,7 +107,7 @@ final class SessionRegister[S <: Session] private[session](
     clientVersion: Option[Version],
     ourVersion: Version = Js7Version)
   : Checked[Unit] =
-    Checked.catchNonFatal {
+    catchNonFatalFlatten {
       clientVersion match {
         case None => Checked.unit
         case Some(v) =>
@@ -115,7 +115,7 @@ final class SessionRegister[S <: Session] private[session](
             Problem.pure(
               s"Client's version $v does not match $componentName version $ourVersion")
       }
-    }.flatten
+    }
 
   def logout(sessionToken: SessionToken): Task[Completed] =
     Task.deferFuture(

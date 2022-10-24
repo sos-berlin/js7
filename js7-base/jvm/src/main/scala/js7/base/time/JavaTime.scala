@@ -97,7 +97,7 @@ object JavaTime
   implicit final class JavaTimeZone(private val timeZone: Timezone) extends AnyVal
   {
     def toZoneId: Checked[ZoneId] =
-      Checked.catchNonFatal(ZoneId.of(timeZone.string))
+      Checked.catchExpected[RuntimeException](ZoneId.of(timeZone.string))
   }
 
   def dateToInstant(date: java.util.Date): Instant = Instant.ofEpochMilli(date.getTime)

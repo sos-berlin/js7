@@ -1,7 +1,7 @@
 package js7.launcher.process
 
-import java.nio.file.Paths
-import js7.base.problem.Checked
+import java.nio.file.{InvalidPathException, Paths}
+import js7.base.problem.Checked._
 import js7.data.job.{AbsolutePathExecutable, JobConf}
 import js7.launcher.configuration.JobLauncherConf
 import monix.eval.Task
@@ -14,7 +14,7 @@ extends PathProcessJobLauncher
 {
   protected val checkFile =
     Task {
-      Checked.catchNonFatal(
+      catchExpected[InvalidPathException](
         Paths.get(executable.path))
     }.memoize
 

@@ -3,6 +3,7 @@ package js7.base.time
 import java.time.format.DateTimeFormatter
 import java.time.{Instant, LocalDateTime, OffsetDateTime, ZoneId, ZoneOffset, ZonedDateTime}
 import js7.base.problem.Checked
+import js7.base.problem.Checked.catchExpected
 import js7.base.time.JavaTimestamp.dateTimeFormatter
 import js7.base.utils.ScalaUtils.syntax.RichAny
 import org.jetbrains.annotations.TestOnly
@@ -22,7 +23,7 @@ final case class JavaTimestamp private(toEpochMilli: Long) extends Timestamp
   def toIsoString = dateTimeFormatter.format(this.toInstant)
 
   def format(format: String, maybeTimezone: Option[String] = None): Checked[String] =
-    Checked.catchNonFatal {
+    catchExpected[Exception] {
       val zone = maybeTimezone.fold(ZoneId.systemDefault())(ZoneId.of)
       this.toOffsetDateTime(zone).format(DateTimeFormatter.ofPattern(format))
     }

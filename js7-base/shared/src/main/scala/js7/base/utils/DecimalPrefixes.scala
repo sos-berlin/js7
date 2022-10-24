@@ -16,13 +16,21 @@ object DecimalPrefixes
 
   def toInt(string: String): Checked[Int] =
     toLong(string)
-      .flatMap(long => Checked.catchNonFatal(toIntExact(long)))
+      .flatMap(long =>
+        catchExpected[ArithmeticException](
+          toIntExact(long)))
 
   def toLong(string: String): Checked[Long] =
     if (string.nonEmpty && string.last.isLetter) {
       val prefix = string.last
-      PrefixToFactor.get(prefix).toChecked(Problem(s"Unknown SI prefix: '$prefix', expected one of ${PrefixToFactor.keys.mkString(", ")}"))
-        .flatMap(factor => Checked.catchNonFatal(multiplyExact(string.take(string.length - 1).toLong, factor)))
+      PrefixToFactor.get(prefix)
+        .toChecked(Problem(
+          s"Unknown SI prefix: '$prefix', expected one of ${PrefixToFactor.keys.mkString(", ")}"))
+        .flatMap(factor =>
+          catchExpected[Exception](
+            multiplyExact(
+              string.take(string.length - 1).toLong,
+              factor)))
     } else
-      Checked.catchNonFatal(string.toLong)
+      catchExpected[NumberFormatException](string.toLong)
 }

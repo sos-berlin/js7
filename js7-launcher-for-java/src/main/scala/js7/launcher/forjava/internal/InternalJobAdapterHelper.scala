@@ -5,7 +5,7 @@ import izumi.reflect.Tag
 import java.lang.reflect.Modifier.isPublic
 import java.lang.reflect.{Constructor, InvocationTargetException}
 import js7.base.monixutils.MonixBase.syntax.*
-import js7.base.problem.Checked.CheckedOption
+import js7.base.problem.Checked._
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichEitherF}
@@ -58,7 +58,7 @@ private[internal] final class InternalJobAdapterHelper[J: ClassTag: Tag]
 
   private def getConstructor(clas: Class[? <: J], jJobContextClass: Class[? <: JavaJobContext])
   : Checked[Constructor[J]] =
-    Checked.catchNonFatal {
+    catchNonFatal {
       val constructors = clas
         .getConstructors.asInstanceOf[Array[Constructor[J]]]
         .filter(o => isPublic(o.getModifiers))

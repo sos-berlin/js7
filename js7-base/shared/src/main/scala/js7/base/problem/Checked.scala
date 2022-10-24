@@ -2,6 +2,7 @@ package js7.base.problem
 
 import cats.Monoid
 import cats.syntax.monoid.*
+import implicitbox.Not
 import io.circe.{Decoder, Encoder, Json}
 import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.generic.Completed
@@ -9,6 +10,7 @@ import js7.base.problem.Problem.*
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.collection.immutable.VectorBuilder
 import scala.collection.mutable
+import scala.reflect.ClassTag
 import scala.util.control.NonFatal
 import scala.util.{Failure, Left, Success, Try}
 
@@ -57,6 +59,7 @@ object Checked
   def catchNonFatalFlatten[A](f: => Checked[A]): Checked[A] =
     catchNonFatal(f).flatten
 
+  /** Logs the Throwable at debug level. */
   def catchNonFatal[A](f: => A): Checked[A] =
     try Right(f)
     catch {
@@ -64,6 +67,19 @@ object Checked
         for (t <- t.ifStackTrace) logger.debug(s"💥 Checked.catchNonFatal: ${t.toStringWithCauses}", t)
         Left(Problem.fromThrowable(t))
     }
+
+  /** Does not log. */
+  def catchExpected[T <: Throwable]: Catcher[T] =
+    new Catcher[T]
+
+  final class Catcher[T <: Throwable] {
+    def apply[A](f: => A)(implicit T: ClassTag[T], ev: Not[T =:= Nothing]): Checked[A] =
+      try Right(f)
+      catch {
+        case t if T.runtimeClass isAssignableFrom t.getClass =>
+          Left(Problem.fromThrowable(t))
+      }
+  }
 
   def catchProblem[A](f: => A): Checked[A] =
     try Right(f)

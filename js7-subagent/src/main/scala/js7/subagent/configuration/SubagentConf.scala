@@ -11,6 +11,7 @@ import js7.base.configutils.Configs.{ConvertibleConfig, RichConfig}
 import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{EmptyPath, WorkingDirectory}
+import js7.base.problem.Checked.catchExpected
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.IOExecutor
@@ -135,12 +136,12 @@ extends CommonConfiguration
     val key = s"js7.windows.codepages.$codepage"
     config.optionAs[String](key) match {
       case None =>
-        Checked.catchNonFatal(Charset.forName("cp" + codepage))
-          .orElse(Checked.catchNonFatal(Charset.forName("CP" + codepage)))
+        catchExpected[Exception](Charset.forName("cp" + codepage))
+          .orElse(catchExpected[Exception](Charset.forName("CP" + codepage)))
           .left.map(_ => Problem(s"Unknown Windows code page $codepage"))
 
       case Some(encodingName) =>
-        Checked.catchNonFatal(Charset.forName(encodingName))
+        catchExpected[Exception](Charset.forName(encodingName))
           .left.map(Problem(s"Unknown encoding for Windows code page $codepage:") |+| _)
     }
   }
