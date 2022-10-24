@@ -34,8 +34,8 @@ extends ExpectOrConsumeNoticesInstruction
 
   def fulfilledEvents(
     order: Order[Order.State],
-    consuming: Vector[OrderNoticesConsumptionStarted.Consuming])
-  = OrderNoticesConsumptionStarted(consuming) :: Nil
+    consumptions: Vector[OrderNoticesConsumptionStarted.Consumption])
+  = OrderNoticesConsumptionStarted(consumptions) :: Nil
 
   override def workflows =
     subworkflow :: Nil
@@ -45,7 +45,7 @@ extends ExpectOrConsumeNoticesInstruction
 
   override def workflow(branchId: BranchId): Checked[Workflow] =
     if (branchId != BranchId.ConsumeNotices)
-      Left(Problem.pure(s"'${BranchId.ConsumeNotices}' BranchId expected'"))
+      Left(Problem.pure(s"'${BranchId.ConsumeNotices}' BranchId expected"))
     else
       Right(subworkflow)
 }

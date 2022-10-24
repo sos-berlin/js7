@@ -769,7 +769,7 @@ with ItemContainer.Companion[ControllerState]
     Subtype[Calendar],
     Subtype[Notice],
     NoticePlace.Snapshot.subtype,
-    BoardState.Consumption.Snapshot.subtype,
+    BoardState.NoticeConsumptionSnapshot.subtype,
     Subtype[VersionedEvent],  // These events describe complete objects
     Subtype[InventoryItemEvent],  // For Repo and SignedItemAdded
     Subtype[OrderWatchState.Snapshot],

@@ -13,6 +13,6 @@ trait ExpectOrConsumeNoticesInstruction extends BoardInstruction
 
   def fulfilledEvents(
     order: Order[Order.State],
-    consuming: Vector[OrderNoticesConsumptionStarted.Consuming])
+    consumptions: Vector[OrderNoticesConsumptionStarted.Consumption])
   : List[OrderActorEvent]
 }

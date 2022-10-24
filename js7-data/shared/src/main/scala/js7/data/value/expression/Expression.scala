@@ -6,7 +6,7 @@ import io.circe.{Decoder, Encoder, Json, JsonObject}
 import java.lang.Character.{isUnicodeIdentifierPart, isUnicodeIdentifierStart}
 import java.util.regex.{Pattern, PatternSyntaxException}
 import js7.base.circeutils.CirceUtils.CirceUtilsChecked
-import js7.base.problem.Checked.{CheckedOption, catchNonFatal}
+import js7.base.problem.Checked.{CheckedOption, catchExpected}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichOption}
 import js7.base.utils.ScalaUtils.withStringBuilder
@@ -700,7 +700,8 @@ object Expression
         pattern <- catchExpected[PatternSyntaxException](
           Pattern.compile(pattern))
         replacement <- replacement.eval.flatMap(_.asString)
-        result <- catchNonFatal(StringValue(pattern.matcher(string).replaceAll(replacement)))
+        result <- catchExpected[RuntimeException](
+          StringValue(pattern.matcher(string).replaceAll(replacement)))
       } yield result
 
     override def toString = s"replaceAll($string, $pattern, $replacement)"
@@ -731,5 +732,4 @@ object Expression
     def subexpressions = Nil
     protected def evalAllowError(implicit scope: Scope) = eval()
   }
-
 }

@@ -174,18 +174,18 @@ with StateView
             case Some(previousOrder) => removeNoticeExpectation(previousOrder)
           }
 
-        case OrderNoticesConsumptionStarted(consumingSeq) =>
-          consumingSeq
-            .traverse(consuming =>
+        case OrderNoticesConsumptionStarted(consumptions) =>
+          consumptions
+            .traverse(consumption =>
               keyTo(BoardState)
-                .checked(consuming.boardPath)
-                .flatMap(_.addConsumption(consuming.noticeId, previousOrder, consumingSeq)))
+                .checked(consumption.boardPath)
+                .flatMap(_.addConsumption(consumption.noticeId, previousOrder, consumption)))
 
         case OrderNoticesConsumed(failed) =>
           previousOrder.workflowPosition.checkedParent
             .flatMap(consumeNoticesPosition =>
               instruction_[ConsumeNotices](consumeNoticesPosition)
-                .traverse(instr => instr.referencedBoardPaths.toSeq
+                .traverse(_.referencedBoardPaths.toSeq
                   .traverse(keyTo(BoardState).checked))
                 .flatten
                 .flatMap(_.traverse(_

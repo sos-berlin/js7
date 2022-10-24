@@ -1,13 +1,11 @@
 package js7.data.board
 
-import cats.syntax.traverse.*
-import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.Subtype
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.board.BoardEvent.NoticeDeleted
-import js7.data.board.BoardState.Consumption
+import js7.data.board.BoardState.NoticeConsumptionSnapshot
 import js7.data.event.KeyedEvent
 import js7.data.item.UnsignedSimpleItemState
 import js7.data.order.OrderEvent.OrderNoticesConsumptionStarted
@@ -18,7 +16,7 @@ import scala.collection.View
 final case class BoardState(
   board: Board,
   idToNotice: Map[NoticeId, NoticePlace] = Map.empty,
-  orderToConsumptions: Map[OrderId, List[Consumption]] = Map.empty)
+  orderToConsumptionStack: Map[OrderId, List[NoticeId]] = Map.empty)
 extends UnsignedSimpleItemState
 {
   protected type Self = BoardState
@@ -35,11 +33,12 @@ extends UnsignedSimpleItemState
   override def toSnapshotObservable: Observable[Any/*BoardState | BoardSnapshot*/] =
     // Notice expectations are recovered from Order[Order.ExpectingNotice]
     Observable.fromIterable(
-      (board +: notices.view) ++
+      View(board) ++
+        notices ++
         idToNotice.values.view.flatMap(_.toSnapshot(path)) ++
-        orderToConsumptions.view
-          .flatMap { case (orderId, consumptions) =>
-            consumptions.reverse.map(Consumption.Snapshot(path, orderId, _))
+        orderToConsumptionStack.view
+          .map { case (orderId, consumptionStack) =>
+            NoticeConsumptionSnapshot(path, orderId, consumptionStack)
           })
 
   def recover(snapshot: BoardSnapshot): Checked[BoardState] =
@@ -47,10 +46,10 @@ extends UnsignedSimpleItemState
       case notice: Notice =>
         addNotice(notice)
 
-      case snapshot: BoardState.Consumption.Snapshot =>
+      case snapshot: BoardState.NoticeConsumptionSnapshot =>
         Right(copy(
-          orderToConsumptions = orderToConsumptions.updated(snapshot.orderId,
-            snapshot.consumption :: orderToConsumptions.getOrElse(snapshot.orderId, Nil))))
+          orderToConsumptionStack = orderToConsumptionStack
+            .updated(snapshot.orderId, snapshot.noticeIdStack)))
 
       case snapshot: NoticePlace.Snapshot =>
         Right(copy(
@@ -87,35 +86,31 @@ extends UnsignedSimpleItemState
   def addConsumption(
     noticeId: NoticeId,
     order: Order[Order.State],
-    consumingSeq: Vector[OrderNoticesConsumptionStarted.Consuming])
+    consumption: OrderNoticesConsumptionStarted.Consumption)
   : Checked[BoardState] = {
     // We can consume a non-existent NoticeId, too, due to BoardExpression's or-operator
     val noticePlace = idToNotice.getOrElse(noticeId, NoticePlace(noticeId))
-    val consumptions = orderToConsumptions.getOrElse(order.id, Nil)
-    val consumption = Consumption(consumingSeq)
+    val consumptionStack = orderToConsumptionStack.getOrElse(order.id, Nil)
     Right(copy(
-      idToNotice = idToNotice.updated(noticeId, noticePlace.startConsuming(order.id)),
-      orderToConsumptions = orderToConsumptions.updated(order.id, consumption :: consumptions)))
+      idToNotice = idToNotice.updated(noticeId, noticePlace.startConsumption(order.id)),
+      orderToConsumptionStack = orderToConsumptionStack.updated(order.id,
+        consumption.noticeId :: consumptionStack)))
   }
 
   def removeConsumption(orderId: OrderId, succeeded: Boolean): Checked[BoardState] =
-    orderToConsumptions.checked(orderId)
+    orderToConsumptionStack.checked(orderId)
       .flatMap { consumptions =>
-        val head = consumptions.head
-        val tail = consumptions.tail
-        head.consuming
-          .map(_.noticeId)
-          .traverse(idToNotice.checked)
-          .map(_
-            .foldLeft(this)((boardState, noticePlace) =>
-              boardState.updateNoticePlace(
-                noticePlace.finishConsuming(succeeded)))
-            .copy(
-              orderToConsumptions =
-                if (tail.isEmpty)
-                  orderToConsumptions - orderId
-                else
-                  orderToConsumptions.updated(orderId, tail)))
+        val noticeId :: remainingConsumptions = consumptions
+        idToNotice.checked(noticeId)
+          .map(noticePlace =>
+            updateNoticePlace(
+              noticePlace.finishConsumption(succeeded))
+              .copy(
+                orderToConsumptionStack =
+                  if (remainingConsumptions.isEmpty)
+                    orderToConsumptionStack - orderId
+                  else
+                    orderToConsumptionStack.updated(orderId, remainingConsumptions)))
       }
 
   def containsNotice(noticeId: NoticeId): Boolean =
@@ -171,17 +166,12 @@ object BoardState extends UnsignedSimpleItemState.Companion[BoardState] {
   type Item = Board
   override type ItemState = BoardState
 
-  final case class Consumption(
-    //workflowPosition: WorkflowPosition,
-    consuming: Vector[OrderNoticesConsumptionStarted.Consuming])
-  object Consumption
-  {
-    implicit val jsonCodec: Codec.AsObject[Consumption] = deriveCodec
-
-    final case class Snapshot(boardPath: BoardPath, orderId: OrderId, consumption: Consumption)
-    extends BoardSnapshot
-    object Snapshot {
-      val subtype = Subtype.named(deriveCodec[Snapshot], "NoticeConsumption")
-    }
+  final case class NoticeConsumptionSnapshot(
+    boardPath: BoardPath,
+    orderId: OrderId,
+    noticeIdStack: List[NoticeId])
+  extends BoardSnapshot
+  object NoticeConsumptionSnapshot {
+    val subtype = Subtype.named(deriveCodec[NoticeConsumptionSnapshot], "NoticeConsumption")
   }
 }

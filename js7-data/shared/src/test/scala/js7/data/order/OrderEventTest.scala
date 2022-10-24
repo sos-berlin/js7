@@ -743,6 +743,21 @@ final class OrderEventTest extends OurTestSuite
       }""")
   }
 
+  "OrderNoticesConsumptionStarted" in {
+    check(OrderNoticesConsumptionStarted(Vector(
+      OrderNoticesConsumptionStarted.Consumption(BoardPath("BOARD"), NoticeId("NOTICE")))),
+      json"""
+      {
+        "TYPE": "OrderNoticesConsumptionStarted",
+        "consumptions": [
+          {
+            "boardPath": "BOARD",
+            "noticeId": "NOTICE"
+          }
+        ]
+      }""")
+  }
+
   // COMPATIBLE with v2.3
   "OrderNoticeRead" in {
     testJsonDecoder[OrderEvent](OrderNoticesRead,

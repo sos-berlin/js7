@@ -75,7 +75,12 @@ final class BoardStateTest extends OurAsyncTestSuite
         NoticeId("NOTICE-2"),
         Some(Notice(NoticeId("NOTICE-2"), boardPath, endOfLife = Timestamp.ofEpochSecond(123))),
         expectingOrderIds = Set.empty /*Recovered by Order.ExpectingNotices*/ ,
-        consumptionCount = 7)))
+        consumptionCount = 7)),
+    orderToConsumptionStack = Map(
+      OrderId("A-ORDER") -> List(
+        NoticeId("NOTICE-3"),
+        NoticeId("NOTICE-2"),
+        NoticeId("NOTICE-1"))))
 
   "toSnapshotObservable JSON" in {
       boardState.toSnapshotObservable
@@ -111,6 +116,11 @@ final class BoardStateTest extends OurAsyncTestSuite
               "noticeId": "NOTICE-2",
               "isInConsumption": false,
               "consumptionCount": 7
+            }""", json"""{
+              "TYPE": "NoticeConsumption",
+              "orderId": "A-ORDER",
+              "boardPath": "BOARD",
+              "noticeIdStack": [ "NOTICE-3", "NOTICE-2", "NOTICE-1" ]
             }""")))
         .runToFuture
     }
