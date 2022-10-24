@@ -381,12 +381,14 @@ extends ReceiveLoggingActor.WithStash
       val lastEventId = stampedEvents.last.eventId
       lastFetchedEventId = lastEventId
 
-      commandQueue.onOrdersAttached(reducedStampedEvents.view.collect {
-        case Stamped(_, _, KeyedEvent(orderId: OrderId, _: OrderAttachedToAgent)) => orderId
-      })
-      commandQueue.onOrdersDetached(reducedStampedEvents.view.collect {
-        case Stamped(_, _, KeyedEvent(orderId: OrderId, OrderDetached)) => orderId
-      })
+      commandQueue.onOrdersAttached(
+        reducedStampedEvents.view.collect {
+          case Stamped(_, _, KeyedEvent(orderId: OrderId, _: OrderAttachedToAgent)) => orderId
+        })
+      commandQueue.onOrdersDetached(
+        reducedStampedEvents.view.collect {
+          case Stamped(_, _, KeyedEvent(orderId: OrderId, OrderDetached)) => orderId
+        })
 
       promiseFuture[Option[EventId]] { p =>
         context.parent ! Output.EventsFromAgent(agentRunIdOnce.orThrow, reducedStampedEvents, p)
