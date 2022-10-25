@@ -26,7 +26,7 @@ final class ControllerClientMainTest extends OurTestSuite with ControllerAgentFo
     assert(controller.localUri.string startsWith "https://")
   }
 
-  "main with Controller URI only checks wether Controller is responding (it is)" in {
+  "main with Controller URI only checks whether Controller is responding (it is)" in {
     val output = mutable.Buffer[String]()
     assertResult(0) {
       ControllerClientMain.run(
@@ -50,7 +50,7 @@ final class ControllerClientMainTest extends OurTestSuite with ControllerAgentFo
     assert(output(1) contains "\"count\": 0")
   }
 
-  "main with Controller URI only checks wether Controller is responding (it is not)" in {
+  "main with Controller URI only checks whether Controller is responding (it is not)" in {
     val unusedPort = 0
     val output = mutable.Buffer[String]()
     assertResult(1) {

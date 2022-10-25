@@ -293,7 +293,7 @@ final case class Order[+S <: Order.State](
             mark = Some(OrderMark.Resuming(position, historyOperations, asSucceeded)),
             isResumed = true))
         else if (!force && (position.isDefined || historyOperations.nonEmpty))
-            // Inhibited because we cannot be sure wether order will pass a fork barrier
+            // Inhibited because we cannot be sure whether order will pass a fork barrier
           inapplicable
         else if (!isSuspended && isSuspending)
           Right(copy(

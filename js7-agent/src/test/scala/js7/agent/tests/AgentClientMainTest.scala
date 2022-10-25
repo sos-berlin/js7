@@ -59,7 +59,7 @@ final class AgentClientMainTest extends OurTestSuite with BeforeAndAfterAll with
     output(1).parseJsonOrThrow.fieldOrThrow("startedAt")
   }
 
-  "main with Agent URI only checks wether Agent is responding (it is)" in {
+  "main with Agent URI only checks whether Agent is responding (it is)" in {
     val output = mutable.Buffer.empty[String]
     assertResult(0) {
       AgentClientMain.run(List(s"--data-directory=$dataDirectory", agent.localUri.toString), o => output += o)
@@ -67,7 +67,7 @@ final class AgentClientMainTest extends OurTestSuite with BeforeAndAfterAll with
     assert(output == List("JS7 Agent is responding"))
   }
 
-  "main with Agent URI only checks wether Agent is responding (it is not)" in {
+  "main with Agent URI only checks whether Agent is responding (it is not)" in {
     val port = findFreeTcpPort()
     val output = mutable.Buffer.empty[String]
     assertResult(1) {
