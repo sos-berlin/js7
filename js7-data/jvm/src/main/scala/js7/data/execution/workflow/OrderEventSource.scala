@@ -1,6 +1,7 @@
 package js7.data.execution.workflow
 
 import cats.instances.either.*
+import cats.instances.list.*
 import cats.syntax.traverse.*
 import js7.base.problem.Checked.catchNonFatalFlatten
 import js7.base.problem.{Checked, Problem}
@@ -43,8 +44,8 @@ final class OrderEventSource(state: StateView)
         if (order.isSuspended)
           Nil
         else if (state.isOrderAtBreakpoint(order))
-          List(
-            order.id <-: (if (isAgent) OrderDetachable else OrderSuspended))
+          atController(OrderSuspended :: Nil)
+            .map(order.id <-: _)
         else if (state.isWorkflowSuspended(order.workflowPath))
           Nil
         else
@@ -146,9 +147,7 @@ final class OrderEventSource(state: StateView)
     val stepFailed = outcome.map(OrderStepFailed(_)).toList
     leaveBlocks(workflow, order, catchable = !uncatchable) {
       case (None | Some(BranchId.IsFailureBoundary(_)), failPosition) =>
-        if (isAgent)
-          OrderDetachable :: Nil
-        else {
+        atController {
           // TODO Transfer parent order to Agent to access joinIfFailed there !
           // For now, order will be moved to Controller, which joins the orders anyway.
           lazy val joinIfFailed = order.parent
@@ -236,18 +235,11 @@ final class OrderEventSource(state: StateView)
     }
 
   private def tryCancel(order: Order[Order.State], mode: CancellationMode): Option[List[OrderActorEvent]] =
-    if (!isOrderCancelable(order, mode))
-      None
-    else if (order.isAttached && isAgent)
-      Some(OrderDetachable :: Nil)
-    else if (order.isDetached && !isAgent)(
-      Some(
+    (weHave(order) && isOrderCancelable(order, mode)) ?
+      atController(
         order.state.isOperationCancelable.thenList(OrderOperationCancelled) :::
           leaveBlocks(idToWorkflow(order.workflowId), order, OrderCancelled)
-            .orThrow/*???*/))
-    else
-      None
-
+            .orThrow/*???*/)
 
   private def isOrderCancelable(order: Order[Order.State], mode: CancellationMode): Boolean =
     (mode != CancellationMode.FreshOnly || order.isState[Order.Fresh]) &&
@@ -276,20 +268,17 @@ final class OrderEventSource(state: StateView)
     }
 
   private def trySuspend(order: Order[Order.State]): Option[OrderActorEvent] =
-    if (weHave(order) && isOrderSuspendible(order))
-      if (order.isAttached && isAgent)
-        Some(OrderDetachable)
-      else if (order.isDetached && (!order.isSuspended || order.isResuming))
-        Some(OrderSuspended)
-      else
-        None
+    if (!weHave(order) || !order.isSuspendible)
+      None
+    else if (isAgent)
+      Some(OrderDetachable)
+    else if (!order.isSuspended || order.isResuming)
+      Some(OrderSuspended)
     else
       None
 
-  private def isOrderSuspendible(order: Order[Order.State]): Boolean =
-    weHave(order) && order.isSuspendible
-
-  /** Returns a `Right(Some(OrderResumed | OrderResumptionMarked))` iff order is not already marked as resuming. */
+  /** Returns a `Right(Some(OrderResumed | OrderResumptionMarked))`
+   * iff order is not already marked as resuming. */
   def resume(
     orderId: OrderId,
     position: Option[Position],
@@ -450,6 +439,12 @@ final class OrderEventSource(state: StateView)
       case Right(workflow) =>
         workflow.instruction(workflowPosition.position)
     }
+
+  private def atController(events: List[OrderActorEvent]): List[OrderActorEvent] =
+    if (isAgent)
+      OrderDetachable :: Nil
+    else
+      events
 }
 
 object OrderEventSource {

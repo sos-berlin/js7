@@ -766,7 +766,6 @@ final class AgentOrderKeeper(
     if (isEnterable) {
       while (jobEntry.isBelowParallelismLimit && jobEntry.queue.nonEmpty) {
         for (orderId <- jobEntry.queue.dequeue()) {
-          val events = orderEventSource.nextEvents(orderId)
           startProcessing(orderId, jobEntry)
         }
       }
