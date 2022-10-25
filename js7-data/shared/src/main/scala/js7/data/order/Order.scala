@@ -394,8 +394,8 @@ final case class Order[+S <: Order.State](
       case _: OrderLocksReleased =>
         // LockState handles this event, too
         if (force || isDetached /*&& isOrderFailedApplicable/*because it may come with OrderFailed*/*/)
-          position.parent
-            .toChecked(Problem(s"OrderLockReleased event but position=$workflowPosition"))
+          position
+            .checkedParent
             .map(pos => withPosition(pos.increment))
         else
           inapplicable
