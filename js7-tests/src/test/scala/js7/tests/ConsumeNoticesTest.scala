@@ -12,21 +12,22 @@ import js7.data.board.BoardPathExpressionParser.boardPathExpr
 import js7.data.board.{Board, BoardPath, BoardState, Notice, NoticeId}
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, DeleteNotice, PostNotice}
 import js7.data.order.OrderEvent.OrderNoticesExpected.Expected
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderNoticePosted, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderOperationCancelled, OrderProcessed, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderStarted, OrderStdoutWritten, OrderStepFailed, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderNoticePosted, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderOperationCancelled, OrderProcessed, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderRetrying, OrderStarted, OrderStdoutWritten, OrderStepFailed, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{ConsumeNotices, Execute, Fail, PostNotices, Prompt}
+import js7.data.workflow.instructions.{ConsumeNotices, Execute, Fail, PostNotices, Prompt, Retry, TryInstruction}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.ConsumeNoticesTest.*
-import js7.tests.jobs.SemaphoreJob
+import js7.tests.jobs.{FailingJob, SemaphoreJob}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.View
+import scala.collection.immutable.Vector
 import scala.concurrent.duration.*
 
 final class ConsumeNoticesTest extends AnyFreeSpec with ControllerAgentForScalaTest
@@ -123,7 +124,7 @@ with BlockingItemUpdater with TestMixins
         val orderId = OrderId("#2022-10-23#X")
         val events = controller.runOrder(
           FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
-        val endOfLife = Timestamp.ofEpochMilli(0)
+        val endOfLife = Timestamp.Epoch
         assert(events.map(_.value).map {
           case e: OrderNoticePosted => e.copy(notice = e.notice.copy(endOfLife = endOfLife))
           case o => o
@@ -164,7 +165,7 @@ with BlockingItemUpdater with TestMixins
       eventWatch.await[OrderTerminated](_.key == orderId)
 
       val events = eventWatch.eventsByKey[OrderEvent](orderId, after = eventId)
-      val endOfLife = Timestamp.ofEpochMilli(0)
+      val endOfLife = Timestamp.Epoch
       assert(events.map {
         case e: OrderNoticePosted => e.copy(notice = e.notice.copy(endOfLife = endOfLife))
         case o => o
@@ -548,6 +549,60 @@ with BlockingItemUpdater with TestMixins
       OrderNoticesConsumed(true),
       OrderCancelled,
       OrderDeleted))
+  }
+
+  "JS-2015 ConsumeOrders in Try/Retry with 0s delay" in {
+    val noticeId = NoticeId("2022-10-25")
+    val workflow = Workflow(
+      WorkflowPath("CONSUME-NOTICES-IN-RETRY"),
+      Seq(
+        PostNotices(Seq(aBoard.path)),
+        TryInstruction(
+          Workflow.of(
+            ConsumeNotices(
+              boardPathExpr(s"'${aBoard.path.string}'"),
+              Workflow.of(
+                FailingJob.execute(agentPath)))),
+          Workflow.of(
+            Retry()),
+          retryDelays = Some(Vector(0.s)),
+          maxTries = Some(2))))
+
+    withTemporaryItem(workflow) { workflow =>
+      val events = controller.runOrder(FreshOrder(OrderId("#2022-10-25#"), workflow.path))
+      val endOfLife = Timestamp.Epoch
+      assert(events.map(_.value).map {
+        case e: OrderNoticePosted => e.copy(notice = e.notice.copy(endOfLife = endOfLife))
+        case o => o
+      } == Seq(
+        OrderAdded(workflow.id),
+        OrderStarted,
+        OrderNoticePosted(Notice(noticeId, aBoard.path, endOfLife)),
+        OrderMoved(Position(1) / "try+0" % 0),
+
+        OrderNoticesConsumptionStarted(Vector(Expected(aBoard.path, noticeId))),
+        OrderAttachable(agentPath),
+        OrderAttached(agentPath),
+        OrderProcessingStarted(subagentId),
+        OrderProcessed(Outcome.failed),
+        OrderDetachable,
+        OrderDetached,
+        OrderNoticesConsumed(failed = true),
+
+        OrderCaught(Position(1) / "catch+0" % 0),
+        OrderRetrying(Position(1) / "try+1" % 0),
+
+        OrderNoticesConsumptionStarted(Vector(Expected(aBoard.path, noticeId))),
+        OrderAttachable(agentPath),
+        OrderAttached(agentPath),
+        OrderProcessingStarted(subagentId),
+        OrderProcessed(Outcome.failed),
+        OrderDetachable,
+        OrderDetached,
+        OrderNoticesConsumed(failed = true),
+
+        OrderFailed(Position(1) / "try+1" % 0)))
+    }
   }
 }
 

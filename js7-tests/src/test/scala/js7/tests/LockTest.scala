@@ -25,11 +25,11 @@ import js7.data.value.StringValue
 import js7.data.value.ValuePrinter.quoteString
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.workflow.instructions.{Fail, Finish, Fork, LockInstruction, Prompt}
+import js7.data.workflow.instructions.{Fail, Finish, Fork, LockInstruction, Prompt, Retry, TryInstruction}
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowParser, WorkflowPath}
 import js7.tests.LockTest.*
-import js7.tests.jobs.{EmptyJob, SemaphoreJob, SleepJob}
+import js7.tests.jobs.{EmptyJob, FailingJob, SemaphoreJob, SleepJob}
 import js7.tests.testenv.DirectoryProvider.{script, toLocalSubagentId, waitingForFileScript}
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import monix.execution.Scheduler.Implicits.traced
@@ -880,6 +880,58 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
       RemoveVersioned(exclusiveWorkflow.path),
       RemoveVersioned(nonExclusiveWorkflow.path)
     )).await(99.s).orThrow
+  }
+
+  "JS-2015 Lock in Try/Retry with 0s delay" in {
+    val workflow = Workflow(
+      WorkflowPath("RETRY-LOCK"),
+      Seq(
+        TryInstruction(
+          Workflow.of(
+            LockInstruction.single(lockPath,
+              count = None,
+              lockedWorkflow = Workflow.of(
+                FailingJob.execute(agentPath)))),
+          Workflow.of(
+            Retry()),
+            retryDelays = Some(Vector(0.s)),
+            maxTries = Some(2))))
+
+    withTemporaryItem(workflow) { workflow =>
+      val orderId = OrderId("RETRY-LOCK")
+      val events = controller.runOrder(
+        FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+      assert(events.map(_.value) == Seq(
+        OrderAdded(workflow.id, deleteWhenTerminated = true),
+        OrderMoved(Position(0) / "try+0" % 0),
+        OrderStarted,
+
+        OrderLocksAcquired(List(LockDemand(lockPath))),
+        OrderAttachable(agentPath),
+        OrderAttached(agentPath),
+        OrderProcessingStarted(subagentId),
+        OrderProcessed(Outcome.failed),
+        OrderDetachable,
+        OrderDetached,
+        OrderLocksReleased(List(lockPath)),
+
+        OrderCaught(Position(0) / "catch+0" % 0),
+        OrderRetrying(Position(0) / "try+1" % 0),
+
+        OrderLocksAcquired(List(LockDemand(lockPath))),
+        OrderAttachable(agentPath),
+        OrderAttached(agentPath),
+        OrderProcessingStarted(subagentId),
+        OrderProcessed(Outcome.failed),
+        OrderDetachable,
+        OrderDetached,
+        OrderLocksReleased(List(lockPath)),
+
+        OrderFailed(Position(0) / "try+1" % 0)))
+
+      controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+      eventWatch.await[OrderDeleted](_.key == orderId)
+    }
   }
 
   "Lock is not deletable while in use by a Workflow" in {

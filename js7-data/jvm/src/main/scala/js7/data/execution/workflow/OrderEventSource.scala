@@ -476,16 +476,23 @@ object OrderEventSource {
             callToEvent(Some(branchId), failPosition)
 
           case Segment(nr, BranchId.Lock) :: prefix =>
-            val pos = prefix.reverse % nr
-            for {
-              lock <- workflow.instruction_[LockInstruction](pos)
-              events <- loop(prefix, pos)
-            } yield OrderLocksReleased(lock.lockPaths) :: events
+            if (order.isAttached)
+              Right(OrderDetachable :: Nil)
+            else {
+              val pos = prefix.reverse % nr
+              for {
+                lock <- workflow.instruction_[LockInstruction](pos)
+                events <- loop(prefix, pos)
+              } yield
+                OrderLocksReleased(lock.lockPaths) :: events
+            }
 
           case Segment(nr, BranchId.ConsumeNotices) :: prefix =>
-            val pos = prefix.reverse % nr
-            loop(prefix, pos)
-              .map(OrderNoticesConsumed(failed = true) :: _)
+            if (order.isAttached)
+              Right(OrderDetachable :: Nil)
+            else
+              for (events <- loop(prefix, prefix.reverse % nr)) yield
+                OrderNoticesConsumed(failed = true) :: events
 
           case Segment(nr, branchId @ TryBranchId(retry)) :: prefix if catchable =>
             val catchPos = prefix.reverse % nr / BranchId.catch_(retry) % 0

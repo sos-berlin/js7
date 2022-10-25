@@ -442,7 +442,7 @@ final case class Order[+S <: Order.State](
               state = Ready))
 
       case OrderNoticesConsumed(_) =>
-        check(isDetached && isState[Ready],
+        check(isDetached,
           position.checkedParent.map(returnPosition =>
             withPosition(returnPosition.increment)
               .copy(

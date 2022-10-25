@@ -1,18 +1,23 @@
 package js7.tests.jobs
 
 import js7.base.log.Logger
+import js7.base.utils.ScalaUtils.syntax._
 import js7.data.order.Outcome
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
 import js7.tests.jobs.EmptyJob.logger
 import monix.eval.Task
 
-final class EmptyJob extends InternalJob
+class EmptyJob(outcome: Outcome.Completed)
+extends InternalJob
 {
-  def toOrderProcess(step: Step) =
+  // We need an empty constructor for reflection
+  def this() = this(Outcome.succeeded)
+
+  final def toOrderProcess(step: Step) =
     OrderProcess(Task {
-      logger.debug(s"EmptyJob ${step.order.id}")
-      Outcome.succeeded
+      logger.debug(s"${getClass.simpleScalaName} ${step.order.id}")
+      outcome
     })
 }
 
