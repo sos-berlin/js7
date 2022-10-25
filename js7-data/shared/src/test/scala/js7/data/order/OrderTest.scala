@@ -655,9 +655,9 @@ final class OrderTest extends OurTestSuite
         markable[DelayedAfterError] orElse
         cancelMarkedAllowed[DelayedAfterError] orElse
         suspendMarkedAllowed[DelayedAfterError] orElse {
-          case (OrderAwoke    , IsSuspended(false), _, IsAttached) => _.isInstanceOf[Order.Ready]
-          case (OrderCancelled, _                 , _, IsDetached) => _.isInstanceOf[Cancelled]
-          case (_: OrderBroken, _                 , _, _         ) => _.isInstanceOf[Broken]
+          case (OrderAwoke    , IsSuspended(false), _, IsDetached | IsAttached) => _.isInstanceOf[Order.Ready]
+          case (OrderCancelled, _                 , _, IsDetached             ) => _.isInstanceOf[Cancelled]
+          case (_: OrderBroken, _                 , _, _                      ) => _.isInstanceOf[Broken]
         })
     }
 

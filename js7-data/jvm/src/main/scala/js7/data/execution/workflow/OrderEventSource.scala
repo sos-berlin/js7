@@ -31,6 +31,7 @@ import scala.reflect.ClassTag
 final class OrderEventSource(state: StateView)
   (implicit executorService: InstructionExecutorService)
 {
+  import executorService.clock
   import state.{idToOrder, idToWorkflow, isAgent}
 
   def nextEvents(orderId: OrderId): Seq[KeyedEvent[OrderActorEvent]] = {
@@ -64,7 +65,7 @@ final class OrderEventSource(state: StateView)
         def ifDefinedElse(o: Option[List[OrderActorEvent]], orElse: Checked[List[KeyedEvent[OrderActorEvent]]]) =
           o.fold(orElse)(events => Right(events.map(order.id <-: _)))
 
-        ifDefinedElse(awokeEvent(order).map(_ :: Nil),
+        ifDefinedElse(awokeEvent(order),
           joinedEvent(order) match {
             case Left(problem) => Left(problem)
             case Right(Some(event)) => Right(event :: Nil)
@@ -89,8 +90,8 @@ final class OrderEventSource(state: StateView)
 
                       case o => Right(o :: Nil)
                     })
-          })
-      .flatMap(checkEvents)
+          }
+        ).flatMap(checkEvents)
     }
 
   private def checkEvents(keyedEvents: Seq[KeyedEvent[OrderActorEvent]]) = {
@@ -175,9 +176,11 @@ final class OrderEventSource(state: StateView)
     else
       Right(None)
 
-  private def awokeEvent(order: Order[Order.State]): Option[OrderActorEvent] =
-    ((order.isDetached || order.isAttached) && order.isState[Order.DelayedAfterError]) ?
-      OrderAwoke  // AgentOrderKeeper has already checked time
+  private def awokeEvent(order: Order[Order.State]): Option[List[OrderActorEvent]] =
+    order.ifState[Order.DelayedAfterError].flatMap(order =>
+      (order.isDetached || order.isAttached) ?
+        (order.state.until <= clock.now()).thenList(
+          OrderAwoke))
 
   private def orderMarkKeyedEvent(order: Order[Order.State])
   : Option[List[KeyedEvent[OrderActorEvent]]] =

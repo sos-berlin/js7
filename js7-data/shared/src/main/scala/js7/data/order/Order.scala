@@ -180,7 +180,7 @@ final case class Order[+S <: Order.State](
             .withPosition(to))
 
       case OrderAwoke =>
-        check(isState[DelayedAfterError] && !isSuspended && isAttached,
+        check(isState[DelayedAfterError] && !isSuspended && (isDetached || isAttached),
           copy(state = Ready))
 
       case OrderForked(children) =>

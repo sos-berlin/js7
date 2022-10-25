@@ -177,26 +177,7 @@ final class RetryTest extends OurTestSuite with ControllerAgentForScalaTest
     awaitAndCheckEventSeq[OrderFinished](afterEventId, orderId, expectedEvents)
   }
 
-  "retryDelay" in {
-    val workflowNotation = s"""
-       |define workflow {
-       |  try (retryDelays=[2, 0]) execute executable="FAIL-1$sh", agent="AGENT";
-       |  catch if (catchCount < 4) retry else fail;
-       |}""".stripMargin
-    val workflow = WorkflowParser.parse(WorkflowPath("TEST"), workflowNotation).orThrow
-    updateVersionedItems(change = workflow :: Nil)
-
-    val orderId = OrderId("⭕")
-    val afterEventId = eventWatch.lastAddedEventId
-    controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
-    eventWatch.await[OrderFailed](_.key == orderId, after = afterEventId)
-
-    val EventSeq.NonEmpty(stamped) = eventWatch.when(EventRequest.singleClass[OrderProcessingStarted](after = afterEventId)).await(9.seconds)
-    logger.debug(0.to(2).map(i => (stamped(i+1).timestamp - stamped(i).timestamp).pretty).mkString(" "))
-    assert(stamped(1).timestamp - stamped(0).timestamp > 2.s)     // First retry after a second
-    assert(stamped(2).timestamp - stamped(1).timestamp < 1.5.seconds)   // Following retries immediately (0 seconds)
-    assert(stamped(3).timestamp - stamped(2).timestamp < 1.5.seconds)
-  }
+  // For test of retryDelays see RetryDelayTest
 
   "maxTries=3, special handling of 'catch retry'" in {
     val workflowNotation = s"""

@@ -8,6 +8,7 @@ import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.time.Timestamp
 import js7.data.Problems.ItemIsStillReferencedProblem
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, CancelOrders, DeleteOrdersWhenTerminated}
@@ -882,7 +883,7 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
     )).await(99.s).orThrow
   }
 
-  "JS-2015 Lock in Try/Retry with 0s delay" in {
+  "JS-2015 Lock in Try/Retry with zero delay" in {
     val workflow = Workflow(
       WorkflowPath("RETRY-LOCK"),
       Seq(
@@ -917,6 +918,63 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
 
         OrderCaught(Position(0) / "catch+0" % 0),
         OrderRetrying(Position(0) / "try+1" % 0),
+
+        OrderLocksAcquired(List(LockDemand(lockPath))),
+        OrderAttachable(agentPath),
+        OrderAttached(agentPath),
+        OrderProcessingStarted(subagentId),
+        OrderProcessed(Outcome.failed),
+        OrderDetachable,
+        OrderDetached,
+        OrderLocksReleased(List(lockPath)),
+
+        OrderFailed(Position(0) / "try+1" % 0)))
+
+      controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+      eventWatch.await[OrderDeleted](_.key == orderId)
+    }
+  }
+
+  "JS-2015 Lock in Try/Retry with delay" in {
+    val workflow = Workflow(
+      WorkflowPath("RETRY-LOCK"),
+      Seq(
+        TryInstruction(
+          Workflow.of(
+            LockInstruction.single(lockPath,
+              count = None,
+              lockedWorkflow = Workflow.of(
+                FailingJob.execute(agentPath)))),
+          Workflow.of(
+            Retry()),
+            retryDelays = Some(Vector(1.ms)),
+            maxTries = Some(2))))
+
+    withTemporaryItem(workflow) { workflow =>
+      val orderId = OrderId("RETRY-LOCK")
+      val events = controller.runOrder(
+        FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+      assert(events.map(_.value)
+        .map {
+          case o @ OrderRetrying(_, Some(_)) => o.copy(delayedUntil = Some(Timestamp.Epoch))
+          case o => o
+        } == Seq(
+        OrderAdded(workflow.id, deleteWhenTerminated = true),
+        OrderMoved(Position(0) / "try+0" % 0),
+        OrderStarted,
+
+        OrderLocksAcquired(List(LockDemand(lockPath))),
+        OrderAttachable(agentPath),
+        OrderAttached(agentPath),
+        OrderProcessingStarted(subagentId),
+        OrderProcessed(Outcome.failed),
+        OrderDetachable,
+        OrderDetached,
+        OrderLocksReleased(List(lockPath)),
+
+        OrderCaught(Position(0) / "catch+0" % 0),
+        OrderRetrying(Position(0) / "try+1" % 0, Some(Timestamp.Epoch)),
+        OrderAwoke,
 
         OrderLocksAcquired(List(LockDemand(lockPath))),
         OrderAttachable(agentPath),
