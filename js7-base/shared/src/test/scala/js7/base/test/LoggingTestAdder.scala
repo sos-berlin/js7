@@ -1,7 +1,7 @@
 package js7.base.test
 
 import js7.base.log.{CorrelId, Logger}
-import js7.base.log.LoggingEscapeCodes.{black, bold, green, orange, resetColor}
+import js7.base.log.LoggingEscapeCodes.{blue, bold, green, orange, resetColor}
 import js7.base.test.LoggingFreeSpecStringWrapper.{StringWrapper, TaggedAs}
 import js7.base.test.LoggingTestAdder.*
 import js7.base.time.ScalaTime.*
@@ -81,7 +81,7 @@ private object LoggingTestAdder {
   final class TestContext(adder: LoggingTestAdder, val prefix: String, testName: String) {
     def beforeTest(): Unit = {
       delayBeforeEnd()
-      logger.info(eager(s"↘︎ $prefix$black$bold$testName$resetColor"))
+      logger.info(eager(s"↘︎ $prefix$blue$bold$testName$resetColor"))
       delayBeforeEnd()
     }
 
