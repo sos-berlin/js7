@@ -512,7 +512,7 @@ final class WorkflowParserTest extends OurTestSuite
         finish;
       }""",
       Workflow(WorkflowPath.NoId, Vector(
-        Finish(sourcePos(33, 39)),
+        Finish(sourcePos = sourcePos(33, 39)),
         ImplicitEnd(sourcePos = sourcePos(47, 48)))))
   }
 

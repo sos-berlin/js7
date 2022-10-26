@@ -186,7 +186,7 @@ object FastparseWorkflowParser
 
     private def finishInstruction[x: P] = P[Finish](
       (Index ~ keyword("finish") ~ hardEnd)
-        .map { case (start, end) => Finish(sourcePos(start, end)) })
+        .map { case (start, end) => Finish(sourcePos = sourcePos(start, end)) })
 
     private def forkInstruction[x: P] = P[Fork]{
       def forkBranch = P[Fork.Branch](

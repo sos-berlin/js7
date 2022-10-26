@@ -184,7 +184,7 @@ object CatsWorkflowParser
     private val finishInstruction: Parser[Finish] =
       (index.with1 ~ keyword("finish") ~ hardEnd)
         .map { case ((start, ()), end) =>
-          Finish(sourcePos(start, end))
+          Finish(sourcePos = sourcePos(start, end))
         }
 
     private val forkInstruction: Parser[Fork] = {
