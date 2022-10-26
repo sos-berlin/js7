@@ -25,7 +25,7 @@ import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVer
 import js7.data.item.VersionId
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath}
-import js7.data.order.OrderEvent.{LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderCaught, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLocksAcquired, OrderLocksReleased, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStepFailed, OrderTerminated}
+import js7.data.order.OrderEvent.{LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderCaught, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLocksAcquired, OrderLocksReleased, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.subagent.SubagentItem
 import js7.data.workflow.instructions.{Fork, LockInstruction, TryInstruction}
@@ -79,7 +79,7 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
       OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.Disrupted(AgentResetProblem(agentPath))),
       OrderDetached,
-      OrderStepFailed(Outcome.Disrupted(AgentResetProblem(agentPath))),
+      OrderOutcomeAdded(Outcome.Disrupted(AgentResetProblem(agentPath))),
       OrderLocksReleased(List(lock.path)),
       OrderFailed(Position(0) / "try+0" % 0)))
 
@@ -127,7 +127,7 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
       OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.Disrupted(AgentResetProblem(agentPath))),
       OrderDetached,
-      OrderStepFailed(Outcome.Disrupted(AgentResetProblem(agentPath))),
+      OrderOutcomeAdded(Outcome.Disrupted(AgentResetProblem(agentPath))),
       OrderFailedInFork(Position(0) / "try+0" % 0 / "fork+FORK" % 0)))
 
     eventWatch.await[OrderTerminated](_.key == orderId)

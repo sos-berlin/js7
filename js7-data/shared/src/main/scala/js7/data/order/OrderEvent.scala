@@ -336,12 +336,12 @@ object OrderEvent
     def movedTo: Position
   }
 
-  final case class OrderStepFailed(outcome: Outcome.NotSucceeded)
+  final case class OrderOutcomeAdded(outcome: Outcome)
   extends OrderActorEvent
 
   final case class OrderFailed(
     movedTo: Position,
-    // COMPATIBLE with v2.4: outcome has been replaced by OrderStepFailed event
+    // COMPATIBLE with v2.4: outcome has been replaced by OrderOutcomeAdded event
     outcome: Option[Outcome.NotSucceeded])
   extends OrderFailedEvent with OrderTerminated {
     def moveTo(movedTo: Position) = copy(movedTo = movedTo)
@@ -356,7 +356,7 @@ object OrderEvent
 
   final case class OrderFailedInFork(
     movedTo: Position,
-    // outcome has been replaced by OrderStepFailed event. COMPATIBLE with v2.4
+    // outcome has been replaced by OrderOutcomeAdded event. COMPATIBLE with v2.4
     outcome: Option[Outcome.NotSucceeded] = None)
   extends OrderFailedEvent {
     def moveTo(movedTo: Position) = copy(movedTo = movedTo)
@@ -379,7 +379,7 @@ object OrderEvent
 
   final case class OrderCaught(
     movedTo: Position,
-    // COMPATIBLE with v2.4: outcome has been replaced by OrderStepFailed event
+    // COMPATIBLE with v2.4: outcome has been replaced by OrderOutcomeAdded event
     outcome: Option[Outcome.NotSucceeded] = None)
   extends OrderFailedEvent {
     def moveTo(movedTo: Position) = copy(movedTo = movedTo)
@@ -648,7 +648,7 @@ object OrderEvent
     Subtype(deriveConfiguredCodec[OrderResumptionMarked]),
     Subtype(deriveConfiguredCodec[OrderResumed]),
     Subtype(OrderFinished),
-    Subtype(deriveCodec[OrderStepFailed]),
+    Subtype(deriveCodec[OrderOutcomeAdded]),
     Subtype(deriveCodec[OrderFailed]),
     Subtype(deriveCodec[OrderFailedInFork]),
     Subtype(deriveCodec[OrderCancellationMarked]),

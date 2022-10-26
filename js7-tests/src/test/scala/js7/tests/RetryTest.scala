@@ -12,7 +12,7 @@ import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.event.{EventId, EventRequest, EventSeq}
 import js7.data.job.RelativePathExecutable
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCaught, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted, OrderStepFailed}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCaught, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderRetrying, OrderStarted}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
 import js7.data.workflow.position.BranchId.{Else, Then, catch_, try_}
@@ -129,7 +129,7 @@ final class RetryTest extends OurTestSuite with ControllerAgentForScalaTest
       OrderCaught(Position(0) / try_(0) % 0 / try_(0) % 1 / catch_(2) % 0),   // Retry limit reached
       OrderMoved(Position(0) / try_(0) % 0 / try_(0) % 1 / catch_(2) % 0 / Else % 0),
 
-      OrderStepFailed(Outcome.failed),
+      OrderOutcomeAdded(Outcome.failed),
       OrderCaught(Position(0) / try_(0) % 0 / catch_(0) % 0),
       OrderMoved(Position(0) / try_(0) % 0 / catch_(0) % 0 / Then % 0),
 
@@ -156,11 +156,11 @@ final class RetryTest extends OurTestSuite with ControllerAgentForScalaTest
       OrderCaught(Position(0) / try_(0) % 0 / try_(1) % 1 / catch_(2) % 0),  // Retry limit reached
       OrderMoved(Position(0) / try_(0) % 0 / try_(1) % 1 / catch_(2) % 0 / Else % 0),
 
-      OrderStepFailed(Outcome.failed),  // Retry limit reached
+      OrderOutcomeAdded(Outcome.failed),  // Retry limit reached
       OrderCaught(Position(0) / try_(0) % 0 / catch_(1) % 0),
       OrderMoved(Position(0) / try_(0) % 0 / catch_(1) % 0 / Else % 0),
 
-      OrderStepFailed(Outcome.failed),
+      OrderOutcomeAdded(Outcome.failed),
       OrderCaught(Position(0) / catch_(0) % 0),
 
       OrderProcessingStarted(subagentId),
@@ -193,16 +193,16 @@ final class RetryTest extends OurTestSuite with ControllerAgentForScalaTest
       OrderMoved(Position(0) / try_(0) % 0),
       OrderStarted,
 
-      OrderStepFailed(Outcome.failed),
+      OrderOutcomeAdded(Outcome.failed),
       OrderCaught(Position(0) / catch_(0) % 0),
       OrderRetrying(Position(0) / try_(1) % 0),
 
-      OrderStepFailed(Outcome.failed),
+      OrderOutcomeAdded(Outcome.failed),
       OrderCaught(Position(0) / catch_(1) % 0),
       OrderRetrying(Position(0) / try_(2) % 0),
 
       // No OrderCaught here! OrderFailed has Outcome of last failed instruction in try block
-      OrderStepFailed(Outcome.failed),
+      OrderOutcomeAdded(Outcome.failed),
       OrderFailed(Position(0) / try_(2) % 0))
 
     val orderId = OrderId("🔶")
@@ -225,17 +225,17 @@ final class RetryTest extends OurTestSuite with ControllerAgentForScalaTest
       OrderMoved(Position(0) / try_(0) % 0),
       OrderStarted,
 
-      OrderStepFailed(Outcome.failed),
+      OrderOutcomeAdded(Outcome.failed),
       OrderCaught(Position(0) / catch_(0) % 0),
       OrderMoved(Position(0) / catch_(0) % 0 / Then % 0),
       OrderRetrying(Position(0) / try_(1) % 0),
 
-      OrderStepFailed(Outcome.failed),
+      OrderOutcomeAdded(Outcome.failed),
       OrderCaught(Position(0) / catch_(1) % 0),
       OrderMoved(Position(0) / catch_(1) % 0 / Then % 0),
       OrderRetrying(Position(0) / try_(2) % 0),
 
-      OrderStepFailed(Outcome.failed),
+      OrderOutcomeAdded(Outcome.failed),
       OrderCaught(Position(0) / catch_(2) % 0),
       OrderMoved(Position(0) / catch_(2) % 0 / Then % 0),
       OrderFailed(Position(0) / catch_(2) % 0 / Then % 0))

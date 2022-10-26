@@ -14,7 +14,7 @@ import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.OrderEventSource.*
 import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.order.Order.{Cancelled, Failed, FailedInFork, IsTerminated, ProcessingKilled}
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCaught, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderFailed, OrderFailedInFork, OrderFailedIntermediate_, OrderLocksDequeued, OrderLocksReleased, OrderMoved, OrderNoticesConsumed, OrderOperationCancelled, OrderPromptAnswered, OrderResumed, OrderResumptionMarked, OrderStepFailed, OrderSuspended, OrderSuspensionMarked}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCaught, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderFailed, OrderFailedInFork, OrderFailedIntermediate_, OrderLocksDequeued, OrderLocksReleased, OrderMoved, OrderNoticesConsumed, OrderOperationCancelled, OrderOutcomeAdded, OrderPromptAnswered, OrderResumed, OrderResumptionMarked, OrderSuspended, OrderSuspensionMarked}
 import js7.data.order.{Order, OrderId, OrderMark, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.state.StateView
@@ -116,11 +116,11 @@ final class OrderEventSource(state: StateView)
                 OrderBroken(problem) :: Nil
               case Right(events) => events
             }
-          else if (order.isOrderStepFailedApplicable &&
+          else if (order.isOrderOutcomeAddedApplicable &&
             order.isAttached &&
             order.isInDetachableState
             && order.copy(attachedState = None).isOrderFailedApplicable)
-            OrderStepFailed(Outcome.Disrupted(problem)) :: OrderDetachable :: Nil
+            OrderOutcomeAdded(Outcome.Disrupted(problem)) :: OrderDetachable :: Nil
           else
             OrderBroken(problem) :: Nil
         events.map(order.id <-: _)
@@ -144,7 +144,7 @@ final class OrderEventSource(state: StateView)
     outcome: Option[Outcome.NotSucceeded],
     uncatchable: Boolean)
   : Checked[List[OrderActorEvent]] = {
-    val stepFailed = outcome.map(OrderStepFailed(_)).toList
+    val outcomeAdded = outcome.map(OrderOutcomeAdded(_)).toList
     leaveBlocks(workflow, order, catchable = !uncatchable) {
       case (None | Some(BranchId.IsFailureBoundary(_)), failPosition) =>
         atController {
@@ -161,7 +161,7 @@ final class OrderEventSource(state: StateView)
 
       case (Some(TryBranchId(_)), catchPos) =>
         OrderCaught(catchPos) :: Nil
-    }.map(stepFailed ++: _)
+    }.map(outcomeAdded ++: _)
   }
 
   private def joinedEvent(order: Order[Order.State]): Checked[Option[KeyedEvent[OrderActorEvent]]] =

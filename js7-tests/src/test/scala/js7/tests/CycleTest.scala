@@ -17,7 +17,7 @@ import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.execution.workflow.instructions.ScheduleTester
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCaught, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStepFailed}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCaught, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.OrderObstacle.WaitingForOtherTime
 import js7.data.order.{CycleState, FreshOrder, OrderEvent, OrderId, OrderObstacle, Outcome}
 import js7.data.value.expression.ExpressionParser.expr
@@ -172,7 +172,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
       OrderStarted,
       OrderCyclingPrepared(cycleState),
       OrderCycleStarted,
-      OrderStepFailed(Outcome.Failed(Some("TEST FAILURE"))),
+      OrderOutcomeAdded(Outcome.Failed(Some("TEST FAILURE"))),
       OrderFailed(Position(0) / BranchId.cycle(cycleState) % 0)))
   }
 
@@ -203,7 +203,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
       OrderStarted,
       OrderCyclingPrepared(cycleState),
       OrderCycleStarted,
-      OrderStepFailed(Outcome.Failed(Some("TEST FAILURE"))),
+      OrderOutcomeAdded(Outcome.Failed(Some("TEST FAILURE"))),
       OrderCaught(Position(0) / "catch+0" % 0),
       OrderMoved(Position(1)),
       OrderFinished))

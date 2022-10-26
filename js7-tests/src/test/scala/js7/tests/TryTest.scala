@@ -8,7 +8,7 @@ import js7.base.test.OurTestSuite
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
 import js7.data.job.RelativePathExecutable
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCaught, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStepFailed, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCaught, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
 import js7.data.value.expression.ExpressionParser.expr
@@ -116,9 +116,9 @@ with BlockingItemUpdater
         OrderAdded(workflowPath ~ v),
         OrderMoved(Position(0) / "try+0" % 0),
         OrderStarted,
-        OrderStepFailed(Outcome.failed),
+        OrderOutcomeAdded(Outcome.failed),
         OrderCaught(Position(0) / "catch+0" % 0),
-        OrderStepFailed(Outcome.failed),
+        OrderOutcomeAdded(Outcome.failed),
         OrderFailed(Position(0) / "catch+0" % 0)))
     assert(controllerState.idToOrder(orderId).lastOutcome == Outcome.failed)
   }
@@ -140,7 +140,7 @@ with BlockingItemUpdater
       OrderAdded(workflowPath ~ v),
       OrderMoved(Position(0) / try_(0) % 0),
       OrderStarted,
-      OrderStepFailed(Outcome.failed),
+      OrderOutcomeAdded(Outcome.failed),
       OrderCaught(Position(0) / "catch+0" % 0),
       OrderMoved(Position(1)),
       OrderFinished))
@@ -174,7 +174,7 @@ with BlockingItemUpdater
       OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(0) / try_(0) % 1 / Then % 0),
-      OrderStepFailed(Outcome.failed),
+      OrderOutcomeAdded(Outcome.failed),
       OrderCaught(Position(0) / "catch+0" % 0),
       OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.succeeded),

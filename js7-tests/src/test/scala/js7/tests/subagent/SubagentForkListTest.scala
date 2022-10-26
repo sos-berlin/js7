@@ -9,7 +9,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.agent.AgentPath
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStepFailed}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
 import js7.data.value.StringValue
@@ -81,7 +81,7 @@ extends OurTestSuite with SubagentTester with BlockingItemUpdater
       assert(events.map(_.value) == Seq(
         OrderAdded(workflow.id, Map("arg" -> StringValue("CONTROLLER"))),
         OrderStarted,
-        OrderStepFailed(Outcome.Disrupted(Problem(
+        OrderOutcomeAdded(Outcome.Disrupted(Problem(
           "The subagentIds function is available only for ForkList statement running at an Agent" +
             " — use the agentPath argument!"))),
         OrderFailed(Position(0))
@@ -113,7 +113,7 @@ extends OurTestSuite with SubagentTester with BlockingItemUpdater
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderStarted,
-        OrderStepFailed(Outcome.Disrupted(UnknownKeyProblem("SubagentSelectionId", "SubagentSelection:UNKNOWN"))),
+        OrderOutcomeAdded(Outcome.Disrupted(UnknownKeyProblem("SubagentSelectionId", "SubagentSelection:UNKNOWN"))),
         OrderDetachable,
         OrderDetached,
         OrderFailed(Position(0))

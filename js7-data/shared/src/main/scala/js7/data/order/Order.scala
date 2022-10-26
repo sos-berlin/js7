@@ -124,8 +124,8 @@ final case class Order[+S <: Order.State](
         check(isState[Processed] && !isSuspended && isAttached,
           copy(state = ProcessingKilled))
 
-      case OrderStepFailed(outcome) =>
-        check(isOrderStepFailedApplicable,
+      case OrderOutcomeAdded(outcome) =>
+        check(isOrderOutcomeAddedApplicable,
           copy(
             historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome)))
 
@@ -138,7 +138,7 @@ final case class Order[+S <: Order.State](
 
       case OrderFailedInFork(movedTo, outcome) =>
         check(parent.nonEmpty
-          && isOrderStepFailedApplicable
+          && isOrderOutcomeAddedApplicable
           && !isState[Fresh],
           copy(
             state = FailedInFork,
@@ -495,7 +495,7 @@ final case class Order[+S <: Order.State](
   }
 
   def shouldFail: Boolean =
-    isFailed && isOrderStepFailedApplicable
+    isFailed && isOrderOutcomeAddedApplicable
 
   private def isFailed: Boolean =
     lastOutcome match {
@@ -512,9 +512,9 @@ final case class Order[+S <: Order.State](
     historicOutcomes.lastOption.map(_.outcome) getOrElse Outcome.succeeded
 
   def isOrderFailedApplicable =
-    isDetached && isOrderStepFailedApplicable
+    isDetached && isOrderOutcomeAddedApplicable
 
-  def isOrderStepFailedApplicable =
+  def isOrderOutcomeAddedApplicable =
     !isSuspended &&
       (isDetached || isAttached) &&
       (state match {

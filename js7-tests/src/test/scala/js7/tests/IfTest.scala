@@ -10,7 +10,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
 import js7.data.job.RelativePathExecutable
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStepFailed, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.{NumberValue, StringValue}
 import js7.data.workflow.position.BranchId.{Else, Then}
@@ -64,7 +64,7 @@ final class IfTest extends OurTestSuite
           OrderStarted,
           OrderProcessingStarted(subagentId),
           OrderProcessed(Outcome.succeededRC0),
-          OrderStepFailed(Outcome.Disrupted(Problem("No such named value: MISSING"))),
+          OrderOutcomeAdded(Outcome.Disrupted(Problem("No such named value: MISSING"))),
           OrderDetachable,
           OrderDetached,
           OrderFailed(Position(0))))

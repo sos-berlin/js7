@@ -276,7 +276,7 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
       OrderDetached,
 
       OrderLocksAcquired(List(LockDemand(lock2Path))),
-      OrderStepFailed(Outcome.failed),
+      OrderOutcomeAdded(Outcome.failed),
       OrderLocksReleased(List(lock2Path)),
       OrderLocksReleased(List(lockPath)),
       OrderFailed(Position(1)),
@@ -312,7 +312,7 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
       OrderLocksAcquired(List(LockDemand(lockPath))),
       OrderMoved(Position(0) / "lock" % 0 / "try+0" % 0),
       OrderLocksAcquired(List(LockDemand(lock2Path))),
-      OrderStepFailed(Outcome.failed),
+      OrderOutcomeAdded(Outcome.failed),
       OrderLocksReleased(List(lock2Path)),
       OrderCaught(Position(0) / "lock" % 0 / "catch+0" % 0),
       OrderAttachable(agentPath),
@@ -363,7 +363,7 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
 
     assert(controller.eventWatch.eventsByKey[OrderEvent](orderId / "BRANCH") == Seq(
       OrderLocksAcquired(List(LockDemand(lockPath))),
-      OrderStepFailed(Outcome.failed),
+      OrderOutcomeAdded(Outcome.failed),
       OrderLocksReleased(List(lockPath)),
       OrderFailedInFork(Position(0) / "fork+BRANCH" % 0)))
 
@@ -405,7 +405,7 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
       OrderDeleted))
 
     assert(controller.eventWatch.eventsByKey[OrderEvent](orderId / "BRANCH") == Seq(
-      OrderStepFailed(Outcome.Disrupted(Problem(
+      OrderOutcomeAdded(Outcome.Disrupted(Problem(
         "Lock:LOCK has already been acquired by parent Order:🟪"))),
       OrderFailed(Position(0) / "lock" % 0 / "fork+BRANCH" % 0),
       OrderCancelled))
@@ -511,7 +511,7 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
     assert(controller.eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
-      OrderStepFailed(Outcome.Disrupted(Problem(
+      OrderOutcomeAdded(Outcome.Disrupted(Problem(
         "Cannot fulfill lock count=2 with Lock:LOCK limit=1"))),
       OrderFailed(Position(0)),
       OrderCancelled,

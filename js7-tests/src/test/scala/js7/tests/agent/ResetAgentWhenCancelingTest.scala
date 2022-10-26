@@ -11,7 +11,7 @@ import js7.data.Problems.AgentResetProblem
 import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode.FreshOrStarted
 import js7.data.controller.ControllerCommand.{CancelOrders, ResetAgent}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancelled, OrderDetached, OrderFailed, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderStepFailed, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancelled, OrderDetached, OrderFailed, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -71,7 +71,7 @@ with BlockingItemUpdater
       OrderProcessed(Outcome.succeeded),
       OrderCancellationMarked(FreshOrStarted(None)),
       OrderDetached,
-      OrderStepFailed(Outcome.Disrupted(AgentResetProblem(agentPath))),
+      OrderOutcomeAdded(Outcome.Disrupted(AgentResetProblem(agentPath))),
       OrderFailed(Position(0)),
       OrderCancelled))
 

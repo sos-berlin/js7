@@ -150,7 +150,7 @@ final class ForkListTest extends OurTestSuite with ControllerAgentForScalaTest
         Map("myList" -> ListValue(Seq(StringValue("DUPLICATE"), StringValue("DUPLICATE")))),
         deleteWhenTerminated = true),
       OrderStarted,
-      OrderStepFailed(Outcome.Disrupted(Problem(
+      OrderOutcomeAdded(Outcome.Disrupted(Problem(
         "Duplicate child IDs in $myList: Unexpected duplicates: 2×DUPLICATE"))),
       OrderFailed(Position(0))))
   }
@@ -179,7 +179,7 @@ final class ForkListTest extends OurTestSuite with ControllerAgentForScalaTest
           Map("myList" -> ListValue(Seq(StringValue(childId)))),
           deleteWhenTerminated = true),
         OrderStarted,
-        OrderStepFailed(Outcome.Disrupted(problem)),
+        OrderOutcomeAdded(Outcome.Disrupted(problem)),
         OrderFailed(Position(0))))
     }
   }
@@ -390,7 +390,7 @@ final class ForkListTest extends OurTestSuite with ControllerAgentForScalaTest
         Map("myList" -> ListValue(Seq(StringValue("SINGLE-ELEMENT")))),
         deleteWhenTerminated = true),
       OrderStarted,
-      OrderStepFailed(Outcome.Failed(Some("No such named value: UNKNOWN"))),
+      OrderOutcomeAdded(Outcome.Failed(Some("No such named value: UNKNOWN"))),
       OrderFailed(Position(0))))
   }
 
