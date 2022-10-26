@@ -138,9 +138,8 @@ final case class Order[+S <: Order.State](
 
       case OrderFailedInFork(movedTo, outcome) =>
         check(parent.nonEmpty
-          && (isState[Ready] || isState[Processed])
-          && !isSuspended
-          && (isDetached || isAttached),
+          && isOrderStepFailedApplicable
+          && !isState[Fresh],
           copy(
             state = FailedInFork,
             workflowPosition = workflowPosition.copy(position = movedTo),

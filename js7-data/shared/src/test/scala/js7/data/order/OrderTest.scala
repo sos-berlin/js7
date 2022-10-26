@@ -576,6 +576,7 @@ final class OrderTest extends OurTestSuite
           case (OrderSuspended, IsSuspendingWithKill(true), _, IsDetached) => _.isInstanceOf[Ready]
           case (OrderSuspended, order                     , _, IsAttached)
             if order.isSuspendingWithKill && order.isSuspended => _.isInstanceOf[Ready]
+          case (_: OrderFailedInFork, IsSuspended(false), IsChild(true), IsDetached | IsAttached) => _.isInstanceOf[FailedInFork]
           case (_: OrderStepFailed, IsSuspended(false), _, IsDetached | IsAttached) => _.isInstanceOf[ProcessingKilled]
           case (_: OrderFailed, IsSuspended(false)        , _, IsDetached) => _.isInstanceOf[Failed]
           case (_: OrderBroken, _                         , _, _         ) => _.isInstanceOf[Broken]
