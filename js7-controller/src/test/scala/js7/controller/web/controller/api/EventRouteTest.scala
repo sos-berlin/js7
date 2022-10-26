@@ -163,7 +163,7 @@ final class EventRouteTest extends OurTestSuite with RouteTester with EventRoute
     }
 
     "/event DefaultDelay" in {
-      val stamped = Stamped(EventId(190), OrderId("190") <-: OrderFinished)
+      val stamped = Stamped(EventId(190), OrderId("190") <-: OrderFinished())
       val runningSince = now
       scheduler.scheduleOnce(100.millis) {
         eventCollector.addStamped(stamped)
@@ -174,7 +174,7 @@ final class EventRouteTest extends OurTestSuite with RouteTester with EventRoute
     }
 
     "/event?delay=0 MinimumDelay" in {
-      val stamped = Stamped(EventId(200), OrderId("200") <-: OrderFinished)
+      val stamped = Stamped(EventId(200), OrderId("200") <-: OrderFinished())
       val runningSince = now
       scheduler.scheduleOnce(100.millis) {
         eventCollector.addStamped(stamped)
@@ -185,7 +185,7 @@ final class EventRouteTest extends OurTestSuite with RouteTester with EventRoute
     }
 
     "/event?delay=0.2" in {
-      val stamped = Stamped(EventId(210), OrderId("210") <-: OrderFinished)
+      val stamped = Stamped(EventId(210), OrderId("210") <-: OrderFinished())
       val runningSince = now
       scheduler.scheduleOnce(100.millis) {
         eventCollector.addStamped(stamped)

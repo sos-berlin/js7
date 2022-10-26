@@ -43,7 +43,7 @@ final class AddOrderTest extends OurTestSuite with ControllerAgentForScalaTest
     assert(controller.runOrder(FreshOrder(orderId, emptyWorkflow.path)).map(_.value) == Seq(
       OrderAdded(emptyWorkflow.path ~ "INITIAL"),
       OrderStarted,
-      OrderFinished))
+      OrderFinished()))
     controller.executeCommandForTest(DeleteOrdersWhenTerminated(Seq(orderId))).orThrow
     eventWatch.await[OrderDeleted](_.key == orderId)
   }
@@ -87,7 +87,7 @@ final class AddOrderTest extends OurTestSuite with ControllerAgentForScalaTest
         OrderMoved(Position(1)),
         OrderDetachable,
         OrderDetached,
-        OrderFinished))
+        OrderFinished()))
   }
 }
 

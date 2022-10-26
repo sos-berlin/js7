@@ -199,7 +199,7 @@ private object RecoveryTest {
     OrderMoved(Position(5)),
     OrderDetachable,
     OrderDetached,
-    OrderFinished)
+    OrderFinished())
 
   /** Deletes restart sequences to make event sequence comparable with ExpectedOrderEvents. */
   private def deleteRestartedJobEvents(events: Iterator[Event]): Seq[Event] = {

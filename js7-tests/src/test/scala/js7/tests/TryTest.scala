@@ -93,7 +93,7 @@ with BlockingItemUpdater
 
       OrderDetachable,
       OrderDetached,
-      OrderFinished))
+      OrderFinished()))
     assert(controllerState.idToOrder(orderId).lastOutcome == Outcome.succeededRC0)
   }
 
@@ -143,7 +143,7 @@ with BlockingItemUpdater
       OrderOutcomeAdded(Outcome.failed),
       OrderCaught(Position(0) / "catch+0" % 0),
       OrderMoved(Position(1)),
-      OrderFinished))
+      OrderFinished()))
     assert(controllerState.idToOrder(orderId).lastOutcome == Outcome.succeeded)
   }
 
@@ -184,7 +184,7 @@ with BlockingItemUpdater
       OrderMoved(Position(2)),
       OrderDetachable,
       OrderDetached,
-      OrderFinished))
+      OrderFinished()))
     assert(controllerState.idToOrder(orderId).lastOutcome == Outcome.succeeded)
   }
 
@@ -229,7 +229,7 @@ with BlockingItemUpdater
       OrderMoved(Position(1)),
       OrderDetachable,
       OrderDetached,
-      OrderFinished))
+      OrderFinished()))
 
     checkEventSeq(OrderId("🔴|🍋"), controller.eventWatch.allKeyedEvents[OrderEvent], Vector(
       OrderProcessingStarted(subagentId),

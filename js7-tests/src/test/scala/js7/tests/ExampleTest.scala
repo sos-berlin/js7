@@ -36,7 +36,7 @@ final class ExampleTest extends OurTestSuite with ControllerAgentForScalaTest
     controllerApi.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
       .await(99.s).orThrow
     assert(eventWatch.await[OrderTerminated](_.key == orderId).map(_.value.event) ==
-      Seq(OrderFinished))
+      Seq(OrderFinished()))
     eventWatch.await[OrderDeleted](_.key == orderId)
     assert(eventWatch.eventsByKey[OrderEvent](orderId, after = eventId) == Seq(
       OrderAdded(workflow.id, deleteWhenTerminated = true),
@@ -48,7 +48,7 @@ final class ExampleTest extends OurTestSuite with ControllerAgentForScalaTest
       OrderMoved(Position(1)),
       OrderDetachable,
       OrderDetached,
-      OrderFinished,
+      OrderFinished(),
       OrderDeleted))
   }
 }

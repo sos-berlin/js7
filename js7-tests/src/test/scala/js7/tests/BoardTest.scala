@@ -114,7 +114,7 @@ with BlockingItemUpdater with TestMixins
             OrderNoticesExpected.Expected(notice1.boardPath, notice1.id))),
           OrderNoticesRead,
           OrderMoved(Position(1)),
-          OrderFinished))
+          OrderFinished()))
       }
 
       val readerEvents = controller.runOrder(FreshOrder(OrderId(s"#$qualifier#EXPECTING-0-2"), expecting02Workflow.path))
@@ -123,7 +123,7 @@ with BlockingItemUpdater with TestMixins
         OrderStarted,
         OrderNoticesRead,
         OrderMoved(Position(1)),
-        OrderFinished))
+        OrderFinished()))
 
       assert(controllerState.keyTo(BoardState).toMap == Map(
         board0.path -> BoardState(
@@ -154,7 +154,7 @@ with BlockingItemUpdater with TestMixins
         OrderStarted,
         OrderNoticePosted(notice),
         OrderMoved(Position(1)),
-        OrderFinished))
+        OrderFinished()))
 
       assert(controllerState.keyTo(BoardState)(board0.path) ==
         BoardState(
@@ -176,7 +176,7 @@ with BlockingItemUpdater with TestMixins
           OrderNoticesExpected(Vector(OrderNoticesExpected.Expected(notice.boardPath, notice.id))),
           OrderNoticesRead,
           OrderMoved(Position(1)),
-          OrderFinished))
+          OrderFinished()))
       }
 
       assert(controllerState.keyTo(BoardState)(board0.path) ==
@@ -212,7 +212,7 @@ with BlockingItemUpdater with TestMixins
         OrderDetached,
         OrderNoticePosted(notice),
         OrderMoved(Position(2)),
-        OrderFinished))
+        OrderFinished()))
 
       val readerEvents = controller.runOrder(
         FreshOrder(OrderId(s"#$qualifier#EXPECTING"), expectingAgentWorkflow.path))
@@ -228,7 +228,7 @@ with BlockingItemUpdater with TestMixins
         OrderDetached,
         OrderNoticesRead,
         OrderMoved(Position(2)),
-        OrderFinished))
+        OrderFinished()))
     }
 
     "PostNotices command with expecting orders" in {
@@ -285,7 +285,7 @@ with BlockingItemUpdater with TestMixins
         OrderStarted,
         OrderNoticePosted(notice),
         OrderMoved(Position(1)),
-        OrderFinished))
+        OrderFinished()))
 
       val eventId = eventWatch.lastAddedEventId
 

@@ -50,7 +50,7 @@ final class WorkflowDefinedOrderVariablesTest extends OurTestSuite with Controll
       "variableName" -> StringValue("Acer"),
       "expected" -> StringValue("Ahorn"),
       "PLANT" -> StringValue("Ahorn")))
-    assert(deEvents.contains(OrderFinished) && svEvents.contains(OrderFinished))
+    assert(deEvents.contains(OrderFinished()) && svEvents.contains(OrderFinished()))
   }
 
   "Argument and variable name sets must be disjoint" in {
@@ -67,7 +67,7 @@ final class WorkflowDefinedOrderVariablesTest extends OurTestSuite with Controll
     val orderId = OrderId("RESOURCE-VARIABLES-AS-OBJECT")
     val events = controller.runOrder(
       FreshOrder(orderId, objectWorkflow.path, deleteWhenTerminated = true))
-    assert(events.map(_.value).contains(OrderFinished))
+    assert(events.map(_.value).contains(OrderFinished()))
   }
 }
 

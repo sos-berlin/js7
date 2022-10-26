@@ -125,5 +125,5 @@ object ExpressionsTest {
       OrderMoved(Position(3)),
       OrderDetachable,
       OrderDetached,
-      OrderFinished))
+      OrderFinished()))
 }

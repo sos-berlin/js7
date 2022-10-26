@@ -36,7 +36,7 @@ final class AgentRestartBeforeDedicationTest extends OurTestSuite with Directory
         controller.eventWatch.await[AgentDedicated](_.key == agentPath,
           after = controller.eventWatch.tornEventId)
         val events = controller.runOrder(FreshOrder(OrderId("ORDER"), workflow.path))
-        assert(events.last.value == OrderFinished)
+        assert(events.last.value == OrderFinished())
       }
     }
   }

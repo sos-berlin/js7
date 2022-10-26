@@ -95,7 +95,7 @@ final class ForkTest extends OurTestSuite with ControllerAgentForScalaTest
       .await(99.s).orThrow
     controller.eventWatch.await[OrderResumed](_.key == childOrderId)
     val terminated = controller.eventWatch.await[OrderTerminated](_.key == orderId).head.value
-    assert(terminated == orderId <-: OrderFinished)
+    assert(terminated == orderId <-: OrderFinished())
   }
 
   "Failed, cancel failed child order" in {
@@ -314,5 +314,5 @@ object ForkTest
       XOrderId <-: OrderDetached,                             YOrderId <-: OrderDetached,
     TestOrder.id <-: OrderJoined(Outcome.succeeded),
     TestOrder.id <-: OrderMoved(Position(5)),
-    TestOrder.id <-: OrderFinished)
+    TestOrder.id <-: OrderFinished())
 }

@@ -77,7 +77,7 @@ public final class TestJControllerProxy
                 .get(99, SECONDS);
             try {
                 proxy.controllerEventBus().<OrderEvent>subscribe(
-                    asList(OrderEvent.OrderStarted$.class, OrderEvent.OrderFinished$.class),
+                    asList(OrderEvent.OrderStarted$.class, OrderEvent.OrderFinished.class),
                     (stampedEvent, controllerState) -> out.println(orderEventToString(stampedEvent))
                 );
                 while (true) {

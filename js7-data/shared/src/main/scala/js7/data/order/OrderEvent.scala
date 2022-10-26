@@ -426,8 +426,8 @@ object OrderEvent
     */
   case object OrderDetached extends OrderCoreEvent
 
-  type OrderFinished = OrderFinished.type
-  case object OrderFinished extends OrderActorEvent with OrderTerminated
+  final case class OrderFinished()
+  extends OrderActorEvent with OrderTerminated
 
   type OrderDeletionMarked = OrderDeletionMarked.type
   case object OrderDeletionMarked extends OrderActorEvent
@@ -647,7 +647,7 @@ object OrderEvent
     Subtype(OrderSuspended),
     Subtype(deriveConfiguredCodec[OrderResumptionMarked]),
     Subtype(deriveConfiguredCodec[OrderResumed]),
-    Subtype(OrderFinished),
+    Subtype(deriveConfiguredCodec[OrderFinished]),
     Subtype(deriveCodec[OrderOutcomeAdded]),
     Subtype(deriveCodec[OrderFailed]),
     Subtype(deriveCodec[OrderFailedInFork]),

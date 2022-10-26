@@ -83,7 +83,7 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
       OrderCancellationMarkedOnAgent,
       OrderProcessed(Outcome.succeededRC0),
       OrderMoved(Position(1)),
-      OrderFinished))
+      OrderFinished()))
   }
 
   "Cancelling (mode=FreshOnly) a started order is not possible" in {

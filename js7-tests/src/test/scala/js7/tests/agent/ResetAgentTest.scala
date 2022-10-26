@@ -108,7 +108,7 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
       OrderDetached,
       OrderLocksReleased(List(lock.path)),
       OrderMoved(Position(1)),
-      OrderFinished))
+      OrderFinished()))
   }
 
   "ResetAgent while a forking order is executed" in {
@@ -140,7 +140,7 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
         "Order:FORKING|FORK Disrupted(Other(AgentReset: Agent:AGENT has been reset))"))),
       OrderCaught(Position(0) / "catch+0" % 0),
       OrderMoved(Position(1)),
-      OrderFinished))
+      OrderFinished()))
 
     barrier.flatMap(_.tryPut(())).runSyncUnsafe()
   }
@@ -241,7 +241,7 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
         secondController.eventWatch.await[AgentCoupled]()
         val events = secondController.runOrder(
           FreshOrder(OrderId("SECOND-CONTROLLER"), simpleWorkflow.path))
-        assert(events.last.value == OrderFinished)
+        assert(events.last.value == OrderFinished())
 
         // The other Controller gets errors now, because we stole the Agent:
         eventWatch.await[AgentCouplingFailed](after = eventId)

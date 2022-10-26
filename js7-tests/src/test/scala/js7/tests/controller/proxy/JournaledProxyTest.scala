@@ -132,7 +132,7 @@ extends OurTestSuite with BeforeAndAfterAll with ProvideActorSystem with Control
             OrderMoved(Position(1)),
             OrderDetachable,
             OrderDetached,
-            OrderFinished))
+            OrderFinished()))
           .toMap)
     }
   }

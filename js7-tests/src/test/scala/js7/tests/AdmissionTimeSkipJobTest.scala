@@ -62,7 +62,7 @@ final class AdmissionTimeSkipJobTest extends OurTestSuite with ControllerAgentFo
         OrderMoved(Position(1)),
         // Order does not start for skipped order (but for OrderFinished)
         OrderStarted,
-        OrderFinished))
+        OrderFinished()))
     }
 
     "Between other jobs" in {
@@ -87,7 +87,7 @@ final class AdmissionTimeSkipJobTest extends OurTestSuite with ControllerAgentFo
 
         OrderDetachable,
         OrderDetached,
-        OrderFinished))
+        OrderFinished()))
     }
   }
 

@@ -137,7 +137,7 @@ object IfTest {
       OrderMoved(Position(3)),
       OrderDetachable,
       OrderDetached,
-      OrderFinished),
+      OrderFinished()),
     ReturnCode(1) -> Vector(
       OrderAdded(TestWorkflow.id, Map("ARG" -> StringValue("ARG-VALUE"), "RETURN_CODE" -> StringValue("1"))),
       OrderMoved(Position(0) / Then % 0 / Then % 0),
@@ -155,7 +155,7 @@ object IfTest {
       OrderMoved(Position(3)),
       OrderDetachable,
       OrderDetached,
-      OrderFinished),
+      OrderFinished()),
     ReturnCode(2) ->  Vector(
       OrderAdded(TestWorkflow.id, Map("ARG" -> StringValue("ARG-VALUE"), "RETURN_CODE" -> StringValue("2"))),
       OrderMoved(Position(0) / Then % 0 / Then % 0),

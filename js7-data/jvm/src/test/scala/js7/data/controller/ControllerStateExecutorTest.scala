@@ -379,9 +379,9 @@ final class ControllerStateExecutorTest extends OurTestSuite
           aOrderId <-: OrderDetached,
           bOrderId <-: OrderDetached
         )) == Right(Seq(
-          bOrderId <-: OrderFinished,
+          bOrderId <-: OrderFinished(),
           aOrderId <-: OrderStarted,
-          aOrderId <-: OrderFinished)))
+          aOrderId <-: OrderFinished())))
 
       assert(
         executor.applyEventsAndReturnSubsequentEvents(Seq(

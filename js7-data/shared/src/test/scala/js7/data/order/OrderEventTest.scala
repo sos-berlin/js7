@@ -401,7 +401,7 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderFinished" in {
-    check(OrderFinished, json"""
+    check(OrderFinished(), json"""
       {
         "TYPE": "OrderFinished"
       }""")

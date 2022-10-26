@@ -20,7 +20,7 @@ extends EventInstructionExecutor with PositionInstructionExecutor
               case _: Order.Ready =>
                 detach(order)
                   .getOrElse(Right(
-                    (order.id <-: OrderFinished) :: Nil))
+                    (order.id <-: OrderFinished()) :: Nil))
 
               case _ => Right(Nil)
             }

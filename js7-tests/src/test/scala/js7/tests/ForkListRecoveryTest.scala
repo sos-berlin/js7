@@ -55,7 +55,7 @@ final class ForkListRecoveryTest extends OurTestSuite with DirectoryProviderForS
         .combineProblems
         .orThrow
       assert(controller.eventWatch.await[OrderTerminated](_.key == parentOrderId)
-        .head.value.event == OrderFinished)
+        .head.value.event == OrderFinished())
       controller.eventWatch.await[OrderDeleted](_.key == parentOrderId)
 
       assert(controller.eventWatch.eventsByKey[OrderEvent](parentOrderId) == Seq(
@@ -86,7 +86,7 @@ final class ForkListRecoveryTest extends OurTestSuite with DirectoryProviderForS
         OrderDetached,
         OrderJoined(Outcome.succeeded),
         OrderMoved(Position(1)),
-        OrderFinished,
+        OrderFinished(),
         OrderDeleted))
 
       for (orderId <- childOrderIds) {

@@ -91,7 +91,7 @@ final class ForkListTest extends OurTestSuite with ControllerAgentForScalaTest
       .await(99.s).orThrow
 
     assert(eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
-      .head.value.event == OrderFinished)
+      .head.value.event == OrderFinished())
     eventWatch.await[OrderDeleted](_.key == orderId, after = eventId)
     assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(
@@ -124,7 +124,7 @@ final class ForkListTest extends OurTestSuite with ControllerAgentForScalaTest
         StringValue("🔹" + (orderId / "ELEMENT-2").string),
         StringValue("🔹" + (orderId / "ELEMENT-3").string)))))),
       OrderMoved(Position(1)),
-      OrderFinished,
+      OrderFinished(),
       OrderDeleted))
 
     asserted.await(9.s)
@@ -196,7 +196,7 @@ final class ForkListTest extends OurTestSuite with ControllerAgentForScalaTest
     controllerApi.addOrder(freshOrder).await(99.s).orThrow
 
     assert(eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
-      .head.value.event == OrderFinished)
+      .head.value.event == OrderFinished())
     eventWatch.await[OrderDeleted](_.key == orderId, after = eventId)
     for (i <- myList.elements.indices) {
       assert(eventWatch.eventsByKey[OrderEvent](orderId / i.toString) == Seq(
@@ -259,7 +259,7 @@ final class ForkListTest extends OurTestSuite with ControllerAgentForScalaTest
   private def runOrder(workflowPath: WorkflowPath, orderId: OrderId, n: Int,
     expectedChildOrderEvent: OrderId => OrderEvent =
       orderId => OrderProcessed(Outcome.Succeeded(Map("result" -> StringValue("🔹" + orderId.string)))),
-    expectedTerminationEvent: OrderTerminated = OrderFinished,
+    expectedTerminationEvent: OrderTerminated = OrderFinished(),
     cancelChildOrders: Boolean = false)
   : Order[Order.State] = {
     val childOrderIds = (1 to n).map(i => orderId / s"ELEMENT-$i").toSet
@@ -308,7 +308,7 @@ final class ForkListTest extends OurTestSuite with ControllerAgentForScalaTest
     controllerApi.addOrder(freshOrder).await(99.s).orThrow
 
     assert(eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
-      .head.value.event == OrderFinished)
+      .head.value.event == OrderFinished())
     eventWatch.await[OrderDeleted](_.key == orderId, after = eventId)
 
     val orderForked = OrderForked(
@@ -365,7 +365,7 @@ final class ForkListTest extends OurTestSuite with ControllerAgentForScalaTest
       OrderDetached,
       OrderJoined(Outcome.succeeded),
       OrderMoved(Position(6)),
-      OrderFinished,
+      OrderFinished(),
       OrderDeleted))
   }
 
@@ -418,7 +418,7 @@ final class ForkListTest extends OurTestSuite with ControllerAgentForScalaTest
     controllerApi.addOrder(freshOrder).await(99.s).orThrow
 
     assert(eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
-      .head.value.event == OrderFinished)
+      .head.value.event == OrderFinished())
     for (elementId <- View("1", "2", "3")) {
       assert(eventWatch.eventsByKey[OrderEvent](orderId / elementId) == Seq(
         OrderProcessingStarted(subagentId),

@@ -53,7 +53,7 @@ final class SubagentMultipleOrdersTest extends OurTestSuite with SubagentTester
                 OrderMoved(Position(1)),
                 OrderDetachable,
                 OrderDetached,
-                OrderFinished))
+                OrderFinished()))
             }
             logger.info(s"$orderId ✔︎")
             result

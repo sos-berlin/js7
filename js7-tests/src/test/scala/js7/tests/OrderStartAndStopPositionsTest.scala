@@ -72,7 +72,7 @@ final class OrderStartAndStopPositionsTest extends OurTestSuite with ControllerA
         startPosition = Some(Position(1)),
         stopPositions = Set(Position(1))),
       OrderStarted,
-      OrderFinished))
+      OrderFinished()))
   }
 
   "startPosition and stopPositions" in {
@@ -96,7 +96,7 @@ final class OrderStartAndStopPositionsTest extends OurTestSuite with ControllerA
 
       OrderDetachable,
       OrderDetached,
-      OrderFinished))
+      OrderFinished()))
   }
 
   "stopPositions point to an If statement" in {
@@ -123,7 +123,7 @@ final class OrderStartAndStopPositionsTest extends OurTestSuite with ControllerA
 
       OrderDetachable,
       OrderDetached,
-      OrderFinished))
+      OrderFinished()))
   }
 
   "startPosition and stopPosition point into If statements" in {
@@ -156,7 +156,7 @@ final class OrderStartAndStopPositionsTest extends OurTestSuite with ControllerA
 
       OrderDetachable,
       OrderDetached,
-      OrderFinished))
+      OrderFinished()))
   }
 
   "startPosition points into a Try statement" in {
@@ -183,7 +183,7 @@ final class OrderStartAndStopPositionsTest extends OurTestSuite with ControllerA
 
       OrderDetachable,
       OrderDetached,
-      OrderFinished))
+      OrderFinished()))
   }
 }
 

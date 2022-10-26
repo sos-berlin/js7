@@ -74,7 +74,7 @@ final class RetryTest extends OurTestSuite with ControllerAgentForScalaTest
 
       OrderDetachable,
       OrderDetached,
-      OrderFinished)
+      OrderFinished())
 
     val orderId = OrderId("🔺")
     val afterEventId = eventWatch.lastAddedEventId
@@ -169,7 +169,7 @@ final class RetryTest extends OurTestSuite with ControllerAgentForScalaTest
 
       OrderDetachable,
       OrderDetached,
-      OrderFinished)
+      OrderFinished())
 
     val orderId = OrderId("🔷")
     val afterEventId = eventWatch.lastAddedEventId

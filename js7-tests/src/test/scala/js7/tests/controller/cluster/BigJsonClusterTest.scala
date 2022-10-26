@@ -50,7 +50,7 @@ final class BigJsonClusterTest extends OurTestSuite with ControllerClusterForSca
           "ARG" -> StringValue(bigString)))))
         .await(99.s).orThrow
       val event = eventWatch.await[OrderTerminated](_.key == orderId)
-      assert(event.head.value.event == OrderFinished)
+      assert(event.head.value.event == OrderFinished())
 
       val controllerState = controllerApi.controllerState.await(99.s).orThrow
       assert(controllerState.clusterState.asInstanceOf[ClusterState.Coupled].setting.activeId ==

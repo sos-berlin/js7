@@ -313,7 +313,7 @@ class JobResourceTest extends OurTestSuite with ControllerAgentForScalaTest
 
     val orderId = OrderId("TMPFILE")
     val events = controller.runOrder(FreshOrder(orderId, myWorkflow.path)).map(_.value)
-    assert(events.last == OrderFinished)
+    assert(events.last == OrderFinished())
     val stdout = events
       .collect { case OrderStdoutWritten(chunk) => chunk }
       .combineAll

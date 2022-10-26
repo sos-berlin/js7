@@ -150,7 +150,7 @@ extends OurTestSuite with ControllerAgentForScalaTest
       OrderMoved(Position(4)),
       OrderDetachable,
       OrderDetached,
-      OrderFinished,
+      OrderFinished(),
       OrderDeleted))
 
     setBreakpoints(

@@ -36,7 +36,7 @@ final class JobResourceClusterTest extends ControllerClusterTester
         assert(primaryController.controllerState.await(99.s).pathToSignedSimpleItem(jobResource.path).value == jobResource0)
         assert(backupController.controllerState.await(99.s).pathToSignedSimpleItem(jobResource.path).value == jobResource0)
         val stamped = primaryController.runOrder(FreshOrder(OrderId("A"), workflow.path))
-        assert(stamped.map(_.value).collectFirst { case o: OrderTerminated => o } == Some(OrderFinished))
+        assert(stamped.map(_.value).collectFirst { case o: OrderTerminated => o } == Some(OrderFinished()))
 
         primaryController.terminate() await 99.s
         backupController.terminate() await 99.s
@@ -52,7 +52,7 @@ final class JobResourceClusterTest extends ControllerClusterTester
         assert(primaryController.controllerState.await(99.s).pathToSignedSimpleItem(jobResource.path).value == jobResource0)
         assert(backupController.controllerState.await(99.s).pathToSignedSimpleItem(jobResource.path).value == jobResource0)
         val stamped = primaryController.runOrder(FreshOrder(OrderId("B"), workflow.path))
-        assert(stamped.map(_.value).collectFirst { case o: OrderTerminated => o } == Some(OrderFinished))
+        assert(stamped.map(_.value).collectFirst { case o: OrderTerminated => o } == Some(OrderFinished()))
 
         primaryController.terminate() await 99.s
         backupController.terminate() await 99.s

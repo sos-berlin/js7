@@ -40,7 +40,7 @@ final class FinishTest extends OurTestSuite
         OrderMoved(Position(1)),
         OrderDetachable,
         OrderDetached,
-        OrderFinished,
+        OrderFinished(),
         OrderDeleted))
   }
 
@@ -67,7 +67,7 @@ final class FinishTest extends OurTestSuite
         OrderMoved(Position(1) / "then" % 1),
         OrderDetachable,
         OrderDetached,
-        OrderFinished,
+        OrderFinished(),
         OrderDeleted))
   }
 
@@ -97,7 +97,7 @@ final class FinishTest extends OurTestSuite
           OrderForked.Child(Fork.Branch.Id("🍋"), OrderId("🔺|🍋")))),
         OrderJoined(Outcome.succeeded),
         OrderMoved(Position(1)),
-        OrderFinished,
+        OrderFinished(),
         OrderDeleted))
 
     assert(events.filter(_.key == orderId / "🥕").map(_.event) ==
@@ -148,7 +148,7 @@ final class FinishTest extends OurTestSuite
           OrderForked.Child(Fork.Branch.Id("🍋"), OrderId("🔺|🍋")))),
         OrderJoined(Outcome.succeeded),
         OrderMoved(Position(1)),
-        OrderFinished,
+        OrderFinished(),
         OrderDeleted))
 
     assert(events.filter(_.key == orderId / "🥕").map(_.event) ==

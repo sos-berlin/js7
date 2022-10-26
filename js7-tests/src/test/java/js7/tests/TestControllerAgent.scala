@@ -122,7 +122,7 @@ object TestControllerAgent
             controller.actorSystem.actorOf(Props {
               new Actor {
                 controller.injector.instance[StampedKeyedEventBus].subscribe(self, classOf[OrderEvent.OrderAdded])
-                controller.injector.instance[StampedKeyedEventBus].subscribe(self, OrderEvent.OrderFinished.getClass)
+                controller.injector.instance[StampedKeyedEventBus].subscribe(self, classOf[OrderEvent.OrderFinished])
                 context.system.scheduler.scheduleWithFixedDelay(0.s, 1.s, self, "PRINT")
                 val stopwatch = new Stopwatch
                 var added, finished, printedFinished = 0
@@ -132,7 +132,7 @@ object TestControllerAgent
                 def receive = {
                   case Stamped(_, _, KeyedEvent(_, _: OrderEvent.OrderAdded)) =>
                     added += 1
-                  case Stamped(_, _, KeyedEvent(orderId: OrderId, OrderFinished)) =>
+                  case Stamped(_, _, KeyedEvent(orderId: OrderId, OrderFinished())) =>
                     lastDuration = Some(Timestamp.now - Timestamp.parse(orderId.string.substring(orderId.string.indexOf('@') + 1)))
                     finished += 1
                   case "PRINT" =>

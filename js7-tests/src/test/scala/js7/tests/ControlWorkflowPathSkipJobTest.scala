@@ -52,7 +52,7 @@ extends OurTestSuite with ControllerAgentForScalaTest
       // skipped
       OrderMoved(Position(1)),
       OrderStarted,
-      OrderFinished,
+      OrderFinished(),
       OrderDeleted))
   }
 
@@ -79,7 +79,7 @@ extends OurTestSuite with ControllerAgentForScalaTest
 
       OrderDetachable,
       OrderDetached,
-      OrderFinished,
+      OrderFinished(),
       OrderDeleted))
   }
 

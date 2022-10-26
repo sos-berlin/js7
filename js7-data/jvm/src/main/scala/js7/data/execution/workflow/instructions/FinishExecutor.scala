@@ -34,7 +34,7 @@ extends EventInstructionExecutor
         order.position.forkBranchReversed match {
           case Nil =>
             // Not in a fork
-            leaveBlocks(order, workflow, OrderFinished)
+            leaveBlocks(order, workflow, OrderFinished())
 
           case BranchPath.Segment(nr, branchId) :: reverseInit =>
             // In a fork

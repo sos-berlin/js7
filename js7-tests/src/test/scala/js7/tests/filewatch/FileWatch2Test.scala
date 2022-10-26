@@ -225,7 +225,7 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
       NoKey <-: ItemAttached(workflow.id, None, bAgentPath),
       orderId1 <-: OrderStarted,
       orderId1 <-: OrderStderrWritten(s"Deleted $aDirectory/1\n"),
-      orderId1 <-: OrderFinished,
+      orderId1 <-: OrderFinished(),
       orderId1 <-: OrderDeleted,
 
       orderId2 <-: OrderAdded(workflow.id,
@@ -236,7 +236,7 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
         Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("2")))),
       orderId2 <-: OrderStarted,
       orderId2 <-: OrderStderrWritten(s"Deleted $aDirectory/2\n"),
-      orderId2 <-: OrderFinished,
+      orderId2 <-: OrderFinished(),
       orderId2 <-: OrderDeleted,
 
       orderId3 <-: OrderAdded(workflow.id,
@@ -247,7 +247,7 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
         Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("3")))),
       orderId3 <-: OrderStarted,
       orderId3 <-: OrderStderrWritten(s"Deleted $aDirectory/3\n"),
-      orderId3 <-: OrderFinished,
+      orderId3 <-: OrderFinished(),
       orderId3 <-: OrderDeleted,
 
       orderId4 <-: OrderAdded(workflow.id,
@@ -261,7 +261,7 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
       NoKey <-: ItemAttachable(orderWatchPath, aAgentPath),
       NoKey <-: ItemAttached(orderWatchPath, Some(ItemRevision(1)), aAgentPath),
       orderId4 <-: OrderStderrWritten(s"Deleted $aDirectory/4\n"),
-      orderId4 <-: OrderFinished,
+      orderId4 <-: OrderFinished(),
       orderId4 <-: OrderDeleted,
 
       orderId5 <-: OrderAdded(workflow.id,
@@ -272,7 +272,7 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
         Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("5")))),
       orderId5 <-: OrderStarted,
       orderId5 <-: OrderStderrWritten(s"Deleted $bDirectory/5\n"),
-      orderId5 <-: OrderFinished,
+      orderId5 <-: OrderFinished(),
       orderId5 <-: OrderDeleted,
 
       orderId6 <-: OrderAdded(workflow.id,
@@ -283,7 +283,7 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
         Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("6")))),
       orderId6 <-: OrderStarted,
       orderId6 <-: OrderStderrWritten(s"Deleted $bDirectory/6\n"),
-      orderId6 <-: OrderFinished,
+      orderId6 <-: OrderFinished(),
       orderId6 <-: OrderDeleted,
       // And again
       orderId6 <-: OrderAdded(workflow.id,
@@ -294,7 +294,7 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
         Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("6")))),
       orderId6 <-: OrderStarted,
       orderId6 <-: OrderStderrWritten(s"Deleted $bDirectory/6\n"),
-      orderId6 <-: OrderFinished,
+      orderId6 <-: OrderFinished(),
       orderId6 <-: OrderDeleted,
 
       orderId7 <-: OrderAdded(workflow.id,
@@ -305,7 +305,7 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
         Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("7")))),
       orderId7 <-: OrderStarted,
       orderId7 <-: OrderStderrWritten(s"Deleted $bDirectory/7\n"),
-      orderId7 <-: OrderFinished,
+      orderId7 <-: OrderFinished(),
       orderId7 <-: OrderDeleted))
   }
 

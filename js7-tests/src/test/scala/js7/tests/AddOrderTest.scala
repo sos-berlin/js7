@@ -51,7 +51,7 @@ final class AddOrderTest extends OurTestSuite with ControllerAgentForScalaTest
           "year" -> StringValue("2099")),
         deleteWhenTerminated = true),
       OrderMoved(Position(1)),
-      OrderFinished))
+      OrderFinished()))
     eventWatch.await[OrderPrompted](_.key == OrderId("🟦"))
   }
 

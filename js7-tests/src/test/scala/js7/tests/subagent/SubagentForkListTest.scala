@@ -157,7 +157,7 @@ extends OurTestSuite with SubagentTester with BlockingItemUpdater
         OrderDetached,
         OrderJoined(Outcome.succeeded),
         OrderMoved(Position(1)),
-        OrderFinished))
+        OrderFinished()))
 
       assert(eventWatch.eventsByKey[OrderEvent](localSubagentOrderId) == Seq(
         OrderProcessingStarted(localSubagentId),
@@ -212,7 +212,7 @@ extends OurTestSuite with SubagentTester with BlockingItemUpdater
         OrderDetached,
         OrderJoined(Outcome.succeeded),
         OrderMoved(Position(1)),
-        OrderFinished))
+        OrderFinished()))
 
       assert(eventWatch.eventsByKey[OrderEvent](localSubagentOrderId) == Seq(
         OrderProcessingStarted(localSubagentId),

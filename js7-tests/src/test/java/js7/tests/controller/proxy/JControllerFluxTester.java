@@ -4,7 +4,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import js7.data.event.Event;
-import js7.data.order.OrderEvent.OrderFinished$;
+import js7.data.order.OrderEvent.OrderFinished;
 import js7.data.order.OrderId;
 import js7.data.workflow.WorkflowPath;
 import js7.data_for_java.auth.JAdmission;
@@ -52,7 +52,7 @@ implements AutoCloseable
         CompletableFuture<Void> orderFinished = new CompletableFuture<>();
         Flux<JEventAndControllerState<Event>> flux = proxy.flux()
             .doOnNext(eventAndState -> {
-                if (eventAndState.stampedEvent().value().event() instanceof OrderFinished$ &&
+                if (eventAndState.stampedEvent().value().event() instanceof OrderFinished &&
                     eventAndState.stampedEvent().value().key().equals(orderId)) {
                     orderFinished.complete(null);
                 }

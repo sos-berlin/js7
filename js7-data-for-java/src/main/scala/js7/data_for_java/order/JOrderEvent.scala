@@ -144,7 +144,7 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
     type AsScala = OrderFinished
   }
   object JOrderFinished {
-    val singleton = new JOrderFinished(OrderFinished)
+    val singleton = new JOrderFinished(OrderFinished())
     def apply(underlying: OrderFinished) = singleton
   }
 

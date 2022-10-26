@@ -45,7 +45,7 @@ class JControllerProxyEventBusOrderTester implements AutoCloseable
         this.api = proxy.api();
         eventSubscriptions.add(
             proxy.controllerEventBus().subscribe(
-                asList(OrderEvent.OrderStarted$.class, OrderEvent.OrderMoved.class, OrderEvent.OrderFinished$.class,
+                asList(OrderEvent.OrderStarted$.class, OrderEvent.OrderMoved.class, OrderEvent.OrderFinished.class,
                     OrderEvent.OrderDeleted$.class),
                 this::onOrderEvent));
     }
@@ -91,7 +91,7 @@ class JControllerProxyEventBusOrderTester implements AutoCloseable
         assertThat(keyedEventToJson(events.get(1)), equalTo("{\"Key\":\"TEST-ORDER-0\",\"TYPE\":\"OrderMoved\",\"to\":[1]}"));
 
         assertThat(events.get(2).key(), equalTo(orderIds.get(0)));
-        assertThat(events.get(2).event(), instanceOf(OrderEvent.OrderFinished$.class));
+        assertThat(events.get(2).event(), instanceOf(OrderEvent.OrderFinished.class));
         assertThat(keyedEventToJson(events.get(2)), equalTo("{\"Key\":\"TEST-ORDER-0\",\"TYPE\":\"OrderFinished\"}"));
 
         assertThat(events.get(3).key(), equalTo(orderIds.get(0)));

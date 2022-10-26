@@ -87,7 +87,7 @@ final class OrderEventSourceTest extends OurTestSuite
       process.jobStep()
       assert(process.step() == Seq(OrderMoved(Position(3))))
       process.transferToController()
-      assert(process.step() == Seq(OrderFinished))
+      assert(process.step() == Seq(OrderFinished()))
     }
 
     "then branch not executed" in {
@@ -1115,7 +1115,7 @@ object OrderEventSourceTest
 
         case event: OrderCoreEvent =>
           processEvent(keyedEvent)
-          if (event != OrderFinished) {
+          if (!event.isInstanceOf[OrderFinished]) {
             idToOrder(orderId) = idToOrder(orderId).applyEvent(event).orThrow
           }
 

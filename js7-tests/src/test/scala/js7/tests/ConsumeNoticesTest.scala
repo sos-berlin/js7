@@ -98,7 +98,7 @@ with BlockingItemUpdater with TestMixins
       OrderMoved(Position(0) / "consumeNotices" % 1),
       OrderDetachable, OrderDetached,
       OrderNoticesConsumed(),
-      OrderFinished,
+      OrderFinished(),
       OrderDeleted))
   }
 
@@ -138,7 +138,7 @@ with BlockingItemUpdater with TestMixins
             Expected(aBoard.path, NoticeId("2022-10-23")),
             Expected(myBoard.path, NoticeId("2022-10-23-X")))),
           OrderNoticesConsumed(false),
-          OrderFinished,
+          OrderFinished(),
           OrderDeleted))
       }
     }
@@ -180,7 +180,7 @@ with BlockingItemUpdater with TestMixins
         OrderPromptAnswered(),
         OrderMoved(Position(1) / "consumeNotices" % 1),
         OrderNoticesConsumed(false),
-        OrderFinished,
+        OrderFinished(),
         OrderDeleted))
     }
   }
@@ -253,7 +253,7 @@ with BlockingItemUpdater with TestMixins
       OrderMoved(Position(0) / "consumeNotices" % 1),
       OrderDetachable, OrderDetached,
       OrderNoticesConsumed(),
-      OrderFinished,
+      OrderFinished(),
       OrderDeleted))
   }
 
@@ -304,7 +304,7 @@ with BlockingItemUpdater with TestMixins
       OrderDetachable,
       OrderDetached,
       OrderNoticesConsumed(),
-      OrderFinished,
+      OrderFinished(),
       OrderDeleted))
   }
 
@@ -362,7 +362,7 @@ with BlockingItemUpdater with TestMixins
       OrderDetachable,
       OrderDetached,
       OrderNoticesConsumed(),
-      OrderFinished,
+      OrderFinished(),
       OrderDeleted))
 
     assert(eventWatch.eventsByKey[OrderEvent](bOrderId) == Seq(
@@ -378,7 +378,7 @@ with BlockingItemUpdater with TestMixins
       OrderDetachable,
       OrderDetached,
       OrderNoticesConsumed(),
-      OrderFinished,
+      OrderFinished(),
       OrderDeleted))
   }
 
@@ -459,7 +459,7 @@ with BlockingItemUpdater with TestMixins
       OrderPromptAnswered(),
       OrderMoved(Position(0) / "consumeNotices" % 2),
       OrderNoticesConsumed(),
-      OrderFinished,
+      OrderFinished(),
       OrderDeleted))
   }
 

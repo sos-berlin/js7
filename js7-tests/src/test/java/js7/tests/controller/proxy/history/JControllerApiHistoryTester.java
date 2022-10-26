@@ -128,7 +128,7 @@ final class JControllerApiHistoryTester
                     .doOnNext(eventAndState -> logger.debug("doOnNext: " + eventAndState.stampedEvent()))
                     .takeUntil(es ->
                         es.stampedEvent().value().key().equals(orderId) &&
-                        es.stampedEvent().value().event() instanceof OrderEvent.OrderFinished$)
+                        es.stampedEvent().value().event() instanceof OrderEvent.OrderFinished)
                     .last()
                     .toFuture();
 

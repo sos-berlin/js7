@@ -154,6 +154,6 @@ object CalendarTest
     OrderMoved(Position(1)),
     OrderDetachable,
     OrderDetached,
-    OrderFinished,
+    OrderFinished(),
     OrderDeleted)
 }

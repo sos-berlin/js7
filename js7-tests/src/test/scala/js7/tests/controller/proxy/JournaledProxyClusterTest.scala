@@ -57,7 +57,7 @@ final class JournaledProxyClusterTest extends OurTestSuite with ClusterProxyTest
       val proxy = new ControllerApi(controllerApiResources).startProxy().await(99.s)
       try {
         val whenProcessed = proxy.eventBus.when[OrderProcessed].runToFuture
-        val whenFinished = proxy.eventBus.when[OrderFinished.type].runToFuture
+        val whenFinished = proxy.eventBus.when[OrderFinished].runToFuture
         primaryController.addOrderBlocking(FreshOrder(OrderId("🔺"), workflow.id.path))
 
         val processed = whenProcessed.await(99.s)

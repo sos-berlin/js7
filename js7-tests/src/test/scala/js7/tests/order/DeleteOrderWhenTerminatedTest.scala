@@ -50,7 +50,7 @@ final class DeleteOrderWhenTerminatedTest extends OurTestSuite with ControllerAg
       OrderMoved(Position(1)),
       OrderDetachable,
       OrderDetached,
-      OrderFinished,
+      OrderFinished(),
       OrderDeleted))
   }
 
@@ -71,7 +71,7 @@ final class DeleteOrderWhenTerminatedTest extends OurTestSuite with ControllerAg
       OrderMoved(Position(1)),
       OrderDetachable,
       OrderDetached,
-      OrderFinished,
+      OrderFinished(),
       OrderDeleted))
   }
 }

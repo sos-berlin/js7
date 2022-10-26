@@ -74,7 +74,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
       OrderAdded(workflow.id),
       OrderStarted,
       OrderMoved(Position(1)),
-      OrderFinished))
+      OrderFinished()))
   }
 
   "Simple loop" in {
@@ -128,7 +128,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
 
       OrderDetachable,
       OrderDetached,
-      OrderFinished))
+      OrderFinished()))
   }
 
   "Continuously(pause = 0, limit = high) with empty body is detected and fails" in {
@@ -206,7 +206,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
       OrderOutcomeAdded(Outcome.Failed(Some("TEST FAILURE"))),
       OrderCaught(Position(0) / "catch+0" % 0),
       OrderMoved(Position(1)),
-      OrderFinished))
+      OrderFinished()))
   }
 
   "Cancel while in Order.BetweenCycle" in {

@@ -379,7 +379,7 @@ final class OrderTest extends OurTestSuite
       OrderForked(Vector(OrderForked.Child("BRANCH", orderId / "BRANCH"))),
       OrderJoined(Outcome.Succeeded(NamedValues.rc(0))),
       OrderFailedInFork(Position(1)),
-      OrderFinished,
+      OrderFinished(),
 
       OrderCancellationMarked(CancellationMode.FreshOnly),
       OrderCancellationMarkedOnAgent,

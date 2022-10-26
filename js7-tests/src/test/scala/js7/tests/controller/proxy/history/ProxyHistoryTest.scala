@@ -167,7 +167,7 @@ final class ProxyHistoryTest extends OurTestSuite with ProvideActorSystem with C
             OrderMoved(Position(3)),
             OrderDetachable,
             OrderDetached,
-            OrderFinished),
+            OrderFinished()),
           OrderId("🔺|🥕") -> List(
             OrderProcessingStarted(aSubagentId),
             OrderStdoutWritten(StdoutOutput),

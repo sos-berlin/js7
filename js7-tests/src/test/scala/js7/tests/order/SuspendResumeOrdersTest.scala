@@ -104,7 +104,7 @@ final class SuspendResumeOrdersTest extends OurTestSuite with ControllerAgentFor
       OrderMoved(Position(1)),
       OrderDetachable,
       OrderDetached,
-      OrderFinished))
+      OrderFinished()))
   }
 
   "An order reaching end of workflow is suspendible" in {
@@ -136,7 +136,7 @@ final class SuspendResumeOrdersTest extends OurTestSuite with ControllerAgentFor
 
     assert(eventWatch.eventsByKey[OrderEvent](order.id, after = lastEventId) == Seq(
       OrderResumed(),
-      OrderFinished))
+      OrderFinished()))
   }
 
   "Suspend with kill" in {
@@ -187,7 +187,7 @@ final class SuspendResumeOrdersTest extends OurTestSuite with ControllerAgentFor
       OrderMoved(Position(1)),
       OrderDetachable,
       OrderDetached,
-      OrderFinished))
+      OrderFinished()))
   }
 
   "Suspend and resume orders between two jobs" in {
@@ -229,7 +229,7 @@ final class SuspendResumeOrdersTest extends OurTestSuite with ControllerAgentFor
         OrderMoved(Position(2)),
         OrderDetachable,
         OrderDetached,
-        OrderFinished))
+        OrderFinished()))
   }
 
   "An order being cancelled is not suspendible nor resumable" in {
@@ -344,7 +344,7 @@ final class SuspendResumeOrdersTest extends OurTestSuite with ControllerAgentFor
       OrderMoved(Position(2)),
       OrderDetachable,
       OrderDetached,
-      OrderFinished))
+      OrderFinished()))
   }
 
   "Resume with position a still suspending order is inhibited" in {
@@ -430,7 +430,7 @@ final class SuspendResumeOrdersTest extends OurTestSuite with ControllerAgentFor
       OrderSuspended,
 
       OrderResumed(),
-      OrderFinished))
+      OrderFinished()))
   }
 
   "Resume with invalid position is rejected" in {

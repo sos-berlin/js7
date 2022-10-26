@@ -201,7 +201,7 @@ final case class Order[+S <: Order.State](
             isResumed = false,
             state = if (isState[Fresh]) state else Ready))
 
-      case OrderFinished =>
+      case OrderFinished() =>
         check(isState[Ready] && isDetached && !isSuspended,
           copy(
             state = Finished,

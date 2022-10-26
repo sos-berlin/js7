@@ -50,7 +50,7 @@ final class WindowsLogonTest extends OurTestSuite with ControllerAgentForScalaTe
       logger.info(s"stdout:\n$stdout")
       logger.info(s"stderr:\n$stderr")
       assert(events.collect { case o: OrderProcessed => o } == Seq(OrderProcessed(Outcome.succeededRC0)))
-      assert(events.last == OrderFinished)
+      assert(events.last == OrderFinished())
 
       val userName = targetKey.map(key => WindowsProcessCredential.keyToUser(key).orThrow.string)
         .getOrElse(sys.env("USERNAME"))
