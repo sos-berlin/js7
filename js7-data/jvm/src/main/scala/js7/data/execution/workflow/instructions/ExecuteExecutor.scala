@@ -65,19 +65,19 @@ extends EventInstructionExecutor with PositionInstructionExecutor
             .ifState[Processed]
             .map { order =>
               val event = order.lastOutcome match {
-                case _: Outcome.Succeeded =>
-                  OrderMoved(order.position.increment)
-
                 case Outcome.Disrupted(_: ProcessLost) =>
                   OrderMoved(order.position) // Repeat
+
+                case _: Outcome.Killed =>
+                  OrderProcessingKilled
 
                 case _: Outcome.NotSucceeded | _: Outcome.TimedOut =>
                   OrderFailedIntermediate_()
 
-                case _: Outcome.Killed =>
-                  OrderProcessingKilled
+                case _: Outcome.Succeeded =>
+                  OrderMoved(order.position.increment)
               }
-              Checked((order.id <-: event) :: Nil)
+              Right((order.id <-: event) :: Nil)
             })
         .getOrElse(Right(Nil)))
 

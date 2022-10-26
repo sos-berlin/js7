@@ -281,7 +281,7 @@ final class AgentOrderKeeper(
         continue()
 
       case Internal.OrdersRecovered(state) =>
-        state.idToOrder.values.view.flatMap(_.ifState[Order.Processing]).foreach { order =>
+        for (order <- state.idToOrder.values.view.flatMap(_.ifState[Order.Processing])) {
           for (jobKey <- state.jobKey(order.workflowPosition).toOption) {
             jobRegister(jobKey).recoverProcessingOrder(order)
           }
