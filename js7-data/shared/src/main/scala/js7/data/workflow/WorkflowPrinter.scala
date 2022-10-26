@@ -181,7 +181,7 @@ final class WorkflowPrinter(sb: StringBuilder) {
         indent(nesting)
         sb ++= "};\n"
 
-      case Finish(_) =>
+      case Finish(_, _) =>
         sb ++= "finish;\n"
 
       case Fork(branches, agentPath, joinIfFailed, _) =>

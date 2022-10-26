@@ -132,7 +132,7 @@ object TestControllerAgent
                 def receive = {
                   case Stamped(_, _, KeyedEvent(_, _: OrderEvent.OrderAdded)) =>
                     added += 1
-                  case Stamped(_, _, KeyedEvent(orderId: OrderId, OrderFinished())) =>
+                  case Stamped(_, _, KeyedEvent(orderId: OrderId, OrderFinished(_))) =>
                     lastDuration = Some(Timestamp.now - Timestamp.parse(orderId.string.substring(orderId.string.indexOf('@') + 1)))
                     finished += 1
                   case "PRINT" =>

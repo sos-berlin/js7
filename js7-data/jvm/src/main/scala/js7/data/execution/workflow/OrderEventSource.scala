@@ -240,7 +240,7 @@ final class OrderEventSource(state: StateView)
     (weHave(order) && isOrderCancelable(order, mode)) ?
       atController(
         order.state.isOperationCancelable.thenList(OrderOperationCancelled) :::
-          leaveBlocks(idToWorkflow(order.workflowId), order, OrderCancelled)
+          leaveBlocks(idToWorkflow(order.workflowId), order, OrderCancelled :: Nil)
             .orThrow/*???*/)
 
   private def isOrderCancelable(order: Order[Order.State], mode: CancellationMode): Boolean =
@@ -452,10 +452,10 @@ final class OrderEventSource(state: StateView)
 object OrderEventSource {
   private val logger = scribe.Logger[this.type]
 
-  def leaveBlocks(workflow: Workflow, order: Order[Order.State], event: OrderActorEvent)
+  def leaveBlocks(workflow: Workflow, order: Order[Order.State], events: List[OrderActorEvent])
   : Checked[List[OrderActorEvent]] =
     leaveBlocks(workflow, order, catchable = false) {
-      case _ => event :: Nil
+      case _ => events
     }
 
   private def leaveBlocks(workflow: Workflow, order: Order[Order.State], catchable: Boolean)

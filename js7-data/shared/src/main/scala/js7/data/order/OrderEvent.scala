@@ -426,7 +426,7 @@ object OrderEvent
     */
   case object OrderDetached extends OrderCoreEvent
 
-  final case class OrderFinished()
+  final case class OrderFinished(outcome: Option[Outcome.Completed] = None)
   extends OrderActorEvent with OrderTerminated
 
   type OrderDeletionMarked = OrderDeletionMarked.type

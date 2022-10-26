@@ -405,6 +405,15 @@ final class OrderEventTest extends OurTestSuite
       {
         "TYPE": "OrderFinished"
       }""")
+
+    check(OrderFinished(Some(Outcome.failed)), json"""
+      {
+        "TYPE": "OrderFinished",
+        "outcome": {
+          "TYPE": "Failed",
+          "namedValues": {}
+        }
+      }""")
   }
 
   "OrderCancellationMarked" in {

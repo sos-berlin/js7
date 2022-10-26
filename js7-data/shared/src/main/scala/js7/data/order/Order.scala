@@ -201,10 +201,12 @@ final case class Order[+S <: Order.State](
             isResumed = false,
             state = if (isState[Fresh]) state else Ready))
 
-      case OrderFinished() =>
+      case OrderFinished(maybeOutcome) =>
         check(isState[Ready] && isDetached && !isSuspended,
           copy(
             state = Finished,
+            historicOutcomes = maybeOutcome.fold(historicOutcomes)(o =>
+              historicOutcomes :+ HistoricOutcome(position, o)),
             mark = None,
             isResumed = false))
 

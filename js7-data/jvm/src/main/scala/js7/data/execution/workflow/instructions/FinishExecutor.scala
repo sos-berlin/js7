@@ -2,11 +2,11 @@ package js7.data.execution.workflow.instructions
 
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
+import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichPartialFunction}
 import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.OrderEventSource
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderFinished, OrderMoved, OrderOutcomeAdded}
 import js7.data.order.{Order, OrderEvent}
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderFinished, OrderMoved}
 import js7.data.state.StateView
 import js7.data.workflow.Workflow
 import js7.data.workflow.instructions.{End, Finish, ForkInstruction}
@@ -18,23 +18,23 @@ extends EventInstructionExecutor
   type Instr = Finish
   val instructionClass = classOf[Finish]
 
-  def toEvents(instruction: Finish, order: Order[Order.State], state: StateView) =
+  def toEvents(instr: Finish, order: Order[Order.State], state: StateView) =
     state.idToWorkflow
       .checked(order.workflowId)
       .flatMap(workflow =>
         start(order)
           .orElse(detach(order))
           .getOrElse(
-            execute(order, workflow, state)))
+            execute(instr, order, workflow, state)))
 
-  private def execute(order: Order[Order.State], workflow: Workflow, state: StateView)
+  private def execute(instr: Finish, order: Order[Order.State], workflow: Workflow, state: StateView)
   : Checked[List[KeyedEvent[OrderEvent.OrderActorEvent]]] =
     order.state match {
       case _: Order.Ready =>
         order.position.forkBranchReversed match {
           case Nil =>
             // Not in a fork
-            leaveBlocks(order, workflow, OrderFinished())
+            leaveBlocks(order, workflow, OrderFinished(instr.outcome) :: Nil)
 
           case BranchPath.Segment(nr, branchId) :: reverseInit =>
             // In a fork
@@ -42,19 +42,22 @@ extends EventInstructionExecutor
             for {
               fork <- state.instruction_[ForkInstruction](order.workflowId /: forkPosition)
               branchWorkflow <- fork.workflow(branchId)
-              endPos <- branchWorkflow.instructions.iterator.zipWithIndex
+              gotoEnd <- branchWorkflow.instructions.iterator.zipWithIndex
                 .collectFirst { case (_: End, index) => forkPosition / branchId % InstructionNr(index) }
-                .toChecked(Problem(s"Missing End instruction in branch ${ forkPosition / branchId }")) // Does not happen
-              events <- leaveBlocks(order, workflow, OrderMoved(endPos))
+                .toChecked(Problem(
+                  s"Missing End instruction in branch ${forkPosition / branchId}")) // Does not happen
+              events <- leaveBlocks(order, workflow,
+                instr.outcome.map(OrderOutcomeAdded(_)) ++:
+                  instr.outcome.forall(_.isSucceeded).thenList(OrderMoved(gotoEnd)))
             } yield events
         }
 
       case _ => Right(Nil)
     }
 
-  private def leaveBlocks(order: Order[Order.State], workflow: Workflow, event: OrderActorEvent)
+  private def leaveBlocks(order: Order[Order.State], w: Workflow, events: List[OrderActorEvent])
   : Checked[List[KeyedEvent[OrderActorEvent]]] =
     OrderEventSource
-      .leaveBlocks(workflow, order, event)
+      .leaveBlocks(w, order, events)
       .map(_.map(order.id <-: _))
 }
