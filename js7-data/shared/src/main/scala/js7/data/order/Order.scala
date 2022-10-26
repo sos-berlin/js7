@@ -495,20 +495,35 @@ final case class Order[+S <: Order.State](
     }
   }
 
-  private def isOrderStepFailedApplicable =
-    state match {
-      case _: Fresh
-           | _: Ready
-           | _: Processed
-           | _: ProcessingKilled
-        if isDetached || isAttached => true
-      case _ => false
+  def shouldFail: Boolean =
+    isFailed && isOrderStepFailedApplicable
+
+  private def isFailed: Boolean =
+    lastOutcome match {
+      // Do not fail but let ExecuteExecutor repeat the job:
+      case Outcome.Disrupted(Outcome.Disrupted.ProcessLost(_)) => false
+
+      // Let ExecuteExecutor handle this case (and fail then):
+      case Outcome.Killed(_) => !isState[Processed]
+
+      case o => !o.isSucceeded
     }
 
+  def lastOutcome: Outcome =
+    historicOutcomes.lastOption.map(_.outcome) getOrElse Outcome.succeeded
+
   def isOrderFailedApplicable =
+    isDetached && isOrderStepFailedApplicable
+
+  def isOrderStepFailedApplicable =
     !isSuspended &&
-      isDetached &&
-      (isState[IsFreshOrReady] || isState[Processed])
+      (isDetached || isAttached) &&
+      (state match {
+        case _: IsFreshOrReady => true
+        case _: Processed => true
+        case _: ProcessingKilled => true
+        case _ => false
+      })
 
   def withPosition(to: Position): Order[S] = copy(
     workflowPosition = workflowPosition.copy(position = to))
@@ -518,9 +533,6 @@ final case class Order[+S <: Order.State](
       scheduledFor
     else
       state.maybeDelayedUntil
-
-  def lastOutcome: Outcome =
-    historicOutcomes.lastOption.map(_.outcome) getOrElse Outcome.succeeded
 
   // Test in OrderScopesTest
   /** The named values as seen at the current workflow position. */

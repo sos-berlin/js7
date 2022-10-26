@@ -13,7 +13,7 @@ import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.OrderEventSource.*
 import js7.data.execution.workflow.instructions.InstructionExecutorService
-import js7.data.order.Order.{Cancelled, Failed, FailedInFork, IsFreshOrReady, IsTerminated, ProcessingKilled}
+import js7.data.order.Order.{Cancelled, Failed, FailedInFork, IsTerminated, ProcessingKilled}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCaught, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderFailed, OrderFailedInFork, OrderFailedIntermediate_, OrderLocksDequeued, OrderLocksReleased, OrderMoved, OrderNoticesConsumed, OrderOperationCancelled, OrderPromptAnswered, OrderResumed, OrderResumptionMarked, OrderStepFailed, OrderSuspended, OrderSuspensionMarked}
 import js7.data.order.{Order, OrderId, OrderMark, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
@@ -55,9 +55,7 @@ final class OrderEventSource(state: StateView)
 
   private def checkedNextEvents(order: Order[Order.State])
   : Checked[Seq[KeyedEvent[OrderActorEvent]]] =
-    if (!order.lastOutcome.isSucceeded && order.isDetached && order.isState[IsFreshOrReady])
-      // Do not go here when Order.Processed(Outcome.processLost) !
-      // ExecuteExecutor handles this to allow to retry execution.
+    if (order.shouldFail)
       fail(order)
         .map(_.map(order.id <-: _))
     else
@@ -118,11 +116,12 @@ final class OrderEventSource(state: StateView)
                 OrderBroken(problem) :: Nil
               case Right(events) => events
             }
-          else if (order.isAttached && order.isInDetachableState
-            && order.copy(attachedState = None).isOrderFailedApplicable) {
-            logger.debug(s"Detaching ${order.id} after failure: $problem")
+          else if (order.isOrderStepFailedApplicable &&
+            order.isAttached &&
+            order.isInDetachableState
+            && order.copy(attachedState = None).isOrderFailedApplicable)
             OrderStepFailed(Outcome.Disrupted(problem)) :: OrderDetachable :: Nil
-          } else
+          else
             OrderBroken(problem) :: Nil
         events.map(order.id <-: _)
 
