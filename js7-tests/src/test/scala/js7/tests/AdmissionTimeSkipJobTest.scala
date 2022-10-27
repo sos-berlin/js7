@@ -150,7 +150,7 @@ object AdmissionTimeSkipJobTest
       EmptyJob.executable(),
       admissionTimeScheme = Some(AdmissionTimeScheme(Seq(
         WeekdayPeriod(FRIDAY, LocalTime.of(18, 0), 1.h)))),
-      skipIfNoAdmissionForOrderDay = true))
+      skipIfNoAdmissionStartForOrderDay = true))
 
   private val singleJobWorkflow = Workflow(WorkflowPath("SINGLE-JOB") ~ "INITIAL",
     Seq(fridayExecute),

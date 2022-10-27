@@ -34,7 +34,7 @@ final case class WorkflowJob(
   timeout: Option[FiniteDuration],
   failOnErrWritten: Boolean,
   admissionTimeScheme: Option[AdmissionTimeScheme],
-  skipIfNoAdmissionForOrderDay: Boolean)
+  skipIfNoAdmissionStartForOrderDay: Boolean)
 {
   def referencedJobResourcePaths =
     jobResourcePaths.view ++ executable.referencedJobResourcePaths
@@ -77,11 +77,11 @@ object WorkflowJob
     login: Option[KeyLogin] = None,
     failOnErrWritten: Boolean = false,
     admissionTimeScheme: Option[AdmissionTimeScheme] = None,
-    skipIfNoAdmissionForOrderDay: Boolean = false)
+    skipIfNoAdmissionStartForOrderDay: Boolean = false)
   : WorkflowJob =
     checked(agentPath, executable, defaultArguments, subagentSelectionId, jobResourcePaths,
       parallelism, sigkillDelay, timeout, failOnErrWritten = failOnErrWritten,
-      admissionTimeScheme, skipIfNoAdmissionForOrderDay
+      admissionTimeScheme, skipIfNoAdmissionStartForOrderDay
     ).orThrow
 
   def checked(
@@ -95,13 +95,13 @@ object WorkflowJob
     timeout: Option[FiniteDuration] = None,
     failOnErrWritten: Boolean = false,
     admissionTimeScheme: Option[AdmissionTimeScheme] = None,
-    skipIfNoAdmissionForOrderDay: Boolean = false)
+    skipIfNoAdmissionStartForOrderDay: Boolean = false)
   : Checked[WorkflowJob] =
     for (_ <- jobResourcePaths.checkUniqueness) yield
       new WorkflowJob(
         agentPath, executable, defaultArguments, subagentSelectionId, jobResourcePaths,
         parallelism, sigkillDelay, timeout, failOnErrWritten,
-        admissionTimeScheme, skipIfNoAdmissionForOrderDay)
+        admissionTimeScheme, skipIfNoAdmissionStartForOrderDay)
 
   final case class Name private(string: String) extends GenericString
   object Name extends GenericString.NameValidating[Name] {
@@ -124,7 +124,7 @@ object WorkflowJob
       "timeout" -> workflowJob.timeout.asJson,
       "failOnErrWritten" -> workflowJob.failOnErrWritten.?.asJson,
       "admissionTimeScheme" -> workflowJob.admissionTimeScheme.asJson,
-      "skipIfNoAdmissionForOrderDay" -> workflowJob.skipIfNoAdmissionForOrderDay.?.asJson)
+      "skipIfNoAdmissionStartForOrderDay" -> workflowJob.skipIfNoAdmissionStartForOrderDay.?.asJson)
 
   implicit val jsonDecoder: Decoder[WorkflowJob] = c =>
     for {
@@ -143,10 +143,15 @@ object WorkflowJob
       timeout <- c.get[Option[FiniteDuration]]("timeout")
       failOnErrWritten <- c.getOrElse[Boolean]("failOnErrWritten")(false)
       admissionTimeScheme <- c.get[Option[AdmissionTimeScheme]]("admissionTimeScheme")
-      skipIfNoAdmissionForOrderDay <- c.getOrElse[Boolean]("skipIfNoAdmissionForOrderDay")(false)
+      skipIfNoAdmissionStartForOrderDay <-
+        c.get[Option[Boolean]]("skipIfNoAdmissionStartForOrderDay").flatMap {
+          case Some(o) => Right(o)
+          case None => // COMPATIBLE with v2.4
+            c.getOrElse[Boolean]("skipIfNoAdmissionForOrderDay")(false)
+        }
       job <- checked(agentPath, executable, arguments, subagentSelectionId, jobResourcePaths,
         parallelism, sigkillDelay, timeout, failOnErrWritten, admissionTimeScheme,
-        skipIfNoAdmissionForOrderDay
+        skipIfNoAdmissionStartForOrderDay
       ).toDecoderResult(c.history)
     } yield job
 }

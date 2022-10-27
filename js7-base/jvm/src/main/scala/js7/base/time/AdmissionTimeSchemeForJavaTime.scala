@@ -12,11 +12,11 @@ object AdmissionTimeSchemeForJavaTime
   implicit final class RichAdmissionTimeScheme(private val admissionTimeScheme: AdmissionTimeScheme)
   extends AnyVal
   {
-    def hasAdmissionPeriodForDay(localDate: LocalDate, dateOffset: FiniteDuration): Boolean =
+    def hasAdmissionPeriodStartForDay(localDate: LocalDate, dateOffset: FiniteDuration): Boolean =
       admissionTimeScheme.periods
         .view
         .map(AdmissionPeriodCalculator(_, dateOffset))
-        .exists(_.hasAdmissionPeriodForDay(localDate))
+        .exists(_.hasAdmissionPeriodStartForDay(localDate))
 
     def isPermitted(timestamp: Timestamp, zone: ZoneId, dateOffset: FiniteDuration): Boolean =
       findTimeInterval(timestamp, zone, dateOffset)

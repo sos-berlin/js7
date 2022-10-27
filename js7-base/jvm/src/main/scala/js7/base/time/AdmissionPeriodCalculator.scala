@@ -7,6 +7,7 @@ import js7.base.time.AdmissionPeriod.{DaySeconds, WeekSeconds}
 import js7.base.time.JavaTime.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
+import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.*
 import scala.jdk.DurationConverters.ScalaDurationOps
 
@@ -16,7 +17,10 @@ sealed trait AdmissionPeriodCalculator
 
   def dateOffset: JDuration
 
-  def hasAdmissionPeriodForDay(localDate: LocalDate): Boolean
+  @TestOnly // Not used
+  private[time] def hasAdmissionPeriodForDay(localDate: LocalDate): Boolean
+
+  def hasAdmissionPeriodStartForDay(localDate: LocalDate): Boolean
 
   def toLocalInterval(local: LocalDateTime): Option[LocalInterval]
 
@@ -64,7 +68,11 @@ object AdmissionPeriodCalculator
     val admissionPeriod = AlwaysPeriod
     val dateOffset = JDuration.ZERO
 
-    def hasAdmissionPeriodForDay(localDate: LocalDate) =
+    @TestOnly // Not used
+    private[time] def hasAdmissionPeriodForDay(localDate: LocalDate) =
+      true
+
+    def hasAdmissionPeriodStartForDay(localDate: LocalDate) =
       true
 
     def toLocalInterval(local: LocalDateTime) =
@@ -84,11 +92,15 @@ object AdmissionPeriodCalculator
     private[time] final def calendarPeriodStart(local: LocalDateTime): LocalDateTime =
       calendarPeriodStartWithoutDateOffset(local minus dateOffset) plus dateOffset
 
-    final def hasAdmissionPeriodForDay(localDate: LocalDate) = {
+    @TestOnly // Not used
+    private[time] final def hasAdmissionPeriodForDay(localDate: LocalDate) = {
       val startOfDay = LocalDateTime.of(localDate, MIDNIGHT)
       val endOfDay = startOfDay.plusDays(1)
       toLocalInterval0(startOfDay).contains(startOfDay, endOfDay)
     }
+
+    final def hasAdmissionPeriodStartForDay(localDate: LocalDate) =
+      localDate == admissionPeriodStart(LocalDateTime.of(localDate, MIDNIGHT)).toLocalDate
 
     final def toLocalInterval(local: LocalDateTime) =
       Some(toLocalInterval0(local))

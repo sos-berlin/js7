@@ -110,7 +110,7 @@ extends EventInstructionExecutor with PositionInstructionExecutor
 
   private def isSkipped(order: Order[Order.State], job: WorkflowJob, state: StateView): Boolean =
     isSkippedDueToWorkflowPathControl(order, state) ||
-      isSkippedBecauseNotInAdmissionPeriod(order, job)
+      isSkippedBecauseOrderDayHasNoAdmissionPeriodStart(order, job)
 
   private def isSkippedDueToWorkflowPathControl(order: Order[Order.State], state: StateView)
   : Boolean =
@@ -120,13 +120,16 @@ extends EventInstructionExecutor with PositionInstructionExecutor
         .flatten
         .exists(control.skip.contains))
 
-  private def isSkippedBecauseNotInAdmissionPeriod(order: Order[Order.State], job: WorkflowJob)
+  private def isSkippedBecauseOrderDayHasNoAdmissionPeriodStart(
+    order: Order[Order.State],
+    job: WorkflowJob)
   : Boolean =
-    job.skipIfNoAdmissionForOrderDay &&
+    job.skipIfNoAdmissionStartForOrderDay &&
       job.admissionTimeScheme.fold(false)(admissionTimeScheme =>
         orderIdToDate(order.id)
           .fold(false)(localDate =>
-            !admissionTimeScheme.hasAdmissionPeriodForDay(localDate, dateOffset = noDateOffset)))
+            !admissionTimeScheme
+              .hasAdmissionPeriodStartForDay(localDate, dateOffset = noDateOffset)))
 }
 
 object ExecuteExecutor

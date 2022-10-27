@@ -56,7 +56,7 @@ final class WorkflowJobTest extends OurTestSuite
           Some(AdmissionTimeScheme(Seq(
             WeekdayPeriod(MONDAY, LocalTime.of(1, 0), 1.h),
             WeekdayPeriod(TUESDAY, LocalTime.of(9, 0), 8.h)))),
-          skipIfNoAdmissionForOrderDay = true),
+          skipIfNoAdmissionStartForOrderDay = true),
         json"""{
           "agentPath": "AGENT",
           "executable": {
@@ -91,7 +91,7 @@ final class WorkflowJobTest extends OurTestSuite
               }
             ]
           },
-          "skipIfNoAdmissionForOrderDay": true
+          "skipIfNoAdmissionStartForOrderDay": true
         }""")
     }
 
@@ -100,14 +100,16 @@ final class WorkflowJobTest extends OurTestSuite
         WorkflowJob(
           AgentPath("AGENT"),
           RelativePathExecutable("EXECUTABLE"),
-          subagentSelectionId = Some(expr("'SELECTION'"))),
+          subagentSelectionId = Some(expr("'SELECTION'")),
+          skipIfNoAdmissionStartForOrderDay = true),
         json"""{
           "agentPath": "AGENT",
           "executable": {
             "TYPE": "PathExecutable",
             "path": "EXECUTABLE"
           },
-          "subagentSelectionId": "SELECTION"
+          "subagentSelectionId": "SELECTION",
+          "skipIfNoAdmissionForOrderDay": true
         }""")
     }
   }

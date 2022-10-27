@@ -52,7 +52,7 @@ final class ExecuteExecutorTest extends OurTestSuite
     }
   }
 
-  "skipIfNoAdmissionForOrderDay" - {
+  "skipIfNoAdmissionStartForOrderDay" - {
     val position = Position(2)
     val execute = workflow.instruction_[Execute](position).orThrow
 
@@ -67,7 +67,10 @@ final class ExecuteExecutorTest extends OurTestSuite
     }
 
     "OrderId date has no admission time" in {
-      for (orderId <- View(OrderId("#2021-09-02#2-Fresh"), OrderId("#2021-09-02#2-Ready"))) {
+      for (orderId <- View(
+        OrderId("#2021-09-02#2-Fresh"),
+        OrderId("#2021-09-02#2-Ready"),
+        OrderId("#2021-09-04#2-Ready"))) {
         val order = stateView.idToOrder(orderId)
         assert(executorService.toEvents(execute, order, stateView) ==
           Right((order.id <-: OrderMoved(position.increment)) :: Nil))
@@ -81,7 +84,7 @@ final class ExecuteExecutorTest extends OurTestSuite
 object ExecuteExecutorTest
 {
   private val admissionTimeScheme = AdmissionTimeScheme(Seq(
-    WeekdayPeriod(FRIDAY, LocalTime.of(8, 0), 1.h)))
+    WeekdayPeriod(FRIDAY, LocalTime.of(8, 0), 25.h)))
   private val agentPath = AgentPath("AGENT")
   private val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "VERSION", Seq(
     /*0*/Execute(WorkflowJob(agentPath, InternalExecutable("?"))),
@@ -93,7 +96,7 @@ object ExecuteExecutorTest
       agentPath,
       InternalExecutable("?"),
       admissionTimeScheme = Some(admissionTimeScheme),
-      skipIfNoAdmissionForOrderDay = true))))
+      skipIfNoAdmissionStartForOrderDay = true))))
 
   private val orders = Seq(
     Order(OrderId("#2021-09-03#0-Fresh"), workflow.id /: Position(0), Order.Fresh),
@@ -109,5 +112,7 @@ object ExecuteExecutorTest
     Order(OrderId("#2021-09-03#2-Fresh"), workflow.id /: Position(2), Order.Fresh),
     Order(OrderId("#2021-09-03#2-Ready"), workflow.id /: Position(2), Order.Ready),
     Order(OrderId("#2021-09-02#2-Fresh"), workflow.id /: Position(2), Order.Fresh),
-    Order(OrderId("#2021-09-02#2-Ready"), workflow.id /: Position(2), Order.Ready))
+    Order(OrderId("#2021-09-02#2-Ready"), workflow.id /: Position(2), Order.Ready),
+
+    Order(OrderId("#2021-09-04#2-Ready"), workflow.id /: Position(2), Order.Ready))
 }
