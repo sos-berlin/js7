@@ -53,12 +53,15 @@ final class OutcomeTest extends OurTestSuite
     }
 
     "Failed" in {
-      testJson[Outcome](Outcome.Failed(None, Map("returnCode" -> NumberValue(1))), json"""
+      testJson[Outcome](Outcome.failed, json"""
+        {
+          "TYPE": "Failed"
+        }""")
+
+      testJsonDecoder[Outcome](Outcome.failed, json"""
         {
           "TYPE": "Failed",
-          "namedValues": {
-            "returnCode": 1
-          }
+          "namedValues": {}
         }""")
     }
 
