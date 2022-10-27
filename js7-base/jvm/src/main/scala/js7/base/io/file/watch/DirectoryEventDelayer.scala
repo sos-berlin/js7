@@ -29,7 +29,9 @@ import scala.concurrent.duration.*
   *
   * Derived from Monix' `DelayByTimespanObservable`.
   */
-private final class DirectoryEventDelayer(source: Observable[DirectoryEvent], delay: FiniteDuration)
+private final class DirectoryEventDelayer(
+  source: Observable[DirectoryEvent],
+  delay: FiniteDuration)
 extends Observable[Seq[DirectoryEvent]]
 {
   def unsafeSubscribeFn(out: Subscriber[Seq[DirectoryEvent]]): Cancelable =
@@ -49,21 +51,21 @@ extends Observable[Seq[DirectoryEvent]]
 
       def onNext(directoryEvent: DirectoryEvent) = {
         directoryEvent match {
-          case fileAdded: FileAdded =>
+          case fileAdded @ FileAdded(path) =>
             self.synchronized {
-              for (index <- pathToIndex.remove(fileAdded.relativePath)) {
+              for (index <- pathToIndex.remove(path)) {
                 indexToEntry -= index
               }
-              val first = indexToEntry.isEmpty
-              enqueue(fileAdded)
-              if (first) setTimer(delay)
+              val isFirst = indexToEntry.isEmpty
+              enqueue(Entry(fileAdded, now, now + delay))
+              if (isFirst) setTimer(delay)
             }
 
           case FileModified(path) =>
             self.synchronized {
               for (previousIndex <- pathToIndex.remove(path)) {
                 for (entry <- indexToEntry.remove(previousIndex)) {
-                  enqueue(entry.fileAdded)
+                  enqueue(entry.copy(delayUntil = now + delay))
                 }
               }
             }
@@ -81,19 +83,56 @@ extends Observable[Seq[DirectoryEvent]]
             }
         }
         // Swallow all incoming events and keep FileAdded events until delay is elapsing !!!
-        Continue
+        if (ack == Stop) Stop else Continue
       }
 
-      private def enqueue(fileAdded: FileAdded): Unit = {
+      private def enqueue(entry: Entry): Unit = {
         val index = indexToEntry.lastOption.fold(0L)(_._1) + 1
-        indexToEntry.update(index, Entry(fileAdded, now + delay))
-        pathToIndex(fileAdded.relativePath) = index
-        logger.trace(s"#$index + $fileAdded")
+        indexToEntry.update(index, entry)
+        pathToIndex(entry.path) = index
+        logger.trace(s"#$index + $entry")
 
         if (delay.isZero) {
           forward()
         }
       }
+
+      def onComplete(): Unit =
+        self.synchronized {
+          if (indexToEntry.nonEmpty) {
+            callerCompleted = true
+          } else
+            outOnComplete()
+        }
+
+      def onError(throwable: Throwable): Unit =
+        self.synchronized {
+          if (!isDone.getAndSet(true)) {
+            hasError = true
+            try out.onError(throwable)
+            finally {
+              ack = Stop
+              timer.foreach(_.cancel())
+            }
+          }
+        }
+
+      /// ⬇︎ ASYNCHRONOUSLY CALLED ⬇ ///
+
+      private def setTimer(nextDelay: FiniteDuration): Unit =
+        self.synchronized {
+          if (timer.isEmpty && !hasError) {
+            logger.trace(s"⏰ scheduleOnce ${nextDelay.pretty}")
+            timer = Some(
+              scheduler.scheduleOnce(nextDelay) {
+                self.synchronized {
+                  timer = None
+                  timerCount += 1
+                }
+                forward()
+              })
+          }
+        }
 
       @tailrec
       private def forward(): Unit =
@@ -112,9 +151,16 @@ extends Observable[Seq[DirectoryEvent]]
               loop()
             }
           }
+
           loop()
 
-          nextTimerDelay() match {
+          self.synchronized {
+            if (timer.isEmpty && !hasError)
+              for (entry <- indexToEntry.values.headOption) yield
+                entry.delayUntil.timeLeftOrZero.roundUpToNext(roundUp)
+            else
+              None
+          } match {
             case None =>
             case Some(ZeroDuration) => forward()
             case Some(nextDelay) => setTimer(nextDelay)
@@ -128,9 +174,9 @@ extends Observable[Seq[DirectoryEvent]]
           @tailrec def loop(): Unit = {
             indexToEntry.headOption match {
               case Some((index, entry)) if entry.delayUntil <= now_ =>
-                logger.trace(s"#$index - ${entry.fileAdded}")
+                logger.trace(s"#$index - $entry")
                 indexToEntry -= index
-                pathToIndex -= entry.fileAdded.relativePath
+                pathToIndex -= entry.path
                 growable += entry.fileAdded
                 loop()
               case _ =>
@@ -155,38 +201,6 @@ extends Observable[Seq[DirectoryEvent]]
           }
         }
 
-      private def nextTimerDelay(): Option[FiniteDuration] =
-        self.synchronized {
-          if (timer.isEmpty && !hasError)
-            for (entry <- indexToEntry.values.headOption) yield
-              entry.delayUntil.timeLeftOrZero.roundUpToNext(roundUp)
-          else
-            None
-        }
-
-      private def setTimer(nextDelay: FiniteDuration): Unit =
-        self.synchronized {
-          if (timer.isEmpty && !hasError) {
-            logger.trace(s"⏰ scheduleOnce ${nextDelay.pretty}")
-            timer = Some(
-              scheduler.scheduleOnce(nextDelay) {
-                self.synchronized {
-                  timer = None
-                  timerCount += 1
-                }
-                forward()
-              })
-          }
-        }
-
-      def onComplete(): Unit =
-        self.synchronized {
-          if (indexToEntry.nonEmpty) {
-            callerCompleted = true
-          } else
-            outOnComplete()
-        }
-
       private def outOnComplete(): Unit =
         ack.syncTryFlatten.syncOnContinue {
           if (!isDone.getAndSet(true)) {
@@ -195,35 +209,28 @@ extends Observable[Seq[DirectoryEvent]]
             finally timer.foreach(_.cancel())  // Just to be sure
           }
         }
-
-      def onError(throwable: Throwable): Unit =
-        self.synchronized {
-          if (!isDone.getAndSet(true)) {
-            hasError = true
-            try out.onError(throwable)
-            finally {
-              ack = Stop
-              timer.foreach(_.cancel())
-            }
-          }
-        }
     })
+
+  private case class Entry(fileAdded: FileAdded, since: MonixDeadline, delayUntil: MonixDeadline)
+  {
+    def path = fileAdded.relativePath
+
+    override def toString = s"$path ${since.elapsed.pretty}"
+  }
 }
 
 object DirectoryEventDelayer
 {
   private val logger = Logger(getClass)
-  private case class Entry(fileAdded: FileAdded, delayUntil: MonixDeadline)
 
   object syntax {
     implicit final class RichDelayLineObservable(private val self: Observable[DirectoryEvent])
     extends AnyVal {
-      def delayFileAdded(delay: FiniteDuration): Observable[Seq[DirectoryEvent]] = {
+      def delayFileAdded(delay: FiniteDuration): Observable[Seq[DirectoryEvent]] =
         if (delay.isPositive)
           new DirectoryEventDelayer(self, delay)
         else
           self.bufferIntrospective(1024)  // Similar to DirectoryEventDelayer, which buffers without limit
-      }
     }
   }
 }

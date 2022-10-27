@@ -68,10 +68,11 @@ final class FileWatchDelayTest extends OurTestSuite with ControllerAgentForScala
 
     // Each test has an increasing sequence of file modifications, delaying FileAdded and OrderAdded.
     def delayedFileAddedTest(i: Int) = Task {
-      withClue(s"file-$i") {
-        val file = watchedDirectory / i.toString
-        val externalOrderName = ExternalOrderName(i.toString)
-        val orderId = fileToOrderId(i.toString)
+      val name = s"file-$i"
+      withClue(name) {
+        val file = watchedDirectory / name
+        val externalOrderName = ExternalOrderName(name)
+        val orderId = fileToOrderId(name)
         val whenArised = eventWatch
           .whenKeyedEvent[ExternalOrderArised](
             EventRequest.singleClass(after = eventWatch.lastAddedEventId, timeout = Some(99.s)),
