@@ -72,6 +72,9 @@ addCommandAlias("quickPublishLocal", "; compile; publishLocal; project js7JS; co
 //addCompilerPlugin(scalafixSemanticdb) // enable SemanticDB
 val jdkVersion = "1.8"
 
+ThisBuild / scalacOptions ++= (if (isForDevelopment) Nil else
+  Seq("-Wconf:cat=unused-imports:error"))
+
 ThisBuild / scalacOptions ++= Seq(
   "-Xsource:3",
   "-Ymacro-annotations",
@@ -83,7 +86,6 @@ ThisBuild / scalacOptions ++= Seq(
   "-Wconf:cat=lint-adapted-args:error",
   "-Wconf:cat=unchecked&src=src/main/*:error",
   "-Wunused:imports",
-  "-Wconf:cat=unused-imports:error",
   "-Wunused:implicits",
   //"-Wunused:locals",
   //"-Wunused:params",
@@ -114,10 +116,9 @@ ThisBuild / scalacOptions ++= Seq(
   "-Xlint:stars-align",
   "-Xlint:type-parameter-shadow",
   "-Wdead-code",
-  "-Wextra-implicit",
+  "-Wextra-implicit")
   //"-Wnumeric-widen",
   //"-Wvalue-discard",
-  )
 
 Global / concurrentRestrictions := Seq(
   Tags.limit(Tags.Test, max = testParallelization),
