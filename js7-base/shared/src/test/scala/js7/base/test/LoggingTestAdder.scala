@@ -65,7 +65,7 @@ private final class LoggingTestAdder(suiteName: String) {
 
 private object LoggingTestAdder {
   val logger = Logger("TEST")
-  private val bar = "⎯" * 80
+  private val bar = "⎯" * 72
   private val successMarkup = green + bold
   private val pendingMarkup = ""
   private val failureMarkup = orange + bold
