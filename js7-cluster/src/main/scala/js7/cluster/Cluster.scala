@@ -358,7 +358,7 @@ object Cluster
     truncated ? file
   }
 
-  @deprecated("Provisional fix for v2.14", "v2.15")
+  @deprecated("Provisional fix for v2.4", "v2.5")
   final class RestartAfterJournalTruncationException
   extends RuntimeException("Restart after journal truncation")
   with NoStackTrace
