@@ -5,14 +5,22 @@ import js7.agent.client.AgentClient
 import js7.agent.data.commands.AgentCommand
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.process.ProcessSignal.SIGKILL
+import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.data.agent.AgentPath
+import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentShutDown}
+import js7.data.event.{Event, KeyedEvent}
 import js7.data.item.VersionId
+import js7.data.job.ShellScriptExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.value.NumberValue
+import js7.data.workflow.instructions.Execute
+import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.ShutdownAgentWithProcessTest.*
@@ -24,9 +32,7 @@ import monix.execution.Scheduler.Implicits.traced
 final class ShutdownAgentWithProcessTest extends OurTestSuite with ControllerAgentForScalaTest
 {
   override protected val controllerConfig = config"""
-    js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
-    js7.controller.agent-driver.command-batch-delay = 0ms
-    js7.controller.agent-driver.event-buffer-delay = 0ms"""
+    js7.auth.users.TEST-USER.permissions = [ UpdateItem ]"""
 
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
@@ -38,6 +44,9 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite with ControllerAge
   private implicit def actorSystem = controller.actorSystem
 
   "JS-2025 AgentCommand.Shutdown with SIGKILL job process, then recovery" in {
+    eventWatch.await[AgentCoupled]()
+    val eventId = eventWatch.lastAddedEventId
+
     val orderId = OrderId("🔹")
     controller.addOrderBlocking(FreshOrder(OrderId("🔹"), workflow.path))
     eventWatch.await[OrderProcessingStarted](_.key == orderId)
@@ -55,18 +64,27 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite with ControllerAge
       .await(10.s)
     eventWatch.await[OrderFailed](_.key == orderId)
 
-    assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
-      OrderAdded(workflow.id),
-      OrderAttachable(agentPath),
-      OrderAttached(agentPath),
-      OrderStarted,
-      OrderProcessingStarted(subagentId),
-      OrderStdoutWritten("TestJob\n"),
-      OrderProcessed(Outcome.Killed(Outcome.Failed(Some("Canceled")))),
-      OrderProcessingKilled,
-      OrderDetachable,
-      OrderDetached,
-      OrderFailed(Position(0))))
+    assert(eventWatch.keyedEvents[Event](after = eventId)
+      .filter {
+        case KeyedEvent(_, _: OrderEvent) => true
+        case KeyedEvent(_, _: AgentShutDown) => true
+        case KeyedEvent(_, _: AgentCoupled) => true
+        case _ => false
+      } == Seq(
+      orderId <-: OrderAdded(workflow.id),
+      orderId <-: OrderAttachable(agentPath),
+      orderId <-: OrderAttached(agentPath),
+      orderId <-: OrderStarted,
+      orderId <-: OrderProcessingStarted(subagentId),
+      orderId <-: OrderStdoutWritten("TestJob\n"),
+      orderId <-: OrderProcessed(Outcome.Killed(Outcome.Failed(namedValues = Map(
+        "returnCode" -> NumberValue(137))))),
+      agentPath <-: AgentShutDown,
+      agentPath <-: AgentCoupled,
+      orderId <-: OrderProcessingKilled,
+      orderId <-: OrderDetachable,
+      orderId <-: OrderDetached,
+      orderId <-: OrderFailed(Position(0))))
 
     restartedAgent.terminate().await(99.s)
   }
@@ -83,5 +101,10 @@ object ShutdownAgentWithProcessTest
 
   private val workflow = Workflow.of(
     WorkflowPath("SINGLE") ~ versionId,
-    TestJob.execute(agentPath))
+    Execute(WorkflowJob.apply(
+      agentPath,
+      ShellScriptExecutable(
+        (isWindows ?? "@echo off\n") +
+          "echo TestJob\n" +
+          "sleep 99\n"))))
 }
