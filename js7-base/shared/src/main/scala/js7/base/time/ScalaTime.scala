@@ -1,6 +1,7 @@
 package js7.base.time
 
 import cats.Show
+import java.math.{MathContext, RoundingMode}
 import js7.base.convert.As
 import js7.base.utils.Ascii.isAsciiDigit
 import scala.annotation.tailrec
@@ -153,23 +154,30 @@ object ScalaTime
     private def smallPretty = {
       val nanos = duration.toNanos
       val a = abs(nanos)
-      if (a >= 100_000_000_000L)
+
+      if (a >= 20_000_000_000L)
         formatNumber(nanos / 1000_000_000.0, 1, "s")
-      else if (a >= 10_000_000_000L)
+      else if (a >= 2_000_000_000)
         formatNumber(nanos / 1000_000_000.0, 10, "s")
-      else if (a >= 1_000_000_000)
+      else if (a >= 200_000_000)
         formatNumber(nanos / 1000_000_000.0, 100, "s")
       else if (a >= 100_000_000)
         formatNumber(nanos / 1000_000_000.0, 1000, "s")
-      else if (a >= 10_000_000)
+
+      else if (a >= 20_000_000)
+        formatNumber(nanos / 1000_000.0, 1, "ms")
+      else if (a >= 2_000_000)
         formatNumber(nanos / 1000_000.0, 10, "ms")
-      else if (a >= 1_000_000)
+      else if (a >= 200_000)
         formatNumber(nanos / 1000_000.0, 100, "ms")
       else if (a >= 100_000)
         formatNumber(nanos / 1000_000.0, 1000, "ms")
-      else if (a >= 10_000)
+
+      else if (a >= 20_000)
+        formatNumber(nanos / 1000.0, 1, "µs")
+      else if (a >= 2000)
         formatNumber(nanos / 1000.0, 10, "µs")
-      else if (a >= 1000)
+      else if (a >= 200)
         formatNumber(nanos / 1000.0, 100, "µs")
       else if (a >= 100)
         formatNumber(nanos / 1000.0, 1000, "µs")
@@ -268,6 +276,13 @@ object ScalaTime
         val gran = granularity.toNanos
         Duration((nanos + (gran - 1) * sgn) / gran * gran, NANOSECONDS).toCoarsest
       }
+
+    def roundToDigits(numberOfDigits: Int): FiniteDuration = {
+      val ctx = new MathContext(numberOfDigits max 1, RoundingMode.HALF_UP)
+      new FiniteDuration(
+        BigDecimal(duration.length).round(ctx).toLong,
+        duration.unit)
+    }
 
     def toBigDecimalSeconds = duration.unit match {
       case NANOSECONDS  => BigDecimal(duration.length, 9)
