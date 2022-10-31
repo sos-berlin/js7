@@ -22,8 +22,12 @@ final class OutcomeTest extends OurTestSuite
   }
 
   "Completed" in {
-    assert(Completed(true, Map("returnCode" -> NumberValue(1), "K" -> StringValue("V"))) == Outcome.Succeeded(Map("returnCode" -> NumberValue(1), "K" -> StringValue("V"))))
-    assert(Completed(false, Map("returnCode" -> NumberValue(1), "K" -> StringValue("V"))) == Outcome.Failed(Map("returnCode" -> NumberValue(1), "K" -> StringValue("V"))))
+    val namedValues = Map(
+      "returnCode" -> NumberValue(1),
+      "K" -> StringValue("V"))
+
+    assert(Completed(true, namedValues) == Outcome.Succeeded(namedValues))
+    assert(Completed(false, namedValues) == Outcome.Failed(namedValues))
     assert((Outcome.Disrupted(Problem("PROBLEM")): Outcome) match {
       case _: Outcome.Completed => false
       case _ => true
@@ -42,8 +46,12 @@ final class OutcomeTest extends OurTestSuite
     }
 
     "Succeeded with namedValues" in {
-      testJson[Outcome](Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "KEY" -> StringValue("VALUE"))), json"""
-        {
+      testJson[Outcome](
+        Outcome.Succeeded(
+          Map(
+            "returnCode" -> NumberValue(0),
+            "KEY" -> StringValue("VALUE"))),
+        json"""{
           "TYPE": "Succeeded",
           "namedValues": {
             "returnCode": 0,
@@ -66,10 +74,15 @@ final class OutcomeTest extends OurTestSuite
     }
 
     "Failed complete" in {
-      testJson[Outcome](Outcome.Failed(Some("ERROR"), Map("returnCode" -> NumberValue(1), "KEY" -> StringValue("VALUE"))), json"""
-        {
+      testJson[Outcome](
+        Outcome.Failed(
+          Some("MESSAGE"),
+          Map(
+            "returnCode" -> NumberValue(1),
+            "KEY" -> StringValue("VALUE"))),
+        json"""{
           "TYPE": "Failed",
-          "message": "ERROR",
+          "message": "MESSAGE",
           "namedValues": {
             "returnCode": 1,
             "KEY": "VALUE"
@@ -78,8 +91,12 @@ final class OutcomeTest extends OurTestSuite
     }
 
     "TimedOut with Failed" in {
-      testJson[Outcome](Outcome.TimedOut(Outcome.Failed(Map("returnCode" -> NumberValue(128+15)))), json"""
-        {
+      testJson[Outcome](
+        Outcome.TimedOut(
+          Outcome.Failed(
+            Map(
+              "returnCode" -> NumberValue(128+15)))),
+        json"""{
           "TYPE": "TimedOut",
           "outcome": {
             "TYPE": "Failed",
@@ -91,8 +108,13 @@ final class OutcomeTest extends OurTestSuite
     }
 
     "Killed with Succeeded and namedValues" in {
-      testJson[Outcome](Outcome.Killed(Outcome.Succeeded(Map("returnCode" -> NumberValue(0), "KEY" -> StringValue("VALUE")))), json"""
-        {
+      testJson[Outcome](
+        Outcome.Killed(
+          Outcome.Succeeded(
+            Map(
+              "returnCode" -> NumberValue(0),
+              "KEY" -> StringValue("VALUE")))),
+        json"""{
           "TYPE": "Killed",
           "outcome": {
             "TYPE": "Succeeded",
@@ -157,6 +179,7 @@ final class OutcomeTest extends OurTestSuite
     assert(Outcome.Succeeded(NamedValues.empty) eq Outcome.succeeded)
     assert(Outcome.Succeeded(NamedValues.empty) eq Outcome.Completed(true))
     assert(Outcome.Succeeded.rc(0) eq Outcome.Succeeded.rc(ReturnCode(0)))
-    assert(Outcome.Succeeded.rc(ReturnCode(0)) eq Outcome.Completed(true, Map("returnCode" -> NumberValue(0))))
+    assert(Outcome.Succeeded.rc(ReturnCode(0)) eq
+      Outcome.Completed(true, Map("returnCode" -> NumberValue(0))))
   }
 }

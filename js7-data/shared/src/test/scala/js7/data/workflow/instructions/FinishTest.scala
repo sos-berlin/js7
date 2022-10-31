@@ -4,9 +4,10 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.test.OurTestSuite
 import js7.data.order.Outcome
 import js7.data.source.SourcePos
+import js7.data.value.NumberValue
 import js7.data.workflow.Instruction
 import js7.data.workflow.instructions.Instructions.jsonCodec
-import js7.tester.CirceJsonTester.testJson
+import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
 /**
   * @author Joacim Zschimmer
@@ -20,16 +21,33 @@ final class FinishTest extends OurTestSuite
         json"""{
           "TYPE": "Finish"
         }""")
+
+      testJsonDecoder[Instruction.Labeled](
+        Finish(Some(Outcome.failed)),
+        json"""{
+          "TYPE": "Finish",
+          "outcome": {
+            "TYPE": "Failed"
+          }
+        }""")
     }
 
     "complete" in {
       testJson[Instruction.Labeled](
-        Finish(Some(Outcome.failed), Some(SourcePos(1, 2))),
+        Finish(
+          Some(
+            Outcome.Failed(
+              Some("MESSAGE"),
+              Map("A" -> NumberValue(7)))),
+          Some(SourcePos(1, 2))),
         json"""{
           "TYPE": "Finish",
           "outcome": {
             "TYPE": "Failed",
-            "namedValues": {}
+            "message": "MESSAGE",
+            "namedValues": {
+              "A": 7
+            }
           },
           "sourcePos": [ 1, 2 ]
         }""")

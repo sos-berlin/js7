@@ -410,8 +410,7 @@ final class OrderEventTest extends OurTestSuite
       {
         "TYPE": "OrderFinished",
         "outcome": {
-          "TYPE": "Failed",
-          "namedValues": {}
+          "TYPE": "Failed"
         }
       }""")
   }

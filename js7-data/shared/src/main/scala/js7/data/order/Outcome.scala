@@ -88,7 +88,7 @@ object Outcome
     }
 
     implicit val jsonCodec: TypedJsonCodec[Completed] = TypedJsonCodec(
-      Subtype(deriveCodec[Failed]),
+      Subtype[Failed],
       Subtype(deriveCodec[Succeeded]))
   }
 
@@ -224,8 +224,8 @@ object Outcome
   private val typedJsonCodec = TypedJsonCodec[Outcome](
     Subtype[Succeeded],
     Subtype[Failed],
-    Subtype(deriveCodec[Killed]),
     Subtype(deriveCodec[TimedOut]),
+    Subtype(deriveCodec[Killed]),
     Subtype(deriveCodec[Disrupted]))
 
   private val predefinedRC0SucceededJson: JsonObject =
