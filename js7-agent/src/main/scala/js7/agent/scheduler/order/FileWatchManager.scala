@@ -55,6 +55,8 @@ final class FileWatchManager(
     case Vector() => 1.s :: Nil
     case o => o
   }
+  private val logDelays = config.getDurationList("js7.filewatch.log-delays")
+    .asScala.toVector.map(_.toFiniteDuration)
   private val pollTimeout = config.getDuration("js7.filewatch.poll-timeout").toFiniteDuration max 0.ms
   private val watchDelay = config.getDuration("js7.filewatch.watch-delay").toFiniteDuration max 0.s
   private val lockKeeper = new LockKeeper[OrderWatchPath]
@@ -184,7 +186,7 @@ final class FileWatchManager(
           })
           .takeUntil(stop)
           .flatMap(Observable.fromIterable)
-          .delayFileAdded(fileWatch.delay)  // buffers without limit all incoming event
+          .delayFileAdded(directory, fileWatch.delay, logDelays)  // buffers without limit all incoming event
           .bufferIntrospective(1024)
           .mapEval(dirEventSeqs =>
             lockKeeper.lock(fileWatch.path)(

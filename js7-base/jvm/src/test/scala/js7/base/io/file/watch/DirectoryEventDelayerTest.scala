@@ -37,9 +37,11 @@ final class DirectoryEventDelayerTest extends OurTestSuite with BeforeAndAfterAl
 
   override def beforeAll() = {
     super.beforeAll()
-    cancelable := publishSubject.delayFileAdded(2.s).foreach {
-      buffer ++= _
-    }
+    cancelable := publishSubject
+      .delayFileAdded(Paths.get("/tmp"), delay = 2.s, logDelays = Nil)
+      .foreach {
+        buffer ++= _
+      }
   }
 
   override def afterAll() = {
@@ -107,7 +109,7 @@ final class DirectoryEventDelayerTest extends OurTestSuite with BeforeAndAfterAl
     val buffer = mutable.Buffer[DirectoryEvent]()
     val publishSubject = PublishSubject[DirectoryEvent]()
     val future = publishSubject
-      .delayFileAdded(100.ms)
+      .delayFileAdded(Paths.get("/tmp"), 100.ms, logDelays = Nil)
       .bufferIntrospective(2)  // Let onNext complete synchronously sometimes
       .map(_.flatten)
       .delayOnNext(1.ms)

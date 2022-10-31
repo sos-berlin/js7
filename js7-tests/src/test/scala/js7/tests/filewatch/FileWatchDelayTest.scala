@@ -39,6 +39,7 @@ final class FileWatchDelayTest extends OurTestSuite with ControllerAgentForScala
 
   override protected def agentConfig = config"""
     js7.filewatch.watch-delay = 0ms
+    js7.filewatch.log-delays = [ 0s, 1s, 2s ]
     js7.journal.remove-obsolete-files = false
     js7.job.execution.signed-script-injection-allowed = on
     """
@@ -68,11 +69,11 @@ final class FileWatchDelayTest extends OurTestSuite with ControllerAgentForScala
 
     // Each test has an increasing sequence of file modifications, delaying FileAdded and OrderAdded.
     def delayedFileAddedTest(i: Int) = Task {
-      val name = s"file-$i"
-      withClue(name) {
-        val file = watchedDirectory / name
-        val externalOrderName = ExternalOrderName(name)
-        val orderId = fileToOrderId(name)
+      val filename = s"file-$i"
+      withClue(filename) {
+        val file = watchedDirectory / filename
+        val externalOrderName = ExternalOrderName(filename)
+        val orderId = fileToOrderId(filename)
         val whenArised = eventWatch
           .whenKeyedEvent[ExternalOrderArised](
             EventRequest.singleClass(after = eventWatch.lastAddedEventId, timeout = Some(99.s)),
@@ -88,7 +89,7 @@ final class FileWatchDelayTest extends OurTestSuite with ControllerAgentForScala
         logger.info(s"""file-$i ++= "A"""")
         file ++= "A"
         assert(!whenArised.isCompleted)
-        val divisor = 2
+        val divisor = 4
         for (j <- 1 to i * divisor) withClue(s"#$i") {
           sleepUntil(since + j * fileWatch.delay / divisor)
           logger.info(s"""file-$i ++= "${"+" * j}"""")

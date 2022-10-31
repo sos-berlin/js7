@@ -1,5 +1,7 @@
 package js7.base.io.file.watch
 
+import java.io.IOException
+import java.nio.file.Files.size
 import java.nio.file.Path
 import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted, FileModified}
 import js7.base.io.file.watch.DirectoryEventDelayer.*
@@ -8,6 +10,7 @@ import js7.base.monixutils.MonixBase.syntax.RichMonixAckFuture
 import js7.base.monixutils.MonixDeadline
 import js7.base.monixutils.MonixDeadline.now
 import js7.base.time.ScalaTime.*
+import js7.base.utils.ByteUnits.toKBGB
 import monix.execution.Ack.{Continue, Stop}
 import monix.execution.atomic.Atomic
 import monix.execution.{Ack, Cancelable, Scheduler}
@@ -18,6 +21,7 @@ import scala.collection.immutable.VectorBuilder
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.concurrent.duration.*
+import scala.util.Try
 
 /** A special delay line for DirectoryEvents.
   *
@@ -31,13 +35,16 @@ import scala.concurrent.duration.*
   */
 private final class DirectoryEventDelayer(
   source: Observable[DirectoryEvent],
-  delay: FiniteDuration)
+  directory: Path,
+  delay: FiniteDuration,
+  logDelays: Seq[FiniteDuration])
 extends Observable[Seq[DirectoryEvent]]
 {
   def unsafeSubscribeFn(out: Subscriber[Seq[DirectoryEvent]]): Cancelable =
     source.subscribe(new Subscriber[DirectoryEvent] { self =>
       implicit val scheduler: Scheduler = out.scheduler
-      private val roundUp = (delay / 10) max 10.ms min 1.s
+      private var addedEventCount = 0L
+      private var modifiedEventCount = 0L
       private var timerCount = 0L
       private var timer: Option[Cancelable] = None
       private val forwardReentrant = Atomic(0)
@@ -50,22 +57,28 @@ extends Observable[Seq[DirectoryEvent]]
       private val outputQueue = new VectorBuilder[DirectoryEvent]
 
       def onNext(directoryEvent: DirectoryEvent) = {
+        logger.trace(s"onNext $directoryEvent")
         directoryEvent match {
           case fileAdded @ FileAdded(path) =>
+            addedEventCount += 1
             self.synchronized {
               for (index <- pathToIndex.remove(path)) {
                 indexToEntry -= index
               }
               val isFirst = indexToEntry.isEmpty
-              enqueue(Entry(fileAdded, now, now + delay))
+              enqueue(new Entry(fileAdded, now, now + delay))
               if (isFirst) setTimer(delay)
             }
 
           case FileModified(path) =>
+            modifiedEventCount += 1
             self.synchronized {
               for (previousIndex <- pathToIndex.remove(path)) {
                 for (entry <- indexToEntry.remove(previousIndex)) {
-                  enqueue(entry.copy(delayUntil = now + delay))
+                  val now_ = now
+                  entry.logStillWritten(now_)
+                  entry.delayUntil = now_ + delay
+                  enqueue(entry)
                 }
               }
             }
@@ -90,20 +103,21 @@ extends Observable[Seq[DirectoryEvent]]
         val index = indexToEntry.lastOption.fold(0L)(_._1) + 1
         indexToEntry.update(index, entry)
         pathToIndex(entry.path) = index
-        logger.trace(s"#$index + $entry")
 
         if (delay.isZero) {
           forward()
         }
       }
 
-      def onComplete(): Unit =
+      def onComplete(): Unit = {
+        logger.trace(s"onComplete")
         self.synchronized {
           if (indexToEntry.nonEmpty) {
             callerCompleted = true
           } else
             outOnComplete()
         }
+      }
 
       def onError(throwable: Throwable): Unit =
         self.synchronized {
@@ -117,7 +131,7 @@ extends Observable[Seq[DirectoryEvent]]
           }
         }
 
-      /// ⬇︎ ASYNCHRONOUSLY CALLED ⬇ ///
+      // ⬇︎ ASYNCHRONOUSLY CALLED CODE ⬇
 
       private def setTimer(nextDelay: FiniteDuration): Unit =
         self.synchronized {
@@ -125,6 +139,7 @@ extends Observable[Seq[DirectoryEvent]]
             logger.trace(s"⏰ scheduleOnce ${nextDelay.pretty}")
             timer = Some(
               scheduler.scheduleOnce(nextDelay) {
+                logger.trace(s"🔔 Timer event")
                 self.synchronized {
                   timer = None
                   timerCount += 1
@@ -157,7 +172,7 @@ extends Observable[Seq[DirectoryEvent]]
           self.synchronized {
             if (timer.isEmpty && !hasError)
               for (entry <- indexToEntry.values.headOption) yield
-                entry.delayUntil.timeLeftOrZero.roundUpToNext(roundUp)
+                entry.delayUntil.timeLeftOrZero
             else
               None
           } match {
@@ -171,17 +186,15 @@ extends Observable[Seq[DirectoryEvent]]
         if (!hasError) {
           val now_ = now
 
-          @tailrec def loop(): Unit = {
+          @tailrec def loop(): Unit =
             indexToEntry.headOption match {
               case Some((index, entry)) if entry.delayUntil <= now_ =>
-                logger.trace(s"#$index - $entry")
                 indexToEntry -= index
                 pathToIndex -= entry.path
                 growable += entry.fileAdded
                 loop()
               case _ =>
             }
-          }
 
           loop()
         }
@@ -196,7 +209,7 @@ extends Observable[Seq[DirectoryEvent]]
           if (events.isEmpty)
             Continue
           else {
-            logger.trace(s"forward ${events.size} events")
+            for (event <- events) logger.trace(s"out.onNext $event")
             out.onNext(events)
           }
         }
@@ -204,19 +217,53 @@ extends Observable[Seq[DirectoryEvent]]
       private def outOnComplete(): Unit =
         ack.syncTryFlatten.syncOnContinue {
           if (!isDone.getAndSet(true)) {
-            logger.debug(s"$timerCount timer events")
+            logger.debug(
+              s"$addedEventCount×FileAdded · $modifiedEventCount×FileModified · $timerCount timer events")
             try out.onComplete()
             finally timer.foreach(_.cancel())  // Just to be sure
           }
         }
+
+      private final class Entry(
+        val fileAdded: FileAdded,
+        val since: MonixDeadline,
+        var delayUntil: MonixDeadline)
+      {
+        val logDelayIterator = logDelays.iterator
+        var lastLoggedAt = since
+        var lastLoggedSize: Long =
+          Try(size(directory.resolve(path))) getOrElse 0
+        var logDelay = delay +
+          (if (logDelayIterator.hasNext) logDelayIterator.next() else 0.s)
+
+        def path = fileAdded.relativePath
+
+        def logStillWritten(now: MonixDeadline): Unit = {
+          if (lastLoggedAt + logDelay <= now) {
+            switchLogDelay()
+            lastLoggedAt = now
+            val file = directory.resolve(path)
+            val growth = try {
+              val s = size(file)
+              val growth = s - lastLoggedSize
+              lastLoggedSize = s
+              toKBGB(growth)
+            } catch {
+              case _: IOException => "?"
+            }
+            logger.info(
+              s"Watched file is still being modified for ${(now - since).pretty}: $file +$growth")
+          }
+        }
+
+        private def switchLogDelay(): Unit =
+          if (logDelayIterator.hasNext) {
+            logDelay = logDelayIterator.next()
+          }
+
+        override def toString = s"$path ${since.elapsed.pretty} delayUntil=$delayUntil"
+      }
     })
-
-  private case class Entry(fileAdded: FileAdded, since: MonixDeadline, delayUntil: MonixDeadline)
-  {
-    def path = fileAdded.relativePath
-
-    override def toString = s"$path ${since.elapsed.pretty}"
-  }
 }
 
 object DirectoryEventDelayer
@@ -226,9 +273,10 @@ object DirectoryEventDelayer
   object syntax {
     implicit final class RichDelayLineObservable(private val self: Observable[DirectoryEvent])
     extends AnyVal {
-      def delayFileAdded(delay: FiniteDuration): Observable[Seq[DirectoryEvent]] =
+      def delayFileAdded(directory: Path, delay: FiniteDuration, logDelays: Seq[FiniteDuration])
+      : Observable[Seq[DirectoryEvent]] =
         if (delay.isPositive)
-          new DirectoryEventDelayer(self, delay)
+          new DirectoryEventDelayer(self, directory, delay, logDelays)
         else
           self.bufferIntrospective(1024)  // Similar to DirectoryEventDelayer, which buffers without limit
     }
