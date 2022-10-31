@@ -48,9 +48,9 @@ final class ByteUnitsTest extends OurTestSuite
 
   "toKBGB" in {
     assert(toKBGB(-1) == "-1bytes")
-    assert(toKBGB(0) == "0kB")
-    assert(toKBGB(1) == "<1kB")
-    assert(toKBGB(999) == "<1kB")
+    assert(toKBGB(0) == "0bytes")
+    assert(toKBGB(1) == "1bytes")
+    assert(toKBGB(999) == "999bytes")
     assert(toKBGB(1000) == "1kB")
     assert(toKBGB(1100) == "1.1kB")
     assert(toKBGB(1199) == "1.1kB")
@@ -81,9 +81,9 @@ final class ByteUnitsTest extends OurTestSuite
     val M = 1024*K
     val G = 1024*M
     assert(toKiBGiB(-1) == "-1bytes")
-    assert(toKiBGiB(0) == "0KiB")
-    assert(toKiBGiB(1) == "<1KiB")
-    assert(toKiBGiB(K-1) == "<1KiB")
+    assert(toKiBGiB(0) == "0bytes")
+    assert(toKiBGiB(1) == "1bytes")
+    assert(toKiBGiB(K-1) == "1023bytes")
     assert(toKiBGiB(K) == "1KiB")
     assert(toKiBGiB(K+K/2) == "1.5KiB")
     assert(toKiBGiB(M-1) == "1023KiB")

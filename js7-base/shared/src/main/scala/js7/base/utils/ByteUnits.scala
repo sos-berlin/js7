@@ -8,12 +8,10 @@ object ByteUnits
   /** Converts to bytes, kB, MB or GB */
   def toKBGB(size: Long): String =
     size match {
-      case _ if size < 0 => s"${size}bytes"
-      case _ if size == 0  => "0kB"
-      case _ if size < 1000  => "<1kB"
-      case _ if size < 1000000 => formatNumber(size, 1000) + "kB"
-      case _ if size < 1000000000 => formatNumber(size, 1000000) + "MB"
-      case _ => formatNumber(size, 1000000000) + "GB"
+      case _ if size < 1000 => s"${size}bytes"
+      case _ if size < 1000_000 => formatNumber(size, 1000) + "kB"
+      case _ if size < 1000_000_000 => formatNumber(size, 1000_000) + "MB"
+      case _ => formatNumber(size, 1000_000_000) + "GB"
     }
 
   def toMB(size: Long): String =
@@ -27,9 +25,7 @@ object ByteUnits
   /** Converts to bytes, kB, MB or GB */
   def toKiBGiB(size: Long): String =
     size match {
-      case _ if size < 0 => s"${size}bytes"
-      case _ if size == 0  => "0KiB"
-      case _ if size < 1024  => "<1KiB"
+      case _ if size < 1024 => s"${size}bytes"
       case _ if size < 2*1024-1 => formatNumber(size, 1024) + "KiB"
       case _ if size < 1024*1024 => formatNumber(size, 1024) + "KiB"
       case _ if size < 1024*1024*1024 => formatNumber(size, 1024*1024) + "MiB"
