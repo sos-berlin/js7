@@ -28,7 +28,7 @@ import scala.concurrent.duration.*
 /**
   * @author Joacim Zschimmer
   */
-@nowarn("msg=method apply in object Order.* is deprecated")
+//@nowarn("msg=method apply in object Order.* is deprecated")
 final class OrderEventTest extends OurTestSuite
 {
   "OrderAdded" in {
@@ -247,9 +247,11 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderCaught complete" in {
-    check(OrderCaught(
-      Position(1),
-      Some(Outcome.Failed(Some("FAILED"), NamedValues.rc(1)))),
+    check(
+      OrderCaught(
+        Position(1),
+        Some(Outcome.Failed(Some("FAILED"), NamedValues.rc(1)))
+      ): @nowarn("msg=deprecated"),
       json"""
       {
         "TYPE": "OrderCaught",
@@ -274,9 +276,11 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderFailed(Failed) complete" in {
-    check(OrderFailed(
-      Position(1),
-      Some(Outcome.Failed(Some("ERROR"), NamedValues.rc(1)))),
+    check(
+      OrderFailed(
+        Position(1),
+        Some(Outcome.Failed(Some("ERROR"), NamedValues.rc(1)))
+      ): @nowarn("msg=deprecated"),
       json"""
       {
         "TYPE": "OrderFailed",
@@ -292,8 +296,12 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderFailed(Disrupted(PROBLEM))" in {
-    check(OrderFailed(Position(1), Some(Outcome.Disrupted(Problem("PROBLEM")))), json"""
-      {
+    check(
+      OrderFailed(
+        Position(1),
+        Some(Outcome.Disrupted(Problem("PROBLEM")))
+      ): @nowarn("msg=deprecated"),
+      json"""{
         "TYPE": "OrderFailed",
         "movedTo": [ 1 ],
         "outcome": {
@@ -317,10 +325,12 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderFailedInFork complete" in {
-    check(OrderFailedInFork(
-      Position(1),
-      Some(Outcome.Failed(Some("ERROR"), NamedValues.rc(1)))), json"""
-      {
+    check(
+      OrderFailedInFork(
+        Position(1),
+        Some(Outcome.Failed(Some("ERROR"), NamedValues.rc(1)))
+      ): @nowarn("msg=deprecated"),
+      json"""{
         "TYPE": "OrderFailedInFork",
         "movedTo": [ 1 ],
         "outcome": {

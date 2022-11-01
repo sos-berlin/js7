@@ -46,15 +46,13 @@ object Java8Polyfill
   }
 
   implicit final class ThreadPolyfill(private val thread: Thread) extends AnyVal {
-    @nowarn("msg=method getId in class Thread is deprecated")
     def threadId: Long =
-      thread.getId
+      thread.getId: @nowarn("msg=deprecated")
   }
 
   implicit final class OperatingSystemMXBeanPolyfill(private val mx: OperatingSystemMXBean)
   extends AnyVal {
-    @nowarn("msg=method getId in class Thread is deprecated")
     def getCpuLoad: Double =
-      mx.getSystemCpuLoad
+      mx.getSystemCpuLoad: @nowarn("msg=deprecated")
   }
 }
