@@ -56,6 +56,7 @@ private final class LoggingTestAdder(suiteName: String) {
 
   def afterAll(): Unit =
     logger.info(s"$suiteName — " +
+      (if (succeededCount > 0) successMarkup else bold) +
       s"$successMarkup$succeededCount tests succeeded$resetColor" +
       (if (failedCount == 0) "" else s" · $failureMarkup💥 $failedCount failed$resetColor") +
       (if (pendingCount == 0) "" else s" · $pendingMarkup🚫 $pendingCount pending$resetColor") +
