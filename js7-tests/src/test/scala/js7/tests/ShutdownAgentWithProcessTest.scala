@@ -45,11 +45,11 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite with ControllerAge
 
   "JS-2025 AgentCommand.Shutdown with SIGKILL job process, then recovery" in {
     eventWatch.await[AgentCoupled]()
-    val eventId = eventWatch.lastAddedEventId
-
+    val agentCoupledEventId = eventWatch.lastAddedEventId
     val orderId = OrderId("🔹")
     controller.addOrderBlocking(FreshOrder(OrderId("🔹"), workflow.path))
-    eventWatch.await[OrderProcessingStarted](_.key == orderId)
+    val eventId = eventWatch.await[OrderProcessingStarted](_.key == orderId).head.eventId
+    eventWatch.await[OrderStdoutWritten](_.key == orderId, after = eventId)
 
     val agentTree = directoryProvider.agents.head
     val agentClient = AgentClient(agentUri = agent.localUri, agentTree.userAndPassword)
@@ -64,7 +64,7 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite with ControllerAge
       .await(10.s)
     eventWatch.await[OrderFailed](_.key == orderId)
 
-    assert(eventWatch.keyedEvents[Event](after = eventId)
+    assert(eventWatch.keyedEvents[Event](after = agentCoupledEventId)
       .filter {
         case KeyedEvent(_, _: OrderEvent) => true
         case KeyedEvent(_, _: AgentShutDown) => true
