@@ -18,20 +18,19 @@ extends EventInstructionExecutor with PositionInstructionExecutor
     if (order.isState[Broken] || order.isState[FailedWhileFresh] || order.isState[Failed])
       Right(Nil)
     else
-      nextPosition(instruction, order, state)
-        .map(_.map(o => order.id <-: OrderMoved(o)))
+      nextMove(instruction, order, state)
+        .map(_.map(order.id <-: _))
         .map(_.toList)
 
-  def nextPosition(instruction: If, order: Order[Order.State], state: StateView) = {
+  def nextMove(instruction: If, order: Order[Order.State], state: StateView) =
     // order may be predicted and different from actual idToOrder(order.id)
     for {
       scope <- state.toPureOrderScope(order)
       condition <- instruction.predicate.evalAsBoolean(scope)
     } yield
-      Some(
+      Some(OrderMoved(
         condition ? Then orElse instruction.elseWorkflow.isDefined ? Else match {
           case Some(thenOrElse) => order.position / thenOrElse % 0
           case None => order.position.increment  // No else-part, skip instruction
-        })
-    }
+        }))
 }

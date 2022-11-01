@@ -11,7 +11,7 @@ import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.AgentResetStarted
 import js7.data.controller.ControllerStateExecutor.*
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{AnyKeyedEvent, KeyedEvent}
+import js7.data.event.{AnyKeyedEvent, Event, KeyedEvent}
 import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.item.BasicItemEvent.{ItemAttachable, ItemAttachedStateEvent, ItemDeleted, ItemDetachable, ItemDetached}
@@ -21,7 +21,7 @@ import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, Simpl
 import js7.data.job.JobResource
 import js7.data.lock.LockState
 import js7.data.order.Order.State
-import js7.data.order.OrderEvent.{OrderAdded, OrderAwoke, OrderBroken, OrderCoreEvent, OrderDeleted, OrderDetached, OrderForked, OrderLockEvent, OrderOrderAdded, OrderProcessed}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAwoke, OrderBroken, OrderCoreEvent, OrderDeleted, OrderDetached, OrderForked, OrderLockEvent, OrderMoved, OrderOrderAdded, OrderProcessed}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.orderwatch.ExternalOrderKey
 import js7.data.subagent.SubagentItemState
@@ -31,6 +31,7 @@ import js7.data.workflow.WorkflowControlId.syntax.*
 import js7.data.workflow.position.{Position, PositionOrLabel}
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPathControl, WorkflowPathControlPath}
 import scala.annotation.tailrec
+import scala.collection.compat.immutable.ArraySeq
 import scala.collection.{View, mutable}
 import scala.language.implicitConversions
 
@@ -537,7 +538,40 @@ final case class ControllerStateExecutor private(
       }
 
     loop()
-    new ControllerStateExecutor(_keyedEvents.result(), controllerState)
+    new ControllerStateExecutor(
+      /*optimizeKeyedEvents*/(_keyedEvents.result()),
+      controllerState)
+  }
+
+  private def optimizeKeyedEvents[E <: Event](keyedEvents: Seq[KeyedEvent[E]]): Seq[KeyedEvent[E]] = {
+    val orderToIndex = mutable.Map[OrderId, Int]()
+    val buffer = mutable.ArrayBuffer[KeyedEvent[E]]()
+    buffer.sizeHint(keyedEvents.size)
+    keyedEvents.foreach {
+      case ke @ KeyedEvent(orderId: OrderId, event: OrderEvent) =>
+        def add() = {
+          orderToIndex(orderId) = buffer.length
+          buffer += ke
+        }
+        event match {
+          case OrderMoved(_, None) =>
+            orderToIndex.get(orderId) match {
+              case None => add()
+              case Some(i) =>
+                buffer(i) match {
+                  case KeyedEvent(_, OrderMoved(_, None)) =>
+                    buffer(i) = ke
+                  case _ => add()
+                }
+            }
+
+          case _ => add()
+        }
+
+      case ke =>
+        buffer += ke
+    }
+    buffer.to(ArraySeq)
   }
 
   private def keyedEventToOrderIds(keyedEvent: KeyedEvent[OrderEvent]): View[OrderId] =

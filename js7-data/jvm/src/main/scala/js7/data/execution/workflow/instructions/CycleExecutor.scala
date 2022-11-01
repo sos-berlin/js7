@@ -67,7 +67,7 @@ extends EventInstructionExecutor with PositionInstructionExecutor
     (order.id <-: event) :: Nil
   }
 
-  def nextPosition(instruction: Cycle, order: Order[Order.State], stateView: StateView) =
+  def nextMove(instruction: Cycle, order: Order[Order.State], stateView: StateView) =
     Right(None)
 
   private[workflow] def onReturnFromSubworkflow(order: Order[Order.State], cycle: Cycle,

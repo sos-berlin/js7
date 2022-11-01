@@ -32,7 +32,7 @@ final class TryExecutorTest extends OurTestSuite
 
   "JSON" - {
     "try" in {
-      testJson(tryExecutor.nextPosition(tryInstruction, AOrder, stateView).orThrow,
+      testJson(tryExecutor.nextMove(tryInstruction, AOrder, stateView).orThrow.get.to,
         json"""[ 7, "try+0", 0 ]""")
     }
 
@@ -42,9 +42,9 @@ final class TryExecutorTest extends OurTestSuite
     }
   }
 
-  "nextPosition" in {
-    assert(executorService.nextPosition(tryInstruction, AOrder, stateView) ==
-      Right(Some(Position(7) / try_(0) % 0)))
+  "nextMove" in {
+    assert(executorService.nextMove(tryInstruction, AOrder, stateView) ==
+      Right(Some(OrderMoved(Position(7) / try_(0) % 0))))
   }
 
   "toEvents" in {

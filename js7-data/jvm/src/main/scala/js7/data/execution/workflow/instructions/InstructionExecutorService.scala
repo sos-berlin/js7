@@ -6,12 +6,11 @@ import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SubclassToX
 import js7.data.event.KeyedEvent
-import js7.data.order.OrderEvent.OrderActorEvent
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderMoved}
 import js7.data.order.{Order, OrderId, OrderObstacle, OrderObstacleCalculator}
 import js7.data.state.StateView
 import js7.data.workflow.Instruction
 import js7.data.workflow.instructions.{Fork, ForkInstruction, ForkList}
-import js7.data.workflow.position.Position
 
 final class InstructionExecutorService(val clock: WallClock)
 {
@@ -48,11 +47,11 @@ final class InstructionExecutorService(val clock: WallClock)
   private[instructions] def instructionToExecutor(instr: Instruction): InstructionExecutor =
     classToExecutor.checked(instr.getClass).orThrow
 
-  def nextPosition(instruction: Instruction, order: Order[Order.State], stateView: StateView)
-  : Checked[Option[Position]] =
+  def nextMove(instruction: Instruction, order: Order[Order.State], stateView: StateView)
+  : Checked[Option[OrderMoved]] =
     instructionToExecutor(instruction) match {
       case executor: PositionInstructionExecutor =>
-        executor.nextPosition(instruction.asInstanceOf[executor.Instr], order, stateView)
+        executor.nextMove(instruction.asInstanceOf[executor.Instr], order, stateView)
       case _ => Right(None)
     }
 

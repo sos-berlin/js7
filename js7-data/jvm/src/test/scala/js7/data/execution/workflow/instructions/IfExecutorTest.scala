@@ -8,6 +8,7 @@ import js7.base.time.WallClock
 import js7.data.agent.AgentPath
 import js7.data.execution.workflow.instructions.IfExecutorTest.*
 import js7.data.job.PathExecutable
+import js7.data.order.OrderEvent.OrderMoved
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.state.TestStateView
 import js7.data.value.expression.Expression.*
@@ -33,40 +34,47 @@ final class IfExecutorTest extends OurTestSuite {
 
   "JSON BranchId" - {
     "then" in {
-      testJson(ifExecutor.nextPosition(ifThenElse(BooleanConstant(true)), AOrder, stateView).orThrow,
+      testJson(
+        ifExecutor.nextMove(ifThenElse(BooleanConstant(true)), AOrder, stateView).orThrow.get.to,
         json"""[ 7, "then", 0 ]""")
     }
 
     "else" in {
-      testJson(ifExecutor.nextPosition(ifThenElse(BooleanConstant(false)), AOrder, stateView).orThrow,
+      testJson(
+        ifExecutor.nextMove(ifThenElse(BooleanConstant(false)), AOrder, stateView).orThrow.get.to,
         json"""[ 7, "else", 0 ]""")
     }
   }
 
   "If true" in {
-    assert(executorService.nextPosition(ifThenElse(BooleanConstant(true)), AOrder, stateView) ==
-      Right(Some(Position(7) / Then % 0)))
+    assert(
+      executorService.nextMove(ifThenElse(BooleanConstant(true)), AOrder, stateView).orThrow.get.to ==
+        Position(7) / Then % 0)
   }
 
   "If false" in {
-    assert(executorService.nextPosition(ifThenElse(BooleanConstant(false)), AOrder, stateView) ==
-      Right(Some(Position(7) / Else % 0)))
+    assert(
+      executorService.nextMove(ifThenElse(BooleanConstant(false)), AOrder, stateView).orThrow.get.to ==
+        Position(7) / Else % 0)
   }
 
   "If false, no else branch" in {
-    assert(executorService.nextPosition(ifThen(BooleanConstant(false)), AOrder, stateView) ==
-      Right(Some(Position(8))))
+    assert(executorService.nextMove(ifThen(BooleanConstant(false)), AOrder, stateView).orThrow.get.to ==
+      Position(8))
   }
 
-  "Naned value comparison" in {
+  "Named value comparison" in {
     val expr = Equal(NamedValue("A"), StringConstant("AA"))
-    assert(executorService.nextPosition(ifThenElse(expr), AOrder, stateView) == Right(Some(Position(7) / Then % 0)))
-    assert(executorService.nextPosition(ifThenElse(expr), BOrder, stateView) == Right(Some(Position(7) / Else % 0)))
+    assert(executorService.nextMove(ifThenElse(expr), AOrder, stateView) ==
+      Right(Some(OrderMoved(Position(7) / Then % 0))))
+
+    assert(executorService.nextMove(ifThenElse(expr), BOrder, stateView) ==
+      Right(Some(OrderMoved(Position(7) / Else % 0))))
   }
 
   "Error in expression" in {
     val expr = Equal(ToNumber(StringConstant("X")), NumericConstant(1))
-    assert(executorService.nextPosition(ifThenElse(expr), AOrder, stateView) == Left(Problem("Not a valid number: X")))
+    assert(executorService.nextMove(ifThenElse(expr), AOrder, stateView) == Left(Problem("Not a valid number: X")))
   }
 }
 

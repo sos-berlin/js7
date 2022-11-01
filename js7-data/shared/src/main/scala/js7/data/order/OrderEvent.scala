@@ -21,6 +21,7 @@ import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.event.Event
 import js7.data.lock.LockPath
 import js7.data.order.Order.*
+import js7.data.order.OrderEvent.OrderMoved.Reason
 import js7.data.orderwatch.ExternalOrderKey
 import js7.data.subagent.Problems.{ProcessLostDueToResetProblem, ProcessLostDueToRestartProblem}
 import js7.data.subagent.SubagentId
@@ -327,8 +328,17 @@ object OrderEvent
   case object OrderProcessingKilled
   extends OrderActorEvent
 
-  final case class OrderMoved(to: Position)
+  final case class OrderMoved(to: Position, reason: Option[Reason] = None)
   extends OrderActorEvent
+  object OrderMoved {
+    sealed trait Reason
+    case object SkippedDueToWorkflowPathControl extends Reason
+    case object NoAdmissionPeriodStart extends Reason
+
+    implicit val jsonCodec: TypedJsonCodec[Reason] = TypedJsonCodec(
+      Subtype(SkippedDueToWorkflowPathControl),
+      Subtype(NoAdmissionPeriodStart))
+  }
 
   sealed trait OrderFailedEvent extends OrderActorEvent {
     def moveTo(movedTo: Position): OrderFailedEvent

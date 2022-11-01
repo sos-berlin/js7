@@ -46,7 +46,7 @@ final class ExecuteExecutorTest extends OurTestSuite
       for (order <- orders.filter(_.position == position)) {
         assert(executorService.toEvents(execute, order, stateView) ==
           Right((order.id <-: OrderAttachable(agentPath)) :: Nil))
-        assert(executorService.nextPosition(execute, order, stateView) ==
+        assert(executorService.nextMove(execute, order, stateView) ==
           Right(None))
       }
     }
@@ -61,7 +61,7 @@ final class ExecuteExecutorTest extends OurTestSuite
         val order = stateView.idToOrder(orderId)
         assert(executorService.toEvents(execute, order, stateView) ==
           Right((order.id <-: OrderAttachable(agentPath)) :: Nil))
-        assert(executorService.nextPosition(execute, order, stateView) ==
+        assert(executorService.nextMove(execute, order, stateView) ==
           Right(None))
       }
     }
@@ -73,9 +73,12 @@ final class ExecuteExecutorTest extends OurTestSuite
         OrderId("#2021-09-04#2-Ready"))) {
         val order = stateView.idToOrder(orderId)
         assert(executorService.toEvents(execute, order, stateView) ==
-          Right((order.id <-: OrderMoved(position.increment)) :: Nil))
-        assert(executorService.nextPosition(execute, order, stateView) ==
-          Right(Some(position.increment)))
+          Right(
+            (order.id <-: OrderMoved(position.increment, Some(OrderMoved.NoAdmissionPeriodStart)))
+              :: Nil))
+        assert(executorService.nextMove(execute, order, stateView) ==
+          Right(Some(
+            OrderMoved(position.increment, reason = Some(OrderMoved.NoAdmissionPeriodStart)))))
       }
     }
   }

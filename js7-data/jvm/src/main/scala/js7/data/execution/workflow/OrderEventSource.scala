@@ -78,7 +78,7 @@ final class OrderEventSource(state: StateView)
                     .flatTraverse {
                       case orderId <-: (moved: OrderMoved) =>
                         applyMoveInstructions(order, moved)
-                          .map(event => (orderId <-: event) :: Nil)
+                          .map(_.map(orderId <-: _))
 
                       case orderId <-: OrderFailedIntermediate_(outcome, uncatchable) =>
                         // OrderFailedIntermediate_ is used internally only
@@ -374,57 +374,67 @@ final class OrderEventSource(state: StateView)
 
   def nextAgent(order: Order[Order.State]): Checked[Option[AgentPath]] =
     catchNonFatalFlatten {
-      for (pos <- applyMoveInstructions(order)) yield
+      for (moves <- applyMoveInstructions(order)) yield
         for {
           workflow <- idToWorkflow.get(order.workflowId)
-          agentPath <- workflow.agentPath(pos)
+          agentPath <- workflow.agentPath(moves.lastOption.fold(order.position)(_.to))
         } yield agentPath
     }
 
-  private def applyMoveInstructions(order: Order[Order.State], orderMoved: OrderMoved): Checked[OrderMoved] =
-    applyMoveInstructions(order.withPosition(orderMoved.to))
-      .map(OrderMoved(_))
+  private def applyMoveInstructions(order: Order[Order.State], orderMoved: OrderMoved)
+  : Checked[List[OrderMoved]] =
+    applyMoveInstructions(order, Some(orderMoved))
+      .map(_.toList)
 
-  private[workflow] def applyMoveInstructions(order: Order[Order.State]): Checked[Position] = {
+  private[workflow] def applyMoveInstructions(order: Order[Order.State], firstMove: Option[OrderMoved] = None)
+  : Checked[Vector[OrderMoved]] = {
     @tailrec
-    def loop(order: Order[Order.State], visited: List[Position]): Checked[Option[Position]] =
-      applySingleMoveInstruction(order) match {
-        case o @ Left(_) => o
+    def loop(order: Order[Order.State], visited: Vector[OrderMoved]): Checked[Vector[OrderMoved]] =
+      nextMove(order) match {
+        case Left(problem) => Left(problem)
 
-        case Right(Some(position)) =>
-          if (visited contains position)
+        case Right(Some(orderMoved)) =>
+          if (visited.exists(_.to == orderMoved.to))
             Left(Problem(s"${order.id} is in a workflow loop: " +
-              visited.reverse.map(pos => pos.toString + " " +
-                idToWorkflow.checked(order.workflowId).flatMap(_.labeledInstruction(pos))
-                  .fold(_.toString, _.toString).truncateWithEllipsis(50)).mkString(" --> ")))
+              visited.reverse
+                .map(moved => moved.toString + " " +
+                  idToWorkflow.checked(order.workflowId)
+                    .flatMap(_.labeledInstruction(moved.to))
+                    .fold(_.toString, _.toString)
+                    .truncateWithEllipsis(50))
+                .mkString(" --> ")))
           else
-            loop(order.withPosition(position), position :: visited)
+            loop(
+              order.withPosition(orderMoved.to),
+              if (orderMoved.reason.isEmpty && visited.lastOption.exists(_.reason.isEmpty))
+                visited.updated(visited.length - 1, orderMoved)
+              else
+                visited :+ orderMoved)
 
-        case Right(None) => Right(Some(order.position))
+        case Right(None) => Right(visited)
       }
 
-    loop(order, Nil) map {
-      case Some(n) => n
-      case None => order.position
+    firstMove match {
+      case None => loop(order, Vector.empty)
+      case Some(move) => loop(order.withPosition(move.to), Vector(move))
     }
   }
 
-  private def applySingleMoveInstruction(order: Order[Order.State]): Checked[Option[Position]] =
+  private def nextMove(order: Order[Order.State]): Checked[Option[OrderMoved]] =
     for {
       workflow <- idToWorkflow.checked(order.workflowId)
-      maybePosition <-
+      maybeMoved <-
         if (workflow.isOrderAtStopPosition(order))
           Right(None)
         else
-          executorService.nextPosition(workflow.instruction(order.position), order, state)
-    } yield maybePosition
+          executorService.nextMove(workflow.instruction(order.position), order, state)
+    } yield maybeMoved
 
-  private def instruction_[A <: Instruction: ClassTag](orderId: OrderId): Checked[A] = {
+  private def instruction_[A <: Instruction: ClassTag](orderId: OrderId): Checked[A] =
     for {
       order <- idToOrder.checked(orderId)
       instr <- instruction_[A](order.workflowPosition)
     } yield instr
-  }
 
   private def instruction_[A <: Instruction: ClassTag](workflowPosition: WorkflowPosition)
   : Checked[A] =

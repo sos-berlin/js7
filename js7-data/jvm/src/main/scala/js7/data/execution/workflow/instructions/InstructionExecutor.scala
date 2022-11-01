@@ -6,11 +6,10 @@ import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.instructions.InstructionExecutor.*
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAttachable, OrderDetachable, OrderStarted}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderAttachable, OrderDetachable, OrderMoved, OrderStarted}
 import js7.data.order.{Order, OrderObstacle, OrderObstacleCalculator}
 import js7.data.state.StateView
 import js7.data.workflow.Instruction
-import js7.data.workflow.position.Position
 
 /**
   * @author Joacim Zschimmer
@@ -58,6 +57,6 @@ trait EventInstructionExecutor extends InstructionExecutor
 
 trait PositionInstructionExecutor extends InstructionExecutor
 {
-  def nextPosition(instruction: Instr, order: Order[Order.State], stateView: StateView)
-  : Checked[Option[Position]]
+  def nextMove(instruction: Instr, order: Order[Order.State], stateView: StateView)
+  : Checked[Option[OrderMoved]]
 }

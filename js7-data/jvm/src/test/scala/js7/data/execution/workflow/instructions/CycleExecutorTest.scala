@@ -475,7 +475,7 @@ object CycleExecutorTest
       stateView.instruction(order.workflowPosition)
 
     def nextPosition =
-      executorService.nextPosition(nextInstruction, order, stateView)
+      executorService.nextMove(nextInstruction, order, stateView)
 
     def step(): Seq[OrderEvent.OrderActorEvent] = {
       val keyedEvents = executorService.toEvents(nextInstruction, order, stateView).orThrow

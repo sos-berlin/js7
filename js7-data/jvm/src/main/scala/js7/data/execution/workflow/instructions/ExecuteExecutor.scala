@@ -31,31 +31,32 @@ extends EventInstructionExecutor with PositionInstructionExecutor
       .flatMap(job => order
         .ifState[IsFreshOrReady]
         .flatMap(order =>
-          if (isSkipped(order, job, state))
-            // If order should start, change nextPosition function, too!
-            //? order.ifState[Fresh].map(_ => OrderStarted).toList :::
-            Some(Right((order.id <-: OrderMoved(order.position.increment)) :: Nil))
-          else if (order.isProcessable && order.isDetached)
-            attach(order, job.agentPath)
-          else {
-            val checked = for {
-              job <- state.workflowJob(order.workflowPosition)
-              scope <- state.toPureOrderScope(order)
-              maybeSubagentSelectionId <- job.subagentSelectionId.traverse(_
-                .evalAsString(scope)
-                .flatMap(SubagentSelectionId.checked))
-              maybeSubagentSelection <- maybeSubagentSelectionId
-                .traverse(o => state
-                  .keyToItem(SubagentSelection)
-                  .checked(o)
-                  .orElse(state
-                    .keyToItem(SubagentItem)
-                    .checked(o.toSubagentId)))
-            } yield Nil
-            Some(
-              checked.left.flatMap(problem => Right(
-                (order.id <-: OrderFailedIntermediate_(Some(Outcome.Disrupted(problem)))) :: Nil)))
-          })
+          skippedReason(order, job, state)
+            .map(reason =>
+              // If order should start, change nextMove function, too!
+              //? order.ifState[Fresh].map(_ => OrderStarted).toList :::
+              Right((order.id <-: OrderMoved(order.position.increment, Some(reason))) :: Nil))
+            .orElse(if (order.isProcessable && order.isDetached)
+              attach(order, job.agentPath)
+            else {
+              val checked = for {
+                job <- state.workflowJob(order.workflowPosition)
+                scope <- state.toPureOrderScope(order)
+                maybeSubagentSelectionId <- job.subagentSelectionId.traverse(_
+                  .evalAsString(scope)
+                  .flatMap(SubagentSelectionId.checked))
+                maybeSubagentSelection <- maybeSubagentSelectionId
+                  .traverse(o => state
+                    .keyToItem(SubagentSelection)
+                    .checked(o)
+                    .orElse(state
+                      .keyToItem(SubagentItem)
+                      .checked(o.toSubagentId)))
+              } yield Nil
+              Some(
+                checked.left.flatMap(problem => Right(
+                  (order.id <-: OrderFailedIntermediate_(Some(Outcome.Disrupted(problem)))) :: Nil)))
+            }))
         .orElse(
           // Order.Ready: Execution has to be started by the caller
           //order.ifState[Order.Fresh].map(order =>
@@ -81,9 +82,10 @@ extends EventInstructionExecutor with PositionInstructionExecutor
             })
         .getOrElse(Right(Nil)))
 
-  def nextPosition(instruction: Execute, order: Order[Order.State], state: StateView) =
+  def nextMove(instruction: Execute, order: Order[Order.State], state: StateView) =
     for (job <- state.workflowJob(order.workflowPosition)) yield
-      isSkipped(order, job, state) ? order.position.increment
+      for (reason <- skippedReason(order, job, state)) yield
+        OrderMoved(order.position.increment, Some(reason))
 
   override def toObstacles(
     order: Order[Order.State],
@@ -97,7 +99,7 @@ extends EventInstructionExecutor with PositionInstructionExecutor
     } yield
       if (order.isState[IsFreshOrReady]) {
         val admissionObstacles = job.admissionTimeScheme
-          .filterNot(_ => isSkipped(order, job, calculator.stateView))
+          .filterNot(_ => skippedReason(order, job, calculator.stateView).isDefined)
           .flatMap(_
             .findTimeInterval(clock.now(), zone, dateOffset = noDateOffset))
           .map(interval => WaitingForAdmission(interval.start))
@@ -108,9 +110,12 @@ extends EventInstructionExecutor with PositionInstructionExecutor
       } else
         Set.empty
 
-  private def isSkipped(order: Order[Order.State], job: WorkflowJob, state: StateView): Boolean =
-    isSkippedDueToWorkflowPathControl(order, state) ||
-      isSkippedBecauseOrderDayHasNoAdmissionPeriodStart(order, job)
+  private def skippedReason(order: Order[Order.State], job: WorkflowJob, state: StateView)
+  : Option[OrderMoved.Reason] =
+    (isSkippedDueToWorkflowPathControl(order, state) ? OrderMoved.SkippedDueToWorkflowPathControl)
+      .orElse(
+        isSkippedBecauseOrderDayHasNoAdmissionPeriodStart(order, job) ?
+          OrderMoved.NoAdmissionPeriodStart)
 
   private def isSkippedDueToWorkflowPathControl(order: Order[Order.State], state: StateView)
   : Boolean =

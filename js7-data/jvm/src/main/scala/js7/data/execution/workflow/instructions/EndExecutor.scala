@@ -45,7 +45,7 @@ extends EventInstructionExecutor with PositionInstructionExecutor
             }
         }))
 
-  def nextPosition(instruction: End, order: Order[Order.State], state: StateView) = {
+  def nextMove(instruction: End, order: Order[Order.State], state: StateView) = {
     import service.instructionToExecutor
     Right(
       for {
@@ -60,6 +60,6 @@ extends EventInstructionExecutor with PositionInstructionExecutor
           case _: PositionInstructionExecutor => Some(returnPosition.increment)
           case _: EventInstructionExecutor => Some(returnPosition)
         }
-      } yield next)
+      } yield OrderMoved(next))
   }
 }

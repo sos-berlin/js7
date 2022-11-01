@@ -59,7 +59,7 @@ final class AdmissionTimeSkipJobTest extends OurTestSuite with ControllerAgentFo
       val events = controller.runOrder(FreshOrder(orderId, singleJobWorkflow.path)).map(_.value)
       assert(events == Seq(
         OrderAdded(singleJobWorkflow.id),
-        OrderMoved(Position(1)),
+        OrderMoved(Position(1), Some(OrderMoved.NoAdmissionPeriodStart)),
         // Order does not start for skipped order (but for OrderFinished)
         OrderStarted,
         OrderFinished()))
@@ -79,7 +79,9 @@ final class AdmissionTimeSkipJobTest extends OurTestSuite with ControllerAgentFo
         OrderStarted,
         OrderProcessingStarted(subagentId),
         OrderProcessed(Outcome.succeeded),
-        OrderMoved(Position(3)),  // Positions 1 and 2 are skipped!
+        OrderMoved(Position(1)),
+        OrderMoved(Position(2), Some(OrderMoved.NoAdmissionPeriodStart)),
+        OrderMoved(Position(3), Some(OrderMoved.NoAdmissionPeriodStart)),
 
         OrderProcessingStarted(subagentId),
         OrderProcessed(Outcome.succeeded),

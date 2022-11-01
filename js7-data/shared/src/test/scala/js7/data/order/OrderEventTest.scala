@@ -394,6 +394,24 @@ final class OrderEventTest extends OurTestSuite
         "TYPE": "OrderMoved",
         "to": [ 7 ]
       }""")
+
+    check(OrderMoved(Position(7), Some(OrderMoved.SkippedDueToWorkflowPathControl)), json"""
+      {
+        "TYPE": "OrderMoved",
+        "to": [ 7 ],
+        "reason": {
+          "TYPE": "SkippedDueToWorkflowPathControl"
+        }
+      }""")
+
+    check(OrderMoved(Position(7), Some(OrderMoved.NoAdmissionPeriodStart)), json"""
+      {
+        "TYPE": "OrderMoved",
+        "to": [ 7 ],
+        "reason": {
+          "TYPE": "NoAdmissionPeriodStart"
+        }
+      }""")
   }
 
   "OrderDetachable" in {

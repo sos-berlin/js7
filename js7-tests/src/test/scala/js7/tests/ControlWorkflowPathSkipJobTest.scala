@@ -50,7 +50,7 @@ extends OurTestSuite with ControllerAgentForScalaTest
     assert(events == Seq(
       OrderAdded(aWorkflow.id, deleteWhenTerminated = true),
       // skipped
-      OrderMoved(Position(1)),
+      OrderMoved(Position(1), reason = Some(OrderMoved.SkippedDueToWorkflowPathControl)),
       OrderStarted,
       OrderFinished(),
       OrderDeleted))
@@ -70,7 +70,8 @@ extends OurTestSuite with ControllerAgentForScalaTest
       OrderStarted,
       OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.succeeded),
-      // skipped
+      OrderMoved(Position(1) / "then" % 0),
+      OrderMoved(Position(1) / "then" % 1, reason = Some(OrderMoved.SkippedDueToWorkflowPathControl)),
       OrderMoved(Position(2)),
 
       OrderProcessingStarted(subagentId),

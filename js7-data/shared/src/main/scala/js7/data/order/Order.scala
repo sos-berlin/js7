@@ -193,7 +193,7 @@ final case class Order[+S <: Order.State](
             state = Processed,
             historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome)))
 
-      case OrderMoved(to) =>
+      case OrderMoved(to, _) =>
         check((isState[IsFreshOrReady]/*before Try*/ || isState[Processed] || isState[BetweenCycles])
           && (isDetached || isAttached),
           withPosition(to).copy(
