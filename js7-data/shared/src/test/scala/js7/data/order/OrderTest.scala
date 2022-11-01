@@ -15,7 +15,7 @@ import js7.data.board.{BoardPath, Notice, NoticeId, NoticeV2_3}
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.job.{InternalExecutable, JobKey}
 import js7.data.lock.LockPath
-import js7.data.order.Order.{Attached, AttachedState, Attaching, BetweenCycles, Broken, Cancelled, DelayedAfterError, Detaching, ExpectingNotice, ExpectingNotices, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, InapplicableOrderEventProblem, IsFreshOrReady, Processed, Processing, ProcessingKilled, Prompting, Ready, State, WaitingForLock}
+import js7.data.order.Order.{Attached, AttachedState, Attaching, BetweenCycles, Broken, Cancelled, DelayedAfterError, Deleted, Detaching, ExpectingNotice, ExpectingNotices, Failed, FailedInFork, FailedWhileFresh, Finished, Forked, Fresh, InapplicableOrderEventProblem, IsFreshOrReady, Processed, Processing, ProcessingKilled, Prompting, Ready, State, WaitingForLock}
 import js7.data.order.OrderEvent.{LegacyOrderLockEvent, LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderAttachedToAgent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCatched, OrderCaught, OrderCoreEvent, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDeletionMarked, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderFinished, OrderForked, OrderJoined, OrderLocksAcquired, OrderLocksDequeued, OrderLocksQueued, OrderLocksReleased, OrderMoved, OrderNoticeExpected, OrderNoticePosted, OrderNoticePostedV2_3, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected, OrderNoticesRead, OrderOperationCancelled, OrderOrderAdded, OrderOutcomeAdded, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent}
 import js7.data.subagent.SubagentId
 import js7.data.value.{NamedValues, NumberValue, StringValue, Value}
@@ -26,6 +26,7 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tester.CirceJsonTester.testJson
 import org.scalactic.source
+import scala.annotation.nowarn
 import scala.collection.View
 import scala.collection.immutable.ListSet
 import scala.reflect.ClassTag
@@ -318,7 +319,16 @@ final class OrderTest extends OurTestSuite
       }
 
       "Broken" in {
-        testJson[State](Broken(Problem("PROBLEM")),
+        testJson[State](
+          Broken(),
+          json"""{
+            "TYPE": "Broken"
+          }""")
+      }
+
+      "Broken until v2.4" in {
+        testJson[State](
+          Broken(Problem("PROBLEM")): @nowarn("msg=deprecated"),
           json"""{
             "TYPE": "Broken",
             "problem": {
@@ -413,7 +423,7 @@ final class OrderTest extends OurTestSuite
       OrderCycleStarted,
       OrderCycleFinished(None),
 
-      OrderBroken(Problem("Problem")),
+      OrderBroken(),
 
       OrderDetachable,
       OrderDetached)
@@ -465,7 +475,7 @@ final class OrderTest extends OurTestSuite
           case (OrderSuspended      , IsSuspended(true) , _, IsAttached             ) => _.isInstanceOf[Fresh]
           case (_: OrderResumptionMarked, _             , _, _                      ) => _.isInstanceOf[Fresh]
           case (_: OrderResumed     , IsSuspended(true) , _, IsDetached | IsAttached) => _.isInstanceOf[Fresh]
-          case (_: OrderOutcomeAdded  , IsSuspended(false), _, IsDetached | IsAttached) => _.isInstanceOf[Fresh]
+          case (_: OrderOutcomeAdded, _                 , _, _                      ) => _.isInstanceOf[Fresh]
           case (_: OrderBroken      , _                 , _, _                      ) => _.isInstanceOf[Broken]
         })
     }
@@ -502,7 +512,7 @@ final class OrderTest extends OurTestSuite
           case (_: OrderPrompted         , _                 , _            , IsDetached             ) => _.isInstanceOf[Prompting]
           case (_: OrderCyclingPrepared  , IsSuspended(false), _            , IsDetached | IsAttached) => _.isInstanceOf[BetweenCycles]
           case (_: OrderOrderAdded       , _                 , _            , IsDetached             ) => _.isInstanceOf[Ready]
-          case (_: OrderOutcomeAdded       , IsSuspended(false), _            , IsDetached | IsAttached) => _.isInstanceOf[Ready]
+          case (_: OrderOutcomeAdded     , _                 , _            , _                      ) => _.isInstanceOf[Ready]
           case (_: OrderBroken           , _                 , _            , _                      ) => _.isInstanceOf[Broken]
         })
     }
@@ -516,6 +526,7 @@ final class OrderTest extends OurTestSuite
           case (_: OrderLocksAcquired, _, _, IsDetached) => _.isInstanceOf[Ready]
           case (_: OrderLocksDequeued, _, _, IsDetached) => _.isInstanceOf[Ready]
           case (_: OrderCancelled    , _, _, IsDetached) => _.isInstanceOf[Cancelled]
+          case (_: OrderOutcomeAdded , _, _, _         ) => _.isInstanceOf[WaitingForLock]
           case (_: OrderBroken       , _, _, _         ) => _.isInstanceOf[Broken]
         })
     }
@@ -530,9 +541,9 @@ final class OrderTest extends OurTestSuite
         suspendMarkedAllowed[ExpectingNotices] orElse {
           case (_: OrderNoticesRead, IsSuspended(false), _, IsDetached) => _.isInstanceOf[Ready]
           case (_: OrderNoticesConsumptionStarted, IsSuspended(false), _, IsDetached) => _.isInstanceOf[Ready]
-          //case (_: OrderOutcomeAdded , _                 , _, IsDetached | IsAttached) => _.isInstanceOf[Ready]
-          case (_: OrderCancelled  , _                 , _, IsDetached) => _.isInstanceOf[Cancelled]
-          case (_: OrderBroken     , _                 , _, _         ) => _.isInstanceOf[Broken]
+          case (_: OrderCancelled   , _, _, IsDetached) => _.isInstanceOf[Cancelled]
+          case (_: OrderOutcomeAdded, _, _, _         ) => _.isInstanceOf[ExpectingNotices]
+          case (_: OrderBroken      , _, _, _         ) => _.isInstanceOf[Broken]
         })
     }
 
@@ -543,6 +554,7 @@ final class OrderTest extends OurTestSuite
         cancelMarkedAllowed[Processing] orElse
         suspendMarkedAllowed[Processing] orElse {
           case (_: OrderProcessed, IsSuspended(false), _, IsAttached) => _.isInstanceOf[Processed]
+          case (_: OrderOutcomeAdded, _              , _, _         ) => _.isInstanceOf[Processing]
           case (_: OrderBroken   , _                 , _, _         ) => _.isInstanceOf[Broken]
         })
     }
@@ -557,7 +569,7 @@ final class OrderTest extends OurTestSuite
         detachingAllowed[Processed] orElse {
           case (_: OrderMoved           , _                 , _            , IsDetached | IsAttached) => _.isInstanceOf[Ready]
           case (_: OrderProcessingKilled, IsSuspended(false), _            ,              IsAttached) => _.isInstanceOf[ProcessingKilled]
-          case (_: OrderOutcomeAdded      , IsSuspended(false), _            , IsDetached | IsAttached) => _.isInstanceOf[Processed]
+          case (_: OrderOutcomeAdded    , _                 , _            , _                      ) => _.isInstanceOf[Processed]
           case (_: OrderFailed          , IsSuspended(false), _            , IsDetached             ) => _.isInstanceOf[Failed]
           case (_: OrderFailedInFork    , IsSuspended(false), IsChild(true), IsDetached | IsAttached) => _.isInstanceOf[FailedInFork]
           case (_: OrderCatched         , IsSuspended(false), _            , IsDetached | IsAttached) => _.isInstanceOf[Ready]
@@ -577,7 +589,7 @@ final class OrderTest extends OurTestSuite
           case (OrderSuspended, order                     , _, IsAttached)
             if order.isSuspendingWithKill && order.isSuspended => _.isInstanceOf[Ready]
           case (_: OrderFailedInFork, IsSuspended(false), IsChild(true), IsDetached | IsAttached) => _.isInstanceOf[FailedInFork]
-          case (_: OrderOutcomeAdded, IsSuspended(false), _, IsDetached | IsAttached) => _.isInstanceOf[ProcessingKilled]
+          case (_: OrderOutcomeAdded, _                 , _            , _                      ) => _.isInstanceOf[ProcessingKilled]
           case (_: OrderFailed, IsSuspended(false)        , _, IsDetached) => _.isInstanceOf[Failed]
           case (_: OrderBroken, _                         , _, _         ) => _.isInstanceOf[Broken]
         })
@@ -593,6 +605,7 @@ final class OrderTest extends OurTestSuite
           case (_: OrderPromptAnswered, _, _, IsDetached) => _.isInstanceOf[Ready]
           case (OrderCancelled        , _, _, IsDetached) => _.isInstanceOf[Cancelled]  // COMPATIBLE with v2.4
           case (OrderOperationCancelled, _, _, IsDetached) => _.isInstanceOf[Ready]
+          case (_: OrderOutcomeAdded  , _, _, _         ) => _.isInstanceOf[Prompting]
           case (_: OrderBroken        , _, _, _         ) => _.isInstanceOf[Broken]
         })
     }
@@ -609,6 +622,7 @@ final class OrderTest extends OurTestSuite
           case (OrderCycleStarted      , IsSuspended(false), _, IsDetached | IsAttached) => _.isInstanceOf[Ready]
           case (_: OrderMoved          , _                 , _, IsDetached | IsAttached) => _.isInstanceOf[Ready]
           case (OrderCancelled         , _                 , _, IsDetached             ) => _.isInstanceOf[Cancelled]
+          case (_: OrderOutcomeAdded   , _                 , _, _                      ) => _.isInstanceOf[BetweenCycles]
           case (_: OrderBroken         , _                 , _, _                      ) => _.isInstanceOf[Broken]
         })
     }
@@ -623,6 +637,7 @@ final class OrderTest extends OurTestSuite
         cancelMarkedAllowed[FailedWhileFresh] orElse
         suspendMarkedAllowed[FailedWhileFresh] orElse {
           case (OrderCancelled, _, _, IsDetached) => _.isInstanceOf[Cancelled]
+          case (_: OrderOutcomeAdded, _, _, _         ) => _.isInstanceOf[FailedWhileFresh]
           case (_: OrderBroken, _, _, _         ) => _.isInstanceOf[Broken]
         })
     }
@@ -636,6 +651,7 @@ final class OrderTest extends OurTestSuite
         cancelMarkedAllowed[Failed] orElse {
           case (_: OrderResumed, IsSuspended(false), _, IsDetached) => _.isInstanceOf[Ready]
           case (OrderCancelled, _, _, IsDetached) => _.isInstanceOf[Cancelled]
+          case (_: OrderOutcomeAdded, _, _, _) => _.isInstanceOf[Failed]
           case (_: OrderBroken, _, _, _         ) => _.isInstanceOf[Broken]
         })
     }
@@ -648,6 +664,7 @@ final class OrderTest extends OurTestSuite
         cancelMarkedAllowed[FailedInFork] orElse {
           case (_: OrderSuspensionMarked, IsSuspended(_), _, _) => _.isInstanceOf[FailedInFork]
           case (_: OrderResumptionMarked, IsSuspended(_), _, _) => _.isInstanceOf[FailedInFork]
+          case (_: OrderOutcomeAdded    , _             , _, _) => _.isInstanceOf[FailedInFork]
           case (_: OrderBroken          , _             , _, _) => _.isInstanceOf[Broken]
         })
     }
@@ -660,12 +677,13 @@ final class OrderTest extends OurTestSuite
         suspendMarkedAllowed[DelayedAfterError] orElse {
           case (OrderAwoke    , IsSuspended(false), _, IsDetached | IsAttached) => _.isInstanceOf[Order.Ready]
           case (OrderCancelled, _                 , _, IsDetached             ) => _.isInstanceOf[Cancelled]
+          case (_: OrderOutcomeAdded, _           , _, _                      ) => _.isInstanceOf[DelayedAfterError]
           case (_: OrderBroken, _                 , _, _                      ) => _.isInstanceOf[Broken]
         })
     }
 
     "Broken" in {
-      checkAllEvents(Order(orderId, workflowId /: Position(0), Broken(Problem("PROBLEM"))),
+      checkAllEvents(Order(orderId, workflowId /: Position(0), Broken()),
         deletionMarkable[Broken] orElse
         markable[Broken] orElse
         detachingAllowed[Broken] orElse
@@ -673,7 +691,10 @@ final class OrderTest extends OurTestSuite
           case (OrderCancelled          , _, _, IsDetached                           ) => _.isInstanceOf[Cancelled]
           case (_: OrderResumptionMarked, _, _, IsDetached | IsAttached | IsDetaching) => _.isInstanceOf[Broken]
           case (_: OrderResumed         , _, _, IsDetached | IsAttached              ) => _.isInstanceOf[Ready]
+          case (_: OrderOutcomeAdded    , _, _, _                                    ) => _.isInstanceOf[Broken]
           case (_: OrderBroken          , _, _, _                                    ) => _.isInstanceOf[Broken]
+          case (_: OrderFailed          , _, IsSuspended(false), IsDetached ) => _.isInstanceOf[Failed]
+          case (_: OrderFailedInFork    , IsChild(true), IsSuspended(false), IsDetached | IsAttached) => _.isInstanceOf[FailedInFork]
         })
     }
 
@@ -686,6 +707,7 @@ final class OrderTest extends OurTestSuite
         cancelMarkedAllowed[Forked] orElse
         suspendMarkedAllowed[Forked] orElse {
           case (_: OrderJoined, IsSuspended(false), _, IsDetached) => _.isInstanceOf[Processed]
+          case (_: OrderOutcomeAdded, _           , _, _         ) => _.isInstanceOf[Forked]
           case (_: OrderBroken, _                 , _, _         ) => _.isInstanceOf[Broken]
         })
     }
@@ -693,14 +715,16 @@ final class OrderTest extends OurTestSuite
     "Cancelled" in {
       checkAllEvents(Order(orderId, workflowId /: Position(0), Cancelled),
         deletionMarkable[Cancelled] orElse {
-          case (OrderDeleted, _, IsChild(false), IsDetached) => _.isInstanceOf[Order.Deleted]
+          case (_: OrderOutcomeAdded, _, _, _) => _.isInstanceOf[Cancelled]
+          case (OrderDeleted, _, IsChild(false), IsDetached) => _.isInstanceOf[Deleted]
         })
     }
 
     "Finished" in {
       checkAllEvents(Order(orderId, workflowId /: Position(0), Finished),
         deletionMarkable[Finished] orElse {
-          case (OrderDeleted, _, IsChild(false), IsDetached) => _.isInstanceOf[Order.Deleted]
+          case (_: OrderOutcomeAdded, _, _, _) => _.isInstanceOf[Finished]
+          case (OrderDeleted, _, IsChild(false), IsDetached) => _.isInstanceOf[Deleted]
         })
     }
 

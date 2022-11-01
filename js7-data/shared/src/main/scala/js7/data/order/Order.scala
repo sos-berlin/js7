@@ -125,12 +125,11 @@ final case class Order[+S <: Order.State](
           copy(state = ProcessingKilled))
 
       case OrderOutcomeAdded(outcome) =>
-        check(isOrderOutcomeAddedApplicable,
-          copy(
-            historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome)))
+        Right(copy(
+          historicOutcomes = historicOutcomes :+ HistoricOutcome(position, outcome)))
 
       case OrderFailed(movedTo, outcome_) =>
-        check(isOrderFailedApplicable,
+        check(isFailable && isDetached,
           copy(
             state = if (isState[Fresh]) FailedWhileFresh else Failed,
             workflowPosition = workflowPosition.copy(position = movedTo),
@@ -138,7 +137,7 @@ final case class Order[+S <: Order.State](
 
       case OrderFailedInFork(movedTo, outcome) =>
         check(parent.nonEmpty
-          && isOrderOutcomeAddedApplicable
+          && isFailable
           && !isState[Fresh],
           copy(
             state = FailedInFork,
@@ -218,9 +217,12 @@ final case class Order[+S <: Order.State](
         check(isState[IsTerminated] && isDetached && parent.isEmpty,
           copy(state = Deleted))
 
-      case OrderBroken(message) =>
+      case OrderBroken(maybeProblem) =>
         check(!isState[IsTerminated],
-          copy(state = Broken(message)))
+          copy(
+            state = Broken(maybeProblem),
+            historicOutcomes = maybeProblem.fold(historicOutcomes)(problem =>
+              historicOutcomes :+ HistoricOutcome(position, Outcome.Disrupted(problem)))))
 
       case OrderAttachable(agentPath) =>
         check((isState[Fresh] || isState[Ready] || isState[Forked]) && isDetached,
@@ -497,7 +499,7 @@ final case class Order[+S <: Order.State](
   }
 
   def shouldFail: Boolean =
-    isFailed && isOrderOutcomeAddedApplicable
+    isFailed && isFailable
 
   private def isFailed: Boolean =
     lastOutcome match {
@@ -513,16 +515,14 @@ final case class Order[+S <: Order.State](
   def lastOutcome: Outcome =
     historicOutcomes.lastOption.map(_.outcome) getOrElse Outcome.succeeded
 
-  def isOrderFailedApplicable =
-    isDetached && isOrderOutcomeAddedApplicable
-
-  def isOrderOutcomeAddedApplicable =
+  def isFailable =
     !isSuspended &&
       (isDetached || isAttached) &&
       (state match {
         case _: IsFreshOrReady => true
         case _: Processed => true
         case _: ProcessingKilled => true
+        case _: Broken => true
         case _ => false
       })
 
@@ -808,7 +808,16 @@ object Order
   type FailedWhileFresh = FailedWhileFresh.type
   case object FailedWhileFresh extends State
 
-  final case class Broken(problem: Problem) extends IsStarted/*!!!*/
+  final case class Broken(problem: Option[Problem]) extends IsStarted/*!!!*/
+  object Broken {
+    // COMPATIBLE with v2.4
+    @deprecated("outcome is deprecated", "v2.5")
+    def apply(problem: Problem): Broken =
+      Broken(Some(problem))
+
+    def apply(): Broken =
+      Broken(None)
+  }
 
   final case class Processing(subagentId: Option[SubagentId]) extends IsStarted {
     override def toString =

@@ -2,12 +2,14 @@ package js7.data.controller
 
 import cats.syntax.apply.*
 import cats.syntax.traverse.*
+import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.Problems.AgentResetProblem
 import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.AgentResetStarted
+import js7.data.controller.ControllerStateExecutor.*
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, KeyedEvent}
 import js7.data.execution.workflow.OrderEventSource
@@ -510,17 +512,18 @@ final case class ControllerStateExecutor private(
     var controllerState = this.controllerState
     val queue = mutable.Queue.empty[OrderId] ++= orderIds
     val _keyedEvents = Vector.newBuilder[KeyedEvent[OrderCoreEvent]]
-    @tailrec def loop(): Unit = {
+
+    @tailrec def loop(): Unit =
       queue.removeHeadOption() match {
         case Some(orderId) =>
           if (controllerState.idToOrder contains orderId) {
             val keyedEvents = new OrderEventSource(controllerState).nextEvents(orderId)
-            for (case KeyedEvent(orderId, OrderBroken(problem)) <- keyedEvents) {
-              scribe.error(s"$orderId is broken: $problem") // ???
+            for (case KeyedEvent(orderId, OrderBroken(maybeProblem)) <- keyedEvents) {
+              logger.error(s"$orderId is broken: ${maybeProblem getOrElse "None"}") // ???
             }
             controllerState.applyEvents(keyedEvents) match {
               case Left(problem) =>
-                scribe.error(s"$orderId: $problem")  // Should not happen
+                logger.error(s"$orderId: $problem")  // Should not happen
               case Right(state) =>
                 controllerState = state
                 _keyedEvents ++= keyedEvents
@@ -532,7 +535,7 @@ final case class ControllerStateExecutor private(
           loop()
         case None =>
       }
-    }
+
     loop()
     new ControllerStateExecutor(_keyedEvents.result(), controllerState)
   }
@@ -556,6 +559,8 @@ final case class ControllerStateExecutor private(
 
 object ControllerStateExecutor
 {
+  private val logger = Logger[this.type]
+
   def apply(controllerState: ControllerState)(implicit service: InstructionExecutorService)
   : ControllerStateExecutor =
     new ControllerStateExecutor(Nil, controllerState)(service)

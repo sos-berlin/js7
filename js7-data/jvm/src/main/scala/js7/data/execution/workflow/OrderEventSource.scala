@@ -104,25 +104,25 @@ final class OrderEventSource(state: StateView)
     problem.toLeft(keyedEvents)
   }
 
-  private def invalidToEvent(order: Order[Order.State], checkedEvents: Checked[Seq[KeyedEvent[OrderActorEvent]]])
+  private def invalidToEvent(
+    order: Order[Order.State],
+    checkedEvents: Checked[Seq[KeyedEvent[OrderActorEvent]]])
   : Seq[KeyedEvent[OrderActorEvent]] =
     checkedEvents match {
       case Left(problem) =>
         val events =
-          if (order.isOrderFailedApplicable)
+          if (order.isFailable)
             fail(order, Some(Outcome.Disrupted(problem)), uncatchable = true) match {
               case Left(prblm) =>
                 logger.debug(s"WARN ${order.id}: $prblm")
-                OrderBroken(problem) :: Nil
+                OrderOutcomeAdded(Outcome.Disrupted(problem)) ::
+                  OrderBroken() ::
+                  (order.isAttached && order.isInDetachableState).thenList(
+                    OrderDetachable)
               case Right(events) => events
             }
-          else if (order.isOrderOutcomeAddedApplicable &&
-            order.isAttached &&
-            order.isInDetachableState
-            && order.copy(attachedState = None).isOrderFailedApplicable)
-            OrderOutcomeAdded(Outcome.Disrupted(problem)) :: OrderDetachable :: Nil
           else
-            OrderBroken(problem) :: Nil
+            OrderOutcomeAdded(Outcome.Disrupted(problem)) :: OrderBroken() :: Nil
         events.map(order.id <-: _)
 
       case Right(o) => o

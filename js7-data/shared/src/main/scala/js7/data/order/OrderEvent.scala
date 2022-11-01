@@ -404,8 +404,17 @@ object OrderEvent
   type OrderAwoke = OrderAwoke.type
   case object OrderAwoke extends OrderActorEvent
 
-  final case class OrderBroken(problem: Problem) extends OrderActorEvent {
+  final case class OrderBroken(problem: Option[Problem]) extends OrderActorEvent {
     override def toString = s"💥 OrderBroken($problem)"
+  }
+  object OrderBroken {
+    // COMPATIBLE with v2.4
+    @deprecated("outcome is deprecated", "v2.5")
+    private[order] def apply(problem: Problem): OrderBroken =
+      OrderBroken(Some(problem))
+
+    def apply(): OrderBroken =
+      OrderBroken(None)
   }
 
   /**

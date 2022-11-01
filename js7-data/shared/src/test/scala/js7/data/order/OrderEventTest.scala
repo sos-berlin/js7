@@ -798,6 +798,23 @@ final class OrderEventTest extends OurTestSuite
       }""")
   }
 
+  "OrderBroken" in {
+    check(OrderBroken(), json"""
+      {
+        "TYPE": "OrderBroken"
+      }""")
+
+    check(
+      OrderBroken(Problem("PROBLEM")): @nowarn("msg=deprecated"),
+      json"""
+      {
+        "TYPE": "OrderBroken",
+        "problem": {
+          "message": "PROBLEM"
+        }
+      }""")
+  }
+
   private def check(event: OrderEvent, json: => Json)(implicit pos: source.Position) =
     testJson(event, json)
 
