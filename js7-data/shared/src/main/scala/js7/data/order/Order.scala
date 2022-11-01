@@ -150,7 +150,9 @@ final case class Order[+S <: Order.State](
         inapplicable  // Intermediate event, internal only
 
       case OrderCatched(movedTo, outcome) =>
-        check((isState[Ready] || isState[Processed]) && !isSuspended && (isAttached | isDetached),
+        check((isState[Ready] || isState[Processed] || isState[ProcessingKilled]) &&
+          !isSuspended &&
+          (isAttached | isDetached),
           copy(
             state = Ready,
             workflowPosition = workflowPosition.copy(position = movedTo),
@@ -159,7 +161,9 @@ final case class Order[+S <: Order.State](
               outcome.fold(historicOutcomes)(o => historicOutcomes :+ HistoricOutcome(position, o))))
 
       case OrderCaught(movedTo, outcome) =>
-        check((isState[Ready] || isState[Processed]) && !isSuspended && (isAttached | isDetached), {
+        check((isState[Ready] || isState[Processed] || isState[ProcessingKilled]) &&
+          !isSuspended &&
+          (isAttached | isDetached), {
           var h = outcome.fold(historicOutcomes)(o => historicOutcomes :+ HistoricOutcome(position, o))
           if (!h.lastOption.exists(_.outcome.isSucceeded))
             h :+= HistoricOutcome(movedTo, Outcome.succeeded)

@@ -16,11 +16,11 @@ import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentShutDown}
 import js7.data.event.{Event, KeyedEvent}
 import js7.data.item.VersionId
 import js7.data.job.ShellScriptExecutable
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
-import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCaught, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
+import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.NumberValue
-import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
+import js7.data.workflow.instructions.{Execute, TryInstruction}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.ShutdownAgentWithProcessTest.*
@@ -39,52 +39,94 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite with ControllerAge
     """
 
   protected val agentPaths = Seq(agentPath)
-  protected val items = Seq(workflow)
+  protected val items = Seq(simpleWorkflow, catchingWorkflow)
 
   private implicit def actorSystem = controller.actorSystem
 
-  "JS-2025 AgentCommand.Shutdown with SIGKILL job process, then recovery" in {
+  override def beforeAll() = {
+    super.beforeAll()
     eventWatch.await[AgentCoupled]()
-    val agentCoupledEventId = eventWatch.lastAddedEventId
-    val orderId = OrderId("🔹")
-    controller.addOrderBlocking(FreshOrder(OrderId("🔹"), workflow.path))
-    val eventId = eventWatch.await[OrderProcessingStarted](_.key == orderId).head.eventId
-    eventWatch.await[OrderStdoutWritten](_.key == orderId, after = eventId)
+  }
+
+  "JS-2025 AgentCommand.Shutdown with SIGKILL job process, then recovery" in {
+    val addOrderEventId = eventWatch.lastAddedEventId
+
+    val simpleOrderId = OrderId("🔹")
+    controller.addOrderBlocking(FreshOrder(OrderId("🔹"), simpleWorkflow.path))
+    eventWatch.await[OrderProcessingStarted](_.key == simpleOrderId).head.eventId
+    eventWatch.await[OrderStdoutWritten](_.key == simpleOrderId)
+
+    val caughtOrderId = OrderId("🔸")
+    controller.addOrderBlocking(FreshOrder(OrderId("🔸"), catchingWorkflow.path))
+    eventWatch.await[OrderProcessingStarted](_.key == caughtOrderId).head.eventId
+    eventWatch.await[OrderStdoutWritten](_.key == caughtOrderId)
 
     val agentTree = directoryProvider.agents.head
-    val agentClient = AgentClient(agentUri = agent.localUri, agentTree.userAndPassword)
-    agentClient.login() await 99.s
-
-    agentClient
-      .commandExecute(AgentCommand.ShutDown(processSignal = Some(SIGKILL)))
-      .await(99.s)
-    agent.terminated.await(99.s)
+    locally {
+      val agentClient = AgentClient(agentUri = agent.localUri, agentTree.userAndPassword)
+      agentClient.login() await 99.s
+      agentClient
+        .commandExecute(AgentCommand.ShutDown(processSignal = Some(SIGKILL)))
+        .await(99.s)
+      agent.terminated.await(99.s)
+    }
 
     val restartedAgent = RunningAgent.startForTest(agentTree.agentConfiguration)
       .await(10.s)
-    eventWatch.await[OrderFailed](_.key == orderId)
+    eventWatch.await[OrderFailed](_.key == simpleOrderId)
 
-    assert(eventWatch.keyedEvents[Event](after = agentCoupledEventId)
+    assert(eventWatch.keyedEvents[Event](after = addOrderEventId)
       .filter {
-        case KeyedEvent(_, _: OrderEvent) => true
+        case KeyedEvent(`simpleOrderId`, _) => true
         case KeyedEvent(_, _: AgentShutDown) => true
         case KeyedEvent(_, _: AgentCoupled) => true
         case _ => false
       } == Seq(
-      orderId <-: OrderAdded(workflow.id),
-      orderId <-: OrderAttachable(agentPath),
-      orderId <-: OrderAttached(agentPath),
-      orderId <-: OrderStarted,
-      orderId <-: OrderProcessingStarted(subagentId),
-      orderId <-: OrderStdoutWritten("TestJob\n"),
-      orderId <-: OrderProcessed(Outcome.Killed(Outcome.Failed(namedValues = Map(
+      simpleOrderId <-: OrderAdded(simpleWorkflow.id),
+      simpleOrderId <-: OrderAttachable(agentPath),
+      simpleOrderId <-: OrderAttached(agentPath),
+
+      simpleOrderId <-: OrderStarted,
+      simpleOrderId <-: OrderProcessingStarted(subagentId),
+      simpleOrderId <-: OrderStdoutWritten("TestJob\n"),
+      simpleOrderId <-: OrderProcessed(Outcome.Killed(Outcome.Failed(namedValues = Map(
         "returnCode" -> NumberValue(137))))),
       agentPath <-: AgentShutDown,
+
       agentPath <-: AgentCoupled,
-      orderId <-: OrderProcessingKilled,
-      orderId <-: OrderDetachable,
-      orderId <-: OrderDetached,
-      orderId <-: OrderFailed(Position(0))))
+      simpleOrderId <-: OrderProcessingKilled,
+
+      simpleOrderId <-: OrderDetachable,
+      simpleOrderId <-: OrderDetached,
+      simpleOrderId <-: OrderFailed(Position(0))))
+
+    assert(eventWatch.keyedEvents[Event](after = addOrderEventId)
+      .filter {
+        case KeyedEvent(`caughtOrderId`, _) => true
+        case KeyedEvent(_, _: AgentShutDown) => true
+        case KeyedEvent(_, _: AgentCoupled) => true
+        case _ => false
+      } == Seq(
+      caughtOrderId <-: OrderAdded(catchingWorkflow.id),
+      caughtOrderId <-: OrderMoved(Position(0) / "try+0" % 0),
+      caughtOrderId <-: OrderAttachable(agentPath),
+      caughtOrderId <-: OrderAttached(agentPath),
+
+      caughtOrderId <-: OrderStarted,
+      caughtOrderId <-: OrderProcessingStarted(subagentId),
+      caughtOrderId <-: OrderStdoutWritten("TestJob\n"),
+      caughtOrderId <-: OrderProcessed(Outcome.Killed(Outcome.Failed(namedValues = Map(
+        "returnCode" -> NumberValue(137))))),
+      agentPath <-: AgentShutDown,
+
+      agentPath <-: AgentCoupled,
+      caughtOrderId <-: OrderProcessingKilled,
+      caughtOrderId <-: OrderCaught(Position(0) / "catch+0" % 0),
+      caughtOrderId <-: OrderMoved(Position(1)),
+
+      caughtOrderId <-: OrderDetachable,
+      caughtOrderId <-: OrderDetached,
+      caughtOrderId <-: OrderFinished()))
 
     restartedAgent.terminate().await(99.s)
   }
@@ -99,12 +141,24 @@ object ShutdownAgentWithProcessTest
   final class TestJob extends SemaphoreJob(TestJob)
   object TestJob extends SemaphoreJob.Companion[TestJob]
 
-  private val workflow = Workflow.of(
-    WorkflowPath("SINGLE") ~ versionId,
+  private val simpleWorkflow = Workflow.of(
+    WorkflowPath("SIMPLE") ~ versionId,
     Execute(WorkflowJob.apply(
       agentPath,
       ShellScriptExecutable(
         (isWindows ?? "@echo off\n") +
           "echo TestJob\n" +
           "sleep 99\n"))))
+
+  private val catchingWorkflow = Workflow.of(
+    WorkflowPath("CATCHING") ~ versionId,
+    TryInstruction(
+      Workflow.of(
+        Execute(WorkflowJob.apply(
+          agentPath,
+          ShellScriptExecutable(
+            (isWindows ?? "@echo off\n") +
+              "echo TestJob\n" +
+              "sleep 99\n")))),
+      Workflow.empty))
 }
