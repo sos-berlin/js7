@@ -1,30 +1,22 @@
 package js7.core.license
 
-import java.util.ServiceLoader
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
+import js7.base.system.ServiceProviders.findServices
 import js7.base.utils.ScalaUtils.RightUnit
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.license.{LicenseCheck, LicenseCheckContext}
-import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
 
 final class LicenseChecker(licenseCheckContext: LicenseCheckContext)
 {
   private val logger = Logger[this.type]
 
-  private lazy val licenseChecks: Seq[LicenseCheck] = {
-    val serviceLoader = ServiceLoader.load(
-      classOf[LicenseCheck],
-      classOf[LicenseChecker].getClassLoader/*required for testing with sbt, sometimes*/)
-    val licenseChecks = serviceLoader.asScala.toSeq
-    if (licenseChecks.isEmpty) logger.debug("No LicenseCheck implementation provided")
-    for (o <- licenseChecks) {
-      logger.debug("ServiceLoader[LicenseCheck] => " + o.getClass.getName)
-      o.initialize(licenseCheckContext)
+  private lazy val licenseChecks: Seq[LicenseCheck] =
+    findServices[LicenseCheck] { (logLine, maybeService) =>
+      logger.debug(logLine)
+      for (service <- maybeService) service.initialize(licenseCheckContext)
     }
-    licenseChecks
-  }
 
   def checkLicense(productName: String): Checked[Unit] =
     try

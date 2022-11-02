@@ -13,4 +13,6 @@ final class FakeLicenseCheck extends LicenseCheck {
     if (!isDirectory(context.configDirectory)) throw new AssertionError // will never happen
     true
   }
+
+  override def toString = "FakeLicenseCheck"
 }

@@ -8,4 +8,6 @@ final class PgpService extends SignatureService
   def verifierCompanion = PgpSignatureVerifier
 
   def maybeSignerCompanion = Some(PgpSigner)
+
+  override def toString = verifierCompanion.typeName
 }

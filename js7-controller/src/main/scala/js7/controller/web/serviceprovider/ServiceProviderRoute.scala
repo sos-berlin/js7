@@ -2,15 +2,14 @@ package js7.controller.web.serviceprovider
 
 import akka.http.scaladsl.server.Route
 import com.google.inject.Injector
-import java.util.ServiceLoader
 import js7.base.log.Logger
+import js7.base.system.ServiceProviders.findServices
 import js7.base.utils.Collections.implicits.*
 import js7.base.utils.Lazy
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkahttp.StandardDirectives.combineRoutes
 import js7.controller.web.serviceprovider.ServiceProviderRoute.*
-import scala.jdk.CollectionConverters.*
 
 /**
   * @author Joacim Zschimmer
@@ -20,20 +19,11 @@ private[web] trait ServiceProviderRoute
   protected def injector: Injector
   protected def routeServiceContext: RouteServiceContext
 
-  private lazy val services: Seq[RouteService] = {
-    val serviceLoader = ServiceLoader.load(classOf[RouteService])
-
-    val iterator = serviceLoader.iterator.asScala
-    if (iterator.isEmpty)
-      logger.debug("No RouteService")
-    else
-      for (service <- iterator/*loads services lazily*/) {
-        logger.debug(s"Found service provider ${service.getClass.scalaName}")
-        injector.injectMembers(service)
-      }
-
-    serviceLoader.asScala.toVector
-  }
+  private lazy val services: Seq[RouteService] =
+    findServices[RouteService] { (logLine, maybeService) =>
+      logger.debug(logLine)
+      for (service <- maybeService) injector.injectMembers(service)
+    }
 
   private val lazyServiceProviderRoute = Lazy[Route] {
     val servicePathRoutes: Seq[(RouteService, String, Route)] =
