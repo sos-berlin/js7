@@ -12,8 +12,8 @@ import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.data.agent.AgentPath
-import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentShutDown}
-import js7.data.event.{Event, KeyedEvent}
+import js7.data.agent.AgentRefStateEvent.{AgentReady, AgentShutDown}
+import js7.data.event.{AnyKeyedEvent, Event, KeyedEvent}
 import js7.data.item.VersionId
 import js7.data.job.ShellScriptExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCaught, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
@@ -45,7 +45,7 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite with ControllerAge
 
   override def beforeAll() = {
     super.beforeAll()
-    eventWatch.await[AgentCoupled]()
+    eventWatch.await[AgentReady]()
   }
 
   "JS-2025 AgentCommand.Shutdown with SIGKILL job process, then recovery" in {
@@ -76,12 +76,7 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite with ControllerAge
     eventWatch.await[OrderFailed](_.key == simpleOrderId)
 
     assert(eventWatch.keyedEvents[Event](after = addOrderEventId)
-      .filter {
-        case KeyedEvent(`simpleOrderId`, _) => true
-        case KeyedEvent(_, _: AgentShutDown) => true
-        case KeyedEvent(_, _: AgentCoupled) => true
-        case _ => false
-      } == Seq(
+      .flatMap(manipulateEvent(_, simpleOrderId)) == Seq(
       simpleOrderId <-: OrderAdded(simpleWorkflow.id),
       simpleOrderId <-: OrderAttachable(agentPath),
       simpleOrderId <-: OrderAttached(agentPath),
@@ -93,7 +88,7 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite with ControllerAge
         "returnCode" -> NumberValue(137))))),
       agentPath <-: AgentShutDown,
 
-      agentPath <-: AgentCoupled,
+      agentPath <-: AgentReady("UTC", None),
       simpleOrderId <-: OrderProcessingKilled,
 
       simpleOrderId <-: OrderDetachable,
@@ -101,12 +96,7 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite with ControllerAge
       simpleOrderId <-: OrderFailed(Position(0))))
 
     assert(eventWatch.keyedEvents[Event](after = addOrderEventId)
-      .filter {
-        case KeyedEvent(`caughtOrderId`, _) => true
-        case KeyedEvent(_, _: AgentShutDown) => true
-        case KeyedEvent(_, _: AgentCoupled) => true
-        case _ => false
-      } == Seq(
+      .flatMap(manipulateEvent(_, caughtOrderId)) == Seq(
       caughtOrderId <-: OrderAdded(catchingWorkflow.id),
       caughtOrderId <-: OrderMoved(Position(0) / "try+0" % 0),
       caughtOrderId <-: OrderAttachable(agentPath),
@@ -119,7 +109,7 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite with ControllerAge
         "returnCode" -> NumberValue(137))))),
       agentPath <-: AgentShutDown,
 
-      agentPath <-: AgentCoupled,
+      agentPath <-: AgentReady("UTC", None),
       caughtOrderId <-: OrderProcessingKilled,
       caughtOrderId <-: OrderCaught(Position(0) / "catch+0" % 0),
       caughtOrderId <-: OrderMoved(Position(1)),
@@ -129,6 +119,15 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite with ControllerAge
       caughtOrderId <-: OrderFinished()))
 
     restartedAgent.terminate().await(99.s)
+  }
+
+  private def manipulateEvent(keyedEvent: AnyKeyedEvent, orderId: OrderId): Option[AnyKeyedEvent] =
+    keyedEvent match {
+    case o @ KeyedEvent(`orderId`, _) => Some(o)
+    case o @ KeyedEvent(_, _: AgentShutDown) => Some(o)
+    case KeyedEvent(agentPath: AgentPath, _: AgentReady) =>
+      Some(agentPath <-: AgentReady("UTC", None))
+    case _ => None
   }
 }
 
