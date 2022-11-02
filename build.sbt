@@ -211,6 +211,7 @@ lazy val js7 = (project in file("."))
     `js7-tests`,
     `js7-license`,
     `js7-license-fake`,
+    `js7-service-pgp`,
     `js7-build-info`)
   .settings(publish / skip := true)
 
@@ -399,7 +400,6 @@ lazy val `js7-common` = project
     import Dependencies._
     libraryDependencies ++=
       typesafeConfig ++
-      bouncyCastle ++
       akkaHttp ++
       akkaActor ++
       akkaSlf4j ++
@@ -515,7 +515,8 @@ lazy val `js7-controller-client` = crossProject(JSPlatform, JVMPlatform)
 
 lazy val `js7-core` = project
   .dependsOn(`js7-journal`, `js7-common`, `js7-license`,
-    `js7-base`.jvm % "test->test", `js7-tester`.jvm % "test")
+    `js7-base`.jvm % "test->test", `js7-tester`.jvm % "test",
+    `js7-service-pgp` % "test")
   .settings(commonSettings)
   .settings {
     import Dependencies._
@@ -601,7 +602,8 @@ lazy val `js7-agent` = project
   .dependsOn(
     `js7-subagent`,
     `js7-agent-data`, `js7-launcher`, `js7-core`, `js7-common`, `js7-data`.jvm,
-    `js7-base`.jvm % "test->test", `js7-agent-client` % "test", `js7-tester`.jvm % "test")
+    `js7-base`.jvm % "test->test", `js7-agent-client` % "test", `js7-tester`.jvm % "test",
+    `js7-service-pgp` % "test")
   .settings(commonSettings)
   .settings {
     import Dependencies._
@@ -675,6 +677,17 @@ lazy val `js7-license-fake` = project
   .dependsOn(`js7-license`)
   .settings(commonSettings)
 
+lazy val `js7-service-pgp` = project
+  .dependsOn(
+    `js7-base`.jvm,
+    `js7-base`.jvm % "test->test",
+    `js7-tester`.jvm % "test")
+  .settings(commonSettings)
+  .settings {
+    import Dependencies._
+    libraryDependencies += bouncyCastle
+  }
+
 lazy val `js7-tests` = project
   .dependsOn(`js7-controller`, `js7-agent`, `js7-proxy`.jvm, `js7-agent-client`,
     `js7-core` % "test->test",
@@ -686,7 +699,8 @@ lazy val `js7-tests` = project
     `js7-docker` % "test",
     `js7-launcher-for-java` % "test->test",
     `js7-launcher-for-windows` % "test->test",
-    `js7-license-fake`)
+    `js7-license-fake`,
+    `js7-service-pgp`)
   .settings(
     commonSettings,
     publish / skip := true,

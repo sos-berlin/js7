@@ -1,4 +1,4 @@
-package js7.common.crypt.pgp
+package js7.service.pgp
 
 import cats.implicits.toBifunctorOps
 import cats.syntax.show.*
@@ -12,7 +12,7 @@ import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.IntelliJUtils.intelliJuseImport
-import js7.common.crypt.pgp.PgpCommons.*
+import js7.service.pgp.PgpCommons.*
 import org.bouncycastle.openpgp.jcajce.JcaPGPObjectFactory
 import org.bouncycastle.openpgp.operator.jcajce.JcaPGPContentVerifierBuilderProvider
 import org.bouncycastle.openpgp.{PGPPublicKey, PGPPublicKeyRingCollection, PGPSignature, PGPSignatureList, PGPUtil}
@@ -25,7 +25,7 @@ import scala.jdk.CollectionConverters.*
 final class PgpSignatureVerifier(publicKeyRingCollection: PGPPublicKeyRingCollection, val publicKeyOrigin: String)
 extends SignatureVerifier
 {
-  import js7.common.crypt.pgp.PgpSignatureVerifier.*
+  import PgpSignatureVerifier.*
 
   protected type MySignature = PgpSignature
   def companion = PgpSignatureVerifier

@@ -8,12 +8,12 @@ import js7.base.crypt.{Signed, SignedString, SignerId}
 import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
-import js7.common.crypt.pgp.PgpCommons.RichPGPPublicKey
-import js7.common.crypt.pgp.{PgpKeyGenerator, PgpSignatureVerifier, PgpSigner}
 import js7.core.item.SignableItemVerifierTest.*
 import js7.data.crypt.SignedItemVerifier
 import js7.data.item.{ItemSigner, VersionedItem}
 import js7.data.workflow.{Workflow, WorkflowParser, WorkflowPath}
+import js7.service.pgp.PgpCommons.RichPGPPublicKey
+import js7.service.pgp.{PgpKeyGenerator, PgpSignatureVerifier, PgpSigner}
 
 /**
   * @author Joacim Zschimmer

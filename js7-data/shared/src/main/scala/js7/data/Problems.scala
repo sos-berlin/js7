@@ -100,10 +100,6 @@ object Problems
       "orderId" -> orderId.string)
   }
 
-  final case class UnknownSignatureTypeProblem(typeName: String) extends Problem.Coded {
-    def arguments = Map("typeName" -> typeName)
-  }
-
   case object ClusterNodeIsNotReadyProblem extends Problem.ArgumentlessCoded {
     override val httpStatusCode = 503  // ServiceUnavailable
   }

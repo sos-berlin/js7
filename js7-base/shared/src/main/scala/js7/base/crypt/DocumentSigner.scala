@@ -3,6 +3,7 @@ package js7.base.crypt
 import js7.base.data.ByteArray
 import js7.base.generic.SecretString
 import js7.base.problem.Checked
+import js7.base.utils.ScalaUtils.syntax.*
 
 trait DocumentSigner
 {
@@ -29,5 +30,8 @@ object DocumentSigner
     def typeName: String
 
     def checked(privateKey: ByteArray, password: SecretString): Checked[MyMessageSigner]
+
+    override def toString =
+      s"""${getClass.simpleScalaName}("$typeName")"""
   }
 }

@@ -2,6 +2,7 @@ package js7.base.crypt
 
 import js7.base.data.ByteArray
 import js7.base.problem.Checked
+import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import org.jetbrains.annotations.TestOnly
 
 /**
@@ -38,7 +39,7 @@ object SignatureVerifier
   trait Companion {
     self =>
 
-    protected type MySignature <: Signature   //= MySignatureVerifier#MySignature
+    protected type MySignature <: Signature   // = MySignatureVerifier#MySignature
     protected type MySignatureVerifier <: SignatureVerifier { type MySignature = self.MySignature }
 
     def typeName: String
@@ -47,8 +48,12 @@ object SignatureVerifier
 
     def recommendedKeyDirectoryName: String
 
-    def checked(publicKeys: Seq[ByteArray], origin: String = "(unknown source)"): Checked[MySignatureVerifier]
+    def checked(publicKeys: Seq[ByteArray], origin: String = "(unknown source)")
+    : Checked[MySignatureVerifier]
 
     def genericSignatureToSignature(signature: GenericSignature): Checked[MySignature]
+
+    override def toString =
+      s"""${getClass.simpleScalaName}("$typeName")"""
   }
 }

@@ -1,4 +1,4 @@
-package js7.common.crypt.pgp
+package js7.service.pgp
 
 import cats.Show
 import cats.effect.{Resource, SyncIO}
@@ -139,7 +139,7 @@ object PgpCommons
     try PGPUtil.getSymmetricCipherName(n)
     catch { case NonFatal(_) => s"cipher-$n" }
 
-  private[crypt] def registerBouncyCastle() = ()  // Dummy to initialize this object
+  private[pgp] def registerBouncyCastle() = ()  // Dummy to initialize this object
 
   private def readMessage(message: Resource[SyncIO, InputStream], update: (Array[Byte], Int) => Unit): Unit =
     message.useSync { in =>

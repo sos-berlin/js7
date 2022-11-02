@@ -1,4 +1,4 @@
-package js7.common.crypt.pgp
+package js7.service.pgp
 
 import java.math.BigInteger
 import java.security.SecureRandom

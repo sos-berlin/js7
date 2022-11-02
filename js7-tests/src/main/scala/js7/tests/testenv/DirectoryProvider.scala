@@ -31,7 +31,6 @@ import js7.base.utils.HasCloser
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.common.akkahttp.web.data.WebServerPort
-import js7.common.crypt.pgp.PgpSigner
 import js7.common.utils.Exceptions.repeatUntilNoException
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.RunningController
@@ -44,6 +43,7 @@ import js7.data.item.{InventoryItem, ItemOperation, ItemSigner, SignableItem, Si
 import js7.data.job.RelativePathExecutable
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.proxy.ControllerApi
+import js7.service.pgp.PgpSigner
 import js7.subagent.BareSubagent
 import js7.subagent.configuration.SubagentConf
 import js7.tests.testenv.DirectoryProvider.*

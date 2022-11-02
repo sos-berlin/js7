@@ -1,4 +1,4 @@
-package js7.common.crypt.generic
+package js7.base.crypt.generic
 
 import cats.Applicative
 import cats.instances.either.*
@@ -7,6 +7,7 @@ import cats.syntax.traverse.*
 import com.typesafe.config.Config
 import java.nio.file.Files.exists
 import java.nio.file.{Files, Paths}
+import js7.base.Problems.UnknownSignatureTypeProblem
 import js7.base.crypt.{GenericSignature, SignatureVerifier, SignerId}
 import js7.base.data.ByteArray
 import js7.base.io.file.FileUtils.syntax.RichPath
@@ -16,6 +17,7 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Collections.*
 import js7.base.utils.JavaCollections.syntax.*
 import js7.base.utils.ScalaUtils.checkedCast
+import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import scala.jdk.CollectionConverters.*
 
 /** A `SignatureVerifier` that verifies different types of signatures.
@@ -55,20 +57,25 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion
 
   def typeName = "(generic)"
 
-  def filenameExtension = throw new NotImplementedError
+  def filenameExtension =
+    throw new NotImplementedError
 
-  def recommendedKeyDirectoryName = throw new NotImplementedError("GenericSignatureVerifier recommendedKeyDirectoryName")
+  def recommendedKeyDirectoryName =
+    throw new NotImplementedError("GenericSignatureVerifier recommendedKeyDirectoryName")
 
   implicitly[Applicative[Checked]]
 
-  def apply(config: Config): Checked[GenericSignatureVerifier] =
+  def checked(config: Config)
+  : Checked[GenericSignatureVerifier] =
     config.getObject(configPath).asScala.toMap  // All Config key-values
       .map { case (typeName, v) =>
         typeName ->
           checkedCast[String](v.unwrapped, ConfigStringExpectedProblem(s"$configPath.$typeName"))
             .map(Paths.get(_))
-            .flatMap(directory =>
-              SignatureVerifiers.typeToSignatureVerifierCompanion(typeName).flatMap(companion =>
+            .flatMap(directory => SignatureServices
+              .nameToSignatureVerifierCompanion
+              .rightOr(typeName, UnknownSignatureTypeProblem(typeName))
+              .flatMap(companion =>
                 if (!exists(directory))
                   Left(Problem.pure(s"Signature key directory '$directory' for '$typeName' does not exists"))
                 else {

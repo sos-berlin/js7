@@ -14,6 +14,7 @@ import com.softwaremill.tagging.{@@, Tagger}
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Path
 import js7.base.auth.{SimpleUser, UserAndPassword}
+import js7.base.crypt.generic.GenericSignatureVerifier
 import js7.base.eventbus.{EventPublisher, StandardEventBus}
 import js7.base.generic.Completed
 import js7.base.io.file.FileUtils.syntax.*
@@ -36,7 +37,6 @@ import js7.cluster.Cluster.RestartAfterJournalTruncationException
 import js7.cluster.{Cluster, ClusterContext, ClusterFollowUp, WorkingClusterNode}
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import js7.common.crypt.generic.GenericSignatureVerifier
 import js7.common.guice.GuiceImplicits.RichInjector
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.RunningController.*
@@ -302,7 +302,7 @@ object RunningController
     private implicit lazy val closer: Closer = injector.instance[Closer]
     private implicit lazy val actorSystem: ActorSystem = injector.instance[ActorSystem]
     private lazy val itemVerifier = new SignedItemVerifier(
-      GenericSignatureVerifier(controllerConfiguration.config).orThrow,
+      GenericSignatureVerifier.checked(controllerConfiguration.config).orThrow,
       ControllerState.signableItemJsonCodec)
     import controllerConfiguration.{implicitAkkaAskTimeout, journalMeta}
     @volatile private var clusterStartupTermination = ProgramTermination()

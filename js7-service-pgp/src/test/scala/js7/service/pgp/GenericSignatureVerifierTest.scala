@@ -1,14 +1,14 @@
-package js7.common.crypt.generic
+package js7.service.pgp
 
 import js7.base.Problems.TamperedWithSignedMessageProblem
 import js7.base.configutils.Configs.*
 import js7.base.crypt.SignedString
+import js7.base.crypt.generic.GenericSignatureVerifier
 import js7.base.data.ByteArray
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
-import js7.common.crypt.pgp.{PgpSigner, PgpTest}
 
 /**
   * @author Joacim Zschimmer
@@ -29,7 +29,7 @@ final class GenericSignatureVerifierTest extends OurTestSuite
       directory / "test-2.asc" := PgpTest.publicKeyResource2.contentBytes
       directory / ".ignore" := "NOT A SIGNATURE FILE"
 
-      val verifier = GenericSignatureVerifier(config"""
+      val verifier = GenericSignatureVerifier.checked(config"""
         js7.configuration.trusted-signature-keys.PGP = "${directory.toString.replace("\\", "\\\\")}""""
       ).orThrow
       assert(verifier.verify(SignedString(messages(0), signatures(0))) == Right(PgpTest.signerIds))

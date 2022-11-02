@@ -1,4 +1,4 @@
-package js7.common.crypt.pgp
+package js7.service.pgp
 
 import cats.instances.vector.*
 import cats.syntax.foldable.*
@@ -10,7 +10,7 @@ import js7.base.data.ByteArray
 import js7.base.generic.SecretString
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
-import js7.common.crypt.pgp.PgpCommons.*
+import js7.service.pgp.PgpCommons.*
 import org.bouncycastle.bcpg.HashAlgorithmTags
 import org.bouncycastle.openpgp.operator.jcajce.{JcaPGPContentSignerBuilder, JcePBESecretKeyDecryptorBuilder}
 import org.bouncycastle.openpgp.{PGPSecretKey, PGPSecretKeyRingCollection, PGPSignature, PGPSignatureGenerator, PGPSignatureSubpacketGenerator, PGPUtil}

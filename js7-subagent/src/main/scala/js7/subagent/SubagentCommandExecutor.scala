@@ -1,13 +1,13 @@
 package js7.subagent
 
 import cats.syntax.traverse.*
+import js7.base.crypt.generic.GenericSignatureVerifier
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.stream.Numbered
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SetOnce
-import js7.common.crypt.generic.GenericSignatureVerifier
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.subagent.Problems.SubagentNotDedicatedProblem
 import js7.data.subagent.SubagentCommand.{AttachSignedItem, CoupleDirector, DedicateSubagent, DetachProcessedOrder, KillProcess, NoOperation, ReleaseEvents, ShutDown, StartOrderProcess}
@@ -33,7 +33,7 @@ extends SubagentExecutor
   def checkedDedicated: Checked[Dedicated] =
     dedicatedOnce.checked
 
-  private val signatureVerifier = GenericSignatureVerifier(subagentConf.config).orThrow
+  private val signatureVerifier = GenericSignatureVerifier.checked(subagentConf.config).orThrow
 
   def executeCommand(numbered: Numbered[SubagentCommand]): Task[Checked[numbered.value.Response]] =
     Task.defer {

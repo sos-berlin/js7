@@ -46,10 +46,10 @@ object X509Signer extends DocumentSigner.Companion
       checked(privateKey, SHA512withRSA, SignerId("???"))
 
   def checked(privateKey: ByteArray, algorithm: X509Algorithm, signerId: SignerId) =
-      Checked.catchNonFatal {
-        KeyFactory.getInstance("RSA")
-          .generatePrivate(new PKCS8EncodedKeySpec(privateKey.toArray))
-      }.map(new X509Signer(_, algorithm, signerId))
+    Checked.catchNonFatal {
+      KeyFactory.getInstance("RSA")
+        .generatePrivate(new PKCS8EncodedKeySpec(privateKey.toArray))
+    }.map(new X509Signer(_, algorithm, signerId))
 
   lazy val forTest: (X509Signer, X509SignatureVerifier) =
     newSignerAndVerifier(SignerId("CN=SIGNER"), "forTest")

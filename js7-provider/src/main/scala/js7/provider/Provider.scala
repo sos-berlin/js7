@@ -3,9 +3,11 @@ package js7.provider
 import cats.implicits.*
 import com.typesafe.config.ConfigUtil
 import java.nio.file.{Path, Paths}
+import js7.base.Problems.UnknownSignatureTypeProblem
 import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.convert.As.*
+import js7.base.crypt.generic.SignatureServices.nameToDocumentSignerCompanion
 import js7.base.generic.{Completed, SecretString}
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
@@ -16,9 +18,8 @@ import js7.base.thread.IOExecutor
 import js7.base.time.JavaTimeConverters.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.HasCloser
-import js7.base.utils.ScalaUtils.syntax.RichBoolean
+import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichPartialFunction}
 import js7.common.akkautils.ProvideActorSystem
-import js7.common.crypt.generic.MessageSigners
 import js7.common.files.{DirectoryReader, PathSeqDiff, PathSeqDiffer}
 import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.workflow.WorkflowReader
@@ -226,7 +227,8 @@ object Provider
       val configPath = "js7.provider.private-signature-keys." + ConfigUtil.quoteString(typeName)
       val keyFile = Paths.get(conf.config.getString(s"$configPath.key"))
       val password = SecretString(conf.config.getString(s"$configPath.password"))
-      MessageSigners.typeToMessageSignersCompanion(typeName)
+      nameToDocumentSignerCompanion
+        .rightOr(typeName, UnknownSignatureTypeProblem(typeName))
         .flatMap(companion => companion.checked(keyFile.byteArray, password))
         .map(messageSigner => new ItemSigner(messageSigner, signableItemJsonCodec))
     }.orThrow

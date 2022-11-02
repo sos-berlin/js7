@@ -1,4 +1,4 @@
-package js7.common.crypt.pgp
+package js7.service.pgp
 
 import cats.syntax.show.*
 import java.io.ByteArrayOutputStream
@@ -12,8 +12,8 @@ import js7.base.io.JavaResource
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
-import js7.common.crypt.pgp.PgpCommons.*
-import js7.common.crypt.pgp.PgpTest.*
+import js7.service.pgp.PgpCommons.*
+import js7.service.pgp.PgpTest.*
 import org.bouncycastle.openpgp.PGPSignature
 
 final class PgpTest extends OurTestSuite
@@ -149,24 +149,24 @@ final class PgpTest extends OurTestSuite
 
 object PgpTest
 {
-  private[crypt] val TestMessage = "The data to be signed\n"
-  private[crypt] val signerIds = SignerId("TEST (COMMENT) <test@example.com>") :: Nil
-  private[crypt] val signerIds2 = SignerId("JobScheduler Test (demonstration only) <jobscheduler-test@example.com>") :: Nil
+  private val TestMessage = "The data to be signed\n"
+  private[pgp] val signerIds = SignerId("TEST (COMMENT) <test@example.com>") :: Nil
+  private[pgp] val signerIds2 = SignerId("JobScheduler Test (demonstration only) <jobscheduler-test@example.com>") :: Nil
 
   // Keys and signatur generated gpg (GnuPG/MacGPG2) 2.2.10, libgcrypt 1.8.3
   // gpg --export --armor
-  private[crypt] final val publicKeyResource = JavaResource("js7/common/crypt/pgp/public-keys/test-public-pgp-key.asc")
-  private[crypt] final val publicKeyResource2 = JavaResource("js7/common/crypt/pgp/public-keys/test-2-public-pgp-key.asc")
+  private[pgp] final val publicKeyResource = JavaResource("js7/service/pgp/public-keys/test-public-pgp-key.asc")
+  private[pgp] final val publicKeyResource2 = JavaResource("js7/service/pgp/public-keys/test-2-public-pgp-key.asc")
 
-  private[crypt] val secretKeyPassword = SecretString("TEST-PASSWORD")
-  private[crypt] val secretKeyPassword2 = SecretString("PGP-PASSWORD")
+  private[pgp] val secretKeyPassword = SecretString("TEST-PASSWORD")
+  private[pgp] val secretKeyPassword2 = SecretString("PGP-PASSWORD")
   // gpg --export-secret-keys --armore
-  private[crypt] final val secretKeyResource = JavaResource("js7/common/crypt/pgp/test-private-pgp-key.asc")
-  private[crypt] final val secretKeyResource2 = JavaResource("js7/common/crypt/pgp/test-2-private-pgp-key.asc")
+  private[pgp] final val secretKeyResource = JavaResource("js7/service/pgp/test-private-pgp-key.asc")
+  private[pgp] final val secretKeyResource2 = JavaResource("js7/service/pgp/test-2-private-pgp-key.asc")
 
   // gpg --sign --detach-sign 1 && base64 1.sig
   private val TestSignature = PgpSignature(
-    JavaResource("js7/common/crypt/pgp/test-pgp-signature.asc").asUTF8String)
+    JavaResource("js7/service/pgp/test-pgp-signature.asc").asUTF8String)
   private val AlienSignature = PgpSignature(
-    JavaResource("js7/common/crypt/pgp/test-alien-pgp-signature.txt").asUTF8String)
+    JavaResource("js7/service/pgp/test-alien-pgp-signature.txt").asUTF8String)
 }
