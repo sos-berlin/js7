@@ -51,7 +51,6 @@ private[agent] final class AgentActor private(
   agentConf: AgentConfiguration,
   jobLauncherConf: JobLauncherConf)
   (implicit protected val scheduler: Scheduler, iox: IOExecutor)
-
   extends Actor with Stash with SimpleStateActor
 {
   import agentConf.{implicitAkkaAskTimeout, journalMeta}

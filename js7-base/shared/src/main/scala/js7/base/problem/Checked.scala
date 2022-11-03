@@ -8,6 +8,7 @@ import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.generic.Completed
 import js7.base.problem.Problem.*
 import js7.base.utils.ScalaUtils.syntax.*
+import scala.annotation.unused
 import scala.collection.immutable.VectorBuilder
 import scala.collection.mutable
 import scala.reflect.ClassTag
@@ -73,7 +74,7 @@ object Checked
     new Catcher[T]
 
   final class Catcher[T <: Throwable] {
-    def apply[A](f: => A)(implicit T: ClassTag[T], ev: Not[T =:= Nothing]): Checked[A] =
+    def apply[A](f: => A)(implicit T: ClassTag[T], @unused ev: Not[T =:= Nothing]): Checked[A] =
       try Right(f)
       catch {
         case t if T.runtimeClass isAssignableFrom t.getClass =>

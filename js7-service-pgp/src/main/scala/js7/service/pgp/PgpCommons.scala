@@ -165,7 +165,8 @@ object PgpCommons
     armored.close()
   }
 
-  def writePublicKeyRingCollectionAsAscii(publicKey: PGPPublicKeyRingCollection, out: OutputStream): Unit = {
+  def writePublicKeyRingCollectionAsAscii(publicKey: PGPPublicKeyRingCollection, out: OutputStream)
+  : Unit = {
     val armored = new ArmoredOutputStream(out)
     publicKey.encode(armored)
     armored.close()
@@ -193,7 +194,9 @@ object PgpCommons
     }
   }
 
-  implicit final class RichPGPPublicKeyRingCollection(private val underlying: PGPPublicKeyRingCollection) extends AnyVal {
+  implicit final class RichPGPPublicKeyRingCollection(
+    private val underlying: PGPPublicKeyRingCollection)
+  extends AnyVal {
     def toArmoredString: String = {
       val out = new ByteArrayOutputStream()
       writePublicKeyRingCollectionAsAscii(underlying, out)

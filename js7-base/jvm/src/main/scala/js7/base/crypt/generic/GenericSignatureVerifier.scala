@@ -1,6 +1,5 @@
 package js7.base.crypt.generic
 
-import cats.Applicative
 import cats.instances.either.*
 import cats.instances.vector.*
 import cats.syntax.traverse.*
@@ -63,10 +62,7 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion
   def recommendedKeyDirectoryName =
     throw new NotImplementedError("GenericSignatureVerifier recommendedKeyDirectoryName")
 
-  implicitly[Applicative[Checked]]
-
-  def checked(config: Config)
-  : Checked[GenericSignatureVerifier] =
+  def checked(config: Config): Checked[GenericSignatureVerifier] =
     config.getObject(configPath).asScala.toMap  // All Config key-values
       .map { case (typeName, v) =>
         typeName ->
@@ -77,20 +73,22 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion
               .rightOr(typeName, UnknownSignatureTypeProblem(typeName))
               .flatMap(companion =>
                 if (!exists(directory))
-                  Left(Problem.pure(s"Signature key directory '$directory' for '$typeName' does not exists"))
+                  Left(Problem.pure(
+                    s"Signature key directory '$directory' for '$typeName' does not exists"))
                 else {
                   val files = autoClosing(Files.list(directory))(_
                     .asScala.filterNot(_.getFileName.toString.startsWith(".")).toVector)
                   if (files.isEmpty) {
-                    logger.warn(s"No public key files for signature verifier '${companion.typeName}' in directory '$directory'")
+                    logger.warn(
+                      s"No public key files for signature verifier '${companion.typeName}' in directory '$directory'")
                   }
                   companion.checked(files.map(_.byteArray), origin = directory.toString)
                 }))
       }
       .toVector
       .traverse {
+        case (_, Left(p)) => Left(p)
         case (k, Right(v)) => Right(k -> v)
-        case (_, Left(p)) => Left(p): Checked[(String, SignatureVerifier)]
       }
       .map(_.toMap)
       .flatMap { typeToVerifier =>
@@ -99,14 +97,15 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion
         else {
           logger.info(
             Seq(s"Trusting public signature keys:")
-              .concat(
-                typeToVerifier.values.toVector
+              .concat(typeToVerifier
+                .values.toVector
                 .sortBy(_.companion.typeName)
                 .flatMap(_.publicKeysToStrings))
               .mkString("\n  "))
           Right(
             new GenericSignatureVerifier(
-              typeToVerifier.toChecked(key => Problem(s"No trusted public key for signature type '$key'"))))
+              typeToVerifier.toChecked(key => Problem(
+                s"No trusted public key for signature type '$key'"))))
         }
       }
 
