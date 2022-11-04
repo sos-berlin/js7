@@ -9,7 +9,7 @@ object Dependencies
 
   val akkaVersion = "2.6.20"      // Do not update to v2.7, due to restrictive Akka licences!
   val akkaHttpVersion = "10.2.10" // Do not update to v10.4, due to restrictive Akka licences!
-  val slf4jVersion = "2.0.2"  // See also plugins.sbt
+  val slf4jVersion = "2.0.3"  // See also plugins.sbt
   val log4jVersion = "2.19.0"  // See also plugins.sbt
   val catsVersion = "2.8.0"
   val catsEffectVersion = "2.5.5"
@@ -19,8 +19,8 @@ object Dependencies
   val fastparseVersion = "2.3.3"
   val circeVersion = "0.14.3"
   val circeGenericExtrasVersion = "0.14.1"
-  val scalaTestVersion = "3.2.12"
-  val scalaTestCheckVersion = "3.2.12.0"
+  val scalaTestVersion = "3.2.14"
+  val scalaTestCheckVersion = "3.2.14.0"
   val scalaCheckVersion= "1.17.0"
   val sourcecodeVersion = "0.3.0"
   val disciplineVersion = "1.5.1"
@@ -29,9 +29,9 @@ object Dependencies
   val monocleVersion = "1.5.0"
   val scribeVersion = "3.6.7" // TODO "3.8.2"
   val scalaJsDomVersion = "2.2.0"
-  val softwaremillTaggingVersion = "2.3.3"
-  val diffxVersion = "0.7.1"
-  val reactorVersion = "3.4.22"
+  val softwaremillTaggingVersion = "2.3.4"
+  val diffxVersion = "0.8.1"
+  val reactorVersion = "3.4.24"
   val vavrVersion = "0.10.4"
   val jnaVersion = "5.12.1"
 
