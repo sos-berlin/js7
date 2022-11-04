@@ -6,6 +6,7 @@ import js7.base.auth.Pem
 import js7.base.crypt.SignerId
 import js7.base.crypt.x509.Openssl.*
 import js7.base.data.ByteArray
+import js7.base.io.file.FileUtils
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.process.Processes.runProcess
 import js7.base.log.Logger
@@ -79,8 +80,21 @@ final class Openssl(dir: Path)
         certFile
       }
 
+      def certificateString: String =
+        certificateFile.contentString
+
+      def signString(string: String): String = {
+        FileUtils.withTemporaryFile("openssl-", ".tmp") { file =>
+          file := string
+          val signatureFile = signFile(file)
+          val signature = signatureFile.contentString
+          delete(signatureFile)
+          signature
+        }
+      }
+
       /** Return a signature file (binary). */
-      def sign(documentFile: Path): Path = {
+      def signFile(documentFile: Path): Path = {
         val signatureFile = Paths.get(s"$documentFile.signature")
         runProcess(s"$openssl dgst -sha512 -sign ${quote(privateKeyFile)} -out ${quote(signatureFile)} ${quote(documentFile)}")
 

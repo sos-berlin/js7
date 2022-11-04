@@ -58,7 +58,7 @@ final class UpdateRepoX509RootTest extends OurTestSuite with ControllerAgentForS
     val v2 = VersionId("2")
     lazy val signer = new root.Signer("CERTIFIED-SIGNER")
     lazy val itemFile = workDir / "workflow.json"
-    lazy val signatureFile = signer.sign(itemFile)
+    lazy val signatureFile = signer.signFile(itemFile)
 
     "Signature matches item" in {
       val item: SignableItem = workflow.withVersion(v2)
@@ -67,7 +67,7 @@ final class UpdateRepoX509RootTest extends OurTestSuite with ControllerAgentForS
         itemFile.contentString,
         signatureFile.contentString,
         algorithm = "SHA512withRSA",
-        signerCertificate = signer.certificateFile.contentString)
+        signerCertificate = signer.certificateString)
       val signed = Signed(item, signedString)
       controllerApi.updateRepo(v2, Seq(signed)).await(99.s).orThrow
     }
@@ -80,7 +80,7 @@ final class UpdateRepoX509RootTest extends OurTestSuite with ControllerAgentForS
         itemFile.contentString + " ",
         GenericSignature("X509", signatureFile.contentString,
           algorithm = Some("SHA512withRSA"),
-          signerCertificate = Some(signer.certificateFile.contentString)))
+          signerCertificate = Some(signer.certificateString)))
       val signed = Signed(item, signedString)
       assert(controllerApi.updateRepo(v3, Seq(signed)).await(99.s) == Left(TamperedWithSignedMessageProblem))
     }
@@ -93,12 +93,12 @@ final class UpdateRepoX509RootTest extends OurTestSuite with ControllerAgentForS
     itemFile := item.asJson
     val alienRoot = new openssl.Root("ALIEN-ROOT")
     val alienSigner = new alienRoot.Signer("ALIEN")
-    val alienSignatureFile = alienSigner.sign(itemFile)
+    val alienSignatureFile = alienSigner.signFile(itemFile)
     val alienSignedString = SignedString(
       itemFile.contentString,
       GenericSignature("X509", alienSignatureFile.contentString,
         algorithm = Some("SHA512withRSA"),
-        signerCertificate = Some(alienSigner.certificateFile.contentString)))
+        signerCertificate = Some(alienSigner.certificateString)))
     val alienSigned = Signed(item, alienSignedString)
     assert(controllerApi.updateRepo(v4, Seq(alienSigned)).await(99.s) == Left(MessageSignedByUnknownProblem))
   }

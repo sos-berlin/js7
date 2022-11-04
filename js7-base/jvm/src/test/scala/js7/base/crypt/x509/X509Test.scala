@@ -84,13 +84,13 @@ final class X509Test extends OurTestSuite
       documentFile := "TEST DOCUMENT"
 
       val signer = new ca.Signer("SIGNER")
-      val signatureFile = signer.sign(documentFile)
+      val signatureFile = signer.signFile(documentFile)
 
       assert(verify(ca.certificateFile, documentFile, toSignatureWithTrustedCertificate(signatureFile, signer.certificateFile)) ==
         Right(Seq(SignerId("CN=SIGNER"))))
 
       val alienSigner = new ca.Signer("ALIEN-SIGNER")
-      val alienSignatureFile = alienSigner.sign(documentFile)
+      val alienSignatureFile = alienSigner.signFile(documentFile)
       assert(verify(signer.certificateFile, documentFile, toSignatureWithSignerId(alienSignatureFile, signer.signerId)) ==
         Left(TamperedWithSignedMessageProblem))
       assert(verify(signer.certificateFile, documentFile, toSignatureWithSignerId(alienSignatureFile, alienSigner.signerId)) ==
@@ -114,7 +114,7 @@ final class X509Test extends OurTestSuite
       documentFile := "TEST DOCUMENT"
 
       val signer = new ca.Signer("SIGNER")
-      val signatureFile = signer.sign(documentFile)
+      val signatureFile = signer.signFile(documentFile)
 
       val cert = toSignatureWithTrustedCertificate(signatureFile, signer.certificateFile)
       assert(verify(ca.certificateFile, documentFile, cert) == Left(MessageSignedByUnknownProblem))
@@ -134,7 +134,7 @@ final class X509Test extends OurTestSuite
           .mapParallelUnorderedBatch() { i =>
             val documentFile = dir / s"document-$i"
             documentFile := Random.nextString(1024)
-            val signatureFile = signer.sign(documentFile)
+            val signatureFile = signer.signFile(documentFile)
             val signedString = SignedString(
               documentFile.contentString,
               GenericSignature(
