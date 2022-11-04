@@ -14,7 +14,7 @@ import com.softwaremill.tagging.{@@, Tagger}
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Path
 import js7.base.auth.{SimpleUser, UserAndPassword}
-import js7.base.crypt.generic.GenericSignatureVerifier
+import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier
 import js7.base.eventbus.{EventPublisher, StandardEventBus}
 import js7.base.generic.Completed
 import js7.base.io.file.FileUtils.syntax.*
@@ -24,6 +24,7 @@ import js7.base.problem.Checked.*
 import js7.base.problem.Problems.ShuttingDownProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.thread.Futures.implicits.*
+import js7.base.thread.IOExecutor
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.AlarmClock
 import js7.base.time.ScalaTime.*
@@ -298,11 +299,20 @@ object RunningController
   private class Starter(injector: Injector)
   {
     private val controllerConfiguration = injector.instance[ControllerConfiguration]
+    private implicit val iox = injector.instance[IOExecutor]
     private implicit val scheduler: Scheduler = injector.instance[Scheduler]
     private implicit lazy val closer: Closer = injector.instance[Closer]
     private implicit lazy val actorSystem: ActorSystem = injector.instance[ActorSystem]
+    private lazy val testEventBus = injector.instance[StandardEventBus[Any]]
+
     private lazy val itemVerifier = new SignedItemVerifier(
-      GenericSignatureVerifier.checked(controllerConfiguration.config).orThrow,
+      DirectoryWatchingSignatureVerifier
+        .start(
+          controllerConfiguration.config,
+          () => testEventBus.publish(ItemSignatureKeysUpdated)
+        )
+        .orThrow
+        .closeWithCloser,
       ControllerState.signableItemJsonCodec)
     import controllerConfiguration.{implicitAkkaAskTimeout, journalMeta}
     @volatile private var clusterStartupTermination = ProgramTermination()
@@ -312,7 +322,6 @@ object RunningController
         // May take several seconds !!!
         StateRecoverer.recover[ControllerState](journalMeta, controllerConfiguration.config)
       }
-      val testEventBus = injector.instance[StandardEventBus[Any]]
       val whenReady = Promise[Unit]()
       whenReady.completeWith(
         testEventBus.when[ControllerOrderKeeper.ControllerReadyTestIncident.type].void.runToFuture)
@@ -543,4 +552,6 @@ object RunningController
   private case class OrderKeeperStarted(
     actor: ActorRef @@ ControllerOrderKeeper,
     termination: Future[ProgramTermination])
+
+  case object ItemSignatureKeysUpdated
 }

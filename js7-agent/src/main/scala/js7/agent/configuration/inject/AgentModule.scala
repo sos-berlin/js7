@@ -8,6 +8,7 @@ import js7.agent.configuration.AgentConfiguration
 import js7.agent.configuration.Akkas.newAgentActorSystem
 import js7.agent.web.common.AgentSession
 import js7.base.auth.SimpleUser
+import js7.base.eventbus.StandardEventBus
 import js7.base.log.CorrelId
 import js7.base.thread.IOExecutor
 import js7.base.thread.ThreadPoolsBase.newUnlimitedThreadPool
@@ -99,6 +100,10 @@ extends AbstractModule
 
   @Provides @Singleton
   def config(agentConfiguration: AgentConfiguration): Config = agentConfiguration.config
+
+  @Provides @Singleton
+  def testEventBus(): StandardEventBus[Any] =
+    new StandardEventBus[Any]
 
   @Provides @Singleton
   def closer(): Closer = new Closer

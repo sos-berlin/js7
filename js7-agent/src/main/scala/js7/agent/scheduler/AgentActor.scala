@@ -14,7 +14,8 @@ import js7.agent.scheduler.AgentActor.*
 import js7.agent.scheduler.order.AgentOrderKeeper
 import js7.base.BuildInfo
 import js7.base.auth.UserId
-import js7.base.crypt.generic.GenericSignatureVerifier
+import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier
+import js7.base.eventbus.StandardEventBus
 import js7.base.generic.Completed
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.{CorrelId, Logger}
@@ -49,7 +50,8 @@ private[agent] final class AgentActor private(
   persistence: FileStatePersistence[AgentState],
   clock: AlarmClock,
   agentConf: AgentConfiguration,
-  jobLauncherConf: JobLauncherConf)
+  jobLauncherConf: JobLauncherConf,
+  testEventBus: StandardEventBus[Any])
   (implicit protected val scheduler: Scheduler, iox: IOExecutor)
   extends Actor with Stash with SimpleStateActor
 {
@@ -59,7 +61,11 @@ private[agent] final class AgentActor private(
 
   override val supervisorStrategy = SupervisorStrategies.escalate
 
-  private val signatureVerifier = GenericSignatureVerifier.checked(agentConf.config).orThrow
+  private val signatureVerifier = DirectoryWatchingSignatureVerifier
+    .start(
+      agentConf.config,
+      () => testEventBus.publish(ItemSignatureKeysUpdated))
+    .orThrow
   private var recovered: Recovered[AgentState] = null
   private val started = SetOnce[Started]
   private val shutDownCommand = SetOnce[AgentCommand.ShutDown]
@@ -80,6 +86,7 @@ private[agent] final class AgentActor private(
       logger.warn("DELETE JOURNAL FILES DUE TO AGENT RESET")
       journalMeta.deleteJournal(ignoreFailure = true)
     }
+    signatureVerifier.close()
     logger.debug("Stopped")
   }
 
@@ -313,7 +320,8 @@ object AgentActor
   final class Factory @Inject private(
     clock: AlarmClock,
     agentConfiguration: AgentConfiguration,
-    jobLauncherConf: JobLauncherConf)
+    jobLauncherConf: JobLauncherConf,
+    testEventBus: StandardEventBus[Any])
     (implicit scheduler: Scheduler, iox: IOExecutor)
   {
     def apply(
@@ -321,6 +329,8 @@ object AgentActor
       terminatePromise: Promise[ProgramTermination])
     =
       new AgentActor(terminatePromise, persistence,
-        clock, agentConfiguration, jobLauncherConf)
+        clock, agentConfiguration, jobLauncherConf, testEventBus)
   }
+
+  case object ItemSignatureKeysUpdated
 }

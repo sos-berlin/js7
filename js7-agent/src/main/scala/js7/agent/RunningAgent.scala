@@ -16,6 +16,7 @@ import js7.agent.data.commands.AgentCommand
 import js7.agent.web.AgentWebServer
 import js7.agent.web.common.AgentSession
 import js7.base.auth.{SessionToken, SimpleUser, UserId}
+import js7.base.eventbus.StandardEventBus
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.process.ProcessSignal
 import js7.base.log.{CorrelId, Logger}
@@ -72,6 +73,9 @@ extends AutoCloseable
   lazy val localUri: Uri = webServer.localUri
   @TestOnly
   lazy val actorSystem = injector.instance[ActorSystem]
+
+  @TestOnly
+  lazy val testEventBus = injector.instance[StandardEventBus[Any]]
 
   val terminated: Future[ProgramTermination] =
     for (o <- terminated1) yield {

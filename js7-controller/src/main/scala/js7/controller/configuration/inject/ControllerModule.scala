@@ -6,6 +6,8 @@ import com.typesafe.config.Config
 import javax.inject.Singleton
 import js7.base.eventbus.StandardEventBus
 import js7.base.log.{CorrelId, Logger}
+import js7.base.thread.IOExecutor
+import js7.base.thread.ThreadPoolsBase.newUnlimitedThreadPool
 import js7.base.time.JavaTimeConverters.*
 import js7.base.time.{AlarmClock, WallClock}
 import js7.base.utils.Closer
@@ -49,6 +51,13 @@ extends AbstractModule
   def scheduler(closer: Closer): Scheduler =
     commonScheduler.map(CorrelId.enableScheduler(_)) getOrElse
       ThreadPools.newStandardScheduler(configuration.name, config, closer)
+
+  @Provides @Singleton
+  def ioExecutor(closer: Closer, conf: ControllerConfiguration, config: Config): IOExecutor = {
+    val threadPool = newUnlimitedThreadPool(config, name = conf.name + " I/O")
+    closer.onClose { threadPool.shutdown() }
+    new IOExecutor(threadPool)
+  }
 
   @Provides @Singleton
   def actorRefFactory(actorSystem: ActorSystem): ActorRefFactory =

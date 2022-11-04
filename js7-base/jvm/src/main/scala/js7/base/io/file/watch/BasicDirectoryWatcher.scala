@@ -22,7 +22,8 @@ extends AutoCloseable
 {
   import options.{directory, kinds, pollTimeout}
 
-  // TODO Use a single WatchService with central polling for all directories, any occupy only one thread!
+  // TODO Use a single WatchService with central polling for all directories, and occupy only one thread!
+  logger.debug(s"newWatchService $directory")
   private val watchService = directory.getFileSystem.newWatchService()
 
   def stop(canceled: Boolean = false): Task[Unit] =

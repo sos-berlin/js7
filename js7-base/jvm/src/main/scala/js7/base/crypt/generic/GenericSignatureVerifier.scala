@@ -9,22 +9,26 @@ import java.nio.file.{Files, Paths}
 import js7.base.Problems.UnknownSignatureTypeProblem
 import js7.base.crypt.{GenericSignature, SignatureVerifier, SignerId}
 import js7.base.data.ByteArray
-import js7.base.io.file.FileUtils.syntax.RichPath
+import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.Collections.*
+import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.JavaCollections.syntax.*
 import js7.base.utils.ScalaUtils.checkedCast
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
+import scala.collection.immutable
 import scala.jdk.CollectionConverters.*
 
 /** A `SignatureVerifier` that verifies different types of signatures.
   * @author Joacim Zschimmer
   */
-final class GenericSignatureVerifier private(typeToVerifier: Map[String, Checked[SignatureVerifier]])
+final class GenericSignatureVerifier private[generic](
+  verifiers: immutable.Iterable[SignatureVerifier])
 extends SignatureVerifier
 {
+  private val typeToVerifier = verifiers.toKeyedMap(_.companion.typeName)
+
   protected type MySignature = GenericSignature
 
   def companion = GenericSignatureVerifier
@@ -35,7 +39,8 @@ extends SignatureVerifier
 
   override def verify(document: ByteArray, signature: GenericSignature): Checked[Seq[SignerId]] =
     for {
-      verifier <- typeToVerifier(signature.typeName)
+      verifier <- typeToVerifier.rightOr(signature.typeName,
+        Problem(s"No trusted public key for signature type '${signature.typeName}'"))
       typedSignature <- verifier.companion.genericSignatureToSignature(signature)
       signerIds <- verifier.verify(document, typedSignature)
     } yield signerIds
@@ -88,24 +93,20 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion
       .toVector
       .traverse {
         case (_, Left(p)) => Left(p)
-        case (k, Right(v)) => Right(k -> v)
+        case (k, Right(v)) => Right(v)
       }
-      .map(_.toMap)
-      .flatMap { typeToVerifier =>
-        if (typeToVerifier.isEmpty)
+      .flatMap { verifiers =>
+        if (verifiers.isEmpty)
           Left(Problem.pure(s"No trusted signature keys - Configure one with $configPath!"))
         else {
           logger.info(
             Seq(s"Trusting public signature keys:")
-              .concat(typeToVerifier
-                .values.toVector
+              .concat(verifiers
                 .sortBy(_.companion.typeName)
                 .flatMap(_.publicKeysToStrings))
               .mkString("\n  "))
           Right(
-            new GenericSignatureVerifier(
-              typeToVerifier.toChecked(key => Problem(
-                s"No trusted public key for signature type '$key'"))))
+            new GenericSignatureVerifier(verifiers))
         }
       }
 
