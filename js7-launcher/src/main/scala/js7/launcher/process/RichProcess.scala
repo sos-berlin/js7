@@ -12,7 +12,6 @@ import js7.base.log.LogLevel.syntax.*
 import js7.base.log.{LogLevel, Logger}
 import js7.base.system.OperatingSystem.{isMac, isWindows}
 import js7.base.thread.IOExecutor
-import js7.base.thread.IOExecutor.ioTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.launcher.process.RichProcess.*
@@ -47,9 +46,9 @@ class RichProcess protected[process](
   private val _terminated: Task[ReturnCode] =
     Task.defer {
       process.returnCode.map(Task.pure)
-        .getOrElse(ioTask {
+        .getOrElse(iox(Task {
           waitForProcessTermination(process)
-        })
+        }))
     }.memoize
 
   def duration = runningSince.elapsed
@@ -98,9 +97,9 @@ class RichProcess protected[process](
             .startRobustly()
             .executeOn(iox.scheduler)
             .flatMap(onKillProcess =>
-              ioTask {
+              iox(Task {
                 waitForProcessTermination(JavaProcess(onKillProcess))
-              } >> Task {
+              }) >> Task {
                 val exitCode = onKillProcess.exitValue
                 val logLevel = if (exitCode == 0) LogLevel.Debug else LogLevel.Warn
                 logger.log(logLevel, s"Kill script '${args(0)}' has returned exit code $exitCode")
@@ -168,10 +167,10 @@ class RichProcess protected[process](
         .startRobustly()
         .executeOn(iox.scheduler)
         .flatMap(killProcess =>
-          ioTask {
+          iox(Task {
             waitForProcessTermination(JavaProcess(killProcess))
             ReturnCode(killProcess.exitValue)
-          })
+          }))
     }
 
   private def destroyWithJava(force: Boolean): Unit =

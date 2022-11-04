@@ -1,7 +1,7 @@
 package js7.base.thread
 
 import com.typesafe.config.Config
-import java.util.concurrent.{ArrayBlockingQueue, LinkedBlockingQueue, SynchronousQueue, ThreadFactory, ThreadPoolExecutor}
+import java.util.concurrent.{ArrayBlockingQueue, ExecutorService, LinkedBlockingQueue, SynchronousQueue, ThreadFactory, ThreadPoolExecutor}
 import js7.base.system.Java8Polyfill.*
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.*
@@ -9,14 +9,14 @@ import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 
 object ThreadPoolsBase
 {
-  def newUnlimitedThreadPool(name: String, keepAlive: FiniteDuration = 60.s): ThreadPoolExecutor =
-      newThreadPoolExecutor(name = name, keepAlive = keepAlive,
-        corePoolSize = 0, maximumPoolSize = Int.MaxValue, queueSize = Some(0))
-
-  def newUnlimitedThreadPool(config: Config, name: String): ThreadPoolExecutor =
+  def newUnlimitedThreadPool(config: Config, name: String): ExecutorService =
     newUnlimitedThreadPool(
       name = name,
       keepAlive = config.getDuration("js7.thread-pools.io.keep-alive").toFiniteDuration)
+
+  def newUnlimitedThreadPool(name: String, keepAlive: FiniteDuration = 60.s): ExecutorService =
+    newThreadPoolExecutor(name = name, keepAlive = keepAlive,
+      corePoolSize = 0, maximumPoolSize = Int.MaxValue, queueSize = Some(0))
 
   //def newThreadPoolExecutor(config: Config, name: String): ThreadPoolExecutor =
   //  newThreadPoolExecutor(

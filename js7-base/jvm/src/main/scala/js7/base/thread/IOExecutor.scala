@@ -3,7 +3,7 @@ package js7.base.thread
 import cats.effect.{Resource, Sync}
 import com.typesafe.config.Config
 import java.lang.Thread.currentThread
-import java.util.concurrent.{Executor, ThreadPoolExecutor}
+import java.util.concurrent.Executor
 import js7.base.log.{CorrelId, Logger}
 import js7.base.system.Java8Polyfill.*
 import js7.base.thread.Futures.promiseFuture
@@ -11,7 +11,7 @@ import js7.base.thread.IOExecutor.*
 import js7.base.thread.ThreadPoolsBase.newUnlimitedThreadPool
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
-import monix.eval.Task
+import monix.eval.{Task, TaskLike}
 import monix.execution.ExecutionModel.SynchronousExecution
 import monix.execution.{Scheduler, UncaughtExceptionReporter}
 import scala.concurrent.{ExecutionContext, Future}
@@ -22,27 +22,29 @@ import scala.util.control.NonFatal
   * For `ioFuture` which starts a blocking (I/O) `Future` in a (normally unlimited) thread pool.
   * @author Joacim Zschimmer
   */
-final class IOExecutor(threadPool: ThreadPoolExecutor) extends Executor
+final class IOExecutor(executor: Executor) extends Executor
 {
-  private val myExecutionContext = ExecutionContext.fromExecutor(
-    threadPool,
+  implicit val executionContext = ExecutionContext.fromExecutor(
+    executor,
     t => logger.error(t.toStringWithCauses, t))
 
   lazy val scheduler = CorrelId.enableScheduler(
-    Scheduler(myExecutionContext, uncaughtExceptionReporter, SynchronousExecution))
+    Scheduler(executionContext, uncaughtExceptionReporter, SynchronousExecution))
 
-  def execute(runnable: Runnable) = myExecutionContext.execute(runnable)
+  def execute(runnable: Runnable) = executionContext.execute(runnable)
 
-  implicit def executionContext: ExecutionContext = myExecutionContext
+  def apply[F[_], A](task: F[A])(implicit F: TaskLike[F]): Task[A] =
+    F(task) executeOn scheduler
 }
 
 object IOExecutor
 {
   private val logger = Logger[this.type]
-  val globalIOX = new IOExecutor(newUnlimitedThreadPool(name = "JS7 global I/O", keepAlive = 10.s))
+  lazy val globalIOX = new IOExecutor(
+    newUnlimitedThreadPool(name = "JS7 global I/O", keepAlive = 10.s))
 
   object Implicits {
-    implicit val globalIOX: IOExecutor = IOExecutor.globalIOX
+    implicit lazy val globalIOX: IOExecutor = IOExecutor.globalIOX
   }
 
   def resource[F[_]](config: Config, name: String)(implicit F: Sync[F]): Resource[F, IOExecutor] =
@@ -65,10 +67,7 @@ object IOExecutor
       case NonFatal(t) => Future.failed(t)
     }
 
-  def ioTask[A](body: => A)(implicit iox: IOExecutor): Task[A] =
-    Task(body) executeOn iox.scheduler
-
-  private val uncaughtExceptionReporter: UncaughtExceptionReporter = { throwable =>
+  private[thread] val uncaughtExceptionReporter: UncaughtExceptionReporter = { throwable =>
     def msg = s"Uncaught exception in thread ${currentThread.threadId} '${currentThread.getName}': ${throwable.toStringWithCauses}"
     throwable match {
       case NonFatal(_) =>

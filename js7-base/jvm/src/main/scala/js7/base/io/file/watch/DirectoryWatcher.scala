@@ -5,7 +5,6 @@ import js7.base.io.file.watch.DirectoryWatcher.*
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.thread.IOExecutor
-import js7.base.thread.IOExecutor.ioTask
 import js7.base.time.ScalaTime.*
 import monix.eval.Task
 import monix.reactive.Observable
@@ -64,7 +63,7 @@ object DirectoryWatcher
         // so that no directory change will be overlooked.
         val readDirectory = repeatWhileIOException(
           options,
-          ioTask(DirectoryState.readDirectory(directory, options.matches)))
+          iox(Task(DirectoryState.readDirectory(directory, options.matches))))
         Observable
           .fromResource(basicWatcher.observableResource)
           .flatMap(observable =>
