@@ -485,7 +485,7 @@ object ScalaUtils
         if (underlying) 1 else 0
     }
 
-    implicit final class RichEither[L, R](private val either: Either[L, R]) extends AnyVal
+    implicit final class RichEither[L, R](val either: Either[L, R]) extends AnyVal
     {
       def rightAs[R1](newRight: => R1): Either[L, R1] =
         either.map(_ => newRight)
@@ -539,6 +539,14 @@ object ScalaUtils
           case Right(_) => throw new NoSuchElementException(s"Either.orThrow on $either")
             .dropTopMethodsFromStackTrace("orThrow$extension")
         }
+
+      def tapEach(tapRight: R => Unit): either.type = {
+        either match {
+          case Left(_) =>
+          case Right(right) => tapRight(right)
+        }
+        either
+      }
     }
 
     implicit final class RichThrowableEither[L <: Throwable, R](private val underlying: Either[L, R]) extends AnyVal

@@ -478,6 +478,16 @@ final class ScalaUtilsTest extends OurTestSuite
       assert(t.getStackTrace.head.getMethodName startsWith "$anonfun$new$")
     }
 
+    "tapEach" in {
+      val left: Either[String, Int] = Left("STRING")
+      assert(left.tapEach(_ => fail()) == Left("STRING"))
+
+      val right: Either[String, Int] = Right(7)
+      var x = 0
+      assert(right.tapEach(x = _) == Right(7))
+      assert(x == 7)
+    }
+
     ".left.orThrow" in {
       intercept[RuntimeException](Right(1).left.orThrow)
       assert(Left(1).left.orThrow == 1)
