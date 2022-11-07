@@ -66,7 +66,7 @@ extends Observable[Seq[DirectoryEvent]]
                 indexToEntry -= index
               }
               val isFirst = indexToEntry.isEmpty
-              enqueue(new Entry(fileAdded, now, now + delay))
+              enqueue(new Entry(fileAdded, now))
               if (isFirst) setTimer(delay)
             }
 
@@ -226,9 +226,9 @@ extends Observable[Seq[DirectoryEvent]]
 
       private final class Entry(
         val fileAdded: FileAdded,
-        val since: MonixDeadline,
-        var delayUntil: MonixDeadline)
+        val since: MonixDeadline)
       {
+        var delayUntil = since + delay
         val logDelayIterator = logDelays.iterator
         var lastLoggedAt = since
         var lastLoggedSize: Long =
