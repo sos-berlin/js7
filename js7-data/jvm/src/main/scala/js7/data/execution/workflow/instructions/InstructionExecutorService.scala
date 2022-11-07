@@ -10,16 +10,10 @@ import js7.data.order.OrderEvent.{OrderActorEvent, OrderMoved}
 import js7.data.order.{Order, OrderId, OrderObstacle, OrderObstacleCalculator}
 import js7.data.state.StateView
 import js7.data.workflow.Instruction
-import js7.data.workflow.instructions.{Fork, ForkInstruction, ForkList}
 
 final class InstructionExecutorService(val clock: WallClock)
 {
   val finishExecutor = new FinishExecutor(this)
-  private[workflow] val forkExecutor = new ForkExecutor(this)
-  private[workflow] val forkListExecutor = new ForkListExecutor(this)
-  private[instructions] val lockExecutor = new LockExecutor(this)
-  private[instructions] val cycleExecutor = new CycleExecutor(this)
-  private[instructions] val consumeNoticesExecutor = new ConsumeNoticesExecutor(this)
 
   private val classToExecutor = new SubclassToX(
     Seq(
@@ -27,19 +21,19 @@ final class InstructionExecutorService(val clock: WallClock)
       new ExecuteExecutor(this),
       new FailExecutor(this),
       finishExecutor,
-      forkExecutor,
-      forkListExecutor,
+      new ForkExecutor(this),
+      new ForkListExecutor(this),
       new GapExecutor(this),
       new IfExecutor(this),
       new TryExecutor(this),
-      lockExecutor,
+      new LockExecutor(this),
       new PostNoticesExecutor(this),
       new ExpectNoticesExecutor(this),
-      consumeNoticesExecutor,
+      new ConsumeNoticesExecutor(this),
       new PromptExecutor(this),
       new RetryExecutor(this),
       new AddOrderExecutor(this),
-      cycleExecutor
+      new CycleExecutor(this)
     ).toKeyedMap(_.instructionClass: Class[? <: Instruction]))
 
   private[instructions] val forkCache = new ForkInstructionExecutor.Cache
@@ -75,15 +69,11 @@ final class InstructionExecutorService(val clock: WallClock)
         Right(Nil)
     }
 
-  private[execution] def tryJoinChildOrder(
-    fork: ForkInstruction,
-    order: Order[Order.State],
-    state: StateView)
-  : Option[KeyedEvent[OrderActorEvent]] =
-    fork match {
-      case fork: Fork => forkExecutor.tryJoinChildOrder(fork, order, state)
-      case fork: ForkList => forkListExecutor.tryJoinChildOrder(fork, order, state)
-    }
+  def onReturnFromSubworkflow(instr: Instruction, order: Order[Order.State], state: StateView)
+  : Checked[List[KeyedEvent[OrderActorEvent]]] = {
+    val executor = instructionToExecutor(instr)
+    executor.onReturnFromSubworkflow(instr.asInstanceOf[executor.Instr], order, state)
+  }
 
   def toObstacles(order: Order[Order.State], calculator: OrderObstacleCalculator)
   : Checked[Set[OrderObstacle]] =

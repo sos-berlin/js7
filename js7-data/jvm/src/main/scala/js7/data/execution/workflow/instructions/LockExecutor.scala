@@ -1,9 +1,8 @@
 package js7.data.execution.workflow.instructions
 
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.data.event.KeyedEvent
 import js7.data.order.Order
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderDetachable, OrderLocksAcquired, OrderLocksQueued, OrderLocksReleased}
+import js7.data.order.OrderEvent.{OrderDetachable, OrderLocksAcquired, OrderLocksQueued, OrderLocksReleased}
 import js7.data.state.StateView
 import js7.data.workflow.instructions.LockInstruction
 
@@ -40,12 +39,14 @@ extends EventInstructionExecutor
         else
           Right(Nil))
 
-
-  def onReturnFromSubworkflow(order: Order[Order.State], instruction: LockInstruction)
-  : Option[KeyedEvent[OrderActorEvent]] =
-    Some(order.id <-: (
-      if (order.isAttached)
-        OrderDetachable
-      else
-        OrderLocksReleased(instruction.lockPaths)))
+  override def onReturnFromSubworkflow(
+    instr: LockInstruction,
+    order: Order[Order.State],
+    state: StateView) =
+    Right(List(
+      order.id <-: (
+        if (order.isAttached)
+          OrderDetachable
+        else
+          OrderLocksReleased(instr.lockPaths))))
 }

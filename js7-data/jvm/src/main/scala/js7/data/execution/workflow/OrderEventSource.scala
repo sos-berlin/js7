@@ -64,10 +64,9 @@ final class OrderEventSource(state: StateView)
           o.fold(orElse)(events => Right(events.map(order.id <-: _)))
 
         ifDefinedElse(awokeEvent(order),
-          joinedEvent(order) match {
+          joinedEvents(order) match {
             case Left(problem) => Left(problem)
-            case Right(Some(event)) => Right(event :: Nil)
-            case Right(None) =>
+            case Right(Nil) =>
               if (state.isOrderAtStopPosition(order))
                 executorService.finishExecutor.toEvents(Finish(), order, state)
               else
@@ -88,6 +87,8 @@ final class OrderEventSource(state: StateView)
 
                       case o => Right(o :: Nil)
                     })
+
+            case Right(events) => Right(events)
           }
         ).flatMap(checkEvents)
     }
@@ -164,16 +165,18 @@ final class OrderEventSource(state: StateView)
     }.map(outcomeAdded ++: _)
   }
 
-  private def joinedEvent(order: Order[Order.State]): Checked[Option[KeyedEvent[OrderActorEvent]]] =
+  // Return Nil or List(OrderJoined)
+  private def joinedEvents(order: Order[Order.State]): Checked[List[KeyedEvent[OrderActorEvent]]] =
     if (order.parent.isDefined
       && (order.isDetached || order.isAttached)
       && (order.isState[FailedInFork] || order.isState[Cancelled]))
       for {
         forkPosition <- order.forkPosition
         fork <- state.instruction_[ForkInstruction](order.workflowId /: forkPosition)
-      } yield executorService.tryJoinChildOrder(fork, order, state)
+        events <- executorService.onReturnFromSubworkflow(fork, order, state)
+      } yield events
     else
-      Right(None)
+      Right(Nil)
 
   private def awokeEvent(order: Order[Order.State]): Option[List[OrderActorEvent]] =
     order.ifState[Order.DelayedAfterError].flatMap(order =>

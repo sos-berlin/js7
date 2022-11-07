@@ -5,9 +5,8 @@ import js7.base.problem.Problem
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
 import js7.data.board.{BoardPath, BoardState}
-import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.instructions.ConsumeNoticesExecutor.*
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderDetachable, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected}
+import js7.data.order.OrderEvent.{OrderDetachable, OrderNoticesConsumed, OrderNoticesConsumptionStarted, OrderNoticesExpected}
 import js7.data.order.{Order, OrderEvent}
 import js7.data.state.StateView
 import js7.data.workflow.instructions.ConsumeNotices
@@ -51,12 +50,16 @@ extends EventInstructionExecutor
         .getOrElse(Right(Nil))
         .map(_.map(order.id <-: _)))
 
-  def onReturnFromSubworkflow(order: Order[Order.State]): KeyedEvent[OrderActorEvent] =
-    order.id <-: (
-      if (order.isAttached)
-        OrderDetachable
-      else
-        OrderNoticesConsumed())
+  override def onReturnFromSubworkflow(
+    instr: ConsumeNotices,
+    order: Order[Order.State],
+    state: StateView) =
+    Right(List(
+      order.id <-: (
+        if (order.isAttached)
+          OrderDetachable
+        else
+          OrderNoticesConsumed())))
 }
 
 private object ConsumeNoticesExecutor

@@ -7,6 +7,7 @@ import js7.data.order.OrderEvent.OrderMoved
 import js7.data.state.StateView
 import js7.data.workflow.instructions.If
 import js7.data.workflow.position.BranchId.{Else, Then}
+import js7.data.workflow.position.Position
 
 private[instructions] final class IfExecutor(protected val service: InstructionExecutorService)
 extends EventInstructionExecutor with PositionInstructionExecutor
@@ -33,4 +34,7 @@ extends EventInstructionExecutor with PositionInstructionExecutor
           case Some(thenOrElse) => order.position / thenOrElse % 0
           case None => order.position.increment  // No else-part, skip instruction
         }))
+
+  override def subworkflowEndToPosition(parentPos: Position) =
+    Some(parentPos.increment)
 }

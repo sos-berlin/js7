@@ -35,8 +35,12 @@ final class UpdateRepoAgentTest extends OurTestSuite
   coupleScribeWithSlf4j()
 
   "ControllerCommand.UpdateRepo" in {
-    autoClosing(new DirectoryProvider(agentPath :: Nil, workflow :: Nil, testName = Some("UpdateRepoAgentTest"))) { provider =>
-      (provider.controller.configDir / "private" / "private.conf") ++=
+    val directoryProvider = new DirectoryProvider(
+      agentPaths = agentPath :: Nil,
+      items = workflow :: Nil,
+      testName = Some("UpdateRepoAgentTest"))
+    autoClosing(directoryProvider) { _ =>
+      (directoryProvider.controller.configDir / "private" / "private.conf") ++=
         """js7.auth.users {
           |  UpdateRepoAgentTest {
           |    password = "plain:TEST-PASSWORD"
@@ -44,13 +48,18 @@ final class UpdateRepoAgentTest extends OurTestSuite
           |  }
           |}
           |""".stripMargin
-      provider.agentToTree(agentPath).writeExecutable(RelativePathExecutable("SCRIPT.cmd"), ":")
+      directoryProvider.agentToTree(agentPath)
+        .writeExecutable(RelativePathExecutable("SCRIPT.cmd"), ":")
 
       // Start Agent before Controller to bind the reserved TCP port early, and the Controller needs not to wait
-      val agent1 = provider.startAgents().await(99.s).head
+      val agent1 = directoryProvider.startAgents().await(99.s).head
       var agent2: RunningAgent = null
-      provider.runController() { controller =>
-        controller.httpApi.login_(Some(UserAndPassword(UserId("UpdateRepoAgentTest"), SecretString("TEST-PASSWORD")))) await 99.s
+      directoryProvider.runController() { controller =>
+        controller.httpApi
+          .login_(Some(UserAndPassword(
+            UserId("UpdateRepoAgentTest"),
+            SecretString("TEST-PASSWORD"))))
+          .await(99.s)
         runOrder(controller, OrderId("🔺"))
         agent1.terminate() await 99.s
 
@@ -59,20 +68,20 @@ final class UpdateRepoAgentTest extends OurTestSuite
           // Start a new Agent with same state but a (hopefully) different HTTP port
           val port = findFreeTcpPort()
           agent2 = RunningAgent.startForTest(AgentConfiguration.forTest(
-            provider.agents.head.directory,
+            directoryProvider.agents.head.directory,
             name = "UpdateRepoAgentTest",
             httpPort = Some(port))
           ).await(99.s)
 
           controller.updateUnsignedSimpleItemsAsSystemUser(Seq(
-            provider.subagentItems.head.copy(uri = agent2.localUri)
+            directoryProvider.subagentItems.head.copy(uri = agent2.localUri)
           )).await(99.s).orThrow
           runOrder(controller, OrderId(s"🔵-$i"))
         }
       }
 
       // Controller recovery
-      provider.runController() { controller =>
+      directoryProvider.runController() { controller =>
         runOrder(controller, OrderId("⭕"))
       }
 

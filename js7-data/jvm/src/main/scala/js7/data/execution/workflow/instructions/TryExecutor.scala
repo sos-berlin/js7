@@ -5,6 +5,7 @@ import js7.data.order.OrderEvent.OrderMoved
 import js7.data.state.StateView
 import js7.data.workflow.instructions.TryInstruction
 import js7.data.workflow.position.BranchId.try_
+import js7.data.workflow.position.Position
 
 private[instructions] final class TryExecutor(protected val service: InstructionExecutorService)
 extends PositionInstructionExecutor with EventInstructionExecutor {
@@ -23,4 +24,7 @@ extends PositionInstructionExecutor with EventInstructionExecutor {
 
   private def nextOrderMoved(order: Order[Order.State]) =
     OrderMoved(order.position / try_(0) % 0)
+
+  override def subworkflowEndToPosition(parentPos: Position) =
+    Some(parentPos.increment)
 }

@@ -66,11 +66,19 @@ trait ForkInstructionExecutor extends EventInstructionExecutor
         Some(Right((order.id <-: OrderAttachable(agentPath)) :: Nil))
     }
 
-  private[execution] final def tryJoinChildOrder(
+  override final def onReturnFromSubworkflow(
+    fork: Instr,
+    childOrder: Order[Order.State],
+    state: StateView) =
+    Right(
+      tryJoinChildOrder(fork, childOrder, state)
+        .toList)
+
+  private def tryJoinChildOrder(
     fork: Instr,
     childOrder: Order[Order.State],
     state: StateView)
-  =
+  : Option[KeyedEvent[OrderActorEvent]] =
     if (childOrder.isAttached)
       Some(childOrder.id <-: OrderDetachable)
     else

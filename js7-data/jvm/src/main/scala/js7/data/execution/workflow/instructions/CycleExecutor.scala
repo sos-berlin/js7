@@ -70,17 +70,19 @@ extends EventInstructionExecutor with PositionInstructionExecutor
   def nextMove(instruction: Cycle, order: Order[Order.State], stateView: StateView) =
     Right(None)
 
-  private[workflow] def onReturnFromSubworkflow(order: Order[Order.State], cycle: Cycle,
-    state: StateView)
-  : Checked[KeyedEvent[OrderActorEvent]] =
-    for {
-      calculator <- toScheduleCalculator(order, cycle, state)
+  override def onReturnFromSubworkflow(instr: Instr, order: Order[Order.State], state: StateView)
+  : Checked[List[KeyedEvent[OrderActorEvent]]] = {
+    val checkedKeyedEvent = for {
+      calculator <- toScheduleCalculator(order, instr, state)
       branchId <- order.position.branchPath.lastOption.map(_.branchId)
         .toChecked(Problem(s"${order.id} Cycle Position expected: ${order.position}"))
       cycleState <- branchId.toCycleState
     } yield
       order.id <-: OrderCycleFinished(
         calculator.nextCycleState(clock.now(), cycleState))
+
+    checkedKeyedEvent.map(_ :: Nil)
+  }
 
   private def toScheduleCalculator(order: Order[Order.State], cycle: Cycle, state: StateView) =
     for (pair <- toCalendarAndScheduleCalculator(order, cycle, state)) yield

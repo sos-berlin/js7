@@ -3,13 +3,15 @@ package js7.data.execution.workflow.instructions
 import js7.data.order.Order
 import js7.data.order.OrderEvent.{OrderFinished, OrderMoved}
 import js7.data.state.StateView
-import js7.data.workflow.instructions.{ConsumeNotices, Cycle, End, ForkInstruction, LockInstruction}
+import js7.data.workflow.instructions.End
 
 private[instructions] final class EndExecutor(protected val service: InstructionExecutorService)
 extends EventInstructionExecutor with PositionInstructionExecutor
 {
   type Instr = End
   val instructionClass = classOf[End]
+
+  import service.instructionToExecutor
 
   def toEvents(instruction: End, order: Order[Order.State], state: StateView) =
     order.position.parent match {
@@ -25,41 +27,16 @@ extends EventInstructionExecutor with PositionInstructionExecutor
           case _ => Right(Nil)
         }
 
-      case Some(returnPosition) =>
-        state.instruction(order.workflowId /: returnPosition) match {
-          case fork: ForkInstruction =>
-            Right(service.tryJoinChildOrder(fork, order, state).toList)
-
-          case lock: LockInstruction =>
-            Right(service.lockExecutor.onReturnFromSubworkflow(order, lock).toList)
-
-          case cycle: Cycle =>
-            service.cycleExecutor.onReturnFromSubworkflow(order, cycle, state)
-              .map(_ :: Nil)
-
-          case _: ConsumeNotices =>
-            Right(service.consumeNoticesExecutor.onReturnFromSubworkflow(order) :: Nil)
-
-          case _ =>
-            Right((order.id <-: OrderMoved(returnPosition.increment)) :: Nil)
-        }
+      case Some(parentPos) =>
+        val instr = state.instruction(order.workflowId /: parentPos)
+        service.onReturnFromSubworkflow(instr, order, state)
     }
 
-  def nextMove(instruction: End, order: Order[Order.State], state: StateView) = {
-    import service.instructionToExecutor
+  def nextMove(instruction: End, order: Order[Order.State], state: StateView) =
     Right(
       for {
-        returnPosition <- order.position.parent
-        next <- instructionToExecutor(state.instruction(order.workflowId /: returnPosition)) match {
-          case _: ForkExecutor => None
-          case _: ForkListExecutor => None
-          case _: LockExecutor => None
-          case _: CycleExecutor => None
-          case _: ConsumeNoticesExecutor => None
-          // Check PositionInstructionExecutor first for TryInstruction !!!
-          case _: PositionInstructionExecutor => Some(returnPosition.increment)
-          case _: EventInstructionExecutor => Some(returnPosition)
-        }
+        parentPos <- order.position.parent
+        exec = instructionToExecutor(state.instruction(order.workflowId /: parentPos))
+        next <- exec.subworkflowEndToPosition(parentPos)
       } yield OrderMoved(next))
-  }
 }

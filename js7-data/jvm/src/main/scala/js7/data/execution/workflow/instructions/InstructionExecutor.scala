@@ -1,6 +1,6 @@
 package js7.data.execution.workflow.instructions
 
-import js7.base.problem.Checked
+import js7.base.problem.{Checked, Problem}
 import js7.base.time.WallClock
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.data.agent.AgentPath
@@ -10,6 +10,7 @@ import js7.data.order.OrderEvent.{OrderActorEvent, OrderAttachable, OrderDetacha
 import js7.data.order.{Order, OrderObstacle, OrderObstacleCalculator}
 import js7.data.state.StateView
 import js7.data.workflow.Instruction
+import js7.data.workflow.position.Position
 
 /**
   * @author Joacim Zschimmer
@@ -18,11 +19,29 @@ trait InstructionExecutor
 {
   type Instr <: Instruction
 
+  protected val service: InstructionExecutorService
+
   def instructionClass: Class[? <: Instr]
 
   def toObstacles(order: Order[Order.State], calculator: OrderObstacleCalculator)
   : Checked[Set[OrderObstacle]] =
     noObstacles
+
+  def onReturnFromSubworkflow(instr: Instr, order: Order[Order.State], state: StateView)
+  : Checked[List[KeyedEvent[OrderActorEvent]]] = {
+    order.position.parent match {
+      case None =>
+        // Does not happen
+        Left(Problem.pure(s"onReturnFromSubworkflow but no parent position for ${order.id}"))
+
+      case Some(parentPos) =>
+        Right(
+          (order.id <-: OrderMoved(parentPos.increment)) :: Nil)
+    }
+  }
+
+  def subworkflowEndToPosition(parentPos: Position): Option[Position] =
+    None
 }
 
 object InstructionExecutor {
@@ -32,8 +51,6 @@ object InstructionExecutor {
 
 trait EventInstructionExecutor extends InstructionExecutor
 {
-  protected val service: InstructionExecutorService
-
   final def clock: WallClock =
     service.clock
 
