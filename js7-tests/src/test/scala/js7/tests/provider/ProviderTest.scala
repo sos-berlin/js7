@@ -72,7 +72,7 @@ final class ProviderTest extends OurTestSuite with ControllerAgentForScalaTest
     createDirectories(orderGeneratorsDir)
 
     providerDirectory / "config" / "provider.conf" :=
-      s"""js7.provider.add-orders-every = 0.1s
+       """js7.provider.add-orders-every = 0.1s
          |js7.provider.add-orders-earlier = 0.1s
          |""".stripMargin
     providerDirectory / "config" / "private" / "private-silly-keys.txt" := privateKey

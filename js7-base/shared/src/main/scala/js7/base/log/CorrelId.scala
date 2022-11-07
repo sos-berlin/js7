@@ -20,7 +20,7 @@ sealed trait CorrelId extends GenericString
   def orNew: CorrelId =
     or(CorrelId.generate())
 
-  def or(correlId: CorrelId): CorrelId =
+  def or(correlId: => CorrelId): CorrelId =
     if (isEmpty) correlId else this
 
   def toOption: Option[CorrelId] =

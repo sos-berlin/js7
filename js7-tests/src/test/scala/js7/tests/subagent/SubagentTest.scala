@@ -123,7 +123,7 @@ final class SubagentTest extends OurTestSuite with SubagentTester
 
 object SubagentTest
 {
-  val agentPath = AgentPath("AGENT")
+  private val agentPath = AgentPath("AGENT")
 
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW") ~ "INITIAL",
