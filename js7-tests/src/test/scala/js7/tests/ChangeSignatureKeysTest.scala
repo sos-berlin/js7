@@ -1,8 +1,8 @@
 package js7.tests
 
 import io.circe.syntax.EncoderOps
+import java.io.FileOutputStream
 import java.nio.file.Files.{copy, createDirectory, createTempDirectory}
-import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import js7.agent.scheduler.AgentActor
 import js7.base.Problems.{MessageSignedByUnknownProblem, TamperedWithSignedMessageProblem}
 import js7.base.circeutils.CirceUtils.*
@@ -11,11 +11,13 @@ import js7.base.crypt.x509.Openssl
 import js7.base.crypt.{GenericSignature, Signed, SignedString}
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.*
+import js7.base.io.file.watch.BasicDirectoryWatcher.systemWatchDelay
 import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
+import js7.base.utils.AutoClosing.autoClosing
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerState.signableItemJsonCodec
@@ -43,6 +45,7 @@ final class ChangeSignatureKeysTest extends OurTestSuite with ControllerAgentFor
 
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
+    js7.configuration.trusted-signature-key-settings.file-delay = ${(systemWatchDelay + 1.s).pretty}
     """
 
   override protected def agentConfig = config"""
@@ -127,13 +130,30 @@ final class ChangeSignatureKeysTest extends OurTestSuite with ControllerAgentFor
         Left(MessageSignedByUnknownProblem))
     }
 
-    "Change changed root certificate in configuration directory" in {
+    "Change changed root certificate in configuration directory, do it slowly" in {
       val whenUpdated = Task.parZip2(
         controller.testEventBus.when[RunningController.ItemSignatureKeysUpdated.type],
         agent.testEventBus.when[AgentActor.ItemSignatureKeysUpdated.type]
       ).runToFuture
-      copy(changedRoot.certificateFile, controllersKeyDirectory / "Root.crt", REPLACE_EXISTING)
-      copy(changedRoot.certificateFile, agentsKeyDirectory / "Root.crt", REPLACE_EXISTING)
+
+      // See also js7.conf:
+      // js7.configuration.trusted-signature-key-settings.file-delay = 2s
+      val cert = changedRoot.certificateFile.contentBytes
+      autoClosing(new FileOutputStream((controllersKeyDirectory / "Root.crt").toFile)) { controllerFile =>
+        autoClosing(new FileOutputStream((agentsKeyDirectory / "Root.crt").toFile)) { agentFile =>
+          val n = 40
+          for (i <- 0 until n) withClue(s"${(i.s / 10).pretty} -> ") {
+            controllerFile.write(cert(i))
+            controllerFile.flush()
+            agentFile.write(cert(i))
+            agentFile.flush()
+            sleep(100.ms)
+            assert(!whenUpdated.isCompleted)
+          }
+          controllerFile.write(cert, n, cert.length - n)
+          agentFile.write(cert, n, cert.length - n)
+        }
+      }
       whenUpdated.await(99.s)
 
       controllerApi.updateRepo(v4, Seq(changedSigned)).await(99.s).orThrow

@@ -27,7 +27,8 @@ sealed trait DirectoryEvent extends DirectoryWatchEvent {
 
 object DirectoryEvent
 {
-  final case class FileAdded(relativePath: Path) extends DirectoryEvent
-  final case class FileModified(relativePath: Path) extends DirectoryEvent
+  sealed trait FileAddedOrModified extends DirectoryEvent
+  final case class FileAdded(relativePath: Path) extends FileAddedOrModified
+  final case class FileModified(relativePath: Path) extends FileAddedOrModified
   final case class FileDeleted(relativePath: Path) extends DirectoryEvent
 }

@@ -3,7 +3,7 @@ package js7.base.io.file.watch
 import java.io.IOException
 import java.nio.file.Files.size
 import java.nio.file.Path
-import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileDeleted, FileModified}
+import js7.base.io.file.watch.DirectoryEvent.{FileAdded, FileAddedOrModified, FileDeleted, FileModified}
 import js7.base.io.file.watch.DirectoryEventDelayer.*
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixAckFuture
@@ -43,9 +43,6 @@ extends Observable[Seq[DirectoryEvent]]
   def unsafeSubscribeFn(out: Subscriber[Seq[DirectoryEvent]]): Cancelable =
     source.subscribe(new Subscriber[DirectoryEvent] { self =>
       implicit val scheduler: Scheduler = out.scheduler
-      private var addedEventCount = 0L
-      private var modifiedEventCount = 0L
-      private var timerCount = 0L
       private var timer: Option[Cancelable] = None
       private val forwardReentrant = Atomic(0)
       private var callerCompleted = false
@@ -55,31 +52,37 @@ extends Observable[Seq[DirectoryEvent]]
       private val indexToEntry = mutable.TreeMap.empty[Long, Entry]  // input queue
       private val pathToIndex = mutable.Map.empty[Path, Long]
       private val outputQueue = new VectorBuilder[DirectoryEvent]
+      private var statsAdded = 0L
+      private var statsModified = 0L
+      private var statsTimer = 0L
 
       def onNext(directoryEvent: DirectoryEvent) = {
         logger.trace(s"onNext $directoryEvent")
+
         directoryEvent match {
           case fileAdded @ FileAdded(path) =>
-            addedEventCount += 1
+            statsAdded += 1
             self.synchronized {
               for (index <- pathToIndex.remove(path)) {
                 indexToEntry -= index
               }
-              val isFirst = indexToEntry.isEmpty
               enqueue(new Entry(fileAdded, now))
-              if (isFirst) setTimer(delay)
             }
 
-          case FileModified(path) =>
-            modifiedEventCount += 1
+          case fileModified @ FileModified(path) =>
+            statsModified += 1
             self.synchronized {
-              for (previousIndex <- pathToIndex.remove(path)) {
-                for (entry <- indexToEntry.remove(previousIndex)) {
-                  val now_ = now
-                  entry.logStillWritten(now_)
-                  entry.delayUntil = now_ + delay
-                  enqueue(entry)
-                }
+              pathToIndex.remove(path) match {
+                case None =>
+                  enqueue(new Entry(fileModified, now))
+
+                case Some(previousIndex) =>
+                  for (entry <- indexToEntry.remove(previousIndex)) {
+                    val now_ = now
+                    entry.logStillWritten(now_)
+                    entry.delayUntil = now_ + delay
+                    enqueue(entry)
+                  }
               }
             }
 
@@ -95,17 +98,21 @@ extends Observable[Seq[DirectoryEvent]]
               }
             }
         }
+
         // Swallow all incoming events and keep FileAdded events until delay is elapsing !!!
         if (ack == Stop) Stop else Continue
       }
 
       private def enqueue(entry: Entry): Unit = {
+        val isFirst = indexToEntry.isEmpty
         val index = indexToEntry.lastOption.fold(0L)(_._1) + 1
         indexToEntry.update(index, entry)
         pathToIndex(entry.path) = index
 
         if (delay.isZero) {
           forward()
+        } else if (isFirst) {
+          setTimer(delay)
         }
       }
 
@@ -142,7 +149,7 @@ extends Observable[Seq[DirectoryEvent]]
                 logger.trace("🔔 Timer event")
                 self.synchronized {
                   timer = None
-                  timerCount += 1
+                  statsTimer += 1
                 }
                 forward()
               })
@@ -156,7 +163,7 @@ extends Observable[Seq[DirectoryEvent]]
             self.synchronized {
               dequeueTo(outputQueue)
             }
-            send()
+            sendOutputQueue()
             self.synchronized {
               if (callerCompleted && indexToEntry.isEmpty && outputQueue.isEmpty) {
                 outOnComplete()
@@ -182,7 +189,7 @@ extends Observable[Seq[DirectoryEvent]]
           }
         }
 
-      private def dequeueTo(growable: mutable.Growable[FileAdded]): Unit =
+      private def dequeueTo(growable: mutable.Growable[FileAddedOrModified]): Unit =
         if (!hasError) {
           val now_ = now
 
@@ -191,7 +198,7 @@ extends Observable[Seq[DirectoryEvent]]
               case Some((index, entry)) if entry.delayUntil <= now_ =>
                 indexToEntry -= index
                 pathToIndex -= entry.path
-                growable += entry.fileAdded
+                growable += entry.event
                 loop()
               case _ =>
             }
@@ -199,7 +206,7 @@ extends Observable[Seq[DirectoryEvent]]
           loop()
         }
 
-      private def send(): Unit =
+      private def sendOutputQueue(): Unit =
         ack = ack.syncFlatMapOnContinue {
           val events = self.synchronized {
             val events = outputQueue.result()
@@ -218,14 +225,14 @@ extends Observable[Seq[DirectoryEvent]]
         ack.syncTryFlatten.syncOnContinue {
           if (!isDone.getAndSet(true)) {
             logger.debug(
-              s"$addedEventCount×FileAdded · $modifiedEventCount×FileModified · $timerCount timer events")
+              s"$statsAdded×FileAdded · $statsModified×FileModified · $statsTimer timer events")
             try out.onComplete()
             finally timer.foreach(_.cancel())  // Just to be sure
           }
         }
 
       private final class Entry(
-        val fileAdded: FileAdded,
+        val event: FileAddedOrModified,
         val since: MonixDeadline)
       {
         var delayUntil = since + delay
@@ -236,9 +243,9 @@ extends Observable[Seq[DirectoryEvent]]
         var logDelay = delay +
           (if (logDelayIterator.hasNext) logDelayIterator.next() else 0.s)
 
-        def path = fileAdded.relativePath
+        def path = event.relativePath
 
-        def logStillWritten(now: MonixDeadline): Unit = {
+        def logStillWritten(now: MonixDeadline): Unit =
           if (lastLoggedAt + logDelay <= now) {
             switchLogDelay()
             lastLoggedAt = now
@@ -254,7 +261,6 @@ extends Observable[Seq[DirectoryEvent]]
             logger.info(
               s"Watched file is still being modified for ${(now - since).pretty}: $file +$growth")
           }
-        }
 
         private def switchLogDelay(): Unit =
           if (logDelayIterator.hasNext) {

@@ -13,6 +13,7 @@ import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier.{Settings, Stat
 import js7.base.crypt.{GenericSignature, SignatureVerifier, SignerId}
 import js7.base.data.ByteArray
 import js7.base.io.file.FileUtils.syntax.RichPath
+import js7.base.io.file.watch.DirectoryEventDelayer.syntax.RichDelayLineObservable
 import js7.base.io.file.watch.{DirectoryState, DirectoryWatcher, WatchOptions}
 import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.Checked.catchNonFatal
@@ -97,10 +98,9 @@ extends SignatureVerifier with AutoCloseable
       .observable(directoryState, toWatchOptions(directory))
       .takeUntil(stop)
       .flatMap(Observable.fromIterable)
-      // buffers without limit all incoming event:
-      //DOES NOT WORK: .delayFileAdded(directory, settings.fileDelay, settings.logDelays)
+      // buffers without limit all incoming events:
+      .delayFileAdded(directory, settings.fileDelay, settings.logDelays)
       .map(_ => ())
-      .debounce(settings.debounce)
       .mapEval(_ =>
         iox(Task(rereadDirectory(directory)))
           .start)
@@ -234,8 +234,7 @@ object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion
     pollTimeout: FiniteDuration,
     retryDelays: Seq[FiniteDuration],
     fileDelay: FiniteDuration,
-    logDelays: Seq[FiniteDuration],
-    debounce: FiniteDuration)
+    logDelays: Seq[FiniteDuration])
   object Settings {
     def fromConfig(config: Config): Checked[Settings] =
       for {
@@ -251,10 +250,8 @@ object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion
         logDelays <- catchNonFatal(config.getDurationList(
           "js7.configuration.trusted-signature-key-settings.log-delays")
           .asScala.map(_.toFiniteDuration).toVector)
-        debounce <- config.finiteDuration(
-          "js7.configuration.trusted-signature-key-settings.debounce")
       } yield
-        Settings(watchDelay, pollTimeout, retryDelays, fileDelay, logDelays, debounce)
+        Settings(watchDelay, pollTimeout, retryDelays, fileDelay, logDelays)
   }
 
   private case class ConfigStringExpectedProblem(configKey: String) extends Problem.Lazy(
