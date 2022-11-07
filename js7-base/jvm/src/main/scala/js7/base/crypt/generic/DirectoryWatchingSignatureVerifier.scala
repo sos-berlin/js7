@@ -14,7 +14,7 @@ import js7.base.crypt.{GenericSignature, SignatureVerifier, SignerId}
 import js7.base.data.ByteArray
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.io.file.watch.{DirectoryState, DirectoryWatcher, WatchOptions}
-import js7.base.log.Logger
+import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.Checked.catchNonFatal
 import js7.base.problem.{Checked, Problem}
 import js7.base.thread.Futures.implicits.*
@@ -85,7 +85,8 @@ extends SignatureVerifier with AutoCloseable
     companionToDirectory.values
       .toVector.distinct
       .map { case (directory, directoryState) =>
-        observeDirectory(directory, directoryState)
+        CorrelId.bindNew(
+          observeDirectory(directory, directoryState))
       }
       .map(_.start)
       .sequence

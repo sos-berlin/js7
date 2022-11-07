@@ -65,7 +65,7 @@ private final class LoggingTestAdder(suiteName: String) {
 }
 
 private object LoggingTestAdder {
-  val logger = Logger("TEST")
+  private val logger = Logger("TEST")
   private val bar = "⎯" * 72
   private val successMarkup = green + bold
   private val pendingMarkup = ""
@@ -82,7 +82,7 @@ private object LoggingTestAdder {
   final class TestContext(adder: LoggingTestAdder, val prefix: String, testName: String) {
     def beforeTest(): Unit = {
       delayBeforeEnd()
-      logger.info(eager(s"↘︎ $prefix$blue$bold$testName$resetColor"))
+      logger.info(eager(s"↘︎ $blue$bold$prefix$testName$resetColor"))
       delayBeforeEnd()
     }
 
@@ -90,13 +90,13 @@ private object LoggingTestAdder {
       result match {
         case Success(_) =>
           adder.succeededCount += 1
-          logger.info(eager(s"↙︎ $prefix$successMarkup$testName$resetColor"))
+          logger.info(eager(s"↙︎ $successMarkup$prefix$testName$resetColor"))
           logger.info(eager(successMarkup + bar))
           delayBeforeEnd()
 
         case Failure(_: TestPendingException) =>
           adder.pendingCount += 1
-          logger.warn(eager(s"🚫 $prefix$pendingMarkup$testName (PENDING)$resetColor\n"))
+          logger.warn(eager(s"🚫 $pendingMarkup$prefix$testName (PENDING)$resetColor\n"))
           logger.info(eager(pendingMarkup + bar))
           delayBeforeEnd()
 
@@ -104,7 +104,7 @@ private object LoggingTestAdder {
           adder.failedCount += 1
           clipStackTrace(t)
 
-          val s = s"💥 $prefix$failureMarkup$testName 💥$resetColor"
+          val s = s"💥 $failureMarkup$prefix$testName 💥$resetColor"
           logger.error(s, t)
           logger.info(eager(failureMarkup + bar))
           if (isSbt) System.err.println(s)

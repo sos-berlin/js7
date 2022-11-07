@@ -141,8 +141,9 @@ object Configs
 
   implicit final class HoconStringInterpolator(private val sc: StringContext) extends AnyVal
   {
-    def config(args: Any*): Config =
+    def config(args: Any*)(implicit enclosing: sourcecode.Enclosing): Config =
       ConfigFactory.parseString(
-        JsonStringInterpolator.interpolate(sc, args))
+        JsonStringInterpolator.interpolate(sc, args),
+        ConfigParseOptions.defaults().setOriginDescription(enclosing.value))
   }
 }

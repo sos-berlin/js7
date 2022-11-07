@@ -335,7 +335,7 @@ final class AgentOrderKeeper(
       shutdown.onSnapshotTaken()
 
     case OrderActor.Output.OrderChanged(orderId, correlId, previousOrderOrNull, events) =>
-      correlId.bind {
+      correlId.bind[Unit] {
         if (!shuttingDown) {
           // previousOrderOrNull is null only for OrderAttachedToAgent event
           var order = previousOrderOrNull

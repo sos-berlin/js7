@@ -194,11 +194,11 @@ object JournalLogger
       if (persistCount == 1)
         ' '
       else {
-        // Return a bold nipple at start of a Persist
+        // Return a bold nipple at start of a Persist ?
         if (isFirst)
-          if (persistIndex == 0) '┍'
-          else if (persistIndex == persistCount - 1 & isLast) '┕'  // Last Persist has one event
-          else '┝'
+          if (persistIndex == 0) '┌' //'┍'
+          else if (persistIndex == persistCount - 1 & isLast) '└' //'┕'  // Last Persist has one event
+          else '├' //'┝'
         else if (isLast & persistIndex == persistCount - 1) '└'  // Last Persist has >1 events
         else '│'
       }
