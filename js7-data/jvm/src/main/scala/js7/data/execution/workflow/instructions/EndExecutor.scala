@@ -12,38 +12,38 @@ extends EventInstructionExecutor with PositionInstructionExecutor
   val instructionClass = classOf[End]
 
   def toEvents(instruction: End, order: Order[Order.State], state: StateView) =
-    start(order)
-      .getOrElse(
-        (order.position.parent match {
-          case None =>
-            order.state match {
-              case _: Order.Ready =>
-                detach(order)
-                  .getOrElse(Right(
-                    (order.id <-: OrderFinished()) :: Nil))
+    order.position.parent match {
+      case None =>
+        order.state match {
+          case _: Order.IsFreshOrReady =>
+            detach(order)
+              .orElse(
+                start(order))
+              .getOrElse(Right(
+                (order.id <-: OrderFinished()) :: Nil))
 
-              case _ => Right(Nil)
-            }
+          case _ => Right(Nil)
+        }
 
-          case Some(returnPosition) =>
-            state.instruction(order.workflowId /: returnPosition) match {
-              case fork: ForkInstruction =>
-                Right(service.tryJoinChildOrder(fork, order, state).toList)
+      case Some(returnPosition) =>
+        state.instruction(order.workflowId /: returnPosition) match {
+          case fork: ForkInstruction =>
+            Right(service.tryJoinChildOrder(fork, order, state).toList)
 
-              case lock: LockInstruction =>
-                Right(service.lockExecutor.onReturnFromSubworkflow(order, lock).toList)
+          case lock: LockInstruction =>
+            Right(service.lockExecutor.onReturnFromSubworkflow(order, lock).toList)
 
-              case cycle: Cycle =>
-                service.cycleExecutor.onReturnFromSubworkflow(order, cycle, state)
-                  .map(_ :: Nil)
+          case cycle: Cycle =>
+            service.cycleExecutor.onReturnFromSubworkflow(order, cycle, state)
+              .map(_ :: Nil)
 
-              case _: ConsumeNotices =>
-                Right(service.consumeNoticesExecutor.onReturnFromSubworkflow(order) :: Nil)
+          case _: ConsumeNotices =>
+            Right(service.consumeNoticesExecutor.onReturnFromSubworkflow(order) :: Nil)
 
-              case _ =>
-                Right((order.id <-: OrderMoved(returnPosition.increment)) :: Nil)
-            }
-        }))
+          case _ =>
+            Right((order.id <-: OrderMoved(returnPosition.increment)) :: Nil)
+        }
+    }
 
   def nextMove(instruction: End, order: Order[Order.State], state: StateView) = {
     import service.instructionToExecutor
