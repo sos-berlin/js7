@@ -3,6 +3,7 @@ package js7.base.thread
 import com.typesafe.config.Config
 import java.util.concurrent.{ArrayBlockingQueue, ExecutorService, LinkedBlockingQueue, SynchronousQueue, ThreadFactory, ThreadPoolExecutor}
 import js7.base.system.Java8Polyfill.*
+import js7.base.thread.VirtualThreads.maybeNewVirtualThreadExecutorService
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.*
 import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
@@ -15,6 +16,10 @@ object ThreadPoolsBase
       keepAlive = config.getDuration("js7.thread-pools.io.keep-alive").toFiniteDuration)
 
   def newBlockingExecutor(name: String, keepAlive: FiniteDuration = 60.s): ExecutorService =
+    maybeNewVirtualThreadExecutorService() getOrElse
+      newBlockingThreadPool(name, keepAlive)
+
+  def newBlockingThreadPool(name: String, keepAlive: FiniteDuration = 60.s): ExecutorService =
     newThreadPoolExecutor(name = name, keepAlive = keepAlive,
       corePoolSize = 0, maximumPoolSize = Int.MaxValue, queueSize = Some(0))
 

@@ -45,6 +45,8 @@ if [ -n "$javaHome" ]; then :
 fi
 
 standardJavaOptions=()
+standardJavaOptions+=("-Djs7.VirtualThread") # Experimental !!!
+standardJavaOptions+=("--enable-preview") # Experimental !!!
 standardJavaOptions+=("-Dfile.encoding=UTF-8")
 standardJavaOptions+=("-XX:MaxJavaStackTraceDepth=999999")  # To analyze StackOverflowError
 
