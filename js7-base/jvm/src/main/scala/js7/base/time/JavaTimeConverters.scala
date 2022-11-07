@@ -54,7 +54,9 @@ object JavaTimeConverters
   }
 
   private def javaToFiniteDuration(o: Duration): FiniteDuration =
-    if (o.isNegative && useJava8Workaround)
+    if (o.isZero)
+      ZeroDuration // "0 seconds" instead of "0 nanoseconds", for logging
+    else if (o.isNegative && useJava8Workaround)
       new FiniteDuration(-o.negated.toNanos, NANOSECONDS).toCoarsest
     else
       new FiniteDuration(o.toNanos, NANOSECONDS).toCoarsest

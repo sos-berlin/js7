@@ -103,7 +103,7 @@ object BareSubagent
       val inMemoryJournalSize = config.getInt("js7.journal.event-buffer-size")
 
       (for {
-        iox <- IOExecutor.resource[Task](config, name = conf.name + " I/O")
+        iox <- IOExecutor.resource[Task](config, name = conf.name + "-I/O")
         // For BlockingInternalJob (thread-blocking Java jobs)
         blockingInternalJobScheduler <-
           schedulerServiceToResource(Task(newUnlimitedScheduler("JS7 blocking job")))

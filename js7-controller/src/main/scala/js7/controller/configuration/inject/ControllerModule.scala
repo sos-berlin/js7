@@ -54,7 +54,7 @@ extends AbstractModule
 
   @Provides @Singleton
   def ioExecutor(closer: Closer, conf: ControllerConfiguration, config: Config): IOExecutor = {
-    val threadPool = newBlockingExecutor(config, name = conf.name + " I/O")
+    val threadPool = newBlockingExecutor(config, name = conf.name + "-I/O")
     closer.onClose { threadPool.shutdown() }
     new IOExecutor(threadPool)
   }
