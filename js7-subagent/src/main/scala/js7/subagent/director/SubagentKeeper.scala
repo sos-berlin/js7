@@ -484,18 +484,18 @@ object SubagentKeeper
       insertSubagentDriver(driver, subagentItem.disabled)
 
     def insertSubagentDriver(driver: SubagentDriver, disabled: Boolean = false): Checked[State] =
-      for {
-        idToE <- subagentToEntry.insert(driver.subagentId -> Entry(driver, disabled))
-        selectionToPrioritized <-
-          if (disabled)
-            Right(selectionToPrioritized)
-          else
-            // Add SubagentId to default SubagentSelection
-            for (o <- selectionToPrioritized(None).add(driver.subagentId)) yield
-              selectionToPrioritized.updated(None, o)
-      } yield copy(
-        subagentToEntry = idToE,
-        selectionToPrioritized = selectionToPrioritized)
+      subagentToEntry.insert(driver.subagentId -> Entry(driver, disabled))
+        .map(idToE => copy(
+          subagentToEntry = idToE,
+          selectionToPrioritized =
+            if (disabled)
+              selectionToPrioritized
+            else
+              // Add SubagentId to default SubagentSelection
+              selectionToPrioritized
+                .updated(
+                  None,
+                  selectionToPrioritized(None).add(driver.subagentId))))
 
     def replaceSubagentDriver(driver: SubagentDriver, subagentItem: SubagentItem): Checked[State] =
       if (!subagentToEntry.contains(driver.subagentId))
@@ -533,22 +533,20 @@ object SubagentKeeper
         selectionToPrioritized = Map.empty)
 
     def disable(id: SubagentId, disabled: Boolean): Checked[State] =
-      subagentToEntry
-        .get(id)
-        .filter(_.disabled != disabled)
-        .fold(Checked(this)) { entry =>
-          val checkedSelToPrio =
-            if (disabled)
-              Right(selectionToPrioritized.view.mapValues(_.remove(id)).toMap)
-            else
-              selectionToPrioritized.toVector
-                .traverse { case (k, v) => v.add(id).map(k -> _) }
-                .map(_.toMap)
-          for (selToPrio <- checkedSelToPrio) yield
+      Right(
+        subagentToEntry
+          .get(id)
+          .filter(_.disabled != disabled)
+          .fold(this)(entry =>
             copy(
               subagentToEntry = subagentToEntry.updated(id, entry.copy(disabled = disabled)),
-              selectionToPrioritized = selToPrio)
-        }
+              selectionToPrioritized = selectionToPrioritized.view
+                .mapValues(o =>
+                  if (disabled)
+                    o.remove(id)
+                  else
+                    o.add(id))
+                .toMap)))
 
     def selectNext(maybeSelectionId: Option[SubagentSelectionId]): Checked[Option[SubagentDriver]] =
       maybeSelectionId match {

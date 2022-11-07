@@ -1,6 +1,5 @@
 package js7.subagent.director
 
-import js7.base.problem.{Checked, Problem}
 import js7.subagent.director.Prioritized.prioritySort
 
 private final class Prioritized[A] private(
@@ -17,13 +16,10 @@ private final class Prioritized[A] private(
       case _ => false
     }
 
-  def add(a: A): Checked[Prioritized[A]] =
-    if (orderedKeys.contains(a))
-      Left(Problem.pure(s"Duplicate value for Prioritized: $a"))
-    else
-      Right(copy(prioritySort(
-        orderedKeys.view :+ a)(
-        toPriority = k => toPriority(k))))
+  def add(a: A): Prioritized[A] =
+    copy(prioritySort(
+      orderedKeys.filter(_ != a).view :+ a)(
+      toPriority = k => toPriority(k)))
 
   def remove(a: A): Prioritized[A] =
     copy(orderedKeys.filter(_ != a))

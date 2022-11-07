@@ -1,7 +1,6 @@
 package js7.subagent.director
 
 import js7.base.test.OurTestSuite
-import js7.base.utils.ScalaUtils.syntax.*
 import js7.subagent.director.Prioritized.prioritySort
 import js7.subagent.director.PrioritizedTest.*
 
@@ -24,12 +23,12 @@ final class PrioritizedTest extends OurTestSuite
     assert(empty.remove(A(3)) == empty)
 
     val prioritized = empty
-      .add(A(32)).orThrow
-      .add(A(31)).orThrow
-      .add(A(30)).orThrow
-      .add(A(12)).orThrow
-      .add(A(11)).orThrow
-      .add(A(99)).orThrow
+      .add(A(32))
+      .add(A(31))
+      .add(A(30))
+      .add(A(12))
+      .add(A(11))
+      .add(A(99))
 
     assert(prioritized.selectNext(_ => false) == None)
 
