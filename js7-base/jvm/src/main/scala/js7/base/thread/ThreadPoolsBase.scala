@@ -9,12 +9,12 @@ import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 
 object ThreadPoolsBase
 {
-  def newUnlimitedThreadPool(config: Config, name: String): ExecutorService =
-    newUnlimitedThreadPool(
+  def newBlockingExecutor(config: Config, name: String): ExecutorService =
+    newBlockingExecutor(
       name = name,
       keepAlive = config.getDuration("js7.thread-pools.io.keep-alive").toFiniteDuration)
 
-  def newUnlimitedThreadPool(name: String, keepAlive: FiniteDuration = 60.s): ExecutorService =
+  def newBlockingExecutor(name: String, keepAlive: FiniteDuration = 60.s): ExecutorService =
     newThreadPoolExecutor(name = name, keepAlive = keepAlive,
       corePoolSize = 0, maximumPoolSize = Int.MaxValue, queueSize = Some(0))
 
@@ -27,7 +27,7 @@ object ThreadPoolsBase
   //      .getOrElse(Int.MaxValue),
   //    queueSize = config.optionAs[Int]("js7.thread-pools.io.queue-size"))
 
-  def newThreadPoolExecutor(
+  private def newThreadPoolExecutor(
     name: String,
     keepAlive: FiniteDuration,
     corePoolSize: Int = 0,

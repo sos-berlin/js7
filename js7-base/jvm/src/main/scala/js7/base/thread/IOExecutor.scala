@@ -8,7 +8,7 @@ import js7.base.log.{CorrelId, Logger}
 import js7.base.system.Java8Polyfill.*
 import js7.base.thread.Futures.promiseFuture
 import js7.base.thread.IOExecutor.*
-import js7.base.thread.ThreadPoolsBase.newUnlimitedThreadPool
+import js7.base.thread.ThreadPoolsBase.newBlockingExecutor
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import monix.eval.{Task, TaskLike}
@@ -41,7 +41,7 @@ object IOExecutor
 {
   private val logger = Logger[this.type]
   lazy val globalIOX = new IOExecutor(
-    newUnlimitedThreadPool(name = "JS7 global I/O", keepAlive = 10.s))
+    newBlockingExecutor(name = "JS7 global I/O", keepAlive = 10.s))
 
   object Implicits {
     implicit lazy val globalIOX: IOExecutor = IOExecutor.globalIOX
@@ -50,7 +50,7 @@ object IOExecutor
   def resource[F[_]](config: Config, name: String)(implicit F: Sync[F]): Resource[F, IOExecutor] =
     Resource
       .make(
-        acquire = F.delay(newUnlimitedThreadPool(config, name)))(
+        acquire = F.delay(newBlockingExecutor(config, name)))(
         release = o => F.delay(o.shutdown()))
       .map(new IOExecutor(_))
 
