@@ -87,7 +87,8 @@ trait ControllerClusterForScalaTest
     withCloser { implicit closer =>
       val testName = ControllerClusterForScalaTest.this.getClass.getSimpleName
       val agentPorts = findFreeTcpPorts(agentPaths.size)
-      val primary = new DirectoryProvider(agentPaths, items, testName = Some(s"$testName-Primary"),
+      val primary = new DirectoryProvider(
+        agentPaths, Map.empty, items, testName = Some(s"$testName-Primary"),
         controllerConfig = combine(
           primaryControllerConfig,
           configIf(configureClusterNodes, config"""
@@ -109,7 +110,8 @@ trait ControllerClusterForScalaTest
         agentConfig = config"""js7.job.execution.signed-script-injection-allowed = on"""
       ).closeWithCloser
 
-      val backup = new DirectoryProvider(Nil, Nil, testName = Some(s"$testName-Backup"),
+      val backup = new DirectoryProvider(
+        Nil, Map.empty, Nil, testName = Some(s"$testName-Backup"),
         controllerConfig = combine(
           backupControllerConfig,
           config"""

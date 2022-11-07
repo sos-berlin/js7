@@ -28,7 +28,7 @@ final class ResetSubagentTest extends OurTestSuite with SubagentTester
   protected implicit val scheduler = Scheduler.traced
 
   "ResetSubagent after Subagent has been shutdown" in {
-    enableSubagents(directoryProvider.subagentItems.head -> false)
+    enableSubagents(directoryProvider.subagentId -> false)
 
     val orderId = OrderId("RESET-SUBAGENT-AFTER-SHUTDOWN")
     var firstSubagentRunId: SubagentRunId = null

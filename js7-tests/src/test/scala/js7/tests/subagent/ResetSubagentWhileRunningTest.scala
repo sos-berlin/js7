@@ -30,7 +30,7 @@ final class ResetSubagentWhileRunningTest extends OurTestSuite with SubagentTest
   protected implicit val scheduler = Scheduler.traced
 
   "ResetSubagent while Subagent is coupled" in {
-    enableSubagents(directoryProvider.subagentItems.head -> false)
+    enableSubagents(directoryProvider.subagentId -> false)
 
     val aOrderId = OrderId("A-ORDER")
     val bOrderId = OrderId("B-ORDER")

@@ -69,12 +69,18 @@ object TestControllerAgent
   }
 
   private def run(conf: Conf): Unit = {
-    autoClosing(new DirectoryProvider(conf.agentPaths, makeWorkflow(conf) :: Nil, useDirectory = Some(conf.directory))) { env =>
-      env.controller.configDir / "controller.conf" ++= "js7.web.server.auth.loopback-is-public = on\n"
-      env.agents foreach { _.configDir / "agent.conf" ++= "js7.web.server.auth.loopback-is-public = on\n" }
+    val directoryProvider = new DirectoryProvider(
+      conf.agentPaths, Map.empty, makeWorkflow(conf) :: Nil, useDirectory = Some(conf.directory))
+    autoClosing(directoryProvider) { directoryProvider =>
+      directoryProvider.controller.configDir / "controller.conf" ++=
+        "js7.web.server.auth.loopback-is-public = on\n"
+      directoryProvider.agents foreach { _.configDir / "agent.conf" ++=
+        "js7.web.server.auth.loopback-is-public = on\n" }
       withCloser { implicit closer =>
         for (agentPath <- conf.agentPaths) {
-          TestPathExecutable.toFile(env.agentToTree(agentPath).configDir / "executables").writeUtf8Executable(
+          TestPathExecutable
+            .toFile(directoryProvider.agentToTree(agentPath).configDir / "executables")
+            .writeUtf8Executable(
               if (isWindows) s"""
                  |@echo off
                  |echo Hello
@@ -92,8 +98,8 @@ object TestControllerAgent
                  |""".stripMargin)
         }
 
-        env.runAgents() { agents =>
-          env.runController() { controller =>
+        directoryProvider.runAgents() { agents =>
+          directoryProvider.runController() { controller =>
             JavaShutdownHook.add("TestControllerAgent") {
               print('\n')
               (for (agent <- agents) yield {
@@ -111,7 +117,8 @@ object TestControllerAgent
               for (i <- 1 to conf.orderGeneratorCount) {
                 val at = Timestamp.now
                 controller
-                  .addOrder(FreshOrder(OrderId(s"test-$i@$at"), TestWorkflowPath, scheduledFor = Some(at)))
+                  .addOrder(
+                    FreshOrder(OrderId(s"test-$i@$at"), TestWorkflowPath, scheduledFor = Some(at)))
                   .map(_.orThrow)
                   .onErrorRecover { case t: Throwable =>
                     logger.error(s"addOrder failed: ${t.toStringWithCauses}", t.nullIfNoStackTrace)

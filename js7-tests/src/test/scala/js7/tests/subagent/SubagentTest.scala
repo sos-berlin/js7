@@ -93,7 +93,7 @@ final class SubagentTest extends OurTestSuite with SubagentTester
 
   "Order waits when no Subagent is available" in {
     var eventId = eventWatch.lastAddedEventId
-    enableSubagents(directoryProvider.subagentItems.head -> false)
+    enableSubagents(directoryProvider.subagentId -> false)
 
     // Be sure that BareSubagent's shutdown has been detected
     assert(waitForCondition(10.s, 10.ms)(

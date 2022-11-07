@@ -4,14 +4,11 @@ import cats.effect.Resource
 import com.typesafe.config.{Config, ConfigFactory}
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.log.Logger
-import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsTestUtils.BlockingTaskResource
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import js7.data.item.BasicItemEvent.ItemAttached
-import js7.data.item.ItemOperation.AddOrChangeSimple
 import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentDedicated}
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.subagent.BareSubagent
@@ -20,7 +17,6 @@ import js7.tests.subagent.SubagentTester.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.eval.Task
 import monix.execution.Scheduler
-import monix.reactive.Observable
 import org.scalatest.Suite
 import scala.util.control.NonFatal
 
@@ -93,20 +89,6 @@ trait SubagentTester extends ControllerAgentForScalaTest
           subagent
       }
     })
-
-  protected final def enableSubagents(subagentIdToEnable: (SubagentItem, Boolean)*): Unit = {
-    val eventId = eventWatch.lastAddedEventId
-    controllerApi
-      .updateItems(Observable
-        .fromIterable(subagentIdToEnable)
-        .map {
-          case (subagentItem, enable) => AddOrChangeSimple(subagentItem.copy(disabled = !enable))
-        })
-      .await(99.s).orThrow
-    for (subagentId <- subagentIdToEnable.map(_._1.id)) {
-      eventWatch.await[ItemAttached](_.event.key == subagentId, after = eventId)
-    }
-  }
 }
 
 object SubagentTester {

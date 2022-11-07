@@ -70,7 +70,7 @@ final class SubagentDisabledTest extends OurTestSuite with SubagentTester
   }
 
   "Disable localSubagentId" in {
-    enableSubagents(localSubagentItem -> false)
+    enableSubagents(localSubagentId -> false)
 
     runOrderAndCheck(aSubagentId)
     runOrderAndCheck(bSubagentId)
@@ -80,19 +80,19 @@ final class SubagentDisabledTest extends OurTestSuite with SubagentTester
   }
 
   "Disable aSubagentId" in {
-    enableSubagents(aSubagentItem -> false)
+    enableSubagents(aSubagentItem.id -> false)
     runOrderAndCheck(bSubagentId)
     runOrderAndCheck(bSubagentId)
   }
 
   "Enable aSubagentId, disable bSubagentId" in {
-    enableSubagents(aSubagentItem -> true, bSubagentItem -> false)
+    enableSubagents(aSubagentItem.id -> true, bSubagentItem.id -> false)
     runOrderAndCheck(aSubagentId)
     runOrderAndCheck(aSubagentId)
   }
 
   "Disable all Subagents including Director, then re-enableSubagents one" in {
-    enableSubagents(aSubagentItem -> false)
+    enableSubagents(aSubagentItem.id -> false)
 
     val orderId = nextOrderId()
     var eventId = eventWatch.lastAddedEventId

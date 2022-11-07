@@ -13,6 +13,7 @@ import js7.common.message.ProblemCodeMessages
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.agent.AgentPath
 import js7.data.item.{InventoryItem, SignableItem}
+import js7.data.subagent.SubagentId
 import monix.execution.Scheduler
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.immutable.Iterable
@@ -33,10 +34,13 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
   protected def agentHttps = false
   protected def agentPorts: Iterable[Int] = Nil
   protected def doNotAddItems = false
+
+  protected def bareSubagentIds: Map[AgentPath, Seq[SubagentId]] = Map.empty
   protected def subagentsDisabled = false
 
   protected final lazy val directoryProvider = new DirectoryProvider(
     agentPaths,
+    bareSubagentIds,
     items = items,
     controllerConfig = controllerConfig,
     agentHttps = agentHttps,

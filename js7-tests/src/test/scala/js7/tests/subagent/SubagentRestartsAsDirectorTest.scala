@@ -48,14 +48,17 @@ with ProvideActorSystem
     val directoryProvider = new DirectoryProvider(agentPaths = Nil)
     autoClosing(directoryProvider) { _ =>
       withTemporaryDirectory("SubagentRestartsAsDirectorTest-") { directory =>
+        val controllerId = ControllerId("CONTROLLER")
+        val agentPath = AgentPath("AGENT")
         val privat = createDirectories(directory / "data" / "private")
         val port = findFreeTcpPort()
         val uri = Uri(s"http://localhost:$port")
-        val conf = directoryProvider.toSubagentConf(directory, trustedSignatureDir = privat, port = port, this.config, name = "SubagentRestartsAsDirectorTest")
+        val conf = directoryProvider
+          .toSubagentConf(
+            agentPath, directory, trustedSignatureDir = privat, port = port,
+            this.config, name = "SubagentRestartsAsDirectorTest")
           .finishAndProvideFiles
 
-        val agentPath = AgentPath("AGENT")
-        val controllerId = ControllerId("CONTROLLER")
         val commands = Seq(
           CoupleController(agentPath, AgentRunId.empty, 0L),
           DedicateAgentDirector(None, controllerId, agentPath))

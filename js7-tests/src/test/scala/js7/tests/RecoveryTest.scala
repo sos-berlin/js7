@@ -50,6 +50,7 @@ final class RecoveryTest extends OurTestSuite
       var lastEventId = EventId.BeforeFirst
       val directoryProvider = new DirectoryProvider(
         AgentPaths,
+        bareSubagents = Map.empty,
         TestWorkflow :: QuickWorkflow :: Nil,
         signer = new SillySigner(SillySignature("MY-SILLY-SIGNATURE")),
         verifier = new SillySignatureVerifier(SillySignature("MY-SILLY-SIGNATURE") :: Nil, "RecoveryTest"),

@@ -20,8 +20,10 @@ final class AgentClientSideHttpsWithoutCertificateTest extends HttpsTestBase
   override protected def agentHttpsMutual = true
   override protected def provideAgentClientCertificate = false
   override protected def useCluster = false
+  override protected val waitUntilReady = false
 
   "Login" in {
+    controller.waitUntilReady()
     httpControllerApi.login() await 99.s
   }
 

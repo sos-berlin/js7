@@ -1,6 +1,7 @@
 package js7.tests.testenv
 
 import cats.syntax.traverse.*
+import cats.syntax.foldable.*
 import js7.agent.RunningAgent
 import js7.base.configutils.Configs.*
 import js7.base.problem.Checked
@@ -9,13 +10,20 @@ import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.WallClock
 import js7.base.utils.Lazy
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.controller.RunningController
 import js7.data.controller.ControllerState
 import js7.data.execution.workflow.instructions.InstructionExecutorService
+import js7.data.item.BasicItemEvent.ItemAttached
+import js7.data.item.ItemOperation.AddOrChangeSimple
 import js7.data.item.{VersionId, VersionedItem, VersionedItemPath}
 import js7.data.order.{OrderId, OrderObstacle, OrderObstacleCalculator}
+import js7.data.subagent.{SubagentId, SubagentItem}
+import js7.data.subagent.SubagentItemStateEvent.SubagentCoupled
+import js7.subagent.BareSubagent
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
+import monix.reactive.Observable
 import scala.collection.mutable
 
 /**
@@ -27,6 +35,12 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
   protected final lazy val agents: Seq[RunningAgent] = directoryProvider.startAgents(agentModule)
     .await(99.s)
   protected final lazy val agent: RunningAgent = agents.head
+
+  protected final lazy val (bareSubagents, releaseBareSubagents): (Seq[BareSubagent], Task[Unit]) =
+    directoryProvider
+      .startBareSubagents()
+      .map(pairs => pairs.map(_._1) -> pairs.traverse(_._2).map(_.combineAll))
+      .await(99.s)
 
   protected final lazy val controller: RunningController =
     directoryProvider
@@ -61,9 +75,15 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
 
   override def beforeAll() = {
     super.beforeAll()
+    bareSubagents
     agents
     if (waitUntilReady) {
       controller.waitUntilReady()
+      if (!doNotAddItems) {
+        for (subagentItem <- directoryProvider.subagentItems) {
+          eventWatch.await[SubagentCoupled](_.key == subagentItem.id)
+        }
+      }
     }
   }
 
@@ -72,6 +92,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
     controller.terminate() await 15.s
     controller.close()
     agents.traverse(a => a.terminate() >> Task(a.close())) await 15.s
+    releaseBareSubagents.await(99.s)
     super.afterAll()
   }
 
@@ -96,5 +117,21 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
   : Unit = {
     usedVersionIds += versionId
     directoryProvider.updateVersionedItems(controller, versionId, change, delete)
+  }
+
+  protected final def enableSubagents(subagentIdToEnable: (SubagentId, Boolean)*): Unit = {
+    val eventId = eventWatch.lastAddedEventId
+    controllerApi
+      .updateItems(Observable
+        .fromIterable(subagentIdToEnable)
+        .map {
+          case (subagentId, enable) =>
+            val subagentItem = controllerState.keyToItem(SubagentItem)(subagentId)
+            AddOrChangeSimple(subagentItem.withRevision(None).copy(disabled = !enable))
+        })
+      .await(99.s).orThrow
+    for (subagentId <- subagentIdToEnable.map(_._1)) {
+      eventWatch.await[ItemAttached](_.event.key == subagentId, after = eventId)
+    }
   }
 }
