@@ -100,6 +100,8 @@ object BasicDirectoryWatcher
 {
   private val logger = Logger(getClass)
 
+  val systemWatchDelay = if (isMac/*polling*/) 2.s else 0.s
+
   private val highSensitivity: Array[WatchEvent.Modifier] =
     if (isMac) // https://bugs.openjdk.java.net/browse/JDK-7133447
       try Array(com.sun.nio.file.SensitivityWatchEventModifier.HIGH/*2s instead of 10s*/)

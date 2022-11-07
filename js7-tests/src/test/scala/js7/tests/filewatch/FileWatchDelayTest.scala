@@ -5,11 +5,11 @@ import cats.syntax.parallel.*
 import java.nio.file.Files.{createDirectories, exists}
 import js7.agent.scheduler.order.FileWatchManager
 import js7.base.configutils.Configs.*
-import js7.base.test.OurTestSuite
 import js7.base.io.file.FileUtils.syntax.*
+import js7.base.io.file.watch.BasicDirectoryWatcher.systemWatchDelay
 import js7.base.log.Logger
 import js7.base.problem.Checked.*
-import js7.base.system.OperatingSystem.isMac
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
@@ -119,6 +119,4 @@ object FileWatchDelayTest
     WorkflowPath("WORKFLOW") ~ "INITIAL",
     Vector(
       DeleteFileJob.execute(agentPath)))
-
-  private val systemWatchDelay = if (isMac) 2.s else 0.s
 }

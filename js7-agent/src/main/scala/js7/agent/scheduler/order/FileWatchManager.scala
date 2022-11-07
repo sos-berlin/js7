@@ -186,7 +186,8 @@ final class FileWatchManager(
           })
           .takeUntil(stop)
           .flatMap(Observable.fromIterable)
-          .delayFileAdded(directory, fileWatch.delay, logDelays)  // buffers without limit all incoming event
+          // Buffers without limit all incoming events
+          .delayFileAdded(directory, fileWatch.delay, logDelays)
           .bufferIntrospective(1024)
           .mapEval(dirEventSeqs =>
             lockKeeper.lock(fileWatch.path)(
