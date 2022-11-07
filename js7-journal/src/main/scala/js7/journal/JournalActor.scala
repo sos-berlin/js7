@@ -696,7 +696,7 @@ extends Actor with Stash with JournalLogging
       logger.error(msg)
       for (stamped <- stampedSeq) logger.error(stamped.toString.truncateWithEllipsis(200))
       // msg may get very big
-      msg ++= s":\n" ++ diffx.compare(couldBeRecoveredState, uncommittedState).show()
+      msg ++= ":\n" ++ diffx.compare(couldBeRecoveredState, uncommittedState).show()
       logger.info(msg)  // Without colors because msg is already colored
       throw new AssertionError(msg)
     }

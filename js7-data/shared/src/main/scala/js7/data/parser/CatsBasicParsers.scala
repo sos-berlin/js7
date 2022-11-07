@@ -95,7 +95,7 @@ object CatsBasicParsers
       .<*(string("'" * n))
       .orElse(failWith(
         s"Expected properly terminated ${"'" * n}…${"'" * n}-quoted string " +
-          s"without non-printable characters (except \\t, \\r and \\n)" +
+          "without non-printable characters (except \\t, \\r and \\n)" +
           s" — or use ${"\"\""} (but not '') for the empty string"))
 
   private def singleQuotedN(n: Int): Parser[String] =

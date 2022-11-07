@@ -303,7 +303,7 @@ object FastparseExpressionParser
         case (a: BooleanExpression, (), b: BooleanExpression) =>
           valid(And(a, b))
         case (a, (), b) =>
-          invalid(s"Operator && requires Boolean operands: " +
+          invalid("Operator && requires Boolean operands: " +
             Precedence.toString(a, "&&", Precedence.And, b))
       }))
 
@@ -311,7 +311,7 @@ object FastparseExpressionParser
     and.flatMap(initial =>
       leftRecurse(initial, "||", and) {
         case (a: BooleanExpression, (), b: BooleanExpression) => valid(Or(a, b))
-        case (a, (), b) => invalid(s"boolean operarands for operator ||: " +
+        case (a, (), b) => invalid("boolean operarands for operator ||: " +
           Precedence.toString(a, "||", Precedence.Or, b))
       }))
 

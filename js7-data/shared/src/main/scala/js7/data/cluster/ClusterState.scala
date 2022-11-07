@@ -187,7 +187,7 @@ extends EventDrivenState.Companion[ClusterState, ClusterEvent]
   extends Decoupled {
     protected def withSetting(setting: ClusterSetting) = copy(setting = setting)
 
-    override def toString = s"FailedOver(" +
+    override def toString = "FailedOver(" +
       s"${setting.passiveId.string} --> ${setting.activeId.string} at $failedAt)"
   }
 

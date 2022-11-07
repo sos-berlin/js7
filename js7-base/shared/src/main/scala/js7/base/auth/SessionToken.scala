@@ -23,7 +23,7 @@ object SessionToken
 {
   private val nextNumber = AtomicInt(0)
   private val NoNumber = 0L
-  private val NoNumberShort = s"Session:?"
+  private val NoNumberShort = "Session:?"
 
   def generateFromSecretString(secretString: SecretString): SessionToken = {
     val nr = nextNumber.incrementAndGet()

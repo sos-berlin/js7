@@ -100,7 +100,7 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion
           Left(Problem.pure(s"No trusted signature keys - Configure one with $configPath!"))
         else {
           logger.info(
-            Seq(s"Trusting public signature keys:")
+            Seq("Trusting public signature keys:")
               .concat(verifiers
                 .sortBy(_.companion.typeName)
                 .flatMap(_.publicKeysToStrings))

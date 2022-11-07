@@ -66,7 +66,7 @@ with Monoid[ByteSeq] with Eq[ByteSeq] with Show[ByteSeq]
   def fromMimeBase64(string: String): Checked[ByteSeq] =
     try Right(fromArray(Base64.getMimeDecoder.decode(string)))
     catch { case e: IllegalArgumentException =>
-      Left(Problem(s"Invalid MIME base64 encoding: " + e.getMessage))
+      Left(Problem("Invalid MIME base64 encoding: " + e.getMessage))
     }
 
   def fromFileUnlimited(file: Path): ByteSeq =

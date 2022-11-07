@@ -212,7 +212,7 @@ final case class Repo(
 
       case event: VersionedItemEvent =>
         if (versionIds.isEmpty)
-          Problem.pure(s"Missing initial VersionAdded event for Repo")
+          Problem.pure("Missing initial VersionAdded event for Repo")
         else
           event match {
             case event: VersionedItemAdded =>
@@ -386,7 +386,7 @@ final case class Repo(
       if (applied == this)
         Checked.unit
       else
-        Left(Problem.pure(s"💥 Repo.toEvents self-test failed, events do not match repo"))
+        Left(Problem.pure("💥 Repo.toEvents self-test failed, events do not match repo"))
     }
 
   /** Convert the Repo to an event sequence ordered by VersionId. */

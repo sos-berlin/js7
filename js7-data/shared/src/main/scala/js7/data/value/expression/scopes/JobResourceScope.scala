@@ -91,7 +91,7 @@ extends Scope
             }
         })
 
-  override def toString = s"JobResourceScope"
+  override def toString = "JobResourceScope"
 }
 
 object JobResourceScope

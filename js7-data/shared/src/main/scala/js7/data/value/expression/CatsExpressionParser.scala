@@ -279,14 +279,14 @@ object CatsExpressionParser
       case (a: BooleanExpression, ((), b: BooleanExpression)) =>
         pure(And(a, b))
       case (a, ((), b)) =>
-        failWith(s"Operator && requires Boolean operands: " +
+        failWith("Operator && requires Boolean operands: " +
           Precedence.toString(a, "&&", Precedence.And, b))
     }
 
   private val or: Parser[Expression] =
     leftRecurseParsers(and, string("||"), and) {
       case (a: BooleanExpression, ((), b: BooleanExpression)) => pure(Or(a, b))
-      case (a, ((), b)) => failWith(s"Expected boolean operans for operator ||: " +
+      case (a, ((), b)) => failWith("Expected boolean operans for operator ||: " +
         Precedence.toString(a, "||", Precedence.Or, b))
     }
 

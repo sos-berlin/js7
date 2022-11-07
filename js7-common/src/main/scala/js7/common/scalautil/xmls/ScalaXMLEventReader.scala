@@ -306,7 +306,7 @@ object ScalaXMLEventReader {
   }
 
   final class UnparsedAttributesException private[xmls](val names: Seq[String]) extends RuntimeException {
-    override def getMessage = s"Unknown XML attributes " + names.map("'" + _ + "'").mkString(", ")
+    override def getMessage = "Unknown XML attributes " + names.map("'" + _ + "'").mkString(", ")
   }
 
   final class XmlException(elementName: String, location: Location, override val getCause: Exception) extends RuntimeException {

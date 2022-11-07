@@ -402,7 +402,7 @@ object DirectoryProvider
       super.createDirectoriesAndFiles()
       for (keyStore <- keyStore) {
         configDir / "private/private.conf" ++=
-          s"""js7.web.https.keystore {
+           """js7.web.https.keystore {
              |  store-password = "jobscheduler"
              |  key-password = "jobscheduler"
              |}

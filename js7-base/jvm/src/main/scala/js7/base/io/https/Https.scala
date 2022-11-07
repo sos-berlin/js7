@@ -136,7 +136,7 @@ object Https
     } else {
       logger.info(s"Loaded $kind keystore $sourcePath" +
         iterator.map { case (alias, cert)  =>
-          s"\n  " +
+          "\n  " +
             (keyStore.isKeyEntry(alias) ?? "Private key ") +
             (keyStore.isCertificateEntry(alias) ?? "Trusted ") +
             certificateToString(cert) +

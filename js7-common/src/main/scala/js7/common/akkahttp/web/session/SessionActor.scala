@@ -52,7 +52,7 @@ extends Actor {
       val user = _user.asInstanceOf[SimpleUser]
       for (t <- tokenOption) delete(t, reason = "second login")
       val token = SessionToken.generateFromSecretString(SecretStringGenerator.newSecretString())
-      assertThat(!tokenToSession.contains(token), s"Duplicate generated SessionToken")  // Must not happen
+      assertThat(!tokenToSession.contains(token), "Duplicate generated SessionToken")  // Must not happen
       val session = newSession(SessionInit(token, user))
       if (!isEternalSession) {
         session.touch(sessionTimeout)

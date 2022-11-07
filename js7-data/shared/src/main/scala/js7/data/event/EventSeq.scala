@@ -52,7 +52,9 @@ object EventSeq {
   extends EventSeq[M, E] {
     assertThat(stamped.knownSize != 0)
 
-    override def toString = s"EventSeq.NonEmpty(" + (if (stamped.knownSize >= 0) s"${stamped.knownSize} events" else "lazy") + ")"
+    override def toString = "EventSeq.NonEmpty(" +
+      (if (stamped.knownSize >= 0) s"${stamped.knownSize} events" else "lazy") +
+      ")"
   }
 
   final case class Empty(lastEventId: EventId)

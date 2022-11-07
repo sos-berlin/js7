@@ -61,7 +61,7 @@ object PgpCommons
   implicit val PGPSecretKeyShow: Show[PGPSecretKey] =
     Show { key =>
       import key.*
-      f"PGPSecretKey(" +
+      "PGPSecretKey(" +
         getPublicKey.show +
         " cipher=" + cipherToString(getKeyEncryptionAlgorithm) +
         " isSigningKey=" + isSigningKey +
@@ -80,7 +80,7 @@ object PgpCommons
   implicit val PGPSignatureShow: Show[PGPSignature] =
     Show { sig =>
       import sig.*
-      f"PGPSignature(" +
+      "PGPSignature(" +
         signatureTypeToString(getSignatureType) +
         //PGPUtil.getSignatureName(getKeyAlgorithm, getHashAlgorithm)
         ", created=" + getCreationTime.show +

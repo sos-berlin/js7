@@ -140,7 +140,7 @@ extends AutoCloseable
           eventHeaderRead = true
           nextEvent3()
         case Some(positionAndJson) =>
-          throw new CorruptJournalException(s"Event header is missing", journalFile,
+          throw new CorruptJournalException("Event header is missing", journalFile,
             positionAndJson.copy(value = positionAndJson.value.toByteArray))
 
         case None =>
@@ -202,7 +202,7 @@ extends AutoCloseable
           case Commit =>  // Only after seek into a transaction
             nextEvent3()
 
-          case _ => throw new CorruptJournalException(s"Unexpected JSON record", journalFile,
+          case _ => throw new CorruptJournalException("Unexpected JSON record", journalFile,
             positionAndJson.copy(value = positionAndJson.value.toByteArray))
         }
     }

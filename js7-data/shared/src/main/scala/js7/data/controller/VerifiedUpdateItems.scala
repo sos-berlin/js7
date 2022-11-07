@@ -135,7 +135,7 @@ object VerifiedUpdateItems
       case (None, Seq(), Seq()) =>
         Right(None)
       case (None, _, _) =>
-        Left(Problem.pure(s"VersionedItem but AddVersionId operation is missing"))
+        Left(Problem.pure("VersionedItem but AddVersionId operation is missing"))
     }
 
   private case class ExitStreamException(problem: Problem) extends Exception

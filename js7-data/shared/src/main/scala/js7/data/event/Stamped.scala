@@ -73,7 +73,8 @@ object Stamped
         case Some(o) =>
           fields ++= o.toIterable
         case None =>
-          if (!json.isArray) sys.error(s"Stamped[A]: The A type must serialize to a JSON object or array, " +
+          if (!json.isArray) sys.error(
+            "Stamped[A]: The A type must serialize to a JSON object or array, " +
             s"but not: ${json.getClass.shortClassName}")
           fields += "array" -> json
       }

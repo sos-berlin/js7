@@ -372,7 +372,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                             assertThat(exists(file))
                             autoClosing(FileChannel.open(file, APPEND)) { out =>
                               if (out.size > lastProperEventPosition) {
-                                logger.info(s"Truncating open transaction in " +
+                                logger.info("Truncating open transaction in " +
                                   s"'${file.getFileName}' file at position $lastProperEventPosition")
                                 out.truncate(lastProperEventPosition)
                               }
@@ -438,8 +438,8 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                 }
 
               case clusterState =>
-                logger.trace(s"Ignoring observed pause without heartbeat because cluster is not coupled: " +
-                  s"clusterState=$clusterState")
+                logger.trace("Ignoring observed pause without heartbeat because cluster is not coupled: " +
+                  "clusterState=" + clusterState)
                 Observable.empty  // Ignore
             }
 
@@ -533,7 +533,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                           // To avoid a deadlock, we send ClusterPrepareCoupling command asynchronously and
                           // continue immediately with acknowledgement of ClusterEvent.ClusterCoupled.
                           if (!otherFailed)
-                            logger.error(s"Replicated unexpected FailedOver event")  // Should not happen
+                            logger.error("Replicated unexpected FailedOver event")  // Should not happen
                           dontActivateBecauseOtherFailedOver = false
                           Observable.fromTask(
                             tryEndlesslyToSendClusterPrepareCoupling
@@ -600,7 +600,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                     lastProperEventPosition = lastProperEventPosition,
                     header, nextHeader, replicatedFirstEventPosition.orThrow, builder.result())))
               case _ =>
-                Left(Problem.pure(s"JournalHeader could not be replicated " +
+                Left(Problem.pure("JournalHeader could not be replicated " +
                   s"fileEventId=${continuation.fileEventId} eventId=${builder.eventId}"))
             }
         }

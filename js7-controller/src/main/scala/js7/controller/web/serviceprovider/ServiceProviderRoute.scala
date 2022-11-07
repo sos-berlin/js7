@@ -58,7 +58,7 @@ private[web] object ServiceProviderRoute
   private val logger = Logger(getClass)
 
   private def logAndCheck(namedRouteToService: Seq[(RouteService, String, Route)]): Unit = {
-    if (namedRouteToService.isEmpty) logger.trace(s"No routes")
+    if (namedRouteToService.isEmpty) logger.trace("No routes")
     else for ((s, p, _) <- namedRouteToService) logger.debug(s"${s.getClass.scalaName} provides route '/$p'")
     for (pathToTriples <- namedRouteToService.duplicateKeys(_._2)) {
       sys.error("Duplicate route paths: " + pathToTriples.values.flatten.map(o => s"'${o._2}'->${o._1.getClass.scalaName}" ).mkString(", "))

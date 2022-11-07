@@ -51,8 +51,9 @@ private final class ShellReturnValuesProvider(
   private def lineToNamedvalue(line: String): (String, StringValue) =
     line match {
       case ReturnValuesRegex(name, value) => name.trim -> StringValue(value.trim)
-      case _ => throw new IllegalArgumentException(s"Not the expected syntax NAME=VALUE in files denoted by environment variable " +
-        s"$varName: $line")
+      case _ => throw new IllegalArgumentException(
+        "Not the expected syntax NAME=VALUE in files denoted by environment variable " +
+          s"$varName: $line")
     }
 
   def varName = if (v1Compatible) V1VarName else VarName

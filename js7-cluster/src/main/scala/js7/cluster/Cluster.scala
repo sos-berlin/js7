@@ -182,7 +182,7 @@ final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag](
   def startPassiveAfterFailover(recovered: Recovered[S], coupled: Coupled, otherFailedOver: FailedOver)
   : (Recovered[S], PassiveClusterNode[S]) = {
     logger.warn(s"The other '${otherFailedOver.activeId.string}' cluster node failed-over and " +
-      s"became active while this node was absent")
+      "became active while this node was absent")
     assertThat(otherFailedOver.idToUri == coupled.idToUri &&
                otherFailedOver.activeId == coupled.passiveId)
     // This restarted, previously failed active cluster node may have written one chunk of events more than
@@ -341,7 +341,7 @@ object Cluster
         JournalFiles.updateSymbolicLink(journalFileBase, lastTwoJournalFiles.head.file)
         lastTwoJournalFiles.head
       } else
-        sys.error(s"Failed-over node's JournalPosition does not match local journal files:" +
+        sys.error("Failed-over node's JournalPosition does not match local journal files:" +
           s" $failedAt <-> ${lastTwoJournalFiles.map(_.file.getFileName).mkString(", ")}")
     assertThat(journalFile.fileEventId == failedAt.fileEventId)
 

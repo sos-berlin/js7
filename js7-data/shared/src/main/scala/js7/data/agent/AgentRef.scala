@@ -25,7 +25,7 @@ extends UnsignedSimpleItem
         if (directors.isEmpty && uri.isEmpty)
           Left(Problem.pure(s"Missing Director in $path"))
         else if (directors.nonEmpty && uri.nonEmpty)
-          Left(Problem.pure(s"AgentRef.directors cannot be used with .uri"))
+          Left(Problem.pure("AgentRef.directors cannot be used with .uri"))
         else if (directors.sizeIs > 1)
           Left(Problem.pure(s"Only one Agent Director is allowed in $path"))
         else

@@ -96,8 +96,9 @@ object PgpSigner extends DocumentSigner.Companion
       .map(o => o.getSecretKey(o.getPublicKey/*the controller key*/.getFingerprint))
       .toVector
     if (keys.isEmpty) throw new NoSuchElementException("No controller key in secret key ring")
-    if (keys.sizeIs > 1) throw new IllegalArgumentException(s"More than one controller key in secret key ring: " +
-      keys.mkString_("", ", ", ""))
+    if (keys.sizeIs > 1) throw new IllegalArgumentException(
+      "More than one controller key in secret key ring: " +
+        keys.mkString_("", ", ", ""))
     keys.head
   }
 }

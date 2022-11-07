@@ -55,5 +55,5 @@ final class AgentsSubagentIdsScope(state: StateView) extends Scope
       .filter(_.agentPath == agentPath)
       .map(_.id.string)
 
-  override def toString = s"AgentsSubagentIdsScope"
+  override def toString = "AgentsSubagentIdsScope"
 }

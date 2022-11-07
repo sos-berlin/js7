@@ -54,7 +54,7 @@ object IP
       string match {
         case StandardRegex(host, port) => makeInetSocketAddress(host, port)
         case IPv6Regex(host, port) => makeInetSocketAddress(host, port)
-        case _ => throw new IllegalArgumentException(s"ipAddress:port or [ip6Address]:port expected")
+        case _ => throw new IllegalArgumentException("ipAddress:port or [ip6Address]:port expected")
       }
 
     private def makeInetSocketAddress(host: String, port: String) = {

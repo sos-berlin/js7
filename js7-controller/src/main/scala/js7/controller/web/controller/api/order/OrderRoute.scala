@@ -73,7 +73,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
                     .flatTap(checkedOrders => Task(
                       for (orders <- checkedOrders) {
                         val d = startedAt.elapsed
-                        if (d > 1.s) logger.debug(s"post controller/api/order received - " +
+                        if (d > 1.s) logger.debug("post controller/api/order received - " +
                           itemsPerSecondString(d, orders.size, "orders") + " · " +
                           bytesPerSecondString(d, byteCount))
                        }))

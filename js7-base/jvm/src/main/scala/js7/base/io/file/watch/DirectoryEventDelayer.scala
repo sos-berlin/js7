@@ -110,7 +110,7 @@ extends Observable[Seq[DirectoryEvent]]
       }
 
       def onComplete(): Unit = {
-        logger.trace(s"onComplete")
+        logger.trace("onComplete")
         self.synchronized {
           if (indexToEntry.nonEmpty) {
             callerCompleted = true
@@ -139,7 +139,7 @@ extends Observable[Seq[DirectoryEvent]]
             logger.trace(s"⏰ scheduleOnce ${nextDelay.pretty}")
             timer = Some(
               scheduler.scheduleOnce(nextDelay) {
-                logger.trace(s"🔔 Timer event")
+                logger.trace("🔔 Timer event")
                 self.synchronized {
                   timer = None
                   timerCount += 1

@@ -299,7 +299,7 @@ with MainJournalingActor[ControllerState, Event]
       import controllerConfiguration.clusterConf.ownId
       if (!clusterState.isEmptyOrActive(ownId))
         throw new IllegalStateException(
-          s"Controller has recovered from Journal but is not the active node in ClusterState: " +
+          "Controller has recovered from Journal but is not the active node in ClusterState: " +
             s"id=$ownId, failedOver=$clusterState")
     }
 
@@ -594,7 +594,7 @@ with MainJournalingActor[ControllerState, Event]
     case AgentDriver.Output.OrdersMarked(orderToMark) =>
       val unknown = orderToMark -- _controllerState.idToOrder.keySet
       if (unknown.nonEmpty) {
-        logger.error(s"Response to AgentCommand.MarkOrder from Agent for unknown orders: " +
+        logger.error("Response to AgentCommand.MarkOrder from Agent for unknown orders: " +
           unknown.mkString(", "))
       }
       for ((orderId, mark) <- orderToMark) {
@@ -695,7 +695,7 @@ with MainJournalingActor[ControllerState, Event]
   : Checked[Unit] = {
     val runningAgentDrivers = addedAgentPaths.filter(agentRegister.contains)
     if (runningAgentDrivers.nonEmpty)
-      Left(Problem(s"AgentDrivers for the following Agents are still running — " +
+      Left(Problem("AgentDrivers for the following Agents are still running — " +
         s"please retry after some seconds: ${runningAgentDrivers.map(_.string).mkString(", ")}"))
     else
       Checked.unit
@@ -892,7 +892,7 @@ with MainJournalingActor[ControllerState, Event]
                 // As a workaround, AgentRefState.applyEvent ignores AgentCoupled if Resetting
                 agentRefState.couplingState match {
                   case Resetting(frc) if !force || frc != force =>
-                    Future.successful(Left(Problem.pure(s"AgentRef is already in state 'Resetting'")))
+                    Future.successful(Left(Problem.pure("AgentRef is already in state 'Resetting'")))
                   case reset: Reset if !force =>
                     Future.successful(Left(Problem.pure(s"AgentRef is already in state '$reset'")))
                   case _ =>

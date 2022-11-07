@@ -127,7 +127,7 @@ object CatsParsers
     case Expectation.EndOfString(_, _) =>
       "Expected end of input"
     case Expectation.Length(_, expected, actual) =>
-      s"Unexpected end of input"
+      "Unexpected end of input"
     case Expectation.ExpectedFailureAt(_, matched) =>
       "Unexpected " + quoteString(matched)
     case Expectation.Fail(_) =>

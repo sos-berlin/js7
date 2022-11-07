@@ -124,7 +124,7 @@ object ThreadPools
               }
           }
         } else {
-          logger.debug(s"awaitTermination() finished")
+          logger.debug("awaitTermination() finished")
         }
       }
     }

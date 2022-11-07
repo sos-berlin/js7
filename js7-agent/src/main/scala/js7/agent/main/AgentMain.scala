@@ -63,7 +63,7 @@ final class AgentMain
           }
 
       case Right(_) =>
-        logger.debug(s"Start as Agent Director with existing journal")
+        logger.debug("Start as Agent Director with existing journal")
         blockingRunAgentDirector(agentConf)
     }
 

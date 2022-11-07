@@ -80,7 +80,7 @@ with AutoCloseable
         recovered.totalRunningSince)
       Task.fromFuture((journalActor ? start)(Timeout(1.h/*???*/)).mapTo[JournalActor.Output.Ready])
         .flatMap { case JournalActor.Output.Ready(journalHeader) =>
-          logger.debug(s"JournalIsReady")
+          logger.debug("JournalIsReady")
           journalHeaderOnce := journalHeader
           Task
             .deferFuture(

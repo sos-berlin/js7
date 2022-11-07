@@ -34,8 +34,8 @@ extends JournalWriter(after = after, append = false)
   def closeAndLog(): Unit = {
     super.close()
     val elapsed = runningSince.elapsed
-    logger.debug(s"Snapshot finished - " + itemsPerSecondString(elapsed, snapshotCount, "objects") + " · " +
-      bytesPerSecondString(elapsed, fileLength))
+    logger.debug("Snapshot finished - " + itemsPerSecondString(elapsed, snapshotCount, "objects") +
+      " · " + bytesPerSecondString(elapsed, fileLength))
     for (o <- statistics.debugString) logger.info(o)
   }
 

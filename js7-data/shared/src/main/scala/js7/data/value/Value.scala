@@ -179,7 +179,7 @@ final case class StringValue(string: String) extends Value
   override def toNumberValue =
     try Right(NumberValue(BigDecimal(string)))
     catch { case NonFatal(_: NumberFormatException) =>
-      Left(Problem.pure(s"Not a valid number: " + string.truncateWithEllipsis(50)))
+      Left(Problem.pure("Not a valid number: " + string.truncateWithEllipsis(50)))
     }
 
   override def toBooleanValue = string match {

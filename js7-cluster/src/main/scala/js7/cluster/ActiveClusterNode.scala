@@ -422,7 +422,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
   private def fetchAndHandleAcknowledgedEventIds(passiveId: NodeId, passiveUri: Uri, timing: ClusterTiming)
   : Task[Checked[Completed]] =
     Task {
-      logger.info(s"Fetching acknowledgements from passive cluster node")
+      logger.info("Fetching acknowledgements from passive cluster node")
     } >>
       Observable
         .fromResource(

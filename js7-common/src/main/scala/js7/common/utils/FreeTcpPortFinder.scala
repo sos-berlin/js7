@@ -25,7 +25,7 @@ object FreeTcpPortFinder
   def findFreeTcpPorts(n: Int): List[Int] =
     freePortNumberIterator.synchronized {
       val result = freePortNumberIterator.take(n).toList
-      if (result.length != n) sys.error(s"Not enough free tcp ports available")
+      if (result.length != n) sys.error("Not enough free tcp ports available")
       logger.debug("findFreeTcpPort => " + result.mkString(", "))
       result
     }
