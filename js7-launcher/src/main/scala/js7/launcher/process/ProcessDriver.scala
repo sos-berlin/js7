@@ -76,8 +76,9 @@ final class ProcessDriver(
             }
           ).flatMapT(processConfiguration =>
             startProcessLock.lock("startProcess")(
-              globalStartProcessLock.lock(orderId.toString)(
-                startPipedShellScript(conf.commandLine, processConfiguration, stdObservers))
+              globalStartProcessLock
+                .lock(orderId.toString)(
+                  startPipedShellScript(conf.commandLine, processConfiguration, stdObservers))
                 .flatMapT { richProcess =>
                   logger.info(s"$orderId: Process $richProcess started, ${conf.jobKey}: ${conf.commandLine}")
                   terminatedPromise.future.value match {

@@ -69,7 +69,7 @@ extends SubagentDriver
     Task.defer {
       stopping = true
       val orderCount = orderIdToJobDriver.toMap.size
-      logger.info(s"Stopping" + ((orderCount > 0) ?? s", waiting for $orderCount processes"))
+      logger.info("Stopping" + ((orderCount > 0) ?? s", waiting for $orderCount processes"))
       Task
         .parZip2(
           orderIdToJobDriver.stop,
