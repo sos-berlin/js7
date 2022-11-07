@@ -1,0 +1,6 @@
+<scalastyle commentFilter="enabled">
+  <check class="org.scalastyle.scalariform.EmptyInterpolatedStringChecker"
+         enabled="true" level="error"/>
+  <check class="org.scalastyle.file.FileTabChecker"
+         enabled="true" level="error"/>
+</scalastyle>
