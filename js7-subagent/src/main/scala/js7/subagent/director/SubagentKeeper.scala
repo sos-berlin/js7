@@ -16,7 +16,6 @@ import js7.base.monixutils.{AsyncMap, AsyncVariable}
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.{DelayIterator, DelayIterators}
-import js7.base.utils.Collections.RichMap
 import js7.base.utils.ScalaUtils.checkedCast
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{LockKeeper, SetOnce}
@@ -54,7 +53,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
   private val defaultPrioritized = Prioritized.empty[SubagentId](
     toPriority = _ => 0/*same priority for each entry, round-robin*/)
   private val initialized = SetOnce[Initialized]
-  private val stateVar = AsyncVariable[State](State(Map.empty, Map(
+  private val stateVar = AsyncVariable[DirectorState](DirectorState(Map.empty, Map(
     /*local Subagent*/None -> defaultPrioritized)))
   private val orderToWaitForSubagent = AsyncMap.empty[OrderId, Promise[Unit]]
   private val orderToSubagent = AsyncMap.empty[OrderId, SubagentDriver]
@@ -467,107 +466,9 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
 object SubagentKeeper
 {
   private val logger = Logger[this.type]
-  private val DefaultPriority = 0
 
   private case class Initialized(
     agentPath: AgentPath,
     localSubagentId: Option[SubagentId],
     controllerId: ControllerId)
-
-  private final case class State(
-    subagentToEntry: Map[SubagentId, Entry],
-    selectionToPrioritized: Map[Option[SubagentSelectionId], Prioritized[SubagentId]])
-  {
-    def idToDriver = subagentToEntry.view.mapValues(_.driver)
-
-    def insertSubagentDriver(driver: SubagentDriver, subagentItem: SubagentItem): Checked[State] =
-      insertSubagentDriver(driver, subagentItem.disabled)
-
-    def insertSubagentDriver(driver: SubagentDriver, disabled: Boolean = false): Checked[State] =
-      subagentToEntry.insert(driver.subagentId -> Entry(driver, disabled))
-        .map(idToE => copy(
-          subagentToEntry = idToE,
-          selectionToPrioritized =
-            if (disabled)
-              selectionToPrioritized
-            else
-              // Add SubagentId to default SubagentSelection
-              selectionToPrioritized
-                .updated(
-                  None,
-                  selectionToPrioritized(None).add(driver.subagentId))))
-
-    def replaceSubagentDriver(driver: SubagentDriver, subagentItem: SubagentItem): Checked[State] =
-      if (!subagentToEntry.contains(driver.subagentId))
-        Left(Problem(s"Replacing unknown ${driver.subagentId} SubagentDriver"))
-      else
-        Right(copy(
-          subagentToEntry = subagentToEntry.updated(
-            driver.subagentId,
-            Entry(driver, subagentItem.disabled))))
-
-    def removeSubagent(subagentId: SubagentId): State =
-      copy(
-        subagentToEntry = subagentToEntry.removed(subagentId),
-        // Remove SubagentId from default SubagentSelection
-        selectionToPrioritized =
-          selectionToPrioritized.updated(None, selectionToPrioritized(None).remove(subagentId)))
-
-    def insertOrReplaceSelection(selection: SubagentSelection): Checked[State] =
-      Right(copy(
-        selectionToPrioritized = selectionToPrioritized.updated(
-          Some(selection.id),
-          Prioritized[SubagentId](
-            selection.subagentToPriority.keys,
-            id => selection.subagentToPriority.getOrElse(id, {
-              logger.error(s"${selection.id} uses unknown $id. Assuming priority=$DefaultPriority")
-              DefaultPriority
-            })))))
-
-    def removeSelection(selectionId: SubagentSelectionId): State =
-      copy(selectionToPrioritized = selectionToPrioritized - Some(selectionId))
-
-    def clear: State =
-      copy(
-        subagentToEntry = Map.empty,
-        selectionToPrioritized = Map.empty)
-
-    def disable(id: SubagentId, disabled: Boolean): Checked[State] =
-      Right(
-        subagentToEntry
-          .get(id)
-          .filter(_.disabled != disabled)
-          .fold(this)(entry =>
-            copy(
-              subagentToEntry = subagentToEntry.updated(id, entry.copy(disabled = disabled)),
-              selectionToPrioritized = selectionToPrioritized.view
-                .mapValues(o =>
-                  if (disabled)
-                    o.remove(id)
-                  else
-                    o.add(id))
-                .toMap)))
-
-    def selectNext(maybeSelectionId: Option[SubagentSelectionId]): Checked[Option[SubagentDriver]] =
-      maybeSelectionId match {
-        case Some(selectionId) if !selectionToPrioritized.contains(maybeSelectionId) =>
-          // A SubagentSelectionId, if not defined, may denote a Subagent
-          subagentToEntry
-            .checked(selectionId.toSubagentId) // May be non-existent when stopping ???
-            .map(o => Some(o.driver))
-
-        case _ =>
-          Right(selectionToPrioritized
-            .get(maybeSelectionId) // May be non-existent when stopping
-            .flatMap(_
-              .selectNext(subagentId =>
-                subagentToEntry.get(subagentId).fold(false)(_.driver.isCoupled)))
-            .flatMap(subagentId =>
-              subagentToEntry.get(subagentId).map(_.driver)))
-      }
-  }
-
-  private final case class Entry(
-    driver: SubagentDriver,
-    disabled: Boolean = false)
 }
