@@ -24,11 +24,12 @@ import js7.data.order.Order.*
 import js7.data.order.OrderEvent.OrderMoved.Reason
 import js7.data.orderwatch.ExternalOrderKey
 import js7.data.subagent.Problems.{ProcessLostDueToResetProblem, ProcessLostDueToRestartProblem}
-import js7.data.subagent.SubagentId
+import js7.data.subagent.{SubagentId, SubagentSelectionId}
 import js7.data.value.{NamedValues, Value}
 import js7.data.workflow.WorkflowId
 import js7.data.workflow.instructions.Fork
 import js7.data.workflow.position.{Position, PositionOrLabel, WorkflowPosition}
+import org.jetbrains.annotations.TestOnly
 import scala.annotation.nowarn
 
 /**
@@ -138,6 +139,7 @@ object OrderEvent
     isSuspended: Boolean = false,
     isResumed: Boolean = false,
     deleteWhenTerminated: Boolean = false,
+    stickySubagents: List[Order.StickySubagent] = Nil,
     stopPositions: Set[PositionOrLabel] = Set.empty)
   extends OrderCoreEvent {
     workflowPosition.workflowId.requireNonAnonymous()
@@ -152,15 +154,20 @@ object OrderEvent
   case object OrderStarted extends OrderActorEvent
 
   // subagentId = None is COMPATIBLE with v2.2
-  final case class OrderProcessingStarted(subagentId: Option[SubagentId])
+  final case class OrderProcessingStarted(subagentId: Option[SubagentId], stick: Boolean = false)
   extends OrderCoreEvent {
     override def toString =
-      s"OrderProcessingStarted(${subagentId getOrElse "legacy local Subagent"})"
+      s"OrderProcessingStarted(${subagentId getOrElse "legacy local Subagent"}${stick ?? " stick"})"
   }
   object OrderProcessingStarted {
     // Since v2.3
+    @TestOnly
     def apply(subagentId: SubagentId): OrderProcessingStarted =
       OrderProcessingStarted(Some(subagentId))
+
+    // Since v2.3
+    def apply(subagentId: SubagentId, stick: Boolean): OrderProcessingStarted =
+      OrderProcessingStarted(Some(subagentId), stick)
   }
 
   sealed trait OrderStdWritten extends OrderEvent {
@@ -326,6 +333,14 @@ object OrderEvent
   // Maybe we want to differentiate between cancellation of an order and killing of a process.
   type OrderProcessingKilled = OrderProcessingKilled.type
   case object OrderProcessingKilled
+  extends OrderActorEvent
+
+  final case class OrderStickySubagentEntered(
+    agentPath: AgentPath,
+    subagentSelectionId: Option[SubagentSelectionId] = None)
+  extends OrderActorEvent
+
+  case object OrderStickySubagentLeaved
   extends OrderActorEvent
 
   final case class OrderMoved(to: Position, reason: Option[Reason] = None)
@@ -649,7 +664,7 @@ object OrderEvent
     Subtype(OrderDeletionMarked),
     Subtype(OrderDeleted),
     Subtype(OrderStarted),
-    Subtype(deriveCodec[OrderProcessingStarted]),
+    Subtype(deriveConfiguredCodec[OrderProcessingStarted]),
     Subtype[OrderStdoutWritten],
     Subtype[OrderStderrWritten],
     Subtype[OrderProcessed],
@@ -700,6 +715,8 @@ object OrderEvent
     Subtype.singleton(OrderNoticesRead, aliases = Seq("OrderNoticeRead")),
     Subtype[OrderNoticesConsumptionStarted],
     Subtype(deriveCodec[OrderNoticesConsumed]),
+    Subtype(deriveCodec[OrderStickySubagentEntered]),
+    Subtype(OrderStickySubagentLeaved),
     Subtype(deriveCodec[OrderPrompted]),
     Subtype(deriveCodec[OrderPromptAnswered]),
     Subtype(deriveCodec[OrderCyclingPrepared]),

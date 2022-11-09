@@ -16,7 +16,7 @@ import js7.data.lock.LockPath
 import js7.data.order.OrderEvent.*
 import js7.data.order.OrderEvent.OrderResumed.{AppendHistoricOutcome, DeleteHistoricOutcome, InsertHistoricOutcome, ReplaceHistoricOutcome}
 import js7.data.orderwatch.{ExternalOrderKey, ExternalOrderName, OrderWatchPath}
-import js7.data.subagent.SubagentId
+import js7.data.subagent.{SubagentId, SubagentSelectionId}
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.{BranchId, Label, Position}
@@ -108,6 +108,9 @@ final class OrderEventTest extends OurTestSuite
         isSuspended = true,
         isResumed = true,
         deleteWhenTerminated = true,
+        List(Order.StickySubagent(
+          AgentPath("AGENT"),
+          Some(SubagentSelectionId("SUBAGENT-SELECTION")))),
         Set(Position(9), Label("LABEL"))),
       json"""{
         "TYPE": "OrderAttachedToAgent",
@@ -146,6 +149,10 @@ final class OrderEventTest extends OurTestSuite
         "isSuspended": true,
         "isResumed": true,
         "deleteWhenTerminated": true,
+        "stickySubagents": [{
+          "agentPath": "AGENT",
+          "subagentSelectionId": "SUBAGENT-SELECTION"
+        }],
         "stopPositions": [ [ 9 ], "LABEL" ]
       }""")
   }
@@ -169,12 +176,20 @@ final class OrderEventTest extends OurTestSuite
     check(OrderProcessingStarted(SubagentId("SUBAGENT")), json"""
       {
         "TYPE": "OrderProcessingStarted",
+        "subagentId": "SUBAGENT",
+        "stick": false
+      }""")
+
+    testJsonDecoder[OrderEvent](OrderProcessingStarted(SubagentId("SUBAGENT")), json"""
+      {
+        "TYPE": "OrderProcessingStarted",
         "subagentId": "SUBAGENT"
       }""")
 
     check(OrderProcessingStarted(None), json"""
       {
-        "TYPE": "OrderProcessingStarted"
+        "TYPE": "OrderProcessingStarted",
+        "stick": false
       }""")
   }
 
@@ -808,6 +823,27 @@ final class OrderEventTest extends OurTestSuite
       json"""
       {
         "TYPE": "OrderNoticesRead"
+      }""")
+  }
+
+  "OrderStickySubagentEntered" in {
+    check(
+      OrderStickySubagentEntered(
+        AgentPath("AGENT"),
+        Some(SubagentSelectionId("SUBAGENT-SELECTION"))),
+      json"""
+      {
+        "TYPE": "OrderStickySubagentEntered",
+        "agentPath": "AGENT",
+        "subagentSelectionId": "SUBAGENT-SELECTION"
+      }""")
+  }
+
+  "OrderStickySubagentLeaved" in {
+    check(OrderStickySubagentLeaved,
+      json"""
+      {
+        "TYPE": "OrderStickySubagentLeaved"
       }""")
   }
 

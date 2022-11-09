@@ -36,6 +36,7 @@ import js7.subagent.director.SubagentKeeper.*
 import js7.subagent.{LocalSubagentDriver, SubagentDriver}
 import monix.eval.{Coeval, Task}
 import monix.reactive.Observable
+import org.jetbrains.annotations.TestOnly
 import scala.concurrent.Promise
 
 final class SubagentKeeper[S <: SubagentDirectorState[S]](
@@ -128,19 +129,21 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
           logger.debug(s"⚠️ ${order.id} has been canceled while selecting a Subagent")
           Task.right(())
 
-        case Right(Some(driver)) =>
-          processOrderAndForwardEvents(order, onEvents, driver)
+        case Right(Some(selectedDriver)) =>
+          processOrderAndForwardEvents(order, onEvents, selectedDriver)
     }
 
   private def processOrderAndForwardEvents(
     order: Order[Order.IsFreshOrReady],
     onEvents: Seq[OrderCoreEvent] => Unit,
-    subagentDriver: SubagentDriver)
+    selectedDriver: SelectedDriver)
   : Task[Checked[Unit]] = {
     // TODO Race with CancelOrders ?
-    val startedEvents = order.isState[Order.Fresh].thenList(OrderStarted) :::
-      OrderProcessingStarted(subagentDriver.subagentId) :: Nil
-    persist(order.id, startedEvents, onEvents)
+    import selectedDriver.{stick, subagentDriver}
+
+    val events = order.isState[Order.Fresh].thenList(OrderStarted) :::
+      OrderProcessingStarted(subagentDriver.subagentId, stick = stick) :: Nil
+    persist(order.id, events, onEvents)
       .map(_.map { case (_, s) => s
         .idToOrder
         .checked(order.id)
@@ -210,27 +213,31 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
             onEvents(orderProcessed :: Nil))))
 
   private def selectSubagentDriverCancelable(order: Order[Order.IsFreshOrReady])
-  : Task[Checked[Option[SubagentDriver]]] =
+  : Task[Checked[Option[SelectedDriver]]] =
     orderToSubagentSelectionId(order)
-      .flatMapT(maybeSelectionId =>
+      .flatMapT { case DeterminedSubagentSelection(subagentSelectionId, stick) =>
         cancelableWhileWaitingForSubagent(order.id)
           .use(canceledPromise =>
             Task.race(
               Task.fromFuture(CorrelId.current.bind(canceledPromise.future)),
-              selectSubagentDriver(maybeSelectionId)))
-          .map(_.toOption.sequence))
+              selectSubagentDriver(subagentSelectionId)))
+          .map(_
+            .toOption
+            .sequence
+            .map(_.map(SelectedDriver(_, stick))))
+      }
 
   private def orderToSubagentSelectionId(order: Order[Order.IsFreshOrReady])
-  : Task[Checked[Option[SubagentSelectionId]]] =
+  : Task[Checked[DeterminedSubagentSelection]] =
     for (agentState <- persistence.state) yield
       for {
         job <- agentState.workflowJob(order.workflowPosition)
         scope <- agentState.toPureOrderScope(order)
-        maybeSubagentSelectionId <- job.subagentSelectionId.traverse(_
-          .evalAsString(scope)
+        maybeJobsSelectionId <- job.subagentSelectionId
+          .traverse(_.evalAsString(scope)
           .flatMap(SubagentSelectionId.checked))
       } yield
-        maybeSubagentSelectionId
+        determineSubagentSelection(order, agentPath, maybeJobsSelectionId)
 
   /** While waiting for a Subagent, the Order is cancelable. */
   private def cancelableWhileWaitingForSubagent(orderId: OrderId): Resource[Task, Promise[Unit]] =
@@ -467,8 +474,39 @@ object SubagentKeeper
 {
   private val logger = Logger[this.type]
 
+  private[director] def determineSubagentSelection(
+    order: Order[Order.IsFreshOrReady],
+    agentPath: AgentPath,
+    maybeJobsSelectionId: Option[SubagentSelectionId])
+  : DeterminedSubagentSelection =
+    order.agentToStickySubagent(agentPath) match {
+      case Some(sticky)
+        if maybeJobsSelectionId.forall(o => sticky.subagentSelectionId.forall(_ == o)) =>
+        // StickySubagent instruction applies
+        DeterminedSubagentSelection(
+          sticky.stuckSubagentId
+            .map(SubagentSelectionId.fromSubagentId)
+            .orElse(sticky.subagentSelectionId)
+            .orElse(maybeJobsSelectionId),
+          stick = sticky.stuckSubagentId.isEmpty)
+
+      case _ =>
+        DeterminedSubagentSelection(maybeJobsSelectionId)
+    }
+
   private case class Initialized(
     agentPath: AgentPath,
     localSubagentId: Option[SubagentId],
     controllerId: ControllerId)
+
+  private final case class SelectedDriver(subagentDriver: SubagentDriver, stick: Boolean)
+
+  private[director] final case class DeterminedSubagentSelection(
+    maybeSubagentSelectionId: Option[SubagentSelectionId],
+    stick: Boolean = false)
+  private[director] object DeterminedSubagentSelection {
+    @TestOnly
+    def stuck(stuckSubagentId: SubagentId): DeterminedSubagentSelection =
+      DeterminedSubagentSelection(Some(SubagentSelectionId.fromSubagentId(stuckSubagentId)))
+  }
 }

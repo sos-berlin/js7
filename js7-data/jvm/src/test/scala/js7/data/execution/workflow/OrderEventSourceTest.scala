@@ -1126,7 +1126,7 @@ object OrderEventSourceTest
 
     private def processEvent(keyedEvent: KeyedEvent[OrderEvent]): Unit =
       keyedEvent match {
-        case orderId <-: OrderProcessingStarted(subagentId) =>
+        case orderId <-: OrderProcessingStarted(subagentId, false) =>
           inProcess += orderId
 
         case orderId <-: (_: OrderProcessed) =>

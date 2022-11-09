@@ -2,7 +2,7 @@ package js7.data.order
 
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.EncoderOps
-import io.circe.{Decoder, DecodingFailure, Encoder, JsonObject}
+import io.circe.{Codec, Decoder, DecodingFailure, Encoder, JsonObject}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Checked.{CheckedOption, Ops}
 import js7.base.problem.{Checked, Problem}
@@ -18,7 +18,7 @@ import js7.data.job.JobKey
 import js7.data.order.Order.*
 import js7.data.order.OrderEvent.*
 import js7.data.orderwatch.ExternalOrderKey
-import js7.data.subagent.SubagentId
+import js7.data.subagent.{SubagentId, SubagentSelectionId}
 import js7.data.value.{NamedValues, Value}
 import js7.data.workflow.position.{BranchId, InstructionNr, Position, PositionOrLabel, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
@@ -42,6 +42,7 @@ final case class Order[+S <: Order.State](
   isSuspended: Boolean = false,
   isResumed: Boolean = false,
   deleteWhenTerminated: Boolean = false,
+  stickySubagents: List[StickySubagent] = Nil,
   stopPositions: Set[PositionOrLabel] = Set.empty)
 {
   // Accelerate usage in Set[Order], for example in AgentDriver's CommandQueue
@@ -108,10 +109,16 @@ final case class Order[+S <: Order.State](
         check(isState[Fresh] && !isSuspended && (isDetached || isAttached),
           copy(state = Ready))
 
-      case OrderProcessingStarted(subagentId) =>
-        check(isState[Ready] && !isSuspended && isAttached,
+      case OrderProcessingStarted(subagentId, stuckSubagentId) =>
+        check(isState[Ready] && !isSuspended && isAttached
+          && (!stuckSubagentId || stickySubagents.nonEmpty),
           copy(
             state = Processing(subagentId),
+            stickySubagents =
+              if (stuckSubagentId)
+                stickySubagents.head.copy(stuckSubagentId = subagentId) :: stickySubagents.tail
+              else
+                stickySubagents,
             mark = cleanMark))
 
       case OrderProcessed(outcome_) =>
@@ -450,11 +457,31 @@ final case class Order[+S <: Order.State](
 
       case OrderNoticesConsumed(_) =>
         check(isDetached,
-          position.checkedParent.map(returnPosition =>
-            withPosition(returnPosition.increment)
+          position.checkedParent.map(parentPos =>
+            withPosition(parentPos.increment)
               .copy(
                 state = Ready))
         ).flatten
+
+      case OrderStickySubagentEntered(agentPath, subagentSelectionId) =>
+        check(isState[IsFreshOrReady]
+          && (isAttached || isDetached)
+          && !isSuspended
+          && !stickySubagents.exists(_.agentPath == agentPath),
+          withPosition(position / BranchId.StickySubagent % 0)
+            .copy(
+              stickySubagents = StickySubagent(agentPath, subagentSelectionId) :: stickySubagents))
+
+      case OrderStickySubagentLeaved =>
+        if ((isAttached || isDetached) && stickySubagents.nonEmpty)
+          position.parent
+            .toChecked(inapplicableProblem)
+            .map(stickySubagentPosition =>
+              withPosition(stickySubagentPosition.increment)
+                .copy(
+                  stickySubagents = stickySubagents.tail))
+        else
+          inapplicable
 
       case OrderPrompted(question) =>
         check(isDetached && isState[Ready],
@@ -709,6 +736,29 @@ final case class Order[+S <: Order.State](
       .map(o => workflow.positionToJobKey(o.position))
       .count(_ == x)
   }
+
+  def agentToStickySubagent(agentPath: AgentPath): Option[StickySubagent] =
+    stickySubagents.find(_.agentPath == agentPath)
+
+  def toOrderAttachedToAgent: Checked[OrderAttachedToAgent] =
+    checkedState[IsFreshOrReady].flatMap(order =>
+      order.attachedState match {
+        case Some(Attached(agentPath)) =>
+          Right(OrderAttachedToAgent(
+            workflowPosition,
+            order.state,
+            arguments,
+            scheduledFor,
+            externalOrderKey,
+            historicOutcomes, agentPath, parent, mark,
+            isSuspended = isSuspended,
+            isResumed = isResumed,
+            deleteWhenTerminated = deleteWhenTerminated,
+            stickySubagents,
+            stopPositions))
+        case _ =>
+          Left(Problem("OrderAttachedToAgent event requires an Attached order"))
+    })
 }
 
 object Order
@@ -732,6 +782,7 @@ object Order
       isSuspended = event.isSuspended,
       isResumed = event.isResumed,
       deleteWhenTerminated = event.deleteWhenTerminated,
+      stickySubagents = event.stickySubagents,
       stopPositions = event.stopPositions)
 
   sealed trait AttachedState
@@ -906,6 +957,7 @@ object Order
       "isSuspended" -> order.isSuspended.?.asJson,
       "deleteWhenTerminated" -> order.deleteWhenTerminated.?.asJson,
       "isResumed" -> order.isResumed.?.asJson,
+      "stickySubagents" -> (order.stickySubagents.nonEmpty ? order.stickySubagents).asJson,
       "stopPositions" -> (order.stopPositions.nonEmpty ? order.stopPositions).asJson,
       "historicOutcomes" -> order.historicOutcomes.??.asJson)
 
@@ -924,6 +976,7 @@ object Order
       isResumed <- cursor.getOrElse[Boolean]("isResumed")(false)
       deleteWhenTerminated <- cursor.getOrElse[Boolean]("deleteWhenTerminated")(false)
       stopPositions <- cursor.getOrElse[Set[PositionOrLabel]]("stopPositions")(Set.empty)
+      stickySubagentId <- cursor.getOrElse[List[StickySubagent]]("stickySubagents")(Nil)
       historicOutcomes <- cursor.getOrElse[Vector[HistoricOutcome]]("historicOutcomes")(Vector.empty)
     } yield
       Order(id, workflowPosition, state, arguments, scheduledFor, externalOrderKey, historicOutcomes,
@@ -931,6 +984,7 @@ object Order
         isSuspended = isSuspended,
         isResumed = isResumed,
         deleteWhenTerminated = deleteWhenTerminated,
+        stickySubagentId,
         stopPositions)
 
   implicit val FreshOrReadyOrderJsonEncoder: Encoder.AsObject[Order[IsFreshOrReady]] =
@@ -957,6 +1011,14 @@ object Order
         case Some(x) => Right(x)
       }
     }
+
+  final case class StickySubagent(
+    agentPath: AgentPath,
+    subagentSelectionId: Option[SubagentSelectionId],
+    stuckSubagentId: Option[SubagentId] = None)
+  object StickySubagent {
+    implicit val jsonCodec: Codec[StickySubagent] = deriveCodec
+  }
 
   final case class InapplicableOrderEventProblem(event: OrderEvent, order: Order[State])
   extends Problem.Coded {

@@ -14,7 +14,7 @@ import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.OrderEventSource.*
 import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.order.Order.{Cancelled, Failed, FailedInFork, IsTerminated, ProcessingKilled}
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCaught, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderFailed, OrderFailedInFork, OrderFailedIntermediate_, OrderLocksDequeued, OrderLocksReleased, OrderMoved, OrderNoticesConsumed, OrderOperationCancelled, OrderOutcomeAdded, OrderPromptAnswered, OrderResumed, OrderResumptionMarked, OrderSuspended, OrderSuspensionMarked}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCaught, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderFailed, OrderFailedInFork, OrderFailedIntermediate_, OrderLocksDequeued, OrderLocksReleased, OrderMoved, OrderNoticesConsumed, OrderOperationCancelled, OrderOutcomeAdded, OrderPromptAnswered, OrderResumed, OrderResumptionMarked, OrderStickySubagentLeaved, OrderSuspended, OrderSuspensionMarked}
 import js7.data.order.{Order, OrderId, OrderMark, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.state.StateView
@@ -508,6 +508,10 @@ object OrderEventSource {
             else
               for (events <- loop(prefix, prefix.reverse % nr)) yield
                 OrderNoticesConsumed(failed = true) :: events
+
+          case Segment(nr, BranchId.StickySubagent) :: prefix =>
+            for (events <- loop(prefix, prefix.reverse % nr)) yield
+              OrderStickySubagentLeaved :: events
 
           case Segment(nr, branchId @ TryBranchId(retry)) :: prefix if catchable =>
             val catchPos = prefix.reverse % nr / BranchId.catch_(retry) % 0

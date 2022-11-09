@@ -118,7 +118,7 @@ final class ForkTest extends OurTestSuite with ControllerAgentForScalaTest
     controller.addOrderBlocking(order)
 
     val expectedOutcomeAdded = OrderOutcomeAdded(Outcome.Disrupted(Problem(
-      "Forked OrderIds duplicate existing Order(Order:DUPLICATE|🥕,DUPLICATE~INITIAL:0,Processing(Subagent:AGENT-A-0),Map(),None,None,Vector(),Some(Attached(AGENT-A)),None,None,false,false,false,Set())")))
+      "Forked OrderIds duplicate existing Order(Order:DUPLICATE|🥕,DUPLICATE~INITIAL:0,Processing(Subagent:AGENT-A-0),Map(),None,None,Vector(),Some(Attached(AGENT-A)),None,None,false,false,false,List(),Set())")))
     assert(eventWatch.await[OrderOutcomeAdded](_.key == order.id).head.value.event == expectedOutcomeAdded)
 
     val expectedFailed = OrderFailed(Position(0))

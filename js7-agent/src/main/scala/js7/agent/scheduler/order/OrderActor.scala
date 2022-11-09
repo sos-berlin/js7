@@ -73,24 +73,21 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
 
     case command: Command =>
       command match {
-        case Command.Attach(attached @ Order(`orderId`, wfPos, state: Order.IsFreshOrReady,
-          arguments, scheduledFor, externalOrderKey, historicOutcomes,
-          Some(Order.Attached(agentPath)), parent, mark,
-        isSuspended, isResumed, removeWhenTerminated,
-          stopPositions),
-        correlId) =>
-          correlId.bind {
-            becomeAsStateOf(attached, force = true)
-            persist(OrderAttachedToAgent(wfPos, state, arguments, scheduledFor, externalOrderKey,
-              historicOutcomes, agentPath, parent, mark,
-              isSuspended = isSuspended,
-              isResumed = isResumed,
-              deleteWhenTerminated = removeWhenTerminated,
-              stopPositions)) {
-              (event, updatedState) =>
-                update(event :: Nil)
-                Completed
-            } pipeTo sender()
+        case Command.Attach(attachedOrder, correlId) if attachedOrder.id == orderId =>
+          correlId.bind[Unit] {
+            attachedOrder.toOrderAttachedToAgent match {
+              case Left(problem) =>
+                logger.error(problem.toString)
+                sender() ! Status.Failure(problem.throwable)
+
+              case Right(orderAttachedToAgent) =>
+                becomeAsStateOf(attachedOrder, force = true)
+                persist(orderAttachedToAgent) {
+                  (event, updatedState) =>
+                    update(event :: Nil)
+                    Completed
+                } pipeTo sender()
+            }
           }
 
         case _ =>

@@ -40,7 +40,7 @@ final class SubagentMultipleOrdersTest extends OurTestSuite with SubagentTester
             val result = withClue(s"$orderId: ") {
               val anySubagentId = SubagentId("ANY")
               assert(events.collect {
-                case OrderProcessingStarted(_) => OrderProcessingStarted(anySubagentId)
+                case OrderProcessingStarted(_, false) => OrderProcessingStarted(anySubagentId)
                 case o => o
               } == Seq(
                 OrderAdded(workflow.id),
