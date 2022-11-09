@@ -76,14 +76,7 @@ private final case class DirectorState(
         .filter(_.disabled != disabled)
         .fold(this)(entry =>
           copy(
-            subagentToEntry = subagentToEntry.updated(id, entry.copy(disabled = disabled)),
-            selectionToPrioritized = selectionToPrioritized.view
-              .mapValues(o =>
-                if (disabled)
-                  o.remove(id)
-                else
-                  o.add(id))
-              .toMap)))
+            subagentToEntry = subagentToEntry.updated(id, entry.copy(disabled = disabled)))))
 
   def selectNext(maybeSelectionId: Option[SubagentSelectionId]): Checked[Option[SubagentDriver]] =
     maybeSelectionId match {
@@ -98,7 +91,7 @@ private final case class DirectorState(
           .get(maybeSelectionId) // May be non-existent when stopping
           .flatMap(_
             .selectNext(subagentId =>
-              subagentToEntry.get(subagentId).fold(false)(_.driver.isCoupled)))
+              subagentToEntry.get(subagentId).fold(false)(_.isAvailable)))
           .flatMap(subagentId =>
             subagentToEntry.get(subagentId).map(_.driver)))
     }
@@ -109,7 +102,7 @@ private object DirectorState
   private val logger = Logger[this.type]
   private val DefaultPriority = 0
 
-  final case class Entry(
-    driver: SubagentDriver,
-    disabled: Boolean = false)
+  final case class Entry(driver: SubagentDriver, disabled: Boolean = false) {
+    def isAvailable = !disabled && driver.isCoupled
+  }
 }
