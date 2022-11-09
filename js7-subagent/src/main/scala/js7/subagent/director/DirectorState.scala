@@ -69,7 +69,7 @@ private final case class DirectorState(
       subagentToEntry = Map.empty,
       selectionToPrioritized = Map.empty)
 
-  def disable(id: SubagentId, disabled: Boolean): Checked[DirectorState] =
+  def setDisabled(id: SubagentId, disabled: Boolean): Checked[DirectorState] =
     Right(
       subagentToEntry
         .get(id)

@@ -13,13 +13,14 @@ final class PrioritizedTest extends OurTestSuite
   }
 
   "Prioritized" in {
-    val empty = Prioritized.empty[A](Map(
-      A(32)-> 3,
-      A(31)-> 3,
-      A(30)-> 3,
-      A(12)-> 1,
-      A(11)-> 1,
-      A(99)-> 9))
+    val aToPriority: A => Int = Map(
+      A(32) -> 3,
+      A(31) -> 3,
+      A(30) -> 3,
+      A(12) -> 1,
+      A(11) -> 1,
+      A(99) -> 9)
+    val empty = Prioritized.empty(aToPriority)
     assert(empty.remove(A(3)) == empty)
 
     val prioritized = empty
@@ -29,7 +30,6 @@ final class PrioritizedTest extends OurTestSuite
       .add(A(12))
       .add(A(11))
       .add(A(99))
-
     assert(prioritized.selectNext(_ => false) == None)
 
 

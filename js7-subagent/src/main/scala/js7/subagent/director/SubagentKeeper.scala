@@ -355,7 +355,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
             case Some(_: LocalSubagentDriver[?]) =>
               stateVar
                 .updateChecked(state => Task(
-                  state.disable(subagentItem.id, subagentItem.disabled)))
+                  state.setDisabled(subagentItem.id, subagentItem.disabled)))
                 .rightAs(None)
 
             case _ =>
@@ -365,7 +365,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
                   case None =>
                     val subagentDriver = newSubagentDriver(subagentItem, initialized)
                     state.insertSubagentDriver(subagentDriver, subagentItem)
-                      .flatMap(_.disable(subagentItem.id, subagentItem.disabled))
+                      .flatMap(_.setDisabled(subagentItem.id, subagentItem.disabled))
                       .map(_ -> Some(None -> subagentDriver))
 
                   case Some(existing) =>
@@ -381,7 +381,7 @@ final class SubagentKeeper[S <: SubagentDirectorState[S]](
                           // Continue after locking updateCheckedWithResult
                         })
                       .flatMap { case (state, result) =>
-                        state.disable(subagentItem.id, subagentItem.disabled)
+                        state.setDisabled(subagentItem.id, subagentItem.disabled)
                           .map(_ -> result)
                       }
                 }))

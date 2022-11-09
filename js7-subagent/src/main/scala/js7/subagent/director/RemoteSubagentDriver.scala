@@ -538,7 +538,7 @@ extends SubagentDriver with SubagentEventListener[S0]
                         })
                   }
               case _ =>
-                Task.right((SubagentNotDedicatedProblem))
+                Task.right(SubagentNotDedicatedProblem)
             }
 
           case Left(problem) =>
