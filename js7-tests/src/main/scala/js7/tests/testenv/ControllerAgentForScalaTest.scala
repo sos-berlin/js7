@@ -1,9 +1,9 @@
 package js7.tests.testenv
 
 import cats.syntax.traverse.*
-import cats.syntax.foldable.*
 import js7.agent.RunningAgent
 import js7.base.configutils.Configs.*
+import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
@@ -18,13 +18,15 @@ import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.item.ItemOperation.AddOrChangeSimple
 import js7.data.item.{VersionId, VersionedItem, VersionedItemPath}
 import js7.data.order.{OrderId, OrderObstacle, OrderObstacleCalculator}
-import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.subagent.SubagentItemStateEvent.SubagentCoupled
+import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.subagent.BareSubagent
+import js7.tests.testenv.ControllerAgentForScalaTest.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import scala.collection.mutable
+import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
@@ -36,10 +38,11 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
     .await(99.s)
   protected final lazy val agent: RunningAgent = agents.head
 
-  protected final lazy val (bareSubagents, releaseBareSubagents): (Seq[BareSubagent], Task[Unit]) =
+  protected final lazy val (bareSubagents, bareSubagentIdToRelease)
+  : (Seq[BareSubagent], Map[SubagentId, Task[Unit]]) =
     directoryProvider
       .startBareSubagents()
-      .map(pairs => pairs.map(_._1) -> pairs.traverse(_._2).map(_.combineAll))
+      .map(pairs => pairs.map(_._1) -> pairs.map(_._2).toMap)
       .await(99.s)
 
   protected final lazy val controller: RunningController =
@@ -92,7 +95,12 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
     controller.terminate() await 15.s
     controller.close()
     agents.traverse(a => a.terminate() >> Task(a.close())) await 15.s
-    releaseBareSubagents.await(99.s)
+
+    try bareSubagentIdToRelease.values.await(99.s)
+    catch { case NonFatal(t) =>
+      logger.error(s"bareSubagentIdToRelease => ${t.toStringWithCauses}", t)
+    }
+
     super.afterAll()
   }
 
@@ -119,6 +127,16 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
     directoryProvider.updateVersionedItems(controller, versionId, change, delete)
   }
 
+  protected final def stopBareSubagent(subagentId: SubagentId): Unit =
+    bareSubagentIdToRelease(subagentId).await(99.s)
+
+  protected final def startBareSubagent(subagentId: SubagentId): (BareSubagent, Task[Unit]) = {
+    val subagentItem = directoryProvider.subagentItems
+      .find(_.id == subagentId)
+      .getOrElse(throw new NoSuchElementException(s"Missing $subagentId"))
+    directoryProvider.subagentResource(subagentItem).allocated.await(99.s)
+  }
+
   protected final def enableSubagents(subagentIdToEnable: (SubagentId, Boolean)*): Unit = {
     val eventId = eventWatch.lastAddedEventId
     controllerApi
@@ -134,4 +152,9 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
       eventWatch.await[ItemAttached](_.event.key == subagentId, after = eventId)
     }
   }
+}
+
+object ControllerAgentForScalaTest
+{
+  private val logger = Logger[this.type]
 }

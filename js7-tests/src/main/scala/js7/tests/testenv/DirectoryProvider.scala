@@ -253,11 +253,15 @@ extends HasCloser
       module = module,
       scheduler = scheduler)
 
-  def startBareSubagents(): Task[Seq[(BareSubagent, Task[Unit])]] =
+  def startBareSubagents(): Task[Seq[(BareSubagent, (SubagentId, Task[Unit]))]] =
     agents
       .flatMap(a => a.bareSubagentItems.map(_ -> a.agentConfiguration.config))
       .traverse { case (subagentItem, config) =>
-        subagentResource(subagentItem, config).allocated
+        subagentResource(subagentItem, config)
+          .allocated
+          .map { case (bareSubagent, release) =>
+            bareSubagent -> (subagentItem.id -> release.memoize)
+          }
       }
 
   def updateVersionedItems(
