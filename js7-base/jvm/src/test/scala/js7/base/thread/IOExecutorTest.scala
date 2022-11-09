@@ -68,7 +68,7 @@ final class IOExecutorTest extends OurTestSuite
   }
 
   private def testPerformance(executor: Executor, n: Int): Unit = {
-    val iox = new IOExecutor(executor)
+    val iox = new IOExecutor(executor, "IOExecutorTest")
     val since = now
     val task = (1 to n).toVector
       .traverse(_ => iox(Task { sleep(100.ms) }).start)

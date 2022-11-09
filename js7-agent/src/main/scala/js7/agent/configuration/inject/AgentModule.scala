@@ -58,9 +58,10 @@ extends AbstractModule
 
   @Provides @Singleton
   def ioExecutor(closer: Closer, conf: AgentConfiguration, config: Config): IOExecutor = {
-    val threadPool = newBlockingExecutor(config, name = conf.name + "-I/O")
+    val name = conf.name + "-I/O"
+    val threadPool = newBlockingExecutor(config, name = name)
     closer.onClose { threadPool.shutdown() }
-    new IOExecutor(threadPool)
+    new IOExecutor(threadPool, name)
   }
 
   @Provides @Singleton

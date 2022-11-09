@@ -69,7 +69,7 @@ extends AutoCloseable
         Task.pure(events)
       } catch {
         case NonFatal(t) if canceled =>
-          logger.trace(s"$prefix canceled (${t.toStringWithCauses})")
+          logger.trace(s"${prefix}canceled (${t.toStringWithCauses})")
           // Ignore the error, otherwise it would be logged by the thread pool.
           Task.never  // because the task is canceled
 
