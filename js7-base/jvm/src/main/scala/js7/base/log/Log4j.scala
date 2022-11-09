@@ -4,6 +4,7 @@ import java.lang.reflect.Method
 import java.time.LocalDateTime
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
+import js7.base.utils.Tests
 import monix.execution.atomic.AtomicBoolean
 import scala.concurrent.duration.Deadline
 import scala.util.{Failure, Success, Try}
@@ -35,6 +36,8 @@ object Log4j
         if (CorrelId.couldBeEnabled) CorrelIdLog4JThreadContextMap.initialize()
         for (t <- shutdownMethod.failed) logger.warn(t.toString)
         initialized = true
+
+        Tests.log()
       }
     }
 
