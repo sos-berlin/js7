@@ -12,6 +12,7 @@ import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSign
 import js7.agent.data.event.AgentEvent.{AgentReady, AgentShutDown}
 import js7.agent.main.AgentMain
 import js7.agent.scheduler.order.AgentOrderKeeper.*
+import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.crypt.{SignatureVerifier, Signed}
 import js7.base.generic.Completed
 import js7.base.log.{CorrelId, Logger}
@@ -484,10 +485,10 @@ final class AgentOrderKeeper(
 
               case Some(registeredWorkflow) =>
                 Future.successful(
-                  if (registeredWorkflow.withoutSource != workflow.withoutSource) {
+                  if (workflow.withoutSource.reduceForAgent(ownAgentPath) != registeredWorkflow.withoutSource) {
                     logger.warn(s"AttachSignedItem: Different duplicate ${workflow.id}:")
-                    logger.warn(s"AttachSignedItem  ${workflow.withoutSource.asJson}")
-                    logger.warn(s"But registered is ${registeredWorkflow.withoutSource.asJson}")
+                    logger.warn(s"AttachSignedItem  ${workflow.withoutSource.asJson.toPrettyString}")
+                    logger.warn(s"But registered is ${registeredWorkflow.withoutSource.asJson.toPrettyString}")
                     Left(Problem.pure(s"Different duplicate ${workflow.id}"))
                   } else
                     Right(AgentCommand.Response.Accepted))
