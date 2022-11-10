@@ -1,7 +1,7 @@
 package js7.base.log
 
 import implicitbox.Not
-import js7.base.log.CorrelId.{generate, local}
+import js7.base.log.CorrelId.generate
 import monix.eval.Task
 import monix.execution.CancelableFuture
 import monix.execution.misc.Local
@@ -48,7 +48,7 @@ object CanBindCorrelId
           val saved = Local.getContext()
           _bindCorrelIdCount += 1
           Task.defer {
-            Local.setContext(saved.bind(local.key, Some(correlId)))
+            Local.setContext(saved.bind(CorrelId.local.key, Some(correlId)))
             task
           }.guarantee(Task(Local.setContext(saved)))
         }
@@ -72,10 +72,10 @@ object CanBindCorrelId
       else {
         _bindCorrelIdCount += 1
         val saved = Local.getContext()
-        Local.setContext(saved.bind(local.key, Some(correlId)))
+        Local.setContext(saved.bind(CorrelId.local.key, Some(correlId)))
         try
           future.transform(result => {
-            local.clear()
+            CorrelId.local.clear()
             result
           })(TrampolineExecutionContext.immediate).asInstanceOf[F[R]]
         finally
@@ -103,7 +103,7 @@ object CanBindCorrelId
       else {
         _bindCorrelIdCount += 1
         val saved = Local.getContext()
-        Local.setContext(saved.bind(local.key, Some(correlId)))
+        Local.setContext(saved.bind(CorrelId.local.key, Some(correlId)))
         try body
         finally Local.setContext(saved)
       }

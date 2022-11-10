@@ -1,6 +1,5 @@
 package js7.base.log
 
-import js7.base.log.CorrelId.local
 import js7.base.log.CorrelIdLog4JThreadContextMap.*
 import org.apache.logging.log4j.spi.{CopyOnWrite, ReadOnlyThreadContextMap, ThreadContextMap}
 import org.apache.logging.log4j.util.StringMap
@@ -39,12 +38,12 @@ with CopyOnWrite
 
   def getCopy: java.util.Map[String, String] = {
     getCopyCount += 1
-    java.util.Collections.singletonMap(CorrelIdKey, local().fixedWidthString)
+    java.util.Collections.singletonMap(CorrelIdKey, CorrelId.local().fixedWidthString)
   }
 
   def getReadOnlyContextData: StringMap = {
     getReadOnlyContextDataCount += 1
-    new CorrelIdLog4jStringMap(local())
+    new CorrelIdLog4jStringMap(CorrelId.local())
   }
 }
 

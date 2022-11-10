@@ -3,7 +3,7 @@ package js7.tests.addOrders
 import js7.base.circeutils.CirceUtils.RichCirceString
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.JavaResource
-import js7.base.log.{CorrelId, Logger}
+import js7.base.log.{CorrelId, CorrelIdLog4JThreadContextMap, Logger}
 import js7.base.problem.Checked.*
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
@@ -55,6 +55,8 @@ final class TestAddOrdersTest extends OurTestSuite with ControllerAgentForScalaT
       .await(99.s).orThrow
     controller.eventWatch.await[OrderDeleted](_.key.string startsWith "TestAddOrders-")
     for (line <- statistics.logLines) info(line)
+    CorrelId.logStatisticsIfEnabled()
+    CorrelIdLog4JThreadContextMap.logStatistics()
   }
 }
 

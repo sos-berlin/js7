@@ -1,5 +1,6 @@
 package js7.base.log
 
+import java.util.Objects.requireNonNull
 import js7.base.log.CorrelIdLog4JThreadContextMap.CorrelIdKey
 import js7.base.log.CorrelIdLog4jStringMap.*
 import js7.base.utils.Tests.isTest
@@ -8,11 +9,13 @@ import org.apache.logging.log4j.util.{BiConsumer, ReadOnlyStringMap, StringMap, 
 final class CorrelIdLog4jStringMap(protected val correlId: CorrelId)
 extends StringMap
 {
+  if (isTest) requireNonNull(correlId) // Seems to happen ???
+
   private def correlIdString =
     if (correlId != null)
       correlId.fixedWidthString
     else if (isTest)
-      throw new NullPointerException("CorrelIdLog4jStringMap: correlId is null")
+      throw new NullPointerException("CorrelIdLog4jStringMap: correlId is null") // ???
     else
       nullString
 
