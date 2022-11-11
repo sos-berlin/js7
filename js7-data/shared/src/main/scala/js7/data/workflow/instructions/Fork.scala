@@ -41,7 +41,7 @@ extends ForkInstruction
     branches = branches.map(o => o.copy(workflow = o.workflow.copy(outer = Some(outer)))))
 
   override def reduceForAgent(agentPath: AgentPath, workflow: Workflow) =
-    if (isVisibleForAgent(agentPath, workflow))
+    if (this.agentPath.contains(agentPath) || isVisibleForAgent(agentPath, workflow))
       copy(
         branches = for (b <- branches) yield
           reuseIfEqual(b, b.copy(
