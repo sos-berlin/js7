@@ -5,10 +5,12 @@ import js7.base.log.LoggingEscapeCodes.{blue, bold, green, orange, resetColor}
 import js7.base.test.LoggingFreeSpecStringWrapper.{StringWrapper, TaggedAs}
 import js7.base.test.LoggingTestAdder.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.base.utils.Tests.{isIntelliJIdea, isSbt}
 import org.scalatest.exceptions.TestPendingException
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline.now
+import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success, Try}
 
 private final class LoggingTestAdder(suiteName: String) {
@@ -51,13 +53,13 @@ private final class LoggingTestAdder(suiteName: String) {
   def freezeContext(testName: String) =
     new TestContext(
       this,
-      outerNames.view.reverse.mkString("", " — ", " — "),
+      outerNames.toVector,
       testName)
 
   def afterAll(): Unit =
     logger.info(s"$suiteName — " +
       (if (succeededCount > 0) successMarkup else bold) +
-      s"$successMarkup$succeededCount tests succeeded$resetColor" +
+      s"$succeededCount tests succeeded$resetColor" +
       (if (failedCount == 0) "" else s" · $failureMarkup💥 $failedCount failed$resetColor") +
       (if (pendingCount == 0) "" else s" · $pendingMarkup🚫 $pendingCount pending$resetColor") +
       (if (failedCount == 0 && pendingCount == 0) s" $successMarkup✔︎$resetColor " else " · ") +
@@ -79,38 +81,67 @@ private object LoggingTestAdder {
     "org.jetbrains.plugins.scala.",
     "js7.base.test.")
 
-  final class TestContext(adder: LoggingTestAdder, val prefix: String, testName: String) {
+  final class TestContext(adder: LoggingTestAdder, val nesting: Seq[String], testName: String) {
+    private lazy val since = now
+    private val prefix = nesting.view.reverse.mkString("", " — ", " — ")
+
     def beforeTest(): Unit = {
       delayBeforeEnd()
       logger.info(eager(s"↘︎ $blue$bold$prefix$testName$resetColor"))
       delayBeforeEnd()
+      since
     }
 
-    def afterTest[A](result: Try[A]): Unit = {
-      result match {
+    def afterTest[A](tried: Try[A]): Unit = {
+      val t = tried match {
+        case Failure(t) =>
+          clipStackTrace(t)
+          Failure(t)
+        case Success(_) => Success(())
+      }
+      val result = Result(prefix, testName, t, since.elapsed)
+      val logLine = result.toLogLine
+      tried match {
         case Success(_) =>
           adder.succeededCount += 1
-          logger.info(eager(s"↙︎ $successMarkup$prefix$testName$resetColor"))
+          logger.info(s"↙︎ $logLine")
           logger.info(eager(successMarkup + bar))
-          delayBeforeEnd()
 
         case Failure(_: TestPendingException) =>
           adder.pendingCount += 1
-          logger.warn(eager(s"🚫 $pendingMarkup$prefix$testName (PENDING)$resetColor\n"))
+          logger.warn(logLine)
           logger.info(eager(pendingMarkup + bar))
-          delayBeforeEnd()
 
         case Failure(t) =>
-          adder.failedCount += 1
           clipStackTrace(t)
-
-          val s = s"💥 $failureMarkup$prefix$testName 💥$resetColor"
-          logger.error(s, t)
+          adder.failedCount += 1
+          if (isSbt) System.err.println(logLine)
+          logger.error(logLine, t.nullIfNoStackTrace)
           logger.info(eager(failureMarkup + bar))
-          if (isSbt) System.err.println(s)
-          delayBeforeEnd()
+          clipStackTrace(t)
       }
+      if (isIntelliJIdea) TestResultCollector.add(result)
+      delayBeforeEnd()
     }
+  }
+
+  private[test] final case class Result(
+    prefix: String,
+    testName: String,
+    tried: Try[Unit],
+    duration: FiniteDuration)
+  {
+    def toLogLine: String =
+      tried match {
+        case Success(_) =>
+          s"$successMarkup$prefix$testName$resetColor ${duration.pretty}"
+
+        case Failure(_: TestPendingException) =>
+          s"🚫 $pendingMarkup$prefix$testName (PENDING)$resetColor ${duration.pretty}"
+
+        case Failure(t) =>
+          s"💥 $failureMarkup$prefix$testName 💥$resetColor ${duration.pretty}"
+      }
   }
 
   private def clipStackTrace(t: Throwable): Unit = {

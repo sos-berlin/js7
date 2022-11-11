@@ -17,6 +17,7 @@ import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.utils.ScalaUtils.syntax.*
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters.*
+import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
@@ -141,9 +142,15 @@ object Configs
 
   implicit final class HoconStringInterpolator(private val sc: StringContext) extends AnyVal
   {
-    def config(args: Any*)(implicit enclosing: sourcecode.Enclosing): Config =
-      ConfigFactory.parseString(
-        JsonStringInterpolator.interpolate(sc, args),
+    def config(args: Any*)(implicit enclosing: sourcecode.Enclosing): Config = {
+      val configString = JsonStringInterpolator.interpolate(sc, args)
+      try ConfigFactory.parseString(
+        configString,
         ConfigParseOptions.defaults().setOriginDescription(enclosing.value))
+      catch { case NonFatal(t) =>
+        logger.warn(s"${enclosing.value} => ${t.toStringWithCauses}")
+        throw t
+      }
+    }
   }
 }

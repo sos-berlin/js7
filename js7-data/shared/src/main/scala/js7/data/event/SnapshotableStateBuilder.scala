@@ -22,7 +22,7 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]
   protected val S: SnapshotableState.Companion[S]
 
   private val since = now
-  private var recordCount = 0L
+  private var recordCount = 1L
   private var _snapshotCount = 0L
   private var _firstEventId = EventId.BeforeFirst
   private var _eventId = EventId.BeforeFirst
@@ -54,6 +54,7 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]
 
   def addSnapshotObject(obj: Any): Unit = {
     recordCount += 1
+    _snapshotCount += 1
     obj match {
       case journalHeader: JournalHeader =>
         try {
