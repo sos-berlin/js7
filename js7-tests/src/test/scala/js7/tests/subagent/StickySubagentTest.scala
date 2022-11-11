@@ -7,7 +7,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.AnswerOrderPrompt
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderStarted, OrderStickySubagentEntered, OrderStickySubagentLeaved, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderStarted, OrderStickySubagentEntered, OrderStickySubagentLeaved, OrderTerminated}
 import js7.data.order.Outcome.Disrupted.ProcessLost
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.subagent.Problems.{ProcessLostDueToRestartProblem, SubagentNotDedicatedProblem}
@@ -16,7 +16,7 @@ import js7.data.subagent.{SubagentId, SubagentSelection, SubagentSelectionId}
 import js7.data.value.StringValue
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.workflow.instructions.{Fail, Prompt, StickySubagent}
+import js7.data.workflow.instructions.{Fail, Fork, Prompt, StickySubagent}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.EmptyJob
@@ -124,15 +124,23 @@ final class StickySubagentTest extends OurTestSuite with ControllerAgentForScala
       OrderFinished()))
   }
 
-  "StickySubagent without SubagentSelection" in {
+  "StickySubagent without SubagentSelection, but with a forking order" in {
     enableSubagents(aSubagentId -> false, a1SubagentId -> true, a2SubagentId -> false)
 
     val orderId = OrderId("🔷")
     controller.addOrder(FreshOrder(orderId, withoutSubagentSelectionWorkflow.path))
       .await(99.s).orThrow
 
-    eventWatch.await[OrderPrompted](_.key == orderId)
+    val childOrderId = orderId / "BRANCH"
+    eventWatch.await[OrderPrompted](_.key == childOrderId)
+
     assert(controllerState.idToOrder(orderId).stickySubagents == List(
+      Order.StickySubagent(
+        aAgentPath,
+        None,
+        stuckSubagentId = Some(a1SubagentId))))
+
+    assert(controllerState.idToOrder(childOrderId).stickySubagents == List(
       Order.StickySubagent(
         aAgentPath,
         None,
@@ -143,7 +151,7 @@ final class StickySubagentTest extends OurTestSuite with ControllerAgentForScala
     val eventId = eventWatch.lastAddedEventId
     stopBareSubagent(a1SubagentId)
 
-    controllerApi.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
+    controllerApi.executeCommand(AnswerOrderPrompt(childOrderId)).await(99.s).orThrow
     eventWatch.await[SubagentCouplingFailed](_.key == a1SubagentId, after = eventId)
 
     val a1SubagentRelease = startBareSubagent(a1SubagentId)._2
@@ -170,15 +178,20 @@ final class StickySubagentTest extends OurTestSuite with ControllerAgentForScala
       OrderProcessingStarted(Some(a1SubagentId)),
       OrderProcessed(Outcome.succeeded),
       OrderMoved(Position(0) / "stickySubagent" % 2),
+
       OrderDetachable,
       OrderDetached,
-
-      OrderPrompted(StringValue("PROMPT")),
-      OrderPromptAnswered(),
+      OrderForked(Vector(OrderForked.Child(Fork.Branch.Id("BRANCH"), childOrderId))),
+      OrderJoined(Outcome.succeeded),
       OrderMoved(Position(0) / "stickySubagent" % 3),
 
       OrderStickySubagentLeaved,
       OrderFinished()))
+
+    assert(eventWatch.eventsByKey[OrderEvent](childOrderId) == Seq(
+      OrderPrompted(StringValue("PROMPT")),
+      OrderPromptAnswered(),
+      OrderMoved(Position(0) / "stickySubagent" % 2 / "fork+BRANCH" % 1)))
   }
 
   "Fail in StickySubagent at Controller" in {
@@ -265,7 +278,12 @@ object StickySubagentTest
         subworkflow = Workflow.of(
           EmptyJob.execute(aAgentPath),
           EmptyJob.execute(aAgentPath),
-          Prompt(expr("'PROMPT'"))))))
+          Fork(
+            Vector(
+              Fork.Branch(
+                "BRANCH",
+                Workflow.of(
+                  Prompt(expr("'PROMPT'"))))))))))
 
   private val failAtControllerWorkflow = Workflow(
     WorkflowPath("FAILING-AT-CONTROLLER") ~ "INITIAL",

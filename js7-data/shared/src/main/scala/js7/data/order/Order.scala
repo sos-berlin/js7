@@ -59,7 +59,8 @@ final case class Order[+S <: Order.State](
         scheduledFor = scheduledFor,
         historicOutcomes = historicOutcomes,
         attachedState = attachedState,
-        parent = Some(id))
+        parent = Some(id),
+        stickySubagents = stickySubagents)
 
   def workflowId: WorkflowId =
     workflowPosition.workflowId
