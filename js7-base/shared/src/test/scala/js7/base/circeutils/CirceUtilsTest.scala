@@ -29,13 +29,13 @@ final class CirceUtilsTest extends OurTestSuite
     assert(myCodec.decodeJson(json"""{ "int": 1, "string":  "B" }""") == Right(Simple(1, "B")))
     assert(myCodec.decodeJson(json"""{ "int": 1, "old":  "B" }""") == Right(Simple(1, "B")))
     assert(myCodec.decodeJson(json"""{ "int": 1 }""") == Left(
-      DecodingFailure(MissingField, DownField("string") :: Nil)))
+      DecodingFailure(MissingField, List(DownField("string")))))
 
     assert(myCodec.apply(Simple(1, "B")) == json"""{ "int": 1, "string": "B" }""")
   }
 
   "PrettyPrinter" in {
-    assert(A(1, B("STRING", 1 :: 2 :: Nil, Nil)).asJson.toPrettyString ==
+    assert(A(1, B("STRING", List(1, 2), Nil)).asJson.toPrettyString ==
       """{
       |  "a": 1,
       |  "b": {
@@ -77,14 +77,17 @@ final class CirceUtilsTest extends OurTestSuite
     }
 
     "Interpolating String value" in {
-      for (string <- "STRING" :: "STRING\"" :: "STRING\"\u007f." :: Nil)
+      for (string <- Seq("STRING", "STRING\"", "STRING\"\u007f."))
         assert(json"""{ "A": "!$string" }""" == Json.obj("A" -> Json.fromString("!" + string)))
     }
 
     "Interpolating GenericString value" in {
       case class MyGenericString(string: String) extends GenericString
-      for (string <- MyGenericString("STRING") :: MyGenericString("STRING\")") :: MyGenericString("STRING\"\u007f.") :: Nil)
-        assert(json"""{ "A": "!$string" }""" == Json.obj("A" -> Json.fromString("!" + string)))
+      for (string <- Seq(MyGenericString("STRING"), MyGenericString("STRING\")"), MyGenericString("STRING\"\u007f."))) {
+        assert(json"""{ "A": "$string" }""" == Json.obj("A" -> Json.fromString(string.string)))
+        assert(json"""{ "A": "!$string/$string" }""" == Json.obj("A" -> Json.fromString(s"!$string/$string")))
+        assert(json"""{ "A": "$string/$string" }""" == Json.obj("A" -> Json.fromString(s"$string/$string")))
+      }
     }
 
     "Interpolating Int value" in {

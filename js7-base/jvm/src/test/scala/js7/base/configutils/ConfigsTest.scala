@@ -3,6 +3,7 @@ package js7.base.configutils
 import cats.Monoid
 import cats.syntax.semigroup.*
 import com.typesafe.config.{Config, ConfigException, ConfigFactory}
+import java.nio.file.Paths
 import js7.base.configutils.Configs.*
 import js7.base.configutils.ConfigsTest.*
 import js7.base.generic.GenericString
@@ -80,10 +81,16 @@ final class ConfigsTest extends OurTestSuite
       assert(config"""A = "STRING\"\u007f." """ == ConfigFactory.parseMap(Map("A" -> "STRING\"\u007f.").asJava))
     }
 
-    for (string <- "STRING" :: "STRING\"" :: "STRING\"\u007f." :: Nil) {
+    for (string <- Seq("STRING", "STRING\"", "STRING\"\u007f.", "back\\slash")) {
       s"Interpolating String: $string" in {
         assert(config"""A = "!$string" """ == ConfigFactory.parseMap(Map("A" -> s"!$string").asJava))
       }
+    }
+
+    "Path" in {
+      val directory = Paths.get("c:\\windows\\directory")
+      val config = config"""directory = "$directory/file" """
+      assert(config == ConfigFactory.parseMap(Map("directory" -> "c:\\windows\\directory/file").asJava))
     }
 
     case class MyGenericString(string: String) extends GenericString

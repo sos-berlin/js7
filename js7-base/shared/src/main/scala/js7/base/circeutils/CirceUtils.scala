@@ -9,9 +9,10 @@ import io.circe.generic.extras.codec.ConfiguredAsObjectCodec
 import io.circe.generic.extras.decoding.ConfiguredDecoder
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, CursorOp, Decoder, DecodingFailure, Encoder, HCursor, Json, JsonNumber, JsonObject, ParsingFailure, Printer}
-import java.io.{OutputStream, OutputStreamWriter}
+import java.io.{File, OutputStream, OutputStreamWriter}
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.file.Path
 import js7.base.circeutils.AnyJsonCodecs.anyToJson
 import js7.base.data.{ByteArray, ByteSequence, Writable}
 import js7.base.generic.GenericString
@@ -328,9 +329,14 @@ object CirceUtils
 
     private def toJsonString(arg: Any): String =
       arg match {
-        case arg @ (_: String | _: GenericString) =>
-          val j = Json.fromString(arg.toString).toString
-          j.substring(1, j.length - 1)  // Interpolation is expected to occur already in quotes: "$var"
+        case arg @ (_: String | _: GenericString | _: Path | _: File) =>
+          val str = arg match {
+            case o: GenericString => o.string
+            case o => o.toString
+          }
+          val j = Json.fromString(str).toString
+          // Strip quotes. Interpolation is expected to occur already in quotes: "$var"
+          j.substring(1, j.length - 1)
         case _ =>
           anyToJson(arg, unknownToString = true).toString
       }
