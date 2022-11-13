@@ -2,7 +2,6 @@ package js7.tests
 
 import izumi.reflect.Tag
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.io.process.ReturnCode
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
@@ -10,19 +9,18 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.event.KeyedEvent
-import js7.data.job.{RelativePathExecutable, ReturnCodeMeaning}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten, OrderTerminated}
 import js7.data.order.{FreshOrder, HistoricOutcome, OrderEvent, OrderId, Outcome}
+import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.value.{NamedValues, NumberValue, StringValue}
-import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{Execute, Fail, Finish, Fork, If}
+import js7.data.workflow.instructions.{Fail, Finish, Fork, If}
 import js7.data.workflow.position.BranchId.Then
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.FinishTest.*
+import js7.tests.jobs.{EmptyJob, FailingJob, SleepJob}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest, DirectoryProvider}
+import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import monix.execution.Scheduler.Implicits.traced
 import scala.reflect.ClassTag
 
@@ -33,20 +31,18 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     """
 
+  override protected def agentConfig = config"""
+    js7.job.execution.signed-script-injection-allowed = on
+    """
+
   protected def agentPaths = Seq(agentPath)
   protected def items = Nil
-
-  override def beforeAll() = {
-    super.beforeAll()
-    directoryProvider.agents.head.writeExecutable(RelativePathExecutable("test.cmd"), "exit 3")
-    directoryProvider.agents.head.writeExecutable(RelativePathExecutable("sleep.cmd"), DirectoryProvider.script(100.ms))
-  }
 
   "finish" in {
     val orderId = OrderId("🟠")
     checkEvents[OrderFinished](
       Workflow.of(
-        executeSuccess,
+        EmptyJob.execute(agentPath),
         Finish(),
         Fail()),
       orderId,
@@ -55,25 +51,24 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
         OrderAttached(agentPath),
         OrderStarted,
         OrderProcessingStarted(subagentId),
-        OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
+        OrderProcessed(Outcome.succeeded),
         OrderMoved(Position(1)),
         OrderDetachable,
         OrderDetached,
         OrderFinished()))
 
     assert(controllerState.idToOrder(orderId).historicOutcomes == Seq(
-      HistoricOutcome(Position(0), Outcome.Succeeded(Map(
-        "returnCode" -> NumberValue(3))))))
+      HistoricOutcome(Position(0), Outcome.succeeded)))
   }
 
   "finish with if" in {
     val orderId = OrderId("🟢")
     checkEvents[OrderFinished](
       Workflow.of(
-        executeSuccess,
+        EmptyJob.execute(agentPath),
         If(expr("true"),
           Workflow.of(
-            executeSuccess,
+            EmptyJob.execute(agentPath),
             Finish(Some(Outcome.Failed(Some("FAIL WITH FINISH")))))),
         Fail()),
       orderId,
@@ -82,18 +77,18 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
         OrderAttached(agentPath),
         OrderStarted,
         OrderProcessingStarted(subagentId),
-        OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
+        OrderProcessed(Outcome.succeeded),
         OrderMoved(Position(1) / "then" % 0),
         OrderProcessingStarted(subagentId),
-        OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
+        OrderProcessed(Outcome.succeeded),
         OrderMoved(Position(1) / "then" % 1),
         OrderDetachable,
         OrderDetached,
         OrderFinished(Some(Outcome.Failed(Some("FAIL WITH FINISH"))))))
 
     assert(controllerState.idToOrder(orderId).historicOutcomes == Seq(
-      HistoricOutcome(Position(0), Outcome.Succeeded(Map("returnCode" -> NumberValue(3)))),
-      HistoricOutcome(Position(1) / "then" % 0, Outcome.Succeeded(Map("returnCode" -> NumberValue(3)))),
+      HistoricOutcome(Position(0), Outcome.succeeded),
+      HistoricOutcome(Position(1) / "then" % 0, Outcome.succeeded),
       HistoricOutcome(Position(1) / "then" % 1, Outcome.Failed(Some("FAIL WITH FINISH")))))
   }
 
@@ -104,13 +99,13 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
         Fork(
           Vector(
             "🥕" -> Workflow.of(
-              executeSuccess,
+              EmptyJob.execute(agentPath),
               If(expr("true"),
                 Workflow.of(
                   Finish())),
-              executeSuccess),
+              EmptyJob.execute(agentPath)),
             "🍋" -> Workflow.of(
-              executeSleep,
+              SleepJob.sleep(agentPath, 100.ms),
               Finish(Some(Outcome.Succeeded(Map(
                 "result" -> StringValue("FINISH"))))))))),
       orderId)
@@ -120,7 +115,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderProcessingStarted(subagentId),
-        OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
+        OrderProcessed(Outcome.succeeded),
         OrderMoved(Position(0) / "fork+🥕" % 1 / Then % 0),  // Position of Finish
         OrderDetachable,
         OrderDetached,
@@ -131,7 +126,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
         OrderProcessingStarted(subagentId),
-        OrderProcessed(Outcome.succeededRC0),
+        OrderProcessed(Outcome.succeeded),
         OrderMoved(Position(0) / "fork+🍋" % 1),
         OrderDetachable,
         OrderDetached,
@@ -158,13 +153,13 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
       Fork(
         Vector(
           "🥕" -> Workflow.of(
-            executeSleep,
+            SleepJob.sleep(agentPath, 100.ms),
             If(expr("true"),
               Workflow.of(
                 Finish(Some(Outcome.Failed(Some("FAIL WITH FINISH")))))),
-            executeFailure),
+            FailingJob.execute(agentPath)),
           "🍋" -> Workflow.of(
-            executeSuccess))))
+            EmptyJob.execute(agentPath)))))
 
     val orderId = OrderId("🟣")
 
@@ -178,7 +173,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
           OrderAttachable(agentPath),
           OrderAttached(agentPath),
           OrderProcessingStarted(subagentId),
-          OrderProcessed(Outcome.Succeeded(NamedValues.rc(0))),
+          OrderProcessed(Outcome.succeeded),
           OrderMoved(Position(0) / "fork+🥕" % 1 / Then % 0), // Position of Finish
           OrderDetachable,
           OrderDetached,
@@ -186,8 +181,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
           OrderFailed(Position(0) / "fork+🥕" % 1 / Then % 0)))
 
       assert(controllerState.idToOrder(orderId / "🥕").historicOutcomes == Seq(
-        HistoricOutcome(Position(0) / "fork+🥕" % 0,
-          Outcome.Succeeded(Map("returnCode" -> NumberValue(0)))),
+        HistoricOutcome(Position(0) / "fork+🥕" % 0, Outcome.succeeded),
         HistoricOutcome(Position(0) / "fork+🥕" % 1 / "then" % 0,
           Outcome.Failed(Some("FAIL WITH FINISH")))))
 
@@ -205,7 +199,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
           OrderAttachable(agentPath),
           OrderAttached(agentPath),
           OrderProcessingStarted(subagentId),
-          OrderProcessed(Outcome.Succeeded(NamedValues.rc(3))),
+          OrderProcessed(Outcome.succeeded),
           OrderMoved(Position(0) / "fork+🍋" % 1),
           OrderDetachable,
           OrderDetached))
@@ -252,23 +246,4 @@ object FinishTest
 {
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
-  private val workflowId = WorkflowPath("WORKFLOW") ~ "VERSION"
-  private val executeFailure = Execute.Anonymous(
-    WorkflowJob(
-      agentPath,
-      RelativePathExecutable(
-        "test.cmd")))
-
-  private val executeSuccess = Execute.Anonymous(
-    WorkflowJob(
-      agentPath,
-      RelativePathExecutable(
-        "test.cmd",
-        returnCodeMeaning = ReturnCodeMeaning.Success(Set(ReturnCode(3))))))
-
-  private val executeSleep = Execute.Anonymous(
-    WorkflowJob(
-      agentPath,
-      RelativePathExecutable(
-        "sleep.cmd")))
-}
+  private val workflowId = WorkflowPath("WORKFLOW") ~ "VERSION"}
