@@ -1,5 +1,6 @@
 package js7.launcher.process
 
+import java.io.{IOException, InputStream}
 import java.lang.ProcessBuilder.Redirect.PIPE
 import js7.base.io.process.Processes.*
 import js7.base.io.process.{JavaProcess, Js7Process, Stderr, Stdout, StdoutOrStderr}
@@ -14,6 +15,7 @@ import js7.launcher.forwindows.WindowsProcess
 import js7.launcher.forwindows.WindowsProcess.StartWindowsProcess
 import js7.launcher.process.InputStreamToObservable.copyInputStreamToObservable
 import monix.eval.{Fiber, Task}
+import monix.reactive.Observer
 import scala.concurrent.Promise
 import scala.jdk.CollectionConverters.*
 import scala.util.Try
@@ -61,25 +63,31 @@ object ShellScriptProcess {
             import conf.encoding
             import stdObservers.{charBufferSize, err, out}
 
+            private def copyToObservable(outErr: StdoutOrStderr, in: InputStream, obs: Observer[String])
+            : Task[Unit] =
+              copyInputStreamToObservable(in, obs, encoding, charBufferSize)
+                .onErrorRecover {
+                  case t: IOException if isKilling /*Happens under Windows*/ => logger.warn(
+                    s"While killing the process, $outErr become unreadable: ${t.toStringWithCauses}")
+                }
+
             def await(outerr: StdoutOrStderr, fiber: Fiber[Unit]): Task[Unit] =
               fiber.join.onErrorHandle(t => logger.warn(outerr.toString + ": " + t.toStringWithCauses))
 
             override val terminated =
               (for {
-                outFiber <-
-                  copyInputStreamToObservable(process.stdout, out, encoding, charBufferSize).start
-                errFiber <-
-                  copyInputStreamToObservable(process.stderr, err, encoding, charBufferSize).start
+                outFiber <- copyToObservable(Stdout, process.stdout, out).start
+                errFiber <- copyToObservable(Stderr, process.stderr, err).start
                 _ <- Task.race(
                   sigkilled.delayExecution(stdoutAndStderrDetachDelay).map { _ =>
-                    Try(process.stdout.close())
-                    Try(process.stderr.close())
+                    if (false) Try(process.stdout.close()) // FIXME
+                    if (false) Try(process.stderr.close()) // FIXME
                     if (process.isAlive) {
                       logger.debug("destroyForcibly")
                       process.destroyForcibly()
                     }
                   },
-                  await(Stdout, outFiber) >> await(Stderr, errFiber))
+                  await(Stdout, outFiber) *> await(Stderr, errFiber))
                 returnCode <- super.terminated
                 _ <- whenTerminated
               } yield returnCode).memoize

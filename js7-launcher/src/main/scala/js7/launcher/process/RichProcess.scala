@@ -1,8 +1,7 @@
 package js7.launcher.process
 
-import java.io.{BufferedOutputStream, OutputStream, OutputStreamWriter}
+import java.io.OutputStream
 import java.lang.ProcessBuilder.Redirect.INHERIT
-import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.delete
 import java.nio.file.Path
 import js7.base.io.process.ProcessSignal.SIGKILL
@@ -31,11 +30,10 @@ class RichProcess protected[process](
 {
   private val runningSince = now
   val pidOption: Option[Pid] = process.pid
+  @volatile private var _isKilling = false
   private val logger = Logger.withPrefix[this.type](toString)
-  /**
-   * UTF-8 encoded stdin.
-   */
-  final lazy val stdinWriter = new OutputStreamWriter(new BufferedOutputStream(stdin), UTF_8)
+
+  protected final def isKilling = _isKilling
 
   protected def onSigkill(): Unit =
     if (process.isAlive) {
@@ -64,11 +62,13 @@ class RichProcess protected[process](
         ifAlive("sendProcessSignal SIGKILL")(
           processConfiguration
             .toKillScriptCommandArgumentsOption(pidOption)
-            .fold(kill)(args =>
+            .fold(kill) { args =>
+              _isKilling = true
               executeKillScript(args ++ pidOption.map(o => s"--pid=${o.string}"))
                 .onErrorHandle(t => logger.error(
                   s"Cannot start kill script command '$args': ${t.toStringWithCauses}"))
-                .tapEval(_ => kill))
+                .tapEval(_ => kill)
+            }
         ).guarantee(Task {
           // The process may have terminated
           // while long running child processes inheriting the file handles
@@ -141,7 +141,7 @@ class RichProcess protected[process](
             if (rc.isSuccess)
               Task.unit
             else Task {
-              logger.warn(s"Could not kill with unix command: ${args.mkString(" ")} => $rc")
+              logger.warn(s"Could not kill with system command: ${args.mkString(" ")} => $rc")
               destroyWithJava(force)
             }
           }
