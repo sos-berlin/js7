@@ -6,6 +6,7 @@ import js7.base.test.TestMixins
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
+import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.board.BoardPathExpressionParser.boardPathExpr
@@ -27,7 +28,6 @@ import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import monix.execution.Scheduler.Implicits.global
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.View
-import scala.collection.immutable.Vector
 import scala.concurrent.duration.*
 
 final class ConsumeNoticesTest extends AnyFreeSpec with ControllerAgentForScalaTest
@@ -345,7 +345,7 @@ with BlockingItemUpdater with TestMixins
 
     TestJob.continue()
     eventWatch.await[OrderNoticesConsumed](_.key == aOrderId)
-    sleep(100.ms)
+    waitForCondition(10.s, 10.ms)(controllerState.keyTo(BoardState)(aBoard.path).idToNotice.get(noticeId).isEmpty)
     assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice.get(noticeId).isEmpty)
 
     deleteItems(workflow.path)

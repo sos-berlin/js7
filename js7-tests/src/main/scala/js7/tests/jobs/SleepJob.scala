@@ -10,7 +10,7 @@ import js7.data.workflow.instructions.Execute
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
 import js7.launcher.internal.InternalJob.JobContext
-import monix.eval.Task
+import scala.concurrent.duration.FiniteDuration
 
 final class SleepJob(jobContext: JobContext) extends InternalJob
 {

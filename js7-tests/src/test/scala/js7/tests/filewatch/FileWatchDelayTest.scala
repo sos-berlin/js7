@@ -35,7 +35,7 @@ final class FileWatchDelayTest extends OurTestSuite with ControllerAgentForScala
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
     js7.controller.agent-driver.command-batch-delay = 0ms
-    js7.controller.agent-driver.event-buffer-delay = 10ms"""
+    js7.controller.agent-driver.event-buffer-delay = 0ms"""
 
   override protected def agentConfig = config"""
     js7.filewatch.watch-delay = 0ms
@@ -50,12 +50,14 @@ final class FileWatchDelayTest extends OurTestSuite with ControllerAgentForScala
   private lazy val watchedDirectory = directoryProvider.agents(0).dataDir / "tmp/a-files"
   private val orderWatchPath = OrderWatchPath("FILE-WATCH")
 
+  private val writeDuration = systemWatchDelay + 1.s
+
   private lazy val fileWatch = FileWatch(
     orderWatchPath,
     workflow.path,
     agentPath,
     StringConstant(watchedDirectory.toString),
-    delay = systemWatchDelay + 1.s)
+    delay = writeDuration)
 
   private def fileToOrderId(filename: String): OrderId =
     FileWatchManager.relativePathToOrderId(fileWatch, filename).get.orThrow
@@ -91,13 +93,13 @@ final class FileWatchDelayTest extends OurTestSuite with ControllerAgentForScala
         assert(!whenArised.isCompleted)
         val divisor = 4
         for (j <- 1 to i * divisor) withClue(s"#$i") {
-          sleepUntil(since + j * fileWatch.delay / divisor)
+          sleepUntil(since + j * writeDuration / divisor)
           logger.info(s"""file-$i ++= "${"+" * j}"""")
           file ++= "+"
           assert(!whenArised.isCompleted)
         }
         whenArised.await(99.s)
-        assert(since.elapsed >= systemWatchDelay + i * fileWatch.delay)
+        assert(since.elapsed >= systemWatchDelay + i * writeDuration)
         await[OrderFinished](_.key == orderId)
         await[OrderDeleted](_.key == orderId)
         assert(!exists(file))

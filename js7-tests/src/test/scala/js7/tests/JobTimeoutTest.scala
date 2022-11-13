@@ -6,27 +6,25 @@ import js7.base.log.Logger
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
-import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
-import js7.data.job.{RelativePathExecutable, ShellScriptExecutable}
+import js7.data.job.ShellScriptExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderProcessed, OrderProcessingStarted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.NumberValue
-import js7.data.value.expression.Expression.NumericConstant
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.JobTimeoutTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
-import js7.tests.testenv.DirectoryProvider.{sleepingScript, toLocalSubagentId}
+import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import scala.concurrent.duration.Deadline.now
 
 final class JobTimeoutTest extends OurTestSuite with ControllerAgentForScalaTest
 {
   override protected val controllerConfig = config"""
     js7.controller.agent-driver.command-batch-delay = 0ms
-    js7.controller.agent-driver.event-buffer-delay = 1ms"""
+    js7.controller.agent-driver.event-buffer-delay = 0ms"""
 
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
@@ -34,11 +32,6 @@ final class JobTimeoutTest extends OurTestSuite with ControllerAgentForScalaTest
 
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(workflow)
-
-  override def beforeAll() = {
-    directoryProvider.agents.head.writeExecutable(RelativePathExecutable("test.cmd"), (isWindows ?? "@echo off\n") + "exit 3")
-    super.beforeAll()
-  }
 
   "timeout" in {
     // Warm-up
@@ -60,7 +53,7 @@ final class JobTimeoutTest extends OurTestSuite with ControllerAgentForScalaTest
         OrderStarted,
         OrderProcessingStarted(subagentId),
         OrderProcessed(Outcome.TimedOut(Outcome.Failed(Map(
-          "returnCode" -> NumberValue(128 + SIGTERM.number))))),
+          "returnCode" -> NumberValue(if (isWindows) 1 else 128 + SIGTERM.number))))),
         OrderDetachable,
         OrderDetached,
         OrderFailed(Position(0))))
@@ -78,7 +71,11 @@ object JobTimeoutTest
     Execute(WorkflowJob(
       agentPath,
       ShellScriptExecutable(
-        sleepingScript("SLEEP"), Map(
-          "SLEEP" -> NumericConstant(9))),
+        if (isWindows)
+           """@echo off
+             |ping -n 10 127.0.0.1 >nul
+             |""".stripMargin
+        else
+          "sleep 9"),
       timeout = Some(timeout)))))
 }

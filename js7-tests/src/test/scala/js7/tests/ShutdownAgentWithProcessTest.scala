@@ -1,5 +1,6 @@
 package js7.tests
 
+import java.lang.System.lineSeparator as nl
 import js7.agent.RunningAgent
 import js7.agent.client.AgentClient
 import js7.agent.data.commands.AgentCommand
@@ -24,7 +25,6 @@ import js7.data.workflow.instructions.{Execute, TryInstruction}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.ShutdownAgentWithProcessTest.*
-import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.traced
@@ -83,9 +83,9 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite with ControllerAge
 
       simpleOrderId <-: OrderStarted,
       simpleOrderId <-: OrderProcessingStarted(subagentId),
-      simpleOrderId <-: OrderStdoutWritten("TestJob\n"),
+      simpleOrderId <-: OrderStdoutWritten(s"TestJob$nl"),
       simpleOrderId <-: OrderProcessed(Outcome.Killed(Outcome.Failed(namedValues = Map(
-        "returnCode" -> NumberValue(137))))),
+        "returnCode" -> NumberValue(if (isWindows) 1 else 137))))),
       agentPath <-: AgentShutDown,
 
       agentPath <-: AgentReady("UTC", None),
@@ -104,9 +104,9 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite with ControllerAge
 
       caughtOrderId <-: OrderStarted,
       caughtOrderId <-: OrderProcessingStarted(subagentId),
-      caughtOrderId <-: OrderStdoutWritten("TestJob\n"),
+      caughtOrderId <-: OrderStdoutWritten(s"TestJob$nl"),
       caughtOrderId <-: OrderProcessed(Outcome.Killed(Outcome.Failed(namedValues = Map(
-        "returnCode" -> NumberValue(137))))),
+        "returnCode" -> NumberValue(if (isWindows) 1 else 137))))),
       agentPath <-: AgentShutDown,
 
       agentPath <-: AgentReady("UTC", None),
@@ -136,9 +136,6 @@ object ShutdownAgentWithProcessTest
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
   private val versionId = VersionId("INITIAL")
-
-  final class TestJob extends SemaphoreJob(TestJob)
-  object TestJob extends SemaphoreJob.Companion[TestJob]
 
   private val simpleWorkflow = Workflow.of(
     WorkflowPath("SIMPLE") ~ versionId,

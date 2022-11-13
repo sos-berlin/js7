@@ -167,7 +167,11 @@ final class SuspendResumeOrdersTest extends OurTestSuite with ControllerAgentFor
       OrderProcessingStarted(subagentId),
       OrderSuspensionMarked(SuspensionMode(Some(CancellationMode.Kill()))),
       OrderSuspensionMarkedOnAgent,
-      OrderProcessed(Outcome.Killed(if (isWindows) Outcome.succeededRC0 else Outcome.Failed(NamedValues.rc(SIGTERM)))),
+      OrderProcessed(Outcome.Killed(
+        if (isWindows)
+          Outcome.Failed.rc(1)
+        else
+          Outcome.Failed(NamedValues.rc(SIGTERM)))),
       OrderProcessingKilled,
       OrderDetachable,
       OrderDetached,

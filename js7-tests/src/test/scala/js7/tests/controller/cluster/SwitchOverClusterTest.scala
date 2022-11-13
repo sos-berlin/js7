@@ -24,7 +24,7 @@ final class SwitchOverClusterTest extends ControllerClusterTester
 {
   override protected def removeObsoleteJournalFiles = false
   private lazy val manyOrdersCount = sys.props.get("SwitchOverClusterTest").map(_.toInt) getOrElse 1
-  private lazy val timeout = if (manyOrdersCount > 0) 1.h else 99.s
+  private lazy val timeout = if (manyOrdersCount > 1) 1.h else 99.s
 
   "Switchover" in {
     val orderIds = for (i <- 1 to manyOrdersCount) yield

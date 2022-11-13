@@ -1,6 +1,8 @@
 package js7.journal.files
 
+import java.io.FileOutputStream
 import java.nio.file.Paths
+import js7.base.io.file.FileUtils.implicits.pathToFile
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{deleteDirectoryContentRecursively, touchFile, withTemporaryDirectory}
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
@@ -85,15 +87,18 @@ final class JournalFilesTest extends OurTestSuite
         dir / "test--1000.journal.tmp",
         dir / "test--1000.journal.gz",
         dir / "other--0.journal")
-      files foreach touchFile
+
+      val openedFiles = for (file <- files) yield
+        new FileOutputStream(file.toPath)  // Make file undeletable under Windows
 
       // Create the marker file before the directory is no longer writable
       touchFile(deletionMarkerFile(fileBase))
-      dir.toFile.setWritable(false)
+      dir.toFile.setWritable(false) // Make files undeletable under Unix
       deleteJournal(fileBase, ignoreFailure = true)
       assert(dir.directoryContentsAs(Set) == files + deletionMarkerFile(fileBase))
 
       dir.toFile.setWritable(true)
+      for (file <- openedFiles) file.close()
       deleteJournalIfMarked(fileBase)
       assert(dir.directoryContentsAs(Set) == Set(dir / "other--0.journal", dir / "test--1000.journal.gz"))
     }

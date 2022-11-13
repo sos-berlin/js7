@@ -1,7 +1,7 @@
 package js7.data.value.expression.scopes
 
 import js7.base.problem.Problems.UnknownKeyProblem
-import js7.base.system.OperatingSystem.isJVM
+import js7.base.system.OperatingSystem.{PathEnvName, isJVM}
 import js7.base.test.OurTestSuite
 import js7.data.value.StringValue
 import scala.PartialFunction.condOpt
@@ -12,7 +12,8 @@ final class EnvScopeTest extends OurTestSuite
   if (isJVM) {
     "Env" - {
       "Known name" in {
-        assert(EnvScope.parseAndEval(s"env('PATH')") == Right(StringValue(sys.env("PATH"))))
+        assert(EnvScope.parseAndEval(s"env('$PathEnvName')") ==
+          Right(StringValue(sys.env(PathEnvName))))
       }
 
       "Unknown name" in {
@@ -29,12 +30,14 @@ final class EnvScopeTest extends OurTestSuite
       "Default environment variable" in {
         val unknown = randomString()
         val unknownDefault = randomString()
-        assert(EnvScope.parseAndEval(s"env('$unknown', env('$unknownDefault', 'DEFAULT'))") == Right(StringValue("DEFAULT")))
+        assert(EnvScope.parseAndEval(s"env('$unknown', env('$unknownDefault', 'DEFAULT'))") ==
+          Right(StringValue("DEFAULT")))
       }
 
       "Default parameter is lazy" in {
         val unknownDefault = randomString()
-        assert(EnvScope.parseAndEval(s"env('PATH', env('$unknownDefault'))") == Right(StringValue(sys.env("PATH"))))
+        assert(EnvScope.parseAndEval(s"env('$PathEnvName', env('$unknownDefault'))") ==
+          Right(StringValue(sys.env(PathEnvName))))
       }
 
       "Nested call" in {

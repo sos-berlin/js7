@@ -17,6 +17,7 @@ import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
+import js7.base.time.WaitForCondition.waitForCondition
 import js7.data.Problems.{CannotDeleteWatchingOrderProblem, ItemIsStillReferencedProblem}
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.{CancelOrders, DeleteOrdersWhenTerminated}
@@ -363,7 +364,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
       NoKey <-: ItemDetachable(fileWatch.path, bAgentPath),
       NoKey <-: ItemDetached(fileWatch.path, bAgentPath),
       NoKey <-: ItemDeleted(fileWatch.path)))
-    sleep(100.ms)   // Wait until controllerState has been updated
+    waitForCondition(10.s, 10.ms)(controllerState.keyTo(OrderWatchState).isEmpty)
     assert(controllerState.keyTo(OrderWatchState).isEmpty)
   }
 }

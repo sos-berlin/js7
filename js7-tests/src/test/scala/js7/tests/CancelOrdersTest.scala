@@ -4,7 +4,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.process.ProcessSignal.{SIGKILL, SIGTERM}
 import js7.base.io.process.{ProcessSignal, ReturnCode}
 import js7.base.problem.Checked.Ops
-import js7.base.system.OperatingSystem.isWindows
+import js7.base.system.OperatingSystem.{isUnix, isWindows}
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -24,7 +24,7 @@ import js7.data.problems.CannotResumeOrderProblem
 import js7.data.value.Value.convenience.*
 import js7.data.value.expression.Expression.NamedValue
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.value.{NamedValues, NumberValue, StringValue}
+import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fork, Prompt}
 import js7.data.workflow.position.{Position, WorkflowPosition}
@@ -58,10 +58,12 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
     twoJobsWorkflow, forkJoinIfFailedWorkflow, forkWorkflow, promptingWorkflow)
 
   "Cancel a fresh order" in {
-    val order = FreshOrder(OrderId("🔹"), singleJobWorkflow.path, scheduledFor = Some(Timestamp.now + 99.seconds))
+    val order = FreshOrder(OrderId("🔹"), singleJobWorkflow.path,
+      scheduledFor = Some(Timestamp.now + 99.seconds))
     controller.addOrderBlocking(order)
     eventWatch.await[OrderAttached](_.key == order.id)
-    controllerApi.executeCommand(CancelOrders(Set(order.id), CancellationMode.FreshOnly)).await(99.seconds).orThrow
+    controllerApi.executeCommand(CancelOrders(Set(order.id), CancellationMode.FreshOnly))
+      .await(99.seconds).orThrow
     eventWatch.await[OrderCancelled](_.key == order.id)
     assert(onlyRelevantEvents(eventWatch.eventsByKey[OrderEvent](order.id)) == Vector(
       OrderCancellationMarked(CancellationMode.FreshOnly),
@@ -72,8 +74,9 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
     val order = FreshOrder(OrderId("🔺"), singleJobWorkflow.path, Map("sleep" -> 1))
     controller.addOrderBlocking(order)
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
-    controllerApi.executeCommand(CancelOrders(Set(order.id), CancellationMode.FreshOrStarted())).await(99.seconds).orThrow
-    eventWatch.await[OrderFinished](_.key == order.id)
+    controllerApi.executeCommand(CancelOrders(Set(order.id), CancellationMode.FreshOrStarted()))
+      .await(99.seconds).orThrow
+    assert(eventWatch.await[OrderTerminated](_.key == order.id).head.value.event == OrderFinished())
 
     val events = eventWatch.eventsByKey[OrderEvent](order.id)
       .filterNot(_.isInstanceOf[OrderStdWritten])
@@ -95,7 +98,9 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
     // Controller knows, the order has started
     assert(controllerApi.executeCommand(CancelOrders(Set(order.id), CancellationMode.FreshOnly)).await(99.seconds) ==
       Left(CancelStartedOrderProblem(OrderId("❌"))))
-    controllerApi.executeCommand(CancelOrders(Set(order.id), CancellationMode.FreshOrStarted(Some(CancellationMode.Kill()))))
+    controllerApi
+      .executeCommand(
+        CancelOrders(Set(order.id), CancellationMode.FreshOrStarted(Some(CancellationMode.Kill()))))
       .await(99.seconds).orThrow
     eventWatch.await[OrderTerminated](_.key == order.id)
   }
@@ -104,7 +109,8 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
     val order = FreshOrder(OrderId("🔴"), twoJobsWorkflow.path, Map("sleep" -> 2))
     controller.addOrderBlocking(order)
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
-    controllerApi.executeCommand(CancelOrders(Set(order.id), CancellationMode.FreshOrStarted())).await(99.seconds).orThrow
+    controllerApi.executeCommand(CancelOrders(Set(order.id), CancellationMode.FreshOrStarted()))
+      .await(99.seconds).orThrow
     eventWatch.await[OrderCancelled](_.key == order.id)
 
     val events = eventWatch.eventsByKey[OrderEvent](order.id)
@@ -119,7 +125,7 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
   }
 
   "Cancel an order and the first job" in {
-    val order = FreshOrder(OrderId("⭕️"), singleJobWorkflow.path, Map("sleep" -> 100))
+    val order = FreshOrder(OrderId("⭕"), singleJobWorkflow.path, Map("sleep" -> 100))
     testCancelFirstJob(order, Some(singleJobWorkflow.id /: Position(0)), immediately = false)
   }
 
@@ -146,9 +152,9 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
       immediately = true)
   }
 
-  if (!isWindows) {
+  if (isUnix) {
     "Cancel with sigkillDelay" in {
-      val order = FreshOrder(OrderId("🟥️"), sigkillDelayWorkflow.path)
+      val order = FreshOrder(OrderId("🟥"), sigkillDelayWorkflow.path)
       val t = now
       testCancel(order, None, awaitTrapping = true, immediately = false,
         mode => Vector(
@@ -162,7 +168,7 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
     }
 
     "Cancel with sigkillDelay=0s" in {
-      val order = FreshOrder(OrderId("🟧️"), sigkillImmediatelyWorkflow.path)
+      val order = FreshOrder(OrderId("🟧"), sigkillImmediatelyWorkflow.path)
       testCancel(order, None, awaitTrapping = true, immediately = false,
         mode => Vector(
           OrderProcessingStarted(subagentId),
@@ -174,13 +180,19 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
     }
   }
 
-  private def testCancelFirstJob(order: FreshOrder, workflowPosition: Option[WorkflowPosition], immediately: Boolean): Unit =
+  private def testCancelFirstJob(order: FreshOrder, workflowPosition: Option[WorkflowPosition],
+    immediately: Boolean)
+  : Unit =
     testCancel(order, workflowPosition, immediately = immediately,
       expectedEvents = mode => Vector(
         OrderProcessingStarted(subagentId),
         OrderCancellationMarked(mode),
         OrderCancellationMarkedOnAgent,
-        OrderProcessed(Outcome.killed(if (immediately) SIGKILL else SIGTERM)),
+        OrderProcessed(
+          if (isWindows)
+            Outcome.Killed(Outcome.Failed.rc(1))
+          else
+            Outcome.killed(if (immediately) SIGKILL else SIGTERM)),
         OrderProcessingKilled,
         OrderCancelled))
 
@@ -241,8 +253,11 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
         OrderId("CANCEL-CHILD|🥕") <-: OrderProcessingStarted(subagentId),
         OrderId("CANCEL-CHILD|🥕") <-: OrderCancellationMarked(mode),
         OrderId("CANCEL-CHILD|🥕") <-: OrderCancellationMarkedOnAgent,
-        OrderId("CANCEL-CHILD|🥕") <-: OrderProcessed(Outcome.Killed(
-          Outcome.Failed(namedValues = Map("returnCode" -> NumberValue(128+15))))),
+        OrderId("CANCEL-CHILD|🥕") <-: OrderProcessed(
+          if (isWindows)
+            Outcome.Killed(Outcome.Failed.rc(1))
+          else
+            Outcome.killed(SIGTERM)),
         OrderId("CANCEL-CHILD|🥕") <-: OrderProcessingKilled,
         OrderId("CANCEL-CHILD|🥕") <-: OrderDetachable,
         OrderId("CANCEL-CHILD|🥕") <-: OrderDetached,
@@ -284,7 +299,10 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
   : Unit = {
     controller.addOrderBlocking(order)
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
-    eventWatch.await[OrderStdoutWritten](_ == order.id <-: OrderStdoutWritten("READY\n"))
+    eventWatch.await[OrderStdoutWritten] {
+      case KeyedEvent(order.id, OrderStdoutWritten(chunk)) if chunk startsWith "READY" => true
+      case _ => false
+    }
     val mode = CancellationMode.FreshOrStarted(Some(CancellationMode.Kill(
       immediately = immediately,
       workflowPosition)))
@@ -318,7 +336,7 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
     for (o <- orders) eventWatch.await[OrderCancelled](_.key == o.id)
   }
 
-  "Cancel a script having a SIGTERM trap writing to stdout" in {
+  if (isUnix) "Cancel a script having a SIGTERM trap writing to stdout" in {
     val name = "TRAP-STDOUT"
     val orderId = OrderId(name)
     val v = VersionId(name)
@@ -373,7 +391,7 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
       OrderCancelled))
   }
 
-  "Cancel a script waiting properly for its child process, forwarding SIGTERM" in {
+  if (isUnix) "Cancel a script waiting properly for its child process, forwarding SIGTERM" in {
     val name = "TRAP-CHILD"
     val orderId = OrderId(name)
     val v = VersionId(name)
@@ -428,7 +446,7 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
       OrderCancelled))
   }
 
-  "Cancel a script waiting for its child process" in {
+  if (isUnix) "Cancel a script waiting for its child process" in {
     // The child processes are not killed, but cut off from stdout and stderr.
     val name = "EXIT-TRAP"
     val orderId = OrderId(name)
@@ -471,7 +489,7 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
       OrderCancelled))
   }
 
-  "Cancel a SIGTERMed script with a still running child process" - {
+  if (isUnix) "Cancel a SIGTERMed script with a still running child process" - {
     "Without traps" in {
       run("TERMINATED-SCRIPT", "", SIGTERM)
     }
@@ -529,7 +547,7 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
     }
   }
 
-  "Sleep in another script" - {
+  if (isUnix) "Sleep in another script" - {
     "Without traps" in {
       run("FOREGROUND", "", SIGTERM)
     }
@@ -588,7 +606,7 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
     }
   }
 
-  "Sleep in a background script and do not wait for it" in {
+  if (isUnix) "Sleep in a background script and do not wait for it" in {
     // The child processes are not killed, but cut off from stdout and stderr.
     val name = "BACKGROUND"
     val orderId = OrderId(name)
@@ -648,17 +666,24 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
 object CancelOrdersTest
 {
   private val sleepingExecutable = ShellScriptExecutable(
-     """#!/usr/bin/env bash
-       |set -euo pipefail
-       |echo "READY"
-       |i=0
-       |while [ $i -lt $SLEEP ]; do
-       |  i=$(($i + 1))
-       |  for j in {0..9}; do
-       |    sleep 0.1
-       |  done
-       |done
-       |""".stripMargin,
+    if (isWindows)
+       """@echo off
+         |echo READY
+         |ping -n %SLEEP% 127.0.0.1
+         |ping -n 2 127.0.0.1
+         |""".stripMargin
+    else
+       """#!/usr/bin/env bash
+         |set -euo pipefail
+         |echo "READY"
+         |i=0
+         |while [ $i -lt $SLEEP ]; do
+         |  i=$(($i + 1))
+         |  for j in {0..9}; do
+         |    sleep 0.1
+         |  done
+         |done
+         |""".stripMargin,
     Map("SLEEP" -> NamedValue("sleep")))
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)

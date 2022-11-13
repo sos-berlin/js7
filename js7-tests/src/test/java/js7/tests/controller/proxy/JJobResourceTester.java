@@ -3,6 +3,7 @@ package js7.tests.controller.proxy;
 import java.util.HashMap;
 import java.util.concurrent.CompletableFuture;
 import js7.base.crypt.SignedString;
+import js7.base.system.OperatingSystem;
 import js7.data.event.Event;
 import js7.data.item.VersionId;
 import js7.data.job.JobResourcePath;
@@ -54,6 +55,9 @@ final class JJobResourceTester
                 put("C", getOrThrow(JExpression.parse("'ccc'")));
                 put("E", getOrThrow(JExpression.parse("'E OF JOB RESOURCE'")));
             }});
+        String script = OperatingSystem.isWindows() ?
+            "@echo off\necho A=/%A%/\necho B=/%B%/\necho C=/%C%/\necho D=/%D%/\necho E=/%E%/\n"
+          : "#!/usr/bin/env bash\nset -euo pipefail\necho A=/$A/\necho B=/$B/\necho C=/$C/\necho D=/$D/\necho E=/$E/\n";
         JWorkflow workflow = getOrThrow(JWorkflow.fromJson("{\n" +
             "  \"TYPE\": \"Workflow\",\n" +
             "  \"path\": \"JOB-RESOURCE-WORKFLOW\",\n" +
@@ -65,7 +69,7 @@ final class JJobResourceTester
             "        \"agentPath\": \"AGENT\",\n" +
             "        \"executable\": {\n" +
             "          \"TYPE\": \"ShellScriptExecutable\",\n" +
-            "          \"script\": \"#!/usr/bin/env bash\\nset -euo pipefail\\necho A=/$A/\\necho B=/$B/\\necho C=/$C/\\necho D=/$D/\\necho E=/$E/\\n\",\n" +
+            "          \"script\": \"" + script.replace("\n", "\\n") + "\",\n" +
             "          \"env\": {\n" +
             "            \"D\": \"'D OF JOB'\",\n" +
             "            \"E\": \"'E OF JOB'\"\n" +

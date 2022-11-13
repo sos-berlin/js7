@@ -103,7 +103,10 @@ object PathExecutable
       RelativePathExecutable.checked(path, env, login, returnCodeMeaning, v1Compatible)
 
   private[job] def isAbsolute(path: String) =
-    path.startsWith("/") || path.startsWith("\\")/*also on Unix, to be reliable*/
+    path.startsWith("/") ||
+      // Executable may be located at a Windows system
+      (path.lengthIs >= 3 &&
+        path(0).isLetter && path(1) == ':' && (path(2) == '\\' || path(2) == '/'))
 
   implicit val jsonEncoder: Encoder.AsObject[PathExecutable] =
     o => JsonObject(

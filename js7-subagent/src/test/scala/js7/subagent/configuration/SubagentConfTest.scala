@@ -6,6 +6,7 @@ import java.nio.file.Paths
 import js7.base.configutils.Configs.*
 import js7.base.log.Logger
 import js7.base.problem.Problem
+import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -24,7 +25,7 @@ final class SubagentConfTest extends OurTestSuite
     configDirectory = Paths.get("/tmp/CONFIG"),
     dataDirectory = Paths.get("/tmp/DATA"),
     logDirectory = Paths.get("/tmp/LOGS"),
-    jobWorkingDirectory = Paths.get("/tmp/WORKING"),
+    jobWorkingDirectory = Paths.get(if (isWindows) """c:\tmp\WORKING""" else "/tmp/WORKING"),
     webServerPorts = Nil,
     killScript = None,
     config"""js7.windows.codepages.88888 = "UNKNOWN" """)

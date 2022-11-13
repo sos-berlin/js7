@@ -31,7 +31,9 @@ final class BasicDirectoryWatcherTest extends OurTestSuite
       autoClosing(watcher) { _ =>
         for (i <- 2 to 4) {
           watcher.observableResource.use(observable => Task {
-            val observed = observable.take(1).toListL
+            val observed = observable
+              .map(_.filterNot(_.isInstanceOf[FileModified]))  // Windows emits FileModified, too ???
+              .take(1).toListL
             // File is detected before observable starts
             val file = dir / s"TEST-$i"
             file := ""

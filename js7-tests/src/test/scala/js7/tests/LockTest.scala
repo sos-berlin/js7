@@ -24,14 +24,14 @@ import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.subagent.SubagentId
 import js7.data.value.StringValue
 import js7.data.value.ValuePrinter.quoteString
-import js7.data.value.expression.Expression.StringConstant
+import js7.data.value.expression.Expression.{NumericConstant, StringConstant}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{Fail, Finish, Fork, LockInstruction, Prompt, Retry, TryInstruction}
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowParser, WorkflowPath}
 import js7.tests.LockTest.*
 import js7.tests.jobs.{EmptyJob, FailingJob, SemaphoreJob, SleepJob}
-import js7.tests.testenv.DirectoryProvider.{script, toLocalSubagentId, waitingForFileScript}
+import js7.tests.testenv.DirectoryProvider.{toLocalSubagentId, waitingForFileScript}
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
@@ -200,18 +200,26 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
   }
 
   "Multiple orders with count=1 and count=2 finish" in {
-    val workflow1 = defineWorkflow(workflow1Path, s"""
-      define workflow {
-        lock (lock="${limit2LockPath.string}", count=1) {
-          execute agent="AGENT", script="${script(10.ms)}", parallelism=99
-        }
-      }""")
-    val workflow2 = defineWorkflow(workflow2Path, s"""
-      define workflow {
-        lock (lock="${limit2LockPath.string}", count=2) {
-          execute agent="AGENT", script="${script(10.ms)}", parallelism=99
-        }
-      }""")
+    val workflow1 = updateItem(Workflow.of(workflow1Path,
+      LockInstruction(
+        Seq(LockDemand(limit2LockPath, count = Some(1))),
+        Workflow.of(
+          SleepJob.execute(
+            agentPath,
+            arguments = Map(
+              "sleep" -> NumericConstant(10.ms.toBigDecimalSeconds)),
+            parallelism = 99)))))
+
+    val workflow2 = updateItem(Workflow.of(workflow2Path,
+      LockInstruction(
+        Seq(LockDemand(limit2LockPath, count = Some(2))),
+        Workflow.of(
+          SleepJob.execute(
+            agentPath,
+            arguments = Map(
+              "sleep" -> NumericConstant(10.ms.toBigDecimalSeconds)),
+            parallelism = 99)))))
+
     val orders = Random.shuffle(
       for (workflow <- Seq(workflow1, workflow2); i <- 1 to 100) yield
         FreshOrder(OrderId(s"${workflow.path.string}-$i"), workflow.path))

@@ -1,12 +1,14 @@
 package js7.tests
 
 import io.circe.syntax.EncoderOps
+import java.lang.System.lineSeparator as nl
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.configutils.Configs.*
 import js7.base.generic.GenericString.EmptyStringProblem
 import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
+import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.*
@@ -397,7 +399,7 @@ final class ForkListTest extends OurTestSuite with ControllerAgentForScalaTest
   "Example with a simple script" in {
     logger.debug(exampleWorkflow.asJson.compactPrint)
     val workflowId = exampleWorkflow.id
-    val orderId = OrderId(s"EXAMPLE")
+    val orderId = OrderId("EXAMPLE")
     val myList = ListValue(Seq(
       ObjectValue(Map(
         "id" -> NumberValue(1),
@@ -422,7 +424,7 @@ final class ForkListTest extends OurTestSuite with ControllerAgentForScalaTest
     for (elementId <- View("1", "2", "3")) {
       assert(eventWatch.eventsByKey[OrderEvent](orderId / elementId) == Seq(
         OrderProcessingStarted(subagentId),
-        OrderStdoutWritten(s"ELEMENT_ID=$elementId\n"),
+        OrderStdoutWritten(s"ELEMENT_ID=$elementId$nl"),
         OrderProcessed(Outcome.succeededRC0),
         OrderMoved(Position(0) / "fork" % 1),
         OrderDetachable,
@@ -577,12 +579,17 @@ object ForkListTest
             Execute(WorkflowJob(
               agentPath,
               ShellScriptExecutable(
-               """#!/usr/bin/env bash
-                 |set -euo pipefail
-                 |echo ELEMENT_ID=$ELEMENT_ID
-                 |""".stripMargin,
-                env = Map(
-                  "ELEMENT_ID" -> expr("$elementId")))))))))
+                if (isWindows)
+                  """@echo off
+                    |echo ELEMENT_ID=%ELEMENT_ID%
+                    |""".stripMargin
+                else
+                 """#!/usr/bin/env bash
+                   |set -euo pipefail
+                   |echo ELEMENT_ID=$ELEMENT_ID
+                   |""".stripMargin,
+                  env = Map(
+                    "ELEMENT_ID" -> expr("$elementId")))))))))
 
   private def newOrder(orderId: OrderId, workflowPath: WorkflowPath, n: Int,
     deleteWhenTerminated: Boolean = false) =

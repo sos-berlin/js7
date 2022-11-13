@@ -21,11 +21,23 @@ final class Openssl(dir: Path)
 
   private lazy val systemOpensslCnf: String = {
     val OpensslDir = """OPENSSLDIR: "(.*)"""".r
-    val opensslCnf = runProcess(s"$openssl version -a").split('\n').collectFirst {
-      case OpensslDir(dir) =>
-        val dir_ = if (isWindows && dir.startsWith("/etc")) "c:/cygwin64" + dir else dir
-        (Paths.get(dir_) / "openssl.cnf").contentString
-    }.getOrElse(sys.error(s"Missing OPENSSLDIR in output of: $openssl version -a"))
+
+    val opensslCnf = runProcess(s"$openssl version -a")
+      .split('\n')
+      .collectFirst { case OpensslDir(dir) => dir }
+      .map { dir =>
+        lazy val cygwinOpensslCnf = Paths.get("""c:\cygwin64""") / dir / "openssl.cnf"
+        lazy val winGitOpensslCnf = Paths.get("""C:\Program files\Git\usr\ssl""") / "openssl.cnf"
+        if (isWindows && dir.startsWith("/etc") && exists(cygwinOpensslCnf))
+          cygwinOpensslCnf.contentString
+        else if (isWindows && dir == "/usr/ssl" && exists(winGitOpensslCnf))
+          winGitOpensslCnf.contentString
+        else
+          (Paths.get(dir) / "openssl.cnf").contentString
+      }
+      .getOrElse(sys.error(
+        s"Missing OPENSSLDIR in output of: $openssl version -a"))
+
     logger.debug(s"Using system openssl.cnf $opensslCnf")
     opensslCnf
   }
@@ -141,8 +153,10 @@ object Openssl
   private lazy val homebrewOpenssl = Paths.get("/usr/local/opt/openssl/bin/openssl")
   lazy val openssl = {
     val openssl =
-      if (useHomebrew && isMac && exists(homebrewOpenssl)) homebrewOpenssl
-      else Paths.get("openssl")
+      if (useHomebrew && isMac && exists(homebrewOpenssl))
+        homebrewOpenssl
+      else
+        Paths.get("openssl")
     val version = runProcess(s"$openssl version").trim
     logger.info(s"Using $version, $openssl")
     quote(openssl)

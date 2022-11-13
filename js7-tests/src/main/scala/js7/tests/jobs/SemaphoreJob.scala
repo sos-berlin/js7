@@ -13,17 +13,14 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import scala.reflect.ClassTag
 
-abstract class SemaphoreJob(semaphore: Task[Semaphore[Task]])
+abstract class SemaphoreJob(companion: SemaphoreJob.Companion[? <: SemaphoreJob])
 extends InternalJob
 {
-  def this(companion: SemaphoreJob.Companion[? <: SemaphoreJob]) =
-    this(companion.semaphore)
-
   final def toOrderProcess(step: Step) = {
     val orderId = step.order.id
     OrderProcess(
-      step.outTaskObserver.send(getClass.simpleScalaName + "\n")
-        .*>(semaphore
+      step.outTaskObserver.send(companion.stdoutLine)
+        .*>(companion.semaphore
           .tapEval(sema =>
             sema.count.flatMap(count =>
               Task(logger.debug(s"$orderId acquire ... (count=$count)"))))
@@ -47,6 +44,7 @@ object SemaphoreJob
   {
     val semaphore = Semaphore[Task](0).memoize
     private val name = classTag.runtimeClass.shortClassName
+    val stdoutLine = getClass.simpleScalaName + "\n"
 
     def reset()(implicit s: Scheduler): Unit = {
       logger.debug(s"$name.reset")

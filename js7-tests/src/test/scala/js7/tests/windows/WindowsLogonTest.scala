@@ -4,7 +4,7 @@ import java.util.Locale
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.process.KeyLogin
 import js7.base.log.Logger
-import js7.base.system.OperatingSystem.isWindows
+import js7.base.system.OperatingSystem.{PathEnvName, isWindows}
 import js7.base.test.OurTestSuite
 import js7.base.utils.Collections.implicits.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
@@ -38,7 +38,8 @@ final class WindowsLogonTest extends OurTestSuite with ControllerAgentForScalaTe
           """echo WindowsLogonTest
             |set
             |""".stripMargin,
-          env = Map("ORIGINAL_PATH" -> FunctionCall("env", Seq(Argument(StringConstant("PATH"))))),
+          env = Map(
+            "ORIGINAL_PATH" -> FunctionCall("env", Seq(Argument(StringConstant(PathEnvName))))),
           login = targetKey.map(KeyLogin(_, withUserProfile = false)))))))
 
   if (isWindows) {
@@ -56,7 +57,7 @@ final class WindowsLogonTest extends OurTestSuite with ControllerAgentForScalaTe
         .getOrElse(sys.env("USERNAME"))
         .toLowerCase(Locale.ROOT)
       assert(stdout.toLowerCase(Locale.ROOT).contains(s"username=$userName\r\n"))
-      assert(stdout.contains(s"ORIGINAL_PATH=${sys.env("PATH")}\r\n"))
+      assert(stdout.contains(s"ORIGINAL_PATH=${sys.env(PathEnvName)}\r\n"))
     }
   }
 }

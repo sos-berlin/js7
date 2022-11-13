@@ -95,7 +95,7 @@ final class ProviderTest extends OurTestSuite with ControllerAgentForScalaTest
         |}
       """.stripMargin
 
-    directoryProvider.agents.head.writeExecutable(RelativePathExecutable("EXECUTABLE"), ":")
+    directoryProvider.agents.head.writeExecutable(RelativePathExecutable("EXECUTABLE.cmd"), ":")
 
     createDirectories(providerDirectory / "private")
     createDirectories(providerDirectory / "live" / "folder")

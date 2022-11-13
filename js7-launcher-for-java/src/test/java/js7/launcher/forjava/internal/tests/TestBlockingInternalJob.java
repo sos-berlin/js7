@@ -16,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import static com.google.common.base.Throwables.throwIfUnchecked;
 import static io.vavr.control.Either.right;
+import static java.lang.System.lineSeparator;
 import static java.lang.Thread.currentThread;
 import static java.util.Collections.singletonMap;
 import static js7.data_for_java.vavr.VavrUtils.getOrThrow;
@@ -89,7 +90,7 @@ public final class TestBlockingInternalJob implements BlockingInternalJob
             for (int i = 0; i < string.length(); i++) {
                 step.errWriter().write(string.charAt(i));
             }
-            step.errWriter().write('\n');
+            step.errWriter().write(lineSeparator());
 
             // The recommened way is to access the declared job arguments:
             Map<String,Value> arguments = step.arguments();

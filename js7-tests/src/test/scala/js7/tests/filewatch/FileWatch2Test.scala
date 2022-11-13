@@ -32,6 +32,7 @@ import js7.tests.jobs.{DeleteFileJob, SemaphoreJob}
 import js7.tests.testenv.DirectoryProviderForScalaTest
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
+import scala.reflect.io.File.separator
 
 final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTest
 {
@@ -218,41 +219,41 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
       NoKey <-: ItemAttached(orderWatchPath, Some(ItemRevision(0)), aAgentPath),
       orderId1 <-: OrderAdded(workflow.id,
         Map(
-          FileArgumentName -> StringValue(s"$aDirectory/1"),
+          FileArgumentName -> StringValue(s"$aDirectory${separator}1"),
           "var" -> StringValue("VAR")),
         None,
         Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("1")))),
       NoKey <-: ItemAttached(workflow.id, None, bAgentPath),
       orderId1 <-: OrderStarted,
-      orderId1 <-: OrderStderrWritten(s"Deleted $aDirectory/1\n"),
+      orderId1 <-: OrderStderrWritten(s"Deleted $aDirectory${separator}1\n"),
       orderId1 <-: OrderFinished(),
       orderId1 <-: OrderDeleted,
 
       orderId2 <-: OrderAdded(workflow.id,
         Map(
-          FileArgumentName -> StringValue(s"$aDirectory/2"),
+          FileArgumentName -> StringValue(s"$aDirectory${separator}2"),
           "var" -> StringValue("VAR")),
         None,
         Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("2")))),
       orderId2 <-: OrderStarted,
-      orderId2 <-: OrderStderrWritten(s"Deleted $aDirectory/2\n"),
+      orderId2 <-: OrderStderrWritten(s"Deleted $aDirectory${separator}2\n"),
       orderId2 <-: OrderFinished(),
       orderId2 <-: OrderDeleted,
 
       orderId3 <-: OrderAdded(workflow.id,
         Map(
-          FileArgumentName -> StringValue(s"$aDirectory/3"),
+          FileArgumentName -> StringValue(s"$aDirectory${separator}3"),
           "var" -> StringValue("VAR")),
         None,
         Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("3")))),
       orderId3 <-: OrderStarted,
-      orderId3 <-: OrderStderrWritten(s"Deleted $aDirectory/3\n"),
+      orderId3 <-: OrderStderrWritten(s"Deleted $aDirectory${separator}3\n"),
       orderId3 <-: OrderFinished(),
       orderId3 <-: OrderDeleted,
 
       orderId4 <-: OrderAdded(workflow.id,
         Map(
-          FileArgumentName -> StringValue(s"$aDirectory/4"),
+          FileArgumentName -> StringValue(s"$aDirectory${separator}4"),
           "var" -> StringValue("VAR")),
         None,
         Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("4")))),
@@ -260,51 +261,51 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
       NoKey <-: UnsignedSimpleItemChanged(bFileWatch.copy(itemRevision = Some(ItemRevision(1)))),
       NoKey <-: ItemAttachable(orderWatchPath, aAgentPath),
       NoKey <-: ItemAttached(orderWatchPath, Some(ItemRevision(1)), aAgentPath),
-      orderId4 <-: OrderStderrWritten(s"Deleted $aDirectory/4\n"),
+      orderId4 <-: OrderStderrWritten(s"Deleted $aDirectory${separator}4\n"),
       orderId4 <-: OrderFinished(),
       orderId4 <-: OrderDeleted,
 
       orderId5 <-: OrderAdded(workflow.id,
         Map(
-          FileArgumentName -> StringValue(s"$bDirectory/5"),
+          FileArgumentName -> StringValue(s"$bDirectory${separator}5"),
           "var" -> StringValue("VAR")),
         None,
         Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("5")))),
       orderId5 <-: OrderStarted,
-      orderId5 <-: OrderStderrWritten(s"Deleted $bDirectory/5\n"),
+      orderId5 <-: OrderStderrWritten(s"Deleted $bDirectory${separator}5\n"),
       orderId5 <-: OrderFinished(),
       orderId5 <-: OrderDeleted,
 
       orderId6 <-: OrderAdded(workflow.id,
         Map(
-          FileArgumentName -> StringValue(s"$bDirectory/6"),
+          FileArgumentName -> StringValue(s"$bDirectory${separator}6"),
           "var" -> StringValue("VAR")),
         None,
         Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("6")))),
       orderId6 <-: OrderStarted,
-      orderId6 <-: OrderStderrWritten(s"Deleted $bDirectory/6\n"),
+      orderId6 <-: OrderStderrWritten(s"Deleted $bDirectory${separator}6\n"),
       orderId6 <-: OrderFinished(),
       orderId6 <-: OrderDeleted,
       // And again
       orderId6 <-: OrderAdded(workflow.id,
         Map(
-          FileArgumentName -> StringValue(s"$bDirectory/6"),
+          FileArgumentName -> StringValue(s"$bDirectory${separator}6"),
           "var" -> StringValue("VAR")),
         None,
         Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("6")))),
       orderId6 <-: OrderStarted,
-      orderId6 <-: OrderStderrWritten(s"Deleted $bDirectory/6\n"),
+      orderId6 <-: OrderStderrWritten(s"Deleted $bDirectory${separator}6\n"),
       orderId6 <-: OrderFinished(),
       orderId6 <-: OrderDeleted,
 
       orderId7 <-: OrderAdded(workflow.id,
         Map(
-          FileArgumentName -> StringValue(s"$bDirectory/7"),
+          FileArgumentName -> StringValue(s"$bDirectory${separator}7"),
           "var" -> StringValue("VAR")),
         None,
         Some(ExternalOrderKey(orderWatchPath, ExternalOrderName("7")))),
       orderId7 <-: OrderStarted,
-      orderId7 <-: OrderStderrWritten(s"Deleted $bDirectory/7\n"),
+      orderId7 <-: OrderStderrWritten(s"Deleted $bDirectory${separator}7\n"),
       orderId7 <-: OrderFinished(),
       orderId7 <-: OrderDeleted))
   }
@@ -330,44 +331,44 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
 
       orderWatchPath <-: ExternalOrderArised(ExternalOrderName("1"),
         OrderId("file:FILE-WATCH:1"),
-        Map("file" -> StringValue(s"$aDirectory/1"))),
+        Map("file" -> StringValue(s"$aDirectory${separator}1"))),
       orderWatchPath <-: ExternalOrderVanished(ExternalOrderName("1")),
 
       orderWatchPath <-: ExternalOrderArised(ExternalOrderName("2"),
         OrderId("file:FILE-WATCH:2"),
-        Map("file" -> StringValue(s"$aDirectory/2"))),
+        Map("file" -> StringValue(s"$aDirectory${separator}2"))),
       orderWatchPath <-: ExternalOrderVanished(ExternalOrderName("2")),
 
       orderWatchPath <-: ExternalOrderArised(ExternalOrderName("3"),
         OrderId("file:FILE-WATCH:3"),
-        Map("file" -> StringValue(s"$aDirectory/3"))),
+        Map("file" -> StringValue(s"$aDirectory${separator}3"))),
       NoKey <-: AgentReady("Europe/Berlin", 1.s, Some(PlatformInfo.test)),
       orderWatchPath <-: ExternalOrderVanished(ExternalOrderName("3")),
 
       orderWatchPath <-: ExternalOrderArised(ExternalOrderName("4"),
         OrderId("file:FILE-WATCH:4"),
-        Map("file" -> StringValue(s"$aDirectory/4"))),
+        Map("file" -> StringValue(s"$aDirectory${separator}4"))),
       orderWatchPath <-: ExternalOrderVanished(ExternalOrderName("4")),
       NoKey <-: ItemAttachedToMe(bFileWatch.copy(itemRevision = Some(ItemRevision(1)))),
 
       orderWatchPath <-: ExternalOrderArised(ExternalOrderName("5"),
         OrderId("file:FILE-WATCH:5"),
-        Map("file" -> StringValue(s"$bDirectory/5"))),
+        Map("file" -> StringValue(s"$bDirectory${separator}5"))),
       orderWatchPath <-: ExternalOrderVanished(ExternalOrderName("5")),
 
       orderWatchPath <-: ExternalOrderArised(ExternalOrderName("6"),
         OrderId("file:FILE-WATCH:6"),
-        Map("file" -> StringValue(s"$bDirectory/6"))),
+        Map("file" -> StringValue(s"$bDirectory${separator}6"))),
       orderWatchPath <-: ExternalOrderVanished(ExternalOrderName("6")),
       // and again
       orderWatchPath <-: ExternalOrderArised(ExternalOrderName("6"),
         OrderId("file:FILE-WATCH:6"),
-        Map("file" -> StringValue(s"$bDirectory/6"))),
+        Map("file" -> StringValue(s"$bDirectory${separator}6"))),
       orderWatchPath <-: ExternalOrderVanished(ExternalOrderName("6")),
 
       orderWatchPath <-: ExternalOrderArised(ExternalOrderName("7"),
         OrderId("file:FILE-WATCH:7"),
-        Map("file" -> StringValue(s"$bDirectory/7"))),
+        Map("file" -> StringValue(s"$bDirectory${separator}7"))),
       orderWatchPath <-: ExternalOrderVanished(ExternalOrderName("7"))))
   }
 }

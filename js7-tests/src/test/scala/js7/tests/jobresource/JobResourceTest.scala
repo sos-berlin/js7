@@ -2,12 +2,13 @@ package js7.tests.jobresource
 
 import cats.implicits.*
 import io.circe.syntax.EncoderOps
+import java.lang.System.lineSeparator as nl
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Problems.UnknownKeyProblem
-import js7.base.system.OperatingSystem.{isMac, isWindows}
+import js7.base.system.OperatingSystem.{PathEnvName, isMac, isWindows}
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.JavaTimestamp.specific.*
@@ -115,7 +116,7 @@ class JobResourceTest extends OurTestSuite with ControllerAgentForScalaTest
 
     val stdouterr = controller.eventWatch.eventsByKey[OrderStdWritten](orderId).foldMap(_.chunk)
     assert(stdouterr.replaceAll("\r", "") ==
-      s"""ORIGINAL_PATH=/${sys.env("PATH")}/
+      s"""ORIGINAL_PATH=/${sys.env(PathEnvName)}/
          |""".stripMargin)
   }
 
@@ -131,17 +132,17 @@ class JobResourceTest extends OurTestSuite with ControllerAgentForScalaTest
 
       val stdouterr = controller.eventWatch.eventsByKey[OrderStdWritten](orderId).foldMap(_.chunk)
       scribe.info(stdouterr.trim)
-      assert(stdouterr contains "JS7_ORDER_ID=/ORDER-SOS/\n")
-      assert(stdouterr contains "JS7_WORKFLOW_NAME=/WORKFLOW-SOS/\n")
-      assert(stdouterr contains "JS7_JOB_NAME=/TEST-JOB/\n")
-      assert(stdouterr contains "JS7_LABEL=/TEST-LABEL/\n")
-      assert(stdouterr contains "JS7_SCHEDULED_DATE=//\n")
-      assert(stdouterr contains "JS7_SCHEDULED_YEAR=//\n")
-      assert(stdouterr contains "JS7_SCHEDULED_MONTH=//\n")
-      assert(stdouterr contains "JS7_SCHEDULED_DAY=//\n")
-      assert(stdouterr contains "JS7_SCHEDULED_HOUR=//\n")
-      assert(stdouterr contains "JS7_SCHEDULED_MINUTE=//\n")
-      assert(stdouterr contains "JS7_SCHEDULED_SECOND=//\n")
+      assert(stdouterr contains s"JS7_ORDER_ID=/ORDER-SOS/$nl")
+      assert(stdouterr contains s"JS7_WORKFLOW_NAME=/WORKFLOW-SOS/$nl")
+      assert(stdouterr contains s"JS7_JOB_NAME=/TEST-JOB/$nl")
+      assert(stdouterr contains s"JS7_LABEL=/TEST-LABEL/$nl")
+      assert(stdouterr contains s"JS7_SCHEDULED_DATE=//$nl")
+      assert(stdouterr contains s"JS7_SCHEDULED_YEAR=//$nl")
+      assert(stdouterr contains s"JS7_SCHEDULED_MONTH=//$nl")
+      assert(stdouterr contains s"JS7_SCHEDULED_DAY=//$nl")
+      assert(stdouterr contains s"JS7_SCHEDULED_HOUR=//$nl")
+      assert(stdouterr contains s"JS7_SCHEDULED_MINUTE=//$nl")
+      assert(stdouterr contains s"JS7_SCHEDULED_SECOND=//$nl")
     }
 
     "with scheduledFor" in {
@@ -162,10 +163,10 @@ class JobResourceTest extends OurTestSuite with ControllerAgentForScalaTest
       val dateTime = scheduledFor
         .toOffsetDateTime(ZoneId.systemDefault())
         .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ssZ"))
-      assert(stdouterr contains s"JS7_SCHEDULED_DATE=/$dateTime/\n")
-      assert(stdouterr contains "JS7_SCHEDULED_YEAR=/2021/\n")
-      assert(stdouterr contains "JS7_SCHEDULED_MINUTE=/11/\n")
-      assert(stdouterr contains "JS7_SCHEDULED_SECOND=/22/\n")
+      assert(stdouterr contains s"JS7_SCHEDULED_DATE=/$dateTime/$nl")
+      assert(stdouterr contains s"JS7_SCHEDULED_YEAR=/2021/$nl")
+      assert(stdouterr contains s"JS7_SCHEDULED_MINUTE=/11/$nl")
+      assert(stdouterr contains s"JS7_SCHEDULED_SECOND=/22/$nl")
     }
   }
 
@@ -297,13 +298,21 @@ class JobResourceTest extends OurTestSuite with ControllerAgentForScalaTest
         WorkflowJob(
           agentPath,
           ShellScriptExecutable(
-            """#!/usr/bin/env bash
-              |set -euo pipefail
-              |echo FROMRESOURCE=/$FROMRESOURCE/
-              |cat "$FROMRESOURCE"
-              |echo FROMEXECUTABLE=/$FROMEXECUTABLE/
-              |cat "$FROMEXECUTABLE"
-              |""".stripMargin,
+            if (isWindows)
+              """@echo off
+                |echo FROMRESOURCE=/%FROMRESOURCE%/
+                |type %FROMRESOURCE%
+                |echo FROMEXECUTABLE=/%FROMEXECUTABLE%/
+                |type %FROMEXECUTABLE%
+                |""".stripMargin
+            else
+              """#!/usr/bin/env bash
+                 |set -euo pipefail
+                 |echo FROMRESOURCE=/$FROMRESOURCE/
+                 |cat "$FROMRESOURCE"
+                 |echo FROMEXECUTABLE=/$FROMEXECUTABLE/
+                 |cat "$FROMEXECUTABLE"
+                 |""".stripMargin,
             env = Map(
               "FROMEXECUTABLE" -> expr(s"""toFile(${StringConstant.quote(executableContent)}, "*.tmp")"""))),
           jobResourcePaths = Seq(myJobResource.path)))))
@@ -363,15 +372,25 @@ object JobResourceTest
       jobName -> WorkflowJob(
         agentPath,
         ShellScriptExecutable(
-          """#!/usr/bin/env bash
-            |set -euo pipefail
-            |echo A=/$A/
-            |echo B=/$B/
-            |echo C=/$C/
-            |echo D=/$D/
-            |echo E=/$E/
-            |echo aJobResourceVariable=/$aJobResourceVariable/
-            |""".stripMargin,
+          if (isWindows)
+            """@echo off
+               |echo A=/%A%/
+               |echo B=/%B%/
+               |echo C=/%C%/
+               |echo D=/%D%/
+               |echo E=/%E%/
+               |echo aJobResourceVariable=/%aJobResourceVariable%/
+               |""".stripMargin
+          else
+            """#!/usr/bin/env bash
+              |set -euo pipefail
+              |echo A=/$A/
+              |echo B=/$B/
+              |echo C=/$C/
+              |echo D=/$D/
+              |echo E=/$E/
+              |echo aJobResourceVariable=/$aJobResourceVariable/
+              |""".stripMargin,
           env = Map(
             "D" -> parseExpression("'D of JOB ENV'").orThrow,
             "E" -> parseExpression("'E of JOB ENV'").orThrow,
@@ -382,7 +401,7 @@ object JobResourceTest
   private val envJobResource = JobResource(
     JobResourcePath("JOB-RESOURCE-ENV"),
     env = Map(
-      "ORIGINAL_PATH" -> parseExpression("env('PATH')").orThrow))
+      "ORIGINAL_PATH" -> parseExpression(s"env('$PathEnvName')").orThrow))
 
   private val envWorkflow = Workflow(
     WorkflowPath("WORKFLOW-ENV") ~ "INITIAL",
@@ -390,10 +409,15 @@ object JobResourceTest
       WorkflowJob(
         agentPath,
         ShellScriptExecutable(
-          """#!/usr/bin/env bash
-            |set -euo pipefail
-            |echo ORIGINAL_PATH=/$ORIGINAL_PATH/
-            |""".stripMargin),
+          if (isWindows)
+            """@echo off
+              |echo ORIGINAL_PATH=/%ORIGINAL_PATH%/
+              |""".stripMargin
+          else
+            """#!/usr/bin/env bash
+              |set -euo pipefail
+              |echo ORIGINAL_PATH=/$ORIGINAL_PATH/
+              |""".stripMargin),
         jobResourcePaths = Seq(envJobResource.path)))))
 
   private val sosJobResource = JobResource(
@@ -429,29 +453,53 @@ object JobResourceTest
       nameToJob = Map(jobName -> WorkflowJob(
         agentPath,
         ShellScriptExecutable(
-          """#!/usr/bin/env bash
-            |set -euo pipefail
-            |echo JS7_ORDER_ID=/$JS7_ORDER_ID/
-            |echo JS7_WORKFLOW_NAME=/$JS7_WORKFLOW_NAME/
-            |echo JS7_WORKFLOW_POSITION=/$JS7_WORKFLOW_POSITION/
-            |echo JS7_LABEL=/$JS7_LABEL/
-            |echo JS7_JOB_NAME=/$JS7_JOB_NAME/
-            |echo JS7_CONTROLLER_ID=/$JS7_CONTROLLER_ID/
-            |echo JS7_SCHEDULED_DATE=/$JS7_SCHEDULED_DATE/
-            |echo JS7_SCHEDULED_DAY=/$JS7_SCHEDULED_DAY/
-            |echo JS7_SCHEDULED_MONTH=/$JS7_SCHEDULED_MONTH/
-            |echo JS7_SCHEDULED_YEAR=/$JS7_SCHEDULED_YEAR/
-            |echo JS7_SCHEDULED_HOUR=/$JS7_SCHEDULED_HOUR/
-            |echo JS7_SCHEDULED_MINUTE=/$JS7_SCHEDULED_MINUTE/
-            |echo JS7_SCHEDULED_SECOND=/$JS7_SCHEDULED_SECOND/
-            |echo JS7_JOBSTART_DATE=/$JS7_JOBSTART_DATE/
-            |echo JS7_JOBSTART_DAY=/$JS7_JOBSTART_DAY/
-            |echo JS7_JOBSTART_MONTH=/$JS7_JOBSTART_MONTH/
-            |echo JS7_JOBSTART_YEAR=/$JS7_JOBSTART_YEAR/
-            |echo JS7_JOBSTART_HOUR=/$JS7_JOBSTART_HOUR/
-            |echo JS7_JOBSTART_MINUTE=/$JS7_JOBSTART_MINUTE/
-            |echo JS7_JOBSTART_SECOND=/$JS7_JOBSTART_SECOND/
-            |""".stripMargin))),
+          if (isWindows)
+            """@echo off
+              |echo JS7_ORDER_ID=/%JS7_ORDER_ID%/
+              |echo JS7_WORKFLOW_NAME=/%JS7_WORKFLOW_NAME%/
+              |echo JS7_WORKFLOW_POSITION=/%JS7_WORKFLOW_POSITION%/
+              |echo JS7_LABEL=/%JS7_LABEL%/
+              |echo JS7_JOB_NAME=/%JS7_JOB_NAME%/
+              |echo JS7_CONTROLLER_ID=/%JS7_CONTROLLER_ID%/
+              |echo JS7_SCHEDULED_DATE=/%JS7_SCHEDULED_DATE%/
+              |echo JS7_SCHEDULED_DAY=/%JS7_SCHEDULED_DAY%/
+              |echo JS7_SCHEDULED_MONTH=/%JS7_SCHEDULED_MONTH%/
+              |echo JS7_SCHEDULED_YEAR=/%JS7_SCHEDULED_YEAR%/
+              |echo JS7_SCHEDULED_HOUR=/%JS7_SCHEDULED_HOUR%/
+              |echo JS7_SCHEDULED_MINUTE=/%JS7_SCHEDULED_MINUTE%/
+              |echo JS7_SCHEDULED_SECOND=/%JS7_SCHEDULED_SECOND%/
+              |echo JS7_JOBSTART_DATE=/%JS7_JOBSTART_DATE%/
+              |echo JS7_JOBSTART_DAY=/%JS7_JOBSTART_DAY%/
+              |echo JS7_JOBSTART_MONTH=/%JS7_JOBSTART_MONTH%/
+              |echo JS7_JOBSTART_YEAR=/%JS7_JOBSTART_YEAR%/
+              |echo JS7_JOBSTART_HOUR=/%JS7_JOBSTART_HOUR%/
+              |echo JS7_JOBSTART_MINUTE=/%JS7_JOBSTART_MINUTE%/
+              |echo JS7_JOBSTART_SECOND=/%JS7_JOBSTART_SECOND%/
+              |""".stripMargin
+          else
+            """#!/usr/bin/env bash
+              |set -euo pipefail
+              |echo JS7_ORDER_ID=/$JS7_ORDER_ID/
+              |echo JS7_WORKFLOW_NAME=/$JS7_WORKFLOW_NAME/
+              |echo JS7_WORKFLOW_POSITION=/$JS7_WORKFLOW_POSITION/
+              |echo JS7_LABEL=/$JS7_LABEL/
+              |echo JS7_JOB_NAME=/$JS7_JOB_NAME/
+              |echo JS7_CONTROLLER_ID=/$JS7_CONTROLLER_ID/
+              |echo JS7_SCHEDULED_DATE=/$JS7_SCHEDULED_DATE/
+              |echo JS7_SCHEDULED_DAY=/$JS7_SCHEDULED_DAY/
+              |echo JS7_SCHEDULED_MONTH=/$JS7_SCHEDULED_MONTH/
+              |echo JS7_SCHEDULED_YEAR=/$JS7_SCHEDULED_YEAR/
+              |echo JS7_SCHEDULED_HOUR=/$JS7_SCHEDULED_HOUR/
+              |echo JS7_SCHEDULED_MINUTE=/$JS7_SCHEDULED_MINUTE/
+              |echo JS7_SCHEDULED_SECOND=/$JS7_SCHEDULED_SECOND/
+              |echo JS7_JOBSTART_DATE=/$JS7_JOBSTART_DATE/
+              |echo JS7_JOBSTART_DAY=/$JS7_JOBSTART_DAY/
+              |echo JS7_JOBSTART_MONTH=/$JS7_JOBSTART_MONTH/
+              |echo JS7_JOBSTART_YEAR=/$JS7_JOBSTART_YEAR/
+              |echo JS7_JOBSTART_HOUR=/$JS7_JOBSTART_HOUR/
+              |echo JS7_JOBSTART_MINUTE=/$JS7_JOBSTART_MINUTE/
+              |echo JS7_JOBSTART_SECOND=/$JS7_JOBSTART_SECOND/
+              |""".stripMargin))),
       jobResourcePaths = Seq(sosJobResource.path))
   }
 

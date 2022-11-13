@@ -1,6 +1,7 @@
 package js7.tests
 
 import js7.base.configutils.Configs.HoconStringInterpolator
+import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -55,25 +56,41 @@ object FailOnErrWrittenTest
       Execute.Anonymous(WorkflowJob(
         agentPath,
         ShellScriptExecutable(
-          """#!/usr/bin/env bash
-            |set -euo pipefail
-            |echo ERROR >&2
-            |""".stripMargin))),
+          if (isWindows)
+            """@echo off
+              |echo ERROR>&2
+              |""".stripMargin
+          else
+            """#!/usr/bin/env bash
+              |set -euo pipefail
+              |echo ERROR >&2
+              |""".stripMargin))),
       Execute.Anonymous(WorkflowJob(
         agentPath,
         ShellScriptExecutable(
-          """#!/usr/bin/env bash
-            |set -euo pipefail
-            |echo SUCCESS
-            |""".stripMargin),
+          if (isWindows)
+            """@echo off
+              |echo SUCCESS
+              |""".stripMargin
+          else
+            """#!/usr/bin/env bash
+              |set -euo pipefail
+              |echo SUCCESS
+              |""".stripMargin),
         failOnErrWritten = true)),
       Execute.Anonymous(WorkflowJob(
         agentPath,
         ShellScriptExecutable(
-          """#!/usr/bin/env bash
-            |set -euo pipefail
-            |echo IGNORED >&2
-            |echo ERROR >&2
-            |""".stripMargin),
+          if (isWindows)
+            """@echo off
+              |echo IGNORED>&2
+              |echo ERROR>&2
+              |""".stripMargin
+          else
+            """#!/usr/bin/env bash
+              |set -euo pipefail
+              |echo IGNORED >&2
+              |echo ERROR >&2
+              |""".stripMargin),
         failOnErrWritten = true))))
 }

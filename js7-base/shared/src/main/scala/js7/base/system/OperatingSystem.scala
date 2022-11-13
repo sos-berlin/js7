@@ -8,4 +8,5 @@ object OperatingSystem {
   val isUnix = !isWindows
   val isSolaris = name startsWith "SunOS"
   val LineEnd = if (isWindows) "\r\n" else "\n"
+  val PathEnvName = if (isWindows) "Path" else "PATH"
 }

@@ -530,28 +530,15 @@ object DirectoryProvider
           resultVariable.fold("")(o => s"""|echo "result=SCRIPT-VARIABLE-$$SCHEDULER_PARAM_${o.toUpperCase}" >>"$$SCHEDULER_RETURN_VALUES"""")
       ).stripMargin
 
-  final def sleepingScript(env: String): String =
-    if (isWindows)
-      throw new NotImplementedError("sleepingScript for Windows is not implemented")
-      //(s"""@echo off
-      //    |echo ${StdoutOutput.trim}
-      //    |if %$env% != 0 then
-      //    |  ping -n 1 127.0.0.1 >nul
-      //    |  ping -n %$env% 127.0.0.1 >nul
-      //    |endif"""
-      //).stripMargin
-    else
-      s"sleep $$$env\n"
-
   final def waitingForFileScript(file: Path, delete: Boolean = false): String =
-    if (isWindows)  // TODO WINDOWS NOT TESTED
+    if (isWindows)
        s"""@echo off
           |:LOOP
           |  if exist "$file" goto FOUND
-          |  timeout /t 1 >nul
+          |  ping -n 2 127.0.0.1 >nul
           |  goto LOOP
           |:FOUND
-          |""" + (delete ?? s"del $file\n")
+          |""".stripMargin + (delete ?? s"del $file\n")
     else
        s"""#!/usr/bin/env bash
           |set -euo pipefail

@@ -3,6 +3,7 @@ package js7.data.value.expression.scopes
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Problem
 import js7.base.problem.Problems.UnknownKeyProblem
+import js7.base.system.OperatingSystem.PathEnvName
 import js7.base.test.OurTestSuite
 import js7.base.time.Stopwatch.measureTime
 import js7.base.time.Timestamp
@@ -47,7 +48,7 @@ final class OrderScopesTest extends OurTestSuite
       assert(scope.parseAndEval("$js7WorkflowPath") == Right(StringValue("WORKFLOW")))
       assert(scope.parseAndEval("$js7Label") == Right(StringValue("LABEL-2")))
 
-      assert(scope.parseAndEval("env('PATH')") == Right(StringValue(sys.env("PATH"))))
+      assert(scope.parseAndEval(s"env('$PathEnvName')") == Right(StringValue(sys.env(PathEnvName))))
 
       assert(scope.parseAndEval("$js7EpochMilli") == Left(Problem("No such named value: js7EpochMilli")))
       assert(scope.parseAndEval("JobResource:JOB-RESOURCE:VARIABLE") == Left(
@@ -209,7 +210,7 @@ final class OrderScopesTest extends OurTestSuite
         assert(scope.parseAndEval("$js7WorkflowPosition") == Right(StringValue("WORKFLOW~VERSION:2")))
         assert(scope.parseAndEval("$js7Label") == Right(StringValue("LABEL-2")))
 
-        assert(scope.parseAndEval("env('PATH')") == Right(StringValue(sys.env("PATH"))))
+        assert(scope.parseAndEval(s"env('$PathEnvName')") == Right(StringValue(sys.env(PathEnvName))))
 
         assert(scope.parseAndEval("JobResource:JOB-RESOURCE:`ORDER-ID`") ==
           Right(StringValue("ORDER")))
@@ -251,7 +252,7 @@ final class OrderScopesTest extends OurTestSuite
 
       assert(scope.parseAndEval("$js7EpochMilli").isRight)
 
-      assert(scope.parseAndEval("env('PATH')") == Right(StringValue(sys.env("PATH"))))
+      assert(scope.parseAndEval(s"env('$PathEnvName')") == Right(StringValue(sys.env(PathEnvName))))
 
       assert(scope.parseAndEval("JobResource:JOB-RESOURCE:`ORDER-ID`") == Right(StringValue("ORDER")))
       assert(scope.parseAndEval("JobResource:JOB-RESOURCE:SCHEDULED") == Right(

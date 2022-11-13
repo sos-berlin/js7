@@ -53,7 +53,7 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
     """
   private val versionIdIterator = Iterator.from(1).map(i => VersionId(s"v$i"))
   private val workflowPathIterator = Iterator.from(1).map(i => WorkflowPath(s"WORKFLOW-$i"))
-  private val orderIdIterator = Iterator.from(1).map(i => OrderId(s"🔵-$i"))
+  private val orderIdIterator = Iterator.from(1).map(i => OrderId(s"ORDER-$i"))
   private lazy val argScriptFile = createTempFile("ExecuteTest-arg-", ".cmd")
   private lazy val myReturnCodeScriptFile = createTempFile("ExecuteTest-myExitCode-", ".cmd")
 
@@ -231,10 +231,17 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
               """echo "C=FROM SECOND JOB" >>"$JS7_RETURN_VALUES" """))),
           Execute.Anonymous(WorkflowJob(agentPath,
             ShellScriptExecutable(
-              """echo "A=$SCHEDULER_PARAM_A" >>"$SCHEDULER_RETURN_VALUES"
-                |echo "B=$SCHEDULER_PARAM_B" >>"$SCHEDULER_RETURN_VALUES"
-                |echo "C=$SCHEDULER_PARAM_C" >>"$SCHEDULER_RETURN_VALUES"
-                |""".stripMargin,
+              if (isWindows)
+                """@echo off
+                  |echo A=%SCHEDULER_PARAM_A%>>%SCHEDULER_RETURN_VALUES%
+                  |echo B=%SCHEDULER_PARAM_B%>>%SCHEDULER_RETURN_VALUES%
+                  |echo C=%SCHEDULER_PARAM_C%>>%SCHEDULER_RETURN_VALUES%
+                  |""".stripMargin
+              else
+                """echo "A=$SCHEDULER_PARAM_A" >>"$SCHEDULER_RETURN_VALUES"
+                  |echo "B=$SCHEDULER_PARAM_B" >>"$SCHEDULER_RETURN_VALUES"
+                  |echo "C=$SCHEDULER_PARAM_C" >>"$SCHEDULER_RETURN_VALUES"
+                  |""".stripMargin,
               v1Compatible = true)))),
       orderPreparation = OrderPreparation(OrderParameterList(
         OrderParameter("A", NumberValue),

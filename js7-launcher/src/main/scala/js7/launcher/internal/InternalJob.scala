@@ -21,6 +21,7 @@ import monix.execution.{Ack, Scheduler}
 import monix.reactive.Observer
 import scala.collection.MapView
 import scala.collection.immutable.ListMap
+import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
 
 trait InternalJob
@@ -108,16 +109,21 @@ object InternalJob
       arguments: Map[String, Expression] = Map.empty,
       subagentSelectionId: Option[Expression] = None,
       parallelism: Int = 1,
+      timeout: Option[FiniteDuration] = None,
       jobResourcePaths: Seq[JobResourcePath] = Nil)
     : Execute.Anonymous =
       Execute(workflowJob(
-        agentPath, arguments, subagentSelectionId, parallelism = parallelism, jobResourcePaths))
+        agentPath, arguments, subagentSelectionId,
+        parallelism = parallelism,
+        timeout = timeout,
+        jobResourcePaths = jobResourcePaths))
 
     final def workflowJob(
       agentPath: AgentPath,
       arguments: Map[String, Expression] = Map.empty,
       subagentSelectionId: Option[Expression] = None,
       parallelism: Int = 1,
+      timeout: Option[FiniteDuration] = None,
       jobResourcePaths: Seq[JobResourcePath] = Nil)
     : WorkflowJob =
       WorkflowJob(
@@ -125,6 +131,7 @@ object InternalJob
         executable(arguments = arguments),
         subagentSelectionId = subagentSelectionId,
         parallelism = parallelism,
+        timeout = timeout,
         jobResourcePaths = jobResourcePaths)
   }
 }

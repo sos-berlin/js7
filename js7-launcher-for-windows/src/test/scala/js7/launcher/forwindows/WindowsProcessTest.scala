@@ -3,7 +3,7 @@ package js7.launcher.forwindows
 import java.lang.ProcessBuilder.Redirect
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets.US_ASCII
-import java.nio.file.Files.{createTempFile, delete}
+import java.nio.file.Files.{createTempFile, delete, deleteIfExists}
 import java.nio.file.{Files, Path}
 import java.util.Locale
 import js7.base.io.file.FileUtils.syntax.*
@@ -12,6 +12,7 @@ import js7.base.problem.Checked.*
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
+import js7.base.time.WaitForCondition.waitForCondition
 import js7.launcher.forwindows.WindowsApi.windowsDirectory
 import js7.launcher.forwindows.WindowsProcess.StartWindowsProcess
 import js7.launcher.forwindows.WindowsProcessTest.*
@@ -96,7 +97,7 @@ final class WindowsProcessTest extends OurTestSuite
         "TerminateProcess" in {
           val process = WindowsProcess.startWithWindowsLogon(
             StartWindowsProcess(
-              Seq(s"$windowsDirectory\\system32\\ping.exe", "-n", "1", "127.0.0.1"),
+              Seq(s"$windowsDirectory\\system32\\ping.exe", "-n", "10", "127.0.0.1"),
               Redirect.INHERIT,
               Redirect.INHERIT,
               Redirect.INHERIT),
@@ -142,8 +143,12 @@ final class WindowsProcessTest extends OurTestSuite
           ).orThrow
           process.waitFor(5.s) shouldBe true
           assert(process.returnCode == Some(ReturnCode(0)))
+
+          waitForCondition(10.s, 10.ms)(Try(stdoutFile.byteArray).isSuccess)  // For Windows
           assert(stdoutFile.contentString(commandCharset) contains s"$testVariableName=$testVariableValue")
-          delete(stdoutFile)
+
+          waitForCondition(10.s, 10.ms)(Try(delete(stdoutFile)).isSuccess)  // For Windows
+          deleteIfExists(stdoutFile)
         }
 
         "Write to stdin" in {
@@ -168,7 +173,8 @@ final class WindowsProcessTest extends OurTestSuite
           process.stdin.flush()
           process.waitFor(5.s) shouldBe true
           stdoutFile.contentString(commandCharset) shouldEqual s"input=$testString"
-          delete(stdoutFile)
+          waitForCondition(10.s, 10.ms) { Try(delete(stdoutFile)).isSuccess }
+          deleteIfExists(stdoutFile)
           delete(scriptFile)
         }
 

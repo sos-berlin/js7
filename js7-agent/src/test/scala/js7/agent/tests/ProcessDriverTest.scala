@@ -7,10 +7,10 @@ import js7.agent.configuration.inject.AgentModule
 import js7.agent.tests.ProcessDriverTest.TestScript
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.RichPath
-import js7.base.test.OurTestSuite
 import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.io.process.ReturnCode
 import js7.base.system.OperatingSystem.isWindows
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
@@ -84,7 +84,7 @@ object ProcessDriverTest {
     if (isWindows) """
       |@echo off
       |echo Hej!
-      |echo THIS IS STDERR >&2
+      |echo THIS IS STDERR>&2
       |echo var1=%VAR1%
       |echo result=TEST-RESULT-%VAR1% >>"%JS7_RETURN_VALUES%"
       |""".stripMargin

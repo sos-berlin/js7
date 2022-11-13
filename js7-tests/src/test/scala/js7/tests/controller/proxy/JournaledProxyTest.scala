@@ -7,6 +7,7 @@ import js7.base.generic.Completed
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem
+import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.*
@@ -127,7 +128,7 @@ extends OurTestSuite with BeforeAndAfterAll with ProvideActorSystem with Control
             OrderAttached(agentPath),
             OrderStarted,
             OrderProcessingStarted(subagentId),
-            OrderStdoutWritten("TEST ☘\n"),
+            OrderStdoutWritten(if (isWindows) "TEST\r\n" else "TEST ☘\n"),
             OrderProcessed(Succeeded(NamedValues.rc(0))),
             OrderMoved(Position(1)),
             OrderDetachable,
