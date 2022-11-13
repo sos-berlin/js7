@@ -74,12 +74,12 @@ final class EventRouteTest extends OurTestSuite with RouteTester with EventRoute
   }
 
   "/event application/x-ndjson" in {
-    Get(s"/event?after=0&limit=2") ~> Accept(`application/x-ndjson`) ~> route ~> check {
+    Get("/event?after=0&limit=2") ~> Accept(`application/x-ndjson`) ~> route ~> check {
       if (status != OK) fail(s"$status - ${responseEntity.toStrict(timeout).value}")
       assert(response.entity.contentType == ContentType(`application/x-ndjson`))
       assert(response.utf8String.await(99.s) ==
-        s"""{"eventId":10,"timestamp":999,"Key":"1","TYPE":"OrderAdded","workflowId":{"path":"test","versionId":"VERSION"}}""" + '\n' +
-        s"""{"eventId":20,"timestamp":999,"Key":"2","TYPE":"OrderAdded","workflowId":{"path":"test","versionId":"VERSION"}}""" + '\n')
+        """{"eventId":10,"timestamp":999,"Key":"1","TYPE":"OrderAdded","workflowId":{"path":"test","versionId":"VERSION"}}""" + '\n' +
+        """{"eventId":20,"timestamp":999,"Key":"2","TYPE":"OrderAdded","workflowId":{"path":"test","versionId":"VERSION"}}""" + '\n')
 
       //implicit val x = JsonSeqStreamingSupport
       //implicit val y = CirceJsonSeqSupport
@@ -90,10 +90,10 @@ final class EventRouteTest extends OurTestSuite with RouteTester with EventRoute
   }
 
   "/event application/x-ndjson with after=unknown fails" in {
-    Get(s"/event?after=5") ~> Accept(`application/x-ndjson`) ~> route ~> check {
+    Get("/event?after=5") ~> Accept(`application/x-ndjson`) ~> route ~> check {
       assert(status == BadRequest)
       assert(response.utf8String.await(99.s) ==
-        s"EventSeqTorn: Requested EventId after=5/1970-01-01T00:00:00.000Z-005 is not available. Oldest available EventId is 0/BeforeFirst\n")
+        "EventSeqTorn: Requested EventId after=5/1970-01-01T00:00:00.000Z-005 is not available. Oldest available EventId is 0/BeforeFirst\n")
     }
   }
 

@@ -23,8 +23,8 @@ package js7.base.monixutils
 
 import java.io.Reader
 import monix.eval.Task
-import monix.execution.Ack.{Continue, Stop}
 import monix.execution.*
+import monix.execution.Ack.{Continue, Stop}
 import monix.execution.atomic.Atomic
 import monix.execution.cancelables.BooleanCancelable
 import monix.execution.exceptions.APIContractViolationException
@@ -126,24 +126,20 @@ extends Observable[String]
         else
           () // Stop!
       }
+    } else if (streamErrors) {
+      sendError(out, errorThrown)
     } else {
-      // Dealing with unexpected errors
-      if (streamErrors)
-        sendError(out, errorThrown)
-      else
-        reportFailure(errorThrown)
+      reportFailure(errorThrown)
     }
   }
 
-  private def sendError(out: Subscriber[Nothing], e: Throwable)(implicit s: UncaughtExceptionReporter): Unit = {
-    try {
-      out.onError(e)
-    } catch {
+  private def sendError(out: Subscriber[Nothing], e: Throwable)(implicit s: UncaughtExceptionReporter): Unit =
+    try out.onError(e)
+    catch {
       case NonFatal(e2) =>
         if (e ne e2) e.addSuppressed(e2)
         reportFailure(e)
     }
-  }
 
   private def reportFailure(e: Throwable)(implicit s: UncaughtExceptionReporter): Unit = {
     s.reportFailure(e)

@@ -72,7 +72,8 @@ object JournalFiles
     }
 
   private[files] def deleteJournal(fileBase: Path, ignoreFailure: Boolean = false): Unit = {
-    val matches = JournalFile.anyJournalFilePattern(fileBase.getFileName).matcher(_: String).matches
+    val matches: String => Boolean = string =>
+      JournalFile.anyJournalFilePattern(fileBase.getFileName).matcher(string).matches
     val markerFile = deletionMarkerFile(fileBase)
     if (!exists(markerFile)/*required for test*/) touchFile(markerFile)
     var failed = false

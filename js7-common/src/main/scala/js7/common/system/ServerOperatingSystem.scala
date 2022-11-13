@@ -23,7 +23,7 @@ trait ServerOperatingSystem {
 
   def makeExecutableFilename(name: String): String
 
-  def getDynamicLibraryEnvironmentVariableName: String
+  def dynamicLibraryEnvironmentVariableName: String
 
   final lazy val hostname: String =
     sys.env.getOrElse(hostnameEnvName, InetAddress.getLocalHost.getHostName)
@@ -52,20 +52,20 @@ object ServerOperatingSystem {
 
   def makeExecutableFilename(name: String): String = operatingSystem.makeExecutableFilename(name)
 
-  def getDynamicLibraryEnvironmentVariableName: String = operatingSystem.getDynamicLibraryEnvironmentVariableName
+  def getDynamicLibraryEnvironmentVariableName: String = operatingSystem.dynamicLibraryEnvironmentVariableName
 
   final class Windows private[system] extends ServerOperatingSystem {
     val secretFileAttributes = Nil  // TODO File must not be accessible for other Windows users
 
     def makeExecutableFilename(name: String): String = name + ".exe"
 
-    def getDynamicLibraryEnvironmentVariableName: String = "PATH"
+    val dynamicLibraryEnvironmentVariableName = "Path"
 
-    protected def hostnameEnvName = "COMPUTERNAME"
+    protected val hostnameEnvName = "COMPUTERNAME"
 
-    def distributionNameAndVersionOption = None
+    val distributionNameAndVersionOption = None
 
-    def cpuModel = sys.env.get("PROCESSOR_IDENTIFIER")
+    lazy val cpuModel = sys.env.get("PROCESSOR_IDENTIFIER")
 
     def sleepingShellScript(duration: FiniteDuration) =
       s"@ping -n ${(duration + 999.ms).toSeconds + 1} 127.0.0.1 >nul"
@@ -77,9 +77,9 @@ object ServerOperatingSystem {
 
     def makeExecutableFilename(name: String): String = name
 
-    def getDynamicLibraryEnvironmentVariableName: String = "LD_LIBRARY_PATH"
+    val dynamicLibraryEnvironmentVariableName = "LD_LIBRARY_PATH"
 
-    protected def hostnameEnvName = "HOSTNAME"
+    protected val hostnameEnvName = "HOSTNAME"
 
     lazy val distributionNameAndVersionOption: Option[String] = {
       def readFirstLine(file: Path): String =

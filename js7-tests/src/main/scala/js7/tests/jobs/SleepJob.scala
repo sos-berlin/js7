@@ -19,7 +19,7 @@ final class SleepJob(jobContext: JobContext) extends InternalJob
         .checked("sleep")
         .flatMap(_.asDuration)
         .traverse(duration =>
-          (if (duration.isPositive) clock.sleep(duration) else Task.unit)
+          clock.sleep(duration).when(duration.isPositive)
             .as(Outcome.succeeded))
         .map(Outcome.Completed.fromChecked))
 }
