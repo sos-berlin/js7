@@ -77,7 +77,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
   assertThat(initialFileEventId.isDefined == (recovered.clusterState == ClusterState.Empty))
 
   private val activeApiCache = new RefCountedResource(
-    common.clusterContext.clusterNodeApi(idToUri(activeId), name = "Active node"))
+    common.clusterNodeApi(idToUri(activeId), "Active node"))
   private val activeApiResource = activeApiCache.resource
 
   private val stateBuilderAndAccessor = new StateBuilderAndAccessor(recovered.state)

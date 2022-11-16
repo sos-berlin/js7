@@ -1,6 +1,5 @@
 package js7.cluster
 
-import akka.util.Timeout
 import com.softwaremill.diffx
 import izumi.reflect.Tag
 import js7.base.generic.Completed
@@ -36,7 +35,7 @@ final class WorkingClusterNode[S <: SnapshotableState[S]: SnapshotableState.Comp
   persistence: FileStatePersistence[S],
   common: ClusterCommon,
   clusterConf: ClusterConf)
-  (implicit scheduler: Scheduler, journalActorAskTimeout: Timeout)
+  (implicit scheduler: Scheduler)
 {
   import clusterConf.ownId
 

@@ -2,6 +2,7 @@ package js7.cluster
 
 import akka.actor.ActorSystem
 import akka.util.Timeout
+import cats.effect.Resource
 import com.softwaremill.diffx
 import com.typesafe.config.Config
 import izumi.reflect.Tag
@@ -16,13 +17,14 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SetOnce
+import js7.base.web.Uri
 import js7.cluster.Cluster.*
 import js7.cluster.ClusterCommon.truncateFile
 import js7.core.license.LicenseChecker
 import js7.data.Problems.{BackupClusterNodeNotAppointed, ClusterNodeIsNotBackupProblem, PrimaryClusterNodeMayNotBecomeBackupProblem}
 import js7.data.cluster.ClusterCommand.{ClusterInhibitActivation, ClusterStartBackupNode}
 import js7.data.cluster.ClusterState.{Coupled, Empty, FailedOver, HasNodes}
-import js7.data.cluster.{ClusterCommand, ClusterSetting}
+import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterSetting}
 import js7.data.controller.ControllerId
 import js7.data.event.{EventId, JournalPosition, SnapshotableState}
 import js7.journal.EventIdGenerator
@@ -36,30 +38,21 @@ import monix.execution.Scheduler
 import scala.concurrent.Promise
 import scala.util.control.NoStackTrace
 
-final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag](
-  journalMeta: JournalMeta,
+final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
   persistence: FileStatePersistence[S],
-  clusterContext: ClusterContext,
-  controllerId: ControllerId,
+  journalMeta: JournalMeta,
   journalConf: JournalConf,
   val clusterConf: ClusterConf,
-  httpsConfig: HttpsConfig,
-  config: Config,
   eventIdGenerator: EventIdGenerator,
-  licenseChecker: LicenseChecker,
-  testEventPublisher: EventPublisher[Any])
+  common: ClusterCommon)
   (implicit
     S: SnapshotableState.Companion[S],
-    journalActorAskTimeout: Timeout,
-    scheduler: Scheduler,
-    actorSystem: ActorSystem)
+    scheduler: Scheduler)
 {
   import clusterConf.ownId
+  import common.{activationInhibitor, config}
 
   private val keepTruncatedRest = config.getBoolean("js7.journal.cluster.keep-truncated-rest")
-  private val common = new ClusterCommon(controllerId, ownId, clusterContext,
-    httpsConfig, config, licenseChecker, testEventPublisher)
-  import common.activationInhibitor
   @volatile private var _passiveOrWorkingNode: Option[Either[PassiveClusterNode[S], WorkingClusterNode[S]]] = None
   private val expectingStartBackupCommand = SetOnce[Promise[ClusterStartBackupNode]]
 
@@ -320,6 +313,33 @@ final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag](
 object Cluster
 {
   private val logger = Logger(getClass)
+
+  def apply[S <: SnapshotableState[S] : diffx.Diff : Tag](
+    persistence: FileStatePersistence[S],
+    journalMeta: JournalMeta,
+    journalConf: JournalConf,
+    clusterConf: ClusterConf,
+    httpsConfig: HttpsConfig,
+    config: Config,
+    eventIdGenerator: EventIdGenerator,
+    clusterNodeApi: (Uri, String) => Resource[Task, ClusterNodeApi],
+    controllerId: ControllerId,
+    licenseChecker: LicenseChecker,
+    testEventPublisher: EventPublisher[Any],
+    journalActorAskTimeout: Timeout)
+    (implicit
+      S: SnapshotableState.Companion[S],
+      scheduler: Scheduler,
+      actorSystem: ActorSystem)
+  : Cluster[S] =
+    new Cluster(
+      persistence,
+      journalMeta,
+      journalConf,
+      clusterConf,
+      eventIdGenerator: EventIdGenerator,
+      new ClusterCommon(controllerId, clusterConf.ownId, clusterNodeApi,
+        httpsConfig, config, licenseChecker, testEventPublisher, journalActorAskTimeout))
 
   private[cluster] def truncateJournal(
     journalFileBase: Path,

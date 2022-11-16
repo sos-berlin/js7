@@ -33,9 +33,8 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Closer, ProgramTermination, SetOnce}
-import js7.base.web.Uri
 import js7.cluster.Cluster.RestartAfterJournalTruncationException
-import js7.cluster.{Cluster, ClusterContext, ClusterFollowUp, WorkingClusterNode}
+import js7.cluster.{Cluster, ClusterFollowUp, WorkingClusterNode}
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.guice.GuiceImplicits.RichInjector
@@ -423,21 +422,20 @@ object RunningController
     = {
       val cluster = {
         import controllerConfiguration.{clusterConf, config, controllerId, httpsConfig, journalConf}
-        new Cluster(
-          journalMeta,
+        Cluster[ControllerState](
           persistence,
-          new ClusterContext {
-            def clusterNodeApi(uri: Uri, name: String) =
-              AkkaHttpControllerApi.resource(uri, clusterConf.peersUserAndPassword, httpsConfig, name = name)
-          },
-          controllerId,
+          journalMeta,
           journalConf,
           clusterConf,
           httpsConfig,
           config,
           injector.instance[EventIdGenerator],
+          (uri, name) => AkkaHttpControllerApi
+            .resource(uri, clusterConf.peersUserAndPassword, httpsConfig, name = name),
+          controllerId,
           new LicenseChecker(LicenseCheckContext(controllerConfiguration.configDirectory)),
-          testEventBus)
+          testEventBus,
+          implicitAkkaAskTimeout)
       }
 
       // clusterFollowUpFuture terminates when this cluster node becomes active or terminates
