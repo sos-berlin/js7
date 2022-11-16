@@ -130,7 +130,8 @@ final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag](
     val startedPromise = Promise[ClusterStartBackupNode]()
     expectingStartBackupCommand := startedPromise
     val passiveClusterNode = Task.deferFuture(startedPromise.future)
-      .map(cmd => newPassiveClusterNode(recovered, cmd.setting, initialFileEventId = Some(cmd.fileEventId)))
+      .map(cmd =>
+        newPassiveClusterNode(recovered, cmd.setting, initialFileEventId = Some(cmd.fileEventId)))
       .memoize
     val passiveState = Task.defer {
       if (startedPromise.future.isCompleted)
@@ -144,7 +145,8 @@ final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag](
     passiveState -> followUp
   }
 
-  private def startAsActiveNodeWithBackup(recovered: Recovered[S]): (Task[Option[Checked[S]]], Task[Checked[ClusterFollowUp[S]]]) = {
+  private def startAsActiveNodeWithBackup(recovered: Recovered[S])
+  : (Task[Option[Checked[S]]], Task[Checked[ClusterFollowUp[S]]]) = {
     recovered.clusterState match {
       case recoveredClusterState: Coupled =>
         import recoveredClusterState.passiveId

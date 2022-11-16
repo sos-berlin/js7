@@ -77,13 +77,15 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
   private def requestAcknowledgmentIfCoupled(eventId: EventId): Task[Checked[Completed]] =
     initialClusterState match {
       case clusterState @ (_: Coupled | _: ActiveShutDown) =>
-        Task(logger.info("Requesting acknowledgement for the last recovered event")) >>
+        Task.defer {
+          logger.info("Requesting acknowledgement for the last recovered event")
           awaitAcknowledgement(clusterState.passiveUri, eventId)
             .logWhenItTakesLonger("acknowledgement")
             .flatTap {
               case Left(problem) => Task(logger.debug(problem.toString))
               case Right(Completed) => Task(logger.info("Passive node acknowledged the recovered state"))
             }
+        }
       case _ => Task.pure(Right(Completed))
     }
 
@@ -421,9 +423,8 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
 
   private def fetchAndHandleAcknowledgedEventIds(passiveId: NodeId, passiveUri: Uri, timing: ClusterTiming)
   : Task[Checked[Completed]] =
-    Task {
+    Task.defer {
       logger.info("Fetching acknowledgements from passive cluster node")
-    } >>
       Observable
         .fromResource(
           common.clusterContext.clusterNodeApi(passiveUri, "acknowledgements"))
@@ -457,6 +458,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
         }
         .guaranteeCase(exitCase => Task(
           logger.debug(s"fetchAndHandleAcknowledgedEventIds ended => $exitCase")))
+    }
 
   private def awaitAcknowledgement(passiveUri: Uri, eventId: EventId)
   : Task[Checked[Completed]] =
