@@ -421,11 +421,10 @@ object RunningController
       Task[Either[ProgramTermination, ClusterFollowUp[ControllerState]]])
     = {
       val cluster = {
-        import controllerConfiguration.{clusterConf, config, controllerId, httpsConfig, journalConf}
+        import controllerConfiguration.{clusterConf, controllerId, httpsConfig, config}
         Cluster[ControllerState](
           persistence,
           journalMeta,
-          journalConf,
           clusterConf,
           httpsConfig,
           config,

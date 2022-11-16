@@ -28,7 +28,6 @@ import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterSetting}
 import js7.data.controller.ControllerId
 import js7.data.event.{EventId, JournalPosition, SnapshotableState}
 import js7.journal.EventIdGenerator
-import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.journal.files.JournalFiles
 import js7.journal.recover.{Recovered, StateRecoverer}
@@ -41,7 +40,6 @@ import scala.util.control.NoStackTrace
 final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
   persistence: FileStatePersistence[S],
   journalMeta: JournalMeta,
-  journalConf: JournalConf,
   val clusterConf: ClusterConf,
   eventIdGenerator: EventIdGenerator,
   common: ClusterCommon)
@@ -233,8 +231,9 @@ final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
     initialFileEventId: Option[EventId] = None)
   : PassiveClusterNode[S] = {
     assertThat(!_passiveOrWorkingNode.exists(_.isLeft))
-    val node = new PassiveClusterNode(ownId, setting, journalMeta, initialFileEventId, recovered,
-      otherFailedOver, journalConf, clusterConf, config, eventIdGenerator, common)
+    val node = new PassiveClusterNode(ownId, setting, recovered,
+      eventIdGenerator, initialFileEventId,
+      otherFailedOver, persistence.journalConf, clusterConf, config, common)
     _passiveOrWorkingNode = Some(Left(node))
     node
   }
@@ -317,7 +316,6 @@ object Cluster
   def apply[S <: SnapshotableState[S] : diffx.Diff : Tag](
     persistence: FileStatePersistence[S],
     journalMeta: JournalMeta,
-    journalConf: JournalConf,
     clusterConf: ClusterConf,
     httpsConfig: HttpsConfig,
     config: Config,
@@ -335,9 +333,8 @@ object Cluster
     new Cluster(
       persistence,
       journalMeta,
-      journalConf,
       clusterConf,
-      eventIdGenerator: EventIdGenerator,
+      eventIdGenerator,
       new ClusterCommon(controllerId, clusterConf.ownId, clusterNodeApi,
         httpsConfig, config, licenseChecker, testEventPublisher, journalActorAskTimeout))
 
