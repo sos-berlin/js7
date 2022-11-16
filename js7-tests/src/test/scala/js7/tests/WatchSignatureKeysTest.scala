@@ -40,13 +40,17 @@ final class WatchSignatureKeysTest extends OurTestSuite with ControllerAgentForS
 {
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
-    js7.configuration.trusted-signature-key-settings.file-delay = ${(systemWatchDelay + 1.s).pretty}
+    js7.configuration.trusted-signature-key-settings.watch-delay = 0s
+    js7.configuration.trusted-signature-key-settings.directory-silence =
+      ${(systemWatchDelay + 1.s).pretty}
     """
 
   // Used for Subagent, too
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
-    js7.configuration.trusted-signature-key-settings.file-delay = ${(systemWatchDelay + 1.s).pretty}
+    js7.configuration.trusted-signature-key-settings.watch-delay = 0s
+    js7.configuration.trusted-signature-key-settings.directory-silence =
+      ${(systemWatchDelay + 1.s).pretty}
     """
 
   protected val agentPaths = Seq(agentPath)

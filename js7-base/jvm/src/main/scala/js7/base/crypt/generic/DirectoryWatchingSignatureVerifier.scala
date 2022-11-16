@@ -13,7 +13,6 @@ import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier.{Settings, Stat
 import js7.base.crypt.{GenericSignature, SignatureVerifier, SignerId}
 import js7.base.data.ByteArray
 import js7.base.io.file.FileUtils.syntax.RichPath
-import js7.base.io.file.watch.DirectoryEventDelayer.syntax.RichDelayLineObservable
 import js7.base.io.file.watch.{DirectoryState, DirectoryWatcher, WatchOptions}
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
@@ -112,16 +111,17 @@ extends SignatureVerifier with AutoCloseable
     companion: SignatureVerifier.Companion,
     directory: Path,
     directoryState: DirectoryState)
-    (implicit iox: IOExecutor): Task[Unit] =
+    (implicit iox: IOExecutor)
+  : Task[Unit] =
     DirectoryWatcher
       .observable(directoryState, toWatchOptions(directory))
       .takeUntil(stop)
       .flatMap(Observable.fromIterable)
-      // buffers without limit all incoming events:
-      .delayFileAdded(directory, settings.fileDelay, settings.logDelays)
+      .debounce(settings.directorySilence)
+      .bufferIntrospective(1024)
       .tapEach(events => logger.info(
-        s"Rereading signature keys of ${companion.typeName} type due to ${events.mkString(", ")}"))
-      .map(_ => ())
+        s"Rereading signature keys of ${companion.typeName} type due to ${
+          events.distinct.mkString(", ")}"))
       .mapEval(_ =>
         rereadDirectory(directory))
       .completedL
@@ -136,27 +136,25 @@ extends SignatureVerifier with AutoCloseable
       delay = settings.watchDelay)
 
   private def rereadDirectory(directory: Path): Task[Unit] =
-    logger.debugTask(
-      Task.defer {
-        //val updated: Map[SignatureVerifier.Companion, Checked[SignatureVerifier]] =
-        companionToDirectory
-          .collect { case (companion, `directory`) =>
-            iox(Task(readDirectory(directory)))
-              .flatMapT(directoryState => Task(
-                toVerifier(companion, directory, directoryState)))
-              .map(companion -> _)
-          }
-          .toVector
-          .sequence
-          .map { updated =>
-            // Update state atomically:
-            state = State(state.companionToVerifier ++ updated)
+    logger.debugTask(Task.defer {
+      companionToDirectory
+        .collect { case (companion, `directory`) =>
+          iox(Task(readDirectory(directory)))
+            .flatMapT(directoryState => Task(
+              toVerifier(companion, directory, directoryState)))
+            .map(companion -> _)
+        }
+        .toVector
+        .sequence
+        .map { updated =>
+          // Update state atomically:
+          state = State(state.companionToVerifier ++ updated)
 
-            try onUpdated()
-            catch { case NonFatal(t) =>
-              logger.error(s"onUpdated => ${t.toStringWithCauses}", t)
-            }
+          try onUpdated()
+          catch { case NonFatal(t) =>
+            logger.error(s"onUpdated => ${t.toStringWithCauses}", t)
           }
+        }
       })
 
   private def toVerifier(
@@ -272,7 +270,7 @@ object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion
     watchDelay: FiniteDuration,
     pollTimeout: FiniteDuration,
     retryDelays: Seq[FiniteDuration],
-    fileDelay: FiniteDuration,
+    directorySilence: FiniteDuration,
     logDelays: Seq[FiniteDuration])
   object Settings {
     def fromConfig(config: Config): Checked[Settings] =
@@ -284,13 +282,13 @@ object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion
         retryDelays <- catchNonFatal(config.getDurationList(
           "js7.configuration.trusted-signature-key-settings.retry-delays")
           .asScala.map(_.toFiniteDuration).toVector)
-        fileDelay <- config.finiteDuration(
-          "js7.configuration.trusted-signature-key-settings.file-delay")
+        directorySilence <- config.finiteDuration(
+          "js7.configuration.trusted-signature-key-settings.directory-silence")
         logDelays <- catchNonFatal(config.getDurationList(
           "js7.configuration.trusted-signature-key-settings.log-delays")
           .asScala.map(_.toFiniteDuration).toVector)
       } yield
-        Settings(watchDelay, pollTimeout, retryDelays, fileDelay, logDelays)
+        Settings(watchDelay, pollTimeout, retryDelays, directorySilence, logDelays)
   }
 
   private case class ConfigStringExpectedProblem(configKey: String) extends Problem.Lazy(

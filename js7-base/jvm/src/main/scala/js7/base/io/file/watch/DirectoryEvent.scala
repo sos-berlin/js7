@@ -1,5 +1,6 @@
 package js7.base.io.file.watch
 
+import cats.Eq
 import java.nio.file.StandardWatchEventKinds.{ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY, OVERFLOW}
 import java.nio.file.{Path, WatchEvent}
 import js7.base.io.file.watch.DirectoryEvent.*
@@ -31,4 +32,7 @@ object DirectoryEvent
   final case class FileAdded(relativePath: Path) extends FileAddedOrModified
   final case class FileModified(relativePath: Path) extends FileAddedOrModified
   final case class FileDeleted(relativePath: Path) extends DirectoryEvent
+
+  implicit val DirectoryEventEq: Eq[DirectoryEvent] =
+    Eq.fromUniversalEquals
 }
