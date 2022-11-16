@@ -40,7 +40,7 @@ extends SignatureVerifier
       trustedCertificates
         .map(o => "  " + o.toLongString)
 
-  def verify(document: ByteArray, signature: X509Signature): Checked[Seq[SignerId]] = {
+  def verify(document: ByteArray, signature: X509Signature): Checked[Seq[SignerId]] =
     signature.signerIdOrCertificate match {
       case Left(signerId) =>
         DistinguishedName.checked(signerId.string)
@@ -70,7 +70,6 @@ extends SignatureVerifier
             }
         }.flatten
     }
-  }
 
   private def verifySignature(document: ByteArray, signature: X509Signature, cert: X509Cert): Checked[SignerId] =
     Checked.catchNonFatal {

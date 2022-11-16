@@ -3,9 +3,11 @@ package js7.base.crypt.x509
 import java.nio.file.Files.{delete, exists}
 import java.nio.file.{Path, Paths}
 import js7.base.auth.Pem
-import js7.base.crypt.SignerId
 import js7.base.crypt.x509.Openssl.*
+import js7.base.crypt.x509.X509Cert.PrivateKeyPem
+import js7.base.crypt.{DocumentSigner, GenericSignature, Signature, SignerId}
 import js7.base.data.ByteArray
+import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.process.Processes.runProcess
@@ -78,8 +80,10 @@ final class Openssl(dir: Path)
       certFile
     }
 
-    final class Signer(name: String)
+    final class Signer(name: String) extends DocumentSigner
     {
+      type MySignature = OpensslSignature
+      val companion = Signer
       val signerId = SignerId(s"CN=$name")
       private val privateKeyFile = dir / s"$name.private-key"
 
@@ -95,13 +99,13 @@ final class Openssl(dir: Path)
       def certificateString: String =
         certificateFile.contentString
 
-      def signString(string: String): String = {
+      def sign(document: ByteArray): OpensslSignature = {
         FileUtils.withTemporaryFile("openssl-", ".tmp") { file =>
-          file := string
+          file := document
           val signatureFile = signFile(file)
           val signature = signatureFile.contentString
           delete(signatureFile)
-          signature
+          OpensslSignature(signature)
         }
       }
 
@@ -122,6 +126,17 @@ final class Openssl(dir: Path)
         delete(signatureFile)
         base64SignatureFile
       }
+    }
+
+    object Signer extends DocumentSigner.Companion
+    {
+      protected type MySignature = OpensslSignature
+      protected type MyMessageSigner = Signer
+
+      val typeName = "X509-openssl"
+
+      def checked(privateKey: ByteArray, password: SecretString) =
+        throw new NotImplementedError
     }
   }
 
@@ -147,7 +162,6 @@ final class Openssl(dir: Path)
 object Openssl
 {
   private val logger = Logger[this.type]
-  private val PrivateKeyPem = Pem("PRIVATE KEY")
 
   private val useHomebrew = true
   private lazy val homebrewOpenssl = Paths.get("/usr/local/opt/openssl/bin/openssl")
@@ -166,7 +180,15 @@ object Openssl
     Pem(typ).fromPem(file.contentString).orThrow
 
   final case class CertWithPrivateKey(privateKey: ByteArray, certificate: ByteArray)
+  {
+    lazy val certificatePem = X509Cert.CertificatePem.toPem(certificate)
+  }
 
   // For Windows
   def quote(path: Path) = "'" + path.toString.replace("\\", "\\\\") + "'"
+}
+
+final case class OpensslSignature(base64: String) extends Signature
+{
+  def toGenericSignature = GenericSignature(X509Signer.typeName, base64)
 }
