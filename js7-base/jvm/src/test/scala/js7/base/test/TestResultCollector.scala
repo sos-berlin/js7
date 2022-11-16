@@ -9,7 +9,9 @@ private object TestResultCollector
 
   sys.runtime.addShutdownHook(
     newMaybeVirtualThread { () =>
-      println(sb)
+      synchronized {
+        println(sb)
+      }
     })
 
   def add(result: LoggingTestAdder.Result): Unit =

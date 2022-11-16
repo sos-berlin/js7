@@ -93,10 +93,7 @@ extends ControllerRouteProvider with EntitySizeLimitProvider
 
   private def verify(signedString: SignedString): Checked[Verified[SignableItem]] = {
     val verified = itemUpdater.signedItemVerifier.verify(signedString)
-    verified match {
-      case Left(problem) => logger.warn(problem.toString)
-      case Right(verified) => logger.info(Logger.SignatureVerified, verified.toString)
-    }
+    for (verified <- verified) logger.info(Logger.SignatureVerified, verified.toString)
     verified
   }
 }
