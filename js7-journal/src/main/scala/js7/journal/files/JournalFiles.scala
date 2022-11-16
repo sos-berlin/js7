@@ -101,6 +101,15 @@ object JournalFiles
     def file(after: EventId): Path =
       JournalFile.toFile(journalMeta.fileBase, after)
 
+    def currentFile: Checked[Path] =
+      JournalFiles.currentFile(journalMeta.fileBase)
+
+    def listJournalFiles: Vector[JournalFile] =
+      JournalFiles.listJournalFiles(journalMeta.fileBase)
+
+    def listGarbageFiles(untilFileEventId: EventId): Vector[Path] =
+      JournalFiles.listGarbageFiles(journalMeta.fileBase, untilFileEventId)
+
     def updateSymbolicLink(toFile: Path): Unit = {
       val symLink = Paths.get(s"${journalMeta.fileBase}-journal")  // We preserve the suffix ".journal" for the real journal files
       Try { if (exists(symLink, NOFOLLOW_LINKS)) delete(symLink) }

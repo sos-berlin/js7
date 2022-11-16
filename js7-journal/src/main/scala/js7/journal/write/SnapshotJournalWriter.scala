@@ -6,24 +6,24 @@ import js7.base.data.ByteArray
 import js7.base.log.Logger
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.{bytesPerSecondString, itemsPerSecondString}
-import js7.data.event.EventId
 import js7.data.event.JournalSeparators.{SnapshotFooter, SnapshotHeader}
+import js7.data.event.{EventId, SnapshotableState}
 import js7.journal.data.JournalMeta
 import js7.journal.files.JournalFiles.*
 import monix.execution.Scheduler
-import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.*
+import scala.concurrent.duration.Deadline.now
 
 /**
   * @author Joacim Zschimmer
   */
 final class SnapshotJournalWriter(
-  protected val journalMeta: JournalMeta,
+  S: SnapshotableState.HasCodec,
   val file: Path,
   after: EventId,
   protected val simulateSync: Option[FiniteDuration])
   (implicit protected val scheduler: Scheduler)
-extends JournalWriter(after = after, append = false)
+extends JournalWriter(S, after = after, append = false)
 {
   private val logger = Logger.withPrefix(getClass, file.getFileName.toString)
   protected val statistics: SnapshotStatisticsCounter = new SnapshotStatisticsCounter
@@ -64,5 +64,5 @@ extends JournalWriter(after = after, append = false)
 object SnapshotJournalWriter
 {
   def forTest(journalMeta: JournalMeta, after: EventId)(implicit scheduler: Scheduler) =
-    new SnapshotJournalWriter(journalMeta, journalMeta.file(after), after = after, simulateSync = None)
+    new SnapshotJournalWriter(journalMeta.S, journalMeta.file(after), after = after, simulateSync = None)
 }

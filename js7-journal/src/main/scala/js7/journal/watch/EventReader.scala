@@ -165,10 +165,10 @@ extends AutoCloseable
   }
 
   final def snapshot: Observable[Any] =
-    JournalReader.snapshot(journalMeta, expectedJournalId, journalFile)
+    JournalReader.snapshot(journalMeta.S, journalFile, expectedJournalId)
 
   final def rawSnapshot: Observable[ByteArray] =
-    JournalReader.rawSnapshot(journalMeta, expectedJournalId, journalFile)
+    JournalReader.rawSnapshot(journalMeta.S, journalFile, expectedJournalId)
 
   /** Observes a journal file lines and length. */
   final def observeFile(position: Long, timeout: FiniteDuration, markEOF: Boolean = false, onlyAcks: Boolean)

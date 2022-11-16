@@ -9,13 +9,11 @@ import js7.base.data.ByteSequence.ops.*
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked.*
 import js7.base.utils.AutoClosing.closeOnError
-import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.jsonseq.{InputStreamJsonSeqReader, PositionAnd}
 import js7.common.utils.untilNoneIterator
 import js7.data.event.JournalSeparators.{Commit, EventHeader, EventHeaderLine, SnapshotFooterLine, SnapshotHeaderLine, Transaction}
-import js7.data.event.{Event, EventId, JournalHeader, JournalId, KeyedEvent, Stamped}
-import js7.journal.data.JournalMeta
+import js7.data.event.{Event, EventId, JournalHeader, JournalId, KeyedEvent, SnapshotableState, Stamped}
 import js7.journal.recover.JournalReader.*
 import monix.eval.Task
 import monix.reactive.Observable
@@ -25,7 +23,10 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
-final class JournalReader(journalMeta: JournalMeta, expectedJournalId: JournalId, journalFile: Path)
+final class JournalReader(
+  S: SnapshotableState.HasCodec,
+  journalFile: Path,
+  expectedJournalId: JournalId)
 extends AutoCloseable
 {
   private val jsonReader = InputStreamJsonSeqReader.open(journalFile)
@@ -74,7 +75,7 @@ extends AutoCloseable
     synchronized {
       journalHeader +:
         Observable.fromIteratorUnsafe(untilNoneIterator(nextSnapshotJson()))
-          .mapParallelBatch()(json => journalMeta.snapshotObjectJsonCodec.decodeJson(json).toChecked.orThrow)
+          .mapParallelBatch()(json => S.snapshotObjectJsonCodec.decodeJson(json).toChecked.orThrow)
     }
 
   private[recover] def readSnapshotRaw: Observable[ByteArray] =
@@ -208,8 +209,7 @@ extends AutoCloseable
     }
 
   private def deserialize(json: Json) = {
-    import journalMeta.implicitEventJsonCodec
-    intelliJuseImport(implicitEventJsonCodec)
+    import S.keyedEventJsonCodec
     json.as[Stamped[KeyedEvent[Event]]].toChecked.orThrow
   }
 
@@ -228,20 +228,20 @@ extends AutoCloseable
 
 object JournalReader
 {
-  def snapshot(journalMeta: JournalMeta, expectedJournalId: JournalId, journalFile: Path)
+  def snapshot(S: SnapshotableState.HasCodec, journalFile: Path, expectedJournalId: JournalId)
   : Observable[Any] =
-    snapshot_(_.readSnapshot)(journalMeta, expectedJournalId, journalFile)
+    snapshot_(_.readSnapshot)(S, journalFile, expectedJournalId)
 
-  def rawSnapshot(journalMeta: JournalMeta, expectedJournalId: JournalId, journalFile: Path)
+  def rawSnapshot(S: SnapshotableState.HasCodec, journalFile: Path, expectedJournalId: JournalId)
   : Observable[ByteArray] =
-    snapshot_(_.readSnapshotRaw)(journalMeta, expectedJournalId, journalFile)
+    snapshot_(_.readSnapshotRaw)(S, journalFile, expectedJournalId)
 
   private def snapshot_[A](f: JournalReader => Observable[A])
-    (journalMeta: JournalMeta, expectedJournalId: JournalId, journalFile: Path)
+    (S: SnapshotableState.HasCodec, journalFile: Path, expectedJournalId: JournalId)
   : Observable[A] =
     Observable
       .fromResource(Resource.fromAutoCloseable(Task(
-        new JournalReader(journalMeta, expectedJournalId, journalFile))))
+        new JournalReader(S, journalFile, expectedJournalId))))
       .flatMap(f)
 
   private final class CorruptJournalException(

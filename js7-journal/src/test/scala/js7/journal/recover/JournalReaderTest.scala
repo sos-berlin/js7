@@ -18,7 +18,7 @@ import js7.data.event.JournalEvent.SnapshotTaken
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalEvent, JournalHeader, JournalHeaders, JournalId, JournalSeparators, KeyedEvent, Stamped}
 import js7.journal.JournalActor
-import js7.journal.files.JournalFiles
+import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.test.{TestActor, TestAggregate, TestAggregateActor, TestEvent, TestJournalMixin}
 import js7.journal.write.{EventJournalWriter, FileJsonWriter, SnapshotJournalWriter}
 import monix.execution.Scheduler.Implicits.traced
@@ -36,7 +36,7 @@ final class JournalReaderTest extends OurTestSuite with TestJournalMixin
     val journalId =
       autoClosing(scala.io.Source.fromFile(file.toFile)(UTF_8))(_.getLines().next())
         .parseJsonAs[JournalHeader].orThrow.journalId
-    autoClosing(new JournalReader(journalMeta, journalId, file)) { journalReader =>
+    autoClosing(new JournalReader(journalMeta.S, file, journalId)) { journalReader =>
       assert(journalReader.readSnapshot.toListL.await(99.s) == journalReader.journalHeader :: Nil)
       assert(journalReader.readEvents().toList == Stamped(1000000L, (NoKey <-: JournalEvent.SnapshotTaken)) :: Nil)
       assert(journalReader.eventId == 1000000)
@@ -47,14 +47,14 @@ final class JournalReaderTest extends OurTestSuite with TestJournalMixin
   "Journal file with snapshot section only" in {
     val file = currentFile
     delete(file)  // File of last test
-    autoClosing(new SnapshotJournalWriter(journalMeta, file, after = EventId.BeforeFirst, simulateSync = None)) { writer =>
+    autoClosing(new SnapshotJournalWriter(journalMeta.S, file, after = EventId.BeforeFirst, simulateSync = None)) { writer =>
       writer.writeHeader(JournalHeaders.forTest(journalId))
       writer.beginSnapshotSection()
       writer.endSnapshotSection()
       writer.beginEventSection(sync = false)
       writer.writeEvent(Stamped(1000L, NoKey <-: SnapshotTaken))
     }
-    autoClosing(new JournalReader(journalMeta, journalId, JournalFiles.currentFile(journalMeta.fileBase).orThrow)) { journalReader =>
+    autoClosing(new JournalReader(journalMeta.S, journalMeta.currentFile.orThrow, journalId)) { journalReader =>
       assert(journalReader.readSnapshot.toListL.await(99.s) == journalReader.journalHeader :: Nil)
       assert(journalReader.readEvents().toList == Stamped(1000L, (NoKey <-: JournalEvent.SnapshotTaken)) :: Nil)
       assert(journalReader.eventId == 1000)
@@ -65,18 +65,18 @@ final class JournalReaderTest extends OurTestSuite with TestJournalMixin
   "Journal file with open event section" in {
     val file = currentFile
     delete(file)  // File of last test
-    autoClosing(new SnapshotJournalWriter(journalMeta, file, after = EventId.BeforeFirst, simulateSync = None)) { writer =>
+    autoClosing(new SnapshotJournalWriter(journalMeta.S, file, after = EventId.BeforeFirst, simulateSync = None)) { writer =>
       writer.writeHeader(JournalHeaders.forTest(journalId))
       writer.beginSnapshotSection()
       writer.endSnapshotSection()
       writer.beginEventSection(sync = false)
       writer.writeEvent(Stamped(1000L, NoKey <-: SnapshotTaken))
     }
-    autoClosing(new EventJournalWriter(journalMeta, file, after = 1000L, journalId, observer = None, simulateSync = None)) { writer =>
+    autoClosing(new EventJournalWriter(journalMeta.S, file, after = 1000L, journalId, observer = None, simulateSync = None)) { writer =>
       writer.writeEvents(Stamped(1001L, "X" <-: TestEvent.Removed) :: Nil)
       //Without: writer.endEventSection(sync = false)
     }
-    autoClosing(new JournalReader(journalMeta, journalId, JournalFiles.currentFile(journalMeta.fileBase).orThrow)) { journalReader =>
+    autoClosing(new JournalReader(journalMeta.S, journalMeta.currentFile.orThrow, journalId)) { journalReader =>
       assert(journalReader.fileEventId == 0)
       assert(journalReader.eventId == EventId.BeforeFirst)
       assert(journalReader.readSnapshot.toListL.await(99.s) == journalReader.journalHeader :: Nil)
@@ -93,7 +93,7 @@ final class JournalReaderTest extends OurTestSuite with TestJournalMixin
       execute(actorSystem, actor, "X", TestAggregateActor.Command.Add("(X)")) await 99.s
       execute(actorSystem, actor, "Y", TestAggregateActor.Command.Add("(Y)")) await 99.s
     }
-    autoClosing(new JournalReader(journalMeta, journalId, currentFile)) { journalReader =>
+    autoClosing(new JournalReader(journalMeta.S, currentFile, journalId)) { journalReader =>
       assert(journalReader.readSnapshot.toL(Set).await(99.s) == Set(
         journalReader.journalHeader,
         TestAggregate("TEST-A","(A.Add)(A.Append)(A.AppendAsync)(A.AppendNested)(A.AppendNestedAsync)"),
@@ -117,7 +117,7 @@ final class JournalReaderTest extends OurTestSuite with TestJournalMixin
     "Committed transaction" in {
       val file = currentFile
       delete(file)  // File of last test
-      autoClosing(new EventJournalWriter(journalMeta, file, after = 0L, journalId, observer = None, simulateSync = None, withoutSnapshots = true)) { writer =>
+      autoClosing(new EventJournalWriter(journalMeta.S, file, after = 0L, journalId, observer = None, simulateSync = None, withoutSnapshots = true)) { writer =>
         writer.writeHeader(JournalHeaders.forTest(journalId, eventId = EventId.BeforeFirst))
         writer.beginEventSection(sync = false)
         writer.writeEvents(first :: Nil)
@@ -125,12 +125,12 @@ final class JournalReaderTest extends OurTestSuite with TestJournalMixin
         writer.writeEvents(last :: Nil)
         writer.endEventSection(sync = false)
       }
-      autoClosing(new JournalReader(journalMeta, journalId, JournalFiles.currentFile(journalMeta.fileBase).orThrow)) { journalReader =>
+      autoClosing(new JournalReader(journalMeta.S, journalMeta.currentFile.orThrow, journalId)) { journalReader =>
         assert(journalReader.readEvents().toList == first :: ta ::: last :: Nil)
         assert(journalReader.eventId == 1004)
         assert(journalReader.totalEventCount == 5)
       }
-      autoClosing(new JournalReader(journalMeta, journalId, JournalFiles.currentFile(journalMeta.fileBase).orThrow)) { journalReader =>
+      autoClosing(new JournalReader(journalMeta.S, journalMeta.currentFile.orThrow, journalId)) { journalReader =>
         assert(journalReader.nextEvent() == Some(first))
         assert(journalReader.eventId == 1000)
         assert(journalReader.nextEvent() == Some(ta(0)))
@@ -162,7 +162,7 @@ final class JournalReaderTest extends OurTestSuite with TestJournalMixin
         writeEvent(ta(1))
         writeEvent(ta(2))
       }
-      autoClosing(new JournalReader(journalMeta, journalId, JournalFiles.currentFile(journalMeta.fileBase).orThrow)) { journalReader =>
+      autoClosing(new JournalReader(journalMeta.S, journalMeta.currentFile.orThrow, journalId)) { journalReader =>
         assert(journalReader.readEvents().toList == first :: Nil)  // Uncommitted transaction is not read
         assert(journalReader.eventId == 1000)
         assert(journalReader.totalEventCount == 1)
@@ -170,5 +170,5 @@ final class JournalReaderTest extends OurTestSuite with TestJournalMixin
     }
   }
 
-  private def currentFile = JournalFiles.currentFile(journalMeta.fileBase).orThrow
+  private def currentFile = journalMeta.currentFile.orThrow
 }

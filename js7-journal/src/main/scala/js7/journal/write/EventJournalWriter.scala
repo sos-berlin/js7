@@ -7,7 +7,7 @@ import js7.base.log.Logger
 import js7.base.utils.Assertions.assertThat
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.JournalSeparators.{Commit, Transaction}
-import js7.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
+import js7.data.event.{Event, EventId, JournalId, JournaledState, KeyedEvent, Stamped}
 import js7.journal.data.JournalMeta
 import js7.journal.files.JournalFiles.*
 import js7.journal.watch.JournalingObserver
@@ -19,7 +19,7 @@ import scala.concurrent.duration.FiniteDuration
   * @author Joacim Zschimmer
   */
 final class EventJournalWriter(
-  protected val journalMeta: JournalMeta,
+  S: JournaledState.HasEventCodec,
   val file: Path,
   after: EventId,
   journalId: JournalId,
@@ -28,7 +28,7 @@ final class EventJournalWriter(
   withoutSnapshots: Boolean = false,
   initialEventCount: Int = 0)
   (implicit protected val scheduler: Scheduler)
-extends JournalWriter(after = after, append = !withoutSnapshots)
+extends JournalWriter(S, after = after, append = !withoutSnapshots)
 with AutoCloseable
 {
   private val logger = Logger.withPrefix(getClass, file.getFileName.toString)
@@ -124,7 +124,7 @@ private[journal] object EventJournalWriter
     observer: Option[JournalingObserver] = None, withoutSnapshots: Boolean = true)
     (implicit scheduler: Scheduler)
   =
-    new EventJournalWriter(journalMeta, journalMeta.file(after), after, journalId, observer,
+    new EventJournalWriter(journalMeta.S, journalMeta.file(after), after, journalId, observer,
       simulateSync = None, withoutSnapshots = withoutSnapshots)
 
   final class SerializationException(cause: Throwable) extends RuntimeException("JSON serialization error", cause)

@@ -7,7 +7,7 @@ import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.*
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import js7.data.event.{AnyKeyedEvent, Event, EventId, JournalHeaders, JournalId, KeyedEventTypedJsonCodec, Stamped}
+import js7.data.event.{AnyKeyedEvent, Event, EventId, JournalHeaders, JournalId, KeyedEventTypedJsonCodec, SnapshotableState, Stamped}
 import js7.journal.data.JournalMeta
 import js7.journal.write.EventJournalWriter
 import monix.execution.Scheduler
@@ -21,7 +21,12 @@ final class SimpleEventCollector(
 extends AutoCloseable
 {
   private val directory = createTempDirectory("SimpleEventCollector-")
-  private val journalMeta = JournalMeta(TypedJsonCodec[Any](), eventTypedJsonCodec, directory / "TEST")
+  private val journalMeta = JournalMeta(
+    new SnapshotableState.HasCodec {
+      implicit val keyedEventJsonCodec = eventTypedJsonCodec
+      val snapshotObjectJsonCodec = TypedJsonCodec()
+    },
+    directory / "TEST")
   private val journalId = JournalId.random()
   private val tornEventId = EventId.BeforeFirst
 

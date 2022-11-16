@@ -26,12 +26,15 @@ extends EventDrivenState[S, Event]
 
 object JournaledState
 {
+  trait HasEventCodec {
+    implicit def keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event]
+  }
+
   trait Companion[S <: JournaledState[S]]
   extends EventDrivenState.Companion[S, Event]
+  with HasEventCodec
   {
     implicit final val implicitJournalStateCompanion: Companion[S] =
       this
-
-    implicit def keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event]
   }
 }

@@ -207,8 +207,8 @@ final class JournalRouteTest extends OurTestSuite with RouteTester with JournalR
     }
 
   private def newSnapshotJournalWriter(eventId: EventId) =
-    new SnapshotJournalWriter(journalMeta, journalMeta.file(eventId), after = eventId, simulateSync = None)
+    new SnapshotJournalWriter(journalMeta.S, journalMeta.file(eventId), after = eventId, simulateSync = None)
 
   private def newEventJournalWriter(eventId: EventId) =
-    new EventJournalWriter(journalMeta, journalMeta.file(eventId), after = eventId, journalId, Some(eventWatch), simulateSync = None)
+    new EventJournalWriter(journalMeta.S, journalMeta.file(eventId), after = eventId, journalId, Some(eventWatch), simulateSync = None)
 }

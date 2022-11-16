@@ -1,14 +1,13 @@
 package js7.journal.watch
 
 import java.nio.file.Files
-import js7.base.circeutils.typed.TypedJsonCodec
 import js7.base.io.file.FileUtils
 import js7.base.test.OurTestSuite
 import js7.data.event.{EventId, Stamped}
 import js7.journal.data.JournalMeta
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.watch.FileEventIteratorPoolTest.*
-import js7.journal.watch.TestData.{AEvent, TestKeyedEventJsonCodec, journalId, writeJournal}
+import js7.journal.watch.TestData.{AEvent, TestState, journalId, writeJournal}
 
 /**
   * @author Joacim Zschimmer
@@ -17,7 +16,7 @@ final class FileEventIteratorPoolTest extends OurTestSuite
 {
   "FileEventIteratorPool" in {
     FileUtils.withTemporaryDirectory("FileEventIteratorPoolTest-") { dir =>
-      val journalMeta = JournalMeta(TypedJsonCodec[Any](), TestKeyedEventJsonCodec, dir resolve "test")
+      val journalMeta = JournalMeta(TestState, dir resolve "test")
       val journalFile = journalMeta.file(after = After)
       writeJournal(journalMeta, after = After, TestEvents)
       val pool = new FileEventIteratorPool(journalMeta, journalId,

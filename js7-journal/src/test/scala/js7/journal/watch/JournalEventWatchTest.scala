@@ -24,9 +24,8 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.jsonseq.PositionAnd
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
-import js7.data.event.{Event, EventId, EventRequest, EventSeq, JournalEvent, JournalHeader, JournalHeaders, JournalId, JournalPosition, JournalSeparators, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
+import js7.data.event.{Event, EventId, EventRequest, EventSeq, JournalEvent, JournalHeader, JournalHeaders, JournalId, JournalPosition, JournalSeparators, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState, Stamped, TearableEventSeq}
 import js7.journal.data.JournalMeta
-import js7.journal.files.JournalFiles
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.watch.JournalEventWatchTest.*
 import js7.journal.watch.TestData.{writeJournal, writeJournalSnapshot}
@@ -42,8 +41,7 @@ import scala.reflect.ClassTag
   */
 final class JournalEventWatchTest extends OurTestSuite with BeforeAndAfterAll
 {
-  private implicit val keyedEventTypedJsonCodec: KeyedEventTypedJsonCodec[Event] =
-    JournalEventWatchTest.keyedEventTypedJsonCodec
+  import TestState.keyedEventJsonCodec
 
   "JournalId is checked" in {
     withJournalMeta { journalMeta =>
@@ -96,24 +94,22 @@ final class JournalEventWatchTest extends OurTestSuite with BeforeAndAfterAll
           .await(99.s) == EventSeq.Empty(220L))
 
         eventWatch.releaseEvents(untilEventId = 0L)
-        assert(JournalFiles
-          .listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file)
+        assert(journalMeta.listJournalFiles.map(_.file)
           == Vector(journalMeta.file(0L), journalMeta.file(120L)))
         assert(when(EventId.BeforeFirst) == EventSeq.NonEmpty(MyEvents1 ++ MyEvents2))
 
         eventWatch.releaseEvents(untilEventId = 110L)
-        assert(JournalFiles
-          .listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file)
+        assert(journalMeta.listJournalFiles.map(_.file)
           == Vector(journalMeta.file(0L), journalMeta.file(120L)))
         assert(when(EventId.BeforeFirst) == EventSeq.NonEmpty(MyEvents1 ++ MyEvents2))
 
         eventWatch.releaseEvents(untilEventId = 120L)
-        assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file)
+        assert(journalMeta.listJournalFiles.map(_.file)
           == Vector(journalMeta.file(120L)))
         assert(when(EventId.BeforeFirst) == TearableEventSeq.Torn(120L))
 
         eventWatch.releaseEvents(untilEventId = 220L)
-        assert(JournalFiles.listJournalFiles(journalFileBase = journalMeta.fileBase).map(_.file)
+        assert(journalMeta.listJournalFiles.map(_.file)
           == Vector(journalMeta.file(120L)))
         assert(when(EventId.BeforeFirst) == TearableEventSeq.Torn(120L))
       }
@@ -316,9 +312,7 @@ final class JournalEventWatchTest extends OurTestSuite with BeforeAndAfterAll
   }
 
   "snapshotAfter" in {
-    withJournalMeta { journalMeta_ =>
-      val journalMeta = journalMeta_.copy(snapshotObjectJsonCodec = SnapshotJsonCodec)
-
+    withJournalMeta { journalMeta =>
       autoClosing(new JournalEventWatch(journalMeta, JournalEventWatch.TestConfig)) { eventWatch =>
         // --0.journal with no snapshot objects
         writeJournalSnapshot(journalMeta, after = EventId.BeforeFirst, Nil)
@@ -420,10 +414,7 @@ final class JournalEventWatchTest extends OurTestSuite with BeforeAndAfterAll
 
   private def withJournalMeta(body: JournalMeta => Unit): Unit =
     withTemporaryDirectory("JournalEventWatchTest") { directory =>
-      val journalMeta = JournalMeta(
-        TypedJsonCodec(),  // No snapshots
-        keyedEventTypedJsonCodec,
-        directory / "test")
+      val journalMeta = JournalMeta(TestState, directory / "test")
       body(journalMeta)
     }
 
@@ -476,17 +467,25 @@ private object JournalEventWatchTest
   private implicit val B1Codec: Codec.AsObject[B1.type] = CirceUtils.singletonCodec(B1)
   private implicit val B2Codec: Codec.AsObject[B2.type] = CirceUtils.singletonCodec(B2)
 
-  private implicit val keyedEventTypedJsonCodec: KeyedEventTypedJsonCodec[Event] =
-    KeyedEventTypedJsonCodec(
-      KeyedSubtype[JournalEvent],
-      KeyedSubtype.singleEvent[A1.type],
-      KeyedSubtype.singleEvent[A2.type],
-      KeyedSubtype.singleEvent[B1.type],
-      KeyedSubtype.singleEvent[B2.type])
 
   private case class ASnapshot(string: String)
 
+  @deprecated
   implicit private val SnapshotJsonCodec: TypedJsonCodec[Any] = TypedJsonCodec[Any](
     Subtype[JournalHeader],
     Subtype(deriveCodec[ASnapshot]))
+
+  private object TestState extends SnapshotableState.HasCodec {
+    implicit val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] =
+      KeyedEventTypedJsonCodec(
+        KeyedSubtype[JournalEvent],
+        KeyedSubtype.singleEvent[A1.type],
+        KeyedSubtype.singleEvent[A2.type],
+        KeyedSubtype.singleEvent[B1.type],
+        KeyedSubtype.singleEvent[B2.type])
+
+    def snapshotObjectJsonCodec: TypedJsonCodec[Any] = TypedJsonCodec[Any](
+      Subtype[JournalHeader],
+      Subtype(deriveCodec[ASnapshot]))
+  }
 }

@@ -7,8 +7,7 @@ import js7.base.utils.AutoClosing.closeOnError
 import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.CloseableIterator
 import js7.common.jsonseq.PositionAnd
-import js7.data.event.{Event, EventId, JournalId, KeyedEvent, Stamped}
-import js7.journal.data.JournalMeta
+import js7.data.event.{Event, EventId, JournalId, KeyedEvent, SnapshotableState, Stamped}
 import js7.journal.recover.JournalReader
 import js7.journal.watch.FileEventIterator.*
 import scala.concurrent.duration.Deadline.now
@@ -17,7 +16,7 @@ import scala.concurrent.duration.Deadline.now
   * @author Joacim Zschimmer
   */
 private[watch] class FileEventIterator(
-  journalMeta: JournalMeta,
+  S: SnapshotableState.HasCodec,
   val journalFile: Path,
   expectedJournalId: JournalId,
   fileEventId: EventId,
@@ -25,7 +24,7 @@ private[watch] class FileEventIterator(
 extends CloseableIterator[Stamped[KeyedEvent[Event]]]
 {
   private val logger = Logger.withPrefix[this.type](journalFile.getFileName.toString)
-  private val journalReader = new JournalReader(journalMeta, expectedJournalId, journalFile)
+  private val journalReader = new JournalReader(S, journalFile, expectedJournalId)
   private var nextEvent: Stamped[KeyedEvent[Event]] = null
   private var closed = false
 

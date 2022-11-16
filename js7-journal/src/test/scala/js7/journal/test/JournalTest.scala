@@ -13,7 +13,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
 import js7.data.event.JournalHeader
 import js7.journal.JournalActor
-import js7.journal.files.JournalFiles.listJournalFiles
+import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.test.JournalTest.*
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers.*
@@ -114,7 +114,7 @@ final class JournalTest extends OurTestSuite with BeforeAndAfterAll with TestJou
 
   "Massive parallel" - {
     def run(n: Int, coalesceEventLimit: Int): Unit = {
-      listJournalFiles(journalMeta.fileBase).map(_.file) foreach delete
+      journalMeta.listJournalFiles.map(_.file) foreach delete
       val config = config"""
        js7.journal.coalesce-event-limit = $coalesceEventLimit
        js7.journal.slow-check-state = false"""
@@ -175,7 +175,7 @@ final class JournalTest extends OurTestSuite with BeforeAndAfterAll with TestJou
   }
 
   private def journalFileNames =
-    listJournalFiles(journalMeta.fileBase).map(_.file.getFileName.toString)
+    journalMeta.listJournalFiles.map(_.file.getFileName.toString)
 }
 
 object JournalTest

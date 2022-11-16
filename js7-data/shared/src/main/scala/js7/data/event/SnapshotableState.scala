@@ -80,20 +80,20 @@ object SnapshotableState
     def empty = Standards(JournalState.empty, ClusterState.Empty)
   }
 
-  trait CompanionForJournal
-  {
+  trait HasSnapshotCodec  {
     def snapshotObjectJsonCodec: TypedJsonCodec[Any]
-
-    implicit def keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event]
   }
 
-  trait Companion[S <: SnapshotableState[S]] extends JournaledState.Companion[S]
+  trait HasCodec
+  extends HasSnapshotCodec with JournaledState.HasEventCodec
+
+  trait Companion[S <: SnapshotableState[S]]
+  extends JournaledState.Companion[S]
+  with HasCodec
   {
     implicit final val implicitSnapshotableStateCompanion: Companion[S] = this
 
     def empty: S
-
-    def snapshotObjectJsonCodec: TypedJsonCodec[Any]
 
     def fromObservable(snapshotObjects: Observable[Any]): Task[S] =
       Task.defer {
