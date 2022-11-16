@@ -6,7 +6,7 @@ import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.duration.*
 
-object CatsTestUtils
+object CatsBlocking
 {
   implicit final class BlockingTaskResource[+A](private val resource: Resource[Task, A]) extends AnyVal {
     def blockingUse[R](timeout: Duration)(block: A => R)(implicit s: Scheduler): R =

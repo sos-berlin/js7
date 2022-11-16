@@ -1,6 +1,8 @@
 package js7.tests.testenv
 
+import cats.effect.Resource
 import cats.syntax.traverse.*
+import com.typesafe.config.{Config, ConfigFactory}
 import js7.agent.RunningAgent
 import js7.base.configutils.Configs.*
 import js7.base.log.Logger
@@ -9,6 +11,7 @@ import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.WallClock
+import js7.base.utils.CatsBlocking.BlockingTaskResource
 import js7.base.utils.Lazy
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.controller.RunningController
@@ -18,7 +21,7 @@ import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.item.ItemOperation.AddOrChangeSimple
 import js7.data.item.{VersionId, VersionedItem, VersionedItemPath}
 import js7.data.order.{OrderId, OrderObstacle, OrderObstacleCalculator}
-import js7.data.subagent.SubagentItemStateEvent.SubagentCoupled
+import js7.data.subagent.SubagentItemStateEvent.{SubagentCoupled, SubagentDedicated}
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.subagent.BareSubagent
 import js7.tests.testenv.ControllerAgentForScalaTest.*
@@ -152,6 +155,51 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
       eventWatch.await[ItemAttached](_.event.key == subagentId, after = eventId)
     }
   }
+
+  protected final def runSubagent[A](
+    subagentItem: SubagentItem,
+    config: Config = ConfigFactory.empty,
+    suffix: String = "",
+    awaitDedicated: Boolean = true,
+    suppressSignatureKeys: Boolean = false)
+    (body: BareSubagent => A)
+  : A =
+    subagentResource(subagentItem,
+      config = config,
+      suffix = suffix,
+      awaitDedicated = awaitDedicated,
+      suppressSignatureKeys = suppressSignatureKeys
+    ).blockingUse(99.s) { subagent =>
+      // body runs in the callers test thread
+      try body(subagent)
+      catch {
+        case NonFatal(t) =>
+          logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)
+          throw t
+      }
+    }
+
+  protected final def subagentResource(
+    subagentItem: SubagentItem,
+    config: Config = ConfigFactory.empty,
+    suffix: String = "",
+    awaitDedicated: Boolean = true,
+    suppressSignatureKeys: Boolean = false)
+  : Resource[Task, BareSubagent] =
+    Resource.suspend(Task {
+      val eventId = eventWatch.lastAddedEventId
+      directoryProvider
+        .subagentResource(subagentItem, config,
+          suffix = suffix,
+          suppressSignatureKeys = suppressSignatureKeys)
+        .map { subagent =>
+          if (awaitDedicated) {
+            val e = eventWatch.await[SubagentDedicated](after = eventId).head.eventId
+            eventWatch.await[SubagentCoupled](after = e)
+          }
+          subagent
+        }
+    })
 }
 
 object ControllerAgentForScalaTest

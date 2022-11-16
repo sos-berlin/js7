@@ -15,7 +15,7 @@ import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.utils.CatsTestUtils.BlockingTaskResource
+import js7.base.utils.CatsBlocking.BlockingTaskResource
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.value.expression.Expression
 import js7.data.value.expression.Expression.{Argument, StringConstant}
