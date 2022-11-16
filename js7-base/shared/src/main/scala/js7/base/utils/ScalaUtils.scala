@@ -547,6 +547,14 @@ object ScalaUtils
         }
         either
       }
+
+      def tapLeft(tapLeft: L => Unit): either.type = {
+        either match {
+          case Left(left) => tapLeft(left)
+          case Right(_) =>
+        }
+        either
+      }
     }
 
     implicit final class RichThrowableEither[L <: Throwable, R](private val underlying: Either[L, R]) extends AnyVal

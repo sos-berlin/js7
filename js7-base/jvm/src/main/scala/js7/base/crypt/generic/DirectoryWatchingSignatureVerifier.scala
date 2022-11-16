@@ -18,7 +18,7 @@ import js7.base.io.file.watch.{DirectoryState, DirectoryWatcher, WatchOptions}
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
-import js7.base.problem.Checked.catchNonFatal
+import js7.base.problem.Checked.{catchNonFatal, catchNonFatalFlatten}
 import js7.base.problem.{Checked, Problem}
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.IOExecutor
@@ -40,12 +40,14 @@ final class DirectoryWatchingSignatureVerifier private(
   companionToDirectory: Map[SignatureVerifier.Companion, Path],
   settings: Settings,
   onUpdated: () => Unit)
+  (implicit iox: IOExecutor)
 extends SignatureVerifier with AutoCloseable
 {
   @volatile private var state = State(
     companionToDirectory
       .map { case (companion, directory) =>
-        companion -> toVerifier(companion, directory)
+        val checkedVerifier = readDirectory(directory).flatMap(toVerifier(companion, directory, _))
+        companion -> checkedVerifier
       })
 
   private var runningFuture = CancelableFuture.successful(())
@@ -64,14 +66,10 @@ extends SignatureVerifier with AutoCloseable
     Problem.combineAllOption(
       state.companionToVerifier.values.collect { case Left(problem) => problem })
 
-  private def start()(implicit s: Scheduler, iox: IOExecutor): Unit = {
+  private def start()(implicit s: Scheduler): Unit = {
     val companionToDirectoryState =
-      for ((companion, directory) <- companionToDirectory) yield {
-        val directoryState = DirectoryState.readDirectory(
-          directory,
-          file => !file.getFileName.startsWith("."))
-        companion -> (directory -> directoryState)
-      }
+      for ((companion, directory) <- companionToDirectory) yield
+        companion -> (directory -> readDirectory(directory).orThrow)
 
     runningFuture = startAndForget(companionToDirectoryState)
       .onErrorHandle { t =>
@@ -132,51 +130,68 @@ extends SignatureVerifier with AutoCloseable
     WatchOptions(
       directory,
       Set(ENTRY_CREATE, ENTRY_MODIFY, ENTRY_DELETE),
-      matches = _ => true,
+      matches = isRelevantFile,
       retryDelays = settings.retryDelays,
       pollTimeout = settings.pollTimeout,
       delay = settings.watchDelay)
 
-  private def rereadDirectory(directory: Path)(implicit iox: IOExecutor): Task[Unit] =
-    iox(logger.debugTask(
-      Task {
-        val updated: Map[SignatureVerifier.Companion, Checked[SignatureVerifier]] =
-          companionToDirectory
-            .collect { case (companion, `directory`) =>
-              val verifier = toVerifier(companion, directory)
-              for (problem <- verifier.left)
-                logger.error(s"Signature key for ${companion.typeName}: $problem")
-              companion -> verifier
-            }
-
-        // Update state atomically:
-        state = State(state.companionToVerifier ++ updated)
-
-        try onUpdated()
-        catch { case NonFatal(t) =>
-          logger.error(s"onUpdated => ${t.toStringWithCauses}", t)
-        }
-      }))
-
-  private def toVerifier(companion: SignatureVerifier.Companion, directory: Path)
-  : Checked[SignatureVerifier] =
-    catchNonFatal(
-      DirectoryState.readDirectory(directory, file => !file.getFileName.startsWith("."))
-    ).flatMap { directoryState =>
-      val files = directoryState.fileToEntry.keys.toVector
-      companion
-        .checked(
-          files.map(file => directory.resolve(file).byteArray),
-          origin = directory.toString)
-        .tapEach { verifier =>
-          logger.info("Trusting updated signature key")
-          for (o <- verifier.publicKeysToStrings) logger.info(s"  $o")
-          if (files.isEmpty) {
-            logger.warn(
-              s"  No public key files for signature verifier '${companion.typeName}' in directory '$directory'")
+  private def rereadDirectory(directory: Path): Task[Unit] =
+    logger.debugTask(
+      Task.defer {
+        //val updated: Map[SignatureVerifier.Companion, Checked[SignatureVerifier]] =
+        companionToDirectory
+          .collect { case (companion, `directory`) =>
+            iox(Task(readDirectory(directory)))
+              .flatMapT(directoryState => Task(
+                toVerifier(companion, directory, directoryState)))
+              .map(companion -> _)
           }
+          .toVector
+          .sequence
+          .map { updated =>
+            // Update state atomically:
+            state = State(state.companionToVerifier ++ updated)
+
+            try onUpdated()
+            catch { case NonFatal(t) =>
+              logger.error(s"onUpdated => ${t.toStringWithCauses}", t)
+            }
+          }
+      })
+
+  private def toVerifier(
+    companion: SignatureVerifier.Companion,
+    directory: Path,
+    directoryState: DirectoryState)
+  : Checked[SignatureVerifier] = {
+    val files = directoryState.files.toVector
+    val checked = catchNonFatalFlatten(
+      companion.checked(
+        files.map(file => directory.resolve(file).byteArray),
+        origin = directory.toString))
+
+    checked match {
+      case Left(problem) =>
+        logger.error(s"${companion.typeName} signature keys are not readable: $problem")
+
+      case Right(verifier) =>
+        logger.info("Trusting updated signature key")
+        for (o <- verifier.publicKeysToStrings) logger.info(s"  $o")
+        if (files.isEmpty) {
+          logger.warn(
+            s"  No public key files for signature verifier '${companion.typeName}' in directory '$directory'")
         }
     }
+
+    checked
+  }
+
+  private def readDirectory(directory: Path): Checked[DirectoryState] =
+    catchNonFatal(
+      DirectoryState.readDirectory(directory, isRelevantFile))
+
+  private def isRelevantFile(file: Path) =
+    !file.getFileName.startsWith(".")
 
   override def verify(document: ByteArray, signature: GenericSignature): Checked[Seq[SignerId]] =
     state.genericVerifier.verify(document, signature)
@@ -209,7 +224,7 @@ object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion
     checked(config, onUpdated)
       .tapEach(_.start())
 
-  private def checked(config: Config, onUpdated: () => Unit)
+  private def checked(config: Config, onUpdated: () => Unit)(implicit iox: IOExecutor)
   : Checked[DirectoryWatchingSignatureVerifier] =
     config.getObject(configPath).asScala.toMap  // All Config key-values
       .map { case (typeName, v) =>

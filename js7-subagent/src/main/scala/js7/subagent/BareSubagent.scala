@@ -146,4 +146,7 @@ object BareSubagent
     (implicit F: Sync[F])
   : Resource[F, Scheduler] =
     ThreadPools.standardSchedulerResource[F](conf.name, conf.config, orCommon = orCommon)
+
+  type ItemSignatureKeysUpdated = ItemSignatureKeysUpdated.type
+  case object ItemSignatureKeysUpdated
 }

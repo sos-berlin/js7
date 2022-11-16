@@ -327,7 +327,7 @@ extends HasCloser
   private def subagentEnvironment(subagentId: SubagentId, suffix: String): Resource[Task, Path] =
     Resource.make(
       acquire = Task {
-        val dir = directory / "subagents" / (subagentId.string + suffix)
+        val dir = bareSubagentToDirectory(subagentId, suffix)
         createDirectories(directory / "subagents")
         createDirectory(dir)
         createDirectory(dir / "data")
@@ -337,6 +337,9 @@ extends HasCloser
       release = dir => Task {
         deleteDirectoryRecursively(dir)
       })
+
+  def bareSubagentToDirectory(subagentId: SubagentId, suffix: String = ""): Path =
+    directory / "subagents" / (subagentId.string + suffix)
 
   private def provideSignatureKeys(trustedSignatureDir: Path) =
     for ((key, i) <- verifier.publicKeys.zipWithIndex) {

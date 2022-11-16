@@ -488,6 +488,16 @@ final class ScalaUtilsTest extends OurTestSuite
       assert(x == 7)
     }
 
+    "tapLeft" in {
+      val left: Either[String, Int] = Left("LEFT")
+      var x = "?"
+      assert(left.tapLeft(x = _) == Left("LEFT"))
+      assert(x == "LEFT")
+
+      val right: Either[String, Int] = Right(7)
+      assert(right.tapLeft(_ => fail()) == Right(7))
+    }
+
     ".left.orThrow" in {
       intercept[RuntimeException](Right(1).left.orThrow)
       assert(Left(1).left.orThrow == 1)

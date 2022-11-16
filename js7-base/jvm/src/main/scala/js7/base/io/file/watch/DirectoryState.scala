@@ -45,6 +45,9 @@ final case class DirectoryState(fileToEntry: Map[Path, Entry])
     diffToDirectoryEvents(MapDiff.diff(fileToEntry, other.fileToEntry))
       .toVector
 
+  def files: Iterable[Path] =
+    fileToEntry.keys
+
   def isEmpty =
     fileToEntry.isEmpty
 }

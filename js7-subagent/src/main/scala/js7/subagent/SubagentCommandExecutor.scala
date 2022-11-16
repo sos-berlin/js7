@@ -1,10 +1,12 @@
 package js7.subagent
 
 import cats.syntax.traverse.*
-import js7.base.crypt.generic.GenericSignatureVerifier
+import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier
+import js7.base.eventbus.StandardEventBus
 import js7.base.log.Logger
 import js7.base.problem.Checked
 import js7.base.stream.Numbered
+import js7.base.thread.IOExecutor
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SetOnce
@@ -15,10 +17,12 @@ import js7.data.subagent.SubagentEvent.SubagentItemAttached
 import js7.data.subagent.{SubagentCommand, SubagentState}
 import js7.journal.watch.InMemoryJournal
 import js7.launcher.configuration.JobLauncherConf
+import js7.subagent.BareSubagent.ItemSignatureKeysUpdated
 import js7.subagent.SubagentCommandExecutor.*
 import js7.subagent.SubagentExecutor.Dedicated
 import js7.subagent.configuration.SubagentConf
 import monix.eval.Task
+import monix.execution.Scheduler
 import monix.reactive.Observable
 import scala.concurrent.duration.Deadline.now
 
@@ -26,14 +30,21 @@ final class SubagentCommandExecutor(
   protected val journal: InMemoryJournal[SubagentState],
   protected val subagentConf: SubagentConf,
   protected val jobLauncherConf: JobLauncherConf)
+  (implicit scheduler: Scheduler, iox: IOExecutor)
 extends SubagentExecutor
 {
   protected[subagent] final val dedicatedOnce = SetOnce[Dedicated](SubagentNotDedicatedProblem)
 
+  val testEventBus = new StandardEventBus[Any]
+
+  private val signatureVerifier = DirectoryWatchingSignatureVerifier
+    .start(
+      subagentConf.config,
+      () => testEventBus.publish(ItemSignatureKeysUpdated))
+    .orThrow
+
   def checkedDedicated: Checked[Dedicated] =
     dedicatedOnce.checked
-
-  private val signatureVerifier = GenericSignatureVerifier.checked(subagentConf.config).orThrow
 
   def executeCommand(numbered: Numbered[SubagentCommand]): Task[Checked[numbered.value.Response]] =
     Task.defer {

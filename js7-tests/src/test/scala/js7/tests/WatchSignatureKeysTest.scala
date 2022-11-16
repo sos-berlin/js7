@@ -22,14 +22,18 @@ import js7.controller.RunningController
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerState
 import js7.data.item.{ItemSigner, VersionId}
-import js7.data.order.OrderEvent.{OrderAdded, OrderFinished}
+import js7.data.order.OrderEvent.{OrderAdded, OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
+import js7.data.subagent.SubagentId
 import js7.data.workflow.{Workflow, WorkflowPath}
+import js7.subagent.BareSubagent
 import js7.tests.WatchSignatureKeysTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
+import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
+import scala.collection.View
 import scala.concurrent.Future
 
 final class WatchSignatureKeysTest extends OurTestSuite with ControllerAgentForScalaTest
@@ -39,10 +43,16 @@ final class WatchSignatureKeysTest extends OurTestSuite with ControllerAgentForS
     js7.configuration.trusted-signature-key-settings.file-delay = ${(systemWatchDelay + 1.s).pretty}
     """
 
+  // Used for Subagent, too
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
+    js7.configuration.trusted-signature-key-settings.file-delay = ${(systemWatchDelay + 1.s).pretty}
     """
+
   protected val agentPaths = Seq(agentPath)
+  override protected lazy val bareSubagentIds = Map(
+    agentPath -> Seq(bareSubagentId))
+
   protected val items = Nil
 
   private lazy val workDir = createTempDirectory("WatchSignatureKeysTest")
@@ -60,8 +70,16 @@ final class WatchSignatureKeysTest extends OurTestSuite with ControllerAgentForS
     directoryProvider.controller.configDir / "private" / "trusted-x509-keys"
   private lazy val agentsKeyDirectory =
     directoryProvider.agents.head.configDir / "private" / "trusted-x509-keys"
+  private lazy val subagentsKeyDirectory = directoryProvider
+    .bareSubagentToDirectory(bareSubagentId) / "config" / "private" / "trusted-x509-keys"
 
   private val nextVersion = Iterator.from(1).map(i => VersionId(s"V$i")).next _
+
+  override def beforeAll(): Unit = {
+    super.beforeAll()
+    // Use only our BareSubagent
+    enableSubagents(toLocalSubagentId(agentPath) -> false)
+  }
 
   override def afterAll() = {
     deleteDirectoryRecursively(workDir)
@@ -83,6 +101,7 @@ final class WatchSignatureKeysTest extends OurTestSuite with ControllerAgentForS
 
       delete(controllersKeyDirectory / "key-1.pem")
       delete(agentsKeyDirectory / "key-1.pem")
+      delete(subagentsKeyDirectory / "key-1.pem")
       whenUpdated.await(99.s)
 
       val v = nextVersion()
@@ -95,6 +114,7 @@ final class WatchSignatureKeysTest extends OurTestSuite with ControllerAgentForS
       val whenUpdated = whenControllerAndAgentUpdated()
       controllersKeyDirectory / "key-1.pem" := pem
       agentsKeyDirectory / "key-1.pem" := pem
+      subagentsKeyDirectory / "key-1.pem" := pem
       whenUpdated.await(99.s)
     }
   }
@@ -123,6 +143,7 @@ final class WatchSignatureKeysTest extends OurTestSuite with ControllerAgentForS
       X509Cert.fromPem(bCertAndKey.certificatePem).orThrow
       controllersKeyDirectory / "key-1.pem" := bCertAndKey.certificatePem
       agentsKeyDirectory / "key-1.pem" := bCertAndKey.certificatePem
+      subagentsKeyDirectory / "key-1.pem" := bCertAndKey.certificatePem
       whenUpdated.await(99.s)
 
       val checked = controllerApi.updateRepo(v, Seq(sign(workflow.withVersion(v)))).await(99.s)
@@ -148,28 +169,37 @@ final class WatchSignatureKeysTest extends OurTestSuite with ControllerAgentForS
       new ItemSigner(cSigner, ControllerState.signableItemJsonCodec)
     }
 
-    val whenUpdated = whenControllerAndAgentUpdated()
+    val controllerUpdated = controller.testEventBus.when[RunningController.ItemSignatureKeysUpdated]
+      .void.runToFuture
+    val agentUpdated = agent.testEventBus.when[AgentActor.ItemSignatureKeysUpdated]
+      .void.runToFuture
+    val subagentUpdated = bareSubagents.head.testEventBus.when[BareSubagent.ItemSignatureKeysUpdated]
+      .void.runToFuture
 
     X509Cert.fromPem(cCertAndKey.certificatePem).orThrow // Check
     val pem = ByteArray(cCertAndKey.certificatePem).toArray
 
     autoClosing(new FileOutputStream((controllersKeyDirectory / "key-1.pem").toFile)) { controllerFile =>
       autoClosing(new FileOutputStream((agentsKeyDirectory / "key-1.pem").toFile)) { agentFile =>
-        val n = 40
-        for (i <- 0 until n) withClue(s"${(i.s / 10).pretty} -> ") {
-          controllerFile.write(pem(i))
-          controllerFile.flush()
-          agentFile.write(pem(i))
-          agentFile.flush()
-          sleep(100.ms)
-          assert(!whenUpdated.isCompleted)
+        autoClosing(new FileOutputStream((subagentsKeyDirectory / "key-1.pem").toFile)) { subagentFile =>
+          val n = 40
+          for (i <- 0 until n) withClue(s"${(i.s / 10).pretty} -> ") {
+            for (file <- View(controllerFile, agentFile, subagentFile)) {
+              file.write(pem(i))
+              file.flush()
+            }
+            sleep(100.ms)
+          }
+          assert(!controllerUpdated.isCompleted)
+          assert(!agentUpdated.isCompleted)
+          assert(!subagentUpdated.isCompleted)
+          controllerFile.write(pem, n, pem.length - n)
+          agentFile.write(pem, n, pem.length - n)
         }
-        controllerFile.write(pem, n, pem.length - n)
-        agentFile.write(pem, n, pem.length - n)
       }
     }
 
-    whenUpdated.await(99.s)
+    Future.sequence(Seq[Future[Unit]](controllerUpdated, agentUpdated, subagentUpdated)).await(99.s)
 
     val v = nextVersion()
     controllerApi.updateRepo(v, Seq(cItemSigner.sign(workflow.withVersion(v)))).await(99.s).orThrow
@@ -178,21 +208,25 @@ final class WatchSignatureKeysTest extends OurTestSuite with ControllerAgentForS
   }
 
   private def whenControllerAndAgentUpdated(): Future[Unit] =
-    Task.parZip2(
+    Task.parZip3(
       controller.testEventBus.when[RunningController.ItemSignatureKeysUpdated],
-      agent.testEventBus.when[AgentActor.ItemSignatureKeysUpdated]
+      agent.testEventBus.when[AgentActor.ItemSignatureKeysUpdated],
+      bareSubagents.head.testEventBus.when[BareSubagent.ItemSignatureKeysUpdated]
     ).void.runToFuture
 
   private def testOrder(versionId: VersionId): Unit = {
     val events = controller.runOrder(FreshOrder(OrderId(versionId.toString), workflow.path))
-    assert(events.last.value.isInstanceOf[OrderFinished])
-    assert(events.head.value.asInstanceOf[OrderAdded].workflowId == workflow.path ~ versionId)
+      .map(_.value)
+    assert(events.last.isInstanceOf[OrderFinished])
+    assert(events.head.asInstanceOf[OrderAdded].workflowId == workflow.path ~ versionId)
+    assert(events.collectFirst { case OrderProcessingStarted(Some(`bareSubagentId`), _) => }.isDefined)
   }
 }
 
 object WatchSignatureKeysTest
 {
   private val agentPath = AgentPath("AGENT")
+  private val bareSubagentId = SubagentId("BARE-SUBAGENT")
   private val workflow = Workflow(
     WorkflowPath("WORKFLOW"),
     Seq(
