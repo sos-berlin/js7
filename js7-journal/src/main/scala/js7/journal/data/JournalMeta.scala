@@ -10,9 +10,6 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.RichString
 import js7.data.event.{Event, JournalHeader, KeyedEvent, KeyedEventTypedJsonCodec, SnapshotableState, Stamped}
 
-/**
-  * @author Joacim Zschimmer
-  */
 final case class JournalMeta(
   snapshotObjectJsonCodec: TypedJsonCodec[Any],
   eventJsonCodec: KeyedEventTypedJsonCodec[Event],
@@ -26,10 +23,12 @@ final case class JournalMeta(
 
   private val jsonDecoder: Decoder[Any] = {
     val stampedEventDecoder = implicitly[Decoder[Stamped[KeyedEvent[Event]]]]
-    stampedEventDecoder or snapshotObjectJsonCodec or JournalHeader.jsonCodec.asInstanceOf[Decoder[Any]]
+    stampedEventDecoder or
+      snapshotObjectJsonCodec or
+      JournalHeader.jsonCodec.asInstanceOf[Decoder[Any]]
   }
 
-  def decodeJson(json: Json): Checked[Any] =
+  private def decodeJson(json: Json): Checked[Any] =
     if (!json.isObject)
       Right(json)  // JournalSeparator
     else

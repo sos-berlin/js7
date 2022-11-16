@@ -339,7 +339,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
           positionAndLine =>
             (positionAndLine.position,
               positionAndLine.value,
-              positionAndLine.value.parseJson.flatMap(journalMeta.decodeJson).orThrow))
+              positionAndLine.value.parseJson.flatMap(S.decodeJournalJson).orThrow))
         .filter(testHeartbeatSuppressor) // for testing
         .detectPauses(setting.timing.failoverTimeout)
         .flatMap[Checked[Unit]] {

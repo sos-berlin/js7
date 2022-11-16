@@ -1,7 +1,12 @@
 package js7.data.event
 
+import cats.implicits.toShow
+import io.circe.{Decoder, Json}
+import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.typed.TypedJsonCodec
-import js7.base.problem.Checked
+import js7.base.log.Logger
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.ScalaUtils.syntax.RichString
 import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import js7.data.event.KeyedEvent.NoKey
@@ -59,6 +64,8 @@ extends JournaledState[S]
 
 object SnapshotableState
 {
+  private val logger = Logger[this.type]
+
   final case class Standards(journalState: JournalState, clusterState: ClusterState)
   {
     def snapshotSize =
@@ -99,5 +106,26 @@ object SnapshotableState
       }
 
     def newBuilder(): SnapshotableStateBuilder[S]
+
+    private lazy val journalDecoder: Decoder[Any] = {
+      val stampedEventDecoder = implicitly[Decoder[Stamped[KeyedEvent[Event]]]]
+      stampedEventDecoder or
+        snapshotObjectJsonCodec or
+        JournalHeader.jsonCodec.asInstanceOf[Decoder[Any]]
+    }
+
+    def decodeJournalJson(json: Json): Checked[Any] =
+      if (!json.isObject)
+        Right(json) // JournalSeparator
+      else
+        journalDecoder.decodeJson(json) match {
+          case Left(t: io.circe.DecodingFailure) =>
+            val problem = Problem.pure(s"Unexpected JSON: ${ t.show }")
+            logger.error(s"$problem: ${json.compactPrint.truncateWithEllipsis(100)}")
+            Left(problem)
+
+          case Right(o) =>
+            Right(o)
+        }
   }
 }
