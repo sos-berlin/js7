@@ -553,5 +553,6 @@ object RunningController
     actor: ActorRef @@ ControllerOrderKeeper,
     termination: Future[ProgramTermination])
 
+  type ItemSignatureKeysUpdated = ItemSignatureKeysUpdated.type
   case object ItemSignatureKeysUpdated
 }

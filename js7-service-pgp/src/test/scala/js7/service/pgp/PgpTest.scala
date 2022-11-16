@@ -18,8 +18,10 @@ import org.bouncycastle.openpgp.PGPSignature
 
 final class PgpTest extends OurTestSuite
 {
-  private lazy val verifier = new PgpSignatureVerifier(readPublicKeyRingCollection(publicKeyResource.readAs[ByteArray] :: Nil),
-    publicKeyOrigin = "PgpTest")
+  private lazy val verifier =
+    new PgpSignatureVerifier(
+      readPublicKeyRingCollection(publicKeyResource.readAs[ByteArray] :: Nil),
+      publicKeyOrigin = "PgpTest")
 
   "Invalid password for secret key" in {
     for (invalidPassword <- Array("", "INVALID")) {
@@ -28,6 +30,13 @@ final class PgpTest extends OurTestSuite
           // TODO Weird Problem message for an invalid password))
           "org.bouncycastle.openpgp.PGPException: checksum mismatch at in checksum of 20 bytes")))
     }
+  }
+
+  "Empty Verfier" in {
+    val verifier = PgpSignatureVerifier.checked(Nil).orThrow
+    val signer = PgpSigner.checked(secretKeyResource.readAs[ByteArray], secretKeyPassword).orThrow
+    assert(verifier.verify(ByteArray.empty, signer.sign(ByteArray.empty)) ==
+      Left(MessageSignedByUnknownProblem))
   }
 
   "Use predefine private key" - {

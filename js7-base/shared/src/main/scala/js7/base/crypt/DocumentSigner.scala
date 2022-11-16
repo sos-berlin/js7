@@ -13,7 +13,7 @@ trait DocumentSigner
 
   def sign(document: ByteArray): MySignature
 
-  final def signString(document: String) =
+  final def signString(document: String): MySignature =
     sign(ByteArray(document))
 
   final def toSignedString(document:String): SignedString =

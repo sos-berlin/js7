@@ -340,7 +340,9 @@ extends HasCloser
 
   private def provideSignatureKeys(trustedSignatureDir: Path) =
     for ((key, i) <- verifier.publicKeys.zipWithIndex) {
-      trustedSignatureDir / (s"key-${i+1}${verifier.companion.filenameExtension}") := key
+      val file = trustedSignatureDir / (s"key-${i+1}${verifier.companion.filenameExtension}")
+      logger.trace(s"$file := key")
+      file := key
     }
 
   def toSubagentConf(
@@ -547,11 +549,17 @@ object DirectoryProvider
           |done
           |""".stripMargin + (delete ?? s"rm '$file'\n")
 
-  private def writeTrustedSignatureKeys(verifier: SignatureVerifier, configDir: Path, confFilename: String): Unit = {
+  private def writeTrustedSignatureKeys(
+    verifier: SignatureVerifier,
+    configDir: Path,
+    confFilename: String)
+  : Unit = {
     val dir = "private/" + verifier.companion.recommendedKeyDirectoryName
     createDirectory(configDir / dir)
     for ((key, i) <- verifier.publicKeys.zipWithIndex) {
-      configDir / dir / (s"key-${i+1}${verifier.companion.filenameExtension}") := key
+      val file = configDir / dir / (s"key-${i+1}${verifier.companion.filenameExtension}")
+      logger.trace(s"$file := key")
+      file := key
     }
     configDir / confFilename ++=
       s"""js7.configuration.trusted-signature-keys {

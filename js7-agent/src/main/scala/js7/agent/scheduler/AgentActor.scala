@@ -332,5 +332,6 @@ object AgentActor
         clock, agentConfiguration, jobLauncherConf, testEventBus)
   }
 
+  type ItemSignatureKeysUpdated = ItemSignatureKeysUpdated.type
   case object ItemSignatureKeysUpdated
 }

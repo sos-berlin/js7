@@ -99,12 +99,7 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion
         if (verifiers.isEmpty)
           Left(Problem.pure(s"No trusted signature keys - Configure one with $configPath!"))
         else {
-          logger.info(
-            Seq("Trusting public signature keys:")
-              .concat(verifiers
-                .sortBy(_.companion.typeName)
-                .flatMap(_.publicKeysToStrings))
-              .mkString("\n  "))
+          logVerifiers(verifiers)
           Right(
             new GenericSignatureVerifier(verifiers))
         }
@@ -116,6 +111,18 @@ object GenericSignatureVerifier extends SignatureVerifier.Companion
 
   def genericSignatureToSignature(signature: GenericSignature) =
     Right(signature)
+
+  private def logVerifiers(verifiers: Seq[SignatureVerifier]): Unit =
+    if (verifiers.isEmpty)
+      logger.info("Trusting NO public signature keys")
+    else {
+      logger.info(
+        Seq("Trusting public signature keys:")
+          .concat(verifiers
+            .sortBy(_.companion.typeName)
+            .flatMap(_.publicKeysToStrings))
+          .mkString("\n  "))
+    }
 
   private case class ConfigStringExpectedProblem(configKey: String) extends Problem.Lazy(
     s"String expected as value of configuration key $configKey")

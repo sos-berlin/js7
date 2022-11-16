@@ -59,6 +59,8 @@ final class BareSubagent(
   @TestOnly
   def subagentRunId: SubagentRunId =
     commandExecutor.subagentRunId
+
+  def testEventBus = commandExecutor.testEventBus
 }
 
 object BareSubagent
@@ -94,7 +96,7 @@ object BareSubagent
 
   def resource(conf: SubagentConf, js7Scheduler: Scheduler, restartAsDirector: Task[Unit] = Task.unit)
   : Resource[Task, BareSubagent] =
-    Resource.suspend(Task {
+    Resource.suspend(Task.deferAction(scheduler => Task {
       import conf.config
       implicit val s: Scheduler = js7Scheduler
 
@@ -113,8 +115,8 @@ object BareSubagent
           size = inMemoryJournalSize,
           waitingFor = "JS7 Agent Director")
         commandExecutor = new SubagentCommandExecutor(journal, conf,
-          conf.toJobLauncherConf(iox, blockingInternalJobScheduler, clock).orThrow)
-
+          conf.toJobLauncherConf(iox, blockingInternalJobScheduler, clock).orThrow)(
+          scheduler, iox)
         actorSystem <- Akkas.actorSystemResource(conf.name, config, js7Scheduler)
         sessionRegister = SessionRegister.start[SimpleSession](
           actorSystem, SimpleSession(_), config)
@@ -130,7 +132,7 @@ object BareSubagent
         logger.info("Subagent is ready to be dedicated" + "\n" + "─" * 80)
         subagent
       }).executeOn(js7Scheduler)
-    })
+    }))
 
   private def provideUriFile(conf: SubagentConf, uri: Checked[Uri]): Resource[Task, Path] = {
     val uriFile = conf.workDirectory / "http-uri"
