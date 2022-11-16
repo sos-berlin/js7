@@ -14,7 +14,7 @@ import js7.data.event.{Event, JournalHeader, KeyedEvent, KeyedEventTypedJsonCode
   * @author Joacim Zschimmer
   */
 final case class JournalMeta(
-  snapshotJsonCodec: TypedJsonCodec[Any],
+  snapshotObjectJsonCodec: TypedJsonCodec[Any],
   eventJsonCodec: KeyedEventTypedJsonCodec[Event],
   /** Path without extension, like "/directory/test". */
   fileBase: Path)
@@ -26,7 +26,7 @@ final case class JournalMeta(
 
   private val jsonDecoder: Decoder[Any] = {
     val stampedEventDecoder = implicitly[Decoder[Stamped[KeyedEvent[Event]]]]
-    stampedEventDecoder or snapshotJsonCodec or JournalHeader.jsonCodec.asInstanceOf[Decoder[Any]]
+    stampedEventDecoder or snapshotObjectJsonCodec or JournalHeader.jsonCodec.asInstanceOf[Decoder[Any]]
   }
 
   def decodeJson(json: Json): Checked[Any] =

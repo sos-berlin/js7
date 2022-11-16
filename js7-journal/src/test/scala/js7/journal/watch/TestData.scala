@@ -42,7 +42,7 @@ private[watch] object TestData
       writer.writeHeader(JournalHeaders.forTest(journalId, eventId = after))
       writer.beginSnapshotSection()
       for (o <- snapshotObjects) {
-        writer.writeSnapshot(ByteArray(journalMeta.snapshotJsonCodec.encodeObject(o).compactPrint))
+        writer.writeSnapshot(ByteArray(journalMeta.snapshotObjectJsonCodec.encodeObject(o).compactPrint))
       }
       writer.endSnapshotSection()
       writer.beginEventSection(sync = false)

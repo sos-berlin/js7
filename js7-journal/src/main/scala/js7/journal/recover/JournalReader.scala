@@ -74,7 +74,7 @@ extends AutoCloseable
     synchronized {
       journalHeader +:
         Observable.fromIteratorUnsafe(untilNoneIterator(nextSnapshotJson()))
-          .mapParallelBatch()(json => journalMeta.snapshotJsonCodec.decodeJson(json).toChecked.orThrow)
+          .mapParallelBatch()(json => journalMeta.snapshotObjectJsonCodec.decodeJson(json).toChecked.orThrow)
     }
 
   private[recover] def readSnapshotRaw: Observable[ByteArray] =
