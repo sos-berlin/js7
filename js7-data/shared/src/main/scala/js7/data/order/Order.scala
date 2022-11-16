@@ -545,7 +545,7 @@ final case class Order[+S <: Order.State](
     }
 
   def lastOutcome: Outcome =
-    historicOutcomes.lastOption.map(_.outcome) getOrElse Outcome.succeeded
+    historicOutcomes.lastOption.fold_(Outcome.succeeded, _.outcome)
 
   def isFailable =
     !isSuspended &&

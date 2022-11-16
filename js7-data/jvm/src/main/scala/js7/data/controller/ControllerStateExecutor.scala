@@ -114,7 +114,7 @@ final case class ControllerStateExecutor private(
       .map(_.toVector)
   }
 
-  private[controller] def forciblyDetachOrder(order: Order[Order.State], agentPath: AgentPath)
+  private def forciblyDetachOrder(order: Order[Order.State], agentPath: AgentPath)
   : Checked[Seq[KeyedEvent[OrderCoreEvent]]] = {
     val outcome = Outcome.Disrupted(AgentResetProblem(agentPath))
     val stateEvents = (order.state: State) match {
