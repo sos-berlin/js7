@@ -2,6 +2,7 @@ package js7.core.cluster.watch
 
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixDeadline.now
+import js7.base.monixutils.MonixDeadline.syntax.DeadlineSchedule
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.test.OurTestSuite
@@ -41,7 +42,7 @@ final class ClusterWatchTest extends OurTestSuite
     lazy val scheduler = TestScheduler()
 
     def newClusterWatch(initialState: Option[HasNodes] = None) = {
-      val w = new ClusterWatch(ControllerId("CONTROLLER"), scheduler)
+      val w = new ClusterWatch(ControllerId("CONTROLLER"), () => scheduler.now)
       for (s <- initialState) w.heartbeat(s.activeId, s).await(99.s).orThrow
       w
     }

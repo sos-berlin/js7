@@ -16,12 +16,11 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.node.NodeId
 import monix.catnap.MVar
 import monix.eval.Task
-import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
 import scala.util.chaining.scalaUtilChainingOps
 
-final class ClusterWatch(controllerId: ControllerId, scheduler: Scheduler)
+final class ClusterWatch(controllerId: ControllerId, now: () => MonixDeadline)
 extends ClusterWatchApi
 {
   private val stateMVar = MVar[Task].of(None: Option[State]).memoize
@@ -194,12 +193,10 @@ extends ClusterWatchApi
             mvar.put(current)
               .map(_ => Left(problem))
           case Right(updated) =>
-            mvar.put(Some(State(updated, now)))
+            mvar.put(Some(State(updated, now())))
               .map(_ => Right(updated))
         }
       })
-
-  private def now = MonixDeadline.now(scheduler)
 
   override def toString = s"ClusterWatch($controllerId)"
 }
