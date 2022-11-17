@@ -1,10 +1,10 @@
-package js7.core.cluster
+package js7.core.cluster.watch
 
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.common.akkahttp.web.session.Session
-import js7.core.cluster.ClusterWatchSession.*
+import js7.core.cluster.watch.ClusterWatchSession.*
 import monix.eval.Task
 import monix.execution.atomic.Atomic
 import org.jetbrains.annotations.TestOnly

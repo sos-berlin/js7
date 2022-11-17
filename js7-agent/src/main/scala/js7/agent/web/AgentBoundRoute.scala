@@ -15,7 +15,7 @@ import js7.common.akkahttp.web.auth.CSRF.forbidCSRF
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.SessionRegister
-import js7.core.cluster.ClusterWatchRegister
+import js7.core.cluster.watch.ClusterWatchRegister
 import js7.core.command.CommandMeta
 import js7.journal.watch.EventWatch
 import monix.execution.Scheduler

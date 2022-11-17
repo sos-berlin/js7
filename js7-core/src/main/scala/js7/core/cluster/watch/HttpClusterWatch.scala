@@ -1,4 +1,4 @@
-package js7.core.cluster
+package js7.core.cluster.watch
 
 import akka.actor.ActorSystem
 import io.circe.*
@@ -14,8 +14,8 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.HttpClient.HttpException
 import js7.base.web.Uri
 import js7.common.http.AkkaHttpClient
-import js7.core.cluster.ClusterWatch.isClusterWatchProblem
-import js7.core.cluster.HttpClusterWatch.*
+import js7.core.cluster.watch.ClusterWatch.isClusterWatchProblem
+import js7.core.cluster.watch.HttpClusterWatch.*
 import js7.data.cluster.ClusterState
 import js7.data.node.NodeId
 import js7.data.session.HttpSessionApi

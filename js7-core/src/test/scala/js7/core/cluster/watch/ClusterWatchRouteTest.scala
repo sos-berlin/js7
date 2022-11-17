@@ -1,4 +1,4 @@
-package js7.core.cluster
+package js7.core.cluster.watch
 
 import akka.http.scaladsl.model.MediaTypes.`application/json`
 import akka.http.scaladsl.model.StatusCodes.{BadRequest, OK}

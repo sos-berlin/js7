@@ -20,8 +20,8 @@ import js7.base.utils.SetOnce
 import js7.base.web.Uri
 import js7.cluster.ClusterCommon.*
 import js7.common.system.startup.Halt.haltJava
-import js7.core.cluster.ClusterWatch.ClusterWatchInactiveNodeProblem
-import js7.core.cluster.HttpClusterWatch
+import js7.core.cluster.watch.ClusterWatch.ClusterWatchInactiveNodeProblem
+import js7.core.cluster.watch.HttpClusterWatch
 import js7.core.license.LicenseChecker
 import js7.data.cluster.ClusterEvent.ClusterPassiveLost
 import js7.data.cluster.ClusterState.{FailedOver, HasNodes, SwitchedOver}

@@ -33,7 +33,7 @@ import js7.cluster.ClusterConf.ClusterProductName
 import js7.cluster.PassiveClusterNode.*
 import js7.common.http.RecouplingStreamReader
 import js7.common.jsonseq.PositionAnd
-import js7.core.cluster.ClusterWatch.{ClusterFailOverWhilePassiveLostProblem, UntaughtClusterWatchProblem}
+import js7.core.cluster.watch.ClusterWatch.{ClusterFailOverWhilePassiveLostProblem, UntaughtClusterWatchProblem}
 import js7.data.cluster.ClusterCommand.{ClusterCouple, ClusterPassiveDown, ClusterPrepareCoupling, ClusterRecouple}
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{Coupled, Decoupled, PreparedToBeCoupled}

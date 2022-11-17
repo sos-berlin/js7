@@ -8,7 +8,7 @@ import js7.base.auth.SimpleUser
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.session.SessionRegister
-import js7.core.cluster.ClusterWatchRegister
+import js7.core.cluster.watch.ClusterWatchRegister
 import js7.core.command.CommandMeta
 import js7.journal.watch.EventWatch
 import monix.eval.Task

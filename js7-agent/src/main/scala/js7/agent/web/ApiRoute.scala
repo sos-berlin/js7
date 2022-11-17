@@ -8,7 +8,7 @@ import js7.base.auth.ValidUserPermission
 import js7.base.problem.Problem
 import js7.common.akkahttp.StandardMarshallers.*
 import js7.common.akkahttp.web.session.SessionRoute
-import js7.core.cluster.ClusterWatchRoute
+import js7.core.cluster.watch.ClusterWatchRoute
 import js7.data.controller.ControllerId
 
 /**

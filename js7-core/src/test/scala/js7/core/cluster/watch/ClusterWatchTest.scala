@@ -1,4 +1,4 @@
-package js7.core.cluster
+package js7.core.cluster.watch
 
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixDeadline.now
@@ -9,7 +9,7 @@ import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.common.message.ProblemCodeMessages
-import js7.core.cluster.ClusterWatch.*
+import js7.core.cluster.watch.ClusterWatch.*
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterPassiveLost, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{Coupled, HasNodes, NodesAppointed, PassiveLost, SwitchedOver}
 import js7.data.cluster.{ClusterEvent, ClusterSetting, ClusterState, ClusterTiming}

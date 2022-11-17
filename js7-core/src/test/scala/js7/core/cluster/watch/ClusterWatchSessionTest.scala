@@ -1,9 +1,9 @@
-package js7.core.cluster
+package js7.core.cluster.watch
 
 import js7.base.problem.Problem
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.core.cluster.ClusterWatchSession.OutdatedRequestProblem
+import js7.core.cluster.watch.ClusterWatchSession.OutdatedRequestProblem
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec

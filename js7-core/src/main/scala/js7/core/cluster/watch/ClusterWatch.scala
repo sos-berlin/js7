@@ -1,4 +1,4 @@
-package js7.core.cluster
+package js7.core.cluster.watch
 
 import js7.base.generic.Completed
 import js7.base.log.Logger
@@ -7,7 +7,7 @@ import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem, ProblemCode}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.core.cluster.ClusterWatch.*
+import js7.core.cluster.watch.ClusterWatch.*
 import js7.data.cluster.ClusterEvent.{ClusterFailedOver, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{Coupled, HasNodes, PassiveLost}
 import js7.data.cluster.{ClusterEvent, ClusterState}

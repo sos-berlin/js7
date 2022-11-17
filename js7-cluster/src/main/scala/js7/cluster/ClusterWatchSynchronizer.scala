@@ -15,7 +15,7 @@ import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.cluster.ClusterWatchSynchronizer.*
 import js7.common.system.startup.Halt.haltJava
-import js7.core.cluster.{ClusterWatchEvents, HttpClusterWatch}
+import js7.core.cluster.watch.{ClusterWatchEvents, HttpClusterWatch}
 import js7.data.cluster.ClusterEvent.ClusterFailedOver
 import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.{ClusterEvent, ClusterState, ClusterTiming}

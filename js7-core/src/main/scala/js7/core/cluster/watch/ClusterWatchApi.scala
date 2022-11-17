@@ -1,4 +1,4 @@
-package js7.core.cluster
+package js7.core.cluster.watch
 
 import js7.base.generic.Completed
 import js7.base.problem.Checked
