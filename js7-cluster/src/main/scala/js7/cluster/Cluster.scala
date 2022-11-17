@@ -72,30 +72,31 @@ final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
     * @return A pair of `Task`s with maybe the current `S` of this passive node (if so)
     *         and ClusterFollowUp.
     */
-  def start(recovered: Recovered[S]): (Task[Option[Checked[S]]], Task[Checked[ClusterFollowUp[S]]]) = {
+  def start(recovered: Recovered[S]): (Task[Option[Checked[S]]], Task[Checked[Recovered[S]]]) = {
     if (recovered.clusterState != Empty) logger.info(
       s"This cluster node '${ownId.string}', recovered ClusterState is ${recovered.clusterState}")
-    val (currentPassiveReplicatedState, followUp) = startNode(recovered)
-    val workingFollowUp = followUp.flatMapT {
-      case followUp: ClusterFollowUp.BecomeActive[S] =>
-        val workingClusterNode = new WorkingClusterNode(persistence, common, clusterConf)
-        assertThat(!_passiveOrWorkingNode.exists(_.isRight))
-        _passiveOrWorkingNode = Some(Right(workingClusterNode))
-        workingClusterNode.startIfNonEmpty(followUp.recovered.clusterState, followUp.recovered.eventId)
-          .map(_.map((_: Completed) => followUp))
-      }
-    currentPassiveReplicatedState -> workingFollowUp
+    val (currentPassiveReplicatedState, activeRecovered) = startNode(recovered)
+    currentPassiveReplicatedState ->
+      activeRecovered.flatMapT(startWorkingNode)
+  }
+
+  private def startWorkingNode(recovered: Recovered[S]): Task[Checked[Recovered[S]]] = {
+    val workingClusterNode = new WorkingClusterNode(persistence, common, clusterConf)
+    assertThat(!_passiveOrWorkingNode.exists(_.isRight))
+    _passiveOrWorkingNode = Some(Right(workingClusterNode))
+    workingClusterNode.startIfNonEmpty(recovered.clusterState, recovered.eventId)
+      .map(_.map((_: Completed) => recovered))
   }
 
   private def startNode(recovered: Recovered[S])
-  : (Task[Option[Checked[S]]], Task[Checked[ClusterFollowUp[S]]]) =
+  : (Task[Option[Checked[S]]], Task[Checked[Recovered[S]]]) =
     recovered.clusterState match {
       case Empty =>
         if (clusterConf.isPrimary) {
           logger.debug(s"Active primary cluster node '${ownId.string}', no backup node appointed")
           Task.pure(None) ->
             (activationInhibitor.startActive >>
-              Task.pure(Right(ClusterFollowUp.BecomeActive(recovered))))
+              Task.pure(Right(recovered)))
         } else if (recovered.eventId != EventId.BeforeFirst)
           Task.pure(Some(Left(PrimaryClusterNodeMayNotBecomeBackupProblem))) ->
             Task.pure(Left(PrimaryClusterNodeMayNotBecomeBackupProblem))
@@ -114,7 +115,7 @@ final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
     }
 
   private def startAsBackupNodeWithEmptyClusterState(recovered: Recovered[S])
-  : (Task[Option[Checked[S]]], Task[Checked[ClusterFollowUp[S]]]) = {
+  : (Task[Option[Checked[S]]], Task[Checked[Recovered[S]]]) = {
     logger.info(s"Backup cluster node '$ownId', awaiting appointment from a primary node")
     val startedPromise = Promise[ClusterStartBackupNode]()
     expectingStartBackupCommand := startedPromise
@@ -135,7 +136,7 @@ final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
   }
 
   private def startAsActiveNodeWithBackup(recovered: Recovered[S])
-  : (Task[Option[Checked[S]]], Task[Checked[ClusterFollowUp[S]]]) = {
+  : (Task[Option[Checked[S]]], Task[Checked[Recovered[S]]]) = {
     recovered.clusterState match {
       case recoveredClusterState: Coupled =>
         import recoveredClusterState.passiveId
@@ -157,7 +158,7 @@ final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
         } ->
           failedOver.flatMap {
             case None =>
-              Task.pure(Right(ClusterFollowUp.BecomeActive(recovered)))
+              Task.pure(Right(recovered))
             case Some((ourRecovered, passiveClusterNode)) =>
               passiveClusterNode.run(ourRecovered.state)
           }
@@ -166,7 +167,7 @@ final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
         logger.info("Remaining the active cluster node, not coupled with passive node")
         Task.pure(None) ->
           (activationInhibitor.startActive >>
-            Task.pure(Right(ClusterFollowUp.BecomeActive(recovered))))
+            Task.pure(Right(recovered)))
     }
   }
 

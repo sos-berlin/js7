@@ -123,7 +123,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
     * Runs the passive node until activated or terminated.
     * Returns also a `Task` with the current ClusterState while being passive or active.
     */
-  def run(recoveredState: S): Task[Checked[ClusterFollowUp[S]]] =
+  def run(recoveredState: S): Task[Checked[Recovered[S]]] =
     Task(common.licenseChecker.checkLicense(ClusterProductName))
       .flatMapT(_ => Task.deferAction { implicit s =>
         val recoveredClusterState = recoveredState.clusterState
@@ -205,7 +205,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
       ClusterCouple(activeId = activeId, passiveId = ownId))
 
   private def replicateJournalFiles(recoveredClusterState: ClusterState)
-  : Task[Checked[ClusterFollowUp[S]]] =
+  : Task[Checked[Recovered[S]]] =
     activeApiResource
       .use(activeNodeApi =>
         Task.tailRecM(
@@ -227,8 +227,8 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
               case Right(continuation) if shouldActivate(continuation.clusterState) =>
                 logger.info(s"Activating because ClusterState has become ${continuation.clusterState}")
                 // Replace Recovered (forget the old one, do not close, because JournalEventWatch is the same)
-                Right(Right(ClusterFollowUp.BecomeActive(
-                  recovered.changeRecoveredJournalFile(continuation.maybeRecoveredJournalFile))))
+                Right(Right(
+                  recovered.changeRecoveredJournalFile(continuation.maybeRecoveredJournalFile)))
 
               case Right(continuation) =>
                 Left(continuation)

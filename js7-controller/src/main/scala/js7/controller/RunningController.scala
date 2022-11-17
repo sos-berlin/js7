@@ -34,7 +34,7 @@ import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Closer, ProgramTermination, SetOnce}
 import js7.cluster.Cluster.RestartAfterJournalTruncationException
-import js7.cluster.{Cluster, ClusterFollowUp, WorkingClusterNode}
+import js7.cluster.{Cluster, WorkingClusterNode}
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.guice.GuiceImplicits.RichInjector
@@ -337,8 +337,13 @@ object RunningController
       val clusterFollowUpFuture = clusterFollowUp.runToFuture
 
       val (orderKeeperActor, orderKeeperTerminated) = {
-        val orderKeeperStarted = clusterFollowUpFuture.map(_.flatMap(
-          startControllerOrderKeeper(persistence, cluster.workingClusterNode.orThrow/*TODO*/, _, testEventBus)))
+        val orderKeeperStarted = clusterFollowUpFuture
+          .map(_.flatMap(recovered =>
+            startControllerOrderKeeper(
+              persistence,
+              cluster.workingClusterNode.orThrow/*TODO*/,
+              recovered,
+              testEventBus)))
 
         val actorTask: Task[Checked[ActorRef @@ ControllerOrderKeeper]] =
           Task.defer {
@@ -418,7 +423,7 @@ object RunningController
       testEventBus: StandardEventBus[Any])
     : (Cluster[ControllerState],
       Task[Checked[ControllerState]],
-      Task[Either[ProgramTermination, ClusterFollowUp[ControllerState]]])
+      Task[Either[ProgramTermination, Recovered[ControllerState]]])
     = {
       val cluster = {
         import controllerConfiguration.{clusterConf, controllerId, httpsConfig, config}
@@ -440,8 +445,8 @@ object RunningController
       // clusterFollowUpFuture terminates when this cluster node becomes active or terminates
       // replicatedState accesses the current ControllerState while this node is passive, otherwise it is None
       class StartingClusterCancelledException extends NoStackTrace
-      val (replicatedState, followUpTask) = cluster.start(recovered)
-      val clusterFollowUpTask = followUpTask
+      val (replicatedState, activeRecovered) = cluster.start(recovered)
+      val clusterFollowUpTask = activeRecovered
         .doOnCancel(Task { logger.debug("Cancel Cluster") })
         .onCancelRaiseError(new StartingClusterCancelledException)
         .map(_.orThrow)
@@ -450,7 +455,7 @@ object RunningController
           case _: StartingClusterCancelledException => Task { Left(clusterStartupTermination) }
         }
         .flatTap {
-          case Right(ClusterFollowUp.BecomeActive(recovered)) =>
+          case Right(recovered) =>
             persistence.start(recovered)
           case _ =>
             cluster.stop
@@ -470,25 +475,23 @@ object RunningController
     private def startControllerOrderKeeper(
       persistence: FileStatePersistence[ControllerState],
       workingClusterNode: WorkingClusterNode[ControllerState],
-      followUp: ClusterFollowUp[ControllerState],
+      recovered: Recovered[ControllerState],
       testEventPublisher: EventPublisher[Any])
-    : Either[ProgramTermination, OrderKeeperStarted] =
-      followUp match {
-        case ClusterFollowUp.BecomeActive(recovered) =>
-          val terminationPromise = Promise[ProgramTermination]()
-          val actor = actorSystem.actorOf(
-            Props {
-              new ControllerOrderKeeper(terminationPromise, persistence, workingClusterNode,
-                injector.instance[AlarmClock],
-                controllerConfiguration, testEventPublisher)
-            },
-            "ControllerOrderKeeper")
-          actor ! ControllerOrderKeeper.Input.Start(recovered)
-          val termination = terminationPromise.future
-            .andThen { case Failure(t) => logger.error(t.toStringWithCauses, t) }
-            .andThen { case _ => closer.close() }  // Close automatically after termination
-          Right(OrderKeeperStarted(actor.taggedWith[ControllerOrderKeeper], termination))
-      }
+    : Either[ProgramTermination, OrderKeeperStarted] = {
+      val terminationPromise = Promise[ProgramTermination]()
+      val actor = actorSystem.actorOf(
+        Props {
+          new ControllerOrderKeeper(terminationPromise, persistence, workingClusterNode,
+            injector.instance[AlarmClock],
+            controllerConfiguration, testEventPublisher)
+        },
+        "ControllerOrderKeeper")
+      actor ! ControllerOrderKeeper.Input.Start(recovered)
+      val termination = terminationPromise.future
+        .andThen { case Failure(t) => logger.error(t.toStringWithCauses, t) }
+        .andThen { case _ => closer.close() }  // Close automatically after termination
+      Right(OrderKeeperStarted(actor.taggedWith[ControllerOrderKeeper], termination))
+    }
   }
 
   private class MyCommandExecutor(
