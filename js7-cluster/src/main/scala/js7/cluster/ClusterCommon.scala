@@ -4,11 +4,6 @@ import akka.actor.ActorSystem
 import akka.util.Timeout
 import cats.effect.Resource
 import com.typesafe.config.{Config, ConfigUtil}
-import java.io.RandomAccessFile
-import java.nio.ByteBuffer
-import java.nio.channels.FileChannel
-import java.nio.file.StandardOpenOption.{CREATE, TRUNCATE_EXISTING, WRITE}
-import java.nio.file.{Path, Paths}
 import js7.base.auth.UserAndPassword
 import js7.base.configutils.Configs.*
 import js7.base.eventbus.EventPublisher
@@ -20,7 +15,6 @@ import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SetOnce
 import js7.base.web.Uri
@@ -35,7 +29,6 @@ import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterSt
 import js7.data.controller.ControllerId
 import js7.data.node.NodeId
 import monix.eval.Task
-import scala.annotation.tailrec
 
 private[cluster] final class ClusterCommon(
   controllerId: ControllerId,
@@ -165,63 +158,6 @@ private[cluster] final class ClusterCommon(
 private[js7] object ClusterCommon
 {
   private val logger = Logger(getClass)
-
-  private def toTruncatedFilePath(file: Path): Path =
-    Paths.get(s"$file~TRUNCATED-AFTER-FAILOVER")
-
-  private[cluster] def truncateFile(file: Path, position: Long, keep: Boolean): Unit =
-    autoClosing(new RandomAccessFile(file.toFile, "rw")) { f =>
-      val channel = f.getChannel
-      assertCutLineEnd(file, position, channel)
-      if (keep) {
-        copyTruncatedRest(file, position, channel)
-      } else {
-        logTruncatedRest(file, position, f)
-      }
-      channel.truncate(position)
-    }
-
-  private def assertCutLineEnd(file: Path, position: Long, in: FileChannel): Unit = {
-    val buffer = ByteBuffer.allocate(1)
-    in.position(position - 1)
-    in.read(buffer)
-    buffer.flip()
-    if (!buffer.hasRemaining || buffer.get() != '\n')
-      sys.error(s"Invalid failed-over position=$position in '${file.getFileName} journal file")
-  }
-
-  /** Save the truncated part for debugging. */
-  private def copyTruncatedRest(file: Path, position: Long, channel: FileChannel): Unit =
-    autoClosing(FileChannel.open(toTruncatedFilePath(file), WRITE, CREATE, TRUNCATE_EXISTING)) { out =>
-      channel.position(position)
-      val buffer = ByteBuffer.allocate(4096)
-      buffer.clear()
-      buffer.flip()
-      var eof = false
-      while (!eof) {
-        if (buffer.hasRemaining) out.write(buffer)
-        buffer.clear()
-        eof = channel.read(buffer) <= 0
-        buffer.flip()
-      }
-    }
-
-  private def logTruncatedRest(file: Path, position: Long, f: RandomAccessFile): Unit = {
-    f.seek(position)
-    var logged = false
-
-    @tailrec def loop(): Unit = {
-      f.readLine() match {
-        case null =>
-        case line =>
-          if (!logged) logger.info(s"Records truncated off ${file.getFileName}:")
-          logged = true
-          logger.info(line)
-          loop()
-      }
-    }
-    loop()
-  }
 
   def clusterEventAndStateToString(event: ClusterEvent, state: ClusterState): String =
     s"ClusterEvent: $event --> $state"

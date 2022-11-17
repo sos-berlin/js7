@@ -6,8 +6,7 @@ import cats.effect.Resource
 import com.softwaremill.diffx
 import com.typesafe.config.Config
 import izumi.reflect.Tag
-import java.nio.file.StandardCopyOption.REPLACE_EXISTING
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.Path
 import js7.base.eventbus.EventPublisher
 import js7.base.generic.Completed
 import js7.base.io.https.HttpsConfig
@@ -19,7 +18,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SetOnce
 import js7.base.web.Uri
 import js7.cluster.Cluster.*
-import js7.cluster.ClusterCommon.truncateFile
+import js7.cluster.JournalTruncator.truncateJournal
 import js7.core.license.LicenseChecker
 import js7.data.Problems.{BackupClusterNodeNotAppointed, ClusterNodeIsNotBackupProblem, PrimaryClusterNodeMayNotBecomeBackupProblem}
 import js7.data.cluster.ClusterCommand.{ClusterInhibitActivation, ClusterStartBackupNode}
@@ -29,7 +28,6 @@ import js7.data.controller.ControllerId
 import js7.data.event.{EventId, JournalPosition, SnapshotableState}
 import js7.journal.EventIdGenerator
 import js7.journal.data.JournalMeta
-import js7.journal.files.JournalFiles
 import js7.journal.recover.{Recovered, StateRecoverer}
 import js7.journal.state.FileStatePersistence
 import monix.eval.Task
@@ -337,45 +335,6 @@ object Cluster
       eventIdGenerator,
       new ClusterCommon(controllerId, clusterConf.ownId, clusterNodeApi,
         httpsConfig, config, licenseChecker, testEventPublisher, journalActorAskTimeout))
-
-  private[cluster] def truncateJournal(
-    journalFileBase: Path,
-    failedAt: JournalPosition,
-    keepTruncatedRest: Boolean)
-  : Option[Path] = {
-    var truncated = false
-    val lastTwoJournalFiles = JournalFiles.listJournalFiles(journalFileBase) takeRight 2
-    val journalFile =
-      if (lastTwoJournalFiles.last.fileEventId == failedAt.fileEventId)
-        lastTwoJournalFiles.last
-      else if (lastTwoJournalFiles.lengthIs == 2 &&
-        lastTwoJournalFiles.head.fileEventId == failedAt.fileEventId &&
-        lastTwoJournalFiles.last.fileEventId > failedAt.fileEventId)
-      {
-        truncated = true
-        val deleteFile = lastTwoJournalFiles.last.file
-        logger.info(s"Removing journal file written after failover: ${deleteFile.getFileName}")
-        // Keep the file for debugging
-        Files.move(deleteFile, Paths.get(s"$deleteFile~DELETED-AFTER-FAILOVER"), REPLACE_EXISTING)
-        JournalFiles.updateSymbolicLink(journalFileBase, lastTwoJournalFiles.head.file)
-        lastTwoJournalFiles.head
-      } else
-        sys.error("Failed-over node's JournalPosition does not match local journal files:" +
-          s" $failedAt <-> ${lastTwoJournalFiles.map(_.file.getFileName).mkString(", ")}")
-    assertThat(journalFile.fileEventId == failedAt.fileEventId)
-
-    val file = journalFile.file
-    val fileSize = Files.size(file)
-    if (fileSize != failedAt.position) {
-      if (fileSize < failedAt.position)
-        sys.error(s"Journal file '${journalFile.file.getFileName} is shorter than the failed-over position ${failedAt.position}")
-      logger.info(s"Truncating journal file at failover position ${failedAt.position} " +
-        s"(${fileSize - failedAt.position} bytes): ${journalFile.file.getFileName}")
-      truncated = true
-      truncateFile(file, failedAt.position, keep = keepTruncatedRest)
-    }
-    truncated ? file
-  }
 
   @deprecated("Provisional fix for v2.4", "v2.5")
   final class RestartAfterJournalTruncationException
