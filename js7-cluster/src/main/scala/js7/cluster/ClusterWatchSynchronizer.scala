@@ -63,7 +63,7 @@ private final class ClusterWatchSynchronizer private(ownId: NodeId, initialInlay
           .void)
     }
 
-  def applyEvents(events: Seq[ClusterEvent], updatedClusterState: ClusterState)
+  def applyEvents(events: Seq[ClusterEvent], updatedClusterState: HasNodes)
   : Task[Checked[Completed]] =
     if (events.isEmpty)
       Task.pure(Right(Completed))

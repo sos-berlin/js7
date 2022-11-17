@@ -12,7 +12,7 @@ import js7.base.web.Uri
 import js7.common.message.ProblemCodeMessages
 import js7.core.cluster.watch.ClusterWatch.*
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterPassiveLost, ClusterSwitchedOver}
-import js7.data.cluster.ClusterState.{Coupled, HasNodes, NodesAppointed, PassiveLost, SwitchedOver}
+import js7.data.cluster.ClusterState.{Coupled, FailedOver, HasNodes, NodesAppointed, PassiveLost, PreparedToBeCoupled, SwitchedOver}
 import js7.data.cluster.{ClusterEvent, ClusterSetting, ClusterState, ClusterTiming}
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
@@ -51,7 +51,7 @@ final class ClusterWatchTest extends OurTestSuite
       val watch = newClusterWatch()
       val clusterState = Coupled(setting)
       val event = ClusterFailedOver(aId, bId, failedAt)
-      val failedOver = clusterState.applyEvent(event).orThrow
+      val failedOver = clusterState.applyEvent(event).orThrow.asInstanceOf[FailedOver]
       assert(watch.applyEvents(ClusterWatchEvents(bId, Seq(event), failedOver)).await(99.s) ==
         Left(UntaughtClusterWatchProblem))
 
@@ -87,7 +87,8 @@ final class ClusterWatchTest extends OurTestSuite
         ClusterCouplingPrepared(aId),
         ClusterCoupled(aId))
 
-      val clusterState2 = clusterState.applyEvents(events.map(NoKey <-: _)).orThrow
+      val clusterState2 = clusterState.applyEvents(events.map(NoKey <-: _))
+        .orThrow.asInstanceOf[Coupled]
       assert(watch.applyEvents(ClusterWatchEvents(aId, events, clusterState2)).await(99.s) ==
         Right(Completed))
       assert(watch.isActive(aId).await(99.s).orThrow)
@@ -145,7 +146,8 @@ final class ClusterWatchTest extends OurTestSuite
       scheduler.tick(duration)
 
       val events = Seq(ClusterFailedOver(aId, bId, failedAt))
-      val clusterWatch2 = clusterState.applyEvents(events.map(NoKey <-: _)).orThrow
+      val clusterWatch2 = clusterState.applyEvents(events.map(NoKey <-: _))
+        .orThrow.asInstanceOf[FailedOver]
       assert(watch.applyEvents(ClusterWatchEvents(bId,  events, clusterWatch2)).await(99.s) ==
         Left(ClusterWatchInactiveNodeProblem(bId, clusterState, duration,
           "event ClusterFailedOver(A --> B, JournalPosition(0,0)) --> FailedOver(A --> B at JournalPosition(0,0))")))
@@ -158,10 +160,12 @@ final class ClusterWatchTest extends OurTestSuite
       val watch = newClusterWatch(Some(clusterState))
       scheduler.tick(timing.clusterWatchHeartbeatValidDuration - 1.ms)
       val failedOverEvent = Seq(ClusterFailedOver(aId, bId, failedAt))
-      val failedOver = clusterState.applyEvents(failedOverEvent.map(NoKey <-: _)).orThrow
+      val failedOver = clusterState.applyEvents(failedOverEvent.map(NoKey <-: _))
+        .orThrow.asInstanceOf[FailedOver]
 
       val passiveLostEvent = Seq(ClusterPassiveLost(bId))
-      val passiveLost = clusterState.applyEvents(passiveLostEvent.map(NoKey <-: _)).orThrow
+      val passiveLost = clusterState.applyEvents(passiveLostEvent.map(NoKey <-: _))
+        .orThrow.asInstanceOf[PassiveLost]
       assert(watch.applyEvents(ClusterWatchEvents(aId, passiveLostEvent, passiveLost)).await(99.s) ==
         Right(Completed))
 
@@ -177,7 +181,8 @@ final class ClusterWatchTest extends OurTestSuite
       scheduler.tick(timing.clusterWatchHeartbeatValidDuration)
 
       val events = Seq(ClusterFailedOver(aId, bId, failedAt))
-      val clusterWatch2 = clusterState.applyEvents(events.map(NoKey <-: _)).orThrow
+      val clusterWatch2 = clusterState.applyEvents(events.map(NoKey <-: _))
+        .orThrow.asInstanceOf[FailedOver]
       assert(watch.applyEvents(ClusterWatchEvents(bId, events, clusterWatch2)).await(99.s) ==
         Right(Completed))
       assert(watch.isActive(bId).await(99.s).orThrow)
@@ -188,11 +193,12 @@ final class ClusterWatchTest extends OurTestSuite
       implicit val watch = newClusterWatch()
 
       val couplingPreparedEvent = ClusterCouplingPrepared(aId)
-      val couplingPrepared = clusterState.applyEvent(couplingPreparedEvent).orThrow
+      val couplingPrepared = clusterState.applyEvent(couplingPreparedEvent)
+        .orThrow.asInstanceOf[PreparedToBeCoupled]
       assert(applyEvents(clusterState, aId, Seq(couplingPreparedEvent), couplingPrepared).isRight)
 
       val coupledEvent = ClusterCoupled(aId)
-      val coupled = couplingPrepared.applyEvent(coupledEvent).orThrow
+      val coupled = couplingPrepared.applyEvent(coupledEvent).orThrow.asInstanceOf[Coupled]
       assert(applyEvents(couplingPrepared, aId, Seq(coupledEvent), coupled).isRight)
     }
 
@@ -234,7 +240,11 @@ final class ClusterWatchTest extends OurTestSuite
       assert(watch.clusterState.await(99.s) == Right(coupled))
     }
 
-    def applyEvents(clusterState: ClusterState, from: NodeId, events: Seq[ClusterEvent], expectedClusterState: ClusterState)
+    def applyEvents(
+      clusterState: ClusterState,
+      from: NodeId,
+      events: Seq[ClusterEvent],
+      expectedClusterState: HasNodes)
       (implicit watch: ClusterWatch)
     : Checked[Completed] = {
       assert(expectedClusterState == clusterState.applyEvents(events.map(NoKey <-: _)).orThrow)

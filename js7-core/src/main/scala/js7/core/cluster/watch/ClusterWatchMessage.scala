@@ -4,7 +4,8 @@ import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.ScalaJsonCodecs.{FiniteDurationJsonDecoder, FiniteDurationJsonEncoder}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.utils.IntelliJUtils.intelliJuseImport
-import js7.data.cluster.{ClusterEvent, ClusterState}
+import js7.data.cluster.ClusterEvent
+import js7.data.cluster.ClusterState.HasNodes
 import js7.data.node.NodeId
 
 sealed trait ClusterWatchMessage
@@ -12,12 +13,12 @@ sealed trait ClusterWatchMessage
 final case class ClusterWatchEvents(
   from: NodeId,
   events: Seq[ClusterEvent],
-  clusterState: ClusterState,
+  clusterState: HasNodes,
   @deprecated("Always false", "v2.4.1")
   checkOnly: Boolean = false)
 extends ClusterWatchMessage
 
-final case class ClusterWatchHeartbeat(from: NodeId, clusterState: ClusterState)
+final case class ClusterWatchHeartbeat(from: NodeId, clusterState: HasNodes)
 extends ClusterWatchMessage
 
 object ClusterWatchMessage

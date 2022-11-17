@@ -523,12 +523,12 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
 
                         case switchedOver: ClusterSwitchedOver =>
                           // Notify ClusterWatch before starting heartbeating
+                          val clusterState = builder.clusterState.asInstanceOf[ClusterState.HasNodes]
                           Observable.fromTask(common
-                            .clusterWatchSynchronizer(
-                              builder.clusterState.asInstanceOf[ClusterState.HasNodes])
+                            .clusterWatchSynchronizer(clusterState)
                             .flatMap(_.applyEvents(
                               switchedOver :: Nil,
-                              builder.clusterState))
+                              clusterState))
                             .map(_.toUnit))
 
                         case ClusterCouplingPrepared(activeId) =>

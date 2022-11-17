@@ -17,6 +17,7 @@ import js7.common.http.AkkaHttpClient
 import js7.core.cluster.watch.ClusterWatch.isClusterWatchProblem
 import js7.core.cluster.watch.HttpClusterWatch.*
 import js7.data.cluster.ClusterState
+import js7.data.cluster.ClusterState.HasNodes
 import js7.data.node.NodeId
 import js7.data.session.HttpSessionApi
 import monix.eval.Task
@@ -52,7 +53,7 @@ with SessionApi.HasUserAndPassword
       ) .onErrorRestartLoop(())(onError)
         .map((_: JsonObject) => Completed))
 
-  def heartbeat(from: NodeId, reportedClusterState: ClusterState): Task[Checked[Completed]] =
+  def heartbeat(from: NodeId, reportedClusterState: HasNodes): Task[Checked[Completed]] =
     liftProblem(
       loginUntilReachable(Iterator.continually(ErrorDelay), onlyIfNotLoggedIn = true)
         .*>(postMsg(ClusterWatchHeartbeat(from, reportedClusterState)))

@@ -5,8 +5,8 @@ import cats.syntax.flatMap.*
 import cats.syntax.monoid.*
 import com.softwaremill.diffx
 import js7.base.generic.Completed
-import js7.base.log.{CorrelId, Logger}
 import js7.base.log.Logger.syntax.*
+import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.monixutils.ObservablePauseDetector.*
 import js7.base.problem.Checked.*
@@ -519,7 +519,14 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
               Task.pure(Right(stampedEvents -> clusterState))
 
             case _ =>
-              clusterWatchSynchronizer.applyEvents(events, clusterState)
+              clusterState
+                .match_ {
+                  case clusterState: HasNodes =>
+                    clusterWatchSynchronizer.applyEvents(events, clusterState)
+
+                  case ClusterState.Empty => Task.left(Problem.pure(
+                    "ClusterState.Empty in persistWithoutTouchingHeartbeat ??"))
+                }
                 .map(_.map((_: Completed) => stampedEvents -> clusterState))
           }
         }

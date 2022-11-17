@@ -13,5 +13,5 @@ trait ClusterWatchApi
 
   def applyEvents(clusterWatchEvents: ClusterWatchEvents): Task[Checked[Completed]]
 
-  def heartbeat(from: NodeId, reportedClusterState: ClusterState): Task[Checked[Completed]]
+  def heartbeat(from: NodeId, reportedClusterState: ClusterState.HasNodes): Task[Checked[Completed]]
 }

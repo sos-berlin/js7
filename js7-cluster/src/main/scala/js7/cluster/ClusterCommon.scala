@@ -12,7 +12,7 @@ import js7.base.io.https.HttpsConfig
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.MonixBase.syntax.*
-import js7.base.problem.Checked
+import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.*
@@ -129,32 +129,36 @@ private[cluster] final class ClusterCommon(
       activationInhibitor.tryToActivate(
         ifInhibited = Task.right(false),
         activate = Task.pure(clusterState.applyEvent(event))
-          .flatMapT(updatedClusterState =>
-            clusterWatchSynchronizer(clusterState)
-              .flatMap(_.applyEvents(event :: Nil, updatedClusterState))
-              .flatMap {
-                case Left(problem) =>
-                  if (problem is ClusterWatchInactiveNodeProblem) {
-                    logger.warn(
-                      s"ClusterWatch did not agree to '${event.getClass.simpleScalaName}' event: $problem")
-                    testEventPublisher.publish(ClusterWatchDisagreedToActivation)
-                    if (event.isInstanceOf[ClusterPassiveLost]) {
-                      haltJava(
-                        "While this node has lost the passive node" +
-                          " and is waiting for ClusterWatch's agreement, " +
-                          "the passive node failed over",
-                        restart = true,
-                        warnOnly = true)
-                    }
-                    Task.right(false)  // Ignore heartbeat loss
-                  } else
-                    Task.left(problem)
+          .flatMapT {
+            case updatedClusterState: HasNodes =>
+              clusterWatchSynchronizer(clusterState)
+                .flatMap(_.applyEvents(event :: Nil, updatedClusterState))
+                .flatMap {
+                  case Left(problem) =>
+                    if (problem is ClusterWatchInactiveNodeProblem) {
+                      logger.warn(
+                        s"ClusterWatch did not agree to '${event.getClass.simpleScalaName}' event: $problem")
+                      testEventPublisher.publish(ClusterWatchDisagreedToActivation)
+                      if (event.isInstanceOf[ClusterPassiveLost]) {
+                        haltJava(
+                          "While this node has lost the passive node" +
+                            " and is waiting for ClusterWatch's agreement, " +
+                            "the passive node failed over",
+                          restart = true,
+                          warnOnly = true)
+                      }
+                      Task.right(false)  // Ignore heartbeat loss
+                    } else
+                      Task.left(problem)
 
-                case Right(Completed) =>
-                  logger.info(s"ClusterWatch agreed to '${event.getClass.simpleScalaName}' event")
-                  testEventPublisher.publish(ClusterWatchAgreedToActivation)
-                  body
-              })))
+                  case Right(Completed) =>
+                    logger.info(s"ClusterWatch agreed to '${event.getClass.simpleScalaName}' event")
+                    testEventPublisher.publish(ClusterWatchAgreedToActivation)
+                    body
+                }
+            case ClusterState.Empty => Task.left(Problem.pure(
+              "ClusterState.Empty in ifClusterWatchAllowsActivation ??"))
+          }))
 }
 
 private[js7] object ClusterCommon

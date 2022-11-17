@@ -30,12 +30,9 @@ extends ClusterWatchApi
 
   @TestOnly
   private[cluster] def isActive(id: NodeId): Task[Checked[Boolean]] =
-    clusterState.map(_.map {
-      case o: ClusterState.HasNodes => o.activeId == id
-      case ClusterState.Empty => sys.error("ClusterState must not be Empty")
-    })
+    clusterState.map(_.map(_.activeId == id))
 
-  def clusterState: Task[Checked[ClusterState]] =
+  def clusterState: Task[Checked[HasNodes]] =
     stateVar.value
       .map(_
         .toChecked(Problem(
@@ -77,7 +74,6 @@ extends ClusterWatchApi
               // ClusterFailedOver must arrive as single events.
               case Seq(ClusterFailedOver(failedActiveId, _, _)) =>
                 state.clusterState match {
-                  case ClusterState.Empty => Left(Problem("ClusterState.Empty ??"))
                   case PassiveLost(setting) if setting.activeId == failedActiveId =>
                     Left(ClusterFailOverWhilePassiveLostProblem)
 
@@ -88,7 +84,6 @@ extends ClusterWatchApi
 
               case _ =>
                 state.clusterState match {
-                  case ClusterState.Empty => Checked.unit
                   case o: HasNodes =>
                     (from == o.activeId) !! clusterWatchInactiveNodeProblem
                 }
@@ -109,10 +104,7 @@ extends ClusterWatchApi
                     } else {
                       // The node may have died just between sending the event to ClusterWatch and
                       // persisting it. Then we have a different state.
-                      val previouslyActive = state.clusterState match {
-                        case o: HasNodes => o.activeId.string
-                        case ClusterState.Empty => "Empty"
-                      }
+                      val previouslyActive = state.clusterState.activeId.string
                       logger.warn(s"$from forced ClusterState to $reportedClusterState " +
                         s"because heartbeat of up to now active $previouslyActive is " +
                         s"too long ago (${state.lastHeartbeat.elapsed.pretty})")
@@ -127,7 +119,7 @@ extends ClusterWatchApi
     }.rightAs(Completed)
   }
 
-  def heartbeat(from: NodeId, reportedClusterState: ClusterState): Task[Checked[Completed]] = {
+  def heartbeat(from: NodeId, reportedClusterState: HasNodes): Task[Checked[Completed]] = {
     lazy val opString = s"heartbeat $reportedClusterState"
     update(from, opString)(current =>
       if (!reportedClusterState.isNonEmptyActive(from))
@@ -175,14 +167,14 @@ extends ClusterWatchApi
     ).map(_.toCompleted)
   }
 
-  private def teach(from: NodeId, clusterState: ClusterState) = {
+  private def teach(from: NodeId, clusterState: HasNodes) = {
     logger.info(s"$from teaches clusterState=$clusterState")
     Right(clusterState)
   }
 
   private def update(from: NodeId, operationString: => String)
-    (body: Option[State] => Checked[ClusterState])
-  : Task[Checked[ClusterState]] =
+    (body: Option[State] => Checked[HasNodes])
+  : Task[Checked[HasNodes]] =
     stateVar
       .updateChecked(current => Task {
         logger.trace(s"$from: $operationString${
@@ -199,15 +191,10 @@ object ClusterWatch
 {
   private val logger = Logger(getClass)
 
-  private[cluster] case class State(clusterState: ClusterState, lastHeartbeat: MonixDeadline)
+  private[cluster] case class State(clusterState: HasNodes, lastHeartbeat: MonixDeadline)
   {
     def isLastHeartbeatStillValid =
-      this match {
-        case State(clusterState: HasNodes, lastHeartbeat) =>
-          (lastHeartbeat + clusterState.timing.clusterWatchHeartbeatValidDuration).hasTimeLeft
-
-        case State(ClusterState.Empty, _) => false // Should not happen
-      }
+      (lastHeartbeat + clusterState.timing.clusterWatchHeartbeatValidDuration).hasTimeLeft
 
     /** false iff `nodeId` cannot be the active node.  */
     def canBeTheActiveNode(nodeId: NodeId): Boolean =
