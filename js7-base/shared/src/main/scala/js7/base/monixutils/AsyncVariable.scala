@@ -4,7 +4,6 @@ import js7.base.problem.Checked
 import js7.base.utils.AsyncLock
 import monix.eval.Task
 
-// TODO Equivalent to MVar?
 final class AsyncVariable[V](initial: V)
 {
   @volatile private var _value = initial

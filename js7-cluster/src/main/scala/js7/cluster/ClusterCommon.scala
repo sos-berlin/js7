@@ -23,7 +23,7 @@ import js7.common.system.startup.Halt.haltJava
 import js7.core.cluster.watch.ClusterWatch.ClusterWatchInactiveNodeProblem
 import js7.core.cluster.watch.HttpClusterWatch
 import js7.core.license.LicenseChecker
-import js7.data.cluster.ClusterEvent.ClusterPassiveLost
+import js7.data.cluster.ClusterEvent.{ClusterNodeLostEvent, ClusterPassiveLost}
 import js7.data.cluster.ClusterState.{FailedOver, HasNodes, SwitchedOver}
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterState}
 import js7.data.controller.ControllerId
@@ -120,7 +120,9 @@ private[cluster] final class ClusterCommon(
   def inhibitActivationOfPeer(clusterState: HasNodes): Task[Option[FailedOver]] =
     ActivationInhibitor.inhibitActivationOfPassiveNode(clusterState.setting, clusterNodeApi)
 
-  def ifClusterWatchAllowsActivation(clusterState: ClusterState.HasNodes, event: ClusterEvent)
+  def ifClusterWatchAllowsActivation(
+    clusterState: ClusterState.HasNodes,
+    event: ClusterNodeLostEvent)
     (body: Task[Checked[Boolean]])
   : Task[Checked[Boolean]] =
     logger.traceTaskWithResult(

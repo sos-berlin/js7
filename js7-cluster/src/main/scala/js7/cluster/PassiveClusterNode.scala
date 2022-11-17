@@ -368,15 +368,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                             val file = recoveredJournalFile.file
                             assertThat(exists(file))
                             autoClosing(FileChannel.open(file, APPEND)) { out =>
-                              if (out.size > lastProperEventPosition) {
-                                logger.info("Truncating open transaction in " +
-                                  s"'${file.getFileName}' file at position $lastProperEventPosition")
-                                out.truncate(lastProperEventPosition)
-                              }
-                              // TODO Use JournalLogging
-                              out.write(ByteBuffer.wrap(
-                                (failedOverStamped.asJson.compactPrint + "\n").getBytes(UTF_8)))
-                              //out.force(true)  // sync()
+                              writeFailedOverEvent(out, file, failedOverStamped, lastProperEventPosition)
                             }
                             size(file)
                           }
@@ -404,14 +396,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                           logger.warn("❗️Failover")
                           builder.rollbackToEventSection()
                           builder.put(failedOverStamped)
-                          if (out.size > lastProperEventPosition) {
-                            logger.info(s"Truncating open transaction in '${file.getFileName}' file " +
-                              s"at position $lastProperEventPosition")
-                            out.truncate(lastProperEventPosition)
-                          }
-                          // TODO Use JournalLogging
-                          out.write(ByteBuffer.wrap((failedOverStamped.asJson.compactPrint + "\n").getBytes(UTF_8)))
-                          //out.force(true)  // sync
+                          writeFailedOverEvent(out, file, failedOverStamped, lastProperEventPosition)
                           val fileSize = out.size
                           replicatedFileLength = fileSize
                           lastProperEventPosition = fileSize
@@ -605,6 +590,24 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
           Task { out.close() })
     }
 
+  private def writeFailedOverEvent(
+    out: FileChannel,
+    file: Path,
+    failedOverStamped: Stamped[KeyedEvent[ClusterFailedOver]],
+    lastProperEventPosition: Long)
+  : Unit = {
+    if (out.size > lastProperEventPosition) {
+      logger.info(s"Truncating open transaction in ${
+        file.getFileName}' file at position $lastProperEventPosition")
+      out.truncate(lastProperEventPosition)
+    }
+    // TODO Use JournalLogging
+    val event = failedOverStamped: Stamped[KeyedEvent[ClusterEvent]]
+    out.write(ByteBuffer.wrap(
+      (event.asJson.compactPrint + '\n').getBytes(UTF_8)))
+    //out.force(true)  // sync()
+  }
+
   private def testHeartbeatSuppressor(tuple: (Long, ByteArray, Any)): Boolean =
     tuple match {
       case (_, HeartbeatMarker, _)
@@ -628,9 +631,10 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
       sys.error(msg)
     }
 
-  private def toStampedFailedOver(clusterState: Coupled, failedAt: JournalPosition): Stamped[KeyedEvent[ClusterEvent]] = {
+  private def toStampedFailedOver(clusterState: Coupled, failedAt: JournalPosition)
+  : Stamped[KeyedEvent[ClusterFailedOver]] = {
     val failedOver = ClusterFailedOver(failedActiveId = clusterState.activeId, activatedId = clusterState.passiveId, failedAt)
-    val stamped = eventIdGenerator.stamp(NoKey <-: (failedOver: ClusterEvent))
+    val stamped = eventIdGenerator.stamp(NoKey <-: failedOver)
     logger.debug(stamped.toString)
     stamped
   }
