@@ -2,7 +2,7 @@ package js7.core.cluster.watch
 
 import js7.base.generic.Completed
 import js7.base.log.Logger
-import js7.base.monixutils.MonixDeadline
+import js7.base.monixutils.{AsyncVariable, MonixDeadline}
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem, ProblemCode}
 import js7.base.time.ScalaTime.*
@@ -14,7 +14,6 @@ import js7.data.cluster.{ClusterEvent, ClusterState}
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.node.NodeId
-import monix.catnap.MVar
 import monix.eval.Task
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
@@ -23,7 +22,7 @@ import scala.util.chaining.scalaUtilChainingOps
 final class ClusterWatch(controllerId: ControllerId, now: () => MonixDeadline)
 extends ClusterWatchApi
 {
-  private val stateMVar = MVar[Task].of(None: Option[State]).memoize
+  private val stateVar = AsyncVariable[Option[State]](None)
 
   logger.trace(toString)
 
@@ -37,7 +36,7 @@ extends ClusterWatchApi
     })
 
   def clusterState: Task[Checked[ClusterState]] =
-    stateMVar.flatMap(_.read)
+    stateVar.value
       .map(_
         .toChecked(Problem(
           s"ClusterWatch not yet started for Controller '$controllerId'"))
@@ -184,19 +183,14 @@ extends ClusterWatchApi
   private def update(from: NodeId, operationString: => String)
     (body: Option[State] => Checked[ClusterState])
   : Task[Checked[ClusterState]] =
-    stateMVar.flatMap(mvar =>
-      mvar.take.flatMap { current =>
+    stateVar
+      .updateChecked(current => Task {
         logger.trace(s"$from: $operationString${
           current.fold("")(o => ", after " + o.lastHeartbeat.elapsed.pretty)}")
-        body(current) match {
-          case Left(problem) =>
-            mvar.put(current)
-              .map(_ => Left(problem))
-          case Right(updated) =>
-            mvar.put(Some(State(updated, now())))
-              .map(_ => Right(updated))
-        }
+        for (updated <- body(current)) yield
+          Some(State(updated, now()))
       })
+      .map(_.map(_./*must be Some*/get.clusterState))
 
   override def toString = s"ClusterWatch($controllerId)"
 }
