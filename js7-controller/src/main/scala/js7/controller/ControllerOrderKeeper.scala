@@ -391,8 +391,8 @@ with MainJournalingActor[ControllerState, Event]
           _controllerState = updatedState
           clusterNode.afterJournalingStarted
             .materializeIntoChecked
-            .runToFuture
             .map(Internal.Ready.apply)
+            .runToFuture
             .pipeTo(self)
 
           for (path <- _controllerState.keyTo(WorkflowPathControl).keys) {

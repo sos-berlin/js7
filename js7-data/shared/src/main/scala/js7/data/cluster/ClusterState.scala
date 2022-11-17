@@ -48,7 +48,7 @@ extends EventDrivenState[ClusterState, ClusterEvent]
             Right(Coupled(state.setting))
 
           case (state: Coupled, ClusterPassiveLost(id)) if state.passiveId == id =>
-            // Be sure that any event on Coupled leave this state !!!
+            // Be sure that any event on Coupled leaves this state !!!
             // In case of a passive heartbeat loss, the JournalActor gets a JournalActor.Input.PassiveLost,
             // event if a concurrent ClusterEvent changes the ClusterState.
             // No ClusterEvent should go from Coupled to Coupled.

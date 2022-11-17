@@ -110,7 +110,7 @@ trait AkkaWebServer extends AutoCloseable
             whenBound
           }
       } yield {
-        logger.info(s"Bound ${ binding.scheme }://${ serverBinding.localAddress.show }" +
+        logger.info(s"Bound ${binding.scheme}://${serverBinding.localAddress.show}" +
           boundRoute.boundMessageSuffix)
         serverBinding
       }

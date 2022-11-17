@@ -6,7 +6,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
-import js7.base.utils.Tests.isTest
+import js7.base.utils.Tests.isStrict
 import js7.data.agent.AgentPath
 import js7.data.event.KeyedEvent
 import js7.data.item.UnsignedSimpleItemEvent.UnsignedSimpleItemAdded
@@ -14,7 +14,7 @@ import js7.data.item.{ItemAttachedState, UnsignedSimpleItemState}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCoreEvent, OrderDeletionMarked}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.orderwatch.OrderWatchEvent.{ExternalOrderArised, ExternalOrderVanished}
-import js7.data.orderwatch.OrderWatchState.{Arised, ArisedOrHasOrder, ExternalOrderSnapshot, HasOrder, ToOrderAdded, Vanished, logger, strictErrorChecking}
+import js7.data.orderwatch.OrderWatchState.{Arised, ArisedOrHasOrder, ExternalOrderSnapshot, HasOrder, ToOrderAdded, Vanished, logger}
 import js7.data.value.NamedValues
 import monix.reactive.Observable
 import scala.collection.View
@@ -209,7 +209,7 @@ extends UnsignedSimpleItemState
       .map(o => copy(externalToState = o))
 
   private def unexpected(msg: String): Checked[this.type] =
-    if (strictErrorChecking)
+    if (isStrict)
       Left(Problem(msg))
     else {
       logger.error(msg)
@@ -226,7 +226,6 @@ object OrderWatchState extends UnsignedSimpleItemState.Companion[OrderWatchState
   type ToOrderAdded = (FreshOrder, Option[ExternalOrderKey]) => Checked[Option[KeyedEvent[OrderAdded]]]
 
   private val logger = scribe.Logger[this.type]
-  private val strictErrorChecking = sys.props.contains("js7.strict") || isTest
 
   def apply(orderWatch: OrderWatch): OrderWatchState =
     OrderWatchState(orderWatch, Map.empty, Set.empty, Set.empty)

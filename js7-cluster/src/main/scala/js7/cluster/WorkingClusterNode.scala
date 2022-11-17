@@ -68,14 +68,14 @@ final class WorkingClusterNode[S <: SnapshotableState[S]: SnapshotableState.Comp
 
   def beforeJournalingStarts: Task[Checked[Completed]] =
     _activeClusterNode.toOption match {
-      case None => Task.pure(Right(Completed))
+      case None => Task.right(Completed)
       case Some(o) => o.beforeJournalingStarts
     }
 
   def afterJournalingStarted: Task[Checked[Completed]] =
     automaticallyAppointConfiguredBackupNode.flatMapT(_ =>
       (_activeClusterNode.toOption match {
-        case None => Task.pure(Right(Completed))
+        case None => Task.right(Completed)
         case Some(o) => o.onRestartActiveNode
       }))
 
