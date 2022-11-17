@@ -8,7 +8,8 @@ import monix.eval.Task
 
 trait ClusterWatchApi
 {
-  def get: Task[Checked[ClusterState]]
+  // HttpSessionApi may implement this method
+  def logout(): Task[Completed]
 
   def applyEvents(clusterWatchEvents: ClusterWatchEvents): Task[Checked[Completed]]
 

@@ -47,7 +47,7 @@ trait ClusterWatchRoute
             case None =>
               Task.pure(Problem(s"No ClusterState registered for '$controllerId'"))
             case Some(clusterWatch) =>
-              clusterWatch.get
+              clusterWatch.clusterState
           })
     }
 }

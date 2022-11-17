@@ -28,14 +28,16 @@ extends ClusterWatchApi
 
   logger.trace(toString)
 
+  def logout() = Task.pure(Completed)
+
   @TestOnly
   private[cluster] def isActive(id: NodeId): Task[Checked[Boolean]] =
-    get.map(_.map {
+    clusterState.map(_.map {
       case o: ClusterState.HasNodes => o.activeId == id
       case ClusterState.Empty => sys.error("ClusterState must not be Empty")
     })
 
-  def get: Task[Checked[ClusterState]] =
+  def clusterState: Task[Checked[ClusterState]] =
     stateMVar.flatMap(_.read)
       .map(_
         .toChecked(Problem(
@@ -62,7 +64,8 @@ extends ClusterWatchApi
 
         if (state.clusterState == reportedClusterState) {
           logger.info(
-            s"Node '$from': Ignore probably duplicate events for already reached clusterState=${state.clusterState}")
+            s"Node '$from': Ignore probably duplicate events for already reached clusterState=${
+              state.clusterState}")
           Right(reportedClusterState)
         } else
           events
@@ -113,8 +116,8 @@ extends ClusterWatchApi
                         case ClusterState.Empty => "Empty"
                       }
                       logger.warn(s"Node '$from' forced ClusterState to $reportedClusterState " +
-                        s"because heartbeat of up to now active node '$previouslyActive' is too long ago " +
-                        s"(${state.lastHeartbeat.elapsed.pretty})")
+                        s"because heartbeat of up to now active node '$previouslyActive' is " +
+                        s"too long ago (${state.lastHeartbeat.elapsed.pretty})")
                       Right(reportedClusterState)
                     }
                   }

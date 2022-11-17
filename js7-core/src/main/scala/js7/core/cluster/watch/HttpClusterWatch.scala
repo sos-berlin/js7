@@ -20,6 +20,7 @@ import js7.data.cluster.ClusterState
 import js7.data.node.NodeId
 import js7.data.session.HttpSessionApi
 import monix.eval.Task
+import scala.annotation.unused
 
 final class HttpClusterWatch(
   val baseUri: Uri,
@@ -29,6 +30,9 @@ final class HttpClusterWatch(
 extends ClusterWatchApi with AkkaHttpClient with HttpSessionApi
 with SessionApi.HasUserAndPassword
 {
+  protected val sessionUri = Uri(s"$baseUri/agent/api/session")
+  private val clusterUri = Uri(s"$baseUri/agent/api/clusterWatch")
+
   override def close(): Unit = {
     logOpenSession()
     super.close()
@@ -38,51 +42,40 @@ with SessionApi.HasUserAndPassword
 
   protected def uriPrefixPath = "/agent"
 
-  protected val sessionUri = Uri(s"$baseUri/agent/api/session")
-
   protected def name = "ClusterWatch"
 
-  private val clusterUri = Uri(s"$baseUri/agent/api/clusterWatch")
 
   def applyEvents(clusterWatchEvents: ClusterWatchEvents): Task[Checked[Completed]] =
     liftProblem(
       retryUntilReachable()(
         post[ClusterWatchMessage, JsonObject](clusterUri, clusterWatchEvents)
-      ) .onErrorRestartLoop(()) { (throwable, _, retry) =>
-          throwable match {
-            case throwable: HttpException if throwable.problem exists isClusterWatchProblem =>
-              Task.raiseError(throwable)
-            case HttpException.HasProblem(InvalidSessionTokenProblem) =>
-              loginUntilReachable(Iterator.continually(ErrorDelay))
-                .delayExecution(ErrorDelay) >>
-                retry(())
-            case _ =>
-              logger.warn(throwable.toStringWithCauses)
-              retry(()).delayExecution(ErrorDelay)
-          }
-        }
+      ) .onErrorRestartLoop(())(onError)
         .map((_: JsonObject) => Completed))
 
   def heartbeat(from: NodeId, reportedClusterState: ClusterState): Task[Checked[Completed]] =
     liftProblem(
-      (loginUntilReachable(Iterator.continually(ErrorDelay), onlyIfNotLoggedIn = true) >>
-        post[ClusterWatchMessage, JsonObject](clusterUri, ClusterWatchHeartbeat(from, reportedClusterState))
-          .map((_: JsonObject) => Completed)
-      ) .onErrorRestartLoop(()) { (throwable, _, retry) =>
-          throwable match {
-            case throwable: HttpException if throwable.problem exists isClusterWatchProblem =>
-              Task.raiseError(throwable)
-            case HttpException.HasProblem(InvalidSessionTokenProblem) =>
-              loginUntilReachable(Iterator.continually(ErrorDelay))
-                .delayExecution(ErrorDelay) >>
-                retry(())
-            case _ =>
-              logger.warn(throwable.toStringWithCauses)
-              retry(()).delayExecution(ErrorDelay)
-          }
-        })
+      loginUntilReachable(Iterator.continually(ErrorDelay), onlyIfNotLoggedIn = true)
+        .*>(postMsg(ClusterWatchHeartbeat(from, reportedClusterState)))
+        .onErrorRestartLoop(())(onError))
 
-  def get: Task[Checked[ClusterState]] =
+  private def postMsg(msg: ClusterWatchMessage): Task[Completed] =
+    post[ClusterWatchMessage, JsonObject](clusterUri, msg)
+      .map((_: JsonObject) => Completed)
+
+  private def onError[A](throwable: Throwable, @unused unit: Unit, retry: Unit => Task[A]) =
+    throwable match {
+      case throwable: HttpException if throwable.problem exists isClusterWatchProblem =>
+        Task.raiseError(throwable)
+      case HttpException.HasProblem(InvalidSessionTokenProblem) =>
+        loginUntilReachable(Iterator.continually(ErrorDelay))
+          .delayExecution(ErrorDelay) >>
+          retry(())
+      case _ =>
+        logger.warn(throwable.toStringWithCauses)
+        retry(()).delayExecution(ErrorDelay)
+    }
+
+  def clusterState: Task[Checked[ClusterState]] =
     liftProblem(
       get[ClusterState](clusterUri))
 }

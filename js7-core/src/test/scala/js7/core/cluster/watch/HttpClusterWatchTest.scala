@@ -87,7 +87,7 @@ final class HttpClusterWatchTest extends OurTestSuite with BeforeAndAfterAll wit
       clusterWatch.applyEvents(
         ClusterWatchEvents(primaryId, ClusterNodesAppointed(setting) :: Nil, expectedClusterState)
       ).await(99.s) == Right(Completed))
-    assert(clusterWatch.get.await(99.s) == Right(expectedClusterState))
+    assert(clusterWatch.clusterState.await(99.s) == Right(expectedClusterState))
   }
 }
 

@@ -90,7 +90,7 @@ final class ClusterWatchTest extends OurTestSuite
       assert(watch.applyEvents(ClusterWatchEvents(aId, events, clusterState2)).await(99.s) ==
         Right(Completed))
       assert(watch.isActive(aId).await(99.s).orThrow)
-      assert(watch.get.await(99.s) == Right(clusterState2))
+      assert(watch.clusterState.await(99.s) == Right(clusterState2))
     }
 
     "Late heartbeat after coupled" in {
@@ -123,7 +123,7 @@ final class ClusterWatchTest extends OurTestSuite
           Left(ClusterWatchInactiveNodeProblem(bId, clusterState, 0.s, "heartbeat Coupled(passive A: http://A, active B: http://B)")))
       }
 
-      assert(watch.get.await(99.s) == Right(clusterState))
+      assert(watch.clusterState.await(99.s) == Right(clusterState))
     }
 
     "Heartbeat must not change active URI" in {
@@ -134,7 +134,7 @@ final class ClusterWatchTest extends OurTestSuite
       val badCoupled = Coupled(setting.copy(activeId = bId))
       assert(watch.heartbeat(aId, badCoupled).await(99.s) ==
         Left(InvalidClusterWatchHeartbeatProblem(aId, badCoupled)))
-      assert(watch.get.await(99.s) == Right(clusterState))
+      assert(watch.clusterState.await(99.s) == Right(clusterState))
     }
 
     "FailedOver before heartbeat loss is rejected" in {
@@ -230,7 +230,7 @@ final class ClusterWatchTest extends OurTestSuite
       assert(passiveLost.applyEvents(nextEvents.map(NoKey <-: _)) == Right(coupled))
 
       assert(watch.applyEvents(ClusterWatchEvents(aId, nextEvents, coupled)).await(99.s) == Right(Completed))
-      assert(watch.get.await(99.s) == Right(coupled))
+      assert(watch.clusterState.await(99.s) == Right(coupled))
     }
 
     def applyEvents(clusterState: ClusterState, from: NodeId, events: Seq[ClusterEvent], expectedClusterState: ClusterState)
@@ -239,7 +239,7 @@ final class ClusterWatchTest extends OurTestSuite
       assert(expectedClusterState == clusterState.applyEvents(events.map(NoKey <-: _)).orThrow)
       val response = watch.applyEvents(ClusterWatchEvents(from, events, expectedClusterState))
         .await(99.s)
-      assert(watch.get.await(99.s) == Right(expectedClusterState))
+      assert(watch.clusterState.await(99.s) == Right(expectedClusterState))
       response
     }
   }
