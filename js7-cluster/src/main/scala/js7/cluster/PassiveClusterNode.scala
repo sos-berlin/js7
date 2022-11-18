@@ -341,7 +341,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
               positionAndLine.value,
               positionAndLine.value.parseJson.flatMap(S.decodeJournalJson).orThrow))
         .filter(testHeartbeatSuppressor) // for testing
-        .detectPauses(setting.timing.failoverTimeout)
+        .detectPauses(setting.timing.activeLostTimeout)
         .flatMap[Checked[Unit]] {
           case Left(noHeartbeatSince) =>
             (if (isReplicatingHeadOfFile) continuation.clusterState else builder.clusterState) match {

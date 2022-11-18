@@ -26,7 +26,7 @@ final class ClusterTimingTest extends OurTestSuite
 
   "PassiveLost is detected before FailedOver" in {
     val t = ClusterTiming(3.s, 10.s)
-    assert(t.passiveLostTimeout + t.heartbeat < t.failoverTimeout)
+    assert(t.passiveLostTimeout + t.heartbeat < t.activeLostTimeout)
   }
 
   "apply" in {
@@ -38,9 +38,9 @@ final class ClusterTimingTest extends OurTestSuite
   "Consistency" in {
     assert(t.heartbeat < t.passiveLostTimeout)
     assert(t.passiveLostTimeout < t.clusterWatchHeartbeatValidDuration)
-    assert(t.clusterWatchHeartbeatValidDuration < t.failoverTimeout)
-    assert(t.clusterWatchReactionTimeout < t.failoverTimeout - t.passiveLostTimeout)
-    assert(t.failoverTimeout < t.inhibitActivationDuration)
+    assert(t.clusterWatchHeartbeatValidDuration < t.activeLostTimeout)
+    assert(t.clusterWatchReactionTimeout < t.activeLostTimeout - t.passiveLostTimeout)
+    assert(t.activeLostTimeout < t.inhibitActivationDuration)
   }
 
   "Timings with 3s heartbeat and 10s timeout" in {
@@ -49,7 +49,7 @@ final class ClusterTimingTest extends OurTestSuite
     assert(t.heartbeat == 3.s)
     assert(t.passiveLostTimeout == 13.s)
     assert(t.clusterWatchHeartbeatValidDuration == 16.s)
-    assert(t.failoverTimeout == 19.s)
+    assert(t.activeLostTimeout == 19.s)
     assert(t.clusterWatchReactionTimeout == 3.s)
     assert(t.inhibitActivationDuration == 22.s)
   }
