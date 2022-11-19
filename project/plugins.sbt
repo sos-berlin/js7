@@ -10,4 +10,4 @@ addSbtPlugin("com.github.sbt" % "sbt-release" % "1.1.0")
 libraryDependencies += "org.apache.logging.log4j" % "log4j-api" % "2.19.0"
 libraryDependencies += "org.apache.logging.log4j" % "log4j-core" % "2.19.0"
 libraryDependencies += "org.apache.logging.log4j" % "log4j-slf4j-impl" % "2.19.0"
-libraryDependencies += "org.slf4j" % "slf4j-api" % "2.0.2"
+libraryDependencies += "org.slf4j" % "slf4j-api" % "2.0.3"

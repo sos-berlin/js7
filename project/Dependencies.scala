@@ -11,7 +11,7 @@ object Dependencies
   val akkaHttpVersion = "10.2.10" // Do not update to v10.4, due to restrictive Akka licences!
   val slf4jVersion = "2.0.3"  // See also plugins.sbt
   val log4jVersion = "2.19.0"  // See also plugins.sbt
-  val catsVersion = "2.8.0"
+  val catsVersion = "2.9.0"
   val catsEffectVersion = "2.5.5"
   val izumiReflectVersion = "2.1.3"
   //val kittensVersion = "1.2.1"
@@ -37,16 +37,13 @@ object Dependencies
 
   val slf4j               = "org.slf4j" % "slf4j-api"    % slf4jVersion
   val slf4jNop            = "org.slf4j" % "slf4j-nop"    % slf4jVersion
-//val julToSlf4J          = "org.slf4j" % "jul-to-slf4j" % slf4jVersion
-//val jansi               = "org.fusesource.jansi" % "jansi" % "1.17"
   val lmaxDisruptor       = "com.lmax" % "disruptor" % "3.4.4"
   val log4j               = "org.apache.logging.log4j" % "log4j-api" % log4jVersion ::
                             "org.apache.logging.log4j" % "log4j-core" % log4jVersion ::
                             "org.apache.logging.log4j" % "log4j-slf4j2-impl" % log4jVersion ::
                             /*jansi ::*/ Nil
 
-  val scalaTest           = "org.scalatest" %% "scalatest" % scalaTestVersion ::
-                            /*"org.scalatest" %% "scalatest-freespec" % scalaTestVersion ::*/ Nil
+  val scalaTest           = "org.scalatest" %% "scalatest" % scalaTestVersion :: Nil
   val scalactic           = "org.scalactic" %% "scalactic" % scalaTestVersion
   val scalaCheck          = "org.scalatestplus" %% "scalacheck-1-16" % scalaTestCheckVersion ::
                             "org.scalacheck" %% "scalacheck" % scalaCheckVersion :: Nil
