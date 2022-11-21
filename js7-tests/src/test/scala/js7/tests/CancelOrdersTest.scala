@@ -207,7 +207,7 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
     eventWatch.await[OrderCancelled](_.key == order.id)
 
     assert(controller.eventWatch
-      .keyedEvents[OrderEvent]
+      .allKeyedEvents[OrderEvent]
       .filter(_.key.string startsWith "FORK")
       .filterNot(_.event.isInstanceOf[OrderStdWritten]) ==
       Vector(
@@ -239,7 +239,7 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
     eventWatch.await[OrderCancelled](_.key == order.id / "🥕")
 
     assert(controller.eventWatch
-      .keyedEvents[OrderEvent]
+      .allKeyedEvents[OrderEvent]
       .filter(_.key.string startsWith "CANCEL-CHILD")
       .filterNot(_.event.isInstanceOf[OrderStdWritten]) ==
       Vector(

@@ -268,7 +268,7 @@ final class SuspendResumeOrdersTest extends OurTestSuite with ControllerAgentFor
     eventWatch.await[OrderSuspended](_.key == order.id)
 
     assert(eventWatch
-      .keyedEvents[OrderEvent]
+      .allKeyedEvents[OrderEvent]
       .filter(_.key.string startsWith "FORK")
       .filterNot(_.event.isInstanceOf[OrderStdWritten]) ==
       Seq(
