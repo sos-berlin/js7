@@ -363,7 +363,7 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
     assert(controller.eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
-      OrderForked(Vector(OrderForked.Child("BRANCH", orderId / "BRANCH"))),
+      OrderForked(Vector("BRANCH" -> orderId / "BRANCH")),
       OrderJoined(Outcome.Failed(Some("Order:🟩|BRANCH Failed"))),
       OrderFailed(Position(0)),
       OrderCancelled,
@@ -404,7 +404,7 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
       OrderLocksAcquired(List(LockDemand(lockPath))),
-      OrderForked(Vector(OrderForked.Child("BRANCH", orderId / "BRANCH"))),
+      OrderForked(Vector("BRANCH" -> orderId / "BRANCH")),
       OrderCancellationMarked(),
       OrderJoined(Outcome.Failed(Some("Order:🟪|BRANCH has been cancelled"))),
       OrderLocksReleased(List(lockPath)),

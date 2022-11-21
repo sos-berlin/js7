@@ -68,7 +68,7 @@ final class ForkTest extends OurTestSuite with ControllerAgentForScalaTest
     assert(events == Seq(
       OrderAdded(failingResultWorkflow.id),
       OrderStarted,
-      OrderForked(Vector(OrderForked.Child(Fork.Branch.Id("💥"), OrderId("💥|💥")))),
+      OrderForked(Vector("💥" -> OrderId("💥|💥"))),
       OrderJoined(Outcome.Failed(Some("No such named value: UNKNOWN"))),
       OrderFailed(Position(0))))
   }
@@ -232,8 +232,8 @@ object ForkTest
             "DUPLICATE" -> expr("$UNKNOWN")))))))))
 
   private val TestOrder = FreshOrder(OrderId("🔺"), workflow.id.path, Map("KEY" -> StringValue("VALUE")))
-  private val XOrderId = OrderId(s"🔺|🥕")
-  private val YOrderId = OrderId(s"🔺|🍋")
+  private val XOrderId = OrderId("🔺|🥕")
+  private val YOrderId = OrderId("🔺|🍋")
 
   private val ExpectedEvents = Vector(
     TestOrder.id <-: OrderAdded(workflow.id, Map("KEY" -> StringValue("VALUE"))),

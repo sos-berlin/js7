@@ -215,9 +215,9 @@ with BlockingItemUpdater
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
       OrderForked(Vector(
-        OrderForked.Child("🥕", OrderId("🔴|🥕")),
-        OrderForked.Child("🍋", OrderId("🔴|🍋")),
-        OrderForked.Child("🌶", OrderId("🔴|🌶")))),
+        "🥕" -> OrderId("🔴|🥕"),
+        "🍋" -> OrderId("🔴|🍋"),
+        "🌶" -> OrderId("🔴|🌶"))),
       OrderDetachable,
       OrderDetached,
       OrderJoined(Outcome.Failed(Some("Order:🔴|🍋 Failed;\nOrder:🔴|🌶 Failed"))),

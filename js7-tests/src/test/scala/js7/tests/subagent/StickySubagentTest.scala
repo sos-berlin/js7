@@ -182,7 +182,7 @@ final class StickySubagentTest extends OurTestSuite with ControllerAgentForScala
 
       OrderDetachable,
       OrderDetached,
-      OrderForked(Vector(OrderForked.Child(Fork.Branch.Id("BRANCH"), childOrderId))),
+      OrderForked(Vector("BRANCH" -> childOrderId)),
       OrderJoined(Outcome.succeeded),
       OrderMoved(Position(0) / "stickySubagent" % 3),
 
