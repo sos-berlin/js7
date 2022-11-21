@@ -55,10 +55,10 @@ trait GenericEventRoute extends RouteProvider
   protected def eventWatch: EventWatch
 
   private lazy val whenShuttingDownCompletion = new FutureCompletion(whenShuttingDown)
-  private lazy val defaultJsonSeqChunkTimeout = config.getDuration("js7.web.server.services.event.streaming.chunk-timeout")
-    .toFiniteDuration
-  private lazy val defaultStreamingDelay = config.getDuration("js7.web.server.services.event.streaming.delay")
-    .toFiniteDuration
+  private lazy val defaultJsonSeqChunkTimeout =
+    config.getDuration("js7.web.server.services.event.streaming.chunk-timeout").toFiniteDuration
+  private lazy val defaultStreamingDelay =
+    config.getDuration("js7.web.server.services.event.streaming.delay").toFiniteDuration
 
   protected trait GenericEventRouteProvider
   {
@@ -239,7 +239,10 @@ trait GenericEventRoute extends RouteProvider
               Task { logger.debug(s"Shutdown observing events for $userId ${httpRequest.uri}") })
             .toAkkaSourceForHttpResponse))
 
-    private def eventObservable(request: EventRequest[Event], predicate: AnyKeyedEvent => Boolean, eventWatch: EventWatch)
+    private def eventObservable(
+      request: EventRequest[Event],
+      predicate: AnyKeyedEvent => Boolean,
+      eventWatch: EventWatch)
     : Observable[Stamped[AnyKeyedEvent]] =
       filterObservable(
         eventWatch  // Continue with an Observable, skipping the already read event
@@ -274,7 +277,9 @@ trait GenericEventRoute extends RouteProvider
 
 object GenericEventRoute
 {
-  type StampedEventFilter = Observable[Stamped[KeyedEvent[Event]]] => Observable[Stamped[KeyedEvent[Event]]]
+  type StampedEventFilter =
+    Observable[Stamped[KeyedEvent[Event]]] =>
+      Observable[Stamped[KeyedEvent[Event]]]
 
   private val logger = Logger(getClass)
   private val LF = ByteString("\n")

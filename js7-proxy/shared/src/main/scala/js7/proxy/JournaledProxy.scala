@@ -32,7 +32,6 @@ import monix.reactive.observables.ConnectableObservable
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{Future, Promise}
 import scala.util.chaining.scalaUtilChainingOps
-import scala.util.control.NoStackTrace
 import scala.util.{Failure, Success}
 
 trait JournaledProxy[S <: SnapshotableState[S]]
@@ -392,10 +391,6 @@ object JournaledProxy
         s"Cluster node '${api.baseUri}' is not accessible: $problem")
     }
     if (maybeActive.isEmpty) logger.warn("No cluster node seems to be active")
-  }
-
-  private case class InternalProblemException(problem: Problem) extends NoStackTrace {
-    override def toString = problem.toString
   }
 
   final class EndOfEventStreamException extends RuntimeException("Event stream terminated unexpectedly")
