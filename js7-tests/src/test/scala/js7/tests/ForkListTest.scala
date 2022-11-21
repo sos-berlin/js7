@@ -23,7 +23,7 @@ import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.value.expression.ExpressionParser.{expr, exprFunction}
 import js7.data.value.{ListValue, NumberValue, ObjectValue, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{Execute, Fail, ForkList, If}
+import js7.data.workflow.instructions.{Execute, Fail, Fork, ForkList, If}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.launcher.OrderProcess
@@ -31,8 +31,8 @@ import js7.launcher.internal.InternalJob
 import js7.proxy.data.event.EventAndState
 import js7.tests.ForkListTest.*
 import js7.tests.jobs.EmptyJob
-import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
+import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
@@ -41,7 +41,14 @@ import scala.collection.View
 import scala.concurrent.duration.Deadline.now
 
 final class ForkListTest extends OurTestSuite with ControllerAgentForScalaTest
+with BlockingItemUpdater
 {
+  override protected val controllerConfig = config"""
+    js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
+    js7.controller.agent-driver.command-batch-delay = 0ms
+    js7.controller.agent-driver.event-buffer-delay = 0ms
+    """
+
   override protected val agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = yes
     """
@@ -256,6 +263,58 @@ final class ForkListTest extends OurTestSuite with ControllerAgentForScalaTest
       """Order:FAIL-THEN-STOP|ELEMENT-1 has been cancelled;
         |Order:FAIL-THEN-STOP|ELEMENT-2 has been cancelled"""
         .stripMargin)))
+  }
+
+  "ForkList with nested Fork" in {
+    // This should not be a special problem
+    val workflow = Workflow.of(
+      WorkflowPath("FORK-IN-FORKLIST"),
+      ForkList(
+        expr("$myList"),
+        exprFunction("(element) => $element"),
+        exprFunction("(element) => { element: $element }"),
+        Workflow.of(
+          Fork(
+            Vector(
+              "BRANCH" -> Workflow.of(
+                EmptyJob.execute(agentPath)))))))
+
+    withTemporaryItem(workflow) { workflow =>
+      val eventId = eventWatch.lastAddedEventId
+      val orderId = OrderId("FORK-IN-FORKLIST")
+      val events = controller.runOrder(FreshOrder(orderId, workflow.path, Map(
+        "myList" -> ListValue(Seq(StringValue("VALUE"))))))
+
+      assert(events.map(_.value) == Seq(
+        OrderAdded(workflow.id, Map("myList" -> ListValue(Seq(StringValue("VALUE"))))),
+        OrderStarted,
+        OrderForked(Vector(OrderForked.Child(orderId / "VALUE", Map(
+          "element" -> StringValue("VALUE"))))),
+        OrderJoined(Outcome.succeeded),
+        OrderMoved(Position(1)),
+        OrderFinished(None)))
+
+      assert(eventWatch
+        .keyedEvents[OrderEvent](_.key == orderId / "VALUE", after = eventId)
+        .map(_.event) ==
+        Seq(
+          OrderForked(Vector(
+            "BRANCH" -> orderId / "VALUE" / "BRANCH")),
+          OrderJoined(Outcome.succeeded),
+          OrderMoved(Position(0) / "fork" % 1)))
+
+      assert(eventWatch
+        .keyedEvents[OrderEvent](_.key == orderId / "VALUE" / "BRANCH", after = eventId)
+        .map(_.event) ==
+        Seq(
+          OrderAttachable(agentPath),
+          OrderAttached(agentPath),
+          OrderProcessingStarted(Some(subagentId)),
+          OrderProcessed(Outcome.succeeded),
+          OrderMoved(Position(0) / "fork" % 0 / "fork+BRANCH" % 1),
+          OrderDetachable,
+          OrderDetached))
+    }
   }
 
   private def runOrder(workflowPath: WorkflowPath, orderId: OrderId, n: Int,
