@@ -86,15 +86,15 @@ trait GenericEventRoute extends RouteProvider
     final lazy val route: Route =
       get {
         pathEnd {
-          Route.seal {
-            authorizedUser(ValidUserPermission) { user =>
-              implicit val userId = user.id
-              val waitingSince = !eventWatch.whenStarted.isCompleted ? now
-              if (waitingSince.isDefined) logger.debug("Waiting for journal to become ready ...")
-              onSuccess(eventWatch.whenStarted) { eventWatch =>
-                for (o <- waitingSince) logger.debug("Journal has become ready after " +
-                  o.elapsed.pretty + ", continuing event web service")
-                accept(`application/x-ndjson`) {
+          accept(`application/x-ndjson`) {
+            Route.seal {
+              authorizedUser(ValidUserPermission) { user =>
+                implicit val userId = user.id
+                val waitingSince = !eventWatch.whenStarted.isCompleted ? now
+                if (waitingSince.isDefined) logger.debug("Waiting for journal to become ready ...")
+                onSuccess(eventWatch.whenStarted) { eventWatch =>
+                  for (o <- waitingSince) logger.debug("Journal has become ready after " +
+                    o.elapsed.pretty + ", continuing event web service")
                   implicit val s = NdJsonStreamingSupport
                   Route.seal(
                     jsonSeqEvents(eventWatch))
