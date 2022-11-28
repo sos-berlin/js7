@@ -30,7 +30,7 @@ object MonixBase
   private val CompletedTask = Task.pure(Completed)
   val DefaultBatchSize = 256
   val DefaultWorryDurations = Seq(3.s, 7.s, 10.s)
-  private val logger = scribe.Logger[this.type]
+  private val logger = js7.base.log.Logger[this.type]
 
   object syntax
   {

@@ -1,0 +1,156 @@
+package js7.base.service
+
+import cats.effect.Resource
+import cats.effect.concurrent.Deferred
+import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
+import js7.base.service.StatefulServiceTest.*
+import js7.base.test.OurAsyncTestSuite
+import js7.base.time.ScalaTime.DurationRichInt
+import js7.base.utils.Tests.isIntelliJIdea
+import monix.eval.Task
+import monix.execution.Scheduler.Implicits.traced
+import org.scalatest.Assertion
+import scala.concurrent.Future
+import scala.concurrent.duration.FiniteDuration
+import scala.util.Failure
+import scala.util.control.NoStackTrace
+
+final class StatefulServiceTest extends OurAsyncTestSuite
+{
+  private val iterations = if (isIntelliJIdea) 100 else 10
+  private val delay = 200.ms // TODO Use TestScheduler
+
+  private def repeat(n: Int)(body: => Future[Assertion]): Future[Assertion] =
+    Task.tailRecM(1)(i => logger
+      .debugTask(s"#$i")(Task
+        .deferFuture(
+          withClue(s"#$i: ")(
+            body)))
+      .map(result =>
+        if (i < n)
+          Left(i + 1)
+        else
+          Right(result)))
+      .runToFuture
+
+  "Resource.release does not suppresses exceptions" in {
+    Resource
+      .make(Task.unit)(_ => Task.raiseError(new IllegalStateException))
+      .use(_ => Task(succeed))
+      .materialize
+      .flatMap {
+        case Failure(_: IllegalStateException) => Task(succeed)
+        case other => fail(s"UNEXPECTED: $other")
+      }
+      .runToFuture
+  }
+
+  "Service terminates while still in use" in repeat(iterations) {
+    var isRunning = false
+    MyService.resource(isRunning = _)
+      .use(service =>
+        // service fails while in use!
+        service.running.get *>
+          service.stop *>
+          Task(assert(!isRunning))
+            .as(succeed))
+      .runToFuture
+  }
+
+  "Service fails while still in use" in repeat(iterations) {
+    FailingService.resource(0.s)
+      .use(_ =>
+        // service fails while in use!
+        Task.unit.delayResult(delay)).as(succeed)
+      .materialize
+      .map {
+        case Failure(FailingService.exception) =>
+          // No failure here. See log for exception.
+          succeed
+        case o => fail(s"Unexpected $o")
+      }
+      .runToFuture
+  }
+
+  "Service usage terminates before service would die" in repeat(iterations) {
+    FailingService.resource(delay)
+      .use(_ =>
+        Task.pure(succeed))
+      .runToFuture
+  }
+
+  "Service fails while usage is terminating (race)" in repeat(iterations) {
+    FailingService.resource(0.s)
+      .use(_ =>
+        // service fails while in use!
+        Task.pure(succeed))
+      .onErrorRecover {
+        case FailingService.exception => succeed
+      }
+      .runToFuture
+  }
+
+  "No failure " in repeat(iterations) {
+    var isRunning = false
+    MyService.resource(isRunning = _)
+      .use(service =>
+        service.running.get
+          .flatMap(_ => Task {
+            assert(isRunning)
+          }))
+      .tapEval(_ => Task {
+        assert(!isRunning)
+      })
+      .runToFuture
+  }
+
+  private class MyService(setRunning: Boolean => Unit)
+  extends StatefulService.StoppableByRequest
+  {
+    val running = Deferred.unsafe[Task, Unit]
+
+    protected def run =
+      Task.defer {
+        setRunning(true)
+        running
+          .complete(())
+          .*>(whenStopRequested)
+          .guaranteeCase(exitCase => Task {
+            logger.info(s"$exitCase")
+            setRunning(false)
+          })
+      }
+
+    override def toString = "MyService"
+  }
+  private object MyService {
+    def resource(setRunning: Boolean => Unit): Resource[Task, MyService] =
+      StatefulService.resource(Task(new MyService(setRunning)))
+  }
+}
+
+object StatefulServiceTest
+{
+  private val logger = Logger[this.type]
+
+  private class FailingService(delay: FiniteDuration)
+  extends StatefulService.StoppableByRequest
+  {
+    protected def run =
+      Task.race(run2, whenStopRequested)
+        .void
+
+    private def run2 = Task
+      .raiseError(FailingService.exception)
+      .delayExecution(delay)
+
+    override def toString = "FailingService"
+  }
+  private object FailingService {
+    val exception = new Exception("SERVICE FAILED") with NoStackTrace
+
+    def resource(delay: FiniteDuration) =
+      StatefulService.resource(Task(new FailingService(delay)))
+  }
+}

@@ -1,12 +1,13 @@
 package js7.base.io.file.watch
 
-import cats.effect.{ExitCase, Resource}
+import cats.effect.Resource
 import java.io.IOException
 import java.nio.file.{ClosedWatchServiceException, NotDirectoryException, Path, WatchEvent, WatchKey}
 import java.util.concurrent.TimeUnit.MILLISECONDS
 import js7.base.io.file.watch.BasicDirectoryWatcher.*
 import js7.base.io.file.watch.DirectoryWatchEvent.Overflow
 import js7.base.log.Logger
+import js7.base.service.StatefulService
 import js7.base.system.OperatingSystem.isMac
 import js7.base.thread.IOExecutor
 import js7.base.time.ScalaTime.*
@@ -17,8 +18,8 @@ import scala.concurrent.duration.Deadline.now
 import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
 
-final class BasicDirectoryWatcher(options: WatchOptions)(implicit iox: IOExecutor)
-extends AutoCloseable
+final class BasicDirectoryWatcher private(options: WatchOptions)(implicit iox: IOExecutor)
+extends StatefulService.StoppableByRequest
 {
   import options.{directory, kinds, pollTimeout}
 
@@ -26,15 +27,12 @@ extends AutoCloseable
   logger.debug(s"newWatchService $directory")
   private val watchService = directory.getFileSystem.newWatchService()
 
-  def stop(canceled: Boolean = false): Task[Unit] =
-    Task {
-      close()
-    }
-
-  def close() = {
-    logger.debug("watchService.close()")
-    watchService.close()
-  }
+  def run =
+    whenStopRequested
+      .guarantee(Task {
+        logger.debug("watchService.close()")
+        watchService.close()
+      })
 
   private[watch] def observableResource: Resource[Task, Observable[Seq[DirectoryEvent]]] =
     directoryWatchResource.map(_ => Observable.defer {
@@ -94,6 +92,9 @@ extends AutoCloseable
           .toVector
         finally watchKey.reset()
     }
+
+  override def toString =
+    s"BasicDirectoryWatcher($directory)"
 }
 
 object BasicDirectoryWatcher
@@ -114,12 +115,7 @@ object BasicDirectoryWatcher
 
   def resource(options: WatchOptions)(implicit iox: IOExecutor)
   : Resource[Task, BasicDirectoryWatcher] =
-    Resource
-      .makeCase(
-        acquire = Task(new BasicDirectoryWatcher(options)))(
-        release = (directoryWatcher, exitCase) =>
-          directoryWatcher.stop(
-            canceled = exitCase == ExitCase.Canceled))
+    StatefulService.resource(Task(new BasicDirectoryWatcher(options)))
 
   //private implicit val watchEventShow: Show[WatchEvent[?]] = e =>
   //  s"${e.kind.name} ${e.count}× ${e.context}"
