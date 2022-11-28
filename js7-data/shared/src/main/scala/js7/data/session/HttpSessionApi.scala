@@ -38,31 +38,34 @@ trait HttpSessionApi extends SessionApi with HasSessionToken
 
   final def login_(userAndPassword: Option[UserAndPassword], onlyIfNotLoggedIn: Boolean = false)
   : Task[Completed] =
-    lock.lock(
-      Task.defer {
-        if (onlyIfNotLoggedIn && hasSession)
-          Task.completed
-        else {
-          val cmd = Login(userAndPassword, Some(Js7Version))
-          Task { logger.debug(s"$toString: $cmd") } >>
-          executeSessionCommand(cmd)
-            .map { response =>
+    Task.defer(
+      if (onlyIfNotLoggedIn && hasSession)
+        Task.completed // avoid lock logging
+      else
+        lock.lock(Task.defer(
+          if (onlyIfNotLoggedIn && hasSession)
+            Task.completed
+          else {
+            val cmd = Login(userAndPassword, Some(Js7Version))
+            logger.debug(s"$toString: $cmd")
+            for (response <- executeSessionCommand(cmd)) yield {
               logNonMatchingVersion(
                 otherVersion = response.js7Version,
                 otherName = sessionUri.stripPath.toString)
               setSessionToken(response.sessionToken)
               Completed
             }
-        }
-      })
+          })))
 
   final def logout(): Task[Completed] =
-    lock.lock(
-      Task.defer {
-        sessionTokenRef.get() match {
-          case None => Task.completed
-          case sometoken @ Some(sessionToken) =>
-            Task.defer {
+    Task.defer(
+      if (sessionTokenRef.get().isEmpty)
+        Task.completed // avoid lock logging
+      else
+        lock.lock(Task.defer(
+          sessionTokenRef.get() match {
+            case None => Task.completed
+            case sometoken @ Some(sessionToken) =>
               val cmd = Logout(sessionToken)
               logger.debug(s"$toString: $cmd")
               executeSessionCommand(cmd, suppressSessionToken = true)
@@ -72,9 +75,7 @@ trait HttpSessionApi extends SessionApi with HasSessionToken
                 })
                 .map((_: SessionCommand.Response.Accepted) => Completed)
                 .logWhenItTakesLonger(s"logout $httpClient")
-            }
-        }
-      })
+          })))
 
   private def executeSessionCommand(command: SessionCommand, suppressSessionToken: Boolean = false)
   : Task[command.Response] = {
