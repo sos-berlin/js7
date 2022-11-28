@@ -1,12 +1,14 @@
 package js7.base.utils
 
-import cats.data.Validated
+import cats.data.{NonEmptyList, NonEmptySeq, Validated}
 import cats.effect.{Resource, SyncIO}
 import cats.kernel.Monoid
 import cats.syntax.foldable.*
+import izumi.reflect.Tag
 import java.io.{ByteArrayInputStream, InputStream}
 import java.util.Base64
-import js7.base.problem.Problem
+import js7.base.problem.{Checked, Problem}
+import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.base.utils.StackTraces.*
 
 /**
@@ -14,6 +16,9 @@ import js7.base.utils.StackTraces.*
   */
 object CatsUtils
 {
+  type Nel[A] = NonEmptyList[A]
+  val Nel = NonEmptyList
+
   def combine[A: Monoid](as: A*): A =
     as.combineAll
 
@@ -41,5 +46,29 @@ object CatsUtils
   {
     def orThrow: A =
       underlying.valueOr(problem => throw problem.throwable.appendCurrentStackTrace)
+  }
+
+  implicit final class RichNonEmptyListCompanion(private val x: NonEmptyList.type)
+  extends AnyVal {
+    def unsafe[A: Tag](seq: Seq[A]): NonEmptyList[A] =
+      checked(seq).orThrow
+
+    def checked[A: Tag](seq: Seq[A]): Checked[NonEmptyList[A]] =
+      if (seq.isEmpty)
+        Left(Problem(s"Cannot create NonEmptyList[${Tag[A].tag.longName}] from empty sequence"))
+      else
+        Right(NonEmptyList(seq.head, seq.toList.tail))
+  }
+
+  implicit final class RichNonEmptySeqCompanion(private val x: NonEmptySeq.type)
+  extends AnyVal {
+    def unsafe[A: Tag](seq: Seq[A]): NonEmptySeq[A] =
+      checked(seq).orThrow
+
+    def checked[A: Tag](seq: Seq[A]): Checked[NonEmptySeq[A]] =
+      if (seq.isEmpty)
+        Left(Problem(s"Cannot create NonEmptySeq[${Tag[A].tag.longName}] from empty sequence"))
+      else
+        Right(NonEmptySeq(seq.head, seq.tail))
   }
 }

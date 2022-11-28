@@ -1,7 +1,7 @@
 package js7.base.utils
 
-import cats.data.Validated
 import cats.data.Validated.{Invalid, Valid}
+import cats.data.{NonEmptyList, NonEmptySeq, Validated}
 import cats.instances.int.*
 import cats.instances.string.*
 import js7.base.problem.{Problem, ProblemException}
@@ -30,5 +30,21 @@ final class CatsUtilsTest extends OurTestSuite
 
     val invalid: Validated[Problem, Int] = Invalid(Problem("PROBLEM"))
     assert(intercept[ProblemException](invalid.orThrow).getMessage == "PROBLEM")
+  }
+
+  "NonEmptyList.checked" in {
+    assert(NonEmptyList.checked[Int](Seq()) == Left(Problem(
+      "Cannot create NonEmptyList[scala.Int] from empty sequence")))
+    assert(NonEmptyList.checked[Int](Seq(1)) == Right(NonEmptyList(1, Nil)))
+    assert(NonEmptyList.checked[Int](Seq(1, 2)) == Right(NonEmptyList(1, 2 :: Nil)))
+    assert(NonEmptyList.checked[Int](Seq(1, 2, 3)) == Right(NonEmptyList(1, 2 :: 3 :: Nil)))
+  }
+
+  "NonEmptySeq.checked" in {
+    assert(NonEmptySeq.checked[Int](Seq()) == Left(Problem(
+      "Cannot create NonEmptySeq[scala.Int] from empty sequence")))
+    assert(NonEmptySeq.checked[Int](Seq(1)) == Right(NonEmptySeq(1, Nil)))
+    assert(NonEmptySeq.checked[Int](Seq(1, 2)) == Right(NonEmptySeq(1, 2 :: Nil)))
+    assert(NonEmptySeq.checked[Int](Seq(1, 2, 3)) == Right(NonEmptySeq(1, 2 :: 3 :: Nil)))
   }
 }
