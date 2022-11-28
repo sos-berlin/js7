@@ -2,7 +2,7 @@ package js7.tests.addOrders
 
 import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.generic.SecretString
-import js7.base.utils.Assertions.assertThat
+import js7.base.utils.CatsUtils.*
 import js7.base.web.Uri
 import js7.common.commandline.CommandLineArguments
 import js7.data.workflow.WorkflowPath
@@ -10,10 +10,7 @@ import js7.data.workflow.WorkflowPath
 private final case class Settings(
   workflowPath: WorkflowPath,
   orderCount: Int,
-  admissions: Seq[Admission])
-{
-  assertThat(admissions.nonEmpty)
-}
+  admissions: Nel[Admission])
 
 private object Settings
 {
@@ -31,6 +28,7 @@ private object Settings
       Settings(
         a.as[WorkflowPath]("--workflow="),
         a.as[Int]("--count=", 1),
-        a.seqAs[Uri]("--controller=").map(Admission(_, Some(userAndPassword))))
+        Nel.unsafe(
+          a.seqAs[Uri]("--controller=").map(Admission(_, Some(userAndPassword)))))
     }
 }

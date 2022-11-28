@@ -19,6 +19,7 @@ import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.time.{Stopwatch, Timestamp}
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ByteUnits.toKBGB
+import js7.base.utils.CatsUtils.Nel
 import js7.base.web.HttpClient
 import js7.common.http.AkkaHttpClient
 import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
@@ -51,7 +52,7 @@ final class JournaledProxyClusterTest extends OurTestSuite with ClusterProxyTest
   "JournaledProxy[ControllerState]" in {
     runControllerAndBackup() { (_, primaryController, _, backupController, _) =>
       primaryController.waitUntilReady()
-      val controllerApiResources = List(
+      val controllerApiResources = Nel.of(
         AkkaHttpControllerApi.resource(primaryController.localUri, Some(primaryUserAndPassword), name = "JournaledProxy-Primary"),
         AkkaHttpControllerApi.resource(backupController.localUri, Some(backupUserAndPassword), name = "JournaledProxy-Backup"))
       val proxy = new ControllerApi(controllerApiResources).startProxy().await(99.s)
@@ -91,7 +92,7 @@ final class JournaledProxyClusterTest extends OurTestSuite with ClusterProxyTest
     runControllerAndBackup() { (primary, primaryController, _, _, _) =>
       primaryController.waitUntilReady()
       val controllerApiResource = AkkaHttpControllerApi.resource(primaryController.localUri, Some(primaryUserAndPassword), name = "JournaledProxy")
-      val api = new ControllerApi(controllerApiResource :: Nil)
+      val api = new ControllerApi(Nel.one(controllerApiResource))
       val workflowPaths = (1 to n).map(i => WorkflowPath(s"WORKFLOW-$i"))
       val sw = new Stopwatch
       val operations = Observable.fromIterable(workflowPaths)
@@ -132,7 +133,7 @@ final class JournaledProxyClusterTest extends OurTestSuite with ClusterProxyTest
     logger.info(s"Adding $n big orders")
     runControllerAndBackup() { (_, primaryController, _, _, _) =>
       primaryController.waitUntilReady()
-      val api = new ControllerApi(List(
+      val api = new ControllerApi(Nel.one(
         AkkaHttpControllerApi.resource(primaryController.localUri, Some(primaryUserAndPassword), name = "JournaledProxy")))
       val orderIds = (1 to n).map(i => OrderId(s"ORDER-$i"))
       val logLine = measureTimeOfSingleRun(n, "orders") {

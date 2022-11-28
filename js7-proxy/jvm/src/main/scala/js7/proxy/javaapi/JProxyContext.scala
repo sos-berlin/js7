@@ -7,6 +7,7 @@ import js7.base.BuildInfo
 import js7.base.annotation.javaApi
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.log.{CorrelId, Logger}
+import js7.base.utils.CatsUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{HasCloser, Lazy}
 import js7.common.akkautils.Akkas
@@ -67,11 +68,12 @@ extends HasCloser
     @Nonnull admissions: java.lang.Iterable[JAdmission],
     @Nonnull httpsConfig: JHttpsConfig
   ): JControllerApi = {
-    if (admissions.asScala.isEmpty) throw new IllegalArgumentException("admissions argument must not be empty")
+    val apiResources = admissionsToApiResources(
+      Nel.unsafe(admissions.asScala.map(_.asScala).toList),
+      httpsConfig.asScala)(
+      actorSystem)
     new JControllerApi(
-      new ControllerApi(
-        admissionsToApiResources(admissions.asScala.map(_.asScala).toSeq, httpsConfig.asScala)(actorSystem),
-        proxyConf))
+      new ControllerApi(apiResources, proxyConf))
   }
 }
 

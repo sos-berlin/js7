@@ -12,6 +12,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsUtils.Nel
 import js7.common.akkautils.ProvideActorSystem
 import js7.controller.client.AkkaHttpControllerApi
 import js7.data.Problems.ItemVersionDoesNotMatchProblem
@@ -56,8 +57,10 @@ extends OurTestSuite with BeforeAndAfterAll with ProvideActorSystem with Control
 
   private implicit def implicitActorSystem: ActorSystem = actorSystem
   private val versionId = VersionId("MY-VERSION")
-  private lazy val api = new ControllerApi(
-    AkkaHttpControllerApi.resource(controller.localUri, Some(primaryUserAndPassword), name = "JournaledProxyTest") :: Nil)
+  private lazy val api = new ControllerApi(Nel.one(AkkaHttpControllerApi.resource(
+    controller.localUri,
+    Some(primaryUserAndPassword),
+    name = "JournaledProxyTest")))
   private lazy val proxy = api.startProxy().await(99.s)
 
   override def beforeAll() = {

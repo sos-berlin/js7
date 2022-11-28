@@ -6,6 +6,7 @@ import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsUtils.Nel
 import js7.common.configuration.Js7Configuration
 import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
 import js7.data.agent.AgentPath
@@ -38,7 +39,7 @@ final class BigJsonClusterTest extends OurTestSuite with ControllerClusterForSca
       import primaryController.eventWatch
       eventWatch.await[ClusterEvent.ClusterCoupled]()
 
-      val admissions = Seq(
+      val admissions = Nel.of(
         Admission(primaryController.localUri, Some(userAndPassword)),
         Admission(backupController.localUri, Some(userAndPassword)))
       val controllerApi = new ControllerApi(

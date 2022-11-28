@@ -3,6 +3,7 @@ package js7.proxy
 import cats.effect.Resource
 import js7.base.eventbus.StandardEventBus
 import js7.base.problem.Checked
+import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.controller.client.HttpControllerApi
 import js7.data.controller.ControllerCommand.AddOrders
@@ -38,7 +39,7 @@ object ControllerProxy
 {
   private[proxy] def start(
     api: ControllerApi,
-    apiResources: Seq[Resource[Task, HttpControllerApi]],
+    apiResources: Nel[Resource[Task, HttpControllerApi]],
     proxyEventBus: StandardEventBus[ProxyEvent],
     eventBus: JournaledStateEventBus[ControllerState],
     proxyConf: ProxyConf = ProxyConf.default)

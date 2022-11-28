@@ -17,6 +17,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.thread.IOExecutor
 import js7.base.time.JavaTimeConverters.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.HasCloser
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichPartialFunction}
 import js7.common.akkautils.ProvideActorSystem
@@ -61,7 +62,7 @@ extends HasCloser with Observing with ProvideActorSystem
       actorSystem = actorSystem,
       conf.config, conf.httpsConfig)
 
-  private val controllerApi = new ControllerApi(Seq(AkkaHttpControllerApi.admissionToApiResource(
+  private val controllerApi = new ControllerApi(Nel.one(AkkaHttpControllerApi.admissionToApiResource(
     Admission(conf.controllerUri, userAndPassword), conf.httpsConfig)(actorSystem)))
 
   protected def config = conf.config

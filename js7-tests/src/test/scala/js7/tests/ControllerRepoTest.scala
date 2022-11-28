@@ -17,6 +17,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
 import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.common.akkautils.Akkas.actorSystemResource
@@ -198,7 +199,7 @@ final class ControllerRepoTest extends OurTestSuite
         actorSystemResource(name = "ControllerRepoTest-SPEED")
           .use(actorSystem => Task {
             val apiResource  = admissionToApiResource(Admission(uri, credentials))(actorSystem)
-            val controllerApi = new ControllerApi(Seq(apiResource))
+            val controllerApi = new ControllerApi(Nel.one(apiResource))
             for (_ <- 1 to n) {
               val t = now
               controllerApi.updateItems(Observable.fromIterable(operations))

@@ -217,7 +217,9 @@ final class ProxyHistoryTest extends OurTestSuite with ProvideActorSystem with C
   "Java history" in {
     runControllerAndBackup() { (primary, _, _, _, _) =>
       autoClosing(new JProxyContext) { context =>
-        val api = context.newControllerApi(admissions.map(JAdmission.apply).asJava, JHttpsConfig.empty)
+        val api = context.newControllerApi(
+          admissions.map(JAdmission.apply).toList.asJava,
+          JHttpsConfig.empty)
         val javaTester = new JControllerApiHistoryTester(api, TestWorkflow.path, primary.agents.map(_.localUri).asJava)
         javaTester.test()
         javaTester.testTorn()

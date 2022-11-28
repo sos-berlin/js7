@@ -12,6 +12,7 @@ import js7.base.eventbus.StandardEventBus
 import js7.base.generic.SecretString
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsUtils.Nel
 import js7.base.web.Uri
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkahttp.StandardMarshallers.monixObservableToMarshallable
@@ -39,7 +40,7 @@ private final class TestControllerProxy(controllerUri: Uri, httpPort: Int)(impli
         val eventBus = new JournaledStateEventBus[ControllerState]
         var currentState: ControllerState = null
         eventBus.subscribe[Event] { e => currentState = e.state }
-        val api = new ControllerApi(apiResource :: Nil)
+        val api = new ControllerApi(Nel.one(apiResource))
         api.startProxy(proxyEventBus, eventBus)
           .flatMap { proxy =>
             AkkaWebServer

@@ -13,7 +13,7 @@ import akka.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, Unmarshal}
 import akka.http.scaladsl.{ConnectionContext, Http}
 import akka.stream.Materializer
 import akka.util.ByteString
-import cats.effect.ExitCase
+import cats.effect.{ExitCase, Resource}
 import io.circe.syntax.*
 import io.circe.{Decoder, Encoder, Json}
 import java.util.Locale
@@ -51,8 +51,8 @@ import monix.execution.atomic.AtomicLong
 import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.Future
-import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.*
+import scala.concurrent.duration.Deadline.now
 import scala.reflect.ClassTag
 import scala.util.Success
 import scala.util.control.NoStackTrace
@@ -396,6 +396,16 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
 
 object AkkaHttpClient
 {
+  def resource(
+    uri: Uri,
+    uriPrefixPath: String,
+    httpsConfig: HttpsConfig = HttpsConfig.empty,
+    name: String = "")
+    (implicit actorSystem: ActorSystem)
+  : Resource[Task, AkkaHttpClient] =
+    Resource.fromAutoCloseable(Task(new AkkaHttpClient.Standard(
+      uri, uriPrefixPath = uriPrefixPath, actorSystem, httpsConfig, name = name)))
+
   final case class `x-js7-session`(sessionToken: SessionToken)
   extends ModeledCustomHeader[`x-js7-session`] {
     val companion = `x-js7-session`

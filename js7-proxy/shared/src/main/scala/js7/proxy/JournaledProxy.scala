@@ -11,6 +11,7 @@ import js7.base.problem.{Checked, Problem, ProblemException}
 import js7.base.session.SessionApi
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.checkedCast
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SetOnce
@@ -138,14 +139,14 @@ object JournaledProxy
   private val logger = scribe.Logger[this.type]
 
   def observable[S <: JournaledState[S]](
-    apiResources: Seq[Resource[Task, Api_[S]]],
+    apiResources: Nel[Resource[Task, Api_[S]]],
     fromEventId: Option[EventId],
     onProxyEvent: ProxyEvent => Unit = _ => (),
     proxyConf: ProxyConf)
     (implicit S: JournaledState.Companion[S])
   : Observable[EventAndState[Event, S]] =
   {
-    if (apiResources.isEmpty) throw new IllegalArgumentException("apiResources must not be empty")
+    //if (apiResources.isEmpty) throw new IllegalArgumentException("apiResources must not be empty")
 
     def observable2: Observable[EventAndState[Event, S]] =
       Observable.tailRecM(none[S])(maybeState =>
@@ -287,7 +288,7 @@ object JournaledProxy
     *         (EventApi, Some(NodeId)) iff apis.size > 1
     */
   final def selectActiveNodeApi[Api <: EventApi & SessionApi.HasUserAndPassword](
-    apiResources: Seq[Resource[Task, Api]],
+    apiResources: Nel[Resource[Task, Api]],
     onCouplingError: EventApi => Throwable => Task[Unit],
     proxyConf: ProxyConf)
   : Resource[Task, Api] =
@@ -299,12 +300,12 @@ object JournaledProxy
           proxyConf)))
 
   private def selectActiveNodeApiOnly[Api <: EventApi & SessionApi.HasUserAndPassword](
-    apis: Seq[Api],
+    apis: Nel[Api],
     onCouplingError: Api => Throwable => Task[Unit],
     proxyConf: ProxyConf)
   : Task[Api] =
     apis match {
-      case Seq(api) =>
+      case Nel(api, Nil) =>
         api
           .loginUntilReachable(
             onError = t => onCouplingError(api)(t).as(true),
@@ -320,8 +321,8 @@ object JournaledProxy
                 .materializeIntoChecked  /*don't let the whole operation fail*/
                 .start
                 .map(ApiWithFiber(api, _)))
-            .flatMap((apisWithClusterNodeStateFibers: Seq[ApiWithFiber[Api]]) =>
-              Observable.fromIterable(apisWithClusterNodeStateFibers)
+            .flatMap((apisWithClusterNodeStateFibers: Nel[ApiWithFiber[Api]]) =>
+              Observable.fromIterable(apisWithClusterNodeStateFibers.toList)
                 .map(o => Observable
                   .fromTask(o.fiber.join)
                   .map(ApiWithNodeState(o.api, _)))

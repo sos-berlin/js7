@@ -6,6 +6,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import js7.base.auth.{Admission, UserAndPassword}
 import js7.base.io.https.HttpsConfig
 import js7.base.session.SessionApi
+import js7.base.utils.CatsUtils.Nel
 import js7.base.web.Uri
 import js7.common.akkautils.Akkas.actorSystemResource
 import js7.common.http.AkkaHttpClient
@@ -49,6 +50,25 @@ object AkkaHttpControllerApi
     } yield api
   }
 
+  def admissionsToApiResources(
+    admissions: Nel[Admission],
+    httpsConfig: HttpsConfig = HttpsConfig.empty,
+    name: String = "ControllerApi")
+    (implicit actorSystem: ActorSystem)
+  : Nel[Resource[Task, HttpControllerApi]] =
+    for {
+      x <- admissions.zipWithIndex
+      (a, i) = x
+    } yield admissionToApiResource(a, httpsConfig, name = s"$name-$i")
+
+  def admissionToApiResource(
+    admission: Admission,
+    httpsConfig: HttpsConfig = HttpsConfig.empty,
+    name: String = "ControllerApi")
+    (implicit actorSystem: ActorSystem)
+  : Resource[Task, HttpControllerApi] =
+    resource(admission.uri, admission.userAndPassword, httpsConfig, name = name)
+
   /** Logs out when the resource is being released. */
   def resource(
     uri: Uri,
@@ -59,26 +79,9 @@ object AkkaHttpControllerApi
     (implicit actorSystem: ActorSystem)
   : Resource[Task, HttpControllerApi] =
     for {
-      httpClient <- Resource.fromAutoCloseable(Task(
-        new AkkaHttpClient.Standard(uri, HttpControllerApi.UriPrefixPath, actorSystem,
-          httpsConfig, name = name)))
+      httpClient <- AkkaHttpClient.resource(
+        uri, uriPrefixPath = HttpControllerApi.UriPrefixPath,
+        httpsConfig, name = name)
       api <- HttpControllerApi.resource(uri, userAndPassword, httpClient, loginDelays)
     } yield api
-
-  def admissionsToApiResources(
-    admissions: Seq[Admission],
-    httpsConfig: HttpsConfig = HttpsConfig.empty,
-    name: String = "ControllerApi")
-    (implicit actorSystem: ActorSystem)
-  : Seq[Resource[Task, HttpControllerApi]] =
-    for ((a, i) <- admissions.zipWithIndex) yield
-      admissionToApiResource(a, httpsConfig, name = s"$name-$i")
-
-  def admissionToApiResource(
-    admission: Admission,
-    httpsConfig: HttpsConfig = HttpsConfig.empty,
-    name: String = "ControllerApi")
-    (implicit actorSystem: ActorSystem)
-  : Resource[Task, HttpControllerApi] =
-      AkkaHttpControllerApi.resource(admission.uri, admission.userAndPassword, httpsConfig, name = name)
 }

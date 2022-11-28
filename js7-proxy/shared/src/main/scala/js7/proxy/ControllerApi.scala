@@ -11,6 +11,7 @@ import js7.base.monixutils.RefCountedResource
 import js7.base.problem.Checked
 import js7.base.session.SessionApi
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.HttpClient.HttpException
 import js7.base.web.{HttpClient, Uri}
@@ -36,12 +37,10 @@ import scala.concurrent.duration.Deadline.now
 import scala.util.Failure
 
 final class ControllerApi(
-  apiResources: Seq[Resource[Task, HttpControllerApi]],
+  apiResources: Nel[Resource[Task, HttpControllerApi]],
   proxyConf: ProxyConf = ProxyConf.default)
 extends ControllerApiWithHttp
 {
-  if (apiResources.isEmpty) throw new IllegalArgumentException("apiResources must not be empty")
-
   private val apiCache = new RefCountedResource(
     JournaledProxy.selectActiveNodeApi(
       apiResources,
@@ -178,7 +177,7 @@ object ControllerApi
   private val logger = scribe.Logger[this.type]
 
   def resource(
-    apiResources: Seq[Resource[Task, HttpControllerApi]],
+    apiResources: Nel[Resource[Task, HttpControllerApi]],
     proxyConf: ProxyConf = ProxyConf.default)
   : Resource[Task, ControllerApi] =
     Resource.make(Task { new ControllerApi(apiResources, proxyConf) })(_.stop)

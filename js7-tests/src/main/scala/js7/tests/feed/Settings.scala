@@ -2,11 +2,12 @@ package js7.tests.feed
 
 import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.generic.SecretString
+import js7.base.utils.CatsUtils.*
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.base.web.Uri
 import js7.common.commandline.CommandLineArguments
 
-final case class Settings(admissions: Seq[Admission])
+final case class Settings(admissions: Nel[Admission])
 
 object Settings
 {
@@ -23,6 +24,6 @@ object Settings
             })
         }
       Settings(
-        a.seqAs[Uri]("--controller=").map(Admission(_, userAndPassword)))
+        Nel.unsafe(a.seqAs[Uri]("--controller=").map(Admission(_, userAndPassword))))
     }
 }

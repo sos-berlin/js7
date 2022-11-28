@@ -13,6 +13,7 @@ import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
 import js7.data.Problems.AgentResetProblem
@@ -208,7 +209,7 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
       secondProvider.runController() { secondController =>
         val v1 = VersionId("1")
         val secondControllerApi = new ControllerApi(
-          admissionsToApiResources(Seq(Admission(
+          admissionsToApiResources(Nel.one(Admission(
             secondController.localUri,
             Some(directoryProvider.controller.userAndPassword))
           ))(secondController.actorSystem))

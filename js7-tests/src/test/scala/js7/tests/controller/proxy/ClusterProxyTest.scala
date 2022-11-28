@@ -4,6 +4,7 @@ import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.generic.SecretString
 import js7.base.problem.Checked.*
+import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.common.akkautils.ProvideActorSystem
@@ -26,17 +27,19 @@ trait ClusterProxyTest extends BeforeAndAfterAll with ControllerClusterForScalaT
     js7.web.client.failure-delay = 0.1
     """.withFallback(ProxyConfs.defaultConfig)
 
-  protected val admissions = List(
+  protected val admissions = Nel.of(
     Admission(Uri(s"http://127.0.0.1:$primaryControllerPort"), Some(primaryUserAndPassword)),
     Admission(Uri(s"http://127.0.0.1:$backupControllerPort"), Some(backupUserAndPassword)))
 
   protected lazy val controllerApi = new ControllerApi(
-    for ((a, i) <- admissions.zipWithIndex)
-      yield AkkaHttpControllerApi.resource(
-        a.uri,
-        a.userAndPassword,
-        name = s"${getClass.simpleScalaName}-Controller-$i")(
-        actorSystem),
+    for {
+      x <- admissions.zipWithIndex
+      (a, i) = x
+    } yield AkkaHttpControllerApi.resource(
+      a.uri,
+      a.userAndPassword,
+      name = s"${getClass.simpleScalaName}-Controller-$i")(
+      actorSystem),
     ProxyConfs.fromConfig(config))
 
   override def afterAll() = {

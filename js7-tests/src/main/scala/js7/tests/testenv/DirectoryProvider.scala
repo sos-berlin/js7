@@ -27,6 +27,7 @@ import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.{closeOnError, multipleAutoClosing}
+import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.Closer.syntax.RichClosersAny
 import js7.base.utils.HasCloser
 import js7.base.utils.ScalaUtils.syntax.*
@@ -141,11 +142,19 @@ extends HasCloser
   def sign[A <: SignableItem](item: A): Signed[A] =
     itemSigner.sign(item)
 
-  @TestOnly
-  def newControllerApi(runningController: RunningController): ControllerApi = {
-    val admission = Admission(runningController.localUri, Some(controller.userAndPassword))
-    new ControllerApi(admissionsToApiResources(Seq(admission))(runningController.actorSystem))
-  }
+  /** Proxy's ControllerApi */
+  def newControllerApi(runningController: RunningController): ControllerApi =
+    controllerApiResource(runningController).allocated.await(99.s)._1  // Caller must stop it
+
+  /** Proxy's ControllerApi */
+  def controllerApiResource(runningController: RunningController): Resource[Task, ControllerApi] =
+    ControllerApi.resource(
+      admissionsToApiResources(
+        Nel.one(controllerAdmission(runningController)))(
+        runningController.actorSystem))
+
+  def controllerAdmission(runningController: RunningController): Admission =
+    Admission(runningController.localUri, Some(controller.userAndPassword))
 
   def run[A](body: (RunningController, IndexedSeq[RunningAgent]) => A): A =
     runAgents(scheduler = scheduler)(agents =>
