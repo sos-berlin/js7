@@ -9,12 +9,12 @@ final class RefCountedResource[A](base: Resource[Task, A])
   private val lock = AsyncLock("RefCountedResource")
   @volatile private var maybeCached: Option[Cached] = None
 
-  val resource: Resource[Task, A] =
+  def resource(implicit src: sourcecode.Enclosing): Resource[Task, A] =
     Resource
       .make(acquire)(releaseCached)
       .map(_.a)
 
-  private def acquire: Task[Cached] =
+  private def acquire(implicit src: sourcecode.Enclosing): Task[Cached] =
     lock.lock(Task.defer(
       maybeCached match {
         case None =>
@@ -29,7 +29,9 @@ final class RefCountedResource[A](base: Resource[Task, A])
           Task.pure(cached)
       }))
 
-  private def releaseCached(cached: Cached): Task[Unit] =
+  private def releaseCached(cached: Cached)
+    (implicit src: sourcecode.Enclosing)
+  : Task[Unit] =
     lock.lock(Task.defer {
       cached.refCount -= 1
       if (cached.releaseOnZero && cached.refCount == 0)
@@ -38,7 +40,7 @@ final class RefCountedResource[A](base: Resource[Task, A])
         Task.unit
     })
 
-  def clear: Task[Unit] =
+  def clear(implicit src: sourcecode.Enclosing): Task[Unit] =
     lock.lock(Task.defer {
       maybeCached.fold(Task.unit) { cached =>
         maybeCached = None
@@ -52,7 +54,7 @@ final class RefCountedResource[A](base: Resource[Task, A])
     })
 
   // Maybe race condition with resource.allocated ???
-  def release: Task[Unit] =
+  def release(implicit src: sourcecode.Enclosing): Task[Unit] =
     lock.lock(Task.defer(
       maybeCached match {
         case None => Task.unit

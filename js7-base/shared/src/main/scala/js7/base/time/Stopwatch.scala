@@ -94,8 +94,8 @@ object Stopwatch
         s"${duration.pretty}/$n$gapOps (⌀${singleDuration.pretty}), $perSecondString$gapOps/s"
 
     def toShortString =
-      if (n == 0)
-        s"0$gapOps"
+      if (n == 0 || duration.isZero)
+        s"${duration.pretty}/$n$gapOps"
       else
         s"${duration.pretty}/$n$gapOps, $perSecondString$gapOps/s"
 

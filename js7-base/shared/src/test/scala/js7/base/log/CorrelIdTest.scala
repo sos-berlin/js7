@@ -6,6 +6,7 @@ import java.util.Base64
 import js7.base.circeutils.CirceUtils.JsonStringInterpolator
 import js7.base.log.CorrelId.LongCorrelId
 import js7.base.log.CorrelIdTest.*
+import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.RichDeadline
 import js7.base.time.Stopwatch.itemsPerSecondString
@@ -18,10 +19,25 @@ final class CorrelIdTest extends OurTestSuite
   override protected def suppressTestCorrelId = true
 
   "JSON" in {
-    testJson(CorrelId(0xba9876543210L), json""" "uph2VDIQ"  """)
-    testJson(CorrelId(CorrelId.bitMask), json""" "________"  """)
-    testJson(CorrelId(62), json""" "AAAAAAAñ"  """)
-    testJson(CorrelId(63), json""" "AAAAAAA_"  """)
+    testJson(CorrelId(0xba9876543210L), json""" "tog1UCHP"  """)
+    testJson(CorrelId(0), json""" "________"  """)
+    testJson(CorrelId(1), json""" "_______A"  """)
+    testJson(CorrelId(26), json""" "_______Z"  """)
+    testJson(CorrelId(62), json""" "_______9"  """)
+    testJson(CorrelId(63), json""" "_______ñ"  """)
+  }
+
+  "apply" in {
+    assert(CorrelId("A") == CorrelId("A_______"))
+  }
+
+  "checked" in {
+    assert(CorrelId.checked("") == Right(CorrelId.empty))
+    assert(CorrelId.checked("?") == Left(Problem("Invalid CorrelId")))
+    assert(CorrelId.checked("123456789") == Left(Problem("Invalid CorrelId")))
+    assert(CorrelId.checked("A") == Right(CorrelId("A_______")))
+    assert(CorrelId.checked("A_12345ñ") == Right(CorrelId("A_12345ñ")))
+    assert(CorrelId.checked("A_12345-") == Right(CorrelId("A_12345ñ")))
   }
 
   "isEmpty" in {

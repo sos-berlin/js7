@@ -55,7 +55,7 @@ object CorrelId extends GenericString.Checked_[CorrelId]
   private val nextCorrelId: NextCorrelId =
     if (isTest && isIntelliJIdea)
       new NextCorrelId {
-        private val next = Atomic(LongCorrelId.checked("CorAAAAA").orThrow.long)
+        private val next = Atomic(LongCorrelId.checked("Cor_____").orThrow.long)
         def apply() = LongCorrelId(next.incrementAndGet())
       }
     else
@@ -192,16 +192,17 @@ object CorrelId extends GenericString.Checked_[CorrelId]
     // Similar to the RFC 4648 "URL and Filename safe" Base 64 Alphabet" but replaces "-".
     // Only word characters are used to make a CorrelId selectable with a single mouse click.
     // The result can easily be used with the grep command, no quotes are required.
-    private val toBase64_ = Array[Char](xs =
-      'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
-      'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e', 'f',
-      'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
-      'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', code62Replacement, '_')
+    // Also, codes are shifted one position to allow '_' for 0 (for legible test logs).
+    private val toOurBase64_ = Array[Char](xs =
+      '_', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O',
+      'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', 'a', 'b', 'c', 'd', 'e',
+      'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u',
+      'v', 'w', 'x', 'y', 'z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', code62Replacement)
 
-    private val fromBase64_ = toBase64_.view.zipWithIndex.map(_.swap)
+    private val fromBase64_ = toOurBase64_.view.zipWithIndex.map(_.swap)
       .scanLeft(Vector.fill(256)(-1))((v, iToChar) => v.updated(iToChar._2, iToChar._1))
       .last.toArray
-    fromBase64_(code62Original) = 62
+    fromBase64_(code62Original) = toOurBase64_.indexOf(code62Replacement)
 
     def apply(long: Long): LongCorrelId =
       new LongCorrelId(long & bitMask)
@@ -211,7 +212,7 @@ object CorrelId extends GenericString.Checked_[CorrelId]
       var i = width - 1
       var a = long
       while (i >= 0) {
-        array(i) = toBase64_((a & 0x3f).toInt)
+        array(i) = toOurBase64_((a & 0x3f).toInt)
         a >>>= 6
         i -= 1
       }
@@ -225,20 +226,25 @@ object CorrelId extends GenericString.Checked_[CorrelId]
 
     private[CorrelId] def checked(string: String): Checked[LongCorrelId] = {
       var long = 0L
-      var i =0
+      var i = 0
       val n = string.length
-      while (i < n) {
-        val c = string(i)
-        if (c < 0 || c >= fromBase64_.length) return invalidCorrelId
-        val v = fromBase64_(c)
-        if (v == -1) return invalidCorrelId
-        long = (long << 6) | v
-        i += 1
-      }
-      if ((long & ~bitMask) != 0)
+      if (n > width)
         invalidCorrelId
-      else
-        Right(LongCorrelId(long))
+      else {
+        // string is interpreted left aligned, filled with zeros '_' to the right
+        while (i < width) {
+          val c: Char = if (i < n) string(i) else '_'
+          if (c < 0 || c >= fromBase64_.length) return invalidCorrelId
+          val v = fromBase64_(c)
+          if (v == -1) return invalidCorrelId
+          long = (long << 6) | v
+          i += 1
+        }
+        if ((long & ~bitMask) != 0)
+          invalidCorrelId
+        else
+          Right(LongCorrelId(long))
+      }
     }
   }
 

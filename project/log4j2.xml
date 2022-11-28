@@ -10,7 +10,7 @@
                              append="true"
                              immediateFlush="${sys:js7.log4j.immediateFlush:-true}">
       <!-- append=true is required to let forked tests append. -->
-      <patternLayout pattern="%d{DEFAULT_MICROS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %notEmpty{%X{js7.correlId} } [%threadName] %logger %notEmpty{»%marker« }- %message%n"
+      <patternLayout pattern="%d{DEFAULT_MICROS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %notEmpty{%X{js7.correlId} }[%threadName] %logger %notEmpty{»%marker« }- %message%n"
                      charset="UTF-8"/>
       <policies>
         <timeBasedTriggeringPolicy/>
