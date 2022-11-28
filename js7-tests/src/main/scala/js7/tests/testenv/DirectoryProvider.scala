@@ -63,6 +63,7 @@ import scala.util.control.NonFatal
 /**
   * @author Joacim Zschimmer
   */
+@TestOnly
 final class DirectoryProvider(
   agentPaths: Seq[AgentPath],
   bareSubagents: Map[AgentPath, Seq[SubagentId]] = Map.empty,

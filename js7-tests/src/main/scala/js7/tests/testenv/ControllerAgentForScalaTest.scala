@@ -28,12 +28,14 @@ import js7.tests.testenv.ControllerAgentForScalaTest.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
+import org.jetbrains.annotations.TestOnly
 import scala.collection.mutable
 import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
   */
+@TestOnly
 trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
   this: org.scalatest.Suite =>
 

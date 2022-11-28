@@ -15,12 +15,14 @@ import js7.data.agent.AgentPath
 import js7.data.item.{InventoryItem, SignableItem}
 import js7.data.subagent.SubagentId
 import monix.execution.Scheduler
+import org.jetbrains.annotations.TestOnly
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.immutable.Iterable
 
 /**
   * @author Joacim Zschimmer
   */
+@TestOnly
 trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
   this: org.scalatest.Suite =>
 
