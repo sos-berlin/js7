@@ -31,6 +31,7 @@ import js7.data.workflow.instructions.Fork
 import js7.data.workflow.position.{Position, PositionOrLabel, WorkflowPosition}
 import org.jetbrains.annotations.TestOnly
 import scala.annotation.nowarn
+import scala.language.implicitConversions
 
 /**
   * @author Joacim Zschimmer
