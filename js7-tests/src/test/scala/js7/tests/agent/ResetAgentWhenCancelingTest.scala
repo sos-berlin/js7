@@ -46,7 +46,7 @@ with BlockingItemUpdater
       TestJob.execute(agentPath))))
     val orderId = OrderId("CANCELING")
     controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
-    eventWatch.await[OrderProcessingStarted](_.key == orderId)
+    eventWatch.await[OrderStdoutWritten](_.key == orderId)
 
     val agentTerminated = agent.terminate()
     TestJob.continue()
