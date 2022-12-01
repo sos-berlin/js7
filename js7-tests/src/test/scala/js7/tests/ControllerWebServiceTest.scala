@@ -45,7 +45,7 @@ import js7.tester.CirceJsonTester.testJson
 import js7.tests.ControllerWebServiceTest.*
 import js7.tests.testenv.{ControllerAgentForScalaTest, DirectoryProvider}
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import org.scalactic.source
 import org.scalatest.BeforeAndAfterAll

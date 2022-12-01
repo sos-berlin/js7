@@ -23,7 +23,7 @@ import js7.proxy.ControllerApi
 import js7.tests.controller.cluster.BigJsonClusterTest.*
 import js7.tests.testenv.ControllerClusterForScalaTest
 import js7.tests.testenv.ControllerClusterForScalaTest.assertEqualJournalFiles
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
 final class BigJsonClusterTest extends OurTestSuite with ControllerClusterForScalaTest

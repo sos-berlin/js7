@@ -14,7 +14,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.controller.cluster.ClusterSpeedTest.*
 import js7.tests.testenv.ControllerClusterForScalaTest
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.Deadline.now
 
 final class ClusterSpeedTest extends OurTestSuite with ControllerClusterForScalaTest

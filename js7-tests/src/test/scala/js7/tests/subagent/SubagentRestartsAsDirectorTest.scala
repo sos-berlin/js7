@@ -27,7 +27,7 @@ import js7.data.controller.ControllerId
 import js7.subagent.BareSubagent
 import js7.tests.testenv.DirectoryProvider
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.Future
 

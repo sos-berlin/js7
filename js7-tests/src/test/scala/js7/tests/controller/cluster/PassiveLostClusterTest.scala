@@ -9,7 +9,7 @@ import js7.data.controller.ControllerCommand.ClusterAppointNodes
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.tests.controller.cluster.ControllerClusterTester.*
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 
 final class PassiveLostClusterTest extends ControllerClusterTester
 {

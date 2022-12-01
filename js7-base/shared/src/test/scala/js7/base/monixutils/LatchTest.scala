@@ -2,7 +2,7 @@ package js7.base.monixutils
 
 import js7.base.time.ScalaTime.*
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import js7.base.test.OurAsyncTestSuite
 import scala.concurrent.Promise
 

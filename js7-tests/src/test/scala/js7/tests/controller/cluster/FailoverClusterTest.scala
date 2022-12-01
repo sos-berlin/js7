@@ -27,7 +27,7 @@ import js7.journal.files.JournalFiles
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.tests.controller.cluster.ControllerClusterTester.*
 import js7.tests.testenv.ControllerClusterForScalaTest.assertEqualJournalFiles
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.Deadline.now
 
 final class FailoverClusterTest extends ControllerClusterTester

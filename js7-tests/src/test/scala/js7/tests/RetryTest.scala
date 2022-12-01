@@ -21,7 +21,7 @@ import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.RetryTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.*
 import scala.reflect.ClassTag
 

@@ -34,7 +34,7 @@ import js7.tests.ExecuteTest.*
 import js7.tests.jobs.SemaphoreJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import org.scalactic.source
 

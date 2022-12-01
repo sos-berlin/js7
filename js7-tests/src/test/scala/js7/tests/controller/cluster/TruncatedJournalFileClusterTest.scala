@@ -11,7 +11,7 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.journal.files.JournalFiles.listJournalFiles
 import js7.tests.controller.cluster.ControllerClusterTester.*
 import js7.tests.testenv.DirectoryProvider
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 
 final class TruncatedJournalFileClusterTest extends ControllerClusterTester
 {

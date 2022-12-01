@@ -21,7 +21,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.filewatch.FileWatchNarrowPatternTest.*
 import js7.tests.jobs.{DeleteFileJob, SemaphoreJob}
 import js7.tests.testenv.ControllerAgentForScalaTest
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 
 final class FileWatchNarrowPatternTest extends OurTestSuite with ControllerAgentForScalaTest
 {

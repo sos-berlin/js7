@@ -39,7 +39,7 @@ import js7.tests.controller.proxy.history.ProxyHistoryTest.*
 import js7.tests.testenv.ControllerClusterForScalaTest.TestPathExecutable
 import js7.tests.testenv.DirectoryProvider.{StdoutOutput, toLocalSubagentId}
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalactic.source
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*

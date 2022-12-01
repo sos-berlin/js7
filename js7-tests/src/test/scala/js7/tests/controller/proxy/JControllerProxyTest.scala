@@ -26,7 +26,7 @@ import js7.proxy.javaapi.JProxyContext
 import js7.tests.controller.proxy.ClusterProxyTest.workflow
 import js7.tests.testenv.DirectoryProvider.script
 import js7.tests.testenv.DirectoryProviderForScalaTest
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.CancellationException
 import scala.jdk.CollectionConverters.*
 import scala.util.{Failure, Try}

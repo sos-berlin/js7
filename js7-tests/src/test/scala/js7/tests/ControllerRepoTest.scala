@@ -41,7 +41,7 @@ import js7.proxy.ControllerApi
 import js7.tests.testenv.ControllerTestUtils.syntax.*
 import js7.tests.testenv.DirectoryProvider
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.execution.atomic.AtomicInt
 import monix.reactive.Observable
 import scala.concurrent.duration.Deadline.now

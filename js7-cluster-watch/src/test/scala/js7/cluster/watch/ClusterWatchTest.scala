@@ -18,7 +18,7 @@ import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalPosition}
 import js7.data.node.NodeId
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.execution.schedulers.TestScheduler
 import scala.concurrent.duration.FiniteDuration
 

@@ -17,7 +17,7 @@ import js7.data.workflow.instructions.{Cycle, Schedule}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.Cycle2Test.*
 import js7.tests.testenv.ControllerAgentForScalaTest
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.*
 
 // Repeats the JS-2012 test case in CycleTest with the real wall clock, to be sure.

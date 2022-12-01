@@ -18,7 +18,7 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.data_for_java.auth.{JAdmission, JHttpsConfig}
 import js7.proxy.data.event.EventAndState
 import js7.tests.controller.proxy.ClusterProxyTest.{backupUserAndPassword, primaryUserAndPassword, workflow}
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import scala.jdk.CollectionConverters.*
 
 final class JournaledProxySwitchOverClusterTest extends OurTestSuite with ClusterProxyTest

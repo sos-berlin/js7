@@ -8,7 +8,7 @@ import js7.data.cluster.ClusterEvent.ClusterCoupled
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.WorkflowPath
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 
 /**
   * @author Joacim Zschimmer

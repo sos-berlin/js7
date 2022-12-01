@@ -28,7 +28,7 @@ import js7.tests.UpdateAgentRefsTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerTestUtils.newControllerApi
 import js7.tests.testenv.{DirectoryProvider, DirectoryProviderForScalaTest}
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
 final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForScalaTest

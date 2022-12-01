@@ -19,7 +19,7 @@ import js7.journal.files.JournalFiles.listJournalFiles
 import js7.tests.controller.ObsoleteJournalFilesRemovedTest.*
 import js7.tests.testenv.DirectoryProvider.script
 import js7.tests.testenv.DirectoryProviderForScalaTest
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 
 /**
   * @author Joacim Zschimmer

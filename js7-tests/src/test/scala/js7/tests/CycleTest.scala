@@ -29,7 +29,7 @@ import js7.tests.CycleTest.*
 import js7.tests.jobs.{EmptyJob, SemaphoreJob}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration.*
 

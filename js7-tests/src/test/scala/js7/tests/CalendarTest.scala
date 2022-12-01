@@ -27,7 +27,7 @@ import js7.tests.CalendarTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
 final class CalendarTest extends OurTestSuite with ControllerAgentForScalaTest

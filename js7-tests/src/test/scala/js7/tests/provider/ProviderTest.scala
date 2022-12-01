@@ -35,7 +35,7 @@ import js7.provider.configuration.ProviderConfiguration
 import js7.tests.provider.ProviderTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.Promise
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now

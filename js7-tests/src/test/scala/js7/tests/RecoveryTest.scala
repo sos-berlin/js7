@@ -31,7 +31,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.RecoveryTest.*
 import js7.tests.testenv.DirectoryProvider
 import js7.tests.testenv.DirectoryProvider.{StdoutOutput, script, toLocalSubagentId}
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.matchers.should.Matchers.*
 import scala.collection.mutable
 import scala.util.control.NonFatal

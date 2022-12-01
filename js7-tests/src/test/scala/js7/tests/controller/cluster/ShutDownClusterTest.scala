@@ -14,7 +14,7 @@ import js7.data.cluster.ClusterState.{Coupled, FailedOver}
 import js7.data.controller.ControllerCommand.ShutDown
 import js7.data.controller.ControllerCommand.ShutDown.ClusterAction
 import js7.data.event.EventId
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 
 final class ShutDownClusterTest extends ControllerClusterTester
 {

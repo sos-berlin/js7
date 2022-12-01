@@ -16,7 +16,7 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.FailOnErrWrittenTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 
 final class FailOnErrWrittenTest extends OurTestSuite with ControllerAgentForScalaTest
 {

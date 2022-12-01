@@ -7,7 +7,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.controller.client.AkkaHttpControllerApi
 import js7.tests.testenv.DirectoryProvider.ExportedControllerTrustStoreRef
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 
 /**
   * Controller and Agent with server-side HTTPS.

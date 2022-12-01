@@ -35,7 +35,7 @@ import js7.tests.controller.proxy.JournaledProxyObservableTester.syntax.*
 import js7.tests.controller.proxy.JournaledProxyTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.{script, toLocalSubagentId}
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import org.scalatest.BeforeAndAfterAll
 

@@ -19,7 +19,7 @@ import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.BranchId.Then
 import js7.data.workflow.position.Position
 import js7.tests.special.CirceParallelizationSpeedTest.*
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
 final class CirceParallelizationSpeedTest extends OurTestSuite

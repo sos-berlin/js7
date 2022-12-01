@@ -31,7 +31,7 @@ import js7.tests.BoardTest.*
 import js7.tests.jobs.{EmptyJob, SemaphoreJob}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.View

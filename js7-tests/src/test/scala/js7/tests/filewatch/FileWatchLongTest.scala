@@ -20,7 +20,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.filewatch.FileWatchLongTest.*
 import js7.tests.jobs.DeleteFileJob
 import js7.tests.testenv.ControllerAgentForScalaTest
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
 final class FileWatchLongTest extends OurTestSuite with ControllerAgentForScalaTest

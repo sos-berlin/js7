@@ -13,7 +13,7 @@ import js7.data.item.ItemOperation.AddOrChangeSimple
 import js7.data.lock.{Lock, LockPath}
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 
 final class FeedMainTest extends OurTestSuite with ControllerAgentForScalaTest
 {

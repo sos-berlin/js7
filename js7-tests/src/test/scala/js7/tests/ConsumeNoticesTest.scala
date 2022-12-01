@@ -25,7 +25,7 @@ import js7.tests.ConsumeNoticesTest.*
 import js7.tests.jobs.{FailingJob, SemaphoreJob}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.freespec.AnyFreeSpec
 import scala.collection.View
 import scala.concurrent.duration.*

@@ -9,7 +9,7 @@ import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.item.ItemOperation
 import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.tests.jobresource.JobResourceTest.agentPath
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
 final class JobResourceAtBareSubagentTest extends JobResourceTest

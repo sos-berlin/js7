@@ -34,7 +34,7 @@ import js7.tests.jobs.EmptyJob
 import js7.tests.order.SuspendResumeOrdersTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.{toLocalSubagentId, waitingForFileScript}
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 
 final class SuspendResumeOrdersTest extends OurTestSuite with ControllerAgentForScalaTest
 {

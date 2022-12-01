@@ -11,7 +11,7 @@ import js7.base.time.ScalaTime.*
 import js7.common.http.AkkaHttpClient
 import js7.data.cluster.ClusterState
 import js7.data.problems.InvalidLoginProblem
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 
 final class ControllerClientSideMultiUserHttpsTest extends ControllerHttpsStandardTests
 {

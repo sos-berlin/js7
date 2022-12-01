@@ -15,7 +15,7 @@ import js7.data.workflow.position.Position
 import js7.tests.ExampleTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 
 final class ExampleTest extends OurTestSuite with ControllerAgentForScalaTest
 {

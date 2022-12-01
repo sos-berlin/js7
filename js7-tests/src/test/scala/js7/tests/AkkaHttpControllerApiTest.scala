@@ -23,7 +23,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.AkkaHttpControllerApiTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 
 /**
   * @author Joacim Zschimmer

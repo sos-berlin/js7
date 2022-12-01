@@ -24,7 +24,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.AdmissionTimeTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.*
 
 final class AdmissionTimeTest extends OurTestSuite with ControllerAgentForScalaTest

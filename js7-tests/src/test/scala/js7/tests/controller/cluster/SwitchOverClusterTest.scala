@@ -17,7 +17,7 @@ import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.tests.controller.cluster.ControllerClusterTester.*
 import js7.tests.controller.cluster.SwitchOverClusterTest.*
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import scala.util.Try
 
 final class SwitchOverClusterTest extends ControllerClusterTester

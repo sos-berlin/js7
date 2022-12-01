@@ -40,7 +40,7 @@ import js7.proxy.data.event.{ProxyEvent, ProxyStarted}
 import js7.tests.controller.proxy.ClusterProxyTest.{backupUserAndPassword, primaryCredentials, primaryUserAndPassword, workflow}
 import js7.tests.controller.proxy.JournaledProxyClusterTest.*
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import scala.concurrent.duration.Deadline.now
 import scala.jdk.CollectionConverters.*

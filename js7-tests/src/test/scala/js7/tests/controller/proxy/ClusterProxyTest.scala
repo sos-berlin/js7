@@ -15,7 +15,7 @@ import js7.proxy.ControllerApi
 import js7.proxy.configuration.ProxyConfs
 import js7.tests.controller.proxy.ClusterProxyTest.*
 import js7.tests.testenv.ControllerClusterForScalaTest
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.{BeforeAndAfterAll, TestSuite}
 
 trait ClusterProxyTest extends BeforeAndAfterAll with ControllerClusterForScalaTest with ProvideActorSystem

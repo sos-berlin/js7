@@ -24,7 +24,7 @@ import js7.tests.AdmissionTimeSkipJobTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 
 final class AdmissionTimeSkipJobTest extends OurTestSuite with ControllerAgentForScalaTest
 {

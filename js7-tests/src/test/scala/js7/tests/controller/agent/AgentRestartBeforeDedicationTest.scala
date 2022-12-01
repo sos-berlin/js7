@@ -11,7 +11,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.controller.agent.AgentRestartBeforeDedicationTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.DirectoryProviderForScalaTest
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 
 final class AgentRestartBeforeDedicationTest extends OurTestSuite with DirectoryProviderForScalaTest
 {

@@ -18,7 +18,7 @@ import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.RetryDelayTest.*
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.TimeoutException
 
 final class RetryDelayTest

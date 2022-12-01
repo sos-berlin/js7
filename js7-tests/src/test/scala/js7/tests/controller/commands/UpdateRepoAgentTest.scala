@@ -24,7 +24,7 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.controller.commands.UpdateRepoAgentTest.*
 import js7.tests.testenv.DirectoryProvider
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.*
 
 /**

@@ -9,7 +9,7 @@ import js7.data.event.KeyedEvent
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.WorkflowPath
 import js7.tests.https.AgentClientSideHttpsWithoutCertificateTest.*
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.*
 
 /**

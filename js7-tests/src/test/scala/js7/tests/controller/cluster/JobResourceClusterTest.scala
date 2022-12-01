@@ -14,7 +14,7 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.controller.cluster.JobResourceClusterTest.*
 import js7.tests.jobs.EmptyJob
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
 final class JobResourceClusterTest extends ControllerClusterTester

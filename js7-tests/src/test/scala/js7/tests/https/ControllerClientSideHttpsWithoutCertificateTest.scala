@@ -4,7 +4,7 @@ import js7.base.log.Logger
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.tests.https.ControllerClientSideHttpsWithoutCertificateTest.*
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.TimeoutException
 
 /**

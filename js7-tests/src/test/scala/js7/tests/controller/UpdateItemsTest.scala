@@ -26,7 +26,7 @@ import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.controller.UpdateItemsTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.ControllerTestUtils.syntax.RichRunningController
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import scala.concurrent.Promise
 import scala.concurrent.duration.*

@@ -14,7 +14,7 @@ import js7.data.subagent.{SubagentId, SubagentItem}
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.controller.commands.AddOrderTimeoutTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 
 final class AddOrderTimeoutTest extends OurTestSuite with ControllerAgentForScalaTest
 {

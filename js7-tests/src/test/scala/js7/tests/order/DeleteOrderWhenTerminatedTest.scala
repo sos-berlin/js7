@@ -18,7 +18,7 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.order.DeleteOrderWhenTerminatedTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.{script, toLocalSubagentId}
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 
 final class DeleteOrderWhenTerminatedTest extends OurTestSuite with ControllerAgentForScalaTest
 {

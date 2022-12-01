@@ -26,7 +26,7 @@ import js7.tests.controller.commands.AddOrderTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
 
 final class AddOrderTest extends OurTestSuite with ControllerAgentForScalaTest
 {
