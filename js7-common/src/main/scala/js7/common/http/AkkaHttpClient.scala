@@ -43,7 +43,7 @@ import js7.common.akkahttp.ByteSequenceChunkerObservable.syntax.*
 import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.akkautils.ByteStrings.syntax.*
 import js7.common.http.AkkaHttpClient.*
-import js7.common.http.AkkaHttpUtils.{RichAkkaAsUri, RichAkkaUri, decompressResponse, encodeGzip}
+import js7.common.http.AkkaHttpUtils.{RichAkkaAsUri, RichAkkaUri, RichResponseEntity, decompressResponse, encodeGzip}
 import js7.common.http.JsonStreamingSupport.{StreamingJsonHeader, StreamingJsonHeaders, `application/x-ndjson`}
 import js7.common.http.StreamingSupport.*
 import monix.eval.Task
@@ -52,7 +52,6 @@ import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.Future
 import scala.concurrent.duration.Deadline.now
-import scala.concurrent.duration.*
 import scala.reflect.ClassTag
 import scala.util.Success
 import scala.util.control.NoStackTrace
@@ -200,11 +199,9 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
     post_[A](uri, data, Accept(`application/json`) :: Nil)
       .flatMap { httpResponse =>
         Task.defer {
-          if (!httpResponse.status.isSuccess && !allowedStatusCodes(httpResponse.status.intValue)) {
-            Task.deferFuture(httpResponse.entity.toStrict(FailureTimeout, maxBytes = HttpErrorContentSizeMaximum))
-              .flatMap(entity =>
-                Task.raiseError(new HttpException(POST, uri, httpResponse, entity.data.utf8String)))
-          } else
+          if (!httpResponse.status.isSuccess && !allowedStatusCodes(httpResponse.status.intValue))
+            failWithResponse(uri, httpResponse)
+          else
             Task.pure(httpResponse.status.intValue)
         }.guarantee(Task {
           httpResponse.discardEntityBytes()
@@ -315,9 +312,11 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
       })
 
   private def unmarshal[A: FromResponseUnmarshaller](method: HttpMethod, uri: Uri)(httpResponse: HttpResponse) =
-    Task.deferFuture[A](
-      executeOn(materializer.executionContext) { implicit ec =>
-        if (httpResponse.status.isSuccess)
+    if (!httpResponse.status.isSuccess)
+      failWithResponse(uri, httpResponse)
+    else
+      Task.deferFuture[A](
+        executeOn(materializer.executionContext) { implicit ec =>
           Unmarshal(httpResponse).to[A]
             .recover { case t =>
               if (!materializer.isShutdown) {
@@ -326,11 +325,11 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
               }
               throw t
             }
-        else
-          httpResponse.entity.toStrict(FailureTimeout, maxBytes = HttpErrorContentSizeMaximum)
-            .flatMap(entity => Future.failed(
-              new HttpException(method, uri, httpResponse, entity.data.utf8String)))
-      })
+        })
+
+  private def failWithResponse(uri: Uri, response: HttpResponse): Task[Nothing] =
+    response.entity.asUtf8String.flatMap(errorMsg =>
+      Task.raiseError(new HttpException(POST, uri, response, errorMsg)))
 
   private def withCheckedAgentUri[A](request: HttpRequest)(body: HttpRequest => Task[A]): Task[A] =
     toCheckedAgentUri(request.uri.asUri) match {
@@ -448,9 +447,6 @@ object AkkaHttpClient
       CorrelId.checked(asciiString).map(`x-js7-correlation-id`(_)).asTry
   }
 
-  private val ErrorMessageLengthMaximum = 10000
-  private val HttpErrorContentSizeMaximum = ErrorMessageLengthMaximum + 100
-  private val FailureTimeout = 10.seconds
   private val logger = Logger(getClass)
   private val LF = ByteString("\n")
   private val AcceptJson = Accept(`application/json`) :: Nil
@@ -536,7 +532,7 @@ object AkkaHttpClient
     private def prefixString =
       s"HTTP ${httpResponse.status}: ${method.value} $uri"
 
-    private def shortDataString = dataAsString.truncateWithEllipsis(ErrorMessageLengthMaximum)
+    private def shortDataString = dataAsString.truncateWithEllipsis(10000)
 
     lazy val problem: Option[Problem] =
       if (httpResponse.entity.contentType == ContentTypes.`application/json`)

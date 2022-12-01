@@ -49,6 +49,12 @@ object ByteStringByteSequence extends ByteSequence[ByteString]
   def combine(a: ByteString, b: ByteString) =
     a ++ b
 
+  override def combineAll(as: IterableOnce[ByteString]): ByteString = {
+    val b = ByteString.newBuilder
+    for (a <- as) b.append(a)
+    b.result()
+  }
+
   def toArray(byteString: ByteString): Array[Byte] =
     byteString.toArray
 
