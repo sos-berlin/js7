@@ -86,14 +86,13 @@ final class StrictEventWatch(val underlying: FileEventWatch)
 
   /** TEST ONLY - Blocking. */
   @TestOnly
-  def keyedEvents[E <: Event: ClassTag: Tag](implicit s: Scheduler): Seq[KeyedEvent[E]] =
-    keyedEvents[E](after = tornEventId)
-
-  /** TEST ONLY - Blocking. */
-  @TestOnly
-  def keyedEvents[E <: Event: ClassTag: Tag](after: EventId)(implicit s: Scheduler)
+  def keyedEvents[E <: Event: ClassTag: Tag](
+    predicate: KeyedEvent[E] => Boolean = Every,
+    after: EventId)
+    (implicit s: Scheduler)
   : Seq[KeyedEvent[E]] =
     allAfter[E](after = after).await(99.s)
+      .filter(stamped => predicate(stamped.value))
       .map(_.value)
 
   /** TEST ONLY - Blocking. */

@@ -8,10 +8,10 @@ import akka.http.scaladsl.model.{HttpEntity, HttpRequest, HttpResponse, Uri as A
 import akka.stream.Materializer
 import akka.util.ByteString
 import js7.base.monixutils.MonixBase.syntax.*
-import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
+import js7.common.akkautils.ByteStrings.syntax.*
+import js7.common.http.StreamingSupport.ObservableAkkaSource
 import monix.eval.Task
-import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer
@@ -33,25 +33,21 @@ object AkkaHttpUtils
       case o => throw new RuntimeException(s"Unsupported Encoding: $o")
     }
 
-  private implicit final class RichResponseEntity(private val underlying: HttpEntity) extends AnyVal {
+  implicit final class RichResponseEntity(private val underlying: HttpEntity) extends AnyVal {
+    def asUtf8String(implicit m: Materializer): Task[String] =
+      asByteString.map(_.utf8String)
+
     // TODO Fail if Content-Type is not a (UTF-8 or other) String.
     // TODO Parameter maxLength to truncateWithEllipsis.
-    /**
-      * Returns the HttpResponse content interpreted as UTF-8, ignoring any Content-Type.
-      * May return a very big String.
-      */
-    def utf8String(timeout: FiniteDuration)(implicit mat: Materializer): Task[String] =
-      byteString(timeout).map(_.utf8String)  // Possible OutOfMemoryError
-
-    /**
-      * Returns the HttpResponse content as a `Future[ByteString]`.
-      * May return a very big ByteString.
-      */
-    def byteString(timeout: FiniteDuration)(implicit mat: Materializer): Task[ByteString] =
-      Task
-        .deferFutureAction(implicit s =>
-          underlying.toStrict(timeout).flatMap(_.dataBytes.runFold(ByteString.empty)(_ ++ _)))  // Possible OutOfMemoryError
-        .logWhenItTakesLonger("HttpEntity.bytestring")
+    // May throw OutOfMemoryError
+    def asByteString(implicit m: Materializer): Task[ByteString] =
+      underlying
+        .withoutSizeLimit
+        .dataBytes
+        .toObservable
+        .fold
+        .headL
+        .logWhenItTakesLonger("HttpEntity.asByteString")
   }
 
   implicit final class RichHttpResponse(private val underlying: HttpResponse) extends AnyVal {
@@ -60,14 +56,14 @@ object AkkaHttpUtils
       * May return a very big String.
       */
     def utf8String(implicit mat: Materializer): Task[String] =
-      underlying.entity.utf8String(99.s)
+      underlying.entity.asUtf8String
 
     /**
       * Returns the HttpResponse content as a `Future[ByteString]`.
       * May return a very big ByteString.
       */
-    def byteString(timeout: FiniteDuration)(implicit mat: Materializer): Task[ByteString] =
-      underlying.entity.byteString(timeout)
+    def byteString(implicit mat: Materializer): Task[ByteString] =
+      underlying.entity.asByteString
   }
 
   implicit final class RichAkkaUri(private val underlying: Uri) extends AnyVal {

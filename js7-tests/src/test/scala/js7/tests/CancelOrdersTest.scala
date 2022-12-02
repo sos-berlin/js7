@@ -207,13 +207,13 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
     eventWatch.await[OrderCancelled](_.key == order.id)
 
     assert(controller.eventWatch
-      .keyedEvents[OrderEvent]
+      .allKeyedEvents[OrderEvent]
       .filter(_.key.string startsWith "FORK")
       .filterNot(_.event.isInstanceOf[OrderStdWritten]) ==
       Vector(
         OrderId("FORK") <-: OrderAdded(forkWorkflow.id, order.arguments, order.scheduledFor),
         OrderId("FORK") <-: OrderStarted,
-        OrderId("FORK") <-: OrderForked(Vector(OrderForked.Child(Fork.Branch.Id("🥕"), OrderId("FORK|🥕")))),
+        OrderId("FORK") <-: OrderForked(Vector("🥕" -> OrderId("FORK|🥕"))),
         OrderId("FORK|🥕") <-: OrderAttachable(agentPath),
         OrderId("FORK|🥕") <-: OrderAttached(agentPath),
         OrderId("FORK|🥕") <-: OrderProcessingStarted(subagentId),
@@ -239,7 +239,7 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
     eventWatch.await[OrderCancelled](_.key == order.id / "🥕")
 
     assert(controller.eventWatch
-      .keyedEvents[OrderEvent]
+      .allKeyedEvents[OrderEvent]
       .filter(_.key.string startsWith "CANCEL-CHILD")
       .filterNot(_.event.isInstanceOf[OrderStdWritten]) ==
       Vector(
@@ -247,7 +247,7 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
           order.scheduledFor),
         OrderId("CANCEL-CHILD") <-: OrderStarted,
         OrderId("CANCEL-CHILD") <-: OrderForked(Vector(
-          OrderForked.Child(Fork.Branch.Id("🥕"), OrderId("CANCEL-CHILD|🥕")))),
+          "🥕" -> OrderId("CANCEL-CHILD|🥕"))),
         OrderId("CANCEL-CHILD|🥕") <-: OrderAttachable(agentPath),
         OrderId("CANCEL-CHILD|🥕") <-: OrderAttached(agentPath),
         OrderId("CANCEL-CHILD|🥕") <-: OrderProcessingStarted(subagentId),

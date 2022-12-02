@@ -31,6 +31,7 @@ import js7.data.workflow.instructions.Fork
 import js7.data.workflow.position.{Position, PositionOrLabel, WorkflowPosition}
 import org.jetbrains.annotations.TestOnly
 import scala.annotation.nowarn
+import scala.language.implicitConversions
 
 /**
   * @author Joacim Zschimmer
@@ -235,8 +236,11 @@ object OrderEvent
       branchId: Option[Fork.Branch.Id] = None)
 
     object Child {
-      def apply(branchId: Fork.Branch.Id, orderId: OrderId) =
+      def apply(branchId: Fork.Branch.Id, orderId: OrderId): Child =
         new Child(orderId, Map.empty, Some(branchId))
+
+      implicit def fromPair(pair: (String, OrderId)): Child =
+        apply(Fork.Branch.Id(pair._1), pair._2)
 
       implicit val jsonEncoder: Encoder.AsObject[Child] =
         o => JsonObject(

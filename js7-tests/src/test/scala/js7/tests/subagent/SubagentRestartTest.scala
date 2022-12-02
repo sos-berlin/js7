@@ -77,7 +77,7 @@ final class SubagentRestartTest extends OurTestSuite with SubagentTester
 
       locally {
         val eventId = eventWatch.lastAddedEventId
-        eventWatch.keyedEvents[OrderProcessed] foreach {
+        eventWatch.allKeyedEvents[OrderProcessed] foreach {
           case ke @ KeyedEvent(`orderId`, OrderProcessed(_)) => fail(s"Unexpected $ke")
           case _ =>
         }

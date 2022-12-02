@@ -138,8 +138,8 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
       Vector(
         OrderStarted,
         OrderForked(Vector(
-          OrderForked.Child(Fork.Branch.Id("🥕"), orderId / "🥕"),
-          OrderForked.Child(Fork.Branch.Id("🍋"), orderId / "🍋"))),
+          "🥕" -> orderId / "🥕",
+          "🍋" -> orderId / "🍋")),
         OrderJoined(Outcome.succeeded),
         OrderMoved(Position(1)),
         OrderFinished()))
@@ -208,8 +208,8 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
         Vector(
           OrderStarted,
           OrderForked(Vector(
-            OrderForked.Child(Fork.Branch.Id("🥕"), orderId / "🥕"),
-            OrderForked.Child(Fork.Branch.Id("🍋"), orderId / "🍋"))),
+            "🥕" -> orderId / "🥕",
+            "🍋" -> orderId / "🍋")),
           OrderJoined(Outcome.Failed(Some("Order:🟣|🥕 has been cancelled"))),
           OrderFailed(Position(0))))
 

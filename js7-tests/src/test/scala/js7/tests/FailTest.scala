@@ -108,8 +108,8 @@ final class FailTest extends OurTestSuite with ControllerAgentForScalaTest
         OrderAdded(workflowId),
         OrderStarted,
         OrderForked(Vector(
-          OrderForked.Child("🥕", OrderId("🔺|🥕")),
-          OrderForked.Child("🍋", OrderId("🔺|🍋")))),
+          "🥕" -> OrderId("🔺|🥕"),
+          "🍋" -> OrderId("🔺|🍋"))),
         OrderJoined(Outcome.Failed(Some("Order:🔺|🍋 Failed"))),
         OrderFailed(Position(0))),
       OrderId("🔺|🍋") -> Vector(
@@ -131,8 +131,8 @@ final class FailTest extends OurTestSuite with ControllerAgentForScalaTest
         OrderAdded(workflowId),
         OrderStarted,
         OrderForked(Vector(
-          OrderForked.Child("🥕", OrderId("🟥|🥕")),
-          OrderForked.Child("🍋", OrderId("🟥|🍋")))),
+          "🥕" -> OrderId("🟥|🥕"),
+          "🍋" -> OrderId("🟥|🍋"))),
         OrderJoined(Outcome.Failed(Some("Order:🟥|🍋 Failed"))),
         OrderFailed(Position(0))),
       OrderId("🟥|🍋") -> Vector(

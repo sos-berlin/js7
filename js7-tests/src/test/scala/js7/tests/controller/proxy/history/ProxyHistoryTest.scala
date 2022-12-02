@@ -153,8 +153,8 @@ final class ProxyHistoryTest extends OurTestSuite with ProvideActorSystem with C
             OrderProcessed(Succeeded(NamedValues.rc(0))),
             OrderMoved(Position(1)),
             OrderForked(Vector(
-              OrderForked.Child("🥕",OrderId("🔺|🥕")),
-              OrderForked.Child("🍋",OrderId("🔺|🍋")))),
+              "🥕" -> OrderId("🔺|🥕"),
+              "🍋" -> OrderId("🔺|🍋"))),
             OrderDetachable,
             OrderDetached,
             OrderJoined(succeeded),

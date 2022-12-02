@@ -11,7 +11,6 @@ import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFailedInFork, OrderForked, OrderJoined, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdWritten}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.NamedValues
-import js7.data.workflow.instructions.Fork
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.FailUncatchableTest.*
@@ -101,8 +100,8 @@ final class FailUncatchableTest extends OurTestSuite
         OrderAdded(TestWorkflowId),
         OrderStarted,
         OrderForked(Vector(
-          OrderForked.Child(Fork.Branch.Id("🥕"), OrderId("🔺|🥕")),
-          OrderForked.Child(Fork.Branch.Id("🍋"), OrderId("🔺|🍋")))),
+          "🥕" -> OrderId("🔺|🥕"),
+          "🍋" -> OrderId("🔺|🍋"))),
         OrderJoined(Outcome.Failed(Some("Order:🔺|🥕 Failed(TEST-ERROR)"))),
         OrderFailed(Position(0))))
 
@@ -152,8 +151,8 @@ final class FailUncatchableTest extends OurTestSuite
         OrderAdded(TestWorkflowId),
         OrderStarted,
         OrderForked(Vector(
-          OrderForked.Child(Fork.Branch.Id("🥕"), OrderId("🔺|🥕")),
-          OrderForked.Child(Fork.Branch.Id("🍋"), OrderId("🔺|🍋")))),
+          "🥕" -> OrderId("🔺|🥕"),
+          "🍋" -> OrderId("🔺|🍋"))),
         OrderJoined(Outcome.Failed(Some("Order:🔺|🥕 Failed(TEST-ERROR)"))),
         OrderFailed(Position(0))))
 

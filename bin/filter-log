@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cat target/test.log \
+  | egrep -- "-Controller-.* - :| TEST | ERROR | WARN  | info  " \
+  | egrep -v "AgentEventsObserved| info  .* js7.journal.Journal - Event " \
+  | sed -E 's/(js7.journal.Journal - :).{32}(.*$)/\1 \2/'  \
+  | sed -E 's/ \[[^]]*] / /' \
+  | sed -E 's/ js7\.[^ ]* / /' \
+  | cut -c 1-25,35- \
+  | less
