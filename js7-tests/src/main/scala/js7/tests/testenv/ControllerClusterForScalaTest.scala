@@ -1,21 +1,25 @@
 package js7.tests.testenv
 
+import cats.effect.Resource
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
-import js7.base.auth.{UserAndPassword, UserId}
+import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.configutils.Configs.*
 import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.*
+import js7.base.io.https.HttpsConfig
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Checked.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
-import js7.base.utils.CatsUtils.combine
+import js7.base.utils.CatsBlocking.BlockingTaskResource
+import js7.base.utils.CatsUtils.{Nel, combine}
 import js7.base.utils.Closer.syntax.*
 import js7.base.utils.Closer.withCloser
 import js7.base.utils.ProgramTermination
 import js7.base.web.Uri
+import js7.cluster.watch.ClusterWatchService
 import js7.common.auth.SecretStringGenerator
 import js7.common.message.ProblemCodeMessages
 import js7.common.utils.FreeTcpPortFinder.{findFreeTcpPort, findFreeTcpPorts}
@@ -31,11 +35,13 @@ import js7.journal.files.JournalFiles.listJournalFiles
 import js7.tests.testenv.ControllerClusterForScalaTest.TestPathExecutable
 import js7.tests.testenv.DirectoryProvider.script
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.global
+import monix.execution.Scheduler.Implicits.traced
+import org.jetbrains.annotations.TestOnly
 import org.scalactic.source
 import org.scalatest.Assertions.*
 import org.scalatest.TestSuite
 
+@TestOnly
 trait ControllerClusterForScalaTest
 {
   this: TestSuite =>
@@ -52,8 +58,17 @@ trait ControllerClusterForScalaTest
   protected def primaryControllerConfig: Config = ConfigFactory.empty
   protected def backupControllerConfig: Config = ConfigFactory.empty
 
-  protected lazy val primaryControllerPort = findFreeTcpPort()
-  protected lazy val backupControllerPort = findFreeTcpPort()
+  protected final lazy val primaryControllerPort = findFreeTcpPort()
+  protected final lazy val backupControllerPort = findFreeTcpPort()
+
+  val userAndPassword = UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))
+
+  protected final lazy val primaryControllerAdmission =
+    Admission(Uri(s"http://127.0.0.1:$primaryControllerPort"), Some(userAndPassword))
+  protected final lazy val backupControllerAdmission =
+    Admission(Uri(s"http://127.0.0.1:$backupControllerPort"), Some(userAndPassword))
+  protected final lazy val controllerAdmissions =
+    Nel.of(primaryControllerAdmission, backupControllerAdmission)
 
   protected val clusterTiming = ClusterTiming(1.s, 3.s)
 
@@ -78,8 +93,6 @@ trait ControllerClusterForScalaTest
         body(primary, backup, setting)
       }
     }
-
-  val userAndPassword = UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))
 
   final def withControllerAndBackupWithoutAgents()
     (body: (DirectoryProvider, DirectoryProvider, ClusterSetting) => Unit)
@@ -137,22 +150,35 @@ trait ControllerClusterForScalaTest
           primaryId -> Uri(s"http://127.0.0.1:$primaryControllerPort"),
           backupId -> Uri(s"http://127.0.0.1:$backupControllerPort")),
         activeId = primaryId,
-        primary.subagentItems.take(1).map(o => ClusterSetting.Watch(o.uri)),
         clusterTiming)
 
-      body(primary, backup, setting)
+      withClusterWatchService { _ =>
+        body(primary, backup, setting)
+      }
     }
 
   protected final def runControllers(primary: DirectoryProvider, backup: DirectoryProvider)
     (body: (RunningController, RunningController) => Unit)
-  : Unit =
-    backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
-      primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
-        primaryController.eventWatch.await[ClusterCoupled]()
-        backupController.eventWatch.await[ClusterCoupled]()
-        body(primaryController, backupController)
+  : Unit = {
+    withClusterWatchService { _ =>
+      backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
+        primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
+          primaryController.eventWatch.await[ClusterCoupled]()
+          backupController.eventWatch.await[ClusterCoupled]()
+          body(primaryController, backupController)
+        }
       }
     }
+  }
+
+  protected final def withClusterWatchService[A](body: ClusterWatchService => A): A =
+    clusterWatchServiceResource.blockingUse(99.s)(body)
+
+  protected final def clusterWatchServiceResource: Resource[Task, ClusterWatchService] =
+    DirectoryProvider.clusterWatchServiceResource(
+      "ControllerClusterForScalaTest-ClusterWatch",
+      controllerAdmissions,
+      HttpsConfig.empty)
 
   /** Simulate a kill via ShutDown(failOver) - still writes new snapshot. */
   protected final def simulateKillActiveNode(controller: RunningController): Task[Unit] =

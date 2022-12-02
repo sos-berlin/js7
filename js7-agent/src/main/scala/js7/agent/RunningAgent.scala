@@ -36,7 +36,6 @@ import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.session.SessionRegister
 import js7.common.guice.GuiceImplicits.*
 import js7.common.system.startup.StartUp
-import js7.core.cluster.watch.ClusterWatchRegister
 import js7.core.command.CommandMeta
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.recover.StateRecoverer
@@ -220,7 +219,6 @@ object RunningAgent {
           gateKeeperConf,
           api,
           injector.instance[SessionRegister[AgentSession]],
-          injector.instance[ClusterWatchRegister],
           persistence.eventWatch
         ).closeWithCloser(closer)
         _ <- webServer.start

@@ -18,7 +18,7 @@ import js7.base.utils.SetOnce
 import js7.base.web.HttpClient
 import js7.common.http.RecouplingStreamReader
 import js7.common.http.configuration.RecouplingStreamReaderConf
-import js7.data.cluster.ClusterNodeState
+import js7.data.cluster.{ClusterNodeApi, ClusterNodeState}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{AnyKeyedEvent, Event, EventApi, EventId, EventRequest, EventSeqTornProblem, JournaledState, SnapshotableState, Stamped}
 import js7.proxy.JournaledProxy.*
@@ -133,13 +133,16 @@ trait JournaledProxy[S <: SnapshotableState[S]]
 
 object JournaledProxy
 {
-  private type Api_[S <: JournaledState[S]] =
-    EventApi & SessionApi.HasUserAndPassword {type State = S}
+  private type RequiredApi_[S <: JournaledState[S]] =
+    EventApi & ClusterNodeApi & SessionApi.HasUserAndPassword { type State = S }
+
+  private type RequiredApi =
+    EventApi & ClusterNodeApi & SessionApi.HasUserAndPassword
 
   private val logger = scribe.Logger[this.type]
 
   def observable[S <: JournaledState[S]](
-    apiResources: Nel[Resource[Task, Api_[S]]],
+    apiResources: Nel[Resource[Task, RequiredApi_[S]]],
     fromEventId: Option[EventId],
     onProxyEvent: ProxyEvent => Unit = _ => (),
     proxyConf: ProxyConf)
@@ -190,7 +193,7 @@ object JournaledProxy
     def isTorn(t: Throwable) =
       fromEventId.isEmpty && checkedCast[ProblemException](t).exists(_.problem is EventSeqTornProblem)
 
-    def observeWithState(api: Api_[S], state: S, stateFetchDuration: FiniteDuration)
+    def observeWithState(api: RequiredApi_[S], state: S, stateFetchDuration: FiniteDuration)
     : Observable[EventAndState[Event, S]] = {
       val seed = EventAndState(Stamped(state.eventId, ProxyStarted: AnyKeyedEvent), state, state)
       val recouplingStreamReader = new MyRecouplingStreamReader(onProxyEvent, stateFetchDuration,
@@ -241,12 +244,12 @@ object JournaledProxy
     tornOlder: Option[FiniteDuration],
     recouplingStreamReaderConf: RecouplingStreamReaderConf)
     (implicit S: JournaledState.Companion[S])
-  extends RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], Api_[S]](
+  extends RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], RequiredApi_[S]](
     _.eventId, recouplingStreamReaderConf)
   {
     private var addToTornOlder = stateFetchDuration
 
-    def getObservable(api: Api_[S], after: EventId) = {
+    def getObservable(api: RequiredApi_[S], after: EventId) = {
       import S.keyedEventJsonCodec
       HttpClient.liftProblem(api
         .eventObservable(
@@ -259,13 +262,13 @@ object JournaledProxy
         })
     }
 
-    override def onCoupled(api: Api_[S], after: EventId) =
+    override def onCoupled(api: RequiredApi_[S], after: EventId) =
       Task {
         onProxyEvent(ProxyCoupled(after))
         Completed
       }
 
-    override protected def onCouplingFailed(api: Api_[S], problem: Problem) =
+    override protected def onCouplingFailed(api: RequiredApi_[S], problem: Problem) =
       super.onCouplingFailed(api, problem) >>
         Task {
           onProxyEvent(ProxyCouplingError(problem))
@@ -287,7 +290,7 @@ object JournaledProxy
     * @return (EventApi, None) iff apis.size == 1
     *         (EventApi, Some(NodeId)) iff apis.size > 1
     */
-  final def selectActiveNodeApi[Api <: EventApi & SessionApi.HasUserAndPassword](
+  final def selectActiveNodeApi[Api <: RequiredApi](
     apiResources: Nel[Resource[Task, Api]],
     onCouplingError: EventApi => Throwable => Task[Unit],
     proxyConf: ProxyConf)
@@ -299,7 +302,7 @@ object JournaledProxy
           (api: EventApi) => throwable => onCouplingError(api)(throwable),
           proxyConf)))
 
-  private def selectActiveNodeApiOnly[Api <: EventApi & SessionApi.HasUserAndPassword](
+  private def selectActiveNodeApiOnly[Api <: RequiredApi](
     apis: Nel[Api],
     onCouplingError: Api => Throwable => Task[Unit],
     proxyConf: ProxyConf)
@@ -368,22 +371,22 @@ object JournaledProxy
       }
     }
 
-  private case class ApiWithFiber[Api <: EventApi & SessionApi.HasUserAndPassword](
+  private case class ApiWithFiber[Api <: RequiredApi](
     api: Api,
     fiber: Fiber[Checked[ClusterNodeState]])
 
-  private case class ApiWithNodeState[Api <: EventApi & SessionApi.HasUserAndPassword](
+  private case class ApiWithNodeState[Api <: RequiredApi](
     api: Api,
     clusterNodeState: Checked[ClusterNodeState])
 
-  private def fetchClusterNodeState[Api <: EventApi & SessionApi.HasUserAndPassword](api: Api, onError: Throwable => Task[Unit])
+  private def fetchClusterNodeState[Api <: RequiredApi](api: Api, onError: Throwable => Task[Unit])
   : Task[Checked[ClusterNodeState]] =
     HttpClient
       .liftProblem(
         api.retryIfSessionLost(onError)(
           api.clusterNodeState))
 
-  private def logProblems[Api <: EventApi & SessionApi.HasUserAndPassword](
+  private def logProblems[Api <: RequiredApi](
     list: List[ApiWithNodeState[Api]],
     maybeActive: Option[(Api, ClusterNodeState)])
   : Unit = {

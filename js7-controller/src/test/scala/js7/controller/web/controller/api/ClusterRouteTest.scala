@@ -6,10 +6,13 @@ import akka.http.scaladsl.model.headers.Accept
 import akka.http.scaladsl.server.Route
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.test.OurTestSuite
+import js7.cluster.web.ClusterRoute
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import js7.common.akkahttp.CirceJsonSupport.jsonUnmarshaller
+import js7.common.akkahttp.web.session.SimpleSession
 import js7.controller.web.controller.api.test.RouteTester
-import js7.data.cluster.{ClusterNodeState, ClusterState}
+import js7.data.cluster.{ClusterCommand, ClusterNodeState, ClusterState, ClusterWatchCommand}
+import js7.data.event.Stamped
 import js7.data.node.NodeId
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -20,6 +23,8 @@ import scala.concurrent.Future
   */
 final class ClusterRouteTest extends OurTestSuite with RouteTester with ClusterRoute
 {
+  protected type OurSession = SimpleSession
+
   coupleScribeWithSlf4j()
 
   protected def scheduler = Scheduler.traced
@@ -28,7 +33,18 @@ final class ClusterRouteTest extends OurTestSuite with RouteTester with ClusterR
 
   protected val nodeId = NodeId("NODE-ID")
   protected def clusterNodeIsBackup = false
-  protected val checkedClusterState = Task.pure(Right(ClusterState.Empty))
+  protected val checkedClusterState = Task.right(Stamped(1, ClusterState.Empty))
+  protected def clusterWatchMessageStream = throw new NotImplementedError
+  protected def nextCusterWatchMessage = throw new NotImplementedError
+
+  protected def eventWatch =
+    throw new NotImplementedError
+
+  protected def executeClusterCommand(command: ClusterCommand) =
+    throw new NotImplementedError
+
+  protected def executeClusterWatchCommand(cmd: ClusterWatchCommand) =
+    throw new NotImplementedError
 
   private lazy val route: Route =
     pathSegment("cluster") {
@@ -37,13 +53,15 @@ final class ClusterRouteTest extends OurTestSuite with RouteTester with ClusterR
 
   "/cluster" in {
     Get("/cluster") ~> Accept(`application/json`) ~> route ~> check {
-      assert(status == OK && responseAs[ClusterState] == ClusterState.Empty)
+      assert(status == OK
+        && responseAs[Stamped[ClusterState]] == Stamped(1, ClusterState.Empty))
     }
   }
 
   "/cluster?return=ClusterNodeState" in {
     Get("/cluster?return=ClusterNodeState") ~> Accept(`application/json`) ~> route ~> check {
-      assert(status == OK && responseAs[ClusterNodeState] == ClusterNodeState(nodeId, false, ClusterState.Empty))
+      assert(status == OK
+        && responseAs[ClusterNodeState] == ClusterNodeState(nodeId, false, ClusterState.Empty))
     }
   }
 }

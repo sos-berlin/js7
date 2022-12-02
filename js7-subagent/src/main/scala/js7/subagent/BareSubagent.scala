@@ -29,7 +29,7 @@ import monix.eval.{Coeval, Task}
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
 
-final class BareSubagent(
+final class BareSubagent private(
   private val commandExecutor: SubagentCommandExecutor,
   val journal: InMemoryJournal[SubagentState])
 {

@@ -111,7 +111,8 @@ object Logger
 
     private def logTask[A](logger: ScalaLogger, function: String, args: => Any = "",
       resultToLoggable: A => Any = null,
-      trace: Boolean = false)(task: Task[A])
+      trace: Boolean = false)
+      (task: Task[A])
     : Task[A] =
       Task.defer {
         if (!isLoggingEnabled(logger, trace))

@@ -13,7 +13,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.HttpClient.liftProblem
 import js7.base.web.{HttpClient, Uri}
 import js7.controller.client.HttpControllerApi.*
-import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterNodeState, ClusterState}
+import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterNodeState, ClusterState, ClusterWatchCommand, ClusterWatchMessage}
 import js7.data.controller.ControllerCommand.{DeleteOrdersWhenTerminated, InternalClusterCommand}
 import js7.data.controller.{ControllerCommand, ControllerOverview, ControllerState}
 import js7.data.event.{Event, EventApi, EventId, EventRequest, JournalInfo, JournalPosition, KeyedEvent, Stamped}
@@ -62,6 +62,9 @@ extends EventApi with ClusterNodeApi with HttpSessionApi with HasIsIgnorableStac
   final def executeCommand(command: ControllerCommand): Task[command.Response] =
     httpClient.post[ControllerCommand, ControllerCommand.Response](uris.command, command)
       .map(_.asInstanceOf[command.Response])
+
+  final def executeClusterWatchCommand(cmd: ClusterWatchCommand): Task[Unit] =
+    httpClient.post[ClusterWatchCommand, Unit](uris.clusterCommand, cmd)
 
   final def overview: Task[ControllerOverview] =
     httpClient.get[ControllerOverview](uris.overview)
@@ -133,6 +136,11 @@ extends EventApi with ClusterNodeApi with HttpSessionApi with HasIsIgnorableStac
 
   final def journalInfo: Task[JournalInfo] =
     httpClient.get[JournalInfo](uris.api("/journalInfo"))
+
+  final def clusterWatchMessageObservable(heartbeat: Option[FiniteDuration]): Task[Observable[ClusterWatchMessage]] =
+    httpClient.getDecodedLinesObservable[ClusterWatchMessage](
+      uris.clusterEvents(heartbeat),
+      responsive = true)
 
   override def toString = s"HttpControllerApi($baseUri)"
 

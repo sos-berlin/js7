@@ -67,7 +67,6 @@ final class ClusterConfTest extends OurTestSuite
               NodeId("PRIMARY") -> Uri("https://PRIMARY"),
               NodeId("Backup") -> Uri("https://BACKUP")),
             NodeId("PRIMARY"),
-            Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
             ClusterTiming(7.s, 5.s))),
           Some(UserAndPassword(UserId("USER"), SecretString("PASSWORD"))),
           RecouplingStreamReaderConf(

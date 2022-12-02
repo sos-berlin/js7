@@ -21,7 +21,7 @@ final class TwoPrimaryClusterNodesTest extends OurTestSuite with ControllerClust
           httpPort = Some(backupControllerPort),
           config = config"js7.journal.cluster.node.is-backup = false"
         ) { _ =>
-          val cmd = ClusterAppointNodes(clusterSetting.idToUri, clusterSetting.activeId, clusterSetting.clusterWatches)
+          val cmd = ClusterAppointNodes(clusterSetting.idToUri, clusterSetting.activeId)
           primaryController.executeCommandAsSystemUser(cmd).await(99.s).orThrow
           sleep(5.s)
           //assert(primaryController.executeCommandAsSystemUser(cmd).await(99.s) == Left(ClusterNodeIsNotBackupProblem))

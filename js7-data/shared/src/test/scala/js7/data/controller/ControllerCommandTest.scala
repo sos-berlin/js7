@@ -9,7 +9,7 @@ import js7.base.time.Timestamp
 import js7.base.web.Uri
 import js7.data.agent.AgentPath
 import js7.data.board.{BoardPath, NoticeId}
-import js7.data.cluster.{ClusterCommand, ClusterSetting}
+import js7.data.cluster.ClusterCommand
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.controller.ControllerCommand.*
 import js7.data.item.VersionId
@@ -423,20 +423,14 @@ final class ControllerCommandTest extends OurTestSuite
         Map(
           NodeId("A") -> Uri("https://A"),
           NodeId("B") -> Uri("https://B")),
-        activeId = NodeId("A"),
-        Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH")))),
+        activeId = NodeId("A")),
       json"""{
         "TYPE": "ClusterAppointNodes",
         "idToUri": {
           "A": "https://A",
           "B": "https://B"
         },
-        "activeId": "A",
-        "clusterWatches": [
-          {
-            "uri": "https://CLUSTER-WATCH"
-          }
-         ]
+        "activeId": "A"
       }""")
   }
 

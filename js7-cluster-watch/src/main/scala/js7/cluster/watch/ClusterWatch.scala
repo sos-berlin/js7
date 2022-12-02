@@ -1,33 +1,28 @@
-package js7.core.cluster.watch
+package js7.cluster.watch
 
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.monixutils.{AsyncVariable, MonixDeadline}
 import js7.base.problem.Checked.*
-import js7.base.problem.{Checked, Problem, ProblemCode}
+import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.core.cluster.watch.ClusterWatch.*
+import js7.cluster.watch.ClusterWatch.*
+import js7.cluster.watch.api.ClusterWatchProblems.{ClusterFailOverWhilePassiveLostProblem, ClusterNodeLossNotAcknowledgedProblem, ClusterWatchEventMismatchProblem, ClusterWatchHeartbeatMismatchProblem, ClusterWatchInactiveNodeProblem, InvalidClusterWatchHeartbeatProblem, NoClusterNodeLostProblem, UntaughtClusterWatchProblem}
 import js7.data.cluster.ClusterEvent.{ClusterFailedOver, ClusterNodeLostEvent, ClusterPassiveLost, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{Coupled, HasNodes, PassiveLost}
-import js7.data.cluster.{ClusterEvent, ClusterState}
-import js7.data.controller.ControllerId
+import js7.data.cluster.{ClusterState, ClusterWatchCheckEvent, ClusterWatchMessage}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.node.NodeId
 import monix.eval.Task
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.duration.FiniteDuration
 import scala.util.chaining.scalaUtilChainingOps
 
 final class ClusterWatch(
-  controllerId: ControllerId,
   now: () => MonixDeadline,
   requireLostAck: Boolean = false)
-extends ClusterWatchApi
 {
   private val stateVar = AsyncVariable[Option[State]](None)
-
-  logger.trace(toString)
 
   def logout() = Task.pure(Completed)
 
@@ -38,19 +33,24 @@ extends ClusterWatchApi
   def clusterState: Task[Checked[HasNodes]] =
     stateVar.value
       .map(_
-        .toChecked(Problem(
-          s"ClusterWatch not yet started for Controller '$controllerId'"))
+        .toChecked(Problem("ClusterWatch not yet started"))
         .map(_.clusterState))
 
-  def applyEvents(clusterWatchEvents: ClusterWatchEvents): Task[Checked[Completed]] = {
-    import clusterWatchEvents.{events, from, clusterState as reportedClusterState}
+  // TODO Das wird synchron genutzt und braucht nicht mehr asynchron zu sein
 
-    lazy val opString = s"event ${events.mkString(", ")} --> $reportedClusterState"
+  def handleMessage(msg: ClusterWatchMessage): Task[Checked[Completed]] = {
+    import msg.{from, clusterState as reportedClusterState}
+    val maybeEvent = msg match {
+      case o: ClusterWatchCheckEvent => Some(o.event)
+      case _ => None
+    }
+
+    lazy val opString = s"${maybeEvent getOrElse "heartbeat"} --> $reportedClusterState"
 
     update(from, opString) {
       case None =>
         // Not yet initialized then no ClusterFailedOver
-        if (events.exists(_.event.isInstanceOf[ClusterFailedOver]))
+        if (maybeEvent.exists(_.isInstanceOf[ClusterFailedOver]))
           Left(UntaughtClusterWatchProblem)
         else
           teach(from, reportedClusterState)
@@ -61,21 +61,23 @@ extends ClusterWatchApi
             state.clusterState, state.lastHeartbeat.elapsed, opString)
 
         if (state.clusterState == reportedClusterState) {
-          logger.info(
-            s"$from: Ignore probably duplicate events for already reached clusterState=${
-              state.clusterState}")
+          if (maybeEvent.nonEmpty) {
+            logger.debug(
+              s"$from: Ignore probably duplicate events for already reached clusterState=${
+                state.clusterState}")
+          }
           Right(reportedClusterState)
         } else
-          events
+          maybeEvent
             .match_ {
               // ClusterSwitchedOver must arrive as single events.
-              case Seq(_: ClusterSwitchedOver) =>
+              case Some(_: ClusterSwitchedOver) =>
                 // ClusterSwitchedOver is applied by each node.
                 // ClusterSwitchedOver is considered reliable.
                 Checked.unit
 
               // ClusterFailedOver must arrive as single events.
-              case Seq(ClusterFailedOver(failedActiveId, _, _)) =>
+              case Some(ClusterFailedOver(failedActiveId, _, _)) =>
                 state.clusterState match {
                   case PassiveLost(setting) if setting.activeId == failedActiveId =>
                     Left(ClusterFailOverWhilePassiveLostProblem)
@@ -92,23 +94,23 @@ extends ClusterWatchApi
                 }
             }
             .flatMap(_ =>
-              state.clusterState.applyEvents(events.map(NoKey <-: _))
+              state.clusterState.applyEvents(maybeEvent.map(NoKey <-: _))
                 .match_ {
                   case Left(problem) =>
                     logger.warn(s"$from: $problem")
                     Left(ClusterWatchEventMismatchProblem(
-                      events, state.clusterState, reportedClusterState = reportedClusterState))
+                      maybeEvent, state.clusterState, reportedClusterState = reportedClusterState))
 
                   case Right(clusterState) =>
-                    for (event <- events) logger.info(s"$from: $event")
+                    for (event <- maybeEvent) logger.info(s"$from: $event")
                     if (clusterState == reportedClusterState) {
-                      logger.info(s"$from changed ClusterState to $reportedClusterState")
-                      events
-                        .collectFirst { case o: ClusterNodeLostEvent => o }
+                      maybeEvent
+                        .collect { case o: ClusterNodeLostEvent => o }
                         .match_ {
                           case Some(event) if requireLostAck && !state.isLostNodeAcknowledged =>
                             Left(ClusterNodeLossNotAcknowledgedProblem(event))
                           case _ =>
+                            logger.info(s"$from changes ClusterState to $reportedClusterState")
                             Right(reportedClusterState)
                         }
                     } else {
@@ -223,7 +225,7 @@ extends ClusterWatchApi
   private[watch] def currentClusterState: Option[ClusterState] =
     stateVar.get.map(_.clusterState)
 
-  override def toString = s"ClusterWatch($controllerId)"
+  override def toString = "ClusterWatch"
 }
 
 object ClusterWatch
@@ -278,75 +280,7 @@ object ClusterWatch
       }
   }
 
-  private lazy val isClusterWatchProblemCode = Set[ProblemCode](
-    UntaughtClusterWatchProblem.code,
-    ClusterWatchHeartbeatMismatchProblem.code,
-    ClusterWatchEventMismatchProblem.code,
-    ClusterWatchInactiveNodeProblem.code,
-    InvalidClusterWatchHeartbeatProblem.code,
-    ClusterFailOverWhilePassiveLostProblem.code)
-
-  def isClusterWatchProblem(problem: Problem): Boolean =
-    problem.maybeCode exists isClusterWatchProblemCode
-
   private[watch] final case class LossRejected(
     event: ClusterNodeLostEvent,
     lostNodeAcknowledged: Boolean = false)
-
-  final case object UntaughtClusterWatchProblem extends Problem.ArgumentlessCoded
-
-  final case class ClusterWatchHeartbeatMismatchProblem(
-    currentClusterState: ClusterState,
-    reportedClusterState: ClusterState)
-  extends Problem.Coded
-  {
-    //"Controller's ClusterState $currentClusterState does not match registered $clusterState")
-    def arguments = Map(
-      "currentClusterState" -> currentClusterState.toString,
-      "reportedClusterState" -> reportedClusterState.toString)
-  }
-  object ClusterWatchHeartbeatMismatchProblem extends Problem.Coded.Companion
-
-  final case class ClusterWatchEventMismatchProblem(
-    events: Seq[ClusterEvent],
-    currentClusterState: ClusterState,
-    reportedClusterState: ClusterState)
-  extends Problem.Coded
-  {
-    //"Controller's ClusterState $currentClusterState does not match registered $clusterState")
-    def arguments = Map(
-      "events" -> events.mkString(", "),
-      "currentClusterState" -> currentClusterState.toString,
-      "reportedClusterState" -> reportedClusterState.toString)
-  }
-  object ClusterWatchEventMismatchProblem extends Problem.Coded.Companion
-
-  final case class ClusterWatchInactiveNodeProblem(from: NodeId, clusterState: ClusterState,
-    lastHeartbeatDuration: FiniteDuration, operation: String)
-  extends Problem.Coded {
-    def arguments = Map(
-      "from" -> from.string,
-      "clusterState" -> clusterState.toString,
-      "lastHeartbeat" -> lastHeartbeatDuration.pretty,
-      "operation" -> operation)
-  }
-  object ClusterWatchInactiveNodeProblem extends Problem.Coded.Companion
-
-  final case class InvalidClusterWatchHeartbeatProblem(from: NodeId, clusterState: ClusterState)
-  extends Problem.Coded {
-    def arguments = Map(
-      "from" -> from.string,
-      "clusterState" -> clusterState.toString)
-  }
-  object InvalidClusterWatchHeartbeatProblem extends Problem.Coded.Companion
-
-  final case object ClusterFailOverWhilePassiveLostProblem extends Problem.ArgumentlessCoded
-
-  final case class ClusterNodeLossNotAcknowledgedProblem(event: ClusterNodeLostEvent)
-  extends Problem.Coded {
-    def arguments = Map(
-      "event" -> event.toString)
-  }
-
-  case object NoClusterNodeLostProblem extends Problem.ArgumentlessCoded
 }

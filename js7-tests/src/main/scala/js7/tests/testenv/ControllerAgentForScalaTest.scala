@@ -12,8 +12,9 @@ import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.WallClock
 import js7.base.utils.CatsBlocking.BlockingTaskResource
-import js7.base.utils.Lazy
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.{Lazy, SetOnce}
+import js7.cluster.watch.ClusterWatchService
 import js7.controller.RunningController
 import js7.data.controller.ControllerState
 import js7.data.execution.workflow.instructions.InstructionExecutorService
@@ -65,6 +66,11 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
   private val controllerApiLazy = Lazy(directoryProvider.newControllerApi(controller))
   protected lazy val controllerApi = controllerApiLazy()
 
+  private val clusterWatchServiceOnce = SetOnce[(ClusterWatchService, /*release:*/Task[Unit])]
+
+  protected def clusterWatchServiceResource: Option[Resource[Task, ClusterWatchService]] =
+    None
+
   protected def controllerHttpsMutual = false
 
   protected def waitUntilReady = true
@@ -83,8 +89,13 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
 
   override def beforeAll() = {
     super.beforeAll()
+
     bareSubagents
     agents
+    for (service <- clusterWatchServiceResource)
+      clusterWatchServiceOnce := service.allocated.await(99.s)
+    controller
+
     if (waitUntilReady) {
       controller.waitUntilReady()
       if (!doNotAddItems) {
@@ -99,6 +110,9 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
     for (o <- controllerApiLazy) o.stop await 99.s
     controller.terminate() await 15.s
     controller.close()
+
+    for (o <- clusterWatchServiceOnce.toOption) o._2.await(99.s)
+
     agents.traverse(a => a.terminate() >> Task(a.close())) await 15.s
 
     try bareSubagentIdToRelease.values.await(99.s)

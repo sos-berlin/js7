@@ -201,7 +201,7 @@ extends AutoCloseable
   @TestOnly
   def waitUntilReady(): Unit =
     Task.fromFuture(whenReady)
-      .logWhenItTakesLonger("waitUntilReady") await 99.s
+      .logWhenItTakesLonger("in", "waitUntilReady") await 99.s
 
   @TestOnly
   lazy val localUri = webServer.localUri
@@ -393,6 +393,7 @@ object RunningController
       val webServer = injector.instance[ControllerWebServer.Factory]
         .apply(orderApi, commandExecutor, itemUpdater,
           controllerState,
+          cluster,
           recovered.totalRunningSince,  // Maybe different from JournalHeader
           recovered.eventWatch
         ).closeWithCloser
@@ -426,17 +427,15 @@ object RunningController
       Task[Either[ProgramTermination, Recovered[ControllerState]]])
     = {
       val cluster = {
-        import controllerConfiguration.{clusterConf, controllerId, httpsConfig, config}
+        import controllerConfiguration.{clusterConf, config, httpsConfig}
         Cluster[ControllerState](
           persistence,
           journalMeta,
           clusterConf,
-          httpsConfig,
           config,
           injector.instance[EventIdGenerator],
           (uri, name) => AkkaHttpControllerApi
             .resource(uri, clusterConf.peersUserAndPassword, httpsConfig, name = name),
-          controllerId,
           new LicenseChecker(LicenseCheckContext(controllerConfiguration.configDirectory)),
           testEventBus,
           implicitAkkaAskTimeout)
@@ -518,9 +517,9 @@ object RunningController
                       .mapTo[Checked[ControllerCommand.Response]])
               }
 
-        case ControllerCommand.ClusterAppointNodes(idToUri, activeId, clusterWatches) =>
+        case ControllerCommand.ClusterAppointNodes(idToUri, activeId) =>
           Task(cluster.workingClusterNode)
-            .flatMapT(_.appointNodes(idToUri, activeId, clusterWatches))
+            .flatMapT(_.appointNodes(idToUri, activeId))
             .map(_.map((_: Completed) => ControllerCommand.Response.Accepted))
 
         case ControllerCommand.InternalClusterCommand(clusterCommand) =>

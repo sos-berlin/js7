@@ -8,7 +8,9 @@ import js7.tests.controller.cluster.ControllerClusterTester.*
 import js7.tests.testenv.ControllerClusterForScalaTest
 import js7.tests.testenv.ControllerClusterForScalaTest.TestPathExecutable
 
-private[cluster] trait ControllerClusterTester extends OurTestSuite with ControllerClusterForScalaTest
+private[cluster] trait ControllerClusterTester
+extends OurTestSuite
+with ControllerClusterForScalaTest
 {
   protected def items = Seq(TestWorkflow)
   override protected def shellScript = ControllerClusterTester.shellScript

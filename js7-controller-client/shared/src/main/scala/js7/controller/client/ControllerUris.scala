@@ -21,6 +21,8 @@ final class ControllerUris private(controllerUri: Uri)
 
   val command = api("/command")
 
+  val clusterCommand = api("/cluster/command")
+
   val session = api("/session")
 
   def events[E <: Event](request: EventRequest[E],
@@ -48,6 +50,11 @@ final class ControllerUris private(controllerUri: Uri)
   def clusterState = api("/cluster")
 
   def clusterNodeState = api("/cluster?return=ClusterNodeState")
+
+  def clusterEvents(heartbeat: Option[FiniteDuration]): Uri =
+    Uri(
+      api("/cluster/event").string +
+        encodeQuery((heartbeat.map("heartbeat" -> _.toDecimalString)).toList))
 
   def journal(
     journalPosition: JournalPosition,

@@ -6,7 +6,6 @@ import java.util.ConcurrentModificationException
 import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixutils.AsyncVariable
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
@@ -15,7 +14,6 @@ import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.cluster.ClusterWatchSynchronizer.*
 import js7.common.system.startup.Halt.haltJava
-import js7.core.cluster.watch.{ClusterWatchEvents, HttpClusterWatch}
 import js7.data.cluster.ClusterEvent.ClusterFailedOver
 import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.{ClusterEvent, ClusterState, ClusterTiming}
@@ -26,63 +24,40 @@ import monix.execution.atomic.{Atomic, AtomicAny}
 import monix.reactive.Observable
 import monix.reactive.OverflowStrategy.DropNew
 
-private final class ClusterWatchSynchronizer private(ownId: NodeId, initialInlay: Inlay)
+private final class ClusterWatchSynchronizer(ownId: NodeId, inlay: Inlay)
 {
-  def this(ownId: NodeId, clusterWatch: HttpClusterWatch, timing: ClusterTiming) =
-    this(ownId, new Inlay(ownId, clusterWatch, timing))
+  def this(ownId: NodeId, clusterWatch: ClusterWatchCounterpart, timing: ClusterTiming) =
+    this(ownId, new Inlay(clusterWatch, timing))
 
-  private val inlay = AsyncVariable(initialInlay)
   private val stopNesting = Atomic(0)
   private val stopNestingLock = AsyncLock()
 
   def start(clusterState: HasNodes): Task[Checked[Completed]] =
-    inlay.value
-      .flatMap(_
-        .doACheckedHeartbeat(clusterState))
+    inlay.doACheckedHeartbeat(clusterState)
       .flatMapT(_ => Task.defer {
         logger.info("ClusterWatch agreed that this node is the active cluster node")
-        inlay.value
-          .flatMap(_.startHeartbeating(clusterState))
+        inlay.startHeartbeating(clusterState)
           .map(Right.apply)
       })
 
   def stop: Task[Completed] =
-    inlay.value.flatMap(_
-      .stop)
+    inlay.stop
 
-  def change(clusterState: ClusterState.HasNodes, clusterWatch: HttpClusterWatch)
-  : Task[Unit] =
-    logger.debugTask {
-      assertThat(clusterState.activeId == ownId)
-      suspendHeartbeat(
-        Task.pure(clusterState),
-        inlay
-          .update(_
-            .stop
-            .as(new Inlay(ownId, clusterWatch, clusterState.timing)))
-          .void)
+  def applyEvent(event: ClusterEvent, updatedClusterState: HasNodes)
+  : Task[Checked[Completed]] = {
+    val isFailover = event match {
+      case o: ClusterFailedOver => o.activatedId == ownId
+      case _ => false
     }
-
-  def applyEvents(events: Seq[ClusterEvent], updatedClusterState: HasNodes)
-  : Task[Checked[Completed]] =
-    if (events.isEmpty)
-      Task.pure(Right(Completed))
-    else {
-      val isFailover = events match {
-        case Seq(o: ClusterFailedOver) => o.activatedId == ownId
-        case _ => false
-      }
-      inlay.value.flatMap(myInlay =>
-        suspendHeartbeat(
-          Task.pure(updatedClusterState),
-          myInlay.repeatWhenTooLong(
-            myInlay.clusterWatch.applyEvents(
-              ClusterWatchEvents(from = ownId, events, updatedClusterState))),
-          isFailover = isFailover
-          // A ClusterSwitchedOver event will be written to the journal after applyEvents.
-          // So persistence.clusterState will reflect the outdated ClusterState for a short while.
-        ))
-    }
+    suspendHeartbeat(
+      Task.pure(updatedClusterState),
+      inlay.repeatWhenTooLong(
+        inlay.clusterWatch.applyEvents(event, updatedClusterState)),
+      isFailover = isFailover
+      // A ClusterSwitchedOver event will be written to the journal after applyEvent.
+      // So persistence.clusterState will reflect the outdated ClusterState for a short while.
+    )
+  }
 
   def suspendHeartbeat[A](
     getClusterState: Task[ClusterState],
@@ -101,7 +76,7 @@ private final class ClusterWatchSynchronizer private(ownId: NodeId, initialInlay
                 false
               case _ => true
             }
-            endNestedSuspension(inlay =>
+            endNestedSuspension(
               Task.when(continueHeartbeat)(
                 getClusterState
                   .flatMap {
@@ -119,30 +94,30 @@ private final class ClusterWatchSynchronizer private(ownId: NodeId, initialInlay
           }
           .guaranteeCase {
             case ExitCase.Completed => Task.unit
-            case _ => endNestedSuspension(_ => Task.unit)
+            case _ => endNestedSuspension(Task.unit)
           })
 
   private def startNestedSuspension(implicit enclosing: sourcecode.Enclosing): Task[Unit] =
     stopNestingLock.lock(Task.defer {
       if (stopNesting.getAndIncrement() == 0)
-        inlay.value.flatMap(_.stopHeartbeating).void
+        inlay.stopHeartbeating.void
       else {
         assertThat(!isHeartbeating)
         Task.unit
       }
     })
 
-  private def endNestedSuspension(onZeroNesting: Inlay => Task[Unit]): Task[Unit] =
+  private def endNestedSuspension(onZeroNesting: Task[Unit]): Task[Unit] =
     stopNestingLock.lock(Task.defer {
       assertThat(!isHeartbeating)
       Task.when(stopNesting.decrementAndGet() == 0)(
-        inlay.value.flatMap(onZeroNesting))
+        onZeroNesting)
     })
 
   def isHeartbeating =
-    inlay.get.isHeartbeating
+    inlay.isHeartbeating
 
-  def uri = inlay.get.uri
+  def clusterWatch = inlay.clusterWatch
 }
 
 object ClusterWatchSynchronizer
@@ -151,17 +126,14 @@ object ClusterWatchSynchronizer
   private val heartbeatSessionNr = Iterator.from(1)
 
   private final class Inlay(
-    ownId: NodeId,
-    val clusterWatch: HttpClusterWatch,
+    val clusterWatch: ClusterWatchCounterpart,
     timing: ClusterTiming)
   {
     private val heartbeat = AtomicAny[Option[Heartbeat]](None)
 
-    def uri = clusterWatch.baseUri
-
     def stop: Task[Completed] =
       stopHeartbeating *>
-        clusterWatch.tryLogout
+        clusterWatch.stop.as(Completed)
 
     def startHeartbeating(clusterState: HasNodes, dontWait: Boolean = false): Task[Completed] =
       logger.traceTask(Task.defer {
@@ -245,7 +217,7 @@ object ClusterWatchSynchronizer
           case Some(()) => Task.completed
           case None =>
             logger.trace(s"Heartbeat ($nr) $clusterState")
-            doACheckedHeartbeat(clusterState)
+            clusterWatch.heartbeat(clusterState)
               .flatMap {
                 case Right(Completed) => Task.pure(Completed)
                 case Left(problem) =>
@@ -261,7 +233,7 @@ object ClusterWatchSynchronizer
 
     def doACheckedHeartbeat(clusterState: HasNodes): Task[Checked[Completed]] =
       repeatWhenTooLong(clusterWatch
-        .heartbeat(from = ownId, clusterState)
+        .checkClusterState(clusterState)
         .materializeIntoChecked)
 
     def repeatWhenTooLong[A](task: Task[A]): Task[A] =

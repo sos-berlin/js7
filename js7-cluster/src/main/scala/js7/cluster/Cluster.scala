@@ -1,6 +1,5 @@
 package js7.cluster
 
-import akka.actor.ActorSystem
 import akka.util.Timeout
 import cats.effect.Resource
 import com.softwaremill.diffx
@@ -9,7 +8,6 @@ import izumi.reflect.Tag
 import java.nio.file.Path
 import js7.base.eventbus.EventPublisher
 import js7.base.generic.Completed
-import js7.base.io.https.HttpsConfig
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
@@ -23,8 +21,8 @@ import js7.core.license.LicenseChecker
 import js7.data.Problems.{BackupClusterNodeNotAppointed, ClusterNodeIsNotBackupProblem, PrimaryClusterNodeMayNotBecomeBackupProblem}
 import js7.data.cluster.ClusterCommand.{ClusterInhibitActivation, ClusterStartBackupNode}
 import js7.data.cluster.ClusterState.{Coupled, Empty, FailedOver, HasNodes}
-import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterSetting}
-import js7.data.controller.ControllerId
+import js7.data.cluster.ClusterWatchCommand.ClusterWatchAcknowledge
+import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterSetting, ClusterWatchCommand, ClusterWatchMessage}
 import js7.data.event.{EventId, JournalPosition, SnapshotableState}
 import js7.journal.EventIdGenerator
 import js7.journal.data.JournalMeta
@@ -299,6 +297,20 @@ final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
           .flatMapT(_.executeCommand(command))
     }
 
+  def executeClusterWatchCommand(command: ClusterWatchCommand): Task[Checked[Unit]] =
+    command match {
+      case ClusterWatchAcknowledge(requestId, maybeProblem) =>
+        Task(common
+          .maybeClusterWatchSynchronizer
+          .toRight(Problem(s"No ClusterWatchSynchronizer: $command"))
+          .flatMap(o => o
+            .clusterWatch.onClusterWatchAcknowledged(requestId, maybeProblem))
+          .map(_ => ClusterCommand.Response.Accepted))
+    }
+
+  def clusterWatchMessageStream: Task[fs2.Stream[Task, ClusterWatchMessage]] =
+    common.clusterWatch.newStream
+
   /** Is the active or non-cluster (Empty, isPrimary) node or is becoming active. */
   def isWorkingNode = _passiveOrWorkingNode.exists(_.isRight)
 
@@ -316,26 +328,23 @@ object Cluster
     persistence: FileStatePersistence[S],
     journalMeta: JournalMeta,
     clusterConf: ClusterConf,
-    httpsConfig: HttpsConfig,
     config: Config,
     eventIdGenerator: EventIdGenerator,
     clusterNodeApi: (Uri, String) => Resource[Task, ClusterNodeApi],
-    controllerId: ControllerId,
     licenseChecker: LicenseChecker,
     testEventPublisher: EventPublisher[Any],
     journalActorAskTimeout: Timeout)
     (implicit
       S: SnapshotableState.Companion[S],
-      scheduler: Scheduler,
-      actorSystem: ActorSystem)
+      scheduler: Scheduler)
   : Cluster[S] =
     new Cluster(
       persistence,
       journalMeta,
       clusterConf,
       eventIdGenerator,
-      new ClusterCommon(controllerId, clusterConf.ownId, clusterNodeApi,
-        httpsConfig, config, licenseChecker, testEventPublisher, journalActorAskTimeout))
+      new ClusterCommon(clusterConf.ownId, clusterNodeApi, clusterConf.timing,
+        config, licenseChecker, testEventPublisher, journalActorAskTimeout))
 
   @deprecated("Provisional fix for v2.4", "v2.5")
   final class RestartAfterJournalTruncationException

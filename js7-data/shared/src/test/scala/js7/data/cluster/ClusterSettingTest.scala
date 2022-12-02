@@ -22,7 +22,6 @@ final class ClusterSettingTest extends OurTestSuite
   private val clusterSetting = ClusterSetting(
     idToUri,
     NodeId("A"),
-    Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
     timing)
 
   "JSON" in {
@@ -33,11 +32,6 @@ final class ClusterSettingTest extends OurTestSuite
           "B": "https://B"
         },
         "activeId": "A",
-        "clusterWatches": [
-          {
-            "uri": "https://CLUSTER-WATCH"
-          }
-        ],
         "timing": {
           "heartbeat": 1,
           "heartbeatTimeout": 2
@@ -50,16 +44,13 @@ final class ClusterSettingTest extends OurTestSuite
     assert(checkUris(Map(NodeId("A") -> Uri("https://A"))).isLeft)
     assert(checkUris(Map(NodeId("A") -> Uri("https://SAME"), NodeId("B") -> Uri("https://SAME"))).isLeft)
 
-    assert(ClusterSetting.checked(idToUri, NodeId("X"), Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))), timing).isLeft)
-
-    assert(ClusterSetting.checked(idToUri, NodeId("A"), Nil, timing).isLeft)
-    assert(ClusterSetting.checked(idToUri, NodeId("A"), Seq(ClusterSetting.Watch(Uri("https://V")), ClusterSetting.Watch(Uri("https://W"))), timing).isLeft)
-    assert(ClusterSetting.checked(idToUri, NodeId("A"), Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))), timing).isRight)
+    assert(ClusterSetting.checked(idToUri, NodeId("X"), timing).isLeft)
+    assert(ClusterSetting.checked(idToUri, NodeId("A"), timing).isRight)
     assert(checkUris(idToUri).isRight)
   }
 
   "apply" in {
-    intercept[ProblemException](ClusterSetting(idToUri, NodeId("X"), Nil, timing))
+    intercept[ProblemException](ClusterSetting(idToUri, NodeId("X"), timing))
   }
 
   "activeId" in {

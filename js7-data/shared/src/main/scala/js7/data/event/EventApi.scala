@@ -5,7 +5,6 @@ import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.problem.Checked
 import js7.base.session.SessionApi
 import js7.base.web.{HttpClient, Uri}
-import js7.data.cluster.ClusterNodeState
 import monix.eval.Task
 import monix.reactive.Observable
 
@@ -16,8 +15,6 @@ with HasIsIgnorableStackTrace
   type State <: JournaledState[State]
 
   def baseUri: Uri
-
-  def clusterNodeState: Task[ClusterNodeState]
 
   def eventObservable[E <: Event](request: EventRequest[E])
     (implicit kd: Decoder[KeyedEvent[E]])

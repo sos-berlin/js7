@@ -13,7 +13,8 @@ extends SessionApi.HasUserAndPassword
 with HasIsIgnorableStackTrace
 {
   /** Observable for a journal file.
-    * @param journalPosition denotes journal file and position
+   *
+   * @param journalPosition denotes journal file and position
     * @param markEOF mark EOF with the special line `JournalSeparators.EndOfJournalFileMarker`
     */
   def journalObservable(
@@ -30,4 +31,11 @@ with HasIsIgnorableStackTrace
   : Task[Observable[EventId]]
 
   def executeClusterCommand(command: ClusterCommand): Task[command.Response]
+
+  def executeClusterWatchCommand(cmd: ClusterWatchCommand): Task[Unit]
+
+  def clusterWatchMessageObservable(heartbeat: Option[FiniteDuration])
+  : Task[Observable[ClusterWatchMessage]]
+
+  def clusterNodeState: Task[ClusterNodeState]
 }

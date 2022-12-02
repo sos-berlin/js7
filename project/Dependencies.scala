@@ -25,6 +25,7 @@ object Dependencies
   val sourcecodeVersion = "0.3.0"
   val disciplineVersion = "1.5.1"
   val disciplineScalaTestVersion = "2.2.0"
+  val fs2Version = "2.5.11"
   val monixVersion = "3.4.1"
   val monocleVersion = "1.5.0"
   val scribeVersion = "3.6.7" // TODO "3.8.2"

@@ -1,10 +1,9 @@
 package js7.data.controller
 
-import js7.base.circeutils.CirceUtils.DecodeWithDefaults
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, Encoder, Json, JsonObject}
-import js7.base.circeutils.CirceUtils.deriveConfiguredCodec
+import js7.base.circeutils.CirceUtils.{DecodeWithDefaults, deriveConfiguredCodec}
 import js7.base.circeutils.ScalaJsonCodecs.{FiniteDurationJsonDecoder, FiniteDurationJsonEncoder}
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.log.CorrelIdWrapped
@@ -17,7 +16,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.data.agent.AgentPath
 import js7.data.board.{BoardPath, NoticeId}
-import js7.data.cluster.{ClusterCommand, ClusterSetting}
+import js7.data.cluster.ClusterCommand
 import js7.data.command.{CancellationMode, CommonCommand, SuspensionMode}
 import js7.data.controller.ControllerState.*
 import js7.data.event.EventId
@@ -233,8 +232,7 @@ object ControllerCommand extends CommonCommand.Companion
 
   final case class ClusterAppointNodes(
     idToUri: Map[NodeId, Uri],
-    activeId: NodeId,
-    clusterWatches: Seq[ClusterSetting.Watch])
+    activeId: NodeId)
   extends ControllerCommand {
     type Response = Response.Accepted
   }
@@ -245,6 +243,7 @@ object ControllerCommand extends CommonCommand.Companion
   }
 
   /** For internal use between cluster nodes only. */
+  @deprecated
   final case class InternalClusterCommand(clusterCommand: ClusterCommand)
   extends ControllerCommand {
     type Response = InternalClusterCommand.Response

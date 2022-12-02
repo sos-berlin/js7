@@ -18,7 +18,7 @@ import js7.base.generic.SecretString
 import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.*
-import js7.base.io.https.TrustStoreRef
+import js7.base.io.https.{HttpsConfig, KeyStoreRef, TrustStoreRef}
 import js7.base.log.Logger
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Checked.*
@@ -32,10 +32,14 @@ import js7.base.utils.Closer.syntax.RichClosersAny
 import js7.base.utils.HasCloser
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
+import js7.cluster.watch.ClusterWatchService
 import js7.common.akkahttp.web.data.WebServerPort
+import js7.common.akkautils.Akkas
+import js7.common.configuration.Js7Configuration
 import js7.common.utils.Exceptions.repeatUntilNoException
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.RunningController
+import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
 import js7.controller.configuration.ControllerConfiguration
 import js7.data.agent.{AgentPath, AgentRef}
@@ -416,6 +420,9 @@ object DirectoryProvider
   extends Tree
   {
     val userAndPassword = UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))
+    // TODO Like AgentTree, use this port in startController
+    //lazy val port = findFreeTcpPort()
+    //lazy val localUri = Uri((if (https) "https://localhost" else "http://127.0.0.1") + ":" + port)
 
     override private[DirectoryProvider] def createDirectoriesAndFiles(): Unit = {
       super.createDirectoriesAndFiles()
@@ -448,9 +455,10 @@ object DirectoryProvider
 
     def writeAgentAuthentication(agentTree: AgentTree): Unit =
       if (!agentHttpsMutual) {
+        val quotedAgentPath = quoteString(agentTree.agentPath.string)
+        val quotedPassword = quoteString(agentTree.password.string)
         (configDir / "private" / "private.conf") ++=
-          "js7.auth.agents." + quoteString(agentTree.agentPath.string) + " = " + quoteString(agentTree.password.string) + "\n" +
-          "js7.auth.agents." + quoteString(agentTree.localUri.toString) + " = " + quoteString(agentTree.password.string) + "\n"  /*ClusterWatch*/
+          s"js7.auth.agents.$quotedAgentPath = $quotedPassword\n"
       } else {
         // Agent uses the distinguished name of the Controller's HTTPS certificate
       }
@@ -589,8 +597,21 @@ object DirectoryProvider
         --config-directory=js7-tests/src/test/resources/js7/tests/controller/config
    */
   val ControllerKeyStoreResource = JavaResource("js7/tests/controller/config/private/https-keystore.p12")
+  lazy val controllerClientKeyStoreRef = KeyStoreRef(
+    ControllerKeyStoreResource.url,
+    alias = None,
+    SecretString("jobscheduler"),
+    SecretString("jobscheduler"))
   val ExportedControllerTrustStoreResource = JavaResource("js7/tests/controller/config/export/https-truststore.p12")
-  lazy val ExportedControllerTrustStoreRef = TrustStoreRef(ExportedControllerTrustStoreResource.url, SecretString("jobscheduler"))
+  lazy val ExportedControllerTrustStoreRef = TrustStoreRef(
+    ExportedControllerTrustStoreResource.url,
+    SecretString("jobscheduler"))
+    Seq(TrustStoreRef(
+      ExportedControllerTrustStoreRef.url,
+      SecretString("jobscheduler")))
+  lazy val controllerClientHttpsConfig = HttpsConfig(
+    Some(controllerClientKeyStoreRef),
+    Seq(ExportedControllerTrustStoreRef))
 
   /* Following resources have been generated with the command line:
      js7-common/src/main/resources/js7/common/akkahttp/https/generate-self-signed-ssl-certificate-test-keystore.sh \
@@ -603,4 +624,16 @@ object DirectoryProvider
   private val AgentTrustStoreResource = JavaResource("js7/tests/agent/config/export/https-truststore.p12")
 
   final lazy val (defaultSigner, defaultVerifier) = PgpSigner.forTest()
+
+  def clusterWatchServiceResource(
+    name: String,
+    admissions: Nel[Admission],
+    httpsConfig: HttpsConfig)
+  : Resource[Task, ClusterWatchService] =
+    Akkas
+      .actorSystemResource(name)
+      .flatMap(implicit actorSystem =>
+        ClusterWatchService.resource(
+          admissions.traverse(AkkaHttpControllerApi.admissionToApiResource(_, httpsConfig)),
+          Js7Configuration.defaultConfig))
 }

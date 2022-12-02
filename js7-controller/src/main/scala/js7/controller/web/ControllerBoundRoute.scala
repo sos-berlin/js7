@@ -9,6 +9,7 @@ import js7.base.auth.{SimpleUser, UpdateItemPermission}
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.convert.AsJava.StringAsPath
 import js7.base.problem.Checked
+import js7.cluster.Cluster
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import js7.common.akkahttp.WebLogDirectives
 import js7.common.akkahttp.web.AkkaWebServer
@@ -24,7 +25,9 @@ import js7.controller.web.controller.ControllerRoute
 import js7.controller.web.serviceprovider.{RouteServiceContext, ServiceProviderRoute}
 import js7.core.command.CommandMeta
 import js7.data.agent.AgentRefState
+import js7.data.cluster.{ClusterCommand, ClusterWatchCommand}
 import js7.data.controller.{ControllerCommand, ControllerState}
+import js7.data.event.Stamped
 import js7.journal.watch.FileEventWatch
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -42,6 +45,7 @@ final class ControllerBoundRoute(
   commandExecutor: ControllerCommandExecutor,
   protected val itemUpdater: ItemUpdater,
   protected val controllerState: Task[Checked[ControllerState]],
+  cluster: Cluster[ControllerState],
   protected val totalRunningSince: Deadline,
   protected val sessionRegister: SessionRegister[SimpleSession],
   protected val eventWatch: FileEventWatch,
@@ -55,15 +59,16 @@ with ControllerRoute
 with WebLogDirectives
 {
   protected val controllerId        = controllerConfiguration.controllerId
-  protected val nodeId              = controllerConfiguration.clusterConf.ownId
   protected val config              = controllerConfiguration.config
+  protected val nodeId              = controllerConfiguration.clusterConf.ownId
   protected val clusterNodeIsBackup = controllerConfiguration.clusterConf.isBackup
+  protected val checkedClusterState = controllerState
+    .map(_.map(s => Stamped(s.eventId, s.clusterState)))
   protected val currentLogFile      = config.as[Path]("js7.log.file")
   protected val pathToAgentRefState = controllerState.map(_.map(_.keyTo(AgentRefState)))
-  protected val checkedClusterState = controllerState.map(_.map(_.clusterState))
   protected val routeServiceContext = RouteServiceContext(filteredSnapshotRoute, filteredEventRoute)
   protected val actorRefFactory     = actorSystem
-
+  protected val clusterWatchMessageStream = cluster.clusterWatchMessageStream
   protected val gateKeeper = GateKeeper(
     binding,
     GateKeeper.Configuration.fromConfig(config, SimpleUser.apply, Seq(
@@ -71,6 +76,12 @@ with WebLogDirectives
 
   protected def executeCommand(command: ControllerCommand, meta: CommandMeta) =
     commandExecutor.executeCommand(command, meta)
+
+  protected def executeClusterCommand(command: ClusterCommand) =
+    cluster.executeCommand(command)
+
+  protected def executeClusterWatchCommand(cmd: ClusterWatchCommand) =
+    cluster.executeClusterWatchCommand(cmd)
 
   val webServerRoute: Route =
     (decodeRequest & encodeResponse) {  // Before handleErrorAndLog to allow simple access to HttpEntity.Strict

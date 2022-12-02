@@ -4,6 +4,3 @@ import org.scalatest.freespec.AsyncFreeSpec
 
 abstract class OurAsyncTestSuite extends AsyncFreeSpec
 with LoggingAsyncFreeSpec
-
-object OurAsyncTestSuite {
-}

@@ -5,6 +5,7 @@ import akka.http.scaladsl.model.headers.CacheDirectives.{`max-age`, `no-cache`, 
 import akka.http.scaladsl.model.headers.`Cache-Control`
 import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route
+import js7.cluster.web.ClusterRoute
 import js7.common.akkahttp.web.session.SessionRoute
 import js7.controller.web.common.ControllerRouteProvider
 import js7.controller.web.controller.api.ApiRoute.*

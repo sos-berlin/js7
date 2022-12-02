@@ -15,7 +15,6 @@ import js7.common.akkahttp.web.auth.CSRF.forbidCSRF
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.SessionRegister
-import js7.core.cluster.watch.ClusterWatchRegister
 import js7.core.command.CommandMeta
 import js7.journal.watch.EventWatch
 import monix.execution.Scheduler
@@ -32,7 +31,6 @@ private final class AgentBoundRoute(
   protected val agentConfiguration: AgentConfiguration,
   gateKeeperConfiguration: GateKeeper.Configuration[SimpleUser],
   protected val sessionRegister: SessionRegister[AgentSession],
-  protected val clusterWatchRegister: ClusterWatchRegister,
   protected val eventWatch: EventWatch)
   (implicit
     protected val actorSystem: ActorSystem,

@@ -3,7 +3,7 @@ package js7.tests.https
 import cats.syntax.option.*
 import com.typesafe.config.ConfigFactory
 import java.nio.file.Files.{createTempFile, delete}
-import js7.base.auth.{UserAndPassword, UserId}
+import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.configutils.Configs.*
 import js7.base.generic.SecretString
 import js7.base.io.JavaResource
@@ -14,8 +14,10 @@ import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.web.Uri
 import js7.common.akkautils.ProvideActorSystem
 import js7.common.system.ServerOperatingSystem.operatingSystem
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
@@ -51,6 +53,10 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest wit
   private lazy val backupHttpsPort = findFreeTcpPort()
   override protected lazy val config = ConfigFactory.empty  // for ProviderActorSystem
   protected def extraDistringuishedNameUserAndPassword = none[UserAndPassword]
+
+  private val backupUserAndPassword = UserAndPassword(
+    UserId("Controller"),
+    SecretString("BACKUP-CONTROLLER-PASSWORD"))
 
   protected final val otherUserAndPassword = UserAndPassword(UserId("OTHER") -> SecretString("OTHER-PASSWORD"))
 
@@ -108,7 +114,7 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest wit
       js7.web.server.auth.https-client-authentication = $controllerHttpsMutual
       js7.auth.users {
         Controller {
-          password = "plain:BACKUP-CONTROLLER-PASSWORD"
+          password = "plain:${backupUserAndPassword.password.string}"
           distinguished-names = [ "CN=Primary Controller,DC=primary-controller,DC=DirectoryProvider,DC=tests,DC=js7,DC=sh" ]
         }
       }
@@ -132,18 +138,35 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest wit
     (!controllerHttpsMutual || extraDistringuishedNameUserAndPassword.isDefined) ?
       UserAndPassword(UserId("TEST"), SecretString("TEST-PASSWORD"))
 
-  protected lazy val httpControllerApi = new AkkaHttpControllerApi(
-    controller.localUri,
-    standardUserAndPassword,
-    actorSystem,
-    config,
+  private lazy val controllerApiHttpsConfig =
     HttpsConfig(
       keyStoreRef = Some(KeyStoreRef(clientKeyStore,
         alias = clientKeyAlias,
         storePassword = SecretString("jobscheduler"),
         keyPassword = SecretString("jobscheduler"))),
       trustStoreRefs = ExportedControllerTrustStoreRef :: Nil)
-  ).closeWithCloser
+
+  protected final lazy val httpControllerApi =
+    new AkkaHttpControllerApi(
+      controller.localUri,
+      standardUserAndPassword,
+      actorSystem,
+      config,
+      controllerApiHttpsConfig
+    ).closeWithCloser
+
+  override protected lazy val clusterWatchServiceResource =
+    useCluster ?
+      DirectoryProvider.clusterWatchServiceResource(
+        getClass.simpleScalaName,
+        Nel.of(
+          Admission(
+            Uri(s"https://localhost:${controllerHttpsPort.get}"),
+            standardUserAndPassword),
+          Admission(
+            Uri(s"https://localhost:$backupHttpsPort"),
+            Some(backupUserAndPassword))),
+        controllerApiHttpsConfig)
 
   protected def serverKeyAlias: Option[String] = None
   override protected final def agentHttps = true

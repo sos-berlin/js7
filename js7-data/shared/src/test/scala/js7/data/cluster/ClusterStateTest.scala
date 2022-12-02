@@ -20,7 +20,6 @@ final class ClusterStateTest extends OurTestSuite
         NodeId("A") -> Uri("https://A"),
         NodeId("B") -> Uri("https://B")),
       NodeId("A"),
-      Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))),
       ClusterTiming(10.s, 20.s))
 
     "Empty" in {
@@ -42,11 +41,6 @@ final class ClusterStateTest extends OurTestSuite
               "B": "https://B"
             },
             "activeId": "A",
-            "clusterWatches": [
-              {
-                "uri": "https://CLUSTER-WATCH"
-              }
-            ],
             "timing": {
               "heartbeat": 10,
               "heartbeatTimeout": 20
@@ -66,11 +60,6 @@ final class ClusterStateTest extends OurTestSuite
               "B": "https://B"
             },
             "activeId": "A",
-            "clusterWatches": [
-              {
-                "uri": "https://CLUSTER-WATCH"
-              }
-            ],
             "timing": {
               "heartbeat": 10,
               "heartbeatTimeout": 20
@@ -90,11 +79,6 @@ final class ClusterStateTest extends OurTestSuite
               "B": "https://B"
             },
             "activeId": "A",
-            "clusterWatches": [
-              {
-                "uri": "https://CLUSTER-WATCH"
-              }
-            ],
             "timing": {
               "heartbeat": 10,
               "heartbeatTimeout": 20
@@ -114,11 +98,6 @@ final class ClusterStateTest extends OurTestSuite
               "B": "https://B"
             },
             "activeId": "A",
-            "clusterWatches": [
-              {
-                "uri": "https://CLUSTER-WATCH"
-              }
-            ],
             "timing": {
               "heartbeat": 10,
               "heartbeatTimeout": 20
@@ -138,11 +117,6 @@ final class ClusterStateTest extends OurTestSuite
               "B": "https://B"
             },
             "activeId": "A",
-            "clusterWatches": [
-              {
-                "uri": "https://CLUSTER-WATCH"
-              }
-            ],
             "timing": {
               "heartbeat": 10,
               "heartbeatTimeout": 20
@@ -162,11 +136,6 @@ final class ClusterStateTest extends OurTestSuite
               "B": "https://B"
             },
             "activeId": "A",
-            "clusterWatches": [
-              {
-                "uri": "https://CLUSTER-WATCH"
-              }
-            ],
             "timing": {
               "heartbeat": 10,
               "heartbeatTimeout": 20
@@ -186,11 +155,6 @@ final class ClusterStateTest extends OurTestSuite
               "B": "https://B"
             },
             "activeId": "A",
-            "clusterWatches": [
-              {
-                "uri": "https://CLUSTER-WATCH"
-              }
-            ],
             "timing": {
               "heartbeat": 10,
               "heartbeatTimeout": 20

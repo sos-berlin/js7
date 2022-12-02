@@ -21,7 +21,7 @@ final class PassiveLostClusterTest extends ControllerClusterTester
       var backupController = backup.startController(httpPort = Some(backupControllerPort)) await 99.s
 
       primaryController.executeCommandForTest(
-        ClusterAppointNodes(clusterSetting.idToUri, clusterSetting.activeId, clusterSetting.clusterWatches)
+        ClusterAppointNodes(clusterSetting.idToUri, clusterSetting.activeId)
       ).orThrow
       primaryController.eventWatch.await[ClusterEvent.ClusterCoupled]()
 

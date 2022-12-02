@@ -202,6 +202,8 @@ lazy val js7 = (project in file("."))
     `js7-install`,
     `js7-journal`,
     `js7-cluster`,
+    `js7-cluster-watch`,
+    `js7-cluster-watch-api`.jvm,
     `js7-controller`,
     `js7-controller-client`.jvm,
     `js7-agent-client`,
@@ -304,6 +306,8 @@ lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
       "io.circe" %%% "circe-parser" % circeVersion ++
       "io.circe" %%% "circe-generic" % circeVersion ++
       "io.circe" %%% "circe-generic-extras" % circeGenericExtrasVersion ++
+      "co.fs2" %% "fs2-core" % fs2Version ++
+      "co.fs2" %% "fs2-reactive-streams" % fs2Version ++
       "io.monix" %%% "monix-eval" % monixVersion ++
       "io.monix" %%% "monix-reactive" % monixVersion ++
       "com.lihaoyi" %%% "sourcecode" % sourcecodeVersion ++
@@ -475,7 +479,10 @@ lazy val `js7-provider` = project
 
 lazy val `js7-proxy` = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
-  .dependsOn(`js7-controller-client`, `js7-base` % "test->test", `js7-tester` % "test")
+  .dependsOn(
+    `js7-controller-client`,
+    `js7-base` % "test->test",
+    `js7-tester` % "test")
   .jvmConfigure(_.dependsOn(`js7-data-for-java`))
   .settings(commonSettings)
   .settings(
@@ -496,7 +503,11 @@ lazy val `js7-proxy` = crossProject(JSPlatform, JVMPlatform)
 
 lazy val `js7-controller-client` = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
-  .dependsOn(`js7-common-http`, `js7-base` % "test->test", `js7-tester` % "test")
+  .dependsOn(
+    `js7-cluster-watch-api`,
+    `js7-common-http`,
+    `js7-base` % "test->test",
+    `js7-tester` % "test")
   .jvmConfigure(_.dependsOn(`js7-common`))
   .settings(commonSettings)
   .settings(
@@ -585,8 +596,45 @@ lazy val `js7-journal` = project
   }
 
 lazy val `js7-cluster` = project
-  .dependsOn(`js7-core`, `js7-common-http`.jvm, `js7-common`,
+  .dependsOn(
+    `js7-cluster-watch-api`.jvm,
+    `js7-core`, `js7-common-http`.jvm, `js7-common`,
     `js7-base`.jvm % "test->test", `js7-tester`.jvm % "test", `js7-license-fake` % "test")
+  .settings(commonSettings)
+  .settings {
+    import Dependencies._
+    libraryDependencies ++=
+      diffx ++
+      akkaHttpTestkit % "test" ++
+      scalaTest % "test" ++
+      scalaCheck % "test" ++
+      log4j % "test" ++
+      lmaxDisruptor % "test"
+  }
+
+lazy val `js7-cluster-watch-api` = crossProject(JSPlatform, JVMPlatform)
+  .dependsOn(
+    `js7-data`/*TODO move js7.data.cluster.* here*/,
+    //`js7-common`,
+    `js7-base` % "test->test",
+    `js7-tester` % "test")
+  .settings(commonSettings)
+  .settings {
+    import Dependencies._
+    libraryDependencies ++=
+      diffx ++
+      scalaTest % "test" ++
+      scalaCheck % "test" ++
+      log4j % "test" ++
+      lmaxDisruptor % "test"
+  }
+
+lazy val `js7-cluster-watch` = project
+  .dependsOn(
+    `js7-cluster-watch-api`.jvm,
+    `js7-common`,
+    `js7-base`.jvm % "test->test",
+    `js7-tester`.jvm % "test")
   .settings(commonSettings)
   .settings {
     import Dependencies._
@@ -689,7 +737,12 @@ lazy val `js7-service-pgp` = project
   }
 
 lazy val `js7-tests` = project
-  .dependsOn(`js7-controller`, `js7-agent`, `js7-proxy`.jvm, `js7-agent-client`,
+  .dependsOn(
+    `js7-controller`,
+    `js7-agent`,
+    `js7-proxy`.jvm,
+    `js7-cluster-watch`,
+    `js7-agent-client`,
     `js7-core` % "test->test",
     `js7-data`.jvm % "test->test",
     `js7-base`.jvm,
