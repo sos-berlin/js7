@@ -27,7 +27,7 @@ extends StatefulService.StoppableByRequest
   logger.debug(s"newWatchService $directory")
   private val watchService = directory.getFileSystem.newWatchService()
 
-  def run =
+  protected def run =
     whenStopRequested
       .guarantee(Task {
         logger.debug("watchService.close()")

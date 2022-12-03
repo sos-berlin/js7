@@ -12,14 +12,13 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.Assertion
 import scala.concurrent.Future
-import scala.concurrent.duration.FiniteDuration
 import scala.util.Failure
 import scala.util.control.NoStackTrace
 
 final class StatefulServiceTest extends OurAsyncTestSuite
 {
+  private val delay = 100.ms
   private val iterations = if (isIntelliJIdea) 100 else 10
-  private val delay = 200.ms // TODO Use TestScheduler
 
   private def repeat(n: Int)(body: => Future[Assertion]): Future[Assertion] =
     Task.tailRecM(1)(i => logger
@@ -59,14 +58,28 @@ final class StatefulServiceTest extends OurAsyncTestSuite
   }
 
   "Service fails while still in use" in repeat(iterations) {
-    FailingService.resource(0.s)
-      .use(_ =>
-        // service fails while in use!
-        Task.unit.delayResult(delay)).as(succeed)
+    val serviceFailed = Deferred.unsafe[Task, Unit]
+    FailingService
+      .resource(onFailed = serviceFailed.complete(()))
+      .use(_ => serviceFailed.get.delayExecution(delay))
       .materialize
       .map {
         case Failure(FailingService.exception) =>
-          // No failure here. See log for exception.
+          succeed
+        case o => fail(s"Unexpected $o")
+      }
+      .runToFuture
+  }
+
+  "Use ends when service has stopped" in repeat(iterations) {
+    // General use case. Similar to the test above.
+    val serviceFailed = Deferred.unsafe[Task, Unit]
+    FailingService
+      .resource(onFailed = serviceFailed.complete(()))
+      .use(_.untilStopped)
+      .materialize
+      .map {
+        case Failure(FailingService.exception) =>
           succeed
         case o => fail(s"Unexpected $o")
       }
@@ -74,17 +87,22 @@ final class StatefulServiceTest extends OurAsyncTestSuite
   }
 
   "Service usage terminates before service would die" in repeat(iterations) {
-    FailingService.resource(delay)
-      .use(_ =>
-        Task.pure(succeed))
+    val serviceFailed = Deferred.unsafe[Task, Unit]
+    FailingService
+      .resource(
+        whenFail = Task.sleep(delay),
+        onFailed = serviceFailed.complete(()))
+      .use(_ => Task.pure(succeed))
       .runToFuture
   }
 
   "Service fails while usage is terminating (race)" in repeat(iterations) {
-    FailingService.resource(0.s)
+    val failService = Deferred.unsafe[Task, Unit]
+    FailingService
+      .resource(whenFail = failService.get)
       .use(_ =>
         // service fails while in use!
-        Task.pure(succeed))
+        failService.complete(()).as(succeed))
       .onErrorRecover {
         case FailingService.exception => succeed
       }
@@ -134,23 +152,26 @@ object StatefulServiceTest
 {
   private val logger = Logger[this.type]
 
-  private class FailingService(delay: FiniteDuration)
+  private class FailingService(
+    whenFail: Task[Unit],
+    onFailed: Task[Unit])
   extends StatefulService.StoppableByRequest
   {
     protected def run =
       Task.race(run2, whenStopRequested)
         .void
 
-    private def run2 = Task
-      .raiseError(FailingService.exception)
-      .delayExecution(delay)
+    private def run2 =
+      whenFail *> Task.raiseError(FailingService.exception).guarantee(onFailed)
 
     override def toString = "FailingService"
   }
   private object FailingService {
     val exception = new Exception("SERVICE FAILED") with NoStackTrace
 
-    def resource(delay: FiniteDuration) =
-      StatefulService.resource(Task(new FailingService(delay)))
+    def resource(
+      whenFail: Task[Unit] = Task.unit,
+      onFailed: Task[Unit] = Task.unit)
+    = StatefulService.resource(Task(new FailingService(whenFail, onFailed)))
   }
 }
