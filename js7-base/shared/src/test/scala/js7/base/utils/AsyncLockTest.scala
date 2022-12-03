@@ -1,13 +1,14 @@
 package js7.base.utils
 
+import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
+import js7.base.utils.AsyncLockTest.*
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.execution.atomic.Atomic
 import monix.reactive.Observable
 import scala.concurrent.Promise
-import js7.base.test.OurAsyncTestSuite
 import scala.concurrent.duration.FiniteDuration
 import scala.util.Random
 
@@ -17,13 +18,14 @@ import scala.util.Random
 final class AsyncLockTest extends OurAsyncTestSuite
 {
   private val initial = 1
+  private val n = 1000
 
   "With logging" - {
-    addTests(n = 200, suppressLog = false)
+    addTests(n, suppressLog = false)
   }
 
   "Without logging" - {
-    addTests(n = 10_000, suppressLog = false)
+    addTests(n, suppressLog = true)
   }
 
   def addTests(n: Int, suppressLog: Boolean): Unit = {
@@ -43,9 +45,16 @@ final class AsyncLockTest extends OurAsyncTestSuite
       if (sys.runtime.availableProcessors == 1) {
         fail("This concurrent test requires more than one processor")
       } else {
-        doTest(identity)
-          // May occasional be equal despite lock is misssing !!!
-          .map(o => assert(o != Vector.fill(n)(initial)))
+        val maxTries = 100
+        val expected = Vector.fill(n)(initial)
+        Task
+          .tailRecM(0)(i =>
+            doTest(identity).flatMap(result =>
+              if (i < maxTries && result == expected) {
+                logger.warn("Retry because tasks did not run concurrently")
+                Task.left(i + 1)
+              } else
+                Task.right(assert(result != expected))))
           .runToFuture
       }
     }
@@ -56,7 +65,7 @@ final class AsyncLockTest extends OurAsyncTestSuite
         .map(_ => lock.lock(Task.unit))
         .completedL
         .timed.map { case (duration, ()) =>
-          scribe.info(Stopwatch.itemsPerSecondString(duration, n))
+          logger.info(Stopwatch.itemsPerSecondString(duration, n))
           succeed
         }
         .runToFuture
@@ -82,7 +91,7 @@ final class AsyncLockTest extends OurAsyncTestSuite
               }
           })
         .timed.map { case (duration, result) =>
-          scribe.info(Stopwatch.itemsPerSecondString(duration, n))
+          logger.info(Stopwatch.itemsPerSecondString(duration, n))
           result
       }
     }
@@ -137,4 +146,9 @@ final class AsyncLockTest extends OurAsyncTestSuite
       })
       .runToFuture
   }
+}
+
+object AsyncLockTest
+{
+  private val logger = js7.base.log.Logger[this.type]
 }

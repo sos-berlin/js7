@@ -17,7 +17,7 @@ final class AsyncLock private(
   suppressLog: Boolean)
 {
   private val lockM = MVar[Task].empty[Acquirer]().memoize
-  private val log = if (suppressLog) ScribeUtils.emptyLogger else logger
+  private val log = if (suppressLog) js7.base.log.Logger.empty else logger
 
   def lock[A](task: Task[A])(implicit src: sourcecode.Enclosing): Task[A] =
     lock(src.value)(task)
@@ -88,7 +88,7 @@ final class AsyncLock private(
 
 object AsyncLock
 {
-  private val logger = scribe.Logger[this.type]
+  private val logger = js7.base.log.Logger[this.type]
 
   def apply()(implicit enclosing: sourcecode.Enclosing): AsyncLock =
     apply(name = enclosing.value)
