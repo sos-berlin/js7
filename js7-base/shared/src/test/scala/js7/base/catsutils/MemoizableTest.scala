@@ -2,7 +2,7 @@ package js7.base.catsutils
 
 import cats.effect.IO
 import java.util.concurrent.atomic.AtomicInteger
-import js7.base.catsutils.Memoizable.*
+import js7.base.catsutils.Memoizable.syntax.*
 import js7.base.test.OurAsyncTestSuite
 import org.scalatest.Assertion
 import scala.concurrent.{ExecutionContext, Future}
