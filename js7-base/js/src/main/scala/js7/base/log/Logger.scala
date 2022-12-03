@@ -5,6 +5,9 @@ import scala.reflect.ClassTag
 
 object Logger
 {
+  val empty: scribe.Logger =
+    scribe.Logger.empty
+
   def initialize() = {}
 
   def apply[A: ClassTag]: scribe.Logger =

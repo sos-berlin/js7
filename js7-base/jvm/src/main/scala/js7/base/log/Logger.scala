@@ -17,6 +17,9 @@ object Logger
 {
   Slf4jUtils.initialize()
 
+  val empty: ScalaLogger =
+    ScalaLogger(org.slf4j.helpers.NOPLogger.NOP_LOGGER)
+
   def initialize() = {}
 
   //val Timing: Marker = MarkerFactory.getMarker("Timing")
