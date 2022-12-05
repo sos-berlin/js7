@@ -77,24 +77,25 @@ trait ControllerClusterForScalaTest
   protected final val testHeartbeatLossPropertyKey = "js7.TEST." + SecretStringGenerator.randomString()
   sys.props(testHeartbeatLossPropertyKey) = "false"
 
-  final def runControllerAndBackup()(body: (DirectoryProvider, RunningController, DirectoryProvider, RunningController, ClusterSetting) => Unit)
+  final def runControllerAndBackup(suppressClusterWatch: Boolean = false)
+    (body: (DirectoryProvider, RunningController, DirectoryProvider, RunningController, ClusterSetting) => Unit)
   : Unit =
-    withControllerAndBackup() { (primary, backup, clusterSetting) =>
+    withControllerAndBackup(suppressClusterWatch) { (primary, backup, clusterSetting) =>
       runControllers(primary, backup) { (primaryController, backupController) =>
         body(primary, primaryController, backup, backupController, clusterSetting)
       }
     }
 
-  final def withControllerAndBackup()
+  final def withControllerAndBackup(suppressClusterWatch: Boolean = false)
     (body: (DirectoryProvider, DirectoryProvider, ClusterSetting) => Unit)
   : Unit =
-    withControllerAndBackupWithoutAgents() { (primary, backup, setting) =>
+    withControllerAndBackupWithoutAgents(suppressClusterWatch) { (primary, backup, setting) =>
       primary.runAgents() { _ =>
         body(primary, backup, setting)
       }
     }
 
-  final def withControllerAndBackupWithoutAgents()
+  final def withControllerAndBackupWithoutAgents(suppressClusterWatch: Boolean = false)
     (body: (DirectoryProvider, DirectoryProvider, ClusterSetting) => Unit)
   : Unit =
     withCloser { implicit closer =>
@@ -152,15 +153,18 @@ trait ControllerClusterForScalaTest
         activeId = primaryId,
         clusterTiming)
 
-      withClusterWatchService { _ =>
+      if (suppressClusterWatch)
         body(primary, backup, setting)
-      }
+      else
+        withClusterWatchService {
+          body(primary, backup, setting)
+        }
     }
 
   protected final def runControllers(primary: DirectoryProvider, backup: DirectoryProvider)
     (body: (RunningController, RunningController) => Unit)
   : Unit = {
-    withClusterWatchService { _ =>
+    withClusterWatchService {
       backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
         primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
           primaryController.eventWatch.await[ClusterCoupled]()
@@ -171,8 +175,8 @@ trait ControllerClusterForScalaTest
     }
   }
 
-  protected final def withClusterWatchService[A](body: ClusterWatchService => A): A =
-    clusterWatchServiceResource.blockingUse(99.s)(body)
+  protected final def withClusterWatchService[A](body: => A): A =
+    clusterWatchServiceResource.blockingUse(99.s)(_ => body)
 
   protected final def clusterWatchServiceResource: Resource[Task, ClusterWatchService] =
     DirectoryProvider.clusterWatchServiceResource(

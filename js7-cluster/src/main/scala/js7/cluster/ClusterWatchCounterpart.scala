@@ -61,7 +61,7 @@ extends StatefulService.StoppableByRequest
               Task.raiseError(RequestTimeoutException)))
           .onErrorRestartLoop(()) {
             case (RequestTimeoutException, _, retry) =>
-              logger.warn("ClusterWatch is not responding. Still trying ...")
+              logger.warn("Still trying to get a response from ClusterWatch ...")
               retry(()).delayExecution(1.s/*TODO*/)
 
             case (t, _, _) => Task.raiseError(t)

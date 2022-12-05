@@ -1,5 +1,6 @@
 package js7.base.session
 
+import cats.effect.Resource
 import js7.base.auth.UserAndPassword
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixBase.syntax.*
@@ -66,6 +67,18 @@ trait SessionApi
 object SessionApi
 {
   private val logger = scribe.Logger[this.type]
+
+  /** Logs out when the resource is being released. */
+  def resource[A <: SessionApi](api: Task[A]): Resource[Task, A] =
+    Resource.make(
+      acquire = api)(
+      release = api =>
+        api.logout()
+          .void
+          .onErrorHandle { t =>
+            logger.debug(s"logout() => ${t.toStringWithCauses}")
+            ()
+          })
 
   def logError(throwable: Throwable, myToString: String): Task[Boolean] =
     Task {

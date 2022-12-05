@@ -16,7 +16,6 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.data.agent.AgentPath
 import js7.data.board.{BoardPath, NoticeId}
-import js7.data.cluster.ClusterCommand
 import js7.data.command.{CancellationMode, CommonCommand, SuspensionMode}
 import js7.data.controller.ControllerState.*
 import js7.data.event.EventId
@@ -242,17 +241,6 @@ object ControllerCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
 
-  /** For internal use between cluster nodes only. */
-  @deprecated
-  final case class InternalClusterCommand(clusterCommand: ClusterCommand)
-  extends ControllerCommand {
-    type Response = InternalClusterCommand.Response
-  }
-  object InternalClusterCommand {
-    final case class Response(response: ClusterCommand.Response)
-    extends ControllerCommand.Response
-  }
-
   final case class ResetAgent(agentPath: AgentPath, force: Boolean = false)
   extends ControllerCommand {
     type Response = Response.Accepted
@@ -273,8 +261,7 @@ object ControllerCommand extends CommonCommand.Companion
       Subtype(Accepted),
       Subtype.named(deriveCodec[AddOrder.Response], "AddOrder.Response"),
       Subtype.named1[AddOrders.Response]("AddOrders.Response"),
-      Subtype.named(deriveCodec[Batch.Response], "BatchResponse"),
-      Subtype.named(deriveCodec[InternalClusterCommand.Response], "InternalClusterCommand.Response"))
+      Subtype.named(deriveCodec[Batch.Response], "BatchResponse"))
   }
 
   implicit val jsonCodec: TypedJsonCodec[ControllerCommand] = TypedJsonCodec[ControllerCommand](
@@ -298,7 +285,6 @@ object ControllerCommand extends CommonCommand.Companion
     Subtype(deriveConfiguredCodec[ControlWorkflow]),
     Subtype(deriveConfiguredCodec[ClusterAppointNodes]),
     Subtype(ClusterSwitchOver),
-    Subtype(deriveConfiguredCodec[InternalClusterCommand]),
     Subtype(deriveConfiguredCodec[ResetAgent]),
     Subtype(deriveConfiguredCodec[ResetSubagent]),
     Subtype(TakeSnapshot))

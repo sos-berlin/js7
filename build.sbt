@@ -252,6 +252,7 @@ lazy val `js7-install` = project
       (Universal / mappings).value
         .filter { case (_, path) => (path startsWith "lib/") && !isExcludedJar(path stripPrefix "lib/") }
         .++(NativePackagerHelper.contentOf((`js7-controller` / Compile / classDirectory).value / "js7/controller/installation"))
+        .++(NativePackagerHelper.contentOf((`js7-cluster-watch` / Compile / classDirectory).value / "js7/cluster/watch/installation"))
         .++(NativePackagerHelper.contentOf((`js7-provider` / Compile / classDirectory).value / "js7/provider/installation"))
         .++(NativePackagerHelper.contentOf((`js7-agent` / Compile / classDirectory).value / "js7/agent/installation"))
         .++(NativePackagerHelper.contentOf((`js7-subagent` / Compile / classDirectory).value / "js7/subagent/installation"))
@@ -615,7 +616,8 @@ lazy val `js7-cluster` = project
 lazy val `js7-cluster-watch-api` = crossProject(JSPlatform, JVMPlatform)
   .dependsOn(
     `js7-data`/*TODO move js7.data.cluster.* here*/,
-    //`js7-common`,
+    `js7-common-http`,
+    `js7-base`,
     `js7-base` % "test->test",
     `js7-tester` % "test")
   .settings(commonSettings)

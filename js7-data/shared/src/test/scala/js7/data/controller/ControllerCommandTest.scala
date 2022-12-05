@@ -9,7 +9,6 @@ import js7.base.time.Timestamp
 import js7.base.web.Uri
 import js7.data.agent.AgentPath
 import js7.data.board.{BoardPath, NoticeId}
-import js7.data.cluster.ClusterCommand
 import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.controller.ControllerCommand.*
 import js7.data.item.VersionId
@@ -438,33 +437,6 @@ final class ControllerCommandTest extends OurTestSuite
     testJson[ControllerCommand](ClusterSwitchOver,
       json"""{
         "TYPE": "ClusterSwitchOver"
-      }""")
-  }
-
-  // Internal use only
-  "InternalClusterCommand" in {
-    testJson[ControllerCommand](InternalClusterCommand(
-      ClusterCommand.ClusterCouple(
-        NodeId("A"),
-        NodeId("B"))),
-      json"""{
-        "TYPE": "InternalClusterCommand",
-        "clusterCommand": {
-          "TYPE": "ClusterCouple",
-          "activeId": "A",
-          "passiveId": "B"
-        }
-      }""")
-  }
-
-  "InternalClusterCommand.Response" in {
-    testJson[ControllerCommand.Response](InternalClusterCommand.Response(
-      ClusterCommand.Response.Accepted),
-      json"""{
-        "TYPE": "InternalClusterCommand.Response",
-        "response": {
-          "TYPE": "Accepted"
-        }
       }""")
   }
 

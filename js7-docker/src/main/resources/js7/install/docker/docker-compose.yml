@@ -66,6 +66,23 @@ services:
       - ./volumes/provider/data/state:/var/opt/js7/provicer/data/state:delegated
     restart: unless-stopped
 
+  cluster-watch:
+    image: js7
+    container_name: js7-cluster-watch
+    hostname: cluster-watch
+    command: [
+      "js7-cluster-watch",
+      "-J-Xmx50m",
+      "--cluster-node-uri=https://controller:4443",
+      "--cluster-node-uri=https://backup-controller:4443" ]
+    working_dir: /home/js7
+    volumes:
+      - ./volumes/cluster-watch/config:/var/opt/js7/cluster-watch/config:ro
+      - ./volumes/cluster-watch/data/cache:/var/opt/js7/cluster-watch/data/cache:delegated
+      - ./volumes/cluster-watch/data/logs:/var/opt/js7/cluster-watch/data/logs:delegated
+      - ./volumes/cluster-watch/data/state:/var/opt/js7/cluster-watch/data/state:delegated
+    restart: unless-stopped
+
   subagent-1-a:
     image: js7
     container_name: js7-subagent-1-a

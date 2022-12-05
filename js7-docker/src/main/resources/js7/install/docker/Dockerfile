@@ -37,7 +37,7 @@ RUN chown root:root -R /opt/js7-[1-9]* && \
     ln -s /opt/js7-[1-9]* /opt/js7 && \
     groupadd --gid ${UID:-1000} js7 && \
     useradd --uid ${UID:-1000} --gid js7 --home-dir /home/js7 --no-create-home --shell /bin/bash js7 && \
-    mkdir -p /var/opt/js7/{provider,controller,agent}/data &&\
+    mkdir -p /var/opt/js7/{provider,cluster-watch,controller,agent}/data &&\
     mkdir -p /var/opt/js7/testControllerAgent && \
     chown js7:js7 -R /home/js7 /var/opt/js7
 

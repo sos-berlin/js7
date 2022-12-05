@@ -522,10 +522,6 @@ object RunningController
             .flatMapT(_.appointNodes(idToUri, activeId))
             .map(_.map((_: Completed) => ControllerCommand.Response.Accepted))
 
-        case ControllerCommand.InternalClusterCommand(clusterCommand) =>
-          cluster.executeCommand(clusterCommand)
-            .map(_.map(ControllerCommand.InternalClusterCommand.Response.apply))
-
         case _ =>
           orderKeeperActor.flatMapT(actor =>
             Task.deferFuture(

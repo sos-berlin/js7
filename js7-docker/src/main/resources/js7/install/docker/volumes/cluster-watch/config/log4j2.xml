@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration status="WARN" shutdownHook="disable" monitorInterval="10">
+  <properties>
+    <property name="logDirectory">${sys:js7.log4j.directory:-logs}</property>
+  </properties>
+
+  <appenders>
+    <console name="stderr" target="SYSTEM_ERR">
+      <patternLayout pattern="%highlight{%d{DEFAULT} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger - %message}{INFO=blue,WARN=red bold}%n"/>
+    </console>
+
+    <rollingRandomAccessFile name="file-info"
+                             fileName="${logDirectory}/cluster-watch.log"
+                             filePattern="${logDirectory}/cluster-watch-%d{yyyy-MM-dd}-%i.log.gz"
+                             immediateFlush="${sys:js7.log4j.immediateFlush:-true}">
+      <patternLayout pattern="%d{DEFAULT_MICROS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %logger - %message%n"
+                     charset="UTF-8"/>
+      <policies>
+        <timeBasedTriggeringPolicy/>
+        <sizeBasedTriggeringPolicy size="1GB"/>
+      </policies>
+      <defaultRolloverStrategy fileIndex="nomax">
+        <delete basePath="${logDirectory}">
+          <ifFileName glob="cluster-watch-*.log.gz"/>
+          <ifAny>
+            <ifLastModified age="8d"/>
+            <ifAccumulatedFileSize exceeds="2GB"/>
+          </ifAny>
+        </delete>
+      </defaultRolloverStrategy>
+    </rollingRandomAccessFile>
+
+    <rollingRandomAccessFile name="file-debug"
+                             fileName="${logDirectory}/cluster-watch-debug.log"
+                             filePattern="${logDirectory}/cluster-watch-debug-%d{yyyy-MM-dd}-%i.log.gz"
+                             immediateFlush="${sys:js7.log4j.immediateFlush:-true}">
+      <patternLayout charset="UTF-8" pattern=
+        "%d{DEFAULT_MICROS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %notEmpty{%X{js7.correlId} }%-2threadId %logger %notEmpty{»%marker« }- %message%n"
+      />
+      <policies>
+        <timeBasedTriggeringPolicy/>
+        <sizeBasedTriggeringPolicy size="1GB"/>
+      </policies>
+      <defaultRolloverStrategy fileIndex="nomax">
+        <delete basePath="${logDirectory}">
+          <ifFileName glob="cluster-watch-debug-*.log.gz"/>
+          <ifAny>
+            <ifLastModified age="8d"/>
+            <ifAccumulatedFileSize exceeds="2GB"/>
+          </ifAny>
+        </delete>
+      </defaultRolloverStrategy>
+    </rollingRandomAccessFile>
+  </appenders>
+
+  <loggers>
+    <root level="info">
+      <!-- The appenderRef levels do not prevent loggers from logging and increasing CPU usage !!! -->
+      <appenderRef level="warn"  ref="stderr"/>
+      <appenderRef level="info"  ref="file-info"/>
+      <appenderRef level="trace" ref="file-debug"/>
+    </root>
+    <logger level="warn"  name="akka.actor.CoordinatedShutdown"/>
+    <logger level="warn"  name="akka.event.slf4j.Slf4jLogger"/>
+    <logger level="debug" name="js7"/>
+
+    <!-- Change to trace for detailed logging -->
+    <logger level="debug" name="js7.journal.Journal"/>
+    <logger level="debug" name="js7.common.http.AkkaHttpClient"/>
+    -->
+  </loggers>
+</configuration>

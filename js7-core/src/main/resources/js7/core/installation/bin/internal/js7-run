@@ -1,0 +1,139 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# JS7 generic starter
+
+JS7_HOME="$(cd "${0%/*}/../internal/../../bin/.." && pwd)"
+export JS7_HOME
+. "$JS7_HOME/bin/internal/set-context.sh"
+declare classpathString java  # returned by set-context.sh
+declare -a standardJavaOptions
+
+camelName=""
+kebabName=
+mainClass=
+config=
+data=
+appOptions=()
+javaOptions=(-XX:+UseStringDeduplication)
+log4jAsync=false
+
+for arg in "$@"; do :
+  case "$arg" in
+    --camel-name=*)
+      camelName="${arg#*=}"
+      ;;
+    --kebab-name=*)
+      kebabName="${arg#*=}"
+      ;;
+    --main-class=*)
+      mainClass="${arg#*=}"
+      ;;
+    --rmx-port=*)
+      a="${arg#*=}"
+      javaOptions+=(
+        "-Dcom.sun.management.jmxremote"
+        "-Dcom.sun.management.jmxremote.ssl=false"
+        "-Dcom.sun.management.jmxremote.authenticate=false"
+        "-Dcom.sun.management.jmxremote.port=$a")
+      ;;
+    --debug-port=*)
+      a="${arg#*=}"
+      javaOptions+=("-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=$a")
+      ;;
+    --java-option=*)
+      a="${arg#*=}"
+      javaOptions+=("$a")
+      ;;
+    -J*)
+      a="${arg#-J}"
+      javaOptions+=("$a")
+      ;;
+    --directory=*)
+      config="${arg#*=}"/config
+      data="${arg#*=}"/data
+      ;;
+    --config-directory=*)
+      config="${arg#*=}"
+      ;;
+    --data-directory=*)
+      data="${arg#*=}"
+      ;;
+    --log4j-async)
+      log4jAsync=true
+      ;;
+    *)
+      appOptions+=("$arg")
+  esac
+done
+
+# $data
+if [ -z "$data" ]; then data=/var/opt/js7/"$kebabName"/data; fi
+if [ ! -d "$data" ]; then :
+  echo "No such directory: --data-directory=$data"
+  exit 1
+fi
+data="$(toSystemPath "$data")"
+
+logs="$data/logs"
+[ -d "$logs" ] || mkdir "$logs"
+
+# Copy stdout and stderr to stdouterr.log
+if [ -e "$logs/stdouterr.log" ]; then
+  echo >>"$logs/stdouterr.log" \
+    -e "\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+fi
+exec &> >(exec tee -a "$logs"/stdouterr.log)
+
+stateDir="$data/state"
+[ -d "$stateDir" ] || mkdir "$stateDir"
+
+workDir="$data/work"
+[ -d "$workDir" ] || mkdir "$workDir"
+
+# $config
+if [ -z "$config" ]; then config=/var/opt/js7/"$kebabName"/config; fi
+if [ ! -d "$config" ]; then :
+  echo "No such directory: --config-directory=$config"
+  exit 1
+fi
+config="$(toSystemPath "$config")"
+
+javaOptions+=("-Djs7.log4j.directory=$logs")  # Used in logging configuration
+if [ -f "$config/log4j2.xml" ]; then :
+  javaOptions+=("-Dlog4j.configurationFile=$config/log4j2.xml")
+fi
+if $log4jAsync; then :
+  javaOptions+=("-Dlog4j2.contextSelector=org.apache.logging.log4j.core.async.AsyncLoggerContextSelector")
+  javaOptions+=("-Dlog4j2.asyncLoggerWaitStrategy=Block")  # Uses less CPU when idling than default "Timeout"
+  javaOptions+=("-Djs7.log4j.immediateFlush=false")
+fi
+
+appOptions+=("--config-directory=$config")
+
+execute=(
+  "$java"
+  "${javaOptions[@]}"
+  "${standardJavaOptions[@]}"
+  -classpath "$classpathString"
+  "$mainClass"
+  "${appOptions[@]}")
+log "${execute[@]}"
+
+"${execute[@]}" &
+
+pid=$!
+log "PID $pid"
+
+terminate() {
+  echo "⚡️ $1"
+  log "$1: Shutdown JS7 $camelName"
+  kill $pid
+}
+
+trap "terminate SIGTERM" SIGTERM
+trap "terminate SIGINT" SIGINT
+wait $pid || log "JS7 $camelName exited with exit code $?"
+trap - SIGTERM SIGINT
+
+log "JS7 $camelName has been shut down"

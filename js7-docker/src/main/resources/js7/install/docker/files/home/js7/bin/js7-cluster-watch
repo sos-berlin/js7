@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+config=/var/opt/js7/cluster-watch/config
+data=/var/opt/js7/cluster-watch/data
+hprof=$data/logs/OutOfMemoryError.hprof
+
+if [ "$HOME" = "/home/js7" ]; then
+  [ -e "$HOME/config" ] || ln -ns $config "$HOME/config"
+  [ -e "$HOME/data" ] || ln -ns $data "$HOME/data"
+fi
+
+echo "### $0"
+find "$HOME/config"
+find "$HOME/data"
+
+exec /opt/js7/bin/js7-cluster-watch \
+  --log4j-async \
+  -J"-XX:+HeapDumpOnOutOfMemoryError" -J"-XX:HeapDumpPath=$hprof" \
+  "$@"
