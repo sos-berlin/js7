@@ -26,10 +26,20 @@ object VirtualThreads
   private[thread] def maybeNewVirtualThreadExecutorService(): Option[ExecutorService] =
     maybeNewVirtualThreadPerTaskExecutor.map(_())
 
-  lazy val newMaybeVirtualThread: Runnable => Thread =
+  def newMaybeVirtualThread(name: String = "")(body: => Unit) =
+    _newMaybeVirtualThread(name)(() => body)
+
+  private lazy val _newMaybeVirtualThread: String => Runnable => Thread =
     newVirtualThreadFactory match {
-      case Some(factory) => factory.newThread(_)
-      case None => new Thread(_)
+      case Some(factory) =>
+        _ => runnable => factory.newThread(runnable)
+
+      case None =>
+        name => runnable => {
+          val thread = new Thread(runnable)
+          if (name.nonEmpty) thread.setName(name)
+          thread
+        }
     }
 
   private lazy val newThreadPerTaskExecutor: Option[ThreadFactory => ExecutorService] =

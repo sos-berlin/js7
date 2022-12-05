@@ -8,7 +8,7 @@ private object TestResultCollector
   private val sb = new mutable.StringBuilder("\n")
 
   sys.runtime.addShutdownHook(
-    newMaybeVirtualThread { () =>
+    newMaybeVirtualThread("TestResultCollector-Shutdown") {
       synchronized {
         println(sb)
       }
