@@ -61,9 +61,9 @@ services:
     working_dir: /home/js7
     volumes:
       - ./volumes/provider/config:/var/opt/js7/provider/config:ro
-      - ./volumes/provider/data/cache:/var/opt/js7/provicer/data/cache:delegated
-      - ./volumes/provider/data/logs:/var/opt/js7/provicer/data/logs:delegated
-      - ./volumes/provider/data/state:/var/opt/js7/provicer/data/state:delegated
+      - ./volumes/provider/data/cache:/var/opt/js7/provider/data/cache:delegated
+      - ./volumes/provider/data/logs:/var/opt/js7/provider/data/logs:delegated
+      - ./volumes/provider/data/state:/var/opt/js7/provider/data/state:delegated
     restart: unless-stopped
 
   cluster-watch:
