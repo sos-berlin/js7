@@ -1,5 +1,6 @@
 package js7.subagent
 
+import cats.effect.concurrent.Deferred
 import cats.effect.{Resource, Sync}
 import java.nio.file.Path
 import js7.base.auth.SimpleUser
@@ -12,8 +13,8 @@ import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked
 import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
+import js7.base.utils.ProgramTermination
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{ProgramTermination, SetOnce}
 import js7.base.web.Uri
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.akkautils.Akkas
@@ -24,7 +25,6 @@ import js7.data.subagent.{SubagentRunId, SubagentState}
 import js7.journal.watch.InMemoryJournal
 import js7.subagent.configuration.SubagentConf
 import js7.subagent.web.SubagentWebServer
-import monix.catnap.MVar
 import monix.eval.{Coeval, Task}
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
@@ -33,20 +33,9 @@ final class BareSubagent private(
   private val commandExecutor: SubagentCommandExecutor,
   val journal: InMemoryJournal[SubagentState])
 {
-  private val release = SetOnce[Task[Unit]]
-  private val stoppedOnce = SetOnce[ProgramTermination]
-
   /** Completes when Subagent has stopped. */
   def untilStopped: Task[ProgramTermination] =
     commandExecutor.untilStopped
-
-  protected def onStopped(termination: ProgramTermination) =
-    Task.defer {
-      release.orThrow.map { _ =>
-        // TODO Beware race condition?
-        stoppedOnce.trySet(termination)
-      }
-    }
 
   def shutdown(
     signal: Option[ProcessSignal] = None,
@@ -60,6 +49,7 @@ final class BareSubagent private(
   def subagentRunId: SubagentRunId =
     commandExecutor.subagentRunId
 
+  @TestOnly
   def testEventBus = commandExecutor.testEventBus
 }
 
@@ -70,18 +60,17 @@ object BareSubagent
   type StartAsAgentDirector = StartAsAgentDirector.type
   object StartAsAgentDirector
 
-  // Startable without Scheduler
+  // Startable without a Scheduler
   def blockingRun(conf: SubagentConf, orCommonScheduler: Option[Scheduler] = None)
-  : Either[StartAsAgentDirector, ProgramTermination] = {
-    ThreadPools
-      .standardSchedulerResource[Coeval](conf.name, conf.config, orCommonScheduler)
+  : Either[StartAsAgentDirector, ProgramTermination] =
+    threadPoolResource[Coeval](conf, orCommonScheduler)
       .use(implicit scheduler => Coeval {
-        val restartAsDirectorVar = MVar.empty[Task, Unit]().memoize
-        val restartAsDirector = restartAsDirectorVar.flatMap(_.tryPut(())).void
+        val restartAsDirectorVar = Deferred.unsafe[Task, Unit]
+        val restartAsDirector = restartAsDirectorVar.complete(())
         resource(conf, scheduler, restartAsDirector)
           .use(bareSubagent => Task
             .race(
-              restartAsDirectorVar.flatMap(_.take),
+              restartAsDirectorVar.get,
               bareSubagent.untilStopped)
             .flatMap {
               case Left(()) =>
@@ -92,7 +81,6 @@ object BareSubagent
           .runSyncUnsafe()
       })
       .apply()
-  }
 
   def resource(conf: SubagentConf, js7Scheduler: Scheduler, restartAsDirector: Task[Unit] = Task.unit)
   : Resource[Task, BareSubagent] =
@@ -134,13 +122,11 @@ object BareSubagent
       }).executeOn(js7Scheduler)
     }))
 
-  private def provideUriFile(conf: SubagentConf, uri: Checked[Uri]): Resource[Task, Path] = {
-    val uriFile = conf.workDirectory / "http-uri"
-    provideFile[Task](uriFile)
-      .evalTap(_ => Task {
-        for (uri <- uri) uriFile := s"$uri/subagent"
+  private def provideUriFile(conf: SubagentConf, uri: Checked[Uri]): Resource[Task, Path] =
+    provideFile[Task](conf.workDirectory / "http-uri")
+      .evalTap(file => Task {
+        for (uri <- uri) file := s"$uri/subagent"
       })
-  }
 
   def threadPoolResource[F[_]](conf: SubagentConf, orCommon: Option[Scheduler] = None)
     (implicit F: Sync[F])
