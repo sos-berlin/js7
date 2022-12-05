@@ -4,6 +4,7 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
+import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.ControlWorkflowPath
@@ -99,7 +100,8 @@ extends OurTestSuite with ControllerAgentForScalaTest
       == ItemDetached(bWorkflow.id, agentPath))
 
     assert(agent.currentAgentState().keyTo(WorkflowPathControl).isEmpty)
-    assert(controller.controllerState.await(99.s).keyTo(WorkflowPathControl).isEmpty)
+    waitForCondition(10.s, 100.ms)(controllerState.keyTo(WorkflowPathControl).isEmpty)
+    assert(controllerState.keyTo(WorkflowPathControl).isEmpty)
   }
 
   private def skipJob(workflowPath: WorkflowPath, skip: Boolean, revision: ItemRevision)
