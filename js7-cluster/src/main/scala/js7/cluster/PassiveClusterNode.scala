@@ -169,7 +169,8 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
               case Left(throwable) => logger.error("While notifying the active cluster node about restart of this passive node:" +
                 s" ${throwable.toStringWithCauses}", throwable.nullIfNoStackTrace)
               case Right(()) =>
-                logger.debug("Notified active cluster node about restart of this passive node")
+                logger.debug(
+                  "Active cluster node has been notified about restart of this passive node")
             }
         }
 
