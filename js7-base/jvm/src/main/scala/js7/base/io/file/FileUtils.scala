@@ -222,7 +222,10 @@ object FileUtils
 
   def provideFile[F[_]](file: Path)(implicit F: Sync[F]): Resource[F, Path] =
     Resource.make(
-      acquire = F.pure(file))(
+      acquire = F.delay {
+        deleteIfExists(file)
+        file
+      })(
       release = _ => F.delay {
         try deleteIfExists(file)
         catch { case t: IOException => logger.error(s"Delete $file => $t")}

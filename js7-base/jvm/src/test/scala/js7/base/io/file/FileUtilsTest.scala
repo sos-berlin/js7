@@ -254,12 +254,26 @@ final class FileUtilsTest extends OurTestSuite with BeforeAndAfterAll
     }
   }
 
-  "provideFile"  in {
-    withTemporaryFile("FileUtilsTest-", ".tmp") { file =>
-      provideFile[Coeval](file)
-        .use(file => Coeval(assert(exists(file))))
-        .value()
-      assert(!exists(file))
+  "provideFile" - {
+    "Non-existing file" in {
+      check(existing = false)
+    }
+
+    "Existing file is delete before use" in {
+      check(existing = true)
+    }
+
+    def check(existing: Boolean): Unit = {
+      withTemporaryFile("FileUtilsTest-", ".tmp") { file =>
+        if (!existing) delete(file)
+        provideFile[Coeval](file)
+          .use(file => Coeval {
+            assert(!exists(file))
+            file := "Hej!"
+          })
+          .value()
+        assert(!exists(file))
+      }
     }
   }
 }
