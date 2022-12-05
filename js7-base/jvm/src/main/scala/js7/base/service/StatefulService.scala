@@ -12,10 +12,14 @@ trait StatefulService {
   service =>
 
   private[StatefulService] final val _fiber = Deferred.unsafe[Task, Fiber[Unit]]
+  private val stopped = Deferred.unsafe[Task, Unit]
+
+  final def untilStopped: Task[Unit] =
+    stopped.get
 
   protected def run: Task[Unit]
 
-  protected def stop: Task[Unit]
+  def stop: Task[Unit]
 }
 
 object StatefulService
@@ -35,6 +39,7 @@ object StatefulService
               logger.error(s"$service died: ${t.toStringWithCauses}")
               Task.raiseError(t)
             })
+            .guarantee(service.stopped.complete(()))
             .start
             .tapEval(service._fiber.complete)
             .as(service))

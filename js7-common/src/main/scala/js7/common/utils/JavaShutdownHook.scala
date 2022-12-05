@@ -1,6 +1,7 @@
 package js7.common.utils
 
 import js7.base.log.Logger
+import js7.base.thread.VirtualThreads.newMaybeVirtualThread
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.common.utils.JavaShutdownHook.*
 import scala.util.control.NonFatal
@@ -10,13 +11,10 @@ import scala.util.control.NonFatal
  */
 final class JavaShutdownHook private(onShutdown: () => Unit, name: String) extends AutoCloseable {
 
-  private val hook = new Thread {
-    setName(name)
-    override def run() = {
-      logger.debug(s"Shutdown hook '$name' starts")
-      onShutdown()
-      logger.debug(s"Shutdown hook '$name' ends")  // May not be logged if log4j has been shutdown
-    }
+  private val hook = newMaybeVirtualThread(s"JavaShutdownHook-$name") {
+    logger.debug(s"Shutdown hook '$name' starts")
+    onShutdown()
+    logger.debug(s"Shutdown hook '$name' ends")  // May not be logged if log4j has been shutdown
   }
 
   sys.runtime.addShutdownHook(hook)
