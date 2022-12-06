@@ -1,5 +1,8 @@
 package js7.proxy.javaapi
 
+import cats.syntax.flatMap.*
+import cats.syntax.traverse.*
+import com.typesafe.config.ConfigFactory
 import io.vavr.control.Either as VEither
 import java.time.Instant
 import java.util.Objects.requireNonNull
@@ -8,9 +11,13 @@ import java.util.{Optional, OptionalLong}
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
 import js7.base.log.CorrelId
+import js7.base.monixutils.AsyncVariable
 import js7.base.problem.Problem
+import js7.base.service.StatefulService
 import js7.base.web.Uri
+import js7.cluster.watch.ClusterWatchService
 import js7.data.board.{BoardPath, NoticeId}
+import js7.data.cluster.ClusterWatchId
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{AddOrdersResponse, CancelOrders, ReleaseEvents, ResumeOrder, ResumeOrders, SuspendOrders, TakeSnapshot}
 import js7.data.event.{Event, EventId, JournalInfo}
@@ -38,6 +45,8 @@ import scala.jdk.OptionConverters.*
 @javaApi
 final class JControllerApi(val asScala: ControllerApi)(implicit scheduler: Scheduler)
 {
+  private val clusterWatchService = AsyncVariable[Option[StatefulService]](None)
+
   def stop: CompletableFuture[Void] =
     runTask(asScala.stop.as(Void))
 
@@ -304,4 +313,29 @@ final class JControllerApi(val asScala: ControllerApi)(implicit scheduler: Sched
 
   private def runTask[A](task: Task[A]): CompletableFuture[A] =
     CorrelId.bindNew(task.runToFuture).asJava
+
+  // FIXME Respect ClusterWatchId
+  @Nonnull
+  def startClusterWatch(id: ClusterWatchId): CompletableFuture[CompletableFuture[Void]] =
+    clusterWatchService
+      .update {
+        case Some(service) => Task.some(service)
+        case None =>
+          ClusterWatchService
+            .resource(asScala.apiResources.sequence, ConfigFactory.empty)
+            .allocated
+            .map(_._1)
+            .flatTap(asScala.addStoppable)
+            .map(Some(_))
+      }
+      .map(_.get.untilStopped)
+      .map(_.as(Void).runToFuture.asJava)
+      .runToFuture.asJava
+
+  @Nonnull
+  def stopClusterWatch: CompletableFuture[Void] =
+    clusterWatchService
+      .update(_.fold(Task.none)(service =>
+        asScala.removeStoppable(service) *> service.stop.as(None)))
+      .as(Void).runToFuture.asJava
 }

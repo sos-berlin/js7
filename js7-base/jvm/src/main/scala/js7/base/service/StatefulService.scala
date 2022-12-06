@@ -6,9 +6,10 @@ import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.RichMonixTask
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
+import js7.base.utils.Stoppable
 import monix.eval.{Fiber, Task}
 
-trait StatefulService {
+trait StatefulService extends Stoppable {
   service =>
 
   private[StatefulService] final val _fiber = Deferred.unsafe[Task, Fiber[Unit]]

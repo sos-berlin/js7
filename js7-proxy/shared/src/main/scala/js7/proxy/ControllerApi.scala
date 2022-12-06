@@ -13,6 +13,7 @@ import js7.base.session.SessionApi
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.{Stoppable, StoppablesRegister}
 import js7.base.web.HttpClient.HttpException
 import js7.base.web.{HttpClient, Uri}
 import js7.controller.client.HttpControllerApi
@@ -36,7 +37,7 @@ import scala.concurrent.duration.Deadline.now
 import scala.util.Failure
 
 final class ControllerApi(
-  apiResources: Nel[Resource[Task, HttpControllerApi]],
+  val apiResources: Nel[Resource[Task, HttpControllerApi]],
   proxyConf: ProxyConf = ProxyConf.default)
 extends ControllerApiWithHttp
 {
@@ -48,8 +49,10 @@ extends ControllerApiWithHttp
 
   protected val apiResource = apiCache.resource
 
+  private val stoppables = new StoppablesRegister
+
   def stop: Task[Unit] =
-    apiCache.release
+    stoppables.stop *> apiCache.release
 
   /** For testing (it's slow): wait for a condition in the running event stream. **/
   def when(predicate: EventAndState[Event, ControllerState] => Boolean)
@@ -169,6 +172,12 @@ extends ControllerApiWithHttp
               Task.raiseError(t)
           })
     }
+
+  def addStoppable(service: Stoppable): Task[Unit] =
+    stoppables.add(service)
+
+  def removeStoppable(service: Stoppable): Task[Unit] =
+    stoppables.remove(service)
 }
 
 object ControllerApi

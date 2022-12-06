@@ -484,7 +484,9 @@ lazy val `js7-proxy` = crossProject(JSPlatform, JVMPlatform)
     `js7-controller-client`,
     `js7-base` % "test->test",
     `js7-tester` % "test")
-  .jvmConfigure(_.dependsOn(`js7-data-for-java`))
+  .jvmConfigure(_.dependsOn(
+    `js7-data-for-java`,
+    `js7-cluster-watch`))
   .settings(commonSettings)
   .settings(
     libraryDependencies ++= {
