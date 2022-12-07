@@ -8,8 +8,9 @@ import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.log.{Log4j, Logger}
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.common.commandline.CommandLineArguments
 import js7.common.message.ProblemCodeMessages
-import js7.common.system.startup.StartUp.{logJavaSettings, printlnWithClock}
+import js7.common.system.startup.StartUp.{logJavaSettings, printlnWithClock, startUpLine}
 import js7.common.utils.JavaShutdownHook
 
 object JavaMain
@@ -17,7 +18,7 @@ object JavaMain
   private val AkkaShutdownHook = "akka.coordinated-shutdown.run-by-jvm-shutdown-hook"
   private lazy val logger = Logger[this.type]
 
-  def runMain[A](name: String, config: Config)(body: => A): Unit =
+  def runMain[A](name: String, arguments: CommandLineArguments, config: Config)(body: => A): Unit =
     runMain {
       // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
       logger.info(s"$name ${BuildInfo.longVersion}")

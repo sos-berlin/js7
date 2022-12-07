@@ -7,6 +7,7 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.test.OurTestSuite
 import js7.cluster.watch.{ClusterWatchConf, ClusterWatchMain}
+import js7.common.commandline.CommandLineArguments
 import js7.data.cluster.ClusterEvent.ClusterCoupled
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -49,7 +50,8 @@ final class ClusterWatchMainTest extends OurTestSuite with ControllerClusterForS
               |  }
               |]""".stripMargin
 
-          val conf = ClusterWatchConf.fromCommandLine(Seq("--config-directory=" + dir))
+          val conf = ClusterWatchConf.fromCommandLine(CommandLineArguments(Seq(
+            "--config-directory=" + dir)))
           ClusterWatchMain.run(conf)(service => Task
             .race(
               service.untilStopped,

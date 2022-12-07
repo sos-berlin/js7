@@ -1,9 +1,12 @@
 package js7.cluster.watch
 
 import cats.effect.Resource
+import js7.base.BuildInfo
 import js7.cluster.watch.api.HttpClusterNodeApi
 import js7.common.akkautils.Akkas.actorSystemResource
+import js7.common.commandline.CommandLineArguments
 import js7.common.http.AkkaHttpClient
+import js7.common.system.startup.StartUp.printlnWithClock
 import js7.common.system.startup.{JavaMain, StatefulServiceMain}
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -11,10 +14,14 @@ import monix.execution.Scheduler
 object ClusterWatchMain
 {
   def main(args: Array[String]): Unit = {
-    val conf = ClusterWatchConf.fromCommandLine(args)
-    JavaMain.runMain(conf.name, conf.config) {
-      run(ClusterWatchConf.fromCommandLine(args))(_.untilStopped)
-    }
+    printlnWithClock(s"JS7 ClusterWatch ${BuildInfo.longVersion}")
+    val arguments = CommandLineArguments(args.toVector)
+    //lockAndRunMain(args) { arguments =>
+      val conf = ClusterWatchConf.fromCommandLine(arguments)
+      JavaMain.runMain(conf.name, arguments, conf.config) {
+        run(conf)(_.untilStopped)
+      }
+    //}
   }
 
   def run(conf: ClusterWatchConf)(use: ClusterWatchService => Task[Unit]): Unit =

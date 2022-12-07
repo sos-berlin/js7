@@ -56,6 +56,21 @@ extends StatefulService.StoppableByRequest
           .void)
     }
 
+  private def observeAgainAndAgain[A](nodeApi: ClusterNodeApi)(observable: Observable[A])
+  : Observable[A] =
+    Observable.tailRecM(())(_ =>
+      Observable
+        .pure(Right(observable
+          .onErrorHandleWith { t =>
+            logger.warn(s"$nodeApi => ${t.toStringWithCauses}")
+            Observable.empty[A]
+          }))
+        .appendAll(
+          Observable.evalDelayed(
+            1.s /*???*/,
+            Left(())))
+    ).flatten
+
   private def nodeObservable(nodeApi: ClusterNodeApi): Observable[ClusterWatchMessage] =
     Observable
       .fromTask(logger.traceTask("nodeObservable", nodeApi)(
@@ -69,37 +84,8 @@ extends StatefulService.StoppableByRequest
             case o => HttpClient.failureToChecked(o)
           }
           .dematerialize
-          // TODO Similar to ControllerApi and SessionApi
-          .onErrorRestartLoop(()) {
-            case (t, _, retry) if HttpClient.isTemporaryUnreachable(t) =>
-              Task
-                .race(
-                  whenStopRequested,
-                  Task.sleep(1.s/*TODO delays.next()*/))
-                .flatMap {
-                  case Left(()) => Task.right(Observable.empty)
-                  case Right(()) => retry(())
-                }
-            case (t, _, _) => Task.raiseError(t)
-          }
           .map(_.orThrow)))
       .flatten
-
-  private def observeAgainAndAgain[A](nodeApi: ClusterNodeApi)(observable: Observable[A])
-  : Observable[A] =
-    Observable.tailRecM(())(_ =>
-      Observable
-        .pure(Right(
-          observable
-            .onErrorHandleWith { t =>
-              logger.warn(s"$nodeApi => ${t.toStringWithCauses}")
-              Observable.empty[A]
-            }))
-        .appendAll(
-          Observable.evalDelayed(
-            1.s/*TODO pauseBeforeNextTry(conf.delay)*/,
-            Left(())))
-    ).flatten
 
   private def handleMessage(nodeApi: ClusterNodeApi, msg: ClusterWatchMessage): Task[Unit] =
     msg.correlId.bind(logger.traceTask("handleMessage", msg)(Task.defer(
