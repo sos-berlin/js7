@@ -76,9 +76,9 @@ extends ClusterNodeApi with HttpSessionApi with HasIsIgnorableStackTrace
       timeout = Some(timeout), markEOF = markEOF, returnAck = true
     ).map(_.map(_.utf8String.stripSuffix("\n").toLong))
 
-  final def clusterWatchMessageObservable(heartbeat: Option[FiniteDuration]): Task[Observable[ClusterWatchMessage]] =
+  final def clusterWatchMessageObservable(keepAlive: Option[FiniteDuration]): Task[Observable[ClusterWatchMessage]] =
     httpClient.getDecodedLinesObservable[ClusterWatchMessage](
-      uris.clusterEvents(heartbeat),
+      uris.clusterWatchMessages(keepAlive),
       responsive = true)
 
   final def executeClusterCommand(cmd: ClusterCommand): Task[cmd.Response] =

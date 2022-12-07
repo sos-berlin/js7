@@ -29,7 +29,7 @@ import scala.util.Failure
 final class ClusterWatchService private[ClusterWatchService](
   nodeApis: Nel[ClusterNodeApi],
   now: () => MonixDeadline,
-  heartbeat: FiniteDuration,
+  keepAlive: FiniteDuration,
   retryDelays: Seq[FiniteDuration])
 extends StatefulService.StoppableByRequest
 {
@@ -62,7 +62,7 @@ extends StatefulService.StoppableByRequest
         nodeApi
           .retryUntilReachable()(
             nodeApi.retryIfSessionLost()(
-              nodeApi.clusterWatchMessageObservable(heartbeat = Some(heartbeat))))
+              nodeApi.clusterWatchMessageObservable(keepAlive = Some(keepAlive))))
           .materialize.map {
             case Failure(t: HttpException) if t.statusInt == 503 /*Service unavailable*/ =>
               Failure(t) // Trigger onErrorRestartLoop
@@ -87,22 +87,18 @@ extends StatefulService.StoppableByRequest
 
   private def observeAgainAndAgain[A](nodeApi: ClusterNodeApi)(observable: Observable[A])
   : Observable[A] =
-    // TODO Observable.tailRecM: Left leaks memory, https://github.com/monix/monix/issues/791
-    Observable.tailRecM(())(after =>
-      //if (isStopped)
-      //  Observable.pure(Right(Observable.empty))
-      //else
-        Observable
-          .pure(Right(
-            observable
-              .onErrorHandleWith { t =>
-                logger.warn(s"$nodeApi => ${t.toStringWithCauses}")
-                Observable.empty[A]
-              }))
-          .appendAll(
-            Observable.evalDelayed(
-              1.s/*TODO pauseBeforeNextTry(conf.delay)*/,
-              Left(())))
+    Observable.tailRecM(())(_ =>
+      Observable
+        .pure(Right(
+          observable
+            .onErrorHandleWith { t =>
+              logger.warn(s"$nodeApi => ${t.toStringWithCauses}")
+              Observable.empty[A]
+            }))
+        .appendAll(
+          Observable.evalDelayed(
+            1.s/*TODO pauseBeforeNextTry(conf.delay)*/,
+            Left(())))
     ).flatten
 
   private def handleMessage(nodeApi: ClusterNodeApi, msg: ClusterWatchMessage): Task[Unit] =
@@ -110,12 +106,12 @@ extends StatefulService.StoppableByRequest
       clusterWatch.handleMessage(msg).flatMap(checked =>
         msg match {
           case msg: ClusterWatchCheck =>
-            // Retry on error ???
             HttpClient
               .liftProblem(nodeApi
-                .executeClusterWatchCommand(
-                  ClusterWatchAcknowledge(msg.requestId, checked.left.toOption))
-                .void)
+                .retryIfSessionLost()(nodeApi
+                  .executeClusterWatchCommand(
+                    ClusterWatchAcknowledge(msg.requestId, checked.left.toOption))
+                  .void))
               .map {
                 case Left(problem @ NoClusterWatchRequestMatches) =>
                   logger.info(s"$nodeApi $problem")
@@ -143,7 +139,7 @@ object ClusterWatchService
   : Resource[Task, ClusterWatchService] = {
     val myConfig = config.withFallback(defaultConfig)
     Resource.suspend(Task {
-      val heartbeat = myConfig.finiteDuration("js7.web.client.heartbeat").orThrow
+      val keepAlive = myConfig.finiteDuration("js7.web.client.keep-alive").orThrow
       val retryDelays = myConfig.getDurationList("js7.journal.cluster.watch.retry-delays")
         .asScala.map(_.toFiniteDuration).toVector
       apiResources
@@ -153,7 +149,7 @@ object ClusterWatchService
               new ClusterWatchService(
                 nodeApis,
                 () => scheduler.now,
-                heartbeat = heartbeat,
+                keepAlive = keepAlive,
                 retryDelays = retryDelays)))))
     })
   }

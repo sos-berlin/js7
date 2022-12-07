@@ -18,7 +18,7 @@ import js7.journal.watch.FileEventWatch
 import monix.eval.Task
 import monix.execution.Scheduler
 
-trait ClusterRoute extends ClusterEventRoute
+trait ClusterRoute extends ClusterWatchMessageRoute
 {
   protected def scheduler: Scheduler
 
@@ -47,8 +47,8 @@ trait ClusterRoute extends ClusterEventRoute
                 }))
           }
         } ~
-        path("event") {
-          clusterEventRoute(user.id)
+        path("clusterWatchMessage") {
+          clusterWatchMessageRoute(user.id)
         }
       } ~
       post {

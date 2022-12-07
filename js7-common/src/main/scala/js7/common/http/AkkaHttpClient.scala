@@ -96,6 +96,8 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
   : Task[Observable[A]] =
     getRawLinesObservable(uri)
       .map(_
+        // Ignore empty keep-alives
+        .collect { case o if o != EmptyLine => o }
         .mapParallelBatch(
           batchSize = jsonReadAhead / sys.runtime.availableProcessors,
           responsive = responsive)(
@@ -395,6 +397,8 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
 
 object AkkaHttpClient
 {
+  private val EmptyLine = ByteArray("\n")
+
   def resource(
     uri: Uri,
     uriPrefixPath: String,

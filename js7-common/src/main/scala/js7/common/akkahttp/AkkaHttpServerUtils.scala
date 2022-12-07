@@ -1,23 +1,44 @@
 package js7.common.akkahttp
 
-import akka.http.scaladsl.marshalling.ToResponseMarshaller
+import akka.http.scaladsl.marshalling.{ToResponseMarshallable, ToResponseMarshaller}
+import akka.http.scaladsl.model.HttpEntity.Chunk
 import akka.http.scaladsl.model.headers.Accept
-import akka.http.scaladsl.model.{HttpHeader, MediaType, Uri}
+import akka.http.scaladsl.model.{HttpEntity, HttpHeader, HttpRequest, MediaType, Uri}
 import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.PathMatcher.{Matched, Unmatched}
 import akka.http.scaladsl.server.{ContentNegotiator, Directive, Directive0, Directive1, MalformedHeaderRejection, MissingHeaderRejection, PathMatcher, PathMatcher0, Route, UnacceptedResponseContentTypeRejection, ValidationRejection}
 import akka.shapeless.HNil
+import akka.util.ByteString
+import cats.effect.concurrent.Deferred
+import io.circe.Encoder
+import io.circe.syntax.EncoderOps
+import js7.base.auth.UserId
+import js7.base.circeutils.CirceUtils.RichJson
+import js7.base.log.Logger
+import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
+import js7.base.utils.FutureCompletion
+import js7.base.utils.FutureCompletion.syntax.FutureCompletionObservable
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.common.akkahttp.ByteSequenceChunkerObservable.syntax.RichByteSequenceChunkerObservable
+import js7.common.akkautils.ByteStrings.syntax.byteStringByteSequence
 import js7.common.http.AkkaHttpClient.`x-js7-request-id`
+import js7.common.http.JsonStreamingSupport.`application/x-ndjson`
+import js7.common.http.StreamingSupport.AkkaObservable
 import monix.eval.Task
 import monix.execution.Scheduler
+import monix.reactive.Observable
 import scala.annotation.tailrec
+import scala.concurrent.duration.FiniteDuration
 
 /**
   * @author Joacim Zschimmer
   */
 object AkkaHttpServerUtils
 {
+  private val logger = Logger[this.type]
+  private val LF = ByteString("\n")
+  private val heartbeatChunk = Chunk(LF)
+
   object implicits {
     implicit final class RichOption[A](private val delegate: Option[A]) extends AnyVal {
       def applyRoute(f: A => Route): Route =
@@ -279,4 +300,46 @@ object AkkaHttpServerUtils
                 }
           })
     }
+
+  def observableToResponseMarshallable[A: Encoder](
+    observable: Observable[A],
+    httpRequest: HttpRequest,
+    userId: UserId,
+    shuttingDownCompletion: FutureCompletion[?],
+    chunkSize: Int,
+    keepAlive: Option[FiniteDuration] = None)
+    (implicit s: Scheduler)
+  : ToResponseMarshallable = {
+    val chunks = observable
+      .mapParallelBatch(responsive = true)(_
+        .asJson
+        .toByteSequence[ByteString]
+        .concat(LF))
+      .chunk(chunkSize)
+      .map(Chunk(_))
+
+    val obs = keepAlive match {
+      case None => chunks
+      case Some(h) =>
+        for {
+          terminated <- Observable.from(Deferred[Task, Unit])
+          obs <- Observable(
+            chunks.guarantee(terminated.complete(())),
+            Observable
+              .repeat(heartbeatChunk)
+              .delayOnNext(h)
+              .takeUntil(Observable.from(terminated.get))
+          ).merge
+        } yield obs
+    }
+
+    ToResponseMarshallable(
+      HttpEntity.Chunked(
+        `application/x-ndjson`,
+        obs
+          .takeUntilCompletedAndDo(shuttingDownCompletion)(_ => Task {
+            logger.debug(s"Shutdown observing events for $userId ${httpRequest.uri}")
+          })
+          .toAkkaSourceForHttpResponse))
+  }
 }

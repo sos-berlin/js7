@@ -23,10 +23,10 @@ final class ClusterNodeUris private(prefixedUri: Uri)
 
   def clusterNodeState = api("/cluster?return=ClusterNodeState")
 
-  def clusterEvents(heartbeat: Option[FiniteDuration]): Uri =
+  def clusterWatchMessages(keepAlive: Option[FiniteDuration]): Uri =
     Uri(
-      api("/cluster/event").string +
-        encodeQuery((heartbeat.map("heartbeat" -> _.toDecimalString)).toList))
+      api("/cluster/clusterWatchMessage").string +
+        encodeQuery(keepAlive.map("keepAlive" -> _.toDecimalString).toList))
 
   def events[E <: Event](request: EventRequest[E],
     heartbeat: Option[FiniteDuration] = None)

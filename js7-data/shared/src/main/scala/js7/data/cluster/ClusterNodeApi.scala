@@ -42,7 +42,7 @@ with HasIsIgnorableStackTrace
     heartbeat: Option[FiniteDuration] = None)
   : Task[Observable[EventId]]
 
-  def clusterWatchMessageObservable(heartbeat: Option[FiniteDuration])
+  def clusterWatchMessageObservable(keepAlive: Option[FiniteDuration])
   : Task[Observable[ClusterWatchMessage]]
 
   def executeClusterCommand(command: ClusterCommand): Task[command.Response]
