@@ -25,8 +25,11 @@ final class ControllerMain
   private val logger = Logger(getClass)
 
   def run(arguments: CommandLineArguments): ProgramTermination = {
-    logger.info("JS7 Controller " + BuildInfo.longVersion +  // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
-      "\n" + "━" * 80)  // In case, the previous file is appended
+    // Log early for early timestamp and proper logger initialization by a
+    // single (non-concurrent) call
+    // Log a bar, in case the previous file is appended
+    logger.info("JS7 Controller " + BuildInfo.longVersion +
+      "\n" + "━" * 80)
     logger.info(startUpLine())
     logger.debug(arguments.toString)
     val conf = ControllerConfiguration.fromCommandLine(arguments)

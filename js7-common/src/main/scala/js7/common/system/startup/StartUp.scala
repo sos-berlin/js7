@@ -41,7 +41,9 @@ object StartUp
     if (CorrelId.isEnabled) {
       // Check isEnabled after some debug line has been logged,
       // because CorrelIds may be enabled automatically on the first use by Log4j.
-      logger.debug("Correlation IDs are enabled")
+      CorrelId("CorrelId").bind {
+        logger.debug("Correlation IDs are enabled")
+      }
     }
     logger.whenTraceEnabled {
       logger.debug("TRACE level logging is enabled")

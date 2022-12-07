@@ -173,7 +173,7 @@ extends SignatureVerifier with AutoCloseable
         logger.error(s"${companion.typeName} signature keys are not readable: $problem")
 
       case Right(verifier) =>
-        logger.info("Trusting updated signature key")
+        logger.info("Trusting signature key")
         for (o <- verifier.publicKeysToStrings) logger.info(s"  $o")
         if (files.isEmpty) {
           logger.warn(

@@ -30,9 +30,11 @@ final class AgentMain
   private lazy val logger = Logger(getClass)
 
   def run(arguments: CommandLineArguments): ProgramTermination = {
-    // Log early for early timestamp and proper logger initialization by a single (non-parallel) call
+    // Log early for early timestamp and proper logger initialization by a
+    // single (non-concurrent) call
+    // Log a bar, in case the previous file is appended
     logger.info("JS7 Agent " + BuildInfo.longVersion +
-      "\n" + "━" * 80)  // In case, the previous file is appended
+      "\n" + "━" * 80)
     logger.info(StartUp.startUpLine())
     logger.debug(arguments.toString)
 

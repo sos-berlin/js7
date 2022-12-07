@@ -20,8 +20,13 @@ object JavaMain
 
   def runMain[A](name: String, arguments: CommandLineArguments, config: Config)(body: => A): Unit =
     runMain {
-      // Log early for early timestamp and proper logger initialization by a single (not-parallel) call
-      logger.info(s"$name ${BuildInfo.longVersion}")
+      // Log early for early timestamp and proper logger initialization by a
+      // single (non-concurrent) call
+      // Log a bar, in case the previous file is appended
+      logger.info(s"$name ${BuildInfo.longVersion}" +
+        "\n" + "━" * 80)  // In case, the previous file is appended
+      logger.info(startUpLine())
+      logger.debug(arguments.toString)
       //logger.info(s"config=${conf.configDirectory}")
       logConfig(config)
       logJavaSettings()

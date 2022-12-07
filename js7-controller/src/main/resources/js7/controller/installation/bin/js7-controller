@@ -161,7 +161,7 @@ while true; do
   fi
 
   if [[ $returnCode -eq 0 ]] || [[ $returnCode -ge 97 ]] && [[ $returnCode -le 99 ]]; then
-    log "Clean $workDir"
+    log "Clear $workDir"
     find "$workDir" -mindepth 1 -delete ! -type d -printf "Removed %p\n"
   fi
 
