@@ -4,17 +4,14 @@ import akka.NotUsed
 import akka.actor.ActorRefFactory
 import akka.http.scaladsl.common.JsonEntityStreamingSupport
 import akka.http.scaladsl.marshalling.{ToEntityMarshaller, ToResponseMarshallable}
-import akka.http.scaladsl.model.HttpEntity.Chunk
+import akka.http.scaladsl.model.HttpRequest
 import akka.http.scaladsl.model.StatusCodes.{BadRequest, ServiceUnavailable}
-import akka.http.scaladsl.model.{HttpEntity, HttpRequest}
 import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.{Directive, Directive1, ExceptionHandler, Route}
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
-import io.circe.syntax.EncoderOps
 import izumi.reflect.Tag
 import js7.base.auth.{UserId, ValidUserPermission}
-import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Problem
@@ -25,13 +22,10 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.FutureCompletion
 import js7.base.utils.FutureCompletion.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.common.akkahttp.AkkaHttpServerUtils.accept
-import js7.common.akkahttp.ByteSequenceChunkerObservable.syntax.*
+import js7.common.akkahttp.AkkaHttpServerUtils.{accept, observableToResponseMarshallable}
 import js7.common.akkahttp.StandardMarshallers.*
 import js7.common.akkahttp.web.session.RouteProvider
-import js7.common.akkautils.ByteStrings.syntax.*
 import js7.common.http.JsonStreamingSupport.*
-import js7.common.http.StreamingSupport.AkkaObservable
 import js7.data.event.JournalEvent.StampedHeartbeat
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, EventSeq, EventSeqTornProblem, KeyedEvent, KeyedEventTypedJsonCodec, Stamped, TearableEventSeq}
 import js7.journal.watch.{ClosedException, EventWatch}
@@ -154,7 +148,7 @@ trait GenericEventRoute extends RouteProvider
               Task(
                 observableToResponseMarshallable(
                   heartbeatingObservable(request, heartbeat, eventWatch),
-                  httpRequest))
+                  httpRequest, userId, whenShuttingDownCompletion, chunkSize = chunkSize))
           }
 
         complete(
@@ -197,7 +191,7 @@ trait GenericEventRoute extends RouteProvider
 
               observableToResponseMarshallable(
                 head +: eventObservable(tailRequest, isRelevantEvent, eventWatch),
-                httpRequest)
+                httpRequest, userId, whenShuttingDownCompletion, chunkSize = chunkSize)
           }
       }
 
@@ -218,26 +212,6 @@ trait GenericEventRoute extends RouteProvider
         eventObservable(request, isRelevantEvent, eventWatch)
           .insertHeartbeatsOnSlowUpstream(heartbeat, StampedHeartbeat)
     }
-
-    private def observableToResponseMarshallable(
-      observable: Observable[Stamped[AnyKeyedEvent]],
-      httpRequest: HttpRequest)
-      (implicit userId: UserId, streamingSupport: JsonEntityStreamingSupport)
-    : ToResponseMarshallable =
-      ToResponseMarshallable(
-        HttpEntity.Chunked(
-          streamingSupport.contentType,
-          observable
-            .mapParallelBatch(responsive = true)(_
-              .asJson.toByteSequence[ByteString])
-            .map(_ ++ LF)
-            .chunk(chunkSize)
-            .map(Chunk(_))
-            // TODO Delay takeUntil until no more events are available (time limited)
-            //  to let flow queued events to the client before shutdown.
-            .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ =>
-              Task { logger.debug(s"Shutdown observing events for $userId ${httpRequest.uri}") })
-            .toAkkaSourceForHttpResponse))
 
     private def eventObservable(
       request: EventRequest[Event],
