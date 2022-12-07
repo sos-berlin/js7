@@ -25,8 +25,9 @@ private final class DirectoryWatcher(
         readDirectoryAndObserve(state)
           .tapEach { case (_, state) => lastState = state }
           .map(Right(_)) ++
-          Observable.pure(Left(lastState))
-            .delayExecution((since + hotLoopBrake).timeLeftOrZero)
+          Observable.evalDelayed(
+            (since + hotLoopBrake).timeLeftOrZero,
+            Left(lastState))
       }
       .guaranteeCase(exitCase => Task(
         logger.debug(s"readDirectoryAndObserveForever: $exitCase")))

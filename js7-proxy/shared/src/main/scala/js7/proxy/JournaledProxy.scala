@@ -184,7 +184,6 @@ object JournaledProxy
                             EventId.toString(state.eventId))
                           Some(lastState)
                         }
-                      // FIXME Observable.tailRecM: Left leaks memory, https://github.com/monix/monix/issues/791
                       Observable.pure(Left(continueWithState))
                         .delayExecution(1.s/*TODO*/)
                   }

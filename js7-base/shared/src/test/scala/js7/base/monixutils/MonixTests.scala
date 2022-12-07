@@ -1,9 +1,13 @@
 package js7.base.monixutils
 
+import cats.syntax.apply.*
+import js7.base.test.OurAsyncTestSuite
+import js7.base.time.ScalaTime.DurationRichInt
+import js7.base.utils.ByteUnits
 import monix.eval.{Task, TaskLocal}
 import monix.execution.Scheduler.Implicits.traced
 import monix.execution.misc.Local
-import js7.base.test.OurAsyncTestSuite
+import monix.reactive.Observable
 
 /** Some tests to show how Monix works. */
 final class MonixTests extends OurAsyncTestSuite
@@ -51,5 +55,49 @@ final class MonixTests extends OurAsyncTestSuite
       _ <- Task(assert(v == "1"))
     } yield succeed
     task.runToFuture
+  }
+
+  "Observable.tailRecM with possible OutOfMemoryError" - {
+    // Observable.tailRecM may leak memory !!!  https://github.com/monix/monix/issues/791
+
+    if (false) "not leaking" in {
+      check(i =>
+        Observable(Right(i), Left(i + 1)))
+    }
+
+    if (false) "leaks" in {
+      // Fails with Observable.empty after Left !!!
+      check(i =>
+        Observable(Right(i), Left(i + 1)) ++ Observable.empty)
+    }
+
+    if (false) "fails with OutOfMemoryError" in {
+      // Fails !!!
+      check(i =>
+        Observable.pure(Right(i)) ++
+          Observable.fromTask(Task.sleep(1.ns)) *>
+            Observable.pure(Left(i + 1)))
+    }
+
+    if (false) "not leaking" in {
+      check(i =>
+        Observable.pure(Right(i)) ++
+          Observable.evalDelayed(1.ns, Left(i + 1)))
+    }
+
+    if (false) "not leaking" in {
+      check(i =>
+        Observable.pure(Right(i)) ++
+          Observable.pure(Left(i + 1)).delayExecution(1.ns))
+    }
+
+    def check(obs: Long => Observable[Either[Long, Long]]) =
+      Observable
+        .tailRecM(0L)(obs)
+        .map(i => if (i % 1000_000 == 0)
+          println(s"$i ${ByteUnits.toKBGB(sys.runtime.totalMemory())}"))
+        .completedL
+        .map(_ => fail())
+        .runToFuture
   }
 }

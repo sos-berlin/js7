@@ -155,7 +155,7 @@ abstract class RecouplingStreamReader[
                       }).flatten
                 })) ++
               (Observable.fromTask(pauseBeforeNextTry(conf.delay)) *>
-                Observable.eval(Left(lastIndex)/*FIXME Observable.tailRecM: Left leaks memory, https://github.com/monix/monix/issues/791*/))
+                Observable.eval(Left(lastIndex)))
         }
       ).flatten
 
