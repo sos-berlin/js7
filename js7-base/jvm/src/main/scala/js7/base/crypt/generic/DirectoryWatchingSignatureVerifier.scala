@@ -42,14 +42,10 @@ final class DirectoryWatchingSignatureVerifier private(
   (implicit iox: IOExecutor)
 extends SignatureVerifier with AutoCloseable
 {
-  @volatile private var state = State(
-    companionToDirectory
-      .map { case (companion, directory) =>
-        val checkedVerifier = readDirectory(directory).flatMap(toVerifier(companion, directory, _))
-        companion -> checkedVerifier
-      })
+  @volatile private var state = State(Map.empty)
 
   private var runningFuture = CancelableFuture.successful(())
+  private val started = Atomic(false)
   private val stop = PublishSubject[Unit]()
   private val stopped = Atomic(false)
 
@@ -65,7 +61,17 @@ extends SignatureVerifier with AutoCloseable
     Problem.combineAllOption(
       state.companionToVerifier.values.collect { case Left(problem) => problem })
 
-  private def start()(implicit s: Scheduler): Unit = {
+  def start()(implicit s: Scheduler): Unit = {
+    if (started.getAndSet(true)) throw new IllegalStateException(
+      "Duplicate DirectoryWatchingSignatureVerifier.start")
+
+    state = State(
+      companionToDirectory
+        .map { case (companion, directory) =>
+          val checkedVerifier = readDirectory(directory).flatMap(toVerifier(companion, directory, _))
+          companion -> checkedVerifier
+        })
+
     val companionToDirectoryState =
       for ((companion, directory) <- companionToDirectory) yield
         companion -> (directory -> readDirectory(directory).orThrow)
@@ -222,7 +228,7 @@ object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion
     checked(config, onUpdated)
       .tapEach(_.start())
 
-  private def checked(config: Config, onUpdated: () => Unit)(implicit iox: IOExecutor)
+  def checked(config: Config, onUpdated: () => Unit)(implicit iox: IOExecutor)
   : Checked[DirectoryWatchingSignatureVerifier] =
     config.getObject(configPath).asScala.toMap  // All Config key-values
       .map { case (typeName, v) =>

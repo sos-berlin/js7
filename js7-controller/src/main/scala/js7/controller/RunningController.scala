@@ -302,17 +302,7 @@ object RunningController
     private implicit val scheduler: Scheduler = injector.instance[Scheduler]
     private implicit lazy val closer: Closer = injector.instance[Closer]
     private implicit lazy val actorSystem: ActorSystem = injector.instance[ActorSystem]
-    private lazy val testEventBus = injector.instance[StandardEventBus[Any]]
 
-    private lazy val itemVerifier = new SignedItemVerifier(
-      DirectoryWatchingSignatureVerifier
-        .start(
-          controllerConfiguration.config,
-          () => testEventBus.publish(ItemSignatureKeysUpdated)
-        )
-        .orThrow
-        .closeWithCloser,
-      ControllerState.signableItemJsonCodec)
     import controllerConfiguration.{implicitAkkaAskTimeout, journalMeta}
     @volatile private var clusterStartupTermination = ProgramTermination()
 
@@ -321,11 +311,24 @@ object RunningController
         // May take several seconds !!!
         StateRecoverer.recover[ControllerState](journalMeta, controllerConfiguration.config)
       }
+      val testEventBus = injector.instance[StandardEventBus[Any]]
       val whenReady = Promise[Unit]()
       whenReady.completeWith(
         testEventBus.when[ControllerOrderKeeper.ControllerReadyTestIncident.type].void.runToFuture)
       // Start-up some stuff while recovering
-      itemVerifier
+
+      val directoryWatchingSignatureVerifier =
+        DirectoryWatchingSignatureVerifier
+          // Do not disturb recovery and cluster log output now and start verifier later
+          .checked(
+            controllerConfiguration.config,
+            () => testEventBus.publish(ItemSignatureKeysUpdated)
+          )
+          .orThrow
+          .closeWithCloser
+      val itemVerifier = new SignedItemVerifier(
+        directoryWatchingSignatureVerifier,
+        ControllerState.signableItemJsonCodec)
 
       val recovered = Await.result(whenRecovered, Duration.Inf).closeWithCloser
       val persistence = FileStatePersistence.prepare[ControllerState](
@@ -387,7 +390,10 @@ object RunningController
               Completed
             },
           orderKeeperActor))
+
+      directoryWatchingSignatureVerifier.start() /*logs*/
       val itemUpdater = new MyItemUpdater(itemVerifier, orderKeeperActor)
+
       val orderApi = new MainOrderApi(controllerState)
 
       val webServer = injector.instance[ControllerWebServer.Factory]
