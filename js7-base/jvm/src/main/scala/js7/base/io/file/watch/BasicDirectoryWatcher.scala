@@ -54,7 +54,10 @@ extends StatefulService.StoppableByRequest
       })
     )(release = watchKey => Task {
       logger.debug(s"watchKey.cancel() $directory")
-      watchKey.cancel()
+      try watchKey.cancel()
+      catch { case t: java.nio.file.ClosedWatchServiceException =>
+        logger.debug(s"watchKey.cancel() => ${t.toStringWithCauses}")
+      }
     })
 
   private def poll(canceled: => Boolean): Task[Seq[DirectoryWatchEvent]] =
