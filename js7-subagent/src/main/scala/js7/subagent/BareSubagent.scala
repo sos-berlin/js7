@@ -11,6 +11,7 @@ import js7.base.io.process.ProcessSignal
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked
+import js7.base.service.StatefulService
 import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
 import js7.base.utils.ProgramTermination
@@ -32,10 +33,15 @@ import org.jetbrains.annotations.TestOnly
 final class BareSubagent private(
   private val commandExecutor: SubagentCommandExecutor,
   val journal: InMemoryJournal[SubagentState])
+extends StatefulService
 {
   /** Completes when Subagent has stopped. */
-  def untilStopped: Task[ProgramTermination] =
+  def untilTerminated: Task[ProgramTermination] =
     commandExecutor.untilStopped
+
+  protected def run = commandExecutor.untilStopped.void
+
+  def stop = shutdown(signal = None).void
 
   def shutdown(
     signal: Option[ProcessSignal] = None,
@@ -71,7 +77,7 @@ object BareSubagent
           .use(bareSubagent => Task
             .race(
               restartAsDirectorVar.get,
-              bareSubagent.untilStopped)
+              bareSubagent.untilTerminated)
             .flatMap {
               case Left(()) =>
                 bareSubagent.shutdown(dontWaitForDirector = true)
@@ -113,9 +119,8 @@ object BareSubagent
         webServer <- SubagentWebServer.resource(
           journal, commandExecutor, sessionRegister, restartAsDirector, conf)(actorSystem)
         _ <- provideUriFile(conf, webServer.localHttpUri)
-        subagent <- Resource.make(
-          acquire = Task(new BareSubagent(commandExecutor, journal)))(
-          release = _.shutdown(signal = None).void)
+        subagent <- StatefulService.resource(Task(
+          new BareSubagent(commandExecutor, journal)))
       } yield {
         logger.info("Subagent is ready to be dedicated" + "\n" + "─" * 80)
         subagent

@@ -69,7 +69,7 @@ final class ResetSubagentWhileRunningTest extends OurTestSuite with SubagentTest
 
       // SubagentShutdown is suppressed like any other event from Subagent after Reset
       //eventWatch.await[SubagentShutdown](_.key == bareSubagentId)
-      subagent.untilStopped.await(99.s)
+      subagent.untilTerminated.await(99.s)
     }
 
     assert(eventWatch.allKeyedEvents[SubagentItemStateEvent]

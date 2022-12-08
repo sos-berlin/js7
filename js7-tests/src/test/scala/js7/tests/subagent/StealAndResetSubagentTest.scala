@@ -89,7 +89,7 @@ final class StealAndResetSubagentTest extends OurTestSuite with SubagentTester
       }
 
       eventWatch.await[SubagentReset](_.key == stolenSubagentItem.id)
-      subagent.untilStopped.await(99.s)
+      subagent.untilTerminated.await(99.s)
     }
 
     // Reset and delete bareSubagentId to give the thieve a change to dedicate the Subagent
