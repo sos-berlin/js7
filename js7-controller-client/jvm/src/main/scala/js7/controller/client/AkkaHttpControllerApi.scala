@@ -35,6 +35,8 @@ extends HttpControllerApi with SessionApi.HasUserAndPassword with AutoCloseable
 
 object AkkaHttpControllerApi
 {
+  private val defaultName = "ControllerApi"
+
   /** Logs out when the resource is being released. */
   def separateAkkaResource(
     uri: Uri,
@@ -53,7 +55,7 @@ object AkkaHttpControllerApi
   def admissionsToApiResources(
     admissions: Nel[Admission],
     httpsConfig: HttpsConfig = HttpsConfig.empty,
-    name: String = "ControllerApi")
+    name: String = defaultName)
     (implicit actorSystem: ActorSystem)
   : Nel[Resource[Task, HttpControllerApi]] =
     for {
@@ -64,7 +66,7 @@ object AkkaHttpControllerApi
   def admissionToApiResource(
     admission: Admission,
     httpsConfig: HttpsConfig = HttpsConfig.empty,
-    name: String = "ControllerApi")
+    name: String = defaultName)
     (implicit actorSystem: ActorSystem)
   : Resource[Task, HttpControllerApi] =
     resource(admission.uri, admission.userAndPassword, httpsConfig, name = name)
@@ -75,7 +77,7 @@ object AkkaHttpControllerApi
     userAndPassword: Option[UserAndPassword],
     httpsConfig: HttpsConfig = HttpsConfig.empty,
     loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays _,
-    name: String = "")
+    name: String = defaultName)
     (implicit actorSystem: ActorSystem)
   : Resource[Task, HttpControllerApi] =
     for {
