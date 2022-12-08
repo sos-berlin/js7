@@ -9,11 +9,6 @@ import js7.data.event.{Event, EventRequest, JournalPosition}
 import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
 
-/**
- * URIs of the JS7 Controller.
- *
- * @author Joacim Zschimmer
- */
 final class ClusterNodeUris private(prefixedUri: Uri)
 {
   val command = api("/cluster/command")

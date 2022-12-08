@@ -425,10 +425,10 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
 
               case Right(eventId) =>
                 Task.deferFuture {
-                            // Possible dead letter when `noMoreJournaling` is detected too late !!!
-                            // because after JournalActor has committed SwitchedOver (after ack), JournalActor stops.
-                            (journalActor ? JournalActor.Input.PassiveNodeAcknowledged(eventId = eventId))
-                              .mapTo[Completed]
+                  // Possible dead letter when `noMoreJournaling` is detected too late !!!
+                  // because after JournalActor has committed SwitchedOver (after ack), JournalActor stops.
+                  (journalActor ? JournalActor.Input.PassiveNodeAcknowledged(eventId = eventId))
+                    .mapTo[Completed]
                 }.map(_ => Right(eventId))
             }
             .collect {
