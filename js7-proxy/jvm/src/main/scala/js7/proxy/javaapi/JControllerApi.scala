@@ -17,7 +17,6 @@ import js7.base.service.StatefulService
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
 import js7.data.board.{BoardPath, NoticeId}
-import js7.data.cluster.ClusterWatchId
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{AddOrdersResponse, CancelOrders, ReleaseEvents, ResumeOrder, ResumeOrders, SuspendOrders, TakeSnapshot}
 import js7.data.event.{Event, EventId, JournalInfo}
@@ -314,9 +313,8 @@ final class JControllerApi(val asScala: ControllerApi)(implicit scheduler: Sched
   private def runTask[A](task: Task[A]): CompletableFuture[A] =
     CorrelId.bindNew(task.runToFuture).asJava
 
-  // FIXME Respect ClusterWatchId
   @Nonnull
-  def startClusterWatch(id: ClusterWatchId): CompletableFuture[CompletableFuture[Void]] =
+  def startClusterWatch(): CompletableFuture[CompletableFuture[Void]] =
     clusterWatchService
       .update {
         case Some(service) => Task.some(service)
