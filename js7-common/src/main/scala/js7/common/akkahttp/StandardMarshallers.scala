@@ -13,6 +13,7 @@ import io.circe.Encoder
 import io.circe.syntax.*
 import izumi.reflect.Tag
 import js7.base.circeutils.CirceUtils.*
+import js7.base.generic.GenericString
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.{Checked, Problem}
 import js7.common.akkahttp.CirceJsonSupport.jsonMarshaller
@@ -38,6 +39,11 @@ object StandardMarshallers
 
   implicit val finiteDurationParamMarshaller: FromStringUnmarshaller[FiniteDuration] =
     Unmarshaller.strict(stringToFiniteDuration)
+
+  implicit def genericStringParamMarshaller[A <: GenericString](
+    implicit A: GenericString.Companion[A])
+  : FromStringUnmarshaller[A] =
+    Unmarshaller.strict(A.apply(_))
 
   implicit val durationParamMarshaller: FromStringUnmarshaller[Duration] =
     Unmarshaller.strict {
