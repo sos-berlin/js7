@@ -7,7 +7,7 @@ import java.util.concurrent.TimeUnit.MILLISECONDS
 import js7.base.io.file.watch.BasicDirectoryWatcher.*
 import js7.base.io.file.watch.DirectoryWatchEvent.Overflow
 import js7.base.log.Logger
-import js7.base.service.StatefulService
+import js7.base.service.Service
 import js7.base.system.OperatingSystem.isMac
 import js7.base.thread.IOExecutor
 import js7.base.time.ScalaTime.*
@@ -19,7 +19,7 @@ import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
 
 final class BasicDirectoryWatcher private(options: WatchOptions)(implicit iox: IOExecutor)
-extends StatefulService.StoppableByRequest
+extends Service.StoppableByRequest
 {
   import options.{directory, kinds, pollTimeout}
 
@@ -118,7 +118,7 @@ object BasicDirectoryWatcher
 
   def resource(options: WatchOptions)(implicit iox: IOExecutor)
   : Resource[Task, BasicDirectoryWatcher] =
-    StatefulService.resource(Task(new BasicDirectoryWatcher(options)))
+    Service.resource(Task(new BasicDirectoryWatcher(options)))
 
   //private implicit val watchEventShow: Show[WatchEvent[?]] = e =>
   //  s"${e.kind.name} ${e.count}× ${e.context}"

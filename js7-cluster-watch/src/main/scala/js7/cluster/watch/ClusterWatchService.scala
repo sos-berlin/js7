@@ -7,7 +7,7 @@ import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.MonixDeadline
 import js7.base.monixutils.MonixDeadline.syntax.DeadlineSchedule
-import js7.base.service.StatefulService
+import js7.base.service.Service
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.utils.CatsUtils.Nel
@@ -31,7 +31,7 @@ final class ClusterWatchService private[ClusterWatchService](
   now: () => MonixDeadline,
   keepAlive: FiniteDuration,
   retryDelays: Seq[FiniteDuration])
-extends StatefulService.StoppableByRequest
+extends Service.StoppableByRequest
 {
   private val clusterWatch = new ClusterWatch(now)
   private val stopNow = PublishSubject[Unit]()
@@ -130,7 +130,7 @@ object ClusterWatchService
         .asScala.map(_.toFiniteDuration).toVector
       apiResources
         .flatMap(nodeApis =>
-          StatefulService.resource(
+          Service.resource(
             Task.deferAction(scheduler => Task(
               new ClusterWatchService(
                 nodeApis,

@@ -7,7 +7,7 @@ import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.RichMonixTask
 import js7.base.problem.{Checked, Problem}
-import js7.base.service.StatefulService
+import js7.base.service.Service
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.utils.Tests.isTest
 import js7.cluster.ClusterWatchCounterpart.*
@@ -24,7 +24,7 @@ import scala.util.Random
 final class ClusterWatchCounterpart private(
   ownId: NodeId,
   timing: ClusterTiming)
-extends StatefulService.StoppableByRequest
+extends Service.StoppableByRequest
 {
   private val nextRequestId = Atomic(if (isTest) 1 else Random.nextLong() * 1000)
   private val request = Atomic(None: Option[Requested])
@@ -93,7 +93,7 @@ object ClusterWatchCounterpart
   private val logger = Logger[this.type]
 
   def resource(ownId: NodeId, timing: ClusterTiming) =
-    StatefulService.resource(Task(
+    Service.resource(Task(
       new ClusterWatchCounterpart(ownId, timing)))
 
   private final class Requested(val id: RequestId) {

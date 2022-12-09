@@ -13,7 +13,7 @@ import js7.base.annotation.javaApi
 import js7.base.log.CorrelId
 import js7.base.monixutils.AsyncVariable
 import js7.base.problem.Problem
-import js7.base.service.StatefulService
+import js7.base.service.Service
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
 import js7.data.board.{BoardPath, NoticeId}
@@ -44,7 +44,7 @@ import scala.jdk.OptionConverters.*
 @javaApi
 final class JControllerApi(val asScala: ControllerApi)(implicit scheduler: Scheduler)
 {
-  private val clusterWatchService = AsyncVariable[Option[StatefulService]](None)
+  private val clusterWatchService = AsyncVariable[Option[Service]](None)
 
   def stop: CompletableFuture[Void] =
     runTask(asScala.stop.as(Void))

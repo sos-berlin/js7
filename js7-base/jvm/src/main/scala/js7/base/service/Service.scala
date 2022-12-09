@@ -9,10 +9,10 @@ import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.base.utils.Stoppable
 import monix.eval.{Fiber, Task}
 
-trait StatefulService extends Stoppable {
+trait Service extends Stoppable {
   service =>
 
-  private[StatefulService] final val _fiber = Deferred.unsafe[Task, Fiber[Unit]]
+  private[Service] final val _fiber = Deferred.unsafe[Task, Fiber[Unit]]
   private val stopped = Deferred.unsafe[Task, Unit]
 
   final def untilStopped: Task[Unit] =
@@ -23,11 +23,11 @@ trait StatefulService extends Stoppable {
   def stop: Task[Unit]
 }
 
-object StatefulService
+object Service
 {
   private val logger = Logger[this.type]
 
-  def resource[A <: StatefulService](newService: Task[A]): Resource[Task, A] =
+  def resource[A <: Service](newService: Task[A]): Resource[Task, A] =
     Resource.make(
       acquire = Task.defer {
         newService
@@ -47,7 +47,7 @@ object StatefulService
       })(
       release = _.stop)
 
-  trait StoppableByRequest extends StatefulService
+  trait StoppableByRequest extends Service
   {
     service =>
 

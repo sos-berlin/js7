@@ -4,7 +4,7 @@ import cats.effect.Resource
 import cats.effect.concurrent.Deferred
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.service.StatefulServiceTest.*
+import js7.base.service.ServiceTest.*
 import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.utils.Tests.isIntelliJIdea
@@ -15,7 +15,7 @@ import scala.concurrent.Future
 import scala.util.Failure
 import scala.util.control.NoStackTrace
 
-final class StatefulServiceTest extends OurAsyncTestSuite
+final class ServiceTest extends OurAsyncTestSuite
 {
   private val delay = 100.ms
   private val iterations = if (isIntelliJIdea) 100 else 10
@@ -124,7 +124,7 @@ final class StatefulServiceTest extends OurAsyncTestSuite
   }
 
   private class MyService(setRunning: Boolean => Unit)
-  extends StatefulService.StoppableByRequest
+  extends Service.StoppableByRequest
   {
     val running = Deferred.unsafe[Task, Unit]
 
@@ -144,18 +144,18 @@ final class StatefulServiceTest extends OurAsyncTestSuite
   }
   private object MyService {
     def resource(setRunning: Boolean => Unit): Resource[Task, MyService] =
-      StatefulService.resource(Task(new MyService(setRunning)))
+      Service.resource(Task(new MyService(setRunning)))
   }
 }
 
-object StatefulServiceTest
+object ServiceTest
 {
   private val logger = Logger[this.type]
 
   private class FailingService(
     whenFail: Task[Unit],
     onFailed: Task[Unit])
-  extends StatefulService.StoppableByRequest
+  extends Service.StoppableByRequest
   {
     protected def run =
       Task.race(run2, whenStopRequested)
@@ -172,6 +172,6 @@ object StatefulServiceTest
     def resource(
       whenFail: Task[Unit] = Task.unit,
       onFailed: Task[Unit] = Task.unit)
-    = StatefulService.resource(Task(new FailingService(whenFail, onFailed)))
+    = Service.resource(Task(new FailingService(whenFail, onFailed)))
   }
 }

@@ -5,7 +5,7 @@ import cats.syntax.functor.*
 import com.typesafe.config.Config
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.log.{CorrelId, Logger}
-import js7.base.service.StatefulService
+import js7.base.service.Service
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.base.utils.SyncResource.syntax.RichResource
@@ -20,7 +20,7 @@ object StatefulServiceMain
 
   private lazy val logger = Logger[this.type]
 
-  def run[S <: StatefulService](
+  def run[S <: Service](
     name: String,
     config: Config,
     commonScheduler: Option[Scheduler] = None,
@@ -35,7 +35,7 @@ object StatefulServiceMain
           .runSyncUnsafe()
       }
 
-  private def resource[S <: StatefulService](
+  private def resource[S <: Service](
     name: String,
     config: Config,
     commonScheduler: Option[Scheduler] = None,
@@ -58,7 +58,7 @@ object StatefulServiceMain
       .getOrElse(
         ThreadPools.standardSchedulerResource[F](name, config))
 
-  private def onJavaShutdown[S <: StatefulService](service: S)(implicit s: Scheduler): Unit = {
+  private def onJavaShutdown[S <: Service](service: S)(implicit s: Scheduler): Unit = {
     logger.warn(s"Trying to shut down JS7 $service due to Java shutdown")
     service
       .stop
