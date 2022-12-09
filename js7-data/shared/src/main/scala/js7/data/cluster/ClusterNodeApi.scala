@@ -47,5 +47,5 @@ with HasIsIgnorableStackTrace
 
   def executeClusterCommand(command: ClusterCommand): Task[command.Response]
 
-  def executeClusterWatchCommand(cmd: ClusterWatchCommand): Task[Unit]
+  def executeClusterWatchingCommand(cmd: ClusterWatchingCommand): Task[Unit]
 }

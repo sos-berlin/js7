@@ -17,7 +17,7 @@ import js7.base.web.HttpClient.HttpException
 import js7.cluster.watch.ClusterWatchService.*
 import js7.cluster.watch.api.ClusterWatchProblems.NoClusterWatchRequestMatches
 import js7.common.configuration.Js7Configuration.defaultConfig
-import js7.data.cluster.ClusterWatchCommand.ClusterWatchAcknowledge
+import js7.data.cluster.ClusterWatchingCommand.ClusterWatchAcknowledge
 import js7.data.cluster.{ClusterNodeApi, ClusterWatchCheck, ClusterWatchMessage}
 import monix.eval.Task
 import monix.reactive.Observable
@@ -95,7 +95,7 @@ extends StatefulService.StoppableByRequest
             HttpClient
               .liftProblem(nodeApi
                 .retryIfSessionLost()(nodeApi
-                  .executeClusterWatchCommand(
+                  .executeClusterWatchingCommand(
                     ClusterWatchAcknowledge(msg.requestId, checked.left.toOption))
                   .void))
               .map {

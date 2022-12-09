@@ -5,16 +5,16 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Problem
 
 /** Command from ClusterWatch to a cluster node. */
-sealed trait ClusterWatchCommand
+sealed trait ClusterWatchingCommand
 
-object ClusterWatchCommand
+object ClusterWatchingCommand
 {
   // Command from ClusterWatch
   final case class ClusterWatchAcknowledge(
     requestId: ClusterWatchMessage.RequestId,
     problem: Option[Problem])
-  extends ClusterWatchCommand
+  extends ClusterWatchingCommand
 
-  implicit val jsonCodec: TypedJsonCodec[ClusterWatchCommand] = TypedJsonCodec(
+  implicit val jsonCodec: TypedJsonCodec[ClusterWatchingCommand] = TypedJsonCodec(
     Subtype(deriveCodec[ClusterWatchAcknowledge]))
 }

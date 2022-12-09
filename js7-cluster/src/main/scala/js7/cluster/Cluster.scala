@@ -21,8 +21,8 @@ import js7.core.license.LicenseChecker
 import js7.data.Problems.{BackupClusterNodeNotAppointed, ClusterNodeIsNotBackupProblem, PrimaryClusterNodeMayNotBecomeBackupProblem}
 import js7.data.cluster.ClusterCommand.{ClusterInhibitActivation, ClusterStartBackupNode}
 import js7.data.cluster.ClusterState.{Coupled, Empty, FailedOver, HasNodes}
-import js7.data.cluster.ClusterWatchCommand.ClusterWatchAcknowledge
-import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterSetting, ClusterWatchCommand, ClusterWatchMessage}
+import js7.data.cluster.ClusterWatchingCommand.ClusterWatchAcknowledge
+import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterSetting, ClusterWatchingCommand, ClusterWatchMessage}
 import js7.data.event.{EventId, JournalPosition, SnapshotableState}
 import js7.journal.EventIdGenerator
 import js7.journal.data.JournalMeta
@@ -297,7 +297,7 @@ final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
           .flatMapT(_.executeCommand(command))
     }
 
-  def executeClusterWatchCommand(command: ClusterWatchCommand): Task[Checked[Unit]] =
+  def executeClusterWatchingCommand(command: ClusterWatchingCommand): Task[Checked[Unit]] =
     command match {
       case ClusterWatchAcknowledge(requestId, maybeProblem) =>
         Task(common

@@ -11,7 +11,7 @@ import js7.cluster.web.ClusterRoute.*
 import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
 import js7.common.akkahttp.CirceJsonSupport.*
 import js7.common.akkahttp.StandardMarshallers.*
-import js7.data.cluster.{ClusterCommand, ClusterNodeState, ClusterState, ClusterWatchCommand}
+import js7.data.cluster.{ClusterCommand, ClusterNodeState, ClusterState, ClusterWatchingCommand}
 import js7.data.event.Stamped
 import js7.data.node.NodeId
 import js7.journal.watch.FileEventWatch
@@ -28,7 +28,7 @@ trait ClusterRoute extends ClusterWatchMessageRoute
   protected def clusterNodeIsBackup: Boolean
   protected def nodeId: NodeId
   protected def executeClusterCommand(cmd: ClusterCommand): Task[Checked[ClusterCommand.Response]]
-  protected def executeClusterWatchCommand(cmd: ClusterWatchCommand): Task[Checked[Unit]]
+  protected def executeClusterWatchingCommand(cmd: ClusterWatchingCommand): Task[Checked[Unit]]
   protected def eventWatch: FileEventWatch
 
   protected final lazy val clusterRoute =
@@ -63,9 +63,9 @@ trait ClusterRoute extends ClusterWatchMessageRoute
                   completeTask(
                     executeClusterCommand(cmd))
 
-                case cmd: ClusterWatchCommand =>
+                case cmd: ClusterWatchingCommand =>
                   completeTask(
-                    executeClusterWatchCommand(cmd)
+                    executeClusterWatchingCommand(cmd)
                       .rightAs(JsonObject.empty))
             })
           }
@@ -77,5 +77,5 @@ trait ClusterRoute extends ClusterWatchMessageRoute
 object ClusterRoute
 {
   private val commandJsonCodec =
-    ClusterCommand.jsonCodec | ClusterWatchCommand.jsonCodec
+    ClusterCommand.jsonCodec | ClusterWatchingCommand.jsonCodec
 }

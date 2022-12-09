@@ -9,7 +9,7 @@ import js7.base.problem.Checked
 import js7.base.session.SessionApi
 import js7.base.web.HttpClient.liftProblem
 import js7.base.web.{HttpClient, Uri}
-import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterNodeState, ClusterState, ClusterWatchCommand, ClusterWatchMessage}
+import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterNodeState, ClusterState, ClusterWatchingCommand, ClusterWatchMessage}
 import js7.data.event.{Event, EventId, EventRequest, JournalPosition, KeyedEvent, Stamped}
 import js7.data.session.HttpSessionApi
 import monix.eval.Task
@@ -85,8 +85,8 @@ extends ClusterNodeApi with HttpSessionApi with HasIsIgnorableStackTrace
     httpClient.post[ClusterCommand, ClusterCommand.Response](uris.command, cmd)
       .map(_.asInstanceOf[cmd.Response])
 
-  final def executeClusterWatchCommand(cmd: ClusterWatchCommand): Task[Unit] =
-    httpClient.post[ClusterWatchCommand, Unit](uris.command, cmd)
+  final def executeClusterWatchingCommand(cmd: ClusterWatchingCommand): Task[Unit] =
+    httpClient.post[ClusterWatchingCommand, Unit](uris.command, cmd)
 
   override def toString = s"HttpClusterNodeApi($prefixedUri)"
 }

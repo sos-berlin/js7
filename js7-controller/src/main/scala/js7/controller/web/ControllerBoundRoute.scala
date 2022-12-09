@@ -25,7 +25,7 @@ import js7.controller.web.controller.ControllerRoute
 import js7.controller.web.serviceprovider.{RouteServiceContext, ServiceProviderRoute}
 import js7.core.command.CommandMeta
 import js7.data.agent.AgentRefState
-import js7.data.cluster.{ClusterCommand, ClusterWatchCommand}
+import js7.data.cluster.{ClusterCommand, ClusterWatchingCommand}
 import js7.data.controller.{ControllerCommand, ControllerState}
 import js7.data.event.Stamped
 import js7.journal.watch.FileEventWatch
@@ -80,8 +80,8 @@ with WebLogDirectives
   protected def executeClusterCommand(command: ClusterCommand) =
     cluster.executeCommand(command)
 
-  protected def executeClusterWatchCommand(cmd: ClusterWatchCommand) =
-    cluster.executeClusterWatchCommand(cmd)
+  protected def executeClusterWatchingCommand(cmd: ClusterWatchingCommand) =
+    cluster.executeClusterWatchingCommand(cmd)
 
   val webServerRoute: Route =
     (decodeRequest & encodeResponse) {  // Before handleErrorAndLog to allow simple access to HttpEntity.Strict

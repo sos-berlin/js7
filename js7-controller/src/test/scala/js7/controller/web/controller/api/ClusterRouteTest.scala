@@ -11,7 +11,7 @@ import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import js7.common.akkahttp.CirceJsonSupport.jsonUnmarshaller
 import js7.common.akkahttp.web.session.SimpleSession
 import js7.controller.web.controller.api.test.RouteTester
-import js7.data.cluster.{ClusterCommand, ClusterNodeState, ClusterState, ClusterWatchCommand}
+import js7.data.cluster.{ClusterCommand, ClusterNodeState, ClusterState, ClusterWatchingCommand}
 import js7.data.event.Stamped
 import js7.data.node.NodeId
 import monix.eval.Task
@@ -43,7 +43,7 @@ final class ClusterRouteTest extends OurTestSuite with RouteTester with ClusterR
   protected def executeClusterCommand(command: ClusterCommand) =
     throw new NotImplementedError
 
-  protected def executeClusterWatchCommand(cmd: ClusterWatchCommand) =
+  protected def executeClusterWatchingCommand(cmd: ClusterWatchingCommand) =
     throw new NotImplementedError
 
   private lazy val route: Route =
