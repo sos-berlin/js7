@@ -33,8 +33,8 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Closer, ProgramTermination, SetOnce}
-import js7.cluster.Cluster.RestartAfterJournalTruncationException
-import js7.cluster.{Cluster, WorkingClusterNode}
+import js7.cluster.ClusterNode.RestartAfterJournalTruncationException
+import js7.cluster.{ClusterNode, WorkingClusterNode}
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.guice.GuiceImplicits.RichInjector
@@ -319,7 +319,8 @@ object RunningController
 
       val directoryWatchingSignatureVerifier =
         DirectoryWatchingSignatureVerifier
-          // Do not disturb recovery and cluster log output now and start verifier later
+          // Do not disturb recovery and ClusterNode start-up log output now
+          // and start verifier later
           .checked(
             controllerConfiguration.config,
             () => testEventBus.publish(ItemSignatureKeysUpdated)
@@ -335,16 +336,17 @@ object RunningController
         recovered.journalId, recovered.eventWatch,
         journalMeta, controllerConfiguration.journalConf,
         injector.instance[EventIdGenerator], injector.instance[StampedKeyedEventBus])
-      val (cluster, controllerState, clusterFollowUp) = startCluster(recovered, persistence, testEventBus)
+      val (clusterNode, controllerState, untilClusterRecovered) =
+        startClusterNode(recovered, persistence, testEventBus)
 
-      val clusterFollowUpFuture = clusterFollowUp.runToFuture
+      val clusterRecoveredFuture = untilClusterRecovered.runToFuture
 
       val (orderKeeperActor, orderKeeperTerminated) = {
-        val orderKeeperStarted = clusterFollowUpFuture
+        val orderKeeperStarted = clusterRecoveredFuture
           .map(_.flatMap(recovered =>
             startControllerOrderKeeper(
               persistence,
-              cluster.workingClusterNode.orThrow/*TODO*/,
+              clusterNode.workingClusterNode.orThrow/*TODO*/,
               recovered,
               testEventBus)))
 
@@ -371,7 +373,7 @@ object RunningController
               for (t <- tried.failed) {
                 logger.error(s"ControllerOrderKeeper failed with ${t.toStringWithCauses}", t)  // Support diagnosis
               }
-              clusterFollowUpFuture.cancel()
+              clusterRecoveredFuture.cancel()
             }
         }
 
@@ -382,11 +384,12 @@ object RunningController
       orderKeeperActor.failed foreach whenReady.tryFailure
       orderKeeperTerminated.failed foreach whenReady.tryFailure
       val commandExecutor = new ControllerCommandExecutor(
-        new MyCommandExecutor(cluster,
+        new MyCommandExecutor(
+          clusterNode,
           onShutDownBeforeClusterActivated = termination =>
             Task {
               clusterStartupTermination = termination
-              clusterFollowUpFuture.cancel()
+              clusterRecoveredFuture.cancel()
               Completed
             },
           orderKeeperActor))
@@ -399,7 +402,7 @@ object RunningController
       val webServer = injector.instance[ControllerWebServer.Factory]
         .apply(orderApi, commandExecutor, itemUpdater,
           controllerState,
-          cluster,
+          clusterNode,
           recovered.totalRunningSince,  // Maybe different from JournalHeader
           recovered.eventWatch
         ).closeWithCloser
@@ -424,17 +427,17 @@ object RunningController
         .runToFuture
     }
 
-    private def startCluster(
+    private def startClusterNode(
       recovered: Recovered[ControllerState],
       persistence: FileStatePersistence[ControllerState],
       testEventBus: StandardEventBus[Any])
-    : (Cluster[ControllerState],
+    : (ClusterNode[ControllerState],
       Task[Checked[ControllerState]],
       Task[Either[ProgramTermination, Recovered[ControllerState]]])
     = {
-      val cluster = {
+      val clusterNode = {
         import controllerConfiguration.{clusterConf, config, httpsConfig}
-        Cluster[ControllerState](
+        ClusterNode[ControllerState](
           persistence,
           journalMeta,
           clusterConf,
@@ -447,11 +450,11 @@ object RunningController
           implicitAkkaAskTimeout)
       }
 
-      // clusterFollowUpFuture terminates when this cluster node becomes active or terminates
-      // replicatedState accesses the current ControllerState while this node is passive, otherwise it is None
       class StartingClusterCancelledException extends NoStackTrace
-      val (replicatedState, activeRecovered) = cluster.start(recovered)
-      val clusterFollowUpTask = activeRecovered
+      // untilClusterNodeRecovered terminates when this cluster node becomes active or terminates
+      // replicatedState accesses the current ControllerState while this node is passive, otherwise it is None
+      val (replicatedState, untilActiveRecovered_) = clusterNode.start(recovered)
+      val untilClusterNodeRecovered = untilActiveRecovered_
         .doOnCancel(Task { logger.debug("Cancel Cluster") })
         .onCancelRaiseError(new StartingClusterCancelledException)
         .map(_.orThrow)
@@ -463,7 +466,7 @@ object RunningController
           case Right(recovered) =>
             persistence.start(recovered)
           case _ =>
-            cluster.stop
+            clusterNode.stop
               .void
               .onErrorHandle(t =>
                 logger.error(t.toStringWithCauses, t.nullIfNoStackTrace))
@@ -474,7 +477,7 @@ object RunningController
         else
           replicatedState.map(_.toChecked(ClusterNodeIsNotReadyProblem).flatten)
       }
-      (cluster, controllerState, clusterFollowUpTask)
+      (clusterNode, controllerState, untilClusterNodeRecovered)
     }
 
     private def startControllerOrderKeeper(
@@ -500,7 +503,7 @@ object RunningController
   }
 
   private class MyCommandExecutor(
-    cluster: Cluster[ControllerState],
+    clusterNode: ClusterNode[ControllerState],
     onShutDownBeforeClusterActivated: ProgramTermination => Task[Completed],
     orderKeeperActor: Task[Checked[ActorRef @@ ControllerOrderKeeper]])
     (implicit timeout: Timeout)
@@ -510,7 +513,7 @@ object RunningController
       (command match {
         case command: ControllerCommand.ShutDown =>
           logger.info(s"❗️ $command")
-          if (command.clusterAction.nonEmpty && !cluster.isWorkingNode)
+          if (command.clusterAction.nonEmpty && !clusterNode.isWorkingNode)
             Task.pure(Left(PassiveClusterNodeShutdownNotAllowedProblem))
           else
             onShutDownBeforeClusterActivated(ProgramTermination(restart = command.restart)) >>
@@ -524,7 +527,7 @@ object RunningController
               }
 
         case ControllerCommand.ClusterAppointNodes(idToUri, activeId) =>
-          Task(cluster.workingClusterNode)
+          Task(clusterNode.workingClusterNode)
             .flatMapT(_.appointNodes(idToUri, activeId))
             .map(_.map((_: Completed) => ControllerCommand.Response.Accepted))
 

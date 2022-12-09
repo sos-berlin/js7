@@ -6,7 +6,7 @@ import javax.inject.{Inject, Singleton}
 import js7.base.problem.Checked
 import js7.base.utils.Closer
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
-import js7.cluster.Cluster
+import js7.cluster.ClusterNode
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.controller.OrderApi
@@ -33,7 +33,7 @@ object ControllerWebServer
       commandExecutor: ControllerCommandExecutor,
       itemUpdater: ItemUpdater,
       controllerState: Task[Checked[ControllerState]],
-      cluster: Cluster[ControllerState],
+      clusterNode: ClusterNode[ControllerState],
       totalRunningSince: Deadline,
       eventWatch: FileEventWatch)
     : AkkaWebServer & AkkaWebServer.HasUri =
@@ -50,7 +50,7 @@ object ControllerWebServer
               commandExecutor,
               itemUpdater,
               controllerState,
-              cluster,
+              clusterNode,
               totalRunningSince,
               sessionRegister,
               eventWatch,

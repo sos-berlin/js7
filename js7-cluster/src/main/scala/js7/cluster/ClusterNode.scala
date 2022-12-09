@@ -15,14 +15,14 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SetOnce
 import js7.base.web.Uri
-import js7.cluster.Cluster.*
+import js7.cluster.ClusterNode.*
 import js7.cluster.JournalTruncator.truncateJournal
 import js7.core.license.LicenseChecker
 import js7.data.Problems.{BackupClusterNodeNotAppointed, ClusterNodeIsNotBackupProblem, PrimaryClusterNodeMayNotBecomeBackupProblem}
 import js7.data.cluster.ClusterCommand.{ClusterInhibitActivation, ClusterStartBackupNode}
 import js7.data.cluster.ClusterState.{Coupled, Empty, FailedOver, HasNodes}
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchAcknowledge
-import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterSetting, ClusterWatchingCommand, ClusterWatchMessage}
+import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterSetting, ClusterWatchMessage, ClusterWatchingCommand}
 import js7.data.event.{EventId, JournalPosition, SnapshotableState}
 import js7.journal.EventIdGenerator
 import js7.journal.data.JournalMeta
@@ -33,7 +33,7 @@ import monix.execution.Scheduler
 import scala.concurrent.Promise
 import scala.util.control.NoStackTrace
 
-final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
+final class ClusterNode[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
   persistence: FileStatePersistence[S],
   journalMeta: JournalMeta,
   val clusterConf: ClusterConf,
@@ -320,7 +320,7 @@ final class Cluster[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
   def isPassive = _passiveOrWorkingNode.exists(_.isLeft)
 }
 
-object Cluster
+object ClusterNode
 {
   private val logger = Logger(getClass)
 
@@ -337,8 +337,8 @@ object Cluster
     (implicit
       S: SnapshotableState.Companion[S],
       scheduler: Scheduler)
-  : Cluster[S] =
-    new Cluster(
+  : ClusterNode[S] =
+    new ClusterNode(
       persistence,
       journalMeta,
       clusterConf,

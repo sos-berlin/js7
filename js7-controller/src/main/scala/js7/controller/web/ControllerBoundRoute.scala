@@ -9,7 +9,7 @@ import js7.base.auth.{SimpleUser, UpdateItemPermission}
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.convert.AsJava.StringAsPath
 import js7.base.problem.Checked
-import js7.cluster.Cluster
+import js7.cluster.ClusterNode
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import js7.common.akkahttp.WebLogDirectives
 import js7.common.akkahttp.web.AkkaWebServer
@@ -45,7 +45,7 @@ final class ControllerBoundRoute(
   commandExecutor: ControllerCommandExecutor,
   protected val itemUpdater: ItemUpdater,
   protected val controllerState: Task[Checked[ControllerState]],
-  cluster: Cluster[ControllerState],
+  clusterNode: ClusterNode[ControllerState],
   protected val totalRunningSince: Deadline,
   protected val sessionRegister: SessionRegister[SimpleSession],
   protected val eventWatch: FileEventWatch,
@@ -68,7 +68,7 @@ with WebLogDirectives
   protected val pathToAgentRefState = controllerState.map(_.map(_.keyTo(AgentRefState)))
   protected val routeServiceContext = RouteServiceContext(filteredSnapshotRoute, filteredEventRoute)
   protected val actorRefFactory     = actorSystem
-  protected val clusterWatchMessageStream = cluster.clusterWatchMessageStream
+  protected val clusterWatchMessageStream = clusterNode.clusterWatchMessageStream
   protected val gateKeeper = GateKeeper(
     binding,
     GateKeeper.Configuration.fromConfig(config, SimpleUser.apply, Seq(
@@ -78,10 +78,10 @@ with WebLogDirectives
     commandExecutor.executeCommand(command, meta)
 
   protected def executeClusterCommand(command: ClusterCommand) =
-    cluster.executeCommand(command)
+    clusterNode.executeCommand(command)
 
   protected def executeClusterWatchingCommand(cmd: ClusterWatchingCommand) =
-    cluster.executeClusterWatchingCommand(cmd)
+    clusterNode.executeClusterWatchingCommand(cmd)
 
   val webServerRoute: Route =
     (decodeRequest & encodeResponse) {  // Before handleErrorAndLog to allow simple access to HttpEntity.Strict
