@@ -5,6 +5,7 @@ import js7.agent.client.AgentClient
 import js7.agent.configuration.Akkas
 import js7.base.BuildInfo
 import js7.base.test.OurTestSuite
+import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import monix.execution.Scheduler.Implicits.traced
@@ -21,6 +22,11 @@ final class AgentClientTest extends OurTestSuite with ScalaFutures with AgentTes
   private implicit lazy val actorSystem: ActorSystem =
     Akkas.newAgentActorSystem("AgentClientTest")(closer)
   private lazy val client = AgentClient(agentUri = agent.localUri, userAndPassword = None)
+
+  override def afterAll(): Unit = {
+    actorSystem.terminate().await(99.s)
+    super.afterAll()
+  }
 
   "get /" in {
     val overview = client.overview await 99.s
