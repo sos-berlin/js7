@@ -16,7 +16,7 @@ object Stoppable
       acquire = acquire)(
       release = _.stop)
 
-  implicit final class RichServiceResource[A](private val resource: Resource[Task, A])
+  implicit final class RichStoppableResource[A](private val resource: Resource[Task, A])
   extends AnyVal
   {
     def acquire(implicit evidence: A <:< Stoppable): Task[A] =

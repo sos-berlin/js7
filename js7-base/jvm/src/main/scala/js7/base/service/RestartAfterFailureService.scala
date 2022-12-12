@@ -48,7 +48,7 @@ extends Service
 
   private def startUnderlyingService: Task[S] =
     serviceResource
-      .acquire
+      .startService
       .pipeMaybe(maybeStartDelay)(
         _.onFailureRestartWithDelayer(_,
           onFailure = t => Task {

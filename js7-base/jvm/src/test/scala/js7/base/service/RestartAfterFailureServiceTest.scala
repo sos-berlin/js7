@@ -139,7 +139,7 @@ final class RestartAfterFailureServiceTest extends OurTestSuite
               runFails = (i & 2) != 0,
               stopFails = (i & 4) != 0,
               i.toString))))
-        .acquire)
+        .startService)
       .flatTap(_ => Task.sleep(testDuration))
       .flatMap(services => services
         .parTraverse(_

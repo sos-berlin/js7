@@ -327,12 +327,16 @@ object RunningController
         DirectoryWatchingSignatureVerifier
           // Do not disturb recovery and ClusterNode start-up log output now
           // and start verifier later
-          .checked(
+          .checkedResource(
             controllerConfiguration.config,
-            () => testEventBus.publish(ItemSignatureKeysUpdated)
-          )
+            onUpdated = () => testEventBus.publish(ItemSignatureKeysUpdated))
           .orThrow
-          .closeWithCloser
+          .startService
+          .awaitInfinite
+      closer.onClose {
+        // TODO Use a StoppableRegister
+        directoryWatchingSignatureVerifier.stop.await(9.s)
+      }
       val itemVerifier = new SignedItemVerifier(
         directoryWatchingSignatureVerifier,
         ControllerState.signableItemJsonCodec)
@@ -400,7 +404,6 @@ object RunningController
             },
           orderKeeperActor))
 
-      directoryWatchingSignatureVerifier.start() /*logs*/
       val itemUpdater = new MyItemUpdater(itemVerifier, orderKeeperActor)
 
       val orderApi = new MainOrderApi(controllerState)

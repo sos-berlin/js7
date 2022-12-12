@@ -1,10 +1,12 @@
 package js7.subagent
 
+import cats.effect.Resource
 import cats.syntax.traverse.*
 import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier
 import js7.base.eventbus.StandardEventBus
 import js7.base.log.Logger
 import js7.base.problem.Checked
+import js7.base.service.Service
 import js7.base.stream.Numbered
 import js7.base.thread.IOExecutor
 import js7.base.time.ScalaTime.*
@@ -22,28 +24,24 @@ import js7.subagent.SubagentCommandExecutor.*
 import js7.subagent.SubagentExecutor.Dedicated
 import js7.subagent.configuration.SubagentConf
 import monix.eval.Task
-import monix.execution.Scheduler
 import monix.reactive.Observable
 import scala.concurrent.duration.Deadline.now
 
-final class SubagentCommandExecutor(
+final class SubagentCommandExecutor private(
+  signatureVerifier: DirectoryWatchingSignatureVerifier,
+  val testEventBus: StandardEventBus[Any],
   protected val journal: InMemoryJournal[SubagentState],
   protected val subagentConf: SubagentConf,
   protected val jobLauncherConf: JobLauncherConf)
-  (implicit scheduler: Scheduler, iox: IOExecutor)
-extends SubagentExecutor
+extends SubagentExecutor with Service.StoppableByRequest
 {
   protected[subagent] final val dedicatedOnce = SetOnce[Dedicated](SubagentNotDedicatedProblem)
 
-  val testEventBus = new StandardEventBus[Any]
+  override protected def onStop =
+    signatureVerifier.stop
 
-  private val signatureVerifier = DirectoryWatchingSignatureVerifier
-    .start(
-      subagentConf.config,
-      () => testEventBus.publish(ItemSignatureKeysUpdated))
-    .orThrow
-
-  def stopV1_5_1 = signatureVerifier.stopV1_5_1
+  protected def start =
+    startService(untilStopRequested)
 
   def checkedDedicated: Checked[Dedicated] =
     dedicatedOnce.checked
@@ -140,4 +138,21 @@ extends SubagentExecutor
 object SubagentCommandExecutor
 {
   private val logger = Logger(getClass)
+
+  def checkedResource(
+    journal: InMemoryJournal[SubagentState],
+    subagentConf: SubagentConf,
+    jobLauncherConf: JobLauncherConf)
+    (implicit iox: IOExecutor)
+  : Checked[Resource[Task, SubagentCommandExecutor]] =
+    for (prepared <- DirectoryWatchingSignatureVerifier.prepare(subagentConf.config)) yield
+      for {
+        testEventBus <- Resource.eval(Task(new StandardEventBus[Any]))
+        signatureVerifier <- prepared.toResource(
+          onUpdated = () => testEventBus.publish(ItemSignatureKeysUpdated))
+        executor <- Service.resource(Task(
+          new SubagentCommandExecutor(
+            signatureVerifier,
+            testEventBus, journal, subagentConf, jobLauncherConf)))
+      } yield executor
 }

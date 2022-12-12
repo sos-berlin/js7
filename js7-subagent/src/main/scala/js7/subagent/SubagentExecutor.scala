@@ -38,20 +38,22 @@ trait SubagentExecutor
   protected val subagentConf: SubagentConf
   protected val jobLauncherConf: JobLauncherConf
 
+  protected def onStop = Task.unit
+
   val subagentRunId = SubagentRunId.fromJournalId(journal.journalId)
   private val subagentDriverConf = SubagentDriver.Conf.fromConfig(subagentConf.config,
     commitDelay = 0.s)
   private val orderToProcessing = AsyncMap.stoppable[OrderId, Processing]()
 
   private val shuttingDown = Atomic(false)
-  private val stoppedOnce = SetOnce[ProgramTermination]
+  private val terminatedOnce = SetOnce[ProgramTermination]
   @volatile private var _dontWaitForDirector = false
 
   def isShuttingDown: Boolean =
     shuttingDown()
 
-  def untilStopped: Task[ProgramTermination] =
-    stoppedOnce.task
+  def untilTerminated: Task[ProgramTermination] =
+    terminatedOnce.task
 
   final def shutdown(shutDown: ShutDown): Task[ProgramTermination] = {
     import shutDown.{dontWaitForDirector, processSignal, restart}
@@ -64,7 +66,7 @@ trait SubagentExecutor
       val first = !shuttingDown.getAndSet(true)
       Task
         .when(first)(
-          dedicatedOnce
+          onStop.*>(dedicatedOnce
             .toOption
             .fold(Task.unit)(_.localSubagentDriver.stop(processSignal))
             .*>(orderToProcessing.initiateStopWithProblem(SubagentIsShuttingDownProblem))
@@ -90,9 +92,9 @@ trait SubagentExecutor
             .*>(Task {
               logger.info(
                 s"Subagent${dedicatedOnce.toOption.fold("")(_.toString + " ")} stopped")
-              stoppedOnce.trySet(ProgramTermination(restart = restart))
-            }))
-        .*>(stoppedOnce.task)
+              terminatedOnce.trySet(ProgramTermination(restart = restart))
+            })))
+        .*>(terminatedOnce.task)
     })
   }
 

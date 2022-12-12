@@ -22,6 +22,7 @@ import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.thread.IOExecutor
+import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.AlarmClock
 import js7.base.utils.ScalaUtils.RightUnit
 import js7.base.utils.ScalaUtils.syntax.*
@@ -61,17 +62,20 @@ private[agent] final class AgentActor private(
 
   override val supervisorStrategy = SupervisorStrategies.escalate
 
-  private val signatureVerifier = DirectoryWatchingSignatureVerifier
-    .start(
-      agentConf.config,
-      () => testEventBus.publish(ItemSignatureKeysUpdated))
-    .orThrow
   private var recovered: Recovered[AgentState] = null
   private val started = SetOnce[Started]
   private val shutDownCommand = SetOnce[AgentCommand.ShutDown]
   private var isResetting = false
   private def terminating = shutDownCommand.isDefined
   private val terminateCompleted = Promise[Completed]()
+
+  private val signatureVerifier = DirectoryWatchingSignatureVerifier
+    .checkedResource(
+      config = agentConf.config,
+      onUpdated = () => testEventBus.publish(ItemSignatureKeysUpdated))
+    .orThrow
+    .startService
+    .awaitInfinite
 
   override def preStart() = {
     watch(persistence.journalActor)
@@ -86,7 +90,7 @@ private[agent] final class AgentActor private(
       logger.warn("DELETE JOURNAL FILES DUE TO AGENT RESET")
       journalMeta.deleteJournal(ignoreFailure = true)
     }
-    signatureVerifier.close()
+    signatureVerifier.stop.awaitInfinite
     logger.debug("Stopped")
   }
 

@@ -1,14 +1,15 @@
 package js7.base.crypt.generic
 
-import cats.effect.ExitCase
+import cats.effect.Resource
 import cats.instances.either.*
 import cats.instances.vector.*
+import cats.syntax.foldable.*
+import cats.syntax.parallel.*
 import cats.syntax.traverse.*
 import com.typesafe.config.Config
 import java.nio.file.Files.exists
 import java.nio.file.StandardWatchEventKinds.{ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY}
 import java.nio.file.{Path, Paths}
-import java.util.concurrent.RejectedExecutionException
 import js7.base.Problems.UnknownSignatureTypeProblem
 import js7.base.configutils.Configs.RichConfig
 import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier.{Settings, State, logger}
@@ -21,18 +22,15 @@ import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked.{catchNonFatal, catchNonFatalFlatten}
 import js7.base.problem.{Checked, Problem}
-import js7.base.thread.Futures.implicits.*
+import js7.base.service.Service
 import js7.base.thread.IOExecutor
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.utils.ScalaUtils.checkedCast
 import js7.base.utils.ScalaUtils.syntax.{RichThrowable, *}
 import monix.eval.Task
-import monix.execution.atomic.Atomic
-import monix.execution.{CancelableFuture, Scheduler}
 import monix.reactive.Observable
 import monix.reactive.subjects.PublishSubject
-import scala.concurrent.blocking
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
@@ -42,107 +40,65 @@ final class DirectoryWatchingSignatureVerifier private(
   settings: Settings,
   onUpdated: () => Unit)
   (implicit iox: IOExecutor)
-extends SignatureVerifier with AutoCloseable
+extends SignatureVerifier with Service
 {
   @volatile private var state = State(Map.empty)
 
-  private var runningFuture = CancelableFuture.successful(())
-  private val started = Atomic(false)
-  private val stop = PublishSubject[Unit]()
-  private val stopped = Atomic(false)
+  private val stopRequested = PublishSubject[Unit]()
 
   protected type MySignature = GenericSignature
 
   def companion = DirectoryWatchingSignatureVerifier
 
-  def publicKeys = throw new NotImplementedError("DirectoryWatchingSignatureVerifier#key")
+  def publicKeys = throw new NotImplementedError("DirectoryWatchingSignatureVerifier#publicKeys")
 
   def publicKeyOrigin = "(DirectoryWatchingSignatureVerifier)"
 
-  def maybeProblem: Option[Problem] =
-    Problem.combineAllOption(
-      state.companionToVerifier.values.collect { case Left(problem) => problem })
-
-  def start()(implicit s: Scheduler): Unit = {
-    if (started.getAndSet(true)) throw new IllegalStateException(
-      "Duplicate DirectoryWatchingSignatureVerifier.start")
-
-    state = State(
-      companionToDirectory
+  protected def start =
+    Task.defer {
+      val companionToDir = companionToDirectory
         .map { case (companion, directory) =>
-          val checkedVerifier = readDirectory(directory).flatMap(toVerifier(companion, directory, _))
-          companion -> checkedVerifier
-        })
-
-    val companionToDirectoryState =
-      for ((companion, directory) <- companionToDirectory) yield
-        companion -> (directory -> readDirectory(directory).orThrow)
-
-    runningFuture = startAndForget(companionToDirectoryState)
-      .onErrorHandle { t =>
-        logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)
-      }
-      .runToFuture
-  }
-
-  def close(): Unit = {
-    if (!stopped.getAndSet(true)) {
-      stop.onComplete()
-    }
-    blocking {
-      // TODO Shutdown JS7 asynchronously !
-      try runningFuture.await(5.s)
-      catch { case NonFatal(t) =>
-        logger.error(s"stop: ${t.toStringWithCauses}")
-      }
-    }
-  }
-
-  // Only for v1.5.1. Stopping is fixed in v1.6
-  val stopV1_5_1: Task[Unit] =
-    logger
-      .debugTask(Task.defer {
-        if (!stopped.getAndSet(true)) {
-          stop.onComplete()
+          companion -> (directory -> readDirectory(directory).orThrow)
         }
-        Task.fromFuture(runningFuture)
-        .guaranteeCase {
-          case ExitCase.Error(t) => Task(logger.error(s"stop: ${t.toStringWithCauses}"))
-          case _ => Task.unit
-        }
-      })
-      .memoize
 
-  private def startAndForget(
-    companionToDirectoryState: Map[SignatureVerifier.Companion, (Path, DirectoryState)])
-    (implicit iox: IOExecutor)
-  : Task[Unit] =
-    companionToDirectoryState
-      .toVector.distinct
+      state = State(
+        companionToDir
+          .map { case (companion, (directory, directoryState)) =>
+            companion -> toVerifier(companion, directory, directoryState)
+          })
+
+      startService(
+        companionToDir
+          .toVector
       .map { case (companion, (directory, directoryState)) =>
         CorrelId.bindNew(
           observeDirectory(companion, directory, directoryState)
             .onErrorRestartLoop(()) { (t, _, retry) =>
               logger.error(s"${companion.typeName}: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
-              t match {
-                case _: RejectedExecutionException => Task.unit // Due ot bad test behaviour?
-                case _ => retry(()).delayExecution(10.s)
-              }
-            }
-            .startAndForget)
-      }
-      .sequence
-      .void
+                  retry(()).delayExecution(10.s)
+                })
+          }
+          .parSequence
+          .map(_.combineAll))
+    }
+
+  private val memoizedStop: Task[Unit] =
+    Task.defer {
+      stopRequested.onComplete()
+      untilStopped
+    }.memoize
+
+  def stop: Task[Unit] =
+    logger.debugTask(memoizedStop)
 
   private def observeDirectory(
     companion: SignatureVerifier.Companion,
     directory: Path,
     directoryState: DirectoryState)
-    (implicit iox: IOExecutor)
   : Task[Unit] =
     DirectoryWatcher
       .observable(directoryState, toWatchOptions(directory))
-      .takeUntil(stop)
+      .takeUntil(stopRequested)
       .flatMap(Observable.fromIterable)
       .debounce(settings.directorySilence)
       .bufferIntrospective(1024)
@@ -223,6 +179,9 @@ extends SignatureVerifier with AutoCloseable
 
   override def publicKeysToStrings =
     "DirectoryWatchingSignatureVerifier#publicKeysToStrings" :: Nil
+
+  override def toString =
+    s"DirectoryWatchingSignatureVerifier(${companionToDirectory.keys.map(_.typeName).mkString(" ")})"
 }
 
 object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion
@@ -241,16 +200,12 @@ object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion
   def recommendedKeyDirectoryName =
     throw new NotImplementedError("DirectoryWatchingSignatureVerifier recommendedKeyDirectoryName")
 
-  def start(
-    config: Config,
-    onUpdated: () => Unit = () => ())(
-    implicit s: Scheduler, iox: IOExecutor)
-  : Checked[DirectoryWatchingSignatureVerifier] =
-    checked(config, onUpdated)
-      .tapEach(_.start())
+  def checkedResource(config: Config, onUpdated: () => Unit)
+    (implicit iox: IOExecutor)
+  : Checked[Resource[Task, DirectoryWatchingSignatureVerifier]] =
+    prepare(config).map(_.toResource(onUpdated))
 
-  def checked(config: Config, onUpdated: () => Unit)(implicit iox: IOExecutor)
-  : Checked[DirectoryWatchingSignatureVerifier] =
+  def prepare(config: Config): Checked[Prepared] =
     config.getObject(configPath).asScala.toMap  // All Config key-values
       .map { case (typeName, v) =>
         checkedCast[String](v.unwrapped, ConfigStringExpectedProblem(s"$configPath.$typeName"))
@@ -273,8 +228,19 @@ object DirectoryWatchingSignatureVerifier extends SignatureVerifier.Companion
           Left(Problem.pure(s"No trusted signature keys - Configure one with $configPath!"))
         else
           for (settings <- Settings.fromConfig(config)) yield
-            new DirectoryWatchingSignatureVerifier(companionToDirectory, settings, onUpdated)
+            new Prepared(companionToDirectory, settings)
       }
+
+  final class Prepared(
+    companionToDirectory: Map[SignatureVerifier.Companion, Path],
+    settings: Settings)
+  {
+    def toResource(onUpdated: () => Unit)(implicit iox: IOExecutor)
+    : Resource[Task, DirectoryWatchingSignatureVerifier] =
+      Service.resource(Task(
+        new DirectoryWatchingSignatureVerifier(
+          companionToDirectory, settings, onUpdated)))
+  }
 
   @deprecated("Not implemented", "")
   def checked(publicKeys: Seq[ByteArray], origin: String) =

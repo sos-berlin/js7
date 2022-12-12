@@ -37,12 +37,15 @@ extends Service
 {
   /** Completes when Subagent has stopped. */
   def untilTerminated: Task[ProgramTermination] =
-    commandExecutor.untilStopped
+    commandExecutor.untilTerminated
 
   protected def start =
     startService(commandExecutor.untilStopped.void)
 
-  def stop = shutdown(signal = None).void
+  private val memoizedStop =
+    shutdown(signal = None).void.memoize
+
+  def stop = memoizedStop
 
   def shutdown(
     signal: Option[ProcessSignal] = None,
@@ -89,9 +92,12 @@ object BareSubagent
       })
       .apply()
 
-  def resource(conf: SubagentConf, js7Scheduler: Scheduler, restartAsDirector: Task[Unit] = Task.unit)
+  def resource(
+    conf: SubagentConf,
+    js7Scheduler: Scheduler,
+    restartAsDirector: Task[Unit] = Task.unit)
   : Resource[Task, BareSubagent] =
-    Resource.suspend(Task.deferAction(scheduler => Task {
+    Resource.suspend(Task {
       import conf.config
       implicit val s: Scheduler = js7Scheduler
 
@@ -109,11 +115,10 @@ object BareSubagent
         journal = new InMemoryJournal(SubagentState.empty,
           size = inMemoryJournalSize,
           waitingFor = "JS7 Agent Director")
-        commandExecutor <- Resource.make(
-          acquire = Task(new SubagentCommandExecutor(
-            journal, conf, conf.toJobLauncherConf(iox, blockingInternalJobScheduler, clock).orThrow)(
-            scheduler, iox)))(
-          release = _.stopV1_5_1)
+        commandExecutor <- conf
+          .toJobLauncherConf(iox, blockingInternalJobScheduler, clock)
+          .flatMap(SubagentCommandExecutor.checkedResource(journal, conf, _)(iox))
+          .orThrow
         actorSystem <- Akkas.actorSystemResource(conf.name, config, js7Scheduler)
         sessionRegister = SessionRegister.start[SimpleSession](
           actorSystem, SimpleSession(_), config)
@@ -128,7 +133,7 @@ object BareSubagent
         logger.info("Subagent is ready to be dedicated" + "\n" + "─" * 80)
         subagent
       }).executeOn(js7Scheduler)
-    }))
+    })
 
   private def provideUriFile(conf: SubagentConf, uri: Checked[Uri]): Resource[Task, Path] =
     provideFile[Task](conf.workDirectory / "http-uri")

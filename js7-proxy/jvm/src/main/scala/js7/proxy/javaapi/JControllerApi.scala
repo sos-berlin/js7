@@ -338,7 +338,7 @@ final class JControllerApi(val asScala: ControllerApi, config: Config)
         case None =>
           ClusterWatchService
             .resource(clusterWatchId, asScala.apiResources.sequence, config, eventBus.asScala)
-            .acquire
+            .startService
             .flatTap(asScala.addStoppable)
             .map(Some(_))
       }
