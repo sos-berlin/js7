@@ -37,9 +37,9 @@ import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.mutable
+import scala.concurrent.Promise
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
-import scala.concurrent.{Future, Promise}
 
 final class GenericEventRouteTest
 extends OurTestSuite with BeforeAndAfterAll with ProvideActorSystem with GenericEventRoute
@@ -98,14 +98,16 @@ extends OurTestSuite with BeforeAndAfterAll with ProvideActorSystem with Generic
       override def isRelevantEvent(keyedEvent: KeyedEvent[Event]) = true
     }.route)
 
-  private lazy val server = new AkkaWebServer with AkkaWebServer.HasUri {
-    protected implicit def actorSystem = GenericEventRouteTest.this.actorSystem
-    protected val config = GenericEventRouteTest.this.config
-    protected val bindings = WebServerBinding.Http(
-      new InetSocketAddress(InetAddress.getLoopbackAddress, findFreeTcpPort())) :: Nil
-    protected def newBoundRoute(binding: WebServerBinding, whenTerminating: Future[Deadline]) =
-      Task.pure(AkkaWebServer.BoundRoute(route, whenTerminating))
-  }
+  private lazy val server = AkkaWebServer
+    .resource(
+      Seq(
+        WebServerBinding.Http(
+          new InetSocketAddress(InetAddress.getLoopbackAddress, findFreeTcpPort()))),
+      config,
+      (_, whenTerminating) => Task.pure(AkkaWebServer.BoundRoute(route, whenTerminating)))(
+      actorSystem)
+    .startService
+    .await(99.s)
 
   private lazy val api = new AkkaHttpClient {
     protected val actorSystem = GenericEventRouteTest.this.actorSystem
@@ -120,7 +122,7 @@ extends OurTestSuite with BeforeAndAfterAll with ProvideActorSystem with Generic
   override def beforeAll() = {
     super.beforeAll()
     AkkaHttpUtils.avoidLazyObjectInitializationDeadlock()
-    server.start await 99.s
+    server
   }
 
   override def afterAll() = {

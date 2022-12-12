@@ -42,7 +42,7 @@ final class CommandWebServerTest extends OurAsyncTestSuite
   private lazy val coupleController = CoupleController(AgentPath("AGENT"), AgentRunId(JournalId.random()), EventId.BeforeFirst)
   private lazy val clientResource = for {
     as <- actorSystemResource("CommandWebServerTest", testConfig)
-    webServer <- AkkaWebServer.resourceForHttp(findFreeTcpPort(), route(as), testConfig)(as)
+    webServer <- AkkaWebServer.httpResource(findFreeTcpPort(), testConfig, route(as))(as)
     client <- Resource.fromAutoCloseable(Task(AgentClient(Uri(s"${webServer.localUri}"), userAndPassword = None)(as)))
   } yield client
 

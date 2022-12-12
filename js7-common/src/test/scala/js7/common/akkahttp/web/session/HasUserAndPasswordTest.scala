@@ -30,7 +30,7 @@ final class HasUserAndPasswordTest extends OurTestSuite with SessionRouteTester
         def httpClient = this
         def sessionUri = Uri(s"$baseUri/session")
         val actorSystem = HasUserAndPasswordTest.this.system
-        val baseUri = server.localUri
+        val baseUri = webServer.localUri
         def uriPrefixPath = ""
         protected val userAndPassword = Some(UserAndPassword(UserId("A-USER"), SecretString("A-PASSWORD")))
         protected def httpsConfig = HttpsConfig.empty
@@ -56,13 +56,13 @@ final class HasUserAndPasswordTest extends OurTestSuite with SessionRouteTester
     val serverTask = progress
       .flatMap(mvar =>
         mvar.tryTake.map(o => assert(o == None)) >>
-          (server.start >>
+          (Task(webServer) >>
             mvar.take.map(o => assert(o == "After retryUntilReachable")) >>
             mvar.take.map(o => assert(o == "After requireAuthorizedAccess")) >>
             mvar.take.map(o => assert(o == "After retryUntilReachable")) >>
             mvar.take.map(o => assert(o == "After requireAuthorizedAccess")) >>
             mvar.take.flatTap(o => Task(assert(o == "FINISHED")))
-          ).guarantee(server.stop()))
+          ).guarantee(webServer.stop()))
     val apiFuture = Task.parMap2(apiTask, serverTask)((a, s) => (a, s)).runToFuture
 
     assert(apiFuture.await(99.s) == ("FINISHED", "FINISHED"))

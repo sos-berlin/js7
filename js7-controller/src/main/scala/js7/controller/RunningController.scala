@@ -405,32 +405,36 @@ object RunningController
 
       val orderApi = new MainOrderApi(controllerState)
 
-      val webServer = injector.instance[ControllerWebServer.Factory]
-        .apply(orderApi, commandExecutor, itemUpdater,
+      injector.instance[ControllerWebServer.Factory]
+        .resource(orderApi, commandExecutor, itemUpdater,
           controllerState,
           clusterNode,
-          recovered.totalRunningSince,  // Maybe different from JournalHeader
-          recovered.eventWatch
-        ).closeWithCloser
-
-      webServer.start
-        .flatTap(_ =>
-          injector.instance[SessionRegister[SimpleSession]]
-            .placeSessionTokenInDirectoryLegacy(
-              SimpleUser.System,
-              controllerConfiguration.workDirectory,
-              closer))
-        .map { _ =>
-          controllerConfiguration.workDirectory / "http-uri" := webServer.localHttpUri.fold(_ => "", o => s"$o/controller")
-          new RunningController(recovered.eventWatch.strict, webServer,
-            recoveredEventId = recovered.eventId,
-            orderApi,
-            controllerState.map(_.orThrow),
-            commandExecutor,
-            itemUpdater,
-            whenReady.future, orderKeeperTerminated, testEventBus, closer, injector)
-        }
-        .runToFuture
+          recovered.totalRunningSince, // Maybe different from JournalHeader
+          recovered.eventWatch)
+        .startService
+        .flatMap(webServer =>
+          Task.defer {
+            // TODO Use a StoppableRegister
+            closer.onClose(webServer.stop.await(99.s))
+            injector
+              .instance[SessionRegister[SimpleSession]]
+              .placeSessionTokenInDirectoryLegacy(
+                SimpleUser.System,
+                controllerConfiguration.workDirectory,
+                closer)
+              .map { _ =>
+                controllerConfiguration.workDirectory / "http-uri" :=
+                  webServer.localHttpUri.fold(_ => "", o => s"$o/controller")
+                new RunningController(recovered.eventWatch.strict, webServer,
+                  recoveredEventId = recovered.eventId,
+                  orderApi,
+                  controllerState.map(_.orThrow),
+                  commandExecutor,
+                  itemUpdater,
+                  whenReady.future, orderKeeperTerminated, testEventBus, closer, injector)
+              }
+          })
+      .runToFuture
     }
 
     private def startClusterNode(

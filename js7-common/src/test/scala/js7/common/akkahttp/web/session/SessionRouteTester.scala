@@ -80,13 +80,15 @@ trait SessionRouteTester extends BeforeAndAfterAll with ScalatestRouteTest with 
         }
       })
 
-  protected final lazy val server = AkkaWebServer.forTest()(route)
+  private lazy val (localUri_, webServerResource) = AkkaWebServer
+    .testUriAndResource()(route)
 
-  protected lazy val localUri = server.localUri
+  protected lazy val localUri = localUri_
+  protected final lazy val webServer = webServerResource.startService.await(99.s)
 
   override def afterAll() = {
     Akkas.shutDownHttpConnectionPools(system)
-    server.stop().await(99.s)
+    webServer.stop().await(99.s)
     super.afterAll()
   }
 

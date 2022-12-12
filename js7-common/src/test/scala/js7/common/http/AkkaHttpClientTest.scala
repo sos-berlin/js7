@@ -97,8 +97,8 @@ final class AkkaHttpClientTest extends OurTestSuite with BeforeAndAfterAll with 
 
   "With a server" - {
     implicit val aJsonCodec: Codec.AsObject[A] = deriveCodec
-    lazy val webServer = {
-      val server = AkkaWebServer.forTest() {
+    lazy val webServer = AkkaWebServer
+      .testResource() {
         decodeRequest {
           import CirceJsonSupport.jsonMarshaller
           post {
@@ -132,10 +132,9 @@ final class AkkaHttpClientTest extends OurTestSuite with BeforeAndAfterAll with 
               }
             }
         }
-      }.closeWithCloser
-      server.start await 99.s
-      server
-    }
+      }
+      .startService
+      .await(99.s)
 
     lazy val httpClient = new AkkaHttpClient {
       protected val actorSystem = AkkaHttpClientTest.this.actorSystem

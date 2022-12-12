@@ -44,7 +44,7 @@ private final class TestControllerProxy(controllerUri: Uri, httpPort: Int)(impli
         api.startProxy(proxyEventBus, eventBus)
           .flatMap { proxy =>
             AkkaWebServer
-              .resourceForHttp(httpPort, webServiceRoute(Task(currentState)), ConfigFactory.empty)
+              .httpResource(httpPort, ConfigFactory.empty, webServiceRoute(Task(currentState)))
               .use(_ =>
                 Task.tailRecM(())(_ =>
                   Task {

@@ -60,7 +60,11 @@ final class JournalRouteTest extends OurTestSuite with RouteTester with JournalR
   private val journalId = JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))
   private var eventWriter: EventJournalWriter = null
 
-  private lazy val webServer = AkkaWebServer.forTest()(pathSegments("journal")(journalRoute))
+  private lazy val webServer = AkkaWebServer
+    .testResource()(pathSegments("journal")(journalRoute))
+    .startService
+    .await(99.s)
+
   private lazy val uri = webServer.localUri
   private lazy val client = new AkkaHttpClient.Standard(uri, actorSystem = system,
     name = "JournalRouteTest")
@@ -68,7 +72,7 @@ final class JournalRouteTest extends OurTestSuite with RouteTester with JournalR
   override def beforeAll() = {
     super.beforeAll()
     eventWatch = new JournalEventWatch(journalMeta, config)
-    webServer.start await 99.s
+    webServer
     writeSnapshot(EventId.BeforeFirst)
     eventWriter = newEventJournalWriter(EventId.BeforeFirst)
     eventWriter.onJournalingStarted()

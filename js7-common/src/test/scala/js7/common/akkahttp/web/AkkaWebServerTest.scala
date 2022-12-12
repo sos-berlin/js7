@@ -21,7 +21,6 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.common.akkahttp.web.AkkaWebServer.HasUri
 import js7.common.akkahttp.web.AkkaWebServerTest.*
 import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkautils.Akkas
@@ -31,8 +30,6 @@ import js7.common.utils.FreeTcpPortFinder.findFreeTcpPorts
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.BeforeAndAfterAll
-import scala.concurrent.Future
-import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer
@@ -45,42 +42,43 @@ final class AkkaWebServerTest extends OurTestSuite with BeforeAndAfterAll
   private lazy val directory = createTempDirectory("AkkaWebServerTest-")
   private lazy val http = Http()
 
-  private lazy val webServer = new AkkaWebServer with HasUri {
-    // TODO Add test with client certificate
-    protected val config = config"""
-      js7.web.server.auth.https-client-authentication = off
-      js7.web.server.shutdown-timeout = 10s"""
-    protected def actorSystem = AkkaWebServerTest.this.actorSystem
-
-    private val keyStoreRef: KeyStoreRef = {
-      createDirectory(directory / "private")
-      KeyStoreResource copyToFile directory / "private" / "https-keystore.p12"
-      KeyStoreRef.fromSubconfig(config"""
+  private lazy val keyStoreRef: KeyStoreRef = {
+    createDirectory(directory / "private")
+    KeyStoreResource copyToFile directory / "private" / "https-keystore.p12"
+    KeyStoreRef.fromSubconfig(
+      config"""
           key-password = "jobscheduler"
           store-password = "jobscheduler"
           """,
-        directory / "private/https-keystore.p12")
+      directory / "private/https-keystore.p12")
       .orThrow
-    }
-
-    val bindings =
-      WebServerBinding.Http(new InetSocketAddress("127.0.0.1", httpPort)) ::
-      WebServerBinding.Https(new InetSocketAddress("127.0.0.1", httpsPort), keyStoreRef) :: Nil
-
-    def newBoundRoute(binding: WebServerBinding, whenTerminating: Future[Deadline]) =
-      Task(AkkaWebServer.BoundRoute(
-        path("TEST") {
-          complete("OKAY")
-        },
-        whenTerminating))
   }
 
-  override def beforeAll(): Unit = {
-    webServer.start await 99.s
+  private lazy val webServer = AkkaWebServer
+    .resource(
+      Seq(
+        WebServerBinding.Http(new InetSocketAddress("127.0.0.1", httpPort)),
+        WebServerBinding.Https(new InetSocketAddress("127.0.0.1", httpsPort), keyStoreRef)),
+      config"""
+        # TODO Add test with client certificate
+        js7.web.server.auth.https-client-authentication = off
+        js7.web.server.shutdown-timeout = 10s""",
+      route = (binding, whenTerminating) =>
+        Task(AkkaWebServer.BoundRoute(
+          path("TEST") {
+            complete("OKAY")
+          },
+          whenTerminating)))
+    .startService
+    .await(99.s)
+
+  override def beforeAll() = {
+    webServer
     super.beforeAll()
   }
 
-  override def afterAll(): Unit = {
+  override def afterAll() = {
+    webServer.stop.await(99.s)
     Akkas.terminateAndWait(actorSystem, 10.s)
     deleteDirectoryRecursively(directory)
     super.afterAll()

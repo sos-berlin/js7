@@ -6,7 +6,8 @@ import akka.http.scaladsl.settings.{ParserSettings, ServerSettings}
 import akka.http.scaladsl.{ConnectionContext, Http, HttpsConnectionContext}
 import akka.stream.TLSClientAuth
 import cats.effect.Resource
-import cats.instances.vector.*
+import cats.effect.concurrent.Deferred
+import cats.syntax.foldable.*
 import cats.syntax.show.*
 import cats.syntax.traverse.*
 import com.typesafe.config.{Config, ConfigFactory}
@@ -15,13 +16,12 @@ import js7.base.generic.Completed
 import js7.base.io.https.Https.loadSSLContext
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.thread.Futures.implicits.*
-import js7.base.time.JavaTimeConverters.AsScalaDuration
+import js7.base.service.Service
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.SetOnce
+import js7.base.web.Uri
 import js7.common.akkahttp.web.AkkaWebServer.*
-import js7.common.akkahttp.web.data.WebServerBinding
+import js7.common.akkahttp.web.data.{WebServerBinding, WebServerPort}
 import js7.common.http.JsonStreamingSupport
 import js7.common.internet.IP.inetSocketAddressShow
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
@@ -36,131 +36,71 @@ import scala.util.control.NonFatal
 /**
  * @author Joacim Zschimmer
  */
-trait AkkaWebServer extends AutoCloseable
+trait AkkaWebServer extends Service
 {
-  protected implicit def actorSystem: ActorSystem
+  protected def serverBindings: Seq[Http.ServerBinding]
   protected def config: Config
-  protected def bindings: Seq[WebServerBinding]
-  protected def newBoundRoute(binding: WebServerBinding, whenTerminating: Future[Deadline])
-  : Task[BoundRoute]
+  protected implicit def actorSystem: ActorSystem
+  protected def scheduler: Scheduler
 
   private val shuttingDownPromise = Promise[Completed]()
-  protected final def isShuttingDown = shuttingDownPromise.future.isCompleted
-  private lazy val akkaHttp = Http(actorSystem)
-  private lazy val shutdownTimeout = config.getDuration("js7.web.server.shutdown-timeout").toFiniteDuration
-  private lazy val httpsClientAuthRequired = config.getBoolean("js7.web.server.auth.https-client-authentication")
-  private val scheduler = SetOnce[Scheduler]
+  private val shutdownTimeout = config.finiteDuration("js7.web.server.shutdown-timeout").orThrow
+  private val stopTimedOut = Deferred.unsafe[Task, Unit]
 
-  private var activeBindings: Seq[Task[Http.ServerBinding]] = null
+  private val untilTerminated: Task[Unit] =
+    serverBindings
+      .traverse(o => Task
+        .fromFuture(o.whenTerminated)
+        .map((_: Http.HttpTerminated) => ()))
+      .map(_.combineAll)
+      .memoize
 
-  /**
-   * @return Future, completed when Agent has been started and is running.
-   */
-  final def start: Task[Completed] =
-    Task.deferAction { scheduler =>
-      shutdownTimeout
-      this.scheduler := scheduler  // For close()
-      if (bindings.isEmpty)
-        Task.raiseError(new IllegalArgumentException("Web server needs a configured HTTP or HTTPS port"))
-      else {
-        activeBindings = bindings map {
-          case o: WebServerBinding.Http => bindHttp(o).memoize
-          case o: WebServerBinding.Https => bindHttps(o).memoize
-        }
-        Task.sequence(activeBindings).map(_ => Completed)
-      }
-    }
+  protected final def start =
+    startService(
+      Task.racePair(untilTerminated, stopTimedOut.get).void)
 
-  private def bindHttp(http: WebServerBinding.Http): Task[Http.ServerBinding] =
-    bind(http)
-
-  private def bindHttps(https: WebServerBinding.Https): Task[Http.ServerBinding] = {
-    logger.info(s"Using HTTPS certificate in ${https.keyStoreRef.url} for port ${https.toWebServerPort}")
-    bind(
-      https,
-      Some(ConnectionContext.https(
-        loadSSLContext(Some(https.keyStoreRef), https.trustStoreRefs),
-        clientAuth = httpsClientAuthRequired ? TLSClientAuth.Need)))
+  def stop = {
+    val longerTimeout = shutdownTimeout + 2.s
+    stop(shutdownTimeout)
+      .timeoutTo(
+        longerTimeout,
+        Task.defer {
+          logger.debug(s"Cancelling AkkaWebServer.stop after ${longerTimeout.pretty}")
+          stopTimedOut.complete(())
+        })
   }
-
-  private def bind(
-    binding: WebServerBinding,
-    httpsConnectionContext: Option[HttpsConnectionContext] = None)
-  : Task[Http.ServerBinding] = {
-    Task.defer {
-      val serverBuilder = akkaHttp
-        .newServerAt(
-          interface = binding.address.getAddress.getHostAddress,
-          port = binding.address.getPort)
-        .pipe(o => httpsConnectionContext.fold(o)(o.enableHttps))
-        .withSettings(
-          ServerSettings(actorSystem)
-            .withParserSettings(
-              ParserSettings(actorSystem)
-                .withCustomMediaTypes(JsonStreamingSupport.CustomMediaTypes*)
-                .withMaxContentLength(JsonStreamingSupport.JsonObjectMaxSize/*js7.conf ???*/)))
-
-      val whenTerminating = Promise[Deadline]()
-      for {
-        boundRoute <- newBoundRoute(binding, whenTerminating.future)
-        serverBinding <-
-          Task.deferFutureAction { implicit s =>
-            val whenBound = serverBuilder.bind(boundRoute.webServerRoute)
-            whenTerminating.completeWith(whenBound.flatMap(_.whenTerminationSignalIssued))
-            whenBound
-          }
-      } yield {
-        logger.info(s"Bound ${binding.scheme}://${serverBinding.localAddress.show}" +
-          boundRoute.boundMessageSuffix)
-        serverBinding
-      }
-    }
-  }
-
-  def close() =
-    for (scheduler <- scheduler) {
-      stop(shutdownTimeout)
-        .runToFuture(scheduler)
-        .await(shutdownTimeout + 2.s)
-    }
 
   def stop(timeout: FiniteDuration = shutdownTimeout): Task[Unit] =
-    Task.defer {
-      scheduler.toOption.fold(Task.unit)(scheduler =>
-        terminate(timeout)
-          .executeOn(scheduler)
-          .uncancelable
-          .timeout(timeout + 1.s)
-          .onErrorHandle {
-            case NonFatal(t: TimeoutException) =>
-              logger.warn(s"$toString while shuttig down the web server: " + t.toStringWithCauses)
-            case NonFatal(t) =>
-              logger.warn(s"$toString close(): " + t.toStringWithCauses, t.nullIfNoStackTrace)
-          })
-    }
+    terminate(timeout)
+      .executeOn(scheduler)
+      .uncancelable
+      .timeout(timeout + 1.s)
+      .onErrorHandle {
+        case NonFatal(t: TimeoutException) =>
+          logger.warn(s"$toString while shuttig down the web server: " + t.toStringWithCauses)
+        case NonFatal(t) =>
+          logger.warn(s"$toString close(): " + t.toStringWithCauses, t.nullIfNoStackTrace)
+      }
 
-  def terminate(timeout: FiniteDuration): Task[Unit] =
+  private def terminate(timeout: FiniteDuration): Task[Unit] =
     Task.defer {
       if (!shuttingDownPromise.trySuccess(Completed))
         Task.unit
-      else if (activeBindings == null)
+      else if (serverBindings == null)
         Task.unit
       else
         terminateBindings(timeout)
     }
 
-  private def terminateBindings(timeout: FiniteDuration): Task[Unit] = {
-    logger.debugTask {
-      activeBindings.toVector
-        .traverse(_.flatMap(binding =>
-          Task.deferFuture(binding.terminate(hardDeadline = timeout))
-            .map { (_: Http.HttpTerminated) =>
-              logger.debug(s"$binding terminated")
-              Completed
-            }))
-        .map((_: Seq[Completed]) => ())
-    }
-  }
+  private def terminateBindings(timeout: FiniteDuration): Task[Unit] =
+    logger.debugTask(
+      serverBindings.traverse(binding =>
+        Task.deferFuture(binding.terminate(hardDeadline = timeout))
+          .map { (_: Http.HttpTerminated) =>
+            logger.debug(s"$binding terminated")
+            Completed
+          })
+        .map((_: Seq[Completed]) => ()))
 
   override def toString = s"${getClass.shortClassName}"
 }
@@ -174,44 +114,30 @@ object AkkaWebServer
     """
 
   @TestOnly
-  def forTest()(route: Route)(implicit as: ActorSystem): AkkaWebServer & HasUri =
-    forTest(ConfigFactory.empty)(route)
+  def testResource()(route: Route)(implicit as: ActorSystem)
+  : Resource[Task, AkkaWebServer & HasUri] =
+    testUriAndResource()(route)._2
 
   @TestOnly
-  def forTest(config: Config)(route: Route)(implicit as: ActorSystem): AkkaWebServer & HasUri =
-    forTest(findFreeTcpPort(), config, route = route)
+  def testUriAndResource()(route: Route)(implicit as: ActorSystem)
+  : (Uri, Resource[Task, AkkaWebServer & HasUri]) =
+    testResource(ConfigFactory.empty)(route)
 
   @TestOnly
-  def forTest(port: Int = findFreeTcpPort(), config: Config = ConfigFactory.empty, route: Route)(implicit as: ActorSystem)
-  : AkkaWebServer & HasUri =
-    http(port = port, config, route)
+  def testResource(config: Config)(route: Route)(implicit as: ActorSystem)
+  : (Uri, Resource[Task, AkkaWebServer & HasUri]) =
+    testResource(findFreeTcpPort(), config, route = route)
 
-  def http(port: Int = findFreeTcpPort(), config: Config = testConfig, route: Route)(implicit as: ActorSystem)
-  : AkkaWebServer & HasUri =
-    new Standard(
-      WebServerBinding.http(port) :: Nil,
-      config.withFallback(testConfig),
-      (_, whenTerminating) => Task.pure(BoundRoute(route, whenTerminating)))
+  @TestOnly
+  def testResource(port: Int = findFreeTcpPort(), config: Config = ConfigFactory.empty, route: Route)(implicit as: ActorSystem)
+  : (Uri, Resource[Task, AkkaWebServer & HasUri]) =
+    Uri(s"http://127.0.0.1:$port") -> httpResource(port = port, config.withFallback(testConfig), route)
 
-  final class Standard(
-    protected val bindings: Seq[WebServerBinding],
-    protected val config: Config,
-    route: (WebServerBinding, Future[Deadline]) => Task[BoundRoute])
-    (implicit protected val actorSystem: ActorSystem)
-  extends AkkaWebServer with HasUri
-  {
-    def newBoundRoute(binding: WebServerBinding, whenTerminating: Future[Deadline]) =
-      route(binding, whenTerminating)
-  }
-
-  def resourceForHttp(
-    httpPort: Int,
-    route: Route,
-    config: Config)
+  def httpResource(port: Int, config: Config, route: Route)
     (implicit actorSystem: ActorSystem)
   : Resource[Task, AkkaWebServer & HasUri] =
     resource(
-      WebServerBinding.http(httpPort) :: Nil,
+      Seq(WebServerBinding.http(port)),
       config,
       (_, whenTerminating) => Task.pure(BoundRoute(route, whenTerminating)))
 
@@ -221,18 +147,77 @@ object AkkaWebServer
     route: (WebServerBinding, Future[Deadline]) => Task[BoundRoute])
     (implicit actorSystem: ActorSystem)
   : Resource[Task, AkkaWebServer & HasUri] =
-    Resource.make(
-      acquire =
-        Task.defer {
-          val webServer = new Standard(bindings, config, route)
-          webServer.start.map(_ => webServer)
-        })(
-      release = _.stop())
+    Service.resource(Task.defer {
+      Task.deferAction { scheduler =>
+        val httpsClientAuthRequired = config.getBoolean("js7.web.server.auth.https-client-authentication")
+        val akkaHttp = Http(actorSystem)
+
+        def bindHttps(https: WebServerBinding.Https): Task[Http.ServerBinding] = {
+          logger.info(s"Using HTTPS certificate in ${https.keyStoreRef.url} for port ${https.toWebServerPort}")
+          bind(
+            https,
+            Some(ConnectionContext.https(
+              loadSSLContext(Some(https.keyStoreRef), https.trustStoreRefs),
+              clientAuth = httpsClientAuthRequired ? TLSClientAuth.Need)))
+        }
+
+        def bind(
+          binding: WebServerBinding,
+          httpsConnectionContext: Option[HttpsConnectionContext] = None)
+        : Task[Http.ServerBinding] =
+          Task.defer {
+            val serverBuilder = akkaHttp
+              .newServerAt(
+                interface = binding.address.getAddress.getHostAddress,
+                port = binding.address.getPort)
+              .pipe(o => httpsConnectionContext.fold(o)(o.enableHttps))
+              .withSettings(
+                ServerSettings(actorSystem)
+                  .withParserSettings(
+                    ParserSettings(actorSystem)
+                      .withCustomMediaTypes(JsonStreamingSupport.CustomMediaTypes *)
+                      .withMaxContentLength(JsonStreamingSupport.JsonObjectMaxSize /*js7.conf ???*/)))
+
+            val whenTerminating = Promise[Deadline]()
+            for {
+              boundRoute <- route(binding, whenTerminating.future)
+              serverBinding <-
+                Task.deferFutureAction { implicit s =>
+                  val whenBound = serverBuilder.bind(boundRoute.webServerRoute)
+                  whenTerminating.completeWith(whenBound.flatMap(_.whenTerminationSignalIssued))
+                  whenBound
+                }
+            } yield {
+              logger.info(
+                s"Bound ${binding.scheme}://${serverBinding.localAddress.show}${boundRoute.boundMessageSuffix}")
+              serverBinding
+            }
+          }
+
+        bindings
+          .traverse {
+            case o: WebServerBinding.Http => bind(o)
+            case o: WebServerBinding.Https => bindHttps(o)
+          }.map(serverBindings =>
+            new Standard(
+              serverBindings,
+              webServerPorts = bindings.map(_.toWebServerPort).toList,
+              config
+            )(actorSystem, scheduler))
+      }
+    })
+
+  final class Standard(
+    protected val serverBindings: Seq[Http.ServerBinding],
+    protected val webServerPorts: Seq[WebServerPort],
+    protected val config: Config)
+    (implicit
+      protected val actorSystem: ActorSystem,
+      protected val scheduler: Scheduler)
+    extends AkkaWebServer with HasUri
 
   trait HasUri extends WebServerBinding.HasLocalUris {
     this: AkkaWebServer =>
-
-    protected final def webServerPorts = bindings.map(_.toWebServerPort)
   }
 
   def actorName(prefix: String, binding: WebServerBinding) = {

@@ -1,11 +1,10 @@
 package js7.controller.web
 
 import akka.actor.ActorSystem
+import cats.effect.Resource
 import com.google.inject.Injector
 import javax.inject.{Inject, Singleton}
 import js7.base.problem.Checked
-import js7.base.utils.Closer
-import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.cluster.ClusterNode
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
@@ -24,11 +23,10 @@ object ControllerWebServer
   final class Factory @Inject private(
     controllerConfiguration: ControllerConfiguration,
     sessionRegister: SessionRegister[SimpleSession],
-    injector: Injector,
-    closer: Closer)(
+    injector: Injector)(
     implicit actorSystem_ : ActorSystem)
   {
-    def apply(
+    def resource(
       orderApi: OrderApi,
       commandExecutor: ControllerCommandExecutor,
       itemUpdater: ItemUpdater,
@@ -36,8 +34,8 @@ object ControllerWebServer
       clusterNode: ClusterNode[ControllerState],
       totalRunningSince: Deadline,
       eventWatch: FileEventWatch)
-    : AkkaWebServer & AkkaWebServer.HasUri =
-      new AkkaWebServer.Standard(
+    : Resource[Task, AkkaWebServer & AkkaWebServer.HasUri] =
+      AkkaWebServer.resource(
         controllerConfiguration.webServerBindings,
         controllerConfiguration.config,
         (binding, whenShuttingDown) =>
@@ -54,7 +52,6 @@ object ControllerWebServer
               totalRunningSince,
               sessionRegister,
               eventWatch,
-              injector)))
-      ).closeWithCloser(closer)
+              injector))))
   }
 }

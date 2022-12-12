@@ -211,30 +211,36 @@ object RunningAgent {
 
       val sessionRegister = injector.instance[SessionRegister[AgentSession]]
 
-      val task = for {
-        ready <- Task.fromFuture(mainActorReadyPromise.future)
-        api = ready.api
-        webServer = AgentWebServer(
-          agentConfiguration,
-          gateKeeperConf,
-          api,
-          injector.instance[SessionRegister[AgentSession]],
-          persistence.eventWatch
-        ).closeWithCloser(closer)
-        _ <- webServer.start
-        sessionToken <- sessionRegister.placeSessionTokenInDirectoryLegacy(
-          SimpleUser.System,
-          agentConfiguration.workDirectory,
-          closer)
-      } yield {
-        agentConfiguration.workDirectory / "http-uri" :=
-          webServer.localHttpUri.fold(_ => "", o => s"$o/agent")
+      Task
+        .fromFuture(mainActorReadyPromise.future)
+        .map(_.api)
+        .flatMap(api => AgentWebServer
+          .resource(
+            agentConfiguration,
+            gateKeeperConf,
+            api,
+            injector.instance[SessionRegister[AgentSession]],
+            persistence.eventWatch)
+          .startService
+          .map { webServer =>
+            // TODO Use a StoppableRegister
+            closer.onClose(webServer.stop.await(99.s))
+            webServer
+          }
+          .flatMap(webServer =>
+            sessionRegister.placeSessionTokenInDirectoryLegacy(
+              SimpleUser.System,
+              agentConfiguration.workDirectory,
+              closer)
+              .flatMap(sessionToken => Task {
+                agentConfiguration.workDirectory / "http-uri" :=
+                  webServer.localHttpUri.fold(_ => "", o => s"$o/agent")
 
-        new RunningAgent(persistence, webServer, mainActor,
-          terminationPromise.future, api, sessionRegister, sessionToken,
-          closer, injector)
-      }
-      task.runToFuture
+                new RunningAgent(persistence, webServer, mainActor,
+                  terminationPromise.future, api, sessionRegister, sessionToken,
+                  closer, injector)
+              })))
+        .runToFuture
     }.flatten
   }
 }
