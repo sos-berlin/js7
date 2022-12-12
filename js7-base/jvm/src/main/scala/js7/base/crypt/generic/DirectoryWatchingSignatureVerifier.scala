@@ -158,7 +158,7 @@ extends SignatureVerifier with AutoCloseable
 
           try onUpdated()
           catch { case NonFatal(t) =>
-            logger.error(s"onUpdated => ${t.toStringWithCauses}", t)
+            logger.error(s"onUpdated => ${t.toStringWithCauses}", t.nullIfNoStackTrace)
           }
         }
       })

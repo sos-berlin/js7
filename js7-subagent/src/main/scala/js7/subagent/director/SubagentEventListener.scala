@@ -144,7 +144,7 @@ private trait SubagentEventListener[S_ <: SubagentDirectorState[S_]]
         Task.pure(None -> onSubagentDied(ProcessLostDueToShutdownProblem, SubagentShutdown))
 
       case KeyedEvent(_: NoKey, event: SubagentEvent.SubagentItemAttached) =>
-        logger.debug(event.toString)
+        logger.debug(event.toShortString)
         Task.pure(None -> Task.unit)
 
       case keyedEvent =>
