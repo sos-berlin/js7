@@ -39,7 +39,8 @@ extends Service
   def untilTerminated: Task[ProgramTermination] =
     commandExecutor.untilStopped
 
-  protected def run = commandExecutor.untilStopped.void
+  protected def start =
+    startService(commandExecutor.untilStopped.void)
 
   def stop = shutdown(signal = None).void
 

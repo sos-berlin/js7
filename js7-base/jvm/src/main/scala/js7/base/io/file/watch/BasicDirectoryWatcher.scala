@@ -27,12 +27,13 @@ extends Service.StoppableByRequest
   logger.debug(s"newWatchService $directory")
   private val watchService = directory.getFileSystem.newWatchService()
 
-  protected def run =
-    whenStopRequested
-      .guarantee(Task {
-        logger.debug("watchService.close()")
-        watchService.close()
-      })
+  protected def start =
+    startService(
+      whenStopRequested
+        .guarantee(Task {
+          logger.debug("watchService.close()")
+          watchService.close()
+        }))
 
   private[watch] def observableResource: Resource[Task, Observable[Seq[DirectoryEvent]]] =
     directoryWatchResource.map(_ => Observable.defer {

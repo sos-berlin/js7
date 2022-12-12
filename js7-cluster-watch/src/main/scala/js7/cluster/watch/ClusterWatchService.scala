@@ -36,24 +36,25 @@ extends Service.StoppableByRequest
   private val clusterWatch = new ClusterWatch(now)
   private val stopNow = PublishSubject[Unit]()
 
-  protected def run: Task[Unit] =
+  protected def start =
     Task.defer {
       logger.info("Starting ClusterWatch")
-      Observable
-        .fromIterable(nodeApis.toList
-          .map(nodeApi =>
-            observeAgainAndAgain(nodeApi)(
-              nodeObservable(nodeApi).map(nodeApi -> _))))
-        .merge
-        .mapEval { case (nodeApi, msg) =>
-          handleMessage(nodeApi, msg)
-        }
-        .takeUntilEval(whenStopRequested)
-        .completedL
-        .guarantee(Task
-          .fromFuture(
-            stopNow.onNext(()))
-          .void)
+      startService(
+        Observable
+          .fromIterable(nodeApis.toList
+            .map(nodeApi =>
+              observeAgainAndAgain(nodeApi)(
+                nodeObservable(nodeApi).map(nodeApi -> _))))
+          .merge
+          .mapEval { case (nodeApi, msg) =>
+            handleMessage(nodeApi, msg)
+          }
+          .takeUntilEval(whenStopRequested)
+          .completedL
+          .guarantee(Task
+            .fromFuture(
+              stopNow.onNext(()))
+            .void))
     }
 
   private def observeAgainAndAgain[A](nodeApi: ClusterNodeApi)(observable: Observable[A])

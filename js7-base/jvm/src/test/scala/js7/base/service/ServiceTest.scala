@@ -128,8 +128,8 @@ final class ServiceTest extends OurAsyncTestSuite
   {
     val running = Deferred.unsafe[Task, Unit]
 
-    protected def run =
-      Task.defer {
+    protected def start =
+      startService(Task.defer {
         setRunning(true)
         running
           .complete(())
@@ -138,7 +138,7 @@ final class ServiceTest extends OurAsyncTestSuite
             logger.info(s"$exitCase")
             setRunning(false)
           })
-      }
+      })
 
     override def toString = "MyService"
   }
@@ -157,9 +157,9 @@ object ServiceTest
     onFailed: Task[Unit])
   extends Service.StoppableByRequest
   {
-    protected def run =
-      Task.race(run2, whenStopRequested)
-        .void
+    protected def start =
+      startService(
+        Task.race(run2, whenStopRequested).void)
 
     private def run2 =
       whenFail *> Task.raiseError(FailingService.exception).guarantee(onFailed)

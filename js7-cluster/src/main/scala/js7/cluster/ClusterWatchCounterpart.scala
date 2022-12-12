@@ -30,8 +30,9 @@ extends Service.StoppableByRequest
   private val request = Atomic(None: Option[Requested])
   private val pubsub = new Fs2PubSub[Task, ClusterWatchMessage]
 
-  def run =
-    whenStopRequested *> pubsub.complete
+  protected def start =
+    startService(
+      whenStopRequested *> pubsub.complete)
 
   def checkClusterState(clusterState: HasNodes): Task[Checked[Completed]] =
     check(reqId =>
