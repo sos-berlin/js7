@@ -19,7 +19,7 @@ object ClusterWatchMain
     //lockAndRunMain(args) { arguments =>
       val conf = ClusterWatchConf.fromCommandLine(arguments)
       JavaMain.runMain(conf.name, arguments, conf.config) {
-        run(conf)(_.untilStopped)
+        run(conf)(_ => Task.never)
       }
     //}
   }

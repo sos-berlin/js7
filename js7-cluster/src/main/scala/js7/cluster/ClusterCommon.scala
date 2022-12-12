@@ -36,7 +36,8 @@ private[cluster] final class ClusterCommon(
   (implicit s: Scheduler)
 {
   val activationInhibitor = new ActivationInhibitor
-  val clusterWatch = ClusterWatchCounterpart.resource(ownId, timing).allocated.map(_._1)
+  val clusterWatch = ClusterWatchCounterpart.resource(ownId, timing)
+    .startService
     .runSyncUnsafe(99.s)/*TODO Make ClusterCommon a service*/
 
   private val _clusterWatchSynchronizer = SetOnce[ClusterWatchSynchronizer]

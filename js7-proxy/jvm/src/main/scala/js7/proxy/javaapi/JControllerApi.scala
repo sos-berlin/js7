@@ -321,8 +321,7 @@ final class JControllerApi(val asScala: ControllerApi)(implicit scheduler: Sched
         case None =>
           ClusterWatchService
             .resource(asScala.apiResources.sequence, ConfigFactory.empty)
-            .allocated
-            .map(_._1)
+            .startService
             .flatTap(asScala.addStoppable)
             .map(Some(_))
       }
