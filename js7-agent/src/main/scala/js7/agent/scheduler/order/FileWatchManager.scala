@@ -165,7 +165,8 @@ final class FileWatchManager(
     fileWatch.directoryExpr
       .eval(EnvScope)
       .flatMap(_.asString)
-      .map(Paths.get(_))
+      .flatMap(o => Checked.catchNonFatal(
+        Paths.get(o)))
       .map { directory =>
         val delayIterator = retryDelays.iterator ++ Iterator.continually(retryDelays.last)
         var directoryState = fileWatchState.directoryState
