@@ -109,9 +109,11 @@ object BareSubagent
         journal = new InMemoryJournal(SubagentState.empty,
           size = inMemoryJournalSize,
           waitingFor = "JS7 Agent Director")
-        commandExecutor = new SubagentCommandExecutor(journal, conf,
-          conf.toJobLauncherConf(iox, blockingInternalJobScheduler, clock).orThrow)(
-          scheduler, iox)
+        commandExecutor <- Resource.make(
+          acquire = Task(new SubagentCommandExecutor(
+            journal, conf, conf.toJobLauncherConf(iox, blockingInternalJobScheduler, clock).orThrow)(
+            scheduler, iox)))(
+          release = _.stopV1_5_1)
         actorSystem <- Akkas.actorSystemResource(conf.name, config, js7Scheduler)
         sessionRegister = SessionRegister.start[SimpleSession](
           actorSystem, SimpleSession(_), config)

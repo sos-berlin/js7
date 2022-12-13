@@ -43,6 +43,8 @@ extends SubagentExecutor
       () => testEventBus.publish(ItemSignatureKeysUpdated))
     .orThrow
 
+  def stopV1_5_1 = signatureVerifier.stopV1_5_1
+
   def checkedDedicated: Checked[Dedicated] =
     dedicatedOnce.checked
 

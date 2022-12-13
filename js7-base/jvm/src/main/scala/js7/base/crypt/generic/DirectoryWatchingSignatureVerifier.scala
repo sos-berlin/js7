@@ -1,5 +1,6 @@
 package js7.base.crypt.generic
 
+import cats.effect.ExitCase
 import cats.instances.either.*
 import cats.instances.vector.*
 import cats.syntax.traverse.*
@@ -7,6 +8,7 @@ import com.typesafe.config.Config
 import java.nio.file.Files.exists
 import java.nio.file.StandardWatchEventKinds.{ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY}
 import java.nio.file.{Path, Paths}
+import java.util.concurrent.RejectedExecutionException
 import js7.base.Problems.UnknownSignatureTypeProblem
 import js7.base.configutils.Configs.RichConfig
 import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier.{Settings, State, logger}
@@ -83,17 +85,33 @@ extends SignatureVerifier with AutoCloseable
       .runToFuture
   }
 
-  def close(): Unit =
+  def close(): Unit = {
     if (!stopped.getAndSet(true)) {
       stop.onComplete()
-      blocking {
-        // TODO Shutdown JS7 asynchronously !
-        try runningFuture.await(5.s)
-        catch { case NonFatal(t) =>
-          logger.error(s"stop: ${t.toStringWithCauses}")
-        }
+    }
+    blocking {
+      // TODO Shutdown JS7 asynchronously !
+      try runningFuture.await(5.s)
+      catch { case NonFatal(t) =>
+        logger.error(s"stop: ${t.toStringWithCauses}")
       }
     }
+  }
+
+  // Only for v1.5.1. Stopping is fixed in v1.6
+  val stopV1_5_1: Task[Unit] =
+    logger
+      .debugTask(Task.defer {
+        if (!stopped.getAndSet(true)) {
+          stop.onComplete()
+        }
+        Task.fromFuture(runningFuture)
+        .guaranteeCase {
+          case ExitCase.Error(t) => Task(logger.error(s"stop: ${t.toStringWithCauses}"))
+          case _ => Task.unit
+        }
+      })
+      .memoize
 
   private def startAndForget(
     companionToDirectoryState: Map[SignatureVerifier.Companion, (Path, DirectoryState)])
@@ -104,9 +122,12 @@ extends SignatureVerifier with AutoCloseable
       .map { case (companion, (directory, directoryState)) =>
         CorrelId.bindNew(
           observeDirectory(companion, directory, directoryState)
-            .onErrorRestartLoop(()) {( t, _, retry) =>
+            .onErrorRestartLoop(()) { (t, _, retry) =>
               logger.error(s"${companion.typeName}: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
-              retry(()).delayExecution(10.s)
+              t match {
+                case _: RejectedExecutionException => Task.unit // Due ot bad test behaviour?
+                case _ => retry(()).delayExecution(10.s)
+              }
             }
             .startAndForget)
       }
