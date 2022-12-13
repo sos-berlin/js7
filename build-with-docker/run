@@ -1,16 +1,29 @@
 #!/bin/sh
 set -eu
 
+# USAGE EXAMPLE
+# build-with-docker/run sbt ";clean;test"
+
 cd "${0%/*}"/../build-with-docker/..
 user=build
 
-docker rm js7-builder >/dev/null 2>&1 || true
+if which podman >/dev/null && test "$(uname)" != "Darwin"; then
+  docker=podman
+  # For proper ownership of mounted volumes
+  extras="--userns=keep-id"
+else
+  docker=docker
+  extras=""
+fi
+
+$docker rm js7-builder >/dev/null 2>&1 || true
 
 ( cd build-with-docker
-  DOCKER_BUILDKIT=1 DOCKER_SCAN_SUGGEST=false docker build --tag=js7-builder .
+  DOCKER_BUILDKIT=1 DOCKER_SCAN_SUGGEST=false $docker build --tag=js7-builder .
 )
 
-docker run \
+$docker run \
+  $extras \
   --volume=js7-builder:/home/$user/mount \
   --volume="$(pwd)":/home/$user/js7:delegated \
   --workdir="/home/$user/js7" \

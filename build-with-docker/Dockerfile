@@ -22,8 +22,10 @@ RUN \
   adduser --comment "JS7 build" --no-create-home build &&\
   mkdir --parents /home/build/mount/{.cache,.ivy2,.npm,.sbt} &&\
   ln -s /home/build/mount/{.cache,.ivy2,.npm,.sbt} /home/build/ &&\
-  chown -R build.build /home/build/ &&\
-  : echo "build ALL=(ALL) NOPASSWD: ALL" >>/etc/sudoers
+  mkdir /home/build/js7 &&\
+  chown -R build.build /home/build/
+
+# echo "build ALL=(ALL) NOPASSWD: ALL" >>/etc/sudoers
 
 USER build
 WORKDIR /home/build/js7
