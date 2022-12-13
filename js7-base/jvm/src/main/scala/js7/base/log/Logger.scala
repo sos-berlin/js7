@@ -10,6 +10,7 @@ import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.base.utils.StackTraces.StackTraceThrowable
 import monix.eval.Task
+import monix.reactive.Observable
 import org.slf4j.{LoggerFactory, Marker, MarkerFactory}
 import scala.reflect.ClassTag
 
@@ -110,6 +111,14 @@ object Logger
       def debugResource[A](function: String, args: => Any = "")(resource: Resource[Task, A])
       : Resource[Task, A] =
         logResource[Task, A](logger, function, args)(resource)
+
+      def debugObservable[A](observable: Observable[A])(implicit src: sourcecode.Name)
+      : Observable[A] =
+        debugObservable(src.value + ": Observable")(observable)
+
+      def debugObservable[A](function: String, args: => Any = "")(observable: Observable[A])
+      : Observable[A] =
+        logObservable[A](logger, function, args)(observable)
     }
 
     private def logTask[A](logger: ScalaLogger, function: String, args: => Any = "",
@@ -148,7 +157,7 @@ object Logger
       trace: Boolean = false)
       (resource: Resource[F, A])
       (implicit F: Applicative[F] & Sync[F])
-    : Resource[F, A] = {
+    : Resource[F, A] =
       Resource
         .makeCase(
           acquire = F.delay(
@@ -160,7 +169,21 @@ object Logger
             F.delay(
               for (ctx <- maybeCtx) ctx.logExitCase(exitCase)))
         .flatMap(_ => resource)
-      }
+
+    private def logObservable[A](
+      logger: ScalaLogger,
+      function: String,
+      args: => Any = "",
+      trace: Boolean = false)
+      (observable: Observable[A])
+    : Observable[A] =
+      observable
+        .doOnSubscribe(
+          Task.when(isLoggingEnabled(logger, trace))(Task(
+            logStart(logger, function, args, trace))))
+        .guaranteeCase(exitCase =>
+          Task.when(isLoggingEnabled(logger, trace))(Task(
+            logExitCase(logger, function, args, trace, duration = "", exitCase))))
   }
 
   private final class StartReturnLogContext(
@@ -169,9 +192,30 @@ object Logger
     args: => Any = "",
     trace: Boolean = false)
   {
-    lazy val argsString = args.toString
+    logStart(logger, function, args, trace)
+    val startedAt = System.nanoTime()
 
+    private def duration: String =
+      if (startedAt == 0)
+        ""
+      else
+        (System.nanoTime() - startedAt).ns.pretty + " "
+
+    def logExitCase(exitCase: ExitCase[Throwable]) =
+      Logger.logExitCase(logger, function, args, trace, duration, exitCase)
+
+    def logReturn(marker: String, msg: AnyRef) =
+      Logger.logReturn(logger, function, args, trace, duration, marker, msg)
+  }
+
+  private def logStart(
+    logger: ScalaLogger,
+    function: String,
+    args: => Any = "",
+    trace: Boolean = false)
+  : Unit = {
     // Are these optimizations justified ???
+    lazy val argsString = args.toString
     if (argsString.isEmpty) {
       if (trace) {
         logger.trace(s"↘ $function ...")
@@ -185,34 +229,43 @@ object Logger
         logger.debug(s"↘ $function($argsString) ...")
       }
     }
+  }
 
-    val startedAt = System.nanoTime()
-
-    def logExitCase(exitCase: ExitCase[Throwable]) =
-      exitCase match {
-        case Error(t) => logReturn("💥️", t.toStringWithCauses)
-        case Canceled => logReturn("❌", Canceled)
-        case Completed => logReturn("", "Completed")
-      }
-
-    def logReturn(marker: String, msg: AnyRef) = {
-      lazy val argsString = args.toString
-      val duration = if (startedAt == 0) "" else (System.nanoTime() - startedAt).ns.pretty + " "
-      if (argsString.isEmpty) {
-        if (trace) {
-          logger.trace(s"↙$marker $function => $duration$msg")
-        } else {
-          logger.debug(s"↙$marker $function => $duration$msg")
-        }
-      } else if (trace) {
-        logger.trace(s"↙$marker $function($argsString) => $duration$msg")
-      } else {
-        logger.debug(s"↙$marker $function($argsString) => $duration$msg")
-      }
+  private def logExitCase(
+    logger: ScalaLogger,
+    function: String,
+    args: => Any = "",
+    trace: Boolean = false,
+    duration: String,
+    exitCase: ExitCase[Throwable])
+  : Unit =
+    exitCase match {
+      case Error(t) => logReturn(logger, function, args, trace, duration, "💥️", t.toStringWithCauses)
+      case Canceled => logReturn(logger, function, args, trace, duration, "❌", Canceled)
+      case Completed => logReturn(logger, function, args, trace, duration, "", "Completed")
     }
 
-    def isEnabled =
-      isLoggingEnabled(logger, trace)
+  private def logReturn(
+    logger: ScalaLogger,
+    function: String,
+    args: => Any = "",
+    trace: Boolean = false,
+    duration: String,
+    marker: String,
+    msg: AnyRef)
+  : Unit = {
+    lazy val argsString = args.toString
+    if (argsString.isEmpty) {
+      if (trace) {
+        logger.trace(s"↙$marker $function => $duration$msg")
+      } else {
+        logger.debug(s"↙$marker $function => $duration$msg")
+      }
+    } else if (trace) {
+      logger.trace(s"↙$marker $function($argsString) => $duration$msg")
+    } else {
+      logger.debug(s"↙$marker $function($argsString) => $duration$msg")
+    }
   }
 
   private def isLoggingEnabled(logger: ScalaLogger, trace: Boolean) =
