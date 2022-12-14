@@ -1,5 +1,6 @@
 package js7.cluster
 
+import akka.actor.ActorSystem
 import akka.util.Timeout
 import cats.effect.Resource
 import com.softwaremill.diffx
@@ -8,6 +9,7 @@ import izumi.reflect.Tag
 import java.nio.file.Path
 import js7.base.eventbus.EventPublisher
 import js7.base.generic.Completed
+import js7.base.io.https.HttpsConfig
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
@@ -23,6 +25,7 @@ import js7.data.cluster.ClusterCommand.{ClusterInhibitActivation, ClusterStartBa
 import js7.data.cluster.ClusterState.{Coupled, Empty, FailedOver, HasNodes}
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchAcknowledge
 import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterSetting, ClusterWatchMessage, ClusterWatchingCommand}
+import js7.data.controller.ControllerId
 import js7.data.event.{EventId, JournalPosition, SnapshotableState}
 import js7.journal.EventIdGenerator
 import js7.journal.data.JournalMeta
@@ -300,16 +303,15 @@ final class ClusterNode[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
   def executeClusterWatchingCommand(command: ClusterWatchingCommand): Task[Checked[Unit]] =
     command match {
       case ClusterWatchAcknowledge(requestId, maybeProblem) =>
-        common
-          /*.maybeClusterWatchSynchronizer
-          .toRight(Problem(s"No ClusterWatchSynchronizer: $command"))
-          .flatMap(o => o*/
-          .clusterWatchCounterpart.onClusterWatchAcknowledged(requestId, maybeProblem)
-          .rightAs(ClusterCommand.Response.Accepted)
+        Task(common.checkedClusterWatchCounterpart)
+          .flatMapT(_
+            .onClusterWatchAcknowledged(requestId, maybeProblem))
     }
 
-  def clusterWatchMessageStream: Task[fs2.Stream[Task, ClusterWatchMessage]] =
-    common.clusterWatch.newStream
+  def clusterWatchMessageStream: Task[Checked[fs2.Stream[Task, ClusterWatchMessage]]] =
+    Task(common.checkedClusterWatchCounterpart)
+      .flatMapT(_
+        .newStream.map(Right(_)))
 
   /** Is the active or non-cluster (Empty, isPrimary) node or is becoming active. */
   def isWorkingNode = _passiveOrWorkingNode.exists(_.isRight)
@@ -325,9 +327,11 @@ object ClusterNode
   private val logger = Logger(getClass)
 
   def apply[S <: SnapshotableState[S] : diffx.Diff : Tag](
+    controllerId: ControllerId,
     persistence: FileStatePersistence[S],
     journalMeta: JournalMeta,
     clusterConf: ClusterConf,
+    httpsConfig: HttpsConfig,
     config: Config,
     eventIdGenerator: EventIdGenerator,
     clusterNodeApi: (Uri, String) => Resource[Task, ClusterNodeApi],
@@ -336,6 +340,7 @@ object ClusterNode
     journalActorAskTimeout: Timeout)
     (implicit
       S: SnapshotableState.Companion[S],
+      actorSystem: ActorSystem,
       scheduler: Scheduler)
   : ClusterNode[S] =
     new ClusterNode(
@@ -343,7 +348,7 @@ object ClusterNode
       journalMeta,
       clusterConf,
       eventIdGenerator,
-      new ClusterCommon(clusterConf.ownId, clusterNodeApi, clusterConf.timing,
+      new ClusterCommon(controllerId, clusterConf.ownId, clusterNodeApi, httpsConfig, clusterConf.timing,
         config, licenseChecker, testEventPublisher, journalActorAskTimeout))
 
   @deprecated("Provisional fix for v2.4", "v2.5")

@@ -17,6 +17,7 @@ import js7.base.utils.{Stoppable, StoppablesRegister}
 import js7.base.web.HttpClient.HttpException
 import js7.base.web.{HttpClient, Uri}
 import js7.controller.client.HttpControllerApi
+import js7.data.cluster.ClusterSetting
 import js7.data.controller.ControllerCommand.Response.Accepted
 import js7.data.controller.ControllerCommand.{AddOrder, AddOrders, ReleaseEvents}
 import js7.data.controller.ControllerState.*
@@ -80,9 +81,9 @@ extends ControllerApiWithHttp
       ControllerProxy.start(this, apiResources, proxyEventBus, eventBus, proxyConf)
     }
 
-  def clusterAppointNodes(idToUri: Map[NodeId, Uri], activeId: NodeId)
+  def clusterAppointNodes(idToUri: Map[NodeId, Uri], activeId: NodeId, clusterWatches: Seq[ClusterSetting.Watch])
   : Task[Checked[Accepted]] =
-    executeCommand(ControllerCommand.ClusterAppointNodes(idToUri, activeId))
+    executeCommand(ControllerCommand.ClusterAppointNodes(idToUri, activeId, clusterWatches))
 
   def updateRepo(
     versionId: VersionId,

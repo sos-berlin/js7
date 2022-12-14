@@ -10,7 +10,11 @@ import js7.data.Problems.PrimaryClusterNodeMayNotBecomeBackupProblem
 import js7.data.controller.ControllerCommand.ClusterAppointNodes
 import monix.execution.Scheduler.Implicits.traced
 
-final class TwoPrimaryClusterNodesTest extends OurTestSuite with ControllerClusterTester
+final class TwoPrimaryClusterNodesWithLegacyClusterWatchTest extends TwoPrimaryClusterNodesTest {
+  override protected val useLegacyServiceClusterWatch = true
+}
+
+class TwoPrimaryClusterNodesTest extends OurTestSuite with ControllerClusterTester
 {
   override protected def configureClusterNodes = false
 
@@ -21,7 +25,8 @@ final class TwoPrimaryClusterNodesTest extends OurTestSuite with ControllerClust
           httpPort = Some(backupControllerPort),
           config = config"js7.journal.cluster.node.is-backup = false"
         ) { _ =>
-          val cmd = ClusterAppointNodes(clusterSetting.idToUri, clusterSetting.activeId)
+          val cmd = ClusterAppointNodes(clusterSetting.idToUri, clusterSetting.activeId,
+            clusterSetting.clusterWatches)
           primaryController.executeCommandAsSystemUser(cmd).await(99.s).orThrow
           sleep(5.s)
           //assert(primaryController.executeCommandAsSystemUser(cmd).await(99.s) == Left(ClusterNodeIsNotBackupProblem))

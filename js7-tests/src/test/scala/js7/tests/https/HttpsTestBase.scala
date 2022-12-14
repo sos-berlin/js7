@@ -43,6 +43,7 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest wit
   override protected final def provideAgentHttpsCertificate = true
   protected def provideControllerClientCertificate = false
   protected def useCluster = true
+  //protected def useLegacyServiceClusterWatch = false
 
   override protected final lazy val controllerHttpPort = None
   override protected final lazy val controllerHttpsPort = Some(findFreeTcpPort())
@@ -69,6 +70,7 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest wit
           Primary: "https://localhost:${controllerHttpsPort.get}"
           Backup: "https://localhost:$backupHttpsPort"
         }
+        watches = [ "https://localhost:$agentHttpsPort" ]
       }""") ++
         Some(config"""
           js7.web.server.auth.invalid-authentication-delay = 10.ms
@@ -109,6 +111,7 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest wit
     Nil,
     controllerConfig = config"""
       js7.journal.cluster.node.is-backup = yes
+      js7.journal.cluster.watches = [ "https://localhost:$agentHttpsPort" ]
       js7.web.server.auth.https-client-authentication = $controllerHttpsMutual
       js7.auth.users {
         Controller {
@@ -154,7 +157,7 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest wit
     ).closeWithCloser
 
   override protected lazy val clusterWatchServiceResource =
-    useCluster ?
+    (useCluster /*&& !useLegacyServiceClusterWatch*/) ?
       DirectoryProvider.clusterWatchServiceResource(
         getClass.simpleScalaName,
         Nel.of(

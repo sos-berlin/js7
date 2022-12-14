@@ -17,7 +17,8 @@ final class JClusterStateTest extends OurTestSuite
       NodeId("PRIMARY") -> Uri("https://PRIMARY"),
       NodeId("BACKUP") -> Uri("https://BACKUP")),
     activeId = NodeId("PRIMARY"),
-    ClusterTiming(10.s, 20.s))
+    ClusterTiming(10.s, 20.s),
+    Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))))
 
   "Empty" in {
     JClusterStateTester.testEmpty(JClusterState(ClusterState.Empty).asInstanceOf[JClusterState.Empty.type])

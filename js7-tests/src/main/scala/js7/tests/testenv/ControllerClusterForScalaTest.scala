@@ -18,6 +18,7 @@ import js7.base.utils.CatsUtils.{Nel, combine}
 import js7.base.utils.Closer.syntax.*
 import js7.base.utils.Closer.withCloser
 import js7.base.utils.ProgramTermination
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
 import js7.common.auth.SecretStringGenerator
@@ -57,6 +58,8 @@ trait ControllerClusterForScalaTest
 
   protected def primaryControllerConfig: Config = ConfigFactory.empty
   protected def backupControllerConfig: Config = ConfigFactory.empty
+
+  protected def useLegacyServiceClusterWatch = false
 
   protected final lazy val primaryControllerPort = findFreeTcpPort()
   protected final lazy val backupControllerPort = findFreeTcpPort()
@@ -118,7 +121,10 @@ trait ControllerClusterForScalaTest
             js7.journal.remove-obsolete-files = $removeObsoleteJournalFiles
             js7.auth.users.TEST-USER.password = "plain:TEST-PASSWORD"
             js7.auth.users.Controller.password = "plain:PRIMARY-CONTROLLER-PASSWORD"
-            js7.auth.cluster.password = "BACKUP-CONTROLLER-PASSWORD" """),
+            js7.auth.cluster.password = "BACKUP-CONTROLLER-PASSWORD" """)
+        .pipeIf(useLegacyServiceClusterWatch)(_
+          .withFallback(
+            config"""js7.journal.cluster.watches = [ "http://127.0.0.1:${agentPorts.head}" ]""")),
         agentPorts = agentPorts,
         agentConfig = config"""js7.job.execution.signed-script-injection-allowed = on"""
       ).closeWithCloser
@@ -150,7 +156,11 @@ trait ControllerClusterForScalaTest
           primaryId -> Uri(s"http://127.0.0.1:$primaryControllerPort"),
           backupId -> Uri(s"http://127.0.0.1:$backupControllerPort")),
         activeId = primaryId,
-        clusterTiming)
+        clusterTiming,
+        if (useLegacyServiceClusterWatch)
+          primary.subagentItems.take(1).map(o => ClusterSetting.Watch(o.uri))
+        else
+          Nil)
 
       if (suppressClusterWatch)
         body(primary, backup, setting)
@@ -175,7 +185,10 @@ trait ControllerClusterForScalaTest
   }
 
   protected final def withClusterWatchService[A](body: => A): A =
-    clusterWatchServiceResource.blockingUse(99.s)(_ => body)
+    if (useLegacyServiceClusterWatch)
+      body
+    else
+      clusterWatchServiceResource.blockingUse(99.s)(_ => body)
 
   protected final def clusterWatchServiceResource: Resource[Task, ClusterWatchService] =
     DirectoryProvider.clusterWatchServiceResource(

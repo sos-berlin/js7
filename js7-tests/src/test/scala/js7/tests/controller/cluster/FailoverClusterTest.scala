@@ -30,7 +30,11 @@ import js7.tests.testenv.ControllerClusterForScalaTest.assertEqualJournalFiles
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.Deadline.now
 
-final class FailoverClusterTest extends ControllerClusterTester
+final class FailoverClusterWithLegacyClusterWatchTest extends FailoverClusterTest {
+  override protected val useLegacyServiceClusterWatch = true
+}
+
+class FailoverClusterTest extends ControllerClusterTester
 {
   override protected def primaryControllerConfig =
     // Short timeout because something blocks web server shutdown occasionally

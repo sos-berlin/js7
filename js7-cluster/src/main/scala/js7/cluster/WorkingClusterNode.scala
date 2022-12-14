@@ -79,9 +79,9 @@ final class WorkingClusterNode[S <: SnapshotableState[S]: SnapshotableState.Comp
         case Some(o) => o.onRestartActiveNode
       }))
 
-  def appointNodes(idToUri: Map[NodeId, Uri], activeId: NodeId)
+  def appointNodes(idToUri: Map[NodeId, Uri], activeId: NodeId, clusterWatches: Seq[ClusterSetting.Watch])
   : Task[Checked[Completed]] =
-    Task(ClusterSetting.checked(idToUri, activeId, clusterConf.timing))
+    Task(ClusterSetting.checked(idToUri, activeId, clusterWatches, clusterConf.timing))
       .flatMapT(appointNodes)
 
   private def automaticallyAppointConfiguredBackupNode: Task[Checked[Completed]] =

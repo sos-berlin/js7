@@ -17,6 +17,7 @@ import js7.base.service.Service
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
 import js7.data.board.{BoardPath, NoticeId}
+import js7.data.cluster.ClusterSetting
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{AddOrdersResponse, CancelOrders, ReleaseEvents, ResumeOrder, ResumeOrders, SuspendOrders, TakeSnapshot}
 import js7.data.event.{Event, EventId, JournalInfo}
@@ -87,11 +88,12 @@ final class JControllerApi(val asScala: ControllerApi)(implicit scheduler: Sched
   @Nonnull
   def clusterAppointNodes(
     @Nonnull idToUri: java.util.Map[NodeId, Uri],
-    @Nonnull activeId: NodeId)
+    @Nonnull activeId: NodeId,
+    @Nonnull clusterWatches: java.util.List[ClusterSetting.Watch])
   : CompletableFuture[VEither[Problem, Void]] = {
     requireNonNull(activeId)
     runTask(asScala
-      .clusterAppointNodes(idToUri.asScala.toMap, activeId)
+      .clusterAppointNodes(idToUri.asScala.toMap, activeId, clusterWatches.asScala.toVector)
       .map(_.toVoidVavr))
   }
 

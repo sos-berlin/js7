@@ -15,7 +15,6 @@ import js7.common.akkahttp.ExceptionHandling
 import js7.common.akkahttp.StandardMarshallers.*
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.session.RouteProvider.*
-import js7.common.akkahttp.web.session.Session
 import js7.common.http.AkkaHttpClient.`x-js7-session`
 import js7.data.problems.InvalidLoginProblem
 import monix.eval.Task

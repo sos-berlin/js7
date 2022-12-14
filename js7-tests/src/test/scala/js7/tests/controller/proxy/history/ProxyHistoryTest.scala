@@ -44,7 +44,11 @@ import org.scalactic.source
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.*
 
-final class ProxyHistoryTest extends OurTestSuite with ProvideActorSystem with ClusterProxyTest
+final class ProxyHistoryWithLegacyClusterWatchTest extends ProxyHistoryTest{
+  override protected val useLegacyServiceClusterWatch = true
+}
+
+class ProxyHistoryTest extends OurTestSuite with ProvideActorSystem with ClusterProxyTest
 {
   private val maxRounds = 100
 

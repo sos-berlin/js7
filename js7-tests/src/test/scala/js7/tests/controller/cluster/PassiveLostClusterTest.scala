@@ -11,7 +11,11 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.tests.controller.cluster.ControllerClusterTester.*
 import monix.execution.Scheduler.Implicits.traced
 
-final class PassiveLostClusterTest extends ControllerClusterTester
+final class PassiveLostClusterWithLegacyClusterWatchTest extends PassiveLostClusterTest {
+  override protected val useLegacyServiceClusterWatch = true
+}
+
+class PassiveLostClusterTest extends ControllerClusterTester
 {
   override protected def configureClusterNodes = false
 
@@ -21,7 +25,7 @@ final class PassiveLostClusterTest extends ControllerClusterTester
       var backupController = backup.startController(httpPort = Some(backupControllerPort)) await 99.s
 
       primaryController.executeCommandForTest(
-        ClusterAppointNodes(clusterSetting.idToUri, clusterSetting.activeId)
+        ClusterAppointNodes(clusterSetting.idToUri, clusterSetting.activeId, clusterSetting.clusterWatches)
       ).orThrow
       primaryController.eventWatch.await[ClusterEvent.ClusterCoupled]()
 

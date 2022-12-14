@@ -26,7 +26,12 @@ import js7.tests.testenv.ControllerClusterForScalaTest.assertEqualJournalFiles
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
-final class BigJsonClusterTest extends OurTestSuite with ControllerClusterForScalaTest
+final class BigJsonClusterWithLegacyClusterWatchTest extends BigJsonClusterTest
+{
+  override protected val useLegacyServiceClusterWatch = true
+}
+
+class BigJsonClusterTest extends OurTestSuite with ControllerClusterForScalaTest
 {
   protected val items = Seq(workflow)
   override protected val clusterTiming = ClusterTiming(1.s, 10.s)

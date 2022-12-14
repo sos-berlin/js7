@@ -16,7 +16,11 @@ import js7.data.controller.ControllerCommand.ShutDown.ClusterAction
 import js7.data.event.EventId
 import monix.execution.Scheduler.Implicits.traced
 
-final class ShutDownClusterTest extends ControllerClusterTester
+final class ShutDownClusterWithLegacyClusterWatchTest extends ShutDownClusterTest {
+  override protected val useLegacyServiceClusterWatch = true
+}
+
+class ShutDownClusterTest extends ControllerClusterTester
 {
   override protected def removeObsoleteJournalFiles = false
 

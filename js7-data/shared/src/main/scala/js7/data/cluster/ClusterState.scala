@@ -33,12 +33,13 @@ extends EventDrivenState[ClusterState, ClusterEvent]
           case (Empty, ClusterNodesAppointed(setting)) =>
             Right(NodesAppointed(setting))
 
-          case (state: CoupledOrDecoupled, ClusterSettingUpdated(maybePassiveUri)) =>
+          case (state: CoupledOrDecoupled, ClusterSettingUpdated(maybePassiveUri, maybeClusterWatches)) =>
             ((state, maybePassiveUri) match {
               case (_, None) => Right(state)
               case (state: Decoupled, Some(uri)) => Right(state.withPassiveUri(uri))
               case _ => eventNotApplicable(keyedEvent)
-            })
+            }).map(_
+              .withClusterWatches(maybeClusterWatches getOrElse state.setting.clusterWatches))
 
           case (state: Decoupled, ClusterCouplingPrepared(activeId)) if state.activeId == activeId =>
             Right(PreparedToBeCoupled(state.setting))
@@ -141,6 +142,9 @@ extends EventDrivenState.Companion[ClusterState, ClusterEvent]
     this: Product =>
 
     protected def withSetting(setting: ClusterSetting): CoupledOrDecoupled
+
+    final def withClusterWatches(w: Seq[ClusterSetting.Watch]) =
+      withSetting(setting.copy(clusterWatches = w))
   }
 
   sealed trait Decoupled extends CoupledOrDecoupled {

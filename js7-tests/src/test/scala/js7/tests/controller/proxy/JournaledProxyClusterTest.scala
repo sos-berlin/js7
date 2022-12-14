@@ -45,7 +45,11 @@ import monix.reactive.Observable
 import scala.concurrent.duration.Deadline.now
 import scala.jdk.CollectionConverters.*
 
-final class JournaledProxyClusterTest extends OurTestSuite with ClusterProxyTest
+final class JournaledProxyClusterWithLegacyClusterWatchTest extends JournaledProxyClusterTest {
+  override protected val useLegacyServiceClusterWatch = true
+}
+
+class JournaledProxyClusterTest extends OurTestSuite with ClusterProxyTest
 {
   private implicit def implicitActorSystem: ActorSystem = actorSystem
 

@@ -23,7 +23,8 @@ final class ClusterEventTest extends OurTestSuite
           NodeId("PRIMARY") -> Uri("https://PRIMARY"),
           NodeId("BACKUP") -> Uri("https://BACKUP")),
         NodeId("PRIMARY"),
-        ClusterTiming(10.s, 20.s))),
+        ClusterTiming(10.s, 20.s),
+        Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))))),
       json"""{
         "TYPE": "ClusterNodesAppointed",
         "setting": {
@@ -32,6 +33,7 @@ final class ClusterEventTest extends OurTestSuite
             "BACKUP": "https://BACKUP"
           },
           "activeId": "PRIMARY",
+          "clusterWatches": [ { "uri": "https://CLUSTER-WATCH" } ],
           "timing": {
             "heartbeat": 10,
             "heartbeatTimeout": 20
@@ -100,11 +102,36 @@ final class ClusterEventTest extends OurTestSuite
   }
 
   "ClusterSettingUpdated" - {
-    "complete" in {
-      testJson[ClusterEvent](ClusterSettingUpdated(Some(Uri("https://PASSIVE"))),
+    "passiveUri only" in {
+      testJson[ClusterEvent](ClusterSettingUpdated(passiveUri = Some(Uri("https://PASSIVE"))),
         json"""{
           "TYPE": "ClusterSettingUpdated",
           "passiveUri": "https://PASSIVE"
+        }""")
+    }
+
+    "clusterWatch only" in {
+      testJson[ClusterEvent](ClusterSettingUpdated(clusterWatches = Some(Seq(ClusterSetting.Watch(Uri("https://A"))))),
+        json"""{
+          "TYPE": "ClusterSettingUpdated",
+          "clusterWatches": [
+            {
+              "uri": "https://A"
+            }
+          ]
+        }""")
+    }
+
+    "complete" in {
+      testJson[ClusterEvent](ClusterSettingUpdated(Some(Uri("https://PASSIVE")), Some(Seq(ClusterSetting.Watch(Uri("https://A"))))),
+        json"""{
+          "TYPE": "ClusterSettingUpdated",
+          "passiveUri": "https://PASSIVE",
+          "clusterWatches": [
+            {
+              "uri": "https://A"
+            }
+          ]
         }""")
     }
   }

@@ -231,7 +231,7 @@ final class ClusterWatchTest extends OurTestSuite
       assert(watch.isActive(bId).orThrow)
     }
 
-    "applyEvents after event loss" in {
+    "applyEvent after event loss" in {
       val clusterState = Coupled(setting)
       val watch = newClusterWatch(Some(clusterState))
 

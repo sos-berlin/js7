@@ -36,7 +36,7 @@ trait ClusterWatchMessageRoute extends RouteProvider
   private lazy val whenShuttingDownCompletion = new FutureCompletion(whenShuttingDown)
 
   protected def checkedClusterState: Task[Checked[Stamped[ClusterState]]]
-  protected def clusterWatchMessageStream: Task[Stream[Task, ClusterWatchMessage]]
+  protected def clusterWatchMessageStream: Task[Checked[Stream[Task, ClusterWatchMessage]]]
   protected def eventWatch: EventWatch
   protected def nodeId: NodeId
 
@@ -47,7 +47,7 @@ trait ClusterWatchMessageRoute extends RouteProvider
           parameter("keepAlive".as[FiniteDuration]) { keepAlive =>
             complete {
               stream
-                .flatMap { stream =>
+                .flatMapT { stream =>
                   val observable = Observable.fromReactivePublisher(
                     stream.toUnicastPublisher: Publisher[ClusterWatchMessage])
                   val toResponseMarshallable = observableToResponseMarshallable(
@@ -66,15 +66,15 @@ trait ClusterWatchMessageRoute extends RouteProvider
             }
           })))
 
-  private def stream: Task[/*Checked[*/Stream[Task, ClusterWatchMessage]] =
+  private def stream: Task[Checked[Stream[Task, ClusterWatchMessage]]] =
     clusterWatchMessageStream
-      .map(_.handleErrorWith { throwable =>
+      .map(_.map(_.handleErrorWith { throwable =>
         // The streaming event web service doesn't have an error channel,
         // so we simply end the stream
         logger.warn(throwable.toStringWithCauses)
         if (throwable.getStackTrace.nonEmpty) logger.debug(throwable.toStringWithCauses, throwable)
         Stream.empty
-      })
+      }))
 
   private val emptyResponseMarshallable: ToResponseMarshallable =
     observableToMarshallable(Observable.empty)

@@ -62,9 +62,11 @@ object ClusterEvent
   case object ClusterActiveNodeRestarted
   extends ClusterEvent
 
-  final case class ClusterSettingUpdated(passiveUri: Option[Uri] = None)
+  final case class ClusterSettingUpdated(
+    passiveUri: Option[Uri] = None,
+    clusterWatches: Option[Seq[ClusterSetting.Watch]] = None)
   extends ClusterEvent {
-    assertThat(passiveUri.nonEmpty)
+    assertThat(passiveUri.nonEmpty || clusterWatches.nonEmpty)
   }
 
   implicit val jsonCodec: TypedJsonCodec[ClusterEvent] = TypedJsonCodec(

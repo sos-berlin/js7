@@ -1,6 +1,6 @@
 package js7.cluster.watch.api
 
-import js7.base.problem.Problem
+import js7.base.problem.{Problem, ProblemCode}
 import js7.base.time.ScalaTime.*
 import js7.data.cluster.ClusterEvent.ClusterNodeLostEvent
 import js7.data.cluster.{ClusterEvent, ClusterState}
@@ -9,6 +9,17 @@ import scala.concurrent.duration.FiniteDuration
 
 object ClusterWatchProblems
 {
+  private lazy val isClusterWatchProblemCode = Set[ProblemCode](
+    UntaughtClusterWatchProblem.code,
+    ClusterWatchHeartbeatMismatchProblem.code,
+    ClusterWatchEventMismatchProblem.code,
+    ClusterWatchInactiveNodeProblem.code,
+    InvalidClusterWatchHeartbeatProblem.code,
+    ClusterFailOverWhilePassiveLostProblem.code)
+
+  def isClusterWatchProblem(problem: Problem): Boolean =
+    problem.maybeCode exists isClusterWatchProblemCode
+
   final case object UntaughtClusterWatchProblem extends Problem.ArgumentlessCoded
 
   final case class ClusterWatchHeartbeatMismatchProblem(
