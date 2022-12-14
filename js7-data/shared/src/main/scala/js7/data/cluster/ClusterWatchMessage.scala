@@ -4,6 +4,7 @@ import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.generic.GenericLong
 import js7.base.log.CorrelId
+import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.ClusterWatchMessage.*
 import js7.data.node.NodeId
@@ -18,6 +19,8 @@ sealed trait ClusterWatchMessage
 sealed trait ClusterWatchCheck extends ClusterWatchMessage
 {
   def requestId: RequestId
+
+  def toShortString: String
 }
 
 final case class ClusterWatchCheckEvent(
@@ -28,6 +31,9 @@ final case class ClusterWatchCheckEvent(
   clusterState: ClusterState.HasNodes,
   checkOnly: Boolean = false /*???*/)
 extends ClusterWatchCheck
+{
+  override def toShortString = s"ClusterWatchCheckEvent(${event.getClass.simpleScalaName})"
+}
 
 final case class ClusterWatchCheckState(
   requestId: RequestId,
@@ -35,6 +41,9 @@ final case class ClusterWatchCheckState(
   from: NodeId,
   clusterState: ClusterState.HasNodes)
 extends ClusterWatchCheck
+{
+  override def toShortString = s"ClusterWatchCheckState(${clusterState.toShortString})"
+}
 
 final case class ClusterWatchHeartbeat(
   correlId: CorrelId,

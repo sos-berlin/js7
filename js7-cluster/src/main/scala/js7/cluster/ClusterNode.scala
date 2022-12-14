@@ -300,12 +300,12 @@ final class ClusterNode[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
   def executeClusterWatchingCommand(command: ClusterWatchingCommand): Task[Checked[Unit]] =
     command match {
       case ClusterWatchAcknowledge(requestId, maybeProblem) =>
-        Task(common
-          .maybeClusterWatchSynchronizer
+        common
+          /*.maybeClusterWatchSynchronizer
           .toRight(Problem(s"No ClusterWatchSynchronizer: $command"))
-          .flatMap(o => o
-            .clusterWatch.onClusterWatchAcknowledged(requestId, maybeProblem))
-          .map(_ => ClusterCommand.Response.Accepted))
+          .flatMap(o => o*/
+          .clusterWatchCounterpart.onClusterWatchAcknowledged(requestId, maybeProblem)
+          .rightAs(ClusterCommand.Response.Accepted)
     }
 
   def clusterWatchMessageStream: Task[fs2.Stream[Task, ClusterWatchMessage]] =

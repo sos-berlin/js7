@@ -113,7 +113,6 @@ trait ControllerClusterForScalaTest
           config"""
             js7.journal.cluster.heartbeat = ${clusterTiming.heartbeat.toSeconds}s
             js7.journal.cluster.heartbeat-timeout = ${clusterTiming.heartbeatTimeout.toSeconds}s
-            js7.journal.cluster.watches = [ "http://127.0.0.1:${agentPorts.head}" ]
             js7.journal.cluster.TEST-HEARTBEAT-LOSS = "$testHeartbeatLossPropertyKey"
             js7.journal.release-events-delay = 0s
             js7.journal.remove-obsolete-files = $removeObsoleteJournalFiles

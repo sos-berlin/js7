@@ -80,6 +80,13 @@ extends EventDrivenState[ClusterState, ClusterEvent]
 
   def toSnapshotObservable =
     Observable.fromIterable((this != Empty) ? ClusterStateSnapshot(this))
+
+  def toShortString: String =
+    this match {
+      case Empty => "ClusterState.Empty"
+      case hasNodes: HasNodes =>
+        s"${hasNodes.getClass.simpleScalaName}(${hasNodes.activeId} is active)"
+    }
 }
 
 object ClusterState

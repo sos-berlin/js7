@@ -24,7 +24,6 @@ final class ClusterConfTest extends OurTestSuite
         js7.journal.cluster.node.is-backup = no
         js7.journal.cluster.heartbeat = 7s
         js7.journal.cluster.heartbeat-timeout = 5s
-        js7.journal.cluster.watches = [ "https://AGENT-1", "https://AGENT-2" ]
         js7.web.client.idle-get-timeout = 50s
         js7.web.client.polling-delay = 1s
         js7.web.client.failure-delay = 5s"""
@@ -50,7 +49,6 @@ final class ClusterConfTest extends OurTestSuite
           PRIMARY: "https://PRIMARY"
           Backup: "https://BACKUP"
         }
-        js7.journal.cluster.watches = [ "https://CLUSTER-WATCH" ]
         js7.journal.cluster.heartbeat = 7s
         js7.journal.cluster.heartbeat-timeout = 5s
         js7.auth.cluster.password = "PASSWORD"

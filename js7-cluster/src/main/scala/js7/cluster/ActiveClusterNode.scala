@@ -504,10 +504,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
                 .map(_.map((_: Completed) => stampedEvents -> clusterState))
 
             case (Seq(), clusterState) =>
-              if (events.nonEmpty)
-                Task.left(Problem.pure("persistWithoutTouchingHeartbeat does not match"))
-              else
-                Task.right(stampedEvents -> clusterState)
+              Task.right(stampedEvents -> clusterState)
 
             case _ =>
               Task.left(Problem.pure("persistWithoutTouchingHeartbeat does not match"))
