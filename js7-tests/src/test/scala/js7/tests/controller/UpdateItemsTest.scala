@@ -14,18 +14,22 @@ import js7.base.time.ScalaTime.*
 import js7.common.system.ServerOperatingSystem.operatingSystem.sleepingShellScript
 import js7.data.Problems.{ItemVersionDoesNotMatchProblem, VersionedItemRemovedProblem}
 import js7.data.agent.AgentPath
-import js7.data.controller.ControllerCommand.DeleteOrdersWhenTerminated
+import js7.data.board.{Board, BoardPath}
+import js7.data.controller.ControllerCommand.{ControlWorkflow, DeleteOrdersWhenTerminated}
 import js7.data.event.{EventRequest, EventSeq}
-import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, RemoveVersioned}
+import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, DeleteSimple, RemoveVersioned}
 import js7.data.item.{ItemRevision, VersionId}
 import js7.data.job.{JobResource, JobResourcePath, RelativePathExecutable}
 import js7.data.lock.{Lock, LockPath}
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
-import js7.data.workflow.{WorkflowParser, WorkflowPath}
+import js7.data.value.expression.ExpressionParser.expr
+import js7.data.workflow.instructions.{Finish, PostNotices}
+import js7.data.workflow.position.Position
+import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowParser, WorkflowPath}
 import js7.tests.controller.UpdateItemsTest.*
-import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.ControllerTestUtils.syntax.RichRunningController
+import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
 import scala.concurrent.Promise
@@ -36,6 +40,7 @@ import scala.concurrent.duration.Deadline.now
   * @author Joacim Zschimmer
   */
 final class UpdateItemsTest extends OurTestSuite with ControllerAgentForScalaTest
+with BlockingItemUpdater
 {
   protected val agentPaths = agentPath :: Nil
   protected val items = Nil
@@ -133,6 +138,50 @@ final class UpdateItemsTest extends OurTestSuite with ControllerAgentForScalaTes
   "SignableItem, tampered" in {
     assert(controllerApi.updateItems(Observable(AddOrChangeSigned(toSignedString(jobResource).tamper)))
       .await(99.s) == Left(TamperedWithSignedMessageProblem))
+  }
+
+  "Change a Workflow and delete the unused Board" in {
+    val board = Board(
+      BoardPath("BOARD"),
+      postOrderToNoticeId = expr("'NOTICE'"),
+      expectOrderToNoticeId = expr("'NOTICE'"),
+      endOfLife = expr("$js7EpochMilli + 24 * 3600 * 1000"))
+
+    val workflow = Workflow(WorkflowPath("WORKFLOW-WITH-BOARD"), Seq(
+      PostNotices(Seq(board.path))))
+
+    updateItems(workflow, board)
+
+    val v2 = nextVersionId()
+    val workflow2 = Workflow(workflow.path ~ v2, Nil)
+    controllerApi
+      .updateItems(Observable(
+        AddVersion(v2),
+        AddOrChangeSigned(toSignedString(workflow2)),
+        DeleteSimple(board.path)))
+      .await(99.s)
+      .orThrow
+  }
+
+  "Change a Workflow with a WorkflowControl" in {
+    val workflow = Workflow(WorkflowPath("WORKFLOW-WITH-CONTROL"), Nil)
+    val workflowControl = WorkflowControl(WorkflowControlId(workflow.id))
+
+    val Some(v1) = updateItems(workflow)
+    assert(controllerState.idToWorkflow.isDefinedAt(workflow.path ~ v1))
+
+    controllerApi
+      .executeCommand(ControlWorkflow(workflow.path ~ v1, addBreakpoints = Set(Position(0))))
+      .await(99.s).orThrow
+    assert(controllerState.keyToItem(WorkflowControl).contains(workflowControl.path ~ v1))
+
+    val workflow2 = Workflow(workflow.path, Seq(Finish()))
+    val Some(v2) = updateItems(workflow2)
+
+    assert(!controllerState.keyToItem(Workflow).contains(workflow.path ~ v1))
+    assert(controllerState.keyToItem(Workflow).contains(workflow.path ~ v2))
+    assert(!controllerState.keyToItem(WorkflowControl).contains(workflowControl.path ~ v1))
+    assert(!controllerState.keyToItem(WorkflowControl).contains(workflowControl.path ~ v2))
   }
 }
 
