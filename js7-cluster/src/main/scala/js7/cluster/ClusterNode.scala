@@ -172,7 +172,7 @@ final class ClusterNode[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
     }
   }
 
-  def startPassiveAfterFailover(recovered: Recovered[S], coupled: Coupled, otherFailedOver: FailedOver)
+  private def startPassiveAfterFailover(recovered: Recovered[S], coupled: Coupled, otherFailedOver: FailedOver)
   : (Recovered[S], PassiveClusterNode[S]) = {
     logger.warn(s"The other $otherFailedOver.activeId} failed-over and " +
       "became active while this node was absent")
