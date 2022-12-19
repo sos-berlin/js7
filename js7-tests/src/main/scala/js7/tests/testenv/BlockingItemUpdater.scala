@@ -41,6 +41,14 @@ trait BlockingItemUpdater {
     finally deleteItems(realItem.path)
   }
 
+  protected final def withItems[A](items: InventoryItem*)(body: => A)
+    (implicit s: Scheduler)
+  : A = {
+    updateItems(items*)
+    try body
+    finally deleteItems(items.map(_.path)*)
+  }
+
   protected final def updateItem[I <: InventoryItem](item: I)(implicit s: Scheduler)
   : I = {
     val v = updateItems(item)

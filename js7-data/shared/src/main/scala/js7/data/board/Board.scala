@@ -4,10 +4,13 @@ import io.circe.Codec
 import js7.base.circeutils.CirceUtils.{DecodeWithDefaults, deriveConfiguredCodec}
 import js7.base.circeutils.ScalaJsonCodecs.*
 import js7.base.problem.Checked
+import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.time.Timestamp
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.data.item.{ItemRevision, UnsignedSimpleItem}
+import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.expression.{Expression, Scope}
+import scala.concurrent.duration.FiniteDuration
 
 final case class Board(
   path: BoardPath,
@@ -66,6 +69,29 @@ object Board extends UnsignedSimpleItem.Companion[Board]
   override val Path = BoardPath
 
   type ItemState = BoardState
+
+  /** A Board with a single, constant Notice. */
+  def singleNotice(
+    boardPath: BoardPath,
+    orderToNoticeId: String = "'NOTICE'",
+    lifetime: FiniteDuration = 24.h)
+  : Board =
+    Board(
+      boardPath,
+      postOrderToNoticeId = expr(orderToNoticeId),
+      expectOrderToNoticeId = expr(orderToNoticeId),
+      endOfLife = expr("$js7EpochMilli + " + lifetime.toMillis))
+
+  private val sosOrderToNotice =
+    expr("""replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')""")
+
+  /** A Board for JOC-style OrderIds. */
+  def joc(boardPath: BoardPath, lifetime: FiniteDuration = 24.h): Board =
+    Board(
+      boardPath,
+      postOrderToNoticeId = sosOrderToNotice,
+      expectOrderToNoticeId = sosOrderToNotice,
+      endOfLife = expr("$js7EpochMilli + " + lifetime.toMillis))
 
   implicit val jsonCodec: Codec.AsObject[Board] = deriveConfiguredCodec[Board]
 

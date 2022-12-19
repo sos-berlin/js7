@@ -23,7 +23,6 @@ import js7.data.job.{JobResource, JobResourcePath, RelativePathExecutable}
 import js7.data.lock.{Lock, LockPath}
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
-import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{Finish, PostNotices}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowParser, WorkflowPath}
@@ -141,11 +140,7 @@ with BlockingItemUpdater
   }
 
   "Change a Workflow and delete the unused Board" in {
-    val board = Board(
-      BoardPath("BOARD"),
-      postOrderToNoticeId = expr("'NOTICE'"),
-      expectOrderToNoticeId = expr("'NOTICE'"),
-      endOfLife = expr("$js7EpochMilli + 24 * 3600 * 1000"))
+    val board = Board.singleNotice(BoardPath("BOARD"))
 
     val workflow = Workflow(WorkflowPath("WORKFLOW-WITH-BOARD"), Seq(
       PostNotices(Seq(board.path))))
