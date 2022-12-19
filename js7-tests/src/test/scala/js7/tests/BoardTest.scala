@@ -15,16 +15,16 @@ import js7.data.Problems.ItemIsStillReferencedProblem
 import js7.data.agent.AgentPath
 import js7.data.board.BoardEvent.NoticeDeleted
 import js7.data.board.BoardPathExpressionParser.boardPathExpr
-import js7.data.board.{Board, BoardPath, BoardState, Notice, NoticeId, NoticePlace}
+import js7.data.board.{Board, BoardPath, BoardPathExpression, BoardState, Notice, NoticeId, NoticePlace}
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{CancelOrders, DeleteNotice, ResumeOrder, SuspendOrders}
 import js7.data.item.ItemOperation.{AddVersion, DeleteSimple, RemoveVersioned}
 import js7.data.item.{ItemRevision, VersionId}
 import js7.data.order.Order.Fresh
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCoreEvent, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderNoticePosted, OrderNoticesExpected, OrderNoticesRead, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderSuspended, OrderSuspensionMarked}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderNoticePosted, OrderNoticesExpected, OrderNoticesRead, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderSuspended, OrderSuspensionMarked}
 import js7.data.order.{FreshOrder, OrderId, Outcome}
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.workflow.instructions.{ExpectNotices, PostNotices}
+import js7.data.workflow.instructions.{ExpectNotices, PostNotices, TryInstruction}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.BoardTest.*
@@ -423,6 +423,36 @@ with BlockingItemUpdater with TestMixins
 
     assert(!controllerState.keyTo(BoardState).contains(board0.path))
   }
+
+  "JOC-1446 Bug: Wrong OrderMoved event after OrderNoticeRead" in {
+    val board = Board.joc(BoardPath("JOC-1446"))
+
+    val postingWorkflow = Workflow(WorkflowPath("JOC-1446-POST"), Seq(
+      TryInstruction(
+        Workflow.of(EmptyJob.execute(agentPath)),
+        Workflow.empty),
+      TryInstruction(
+        Workflow.of(EmptyJob.execute(agentPath)),
+        Workflow.empty),
+      PostNotices(Seq(board.path))))
+
+    val expectingWorkflow = Workflow(WorkflowPath("JOC-1446-EXPECT"), Seq(
+      ExpectNotices(BoardPathExpression.ExpectNotice(board.path))))
+
+    withItems(board, postingWorkflow, expectingWorkflow) {
+      val day = Timestamp.now.toIsoString.take(10) // yyyy-MM-dd
+      val postOrderId = OrderId(s"#$day#JOC-1446-POST")
+      val expectOrderId = OrderId(s"#$day#JOC-1446-EXPECT")
+      controllerApi
+        .addOrder(FreshOrder(postOrderId, postingWorkflow.path, deleteWhenTerminated = true))
+        .await(99.s).orThrow
+      controllerApi
+        .addOrder(FreshOrder(expectOrderId, expectingWorkflow.path, deleteWhenTerminated = true))
+        .await(99.s).orThrow
+      eventWatch.await[OrderDeleted](_.key == postOrderId)
+      eventWatch.await[OrderDeleted](_.key == expectOrderId)
+    }
+  }
 }
 
 object BoardTest
@@ -440,15 +470,8 @@ object BoardTest
   private val endOfLifes = lifeTimes.map(BoardTest.startTimestamp + _)
   private val Seq(endOfLife0, endOfLife1, endOfLife2) = endOfLifes
 
-  private val orderIdToNoticeId = expr(
-    """replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')""")
-
-  private val boards = for ((lifeTime, i) <- lifeTimes.zipWithIndex) yield
-    Board(
-      BoardPath(s"BOARD-$i"),
-      postOrderToNoticeId = orderIdToNoticeId,
-      endOfLife = expr(s"$$js7EpochMilli + ${lifeTime.toMillis}"),
-      expectOrderToNoticeId = orderIdToNoticeId)
+  private val boards = for ((lifetime, i) <- lifeTimes.zipWithIndex) yield
+    Board.joc(BoardPath(s"BOARD-$i"), lifetime)
 
   private val Seq(board0, board1, board2) = boards
 
