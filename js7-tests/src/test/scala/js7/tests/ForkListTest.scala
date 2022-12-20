@@ -17,13 +17,16 @@ import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.event.{KeyedEvent, Stamped}
+import js7.data.execution.workflow.instructions.ForkInstructionExecutor
 import js7.data.job.ShellScriptExecutable
 import js7.data.order.OrderEvent.*
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
+import js7.data.subagent.{SubagentSelection, SubagentSelectionId}
+import js7.data.value.expression.Expression.{ListExpression, NumericConstant}
 import js7.data.value.expression.ExpressionParser.{expr, exprFunction}
 import js7.data.value.{ListValue, NumberValue, ObjectValue, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{Execute, Fail, ForkList, If}
+import js7.data.workflow.instructions.{Execute, Fail, Fork, ForkList, If}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.launcher.OrderProcess
@@ -31,8 +34,8 @@ import js7.launcher.internal.InternalJob
 import js7.proxy.data.event.EventAndState
 import js7.tests.ForkListTest.*
 import js7.tests.jobs.EmptyJob
-import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
+import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import monix.reactive.Observable
@@ -41,7 +44,14 @@ import scala.collection.View
 import scala.concurrent.duration.Deadline.now
 
 final class ForkListTest extends OurTestSuite with ControllerAgentForScalaTest
+with BlockingItemUpdater
 {
+  override protected val controllerConfig = config"""
+    js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
+    js7.controller.agent-driver.command-batch-delay = 0ms
+    js7.controller.agent-driver.event-buffer-delay = 0ms
+    """
+
   override protected val agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = yes
     """
@@ -103,9 +113,9 @@ final class ForkListTest extends OurTestSuite with ControllerAgentForScalaTest
           StringValue("ELEMENT-2"),
           StringValue("ELEMENT-3")))),
         deleteWhenTerminated = true),
-      OrderStarted,
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
+      OrderStarted,
       OrderForked(Vector(
         Order.Forked.Child(
           orderId / "ELEMENT-1",
@@ -151,7 +161,7 @@ final class ForkListTest extends OurTestSuite with ControllerAgentForScalaTest
         workflowId,
         Map("myList" -> ListValue(Seq(StringValue("DUPLICATE"), StringValue("DUPLICATE")))),
         deleteWhenTerminated = true),
-      OrderStarted,
+      //OrderStarted,
       OrderOutcomeAdded(Outcome.Disrupted(Problem(
         "Duplicate child IDs in $myList: Unexpected duplicates: 2×DUPLICATE"))),
       OrderFailed(Position(0))))
@@ -180,7 +190,7 @@ final class ForkListTest extends OurTestSuite with ControllerAgentForScalaTest
           workflowId,
           Map("myList" -> ListValue(Seq(StringValue(childId)))),
           deleteWhenTerminated = true),
-        OrderStarted,
+        //OrderStarted,
         OrderOutcomeAdded(Outcome.Disrupted(problem)),
         OrderFailed(Position(0))))
     }
@@ -258,6 +268,69 @@ final class ForkListTest extends OurTestSuite with ControllerAgentForScalaTest
         .stripMargin)))
   }
 
+  "ForkList with nested Fork" in {
+    // This should not be a special problem
+    val subagentSelection = SubagentSelection(
+      SubagentSelectionId("active-active-all-agents"),
+      Map(subagentId -> 1))
+    updateItem(subagentSelection)
+    val list = (1 to ForkInstructionExecutor.MinimumChildCountForParentAttachment).toList
+    val listExpr = ListExpression(list.map(NumericConstant(_)))
+
+    val workflow = updateItem(Workflow.of(
+      WorkflowPath("FORK-IN-FORKLIST"),
+      EmptyJob.execute(agentPath),
+      ForkList(
+        listExpr,
+        exprFunction("(element) => $element"),
+        exprFunction("(element) => { element: $element }"),
+        agentPath = Some(agentPath),
+        workflow = Workflow.of(
+          Fork(Vector.empty)))))
+
+    try {
+      val eventId = eventWatch.lastAddedEventId
+      val orderId = OrderId("FORK-IN-FORKLIST")
+      val events = controller.runOrder(FreshOrder(orderId, workflow.path, Map(
+        "myList" -> ListValue(Seq(StringValue("VALUE"))))))
+
+      assert(events.map(_.value) == Seq(
+        OrderAdded(workflow.id, Map("myList" -> ListValue(Seq(StringValue("VALUE"))))),
+
+        OrderAttachable(agentPath),
+        OrderAttached(agentPath),
+        OrderStarted,
+        OrderProcessingStarted(Some(subagentId)),
+        OrderProcessed(Outcome.succeeded),
+        OrderMoved(Position(1)),
+
+        OrderForked(Vector(
+          OrderForked.Child(orderId / "1", Map("element" -> NumberValue(1))),
+          OrderForked.Child(orderId / "2", Map("element" -> NumberValue(2))),
+          OrderForked.Child(orderId / "3", Map("element" -> NumberValue(3))))),
+        OrderDetachable,
+        OrderDetached,
+
+        OrderJoined(Outcome.succeeded),
+        OrderMoved(Position(2)),
+
+        OrderFinished(None)))
+
+      for (i <- list) withClue(s"i=$i ") {
+        assert(eventWatch
+          .keyedEvents[OrderEvent](_.key == orderId / s"$i", after = eventId)
+          .map(_.event) ==
+          Seq(
+            OrderDetachable,
+            OrderDetached,
+            OrderForked(Vector.empty),
+            OrderJoined(Outcome.succeeded),
+            OrderMoved(Position(1) / "fork" % 1)))
+      }
+    } finally
+      deleteItems(workflow.path, subagentSelection.path)
+  }
+
   private def runOrder(workflowPath: WorkflowPath, orderId: OrderId, n: Int,
     expectedChildOrderEvent: OrderId => OrderEvent =
       orderId => OrderProcessed(Outcome.Succeeded(Map("result" -> StringValue("🔹" + orderId.string)))),
@@ -324,9 +397,9 @@ final class ForkListTest extends OurTestSuite with ControllerAgentForScalaTest
         deleteWhenTerminated = true),
 
       // Each child order starts at bAgentPath. So attach forking order to bAgentPath.
-      OrderStarted,
       OrderAttachable(bAgentPath),
       OrderAttached(bAgentPath),
+      OrderStarted,
       orderForked,
       OrderDetachable,
       OrderDetached,
@@ -391,8 +464,9 @@ final class ForkListTest extends OurTestSuite with ControllerAgentForScalaTest
         workflowId,
         Map("myList" -> ListValue(Seq(StringValue("SINGLE-ELEMENT")))),
         deleteWhenTerminated = true),
-      OrderStarted,
-      OrderOutcomeAdded(Outcome.Failed(Some("No such named value: UNKNOWN"))),
+      //Until v2.5.0: OrderStarted,
+      //Until v2.5.0: OrderOutcomeAdded(Outcome.Failed(Some("No such named value: UNKNOWN"))),
+      OrderOutcomeAdded(Outcome.Disrupted(Problem("No such named value: UNKNOWN"))),
       OrderFailed(Position(0))))
   }
 

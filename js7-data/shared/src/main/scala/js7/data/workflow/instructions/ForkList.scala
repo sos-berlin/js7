@@ -43,7 +43,7 @@ extends ForkInstruction
     workflow = workflow.copy(outer = Some(outer)))
 
   override def reduceForAgent(agentPath: AgentPath, outer: Workflow) =
-    if (isVisibleForAgent(agentPath, outer))
+    if (this.agentPath.contains(agentPath) || isVisibleForAgent(agentPath, outer))
       copy(
         workflow = reuseIfEqual(workflow, workflow.reduceForAgent(agentPath)))
     else

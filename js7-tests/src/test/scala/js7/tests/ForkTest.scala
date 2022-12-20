@@ -128,7 +128,6 @@ final class ForkTest extends OurTestSuite with ControllerAgentForScalaTest
     eventWatch.await[OrderCancelled](_.key == order.id)
     assert(eventWatch.eventsByKey[OrderEvent](order.id) == Vector(
       OrderAdded(workflow.id, order.arguments),
-      OrderStarted,
       expectedOutcomeAdded,
       expectedFailed,
       OrderCancelled))

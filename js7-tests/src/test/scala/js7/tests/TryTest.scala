@@ -211,9 +211,9 @@ with BlockingItemUpdater
     checkEventSeq(orderId, controller.eventWatch.allKeyedEvents[OrderEvent], Vector(
       OrderAdded(workflow.path ~ v),
       OrderMoved(Position(0) / "try+0" % 0),
-      OrderStarted,
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
+      OrderStarted,
       OrderForked(Vector(
         "🥕" -> OrderId("🔴|🥕"),
         "🍋" -> OrderId("🔴|🍋"),

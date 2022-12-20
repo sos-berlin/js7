@@ -7,7 +7,7 @@ import cats.syntax.traverse.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
 import js7.base.utils.Collections.implicits.*
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderForked}
+import js7.data.order.OrderEvent.OrderForked
 import js7.data.order.{Order, Outcome}
 import js7.data.state.{AgentsSubagentIdsScope, StateView}
 import js7.data.value.{ListValue, NumberValue}
@@ -20,8 +20,8 @@ extends ForkInstructionExecutor
   type Instr = ForkList
   val instructionClass = classOf[ForkList]
 
-  protected def toForkedEvent(fork: ForkList, order: Order[Order.Ready], state: StateView)
-  : Checked[OrderActorEvent] =
+  protected def toForkedEvent(fork: ForkList, order: Order[Order.IsFreshOrReady], state: StateView)
+  : Checked[OrderForked] =
     for {
       scope0 <- state.toImpureOrderExecutingScope(order, clock.now())
       scope =  scope0 |+| new AgentsSubagentIdsScope(state)
@@ -45,9 +45,7 @@ extends ForkInstructionExecutor
           order.id.withChild(childId)
             .map(OrderForked.Child(_, args.nameToValue))
         }
-      orderForked = OrderForked(children)
-      event <- postprocessOrderForked(fork, order, orderForked, state)
-    } yield event
+    } yield OrderForked(children)
 
   protected def forkResult(fork: ForkList, order: Order[Order.Forked], state: StateView,
     now: Timestamp) =

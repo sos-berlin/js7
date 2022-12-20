@@ -3,6 +3,7 @@ package js7.data.execution.workflow.instructions
 import cats.instances.either.*
 import cats.instances.vector.*
 import cats.syntax.traverse.*
+import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.*
@@ -11,7 +12,7 @@ import js7.data.event.KeyedEvent
 import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.instructions.ForkInstructionExecutor.*
 import js7.data.order.Order.Cancelled
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAttachable, OrderDetachable, OrderFailedIntermediate_, OrderForked, OrderJoined, OrderMoved}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderAttachable, OrderDetachable, OrderFailedIntermediate_, OrderForked, OrderJoined, OrderMoved, OrderStarted}
 import js7.data.order.{Order, OrderId, Outcome}
 import js7.data.state.StateView
 import js7.data.value.Value
@@ -26,44 +27,84 @@ trait ForkInstructionExecutor extends EventInstructionExecutor
   protected val service: InstructionExecutorService
   private implicit val implicitService: InstructionExecutorService = service
 
-  protected def toForkedEvent(fork: Instr, order: Order[Order.Ready], state: StateView)
-  : Checked[OrderActorEvent]
+  protected def toForkedEvent(fork: Instr, order: Order[Order.IsFreshOrReady], state: StateView)
+  : Checked[OrderForked]
 
   protected def forkResult(fork: Instr, order: Order[Order.Forked], state: StateView,
     now: Timestamp): Outcome.Completed
 
   final def toEvents(fork: Instr, order: Order[Order.State], state: StateView) =
-    order
-      .ifState[Order.IsFreshOrReady].map(order =>
-        fork.agentPath
-          .flatMap(attachOrDetach(order, _))
-          .orElse(
-            start(order))
-          .getOrElse(
-            for (event <- toForkedEvent(fork, order.asInstanceOf[Order[Order.Ready]], state)) yield
-              (order.id <-: event) :: Nil))
+    readyOrStartable(order)
+      .map(order =>
+        for (event <- forkOrder(fork, order, state)) yield
+          (order.id <-: event) :: Nil)
       .orElse(
         for {
           order <- order.ifState[Order.Forked]
           joined <- toJoined(order, fork, state)
         } yield Right(joined :: Nil))
-      .orElse(order.ifState[Order.Processed].map { order =>
-        val event = if (order.lastOutcome.isSucceeded)
-          OrderMoved(order.position.increment)
-        else
-          OrderFailedIntermediate_()
-        Right((order.id <-: event) :: Nil)
-      })
+      .orElse(
+        for (order <- order.ifState[Order.Processed]) yield {
+          val event = if (order.lastOutcome.isSucceeded)
+            OrderMoved(order.position.increment)
+          else
+            OrderFailedIntermediate_()
+          Right((order.id <-: event) :: Nil)
+        })
       .getOrElse(Right(Nil))
 
-  protected final def attachOrDetach(order: Order[Order.IsFreshOrReady], agentPath: AgentPath)
-  : Option[Right[Problem, List[KeyedEvent[OrderActorEvent]]]] =
-    order.attachedState match {
-      case Some(Order.Attached(ordersAgentPath)) =>
-        (agentPath != ordersAgentPath) ?
-          Right((order.id <-: OrderDetachable) :: Nil)
-      case _ =>
-        Some(Right((order.id <-: OrderAttachable(agentPath)) :: Nil))
+  private def forkOrder(fork: Instr, order: Order[Order.IsFreshOrReady], state: StateView)
+  : Checked[OrderActorEvent] = {
+    // toForkedEvent may be called three times:
+    // 1) to predict the Agent and before OrderAttachable
+    // 2) if Order.Fresh then OrderStart
+    // 3) OrderForked
+    // Call toForkedEvent not before needed, because it may require an Agent
+    // (for subagentIds function)
+    lazy val checkedOrderForked = toForkedEvent(fork, order, state)
+    for {
+      maybe <- fork.agentPath
+        .map(agentPath => Right(Some(Some(agentPath))))
+        .getOrElse(
+          checkedOrderForked.flatMap(
+            predictControllerOrAgent(order, _, state)))
+        .map(_.flatMap(controllerOrAgent =>
+          attachOrDetach(order, controllerOrAgent)))
+      event <- maybe
+        .map(event => Right(event))
+        .getOrElse(
+          for {
+            orderForked <- checkedOrderForked
+            _ <- checkOrderIdCollisions(orderForked, state)
+          } yield
+            if (order.isState[Order.Fresh])
+              OrderStarted
+            else
+              orderForked)
+    } yield event
+  }
+
+  private def attachOrDetach(
+    order: Order[Order.IsFreshOrReady],
+    agentPath: Option[AgentPath])
+  : Option[OrderActorEvent] =
+    agentPath match {
+      case None =>
+        // Order must be at Controller
+        order.isAttached ? OrderDetachable
+
+      case Some(agentPath) =>
+        // Order must be at agentPath
+        order.attachedState match {
+          case Some(Order.Attached(`agentPath`)) =>
+            None
+          case Some(Order.Attached(_)) =>
+            Some(OrderDetachable)
+          case None =>
+            Some(OrderAttachable(agentPath))
+          case x =>
+            throw new IllegalStateException(s"${order.id} Fork: Invalid attachedState=$x")
+        }
     }
 
   override final def onReturnFromSubworkflow(
@@ -156,80 +197,59 @@ trait ForkInstructionExecutor extends EventInstructionExecutor
       body(entry)
     }
 
-  protected[instructions] final def postprocessOrderForked(
-    fork: ForkInstruction,
-    order: Order[Order.Ready],
-    orderForked: OrderForked,
-    state: StateView)
-  : Checked[OrderActorEvent] =
-    for (_ <- checkOrderIdCollisions(orderForked, state)) yield
-      predictAttachOrDetach(fork, order, orderForked, state)
-        .getOrElse(orderForked)
-
   // Forking many children at Controller and then attached all to their first agent is inefficient.
   // Here we decide where to attach the forking order before generating child orders.
-  protected[instructions] final def predictAttachOrDetach(
-    fork: ForkInstruction,
-    order: Order[Order.Ready],
+  // Right(None): No prediction
+  // Right(Some(None)): Controller
+  protected[instructions] final def predictControllerOrAgent(
+    order: Order[Order.IsFreshOrReady],
     orderForked: OrderForked,
     state: StateView)
-  : Option[OrderActorEvent] = {
-    val eventSource = new OrderEventSource(state)
-    order
-      .newForkedOrders(orderForked)
-      .toVector
-      .traverse(eventSource.nextAgent)
-      .map(_.toSet)
-    match {
-      case Left(problem) =>
-        Some(OrderFailedIntermediate_(Some(Outcome.Failed.fromProblem(problem))))
-
-      case Right(agentPaths: Set[Option[AgentPath]]) =>
+  : Checked[Option[Option[AgentPath]]] =
+    if (orderForked.children.sizeIs == 0)
+      Right(None) // No children, Order can stay where it is
+    else {
+      val eventSource = new OrderEventSource(state)
+      order
+        .newForkedOrders(orderForked)
+        .toVector
+        .traverse(eventSource.nextAgent)
+        .map(_.toSet)
+      .map(controllerOrAgents =>
         // None means Controller or the location is irrelevant (not distinguishable for now)
-        if (orderForked.children.sizeIs == 0)
-          None  // no children
-        else if (agentPaths.sizeIs == 1) {
-          // All children start at the same agent
-          val enoughChildren = orderForked.children.sizeIs >= minimumChildCountForParentAttachment
-          (order.attachedState, agentPaths.head) match {
-            case (Some(Order.Attached(parentsAgentPath)), Some(childrensAgentPath)) =>
+        if (controllerOrAgents.sizeIs == 1) {
+          // All children start at the Controller or the same Agent
+          val enoughChildren = orderForked.children.sizeIs >= MinimumChildCountForParentAttachment
+          (order.attachedState, controllerOrAgents.head) match {
+            case (Some(Order.Attached(agentPath)), Some(childrensAgentPath)) =>
               // If parent order's attachment and the orders first agent differs,
               // detach the parent order!
-              (parentsAgentPath != childrensAgentPath) ?
-                OrderDetachable
+              (agentPath != childrensAgentPath) ?
+                None // Transfer back to Controller
 
-            case (Some(Order.Attached(parentsAgentPath)), None) =>
+            case (Some(Order.Attached(_)), None) =>
               // If the orders first location is the Controller or irrelevant,
               // then we prefer to detach the parent order.
-              (fork.agentPath.exists(_ != parentsAgentPath) || enoughChildren) ?
-                OrderDetachable
+              enoughChildren ? None
 
             case (None, Some(childrensAgentPath)) =>
               // Attach the forking order to the children's agent
-              (fork.agentPath.contains(childrensAgentPath) || enoughChildren) ?
-                OrderAttachable(childrensAgentPath)
+              enoughChildren ? Some(childrensAgentPath)
 
             case _ =>
               None
           }
         } else // Child orders may start at different agents
-          order.attachedState match {
-            case Some(Order.Attached(parentsAgentPath)) =>
-              // We prefer to detach
-              // Inefficient if only one of many children change the agent !!!
-              !fork.agentPath.contains(parentsAgentPath) ?
-                OrderDetachable
-
-            case _ =>
-              fork.agentPath.map(OrderAttachable(_))
-          }
+          // Transfer back to Controller
+          // Inefficient if only one of many children change the agent !!!
+          order.isAttached ? None)
     }
-  }
 }
 
-private object ForkInstructionExecutor
+object ForkInstructionExecutor
 {
-  private val minimumChildCountForParentAttachment = 3
+  val MinimumChildCountForParentAttachment = 3
+  private val logger = Logger[this.type]
 
   // Paranoid check. Will not work properly on Agent because Agent does not know all orders.
   // The Order child syntax is based on the reserved character '|'.
@@ -240,7 +260,7 @@ private object ForkInstructionExecutor
     if (duplicates.nonEmpty) {
       // Internal error, maybe a lost OrderDetached event
       val problem = Problem.pure(s"Forked OrderIds duplicate existing ${duplicates mkString ", "}")
-      scribe.error(problem.toString)
+      logger.error(problem.toString)
       Left(problem)
     } else
       Checked.unit

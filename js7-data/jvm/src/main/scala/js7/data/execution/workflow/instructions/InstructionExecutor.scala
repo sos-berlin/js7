@@ -59,9 +59,24 @@ trait EventInstructionExecutor extends InstructionExecutor
 
   protected final def start(order: Order[Order.State])
   : Option[Checked[List[KeyedEvent[OrderStarted]]]] =
+    for (maybeStartable <- maybeStart(order)) yield
+      Right(maybeStartable.map(order.id <-: _).toList)
+
+  private def maybeStart(order: Order[Order.State]): Option[Option[OrderStarted]] =
     order.isState[Order.Fresh] ?
-      Right(order.maybeDelayedUntil.forall(_ <= clock.now())
-        .thenList(order.id <-: OrderStarted))
+      (isNotDelayed(order) ?
+        OrderStarted)
+
+  protected final def readyOrStartable(order: Order[Order.State])
+  : Option[Order[Order.IsFreshOrReady]] =
+    order
+      .ifState[Order.Ready]
+      .orElse(order
+        .ifState[Order.Fresh]
+        .filter(isNotDelayed))
+
+  protected final def isNotDelayed(order: Order[Order.State]): Boolean =
+    order.maybeDelayedUntil.forall(_ <= clock.now())
 
   protected final def attach(order: Order[Order.State], agentPath: AgentPath)
   : Option[Checked[List[KeyedEvent[OrderAttachable]]]] =
