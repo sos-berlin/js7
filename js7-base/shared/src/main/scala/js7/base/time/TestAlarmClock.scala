@@ -1,5 +1,6 @@
 package js7.base.time
 
+import js7.base.log.Logger
 import js7.base.time.AlarmClock.{ClockChecking, Simple}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
@@ -24,7 +25,7 @@ trait TestAlarmClock extends AlarmClock
 
 object TestAlarmClock
 {
-  private val logger = scribe.Logger[this.type]
+  private val logger = Logger[this.type]
 
   def apply(start: Timestamp): TestAlarmClock =
     new SimpleTestAlarmClock(start)

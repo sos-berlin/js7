@@ -118,7 +118,7 @@ final class CorrelIdTest extends OurTestSuite
         for (_ <- 1 to n) {
           garbage = CorrelId.generate()
         }
-        scribe.info(itemsPerSecondString(since.elapsed, n, "CorrelIds"))
+        logger.info(itemsPerSecondString(since.elapsed, n, "CorrelIds"))
       }
     }
 
@@ -128,7 +128,7 @@ final class CorrelIdTest extends OurTestSuite
         for (_ <- 1 to n) {
           garbage = CorrelId.generate().string
         }
-        scribe.info(itemsPerSecondString(since.elapsed, n, "strings"))
+        logger.info(itemsPerSecondString(since.elapsed, n, "strings"))
       }
     }
   }
@@ -136,4 +136,5 @@ final class CorrelIdTest extends OurTestSuite
 
 object CorrelIdTest {
   var garbage: Any = null
+  private val logger = Logger[this.type]
 }
