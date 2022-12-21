@@ -80,7 +80,6 @@ extends OurTestSuite with SubagentTester with BlockingItemUpdater
       val events = controller.runOrder(freshOrder)
       assert(events.map(_.value) == Seq(
         OrderAdded(workflow.id, Map("arg" -> StringValue("CONTROLLER"))),
-        OrderStarted,
         OrderOutcomeAdded(Outcome.Disrupted(Problem(
           "The subagentIds function is available only for ForkList statement running at an Agent" +
             " — use the agentPath argument!"))),
@@ -112,7 +111,6 @@ extends OurTestSuite with SubagentTester with BlockingItemUpdater
         OrderAdded(workflow.id, Map("arg" -> StringValue("UNKNOWN"))),
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
-        OrderStarted,
         OrderOutcomeAdded(Outcome.Disrupted(UnknownKeyProblem("SubagentSelectionId", "SubagentSelection:UNKNOWN"))),
         OrderDetachable,
         OrderDetached,

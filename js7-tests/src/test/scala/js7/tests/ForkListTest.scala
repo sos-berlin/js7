@@ -17,9 +17,12 @@ import js7.base.time.Stopwatch.itemsPerSecondString
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.CancelOrders
 import js7.data.event.{KeyedEvent, Stamped}
+import js7.data.execution.workflow.instructions.ForkInstructionExecutor
 import js7.data.job.ShellScriptExecutable
 import js7.data.order.OrderEvent.*
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
+import js7.data.subagent.{SubagentSelection, SubagentSelectionId}
+import js7.data.value.expression.Expression.{ListExpression, NumericConstant}
 import js7.data.value.expression.ExpressionParser.{expr, exprFunction}
 import js7.data.value.{ListValue, NumberValue, ObjectValue, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
@@ -110,9 +113,9 @@ with BlockingItemUpdater
           StringValue("ELEMENT-2"),
           StringValue("ELEMENT-3")))),
         deleteWhenTerminated = true),
-      OrderStarted,
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
+      OrderStarted,
       OrderForked(Vector(
         Order.Forked.Child(
           orderId / "ELEMENT-1",
@@ -158,7 +161,7 @@ with BlockingItemUpdater
         workflowId,
         Map("myList" -> ListValue(Seq(StringValue("DUPLICATE"), StringValue("DUPLICATE")))),
         deleteWhenTerminated = true),
-      OrderStarted,
+      //OrderStarted,
       OrderOutcomeAdded(Outcome.Disrupted(Problem(
         "Duplicate child IDs in $myList: Unexpected duplicates: 2×DUPLICATE"))),
       OrderFailed(Position(0))))
@@ -187,7 +190,7 @@ with BlockingItemUpdater
           workflowId,
           Map("myList" -> ListValue(Seq(StringValue(childId)))),
           deleteWhenTerminated = true),
-        OrderStarted,
+        //OrderStarted,
         OrderOutcomeAdded(Outcome.Disrupted(problem)),
         OrderFailed(Position(0))))
     }
@@ -267,19 +270,25 @@ with BlockingItemUpdater
 
   "ForkList with nested Fork" in {
     // This should not be a special problem
-    val workflow = Workflow.of(
+    val subagentSelection = SubagentSelection(
+      SubagentSelectionId("active-active-all-agents"),
+      Map(subagentId -> 1))
+    updateItem(subagentSelection)
+    val list = (1 to ForkInstructionExecutor.MinimumChildCountForParentAttachment).toList
+    val listExpr = ListExpression(list.map(NumericConstant(_)))
+
+    val workflow = updateItem(Workflow.of(
       WorkflowPath("FORK-IN-FORKLIST"),
+      EmptyJob.execute(agentPath),
       ForkList(
-        expr("$myList"),
+        listExpr,
         exprFunction("(element) => $element"),
         exprFunction("(element) => { element: $element }"),
-        Workflow.of(
-          Fork(
-            Vector(
-              "BRANCH" -> Workflow.of(
-                EmptyJob.execute(agentPath)))))))
+        agentPath = Some(agentPath),
+        workflow = Workflow.of(
+          Fork(Vector.empty)))))
 
-    withTemporaryItem(workflow) { workflow =>
+    try {
       val eventId = eventWatch.lastAddedEventId
       val orderId = OrderId("FORK-IN-FORKLIST")
       val events = controller.runOrder(FreshOrder(orderId, workflow.path, Map(
@@ -287,34 +296,39 @@ with BlockingItemUpdater
 
       assert(events.map(_.value) == Seq(
         OrderAdded(workflow.id, Map("myList" -> ListValue(Seq(StringValue("VALUE"))))),
+
+        OrderAttachable(agentPath),
+        OrderAttached(agentPath),
         OrderStarted,
-        OrderForked(Vector(OrderForked.Child(orderId / "VALUE", Map(
-          "element" -> StringValue("VALUE"))))),
-        OrderJoined(Outcome.succeeded),
+        OrderProcessingStarted(Some(subagentId)),
+        OrderProcessed(Outcome.succeeded),
         OrderMoved(Position(1)),
+
+        OrderForked(Vector(
+          OrderForked.Child(orderId / "1", Map("element" -> NumberValue(1))),
+          OrderForked.Child(orderId / "2", Map("element" -> NumberValue(2))),
+          OrderForked.Child(orderId / "3", Map("element" -> NumberValue(3))))),
+        OrderDetachable,
+        OrderDetached,
+
+        OrderJoined(Outcome.succeeded),
+        OrderMoved(Position(2)),
+
         OrderFinished(None)))
 
-      assert(eventWatch
-        .keyedEvents[OrderEvent](_.key == orderId / "VALUE", after = eventId)
-        .map(_.event) ==
-        Seq(
-          OrderForked(Vector(
-            "BRANCH" -> orderId / "VALUE" / "BRANCH")),
-          OrderJoined(Outcome.succeeded),
-          OrderMoved(Position(0) / "fork" % 1)))
-
-      assert(eventWatch
-        .keyedEvents[OrderEvent](_.key == orderId / "VALUE" / "BRANCH", after = eventId)
-        .map(_.event) ==
-        Seq(
-          OrderAttachable(agentPath),
-          OrderAttached(agentPath),
-          OrderProcessingStarted(Some(subagentId)),
-          OrderProcessed(Outcome.succeeded),
-          OrderMoved(Position(0) / "fork" % 0 / "fork+BRANCH" % 1),
-          OrderDetachable,
-          OrderDetached))
-    }
+      for (i <- list) withClue(s"i=$i ") {
+        assert(eventWatch
+          .keyedEvents[OrderEvent](_.key == orderId / s"$i", after = eventId)
+          .map(_.event) ==
+          Seq(
+            OrderDetachable,
+            OrderDetached,
+            OrderForked(Vector.empty),
+            OrderJoined(Outcome.succeeded),
+            OrderMoved(Position(1) / "fork" % 1)))
+      }
+    } finally
+      deleteItems(workflow.path, subagentSelection.path)
   }
 
   private def runOrder(workflowPath: WorkflowPath, orderId: OrderId, n: Int,
@@ -383,9 +397,9 @@ with BlockingItemUpdater
         deleteWhenTerminated = true),
 
       // Each child order starts at bAgentPath. So attach forking order to bAgentPath.
-      OrderStarted,
       OrderAttachable(bAgentPath),
       OrderAttached(bAgentPath),
+      OrderStarted,
       orderForked,
       OrderDetachable,
       OrderDetached,
@@ -450,8 +464,9 @@ with BlockingItemUpdater
         workflowId,
         Map("myList" -> ListValue(Seq(StringValue("SINGLE-ELEMENT")))),
         deleteWhenTerminated = true),
-      OrderStarted,
-      OrderOutcomeAdded(Outcome.Failed(Some("No such named value: UNKNOWN"))),
+      //Until v2.5.0: OrderStarted,
+      //Until v2.5.0: OrderOutcomeAdded(Outcome.Failed(Some("No such named value: UNKNOWN"))),
+      OrderOutcomeAdded(Outcome.Disrupted(Problem("No such named value: UNKNOWN"))),
       OrderFailed(Position(0))))
   }
 

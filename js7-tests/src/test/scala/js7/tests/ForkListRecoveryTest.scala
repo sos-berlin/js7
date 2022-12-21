@@ -66,9 +66,9 @@ final class ForkListRecoveryTest extends OurTestSuite with DirectoryProviderForS
             StringValue("CHILD-2"),
             StringValue("CHILD-3")))),
           deleteWhenTerminated = true),
-        OrderStarted,
         OrderAttachable(agentPath),
         OrderAttached(agentPath),
+        OrderStarted,
         OrderForked(Vector(
           Order.Forked.Child(
             childOrderIds(0),

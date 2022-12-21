@@ -107,9 +107,9 @@ with BlockingItemUpdater with TestMixins
       """replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#(.*)$', '$1-$2')""")
 
     val myBoard = Board(
-      BoardPath(s"MY-BOARD"),
+      BoardPath("MY-BOARD"),
       postOrderToNoticeId = orderIdToNoticeId,
-      endOfLife = expr(s"$$js7EpochMilli + ${lifeTime.toMillis}"),
+      endOfLife = expr(s"$$js7EpochMilli + ${lifetime.toMillis}"),
       expectOrderToNoticeId = orderIdToNoticeId)
 
     val workflow = Workflow(
@@ -611,24 +611,10 @@ object ConsumeNoticesTest
   private val agentPath = AgentPath("AGENT")
   private val subagentId = toLocalSubagentId(agentPath)
 
-  // One lifeTime per board
-  private val lifeTime = 1.day
-
-  private val orderIdToNoticeId = expr(
-    """replaceAll($js7OrderId, '^#([0-9]{4}-[0-9]{2}-[0-9]{2})#.*$', '$1')""")
-
-  private val aBoard = Board(
-    BoardPath("A-BOARD"),
-    postOrderToNoticeId = orderIdToNoticeId,
-    endOfLife = expr(s"$$js7EpochMilli + ${lifeTime.toMillis}"),
-    expectOrderToNoticeId = orderIdToNoticeId)
-
-  private val bBoard = Board(
-    BoardPath("B-BOARD"),
-    postOrderToNoticeId = orderIdToNoticeId,
-    endOfLife = expr(s"$$js7EpochMilli + ${lifeTime.toMillis}"),
-    expectOrderToNoticeId = orderIdToNoticeId)
-
+  // One lifetime per board
+  private val lifetime = 1.day
+  private val aBoard = Board.joc(BoardPath("A-BOARD"), lifetime)
+  private val bBoard = Board.joc(BoardPath("B-BOARD"), lifetime)
 
   final class TestJob extends SemaphoreJob(TestJob)
   private object TestJob extends SemaphoreJob.Companion[TestJob]

@@ -120,9 +120,9 @@ final class OrderEventSourceTest extends OurTestSuite
     process.update(orderId <-: OrderAttachable(TestAgentPath))
     process.update(orderId <-: OrderAttached(TestAgentPath))
     assert(process.run(orderId) == List(
-      orderId <-: OrderStarted,
       orderId <-: OrderDetachable,
       orderId <-: OrderDetached,
+      orderId <-: OrderStarted,
       orderId <-: OrderForked(Vector(
         OrderForked.Child("🥕", orderId / "🥕"),
         OrderForked.Child("🍋", orderId / "🍋")))))
@@ -238,7 +238,7 @@ final class OrderEventSourceTest extends OurTestSuite
         "Attached" in {
           testEventSource(freshOrder, attached) { (order, controller, agent) =>
             assert(controller.nextEvents(order.id) == Nil)
-            assert(agent     .nextEvents(order.id) == Seq(order.id <-: OrderStarted))
+            assert(agent     .nextEvents(order.id) == Seq(order.id <-: OrderDetachable))
             assert(controller.cancel(order.id, CancellationMode.FreshOnly       ) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOnly)))))
             assert(agent     .cancel(order.id, CancellationMode.FreshOnly       ) == Right(Some(Seq(OrderDetachable))))
             assert(controller.cancel(order.id, CancellationMode.FreshOrStarted()) == Right(Some(Seq(OrderCancellationMarked(CancellationMode.FreshOrStarted())))))

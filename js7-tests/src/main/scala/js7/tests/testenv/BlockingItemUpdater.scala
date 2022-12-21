@@ -5,21 +5,33 @@ import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Lazy
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.data.controller.ControllerState
 import js7.data.item.ItemOperation.{AddOrChangeOperation, AddOrChangeSigned, AddOrChangeSimple, AddVersion}
 import js7.data.item.{InventoryItem, InventoryItemPath, ItemOperation, SignableItem, UnsignedSimpleItem, VersionId, VersionedItem, VersionedItemPath}
 import js7.proxy.ControllerApi
 import monix.execution.Scheduler
 import monix.execution.atomic.Atomic
 import monix.reactive.Observable
+import scala.annotation.tailrec
 
 trait BlockingItemUpdater {
   private val nextVersionId_ = Atomic(1)
 
   protected def sign[A <: SignableItem](item: A): Signed[A]
   protected def controllerApi: ControllerApi
+  protected def controllerState: ControllerState
 
-  private def nextVersionId() =
-    VersionId(nextVersionId_.getAndIncrement().toString)
+  protected final def nextVersionId() = {
+    val versionIdSet = controllerState.repo.versionIdSet
+    @tailrec def loop(): VersionId = {
+      val v = VersionId(nextVersionId_.getAndIncrement().toString)
+      if (versionIdSet contains v)
+        loop()
+      else
+        v
+    }
+    loop()
+  }
 
   protected final def withTemporaryItem[I <: InventoryItem, A](item: I)(body: I => A)
     (implicit s: Scheduler)
@@ -27,6 +39,14 @@ trait BlockingItemUpdater {
     val realItem = updateItem(item)
     try body(realItem)
     finally deleteItems(realItem.path)
+  }
+
+  protected final def withItems[A](items: InventoryItem*)(body: => A)
+    (implicit s: Scheduler)
+  : A = {
+    updateItems(items*)
+    try body
+    finally deleteItems(items.map(_.path)*)
   }
 
   protected final def updateItem[I <: InventoryItem](item: I)(implicit s: Scheduler)

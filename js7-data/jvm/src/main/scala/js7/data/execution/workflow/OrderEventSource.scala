@@ -76,13 +76,12 @@ final class OrderEventSource(state: StateView)
                   .flatMap(_
                     .flatTraverse {
                       case orderId <-: (moved: OrderMoved) =>
-                        applyMoveInstructions(order, moved)
+                        applyMoveInstructions(idToOrder(orderId), moved)
                           .map(_.map(orderId <-: _))
 
                       case orderId <-: OrderFailedIntermediate_(outcome, uncatchable) =>
                         // OrderFailedIntermediate_ is used internally only
-                        assertThat(orderId == order.id)
-                        fail(order, outcome, uncatchable)
+                        fail(idToOrder(orderId), outcome, uncatchable)
                           .map(_.map(orderId <-: _))
 
                       case o => Right(o :: Nil)

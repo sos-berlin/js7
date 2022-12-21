@@ -520,7 +520,7 @@ final case class ControllerStateExecutor private(
           if (controllerState.idToOrder contains orderId) {
             val keyedEvents = new OrderEventSource(controllerState).nextEvents(orderId)
             for (case KeyedEvent(orderId, OrderBroken(maybeProblem)) <- keyedEvents) {
-              logger.error(s"$orderId is broken: ${maybeProblem getOrElse "None"}") // ???
+              logger.error(s"$orderId is broken${maybeProblem.fold("")(": " + _)}") // ???
             }
             controllerState.applyEvents(keyedEvents) match {
               case Left(problem) =>

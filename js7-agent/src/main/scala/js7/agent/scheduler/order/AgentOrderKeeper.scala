@@ -704,8 +704,8 @@ final class AgentOrderKeeper(
       if (!delayed) {
         val keyedEvents = orderEventSource.nextEvents(order.id)
         keyedEvents foreach {
-          case KeyedEvent(orderId, OrderBroken(problem)) =>
-            logger.error(s"Order ${orderId.string} is broken: $problem")
+          case KeyedEvent(orderId, OrderBroken(maybeProblem)) =>
+            logger.error(s"$orderId is broken${maybeProblem.fold("")(": " + _)}") // ???
 
           case KeyedEvent(orderId_, event) =>
             val future = orderRegister(orderId_).actor ?

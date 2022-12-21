@@ -11,7 +11,7 @@ import js7.data.event.{KeyedEvent, NoKeyEvent}
 import js7.data.item.BasicItemEvent.{ItemDeleted, ItemDeletionMarked}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemAddedOrChanged, SignedItemChanged}
 import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedSimpleItemAddedOrChanged, UnsignedSimpleItemChanged}
-import js7.data.item.VersionedEvent.VersionedItemRemoved
+import js7.data.item.VersionedEvent.{VersionedItemChanged, VersionedItemRemoved}
 import js7.data.item.{BasicItemEvent, InventoryItem, InventoryItemEvent, InventoryItemPath, ItemRevision, SignableSimpleItem, SimpleItemPath, UnsignedSimpleItem, VersionedEvent, VersionedItemPath}
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath, WorkflowPathControl, WorkflowPathControlPath}
 import scala.collection.View
@@ -51,6 +51,12 @@ object VerifiedUpdateItemsExecutor
           versionedEvents.view
             .collect { case KeyedEvent(_, e: VersionedItemRemoved) => e.path }
             .flatMap(deleteRemovedVersionedItem(_, updatedState)))
+        updatedState <- updatedState.applyEvents(
+          versionedEvents.view
+            .collect { case KeyedEvent(_, e: VersionedItemChanged) => e.path }
+            .flatMap(controllerState.repo.pathToId)
+            .filterNot(controllerState.isInUse)
+            .map(previousItemId => NoKey <-: ItemDeleted(previousItemId)))
         derivedWorkflowPathControlEvents = toDerivedWorkflowPathControlEvents(updatedState)
         updatedState <- updatedState.applyEvents(derivedWorkflowPathControlEvents)
         derivedWorkflowControlEvents = toDerivedWorkflowControlEvents(updatedState)
@@ -221,7 +227,7 @@ object VerifiedUpdateItemsExecutor
     val delSimpleChecked = controllerState
       .checkDeletedSimpleItems(verifiedUpdateItems.simple.delete.toSet)
     val delVersionedChecked = controllerState.checkRemovedVersionedItems(
-        verifiedUpdateItems.maybeVersioned.view.flatMap(_.remove))
+      verifiedUpdateItems.maybeVersioned.view.flatMap(_.remove))
     newChecked
       .combineLeftOrRight(delSimpleChecked)
       .combineLeftOrRight(delVersionedChecked)

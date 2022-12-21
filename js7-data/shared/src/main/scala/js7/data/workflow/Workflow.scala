@@ -23,7 +23,7 @@ import js7.data.value.expression.{Expression, PositionSearch, Scope}
 import js7.data.workflow.Instruction.{@:, Labeled}
 import js7.data.workflow.Workflow.isCorrectlyEnded
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{BoardInstruction, Cycle, End, Execute, Fork, Gap, If, ImplicitEnd, Instructions, LockInstruction, Retry, TryInstruction}
+import js7.data.workflow.instructions.{BoardInstruction, Cycle, End, Execute, Fork, ForkInstruction, Gap, If, ImplicitEnd, Instructions, LockInstruction, Retry, TryInstruction}
 import js7.data.workflow.position.BranchPath.Segment
 import js7.data.workflow.position.{BranchId, BranchPath, InstructionNr, Label, Position, PositionOrLabel, WorkflowBranchPath, WorkflowPosition}
 import scala.annotation.tailrec
@@ -328,10 +328,15 @@ with TrivialItemState[Workflow]
     checkedWorkflowJob(Position(0)).exists(_ isExecutableOnAgent agentPath)
 
   def agentPath(position: Position): Option[AgentPath] =
-    checkedAgentPath(position).toOption
+    instruction(position) match {
+      case execute: Execute =>
+        checkedWorkflowJob(position).toOption.map(_.agentPath)
 
-  def checkedAgentPath(position: Position): Checked[AgentPath] =
-    checkedWorkflowJob(position).map(_.agentPath)
+      case fork: ForkInstruction =>
+        fork.agentPath
+
+      case _ => None
+    }
 
   def isDefinedAt(position: Position): Boolean =
     position match {
