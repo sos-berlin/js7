@@ -16,32 +16,34 @@ import js7.data.Problems.UnknownOrderProblem
 import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.AgentReady
 import js7.data.command.{CancellationMode, SuspensionMode}
-import js7.data.controller.ControllerCommand.{Batch, CancelOrders, Response, ResumeOrder, ResumeOrders, SuspendOrders}
+import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, Batch, CancelOrders, Response, ResumeOrder, ResumeOrders, SuspendOrders}
 import js7.data.item.VersionId
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderResumed.{AppendHistoricOutcome, DeleteHistoricOutcome, InsertHistoricOutcome, ReplaceHistoricOutcome}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCaught, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderStdWritten, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarkedOnAgent, OrderCancelled, OrderCaught, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderResumed, OrderResumptionMarked, OrderRetrying, OrderStarted, OrderStdWritten, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent, OrderTerminated}
 import js7.data.order.{FreshOrder, HistoricOutcome, Order, OrderEvent, OrderId, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.value.{NamedValues, NumberValue}
+import js7.data.value.{NamedValues, NumberValue, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{Execute, Fail, Fork, Retry, TryInstruction}
+import js7.data.workflow.instructions.{EmptyInstruction, Execute, Fail, Fork, Prompt, Retry, TryInstruction}
 import js7.data.workflow.position.BranchId.{Try_, catch_, try_}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.jobs.EmptyJob
 import js7.tests.order.SuspendResumeOrdersTest.*
-import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.{toLocalSubagentId, waitingForFileScript}
+import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import monix.execution.Scheduler.Implicits.global
 
 final class SuspendResumeOrdersTest extends OurTestSuite with ControllerAgentForScalaTest
+with BlockingItemUpdater
 {
   override def controllerConfig = config"""
+    js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
     js7.controller.agent-driver.command-batch-delay = 0ms
-    js7.controller.agent-driver.event-buffer-delay = 10ms"""
+    js7.controller.agent-driver.event-buffer-delay = 0ms"""
 
   override def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on"""
@@ -574,6 +576,83 @@ final class SuspendResumeOrdersTest extends OurTestSuite with ControllerAgentFor
       OrderDetachable,
       OrderDetached,
       OrderFailed(Position(1))))
+  }
+
+  "Suspend and resume at end of workflow" in {
+    val workflow = Workflow(
+      WorkflowPath("SUSPEND-AT-END"),
+      Seq(
+        Prompt(expr("'PROMPT'"))))
+    withTemporaryItem(workflow) { workflow =>
+      val orderId = OrderId("SUSPEND-AT-END")
+      controller.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+        .await(99.s).orThrow
+      eventWatch.await[OrderPrompted](_.key == orderId)
+
+      controllerApi.executeCommand(SuspendOrders(Seq(orderId))).await(99.s).orThrow
+      controllerApi.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
+      eventWatch.await[OrderSuspended](_.key == orderId)
+
+      controllerApi.executeCommand(ResumeOrders(Seq(orderId))).await(99.s).orThrow
+      eventWatch.await[OrderDeleted](_.key == orderId)
+
+      assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
+        OrderAdded(workflow.id, deleteWhenTerminated = true),
+        OrderStarted,
+        OrderPrompted(StringValue("PROMPT")),
+        OrderSuspensionMarked(SuspensionMode(None)),
+        OrderPromptAnswered(),
+        OrderMoved(Position(1)),
+        OrderSuspended,
+        OrderResumed(),
+        OrderFinished(),
+        OrderDeleted))
+    }
+  }
+
+  "Suspend then cancel" - {
+    "Suspend in the middle of a workflow, then cancel" in {
+      testSuspendAndCancel(
+        Workflow(
+          WorkflowPath("SUSPEND-THEN-CANCEL"),
+          Seq(
+            Prompt(expr("'PROMPT'")),
+            EmptyInstruction())))
+    }
+
+    "Suspend at end of workflow, then cancel" in {
+      testSuspendAndCancel(
+        Workflow(
+          WorkflowPath("SUSPEND-AT-END-THEN-CANCEL"),
+          Seq(
+            Prompt(expr("'PROMPT'")))))
+    }
+
+    def testSuspendAndCancel(workflow: Workflow): Unit =
+      withTemporaryItem(workflow) { workflow =>
+        val orderId = OrderId(workflow.path.string)
+        controller.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+          .await(99.s).orThrow
+        eventWatch.await[OrderPrompted](_.key == orderId)
+
+        controllerApi.executeCommand(SuspendOrders(Seq(orderId))).await(99.s).orThrow
+        controllerApi.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
+        eventWatch.await[OrderSuspended](_.key == orderId)
+
+        controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+        eventWatch.await[OrderDeleted](_.key == orderId)
+
+        assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
+          OrderAdded(workflow.id, deleteWhenTerminated = true),
+          OrderStarted,
+          OrderPrompted(StringValue("PROMPT")),
+          OrderSuspensionMarked(SuspensionMode(None)),
+          OrderPromptAnswered(),
+          OrderMoved(Position(1)),
+          OrderSuspended,
+          OrderCancelled,
+          OrderDeleted))
+      }
   }
 }
 
