@@ -359,7 +359,7 @@ final class OrderEventSource(state: StateView)
   : Option[OrderActorEvent] =
     (weHave(order) && order.isResumable) ? OrderResumed(position, historyOperations, asSucceeded)
 
-  def answer(orderId: OrderId): Checked[Seq[KeyedEvent[OrderCoreEvent]]] =
+  def answerPrompt(orderId: OrderId): Checked[Seq[KeyedEvent[OrderCoreEvent]]] =
     catchNonFatalFlatten {
       for {
         order <- idToOrder.checked(orderId)
