@@ -29,5 +29,6 @@ object Instructions
     Subtype[Cycle],
     Subtype[StickySubagent],
     Subtype[AddOrder],
+    Subtype[EmptyInstruction],
     Subtype[Gap])
 }

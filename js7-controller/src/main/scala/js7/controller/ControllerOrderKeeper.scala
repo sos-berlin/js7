@@ -951,7 +951,7 @@ with MainJournalingActor[ControllerState, Event]
           }
 
       case ControllerCommand.AnswerOrderPrompt(orderId) =>
-        orderEventSource.answer(orderId) match {
+        orderEventSource.answerPrompt(orderId) match {
           case Left(problem) =>
             Future.successful(Left(problem))
           case Right(events) =>
