@@ -17,6 +17,7 @@ final class InstructionExecutorService(val clock: WallClock)
 
   private val classToExecutor = new SubclassToX(
     Seq(
+      new EmptyExecutor(this),
       new EndExecutor(this),
       new ExecuteExecutor(this),
       new FailExecutor(this),

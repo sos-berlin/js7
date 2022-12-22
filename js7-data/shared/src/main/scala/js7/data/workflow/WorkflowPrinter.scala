@@ -15,7 +15,7 @@ import js7.data.value.{NamedValues, ValuePrinter}
 import js7.data.workflow.WorkflowPrinter.*
 import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{Execute, ExplicitEnd, Fail, Finish, Fork, Gap, If, ImplicitEnd, LockInstruction, Retry, TryInstruction}
+import js7.data.workflow.instructions.{EmptyInstruction, Execute, ExplicitEnd, Fail, Finish, Fork, Gap, If, ImplicitEnd, LockInstruction, Retry, TryInstruction}
 import scala.annotation.tailrec
 
 /**
@@ -213,6 +213,9 @@ final class WorkflowPrinter(sb: StringBuilder) {
 
       case Gap(_) =>
         sb ++= "/*gap*/\n"
+
+      case EmptyInstruction(_) =>
+        sb ++= "/*empty*/\n"
 
       case If(predicate, thenWorkflow, elseWorkflowOption, _) =>
         sb ++= "if (" ++= predicate.toString ++= ") {\n"
