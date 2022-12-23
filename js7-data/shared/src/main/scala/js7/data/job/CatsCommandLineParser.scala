@@ -30,7 +30,7 @@ object CatsCommandLineParser
     charWhere(c => !isWhite(c) && c != '$' && c != '"' && c != '\'' && c != '\\')
 
   private val stringConstant: Parser[StringConstant] =
-    (normalCharInUnquotedWord | escapedCharInUnquotedWord).rep
+    (normalCharInUnquotedWord.map(_.toString) | escapedCharInUnquotedWord).rep
       .map(chars => StringConstant(chars.toList.mkString))
 
   private val constantInDoubleQuotedWord: Parser0[StringConstant] =

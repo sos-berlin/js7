@@ -331,7 +331,7 @@ final class MonixBaseTest extends OurAsyncTestSuite
           case 2 => throw new IllegalArgumentException("TEST")
           case _ =>
         }
-        .onErrorRecover { case e: RuntimeException if e.getMessage == "TEST" => -1 }
+        .onErrorRecover[Any] { case e: RuntimeException if e.getMessage == "TEST" => -1 }
         .toListL
         .map(list => assert(list == List(1, -1)))
         .runToFuture

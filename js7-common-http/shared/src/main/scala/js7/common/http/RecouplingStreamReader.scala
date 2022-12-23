@@ -103,7 +103,7 @@ abstract class RecouplingStreamReader[
   final def markAsStopped(): Unit =
     markedAsStopped = true
 
-  final def terminateAndLogout: Task[Completed] =
+  final def terminateAndLogout: Task[Unit] =
     decouple
       .*>(coupledApiVar.terminate)
       .logWhenItTakesLonger

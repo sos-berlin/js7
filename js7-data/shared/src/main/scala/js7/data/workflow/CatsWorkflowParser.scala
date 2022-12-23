@@ -42,7 +42,7 @@ object CatsWorkflowParser
 
     private val instructionTerminator: Parser0[Unit] =
       (w ~
-        ((char(';') ~ w) |
+        ((char(';') ~ w).void |
           peek(char('}') | keyword("else") | keyword("catch")) |
           end
         ).backtrack.orElse(failWith("Expected end of instruction"))

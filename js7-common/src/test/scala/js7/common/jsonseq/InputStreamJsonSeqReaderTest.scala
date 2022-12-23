@@ -165,7 +165,7 @@ private object InputStreamJsonSeqReaderTest
   private val ChunkBytes: Seq[Byte] = Chunk.flatMap(o => Array(RS) ++ o._1 :+ LF)
 
   private val FourByteUtf8 = Vector('"', 'x', 0xF0.toByte, 0x9F.toByte, 0xA5.toByte, 0x95.toByte, '"')
-  assert(Chunk.last._1 sameElements FourByteUtf8)
+  assert(Chunk.last._1.toVector == FourByteUtf8)
 
   private def read(bytes: String, withRS: Boolean = false) =
     newInputStreamJsonSeqReader(simplifiedSeekableInputStream(bytes.getBytes(US_ASCII)), withRS = withRS).read()

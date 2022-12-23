@@ -111,7 +111,6 @@ private trait SubagentEventListener[S_ <: SubagentDirectorState[S_]]
         })
       .guarantee(recouplingStreamReader
         .terminateAndLogout
-        .void
         .logWhenItTakesLonger)
       .completedL)
   }

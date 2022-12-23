@@ -23,8 +23,9 @@ class AkkaHttpControllerApi(
   name: String = "")
 extends HttpControllerApi with SessionApi.HasUserAndPassword with AutoCloseable
 {
-  final val httpClient = new AkkaHttpClient.Standard(
-    baseUri, HttpControllerApi.UriPrefixPath, actorSystem, httpsConfig, name = name)
+  final val httpClient: AkkaHttpClient =
+    new AkkaHttpClient.Standard(
+      baseUri, HttpControllerApi.UriPrefixPath, actorSystem, httpsConfig, name = name)
 
   def close() = {
     logOpenSession()

@@ -23,7 +23,7 @@ object UnsignedSimpleItemPath
   with SimpleItemPath.Companion[A]
   {
     type Item <: UnsignedSimpleItem
-    override implicit def implicitCompanion = this
+    override implicit def implicitCompanion: Companion[A] = this
   }
 
   def jsonCodec(companions: Iterable[UnsignedSimpleItemPath.Companion_]): Codec[UnsignedSimpleItemPath] =

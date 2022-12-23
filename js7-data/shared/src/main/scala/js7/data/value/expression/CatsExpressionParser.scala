@@ -93,7 +93,7 @@ object CatsExpressionParser
     val namedValue = (identifier | digits/*regex group*/).map(NamedValue(_))
     val expr = char('$') *> (namedValue | curlyName | inParentheses(expression))
     val simpleConstant = charsWhile(ch => ch != '"' && ch != '\\' && ch != '$').string
-    val constant = (simpleConstant | escapedCharInString).rep
+    val constant = (simpleConstant | escapedCharInString.map(_.toString)).rep
       .map(_.toList.mkString)
       .map(StringConstant(_))
 

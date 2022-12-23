@@ -25,7 +25,7 @@ final class AnyJsonCodecsTest extends OurTestSuite
   }
 
   "anyToJson, jsonToAny" in {
-    val map = Map(
+    val map = Map[String, Any](
       "string" -> "STRING",
       "int" -> 333,
       "bigDecimal" -> BigDecimal("111222333444555666777888999.1234556789"),

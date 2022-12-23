@@ -204,7 +204,7 @@ final class CatsBasicParsersTest extends OurTestSuite
 
     "Valid" in {
       assert(checkedParse("""string="STRING", number=7""", kvP)
-        == Right(KeyToValue(Map("string" -> "STRING", "number" -> 7))))
+        == Right(KeyToValue(Map[String, Any]("string" -> "STRING", "number" -> 7))))
     }
 
     "apply" in {
@@ -220,7 +220,10 @@ final class CatsBasicParsersTest extends OurTestSuite
   }
 
   "KeyToValue" - {
-    val keyToValue = KeyToValue(Map("string" -> "STRING", "string2" -> "STRING2", "number" -> 7))
+    val keyToValue = KeyToValue(Map[String, Any](
+      "string" -> "STRING",
+      "string2" -> "STRING2",
+      "number" -> 7))
 
     // checkedParse("") in following tests due to Parser.flatMap
 

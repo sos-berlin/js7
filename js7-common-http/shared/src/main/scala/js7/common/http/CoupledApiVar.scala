@@ -21,7 +21,7 @@ private[http] final class CoupledApiVar[Api <: SessionApi]
 
   def isStopped = stopped
 
-  def terminate: Task[Completed] =
+  def terminate: Task[Unit] =
     Task.tailRecM(ZeroDuration)(delay =>
       Task {
         stopped = true
@@ -29,7 +29,7 @@ private[http] final class CoupledApiVar[Api <: SessionApi]
         Task.delay(delay) *>
         invalidate *>
         coupledApiMVar.flatMap(_.tryPut(Left(TerminatedProblem)))
-          .map(if (_) Right(Completed) else Left(10.ms/*just in case this loop is endless*/)))
+          .map(if (_) Right(()) else Left(10.ms/*just in case this loop is endless*/)))
 
   def invalidate: Task[Completed] =
     coupledApiMVar.flatMap(_.tryTake)
