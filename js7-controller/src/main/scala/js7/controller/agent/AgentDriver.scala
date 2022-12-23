@@ -92,7 +92,7 @@ extends ReceiveLoggingActor.WithStash
   private var isTerminating = false
   private var changingUri: Option[Uri] = None
   private val sessionNumber = AtomicInt(0)
-  private val eventFetcherTerminated = Promise[Completed]()
+  private val eventFetcherTerminated = Promise[Unit]()
   private var noJournal = false
   private var isReset = false
 
@@ -580,10 +580,10 @@ extends ReceiveLoggingActor.WithStash
       }
     }
 
-  private def closeClient: Task[Completed] =
+  private def closeClient: Task[Unit] =
     eventFetcher.invalidateCoupledApi
       .materialize
-      .flatMap(_ => client.tryLogout)
+      .flatMap(_ => client.tryLogout.void)
       .guarantee(Task {
         client.close()
       })

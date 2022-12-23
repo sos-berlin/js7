@@ -85,6 +85,7 @@ trait SubagentExecutor
             .*>(journal
               // The event may get lost due to immediate shutdown !!!
               .persistKeyedEvent(NoKey <-: SubagentShutdown)
+              .rightAs(())
               .map(_.onProblemHandle(problem => logger.warn(s"Shutdown: $problem"))))
             .*>(Task {
               logger.info(

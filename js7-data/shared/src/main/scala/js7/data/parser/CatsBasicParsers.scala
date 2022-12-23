@@ -32,11 +32,11 @@ object CatsBasicParsers
 
   /** Optional whitespace including line ends */
   val w: Parser0[Unit] =
-    (charIn(" \t\r\n").rep | comment).rep0.void
+    (charIn(" \t\r\n").rep.void | comment).rep0.void
 
   /** Optional horizontal whitespace */
   val h: Parser0[Unit] =
-    (charIn(" \t").rep | comment).rep0.void
+    (charIn(" \t").rep.void | comment).rep0.void
 
   val int: Parser[Int] =
     (char('-').string.?.with1 ~ digits).string

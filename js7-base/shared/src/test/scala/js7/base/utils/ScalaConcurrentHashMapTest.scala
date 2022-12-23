@@ -39,7 +39,7 @@ final class ScalaConcurrentHashMapTest extends OurTestSuite
   }
 
   "getOrElse" in {
-    assert(m.getOrElse(1, 33) == 33)
+    assert(m.getOrElse(1, "DEFAULT") == "DEFAULT")
     assert(m.getOrElse(2, sys.error("")) == "zwei")
   }
 

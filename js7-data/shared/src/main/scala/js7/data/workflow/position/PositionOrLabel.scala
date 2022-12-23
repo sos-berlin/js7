@@ -84,7 +84,10 @@ extends PositionOrLabel
     branchPath.view.reverse.dropWhile(o => !o.branchId.isFork).toList
 
   def toSeq: IndexedSeq[Any] =
-    branchPath.view.flatMap(p => Seq(p.nr.number, p.branchId.string)).toVector :+ nr.number
+    branchPath.view
+      .flatMap(p => Seq[Any](p.nr.number, p.branchId.string))
+      .toVector :+
+      nr.number
 
   private[workflow] def toJsonSeq: Vector[Json] =
     branchPath.toJsonSeq :+ nr.asJson

@@ -74,7 +74,8 @@ with WebLogDirectives
     GateKeeper.Configuration.fromConfig(config, SimpleUser.apply, Seq(
       UpdateItemPermission)))
 
-  protected def executeCommand(command: ControllerCommand, meta: CommandMeta) =
+  protected def executeCommand(command: ControllerCommand, meta: CommandMeta)
+  : Task[Checked[command.Response]] =
     commandExecutor.executeCommand(command, meta)
 
   protected def executeClusterCommand(command: ClusterCommand) =

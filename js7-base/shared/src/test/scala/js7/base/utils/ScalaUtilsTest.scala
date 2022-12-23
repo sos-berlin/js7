@@ -433,10 +433,10 @@ final class ScalaUtilsTest extends OurTestSuite
     }
 
     "orElse" in {
-      assert((Left(1): Either[Int, Boolean]).orElse(Left("WINNER")) == Left("WINNER"))
-      assert((Left(1): Either[Int, Boolean]).orElse(Right("WINNER")) == Right("WINNER"))
-      assert((Right(true): Either[Int, Boolean]).orElse(Left("LOOSER")) == Right(true))
-      assert((Right(true): Either[Int, Boolean]).orElse(Right("LOOSER")) == Right(true))
+      assert((Left("LEFT"): Either[String, String]).orElse(Left("WINNER")) == Left("WINNER"))
+      assert((Left("LEFT"): Either[String, String]).orElse(Right("WINNER")) == Right("WINNER"))
+      assert((Right("RIGHT"): Either[String, String]).orElse(Left("LOOSER")) == Right("RIGHT"))
+      assert((Right("RIGHT"): Either[String, String]).orElse(Right("LOOSER")) == Right("RIGHT"))
     }
 
     "combineLeft" in {
