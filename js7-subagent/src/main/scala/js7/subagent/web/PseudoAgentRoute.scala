@@ -94,9 +94,9 @@ private trait PseudoAgentRoute extends SessionRoute with EntitySizeLimitProvider
     completeTask(
       restartAsDirector
         .delayExecution(200.ms) // Delay in background to allow to respond properly (for test)
-        .onErrorHandle(t => Task {
+        .onErrorHandle { t =>
           logger.error(s"restartAsDirector => ${t.toStringWithCauses}")
-        })
+        }
         .start
         .as(ServiceUnavailable -> Problem(
           "Subagent becomes a fresh Agent Director - try again after a second")))
