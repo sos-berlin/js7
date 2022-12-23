@@ -358,7 +358,7 @@ object Cluster
     truncated ? file
   }
 
-  @deprecated("Provisional fix for v2.4", "v2.5")
+  // TODO Provisional fix because it's not easy to restart the recovery
   final class RestartAfterJournalTruncationException
   extends RuntimeException("Restart after journal truncation")
   with NoStackTrace
