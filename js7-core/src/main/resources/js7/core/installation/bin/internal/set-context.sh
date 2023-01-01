@@ -12,6 +12,7 @@ fi
 
 declare JAVA_HOME
 declare -a classpath=()
+. <(egrep "^JAVA_VERSION=" "$JAVA_HOME/release")
 
 if [ "$(uname -o)" == "Cygwin" ]; then
   function toUnixPath() {

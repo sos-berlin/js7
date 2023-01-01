@@ -4,7 +4,8 @@ set -eu
 cd "${0%/*}"/../build-with-docker/..
 user=build
 
-docker rm js7-builder >/dev/null 2>&1 || true
+# Let Docker not accumulate old images:
+docker rmi js7-builder >/dev/null 2>&1 || true
 
 ( cd build-with-docker
   DOCKER_BUILDKIT=1 DOCKER_SCAN_SUGGEST=false docker build --tag=js7-builder .
