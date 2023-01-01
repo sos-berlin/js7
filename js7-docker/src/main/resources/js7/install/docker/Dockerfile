@@ -1,4 +1,4 @@
-FROM openjdk:19
+FROM almalinux:9
 
 # Directory structure according to the Filesystem Hierarchy Standard, https://refspecs.linuxfoundation.org/FHS_3.0/fhs-3.0.pdf
 #   /opt/js7-VERSION/bin/
@@ -9,8 +9,11 @@ FROM openjdk:19
 #   /home/js7/bin
 
 ENV LANG=C.UTF-8
+ENV JAVA_HOME=/opt/java/openjdk
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
+COPY --from=eclipse-temurin:19 $JAVA_HOME $JAVA_HOME
 # Own Docker image layer with downloaded microdnf metadata (may take several seconds)
-RUN microdnf install procps
+RUN yum -y install procps git unzip which sudo openssl
 # Until here, same Dockerfile command sequence as in build-with-docker for shorter build time
 #———————————————————————————————————————————————————————————————————————————————
 
@@ -18,7 +21,9 @@ RUN microdnf install procps
 # Used as group ID, too.
 ARG UID
 
-RUN microdnf install less findutils which
+RUN \
+  yum -y install less findutils which &&\
+  yum -y clean packages
 
 # A tiny improvement of the Java runtime:
 #RUN $JAVA_HOME/bin/jlink --no-header-files --no-man-pages \

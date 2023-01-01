@@ -29,8 +29,6 @@ build/bin/prepare-volumes
 [ -f docker-compose.yml ] || ln -sf build/docker-compose.yml .
 
 docker-compose down --remove-orphans
-# Let Docker not accumulate old images:
-docker rmi --js7 &>/dev/null || true
 echo "docker-compose build"
 DOCKER_BUILDKIT=1 docker-compose build --quiet
 docker-compose up --no-start
