@@ -15,7 +15,7 @@ RUN \
   yum clean packages
 
 RUN \
-  sbtVersion=1.8.0 &&\
+  sbtVersion=1.8.2 &&\
   mkdir --parents /opt/lib/sbt-$sbtVersion &&\
   curl --location https://github.com/sbt/sbt/releases/download/v$sbtVersion/sbt-$sbtVersion.tgz |\
     tar xzf - --directory=/opt/lib/sbt-$sbtVersion --strip-components=1 sbt/ &&\

@@ -9,7 +9,7 @@ object Dependencies
 
   val akkaVersion = "2.6.20"      // Do not update to v2.7, due to restrictive Akka licences!
   val akkaHttpVersion = "10.2.10" // Do not update to v10.4, due to restrictive Akka licences!
-  val slf4jVersion = "2.0.3"  // See also plugins.sbt
+  val slf4jVersion = "2.0.5"  // See also plugins.sbt
   val log4jVersion = "2.19.0"  // See also plugins.sbt
   val catsVersion = "2.9.0"
   val catsEffectVersion = "2.5.5"
