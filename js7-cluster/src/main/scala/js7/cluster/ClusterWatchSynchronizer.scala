@@ -177,7 +177,7 @@ object ClusterWatchSynchronizer
 
     def stopHeartbeating(implicit enclosing: sourcecode.Enclosing): Task[Completed] =
       Task.defer {
-        logger.trace(s"stopHearbeating called by ${enclosing.value}")
+        logger.trace(s"stopHeartbeating called by ${enclosing.value}")
         heartbeat.getAndSet(None)
           .fold(Task.completed)(_.stop)
       }

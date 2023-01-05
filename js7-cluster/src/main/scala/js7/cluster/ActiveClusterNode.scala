@@ -354,7 +354,8 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
     fetchAndHandleAcknowledgedEventIds(initialState.passiveId, initialState.passiveUri, initialState.timing)
       .flatMap {
         case Left(missingHeartbeatProblem @ MissingPassiveClusterNodeHeartbeatProblem(passiveId, duration)) =>
-          logger.warn(s"No heartbeat from passive cluster node since ${duration.pretty} - continuing as single active cluster node")
+          logger.warn("No heartbeat from passive cluster node since " + duration.pretty +
+            " - trying to continue as single active cluster node")
           assertThat(passiveId != ownId)
 
           // FIXME (1) Exklusiver Zugriff (Lock) wegen parallelen ClusterCommand.ClusterRecouple,
