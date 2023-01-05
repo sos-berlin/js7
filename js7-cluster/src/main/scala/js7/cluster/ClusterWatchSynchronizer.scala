@@ -17,7 +17,7 @@ import js7.cluster.ClusterWatchSynchronizer.*
 import js7.cluster.watch.api.AnyClusterWatch
 import js7.common.system.startup.Halt.haltJava
 import js7.core.cluster.watch.HttpClusterWatch
-import js7.data.cluster.ClusterEvent.ClusterFailedOver
+import js7.data.cluster.ClusterEvent.{ClusterFailedOver, ClusterNodeLostEvent, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.{ClusterEvent, ClusterState, ClusterTiming}
 import js7.data.node.NodeId
@@ -55,8 +55,7 @@ private final class ClusterWatchSynchronizer private(ownId: NodeId, initialInlay
   : Task[Unit] =
     logger.debugTask {
       assertThat(clusterState.activeId == ownId)
-      suspendHeartbeat(
-        Task.pure(clusterState),
+      suspendHeartbeat(Task.pure(clusterState))(
         inlay
           .update(_
             .stop
@@ -64,33 +63,35 @@ private final class ClusterWatchSynchronizer private(ownId: NodeId, initialInlay
           .void)
     }
 
-  def applyEvent(event: ClusterEvent, updatedClusterState: HasNodes)
-  : Task[Checked[Completed]] =
+  def applyEvent(event: ClusterEvent, updatedClusterState: HasNodes): Task[Checked[Completed]] =
     Task.defer {
-      val isFailover = event match {
-        case o: ClusterFailedOver => o.activatedId == ownId
-        case _ => false
-      }
       inlay.value.flatMap(myInlay =>
-        suspendHeartbeat(
-          Task.pure(updatedClusterState),
-          myInlay.repeatWhenTooLong(
-            myInlay.clusterWatch.applyEvent(event, updatedClusterState)),
-          isFailover = isFailover
-          // A ClusterSwitchedOver event will be written to the journal after applyEvent.
-          // So persistence.clusterState will reflect the outdated ClusterState for a short while.
-        ))
+        event match {
+          case _: ClusterNodeLostEvent | _: ClusterSwitchedOver =>
+            suspendHeartbeat(
+              Task.pure(updatedClusterState),
+              isFailover = event match {
+                case o: ClusterFailedOver => o.activatedId == ownId
+                case _ => false
+              })(
+              myInlay.applyEvent(event, updatedClusterState))
+            // A ClusterSwitchedOver event will be written to the journal after applyEvent.
+            // So persistence.clusterState will reflect the outdated ClusterState for a short while.
+
+          case _ =>
+            myInlay.applyEvent(event, updatedClusterState)
+        })
     }
 
   def suspendHeartbeat[A](
     getClusterState: Task[ClusterState],
-    operation: Task[A],
     isFailover: Boolean = false)
+    (task: Task[A])
     (implicit enclosing: sourcecode.Enclosing)
   : Task[A] =
     logger.traceTask(
       startNestedSuspension *>
-        operation
+        task
           .flatMap { result =>
             val continueHeartbeat = !isFailover || result.match_ {
               case Left(problem: Problem) =>
@@ -162,6 +163,10 @@ object ClusterWatchSynchronizer
     def stop: Task[Completed] =
       stopHeartbeating *>
         clusterWatch.tryLogout
+
+    def applyEvent(event: ClusterEvent, updatedClusterState: HasNodes) =
+      repeatWhenTooLong(
+        clusterWatch.applyEvent(event, updatedClusterState))
 
     def startHeartbeating(clusterState: HasNodes, dontWait: Boolean = false): Task[Completed] =
       logger.traceTask(Task.defer {
@@ -264,7 +269,7 @@ object ClusterWatchSynchronizer
         .checkClusterState(clusterState)
         .materializeIntoChecked)
 
-    def repeatWhenTooLong[A](task: Task[A]): Task[A] =
+    private def repeatWhenTooLong[A](task: Task[A]): Task[A] =
       Task.tailRecM(())(_ => task
         .timed
         .map { case (duration, result) =>

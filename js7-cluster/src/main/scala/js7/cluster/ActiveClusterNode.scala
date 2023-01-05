@@ -537,7 +537,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
   private def suspendHeartbeat[A](task: Task[A])
     (implicit enclosing: sourcecode.Enclosing)
   : Task[A] =
-    clusterWatchSynchronizer.suspendHeartbeat(persistence.clusterState, task)
+    clusterWatchSynchronizer.suspendHeartbeat(persistence.clusterState)(task)
 }
 
 object ActiveClusterNode
