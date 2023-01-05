@@ -51,8 +51,7 @@ private final class ClusterWatchSynchronizer private(ownId: NodeId, initialInlay
     inlay.value.flatMap(_
       .stop)
 
-  def change(clusterState: ClusterState.HasNodes, clusterWatch: AnyClusterWatch)
-  : Task[Unit] =
+  def change(clusterState: ClusterState.HasNodes, clusterWatch: AnyClusterWatch): Task[Unit] =
     logger.debugTask {
       assertThat(clusterState.activeId == ownId)
       suspendHeartbeat(Task.pure(clusterState))(

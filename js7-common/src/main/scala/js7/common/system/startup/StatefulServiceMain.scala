@@ -67,6 +67,6 @@ object StatefulServiceMain
           throwable.nullIfNoStackTrace)
         case Right(_) =>
       }
-      service.untilStopped.runToFuture.awaitInfinite
+    service.untilStopped.runToFuture.awaitInfinite
   }
 }

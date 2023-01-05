@@ -67,16 +67,11 @@ trait TextApi
     }
 
   protected object printer {
-    //private var needYamlDocumentSeparator = false
-
     def doPrint(json: Json): Unit =
       printer.doPrint(json.toPrettyString)
 
-    def doPrint(string: String): Unit = {
-      //if (needYamlDocumentSeparator) print("---")
-      //needYamlDocumentSeparator = true
+    def doPrint(string: String): Unit =
       print(string.trim)
-    }
   }
 
   object ConnectionLost {

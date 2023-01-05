@@ -81,13 +81,14 @@ class AppointNodesLatelyClusterTest extends OurTestSuite with ControllerClusterT
             backupController.eventWatch.await[OrderFinished](_.key == orderId)
           }
 
-          // PREPARE CHANGING BACKUP NODE
-          val primaryUri = clusterSetting.idToUri(primaryId)
-          val backupUri = clusterSetting.idToUri(backupId)
-          assert(!primaryUri.string.exists(_.isUpper))
-          assert(!backupUri.string.exists(_.isUpper))
-          val updatedBackupSetting = clusterSetting.copy(idToUri = clusterSetting.idToUri + (backupId -> Uri(backupUri.string.toUpperCase)))
-          assert(updatedBackupSetting != clusterSetting)
+        // PREPARE CHANGING BACKUP NODE
+        val primaryUri = clusterSetting.idToUri(primaryId)
+        val backupUri = clusterSetting.idToUri(backupId)
+        assert(!primaryUri.string.exists(_.isUpper))
+        assert(!backupUri.string.exists(_.isUpper))
+        val updatedBackupSetting = clusterSetting.copy(
+          idToUri = clusterSetting.idToUri + (backupId -> Uri(backupUri.string.toUpperCase)))
+        assert(updatedBackupSetting != clusterSetting)
 
           // UPDATING BACKUP URI IS REJECTED WHEN COUPLED
           val clusterAppointNodes = ClusterAppointNodes(
