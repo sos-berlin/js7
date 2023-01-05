@@ -42,7 +42,7 @@ object ClusterWatchConf
       else
         Nel
           .fromList {
-            for (cnf <- config.getConfigList("js7.cluster.watch.cluster-nodes").asScala.toList) yield
+            for (cnf <- config.getConfigList("js7.journal.cluster.watch.cluster-nodes").asScala.toList) yield
               Admission(
                 cnf.as[Uri]("uri"),
                 for {

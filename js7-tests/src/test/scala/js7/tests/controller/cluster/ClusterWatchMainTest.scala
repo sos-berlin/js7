@@ -42,7 +42,7 @@ final class ClusterWatchMainTest extends OurTestSuite with ControllerClusterForS
       val clusterWatch = IO {
         withTemporaryDirectory("ClusterWatchMainTest-") { dir =>
           dir / "cluster-watch.conf" :=
-            s"""js7.cluster.watch.cluster-nodes = [
+            s"""js7.journal.cluster.watch.cluster-nodes = [
               |  {
               |     uri = "${serverAdmission.uri}"
               |     user = ClusterWatch
