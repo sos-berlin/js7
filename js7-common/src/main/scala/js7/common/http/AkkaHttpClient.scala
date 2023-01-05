@@ -1,5 +1,6 @@
 package js7.common.http
 
+import akka.Done
 import akka.actor.ActorSystem
 import akka.http.scaladsl.marshalling.Marshal
 import akka.http.scaladsl.model.HttpEntity.{Chunk, LastChunk}
@@ -275,11 +276,12 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
                 // TODO Maybe manage own connection pool? Or switch to http4s?
                 executeOn(materializer.executionContext) { implicit ec =>
                   responseFuture
-                    .map(_
+                    .flatMap(_
                       .discardEntityBytes().future.andThen { case tried =>
                         logger.debug(s"$responseLogPrefix discardResponse => " +
                           tried.fold(_.toStringWithCauses, _ => "ok"))
                       })
+                    .map((_: Done) => ())
                     .recover { case _ => () }
                 }
               }
