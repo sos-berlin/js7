@@ -1,6 +1,7 @@
 package js7.base.utils
 
 import cats.syntax.foldable.*
+import cats.syntax.functor.*
 import cats.syntax.option.*
 import cats.{Functor, Monad, Monoid, Semigroup}
 import izumi.reflect.Tag
@@ -65,6 +66,13 @@ object ScalaUtils
         F.flatMap(underlying) {
           case Left(left) => F.pure(Left(left))
           case Right(right) => f(right)
+        }
+
+      /** Simple alternative to `EitherT` `flatMap` if for-comprehension is not needed. */
+      def flatTapT[R1](f: R => F[Either[L, R1]])(implicit F: Monad[F]): F[Either[L, R]] =
+        F.flatMap(underlying) {
+          case Left(left) => F.pure(Left(left))
+          case Right(right) => f(right).map(_.as(right))
         }
     }
 

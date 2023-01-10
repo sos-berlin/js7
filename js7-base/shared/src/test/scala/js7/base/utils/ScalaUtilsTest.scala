@@ -75,6 +75,17 @@ final class ScalaUtilsTest extends OurTestSuite
       }
     }
 
+    "flatTapT" - {
+      "Option" in {
+        type O = Option[E]
+        assert(none[E].flatMapT(_ => ignored) == none[E])
+        assert((Some(Left("A")): O).flatTapT(_ => ignored) == Some(Left("A")))
+        assert((Some(Right(7)): O).flatTapT(_ => none[E]) == none[E])
+        assert((Some(Right(7)): O).flatTapT(_ => Some(Left("B"))) == Some(Left("B")))
+        assert((Some(Right(7)): O).flatTapT(o => Some(Right(3 * o))) == Some(Right(7)))
+      }
+    }
+
     "Coeval" in {
       assert(Coeval[E](Left("A")).flatMapT(_ => Coeval.pure(Left("B"))).value() == Left("A"))
       assert(Coeval[E](Left("A")).flatMapT(o => Coeval.pure(Right(3 * o))).value() == Left("A"))
