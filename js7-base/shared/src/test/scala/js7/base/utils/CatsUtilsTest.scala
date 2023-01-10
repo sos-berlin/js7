@@ -47,4 +47,8 @@ final class CatsUtilsTest extends OurTestSuite
     assert(NonEmptySeq.checked[Int](Seq(1, 2)) == Right(NonEmptySeq(1, 2 :: Nil)))
     assert(NonEmptySeq.checked[Int](Seq(1, 2, 3)) == Right(NonEmptySeq(1, 2 :: 3 :: Nil)))
   }
+
+  "continueWithLast" in {
+    assert(continueWithLast(1, 2, 3).take(5).toSeq == Seq(1, 2, 3, 3, 3))
+  }
 }

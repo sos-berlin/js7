@@ -71,4 +71,13 @@ object CatsUtils
       else
         Right(NonEmptySeq(seq.head, seq.tail))
   }
+
+  // Scala 2.13 does not allow add a method to an AnyVal class
+  def continueWithLast[A](seq: NonEmptySeq[A]): Iterator[A] = {
+    val last = seq.last
+    seq.iterator ++ Iterator.continually(last)
+  }
+
+  def continueWithLast[A](head: A, tail: A*): Iterator[A] =
+    continueWithLast(NonEmptySeq.of(head, tail*))
 }
