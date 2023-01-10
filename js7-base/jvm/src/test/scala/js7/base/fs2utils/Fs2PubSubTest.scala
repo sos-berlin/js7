@@ -5,7 +5,6 @@ import cats.effect.{Fiber, IO}
 import cats.syntax.flatMap.*
 import cats.syntax.parallel.*
 import fs2.Stream
-import js7.base.catsutils.Memoizable.syntax.ioMemoizable
 import js7.base.test.OurAsyncTestSuite
 import js7.base.utils.Tests.isIntelliJIdea
 import monix.execution.Scheduler.Implicits.traced as scheduler

@@ -2,7 +2,6 @@ package js7.cluster
 
 import cats.effect.Resource
 import cats.effect.concurrent.Deferred
-import js7.base.catsutils.Memoizable.syntax.*
 import js7.base.fs2utils.Fs2PubSub
 import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
