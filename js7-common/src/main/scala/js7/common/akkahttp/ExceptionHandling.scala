@@ -51,7 +51,11 @@ trait ExceptionHandling
   private def completeWithError(status: StatusCode, e: Throwable): Route =
     extractRequest { request =>
       def msg = toLogMessage(request, e)
-      if (whenShuttingDown.isCompleted) webLogger.debug(msg, e) else webLogger.warn(msg, e.nullIfNoStackTrace)
+      //if (whenShuttingDown.isCompleted) {
+        webLogger.debug(msg, e)
+      //} else {
+      //  webLogger.warn(msg, e.nullIfNoStackTrace)
+      //}
       if (respondWithException)
         complete(status -> Problem.fromThrowable(e))
       else

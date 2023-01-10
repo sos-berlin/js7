@@ -37,7 +37,7 @@ extends CommandExecutor[ControllerCommand]
             checkedResponse match {
               //case Right(ControllerCommand.Response.Accepted) =>
               case Right(_) =>
-                logger.debug(s"↙︎ ${run.idString} " +
+                logger.debug(s"↙ ${run.idString} " +
                   ControllerCommand.jsonCodec.classToName(run.command.getClass) +
                   s" (${run.runningSince.elapsed.pretty}): $checkedResponse")
               case Left(problem) =>

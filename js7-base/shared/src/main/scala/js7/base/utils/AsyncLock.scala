@@ -1,11 +1,13 @@
 package js7.base.utils
 
+import cats.effect.ExitCase
 import java.lang.System.nanoTime
 import js7.base.log.CorrelId
 import js7.base.monixutils.MonixBase.DefaultWorryDurations
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AsyncLock.*
+import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import monix.catnap.MVar
 import monix.eval.Task
 import scala.concurrent.duration.Deadline.now
@@ -29,7 +31,7 @@ final class AsyncLock private(
 
   private def lock2[A](acquirer: () => String)(task: Task[A]): Task[A] =
     acquire(acquirer)
-      .bracket(_ => task)(_ => release(acquirer))
+      .bracketCase(_ => task)((_, exitCase) => release(acquirer, exitCase))
 
   private def acquire(acquirerToString: () => String): Task[Unit] =
     lockM
@@ -77,9 +79,18 @@ final class AsyncLock private(
             })
       }
 
-  private def release(acquirerToString: () => String): Task[Unit] =
+  private def release(acquirerToString: () => String, exitCase: ExitCase[Throwable]): Task[Unit] =
     Task.defer {
-      log.trace(s"↙︎ $name released by ${acquirerToString()}")
+      exitCase match {
+        case ExitCase.Completed =>
+          log.trace(s"↙ $name released by ${acquirerToString()}")
+
+        case ExitCase.Canceled =>
+          log.trace(s"↙❌ $name released by ${acquirerToString()} · Canceled")
+
+        case ExitCase.Error(t) =>
+          log.trace(s"↙💥 $name released by ${acquirerToString()} · ${t.toStringWithCauses}")
+      }
       lockM.flatMap(_.take).void
     }
 

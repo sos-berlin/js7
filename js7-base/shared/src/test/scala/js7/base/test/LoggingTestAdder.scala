@@ -89,7 +89,7 @@ private object LoggingTestAdder {
 
     def beforeTest(): Unit = {
       delayBeforeEnd()
-      logger.info(eager(s"↘︎ $blue$bold$prefix$testName$resetColor"))
+      logger.info(eager(s"↘ $blue$bold$prefix$testName$resetColor"))
       delayBeforeEnd()
       since
     }
@@ -106,7 +106,7 @@ private object LoggingTestAdder {
       tried match {
         case Success(_) =>
           adder.succeededCount += 1
-          logger.info(s"↙︎ $logLine")
+          logger.info(s"↙ $logLine")
           logger.info(eager(successMarkup + bar))
 
         case Failure(_: TestPendingException) =>

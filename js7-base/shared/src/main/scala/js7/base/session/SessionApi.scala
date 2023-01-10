@@ -51,7 +51,7 @@ trait SessionApi
             Completed
           }
           .guaranteeCase(exitCase => Task {
-            logger.trace(s"↙︎ $toString: tryLogout => $exitCase")
+            logger.trace(s"↙ $toString: tryLogout => $exitCase")
           }))
     }
 
