@@ -5,11 +5,11 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.marshalling.Marshal
 import akka.http.scaladsl.model.HttpEntity.{Chunk, LastChunk}
 import akka.http.scaladsl.model.HttpMethods.{GET, POST}
-import akka.http.scaladsl.model.MediaTypes.`application/json`
+import akka.http.scaladsl.model.MediaTypes.{`application/json`, `text/plain`}
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, GatewayTimeout, Unauthorized}
 import akka.http.scaladsl.model.headers.CacheDirectives.{`no-cache`, `no-store`}
 import akka.http.scaladsl.model.headers.{Accept, ModeledCustomHeader, ModeledCustomHeaderCompanion, `Cache-Control`}
-import akka.http.scaladsl.model.{ContentTypes, ErrorInfo, HttpEntity, HttpHeader, HttpMethod, HttpRequest, HttpResponse, RequestEntity, StatusCode, Uri as AkkaUri}
+import akka.http.scaladsl.model.{ContentType, ContentTypes, ErrorInfo, HttpEntity, HttpHeader, HttpMethod, HttpRequest, HttpResponse, RequestEntity, StatusCode, Uri as AkkaUri}
 import akka.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, Unmarshal}
 import akka.http.scaladsl.{ConnectionContext, Http}
 import akka.stream.Materializer
@@ -19,8 +19,8 @@ import io.circe.syntax.*
 import io.circe.{Decoder, Encoder, Json}
 import java.util.Locale
 import js7.base.auth.SessionToken
-import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.circeutils.CirceUtils.implicits.*
+import js7.base.circeutils.CirceUtils.{RichCirceString, RichJson}
 import js7.base.configutils.Configs.RichConfig
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
@@ -55,7 +55,7 @@ import scala.concurrent.Future
 import scala.concurrent.duration.Deadline.now
 import scala.reflect.ClassTag
 import scala.util.Success
-import scala.util.control.NoStackTrace
+import scala.util.control.{NoStackTrace, NonFatal}
 import scala.util.matching.Regex
 
 /**
@@ -310,8 +310,18 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
                 case Unauthorized | Forbidden => "⛔️"
                 case _ => "❓"
               })
+              val suffix = response.status.isFailure ??
+                (try
+                  response.entity match {
+                    case HttpEntity.Strict(ContentTypes.`application/json`, bytes) =>
+                      bytes.parseJsonAs[Problem].toOption.fold("")(" · " + _)
+                    case HttpEntity.Strict(ContentType.WithCharset(`text/plain`, charset), bytes) =>
+                      bytes.decodeString(charset.nioCharset)
+                        .parseJsonAs[Problem].toOption.fold("")(" · " + _)
+                    case _ => ""
+                  } catch { case NonFatal(_) => "" })
               logger.debug(
-                s"<--<$mark $responseLogPrefix => ${response.status}")
+                s"<--<$mark $responseLogPrefix => ${response.status}$suffix")
             }))
       })
 
