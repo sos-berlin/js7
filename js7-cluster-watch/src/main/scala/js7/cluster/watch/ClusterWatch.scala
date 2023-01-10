@@ -103,26 +103,27 @@ final class ClusterWatch(
 
                     case Right(clusterState) =>
                       for (event <- maybeEvent) logger.info(s"$from: $event")
-                      if (clusterState == reportedClusterState) {
-                        maybeEvent
-                          .collect { case o: ClusterNodeLostEvent => o }
-                          .match_ {
-                            case Some(event) if requireLostAck && !state.isLostNodeAcknowledged =>
-                              Left(ClusterNodeLossNotAcknowledgedProblem(event))
-                            case _ =>
+                      maybeEvent
+                        .collect { case o: ClusterNodeLostEvent => o }
+                        .match_ {
+                          case Some(event) if requireLostAck && !state.isLostNodeAcknowledged =>
+                            Left(ClusterNodeLossNotAcknowledgedProblem(event))
+                          case _ =>
+                            if (clusterState == reportedClusterState) {
                               logger.info(s"$from changes ClusterState to $reportedClusterState")
                               Right(reportedClusterState)
-                          }
-                      } else {
-                        // The node may have died just between sending the event to ClusterWatch and
-                        // persisting it. Then we have a different state.
-                        val previouslyActive = state.clusterState.activeId.string
-                        logger.warn(s"$from forced ClusterState to $reportedClusterState " +
-                          s"because heartbeat of up to now active $previouslyActive is " +
-                          s"too long ago (${state.lastHeartbeat.elapsed.pretty})")
-                        Right(reportedClusterState)
-                      }
-                    })
+                            } else {
+                              // The node may have died just between sending the event to
+                              // ClusterWatch and persisting it. Then we have a different state.
+                              val previouslyActive = state.clusterState.activeId.string
+                              // TODO Warning may occur due to different ClusterWatchId. But why?
+                              logger.warn(s"$from forced ClusterState to $reportedClusterState " +
+                                s"maybe because heartbeat of up to now active $previouslyActive " +
+                                s"is too long ago (${state.lastHeartbeat.elapsed.pretty})")
+                              Right(reportedClusterState)
+                            }
+                        }
+                  })
             .tap {
               case Left(problem) => logger.warn(s"$from: $problem")
               case Right(_) =>
