@@ -47,7 +47,7 @@ RUN chown root:root -R /opt/js7-[1-9]* && \
     chown js7:js7 -R /home/js7 /var/opt/js7
 
 # ~js7/bin contains scripts controller and agent, useable for "docker run".
-ENV PATH /home/js7/bin:/usr/local/bin:/usr/bin:/bin
+ENV PATH="/home/js7/bin:${PATH}"
 USER js7
 
 # Possible start:
