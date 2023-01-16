@@ -7,6 +7,8 @@ import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
+import js7.base.utils.ProgramTermination
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.Problems.PassiveClusterNodeShutdownNotAllowedProblem
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterFailedOver, ClusterPassiveLost, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState
@@ -14,6 +16,7 @@ import js7.data.cluster.ClusterState.{Coupled, FailedOver}
 import js7.data.controller.ControllerCommand.ShutDown
 import js7.data.controller.ControllerCommand.ShutDown.ClusterAction
 import js7.data.event.EventId
+import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 
 final class ShutDownClusterWithLegacyClusterWatchTest extends ShutDownClusterTest {
@@ -84,15 +87,34 @@ class ShutDownClusterTest extends ControllerClusterTester
             waitForCondition(3.s, 10.ms)(backupController.clusterState.await(99.s).isInstanceOf[FailedOver])
             assert(backupController.clusterState.await(99.s).asInstanceOf[FailedOver].activeId == backupId)
           }
-          primary.runController(httpPort = Some(primaryControllerPort), dontWaitUntilReady = true) { primaryController =>
-            // Restarted Primary should have become passive
-            primaryController.eventWatch.await[ClusterCoupled](after = primaryController.eventWatch.lastFileEventId)
-            waitForCondition(3.s, 10.ms)(primaryController.clusterState.await(99.s).isInstanceOf[Coupled])
-            assert(primaryController.clusterState.await(99.s) == backupController.clusterState.await(99.s))
-            assert(primaryController.clusterState.await(99.s) == Coupled(clusterSetting.copy(activeId = backupId)))
 
-            backupController.executeCommandAsSystemUser(ShutDown()).await(99.s).orThrow
-            backupController.terminated await 99.s
+          // When journal file must be truncated due to non-replicated data after failover,
+          // the primary Controller wants to start again.
+          var restart = true
+          while (restart) {
+            primary.runController(httpPort = Some(primaryControllerPort), dontWaitUntilReady = true) { primaryController =>
+              Task
+                .race(
+                  Task.fromFuture(primaryController.terminated),
+                  primaryController.eventWatch.awaitAsync[ClusterCoupled](
+                    after = primaryController.eventWatch.lastFileEventId))
+                .await(99.s)
+                .match_ {
+                  case Left(ProgramTermination(/*restart=*/true)) =>
+                  case _ =>
+                    restart = false
+                    // Restarted Primary should have become passive
+                    waitForCondition(3.s, 10.ms)(
+                      primaryController.clusterState.await(99.s).isInstanceOf[Coupled])
+                    assert(primaryController.clusterState.await(99.s) ==
+                      backupController.clusterState.await(99.s))
+                    assert(primaryController.clusterState.await(99.s) ==
+                      Coupled(clusterSetting.copy(activeId = backupId)))
+
+                    backupController.executeCommandAsSystemUser(ShutDown()).await(99.s).orThrow
+                    backupController.terminated await 99.s
+                }
+            }
           }
         }
       }
