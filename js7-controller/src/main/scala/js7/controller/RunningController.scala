@@ -457,7 +457,7 @@ object RunningController
       // replicatedState accesses the current ControllerState while this node is passive, otherwise it is None
       val (replicatedState, untilActiveRecovered_) = clusterNode.start(recovered)
       val untilClusterNodeRecovered = untilActiveRecovered_
-        .doOnCancel(Task { logger.debug("Cancel Cluster") })
+        .doOnCancel(Task { logger.debug("ClusterNode canceled") })
         .onCancelRaiseError(new StartingClusterCancelledException)
         .map(_.orThrow)
         .map(Right.apply)
