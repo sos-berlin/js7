@@ -30,7 +30,7 @@ final class ClassEventBusTest extends OurAsyncTestSuite
   "oneShot" in {
     val events = mutable.Buffer.empty[Event[? <: Classifier]]
     val eventBus = new TestEventBus
-    eventBus.oneShot[BClassifier]((event: Event[BClassifier]) => events += event)
+    eventBus.oneShot[BClassifier]()((event: Event[BClassifier]) => events += event)
     eventBus.publish(Event(AClassifier("1"), "IGNORE"))
     eventBus.publish(Event(BClassifier(""), "MORE"))
     assert(events.toList == List(Event(BClassifier(""), "MORE")))

@@ -70,20 +70,28 @@ trait ClassEventBus[E] extends EventPublisher[E] with AutoCloseable
       register.clear()
     }
 
-  final def when[C <: Classifier: ClassTag]: Task[ClassifierToEvent[C]] =
+  final def when[C <: Classifier : ClassTag]: Task[ClassifierToEvent[C]] =
+    when_[C](_ => true)
+
+  final def when_[C <: Classifier: ClassTag](
+    predicate: ClassifierToEvent[C] => Boolean = (_: ClassifierToEvent[C]) => true)
+  : Task[ClassifierToEvent[C]] =
     Task.deferFuture {
       val promise = Promise[ClassifierToEvent[C]]()
-      oneShot[C](promise.success)
+      oneShot[C](predicate)(promise.success)
       promise.future
     }
 
-  final def oneShot[C <: Classifier: ClassTag](handle: ClassifierToEvent[C] => Unit): Unit = {
+  final def oneShot[C <: Classifier: ClassTag](
+    predicate: ClassifierToEvent[C] => Boolean = (_: ClassifierToEvent[C]) => true)
+    (handle: ClassifierToEvent[C] => Unit): Unit = {
     val used = AtomicBoolean(false)
     lazy val subscription: EventSubscription =
-      toSubscription { event =>
-        if (!used.getAndSet(true)) {
+      toSubscription { event_ =>
+        val event = event_.asInstanceOf[ClassifierToEvent[C]]
+        if (predicate(event) && !used.getAndSet(true)) {
           subscription.close()
-          handle(event.asInstanceOf[ClassifierToEvent[C]])
+          handle(event)
         }
       }
     addSubscription(subscription)

@@ -38,7 +38,7 @@ final class StandardEventBusTest extends OurAsyncTestSuite
     type Event = String
     val events = mutable.Buffer.empty[Event]
     val eventBus = new StandardEventBus[Event]
-    eventBus.oneShot[Event](events += _)
+    eventBus.oneShot[Event]()(events += _)
     assert(!eventBus.isEmpty)
     eventBus.publish("ONE")
     assert(eventBus.isEmpty)
