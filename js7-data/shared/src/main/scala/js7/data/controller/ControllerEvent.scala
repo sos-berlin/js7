@@ -27,7 +27,7 @@ object ControllerEvent
   extends ControllerEvent
 
   type ControllerShutDown = ControllerShutDown.type
-  object ControllerShutDown extends ControllerEvent
+  case object ControllerShutDown extends ControllerEvent
 
   case object ControllerTestEvent extends ControllerEvent
 
