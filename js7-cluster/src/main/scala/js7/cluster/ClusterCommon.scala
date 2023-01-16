@@ -121,17 +121,17 @@ private[cluster] final class ClusterCommon(
     val name = command.getClass.simpleScalaName
     apiResource
       .use(api => api
-          .loginUntilReachable(onlyIfNotLoggedIn = true)
-          .*>(api.executeClusterCommand(command))
-          .map((_: ClusterCommand.Response) => ())
-          .onErrorRestartLoop(()) { (throwable, _, retry) =>
-            logger.warn(s"'$name' command failed with ${throwable.toStringWithCauses}")
-            logger.debug(throwable.toString, throwable)
-            // TODO ClusterFailed event?
-            api.tryLogout >>
-              Task.sleep(1.s/*TODO*/) >>       // TODO Handle heartbeat timeout!
-              retry(())
-          })
+        .retryIfSessionLost()(
+          api.loginUntilReachable(onlyIfNotLoggedIn = true)
+            .*>(api.executeClusterCommand(command)))
+        .map((_: ClusterCommand.Response) => ())
+        .onErrorRestartLoop(()) { (throwable, _, retry) =>
+          logger.warn(s"'$name' command failed with ${throwable.toStringWithCauses}")
+          logger.debug(throwable.toString, throwable)
+          // TODO ClusterFailed event?
+          Task.sleep(1.s/*TODO*/) *> // TODO Handle heartbeat timeout?
+            retry(())
+        })
   }
 
   def inhibitActivationOfPeer(clusterState: HasNodes): Task[Option[FailedOver]] =
