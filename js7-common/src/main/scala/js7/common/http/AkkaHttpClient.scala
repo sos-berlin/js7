@@ -3,7 +3,7 @@ package js7.common.http
 import akka.Done
 import akka.actor.ActorSystem
 import akka.http.scaladsl.marshalling.Marshal
-import akka.http.scaladsl.model.HttpEntity.{Chunk, LastChunk}
+import akka.http.scaladsl.model.HttpEntity.{Chunk, ChunkStreamPart, LastChunk}
 import akka.http.scaladsl.model.HttpMethods.{GET, POST}
 import akka.http.scaladsl.model.MediaTypes.{`application/json`, `text/plain`}
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, GatewayTimeout, Unauthorized}
@@ -14,6 +14,7 @@ import akka.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, Unmarshal}
 import akka.http.scaladsl.{ConnectionContext, Http}
 import akka.stream.Materializer
 import akka.util.ByteString
+import cats.effect.concurrent.Deferred
 import cats.effect.{ExitCase, Resource}
 import io.circe.syntax.*
 import io.circe.{Decoder, Encoder, Json}
@@ -151,24 +152,45 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
   final def post[A: Encoder, B: Decoder](uri: Uri, data: A)(implicit s: Task[Option[SessionToken]]): Task[B] =
     post2[A, B](uri, data, Nil)
 
-  final def postObservable[A: Encoder, B: Decoder](uri: Uri, data: Observable[A])
+  final def postObservable[A: Encoder, B: Decoder](
+    uri: Uri,
+    data: Observable[A],
+    responsive: Boolean = false,
+    terminateStreamOnCancel: Boolean = false)
     (implicit s: Task[Option[SessionToken]])
-  : Task[B] =
-    data
-      .mapParallelBatch()(_
-        .asJson.toByteSequence[ByteString]
-        .concat(LF)
-        .chunk(chunkSize))
-      .flatMap(Observable.fromIterable)
-      .map(Chunk(_))
-      .append(LastChunk)
-      .toAkkaSourceTask
-      .flatMap(akkaChunks =>
-        sendReceive(
-          HttpRequest(POST, uri.asAkka, Accept(`application/json`) :: Nil,
-            HttpEntity.Chunked(`application/x-ndjson`.toContentType, akkaChunks)),
-          logData = Some("postObservable")))
-      .flatMap(unmarshal[B](POST, uri))
+  : Task[B] =   {
+    def toNdJson(a: A) = a.asJson.toByteSequence[ByteString] ++ LF
+
+    val chunks: Observable[ByteString] =
+      if (responsive)
+        for (a <- data) yield toNdJson(a)
+      else
+        data
+          .mapParallelBatch(responsive = responsive)(a =>
+            toNdJson(a).chunk(chunkSize))
+          .flatMap(Observable.fromIterable)
+
+    Task.defer {
+      val stop = Deferred.unsafe[Task, Unit]
+      val stopped = Deferred.unsafe[Task, Unit]
+      chunks
+        .map(Chunk(_))
+        .append[ChunkStreamPart](LastChunk)
+        .takeUntilEval(stop.get)
+        .guarantee(stopped.complete(()))
+        .toAkkaSourceTask
+        .flatMap(akkaChunks =>
+          sendReceive(
+            HttpRequest(POST, uri.asAkka, Accept(`application/json`) :: Nil,
+              HttpEntity.Chunked(`application/x-ndjson`.toContentType, akkaChunks)),
+            logData = Some("postObservable")))
+        .flatMap(unmarshal[B](POST, uri))
+        .pipeIf(terminateStreamOnCancel)(_.doOnCancel(
+          // Terminate stream properly to avoid "TCP Connection reset" error
+          // Maybe a race condition. So good luck!
+          stop.complete(()) *> stopped.get))
+    }
+  }
 
   @TestOnly
   final def postObservableJsonString(uri: Uri, data: Observable[String])(implicit s: Task[Option[SessionToken]]): Task[Json] =

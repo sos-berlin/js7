@@ -27,7 +27,11 @@ trait HttpClient
   def post[A: Encoder, B: Decoder](uri: Uri, data: A)(implicit s: Task[Option[SessionToken]])
   : Task[B]
 
-  def postObservable[A: Encoder, B: Decoder](uri: Uri, data: Observable[A])
+  def postObservable[A: Encoder, B: Decoder](
+    uri: Uri,
+    data: Observable[A],
+    responsive: Boolean = false,
+    terminateStreamOnCancel: Boolean = false)
     (implicit s: Task[Option[SessionToken]])
   : Task[B]
 
