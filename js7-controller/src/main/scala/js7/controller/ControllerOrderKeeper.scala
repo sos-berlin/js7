@@ -197,7 +197,7 @@ with MainJournalingActor[ControllerState, Event]
           if (snapshotTaken && !terminatingJournal) {
             // The event forces the cluster to acknowledge this event and the snapshot taken
             terminatingJournal = true
-            persistKeyedEventTask(NoKey <-: ControllerShutDown())((_, _) => Completed)
+            persistKeyedEventTask(NoKey <-: ControllerShutDown)((_, _) => Completed)
               .tapEval(_ => persistence.stop)
               .runToFuture
               .onComplete {

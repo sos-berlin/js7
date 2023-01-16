@@ -215,7 +215,7 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
     assert(filteredLeyedEvents == Seq[AnyKeyedEvent](
       NoKey <-: UnsignedSimpleItemAdded(aFileWatch.copy(itemRevision = Some(ItemRevision(0)))),
       NoKey <-: ItemAttachable(orderWatchPath, aAgentPath),
-      NoKey <-: ControllerShutDown(None),
+      NoKey <-: ControllerShutDown,
       NoKey <-: ItemAttached(orderWatchPath, Some(ItemRevision(0)), aAgentPath),
       orderId1 <-: OrderAdded(workflow.id,
         Map(

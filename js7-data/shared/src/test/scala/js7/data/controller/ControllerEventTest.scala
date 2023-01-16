@@ -43,7 +43,7 @@ final class ControllerEventTest extends OurTestSuite
   }
 
   "ControllerShutDown" in {
-    testJson[ControllerEvent](ControllerShutDown(),
+    testJson[ControllerEvent](ControllerShutDown,
       json"""{
         "TYPE": "ControllerShutDown"
       }""")

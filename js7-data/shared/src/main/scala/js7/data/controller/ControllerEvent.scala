@@ -26,18 +26,8 @@ object ControllerEvent
   final case class ControllerReady(timezone: Timezone, totalRunningTime: FiniteDuration)
   extends ControllerEvent
 
-  final case class ControllerShutDown(clusterAction: Option[ControllerShutDown.ClusterAction] = None)
-  extends ControllerEvent
-  object ControllerShutDown {
-    sealed trait ClusterAction
-    object ClusterAction {
-      case object Failover extends ClusterAction
-      case object CompleteShutdown extends ClusterAction
-      implicit val jsonCodec: TypedJsonCodec[ClusterAction] = TypedJsonCodec[ClusterAction](
-        Subtype(Failover),
-        Subtype(CompleteShutdown))
-    }
-  }
+  type ControllerShutDown = ControllerShutDown.type
+  object ControllerShutDown extends ControllerEvent
 
   case object ControllerTestEvent extends ControllerEvent
 
@@ -45,6 +35,6 @@ object ControllerEvent
     Subtype(deriveRenamingCodec[ControllerInitialized](Map(
       "startedAt" -> "initiallyStartedAt"))),
     Subtype(deriveCodec[ControllerReady]),
-    Subtype(deriveCodec[ControllerShutDown]),
+    Subtype(ControllerShutDown),
     Subtype(ControllerTestEvent))
 }
