@@ -12,10 +12,12 @@ import js7.base.utils.CatsUtils.Nel
 import js7.base.web.Uri
 import js7.common.commandline.CommandLineArguments
 import js7.common.configuration.Js7Configuration
+import js7.data.cluster.ClusterWatchId
 import scala.jdk.CollectionConverters.*
 
 final case class ClusterWatchConf(
   configDirectory: Path,
+  clusterWatchId: ClusterWatchId,
   clusterNodeAdmissions: Nel[Admission],
   httpsConfig: HttpsConfig,
   name: String = "ClusterWatch",
@@ -25,6 +27,7 @@ object ClusterWatchConf
 {
   def fromCommandLine(args: CommandLineArguments): ClusterWatchConf = {
     val configDir = args.as[Path]("--config-directory=").toAbsolutePath
+    val clusterWatchId = args.as[ClusterWatchId]("--cluster-watch-id=")
 
     val config = ConfigFactory.parseMap(Map(
       "js7.config-directory" -> configDir.toString
@@ -55,6 +58,7 @@ object ClusterWatchConf
 
     new ClusterWatchConf(
       configDirectory = configDir,
+      clusterWatchId,
       admissions,
       HttpsConfig.fromConfig(config, configDir),
       config = config)

@@ -24,6 +24,7 @@ final class ClusterEventTest extends OurTestSuite
           NodeId("BACKUP") -> Uri("https://BACKUP")),
         NodeId("PRIMARY"),
         ClusterTiming(10.s, 20.s),
+        Some(ClusterWatchId("CLUSTER-WATCH")),
         Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))))),
       json"""{
         "TYPE": "ClusterNodesAppointed",
@@ -33,11 +34,12 @@ final class ClusterEventTest extends OurTestSuite
             "BACKUP": "https://BACKUP"
           },
           "activeId": "PRIMARY",
-          "clusterWatches": [ { "uri": "https://CLUSTER-WATCH" } ],
           "timing": {
             "heartbeat": 10,
             "heartbeatTimeout": 20
-          }
+          },
+          "clusterWatchId": "CLUSTER-WATCH",
+          "clusterWatches": [ { "uri": "https://CLUSTER-WATCH" } ]
         }
       }""")
   }

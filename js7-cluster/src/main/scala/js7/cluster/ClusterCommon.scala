@@ -12,7 +12,6 @@ import js7.base.io.https.HttpsConfig
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.MonixBase.syntax.*
-import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
@@ -29,33 +28,31 @@ import js7.data.cluster.ClusterEvent.{ClusterNodeLostEvent, ClusterPassiveLost}
 import js7.data.cluster.ClusterState.{FailedOver, HasNodes, SwitchedOver}
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterState, ClusterTiming}
 import js7.data.controller.ControllerId
-import js7.data.node.NodeId
 import monix.eval.Task
 import monix.execution.Scheduler
 
 private[cluster] final class ClusterCommon(
   controllerId: ControllerId,
-  ownId: NodeId,
+  clusterConf: ClusterConf,
   val clusterNodeApi: (Uri, String) => Resource[Task, ClusterNodeApi],
   httpsConfig: HttpsConfig,
   timing: ClusterTiming,
   val config: Config,
   val licenseChecker: LicenseChecker,
-  testEventPublisher: EventPublisher[Any],
+  val testEventPublisher: EventPublisher[Any],
   val journalActorAskTimeout: Timeout)
   (implicit scheduler: Scheduler, actorSystem: ActorSystem)
 {
+  import clusterConf.ownId
+
   val activationInhibitor = new ActivationInhibitor
   private val clusterWatchCounterpartLazy = Lazy(ClusterWatchCounterpart
-    .resource(ownId, timing)
+    .resource(clusterConf, timing)
     .startService
     .runSyncUnsafe(99.s)/*TODO Make ClusterCommon a service*/)
 
-  def checkedClusterWatchCounterpart: Checked[ClusterWatchCounterpart] =
-    clusterWatchCounterpartLazy
-      .toOption
-      .toChecked(Problem(
-        "JS7 seems to be configured with legacy server-side (Agent) ClusterWatch"))
+  def clusterWatchCounterpart: ClusterWatchCounterpart =
+    clusterWatchCounterpartLazy.value
 
   private val _clusterWatchSynchronizer = SetOnce[ClusterWatchSynchronizer]
 

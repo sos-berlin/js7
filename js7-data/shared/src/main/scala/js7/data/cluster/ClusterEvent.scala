@@ -69,6 +69,9 @@ object ClusterEvent
     assertThat(passiveUri.nonEmpty || clusterWatches.nonEmpty)
   }
 
+  final case class ClusterWatchRegistered(clusterWatchId: ClusterWatchId)
+  extends ClusterEvent
+
   implicit val jsonCodec: TypedJsonCodec[ClusterEvent] = TypedJsonCodec(
     Subtype(deriveCodec[ClusterNodesAppointed]),
     Subtype(deriveCodec[ClusterCouplingPrepared]),
@@ -78,5 +81,6 @@ object ClusterEvent
     Subtype(deriveCodec[ClusterPassiveLost]),
     Subtype(ClusterActiveNodeShutDown),
     Subtype(ClusterActiveNodeRestarted),
-    Subtype(deriveCodec[ClusterSettingUpdated]))
+    Subtype(deriveCodec[ClusterSettingUpdated]),
+    Subtype(deriveCodec[ClusterWatchRegistered]))
 }

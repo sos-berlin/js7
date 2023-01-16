@@ -3,7 +3,7 @@ package js7.cluster.watch.api
 import js7.base.problem.{Problem, ProblemCode}
 import js7.base.time.ScalaTime.*
 import js7.data.cluster.ClusterEvent.ClusterNodeLostEvent
-import js7.data.cluster.{ClusterEvent, ClusterState}
+import js7.data.cluster.{ClusterEvent, ClusterState, ClusterWatchId, ClusterWatchRunId}
 import js7.data.node.NodeId
 import scala.concurrent.duration.FiniteDuration
 
@@ -11,7 +11,6 @@ object ClusterWatchProblems
 {
   private lazy val isClusterWatchProblemCode = Set[ProblemCode](
     UntaughtClusterWatchProblem.code,
-    ClusterWatchHeartbeatMismatchProblem.code,
     ClusterWatchEventMismatchProblem.code,
     ClusterWatchInactiveNodeProblem.code,
     InvalidClusterWatchHeartbeatProblem.code,
@@ -21,19 +20,6 @@ object ClusterWatchProblems
     problem.maybeCode exists isClusterWatchProblemCode
 
   final case object UntaughtClusterWatchProblem extends Problem.ArgumentlessCoded
-
-  final case class ClusterWatchHeartbeatMismatchProblem(
-    currentClusterState: ClusterState,
-    reportedClusterState: ClusterState)
-    extends Problem.Coded
-  {
-    //"Controller's ClusterState $currentClusterState does not match registered $clusterState")
-    def arguments = Map(
-      "currentClusterState" -> currentClusterState.toString,
-      "reportedClusterState" -> reportedClusterState.toString)
-  }
-
-  object ClusterWatchHeartbeatMismatchProblem extends Problem.Coded.Companion
 
   final case class ClusterWatchEventMismatchProblem(
     event: Option[ClusterEvent],
@@ -85,5 +71,38 @@ object ClusterWatchProblems
 
   case object NoClusterNodeLostProblem extends Problem.ArgumentlessCoded
 
-  case object NoClusterWatchRequestMatches extends Problem.ArgumentlessCoded
+  case object ClusterWatchRequestDoesNotMatchProblem extends Problem.ArgumentlessCoded
+
+  case object NoClusterWatchProblem extends Problem.ArgumentlessCoded
+
+  final case class ClusterWatchIdDoesNotMatchProblem(
+    rejectedClusterWatchId: ClusterWatchId,
+    requestedClusterWatchId: ClusterWatchId)
+  extends Problem.Coded {
+    def arguments = Map(
+      "rejectedClusterWatchId" -> rejectedClusterWatchId.toString,
+      "requestedClusterWatchId" -> requestedClusterWatchId.toString,
+    )
+  }
+
+  final case class OtherClusterWatchStillAliveProblem(
+    rejectedClusterWatchId: ClusterWatchId,
+    requestedClusterWatchId: ClusterWatchId)
+  extends Problem.Coded {
+    def arguments = Map(
+      "rejectedClusterWatchId" -> rejectedClusterWatchId.toString,
+      "requestedClusterWatchId" -> requestedClusterWatchId.toString,
+    )
+  }
+
+  final case class ClusterWatchIdNotUniqueProblem(
+    clusterWatchId: ClusterWatchId,
+    clusterWatchRunId: ClusterWatchRunId)
+  extends Problem.Coded {
+    def arguments = Map(
+      "clusterWatchId" -> clusterWatchId.toString,
+      "clusterWatchRunId" -> clusterWatchRunId.toString)
+  }
+
+  case object ClusterStateEmptyProblem extends Problem.ArgumentlessCoded
 }

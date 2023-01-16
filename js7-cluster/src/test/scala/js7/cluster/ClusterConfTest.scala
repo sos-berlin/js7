@@ -24,10 +24,12 @@ final class ClusterConfTest extends OurTestSuite
         js7.journal.cluster.node.is-backup = no
         js7.journal.cluster.heartbeat = 7s
         js7.journal.cluster.heartbeat-timeout = 5s
+        js7.journal.cluster.watch.uniqueness-memory-size = 100
         js7.journal.cluster.watches = [ "https://AGENT-1", "https://AGENT-2" ]
         js7.web.client.idle-get-timeout = 50s
         js7.web.client.polling-delay = 1s
-        js7.web.client.failure-delay = 5s"""
+        js7.web.client.failure-delay = 5s
+        """
       val clusterConf = ClusterConf.fromConfig(UserId("USER"), config)
       assert(clusterConf == Right(
         ClusterConf(
@@ -39,7 +41,8 @@ final class ClusterConfTest extends OurTestSuite
             timeout = 6.s,  // Between 5s and 7s
             delay = 1.s,
             failureDelay = 5.s),
-          ClusterTiming(7.s, 5.s))))
+          ClusterTiming(7.s, 5.s),
+        clusterWatchUniquenessMemorySize = 100)))
     }
 
     "Full configuration" in {
@@ -50,13 +53,15 @@ final class ClusterConfTest extends OurTestSuite
           PRIMARY: "https://PRIMARY"
           Backup: "https://BACKUP"
         }
+        js7.journal.cluster.watch.uniqueness-memory-size = 100
         js7.journal.cluster.watches = [ "https://CLUSTER-WATCH" ]
         js7.journal.cluster.heartbeat = 7s
         js7.journal.cluster.heartbeat-timeout = 5s
         js7.auth.cluster.password = "PASSWORD"
         js7.web.client.idle-get-timeout = 50s
         js7.web.client.polling-delay = 1s
-        js7.web.client.failure-delay = 5s"""
+        js7.web.client.failure-delay = 5s
+        """
       val checkedClusterConf = ClusterConf.fromConfig(UserId("USER"), config)
       assert(checkedClusterConf == Right(
         ClusterConf(
@@ -68,13 +73,15 @@ final class ClusterConfTest extends OurTestSuite
               NodeId("Backup") -> Uri("https://BACKUP")),
             NodeId("PRIMARY"),
             ClusterTiming(7.s, 5.s),
+            clusterWatchId = None,
             Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))))),
           Some(UserAndPassword(UserId("USER"), SecretString("PASSWORD"))),
           RecouplingStreamReaderConf(
             timeout = 6.s,  // Between 5s and 7s
             delay = 1.s,
             failureDelay = 5.s),
-          ClusterTiming(7.s, 5.s))))
+          ClusterTiming(7.s, 5.s),
+          clusterWatchUniquenessMemorySize = 100)))
     }
   }
 }

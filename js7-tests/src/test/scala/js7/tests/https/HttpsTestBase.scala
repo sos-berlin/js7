@@ -23,6 +23,7 @@ import js7.common.system.ServerOperatingSystem.operatingSystem
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.client.AkkaHttpControllerApi
 import js7.data.agent.AgentPath
+import js7.data.cluster.ClusterWatchId
 import js7.data.job.RelativePathExecutable
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.https.HttpsTestBase.*
@@ -159,7 +160,7 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest wit
   override protected lazy val clusterWatchServiceResource =
     (useCluster /*&& !useLegacyServiceClusterWatch*/) ?
       DirectoryProvider.clusterWatchServiceResource(
-        getClass.simpleScalaName,
+        ClusterWatchId(getClass.simpleScalaName + "-ClusterWatch"),
         Nel.of(
           Admission(
             Uri(s"https://localhost:${controllerHttpsPort.get}"),

@@ -5,7 +5,7 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.problem.Checked
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
-import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSettingUpdated, ClusterSwitchedOver}
+import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSettingUpdated, ClusterSwitchedOver, ClusterWatchRegistered}
 import js7.data.cluster.ClusterSetting.syntax.*
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventDrivenState, JournalPosition, KeyedEvent}
@@ -68,6 +68,10 @@ extends EventDrivenState[ClusterState, ClusterEvent]
             Right(PassiveLost(state.setting))
             // Passive node may recouple now
 
+          case (state: HasNodes, ClusterWatchRegistered(clusterWatchId)) =>
+            Right(state.withSetting(setting = state.setting.copy(
+              clusterWatchId = Some(clusterWatchId))))
+
           case (_, keyedEvent) =>
             eventNotApplicable(keyedEvent)
         }
@@ -107,10 +111,12 @@ extends EventDrivenState.Companion[ClusterState, ClusterEvent]
   {
     this: Product =>
 
-    def setting: ClusterSetting
+    val setting: ClusterSetting
     def idToUri = setting.idToUri
     def activeId = setting.activeId
     def timing = setting.timing
+
+    def withSetting(setting: ClusterSetting): HasNodes
 
     final def isNonEmptyActive(id: Id) = id == activeId
     final def isEmptyOrActive(id: Id) = id == activeId
@@ -123,7 +129,8 @@ extends EventDrivenState.Companion[ClusterState, ClusterEvent]
         (if (activeId == id) "active " else "passive ") + s"${id.string}: $uri"
       ).mkString(", ")
 
-    override def toString = s"$productPrefix($nodesString)"
+    override def toString =
+      s"$productPrefix($nodesString${setting.clusterWatchId.fold("")(o => ", " + o)})"
   }
   object HasNodes {
     def unapply(clusterState: ClusterState.HasNodes) = Some(clusterState.setting)
@@ -141,7 +148,7 @@ extends EventDrivenState.Companion[ClusterState, ClusterEvent]
   sealed trait CoupledOrDecoupled extends HasNodes {
     this: Product =>
 
-    protected def withSetting(setting: ClusterSetting): CoupledOrDecoupled
+    def withSetting(setting: ClusterSetting): CoupledOrDecoupled
 
     final def withClusterWatches(w: Seq[ClusterSetting.Watch]) =
       withSetting(setting.copy(clusterWatches = w))
@@ -156,18 +163,20 @@ extends EventDrivenState.Companion[ClusterState, ClusterEvent]
 
   final case class NodesAppointed(setting: ClusterSetting)
   extends Decoupled {
-    protected def withSetting(setting: ClusterSetting) = copy(setting = setting)
+    def withSetting(setting: ClusterSetting) = copy(setting = setting)
   }
 
   /** Intermediate state only, is immediately followed by transition ClusterEvent.Coupled -> Coupled. */
   final case class PreparedToBeCoupled(setting: ClusterSetting)
-  extends HasNodes
+  extends HasNodes {
+    def withSetting(setting: ClusterSetting) = copy(setting = setting)
+  }
 
   /** An active node is coupled with a passive node. */
   final case class Coupled(setting: ClusterSetting)
   extends CoupledOrDecoupled
   {
-    protected def withSetting(setting: ClusterSetting) = copy(setting = setting)
+    def withSetting(setting: ClusterSetting) = copy(setting = setting)
   }
 
   /** The active node has shut down while `Coupled` and will continue to be active when restarted.
@@ -176,24 +185,27 @@ extends EventDrivenState.Companion[ClusterState, ClusterEvent]
     */
   final case class ActiveShutDown(setting: ClusterSetting)
   extends Decoupled {
-    protected def withSetting(setting: ClusterSetting) = copy(setting = setting)
+    def withSetting(setting: ClusterSetting) = copy(setting = setting)
   }
 
   final case class PassiveLost(setting: ClusterSetting)
   extends Decoupled {
-    protected def withSetting(setting: ClusterSetting) = copy(setting = setting)
+    def withSetting(setting: ClusterSetting) = copy(setting = setting)
   }
 
   final case class SwitchedOver(setting: ClusterSetting)
   extends Decoupled {
-    protected def withSetting(setting: ClusterSetting) = copy(setting = setting)
+    def withSetting(setting: ClusterSetting) = copy(setting = setting)
   }
 
   /** Decoupled after failover.
     * @param failedAt the failing node's journal must be truncated at this point. */
   final case class FailedOver(setting: ClusterSetting, failedAt: JournalPosition)
   extends Decoupled {
-    protected def withSetting(setting: ClusterSetting) = copy(setting = setting)
+    def withSetting(setting: ClusterSetting) = copy(setting = setting)
+
+    override def toShortString =
+      "FailedOver(${setting.passiveId.string} --> ${setting.activeId.string})"
 
     override def toString = "FailedOver(" +
       s"${setting.passiveId.string} --> ${setting.activeId.string} at $failedAt)"

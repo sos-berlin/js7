@@ -23,6 +23,7 @@ final class ClusterSettingTest extends OurTestSuite
     idToUri,
     NodeId("A"),
     timing,
+    Some(ClusterWatchId("CLUSTER-WATCH")),
     Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))))
 
   "JSON" in {
@@ -33,15 +34,16 @@ final class ClusterSettingTest extends OurTestSuite
           "B": "https://B"
         },
         "activeId": "A",
+        "timing": {
+          "heartbeat": 1,
+          "heartbeatTimeout": 2
+        },
+        "clusterWatchId": "CLUSTER-WATCH",
         "clusterWatches": [
           {
             "uri": "https://CLUSTER-WATCH"
           }
-        ],
-        "timing": {
-          "heartbeat": 1,
-          "heartbeatTimeout": 2
-        }
+        ]
       }""")
   }
 
@@ -50,9 +52,9 @@ final class ClusterSettingTest extends OurTestSuite
     assert(checkUris(Map(NodeId("A") -> Uri("https://A"))).isLeft)
     assert(checkUris(Map(NodeId("A") -> Uri("https://SAME"), NodeId("B") -> Uri("https://SAME"))).isLeft)
 
-    assert(ClusterSetting.checked(idToUri, NodeId("X"), Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))), timing).isLeft)
-    assert(ClusterSetting.checked(idToUri, NodeId("A"), Seq(ClusterSetting.Watch(Uri("https://V")), ClusterSetting.Watch(Uri("https://W"))), timing).isLeft)
-    assert(ClusterSetting.checked(idToUri, NodeId("A"), Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))), timing).isRight)
+    assert(ClusterSetting.checked(idToUri, NodeId("X"), timing, None, Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH")))).isLeft)
+    assert(ClusterSetting.checked(idToUri, NodeId("A"), timing, None, Seq(ClusterSetting.Watch(Uri("https://V")), ClusterSetting.Watch(Uri("https://W")))).isLeft)
+    assert(ClusterSetting.checked(idToUri, NodeId("A"), timing, None, Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH")))).isRight)
     assert(checkUris(idToUri).isRight)
   }
 

@@ -36,6 +36,7 @@ object ClusterWatchMain
     for {
       akka <- actorSystemResource("ClusterWatch", config, scheduler)
       service <- ClusterWatchService.resource(
+        conf.clusterWatchId,
         apiResources = clusterNodeAdmissions
           .traverse(admission => AkkaHttpClient
             .resource(admission.uri, uriPrefixPath = "", httpsConfig, name = "ClusterNode")(akka)

@@ -4,7 +4,7 @@ import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
-import js7.data.cluster.{ClusterEvent, ClusterSetting, ClusterState, ClusterTiming}
+import js7.data.cluster.{ClusterEvent, ClusterSetting, ClusterState, ClusterTiming, ClusterWatchId}
 import js7.data.event.EventDrivenState.EventNotApplicableProblem
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.SnapshotableStateTest.*
@@ -47,6 +47,7 @@ private object SnapshotableStateTest
       NodeId("BACKUP") -> Uri("https://BACKUP")),
     primaryNodeId,
     ClusterTiming(10.s, 20.s),
+    Some(ClusterWatchId("CLUSTER-WATCH")),
     Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))))
 
   private case class MyState(eventId: EventId, standards: SnapshotableState.Standards)

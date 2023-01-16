@@ -10,7 +10,6 @@ if [ "$HOME" = "/home/js7" ]; then
   [ -e "$HOME/data" ] || ln -ns $data "$HOME/data"
 fi
 
-echo "### $0"
 find "$HOME/config"
 find "$HOME/data"
 

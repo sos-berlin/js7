@@ -62,6 +62,7 @@ final class ClusterWatchRouteTest extends OurTestSuite with ScalatestRouteTest w
       NodeId("B") -> Uri("https://B")),
     NodeId("A"),
     ClusterTiming(10.s, 20.s),
+    clusterWatchId = None,
     Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))))
 
   "Post" in {

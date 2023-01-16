@@ -10,7 +10,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.web.Uri
 import js7.common.http.configuration.{RecouplingStreamReaderConf, RecouplingStreamReaderConfs}
-import js7.data.cluster.{ClusterSetting, ClusterTiming}
+import js7.data.cluster.{ClusterSetting, ClusterTiming, ClusterWatchId}
 import js7.data.node.NodeId
 import scala.jdk.CollectionConverters.*
 
@@ -21,6 +21,7 @@ final case class ClusterConf(
   peersUserAndPassword: Option[UserAndPassword],
   recouplingStreamReader: RecouplingStreamReaderConf,
   timing: ClusterTiming,
+  clusterWatchUniquenessMemorySize: Int,
   testHeartbeatLossPropertyKey: Option[String] = None)
 {
   def isPrimary = !isBackup
@@ -65,8 +66,11 @@ object ClusterConf
       heartbeat <- Right(config.getDuration("js7.journal.cluster.heartbeat").toFiniteDuration)
       heartbeatTimeout <- Right(config.getDuration("js7.journal.cluster.heartbeat-timeout").toFiniteDuration)
       timing <- ClusterTiming.checked(heartbeat, heartbeatTimeout)
+      clusterWatchId <- Right(config.optionAs[ClusterWatchId]("clusterWatchId"))
+      clusterWatchUniquenessMemorySize = config.getInt("js7.journal.cluster.watch.uniqueness-memory-size")
       testHeartbeatLoss <- Right(config.optionAs[String]("js7.journal.cluster.TEST-HEARTBEAT-LOSS"))
-      setting <- maybeIdToUri.traverse(ClusterSetting.checked(_, nodeId, watchUris.map(ClusterSetting.Watch(_)), timing))
+      setting <- maybeIdToUri.traverse(ClusterSetting.checked(_, nodeId, timing, clusterWatchId,
+        watchUris.map(ClusterSetting.Watch(_))))
     } yield
       new ClusterConf(
         nodeId,
@@ -76,6 +80,7 @@ object ClusterConf
         recouplingStreamReaderConf.copy(
           timeout = heartbeat + (heartbeatTimeout - heartbeat) / 2),
         timing,
+        clusterWatchUniquenessMemorySize,
         testHeartbeatLoss)
   }
 }

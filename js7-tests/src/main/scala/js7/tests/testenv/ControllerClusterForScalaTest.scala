@@ -1,6 +1,6 @@
 package js7.tests.testenv
 
-import cats.effect.Resource
+import cats.effect.{Resource, SyncIO}
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
@@ -22,21 +22,23 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
 import js7.common.auth.SecretStringGenerator
+import js7.common.configuration.Js7Configuration
 import js7.common.message.ProblemCodeMessages
+import js7.common.system.ThreadPools
 import js7.common.utils.FreeTcpPortFinder.{findFreeTcpPort, findFreeTcpPorts}
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
-import js7.data.cluster.ClusterEvent.ClusterCoupled
-import js7.data.cluster.{ClusterSetting, ClusterTiming}
+import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterWatchRegistered}
+import js7.data.cluster.{ClusterSetting, ClusterTiming, ClusterWatchId}
 import js7.data.controller.ControllerCommand.ShutDown
 import js7.data.item.InventoryItem
 import js7.data.job.RelativePathExecutable
 import js7.data.node.NodeId
 import js7.journal.files.JournalFiles.listJournalFiles
-import js7.tests.testenv.ControllerClusterForScalaTest.TestPathExecutable
+import js7.tests.testenv.ControllerClusterForScalaTest.*
 import js7.tests.testenv.DirectoryProvider.script
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced
+import monix.execution.Scheduler.Implicits.traced as scheduler
 import org.jetbrains.annotations.TestOnly
 import org.scalactic.source
 import org.scalatest.Assertions.*
@@ -74,6 +76,9 @@ trait ControllerClusterForScalaTest
     Nel.of(primaryControllerAdmission, backupControllerAdmission)
 
   protected val clusterTiming = ClusterTiming(1.s, 3.s)
+
+  protected def clusterWatchConfig: Config =
+    ConfigFactory.empty()
 
   coupleScribeWithSlf4j()
   ProblemCodeMessages.initialize()
@@ -157,6 +162,7 @@ trait ControllerClusterForScalaTest
           backupId -> Uri(s"http://127.0.0.1:$backupControllerPort")),
         activeId = primaryId,
         clusterTiming,
+        clusterWatchId = None,
         if (useLegacyServiceClusterWatch)
           primary.subagentItems.take(1).map(o => ClusterSetting.Watch(o.uri))
         else
@@ -165,15 +171,16 @@ trait ControllerClusterForScalaTest
       if (suppressClusterWatch)
         body(primary, backup, setting)
       else
-        withClusterWatchService {
-          body(primary, backup, setting)
+        withOptionalClusterWatchService() {
+          body(primary, backup, setting.copy(
+            clusterWatchId = !useLegacyServiceClusterWatch ? clusterWatchId))
         }
     }
 
   protected final def runControllers(primary: DirectoryProvider, backup: DirectoryProvider)
     (body: (RunningController, RunningController) => Unit)
   : Unit = {
-    withClusterWatchService {
+    withOptionalClusterWatchService() {
       backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
         primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
           primaryController.eventWatch.await[ClusterCoupled]()
@@ -184,17 +191,41 @@ trait ControllerClusterForScalaTest
     }
   }
 
-  protected final def withClusterWatchService[A](body: => A): A =
+  protected final def withOptionalClusterWatchService[A](
+    clusterWatchId: ClusterWatchId = ControllerClusterForScalaTest.clusterWatchId)
+    (body: => A)
+  : A =
     if (useLegacyServiceClusterWatch)
       body
     else
-      clusterWatchServiceResource.blockingUse(99.s)(_ => body)
+      withClusterWatchService(clusterWatchId)(_ => body)
 
-  protected final def clusterWatchServiceResource: Resource[Task, ClusterWatchService] =
+  protected final def withClusterWatchService[A](
+    clusterWatchId: ClusterWatchId = ControllerClusterForScalaTest.clusterWatchId)
+    (body: ClusterWatchService => A)
+  : A =
+    ThreadPools
+      .standardSchedulerResource[SyncIO](
+        s"${getClass.simpleScalaName}-${clusterWatchId.string}",
+        Js7Configuration.defaultConfig)
+      .use(implicit scheduler => SyncIO(
+        clusterWatchServiceResource(clusterWatchId).blockingUse(99.s)(
+          body)))
+      .unsafeRunSync()
+
+  protected final def clusterWatchServiceResource(clusterWatchId: ClusterWatchId)
+  : Resource[Task, ClusterWatchService] =
     DirectoryProvider.clusterWatchServiceResource(
-      "ControllerClusterForScalaTest-ClusterWatch",
+      clusterWatchId,
       controllerAdmissions,
-      HttpsConfig.empty)
+      HttpsConfig.empty,
+      clusterWatchConfig)
+
+  protected final def waitUntilClusterWatchRegistered(controller: RunningController): Unit = {
+    if (!useLegacyServiceClusterWatch) {
+      controller.eventWatch.await[ClusterWatchRegistered]()
+    }
+  }
 
   /** Simulate a kill via ShutDown(failOver) - still writes new snapshot. */
   protected final def simulateKillActiveNode(controller: RunningController): Task[Unit] =
@@ -209,6 +240,7 @@ trait ControllerClusterForScalaTest
 object ControllerClusterForScalaTest
 {
   val TestPathExecutable = RelativePathExecutable("TEST.cmd")
+  val clusterWatchId = ClusterWatchId("CLUSTER-WATCH")
 
   def assertEqualJournalFiles(
     primary: DirectoryProvider.ControllerTree,

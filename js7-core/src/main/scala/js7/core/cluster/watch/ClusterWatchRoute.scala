@@ -38,7 +38,7 @@ trait ClusterWatchRoute
             case None =>
               Left(Problem(s"No ClusterState registered for '$controllerId'"))
             case Some(clusterWatch) =>
-              Right(clusterWatch.unsafeClusterState)
+              Right(clusterWatch.unsafeClusterState())
           })
     }
 }

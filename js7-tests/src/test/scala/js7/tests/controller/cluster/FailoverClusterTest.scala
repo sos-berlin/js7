@@ -18,8 +18,8 @@ import js7.data.cluster.ClusterState.{Coupled, FailedOver}
 import js7.data.controller.ControllerCommand.{ClusterSwitchOver, ShutDown}
 import js7.data.controller.ControllerEvent
 import js7.data.controller.ControllerEvent.ControllerTestEvent
-import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.*
+import js7.data.event.KeyedEvent.NoKey
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.StringValue
@@ -57,6 +57,7 @@ class FailoverClusterTest extends ControllerClusterTester
     withControllerAndBackup() { (primary, backup, clusterSetting) =>
       var primaryController = primary.startController(httpPort = Some(primaryControllerPort)) await 99.s
       var backupController = backup.startController(httpPort = Some(backupControllerPort)) await 99.s
+      waitUntilClusterWatchRegistered(primaryController)
       primaryController.eventWatch.await[ClusterCoupled]()
 
       val since = now

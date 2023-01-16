@@ -50,7 +50,7 @@ import js7.core.command.{CommandExecutor, CommandMeta}
 import js7.core.license.LicenseChecker
 import js7.data.Problems.{ClusterNodeIsNotActiveProblem, ClusterNodeIsNotReadyProblem, PassiveClusterNodeShutdownNotAllowedProblem}
 import js7.data.cluster.ClusterState
-import js7.data.controller.ControllerCommand.AddOrder
+import js7.data.controller.ControllerCommand.{AddOrder, ShutDown}
 import js7.data.controller.{ControllerCommand, ControllerState, VerifiedUpdateItems}
 import js7.data.crypt.SignedItemVerifier
 import js7.data.event.{EventId, EventRequest, Stamped}
@@ -113,7 +113,11 @@ extends AutoCloseable
     }
   }
 
-  def terminate(suppressSnapshot: Boolean = false): Task[ProgramTermination] =
+  def terminate(
+    suppressSnapshot: Boolean = false,
+    clusterAction: Option[ShutDown.ClusterAction] = None,
+    dontNotifyActiveNode: Boolean = false)
+  : Task[ProgramTermination] =
     Task.defer {
       if (terminated.isCompleted)  // Works only if previous termination has been completed
         Task.fromFuture(terminated)
@@ -128,7 +132,12 @@ extends AutoCloseable
             for {
               _ <- _httpApi.toOption.fold(Task.unit)(_
                 .tryLogout.void.onErrorHandle(t => logger.warn(t.toString)))
-              _ <- executeCommandAsSystemUser(ControllerCommand.ShutDown(suppressSnapshot = suppressSnapshot)).map(_.orThrow)
+              _ <- executeCommandAsSystemUser(ControllerCommand
+                .ShutDown(
+                  suppressSnapshot = suppressSnapshot,
+                  clusterAction = clusterAction,
+                  dontNotifyActiveNode = dontNotifyActiveNode)
+              ).map(_.orThrow)
               t <- Task.fromFuture(terminated)
             } yield t
         }
@@ -517,7 +526,10 @@ object RunningController
           logger.info(s"❗️ $command")
           if (command.clusterAction.nonEmpty && !clusterNode.isWorkingNode)
             Task.pure(Left(PassiveClusterNodeShutdownNotAllowedProblem))
-          else
+          else {
+            if (command.dontNotifyActiveNode && clusterNode.isPassive) {
+              clusterNode.dontNotifyActiveNodeAboutShutdown()
+            }
             onShutDownBeforeClusterActivated(ProgramTermination(restart = command.restart)) >>
               orderKeeperActor.flatMap {
                 case Left(ClusterNodeIsNotActiveProblem | ShuttingDownProblem) => Task.pure(Right(ControllerCommand.Response.Accepted))
@@ -527,6 +539,7 @@ object RunningController
                     (actor ? ControllerOrderKeeper.Command.Execute(command, meta, CorrelId.current))
                       .mapTo[Checked[ControllerCommand.Response]])
               }
+          }
 
         case ControllerCommand.ClusterAppointNodes(idToUri, activeId, clusterWatches) =>
           Task(clusterNode.workingClusterNode)

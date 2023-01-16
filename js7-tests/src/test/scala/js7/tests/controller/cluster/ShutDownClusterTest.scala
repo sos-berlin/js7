@@ -34,6 +34,7 @@ class ShutDownClusterTest extends ControllerClusterTester
           backupController.httpApi.login_(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))).await(99.s)
 
           primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
+            waitUntilClusterWatchRegistered(primaryController)
             primaryController.eventWatch.await[ClusterCoupled]()
             primaryController.httpApi.login_(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))).await(99.s)
             assert(primaryController.httpApi.clusterState.await(99.s) == Right(Coupled(clusterSetting)))
@@ -51,7 +52,7 @@ class ShutDownClusterTest extends ControllerClusterTester
             val activeRestarted = primaryController.eventWatch.await[ClusterActiveNodeRestarted](
               after = activeNodeShutDown).head.eventId
             primaryController.eventWatch.await[ClusterCoupled](after = activeRestarted)
-            // TODO EventWatch delivers event after it has been written but befor ack!
+            // TODO EventWatch delivers event after it has been written but before ack!
             waitForCondition(2.s, 10.ms)(primaryController.clusterState.await(99.s) == Coupled(clusterSetting))
             assert(primaryController.clusterState.await(99.s) == Coupled(clusterSetting))
           }
@@ -63,9 +64,11 @@ class ShutDownClusterTest extends ControllerClusterTester
       withControllerAndBackup() { (primary, backup, _) =>
         backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
           primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
+            waitUntilClusterWatchRegistered(primaryController)
             primaryController.eventWatch.await[ClusterCoupled]()
 
-            primaryController.executeCommandAsSystemUser(ShutDown(clusterAction = Some(ClusterAction.Switchover)))
+            primaryController
+              .executeCommandAsSystemUser(ShutDown(clusterAction = Some(ClusterAction.Switchover)))
               .await(99.s).orThrow
             backupController.eventWatch.await[ClusterSwitchedOver]()
             primaryController.terminated.await(99.s)
@@ -79,8 +82,10 @@ class ShutDownClusterTest extends ControllerClusterTester
         backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
           primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
             primaryController.eventWatch.await[ClusterCoupled]()
+            waitUntilClusterWatchRegistered(backupController)
 
-            primaryController.executeCommandAsSystemUser(ShutDown(clusterAction = Some(ClusterAction.Failover)))
+            primaryController
+              .executeCommandAsSystemUser(ShutDown(clusterAction = Some(ClusterAction.Failover)))
               .await(99.s).orThrow
             primaryController.terminated.await(99.s)
             backupController.eventWatch.await[ClusterFailedOver]()
@@ -176,6 +181,7 @@ class ShutDownClusterTest extends ControllerClusterTester
       withControllerAndBackup() { (primary, backup, _) =>
         backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
           primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
+            waitUntilClusterWatchRegistered(primaryController)
             primaryController.eventWatch.await[ClusterCoupled]()
 
             backupController.executeCommandAsSystemUser(ShutDown()).await(99.s).orThrow
@@ -190,6 +196,7 @@ class ShutDownClusterTest extends ControllerClusterTester
       withControllerAndBackup() { (primary, backup, _) =>
         backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
           primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
+            //waitUntilClusterWatchRegistered(primaryController)
             primaryController.eventWatch.await[ClusterCoupled]()
 
             backupController.executeCommandAsSystemUser(ShutDown(clusterAction = Some(ClusterAction.Switchover)))

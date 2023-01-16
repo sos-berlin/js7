@@ -30,6 +30,8 @@ services:
       - ./volumes/controller/data/state:/var/opt/js7/controller/data/state:delegated
     stop_grace_period: 10s
     restart: unless-stopped
+    depends_on:
+      - cluster-watch
 
   backup-controller:
     build:
@@ -52,6 +54,8 @@ services:
       - ./volumes/backup-controller/data/state:/var/opt/js7/controller/data/state:delegated
     stop_grace_period: 10s
     restart: unless-stopped
+    depends_on:
+      - cluster-watch
 
   provider:
     image: js7
@@ -73,6 +77,7 @@ services:
     command: [
       "js7-cluster-watch",
       "-J-Xmx50m",
+      "--cluster-watch-id=CLUSTER-WATCH",
       "--cluster-node-uri=https://controller:4443",
       "--cluster-node-uri=https://backup-controller:4443" ]
     working_dir: /home/js7
@@ -96,6 +101,8 @@ services:
       - ./volumes/subagent-1-a/data/state:/var/opt/js7/agent/data/state:delegated
     stop_grace_period: 10s
     restart: unless-stopped
+    depends_on:
+      - controller
 
   subagent-1-b:
     image: js7
@@ -110,6 +117,8 @@ services:
       - ./volumes/subagent-1-b/data/state:/var/opt/js7/agent/data/state:delegated
     stop_grace_period: 10s
     restart: unless-stopped
+    depends_on:
+      - subagent-1-a
 
   subagent-2-a:
     image: js7
@@ -124,3 +133,5 @@ services:
       - ./volumes/subagent-2-a/data/state:/var/opt/js7/agent/data/state:delegated
     stop_grace_period: 10s
     restart: unless-stopped
+    depends_on:
+      - controller

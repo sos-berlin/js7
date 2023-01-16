@@ -21,6 +21,7 @@ final class ClusterStateTest extends OurTestSuite
         NodeId("B") -> Uri("https://B")),
       NodeId("A"),
       ClusterTiming(10.s, 20.s),
+      Some(ClusterWatchId("CLUSTER-WATCH")),
       Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))))
 
     "Empty" in {
@@ -42,15 +43,16 @@ final class ClusterStateTest extends OurTestSuite
               "B": "https://B"
             },
             "activeId": "A",
+            "timing": {
+              "heartbeat": 10,
+              "heartbeatTimeout": 20
+            },
+            "clusterWatchId": "CLUSTER-WATCH",
             "clusterWatches": [
               {
                 "uri": "https://CLUSTER-WATCH"
               }
-            ],
-            "timing": {
-              "heartbeat": 10,
-              "heartbeatTimeout": 20
-            }
+            ]
           }
         }""")
     }
@@ -66,15 +68,16 @@ final class ClusterStateTest extends OurTestSuite
               "B": "https://B"
             },
             "activeId": "A",
+            "timing": {
+              "heartbeat": 10,
+              "heartbeatTimeout": 20
+            },
+            "clusterWatchId": "CLUSTER-WATCH",
             "clusterWatches": [
               {
                 "uri": "https://CLUSTER-WATCH"
               }
-            ],
-            "timing": {
-              "heartbeat": 10,
-              "heartbeatTimeout": 20
-            }
+            ]
           }
         }""")
     }
@@ -90,15 +93,16 @@ final class ClusterStateTest extends OurTestSuite
               "B": "https://B"
             },
             "activeId": "A",
+            "timing": {
+              "heartbeat": 10,
+              "heartbeatTimeout": 20
+            },
+            "clusterWatchId": "CLUSTER-WATCH",
             "clusterWatches": [
               {
                 "uri": "https://CLUSTER-WATCH"
               }
-            ],
-            "timing": {
-              "heartbeat": 10,
-              "heartbeatTimeout": 20
-            }
+            ]
           }
         }""")
     }
@@ -114,15 +118,16 @@ final class ClusterStateTest extends OurTestSuite
               "B": "https://B"
             },
             "activeId": "A",
+            "timing": {
+              "heartbeat": 10,
+              "heartbeatTimeout": 20
+            },
+            "clusterWatchId": "CLUSTER-WATCH",
             "clusterWatches": [
               {
                 "uri": "https://CLUSTER-WATCH"
               }
-            ],
-            "timing": {
-              "heartbeat": 10,
-              "heartbeatTimeout": 20
-            }
+            ]
           }
         }""")
     }
@@ -138,15 +143,16 @@ final class ClusterStateTest extends OurTestSuite
               "B": "https://B"
             },
             "activeId": "A",
+            "timing": {
+              "heartbeat": 10,
+              "heartbeatTimeout": 20
+            },
+            "clusterWatchId": "CLUSTER-WATCH",
             "clusterWatches": [
               {
                 "uri": "https://CLUSTER-WATCH"
               }
-            ],
-            "timing": {
-              "heartbeat": 10,
-              "heartbeatTimeout": 20
-            }
+            ]
           }
         }""")
     }
@@ -162,15 +168,16 @@ final class ClusterStateTest extends OurTestSuite
               "B": "https://B"
             },
             "activeId": "A",
+            "timing": {
+              "heartbeat": 10,
+              "heartbeatTimeout": 20
+            },
+            "clusterWatchId": "CLUSTER-WATCH",
             "clusterWatches": [
               {
                 "uri": "https://CLUSTER-WATCH"
               }
-            ],
-            "timing": {
-              "heartbeat": 10,
-              "heartbeatTimeout": 20
-            }
+            ]
           }
         }""")
     }
@@ -186,15 +193,16 @@ final class ClusterStateTest extends OurTestSuite
               "B": "https://B"
             },
             "activeId": "A",
+            "timing": {
+              "heartbeat": 10,
+              "heartbeatTimeout": 20
+            },
+            "clusterWatchId": "CLUSTER-WATCH",
             "clusterWatches": [
               {
                 "uri": "https://CLUSTER-WATCH"
               }
-            ],
-            "timing": {
-              "heartbeat": 10,
-              "heartbeatTimeout": 20
-            }
+            ]
           },
           "failedAt": {
             "fileEventId": 0,

@@ -14,7 +14,7 @@ import js7.base.web.Uri
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState}
 import js7.data.board.{Board, BoardPath, BoardPathExpression, BoardState, Notice, NoticeId, NoticePlace}
 import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
-import js7.data.cluster.{ClusterSetting, ClusterState, ClusterStateSnapshot, ClusterTiming}
+import js7.data.cluster.{ClusterSetting, ClusterState, ClusterStateSnapshot, ClusterTiming, ClusterWatchId}
 import js7.data.controller.ControllerStateTest.*
 import js7.data.delegate.DelegateCouplingState
 import js7.data.event.SnapshotMeta.SnapshotEventId
@@ -75,6 +75,7 @@ final class ControllerStateTest extends OurAsyncTestSuite
                   NodeId("B") -> Uri("https://B")),
                 activeId = NodeId("A"),
                 ClusterTiming(10.s, 20.s),
+                Some(ClusterWatchId("CLUSTER-WATCH")),
                 Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH")))))),
           controllerState.controllerMetaState,
           WorkflowPathControl(
@@ -183,11 +184,12 @@ final class ControllerStateTest extends OurAsyncTestSuite
               "B": "https://B"
             },
             "activeId": "A",
-            "clusterWatches": [ { "uri": "https://CLUSTER-WATCH" } ],
             "timing": {
               "heartbeat": 10,
               "heartbeatTimeout": 20
-            }
+            },
+            "clusterWatchId": "CLUSTER-WATCH",
+            "clusterWatches": [ { "uri": "https://CLUSTER-WATCH" } ]
           }
         }
       }, {
@@ -520,7 +522,8 @@ object ControllerStateTest
             NodeId("B") -> Uri("https://B")),
           activeId = NodeId("A"),
           ClusterTiming(10.s, 20.s),
-          Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH")))))),
+          Some(ClusterWatchId("CLUSTER-WATCH")),
+          clusterWatches = Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH")))))),
     ControllerMetaState(ControllerId("CONTROLLER-ID"), Timestamp("2019-05-24T12:00:00Z"),
       Timezone("Europe/Berlin")),
     Map(

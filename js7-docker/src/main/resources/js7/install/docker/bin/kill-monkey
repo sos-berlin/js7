@@ -19,7 +19,7 @@ pids+="$pids $!"
 pids+="$pids $!"
 
 "$bin"/kill-and-restart-monkey \
-  --container=js7-subagent-1-a \
+  --container=cluster-watch \
   --up-exp=7  \
   --down-exp=1 \
   --cursor-line=3 &

@@ -52,34 +52,35 @@ class AppointNodesLatelyClusterTest extends OurTestSuite with ControllerClusterT
 
       val agents = primary.startAgents().await(99.s)
 
-        primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
-          val orderId = OrderId("🔺")
+      primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
+        val orderId = OrderId("🔺")
+        primaryController.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path))
+        primaryController.eventWatch.await[OrderStarted](_.key == orderId)
+      }
+
+      primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
+        assert(listJournalFiles(primary.controller.dataDir / "state" / "controller").head
+          .fileEventId > EventId.BeforeFirst)
+
+        var backupController = backup.startController(httpPort = Some(backupControllerPort)) await 99.s
+
+        backupController.httpApiDefaultLogin(Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD")))
+        backupController.httpApi.login() await 99.s
+        assert(backupController.httpApi.clusterState.await(99.s) == Left(BackupClusterNodeNotAppointed))
+
+        primaryController.executeCommandForTest(
+          ClusterAppointNodes(clusterSetting.idToUri, clusterSetting.activeId,
+            clusterSetting.clusterWatches)
+        ).orThrow
+        primaryController.eventWatch.await[ClusterCoupled]()
+        waitUntilClusterWatchRegistered(primaryController)
+
+        locally {
+          val orderId = OrderId("🔸")
           primaryController.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path))
-          primaryController.eventWatch.await[OrderStarted](_.key == orderId)
+          primaryController.eventWatch.await[OrderFinished](_.key == orderId)
+          backupController.eventWatch.await[OrderFinished](_.key == orderId)
         }
-
-        primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
-          assert(listJournalFiles(primary.controller.dataDir / "state" / "controller").head
-            .fileEventId > EventId.BeforeFirst)
-
-          var backupController = backup.startController(httpPort = Some(backupControllerPort)) await 99.s
-
-          backupController.httpApiDefaultLogin(Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD")))
-          backupController.httpApi.login() await 99.s
-          assert(backupController.httpApi.clusterState.await(99.s) == Left(BackupClusterNodeNotAppointed))
-
-          primaryController.executeCommandForTest(
-            ClusterAppointNodes(clusterSetting.idToUri, clusterSetting.activeId,
-              clusterSetting.clusterWatches)
-          ).orThrow
-          primaryController.eventWatch.await[ClusterCoupled]()
-
-          locally {
-            val orderId = OrderId("🔸")
-            primaryController.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path))
-            primaryController.eventWatch.await[OrderFinished](_.key == orderId)
-            backupController.eventWatch.await[OrderFinished](_.key == orderId)
-          }
 
         // PREPARE CHANGING BACKUP NODE
         val primaryUri = clusterSetting.idToUri(primaryId)
@@ -90,29 +91,29 @@ class AppointNodesLatelyClusterTest extends OurTestSuite with ControllerClusterT
           idToUri = clusterSetting.idToUri + (backupId -> Uri(backupUri.string.toUpperCase)))
         assert(updatedBackupSetting != clusterSetting)
 
-          // UPDATING BACKUP URI IS REJECTED WHEN COUPLED
-          val clusterAppointNodes = ClusterAppointNodes(
-            updatedBackupSetting.idToUri, updatedBackupSetting.activeId,
-            updatedBackupSetting.clusterWatches)
-          assert(primaryController.executeCommandForTest(clusterAppointNodes) == Left(ClusterSettingNotUpdatable))
+        // UPDATING BACKUP URI IS REJECTED WHEN COUPLED
+        val clusterAppointNodes = ClusterAppointNodes(
+          updatedBackupSetting.idToUri, updatedBackupSetting.activeId,
+          updatedBackupSetting.clusterWatches)
+        assert(primaryController.executeCommandForTest(clusterAppointNodes) == Left(ClusterSettingNotUpdatable))
 
-          // CHANGE BACKUP URI WHEN PASSIVE IS LOST
-          locally {
-            val eventId = primaryController.eventWatch.lastAddedEventId
-            backupController.terminate() await 99.s
-            primaryController.eventWatch.await[ClusterPassiveLost](after = eventId)
-            primaryController.executeCommandForTest(clusterAppointNodes).orThrow
-            primaryController.eventWatch.await[ClusterSettingUpdated](after = eventId)
+        // CHANGE BACKUP URI WHEN PASSIVE IS LOST
+        locally {
+          val eventId = primaryController.eventWatch.lastAddedEventId
+          backupController.terminate() await 99.s
+          primaryController.eventWatch.await[ClusterPassiveLost](after = eventId)
+          primaryController.executeCommandForTest(clusterAppointNodes).orThrow
+          primaryController.eventWatch.await[ClusterSettingUpdated](after = eventId)
 
-            backupController = backup.startController(httpPort = Some(backupControllerPort)) await 99.s
+          backupController = backup.startController(httpPort = Some(backupControllerPort)) await 99.s
 
-            primaryController.eventWatch.await[ClusterCoupled](after = eventId)
-            backupController.eventWatch.await[ClusterCoupled](after = eventId)
-            sleep(100.ms)
+          primaryController.eventWatch.await[ClusterCoupled](after = eventId)
+          backupController.eventWatch.await[ClusterCoupled](after = eventId)
+          sleep(100.ms)
 
-            assert(primaryController.clusterState.await(99.s).asInstanceOf[Coupled].setting == updatedBackupSetting)
-            assert(backupController.clusterState.await(99.s).asInstanceOf[Coupled].setting == updatedBackupSetting)
-          }
+          assert(primaryController.clusterState.await(99.s).asInstanceOf[Coupled].setting == updatedBackupSetting)
+          assert(backupController.clusterState.await(99.s).asInstanceOf[Coupled].setting == updatedBackupSetting)
+        }
 
         var bAgent: RunningAgent = null
         if (useLegacyServiceClusterWatch) {
@@ -161,7 +162,7 @@ class AppointNodesLatelyClusterTest extends OurTestSuite with ControllerClusterT
           primaryController.terminate() await 99.s
         }
         primaryController.terminated await 99.s
-        sleep(200.ms) // TODO Early ShutDown seems do be ignored
+        sleep(200.ms) // TODO Early ShutDown seems to be ignored
         backupController.terminate() await 99.s
         Option(bAgent).foreach(_.terminate() await 90.s)
       }

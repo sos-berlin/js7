@@ -14,6 +14,7 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.monixutils.MonixDeadline.now
 import js7.base.monixutils.ObservablePauseDetector.RichPauseObservable
@@ -31,7 +32,7 @@ import js7.base.web.HttpClient
 import js7.cluster.ClusterCommon.clusterEventAndStateToString
 import js7.cluster.ClusterConf.ClusterProductName
 import js7.cluster.PassiveClusterNode.*
-import js7.cluster.watch.api.ClusterWatchProblems.{ClusterFailOverWhilePassiveLostProblem, UntaughtClusterWatchProblem}
+import js7.cluster.watch.api.ClusterWatchProblems.{ClusterFailOverWhilePassiveLostProblem, NoClusterWatchProblem, UntaughtClusterWatchProblem}
 import js7.common.http.RecouplingStreamReader
 import js7.common.jsonseq.PositionAnd
 import js7.data.cluster.ClusterCommand.{ClusterCouple, ClusterPassiveDown, ClusterPrepareCoupling, ClusterRecouple}
@@ -83,38 +84,39 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
   @volatile var awaitingCoupledEvent = false
   @volatile private var stopped = false
 
-  def onShutDown: Task[Unit] = {
-    // Active and passive node may be shut down at the same time. We try to handle this here.
-    val untilDecoupled = Task
-      .tailRecM(())(_ =>
-        stateBuilderAndAccessor.state
-          .map(_.clusterState)
-          .flatMap {
-            case _: Coupled => Task.pure(Left(())).delayResult(1.s)
-            case clusterState => Task.pure(Right(clusterState))
-          })
+  def onShutDown(dontNotifyActiveNode: Boolean = false): Task[Unit] =
+    logger.debugTask(Task.unless(dontNotifyActiveNode) {
+      // Active and passive node may be shut down at the same time. We try to handle this here.
+      val untilDecoupled = Task
+        .tailRecM(())(_ =>
+          stateBuilderAndAccessor.state
+            .map(_.clusterState)
+            .flatMap {
+              case _: Coupled => Task.pure(Left(())).delayResult(1.s)
+              case clusterState => Task.pure(Right(clusterState))
+            })
 
-    val notifyActive =
-      activeApiResource.use(api =>
-        api.login(onlyIfNotLoggedIn = true)
-          .*>(api.executeClusterCommand(ClusterPassiveDown(activeId = activeId, passiveId = ownId)))
-          .void
-          .onErrorHandle(throwable => logger.debug(
-            s"ClusterCommand.ClusterPassiveDown failed: ${throwable.toStringWithCauses}",
-            throwable.nullIfNoStackTrace)))
+      val notifyActive =
+        activeApiResource.use(api =>
+          api.login(onlyIfNotLoggedIn = true)
+            .*>(api.executeClusterCommand(ClusterPassiveDown(activeId = activeId, passiveId = ownId)))
+            .void
+            .onErrorHandle(throwable => logger.debug(
+              s"ClusterCommand.ClusterPassiveDown failed: ${throwable.toStringWithCauses}",
+              throwable.nullIfNoStackTrace)))
 
-    Task.race(untilDecoupled, notifyActive.delayExecution(50.ms))
-      .tapEval {
-        case Left(clusterState) =>
-          // The connection of the killed notifyActive HTTP request may be still blocked !!!
-          // until it is responded (see AkkaHttpClient)
-          // It should not disturb the shutdown.
-          Task(logger.debug(s"onShutDown: clusterState=$clusterState"))
-        case Right(()) =>
-          Task(logger.debug("Active node has been notified about shutdown"))
-      }
-      .as(())
-  }
+      Task.race(untilDecoupled, notifyActive.delayExecution(50.ms))
+        .tapEval {
+          case Left(clusterState) =>
+            // The connection of the killed notifyActive HTTP request may be still blocked !!!
+            // until it is responded (see AkkaHttpClient)
+            // It should not disturb the shutdown.
+            Task(logger.debug(s"onShutDown: clusterState=$clusterState"))
+          case Right(()) =>
+            Task(logger.debug("Active node has been notified about shutdown"))
+        }
+        .as(())
+    })
 
   def state: Task[S] =
     stateBuilderAndAccessor.state
@@ -124,62 +126,64 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
     * Returns also a `Task` with the current ClusterState while being passive or active.
     */
   def run(recoveredState: S): Task[Checked[Recovered[S]]] =
-    Task(common.licenseChecker.checkLicense(ClusterProductName))
-      .flatMapT(_ => Task.deferAction { implicit s =>
-        val recoveredClusterState = recoveredState.clusterState
-        logger.debug(s"recoveredClusterState=$recoveredClusterState")
-        assertThat(!stopped)  // Single-use only
+    logger.debugTask(
+      Task(common.licenseChecker.checkLicense(ClusterProductName))
+        .flatMapT(_ => Task.deferAction { implicit s =>
+          val recoveredClusterState = recoveredState.clusterState
+          logger.debug(s"recoveredClusterState=$recoveredClusterState")
+          assertThat(!stopped)  // Single-use only
 
-        // Delete obsolete journal files left by last run
-        if (journalConf.deleteObsoleteFiles) {
-          for (f <- recovered.recoveredJournalFile) {
-            val eventId = f.fileEventId/*release files before the recovered file*/
-            eventWatch.releaseEvents(
-              recoveredState.journalState.toReleaseEventId(eventId, journalConf.releaseEventsUserIds))
+          // Delete obsolete journal files left by last run
+          if (journalConf.deleteObsoleteFiles) {
+            for (f <- recovered.recoveredJournalFile) {
+              val eventId = f.fileEventId/*release files before the recovered file*/
+              eventWatch.releaseEvents(
+                recoveredState.journalState.toReleaseEventId(eventId, journalConf.releaseEventsUserIds))
+            }
           }
-        }
 
-        for (o <- recovered.recoveredJournalFile) {
-          cutJournalFile(o.file, o.length, o.eventId)
-        }
+          for (o <- recovered.recoveredJournalFile) {
+            cutJournalFile(o.file, o.length, o.eventId)
+          }
 
-        if (!otherFailed) { // Other node failed-over while this node was active but lost? FailedOver event will be replicated.
-          recoveredClusterState
-            .match_ {
-              case ClusterState.Empty =>
-                Task.unit
-              case _: Decoupled =>
-                tryEndlesslyToSendClusterPrepareCoupling
-              case _: PreparedToBeCoupled =>
-                common.tryEndlesslyToSendCommand(
-                  activeApiResource,
-                  ClusterCouple(activeId = activeId, passiveId = ownId))
-              case _: Coupled =>
-                // After a quick restart of this passive node, the active node may not yet have noticed the loss.
-                // So we send a ClusterRecouple command to force a ClusterPassiveLost event.
-                // Then the active node couples again with this passive node,
-                // and we are sure to be coupled and up-to-date and may properly fail-over in case of active node loss.
-                // The active node ignores this command if it has emitted a ClusterPassiveLost event.
-                awaitingCoupledEvent = true
-                common.tryEndlesslyToSendCommand(
-                  activeApiResource,
-                  ClusterRecouple(activeId = activeId, passiveId = ownId))
-            }
-            .runAsyncUncancelable {
-              case Left(throwable) => logger.error("While notifying the active cluster node about restart of this passive node:" +
-                s" ${throwable.toStringWithCauses}", throwable.nullIfNoStackTrace)
-              case Right(()) =>
-                logger.debug(
-                  "Active cluster node has been notified about restart of this passive node")
-            }
-        }
+          if (!otherFailed) { // Other node failed-over while this node was active but lost? FailedOver event will be replicated.
+            recoveredClusterState
+              .match_ {
+                case ClusterState.Empty =>
+                  Task.unit
+                case _: Decoupled =>
+                  tryEndlesslyToSendClusterPrepareCoupling
+                case _: PreparedToBeCoupled =>
+                  common.tryEndlesslyToSendCommand(
+                    activeApiResource,
+                    ClusterCouple(activeId = activeId, passiveId = ownId))
+                case _: Coupled =>
+                  // After a quick restart of this passive node, the active node may not yet have noticed the loss.
+                  // So we send a ClusterRecouple command to force a ClusterPassiveLost event.
+                  // Then the active node couples again with this passive node,
+                  // and we are sure to be coupled and up-to-date and may properly fail-over in case of active node loss.
+                  // The active node ignores this command if it has emitted a ClusterPassiveLost event.
+                  awaitingCoupledEvent = true
+                  common.tryEndlesslyToSendCommand(
+                    activeApiResource,
+                    ClusterRecouple(activeId = activeId, passiveId = ownId))
+              }
+              .runAsyncUncancelable {
+                case Left(throwable) => logger.error(
+                  "While notifying the active cluster node about restart of this passive node:" +
+                  s" ${throwable.toStringWithCauses}", throwable.nullIfNoStackTrace)
+                case Right(()) =>
+                  logger.debug(
+                    "Active cluster node has been notified about restart of this passive node")
+              }
+          }
 
-        replicateJournalFiles(recoveredClusterState)
-          .guarantee(Task {
-            stopped = true
-          })
-          .guarantee(activeApiCache.clear)
-      })
+          replicateJournalFiles(recoveredClusterState)
+            .guarantee(Task {
+              stopped = true
+            })
+            .guarantee(activeApiCache.clear)
+        }))
 
   private def cutJournalFile(file: Path, length: Long, eventId: EventId): Unit =
     if (exists(file)) {
@@ -413,8 +417,9 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                   ).flatMap {
                     case Left(problem) =>
                       if (problem.is(ClusterFailOverWhilePassiveLostProblem)
-                        || problem.is(UntaughtClusterWatchProblem)) {
-                        logger.info(s"No failover because ClusterWatch reponded: $problem")
+                        || problem.is(UntaughtClusterWatchProblem)
+                        || problem.is(NoClusterWatchProblem)) {
+                        logger.info(s"No failover because ClusterWatch responded: $problem")
                         Observable.empty   // Ignore
                       } else
                         Observable.raiseError(problem.throwable.appendCurrentStackTrace)

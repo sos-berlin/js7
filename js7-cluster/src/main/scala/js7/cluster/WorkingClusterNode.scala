@@ -4,17 +4,19 @@ import com.softwaremill.diffx
 import izumi.reflect.Tag
 import js7.base.generic.Completed
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.thread.Futures.syntax.*
-import js7.base.utils.ScalaUtils.syntax.{RichEitherF, RichThrowable}
+import js7.base.utils.ScalaUtils.syntax.{RichEitherF, RichOption, RichThrowable}
 import js7.base.utils.SetOnce
 import js7.base.web.Uri
 import js7.cluster.ClusterConf.ClusterProductName
 import js7.cluster.WorkingClusterNode.*
-import js7.data.Problems.ClusterNodesAlreadyAppointed
+import js7.data.Problems.{ClusterNodeIsNotActiveProblem, ClusterNodesAlreadyAppointed}
 import js7.data.cluster.ClusterEvent.ClusterNodesAppointed
 import js7.data.cluster.ClusterState.HasNodes
+import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterCommand, ClusterSetting, ClusterState}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, SnapshotableState}
@@ -81,7 +83,11 @@ final class WorkingClusterNode[S <: SnapshotableState[S]: SnapshotableState.Comp
 
   def appointNodes(idToUri: Map[NodeId, Uri], activeId: NodeId, clusterWatches: Seq[ClusterSetting.Watch])
   : Task[Checked[Completed]] =
-    Task(ClusterSetting.checked(idToUri, activeId, clusterWatches, clusterConf.timing))
+    Task(ClusterSetting
+      .checked(
+        idToUri, activeId, clusterConf.timing,
+        clusterWatchId = None,
+        clusterWatches))
       .flatMapT(appointNodes)
 
   private def automaticallyAppointConfiguredBackupNode: Task[Checked[Completed]] =
@@ -110,24 +116,25 @@ final class WorkingClusterNode[S <: SnapshotableState[S]: SnapshotableState.Comp
     }
 
   private def appointNodes(setting: ClusterSetting): Task[Checked[Completed]] =
-    currentClusterState.flatMap {
-      case ClusterState.Empty =>
-        Task(common.licenseChecker.checkLicense(ClusterProductName))
-          .flatMapT(_ =>
-            persistence.persistKeyedEvent(NoKey <-: ClusterNodesAppointed(setting))
-              .flatMapT { case (_, state) =>
-                state.clusterState match {
-                  case clusterState: HasNodes =>
-                    startActiveClusterNode(clusterState, state.eventId)
-                  case clusterState => Task.pure(Left(Problem.pure(
-                    s"Unexpected ClusterState $clusterState after ClusterNodesAppointed")))
-                }
-              })
+    logger.debugTask(
+      currentClusterState.flatMap {
+        case ClusterState.Empty =>
+          Task(common.licenseChecker.checkLicense(ClusterProductName))
+            .flatMapT(_ =>
+              persistence.persistKeyedEvent(NoKey <-: ClusterNodesAppointed(setting))
+                .flatMapT { case (_, state) =>
+                  state.clusterState match {
+                    case clusterState: HasNodes =>
+                      startActiveClusterNode(clusterState, state.eventId)
+                    case clusterState => Task.pure(Left(Problem.pure(
+                      s"Unexpected ClusterState $clusterState after ClusterNodesAppointed")))
+                  }
+                })
 
-      case _: HasNodes =>
-        activeClusterNodeTask
-          .flatMapT(_.appointNodes(setting))
-    }
+        case _: HasNodes =>
+          activeClusterNodeTask
+            .flatMapT(_.appointNodes(setting))
+      })
 
   private def startActiveClusterNode(clusterState: HasNodes, eventId: EventId): Task[Checked[Completed]] =
     Task.defer {
@@ -136,6 +143,12 @@ final class WorkingClusterNode[S <: SnapshotableState[S]: SnapshotableState.Comp
         activeClusterNode.start(eventId)
       else
         Task.pure(Left(Problem.pure("ActiveClusterNode has already been started")))
+    }
+
+  def executeClusterWatchConfirm(cmd: ClusterWatchConfirm): Task[Checked[Unit]] =
+    Task.defer {
+      _activeClusterNode.toOption.fold_(Task.left(ClusterNodeIsNotActiveProblem),
+        _.executeClusterWatchConfirm(cmd))
     }
 
   def onTerminatedUnexpectedly: Task[Checked[Completed]] =

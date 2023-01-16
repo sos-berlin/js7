@@ -2,6 +2,7 @@ package js7.tests.controller.proxy;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import js7.data.cluster.ClusterWatchId;
 import js7.data_for_java.auth.JAdmission;
 import js7.data_for_java.auth.JHttpsConfig;
 import js7.proxy.javaapi.JControllerApi;
@@ -18,13 +19,13 @@ final class JProxyWithClusterWatchTester
             JControllerApi controllerApi = context
                 .newControllerApi(admissions, httpsConfig);
 
-            controllerApi.startClusterWatch().get();
+            controllerApi.startClusterWatch(ClusterWatchId.of("JOC-A")).get();
             // Stop is effective only after startClusterWatch has completed!
             controllerApi.stopClusterWatch().get();
 
             // Start again
             CompletableFuture<Void> clusterWatchStopped =
-                controllerApi.startClusterWatch().get();
+                controllerApi.startClusterWatch(ClusterWatchId.of("JOC-A")).get();
 
             if (clusterWatchStopped.isDone()) {
                 clusterWatchStopped.get()/*throws*/;

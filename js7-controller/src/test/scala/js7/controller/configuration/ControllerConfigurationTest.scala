@@ -53,7 +53,8 @@ final class ControllerConfigurationTest extends OurTestSuite with BeforeAndAfter
           timeout = 6500.ms,  // Between 3s and 10s
           delay = 1.s,
           failureDelay = 5.s),
-        ClusterTiming(3.s, 10.s)),
+        ClusterTiming(3.s, 10.s),
+        clusterWatchUniquenessMemorySize = 1000),
       name = ControllerConfiguration.DefaultName,
       config = DefaultConfig))
   }

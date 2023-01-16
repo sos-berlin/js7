@@ -17,13 +17,14 @@ import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.{HttpClient, Uri}
 import js7.cluster.ActiveClusterNode.*
+import js7.cluster.watch.api.ClusterWatchProblems.{ClusterStateEmptyProblem, NoClusterWatchProblem}
 import js7.common.http.RecouplingStreamReader
-import js7.common.system.startup.Halt.haltJava
-import js7.data.Problems.{ClusterCommandInapplicableProblem, ClusterSettingNotUpdatable, MissingPassiveClusterNodeHeartbeatProblem}
+import js7.data.Problems.{ClusterCommandInapplicableProblem, ClusterNodeIsNotActiveProblem, ClusterSettingNotUpdatable, MissingPassiveClusterNodeHeartbeatProblem}
 import js7.data.cluster.ClusterCommand.ClusterStartBackupNode
-import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterPassiveLost, ClusterSettingUpdated, ClusterSwitchedOver}
+import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterPassiveLost, ClusterSettingUpdated, ClusterSwitchedOver, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState.{ActiveShutDown, Coupled, CoupledOrDecoupled, Decoupled, Empty, HasNodes, NodesAppointed, PassiveLost, PreparedToBeCoupled}
-import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterSetting, ClusterState, ClusterTiming}
+import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
+import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterSetting, ClusterState, ClusterTiming, ClusterWatchId}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, KeyedEvent, SnapshotableState, Stamped}
 import js7.data.node.NodeId
@@ -62,17 +63,17 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
 
   def start(eventId: EventId): Task[Checked[Completed]] =
     Task.defer {
-      logger.info("Asking ClusterWatch")
       assertThat(initialClusterState.activeId == ownId)
       clusterStateLock.lock(
         Task.parMap2(
-          clusterWatchSynchronizer.start(initialClusterState),
-          requestAcknowledgmentIfCoupled(eventId)
+          // .start requires a locked clusterStateLock!
+          clusterWatchSynchronizer.start(initialClusterState, registerClusterWatchId),
+          awaitAcknowledgmentIfCoupled(eventId)
         )(_ |+| _)
           .flatMapT(_ => proceed(initialClusterState) map Right.apply))
     }
 
-  private def requestAcknowledgmentIfCoupled(eventId: EventId): Task[Checked[Completed]] =
+  private def awaitAcknowledgmentIfCoupled(eventId: EventId): Task[Checked[Completed]] =
     initialClusterState match {
       case clusterState @ (_: Coupled | _: ActiveShutDown) =>
         Task.defer {
@@ -113,26 +114,28 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
       }
     }
 
-  private[cluster] def appointNodes(setting: ClusterSetting): Task[Checked[Completed]] = {
+  private[cluster] def appointNodes(setting: ClusterSetting): Task[Checked[Completed]] =
     logger.debugTask(
       clusterStateLock.lock(
-        suspendHeartbeat(
+        suspendHeartbeat(forEvent = true)(
           persistWithoutTouchingHeartbeat() {
             case clusterState: CoupledOrDecoupled =>
-              val currentSetting = clusterState.setting
-              val updated = currentSetting.withPassiveUri(setting.passiveUri)
-                .copy(clusterWatches = setting.clusterWatches)
-              val changedPassiveUri = (setting.passiveUri != currentSetting.passiveUri) ?
+              val current = clusterState.setting
+              val updated = current.withPassiveUri(setting.passiveUri)
+                .copy(
+                  clusterWatchId = setting.clusterWatchId,
+                  clusterWatches = setting.clusterWatches)
+              val changedPassiveUri = (setting.passiveUri != current.passiveUri) ?
                 setting.passiveUri
-              if (changedPassiveUri.isDefined && !clusterState.isInstanceOf[Decoupled] ||
-                  updated != setting/*reject other differences*/)
+              if (changedPassiveUri.isDefined && !clusterState.isInstanceOf[Decoupled]
+                || updated != setting /*reject other differences*/ )
                 Left(ClusterSettingNotUpdatable)
-              else if (updated == currentSetting)
+              else if (updated.copy(clusterWatchId = None) == current.copy(clusterWatchId = None))
                 Right(None)
               else
                 Right(Some(ClusterSettingUpdated(
                   changedPassiveUri,
-                  (setting.clusterWatches != currentSetting.clusterWatches) ?
+                  (setting.clusterWatches != current.clusterWatches) ?
                     setting.clusterWatches)))
 
             case _ =>
@@ -143,7 +146,6 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
             case _ =>
               Task.pure(Right(Completed))
           })))
-  }
 
   private[cluster] def onRestartActiveNode: Task[Checked[Completed]] =
     clusterStateLock.lock(
@@ -198,7 +200,12 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
 
                 case s: PreparedToBeCoupled if s.activeId == activeId && s.passiveId == passiveId =>
                   // This is the normally expected ClusterState
-                  Right(Some(ClusterCoupled(activeId)))
+                  if (!s.setting.clusterWatchId.isDefined && !s.setting.isLegacyClusterWatch)
+                    // Passive cluster tries again until
+                    // ClusterWatch  has been registered via background ClusterWatch heartbeat
+                    Left(NoClusterWatchProblem)
+                  else
+                    Right(Some(ClusterCoupled(activeId)))
 
                 case s: Coupled if s.activeId == activeId && s.passiveId == passiveId =>
                   // Already coupled
@@ -283,29 +290,30 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
     }
 
   private def proceedNodesAppointed(clusterState: HasNodes): Task[Completed] =
-    clusterState match {
-      case state: NodesAppointed =>
-        Task {
-          if (!startingBackupNode.getAndSet(true)) {
-            startSendingClusterStartBackupNode(state)
+    logger.traceTask(
+      clusterState match {
+        case state: NodesAppointed =>
+          Task {
+            if (!startingBackupNode.getAndSet(true)) {
+              startSendingClusterStartBackupNode(state)
+            }
+            Completed
           }
-          Completed
-        }
 
-      case state =>
-        Task.defer {
-          if (clusterWatchSynchronizer.uri == state.setting.maybeClusterWatchUri)
-            Task.completed
-          else
-            logger.info(
-              s"Changing ClusterWatch URI to ${state.setting.maybeClusterWatchUri getOrElse "None"}")
-            common.updateClusterWatchSynchronizer(state)
-              .as(Completed)
-            //, dontWait = true*
-            // The new ClusterWatch must run before the ClusterAppointNodes command.
-            // See also calling appointNodes and suspendHeartbeat.
-          }
-    }
+        case state =>
+          Task.defer {
+            if (clusterWatchSynchronizer.uri == state.setting.maybeClusterWatchUri)
+              Task.completed
+            else
+              logger.info(
+                s"Changing ClusterWatch URI to ${state.setting.maybeClusterWatchUri getOrElse "None"}")
+              common.updateClusterWatchSynchronizer(state)
+                .as(Completed)
+              //, dontWait = true*
+              // The new ClusterWatch must run before the ClusterAppointNodes command.
+              // See also calling appointNodes and suspendHeartbeat.
+            }
+      })
 
   private def startSendingClusterStartBackupNode(clusterState: NodesAppointed): Unit = {
     val sending =
@@ -333,9 +341,10 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
       if (isFetchingAcks.getAndSet(true)) {
         logger.debug("fetchAndHandleAcknowledgedEventIds: already isFetchingAcks")
       } else {
+        import initialState.{passiveId, passiveUri, timing}
         val future =
           CorrelId.bindNew(
-            fetchAndHandleAcknowledgedEventIds(initialState)
+            fetchAndHandleAcknowledgedEventIds(passiveId, passiveUri, timing)
           ).runToFuture
         fetchingAcks := future
         future.onComplete {
@@ -348,10 +357,14 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
       Completed
     }
 
-  private def fetchAndHandleAcknowledgedEventIds(initialState: Coupled): Task[Checked[Completed]] = {
+  private def fetchAndHandleAcknowledgedEventIds(
+    passiveId: NodeId,
+    passiveUri: Uri,
+    timing: ClusterTiming)
+  : Task[Checked[Completed]] = {
     def msg =
-      s"observeEventIds(${initialState.passiveUri}, peersUserAndPassword=${clusterConf.peersUserAndPassword})"
-    fetchAndHandleAcknowledgedEventIds(initialState.passiveId, initialState.passiveUri, initialState.timing)
+      s"observeEventIds($passiveUri, peersUserAndPassword=${clusterConf.peersUserAndPassword})"
+    fetchAndHandleAcknowledgedEventIds2(passiveId, passiveUri, timing)
       .flatMap {
         case Left(missingHeartbeatProblem @ MissingPassiveClusterNodeHeartbeatProblem(passiveId, duration)) =>
           logger.warn("No heartbeat from passive cluster node since " + duration.pretty +
@@ -375,7 +388,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
             persistence.clusterState.flatMap {
               case clusterState: Coupled =>
                 val passiveLost = ClusterPassiveLost(passiveId)
-                suspendHeartbeat(
+                suspendHeartbeat(forEvent = true)(
                   common.ifClusterWatchAllowsActivation(clusterState, passiveLost)(
                     Task.deferFuture {
                       // Release a concurrent persist operation, which waits for the missing acknowledgement and
@@ -386,18 +399,14 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
                       journalActor ? JournalActor.Input.PassiveLost(passiveLost)
                     } >>
                       persistWithoutTouchingHeartbeat() {
-                        case `initialState` => Right(Some(passiveLost))
+                        case _: Coupled => Right(Some(passiveLost))
                         case _ => Right(None)  // Ignore when ClusterState has changed (no longer Coupled)
                       } .map(_.toCompleted.map(_ => true)))
                 ).map(_.flatMap { allowed =>
-                  if (!allowed) {
-                    // Should not happen
-                    haltJava(
-                      "🔥 ClusterWatch has unexpectedly forbidden activation " +
-                        s"after $passiveLost event",
-                      restart = true)
-                  }
-                  Left(missingHeartbeatProblem)
+                  if (!allowed)
+                    Right(Completed)
+                  else
+                    Left(missingHeartbeatProblem)
                 })
               case _ =>
                 Task.pure(Left(missingHeartbeatProblem))
@@ -421,7 +430,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
       })
   }
 
-  private def fetchAndHandleAcknowledgedEventIds(passiveId: NodeId, passiveUri: Uri, timing: ClusterTiming)
+  private def fetchAndHandleAcknowledgedEventIds2(passiveId: NodeId, passiveUri: Uri, timing: ClusterTiming)
   : Task[Checked[Completed]] =
     Task.defer {
       logger.info("Fetching acknowledgements from passive cluster node")
@@ -445,7 +454,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
                   // because after JournalActor has committed SwitchedOver (after ack), JournalActor stops.
                   (journalActor ? JournalActor.Input.PassiveNodeAcknowledged(eventId = eventId))
                     .mapTo[Completed]
-                }.map(_ => Right(eventId))
+                }.map(_ => Right(Completed))
             }
             .collect {
               case Left(problem) => problem
@@ -486,15 +495,82 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
             api.eventIdObservable(heartbeat = heartbeat)),
         stopRequested = () => stopRequested)
 
+  def executeClusterWatchConfirm(cmd: ClusterWatchConfirm): Task[Checked[Unit]] =
+    logger.traceTask(cmd.toString)(
+      common.clusterWatchCounterpart.executeClusterWatchConfirm(cmd))
+
+  // Called back by clusterWatchCounterpart.executeClusterWatchConfirm
+  private def registerClusterWatchId(confirm: ClusterWatchConfirm, alreadyLocked: Boolean)
+  : Task[Checked[Unit]] =
+    logger.traceTask(Task.defer {
+      if (!persistence.isStarted) {
+        // Not expected
+        logger.error(
+          s"🔥 registerClusterWatchId(${confirm.clusterWatchId.string}): persistence not yet started")
+        Task.left(Problem("registerClusterWatchId: persistence not yet started"))
+      } else if (alreadyLocked)
+        nonLockingRegisterClusterWatchId(confirm)
+      else
+        clusterStateLock.lock(
+          nonLockingRegisterClusterWatchId(confirm))
+    })
+
+  private def nonLockingRegisterClusterWatchId(confirm: ClusterWatchConfirm)
+  : Task[Checked[Unit]] =
+    persistence.clusterState
+      .flatMap(clusterState =>
+        Task(ifClusterWatchRegistered(clusterState, confirm.clusterWatchId))
+          .flatMapT(
+            if (_) // Short cut
+              Task.right(Nil -> clusterState)
+            else
+              persistence
+                .persistTransaction[ClusterEvent](NoKey)(s =>
+                  ifClusterWatchRegistered(s.clusterState, confirm.clusterWatchId)
+                    .map(!_ thenList ClusterWatchRegistered(confirm.clusterWatchId)))
+                .map(_.map { case (stampedEvents, journaledState) =>
+                  stampedEvents -> journaledState.clusterState
+                })))
+      .flatMapT { case (stampedEvents, clusterState) =>
+        val events = stampedEvents.map(_.value.event)
+        (events, clusterState) match {
+          case (Seq(event), clusterState: HasNodes) =>
+            clusterWatchSynchronizer.applyEvent(event, clusterState)
+              .rightAs(())
+
+          case (Seq(), _) =>
+            Task.right(())
+
+          case o => throw new MatchError(o)
+        }
+      }
+      .flatMapT(_ => common
+        .clusterWatchCounterpart.onClusterWatchRegistered.map(Right(_)))
+
+  // Returns Right(true) iff clusterState settings contains clusterWatchId
+  private def ifClusterWatchRegistered(clusterState: ClusterState, clusterWatchId: ClusterWatchId)
+  : Checked[Boolean] =
+    clusterState match {
+      case ClusterState.Empty => Left(ClusterStateEmptyProblem)
+      case hasNodes: HasNodes =>
+        if (hasNodes.activeId != ownId)
+          Left(ClusterNodeIsNotActiveProblem)
+        else if (hasNodes.setting.isLegacyClusterWatch)
+          Left(Problem.pure("A server-side ClusterWatch is expected"))
+        else
+          Right(hasNodes.setting.clusterWatchId contains clusterWatchId)
+    }
+
   def onTerminatedUnexpectedly: Task[Checked[Completed]] =
     Task.fromFuture(fetchingAcksTerminatedUnexpectedlyPromise.future)
 
   private def persist()(toEvents: ClusterState => Checked[Option[ClusterEvent]])
   : Task[Checked[(Seq[Stamped[KeyedEvent[ClusterEvent]]], ClusterState)]] =
-    suspendHeartbeat(
+    suspendHeartbeat(forEvent = true)(
       persistWithoutTouchingHeartbeat()(toEvents))
 
-  private def persistWithoutTouchingHeartbeat()(toEvents: ClusterState => Checked[Option[ClusterEvent]])
+  private def persistWithoutTouchingHeartbeat()(
+    toEvents: ClusterState => Checked[Option[ClusterEvent]])
   : Task[Checked[(Seq[Stamped[KeyedEvent[ClusterEvent]]], ClusterState)]] =
     Task.defer {
       assertThat(!clusterWatchSynchronizer.isHeartbeating)
@@ -515,8 +591,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
           }
           val events = stampedEvents.map(_.value.event)
           (events, clusterState) match  {
-            case (Seq(ClusterSettingUpdated(_, Some(uris))), clusterState: HasNodes)
-              if uris != clusterState.setting.clusterWatchUris =>
+            case (Seq(ClusterSettingUpdated(_, Some(_))), clusterState: HasNodes) =>
               // Previous ClusterWatch is probably unreachable already
               // Due to missing applyEvent the ClusterWatch must be restarted
               logger.debug("ClusterWatch applyEvent not called because ClusterWatch URI changed")
@@ -535,10 +610,12 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
         }
     }
 
-  private def suspendHeartbeat[A](task: Task[A])
+  private def suspendHeartbeat[A](forEvent: Boolean = false)(task: Task[A])
     (implicit enclosing: sourcecode.Enclosing)
   : Task[A] =
-    clusterWatchSynchronizer.suspendHeartbeat(persistence.clusterState)(task)
+    clusterWatchSynchronizer
+      .suspendHeartbeat(persistence.clusterState, forEvent = forEvent)(
+        task)
 }
 
 object ActiveClusterNode

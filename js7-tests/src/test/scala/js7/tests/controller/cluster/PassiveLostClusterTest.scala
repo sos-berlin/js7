@@ -3,7 +3,6 @@ package js7.tests.controller.cluster
 import js7.base.problem.Checked.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.data.cluster.ClusterEvent
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterPassiveLost}
 import js7.data.controller.ControllerCommand.ClusterAppointNodes
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
@@ -27,7 +26,7 @@ class PassiveLostClusterTest extends ControllerClusterTester
       primaryController.executeCommandForTest(
         ClusterAppointNodes(clusterSetting.idToUri, clusterSetting.activeId, clusterSetting.clusterWatches)
       ).orThrow
-      primaryController.eventWatch.await[ClusterEvent.ClusterCoupled]()
+      primaryController.eventWatch.await[ClusterCoupled]()
 
       val firstOrderId = OrderId("🔺")
       locally {
@@ -36,8 +35,10 @@ class PassiveLostClusterTest extends ControllerClusterTester
         backupController.eventWatch.await[OrderProcessingStarted](_.key == firstOrderId)
       }
 
+      waitUntilClusterWatchRegistered(primaryController)
+
       for (orderId <- Array(OrderId("🔸"), OrderId("🔶"))) {
-        backupController.terminate() await 99.s
+        backupController.terminate(dontNotifyActiveNode = true) await 99.s
         val passiveLost = primaryController.eventWatch.await[ClusterPassiveLost]().head.eventId
 
         primaryController.eventWatch.await[OrderFinished](_.key == firstOrderId, after = passiveLost)

@@ -16,7 +16,7 @@ sealed trait ClusterWatchMessage
   def clusterState: HasNodes
 }
 
-sealed trait ClusterWatchCheck extends ClusterWatchMessage
+sealed trait ClusterWatchRequest extends ClusterWatchMessage
 {
   def requestId: RequestId
 
@@ -30,9 +30,10 @@ final case class ClusterWatchCheckEvent(
   event: ClusterEvent,
   clusterState: ClusterState.HasNodes,
   checkOnly: Boolean = false /*???*/)
-extends ClusterWatchCheck
+extends ClusterWatchRequest
 {
-  override def toShortString = s"ClusterWatchCheckEvent(${event.getClass.simpleScalaName})"
+  override def toShortString =
+    s"$requestId ${event.getClass.simpleScalaName} event"
 }
 
 final case class ClusterWatchCheckState(
@@ -40,27 +41,21 @@ final case class ClusterWatchCheckState(
   correlId: CorrelId,
   from: NodeId,
   clusterState: ClusterState.HasNodes)
-extends ClusterWatchCheck
+extends ClusterWatchRequest
 {
-  override def toShortString = s"ClusterWatchCheckState(${clusterState.toShortString})"
+  override def toShortString =
+    s"$requestId ${clusterState.toShortString} state"
 }
-
-final case class ClusterWatchHeartbeat(
-  correlId: CorrelId,
-  from: NodeId,
-  clusterState: ClusterState.HasNodes)
-extends ClusterWatchMessage
 
 object ClusterWatchMessage
 {
   final case class RequestId(number: Long) extends GenericLong {
     def increment = RequestId(number + 1)
-    override def toString = s"#$number"
+    override def toString = s"Request:$number"
   }
   object RequestId extends GenericLong.Companion[RequestId]
 
   implicit val jsonCodec: TypedJsonCodec[ClusterWatchMessage] = TypedJsonCodec(
-    Subtype(deriveCodec[ClusterWatchHeartbeat]),
     Subtype(deriveCodec[ClusterWatchCheckState]),
     Subtype(deriveCodec[ClusterWatchCheckEvent]))
 }

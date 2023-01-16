@@ -158,7 +158,8 @@ object ControllerCommand extends CommonCommand.Companion
   final case class ShutDown(
     restart: Boolean = false,
     clusterAction: Option[ShutDown.ClusterAction] = None,
-    suppressSnapshot: Boolean = false)
+    suppressSnapshot: Boolean = false,
+    /*for test only*/dontNotifyActiveNode: Boolean = false)
   extends ControllerCommand {
     type Response = Response.Accepted
   }

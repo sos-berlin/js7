@@ -82,6 +82,7 @@ final class HttpClusterWatchTest extends OurTestSuite with BeforeAndAfterAll wit
         NodeId("B") -> Uri("http://B")),
       activeId = primaryId,
       ClusterTiming(10.s, 20.s),
+      clusterWatchId = None,
       Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))))
     val expectedClusterState = ClusterState.NodesAppointed(setting)
     assert(clusterWatch

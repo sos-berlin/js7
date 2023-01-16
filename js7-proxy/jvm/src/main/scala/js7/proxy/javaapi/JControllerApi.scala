@@ -17,7 +17,7 @@ import js7.base.service.Service
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
 import js7.data.board.{BoardPath, NoticeId}
-import js7.data.cluster.ClusterSetting
+import js7.data.cluster.{ClusterSetting, ClusterWatchId}
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{AddOrdersResponse, CancelOrders, ReleaseEvents, ResumeOrder, ResumeOrders, SuspendOrders, TakeSnapshot}
 import js7.data.event.{Event, EventId, JournalInfo}
@@ -316,13 +316,13 @@ final class JControllerApi(val asScala: ControllerApi)(implicit scheduler: Sched
     CorrelId.bindNew(task.runToFuture).asJava
 
   @Nonnull
-  def startClusterWatch(): CompletableFuture[CompletableFuture[Void]] =
+  def startClusterWatch(clusterWatchId: ClusterWatchId): CompletableFuture[CompletableFuture[Void]] =
     clusterWatchService
       .update {
         case Some(service) => Task.some(service)
         case None =>
           ClusterWatchService
-            .resource(asScala.apiResources.sequence, ConfigFactory.empty)
+            .resource(clusterWatchId, asScala.apiResources.sequence, ConfigFactory.empty)
             .startService
             .flatTap(asScala.addStoppable)
             .map(Some(_))

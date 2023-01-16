@@ -9,7 +9,7 @@ import js7.base.problem.Checked
 import js7.base.session.SessionApi
 import js7.base.web.HttpClient.liftProblem
 import js7.base.web.{HttpClient, Uri}
-import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterNodeState, ClusterState, ClusterWatchingCommand, ClusterWatchMessage}
+import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterNodeState, ClusterState, ClusterWatchId, ClusterWatchMessage, ClusterWatchingCommand}
 import js7.data.event.{Event, EventId, EventRequest, JournalPosition, KeyedEvent, Stamped}
 import js7.data.session.HttpSessionApi
 import monix.eval.Task
@@ -20,6 +20,8 @@ trait HttpClusterNodeApi
 extends ClusterNodeApi with HttpSessionApi with HasIsIgnorableStackTrace
 {
   def httpClient: HttpClient
+
+  def baseUri: Uri
 
   // "http://.../controller" or ".../agent"
   protected def prefixedUri: Uri
@@ -76,9 +78,12 @@ extends ClusterNodeApi with HttpSessionApi with HasIsIgnorableStackTrace
       timeout = Some(timeout), markEOF = markEOF, returnAck = true
     ).map(_.map(_.utf8String.stripSuffix("\n").toLong))
 
-  final def clusterWatchMessageObservable(keepAlive: Option[FiniteDuration]): Task[Observable[ClusterWatchMessage]] =
+  final def clusterWatchMessageObservable(
+    clusterWatchId: ClusterWatchId,
+    keepAlive: Option[FiniteDuration])
+  : Task[Observable[ClusterWatchMessage]] =
     httpClient.getDecodedLinesObservable[ClusterWatchMessage](
-      uris.clusterWatchMessages(keepAlive),
+      uris.clusterWatchMessages(clusterWatchId, keepAlive),
       responsive = true)
 
   final def executeClusterCommand(cmd: ClusterCommand): Task[cmd.Response] =
@@ -114,6 +119,7 @@ object HttpClusterNodeApi
       SessionApi.defaultLoginDelays _)
   extends HttpClusterNodeApi
   {
+    val baseUri = admission.uri
     protected val prefixedUri = admission.uri / uriPrefix
     protected val userAndPassword = admission.userAndPassword
   }

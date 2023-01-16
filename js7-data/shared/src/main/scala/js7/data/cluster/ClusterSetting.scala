@@ -18,6 +18,7 @@ final case class ClusterSetting(
   idToUri: Map[NodeId, Uri],
   activeId: NodeId,
   timing: ClusterTiming,
+  clusterWatchId: Option[ClusterWatchId] = None,
   clusterWatches: Seq[ClusterSetting.Watch] = Nil)
 {
   checkedUnit(idToUri, activeId, clusterWatches).orThrow
@@ -39,11 +40,11 @@ final case class ClusterSetting(
         .sortBy(o => if (o._1 == activeId) 0 else 1)
         .toMap)
 
+  def isLegacyClusterWatch: Boolean =
+    clusterWatches.nonEmpty
+
   def maybeClusterWatchUri: Option[Uri] =
     clusterWatches.headOption.map(_.uri)
-
-  def clusterWatchUris =
-    clusterWatches.map(_.uri)
 
   def withPassiveUri(uri: Uri): ClusterSetting =
     copy(idToUri = idToUri + (passiveId -> uri))
@@ -61,11 +62,12 @@ object ClusterSetting
   def checked(
     idToUri: Map[NodeId, Uri],
     activeId: NodeId,
-    clusterWatches: Seq[Watch],
-    timing: ClusterTiming)
+    timing: ClusterTiming,
+    clusterWatchId: Option[ClusterWatchId],
+    clusterWatches: Seq[Watch])
   : Checked[ClusterSetting] =
     for (_ <- checkedUnit(idToUri, activeId, clusterWatches)) yield
-      new ClusterSetting(idToUri, activeId, timing, clusterWatches)
+      new ClusterSetting(idToUri, activeId, timing, clusterWatchId, clusterWatches)
 
   private def checkedUnit(idToUri: Map[NodeId, Uri], activeId: NodeId, clusterWatches: Seq[Watch]) =
     checkUris(idToUri) >>

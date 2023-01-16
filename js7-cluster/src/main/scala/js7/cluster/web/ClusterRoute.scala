@@ -1,12 +1,14 @@
 package js7.cluster.web
 
+import akka.actor.ActorSystem
 import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.server.Directives.*
 import io.circe.{Json, JsonObject}
 import js7.base.auth.ValidUserPermission
 import js7.base.circeutils.CirceUtils.RichCirceEither
 import js7.base.problem.Checked
-import js7.base.utils.ScalaUtils.syntax.RichEitherF
+import js7.base.utils.FutureCompletion
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.cluster.web.ClusterRoute.*
 import js7.common.akkahttp.AkkaHttpServerUtils.completeTask
 import js7.common.akkahttp.CirceJsonSupport.*
@@ -21,15 +23,19 @@ import monix.execution.Scheduler
 trait ClusterRoute extends ClusterWatchMessageRoute
 {
   protected def scheduler: Scheduler
-
-  private implicit def implicitScheduler: Scheduler = scheduler
-
+  protected def actorSystem: ActorSystem
   protected def checkedClusterState: Task[Checked[Stamped[ClusterState]]]
   protected def clusterNodeIsBackup: Boolean
   protected def nodeId: NodeId
   protected def executeClusterCommand(cmd: ClusterCommand): Task[Checked[ClusterCommand.Response]]
   protected def executeClusterWatchingCommand(cmd: ClusterWatchingCommand): Task[Checked[Unit]]
   protected def eventWatch: FileEventWatch
+
+  private implicit def implicitScheduler: Scheduler = scheduler
+  private implicit def implicitActorsystem: ActorSystem = actorSystem
+
+  // TODO Abort POST with error when shutting down
+  private lazy val whenShuttingDownCompletion = new FutureCompletion(whenShuttingDown)
 
   protected final lazy val clusterRoute =
     authorizedUser(ValidUserPermission) { user =>
@@ -53,22 +59,44 @@ trait ClusterRoute extends ClusterWatchMessageRoute
       } ~
       post {
         path("command") {
-          implicit val x = commandJsonCodec
-          entity(as[Json]) { json =>
-            commandJsonCodec
-              .decodeJson(json)
-              .toChecked
-              .fold(complete(_), {
-                case cmd: ClusterCommand =>
-                  completeTask(
-                    executeClusterCommand(cmd))
+          //withoutSizeLimit(
+          //  entity(as[HttpEntity])(httpEntity =>
+          //    httpEntity.contentType match {
+          //      case `application/x-ndjson-ContentType` =>
+          //        completeTask(
+          //          httpEntity
+          //            .dataBytes
+          //            .toObservable
+          //            .flatMap(new ByteSequenceToLinesObservable)
+          //            .map(_.parseJsonAs[ClusterWatchingCommand].orThrow)
+          //            .mapEval(cmd =>
+          //              executeClusterWatchingCommand(cmd)
+          //                .map {
+          //                  case Left(problem) => logger.debug(s"❓ $cmd => $problem")
+          //                  case Right(()) => logger.trace(s"✔ $cmd ")
+          //                })
+          //            .completedL
+          //            .as(OK -> JsonObject.empty)
+          //        )
+          //
+          //      case _ => complete(NotAcceptable)
+          //    }))
+          //    case ContentTypes.`application/json` =>
+                  entity(as[Json]) { json =>
+                    commandJsonCodec
+                      .decodeJson(json)
+                      .toChecked
+                      .fold(complete(_), {
+                        case cmd: ClusterCommand =>
+                          completeTask(
+                            executeClusterCommand(cmd))
 
-                case cmd: ClusterWatchingCommand =>
-                  completeTask(
-                    executeClusterWatchingCommand(cmd)
-                      .rightAs(JsonObject.empty))
-            })
-          }
+                        case cmd: ClusterWatchingCommand =>
+                          completeTask(
+                            executeClusterWatchingCommand(cmd)
+                              .rightAs(JsonObject.empty))
+                    })
+                  }
         }
       }
     }
@@ -78,4 +106,5 @@ object ClusterRoute
 {
   private val commandJsonCodec =
     ClusterCommand.jsonCodec | ClusterWatchingCommand.jsonCodec
+  //private val logger = Logger[this.type]
 }

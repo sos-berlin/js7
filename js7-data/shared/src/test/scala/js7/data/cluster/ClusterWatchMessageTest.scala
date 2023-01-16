@@ -97,33 +97,5 @@ final class ClusterWatchMessageTest extends OurTestSuite
           }
         }""")
     }
-
-    "ClusterWatchHeartbeat" in {
-      testJson[ClusterWatchMessage](
-        ClusterWatchHeartbeat(
-          CorrelId("TESTTEST"),
-          from = NodeId("A"),
-          NodesAppointed(clusterSetting)),
-        json"""{
-          "TYPE": "ClusterWatchHeartbeat",
-          "correlId": "TESTTEST",
-          "from": "A",
-          "clusterState": {
-            "TYPE": "NodesAppointed",
-            "setting": {
-              "idToUri": {
-                "A": "https://A",
-                "B": "https://B"
-              },
-              "activeId": "A",
-              "clusterWatches": [],
-              "timing": {
-                "heartbeat": 10,
-                "heartbeatTimeout": 20
-              }
-            }
-          }
-        }""")
-    }
   }
 }

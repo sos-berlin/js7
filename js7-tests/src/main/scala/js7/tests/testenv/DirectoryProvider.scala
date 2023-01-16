@@ -43,6 +43,7 @@ import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
 import js7.controller.configuration.ControllerConfiguration
 import js7.data.agent.{AgentPath, AgentRef}
+import js7.data.cluster.ClusterWatchId
 import js7.data.controller.ControllerState.signableItemJsonCodec
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion, RemoveVersioned}
 import js7.data.item.{InventoryItem, ItemOperation, ItemSigner, SignableItem, SignableSimpleItem, UnsignedSimpleItem, VersionId, VersionedItem, VersionedItemPath}
@@ -628,14 +629,16 @@ object DirectoryProvider
   final lazy val (defaultSigner, defaultVerifier) = PgpSigner.forTest()
 
   def clusterWatchServiceResource(
-    name: String,
+    clusterWatchId: ClusterWatchId,
     admissions: Nel[Admission],
-    httpsConfig: HttpsConfig)
+    httpsConfig: HttpsConfig,
+    config: Config = ConfigFactory.empty)
   : Resource[Task, ClusterWatchService] =
     Akkas
-      .actorSystemResource(name)
+      .actorSystemResource(clusterWatchId.string)
       .flatMap(implicit actorSystem =>
         ClusterWatchService.resource(
+          clusterWatchId,
           admissions.traverse(AkkaHttpControllerApi.admissionToApiResource(_, httpsConfig)),
-          Js7Configuration.defaultConfig))
+          config.withFallback(Js7Configuration.defaultConfig)))
 }

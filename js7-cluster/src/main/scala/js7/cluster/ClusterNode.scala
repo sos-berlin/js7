@@ -11,6 +11,7 @@ import js7.base.eventbus.EventPublisher
 import js7.base.generic.Completed
 import js7.base.io.https.HttpsConfig
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
@@ -23,7 +24,7 @@ import js7.core.license.LicenseChecker
 import js7.data.Problems.{BackupClusterNodeNotAppointed, ClusterNodeIsNotBackupProblem, PrimaryClusterNodeMayNotBecomeBackupProblem}
 import js7.data.cluster.ClusterCommand.{ClusterInhibitActivation, ClusterStartBackupNode}
 import js7.data.cluster.ClusterState.{Coupled, Empty, FailedOver, HasNodes}
-import js7.data.cluster.ClusterWatchingCommand.ClusterWatchAcknowledge
+import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterSetting, ClusterWatchMessage, ClusterWatchingCommand}
 import js7.data.controller.ControllerId
 import js7.data.event.{EventId, JournalPosition, SnapshotableState}
@@ -52,18 +53,26 @@ final class ClusterNode[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
   private val keepTruncatedRest = config.getBoolean("js7.journal.cluster.keep-truncated-rest")
   @volatile private var _passiveOrWorkingNode: Option[Either[PassiveClusterNode[S], WorkingClusterNode[S]]] = None
   private val expectingStartBackupCommand = SetOnce[Promise[ClusterStartBackupNode]]
+  private var _dontNotifyActiveNodeAboutShutdown = false // for test only
+
+  def dontNotifyActiveNodeAboutShutdown(): Unit =
+    _dontNotifyActiveNodeAboutShutdown = true
 
   def stop: Task[Completed] =
-    Task.defer {
+    logger.debugTask(Task.defer {
       if (isActive || isPassive) logger.info("Stop cluster node")
       else logger.debug("Stop cluster node")
       (_passiveOrWorkingNode match {
-        case Some(Left(passiveClusterNode)) => passiveClusterNode.onShutDown
-        case Some(Right(workingClusterNode)) => workingClusterNode.stop
+        case Some(Left(passiveClusterNode)) =>
+          passiveClusterNode.onShutDown(dontNotifyActiveNode = _dontNotifyActiveNodeAboutShutdown)
+
+        case Some(Right(workingClusterNode)) =>
+          workingClusterNode.stop
+
         case _ => Task.unit
       }) >>
         common.stop
-    }
+    })
 
   /**
     * Returns a pair of `Task`s
@@ -302,16 +311,20 @@ final class ClusterNode[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
 
   def executeClusterWatchingCommand(command: ClusterWatchingCommand): Task[Checked[Unit]] =
     command match {
-      case ClusterWatchAcknowledge(requestId, maybeProblem) =>
-        Task(common.checkedClusterWatchCounterpart)
-          .flatMapT(_
-            .onClusterWatchAcknowledged(requestId, maybeProblem))
+      case cmd: ClusterWatchConfirm =>
+        Task(_passiveOrWorkingNode)
+          .flatMap {
+            case Some(Right(workingClusterNode)) =>
+              workingClusterNode.executeClusterWatchConfirm(cmd)
+            case _ =>
+              common.clusterWatchCounterpart.executeClusterWatchConfirm(cmd)
+          }
+          .tapEval(result => Task(
+            common.testEventPublisher.publish(ClusterWatchConfirmed(cmd, result))))
     }
 
-  def clusterWatchMessageStream: Task[Checked[fs2.Stream[Task, ClusterWatchMessage]]] =
-    Task(common.checkedClusterWatchCounterpart)
-      .flatMapT(_
-        .newStream.map(Right(_)))
+  def clusterWatchMessageStream: Task[fs2.Stream[Task, ClusterWatchMessage]] =
+    common.clusterWatchCounterpart.newStream
 
   /** Is the active or non-cluster (Empty, isPrimary) node or is becoming active. */
   def isWorkingNode = _passiveOrWorkingNode.exists(_.isRight)
@@ -348,11 +361,15 @@ object ClusterNode
       journalMeta,
       clusterConf,
       eventIdGenerator,
-      new ClusterCommon(controllerId, clusterConf.ownId, clusterNodeApi, httpsConfig, clusterConf.timing,
+      new ClusterCommon(controllerId, clusterConf, clusterNodeApi, httpsConfig, clusterConf.timing,
         config, licenseChecker, testEventPublisher, journalActorAskTimeout))
 
   // TODO Provisional fix because it's not easy to restart the recovery
   final class RestartAfterJournalTruncationException
   extends RuntimeException("Restart after journal truncation")
   with NoStackTrace
+
+  final case class ClusterWatchConfirmed(
+    command: ClusterWatchConfirm,
+    result: Checked[Unit])
 }

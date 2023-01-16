@@ -44,6 +44,12 @@ final case class ClusterTiming(heartbeat: FiniteDuration, heartbeatTimeout: Fini
   def inhibitActivationDuration =
     activeLostTimeout + heartbeat
 
+  def clusterWatchHeartbeat =
+    heartbeat
+
+  def clusterWatchIdTimeout =
+    heartbeat + 2 * heartbeatTimeout
+
   override def toString = s"ClusterTiming(${heartbeat.pretty}, ${heartbeatTimeout.pretty})"
 }
 

@@ -28,7 +28,7 @@ final class ClusterRouteTest extends OurTestSuite with RouteTester with ClusterR
   coupleScribeWithSlf4j()
 
   protected def scheduler = Scheduler.traced
-
+  protected def actorSystem = system
   protected def whenShuttingDown = Future.never
 
   protected val nodeId = NodeId("NODE-ID")

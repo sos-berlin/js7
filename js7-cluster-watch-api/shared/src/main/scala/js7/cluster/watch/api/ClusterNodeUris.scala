@@ -5,6 +5,7 @@ import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.common.http.Uris.encodeQuery
+import js7.data.cluster.ClusterWatchId
 import js7.data.event.{Event, EventRequest, JournalPosition}
 import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
@@ -18,10 +19,12 @@ final class ClusterNodeUris private(prefixedUri: Uri)
 
   def clusterNodeState = api("/cluster?return=ClusterNodeState")
 
-  def clusterWatchMessages(keepAlive: Option[FiniteDuration]): Uri =
+  def clusterWatchMessages(clusterWatchId: ClusterWatchId, keepAlive: Option[FiniteDuration]): Uri =
     Uri(
       api("/cluster/clusterWatchMessage").string +
-        encodeQuery(keepAlive.map("keepAlive" -> _.toDecimalString).toList))
+        encodeQuery(
+          ("clusterWatchId" -> clusterWatchId.string) ::
+            keepAlive.map("keepAlive" -> _.toDecimalString).toList))
 
   def events[E <: Event](request: EventRequest[E],
     heartbeat: Option[FiniteDuration] = None)

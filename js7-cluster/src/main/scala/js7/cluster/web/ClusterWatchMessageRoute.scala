@@ -36,7 +36,7 @@ trait ClusterWatchMessageRoute extends RouteProvider
   private lazy val whenShuttingDownCompletion = new FutureCompletion(whenShuttingDown)
 
   protected def checkedClusterState: Task[Checked[Stamped[ClusterState]]]
-  protected def clusterWatchMessageStream: Task[Checked[Stream[Task, ClusterWatchMessage]]]
+  protected def clusterWatchMessageStream: Task[fs2.Stream[Task, ClusterWatchMessage]]
   protected def eventWatch: EventWatch
   protected def nodeId: NodeId
 
@@ -44,10 +44,18 @@ trait ClusterWatchMessageRoute extends RouteProvider
     Route.seal(
       accept(`application/x-ndjson`)(
         extractRequest(request =>
-          parameter("keepAlive".as[FiniteDuration]) { keepAlive =>
+          parameter("keepAlive".as[FiniteDuration])(keepAlive =>
             complete {
-              stream
-                .flatMapT { stream =>
+              clusterWatchMessageStream
+                .map(_
+                  .handleErrorWith { throwable =>
+                    // The streaming event web service doesn't have an error channel,
+                    // so we simply end the stream
+                    logger.warn(throwable.toStringWithCauses)
+                    if (throwable.getStackTrace.nonEmpty) logger.debug(throwable.toStringWithCauses, throwable)
+                    Stream.empty
+                  })
+                .flatMap { stream =>
                   val observable = Observable.fromReactivePublisher(
                     stream.toUnicastPublisher: Publisher[ClusterWatchMessage])
                   val toResponseMarshallable = observableToResponseMarshallable(
@@ -63,18 +71,7 @@ trait ClusterWatchMessageRoute extends RouteProvider
                 }
                 .runToFuture
                 .cancelOnCompletionOf(whenShuttingDownCompletion)
-            }
-          })))
-
-  private def stream: Task[Checked[Stream[Task, ClusterWatchMessage]]] =
-    clusterWatchMessageStream
-      .map(_.map(_.handleErrorWith { throwable =>
-        // The streaming event web service doesn't have an error channel,
-        // so we simply end the stream
-        logger.warn(throwable.toStringWithCauses)
-        if (throwable.getStackTrace.nonEmpty) logger.debug(throwable.toStringWithCauses, throwable)
-        Stream.empty
-      }))
+            }))))
 
   private val emptyResponseMarshallable: ToResponseMarshallable =
     observableToMarshallable(Observable.empty)

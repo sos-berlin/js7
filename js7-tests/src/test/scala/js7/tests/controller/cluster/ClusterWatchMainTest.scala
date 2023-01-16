@@ -51,6 +51,7 @@ final class ClusterWatchMainTest extends OurTestSuite with ControllerClusterForS
               |]""".stripMargin
 
           val conf = ClusterWatchConf.fromCommandLine(CommandLineArguments(Seq(
+            "--cluster-watch-id=MY-CLUSTER-WATCH",
             "--config-directory=" + dir)))
           ClusterWatchMain.run(conf)(service => Task
             .race(

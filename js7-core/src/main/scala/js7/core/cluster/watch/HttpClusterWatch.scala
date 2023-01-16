@@ -19,7 +19,7 @@ import js7.common.http.AkkaHttpClient
 import js7.core.cluster.watch.HttpClusterWatch.*
 import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.ClusterWatchMessage.RequestId
-import js7.data.cluster.{ClusterEvent, ClusterState, ClusterWatchCheckEvent, ClusterWatchCheckState, ClusterWatchHeartbeat, ClusterWatchMessage}
+import js7.data.cluster.{ClusterEvent, ClusterState, ClusterWatchCheckEvent, ClusterWatchCheckState, ClusterWatchMessage}
 import js7.data.node.NodeId
 import js7.data.session.HttpSessionApi
 import monix.eval.Task
@@ -49,22 +49,15 @@ with AnyClusterWatch
 
   protected def name = "ClusterWatch"
 
-  def checkClusterState(clusterState: HasNodes): Task[Checked[Completed]] =
+  def checkClusterState(clusterState: HasNodes, clusterWatchIdChangeAllowed: Boolean)
+  : Task[Checked[None.type]] =
     Task.defer {
       val msg = ClusterWatchCheckState(RequestId(0), CorrelId.current, ownNodeId, clusterState)
       liftProblem(
         loginUntilReachable(Iterator.continually(ErrorDelay), onlyIfNotLoggedIn = true)
           .*>(postMsg(msg))
-          .onErrorRestartLoop(())(onError))
-    }
-
-  def heartbeat(clusterState: HasNodes): Task[Checked[Completed]] =
-    Task.defer {
-      val msg = ClusterWatchHeartbeat(CorrelId.current, ownNodeId, clusterState)
-      liftProblem(
-        loginUntilReachable(Iterator.continually(ErrorDelay), onlyIfNotLoggedIn = true)
-          .*>(postMsg(msg))
-          .onErrorRestartLoop(())(onError))
+          .onErrorRestartLoop(())(onError)
+          .as(None))
     }
 
   def applyEvent(event: ClusterEvent, clusterState: HasNodes): Task[Checked[Completed]] =

@@ -21,6 +21,7 @@ object JsonStreamingSupport
 {
   val `application/json-seq` = MediaType.customWithFixedCharset("application", "json-seq", `UTF-8`)  // https://tools.ietf.org/html/rfc7464
   val `application/x-ndjson` = MediaType.customWithFixedCharset("application", "x-ndjson", `UTF-8`)  // https://github.com/ndjson/ndjson-spec
+  val `application/x-ndjson-ContentType` = `application/x-ndjson`.toContentType
   val CustomMediaTypes = `application/json-seq` :: `application/x-ndjson` :: Nil
 
   /** Useable for HTTP request expecting a Checked[Observable] response. */

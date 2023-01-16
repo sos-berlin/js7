@@ -11,7 +11,7 @@ import js7.cluster.watch.ClusterWatch.*
 import js7.cluster.watch.api.ClusterWatchProblems.{ClusterFailOverWhilePassiveLostProblem, ClusterNodeLossNotAcknowledgedProblem, ClusterWatchEventMismatchProblem, ClusterWatchInactiveNodeProblem, InvalidClusterWatchHeartbeatProblem, NoClusterNodeLostProblem, UntaughtClusterWatchProblem}
 import js7.data.cluster.ClusterEvent.{ClusterFailedOver, ClusterNodeLostEvent, ClusterPassiveLost, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{Coupled, HasNodes, PassiveLost}
-import js7.data.cluster.{ClusterState, ClusterWatchCheckEvent, ClusterWatchMessage}
+import js7.data.cluster.{ClusterWatchCheckEvent, ClusterWatchMessage}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.node.NodeId
 import monix.eval.Task
@@ -28,9 +28,9 @@ final class ClusterWatch(
 
   @TestOnly
   private[cluster] def isActive(id: NodeId): Checked[Boolean] =
-    unsafeClusterState.map(_.activeId == id)
+    unsafeClusterState().map(_.activeId == id)
 
-  def unsafeClusterState: Checked[HasNodes] =
+  def unsafeClusterState(): Checked[HasNodes] =
     stateVar.get
       .toChecked(UntaughtClusterWatchProblem)
       .map(_.clusterState)
@@ -73,13 +73,11 @@ final class ClusterWatch(
           } else
             maybeEvent
               .match_ {
-                // ClusterSwitchedOver must arrive as single events.
                 case Some(_: ClusterSwitchedOver) =>
                   // ClusterSwitchedOver is applied by each node.
                   // ClusterSwitchedOver is considered reliable.
                   Checked.unit
 
-                // ClusterFailedOver must arrive as single events.
                 case Some(ClusterFailedOver(failedActiveId, _, _)) =>
                   state.clusterState match {
                     case PassiveLost(setting) if setting.activeId == failedActiveId =>
@@ -173,10 +171,6 @@ final class ClusterWatch(
         .flatMap(_.acknowledgeLostNode(lostNodeId))
         .map(Some(_))))
       .rightAs(())
-
-  @TestOnly
-  private[watch] def currentClusterState: Option[ClusterState] =
-    stateVar.get.map(_.clusterState)
 
   override def toString =
     "ClusterWatch(" +
