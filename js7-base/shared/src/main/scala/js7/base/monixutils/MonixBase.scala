@@ -21,7 +21,7 @@ import scala.annotation.unchecked.uncheckedVariance
 import scala.collection.{IterableFactory, IterableOps}
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
-import scala.concurrent.{Future, Promise, TimeoutException}
+import scala.concurrent.{Future, Promise}
 
 object MonixBase
 {
@@ -54,16 +54,6 @@ object MonixBase
       def maybeTimeout(duration: Duration): Task[A] =
         duration match {
           case d: FiniteDuration => task.timeout(d)
-          case _ => task
-        }
-
-      def orTimeout(timeout: Duration, onTimeout: => Task[A]): Task[A] =
-        timeout match {
-          case d: FiniteDuration =>
-            task.timeout(d)
-              .onErrorRecoverWith { case _: TimeoutException =>
-                onTimeout
-              }
           case _ => task
         }
 

@@ -4,6 +4,7 @@ import cats.effect.ExitCase
 import js7.base.monixutils.MonixBase.*
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.{Checked, Problem, ProblemException}
+import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CloseableIterator
 import monix.eval.Task
@@ -12,9 +13,8 @@ import monix.execution.Scheduler.Implicits.traced
 import monix.execution.atomic.AtomicInt
 import monix.execution.schedulers.TestScheduler
 import monix.reactive.Observable
-import js7.base.test.OurAsyncTestSuite
-import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.*
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.{Future, TimeoutException}
 
 /**
@@ -37,13 +37,6 @@ final class MonixBaseTest extends OurAsyncTestSuite
         .onErrorHandle(t => assert(t.isInstanceOf[TimeoutException]))
         .runToFuture
     }
-  }
-
-  "orTimeout" in {
-    Task(3).delayExecution(99.s)
-      .orTimeout(10.ms, Task(7))
-      .map(o => assert(o == 7))
-      .runToFuture
   }
 
   "whenItTakesLonger" - {

@@ -76,6 +76,14 @@ object ScalaUtils
         }
     }
 
+    // Does not work because rightAs() accepts any type as Unit. But we want accept Unit only.
+    //implicit final class RichUnitEitherF[F[_], L](private val underlying: F[Either[L, Unit]])
+    //extends AnyVal {
+    //  @deprecated("❌Right is already Unit", "")
+    //  def rightAs(unit: Unit)(implicit F: Functor[F]): F[Either[L, Unit]] =
+    //    underlying
+    //}
+
     implicit final class RichEitherIterable[F[x] <: Iterable[x], L, R](private val iterable: F[Either[L, R]])
     extends AnyVal
     {
