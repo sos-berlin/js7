@@ -21,7 +21,7 @@ final class Synchronizer(what: String)
       if (!synchronizeLock.tryLock()) {
         blocking {
           if (!synchronizeLock.tryLock(LogAfter.toMillis, MILLISECONDS)) {
-            logger.debug(s"⏳ Start synchronize '$what': waiting for lock since ${LogAfter.pretty} (#${synchronizeLock.getQueueLength} in queue)")
+            logger.debug(s"🔴 Start synchronize '$what': waiting for lock since ${LogAfter.pretty} (#${synchronizeLock.getQueueLength} in queue)")
             synchronizeLock.lock()
             logger.debug(s"synchronize '$what': continuing")
           }

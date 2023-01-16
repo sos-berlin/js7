@@ -10,6 +10,7 @@ import js7.base.utils.AsyncLock.*
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import monix.catnap.MVar
 import monix.eval.Task
+import monix.execution.atomic.Atomic
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.FiniteDuration
 
@@ -51,17 +52,18 @@ final class AsyncLock private(
               Task.tailRecM(())(_ =>
                 mvar.tryRead.flatMap {
                   case Some(lockedBy) =>
+                    val nr = waitCounter.incrementAndGet()
                     log.debug(
-                      s"⟲ $name enqueues $acquirer (currently locked by $lockedBy) ...")
+                      s"⟲ 🔴$nr $name enqueues $acquirer (currently locked by $lockedBy) ...")
                     mvar.put(acquirer)
                       .whenItTakesLonger(warnTimeouts)(_ =>
                         for (lockedBy <- mvar.tryRead) yield logger.info(
-                          s"$name: ⏳ $acquirer is still waiting" +
+                          s"⭕ $name: $acquirer is still waiting" +
                             s" (currently locked by ${lockedBy getOrElse "None"})" +
                             s" for ${waitingSince.elapsed.pretty} ..."))
                       .map { _ =>
                         log.debug(
-                          s"↘ $name acquired by $acquirer after ${waitingSince.elapsed.pretty}")
+                          s"↘ 🟢$nr $name acquired by $acquirer after ${waitingSince.elapsed.pretty}")
                         acquirer.lockedSince = nanoTime()
                         Right(())
                     }
@@ -100,6 +102,7 @@ final class AsyncLock private(
 object AsyncLock
 {
   private val logger = js7.base.log.Logger[this.type]
+  private val waitCounter = Atomic(0)
 
   def apply()(implicit enclosing: sourcecode.Enclosing): AsyncLock =
     apply(name = enclosing.value)

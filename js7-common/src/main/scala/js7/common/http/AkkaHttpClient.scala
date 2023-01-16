@@ -302,7 +302,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
             _.whenItTakesLonger() {
               val level = if (request.headers contains StreamingJsonHeader) Trace else Debug
               _ => Task(logger.underlying.log(level,
-                "⏳ " + responseLogPrefix + " => Still waiting for response" +
+                "⭕ " + responseLogPrefix + " => Still waiting for response" +
                   (closed ?? " (closed)")))
             }
             .tapEval(response => Task {

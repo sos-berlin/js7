@@ -202,7 +202,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
       throw problem.throwable.appendCurrentStackTrace
 
     case msg if stashingCount > 0 =>
-      if (TraceLog) logger.trace(s"»$toString« ⏳ Still waiting for event commit: stash $msg")
+      if (TraceLog) logger.trace(s"»$toString« 🔴 Still waiting for event commit: stash $msg")
       super.stash()
   }
 
