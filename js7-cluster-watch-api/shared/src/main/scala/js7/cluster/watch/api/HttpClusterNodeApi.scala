@@ -104,7 +104,6 @@ object HttpClusterNodeApi
   def resource(
     admission: Admission,
     httpClient: HttpClient,
-    @deprecated("Immer controller/agent -> js7")
     uriPrefix: String,
     loginDelays: () => Iterator[FiniteDuration] = SessionApi.defaultLoginDelays _)
   : Resource[Task, HttpClusterNodeApi] =

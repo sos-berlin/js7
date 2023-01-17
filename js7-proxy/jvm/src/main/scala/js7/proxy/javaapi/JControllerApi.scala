@@ -327,8 +327,12 @@ final class JControllerApi(val asScala: ControllerApi)(implicit scheduler: Sched
             .flatTap(asScala.addStoppable)
             .map(Some(_))
       }
-      .map(_.get.untilStopped)
-      .map(_.as(Void).runToFuture.asJava)
+      .map(_
+        .get
+        .untilStopped
+        .as(Void)
+        .runToFuture
+        .asJava)
       .runToFuture.asJava
 
   @Nonnull

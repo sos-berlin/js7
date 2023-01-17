@@ -187,7 +187,6 @@ extends Service.StoppableByRequest with AnyClusterWatch
   def onClusterWatchRegistered: Task[Unit] =
     Task {
       clusterWatchIdExpires = Some(now + timing.clusterWatchIdTimeout)
-      Checked.unit
     }
 
   private def send(msg: ClusterWatchMessage): Task[Unit] =
