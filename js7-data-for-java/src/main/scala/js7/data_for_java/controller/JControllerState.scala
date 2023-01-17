@@ -266,7 +266,7 @@ object JControllerState extends JJournaledState.Companion[JControllerState, Cont
   implicit val companion: JJournaledState.Companion[JControllerState, ControllerState] =
     this
 
-  def apply(underlying: ControllerState) =
+  def apply(underlying: ControllerState): JControllerState =
     new JControllerState(underlying)
 
   /** Includes the type. */

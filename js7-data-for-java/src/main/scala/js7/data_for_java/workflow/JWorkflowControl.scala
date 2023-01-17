@@ -19,7 +19,8 @@ extends JUnsignedVersionedItem[JWorkflowControl, WorkflowControlPath]
   def companion = JWorkflowControl
 
   @Nonnull
-  def id = JWorkflowControlId(asScala.id)
+  def id: JWorkflowControlId =
+    JWorkflowControlId(asScala.id)
 
   @Nonnull
   def breakpoints: java.util.Set[JPosition] =

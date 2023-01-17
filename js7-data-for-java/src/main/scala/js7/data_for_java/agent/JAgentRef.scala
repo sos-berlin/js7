@@ -41,13 +41,15 @@ object JAgentRef extends JJsonable.Companion[JAgentRef]
   def of(
     @Nonnull path: AgentPath,
     @Nonnull directors: java.lang.Iterable[SubagentId])
-  = JAgentRef(AgentRef(path, directors = directors.asScala.toVector))
+  : JAgentRef =
+    JAgentRef(AgentRef(path, directors = directors.asScala.toVector))
 
   @Nonnull
   def of(
     @Nonnull path: AgentPath,
     @Nonnull director: SubagentId)
-  = JAgentRef(AgentRef(path, directors = director :: Nil))
+  : JAgentRef =
+    JAgentRef(AgentRef(path, directors = director :: Nil))
 
   @Nonnull
   override def fromJson(jsonString: String): VEither[Problem, JAgentRef] =

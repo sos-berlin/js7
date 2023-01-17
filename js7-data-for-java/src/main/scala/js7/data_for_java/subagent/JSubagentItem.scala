@@ -19,7 +19,8 @@ extends JJsonable[JSubagentItem] with JUnsignedSimpleItem
   protected def companion = JSubagentItem
 
   @Nonnull
-  def path = id
+  def path: SubagentId =
+    id
 
   @Nonnull
   def id: SubagentId =
@@ -49,7 +50,8 @@ object JSubagentItem extends JJsonable.Companion[JSubagentItem]
     @Nonnull agentPath: AgentPath,
     @Nonnull uri: Uri,
     disabled: Boolean)
-  = JSubagentItem(SubagentItem(id, agentPath, uri, disabled = disabled))
+  : JSubagentItem =
+    JSubagentItem(SubagentItem(id, agentPath, uri, disabled = disabled))
 
   @Nonnull
   override def fromJson(jsonString: String): VEither[Problem, JSubagentItem] =

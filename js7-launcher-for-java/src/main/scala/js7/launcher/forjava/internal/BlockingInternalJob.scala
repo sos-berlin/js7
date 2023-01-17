@@ -42,7 +42,7 @@ trait BlockingInternalJob
     * </ul>
     * */
   @throws[Exception]
-  final def stop() = {}
+  final def stop(): Unit = {}
 
   /** Only returns a OrderProcess for a single order step.
     * <p>

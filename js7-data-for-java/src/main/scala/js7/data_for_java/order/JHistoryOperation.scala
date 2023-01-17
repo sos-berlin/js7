@@ -19,19 +19,20 @@ extends JJsonable[JHistoryOperation]
 object JHistoryOperation extends JJsonable.Companion[JHistoryOperation]
 {
   @javaApi @Nonnull
-  def replace(@Nonnull historicOutcome: HistoricOutcome) =
+  def replace(@Nonnull historicOutcome: HistoricOutcome): JHistoryOperation =
     JHistoryOperation(ReplaceHistoricOutcome(historicOutcome))
 
   @javaApi @Nonnull
-  def delete(@Nonnull position: JPosition) =
+  def delete(@Nonnull position: JPosition): JHistoryOperation =
     JHistoryOperation(DeleteHistoricOutcome(position.asScala))
 
   @javaApi @Nonnull
-  def insert(@Nonnull before: JPosition, @Nonnull historicOutcome: HistoricOutcome) =
+  def insert(@Nonnull before: JPosition, @Nonnull historicOutcome: HistoricOutcome)
+  : JHistoryOperation =
     JHistoryOperation(InsertHistoricOutcome(before.asScala, historicOutcome))
 
   @javaApi @Nonnull
-  def append(@Nonnull historicOutcome: HistoricOutcome) =
+  def append(@Nonnull historicOutcome: HistoricOutcome): JHistoryOperation =
     JHistoryOperation(AppendHistoricOutcome(historicOutcome))
 
   @Nonnull

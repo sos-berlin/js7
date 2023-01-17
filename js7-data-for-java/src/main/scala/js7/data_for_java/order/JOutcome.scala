@@ -19,14 +19,16 @@ sealed trait JOutcome extends JJsonable[JOutcome]
 object JOutcome extends JJsonable.Companion[JOutcome]
 {
   @javaApi
-  val succeeded = JOutcome.Succeeded(Outcome.Succeeded.empty)
+  val succeeded: Succeeded =
+    JOutcome.Succeeded(Outcome.Succeeded.empty)
 
   @javaApi @Nonnull
   def succeeded(@Nonnull namedValues: java.util.Map[String, Value]) =
     JOutcome.Succeeded(Outcome.Succeeded(namedValues.asScala.toMap))
 
   @javaApi
-  val failed = JOutcome.Failed(Outcome.failed)
+  val failed: Failed =
+    JOutcome.Failed(Outcome.failed)
 
   @javaApi @Nonnull
   def failed(@Nonnull message: String) =
@@ -53,7 +55,8 @@ object JOutcome extends JJsonable.Companion[JOutcome]
     def asScala: Outcome.Completed
 
     @Nonnull
-    final def namedValues: java.util.Map[String, Value] = asScala.namedValues.asJava
+    final def namedValues: java.util.Map[String, Value] =
+      asScala.namedValues.asJava
   }
 
   final case class Succeeded(asScala: Outcome.Succeeded) extends Completed

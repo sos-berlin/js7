@@ -38,8 +38,8 @@ object JSuspensionMode
   @Nonnull
   def kill(
     immediately: Boolean,
-    @Nonnull position: Optional[JWorkflowPosition]
-  ): JSuspensionMode =
+    @Nonnull position: Optional[JWorkflowPosition])
+  : JSuspensionMode =
     JSuspensionMode(SuspensionMode(Some(
       Kill(
         immediately = immediately,

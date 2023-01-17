@@ -22,7 +22,7 @@ extends JJsonable[JBoard] with JUnsignedSimpleItem
     asScala.path
 
   @Nonnull
-  def withRevision(revision: Optional[ItemRevision]) =
+  def withRevision(revision: Optional[ItemRevision]): JBoard =
     copy(asScala.withRevision(revision.toScala))
 }
 

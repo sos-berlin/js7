@@ -19,7 +19,7 @@ extends JJsonable[JHistoricOutcome]
 object JHistoricOutcome extends JJsonable.Companion[JHistoricOutcome]
 {
   @javaApi @Nonnull
-  def of(@Nonnull position: JPosition, @Nonnull outcome: JOutcome) =
+  def of(@Nonnull position: JPosition, @Nonnull outcome: JOutcome): JHistoricOutcome =
     JHistoricOutcome(HistoricOutcome(position.asScala, outcome.asScala))
 
   @Nonnull

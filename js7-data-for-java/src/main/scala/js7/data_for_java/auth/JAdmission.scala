@@ -19,11 +19,12 @@ extends JavaWrapper
 object JAdmission
 {
   @javaApi @Nonnull @throws[RuntimeException]("on invalid syntax")
-  def of(uri: String, credentials: JCredentials) =
+  def of(uri: String, credentials: JCredentials): JAdmission =
     new JAdmission(Admission(Uri(uri), credentials.toScala))
 
   @javaApi @Nonnull
-  def checked(@Nonnull uri: String, @Nonnull credentials: JCredentials): VEither[Problem, JAdmission] =
+  def checked(@Nonnull uri: String, @Nonnull credentials: JCredentials)
+  : VEither[Problem, JAdmission] =
     Uri.checked(uri)
       .map(uri => new JAdmission(Admission(uri, credentials.toScala)))
       .toVavr

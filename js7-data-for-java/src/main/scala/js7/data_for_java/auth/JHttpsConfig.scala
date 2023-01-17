@@ -14,7 +14,7 @@ final case class JHttpsConfig(asScala: HttpsConfig) extends JavaWrapper
 
 object JHttpsConfig
 {
-  val empty = JHttpsConfig(HttpsConfig.empty)
+  val empty: JHttpsConfig = JHttpsConfig(HttpsConfig.empty)
 
   @Nonnull
   def of(

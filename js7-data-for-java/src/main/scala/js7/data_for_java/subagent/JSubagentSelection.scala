@@ -18,7 +18,8 @@ extends JJsonable[JSubagentSelection] with JUnsignedSimpleItem
   protected def companion = JSubagentSelection
 
   @Nonnull
-  def path = id
+  def path: SubagentSelectionId =
+    id
 
   @Nonnull
   def id: SubagentSelectionId =
@@ -29,7 +30,7 @@ extends JJsonable[JSubagentSelection] with JUnsignedSimpleItem
     asScala.subagentToPriority.asJava
 
   @Nonnull
-  def withRevision(revision: Optional[ItemRevision]) =
+  def withRevision(revision: Optional[ItemRevision]): JSubagentSelection =
     copy(asScala.withRevision(revision.toScala))
 }
 
@@ -38,7 +39,8 @@ object JSubagentSelection extends JJsonable.Companion[JSubagentSelection]
   def of(
     id: SubagentSelectionId,
     subagentToPriority: java.util.Map[SubagentId, java.lang.Integer])
-  = JSubagentSelection(
+  : JSubagentSelection =
+    JSubagentSelection(
       SubagentSelection(
         id,
         subagentToPriority.asScala.view.mapValues(_.toInt).toMap))

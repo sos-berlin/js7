@@ -11,7 +11,7 @@ import js7.base.problem.Problem
 import js7.base.time.JavaTimestamp.specific.*
 import js7.data.board.{BoardPath, NoticeId}
 import js7.data.order.OrderEvent.{OrderAdded, OrderCancelled, OrderDeleted, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderNoticesExpected, OrderProcessed, OrderProcessingStarted, OrderStdWritten}
-import js7.data.order.{OrderEvent, OrderId}
+import js7.data.order.{OrderEvent, OrderId, Outcome}
 import js7.data.subagent.SubagentId
 import js7.data.value.Value
 import js7.data_for_java.common.JJsonable
@@ -97,7 +97,8 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
     type AsScala = OrderProcessed
 
     @Nonnull
-    def outcome = asScala.outcome
+    def outcome: Outcome =
+      asScala.outcome
   }
 
   final case class JOrderForked(asScala: OrderForked)
@@ -126,7 +127,8 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
   extends JOrderEvent {
     type AsScala = OrderJoined
 
-    def outcome = asScala.outcome
+    def outcome: Outcome =
+      asScala.outcome
   }
 
   final case class JOrderFailed(asScala: OrderFailed)
@@ -135,7 +137,8 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
     type AsScala = OrderFailed
 
     @Nonnull
-    def outcome = asScala.outcome
+    def outcome: Option[Outcome.NotSucceeded] =
+      asScala.outcome
   }
 
   final case class JOrderFinished private(asScala: OrderFinished)
@@ -144,8 +147,9 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
     type AsScala = OrderFinished
   }
   object JOrderFinished {
-    val singleton = new JOrderFinished(OrderFinished())
-    def apply(underlying: OrderFinished) = singleton
+    val singleton: JOrderFinished = new JOrderFinished(OrderFinished())
+    def apply(asScala: OrderFinished): JOrderFinished =
+      singleton
   }
 
   final case class JOrderDeleted private(asScala: OrderDeleted)
@@ -154,8 +158,10 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
     type AsScala = OrderDeleted
   }
   object JOrderDeleted {
-    val singleton = new JOrderDeleted(OrderDeleted)
-    def apply(underlying: OrderDeleted) = singleton
+    val singleton: JOrderDeleted = new JOrderDeleted(OrderDeleted)
+
+    def apply(asScala: OrderDeleted): JOrderDeleted =
+      singleton
   }
 
   final case class JOrderCancelled private(asScala: OrderCancelled)
@@ -164,7 +170,7 @@ object JOrderEvent extends JJsonable.Companion[JOrderEvent]
     type AsScala = OrderCancelled
   }
   object JOrderCancelled {
-    val singleton = JOrderCancelled(OrderCancelled)
+    val singleton: JOrderCancelled = JOrderCancelled(OrderCancelled)
   }
 
   // TODO Move ForkBranchId out of here

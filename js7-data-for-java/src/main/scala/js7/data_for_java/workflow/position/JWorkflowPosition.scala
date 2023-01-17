@@ -15,10 +15,12 @@ extends JJsonable [JWorkflowPosition]
   protected def companion = JWorkflowPosition
 
   @Nonnull
-  def workflowId = JWorkflowId(asScala.workflowId)
+  def workflowId: JWorkflowId =
+    JWorkflowId(asScala.workflowId)
 
   @Nonnull
-  def position = JPosition(asScala.position)
+  def position: JPosition =
+    JPosition(asScala.position)
 }
 
 object JWorkflowPosition extends JJsonable.Companion[JWorkflowPosition]

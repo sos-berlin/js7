@@ -22,7 +22,8 @@ extends JVersionedItem[JWorkflow, WorkflowPath]
   def companion = JWorkflow
 
   @Nonnull
-  def id = JWorkflowId(asScala.id)
+  def id: JWorkflowId =
+    JWorkflowId(asScala.id)
 
   @Nonnull
   def checkedJobName(position: JPosition): VEither[Problem, WorkflowJob.Name] =
@@ -34,7 +35,8 @@ extends JVersionedItem[JWorkflow, WorkflowPath]
       .toVavr
 
   @Nonnull
-  def withPositions = JWorkflow(asScala.withPositions(Nil))
+  def withPositions: JWorkflow =
+    JWorkflow(asScala.withPositions(Nil))
 
   /** Positions to which a given order can be moved. */
   @Nonnull

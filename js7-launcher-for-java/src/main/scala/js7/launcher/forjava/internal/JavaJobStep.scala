@@ -27,7 +27,7 @@ trait JavaJobStep extends JavaWrapper
     asScala.arguments.asJava
 
   @Nonnull
-  final lazy val order =
+  final lazy val order: JOrder =
     JOrder(asScala.order)
 
   @Nonnull
@@ -39,7 +39,7 @@ trait JavaJobStep extends JavaWrapper
     asScala.processOrder.jobExecutionCount
 
   @Nonnull
-  final lazy val workflow =
+  final lazy val workflow: JWorkflow =
     JWorkflow(asScala.workflow)
 
   @Nonnull

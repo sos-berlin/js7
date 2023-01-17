@@ -16,8 +16,11 @@ extends JavaWrapper
 
 object JCancellationMode
 {
-  val freshOnly = JCancellationMode(CancellationMode.FreshOnly)
-  val freshOrStarted = JCancellationMode(CancellationMode.Default)
+  val freshOnly: JCancellationMode =
+    JCancellationMode(CancellationMode.FreshOnly)
+
+  val freshOrStarted: JCancellationMode =
+    JCancellationMode(CancellationMode.Default)
 
   /** Kill a running job (with SIGTERM if possible). */
   def kill: JCancellationMode =

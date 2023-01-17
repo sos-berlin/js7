@@ -15,7 +15,7 @@ extends JavaWrapper
 object JUpdateItemOperation
 {
   @Nonnull
-  def addOrChangeSimple(@Nonnull item: JUnsignedSimpleItem) =
+  def addOrChangeSimple(@Nonnull item: JUnsignedSimpleItem): JUpdateItemOperation =
     new JUpdateItemOperation(ItemOperation.AddOrChangeSimple(item.asScala))
 
   /** Deletes a non-versioned item. */

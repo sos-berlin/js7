@@ -23,7 +23,8 @@ extends JavaWrapper with AutoCloseable
     this(new StandardEventBus(eventClass))
 
   /** Close all subscriptions. */
-  def close() = asScala.close()
+  def close(): Unit =
+    asScala.close()
 
   @javaApi @Nonnull
   def subscribe[E1 <: E](
@@ -68,7 +69,8 @@ extends JavaWrapper with AutoCloseable
     /** For internal use only. */
     private[JStandardEventBus] def eventBus = JStandardEventBus.this.asScala
 
-    def close() = asScala.close()
+    def close(): Unit =
+      asScala.close()
 
     /** For internal use only. */
     private[JStandardEventBus] def internalAddToEventBus(): Unit =

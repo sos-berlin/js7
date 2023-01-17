@@ -18,7 +18,8 @@ extends JJsonable[JWorkflowId] with JVersionedItemId[WorkflowPath]
   protected def companion = JWorkflowId
 
   @Nonnull
-  def path = asScala.path
+  def path: WorkflowPath =
+    asScala.path
 }
 
 @javaApi

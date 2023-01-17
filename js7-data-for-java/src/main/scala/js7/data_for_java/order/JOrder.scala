@@ -82,8 +82,11 @@ object JOrder extends JJsonable.Companion[JOrder]
   protected def jsonEncoder = Order.jsonEncoder
   protected def jsonDecoder = Order.jsonDecoder
 
-  val forked = new StateType(classOf[Forked], classOf[Order.Forked])
+  val forked: StateType[Forked] =
+    new StateType(classOf[Forked], classOf[Order.Forked])
+
   val finished = new StateType(Finished.getClass, Order.Finished.getClass)
+
   val deleted = new StateType(Deleted.getClass, Order.Deleted.getClass)
 
   sealed trait State extends JavaWrapper
@@ -110,11 +113,11 @@ object JOrder extends JJsonable.Companion[JOrder]
 
   case object Finished extends State {
     type AsScala = Order.Finished
-    val asScala = Order.Finished
+    val asScala: Order.Finished = Order.Finished
   }
 
   case object Deleted extends State {
     type AsScala = Order.Deleted
-    val asScala = Order.Deleted
+    val asScala: Order.Deleted = Order.Deleted
   }
 }
