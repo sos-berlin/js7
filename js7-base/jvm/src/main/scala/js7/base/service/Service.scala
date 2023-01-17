@@ -18,9 +18,9 @@ trait Service extends Stoppable {
   final def untilStopped: Task[Unit] =
     stopped.get
 
-  protected def start: Task[ServiceStarted]
+  protected def start: Task[Started]
 
-  protected final def startService(run: Task[Unit]): Task[ServiceStarted] =
+  protected final def startService(run: Task[Unit]): Task[Started] =
     CorrelId
       .bindNew(logger.debugTask(s"$service run")(
         run
@@ -38,7 +38,7 @@ trait Service extends Stoppable {
           case service: StoppableByRequest => service._fiber.complete(fiber)
           case _ => Task.unit
         })
-      .as(ServiceStarted)
+      .as(Started)
 }
 
 object Service
@@ -79,6 +79,8 @@ object Service
   }
 
   /** Marker type to ensure call of `startFiber`. */
-  final class ServiceStarted private[Service]
-  private val ServiceStarted = new ServiceStarted()
+  final class Started private[Service] {
+    override def toString = "Service.Started"
+  }
+  private val Started = new Started()
 }
