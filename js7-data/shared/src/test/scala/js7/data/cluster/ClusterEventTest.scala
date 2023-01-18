@@ -4,7 +4,7 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
-import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSettingUpdated, ClusterSwitchedOver}
+import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSettingUpdated, ClusterSwitchedOver, ClusterWatchRegistered}
 import js7.data.event.{EventId, JournalPosition}
 import js7.data.node.NodeId
 import js7.tester.CirceJsonTester.testJson
@@ -136,5 +136,13 @@ final class ClusterEventTest extends OurTestSuite
           ]
         }""")
     }
+  }
+
+  "ClusterWatchRegistered" in {
+    testJson[ClusterEvent](ClusterWatchRegistered(ClusterWatchId("CLUSTER-WATCH")),
+      json"""{
+      "TYPE": "ClusterWatchRegistered",
+      "clusterWatchId": "CLUSTER-WATCH"
+    }""")
   }
 }
