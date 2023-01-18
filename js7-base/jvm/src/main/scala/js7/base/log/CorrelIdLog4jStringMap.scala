@@ -6,7 +6,7 @@ import js7.base.log.CorrelIdLog4jStringMap.*
 import js7.base.utils.Tests.isTest
 import org.apache.logging.log4j.util.{BiConsumer, ReadOnlyStringMap, StringMap, TriConsumer}
 
-final class CorrelIdLog4jStringMap(protected val correlId: CorrelId)
+final class CorrelIdLog4jStringMap(private[log] val correlId: CorrelId)
 extends StringMap
 {
   if (isTest) requireNonNull(correlId) // Seems to happen ???

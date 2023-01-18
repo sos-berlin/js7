@@ -21,7 +21,8 @@ object Logger
   val empty: ScalaLogger =
     ScalaLogger(org.slf4j.helpers.NOPLogger.NOP_LOGGER)
 
-  def initialize() = {}
+  def initialize(): Unit =
+    Log4j.initialize()
 
   //val Timing: Marker = MarkerFactory.getMarker("Timing")
   //val Event: Marker = MarkerFactory.getMarker("Event")
@@ -193,7 +194,7 @@ object Logger
     trace: Boolean = false)
   {
     logStart(logger, function, args, trace)
-    val startedAt = System.nanoTime()
+    private val startedAt = System.nanoTime()
 
     private def duration: String =
       if (startedAt == 0)
