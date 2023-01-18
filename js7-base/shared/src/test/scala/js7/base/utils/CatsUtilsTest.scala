@@ -51,4 +51,8 @@ final class CatsUtilsTest extends OurTestSuite
   "continueWithLast" in {
     assert(continueWithLast(1, 2, 3).take(5).toSeq == Seq(1, 2, 3, 3, 3))
   }
+
+  "repeatLast" in {
+    assert(repeatLast(NonEmptySeq.of(1, 2, 3)).take(5) == Seq(1, 2, 3, 3, 3))
+  }
 }

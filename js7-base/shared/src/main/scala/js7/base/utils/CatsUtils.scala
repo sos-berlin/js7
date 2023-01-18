@@ -78,6 +78,11 @@ object CatsUtils
     seq.iterator ++ Iterator.continually(last)
   }
 
-  def continueWithLast[A](head: A, tail: A*): Iterator[A] =
-    continueWithLast(NonEmptySeq.of(head, tail*))
+  def continueWithLast[A](head: A, next: A, tail: A*): Iterator[A] =
+    continueWithLast(NonEmptySeq.fromSeqUnsafe(Seq(head, next) ++ tail))
+
+  def repeatLast[A](seq: NonEmptySeq[A]): LazyList[A] = {
+    val last = seq.last
+    seq.toSeq ++: LazyList.continually(last)
+  }
 }
