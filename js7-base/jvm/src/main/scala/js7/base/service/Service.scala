@@ -5,32 +5,39 @@ import cats.effect.{ExitCase, Resource}
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.RichMonixTask
+import js7.base.problem.Problem
 import js7.base.service.Service.*
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.base.utils.Stoppable
 import monix.eval.{Fiber, Task}
+import scala.util.{Failure, Success, Try}
 
 trait Service extends Stoppable {
   service =>
 
-  private val stopped = Deferred.unsafe[Task, Unit]
-
-  final def untilStopped: Task[Unit] =
-    stopped.get
+  private val stopped = Deferred.unsafe[Task, Try[Unit]]
 
   protected def start: Task[Started]
+
+  final def untilStopped: Task[Unit] =
+    stopped.get.flatMap(_
+      .fold(Task.raiseError, Task(_)))
 
   protected final def startService(run: Task[Unit]): Task[Started] =
     CorrelId
       .bindNew(logger.debugTask(s"$service run")(
         run
-          .guarantee(stopped.complete(()))
           .guaranteeCase {
-            case ExitCase.Error(t) => Task {
+            case ExitCase.Error(t) =>
               // A service should not die
               logger.error(s"$service died: ${t.toStringWithCauses}")
-            }
-            case _ => Task.unit
+              stopped.complete(Failure(t))
+
+            case ExitCase.Canceled =>
+              stopped.complete(Failure(Problem.pure(s"$service canceled").throwable))
+
+            case ExitCase.Completed =>
+              stopped.complete(Success(()))
           }))
       .start
       .flatMap(fiber =>
