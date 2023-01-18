@@ -133,7 +133,7 @@ final class ServiceTest extends OurAsyncTestSuite
         setRunning(true)
         running
           .complete(())
-          .*>(whenStopRequested)
+          .*>(untilStopRequested)
           .guaranteeCase(exitCase => Task {
             logger.info(s"$exitCase")
             setRunning(false)
@@ -159,7 +159,7 @@ object ServiceTest
   {
     protected def start =
       startService(
-        Task.race(run2, whenStopRequested).void)
+        Task.race(run2, untilStopRequested).void)
 
     private def run2 =
       whenFail *> Task.raiseError(FailingService.exception).guarantee(onFailed)

@@ -51,7 +51,7 @@ extends Service.StoppableByRequest
           .mapEval { case (nodeApi, msg) =>
             handleMessage(nodeApi, msg)
           }
-          .takeUntilEval(whenStopRequested)
+        .takeUntilEval(untilStopRequested)
           .completedL
           .guaranteeCase(exitCase => Task(
             logger.info(s"$clusterWatchId for ${nodeApis.toList.mkString(", ")} => $exitCase"))))

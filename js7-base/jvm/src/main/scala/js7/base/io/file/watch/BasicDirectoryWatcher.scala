@@ -29,7 +29,7 @@ extends Service.StoppableByRequest
 
   protected def start =
     startService(
-      whenStopRequested
+      untilStopRequested
         .guarantee(Task {
           logger.debug("watchService.close()")
           watchService.close()

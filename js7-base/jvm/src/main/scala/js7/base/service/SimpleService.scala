@@ -9,7 +9,7 @@ trait SimpleService extends Service.StoppableByRequest
 
   protected def start =
     startService(Task
-      .race(run, whenStopRequested)
+      .race(untilStopRequested, run)
       .map(_.fold(identity, identity)))
 
   override def toString = "SimpleService"

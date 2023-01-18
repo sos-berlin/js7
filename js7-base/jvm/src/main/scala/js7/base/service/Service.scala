@@ -64,7 +64,7 @@ object Service
     private[Service] final val _fiber = Deferred.unsafe[Task, Fiber[Unit]]
     private val stopRequested = Deferred.unsafe[Task, Unit]
 
-    protected final def whenStopRequested: Task[Unit] =
+    protected final def untilStopRequested: Task[Unit] =
       stopRequested.get
 
     private val memoizedStop =

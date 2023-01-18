@@ -47,7 +47,7 @@ extends Service.StoppableByRequest with AnyClusterWatch
 
   protected def start =
     startService(
-      whenStopRequested *> pubsub.complete)
+      untilStopRequested *> pubsub.complete)
 
   def tryLogout = Task.pure(Completed)
 
