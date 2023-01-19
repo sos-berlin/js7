@@ -235,7 +235,8 @@ object ClusterWatchSynchronizer
           sendHeartbeats
             .guaranteeCase {
               case ExitCase.Error(t) =>
-                logger.warn(s"Sending heartbeat to ClusterWatch failed: ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+                logger.warn(s"Sending heartbeat to ClusterWatch failed: ${t.toStringWithCauses}",
+                  t.nullIfNoStackTrace)
                 haltJava(
                   s"💥 HALT after sending heartbeat to ClusterWatch failed: ${t.toStringWithCauses}",
                   restart = true)

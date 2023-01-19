@@ -496,7 +496,7 @@ extends Actor with Stash with JournalLogging
     case Input.GetJournaledState =>
       // Allow the caller outside of this JournalActor to read committedState
       // asynchronously at any time.
-      sender() ! (() => committedState)
+      sender() ! (() => committedState)  // Direct access, reads asynchronously !!!
   }
 
   def tryTakeSnapshotIfRequested(): Unit =
