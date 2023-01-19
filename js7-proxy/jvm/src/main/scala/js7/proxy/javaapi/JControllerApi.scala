@@ -315,7 +315,13 @@ final class JControllerApi(val asScala: ControllerApi)(implicit scheduler: Sched
     CorrelId.bindNew(task.runToFuture).asJava
 
   @Nonnull
-  def startClusterWatch(clusterWatchId: ClusterWatchId): CompletableFuture[CompletableFuture[Void]] =
+  def runClusterWatch(@Nonnull clusterWatchId: ClusterWatchId): CompletableFuture[Void] =
+    startClusterWatch(clusterWatchId)
+      .thenCompose(identity(_))
+
+  @Nonnull
+  def startClusterWatch(@Nonnull clusterWatchId: ClusterWatchId)
+  : CompletableFuture[CompletableFuture[Void]] =
     clusterWatchService
       .update {
         case Some(service) => Task.some(service)

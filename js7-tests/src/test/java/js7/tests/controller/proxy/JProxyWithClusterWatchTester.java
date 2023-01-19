@@ -7,9 +7,12 @@ import js7.data_for_java.auth.JAdmission;
 import js7.data_for_java.auth.JHttpsConfig;
 import js7.proxy.javaapi.JControllerApi;
 import js7.proxy.javaapi.JProxyContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 final class JProxyWithClusterWatchTester
 {
+    private static final Logger logger = LoggerFactory.getLogger(JProxyWithClusterWatchTester.class);
     private JProxyWithClusterWatchTester() {}
 
     static void test(List<JAdmission> admissions, JHttpsConfig httpsConfig)
@@ -23,9 +26,12 @@ final class JProxyWithClusterWatchTester
             // Stop is effective only after startClusterWatch has completed!
             controllerApi.stopClusterWatch().get();
 
-            // Start again
+            // Run again
             CompletableFuture<Void> clusterWatchStopped =
-                controllerApi.startClusterWatch(ClusterWatchId.of("JOC-A")).get();
+                controllerApi.runClusterWatch(ClusterWatchId.of("JOC-A"))
+                    .thenRun(() -> logger.info("clusterWatchStopped COMPLETED"));
+
+            Thread.sleep(1000);
 
             if (clusterWatchStopped.isDone()) {
                 clusterWatchStopped.get()/*throws*/;
