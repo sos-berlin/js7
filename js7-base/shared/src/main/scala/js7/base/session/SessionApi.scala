@@ -158,7 +158,7 @@ object SessionApi
                 // Race condition with a parallel operation,
                 // which after the same error has already logged-in again successfully.
                 // Should be okay if login is delayed like here
-                logger.info(s"Login again due to: $problem")
+                logger.debug(s"$toString: Login again due to: $problem")
                 Task.sleep(delays.next()) *>
                   login() *>
                   retry(())
@@ -180,7 +180,7 @@ object SessionApi
                 case HttpException.HasProblem(problem)
                   if problem.is(InvalidSessionTokenProblem) && delays.hasNext =>
                   // Do not call onError on this minor problem
-                  logger.debug(problem.toString)
+                  logger.debug(s"$toString: $problem")
                   loginUntilReachable(delays, onError = onError)
 
                 case e: HttpException if isTemporaryUnreachable(e) && delays.hasNext =>

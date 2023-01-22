@@ -205,7 +205,7 @@ extends EventDrivenState.Companion[ClusterState, ClusterEvent]
     def withSetting(setting: ClusterSetting) = copy(setting = setting)
 
     override def toShortString =
-      "FailedOver(${setting.passiveId.string} --> ${setting.activeId.string})"
+      s"FailedOver(${setting.passiveId.string} --> ${setting.activeId.string})"
 
     override def toString = "FailedOver(" +
       s"${setting.passiveId.string} --> ${setting.activeId.string} at $failedAt)"

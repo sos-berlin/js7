@@ -342,7 +342,7 @@ object ClusterWatchSynchronizer
         .map { case (duration, result) =>
           if (duration >= timing.clusterWatchReactionTimeout) {
             logger.info("ClusterWatch response time was too long: " + duration.pretty +
-              ", retry after discarding " + result)
+              ", asking after discarding " + result)
             Left(())
           } else
             Right(result)

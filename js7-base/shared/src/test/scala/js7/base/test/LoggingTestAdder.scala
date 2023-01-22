@@ -1,7 +1,7 @@
 package js7.base.test
 
-import js7.base.log.{CorrelId, Logger}
 import js7.base.log.LoggingEscapeCodes.{blue, bold, green, orange, resetColor}
+import js7.base.log.{CorrelId, Logger}
 import js7.base.test.LoggingFreeSpecStringWrapper.{StringWrapper, TaggedAs}
 import js7.base.test.LoggingTestAdder.*
 import js7.base.time.ScalaTime.*
@@ -107,19 +107,19 @@ private object LoggingTestAdder {
         case Success(_) =>
           adder.succeededCount += 1
           logger.info(s"↙ $logLine")
-          logger.info(eager(successMarkup + bar))
+          logger.info(eager(successMarkup + bar + resetColor))
 
         case Failure(_: TestPendingException) =>
           adder.pendingCount += 1
           logger.warn(logLine)
-          logger.info(eager(pendingMarkup + bar))
+          logger.info(eager(pendingMarkup + bar + resetColor))
 
         case Failure(t) =>
           clipStackTrace(t)
           adder.failedCount += 1
           if (isSbt) System.err.println(logLine)
           logger.error(logLine, t.nullIfNoStackTrace)
-          logger.info(eager(failureMarkup + bar))
+          logger.info(eager(failureMarkup + bar + resetColor))
           clipStackTrace(t)
       }
       if (isIntelliJIdea) TestResultCollector.add(result)

@@ -183,8 +183,8 @@ final class ClusterNode[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
 
   private def startPassiveAfterFailover(recovered: Recovered[S], coupled: Coupled, otherFailedOver: FailedOver)
   : (Recovered[S], PassiveClusterNode[S]) = {
-    logger.warn(s"The other ${otherFailedOver.activeId} ${otherFailedOver.toShortString} and " +
-      "became active while this node was absent")
+    logger.warn(s"The other ${otherFailedOver.activeId} ${otherFailedOver.toShortString}" +
+      ", and became active while this node was absent")
     assertThat(otherFailedOver.idToUri == coupled.idToUri &&
                otherFailedOver.activeId == coupled.passiveId)
     // This restarted, previously failed active cluster node may have written one chunk of events more than
