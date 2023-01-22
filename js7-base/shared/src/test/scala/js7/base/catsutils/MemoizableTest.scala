@@ -30,18 +30,20 @@ final class MemoizableTest extends OurAsyncTestSuite
 
   "memoize with Monix Task, direct" in {
     import monix.execution.Scheduler.Implicits.traced
-    check[Task](_.memoize, 1).runSyncUnsafe()
+    check[Task](_.memoize, 1).runToFuture
   }
 
   "memoize with Monix Task, via Concurrent" in {
     import monix.execution.Scheduler.Implicits.traced
-    check0[Task](1).runSyncUnsafe()
+    check0[Task](1).runToFuture
   }
 
   private def check0[F[_]: Concurrent: FlatMap](expected: Int): F[Assertion] = {
     // These two calls are equivalent
-    check[F](_.memoize, expected)
-    check[F](Memoizable.concurrentMemoizable.memoize(_), expected)
+    (for {
+      _ <- check[F](_.memoize, expected)
+      _ <- check[F](Memoizable.concurrentMemoizable.memoize(_), expected)
+    } yield succeed)
   }
 
   private def check[F[_]: Sync: FlatMap](f: F[Int] => F[Int], expected: Int): F[Assertion] = {
