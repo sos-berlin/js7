@@ -786,6 +786,9 @@ object ScalaUtils
     else
       None
 
+  def some[A](a: A): Option[A] =
+    Some(a)
+
   def someUnless[A](a: A, none: A): Option[A] =
     if (a == none) None else Some(a)
 
