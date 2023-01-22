@@ -53,6 +53,8 @@ final class CatsUtilsTest extends OurTestSuite
   }
 
   "repeatLast" in {
-    assert(repeatLast(NonEmptySeq.of(1, 2, 3)).take(5) == Seq(1, 2, 3, 3, 3))
+    assert(repeatLast(Nil).isEmpty)
+    assert(repeatLast(Seq(1, 2, 3)).take(5) == Seq(1, 2, 3, 3, 3))
+    //assert(repeatLast(NonEmptySeq.of(1, 2, 3)).take(5) == Seq(1, 2, 3, 3, 3))
   }
 }
