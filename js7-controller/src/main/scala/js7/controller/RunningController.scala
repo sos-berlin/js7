@@ -98,6 +98,18 @@ extends AutoCloseable
   val config: Config = injector.instance[Config]
   val sessionRegister: SessionRegister[SimpleSession] = injector.instance[SessionRegister[SimpleSession]]
   private lazy val controllerConfiguration = injector.instance[ControllerConfiguration]
+  private val httpApiUserAndPassword = SetOnce[Option[UserAndPassword]]
+  private val _httpApi = SetOnce[AkkaHttpControllerApi]
+
+  @TestOnly lazy val localUri = webServer.localUri
+  @TestOnly lazy val httpApi: HttpControllerApi = {
+    if (_httpApi.isEmpty) {
+      httpApiUserAndPassword.trySet(None)
+      _httpApi := new AkkaHttpControllerApi(localUri, httpApiUserAndPassword.orThrow,
+        actorSystem = actorSystem, config = config, name = controllerConfiguration.name)
+    }
+    _httpApi.orThrow
+  }
 
   lazy val actorSystem = injector.instance[ActorSystem]
 
@@ -213,30 +225,14 @@ extends AutoCloseable
       .logWhenItTakesLonger("in", "waitUntilReady") await 99.s
 
   @TestOnly
-  lazy val localUri = webServer.localUri
-
-  @TestOnly
   def clusterState: Task[ClusterState] =
     controllerState.map(_.clusterState)
-
-  private val httpApiUserAndPassword = SetOnce[Option[UserAndPassword]]
-  private val _httpApi = SetOnce[AkkaHttpControllerApi]
 
   @TestOnly
   def httpApiDefaultLogin(userAndPassword: Option[UserAndPassword]): Unit = {
     assertThat(_httpApi.isEmpty)
     httpApiUserAndPassword := userAndPassword
     httpApi
-  }
-
-  @TestOnly
-  lazy val httpApi: HttpControllerApi = {
-    if (_httpApi.isEmpty) {
-      httpApiUserAndPassword.trySet(None)
-      _httpApi := new AkkaHttpControllerApi(localUri, httpApiUserAndPassword.orThrow,
-        actorSystem = actorSystem, config = config, name = controllerConfiguration.name)
-    }
-    _httpApi.orThrow
   }
 
   @TestOnly
