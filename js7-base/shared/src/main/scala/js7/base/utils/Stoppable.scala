@@ -5,6 +5,7 @@ import monix.eval.Task
 
 trait Stoppable
 {
+  // Idempotent
   def stop: Task[Unit]
 }
 

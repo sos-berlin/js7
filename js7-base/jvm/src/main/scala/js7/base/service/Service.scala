@@ -2,43 +2,58 @@ package js7.base.service
 
 import cats.effect.concurrent.Deferred
 import cats.effect.{ExitCase, Resource}
+import cats.syntax.flatMap.*
+import izumi.reflect.Tag
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.RichMonixTask
+import js7.base.monixutils.MonixDeadline.syntax.DeadlineSchedule
 import js7.base.problem.Problem
 import js7.base.service.Service.*
-import js7.base.utils.ScalaUtils.syntax.RichThrowable
+import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Stoppable
 import monix.eval.{Fiber, Task}
+import monix.execution.atomic.Atomic
+import scala.concurrent.duration.*
 import scala.util.{Failure, Success, Try}
 
-trait Service extends Stoppable {
+trait Service extends AnyRef with Stoppable {
   service =>
 
+  private val started = Atomic(false)
   private val stopped = Deferred.unsafe[Task, Try[Unit]]
 
   protected def start: Task[Started]
 
   final def untilStopped: Task[Unit] =
-    stopped.get.flatMap(_
-      .fold(Task.raiseError, Task(_)))
+    Task.defer {
+      if (!started.get())
+        Task.raiseError(Problem.pure(
+          s"$service.untilStopped but service has not been started").throwable)
+      else
+        stopped.get.flatMap(_
+          .fold(Task.raiseError, Task(_)))
+
+    }
 
   protected final def startService(run: Task[Unit]): Task[Started] =
     CorrelId
       .bindNew(logger.debugTask(s"$service run")(
-        run
-          .guaranteeCase {
-            case ExitCase.Error(t) =>
-              // A service should not die
-              logger.error(s"$service died: ${t.toStringWithCauses}")
-              stopped.complete(Failure(t))
+        Task.deferAction(scheduler => Task(scheduler.now)).flatMap(since =>
+          run
+            .guaranteeCase {
+              case ExitCase.Error(t) =>
+                // A service should not die
+                logger.error(s"$service died after ${since.elapsed.pretty}: ${t.toStringWithCauses}")
+                stopped.complete(Failure(t))
 
-            case ExitCase.Canceled =>
-              stopped.complete(Failure(Problem.pure(s"$service canceled").throwable))
+              case ExitCase.Canceled =>
+                stopped.complete(Failure(Problem.pure(s"$service canceled").throwable))
 
-            case ExitCase.Completed =>
-              stopped.complete(Success(()))
-          }))
+              case ExitCase.Completed =>
+                stopped.complete(Success(()))
+            })))
       .start
       .flatMap(fiber =>
         service match {
@@ -50,12 +65,33 @@ trait Service extends Stoppable {
 
 object Service
 {
+  val defaultRestartDelays: Seq[FiniteDuration] =
+    RestartAfterFailureService.defaultRestartDelays
+
+  private[service] object Empty extends Service {
+    protected val start = startService(Task.unit)
+    def stop = Task.unit
+  }
+
   private val logger = Logger[this.type]
 
   def resource[A <: Service](acquire: Task[A]): Resource[Task, A] =
-    Stoppable.resource(
-      acquire.flatMap(service =>
-        service.start.as(service)))
+    Stoppable.resource(start(acquire))
+
+  def start[A <: Service](newService: Task[A]): Task[A] =
+    newService.flatTap(service =>
+      if (service.started.getAndSet(true))
+        Task.raiseError(Problem.pure(s"$toString started twice").throwable)
+      else
+        service.start)
+
+  def restartAfterFailure[S <: Service: Tag](
+    startDelays: Seq[FiniteDuration] = defaultRestartDelays,
+    runDelays: Seq[FiniteDuration] = defaultRestartDelays)
+    (serviceResource: Resource[Task, S])
+  : Resource[Task, RestartAfterFailureService[S]] =
+      resource(Task(
+        new RestartAfterFailureService(startDelays, runDelays)(serviceResource)))
 
   trait StoppableByRequest extends Service
   {

@@ -1,7 +1,7 @@
 package js7.common.system.startup
 
 import cats.effect.{Resource, Sync, SyncIO}
-import cats.syntax.functor.*
+import cats.syntax.flatMap.*
 import com.typesafe.config.Config
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.log.{CorrelId, Logger}
@@ -44,9 +44,9 @@ object StatefulServiceMain
     threadPoolResource[SyncIO](name, config, commonScheduler)
       .map(implicit scheduler =>
         scheduler -> serviceResource(scheduler)
-          .flatMap(service =>
-            shutdownHookResource[Task](config, name)(onJavaShutdown(service))
-              .as(service)))
+          .flatTap(service =>
+            shutdownHookResource[Task](config, name)(
+              onJavaShutdown(service))))
 
   private def threadPoolResource[F[_]: Sync](
     name: String,

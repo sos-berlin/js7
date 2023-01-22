@@ -3,10 +3,10 @@ package js7.base.service
 import cats.effect.Resource
 import monix.eval.Task
 
-trait SimpleService extends Service.StoppableByRequest
+final class SimpleService private(
+  protected val run: Task[Unit])
+extends Service.StoppableByRequest
 {
-  protected def run: Task[Unit]
-
   protected def start =
     startService(Task
       .race(untilStopRequested, run)
@@ -16,13 +16,6 @@ trait SimpleService extends Service.StoppableByRequest
 }
 
 object SimpleService {
-  def apply(run: Task[Unit]): SimpleService = {
-    val run_ = run
-    new SimpleService {
-      protected def run = run_
-    }
-  }
-
   def resource(run: Task[Unit]): Resource[Task, SimpleService] =
-    Service.resource(Task(SimpleService(run)))
+    Service.resource(Task(new SimpleService(run)))
 }

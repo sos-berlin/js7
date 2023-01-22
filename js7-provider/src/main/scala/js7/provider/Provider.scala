@@ -62,7 +62,8 @@ extends HasCloser with Observing with ProvideActorSystem
       actorSystem = actorSystem,
       conf.config, conf.httpsConfig)
 
-  private val controllerApi = new ControllerApi(Nel.one(AkkaHttpControllerApi.admissionToApiResource(
+  private val controllerApi = new ControllerApi(
+    Nel.one(AkkaHttpControllerApi.admissionToApiResource(
     Admission(conf.controllerUri, userAndPassword), conf.httpsConfig)(actorSystem)))
 
   protected def config = conf.config
