@@ -73,7 +73,8 @@ extends HasCloser
       httpsConfig.asScala)(
       actorSystem)
     new JControllerApi(
-      new ControllerApi(apiResources, proxyConf))
+      new ControllerApi(apiResources, proxyConf),
+      config)
   }
 }
 

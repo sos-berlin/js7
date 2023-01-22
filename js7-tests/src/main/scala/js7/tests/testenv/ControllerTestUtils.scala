@@ -5,9 +5,11 @@ import js7.base.utils.CatsUtils.Nel
 import js7.controller.RunningController
 import js7.controller.client.AkkaHttpControllerApi.admissionToApiResource
 import js7.proxy.ControllerApi
+import org.jetbrains.annotations.TestOnly
 
 object ControllerTestUtils
 {
+  @TestOnly
   def newControllerApi(controller: RunningController, userAndPassword: Option[UserAndPassword] = None) =
     new ControllerApi(Nel.one(
       admissionToApiResource(Admission(controller.localUri, userAndPassword))(controller.actorSystem)))
@@ -16,6 +18,7 @@ object ControllerTestUtils
   {
     implicit final class RichRunningController(private val controller: RunningController) extends AnyVal
     {
+      @TestOnly
       def newControllerApi(userAndPassword: Option[UserAndPassword] = None) =
         ControllerTestUtils.newControllerApi(controller, userAndPassword)
     }

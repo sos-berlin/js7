@@ -2,7 +2,7 @@ package js7.proxy.javaapi
 
 import cats.syntax.flatMap.*
 import cats.syntax.traverse.*
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config.Config
 import io.vavr.control.Either as VEither
 import java.time.Instant
 import java.util.Objects.requireNonNull
@@ -13,6 +13,7 @@ import js7.base.annotation.javaApi
 import js7.base.log.CorrelId
 import js7.base.monixutils.AsyncVariable
 import js7.base.problem.Problem
+import js7.base.service.{RestartAfterFailureService, Service}
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
 import js7.data.board.{BoardPath, NoticeId}
@@ -42,9 +43,11 @@ import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
 
 @javaApi
-final class JControllerApi(val asScala: ControllerApi)(implicit scheduler: Scheduler)
+final class JControllerApi(val asScala: ControllerApi, config: Config)
+  (implicit scheduler: Scheduler)
 {
-  private val clusterWatchService = AsyncVariable[Option[ClusterWatchService]](None)
+  private val clusterWatchService =
+    AsyncVariable[Option[RestartAfterFailureService[ClusterWatchService]]](None)
 
   def stop: CompletableFuture[Void] =
     runTask(asScala.stop.as(Void))
@@ -326,8 +329,10 @@ final class JControllerApi(val asScala: ControllerApi)(implicit scheduler: Sched
       .update {
         case Some(service) => Task.some(service)
         case None =>
-          ClusterWatchService
-            .resource(clusterWatchId, asScala.apiResources.sequence, ConfigFactory.empty)
+          Service
+            .restartAfterFailure(startDelays = Nil /*Do not restart on start failure*/)(
+              ClusterWatchService
+                .resource(clusterWatchId, asScala.apiResources.sequence, config))
             .startService
             .flatTap(asScala.addStoppable)
             .map(Some(_))

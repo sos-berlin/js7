@@ -20,7 +20,9 @@ final class JFileWatchTest extends OurTestSuite with ControllerAgentForScalaTest
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
     """
-  private lazy val jControllerApi = new JControllerApi(controllerApi)
+  private lazy val jControllerApi = new JControllerApi(
+    controllerApi,
+    config = controller.config/*reuse this ???*/)
 
   "JFileWatch" in {
     JFileWatchTester.testFileOrder(jControllerApi)

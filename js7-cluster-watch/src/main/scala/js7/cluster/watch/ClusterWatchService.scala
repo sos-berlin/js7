@@ -10,7 +10,7 @@ import js7.base.monixutils.MonixDeadline.syntax.DeadlineSchedule
 import js7.base.problem.Checked
 import js7.base.service.Service
 import js7.base.time.JavaTimeConverters.AsScalaDuration
-import js7.base.time.ScalaTime.DurationRichInt
+import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichThrowable}
 import js7.base.web.HttpClient
@@ -103,8 +103,10 @@ extends Service.StoppableByRequest
                   .void))
               .map {
                 case Left(problem @ ClusterWatchRequestDoesNotMatchProblem) =>
+                  // Already confirmed by this or another ClusterWatch
                   logger.info(s"$nodeApi $problem")
-                case Left(problem) => logger.warn(s"$nodeApi $problem")
+                case Left(problem) =>
+                  logger.warn(s"$nodeApi $problem")
                 case Right(()) =>
               }
               .onErrorHandle(t =>
@@ -128,11 +130,17 @@ object ClusterWatchService
     clusterWatchId: ClusterWatchId,
     apiResources: Resource[Task, Nel[HttpClusterNodeApi]],
     config: Config)
-  : Resource[Task, ClusterWatchService] = {
-    val myConfig = config.withFallback(defaultConfig)
+  : Resource[Task, ClusterWatchService] =
+    resource2(clusterWatchId, apiResources, config.withFallback(defaultConfig))
+
+  private def resource2(
+    clusterWatchId: ClusterWatchId,
+    apiResources: Resource[Task, Nel[HttpClusterNodeApi]],
+    config: Config)
+  : Resource[Task, ClusterWatchService] =
     Resource.suspend(Task {
-      val keepAlive = myConfig.finiteDuration("js7.web.client.keep-alive").orThrow
-      val retryDelays = myConfig.getDurationList("js7.journal.cluster.watch.retry-delays")
+      val keepAlive = config.finiteDuration("js7.web.client.keep-alive").orThrow
+      val retryDelays = config.getDurationList("js7.journal.cluster.watch.retry-delays")
         .asScala.map(_.toFiniteDuration).toVector
       apiResources
         .flatMap(nodeApis =>
@@ -145,5 +153,4 @@ object ClusterWatchService
                 keepAlive = keepAlive,
                 retryDelays = retryDelays)))))
     })
-  }
 }
