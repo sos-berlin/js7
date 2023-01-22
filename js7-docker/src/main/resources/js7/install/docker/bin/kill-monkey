@@ -19,7 +19,7 @@ pids+="$pids $!"
 pids+="$pids $!"
 
 "$bin"/kill-and-restart-monkey \
-  --container=cluster-watch \
+  --container=js7-cluster-watch \
   --up-exp=7  \
   --down-exp=1 \
   --cursor-line=3 &
