@@ -496,8 +496,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
         stopRequested = () => stopRequested)
 
   def executeClusterWatchConfirm(cmd: ClusterWatchConfirm): Task[Checked[Unit]] =
-    logger.traceTask(cmd.toString)(
-      common.clusterWatchCounterpart.executeClusterWatchConfirm(cmd))
+    common.clusterWatchCounterpart.executeClusterWatchConfirm(cmd)
 
   // Called back by clusterWatchCounterpart.executeClusterWatchConfirm
   private def registerClusterWatchId(confirm: ClusterWatchConfirm, alreadyLocked: Boolean)
@@ -515,8 +514,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
           nonLockingRegisterClusterWatchId(confirm))
     })
 
-  private def nonLockingRegisterClusterWatchId(confirm: ClusterWatchConfirm)
-  : Task[Checked[Unit]] =
+  private def nonLockingRegisterClusterWatchId(confirm: ClusterWatchConfirm): Task[Checked[Unit]] =
     persistence.clusterState
       .flatMap(clusterState =>
         Task(ifClusterWatchRegistered(clusterState, confirm.clusterWatchId))
@@ -531,6 +529,9 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
                 .map(_.map { case (stampedEvents, journaledState) =>
                   stampedEvents -> journaledState.clusterState
                 })))
+      .flatTapT(_ => common
+        .clusterWatchCounterpart.onClusterWatchRegistered(confirm.clusterWatchId)
+        .as(Checked.unit))
       .flatMapT { case (stampedEvents, clusterState) =>
         val events = stampedEvents.map(_.value.event)
         (events, clusterState) match {
@@ -538,14 +539,10 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
             clusterWatchSynchronizer.applyEvent(event, clusterState)
               .rightAs(())
 
-          case (Seq(), _) =>
-            Task.right(())
-
+          case (Seq(), _) => Task.right(())
           case o => throw new MatchError(o)
         }
       }
-      .flatMapT(_ => common
-        .clusterWatchCounterpart.onClusterWatchRegistered.map(Right(_)))
 
   // Returns Right(true) iff clusterState settings contains clusterWatchId
   private def ifClusterWatchRegistered(clusterState: ClusterState, clusterWatchId: ClusterWatchId)

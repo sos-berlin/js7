@@ -89,7 +89,8 @@ extends Service.StoppableByRequest
       .flatten
 
   private def handleMessage(nodeApi: HttpClusterNodeApi, msg: ClusterWatchMessage): Task[Unit] =
-    msg.correlId.bind(logger.traceTask("handleMessage", msg)(Task.defer(
+    /*msg.correlId.bind — better log the ClusterWatch's CorrelId in Cluster node*/(
+    logger.debugTask("handleMessage", msg)(Task.defer(
       clusterWatch.handleMessage(msg).flatMap(checked =>
         msg match {
           case msg: ClusterWatchRequest =>

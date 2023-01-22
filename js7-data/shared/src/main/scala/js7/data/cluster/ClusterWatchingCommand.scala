@@ -20,8 +20,10 @@ object ClusterWatchingCommand
   extends ClusterWatchingCommand
   {
     override def toString =
-      s"ClusterWatchConfirm($requestId $clusterWatchId $clusterWatchRunId${
-        problem.fold("")(o => s"🚫 $o")})"
+      s"ClusterWatchConfirm($argString)"
+
+    def argString =
+      s"$requestId $clusterWatchId $clusterWatchRunId${problem.fold("")(o => s"🚫 $o")}"
   }
 
   implicit val jsonCodec: TypedJsonCodec[ClusterWatchingCommand] = TypedJsonCodec(

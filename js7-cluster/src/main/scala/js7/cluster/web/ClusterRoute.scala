@@ -59,44 +59,21 @@ trait ClusterRoute extends ClusterWatchMessageRoute
       } ~
       post {
         path("command") {
-          //withoutSizeLimit(
-          //  entity(as[HttpEntity])(httpEntity =>
-          //    httpEntity.contentType match {
-          //      case `application/x-ndjson-ContentType` =>
-          //        completeTask(
-          //          httpEntity
-          //            .dataBytes
-          //            .toObservable
-          //            .flatMap(new ByteSequenceToLinesObservable)
-          //            .map(_.parseJsonAs[ClusterWatchingCommand].orThrow)
-          //            .mapEval(cmd =>
-          //              executeClusterWatchingCommand(cmd)
-          //                .map {
-          //                  case Left(problem) => logger.debug(s"❓ $cmd => $problem")
-          //                  case Right(()) => logger.trace(s"✔ $cmd ")
-          //                })
-          //            .completedL
-          //            .as(OK -> JsonObject.empty)
-          //        )
-          //
-          //      case _ => complete(NotAcceptable)
-          //    }))
-          //    case ContentTypes.`application/json` =>
-                  entity(as[Json]) { json =>
-                    commandJsonCodec
-                      .decodeJson(json)
-                      .toChecked
-                      .fold(complete(_), {
-                        case cmd: ClusterCommand =>
-                          completeTask(
-                            executeClusterCommand(cmd))
+          entity(as[Json]) { json =>
+            commandJsonCodec
+              .decodeJson(json)
+              .toChecked
+              .fold(complete(_), {
+                case cmd: ClusterCommand =>
+                  completeTask(
+                    executeClusterCommand(cmd))
 
-                        case cmd: ClusterWatchingCommand =>
-                          completeTask(
-                            executeClusterWatchingCommand(cmd)
-                              .rightAs(JsonObject.empty))
-                    })
-                  }
+                case cmd: ClusterWatchingCommand =>
+                  completeTask(
+                    executeClusterWatchingCommand(cmd)
+                      .rightAs(JsonObject.empty))
+            })
+          }
         }
       }
     }

@@ -21,6 +21,7 @@ final class ClusterWatchUniquenessChecker(memorySize: Int)
       if (idToRunId.get(clusterWatchId) contains clusterWatchRunId)
         Checked.unit
       else if (idToRunId.values.exists(_ == clusterWatchRunId) || isUsedRunId(clusterWatchRunId)) {
+        // Only in the weird case, that the same clusterWatchRunId has another clusterWatchId
         val problem = ClusterWatchIdNotUniqueProblem(clusterWatchId, clusterWatchRunId)
         logger.warn(problem.toString)
         Left(problem)
