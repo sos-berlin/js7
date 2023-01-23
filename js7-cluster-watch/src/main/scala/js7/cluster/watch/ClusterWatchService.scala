@@ -20,7 +20,7 @@ import js7.cluster.watch.api.ClusterWatchProblems.ClusterWatchRequestDoesNotMatc
 import js7.cluster.watch.api.HttpClusterNodeApi
 import js7.common.configuration.Js7Configuration.defaultConfig
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
-import js7.data.cluster.{ClusterNodeApi, ClusterState, ClusterWatchId, ClusterWatchMessage, ClusterWatchRequest, ClusterWatchRunId}
+import js7.data.cluster.{ClusterNodeApi, ClusterState, ClusterWatchId, ClusterWatchRequest, ClusterWatchRunId}
 import monix.eval.Task
 import monix.reactive.Observable
 import scala.concurrent.duration.FiniteDuration
@@ -46,10 +46,10 @@ extends Service.StoppableByRequest
           .fromIterable(
             for (nodeApi <- nodeApis.toList) yield
               observeAgainAndAgain(nodeApi)(
-                nodeObservable(nodeApi).map(nodeApi -> _)))
+                clusterWatchRequestObservable(nodeApi).map(nodeApi -> _)))
           .merge
           .mapEval { case (nodeApi, msg) =>
-            handleMessage(nodeApi, msg)
+            processRequest(nodeApi, msg)
           }
         .takeUntilEval(untilStopRequested)
           .completedL
@@ -72,13 +72,13 @@ extends Service.StoppableByRequest
             Left(())))
     ).flatten
 
-  private def nodeObservable(nodeApi: ClusterNodeApi): Observable[ClusterWatchMessage] =
+  private def clusterWatchRequestObservable(nodeApi: ClusterNodeApi): Observable[ClusterWatchRequest] =
     Observable
-      .fromTask(logger.traceTask("nodeObservable", nodeApi)(
+      .fromTask(logger.traceTask("clusterWatchRequestObservable", nodeApi)(
         nodeApi
           .retryUntilReachable()(
             nodeApi.retryIfSessionLost()(
-              nodeApi.clusterWatchMessageObservable(clusterWatchId, keepAlive = Some(keepAlive))))
+              nodeApi.clusterWatchRequestObservable(clusterWatchId, keepAlive = Some(keepAlive))))
           .materialize.map {
             case Failure(t: HttpException) if t.statusInt == 503 /*Service unavailable*/ =>
               Failure(t) // Trigger onErrorRestartLoop
@@ -88,18 +88,18 @@ extends Service.StoppableByRequest
           .map(_.orThrow)))
       .flatten
 
-  private def handleMessage(nodeApi: HttpClusterNodeApi, msg: ClusterWatchMessage): Task[Unit] =
+  private def processRequest(nodeApi: HttpClusterNodeApi, msg: ClusterWatchRequest): Task[Unit] =
     /*msg.correlId.bind — better log the ClusterWatch's CorrelId in Cluster node*/(
-    logger.debugTask("handleMessage", msg)(Task.defer(
+    logger.debugTask("processRequest", msg)(Task.defer(
       clusterWatch.handleMessage(msg).flatMap(checked =>
         msg match {
-          case msg: ClusterWatchRequest =>
+          case request: ClusterWatchRequest =>
             HttpClient
               .liftProblem(nodeApi
                 .retryIfSessionLost()(nodeApi
                   .executeClusterWatchingCommand(
                     ClusterWatchConfirm(
-                      msg.requestId, clusterWatchId, clusterWatchRunId,
+                      request.requestId, clusterWatchId, clusterWatchRunId,
                       checked.left.toOption))
                   .void))
               .map {
@@ -113,7 +113,7 @@ extends Service.StoppableByRequest
               .onErrorHandle(t =>
                 logger.error(s"$nodeApi ${t.toStringWithCauses}", t.nullIfNoStackTrace))
           case _ =>
-            for (problem <- checked.left) logger.warn(s"$nodeApi $problem — msg=$msg")
+            for (problem <- checked.left) logger.warn(s"$nodeApi $problem — request=$msg")
             Task.unit
         }))))
 

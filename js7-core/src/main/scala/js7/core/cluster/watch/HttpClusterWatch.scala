@@ -18,8 +18,8 @@ import js7.cluster.watch.api.ClusterWatchProblems.isClusterWatchProblem
 import js7.common.http.AkkaHttpClient
 import js7.core.cluster.watch.HttpClusterWatch.*
 import js7.data.cluster.ClusterState.HasNodes
-import js7.data.cluster.ClusterWatchMessage.RequestId
-import js7.data.cluster.{ClusterEvent, ClusterState, ClusterWatchCheckEvent, ClusterWatchCheckState, ClusterWatchMessage}
+import js7.data.cluster.ClusterWatchRequest.RequestId
+import js7.data.cluster.{ClusterEvent, ClusterState, ClusterWatchCheckEvent, ClusterWatchCheckState, ClusterWatchRequest}
 import js7.data.node.NodeId
 import js7.data.session.HttpSessionApi
 import monix.eval.Task
@@ -55,7 +55,7 @@ with AnyClusterWatch
       val msg = ClusterWatchCheckState(RequestId(0), CorrelId.current, ownNodeId, clusterState)
       liftProblem(
         loginUntilReachable(Iterator.continually(ErrorDelay), onlyIfNotLoggedIn = true)
-          .*>(postMsg(msg))
+          .*>(postRequest(msg))
           .onErrorRestartLoop(())(onError)
           .as(None))
     }
@@ -65,13 +65,13 @@ with AnyClusterWatch
       val msg = ClusterWatchCheckEvent(RequestId(0), CorrelId.current, ownNodeId, event, clusterState)
       liftProblem(
         retryUntilReachable()(
-          post[ClusterWatchMessage, JsonObject](clusterUri, msg)
+          post[ClusterWatchRequest, JsonObject](clusterUri, msg)
         ).onErrorRestartLoop(())(onError)
           .map((_: JsonObject) => None))
     }
 
-  private def postMsg(msg: ClusterWatchMessage): Task[Completed] =
-    post[ClusterWatchMessage, JsonObject](clusterUri, msg)
+  private def postRequest(request: ClusterWatchRequest): Task[Completed] =
+    post[ClusterWatchRequest, JsonObject](clusterUri, request)
       .map((_: JsonObject) => Completed)
 
   private def onError[A](throwable: Throwable, @unused unit: Unit, retry: Unit => Task[A]) =

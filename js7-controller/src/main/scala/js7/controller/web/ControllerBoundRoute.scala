@@ -68,7 +68,7 @@ with WebLogDirectives
   protected val pathToAgentRefState = controllerState.map(_.map(_.keyTo(AgentRefState)))
   protected val routeServiceContext = RouteServiceContext(filteredSnapshotRoute, filteredEventRoute)
   protected val actorRefFactory     = actorSystem
-  protected val clusterWatchMessageStream = clusterNode.clusterWatchMessageStream
+  protected val clusterWatchRequestStream = clusterNode.clusterWatchRequestStream
   protected val gateKeeper = GateKeeper(
     binding,
     GateKeeper.Configuration.fromConfig(config, SimpleUser.apply, Seq(

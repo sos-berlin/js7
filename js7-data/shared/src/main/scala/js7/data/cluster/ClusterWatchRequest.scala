@@ -6,22 +6,18 @@ import js7.base.generic.GenericLong
 import js7.base.log.CorrelId
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.data.cluster.ClusterState.HasNodes
-import js7.data.cluster.ClusterWatchMessage.*
+import js7.data.cluster.ClusterWatchRequest.*
 import js7.data.node.NodeId
 
-sealed trait ClusterWatchMessage
+sealed trait ClusterWatchRequest
 {
+  def requestId: RequestId
   def correlId: CorrelId
   def from: NodeId
   def clusterState: HasNodes
-}
-
-sealed trait ClusterWatchRequest extends ClusterWatchMessage
-{
-  def requestId: RequestId
-
   def toShortString: String
 }
+
 
 final case class ClusterWatchCheckEvent(
   requestId: RequestId,
@@ -46,7 +42,7 @@ extends ClusterWatchRequest
     s"$requestId ${clusterState.toShortString} state"
 }
 
-object ClusterWatchMessage
+object ClusterWatchRequest
 {
   final case class RequestId(number: Long) extends GenericLong {
     def increment = RequestId(number + 1)
@@ -54,7 +50,7 @@ object ClusterWatchMessage
   }
   object RequestId extends GenericLong.Companion[RequestId]
 
-  implicit val jsonCodec: TypedJsonCodec[ClusterWatchMessage] = TypedJsonCodec(
+  implicit val jsonCodec: TypedJsonCodec[ClusterWatchRequest] = TypedJsonCodec(
     Subtype(deriveCodec[ClusterWatchCheckState]),
     Subtype(deriveCodec[ClusterWatchCheckEvent]))
 }

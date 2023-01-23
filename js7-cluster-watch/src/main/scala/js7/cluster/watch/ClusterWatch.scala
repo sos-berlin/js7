@@ -11,7 +11,7 @@ import js7.cluster.watch.ClusterWatch.*
 import js7.cluster.watch.api.ClusterWatchProblems.{ClusterFailOverWhilePassiveLostProblem, ClusterNodeLossNotAcknowledgedProblem, ClusterWatchEventMismatchProblem, ClusterWatchInactiveNodeProblem, InvalidClusterWatchHeartbeatProblem, NoClusterNodeLostProblem, UntaughtClusterWatchProblem}
 import js7.data.cluster.ClusterEvent.{ClusterFailedOver, ClusterNodeLostEvent, ClusterPassiveLost, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{Coupled, HasNodes, PassiveLost}
-import js7.data.cluster.{ClusterWatchCheckEvent, ClusterWatchMessage}
+import js7.data.cluster.{ClusterWatchCheckEvent, ClusterWatchRequest}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.node.NodeId
 import monix.eval.Task
@@ -37,9 +37,9 @@ final class ClusterWatch(
 
   // TODO Das wird synchron genutzt und braucht nicht mehr asynchron zu sein
 
-  def handleMessage(msg: ClusterWatchMessage): Task[Checked[Completed]] = {
-    import msg.{from, clusterState as reportedClusterState}
-    val maybeEvent = msg match {
+  def handleMessage(request: ClusterWatchRequest): Task[Checked[Completed]] = {
+    import request.{from, clusterState as reportedClusterState}
+    val maybeEvent = request match {
       case o: ClusterWatchCheckEvent => Some(o.event)
       case _ => None
     }

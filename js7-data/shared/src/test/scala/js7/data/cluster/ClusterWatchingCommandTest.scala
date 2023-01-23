@@ -12,7 +12,7 @@ final class ClusterWatchingCommandTest extends OurTestSuite
   "JSON" in {
     testJson[ClusterWatchingCommand](
       ClusterWatchConfirm(
-        ClusterWatchMessage.RequestId(123L),
+        ClusterWatchRequest.RequestId(123L),
         ClusterWatchId("WATCH"),
         ClusterWatchRunId(Base64UUID.zero.string),
         Some(Problem("PROBLEM"))),

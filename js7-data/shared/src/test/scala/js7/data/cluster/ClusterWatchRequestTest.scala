@@ -7,11 +7,11 @@ import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.web.Uri
 import js7.data.cluster.ClusterEvent.ClusterNodesAppointed
 import js7.data.cluster.ClusterState.NodesAppointed
-import js7.data.cluster.ClusterWatchMessage.RequestId
+import js7.data.cluster.ClusterWatchRequest.RequestId
 import js7.data.node.NodeId
 import js7.tester.CirceJsonTester.testJson
 
-final class ClusterWatchMessageTest extends OurTestSuite
+final class ClusterWatchRequestTest extends OurTestSuite
 {
   "JSON" - {
     val clusterSetting = ClusterSetting(
@@ -22,7 +22,7 @@ final class ClusterWatchMessageTest extends OurTestSuite
       ClusterTiming(10.s, 20.s))
 
     "ClusterWatchCheckEvent" in {
-      testJson[ClusterWatchMessage](
+      testJson[ClusterWatchRequest](
         ClusterWatchCheckEvent(
           RequestId(123),
           CorrelId("TESTTEST"),
@@ -68,7 +68,7 @@ final class ClusterWatchMessageTest extends OurTestSuite
     }
 
     "ClusterWatchCheckState" in {
-      testJson[ClusterWatchMessage](
+      testJson[ClusterWatchRequest](
         ClusterWatchCheckState(
           RequestId(123),
           CorrelId("TESTTEST"),

@@ -34,7 +34,7 @@ final class ClusterRouteTest extends OurTestSuite with RouteTester with ClusterR
   protected val nodeId = NodeId("NODE-ID")
   protected def clusterNodeIsBackup = false
   protected val checkedClusterState = Task.right(Stamped(1, ClusterState.Empty))
-  protected def clusterWatchMessageStream = throw new NotImplementedError
+  protected def clusterWatchRequestStream = throw new NotImplementedError
   protected def nextCusterWatchMessage = throw new NotImplementedError
 
   protected def eventWatch =

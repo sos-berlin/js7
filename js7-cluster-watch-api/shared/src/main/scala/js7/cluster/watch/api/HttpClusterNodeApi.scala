@@ -9,7 +9,7 @@ import js7.base.problem.Checked
 import js7.base.session.SessionApi
 import js7.base.web.HttpClient.liftProblem
 import js7.base.web.{HttpClient, Uri}
-import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterNodeState, ClusterState, ClusterWatchId, ClusterWatchMessage, ClusterWatchingCommand}
+import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterNodeState, ClusterState, ClusterWatchId, ClusterWatchRequest, ClusterWatchingCommand}
 import js7.data.event.{Event, EventId, EventRequest, JournalPosition, KeyedEvent, Stamped}
 import js7.data.session.HttpSessionApi
 import monix.eval.Task
@@ -78,11 +78,11 @@ extends ClusterNodeApi with HttpSessionApi with HasIsIgnorableStackTrace
       timeout = Some(timeout), markEOF = markEOF, returnAck = true
     ).map(_.map(_.utf8String.stripSuffix("\n").toLong))
 
-  final def clusterWatchMessageObservable(
+  final def clusterWatchRequestObservable(
     clusterWatchId: ClusterWatchId,
     keepAlive: Option[FiniteDuration])
-  : Task[Observable[ClusterWatchMessage]] =
-    httpClient.getDecodedLinesObservable[ClusterWatchMessage](
+  : Task[Observable[ClusterWatchRequest]] =
+    httpClient.getDecodedLinesObservable[ClusterWatchRequest](
       uris.clusterWatchMessages(clusterWatchId, keepAlive),
       responsive = true)
 

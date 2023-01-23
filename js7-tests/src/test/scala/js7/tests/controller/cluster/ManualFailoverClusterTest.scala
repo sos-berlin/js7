@@ -65,7 +65,7 @@ final class ManualFailoverClusterTest extends ControllerClusterTester
         "— The Controller should have terminated while the shell script runs")
 
       backupController.testEventBus
-        .whenFilterMap[WaitingForConfirmation, ClusterFailedOver](_.message match {
+        .whenFilterMap[WaitingForConfirmation, ClusterFailedOver](_.request match {
           case ClusterWatchCheckEvent(_, _, _, event: ClusterFailedOver, _) => Some(event)
           case _ => None
         })

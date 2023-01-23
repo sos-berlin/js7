@@ -19,8 +19,8 @@ import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.akkahttp.web.session.SessionInit
 import js7.common.http.AkkaHttpClient.`x-js7-request-id`
 import js7.data.cluster.ClusterEvent.ClusterNodesAppointed
-import js7.data.cluster.ClusterWatchMessage.RequestId
-import js7.data.cluster.{ClusterSetting, ClusterState, ClusterTiming, ClusterWatchCheckEvent, ClusterWatchMessage}
+import js7.data.cluster.ClusterWatchRequest.RequestId
+import js7.data.cluster.{ClusterSetting, ClusterState, ClusterTiming, ClusterWatchCheckEvent, ClusterWatchRequest}
 import js7.data.controller.ControllerId
 import js7.data.node.NodeId
 import monix.execution.Scheduler
@@ -66,7 +66,7 @@ final class ClusterWatchRouteTest extends OurTestSuite with ScalatestRouteTest w
     Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))))
 
   "Post" in {
-    Post[ClusterWatchMessage]("/cluster",
+    Post[ClusterWatchRequest]("/cluster",
       ClusterWatchCheckEvent(
         RequestId(1),
         CorrelId("CorrelId"),

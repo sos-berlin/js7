@@ -36,7 +36,7 @@ final class ManualPassiveLostClusterTest extends ControllerClusterTester
       //??? backupController.terminated await 99.s
 
       primaryController.testEventBus
-        .whenFilterMap[WaitingForConfirmation, ClusterPassiveLost](_.message match {
+        .whenFilterMap[WaitingForConfirmation, ClusterPassiveLost](_.request match {
           case ClusterWatchCheckEvent(_, _, _, event: ClusterPassiveLost, _) => Some(event)
           case _ => None
         })

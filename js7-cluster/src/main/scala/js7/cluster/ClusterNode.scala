@@ -25,7 +25,7 @@ import js7.data.Problems.{BackupClusterNodeNotAppointed, ClusterNodeIsNotActiveP
 import js7.data.cluster.ClusterCommand.{ClusterInhibitActivation, ClusterStartBackupNode}
 import js7.data.cluster.ClusterState.{Coupled, Empty, FailedOver, HasNodes}
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
-import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterSetting, ClusterWatchMessage, ClusterWatchingCommand}
+import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterSetting, ClusterWatchRequest, ClusterWatchingCommand}
 import js7.data.controller.ControllerId
 import js7.data.event.{EventId, JournalPosition, SnapshotableState}
 import js7.data.node.NodeId
@@ -324,7 +324,7 @@ final class ClusterNode[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
             common.testEventPublisher.publish(ClusterWatchConfirmed(cmd, result))))
     }
 
-  def clusterWatchMessageStream: Task[fs2.Stream[Task, ClusterWatchMessage]] =
+  def clusterWatchRequestStream: Task[fs2.Stream[Task, ClusterWatchRequest]] =
     common.clusterWatchCounterpart.newStream
 
   def confirmLostNode(nodeId: NodeId): Task[Checked[Unit]] =

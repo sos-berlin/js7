@@ -16,7 +16,7 @@ import js7.common.akkahttp.AkkaHttpServerUtils.{accept, observableToResponseMars
 import js7.common.akkahttp.StandardMarshallers.*
 import js7.common.akkahttp.web.session.RouteProvider
 import js7.common.http.JsonStreamingSupport.{NdJsonStreamingSupport, `application/x-ndjson`, jsonSeqMarshaller}
-import js7.data.cluster.{ClusterState, ClusterWatchMessage}
+import js7.data.cluster.{ClusterState, ClusterWatchRequest}
 import js7.data.event.Stamped
 import js7.data.node.NodeId
 import js7.journal.watch.EventWatch
@@ -36,7 +36,7 @@ trait ClusterWatchMessageRoute extends RouteProvider
   private lazy val whenShuttingDownCompletion = new FutureCompletion(whenShuttingDown)
 
   protected def checkedClusterState: Task[Checked[Stamped[ClusterState]]]
-  protected def clusterWatchMessageStream: Task[fs2.Stream[Task, ClusterWatchMessage]]
+  protected def clusterWatchRequestStream: Task[fs2.Stream[Task, ClusterWatchRequest]]
   protected def eventWatch: EventWatch
   protected def nodeId: NodeId
 
@@ -46,7 +46,7 @@ trait ClusterWatchMessageRoute extends RouteProvider
         extractRequest(request =>
           parameter("keepAlive".as[FiniteDuration])(keepAlive =>
             complete {
-              clusterWatchMessageStream
+              clusterWatchRequestStream
                 .map(_
                   .handleErrorWith { throwable =>
                     // The streaming event web service doesn't have an error channel,
@@ -57,7 +57,7 @@ trait ClusterWatchMessageRoute extends RouteProvider
                   })
                 .flatMap { stream =>
                   val observable = Observable.fromReactivePublisher(
-                    stream.toUnicastPublisher: Publisher[ClusterWatchMessage])
+                    stream.toUnicastPublisher: Publisher[ClusterWatchRequest])
                   val toResponseMarshallable = observableToResponseMarshallable(
                     observable, request, userId, whenShuttingDownCompletion,
                     keepAlive = Some(keepAlive),
@@ -76,10 +76,10 @@ trait ClusterWatchMessageRoute extends RouteProvider
   private val emptyResponseMarshallable: ToResponseMarshallable =
     observableToMarshallable(Observable.empty)
 
-  private def observableToMarshallable(observable: Observable[ClusterWatchMessage])
+  private def observableToMarshallable(observable: Observable[ClusterWatchRequest])
   : ToResponseMarshallable = {
     implicit val x = NdJsonStreamingSupport
-    implicit val y = jsonSeqMarshaller[ClusterWatchMessage]
+    implicit val y = jsonSeqMarshaller[ClusterWatchRequest]
     monixObservableToMarshallable(
       observable
         .takeUntilCompletedAndDo(whenShuttingDownCompletion)(_ => Task {

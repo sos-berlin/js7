@@ -13,7 +13,7 @@ object ClusterWatchingCommand
 {
   // Command from ClusterWatch
   final case class ClusterWatchConfirm(
-    requestId: ClusterWatchMessage.RequestId,
+    requestId: ClusterWatchRequest.RequestId,
     clusterWatchId: ClusterWatchId,
     clusterWatchRunId: ClusterWatchRunId,
     problem: Option[Problem])
