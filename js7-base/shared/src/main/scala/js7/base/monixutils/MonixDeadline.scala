@@ -75,6 +75,9 @@ extends Ordered[MonixDeadline]
   def compare(other: MonixDeadline) =
     nanos compare other.nanos
 
+  def now: MonixDeadline =
+    MonixDeadline(nowNanos)
+
   /** Not immutable, may return each nanosecond a different string. */
   override def toString = {
     val t = elapsed

@@ -8,7 +8,6 @@ import izumi.reflect.Tag
 import js7.base.log.Logger
 import js7.base.monixutils.MonixDeadline
 import js7.base.monixutils.MonixDeadline.now
-import js7.base.monixutils.MonixDeadline.syntax.DeadlineSchedule
 import js7.base.service.RestartAfterFailureService.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.repeatLast
@@ -43,45 +42,50 @@ extends Service
     Task.deferAction(implicit scheduler =>
       for {
         service <- startUnderlyingService
-        started <- startService(
-          Task.tailRecM((some(service), now, repeatLast(runDelays))) {
-            case (initialService, since, delays) =>
-              val service = initialService match {
-                case Some(initialService) => Task.pure(initialService)
-                case None => startUnderlyingService
-              }
-              service.flatMap(service =>
-                service
-                  .untilStopped
-                  .map(Right(_))
-                  .onErrorHandleWith { throwable =>
-                    // Service has already logged the throwable
-                    logger.debug(s"💥 $serviceName start failed: ${throwable.toStringWithCauses}",
-                      throwable.nullIfNoStackTrace)
-                    if (stopping)
-                      Task.right(())
-                    else
-                      delayAfterFailure(since, delays, runDelays)
-                        .map(delays =>
-                          if (stopping)
-                            Right(())
-                          else
-                            Left((None, now, delays)))
-                  })
-          })
+        started <- startService(runUnderlyingService(service))
       } yield started)
 
   private def startUnderlyingService(implicit scheduler: Scheduler): Task[S] =
     Task
       .defer(serviceResource
-        .startService
+        .acquire
         .onErrorRestartLoop((now, repeatLast(startDelays))) {
           case (throwable, (since, delays), retry) =>
             logThrowable(throwable)
             delayAfterFailure(since, delays, startDelays)
-              .flatMap(delays => retry((scheduler.now, delays)))
+              .flatMap { case (now_, delays) =>
+                retry(now_ -> delays)
+              }
         })
       .flatTap(service => setCurrentService(service))
+
+  private def runUnderlyingService(service: S)(implicit scheduler: Scheduler) =
+    Task.tailRecM((some(service), now, repeatLast(runDelays))) {
+      case (initialService, since, delays) =>
+        val service = initialService match {
+          case Some(initialService) => Task.pure(initialService) // First iteration
+          case None => startUnderlyingService // Following iterations
+        }
+        service.flatMap(service =>
+          service
+            .untilStopped
+            .map(Right(_))
+            .onErrorHandleWith { throwable =>
+              // Service has already logged the throwable
+              logger.debug(s"💥 $serviceName start failed: ${throwable.toStringWithCauses}",
+                throwable.nullIfNoStackTrace)
+              if (stopping)
+                Task.right(())
+              else
+                delayAfterFailure(since, delays, runDelays)
+                  .map { case (now_, delays) =>
+                    if (stopping)
+                      Right(()) // finish tailRecM
+                    else
+                      Left((None, now_, delays))/*loop*/
+                  }
+            })
+    }
 
   private def logThrowable(throwable: Throwable): Unit = {
     logger.error(s"$serviceName start failed: ${throwable.toStringWithCauses}")
@@ -93,18 +97,20 @@ extends Service
     since: MonixDeadline,
     delays: LazyList[FiniteDuration],
     newDelays: Seq[FiniteDuration])
-  : Task[LazyList[FiniteDuration]] = {
-    val duration = since.elapsed
-    val delay = (delays.head - duration) max ZeroDuration
+  : Task[(MonixDeadline, LazyList[FiniteDuration])] = {
+    // For predictable timestamps, try to delay precisely according to delays
+    val now_ = since.now
+    val elapsed = now_ - since
+    val delay = (delays.head - elapsed) max ZeroDuration
     // Throwable has already been error-logged by caller (start) or Service (run)
     logger.info(s"Due to failure, $serviceName restarts ${
       if (delay.isZero) "now" else s"in ${delay.pretty}"}")
     Task.race(untilStopRequested.get, Task.sleep(delay)) *>
-      Task(
-        if (duration >= newDelays.last)
+      Task(now_ + delay ->
+        (if (elapsed >= newDelays.last)
           repeatLast(newDelays) // reset restartDelays
         else
-          delays.tail)
+          delays.tail))
   }
 
   private  def setCurrentService(service: S): Task[Unit] =

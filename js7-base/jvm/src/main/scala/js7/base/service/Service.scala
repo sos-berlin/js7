@@ -115,12 +115,6 @@ object Service
         memoizedStop)
   }
 
-  implicit final class RichServiceResource[A](private val resource: Resource[Task, A])
-  extends AnyVal {
-    def startService(implicit evidence: A <:< Service): Task[A] =
-      resource.allocated.map(_._1)
-  }
-
   /** Marker type to ensure call of `startFiber`. */
   final class Started private[Service] {
     override def toString = "Service.Started"

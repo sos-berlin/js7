@@ -8,7 +8,7 @@ import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.MonixDeadline
 import js7.base.monixutils.MonixDeadline.syntax.DeadlineSchedule
 import js7.base.problem.Checked
-import js7.base.service.Service
+import js7.base.service.{RestartAfterFailureService, Service}
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
@@ -133,6 +133,22 @@ object ClusterWatchService
     config: Config)
   : Resource[Task, ClusterWatchService] =
     resource2(clusterWatchId, apiResources, config.withFallback(defaultConfig))
+
+  def restartableResource(
+    clusterWatchId: ClusterWatchId,
+    apiResources: Resource[Task, Nel[HttpClusterNodeApi]],
+    config: Config)
+  : Resource[Task, RestartAfterFailureService[ClusterWatchService]] =
+    Resource.suspend(Task {
+      val cfg = config.withFallback(defaultConfig)
+      val startDelays = Nil // Do not restart on start failure
+      val runDelays = cfg
+        .getDurationList("js7.journal.cluster.watch.restart-after-failure-delays")
+        .asScala.map(_.toFiniteDuration).toVector
+
+      Service.restartAfterFailure(startDelays = startDelays, runDelays = runDelays)(
+        resource2(clusterWatchId, apiResources, cfg))
+    })
 
   private def resource2(
     clusterWatchId: ClusterWatchId,

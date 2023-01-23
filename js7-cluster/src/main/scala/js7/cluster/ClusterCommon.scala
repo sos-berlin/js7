@@ -48,7 +48,7 @@ private[cluster] final class ClusterCommon(
   val activationInhibitor = new ActivationInhibitor
   private val clusterWatchCounterpartLazy = Lazy(ClusterWatchCounterpart
     .resource(clusterConf, timing)
-    .startService
+    .acquire
     .runSyncUnsafe(99.s)/*TODO Make ClusterCommon a service*/)
 
   def clusterWatchCounterpart: ClusterWatchCounterpart =

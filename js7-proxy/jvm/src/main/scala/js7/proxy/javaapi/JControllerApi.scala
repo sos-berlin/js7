@@ -13,7 +13,7 @@ import js7.base.annotation.javaApi
 import js7.base.log.CorrelId
 import js7.base.monixutils.AsyncVariable
 import js7.base.problem.Problem
-import js7.base.service.{RestartAfterFailureService, Service}
+import js7.base.service.RestartAfterFailureService
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
 import js7.data.board.{BoardPath, NoticeId}
@@ -329,11 +329,9 @@ final class JControllerApi(val asScala: ControllerApi, config: Config)
       .update {
         case Some(service) => Task.some(service)
         case None =>
-          Service
-            .restartAfterFailure(startDelays = Nil /*Do not restart on start failure*/)(
-              ClusterWatchService
-                .resource(clusterWatchId, asScala.apiResources.sequence, config))
-            .startService
+          ClusterWatchService
+            .restartableResource(clusterWatchId, asScala.apiResources.sequence, config)
+            .acquire
             .flatTap(asScala.addStoppable)
             .map(Some(_))
       }
