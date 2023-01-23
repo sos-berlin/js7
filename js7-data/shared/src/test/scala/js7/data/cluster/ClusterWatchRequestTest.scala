@@ -63,8 +63,7 @@ final class ClusterWatchMessageTest extends OurTestSuite
                 "heartbeatTimeout": 20
               }
             }
-          },
-          "checkOnly": false
+          }
         }""")
     }
 

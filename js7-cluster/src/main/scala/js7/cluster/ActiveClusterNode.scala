@@ -17,6 +17,7 @@ import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.{HttpClient, Uri}
 import js7.cluster.ActiveClusterNode.*
+import js7.cluster.watch.ClusterWatchConf
 import js7.cluster.watch.api.ClusterWatchProblems.{ClusterStateEmptyProblem, NoClusterWatchProblem}
 import js7.common.http.RecouplingStreamReader
 import js7.data.Problems.{ClusterCommandInapplicableProblem, ClusterNodeIsNotActiveProblem, ClusterSettingNotUpdatable, MissingPassiveClusterNodeHeartbeatProblem}
@@ -503,7 +504,9 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
   private def registerClusterWatchId(confirm: ClusterWatchConfirm, alreadyLocked: Boolean)
   : Task[Checked[Unit]] =
     logger.traceTask(Task.defer {
-      if (!persistence.isStarted) {
+      if (confirm.clusterWatchId == ClusterWatchConf.commandClusterWatchId)
+        Task.right(())
+      else if (!persistence.isStarted) {
         // Not expected
         logger.error(
           s"🔥 registerClusterWatchId(${confirm.clusterWatchId.string}): persistence not yet started")

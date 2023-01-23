@@ -28,8 +28,7 @@ final case class ClusterWatchCheckEvent(
   correlId: CorrelId,
   from: NodeId,
   event: ClusterEvent,
-  clusterState: ClusterState.HasNodes,
-  checkOnly: Boolean = false /*???*/)
+  clusterState: ClusterState.HasNodes)
 extends ClusterWatchRequest
 {
   override def toShortString =

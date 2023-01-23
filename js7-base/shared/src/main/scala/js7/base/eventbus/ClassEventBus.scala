@@ -73,8 +73,7 @@ trait ClassEventBus[E] extends EventPublisher[E] with AutoCloseable
   final def when[C <: Classifier : ClassTag]: Task[ClassifierToEvent[C]] =
     when_[C](_ => true)
 
-  final def when_[C <: Classifier: ClassTag](
-    predicate: ClassifierToEvent[C] => Boolean = (_: ClassifierToEvent[C]) => true)
+  final def when_[C <: Classifier: ClassTag](predicate: ClassifierToEvent[C] => Boolean)
   : Task[ClassifierToEvent[C]] =
     Task.deferFuture {
       val promise = Promise[ClassifierToEvent[C]]()
@@ -82,9 +81,21 @@ trait ClassEventBus[E] extends EventPublisher[E] with AutoCloseable
       promise.future
     }
 
+  private final def whenPF[C <: Classifier : ClassTag, D](pf: PartialFunction[ClassifierToEvent[C], D])
+  : Task[D] =
+    whenFilterMap(pf.lift)
+
+  final def whenFilterMap[C <: Classifier: ClassTag, D](f: ClassifierToEvent[C] => Option[D]): Task[D] =
+    Task.deferFuture {
+      val promise = Promise[D]()
+      oneShotFilterMap(f)(promise.success)
+      promise.future
+    }
+
   final def oneShot[C <: Classifier: ClassTag](
     predicate: ClassifierToEvent[C] => Boolean = (_: ClassifierToEvent[C]) => true)
-    (handle: ClassifierToEvent[C] => Unit): Unit = {
+    (handle: ClassifierToEvent[C] => Unit)
+  : Unit = {
     val used = AtomicBoolean(false)
     lazy val subscription: EventSubscription =
       toSubscription { event_ =>
@@ -92,6 +103,30 @@ trait ClassEventBus[E] extends EventPublisher[E] with AutoCloseable
         if (predicate(event) && !used.getAndSet(true)) {
           subscription.close()
           handle(event)
+        }
+      }
+    addSubscription(subscription)
+  }
+
+  private final def oneShotPF[C <: Classifier : ClassTag, A](
+    pf: PartialFunction[ClassifierToEvent[C], A])
+    (handle: A => Unit)
+  : Unit =
+    oneShotFilterMap(pf.lift)(handle)
+
+  final def oneShotFilterMap[C <: Classifier : ClassTag, A](
+    f: ClassifierToEvent[C] => Option[A])
+    (handle: A => Unit)
+  : Unit = {
+    val used = AtomicBoolean(false)
+    lazy val subscription: EventSubscription =
+      toSubscription { event_ =>
+        val event = event_.asInstanceOf[ClassifierToEvent[C]]
+        for (a <- f(event)) {
+          if (!used.getAndSet(true)) {
+            subscription.close()
+            handle(a)
+          }
         }
       }
     addSubscription(subscription)

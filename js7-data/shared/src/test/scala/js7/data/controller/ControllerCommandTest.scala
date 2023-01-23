@@ -447,6 +447,14 @@ final class ControllerCommandTest extends OurTestSuite
       }""")
   }
 
+  "ClusterConfirmLostNode" in {
+    testJson[ControllerCommand](ClusterConfirmLostNode(NodeId("NODE")),
+      json"""{
+      "TYPE": "ClusterConfirmLostNode",
+      "lostNodeId": "NODE"
+    }""")
+  }
+
   "Response.Accepted" in {
     testJson[ControllerCommand.Response](
       Response.Accepted,

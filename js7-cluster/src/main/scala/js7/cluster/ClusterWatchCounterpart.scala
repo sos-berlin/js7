@@ -3,6 +3,8 @@ package js7.cluster
 import cats.effect.concurrent.Deferred
 import cats.effect.{ExitCase, Resource}
 import cats.syntax.flatMap.*
+import cats.syntax.option.*
+import js7.base.eventbus.EventPublisher
 import js7.base.fs2utils.Fs2PubSub
 import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
@@ -17,13 +19,15 @@ import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest
 import js7.cluster.ClusterWatchCounterpart.*
+import js7.cluster.watch.ClusterWatchConf
 import js7.cluster.watch.api.AnyClusterWatch
-import js7.cluster.watch.api.ClusterWatchProblems.{ClusterWatchIdDoesNotMatchProblem, ClusterWatchRequestDoesNotMatchProblem, NoClusterWatchProblem, OtherClusterWatchStillAliveProblem}
-import js7.data.cluster.ClusterEvent.{ClusterCouplingPrepared, ClusterNodesAppointed, ClusterWatchRegistered}
+import js7.cluster.watch.api.ClusterWatchProblems.{ClusterConfirmLostNodeDoesNotMatchProblem, ClusterWatchIdDoesNotMatchProblem, ClusterWatchRequestDoesNotMatchProblem, NoClusterWatchProblem, OtherClusterWatchStillAliveProblem}
+import js7.data.cluster.ClusterEvent.{ClusterCouplingPrepared, ClusterNodeLostEvent, ClusterNodesAppointed, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState.{Coupled, FailedOver, HasNodes, PassiveLost}
 import js7.data.cluster.ClusterWatchMessage.RequestId
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
-import js7.data.cluster.{ClusterEvent, ClusterTiming, ClusterWatchCheckEvent, ClusterWatchCheckState, ClusterWatchId, ClusterWatchMessage, ClusterWatchRequest}
+import js7.data.cluster.{ClusterEvent, ClusterTiming, ClusterWatchCheckEvent, ClusterWatchCheckState, ClusterWatchId, ClusterWatchMessage, ClusterWatchRequest, ClusterWatchRunId}
+import js7.data.node.NodeId
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.atomic.Atomic
@@ -32,7 +36,8 @@ import scala.util.Random
 
 final class ClusterWatchCounterpart private(
   clusterConf: ClusterConf,
-  timing: ClusterTiming)
+  timing: ClusterTiming,
+  testEventPublisher: EventPublisher[Any])
   (implicit scheduler: Scheduler)
 extends Service.StoppableByRequest with AnyClusterWatch
 {
@@ -47,6 +52,7 @@ extends Service.StoppableByRequest with AnyClusterWatch
   private val clusterWatchUniquenessChecker = new ClusterWatchUniquenessChecker(
     clusterConf.clusterWatchUniquenessMemorySize)
   @volatile private var currentClusterWatchId: Option[CurrentClusterWatchId] = None
+  @volatile private var commandConfirmedLostNodeId = none[(NodeId, MonixDeadline)]
 
   protected def start =
     startService(
@@ -89,11 +95,14 @@ extends Service.StoppableByRequest with AnyClusterWatch
         Task.right(None)
 
       case _ =>
-        check(
-          clusterState.setting.clusterWatchId,
-          ClusterWatchCheckEvent(_, CorrelId.current, ownId, event, clusterState),
-          clusterWatchIdChangeAllowed = event.isInstanceOf[ClusterWatchRegistered]
-        ).map(_.map(Some(_)))
+        Task.defer {
+          commandConfirmedLostNodeId = None
+          check(
+            clusterState.setting.clusterWatchId,
+            ClusterWatchCheckEvent(_, CorrelId.current, ownId, event, clusterState),
+            clusterWatchIdChangeAllowed = event.isInstanceOf[ClusterWatchRegistered]
+          ).map(_.map(Some(_)))
+        }
     }
 
   private def check(
@@ -109,50 +118,69 @@ extends Service.StoppableByRequest with AnyClusterWatch
         val msg = toMessage(reqId)
         lock.lock(
           logger.debugTask("check", msg)(Task.defer {
-            val req = new Request(clusterWatchId, reqId,
+            val req = new Request(clusterWatchId, msg,
               clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed)
-            request.set(Some(req))
-            val t = now
-            var warned = false
-            send(msg)
-              .*>(req
-                .untilConfirmed
-                .timeoutTo(
-                  timing.clusterWatchReactionTimeout,
-                  Task.raiseError(RequestTimeoutException)))
-              .onErrorRestartLoop(()) {
-                case (RequestTimeoutException, _, retry) =>
-                  warned = true
-                  logger.warn(
-                    s"⭕ Still trying to get a confirmation from ${
-                      clusterWatchId getOrElse "unknown ClusterWatch"} for ${
-                      msg.toShortString} for ${t.elapsed.pretty}...")
-                  retry(()).delayExecution(1.s)
 
-                case (t, _, _) => Task.raiseError(t)
-              }
-              .flatTap {
-                case Left(problem) =>
-                  Task(logger.warn(s"ClusterWatch rejected ${msg.toShortString}: $problem"))
-
-                case Right(ClusterWatchConfirm(_, clusterWatchId, _, Some(problem))) =>
-                  // Just in case, the caller does not warn ???
-                  Task(logger.warn(s"$clusterWatchId rejected ${msg.toShortString}: $problem"))
-
-                case Right(ClusterWatchConfirm(_, clusterWatchId, _, None)) =>
-                  Task {
-                    if (warned) logger.info(
-                      s"🟢 $clusterWatchId finally confirmed ${
-                        msg.toShortString} after ${t.elapsed.pretty}")
-                  }
-              }
-              .guaranteeCase(exitCase => Task {
-                request.set(None)
-                if (warned && exitCase != ExitCase.Completed) logger.warn(
-                  s"${msg.toShortString} => $exitCase · after ${t.elapsed.pretty}")
-              })
+            msg match {
+              case ClusterWatchCheckState(_, _, _, failedOver: FailedOver)
+                if commandConfirmedLostNodeId.exists(o =>
+                  o._1 == failedOver.passiveId && o._2.hasTimeLeft) =>
+                  Task.right(req.commandConfirm)
+              case _ =>
+                commandConfirmedLostNodeId = None
+                check2(clusterWatchId, msg, req)
+            }
           }))
       }
+
+  private def check2(clusterWatchId: Option[ClusterWatchId], msg: ClusterWatchRequest, req: Request)
+  : Task[Checked[ClusterWatchConfirm]] =
+    Task.defer {
+      request.set(Some(req))
+      val t = now
+      var warned = false
+      send(msg)
+        .*>(Task(
+          testEventPublisher.publish(WaitingForConfirmation(msg))))
+        .*>(req
+          .untilConfirmed
+          .timeoutTo(
+            timing.clusterWatchReactionTimeout,
+            Task.raiseError(RequestTimeoutException)))
+        .onErrorRestartLoop(()) {
+          case (RequestTimeoutException, _, retry) =>
+            warned = true
+            logger.warn(
+              "⭕ Still trying to get a confirmation from " +
+                clusterWatchId.getOrElse("unknown ClusterWatch") +
+                " for " + msg.toShortString + "" +
+                " for " + t.elapsed.pretty + "...")
+            retry(()).delayExecution(1.s)
+
+          case (t, _, _) => Task.raiseError(t)
+        }
+        .flatTap {
+          case Left(problem) =>
+            Task(logger.warn(s"ClusterWatch rejected ${msg.toShortString}: $problem"))
+
+          case Right(ClusterWatchConfirm(_, clusterWatchId, _, Some(problem))) =>
+            // Just in case, the caller does not warn ???
+            Task(logger.warn(s"$clusterWatchId rejected ${msg.toShortString}: $problem"))
+
+          case Right(ClusterWatchConfirm(_, clusterWatchId, _, None)) =>
+            Task {
+              if (warned) logger.info(
+                s"🟢 $clusterWatchId finally confirmed ${
+                  msg.toShortString
+                } after ${t.elapsed.pretty}")
+            }
+        }
+        .guaranteeCase(exitCase => Task {
+          request.set(None)
+          if (warned && exitCase != ExitCase.Completed) logger.warn(
+            s"${msg.toShortString} => $exitCase · after ${t.elapsed.pretty}")
+        })
+    }
 
   def executeClusterWatchConfirm(confirm: ClusterWatchConfirm): Task[Checked[Unit]] =
     logger.traceTask("executeClusterWatchConfirm", confirm.argString)(
@@ -215,6 +243,33 @@ extends Service.StoppableByRequest with AnyClusterWatch
     }
   }
 
+  def confirmLostNode(lostNodeId: NodeId): Task[Checked[Unit]] =
+    logger.traceTask("confirmLostNode", lostNodeId)(Task.defer {
+      @tailrec def takeRequest(): Checked[Request] = {
+        request.get() match {
+          case some @ Some(req) =>
+            req.message match {
+              case ClusterWatchCheckEvent(_, _, _, event: ClusterNodeLostEvent, _)
+                if event.lostNodeId == lostNodeId =>
+                if (request.compareAndSet(some, None))
+                  Right(req)
+                else
+                  takeRequest()
+
+              case _ => Left(ClusterConfirmLostNodeDoesNotMatchProblem)
+            }
+          case None => Left(ClusterConfirmLostNodeDoesNotMatchProblem)
+        }
+      }
+      Task(takeRequest())
+        .flatTapT(_ => Task {
+          commandConfirmedLostNodeId = Some((lostNodeId, now + timing.heartbeat))
+          Checked.unit
+        })
+        .flatMapT(request => request.confirm(request.commandConfirm))
+        .rightAs(())
+    })
+
   def onClusterWatchRegistered(clusterWatchId: ClusterWatchId): Task[Unit] =
     Task {
       currentClusterWatchId = Some(CurrentClusterWatchId(clusterWatchId))
@@ -254,16 +309,21 @@ object ClusterWatchCounterpart
 {
   private val logger = Logger[this.type]
 
-  def resource(clusterConf: ClusterConf, timing: ClusterTiming): Resource[Task, ClusterWatchCounterpart] =
+  def resource(
+    clusterConf: ClusterConf,
+    timing: ClusterTiming,
+    testEventPublisher: EventPublisher[Any])
+  : Resource[Task, ClusterWatchCounterpart] =
     Service.resource(Task.deferAction(scheduler => Task(
-      new ClusterWatchCounterpart(clusterConf, timing)(scheduler))))
+      new ClusterWatchCounterpart(clusterConf, timing, testEventPublisher)(scheduler))))
 
   /** A running request to ClusterWatch. */
   private final class Request(
     val clusterWatchId: Option[ClusterWatchId],
-    val id: RequestId,
+    val message: ClusterWatchRequest,
     val clusterWatchIdChangeAllowed: Boolean)
   {
+    def id = message.requestId
     private val confirmation = Deferred.unsafe[Task, Checked[ClusterWatchConfirm]]
 
     def untilConfirmed: Task[Checked[ClusterWatchConfirm]] =
@@ -273,8 +333,17 @@ object ClusterWatchCounterpart
       confirmation.complete(confirm.problem.toLeft(confirm))
         .materialize/*Ignore duplicate complete*/.as(Checked.unit)
 
+    // A fake ClusterWatchConfirm used for node loss confirmation by command
+    def commandConfirm = ClusterWatchConfirm(
+      id,
+      ClusterWatchConf.commandClusterWatchId,
+      ClusterWatchRunId.empty,
+      problem = None)
+
     override def toString = s"Request($id,$clusterWatchId)"
   }
 
   private object RequestTimeoutException extends Exception
+
+  final case class WaitingForConfirmation(message: ClusterWatchMessage)
 }

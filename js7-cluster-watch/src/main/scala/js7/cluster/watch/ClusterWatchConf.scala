@@ -24,6 +24,8 @@ final case class ClusterWatchConf(
 
 object ClusterWatchConf
 {
+  val commandClusterWatchId = ClusterWatchId("ClusterWatchByCommand")
+
   def fromCommandLine(args: CommandLineArguments): ClusterWatchConf = {
     val configDir = args.as[Path]("--config-directory=").toAbsolutePath
     val clusterWatchId = args.as[ClusterWatchId]("--cluster-watch-id=")

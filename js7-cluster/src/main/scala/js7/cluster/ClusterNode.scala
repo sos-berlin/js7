@@ -21,13 +21,14 @@ import js7.base.web.Uri
 import js7.cluster.ClusterNode.*
 import js7.cluster.JournalTruncator.truncateJournal
 import js7.core.license.LicenseChecker
-import js7.data.Problems.{BackupClusterNodeNotAppointed, ClusterNodeIsNotBackupProblem, PrimaryClusterNodeMayNotBecomeBackupProblem}
+import js7.data.Problems.{BackupClusterNodeNotAppointed, ClusterNodeIsNotActiveProblem, ClusterNodeIsNotBackupProblem, PrimaryClusterNodeMayNotBecomeBackupProblem}
 import js7.data.cluster.ClusterCommand.{ClusterInhibitActivation, ClusterStartBackupNode}
 import js7.data.cluster.ClusterState.{Coupled, Empty, FailedOver, HasNodes}
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterSetting, ClusterWatchMessage, ClusterWatchingCommand}
 import js7.data.controller.ControllerId
 import js7.data.event.{EventId, JournalPosition, SnapshotableState}
+import js7.data.node.NodeId
 import js7.journal.EventIdGenerator
 import js7.journal.data.JournalMeta
 import js7.journal.recover.{Recovered, StateRecoverer}
@@ -250,7 +251,7 @@ final class ClusterNode[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
   def workingClusterNode: Checked[WorkingClusterNode[S]] =
     _passiveOrWorkingNode
       .flatMap(_.toOption)
-      .toRight(Problem.pure(s"This cluster $ownId is not active"))
+      .toRight(ClusterNodeIsNotActiveProblem)
 
   def executeCommand(command: ClusterCommand): Task[Checked[ClusterCommand.Response]] =
     command match {
@@ -325,6 +326,9 @@ final class ClusterNode[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
 
   def clusterWatchMessageStream: Task[fs2.Stream[Task, ClusterWatchMessage]] =
     common.clusterWatchCounterpart.newStream
+
+  def confirmLostNode(nodeId: NodeId): Task[Checked[Unit]] =
+    common.clusterWatchCounterpart.confirmLostNode(nodeId)
 
   /** Is the active or non-cluster (Empty, isPrimary) node or is becoming active. */
   def isWorkingNode = _passiveOrWorkingNode.exists(_.isRight)

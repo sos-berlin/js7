@@ -12,6 +12,9 @@ final case class ClusterWatchRunId(base64UUID: Base64UUID) extends GenericString
 
 object ClusterWatchRunId extends GenericString.Checked_[ClusterWatchRunId]
 {
+  val empty: ClusterWatchRunId =
+    ClusterWatchRunId(Base64UUID.zero)
+
   def apply(uuid: UUID): ClusterWatchRunId =
     new ClusterWatchRunId(Base64UUID(uuid))
 

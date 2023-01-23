@@ -528,7 +528,8 @@ object RunningController
             }
             onShutDownBeforeClusterActivated(ProgramTermination(restart = command.restart)) >>
               orderKeeperActor.flatMap {
-                case Left(ClusterNodeIsNotActiveProblem | ShuttingDownProblem) => Task.pure(Right(ControllerCommand.Response.Accepted))
+                case Left(ClusterNodeIsNotActiveProblem | ShuttingDownProblem) =>
+                  Task.right(ControllerCommand.Response.Accepted)
                 case Left(problem) => Task.pure(Left(problem))
                 case Right(actor) =>
                   Task.deferFuture(
@@ -541,6 +542,10 @@ object RunningController
           Task(clusterNode.workingClusterNode)
             .flatMapT(_.appointNodes(idToUri, activeId, clusterWatches))
             .map(_.map((_: Completed) => ControllerCommand.Response.Accepted))
+
+        case ControllerCommand.ClusterConfirmLostNode(nodeID) =>
+          clusterNode.confirmLostNode(nodeID)
+            .rightAs(ControllerCommand.Response.Accepted)
 
         case _ =>
           orderKeeperActor.flatMapT(actor =>
