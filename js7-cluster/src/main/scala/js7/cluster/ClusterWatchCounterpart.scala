@@ -81,18 +81,19 @@ extends Service.StoppableByRequest with AnyClusterWatch
       }
     }
 
-  def applyEvent(event: ClusterEvent, clusterState: HasNodes): Task[Checked[Completed]] =
+  def applyEvent(event: ClusterEvent, clusterState: HasNodes)
+  : Task[Checked[Option[ClusterWatchConfirm]]] =
     event match {
       case _: ClusterNodesAppointed | _: ClusterCouplingPrepared
         if !clusterState.setting.clusterWatchId.isDefined =>
-        Task.right(Completed)
+        Task.right(None)
 
       case _ =>
         check(
           clusterState.setting.clusterWatchId,
           ClusterWatchCheckEvent(_, CorrelId.current, ownId, event, clusterState),
           clusterWatchIdChangeAllowed = event.isInstanceOf[ClusterWatchRegistered]
-        ).rightAs(Completed)
+        ).map(_.map(Some(_)))
     }
 
   private def check(

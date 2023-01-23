@@ -20,7 +20,6 @@ final case class ClusterWatchConf(
   clusterWatchId: ClusterWatchId,
   clusterNodeAdmissions: Nel[Admission],
   httpsConfig: HttpsConfig,
-  name: String = "ClusterWatch",
   config: Config)
 
 object ClusterWatchConf

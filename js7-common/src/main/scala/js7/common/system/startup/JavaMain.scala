@@ -18,7 +18,8 @@ object JavaMain
   private val AkkaShutdownHook = "akka.coordinated-shutdown.run-by-jvm-shutdown-hook"
   private lazy val logger = Logger[this.type]
 
-  def runMain[A](name: String, arguments: CommandLineArguments, config: Config)(body: => A): Unit =
+  def runMain[A](name: String, arguments: => CommandLineArguments, config: => Config)(body: => A)
+  : Unit =
     runMain {
       // Log early for early timestamp and proper logger initialization by a
       // single (non-concurrent) call

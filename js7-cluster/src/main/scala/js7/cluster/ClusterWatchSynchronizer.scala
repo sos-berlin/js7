@@ -67,10 +67,12 @@ private final class ClusterWatchSynchronizer private(ownId: NodeId, initialInlay
             registerClusterWatchId,
             clusterWatchIdChangeAllowed = true,
             alreadyLocked = true))
-        .flatTapT(_ => Task {
-          if (isCoupled) logger.info(
-            "ClusterWatch agreed that this node is the active cluster node")
-          Checked.unit
+        .map(_.map {
+          case None => Completed
+          case Some(confirm) =>
+            if (isCoupled) logger.info(
+              s"${confirm.clusterWatchId} agreed that this node is the active cluster node")
+            Completed
         })
     }
 
@@ -89,7 +91,8 @@ private final class ClusterWatchSynchronizer private(ownId: NodeId, initialInlay
           .void)
     }
 
-  def applyEvent(event: ClusterEvent, updatedClusterState: HasNodes): Task[Checked[Completed]] =
+  def applyEvent(event: ClusterEvent, updatedClusterState: HasNodes)
+  : Task[Checked[Option[ClusterWatchConfirm]]] =
     Task.defer {
       inlay.value.flatMap(myInlay =>
         event match {
@@ -214,6 +217,7 @@ object ClusterWatchSynchronizer
     : Task[Completed] =
       logger.traceTask(
         doACheckedHeartbeat(clusterState, registerClusterWatchId)
+          .rightAs(())
           .when(!forEvent && clusterState.setting.clusterWatchId.isDefined)
           .*>(Task.defer {
             val h = new Heartbeat(clusterState, registerClusterWatchId)
@@ -342,7 +346,7 @@ object ClusterWatchSynchronizer
                       restart = true)
                 }
 
-              case Right(Completed) =>
+              case Right(_) =>
                 Task.pure(Completed)
             }
         }
@@ -353,7 +357,7 @@ object ClusterWatchSynchronizer
       registerClusterWatchId: RegisterClusterWatchId,
       clusterWatchIdChangeAllowed: Boolean = false,
       alreadyLocked: Boolean = false)
-    : Task[Checked[Completed]] =
+    : Task[Checked[Option[ClusterWatchConfirm]]] =
       logger.debugTask(
         repeatWhenTooLong(clusterWatch
           .checkClusterState(
@@ -362,14 +366,14 @@ object ClusterWatchSynchronizer
           .materializeIntoChecked
         ).flatMapT {
           case None =>
-            Task.right(Completed)
+            Task.right(None)
 
           case Some(confirm) =>
             if (clusterState.setting.clusterWatchId contains confirm.clusterWatchId)
-              Task.right(Completed)
+              Task.right(Some(confirm))
             else if (clusterWatchIdChangeAllowed)
               registerClusterWatchId(confirm, alreadyLocked)
-                .rightAs(Completed)
+                .rightAs(Some(confirm))
             else
               // Not expected
               Task.left(Problem(s"New ${confirm.clusterWatchId} cannot be registered now"))

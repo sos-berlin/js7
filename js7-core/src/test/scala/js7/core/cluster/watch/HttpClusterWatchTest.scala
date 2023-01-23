@@ -5,7 +5,7 @@ import akka.http.scaladsl.server.Route
 import com.typesafe.config.ConfigFactory
 import js7.base.Js7Version
 import js7.base.auth.{SessionToken, SimpleUser}
-import js7.base.generic.{Completed, SecretString}
+import js7.base.generic.SecretString
 import js7.base.io.https.HttpsConfig
 import js7.base.session.SessionCommand
 import js7.base.test.OurTestSuite
@@ -87,7 +87,7 @@ final class HttpClusterWatchTest extends OurTestSuite with BeforeAndAfterAll wit
     val expectedClusterState = ClusterState.NodesAppointed(setting)
     assert(clusterWatch
       .applyEvent(ClusterNodesAppointed(setting), expectedClusterState)
-      .await(99.s) == Right(Completed))
+      .await(99.s) == Right(None))
     assert(clusterWatch.clusterState.await(99.s) == Right(expectedClusterState))
   }
 }

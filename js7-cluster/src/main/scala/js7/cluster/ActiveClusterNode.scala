@@ -367,7 +367,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
     fetchAndHandleAcknowledgedEventIds2(passiveId, passiveUri, timing)
       .flatMap {
         case Left(missingHeartbeatProblem @ MissingPassiveClusterNodeHeartbeatProblem(passiveId, duration)) =>
-          logger.warn("No heartbeat from passive cluster node since " + duration.pretty +
+          logger.warn("❗ No heartbeat from passive cluster node since " + duration.pretty +
             " - trying to continue as single active cluster node")
           assertThat(passiveId != ownId)
 
@@ -418,6 +418,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
         case Success(Right(Completed)) =>
           if (!stopRequested) logger.error("fetchAndHandleAcknowledgedEventIds terminated unexpectedly")
         case Success(Left(_: MissingPassiveClusterNodeHeartbeatProblem)) =>
+          logger.warn("❗ Continue as single active cluster node, without passive node")
         case Success(Left(problem)) =>
           logger.error(s"$msg failed with $problem")
         case Failure(t) =>
@@ -596,7 +597,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
 
             case (Seq(event), clusterState: HasNodes) =>
               clusterWatchSynchronizer.applyEvent(event, clusterState)
-                .map(_.map((_: Completed) => stampedEvents -> clusterState))
+                .rightAs(stampedEvents -> clusterState)
 
             case (Seq(), clusterState) =>
               Task.right(stampedEvents -> clusterState)

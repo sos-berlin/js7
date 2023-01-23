@@ -166,8 +166,18 @@ private[cluster] final class ClusterCommon(
                     } else
                       Task.left(problem)
 
-                  case Right(Completed) =>
-                    logger.info(s"ClusterWatch agreed to '${event.getClass.simpleScalaName}' event")
+                  case Right(None) if !clusterState.setting.isLegacyClusterWatch =>
+                    logger.debug(
+                      s"No ClusterWatch confirmation required for '${event.getClass.simpleScalaName}' event")
+                    body
+
+                  case Right(maybeConfirm) =>
+                    maybeConfirm match {
+                      case None =>
+                        logger.info(s"ClusterWatch agreed to '${event.getClass.simpleScalaName}' event")
+                      case Some(confirm) =>
+                        logger.info(s"${confirm.clusterWatchId} agreed to '${event.getClass.simpleScalaName}' event")
+                    }
                     testEventPublisher.publish(ClusterWatchAgreedToActivation)
                     body
                 }

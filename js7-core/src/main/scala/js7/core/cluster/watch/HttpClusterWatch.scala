@@ -60,14 +60,14 @@ with AnyClusterWatch
           .as(None))
     }
 
-  def applyEvent(event: ClusterEvent, clusterState: HasNodes): Task[Checked[Completed]] =
+  def applyEvent(event: ClusterEvent, clusterState: HasNodes): Task[Checked[None.type]] =
     Task.defer {
       val msg = ClusterWatchCheckEvent(RequestId(0), CorrelId.current, ownNodeId, event, clusterState)
       liftProblem(
         retryUntilReachable()(
           post[ClusterWatchMessage, JsonObject](clusterUri, msg)
         ).onErrorRestartLoop(())(onError)
-          .map((_: JsonObject) => Completed))
+          .map((_: JsonObject) => None))
     }
 
   private def postMsg(msg: ClusterWatchMessage): Task[Completed] =

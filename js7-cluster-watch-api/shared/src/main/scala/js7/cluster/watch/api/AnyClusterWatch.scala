@@ -14,5 +14,5 @@ trait AnyClusterWatch
   def checkClusterState(clusterState: HasNodes, clusterWatchIdChangeAllowed: Boolean)
   : Task[Checked[Option[ClusterWatchConfirm]]]
 
-  def applyEvent(event: ClusterEvent, clusterState: HasNodes): Task[Checked[Completed]]
+  def applyEvent(event: ClusterEvent, clusterState: HasNodes): Task[Checked[Option[ClusterWatchConfirm]]]
 }

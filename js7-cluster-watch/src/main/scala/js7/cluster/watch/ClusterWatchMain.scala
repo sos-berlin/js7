@@ -15,10 +15,11 @@ object ClusterWatchMain
 {
   def main(args: Array[String]): Unit = {
     printlnWithClock(s"JS7 ClusterWatch ${BuildInfo.longVersion}")
-    val arguments = CommandLineArguments(args.toVector)
+    // Lazy, otherwise Log4j may be used and implicitly started uninitialized
+    lazy val arguments = CommandLineArguments(args.toVector)
     //lockAndRunMain(args) { arguments =>
-      val conf = ClusterWatchConf.fromCommandLine(arguments)
-      JavaMain.runMain(conf.name, arguments, conf.config) {
+      lazy val conf = ClusterWatchConf.fromCommandLine(arguments)
+      JavaMain.runMain("ClusterWatch", arguments, conf.config) {
         run(conf)(_ => Task.never)
       }
     //}
@@ -26,7 +27,8 @@ object ClusterWatchMain
 
   def run(conf: ClusterWatchConf)(use: ClusterWatchService => Task[Unit]): Unit =
     StatefulServiceMain.run(
-      conf.name, conf.config,
+      name = conf.clusterWatchId.toString,
+      conf.config,
       serviceResource = resource(conf, _),
       use = use)
 
