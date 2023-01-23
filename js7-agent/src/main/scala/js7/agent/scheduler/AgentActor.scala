@@ -131,12 +131,12 @@ private[agent] final class AgentActor private(
     command match {
       case command: AgentCommand.ShutDown =>
         if (!terminating) {
-          logger.info(s"❗️ $command")
+          logger.info(s"❗ $command")
           response.completeWith(terminateOrderKeeper(command))
         }
 
       case AgentCommand.Reset(maybeAgentRunId) =>
-        logger.info(s"❗️ $command")
+        logger.info(s"❗ $command")
         maybeAgentRunId.fold(Checked.unit)(checkAgentRunId(_)) match {
           case Left(problem) => response.success(Left(problem))
           case Right(()) =>

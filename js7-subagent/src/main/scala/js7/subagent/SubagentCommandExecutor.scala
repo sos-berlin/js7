@@ -96,7 +96,7 @@ extends SubagentExecutor
               .rightAs(SubagentCommand.Accepted)
 
           case shutDown: ShutDown =>
-            logger.info(s"❗️ $command")
+            logger.info(s"❗ $command")
             shutdown(shutDown)
               .as(Right(SubagentCommand.Accepted))
 
