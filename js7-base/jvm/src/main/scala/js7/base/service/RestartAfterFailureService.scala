@@ -6,15 +6,13 @@ import cats.syntax.flatMap.*
 import cats.syntax.option.*
 import izumi.reflect.Tag
 import js7.base.log.Logger
-import js7.base.monixutils.MonixDeadline
-import js7.base.monixutils.MonixDeadline.now
 import js7.base.service.RestartAfterFailureService.*
 import js7.base.time.ScalaTime.*
-import js7.base.utils.CatsUtils.repeatLast
+import js7.base.utils.Delayer.syntax.RichDelayerTask
 import js7.base.utils.ScalaUtils.some
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.{DelayConf, Delayer}
 import monix.eval.Task
-import monix.execution.Scheduler
 import monix.execution.atomic.Atomic
 import scala.concurrent.duration.*
 
@@ -31,6 +29,9 @@ extends Service
   @volatile private var stopping = false
   private val untilStopRequested = Deferred.unsafe[Task, Unit]
 
+  private val maybeStartDelay = DelayConf.maybe(startDelays)
+  private val maybeRunDelay = DelayConf.maybe(runDelays)
+
   val stop =
     Task.defer {
       stopping = true
@@ -39,87 +40,64 @@ extends Service
     }.memoize
 
   protected def start: Task[Service.Started] =
-    Task.deferAction(implicit scheduler =>
-      for {
-        service <- startUnderlyingService
-        started <- startService(runUnderlyingService(service))
-      } yield started)
+    for {
+      service <- startUnderlyingService
+      started <- startService(runUnderlyingService(service))
+    } yield started
 
-  private def startUnderlyingService(implicit scheduler: Scheduler): Task[S] =
-    Task
-      .defer(serviceResource
-        .acquire
-        .onErrorRestartLoop((now, repeatLast(startDelays))) {
-          case (throwable, (since, delays), retry) =>
-            logThrowable(throwable)
-            delayAfterFailure(since, delays, startDelays)
-              .flatMap { case (now_, delays) =>
-                retry(now_ -> delays)
-              }
-        })
-      .flatTap(service => setCurrentService(service))
 
-  private def runUnderlyingService(service: S)(implicit scheduler: Scheduler) =
-    Task.tailRecM((some(service), now, repeatLast(runDelays))) {
-      case (initialService, since, delays) =>
-        val service = initialService match {
-          case Some(initialService) => Task.pure(initialService) // First iteration
-          case None => startUnderlyingService // Following iterations
-        }
-        service.flatMap(service =>
-          service
-            .untilStopped
-            .map(Right(_))
-            .onErrorHandleWith { throwable =>
-              // Service has already logged the throwable
-              logger.debug(s"💥 $serviceName start failed: ${throwable.toStringWithCauses}",
-                throwable.nullIfNoStackTrace)
-              if (stopping)
-                Task.right(())
-              else
-                delayAfterFailure(since, delays, runDelays)
-                  .map { case (now_, delays) =>
-                    if (stopping)
-                      Right(()) // finish tailRecM
-                    else
-                      Left((None, now_, delays))/*loop*/
-                  }
-            })
-    }
+  private def startUnderlyingService: Task[S] =
+    serviceResource
+      .acquire
+      .pipeMaybe(maybeStartDelay)(
+        _.onFailureRestartWithDelayer(_,
+          onFailure = t => Task {
+            logger.error(s"$serviceName start failed: ${t.toStringWithCauses}")
+            for (st <- t.ifStackTrace)
+              logger.debug(s"$serviceName start failed: ${t.toStringWithCauses}", st)
+          },
+          onSleep = logDelay))
+      .flatTap(setCurrentService)
 
-  private def logThrowable(throwable: Throwable): Unit = {
-    logger.error(s"$serviceName start failed: ${throwable.toStringWithCauses}")
-    for (st <- throwable.ifStackTrace)
-      logger.debug(s"$serviceName start failed: ${throwable.toStringWithCauses}", st)
-  }
-
-  private def delayAfterFailure(
-    since: MonixDeadline,
-    delays: LazyList[FiniteDuration],
-    newDelays: Seq[FiniteDuration])
-  : Task[(MonixDeadline, LazyList[FiniteDuration])] = {
-    // For predictable timestamps, try to delay precisely according to delays
-    val now_ = since.now
-    val elapsed = now_ - since
-    val delay = (delays.head - elapsed) max ZeroDuration
-    // Throwable has already been error-logged by caller (start) or Service (run)
-    logger.info(s"Due to failure, $serviceName restarts ${
-      if (delay.isZero) "now" else s"in ${delay.pretty}"}")
-    Task.race(untilStopRequested.get, Task.sleep(delay)) *>
-      Task(now_ + delay ->
-        (if (elapsed >= newDelays.last)
-          repeatLast(newDelays) // reset restartDelays
-        else
-          delays.tail))
-  }
-
-  private  def setCurrentService(service: S): Task[Unit] =
+  private def setCurrentService(service: S): Task[Unit] =
     Task.defer {
       currentService
         .getAndSet(Some(service))
         .fold(Task.unit)(_.stop.when(stopping))
         .*>(service.stop.when(stopping))
     }
+
+  private def runUnderlyingService(service: S) =
+    maybeRunDelay.fold(service.untilStopped)(delayConf =>
+      Delayer.start[Task](delayConf).flatMap(delayer =>
+        Task.tailRecM(some(service)) { initialService =>
+          val service = initialService match {
+            case Some(initialService) => Task.pure(initialService) // First iteration
+            case None => startUnderlyingService // Following iterations
+          }
+          service.flatMap(service =>
+            service
+              .untilStopped
+              .map(Right(_))
+              .onErrorHandleWith { throwable =>
+                // Service has already logged the throwable
+                logger.debug(s"💥 $serviceName start failed: ${throwable.toStringWithCauses}",
+                  throwable.nullIfNoStackTrace)
+                if (stopping)
+                  Task.right(())
+                else
+                  for (_ <- delayer.sleep(logDelay)) yield
+                    if (stopping)
+                      Right(()) // finish tailRecM
+                    else
+                      Left(None) /*loop*/
+              })
+        }))
+
+  private def logDelay(duration: FiniteDuration) =
+    Task(logger.info(
+      "Due to failure, " + serviceName + " restarts " +
+        (if (duration.isZero) "now" else "in " + duration.pretty)))
 
   // Call only after this Service has been started!
   def unsafeCurrentService(): S =

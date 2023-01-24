@@ -1,5 +1,6 @@
 package js7.cluster.watch
 
+import cats.data.NonEmptySeq
 import cats.effect.Resource
 import com.typesafe.config.Config
 import js7.base.configutils.Configs.RichConfig
@@ -13,6 +14,7 @@ import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichThrowable}
+import js7.base.utils.{DelayConf, Delayer}
 import js7.base.web.HttpClient
 import js7.base.web.HttpClient.HttpException
 import js7.cluster.watch.ClusterWatchService.*
@@ -32,11 +34,12 @@ final class ClusterWatchService private[ClusterWatchService](
   nodeApis: Nel[HttpClusterNodeApi],
   now: () => MonixDeadline,
   keepAlive: FiniteDuration,
-  retryDelays: Seq[FiniteDuration])
+  retryDelays: NonEmptySeq[FiniteDuration])
 extends Service.StoppableByRequest
 {
   private val clusterWatch = new ClusterWatch(now)
   val clusterWatchRunId = ClusterWatchRunId.random()
+  private val delayConf = DelayConf(retryDelays, resetWhen = retryDelays.last)
 
   protected def start =
     Task.defer {
@@ -59,18 +62,13 @@ extends Service.StoppableByRequest
 
   private def observeAgainAndAgain[A](nodeApi: ClusterNodeApi)(observable: Observable[A])
   : Observable[A] =
-    Observable.tailRecM(())(_ =>
-      Observable
-        .pure(Right(observable
+    Delayer.observable[Task](delayConf)
+      .flatMap(_ =>
+        observable
           .onErrorHandleWith { t =>
             logger.warn(s"$nodeApi => ${t.toStringWithCauses}")
-            Observable.empty[A]
-          }))
-        .appendAll(
-          Observable.evalDelayed(
-            1.s /*???*/,
-            Left(())))
-    ).flatten
+            Observable.empty
+          })
 
   private def clusterWatchRequestObservable(nodeApi: ClusterNodeApi): Observable[ClusterWatchRequest] =
     Observable
@@ -168,6 +166,6 @@ object ClusterWatchService
                 nodeApis,
                 () => scheduler.now,
                 keepAlive = keepAlive,
-                retryDelays = retryDelays)))))
+                retryDelays = NonEmptySeq.fromSeq(retryDelays) getOrElse NonEmptySeq.of(1.s))))))
     })
 }

@@ -1,15 +1,18 @@
 package js7.base.utils
 
+import cats.Functor
 import cats.data.{NonEmptyList, NonEmptySeq, Validated}
-import cats.effect.{Resource, SyncIO}
+import cats.effect.{Resource, SyncIO, Timer}
 import cats.kernel.Monoid
 import cats.syntax.foldable.*
+import cats.syntax.functor.*
 import izumi.reflect.Tag
 import java.io.{ByteArrayInputStream, InputStream}
 import java.util.Base64
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils.syntax.RichEither
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.*
+import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer
@@ -35,6 +38,21 @@ object CatsUtils
         throw new IllegalArgumentException(s"Error in Base64 encoded data: ${e.getMessage}", e)
       }
     })
+
+  object syntax {
+    implicit final class RichTimer[F[_]](private val timer: Timer[F]) extends AnyVal {
+      def now(implicit F: Functor[F]): F[Deadline] =
+        for (nanos <- timer.clock.monotonic(NANOSECONDS)) yield
+          Deadline(Duration(nanos, NANOSECONDS))
+    }
+
+    implicit final class RichSyncTimer(private val timer: Timer[SyncIO]) extends AnyVal {
+      def unsafeNow(): FiniteDuration =
+        Duration(
+          timer.clock.monotonic(NANOSECONDS).unsafeRunSync(),
+          NANOSECONDS)
+    }
+  }
 
   implicit final class RichThrowableValidated[E <: Throwable, A](private val underlying: Validated[E, A]) extends AnyVal
   {
