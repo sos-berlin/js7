@@ -19,10 +19,13 @@ object CirceJsonTester
   def testJsonString[A: Encoder: Decoder](a: A, jsonString: String): Assertion =
     testJson(a, parseJson(jsonString))
 
-  def testJson[A: Encoder: Decoder](a: A, json: => Json)(implicit pos: source.Position)
+  def testJson[A: Encoder: Decoder](a: A, json: => Json, more: Json*)
+    (implicit pos: source.Position)
   : Assertion = {
     testJsonEncoder(a, json)
     testJsonDecoder(a, json)
+    for (json <- more) testJsonDecoder(a, json)
+    succeed
   }
 
   def testJsonEncoder[A: Encoder](a: A, json: => Json)(implicit pos: source.Position)

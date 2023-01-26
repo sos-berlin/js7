@@ -3,12 +3,13 @@ package js7.data.workflow
 import cats.Show
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.RichJson
+import js7.base.parser.BasicPrinter
 import js7.base.time.ScalaTime.*
+import js7.base.utils.RangeSet
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.job.{CommandLineExecutable, InternalExecutable, PathExecutable, ProcessExecutable, ReturnCodeMeaning, ShellScriptExecutable}
 import js7.data.lock.LockPath
 import js7.data.order.OrderEvent.LockDemand
-import js7.data.parser.BasicPrinter
 import js7.data.value.ValuePrinter.{appendQuoted, appendValue}
 import js7.data.value.expression.Expression
 import js7.data.value.{NamedValues, ValuePrinter}
@@ -67,11 +68,21 @@ final class WorkflowPrinter(sb: StringBuilder) {
           case ReturnCodeMeaning.Default =>
           case ReturnCodeMeaning.Success(returnCodes) =>
             sb ++= ", successReturnCodes=["
-            sb ++= returnCodes.map(_.number).toVector.sorted.mkString(", ")
+            sb ++= returnCodes.ranges
+              .map {
+                case RangeSet.Single(a) => a.number
+                case RangeSet.Interval(a, b) => s"${a.number}..${b.number}" // not parseable
+              }
+              .mkString(", ")
             sb += ']'
           case ReturnCodeMeaning.Failure(returnCodes) =>
             sb ++= ", failureReturnCodes=["
-            sb ++= returnCodes.map(_.number).toVector.sorted.mkString(", ")
+            sb ++= returnCodes.ranges
+              .map {
+                case RangeSet.Single(a) => a.number
+                case RangeSet.Interval(a, b) => s"${a.number}..${b.number}" // not parseable
+              }
+              .mkString(", ")
             sb += ']'
         }
         executable match {

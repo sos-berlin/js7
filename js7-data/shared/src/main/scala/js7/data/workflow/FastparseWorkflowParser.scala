@@ -6,6 +6,7 @@ import js7.base.io.process.ReturnCode
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Collections.implicits.RichIterable
+import js7.base.utils.RangeSet
 import js7.data.agent.AgentPath
 import js7.data.job.{CommandLineExecutable, CommandLineParser, InternalExecutable, JobResourcePath, PathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
 import js7.data.lock.LockPath
@@ -77,11 +78,11 @@ object FastparseWorkflowParser
 
     private def successReturnCodes[x: P] = P[ReturnCodeMeaning.Success](
       bracketCommaSequence(returnCode)
-        map(returnCodes => ReturnCodeMeaning.Success(returnCodes.toSet)))
+        map(returnCodes => ReturnCodeMeaning.Success(RangeSet(returnCodes*))))
 
     private def failureReturnCodes[x: P] = P[ReturnCodeMeaning.Failure](
       bracketCommaSequence(returnCode)
-        map(returnCodes => ReturnCodeMeaning.Failure(returnCodes.toSet)))
+        map(returnCodes => ReturnCodeMeaning.Failure(RangeSet(returnCodes*))))
 
     private def endInstruction[x: P] = P[EndInstr](
       Index ~ keyword("end") ~ hardEnd

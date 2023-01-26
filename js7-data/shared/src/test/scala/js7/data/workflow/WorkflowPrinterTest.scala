@@ -65,12 +65,12 @@ final class WorkflowPrinterTest extends OurTestSuite
             WorkflowJob(AgentPath("AGENT"),
               ShellScriptExecutable(
                 "LINE 1\nLINE 2\n'''LINE 3'''\n",
-                returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 1)),
+                returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 2)),
               Map("KEY" -> StringConstant("VALUE")))),
           Execute.Anonymous(
             WorkflowJob(AgentPath("AGENT"), ShellScriptExecutable("SCRIPT", v1Compatible = true))))),
       """define workflow {
-        |  execute agent='AGENT', defaultArguments={'KEY': 'VALUE'}, successReturnCodes=[0, 1], script=
+        |  execute agent='AGENT', defaultArguments={'KEY': 'VALUE'}, successReturnCodes=[0, 2], script=
         |''''LINE 1
         |   |LINE 2
         |   |'''LINE 3'''
@@ -110,7 +110,7 @@ final class WorkflowPrinterTest extends OurTestSuite
             AgentPath("AGENT"),
             PathExecutable(
               "a-script",
-              returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 1)),
+              returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 2)),
             Map("KEY" -> StringConstant("VALUE"))),
           WorkflowJob.Name("B-JOB") -> WorkflowJob(AgentPath("AGENT"), PathExecutable("b-script")))),
       """define workflow {
@@ -118,7 +118,7 @@ final class WorkflowPrinterTest extends OurTestSuite
         |  job `B-JOB`;
         |
         |  define job A {
-        |    execute agent='AGENT', defaultArguments={'KEY': 'VALUE'}, successReturnCodes=[0, 1], executable='a-script'
+        |    execute agent='AGENT', defaultArguments={'KEY': 'VALUE'}, successReturnCodes=[0, 2], executable='a-script'
         |  }
         |  define job `B-JOB` {
         |    execute agent='AGENT', executable='b-script'

@@ -9,6 +9,7 @@ import js7.base.problem.Problems.InvalidNameProblem
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.time.{AdmissionTimeScheme, WeekdayPeriod}
+import js7.base.utils.RangeSet
 import js7.data.agent.AgentPath
 import js7.data.job.{JobResourcePath, RelativePathExecutable, ReturnCodeMeaning}
 import js7.data.value.expression.Expression.{NumericConstant, StringConstant}
@@ -42,7 +43,7 @@ final class WorkflowJobTest extends OurTestSuite
           AgentPath("AGENT"),
           RelativePathExecutable(
             "EXECUTABLE",
-            returnCodeMeaning = ReturnCodeMeaning.Success(Set(ReturnCode(0), ReturnCode(1)))),
+            returnCodeMeaning = ReturnCodeMeaning.Success(RangeSet(ReturnCode(0), ReturnCode(1)))),
           Map(
             "NAME" -> StringConstant("VALUE"),
             "NUMBER" -> NumericConstant(7)),
@@ -62,7 +63,7 @@ final class WorkflowJobTest extends OurTestSuite
           "executable": {
             "TYPE": "PathExecutable",
             "returnCodeMeaning": {
-              "success": [ 0, 1 ]
+              "success": "0,1"
             },
             "path": "EXECUTABLE"
           },

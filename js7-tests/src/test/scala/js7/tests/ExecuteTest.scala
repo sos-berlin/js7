@@ -13,6 +13,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.time.WallClock
+import js7.base.utils.RangeSet
 import js7.base.utils.ScalaUtils.syntax.RichPartialFunction
 import js7.data.agent.AgentPath
 import js7.data.command.CancellationMode
@@ -91,8 +92,19 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
         agentPath,
         ShellScriptExecutable(
           returnCodeScript(2),
-          returnCodeMeaning = ReturnCodeMeaning.Success(Set(ReturnCode(2)))))),
+          returnCodeMeaning = ReturnCodeMeaning.Success(RangeSet(ReturnCode(2)))))),
     expectedOutcome = Outcome.Succeeded(NamedValues.rc(2)))
+
+  addExecuteTest(
+    Execute(
+      WorkflowJob(
+        agentPath,
+        ShellScriptExecutable(
+          returnCodeScript(3),
+          returnCodeMeaning = ReturnCodeMeaning.Success(
+            RangeSet.fromRanges(Seq(
+              RangeSet.Interval(ReturnCode(1), ReturnCode(5)))))))),
+    expectedOutcome = Outcome.Succeeded(NamedValues.rc(3)))
 
   addExecuteTest(Execute(WorkflowJob(agentPath, ShellScriptExecutable(returnCodeScript(44)))),
     expectedOutcome = Outcome.Failed(NamedValues.rc(44)))
@@ -189,7 +201,7 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
         ShellScriptExecutable(
           returnCodeScript("myExitCode"),
           env = Map("myExitCode" -> NamedValue("myExitCode")),
-          returnCodeMeaning = ReturnCodeMeaning.Success(Set(ReturnCode(1)))))),
+          returnCodeMeaning = ReturnCodeMeaning.Success(RangeSet(ReturnCode(1)))))),
     orderArguments = Map("myExitCode" -> NumberValue(1)),
     expectedOutcome = Outcome.Succeeded.rc(1))
 
@@ -205,13 +217,14 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
           Execute.Anonymous(WorkflowJob(
             agentPath,
             executable.copy(
-              returnCodeMeaning = ReturnCodeMeaning.Success(Set(ReturnCode(33)))),
+              returnCodeMeaning = ReturnCodeMeaning.Success(RangeSet(ReturnCode(33)))),
             Map("myExitCode" -> NumericConstant(33))))),
         Map(WorkflowJob.Name("JOB") ->
           WorkflowJob(
             agentPath,
             executable.copy(
-              returnCodeMeaning = ReturnCodeMeaning.Success(Set(ReturnCode(11), ReturnCode(22)))),
+              returnCodeMeaning = ReturnCodeMeaning.Success(RangeSet(
+                ReturnCode(11), ReturnCode(22)))),
             Map("myExitCode" -> NumericConstant(11))))),
       expectedOutcomes = Seq(
         Outcome.Succeeded.rc(11),

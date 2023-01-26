@@ -118,7 +118,7 @@ final class WorkflowParserTest extends OurTestSuite
         job B, defaultArguments = { "KEY": "VALUE" };
         job C;
         define job A {
-          execute executable="my/executable", agent="AGENT", successReturnCodes=[0, 1, 3];
+          execute executable="my/executable", agent="AGENT", successReturnCodes=[0, 2, 4];
         }
         define job B {
           execute executable="my/executable", agent="AGENT"
@@ -140,7 +140,7 @@ final class WorkflowParserTest extends OurTestSuite
               AgentPath("AGENT"),
               PathExecutable(
                 "my/executable",
-                returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 1, 3))),
+                returnCodeMeaning = ReturnCodeMeaning.Success.of(0, 2, 4))),
           WorkflowJob.Name("B") ->
             WorkflowJob(
               AgentPath("AGENT"),

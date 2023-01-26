@@ -9,6 +9,7 @@ import js7.base.parser.CatsParsers.syntax.*
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Collections.implicits.*
+import js7.base.utils.RangeSet
 import js7.data.agent.AgentPath
 import js7.data.job.{CatsCommandLineParser, CommandLineExecutable, InternalExecutable, JobResourcePath, PathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
 import js7.data.lock.LockPath
@@ -60,13 +61,13 @@ object CatsWorkflowParser
     private val returnCode: Parser[ReturnCode] =
       int map ReturnCode.apply
 
-    private val successReturnCodes: Parser[ReturnCodeMeaning.Success] = (
+    private val successReturnCodes: Parser[ReturnCodeMeaning.Success] =
       bracketCommaSequence(returnCode)
-        map(returnCodes => ReturnCodeMeaning.Success(returnCodes.toSet)))
+        .map(returnCodes => ReturnCodeMeaning.Success(RangeSet(returnCodes*)))
 
-    private val failureReturnCodes: Parser[ReturnCodeMeaning.Failure] = (
+    private val failureReturnCodes: Parser[ReturnCodeMeaning.Failure] =
       bracketCommaSequence(returnCode)
-        map(returnCodes => ReturnCodeMeaning.Failure(returnCodes.toSet)))
+        .map(returnCodes => ReturnCodeMeaning.Failure(RangeSet(returnCodes*)))
 
     private val endInstruction: Parser[EndInstr] =
       (index.with1 ~ keyword("end") ~ hardEnd)
