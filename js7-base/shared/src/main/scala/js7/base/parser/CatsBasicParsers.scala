@@ -30,9 +30,11 @@ object CatsBasicParsers
   private val comment: Parser[Unit] =
     inlineComment | lineEndComment
 
+  val isWhiteChar = " \t\r\n".toSet[Char]
+
   /** Optional whitespace including line ends */
   val w: Parser0[Unit] =
-    (charIn(" \t\r\n").rep.void | comment).rep0.void
+    (charIn(isWhiteChar).rep.void | comment).rep0.void
 
   /** Optional horizontal whitespace */
   val h: Parser0[Unit] =
