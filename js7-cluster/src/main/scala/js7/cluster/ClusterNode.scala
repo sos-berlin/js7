@@ -327,8 +327,8 @@ final class ClusterNode[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
   def clusterWatchRequestStream: Task[fs2.Stream[Task, ClusterWatchRequest]] =
     common.clusterWatchCounterpart.newStream
 
-  def confirmLostNode(nodeId: NodeId): Task[Checked[Unit]] =
-    common.clusterWatchCounterpart.confirmLostNode(nodeId)
+  def confirmNodeLoss(nodeId: NodeId): Task[Checked[Unit]] =
+    common.clusterWatchCounterpart.confirmNodeLoss(nodeId)
 
   /** Is the active or non-cluster (Empty, isPrimary) node or is becoming active. */
   def isWorkingNode = _passiveOrWorkingNode.exists(_.isRight)

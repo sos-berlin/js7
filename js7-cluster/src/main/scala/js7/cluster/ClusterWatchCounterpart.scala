@@ -21,7 +21,7 @@ import js7.base.utils.Tests.isTest
 import js7.cluster.ClusterWatchCounterpart.*
 import js7.cluster.watch.ClusterWatchConf
 import js7.cluster.watch.api.AnyClusterWatch
-import js7.cluster.watch.api.ClusterWatchProblems.{ClusterConfirmLostNodeDoesNotMatchProblem, ClusterWatchIdDoesNotMatchProblem, ClusterWatchRequestDoesNotMatchProblem, NoClusterWatchProblem, OtherClusterWatchStillAliveProblem}
+import js7.cluster.watch.api.ClusterWatchProblems.{ClusterWatchIdDoesNotMatchProblem, ClusterWatchRequestDoesNotMatchProblem, ConfirmClusterNodeLossNotApplicableProblem, NoClusterWatchProblem, OtherClusterWatchStillAliveProblem}
 import js7.data.cluster.ClusterEvent.{ClusterCouplingPrepared, ClusterNodeLostEvent, ClusterNodesAppointed, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState.{Coupled, FailedOver, HasNodes, PassiveLost}
 import js7.data.cluster.ClusterWatchRequest.RequestId
@@ -246,8 +246,8 @@ extends Service.StoppableByRequest with AnyClusterWatch
     }
   }
 
-  def confirmLostNode(lostNodeId: NodeId): Task[Checked[Unit]] =
-    logger.traceTask("confirmLostNode", lostNodeId)(Task.defer {
+  def confirmNodeLoss(lostNodeId: NodeId): Task[Checked[Unit]] =
+    logger.traceTask("confirmNodeLoss", lostNodeId)(Task.defer {
       @tailrec def takeRequest(): Checked[Requested] = {
         _requested.get() match {
           case some @ Some(requested) =>
@@ -259,9 +259,9 @@ extends Service.StoppableByRequest with AnyClusterWatch
                 else
                   takeRequest()
 
-              case _ => Left(ClusterConfirmLostNodeDoesNotMatchProblem)
+              case _ => Left(ConfirmClusterNodeLossNotApplicableProblem)
             }
-          case None => Left(ClusterConfirmLostNodeDoesNotMatchProblem)
+          case None => Left(ConfirmClusterNodeLossNotApplicableProblem)
         }
       }
       Task(takeRequest())

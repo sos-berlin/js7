@@ -8,13 +8,13 @@ import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.cluster.ClusterWatchCounterpart.WaitingForConfirmation
-import js7.cluster.watch.api.ClusterWatchProblems.ClusterConfirmLostNodeDoesNotMatchProblem
+import js7.cluster.watch.api.ClusterWatchProblems.ConfirmClusterNodeLossNotApplicableProblem
 import js7.common.guice.GuiceImplicits.RichInjector
 import js7.controller.configuration.ControllerConfiguration
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver}
 import js7.data.cluster.ClusterState.{Coupled, FailedOver}
 import js7.data.cluster.ClusterWatchCheckEvent
-import js7.data.controller.ControllerCommand.{ClusterConfirmLostNode, ShutDown}
+import js7.data.controller.ControllerCommand.{ConfirmClusterNodeLoss, ShutDown}
 import js7.data.event.*
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
@@ -43,8 +43,8 @@ final class ManualFailoverClusterTest extends ControllerClusterTester
         waitForCondition(10.s, 10.ms)(clusterWatch.unsafeClusterState().exists(_.isInstanceOf[Coupled]))
       }
 
-      assert(backupController.executeCommandForTest(ClusterConfirmLostNode(backupId)) ==
-        Left(ClusterConfirmLostNodeDoesNotMatchProblem))
+      assert(backupController.executeCommandForTest(ConfirmClusterNodeLoss(backupId)) ==
+        Left(ConfirmClusterNodeLossNotApplicableProblem))
 
       val since = now
       val sleepWhileFailing = clusterTiming.activeLostTimeout + 1.s
@@ -71,14 +71,14 @@ final class ManualFailoverClusterTest extends ControllerClusterTester
         })
         .await(99.s)
 
-      assert(backupController.executeCommandForTest(ClusterConfirmLostNode(backupId)) ==
-        Left(ClusterConfirmLostNodeDoesNotMatchProblem))
-      assert(primaryController.executeCommandForTest(ClusterConfirmLostNode(backupId)) ==
-        Left(ClusterConfirmLostNodeDoesNotMatchProblem))
-      assert(primaryController.executeCommandForTest(ClusterConfirmLostNode(primaryId)) ==
-        Left(ClusterConfirmLostNodeDoesNotMatchProblem))
+      assert(backupController.executeCommandForTest(ConfirmClusterNodeLoss(backupId)) ==
+        Left(ConfirmClusterNodeLossNotApplicableProblem))
+      assert(primaryController.executeCommandForTest(ConfirmClusterNodeLoss(backupId)) ==
+        Left(ConfirmClusterNodeLossNotApplicableProblem))
+      assert(primaryController.executeCommandForTest(ConfirmClusterNodeLoss(primaryId)) ==
+        Left(ConfirmClusterNodeLossNotApplicableProblem))
 
-      backupController.executeCommandForTest(ClusterConfirmLostNode(primaryId)).orThrow
+      backupController.executeCommandForTest(ConfirmClusterNodeLoss(primaryId)).orThrow
 
       val Stamped(failedOverEventId, _, NoKey <-: failedOver) =
         backupController.eventWatch.await[ClusterFailedOver]().head

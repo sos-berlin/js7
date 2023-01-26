@@ -6,11 +6,11 @@ import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.cluster.ClusterWatchCounterpart.WaitingForConfirmation
-import js7.cluster.watch.api.ClusterWatchProblems.ClusterConfirmLostNodeDoesNotMatchProblem
+import js7.cluster.watch.api.ClusterWatchProblems.ConfirmClusterNodeLossNotApplicableProblem
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterPassiveLost}
 import js7.data.cluster.ClusterState.Coupled
 import js7.data.cluster.ClusterWatchCheckEvent
-import js7.data.controller.ControllerCommand.{ClusterConfirmLostNode, ShutDown}
+import js7.data.controller.ControllerCommand.{ConfirmClusterNodeLoss, ShutDown}
 import monix.execution.Scheduler.Implicits.global
 
 final class ManualPassiveLostClusterTest extends ControllerClusterTester
@@ -42,14 +42,14 @@ final class ManualPassiveLostClusterTest extends ControllerClusterTester
         })
         .await(99.s)
 
-      assert(backupController.executeCommandForTest(ClusterConfirmLostNode(backupId)) ==
-        Left(ClusterConfirmLostNodeDoesNotMatchProblem))
-      assert(backupController.executeCommandForTest(ClusterConfirmLostNode(primaryId)) ==
-        Left(ClusterConfirmLostNodeDoesNotMatchProblem))
-      assert(primaryController.executeCommandForTest(ClusterConfirmLostNode(primaryId)) ==
-        Left(ClusterConfirmLostNodeDoesNotMatchProblem))
+      assert(backupController.executeCommandForTest(ConfirmClusterNodeLoss(backupId)) ==
+        Left(ConfirmClusterNodeLossNotApplicableProblem))
+      assert(backupController.executeCommandForTest(ConfirmClusterNodeLoss(primaryId)) ==
+        Left(ConfirmClusterNodeLossNotApplicableProblem))
+      assert(primaryController.executeCommandForTest(ConfirmClusterNodeLoss(primaryId)) ==
+        Left(ConfirmClusterNodeLossNotApplicableProblem))
 
-      primaryController.executeCommandForTest(ClusterConfirmLostNode(backupId)).orThrow
+      primaryController.executeCommandForTest(ConfirmClusterNodeLoss(backupId)).orThrow
 
       val ClusterPassiveLost(`backupId`) = primaryController.eventWatch.await[ClusterPassiveLost]()
         .head.value.event

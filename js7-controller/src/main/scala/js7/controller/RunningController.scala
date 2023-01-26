@@ -543,8 +543,8 @@ object RunningController
             .flatMapT(_.appointNodes(idToUri, activeId, clusterWatches))
             .map(_.map((_: Completed) => ControllerCommand.Response.Accepted))
 
-        case ControllerCommand.ClusterConfirmLostNode(nodeID) =>
-          clusterNode.confirmLostNode(nodeID)
+        case ControllerCommand.ConfirmClusterNodeLoss(nodeID) =>
+          clusterNode.confirmNodeLoss(nodeID)
             .rightAs(ControllerCommand.Response.Accepted)
 
         case _ =>
