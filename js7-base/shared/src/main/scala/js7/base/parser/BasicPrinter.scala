@@ -1,4 +1,4 @@
-package js7.data.parser
+package js7.base.parser
 
 import java.lang.Character.{isIdentifierIgnorable, isUnicodeIdentifierPart, isUnicodeIdentifierStart}
 import js7.base.utils.ScalaUtils.withStringBuilder

@@ -1,15 +1,15 @@
-package js7.data.parser
+package js7.base.parser
 
 import cats.Show
 import cats.data.NonEmptyList
 import cats.parse.*
 import cats.parse.Parser.{Error, Expectation, end}
 import cats.syntax.show.*
+import js7.base.parser.BasicPrinter.isIdentifierStart
+import js7.base.parser.CatsBasicParsers.w
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.data.parser.BasicPrinter.isIdentifierStart
-import js7.data.parser.CatsBasicParsers.w
-import js7.data.value.ValuePrinter.quoteString
+//import js7.base.value.ValuePrinter.quoteString
 import scala.util.control.NonFatal
 
 object CatsParsers
@@ -115,9 +115,9 @@ object CatsParsers
 
   implicit val ExpectationShow: Show[Expectation] = {
     case Expectation.OneOfStr(_, strings) =>
-      strings.distinct.map(quoteString) match {
+      strings.distinct.map(o => s"“$o”") match {
         case o :: Nil => s"Expected $o"
-        case list => "Expected one of " + list.mkString(", ")
+        case list => "Expected one of " + list.mkString("\"", ", ", "\"")
       }
     case Expectation.InRange(_, lower, upper) =>
       if (lower == upper) s"expected '$lower'"
@@ -129,7 +129,7 @@ object CatsParsers
     case Expectation.Length(_, expected, actual) =>
       "Unexpected end of input"
     case Expectation.ExpectedFailureAt(_, matched) =>
-      "Unexpected " + quoteString(matched)
+      s"Unexpected “$matched”"
     case Expectation.Fail(_) =>
       "Failed to parse"
     case Expectation.FailWith(_, message) =>
@@ -218,7 +218,7 @@ object CatsParsers
   }
 
   private def charsToString(chars: Iterable[Char]): String =
-    chars.view.flatMap {
+    chars.toVector.sortBy(c => (c.toInt & Int.MaxValue)).view.flatMap {
       case '\\' => "\\\\"
       case '\t' => "\\t"
       case '\r' => "\\r"

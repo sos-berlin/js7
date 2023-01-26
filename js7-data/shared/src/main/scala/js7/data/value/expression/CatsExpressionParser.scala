@@ -3,13 +3,13 @@ package js7.data.value.expression
 import cats.parse.Numbers.digits
 import cats.parse.Parser.{char, charIn, charWhere, charsWhile, charsWhile0, end, failWith, pure, string, stringIn}
 import cats.parse.{Parser, Parser0}
+import js7.base.parser.CatsBasicParsers.*
+import js7.base.parser.CatsParsers.checkedParse
+import js7.base.parser.CatsParsers.syntax.*
 import js7.base.problem.Checked
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.job.JobResourcePath
-import js7.data.parser.CatsBasicParsers.*
-import js7.data.parser.CatsParsers.checkedParse
-import js7.data.parser.CatsParsers.syntax.*
 import js7.data.value.expression.Expression.*
 import js7.data.value.expression.ExpressionOptimizer.optimizeExpression
 import js7.data.workflow.instructions.executable.WorkflowJob

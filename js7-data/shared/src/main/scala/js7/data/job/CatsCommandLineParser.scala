@@ -2,10 +2,10 @@ package js7.data.job
 
 import cats.parse.Parser.{char, charWhere, charsWhile0, end, failWith, stringIn}
 import cats.parse.{Parser, Parser0}
+import js7.base.parser.CatsBasicParsers.singleQuoted
+import js7.base.parser.CatsParsers
 import js7.base.problem.Checked
 import js7.data.job.CommandLineExpression.optimizeCommandLine
-import js7.data.parser.CatsBasicParsers.singleQuoted
-import js7.data.parser.CatsParsers
 import js7.data.value.expression.CatsExpressionParser.dollarNamedValue
 import js7.data.value.expression.Expression
 import js7.data.value.expression.Expression.{ListExpression, MkString, StringConstant, StringExpression}

@@ -1,8 +1,8 @@
 package js7.data.parser
 
 import cats.parse.Parser
+import js7.base.parser.CatsBasicParsers.{checkedToParser, quotedString}
 import js7.data.item.InventoryItemPath
-import js7.data.parser.CatsBasicParsers.{checkedToParser, quotedString}
 
 object Js7Parsers
 {

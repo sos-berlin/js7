@@ -3,6 +3,7 @@ package js7.data.parser
 import fastparse.*
 import fastparse.NoWhitespace.*
 import java.lang.Character.isUnicodeIdentifierPart
+import js7.base.parser.BasicPrinter.{isIdentifierPart, isIdentifierStart}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Collections.implicits.*
 import js7.base.utils.ScalaUtils.*
@@ -10,7 +11,6 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.item.VersionedItemPath
 import js7.data.lock.LockPath
-import js7.data.parser.BasicPrinter.{isIdentifierPart, isIdentifierStart}
 import scala.reflect.ClassTag
 
 /**

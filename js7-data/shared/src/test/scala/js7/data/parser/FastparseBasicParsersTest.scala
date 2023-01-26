@@ -2,10 +2,10 @@ package js7.data.parser
 
 import fastparse.*
 import fastparse.NoWhitespace.*
+import js7.base.parser.BasicPrinter.appendIdentifier
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
 import js7.base.utils.ScalaUtils.withStringBuilder
-import js7.data.parser.BasicPrinter.appendIdentifier
 import js7.data.parser.FastparseBasicParsers.*
 import js7.data.parser.FastparseParsers.checkedParse
 

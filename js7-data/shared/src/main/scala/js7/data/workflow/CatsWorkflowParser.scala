@@ -3,15 +3,15 @@ package js7.data.workflow
 import cats.parse.Parser.{char, end, failWith, index, peek, pure, string}
 import cats.parse.{Parser, Parser0}
 import js7.base.io.process.ReturnCode
+import js7.base.parser.CatsBasicParsers.*
+import js7.base.parser.CatsParsers.checkedParse
+import js7.base.parser.CatsParsers.syntax.*
 import js7.base.problem.Checked
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Collections.implicits.*
 import js7.data.agent.AgentPath
 import js7.data.job.{CatsCommandLineParser, CommandLineExecutable, InternalExecutable, JobResourcePath, PathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
 import js7.data.lock.LockPath
-import js7.data.parser.CatsBasicParsers.*
-import js7.data.parser.CatsParsers.checkedParse
-import js7.data.parser.CatsParsers.syntax.*
 import js7.data.parser.Js7Parsers.path
 import js7.data.source.SourcePos
 import js7.data.value.expression.CatsExpressionParser.{booleanConstant, constantExpression, expression}

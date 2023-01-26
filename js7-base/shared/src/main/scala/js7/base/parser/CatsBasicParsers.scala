@@ -1,16 +1,16 @@
-package js7.data.parser
+package js7.base.parser
 
 import cats.data.NonEmptyList
 import cats.parse.Numbers.digits
 import cats.parse.Parser.{anyChar, char, charIn, charWhere, charsWhile, charsWhile0, end, failWith, peek, pure, string}
 import cats.parse.{Parser, Parser0}
 import java.lang.Character.isUnicodeIdentifierPart
+import js7.base.parser.BasicPrinter.{isIdentifierPart, isIdentifierStart}
+import js7.base.parser.CatsParsers.syntax.*
 import js7.base.problem.Checked
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
-import js7.data.parser.BasicPrinter.{isIdentifierPart, isIdentifierStart}
-import js7.data.parser.CatsParsers.syntax.*
 import scala.reflect.ClassTag
 
 object CatsBasicParsers

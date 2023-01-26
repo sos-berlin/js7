@@ -13,13 +13,13 @@ final class CommandLineParserTest extends OurTestSuite
       if (UseFastparse)
         """Expected The command line must not be empty:1:1, found """""
       else
-        """Parsing failed at position 1 “❓” · Unexpected "" · The command line must not be empty""")))
+        """Parsing failed at position 1 “❓” · Unexpected “” · The command line must not be empty""")))
     assert(CommandLineParser.parse("  ") ==
       Left(Problem(
         if (UseFastparse)
           """Expected The command line must not be empty:1:3, found """""
         else
-          """Parsing failed at position 3 “  ❓” · Unexpected "" · The command line must not be empty""")))
+          """Parsing failed at position 3 “  ❓” · Unexpected “” · The command line must not be empty""")))
   }
 
   "Constant" in {

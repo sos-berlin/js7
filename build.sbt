@@ -301,6 +301,7 @@ lazy val `js7-base` = crossProject(JSPlatform, JVMPlatform)
       "org.typelevel" %%% "cats-core" % catsVersion ++
       "org.typelevel" %%% "cats-effect" % catsEffectVersion ++
       "org.typelevel" %%% "cats-laws" % catsVersion % "test" ++
+      "org.typelevel" %%% "cats-parse" % catsParseVersion ++
       "org.typelevel" %%% "discipline-core" % disciplineVersion % "test" ++
       "org.typelevel" %%% "discipline-scalatest" % disciplineScalaTestVersion % "test" ++
       "io.circe" %%% "circe-core" % circeVersion ++
@@ -368,7 +369,6 @@ lazy val `js7-data` = crossProject(JSPlatform, JVMPlatform)
   .settings {
     import Dependencies._
     libraryDependencies ++=
-      "org.typelevel" %%% "cats-parse" % catsParseVersion ++
       "com.lihaoyi" %%% "fastparse" % fastparseVersion ++
       "org.scalatest" %%% "scalatest" % scalaTestVersion % "test" ++
     //"org.scalatest" %%% "scalatest-freespec" % scalaTestVersion % "test" ++
