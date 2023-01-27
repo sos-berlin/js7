@@ -11,6 +11,7 @@ import js7.base.problem.Checked.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.CloseableIterator
+import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import monix.eval.Task
 import monix.execution.Ack.{Continue, Stop}
 import monix.execution.cancelables.SerialCancelable
@@ -58,20 +59,35 @@ object MonixBase
         }
 
       def logWhenItTakesLonger(implicit enclosing: sourcecode.Enclosing): Task[A] =
-        logWhenItTakesLonger2("in", enclosing.value)
+        logWhenItTakesLonger2("in", "continues", enclosing.value)
 
       def logWhenItTakesLonger(what: => String): Task[A] =
-        logWhenItTakesLonger2("for", what)
+        logWhenItTakesLonger2("for", "completed", what)
 
-      def logWhenItTakesLonger(preposition: String, what: => String): Task[A] =
-        logWhenItTakesLonger2(preposition, what)
-
-      private def logWhenItTakesLonger2(preposition: String, what: => String): Task[A] =
-        task.whenItTakesLonger()(duration => Task {
-          def msg = s"⭕ Still waiting $preposition $what for ${duration.pretty}"
-          if (duration < 10.s) logger.debug(msg)
-          else logger.info(msg)
-        })
+      private def logWhenItTakesLonger2(preposition: String, completed: String, what: => String)
+      : Task[A] =
+        Task.defer {
+          val since = now
+          var infoLogged = false
+          task
+            .whenItTakesLonger()(duration => Task {
+              def msg = s"⭕ Still waiting $preposition $what for ${duration.pretty}"
+              if (duration < 10.s)
+                logger.debug(msg)
+              else {
+                infoLogged = true
+                logger.info(msg)
+              }
+            })
+            .guaranteeCase(exit => Task(if (infoLogged) exit match {
+              case ExitCase.Completed => logger.info(
+                s"🟢 $what $completed after ${since.elapsed.pretty}")
+              case ExitCase.Canceled => logger.info(
+                s"❌ $what canceled after ${since.elapsed.pretty}")
+              case ExitCase.Error(t) => logger.info(
+                s"💥 $what failed after ${since.elapsed.pretty} with ${t.toStringWithCauses}")
+            }))
+        }
 
       /** When `this` takes longer than `duration` then call `thenDo` once. */
       def whenItTakesLonger(duration: FiniteDuration)(thenDo: Task[Unit]): Task[A] =
@@ -357,9 +373,7 @@ object MonixBase
         case None =>
           logger.debug(s"Waiting for Future '$name' ...")
           Task.fromFuture(future)
-            .whenItTakesLonger()(duration => Task {
-              logger.info(s"Still waiting for '$name' for ${duration.pretty} ...")
-            })
+            .logWhenItTakesLonger(name)
             .guaranteeCase(exitCase => Task(logger.debug(s"Future '$name' $exitCase")))
       }
     }

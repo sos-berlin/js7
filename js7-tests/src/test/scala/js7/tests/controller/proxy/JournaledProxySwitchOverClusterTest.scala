@@ -8,7 +8,7 @@ import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
-import js7.data.cluster.ClusterEvent.ClusterFailedOver
+import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver}
 import js7.data.controller.ControllerCommand.ShutDown.ClusterAction
 import js7.data.controller.ControllerCommand.{ClusterSwitchOver, ShutDown}
 import js7.data.controller.ControllerEvent.ControllerReady
@@ -72,6 +72,7 @@ class JournaledProxySwitchOverClusterTest extends OurTestSuite with ClusterProxy
             dontWaitUntilReady = true
           ) { primaryController =>
             backupController.eventWatch.await[ControllerReady](after = lastEventId)
+            primaryController.eventWatch.await[ClusterCoupled](after = lastEventId)
             runOrder(OrderId("ORDER-ON-BACKUP-1"))
             // RESTART BACKUP
 

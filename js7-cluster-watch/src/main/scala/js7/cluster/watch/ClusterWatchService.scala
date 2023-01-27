@@ -43,7 +43,8 @@ extends Service.StoppableByRequest
 
   protected def start =
     Task.defer {
-      logger.info(s"$clusterWatchId ($clusterWatchRunId) for ${nodeApis.toList.mkString(", ")}")
+      logger.info(
+        s"↘ $clusterWatchId is starting for ${nodeApis.toList.mkString(", ")} ($clusterWatchRunId) ...")
       startService(
         Observable
           .fromIterable(
@@ -56,8 +57,8 @@ extends Service.StoppableByRequest
           }
         .takeUntilEval(untilStopRequested)
           .completedL
-          .guaranteeCase(exitCase => Task(
-            logger.info(s"$clusterWatchId for ${nodeApis.toList.mkString(", ")} => $exitCase"))))
+          .*>(Task(logger.info(
+            s"↙ $clusterWatchId started for ${nodeApis.toList.mkString(", ")}"))))
     }
 
   private def observeAgainAndAgain[A](nodeApi: ClusterNodeApi)(observable: Observable[A])
@@ -66,7 +67,7 @@ extends Service.StoppableByRequest
       .flatMap(_ =>
         observable
           .onErrorHandleWith { t =>
-            logger.warn(s"$nodeApi => ${t.toStringWithCauses}")
+            logger.warn(s"⟲ $nodeApi => ${t.toStringWithCauses}")
             Observable.empty
           })
 

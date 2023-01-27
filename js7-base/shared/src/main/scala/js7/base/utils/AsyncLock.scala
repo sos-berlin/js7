@@ -36,7 +36,7 @@ final class AsyncLock private(
 
   private def acquire(acquirerToString: () => String): Task[Unit] =
     lockM
-      .flatMap { mvar =>
+      .flatMap(mvar => Task.defer {
         val acquirer = new Acquirer(CorrelId.current, acquirerToString)
         mvar.tryPut(acquirer).flatMap(hasAcquired =>
           if (hasAcquired) {
@@ -53,18 +53,24 @@ final class AsyncLock private(
                 mvar.tryRead.flatMap {
                   case Some(lockedBy) =>
                     val nr = waitCounter.incrementAndGet()
-                    log.debug(
-                      s"⟲ 🔴$nr $name enqueues $acquirer (currently locked by $lockedBy) ...")
+                    var infoLogged = false
+                    log.debug(/*spaces are for column alignment*/
+                      s"⟲ 🔴$nr $name enqueues    $acquirer (currently locked by ${lockedBy.withCorrelId}) ...")
                     mvar.put(acquirer)
                       .whenItTakesLonger(warnTimeouts)(_ =>
-                        for (lockedBy <- mvar.tryRead) yield logger.info(
-                          s"⭕ $name: $acquirer is still waiting" +
-                            s" (currently locked by ${lockedBy getOrElse "None"})" +
-                            s" for ${waitingSince.elapsed.pretty} ..."))
+                        for (lockedBy <- mvar.tryRead) yield {
+                          val symbol = if (!infoLogged) "🔴" else "⭕"
+                          infoLogged = true
+                          logger.info(
+                            s"⟲ $symbol$nr $name: $acquirer is still waiting" +
+                              s" for ${waitingSince.elapsed.pretty}," +
+                              s" currently locked by ${lockedBy getOrElse "None"} ...")
+                        })
                       .map { _ =>
-                        log.debug(
-                          s"↘ 🟢$nr $name acquired by $acquirer after ${waitingSince.elapsed.pretty}")
                         acquirer.lockedSince = nanoTime()
+                        lazy val msg =
+                          s"↘ 🟢$nr $name acquired by $acquirer after ${waitingSince.elapsed.pretty}"
+                        if (infoLogged) log.info(msg) else log.debug(msg)
                         Right(())
                     }
 
@@ -79,7 +85,7 @@ final class AsyncLock private(
                       }
                 })
             })
-      }
+      })
 
   private def release(acquirerToString: () => String, exitCase: ExitCase[Throwable]): Task[Unit] =
     Task.defer {
@@ -111,20 +117,25 @@ object AsyncLock
     name: String,
     logWorryDurations: IterableOnce[FiniteDuration] = DefaultWorryDurations,
     suppressLog: Boolean = false)
-  =
+  : AsyncLock =
     new AsyncLock(name, logWorryDurations, suppressLog)
 
   private final class Acquirer(correlId: CorrelId, nameToString: () => String) {
     private lazy val name = nameToString()
     var lockedSince: Long = 0
 
+    def withCorrelId: String =
+      if (lockedSince == 0)
+        name
+      else
+        correlId.fold("", o => s"$o ") + toString
+
     override def toString =
       if (lockedSince == 0)
         name
       else {
-        val c = correlId.fold("", o => s"$o ")
         val duration = (nanoTime() - lockedSince).ns.pretty
-        s"$c$name $duration ago"
+        s"$name $duration ago"
       }
   }
 }

@@ -54,6 +54,7 @@ object ControllerCommand extends CommonCommand.Companion
 
   final case class AddOrder(order: FreshOrder) extends ControllerCommand {
     type Response = AddOrder.Response
+    override def toShortString = s"AddOrder(${order.id}, ${order.workflowPath})"
   }
   object AddOrder {
     final case class Response(ignoredBecauseDuplicate: Boolean)

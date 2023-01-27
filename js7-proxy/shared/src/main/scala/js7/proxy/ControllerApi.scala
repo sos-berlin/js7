@@ -6,7 +6,8 @@ import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.crypt.Signed
 import js7.base.eventbus.StandardEventBus
 import js7.base.generic.Completed
-import js7.base.log.CorrelId
+import js7.base.log.Logger.syntax.*
+import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.RefCountedResource
 import js7.base.problem.Checked
 import js7.base.session.SessionApi
@@ -48,22 +49,23 @@ extends ControllerApiWithHttp
       onCouplingError = _ => t => SessionApi.logError(t, toString).void,
       proxyConf))
 
-  protected val apiResource = apiCache.resource
+  protected def apiResource(implicit src: sourcecode.Enclosing) =
+    apiCache.resource
 
   private val stoppables = new StoppablesRegister
 
   def stop: Task[Unit] =
-    stoppables.stop *> apiCache.release
+    logger.debugTask(
+      stoppables.stop *> apiCache.release)
 
   /** For testing (it's slow): wait for a condition in the running event stream. **/
   def when(predicate: EventAndState[Event, ControllerState] => Boolean)
   : Task[EventAndState[Event, ControllerState]] =
-    CorrelId.bind {
+    CorrelId.bind(
       JournaledProxy.observable(apiResources, None, _ => (), proxyConf)
         .filter(predicate)
         .headOptionL
-        .map(_.getOrElse(throw new EndOfEventStreamException))
-    }
+        .map(_.getOrElse(throw new EndOfEventStreamException)))
 
   /** Read events and state from Controller. */
   def eventAndStateObservable(
@@ -71,15 +73,15 @@ extends ControllerApiWithHttp
     fromEventId: Option[EventId] = None)
   : Observable[EventAndState[Event, ControllerState]] =
     // CorrelId.bind ???
-    JournaledProxy.observable(apiResources, fromEventId, proxyEventBus.publish, proxyConf)
+    logger.debugObservable(
+      JournaledProxy.observable(apiResources, fromEventId, proxyEventBus.publish, proxyConf))
 
   def startProxy(
     proxyEventBus: StandardEventBus[ProxyEvent] = new StandardEventBus,
     eventBus: JournaledStateEventBus[ControllerState] = new JournaledStateEventBus[ControllerState])
   : Task[ControllerProxy] =
-    CorrelId.bind {
-      ControllerProxy.start(this, apiResources, proxyEventBus, eventBus, proxyConf)
-    }
+    CorrelId.bind(logger.debugTask(
+      ControllerProxy.start(this, apiResources, proxyEventBus, eventBus, proxyConf)))
 
   def clusterAppointNodes(idToUri: Map[NodeId, Uri], activeId: NodeId, clusterWatches: Seq[ClusterSetting.Watch])
   : Task[Checked[Accepted]] =
@@ -105,15 +107,17 @@ extends ControllerApiWithHttp
         Observable.fromIterable(items).map(o => ItemOperation.AddOrChangeSigned(o.signedString)))
 
   def updateItems(operations: Observable[ItemOperation]): Task[Checked[Completed]] =
-    untilReachable(_
-      .postObservable[ItemOperation, JsonObject](
-        "controller/api/item",
-        operations)
-    ).map(_.map((_: JsonObject) => Completed))
+    logger.debugTask(
+      untilReachable(_
+        .postObservable[ItemOperation, JsonObject](
+          "controller/api/item",
+          operations)
+      ).map(_.map((_: JsonObject) => Completed)))
 
   def addOrders(orders: Observable[FreshOrder]): Task[Checked[AddOrders.Response]] =
-    untilReachable(_.postObservable[FreshOrder, Json]("controller/api/order", orders))
-      .map(_.flatMap(_.checkedAs[AddOrders.Response]))
+    logger.debugTask(
+      untilReachable(_.postObservable[FreshOrder, Json]("controller/api/order", orders))
+        .map(_.flatMap(_.checkedAs[AddOrders.Response])))
 
   /** @return true if added, otherwise false because of duplicate OrderId. */
   def addOrder(order: FreshOrder): Task[Checked[Boolean]] =
@@ -122,29 +126,33 @@ extends ControllerApiWithHttp
 
   def deleteOrdersWhenTerminated(orderIds: Observable[OrderId])
   : Task[Checked[ControllerCommand.Response.Accepted]] =
-    untilReachable(_
-      .postObservable[OrderId, Json](
-        "controller/api/order/DeleteOrdersWhenTerminated",
-        orderIds))
-      .map(_.flatMap(_
-        .checkedAs[ControllerCommand.Response]
-        .map(_.asInstanceOf[ControllerCommand.Response.Accepted])))
+    logger.debugTask(
+      untilReachable(_
+        .postObservable[OrderId, Json](
+          "controller/api/order/DeleteOrdersWhenTerminated",
+          orderIds))
+        .map(_.flatMap(_
+          .checkedAs[ControllerCommand.Response]
+          .map(_.asInstanceOf[ControllerCommand.Response.Accepted]))))
 
   def releaseEvents(eventId: EventId): Task[Checked[Completed]] =
     executeCommand(ReleaseEvents(eventId))
       .mapt((_: ControllerCommand.Response.Accepted) => Completed)
 
   def executeCommand(command: ControllerCommand): Task[Checked[command.Response]] =
-    untilReachable(_.executeCommand(command))
+    logger.debugTask("executeCommand", command.toShortString)(
+      untilReachable(_.executeCommand(command)))
 
   def journalInfo: Task[Checked[JournalInfo]] =
-    untilReachable(_.journalInfo)
+    logger.debugTask(
+      untilReachable(_.journalInfo))
 
   def controllerState: Task[Checked[ControllerState]] =
-    untilReachable(_.snapshot())
+    logger.debugTask(
+      untilReachable(_.snapshot()))
 
   private def untilReachable[A](body: HttpControllerApi => Task[A]): Task[Checked[A]] =
-    CorrelId.bind {
+    CorrelId.bind(Task.defer {
       // TODO Similar to SessionApi.retryUntilReachable
       val delays = SessionApi.defaultLoginDelays()
       var warned = now - 1.h
@@ -172,7 +180,7 @@ extends ControllerApiWithHttp
             case (t, _, _) =>
               Task.raiseError(t)
           })
-    }
+    })
 
   def addStoppable(service: Stoppable): Task[Unit] =
     stoppables.add(service)
@@ -183,7 +191,7 @@ extends ControllerApiWithHttp
 
 object ControllerApi
 {
-  private val logger = scribe.Logger[this.type]
+  private val logger = Logger[this.type]
 
   def resource(
     apiResources: Nel[Resource[Task, HttpControllerApi]],

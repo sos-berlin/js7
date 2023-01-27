@@ -77,7 +77,8 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
 
   private val activeApiCache = new RefCountedResource(
     common.clusterNodeApi(idToUri(activeId), "Active node"))
-  private val activeApiResource = activeApiCache.resource
+  private def activeApiResource(implicit src: sourcecode.Enclosing) =
+    activeApiCache.resource
 
   private val stateBuilderAndAccessor = new StateBuilderAndAccessor(recovered.state)
   private var dontActivateBecauseOtherFailedOver = otherFailed

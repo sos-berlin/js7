@@ -222,7 +222,8 @@ extends AutoCloseable
   @TestOnly
   def waitUntilReady(): Unit =
     Task.fromFuture(whenReady)
-      .logWhenItTakesLonger("in", "waitUntilReady") await 99.s
+      .logWhenItTakesLonger
+      .await(99.s)
 
   @TestOnly
   def clusterState: Task[ClusterState] =
