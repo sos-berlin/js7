@@ -248,25 +248,20 @@ extends Service.StoppableByRequest with AnyClusterWatch
 
   def confirmNodeLoss(lostNodeId: NodeId): Task[Checked[Unit]] =
     logger.traceTask("confirmNodeLoss", lostNodeId)(Task.defer {
-      @tailrec def takeRequest(): Checked[Requested] = {
+      @tailrec def takeAnyNodeLostEventRequest(): Checked[Requested] =
         _requested.get() match {
-          case some @ Some(requested) =>
-            requested.request match {
-              case ClusterWatchCheckEvent(_, _, _, event: ClusterNodeLostEvent, _)
-                if event.lostNodeId == lostNodeId =>
-                if (_requested.compareAndSet(some, None))
-                  Right(requested)
-                else
-                  takeRequest()
-
-              case _ => Left(ConfirmClusterNodeLossNotApplicableProblem)
-            }
-          case None => Left(ConfirmClusterNodeLossNotApplicableProblem)
+          case some @ Some(requested) if requested.isNodeLostEvent(lostNodeId) =>
+            if (_requested.compareAndSet(some, None))
+              Right(requested)
+            else
+              takeAnyNodeLostEventRequest()
+          case _ => Left(ConfirmClusterNodeLossNotApplicableProblem)
         }
-      }
-      Task(takeRequest())
+
+      Task(takeAnyNodeLostEventRequest())
         .flatTapT(_ => Task {
-          commandConfirmedLostNodeId = Some((lostNodeId, now + timing.heartbeat))
+          commandConfirmedLostNodeId = Some(
+            (lostNodeId, now + timing.clusterWatchReactionTimeout + 1.s))
           Checked.unit
         })
         .flatMapT(request => request.confirm(request.commandConfirm))
@@ -342,6 +337,14 @@ object ClusterWatchCounterpart
       ClusterWatchConf.commandClusterWatchId,
       ClusterWatchRunId.empty,
       problem = None)
+
+
+    def isNodeLostEvent(lostNodeId: NodeId): Boolean =
+      request match {
+        case ClusterWatchCheckEvent(_, _, _, event: ClusterNodeLostEvent, _) =>
+          event.lostNodeId == lostNodeId
+        case _ => false
+      }
 
     override def toString = s"Requested($id,$clusterWatchId)"
   }
