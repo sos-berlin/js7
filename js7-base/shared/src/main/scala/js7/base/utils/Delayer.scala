@@ -32,7 +32,7 @@ final class Delayer[F[_]] private(initialNow: Deadline, conf: DelayConf)
   def sleep_(onSleep: FiniteDuration => F[Unit]): F[Unit] =
     nextDelay2.flatMap { case (elapsed, delay) =>
       logger.trace(s"sleep ${delay.pretty} elapsed=${elapsed.pretty} $toString")
-      onSleep(delay) *> timer.sleep(delay).as(this)
+      onSleep(delay) *> timer.sleep(delay)
     }
 
   def nextDelay: F[FiniteDuration] =
