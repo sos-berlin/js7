@@ -74,7 +74,7 @@ final class HttpClusterWatchTest extends OurTestSuite with BeforeAndAfterAll wit
 
   "HttpClusterWatch" in {
     val clusterWatch = new HttpClusterWatch(
-      NodeId("A"), server.localUri, userAndPassword = None, HttpsConfig.empty, actorSystem)
+      NodeId("A"), server.localUri, userAndPassword = None, HttpsConfig.empty, actorSystem, clusterTiming)
     val primaryId = NodeId("A")
     val setting = ClusterSetting(
       Map(
@@ -94,6 +94,8 @@ final class HttpClusterWatchTest extends OurTestSuite with BeforeAndAfterAll wit
 
 object HttpClusterWatchTest
 {
+  private val clusterTiming = ClusterTiming(3.s, 10.s)
+
   private def testSessionRoute: Route =
     decodeRequest/*decompress*/ {
     (pathSegments("agent/api/session") & pathEnd) {

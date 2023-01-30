@@ -9,7 +9,6 @@ import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.AsyncVariable
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, SetOnce}
@@ -205,8 +204,7 @@ object ClusterWatchSynchronizer
         clusterWatch.tryLogout
 
     def applyEvent(event: ClusterEvent, updatedClusterState: HasNodes) =
-      repeatWhenTooLong(
-        clusterWatch.applyEvent(event, updatedClusterState))
+      clusterWatch.applyEvent(event, updatedClusterState)
 
     // forEvent = true: do not check and wait ClusterState after an event has applied.
     // We suppress this to simplify testing.
@@ -358,13 +356,12 @@ object ClusterWatchSynchronizer
       clusterWatchIdChangeAllowed: Boolean = false,
       alreadyLocked: Boolean = false)
     : Task[Checked[Option[ClusterWatchConfirm]]] =
-      logger.debugTask(
-        repeatWhenTooLong(clusterWatch
-          .checkClusterState(
-            clusterState,
-            clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed)
-          .materializeIntoChecked
-        ).flatMapT {
+      logger.debugTask(clusterWatch
+        .checkClusterState(
+          clusterState,
+          clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed)
+        .materializeIntoChecked
+        .flatMapT {
           case None =>
             Task.right(None)
 
@@ -377,18 +374,6 @@ object ClusterWatchSynchronizer
             else
               // Not expected
               Task.left(Problem(s"New ${confirm.clusterWatchId} cannot be registered now"))
-        })
-
-    private def repeatWhenTooLong[A](task: Task[A]): Task[A] =
-      Task.tailRecM(())(_ => task
-        .timed
-        .map { case (duration, result) =>
-          if (duration >= timing.clusterWatchReactionTimeout) {
-            logger.info("ClusterWatch response time was too long: " + duration.pretty +
-              ", asking after discarding " + result)
-            Left(())
-          } else
-            Right(result)
         })
   }
 }

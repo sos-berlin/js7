@@ -19,7 +19,7 @@ import js7.common.http.AkkaHttpClient
 import js7.core.cluster.watch.HttpClusterWatch.*
 import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.ClusterWatchRequest.RequestId
-import js7.data.cluster.{ClusterEvent, ClusterState, ClusterWatchCheckEvent, ClusterWatchCheckState, ClusterWatchRequest}
+import js7.data.cluster.{ClusterEvent, ClusterState, ClusterTiming, ClusterWatchCheckEvent, ClusterWatchCheckState, ClusterWatchRequest}
 import js7.data.node.NodeId
 import js7.data.session.HttpSessionApi
 import monix.eval.Task
@@ -30,7 +30,8 @@ final class HttpClusterWatch(
   val baseUri: Uri,
   protected val userAndPassword: Option[UserAndPassword],
   protected val httpsConfig: HttpsConfig,
-  protected val actorSystem: ActorSystem)
+  protected val actorSystem: ActorSystem,
+  timing: ClusterTiming)
 extends ClusterWatchApi with AkkaHttpClient with HttpSessionApi
 with SessionApi.HasUserAndPassword
 with AnyClusterWatch
@@ -51,24 +52,24 @@ with AnyClusterWatch
 
   def checkClusterState(clusterState: HasNodes, clusterWatchIdChangeAllowed: Boolean)
   : Task[Checked[None.type]] =
-    Task.defer {
+    repeatWhenTooLong(Task.defer {
       val msg = ClusterWatchCheckState(RequestId(0), CorrelId.current, ownNodeId, clusterState)
       liftProblem(
         loginUntilReachable(Iterator.continually(ErrorDelay), onlyIfNotLoggedIn = true)
           .*>(postRequest(msg))
           .onErrorRestartLoop(())(onError)
           .as(None))
-    }
+    })
 
   def applyEvent(event: ClusterEvent, clusterState: HasNodes): Task[Checked[None.type]] =
-    Task.defer {
+    repeatWhenTooLong(Task.defer {
       val msg = ClusterWatchCheckEvent(RequestId(0), CorrelId.current, ownNodeId, event, clusterState)
       liftProblem(
         retryUntilReachable()(
           post[ClusterWatchRequest, JsonObject](clusterUri, msg)
         ).onErrorRestartLoop(())(onError)
           .map((_: JsonObject) => None))
-    }
+    })
 
   private def postRequest(request: ClusterWatchRequest): Task[Completed] =
     post[ClusterWatchRequest, JsonObject](clusterUri, request)
@@ -90,6 +91,18 @@ with AnyClusterWatch
   def clusterState: Task[Checked[ClusterState]] =
     liftProblem(
       get[ClusterState](clusterUri))
+
+  private def repeatWhenTooLong[A](task: Task[A]): Task[A] =
+    Task.tailRecM(())(_ => task
+      .timed
+      .map { case (duration, result) =>
+        if (duration >= timing.clusterWatchReactionTimeout) {
+          logger.info("ClusterWatch response time was too long: " + duration.pretty +
+            ", asking again after discarding " + result)
+          Left(())
+        } else
+          Right(result)
+      })
 }
 
 object HttpClusterWatch

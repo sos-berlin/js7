@@ -104,7 +104,8 @@ private[cluster] final class ClusterCommon(
           .optionAs[SecretString]("js7.auth.agents." /*TODO*/ + ConfigUtil.joinPath(uri.string))
           .map(password => UserAndPassword(controllerId.toUserId, password)),
         httpsConfig = httpsConfig,
-        actorSystem))
+        actorSystem,
+        timing))
 
   def tryEndlesslyToSendCommand(uri: Uri, command: ClusterCommand): Task[Unit] = {
     val name = command.getClass.simpleScalaName
