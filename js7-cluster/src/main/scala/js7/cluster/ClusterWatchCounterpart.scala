@@ -7,7 +7,6 @@ import cats.syntax.option.*
 import js7.base.auth.UserId
 import js7.base.eventbus.EventPublisher
 import js7.base.fs2utils.Fs2PubSub
-import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.*
@@ -21,7 +20,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest
 import js7.cluster.ClusterWatchCounterpart.*
 import js7.cluster.watch.api.ClusterWatchProblems.{ClusterWatchIdDoesNotMatchProblem, ClusterWatchRequestDoesNotMatchProblem, ConfirmClusterNodeLossNotApplicableProblem, NoClusterWatchProblem, OtherClusterWatchStillAliveProblem}
-import js7.cluster.watch.api.{AnyClusterWatch, ClusterWatchConfirmation, ConfirmedByClusterWatch, ConfirmedByUser}
+import js7.cluster.watch.api.{ClusterWatchApi, ClusterWatchConfirmation, ConfirmedByClusterWatch, ConfirmedByUser}
 import js7.data.cluster.ClusterEvent.{ClusterCouplingPrepared, ClusterNodesAppointed, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState.{Coupled, FailedOver, HasNodes, NodeLost, PassiveLost}
 import js7.data.cluster.ClusterWatchRequest.RequestId
@@ -39,7 +38,7 @@ final class ClusterWatchCounterpart private(
   timing: ClusterTiming,
   testEventPublisher: EventPublisher[Any])
   (implicit scheduler: Scheduler)
-extends Service.StoppableByRequest with AnyClusterWatch
+extends Service.StoppableByRequest with ClusterWatchApi
 {
   import clusterConf.ownId
 
@@ -57,8 +56,6 @@ extends Service.StoppableByRequest with AnyClusterWatch
   protected def start =
     startService(
       untilStopRequested *> pubsub.complete)
-
-  def tryLogout = Task.pure(Completed)
 
   def checkClusterState(clusterState: HasNodes, clusterWatchIdChangeAllowed: Boolean)
   : Task[Checked[Option[ClusterWatchConfirmation]]] =

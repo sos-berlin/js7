@@ -13,7 +13,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, SetOnce}
 import js7.cluster.ClusterWatchSynchronizer.*
-import js7.cluster.watch.api.{AnyClusterWatch, ClusterWatchConfirmation, ConfirmedByClusterWatch, ConfirmedByUser}
+import js7.cluster.watch.api.{ClusterWatchApi, ClusterWatchConfirmation, ConfirmedByClusterWatch, ConfirmedByUser}
 import js7.common.system.startup.Halt.haltJava
 import js7.core.cluster.watch.HttpClusterWatch
 import js7.data.cluster.ClusterEvent.{ClusterPassiveLost, ClusterWatchRegistered}
@@ -29,7 +29,7 @@ import scala.annotation.tailrec
 
 private final class ClusterWatchSynchronizer private(ownId: NodeId, initialInlay: Inlay)
 {
-  def this(ownId: NodeId, clusterWatch: AnyClusterWatch, timing: ClusterTiming) =
+  def this(ownId: NodeId, clusterWatch: ClusterWatchApi, timing: ClusterTiming) =
     this(ownId, new Inlay(clusterWatch, timing))
 
   private val inlay = AsyncVariable(initialInlay)
@@ -78,7 +78,7 @@ private final class ClusterWatchSynchronizer private(ownId: NodeId, initialInlay
     inlay.value.flatMap(_
       .stop.as(Completed))
 
-  def change(clusterState: ClusterState.HasNodes, clusterWatch: AnyClusterWatch): Task[Unit] =
+  def change(clusterState: ClusterState.HasNodes, clusterWatch: ClusterWatchApi): Task[Unit] =
     logger.debugTask {
       assertThat(clusterState.activeId == ownId)
       suspendHeartbeat(Task.pure(clusterState))(
@@ -188,7 +188,7 @@ object ClusterWatchSynchronizer
   private type RegisterClusterWatchId = (ConfirmedByClusterWatch, Boolean) => Task[Checked[Unit]]
 
   private final class Inlay(
-    val clusterWatch: AnyClusterWatch,
+    val clusterWatch: ClusterWatchApi,
     timing: ClusterTiming)
   {
     private val heartbeat = AtomicAny[Option[Heartbeat]](None)
@@ -198,9 +198,9 @@ object ClusterWatchSynchronizer
       case _ => None
     }
 
-    def stop: Task[Completed] =
+    def stop: Task[Unit] =
       stopHeartbeating *>
-        clusterWatch.tryLogout
+        clusterWatch.stop
 
     def applyEvent(event: ClusterEvent, updatedClusterState: HasNodes) =
       clusterWatch.applyEvent(event, updatedClusterState)

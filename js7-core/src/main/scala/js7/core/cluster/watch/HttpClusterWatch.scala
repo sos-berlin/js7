@@ -13,7 +13,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.HttpClient.HttpException
 import js7.base.web.Uri
-import js7.cluster.watch.api.AnyClusterWatch
+import js7.cluster.watch.api.ClusterWatchApi
 import js7.cluster.watch.api.ClusterWatchProblems.isClusterWatchProblem
 import js7.common.http.AkkaHttpClient
 import js7.core.cluster.watch.HttpClusterWatch.*
@@ -34,7 +34,6 @@ final class HttpClusterWatch(
   timing: ClusterTiming)
 extends ClusterWatchApi with AkkaHttpClient with HttpSessionApi
 with SessionApi.HasUserAndPassword
-with AnyClusterWatch
 {
   protected val sessionUri = Uri(s"$baseUri/agent/api/session")
   private val clusterUri = Uri(s"$baseUri/agent/api/clusterWatch")
@@ -49,6 +48,8 @@ with AnyClusterWatch
   protected def uriPrefixPath = "/agent"
 
   protected def name = "ClusterWatch"
+
+  def stop = tryLogout.as(())
 
   def checkClusterState(clusterState: HasNodes, clusterWatchIdChangeAllowed: Boolean)
   : Task[Checked[None.type]] =

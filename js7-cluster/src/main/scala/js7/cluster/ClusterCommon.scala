@@ -19,7 +19,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Lazy, SetOnce}
 import js7.base.web.Uri
 import js7.cluster.ClusterCommon.*
-import js7.cluster.watch.api.AnyClusterWatch
+import js7.cluster.watch.api.ClusterWatchApi
 import js7.cluster.watch.api.ClusterWatchProblems.{ClusterNodeLossNotAcknowledgedProblem, ClusterWatchInactiveNodeProblem}
 import js7.common.system.startup.Halt.haltJava
 import js7.core.cluster.watch.HttpClusterWatch
@@ -95,7 +95,7 @@ private[cluster] final class ClusterCommon(
           clusterState,
           newClusterWatchApi(clusterState.setting.maybeClusterWatchUri)))
 
-  private def newClusterWatchApi(uri: Option[Uri]): AnyClusterWatch =
+  private def newClusterWatchApi(uri: Option[Uri]): ClusterWatchApi =
     uri.fold_(clusterWatchCounterpartLazy.value, uri =>
       new HttpClusterWatch(
         ownId,
