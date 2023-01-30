@@ -22,7 +22,7 @@ import js7.data.event.*
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
-import js7.data.value.StringValue
+import js7.data.value.NumberValue
 import js7.journal.files.JournalFiles
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.tests.controller.cluster.ControllerClusterTester.*
@@ -64,7 +64,7 @@ class FailoverClusterTest extends ControllerClusterTester
       val sleepWhileFailing = clusterTiming.activeLostTimeout + 1.s
       val orderId = OrderId("💥")
       primaryController.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path, arguments = Map(
-        "SLEEP" -> StringValue(sleepWhileFailing.toSeconds.toString))))
+        "sleep" -> NumberValue(sleepWhileFailing.toSeconds))))
       primaryController.eventWatch.await[OrderProcessingStarted](_.key == orderId)
       backupController.eventWatch.await[OrderProcessingStarted](_.key == orderId)
       // KILL PRIMARY

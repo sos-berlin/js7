@@ -7,6 +7,7 @@ import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterPassiveLost}
 import js7.data.controller.ControllerCommand.ClusterAppointNodes
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
+import js7.data.value.NumberValue
 import js7.tests.controller.cluster.ControllerClusterTester.*
 import monix.execution.Scheduler.Implicits.traced
 
@@ -30,7 +31,8 @@ class PassiveLostClusterTest extends ControllerClusterTester
 
       val firstOrderId = OrderId("🔺")
       locally {
-        primaryController.addOrderBlocking(FreshOrder(firstOrderId, TestWorkflow.id.path))
+        primaryController.addOrderBlocking(FreshOrder(firstOrderId, TestWorkflow.id.path,
+          Map("sleep" -> NumberValue(1))))
         primaryController.eventWatch.await[OrderProcessingStarted](_.key == firstOrderId)
         backupController.eventWatch.await[OrderProcessingStarted](_.key == firstOrderId)
       }

@@ -1,7 +1,7 @@
 package js7.tests.jobs
 
 import cats.syntax.traverse.*
-import js7.base.time.ScalaTime.RichFiniteDuration
+import js7.base.time.ScalaTime.{DurationRichInt, RichFiniteDuration}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.agent.AgentPath
 import js7.data.order.Outcome
@@ -19,8 +19,8 @@ final class SleepJob(jobContext: JobContext) extends InternalJob
   def toOrderProcess(step: Step) =
     OrderProcess(
       step.arguments
-        .checked("sleep")
-        .flatMap(_.asDuration)
+        .get("sleep")
+        .fold_(Right(0.s), _.asDuration)
         .traverse(duration =>
           clock.sleep(duration).when(duration.isPositive)
             .as(Outcome.succeeded))
