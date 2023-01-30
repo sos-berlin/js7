@@ -31,6 +31,8 @@ object MonixBase
   private val CompletedTask = Task.pure(Completed)
   val DefaultBatchSize = 256
   val DefaultWorryDurations = Seq(3.s, 7.s, 10.s)
+  /** Log worry at info level after this duration. */
+  val InfoWorryDuration = DefaultWorryDurations.last
   private val logger = js7.base.log.Logger[this.type]
 
   object syntax
@@ -72,7 +74,7 @@ object MonixBase
           task
             .whenItTakesLonger()(duration => Task {
               def msg = s"⭕ Still waiting $preposition $what for ${duration.pretty}"
-              if (duration < 10.s)
+              if (duration < InfoWorryDuration)
                 logger.debug(msg)
               else {
                 infoLogged = true

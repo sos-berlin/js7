@@ -7,6 +7,7 @@ import com.softwaremill.diffx
 import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
+import js7.base.monixutils.MonixBase.InfoWorryDuration
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.monixutils.ObservablePauseDetector.*
 import js7.base.problem.Checked.*
@@ -30,6 +31,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, KeyedEvent, SnapshotableState, Stamped}
 import js7.data.node.NodeId
 import js7.journal.JournalActor
+import js7.journal.problems.Problems.JournalNotReadyProblem
 import js7.journal.state.FileStatePersistence
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -164,7 +166,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
 
       case ClusterCommand.ClusterPrepareCoupling(activeId, passiveId) =>
         requireOwnNodeId(command, activeId)(
-          persistence.waitUntilStarted.flatMap(_ =>
+          untilPersistenceStarted.flatMapT(_ =>
             clusterStateLock.lock(command.toShortString)(
               persist() {
                 case Empty =>
@@ -189,7 +191,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
 
       case ClusterCommand.ClusterCouple(activeId, passiveId) =>
         requireOwnNodeId(command, activeId)(
-          persistence.waitUntilStarted >>
+          untilPersistenceStarted.flatMapT(_ =>
             clusterStateLock.lock(command.toShortString)(
               persist() {
                 case s: PassiveLost if s.activeId == activeId && s.passiveId == passiveId =>
@@ -217,11 +219,11 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
               }.flatMapT { case (stampedEvents, state) =>
                 proceed(state).unless(stampedEvents.isEmpty)
                   .as(Right(ClusterCommand.Response.Accepted))
-              }))
+              })))
 
       case ClusterCommand.ClusterRecouple(activeId, passiveId) =>
         requireOwnNodeId(command, activeId)(
-          persistence.waitUntilStarted >>
+          untilPersistenceStarted.flatMapT(_ =>
             clusterStateLock.lock(command.toShortString)(
               persist() {
                 case s: Coupled if s.activeId == activeId && s.passiveId == passiveId =>
@@ -231,7 +233,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
 
                 case _ =>
                   Right(None)
-              }.map(_.map(_ => ClusterCommand.Response.Accepted))))
+              }.map(_.map(_ => ClusterCommand.Response.Accepted)))))
 
       case ClusterCommand.ClusterPassiveDown(activeId, passiveId) =>
         requireOwnNodeId(command, activeId)(
@@ -253,6 +255,14 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
       Task.pure(Left(Problem.pure(s"'${command.getClass.simpleScalaName}' command may only be directed to the active node")))
     else
       body
+
+  private def untilPersistenceStarted: Task[Checked[Unit]] =
+    persistence
+      .waitUntilStarted
+      .map(Right(_))
+      .timeoutTo(
+        InfoWorryDuration - 100.ms/*before the info message*/,
+        Task.left(JournalNotReadyProblem))
 
   def switchOver: Task[Checked[Completed]] =
     clusterStateLock.lock(
