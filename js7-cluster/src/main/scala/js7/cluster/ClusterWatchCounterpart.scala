@@ -155,7 +155,8 @@ extends Service.StoppableByRequest with AnyClusterWatch
             warned = true
             logger.warn(
               "⭕ Still trying to get a confirmation from " +
-                clusterWatchId.getOrElse("unknown ClusterWatch") +
+                clusterWatchId.fold("any ClusterWatch")(id =>
+                  id.toString + (requested.clusterWatchIdChangeAllowed ?? " (or other)")) +
                 " for " + request.toShortString + "" +
                 " for " + t.elapsed.pretty + "...")
             retry(()).delayExecution(1.s)

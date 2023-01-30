@@ -66,7 +66,7 @@ final class ClusterWatch(
           if (state.clusterState == reportedClusterState) {
             if (maybeEvent.nonEmpty) {
               logger.debug(
-                s"$from: Ignore probably duplicate events for already reached clusterState=${
+                s"$from: Ignore probably duplicate event for already reached clusterState=${
                   state.clusterState}")
             }
             Right(reportedClusterState)
