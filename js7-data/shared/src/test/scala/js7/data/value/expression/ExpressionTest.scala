@@ -610,6 +610,7 @@ final class ExpressionTest extends OurTestSuite
     "orElse" in {
       assert(OrElse(NumericConstant(1), NumericConstant(7)).eval == Right(NumberValue(1)))
       assert((OrElse(MissingConstant(), NumericConstant(7))).eval == Right(NumberValue(7)))
+      assert(OrElse(NamedValue("UNKNOWN"), NumericConstant(1)).eval == Right(NumberValue(1)))
     }
   }
 

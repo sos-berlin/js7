@@ -6,6 +6,7 @@ import io.circe.{Decoder, Encoder, Json, JsonObject}
 import java.lang.Character.{isUnicodeIdentifierPart, isUnicodeIdentifierStart}
 import java.util.regex.{Pattern, PatternSyntaxException}
 import js7.base.circeutils.CirceUtils.CirceUtilsChecked
+import js7.base.log.Logger
 import js7.base.parser.BasicPrinter.{appendIdentifier, appendIdentifierWithBackticks, identifierToString, isIdentifierPart}
 import js7.base.problem.Checked.{CheckedOption, catchExpected}
 import js7.base.problem.{Checked, Problem}
@@ -40,7 +41,7 @@ sealed trait Expression extends Precedence
 
   final def eval(implicit scope: Scope): Checked[Value] =
     evalAllowError.flatMap {
-      case v: IsErrorValue => v.problem
+      case v: IsErrorValue => Left(v.problem)
       case o => Right(o)
     }
 
@@ -69,6 +70,8 @@ sealed trait Expression extends Precedence
 
 object Expression
 {
+  private val logger = Logger[this.type]
+
   implicit val jsonEncoder: Encoder[Expression] = expr => Json.fromString(expr.toString)
   implicit val jsonDecoder: Decoder[Expression] =
     c => c.as[String]
@@ -313,9 +316,12 @@ object Expression
     def subexpressions = a :: default :: Nil
 
     protected def evalAllowError(implicit scope: Scope) =
-      a.evalAllowError.flatMap {
-        case _: IsErrorValue | NullValue => default.eval
-        case o => Right(o)
+      a.evalAllowError match {
+        case Left(problem) =>
+          logger.trace(s"OrElse catched $problem")
+          default.eval
+        case Right(_: IsErrorValue | NullValue) => default.eval
+        case Right(o) => Right(o)
       }
 
     override def toString = makeString(a, "orElse", default)
