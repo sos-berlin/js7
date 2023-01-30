@@ -1,6 +1,5 @@
 package js7.base.monixutils
 
-import js7.base.monixutils.MonixDeadline.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import monix.eval.Task
@@ -29,15 +28,33 @@ extends Ordered[MonixDeadline]
   def -(other: MonixDeadline): FiniteDuration =
     Duration(nanos - other.nanos, NANOSECONDS)
 
+  /**
+   * Determine whether the deadline lies in the past at the point where this method is called.
+   *
+   * '''''Note that on some systems this operation is costly because it entails a system call.'''''
+   * Check `System.nanoTime` for your platform.
+   */
+  def isOverdue: Boolean =
+    hasElapsed
+
+  /**
+   * Determine whether the deadline still lies in the future at the point where this method is called.
+   *
+   * '''''Note that on some systems this operation is costly because it entails a system call.'''''
+   * Check `System.nanoTime` for your platform.
+   */
+  def hasTimeLeft: Boolean =
+    !hasElapsed
+
   /** Returns true even if timeLeft == 0, this is different to `timeLeft` */
   def hasElapsed: Boolean =
-    nanos <= nowNanos
+    elapsedNanos >= 0
 
   def elapsedOrZero: FiniteDuration =
     elapsed max ZeroDuration
 
   def elapsed: FiniteDuration =
-    Duration(nowNanos - nanos, NANOSECONDS)
+    Duration(elapsedNanos, NANOSECONDS)
 
   def timeLeftOrZero: FiniteDuration =
     timeLeft max ZeroDuration
@@ -49,25 +66,10 @@ extends Ordered[MonixDeadline]
    * Check `System.nanoTime` for your platform.
    */
   def timeLeft: FiniteDuration =
-    Duration(nanos - nowNanos, NANOSECONDS)
+    Duration(-elapsedNanos, NANOSECONDS)
 
-  /**
-   * Determine whether the deadline still lies in the future at the point where this method is called.
-   *
-   * '''''Note that on some systems this operation is costly because it entails a system call.'''''
-   * Check `System.nanoTime` for your platform.
-   */
-  def hasTimeLeft: Boolean =
-    (nanos - nowNanos) > 0
-
-  /**
-   * Determine whether the deadline lies in the past at the point where this method is called.
-   *
-   * '''''Note that on some systems this operation is costly because it entails a system call.'''''
-   * Check `System.nanoTime` for your platform.
-   */
-  def isOverdue: Boolean =
-    (nanos - nowNanos) < 0
+  private def elapsedNanos =
+    scheduler.clockMonotonic(NANOSECONDS) - nanos
 
   /**
    * The natural ordering for deadline is determined by the natural order of the underlying (finite) duration.
@@ -76,7 +78,7 @@ extends Ordered[MonixDeadline]
     nanos compare other.nanos
 
   def now: MonixDeadline =
-    MonixDeadline(nowNanos)
+    MonixDeadline(scheduler.clockMonotonic(NANOSECONDS))
 
   /** Not immutable, may return each nanosecond a different string. */
   override def toString = {
