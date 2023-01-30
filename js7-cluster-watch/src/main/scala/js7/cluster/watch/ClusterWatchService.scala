@@ -87,34 +87,28 @@ extends Service.StoppableByRequest
           .map(_.orThrow)))
       .flatten
 
-  private def processRequest(nodeApi: HttpClusterNodeApi, msg: ClusterWatchRequest): Task[Unit] =
-    /*msg.correlId.bind — better log the ClusterWatch's CorrelId in Cluster node*/(
-    logger.debugTask("processRequest", msg)(Task.defer(
-      clusterWatch.handleMessage(msg).flatMap(checked =>
-        msg match {
-          case request: ClusterWatchRequest =>
-            HttpClient
-              .liftProblem(nodeApi
-                .retryIfSessionLost()(nodeApi
-                  .executeClusterWatchingCommand(
-                    ClusterWatchConfirm(
-                      request.requestId, clusterWatchId, clusterWatchRunId,
-                      checked.left.toOption))
-                  .void))
-              .map {
-                case Left(problem @ ClusterWatchRequestDoesNotMatchProblem) =>
-                  // Already confirmed by this or another ClusterWatch
-                  logger.info(s"$nodeApi $problem")
-                case Left(problem) =>
-                  logger.warn(s"$nodeApi $problem")
-                case Right(()) =>
-              }
-              .onErrorHandle(t =>
-                logger.error(s"$nodeApi ${t.toStringWithCauses}", t.nullIfNoStackTrace))
-          case _ =>
-            for (problem <- checked.left) logger.warn(s"$nodeApi $problem — request=$msg")
-            Task.unit
-        }))))
+  private def processRequest(nodeApi: HttpClusterNodeApi, request: ClusterWatchRequest): Task[Unit] =
+    /*request.correlId.bind — better log the ClusterWatch's CorrelId in Cluster node*/(
+    logger.debugTask("processRequest", request)(Task.defer(
+      clusterWatch.handleMessage(request).flatMap(checked =>
+        HttpClient
+          .liftProblem(nodeApi
+            .retryIfSessionLost()(nodeApi
+              .executeClusterWatchingCommand(
+                ClusterWatchConfirm(
+                  request.requestId, clusterWatchId, clusterWatchRunId,
+                  checked.left.toOption))
+              .void))
+          .map {
+            case Left(problem @ ClusterWatchRequestDoesNotMatchProblem) =>
+              // Already confirmed by this or another ClusterWatch
+              logger.info(s"$nodeApi $problem")
+            case Left(problem) =>
+              logger.warn(s"$nodeApi $problem")
+            case Right(()) =>
+          }
+          .onErrorHandle(t =>
+            logger.error(s"$nodeApi ${t.toStringWithCauses}", t.nullIfNoStackTrace))))))
 
   override def toString = "ClusterWatchService"
 

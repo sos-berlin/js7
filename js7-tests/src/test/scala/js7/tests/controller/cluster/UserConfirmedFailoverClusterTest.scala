@@ -26,7 +26,7 @@ import js7.tests.testenv.ControllerClusterForScalaTest.clusterWatchId
 import monix.execution.Scheduler.Implicits.global
 import scala.concurrent.duration.Deadline.now
 
-final class ManualFailoverClusterTest extends ControllerClusterTester
+final class UserConfirmedFailoverClusterTest extends ControllerClusterTester
 {
   override protected def primaryControllerConfig =
     // Short timeout because something blocks web server shutdown occasionally

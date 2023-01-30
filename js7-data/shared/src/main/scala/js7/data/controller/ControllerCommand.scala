@@ -245,6 +245,7 @@ object ControllerCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
 
+  /** Manually confirm a cluster node loss when ClusterWatch fails. */
   final case class ConfirmClusterNodeLoss(lostNodeId: NodeId)
   extends ControllerCommand {
     type Response = Response.Accepted
