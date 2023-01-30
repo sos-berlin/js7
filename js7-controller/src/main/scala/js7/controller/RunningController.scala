@@ -545,7 +545,7 @@ object RunningController
             .map(_.map((_: Completed) => ControllerCommand.Response.Accepted))
 
         case ControllerCommand.ConfirmClusterNodeLoss(nodeID) =>
-          clusterNode.confirmNodeLoss(nodeID)
+          clusterNode.userConfirmNodeLoss(nodeID, meta.user.id)
             .rightAs(ControllerCommand.Response.Accepted)
 
         case _ =>

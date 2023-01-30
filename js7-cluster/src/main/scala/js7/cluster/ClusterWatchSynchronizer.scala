@@ -13,12 +13,11 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, SetOnce}
 import js7.cluster.ClusterWatchSynchronizer.*
-import js7.cluster.watch.api.AnyClusterWatch
+import js7.cluster.watch.api.{AnyClusterWatch, ClusterWatchConfirmation, ConfirmedByClusterWatch, ConfirmedByUser}
 import js7.common.system.startup.Halt.haltJava
 import js7.core.cluster.watch.HttpClusterWatch
 import js7.data.cluster.ClusterEvent.{ClusterPassiveLost, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState.{Coupled, HasNodes}
-import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterEvent, ClusterState, ClusterTiming}
 import js7.data.node.NodeId
 import monix.catnap.MVar
@@ -70,14 +69,14 @@ private final class ClusterWatchSynchronizer private(ownId: NodeId, initialInlay
           case None => Completed
           case Some(confirm) =>
             if (isCoupled) logger.info(
-              s"${confirm.clusterWatchId} agreed that this node is the active cluster node")
+              s"${confirm.confirmer} agreed that this node is the active cluster node")
             Completed
         })
     }
 
   def stop: Task[Completed] =
     inlay.value.flatMap(_
-      .stop)
+      .stop.as(Completed))
 
   def change(clusterState: ClusterState.HasNodes, clusterWatch: AnyClusterWatch): Task[Unit] =
     logger.debugTask {
@@ -91,7 +90,7 @@ private final class ClusterWatchSynchronizer private(ownId: NodeId, initialInlay
     }
 
   def applyEvent(event: ClusterEvent, updatedClusterState: HasNodes)
-  : Task[Checked[Option[ClusterWatchConfirm]]] =
+  : Task[Checked[Option[ClusterWatchConfirmation]]] =
     Task.defer {
       inlay.value.flatMap(myInlay =>
         event match {
@@ -186,7 +185,7 @@ object ClusterWatchSynchronizer
   private val logger = Logger(getClass)
   private val heartbeatSessionNr = Iterator.from(1)
 
-  private type RegisterClusterWatchId = (ClusterWatchConfirm, Boolean) => Task[Checked[Unit]]
+  private type RegisterClusterWatchId = (ConfirmedByClusterWatch, Boolean) => Task[Checked[Unit]]
 
   private final class Inlay(
     val clusterWatch: AnyClusterWatch,
@@ -355,7 +354,7 @@ object ClusterWatchSynchronizer
       registerClusterWatchId: RegisterClusterWatchId,
       clusterWatchIdChangeAllowed: Boolean = false,
       alreadyLocked: Boolean = false)
-    : Task[Checked[Option[ClusterWatchConfirm]]] =
+    : Task[Checked[Option[ClusterWatchConfirmation]]] =
       logger.debugTask(clusterWatch
         .checkClusterState(
           clusterState,
@@ -365,15 +364,18 @@ object ClusterWatchSynchronizer
           case None =>
             Task.right(None)
 
-          case Some(confirm) =>
-            if (clusterState.setting.clusterWatchId contains confirm.clusterWatchId)
-              Task.right(Some(confirm))
+          case Some(confirmation: ConfirmedByClusterWatch) =>
+            if (clusterState.setting.clusterWatchId contains confirmation.clusterWatchId)
+              Task.right(Some(confirmation))
             else if (clusterWatchIdChangeAllowed)
-              registerClusterWatchId(confirm, alreadyLocked)
-                .rightAs(Some(confirm))
+              registerClusterWatchId(confirmation, alreadyLocked)
+                .rightAs(Some(confirmation))
             else
               // Not expected
-              Task.left(Problem(s"New ${confirm.clusterWatchId} cannot be registered now"))
+              Task.left(Problem(s"New ${confirmation.clusterWatchId} cannot be registered now"))
+
+          case Some(confirmation: ConfirmedByUser) =>
+            Task.right(Some(confirmation))
         })
   }
 }

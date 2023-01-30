@@ -5,6 +5,7 @@ import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.generic.GenericLong
 import js7.base.log.CorrelId
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
+import js7.data.cluster.ClusterEvent.ClusterNodeLostEvent
 import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.ClusterWatchRequest.*
 import js7.data.node.NodeId
@@ -15,9 +16,9 @@ sealed trait ClusterWatchRequest
   def correlId: CorrelId
   def from: NodeId
   def clusterState: HasNodes
+  def isNodeLostEvent(lostNodeId: NodeId): Boolean
   def toShortString: String
 }
-
 
 final case class ClusterWatchCheckEvent(
   requestId: RequestId,
@@ -27,6 +28,12 @@ final case class ClusterWatchCheckEvent(
   clusterState: ClusterState.HasNodes)
 extends ClusterWatchRequest
 {
+  def isNodeLostEvent(lostNodeId: NodeId): Boolean =
+    event match {
+      case event: ClusterNodeLostEvent => event.lostNodeId == lostNodeId
+      case _ => false
+    }
+
   override def toShortString =
     s"$requestId ${event.getClass.simpleScalaName} event"
 }
@@ -38,8 +45,10 @@ final case class ClusterWatchCheckState(
   clusterState: ClusterState.HasNodes)
 extends ClusterWatchRequest
 {
+  def isNodeLostEvent(lostNodeId: NodeId) = false
+
   override def toShortString =
-    s"$requestId ${clusterState.toShortString} state"
+    s"$requestId ClusterState.${clusterState.toShortString}"
 }
 
 object ClusterWatchRequest

@@ -188,20 +188,24 @@ extends EventDrivenState.Companion[ClusterState, ClusterEvent]
     def withSetting(setting: ClusterSetting) = copy(setting = setting)
   }
 
-  final case class PassiveLost(setting: ClusterSetting)
+  final case class SwitchedOver(setting: ClusterSetting)
   extends Decoupled {
     def withSetting(setting: ClusterSetting) = copy(setting = setting)
   }
 
-  final case class SwitchedOver(setting: ClusterSetting)
-  extends Decoupled {
+  sealed trait NodeLost extends Decoupled {
+    this: Product =>
+  }
+
+  final case class PassiveLost(setting: ClusterSetting)
+  extends NodeLost {
     def withSetting(setting: ClusterSetting) = copy(setting = setting)
   }
 
   /** Decoupled after failover.
     * @param failedAt the failing node's journal must be truncated at this point. */
   final case class FailedOver(setting: ClusterSetting, failedAt: JournalPosition)
-  extends Decoupled {
+  extends NodeLost {
     def withSetting(setting: ClusterSetting) = copy(setting = setting)
 
     override def toShortString =

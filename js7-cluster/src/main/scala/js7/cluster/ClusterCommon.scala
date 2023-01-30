@@ -175,9 +175,11 @@ private[cluster] final class ClusterCommon(
                   case Right(maybeConfirm) =>
                     maybeConfirm match {
                       case None =>
-                        logger.info(s"ClusterWatch agreed to '${event.getClass.simpleScalaName}' event")
+                        logger.info(
+                          s"ClusterWatch agreed to '${event.getClass.simpleScalaName}' event")
                       case Some(confirm) =>
-                        logger.info(s"${confirm.clusterWatchId} agreed to '${event.getClass.simpleScalaName}' event")
+                        logger.info(
+                          s"${confirm.confirmer} agreed to '${event.getClass.simpleScalaName}' event")
                     }
                     testEventPublisher.publish(ClusterWatchAgreedToActivation)
                     body

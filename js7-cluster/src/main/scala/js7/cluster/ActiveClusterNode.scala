@@ -18,8 +18,8 @@ import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.{HttpClient, Uri}
 import js7.cluster.ActiveClusterNode.*
-import js7.cluster.watch.ClusterWatchConf
 import js7.cluster.watch.api.ClusterWatchProblems.{ClusterStateEmptyProblem, NoClusterWatchProblem}
+import js7.cluster.watch.api.ConfirmedByClusterWatch
 import js7.common.http.RecouplingStreamReader
 import js7.data.Problems.{ClusterCommandInapplicableProblem, ClusterNodeIsNotActiveProblem, ClusterSettingNotUpdatable, MissingPassiveClusterNodeHeartbeatProblem}
 import js7.data.cluster.ClusterCommand.ClusterStartBackupNode
@@ -511,40 +511,39 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
     common.clusterWatchCounterpart.executeClusterWatchConfirm(cmd)
 
   // Called back by clusterWatchCounterpart.executeClusterWatchConfirm
-  private def registerClusterWatchId(confirm: ClusterWatchConfirm, alreadyLocked: Boolean)
+  private def registerClusterWatchId(confirmation: ConfirmedByClusterWatch, alreadyLocked: Boolean)
   : Task[Checked[Unit]] =
     logger.traceTask(Task.defer {
-      if (confirm.clusterWatchId == ClusterWatchConf.commandClusterWatchId)
-        Task.right(())
-      else if (!persistence.isStarted) {
+      if (!persistence.isStarted) {
         // Not expected
         logger.error(
-          s"🔥 registerClusterWatchId(${confirm.clusterWatchId.string}): persistence not yet started")
+          s"🔥 registerClusterWatchId(${confirmation.clusterWatchId.string}): persistence not yet started")
         Task.left(Problem("registerClusterWatchId: persistence not yet started"))
       } else if (alreadyLocked)
-        nonLockingRegisterClusterWatchId(confirm)
+        nonLockingRegisterClusterWatchId(confirmation)
       else
         clusterStateLock.lock(
-          nonLockingRegisterClusterWatchId(confirm))
+          nonLockingRegisterClusterWatchId(confirmation))
     })
 
-  private def nonLockingRegisterClusterWatchId(confirm: ClusterWatchConfirm): Task[Checked[Unit]] =
+  private def nonLockingRegisterClusterWatchId(confirmation: ConfirmedByClusterWatch)
+  : Task[Checked[Unit]] =
     persistence.clusterState
       .flatMap(clusterState =>
-        Task(ifClusterWatchRegistered(clusterState, confirm.clusterWatchId))
+        Task(ifClusterWatchRegistered(clusterState, confirmation.clusterWatchId))
           .flatMapT(
             if (_) // Short cut
               Task.right(Nil -> clusterState)
             else
               persistence
                 .persistTransaction[ClusterEvent](NoKey)(s =>
-                  ifClusterWatchRegistered(s.clusterState, confirm.clusterWatchId)
-                    .map(!_ thenList ClusterWatchRegistered(confirm.clusterWatchId)))
+                  ifClusterWatchRegistered(s.clusterState, confirmation.clusterWatchId)
+                    .map(!_ thenList ClusterWatchRegistered(confirmation.clusterWatchId)))
                 .map(_.map { case (stampedEvents, journaledState) =>
                   stampedEvents -> journaledState.clusterState
                 })))
       .flatTapT(_ => common
-        .clusterWatchCounterpart.onClusterWatchRegistered(confirm.clusterWatchId)
+        .clusterWatchCounterpart.onClusterWatchRegistered(confirmation.clusterWatchId)
         .as(Checked.unit))
       .flatMapT { case (stampedEvents, clusterState) =>
         val events = stampedEvents.map(_.value.event)
