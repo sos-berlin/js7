@@ -33,6 +33,8 @@ extends EventInstructionExecutor
               else
                 View(
                   OrderOrderAdded(addedOrderId, workflowId, args,
+                    startPosition = addOrder.startPosition,
+                    stopPositions = addOrder.stopPositions,
                     deleteWhenTerminated = addOrder.deleteWhenTerminated),
                   OrderMoved(order.position.increment))
             events.map(_.map(order.id <-: _).toList)

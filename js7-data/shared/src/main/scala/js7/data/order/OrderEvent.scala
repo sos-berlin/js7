@@ -99,12 +99,12 @@ object OrderEvent
     orderId: OrderId,
     workflowId: WorkflowId,
     arguments: NamedValues = Map.empty,
+    startPosition: Option[Position] = None,
+    stopPositions: Set[PositionOrLabel] = Set.empty,
     deleteWhenTerminated: Boolean = false)
   extends OrderAddedX with OrderActorEvent {
     workflowId.requireNonAnonymous()
     def scheduledFor = None
-    def startPosition = None
-    def stopPositions = Set.empty
     def externalOrderKey = None
     def addedOrderId(o: OrderId) = orderId
     override def toShortString = s"OrderOrderAdded($orderId, ${workflowId.path})"
@@ -115,6 +115,8 @@ object OrderEvent
         "orderId" -> o.orderId.asJson,
         "workflowId" -> o.workflowId.asJson,
         "arguments" -> o.arguments.??.asJson,
+        "startPosition" -> o.startPosition.asJson,
+        "stopPositions" -> o.stopPositions.??.asJson,
         "deleteWhenTerminated" -> o.deleteWhenTerminated.?.asJson)
 
     private[OrderEvent] implicit val jsonDecoder: Decoder[OrderOrderAdded] =
@@ -122,8 +124,11 @@ object OrderEvent
         orderId <- c.get[OrderId]("orderId")
         workflowId <- c.get[WorkflowId]("workflowId")
         arguments <- c.getOrElse[NamedValues]("arguments")(Map.empty)
+        startPosition <- c.get[Option[Position]]("startPosition")
+        stopPositions <- c.getOrElse[Set[PositionOrLabel]]("stopPositions")(Set.empty)
         deleteWhenTerminated <- c.getOrElse[Boolean]("deleteWhenTerminated")(false)
-      } yield OrderOrderAdded(orderId, workflowId, arguments, deleteWhenTerminated)
+      } yield OrderOrderAdded(orderId, workflowId, arguments, startPosition, stopPositions,
+        deleteWhenTerminated)
   }
 
   /** Agent-only event. */

@@ -7,15 +7,17 @@ import js7.base.problem.Problems.DuplicateKey
 import js7.base.test.OurTestSuite
 import js7.base.time.{AlarmClock, TestAlarmClock, Timestamp}
 import js7.data.agent.AgentPath
-import js7.data.order.OrderEvent.{OrderAdded, OrderFailed, OrderFinished, OrderMoved, OrderOrderAdded, OrderOutcomeAdded, OrderPrompted, OrderStarted}
-import js7.data.order.{FreshOrder, OrderId, Outcome}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderOrderAdded, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderPrompted, OrderStarted}
+import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.workflow.instructions.{AddOrder, Prompt}
+import js7.data.workflow.instructions.{AddOrder, Fail, Prompt}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.AddOrderTest.*
+import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.ControllerAgentForScalaTest
+import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import monix.execution.Scheduler.Implicits.traced
 
 final class AddOrderTest extends OurTestSuite with ControllerAgentForScalaTest
@@ -36,7 +38,7 @@ final class AddOrderTest extends OurTestSuite with ControllerAgentForScalaTest
   }
 
   protected def agentPaths = Seq(agentPath)
-  protected def items = Seq(aWorkflow, bWorkflow)
+  protected def items = Seq(aWorkflow, bWorkflow, c1Workflow, c2Workflow)
 
   "AddOrder" in {
     val orderId = OrderId("🔵")
@@ -74,13 +76,49 @@ final class AddOrderTest extends OurTestSuite with ControllerAgentForScalaTest
       OrderOutcomeAdded(Outcome.Failed.fromProblem(DuplicateKey("OrderId", "🟦"))),
       OrderFailed(Position(0))))
   }
+
+  "AddOrder with startPosition and stopPositions (JS-2029)" in {
+    locally {
+      val orderId = OrderId("START-AND-STOP")
+      val events = controller.runOrder(FreshOrder(orderId, c1Workflow.path)).map(_.value)
+      assert(events == Seq(
+        OrderAdded(c1Workflow.id),
+        OrderStarted,
+        OrderOrderAdded(
+          OrderId("ADDED"),
+          c2Workflow.id,
+          startPosition = Some(Position(1)),
+          stopPositions = Set(Position(2)),
+          deleteWhenTerminated = true),
+        OrderMoved(Position(1)),
+        OrderFinished()))
+    }
+
+    locally {
+      val orderId = OrderId("ADDED")
+      eventWatch.await[OrderDeleted](_.key == orderId)
+      val events = eventWatch.eventsByKey[OrderEvent](orderId)
+      assert(events == Seq(
+        OrderAttachable(agentPath),
+        OrderAttached(agentPath),
+        OrderStarted,
+        OrderProcessingStarted(Some(subagentId), false),
+        OrderProcessed(Outcome.succeeded),
+        OrderMoved(Position(2)),
+        OrderDetachable,
+        OrderDetached,
+        OrderFinished(None),
+        OrderDeleted))
+    }
+  }
 }
 
 object AddOrderTest
 {
   private val agentPath = AgentPath("AGENT")
+  private val subagentId = toLocalSubagentId(agentPath)
 
-  private lazy val aWorkflow = Workflow(WorkflowPath("A-WORKFLOW") ~ "INITIAL",
+  private val aWorkflow = Workflow(WorkflowPath("A-WORKFLOW") ~ "INITIAL",
     Seq(
       AddOrder(
         orderId = expr("'🟦'"),
@@ -89,7 +127,22 @@ object AddOrderTest
           "year" -> expr("now('yyyy')")),
         deleteWhenTerminated = true)))
 
-  private val bWorkflow = Workflow(WorkflowPath("B-WORKFLOW") ~ "INITIAL",
+  private lazy val bWorkflow = Workflow(WorkflowPath("B-WORKFLOW") ~ "INITIAL",
     Seq(
       Prompt(expr("'?'"))))
+
+  private val c1Workflow = Workflow(WorkflowPath("C1-WORKFLOW") ~ "INITIAL",
+    Seq(
+      AddOrder(
+        orderId = expr("'ADDED'"),
+        c2Workflow.path,
+        startPosition = Some(Position(1)),
+        stopPositions = Set(Position(2)),
+        deleteWhenTerminated = true)))
+
+  private lazy val c2Workflow = Workflow(WorkflowPath("C2-WORKFLOW") ~ "INITIAL",
+    Seq(
+      Prompt(expr("'?'")),
+      EmptyJob.execute(agentPath),
+      Fail(None)))
 }

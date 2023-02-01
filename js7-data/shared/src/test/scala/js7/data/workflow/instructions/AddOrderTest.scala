@@ -4,6 +4,7 @@ import js7.base.circeutils.CirceUtils.*
 import js7.base.test.OurTestSuite
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.Instructions.jsonCodec
+import js7.data.workflow.position.{Label, Position}
 import js7.data.workflow.{Instruction, WorkflowPath}
 import js7.tester.CirceJsonTester.testJson
 
@@ -16,6 +17,8 @@ final class AddOrderTest extends OurTestSuite
         WorkflowPath("WORKFLOW"),
         Map(
           "arg1" -> expr("7")),
+        startPosition = Some(Position(1)),
+        stopPositions = Set(Position(2), Label("LABEL")),
         deleteWhenTerminated = true),
       json"""
       {
@@ -25,6 +28,8 @@ final class AddOrderTest extends OurTestSuite
         "arguments": {
           "arg1": "7"
         },
+        "startPosition": [1],
+        "stopPositions": [ [2], "LABEL"],
         "deleteWhenTerminated": true
       }""")
   }

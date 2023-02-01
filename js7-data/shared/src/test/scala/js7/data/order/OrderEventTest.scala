@@ -68,6 +68,8 @@ final class OrderEventTest extends OurTestSuite
         OrderId("ORDER-ID"),
         WorkflowPath("WORKFLOW") ~ "VERSION",
         Map("VAR" -> StringValue("VALUE")),
+        startPosition = Some(Position(1)),
+        stopPositions = Set(Position(2), Label("LABEL")),
         deleteWhenTerminated = true),
       json"""
       {
@@ -80,6 +82,8 @@ final class OrderEventTest extends OurTestSuite
         "arguments": {
           "VAR": "VALUE"
         },
+        "startPosition": [1],
+        "stopPositions": [ [2], "LABEL"],
         "deleteWhenTerminated": true
       }""")
   }
