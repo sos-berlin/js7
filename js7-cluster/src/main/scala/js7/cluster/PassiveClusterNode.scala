@@ -37,7 +37,7 @@ import js7.common.http.RecouplingStreamReader
 import js7.common.jsonseq.PositionAnd
 import js7.data.cluster.ClusterCommand.{ClusterCouple, ClusterPassiveDown, ClusterPrepareCoupling, ClusterRecouple}
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodesAppointed, ClusterPassiveLost, ClusterSwitchedOver}
-import js7.data.cluster.ClusterState.{Coupled, Decoupled, PreparedToBeCoupled}
+import js7.data.cluster.ClusterState.{Coupled, IsDecoupled, PreparedToBeCoupled}
 import js7.data.cluster.{ClusterEvent, ClusterNodeApi, ClusterSetting, ClusterState}
 import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import js7.data.event.JournalSeparators.HeartbeatMarker
@@ -152,7 +152,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
               .match_ {
                 case ClusterState.Empty =>
                   Task.unit
-                case _: Decoupled =>
+                case _: IsDecoupled =>
                   tryEndlesslyToSendClusterPrepareCoupling
                 case _: PreparedToBeCoupled =>
                   common.tryEndlesslyToSendCommand(

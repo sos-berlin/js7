@@ -22,7 +22,7 @@ import js7.cluster.ClusterWatchCounterpart.*
 import js7.cluster.watch.api.ClusterWatchProblems.{ClusterWatchIdDoesNotMatchProblem, ClusterWatchRequestDoesNotMatchProblem, ConfirmClusterNodeLossNotApplicableProblem, NoClusterWatchProblem, OtherClusterWatchStillAliveProblem}
 import js7.cluster.watch.api.{ClusterWatchApi, ClusterWatchConfirmation, ConfirmedByClusterWatch, ConfirmedByUser}
 import js7.data.cluster.ClusterEvent.{ClusterCouplingPrepared, ClusterNodesAppointed, ClusterWatchRegistered}
-import js7.data.cluster.ClusterState.{Coupled, FailedOver, HasNodes, NodeLost, PassiveLost}
+import js7.data.cluster.ClusterState.{Coupled, FailedOver, HasNodes, IsNodeLost, PassiveLost}
 import js7.data.cluster.ClusterWatchRequest.RequestId
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterEvent, ClusterTiming, ClusterWatchCheckEvent, ClusterWatchCheckState, ClusterWatchId, ClusterWatchRequest}
@@ -113,8 +113,10 @@ extends Service.StoppableByRequest with ClusterWatchApi
       Task.defer {
         val reqId = RequestId(nextRequestId.getAndIncrement())
         val request = toRequest(reqId)
-        lock.lock(logger.debugTask("check", request)(
-          Task.defer {
+        lock.lock(
+          logger.debugTask("check",
+            s"$request${if (clusterWatchIdChangeAllowed) "" else "clusterWatchIdChangeAllowed=false"}"
+          )(Task.defer {
             userConfirmedNodeLoss
               .flatMap(_
                 .nodeLostStateToConfirm(request))
@@ -357,7 +359,7 @@ object ClusterWatchCounterpart
 
     def nodeLostStateToConfirm(request: ClusterWatchRequest): Option[ConfirmedByUser] =
       request match {
-        case ClusterWatchCheckState(_, _, _, clusterState: NodeLost)
+        case ClusterWatchCheckState(_, _, _, clusterState: IsNodeLost)
           if clusterState.passiveId == lostNodeId && expires.hasTimeLeft =>
           //? requested.confirm(toConfirmation(requested.id))
           Some(toConfirmation(request.requestId))

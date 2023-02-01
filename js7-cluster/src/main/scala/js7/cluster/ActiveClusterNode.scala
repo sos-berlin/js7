@@ -24,7 +24,7 @@ import js7.common.http.RecouplingStreamReader
 import js7.data.Problems.{ClusterCommandInapplicableProblem, ClusterNodeIsNotActiveProblem, ClusterSettingNotUpdatable, MissingPassiveClusterNodeHeartbeatProblem}
 import js7.data.cluster.ClusterCommand.ClusterStartBackupNode
 import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterCouplingPrepared, ClusterPassiveLost, ClusterSettingUpdated, ClusterSwitchedOver, ClusterWatchRegistered}
-import js7.data.cluster.ClusterState.{ActiveShutDown, Coupled, CoupledOrDecoupled, Decoupled, Empty, HasNodes, NodesAppointed, PassiveLost, PreparedToBeCoupled}
+import js7.data.cluster.ClusterState.{ActiveShutDown, Coupled, Empty, HasNodes, IsCoupledOrDecoupled, IsDecoupled, NodesAppointed, PassiveLost, PreparedToBeCoupled}
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterSetting, ClusterState, ClusterTiming, ClusterWatchId}
 import js7.data.event.KeyedEvent.NoKey
@@ -122,7 +122,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
       clusterStateLock.lock(
         suspendHeartbeat(forEvent = true)(
           persistWithoutTouchingHeartbeat() {
-            case clusterState: CoupledOrDecoupled =>
+            case clusterState: IsCoupledOrDecoupled =>
               val current = clusterState.setting
               val updated = current.withPassiveUri(setting.passiveUri)
                 .copy(
@@ -130,7 +130,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
                   clusterWatches = setting.clusterWatches)
               val changedPassiveUri = (setting.passiveUri != current.passiveUri) ?
                 setting.passiveUri
-              if (changedPassiveUri.isDefined && !clusterState.isInstanceOf[Decoupled]
+              if (changedPassiveUri.isDefined && !clusterState.isInstanceOf[IsDecoupled]
                 || updated != setting /*reject other differences*/ )
                 Left(ClusterSettingNotUpdatable)
               else if (updated.copy(clusterWatchId = None) == current.copy(clusterWatchId = None))
@@ -177,7 +177,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
                     case _ if clusterState.activeId != activeId || clusterState.passiveId != passiveId =>
                       Left(ClusterCommandInapplicableProblem(command, clusterState))
 
-                    case _: Decoupled =>
+                    case _: IsDecoupled =>
                       Right(Some(ClusterCouplingPrepared(activeId)))
 
                     case _: PreparedToBeCoupled | _: Coupled | _: ActiveShutDown =>

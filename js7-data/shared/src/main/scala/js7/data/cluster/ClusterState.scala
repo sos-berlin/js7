@@ -28,55 +28,55 @@ extends EventDrivenState[ClusterState, ClusterEvent]
 
   final def applyEvent(keyedEvent: KeyedEvent[ClusterEvent]): Checked[ClusterState] =
     keyedEvent match {
-      case KeyedEvent(_: NoKey, event) =>
-        (this, event) match {
-          case (Empty, ClusterNodesAppointed(setting)) =>
-            Right(NodesAppointed(setting))
+      case KeyedEvent(_: NoKey, event) => applyEvent2(event)
+      case _ => eventNotApplicable(keyedEvent)
+    }
 
-          case (state: CoupledOrDecoupled, ClusterSettingUpdated(maybePassiveUri, maybeClusterWatches)) =>
-            ((state, maybePassiveUri) match {
-              case (_, None) => Right(state)
-              case (state: Decoupled, Some(uri)) => Right(state.withPassiveUri(uri))
-              case _ => eventNotApplicable(keyedEvent)
-            }).map(_
-              .withClusterWatches(maybeClusterWatches getOrElse state.setting.clusterWatches))
+  private def applyEvent2(event: ClusterEvent): Checked[ClusterState] =
+    (this, event) match {
+      case (Empty, ClusterNodesAppointed(setting)) =>
+        Right(NodesAppointed(setting))
 
-          case (state: Decoupled, ClusterCouplingPrepared(activeId)) if state.activeId == activeId =>
-            Right(PreparedToBeCoupled(state.setting))
+      case (state: IsCoupledOrDecoupled, ClusterSettingUpdated(maybePassiveUri, maybeClusterWatches)) =>
+        ((state, maybePassiveUri) match {
+          case (_, None) => Right(state)
+          case (state: IsDecoupled, Some(uri)) => Right(state.withPassiveUri(uri))
+          case _ => eventNotApplicable(event)
+        }).map(_
+          .withClusterWatches(maybeClusterWatches getOrElse state.setting.clusterWatches))
 
-          case (state: PreparedToBeCoupled, ClusterCoupled(activeId)) if state.activeId == activeId =>
-            Right(Coupled(state.setting))
+      case (state: IsDecoupled, ClusterCouplingPrepared(activeId)) if state.activeId == activeId =>
+        Right(PreparedToBeCoupled(state.setting))
 
-          case (state: Coupled, ClusterPassiveLost(id)) if state.passiveId == id =>
-            // Be sure that any event on Coupled leaves this state !!!
-            // In case of a passive heartbeat loss, the JournalActor gets a JournalActor.Input.PassiveLost,
-            // event if a concurrent ClusterEvent changes the ClusterState.
-            // No ClusterEvent should go from Coupled to Coupled.
-            Right(PassiveLost(state.setting))
+      case (state: PreparedToBeCoupled, ClusterCoupled(activeId)) if state.activeId == activeId =>
+        Right(Coupled(state.setting))
 
-          case (state: Coupled, ClusterSwitchedOver(id)) if state.passiveId == id =>
-            Right(SwitchedOver(state.setting.copy(activeId = id)))
+      case (state: Coupled, ClusterPassiveLost(id)) if state.passiveId == id =>
+        // Be sure that any event on Coupled leaves this state !!!
+        // In case of a passive heartbeat loss, the JournalActor gets a JournalActor.Input.PassiveLost,
+        // event if a concurrent ClusterEvent changes the ClusterState.
+        // No ClusterEvent should go from Coupled to Coupled.
+        Right(PassiveLost(state.setting))
 
-          case (state: Coupled, event: ClusterFailedOver)
-            if state.activeId == event.failedActiveId && state.passiveId == event.activatedId =>
-            Right(FailedOver(state.setting.copy(activeId = event.activatedId), failedAt = event.failedAt))
+      case (state: Coupled, ClusterSwitchedOver(id)) if state.passiveId == id =>
+        Right(SwitchedOver(state.setting.copy(activeId = id)))
 
-          case (state: Coupled, ClusterActiveNodeShutDown) =>
-            Right(ActiveShutDown(state.setting))
+      case (state: Coupled, event: ClusterFailedOver)
+        if state.activeId == event.failedActiveId && state.passiveId == event.activatedId =>
+        Right(FailedOver(state.setting.copy(activeId = event.activatedId), failedAt = event.failedAt))
 
-          case (state: ActiveShutDown, ClusterActiveNodeRestarted) =>
-            Right(PassiveLost(state.setting))
-            // Passive node may recouple now
+      case (state: Coupled, ClusterActiveNodeShutDown) =>
+        Right(ActiveShutDown(state.setting))
 
-          case (state: HasNodes, ClusterWatchRegistered(clusterWatchId)) =>
-            Right(state.withSetting(setting = state.setting.copy(
-              clusterWatchId = Some(clusterWatchId))))
+      case (state: ActiveShutDown, ClusterActiveNodeRestarted) =>
+        Right(PassiveLost(state.setting))
+        // Passive node may recouple now
 
-          case (_, keyedEvent) =>
-            eventNotApplicable(keyedEvent)
-        }
+      case (state: HasNodes, ClusterWatchRegistered(clusterWatchId)) =>
+        Right(state.withSetting(setting = state.setting.copy(
+          clusterWatchId = Some(clusterWatchId))))
 
-      case _ =>
+      case (_, keyedEvent) =>
         eventNotApplicable(keyedEvent)
     }
 
@@ -145,16 +145,16 @@ extends EventDrivenState.Companion[ClusterState, ClusterEvent]
       Subtype(deriveCodec[FailedOver]))
   }
 
-  sealed trait CoupledOrDecoupled extends HasNodes {
+  sealed trait IsCoupledOrDecoupled extends HasNodes {
     this: Product =>
 
-    def withSetting(setting: ClusterSetting): CoupledOrDecoupled
+    def withSetting(setting: ClusterSetting): IsCoupledOrDecoupled
 
     final def withClusterWatches(w: Seq[ClusterSetting.Watch]) =
       withSetting(setting.copy(clusterWatches = w))
   }
 
-  sealed trait Decoupled extends CoupledOrDecoupled {
+  sealed trait IsDecoupled extends IsCoupledOrDecoupled {
     this: Product =>
 
     final def withPassiveUri(uri: Uri) =
@@ -162,7 +162,7 @@ extends EventDrivenState.Companion[ClusterState, ClusterEvent]
   }
 
   final case class NodesAppointed(setting: ClusterSetting)
-  extends Decoupled {
+  extends IsDecoupled {
     def withSetting(setting: ClusterSetting) = copy(setting = setting)
   }
 
@@ -174,7 +174,7 @@ extends EventDrivenState.Companion[ClusterState, ClusterEvent]
 
   /** An active node is coupled with a passive node. */
   final case class Coupled(setting: ClusterSetting)
-  extends CoupledOrDecoupled
+  extends IsCoupledOrDecoupled
   {
     def withSetting(setting: ClusterSetting) = copy(setting = setting)
   }
@@ -184,28 +184,28 @@ extends EventDrivenState.Companion[ClusterState, ClusterEvent]
       After restart, the active node will be still active.
     */
   final case class ActiveShutDown(setting: ClusterSetting)
-  extends Decoupled {
+  extends IsDecoupled {
     def withSetting(setting: ClusterSetting) = copy(setting = setting)
   }
 
   final case class SwitchedOver(setting: ClusterSetting)
-  extends Decoupled {
+  extends IsDecoupled {
     def withSetting(setting: ClusterSetting) = copy(setting = setting)
   }
 
-  sealed trait NodeLost extends Decoupled {
+  sealed trait IsNodeLost extends IsDecoupled {
     this: Product =>
   }
 
   final case class PassiveLost(setting: ClusterSetting)
-  extends NodeLost {
+  extends IsNodeLost {
     def withSetting(setting: ClusterSetting) = copy(setting = setting)
   }
 
   /** Decoupled after failover.
     * @param failedAt the failing node's journal must be truncated at this point. */
   final case class FailedOver(setting: ClusterSetting, failedAt: JournalPosition)
-  extends NodeLost {
+  extends IsNodeLost {
     def withSetting(setting: ClusterSetting) = copy(setting = setting)
 
     override def toShortString =
