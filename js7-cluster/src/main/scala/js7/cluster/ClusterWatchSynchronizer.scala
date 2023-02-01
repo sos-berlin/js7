@@ -17,7 +17,7 @@ import js7.cluster.watch.api.{ClusterWatchApi, ClusterWatchConfirmation, Confirm
 import js7.common.system.startup.Halt.haltJava
 import js7.core.cluster.watch.HttpClusterWatch
 import js7.data.cluster.ClusterEvent.{ClusterPassiveLost, ClusterWatchRegistered}
-import js7.data.cluster.ClusterState.{Coupled, HasNodes}
+import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.{ClusterEvent, ClusterState, ClusterTiming}
 import js7.data.node.NodeId
 import monix.catnap.MVar
@@ -55,8 +55,9 @@ private final class ClusterWatchSynchronizer private(ownId: NodeId, initialInlay
     registerClusterWatchId: RegisterClusterWatchId)
   : Task[Checked[Completed]] =
     Task.defer {
-      val isCoupled = clusterState.isInstanceOf[Coupled]
-      if (isCoupled) logger.info("Asking ClusterWatch")
+      assertThat(clusterState.activeId == ownId)
+      val logAsInfo = clusterState.isInstanceOf[HasNodes]
+      if (logAsInfo) logger.info("Asking ClusterWatch")
 
       inlay.value
         .flatMap(_
@@ -68,7 +69,7 @@ private final class ClusterWatchSynchronizer private(ownId: NodeId, initialInlay
         .map(_.map {
           case None => Completed
           case Some(confirm) =>
-            if (isCoupled) logger.info(
+            if (logAsInfo) logger.info(
               s"${confirm.confirmer} agreed that this node is the active cluster node")
             Completed
         })
