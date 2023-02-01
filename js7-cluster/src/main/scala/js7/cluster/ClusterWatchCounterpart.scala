@@ -105,7 +105,7 @@ extends Service.StoppableByRequest with ClusterWatchApi
   private def check(
     clusterWatchId: Option[ClusterWatchId],
     toRequest: RequestId => ClusterWatchRequest,
-    clusterWatchIdChangeAllowed: Boolean = false)
+    clusterWatchIdChangeAllowed: Boolean)
   : Task[Checked[ClusterWatchConfirmation]] =
     if (!clusterWatchIdChangeAllowed && !clusterWatchId.isDefined)
       Task.left(NoClusterWatchProblem)

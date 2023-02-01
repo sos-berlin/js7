@@ -214,7 +214,7 @@ object ClusterWatchSynchronizer
       forEvent: Boolean)
     : Task[Completed] =
       logger.traceTask(
-        doACheckedHeartbeat(clusterState, registerClusterWatchId)
+        doACheckedHeartbeat(clusterState, registerClusterWatchId, clusterWatchIdChangeAllowed = false)
           .rightAs(())
           .when(!forEvent && clusterState.setting.clusterWatchId.isDefined)
           .*>(Task.defer {
@@ -353,7 +353,7 @@ object ClusterWatchSynchronizer
     def doACheckedHeartbeat(
       clusterState: HasNodes,
       registerClusterWatchId: RegisterClusterWatchId,
-      clusterWatchIdChangeAllowed: Boolean = false,
+      clusterWatchIdChangeAllowed: Boolean,
       alreadyLocked: Boolean = false)
     : Task[Checked[Option[ClusterWatchConfirmation]]] =
       logger.debugTask(clusterWatch
