@@ -5,8 +5,8 @@ import js7.base.log.{CorrelId, Logger}
 import js7.base.test.LoggingFreeSpecStringWrapper.{StringWrapper, TaggedAs}
 import js7.base.test.LoggingTestAdder.*
 import js7.base.time.ScalaTime.*
-import js7.base.utils.ScalaUtils.syntax.RichThrowable
-import js7.base.utils.Tests.{isIntelliJIdea, isSbt}
+import js7.base.utils.ScalaUtils.syntax.{RichString, RichThrowable}
+import js7.base.utils.Tests.isSbt
 import org.scalatest.exceptions.TestPendingException
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline.now
@@ -88,9 +88,7 @@ private object LoggingTestAdder {
     private val prefix = nesting.view.reverse.mkString("", " — ", " — ")
 
     def beforeTest(): Unit = {
-      delayBeforeEnd()
       logger.info(eager(s"↘ $blue$bold$prefix$testName$resetColor"))
-      delayBeforeEnd()
       since
     }
 
@@ -122,8 +120,7 @@ private object LoggingTestAdder {
           logger.info(eager(failureMarkup + bar + resetColor))
           clipStackTrace(t)
       }
-      if (isIntelliJIdea) TestResultCollector.add(result)
-      delayBeforeEnd()
+      TestResultCollector.add(result)
     }
   }
 
@@ -133,17 +130,33 @@ private object LoggingTestAdder {
     tried: Try[Unit],
     duration: FiniteDuration)
   {
+    val prettyDuration: String = duration.pretty
+
     def toLogLine: String =
       tried match {
         case Success(_) =>
-          s"$successMarkup$prefix$testName$resetColor ${duration.pretty}"
+          s"$successMarkup$prefix$testName$resetColor $prettyDuration"
 
         case Failure(_: TestPendingException) =>
-          s"❌ $pendingMarkup$prefix$testName (PENDING)$resetColor ${duration.pretty}"
+          s"❌ $pendingMarkup$prefix$testName (PENDING)$resetColor $prettyDuration"
 
         case Failure(t) =>
-          s"💥 $failureMarkup$prefix$testName 💥$resetColor ${duration.pretty}"
+          s"💥 $failureMarkup$prefix$testName 💥$resetColor $prettyDuration"
       }
+
+    def toSummaryLine: String = {
+      val shortTestName = testName.truncateWithEllipsis(100) // Replaces \n
+      tried match {
+        case Success(_) =>
+          f"✔️  $prettyDuration%-7s $successMarkup$prefix$shortTestName$resetColor"
+
+        case Failure(_: TestPendingException) =>
+          f"❌ $prettyDuration%-7s $pendingMarkup$prefix$shortTestName (PENDING)$resetColor"
+
+        case Failure(t) =>
+          f"💥 $prettyDuration%-7s $failureMarkup$prefix$shortTestName 💥$resetColor"
+      }
+    }
   }
 
   private def clipStackTrace(t: Throwable): Unit = {
@@ -155,9 +168,6 @@ private object LoggingTestAdder {
     }
     t.setStackTrace(st.slice(dropTop, dropBottom + 1 max dropTop + 1))
   }
-
-  private def delayBeforeEnd() =
-    if (false && isIntelliJIdea) sleep(1.ms)
 
   /** Because ScalaLogging String interpolation may let the
    * IntellijJScala plugin intersperse a '\n'. */

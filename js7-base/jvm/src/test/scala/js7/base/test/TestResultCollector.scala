@@ -1,23 +1,42 @@
 package js7.base.test
 
+import js7.base.log.Logger
+import js7.base.test.LoggingTestAdder.Result
 import js7.base.thread.VirtualThreads.newMaybeVirtualThread
+import js7.base.utils.Tests.isIntelliJIdea
 import scala.collection.mutable
 
 private object TestResultCollector
 {
-  private val sb = new mutable.StringBuilder("\n")
+  private val results = mutable.Buffer[Result]()
+  private val logger = Logger[this.type]
 
   sys.runtime.addShutdownHook(
     newMaybeVirtualThread("TestResultCollector-Shutdown") {
-      synchronized {
-        println(sb)
+      val summary = asString
+      logger.info(s"Test summary:\n$summary")
+      if (isIntelliJIdea) {
+        println(summary)
       }
     })
 
-  def add(result: LoggingTestAdder.Result): Unit =
+  def add(result: Result): Unit =
     synchronized {
-      if (result.tried.isSuccess) sb.append("✔️ ")
-      sb.append(result.toLogLine)
-      sb.append("\n")
+      results += result
+    }
+
+  def asString: String =
+    synchronized {
+      results
+        .sortWith((a, b) =>
+          if (a.prettyDuration != b.prettyDuration)
+            a.duration < b.duration
+          else
+            a.prefix.compareTo(b.prefix) match {
+              case 0 => a.testName == b.testName
+              case i => i < 0
+            })
+        .map(_.toSummaryLine)
+        .mkString("\n")
     }
 }

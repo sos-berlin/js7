@@ -297,13 +297,13 @@ final class CatsExpressionParserTest extends OurTestSuite
   }
 
   private def testBooleanExpression(exprString: String, expr: BooleanExpression)(implicit pos: source.Position) =
-    registerTest(exprString) {
+    exprString in {
         assert(parseExpression(exprString) == Right(expr))
       assert(parseExpression(expr.toString) == Right(expr), " - toString")
     }
 
   private def testExpression(exprString: String, expr: Expression)(implicit pos: source.Position) =
-    registerTest(exprString) {
+    exprString in {
       testExpressionRaw(exprString, expr)
     }
 
@@ -313,7 +313,7 @@ final class CatsExpressionParserTest extends OurTestSuite
   }
 
   private def testError(exprString: String, errorMessage: String)(implicit pos: source.Position) =
-    registerTest(exprString + " - should fail") {
+    exprString + " - should fail" in {
       testErrorRaw(exprString, errorMessage)
     }
 

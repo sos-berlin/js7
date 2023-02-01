@@ -713,7 +713,7 @@ final class ExpressionTest extends OurTestSuite
   }
 
   private def testSyntaxError(exprString: String, problem: String)(implicit pos: source.Position): Unit =
-    registerTest(s"$exprString - should fail") {
+    s"$exprString - should fail" in {
       assert(parseExpression(exprString) == Left(Problem(problem)))
     }
 
@@ -735,7 +735,7 @@ final class ExpressionTest extends OurTestSuite
   private def testEval(exprString: String, result: Checked[Value], expression: Checked[Expression])
     (implicit scope: Scope, pos: source.Position)
   : Unit =
-    registerTest(exprString) {
+    exprString in {
       val checked = parseExpressionOrFunction(exprString.trim)
       assert(checked == expression)
       //if (checked != expression) {

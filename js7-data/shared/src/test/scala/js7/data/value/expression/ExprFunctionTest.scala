@@ -48,7 +48,7 @@ final class ExprFunctionTest extends OurTestSuite
     result: Checked[Value],
     checkedFunction: Checked[ExprFunction])
     (implicit pos: source.Position): Unit =
-    registerTest(exprString) {
+    exprString in {
       val checked = parseFunction(exprString)
       assert(checked == checkedFunction)
       for (function <- checkedFunction) {
