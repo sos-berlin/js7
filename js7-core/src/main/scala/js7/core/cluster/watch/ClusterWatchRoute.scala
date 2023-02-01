@@ -27,7 +27,7 @@ trait ClusterWatchRoute
           completeTask(
             session.withRequestId(requestNumber)(
               clusterWatchRegister(controllerId)
-                .flatMap(_.handleMessage(msg))
+                .flatMap(_.processRequest(msg))
                 .map(_.map((_: Completed) => JsonObject.empty)))))
       }
     } ~

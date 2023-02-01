@@ -42,6 +42,8 @@ private final class ClusterWatchSynchronizer private(ownId: NodeId, initialInlay
   : Task[Checked[Completed]] =
     logger.debugTask(Task.defer {
       this.registerClusterWatchId := registerClusterWatchId
+      // Due to clusterWatchIdChangeAllowed = true, the ClusterWatch should always agree.
+      // This is more to teach a recently started ClusterWatch.
       askClusterWatch(clusterState, registerClusterWatchId)
         .when(clusterState.setting.clusterWatchId.isDefined)
         .flatMapT(_ =>

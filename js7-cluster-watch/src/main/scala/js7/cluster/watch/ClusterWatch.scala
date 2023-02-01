@@ -8,7 +8,7 @@ import js7.base.problem.Checked.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.cluster.watch.ClusterWatch.*
-import js7.cluster.watch.api.ClusterWatchProblems.{ClusterFailOverWhilePassiveLostProblem, ClusterNodeLossNotAcknowledgedProblem, ClusterWatchEventMismatchProblem, ClusterWatchInactiveNodeProblem, InvalidClusterWatchHeartbeatProblem, NoClusterNodeLostProblem, UntaughtClusterWatchProblem}
+import js7.cluster.watch.api.ClusterWatchProblems.{ClusterFailOverWhilePassiveLostProblem, ClusterNodeLossNotAcknowledgedProblem, ClusterWatchEventMismatchProblem, ClusterWatchInactiveNodeProblem, NoClusterNodeLostProblem, UntaughtClusterWatchProblem}
 import js7.data.cluster.ClusterEvent.{ClusterFailedOver, ClusterNodeLostEvent, ClusterPassiveLost, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{Coupled, HasNodes, PassiveLost}
 import js7.data.cluster.{ClusterWatchCheckEvent, ClusterWatchRequest}
@@ -35,9 +35,12 @@ final class ClusterWatch(
       .toChecked(UntaughtClusterWatchProblem)
       .map(_.clusterState)
 
-  // TODO Das wird synchron genutzt und braucht nicht mehr asynchron zu sein
+  // TODO `processRequest` wird synchron genutzt und braucht nicht mehr asynchron zu sein
+  def processRequest(request: ClusterWatchRequest): Task[Checked[Completed]] =
+    Task.pure(request.checked)
+      .flatMapT(_ => processCheckedRequest2(request))
 
-  def handleMessage(request: ClusterWatchRequest): Task[Checked[Completed]] = {
+  private def processCheckedRequest2(request: ClusterWatchRequest): Task[Checked[Completed]] = {
     import request.{from, clusterState as reportedClusterState}
     val maybeEvent = request match {
       case o: ClusterWatchCheckEvent => Some(o.event)
@@ -46,87 +49,83 @@ final class ClusterWatch(
 
     lazy val opString = s"${maybeEvent getOrElse "heartbeat"} --> $reportedClusterState"
 
-    update(from, opString)(current =>
-      if (from != reportedClusterState.activeId
-        && !maybeEvent.exists(_.event.isInstanceOf[ClusterSwitchedOver]))
-        Left(InvalidClusterWatchHeartbeatProblem(from, reportedClusterState))
-      else current match {
-        case None =>
-          // Not yet initialized then no ClusterFailedOver
-          if (maybeEvent.exists(_.isInstanceOf[ClusterFailedOver]))
-            Left(UntaughtClusterWatchProblem)
-          else
-            teach(from, reportedClusterState)
+    update(from, opString) {
+      case None =>
+        // Not yet initialized then no ClusterFailedOver
+        if (maybeEvent.exists(_.isInstanceOf[ClusterFailedOver]))
+          Left(UntaughtClusterWatchProblem)
+        else
+          teach(from, reportedClusterState)
 
-        case Some(state) =>
-          def clusterWatchInactiveNodeProblem =
-            ClusterWatchInactiveNodeProblem(from,
-              state.clusterState, state.lastHeartbeat.elapsed, opString)
+      case Some(state) =>
+        def clusterWatchInactiveNodeProblem =
+          ClusterWatchInactiveNodeProblem(from,
+            state.clusterState, state.lastHeartbeat.elapsed, opString)
 
-          if (state.clusterState == reportedClusterState) {
-            if (maybeEvent.nonEmpty) {
-              logger.debug(
-                s"$from: Ignore probably duplicate event for already reached clusterState=${
-                  state.clusterState}")
+        if (state.clusterState == reportedClusterState) {
+          if (maybeEvent.nonEmpty) {
+            logger.debug(
+              s"$from: Ignore probably duplicate event for already reached clusterState=${
+                state.clusterState}")
+          }
+          Right(reportedClusterState)
+        } else
+          maybeEvent
+            .match_ {
+              case Some(_: ClusterSwitchedOver) =>
+                // ClusterSwitchedOver is applied by each node.
+                // ClusterSwitchedOver is considered reliable.
+                Checked.unit
+
+              case Some(ClusterFailedOver(failedActiveId, _, _)) =>
+                state.clusterState match {
+                  case PassiveLost(setting) if setting.activeId == failedActiveId =>
+                    Left(ClusterFailOverWhilePassiveLostProblem)
+
+                  case clusterState =>
+                    (from == clusterState.passiveId && !state.isLastHeartbeatStillValid) !!
+                      clusterWatchInactiveNodeProblem
+                }
+
+              case _ =>
+                (from == state.clusterState.activeId) !! clusterWatchInactiveNodeProblem
             }
-            Right(reportedClusterState)
-          } else
-            maybeEvent
-              .match_ {
-                case Some(_: ClusterSwitchedOver) =>
-                  // ClusterSwitchedOver is applied by each node.
-                  // ClusterSwitchedOver is considered reliable.
-                  Checked.unit
+            .flatMap(_ =>
+              state.clusterState.applyEvents(maybeEvent.map(NoKey <-: _))
+                .match_ {
+                  case Left(problem) =>
+                    logger.warn(s"$from: $problem")
+                    Left(ClusterWatchEventMismatchProblem(
+                      maybeEvent, state.clusterState, reportedClusterState = reportedClusterState))
 
-                case Some(ClusterFailedOver(failedActiveId, _, _)) =>
-                  state.clusterState match {
-                    case PassiveLost(setting) if setting.activeId == failedActiveId =>
-                      Left(ClusterFailOverWhilePassiveLostProblem)
-
-                    case clusterState =>
-                      (from == clusterState.passiveId && !state.isLastHeartbeatStillValid) !!
-                        clusterWatchInactiveNodeProblem
-                  }
-
-                case _ =>
-                  (from == state.clusterState.activeId) !! clusterWatchInactiveNodeProblem
-              }
-              .flatMap(_ =>
-                state.clusterState.applyEvents(maybeEvent.map(NoKey <-: _))
-                  .match_ {
-                    case Left(problem) =>
-                      logger.warn(s"$from: $problem")
-                      Left(ClusterWatchEventMismatchProblem(
-                        maybeEvent, state.clusterState, reportedClusterState = reportedClusterState))
-
-                    case Right(clusterState) =>
-                      for (event <- maybeEvent) logger.info(s"$from: $event")
-                      maybeEvent
-                        .collect { case o: ClusterNodeLostEvent => o }
-                        .match_ {
-                          case Some(event) if requireLostAck && !state.isLostNodeAcknowledged =>
-                            Left(ClusterNodeLossNotAcknowledgedProblem(event))
-                          case _ =>
-                            if (clusterState == reportedClusterState) {
-                              logger.info(s"$from changes ClusterState to $reportedClusterState")
-                              Right(reportedClusterState)
-                            } else {
-                              // The node may have died just between sending the event to
-                              // ClusterWatch and persisting it. Then we have a different state.
-                              val previouslyActive = state.clusterState.activeId.string
-                              // TODO Warning may occur due to different ClusterWatchId. But why?
-                              logger.warn(s"$from forced ClusterState to $reportedClusterState " +
-                                s"maybe because heartbeat of up to now active $previouslyActive " +
-                                s"is too long ago (${state.lastHeartbeat.elapsed.pretty})")
-                              Right(reportedClusterState)
-                            }
-                        }
-                  })
+                  case Right(clusterState) =>
+                    for (event <- maybeEvent) logger.info(s"$from: $event")
+                    maybeEvent
+                      .collect { case o: ClusterNodeLostEvent => o }
+                      .match_ {
+                        case Some(event) if requireLostAck && !state.isLostNodeAcknowledged =>
+                          Left(ClusterNodeLossNotAcknowledgedProblem(event))
+                        case _ =>
+                          if (clusterState == reportedClusterState) {
+                            logger.info(s"$from changes ClusterState to $reportedClusterState")
+                            Right(reportedClusterState)
+                          } else {
+                            // The node may have died just between sending the event to
+                            // ClusterWatch and persisting it. Then we have a different state.
+                            val previouslyActive = state.clusterState.activeId.string
+                            // TODO Warning may occur due to different ClusterWatchId. But why?
+                            logger.warn(s"$from forced ClusterState to $reportedClusterState " +
+                              s"maybe because heartbeat of up to now active $previouslyActive " +
+                              s"is too long ago (${state.lastHeartbeat.elapsed.pretty})")
+                            Right(reportedClusterState)
+                          }
+                      }
+                })
             .tap {
               case Left(problem) => logger.warn(s"$from: $problem")
               case Right(_) =>
             }
-    }).rightAs(Completed)
+    }.rightAs(Completed)
   }
 
   private def teach(from: NodeId, clusterState: HasNodes) = {

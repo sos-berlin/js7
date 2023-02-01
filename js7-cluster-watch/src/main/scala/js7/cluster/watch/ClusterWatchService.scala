@@ -90,7 +90,7 @@ extends Service.StoppableByRequest
   private def processRequest(nodeApi: HttpClusterNodeApi, request: ClusterWatchRequest): Task[Unit] =
     /*request.correlId.bind — better log the ClusterWatch's CorrelId in Cluster node*/(
     logger.debugTask("processRequest", request)(Task.defer(
-      clusterWatch.handleMessage(request).flatMap(checked =>
+      clusterWatch.processRequest(request).flatMap(checked =>
         HttpClient
           .liftProblem(nodeApi
             .retryIfSessionLost()(nodeApi

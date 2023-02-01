@@ -3,7 +3,7 @@ package js7.cluster.watch.api
 import js7.base.problem.{Problem, ProblemCode}
 import js7.base.time.ScalaTime.*
 import js7.data.cluster.ClusterEvent.ClusterNodeLostEvent
-import js7.data.cluster.{ClusterEvent, ClusterState, ClusterWatchId, ClusterWatchRunId}
+import js7.data.cluster.{ClusterEvent, ClusterState, ClusterWatchId, ClusterWatchRunId, InvalidClusterWatchHeartbeatProblem}
 import js7.data.node.NodeId
 import scala.concurrent.duration.FiniteDuration
 
@@ -13,7 +13,7 @@ object ClusterWatchProblems
     UntaughtClusterWatchProblem.code,
     ClusterWatchEventMismatchProblem.code,
     ClusterWatchInactiveNodeProblem.code,
-    InvalidClusterWatchHeartbeatProblem.code,
+    InvalidClusterWatchHeartbeatProblem.code,  // <-- this is in js7-data/ClusterWatchRequest
     ClusterFailOverWhilePassiveLostProblem.code)
 
   def isClusterWatchProblem(problem: Problem): Boolean =
@@ -48,16 +48,6 @@ object ClusterWatchProblems
   }
 
   object ClusterWatchInactiveNodeProblem extends Problem.Coded.Companion
-
-  final case class InvalidClusterWatchHeartbeatProblem(from: NodeId, clusterState: ClusterState)
-  extends Problem.Coded
-  {
-    def arguments = Map(
-      "from" -> from.string,
-      "clusterState" -> clusterState.toString)
-  }
-
-  object InvalidClusterWatchHeartbeatProblem extends Problem.Coded.Companion
 
   final case object ClusterFailOverWhilePassiveLostProblem extends Problem.ArgumentlessCoded
 
