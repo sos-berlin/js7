@@ -210,6 +210,14 @@ object ControllerCommand extends CommonCommand.Companion
     type Response = Response.Accepted
   }
 
+  final case class TransferOrders(
+    workflowId: WorkflowId
+    /*orderIds: Option[immutable.Iterable[OrderId]],
+    position: Option[Position] = None*/)
+  extends ControllerCommand {
+    type Response = Response.Accepted
+  }
+
   /** Command to control all Workflows (all versions) of a WorkflowPath. */
   final case class ControlWorkflowPath(
     workflowPath: WorkflowPath,
@@ -291,6 +299,7 @@ object ControllerCommand extends CommonCommand.Companion
     Subtype(deriveConfiguredCodec[ResumeOrder]),
     Subtype(deriveConfiguredCodec[ResumeOrders]),
     Subtype(deriveConfiguredCodec[SuspendOrders]),
+    Subtype(deriveConfiguredCodec[TransferOrders]),
     Subtype(deriveConfiguredCodec[ControlWorkflowPath]),
     Subtype(deriveConfiguredCodec[ControlWorkflow]),
     Subtype(deriveConfiguredCodec[ClusterAppointNodes]),

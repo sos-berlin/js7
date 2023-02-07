@@ -556,7 +556,6 @@ object ControllerStateTest
         externalOrderKey = Some(ExternalOrderKey(fileWatch.path, ExternalOrderName("ORDER-NAME")))),
       Order(expectingNoticeOrderId, workflow.id /: Position(1),
         Order.ExpectingNotices(Vector(OrderNoticesExpected.Expected(board.path, expectedNoticeId))))
-    ).toKeyedMap(_.id),
-    workflowIdToOrders = Map.empty
+    ).toKeyedMap(_.id)
   ).finish
 }

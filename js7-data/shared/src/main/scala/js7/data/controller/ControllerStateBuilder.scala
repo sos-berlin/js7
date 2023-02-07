@@ -414,8 +414,7 @@ with OrderWatchStateHandler[ControllerStateBuilder]
       pathToSignedSimpleItem.toMap,
       agentAttachments,
       deletionMarkedItems.toSet,
-      _idToOrder.toMap,
-      workflowIdToOrders = Map.empty
+      _idToOrder.toMap
     ).finish
 
   def journalState = standards.journalState

@@ -666,6 +666,9 @@ object OrderEvent
   final case class OrderCycleFinished(cycleState: Option[CycleState])
   extends OrderActorEvent
 
+  final case class OrderTransferred(workflowPosition: WorkflowPosition)
+  extends OrderActorEvent
+
   @nowarn("msg=deprecated")
   implicit val jsonCodec: TypedJsonCodec[OrderEvent] = TypedJsonCodec(
     Subtype[OrderAdded],
@@ -730,7 +733,8 @@ object OrderEvent
     Subtype(deriveCodec[OrderPromptAnswered]),
     Subtype(deriveCodec[OrderCyclingPrepared]),
     Subtype(OrderCycleStarted),
-    Subtype(deriveCodec[OrderCycleFinished]))
+    Subtype(deriveCodec[OrderCycleFinished]),
+    Subtype(deriveCodec[OrderTransferred]))
 
   intelliJuseImport(DecodeWithDefaults)
 }

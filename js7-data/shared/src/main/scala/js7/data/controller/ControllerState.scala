@@ -18,7 +18,7 @@ import js7.data.board.{Board, BoardEvent, BoardPath, BoardState, Notice, NoticeP
 import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
-import js7.data.controller.ControllerState.logger
+import js7.data.controller.ControllerState.{WorkflowToOrders, logger}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
 import js7.data.event.SnapshotMeta.SnapshotEventId
@@ -31,7 +31,7 @@ import js7.data.item.UnsignedSimpleItemEvent.{UnsignedSimpleItemAdded, UnsignedS
 import js7.data.item.{BasicItemEvent, ClientAttachments, InventoryItem, InventoryItemEvent, InventoryItemKey, InventoryItemPath, ItemAttachedState, ItemRevision, Repo, SignableItem, SignableItemKey, SignableSimpleItem, SignableSimpleItemPath, SignedItemEvent, SimpleItem, SimpleItemPath, UnsignedItemEvent, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItem, UnsignedSimpleItemEvent, UnsignedSimpleItemPath, UnsignedSimpleItemState, VersionedControl, VersionedControlId_, VersionedEvent, VersionedItemId_, VersionedItemPath}
 import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.lock.{Lock, LockPath, LockState}
-import js7.data.order.OrderEvent.OrderNoticesExpected
+import js7.data.order.OrderEvent.{OrderNoticesExpected, OrderTransferred}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatch, OrderWatchEvent, OrderWatchPath, OrderWatchState, OrderWatchStateHandler}
 import js7.data.state.EventDrivenStateView
@@ -57,7 +57,7 @@ final case class ControllerState(
   /** Used for OrderWatch to allow to attach it from Agent. */
   deletionMarkedItems: Set[InventoryItemKey],
   idToOrder: Map[OrderId, Order[Order.State]],
-  workflowIdToOrders: Map[WorkflowId, Set[OrderId]])
+  workflowToOrders: WorkflowToOrders = WorkflowToOrders(Map.empty))
 extends SignedItemContainer
 with EventDrivenStateView[ControllerState, Event]
 with OrderWatchStateHandler[ControllerState]
@@ -282,7 +282,16 @@ with SnapshotableState[ControllerState]
         keyToUnsignedItemState_ = keyToUnsignedItemState_ + (agentPath -> agentRefState))
 
     case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
-      applyOrderEvent(orderId, event)
+      event match {
+        case event: OrderTransferred =>
+          for (updated <- applyOrderEvent(orderId, event)) yield
+            updated
+              .copy(workflowToOrders = workflowToOrders
+                .moveOrder(idToOrder(orderId), updated.idToOrder(orderId).workflowId))
+
+        case _ =>
+          applyOrderEvent(orderId, event)
+      }
 
     case KeyedEvent(boardPath: BoardPath, NoticePosted(notice)) =>
       for {
@@ -458,37 +467,13 @@ with SnapshotableState[ControllerState]
     for (updated <- ow.onOrderAdded(order)) yield
       updated.copy(
         idToOrder = idToOrder.updated(order.id, order),
-        workflowIdToOrders = updated.addOrderToWorkflowIdToOrders(order))
+        workflowToOrders = workflowToOrders.addOrder(order))
 
-  private def addOrderToWorkflowIdToOrders(order: Order[Order.State])
-  : Map[WorkflowId, Set[OrderId]] =
-    workflowIdToOrders.updated(
-      order.workflowId,
-      workflowIdToOrders.getOrElse(order.workflowId, Set.empty) + order.id)
-
-  override protected def deleteOrder(order: Order[Order.State]): Checked[ControllerState] = {
-    val idToOrder_ = idToOrder - order.id
-    val workflowToOrders_ = {
-      val orderIds = workflowIdToOrders(order.workflowId) - order.id
-      if (orderIds.isEmpty)
-        workflowIdToOrders - order.workflowId
-      else
-        workflowIdToOrders.updated(order.workflowId, orderIds)
-    }
-
-    order.externalOrderKey match {
-      case None =>
-        Right(copy(
-          idToOrder = idToOrder_,
-          workflowIdToOrders = workflowToOrders_))
-      case Some(externalOrderKey) =>
-        ow
-          .onOrderDeleted(externalOrderKey, order.id)
-          .map(_.copy(
-            idToOrder = idToOrder_,
-            workflowIdToOrders = workflowToOrders_))
-    }
-  }
+  override protected def deleteOrder(order: Order[Order.State]): Checked[ControllerState] =
+    for (updated <- order.externalOrderKey.fold_(Right(this), ow.onOrderDeleted(_, order.id))) yield
+      updated.copy(
+        idToOrder = idToOrder - order.id,
+        workflowToOrders = workflowToOrders.removeOrder(order))
 
   /** The named values as seen at the current workflow position. */
   def orderNamedValues(orderId: OrderId): Checked[MapView[String, Value]] =
@@ -712,16 +697,17 @@ with SnapshotableState[ControllerState]
 
   def finish: ControllerState =
     copy(
-      workflowIdToOrders = calculateWorkflowToOrders)
+      workflowToOrders = calculateWorkflowToOrders)
 
-  private def calculateWorkflowToOrders =
-    idToOrder.values.view
+  private def calculateWorkflowToOrders: WorkflowToOrders =
+    ControllerState.WorkflowToOrders(idToOrder
+      .values.view
       .map(o => o.workflowId -> o.id)
       .toVector
       .groupMap[WorkflowId, OrderId](_._1)(_._2)
       .view
       .mapValues(_.toSet)
-      .toMap
+      .toMap)
 
   override def toString = s"ControllerState(${EventId.toString(eventId)} ${idToOrder.size} orders, " +
     s"Repo(${repo.currentVersionSize} objects, ...))"
@@ -742,7 +728,6 @@ with ItemContainer.Companion[ControllerState]
     Map.empty,
     ClientAttachments.empty,
     Set.empty,
-    Map.empty,
     Map.empty)
 
   val empty = Undefined
@@ -791,5 +776,27 @@ with ItemContainer.Companion[ControllerState]
   object implicits {
     implicit val snapshotObjectJsonCodec: TypedJsonCodec[Any] =
       ControllerState.snapshotObjectJsonCodec
+  }
+
+  final case class WorkflowToOrders(workflowIdToOrders: Map[WorkflowId, Set[OrderId]])
+  {
+    def moveOrder(order: Order[Order.State], to: WorkflowId): WorkflowToOrders =
+      removeOrder(order).addOrder(order.id, to)
+
+    def addOrder(order: Order[Order.State]): WorkflowToOrders =
+      addOrder(order.id, order.workflowId)
+
+    private def addOrder(orderId: OrderId, workflowId: WorkflowId): WorkflowToOrders =
+      copy(workflowIdToOrders.updated(
+        workflowId,
+        workflowIdToOrders.getOrElse(workflowId, Set.empty) + orderId))
+
+    def removeOrder(order: Order[Order.State]): WorkflowToOrders = {
+      val orderIds = workflowIdToOrders(order.workflowId) - order.id
+      if (orderIds.isEmpty)
+        copy(workflowIdToOrders - order.workflowId)
+      else
+        copy(workflowIdToOrders.updated(order.workflowId, orderIds))
+    }
   }
 }

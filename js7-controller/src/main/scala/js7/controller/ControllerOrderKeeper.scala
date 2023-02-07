@@ -47,7 +47,7 @@ import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.board.BoardEvent.{NoticeDeleted, NoticePosted}
 import js7.data.board.{BoardPath, BoardState, Notice, NoticeId}
 import js7.data.calendar.{Calendar, CalendarExecutor}
-import js7.data.controller.ControllerCommand.{ControlWorkflow, ControlWorkflowPath}
+import js7.data.controller.ControllerCommand.{ControlWorkflow, ControlWorkflowPath, TransferOrders}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.data.controller.ControllerStateExecutor.convertImplicitly
 import js7.data.controller.{ControllerCommand, ControllerEvent, ControllerState, VerifiedUpdateItems, VerifiedUpdateItemsExecutor}
@@ -760,6 +760,9 @@ with MainJournalingActor[ControllerState, Event]
         executeOrderMarkCommands(Vector(orderId))(
           orderEventSource.resume(_, position, historicOps, asSucceeded))
 
+      case cmd: ControllerCommand.TransferOrders =>
+        executeTransferOrders(cmd)
+
       case cmd: ControllerCommand.ControlWorkflowPath =>
         controlWorkflowPath(cmd)
 
@@ -989,6 +992,19 @@ with MainJournalingActor[ControllerState, Event]
               // Event may be inserted between events coming from Agent
               persistTransactionAndSubsequentEvents(keyedEvents)(handleEvents))
             .map(_.map(_ => ControllerCommand.Response.Accepted))
+      }
+
+  private def executeTransferOrders(cmd: TransferOrders)
+  : Future[Checked[ControllerCommand.Response]] =
+    new TransferOrderEventSource(_controllerState)
+      .transferOrders(cmd)
+      .match_ {
+        case Left(problem) => Future.successful(Left(problem))
+        case Right(events) =>
+          persistTransaction(events) { (stamped, updatedState) =>
+            handleEvents(stamped, updatedState)
+            Right(ControllerCommand.Response.Accepted)
+          }
       }
 
   private def controlWorkflowPath(cmd: ControlWorkflowPath)
@@ -1474,7 +1490,7 @@ with MainJournalingActor[ControllerState, Event]
         .flatMap(_controllerState.keyToItem(SubagentItem).get)
         .exists(_.agentPath == agentPath))
 
-    if (_controllerState.workflowIdToOrders contains workflow.id) {
+    if (_controllerState.workflowToOrders.workflowIdToOrders contains workflow.id) {
       result ++= _controllerState.keyToItem(WorkflowPathControl)
         .get(WorkflowPathControlPath(workflow.path))
         .map(o => o.key -> o)

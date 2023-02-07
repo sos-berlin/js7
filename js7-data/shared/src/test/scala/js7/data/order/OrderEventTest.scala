@@ -866,6 +866,20 @@ final class OrderEventTest extends OurTestSuite
       }""")
   }
 
+  "OrderTransferred" in {
+    check(OrderTransferred(WorkflowPath("WORKFLOW") ~ "v2" /: Position(7)), json"""
+      {
+        "TYPE": "OrderTransferred",
+        "workflowPosition": {
+          "workflowId": {
+            "path": "WORKFLOW",
+            "versionId": "v2"
+          },
+          "position": [7]
+        }
+      }""")
+  }
+
   "OrderBroken" in {
     check(OrderBroken(), json"""
       {

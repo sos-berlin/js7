@@ -527,6 +527,12 @@ final case class Order[+S <: Order.State](
             withPosition(cyclePosition)
               .copy(
                 state = BetweenCycles(cycleState)))
+
+      case OrderTransferred(workflowPosition) =>
+        if (isDetached)
+          Right(copy(workflowPosition = workflowPosition))
+        else
+          inapplicable
     }
   }
 

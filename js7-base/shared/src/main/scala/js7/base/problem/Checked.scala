@@ -181,8 +181,9 @@ object Checked
     }
 
     def combineProblems: Checked[Seq[A]] = {
-      val rightBuilder = new VectorBuilder[A]
       val leftBuilder = mutable.Buffer[Problem]()
+      val rightBuilder = new VectorBuilder[A]
+      rightBuilder.sizeHint(underlying)
       underlying.iterator.foreach {
         case Left(problem) => leftBuilder += problem
         case Right(b) => if (leftBuilder.isEmpty) rightBuilder += b

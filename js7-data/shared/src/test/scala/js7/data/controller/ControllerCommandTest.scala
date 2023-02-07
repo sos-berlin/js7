@@ -383,6 +383,21 @@ final class ControllerCommandTest extends OurTestSuite
       }""")
   }
 
+  "TransferOrders" in {
+    testJson[ControllerCommand](
+      TransferOrders(WorkflowPath("WORKFLOW") ~ "v1"
+        /*Seq(OrderId("A"), OrderId("B")),
+        Some(),
+        Some(Position(7))*/), json"""
+      {
+        "TYPE": "TransferOrders",
+        "workflowId": {
+          "path": "WORKFLOW",
+          "versionId": "v1"
+        }
+      }""")
+  }
+
   "ControlWorkflowPath" in {
     testJson[ControllerCommand](
       ControlWorkflowPath(
