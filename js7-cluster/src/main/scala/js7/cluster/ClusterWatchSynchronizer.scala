@@ -358,7 +358,7 @@ object ClusterWatchSynchronizer
       clusterWatchIdChangeAllowed: Boolean,
       alreadyLocked: Boolean = false)
     : Task[Checked[Option[ClusterWatchConfirmation]]] =
-      logger.debugTask(clusterWatch
+      clusterWatch
         .checkClusterState(
           clusterState,
           clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed)
@@ -379,6 +379,6 @@ object ClusterWatchSynchronizer
 
           case Some(confirmation: ConfirmedByUser) =>
             Task.right(Some(confirmation))
-        })
+        }
   }
 }

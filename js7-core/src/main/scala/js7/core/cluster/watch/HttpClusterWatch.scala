@@ -5,6 +5,7 @@ import io.circe.*
 import js7.base.auth.UserAndPassword
 import js7.base.generic.Completed
 import js7.base.io.https.HttpsConfig
+import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.Checked
 import js7.base.problem.Problems.InvalidSessionTokenProblem
@@ -53,14 +54,15 @@ with SessionApi.HasUserAndPassword
 
   def checkClusterState(clusterState: HasNodes, clusterWatchIdChangeAllowed: Boolean)
   : Task[Checked[None.type]] =
-    repeatWhenTooLong(Task.defer {
-      val msg = ClusterWatchCheckState(RequestId(0), CorrelId.current, ownNodeId, clusterState)
-      liftProblem(
-        loginUntilReachable(Iterator.continually(ErrorDelay), onlyIfNotLoggedIn = true)
-          .*>(postRequest(msg))
-          .onErrorRestartLoop(())(onError)
-          .as(None))
-    })
+    logger.debugTask(
+      repeatWhenTooLong(Task.defer {
+        val msg = ClusterWatchCheckState(RequestId(0), CorrelId.current, ownNodeId, clusterState)
+        liftProblem(
+          loginUntilReachable(Iterator.continually(ErrorDelay), onlyIfNotLoggedIn = true)
+            .*>(postRequest(msg))
+            .onErrorRestartLoop(())(onError)
+            .as(None))
+      }))
 
   def applyEvent(event: ClusterEvent, clusterState: HasNodes): Task[Checked[None.type]] =
     repeatWhenTooLong(Task.defer {

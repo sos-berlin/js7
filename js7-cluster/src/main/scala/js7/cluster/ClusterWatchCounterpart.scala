@@ -114,8 +114,8 @@ extends Service.StoppableByRequest with ClusterWatchApi
         val reqId = RequestId(nextRequestId.getAndIncrement())
         val request = toRequest(reqId)
         lock.lock(
-          logger.debugTask("check",
-            s"$request${if (clusterWatchIdChangeAllowed) "" else "clusterWatchIdChangeAllowed=false"}"
+          logger.debugTaskWithResult[Checked[ClusterWatchConfirmation]]("check",
+            s"$request${!clusterWatchIdChangeAllowed ?? "clusterWatchIdChangeAllowed=false"}"
           )(Task.defer {
             userConfirmedNodeLoss
               .flatMap(_
@@ -186,14 +186,13 @@ extends Service.StoppableByRequest with ClusterWatchApi
     }
 
   def executeClusterWatchConfirm(confirm: ClusterWatchConfirm): Task[Checked[Unit]] =
-    logger.traceTask("executeClusterWatchConfirm", confirm.argString)(
-      Task(clusterWatchUniquenessChecker.check(confirm.clusterWatchId, confirm.clusterWatchRunId))
-        .flatMapT(_ => Task(takeRequest(confirm)))
-        .flatMapT(_.confirm(toConfirmation(confirm)))
-        .flatMapT(_ => Task {
-          for (o <- currentClusterWatchId) o.touched(confirm.clusterWatchId)
-          Checked.unit
-        }))
+    Task(clusterWatchUniquenessChecker.check(confirm.clusterWatchId, confirm.clusterWatchRunId))
+      .flatMapT(_ => Task(takeRequest(confirm)))
+      .flatMapT(_.confirm(toConfirmation(confirm)))
+      .flatMapT(_ => Task {
+        for (o <- currentClusterWatchId) o.touched(confirm.clusterWatchId)
+        Checked.unit
+      })
 
   private def toConfirmation(confirm: ClusterWatchConfirm): ConfirmedByClusterWatch =
     ConfirmedByClusterWatch(
@@ -288,10 +287,8 @@ extends Service.StoppableByRequest with ClusterWatchApi
     }
 
   private def send(request: ClusterWatchRequest): Task[Unit] =
-    logger
-      .traceTask("send", request)(
-        pubsub.publish(request))
-      .logWhenItTakesLonger("ClusterWatch sender")
+    pubsub.publish(request)
+      .logWhenItTakesLonger(s"ClusterWatch.send($request)")
 
   def newStream: Task[fs2.Stream[Task, ClusterWatchRequest]] =
     pubsub.newStream // TODO Delete all but the last request at a time. At push-side?
