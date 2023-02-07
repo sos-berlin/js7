@@ -29,8 +29,6 @@ import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.generic.SecretString
 import js7.base.io.https.Https.loadSSLContext
 import js7.base.io.https.HttpsConfig
-import js7.base.log.LogLevel.syntax.LevelLogger
-import js7.base.log.LogLevel.{Debug, Trace}
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked.*
@@ -321,12 +319,16 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
           }
           .map(decompressResponse)
           .pipeIf(logger.underlying.isDebugEnabled)(
-            _.whenItTakesLonger() {
-              val level = if (request.headers contains StreamingJsonHeader) Trace else Debug
-              _ => Task(logger.underlying.log(level,
-                "⭕ " + responseLogPrefix + " => Still waiting for response" +
-                  (closed ?? " (closed)")))
-            }
+            _.pipeIf(!request.headers.contains(StreamingJsonHeader))(o => Task.defer {
+              var waitingLogged = false
+              o.whenItTakesLonger()(_ => Task {
+                waitingLogged = true
+                logger.debug(
+                  s"⭕ $responseLogPrefix => Still waiting for response${closed ?? " (closed)"}")
+              }).guaranteeCase(exitCase => Task(if (waitingLogged)
+                logger.debug(
+                  s"🟢 $responseLogPrefix => $exitCase")))
+            })
             .tapEval(response => Task {
               val mark = response.status.isFailure ?? (response.status match {
                 case Unauthorized | Forbidden => "⛔️"

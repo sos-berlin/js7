@@ -803,15 +803,15 @@ object Order
   }
   /** Order is going to be attached to an Agent. */
   final case class Attaching(agentPath: AgentPath) extends AttachedState.AttachingOrAttached {
-    override def toString = s"Attaching(${agentPath.string})"
+    override def toString = s"Attaching to $agentPath"
   }
   /** Order is attached to an Agent. */
   final case class Attached(agentPath: AgentPath) extends AttachedState.AttachingOrAttached {
-    override def toString = s"Attached(${agentPath.string})"
+    override def toString = s"Attached to $agentPath"
   }
   /** Order is going to be detached from Agent. */
   final case class Detaching(agentPath: AgentPath) extends AttachedState.HasAgentPath {
-    override def toString = s"Detaching(${agentPath.string})"
+    override def toString = s"Detaching from $agentPath"
   }
 
   sealed trait State {

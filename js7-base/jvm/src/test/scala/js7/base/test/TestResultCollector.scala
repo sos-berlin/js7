@@ -14,9 +14,11 @@ private object TestResultCollector
   sys.runtime.addShutdownHook(
     newMaybeVirtualThread("TestResultCollector-Shutdown") {
       val summary = asString
-      logger.info(s"Test summary:\n$summary")
       if (isIntelliJIdea) {
         println(summary)
+      } else {
+        // Does not work when Log4j has been shutdown
+        logger.info(s"Test summary:\n$summary")
       }
     })
 
