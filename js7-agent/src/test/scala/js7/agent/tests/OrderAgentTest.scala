@@ -117,7 +117,8 @@ final class OrderAgentTest extends OurTestSuite
           //TODO assert((agentClient.task.overview await 99.s) == TaskRegisterOverview(currentTaskCount = 0, totalTaskCount = 1))
 
           try agentClient.commandExecute(AgentCommand.ShutDown()).await(99.s).orThrow
-          catch { case t: RuntimeException if t.getMessage contains "Connection reset by peer" => }
+          catch { case t: RuntimeException
+            if Option(t.getMessage) getOrElse "" contains "Connection reset by peer" => }
         }
       }
     }
