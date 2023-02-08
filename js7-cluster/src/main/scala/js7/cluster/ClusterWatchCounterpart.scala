@@ -115,7 +115,7 @@ extends Service.StoppableByRequest with ClusterWatchApi
         val request = toRequest(reqId)
         lock.lock(
           logger.debugTaskWithResult[Checked[ClusterWatchConfirmation]]("check",
-            s"$request${!clusterWatchIdChangeAllowed ?? "clusterWatchIdChangeAllowed=false"}"
+            s"$request${!clusterWatchIdChangeAllowed ?? ",clusterWatchIdChangeAllowed=false"}"
           )(Task.defer {
             userConfirmedNodeLoss
               .flatMap(_
