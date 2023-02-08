@@ -24,23 +24,12 @@ final class ClusterWatch(
 {
   private val stateVar = AsyncVariable[Option[State]](None)
 
-  def logout() = Task.pure(Completed)
-
-  @TestOnly
-  private[cluster] def isActive(id: NodeId): Checked[Boolean] =
-    unsafeClusterState().map(_.activeId == id)
-
-  def unsafeClusterState(): Checked[HasNodes] =
-    stateVar.get
-      .toChecked(UntaughtClusterWatchProblem)
-      .map(_.clusterState)
-
   // TODO `processRequest` wird synchron genutzt und braucht nicht mehr asynchron zu sein
   def processRequest(request: ClusterWatchRequest): Task[Checked[Completed]] =
     Task.pure(request.checked)
-      .flatMapT(_ => processCheckedRequest2(request))
+      .flatMapT(_ => processRequest2(request))
 
-  private def processCheckedRequest2(request: ClusterWatchRequest): Task[Checked[Completed]] = {
+  private def processRequest2(request: ClusterWatchRequest): Task[Checked[Completed]] = {
     import request.{from, clusterState as reportedClusterState}
     val maybeEvent = request match {
       case o: ClusterWatchCheckEvent => Some(o.event)
@@ -170,6 +159,15 @@ final class ClusterWatch(
         .flatMap(_.acknowledgeLostNode(lostNodeId))
         .map(Some(_))))
       .rightAs(())
+
+  @TestOnly
+  private[cluster] def isActive(id: NodeId): Checked[Boolean] =
+    unsafeClusterState().map(_.activeId == id)
+
+  def unsafeClusterState(): Checked[HasNodes] =
+    stateVar.get
+      .toChecked(UntaughtClusterWatchProblem)
+      .map(_.clusterState)
 
   override def toString =
     "ClusterWatch(" +
