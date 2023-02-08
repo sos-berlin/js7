@@ -51,13 +51,13 @@ object ClusterWatchProblems
 
   final case object ClusterFailOverWhilePassiveLostProblem extends Problem.ArgumentlessCoded
 
-  final case class ClusterNodeLossNotAcknowledgedProblem(event: ClusterNodeLostEvent)
+  final case class ClusterNodeLossNotConfirmedProblem(event: ClusterNodeLostEvent)
   extends Problem.Coded
   {
     def arguments = Map(
       "event" -> event.toString)
   }
-  object ClusterNodeLossNotAcknowledgedProblem extends Problem.Coded.Companion
+  object ClusterNodeLossNotConfirmedProblem extends Problem.Coded.Companion
 
   case object NoClusterNodeLostProblem extends Problem.ArgumentlessCoded
 
