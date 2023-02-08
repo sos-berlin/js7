@@ -10,6 +10,7 @@ import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.common.akkahttp.StandardMarshallers.*
 import js7.data.cluster.ClusterWatchRequest
 import js7.data.controller.ControllerId
+import monix.eval.Task
 import monix.execution.Scheduler
 
 trait ClusterWatchRoute
@@ -27,7 +28,8 @@ trait ClusterWatchRoute
           completeTask(
             session.withRequestId(requestNumber)(
               clusterWatchRegister(controllerId)
-                .flatMap(_.processRequest(msg))
+                .flatMap(clusterWatch =>
+                  Task(clusterWatch.processRequest(msg)))
                 .map(_.map((_: Completed) => JsonObject.empty)))))
       }
     } ~

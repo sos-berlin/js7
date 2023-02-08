@@ -1,8 +1,9 @@
 package js7.cluster.watch
 
+import cats.syntax.flatMap.*
 import js7.base.generic.Completed
 import js7.base.log.Logger
-import js7.base.monixutils.{AsyncVariable, MonixDeadline}
+import js7.base.monixutils.MonixDeadline
 import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.time.ScalaTime.*
@@ -14,7 +15,6 @@ import js7.data.cluster.ClusterState.{Coupled, HasNodes, PassiveLost}
 import js7.data.cluster.{ClusterWatchCheckEvent, ClusterWatchRequest}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.node.NodeId
-import monix.eval.Task
 import org.jetbrains.annotations.TestOnly
 import scala.util.chaining.scalaUtilChainingOps
 
@@ -22,14 +22,15 @@ final class ClusterWatch(
   now: () => MonixDeadline,
   requireManualNodeLossConfirmation: Boolean = false)
 {
-  private val stateVar = AsyncVariable[Option[State]](None)
+  // _state is synchronized
+  private var _state: Option[State] = None
 
-  // TODO `processRequest` wird synchron genutzt und braucht nicht mehr asynchron zu sein
-  def processRequest(request: ClusterWatchRequest): Task[Checked[Completed]] =
-    Task.pure(request.checked)
-      .flatMapT(_ => processRequest2(request))
+  def processRequest(request: ClusterWatchRequest): Checked[Completed] =
+    synchronized {
+      request.checked >> processRequest2(request)
+    }
 
-  private def processRequest2(request: ClusterWatchRequest): Task[Checked[Completed]] = {
+  private def processRequest2(request: ClusterWatchRequest): Checked[Completed] = {
     import request.{from, clusterState as reportedClusterState}
     val maybeEvent = request match {
       case o: ClusterWatchCheckEvent => Some(o.event)
@@ -123,54 +124,52 @@ final class ClusterWatch(
 
   private def update(from: NodeId, operationString: => String)
     (body: Option[State] => Checked[HasNodes])
-  : Task[Checked[HasNodes]] =
-    stateVar
-      .updateCheckedWithResult[Checked[HasNodes]](current => Task {
-        logger.trace(s"$from: $operationString${
-          current.fold("")(o => ", after " + o.lastHeartbeat.elapsed.pretty)}")
+  : Checked[HasNodes] = {
+    logger.trace(s"$from: $operationString${
+      _state.fold("")(o => ", after " + o.lastHeartbeat.elapsed.pretty)}")
 
-        body(current) match {
-          case Left(problem: ClusterNodeLossNotConfirmedProblem) =>
-            val updatedState = current.map(state => state.copy(
-              lastHeartbeat = // Update lastHeartbeat only when `from` is active
-                current.filter(_.clusterState.activeId != from).fold(now())(_.lastHeartbeat),
-              lossRejected = Some(LossRejected(problem.event))))
-            Right(updatedState -> /*result*/Left(problem))
+    body(_state).match_ {
+      case Left(problem: ClusterNodeLossNotConfirmedProblem) =>
+        _state = _state.map(state => state.copy(
+          lastHeartbeat = // Update lastHeartbeat only when `from` is active
+            Some(state).filter(_.clusterState.activeId != from).fold(now())(_.lastHeartbeat),
+          lossRejected = Some(LossRejected(problem.event))))
+        Left(problem)
 
-          case Left(problem) =>
-            Left(problem)
+      case Left(problem) =>
+        Left(problem)
 
-          case Right(updatedClusterState) =>
-            val updatedState = Some(State(
-              updatedClusterState,
-              lastHeartbeat = now(),
-              lossRejected = // Keep lossRejected iff clusterState is unchanged
-                current.filter(_.clusterState == updatedClusterState).flatMap(_.lossRejected)))
-            Right(updatedState -> /*result*/Right(updatedClusterState))
-        }
-      })
-      .map(_.flatten)
+      case Right(updatedClusterState) =>
+        _state = Some(State(
+          updatedClusterState,
+          lastHeartbeat = now(),
+          lossRejected = // Keep lossRejected iff clusterState is unchanged
+            _state.filter(_.clusterState == updatedClusterState).flatMap(_.lossRejected)))
+        Right(updatedClusterState)
+    }
+  }
 
-  def confirmNodeLoss(lostNodeId: NodeId): Task[Checked[Unit]] =
-    stateVar
-      .updateChecked(current => Task(current
+  def confirmNodeLoss(lostNodeId: NodeId): Checked[Unit] =
+    synchronized {
+      _state
         .toRight(NoClusterNodeLostProblem)
         .flatMap(_.confirmNodeLoss(lostNodeId))
-        .map(Some(_))))
-      .rightAs(())
+        .map { updated =>
+          _state = Some(updated)
+        }
+    }
 
   @TestOnly
   private[cluster] def isActive(id: NodeId): Checked[Boolean] =
     unsafeClusterState().map(_.activeId == id)
 
   def unsafeClusterState(): Checked[HasNodes] =
-    stateVar.get
-      .toChecked(UntaughtClusterWatchProblem)
+    _state.toChecked(UntaughtClusterWatchProblem)
       .map(_.clusterState)
 
   override def toString =
     "ClusterWatch(" +
-      stateVar.get.fold("untaught")(state =>
+      _state.fold("untaught")(state =>
         state.clusterState.toShortString + ", " +
           state.lastHeartbeat.elapsed.pretty + " ago") +
       ")"

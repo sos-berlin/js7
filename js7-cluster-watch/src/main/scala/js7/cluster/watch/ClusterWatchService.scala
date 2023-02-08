@@ -89,8 +89,8 @@ extends Service.StoppableByRequest
 
   private def processRequest(nodeApi: HttpClusterNodeApi, request: ClusterWatchRequest): Task[Unit] =
     /*request.correlId.bind — better log the ClusterWatch's CorrelId in Cluster node*/(
-    logger.debugTask("processRequest", request)(Task.defer(
-      clusterWatch.processRequest(request).flatMap(checked =>
+    logger.debugTask("processRequest", request)(
+      Task(clusterWatch.processRequest(request)).flatMap(checked =>
         HttpClient
           .liftProblem(nodeApi
             .retryIfSessionLost()(nodeApi
@@ -108,7 +108,7 @@ extends Service.StoppableByRequest
             case Right(()) =>
           }
           .onErrorHandle(t =>
-            logger.error(s"$nodeApi ${t.toStringWithCauses}", t.nullIfNoStackTrace))))))
+            logger.error(s"$nodeApi ${t.toStringWithCauses}", t.nullIfNoStackTrace)))))
 
   override def toString = "ClusterWatchService"
 
