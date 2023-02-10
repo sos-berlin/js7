@@ -3,13 +3,12 @@ package js7.base.fs2utils
 import cats.effect.Concurrent
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
-import cats.{FlatMap, Functor}
 import fs2.Stream
 import fs2.concurrent.Topic
 import js7.base.catsutils.Memoizable
-import js7.base.catsutils.Memoizable.syntax.MemoizableIO
+import js7.base.catsutils.Memoizable.syntax.*
 
-final class Fs2PubSub[F[_]: Functor: FlatMap: Concurrent: Memoizable, A <: AnyRef]
+final class Fs2PubSub[F[_]: Concurrent: Memoizable, A <: AnyRef]
 {
   private val Initial = Fs2PubSub.Initial.asInstanceOf[A]
   private val EOF = Fs2PubSub.EOF.asInstanceOf[A]

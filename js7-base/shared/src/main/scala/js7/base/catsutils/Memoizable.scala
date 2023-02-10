@@ -39,7 +39,7 @@ object Memoizable
     }
 
   object syntax {
-    implicit class MemoizableIO[F[_], A](private val f: F[A]) extends AnyVal {
+    implicit class RichMemoizable[F[_], A](private val f: F[A]) extends AnyVal {
       def memoize(implicit m: Memoizable[F]): F[A] =
         m.memoize(f)
     }
