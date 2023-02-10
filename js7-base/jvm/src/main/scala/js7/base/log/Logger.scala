@@ -2,7 +2,9 @@ package js7.base.log
 
 import cats.Applicative
 import cats.effect.ExitCase.{Canceled, Completed, Error}
-import cats.effect.{ExitCase, Resource, Sync}
+import cats.effect.syntax.bracket.*
+import cats.effect.{ExitCase, Resource, Sync, SyncIO}
+import cats.syntax.flatMap.*
 import com.typesafe.scalalogging.Logger as ScalaLogger
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime.{DurationRichLong, RichDuration}
@@ -75,7 +77,14 @@ object Logger
         debugTask(src.value)(task)
 
       def debugTask[A](functionName: String, args: => Any = "")(task: Task[A]): Task[A] =
-        logTask[A](logger, functionName, args)(task)
+        logF[Task, A](logger, functionName, args)(task)
+
+      def debugCall[A](functionName: String, args: => Any = "")(body: => A): A =
+        logF[SyncIO, A](logger, functionName, args)(SyncIO(body)).unsafeRunSync()
+
+      def debugF[F[_], A](functionName: String, args: => Any = "")(body: F[A])(implicit F: Sync[F])
+      : F[A] =
+        logF[F, A](logger, functionName, args)(body)
 
       def debugTaskWithResult[A](task: Task[A])(implicit src: sourcecode.Name): Task[A] =
         debugTaskWithResult[A](src.value)(task)
@@ -86,13 +95,13 @@ object Logger
         result: A => Any = identity[A](_))
         (task: Task[A])
       : Task[A] =
-        logTask[A](logger, function, args, result)(task)
+        logF[Task, A](logger, function, args, result)(task)
 
       def traceTask[A](task: Task[A])(implicit src: sourcecode.Name): Task[A] =
         traceTask(src.value)(task)
 
       def traceTask[A](function: String, args: => Any = "")(task: Task[A]): Task[A] =
-        logTask[A](logger, function, args, trace = true)(task)
+        logF[Task, A](logger, function, args, trace = true)(task)
 
       def traceTaskWithResult[A](task: Task[A])(implicit src: sourcecode.Name): Task[A] =
         traceTaskWithResult[A](src.value)(task)
@@ -103,7 +112,7 @@ object Logger
         result: A => Any = identity[A](_))
         (task: Task[A])
       : Task[A] =
-        logTask[A](logger, function, args, result, trace = true)(task)
+        logF[Task, A](logger, function, args, result, trace = true)(task)
 
       def debugResource[A](resource: Resource[Task, A])(implicit src: sourcecode.Name)
       : Resource[Task, A] =
@@ -120,24 +129,33 @@ object Logger
       def debugObservable[A](function: String, args: => Any = "")(observable: Observable[A])
       : Observable[A] =
         logObservable[A](logger, function, args)(observable)
+
+      def traceObservable[A](observable: Observable[A])(implicit src: sourcecode.Name)
+      : Observable[A] =
+        traceObservable(src.value + ": Observable")(observable)
+
+      def traceObservable[A](function: String, args: => Any = "")(observable: Observable[A])
+      : Observable[A] =
+        logObservable[A](logger, function, args, trace = true)(observable)
     }
 
-    private def logTask[A](logger: ScalaLogger, function: String, args: => Any = "",
+    private def logF[F[_], A](logger: ScalaLogger, function: String, args: => Any = "",
       resultToLoggable: A => Any = null,
       trace: Boolean = false)
-      (task: Task[A])
-    : Task[A] =
-      Task.defer {
+      (body: F[A])
+      (implicit F: Sync[F])
+    : F[A] =
+      F.defer {
         if (!isLoggingEnabled(logger, trace))
-          task
+          body
         else {
           val ctx = new StartReturnLogContext(logger, function, args, trace)
-          task
-            .tapEval {
+          body
+            .flatTap {
               case left @ Left(_: Throwable | _: Problem) =>
-                Task(ctx.logReturn("❓", left))
+                F.delay(ctx.logReturn("❓", left))
               case result =>
-                Task(ctx.logReturn(
+                F.delay(ctx.logReturn(
                   "",
                   if (resultToLoggable eq null)
                     "Completed"
@@ -145,8 +163,8 @@ object Logger
                     resultToLoggable(result).toString))
             }
             .guaranteeCase {
-              case Completed => Task.unit
-              case exitCase => Task(ctx.logExitCase(exitCase))
+              case Completed => F.unit
+              case exitCase => F.delay(ctx.logExitCase(exitCase))
             }
         }
       }
@@ -202,10 +220,10 @@ object Logger
       else
         (System.nanoTime() - startedAt).ns.pretty + " "
 
-    def logExitCase(exitCase: ExitCase[Throwable]) =
+    def logExitCase(exitCase: ExitCase[Throwable]): Unit =
       Logger.logExitCase(logger, function, args, trace, duration, exitCase)
 
-    def logReturn(marker: String, msg: AnyRef) =
+    def logReturn(marker: String, msg: AnyRef): Unit =
       Logger.logReturn(logger, function, args, trace, duration, marker, msg)
   }
 
