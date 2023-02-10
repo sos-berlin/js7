@@ -6,8 +6,9 @@ import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.cluster.ClusterWatchCounterpart.WaitingForConfirmation
+import js7.cluster.watch.api.ClusterWatchProblems.ClusterNodeIsNotLostProblem
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterPassiveLost}
-import js7.data.cluster.ClusterState.Coupled
+import js7.data.cluster.ClusterState.{Coupled, PassiveLost}
 import js7.data.cluster.ClusterWatchCheckEvent
 import js7.data.controller.ControllerCommand.ShutDown
 import monix.execution.Scheduler.Implicits.global
@@ -29,7 +30,7 @@ final class UntaughtClusterWatchPassiveLostClusterTest extends ControllerCluster
         waitForCondition(10.s, 10.ms)(clusterWatch.clusterState().exists(_.isInstanceOf[Coupled]))
 
         // KILL BACKUP
-        backupController.executeCommandAsSystemUser(ShutDown())
+        backupController.executeCommandAsSystemUser(ShutDown(dontNotifyActiveNode = true))
           .await(99.s).orThrow
         //backupController.terminated await 99.s
       }
@@ -41,9 +42,18 @@ final class UntaughtClusterWatchPassiveLostClusterTest extends ControllerCluster
         })
         .await(99.s)
 
-      withClusterWatchService() { _ =>
-        // Untaught ClusterWatch trusts the active cluster node and
-        // automatically confirms ClusterPassiveLost
+      withClusterWatchService() { clusterWatch =>
+        assert(clusterWatch.confirmNodeLoss(primaryId) == Left(ClusterNodeIsNotLostProblem(primaryId)))
+
+        // backupId is lost. Wait until active node has detected it.
+        waitForCondition(99.s, 10.ms)(
+          clusterWatch.confirmNodeLoss(backupId) != Left(ClusterNodeIsNotLostProblem(backupId)))
+
+        primaryController.eventWatch.await[ClusterPassiveLost]()
+
+        waitForCondition(10.s, 10.ms)(
+          primaryController.clusterState.await(99.s).isInstanceOf[PassiveLost])
+
         val ClusterPassiveLost(`backupId`) = primaryController.eventWatch.await[ClusterPassiveLost]()
           .head.value.event
 

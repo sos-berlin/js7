@@ -278,16 +278,29 @@ final class ClusterWatchTest extends OurTestSuite
       watch.processRequest(ClusterWatchCheckState(RequestId(123), correlId, from, clusterState))
   }
 
-  "ClusterPassiveLost when ClusterWatch is still untaught is resolved automatically" in {
+  "ClusterPassiveLost when ClusterWatch is still untaught requires manual confirmation" in {
     val watch = new ClusterWatch(() => scheduler.now)
     val passiveLost = PassiveLost(setting)
     import passiveLost.{activeId, passiveId}
     val event = ClusterPassiveLost(passiveId)
 
     assert(watch.clusterState() == Left(UntaughtClusterWatchProblem))
-    assert(watch.clusterFailedOverRequested() == None)
+    assert(watch.clusterNodeLossEventToBeConfirmed() == None)
     assert(watch.confirmNodeLoss(passiveId) == Left(ClusterNodeIsNotLostProblem(passiveId)))
 
+    // Cluster node tries and fails
+    assert(watch.processRequest(ClusterWatchCheckEvent(
+      RequestId(123), correlId, activeId, event, passiveLost))
+      == Left(ClusterNodeLossNotConfirmedProblem(event)))
+    assert(watch.clusterState() == Left(UntaughtClusterWatchProblem))
+
+    // ClusterWatch remembers ClusterPassiveLost
+    assert(watch.clusterNodeLossEventToBeConfirmed() == Some(event))
+
+    // Manually confirm node loss
+    watch.confirmNodeLoss(passiveId).orThrow
+
+    // Cluster node's second try succeeds
     assert(watch.processRequest(ClusterWatchCheckEvent(
       RequestId(123), correlId, activeId, event, passiveLost))
       == Right(Completed))
@@ -306,7 +319,7 @@ final class ClusterWatchTest extends OurTestSuite
     assert(watch.clusterState() == Right(passiveLost))
   }
 
-  "ClusterFailedOver when ClusterWatch is still untaught required manual confirmation" in {
+  "ClusterFailedOver when ClusterWatch is still untaught requires manual confirmation" in {
     val watch = new ClusterWatch(() => scheduler.now)
     val failedOver = FailedOver(setting, failedAt)
     val lostNodeId = failedOver.passiveId
@@ -314,7 +327,7 @@ final class ClusterWatchTest extends OurTestSuite
     val event = ClusterFailedOver(lostNodeId, activatedId, failedAt)
 
     assert(watch.clusterState() == Left(UntaughtClusterWatchProblem))
-    assert(watch.clusterFailedOverRequested() == None)
+    assert(watch.clusterNodeLossEventToBeConfirmed() == None)
     assert(watch.confirmNodeLoss(lostNodeId) == Left(ClusterNodeIsNotLostProblem(lostNodeId)))
 
     // Cluster node tries and fails
@@ -324,7 +337,7 @@ final class ClusterWatchTest extends OurTestSuite
     assert(watch.clusterState() == Left(UntaughtClusterWatchProblem))
 
     // ClusterWatch remembers ClusterFailedOver
-    assert(watch.clusterFailedOverRequested() == Some(event))
+    assert(watch.clusterNodeLossEventToBeConfirmed() == Some(event))
 
     // Manually confirm node loss
     watch.confirmNodeLoss(lostNodeId).orThrow
@@ -333,7 +346,7 @@ final class ClusterWatchTest extends OurTestSuite
     assert(watch.processRequest(ClusterWatchCheckEvent(
       RequestId(123), correlId, activatedId, event, failedOver))
       == Right(Completed))
-    assert(watch.clusterFailedOverRequested() == None)
+    assert(watch.clusterNodeLossEventToBeConfirmed() == None)
     assert(watch.clusterState() == Right(failedOver))
 
     // Even a repetition succeeds, it's idempotent because ClusterState does not change
@@ -347,7 +360,7 @@ final class ClusterWatchTest extends OurTestSuite
       == Right(Completed))
 
     assert(watch.clusterState() == Right(failedOver))
-    assert(watch.clusterFailedOverRequested() == None)
+    assert(watch.clusterNodeLossEventToBeConfirmed() == None)
   }
 
   "requireManualNodeLossConfirmation" - {

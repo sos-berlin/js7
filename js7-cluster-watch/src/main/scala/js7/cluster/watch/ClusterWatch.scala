@@ -11,7 +11,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.cluster.watch.ClusterWatch.*
 import js7.cluster.watch.api.ClusterWatchProblems.{ClusterFailOverWhilePassiveLostProblem, ClusterNodeIsNotLostProblem, ClusterNodeLossNotConfirmedProblem, ClusterWatchEventMismatchProblem, ClusterWatchInactiveNodeProblem, UntaughtClusterWatchProblem}
-import js7.data.cluster.ClusterEvent.{ClusterFailedOver, ClusterPassiveLost, ClusterSwitchedOver}
+import js7.data.cluster.ClusterEvent.{ClusterFailedOver, ClusterNodeLostEvent, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{Coupled, HasNodes, PassiveLost}
 import js7.data.cluster.ClusterWatchRequest
 import js7.data.event.KeyedEvent.NoKey
@@ -40,16 +40,12 @@ final class ClusterWatch(
       _state.fold("")(o => ", after " + o.lastHeartbeat.elapsed.pretty)}")
 
     val checkedClusterState = (_state, request.maybeEvent) match {
-      case (None/*untaught*/, Some(_: ClusterPassiveLost)) =>
-        // We trust the active node (like we trust the active node's heartbeat)
-        Right(reportedClusterState)
-
-      case (None/*untaught*/, Some(event: ClusterFailedOver)) =>
+      case (None/*untaught*/, Some(event: ClusterNodeLostEvent)) =>
         if (!isNodeLossConfirmed(event))
           Left(ClusterNodeLossNotConfirmedProblem(event))
         else {
           logger.info(
-            s"$from teaches clusterState=$reportedClusterState after ClusterFailedOver confirmation")
+            s"$from teaches clusterState=$reportedClusterState after ${event.getClass.simpleScalaName} confirmation")
           Right(reportedClusterState)
         }
 
@@ -83,7 +79,7 @@ final class ClusterWatch(
     }
   }
 
-  // User manually confirms a ClusterFailedOver event
+  // User manually confirms a ClusterNodeLostEvent event
   def confirmNodeLoss(lostNodeId: NodeId): Checked[Unit] =
     logger.debugCall("confirmNodeLoss", lostNodeId)(
       synchronized {
@@ -107,14 +103,14 @@ final class ClusterWatch(
       case _ => None
     }
 
-  private def isNodeLossConfirmed(event: ClusterFailedOver) =
+  private def isNodeLossConfirmed(event: ClusterNodeLostEvent) =
     _lossRejected.exists(_.isConfirmed(event))
 
   @TestOnly
   private[cluster] def isActive(id: NodeId): Checked[Boolean] =
     clusterState().map(_.activeId == id)
 
-  def clusterFailedOverRequested(): Option[ClusterFailedOver] =
+  def clusterNodeLossEventToBeConfirmed(): Option[ClusterNodeLostEvent] =
     _lossRejected.map(_.event)
 
   def clusterState(): Checked[HasNodes] =
@@ -140,7 +136,7 @@ object ClusterWatch
   {
     def processRequest(
       request: ClusterWatchRequest,
-      isNodeLossConfirmed: ClusterFailedOver => Boolean,
+      isNodeLossConfirmed: ClusterNodeLostEvent => Boolean,
       opString: => String)
     : Checked[HasNodes] = {
       import request.{from, clusterState as reportedClusterState}
@@ -186,7 +182,7 @@ object ClusterWatch
               case Right(updatedClusterState) =>
                 for (event <- maybeEvent) logger.info(s"$from: $event")
                 maybeEvent match {
-                  case Some(event: ClusterFailedOver)
+                  case Some(event: ClusterNodeLostEvent)
                     if requireManualNodeLossConfirmation && !isNodeLossConfirmed(event) =>
                     Left(ClusterNodeLossNotConfirmedProblem(event))
                   case _ =>
@@ -216,10 +212,10 @@ object ClusterWatch
 
   // ClusterNodeLossEvent has been rejected, but the user may confirm it later
   private case class LossRejected(
-    event: ClusterFailedOver,
+    event: ClusterNodeLostEvent,
     nodeLossConfirmed: Boolean = false)
   {
-    def isConfirmed(event: ClusterFailedOver) =
+    def isConfirmed(event: ClusterNodeLostEvent) =
       nodeLossConfirmed && event == this.event
   }
 }

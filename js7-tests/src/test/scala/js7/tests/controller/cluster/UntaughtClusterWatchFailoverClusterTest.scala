@@ -89,7 +89,11 @@ final class UntaughtClusterWatchFailoverClusterTest extends ControllerClusterTes
           .journalMeta.file(failedOver.failedAt.fileEventId)
         assert(failedOver.failedAt.position == size(expectedFailedFile))
 
-        waitForCondition(10.s, 10.ms)(backupController.clusterState.await(99.s).isInstanceOf[FailedOver])
+        waitForCondition(10.s, 10.ms)(
+          backupController.clusterState.await(99.s).isInstanceOf[FailedOver])
+
+        assert(clusterWatchService.confirmNodeLoss(backupId)
+          == Left(ClusterNodeIsNotLostProblem(backupId)))
         assert(backupController.clusterState.await(99.s) ==
           FailedOver(
             clusterSetting.copy(activeId = backupId, clusterWatchId = Some(clusterWatchId)),

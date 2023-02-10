@@ -39,10 +39,10 @@ final class JProxyWithClusterWatchTester
             clusterWatchService.clusterWatchRunId();
             clusterWatchService.clusterState();
 
-            if (clusterWatchService.clusterFailedOverRequested().isDefined()) {
-                ClusterEvent.ClusterFailedOver clusterFailedOver =
-                    clusterWatchService.clusterFailedOverRequested().get();
-                NodeId lostNodeId = clusterFailedOver.lostNodeId();
+            if (clusterWatchService.clusterNodeLossEventToBeConfirmed().isDefined()) {
+                ClusterEvent.ClusterNodeLostEvent clusterNodeLostEvent =
+                    clusterWatchService.clusterNodeLossEventToBeConfirmed().get();
+                NodeId lostNodeId = clusterNodeLostEvent.lostNodeId();
                 // Don't do this automatically! The user must be sure that the node is down.
                 // Otherwise, both cluster nodes may get active, with destroying consequences.
                 Either<Problem,?> checked = clusterWatchService.confirmNodeLoss(lostNodeId);

@@ -17,9 +17,9 @@ import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest
 import js7.cluster.ClusterWatchCounterpart.*
-import js7.cluster.watch.api.ClusterWatchProblems.{ClusterWatchIdDoesNotMatchProblem, ClusterWatchRequestDoesNotMatchProblem, NoClusterWatchProblem, OtherClusterWatchStillAliveProblem}
+import js7.cluster.watch.api.ClusterWatchProblems.{ClusterNodeLossNotConfirmedProblem, ClusterWatchIdDoesNotMatchProblem, ClusterWatchRequestDoesNotMatchProblem, NoClusterWatchProblem, OtherClusterWatchStillAliveProblem}
 import js7.cluster.watch.api.{ClusterWatchApi, ClusterWatchConfirmation}
-import js7.data.cluster.ClusterEvent.{ClusterCouplingPrepared, ClusterNodesAppointed, ClusterWatchRegistered}
+import js7.data.cluster.ClusterEvent.{ClusterCouplingPrepared, ClusterNodesAppointed, ClusterPassiveLost, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState.{Coupled, FailedOver, HasNodes, PassiveLost}
 import js7.data.cluster.ClusterWatchRequest.RequestId
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
@@ -173,7 +173,26 @@ extends Service.StoppableByRequest with ClusterWatchApi
   def executeClusterWatchConfirm(confirm: ClusterWatchConfirm): Task[Checked[Unit]] =
     Task(clusterWatchUniquenessChecker.check(confirm.clusterWatchId, confirm.clusterWatchRunId))
       .flatMapT(_ => Task(takeRequest(confirm)))
-      .flatMapT(_.confirm(toConfirmation(confirm)))
+      .flatMapT { requested =>
+        val confirmation = toConfirmation(confirm)
+        (requested.request.maybeEvent, confirmation) match {
+          case (Some(_: ClusterPassiveLost), Left(problem))
+            if problem is ClusterNodeLossNotConfirmedProblem =>
+            // Ignore this, because ActiveClusterNode cannot handle this.
+            // Continue to wait until user has confirmed the ClusterPassiveLost via ClusterWatch.
+
+            // Possible improvement: ActiveClusterNode should continue trying to get acknowledges
+            // from the lost passive node. If it succeeds, ActiveClusterNode becomes senseless.
+
+            // Keep _requested
+            _requested.compareAndSet(None, Some(requested))
+            logger.warn(problem.toString)
+            Task.right(())
+
+          case _ =>
+            requested.confirm(confirmation)
+        }
+      }
       .flatMapT(_ => Task {
         for (o <- currentClusterWatchId) o.touched(confirm.clusterWatchId)
         Checked.unit
