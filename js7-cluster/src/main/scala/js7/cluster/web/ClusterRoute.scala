@@ -20,7 +20,7 @@ import js7.journal.watch.FileEventWatch
 import monix.eval.Task
 import monix.execution.Scheduler
 
-trait ClusterRoute extends ClusterWatchMessageRoute
+trait ClusterRoute extends ClusterWatchRequestRoute
 {
   protected def scheduler: Scheduler
   protected def actorSystem: ActorSystem
@@ -32,7 +32,6 @@ trait ClusterRoute extends ClusterWatchMessageRoute
   protected def eventWatch: FileEventWatch
 
   private implicit def implicitScheduler: Scheduler = scheduler
-  private implicit def implicitActorsystem: ActorSystem = actorSystem
 
   // TODO Abort POST with error when shutting down
   private lazy val whenShuttingDownCompletion = new FutureCompletion(whenShuttingDown)

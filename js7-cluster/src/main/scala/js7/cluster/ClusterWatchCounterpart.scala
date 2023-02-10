@@ -140,7 +140,8 @@ extends Service.StoppableByRequest with ClusterWatchApi
       _requested.set(Some(requested))
       val t = now
       var warned = false
-      send(request)
+      pubsub.publish(request)
+        .logWhenItTakesLonger(s"ClusterWatch.send($request)")
         .*>(Task(
           testEventPublisher.publish(WaitingForConfirmation(request))))
         .*>(requested
@@ -157,7 +158,7 @@ extends Service.StoppableByRequest with ClusterWatchApi
                   id.toString + (requested.clusterWatchIdChangeAllowed ?? " (or other)")) +
                 " for " + request.toShortString + "" +
                 " for " + t.elapsed.pretty + "...")
-            retry(()).delayExecution(1.s)
+            retry(())
 
           case (t, _, _) => Task.raiseError(t)
         }
@@ -285,10 +286,6 @@ extends Service.StoppableByRequest with ClusterWatchApi
     Task {
       currentClusterWatchId = Some(CurrentClusterWatchId(clusterWatchId))
     }
-
-  private def send(request: ClusterWatchRequest): Task[Unit] =
-    pubsub.publish(request)
-      .logWhenItTakesLonger(s"ClusterWatch.send($request)")
 
   def newStream: Task[fs2.Stream[Task, ClusterWatchRequest]] =
     pubsub.newStream // TODO Delete all but the last request at a time. At push-side?

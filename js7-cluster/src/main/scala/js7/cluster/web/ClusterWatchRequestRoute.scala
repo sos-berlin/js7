@@ -11,7 +11,7 @@ import js7.base.problem.Checked
 import js7.base.utils.FutureCompletion
 import js7.base.utils.FutureCompletion.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.cluster.web.ClusterWatchMessageRoute.*
+import js7.cluster.web.ClusterWatchRequestRoute.*
 import js7.common.akkahttp.AkkaHttpServerUtils.{accept, observableToResponseMarshallable}
 import js7.common.akkahttp.StandardMarshallers.*
 import js7.common.akkahttp.web.session.RouteProvider
@@ -27,7 +27,7 @@ import org.reactivestreams.Publisher
 import scala.concurrent.duration.FiniteDuration
 import scala.util.control.NoStackTrace
 
-trait ClusterWatchMessageRoute extends RouteProvider
+trait ClusterWatchRequestRoute extends RouteProvider
 {
   protected def scheduler: Scheduler
 
@@ -88,7 +88,7 @@ trait ClusterWatchMessageRoute extends RouteProvider
   }
 }
 
-object ClusterWatchMessageRoute
+object ClusterWatchRequestRoute
 {
   private val logger = Logger[this.type]
 

@@ -119,9 +119,8 @@ object ClusterWatch
         case _ => None
       }
 
-      def clusterWatchInactiveNodeProblem =
-        ClusterWatchInactiveNodeProblem(from,
-          clusterState, lastHeartbeat.elapsed, opString)
+      def clusterWatchInactiveNodeProblem = ClusterWatchInactiveNodeProblem(
+        from, clusterState, lastHeartbeat.elapsed, opString)
 
       if (clusterState == reportedClusterState) {
         if (maybeEvent.nonEmpty) {
@@ -135,8 +134,7 @@ object ClusterWatch
         maybeEvent
           .match_ {
             case Some(_: ClusterSwitchedOver) =>
-              // ClusterSwitchedOver is applied by each node.
-              // ClusterSwitchedOver is considered reliable.
+              // ClusterSwitchedOver is applied by each node and is considered reliable
               Checked.unit
 
             case Some(ClusterFailedOver(failedActiveId, _, _)) =>
