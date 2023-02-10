@@ -13,7 +13,7 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, SetOnce}
 import js7.cluster.ClusterWatchSynchronizer.*
-import js7.cluster.watch.api.{ClusterWatchApi, ClusterWatchConfirmation, ConfirmedByClusterWatch, ConfirmedByUser}
+import js7.cluster.watch.api.{ClusterWatchApi, ClusterWatchConfirmation}
 import js7.common.system.startup.Halt.haltJava
 import js7.core.cluster.watch.HttpClusterWatch
 import js7.data.cluster.ClusterEvent.{ClusterPassiveLost, ClusterWatchRegistered}
@@ -188,7 +188,7 @@ object ClusterWatchSynchronizer
   private val logger = Logger(getClass)
   private val heartbeatSessionNr = Iterator.from(1)
 
-  private type RegisterClusterWatchId = (ConfirmedByClusterWatch, Boolean) => Task[Checked[Unit]]
+  private type RegisterClusterWatchId = (ClusterWatchConfirmation, Boolean) => Task[Checked[Unit]]
 
   private final class Inlay(
     val clusterWatch: ClusterWatchApi,
@@ -367,7 +367,7 @@ object ClusterWatchSynchronizer
           case None =>
             Task.right(None)
 
-          case Some(confirmation: ConfirmedByClusterWatch) =>
+          case Some(confirmation: ClusterWatchConfirmation) =>
             if (clusterState.setting.clusterWatchId contains confirmation.clusterWatchId)
               Task.right(Some(confirmation))
             else if (clusterWatchIdChangeAllowed)
@@ -376,9 +376,6 @@ object ClusterWatchSynchronizer
             else
               // Not expected
               Task.left(Problem(s"New ${confirmation.clusterWatchId} cannot be registered now"))
-
-          case Some(confirmation: ConfirmedByUser) =>
-            Task.right(Some(confirmation))
         }
   }
 }

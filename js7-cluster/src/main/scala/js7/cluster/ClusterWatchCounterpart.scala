@@ -3,8 +3,6 @@ package js7.cluster
 import cats.effect.concurrent.Deferred
 import cats.effect.{ExitCase, Resource}
 import cats.syntax.flatMap.*
-import cats.syntax.option.*
-import js7.base.auth.UserId
 import js7.base.eventbus.EventPublisher
 import js7.base.fs2utils.Fs2PubSub
 import js7.base.log.Logger.syntax.*
@@ -14,19 +12,18 @@ import js7.base.monixutils.MonixDeadline
 import js7.base.monixutils.MonixDeadline.now
 import js7.base.problem.Checked
 import js7.base.service.Service
-import js7.base.time.ScalaTime.{DurationRichInt, RichDuration}
+import js7.base.time.ScalaTime.RichDuration
 import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest
 import js7.cluster.ClusterWatchCounterpart.*
-import js7.cluster.watch.api.ClusterWatchProblems.{ClusterWatchIdDoesNotMatchProblem, ClusterWatchRequestDoesNotMatchProblem, ConfirmClusterNodeLossNotApplicableProblem, NoClusterWatchProblem, OtherClusterWatchStillAliveProblem}
-import js7.cluster.watch.api.{ClusterWatchApi, ClusterWatchConfirmation, ConfirmedByClusterWatch, ConfirmedByUser}
+import js7.cluster.watch.api.ClusterWatchProblems.{ClusterWatchIdDoesNotMatchProblem, ClusterWatchRequestDoesNotMatchProblem, NoClusterWatchProblem, OtherClusterWatchStillAliveProblem}
+import js7.cluster.watch.api.{ClusterWatchApi, ClusterWatchConfirmation}
 import js7.data.cluster.ClusterEvent.{ClusterCouplingPrepared, ClusterNodesAppointed, ClusterWatchRegistered}
-import js7.data.cluster.ClusterState.{Coupled, FailedOver, HasNodes, IsNodeLost, PassiveLost}
+import js7.data.cluster.ClusterState.{Coupled, FailedOver, HasNodes, PassiveLost}
 import js7.data.cluster.ClusterWatchRequest.RequestId
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterEvent, ClusterTiming, ClusterWatchCheckEvent, ClusterWatchCheckState, ClusterWatchId, ClusterWatchRequest}
-import js7.data.node.NodeId
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.atomic.Atomic
@@ -51,7 +48,6 @@ extends Service.StoppableByRequest with ClusterWatchApi
   private val clusterWatchUniquenessChecker = new ClusterWatchUniquenessChecker(
     clusterConf.clusterWatchUniquenessMemorySize)
   @volatile private var currentClusterWatchId: Option[CurrentClusterWatchId] = None
-  @volatile private var userConfirmedNodeLoss = none[UserConfirmedNodeLoss]
 
   protected def start =
     startService(
@@ -86,20 +82,17 @@ extends Service.StoppableByRequest with ClusterWatchApi
 
   def applyEvent(event: ClusterEvent, clusterState: HasNodes)
   : Task[Checked[Option[ClusterWatchConfirmation]]] =
-    Task.defer {
-      userConfirmedNodeLoss = None
-      event match {
-        case _: ClusterNodesAppointed | _: ClusterCouplingPrepared
-          if !clusterState.setting.clusterWatchId.isDefined =>
-          Task.right(None)
+    event match {
+      case _: ClusterNodesAppointed | _: ClusterCouplingPrepared
+        if !clusterState.setting.clusterWatchId.isDefined =>
+        Task.right(None)
 
-        case _ =>
-          check(
-            clusterState.setting.clusterWatchId,
-            ClusterWatchCheckEvent(_, CorrelId.current, ownId, event, clusterState),
-            clusterWatchIdChangeAllowed = event.isInstanceOf[ClusterWatchRegistered]
-          ).map(_.map(Some(_)))
-      }
+      case _ =>
+        check(
+          clusterState.setting.clusterWatchId,
+          ClusterWatchCheckEvent(_, CorrelId.current, ownId, event, clusterState),
+          clusterWatchIdChangeAllowed = event.isInstanceOf[ClusterWatchRegistered]
+        ).map(_.map(Some(_)))
     }
 
   private def check(
@@ -116,19 +109,10 @@ extends Service.StoppableByRequest with ClusterWatchApi
         lock.lock(
           logger.debugTaskWithResult[Checked[ClusterWatchConfirmation]]("check",
             s"$request${!clusterWatchIdChangeAllowed ?? ",clusterWatchIdChangeAllowed=false"}"
-          )(Task.defer {
-            userConfirmedNodeLoss
-              .flatMap(_
-                .nodeLostStateToConfirm(request))
-              .map(Task.right(_))
-              .getOrElse {
-                userConfirmedNodeLoss = None
-
-                val requested = new Requested(clusterWatchId, request,
-                  clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed)
-                check2(clusterWatchId, request, requested)
-              }
-          }))
+          )(check2(
+            clusterWatchId, request,
+            new Requested(clusterWatchId, request,
+              clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed))))
       }
 
   private def check2(
@@ -195,8 +179,8 @@ extends Service.StoppableByRequest with ClusterWatchApi
         Checked.unit
       })
 
-  private def toConfirmation(confirm: ClusterWatchConfirm): ConfirmedByClusterWatch =
-    ConfirmedByClusterWatch(
+  private def toConfirmation(confirm: ClusterWatchConfirm): ClusterWatchConfirmation =
+    ClusterWatchConfirmation(
       confirm.requestId,
       confirm.clusterWatchId,
       confirm.clusterWatchRunId,
@@ -252,35 +236,6 @@ extends Service.StoppableByRequest with ClusterWatchApi
         }
     }
   }
-
-  def userConfirmNodeLoss(lostNodeId: NodeId, userId: UserId): Task[Checked[Unit]] =
-    logger.traceTask("userConfirmNodeLoss", lostNodeId)(
-      Task.defer {
-        val confirmedLoss = UserConfirmedNodeLoss(
-          lostNodeId,
-          expires = now + timing.clusterWatchReactionTimeout + 1.s,
-          userId)
-
-        def reject = Task.left(ConfirmClusterNodeLossNotApplicableProblem)
-
-        @tailrec def confirmRequest(): Task[Checked[Unit]] =
-          _requested.get() match {
-            case None => reject
-            case some @ Some(requested) =>
-              confirmedLoss.nodeLostEventToConfirm(requested) match {
-                case None => reject
-                case Some(confirm) =>
-                  if (_requested.compareAndSet(some, None)) {
-                    userConfirmedNodeLoss = Some(confirmedLoss)
-                    requested.confirm(confirm)
-                  } else
-                    confirmRequest()
-              }
-            case _ => reject
-          }
-
-        confirmRequest()
-      })
 
   def onClusterWatchRegistered(clusterWatchId: ClusterWatchId): Task[Unit] =
     Task {
@@ -340,33 +295,6 @@ object ClusterWatchCounterpart
         .materialize/*Ignore duplicate complete*/.as(Checked.unit)
 
     override def toString = s"Requested($id,$clusterWatchId)"
-  }
-
-  private case class UserConfirmedNodeLoss(
-    lostNodeId: NodeId,
-    expires: MonixDeadline,
-    userId: UserId)
-  {
-    def nodeLostEventToConfirm(requested: Requested): Option[ConfirmedByUser] =
-      requested.request.isNodeLostEvent(lostNodeId) ?
-        toConfirmation(requested.id)
-
-    def nodeLostStateToConfirm(request: ClusterWatchRequest): Option[ConfirmedByUser] =
-      request match {
-        case ClusterWatchCheckState(_, _, _, clusterState: IsNodeLost)
-          if clusterState.passiveId == lostNodeId && expires.hasTimeLeft =>
-          //? requested.confirm(toConfirmation(requested.id))
-          Some(toConfirmation(request.requestId))
-        case _ =>
-          logger.trace(s"🚫 $toString does not match $request")
-          None
-      }
-
-    // A fake ClusterWatchConfirm used for node loss confirmation by command
-    private def toConfirmation(requestId: RequestId) =
-      ConfirmedByUser(requestId, userId)
-
-    override def toString = s"UserConfirmedNodeLoss($userId $lostNodeId expires=$expires)"
   }
 
   private object RequestTimeoutException extends Exception

@@ -97,7 +97,5 @@ object ClusterWatchProblems
       "clusterWatchRunId" -> clusterWatchRunId.toString)
   }
 
-  case object ConfirmClusterNodeLossNotApplicableProblem extends Problem.ArgumentlessCoded
-
   case object ClusterStateEmptyProblem extends Problem.ArgumentlessCoded
 }

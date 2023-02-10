@@ -7,7 +7,6 @@ import com.softwaremill.diffx
 import com.typesafe.config.Config
 import izumi.reflect.Tag
 import java.nio.file.Path
-import js7.base.auth.UserId
 import js7.base.eventbus.EventPublisher
 import js7.base.generic.Completed
 import js7.base.io.https.HttpsConfig
@@ -29,7 +28,6 @@ import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterSetting, ClusterWatchRequest, ClusterWatchingCommand}
 import js7.data.controller.ControllerId
 import js7.data.event.{EventId, JournalPosition, SnapshotableState}
-import js7.data.node.NodeId
 import js7.journal.EventIdGenerator
 import js7.journal.data.JournalMeta
 import js7.journal.recover.{Recovered, StateRecoverer}
@@ -327,9 +325,6 @@ final class ClusterNode[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
 
   def clusterWatchRequestStream: Task[fs2.Stream[Task, ClusterWatchRequest]] =
     common.clusterWatchCounterpart.newStream
-
-  def userConfirmNodeLoss(nodeId: NodeId, userId: UserId): Task[Checked[Unit]] =
-    common.clusterWatchCounterpart.userConfirmNodeLoss(nodeId, userId)
 
   /** Is the active or non-cluster (Empty, isPrimary) node or is becoming active. */
   def isWorkingNode = _passiveOrWorkingNode.exists(_.isRight)

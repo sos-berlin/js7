@@ -544,10 +544,6 @@ object RunningController
             .flatMapT(_.appointNodes(idToUri, activeId, clusterWatches))
             .map(_.map((_: Completed) => ControllerCommand.Response.Accepted))
 
-        case ControllerCommand.ConfirmClusterNodeLoss(nodeID) =>
-          clusterNode.userConfirmNodeLoss(nodeID, meta.user.id)
-            .rightAs(ControllerCommand.Response.Accepted)
-
         case _ =>
           orderKeeperActor.flatMapT(actor =>
             Task.deferFuture(

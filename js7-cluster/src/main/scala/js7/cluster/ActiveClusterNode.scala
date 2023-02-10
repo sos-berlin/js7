@@ -18,8 +18,8 @@ import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.{HttpClient, Uri}
 import js7.cluster.ActiveClusterNode.*
+import js7.cluster.watch.api.ClusterWatchConfirmation
 import js7.cluster.watch.api.ClusterWatchProblems.{ClusterStateEmptyProblem, NoClusterWatchProblem}
-import js7.cluster.watch.api.ConfirmedByClusterWatch
 import js7.common.http.RecouplingStreamReader
 import js7.data.Problems.{ClusterCommandInapplicableProblem, ClusterNodeIsNotActiveProblem, ClusterSettingNotUpdatable, MissingPassiveClusterNodeHeartbeatProblem}
 import js7.data.cluster.ClusterCommand.ClusterStartBackupNode
@@ -511,7 +511,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
     common.clusterWatchCounterpart.executeClusterWatchConfirm(cmd)
 
   // Called back by clusterWatchCounterpart.executeClusterWatchConfirm
-  private def registerClusterWatchId(confirmation: ConfirmedByClusterWatch, alreadyLocked: Boolean)
+  private def registerClusterWatchId(confirmation: ClusterWatchConfirmation, alreadyLocked: Boolean)
   : Task[Checked[Unit]] =
     logger.traceTask(Task.defer {
       if (!persistence.isStarted) {
@@ -526,7 +526,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
           nonLockingRegisterClusterWatchId(confirmation))
     })
 
-  private def nonLockingRegisterClusterWatchId(confirmation: ConfirmedByClusterWatch)
+  private def nonLockingRegisterClusterWatchId(confirmation: ClusterWatchConfirmation)
   : Task[Checked[Unit]] =
     persistence.clusterState
       .flatMap(clusterState =>

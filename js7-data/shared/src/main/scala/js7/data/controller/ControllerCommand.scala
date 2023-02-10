@@ -304,7 +304,6 @@ object ControllerCommand extends CommonCommand.Companion
     Subtype(deriveConfiguredCodec[ControlWorkflow]),
     Subtype(deriveConfiguredCodec[ClusterAppointNodes]),
     Subtype(ClusterSwitchOver),
-    Subtype(deriveConfiguredCodec[ConfirmClusterNodeLoss]),
     Subtype(deriveConfiguredCodec[ResetAgent]),
     Subtype(deriveConfiguredCodec[ResetSubagent]),
     Subtype(TakeSnapshot))

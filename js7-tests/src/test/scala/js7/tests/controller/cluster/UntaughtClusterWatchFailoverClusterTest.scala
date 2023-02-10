@@ -9,13 +9,13 @@ import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.cluster.ClusterWatchCounterpart.WaitingForConfirmation
-import js7.cluster.watch.api.ClusterWatchProblems.{ClusterNodeIsNotLostProblem, ConfirmClusterNodeLossNotApplicableProblem}
+import js7.cluster.watch.api.ClusterWatchProblems.ClusterNodeIsNotLostProblem
 import js7.common.guice.GuiceImplicits.RichInjector
 import js7.controller.configuration.ControllerConfiguration
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver}
 import js7.data.cluster.ClusterState.{Coupled, FailedOver}
 import js7.data.cluster.ClusterWatchCheckEvent
-import js7.data.controller.ControllerCommand.{ConfirmClusterNodeLoss, ShutDown}
+import js7.data.controller.ControllerCommand.ShutDown
 import js7.data.event.*
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
@@ -45,9 +45,6 @@ final class UntaughtClusterWatchFailoverClusterTest extends ControllerClusterTes
         waitForCondition(10.s, 10.ms)(clusterWatch.clusterState().exists(_.isInstanceOf[Coupled]))
       }
 
-      assert(backupController.executeCommandForTest(ConfirmClusterNodeLoss(backupId)) ==
-        Left(ConfirmClusterNodeLossNotApplicableProblem))
-
       val since = now
       val sleepWhileFailing = clusterTiming.activeLostTimeout + 1.s
 
@@ -73,16 +70,6 @@ final class UntaughtClusterWatchFailoverClusterTest extends ControllerClusterTes
         })
         .await(99.s)
 
-      if (false) {
-      assert(backupController.executeCommandForTest(ConfirmClusterNodeLoss(backupId)) ==
-        Left(ConfirmClusterNodeLossNotApplicableProblem))
-      assert(primaryController.executeCommandForTest(ConfirmClusterNodeLoss(backupId)) ==
-        Left(ConfirmClusterNodeLossNotApplicableProblem))
-      assert(primaryController.executeCommandForTest(ConfirmClusterNodeLoss(primaryId)) ==
-        Left(ConfirmClusterNodeLossNotApplicableProblem))
-
-      backupController.executeCommandForTest(ConfirmClusterNodeLoss(primaryId)).orThrow
-      } else
       withClusterWatchService() { clusterWatchService =>
         // backupId ist not lost
         assert(clusterWatchService.confirmNodeLoss(backupId)

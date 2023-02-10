@@ -6,11 +6,10 @@ import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.cluster.ClusterWatchCounterpart.WaitingForConfirmation
-import js7.cluster.watch.api.ClusterWatchProblems.ConfirmClusterNodeLossNotApplicableProblem
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterPassiveLost}
 import js7.data.cluster.ClusterState.Coupled
 import js7.data.cluster.ClusterWatchCheckEvent
-import js7.data.controller.ControllerCommand.{ConfirmClusterNodeLoss, ShutDown}
+import js7.data.controller.ControllerCommand.ShutDown
 import monix.execution.Scheduler.Implicits.global
 
 final class UntaughtClusterWatchPassiveLostClusterTest extends ControllerClusterTester
@@ -42,16 +41,6 @@ final class UntaughtClusterWatchPassiveLostClusterTest extends ControllerCluster
         })
         .await(99.s)
 
-      if (false) {
-      assert(backupController.executeCommandForTest(ConfirmClusterNodeLoss(backupId)) ==
-        Left(ConfirmClusterNodeLossNotApplicableProblem))
-      assert(backupController.executeCommandForTest(ConfirmClusterNodeLoss(primaryId)) ==
-        Left(ConfirmClusterNodeLossNotApplicableProblem))
-      assert(primaryController.executeCommandForTest(ConfirmClusterNodeLoss(primaryId)) ==
-        Left(ConfirmClusterNodeLossNotApplicableProblem))
-
-      primaryController.executeCommandForTest(ConfirmClusterNodeLoss(backupId)).orThrow
-      } else
       withClusterWatchService() { _ =>
         // Untaught ClusterWatch trusts the active cluster node and
         // automatically confirms ClusterPassiveLost
