@@ -1,6 +1,5 @@
 package js7.data.order
 
-import io.circe.Json
 import io.circe.syntax.EncoderOps
 import js7.base.circeutils.CirceUtils.*
 import js7.base.problem.Problem
@@ -21,7 +20,6 @@ import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.{BranchId, Label, Position}
 import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
-import org.scalactic.source
 import scala.annotation.nowarn
 import scala.concurrent.duration.*
 
@@ -32,7 +30,7 @@ import scala.concurrent.duration.*
 final class OrderEventTest extends OurTestSuite
 {
   "OrderAdded" in {
-    check(
+    testJson[OrderEvent](
       OrderAdded(
         WorkflowPath("WORKFLOW") ~ "VERSION",
         Map("VAR" -> StringValue("VALUE")),
@@ -60,10 +58,21 @@ final class OrderEventTest extends OurTestSuite
         "startPosition": [ 1 ],
         "stopPositions": [ [ 9 ], "LABEL" ]
       }""")
+
+    testJsonDecoder[OrderEvent](
+      OrderAdded(WorkflowPath("WORKFLOW") ~ "VERSION"),
+      json"""
+      {
+        "TYPE": "OrderAdded",
+        "workflowId": {
+          "path": "WORKFLOW",
+          "versionId": "VERSION"
+        }
+      }""")
   }
 
   "OrderOrderAdded" in {
-    check(
+    testJson[OrderEvent](
       OrderOrderAdded(
         OrderId("ORDER-ID"),
         WorkflowPath("WORKFLOW") ~ "VERSION",
@@ -86,10 +95,24 @@ final class OrderEventTest extends OurTestSuite
         "stopPositions": [ [2], "LABEL"],
         "deleteWhenTerminated": true
       }""")
+
+    testJsonDecoder[OrderEvent](
+      OrderOrderAdded(
+        OrderId("ORDER-ID"),
+        WorkflowPath("WORKFLOW") ~ "VERSION"),
+      json"""
+      {
+        "TYPE": "OrderOrderAdded",
+        "orderId": "ORDER-ID",
+        "workflowId": {
+          "path": "WORKFLOW",
+          "versionId": "VERSION"
+        }
+      }""")
   }
 
   "OrderAttachable" in {
-    check(
+    testJson[OrderEvent](
       OrderAttachable(AgentPath("AGENT")),
       json"""{
         "TYPE": "OrderAttachable",
@@ -98,7 +121,7 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderAttachedToAgent" in {
-    check(
+    testJson[OrderEvent](
       OrderAttachedToAgent(
         (WorkflowPath("WORKFLOW") ~ "VERSION") /: Position(2),
         Order.Ready,
@@ -159,10 +182,32 @@ final class OrderEventTest extends OurTestSuite
         }],
         "stopPositions": [ [ 9 ], "LABEL" ]
       }""")
+
+    testJsonDecoder[OrderEvent](
+      OrderAttachedToAgent(
+        (WorkflowPath("WORKFLOW") ~ "VERSION") /: Position(2),
+        Order.Ready,
+        agentPath = AgentPath("AGENT")),
+      json"""
+      {
+        "TYPE": "OrderAttachedToAgent",
+        "workflowPosition": {
+          "workflowId": {
+            "path": "WORKFLOW",
+            "versionId": "VERSION"
+          },
+          "position": [ 2 ]
+        },
+        "state": {
+          "TYPE": "Ready"
+        },
+        "historicOutcomes": [],
+        "agentPath":"AGENT"
+      }""")
   }
 
   "OrderAttached" in {
-    check(OrderAttached(AgentPath("AGENT")), json"""
+    testJson[OrderEvent](OrderAttached(AgentPath("AGENT")), json"""
       {
         "TYPE": "OrderAttached",
         "agentPath":"AGENT"
@@ -170,14 +215,14 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderStarted" in {
-    check(OrderStarted, json"""
+    testJson[OrderEvent](OrderStarted, json"""
       {
         "TYPE": "OrderStarted"
       }""")
   }
 
   "OrderProcessingStarted" in {
-    check(OrderProcessingStarted(SubagentId("SUBAGENT")), json"""
+    testJson[OrderEvent](OrderProcessingStarted(SubagentId("SUBAGENT")), json"""
       {
         "TYPE": "OrderProcessingStarted",
         "subagentId": "SUBAGENT",
@@ -190,7 +235,7 @@ final class OrderEventTest extends OurTestSuite
         "subagentId": "SUBAGENT"
       }""")
 
-    check(OrderProcessingStarted(None), json"""
+    testJson[OrderEvent](OrderProcessingStarted(None), json"""
       {
         "TYPE": "OrderProcessingStarted",
         "stick": false
@@ -203,7 +248,7 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderStdoutWritten" in {
-    check(OrderStdoutWritten("STDOUT\n"), json"""
+    testJson[OrderEvent](OrderStdoutWritten("STDOUT\n"), json"""
       {
         "TYPE": "OrderStdoutWritten",
         "chunk": "STDOUT\n"
@@ -211,7 +256,7 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderStderrWritten" in {
-    check(OrderStderrWritten("STDOUT\n"), json"""
+    testJson[OrderEvent](OrderStderrWritten("STDOUT\n"), json"""
       {
         "TYPE": "OrderStderrWritten",
         "chunk": "STDOUT\n"
@@ -219,7 +264,7 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderProcessed" in {
-    check(OrderProcessed(Outcome.Succeeded(Map("KEY" -> StringValue("VALUE")))), json"""
+    testJson[OrderEvent](OrderProcessed(Outcome.Succeeded(Map("KEY" -> StringValue("VALUE")))), json"""
       {
         "TYPE": "OrderProcessed",
         "outcome": {
@@ -232,7 +277,7 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderCatched" in {
-    check(OrderCatched(Position(1)), json"""
+    testJson[OrderEvent](OrderCatched(Position(1)), json"""
       {
         "TYPE": "OrderCatched",
         "movedTo": [ 1 ]
@@ -240,7 +285,7 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderCatched complete" in {
-    check(OrderCatched(
+    testJson[OrderEvent](OrderCatched(
       Position(1),
       Some(Outcome.Failed(Some("FAILED"), NamedValues.rc(1)))),
       json"""
@@ -258,7 +303,7 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderCaught" in {
-    check(OrderCaught(Position(1)), json"""
+    testJson[OrderEvent](OrderCaught(Position(1)), json"""
       {
         "TYPE": "OrderCaught",
         "movedTo": [ 1 ]
@@ -266,7 +311,7 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderCaught complete" in {
-    check(
+    testJson[OrderEvent](
       OrderCaught(
         Position(1),
         Some(Outcome.Failed(Some("FAILED"), NamedValues.rc(1)))
@@ -286,7 +331,7 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderFailed" in {
-    check(OrderFailed(Position(1)),
+    testJson[OrderEvent](OrderFailed(Position(1)),
       json"""
       {
         "TYPE": "OrderFailed",
@@ -295,7 +340,7 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderFailed(Failed) complete" in {
-    check(
+    testJson[OrderEvent](
       OrderFailed(
         Position(1),
         Some(Outcome.Failed(Some("ERROR"), NamedValues.rc(1)))
@@ -315,7 +360,7 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderFailed(Disrupted(PROBLEM))" in {
-    check(
+    testJson[OrderEvent](
       OrderFailed(
         Position(1),
         Some(Outcome.Disrupted(Problem("PROBLEM")))
@@ -336,7 +381,7 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderFailedInFork" in {
-    check(OrderFailedInFork(Position(1)), json"""
+    testJson[OrderEvent](OrderFailedInFork(Position(1)), json"""
       {
         "TYPE": "OrderFailedInFork",
         "movedTo": [ 1 ]
@@ -344,7 +389,7 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderFailedInFork complete" in {
-    check(
+    testJson[OrderEvent](
       OrderFailedInFork(
         Position(1),
         Some(Outcome.Failed(Some("ERROR"), NamedValues.rc(1)))
@@ -363,7 +408,7 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderRetrying" in {
-    check(OrderRetrying(Position(1)), json"""
+    testJson[OrderEvent](OrderRetrying(Position(1)), json"""
       {
         "TYPE": "OrderRetrying",
         "movedTo": [ 1 ]
@@ -371,7 +416,7 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderRetrying(delayedUntil)" in {
-    check(OrderRetrying(Position(1), Some(Timestamp("2019-03-04T12:00:00Z"))), json"""
+    testJson[OrderEvent](OrderRetrying(Position(1), Some(Timestamp("2019-03-04T12:00:00Z"))), json"""
       {
         "TYPE": "OrderRetrying",
         "movedTo": [ 1 ],
@@ -380,7 +425,7 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderForked" in {
-    check(OrderForked(Vector(
+    testJson[OrderEvent](OrderForked(Vector(
       OrderForked.Child("A", OrderId("A/1")),
       OrderForked.Child("B", OrderId("B/1")))), json"""
       {
@@ -398,7 +443,7 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderJoined" in {
-    check(OrderJoined(Outcome.succeeded), json"""
+    testJson[OrderEvent](OrderJoined(Outcome.succeeded), json"""
       {
         "TYPE": "OrderJoined",
         "outcome": {
@@ -408,13 +453,13 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderMoved" in {
-    check(OrderMoved(Position(7)), json"""
+    testJson[OrderEvent](OrderMoved(Position(7)), json"""
       {
         "TYPE": "OrderMoved",
         "to": [ 7 ]
       }""")
 
-    check(OrderMoved(Position(7), Some(OrderMoved.SkippedDueToWorkflowPathControl)), json"""
+    testJson[OrderEvent](OrderMoved(Position(7), Some(OrderMoved.SkippedDueToWorkflowPathControl)), json"""
       {
         "TYPE": "OrderMoved",
         "to": [ 7 ],
@@ -423,7 +468,7 @@ final class OrderEventTest extends OurTestSuite
         }
       }""")
 
-    check(OrderMoved(Position(7), Some(OrderMoved.NoAdmissionPeriodStart)), json"""
+    testJson[OrderEvent](OrderMoved(Position(7), Some(OrderMoved.NoAdmissionPeriodStart)), json"""
       {
         "TYPE": "OrderMoved",
         "to": [ 7 ],
@@ -434,26 +479,26 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderDetachable" in {
-    check(OrderDetachable, json"""
+    testJson[OrderEvent](OrderDetachable, json"""
       {
         "TYPE": "OrderDetachable"
       }""")
   }
 
   "OrderDetached" in {
-    check(OrderDetached, json"""
+    testJson[OrderEvent](OrderDetached, json"""
       {
         "TYPE": "OrderDetached"
       }""")
   }
 
   "OrderFinished" in {
-    check(OrderFinished(), json"""
+    testJson[OrderEvent](OrderFinished(), json"""
       {
         "TYPE": "OrderFinished"
       }""")
 
-    check(OrderFinished(Some(Outcome.failed)), json"""
+    testJson[OrderEvent](OrderFinished(Some(Outcome.failed)), json"""
       {
         "TYPE": "OrderFinished",
         "outcome": {
@@ -463,67 +508,77 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderCancellationMarked" in {
-    check(OrderCancellationMarked(CancellationMode.FreshOnly), json"""
+    testJson[OrderEvent](OrderCancellationMarked(CancellationMode.FreshOnly), json"""
       {
         "TYPE": "OrderCancellationMarked",
         "mode": {
           "TYPE": "FreshOnly"
         }
       }""")
+
+    testJsonDecoder[OrderEvent](OrderCancellationMarked(), json"""
+      {
+        "TYPE": "OrderCancellationMarked"
+      }""")
   }
 
   "OrderCancellationMarkedOnAgent" in {
-    check(OrderCancellationMarkedOnAgent, json"""
+    testJson[OrderEvent](OrderCancellationMarkedOnAgent, json"""
       {
         "TYPE": "OrderCancellationMarkedOnAgent"
       }""")
   }
 
   "OrderCancelled" in {
-    check(OrderCancelled, json"""
+    testJson[OrderEvent](OrderCancelled, json"""
       {
         "TYPE": "OrderCancelled"
       }""")
   }
 
   "OrderDeletionMarked" in {
-    check(OrderDeletionMarked, json"""
+    testJson[OrderEvent](OrderDeletionMarked, json"""
       {
         "TYPE": "OrderDeletionMarked"
       }""")
   }
 
   "OrderDeleted" in {
-    check(OrderDeleted, json"""
+    testJson[OrderEvent](OrderDeleted, json"""
       {
         "TYPE": "OrderDeleted"
       }""")
   }
 
   "OrderSuspensionMarked" in {
-    check(OrderSuspensionMarked(), json"""
+    testJson[OrderEvent](OrderSuspensionMarked(), json"""
       {
         "TYPE": "OrderSuspensionMarked",
         "mode": {}
       }""")
+
+    testJsonDecoder[OrderEvent](OrderSuspensionMarked(), json"""
+      {
+        "TYPE": "OrderSuspensionMarked"
+      }""")
   }
 
   "OrderSuspensionMarkedOnAgent" in {
-    check(OrderSuspensionMarkedOnAgent, json"""
+    testJson[OrderEvent](OrderSuspensionMarkedOnAgent, json"""
       {
         "TYPE": "OrderSuspensionMarkedOnAgent"
       }""")
   }
 
   "OrderSuspended" in {
-    check(OrderSuspended, json"""
+    testJson[OrderEvent](OrderSuspended, json"""
       {
         "TYPE": "OrderSuspended"
       }""")
   }
 
   "OrderResumptionMarked" in {
-    check(OrderResumptionMarked(
+    testJson[OrderEvent](OrderResumptionMarked(
       Some(Position(1)),
       Seq(
         OrderResumed.ReplaceHistoricOutcome(Position(0), Outcome.succeeded)),
@@ -552,7 +607,7 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderResumed" in {
-    check(OrderResumed(
+    testJson[OrderEvent](OrderResumed(
       Some(Position(1)),
       Seq(
         ReplaceHistoricOutcome(Position(0), Outcome.succeeded),
@@ -593,7 +648,7 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderLocksAcquired" in {
-    check(OrderLocksAcquired(List(LockDemand(LockPath("LOCK"), Some(3)))), json"""
+    testJson[OrderEvent](OrderLocksAcquired(List(LockDemand(LockPath("LOCK"), Some(3)))), json"""
       {
         "TYPE": "OrderLocksAcquired",
         "demands": [{
@@ -643,7 +698,7 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderLocksQueued" in {
-    check(OrderLocksQueued(List(LockDemand(LockPath("LOCK"), Some(1)))), json"""
+    testJson[OrderEvent](OrderLocksQueued(List(LockDemand(LockPath("LOCK"), Some(1)))), json"""
       {
         "TYPE": "OrderLocksQueued",
         "demands": [
@@ -695,7 +750,7 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderLocksDequeued" in {
-    check(OrderLocksDequeued(List(LockPath("LOCK"))), json"""
+    testJson[OrderEvent](OrderLocksDequeued(List(LockPath("LOCK"))), json"""
       {
         "TYPE": "OrderLocksDequeued",
         "lockPaths": [ "LOCK" ]
@@ -720,7 +775,7 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderLocksReleased" in {
-    check(OrderLocksReleased(List(LockPath("LOCK"))), json"""
+    testJson[OrderEvent](OrderLocksReleased(List(LockPath("LOCK"))), json"""
       {
         "TYPE": "OrderLocksReleased",
         "lockPaths": [ "LOCK" ]
@@ -745,7 +800,7 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderNoticePosted until v2.3" in {
-    check(OrderNoticePostedV2_3(NoticeV2_3(
+    testJson[OrderEvent](OrderNoticePostedV2_3(NoticeV2_3(
       NoticeId("NOTICE"),
       endOfLife = Timestamp("1970-01-01T01:00:00Z"))),
       json"""
@@ -759,7 +814,7 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderNoticePosted" in {
-    check(OrderNoticePosted(Notice(
+    testJson[OrderEvent](OrderNoticePosted(Notice(
       NoticeId("NOTICE"),
       BoardPath("BOARD"),
       endOfLife = Timestamp("1970-01-01T01:00:00Z"))),
@@ -775,7 +830,7 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderNoticeExpected" in {
-    check(OrderNoticeExpected(NoticeId("NOTICE")),
+    testJson[OrderEvent](OrderNoticeExpected(NoticeId("NOTICE")),
       json"""
       {
         "TYPE": "OrderNoticeExpected",
@@ -784,7 +839,7 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderNoticesExpected" in {
-    check(OrderNoticesExpected(Vector(
+    testJson[OrderEvent](OrderNoticesExpected(Vector(
       OrderNoticesExpected.Expected(BoardPath("BOARD"), NoticeId("NOTICE")))),
       json"""
       {
@@ -798,8 +853,23 @@ final class OrderEventTest extends OurTestSuite
       }""")
   }
 
+  "OrderNoticesConsumed" in {
+    testJson[OrderEvent](OrderNoticesConsumed(failed = true),
+      json"""
+      {
+        "TYPE": "OrderNoticesConsumed",
+        "failed": true
+      }""")
+
+    testJsonDecoder[OrderEvent](OrderNoticesConsumed(),
+      json"""
+      {
+        "TYPE": "OrderNoticesConsumed"
+      }""")
+  }
+
   "OrderNoticesConsumptionStarted" in {
-    check(OrderNoticesConsumptionStarted(Vector(
+    testJson[OrderEvent](OrderNoticesConsumptionStarted(Vector(
       OrderNoticesConsumptionStarted.Consumption(BoardPath("BOARD"), NoticeId("NOTICE")))),
       json"""
       {
@@ -823,7 +893,7 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderNoticesRead" in {
-    check(OrderNoticesRead,
+    testJson[OrderEvent](OrderNoticesRead,
       json"""
       {
         "TYPE": "OrderNoticesRead"
@@ -831,7 +901,7 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderStickySubagentEntered" in {
-    check(
+    testJson[OrderEvent](
       OrderStickySubagentEntered(
         AgentPath("AGENT"),
         Some(SubagentSelectionId("SUBAGENT-SELECTION"))),
@@ -844,7 +914,7 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderStickySubagentLeaved" in {
-    check(OrderStickySubagentLeaved,
+    testJson[OrderEvent](OrderStickySubagentLeaved,
       json"""
       {
         "TYPE": "OrderStickySubagentLeaved"
@@ -852,7 +922,7 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderPrompted" in {
-    check(OrderPrompted(StringValue("QUESTION")), json"""
+    testJson[OrderEvent](OrderPrompted(StringValue("QUESTION")), json"""
       {
         "TYPE": "OrderPrompted",
         "question": "QUESTION"
@@ -860,14 +930,15 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderPromptAnswered" in {
-    check(OrderPromptAnswered(), json"""
+    testJson[OrderEvent](OrderPromptAnswered(), json"""
       {
         "TYPE": "OrderPromptAnswered"
       }""")
   }
 
   "OrderTransferred" in {
-    check(OrderTransferred(WorkflowPath("WORKFLOW") ~ "v2" /: Position(7)), json"""
+    testJson[OrderEvent](OrderTransferred(WorkflowPath("WORKFLOW") ~ "v2" /: Position(7)),
+      json"""
       {
         "TYPE": "OrderTransferred",
         "workflowPosition": {
@@ -881,12 +952,12 @@ final class OrderEventTest extends OurTestSuite
   }
 
   "OrderBroken" in {
-    check(OrderBroken(), json"""
+    testJson[OrderEvent](OrderBroken(), json"""
       {
         "TYPE": "OrderBroken"
       }""")
 
-    check(
+    testJson[OrderEvent](
       OrderBroken(Problem("PROBLEM")): @nowarn("msg=deprecated"),
       json"""
       {
@@ -896,9 +967,6 @@ final class OrderEventTest extends OurTestSuite
         }
       }""")
   }
-
-  private def check(event: OrderEvent, json: => Json)(implicit pos: source.Position) =
-    testJson(event, json)
 
   if (sys.props contains "test.speed") "Speed" in {
     val n = 10000
