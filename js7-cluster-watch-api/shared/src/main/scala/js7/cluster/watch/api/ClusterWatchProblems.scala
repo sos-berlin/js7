@@ -2,7 +2,7 @@ package js7.cluster.watch.api
 
 import js7.base.problem.{Problem, ProblemCode}
 import js7.base.time.ScalaTime.*
-import js7.data.cluster.ClusterEvent.ClusterNodeLostEvent
+import js7.data.cluster.ClusterEvent.ClusterFailedOver
 import js7.data.cluster.{ClusterEvent, ClusterState, ClusterWatchId, ClusterWatchRunId, InvalidClusterWatchHeartbeatProblem}
 import js7.data.node.NodeId
 import scala.concurrent.duration.FiniteDuration
@@ -51,7 +51,7 @@ object ClusterWatchProblems
 
   final case object ClusterFailOverWhilePassiveLostProblem extends Problem.ArgumentlessCoded
 
-  final case class ClusterNodeLossNotConfirmedProblem(event: ClusterNodeLostEvent)
+  final case class ClusterNodeLossNotConfirmedProblem(event: ClusterFailedOver)
   extends Problem.Coded
   {
     def arguments = Map(
@@ -59,7 +59,10 @@ object ClusterWatchProblems
   }
   object ClusterNodeLossNotConfirmedProblem extends Problem.Coded.Companion
 
-  case object NoClusterNodeLostProblem extends Problem.ArgumentlessCoded
+  final case class ClusterNodeIsNotLostProblem(nodeId: NodeId) extends Problem.Coded {
+    def arguments = Map("" +
+      "nodeId" -> nodeId.toString)
+  }
 
   case object ClusterWatchRequestDoesNotMatchProblem extends Problem.ArgumentlessCoded
 

@@ -18,6 +18,7 @@ sealed trait ClusterWatchRequest
   def correlId: CorrelId
   def from: NodeId
   def clusterState: HasNodes
+  def maybeEvent: Option[ClusterEvent]
   def isNodeLostEvent(lostNodeId: NodeId): Boolean
   def toShortString: String
 }
@@ -42,6 +43,8 @@ extends ClusterWatchRequest
       case _ => false
     }
 
+  def maybeEvent = Some(event)
+
   override def toShortString =
     s"$requestId ${event.getClass.simpleScalaName} event"
 }
@@ -60,6 +63,8 @@ extends ClusterWatchRequest
       Right(this)
 
   def isNodeLostEvent(lostNodeId: NodeId) = false
+
+  def maybeEvent = None
 
   override def toShortString =
     s"$requestId ClusterState.${clusterState.toShortString}"

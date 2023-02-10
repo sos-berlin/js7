@@ -8,9 +8,9 @@ import js7.base.problem.Checked.*
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
-import js7.cluster.watch.api.ClusterWatchProblems.{ClusterFailOverWhilePassiveLostProblem, ClusterNodeLossNotConfirmedProblem, ClusterWatchInactiveNodeProblem, NoClusterNodeLostProblem, UntaughtClusterWatchProblem}
+import js7.cluster.watch.api.ClusterWatchProblems.{ClusterFailOverWhilePassiveLostProblem, ClusterNodeIsNotLostProblem, ClusterNodeLossNotConfirmedProblem, ClusterWatchInactiveNodeProblem, UntaughtClusterWatchProblem}
 import js7.common.message.ProblemCodeMessages
-import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterNodeLostEvent, ClusterPassiveLost, ClusterSwitchedOver}
+import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, ClusterFailedOver, ClusterPassiveLost, ClusterSwitchedOver}
 import js7.data.cluster.ClusterState.{Coupled, FailedOver, HasNodes, NodesAppointed, PassiveLost, PreparedToBeCoupled, SwitchedOver}
 import js7.data.cluster.ClusterWatchRequest.RequestId
 import js7.data.cluster.{ClusterEvent, ClusterSetting, ClusterState, ClusterTiming, ClusterWatchCheckEvent, ClusterWatchCheckState, InvalidClusterWatchHeartbeatProblem}
@@ -46,13 +46,13 @@ final class ClusterWatchTest extends OurTestSuite
       watch
     }
 
-    "Initial (untaught) state" in {
+    "Initial (untaught) state, active node heartbeats, after delay passive fails-over" in {
       implicit val watch = newClusterWatch()
       val clusterState = Coupled(setting)
       val event = ClusterFailedOver(aId, bId, failedAt)
       val failedOver = clusterState.applyEvent(event).orThrow.asInstanceOf[FailedOver]
       assert(watch.processRequest(ClusterWatchCheckEvent(RequestId(123), correlId, bId, event, failedOver))
-         == Left(UntaughtClusterWatchProblem))
+         == Left(ClusterNodeLossNotConfirmedProblem(event)))
 
       assert(heartbeat(aId, clusterState) == Right(Completed))
 
@@ -96,7 +96,7 @@ final class ClusterWatchTest extends OurTestSuite
         .processRequest(ClusterWatchCheckEvent(RequestId(123), correlId, aId, event2, clusterState2))
         == Right(Completed))
       assert(watch.isActive(aId).orThrow)
-      assert(watch.unsafeClusterState() == Right(clusterState2))
+      assert(watch.clusterState() == Right(clusterState2))
     }
 
     "Late heartbeat after coupled" in {
@@ -129,7 +129,7 @@ final class ClusterWatchTest extends OurTestSuite
             "heartbeat --> Coupled(passive A: http://A, active B: http://B)")))
       }
 
-      assert(watch.unsafeClusterState() == Right(clusterState))
+      assert(watch.clusterState() == Right(clusterState))
     }
 
     "Heartbeat must not change active URI" in {
@@ -140,7 +140,7 @@ final class ClusterWatchTest extends OurTestSuite
       val badCoupled = Coupled(setting.copy(activeId = bId))
       assert(heartbeat(aId, badCoupled) ==
         Left(InvalidClusterWatchHeartbeatProblem(aId, badCoupled)))
-      assert(watch.unsafeClusterState() == Right(clusterState))
+      assert(watch.clusterState() == Right(clusterState))
     }
 
     "FailedOver before heartbeat loss is rejected" in {
@@ -246,7 +246,7 @@ final class ClusterWatchTest extends OurTestSuite
 
         assert(watch.processRequest(ClusterWatchCheckEvent(RequestId(123), correlId, aId, nextEvent1, prepared))
           == Right(Completed))
-        assert(watch.unsafeClusterState() == Right(prepared))
+        assert(watch.clusterState() == Right(prepared))
       }
 
       locally {
@@ -256,7 +256,7 @@ final class ClusterWatchTest extends OurTestSuite
 
         assert(watch.processRequest(ClusterWatchCheckEvent(RequestId(123), correlId, aId, nextEvent2, coupled))
           == Right(Completed))
-        assert(watch.unsafeClusterState() == Right(coupled))
+        assert(watch.clusterState() == Right(coupled))
       }
     }
 
@@ -269,7 +269,7 @@ final class ClusterWatchTest extends OurTestSuite
     : Checked[Completed] = {
       assert(expectedClusterState == clusterState.applyEvent(event).orThrow)
       val response = watch.processRequest(ClusterWatchCheckEvent(RequestId(123), correlId, from, event, expectedClusterState))
-      assert(watch.unsafeClusterState() == Right(expectedClusterState))
+      assert(watch.clusterState() == Right(expectedClusterState))
       response
     }
 
@@ -278,18 +278,90 @@ final class ClusterWatchTest extends OurTestSuite
       watch.processRequest(ClusterWatchCheckState(RequestId(123), correlId, from, clusterState))
   }
 
+  "ClusterPassiveLost when ClusterWatch is still untaught is resolved automatically" in {
+    val watch = new ClusterWatch(() => scheduler.now)
+    val passiveLost = PassiveLost(setting)
+    import passiveLost.{activeId, passiveId}
+    val event = ClusterPassiveLost(passiveId)
+
+    assert(watch.clusterState() == Left(UntaughtClusterWatchProblem))
+    assert(watch.clusterFailedOverRequested() == None)
+    assert(watch.confirmNodeLoss(passiveId) == Left(ClusterNodeIsNotLostProblem(passiveId)))
+
+    assert(watch.processRequest(ClusterWatchCheckEvent(
+      RequestId(123), correlId, activeId, event, passiveLost))
+      == Right(Completed))
+    assert(watch.clusterState() == Right(passiveLost))
+
+    // Even a repetition succeeds, it's idempotent because ClusterState does not change
+    assert(watch.processRequest(ClusterWatchCheckEvent(
+      RequestId(123), correlId, activeId, event, passiveLost))
+      == Right(Completed))
+
+    // ClusterWatchCheckState succeeds
+    assert(watch.processRequest(ClusterWatchCheckState(
+      RequestId(123), correlId, activeId, passiveLost))
+      == Right(Completed))
+
+    assert(watch.clusterState() == Right(passiveLost))
+  }
+
+  "ClusterFailedOver when ClusterWatch is still untaught required manual confirmation" in {
+    val watch = new ClusterWatch(() => scheduler.now)
+    val failedOver = FailedOver(setting, failedAt)
+    val lostNodeId = failedOver.passiveId
+    val activatedId = failedOver.activeId
+    val event = ClusterFailedOver(lostNodeId, activatedId, failedAt)
+
+    assert(watch.clusterState() == Left(UntaughtClusterWatchProblem))
+    assert(watch.clusterFailedOverRequested() == None)
+    assert(watch.confirmNodeLoss(lostNodeId) == Left(ClusterNodeIsNotLostProblem(lostNodeId)))
+
+    // Cluster node tries and fails
+    assert(watch.processRequest(ClusterWatchCheckEvent(
+      RequestId(123), correlId, activatedId, event, failedOver))
+      == Left(ClusterNodeLossNotConfirmedProblem(event)))
+    assert(watch.clusterState() == Left(UntaughtClusterWatchProblem))
+
+    // ClusterWatch remembers ClusterFailedOver
+    assert(watch.clusterFailedOverRequested() == Some(event))
+
+    // Manually confirm node loss
+    watch.confirmNodeLoss(lostNodeId).orThrow
+
+    // Cluster node's second try succeeds
+    assert(watch.processRequest(ClusterWatchCheckEvent(
+      RequestId(123), correlId, activatedId, event, failedOver))
+      == Right(Completed))
+    assert(watch.clusterFailedOverRequested() == None)
+    assert(watch.clusterState() == Right(failedOver))
+
+    // Even a repetition succeeds, it's idempotent because ClusterState does not change
+    assert(watch.processRequest(ClusterWatchCheckEvent(
+      RequestId(123), correlId, activatedId, event, failedOver))
+      == Right(Completed))
+
+    // ClusterWatchCheckState succeeds
+    assert(watch.processRequest(ClusterWatchCheckState(
+      RequestId(123), correlId, activatedId, failedOver))
+      == Right(Completed))
+
+    assert(watch.clusterState() == Right(failedOver))
+    assert(watch.clusterFailedOverRequested() == None)
+  }
+
   "requireManualNodeLossConfirmation" - {
     "ClusterFailedOver" in {
       import setting.{activeId, passiveId}
       checkRequireNodeLossConfirm(from = passiveId, ClusterFailedOver(activeId, activatedId = passiveId, failedAt))
     }
 
-    "ClusterPassiveLost" in {
-      import setting.{activeId, passiveId}
-      checkRequireNodeLossConfirm(from = activeId, ClusterPassiveLost(passiveId))
-    }
+    //"ClusterPassiveLost" in {
+    //  import setting.{activeId, passiveId}
+    //  checkRequireNodeLossConfirm(from = activeId, ClusterPassiveLost(passiveId))
+    //}
 
-    def checkRequireNodeLossConfirm(from: NodeId, event: ClusterNodeLostEvent): Unit = {
+    def checkRequireNodeLossConfirm(from: NodeId, event: ClusterFailedOver): Unit = {
       val coupled = Coupled(setting)
       import coupled.{activeId, passiveId}
 
@@ -301,12 +373,12 @@ final class ClusterWatchTest extends OurTestSuite
       watch.processRequest(ClusterWatchCheckState(RequestId(123), correlId, activeId, coupled))
         .orThrow
 
-      assert(watch.confirmNodeLoss(activeId) == Left(NoClusterNodeLostProblem))
-      assert(watch.confirmNodeLoss(passiveId) == Left(NoClusterNodeLostProblem))
+      assert(watch.confirmNodeLoss(activeId) == Left(ClusterNodeIsNotLostProblem(activeId)))
+      assert(watch.confirmNodeLoss(passiveId) == Left(ClusterNodeIsNotLostProblem(passiveId)))
 
       scheduler.tick(setting.timing.clusterWatchHeartbeatValidDuration)
-      assert(watch.confirmNodeLoss(activeId) == Left(NoClusterNodeLostProblem))
-      assert(watch.confirmNodeLoss(passiveId) == Left(NoClusterNodeLostProblem))
+      assert(watch.confirmNodeLoss(activeId) == Left(ClusterNodeIsNotLostProblem(activeId)))
+      assert(watch.confirmNodeLoss(passiveId) == Left(ClusterNodeIsNotLostProblem(passiveId)))
 
       val expectedClusterState = coupled.applyEvent(NoKey <-: event).orThrow.asInstanceOf[HasNodes]
 
@@ -314,13 +386,13 @@ final class ClusterWatchTest extends OurTestSuite
       val response = watch
         .processRequest(ClusterWatchCheckEvent(RequestId(123), correlId, from, event, expectedClusterState))
       assert(response == Left(ClusterNodeLossNotConfirmedProblem(event)))
-      assert(watch.unsafeClusterState() == Right(coupled))
+      assert(watch.clusterState() == Right(coupled))
 
       // Try to confirm a loss of the not lost Node
       import event.lostNodeId
       val notLostNodeId = setting.other(lostNodeId)
-      assert(watch.confirmNodeLoss(notLostNodeId) ==
-        Left(NoClusterNodeLostProblem))
+      assert(watch.confirmNodeLoss(notLostNodeId) == Left(
+        ClusterNodeIsNotLostProblem(notLostNodeId)))
 
       // Confirm the loss of the Node
       watch.confirmNodeLoss(lostNodeId).orThrow
@@ -329,10 +401,10 @@ final class ClusterWatchTest extends OurTestSuite
         .processRequest(ClusterWatchCheckEvent(RequestId(123), correlId, notLostNodeId, event, expectedClusterState))
 
         .orThrow
-      assert(watch.unsafeClusterState() == Right(expectedClusterState))
+      assert(watch.clusterState() == Right(expectedClusterState))
 
-      assert(watch.confirmNodeLoss(activeId) == Left(NoClusterNodeLostProblem))
-      assert(watch.confirmNodeLoss(passiveId) == Left(NoClusterNodeLostProblem))
+      assert(watch.confirmNodeLoss(activeId) == Left(ClusterNodeIsNotLostProblem(activeId)))
+      assert(watch.confirmNodeLoss(passiveId) == Left(ClusterNodeIsNotLostProblem(passiveId)))
     }
   }
 }

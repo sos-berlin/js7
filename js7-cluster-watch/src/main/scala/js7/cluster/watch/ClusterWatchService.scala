@@ -21,8 +21,10 @@ import js7.cluster.watch.ClusterWatchService.*
 import js7.cluster.watch.api.ClusterWatchProblems.ClusterWatchRequestDoesNotMatchProblem
 import js7.cluster.watch.api.HttpClusterNodeApi
 import js7.common.configuration.Js7Configuration.defaultConfig
+import js7.data.cluster.ClusterEvent.ClusterFailedOver
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterNodeApi, ClusterState, ClusterWatchId, ClusterWatchRequest, ClusterWatchRunId}
+import js7.data.node.NodeId
 import monix.eval.Task
 import monix.reactive.Observable
 import scala.concurrent.duration.FiniteDuration
@@ -110,10 +112,16 @@ extends Service.StoppableByRequest
           .onErrorHandle(t =>
             logger.error(s"$nodeApi ${t.toStringWithCauses}", t.nullIfNoStackTrace)))))
 
+  def confirmNodeLoss(lostNodeId: NodeId): Checked[Unit] =
+    clusterWatch.confirmNodeLoss(lostNodeId)
+
   override def toString = "ClusterWatchService"
 
-  def unsafeClusterState(): Checked[ClusterState] =
-    clusterWatch.unsafeClusterState()
+  def clusterState(): Checked[ClusterState] =
+    clusterWatch.clusterState()
+
+  def clusterFailedOverRequested(): Option[ClusterFailedOver] =
+    clusterWatch.clusterFailedOverRequested()
 }
 
 object ClusterWatchService

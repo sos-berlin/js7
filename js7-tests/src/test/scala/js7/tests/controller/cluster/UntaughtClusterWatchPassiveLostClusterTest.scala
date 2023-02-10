@@ -13,7 +13,7 @@ import js7.data.cluster.ClusterWatchCheckEvent
 import js7.data.controller.ControllerCommand.{ConfirmClusterNodeLoss, ShutDown}
 import monix.execution.Scheduler.Implicits.global
 
-final class UserConfirmedPassiveLostClusterTest extends ControllerClusterTester
+final class UntaughtClusterWatchPassiveLostClusterTest extends ControllerClusterTester
 {
   override protected def primaryControllerConfig =
     // Short timeout because something blocks web server shutdown occasionally
@@ -21,19 +21,19 @@ final class UserConfirmedPassiveLostClusterTest extends ControllerClusterTester
       .withFallback(super.primaryControllerConfig)
 
   "PassiveLost" in {
-    withControllerAndBackup(suppressClusterWatch = true) { (primary, backup, clusterSetting) =>
+    withControllerAndBackup(suppressClusterWatch = true) { (primary, backup, _) =>
       val primaryController = primary.startController(httpPort = Some(primaryControllerPort)) await 99.s
       val backupController = backup.startController(httpPort = Some(backupControllerPort)) await 99.s
 
       withClusterWatchService() { clusterWatch =>
         primaryController.eventWatch.await[ClusterCoupled]()
-        waitForCondition(10.s, 10.ms)(clusterWatch.unsafeClusterState().exists(_.isInstanceOf[Coupled]))
-      }
+        waitForCondition(10.s, 10.ms)(clusterWatch.clusterState().exists(_.isInstanceOf[Coupled]))
 
-      // KILL BACKUP
-      backupController.executeCommandAsSystemUser(ShutDown())
-        .await(99.s).orThrow
-      //??? backupController.terminated await 99.s
+        // KILL BACKUP
+        backupController.executeCommandAsSystemUser(ShutDown())
+          .await(99.s).orThrow
+        //backupController.terminated await 99.s
+      }
 
       primaryController.testEventBus
         .whenFilterMap[WaitingForConfirmation, ClusterPassiveLost](_.request match {
@@ -42,6 +42,7 @@ final class UserConfirmedPassiveLostClusterTest extends ControllerClusterTester
         })
         .await(99.s)
 
+      if (false) {
       assert(backupController.executeCommandForTest(ConfirmClusterNodeLoss(backupId)) ==
         Left(ConfirmClusterNodeLossNotApplicableProblem))
       assert(backupController.executeCommandForTest(ConfirmClusterNodeLoss(primaryId)) ==
@@ -50,11 +51,15 @@ final class UserConfirmedPassiveLostClusterTest extends ControllerClusterTester
         Left(ConfirmClusterNodeLossNotApplicableProblem))
 
       primaryController.executeCommandForTest(ConfirmClusterNodeLoss(backupId)).orThrow
+      } else
+      withClusterWatchService() { _ =>
+        // Untaught ClusterWatch trusts the active cluster node and
+        // automatically confirms ClusterPassiveLost
+        val ClusterPassiveLost(`backupId`) = primaryController.eventWatch.await[ClusterPassiveLost]()
+          .head.value.event
 
-      val ClusterPassiveLost(`backupId`) = primaryController.eventWatch.await[ClusterPassiveLost]()
-        .head.value.event
-
-      primaryController.terminate() await 99.s
+        primaryController.terminate() await 99.s
+      }
     }
   }
 }

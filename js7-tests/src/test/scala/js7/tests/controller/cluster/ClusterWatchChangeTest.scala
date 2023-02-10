@@ -46,7 +46,7 @@ final class ClusterWatchChangeTest extends ControllerClusterTester
           == Some(aClusterWatchId))
 
         waitForCondition(10.s, 10.ms)(
-          a.unsafeClusterState().exists(_.isInstanceOf[ClusterState.Coupled]))
+          a.clusterState().exists(_.isInstanceOf[ClusterState.Coupled]))
       }
 
       logger.info("🔵 Same ClusterWatchId again")
