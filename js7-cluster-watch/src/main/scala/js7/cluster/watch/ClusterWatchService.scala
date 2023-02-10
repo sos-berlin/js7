@@ -72,9 +72,9 @@ extends Service.StoppableByRequest
           })
 
   private def clusterWatchRequestObservable(nodeApi: ClusterNodeApi): Observable[ClusterWatchRequest] =
-    Observable
-      .fromTask(logger.traceTask("clusterWatchRequestObservable", nodeApi)(
-        nodeApi
+    logger.traceObservable("clusterWatchRequestObservable", nodeApi)(
+      Observable
+        .fromTask(nodeApi
           .retryUntilReachable()(
             nodeApi.retryIfSessionLost()(
               nodeApi.clusterWatchRequestObservable(clusterWatchId, keepAlive = Some(keepAlive))))
@@ -84,8 +84,8 @@ extends Service.StoppableByRequest
             case o => HttpClient.failureToChecked(o)
           }
           .dematerialize
-          .map(_.orThrow)))
-      .flatten
+          .map(_.orThrow))
+        .flatten)
 
   private def processRequest(nodeApi: HttpClusterNodeApi, request: ClusterWatchRequest): Task[Unit] =
     /*request.correlId.bind — better log the ClusterWatch's CorrelId in Cluster node*/(
