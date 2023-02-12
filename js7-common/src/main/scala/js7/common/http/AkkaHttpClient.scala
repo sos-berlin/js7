@@ -308,7 +308,13 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
             }
 
             case ExitCase.Error(throwable) => Task.defer {
-              logger.debug(s"<--<💥 $responseLogPrefix => failed with ${throwable.toStringWithCauses}")
+              val mark = throwable match {
+                case t: akka.stream.StreamTcpException if t.getMessage.contains(
+                  "failed because of java.net.ConnectException: ") => "⭕"
+                case _ => "💥"
+              }
+              logger.debug(
+                s"<~~$mark $responseLogPrefix => failed with ${throwable.toStringWithCauses}")
               Task.raiseError(toPrettyProblem(throwable).throwable)
             }
 

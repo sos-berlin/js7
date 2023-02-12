@@ -1,5 +1,6 @@
 package js7.base.log
 
+import cats.Defer
 import io.circe.Decoder
 import java.security.SecureRandom
 import js7.base.circeutils.CirceUtils.*
@@ -111,6 +112,9 @@ object CorrelId extends GenericString.Checked_[CorrelId]
       generateCount += 1
       nextCorrelId()
     }
+
+  def use[F[_], R](body: CorrelId => F[R])(implicit F: Defer[F]): F[R] =
+    F.defer(body(current))
 
   def current: CorrelId =
     if (!CorrelId.isEnabled)

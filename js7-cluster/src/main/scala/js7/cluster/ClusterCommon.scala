@@ -153,11 +153,11 @@ private[cluster] final class ClusterCommon(
                     if (problem.is(ClusterNodeLossNotConfirmedProblem)
                       || problem.is(ClusterWatchInactiveNodeProblem)) {
                       logger.warn(
-                        s"ClusterWatch did not agree to '${event.getClass.simpleScalaName}' event: $problem")
+                        s"⛔️ ClusterWatch did not agree to '${event.getClass.simpleScalaName}' event: $problem")
                       testEventPublisher.publish(ClusterWatchDisagreedToActivation)
                       if (event.isInstanceOf[ClusterPassiveLost]) {
                         haltJava(
-                          "While this node has lost the passive node" +
+                          "🟥 While this node has lost the passive node" +
                             " and is waiting for ClusterWatch's agreement, " +
                             "the passive node failed over",
                           restart = true,

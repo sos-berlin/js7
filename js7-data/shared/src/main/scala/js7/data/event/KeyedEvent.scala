@@ -3,6 +3,7 @@ package js7.data.event
 import io.circe.syntax.EncoderOps
 import io.circe.{Decoder, Encoder}
 import js7.base.circeutils.typed.TypedJsonCodec
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.KeyedEvent.*
 import scala.reflect.ClassTag
 
@@ -17,12 +18,12 @@ final case class KeyedEvent[+E <: Event](key: E#Key, event: E)
 
   def toShortString = s"$keyPrefix${TypedJsonCodec.typeName(event.getClass)}"
 
-  private def keyPrefix = if (key == NoKey) "" else s"$key$Arrow"
+  private def keyPrefix = (key != NoKey) ?? s"$key $Arrow "
 }
 
 object KeyedEvent {
   private[event] val KeyFieldName = "Key"
-  val Arrow = " <-: "
+  val Arrow = "<-:"
 
   type NoKey = NoKey.type
   case object NoKey {

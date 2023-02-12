@@ -117,7 +117,8 @@ extends Actor {
         agentHandle.executeCommand(command, meta.user.id, response)
 
       case EmergencyStop(restart) =>
-        Halt.haltJava("Received EmergencyStop command: JS7 AGENT STOPS NOW", restart = restart)
+        Halt.haltJava("🟥 EmergencyStop command received: JS7 AGENT STOPS NOW",
+          restart = restart)
     }
 }
 

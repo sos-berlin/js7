@@ -66,7 +66,7 @@ extends CommandExecutor[ControllerCommand]
           Task.sequence(tasks).map(checkedResponses => Right(Batch.Response(checkedResponses)))
 
         case EmergencyStop(restart) =>
-          Halt.haltJava("Command EmergencyStop received: JS7 CONTROLLER STOPS NOW", restart = restart)
+          Halt.haltJava("🟥 EmergencyStop command received: JS7 CONTROLLER STOPS NOW", restart = restart)
 
         case _ =>
           otherCommandExecutor.executeCommand(command, meta)

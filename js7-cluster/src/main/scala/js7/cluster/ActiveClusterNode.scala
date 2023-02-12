@@ -236,7 +236,8 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
               }.map(_.map(_ => ClusterCommand.Response.Accepted)))))
 
       case ClusterCommand.ClusterPassiveDown(activeId, passiveId) =>
-        requireOwnNodeId(command, activeId)(
+        requireOwnNodeId(command, activeId)(Task.defer {
+          logger.info(s"The passive $passiveId is shutting down")
           clusterStateLock.lock(command.toShortString)(
             persist() {
               case s: Coupled if s.activeId == activeId && s.passiveId == passiveId =>
@@ -244,7 +245,8 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
 
               case _ =>
                 Right(None)
-            }.map(_.map(_ => ClusterCommand.Response.Accepted))))
+            }.map(_.map(_ => ClusterCommand.Response.Accepted)))
+          })
 
       case _: ClusterCommand.ClusterInhibitActivation =>
         throw new NotImplementedError

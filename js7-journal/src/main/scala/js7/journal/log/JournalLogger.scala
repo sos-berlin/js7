@@ -56,38 +56,38 @@ private[journal] final class JournalLogger(
     persists: IndexedSeqView[Loggable],
     committedAt: Deadline,
     isLoggable: Stamped[AnyKeyedEvent] => Boolean = _ => true)
-    (body: (Frame, Stamped[AnyKeyedEvent]) => Unit)
+    (body: (PersistFrame, Stamped[AnyKeyedEvent]) => Unit)
   : Unit =
     CorrelId.isolate { logCorrelId =>
       var index = 0
       for (persist <- persists) {
         logCorrelId := persist.correlId
         val stampedSeq = persist.stampedSeq.filter(isLoggable)
-        val frame = Frame(persist, stampedSeq.length, index, persists.length, committedAt)
+        val frame = PersistFrame(persist, stampedSeq.length, index, persists.length, committedAt)
         val stampedIterator = stampedSeq.iterator
         var hasNext = stampedIterator.hasNext
         while (hasNext) {
           val stamped = stampedIterator.next()
           hasNext = stampedIterator.hasNext
-          frame.isLast = !hasNext
+          frame.isLastEvent = !hasNext
           body(frame, stamped)
           frame.nr += 1
-          frame.isFirst = false
+          frame.isFirstEvent = false
         }
         index += 1
       }
     }
 
-  private def traceLogPersist(ack: Boolean)(frame: Frame, stamped: Stamped[AnyKeyedEvent]): Unit = {
+  private def traceLogPersist(ack: Boolean)(frame: PersistFrame, stamped: Stamped[AnyKeyedEvent]): Unit = {
     import frame.*
     sb.clear()
     sb.append(':')  // Something simple to grep
     //? sb.fillRight(5) { sb.append(nr) }
     sb.append(persistMarker)
     sb.fillRight(syncOrFlushWidth) {
-      if (isLast && persist.isLastOfFlushedOrSynced) {
+      if (isLastEvent && persist.isLastOfFlushedOrSynced) {
         sb.append(if (ack) ackSyncOrFlushString else syncOrFlushCharsAndSpace)
-      } else if (isFirst && persistIndex == 0 && persistCount >= 2) {
+      } else if (isFirstEvent && persistIndex == 0 && persistCount >= 2) {
         sb.append(persistCount)  // Wrongly counts multiple isLastOfFlushedOrSynced (but only SnapshotTaken)
       } else if (nr == beforeLastEventNr && persistEventCount >= 10_000) {
         val micros = duration.toMicros
@@ -104,7 +104,7 @@ private[journal] final class JournalLogger(
       }
     }
 
-    if (isLast) {
+    if (isLastEvent) {
       sb.append(' ')
       sb.fillRight(6) {
         if (!suppressTiming && duration >= MinimumDuration) sb.append(duration.msPretty)
@@ -117,19 +117,20 @@ private[journal] final class JournalLogger(
 
     sb.append(transactionMarker(true))
     sb.append(stamped.eventId)
-    sb.append(' ')
     if (stamped.value.key != NoKey) {
+      sb.append(' ')
       sb.append(stamped.value.key)
-      sb.append(KeyedEvent.Arrow)
+      sb.append(spaceArrow)
     }
     val event = stamped.value.event
     if (!event.isMinor) sb.append(bold)
+    sb.append(' ')
     sb.append(event.toString.truncateWithEllipsis(200, firstLineOnly = true))
     if (!event.isMinor) sb.append(resetColor)
     logger.trace(sb.toString)
   }
 
-  private def infoLogPersist(frame: Frame, stamped: Stamped[AnyKeyedEvent]): Unit = {
+  private def infoLogPersist(frame: PersistFrame, stamped: Stamped[AnyKeyedEvent]): Unit = {
     import frame.*
     import stamped.value.{event, key}
     sb.clear()
@@ -137,7 +138,7 @@ private[journal] final class JournalLogger(
     sb.append(transactionMarker(false))
     if (key != NoKey) {
       sb.append(key)
-      sb.append(" <-: ")
+      sb.append(spaceArrowSpace)
     }
     sb.append(event.toShortString)
     logger.info(sb.toString)
@@ -148,6 +149,8 @@ object JournalLogger
 {
   private val logger = Logger("js7.journal.Journal")
   private val MinimumDuration = 1.ms
+  private val spaceArrow = " " + KeyedEvent.Arrow
+  private val spaceArrowSpace = spaceArrow + " "
 
   private[journal] trait Loggable {
     def correlId: CorrelId
@@ -180,42 +183,33 @@ object JournalLogger
     override def toString = s"SubclassCache($superclassNames)"
   }
 
-  private final case class Frame(persist: Loggable,
+  private final case class PersistFrame(persist: Loggable,
     persistEventCount: Int, persistIndex: Int, persistCount: Int,
     committedAt: Deadline)
   {
     val beforeLastEventNr = persist.eventNumber + persistEventCount - 2
     val duration = committedAt - persist.since
     var nr = persist.eventNumber
-    var isFirst = true
-    var isLast = true
+    var isFirstEvent = true
+    var isLastEvent = true
 
     def persistMarker: Char =
-      if (persistCount == 1)
-        ' '
-      else {
-        // Return a bold nipple at start of a Persist ?
-        if (isFirst)
-          if (persistIndex == 0) '┌' //'┍'
-          else if (persistIndex == persistCount - 1 & isLast) '└' //'┕'  // Last Persist has one event
-          else '├' //'┝'
-        else if (isLast & persistIndex == persistCount - 1) '└'  // Last Persist has >1 events
-        else '│'
-      }
+      if (persistCount == 1) ' '
+      else if (persistIndex == 0 & isFirstEvent) '┌'
+      else if (persistIndex == persistCount - 1 & isLastEvent) '└'
+      else '│'
 
-    def transactionMarker(forTrace: Boolean): Char = {
+    def transactionMarker(forTrace: Boolean): Char =
       if (persistEventCount == 1) ' '
       else if (persist.isTransaction)
-        if (isFirst) '⎧'
-        else if (isLast) '⎩'
+        if (isFirstEvent) '⎛' // ⎧
+        else if (isLastEvent) '⎝' // ⎩
         else if (forTrace && nr == beforeLastEventNr) '⎨'
         else '⎪'
-      else if (forTrace) {
-        if (isFirst) '┐'
-        else if (isLast) '┘'
-        //else if (nr == beforeLastEventNr) '┤'
-        else '┆'
-      } else ' '
-    }
+      else if (!forTrace) ' '
+      else if (isFirstEvent) '┐'
+      else if (isLastEvent) '┘'
+      //else if (nr == beforeLastEventNr) '┤'
+      else '╷' // ┆╎
   }
 }

@@ -49,7 +49,7 @@ object ThreadPools
         logger.error(msg, throwable.nullIfNoStackTrace)
         // Writes to stderr:
         UncaughtExceptionReporter.default.reportFailure(throwable)
-        haltJava(s"HALT DUE TO $throwable (heap size is ${toKiBGiB(sys.runtime.maxMemory)})",
+        haltJava(s"💥 HALT DUE TO $throwable (heap size is ${toKiBGiB(sys.runtime.maxMemory)})",
           restart = true)
 
       case throwable =>
