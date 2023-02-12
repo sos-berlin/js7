@@ -2,6 +2,7 @@ package js7.cluster.watch
 
 import cats.effect.Resource
 import js7.base.BuildInfo
+import js7.base.service.{RestartAfterFailureService, Service}
 import js7.cluster.watch.api.HttpClusterNodeApi
 import js7.common.akkautils.Akkas.actorSystemResource
 import js7.common.commandline.CommandLineArguments
@@ -15,7 +16,7 @@ object ClusterWatchMain
 {
   def main(args: Array[String]): Unit = {
     printlnWithClock(s"JS7 ClusterWatch ${BuildInfo.longVersion}")
-    // Lazy, otherwise Log4j may be used and implicitly started uninitialized
+    // Lazy, otherwise Log4j may be used and implicitly start uninitialized
     lazy val arguments = CommandLineArguments(args.toVector)
     lazy val conf = ClusterWatchConf.fromCommandLine(arguments)
     JavaMain.runMain("ClusterWatch", arguments, conf.config) {
@@ -23,7 +24,7 @@ object ClusterWatchMain
     }
   }
 
-  def run(conf: ClusterWatchConf)(use: ClusterWatchService => Task[Unit]): Unit =
+  def run(conf: ClusterWatchConf)(use: Service => Task[Unit]): Unit =
     StatefulServiceMain.run(
       name = conf.clusterWatchId.toString,
       conf.config,
@@ -31,11 +32,11 @@ object ClusterWatchMain
       use = use)
 
   private def resource(conf: ClusterWatchConf, scheduler: Scheduler)
-  : Resource[Task, ClusterWatchService] = {
+  : Resource[Task, RestartAfterFailureService[ClusterWatchService]] = {
     import conf.{clusterNodeAdmissions, config, httpsConfig}
     for {
       akka <- actorSystemResource("ClusterWatch", config, scheduler)
-      service <- ClusterWatchService.resource(
+      service <- ClusterWatchService.restartableResource(
         conf.clusterWatchId,
         apiResources = clusterNodeAdmissions
           .traverse(admission => AkkaHttpClient
