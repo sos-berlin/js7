@@ -4,6 +4,7 @@ import cats.data.NonEmptySeq
 import cats.effect.Resource
 import com.typesafe.config.Config
 import js7.base.configutils.Configs.RichConfig
+import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.MonixDeadline
@@ -23,7 +24,7 @@ import js7.cluster.watch.api.HttpClusterNodeApi
 import js7.common.configuration.Js7Configuration.defaultConfig
 import js7.data.cluster.ClusterEvent.ClusterNodeLostEvent
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
-import js7.data.cluster.{ClusterNodeApi, ClusterState, ClusterWatchId, ClusterWatchRequest, ClusterWatchRunId}
+import js7.data.cluster.{ClusterState, ClusterWatchId, ClusterWatchRequest, ClusterWatchRunId}
 import js7.data.node.NodeId
 import monix.eval.Task
 import monix.reactive.Observable
@@ -44,73 +45,80 @@ extends Service.StoppableByRequest
   private val delayConf = DelayConf(retryDelays, resetWhen = retryDelays.last)
 
   protected def start =
-    Task.defer {
-      logger.info(
-        s"↘ $clusterWatchId is starting for ${nodeApis.toList.mkString(", ")} ($clusterWatchRunId) ...")
-      startService(
+    startService(
+      logger.infoTask(
+        s"$clusterWatchId ${nodeApis.toList.map(_.baseUri).mkString(", ")}, $clusterWatchRunId"
+      )(run))
+
+  private def run: Task[Unit] =
+    Observable
+      .fromIterable(
+        for (nodeApi <- nodeApis.toList) yield {
+          val nodeWatch = new NodeServer(nodeApi)
+          nodeWatch.observable.map(nodeWatch -> _)
+        })
+      .merge
+      .mapEval { case (nodeWatch, request) =>
+        // Synchronize requests from both nodes
+        request.correlId.bind(
+          nodeWatch.processRequest(request))
+      }
+      .takeUntilEval(untilStopRequested)
+      .completedL
+
+  private final class NodeServer(nodeApi: HttpClusterNodeApi) {
+    def observable: Observable[ClusterWatchRequest] =
+      observeAgainAndAgain(clusterWatchRequestObservable)
+
+    private def observeAgainAndAgain[A](observable: Observable[A]): Observable[A] =
+      Delayer.observable[Task](delayConf)
+        .flatMap(_ =>
+          observable
+            .onErrorHandleWith { t =>
+              logger.warn(s"⟲ $nodeApi => ${t.toStringWithCauses}")
+              Observable.empty
+            })
+
+    private def clusterWatchRequestObservable: Observable[ClusterWatchRequest] =
+      logger.traceObservable("clusterWatchRequestObservable", nodeApi)(
         Observable
-          .fromIterable(
-            for (nodeApi <- nodeApis.toList) yield
-              observeAgainAndAgain(nodeApi)(
-                clusterWatchRequestObservable(nodeApi).map(nodeApi -> _)))
-          .merge
-          .mapEval { case (nodeApi, msg) =>
-            processRequest(nodeApi, msg)
-          }
-        .takeUntilEval(untilStopRequested)
-          .completedL
-          .*>(Task(logger.info(
-            s"↙ $clusterWatchId started for ${nodeApis.toList.mkString(", ")}"))))
-    }
+          .fromTask(nodeApi
+            .retryUntilReachable()(
+              nodeApi.retryIfSessionLost()(
+                nodeApi.clusterWatchRequestObservable(clusterWatchId, keepAlive = Some(keepAlive))))
+            .materialize.map {
+              case Failure(t: HttpException) if t.statusInt == 503 /*Service unavailable*/ =>
+                Failure(t) // Trigger onErrorRestartLoop
+              case o => HttpClient.failureToChecked(o)
+            }
+            .dematerialize
+            .map(_.orThrow))
+          .flatten)
 
-  private def observeAgainAndAgain[A](nodeApi: ClusterNodeApi)(observable: Observable[A])
-  : Observable[A] =
-    Delayer.observable[Task](delayConf)
-      .flatMap(_ =>
-        observable
-          .onErrorHandleWith { t =>
-            logger.warn(s"⟲ $nodeApi => ${t.toStringWithCauses}")
-            Observable.empty
-          })
+    def processRequest(request: ClusterWatchRequest): Task[Unit] =
+      Task(clusterWatch.processRequest(request))
+        .flatMap(respond(request, _))
 
-  private def clusterWatchRequestObservable(nodeApi: ClusterNodeApi): Observable[ClusterWatchRequest] =
-    logger.traceObservable("clusterWatchRequestObservable", nodeApi)(
-      Observable
-        .fromTask(nodeApi
-          .retryUntilReachable()(
-            nodeApi.retryIfSessionLost()(
-              nodeApi.clusterWatchRequestObservable(clusterWatchId, keepAlive = Some(keepAlive))))
-          .materialize.map {
-            case Failure(t: HttpException) if t.statusInt == 503 /*Service unavailable*/ =>
-              Failure(t) // Trigger onErrorRestartLoop
-            case o => HttpClient.failureToChecked(o)
-          }
-          .dematerialize
-          .map(_.orThrow))
-        .flatten)
-
-  private def processRequest(nodeApi: HttpClusterNodeApi, request: ClusterWatchRequest): Task[Unit] =
-    /*request.correlId.bind — better log the ClusterWatch's CorrelId in Cluster node*/(
-    logger.debugTask("processRequest", request)(
-      Task(clusterWatch.processRequest(request)).flatMap(checked =>
-        HttpClient
-          .liftProblem(nodeApi
-            .retryIfSessionLost()(nodeApi
-              .executeClusterWatchingCommand(
-                ClusterWatchConfirm(
-                  request.requestId, clusterWatchId, clusterWatchRunId,
-                  checked.left.toOption))
-              .void))
-          .map {
-            case Left(problem @ ClusterWatchRequestDoesNotMatchProblem) =>
-              // Already confirmed by this or another ClusterWatch
-              logger.info(s"$nodeApi $problem")
-            case Left(problem) =>
-              logger.warn(s"$nodeApi $problem")
-            case Right(()) =>
-          }
-          .onErrorHandle(t =>
-            logger.error(s"$nodeApi ${t.toStringWithCauses}", t.nullIfNoStackTrace)))))
+    private def respond(request: ClusterWatchRequest, response: Checked[Completed]): Task[Unit] =
+      HttpClient
+        .liftProblem(nodeApi
+          .retryIfSessionLost()(nodeApi
+            .executeClusterWatchingCommand(
+              ClusterWatchConfirm(
+                request.requestId, clusterWatchId, clusterWatchRunId,
+                response.left.toOption))
+            .void))
+        .map {
+          case Left(problem @ ClusterWatchRequestDoesNotMatchProblem) =>
+            // Already confirmed by this or another ClusterWatch
+            logger.info(s"❓$nodeApi $problem")
+          case Left(problem) =>
+            logger.warn(s"❓$nodeApi $problem")
+          case Right(()) =>
+        }
+        .onErrorHandle(t =>
+          logger.error(s"$nodeApi ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+  }
 
   def confirmNodeLoss(lostNodeId: NodeId): Checked[Unit] =
     clusterWatch.confirmNodeLoss(lostNodeId)

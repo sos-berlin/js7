@@ -17,12 +17,10 @@ object ClusterWatchMain
     printlnWithClock(s"JS7 ClusterWatch ${BuildInfo.longVersion}")
     // Lazy, otherwise Log4j may be used and implicitly started uninitialized
     lazy val arguments = CommandLineArguments(args.toVector)
-    //lockAndRunMain(args) { arguments =>
-      lazy val conf = ClusterWatchConf.fromCommandLine(arguments)
-      JavaMain.runMain("ClusterWatch", arguments, conf.config) {
-        run(conf)(_ => Task.never)
-      }
-    //}
+    lazy val conf = ClusterWatchConf.fromCommandLine(arguments)
+    JavaMain.runMain("ClusterWatch", arguments, conf.config) {
+      run(conf)(_ => Task.never)
+    }
   }
 
   def run(conf: ClusterWatchConf)(use: ClusterWatchService => Task[Unit]): Unit =

@@ -80,6 +80,9 @@ final class ClusterWatch(
     }
   }
 
+  private def isNodeLossConfirmed(event: ClusterNodeLostEvent) =
+    _lossRejected.exists(_.isConfirmed(event))
+
   // User manually confirms a ClusterNodeLostEvent event
   def confirmNodeLoss(lostNodeId: NodeId): Checked[Unit] =
     logger.debugCall("confirmNodeLoss", lostNodeId)(
@@ -104,15 +107,12 @@ final class ClusterWatch(
       case _ => None
     }
 
-  private def isNodeLossConfirmed(event: ClusterNodeLostEvent) =
-    _lossRejected.exists(_.isConfirmed(event))
+  def clusterNodeLossEventToBeConfirmed(): Option[ClusterNodeLostEvent] =
+    _lossRejected.map(_.event)
 
   @TestOnly
   private[cluster] def isActive(id: NodeId): Checked[Boolean] =
     clusterState().map(_.activeId == id)
-
-  def clusterNodeLossEventToBeConfirmed(): Option[ClusterNodeLostEvent] =
-    _lossRejected.map(_.event)
 
   def clusterState(): Checked[HasNodes] =
     _state.toChecked(UntaughtClusterWatchProblem)
@@ -129,6 +129,12 @@ final class ClusterWatch(
 object ClusterWatch
 {
   private val logger = Logger(getClass)
+
+  // ClusterNodeLossEvent has been rejected, but the user may confirm it later
+  private case class LossRejected(event: ClusterNodeLostEvent, nodeLossConfirmed: Boolean = false) {
+    def isConfirmed(event: ClusterNodeLostEvent) =
+      nodeLossConfirmed && event == this.event
+  }
 
   private[ClusterWatch] final case class State(
     clusterState: HasNodes,
@@ -209,14 +215,5 @@ object ClusterWatch
 
     private def isLastHeartbeatStillValid =
       (lastHeartbeat + clusterState.timing.clusterWatchHeartbeatValidDuration).hasTimeLeft
-  }
-
-  // ClusterNodeLossEvent has been rejected, but the user may confirm it later
-  private case class LossRejected(
-    event: ClusterNodeLostEvent,
-    nodeLossConfirmed: Boolean = false)
-  {
-    def isConfirmed(event: ClusterNodeLostEvent) =
-      nodeLossConfirmed && event == this.event
   }
 }
