@@ -9,23 +9,23 @@ import java.util.concurrent.atomic.AtomicBoolean
 import monix.eval.Task
 
 /** Monix Task like (unsafe) memoize for Cats IO. */
-trait Memoizable[F[_]]
+trait UnsafeMemoizable[F[_]]
 {
-  def memoize[A](f: F[A]): F[A]
+  def unsafeMemoize[A](f: F[A]): F[A]
 }
 
-object Memoizable
+object UnsafeMemoizable
 {
-  def apply[F[_]](implicit o: Memoizable[F]) = o
+  def apply[F[_]](implicit o: UnsafeMemoizable[F]) = o
 
-  implicit val taskMemoizable: Memoizable[Task] =
-    new Memoizable[Task] {
-      def memoize[A](task: Task[A]) = task.memoize
+  implicit val taskMemoizable: UnsafeMemoizable[Task] =
+    new UnsafeMemoizable[Task] {
+      def unsafeMemoize[A](task: Task[A]) = task.memoize
     }
 
-  implicit def concurrentMemoizable[F[_]: Concurrent: FlatMap]: Memoizable[F] =
-    new Memoizable[F] {
-      def memoize[A](io: F[A]): F[A] = {
+  implicit def concurrentMemoizable[F[_]: Concurrent: FlatMap]: UnsafeMemoizable[F] =
+    new UnsafeMemoizable[F] {
+      def unsafeMemoize[A](io: F[A]): F[A] = {
         val triggered = new AtomicBoolean(false)
         val deferred = Deferred.unsafe[F, A]
 
@@ -40,8 +40,8 @@ object Memoizable
 
   object syntax {
     implicit class RichMemoizable[F[_], A](private val f: F[A]) extends AnyVal {
-      def memoize(implicit m: Memoizable[F]): F[A] =
-        m.memoize(f)
+      def unsafeMemoize(implicit m: UnsafeMemoizable[F]): F[A] =
+        m.unsafeMemoize(f)
     }
   }
 }

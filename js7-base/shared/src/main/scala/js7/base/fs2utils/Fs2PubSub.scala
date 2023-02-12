@@ -5,16 +5,16 @@ import cats.syntax.flatMap.*
 import cats.syntax.functor.*
 import fs2.Stream
 import fs2.concurrent.Topic
-import js7.base.catsutils.Memoizable
-import js7.base.catsutils.Memoizable.syntax.*
+import js7.base.catsutils.UnsafeMemoizable
+import js7.base.catsutils.UnsafeMemoizable.syntax.*
 
-final class Fs2PubSub[F[_]: Concurrent: Memoizable, A <: AnyRef]
+final class Fs2PubSub[F[_]: Concurrent: UnsafeMemoizable, A <: AnyRef]
 {
   private val Initial = Fs2PubSub.Initial.asInstanceOf[A]
   private val EOF = Fs2PubSub.EOF.asInstanceOf[A]
 
   private val topic: F[Topic[F, A]] =
-    Topic[F, A](Initial).memoize
+    Topic[F, A](Initial).unsafeMemoize
 
   def publish(a: A): F[Unit] =
     topic.flatMap(_.publish1(a))
