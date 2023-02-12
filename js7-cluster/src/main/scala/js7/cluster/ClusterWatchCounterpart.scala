@@ -154,17 +154,11 @@ extends Service.StoppableByRequest with ClusterWatchApi
           case Left(problem) =>
             Task(logger.warn(s"ClusterWatch rejected ${request.toShortString}: $problem"))
 
-          case Right(confirmation) =>
+          case Right(_) =>
             Task {
-              confirmation.problem match {
-                case Some(problem) =>
-                  // Just in case, the caller does not warn ???
-                  logger.warn(s"$clusterWatchId rejected ${request.toShortString}: $problem")
-                case None =>
-                  if (warned) logger.info(
-                    s"🟢 $clusterWatchId finally confirmed ${
-                      request.toShortString} after ${t.elapsed.pretty}")
-              }
+              if (warned) logger.info(
+                s"🟢 $clusterWatchId finally confirmed ${
+                  request.toShortString} after ${t.elapsed.pretty}")
             }
         }
         .guaranteeCase(exitCase => Task {
@@ -202,12 +196,12 @@ extends Service.StoppableByRequest with ClusterWatchApi
         Checked.unit
       })
 
-  private def toConfirmation(confirm: ClusterWatchConfirm): ClusterWatchConfirmation =
-    ClusterWatchConfirmation(
-      confirm.requestId,
-      confirm.clusterWatchId,
-      confirm.clusterWatchRunId,
-      confirm.problem)
+  private def toConfirmation(confirm: ClusterWatchConfirm): Checked[ClusterWatchConfirmation] =
+    confirm.problem.toLeft(
+      ClusterWatchConfirmation(
+        confirm.requestId,
+        confirm.clusterWatchId,
+        confirm.clusterWatchRunId))
 
   // Recursive in (wrong) case of concurrent access to this._requested
   @tailrec private def takeRequest(confirm: ClusterWatchConfirm): Checked[Requested] = {
@@ -315,8 +309,8 @@ object ClusterWatchCounterpart
     def untilConfirmed: Task[Checked[ClusterWatchConfirmation]] =
       confirmation.get
 
-    def confirm(confirm: ClusterWatchConfirmation): Task[Checked[Unit]] =
-      confirmation.complete(confirm.problem.toLeft(confirm))
+    def confirm(confirm: Checked[ClusterWatchConfirmation]): Task[Checked[Unit]] =
+      confirmation.complete(confirm)
         .materialize/*Ignore duplicate complete*/.as(Checked.unit)
 
     override def toString = s"Requested($id,$clusterWatchId)"
