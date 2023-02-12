@@ -28,9 +28,10 @@ final class ClusterWatch(
   private var _state: Option[State] = None
 
   def processRequest(request: ClusterWatchRequest): Checked[Completed] =
-    synchronized {
-      request.checked >> processRequest2(request)
-    }
+    logger.debugCall("processRequest", request)(
+      synchronized {
+        request.checked >> processRequest2(request)
+      })
 
   private def processRequest2(request: ClusterWatchRequest): Checked[Completed] = {
     import request.{from, clusterState as reportedClusterState}

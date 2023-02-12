@@ -39,8 +39,9 @@ extends Service.StoppableByRequest with ClusterWatchApi
 {
   import clusterConf.ownId
 
-  private val nextRequestId = Atomic(if (isTest) 1 else Random.nextLong(
-    (Long.MaxValue - (3 * 32_000_000/*a year*/) / timing.heartbeat.toSeconds) / 1000 * 1000))
+  private val nextRequestId = Atomic(if (isTest) 1 else
+    Random.nextLong((Long.MaxValue - (3 * 32_000_000/*a year*/) / timing.heartbeat.toSeconds))
+      / 1000_000 * 1000_000)
   private val lock = AsyncLock()
   private val _requested = Atomic(None: Option[Requested])
   private val pubsub = new Fs2PubSub[Task, ClusterWatchRequest]
@@ -63,11 +64,12 @@ extends Service.StoppableByRequest with ClusterWatchApi
       Task.right(None)
     else
       initializeCurrentClusterWatchId(clusterState) *>
-        check(
-          clusterState.setting.clusterWatchId,
-          ClusterWatchCheckState(_, CorrelId.current, ownId, clusterState),
-          clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed
-        ).map(_.map(Some(_)))
+        CorrelId.use(correlId =>
+          check(
+            clusterState.setting.clusterWatchId,
+            ClusterWatchCheckState(_, correlId, ownId, clusterState),
+            clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed
+          ).map(_.map(Some(_))))
 
   private def initializeCurrentClusterWatchId(clusterState: HasNodes): Task[Unit] =
     Task {
@@ -82,17 +84,19 @@ extends Service.StoppableByRequest with ClusterWatchApi
 
   def applyEvent(event: ClusterEvent, clusterState: HasNodes)
   : Task[Checked[Option[ClusterWatchConfirmation]]] =
-    event match {
-      case _: ClusterNodesAppointed | _: ClusterCouplingPrepared
-        if !clusterState.setting.clusterWatchId.isDefined =>
-        Task.right(None)
+    CorrelId.use { correlId =>
+      event match {
+        case _: ClusterNodesAppointed | _: ClusterCouplingPrepared
+          if !clusterState.setting.clusterWatchId.isDefined =>
+          Task.right(None)
 
-      case _ =>
-        check(
-          clusterState.setting.clusterWatchId,
-          ClusterWatchCheckEvent(_, CorrelId.current, ownId, event, clusterState),
-          clusterWatchIdChangeAllowed = event.isInstanceOf[ClusterWatchRegistered]
-        ).map(_.map(Some(_)))
+        case _ =>
+          check(
+            clusterState.setting.clusterWatchId,
+            ClusterWatchCheckEvent(_, correlId, ownId, event, clusterState),
+            clusterWatchIdChangeAllowed = event.isInstanceOf[ClusterWatchRegistered]
+          ).map(_.map(Some(_)))
+      }
     }
 
   private def check(
@@ -219,6 +223,7 @@ extends Service.StoppableByRequest with ClusterWatchApi
               requestedClusterWatchId = o.clusterWatchId))
 
           case _ =>
+            logger.debug(s"❓ ${confirm.clusterWatchId} confirms, but no request is present")
             Left(ClusterWatchRequestDoesNotMatchProblem)
         }
 
@@ -237,6 +242,7 @@ extends Service.StoppableByRequest with ClusterWatchApi
 
           case _ =>
             if (confirm.requestId != requested.id) {
+              logger.debug(s"⛔ confirm.requestId=${confirm.requestId}, but requested=${requested.id}")
               val problem = ClusterWatchRequestDoesNotMatchProblem
               logger.debug(s"$problem id=${confirm.requestId} but _requested=${requested.id}")
               Left(problem)

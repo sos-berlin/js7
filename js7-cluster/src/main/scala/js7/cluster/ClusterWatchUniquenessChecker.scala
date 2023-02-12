@@ -26,7 +26,7 @@ final class ClusterWatchUniquenessChecker(memorySize: Int)
         logger.warn(problem.toString)
         Left(problem)
       } else {
-        logger.debug(s"$clusterWatchId $clusterWatchRunId")
+        logger.debug(s"Remember $clusterWatchId $clusterWatchRunId")
         idToRunId = idToRunId.updated(clusterWatchId, clusterWatchRunId)
         if (usedRunIds.length >= memorySize) {
           isUsedRunId -= usedRunIds.dequeue()

@@ -277,7 +277,7 @@ object ClusterWatchSynchronizer
                 logger.warn(s"Sending heartbeat to ClusterWatch failed: ${t.toStringWithCauses}",
                   t.nullIfNoStackTrace)
                 haltJava(
-                  s"💥 HALT after sending heartbeat to ClusterWatch failed: ${t.toStringWithCauses}",
+                  s"🔥 HALT after sending heartbeat to ClusterWatch failed: ${t.toStringWithCauses}",
                   restart = true)
 
               case ExitCase.Canceled =>
