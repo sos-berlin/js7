@@ -10,11 +10,13 @@ import java.util.concurrent.CompletableFuture
 import java.util.{Optional, OptionalLong}
 import javax.annotation.Nonnull
 import js7.base.annotation.javaApi
+import js7.base.eventbus.StandardEventBus
 import js7.base.log.CorrelId
 import js7.base.monixutils.AsyncVariable
 import js7.base.problem.Problem
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
+import js7.cluster.watch.api.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
 import js7.data.board.{BoardPath, NoticeId}
 import js7.data.cluster.{ClusterSetting, ClusterWatchId}
 import js7.data.controller.ControllerCommand
@@ -32,6 +34,7 @@ import js7.data_for_java.vavr.VavrConverters.*
 import js7.data_for_java.workflow.position.JPosition
 import js7.proxy.ControllerApi
 import js7.proxy.data.event.ProxyEvent
+import js7.proxy.javaapi.JControllerApi.*
 import js7.proxy.javaapi.data.controller.JEventAndControllerState
 import js7.proxy.javaapi.eventbus.{JControllerEventBus, JStandardEventBus}
 import monix.eval.Task
@@ -326,14 +329,16 @@ final class JControllerApi(val asScala: ControllerApi, config: Config)
         .asJava)
 
   @Nonnull
-  def startClusterWatch(@Nonnull clusterWatchId: ClusterWatchId)
+  def startClusterWatch(
+    @Nonnull clusterWatchId: ClusterWatchId,
+    @Nonnull eventBus: JClusterWatchEventBus = newClusterWatchEventBus())
   : CompletableFuture[ClusterWatchService] =
     clusterWatchService
       .update {
         case Some(service) => Task.some(service)
         case None =>
           ClusterWatchService
-            .resource(clusterWatchId, asScala.apiResources.sequence, config)
+            .resource(clusterWatchId, asScala.apiResources.sequence, config, eventBus.asScala)
             .acquire
             .flatTap(asScala.addStoppable)
             .map(Some(_))
@@ -347,4 +352,11 @@ final class JControllerApi(val asScala: ControllerApi, config: Config)
       .update(_.fold(Task.none)(service =>
         asScala.removeStoppable(service) *> service.stop.as(None)))
       .as(Void).runToFuture.asJava
+}
+
+object JControllerApi {
+  type JClusterWatchEventBus = JStandardEventBus[ClusterNodeLossNotConfirmedProblem]
+
+  def newClusterWatchEventBus(): JClusterWatchEventBus =
+    new JStandardEventBus(new StandardEventBus[ClusterNodeLossNotConfirmedProblem])
 }

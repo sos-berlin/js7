@@ -18,6 +18,7 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, JournalPosition}
 import js7.data.node.NodeId
 import monix.execution.schedulers.TestScheduler
+import scala.collection.mutable
 import scala.concurrent.duration.FiniteDuration
 
 final class ClusterWatchTest extends OurTestSuite
@@ -284,6 +285,9 @@ final class ClusterWatchTest extends OurTestSuite
     import passiveLost.{activeId, passiveId}
     val event = ClusterPassiveLost(passiveId)
 
+    val rejectedConfirmations = mutable.Buffer[ClusterNodeLossNotConfirmedProblem]()
+    watch.eventBus.subscribe[ClusterNodeLossNotConfirmedProblem](rejectedConfirmations += _)
+
     assert(watch.clusterState() == Left(UntaughtClusterWatchProblem))
     assert(watch.clusterNodeLossEventToBeConfirmed() == None)
     assert(watch.confirmNodeLoss(passiveId) == Left(ClusterNodeIsNotLostProblem(passiveId)))
@@ -293,6 +297,7 @@ final class ClusterWatchTest extends OurTestSuite
       RequestId(123), correlId, activeId, event, passiveLost))
       == Left(ClusterNodeLossNotConfirmedProblem(event)))
     assert(watch.clusterState() == Left(UntaughtClusterWatchProblem))
+    assert(rejectedConfirmations == Seq(ClusterNodeLossNotConfirmedProblem(event)))
 
     // ClusterWatch remembers ClusterPassiveLost
     assert(watch.clusterNodeLossEventToBeConfirmed() == Some(event))

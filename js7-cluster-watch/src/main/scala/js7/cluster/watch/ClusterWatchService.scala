@@ -37,10 +37,11 @@ final class ClusterWatchService private[ClusterWatchService](
   nodeApis: Nel[HttpClusterNodeApi],
   now: () => MonixDeadline,
   keepAlive: FiniteDuration,
-  retryDelays: NonEmptySeq[FiniteDuration])
+  retryDelays: NonEmptySeq[FiniteDuration],
+  eventBus: ClusterWatchEventBus)
 extends Service.StoppableByRequest
 {
-  private val clusterWatch = new ClusterWatch(now)
+  private val clusterWatch = new ClusterWatch(now, eventBus = eventBus)
   val clusterWatchRunId = ClusterWatchRunId.random()
   private val delayConf = DelayConf(retryDelays, resetWhen = retryDelays.last)
 
@@ -139,9 +140,10 @@ object ClusterWatchService
   def resource(
     clusterWatchId: ClusterWatchId,
     apiResources: Resource[Task, Nel[HttpClusterNodeApi]],
-    config: Config)
+    config: Config,
+    eventBus: ClusterWatchEventBus = new ClusterWatchEventBus)
   : Resource[Task, ClusterWatchService] =
-    resource2(clusterWatchId, apiResources, config.withFallback(defaultConfig))
+    resource2(clusterWatchId, apiResources, config.withFallback(defaultConfig), eventBus)
 
   def restartableResource(
     clusterWatchId: ClusterWatchId,
@@ -162,7 +164,8 @@ object ClusterWatchService
   private def resource2(
     clusterWatchId: ClusterWatchId,
     apiResources: Resource[Task, Nel[HttpClusterNodeApi]],
-    config: Config)
+    config: Config,
+    eventBus: ClusterWatchEventBus = new ClusterWatchEventBus)
   : Resource[Task, ClusterWatchService] =
     Resource.suspend(Task {
       val keepAlive = config.finiteDuration("js7.web.client.keep-alive").orThrow
@@ -177,6 +180,7 @@ object ClusterWatchService
                 nodeApis,
                 () => scheduler.now,
                 keepAlive = keepAlive,
-                retryDelays = NonEmptySeq.fromSeq(retryDelays) getOrElse NonEmptySeq.of(1.s))))))
+                retryDelays = NonEmptySeq.fromSeq(retryDelays) getOrElse NonEmptySeq.of(1.s),
+                eventBus)))))
     })
 }

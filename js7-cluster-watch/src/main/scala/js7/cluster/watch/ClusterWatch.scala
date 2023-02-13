@@ -21,7 +21,8 @@ import scala.util.chaining.scalaUtilChainingOps
 
 final class ClusterWatch(
   now: () => MonixDeadline,
-  requireManualNodeLossConfirmation: Boolean = false)
+  requireManualNodeLossConfirmation: Boolean = false,
+  val eventBus: ClusterWatchEventBus = new ClusterWatchEventBus)
 {
   // Variables are synchronized
   private var _lossRejected: Option[LossRejected] = None
@@ -64,6 +65,7 @@ final class ClusterWatch(
         _state = _state.map(state => state.copy(
           lastHeartbeat = // Update lastHeartbeat only when `from` is active
             Some(state).filter(_.clusterState.activeId != from).fold(now())(_.lastHeartbeat)))
+        eventBus.publish(problem)
         Left(problem)
 
       case Left(problem) =>

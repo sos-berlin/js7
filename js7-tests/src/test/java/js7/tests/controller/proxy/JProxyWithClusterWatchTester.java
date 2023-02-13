@@ -5,6 +5,7 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import js7.base.problem.Problem;
 import js7.cluster.watch.ClusterWatchService;
+import js7.cluster.watch.api.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem;
 import js7.data.cluster.ClusterEvent;
 import js7.data.cluster.ClusterWatchId;
 import js7.data.node.NodeId;
@@ -12,10 +13,13 @@ import js7.data_for_java.auth.JAdmission;
 import js7.data_for_java.auth.JHttpsConfig;
 import js7.proxy.javaapi.JControllerApi;
 import js7.proxy.javaapi.JProxyContext;
+import js7.proxy.javaapi.eventbus.JStandardEventBus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.compat.java8.OptionConverters;
 import scala.util.Either;
+import static java.util.Arrays.asList;
+import static js7.proxy.javaapi.JControllerApi.newClusterWatchEventBus;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 
@@ -31,8 +35,12 @@ final class JProxyWithClusterWatchTester
             JControllerApi controllerApi = context
                 .newControllerApi(admissions, httpsConfig);
 
+            JStandardEventBus<ClusterNodeLossNotConfirmedProblem> eventBus = newClusterWatchEventBus();
+            eventBus.subscribe(
+                asList(ClusterNodeLossNotConfirmedProblem.class),
+                problem -> logger.info("Event received: " + problem));
             ClusterWatchService clusterWatchService =
-                controllerApi.startClusterWatch(ClusterWatchId.of("JOC-A")).get();
+                controllerApi.startClusterWatch(ClusterWatchId.of("JOC-A"), eventBus).get();
 
             // ClusterWatchService provides some methods
             assertThat(clusterWatchService.clusterWatchId(), equalTo(ClusterWatchId.of("JOC-A")));
