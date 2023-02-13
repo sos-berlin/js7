@@ -1,12 +1,14 @@
 package js7.base.catsutils
 
 import cats.FlatMap
-import cats.effect.{Concurrent, IO, Sync}
+import cats.effect.syntax.syncEffect.*
+import cats.effect.{Concurrent, IO, Sync, SyncEffect, SyncIO}
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
 import java.util.concurrent.atomic.AtomicInteger
 import js7.base.catsutils.UnsafeMemoizable.syntax.*
 import js7.base.test.OurAsyncTestSuite
+import js7.base.utils.Lazy
 import monix.eval.Task
 import org.scalatest.Assertion
 import scala.concurrent.ExecutionContext
@@ -23,14 +25,28 @@ final class UnsafeMemoizableTest extends OurAsyncTestSuite
     check[IO](_.unsafeMemoize, 1).unsafeToFuture()
   }
 
-  def makeConcurrent(): Concurrent[IO] =  {
+  private def makeConcurrent(): Concurrent[IO] =  {
     implicit val cs = IO.contextShift(ExecutionContext.global)
     implicitly[Concurrent[IO]]
   }
 
+  "unsafeMemoize with Cats SyncIO (experimental only)" in {
+    implicit def blockingSyncEffectMemoizable[F[_] : SyncEffect]: UnsafeMemoizable[F] =
+      new UnsafeMemoizable[F] {
+        def unsafeMemoize[A](body: F[A]): F[A] = {
+          // `Lazy` blocks the thread when used concurrently. Only a experiment.
+          val lzy = Lazy(body.runSync[SyncIO].unsafeRunSync())
+          Sync[F].delay(lzy.value)
+        }
+      }
+
+    check[SyncIO](_.unsafeMemoize, 1).unsafeRunSync()
+  }
+
   "unsafeMemoize with Monix Task, direct" in {
     import monix.execution.Scheduler.Implicits.traced
-    check[Task](_.memoize, 1).runToFuture
+    check[Task](_.unsafeMemoize, 1).runToFuture
+    check[Task](_.memoize/*native*/, 1).runToFuture
   }
 
   "unsafeMemoize with Monix Task, via Concurrent" in {
@@ -48,11 +64,12 @@ final class UnsafeMemoizableTest extends OurAsyncTestSuite
 
   private def check[F[_]: Sync: FlatMap](f: F[Int] => F[Int], expected: Int): F[Assertion] = {
     val called = new AtomicInteger(0)
-    val io = f(Sync[F].delay(called.incrementAndGet()))
+    // TODO How to test parallel execution?
+    val x = f(Sync[F].delay(called.incrementAndGet()))
     (for {
-      _ <- io
-      _ <- io
-      a <- io
+      _ <- x
+      _ <- x
+      a <- x
     } yield assert(a == expected))
   }
 }
