@@ -442,13 +442,11 @@ object RunningController
       Task[Either[ProgramTermination, Recovered[ControllerState]]])
     = {
       val clusterNode = {
-        import controllerConfiguration.{clusterConf, config, controllerId, httpsConfig}
+        import controllerConfiguration.{clusterConf, config, httpsConfig}
         ClusterNode[ControllerState](
-          controllerId,
           persistence,
           journalMeta,
           clusterConf,
-          httpsConfig,
           config,
           injector.instance[EventIdGenerator],
           (uri, name) => AkkaHttpControllerApi
@@ -539,9 +537,9 @@ object RunningController
               }
           }
 
-        case ControllerCommand.ClusterAppointNodes(idToUri, activeId, clusterWatches) =>
+        case ControllerCommand.ClusterAppointNodes(idToUri, activeId) =>
           Task(clusterNode.workingClusterNode)
-            .flatMapT(_.appointNodes(idToUri, activeId, clusterWatches))
+            .flatMapT(_.appointNodes(idToUri, activeId))
             .map(_.map((_: Completed) => ControllerCommand.Response.Accepted))
 
         case _ =>

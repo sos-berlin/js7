@@ -1,14 +1,10 @@
 package js7.cluster
 
-import akka.actor.ActorSystem
 import akka.util.Timeout
 import cats.effect.Resource
-import com.typesafe.config.{Config, ConfigUtil}
-import js7.base.auth.UserAndPassword
-import js7.base.configutils.Configs.*
+import com.typesafe.config.Config
 import js7.base.eventbus.EventPublisher
-import js7.base.generic.{Completed, SecretString}
-import js7.base.io.https.HttpsConfig
+import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.MonixBase.syntax.*
@@ -16,50 +12,42 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Lazy, SetOnce}
+import js7.base.utils.SetOnce
 import js7.base.web.Uri
 import js7.cluster.ClusterCommon.*
-import js7.cluster.watch.api.ClusterWatchApi
 import js7.cluster.watch.api.ClusterWatchProblems.{ClusterNodeLossNotConfirmedProblem, ClusterWatchInactiveNodeProblem}
 import js7.common.system.startup.Halt.haltJava
-import js7.core.cluster.watch.HttpClusterWatch
 import js7.core.license.LicenseChecker
 import js7.data.cluster.ClusterEvent.{ClusterNodeLostEvent, ClusterPassiveLost}
 import js7.data.cluster.ClusterState.{FailedOver, HasNodes, SwitchedOver}
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterState, ClusterTiming}
-import js7.data.controller.ControllerId
 import monix.eval.Task
 import monix.execution.Scheduler
 
 private[cluster] final class ClusterCommon(
-  controllerId: ControllerId,
   clusterConf: ClusterConf,
   val clusterNodeApi: (Uri, String) => Resource[Task, ClusterNodeApi],
-  httpsConfig: HttpsConfig,
   timing: ClusterTiming,
   val config: Config,
   val licenseChecker: LicenseChecker,
   val testEventPublisher: EventPublisher[Any],
   val journalActorAskTimeout: Timeout)
-  (implicit scheduler: Scheduler, actorSystem: ActorSystem)
+  (implicit scheduler: Scheduler)
 {
   import clusterConf.ownId
 
   val activationInhibitor = new ActivationInhibitor
-  private val clusterWatchCounterpartLazy = Lazy(ClusterWatchCounterpart
+  val clusterWatchCounterpart = ClusterWatchCounterpart
     .resource(clusterConf, timing, testEventPublisher)
     .acquire
-    .runSyncUnsafe(99.s)/*TODO Make ClusterCommon a service*/)
-
-  def clusterWatchCounterpart: ClusterWatchCounterpart =
-    clusterWatchCounterpartLazy.value
+    .runSyncUnsafe(99.s)/*TODO Make ClusterCommon a service*/
 
   private val _clusterWatchSynchronizer = SetOnce[ClusterWatchSynchronizer]
 
   def stop: Task[Completed] =
     Task.defer {
       _clusterWatchSynchronizer.toOption.fold(Task.completed)(_.stop)
-        .*>(clusterWatchCounterpartLazy.toOption.fold(Task.unit)(_.stop))
+        .*>(clusterWatchCounterpart.stop)
         .as(Completed)
     }
 
@@ -82,30 +70,11 @@ private[cluster] final class ClusterCommon(
         import clusterState.setting
         val result = new ClusterWatchSynchronizer(
           ownId,
-          newClusterWatchApi(setting.maybeClusterWatchUri),
+          clusterWatchCounterpart,
           setting.timing)
         _clusterWatchSynchronizer := result
         result
     }
-
-  def updateClusterWatchSynchronizer(clusterState: HasNodes): Task[Unit] =
-    clusterWatchSynchronizer(clusterState)
-      .flatMap(_
-        .change(
-          clusterState,
-          newClusterWatchApi(clusterState.setting.maybeClusterWatchUri)))
-
-  private def newClusterWatchApi(uri: Option[Uri]): ClusterWatchApi =
-    uri.fold_(clusterWatchCounterpartLazy.value, uri =>
-      new HttpClusterWatch(
-        ownId,
-        uri,
-        userAndPassword = config
-          .optionAs[SecretString]("js7.auth.agents." /*TODO*/ + ConfigUtil.joinPath(uri.string))
-          .map(password => UserAndPassword(controllerId.toUserId, password)),
-        httpsConfig = httpsConfig,
-        actorSystem,
-        timing))
 
   def tryEndlesslyToSendCommand(uri: Uri, command: ClusterCommand): Task[Unit] = {
     val name = command.getClass.simpleScalaName
@@ -167,7 +136,7 @@ private[cluster] final class ClusterCommon(
                     } else
                       Task.left(problem)
 
-                  case Right(None) if !clusterState.setting.isLegacyClusterWatch =>
+                  case Right(None) =>
                     logger.debug(
                       s"No ClusterWatch confirmation required for '${event.getClass.simpleScalaName}' event")
                     body

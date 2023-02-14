@@ -17,11 +17,7 @@ import js7.tests.jobs.EmptyJob
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
-final class JobResourceClusterWithLegacyClusterWatchTest extends JobResourceClusterTest {
-  override protected val useLegacyServiceClusterWatch = true
-}
-
-class JobResourceClusterTest extends ControllerClusterTester
+final class JobResourceClusterTest extends ControllerClusterTester
 {
   "Cluster handles JobResources properly" in {
     withControllerAndBackupWithoutAgents() { (primary, backup, _) =>

@@ -18,7 +18,7 @@ import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
 import js7.cluster.watch.api.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
 import js7.data.board.{BoardPath, NoticeId}
-import js7.data.cluster.{ClusterSetting, ClusterWatchId}
+import js7.data.cluster.ClusterWatchId
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{AddOrdersResponse, CancelOrders, ReleaseEvents, ResumeOrder, ResumeOrders, SuspendOrders, TakeSnapshot}
 import js7.data.event.{Event, EventId, JournalInfo}
@@ -92,12 +92,11 @@ final class JControllerApi(val asScala: ControllerApi, config: Config)
   @Nonnull
   def clusterAppointNodes(
     @Nonnull idToUri: java.util.Map[NodeId, Uri],
-    @Nonnull activeId: NodeId,
-    @Nonnull clusterWatches: java.util.List[ClusterSetting.Watch])
+    @Nonnull activeId: NodeId)
   : CompletableFuture[VEither[Problem, Void]] = {
     requireNonNull(activeId)
     runTask(asScala
-      .clusterAppointNodes(idToUri.asScala.toMap, activeId, clusterWatches.asScala.toVector)
+      .clusterAppointNodes(idToUri.asScala.toMap, activeId)
       .map(_.toVoidVavr))
   }
 

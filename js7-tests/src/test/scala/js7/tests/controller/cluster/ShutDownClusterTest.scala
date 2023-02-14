@@ -10,7 +10,7 @@ import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.ProgramTermination
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.Problems.PassiveClusterNodeShutdownNotAllowedProblem
-import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterFailedOver, ClusterPassiveLost, ClusterSwitchedOver}
+import js7.data.cluster.ClusterEvent.{ClusterActiveNodeRestarted, ClusterActiveNodeShutDown, ClusterCoupled, ClusterFailedOver, ClusterPassiveLost, ClusterSwitchedOver, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState
 import js7.data.cluster.ClusterState.{Coupled, FailedOver}
 import js7.data.controller.ControllerCommand.ShutDown
@@ -19,11 +19,7 @@ import js7.data.event.EventId
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 
-final class ShutDownClusterWithLegacyClusterWatchTest extends ShutDownClusterTest {
-  override protected val useLegacyServiceClusterWatch = true
-}
-
-class ShutDownClusterTest extends ControllerClusterTester
+final class ShutDownClusterTest extends ControllerClusterTester
 {
   override protected def removeObsoleteJournalFiles = false
 
@@ -34,7 +30,7 @@ class ShutDownClusterTest extends ControllerClusterTester
           backupController.httpApi.login_(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))).await(99.s)
 
           primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
-            waitUntilClusterWatchRegistered(primaryController)
+            primaryController.eventWatch.await[ClusterWatchRegistered]()
             primaryController.eventWatch.await[ClusterCoupled]()
             primaryController.httpApi.login_(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))).await(99.s)
             assert(primaryController.httpApi.clusterState.await(99.s) == Right(Coupled(clusterSetting)))
@@ -64,7 +60,7 @@ class ShutDownClusterTest extends ControllerClusterTester
       withControllerAndBackup() { (primary, backup, _) =>
         backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
           primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
-            waitUntilClusterWatchRegistered(primaryController)
+            primaryController.eventWatch.await[ClusterWatchRegistered]()
             primaryController.eventWatch.await[ClusterCoupled]()
 
             primaryController
@@ -82,7 +78,7 @@ class ShutDownClusterTest extends ControllerClusterTester
         backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
           primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
             primaryController.eventWatch.await[ClusterCoupled]()
-            waitUntilClusterWatchRegistered(backupController)
+            primaryController.eventWatch.await[ClusterWatchRegistered]()
 
             primaryController
               .executeCommandAsSystemUser(ShutDown(clusterAction = Some(ClusterAction.Failover)))
@@ -181,7 +177,7 @@ class ShutDownClusterTest extends ControllerClusterTester
       withControllerAndBackup() { (primary, backup, _) =>
         backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
           primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
-            waitUntilClusterWatchRegistered(primaryController)
+            primaryController.eventWatch.await[ClusterWatchRegistered]()
             primaryController.eventWatch.await[ClusterCoupled]()
 
             backupController.executeCommandAsSystemUser(ShutDown()).await(99.s).orThrow

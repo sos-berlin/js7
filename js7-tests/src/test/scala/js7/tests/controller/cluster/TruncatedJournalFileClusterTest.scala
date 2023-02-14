@@ -13,11 +13,7 @@ import js7.tests.controller.cluster.ControllerClusterTester.*
 import js7.tests.testenv.DirectoryProvider
 import monix.execution.Scheduler.Implicits.traced
 
-final class TruncatedJournalFileClusterWithLegacyClusterWatchTest extends TruncatedJournalFileClusterTest {
-  override protected val useLegacyServiceClusterWatch = true
-}
-
-class TruncatedJournalFileClusterTest extends ControllerClusterTester
+final class TruncatedJournalFileClusterTest extends ControllerClusterTester
 {
   override protected def removeObsoleteJournalFiles = false
 

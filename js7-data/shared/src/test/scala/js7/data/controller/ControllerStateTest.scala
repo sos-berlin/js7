@@ -75,8 +75,7 @@ final class ControllerStateTest extends OurAsyncTestSuite
                   NodeId("B") -> Uri("https://B")),
                 activeId = NodeId("A"),
                 ClusterTiming(10.s, 20.s),
-                Some(ClusterWatchId("CLUSTER-WATCH")),
-                Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH")))))),
+                Some(ClusterWatchId("CLUSTER-WATCH"))))),
           controllerState.controllerMetaState,
           WorkflowPathControl(
             WorkflowPathControlPath(workflow.path), suspended = true, skip = Set("LABEL"),
@@ -188,8 +187,7 @@ final class ControllerStateTest extends OurAsyncTestSuite
               "heartbeat": 10,
               "heartbeatTimeout": 20
             },
-            "clusterWatchId": "CLUSTER-WATCH",
-            "clusterWatches": [ { "uri": "https://CLUSTER-WATCH" } ]
+            "clusterWatchId": "CLUSTER-WATCH"
           }
         }
       }, {
@@ -522,8 +520,7 @@ object ControllerStateTest
             NodeId("B") -> Uri("https://B")),
           activeId = NodeId("A"),
           ClusterTiming(10.s, 20.s),
-          Some(ClusterWatchId("CLUSTER-WATCH")),
-          clusterWatches = Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH")))))),
+          Some(ClusterWatchId("CLUSTER-WATCH"))))),
     ControllerMetaState(ControllerId("CONTROLLER-ID"), Timestamp("2019-05-24T12:00:00Z"),
       Timezone("Europe/Berlin")),
     Map(

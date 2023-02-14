@@ -21,11 +21,7 @@ import js7.tests.controller.proxy.ClusterProxyTest.{backupUserAndPassword, prima
 import monix.execution.Scheduler.Implicits.traced
 import scala.jdk.CollectionConverters.*
 
-final class JournaledProxySwitchOverClusterWithLegacyClusterWatchTest extends JournaledProxySwitchOverClusterTest{
-  override protected val useLegacyServiceClusterWatch = true
-}
-
-class JournaledProxySwitchOverClusterTest extends OurTestSuite with ClusterProxyTest
+final class JournaledProxySwitchOverClusterTest extends OurTestSuite with ClusterProxyTest
 {
   override protected val removeObsoleteJournalFiles = false
 

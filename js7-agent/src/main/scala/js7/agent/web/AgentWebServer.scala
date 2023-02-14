@@ -8,7 +8,6 @@ import js7.base.auth.SimpleUser
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.session.SessionRegister
-import js7.core.cluster.watch.ClusterWatchRegister
 import js7.core.command.CommandMeta
 import js7.journal.watch.EventWatch
 import monix.eval.Task
@@ -20,7 +19,6 @@ object AgentWebServer
     gateKeeperConfiguration: GateKeeper.Configuration[SimpleUser],
     api: CommandMeta => DirectAgentApi,
     sessionRegister: SessionRegister[AgentSession],
-    clusterWatchRegister: ClusterWatchRegister,
     eventWatch: EventWatch)
     (implicit actorSystem: ActorSystem)
   : AkkaWebServer & AkkaWebServer.HasUri =
@@ -36,6 +34,5 @@ object AgentWebServer
             agentConfiguration,
             gateKeeperConfiguration,
             sessionRegister,
-            clusterWatchRegister,
             eventWatch))))
 }

@@ -529,7 +529,6 @@ lazy val `js7-controller-client` = crossProject(JSPlatform, JVMPlatform)
 
 lazy val `js7-core` = project
   .dependsOn(`js7-journal`, `js7-common`, `js7-license`,
-    `js7-cluster-watch`,
     `js7-base`.jvm % "test->test", `js7-tester`.jvm % "test",
     `js7-service-pgp` % "test")
   .settings(commonSettings)

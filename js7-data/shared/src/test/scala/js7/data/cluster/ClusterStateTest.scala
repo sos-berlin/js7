@@ -21,8 +21,7 @@ final class ClusterStateTest extends OurTestSuite
         NodeId("B") -> Uri("https://B")),
       NodeId("A"),
       ClusterTiming(10.s, 20.s),
-      Some(ClusterWatchId("CLUSTER-WATCH")),
-      Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH"))))
+      Some(ClusterWatchId("CLUSTER-WATCH")))
 
     "Empty" in {
       testJson[ClusterState](
@@ -47,12 +46,7 @@ final class ClusterStateTest extends OurTestSuite
               "heartbeat": 10,
               "heartbeatTimeout": 20
             },
-            "clusterWatchId": "CLUSTER-WATCH",
-            "clusterWatches": [
-              {
-                "uri": "https://CLUSTER-WATCH"
-              }
-            ]
+            "clusterWatchId": "CLUSTER-WATCH"
           }
         }""")
     }
@@ -72,12 +66,7 @@ final class ClusterStateTest extends OurTestSuite
               "heartbeat": 10,
               "heartbeatTimeout": 20
             },
-            "clusterWatchId": "CLUSTER-WATCH",
-            "clusterWatches": [
-              {
-                "uri": "https://CLUSTER-WATCH"
-              }
-            ]
+            "clusterWatchId": "CLUSTER-WATCH"
           }
         }""")
     }
@@ -97,12 +86,7 @@ final class ClusterStateTest extends OurTestSuite
               "heartbeat": 10,
               "heartbeatTimeout": 20
             },
-            "clusterWatchId": "CLUSTER-WATCH",
-            "clusterWatches": [
-              {
-                "uri": "https://CLUSTER-WATCH"
-              }
-            ]
+            "clusterWatchId": "CLUSTER-WATCH"
           }
         }""")
     }
@@ -122,12 +106,7 @@ final class ClusterStateTest extends OurTestSuite
               "heartbeat": 10,
               "heartbeatTimeout": 20
             },
-            "clusterWatchId": "CLUSTER-WATCH",
-            "clusterWatches": [
-              {
-                "uri": "https://CLUSTER-WATCH"
-              }
-            ]
+            "clusterWatchId": "CLUSTER-WATCH"
           }
         }""")
     }
@@ -147,12 +126,7 @@ final class ClusterStateTest extends OurTestSuite
               "heartbeat": 10,
               "heartbeatTimeout": 20
             },
-            "clusterWatchId": "CLUSTER-WATCH",
-            "clusterWatches": [
-              {
-                "uri": "https://CLUSTER-WATCH"
-              }
-            ]
+            "clusterWatchId": "CLUSTER-WATCH"
           }
         }""")
     }
@@ -172,12 +146,7 @@ final class ClusterStateTest extends OurTestSuite
               "heartbeat": 10,
               "heartbeatTimeout": 20
             },
-            "clusterWatchId": "CLUSTER-WATCH",
-            "clusterWatches": [
-              {
-                "uri": "https://CLUSTER-WATCH"
-              }
-            ]
+            "clusterWatchId": "CLUSTER-WATCH"
           }
         }""")
     }
@@ -197,12 +166,7 @@ final class ClusterStateTest extends OurTestSuite
               "heartbeat": 10,
               "heartbeatTimeout": 20
             },
-            "clusterWatchId": "CLUSTER-WATCH",
-            "clusterWatches": [
-              {
-                "uri": "https://CLUSTER-WATCH"
-              }
-            ]
+            "clusterWatchId": "CLUSTER-WATCH"
           },
           "failedAt": {
             "fileEventId": 0,

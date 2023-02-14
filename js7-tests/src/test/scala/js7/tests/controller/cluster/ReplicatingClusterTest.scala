@@ -14,11 +14,7 @@ import js7.tests.controller.cluster.ControllerClusterTester.*
 import js7.tests.testenv.ControllerClusterForScalaTest.assertEqualJournalFiles
 import monix.execution.Scheduler.Implicits.traced
 
-final class ReplicatingClusterWithLegacyClusterWatchTest extends ReplicatingClusterTest {
-  override protected val useLegacyServiceClusterWatch = true
-}
-
-class ReplicatingClusterTest extends ControllerClusterTester
+final class ReplicatingClusterTest extends ControllerClusterTester
 {
   "Cluster replicates journal files properly" in {
     withControllerAndBackup() { (primary, backup, _) =>

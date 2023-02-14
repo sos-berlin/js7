@@ -126,8 +126,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
               val current = clusterState.setting
               val updated = current.withPassiveUri(setting.passiveUri)
                 .copy(
-                  clusterWatchId = setting.clusterWatchId,
-                  clusterWatches = setting.clusterWatches)
+                  clusterWatchId = setting.clusterWatchId)
               val changedPassiveUri = (setting.passiveUri != current.passiveUri) ?
                 setting.passiveUri
               if (changedPassiveUri.isDefined && !clusterState.isInstanceOf[IsDecoupled]
@@ -136,10 +135,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
               else if (updated.copy(clusterWatchId = None) == current.copy(clusterWatchId = None))
                 Right(None)
               else
-                Right(Some(ClusterSettingUpdated(
-                  changedPassiveUri,
-                  (setting.clusterWatches != current.clusterWatches) ?
-                    setting.clusterWatches)))
+                Right(Some(ClusterSettingUpdated(changedPassiveUri)))
 
             case _ =>
               Left(ClusterSettingNotUpdatable)
@@ -203,7 +199,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
 
                 case s: PreparedToBeCoupled if s.activeId == activeId && s.passiveId == passiveId =>
                   // This is the normally expected ClusterState
-                  if (!s.setting.clusterWatchId.isDefined && !s.setting.isLegacyClusterWatch)
+                  if (!s.setting.clusterWatchId.isDefined)
                     // Passive cluster tries again until
                     // ClusterWatch  has been registered via background ClusterWatch heartbeat
                     Left(NoClusterWatchProblem)
@@ -313,19 +309,8 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
             Completed
           }
 
-        case state =>
-          Task.defer {
-            if (clusterWatchSynchronizer.uri == state.setting.maybeClusterWatchUri)
-              Task.completed
-            else
-              logger.info(
-                s"Changing ClusterWatch URI to ${state.setting.maybeClusterWatchUri getOrElse "None"}")
-              common.updateClusterWatchSynchronizer(state)
-                .as(Completed)
-              //, dontWait = true*
-              // The new ClusterWatch must run before the ClusterAppointNodes command.
-              // See also calling appointNodes and suspendHeartbeat.
-            }
+        case _ =>
+          Task.completed
       })
 
   private def startSendingClusterStartBackupNode(clusterState: NodesAppointed): Unit = {
@@ -568,8 +553,6 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
       case hasNodes: HasNodes =>
         if (hasNodes.activeId != ownId)
           Left(ClusterNodeIsNotActiveProblem)
-        else if (hasNodes.setting.isLegacyClusterWatch)
-          Left(Problem.pure("A server-side ClusterWatch is expected"))
         else
           Right(hasNodes.setting.clusterWatchId contains clusterWatchId)
     }
@@ -604,12 +587,6 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
           }
           val events = stampedEvents.map(_.value.event)
           (events, clusterState) match  {
-            case (Seq(ClusterSettingUpdated(_, Some(_))), clusterState: HasNodes) =>
-              // Previous ClusterWatch is probably unreachable already
-              // Due to missing applyEvent the ClusterWatch must be restarted
-              logger.debug("ClusterWatch applyEvent not called because ClusterWatch URI changed")
-              Task.pure(Right(stampedEvents -> clusterState))
-
             case (Seq(event), clusterState: HasNodes) =>
               clusterWatchSynchronizer.applyEvent(event, clusterState)
                 .rightAs(stampedEvents -> clusterState)

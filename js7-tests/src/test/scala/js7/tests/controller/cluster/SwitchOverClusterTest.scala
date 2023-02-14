@@ -20,11 +20,7 @@ import js7.tests.controller.cluster.SwitchOverClusterTest.*
 import monix.execution.Scheduler.Implicits.traced
 import scala.util.Try
 
-final class SwitchOverClusterWithLegacyClusterWatchTest extends SwitchOverClusterTest {
-  override protected val useLegacyServiceClusterWatch = true
-}
-
-class SwitchOverClusterTest extends ControllerClusterTester
+final class SwitchOverClusterTest extends ControllerClusterTester
 {
   override protected def removeObsoleteJournalFiles = false
   private lazy val manyOrdersCount = sys.props.get("SwitchOverClusterTest").map(_.toInt) getOrElse 1

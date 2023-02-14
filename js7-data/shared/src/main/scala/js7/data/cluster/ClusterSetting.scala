@@ -4,24 +4,22 @@ import cats.instances.either.*
 import cats.syntax.flatMap.*
 import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
-import js7.base.annotation.javaApi
-import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
 import js7.base.web.Uri
-import js7.data.cluster.ClusterSetting.*
 import js7.data.cluster.ClusterSetting.syntax.*
 import js7.data.node.NodeId
 import org.jetbrains.annotations.TestOnly
+import ClusterSetting.*
+import js7.base.utils.ScalaUtils.syntax.*
 
 final case class ClusterSetting(
   idToUri: Map[NodeId, Uri],
   activeId: NodeId,
   timing: ClusterTiming,
-  clusterWatchId: Option[ClusterWatchId] = None,
-  clusterWatches: Seq[ClusterSetting.Watch] = Nil)
+  clusterWatchId: Option[ClusterWatchId] = None)
 {
-  checkedUnit(idToUri, activeId, clusterWatches).orThrow
+  checkedUnit(idToUri, activeId).orThrow
 
   def activeUri: Uri =
     idToUri(activeId)
@@ -40,12 +38,6 @@ final case class ClusterSetting(
         .sortBy(o => if (o._1 == activeId) 0 else 1)
         .toMap)
 
-  def isLegacyClusterWatch: Boolean =
-    clusterWatches.nonEmpty
-
-  def maybeClusterWatchUri: Option[Uri] =
-    clusterWatches.headOption.map(_.uri)
-
   def withPassiveUri(uri: Uri): ClusterSetting =
     copy(idToUri = idToUri + (passiveId -> uri))
 
@@ -63,19 +55,16 @@ object ClusterSetting
     idToUri: Map[NodeId, Uri],
     activeId: NodeId,
     timing: ClusterTiming,
-    clusterWatchId: Option[ClusterWatchId],
-    clusterWatches: Seq[Watch])
+    clusterWatchId: Option[ClusterWatchId])
   : Checked[ClusterSetting] =
-    for (_ <- checkedUnit(idToUri, activeId, clusterWatches)) yield
-      new ClusterSetting(idToUri, activeId, timing, clusterWatchId, clusterWatches)
+    for (_ <- checkedUnit(idToUri, activeId)) yield
+      new ClusterSetting(idToUri, activeId, timing, clusterWatchId)
 
-  private def checkedUnit(idToUri: Map[NodeId, Uri], activeId: NodeId, clusterWatches: Seq[Watch]) =
+  private def checkedUnit(idToUri: Map[NodeId, Uri], activeId: NodeId) =
     checkUris(idToUri) >>
       (if (!idToUri.contains(activeId))
         Left(Problem(
           s"Unknown $activeId, expected one of ${idToUri.keys.mkString("'", "', '", "'")}"))
-      else if (clusterWatches.sizeIs > 1)
-        Left(Problem.pure("Only zero or one cluster watch URI may be given"))
       else
         Right(()))
 
@@ -86,14 +75,6 @@ object ClusterSetting
       Left(Problem("URIs must be different"))
     else
       Right(idToUri)
-
-  final case class Watch(uri: Uri)
-  object Watch {
-    @javaApi
-    def of(uri: Uri) = Watch(uri)
-
-    implicit val jsonCodec: Codec.AsObject[Watch] = deriveCodec
-  }
 
   object syntax {
     implicit final class RichIdToUri(private val idToUri: Map[NodeId, Uri]) extends AnyVal {

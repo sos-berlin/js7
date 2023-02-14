@@ -17,8 +17,8 @@ import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest
 import js7.cluster.ClusterWatchCounterpart.*
+import js7.cluster.watch.api.ClusterWatchConfirmation
 import js7.cluster.watch.api.ClusterWatchProblems.{ClusterNodeLossNotConfirmedProblem, ClusterWatchIdDoesNotMatchProblem, ClusterWatchRequestDoesNotMatchProblem, NoClusterWatchProblem, OtherClusterWatchStillAliveProblem}
-import js7.cluster.watch.api.{ClusterWatchApi, ClusterWatchConfirmation}
 import js7.data.cluster.ClusterEvent.{ClusterCouplingPrepared, ClusterNodesAppointed, ClusterPassiveLost, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState.{Coupled, FailedOver, HasNodes, PassiveLost}
 import js7.data.cluster.ClusterWatchRequest.RequestId
@@ -35,7 +35,7 @@ final class ClusterWatchCounterpart private(
   timing: ClusterTiming,
   testEventPublisher: EventPublisher[Any])
   (implicit scheduler: Scheduler)
-extends Service.StoppableByRequest with ClusterWatchApi
+extends Service.StoppableByRequest
 {
   import clusterConf.ownId
 

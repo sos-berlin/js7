@@ -3,7 +3,7 @@ package js7.tests.controller.cluster
 import js7.base.problem.Checked.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterPassiveLost}
+import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterPassiveLost, ClusterWatchRegistered}
 import js7.data.controller.ControllerCommand.ClusterAppointNodes
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
@@ -11,11 +11,7 @@ import js7.data.value.NumberValue
 import js7.tests.controller.cluster.ControllerClusterTester.*
 import monix.execution.Scheduler.Implicits.traced
 
-final class PassiveLostClusterWithLegacyClusterWatchTest extends PassiveLostClusterTest {
-  override protected val useLegacyServiceClusterWatch = true
-}
-
-class PassiveLostClusterTest extends ControllerClusterTester
+final class PassiveLostClusterTest extends ControllerClusterTester
 {
   override protected def configureClusterNodes = false
 
@@ -25,7 +21,7 @@ class PassiveLostClusterTest extends ControllerClusterTester
       var backupController = backup.startController(httpPort = Some(backupControllerPort)) await 99.s
 
       primaryController.executeCommandForTest(
-        ClusterAppointNodes(clusterSetting.idToUri, clusterSetting.activeId, clusterSetting.clusterWatches)
+        ClusterAppointNodes(clusterSetting.idToUri, clusterSetting.activeId)
       ).orThrow
       primaryController.eventWatch.await[ClusterCoupled]()
 
@@ -37,7 +33,7 @@ class PassiveLostClusterTest extends ControllerClusterTester
         backupController.eventWatch.await[OrderProcessingStarted](_.key == firstOrderId)
       }
 
-      waitUntilClusterWatchRegistered(primaryController)
+      primaryController.eventWatch.await[ClusterWatchRegistered]()
 
       for (orderId <- Array(OrderId("🔸"), OrderId("🔶"))) {
         backupController.terminate(dontNotifyActiveNode = true) await 99.s

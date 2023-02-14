@@ -1,6 +1,5 @@
 package js7.cluster
 
-import akka.actor.ActorSystem
 import akka.util.Timeout
 import cats.effect.Resource
 import com.softwaremill.diffx
@@ -9,7 +8,6 @@ import izumi.reflect.Tag
 import java.nio.file.Path
 import js7.base.eventbus.EventPublisher
 import js7.base.generic.Completed
-import js7.base.io.https.HttpsConfig
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.problem.{Checked, Problem}
@@ -26,7 +24,6 @@ import js7.data.cluster.ClusterCommand.{ClusterInhibitActivation, ClusterStartBa
 import js7.data.cluster.ClusterState.{Coupled, Empty, FailedOver, HasNodes}
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterSetting, ClusterWatchRequest, ClusterWatchingCommand}
-import js7.data.controller.ControllerId
 import js7.data.event.{EventId, JournalPosition, SnapshotableState}
 import js7.journal.EventIdGenerator
 import js7.journal.data.JournalMeta
@@ -340,11 +337,9 @@ object ClusterNode
   private val logger = Logger(getClass)
 
   def apply[S <: SnapshotableState[S] : diffx.Diff : Tag](
-    controllerId: ControllerId,
     persistence: FileStatePersistence[S],
     journalMeta: JournalMeta,
     clusterConf: ClusterConf,
-    httpsConfig: HttpsConfig,
     config: Config,
     eventIdGenerator: EventIdGenerator,
     clusterNodeApi: (Uri, String) => Resource[Task, ClusterNodeApi],
@@ -353,7 +348,6 @@ object ClusterNode
     journalActorAskTimeout: Timeout)
     (implicit
       S: SnapshotableState.Companion[S],
-      actorSystem: ActorSystem,
       scheduler: Scheduler)
   : ClusterNode[S] =
     new ClusterNode(
@@ -361,7 +355,7 @@ object ClusterNode
       journalMeta,
       clusterConf,
       eventIdGenerator,
-      new ClusterCommon(controllerId, clusterConf, clusterNodeApi, httpsConfig, clusterConf.timing,
+      new ClusterCommon(clusterConf, clusterNodeApi, clusterConf.timing,
         config, licenseChecker, testEventPublisher, journalActorAskTimeout))
 
   // TODO Provisional fix because it's not easy to restart the recovery

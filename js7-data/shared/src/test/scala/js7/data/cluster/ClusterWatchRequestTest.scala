@@ -42,7 +42,6 @@ final class ClusterWatchRequestTest extends OurTestSuite
                 "B": "https://B"
               },
               "activeId": "A",
-              "clusterWatches": [],
               "timing": {
                 "heartbeat": 10,
                 "heartbeatTimeout": 20
@@ -57,7 +56,6 @@ final class ClusterWatchRequestTest extends OurTestSuite
                 "B": "https://B"
               },
               "activeId": "A",
-              "clusterWatches": [],
               "timing": {
                 "heartbeat": 10,
                 "heartbeatTimeout": 20
@@ -87,7 +85,6 @@ final class ClusterWatchRequestTest extends OurTestSuite
                 "B": "https://B"
               },
               "activeId": "A",
-              "clusterWatches": [],
               "timing": {
                 "heartbeat": 10,
                 "heartbeatTimeout": 20

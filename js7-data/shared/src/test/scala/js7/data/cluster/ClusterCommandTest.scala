@@ -21,8 +21,7 @@ final class ClusterCommandTest extends OurTestSuite
             NodeId("B") -> Uri("https://B")),
           NodeId("A"),
           ClusterTiming(10.s, 20.s),
-          Some(ClusterWatchId("CLUSTER-WATCH")),
-          Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH")))),
+          Some(ClusterWatchId("CLUSTER-WATCH"))),
         1000L),
       json"""{
         "TYPE": "ClusterStartBackupNode",
@@ -36,8 +35,7 @@ final class ClusterCommandTest extends OurTestSuite
             "heartbeat": 10,
             "heartbeatTimeout": 20
           },
-          "clusterWatchId": "CLUSTER-WATCH",
-          "clusterWatches": [ { "uri": "https://CLUSTER-WATCH" } ]
+          "clusterWatchId": "CLUSTER-WATCH"
         },
         "fileEventId": 1000
       }""")
@@ -89,8 +87,7 @@ final class ClusterCommandTest extends OurTestSuite
           NodeId("B") -> Uri("https://B")),
         activeId = NodeId("A"),
         ClusterTiming(10.s, 20.s),
-        None,
-        Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH")))),
+        None),
       JournalPosition(0L, 1000)))),
       json"""{
         "TYPE": "ClusterInhibitActivation.Response",
@@ -101,7 +98,6 @@ final class ClusterCommandTest extends OurTestSuite
               "B": "https://B"
             },
             "activeId": "A",
-            "clusterWatches": [ { "uri": "https://CLUSTER-WATCH" } ],
             "timing": {
               "heartbeat": 10,
               "heartbeatTimeout": 20

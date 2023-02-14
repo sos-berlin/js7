@@ -13,7 +13,7 @@ import js7.base.time.WaitForCondition.waitForCondition
 import js7.cluster.ClusterCommon.{ClusterWatchAgreedToActivation, ClusterWatchDisagreedToActivation}
 import js7.common.guice.GuiceImplicits.RichInjector
 import js7.controller.configuration.ControllerConfiguration
-import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterSwitchedOver}
+import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterSwitchedOver, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState.{Coupled, FailedOver}
 import js7.data.controller.ControllerCommand.{ClusterSwitchOver, ShutDown}
 import js7.data.controller.ControllerEvent
@@ -30,11 +30,7 @@ import js7.tests.testenv.ControllerClusterForScalaTest.assertEqualJournalFiles
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.Deadline.now
 
-final class FailoverClusterWithLegacyClusterWatchTest extends FailoverClusterTest {
-  override protected val useLegacyServiceClusterWatch = true
-}
-
-class FailoverClusterTest extends ControllerClusterTester
+final class FailoverClusterTest extends ControllerClusterTester
 {
   override protected def primaryControllerConfig =
     // Short timeout because something blocks web server shutdown occasionally
@@ -57,7 +53,7 @@ class FailoverClusterTest extends ControllerClusterTester
     withControllerAndBackup() { (primary, backup, clusterSetting) =>
       var primaryController = primary.startController(httpPort = Some(primaryControllerPort)) await 99.s
       var backupController = backup.startController(httpPort = Some(backupControllerPort)) await 99.s
-      waitUntilClusterWatchRegistered(primaryController)
+      primaryController.eventWatch.await[ClusterWatchRegistered]()
       primaryController.eventWatch.await[ClusterCoupled]()
 
       val since = now

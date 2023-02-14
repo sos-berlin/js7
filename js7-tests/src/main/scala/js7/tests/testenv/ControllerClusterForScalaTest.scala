@@ -28,7 +28,7 @@ import js7.common.system.ThreadPools
 import js7.common.utils.FreeTcpPortFinder.{findFreeTcpPort, findFreeTcpPorts}
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
-import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterWatchRegistered}
+import js7.data.cluster.ClusterEvent.ClusterCoupled
 import js7.data.cluster.{ClusterSetting, ClusterTiming, ClusterWatchId}
 import js7.data.controller.ControllerCommand.ShutDown
 import js7.data.item.InventoryItem
@@ -60,8 +60,6 @@ trait ControllerClusterForScalaTest
 
   protected def primaryControllerConfig: Config = ConfigFactory.empty
   protected def backupControllerConfig: Config = ConfigFactory.empty
-
-  protected def useLegacyServiceClusterWatch = false
 
   protected final lazy val primaryControllerPort = findFreeTcpPort()
   protected final lazy val backupControllerPort = findFreeTcpPort()
@@ -129,10 +127,7 @@ trait ControllerClusterForScalaTest
             js7.journal.remove-obsolete-files = $removeObsoleteJournalFiles
             js7.auth.users.TEST-USER.password = "plain:TEST-PASSWORD"
             js7.auth.users.Controller.password = "plain:PRIMARY-CONTROLLER-PASSWORD"
-            js7.auth.cluster.password = "BACKUP-CONTROLLER-PASSWORD" """)
-        .pipeIf(useLegacyServiceClusterWatch)(_
-          .withFallback(
-            config"""js7.journal.cluster.watches = [ "http://127.0.0.1:${agentPorts.head}" ]""")),
+            js7.auth.cluster.password = "BACKUP-CONTROLLER-PASSWORD" """),
         agentPorts = agentPorts,
         agentConfig = config"""js7.job.execution.signed-script-injection-allowed = on"""
       ).closeWithCloser
@@ -166,18 +161,14 @@ trait ControllerClusterForScalaTest
           backupId -> Uri(s"http://127.0.0.1:$backupControllerPort")),
         activeId = primaryId,
         clusterTiming,
-        clusterWatchId = None,
-        if (useLegacyServiceClusterWatch)
-          primary.subagentItems.take(1).map(o => ClusterSetting.Watch(o.uri))
-        else
-          Nil)
+        clusterWatchId = None)
 
       if (suppressClusterWatch)
         body(primary, backup, setting)
       else
         withOptionalClusterWatchService() {
           body(primary, backup, setting.copy(
-            clusterWatchId = !useLegacyServiceClusterWatch ? clusterWatchId))
+            clusterWatchId = Some(clusterWatchId)))
         }
     }
 
@@ -199,10 +190,7 @@ trait ControllerClusterForScalaTest
     clusterWatchId: ClusterWatchId = ControllerClusterForScalaTest.clusterWatchId)
     (body: => A)
   : A =
-    if (useLegacyServiceClusterWatch)
-      body
-    else
-      withClusterWatchService(clusterWatchId)(_ => body)
+    withClusterWatchService(clusterWatchId)(_ => body)
 
   protected final def withClusterWatchService[A](
     clusterWatchId: ClusterWatchId = ControllerClusterForScalaTest.clusterWatchId)
@@ -224,12 +212,6 @@ trait ControllerClusterForScalaTest
       controllerAdmissions,
       HttpsConfig.empty,
       clusterWatchConfig)
-
-  protected final def waitUntilClusterWatchRegistered(controller: RunningController): Unit = {
-    if (!useLegacyServiceClusterWatch) {
-      controller.eventWatch.await[ClusterWatchRegistered]()
-    }
-  }
 
   /** Simulate a kill via ShutDown(failOver) - still writes new snapshot. */
   protected final def simulateKillActiveNode(controller: RunningController): Task[Unit] =

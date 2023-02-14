@@ -459,9 +459,7 @@ object DirectoryProvider
         val quotedAgentPath = quoteString(agentTree.agentPath.string)
         val quotedPassword = quoteString(agentTree.password.string)
         (configDir / "private" / "private.conf") ++=
-          s"js7.auth.agents.$quotedAgentPath = $quotedPassword\n" +
-          "js7.auth.agents." + quoteString(agentTree.localUri.toString) + " = " +
-            quotedPassword + "\n" /*ClusterWatch*/
+          s"js7.auth.agents.$quotedAgentPath = $quotedPassword\n"
       } else {
         // Agent uses the distinguished name of the Controller's HTTPS certificate
       }

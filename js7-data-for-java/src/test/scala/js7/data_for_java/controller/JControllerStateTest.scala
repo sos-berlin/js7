@@ -85,8 +85,7 @@ private object JControllerStateTest
             NodeId("B") -> Uri("https://B")),
           activeId = NodeId("A"),
           ClusterTiming(10.s, 20.s),
-          clusterWatchId = None,
-          Seq(ClusterSetting.Watch(Uri("https://CLUSTER-WATCH")))))),
+          clusterWatchId = None))),
     controllerMetaState = ControllerMetaState(
       ControllerId("CONTROLLER-ID"),
       Timestamp("2019-05-24T12:00:00Z"),

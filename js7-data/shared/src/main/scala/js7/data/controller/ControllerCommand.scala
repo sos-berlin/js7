@@ -16,7 +16,6 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.data.agent.AgentPath
 import js7.data.board.{BoardPath, NoticeId}
-import js7.data.cluster.ClusterSetting
 import js7.data.command.{CancellationMode, CommonCommand, SuspensionMode}
 import js7.data.controller.ControllerState.*
 import js7.data.event.EventId
@@ -242,8 +241,7 @@ object ControllerCommand extends CommonCommand.Companion
 
   final case class ClusterAppointNodes(
     idToUri: Map[NodeId, Uri],
-    activeId: NodeId,
-    clusterWatches: Seq[ClusterSetting.Watch] = Nil)
+    activeId: NodeId)
   extends ControllerCommand {
     type Response = Response.Accepted
   }
