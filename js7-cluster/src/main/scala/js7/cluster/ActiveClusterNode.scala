@@ -454,6 +454,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
         .flatMap(api =>
           observeEventIds(api, Some(timing.heartbeat))
             .whileBusyBuffer(OverflowStrategy.DropOld(bufferSize = 2))
+            .filter(_ => !clusterConf.testAckLossPropertyKey.fold(false)(k => sys.props(k).toBoolean)) // for testing
             .detectPauses(timing.passiveLostTimeout)
             .takeWhile(_ => !noMoreJournaling)  // Race condition: may be set too late
             .mapEval {

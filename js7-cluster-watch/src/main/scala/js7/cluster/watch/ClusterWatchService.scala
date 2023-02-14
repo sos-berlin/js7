@@ -38,7 +38,7 @@ final class ClusterWatchService private[ClusterWatchService](
   now: () => MonixDeadline,
   keepAlive: FiniteDuration,
   retryDelays: NonEmptySeq[FiniteDuration],
-  eventBus: ClusterWatchEventBus)
+  val eventBus: ClusterWatchEventBus)
 extends Service.StoppableByRequest
 {
   private val clusterWatch = new ClusterWatch(now, eventBus = eventBus)
@@ -124,13 +124,13 @@ extends Service.StoppableByRequest
   def confirmNodeLoss(lostNodeId: NodeId): Checked[Unit] =
     clusterWatch.confirmNodeLoss(lostNodeId)
 
+  def clusterNodeLossEventToBeConfirmed(lostNodeId: NodeId): Option[ClusterNodeLostEvent] =
+    clusterWatch.clusterNodeLossEventToBeConfirmed(lostNodeId)
+
   override def toString = "ClusterWatchService"
 
   def clusterState(): Checked[ClusterState] =
     clusterWatch.clusterState()
-
-  def clusterNodeLossEventToBeConfirmed(): Option[ClusterNodeLostEvent] =
-    clusterWatch.clusterNodeLossEventToBeConfirmed()
 }
 
 object ClusterWatchService

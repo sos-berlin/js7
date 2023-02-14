@@ -22,7 +22,8 @@ final case class ClusterConf(
   recouplingStreamReader: RecouplingStreamReaderConf,
   timing: ClusterTiming,
   clusterWatchUniquenessMemorySize: Int,
-  testHeartbeatLossPropertyKey: Option[String] = None)
+  testHeartbeatLossPropertyKey: Option[String] = None,
+  testAckLossPropertyKey: Option[String] = None)
 {
   def isPrimary = !isBackup
 }
@@ -69,6 +70,7 @@ object ClusterConf
       clusterWatchId <- Right(config.optionAs[ClusterWatchId]("clusterWatchId"))
       clusterWatchUniquenessMemorySize = config.getInt("js7.journal.cluster.watch.uniqueness-memory-size")
       testHeartbeatLoss <- Right(config.optionAs[String]("js7.journal.cluster.TEST-HEARTBEAT-LOSS"))
+      testAckLoss <- Right(config.optionAs[String]("js7.journal.cluster.TEST-ACK-LOSS"))
       setting <- maybeIdToUri.traverse(ClusterSetting.checked(_, nodeId, timing, clusterWatchId,
         watchUris.map(ClusterSetting.Watch(_))))
     } yield
@@ -81,6 +83,7 @@ object ClusterConf
           timeout = heartbeat + (heartbeatTimeout - heartbeat) / 2),
         timing,
         clusterWatchUniquenessMemorySize,
-        testHeartbeatLoss)
+        testHeartbeatLoss,
+        testAckLoss)
   }
 }

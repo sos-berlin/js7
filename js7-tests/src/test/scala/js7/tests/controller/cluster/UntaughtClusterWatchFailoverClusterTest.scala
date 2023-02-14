@@ -71,6 +71,7 @@ final class UntaughtClusterWatchFailoverClusterTest extends ControllerClusterTes
         .await(99.s)
 
       withClusterWatchService() { clusterWatchService =>
+        // ClusterWatch is untaught
         // backupId ist not lost
         assert(clusterWatchService.confirmNodeLoss(backupId)
           == Left(ClusterNodeIsNotLostProblem(backupId)))

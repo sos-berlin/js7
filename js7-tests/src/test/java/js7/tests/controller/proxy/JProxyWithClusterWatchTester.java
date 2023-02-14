@@ -47,13 +47,22 @@ final class JProxyWithClusterWatchTester
             clusterWatchService.clusterWatchRunId();
             clusterWatchService.clusterState();
 
-            if (clusterWatchService.clusterNodeLossEventToBeConfirmed().isDefined()) {
+            NodeId primaryId = NodeId.of("Primary");
+            NodeId backupId = NodeId.of("Backup");
+            if (clusterWatchService.clusterNodeLossEventToBeConfirmed(primaryId).isDefined()) {
                 ClusterEvent.ClusterNodeLostEvent clusterNodeLostEvent =
-                    clusterWatchService.clusterNodeLossEventToBeConfirmed().get();
-                NodeId lostNodeId = clusterNodeLostEvent.lostNodeId();
+                    clusterWatchService.clusterNodeLossEventToBeConfirmed(primaryId).get();
+                assert clusterNodeLostEvent.lostNodeId().equals(primaryId);
+
+                // In case of broken connection between the nodes, both primaryId and backupId
+                // may require manual ClusterNodeLostEvent.
+                // The user must decide which node is considered to be lost.
+                // Before this, they must terminate the lost node.
+                assert clusterWatchService.clusterNodeLossEventToBeConfirmed(backupId).isEmpty();
+
                 // Don't do this automatically! The user must be sure that the node is down.
                 // Otherwise, both cluster nodes may get active, with destroying consequences.
-                Either<Problem,?> checked = clusterWatchService.confirmNodeLoss(lostNodeId);
+                Either<Problem,?> checked = clusterWatchService.confirmNodeLoss(primaryId);
                 Optional<Problem> maybeProblem = OptionConverters.toJava(checked.left().toOption());
             }
 

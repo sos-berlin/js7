@@ -81,7 +81,7 @@ trait ClassEventBus[E] extends EventPublisher[E] with AutoCloseable
       promise.future
     }
 
-  private final def whenPF[C <: Classifier : ClassTag, D](pf: PartialFunction[ClassifierToEvent[C], D])
+  final def whenPF[C <: Classifier: ClassTag, D](pf: PartialFunction[ClassifierToEvent[C], D])
   : Task[D] =
     whenFilterMap(pf.lift)
 
