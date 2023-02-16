@@ -28,11 +28,11 @@ final class RestartAfterFailureServiceTest extends OurTestSuite
     val started = now
     val elapsedSeq = mutable.Buffer[(FiniteDuration, FiniteDuration)]()
 
-    def serviceResource: Resource[Task, RestartAfterFailureService[SimpleService]] = {
+    def serviceResource: Resource[Task, RestartAfterFailureService[CancelableService]] = {
       var i = 0
       var lastEnd = started
 
-      Service.restartAfterFailure()(SimpleService.resource(
+      Service.restartAfterFailure()(CancelableService.resource(
         Task.defer {
           val delayed = now - lastEnd
           i += 1
@@ -54,9 +54,9 @@ final class RestartAfterFailureServiceTest extends OurTestSuite
     }
 
     val running = serviceResource
-      .use { (service: RestartAfterFailureService[SimpleService]) =>
+      .use { (service: RestartAfterFailureService[CancelableService]) =>
         // Due to automatic restart, the underlying service may change.
-        service.unsafeCurrentService(): SimpleService
+        service.unsafeCurrentService(): CancelableService
         service.untilStopped
       }
       .runToFuture
