@@ -449,6 +449,7 @@ lazy val `js7-controller` = project
     `js7-cluster`,
     `js7-common`,
     `js7-agent-client`,
+    `js7-cluster-watch`,
     `js7-data`.jvm % "test->test",
     `js7-tester`.jvm % "test")
   .settings(commonSettings)
@@ -692,6 +693,7 @@ lazy val `js7-subagent` = project
 
 lazy val `js7-agent-client` = project
   .dependsOn(`js7-data`.jvm, `js7-common-http`.jvm, `js7-common`, `js7-agent-data`,
+    `js7-cluster-watch-api`.jvm,
     `js7-base`.jvm % "test->test",
     `js7-tester`.jvm % "test")
   .settings(commonSettings)

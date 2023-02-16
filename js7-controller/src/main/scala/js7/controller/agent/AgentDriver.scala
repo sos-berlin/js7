@@ -2,6 +2,8 @@ package js7.controller.agent
 
 import akka.actor.{DeadLetterSuppression, Props}
 import cats.data.EitherT
+import cats.effect.Resource
+import cats.syntax.flatMap.*
 import com.typesafe.config.ConfigUtil
 import js7.agent.client.AgentClient
 import js7.agent.data.commands.AgentCommand
@@ -19,12 +21,15 @@ import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.thread.Futures.promiseFuture
 import js7.base.thread.Futures.syntax.RichFuture
+import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SetOnce
 import js7.base.web.Uri
+import js7.cluster.watch.ClusterWatchService
 import js7.common.akkautils.ReceiveLoggingActor
 import js7.common.http.RecouplingStreamReader
 import js7.controller.agent.AgentDriver.*
@@ -33,6 +38,7 @@ import js7.controller.configuration.ControllerConfiguration
 import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentCouplingFailed, AgentDedicated, AgentReset}
 import js7.data.agent.Problems.AgentNotDedicatedProblem
 import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
+import js7.data.cluster.ClusterWatchId
 import js7.data.controller.ControllerState
 import js7.data.delegate.DelegateCouplingState.{Coupled, Resetting}
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
@@ -95,6 +101,9 @@ extends ReceiveLoggingActor.WithStash
   private val eventFetcherTerminated = Promise[Unit]()
   private var noJournal = false
   private var isReset = false
+  private val clusterWatchId = ClusterWatchId(
+    controllerId.string + "." + controllerConfiguration.clusterConf.ownId.string)
+  private var clusterWatchService: Option[ClusterWatchService] = None
 
   private val eventFetcher = new RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], AgentClient](
     _.eventId, conf.recouplingStreamReader)
@@ -228,6 +237,7 @@ extends ReceiveLoggingActor.WithStash
   override def preStart() = {
     super.preStart()
     logger.debug(s"preStart $agentRunIdOnce")
+    startClusterWatch.awaitInfinite/*TODO Blocking*/
   }
 
   override def postStop() = {
@@ -235,6 +245,7 @@ extends ReceiveLoggingActor.WithStash
     eventFetcher.markAsStopped()
     eventFetcher.terminateAndLogout.runAsyncAndForget
     currentFetchedFuture.foreach(_.cancel())
+    clusterWatchService.fold(Task.unit)(_.stop).awaitInfinite // TODO Blocking
     super.postStop()
   }
 
@@ -271,8 +282,19 @@ extends ReceiveLoggingActor.WithStash
         client.close()
         logger.debug(s"new AgentClient($uri)")
         client = newAgentClient(uri)
-        self ! Internal.FetchEvents
-        changingUri = None
+        stopClusterWatch
+          .flatMap(_ => startClusterWatch)
+          .void
+          .attempt
+          .foreach { tried =>
+            changingUri = None
+            for (throwable <- tried.left) {
+              logger.error(s"Internal.UriChanged($uri) => ${throwable.toStringWithCauses}",
+                throwable.nullIfNoStackTrace)
+              context.stop(self)
+            }
+            self ! Internal.FetchEvents
+          }
       }
 
     case Input.Terminate(noJournal, reset) =>
@@ -572,7 +594,9 @@ extends ReceiveLoggingActor.WithStash
       releaseEventsCancelable.foreach(_.cancel())
       Task.fromFuture(eventFetcherTerminated.future)
         .onErrorRecover { case t => logger.debug(t.toStringWithCauses) }
-        .flatMap(_ => closeClient)
+        .flatMap(_ => Task.parZip2(
+          closeClient,
+          stopClusterWatch))
         .onErrorRecover { case t => logger.debug(t.toStringWithCauses) }
         .foreach(_ => self ! Stop)
       become("stopping") {
@@ -587,6 +611,29 @@ extends ReceiveLoggingActor.WithStash
       .guarantee(Task {
         client.close()
       })
+
+  private def startClusterWatch: Task[ClusterWatchService] =
+    Task.defer {
+      assertThat(clusterWatchService.isEmpty)
+      clusterWatchResource
+        .startService
+        .flatTap(service => Task {
+          clusterWatchService = Some(service)
+        })
+    }
+
+  private def clusterWatchResource: Resource[Task, ClusterWatchService] =
+    ClusterWatchService.resource(
+      clusterWatchId,
+      Resource.eval(Task.pure(Nel.one(client))),
+      controllerConfiguration.config)
+
+  private def stopClusterWatch: Task[Unit] =
+    Task.defer(clusterWatchService.fold(Task.unit)(_
+      .stop
+      .guarantee(Task {
+        clusterWatchService = None
+      })))
 
   override def toString = s"AgentDriver($agentPath)"
 }

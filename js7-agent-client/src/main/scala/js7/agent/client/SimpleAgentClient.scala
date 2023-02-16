@@ -34,4 +34,8 @@ extends HasCloser with AgentClient
     logOpenSession()
     super[HasCloser].close()
   }
+
+  protected val prefixedUri = baseUri / "agent"
+
+  override def toString = s"SimpleAgentClient($prefixedUri)"
 }

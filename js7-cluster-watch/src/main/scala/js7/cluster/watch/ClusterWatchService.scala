@@ -125,7 +125,7 @@ extends Service.StoppableByRequest
   def clusterNodeLossEventToBeConfirmed(lostNodeId: NodeId): Option[ClusterNodeLostEvent] =
     clusterWatch.clusterNodeLossEventToBeConfirmed(lostNodeId)
 
-  override def toString = "ClusterWatchService"
+  override def toString = clusterWatchId.toString
 
   def clusterState(): Checked[ClusterState] =
     clusterWatch.clusterState()

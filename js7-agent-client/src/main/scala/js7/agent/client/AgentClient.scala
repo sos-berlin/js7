@@ -12,6 +12,7 @@ import js7.base.io.https.HttpsConfig
 import js7.base.problem.Checked
 import js7.base.session.SessionApi
 import js7.base.web.Uri
+import js7.cluster.watch.api.HttpClusterNodeApi
 import js7.common.http.AkkaHttpClient
 import js7.data.event.{Event, EventRequest, KeyedEvent, Stamped}
 import js7.data.session.HttpSessionApi
@@ -27,12 +28,13 @@ import monix.reactive.Observable
 trait AgentClient
 extends AgentApi with HttpSessionApi with AkkaHttpClient
 with SessionApi.HasUserAndPassword
+with HttpClusterNodeApi
 {
-  protected def httpClient = this
+  def httpClient = this
 
   def baseUri: Uri
 
-  protected lazy val sessionUri = agentUris.session
+  //protected lazy val sessionUri = agentUris.session
   protected lazy val agentUris = AgentUris(baseUri)
   protected lazy val uriPrefixPath = "/agent"
 
@@ -59,8 +61,8 @@ object AgentClient
   : AgentClient = {
     val a = actorSystem
     val up = userAndPassword
-    def h = httpsConfig  // lazy, to avoid reference when not needed (needed only for http)
-    new AgentClient {
+    def h = httpsConfig  // lazy, to avoid reference when not needed (needed only for https)
+    new AgentClient with HttpClusterNodeApi  {
       override def close(): Unit = {
         logOpenSession()
         super.close()
@@ -71,6 +73,10 @@ object AgentClient
       protected val name = label
       protected def httpsConfig = h
       protected def userAndPassword = up
+
+      protected val prefixedUri = agentUri / "agent"
+
+      override def toString = s"AgentClient($prefixedUri)"
     }
   }
 }
