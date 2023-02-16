@@ -268,7 +268,7 @@ object Logger
   : Unit =
     exitCase match {
       case Error(t) => logReturn(logger, logLevel, function, args, duration, "💥️", t.toStringWithCauses)
-      case Canceled => logReturn(logger, logLevel, function, args, duration, "❌", Canceled)
+      case Canceled => logReturn(logger, logLevel, function, args, duration, "❌", "Canceled")
       case Completed => logReturn(logger, logLevel, function, args, duration, "", "Completed")
     }
 

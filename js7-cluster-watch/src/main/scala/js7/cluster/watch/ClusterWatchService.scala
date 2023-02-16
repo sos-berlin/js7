@@ -46,10 +46,8 @@ extends Service.StoppableByRequest
   private val delayConf = DelayConf(retryDelays, resetWhen = retryDelays.last)
 
   protected def start =
-    startService(
-      logger.infoTask(
-        s"$clusterWatchId ${nodeApis.toList.map(_.baseUri).mkString(", ")}, $clusterWatchRunId"
-      )(run))
+    startServiceAndLog(logger, nodeApis.toList.mkString(", "))(
+      run)
 
   private def run: Task[Unit] =
     Observable
@@ -175,12 +173,12 @@ object ClusterWatchService
         .flatMap(nodeApis =>
           Service.resource(
             Task.deferAction(scheduler => Task(
-              new ClusterWatchService(
-                clusterWatchId,
-                nodeApis,
+            new ClusterWatchService(
+              clusterWatchId,
+              nodeApis,
                 () => scheduler.now,
-                keepAlive = keepAlive,
-                retryDelays = NonEmptySeq.fromSeq(retryDelays) getOrElse NonEmptySeq.of(1.s),
+              keepAlive = keepAlive,
+              retryDelays = NonEmptySeq.fromSeq(retryDelays) getOrElse NonEmptySeq.of(1.s),
                 eventBus)))))
     })
 }
