@@ -3,6 +3,7 @@ package js7.base.service
 import cats.effect.concurrent.Deferred
 import cats.effect.{ExitCase, Resource}
 import cats.syntax.flatMap.*
+import com.typesafe.scalalogging.Logger as ScalaLogger
 import izumi.reflect.Tag
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
@@ -36,6 +37,12 @@ trait Service extends AnyRef with Stoppable {
           .fold(Task.raiseError, Task(_)))
 
     }
+
+  protected final def startServiceAndLog(logger: ScalaLogger, args: String)(run: Task[Unit])
+  : Task[Started] =
+    startService(
+      logInfoStartAndStop(logger, args)(
+        run))
 
   protected final def startService(run: Task[Unit]): Task[Started] =
     CorrelId
@@ -120,4 +127,22 @@ object Service
     override def toString = "Service.Started"
   }
   private val Started = new Started()
+
+  trait ServiceLogger {
+    final def logInfoStartAndStop[A](
+      logger: ScalaLogger,
+      serviceName: String,
+      args: String = "")
+      (task: Task[A])
+    : Task[A] =
+      Task.defer {
+        val a = args.nonEmpty ?? s"($args)"
+        logger.info(s"$serviceName$a started")
+        task.guaranteeCase {
+          case ExitCase.Error(_) => Task.unit // startService logs the error
+          case ExitCase.Canceled => Task(logger.info(s"❌ $serviceName canceled"))
+          case ExitCase.Completed => Task(logger.info(s"$serviceName stopped"))
+        }
+      }
+  }
 }

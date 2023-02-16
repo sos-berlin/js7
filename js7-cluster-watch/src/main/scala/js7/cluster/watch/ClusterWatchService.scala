@@ -46,10 +46,8 @@ extends Service.StoppableByRequest
   private val delayConf = DelayConf(retryDelays, resetWhen = retryDelays.last)
 
   protected def start =
-    startService(
-      logger.infoTask(
-        s"$clusterWatchId ${nodeApis.toList.map(_.baseUri).mkString(", ")}, $clusterWatchRunId"
-      )(run))
+    startServiceAndLog(logger, nodeApis.toList.mkString(", "))(
+      run)
 
   private def run: Task[Unit] =
     Observable
