@@ -300,7 +300,7 @@ object MonixBase
         }
     }
 
-    implicit final class RichResource[A](private val resource: Resource[Task, A])
+    implicit final class RichMonixResource[A](private val resource: Resource[Task, A])
     extends AnyVal
     {
       def executeOn(scheduler: Scheduler): Resource[Task, A] =
