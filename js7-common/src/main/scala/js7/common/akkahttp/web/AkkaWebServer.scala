@@ -70,7 +70,7 @@ trait AkkaWebServer extends Service
         })
   }
 
-  def stop(timeout: FiniteDuration = shutdownTimeout): Task[Unit] =
+  private def stop(timeout: FiniteDuration = shutdownTimeout): Task[Unit] =
     terminate(timeout)
       .executeOn(scheduler)
       .uncancelable

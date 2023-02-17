@@ -26,8 +26,9 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CatsUtils.Nel
+import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.SetOnce
+import js7.base.utils.{Allocated, SetOnce}
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
 import js7.common.akkautils.ReceiveLoggingActor
@@ -103,7 +104,7 @@ extends ReceiveLoggingActor.WithStash
   private var isReset = false
   private val clusterWatchId = ClusterWatchId(
     controllerId.string + "." + controllerConfiguration.clusterConf.ownId.string)
-  private var clusterWatchService: Option[ClusterWatchService] = None
+  private var allocatedClusterWatchService: Option[Allocated[Task, ClusterWatchService]] = None
 
   private val eventFetcher = new RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], AgentClient](
     _.eventId, conf.recouplingStreamReader)
@@ -245,7 +246,7 @@ extends ReceiveLoggingActor.WithStash
     eventFetcher.markAsStopped()
     eventFetcher.terminateAndLogout.runAsyncAndForget
     currentFetchedFuture.foreach(_.cancel())
-    clusterWatchService.fold(Task.unit)(_.stop).awaitInfinite // TODO Blocking
+    allocatedClusterWatchService.fold(Task.unit)(_.stop).awaitInfinite // TODO Blocking
     super.postStop()
   }
 
@@ -594,9 +595,11 @@ extends ReceiveLoggingActor.WithStash
       releaseEventsCancelable.foreach(_.cancel())
       Task.fromFuture(eventFetcherTerminated.future)
         .onErrorRecover { case t => logger.debug(t.toStringWithCauses) }
-        .flatMap(_ => Task.parZip2(
-          closeClient,
-          stopClusterWatch))
+        .flatMap(_ => Task
+          .parZip2(
+            closeClient,
+            stopClusterWatch)
+          .void)
         .onErrorRecover { case t => logger.debug(t.toStringWithCauses) }
         .foreach(_ => self ! Stop)
       become("stopping") {
@@ -612,13 +615,13 @@ extends ReceiveLoggingActor.WithStash
         client.close()
       })
 
-  private def startClusterWatch: Task[ClusterWatchService] =
+  private def startClusterWatch: Task[Allocated[Task, ClusterWatchService]] =
     Task.defer {
-      assertThat(clusterWatchService.isEmpty)
+      assertThat(allocatedClusterWatchService.isEmpty)
       clusterWatchResource
-        .startService
+        .toAllocated
         .flatTap(service => Task {
-          clusterWatchService = Some(service)
+          allocatedClusterWatchService = Some(service)
         })
     }
 
@@ -629,10 +632,10 @@ extends ReceiveLoggingActor.WithStash
       controllerConfiguration.config)
 
   private def stopClusterWatch: Task[Unit] =
-    Task.defer(clusterWatchService.fold(Task.unit)(_
+    Task.defer(allocatedClusterWatchService.fold(Task.unit)(_
       .stop
       .guarantee(Task {
-        clusterWatchService = None
+        allocatedClusterWatchService = None
       })))
 
   override def toString = s"AgentDriver($agentPath)"

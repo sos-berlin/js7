@@ -14,6 +14,7 @@ import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.web.{HttpClient, Uri}
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkahttp.web.AkkaWebServer
@@ -60,26 +61,26 @@ final class JournalRouteTest extends OurTestSuite with RouteTester with JournalR
   private val journalId = JournalId(UUID.fromString("00112233-4455-6677-8899-AABBCCDDEEFF"))
   private var eventWriter: EventJournalWriter = null
 
-  private lazy val webServer = AkkaWebServer
+  private lazy val allocatedWebServer = AkkaWebServer
     .testResource()(pathSegments("journal")(journalRoute))
-    .startService
+    .toAllocated
     .await(99.s)
 
-  private lazy val uri = webServer.localUri
+  private lazy val uri = allocatedWebServer.allocatedThing.localUri
   private lazy val client = new AkkaHttpClient.Standard(uri, actorSystem = system,
     name = "JournalRouteTest")
 
   override def beforeAll() = {
     super.beforeAll()
     eventWatch = new JournalEventWatch(journalMeta, config)
-    webServer
+    allocatedWebServer
     writeSnapshot(EventId.BeforeFirst)
     eventWriter = newEventJournalWriter(EventId.BeforeFirst)
     eventWriter.onJournalingStarted()
   }
 
   override def afterAll() = {
-    webServer.stop().await(99.s)
+    allocatedWebServer.stop.await(99.s)
     eventWriter.close()
     deleteDirectoryRecursively(directory)
     super.afterAll()

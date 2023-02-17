@@ -30,6 +30,7 @@ import js7.base.time.AlarmClock
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Closer, ProgramTermination, SetOnce}
@@ -323,7 +324,7 @@ object RunningController
         testEventBus.when[ControllerOrderKeeper.ControllerReadyTestIncident.type].void.runToFuture)
       // Start-up some stuff while recovering
 
-      val directoryWatchingSignatureVerifier =
+      val allocatedDirectoryWatchingSignatureVerifier =
         DirectoryWatchingSignatureVerifier
           // Do not disturb recovery and ClusterNode start-up log output now
           // and start verifier later
@@ -331,14 +332,14 @@ object RunningController
             controllerConfiguration.config,
             onUpdated = () => testEventBus.publish(ItemSignatureKeysUpdated))
           .orThrow
-          .startService
+          .toAllocated
           .awaitInfinite
       closer.onClose {
         // TODO Use a StoppableRegister
-        directoryWatchingSignatureVerifier.stop.await(9.s)
+        allocatedDirectoryWatchingSignatureVerifier.stop.await(9.s)
       }
       val itemVerifier = new SignedItemVerifier(
-        directoryWatchingSignatureVerifier,
+        allocatedDirectoryWatchingSignatureVerifier.allocatedThing,
         ControllerState.signableItemJsonCodec)
 
       val recovered = Await.result(whenRecovered, Duration.Inf).closeWithCloser
@@ -414,11 +415,11 @@ object RunningController
           clusterNode,
           recovered.totalRunningSince, // Maybe different from JournalHeader
           recovered.eventWatch)
-        .startService
-        .flatMap(webServer =>
+        .toAllocated
+        .flatMap(allocatedWebServer =>
           Task.defer {
             // TODO Use a StoppableRegister
-            closer.onClose(webServer.stop.await(99.s))
+            closer.onClose(allocatedWebServer.stop.await(99.s))
             injector
               .instance[SessionRegister[SimpleSession]]
               .placeSessionTokenInDirectoryLegacy(
@@ -426,6 +427,7 @@ object RunningController
                 controllerConfiguration.workDirectory,
                 closer)
               .map { _ =>
+                val webServer = allocatedWebServer.allocatedThing
                 controllerConfiguration.workDirectory / "http-uri" :=
                   webServer.localHttpUri.fold(_ => "", o => s"$o/controller")
                 new RunningController(recovered.eventWatch.strict, webServer,

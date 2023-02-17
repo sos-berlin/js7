@@ -12,6 +12,7 @@ import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.time.WaitForCondition.waitForCondition
+import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.web.Uri
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
@@ -98,7 +99,7 @@ extends OurTestSuite with BeforeAndAfterAll with ProvideActorSystem with Generic
       override def isRelevantEvent(keyedEvent: KeyedEvent[Event]) = true
     }.route)
 
-  private lazy val server = AkkaWebServer
+  private lazy val allocatedServer = AkkaWebServer
     .resource(
       Seq(
         WebServerBinding.Http(
@@ -106,12 +107,12 @@ extends OurTestSuite with BeforeAndAfterAll with ProvideActorSystem with Generic
       config,
       (_, whenTerminating) => Task.pure(AkkaWebServer.BoundRoute(route, whenTerminating)))(
       actorSystem)
-    .startService
+    .toAllocated
     .await(99.s)
 
   private lazy val api = new AkkaHttpClient {
     protected val actorSystem = GenericEventRouteTest.this.actorSystem
-    protected val baseUri = server.localUri
+    protected val baseUri = allocatedServer.allocatedThing.localUri
     protected val name = "GenericEventRouteTest"
     protected val uriPrefixPath = ""
     protected def httpsConfig = HttpsConfig.empty
@@ -122,11 +123,11 @@ extends OurTestSuite with BeforeAndAfterAll with ProvideActorSystem with Generic
   override def beforeAll() = {
     super.beforeAll()
     AkkaHttpUtils.avoidLazyObjectInitializationDeadlock()
-    server
+    allocatedServer
   }
 
   override def afterAll() = {
-    server.stop().await(99.s)
+    allocatedServer.stop.await(99.s)
     Akkas.terminateAndWait(actorSystem, 99.s)
     super.afterAll()
   }

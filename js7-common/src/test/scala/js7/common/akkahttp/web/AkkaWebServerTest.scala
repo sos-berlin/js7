@@ -21,6 +21,8 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.Allocated
+import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.common.akkahttp.web.AkkaWebServerTest.*
 import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkautils.Akkas
@@ -54,7 +56,7 @@ final class AkkaWebServerTest extends OurTestSuite with BeforeAndAfterAll
       .orThrow
   }
 
-  private lazy val webServer = AkkaWebServer
+  private lazy val webServer: Allocated[Task, AkkaWebServer & AkkaWebServer.HasUri] = AkkaWebServer
     .resource(
       Seq(
         WebServerBinding.Http(new InetSocketAddress("127.0.0.1", httpPort)),
@@ -69,7 +71,7 @@ final class AkkaWebServerTest extends OurTestSuite with BeforeAndAfterAll
             complete("OKAY")
           },
           whenTerminating)))
-    .startService
+    .toAllocated
     .await(99.s)
 
   override def beforeAll() = {

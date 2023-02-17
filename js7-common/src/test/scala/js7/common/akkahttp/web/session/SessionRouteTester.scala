@@ -10,6 +10,8 @@ import js7.base.configutils.Configs.*
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.Allocated
+import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.web.Uri
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegment
 import js7.common.akkahttp.web.AkkaWebServer
@@ -84,11 +86,12 @@ trait SessionRouteTester extends BeforeAndAfterAll with ScalatestRouteTest with 
     .testUriAndResource()(route)
 
   protected lazy val localUri = localUri_
-  protected final lazy val webServer = webServerResource.startService.await(99.s)
+  protected final lazy val allocatedWebServer: Allocated[Task, AkkaWebServer & AkkaWebServer.HasUri] =
+    webServerResource.toAllocated.await(99.s)
 
   override def afterAll() = {
     Akkas.shutDownHttpConnectionPools(system)
-    webServer.stop().await(99.s)
+    allocatedWebServer.stop.await(99.s)
     super.afterAll()
   }
 

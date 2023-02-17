@@ -82,7 +82,7 @@ extends OurTestSuite with SessionRouteTester
         waitForCondition(99.s, 10.ms)(count >= 3)
         assert(count >= 3)
         // Start web server
-        webServer
+        allocatedWebServer
         val exception = intercept[AkkaHttpClient.HttpException] {
           whenLoggedIn await 99.s
         }

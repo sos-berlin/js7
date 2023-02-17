@@ -22,8 +22,9 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
-import js7.base.utils.HasCloser
+import js7.base.utils.{Allocated, HasCloser}
 import js7.base.web.HttpClient.liftProblem
 import js7.base.web.Uri
 import js7.common.akkahttp.CirceJsonSupport
@@ -97,7 +98,7 @@ final class AkkaHttpClientTest extends OurTestSuite with BeforeAndAfterAll with 
 
   "With a server" - {
     implicit val aJsonCodec: Codec.AsObject[A] = deriveCodec
-    lazy val webServer = AkkaWebServer
+    lazy val allocatedWebServer: Allocated[Task, AkkaWebServer & AkkaWebServer.HasUri] = AkkaWebServer
       .testResource() {
         decodeRequest {
           import CirceJsonSupport.jsonMarshaller
@@ -133,18 +134,18 @@ final class AkkaHttpClientTest extends OurTestSuite with BeforeAndAfterAll with 
             }
         }
       }
-      .startService
+      .toAllocated
       .await(99.s)
 
     lazy val httpClient = new AkkaHttpClient {
       protected val actorSystem = AkkaHttpClientTest.this.actorSystem
-      protected val baseUri = webServer.localUri
+      protected val baseUri = allocatedWebServer.allocatedThing.localUri
       protected val name = "AkkaHttpClientTest"
       protected def uriPrefixPath = ""
       protected def httpsConfig = HttpsConfig.empty
     }.closeWithCloser
 
-    lazy val uri = webServer.localUri
+    lazy val uri = allocatedWebServer.allocatedThing.localUri
     implicit val sessionToken: Task[Option[SessionToken]] = Task.pure(None)
 
     "OK" in {
@@ -201,7 +202,7 @@ final class AkkaHttpClientTest extends OurTestSuite with BeforeAndAfterAll with 
 
     "close" in {
       httpClient.close()
-      webServer.stop().await(99.s)
+      allocatedWebServer.stop.await(99.s)
     }
   }
 

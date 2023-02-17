@@ -1,6 +1,7 @@
 package js7.agent
 
 import akka.actor.{ActorRef, ActorSystem, Props}
+import cats.syntax.flatMap.*
 import cats.syntax.traverse.*
 import com.google.inject.Stage.PRODUCTION
 import com.google.inject.util.Modules
@@ -27,6 +28,7 @@ import js7.base.thread.Futures.promiseFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Closer, ProgramTermination}
@@ -221,12 +223,12 @@ object RunningAgent {
             api,
             injector.instance[SessionRegister[AgentSession]],
             persistence.eventWatch)
-          .startService
-          .map { webServer =>
-            // TODO Use a StoppableRegister
-            closer.onClose(webServer.stop.await(99.s))
-            webServer
-          }
+          .toAllocated
+          .flatTap(allocated => Task {
+              // TODO Use a StoppableRegister
+              closer.onClose(allocated.stop.await(99.s))
+            })
+          .map(_.allocatedThing)
           .flatMap(webServer =>
             sessionRegister.placeSessionTokenInDirectoryLegacy(
               SimpleUser.System,

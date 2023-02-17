@@ -24,6 +24,7 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.thread.IOExecutor
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.AlarmClock
+import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.RightUnit
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{ProgramTermination, SetOnce}
@@ -69,12 +70,12 @@ private[agent] final class AgentActor private(
   private def terminating = shutDownCommand.isDefined
   private val terminateCompleted = Promise[Completed]()
 
-  private val signatureVerifier = DirectoryWatchingSignatureVerifier
+  private val allocatedSignatureVerifier = DirectoryWatchingSignatureVerifier
     .checkedResource(
       config = agentConf.config,
       onUpdated = () => testEventBus.publish(ItemSignatureKeysUpdated))
     .orThrow
-    .startService
+    .toAllocated
     .awaitInfinite
 
   override def preStart() = {
@@ -90,7 +91,7 @@ private[agent] final class AgentActor private(
       logger.warn("DELETE JOURNAL FILES DUE TO AGENT RESET")
       journalMeta.deleteJournal(ignoreFailure = true)
     }
-    signatureVerifier.stop.awaitInfinite
+    allocatedSignatureVerifier.stop.awaitInfinite
     logger.debug("Stopped")
   }
 
@@ -278,7 +279,7 @@ private[agent] final class AgentActor private(
               new AgentOrderKeeper(
                 recovered.totalRunningSince,
                 requireNonNull(recovered),
-                signatureVerifier,
+                allocatedSignatureVerifier.allocatedThing,
                 jobLauncherConf,
                 persistence,
                 clock,

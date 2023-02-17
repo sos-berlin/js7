@@ -38,20 +38,19 @@ private[cluster] final class ClusterCommon(
   import clusterConf.ownId
 
   val activationInhibitor = new ActivationInhibitor
-  val allocatedClusterWatchCounterpart = ClusterWatchCounterpart
+  private val allocatedClusterWatchCounterpart = ClusterWatchCounterpart
     .resource(clusterConf, timing, testEventPublisher)
     .toAllocated
     .runSyncUnsafe(99.s)/*TODO Make ClusterCommon a service*/
 
-  def clusterWatchCounterpart: ClusterWatchCounterpart =
-    allocatedClusterWatchCounterpart.allocatedThing
-
   private val _clusterWatchSynchronizer = SetOnce[ClusterWatchSynchronizer]
+
+  def clusterWatchCounterpart = allocatedClusterWatchCounterpart.allocatedThing
 
   def stop: Task[Completed] =
     Task.defer {
       _clusterWatchSynchronizer.toOption.fold(Task.completed)(_.stop)
-        .*>(clusterWatchCounterpart.stop)
+        .*>(allocatedClusterWatchCounterpart.stop)
         .as(Completed)
     }
 
