@@ -11,6 +11,7 @@ import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SetOnce
 import js7.base.web.Uri
@@ -37,10 +38,13 @@ private[cluster] final class ClusterCommon(
   import clusterConf.ownId
 
   val activationInhibitor = new ActivationInhibitor
-  val clusterWatchCounterpart = ClusterWatchCounterpart
+  val allocatedClusterWatchCounterpart = ClusterWatchCounterpart
     .resource(clusterConf, timing, testEventPublisher)
-    .acquire
+    .toAllocated
     .runSyncUnsafe(99.s)/*TODO Make ClusterCommon a service*/
+
+  def clusterWatchCounterpart: ClusterWatchCounterpart =
+    allocatedClusterWatchCounterpart.allocatedThing
 
   private val _clusterWatchSynchronizer = SetOnce[ClusterWatchSynchronizer]
 

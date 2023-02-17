@@ -10,7 +10,7 @@ import js7.base.data.ByteSequenceTester.*
 import js7.base.problem.Problem
 import js7.base.system.Java8Polyfill.*
 import js7.base.test.OurTestSuite
-import js7.base.utils.SyncResource.syntax.RichResource
+import js7.base.utils.SyncResource.syntax.*
 import scala.util.Random
 
 abstract class ByteSequenceTester[ByteSeq](implicit ByteSeq: ByteSequence[ByteSeq])

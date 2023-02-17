@@ -8,7 +8,7 @@ import js7.common.akkautils.Akkas.actorSystemResource
 import js7.common.commandline.CommandLineArguments
 import js7.common.http.AkkaHttpClient
 import js7.common.system.startup.StartUp.printlnWithClock
-import js7.common.system.startup.{JavaMain, StatefulServiceMain}
+import js7.common.system.startup.{JavaMain, ServiceMain}
 import monix.eval.Task
 import monix.execution.Scheduler
 
@@ -25,7 +25,7 @@ object ClusterWatchMain
   }
 
   def run(conf: ClusterWatchConf)(use: Service => Task[Unit]): Unit =
-    StatefulServiceMain.run(
+    ServiceMain.run(
       name = conf.clusterWatchId.toString,
       conf.config,
       serviceResource = resource(conf, _),
@@ -35,7 +35,7 @@ object ClusterWatchMain
   : Resource[Task, RestartAfterFailureService[ClusterWatchService]] = {
     import conf.{clusterNodeAdmissions, config, httpsConfig}
     for {
-      akka <- actorSystemResource("ClusterWatch", config, scheduler)
+      akka <- actorSystemResource(name = "ClusterWatch", config, scheduler)
       service <- ClusterWatchService.restartableResource(
         conf.clusterWatchId,
         apiResources = clusterNodeAdmissions

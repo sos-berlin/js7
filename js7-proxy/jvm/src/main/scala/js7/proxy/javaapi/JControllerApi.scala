@@ -14,6 +14,8 @@ import js7.base.eventbus.StandardEventBus
 import js7.base.log.CorrelId
 import js7.base.monixutils.AsyncVariable
 import js7.base.problem.Problem
+import js7.base.utils.Allocated
+import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
 import js7.cluster.watch.api.ClusterWatchProblems.ClusterNodeLossNotConfirmedProblem
@@ -48,8 +50,7 @@ import scala.jdk.OptionConverters.*
 final class JControllerApi(val asScala: ControllerApi, config: Config)
   (implicit scheduler: Scheduler)
 {
-  private val clusterWatchService =
-    AsyncVariable[Option[ClusterWatchService]](None)
+  private val clusterWatchService = AsyncVariable[Option[Allocated[Task, ClusterWatchService]]](None)
 
   def stop: CompletableFuture[Void] =
     runTask(asScala.stop.as(Void))
@@ -338,18 +339,19 @@ final class JControllerApi(val asScala: ControllerApi, config: Config)
         case None =>
           ClusterWatchService
             .resource(clusterWatchId, asScala.apiResources.sequence, config, eventBus.asScala)
-            .startService
+            .toAllocated
             .flatTap(asScala.addStoppable)
             .map(Some(_))
       }
-      .map(_.get)
+      .map(_.get.allocatedThing)
       .runToFuture.asJava
 
   @Nonnull
   def stopClusterWatch: CompletableFuture[Void] =
     clusterWatchService
-      .update(_.fold(Task.none)(service =>
-        asScala.removeStoppable(service) *> service.stop.as(None)))
+      .update(_.fold(Task.none)(allocated =>
+        asScala.removeStoppable(allocated) *>
+          allocated.stop.as(None)))
       .as(Void).runToFuture.asJava
 }
 

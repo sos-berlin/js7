@@ -54,6 +54,9 @@ extends Service.StoppableByRequest
     startService(
       untilStopRequested *> pubsub.complete)
 
+  // ClusterWatchApi requires public
+  override def stop = super.stop
+
   def checkClusterState(clusterState: HasNodes, clusterWatchIdChangeAllowed: Boolean)
   : Task[Checked[Option[ClusterWatchConfirmation]]] =
     if (!clusterState.setting.clusterWatchId.isDefined

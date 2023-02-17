@@ -8,10 +8,11 @@ import izumi.reflect.Tag
 import js7.base.log.Logger
 import js7.base.service.RestartAfterFailureService.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.Delayer.syntax.RichDelayerTask
 import js7.base.utils.ScalaUtils.some
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{DelayConf, Delayer}
+import js7.base.utils.{Allocated, DelayConf, Delayer}
 import monix.eval.Task
 import monix.execution.atomic.Atomic
 import scala.concurrent.duration.*
@@ -25,18 +26,18 @@ extends Service
   self =>
 
   private val serviceName = implicitly[Tag[S]].tag.toString
-  private val currentService = Atomic(none[S])
+  private val currentAllocatedService = Atomic(none[Allocated[Task, S]])
   @volatile private var stopping = false
   private val untilStopRequested = Deferred.unsafe[Task, Unit]
 
   private val maybeStartDelay = DelayConf.maybe(startDelays)
   private val maybeRunDelay = DelayConf.maybe(runDelays)
 
-  val stop =
+  protected val stop =
     Task.defer {
       stopping = true
       untilStopRequested.complete(()) *>
-        currentService.get().fold(Task.unit)(_.stop)
+        currentAllocatedService.get().fold(Task.unit)(_.stop)
     }.memoize
 
   protected def start: Task[Service.Started] =
@@ -48,7 +49,7 @@ extends Service
 
   private def startUnderlyingService: Task[S] =
     serviceResource
-      .startService
+      .toAllocated
       .pipeMaybe(maybeStartDelay)(
         _.onFailureRestartWithDelayer(_,
           onFailure = t => Task {
@@ -58,13 +59,14 @@ extends Service
           },
           onSleep = logDelay))
       .flatTap(setCurrentService)
+      .map(_.allocatedThing)
 
-  private def setCurrentService(service: S): Task[Unit] =
+  private def setCurrentService(allocated: Allocated[Task, S]): Task[Unit] =
     Task.defer {
-      currentService
-        .getAndSet(Some(service))
+      currentAllocatedService
+        .getAndSet(Some(allocated))
         .fold(Task.unit)(_.stop.when(stopping))
-        .*>(service.stop.when(stopping))
+        .*>(allocated.stop.when(stopping))
     }
 
   private def runUnderlyingService(service: S) =
@@ -101,11 +103,11 @@ extends Service
 
   // Call only after this Service has been started!
   def unsafeCurrentService(): S =
-    currentService.get()
+    currentAllocatedService.get()
       .getOrElse(throw new IllegalStateException(s"$myName not yet started"))
+      .allocatedThing
 
-  override def toString =
-    currentService.get().fold(myName)(o => s"RestartAfterFailureService($o)")
+  override def toString = s"RestartAfterFailureService(${unsafeCurrentService()})"
 
   private def myName = s"RestartAfterFailureService[$serviceName]"
 }

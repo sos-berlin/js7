@@ -6,7 +6,7 @@ import monix.eval.Task
 
 final class StoppablesRegister
 {
-  private val stoppables = AsyncVariable[Vector[Stoppable]](Vector.empty)
+  private val stoppables = AsyncVariable[Vector[Stoppable[Task]]](Vector.empty)
 
   def stop: Task[Unit] =
     stoppables
@@ -15,16 +15,16 @@ final class StoppablesRegister
         .as(Vector.empty))
       .void
 
-  def add(service: Stoppable): Task[Unit] =
+  def add(stoppable: Stoppable[Task]): Task[Unit] =
     stoppables
-      .update(services => Task.pure(
-        if (services.exists(_ eq service))
-          services
+      .update(stoppables => Task.pure(
+        if (stoppables.exists(_ eq stoppable))
+          stoppables
         else
-          services :+ service))
+          stoppables :+ stoppable))
       .void
 
-  def remove(stoppable: Stoppable): Task[Unit] =
+  def remove(stoppable: Stoppable[Task]): Task[Unit] =
     stoppables
       .update(stoppables => Task.pure(
         stoppables.filter(_ ne stoppable)))

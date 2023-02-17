@@ -6,7 +6,7 @@ import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.Instructions.jsonCodec
 import js7.data.workflow.position.{Label, Position}
 import js7.data.workflow.{Instruction, WorkflowPath}
-import js7.tester.CirceJsonTester.testJson
+import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
 
 final class AddOrderTest extends OurTestSuite
 {
@@ -31,6 +31,16 @@ final class AddOrderTest extends OurTestSuite
         "startPosition": [1],
         "stopPositions": [ [2], "LABEL"],
         "deleteWhenTerminated": true
+      }""")
+
+    testJsonDecoder[Instruction](
+      AddOrder(expr("'ORDER-ID'"), WorkflowPath("WORKFLOW")),
+      json"""
+      {
+        "TYPE": "AddOrder",
+        "orderId": "'ORDER-ID'",
+        "workflowPath": "WORKFLOW",
+        "deleteWhenTerminated": false
       }""")
   }
 }

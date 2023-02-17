@@ -128,6 +128,8 @@ final class ServiceTest extends OurAsyncTestSuite
   {
     val running = Deferred.unsafe[Task, Unit]
 
+    override def stop = super.stop
+
     protected def start =
       startService(Task.defer {
         setRunning(true)
