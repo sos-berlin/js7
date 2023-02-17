@@ -182,11 +182,11 @@ extends ControllerApiWithHttp
           })
     })
 
-  def addStoppable(service: Stoppable): Task[Unit] =
-    stoppables.add(service)
+  def addStoppable(stoppable: Stoppable[Task]): Task[Unit] =
+    stoppables.add(stoppable)
 
-  def removeStoppable(service: Stoppable): Task[Unit] =
-    stoppables.remove(service)
+  def removeStoppable(stoppable: Stoppable[Task]): Task[Unit] =
+    stoppables.remove(stoppable)
 }
 
 object ControllerApi

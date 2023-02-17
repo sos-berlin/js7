@@ -5,7 +5,9 @@ import cats.effect.concurrent.Deferred
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
-import js7.base.test.OurTestSuite
+import js7.base.log.Logger
+import js7.base.test.OurAsyncTestSuite
+import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.cluster.watch.{ClusterWatchConf, ClusterWatchMain}
 import js7.common.commandline.CommandLineArguments
 import js7.data.cluster.ClusterEvent.ClusterCoupled
@@ -16,7 +18,7 @@ import js7.tests.testenv.ControllerClusterForScalaTest
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced as scheduler
 
-final class ClusterWatchMainTest extends OurTestSuite with ControllerClusterForScalaTest
+final class ClusterWatchMainTest extends OurAsyncTestSuite with ControllerClusterForScalaTest
 {
   private implicit lazy val cs = IO.contextShift(scheduler)
   private lazy val serverAdmission = controllerAdmissions.head
@@ -39,27 +41,30 @@ final class ClusterWatchMainTest extends OurTestSuite with ControllerClusterForS
     IO.defer {
       val stopClusterWatch = Deferred.unsafe[IO, Unit]
 
-      val clusterWatch = IO {
-        withTemporaryDirectory("ClusterWatchMainTest-") { dir =>
-          dir / "cluster-watch.conf" :=
-            s"""js7.journal.cluster.watch.cluster-nodes = [
-              |  {
-              |     uri = "${serverAdmission.uri}"
-              |     user = ClusterWatch
-              |     password = "${serverAdmission.userAndPassword.get.password.string}"
-              |  }
-              |]""".stripMargin
+      val clusterWatch = IO(
+        try
+          withTemporaryDirectory("ClusterWatchMainTest-") { dir =>
+            dir / "cluster-watch.conf" :=
+              s"""js7.journal.cluster.watch.cluster-nodes = [
+                |  {
+                |     uri = "${serverAdmission.uri}"
+                |     user = ClusterWatch
+                |     password = "${serverAdmission.userAndPassword.get.password.string}"
+                |  }
+                |]""".stripMargin
 
-          val conf = ClusterWatchConf.fromCommandLine(CommandLineArguments(Seq(
-            "--cluster-watch-id=MY-CLUSTER-WATCH",
-            "--config-directory=" + dir)))
-          ClusterWatchMain.run(conf)(service => Task
-            .race(
-              service.untilStopped,
-              Task.from(stopClusterWatch.get))
-            .void)
-        }
-      }
+            val conf = ClusterWatchConf.fromCommandLine(CommandLineArguments(Seq(
+              "--cluster-watch-id=MY-CLUSTER-WATCH",
+              "--config-directory=" + dir)))
+            ClusterWatchMain.run(conf)(service => Task
+              .race(
+                service.untilStopped,
+                stopClusterWatch.get.to[Task])
+              .void)
+          }
+        catch { case t: Throwable =>
+          logger.error(t.toStringWithCauses, t)
+        })
 
       val runAnOrder = IO {
         runControllerAndBackup(suppressClusterWatch = true) { (_, controller, _, _, _) =>
@@ -75,12 +80,13 @@ final class ClusterWatchMainTest extends OurTestSuite with ControllerClusterForS
         _ <- runAnOrder.join
         _ <- stopClusterWatch.complete(())
         _ <- clusterWatch.join
-      } yield ()
-    }.unsafeRunSync()
+      } yield succeed
+    }.unsafeToFuture()
   }
 }
 
 object ClusterWatchMainTest
 {
+  private val logger = Logger[this.type]
   private val workflow = Workflow(WorkflowPath("WORKFLOW"), Nil)
 }

@@ -42,12 +42,11 @@ import monix.execution.Scheduler.Implicits.traced as scheduler
 import org.jetbrains.annotations.TestOnly
 import org.scalactic.source
 import org.scalatest.Assertions.*
-import org.scalatest.TestSuite
 
 @TestOnly
 trait ControllerClusterForScalaTest
 {
-  this: TestSuite =>
+  this: org.scalatest.Suite =>
 
   protected def agentPaths: Seq[AgentPath] = AgentPath("AGENT") :: Nil
   protected def items: Seq[InventoryItem]
@@ -184,7 +183,7 @@ trait ControllerClusterForScalaTest
   protected final def runControllers(primary: DirectoryProvider, backup: DirectoryProvider)
     (body: (RunningController, RunningController) => Unit)
   : Unit = {
-    withOptionalClusterWatchService() {
+    /*withOptionalClusterWatchService()*/ {
       backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
         primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
           primaryController.eventWatch.await[ClusterCoupled]()

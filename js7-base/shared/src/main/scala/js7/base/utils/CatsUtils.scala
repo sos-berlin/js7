@@ -2,13 +2,14 @@ package js7.base.utils
 
 import cats.Functor
 import cats.data.{NonEmptyList, NonEmptySeq, Validated}
-import cats.effect.{Resource, SyncIO, Timer}
+import cats.effect.{BracketThrow, Resource, SyncIO, Timer}
 import cats.kernel.Monoid
 import cats.syntax.foldable.*
 import cats.syntax.functor.*
 import izumi.reflect.Tag
 import java.io.{ByteArrayInputStream, InputStream}
 import java.util.Base64
+import js7.base.catsutils.UnsafeMemoizable
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.*
@@ -51,6 +52,13 @@ object CatsUtils
         Duration(
           timer.clock.monotonic(NANOSECONDS).unsafeRunSync(),
           NANOSECONDS)
+    }
+
+    implicit final class RichResource[F[_], A](private val resource: Resource[F, A])
+    extends AnyVal {
+      def toAllocated[G[x] >: F[x], B >: A](implicit F: BracketThrow[G], G: UnsafeMemoizable[G])
+      : G[Allocated[G, B]] =
+        resource.allocated[G, B].map(Allocated.fromPair(_))
     }
   }
 

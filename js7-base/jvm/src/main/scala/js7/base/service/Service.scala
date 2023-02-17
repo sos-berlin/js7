@@ -13,19 +13,19 @@ import js7.base.problem.Problem
 import js7.base.service.Service.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.Stoppable
 import monix.eval.{Fiber, Task}
 import monix.execution.atomic.Atomic
 import scala.concurrent.duration.*
 import scala.util.{Failure, Success, Try}
 
-trait Service extends AnyRef with Stoppable {
+trait Service extends AnyRef with Service.ServiceLogger {
   service =>
 
   private val started = Atomic(false)
   private val stopped = Deferred.unsafe[Task, Try[Unit]]
 
   protected def start: Task[Started]
+  protected def stop: Task[Unit]
 
   final def untilStopped: Task[Unit] =
     Task.defer {
@@ -77,15 +77,17 @@ object Service
 
   private[service] object Empty extends Service {
     protected val start = startService(Task.unit)
-    def stop = Task.unit
+    protected def stop = Task.unit
   }
 
   private val logger = Logger[this.type]
 
-  def resource[A <: Service](acquire: Task[A]): Resource[Task, A] =
-    Stoppable.resource(start(acquire))
+  def resource[S <: Service](newService: Task[S]): Resource[Task, S] =
+    Resource.make(
+      acquire = start(newService))(
+      release = _.stop)
 
-  def start[A <: Service](newService: Task[A]): Task[A] =
+  private def start[S <: Service](newService: Task[S]): Task[S] =
     newService.flatTap(service =>
       if (service.started.getAndSet(true))
         Task.raiseError(Problem.pure(s"$toString started twice").throwable)
@@ -117,7 +119,7 @@ object Service
         .logWhenItTakesLonger(s"stopping $service")
         .memoize
 
-    def stop =
+    protected def stop =
       logger.debugTask(s"$service stop")(
         memoizedStop)
   }

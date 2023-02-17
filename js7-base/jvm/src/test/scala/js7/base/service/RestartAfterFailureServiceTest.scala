@@ -12,6 +12,7 @@ import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
+import js7.base.utils.CatsUtils.syntax.RichResource
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.atomic.Atomic
@@ -139,9 +140,9 @@ final class RestartAfterFailureServiceTest extends OurTestSuite
               runFails = (i & 2) != 0,
               stopFails = (i & 4) != 0,
               i.toString))))
-        .acquire)
+        .toAllocated)
       .flatTap(_ => Task.sleep(testDuration))
-      .flatMap(services => services
+      .flatMap(allocatedServices => allocatedServices
         .parTraverse(_
           .stop
           .handleError(t => logger.debug(s"stop => $t"))))

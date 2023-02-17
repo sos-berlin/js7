@@ -15,8 +15,9 @@ import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Lazy, SetOnce}
+import js7.base.utils.{Allocated, Lazy, SetOnce}
 import js7.base.web.Uri
 import js7.cluster.ClusterCommon.*
 import js7.cluster.watch.api.ClusterWatchApi
@@ -46,13 +47,14 @@ private[cluster] final class ClusterCommon(
   import clusterConf.ownId
 
   val activationInhibitor = new ActivationInhibitor
-  private val clusterWatchCounterpartLazy = Lazy(ClusterWatchCounterpart
-    .resource(clusterConf, timing, testEventPublisher)
-    .acquire
-    .runSyncUnsafe(99.s)/*TODO Make ClusterCommon a service*/)
+  private val clusterWatchCounterpartLazy: Lazy[Allocated[Task, ClusterWatchCounterpart]] =
+    Lazy(ClusterWatchCounterpart
+      .resource(clusterConf, timing, testEventPublisher)
+      .toAllocated
+      .runSyncUnsafe(99.s)/*TODO Make ClusterCommon a service*/)
 
   def clusterWatchCounterpart: ClusterWatchCounterpart =
-    clusterWatchCounterpartLazy.value
+    clusterWatchCounterpartLazy.value.allocatedThing
 
   private val _clusterWatchSynchronizer = SetOnce[ClusterWatchSynchronizer]
 
@@ -96,7 +98,7 @@ private[cluster] final class ClusterCommon(
           newClusterWatchApi(clusterState.setting.maybeClusterWatchUri)))
 
   private def newClusterWatchApi(uri: Option[Uri]): ClusterWatchApi =
-    uri.fold_(clusterWatchCounterpartLazy.value, uri =>
+    uri.fold_(clusterWatchCounterpart, uri =>
       new HttpClusterWatch(
         ownId,
         uri,
