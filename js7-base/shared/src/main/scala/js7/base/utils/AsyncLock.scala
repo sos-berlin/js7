@@ -40,8 +40,8 @@ final class AsyncLock private(
         val acquirer = new Acquirer(CorrelId.current, acquirerToString)
         mvar.tryPut(acquirer).flatMap(hasAcquired =>
           if (hasAcquired) {
-            log.trace(s"↘ $name acquired by $acquirer")
-            acquirer.lockedSince = nanoTime()
+            log.trace(s"↘ $name acquired by $acquirer ↘")
+            acquirer.startMetering()
             Task.unit
           } else
             if (suppressLog)
@@ -67,10 +67,10 @@ final class AsyncLock private(
                               s" currently locked by ${lockedBy getOrElse "None"} ...")
                         })
                       .map { _ =>
-                        acquirer.lockedSince = nanoTime()
                         lazy val msg =
-                          s"↘ 🟢$nr $name acquired by $acquirer after ${waitingSince.elapsed.pretty}"
+                          s"↘ 🟢$nr $name acquired by $acquirer after ${waitingSince.elapsed.pretty} ↘"
                         if (infoLogged) log.info(msg) else log.debug(msg)
+                        acquirer.startMetering()
                         Right(())
                     }
 
@@ -79,8 +79,8 @@ final class AsyncLock private(
                       if (!hasAcquired)
                         Left(())  // Locked again by someone else, so try again
                       else {
-                        log.trace(s"↘ $name acquired by $acquirer")
-                        acquirer.lockedSince = nanoTime()
+                        log.trace(s"↘ $name acquired by $acquirer ↘")
+                        acquirer.startMetering()
                         Right(())  // The lock is ours!
                       }
                 })
@@ -91,13 +91,13 @@ final class AsyncLock private(
     Task.defer {
       exitCase match {
         case ExitCase.Completed =>
-          log.trace(s"↙ $name released by ${acquirerToString()}")
+          log.trace(s"↙ $name released by ${acquirerToString()} ↙")
 
         case ExitCase.Canceled =>
-          log.trace(s"↙❌ $name released by ${acquirerToString()} · Canceled")
+          log.trace(s"↙❌ $name released by ${acquirerToString()} · Canceled ↙")
 
         case ExitCase.Error(t) =>
-          log.trace(s"↙💥 $name released by ${acquirerToString()} · ${t.toStringWithCauses}")
+          log.trace(s"↙💥 $name released by ${acquirerToString()} · ${t.toStringWithCauses} ↙")
       }
       lockM.flatMap(_.take).void
     }
@@ -122,13 +122,16 @@ object AsyncLock
 
   private final class Acquirer(correlId: CorrelId, nameToString: () => String) {
     private lazy val name = nameToString()
-    var lockedSince: Long = 0
+    private var lockedSince: Long = 0
 
     def withCorrelId: String =
       if (lockedSince == 0)
         name
       else
         correlId.fold("", o => s"$o ") + toString
+
+    def startMetering(): Unit =
+      lockedSince = nanoTime()
 
     override def toString =
       if (lockedSince == 0)

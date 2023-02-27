@@ -3,7 +3,7 @@ package js7.controller
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.pattern.ask
 import akka.util.Timeout
-import cats.syntax.flatMap.*
+import cats.effect.{Resource, Sync, SyncIO}
 import cats.syntax.traverse.*
 import com.google.inject.Stage.{DEVELOPMENT, PRODUCTION}
 import com.google.inject.util.Modules
@@ -18,6 +18,7 @@ import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier
 import js7.base.eventbus.{EventPublisher, StandardEventBus}
 import js7.base.generic.Completed
 import js7.base.io.file.FileUtils.syntax.*
+import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked.*
@@ -166,11 +167,14 @@ extends AutoCloseable
     } yield checkedChecked.flatten
 
   def executeCommand(command: ControllerCommand, meta: CommandMeta): Task[Checked[command.Response]] =
-    commandExecutor.executeCommand(command, meta)
+    logger.debugTask("executeCommand", command.toShortString)(
+      commandExecutor.executeCommand(command, meta)
+        .executeOn(scheduler))
 
   def updateUnsignedSimpleItemsAsSystemUser(items: Seq[UnsignedSimpleItem]): Task[Checked[Completed]] =
     sessionRegister.systemUser
       .flatMapT(updateUnsignedSimpleItems(_, items))
+      .executeOn(scheduler)
 
   def updateUnsignedSimpleItems(user: SimpleUser, items: Seq[UnsignedSimpleItem]): Task[Checked[Completed]] =
     VerifiedUpdateItems
@@ -180,6 +184,7 @@ extends AutoCloseable
         _ => Left(Problem.pure("updateUnsignedSimpleItems and verify?")),
         user)
       .flatMapT(itemUpdater.updateItems)
+      .executeOn(scheduler)
 
   def updateItemsAsSystemUser(operations: Observable[ItemOperation]): Task[Checked[Completed]] =
     sessionRegister.systemUser
@@ -189,6 +194,7 @@ extends AutoCloseable
     VerifiedUpdateItems
       .fromOperations(operations, itemUpdater.signedItemVerifier.verify, user)
       .flatMapT(itemUpdater.updateItems)
+      .executeOn(scheduler)
 
   @TestOnly
   def addOrderBlocking(order: FreshOrder): Unit =
@@ -217,6 +223,7 @@ extends AutoCloseable
           !event.isInstanceOf[OrderTerminated]
       }
       .toL(Vector)
+      .executeOn(scheduler)
       .await(timeout)
   }
 
@@ -243,10 +250,11 @@ extends AutoCloseable
       .mapTo[JournalActor.Output.JournalActorState]
       .await(99.s)
 
-  def close() = {
-    for (o <- _httpApi) o.close()  // Close before server
-    closer.close()
-  }
+  def close() =
+    logger.debugCall {
+      for (o <- _httpApi) o.close()  // Close before server
+      closer.close()
+    }
 }
 
 object RunningController

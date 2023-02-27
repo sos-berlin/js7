@@ -365,7 +365,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
     fetchAndHandleAcknowledgedEventIds2(passiveId, passiveUri, timing)
       .flatMap {
         case Left(missingHeartbeatProblem @ MissingPassiveClusterNodeHeartbeatProblem(passiveId, duration)) =>
-          logger.warn("❗ No heartbeat from passive cluster node since " + duration.pretty +
+          logger.warn(s"❗ No heartbeat from passive cluster $passiveId since ${duration.pretty}" +
             " - trying to continue as single active cluster node")
           assertThat(passiveId != ownId)
 
@@ -432,7 +432,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
   private def fetchAndHandleAcknowledgedEventIds2(passiveId: NodeId, passiveUri: Uri, timing: ClusterTiming)
   : Task[Checked[Completed]] =
     Task.defer {
-      logger.info("Fetching acknowledgements from passive cluster node")
+      logger.info(s"Fetching acknowledgements from passive cluster $passiveId")
       Observable
         .fromResource(
           common.clusterNodeApi(passiveUri, "acknowledgements"))

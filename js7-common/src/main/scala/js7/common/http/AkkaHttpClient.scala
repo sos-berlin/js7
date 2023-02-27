@@ -287,7 +287,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
           .guaranteeCase {
             case ExitCase.Canceled => Task {
               canceled = true
-              logger.debug(s"$responseLogPrefix => canceled")
+              logger.debug(s"<~~❌ $responseLogPrefix => canceled")
               if (responseFuture != null) {
                 // TODO Akka's max-open-requests may be exceeded when new requests are opened
                 //  while many canceled requests are still not completed by Akka

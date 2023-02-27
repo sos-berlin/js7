@@ -83,6 +83,9 @@ object Logger
       def debugTask[A](functionName: String, args: => Any = "")(task: Task[A]): Task[A] =
         logF[Task, A](logger, LogLevel.Debug, functionName, args)(task)
 
+      def debugCall[A](body: => A)(implicit src: sourcecode.Name): A =
+        debugCall[A](src.value)(body)
+
       def debugCall[A](functionName: String, args: => Any = "")(body: => A): A =
         logF[SyncIO, A](logger, LogLevel.Debug, functionName, args)(SyncIO(body)).unsafeRunSync()
 
@@ -241,20 +244,20 @@ object Logger
     if (argsString.isEmpty)
       logLevel match {
         case LogLevel.LogNone =>
-        case LogLevel.Trace => logger.trace(s"↘ $function ...")
-        case LogLevel.Debug => logger.debug(s"↘ $function ...")
-        case LogLevel.Info  => logger.info (s"↘ $function ...")
-        case LogLevel.Warn  => logger.warn (s"↘ $function ...")
-        case LogLevel.Error => logger.error(s"↘ $function ...")
+        case LogLevel.Trace => logger.trace(s"↘ $function ↘")
+        case LogLevel.Debug => logger.debug(s"↘ $function ↘")
+        case LogLevel.Info  => logger.info (s"↘ $function ↘")
+        case LogLevel.Warn  => logger.warn (s"↘ $function ↘")
+        case LogLevel.Error => logger.error(s"↘ $function ↘")
       }
     else
       logLevel match {
         case LogLevel.LogNone =>
-        case LogLevel.Trace => logger.trace(s"↘ $function($argsString) ...")
-        case LogLevel.Debug => logger.debug(s"↘ $function($argsString) ...")
-        case LogLevel.Info  => logger.info (s"↘ $function($argsString) ...")
-        case LogLevel.Warn  => logger.warn (s"↘ $function($argsString) ...")
-        case LogLevel.Error => logger.error(s"↘ $function($argsString) ...")
+        case LogLevel.Trace => logger.trace(s"↘ $function($argsString) ↘")
+        case LogLevel.Debug => logger.debug(s"↘ $function($argsString) ↘")
+        case LogLevel.Info  => logger.info (s"↘ $function($argsString) ↘")
+        case LogLevel.Warn  => logger.warn (s"↘ $function($argsString) ↘")
+        case LogLevel.Error => logger.error(s"↘ $function($argsString) ↘")
       }
   }
 
@@ -285,19 +288,19 @@ object Logger
     if (argsString.isEmpty) {
       logLevel match {
         case LogLevel.LogNone =>
-        case LogLevel.Trace => logger.trace(s"↙$marker $function => $duration$msg")
-        case LogLevel.Debug => logger.debug(s"↙$marker $function => $duration$msg")
-        case LogLevel.Info  => logger.info (s"↙$marker $function => $duration$msg")
-        case LogLevel.Warn  => logger.warn (s"↙$marker $function => $duration$msg")
-        case LogLevel.Error => logger.error(s"↙$marker $function => $duration$msg")
+        case LogLevel.Trace => logger.trace(s"↙$marker $function => $duration$msg ↙")
+        case LogLevel.Debug => logger.debug(s"↙$marker $function => $duration$msg ↙")
+        case LogLevel.Info  => logger.info (s"↙$marker $function => $duration$msg ↙")
+        case LogLevel.Warn  => logger.warn (s"↙$marker $function => $duration$msg ↙")
+        case LogLevel.Error => logger.error(s"↙$marker $function => $duration$msg ↙")
       }
     } else logLevel match {
       case LogLevel.LogNone =>
-      case LogLevel.Trace => logger.trace(s"↙$marker $function($argsString) => $duration$msg")
-      case LogLevel.Debug => logger.debug(s"↙$marker $function($argsString) => $duration$msg")
-      case LogLevel.Info  => logger.info (s"↙$marker $function($argsString) => $duration$msg")
-      case LogLevel.Warn  => logger.warn (s"↙$marker $function($argsString) => $duration$msg")
-      case LogLevel.Error => logger.error(s"↙$marker $function($argsString) => $duration$msg")
+      case LogLevel.Trace => logger.trace(s"↙$marker $function($argsString) => $duration$msg ↙")
+      case LogLevel.Debug => logger.debug(s"↙$marker $function($argsString) => $duration$msg ↙")
+      case LogLevel.Info  => logger.info (s"↙$marker $function($argsString) => $duration$msg ↙")
+      case LogLevel.Warn  => logger.warn (s"↙$marker $function($argsString) => $duration$msg ↙")
+      case LogLevel.Error => logger.error(s"↙$marker $function($argsString) => $duration$msg ↙")
     }
   }
 }
