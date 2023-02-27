@@ -157,10 +157,10 @@ extends Service.StoppableByRequest with ClusterWatchApi
           case Left(problem) =>
             Task(logger.warn(s"ClusterWatch rejected ${request.toShortString}: $problem"))
 
-          case Right(_) =>
+          case Right(confirmation) =>
             Task {
               if (warned) logger.info(
-                s"🟢 $clusterWatchId finally confirmed ${
+                s"🟢 ${confirmation.clusterWatchId} finally confirmed ${
                   request.toShortString} after ${t.elapsed.pretty}")
             }
         }
