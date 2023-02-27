@@ -99,13 +99,13 @@ final class ClusterWatch(
       })
 
   private def matchRejectedNodeLostEvent(lostNodeId: NodeId): Option[LossRejected] =
-    (_state.map(_.clusterState), _nodeToLossRejected.get(lostNodeId)) match {
-      case (None, Some(lossRejected))
-        if lostNodeId == lossRejected.event.lostNodeId =>
+    (_nodeToLossRejected.get(lostNodeId), _state.map(_.clusterState)) match {
+      case (Some(lossRejected), None)
+        if lossRejected.event.lostNodeId == lostNodeId =>
         Some(lossRejected)
 
-      case (Some(Coupled(setting)), Some(lossRejected: LossRejected))
-        if lostNodeId == setting.activeId && lostNodeId == lossRejected.event.lostNodeId =>
+      case (Some(lossRejected), Some(Coupled(setting)))
+        if lossRejected.event.lostNodeId == lostNodeId && lostNodeId == setting.activeId =>
         Some(lossRejected)
 
       case _ => None
