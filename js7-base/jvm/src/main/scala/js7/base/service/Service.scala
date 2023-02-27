@@ -7,18 +7,17 @@ import com.typesafe.scalalogging.Logger as ScalaLogger
 import izumi.reflect.Tag
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixutils.MonixBase.syntax.RichMonixTask
 import js7.base.monixutils.MonixDeadline.syntax.DeadlineSchedule
 import js7.base.problem.Problem
 import js7.base.service.Service.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
-import monix.eval.{Fiber, Task}
+import monix.eval.Task
 import monix.execution.atomic.Atomic
 import scala.concurrent.duration.*
 import scala.util.{Failure, Success, Try}
 
-trait Service extends AnyRef with Service.ServiceLogger {
+trait Service extends AnyRef {
   service =>
 
   private val started = Atomic(false)
@@ -35,13 +34,10 @@ trait Service extends AnyRef with Service.ServiceLogger {
       else
         stopped.get.flatMap(_
           .fold(Task.raiseError, Task(_)))
-
     }
 
-  protected final def startServiceAndLog(
-    logger: ScalaLogger,
-    args: String = "")
-    (run: Task[Unit]): Task[Started] =
+  protected final def startServiceAndLog(logger: ScalaLogger, args: String = "")(run: Task[Unit])
+  : Task[Started] =
     startService(
       logInfoStartAndStop(logger, service.toString, args)(
         run))
@@ -66,7 +62,7 @@ trait Service extends AnyRef with Service.ServiceLogger {
       .start
       .flatMap(fiber =>
         service match {
-          case service: StoppableByRequest => service._fiber.complete(fiber)
+          case service: StoppableByRequest => service.onFiberStarted(fiber)
           case _ => Task.unit
         })
       .as(Started)
@@ -84,17 +80,39 @@ object Service
 
   private val logger = Logger[this.type]
 
-  def resource[S <: Service](newService: Task[S]): Resource[Task, S] =
+  def resource[S <: Service](newService: Task[S])
+  : Resource[Task, S] =
+    resource(newService, (_: S).start)
+
+  @deprecated
+  private def resource[S <: Service](newService: Task[S], start: S => Task[Started])
+  : Resource[Task, S] =
     Resource.make(
-      acquire = start(newService))(
+      acquire = startService(newService, start))(
       release = _.stop)
 
-  private def start[S <: Service](newService: Task[S]): Task[S] =
+  private def startService[S <: Service](newService: Task[S], start: S => Task[Started]): Task[S] =
     newService.flatTap(service =>
       if (service.started.getAndSet(true))
         Task.raiseError(Problem.pure(s"$toString started twice").throwable)
       else
-        service.start)
+        start(service))
+
+  private def logInfoStartAndStop[A](
+    logger: ScalaLogger,
+    serviceName: String,
+    args: String = "")
+    (task: Task[A])
+  : Task[A] =
+    Task.defer {
+      val a = args.nonEmpty ?? s"($args)"
+      logger.info(s"$serviceName$a started")
+      task.guaranteeCase {
+        case ExitCase.Error(_) => Task.unit // startService logs the error
+        case ExitCase.Canceled => Task(logger.info(s"❌ $serviceName canceled"))
+        case ExitCase.Completed => Task(logger.info(s"$serviceName stopped"))
+      }
+    }
 
   def restartAfterFailure[S <: Service: Tag](
     startDelays: Seq[FiniteDuration] = defaultRestartDelays,
@@ -104,49 +122,11 @@ object Service
       resource(Task(
         new RestartAfterFailureService(startDelays, runDelays)(serviceResource)))
 
-  trait StoppableByRequest extends Service
-  {
-    service =>
-
-    private[Service] final val _fiber = Deferred.unsafe[Task, Fiber[Unit]]
-    private val stopRequested = Deferred.unsafe[Task, Unit]
-
-    protected final def untilStopRequested: Task[Unit] =
-      stopRequested.get
-
-    private val memoizedStop =
-      stopRequested.complete(())
-        .*>(_fiber.get)
-        .flatMap(_.join)
-        .logWhenItTakesLonger(s"stopping $service")
-        .memoize
-
-    protected def stop =
-      logger.debugTask(s"$service stop")(
-        memoizedStop)
-  }
+  trait StoppableByRequest extends Service with js7.base.service.StoppableByRequest
 
   /** Marker type to ensure call of `startFiber`. */
   final class Started private[Service] {
     override def toString = "Service.Started"
   }
   private val Started = new Started()
-
-  trait ServiceLogger {
-    final def logInfoStartAndStop[A](
-      logger: ScalaLogger,
-      serviceName: String,
-      args: String = "")
-      (task: Task[A])
-    : Task[A] =
-      Task.defer {
-        val a = args.nonEmpty ?? s"($args)"
-        logger.info(s"$serviceName$a started")
-        task.guaranteeCase {
-          case ExitCase.Error(_) => Task.unit // startService logs the error
-          case ExitCase.Canceled => Task(logger.info(s"❌ $serviceName canceled"))
-          case ExitCase.Completed => Task(logger.info(s"$serviceName stopped"))
-        }
-      }
-  }
 }
