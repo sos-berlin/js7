@@ -11,6 +11,7 @@ import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.{autoClosing, multipleAutoClosing}
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.controller.RunningController
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerEvent
 import js7.data.event.KeyedEvent.NoKey

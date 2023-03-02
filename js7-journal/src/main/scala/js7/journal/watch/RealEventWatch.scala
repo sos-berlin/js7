@@ -6,6 +6,7 @@ import java.util.concurrent.TimeoutException
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.MonixBase.closeableIteratorToObservable
+import js7.base.monixutils.MonixBase.syntax.RichMonixTask
 import js7.base.monixutils.MonixDeadline
 import js7.base.monixutils.MonixDeadline.now
 import js7.base.problem.{Checked, Problem}
@@ -308,7 +309,8 @@ trait RealEventWatch extends EventWatch
     timeout: FiniteDuration)
     (implicit s: Scheduler)
   : Task[Vector[Stamped[KeyedEvent[E]]]] = {
-    logger.debugTask(s"awaitAsync[${implicitly[ClassTag[E]].runtimeClass.simpleScalaName}]")(
+    val label = s"awaitAsync[${implicitly[ClassTag[E]].runtimeClass.simpleScalaName}]"
+    logger.debugTask(label)(
       when[E](EventRequest.singleClass[E](after = after, Some(timeout)), predicate)
         .map {
           case EventSeq.NonEmpty(events) =>
@@ -323,9 +325,9 @@ trait RealEventWatch extends EventWatch
           //?   throw new TornException(after, tornEventId)
 
           case o =>
-            sys.error(s"RealEventWatch.await[${implicitClass[E].scalaName}]" +
-              s"(after=$after,timeout=${timeout.pretty}) unexpected EventSeq: $o")
-        })
+            sys.error(s"$label(after=$after,timeout=${timeout.pretty}) unexpected EventSeq: $o")
+        }
+        .logWhenItTakesLonger(label))
   }
 }
 

@@ -62,20 +62,23 @@ final class UntaughtClusterWatchBothNodesLostTest extends ControllerClusterTeste
         assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(primaryId) == Some(clusterFailedOver))
         assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(backupId) == Some(clusterPassiveLost))
 
-        clusterWatchService.confirmNodeLoss(backupId).orThrow
+        clusterWatchService.manuallyConfirmNodeLoss(backupId, "CONFIRMER").orThrow
         assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(primaryId) == None)
         assert(clusterWatchService.clusterNodeLossEventToBeConfirmed(backupId) == Some(clusterPassiveLost))
 
         val ClusterPassiveLost(`backupId`) = primaryController.eventWatch.await[ClusterPassiveLost]()
           .head.value.event
 
-        assert(clusterWatchService.confirmNodeLoss(primaryId) == Left(ClusterNodeIsNotLostProblem(primaryId)))
+        assert(clusterWatchService.manuallyConfirmNodeLoss(primaryId, "CONFIRMER")
+          == Left(ClusterNodeIsNotLostProblem(primaryId)))
 
         waitForCondition(10.s, 10.ms)(
           primaryController.clusterState.await(99.s).isInstanceOf[PassiveLost])
 
-        assert(clusterWatchService.confirmNodeLoss(primaryId) == Left(ClusterNodeIsNotLostProblem(primaryId)))
-        assert(clusterWatchService.confirmNodeLoss(backupId) == Left(ClusterNodeIsNotLostProblem(backupId)))
+        assert(clusterWatchService.manuallyConfirmNodeLoss(primaryId, "CONFIRMER")
+          == Left(ClusterNodeIsNotLostProblem(primaryId)))
+        assert(clusterWatchService.manuallyConfirmNodeLoss(backupId, "CONFIRMER")
+          == Left(ClusterNodeIsNotLostProblem(backupId)))
 
         primaryController.terminate() await 99.s
         backupController.terminate() await 99.s

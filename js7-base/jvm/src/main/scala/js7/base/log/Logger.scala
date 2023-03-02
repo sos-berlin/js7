@@ -116,8 +116,8 @@ object Logger
       def traceTaskWithResult[A](
         function: String,
         args: => Any = "",
-        result: A => Any = identity[A](_))
-        (task: Task[A])
+        result: A => Any = identity[A](_),
+        task: Task[A])
       : Task[A] =
         logF[Task, A](logger, LogLevel.Trace, function, args, result)(task)
 

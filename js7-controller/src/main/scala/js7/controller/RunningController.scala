@@ -3,7 +3,7 @@ package js7.controller
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.pattern.ask
 import akka.util.Timeout
-import cats.effect.{Resource, Sync, SyncIO}
+import cats.syntax.flatMap.*
 import cats.syntax.traverse.*
 import com.google.inject.Stage.{DEVELOPMENT, PRODUCTION}
 import com.google.inject.util.Modules
@@ -486,13 +486,12 @@ object RunningController
           case _: StartingClusterCancelledException => Task { Left(clusterStartupTermination) }
         }
         .flatTap {
-          case Right(recovered) =>
-            persistence.start(recovered)
-          case _ =>
+          case Left(_) =>
             clusterNode.stop
               .void
               .onErrorHandle(t =>
                 logger.error(t.toStringWithCauses, t.nullIfNoStackTrace))
+          case Right(_) => Task.unit
         }
       val controllerState = Task.defer {
         if (persistence.isStarted)

@@ -192,11 +192,15 @@ extends Service.StoppableByRequest
             Task.right(())
 
           case _ =>
+            for (confirmer <- confirm.manualConfirmer) {
+              logger.info(s"‼️ ${requested.request.maybeEvent.fold("?")(_.getClass.simpleScalaName)
+                } has MANUALLY BEEN CONFIRMED by '$confirmer' ‼️")
+            }
             requested.confirm(confirmation)
         }
       }
       .flatMapT(_ => Task {
-        for (o <- currentClusterWatchId) o.touched(confirm.clusterWatchId)
+        for (o <- currentClusterWatchId) o.touch(confirm.clusterWatchId)
         Checked.unit
       })
 
@@ -207,7 +211,7 @@ extends Service.StoppableByRequest
         confirm.clusterWatchId,
         confirm.clusterWatchRunId))
 
-  // Recursive in (wrong) case of concurrent access to this._requested
+  // Recursive in case of (wrong) concurrent access to this._requested
   @tailrec private def takeRequest(confirm: ClusterWatchConfirm): Checked[Requested] = {
     _requested.get() match {
       case None =>
@@ -233,7 +237,9 @@ extends Service.StoppableByRequest
               rejectedClusterWatchId = confirm.clusterWatchId,
               requestedClusterWatchId = o))
 
-          case Some(o) if o != confirm.clusterWatchId && !requested.clusterWatchIdChangeAllowed =>
+          case Some(o) if o != confirm.clusterWatchId
+            && !confirm.manualConfirmer.isDefined
+            && !requested.clusterWatchIdChangeAllowed =>
             Left(ClusterWatchIdDoesNotMatchProblem(
               rejectedClusterWatchId = confirm.clusterWatchId,
               requestedClusterWatchId = o))
@@ -277,7 +283,7 @@ extends Service.StoppableByRequest
     private var expires: MonixDeadline =
       now + timing.clusterWatchIdTimeout
 
-    def touched(clusterWatchId: ClusterWatchId): Unit =
+    def touch(clusterWatchId: ClusterWatchId): Unit =
       if (clusterWatchId == this.clusterWatchId) {
         expires = now + timing.clusterWatchIdTimeout
       }

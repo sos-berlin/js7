@@ -16,6 +16,7 @@ object ClusterWatchingCommand
     requestId: ClusterWatchRequest.RequestId,
     clusterWatchId: ClusterWatchId,
     clusterWatchRunId: ClusterWatchRunId,
+    manualConfirmer: Option[String],
     problem: Option[Problem])
   extends ClusterWatchingCommand
   {
