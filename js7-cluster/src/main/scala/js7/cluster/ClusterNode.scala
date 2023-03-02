@@ -87,7 +87,10 @@ final class ClusterNode[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
       s"This is cluster $ownId, recovered ClusterState is ${recovered.clusterState}")
     val (currentPassiveReplicatedState, activeRecovered) = startNode(recovered)
     currentPassiveReplicatedState ->
-      activeRecovered.flatMapT(startWorkingNode)
+      activeRecovered
+        .flatTapT(recovered =>
+          persistence.start(recovered).as(Checked.unit))
+        .flatMapT(startWorkingNode)
   }
 
   private def startWorkingNode(recovered: Recovered[S]): Task[Checked[Recovered[S]]] = {

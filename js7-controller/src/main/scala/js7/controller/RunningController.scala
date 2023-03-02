@@ -471,13 +471,12 @@ object RunningController
           case _: StartingClusterCancelledException => Task { Left(clusterStartupTermination) }
         }
         .flatTap {
-          case Right(recovered) =>
-            persistence.start(recovered)
-          case _ =>
+          case Left(_) =>
             clusterNode.stop
               .void
               .onErrorHandle(t =>
                 logger.error(t.toStringWithCauses, t.nullIfNoStackTrace))
+          case Right(_) => Task.unit
         }
       val controllerState = Task.defer {
         if (persistence.isStarted)
