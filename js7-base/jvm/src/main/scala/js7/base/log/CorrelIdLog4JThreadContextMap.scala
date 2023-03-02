@@ -1,6 +1,8 @@
 package js7.base.log
 
+import java.util.Objects.requireNonNull
 import js7.base.log.CorrelIdLog4JThreadContextMap.*
+import js7.base.utils.Tests.isTest
 import org.apache.logging.log4j.spi.{CopyOnWrite, ReadOnlyThreadContextMap, ThreadContextMap}
 import org.apache.logging.log4j.util.StringMap
 
@@ -46,7 +48,13 @@ with CopyOnWrite
   def getReadOnlyContextData: StringMap = {
     getReadOnlyContextDataCount += 1
     val last = lastCorrelIdLog4jStringMap
-    val correlId = CorrelId.local()
+
+    val correlId = CorrelId.local() match {
+      case null => dummyNullCorrelId  // Happens occasionally in test
+      case o => o
+    }
+    if (isTest) requireNonNull(correlId)
+
     if (last.correlId eq correlId)
       last
     else {
@@ -63,6 +71,7 @@ object CorrelIdLog4JThreadContextMap
   /** Use this name in Log4j2 pattern as `%notEmpty{%X{js7.correlId} }`.
    * The value is empty iff CorrelId are switched off (-Djs7.log.correlId=false). */
   private[log] val CorrelIdKey = "js7.correlId"
+  private val dummyNullCorrelId = CorrelId("__NULL__")
 
   // Counters are not accurate because not synchronized !!!
   private var putSuppressedCount = 0L
