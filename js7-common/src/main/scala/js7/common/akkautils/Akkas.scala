@@ -63,23 +63,28 @@ object Akkas
     * Only once callable.
     */
   def terminate(actorSystem: ActorSystem): Future[Terminated] = {
-    import actorSystem.dispatcher  // The ExecutionContext will be shut down here !!!
-    val poolShutdownTimeout =
-      try actorSystem.settings.config.getDuration("js7.akka.http.connection-pool-shutdown-timeout").toFiniteDuration
-      catch { case _: ConfigException.Missing => 100.ms }
-    val timeoutPromise = Promise[Unit]()
-    val timer = actorSystem.scheduler.scheduleOnce(poolShutdownTimeout) {
-      timeoutPromise.success(())
-    }
-    Future.firstCompletedOf(Seq(
-      shutDownHttpConnectionPools(actorSystem),  // May block a long time (>99s)
-      timeoutPromise.future)
-    ).flatMap { _ =>
-      if (timeoutPromise.isCompleted) {
-        logger.debug(s"ActorSystem('${actorSystem.name}') shutdownAllConnectionPools() timed out after ${poolShutdownTimeout.pretty}")
+    if (actorSystem.whenTerminated.isCompleted)
+      actorSystem.whenTerminated
+    else {
+      import actorSystem.dispatcher  // The ExecutionContext will be shut down here !!!
+      val poolShutdownTimeout =
+        try actorSystem.settings.config.getDuration("js7.akka.http.connection-pool-shutdown-timeout").toFiniteDuration
+        catch { case _: ConfigException.Missing => 100.ms }
+      val timeoutPromise = Promise[Unit]()
+
+      val timer = actorSystem.scheduler.scheduleOnce(poolShutdownTimeout) {
+        timeoutPromise.success(())
       }
-      timer.cancel()
-      actorSystem.terminate()
+      Future.firstCompletedOf(Seq(
+        shutDownHttpConnectionPools(actorSystem),  // May block a long time (>99s)
+        timeoutPromise.future)
+      ).flatMap { _ =>
+        if (timeoutPromise.isCompleted) {
+          logger.debug(s"ActorSystem('${actorSystem.name}') shutdownAllConnectionPools() timed out after ${poolShutdownTimeout.pretty}")
+        }
+        timer.cancel()
+        actorSystem.terminate()
+      }
     }
   }
 
