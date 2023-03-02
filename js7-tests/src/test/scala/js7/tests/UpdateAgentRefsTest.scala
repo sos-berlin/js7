@@ -30,6 +30,7 @@ import js7.tests.testenv.ControllerTestUtils.newControllerApi
 import js7.tests.testenv.{DirectoryProvider, DirectoryProviderForScalaTest}
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
+import scala.annotation.tailrec
 
 final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForScalaTest
 {
@@ -107,14 +108,24 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
     val eventId = controller.eventWatch.lastFileEventId
     val versionId = VersionId("AGAIN")
     val subagentItem = SubagentItem(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort1"))
-    controllerApi
-      .updateItems(
-        Observable(
-          AddOrChangeSimple(agentRef),
-          AddOrChangeSimple(subagentItem),
-          AddVersion(versionId),
-          AddOrChangeSigned(toSignedString(workflow withVersion versionId))))
-      .await(99.s).orThrow
+
+    @tailrec def loop(n: Int): Unit = {
+      val checked = controllerApi
+        .updateItems(
+          Observable(
+            AddOrChangeSimple(agentRef),
+            AddOrChangeSimple(subagentItem),
+            AddVersion(versionId),
+            AddOrChangeSigned(toSignedString(workflow withVersion versionId))))
+        .await(99.s)
+        if (n > 0 && checked.left.exists(_.toString contains
+          "AgentDrivers for the following Agents are still running — please retry after some seconds:")) {
+          sleep(1.s)
+          loop(n - 1)
+        } else
+          checked.orThrow
+    }
+    loop(2)
 
     controller.eventWatch.await[AgentDedicated](after = eventId)
     controller.eventWatch.await[AgentReady](after = eventId)
