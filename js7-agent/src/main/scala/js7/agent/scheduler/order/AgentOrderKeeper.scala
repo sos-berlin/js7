@@ -718,7 +718,10 @@ final class AgentOrderKeeper(
             //  for example when OrderSuspensionMarked is emitted after OrderProcessed and before OrderMoved.
             //  Then, two OrderMoved are emitted, because the second event is based on the same Order state.
         }
-        if (keyedEvents.isEmpty && order.isProcessable) {
+        if (keyedEvents.isEmpty
+          && persistence.currentState.isOrderProcessable(order)
+          && order.isAttached
+          && !shuttingDown) {
           onOrderIsProcessable(order)
         }
       }
@@ -726,32 +729,28 @@ final class AgentOrderKeeper(
   }
 
   private def onOrderIsProcessable(order: Order[Order.State]): Unit =
-    if (!shuttingDown) {
-      for (_ <- order.attached.onProblem(p => logger.error(s"onOrderIsProcessable: $p"))) {
-        persistence.currentState
-          .idToWorkflow.checked(order.workflowId)
-          .map(workflow => workflow -> workflow.instruction(order.position))
-          .match_ {
-            case Left(problem) =>
-              logger.error(s"onOrderIsProcessable => $problem")
+    persistence.currentState
+      .idToWorkflow.checked(order.workflowId)
+      .map(workflow => workflow -> workflow.instruction(order.position))
+      .match_ {
+        case Left(problem) =>
+          logger.error(s"onOrderIsProcessable => $problem")
 
-            case Right((workflow, execute: Execute)) =>
-              val checkedJobKey = execute match {
-                case _: Execute.Anonymous => Right(workflow.anonymousJobKey(order.workflowPosition))
-                case o: Execute.Named     => workflow.jobKey(order.position.branchPath, o.name)  // defaultArguments are extracted later
-              }
-              checkedJobKey
-                .flatMap(jobRegister.checked)
-                .onProblem(problem =>
-                  logger.error(s"Internal: onOrderIsProcessable(${order.id}) => $problem"))
-                .foreach { jobEntry =>
-                  onOrderAvailableForJob(order.id, jobEntry)
-                }
-
-            case Right(_) =>
+        case Right((workflow, execute: Execute)) =>
+          val checkedJobKey = execute match {
+            case _: Execute.Anonymous => Right(workflow.anonymousJobKey(order.workflowPosition))
+            case o: Execute.Named     => workflow.jobKey(order.position.branchPath, o.name)  // defaultArguments are extracted later
           }
+          checkedJobKey
+            .flatMap(jobRegister.checked)
+            .onProblem(problem =>
+              logger.error(s"Internal: onOrderIsProcessable(${order.id}) => $problem"))
+            .foreach { jobEntry =>
+              onOrderAvailableForJob(order.id, jobEntry)
+            }
+
+        case Right(_) =>
       }
-    }
 
   private def onOrderAvailableForJob(orderId: OrderId, jobEntry: JobEntry): Unit =
   // TODO Make this more functional!
