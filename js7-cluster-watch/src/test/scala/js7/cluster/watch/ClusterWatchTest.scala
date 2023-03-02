@@ -127,7 +127,7 @@ final class ClusterWatchTest extends OurTestSuite
       locally {
         assert(heartbeat(bId, Coupled(setting.copy(activeId = bId))) ==
           Left(ClusterWatchInactiveNodeProblem(bId, clusterState, 0.s,
-            "heartbeat --> Coupled(passive A: http://A, active B: http://B)")))
+            "Coupled(passive A: http://A, active B: http://B)")))
       }
 
       assert(watch.clusterState() == Right(clusterState))

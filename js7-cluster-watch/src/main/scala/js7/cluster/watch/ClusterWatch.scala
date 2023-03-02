@@ -38,7 +38,7 @@ final class ClusterWatch(
   private def processRequest2(request: ClusterWatchRequest): Checked[Completed] = {
     import request.{from, clusterState as reportedClusterState}
 
-    lazy val opString = s"${request.maybeEvent getOrElse "heartbeat"} --> $reportedClusterState"
+    lazy val opString = s"${request.maybeEvent.fold("")(o => s"$o --> ")}$reportedClusterState"
     logger.trace(s"$from: $opString${
       _state.fold("")(o => ", after " + o.lastHeartbeat.elapsed.pretty)}")
 
