@@ -166,7 +166,7 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
     var eventId = eventWatch.lastAddedEventId
     myAgent = directoryProvider.startAgent(agentPath) await 99.s
     eventWatch.await[AgentDedicated](after = eventId)
-    sleep(100.ms)
+    eventWatch.await[AgentCoupled](after = eventId)
 
     eventId = eventWatch.lastAddedEventId
     controllerApi.executeCommand(ResetAgent(agentPath)).await(99.s).orThrow
