@@ -26,7 +26,7 @@ import js7.data.event.JournalEvent.{JournalEventsReleased, SnapshotTaken}
 import js7.data.event.JournalHeaders.*
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.SnapshotMeta.SnapshotEventId
-import js7.data.event.{AnyKeyedEvent, EventId, JournalEvent, JournalHeader, JournalHeaders, JournalId, KeyedEvent, SnapshotableState, Stamped}
+import js7.data.event.{AnyKeyedEvent, EventId, JournalEvent, JournalHeader, KeyedEvent, SnapshotableState, Stamped}
 import js7.journal.JournalActor.*
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
@@ -140,23 +140,6 @@ extends Actor with Stash with JournalLogging
       become(ready)
       logReady()
       sender ! Output.Ready(journalHeader)
-
-    case Input.StartWithoutRecovery(journalId, observer_) =>  // Testing only
-      committedState = S.empty
-      uncommittedState = committedState
-      if (conf.slowCheckState) {
-        journaledStateBuilder.initializeState(None, committedState.eventId, totalEventCount = 0, committedState)
-      }
-      journalingObserver := observer_
-      journalHeader = JournalHeaders.initial(journalId).copy(generation = 1)
-      eventWriter = newEventJsonWriter(after = EventId.BeforeFirst, withoutSnapshots = true)
-      eventWriter.writeHeader(journalHeader)
-      eventWriter.beginEventSection(sync = conf.syncOnCommit)
-      eventWriter.onJournalingStarted()
-      unstashAll()
-      become(ready)
-      logReady()
-      sender() ! Output.Ready(journalHeader)
 
     case _ =>
       stash()
@@ -739,10 +722,6 @@ object JournalActor
       journalingObserver: Option[JournalingObserver],
       recoveredJournalHeader: JournalHeader,
       totalRunningSince: Deadline)
-
-    final case class StartWithoutRecovery(
-      journalId: JournalId,
-      journalingObserver: Option[JournalingObserver] = None)
 
     private[journal] final case class Store(
       correlId: CorrelId,
