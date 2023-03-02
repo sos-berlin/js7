@@ -159,14 +159,19 @@ extends ReceiveLoggingActor.WithStash
           Task.pure(true)
         } else {
           lastCouplingFailed = Some(agentCouplingFailed)
-          logger.warn(s"Coupling failed: $problem")
-          for (t <- problem.throwableOption if t.getStackTrace.nonEmpty) logger.debug(s"Coupling failed: $problem", t)
-          if (noJournal)
+          if (agentCouplingFailed.problem is InvalidSessionTokenProblem) {
+            logger.debug(s"Coupling failed: $problem")
             Task.pure(true)
-          else
-            persistence.persistKeyedEvent(agentPath <-: agentCouplingFailed)
-              .map(_.map(_ => true))  // recouple and continue after onCouplingFailed
-              .map(_.orThrow)
+          } else {
+            logger.warn(s"Coupling failed: $problem")
+            for (t <- problem.throwableOption if t.getStackTrace.nonEmpty) logger.debug(s"Coupling failed: $problem", t)
+            if (noJournal)
+              Task.pure(true)
+            else
+              persistence.persistKeyedEvent(agentPath <-: agentCouplingFailed)
+                .map(_.map(_ => true))  // recouple and continue after onCouplingFailed
+                .map(_.orThrow)
+          }
         }
       }
 
