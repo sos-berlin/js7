@@ -1,9 +1,10 @@
 package js7.base.monixutils
 
+import js7.base.test.OurAsyncTestSuite
 import js7.base.time.ScalaTime.*
 import monix.eval.Task
-import monix.execution.Scheduler.Implicits.traced
-import js7.base.test.OurAsyncTestSuite
+import monix.execution.Scheduler.Implicits.traced as scheduler
+import monix.execution.schedulers.TestScheduler
 import scala.annotation.nowarn
 
 final class SwitchTest extends OurAsyncTestSuite
@@ -51,8 +52,10 @@ final class SwitchTest extends OurAsyncTestSuite
   }
 
   "whenOff" in {
+    implicit val scheduler = TestScheduler()
+
     val switch = Switch(false)
-    switch
+    val future = switch
       .whenOff
       .*>(switch.switchOn)
       .*>(Task.race(
@@ -65,11 +68,16 @@ final class SwitchTest extends OurAsyncTestSuite
         Task.sleep(100.ms).map(_ => fail())))
       .as(succeed)
       .runToFuture
+
+    scheduler.tick(100.ms)
+    future
   }
 
   "whenOn" in {
+    implicit val scheduler = TestScheduler()
+
     val switch = Switch(true)
-    switch
+    val future = switch
       .whenOn
       .*>(switch.switchOff)
       .*>(Task.race(
@@ -81,5 +89,8 @@ final class SwitchTest extends OurAsyncTestSuite
         Task.sleep(100.ms).map(_ => fail())))
       .as(succeed)
       .runToFuture
+
+    scheduler.tick(100.ms)
+    future
   }
 }
