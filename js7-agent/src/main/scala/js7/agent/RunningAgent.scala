@@ -94,14 +94,19 @@ extends AutoCloseable
 
   def close() = closer.close()
 
-  def terminate(processSignal: Option[ProcessSignal] = None): Task[ProgramTermination] =
+  def terminate(
+    processSignal: Option[ProcessSignal] = None,
+    suppressSnapshot: Boolean = false)
+  : Task[ProgramTermination] =
     if (terminated.isCompleted)  // Works only if previous termination has been run
       Task.fromFuture(terminated)
     else {
       logger.debug("terminate")
       for {
-        _ <- directExecuteCommand(AgentCommand.ShutDown(processSignal))
-              .map(_.orThrow)
+        _ <- directExecuteCommand(AgentCommand.ShutDown(
+          processSignal,
+          suppressSnapshot = suppressSnapshot)
+        ).map(_.orThrow)
         t <- Task.fromFuture(terminated)
       } yield t
     }

@@ -11,8 +11,6 @@ import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.{autoClosing, multipleAutoClosing}
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.common.akkautils.Akkas
-import js7.controller.RunningController
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerEvent
 import js7.data.event.KeyedEvent.NoKey
@@ -122,8 +120,7 @@ final class RecoveryTest extends OurTestSuite
         throw t
       }
       logger.info("🔥🔥🔥 TERMINATE CONTROLLER 🔥🔥🔥")
-      // Kill Controller ActorSystem
-      Akkas.terminateAndWait(controller.actorSystem, 99.s)
+      controller.terminate(suppressSnapshot = true).await(99.s)
     }
 
   private def runAgents(directoryProvider: DirectoryProvider)(body: IndexedSeq[RunningAgent] => Unit): Unit = {
@@ -141,8 +138,7 @@ final class RecoveryTest extends OurTestSuite
         throw t
       }
       logger.info("🔥🔥🔥 TERMINATE AGENTS 🔥🔥🔥")
-      // Kill Agents ActorSystems
-      for (agent <- agents) Akkas.terminateAndWait(agent.actorSystem, 99.s)
+      for (agent <- agents) agent.terminate(suppressSnapshot = true).await(99.s)
     }
   }
 }
