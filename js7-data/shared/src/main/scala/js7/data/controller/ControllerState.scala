@@ -17,7 +17,7 @@ import js7.data.board.BoardEvent.{NoticeDeleted, NoticePosted}
 import js7.data.board.{Board, BoardEvent, BoardPath, BoardState, Notice, NoticePlace}
 import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
-import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
+import js7.data.controller.ControllerEvent.ControllerTestEvent
 import js7.data.controller.ControllerState.{WorkflowToOrders, logger}
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
@@ -323,9 +323,6 @@ with SnapshotableState[ControllerState]
           } yield copy(
             keyToUnsignedItemState_ = keyToUnsignedItemState_.updated(subagentId, o))
       }
-
-    case KeyedEvent(_, _: ControllerShutDown) =>
-      Right(this)
 
     case KeyedEvent(_, ControllerTestEvent) =>
       Right(this)

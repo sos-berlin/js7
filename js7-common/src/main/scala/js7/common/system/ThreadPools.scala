@@ -76,7 +76,7 @@ object ThreadPools
           standardSchedulerResource(name, config)
       }
 
-  // Requires an outer Scheduler (global).
+  // May require an outer Scheduler (for example, global).
   def standardSchedulerResource[F[_]](name: String, config: Config)
     (implicit F: Sync[F])
   : Resource[F, Scheduler] =

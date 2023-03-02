@@ -40,7 +40,7 @@ final class TerminateWithUnknownAgentTest extends OurTestSuite with ControllerAg
 private object TerminateWithUnknownAgentTest
 {
   private val agentRef = AgentRef(AgentPath("UNKNOWN"), directors = Nil,
-    uri = Some(Uri(s"http://0.0.0.0:0")))
+    uri = Some(Uri("http://0.0.0.0:0")))
   private val workflow = Workflow.of(WorkflowPath("WORKFLOW"),
     EmptyJob.execute(agentRef.path))
 }
