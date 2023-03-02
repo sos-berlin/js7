@@ -6,8 +6,8 @@ import akka.http.scaladsl.settings.{ParserSettings, ServerSettings}
 import akka.http.scaladsl.{ConnectionContext, Http, HttpsConnectionContext}
 import akka.stream.TLSClientAuth
 import cats.effect.Resource
-import cats.effect.concurrent.Deferred
 import cats.syntax.foldable.*
+import cats.syntax.parallel.*
 import cats.syntax.show.*
 import cats.syntax.traverse.*
 import com.typesafe.config.{Config, ConfigFactory}
@@ -17,7 +17,6 @@ import js7.base.io.https.Https.loadSSLContext
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.service.Service
-import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.common.akkahttp.web.AkkaWebServer.*
@@ -28,10 +27,9 @@ import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.duration.{Deadline, FiniteDuration}
-import scala.concurrent.{Future, Promise, TimeoutException}
+import scala.concurrent.duration.Deadline
+import scala.concurrent.{Future, Promise}
 import scala.util.chaining.scalaUtilChainingOps
-import scala.util.control.NonFatal
 
 /**
  * @author Joacim Zschimmer
@@ -45,7 +43,6 @@ trait AkkaWebServer extends Service
 
   private val shuttingDownPromise = Promise[Completed]()
   private val shutdownTimeout = config.finiteDuration("js7.web.server.shutdown-timeout").orThrow
-  private val stopTimedOut = Deferred.unsafe[Task, Unit]
 
   private val untilTerminated: Task[Unit] =
     serverBindings
@@ -57,50 +54,33 @@ trait AkkaWebServer extends Service
 
   protected final def start =
     startService(
-      Task.racePair(untilTerminated, stopTimedOut.get).void)
+      untilTerminated)
 
-  def stop = {
-    val longerTimeout = shutdownTimeout + 2.s
-    stop(shutdownTimeout)
-      .timeoutTo(
-        longerTimeout,
-        Task.defer {
-          logger.debug(s"Cancelling AkkaWebServer.stop after ${longerTimeout.pretty}")
-          stopTimedOut.complete(())
-        })
-  }
+  protected val stop =
+    terminate.*>(untilStopped).memoize
 
-  private def stop(timeout: FiniteDuration = shutdownTimeout): Task[Unit] =
-    terminate(timeout)
-      .executeOn(scheduler)
-      .uncancelable
-      .timeout(timeout + 1.s)
-      .onErrorHandle {
-        case NonFatal(t: TimeoutException) =>
-          logger.warn(s"$toString while shuttig down the web server: " + t.toStringWithCauses)
-        case NonFatal(t) =>
-          logger.warn(s"$toString close(): " + t.toStringWithCauses, t.nullIfNoStackTrace)
-      }
-
-  private def terminate(timeout: FiniteDuration): Task[Unit] =
+  private def terminate: Task[Unit] =
     Task.defer {
       if (!shuttingDownPromise.trySuccess(Completed))
         Task.unit
       else if (serverBindings == null)
         Task.unit
       else
-        terminateBindings(timeout)
+        terminateBindings
     }
 
-  private def terminateBindings(timeout: FiniteDuration): Task[Unit] =
+  private def terminateBindings: Task[Unit] =
     logger.debugTask(
-      serverBindings.traverse(binding =>
-        Task.deferFuture(binding.terminate(hardDeadline = timeout))
-          .map { (_: Http.HttpTerminated) =>
-            logger.debug(s"$binding terminated")
-            Completed
-          })
-        .map((_: Seq[Completed]) => ()))
+      serverBindings.parTraverse(binding =>
+        logger
+          .debugTask(s"$toString terminate $binding")(
+            Task.deferFuture(
+              binding.terminate(hardDeadline = shutdownTimeout)))
+          .onErrorHandle { t =>
+            logger.error(s"$toString $binding.terminate => ${t.toStringWithCauses}",
+              t.nullIfNoStackTrace)
+          }
+      ).void)
 
   override def toString = s"${getClass.shortClassName}"
 }
