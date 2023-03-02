@@ -44,7 +44,7 @@ final class ClusterWatch(
 
     val checkedClusterState = (_state, request.maybeEvent) match {
       case (None/*untaught*/, Some(event: ClusterNodeLostEvent)) =>
-        if (!isNodeLossConfirmed(event))
+        if (!isNodeLossManuallyConfirmed(event))
           Left(ClusterNodeLossNotConfirmedProblem(event))
         else {
           logger.info(
@@ -57,7 +57,7 @@ final class ClusterWatch(
         Right(reportedClusterState)
 
       case (Some(state), _) =>
-        state.processRequest(request, isNodeLossConfirmed, opString)
+        state.processRequest(request, isNodeLossManuallyConfirmed, opString)
     }
 
     checkedClusterState match {
@@ -83,12 +83,13 @@ final class ClusterWatch(
     }
   }
 
-  private def isNodeLossConfirmed(event: ClusterNodeLostEvent) =
-    _nodeToLossRejected.get(event.lostNodeId).exists(_.isConfirmed(event))
+  private def isNodeLossManuallyConfirmed(event: ClusterNodeLostEvent) =
+    _nodeToLossRejected.get(event.lostNodeId)
+      .exists(_.isManuallyConfirmed(event))
 
   // User manually confirms a ClusterNodeLostEvent event
-  def confirmNodeLoss(lostNodeId: NodeId): Checked[Unit] =
-    logger.debugCall("confirmNodeLoss", lostNodeId)(
+  def manuallyConfirmNodeLoss(lostNodeId: NodeId): Checked[Unit] =
+    logger.debugCall("manuallyConfirmNodeLoss", lostNodeId)(
       synchronized {
         matchRejectedNodeLostEvent(lostNodeId)
           .toRight(ClusterNodeIsNotLostProblem(lostNodeId))
@@ -135,9 +136,12 @@ object ClusterWatch
   private val logger = Logger(getClass)
 
   // ClusterNodeLossEvent has been rejected, but the user may confirm it later
-  private case class LossRejected(event: ClusterNodeLostEvent, nodeLossConfirmed: Boolean = false) {
-    def isConfirmed(event: ClusterNodeLostEvent) =
-      nodeLossConfirmed && event == this.event
+  private case class LossRejected(
+    event: ClusterNodeLostEvent,
+    manuallyConfirmed: Boolean = false)
+  {
+    def isManuallyConfirmed(event: ClusterNodeLostEvent) =
+      manuallyConfirmed && event == this.event
   }
 
   private[ClusterWatch] final case class State(
@@ -147,7 +151,7 @@ object ClusterWatch
   {
     def processRequest(
       request: ClusterWatchRequest,
-      isNodeLossConfirmed: ClusterNodeLostEvent => Boolean,
+      isNodeLossManuallyConfirmed: ClusterNodeLostEvent => Boolean,
       opString: => String)
     : Checked[HasNodes] = {
       import request.{from, clusterState as reportedClusterState}
@@ -194,7 +198,7 @@ object ClusterWatch
                 for (event <- maybeEvent) logger.info(s"$from: $event")
                 maybeEvent match {
                   case Some(event: ClusterNodeLostEvent)
-                    if requireManualNodeLossConfirmation && !isNodeLossConfirmed(event) =>
+                    if requireManualNodeLossConfirmation && !isNodeLossManuallyConfirmed(event) =>
                     Left(ClusterNodeLossNotConfirmedProblem(event))
                   case _ =>
                     if (updatedClusterState == reportedClusterState) {

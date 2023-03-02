@@ -73,14 +73,14 @@ final class UntaughtClusterWatchFailoverClusterTest extends ControllerClusterTes
       withClusterWatchService() { clusterWatchService =>
         // ClusterWatch is untaught
         // backupId ist not lost
-        assert(clusterWatchService.confirmNodeLoss(backupId)
+        assert(clusterWatchService.manuallyConfirmNodeLoss(backupId)
           == Left(ClusterNodeIsNotLostProblem(backupId)))
 
         // primaryId is lost. Wait until passive node has detected it.
         waitForCondition(99.s, 10.ms)(
-          clusterWatchService.confirmNodeLoss(primaryId)
+          clusterWatchService.manuallyConfirmNodeLoss(primaryId)
             != Left(ClusterNodeIsNotLostProblem(primaryId)))
-        clusterWatchService.confirmNodeLoss(primaryId).orThrow
+        clusterWatchService.manuallyConfirmNodeLoss(primaryId).orThrow
 
         val Stamped(failedOverEventId, _, NoKey <-: failedOver) =
           backupController.eventWatch.await[ClusterFailedOver]().head
@@ -93,7 +93,7 @@ final class UntaughtClusterWatchFailoverClusterTest extends ControllerClusterTes
         waitForCondition(10.s, 10.ms)(
           backupController.clusterState.await(99.s).isInstanceOf[FailedOver])
 
-        assert(clusterWatchService.confirmNodeLoss(backupId)
+        assert(clusterWatchService.manuallyConfirmNodeLoss(backupId)
           == Left(ClusterNodeIsNotLostProblem(backupId)))
         assert(backupController.clusterState.await(99.s) ==
           FailedOver(

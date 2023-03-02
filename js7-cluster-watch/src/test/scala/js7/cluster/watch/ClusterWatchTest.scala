@@ -291,7 +291,7 @@ final class ClusterWatchTest extends OurTestSuite
     assert(watch.clusterState() == Left(UntaughtClusterWatchProblem))
     assert(watch.clusterNodeLossEventToBeConfirmed(aId) == None)
     assert(watch.clusterNodeLossEventToBeConfirmed(bId) == None)
-    assert(watch.confirmNodeLoss(passiveId) == Left(ClusterNodeIsNotLostProblem(passiveId)))
+    assert(watch.manuallyConfirmNodeLoss(passiveId) == Left(ClusterNodeIsNotLostProblem(passiveId)))
 
     // Cluster node tries and fails
     assert(watch.processRequest(ClusterWatchCheckEvent(
@@ -304,7 +304,7 @@ final class ClusterWatchTest extends OurTestSuite
     assert(watch.clusterNodeLossEventToBeConfirmed(passiveId) == Some(event))
 
     // Manually confirm node loss
-    watch.confirmNodeLoss(passiveId).orThrow
+    watch.manuallyConfirmNodeLoss(passiveId).orThrow
 
     // Cluster node's second try succeeds
     assert(watch.processRequest(ClusterWatchCheckEvent(
@@ -334,7 +334,7 @@ final class ClusterWatchTest extends OurTestSuite
 
     assert(watch.clusterState() == Left(UntaughtClusterWatchProblem))
     assert(watch.clusterNodeLossEventToBeConfirmed(lostNodeId) == None)
-    assert(watch.confirmNodeLoss(lostNodeId) == Left(ClusterNodeIsNotLostProblem(lostNodeId)))
+    assert(watch.manuallyConfirmNodeLoss(lostNodeId) == Left(ClusterNodeIsNotLostProblem(lostNodeId)))
 
     // Cluster node tries and fails
     assert(watch.processRequest(ClusterWatchCheckEvent(
@@ -346,7 +346,7 @@ final class ClusterWatchTest extends OurTestSuite
     assert(watch.clusterNodeLossEventToBeConfirmed(lostNodeId) == Some(event))
 
     // Manually confirm node loss
-    watch.confirmNodeLoss(lostNodeId).orThrow
+    watch.manuallyConfirmNodeLoss(lostNodeId).orThrow
 
     // Cluster node's second try succeeds
     assert(watch.processRequest(ClusterWatchCheckEvent(
@@ -392,12 +392,12 @@ final class ClusterWatchTest extends OurTestSuite
       watch.processRequest(ClusterWatchCheckState(RequestId(123), correlId, activeId, coupled))
         .orThrow
 
-      assert(watch.confirmNodeLoss(activeId) == Left(ClusterNodeIsNotLostProblem(activeId)))
-      assert(watch.confirmNodeLoss(passiveId) == Left(ClusterNodeIsNotLostProblem(passiveId)))
+      assert(watch.manuallyConfirmNodeLoss(activeId) == Left(ClusterNodeIsNotLostProblem(activeId)))
+      assert(watch.manuallyConfirmNodeLoss(passiveId) == Left(ClusterNodeIsNotLostProblem(passiveId)))
 
       scheduler.tick(setting.timing.clusterWatchHeartbeatValidDuration)
-      assert(watch.confirmNodeLoss(activeId) == Left(ClusterNodeIsNotLostProblem(activeId)))
-      assert(watch.confirmNodeLoss(passiveId) == Left(ClusterNodeIsNotLostProblem(passiveId)))
+      assert(watch.manuallyConfirmNodeLoss(activeId) == Left(ClusterNodeIsNotLostProblem(activeId)))
+      assert(watch.manuallyConfirmNodeLoss(passiveId) == Left(ClusterNodeIsNotLostProblem(passiveId)))
 
       val expectedClusterState = coupled.applyEvent(NoKey <-: event).orThrow.asInstanceOf[HasNodes]
 
@@ -410,11 +410,11 @@ final class ClusterWatchTest extends OurTestSuite
       // Try to confirm a loss of the not lost Node
       import event.lostNodeId
       val notLostNodeId = setting.other(lostNodeId)
-      assert(watch.confirmNodeLoss(notLostNodeId) == Left(
+      assert(watch.manuallyConfirmNodeLoss(notLostNodeId) == Left(
         ClusterNodeIsNotLostProblem(notLostNodeId)))
 
       // Confirm the loss of the Node
-      watch.confirmNodeLoss(lostNodeId).orThrow
+      watch.manuallyConfirmNodeLoss(lostNodeId).orThrow
       //scheduler.tick(setting.timing.clusterWatchHeartbeatValidDuration)
       watch
         .processRequest(ClusterWatchCheckEvent(RequestId(123), correlId, notLostNodeId, event, expectedClusterState))
@@ -422,8 +422,8 @@ final class ClusterWatchTest extends OurTestSuite
         .orThrow
       assert(watch.clusterState() == Right(expectedClusterState))
 
-      assert(watch.confirmNodeLoss(activeId) == Left(ClusterNodeIsNotLostProblem(activeId)))
-      assert(watch.confirmNodeLoss(passiveId) == Left(ClusterNodeIsNotLostProblem(passiveId)))
+      assert(watch.manuallyConfirmNodeLoss(activeId) == Left(ClusterNodeIsNotLostProblem(activeId)))
+      assert(watch.manuallyConfirmNodeLoss(passiveId) == Left(ClusterNodeIsNotLostProblem(passiveId)))
     }
   }
 }

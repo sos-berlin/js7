@@ -62,7 +62,7 @@ final class JProxyWithClusterWatchTester
 
                 // Don't do this automatically! The user must be sure that the node is down.
                 // Otherwise, both cluster nodes may get active, with destroying consequences.
-                Either<Problem,?> checked = clusterWatchService.confirmNodeLoss(primaryId);
+                Either<Problem,?> checked = clusterWatchService.manuallyConfirmNodeLoss(primaryId);
                 Optional<Problem> maybeProblem = OptionConverters.toJava(checked.left().toOption());
             }
 

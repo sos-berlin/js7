@@ -119,8 +119,8 @@ extends Service.StoppableByRequest
           logger.error(s"$nodeApi ${t.toStringWithCauses}", t.nullIfNoStackTrace))
   }
 
-  def confirmNodeLoss(lostNodeId: NodeId): Checked[Unit] =
-    clusterWatch.confirmNodeLoss(lostNodeId)
+  def manuallyConfirmNodeLoss(lostNodeId: NodeId): Checked[Unit] =
+    clusterWatch.manuallyConfirmNodeLoss(lostNodeId)
 
   def clusterNodeLossEventToBeConfirmed(lostNodeId: NodeId): Option[ClusterNodeLostEvent] =
     clusterWatch.clusterNodeLossEventToBeConfirmed(lostNodeId)

@@ -44,11 +44,11 @@ final class UntaughtClusterWatchPassiveLostClusterTest extends ControllerCluster
 
       withClusterWatchService() { clusterWatch =>
         // ClusterWatch is untaught
-        assert(clusterWatch.confirmNodeLoss(primaryId) == Left(ClusterNodeIsNotLostProblem(primaryId)))
+        assert(clusterWatch.manuallyConfirmNodeLoss(primaryId) == Left(ClusterNodeIsNotLostProblem(primaryId)))
 
         // backupId is lost. Wait until active node has detected it.
         waitForCondition(99.s, 10.ms)(
-          clusterWatch.confirmNodeLoss(backupId) != Left(ClusterNodeIsNotLostProblem(backupId)))
+          clusterWatch.manuallyConfirmNodeLoss(backupId) != Left(ClusterNodeIsNotLostProblem(backupId)))
 
         primaryController.eventWatch.await[ClusterPassiveLost]()
 
