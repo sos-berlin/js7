@@ -67,6 +67,7 @@ extends Actor with Stash with JournalLogging
   private var uncommittedState: S = null.asInstanceOf[S]
   // committedState is being read asynchronously from outside this JournalActor. Always keep consistent!
   @volatile private var committedState: S = null.asInstanceOf[S]
+  private val commitStateSync = new Object
   private val journaledStateBuilder = S.newBuilder()
   /** Originates from `JournalValue`, calculated from recovered journal if not freshly initialized. */
   private var journalHeader: JournalHeader = null
@@ -389,22 +390,26 @@ extends Actor with Stash with JournalLogging
     val ackWritten = persistBuffer.view.take(n)
     logCommitted(ackWritten, ack = ack)
 
-    for (lastFileLengthAndEventId <- ackWritten.flatMap(_.lastFileLengthAndEventId).lastOption) {
-      lastAcknowledgedEventId = lastFileLengthAndEventId.value
-      eventWriter.onCommitted(lastFileLengthAndEventId, n = ackWritten.map(_.eventCount).sum)
-    }
-
-    for (persist <- ackWritten.collect { case o: StandardPersist => o }) {
-      updateStateAndContinueCallers(persist)
-    }
-
-    // Update EventId for trailing acceptEarly events
-    ackWritten.lastOption
-      .collect { case o: AcceptEarlyPersist => o }
-      .flatMap(_.lastFileLengthAndEventId)
-      .foreach { case PositionAnd(_, eventId) =>
-        committedState = committedState.withEventId(eventId)
+    commitStateSync.synchronized {
+      for (lastFileLengthAndEventId <- ackWritten.flatMap(_.lastFileLengthAndEventId).lastOption) {
+        lastAcknowledgedEventId = lastFileLengthAndEventId.value
+        eventWriter.onCommitted(lastFileLengthAndEventId, n = ackWritten.map(_.eventCount).sum)
       }
+
+      for (persist <- ackWritten.collect { case o: StandardPersist => o }) {
+        committedState = committedState.applyStampedEvents(persist.stampedSeq)
+          .orThrow /*may crash JournalActor !!!*/
+        continueCallers(persist)
+      }
+
+      // Update EventId for trailing acceptEarly events
+      ackWritten.lastOption
+        .collect { case o: AcceptEarlyPersist => o }
+        .flatMap(_.lastFileLengthAndEventId)
+        .foreach { case PositionAnd(_, eventId) =>
+          committedState = committedState.withEventId(eventId)
+        }
+    }
 
     for (p <- persistBuffer.iterator.take(n)) statistics.onPersisted(p.eventCount, p.since)
     persistBuffer.removeFirst(n)
@@ -432,9 +437,7 @@ extends Actor with Stash with JournalLogging
     maybeDoASnapshot()
   }
 
-  private def updateStateAndContinueCallers(persist: StandardPersist): Unit = {
-    committedState = committedState.applyStampedEvents(persist.stampedSeq)
-      .orThrow/*may crash JournalActor !!!*/
+  private def continueCallers(persist: StandardPersist): Unit = {
     if (persist.replyTo != Actor.noSender) {
       // Continue caller
       reply(persist.sender, persist.replyTo, Output.Stored(persist.stampedSeq, committedState, persist.callersItem))
@@ -496,7 +499,8 @@ extends Actor with Stash with JournalLogging
     case Input.GetJournaledState =>
       // Allow the caller outside of this JournalActor to read committedState
       // asynchronously at any time.
-      sender() ! (() => committedState)  // Direct access, reads asynchronously !!!
+      // Returned function accesses committedState directly and asynchronously !!!
+      sender() ! (() => commitStateSync.synchronized(committedState))
   }
 
   def tryTakeSnapshotIfRequested(): Unit =

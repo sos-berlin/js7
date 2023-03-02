@@ -21,7 +21,6 @@ import js7.tests.ForkListRecoveryTest.*
 import js7.tests.jobs.EmptyJob
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.DirectoryProviderForScalaTest
-import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 
 final class ForkListRecoveryTest extends OurTestSuite with DirectoryProviderForScalaTest
@@ -49,7 +48,6 @@ final class ForkListRecoveryTest extends OurTestSuite with DirectoryProviderForS
           controller.eventWatch.whenKeyedEvent[OrderPrompted](
             EventRequest.singleClass(), childOrderIds.head
           ) >>
-            Task.sleep(100.ms)/*Sometimes, ControllerState update is delayed?*/ >>
             controller.executeCommandAsSystemUser(AnswerOrderPrompt(orderId)))
         .await(99.s)
         .combineProblems

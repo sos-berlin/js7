@@ -470,7 +470,6 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
     val extraOrderId = OrderId("PARALLEL-EXTRA")
     controllerApi.addOrder(FreshOrder(extraOrderId, workflow.path)).await(99.s).orThrow
     eventWatch.await[OrderAttached](_.key == extraOrderId, after = eventId)
-    sleep(100.ms)
     assert(orderToObstacles(extraOrderId)(WallClock) == Right(Set(jobParallelismLimitReached)))
 
     controllerApi.executeCommand(CancelOrders(extraOrderId :: Nil)).await(99.s).orThrow

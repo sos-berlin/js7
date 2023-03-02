@@ -77,7 +77,6 @@ final class FileWatchNarrowPatternTest extends OurTestSuite with ControllerAgent
 
     eventWatch.await[ExternalOrderVanished](_.event.externalOrderName == ExternalOrderName("A"))
     // This must be the only ExternalOrderVanished event
-    sleep(100.ms)
     assert(eventWatch.keyedEvents[ExternalOrderVanished](after = EventId.BeforeFirst) ==
       Seq(fileWatch.path <-: ExternalOrderVanished(ExternalOrderName("A"))))
 

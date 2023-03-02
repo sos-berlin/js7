@@ -70,7 +70,6 @@ final class FileWatchLongTest extends OurTestSuite with ControllerAgentForScalaT
     assert(controllerApi.updateItems(Observable(DeleteSimple(fileWatch.path))).await(99.s) ==
       Right(Completed))
     eventWatch.await[ItemDeleted](_.event.key == fileWatch.path)
-    sleep(100.ms)
     assert(controllerState.keyTo(OrderWatchState).isEmpty)
   }
 }

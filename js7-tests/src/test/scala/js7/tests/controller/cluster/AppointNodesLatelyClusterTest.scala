@@ -109,7 +109,6 @@ class AppointNodesLatelyClusterTest extends OurTestSuite with ControllerClusterT
 
           primaryController.eventWatch.await[ClusterCoupled](after = eventId)
           backupController.eventWatch.await[ClusterCoupled](after = eventId)
-          sleep(100.ms)
 
           assert(primaryController.clusterState.await(99.s).asInstanceOf[Coupled].setting == updatedBackupSetting)
           assert(backupController.clusterState.await(99.s).asInstanceOf[Coupled].setting == updatedBackupSetting)
