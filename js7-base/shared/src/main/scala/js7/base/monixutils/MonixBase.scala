@@ -306,16 +306,14 @@ object MonixBase
       def executeOn(scheduler: Scheduler): Resource[Task, A] =
         Resource.suspend(
           // Execute acquire and release on the given `scheduler`
-          Task(
-            resource
-              .allocated
-              .executeOn(scheduler)
-              .map { case (subagent, release) =>
-                Resource.make(
-                  acquire = Task.pure(subagent))(
-                  release = _ => release.executeOn(scheduler))
-              }
-          ).flatten.executeOn(scheduler))
+          resource
+            .allocated
+            .map { case (acquiredThing, release) =>
+              Resource.make(
+                acquire = Task.pure(acquiredThing))(
+                release = _ => release.executeOn(scheduler))
+            }
+            .executeOn(scheduler))
     }
 
     implicit final class RichScheduler(private val scheduler: Scheduler) extends AnyVal
