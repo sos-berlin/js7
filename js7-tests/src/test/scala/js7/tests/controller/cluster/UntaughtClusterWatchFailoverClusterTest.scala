@@ -12,9 +12,9 @@ import js7.cluster.ClusterWatchCounterpart.WaitingForConfirmation
 import js7.cluster.watch.api.ClusterWatchProblems.ClusterNodeIsNotLostProblem
 import js7.common.guice.GuiceImplicits.RichInjector
 import js7.controller.configuration.ControllerConfiguration
-import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver}
+import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState.{Coupled, FailedOver}
-import js7.data.cluster.ClusterWatchCheckEvent
+import js7.data.cluster.{ClusterWatchCheckEvent, ClusterWatchId}
 import js7.data.controller.ControllerCommand.ShutDown
 import js7.data.event.*
 import js7.data.event.KeyedEvent.NoKey
@@ -24,7 +24,6 @@ import js7.data.value.NumberValue
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.tests.controller.cluster.ControllerClusterTester.*
 import js7.tests.controller.cluster.UntaughtClusterWatchFailoverClusterTest.*
-import js7.tests.testenv.ControllerClusterForScalaTest.clusterWatchId
 import monix.execution.Scheduler.Implicits.global
 import scala.concurrent.duration.Deadline.now
 
@@ -70,35 +69,35 @@ final class UntaughtClusterWatchFailoverClusterTest extends ControllerClusterTes
         })
         .await(99.s)
 
-      withClusterWatchService() { clusterWatchService =>
+      withClusterWatchService(ClusterWatchId("CLUSTER-WATCH-2")) { clusterWatchService =>
         // ClusterWatch is untaught
         // backupId ist not lost
-        assert(clusterWatchService.manuallyConfirmNodeLoss(backupId)
+        assert(clusterWatchService.manuallyConfirmNodeLoss(backupId, "CONFIRMER")
           == Left(ClusterNodeIsNotLostProblem(backupId)))
 
         // primaryId is lost. Wait until passive node has detected it.
         waitForCondition(99.s, 10.ms)(
-          clusterWatchService.manuallyConfirmNodeLoss(primaryId)
+          clusterWatchService.manuallyConfirmNodeLoss(primaryId, "CONFIRMER")
             != Left(ClusterNodeIsNotLostProblem(primaryId)))
-        clusterWatchService.manuallyConfirmNodeLoss(primaryId).orThrow
+        clusterWatchService.manuallyConfirmNodeLoss(primaryId, "CONFIRMER").orThrow
 
-        val Stamped(failedOverEventId, _, NoKey <-: failedOver) =
+        val Stamped(failedOverEventId, _, NoKey <-: clusterFailedOver) =
           backupController.eventWatch.await[ClusterFailedOver]().head
-        assert(failedOver.failedAt.fileEventId == backupController.eventWatch.fileEventIds.last ||
-               failedOver.failedAt.fileEventId == backupController.eventWatch.fileEventIds.dropRight(1).last)
+        assert(clusterFailedOver.failedAt.fileEventId == backupController.eventWatch.fileEventIds.last ||
+               clusterFailedOver.failedAt.fileEventId == backupController.eventWatch.fileEventIds.dropRight(1).last)
         val expectedFailedFile = primaryController.injector.instance[ControllerConfiguration]
-          .journalMeta.file(failedOver.failedAt.fileEventId)
-        assert(failedOver.failedAt.position == size(expectedFailedFile))
+          .journalMeta.file(clusterFailedOver.failedAt.fileEventId)
+        assert(clusterFailedOver.failedAt.position == size(expectedFailedFile))
 
-        waitForCondition(10.s, 10.ms)(
-          backupController.clusterState.await(99.s).isInstanceOf[FailedOver])
-
-        assert(clusterWatchService.manuallyConfirmNodeLoss(backupId)
+        backupController.eventWatch.await[ClusterWatchRegistered](after = failedOverEventId)
+        assert(clusterWatchService.manuallyConfirmNodeLoss(backupId, "CONFIRMER")
           == Left(ClusterNodeIsNotLostProblem(backupId)))
         assert(backupController.clusterState.await(99.s) ==
           FailedOver(
-            clusterSetting.copy(activeId = backupId, clusterWatchId = Some(clusterWatchId)),
-            failedOver.failedAt))
+            clusterSetting.copy(
+              activeId = backupId,
+              clusterWatchId = Some(clusterWatchService.clusterWatchId)),
+            clusterFailedOver.failedAt))
 
         backupController.eventWatch.await[OrderFinished](_.key == orderId, after = failedOverEventId)
       }

@@ -4,7 +4,6 @@ import cats.data.NonEmptySeq
 import cats.effect.Resource
 import com.typesafe.config.Config
 import js7.base.configutils.Configs.RichConfig
-import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.MonixDeadline
@@ -18,6 +17,7 @@ import js7.base.utils.ScalaUtils.syntax.{RichEither, RichThrowable}
 import js7.base.utils.{DelayConf, Delayer}
 import js7.base.web.HttpClient
 import js7.base.web.HttpClient.HttpException
+import js7.cluster.watch.ClusterWatch.Confirmed
 import js7.cluster.watch.ClusterWatchService.*
 import js7.cluster.watch.api.ClusterWatchProblems.ClusterWatchRequestDoesNotMatchProblem
 import js7.cluster.watch.api.HttpClusterNodeApi
@@ -98,14 +98,15 @@ extends Service.StoppableByRequest
       Task(clusterWatch.processRequest(request))
         .flatMap(respond(request, _))
 
-    private def respond(request: ClusterWatchRequest, response: Checked[Completed]): Task[Unit] =
+    private def respond(request: ClusterWatchRequest, confirmed: Checked[Confirmed]): Task[Unit] =
       HttpClient
         .liftProblem(nodeApi
           .retryIfSessionLost()(nodeApi
             .executeClusterWatchingCommand(
               ClusterWatchConfirm(
                 request.requestId, clusterWatchId, clusterWatchRunId,
-                response.left.toOption))
+                manualConfirmer = confirmed.toOption.flatMap(_.manualConfirmer),
+                problem = confirmed.left.toOption))
             .void))
         .map {
           case Left(problem @ ClusterWatchRequestDoesNotMatchProblem) =>
@@ -119,8 +120,8 @@ extends Service.StoppableByRequest
           logger.error(s"$nodeApi ${t.toStringWithCauses}", t.nullIfNoStackTrace))
   }
 
-  def manuallyConfirmNodeLoss(lostNodeId: NodeId): Checked[Unit] =
-    clusterWatch.manuallyConfirmNodeLoss(lostNodeId)
+  def manuallyConfirmNodeLoss(lostNodeId: NodeId, confirmer: String): Checked[Unit] =
+    clusterWatch.manuallyConfirmNodeLoss(lostNodeId, confirmer)
 
   def clusterNodeLossEventToBeConfirmed(lostNodeId: NodeId): Option[ClusterNodeLostEvent] =
     clusterWatch.clusterNodeLossEventToBeConfirmed(lostNodeId)

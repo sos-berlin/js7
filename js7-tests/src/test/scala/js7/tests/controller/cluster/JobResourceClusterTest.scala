@@ -51,6 +51,7 @@ class JobResourceClusterTest extends ControllerClusterTester
         val primaryController = primary.startController(httpPort = Some(primaryControllerPort)) await 99.s
         primaryController.eventWatch.await[ClusterEvent.ClusterCoupled]()
         primaryController.eventWatch.await[ControllerReady]()
+        primaryController.waitUntilReady()
         sleep(100.ms)  // TODO Wait controllerState has been updated
 
         assert(primaryController.controllerState.await(99.s).pathToSignedSimpleItem(jobResource.path).value == jobResource0)

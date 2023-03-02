@@ -15,12 +15,14 @@ final class ClusterWatchingCommandTest extends OurTestSuite
         ClusterWatchRequest.RequestId(123L),
         ClusterWatchId("WATCH"),
         ClusterWatchRunId(Base64UUID.zero.string),
+        manualConfirmer = Some("SOMEONE"),
         Some(Problem("PROBLEM"))),
       json"""{
           "TYPE": "ClusterWatchConfirm",
           "clusterWatchId": "WATCH",
           "clusterWatchRunId": "AAAAAAAAAAAAAAAAAAAAAA",
           "requestId": 123,
+          "manualConfirmer": "SOMEONE",
           "problem": {
             "message": "PROBLEM"
           }
