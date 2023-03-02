@@ -474,9 +474,9 @@ with MainJournalingActor[ControllerState, Event]
     case Command.Execute(command, meta, correlId) =>
       val sender = this.sender()
       if (shuttingDown)
-        sender ! Status.Failure(ControllerIsShuttingDownProblem.throwable)
+        sender ! Status.Success(Left(ControllerIsShuttingDownProblem))
       else if (switchover.isDefined)
-        sender ! Status.Failure(ControllerIsSwitchingOverProblem.throwable)
+        sender ! Status.Success(Left(ControllerIsSwitchingOverProblem))
       else
         correlId.bind(
           executeControllerCommand(command, meta)
