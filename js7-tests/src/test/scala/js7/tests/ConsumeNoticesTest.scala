@@ -74,7 +74,6 @@ with BlockingItemUpdater
     TestJob.continue()
     eventWatch.await[OrderNoticesConsumed](_.key == orderId)
 
-    sleep(100.ms)
     assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice.get(noticeId).isEmpty)
     assert(controllerState.keyTo(BoardState)(bBoard.path).idToNotice.get(noticeId).isEmpty)
 
@@ -207,7 +206,6 @@ with BlockingItemUpdater
 
     eventWatch.await[OrderNoticesConsumptionStarted](_.key == orderId)
 
-    sleep(100.ms)
     assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).notice.isDefined)
     assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).isInConsumption)
     assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).consumptionCount == 1)
@@ -224,7 +222,6 @@ with BlockingItemUpdater
     TestJob.continue()
     eventWatch.await[OrderNoticesConsumed](_.key == orderId)
 
-    sleep(100.ms)
     // Notice at board has been deleted:
     assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice.get(noticeId).isEmpty)
 
@@ -283,7 +280,6 @@ with BlockingItemUpdater
     ).await(99.s).orThrow
     eventWatch.await[OrderNoticesConsumed](_.key == orderId)
 
-    sleep(100.ms)
     // The secondly posted Notice still exists:
     assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).notice.isDefined)
     assert(!controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).isInConsumption)
@@ -332,13 +328,11 @@ with BlockingItemUpdater
       eventWatch.await[OrderNoticesConsumptionStarted](_.key == orderId)
     }
 
-    sleep(100.ms)
     assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).isInConsumption)
     assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).consumptionCount == 2)
 
     TestJob.continue()
     eventWatch.await[OrderNoticesConsumed](_.key == aOrderId)
-    sleep(100.ms)
     assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).isInConsumption)
     assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).consumptionCount == 1)
 
@@ -413,7 +407,6 @@ with BlockingItemUpdater
 
     eventWatch.await[OrderStdoutWritten](_.key == orderId)
 
-    sleep(100.ms)
     assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).notice.isDefined)
     assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).isInConsumption)
     assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).consumptionCount == 2)
@@ -424,7 +417,6 @@ with BlockingItemUpdater
 
     TestJob.continue()
     eventWatch.await[OrderPrompted](_.key == orderId)
-    sleep(100.ms)
     assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).notice.isDefined)
     assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).isInConsumption)
     assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).consumptionCount == 1)
@@ -488,7 +480,6 @@ with BlockingItemUpdater
     eventWatch.await[OrderNoticesConsumed](_.key == orderId)
     eventWatch.await[OrderFailed](_.key == orderId)
 
-    sleep(100.ms)
     assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).notice.isDefined)
     assert(!controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).isInConsumption)
     assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).consumptionCount == 0)
@@ -532,7 +523,6 @@ with BlockingItemUpdater
     eventWatch.await[OrderNoticesConsumed](_.key == orderId)
     eventWatch.await[OrderCancelled](_.key == orderId)
 
-    sleep(100.ms)
     assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).notice.isDefined)
     assert(!controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).isInConsumption)
     assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).consumptionCount == 0)

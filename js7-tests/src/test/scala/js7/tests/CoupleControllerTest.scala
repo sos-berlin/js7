@@ -65,7 +65,6 @@ final class CoupleControllerTest extends OurTestSuite with DirectoryProviderForS
       }
 
       controller.eventWatch.await[AgentShutDown](after = lastEventId)
-      sleep(100.ms)
       assert(controller.controllerState.await(99.s).keyTo(AgentRefState)(agentPath).couplingState ==
         DelegateCouplingState.ShutDown)
 

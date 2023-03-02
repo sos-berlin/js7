@@ -54,7 +54,6 @@ final class AdmissionTimeTest extends OurTestSuite with ControllerAgentForScalaT
       val eventId = eventWatch.lastAddedEventId
       controllerApi.addOrder(FreshOrder(orderId, sundayWorkflow.path)).await(99.s).orThrow
       eventWatch.await[OrderAttached](_.key == orderId, after = eventId)
-      sleep(100.ms)
       assert(controllerState.idToOrder(orderId).isState[Fresh])
       assert(controllerState.idToOrder(orderId).position == Position(0))
       assert(orderToObstacles(orderId) ==
@@ -89,7 +88,6 @@ final class AdmissionTimeTest extends OurTestSuite with ControllerAgentForScalaT
       val eventId = eventWatch.lastAddedEventId
       val orderId = OrderId("🟠")
       controllerApi.addOrder(FreshOrder(orderId, sundayWorkflow.path)).await(99.s).orThrow
-      sleep(100.ms)
       assert(controllerState.idToOrder(orderId).isState[Fresh])
       assert(controllerState.idToOrder(orderId).position == Position(0))
       assert(orderToObstacles(orderId) ==
@@ -104,7 +102,6 @@ final class AdmissionTimeTest extends OurTestSuite with ControllerAgentForScalaT
       val orderId = OrderId("🟤")
       controllerApi.addOrder(FreshOrder(orderId, sundayWorkflow.path)).await(99.s).orThrow
       eventWatch.await[OrderAttached](_.key == orderId, after = eventId)
-      sleep(100.ms)
       assert(controllerState.idToOrder(orderId).isState[Fresh])
       assert(controllerState.idToOrder(orderId).position == Position(0))
       assert(orderToObstacles(orderId) ==
@@ -126,7 +123,6 @@ final class AdmissionTimeTest extends OurTestSuite with ControllerAgentForScalaT
       clock := local("2021-03-28T05:00")
       val orderId = OrderId("🟣")
       controllerApi.addOrder(FreshOrder(orderId, sundayWorkflow.path)).await(99.s).orThrow
-      sleep(100.ms)
       assert(controllerState.idToOrder(orderId).isState[Fresh])
       assert(controllerState.idToOrder(orderId).position == Position(0))
       assert(orderToObstacles(orderId) ==
@@ -142,7 +138,6 @@ final class AdmissionTimeTest extends OurTestSuite with ControllerAgentForScalaT
     val orderId = OrderId("🟦")
     controllerApi.addOrder(FreshOrder(orderId, mondayWorkflow.path)).await(99.s).orThrow
     eventWatch.await[OrderAttached](_.key == orderId)
-    sleep(100.ms)
     assert(controllerState.idToOrder(orderId).isState[Fresh])
     assert(controllerState.idToOrder(orderId).position == Position(0))
 
@@ -163,7 +158,6 @@ final class AdmissionTimeTest extends OurTestSuite with ControllerAgentForScalaT
     val orderId = OrderId("🟥")
     controllerApi.addOrder(FreshOrder(orderId, mondayWorkflow.path)).await(99.s).orThrow
     eventWatch.await[OrderAttached](_.key == orderId, after = eventId)
-    sleep(100.ms)
     assert(controllerState.idToOrder(orderId).isState[Fresh])
     assert(controllerState.idToOrder(orderId).position == Position(0))
 

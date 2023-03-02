@@ -248,7 +248,6 @@ with BlockingItemUpdater
       controllerApi.executeCommand(
         ControllerCommand.PostNotice(board0.path, notice2.id)
       ).await(99.s).orThrow
-      sleep(100.ms)
       assert(controllerState.keyTo(BoardState)(board0.path).idToNotice(notice2.id) ==
         NoticePlace(notice2.id, Some(notice2)))
     }
@@ -266,7 +265,6 @@ with BlockingItemUpdater
           endOfLife = Some(notice2.endOfLife))
       ).await(99.s).orThrow
 
-      sleep(100.ms)
       assert(controllerState.keyTo(BoardState)(board0.path).idToNotice(notice.id) ==
         NoticePlace(notice.id, Some(notice)))
       assert(controllerState.keyTo(BoardState)(board0.path).idToNotice(notice2.id) ==

@@ -93,7 +93,6 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
     val order = FreshOrder(OrderId("❌"), twoJobsWorkflow.path, Map("sleep" -> 5))
     controller.addOrderBlocking(order)
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
-    sleep(100.ms)  // ControllerOrderKeeper may take some time to update its state
 
     // Controller knows, the order has started
     assert(controllerApi.executeCommand(CancelOrders(Set(order.id), CancellationMode.FreshOnly)).await(99.seconds) ==
@@ -274,7 +273,6 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
 
     controllerApi.executeCommand(CancelOrders(Seq(order.id))).await(99.s).orThrow
     eventWatch.await[OrderCancelled](_.key == order.id)
-    sleep(100.ms)
     assert(controllerState.idToOrder(order.id).isState[Order.Cancelled])
 
     assert(controllerApi

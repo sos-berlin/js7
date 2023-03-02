@@ -31,7 +31,6 @@ final class PromptTest extends OurTestSuite with ControllerAgentForScalaTest
       .await(99.s).orThrow
     val orderPrompted = eventWatch.await[OrderPrompted](_.key == orderId).head.value.event
     assert(orderPrompted == OrderPrompted(StringValue("MY QUESTION")))
-    sleep(100.ms)  // Wait until controllerState has been updated
     assert(controllerState.idToOrder(orderId).state ==
       Order.Prompting(StringValue("MY QUESTION")))
 
