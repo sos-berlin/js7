@@ -85,7 +85,7 @@ object IOExecutor
           if (isShuttDown)
             logger.error(s"'$name' ${executor.getClass.simpleScalaName} has been shut down: $msg")
           else
-            logger.error(msg, throwable.toStringWithCauses)
+            logger.error(msg, throwable.nullIfNoStackTrace)
 
         case NonFatal(_) =>
           logger.error(msg, throwable.nullIfNoStackTrace)

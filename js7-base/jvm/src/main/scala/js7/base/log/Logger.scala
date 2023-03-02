@@ -111,7 +111,7 @@ object Logger
         logF[Task, A](logger, LogLevel.Trace, function, args)(task)
 
       def traceTaskWithResult[A](task: Task[A])(implicit src: sourcecode.Name): Task[A] =
-        traceTaskWithResult[A](src.value)(task)
+        traceTaskWithResult[A](src.value, task = task)
 
       def traceTaskWithResult[A](
         function: String,

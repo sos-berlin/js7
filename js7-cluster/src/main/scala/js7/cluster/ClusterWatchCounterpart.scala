@@ -142,9 +142,10 @@ extends Service.StoppableByRequest
             Task.raiseError(RequestTimeoutException)))
         .onErrorRestartLoop(()) {
           case (RequestTimeoutException, _, retry) =>
+            val m = if (!warned) "🔴" else "⭕"
             warned = true
             logger.warn(
-              "⭕ Still trying to get a confirmation from " +
+              m + " Still trying to get a confirmation from " +
                 clusterWatchId.fold("any ClusterWatch")(id =>
                   id.toString + (requested.clusterWatchIdChangeAllowed ?? " (or other)")) +
                 " for " + request.toShortString + "" +

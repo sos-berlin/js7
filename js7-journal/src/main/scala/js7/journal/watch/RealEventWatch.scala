@@ -4,6 +4,7 @@ import cats.syntax.option.*
 import izumi.reflect.Tag
 import java.util.concurrent.TimeoutException
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.MonixBase.closeableIteratorToObservable
 import js7.base.monixutils.MonixDeadline
 import js7.base.monixutils.MonixDeadline.now
@@ -306,24 +307,26 @@ trait RealEventWatch extends EventWatch
     after: EventId,
     timeout: FiniteDuration)
     (implicit s: Scheduler)
-  : Task[Vector[Stamped[KeyedEvent[E]]]] =
-    when[E](EventRequest.singleClass[E](after = after, Some(timeout)), predicate)
-      .map {
-        case EventSeq.NonEmpty(events) =>
-          try events.toVector
-          finally events.close()
+  : Task[Vector[Stamped[KeyedEvent[E]]]] = {
+    logger.debugTask(s"awaitAsync[${implicitly[ClassTag[E]].runtimeClass.simpleScalaName}]")(
+      when[E](EventRequest.singleClass[E](after = after, Some(timeout)), predicate)
+        .map {
+          case EventSeq.NonEmpty(events) =>
+            try events.toVector
+            finally events.close()
 
-        case _: EventSeq.Empty =>
-          throw new TimeoutException(s"RealEventWatch.await[${implicitClass[E].scalaName}]" +
-            s"(after=$after, timeout=$timeout) timed out")
+          case _: EventSeq.Empty =>
+            throw new TimeoutException(s"RealEventWatch.await[${implicitClass[E].scalaName}]" +
+              s"(after=$after, timeout=$timeout) timed out")
 
-        //? case TearableEventSeq.Torn(tornEventId) =>
-        //?   throw new TornException(after, tornEventId)
+          //? case TearableEventSeq.Torn(tornEventId) =>
+          //?   throw new TornException(after, tornEventId)
 
-        case o =>
-          sys.error(s"RealEventWatch.await[${implicitClass[E].scalaName}]" +
-            s"(after=$after,timeout=${timeout.pretty}) unexpected EventSeq: $o")
-      }
+          case o =>
+            sys.error(s"RealEventWatch.await[${implicitClass[E].scalaName}]" +
+              s"(after=$after,timeout=${timeout.pretty}) unexpected EventSeq: $o")
+        })
+  }
 }
 
 object RealEventWatch

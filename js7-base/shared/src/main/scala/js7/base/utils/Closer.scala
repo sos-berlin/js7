@@ -2,7 +2,9 @@ package js7.base.utils
 
 import java.util.Objects.requireNonNull
 import java.util.concurrent.ConcurrentLinkedDeque
+import js7.base.log.Logger
 import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.Closer.*
 import monix.execution.atomic.AtomicAny
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
@@ -50,25 +52,29 @@ final class Closer extends AutoCloseable
         for (t <- Option(throwable.get())) throw t
 
       case closeable =>
-        try closeable.close()
-        catch {
-          case NonFatal(t) =>
-            if (!throwable.compareAndSet(null, t)) {
-              val tt = throwable.get()
-              if (tt ne t) {
-                scribe.debug(s"Throwable.addSuppressed($t)")
-                tt.addSuppressed(t)
+        //Not in JavaScript: logger.traceCall[Unit](s"close $closeable") {
+          try closeable.close()
+          catch {
+            case NonFatal(t) =>
+              if (!throwable.compareAndSet(null, t)) {
+                val tt = throwable.get()
+                if (tt ne t) {
+                  logger.debug(s"Throwable.addSuppressed($t)")
+                  tt.addSuppressed(t)
+                }
               }
-            }
-          case fatal: Throwable =>
-            throw fatal
-        }
+            case fatal: Throwable =>
+              throw fatal
+          }
+        //}
         close()
     }
 }
 
 object Closer
 {
+  private val logger = Logger[this.type]
+
   def withCloser[A](f: Closer => A): A =
     autoClosing(new Closer)(f)
 

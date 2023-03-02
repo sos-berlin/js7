@@ -26,6 +26,10 @@ private[journal] final class JournalLogger(
   private val infoLoggableEventClasses = new SubclassCache(infoLogEvents)
   private val sb = new StringBuilder
 
+  //def logHeader(header: JournalHeader): Unit =
+  //  logger.trace(
+  //    f"  ${" " * syncOrFlushWidth}      * ${header.eventId}%16d $header")
+
   def logCommitted(persists: IndexedSeqView[Loggable], ack: Boolean = false): Unit =
     logger.whenInfoEnabled {
       val committedAt = now

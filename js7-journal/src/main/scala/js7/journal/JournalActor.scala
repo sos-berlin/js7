@@ -371,7 +371,7 @@ extends Actor with Stash with JournalLogging
 
   private def finishCommitted(n: Int, ack: Boolean): Unit = {
     val ackWritten = persistBuffer.view.take(n)
-    logCommitted(ackWritten, ack = ack)
+    journalLogger.logCommitted(ackWritten, ack = ack)
 
     commitStateSync.synchronized {
       for (lastFileLengthAndEventId <- ackWritten.flatMap(_.lastFileLengthAndEventId).lastOption) {
@@ -530,6 +530,7 @@ extends Actor with Stash with JournalLogging
       simulateSync = conf.simulateSync)(scheduler)
     snapshotWriter.writeHeader(journalHeader)
     snapshotWriter.beginSnapshotSection()
+    //journalLogger.logHeader(journalHeader)
 
     locally {
       lazy val checkingBuilder = S.newBuilder()

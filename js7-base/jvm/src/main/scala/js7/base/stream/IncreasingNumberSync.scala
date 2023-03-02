@@ -44,7 +44,7 @@ final class IncreasingNumberSync(initial: Long, valueToString: Long => String)
   : Task[Boolean] = {
     def argsString =
       s"$after delay=${delay.pretty}${until.fold("")(o => " until=" + o.timeLeft.pretty)}"
-    logger.traceTaskWithResult[Boolean]("whenAvailable", argsString)(
+    logger.traceTaskWithResult("whenAvailable", argsString, task =
       Task.defer {
         if (after < _last)
           Task.True  // Event already waiting
