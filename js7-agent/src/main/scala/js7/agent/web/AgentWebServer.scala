@@ -10,7 +10,7 @@ import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.session.SessionRegister
 import js7.core.command.CommandMeta
-import js7.journal.watch.EventWatch
+import js7.journal.watch.FileEventWatch
 import monix.eval.Task
 
 object AgentWebServer
@@ -20,7 +20,7 @@ object AgentWebServer
     gateKeeperConfiguration: GateKeeper.Configuration[SimpleUser],
     api: CommandMeta => DirectAgentApi,
     sessionRegister: SessionRegister[AgentSession],
-    eventWatch: EventWatch)
+    eventWatch: FileEventWatch)
     (implicit actorSystem: ActorSystem)
   : Resource[Task, AkkaWebServer & AkkaWebServer.HasUri] =
     AkkaWebServer.resource(
