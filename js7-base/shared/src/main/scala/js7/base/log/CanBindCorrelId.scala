@@ -1,5 +1,7 @@
 package js7.base.log
 
+import cats.effect.{Resource, Sync}
+import cats.syntax.functor.*
 import implicitbox.Not
 import js7.base.log.CorrelId.generate
 import monix.eval.Task
@@ -53,7 +55,7 @@ object CanBindCorrelId
           }.guarantee(Task(Local.setContext(saved)))
         }
 
-    private[log] def bindNewIfNoCurrent(task: => Task[Any]): Task[Any] =
+    def bindNewIfNoCurrent(task: => Task[Any]): Task[Any] =
       if (!CorrelId.isEnabled)
         Task.defer(task)
       else
@@ -83,9 +85,7 @@ object CanBindCorrelId
       }
 
     def bindNewIfNoCurrent(future: => F[R]): F[R] =
-      if (!CorrelId.isEnabled)
-        future
-      else if (CorrelId.current.nonEmpty)
+      if (!CorrelId.isEnabled || CorrelId.current.nonEmpty)
         future
       else
         bind(generate())(future)
@@ -94,6 +94,36 @@ object CanBindCorrelId
   private object FutureCan extends FutureCan[Future, Any]
 
   private object CancelableFutureCan extends FutureCan[CancelableFuture, Any]
+
+  implicit def resourceCan[F[_], A]
+    (implicit F: Sync[F], canBind: CanBindCorrelId[F[?]])
+  : CanBindCorrelId[Resource[F, A]] =
+    new CanBindCorrelId[Resource[F, A]] {
+      private implicit val x = canBind.asInstanceOf[CanBindCorrelId[F[(A, F[Unit])]]]
+      private implicit val y = canBind.asInstanceOf[CanBindCorrelId[F[Unit]]]
+
+      def bind(correlId: CorrelId)(resource: => Resource[F, A]): Resource[F, A] =
+        if (!CorrelId.isEnabled)
+          Resource.suspend(F.delay(resource))
+        else
+          Resource.suspend(
+            correlId.bind(resource.allocated)
+              .map { case (acquiredThing, release) =>
+                Resource.make(
+                  acquire = F.pure(acquiredThing))(
+                  release = _ => correlId.bind(release))
+              })
+
+    def bindNewIfNoCurrent(resource: => Resource[F, A]): Resource[F, A] =
+      if (!CorrelId.isEnabled)
+        Resource.suspend(F.delay(resource))
+      else
+        Resource.suspend(F.delay(
+          if (CorrelId.current.nonEmpty)
+            resource
+          else
+            bind(generate())(resource)))
+    }
 
   private object SynchronousCan extends CanBindCorrelId[Any]
   {
@@ -109,9 +139,7 @@ object CanBindCorrelId
       }
 
     def bindNewIfNoCurrent(body: => Any): Any =
-      if (!CorrelId.isEnabled)
-        body
-      else if (CorrelId.current.nonEmpty)
+      if (!CorrelId.isEnabled || CorrelId.current.nonEmpty)
         body
       else
         bind(generate())(body)

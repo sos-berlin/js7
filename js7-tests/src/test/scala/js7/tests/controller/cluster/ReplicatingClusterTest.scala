@@ -18,28 +18,29 @@ final class ReplicatingClusterTest extends ControllerClusterTester
 {
   "Cluster replicates journal files properly" in {
     withControllerAndBackup() { (primary, backup, _) =>
-      val primaryController = primary.startController(httpPort = Some(primaryControllerPort)) await 99.s
+      val primaryController = primary.newController(httpPort = Some(primaryControllerPort))
       primaryController.waitUntilReady()
       primaryController.runOrder(FreshOrder(OrderId("🔶"), TestWorkflow.path))
 
-      val backupController = backup.startController(httpPort = Some(backupControllerPort)) await 99.s
-      primaryController.eventWatch.await[ClusterEvent.ClusterCouplingPrepared]()
+      backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { _ =>
+        primaryController.eventWatch.await[ClusterEvent.ClusterCouplingPrepared]()
 
-      primaryController.eventWatch.await[ClusterEvent.ClusterCoupled]()
-      assert(primaryController.journalActorState.isRequiringClusterAcknowledgement)
+        primaryController.eventWatch.await[ClusterEvent.ClusterCoupled]()
+        assert(primaryController.journalActorState.isRequiringClusterAcknowledgement)
 
-      primaryController.runOrder(FreshOrder(OrderId("🔷"), TestWorkflow.path))
+        primaryController.runOrder(FreshOrder(OrderId("🔷"), TestWorkflow.path))
 
-      assertEqualJournalFiles(primary.controller, backup.controller, n = 1)
+        assertEqualJournalFiles(primary.controller, backup.controller, n = 1)
 
-      primaryController.executeCommandAsSystemUser(TakeSnapshot).await(99.s).orThrow
-      assertEqualJournalFiles(primary.controller, backup.controller, n = 1)
+        primaryController.executeCommandAsSystemUser(TakeSnapshot).await(99.s).orThrow
+        assertEqualJournalFiles(primary.controller, backup.controller, n = 1)
 
-      primaryController.runOrder(FreshOrder(OrderId("🔵"), TestWorkflow.path))
-      assertEqualJournalFiles(primary.controller, backup.controller, n = 1)
+        primaryController.runOrder(FreshOrder(OrderId("🔵"), TestWorkflow.path))
+        assertEqualJournalFiles(primary.controller, backup.controller, n = 1)
 
-      simulateKillActiveNode(primaryController) await 99.s
-      backupController.terminate() await 99.s
+        simulateKillActiveNode(primaryController) await 99.s
+        primaryController.terminate().await(99.s)
+      }
       // Test may fail here if computer is slow, and backup controller failed over before termination !!!
       assertEqualJournalFiles(primary.controller, backup.controller, n = 1)
 

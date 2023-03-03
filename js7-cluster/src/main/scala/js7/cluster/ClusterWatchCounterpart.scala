@@ -167,8 +167,11 @@ extends Service.StoppableByRequest
         }
         .guaranteeCase(exitCase => Task {
           _requested.set(None)
-          if (warned && exitCase != ExitCase.Completed) logger.warn(
-            s"${request.toShortString} => $exitCase · after ${t.elapsed.pretty}")
+          if (warned && exitCase != ExitCase.Completed) {
+            val m = if (exitCase == ExitCase.Canceled) "❌" else "💥"
+            logger.warn(
+              s"$m ${request.toShortString} => $exitCase · after ${t.elapsed.pretty}")
+          }
         })
     }
 

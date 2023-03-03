@@ -5,12 +5,14 @@ import java.nio.file.Files.size
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.syntax.*
+import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.cluster.ClusterCommon.{ClusterWatchAgreedToActivation, ClusterWatchDisagreedToActivation}
+import js7.cluster.ClusterNode.RestartAfterJournalTruncationException
 import js7.common.guice.GuiceImplicits.RichInjector
 import js7.controller.configuration.ControllerConfiguration
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterSwitchedOver, ClusterWatchRegistered}
@@ -26,6 +28,7 @@ import js7.data.value.NumberValue
 import js7.journal.files.JournalFiles
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.tests.controller.cluster.ControllerClusterTester.*
+import js7.tests.controller.cluster.FailoverClusterTest.*
 import js7.tests.testenv.ControllerClusterForScalaTest.assertEqualJournalFiles
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.Deadline.now
@@ -51,8 +54,9 @@ final class FailoverClusterTest extends ControllerClusterTester
   private def test(addNonReplicatedEvents: Boolean = false): Unit = {
     sys.props(testHeartbeatLossPropertyKey) = "false"
     withControllerAndBackup() { (primary, backup, clusterSetting) =>
-      var primaryController = primary.startController(httpPort = Some(primaryControllerPort)) await 99.s
-      var backupController = backup.startController(httpPort = Some(backupControllerPort)) await 99.s
+      var primaryController = primary.newController(httpPort = Some(primaryControllerPort))
+      var backupController = backup.newController(httpPort = Some(backupControllerPort))
+
       primaryController.eventWatch.await[ClusterWatchRegistered]()
       primaryController.eventWatch.await[ClusterCoupled]()
 
@@ -67,7 +71,8 @@ final class FailoverClusterTest extends ControllerClusterTester
       primaryController.executeCommandAsSystemUser(ShutDown(clusterAction = Some(ShutDown.ClusterAction.Failover)))
         .await(99.s).orThrow
       primaryController.terminated await 99.s
-      scribe.info("💥 Controller shut down with backup fail-over while script is running 💥")
+      primaryController.close()
+      logger.info("💥 Controller shut down with backup fail-over while script is running 💥")
       assert(since.elapsed < sleepWhileFailing, "— The Controller should have terminated while the shell script runs")
 
       val Stamped(failedOverEventId, _, NoKey <-: failedOver) =
@@ -94,13 +99,16 @@ final class FailoverClusterTest extends ControllerClusterTester
           .append(line)
       }
 
-      primaryController = primary.startController(httpPort = Some(primaryControllerPort)) await 99.s
+      primaryController = primary.newController(httpPort = Some(primaryControllerPort))
       if (addNonReplicatedEvents) {
         // Provisional fix lets Controller terminate
-        primaryController.terminated await 99.s
-        primaryController = primary.startController(httpPort = Some(primaryControllerPort)) await 99.s
-        //val tried = Await.ready(primaryController.terminated, 99.s).value.get
-        //assert(tried.failed.get.isInstanceOf[RestartAfterJournalTruncationException])
+        val termination = primaryController.terminated.await(99.s)
+        assert(termination.restart)
+        try {
+          primaryController.close()
+          fail("RestartAfterJournalTruncationException expected")
+        } catch { case t: RestartAfterJournalTruncationException => /*weird???*/}
+        primaryController = primary.newController(httpPort = Some(primaryControllerPort))
       }
       primaryController.eventWatch.await[ClusterCoupled](after = failedOverEventId)
       backupController.eventWatch.await[ClusterCoupled](after = failedOverEventId)
@@ -110,7 +118,10 @@ final class FailoverClusterTest extends ControllerClusterTester
       val recoupledEventId = primaryController.eventWatch.await[ClusterSwitchedOver](after = failedOverEventId).head.eventId
 
       backupController.terminated await 99.s
-      backupController = backup.startController(httpPort = Some(backupControllerPort)) await 99.s
+      backupController.close()
+
+      backupController = backup.newController(httpPort = Some(backupControllerPort))
+
       backupController.eventWatch.await[ClusterCoupled](after = recoupledEventId)
       primaryController.eventWatch.await[ClusterCoupled](after = recoupledEventId)
 
@@ -128,8 +139,12 @@ final class FailoverClusterTest extends ControllerClusterTester
       assert(primaryController.clusterState.await(99.s) == stillCoupled)
       assert(backupController.clusterState.await(99.s) == stillCoupled)
 
-      primaryController.terminate() await 99.s
-      backupController.terminate() await 99.s
+      primaryController.close()
+      backupController.close()
     }
   }
+}
+
+object FailoverClusterTest {
+  private val logger = Logger[this.type]
 }

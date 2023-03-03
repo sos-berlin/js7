@@ -39,10 +39,10 @@ import js7.common.akkahttp.web.session.SessionRegister
 import js7.common.guice.GuiceImplicits.*
 import js7.common.system.startup.StartUp
 import js7.core.command.CommandMeta
+import js7.journal.EventIdGenerator
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.recover.StateRecoverer
 import js7.journal.state.{FileStatePersistence, ReadableStatePersistence}
-import js7.journal.{EventIdGenerator, StampedKeyedEventBus}
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
@@ -199,9 +199,9 @@ object RunningAgent {
       val persistence = FileStatePersistence
         .start(recovered, journalConf,
           injector.instance[EventIdGenerator],
-          injector.instance[StampedKeyedEventBus])
+          new StandardEventBus)
         .awaitInfinite
-        .closeWithCloser(closer)
+      closer.onClose(persistence.stop.await(3.s)) // TODO Use StoppableRegister
 
       val gateKeeperConf = injector.instance[GateKeeper.Configuration[SimpleUser]]
 

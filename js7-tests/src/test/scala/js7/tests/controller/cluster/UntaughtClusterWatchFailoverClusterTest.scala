@@ -4,7 +4,6 @@ import java.nio.file.Files.size
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
-import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
@@ -36,74 +35,79 @@ final class UntaughtClusterWatchFailoverClusterTest extends ControllerClusterTes
 
   "Failover and recouple" in {
     withControllerAndBackup(suppressClusterWatch = true) { (primary, backup, clusterSetting) =>
-      val primaryController = primary.startController(httpPort = Some(primaryControllerPort)) await 99.s
-      val backupController = backup.startController(httpPort = Some(backupControllerPort)) await 99.s
+      val primaryController = primary.newController(httpPort = Some(primaryControllerPort))
 
-      withClusterWatchService() { clusterWatch =>
-        primaryController.eventWatch.await[ClusterCoupled]()
-        waitForCondition(10.s, 10.ms)(clusterWatch.clusterState().exists(_.isInstanceOf[Coupled]))
-      }
+      backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
+        withClusterWatchService() { clusterWatch =>
+          primaryController.eventWatch.await[ClusterCoupled]()
+          waitForCondition(10.s, 10.ms)(clusterWatch.clusterState().exists(_.isInstanceOf[Coupled]))
+        }
 
-      val since = now
-      val sleepWhileFailing = clusterTiming.activeLostTimeout + 1.s
+        val since = now
+        val sleepWhileFailing = clusterTiming.activeLostTimeout + 1.s
 
-      val orderId = OrderId("💥")
-      primaryController.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path, arguments = Map(
-        "sleep" -> NumberValue(sleepWhileFailing.toSeconds))))
-      primaryController.eventWatch.await[OrderProcessingStarted](_.key == orderId)
-      backupController.eventWatch.await[OrderProcessingStarted](_.key == orderId)
+        val orderId = OrderId("💥")
+        primaryController.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path, arguments = Map(
+          "sleep" -> NumberValue(sleepWhileFailing.toSeconds))))
+        primaryController.eventWatch.await[OrderProcessingStarted](_.key == orderId)
+        backupController.eventWatch.await[OrderProcessingStarted](_.key == orderId)
 
-      // KILL PRIMARY
-      primaryController
-        .executeCommandAsSystemUser(ShutDown(clusterAction = Some(ShutDown.ClusterAction.Failover)))
-        .await(99.s).orThrow
-      primaryController.terminated await 99.s
-      logger.info("💥 Controller shut down with backup fail-over while script is running 💥")
-      assert(since.elapsed < sleepWhileFailing,
-        "— The Controller should have terminated while the shell script runs")
+        // KILL PRIMARY
+        primaryController
+          .executeCommandAsSystemUser(ShutDown(clusterAction = Some(ShutDown.ClusterAction.Failover)))
+          .await(99.s).orThrow
+        primaryController.close()
+        logger.info("💥 Controller shut down with backup fail-over while script is running 💥")
+        assert(since.elapsed < sleepWhileFailing,
+          "— The Controller should have terminated while the shell script runs")
 
-      backupController.testEventBus
-        .whenFilterMap[WaitingForConfirmation, ClusterFailedOver](_.request match {
-          case ClusterWatchCheckEvent(_, _, _, event: ClusterFailedOver, _) => Some(event)
-          case _ => None
-        })
-        .await(99.s)
+        backupController.testEventBus
+          .whenFilterMap[WaitingForConfirmation, ClusterFailedOver](_.request match {
+            case ClusterWatchCheckEvent(_, _, _, event: ClusterFailedOver, _) => Some(event)
+            case _ => None
+          })
+          .await(99.s)
 
-      withClusterWatchService(ClusterWatchId("CLUSTER-WATCH-2")) { clusterWatchService =>
-        // ClusterWatch is untaught
-        // backupId ist not lost
-        assert(clusterWatchService.manuallyConfirmNodeLoss(backupId, "CONFIRMER")
-          == Left(ClusterNodeIsNotLostProblem(backupId)))
+        withClusterWatchService(ClusterWatchId("CLUSTER-WATCH-2")) { clusterWatchService =>
+            // ClusterWatch is untaught
+            // backupId ist not lost
+          assert(clusterWatchService.manuallyConfirmNodeLoss(backupId, "CONFIRMER")
+            == Left(ClusterNodeIsNotLostProblem(backupId)))
 
-        // primaryId is lost. Wait until passive node has detected it.
-        waitForCondition(99.s, 10.ms)(
+          // primaryId is lost. Wait until passive node has detected it.
+          waitForCondition(99.s, 10.ms)(
           clusterWatchService.manuallyConfirmNodeLoss(primaryId, "CONFIRMER")
             != Left(ClusterNodeIsNotLostProblem(primaryId)))
-        clusterWatchService.manuallyConfirmNodeLoss(primaryId, "CONFIRMER").orThrow
+          clusterWatchService.manuallyConfirmNodeLoss(primaryId, "CONFIRMER").orThrow
 
-        val Stamped(failedOverEventId, _, NoKey <-: clusterFailedOver) =
-          backupController.eventWatch.await[ClusterFailedOver]().head
-        assert(clusterFailedOver.failedAt.fileEventId == backupController.eventWatch.fileEventIds.last ||
-               clusterFailedOver.failedAt.fileEventId == backupController.eventWatch.fileEventIds.dropRight(1).last)
-        val expectedFailedFile = primaryController.injector.instance[ControllerConfiguration]
-          .journalMeta.file(clusterFailedOver.failedAt.fileEventId)
-        assert(clusterFailedOver.failedAt.position == size(expectedFailedFile))
+          val Stamped(failedOverEventId, _, NoKey <-: clusterFailedOver) =
+            backupController.eventWatch.await[ClusterFailedOver]().head
+          assert(clusterFailedOver.failedAt.fileEventId == backupController.eventWatch.fileEventIds.last ||
+                 clusterFailedOver.failedAt.fileEventId == backupController.eventWatch.fileEventIds.dropRight(1).last)
+          val expectedFailedFile = primaryController.injector.instance[ControllerConfiguration]
+            .journalMeta.file(clusterFailedOver.failedAt.fileEventId)
+          assert(clusterFailedOver.failedAt.position == size(expectedFailedFile))
 
-        backupController.eventWatch.await[ClusterWatchRegistered](after = failedOverEventId)
-        assert(clusterWatchService.manuallyConfirmNodeLoss(backupId, "CONFIRMER")
-          == Left(ClusterNodeIsNotLostProblem(backupId)))
-        assert(backupController.clusterState.await(99.s) ==
-          FailedOver(
-            clusterSetting.copy(
-              activeId = backupId,
-              clusterWatchId = Some(clusterWatchService.clusterWatchId)),
-            clusterFailedOver.failedAt))
+          val registered = backupController.eventWatch.await[ClusterWatchRegistered](
+            after = failedOverEventId)
+          assert(registered.head.value.event
+            == ClusterWatchRegistered(clusterWatchService.clusterWatchId))
 
-        backupController.eventWatch.await[OrderFinished](_.key == orderId, after = failedOverEventId)
+          assert(clusterWatchService.manuallyConfirmNodeLoss(backupId, "CONFIRMER")
+            == Left(ClusterNodeIsNotLostProblem(backupId)))
+
+          sleep(100.ms) // Why ???
+          assert(backupController.clusterState.await(99.s) ==
+            FailedOver(
+              clusterSetting.copy(
+                activeId = backupId,
+                clusterWatchId = Some(clusterWatchService.clusterWatchId)),
+              clusterFailedOver.failedAt))
+
+          backupController.eventWatch.await[OrderFinished](_.key == orderId, after = failedOverEventId)
+        }
+        primaryController.close()
       }
-
-      primaryController.terminate() await 99.s
-      backupController.terminate() await 99.s
     }
   }
 }

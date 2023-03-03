@@ -22,7 +22,6 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.common.akkautils.Akkas.actorSystemResource
 import js7.common.http.AkkaHttpClient.HttpException
-import js7.controller.RunningController
 import js7.controller.client.AkkaHttpControllerApi.admissionToApiResource
 import js7.data.Problems.VersionedItemRemovedProblem
 import js7.data.agent.AgentPath
@@ -38,8 +37,8 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Prompt}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import js7.proxy.ControllerApi
-import js7.tests.testenv.ControllerTestUtils.syntax.*
-import js7.tests.testenv.DirectoryProvider
+import js7.tests.testenv.ControllerTestUtils.syntax.RichRunningController
+import js7.tests.testenv.{DirectoryProvider, TestController}
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.execution.atomic.AtomicInt
@@ -178,13 +177,13 @@ final class ControllerRepoTest extends OurTestSuite
         }
       }
 
-      def runOrder(controller: RunningController, workflowId: WorkflowId, orderId: OrderId): Unit = {
+      def runOrder(controller: TestController, workflowId: WorkflowId, orderId: OrderId): Unit = {
         val order = FreshOrder(orderId, workflowId.path)
         controller.httpApi.addOrder(order).await(99.s)
         awaitOrder(controller, orderId, workflowId)
       }
 
-      def awaitOrder(controller: RunningController, orderId: OrderId, workflowId: WorkflowId): Unit = {
+      def awaitOrder(controller: TestController, orderId: OrderId, workflowId: WorkflowId): Unit = {
         val orderAdded: OrderAdded = controller.eventWatch.await[OrderAdded](_.key == orderId).head.value.event
         assert(orderAdded.workflowId == workflowId)
         val written = controller.eventWatch.await[OrderStdoutWritten](_.key == orderId).head.value.event

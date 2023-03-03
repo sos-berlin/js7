@@ -1,11 +1,14 @@
 package js7.controller
 
+import cats.effect.SyncIO
 import js7.base.BuildInfo
 import js7.base.configutils.Configs.logConfig
 import js7.base.log.Logger
 import js7.base.thread.Futures.implicits.SuccessFuture
+import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.utils.ProgramTermination
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
+import js7.base.utils.SyncResource.syntax.RichSyncResource
 import js7.common.commandline.CommandLineArguments
 import js7.common.system.startup.JavaMain.withShutdownHooks
 import js7.common.system.startup.JavaMainLockfileSupport.lockAndRunMain
@@ -38,10 +41,12 @@ final class ControllerMain
     logJavaSettings()
 
     val termination =
-      RunningController.blockingRun(conf) { controller =>
-        import controller.scheduler
+      RunningController.threadPoolResource[SyncIO](conf).useSync { implicit scheduler =>
+        val (controller, stop) = RunningController.resource(conf, scheduler).allocated.awaitInfinite
         withShutdownHooks(conf.config, "ControllerMain", () => onJavaShutdown(controller)) {
-          controller.terminated.awaitInfinite
+          val termination = controller.terminated.awaitInfinite
+          stop.awaitInfinite
+          termination
         }
       }
 

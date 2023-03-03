@@ -20,14 +20,16 @@ import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.https.{HttpsConfig, KeyStoreRef, TrustStoreRef}
-import js7.base.log.Logger
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
+import js7.base.log.{CorrelId, Logger}
+import js7.base.monixutils.MonixBase.syntax.RichMonixResource
 import js7.base.problem.Checked.*
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
-import js7.base.utils.AutoClosing.{closeOnError, multipleAutoClosing}
+import js7.base.utils.AutoClosing.{autoClosing, closeOnError, multipleAutoClosing}
 import js7.base.utils.CatsUtils.Nel
+import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.Closer.syntax.RichClosersAny
 import js7.base.utils.HasCloser
 import js7.base.utils.ScalaUtils.syntax.*
@@ -148,6 +150,10 @@ extends HasCloser
     itemSigner.sign(item)
 
   /** Proxy's ControllerApi */
+  def newControllerApi(controller: TestController): ControllerApi =
+    newControllerApi(controller.runningController)
+
+  /** Proxy's ControllerApi */
   def newControllerApi(runningController: RunningController): ControllerApi =
     controllerApiResource(runningController).allocated.await(99.s)._1  // Caller must stop it
 
@@ -161,7 +167,7 @@ extends HasCloser
   def controllerAdmission(runningController: RunningController): Admission =
     Admission(runningController.localUri, Some(controller.userAndPassword))
 
-  def run[A](body: (RunningController, IndexedSeq[RunningAgent]) => A): A =
+  def run[A](body: (TestController, IndexedSeq[RunningAgent]) => A): A =
     runAgents(scheduler = scheduler)(agents =>
       runController()(controller =>
         body(controller, agents)))
@@ -170,32 +176,33 @@ extends HasCloser
     httpPort: Option[Int] = Some(findFreeTcpPort()),
     dontWaitUntilReady: Boolean = false,
     config: Config = ConfigFactory.empty)
-    (body: RunningController => A)
+    (body: TestController => A)
   : A = {
-    val runningController = startController(httpPort = httpPort, config = config) await 99.s
-    val result =
-      try {
-        if (!dontWaitUntilReady) {
-          runningController.waitUntilReady()
+    autoClosing(newController(httpPort = httpPort, config = config)) { testController =>
+      val result =
+        try {
+          if (!dontWaitUntilReady) {
+            testController.waitUntilReady()
+          }
+          body(testController)
+        } catch { case NonFatal(t) =>
+          logger.error(t.toStringWithCauses) /* Akka may crash before the caller gets the error so we log the error here */
+          try testController.terminate() await 99.s
+          catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
+          throw t
         }
-        body(runningController)
-      } catch { case NonFatal(t) =>
+      try testController.terminate() await 99.s
+      catch { case NonFatal(t) =>
         logger.error(t.toStringWithCauses) /* Akka may crash before the caller gets the error so we log the error here */
-        try runningController.terminate() await 99.s
+        try testController.close()
         catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
         throw t
       }
-    try runningController.terminate() await 99.s
-    catch { case NonFatal(t) =>
-      logger.error(t.toStringWithCauses) /* Akka may crash before the caller gets the error so we log the error here */
-      try runningController.close()
-      catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
-      throw t
+      result
     }
-    result
   }
 
-  def startController(
+  def newController(
     module: Module = controllerModule,
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(findFreeTcpPort()),
@@ -203,38 +210,62 @@ extends HasCloser
     items: Seq[InventoryItem] = items,
     name: String = controllerName,
     scheduler: Option[Scheduler] = scheduler)
-  : Task[RunningController]
-  =
-    Task.deferFuture(
-      RunningController.fromInjector(
-        RunningController.newInjectorForTest(controller.directory, module, config withFallback controllerConfig,
-          httpPort = httpPort, httpsPort = httpsPort, name = name, scheduler)))
-    .map { runningController =>
-      if (!doNotAddItems && (agentRefs.nonEmpty || items.nonEmpty)) {
-        if (!itemsHasBeenAdded.getAndSet(true)) {
-          runningController.waitUntilReady()
-          runningController.updateUnsignedSimpleItemsAsSystemUser(agentRefs ++ subagentItems)
-            .await(99.s).orThrow
-          if (items.nonEmpty) {
-            val versionedItems = items.collect { case o: VersionedItem => o }.map(_ withVersion Vinitial)
-            val signableItems = versionedItems ++ items.collect { case o: SignableSimpleItem => o }
-            runningController
-              .updateItemsAsSystemUser(
-                Observable.from(items).collect { case o: UnsignedSimpleItem => ItemOperation.AddOrChangeSimple(o) } ++
-                  Observable.fromIterable(versionedItems.nonEmpty ? ItemOperation.AddVersion(Vinitial)) ++
-                  Observable.fromIterable(signableItems)
-                    .map(itemSigner.toSignedString)
-                    .map(ItemOperation.AddOrChangeSigned.apply))
-              .await(99.s).orThrow
-          }
-        }
-      }
-      for (t <- runningController.terminated.failed) {
-        scribe.error(t.toStringWithCauses)
-        scribe.debug(t.toStringWithCauses, t)
-      }
-      runningController
-    }
+  : TestController =
+    new TestController(
+      controllerResource(module, config, httpPort, httpsPort, items, name, scheduler)
+        .toAllocated
+        .await(99.s))
+
+  def controllerResource(
+    module: Module = controllerModule,
+    config: Config = ConfigFactory.empty,
+    httpPort: Option[Int] = Some(findFreeTcpPort()),
+    httpsPort: Option[Int] = None,
+    items: Seq[InventoryItem] = items,
+    name: String = controllerName,
+    scheduler: Option[Scheduler] = scheduler)
+  : Resource[Task, RunningController] = {
+    val conf = ControllerConfiguration.forTest(
+      configAndData = controller.directory,
+      config.withFallback(controllerConfig),
+      httpPort = httpPort,
+      httpsPort = httpsPort,
+      name = name)
+
+    CorrelId.bindNew(
+      RunningController.threadPoolResource[Task](conf, orCommon = scheduler)
+        .flatMap(scheduler =>
+          RunningController
+            .resource(
+              RunningController.newInjectorForTest(module, conf, Some(scheduler)))
+            .flatMap(runningController => Resource.eval(Task {
+              if (!doNotAddItems && (agentRefs.nonEmpty || items.nonEmpty)) {
+                if (!itemsHasBeenAdded.getAndSet(true)) {
+                  runningController.waitUntilReady()
+                  runningController.updateUnsignedSimpleItemsAsSystemUser(agentRefs ++ subagentItems)
+                    .await(99.s).orThrow
+                  if (items.nonEmpty) {
+                    val versionedItems = items.collect { case o: VersionedItem => o }.map(_ withVersion Vinitial)
+                    val signableItems = versionedItems ++ items.collect { case o: SignableSimpleItem => o }
+                    runningController
+                      .updateItemsAsSystemUser(
+                        Observable.from(items).collect { case o: UnsignedSimpleItem => ItemOperation.AddOrChangeSimple(o) } ++
+                          Observable.fromIterable(versionedItems.nonEmpty ? ItemOperation.AddVersion(Vinitial)) ++
+                          Observable.fromIterable(signableItems)
+                            .map(itemSigner.toSignedString)
+                            .map(ItemOperation.AddOrChangeSigned.apply))
+                      .await(99.s).orThrow
+                  }
+                }
+              }
+              for (t <- runningController.terminated.failed) {
+                logger.error(t.toStringWithCauses)
+                logger.debug(t.toStringWithCauses, t)
+              }
+              runningController
+            }))
+            .executeOn(scheduler)))
+  }
 
   def runAgents[A](
     agentPaths: Seq[AgentPath] = DirectoryProvider.this.agentPaths,
@@ -283,7 +314,7 @@ extends HasCloser
       }
 
   def updateVersionedItems(
-    controller: RunningController,
+    controller: TestController,
     versionId: VersionId,
     change: Seq[VersionedItem] = Nil,
     delete: Seq[VersionedItemPath] = Nil)
@@ -399,7 +430,7 @@ extends HasCloser
 object DirectoryProvider
 {
   val Vinitial = VersionId("INITIAL")
-  private val logger = Logger(getClass)
+  private val logger = Logger[this.type]
 
   def toLocalSubagentId(agentPath: AgentPath): SubagentId =
     SubagentId(agentPath.string + "-0")

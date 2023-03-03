@@ -11,7 +11,6 @@ import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.{autoClosing, multipleAutoClosing}
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.controller.RunningController
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerEvent
 import js7.data.event.KeyedEvent.NoKey
@@ -28,8 +27,8 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.RecoveryTest.*
-import js7.tests.testenv.DirectoryProvider
 import js7.tests.testenv.DirectoryProvider.{StdoutOutput, script, toLocalSubagentId}
+import js7.tests.testenv.{DirectoryProvider, TestController}
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.matchers.should.Matchers.*
 import scala.collection.mutable
@@ -110,7 +109,7 @@ final class RecoveryTest extends OurTestSuite
     }
   }
 
-  private def runController(directoryProvider: DirectoryProvider)(body: RunningController => Unit): Unit =
+  private def runController(directoryProvider: DirectoryProvider)(body: TestController => Unit): Unit =
     directoryProvider.runController() { controller =>
       // TODO Duplicate code in DirectoryProvider
       try body(controller)

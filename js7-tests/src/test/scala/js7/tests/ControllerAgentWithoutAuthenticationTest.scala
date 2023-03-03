@@ -9,9 +9,9 @@ import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
-import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.Allocated
 import js7.base.web.Uri
 import js7.common.commandline.CommandLineArguments
 import js7.common.utils.FreeTcpPortFinder
@@ -29,6 +29,8 @@ import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.ControllerAgentWithoutAuthenticationTest.*
+import js7.tests.testenv.TestController
+import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
@@ -51,7 +53,7 @@ final class ControllerAgentWithoutAuthenticationTest extends OurTestSuite
     }
   }
 
-  private def runMyTest(isPublic: Boolean)(body: (RunningController, Int) => Unit): Unit = {
+  private def runMyTest(isPublic: Boolean)(body: (TestController, Int) => Unit): Unit = {
     withTemporaryDirectory("ControllerAgentWithoutAuthenticationTest-") { dir =>
       createDirectories(dir / "controller/config/private")
       createDirectories(dir / "controller/data/state")
@@ -93,21 +95,22 @@ final class ControllerAgentWithoutAuthenticationTest extends OurTestSuite
       val subagentId = SubagentId("SUBAGENT")
       val agentRef = AgentRef(agentPath, directors = Seq(subagentId))
       val subagentItem = SubagentItem(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort"))
-      val agent = RunningAgent(agentConfiguration) await 99.s
-      val controller = RunningController.start(controllerConfiguration) await 99.s
-      controller.waitUntilReady()
+      RunningAgent.run(agentConfiguration) { _ =>
+        RunningController.blockingRun(controllerConfiguration) { runningController =>
+          val testController = new TestController(new Allocated(runningController, Task.unit))
+          testController.waitUntilReady()
 
-      controller.updateItemsAsSystemUser(Observable(
-        ItemOperation.AddOrChangeSimple(agentRef),
-        ItemOperation.AddOrChangeSimple(subagentItem),
-        ItemOperation.AddVersion(versionId),
-        ItemOperation.AddOrChangeSigned(itemSigner.toSignedString(workflow)))
-      ).await(99.s).orThrow
+          testController.updateItemsAsSystemUser(Observable(
+            ItemOperation.AddOrChangeSimple(agentRef),
+            ItemOperation.AddOrChangeSimple(subagentItem),
+            ItemOperation.AddVersion(versionId),
+            ItemOperation.AddOrChangeSigned(itemSigner.toSignedString(workflow)))
+          ).await(99.s).orThrow
 
-      body(controller, agentPort)
-
-      controller.terminate() await 99.s
-      agent.terminate() await 99.s
+          body(testController, agentPort)
+          testController.terminate().await(99.s)
+        }
+      }
     }
   }
 }

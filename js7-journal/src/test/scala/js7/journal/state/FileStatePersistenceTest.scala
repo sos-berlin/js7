@@ -150,7 +150,7 @@ final class FileStatePersistenceTest extends OurTestSuite with BeforeAndAfterAll
     def stop() = {
       (persistence.journalActor ? JournalActor.Input.TakeSnapshot)(99.s) await 99.s
       if (persistence != null) {
-        persistence.close()
+        persistence.stop.await(99.s)
       }
       persistence.stop.await(99.s)
       close()

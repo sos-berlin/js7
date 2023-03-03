@@ -13,7 +13,6 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.ScalaUtils.syntax.RichEither
-import js7.controller.RunningController
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, ControlWorkflowPath}
 import js7.data.event.EventId
@@ -31,7 +30,7 @@ import js7.data.workflow.{Workflow, WorkflowPath, WorkflowPathControl, WorkflowP
 import js7.proxy.ControllerApi
 import js7.tests.ControlWorkflowPathSuspendWorkflowTest.*
 import js7.tests.jobs.SemaphoreJob
-import js7.tests.testenv.DirectoryProviderForScalaTest
+import js7.tests.testenv.{DirectoryProviderForScalaTest, TestController}
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
@@ -51,7 +50,8 @@ extends OurTestSuite with DirectoryProviderForScalaTest
   protected val agentPaths = Seq(aAgentPath, bAgentPath)
   protected val items = Seq(aWorkflow, bWorkflow)
 
-  private var controller: RunningController = null
+  private var controller: TestController = null
+
   private var aAgent: RunningAgent = null
   private var bAgent: RunningAgent = null
 
@@ -65,7 +65,7 @@ extends OurTestSuite with DirectoryProviderForScalaTest
   }
 
   "ControlWorkflowPath suspend=true" in {
-    controller = directoryProvider.startController().await(99.s)
+    controller = directoryProvider.newController()
     def controllerState = controller.controllerState.await(99.s)
     implicit val controllerApi = directoryProvider.newControllerApi(controller)
 
@@ -213,7 +213,7 @@ extends OurTestSuite with DirectoryProviderForScalaTest
         after = agentEventId)
       .head.eventId
 
-    controller = directoryProvider.startController().await(99.s)
+    controller = directoryProvider.newController()
     implicit val controllerApi = directoryProvider.newControllerApi(controller)
     eventId = eventWatch.lastFileEventId
 

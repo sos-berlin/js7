@@ -22,8 +22,8 @@ final class UntaughtClusterWatchPassiveLostClusterTest extends ControllerCluster
 
   "PassiveLost" in {
     withControllerAndBackup(suppressClusterWatch = true) { (primary, backup, _) =>
-      val primaryController = primary.startController(httpPort = Some(primaryControllerPort)) await 99.s
-      val backupController = backup.startController(httpPort = Some(backupControllerPort)) await 99.s
+      val primaryController = primary.newController(httpPort = Some(primaryControllerPort))
+      val backupController = backup.newController(httpPort = Some(backupControllerPort))
 
       withClusterWatchService() { clusterWatch =>
         primaryController.eventWatch.await[ClusterCoupled]()
@@ -32,7 +32,7 @@ final class UntaughtClusterWatchPassiveLostClusterTest extends ControllerCluster
         // KILL BACKUP
         backupController.executeCommandAsSystemUser(ShutDown(dontNotifyActiveNode = true))
           .await(99.s).orThrow
-        //backupController.terminated await 99.s
+        backupController.close()
       }
 
       primaryController.testEventBus
@@ -60,7 +60,7 @@ final class UntaughtClusterWatchPassiveLostClusterTest extends ControllerCluster
         val ClusterPassiveLost(`backupId`) = primaryController.eventWatch.await[ClusterPassiveLost]()
           .head.value.event
 
-        primaryController.terminate() await 99.s
+        primaryController.close()
       }
     }
   }

@@ -4,10 +4,8 @@ import akka.util.Timeout
 import cats.effect.Resource
 import com.typesafe.config.Config
 import js7.base.eventbus.EventPublisher
-import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
@@ -47,11 +45,10 @@ private[cluster] final class ClusterCommon(
 
   def clusterWatchCounterpart = allocatedClusterWatchCounterpart.allocatedThing
 
-  def stop: Task[Completed] =
+  def stop: Task[Unit] =
     Task.defer {
-      _clusterWatchSynchronizer.toOption.fold(Task.completed)(_.stop)
-        .*>(allocatedClusterWatchCounterpart.stop)
-        .as(Completed)
+      _clusterWatchSynchronizer.toOption.fold(Task.unit)(_.stop)
+        .guarantee(allocatedClusterWatchCounterpart.stop)
     }
 
   def clusterWatchSynchronizer(clusterState: ClusterState.HasNodes): Task[ClusterWatchSynchronizer] =

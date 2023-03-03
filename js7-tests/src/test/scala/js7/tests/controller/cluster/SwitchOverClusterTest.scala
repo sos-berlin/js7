@@ -9,7 +9,6 @@ import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
-import js7.controller.RunningController
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterSwitchedOver}
 import js7.data.controller.ControllerCommand.ClusterSwitchOver
 import js7.data.event.EventId
@@ -17,6 +16,7 @@ import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.tests.controller.cluster.ControllerClusterTester.*
 import js7.tests.controller.cluster.SwitchOverClusterTest.*
+import js7.tests.testenv.TestController
 import monix.execution.Scheduler.Implicits.traced
 import scala.util.Try
 
@@ -86,7 +86,7 @@ final class SwitchOverClusterTest extends ControllerClusterTester
     }
   }
 
-  private def addOrders(orderId: Seq[OrderId])(implicit controller: RunningController): Unit = {
+  private def addOrders(orderId: Seq[OrderId])(implicit controller: TestController): Unit = {
     controller.httpApi.login(onlyIfNotLoggedIn = true).await(timeout)
     orderId.grouped(1000)
       .map(_.map(FreshOrder(_, TestWorkflow.path,

@@ -12,8 +12,6 @@ import js7.base.io.https.{HttpsConfig, KeyStoreRef}
 import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.*
-import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.ScalaUtils.syntax.*
@@ -29,7 +27,6 @@ import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.https.HttpsTestBase.*
 import js7.tests.testenv.DirectoryProvider.{ExportedControllerTrustStoreRef, ExportedControllerTrustStoreResource}
 import js7.tests.testenv.{ControllerAgentForScalaTest, DirectoryProvider}
-import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.duration.*
 
@@ -130,9 +127,8 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest wit
     agentHttpsMutual = provideControllerClientCertificate,
     testName = Some(getClass.simpleScalaName + "-Backup"))
 
-  protected final lazy val backupController = backupDirectoryProvider.startController(
-    httpPort = None, httpsPort = Some(backupHttpsPort)
-  ).await(99.s)
+  protected final lazy val backupController =
+    backupDirectoryProvider.newController(httpPort = None, httpsPort = Some(backupHttpsPort))
 
   protected final val standardUserAndPassword: Option[UserAndPassword] =
     (!controllerHttpsMutual || extraDistringuishedNameUserAndPassword.isDefined) ?
@@ -187,7 +183,7 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest wit
     delete(clientKeyStore)
     super.afterAll()
     if (useCluster) {
-      backupController.terminate() await 99.s
+      backupController.close()
       backupDirectoryProvider.close()
     }
   }

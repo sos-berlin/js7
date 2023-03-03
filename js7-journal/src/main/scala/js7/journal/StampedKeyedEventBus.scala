@@ -9,6 +9,7 @@ import js7.data.event.{AnyKeyedEvent, Stamped, Event as EngineEvent}
 /**
   * @author Joacim Zschimmer
   */
+@deprecated
 @Singleton
 final class StampedKeyedEventBus extends EventBus with SubchannelClassification {
 

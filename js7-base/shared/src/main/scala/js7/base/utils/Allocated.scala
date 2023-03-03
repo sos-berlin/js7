@@ -13,4 +13,7 @@ extends Stoppable[F]
 object Allocated {
   def fromPair[F[_]: UnsafeMemoizable, A](pair: (A, F[Unit])): Allocated[F, A] =
     new Allocated[F, A](pair._1, pair._2)
+
+  def unapply[F[_], A](allocated: Allocated[F, A]) =
+    Some(allocated.allocatedThing -> allocated.stop)
 }

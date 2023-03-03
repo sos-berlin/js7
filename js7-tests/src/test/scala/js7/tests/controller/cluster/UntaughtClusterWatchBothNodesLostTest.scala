@@ -24,8 +24,8 @@ final class UntaughtClusterWatchBothNodesLostTest extends ControllerClusterTeste
 
   "Failover and recouple" in {
     withControllerAndBackup(suppressClusterWatch = true) { (primary, backup, _) =>
-      val primaryController = primary.startController(httpPort = Some(primaryControllerPort)) await 99.s
-      val backupController = backup.startController(httpPort = Some(backupControllerPort)) await 99.s
+      val primaryController = primary.newController(httpPort = Some(primaryControllerPort))
+      val backupController = backup.newController(httpPort = Some(backupControllerPort))
 
       withClusterWatchService() { clusterWatch =>
         primaryController.eventWatch.await[ClusterCoupled]()
@@ -80,8 +80,8 @@ final class UntaughtClusterWatchBothNodesLostTest extends ControllerClusterTeste
         assert(clusterWatchService.manuallyConfirmNodeLoss(backupId, "CONFIRMER")
           == Left(ClusterNodeIsNotLostProblem(backupId)))
 
-        primaryController.terminate() await 99.s
-        backupController.terminate() await 99.s
+        primaryController.close()
+        backupController.close()
       }
     }
   }

@@ -6,8 +6,8 @@ import java.util.concurrent.TimeUnit.SECONDS
 import java.util.concurrent.TimeoutException
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.configutils.Configs.*
-import js7.base.test.OurTestSuite
 import js7.base.io.file.FileUtils.syntax.*
+import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
@@ -69,7 +69,9 @@ final class JControllerProxyTest extends OurTestSuite with DirectoryProviderForS
   "JControllerProxy" in {
     directoryProvider.runAgents() { _ =>
       val port = findFreeTcpPort()
-      val controller = Lazy { directoryProvider.startController(httpPort = Some(port)).await(99.s) }
+      val controllerAllocated = Lazy(
+        directoryProvider.controllerResource(httpPort = Some(port))
+          .allocated.await(99.s))
       try {
         val admissions = List(JAdmission.of(s"http://127.0.0.1:$port", ClusterProxyTest.primaryCredentials)).asJava
         val myVersionId = VersionId("MY-VERSION")
@@ -80,11 +82,10 @@ final class JControllerProxyTest extends OurTestSuite with DirectoryProviderForS
           ).map(_.asJson.compactPrint).asJava,
           (1 to 1000).map(i => workflow.withId(WorkflowPath(s"WORKFLOW-$i") ~ myVersionId))
             .map(_.asJson.compactPrint).asJava,
-          () => controller())
+          () => controllerAllocated())
       } finally
-        for (controller <- controller) {
-          controller.terminate() await 99.s
-          controller.close()
+        for (allocated <- controllerAllocated) {
+          allocated._2.await(99.s)
         }
     }
   }

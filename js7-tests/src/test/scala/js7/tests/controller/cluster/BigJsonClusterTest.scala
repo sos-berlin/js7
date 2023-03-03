@@ -32,10 +32,7 @@ final class BigJsonClusterTest extends OurTestSuite with ControllerClusterForSca
   override protected val clusterTiming = ClusterTiming(1.s, 10.s)
 
   "Cluster replicates big JSON" in {
-    withControllerAndBackup() { (primary, backup, _) =>
-      val backupController = backup.startController(httpPort = Some(backupControllerPort)) await 99.s
-      val primaryController = primary.startController(httpPort = Some(primaryControllerPort))
-        .await(99.s)
+    runControllerAndBackup() { (primary, primaryController, backup, backupController, _) =>
       import primaryController.eventWatch
       eventWatch.await[ClusterEvent.ClusterCoupled]()
 
@@ -60,8 +57,6 @@ final class BigJsonClusterTest extends OurTestSuite with ControllerClusterForSca
       assertEqualJournalFiles(primary.controller, backup.controller, n = 1)
 
       controllerApi.stop await 99.s
-      primaryController.terminate() await 99.s
-      backupController.terminate() await 99.s
     }
   }
 }

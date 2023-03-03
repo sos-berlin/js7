@@ -19,9 +19,9 @@ import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.{Closer, HasCloser}
 import js7.common.guice.GuiceImplicits.RichInjector
+import js7.journal.EventIdGenerator
 import js7.journal.recover.Recovered
 import js7.journal.state.{FileStatePersistence, StatePersistence}
-import js7.journal.{EventIdGenerator, StampedKeyedEventBus}
 import monix.execution.Scheduler
 import scala.concurrent.duration.Deadline.now
 import scala.concurrent.{Future, Promise}
@@ -69,8 +69,7 @@ object TestAgentActorProvider {
       .start(
         Recovered.noJournalFile[AgentState](journalMeta, now, config),
         journalConf,
-        injector.instance[EventIdGenerator],
-        injector.instance[StampedKeyedEventBus])
+        injector.instance[EventIdGenerator])
       .awaitInfinite
 
     val actor = actorSystem.actorOf(

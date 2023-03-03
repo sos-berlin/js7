@@ -7,6 +7,7 @@ import com.typesafe.scalalogging.Logger as ScalaLogger
 import izumi.reflect.Tag
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
+import js7.base.monixutils.MonixBase.syntax.RichMonixTask
 import js7.base.monixutils.MonixDeadline.syntax.DeadlineSchedule
 import js7.base.problem.Problem
 import js7.base.service.Service.*
@@ -89,14 +90,16 @@ object Service
   : Resource[Task, S] =
     Resource.make(
       acquire = startService(newService, start))(
-      release = _.stop)
+      release = service => service.stop
+        .logWhenItTakesLonger(s"$service stop"))
 
   private def startService[S <: Service](newService: Task[S], start: S => Task[Started]): Task[S] =
     newService.flatTap(service =>
       if (service.started.getAndSet(true))
         Task.raiseError(Problem.pure(s"$toString started twice").throwable)
       else
-        start(service))
+        logger.traceTask(s"$service start")(
+          start(service)))
 
   private def logInfoStartAndStop[A](
     logger: ScalaLogger,

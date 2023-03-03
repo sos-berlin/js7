@@ -27,68 +27,70 @@ final class JournaledProxySwitchOverClusterTest extends OurTestSuite with Cluste
 
   "JournaledProxy accesses a switching Cluster" in {
     withControllerAndBackup() { (primary, backup, _) =>
-      backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
-        lazy val proxy = controllerApi.startProxy().await(99.s)
-        var lastEventId = EventId.BeforeFirst
+      val backupController = backup.newController(httpPort = Some(backupControllerPort))
 
-        def runOrder(orderId: OrderId): Unit = {
-          val whenFinished = proxy.observable
-            .find {
-              case EventAndState(Stamped(_, _, KeyedEvent(`orderId`, _: OrderFinished)), _, _) => true
-              case _ => false
-            }
-            .timeoutOnSlowUpstream(99.s)
-            .headL.runToFuture
-          controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
-          whenFinished await 99.s
+      lazy val proxy = controllerApi.startProxy().await(99.s)
+      var lastEventId = EventId.BeforeFirst
+
+      def runOrder(orderId: OrderId): Unit = {
+        val whenFinished = proxy.observable
+          .find {
+            case EventAndState(Stamped(_, _, KeyedEvent(`orderId`, _: OrderFinished)), _, _) => true
+            case _ => false
+          }
+          .timeoutOnSlowUpstream(99.s)
+          .headL.runToFuture
+        controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+        whenFinished await 99.s
+      }
+
+      try {
+        primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
+          val admissions = List(
+            Admission(primaryController.localUri, Some(primaryUserAndPassword)),
+            Admission(backupController.localUri, Some(backupUserAndPassword)))
+
+          // Run a non-cluster test
+          autoClosing(
+            new JControllerFluxTester(admissions.map(JAdmission.apply).asJava, JHttpsConfig.empty)
+          ) { _.test() }
+
+          runOrder(OrderId("ORDER-ON-PRIMARY"))
+
+          // SWITCH-OVER
+
+          lastEventId = primaryController.eventWatch.lastAddedEventId
+          primaryController.executeCommandAsSystemUser(ClusterSwitchOver).await(99.s).orThrow
+          primaryController.terminated await 99.s
         }
 
-        try {
-          primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
-            val admissions = List(
-              Admission(primaryController.localUri, Some(primaryUserAndPassword)),
-              Admission(backupController.localUri, Some(backupUserAndPassword)))
+        // Try to confuse controllerApi about the active controller and start primary controller again
+        primary.runController(
+          httpPort = Some(primaryControllerPort),
+          dontWaitUntilReady = true
+        ) { primaryController =>
+          backupController.eventWatch.await[ControllerReady](after = lastEventId)
+          primaryController.eventWatch.await[ClusterCoupled](after = lastEventId)
+          runOrder(OrderId("ORDER-ON-BACKUP-1"))
 
-            // Run a non-cluster test
-            autoClosing(
-              new JControllerFluxTester(admissions.map(JAdmission.apply).asJava, JHttpsConfig.empty)
-            ) { _.test() }
+          // RESTART BACKUP
+          lastEventId = backupController.eventWatch.lastAddedEventId
+          backupController.terminate().await(99.s)
 
-            runOrder(OrderId("ORDER-ON-PRIMARY"))
-
-            // SWITCH-OVER
-
-            lastEventId = primaryController.eventWatch.lastAddedEventId
-            primaryController.executeCommandAsSystemUser(ClusterSwitchOver).await(99.s).orThrow
-            primaryController.terminated await 99.s
-          }
-          // Try to confuse controllerApi about the active controller and start primary controller again
-          primary.runController(
-            httpPort = Some(primaryControllerPort),
-            dontWaitUntilReady = true
-          ) { primaryController =>
-            backupController.eventWatch.await[ControllerReady](after = lastEventId)
-            primaryController.eventWatch.await[ClusterCoupled](after = lastEventId)
-            runOrder(OrderId("ORDER-ON-BACKUP-1"))
-            // RESTART BACKUP
-
-            lastEventId = backupController.eventWatch.lastAddedEventId
-            backupController.terminate().await(99.s)
-            backupController.close()
-            val backupController2 = backup
-              .startController(httpPort = Some(new URI(backupController.localUri.toString).getPort))
-              .await(99.s)
-            backupController2.waitUntilReady()
+          backup.runController(
+            httpPort = Some(new URI(backupController.localUri.toString).getPort)
+          ) { backupController2 =>
             runOrder(OrderId("ORDER-ON-BACKUP-RESTARTED"))
             backupController2.executeCommandAsSystemUser(ShutDown(clusterAction = Some(ClusterAction.Failover)))
               .await(99.s).orThrow
-
-            primaryController.eventWatch.await[ClusterFailedOver](after = lastEventId)
-            runOrder(OrderId("ORDER-AFTER-FAILOVER"))
+            backupController2.terminated.await(99.s)
           }
-        } finally
-          proxy.stop.runToFuture await 99.s
-      }
+
+          primaryController.eventWatch.await[ClusterFailedOver](after = lastEventId)
+          runOrder(OrderId("ORDER-AFTER-FAILOVER"))
+        }
+      } finally
+        proxy.stop.runToFuture await 99.s
     }
   }
 }

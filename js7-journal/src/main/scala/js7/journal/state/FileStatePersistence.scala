@@ -6,6 +6,7 @@ import akka.util.Timeout
 import com.softwaremill.diffx
 import com.softwaremill.tagging.{@@, Tagger}
 import izumi.reflect.Tag
+import js7.base.eventbus.{EventPublisher, StandardEventBus}
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.monixutils.Switch
@@ -15,14 +16,14 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.SetOnce
 import js7.common.akkautils.Akkas.encodeAsActorName
 import js7.data.cluster.ClusterState
-import js7.data.event.{Event, JournalHeader, JournalHeaders, JournalId, KeyedEvent, SnapshotableState, Stamped}
+import js7.data.event.{AnyKeyedEvent, Event, JournalHeader, JournalHeaders, JournalId, KeyedEvent, SnapshotableState, Stamped}
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.journal.recover.Recovered
 import js7.journal.state.FileStatePersistence.logger
 import js7.journal.state.StateJournalingActor.{PersistFunction, PersistLaterFunction, StateToEvents}
 import js7.journal.watch.FileEventWatch
-import js7.journal.{CommitOptions, EventIdGenerator, JournalActor, StampedKeyedEventBus}
+import js7.journal.{CommitOptions, EventIdGenerator, JournalActor}
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.{Future, Promise}
@@ -45,7 +46,6 @@ final class FileStatePersistence[S <: SnapshotableState[S]: Tag](
     timeout: akka.util.Timeout)
 extends StatePersistence[S]
 with FileStatePersistence.PossibleFailover
-with AutoCloseable
 {
   val journalId = recoveredJournalId getOrElse JournalId.random()
 
@@ -64,9 +64,6 @@ with AutoCloseable
     journalHeaderOnce.task
 
   def actor = actorOnce.orThrow
-
-  def close(): Unit =
-    stop.runAsyncAndForget
 
   def start(recovered: Recovered[S]): Task[JournalHeader] =
     Task.defer {
@@ -209,7 +206,7 @@ object FileStatePersistence
     recovered: Recovered[S],
     journalConf: JournalConf,
     eventIdGenerator: EventIdGenerator = new EventIdGenerator,
-    keyedEventBus: StampedKeyedEventBus = new StampedKeyedEventBus)
+    keyedEventBus: EventPublisher[Stamped[AnyKeyedEvent]] = new StandardEventBus)
     (implicit
       scheduler: Scheduler,
       actorRefFactory: ActorRefFactory,
@@ -222,13 +219,13 @@ object FileStatePersistence
       .as(persistence)
   }
 
-  def prepare[S <: SnapshotableState[S]: SnapshotableState.Companion: diffx.Diff: Tag](
+  private def prepare[S <: SnapshotableState[S]: SnapshotableState.Companion: diffx.Diff: Tag](
     recoveredJournalId: Option[JournalId],
     eventWatch: FileEventWatch,
     journalMeta: JournalMeta,
     journalConf: JournalConf,
     eventIdGenerator: EventIdGenerator = new EventIdGenerator,
-    keyedEventBus: StampedKeyedEventBus = new StampedKeyedEventBus)
+    keyedEventBus: EventPublisher[Stamped[AnyKeyedEvent]] = new StandardEventBus)
     (implicit
       scheduler: Scheduler,
       actorRefFactory: ActorRefFactory,

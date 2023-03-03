@@ -16,6 +16,7 @@ import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.Log4j
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.CatsBlocking.BlockingTaskResource
 import js7.base.utils.Closer
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.Closer.withCloser
@@ -92,10 +93,10 @@ object TestDockerExample
         Log4j.shutdown()
       } .closeWithCloser
 
-      val controller = RunningController.fromInjector(injector) await 99.s
-      //??? controller.executeCommandAsSystemUser(ControllerCommand.ScheduleOrdersEvery(1.minute)).runToFuture.await(99.s).orThrow
-      controller.terminated await 365 * 24.h
-      controller.close()
+      RunningController.resource(injector).blockingUse(99.s) { controller =>
+        //??? controller.executeCommandAsSystemUser(ControllerCommand.ScheduleOrdersEvery(1.minute)).runToFuture.await(99.s).orThrow
+        controller.terminated await 365 * 24.h
+      }
       for (agent <- agents) agent.executeCommandAsSystemUser(AgentCommand.ShutDown())
       agents.traverse(_.terminated) await 60.s
       agents foreach (_.close())

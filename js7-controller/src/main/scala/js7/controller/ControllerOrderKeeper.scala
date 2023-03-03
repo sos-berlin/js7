@@ -47,6 +47,7 @@ import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.board.BoardEvent.{NoticeDeleted, NoticePosted}
 import js7.data.board.{BoardPath, BoardState, Notice, NoticeId}
 import js7.data.calendar.{Calendar, CalendarExecutor}
+import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerCommand.{ControlWorkflow, ControlWorkflowPath, TransferOrders}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.data.controller.ControllerStateExecutor.convertImplicitly
@@ -75,7 +76,6 @@ import js7.data.subagent.{SubagentId, SubagentItem, SubagentItemState, SubagentI
 import js7.data.value.expression.scopes.NowScope
 import js7.data.workflow.position.WorkflowPosition
 import js7.data.workflow.{Instruction, Workflow, WorkflowControl, WorkflowControlId, WorkflowPathControl, WorkflowPathControlPath}
-import js7.journal.recover.Recovered
 import js7.journal.state.FileStatePersistence
 import js7.journal.{CommitOptions, JournalActor, MainJournalingActor}
 import monix.eval.Task
@@ -265,7 +265,6 @@ with MainJournalingActor[ControllerState, Event]
 
   override def postStop() =
     try {
-      clusterNode.close()
       shutdown.close()
       switchover foreach { _.close() }
     } finally {
@@ -277,15 +276,16 @@ with MainJournalingActor[ControllerState, Event]
     }
 
   def receive = {
-    case Input.Start(recovered) =>
-      assertActiveClusterState(recovered)
-      recover(recovered)
+    case Input.Start(maybeClusterState) =>
+      for (controllerState <- maybeClusterState) {
+        assertActiveClusterState(controllerState.clusterState)
+        recover(controllerState)
+      }
 
       become("activating")(activating)
       unstashAll()
       clusterNode.beforeJournalingStarts
         .map(_.orThrow)
-        .map((_: Completed) => ())
         .materialize
         .map(Internal.Activated.apply)
         .runToFuture
@@ -294,39 +294,36 @@ with MainJournalingActor[ControllerState, Event]
     case msg => notYetReady(msg)
   }
 
-  private def assertActiveClusterState(recovered: Recovered[ControllerState]): Unit =
-    for (clusterState <- recovered.recoveredState.map(_.clusterState)) {
-      import controllerConfiguration.clusterConf.ownId
-      if (!clusterState.isEmptyOrActive(ownId))
-        throw new IllegalStateException(
-          "Controller has recovered from Journal but is not the active node in ClusterState: " +
-            s"id=$ownId, failedOver=$clusterState")
-    }
-
-  private def recover(recovered: Recovered[ControllerState]): Unit = {
-    for (controllerState <- recovered.recoveredState) {
-      if (controllerState.controllerId != controllerConfiguration.controllerId)
-        throw Problem(s"Recovered '${controllerState.controllerId}' " +
-          s"differs from configured '${controllerConfiguration.controllerId}'"
-        ).throwable
-      this._controllerState = controllerState
-      //controllerMetaState = controllerState.controllerMetaState.copy(totalRunningTime = recovered.totalRunningTime)
-      for (agentRef <- controllerState.pathToUnsignedSimple(AgentRef).values) {
-        val agentRefState = controllerState.keyTo(AgentRefState)
-          .getOrElse(agentRef.path, AgentRefState(agentRef))
-        registerAgent(agentRef, agentRefState.agentRunId, eventId = agentRefState.eventId)
-      }
-
-      for (
-        boardState <- controllerState.keyTo(BoardState).values;
-        notice <- boardState.notices)
-      {
-        notices.schedule(notice)
-      }
-
-      persistedEventId = controllerState.eventId
-    }
+  private def assertActiveClusterState(clusterState: ClusterState): Unit = {
+    import controllerConfiguration.clusterConf.ownId
+    if (!clusterState.isEmptyOrActive(ownId))
+      throw new IllegalStateException(
+        "Controller has recovered from Journal but is not the active node in ClusterState: " +
+          s"id=$ownId, failedOver=$clusterState")
   }
+
+  private def recover(controllerState: ControllerState): Unit = {
+    if (controllerState.controllerId != controllerConfiguration.controllerId)
+      throw Problem(s"Recovered '${controllerState.controllerId}' " +
+        s"differs from configured '${controllerConfiguration.controllerId}'"
+      ).throwable
+    this._controllerState = controllerState
+    //controllerMetaState = controllerState.controllerMetaState.copy(totalRunningTime = recovered.totalRunningTime)
+    for (agentRef <- controllerState.pathToUnsignedSimple(AgentRef).values) {
+      val agentRefState = controllerState.keyTo(AgentRefState)
+        .getOrElse(agentRef.path, AgentRefState(agentRef))
+      registerAgent(agentRef, agentRefState.agentRunId, eventId = agentRefState.eventId)
+    }
+
+    for (
+      boardState <- controllerState.keyTo(BoardState).values;
+      notice <- boardState.notices)
+    {
+      notices.schedule(notice)
+    }
+
+    persistedEventId = controllerState.eventId
+}
 
   private def activating: Receive = {
     case Internal.Activated(Failure(t)) =>
@@ -1573,13 +1570,13 @@ with MainJournalingActor[ControllerState, Event]
 
 private[controller] object ControllerOrderKeeper
 {
-  private object ControllerIsShuttingDownProblem extends Problem.ArgumentlessCoded
+  object ControllerIsShuttingDownProblem extends Problem.ArgumentlessCoded
   private object ControllerIsSwitchingOverProblem extends Problem.ArgumentlessCoded
 
   private val logger = Logger(getClass)
 
   object Input {
-    final case class Start(recovered: Recovered[ControllerState])
+    final case class Start(maybeClusterState: Option[ControllerState])
   }
 
   sealed trait Command

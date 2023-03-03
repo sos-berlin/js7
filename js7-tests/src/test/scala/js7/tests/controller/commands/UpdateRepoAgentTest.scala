@@ -15,7 +15,6 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.web.HttpClient.HttpException
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import js7.controller.RunningController
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand
 import js7.data.job.RelativePathExecutable
@@ -23,7 +22,7 @@ import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.controller.commands.UpdateRepoAgentTest.*
-import js7.tests.testenv.DirectoryProvider
+import js7.tests.testenv.{DirectoryProvider, TestController}
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.*
 
@@ -89,7 +88,7 @@ final class UpdateRepoAgentTest extends OurTestSuite
     }
   }
 
-  private def executeCommand(controller: RunningController, cmd: ControllerCommand): Checked[cmd.Response] =
+  private def executeCommand(controller: TestController, cmd: ControllerCommand): Checked[cmd.Response] =
     controller.httpApi.executeCommand(cmd).map(Right.apply)
       .onErrorRecover { case HttpException.HasProblem(problem) => Left(problem) }
       .await(99.seconds)
@@ -104,7 +103,7 @@ object UpdateRepoAgentTest
         }"""
   ).orThrow
 
-  private def runOrder(controller: RunningController, orderId: OrderId): Unit = {
+  private def runOrder(controller: TestController, orderId: OrderId): Unit = {
     controller.addOrderBlocking(FreshOrder(orderId, workflow.path))
     controller.eventWatch.await[OrderFinished](predicate = _.key == orderId)
   }

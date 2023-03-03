@@ -15,7 +15,6 @@ import js7.base.utils.CatsBlocking.BlockingTaskResource
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Lazy, SetOnce}
 import js7.cluster.watch.ClusterWatchService
-import js7.controller.RunningController
 import js7.data.controller.ControllerState
 import js7.data.execution.workflow.instructions.InstructionExecutorService
 import js7.data.item.BasicItemEvent.ItemAttached
@@ -51,16 +50,16 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
       .map(pairs => pairs.map(_._1) -> pairs.map(_._2).toMap)
       .await(99.s)
 
-  protected final lazy val controller: RunningController =
-    directoryProvider
-      .startController(
+  protected final lazy val controller: TestController = {
+    val controller = directoryProvider
+      .newController(
         controllerModule,
         config"""js7.web.server.auth.https-client-authentication = $controllerHttpsMutual""",
         httpPort = controllerHttpPort,
         httpsPort = controllerHttpsPort)
-      .tapEval(controller =>
-        Task(controller.httpApiDefaultLogin(Some(directoryProvider.controller.userAndPassword))))
-      .await(99.s)
+    controller.httpApiDefaultLogin(Some(directoryProvider.controller.userAndPassword))
+    controller
+  }
 
   protected final lazy val eventWatch = controller.eventWatch
   private val controllerApiLazy = Lazy(directoryProvider.newControllerApi(controller))
@@ -109,7 +108,6 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
   override def afterAll() = {
     for (o <- controllerApiLazy) o.stop await 99.s
     controller.terminate() await 15.s
-    controller.close()
 
     for (o <- clusterWatchServiceOnce.toOption) o._2.await(99.s)
 

@@ -3,7 +3,6 @@ package js7.controller.web
 import akka.actor.ActorSystem
 import cats.effect.Resource
 import com.google.inject.Injector
-import javax.inject.{Inject, Singleton}
 import js7.base.problem.Checked
 import js7.cluster.ClusterNode
 import js7.common.akkahttp.web.AkkaWebServer
@@ -19,39 +18,35 @@ import scala.concurrent.duration.Deadline
 
 object ControllerWebServer
 {
-  @Singleton
-  final class Factory @Inject private(
+  def resource(
+    orderApi: OrderApi,
+    commandExecutor: ControllerCommandExecutor,
+    itemUpdater: ItemUpdater,
+    controllerState: Task[Checked[ControllerState]],
+    clusterNode: ClusterNode[ControllerState],
+    totalRunningSince: Deadline,
+    eventWatch: FileEventWatch,
     controllerConfiguration: ControllerConfiguration,
     sessionRegister: SessionRegister[SimpleSession],
     injector: Injector)(
     implicit actorSystem_ : ActorSystem)
-  {
-    def resource(
-      orderApi: OrderApi,
-      commandExecutor: ControllerCommandExecutor,
-      itemUpdater: ItemUpdater,
-      controllerState: Task[Checked[ControllerState]],
-      clusterNode: ClusterNode[ControllerState],
-      totalRunningSince: Deadline,
-      eventWatch: FileEventWatch)
-    : Resource[Task, AkkaWebServer & AkkaWebServer.HasUri] =
-      AkkaWebServer.resource(
-        controllerConfiguration.webServerBindings,
-        controllerConfiguration.config,
-        (binding, whenShuttingDown) =>
-          Task.deferAction(implicit scheduler => Task.pure(
-            new ControllerBoundRoute(
-              binding,
-              whenShuttingDown,
-              controllerConfiguration,
-              orderApi,
-              commandExecutor,
-              itemUpdater,
-              controllerState,
-              clusterNode,
-              totalRunningSince,
-              sessionRegister,
-              eventWatch,
-              injector))))
-  }
+  : Resource[Task, AkkaWebServer & AkkaWebServer.HasUri] =
+    AkkaWebServer.resource(
+      controllerConfiguration.webServerBindings,
+      controllerConfiguration.config,
+      (binding, whenShuttingDown) =>
+        Task.deferAction(implicit scheduler => Task.pure(
+          new ControllerBoundRoute(
+            binding,
+            whenShuttingDown,
+            controllerConfiguration,
+            orderApi,
+            commandExecutor,
+            itemUpdater,
+            controllerState,
+            clusterNode,
+            totalRunningSince,
+            sessionRegister,
+            eventWatch,
+            injector))))
 }

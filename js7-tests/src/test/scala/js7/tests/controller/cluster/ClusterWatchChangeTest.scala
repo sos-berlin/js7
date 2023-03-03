@@ -18,124 +18,123 @@ final class ClusterWatchChangeTest extends ControllerClusterTester
 {
   "Start and stop some ClusterWatch with same or different ClusterWatchIds" in {
     withControllerAndBackup(suppressClusterWatch = true) { (primary, backup, _) =>
-      val primaryController = primary.startController(httpPort = Some(primaryControllerPort)) await 99.s
+      val primaryController = primary.newController(httpPort = Some(primaryControllerPort))
+
       var whenConfirmed = primaryController.testEventBus.when[ClusterWatchConfirmed].runToFuture
 
-      val backupController = backup.startController(httpPort = Some(backupControllerPort)) await 99.s
+      backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { _ =>
+        // ClusterWatch is not required for ClusterCouplingPrepared
+        val x = primaryController.eventWatch.await[ClusterCouplingPrepared]().head.eventId
+        sleep(3.s)
+        // But ClusterWatch is required for ClusterCoupled
+        assert(primaryController.eventWatch.allKeyedEvents[ClusterCoupled].isEmpty)
 
-      // ClusterWatch is not required for ClusterCouplingPrepared
-      val x = primaryController.eventWatch.await[ClusterCouplingPrepared]().head.eventId
-      sleep(3.s)
-      // But ClusterWatch is required for ClusterCoupled
-      assert(primaryController.eventWatch.allKeyedEvents[ClusterCoupled].isEmpty)
+        withClusterWatchService(aClusterWatchId) { a =>
+          val z = primaryController.eventWatch.await[ClusterCoupled]().head.eventId
+          // ClusterWatchRegistered is expected to immediately follow ClusterCouplingPrepared
+          // but we await this only now, to not force this wrong behaviour.
+          val y = primaryController.eventWatch.await[ClusterWatchRegistered]().head.eventId
+          assert(x < y && y < z)
 
-      withClusterWatchService(aClusterWatchId) { a =>
-        val z = primaryController.eventWatch.await[ClusterCoupled]().head.eventId
-        // ClusterWatchRegistered is expected to immediately follow ClusterCouplingPrepared
-        // but we await this only now, to not force this wrong behaviour.
-        val y = primaryController.eventWatch.await[ClusterWatchRegistered]().head.eventId
-        assert(x < y && y < z)
+          val confirmed = whenConfirmed.await(99.s)
+          assert(confirmed.command.clusterWatchId == a.clusterWatchId)
+          assert(confirmed.command.clusterWatchRunId == a.clusterWatchRunId)
+          assert(confirmed.result == Right(()))
 
-        val confirmed = whenConfirmed.await(99.s)
-        assert(confirmed.command.clusterWatchId == a.clusterWatchId)
-        assert(confirmed.command.clusterWatchRunId == a.clusterWatchRunId)
-        assert(confirmed.result == Right(()))
+          assert(primaryController.controllerState.await(99.s)
+            .clusterState.asInstanceOf[ClusterState.Coupled].setting.clusterWatchId
+            == Some(aClusterWatchId))
 
-        assert(primaryController.controllerState.await(99.s)
-          .clusterState.asInstanceOf[ClusterState.Coupled].setting.clusterWatchId
-          == Some(aClusterWatchId))
+          waitForCondition(10.s, 10.ms)(
+            a.clusterState().exists(_.isInstanceOf[ClusterState.Coupled]))
+        }
 
-        waitForCondition(10.s, 10.ms)(
-          a.clusterState().exists(_.isInstanceOf[ClusterState.Coupled]))
-      }
+        logger.info("🔵 Same ClusterWatchId again")
 
-      logger.info("🔵 Same ClusterWatchId again")
+        def whenProperRequestIsConfirmed() = primaryController.testEventBus
+          .when_[ClusterWatchConfirmed](predicate = confirmed =>
+            confirmed.result != Left(ClusterWatchRequestDoesNotMatchProblem) || {
+              // bClusterWatchId may confirm the last request already confirmed by aClusterWatchId
+              logger.debug(s"Ignore: $confirmed")
+              false
+            })
+          .runToFuture
 
-      def whenProperRequestIsConfirmed() = primaryController.testEventBus
-        .when_[ClusterWatchConfirmed](predicate = confirmed =>
-          confirmed.result != Left(ClusterWatchRequestDoesNotMatchProblem) || {
-            // bClusterWatchId may confirm the last request already confirmed by aClusterWatchId
-            logger.debug(s"Ignore: $confirmed")
-            false
-          })
-        .runToFuture
+        whenConfirmed = whenProperRequestIsConfirmed()
+        withClusterWatchService(aClusterWatchId) { a =>
+          val confirmed = whenConfirmed.await(99.s)
+          assert(confirmed.command.clusterWatchId == a.clusterWatchId)
+          assert(confirmed.command.clusterWatchRunId == a.clusterWatchRunId)
+          assert(confirmed.result == Right(()))
+        }
 
-      whenConfirmed = whenProperRequestIsConfirmed()
-      withClusterWatchService(aClusterWatchId) { a =>
-        val confirmed = whenConfirmed.await(99.s)
-        assert(confirmed.command.clusterWatchId == a.clusterWatchId)
-        assert(confirmed.command.clusterWatchRunId == a.clusterWatchRunId)
-        assert(confirmed.result == Right(()))
-      }
+        logger.info("🔵 Different ClusterWatchId")
+        whenConfirmed = whenProperRequestIsConfirmed()
+        val eventId = primaryController.eventWatch.lastAddedEventId
+        withClusterWatchService(bClusterWatchId) { b =>
+          // aClusterWatchId has not yet expired
+          var confirmed = whenConfirmed.await(99.s)
+          assert(confirmed.command.clusterWatchId == b.clusterWatchId)
+          assert(confirmed.command.clusterWatchRunId == b.clusterWatchRunId)
+          assert(confirmed.result == Left(OtherClusterWatchStillAliveProblem(
+            rejectedClusterWatchId = bClusterWatchId,
+            requestedClusterWatchId = aClusterWatchId)))
 
-      logger.info("🔵 Different ClusterWatchId")
-      whenConfirmed = whenProperRequestIsConfirmed()
-      val eventId = primaryController.eventWatch.lastAddedEventId
-      withClusterWatchService(bClusterWatchId) { b =>
-        // aClusterWatchId has not yet expired
-        var confirmed = whenConfirmed.await(99.s)
-        assert(confirmed.command.clusterWatchId == b.clusterWatchId)
-        assert(confirmed.command.clusterWatchRunId == b.clusterWatchRunId)
-        assert(confirmed.result == Left(OtherClusterWatchStillAliveProblem(
-          rejectedClusterWatchId = bClusterWatchId,
-          requestedClusterWatchId = aClusterWatchId)))
+          logger.info("🔵 Wait for expiration of aClusterWatchId")
+          assert(primaryController.eventWatch.await[ClusterWatchRegistered](after = eventId)
+            .head.value.event.clusterWatchId == b.clusterWatchId)
 
-        logger.info("🔵 Wait for expiration of aClusterWatchId")
-        assert(primaryController.eventWatch.await[ClusterWatchRegistered](after = eventId)
-          .head.value.event.clusterWatchId == b.clusterWatchId)
+          logger.info("🔵 Start DUPLICATE ClusterWatch with SAME bClusterWatchId")
+          // bClusterWatchId is used twice, non-unique
+          val executedPromise = Promise[ClusterWatchConfirmed]()
+          val subscription = primaryController.testEventBus
+            .subscribe[ClusterWatchConfirmed] { executed =>
+              // Await ClusterWatchConfirmed of second bClusterWatchId
+              if (executed.command.clusterWatchId == b.clusterWatchId
+                && executed.command.clusterWatchRunId != b.clusterWatchRunId
+                && executed.result == Right(())) {
+                executedPromise.trySuccess(executed)
+              }
+            }
 
-        logger.info("🔵 Start DUPLICATE ClusterWatch with SAME bClusterWatchId")
-        // bClusterWatchId is used twice, non-unique
-        val executedPromise = Promise[ClusterWatchConfirmed]()
-        val subscription = primaryController.testEventBus
-          .subscribe[ClusterWatchConfirmed] { executed =>
-            // Await ClusterWatchConfirmed of second bClusterWatchId
-            if (executed.command.clusterWatchId == b.clusterWatchId
-              && executed.command.clusterWatchRunId != b.clusterWatchRunId
-              && executed.result == Right(())) {
-              executedPromise.trySuccess(executed)
+          // Start a duplicate bClusterWatchId. It's ClusterWatchRunId replaces the first one.
+          autoClosing(subscription) { _ =>
+            withClusterWatchService(bClusterWatchId) { b =>
+              val executed = executedPromise.future.await(99.s)
+              assert(executed.command.clusterWatchId == b.clusterWatchId)
+              assert(executed.command.clusterWatchRunId == b.clusterWatchRunId)
+              assert(executed.result == Right(()))
             }
           }
 
-        // Start a duplicate bClusterWatchId. It's ClusterWatchRunId replaces the first one.
-        autoClosing(subscription) { _ =>
-          withClusterWatchService(bClusterWatchId) { b =>
-            val executed = executedPromise.future.await(99.s)
-            assert(executed.command.clusterWatchId == b.clusterWatchId)
-            assert(executed.command.clusterWatchRunId == b.clusterWatchRunId)
-            assert(executed.result == Right(()))
-          }
+          logger.info("🔵 Now, the first bClusterWatch is invalid and cannot be used")
+          // ClusterWatchCounterpart detects this
+          confirmed = primaryController.testEventBus.when[ClusterWatchConfirmed].await(99.s)
+          assert(confirmed.command.clusterWatchId == b.clusterWatchId)
+          assert(confirmed.command.clusterWatchRunId == b.clusterWatchRunId)
+
+          assert(primaryController.eventWatch.allKeyedEvents[ClusterWatchRegistered].map(_.event) ==
+            Seq(
+              ClusterWatchRegistered(aClusterWatchId),
+              ClusterWatchRegistered(bClusterWatchId)))
+
+          assert(primaryController.controllerState.await(99.s)
+            .clusterState.asInstanceOf[ClusterState.Coupled].setting.clusterWatchId
+            == Some(bClusterWatchId))
         }
 
-        logger.info("🔵 Now, the first bClusterWatch is invalid and cannot be used")
-        // ClusterWatchCounterpart detects this
-        confirmed = primaryController.testEventBus.when[ClusterWatchConfirmed].await(99.s)
-        assert(confirmed.command.clusterWatchId == b.clusterWatchId)
-        assert(confirmed.command.clusterWatchRunId == b.clusterWatchRunId)
-
-        assert(primaryController.eventWatch.allKeyedEvents[ClusterWatchRegistered].map(_.event) ==
-          Seq(
-            ClusterWatchRegistered(aClusterWatchId),
-            ClusterWatchRegistered(bClusterWatchId)))
-
-        assert(primaryController.controllerState.await(99.s)
-          .clusterState.asInstanceOf[ClusterState.Coupled].setting.clusterWatchId
-          == Some(bClusterWatchId))
+        logger.info("🔵 Start bClusterWatchId again to allow primaryController to terminate")
+        // Allow primaryController to terminate by acknowledging ClusterActiveNodeShutdown event.
+        whenConfirmed = whenProperRequestIsConfirmed()
+        withClusterWatchService(bClusterWatchId) { b =>
+          // Wait for ClusterWatchAlive before emitting a ClusterEvent like ClusterActiveNotShutDown,
+          // because the latter locks the ClusterState, blocking ClusterWatchAlive,
+          // resulting in a deadlock.
+          // Duplicate ClusterWatchId is not considered a real world problem !!!
+          assert(whenConfirmed.await(99.s).result == Right(()))
+          primaryController.close()
+        }
       }
-
-      logger.info("🔵 Start bClusterWatchId again to allow primaryController to terminate")
-      // Allow primaryController to terminate by acknowledging ClusterActiveNodeShutdown event.
-      whenConfirmed = whenProperRequestIsConfirmed()
-      withClusterWatchService(bClusterWatchId) { b =>
-        // Wait for ClusterWatchAlive before emitting a ClusterEvent like ClusterActiveNotShutDown,
-        // because the latter locks the ClusterState, blocking ClusterWatchAlive,
-        // resulting in a deadlock.
-        // Duplicate ClusterWatchId is not considered a real world problem !!!
-        assert(whenConfirmed.await(99.s).result == Right(()))
-        primaryController.terminate().await(99.s)
-      }
-
-      backupController.terminate().await(99.s)
     }
   }
 }

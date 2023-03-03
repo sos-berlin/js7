@@ -4,6 +4,7 @@ import cats.syntax.apply.*
 import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.generic.Completed
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.problem.{Checked, Problem, ProblemException}
@@ -85,20 +86,20 @@ abstract class RecouplingStreamReader[
 
   /** Observes endlessly, recoupling and repeating when needed. */
   final def observe(api: Api, after: I): Observable[V] =
-    Observable.fromTask(
-      Task(logger.debug(s"$api: observe(after=$after)")) *>
+    logger.debugObservable("observe", s"$api after=$after")(
+      Observable.fromTask(
         inUseVar.flatMap(_.put(()))
           .*>(Task { inUse := true })
           .logWhenItTakesLonger
           .*>(decouple)
-    ) *>
-      new ForApi(api, after)
-        .observeAgainAndAgain
-        .guarantee(Task.defer {
-          logger.trace(s"$api: inUse := false")
-          inUse := false
-          inUseVar.flatMap(_.tryTake.void)
-        })
+      ) *>
+        new ForApi(api, after)
+          .observeAgainAndAgain
+          .guarantee(Task.defer {
+            logger.trace(s"$api: inUse := false")
+            inUse := false
+            inUseVar.flatMap(_.tryTake.void)
+          }))
 
   final def markAsStopped(): Unit =
     markedAsStopped = true

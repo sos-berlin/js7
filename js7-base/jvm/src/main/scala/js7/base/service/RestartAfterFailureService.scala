@@ -107,7 +107,8 @@ extends Service
       .getOrElse(throw new IllegalStateException(s"$myName not yet started"))
       .allocatedThing
 
-  override def toString = s"RestartAfterFailureService(${unsafeCurrentService()})"
+  override def toString = s"RestartAfterFailureService(${
+    currentAllocatedService.get().fold("not started")(_.allocatedThing.toString)})"
 
   private def myName = s"RestartAfterFailureService[$serviceName]"
 }

@@ -84,10 +84,11 @@ final class ShutDownClusterTest extends ControllerClusterTester
               .executeCommandAsSystemUser(ShutDown(clusterAction = Some(ClusterAction.Failover)))
               .await(99.s).orThrow
             primaryController.terminated.await(99.s)
-            backupController.eventWatch.await[ClusterFailedOver]()
-            waitForCondition(3.s, 10.ms)(backupController.clusterState.await(99.s).isInstanceOf[FailedOver])
-            assert(backupController.clusterState.await(99.s).asInstanceOf[FailedOver].activeId == backupId)
           }
+
+          backupController.eventWatch.await[ClusterFailedOver]()
+          waitForCondition(3.s, 10.ms)(backupController.clusterState.await(99.s).isInstanceOf[FailedOver])
+          assert(backupController.clusterState.await(99.s).asInstanceOf[FailedOver].activeId == backupId)
 
           // When journal file must be truncated due to non-replicated data after failover,
           // the primary Controller wants to start again.
@@ -96,7 +97,7 @@ final class ShutDownClusterTest extends ControllerClusterTester
             primary.runController(httpPort = Some(primaryControllerPort), dontWaitUntilReady = true) { primaryController =>
               Task
                 .race(
-                  Task.fromFuture(primaryController.terminated),
+                  Task.fromFuture(primaryController.terminated).uncancelable,
                   primaryController.eventWatch.awaitAsync[ClusterCoupled](
                     after = primaryController.eventWatch.lastFileEventId))
                 .await(99.s)
@@ -175,15 +176,15 @@ final class ShutDownClusterTest extends ControllerClusterTester
   "ShutDown passive node" - {
     "ShutDown passive node only (no switchover)" in {
       withControllerAndBackup() { (primary, backup, _) =>
-        backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
-          primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
-            primaryController.eventWatch.await[ClusterWatchRegistered]()
-            primaryController.eventWatch.await[ClusterCoupled]()
+        val backupController = backup.newController(httpPort = Some(backupControllerPort))
+        primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
+          primaryController.eventWatch.await[ClusterWatchRegistered]()
+          primaryController.eventWatch.await[ClusterCoupled]()
 
-            backupController.executeCommandAsSystemUser(ShutDown()).await(99.s).orThrow
-            backupController.terminated.await(99.s)
-            primaryController.eventWatch.await[ClusterPassiveLost]()
-          }
+          backupController.executeCommandAsSystemUser(ShutDown()).await(99.s).orThrow
+          backupController.close()
+
+          primaryController.eventWatch.await[ClusterPassiveLost]()
         }
       }
     }

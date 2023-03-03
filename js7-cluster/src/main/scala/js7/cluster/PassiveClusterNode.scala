@@ -15,7 +15,7 @@ import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
+import js7.base.monixutils.MonixBase.syntax.{RichMonixObservable, RichMonixTask}
 import js7.base.monixutils.MonixDeadline.now
 import js7.base.monixutils.ObservablePauseDetector.RichPauseObservable
 import js7.base.monixutils.RefCountedResource
@@ -85,26 +85,28 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
   @volatile var awaitingCoupledEvent = false
   @volatile private var stopped = false
 
-  def onShutDown(dontNotifyActiveNode: Boolean = false): Task[Unit] =
-    logger.debugTask(Task.unless(dontNotifyActiveNode) {
+  def notifyActiveNodeAboutShutdown: Task[Unit] =
+    logger.debugTask {
       // Active and passive node may be shut down at the same time. We try to handle this here.
-      val untilDecoupled = Task
+      val untilDecoupled = logger.traceTask(Task
         .tailRecM(())(_ =>
           stateBuilderAndAccessor.state
             .map(_.clusterState)
             .flatMap {
-              case _: Coupled => Task.pure(Left(())).delayResult(1.s)
-              case clusterState => Task.pure(Right(clusterState))
-            })
+              case _: Coupled => Task.left(()).delayResult(1.s)
+              case clusterState => Task.right(clusterState)
+            }))
 
-      val notifyActive =
+      val notifyActive = logger.traceTask(
         activeApiResource.use(api =>
           api.login(onlyIfNotLoggedIn = true)
             .*>(api.executeClusterCommand(ClusterPassiveDown(activeId = activeId, passiveId = ownId)))
             .void
             .onErrorHandle(throwable => logger.debug(
               s"ClusterCommand.ClusterPassiveDown failed: ${throwable.toStringWithCauses}",
-              throwable.nullIfNoStackTrace)))
+              throwable.nullIfNoStackTrace))))
+            .timeoutTo(clusterConf.timing.heartbeat/*some short time*/, Task.unit)
+        .logWhenItTakesLonger
 
       Task.race(untilDecoupled, notifyActive.delayExecution(50.ms))
         .tapEval {
@@ -112,12 +114,12 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
             // The connection of the killed notifyActive HTTP request may be still blocked !!!
             // until it is responded (see AkkaHttpClient)
             // It should not disturb the shutdown.
-            Task(logger.debug(s"onShutDown: clusterState=$clusterState"))
+            Task(logger.debug(s"onShutdown: clusterState=$clusterState"))
           case Right(()) =>
-            Task(logger.debug("Active node has been notified about shutdown"))
+            Task(logger.debug("onShutdown: Active node has been notified about shutdown"))
         }
         .as(())
-    })
+    }
 
   def state: Task[S] =
     stateBuilderAndAccessor.state

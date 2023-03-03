@@ -5,10 +5,8 @@ import izumi.reflect.Tag
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
-import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.thread.Futures.syntax.*
-import js7.base.utils.ScalaUtils.syntax.{RichEitherF, RichOption, RichThrowable}
+import js7.base.utils.ScalaUtils.syntax.{RichEitherF, RichOption}
 import js7.base.utils.SetOnce
 import js7.base.web.Uri
 import js7.cluster.ClusterConf.ClusterProductName
@@ -34,19 +32,19 @@ import monix.execution.Scheduler
   * the ClusterNodesAppointed event.
   */
 final class WorkingClusterNode[S <: SnapshotableState[S]: SnapshotableState.Companion: diffx.Diff: Tag](
-  persistence: FileStatePersistence[S],
+  val persistence: FileStatePersistence[S],
   common: ClusterCommon,
   clusterConf: ClusterConf)
   (implicit scheduler: Scheduler)
+//TODO extends Service
 {
-
   private val _activeClusterNode = SetOnce.undefined[ActiveClusterNode[S]](
     "ActiveClusterNode[S]",
     ClusterNodeIsNotActiveProblem)
   private val activeClusterNodeTask = Task { _activeClusterNode.checked }
   private val currentClusterState = persistence.clusterState
 
-  def startIfNonEmpty(clusterState: ClusterState, eventId: EventId): Task[Checked[Completed]] =
+  def start(clusterState: ClusterState, eventId: EventId): Task[Checked[Unit]] =
     clusterState match {
       case ClusterState.Empty => Task.pure(Right(Completed))
       case clusterState: HasNodes =>
@@ -55,19 +53,12 @@ final class WorkingClusterNode[S <: SnapshotableState[S]: SnapshotableState.Comp
             startActiveClusterNode(clusterState, eventId))
     }
 
-  def close(): Unit =
-    for (o <- _activeClusterNode) {
-      o.stop.runToFuture.onFailure { case t =>
-        logger.warn(s"WorkingClusterNode.stop => ${t.toStringWithCauses}", t.nullIfNoStackTrace)
-      }
-    }
-
-  def stop: Task[Completed] =
+  def stop: Task[Unit] =
     Task.defer {
-      _activeClusterNode.toOption.fold(Task.completed)(_.stop)
+      _activeClusterNode.toOption.fold(Task.unit)(_.stop)
     }
 
-  def beforeJournalingStarts: Task[Checked[Completed]] =
+  def beforeJournalingStarts: Task[Checked[Unit]] =
     _activeClusterNode.toOption match {
       case None => Task.right(Completed)
       case Some(o) => o.beforeJournalingStarts
@@ -80,14 +71,14 @@ final class WorkingClusterNode[S <: SnapshotableState[S]: SnapshotableState.Comp
         case Some(o) => o.onRestartActiveNode
       }))
 
-  def appointNodes(idToUri: Map[NodeId, Uri], activeId: NodeId): Task[Checked[Completed]] =
+  def appointNodes(idToUri: Map[NodeId, Uri], activeId: NodeId): Task[Checked[Unit]] =
     Task(ClusterSetting
       .checked(
         idToUri, activeId, clusterConf.timing,
-        clusterWatchId = None))
-      .flatMapT(appointNodes)
+        clusterWatchId = None)
+    ).flatMapT(appointNodes(_))
 
-  private def automaticallyAppointConfiguredBackupNode: Task[Checked[Completed]] =
+  private def automaticallyAppointConfiguredBackupNode: Task[Checked[Unit]] =
     Task.defer {
       clusterConf.maybeClusterSetting match {
         case None => Task.pure(Right(Completed))
@@ -112,7 +103,7 @@ final class WorkingClusterNode[S <: SnapshotableState[S]: SnapshotableState.Comp
       }
     }
 
-  private def appointNodes(setting: ClusterSetting): Task[Checked[Completed]] =
+  private def appointNodes(setting: ClusterSetting): Task[Checked[Unit]] =
     logger.debugTask(
       currentClusterState.flatMap {
         case ClusterState.Empty =>
@@ -133,13 +124,14 @@ final class WorkingClusterNode[S <: SnapshotableState[S]: SnapshotableState.Comp
             .flatMapT(_.appointNodes(setting))
       })
 
-  private def startActiveClusterNode(clusterState: HasNodes, eventId: EventId): Task[Checked[Completed]] =
+  private def startActiveClusterNode(clusterState: HasNodes, eventId: EventId)
+  : Task[Checked[Unit]] =
     Task.defer {
       val activeClusterNode = new ActiveClusterNode(clusterState, persistence, common, clusterConf)
       if (_activeClusterNode.trySet(activeClusterNode))
         activeClusterNode.start(eventId)
       else
-        Task.pure(Left(Problem.pure("ActiveClusterNode has already been started")))
+        Task.left(Problem.pure("ActiveClusterNode has already been started"))
     }
 
   def executeClusterWatchConfirm(cmd: ClusterWatchConfirm): Task[Checked[Unit]] =
@@ -161,9 +153,11 @@ final class WorkingClusterNode[S <: SnapshotableState[S]: SnapshotableState.Comp
       .flatMapT(_.executeCommand(command))
 
   def shutDownThisNode: Task[Checked[Completed]] =
-    _activeClusterNode.toOption match {
-      case None => Task.pure(Right(Completed))
-      case Some(o) => o.shutDownThisNode
+    Task.defer {
+      _activeClusterNode.toOption match {
+        case None => Task.pure(Right(Completed))
+        case Some(o) => o.shutDownThisNode
+      }
     }
 
   def isActive = _activeClusterNode.isDefined

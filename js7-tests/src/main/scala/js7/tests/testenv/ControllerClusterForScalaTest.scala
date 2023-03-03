@@ -26,7 +26,6 @@ import js7.common.configuration.Js7Configuration
 import js7.common.message.ProblemCodeMessages
 import js7.common.system.ThreadPools
 import js7.common.utils.FreeTcpPortFinder.{findFreeTcpPort, findFreeTcpPorts}
-import js7.controller.RunningController
 import js7.data.agent.AgentPath
 import js7.data.cluster.ClusterEvent.ClusterCoupled
 import js7.data.cluster.{ClusterSetting, ClusterTiming, ClusterWatchId}
@@ -85,7 +84,7 @@ trait ControllerClusterForScalaTest
   sys.props(testHeartbeatLossPropertyKey) = "false"
 
   final def runControllerAndBackup(suppressClusterWatch: Boolean = false)
-    (body: (DirectoryProvider, RunningController, DirectoryProvider, RunningController, ClusterSetting) => Unit)
+    (body: (DirectoryProvider, TestController, DirectoryProvider, TestController, ClusterSetting) => Unit)
   : Unit =
     withControllerAndBackup(suppressClusterWatch) { (primary, backup, clusterSetting) =>
       runControllers(primary, backup) { (primaryController, backupController) =>
@@ -172,7 +171,7 @@ trait ControllerClusterForScalaTest
     }
 
   protected final def runControllers(primary: DirectoryProvider, backup: DirectoryProvider)
-    (body: (RunningController, RunningController) => Unit)
+    (body: (TestController, TestController) => Unit)
   : Unit = {
     /*withOptionalClusterWatchService()*/ {
       backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
@@ -213,7 +212,7 @@ trait ControllerClusterForScalaTest
       clusterWatchConfig)
 
   /** Simulate a kill via ShutDown(failOver) - still writes new snapshot. */
-  protected final def simulateKillActiveNode(controller: RunningController): Task[Unit] =
+  protected final def simulateKillActiveNode(controller: TestController): Task[Unit] =
     controller
       .executeCommandAsSystemUser(
         ShutDown(clusterAction = Some(ShutDown.ClusterAction.Failover)))

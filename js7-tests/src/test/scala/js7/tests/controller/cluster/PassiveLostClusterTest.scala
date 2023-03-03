@@ -17,8 +17,9 @@ final class PassiveLostClusterTest extends ControllerClusterTester
 
   "Passive lost" in {
     withControllerAndBackup() { (primary, backup, clusterSetting) =>
-      val primaryController = primary.startController(httpPort = Some(primaryControllerPort)) await 99.s
-      var backupController = backup.startController(httpPort = Some(backupControllerPort)) await 99.s
+      val primaryController = primary.newController(httpPort = Some(primaryControllerPort))
+
+      var backupController = backup.newController(httpPort = Some(backupControllerPort))
 
       primaryController.executeCommandForTest(
         ClusterAppointNodes(clusterSetting.idToUri, clusterSetting.activeId)
@@ -37,11 +38,13 @@ final class PassiveLostClusterTest extends ControllerClusterTester
 
       for (orderId <- Array(OrderId("🔸"), OrderId("🔶"))) {
         backupController.terminate(dontNotifyActiveNode = true) await 99.s
+        backupController.close()
+
         val passiveLost = primaryController.eventWatch.await[ClusterPassiveLost]().head.eventId
 
         primaryController.eventWatch.await[OrderFinished](_.key == firstOrderId, after = passiveLost)
 
-        backupController = backup.startController(httpPort = Some(backupControllerPort)) await 99.s
+        backupController = backup.newController(httpPort = Some(backupControllerPort))
         primaryController.eventWatch.await[ClusterCoupled]().head.eventId
 
         primaryController.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path))
@@ -49,8 +52,8 @@ final class PassiveLostClusterTest extends ControllerClusterTester
         backupController.eventWatch.await[OrderFinished](_.key == orderId, after = passiveLost)
       }
 
-      primaryController.terminate() await 99.s
-      backupController.terminate() await 99.s
+      primaryController.close()
+      backupController.close()
     }
   }
 }

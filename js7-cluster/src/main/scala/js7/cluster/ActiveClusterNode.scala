@@ -64,7 +64,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
 
   import clusterConf.ownId
 
-  def start(eventId: EventId): Task[Checked[Completed]] =
+  def start(eventId: EventId): Task[Checked[Unit]] =
     Task.defer {
       assertThat(initialClusterState.activeId == ownId)
       clusterStateLock.lock(
@@ -73,7 +73,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
           clusterWatchSynchronizer.start(initialClusterState, registerClusterWatchId),
           awaitAcknowledgmentIfCoupled(eventId)
         )(_ |+| _)
-          .flatMapT(_ => proceed(initialClusterState) map Right.apply))
+          .flatMapT(_ => proceed(initialClusterState).as(Checked.unit)))
     }
 
   private def awaitAcknowledgmentIfCoupled(eventId: EventId): Task[Checked[Completed]] =
@@ -88,18 +88,17 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
               case Right(Completed) => Task(logger.info("Passive node acknowledged the recovered state"))
             }
         }
-      case _ => Task.pure(Right(Completed))
+      case _ => Task.right(Completed)
     }
 
-  def stop: Task[Completed] =
-    Task.defer {
-      logger.debug("stop")
+  def stop: Task[Unit] =
+    logger.debugTask(Task.defer {
       stopRequested = true
       fetchingAcks.cancel()
       clusterWatchSynchronizer.stop
-    }
+    })
 
-  def beforeJournalingStarts: Task[Checked[Completed]] =
+  def beforeJournalingStarts: Task[Checked[Unit]] =
     Task.defer {
       logger.trace("beforeJournalingStarts")
       initialClusterState match {
@@ -117,7 +116,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
       }
     }
 
-  private[cluster] def appointNodes(setting: ClusterSetting): Task[Checked[Completed]] =
+  private[cluster] def appointNodes(setting: ClusterSetting): Task[Checked[Unit]] =
     logger.debugTask(
       clusterStateLock.lock(
         suspendHeartbeat(forEvent = true)(
@@ -141,9 +140,9 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
               Left(ClusterSettingNotUpdatable)
           }.flatMapT {
             case (stampedEvents, state: HasNodes) if stampedEvents.nonEmpty =>
-              proceedNodesAppointed(state) map Right.apply
+              proceedNodesAppointed(state).as(Right(()))
             case _ =>
-              Task.pure(Right(Completed))
+              Task.right(())
           })))
 
   private[cluster] def onRestartActiveNode: Task[Checked[Completed]] =

@@ -7,6 +7,7 @@ import java.nio.file.Files.{delete, exists, move}
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import js7.base.circeutils.CirceUtils.*
+import js7.base.eventbus.EventPublisher
 import js7.base.generic.Completed
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.*
@@ -48,7 +49,7 @@ import scala.util.control.NonFatal
 final class JournalActor[S <: SnapshotableState[S]: diffx.Diff] private(
   journalMeta: JournalMeta,
   protected val conf: JournalConf,
-  keyedEventBus: StampedKeyedEventBus,
+  keyedEventBus: EventPublisher[Stamped[AnyKeyedEvent]],
   scheduler: Scheduler,
   eventIdGenerator: EventIdGenerator,
   stopped: Promise[Stopped])
@@ -704,7 +705,7 @@ object JournalActor
   def props[S <: SnapshotableState[S]: SnapshotableState.Companion: diffx.Diff](
     journalMeta: JournalMeta,
     conf: JournalConf,
-    keyedEventBus: StampedKeyedEventBus,
+    keyedEventBus: EventPublisher[Stamped[AnyKeyedEvent]],
     scheduler: Scheduler,
     eventIdGenerator: EventIdGenerator,
     stopped: Promise[Stopped] = Promise())

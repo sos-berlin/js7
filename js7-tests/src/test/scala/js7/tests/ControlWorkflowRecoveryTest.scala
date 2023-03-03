@@ -9,7 +9,6 @@ import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
-import js7.controller.RunningController
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.ResumeOrder
 import js7.data.event.KeyedEvent.NoKey
@@ -26,7 +25,7 @@ import js7.journal.watch.StrictEventWatch
 import js7.tests.ControlWorkflowBreakpointTest.setBreakpoints
 import js7.tests.ControlWorkflowRecoveryTest.*
 import js7.tests.jobs.{EmptyJob, SemaphoreJob}
-import js7.tests.testenv.DirectoryProviderForScalaTest
+import js7.tests.testenv.{DirectoryProviderForScalaTest, TestController}
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
@@ -46,7 +45,8 @@ extends OurTestSuite with DirectoryProviderForScalaTest
   protected val agentPaths = Seq(aAgentPath, bAgentPath)
   protected val items = Seq(aWorkflow, bWorkflow)
 
-  private var controller: RunningController = null
+  private var controller: TestController = null
+
   private var aAgent: RunningAgent = null
   private var bAgent: RunningAgent = null
 
@@ -63,7 +63,7 @@ extends OurTestSuite with DirectoryProviderForScalaTest
   }
 
   "ControlWorkflow sets some breakpoints" in {
-    controller = directoryProvider.startController().await(99.s)
+    controller = directoryProvider.newController()
     implicit val controllerApi = directoryProvider.newControllerApi(controller)
 
     aAgent = directoryProvider.startAgent(aAgentPath).await(99.s)
@@ -155,7 +155,7 @@ extends OurTestSuite with DirectoryProviderForScalaTest
         after = agentEventId)
       .head.eventId
 
-    controller = directoryProvider.startController().await(99.s)
+    controller = directoryProvider.newController()
     implicit val controllerApi = directoryProvider.newControllerApi(controller)
     eventId = eventWatch.lastFileEventId
 

@@ -50,7 +50,9 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
   private lazy val agentFileTree = new DirectoryProvider.AgentTree(directoryProvider.directory,
     agentPath, SubagentId(agentPath.string + "-0"), "AGENT",
     agentPort1, config = agentConfig)
-  private lazy val controller = directoryProvider.startController() await 99.s
+
+  private lazy val controller = directoryProvider.newController()
+
   private lazy val controllerApi = newControllerApi(controller, Some(directoryProvider.controller.userAndPassword))
   private var agent: RunningAgent = null
 

@@ -35,7 +35,7 @@ final class AppointNodesLatelyClusterTest extends OurTestSuite with ControllerCl
         assert(listJournalFiles(primary.controller.dataDir / "state" / "controller").head
           .fileEventId > EventId.BeforeFirst)
 
-        var backupController = backup.startController(httpPort = Some(backupControllerPort)) await 99.s
+        var backupController = backup.newController(httpPort = Some(backupControllerPort))
 
         backupController.httpApiDefaultLogin(Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD")))
         backupController.httpApi.login() await 99.s
@@ -71,12 +71,13 @@ final class AppointNodesLatelyClusterTest extends OurTestSuite with ControllerCl
         // CHANGE BACKUP URI WHEN PASSIVE IS LOST
         locally {
           val eventId = primaryController.eventWatch.lastAddedEventId
-          backupController.terminate() await 99.s
+          backupController.terminate(dontNotifyActiveNode = true).await(99.s)
+
           primaryController.eventWatch.await[ClusterPassiveLost](after = eventId)
           primaryController.executeCommandForTest(clusterAppointNodes).orThrow
           primaryController.eventWatch.await[ClusterSettingUpdated](after = eventId)
 
-          backupController = backup.startController(httpPort = Some(backupControllerPort)) await 99.s
+          backupController = backup.newController(httpPort = Some(backupControllerPort))
 
           primaryController.eventWatch.await[ClusterCoupled](after = eventId)
           backupController.eventWatch.await[ClusterCoupled](after = eventId)
