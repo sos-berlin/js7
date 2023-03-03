@@ -10,6 +10,7 @@ import js7.data.agent.AgentPath
 import js7.data.board.{Board, BoardPath, BoardPathExpression, NoticeId}
 import js7.data.command.SuspensionMode
 import js7.data.controller.ControllerCommand.{AnswerOrderPrompt, PostNotice, ResumeOrder, SuspendOrders, TransferOrders}
+import js7.data.item.BasicItemEvent.ItemDeleted
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFinished, OrderMoved, OrderNoticesExpected, OrderProcessed, OrderProcessingStarted, OrderPrompted, OrderStarted, OrderStdoutWritten, OrderSuspended, OrderSuspensionMarked, OrderSuspensionMarkedOnAgent, OrderTransferred}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
 import js7.data.value.StringValue
@@ -126,6 +127,8 @@ with BlockingItemUpdater
         OrderDetached,
         OrderSuspended,
         OrderTransferred(v2Workflow.id /: Position(2))))
+
+      eventWatch.await[ItemDeleted](_.event.key == v1Workflow.id)
 
       controllerApi.executeCommand(AnswerOrderPrompt(aOrderId)).await(99.s).orThrow
       eventWatch.await[OrderFinished](_.key == aOrderId)

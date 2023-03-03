@@ -1001,7 +1001,7 @@ with MainJournalingActor[ControllerState, Event]
       .match_ {
         case Left(problem) => Future.successful(Left(problem))
         case Right(events) =>
-          persistTransaction(events) { (stamped, updatedState) =>
+          persistTransaction(events ++ subsequentEvents(events)) { (stamped, updatedState) =>
             handleEvents(stamped, updatedState)
             Right(ControllerCommand.Response.Accepted)
           }
