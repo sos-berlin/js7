@@ -54,7 +54,7 @@ object ThreadPoolsBase
   private def myThreadFactory(name: String): ThreadFactory =
     runnable => {
       val thread = new Thread(runnable)
-      thread.setName(s"$name ${thread.threadId}")
+      thread.setName(s"$name-${thread.threadId}")
       thread.setDaemon(true)  // Do it like Monix and Akka
       thread
     }

@@ -39,7 +39,7 @@ final class IOExecutorTest extends OurTestSuite
   if (!VirtualThreads.isEnabled) {
     "Thread name" in {
       ioFuture {
-        assert(Thread.currentThread.getName startsWith "JS7 global I/O ")
+        assert(Thread.currentThread.getName startsWith "JS7 global I/O-")
       } await 10.seconds
     }
   }

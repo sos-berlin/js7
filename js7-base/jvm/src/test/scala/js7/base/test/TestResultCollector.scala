@@ -35,7 +35,7 @@ private object TestResultCollector
           .view
           .map { case (groupName, names) =>
             val n = names.size
-            "- " + groupName + ((n > 1) ?? s" ($n×)")
+            "- " + groupName + ((n > 1) ?? s" $n×")
           }
           .toVector
           .sorted
