@@ -236,8 +236,7 @@ extends HasCloser
       RunningController.threadPoolResource[Task](conf, orCommon = scheduler)
         .flatMap(scheduler =>
           RunningController
-            .resource(
-              RunningController.newInjectorForTest(module, conf, Some(scheduler)))
+            .resource(conf, scheduler, Some(module))
             .flatMap(runningController => Resource.eval(Task {
               if (!doNotAddItems && (agentRefs.nonEmpty || items.nonEmpty)) {
                 if (!itemsHasBeenAdded.getAndSet(true)) {

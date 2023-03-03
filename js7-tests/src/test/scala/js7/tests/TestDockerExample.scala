@@ -1,7 +1,7 @@
 package js7.tests
 
+import cats.effect.SyncIO
 import cats.syntax.traverse.*
-import com.google.inject.Guice
 import java.nio.file.Files.{createDirectories, createDirectory, setPosixFilePermissions}
 import java.nio.file.attribute.PosixFilePermissions
 import java.nio.file.{Files, Path}
@@ -17,18 +17,17 @@ import js7.base.log.Log4j
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsBlocking.BlockingTaskResource
-import js7.base.utils.Closer
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.Closer.withCloser
 import js7.base.utils.SideEffect.ImplicitSideEffect
-import js7.common.guice.GuiceImplicits.RichInjector
+import js7.base.utils.SyncResource.syntax.RichSyncResource
 import js7.common.utils.JavaShutdownHook
 import js7.controller.RunningController
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.configuration.inject.ControllerModule
 import js7.controller.tests.TestEnvironment
 import js7.data.agent.AgentPath
-import monix.execution.Scheduler.Implicits.traced
+import monix.execution.Scheduler.Implicits.traced as scheduler
 
 /**
   * @author Joacim Zschimmer
@@ -69,10 +68,8 @@ object TestDockerExample
     provide("agent-b-1/config/executables/exit-7")
     env.controllerDir / "config" / "controller.conf" := """js7.web.server.auth.loopback-is-public = on"""
     withCloser { implicit closer =>
-      val controllerConfiguration = ControllerConfiguration.forTest(configAndData = env.controllerDir, httpPort = Some(4444))
-      val injector = Guice.createInjector(new ControllerModule(controllerConfiguration.copy(
-        config = controllerConfiguration.config)))
-      injector.instance[Closer].closeWithCloser
+      val conf = ControllerConfiguration.forTest(configAndData = env.controllerDir, httpPort = Some(4444))
+      val module = new ControllerModule(conf)
       val agents = for (agentPath <- TestAgentPaths) yield {
         val agent = RunningAgent.startForTest(AgentConfiguration.forTest(
           configAndData = env.agentDir(agentPath),
@@ -89,17 +86,19 @@ object TestDockerExample
           agent.close()
           r
         }) await 10.s
-        injector.instance[Closer].close()
         Log4j.shutdown()
       } .closeWithCloser
 
-      RunningController.resource(injector).blockingUse(99.s) { controller =>
-        //??? controller.executeCommandAsSystemUser(ControllerCommand.ScheduleOrdersEvery(1.minute)).runToFuture.await(99.s).orThrow
-        controller.terminated await 365 * 24.h
+      RunningController.threadPoolResource[SyncIO](conf).useSync { implicit scheduler =>
+        RunningController.resource(conf, scheduler)
+          .blockingUse(99.s) { controller =>
+            //??? controller.executeCommandAsSystemUser(ControllerCommand.ScheduleOrdersEvery(1.minute)).runToFuture.await(99.s).orThrow
+            controller.terminated await 365 * 24.h
+        }
+        for (agent <- agents) agent.executeCommandAsSystemUser(AgentCommand.ShutDown())
+        agents.traverse(_.terminated) await 60.s
+        agents foreach (_.close())
       }
-      for (agent <- agents) agent.executeCommandAsSystemUser(AgentCommand.ShutDown())
-      agents.traverse(_.terminated) await 60.s
-      agents foreach (_.close())
     }
   }
 }

@@ -1,5 +1,6 @@
 package js7.journal.recover
 
+import cats.effect.Resource
 import com.typesafe.config.Config
 import java.nio.file.{Files, Path}
 import js7.base.log.Logger
@@ -14,6 +15,7 @@ import js7.journal.data.JournalMeta
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.recover.JournalProgress.{AfterSnapshotSection, InCommittedEventsSection}
 import js7.journal.recover.StateRecoverer.*
+import monix.eval.Task
 import scala.concurrent.duration.Deadline
 import scala.concurrent.duration.Deadline.now
 
@@ -64,6 +66,12 @@ private final class StateRecoverer[S <: SnapshotableState[S]](
 object StateRecoverer
 {
   private val logger = Logger(getClass)
+
+  def resource[S <: SnapshotableState[S]](journalMeta: JournalMeta, config: Config)
+    (implicit S: SnapshotableState.Companion[S])
+  : Resource[Task, Recovered[S]] =
+    Resource.fromAutoCloseable(Task(
+      StateRecoverer.recover[S](journalMeta, config)))
 
   def recover[S <: SnapshotableState[S]](
     journalMeta: JournalMeta,
