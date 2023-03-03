@@ -61,7 +61,7 @@ extends OurTestSuite with SubagentTester with BlockingItemUpdater
   override def afterAll() = {
     bSubagentRelease.await(99.s)
     bareSubagentRelease.await(99.s)
-    super.beforeAll()
+    super.afterAll()
   }
 
   "ForkList with subagentIds function at Controller is rejected" in {

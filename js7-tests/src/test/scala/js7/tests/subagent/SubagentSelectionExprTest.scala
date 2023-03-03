@@ -51,7 +51,7 @@ extends OurTestSuite with SubagentTester with BlockingItemUpdater
 
   override def afterAll() = {
     bareSubagentRelease.await(99.s)
-    super.beforeAll()
+    super.afterAll()
   }
 
   "Expression references a non-existing variable" in {

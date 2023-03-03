@@ -67,6 +67,7 @@ final class SubagentSelectionTest extends OurTestSuite with SubagentTester with 
 
   override def afterAll() = {
     idToRelease.values.toVector.sequence.await(99.s)
+    myAgent.terminate().await(99.s)
     super.afterAll()
   }
 

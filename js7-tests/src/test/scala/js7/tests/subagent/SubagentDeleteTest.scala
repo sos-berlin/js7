@@ -37,6 +37,11 @@ final class SubagentDeleteTest extends OurTestSuite with SubagentTester
     myAgent = agent
   }
 
+  override def afterAll() = {
+    myAgent.terminate().await(99.s)
+    super.afterAll()
+  }
+
   "Delete bare Subagent" in {
     runSubagent(bareSubagentItem) { _ =>
       val eventId = eventWatch.lastAddedEventId
@@ -155,6 +160,7 @@ final class SubagentDeleteTest extends OurTestSuite with SubagentTester
 
       // RESTART DIRECTOR
       myAgent.terminate().await(99.s)
+
       eventId = eventWatch.lastAddedEventId
       myAgent = directoryProvider.startAgent(agentPath).await(99.s)
       eventWatch.await[AgentReady](after = eventId)
