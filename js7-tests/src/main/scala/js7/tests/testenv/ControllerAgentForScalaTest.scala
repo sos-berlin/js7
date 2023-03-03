@@ -1,7 +1,7 @@
 package js7.tests.testenv
 
 import cats.effect.Resource
-import cats.syntax.traverse.*
+import cats.syntax.parallel.*
 import com.typesafe.config.{Config, ConfigFactory}
 import js7.agent.RunningAgent
 import js7.base.configutils.Configs.*
@@ -113,7 +113,9 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
 
     for (o <- clusterWatchServiceOnce.toOption) o._2.await(99.s)
 
-    agents.traverse(a => a.terminate() >> Task(a.close())) await 15.s
+    agents
+      .parTraverse(a => a.terminate() *> Task(a.close()))
+      .await(15.s)
 
     try bareSubagentIdToRelease.values.await(99.s)
     catch { case NonFatal(t) =>

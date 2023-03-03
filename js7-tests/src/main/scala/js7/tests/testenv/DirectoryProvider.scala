@@ -2,6 +2,7 @@ package js7.tests.testenv
 
 import cats.effect.Resource
 import cats.syntax.foldable.*
+import cats.syntax.parallel.*
 import cats.syntax.traverse.*
 import com.google.inject.Module
 import com.google.inject.util.Modules.EMPTY_MODULE
@@ -23,7 +24,6 @@ import js7.base.log.Logger
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Checked.*
 import js7.base.system.OperatingSystem.isWindows
-import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.{closeOnError, multipleAutoClosing}
@@ -244,7 +244,7 @@ extends HasCloser
     multipleAutoClosing(agents
       .filter(o => agentPaths.contains(o.agentPath))
       .map(_.agentConfiguration)
-      .traverse(RunningAgent.startForTest(_, scheduler))
+      .parTraverse(a => Task.fromFuture(RunningAgent.startForTest(a, scheduler)))
       .await(99.s))
     { agents =>
       val result =
@@ -260,7 +260,10 @@ extends HasCloser
     }
 
   def startAgents(module: Module = EMPTY_MODULE): Future[Seq[RunningAgent]] =
-    Future.sequence(agents.map(_.agentPath).map(startAgent(_, module)))
+    agents
+      .parTraverse(a => Task.fromFuture(
+        startAgent(a.agentPath, module)))
+      .runToFuture
 
   def startAgent(agentPath: AgentPath, module: Module = EMPTY_MODULE): Future[RunningAgent] =
     RunningAgent.startForTest(
@@ -271,7 +274,7 @@ extends HasCloser
   def startBareSubagents(): Task[Seq[(BareSubagent, (SubagentId, Task[Unit]))]] =
     agents
       .flatMap(a => a.bareSubagentItems.map(_ -> a.agentConfiguration.config))
-      .traverse { case (subagentItem, config) =>
+      .parTraverse { case (subagentItem, config) =>
         subagentResource(subagentItem, config)
           .allocated
           .map { case (bareSubagent, release) =>
