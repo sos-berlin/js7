@@ -21,7 +21,7 @@ import js7.data.item.{InventoryItem, InventoryItemEvent, InventoryItemKey, Simpl
 import js7.data.job.JobResource
 import js7.data.lock.LockState
 import js7.data.order.Order.State
-import js7.data.order.OrderEvent.{OrderAdded, OrderAwoke, OrderBroken, OrderCoreEvent, OrderDeleted, OrderDetached, OrderForked, OrderLockEvent, OrderMoved, OrderOrderAdded, OrderProcessed}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAwoke, OrderBroken, OrderCoreEvent, OrderDeleted, OrderDetached, OrderForked, OrderLockEvent, OrderMoved, OrderOrderAdded, OrderProcessed, OrderTransferred}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.orderwatch.ExternalOrderKey
 import js7.data.subagent.SubagentItemState
@@ -204,7 +204,7 @@ final case class ControllerStateExecutor private(
             case KeyedEvent(orderId: OrderId, event: OrderEvent) =>
               touchedOrderIds += orderId
               event match {
-                case OrderDeleted =>
+                case OrderDeleted | _: OrderTransferred =>
                   detachWorkflowCandidates += previous.idToOrder(orderId).workflowId
                 case _ =>
               }
