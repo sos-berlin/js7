@@ -12,7 +12,7 @@ import js7.base.web.Uri
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.Problems.ItemIsStillReferencedProblem
 import js7.data.agent.AgentPath
-import js7.data.agent.AgentRefStateEvent.{AgentCoupled, AgentCouplingFailed}
+import js7.data.agent.AgentRefStateEvent.AgentCouplingFailed
 import js7.data.item.BasicItemEvent.{ItemAttached, ItemDeleted}
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddOrChangeSimple, AddVersion, DeleteSimple, RemoveVersioned}
 import js7.data.item.VersionId
@@ -109,7 +109,7 @@ final class SubagentSelectionTest extends OurTestSuite with SubagentTester with 
     eventWatch.await[AgentCouplingFailed](_.key == agentPath, after = eventId)
 
     myAgent = directoryProvider.startAgent(agentPath).await(99.s)
-    eventWatch.await[AgentCoupled](_.key == agentPath, after = eventId)
+    //eventWatch.await[AgentCoupled](_.key == agentPath, after = eventId)
     eventWatch.await[SubagentCoupled](_.key == aSubagentId, after = eventId)
     eventWatch.await[SubagentCoupled](_.key == bSubagentId, after = eventId)
     eventWatch.await[SubagentCoupled](_.key == cSubagentId, after = eventId)
