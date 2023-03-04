@@ -10,14 +10,14 @@ object Dependencies
   val akkaVersion = "2.6.20"      // Do not update to v2.7, due to restrictive Akka licences!
   val akkaHttpVersion = "10.2.10" // Do not update to v10.4, due to restrictive Akka licences!
   val slf4jVersion = "2.0.5"  // See also plugins.sbt
-  val log4jVersion = "2.19.0"  // See also plugins.sbt
+  val log4jVersion = "2.20.0"  // See also plugins.sbt
   val catsVersion = "2.9.0"
   val catsEffectVersion = "2.5.5"
   val izumiReflectVersion = "2.1.3"
   //val kittensVersion = "1.2.1"
   val catsParseVersion = "0.3.8"
   val fastparseVersion = "2.3.3"
-  val circeVersion = "0.14.4"
+  val circeVersion = "0.14.5"
   val circeGenericExtrasVersion = "0.14.1"
   val scalaTestVersion = "3.2.15"
   val scalaTestCheckVersion = "3.2.14.0"
