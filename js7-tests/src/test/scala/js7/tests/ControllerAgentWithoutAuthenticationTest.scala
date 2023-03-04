@@ -96,7 +96,7 @@ final class ControllerAgentWithoutAuthenticationTest extends OurTestSuite
       val agentRef = AgentRef(agentPath, directors = Seq(subagentId))
       val subagentItem = SubagentItem(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort"))
       RunningAgent.run(agentConfiguration) { _ =>
-        RunningController.blockingRun(controllerConfiguration) { runningController =>
+        RunningController.blockingRun(controllerConfiguration, 99.s) { runningController =>
           val testController = new TestController(new Allocated(runningController, Task.unit))
           testController.waitUntilReady()
 

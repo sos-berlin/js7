@@ -109,7 +109,8 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
         }
 
         // RESTART WATCHING AGENT WHILE A FILE EXISTS
-        directoryProvider.runAgents(Seq(aAgentPath)) { case Seq(aAgent) =>
+        directoryProvider.runAgents(Seq(aAgentPath)) { agents =>
+          val aAgent = agents.head
           TestJob.continue(2)
           await[OrderFinished](_.key == orderId3)
           // Agent must detect the file deletion after restart to allow the order to be removed:

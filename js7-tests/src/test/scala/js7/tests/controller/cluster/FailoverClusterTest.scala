@@ -13,8 +13,6 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.cluster.ClusterCommon.{ClusterWatchAgreedToActivation, ClusterWatchDisagreedToActivation}
 import js7.cluster.ClusterNode.RestartAfterJournalTruncationException
-import js7.common.guice.GuiceImplicits.RichInjector
-import js7.controller.configuration.ControllerConfiguration
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterSwitchedOver, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState.{Coupled, FailedOver}
 import js7.data.controller.ControllerCommand.{ClusterSwitchOver, ShutDown}
@@ -79,7 +77,7 @@ final class FailoverClusterTest extends ControllerClusterTester
         backupController.eventWatch.await[ClusterFailedOver](_.key == NoKey).head
       assert(failedOver.failedAt.fileEventId == backupController.eventWatch.fileEventIds.last ||
              failedOver.failedAt.fileEventId == backupController.eventWatch.fileEventIds.dropRight(1).last)
-      val expectedFailedFile = primaryController.injector.instance[ControllerConfiguration].journalMeta.file(failedOver.failedAt.fileEventId)
+      val expectedFailedFile = primaryController.conf.journalMeta.file(failedOver.failedAt.fileEventId)
       assert(failedOver.failedAt.position == size(expectedFailedFile))
 
       waitForCondition(10.s, 10.ms)(backupController.clusterState.await(99.s).isInstanceOf[FailedOver])  // Is a delay okay ???

@@ -51,7 +51,7 @@ final class JControllerProxyTest extends OurTestSuite with DirectoryProviderForS
 
   override def beforeAll() = {
     super.beforeAll()
-    (directoryProvider.controller.configDir / "private" / "private.conf") ++= s"""
+    (directoryProvider.controller.configDir / "private" / "private.conf") ++= """
       |js7.auth.users.TEST-USER = "plain:TEST-PASSWORD"
       |""".stripMargin
 
@@ -69,9 +69,8 @@ final class JControllerProxyTest extends OurTestSuite with DirectoryProviderForS
   "JControllerProxy" in {
     directoryProvider.runAgents() { _ =>
       val port = findFreeTcpPort()
-      val controllerAllocated = Lazy(
-        directoryProvider.controllerResource(httpPort = Some(port))
-          .allocated.await(99.s))
+      val controller = Lazy(
+        directoryProvider.newController(httpPort = Some(port)))
       try {
         val admissions = List(JAdmission.of(s"http://127.0.0.1:$port", ClusterProxyTest.primaryCredentials)).asJava
         val myVersionId = VersionId("MY-VERSION")
@@ -82,16 +81,16 @@ final class JControllerProxyTest extends OurTestSuite with DirectoryProviderForS
           ).map(_.asJson.compactPrint).asJava,
           (1 to 1000).map(i => workflow.withId(WorkflowPath(s"WORKFLOW-$i") ~ myVersionId))
             .map(_.asJson.compactPrint).asJava,
-          () => controllerAllocated())
+          () => controller())
       } finally
-        for (allocated <- controllerAllocated) {
-          allocated._2.await(99.s)
+        for (controller <- controller) {
+          controller.stop.await(99.s)
         }
     }
   }
 
   "cancel startProxy" in {
-    val admissions = List(JAdmission.of(s"http://127.0.0.1:0", JCredentials.noCredentials)).asJava
+    val admissions = List(JAdmission.of("http://127.0.0.1:0", JCredentials.noCredentials)).asJava
     autoClosing(new JProxyContext) { context =>
       val api = context.newControllerApi(admissions, JHttpsConfig.empty)
       val future = api.startProxy()

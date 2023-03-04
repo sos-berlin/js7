@@ -9,8 +9,6 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.cluster.ClusterWatchCounterpart.WaitingForConfirmation
 import js7.cluster.watch.api.ClusterWatchProblems.ClusterNodeIsNotLostProblem
-import js7.common.guice.GuiceImplicits.RichInjector
-import js7.controller.configuration.ControllerConfiguration
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterWatchRegistered}
 import js7.data.cluster.ClusterState.{Coupled, FailedOver}
 import js7.data.cluster.{ClusterWatchCheckEvent, ClusterWatchId}
@@ -84,8 +82,8 @@ final class UntaughtClusterWatchFailoverClusterTest extends ControllerClusterTes
             backupController.eventWatch.await[ClusterFailedOver]().head
           assert(clusterFailedOver.failedAt.fileEventId == backupController.eventWatch.fileEventIds.last ||
                  clusterFailedOver.failedAt.fileEventId == backupController.eventWatch.fileEventIds.dropRight(1).last)
-          val expectedFailedFile = primaryController.injector.instance[ControllerConfiguration]
-            .journalMeta.file(clusterFailedOver.failedAt.fileEventId)
+          val expectedFailedFile = primaryController.conf.journalMeta
+            .file(clusterFailedOver.failedAt.fileEventId)
           assert(clusterFailedOver.failedAt.position == size(expectedFailedFile))
 
           val registered = backupController.eventWatch.await[ClusterWatchRegistered](

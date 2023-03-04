@@ -15,6 +15,7 @@ import js7.common.system.startup.JavaMainLockfileSupport.lockAndRunMain
 import js7.common.system.startup.StartUp.{logJavaSettings, nowString, printlnWithClock, startUpLine}
 import js7.common.system.startup.{Js7ReturnCodes, StartUp}
 import js7.controller.configuration.ControllerConfiguration
+import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.duration.{Deadline, Duration, NANOSECONDS}
 
@@ -43,7 +44,7 @@ final class ControllerMain
     val termination =
       RunningController.threadPoolResource[SyncIO](conf).useSync { implicit scheduler =>
         val (controller, stop) = RunningController.resource(conf, scheduler).allocated.awaitInfinite
-        withShutdownHooks(conf.config, "ControllerMain", () => onJavaShutdown(controller)) {
+        withShutdownHooks(conf.config, "ControllerMain", () => onJavaShutdown(stop)) {
           val termination = controller.terminated.awaitInfinite
           stop.awaitInfinite
           termination
@@ -58,14 +59,9 @@ final class ControllerMain
     termination
   }
 
-  private def onJavaShutdown(controller: RunningController)(implicit s: Scheduler): Unit = {
+  private def onJavaShutdown(stop: Task[Unit])(implicit s: Scheduler): Unit = {
     logger.warn("Trying to shut down Controller due to Java shutdown")
-    if (!controller.actorSystem.whenTerminated.isCompleted) {
-      controller.terminate()
-        .runToFuture
-        .awaitInfinite
-    }
-    controller.close()
+    stop.awaitInfinite
   }
 }
 

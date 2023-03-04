@@ -15,10 +15,8 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.Closer.syntax.*
 import js7.base.utils.StackTraces.StackTraceThrowable
 import js7.base.web.Uri
-import js7.common.guice.GuiceImplicits.RichInjector
 import js7.common.http.AkkaHttpClient.HttpException
 import js7.controller.client.AkkaHttpControllerApi
-import js7.controller.configuration.ControllerConfiguration
 import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.{AgentDedicated, AgentEventsObserved, AgentReady}
 import js7.data.controller.ControllerCommand
@@ -92,7 +90,7 @@ final class JournalWebServiceTest extends OurTestSuite with BeforeAndAfterAll wi
       .await(99.s)
       .foreach(o => observedLengths += o.utf8String)
 
-    val stateDir = controller.injector.instance[ControllerConfiguration].stateDirectory
+    val stateDir = controller.conf.stateDirectory
     val controller0File = stateDir / "controller--0.journal"
     awaitAndAssert(replicated.length == Files.size(controller0File))
     //assert(replicated.utf8String endsWith EndOfJournalFileMarker.utf8String)

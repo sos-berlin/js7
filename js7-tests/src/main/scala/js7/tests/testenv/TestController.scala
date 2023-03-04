@@ -14,6 +14,7 @@ import js7.base.utils.{Allocated, ProgramTermination}
 import js7.base.web.Uri
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.controller.client.HttpControllerApi
+import js7.controller.configuration.ControllerConfiguration
 import js7.controller.{OrderApi, RunningController}
 import js7.core.command.CommandMeta
 import js7.data.cluster.ClusterState
@@ -47,8 +48,11 @@ extends AutoCloseable
   def stop: Task[Unit] =
     allocated.stop
 
+  val conf: ControllerConfiguration =
+    runningController.conf
+
   val config: Config =
-    runningController.config
+    conf.config
 
   def localUri: Uri =
     runningController.localUri
@@ -93,7 +97,7 @@ extends AutoCloseable
         suppressSnapshot = suppressSnapshot,
         clusterAction,
         dontNotifyActiveNode = dontNotifyActiveNode)
-      .<*(stop)
+      .<*(allocated.stop)
 
   def executeCommandForTest(command: ControllerCommand): Checked[command.Response] =
     executeCommandAsSystemUser(command) await 99.s

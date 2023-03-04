@@ -30,7 +30,7 @@ object ControllerWebServer
     sessionRegister: SessionRegister[SimpleSession],
     injector: Injector)(
     implicit actorSystem_ : ActorSystem)
-  : Resource[Task, AkkaWebServer & AkkaWebServer.HasUri] =
+  : Resource[Task, ControllerWebServer] =
     AkkaWebServer.resource(
       controllerConfiguration.webServerBindings,
       controllerConfiguration.config,

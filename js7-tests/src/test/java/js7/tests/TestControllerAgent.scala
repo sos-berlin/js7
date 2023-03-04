@@ -1,6 +1,7 @@
 package js7.tests
 
 import akka.actor.{Actor, Props}
+import cats.syntax.parallel.*
 import java.lang.management.ManagementFactory.getOperatingSystemMXBean
 import java.nio.file.Files.createDirectory
 import java.nio.file.{Files, Path}
@@ -15,14 +16,15 @@ import js7.base.problem.Checked.Ops
 import js7.base.system.Java8Polyfill.*
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.thread.Futures.implicits.*
+import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.time.{Stopwatch, Timestamp}
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.Closer.withCloser
+import js7.base.utils.DecimalPrefixes
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SideEffect.ImplicitSideEffect
-import js7.base.utils.{Closer, DecimalPrefixes}
 import js7.common.commandline.CommandLineArguments
 import js7.common.guice.GuiceImplicits.RichInjector
 import js7.common.utils.JavaShutdownHook
@@ -37,6 +39,7 @@ import js7.data.workflow.instructions.{Execute, Fork, If}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.journal.StampedKeyedEventBus
 import js7.tests.testenv.DirectoryProvider
+import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.*
@@ -102,13 +105,16 @@ object TestControllerAgent
           directoryProvider.runController() { controller =>
             JavaShutdownHook.add("TestControllerAgent") {
               print('\n')
-              (for (agent <- agents) yield {
-                agent.executeCommandAsSystemUser(ShutDown(Some(SIGTERM)))
-                val r = agent.terminated
-                agent.close()
-                r
-              }) await 10.s
-              controller.injector.instance[Closer].close()
+              Task
+                .parZip2(
+                  controller.stop,
+                  agents.parTraverse(agent =>
+                    agent.executeCommandAsSystemUser(ShutDown(Some(SIGTERM)))
+                      .*>(Task(
+                        agent.close()))
+                      .*>(Task.fromFuture(
+                        agent.terminated))))
+                .awaitInfinite
               Log4j.shutdown()
             } .closeWithCloser
 

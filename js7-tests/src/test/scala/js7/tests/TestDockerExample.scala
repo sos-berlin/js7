@@ -24,7 +24,6 @@ import js7.base.utils.SyncResource.syntax.RichSyncResource
 import js7.common.utils.JavaShutdownHook
 import js7.controller.RunningController
 import js7.controller.configuration.ControllerConfiguration
-import js7.controller.configuration.inject.ControllerModule
 import js7.controller.tests.TestEnvironment
 import js7.data.agent.AgentPath
 import monix.execution.Scheduler.Implicits.traced as scheduler
@@ -69,7 +68,6 @@ object TestDockerExample
     env.controllerDir / "config" / "controller.conf" := """js7.web.server.auth.loopback-is-public = on"""
     withCloser { implicit closer =>
       val conf = ControllerConfiguration.forTest(configAndData = env.controllerDir, httpPort = Some(4444))
-      val module = new ControllerModule(conf)
       val agents = for (agentPath <- TestAgentPaths) yield {
         val agent = RunningAgent.startForTest(AgentConfiguration.forTest(
           configAndData = env.agentDir(agentPath),

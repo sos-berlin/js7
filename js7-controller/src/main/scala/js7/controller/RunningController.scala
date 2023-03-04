@@ -29,12 +29,13 @@ import js7.base.time.AlarmClock
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.CatsBlocking.BlockingTaskResource
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SyncResource.syntax.RichSyncResource
-import js7.base.utils.{Closer, ProgramTermination, SetOnce}
+import js7.base.utils.{ProgramTermination, SetOnce}
+import js7.base.web.Uri
 import js7.cluster.ClusterNode.RestartAfterJournalTruncationException
 import js7.cluster.{ClusterNode, WorkingClusterNode}
-import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.akkautils.Akkas
 import js7.common.guice.GuiceImplicits.RichInjector
@@ -58,16 +59,16 @@ import js7.data.event.EventId
 import js7.data.item.{ItemOperation, SignableItem, UnsignedSimpleItem}
 import js7.data.order.FreshOrder
 import js7.journal.JournalActor.Output
-import js7.journal.recover.{Recovered, StateRecoverer}
+import js7.journal.recover.StateRecoverer
 import js7.journal.state.FileStatePersistence
-import js7.journal.watch.{JournalEventWatch, StrictEventWatch}
-import js7.journal.{EventIdGenerator, JournalActor}
+import js7.journal.watch.StrictEventWatch
+import js7.journal.{EventIdClock, EventIdGenerator, JournalActor}
 import js7.license.LicenseCheckContext
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
-import scala.concurrent.duration.*
+import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success, Try}
 
@@ -80,7 +81,7 @@ import scala.util.{Failure, Success, Try}
  */
 final class RunningController private(
   val eventWatch: StrictEventWatch,
-  webServer: AkkaWebServer & AkkaWebServer.HasUri,
+  localUri_ : () => Uri,
   val recoveredEventId: EventId,
   val orderApi: OrderApi,
   val controllerState: Task[ControllerState],
@@ -89,23 +90,21 @@ final class RunningController private(
   whenReady: Future[Unit],
   terminated1: Future[ProgramTermination],
   val sessionRegister: SessionRegister[SimpleSession],
-  val actorSystem: ActorSystem,
+  val conf: ControllerConfiguration,
   val testEventBus: StandardEventBus[Any],
-  closer: Closer,
+  val actorSystem: ActorSystem,
   val injector: Injector)
+  (implicit val scheduler: Scheduler)
 {
-  implicit val scheduler: Scheduler = injector.instance[Scheduler]
-  val config: Config = injector.instance[Config]
-  private lazy val controllerConfiguration = injector.instance[ControllerConfiguration]
   private val httpApiUserAndPassword = SetOnce[Option[UserAndPassword]]
   private val _httpApi = SetOnce[AkkaHttpControllerApi]
 
-  @TestOnly lazy val localUri = webServer.localUri
+  @TestOnly lazy val localUri = localUri_()
   @TestOnly lazy val httpApi: HttpControllerApi = {
     if (_httpApi.isEmpty) {
       httpApiUserAndPassword.trySet(None)
       _httpApi := new AkkaHttpControllerApi(localUri, httpApiUserAndPassword.orThrow,
-        actorSystem = actorSystem, config = config, name = controllerConfiguration.name)
+        actorSystem = actorSystem, config = conf.config, name = conf.name)
     }
     _httpApi.orThrow
   }
@@ -113,34 +112,13 @@ final class RunningController private(
   val terminated: Future[ProgramTermination] =
     terminated1
       .map { o =>
-        close()
+        for (o <- _httpApi) {
+          logger.debugCall("_httpApi.close()", "") {
+            o.close() // Close before server
+          }
+        }
         o
       }
-
-  private def controllerOrderKeeperResource(
-    persistence: FileStatePersistence[ControllerState],
-    workingClusterNode: WorkingClusterNode[ControllerState],
-    recovered: Recovered[ControllerState],
-    testEventPublisher: EventPublisher[Any])
-  : Resource[Task, OrderKeeperStarted] =
-    Resource.make(
-      acquire = Task {
-        val terminationPromise = Promise[ProgramTermination]()
-        val actor = actorSystem.actorOf(
-          Props {
-            new ControllerOrderKeeper(terminationPromise, persistence, workingClusterNode,
-              injector.instance[AlarmClock],
-              controllerConfiguration, testEventPublisher)
-          },
-          "ControllerOrderKeeper")
-        actor ! ControllerOrderKeeper.Input.Start(recovered.recoveredState)
-        val whenterminated = terminationPromise.future
-          .andThen { case Failure(t) => logger.error(t.toStringWithCauses, t) }
-          //??? .andThen { case _ => closer.close() } // Close automatically after termination
-        OrderKeeperStarted(actor.taggedWith[ControllerOrderKeeper], whenterminated)
-      })(
-      release = orderKeeperStarted => Task(
-        actorSystem.stop(orderKeeperStarted.actor)))
 
   def terminate(
     suppressSnapshot: Boolean = false,
@@ -155,7 +133,7 @@ final class RunningController private(
           case Some(Failure(t)) => Task.raiseError(t)
           case Some(Success(_)) =>
             logger.warn("Controller terminate: Akka has already been terminated")
-            Task.pure(ProgramTermination(restart = false))
+            Task.pure(ProgramTermination())
           case None =>
             logger.debugTask(
               for {
@@ -253,12 +231,6 @@ final class RunningController private(
     .mapTo[JournalActor.Output.JournalActorState]
     .await(99.s)
   }
-
-  def close() =
-    logger.debugCall {
-      for (o <- _httpApi) o.close()  // Close before server
-      closer.close()
-    }
 }
 
 object RunningController
@@ -266,136 +238,76 @@ object RunningController
   private val logger = Logger(getClass)
 
   @TestOnly
-  def blockingRun(conf: ControllerConfiguration)(whileRunning: RunningController => Unit)
+  def blockingRun(conf: ControllerConfiguration, timeout: FiniteDuration)
+    (whileRunning: RunningController => Unit)
   : ProgramTermination =
     threadPoolResource[SyncIO](conf).useSync(implicit scheduler =>
       resource(conf, scheduler)
-        .use(runningController => Task {
+        .blockingUse(timeout) { runningController =>
           whileRunning(runningController)
           runningController.terminated.awaitInfinite
         })
-        .awaitInfinite)
 
   def resource(conf: ControllerConfiguration, scheduler: Scheduler, module: Option[Module] = None)
-  : Resource[Task, RunningController] = {
-    val controllerModule = new ControllerModule(
-      conf,
-      commonScheduler = Some(scheduler))
-    resource(module.fold_(
-      controllerModule,
-      module => Modules.`override`(controllerModule).`with`(module)))
-  }
-
-  private def resource(module: Module): Resource[Task, RunningController] =
+  : Resource[Task, RunningController] =
     for {
-      injector <- injectorResource(module)
-      runningController <- resource(injector)
+      iox <- IOExecutor.resource[Task](conf.config, conf.name + " I/O")
+      controllerModule = new ControllerModule(conf, scheduler)
+      runningController <- resource(
+        conf,
+        Guice.createInjector(PRODUCTION,
+          module.fold_(
+            controllerModule,
+            module => Modules.`override`(controllerModule).`with`(module))))(
+        scheduler, iox)
     } yield runningController
 
-  private def injectorResource(module: Module): Resource[Task, Injector] =
-    Resource.make(
-      acquire = Task(Guice.createInjector(PRODUCTION, module)))(
-      release = injector => Task(injector.instance[Closer].close()))
-
-  private def resource(injector: Injector): Resource[Task, RunningController] = {
-    implicit val iox = injector.instance[IOExecutor]
-    implicit val scheduler = injector.instance[Scheduler]
-    lazy val closer = injector.instance[Closer]
-    lazy val testEventBus = injector.instance[StandardEventBus[Any]]
-    val conf = injector.instance[ControllerConfiguration]
-
+  private def resource(conf: ControllerConfiguration, injector: Injector)
+    (implicit scheduler: Scheduler, iox: IOExecutor)
+  : Resource[Task, RunningController] = {
     import conf.{config, implicitAkkaAskTimeout, journalMeta}
 
-    def directoryWatchingSignatureVerifierResource
-    : Resource[Task, DirectoryWatchingSignatureVerifier] =
-      DirectoryWatchingSignatureVerifier
-        .checkedResource(
-          config,
-          onUpdated = () => testEventBus.publish(ItemSignatureKeysUpdated))
-        .orThrow
+    val testEventBus = new StandardEventBus[Any]
 
-    val itemVerifierResource: Resource[Task, SignedItemVerifier[SignableItem]] =
-      for {
-        directoryWatchingSignatureVerifier <- directoryWatchingSignatureVerifierResource
-        itemVerifier <- Resource.eval(Task(new SignedItemVerifier(
-          directoryWatchingSignatureVerifier,
-          ControllerState.signableItemJsonCodec)))
-      } yield itemVerifier
-
-    def clusterNodeResource(
-      recovered: Recovered[ControllerState],
-      testEventBus: StandardEventBus[Any])(
-      implicit actorSystem: ActorSystem)
-    : Resource[Task, ClusterNode[ControllerState]] = {
-      import conf.{clusterConf, config, httpsConfig, journalConf}
-      ClusterNode.resource(
-        recovered,
-        journalMeta, journalConf, clusterConf, config,
-        injector.instance[EventIdGenerator],
-        (uri, name) => AkkaHttpControllerApi.resource(
-          uri, clusterConf.peersUserAndPassword, httpsConfig, name = name),
-        new LicenseChecker(LicenseCheckContext(conf.configDirectory)),
-        testEventBus,
-        implicitAkkaAskTimeout
-      ).orThrow
-    }
-
-    def startControllerOrderKeeper(
-      persistence: FileStatePersistence[ControllerState],
-      workingClusterNode: WorkingClusterNode[ControllerState],
-      controllerState: Option[ControllerState],
-      testEventPublisher: EventPublisher[Any])(
-      implicit actorSystem: ActorSystem)
-    : Either[ProgramTermination, OrderKeeperStarted] =
-      logger.traceCall {
-        val terminationPromise = Promise[ProgramTermination]()
-        val actor = actorSystem.actorOf(
-          Props {
-            new ControllerOrderKeeper(terminationPromise, persistence, workingClusterNode,
-              injector.instance[AlarmClock],
-              conf, testEventPublisher)
-          },
-          "ControllerOrderKeeper")
-        actor ! ControllerOrderKeeper.Input.Start(controllerState)
-        val termination = terminationPromise.future
-          .andThen { case Failure(t) => logger.error(t.toStringWithCauses, t) }
-          .andThen { case _ => closer.close() } // Close automatically after termination
-        Right(OrderKeeperStarted(actor.taggedWith[ControllerOrderKeeper], termination))
-      }
-
-    // Recover and initialize in parallel
+    // Recover and initialize other stuff in parallel
     val resources =
       StateRecoverer.resource[ControllerState](journalMeta, config)
-        .parZip(Akkas.actorSystemResource(conf.name, config))
+        .parZip(
+          Akkas.actorSystemResource(conf.name, config))
         .flatMap { case (recovered, actorSystem) =>
-          clusterNodeResource(recovered, testEventBus)(actorSystem)
-            .map((recovered, actorSystem, _))
+          implicit val a = actorSystem
+          import conf.{clusterConf, config, httpsConfig, journalConf}
+          ClusterNode.resource(
+            recovered,
+            journalMeta, journalConf, clusterConf, config,
+            new EventIdGenerator(injector.instance[EventIdClock]),
+            (uri, name) => AkkaHttpControllerApi.resource(
+              uri, clusterConf.peersUserAndPassword, httpsConfig, name = name),
+            new LicenseChecker(LicenseCheckContext(conf.configDirectory)),
+            testEventBus,
+            implicitAkkaAskTimeout
+          ).orThrow.map((recovered, actorSystem, _))
         }
-        .parZip(itemVerifierResource)
+        .parZip(
+          itemVerifierResource(config, testEventBus))
 
     resources.flatMap { case ((recovered, actorSystem, clusterNode), itemVerifier) =>
       @volatile var clusterStartupTermination = ProgramTermination()
       implicit val implicitActorSystem = actorSystem
-      val whenReady = Promise[Unit]()
-      whenReady.completeWith(
-        testEventBus.when[ControllerOrderKeeper.ControllerReadyTestIncident.type].void.runToFuture)
-
-      val controllerState = clusterNode.currentState
-      val orderApi = new MainOrderApi(controllerState)
 
       val orderKeeperStarted: Task[Either[ProgramTermination, OrderKeeperStarted]] =
         logger.traceTaskWithResult(
           clusterNode.untilActivated
             .map {
-              case None =>
-                Left(clusterStartupTermination)
+              case None => Left(clusterStartupTermination)
 
               case Some((recovered, workingClusterNode)) =>
                 startControllerOrderKeeper(
                   workingClusterNode.persistence,
-                  clusterNode.workingClusterNode.orThrow /*TODO*/ ,
+                  clusterNode.workingClusterNode.orThrow,
                   recovered.recoveredState,
-                  testEventBus)
+                  injector.instance[AlarmClock],
+                  conf, testEventBus)
             }
             .onErrorRecover { case t: RestartAfterJournalTruncationException =>
               logger.info(t.getMessage)
@@ -403,6 +315,13 @@ object RunningController
             }
         ).memoize
 
+      val controllerState = clusterNode.currentState
+
+      val whenReady = Promise[Unit]()
+      whenReady.completeWith(
+        testEventBus.when[ControllerOrderKeeper.ControllerReadyTestIncident.type].void.runToFuture)
+
+      // The ControllerOrderKeeper if started
       val orderKeeperActor: Task[Checked[ActorRef @@ ControllerOrderKeeper]] =
         logger.traceTask(
           controllerState
@@ -412,27 +331,28 @@ object RunningController
               if (!clusterState.isActive(ownId, isBackup = isBackup))
                 Task.left(ClusterNodeIsNotActiveProblem)
               else
-                orderKeeperStarted
-                  .map {
-                    case Left(_) => Left(ShuttingDownProblem)
-                    case Right(o) => Right(o.actor)
-                  }
-            })
+                orderKeeperStarted.map {
+                  case Left(_) => Left(ShuttingDownProblem)
+                  case Right(o) => Right(o.actor)
+                }
+            }
+            .tapError(t => Task {
+              logger.debug(s"orderKeeperActor => ${t.toStringWithCauses}", t)
+              whenReady.tryFailure(t)
+            }))
 
       val orderKeeperTerminated = logger.traceTask(
-        orderKeeperStarted
-          .flatMap {
-            case Left(termination) => Task.pure(termination)
-            case Right(o) =>
-              Task.fromFuture(
-                o.termination andThen { case tried =>
-                  for (t <- tried.failed) { // Support diagnosis
-                    logger.error(
-                      s"ControllerOrderKeeper failed with ${t.toStringWithCauses}", t)
-                  }
-                })
+        orderKeeperStarted.flatMap {
+          case Left(termination) => Task.pure(termination)
+          case Right(o) =>
+            Task
+              .fromFuture(o.termination)
+              .tapError(t => Task(
+                logger.error(s"ControllerOrderKeeper failed with ${t.toStringWithCauses}", t)))
           }
-          .uncancelable/*a test may use this in `race`, unintentionally canceling this*/)
+          .tapError(t => Task(whenReady.tryFailure(t)))
+      ).uncancelable/*a test may use this in `race`, unintentionally canceling this*/
+        .memoize
 
       val commandExecutor = new ControllerCommandExecutor(
         new MyCommandExecutor(
@@ -444,70 +364,88 @@ object RunningController
             },
           orderKeeperActor))
 
+      val orderApi = new MainOrderApi(controllerState)
       val itemUpdater = new MyItemUpdater(itemVerifier, orderKeeperActor)
+      val sessionRegister = SessionRegister.start(actorSystem, SimpleSession.apply, config)
 
-      val sessionRegister: SessionRegister[SimpleSession] =
-        SessionRegister.start(actorSystem, SimpleSession.apply, config)
-
-      def webServerResource(eventWatch: JournalEventWatch, totalRunningSince: Deadline)
-      : Resource[Task, AkkaWebServer & AkkaWebServer.HasUri] =
+      val webServerResource: Resource[Task, ControllerWebServer] =
         ControllerWebServer
-          .resource(orderApi, commandExecutor, itemUpdater,
-            controllerState,
-            clusterNode,
-            totalRunningSince, // Maybe different from JournalHeader
-            eventWatch,
-            conf,
-            sessionRegister, injector)
+          .resource(
+            orderApi, commandExecutor, itemUpdater, controllerState, clusterNode,
+            recovered.totalRunningSince, // Maybe different from JournalHeader
+            recovered.eventWatch,
+            conf, sessionRegister, injector)
+          .evalTap(webServer => Task(
+            conf.workDirectory / "http-uri" :=
+              webServer.localHttpUri.fold(_ => "", o => s"$o/controller")))
 
-      def controllerResource(
-        eventId: EventId,
-        eventWatch: JournalEventWatch,
-        whenReady: Task[Unit],
-        webServer: AkkaWebServer & AkkaWebServer.HasUri)
-      : Resource[Task, RunningController] = {
+      def runningControllerResource(webServer: ControllerWebServer)
+      : Resource[Task, RunningController] =
         Resource.make(
-          acquire = Task.defer(
-            sessionRegister
-              .placeSessionTokenInDirectoryLegacy(
-                SimpleUser.System,
-                conf.workDirectory,
-                closer)
-              .map { _ =>
-                conf.workDirectory / "http-uri" :=
-                  webServer.localHttpUri.fold(_ => "", o => s"$o/controller")
-                new RunningController(eventWatch.strict, webServer,
-                  recoveredEventId = eventId,
-                  orderApi,
-                  controllerState.map(_.orThrow),
-                  commandExecutor,
-                  itemUpdater,
-                  whenReady.runToFuture,
-                  logger.traceTask("orderKeeperTerminated.runToFuture")(orderKeeperTerminated).runToFuture,
-                  sessionRegister,
-                  actorSystem,
-                  testEventBus, closer, injector)
-              }))(
-          release = _.terminate().void)
-      }
+          acquire = Task(
+            new RunningController(
+              recovered.eventWatch.strict,
+              () => webServer.localUri,
+              recoveredEventId = recovered.eventId,
+              orderApi,
+              controllerState.map(_.orThrow),
+              commandExecutor, itemUpdater,
+              whenReady.future, orderKeeperTerminated.runToFuture,
+              sessionRegister, conf, testEventBus,
+              actorSystem, injector)))(
+          release =
+            _.terminate().void)
 
-      webServerResource(recovered.eventWatch, recovered.totalRunningSince)
-        .flatMap(webServer =>
-          controllerResource(
-            recovered.eventId, recovered.eventWatch,
-            Task.fromFuture(whenReady.future),
-            webServer))
-      }
-
-    //for (t <- orderKeeperActor.failed) logger.debug("orderKeeperActor => " + t.toStringWithCauses, t)
-    //orderKeeperActor.failed foreach whenReady.tryFailure
-    //terminated.failed foreach whenReady.tryFailure
+      for {
+        _ <- sessionRegister.placeSessionTokenInDirectory(SimpleUser.System, conf.workDirectory)
+        webServer <- webServerResource
+        runningController <- runningControllerResource(webServer)
+      } yield runningController
+    }
   }
 
   def threadPoolResource[F[_]](conf: ControllerConfiguration, orCommon: Option[Scheduler] = None)
     (implicit F: Sync[F])
   : Resource[F, Scheduler] =
     ThreadPools.standardSchedulerResource[F](conf.name, conf.config, orCommon = orCommon)
+
+  private def itemVerifierResource(
+    config: Config,
+    testEventBus: StandardEventBus[Any])(
+    implicit iox: IOExecutor)
+  : Resource[Task, SignedItemVerifier[SignableItem]] =
+    DirectoryWatchingSignatureVerifier
+      .checkedResource(
+        config,
+        onUpdated = () => testEventBus.publish(ItemSignatureKeysUpdated))
+      .orThrow
+      .map(directoryWatchingSignatureVerifier =>
+        new SignedItemVerifier(
+          directoryWatchingSignatureVerifier,
+          ControllerState.signableItemJsonCodec))
+
+  private def startControllerOrderKeeper(
+    persistence: FileStatePersistence[ControllerState],
+    workingClusterNode: WorkingClusterNode[ControllerState],
+    controllerState: Option[ControllerState],
+    alarmClock: AlarmClock,
+    conf: ControllerConfiguration,
+    testEventPublisher: EventPublisher[Any])(
+    implicit scheduler: Scheduler, actorSystem: ActorSystem)
+  : Either[ProgramTermination, OrderKeeperStarted] =
+    logger.traceCall {
+      val terminationPromise = Promise[ProgramTermination]()
+      val actor = actorSystem.actorOf(
+        Props {
+          new ControllerOrderKeeper(terminationPromise, persistence, workingClusterNode,
+            alarmClock, conf, testEventPublisher)
+        },
+        "ControllerOrderKeeper")
+      actor ! ControllerOrderKeeper.Input.Start(controllerState)
+      val termination = terminationPromise.future
+        .andThen { case Failure(t) => logger.error(t.toStringWithCauses, t) }
+      Right(OrderKeeperStarted(actor.taggedWith[ControllerOrderKeeper], termination))
+    }
 
   private class MyCommandExecutor(
     clusterNode: ClusterNode[ControllerState],

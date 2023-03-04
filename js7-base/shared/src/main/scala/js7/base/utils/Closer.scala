@@ -1,10 +1,12 @@
 package js7.base.utils
 
+import cats.effect.Resource
 import java.util.Objects.requireNonNull
 import java.util.concurrent.ConcurrentLinkedDeque
 import js7.base.log.Logger
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.Closer.*
+import monix.eval.Task
 import monix.execution.atomic.AtomicAny
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
@@ -83,6 +85,11 @@ object Closer
     closeables.reverseIterator foreach closer.register
     closer.close()
   }
+
+  private val resource: Resource[Task, Closer] =
+    Resource.make(
+      acquire = Task(new Closer))(
+      release = closer => Task(closer.close()))
 
   object syntax {
     implicit final class RichClosersAutoCloseable[A <: AutoCloseable](private val underlying: A) extends AnyVal {

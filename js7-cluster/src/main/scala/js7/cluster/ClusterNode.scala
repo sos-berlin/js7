@@ -2,8 +2,8 @@ package js7.cluster
 
 import akka.actor.ActorRefFactory
 import akka.util.Timeout
-import cats.effect.{ExitCase, Resource}
 import cats.effect.concurrent.Deferred
+import cats.effect.{ExitCase, Resource}
 import cats.syntax.flatMap.*
 import com.softwaremill.diffx
 import com.typesafe.config.Config
@@ -61,7 +61,7 @@ extends Service.StoppableByRequest
 
   private val workingNodeStarted = Deferred.unsafe[Task, Try[Option[(Recovered[S]/*FIXME Release memory*/, WorkingClusterNode[S])]]]
   private var _testDontNotifyActiveNodeAboutShutdown = false // for test only
-  private val recoveryStopped = Deferred.unsafe[Task, Unit]
+  private val recoveryStopRequested = Deferred.unsafe[Task, Unit]
 
   @volatile private var _currentState: Task[Either[Problem, S]] =
     prepared.currentPassiveReplicatedState.map(_.toChecked(ClusterNodeIsNotReadyProblem).flatten)
@@ -114,7 +114,7 @@ extends Service.StoppableByRequest
         }
         .start
         .flatMap(fiber => logger.traceTask("fiber.join")(
-          Task.race(recoveryStopped.get, fiber.join)))
+          Task.race(recoveryStopRequested.get, fiber.join)))
         .*>(untilStopRequested)
         .*>(stopRecovery)
         .*>(Task.defer(passiveOrWorkingNode.get() match {
@@ -138,7 +138,7 @@ extends Service.StoppableByRequest
   private def stopRecovery: Task[Unit] =
     Task.defer {
       logger.trace("stopRecovery")
-      recoveryStopped.complete(()).attempt *>
+      recoveryStopRequested.complete(()).attempt *>
         workingNodeStarted.complete(Success(None)).attempt.void
     }
 
