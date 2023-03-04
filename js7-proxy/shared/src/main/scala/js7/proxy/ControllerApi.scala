@@ -60,7 +60,7 @@ extends ControllerApiWithHttp
   /** For testing (it's slow): wait for a condition in the running event stream. **/
   def when(predicate: EventAndState[Event, ControllerState] => Boolean)
   : Task[EventAndState[Event, ControllerState]] =
-    CorrelId.bind(
+    CorrelId.bindIfEmpty(
       JournaledProxy.observable(apiResources, None, _ => (), proxyConf)
         .filter(predicate)
         .headOptionL
@@ -79,7 +79,7 @@ extends ControllerApiWithHttp
     proxyEventBus: StandardEventBus[ProxyEvent] = new StandardEventBus,
     eventBus: JournaledStateEventBus[ControllerState] = new JournaledStateEventBus[ControllerState])
   : Task[ControllerProxy] =
-    CorrelId.bind(logger.debugTask(
+    CorrelId.bindIfEmpty(logger.debugTask(
       ControllerProxy.start(this, apiResources, proxyEventBus, eventBus, proxyConf)))
 
   def clusterAppointNodes(idToUri: Map[NodeId, Uri], activeId: NodeId)
@@ -151,7 +151,7 @@ extends ControllerApiWithHttp
       untilReachable(_.snapshot()))
 
   private def untilReachable[A](body: HttpControllerApi => Task[A]): Task[Checked[A]] =
-    CorrelId.bind(Task.defer {
+    CorrelId.bindIfEmpty(Task.defer {
       // TODO Similar to SessionApi.retryUntilReachable
       val delays = SessionApi.defaultLoginDelays()
       var warned = now - 1.h

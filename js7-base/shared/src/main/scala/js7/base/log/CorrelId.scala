@@ -152,12 +152,12 @@ object CorrelId extends GenericString.Checked_[CorrelId]
   }
 
   /** Generate a CorrelId for the body if `current` isEmpty. */
-  def bind[R](body: => R)(implicit R: CanBindCorrelId[R]): R =
-    R.bindNewIfNoCurrent(body)
+  def bindIfEmpty[R](body: => R)(implicit R: CanBindCorrelId[R]): R =
+    R.bindNewIfEmpty(body)
 
   /** Generate a CorrelId for the synchronously executable body if `current` isEmpty. */
   def bindNow[R](body: => R): R =
-    CanBindCorrelId.synchronous.bindNewIfNoCurrent(body)
+    CanBindCorrelId.synchronous.bindNewIfEmpty(body)
 
   def bindNew[R](body: => R)(implicit R: CanBindCorrelId[R]): R =
     R.bind(CorrelId.generate())(body)

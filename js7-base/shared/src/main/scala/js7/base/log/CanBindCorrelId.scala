@@ -17,7 +17,7 @@ If ${R} is the result of a synchronous action, either build an implicit with
 CanBindCorrelId.synchronous or import CanBindCorrelId.Implicits.synchronousAsDefault.""")
 trait CanBindCorrelId[R] {
   private[log] def bind(correlId: CorrelId)(body: => R): R
-  private[log] def bindNewIfNoCurrent(body: => R): R
+  private[log] def bindNewIfEmpty(body: => R): R
 }
 
 object CanBindCorrelId
@@ -55,7 +55,7 @@ object CanBindCorrelId
           }.guarantee(Task(Local.setContext(saved)))
         }
 
-    def bindNewIfNoCurrent(task: => Task[Any]): Task[Any] =
+    def bindNewIfEmpty(task: => Task[Any]): Task[Any] =
       if (!CorrelId.isEnabled)
         Task.defer(task)
       else
@@ -84,7 +84,7 @@ object CanBindCorrelId
           Local.setContext(saved)
       }
 
-    def bindNewIfNoCurrent(future: => F[R]): F[R] =
+    def bindNewIfEmpty(future: => F[R]): F[R] =
       if (!CorrelId.isEnabled || CorrelId.current.nonEmpty)
         future
       else
@@ -114,7 +114,7 @@ object CanBindCorrelId
                   release = _ => correlId.bind(release))
               })
 
-    def bindNewIfNoCurrent(resource: => Resource[F, A]): Resource[F, A] =
+    def bindNewIfEmpty(resource: => Resource[F, A]): Resource[F, A] =
       if (!CorrelId.isEnabled)
         Resource.suspend(F.delay(resource))
       else
@@ -138,7 +138,7 @@ object CanBindCorrelId
         finally Local.setContext(saved)
       }
 
-    def bindNewIfNoCurrent(body: => Any): Any =
+    def bindNewIfEmpty(body: => Any): Any =
       if (!CorrelId.isEnabled || CorrelId.current.nonEmpty)
         body
       else
