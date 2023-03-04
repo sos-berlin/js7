@@ -68,7 +68,7 @@ final class FileWatchManager(
       .map(_.unorderedFold)
 
   def start: Task[Checked[Unit]] =
-    persistence.awaitCurrentState
+    persistence.state
       .map(_.keyTo(FileWatchState).values)
       .flatMap(_
         .toVector
@@ -215,7 +215,7 @@ final class FileWatchManager(
     directory: Path,
     dirEventSeqs: List[Seq[DirectoryEvent]])
   : Task[Checked[(Seq[Stamped[KeyedEvent[OrderWatchEvent]]], AgentState)]] =
-    persistence.awaitCurrentState
+    persistence.state
       .flatMap(agentState =>
         if (!agentState.keyTo(FileWatchState).contains(fileWatch.path))
           Task.right(Nil -> agentState)

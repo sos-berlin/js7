@@ -10,16 +10,10 @@ trait ReadableStatePersistence[S <: JournaledState[S]]
 
   protected val S: JournaledState.Companion[S]
 
-  //TODO def currentState(): S
-  def currentState: S
+  def unsafeCurrentState(): S
 
   val state: Task[S] =
-    Task(currentState)
-
-  final def awaitCurrentState: Task[S] =
-    waitUntilStarted *> Task(currentState)
-
-  def waitUntilStarted: Task[Unit]
+    Task(unsafeCurrentState())
 
   def eventWatch: EventWatch
 }

@@ -85,7 +85,7 @@ extends ReceiveLoggingActor.WithStash
       .map(password => UserAndPassword(controllerConfiguration.controllerId.toUserId, password))
 
   private val agentRunIdOnce = SetOnce.fromOption(initialAgentRunId)
-  private var client = newAgentClient(persistence.currentState.agentToUri(agentPath)
+  private var client = newAgentClient(persistence.unsafeCurrentState().agentToUri(agentPath)
     .getOrElse(Uri(s"unknown-uri://$agentPath"/*should not happen ???*/)))
   /** Only filled when coupled */
   private var lastFetchedEventId = initialEventId
@@ -112,7 +112,7 @@ extends ReceiveLoggingActor.WithStash
     private var attachedOrderIds: Set[OrderId] = null
 
     override protected def couple(eventId: EventId) =
-      Task(persistence.currentState.keyTo(AgentRefState).checked(agentPath))
+      Task(persistence.unsafeCurrentState().keyTo(AgentRefState).checked(agentPath))
         .flatMapT(agentRefState =>
           ((agentRefState.couplingState, agentRefState.agentRunId) match {
             case (Resetting(false), None) =>
@@ -569,7 +569,7 @@ extends ReceiveLoggingActor.WithStash
     }
 
   private def reattachSubagents(): Unit = {
-    val controllerState = persistence.currentState
+    val controllerState = persistence.unsafeCurrentState()
     controllerState.itemToAgentToAttachedState
       .foreach {
         case (subagentId: SubagentId, agentToAttachedState) =>

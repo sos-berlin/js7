@@ -7,7 +7,6 @@ import com.softwaremill.diffx
 import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
-import js7.base.monixutils.MonixBase.InfoWorryDuration
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.monixutils.ObservablePauseDetector.*
 import js7.base.problem.Checked.*
@@ -31,7 +30,6 @@ import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.{EventId, KeyedEvent, SnapshotableState, Stamped}
 import js7.data.node.NodeId
 import js7.journal.JournalActor
-import js7.journal.problems.Problems.JournalNotReadyProblem
 import js7.journal.state.FileStatePersistence
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -161,74 +159,71 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
 
       case ClusterCommand.ClusterPrepareCoupling(activeId, passiveId) =>
         requireOwnNodeId(command, activeId)(
-          untilPersistenceStarted.flatMapT(_ =>
-            clusterStateLock.lock(command.toShortString)(
-              persist() {
-                case Empty =>
-                  Left(ClusterCommandInapplicableProblem(command, Empty))
+          clusterStateLock.lock(command.toShortString)(
+            persist() {
+              case Empty =>
+                Left(ClusterCommandInapplicableProblem(command, Empty))
 
-                case clusterState: HasNodes =>
-                  clusterState match {
-                    case _ if clusterState.activeId != activeId || clusterState.passiveId != passiveId =>
-                      Left(ClusterCommandInapplicableProblem(command, clusterState))
+              case clusterState: HasNodes =>
+                clusterState match {
+                  case _ if clusterState.activeId != activeId || clusterState.passiveId != passiveId =>
+                    Left(ClusterCommandInapplicableProblem(command, clusterState))
 
-                    case _: IsDecoupled =>
-                      Right(Some(ClusterCouplingPrepared(activeId)))
+                  case _: IsDecoupled =>
+                    Right(Some(ClusterCouplingPrepared(activeId)))
 
-                    case _: PreparedToBeCoupled | _: Coupled | _: ActiveShutDown =>
-                      logger.debug(s"ClusterPrepareCoupling command ignored in clusterState=$clusterState")
-                      Right(None)
-                  }
-              }.flatMapT { case (stampedEvents, clusterState) =>
-                proceed(clusterState).unless(stampedEvents.isEmpty)
-                  .as(Right(ClusterCommand.Response.Accepted))
-              })))
+                  case _: PreparedToBeCoupled | _: Coupled | _: ActiveShutDown =>
+                    logger.debug(s"ClusterPrepareCoupling command ignored in clusterState=$clusterState")
+                    Right(None)
+                }
+            }.flatMapT { case (stampedEvents, clusterState) =>
+              proceed(clusterState).unless(stampedEvents.isEmpty)
+                .as(Right(ClusterCommand.Response.Accepted))
+            }))
 
       case ClusterCommand.ClusterCouple(activeId, passiveId) =>
         requireOwnNodeId(command, activeId)(
-          untilPersistenceStarted.flatMapT(_ =>
-            clusterStateLock.lock(command.toShortString)(
-              persist() {
-                case s: PassiveLost if s.activeId == activeId && s.passiveId == passiveId =>
-                  // Happens when this active node has restarted just before the passive one
-                  // and has already emitted a PassiveLost event.
-                  // We ignore this.
-                  // The passive node will replicate PassiveLost event and recouple
-                  Right(None)
+          clusterStateLock.lock(command.toShortString)(
+            persist() {
+              case s: PassiveLost if s.activeId == activeId && s.passiveId == passiveId =>
+                // Happens when this active node has restarted just before the passive one
+                // and has already emitted a PassiveLost event.
+                // We ignore this.
+                // The passive node will replicate PassiveLost event and recouple
+                Right(None)
 
-                case s: PreparedToBeCoupled if s.activeId == activeId && s.passiveId == passiveId =>
-                  // This is the normally expected ClusterState
-                  if (!s.setting.clusterWatchId.isDefined)
-                    // Passive cluster tries again until
-                    // ClusterWatch  has been registered via background ClusterWatch heartbeat
-                    Left(NoClusterWatchProblem)
-                  else
-                    Right(Some(ClusterCoupled(activeId)))
+              case s: PreparedToBeCoupled if s.activeId == activeId && s.passiveId == passiveId =>
+                // This is the normally expected ClusterState
+                if (!s.setting.clusterWatchId.isDefined)
+                  // Passive cluster tries again until
+                  // ClusterWatch  has been registered via background ClusterWatch heartbeat
+                  Left(NoClusterWatchProblem)
+                else
+                  Right(Some(ClusterCoupled(activeId)))
 
-                case s: Coupled if s.activeId == activeId && s.passiveId == passiveId =>
-                  // Already coupled
-                  Right(None)
+              case s: Coupled if s.activeId == activeId && s.passiveId == passiveId =>
+                // Already coupled
+                Right(None)
 
-                case s =>
-                  Left(ClusterCommandInapplicableProblem(command, s))
-              }.flatMapT { case (stampedEvents, state) =>
-                proceed(state).unless(stampedEvents.isEmpty)
-                  .as(Right(ClusterCommand.Response.Accepted))
-              })))
+              case s =>
+                Left(ClusterCommandInapplicableProblem(command, s))
+            }.flatMapT { case (stampedEvents, state) =>
+              proceed(state).unless(stampedEvents.isEmpty)
+                .as(Right(ClusterCommand.Response.Accepted))
+            }))
 
       case ClusterCommand.ClusterRecouple(activeId, passiveId) =>
         requireOwnNodeId(command, activeId)(
-          untilPersistenceStarted.flatMapT(_ =>
-            clusterStateLock.lock(command.toShortString)(
-              persist() {
-                case s: Coupled if s.activeId == activeId && s.passiveId == passiveId =>
-                  // ClusterPassiveLost leads to recoupling
-                  // TODO The cluster is not coupled for a short while.
-                  Right(Some(ClusterPassiveLost(passiveId)))
+          clusterStateLock.lock(command.toShortString)(
+            persist() {
+              case s: Coupled if s.activeId == activeId && s.passiveId == passiveId =>
+                // ClusterPassiveLost leads to recoupling
+                // TODO The cluster is not coupled for a short while.
+                Right(Some(ClusterPassiveLost(passiveId)))
 
-                case _ =>
-                  Right(None)
-              }.map(_.map(_ => ClusterCommand.Response.Accepted)))))
+              case _ =>
+                Right(None)
+            }.map(_.map(_ => ClusterCommand.Response.Accepted))))
 
       case ClusterCommand.ClusterPassiveDown(activeId, passiveId) =>
         requireOwnNodeId(command, activeId)(Task.defer {
@@ -252,14 +247,6 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
       Task.pure(Left(Problem.pure(s"'${command.getClass.simpleScalaName}' command may only be directed to the active node")))
     else
       body
-
-  private def untilPersistenceStarted: Task[Checked[Unit]] =
-    persistence
-      .waitUntilStarted
-      .map(Right(_))
-      .timeoutTo(
-        InfoWorryDuration - 100.ms/*before the info message*/,
-        Task.left(JournalNotReadyProblem))
 
   def switchOver: Task[Checked[Completed]] =
     clusterStateLock.lock(
@@ -501,12 +488,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
   private def registerClusterWatchId(confirmation: ClusterWatchConfirmation, alreadyLocked: Boolean)
   : Task[Checked[Unit]] =
     logger.traceTask(Task.defer {
-      if (!persistence.isStarted) {
-        // Not expected
-        logger.error(
-          s"🔥 registerClusterWatchId(${confirmation.clusterWatchId.string}): persistence not yet started")
-        Task.left(Problem("registerClusterWatchId: persistence not yet started"))
-      } else if (alreadyLocked)
+      if (alreadyLocked)
         nonLockingRegisterClusterWatchId(confirmation)
       else
         clusterStateLock.lock(

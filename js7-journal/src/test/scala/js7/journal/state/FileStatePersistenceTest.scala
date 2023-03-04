@@ -107,7 +107,8 @@ final class FileStatePersistenceTest extends OurTestSuite with BeforeAndAfterAll
     }
 
     "currentState" in {
-      assert(persistence.awaitCurrentState.await(99.s) == TestState(eventId = 1000000 + 2 + keys.size * (1 + n), expectedThingCollection))
+      assert(persistence.unsafeCurrentState() ==
+        TestState(eventId = 1000000 + 2 + keys.size * (1 + n), expectedThingCollection))
     }
 
     "Stop" in {
@@ -124,7 +125,8 @@ final class FileStatePersistenceTest extends OurTestSuite with BeforeAndAfterAll
     }
 
     "currentState" in {
-      assert(persistence.awaitCurrentState.await(99.s) == TestState(eventId = 1000000 + 4 + keys.size * (1 + n), expectedThingCollection))
+      assert(persistence.unsafeCurrentState() ==
+        TestState(eventId = 1000000 + 4 + keys.size * (1 + n), expectedThingCollection))
     }
 
     "Stop" in {

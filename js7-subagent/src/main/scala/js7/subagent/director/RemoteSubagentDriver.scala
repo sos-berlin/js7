@@ -81,7 +81,7 @@ extends SubagentDriver with SubagentEventListener[S0]
   override def isCoupled =
     super.isCoupled &&
       isHeartbeating &&
-      persistence.currentState
+      persistence.unsafeCurrentState()
         .idToSubagentItemState.get(subagentId)
         .exists(s => s.couplingState == Coupled
           /*Due to isHeartbeating we can ignore s.problem to allow SubagentCoupled event.*/)

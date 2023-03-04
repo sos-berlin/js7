@@ -190,7 +190,7 @@ private[agent] final class AgentActor private(
             _ <- checkAgentRunId(agentRunId)
             _ <- eventWatch.checkEventId(eventId)
           } yield
-            CoupleController.Response(persistence.currentState.idToOrder.keySet))
+            CoupleController.Response(persistence.unsafeCurrentState().idToOrder.keySet))
 
       case command @ (_: AgentCommand.OrderCommand |
                       _: AgentCommand.TakeSnapshot |
@@ -217,7 +217,7 @@ private[agent] final class AgentActor private(
   }
 
   private def checkAgentPath(requestedAgentPath: AgentPath): Checked[Unit] = {
-    val agentState = persistence.currentState
+    val agentState = persistence.unsafeCurrentState()
     if (!agentState.isDedicated)
       Left(AgentNotDedicatedProblem)
     else if (requestedAgentPath != agentState.agentPath)
@@ -227,7 +227,7 @@ private[agent] final class AgentActor private(
   }
 
   private def checkAgentRunId(requestedAgentRunId: AgentRunId): Checked[Unit] = {
-    val agentState = persistence.currentState
+    val agentState = persistence.unsafeCurrentState()
     if (!agentState.isDedicated)
       Left(AgentNotDedicatedProblem)
     else if (requestedAgentRunId != agentState.meta.agentRunId) {

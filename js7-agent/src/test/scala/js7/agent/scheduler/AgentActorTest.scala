@@ -10,11 +10,11 @@ import js7.agent.scheduler.order.TestAgentActorProvider
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Checked.Ops
 import js7.base.system.OperatingSystem.isWindows
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch
-import js7.base.test.OurTestSuite
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
@@ -88,9 +88,9 @@ final class AgentActorTest extends OurTestSuite
 
         waitForCondition(10.s, 10.ms) {
           // orderRegister is updated lately, so we may wait a moment
-          !persistence.currentState.idToOrder.values.exists(_.isAttached/*should be _.isDetaching*/)
+          !persistence.unsafeCurrentState().idToOrder.values.exists(_.isAttached/*should be _.isDetaching*/)
         }
-        val orders = persistence.currentState.idToOrder.values
+        val orders = persistence.unsafeCurrentState().idToOrder.values
 
         assert(orders.toSet ==
           orderIds.map(orderId => Order(

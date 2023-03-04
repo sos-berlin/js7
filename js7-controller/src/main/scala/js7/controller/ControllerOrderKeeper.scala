@@ -56,7 +56,7 @@ import js7.data.delegate.DelegateCouplingState
 import js7.data.delegate.DelegateCouplingState.{Reset, Resetting}
 import js7.data.event.JournalEvent.JournalEventsReleased
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{AnyKeyedEvent, Event, EventId, JournalHeader, KeyedEvent, Stamped}
+import js7.data.event.{AnyKeyedEvent, Event, EventId, KeyedEvent, Stamped}
 import js7.data.execution.workflow.OrderEventSource
 import js7.data.execution.workflow.instructions.{InstructionExecutorService, PostNoticesExecutor}
 import js7.data.item.BasicItemEvent.{ItemAttached, ItemAttachedToMe, ItemDeleted, ItemDetached, ItemDetachingFromMe, SignedItemAttachedToMe}
@@ -332,42 +332,6 @@ with MainJournalingActor[ControllerState, Event]
       throw t.appendCurrentStackTrace
 
     case Internal.Activated(Success(())) =>
-      val sender = this.sender()
-      persistence.journalHeader
-        .runToFuture
-        .onComplete { tried => (self ! Internal.JournalIsReady(tried))(sender) }
-      become("journalIsStarting")(journalIsStarting)
-      unstashAll()
-
-    case msg => notYetReady(msg)
-  }
-
-  private def notYetReady(message: Any): Unit =
-    message match {
-      case Command.Execute(_: ControllerCommand.ShutDown, _, _) =>
-        stash()
-
-      case Command.Execute(cmd, _, _) =>
-        logger.warn(s"$ControllerIsNotReadyProblem: $cmd")
-        sender() ! Left(ControllerIsNotReadyProblem)
-
-      case Command.VerifiedUpdateItemsCmd(_) =>
-        logger.warn(s"$ControllerIsNotReadyProblem: VerifiedUpdateItemsCmd")
-        sender() ! Left(ControllerIsNotReadyProblem)
-
-      case cmd: Command =>
-        logger.warn(s"$ControllerIsNotReadyProblem: $cmd")
-        sender() ! Status.Failure(ControllerIsNotReadyProblem.throwable)
-
-      case _ => stash()
-    }
-
-  private def journalIsStarting: Receive = {
-    case Internal.JournalIsReady(Failure(t)) =>
-      logger.error(t.toStringWithCauses)
-      throw t
-
-    case Internal.JournalIsReady(Success(journalHeader)) =>
       // `become` must be called early, before any persist!
       become("becomingReady")(becomingReady)
 
@@ -375,10 +339,10 @@ with MainJournalingActor[ControllerState, Event]
         val maybeControllerInitialized = !_controllerState.controllerMetaState.isDefined thenVector
           (NoKey <-: ControllerEvent.ControllerInitialized(
             controllerConfiguration.controllerId,
-            journalHeader.initiallyStartedAt))
+            persistence.journalHeader.initiallyStartedAt))
         val controllerReady = NoKey <-: ControllerEvent.ControllerReady(
           Timezone(ZoneId.systemDefault.getId),
-          totalRunningTime = journalHeader.totalRunningTime)
+          totalRunningTime = persistence.journalHeader.totalRunningTime)
 
         val events = maybeControllerInitialized :+
           controllerReady :++
@@ -436,8 +400,28 @@ with MainJournalingActor[ControllerState, Event]
       logger.warn(s"$ControllerIsNotReadyProblem: $cmd")
       sender() ! Status.Failure(ControllerIsNotReadyProblem.throwable)
 
-    case _ => stash()
+    case msg => notYetReady(msg)
   }
+
+  private def notYetReady(message: Any): Unit =
+    message match {
+      case Command.Execute(_: ControllerCommand.ShutDown, _, _) =>
+        stash()
+
+      case Command.Execute(cmd, _, _) =>
+        logger.warn(s"$ControllerIsNotReadyProblem: $cmd")
+        sender() ! Left(ControllerIsNotReadyProblem)
+
+      case Command.VerifiedUpdateItemsCmd(_) =>
+        logger.warn(s"$ControllerIsNotReadyProblem: VerifiedUpdateItemsCmd")
+        sender() ! Left(ControllerIsNotReadyProblem)
+
+      case cmd: Command =>
+        logger.warn(s"$ControllerIsNotReadyProblem: $cmd")
+        sender() ! Status.Failure(ControllerIsNotReadyProblem.throwable)
+
+      case _ => stash()
+    }
 
   private def becomingReady: Receive = {
     case Internal.Ready(Left(problem)) =>
@@ -488,7 +472,7 @@ with MainJournalingActor[ControllerState, Event]
     case AgentDriver.Output.EventsFromAgent(agentRunId, stampedAgentEvents, committedPromise) =>
       for (agentEntry <- agentRegister.get(sender())) {
         import agentEntry.agentPath
-        for (agentRefState <- persistence.currentState.keyTo(AgentRefState).get(agentPath)) {
+        for (agentRefState <- persistence.unsafeCurrentState().keyTo(AgentRefState).get(agentPath)) {
           if (!agentRefState.couplingState.isInstanceOf[Resetting]) {
             if (!agentRefState.agentRunId.forall(_ == agentRunId)) {
               logger.debug(s"AgentDriver.Output.EventsFromAgent: Unknown agentRunId=$agentRunId")
@@ -567,7 +551,7 @@ with MainJournalingActor[ControllerState, Event]
                   subseqEvents.view.collect { case KeyedEvent(orderId: OrderId, _) => orderId })  // For OrderSourceEvents
                 timestampedEvents ++= subseqEvents.map(Timestamped(_))
 
-                persistence.currentState.keyTo(AgentRefState).get(agentPath).map(_.couplingState) match {
+                persistence.unsafeCurrentState().keyTo(AgentRefState).get(agentPath).map(_.couplingState) match {
                   case Some(DelegateCouplingState.Resetting(_) | DelegateCouplingState.Reset(_)) =>
                     // Ignore the events, because orders are already marked as detached (and Failed)
                     // TODO Avoid race-condition and guard with persistence.lock!
@@ -643,7 +627,7 @@ with MainJournalingActor[ControllerState, Event]
         shutdown.continue()
       } else {
         agentRegister -= actor
-        for (agentRefState <- persistence.currentState.keyTo(AgentRefState).checked(agentPath)) {
+        for (agentRefState <- persistence.unsafeCurrentState().keyTo(AgentRefState).checked(agentPath)) {
           agentRefState.couplingState match {
             case Resetting(_) | Reset(_) =>
               agentEntry = registerAgent(agentRefState.agentRef,
@@ -885,7 +869,7 @@ with MainJournalingActor[ControllerState, Event]
         agentRegister.checked(agentPath) match {
           case Left(problem) => Future.successful(Left(problem))
           case Right(agentEntry) =>
-            persistence.currentState.keyTo(AgentRefState).checked(agentEntry.agentPath) match {
+            persistence.unsafeCurrentState().keyTo(AgentRefState).checked(agentEntry.agentPath) match {
               case Left(problem) => Future.successful(Left(problem))
               case Right(agentRefState) =>
                 // TODO persistence.lock(agentPath), to avoid race with AgentCoupled, too
@@ -896,10 +880,10 @@ with MainJournalingActor[ControllerState, Event]
                   case reset: Reset if !force =>
                     Future.successful(Left(Problem.pure(s"AgentRef is already in state '$reset'")))
                   case _ =>
-                    persistence.currentState.resetAgent(agentPath, force = force) match {
+                    persistence.unsafeCurrentState().resetAgent(agentPath, force = force) match {
                       case Left(problem) => Future.successful(Left(problem))
                       case Right(events) =>
-                        persistence.currentState.applyEvents(events) match {
+                        persistence.unsafeCurrentState().applyEvents(events) match {
                           case Left(problem) => Future.successful(Left(problem))
                           case Right(_) =>
                             persistTransactionAndSubsequentEvents(events) { (stampedEvents, updatedState) =>
@@ -937,7 +921,7 @@ with MainJournalingActor[ControllerState, Event]
         }
 
       case ControllerCommand.ResetSubagent(subagentId, force) =>
-        persistence.currentState.keyTo(SubagentItemState).checked(subagentId)
+        persistence.unsafeCurrentState().keyTo(SubagentItemState).checked(subagentId)
           .map(subagentItemState =>
             (subagentItemState.couplingState != DelegateCouplingState.Resetting(force))
               .thenList((subagentId <-: SubagentResetStartedByController(force = force))))
@@ -1209,13 +1193,13 @@ with MainJournalingActor[ControllerState, Event]
 
       case UnsignedSimpleItemChanged(agentRef: AgentRef) =>
         agentRegister.update(agentRef)
-        for (uri <- persistence.currentState.agentToUri(agentRef.path)) {
+        for (uri <- persistence.unsafeCurrentState().agentToUri(agentRef.path)) {
           agentRegister(agentRef.path).actor ! AgentDriver.Input.ChangeUri(agentRef, uri)
         }
 
       case UnsignedSimpleItemChanged(subagentItem: SubagentItem) =>
-        for (agentRef <- persistence.currentState.keyToItem(AgentRef).get(subagentItem.agentPath)) {
-          for (uri <- persistence.currentState.agentToUri(agentRef.path)) {
+        for (agentRef <- persistence.unsafeCurrentState().keyToItem(AgentRef).get(subagentItem.agentPath)) {
+          for (uri <- persistence.unsafeCurrentState().agentToUri(agentRef.path)) {
             agentRegister(agentRef.path).actor ! AgentDriver.Input.ChangeUri(agentRef, uri)
           }
         }
@@ -1587,7 +1571,6 @@ private[controller] object ControllerOrderKeeper
   }
 
   private object Internal {
-    final case class JournalIsReady(journalHeader: Try[JournalHeader])
     case object ContinueWithNextOrderEvents extends DeadLetterSuppression
     final case class OrderIsDue(orderId: OrderId) extends DeadLetterSuppression
     final case class NoticeIsDue(boardPath: BoardPath, noticeId: NoticeId) extends DeadLetterSuppression

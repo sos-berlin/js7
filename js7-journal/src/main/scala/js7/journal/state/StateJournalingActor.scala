@@ -18,7 +18,7 @@ import scala.concurrent.Promise
 import scala.util.{Failure, Success, Try}
 
 private[state] final class StateJournalingActor[S <: JournaledState[S], E <: Event](
-  currentState: => S,
+  currentState: () => S,
   protected val journalActor: ActorRef @@ JournalActor.type,
   protected val journalConf: JournalConf,
   persistPromise: Promise[PersistFunction[S, E]],
@@ -52,7 +52,7 @@ extends MainJournalingActor[S, E]
   def receive = {
     case Persist(stateToEvents, options, correlId, promise) =>
       correlId.bind[Unit] {
-        val state = currentState
+        val state = currentState()
         Try(
           for {
             keyedEvent <- stateToEvents(state)
@@ -103,7 +103,7 @@ private[state] object StateJournalingActor
     (Seq[KeyedEvent[E]], CommitOptions) => Task[Checked[Unit]]
 
   def props[S <: JournaledState[S], E <: Event](
-    currentState: => S,
+    currentState: () => S,
     journalActor: ActorRef @@ JournalActor.type,
     journalConf: JournalConf,
     persistPromise: Promise[PersistFunction[S, E]],

@@ -77,7 +77,9 @@ private trait SubagentEventListener[S_ <: SubagentDirectorState[S_]]
     val recouplingStreamReader = newEventListener()
     val bufferDelay = conf.eventBufferDelay max conf.commitDelay
     logger.debugTask(recouplingStreamReader
-      .observe(client, after = persistence.currentState.idToSubagentItemState(subagentId).eventId)
+      .observe(
+        client,
+        after = persistence.unsafeCurrentState().idToSubagentItemState(subagentId).eventId)
       .takeUntilEval(stopObserving.flatMap(_.read))
       .pipe(obs =>
         if (!bufferDelay.isPositive)

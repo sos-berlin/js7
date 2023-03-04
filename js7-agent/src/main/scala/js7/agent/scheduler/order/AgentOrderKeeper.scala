@@ -87,9 +87,9 @@ final class AgentOrderKeeper(
   import conf.implicitAkkaAskTimeout
   import context.{actorOf, watch}
 
-  private val ownAgentPath = persistence.currentState.meta.agentPath
-  private val localSubagentId = persistence.currentState.meta.subagentId
-  private val controllerId = persistence.currentState.meta.controllerId
+  private val ownAgentPath = persistence.unsafeCurrentState().meta.agentPath
+  private val localSubagentId = persistence.unsafeCurrentState().meta.subagentId
+  private val controllerId = persistence.unsafeCurrentState().meta.controllerId
   private implicit val instructionExecutorService: InstructionExecutorService =
     new InstructionExecutorService(clock)
 
@@ -348,7 +348,7 @@ final class AgentOrderKeeper(
 
               case event: OrderProcessed =>
                 (for {
-                  jobKey <- persistence.currentState.jobKey(previousOrderOrNull.workflowPosition)
+                  jobKey <- persistence.unsafeCurrentState().jobKey(previousOrderOrNull.workflowPosition)
                   jobEntry <- jobRegister.checked(jobKey)
                 } yield jobEntry)
                 match {
@@ -394,7 +394,7 @@ final class AgentOrderKeeper(
       attachSignedItem(signed)
 
     case DetachItem(itemKey) if itemKey.isAssignableToAgent =>
-      if (!persistence.currentState.keyToItem.contains(itemKey)) {
+      if (!persistence.unsafeCurrentState().keyToItem.contains(itemKey)) {
         logger.warn(s"DetachItem($itemKey) but item is unknown")
         Future.successful(Right(AgentCommand.Response.Accepted))
       } else
@@ -519,7 +519,7 @@ final class AgentOrderKeeper(
       case workflowPathControl: WorkflowPathControl =>
         if (!workflowPathControl.suspended) {
           // Slow !!!
-          for (order <- persistence.currentState.orders
+          for (order <- persistence.unsafeCurrentState().orders
                if order.workflowPath == workflowPathControl.workflowPath) {
             proceedWithOrder(order)
           }
@@ -564,7 +564,7 @@ final class AgentOrderKeeper(
           case Some(orderEntry) =>
             // TODO Antwort erst nach OrderDetached _und_ Terminated senden, wenn Actor aus orderRegister entfernt worden ist
             // Bei langsamem Agenten, schnellem Controller-Wiederanlauf kann DetachOrder doppelt kommen, während OrderActor sich noch beendet.
-            persistence.currentState.idToOrder.checked(orderId).flatMap(_.detaching) match {
+            persistence.unsafeCurrentState().idToOrder.checked(orderId).flatMap(_.detaching) match {
               case Left(problem) => Future.successful(Left(problem))
               case Right(_) =>
                 val promise = Promise[Unit]()
@@ -652,7 +652,7 @@ final class AgentOrderKeeper(
     // updatedOrderId may be outdated, changed by more events in the same batch
     // Nevertheless, updateOrderId is the result of the event.
     val orderId = previousOrder.id
-    val agentState = persistence.currentState
+    val agentState = persistence.unsafeCurrentState()
     val orderEventHandler = new OrderEventHandler(agentState.idToWorkflow.checked)
 
     orderEventHandler.handleEvent(previousOrder, event)
@@ -680,7 +680,7 @@ final class AgentOrderKeeper(
   }
 
   private def proceedWithOrder(orderId: OrderId): Unit =
-    persistence.currentState.idToOrder.checked(orderId) match {
+    persistence.unsafeCurrentState().idToOrder.checked(orderId) match {
       case Left(problem) => logger.error(s"Internal: proceedWithOrder($orderId) => $problem")
       case Right(order) => proceedWithOrder(order)
     }
@@ -719,7 +719,7 @@ final class AgentOrderKeeper(
             //  Then, two OrderMoved are emitted, because the second event is based on the same Order state.
         }
         if (keyedEvents.isEmpty
-          && persistence.currentState.isOrderProcessable(order)
+          && persistence.unsafeCurrentState().isOrderProcessable(order)
           && order.isAttached
           && !shuttingDown) {
           onOrderIsProcessable(order)
@@ -729,7 +729,7 @@ final class AgentOrderKeeper(
   }
 
   private def onOrderIsProcessable(order: Order[Order.State]): Unit =
-    persistence.currentState
+    persistence.unsafeCurrentState
       .idToWorkflow.checked(order.workflowId)
       .map(workflow => workflow -> workflow.instruction(order.position))
       .match_ {
@@ -820,22 +820,22 @@ final class AgentOrderKeeper(
       def isAgent = true
 
       override def maybeAgentPath =
-        persistence.currentState.maybeAgentPath
+        persistence.unsafeCurrentState().maybeAgentPath
 
       def controllerId = AgentOrderKeeper.this.controllerId
 
-      def idToOrder = persistence.currentState.idToOrder
+      def idToOrder = persistence.unsafeCurrentState().idToOrder
 
-      def orders = persistence.currentState.idToOrder.values
+      def orders = persistence.unsafeCurrentState().idToOrder.values
 
-      def idToWorkflow = persistence.currentState.idToWorkflow
+      def idToWorkflow = persistence.unsafeCurrentState().idToWorkflow
 
       def workflowPathToId(workflowPath: WorkflowPath) =
-        persistence.currentState.workflowPathToId(workflowPath)
+        persistence.unsafeCurrentState().workflowPathToId(workflowPath)
 
-      def keyToUnsignedItemState = persistence.currentState.keyToUnsignedItemState
+      def keyToUnsignedItemState = persistence.unsafeCurrentState().keyToUnsignedItemState
 
-      def keyToItem = persistence.currentState.keyToItem
+      def keyToItem = persistence.unsafeCurrentState().keyToItem
     })
 
   override def toString = "AgentOrderKeeper"

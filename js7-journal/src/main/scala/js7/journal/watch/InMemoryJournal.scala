@@ -44,8 +44,6 @@ extends StatePersistence[S] with RealEventWatch
     infoLogEvents = Set.empty,
     suppressTiming = true)
 
-  val waitUntilStarted = Task.unit
-
   val whenNoFailoverByOtherNode = Task.unit
 
   def eventWatch = this
@@ -62,7 +60,7 @@ extends StatePersistence[S] with RealEventWatch
       journalFiles = Nil)
   }
 
-  def currentState: S =
+  def unsafeCurrentState(): S =
     _state
 
   def persistKeyedEvent[E <: Event](

@@ -90,7 +90,7 @@ extends AutoCloseable
   logger.debug("Ready")
 
   def currentAgentState(): AgentState =
-    persistence.currentState
+    persistence.unsafeCurrentState()
 
   def close() = closer.close()
 

@@ -212,7 +212,7 @@ extends SubagentDriver
                   jobLauncherConf.systemEncoding)
                 new JobDriver(
                   jobConf,
-                  id => persistence.currentState.pathToJobResource.checked(id)/*live!*/,
+                  id => persistence.unsafeCurrentState().pathToJobResource.checked(id)/*live!*/,
                   JobLauncher.checked(jobConf, jobLauncherConf),
                   fileValueState)
               }))
