@@ -28,6 +28,13 @@ import monix.reactive.Observable
 
 final class BigJsonClusterTest extends OurTestSuite with ControllerClusterForScalaTest
 {
+  private val bigString = BigJsonClusterTest.bigString // Allocate one
+
+  private val workflow = Workflow(WorkflowPath("BIG-JSON") ~ "INITIAL",
+    Seq.fill(2)(
+      TestJob.execute(agentPath, arguments = Map(
+        "BIG" -> StringConstant(bigString)))))
+
   protected val items = Seq(workflow)
   override protected val clusterTiming = ClusterTiming(1.s, 10.s)
 
@@ -64,21 +71,17 @@ final class BigJsonClusterTest extends OurTestSuite with ControllerClusterForSca
 object BigJsonClusterTest
 {
   private val agentPath = AgentPath("AGENT")
-  private def bigString = "+" *
-    (9_000_000 max
-      Js7Configuration.defaultConfig.memorySizeAsInt("js7.web.chunk-size").orThrow)
+  private val bigStringSize = 9_000_000 max
+    Js7Configuration.defaultConfig.memorySizeAsInt("js7.web.chunk-size").orThrow
 
-  private val workflow = Workflow(WorkflowPath("BIG-JSON") ~ "INITIAL",
-    Seq.fill(2)(
-      TestJob.execute(agentPath, arguments = Map(
-        "BIG" -> StringConstant(bigString)))))
+  // Function, to keep heap small (for proper a heap dump)
+  private def bigString = "+" * bigStringSize
 
   private class TestJob extends InternalJob
   {
-    private val orderProcess = OrderProcess.succeeded(Map(
-      "RESULT" -> StringValue(bigString)))
-
-    def toOrderProcess(step: Step) = orderProcess
+    def toOrderProcess(step: Step) =
+      OrderProcess.succeeded(Map(
+        "RESULT" -> StringValue(bigString)))
   }
   private object TestJob extends InternalJob.Companion[TestJob]
 }
