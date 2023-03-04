@@ -11,6 +11,7 @@ import js7.base.time.JavaTimestamp.local
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.time.{AdmissionTimeScheme, AlarmClock, AlwaysPeriod, TestAlarmClock, Timestamp, Timezone}
 import js7.base.utils.ScalaUtils.syntax.RichEither
+import js7.controller.RunningController
 import js7.data.agent.AgentPath
 import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.item.BasicItemEvent.{ItemAttached, ItemDeleted, ItemDeletionMarked, ItemDetachable, ItemDetached}
@@ -44,9 +45,9 @@ final class CalendarTest extends OurTestSuite with ControllerAgentForScalaTest
     js7.job.execution.signed-script-injection-allowed = on
     """
 
-  override protected def controllerModule = new AbstractModule {
-    @Provides @Singleton def provideAlarmClock(): AlarmClock = clock
-  }
+  override protected def controllerTestWiring = RunningController.TestWiring(
+    alarmClock = Some(clock))
+
   override protected def agentModule = new AbstractModule {
     @Provides @Singleton def provideAlarmClock(): AlarmClock = clock
   }

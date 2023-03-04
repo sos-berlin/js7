@@ -26,7 +26,6 @@ import js7.base.utils.DecimalPrefixes
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SideEffect.ImplicitSideEffect
 import js7.common.commandline.CommandLineArguments
-import js7.common.guice.GuiceImplicits.RichInjector
 import js7.common.utils.JavaShutdownHook
 import js7.data.agent.AgentPath
 import js7.data.event.{KeyedEvent, Stamped}
@@ -37,7 +36,6 @@ import js7.data.value.expression.Expression.{Equal, LastReturnCode, NumericConst
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Fork, If}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.journal.StampedKeyedEventBus
 import js7.tests.testenv.DirectoryProvider
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -134,8 +132,8 @@ object TestControllerAgent
             }
             controller.actorSystem.actorOf(Props {
               new Actor {
-                controller.injector.instance[StampedKeyedEventBus].subscribe(self, classOf[OrderEvent.OrderAdded])
-                controller.injector.instance[StampedKeyedEventBus].subscribe(self, classOf[OrderEvent.OrderFinished])
+                //TODO controller.injector.instance[StampedKeyedEventBus].subscribe(self, classOf[OrderEvent.OrderAdded])
+                //TODO controller.injector.instance[StampedKeyedEventBus].subscribe(self, classOf[OrderEvent.OrderFinished])
                 context.system.scheduler.scheduleWithFixedDelay(0.s, 1.s, self, "PRINT")
                 val stopwatch = new Stopwatch
                 var added, finished, printedFinished = 0

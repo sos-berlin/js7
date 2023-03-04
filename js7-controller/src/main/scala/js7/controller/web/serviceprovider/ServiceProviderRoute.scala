@@ -1,7 +1,7 @@
 package js7.controller.web.serviceprovider
 
 import akka.http.scaladsl.server.Route
-import com.google.inject.Injector
+import com.typesafe.config.Config
 import js7.base.log.Logger
 import js7.base.system.ServiceProviders.findServices
 import js7.base.utils.Collections.implicits.*
@@ -16,20 +16,18 @@ import js7.controller.web.serviceprovider.ServiceProviderRoute.*
   */
 private[web] trait ServiceProviderRoute
 {
-  protected def injector: Injector
   protected def routeServiceContext: RouteServiceContext
+  protected def config: Config
 
   private lazy val services: Seq[RouteService] =
-    findServices[RouteService] { (logLine, maybeService) =>
-      logger.debug(logLine)
-      for (service <- maybeService) injector.injectMembers(service)
-    }
+    findServices[RouteService]()
 
   private val lazyServiceProviderRoute = Lazy[Route] {
     val servicePathRoutes: Seq[(RouteService, String, Route)] =
       for {
         service <- services
-        (p, r) <- service.pathToRoute(routeServiceContext)
+        routeMapper = service.newRouteMapper(config)
+        (p, r) <- routeMapper.pathToRoute(routeServiceContext)
       } yield (service, p, r)
     logAndCheck(servicePathRoutes)
     combineRoutes(

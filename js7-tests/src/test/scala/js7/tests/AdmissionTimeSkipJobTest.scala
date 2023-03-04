@@ -11,6 +11,7 @@ import js7.base.time.JavaTimestamp.local
 import js7.base.time.ScalaTime.*
 import js7.base.time.{AdmissionTimeScheme, AlarmClock, TestAlarmClock, Timezone, WeekdayPeriod}
 import js7.base.utils.ScalaUtils.syntax.RichEither
+import js7.controller.RunningController
 import js7.data.agent.AgentPath
 import js7.data.execution.workflow.instructions.ExecuteExecutor.orderIdToDate
 import js7.data.order.Order.Fresh
@@ -43,9 +44,8 @@ final class AdmissionTimeSkipJobTest extends OurTestSuite with ControllerAgentFo
   private implicit val timeZone: ZoneId = AdmissionTimeSkipJobTest.timeZone
   private val clock = TestAlarmClock(local("2021-09-09T00:00"))
 
-  override protected def controllerModule = new AbstractModule {
-    @Provides @Singleton def provideAlarmClock(): AlarmClock = clock
-  }
+  override protected def controllerTestWiring = RunningController.TestWiring(
+    alarmClock = Some(clock))
 
   override protected def agentModule = new AbstractModule {
     @Provides @Singleton def provideAlarmClock(): AlarmClock = clock

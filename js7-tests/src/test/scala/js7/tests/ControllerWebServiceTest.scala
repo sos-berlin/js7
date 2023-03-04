@@ -30,6 +30,7 @@ import js7.base.{BuildInfo, Js7Version}
 import js7.common.http.AkkaHttpClient.HttpException
 import js7.common.http.AkkaHttpUtils.RichHttpResponse
 import js7.common.system.ServerOperatingSystem.operatingSystem
+import js7.controller.RunningController
 import js7.data.Problems.UnknownItemPathProblem
 import js7.data.agent.{AgentPath, AgentRefStateEvent}
 import js7.data.item.{ItemOperation, VersionId}
@@ -80,9 +81,8 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest
     @Provides @Singleton def eventIdClock(): EventIdClock = EventIdClock.fixed(2000)
   }
 
-  override val controllerModule = new AbstractModule {
-    @Provides @Singleton def eventIdClock(): EventIdClock = EventIdClock.fixed(1000)
-  }
+  override protected def controllerTestWiring = RunningController.TestWiring(
+    eventIdClock = Some(EventIdClock.fixed(1000)))
 
   private implicit def materializer: Materializer = httpClient.materializer
 

@@ -1,9 +1,9 @@
 package js7.controller.web.serviceprovider
 
-import akka.http.scaladsl.server.Route
+import com.typesafe.config.Config
 
 /** A Java service providing more routes for the Controller web services. */
 trait RouteService
 {
-  def pathToRoute(context: RouteServiceContext): Map[String, Route]
+  def newRouteMapper(config: Config): RouteMapper
 }

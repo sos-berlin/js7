@@ -3,7 +3,6 @@ package js7.controller.web
 import akka.actor.ActorSystem
 import akka.http.scaladsl.server.Directives.*
 import akka.http.scaladsl.server.Route
-import com.google.inject.Injector
 import java.nio.file.Path
 import js7.base.auth.{SimpleUser, UpdateItemPermission}
 import js7.base.configutils.Configs.ConvertibleConfig
@@ -48,8 +47,7 @@ final class ControllerBoundRoute(
   clusterNode: ClusterNode[ControllerState],
   protected val totalRunningSince: Deadline,
   protected val sessionRegister: SessionRegister[SimpleSession],
-  protected val eventWatch: FileEventWatch,
-  protected val injector: Injector)(
+  protected val eventWatch: FileEventWatch)(
   implicit
     protected val actorSystem: ActorSystem,
     protected val scheduler: Scheduler)
@@ -66,7 +64,8 @@ with WebLogDirectives
     .map(_.map(s => Stamped(s.eventId, s.clusterState)))
   protected val currentLogFile      = config.as[Path]("js7.log.file")
   protected val pathToAgentRefState = controllerState.map(_.map(_.keyTo(AgentRefState)))
-  protected val routeServiceContext = RouteServiceContext(filteredSnapshotRoute, filteredEventRoute)
+  protected val routeServiceContext = RouteServiceContext(
+    filteredSnapshotRoute, filteredEventRoute, config)
   protected val actorRefFactory     = actorSystem
   protected val clusterWatchRequestStream = clusterNode.clusterWatchRequestStream
   protected val gateKeeper = GateKeeper(

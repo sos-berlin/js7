@@ -53,7 +53,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
   protected final lazy val controller: TestController = {
     val controller = directoryProvider
       .newController(
-        controllerModule,
+        controllerTestWiring,
         config"""js7.web.server.auth.https-client-authentication = $controllerHttpsMutual""",
         httpPort = controllerHttpPort,
         httpsPort = controllerHttpsPort)

@@ -13,6 +13,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.common.message.ProblemCodeMessages
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
+import js7.controller.RunningController
 import js7.data.agent.AgentPath
 import js7.data.item.{InventoryItem, SignableItem}
 import js7.data.subagent.SubagentId
@@ -63,7 +64,8 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
 
   protected def agentConfig: Config = ConfigFactory.empty
 
-  protected def controllerModule: Module = EMPTY_MODULE
+  protected def controllerTestWiring: RunningController.TestWiring =
+    RunningController.TestWiring.empty
   protected def agentModule: Module = EMPTY_MODULE
   protected lazy val controllerHttpPort = findFreeTcpPort().some
   protected lazy val controllerHttpsPort = none[Int]

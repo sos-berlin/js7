@@ -10,6 +10,7 @@ import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.ScalaTime.*
 import js7.base.time.{AlarmClock, TestAlarmClock}
+import js7.controller.RunningController
 import js7.data.agent.AgentPath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAwoke, OrderCaught, OrderFailed, OrderMoved, OrderOutcomeAdded, OrderRetrying, OrderStarted, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
@@ -35,9 +36,8 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
   protected val agentPaths = agentPath :: Nil
   protected val items = Nil
 
-  override protected def controllerModule = new AbstractModule {
-    @Provides @Singleton def provideAlarmClock(): AlarmClock = clock
-  }
+  override protected def controllerTestWiring = RunningController.TestWiring(
+    alarmClock = Some(clock))
 
   override protected def agentModule = new AbstractModule {
     @Provides @Singleton def provideAlarmClock(): AlarmClock = clock

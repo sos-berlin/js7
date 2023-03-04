@@ -1,7 +1,6 @@
 package js7.tests.testenv
 
 import akka.actor.ActorSystem
-import com.google.inject.Injector
 import com.typesafe.config.Config
 import js7.base.auth.{SimpleUser, UserAndPassword}
 import js7.base.eventbus.StandardEventBus
@@ -80,9 +79,6 @@ extends AutoCloseable
 
   def testEventBus: StandardEventBus[Any] =
     runningController.testEventBus
-
-  def injector: Injector =
-    runningController.injector
 
   def terminated: Future[ProgramTermination] =
     runningController.terminated

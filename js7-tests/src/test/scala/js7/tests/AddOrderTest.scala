@@ -1,11 +1,10 @@
 package js7.tests
 
-import com.google.inject.{AbstractModule, Provides}
-import javax.inject.Singleton
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Problems.DuplicateKey
 import js7.base.test.OurTestSuite
-import js7.base.time.{AlarmClock, TestAlarmClock, Timestamp}
+import js7.base.time.{TestAlarmClock, Timestamp}
+import js7.controller.RunningController
 import js7.data.agent.AgentPath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderOrderAdded, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderPrompted, OrderStarted}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
@@ -33,9 +32,8 @@ final class AddOrderTest extends OurTestSuite with ControllerAgentForScalaTest
 
   private val alarmClock = TestAlarmClock(Timestamp("2099-01-01T00:00:00Z"))
 
-  override protected def controllerModule = new AbstractModule {
-    @Provides @Singleton def provideAlarmClock(): AlarmClock = alarmClock
-  }
+  override protected def controllerTestWiring = RunningController.TestWiring(
+    alarmClock = Some(alarmClock))
 
   protected def agentPaths = Seq(agentPath)
   protected def items = Seq(aWorkflow, bWorkflow, c1Workflow, c2Workflow)

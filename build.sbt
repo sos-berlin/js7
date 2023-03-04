@@ -222,6 +222,7 @@ lazy val js7JS = (project in file("target/project-js7JS"))
     `js7-base`.js,
     `js7-common-http`.js,
     `js7-data`.js,
+    `js7-cluster-watch-api`.js,
     `js7-controller-client`.js,
     `js7-proxy`.js)
   .settings(publish / skip := true)
@@ -590,7 +591,6 @@ lazy val `js7-journal` = project
     libraryDependencies ++=
       akkaHttp ++
       akkaHttpTestkit % "test" ++
-      guice ++
       tagging ++
       diffx ++
       scalaTest % "test" ++
@@ -702,7 +702,6 @@ lazy val `js7-agent-client` = project
   .settings {
     import Dependencies._
     libraryDependencies ++=
-      guice ++
       "io.monix" %% "monix-reactive" % monixVersion ++
       akkaActor ++
       akkaHttp ++

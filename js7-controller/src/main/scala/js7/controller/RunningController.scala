@@ -5,9 +5,6 @@ import akka.pattern.ask
 import akka.util.Timeout
 import cats.effect.{Resource, Sync, SyncIO}
 import cats.syntax.traverse.*
-import com.google.inject.Stage.PRODUCTION
-import com.google.inject.util.Modules
-import com.google.inject.{Guice, Injector, Module}
 import com.softwaremill.diffx.generic.auto.*
 import com.softwaremill.tagging.{@@, Tagger}
 import com.typesafe.config.Config
@@ -26,6 +23,7 @@ import js7.base.thread.Futures.implicits.*
 import js7.base.thread.IOExecutor
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.AlarmClock
+import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.Assertions.assertThat
@@ -38,14 +36,12 @@ import js7.cluster.ClusterNode.RestartAfterJournalTruncationException
 import js7.cluster.{ClusterNode, WorkingClusterNode}
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.akkautils.Akkas
-import js7.common.guice.GuiceImplicits.RichInjector
 import js7.common.system.ThreadPools
 import js7.controller.ControllerOrderKeeper.ControllerIsShuttingDownProblem
 import js7.controller.RunningController.*
 import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
 import js7.controller.command.ControllerCommandExecutor
 import js7.controller.configuration.ControllerConfiguration
-import js7.controller.configuration.inject.ControllerModule
 import js7.controller.item.ItemUpdater
 import js7.controller.web.ControllerWebServer
 import js7.core.command.{CommandExecutor, CommandMeta}
@@ -92,8 +88,7 @@ final class RunningController private(
   val sessionRegister: SessionRegister[SimpleSession],
   val conf: ControllerConfiguration,
   val testEventBus: StandardEventBus[Any],
-  val actorSystem: ActorSystem,
-  val injector: Injector)
+  val actorSystem: ActorSystem)
   (implicit val scheduler: Scheduler)
 {
   private val httpApiUserAndPassword = SetOnce[Option[UserAndPassword]]
@@ -248,21 +243,29 @@ object RunningController
           runningController.terminated.awaitInfinite
         })
 
-  def resource(conf: ControllerConfiguration, scheduler: Scheduler, module: Option[Module] = None)
-  : Resource[Task, RunningController] =
+  def resource(conf: ControllerConfiguration, scheduler: Scheduler,
+    testWiring: TestWiring = TestWiring.empty)
+  : Resource[Task, RunningController] = {
+    val alarmClock: AlarmClock =
+      testWiring.alarmClock getOrElse
+        AlarmClock(Some(conf.config
+          .getDuration("js7.time.clock-setting-check-interval")
+          .toFiniteDuration))(scheduler)
+
+    val eventIdClock: EventIdClock =
+      testWiring.eventIdClock getOrElse new EventIdClock(alarmClock)
+
     for {
       iox <- IOExecutor.resource[Task](conf.config, conf.name + " I/O")
-      controllerModule = new ControllerModule(conf, scheduler)
-      runningController <- resource(
-        conf,
-        Guice.createInjector(PRODUCTION,
-          module.fold_(
-            controllerModule,
-            module => Modules.`override`(controllerModule).`with`(module))))(
+      runningController <- resource(conf, alarmClock, eventIdClock)(
         scheduler, iox)
     } yield runningController
+  }
 
-  private def resource(conf: ControllerConfiguration, injector: Injector)
+  private def resource(
+    conf: ControllerConfiguration,
+    alarmClock: AlarmClock,
+    eventIdClock: EventIdClock)
     (implicit scheduler: Scheduler, iox: IOExecutor)
   : Resource[Task, RunningController] = {
     import conf.{config, implicitAkkaAskTimeout, journalMeta}
@@ -280,7 +283,7 @@ object RunningController
           ClusterNode.resource(
             recovered,
             journalMeta, journalConf, clusterConf, config,
-            new EventIdGenerator(injector.instance[EventIdClock]),
+            new EventIdGenerator(eventIdClock),
             (uri, name) => AkkaHttpControllerApi.resource(
               uri, clusterConf.peersUserAndPassword, httpsConfig, name = name),
             new LicenseChecker(LicenseCheckContext(conf.configDirectory)),
@@ -306,7 +309,7 @@ object RunningController
                   workingClusterNode.persistence,
                   clusterNode.workingClusterNode.orThrow,
                   recovered.recoveredState,
-                  injector.instance[AlarmClock],
+                  alarmClock,
                   conf, testEventBus)
             }
             .onErrorRecover { case t: RestartAfterJournalTruncationException =>
@@ -374,7 +377,7 @@ object RunningController
             orderApi, commandExecutor, itemUpdater, controllerState, clusterNode,
             recovered.totalRunningSince, // Maybe different from JournalHeader
             recovered.eventWatch,
-            conf, sessionRegister, injector)
+            conf, sessionRegister)
           .evalTap(webServer => Task(
             conf.workDirectory / "http-uri" :=
               webServer.localHttpUri.fold(_ => "", o => s"$o/controller")))
@@ -392,7 +395,7 @@ object RunningController
               commandExecutor, itemUpdater,
               whenReady.future, orderKeeperTerminated.runToFuture,
               sessionRegister, conf, testEventBus,
-              actorSystem, injector)))(
+              actorSystem)))(
           release =
             _.terminate().void)
 
@@ -509,4 +512,11 @@ object RunningController
 
   type ItemSignatureKeysUpdated = ItemSignatureKeysUpdated.type
   case object ItemSignatureKeysUpdated
+
+  final case class TestWiring(
+    alarmClock: Option[AlarmClock] = None,
+    eventIdClock: Option[EventIdClock] = None)
+  object TestWiring {
+    val empty = TestWiring()
+  }
 }

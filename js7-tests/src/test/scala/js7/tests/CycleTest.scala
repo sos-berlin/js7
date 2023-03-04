@@ -12,6 +12,7 @@ import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.time.{AdmissionTimeScheme, AlarmClock, AlwaysPeriod, DailyPeriod, TestAlarmClock, Timestamp, Timezone}
 import js7.base.utils.ScalaUtils.syntax.RichEither
+import js7.controller.RunningController
 import js7.data.agent.AgentPath
 import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.controller.ControllerCommand.CancelOrders
@@ -50,9 +51,9 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
 
   private implicit val clock: TestAlarmClock = CycleTest.clock
 
-  override protected def controllerModule = new AbstractModule {
-    @Provides @Singleton def provideAlarmClock(): AlarmClock = clock
-  }
+  override protected def controllerTestWiring = RunningController.TestWiring(
+    alarmClock = Some(clock))
+
   override protected def agentModule = new AbstractModule {
     @Provides @Singleton def provideAlarmClock(): AlarmClock = clock
   }

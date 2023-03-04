@@ -42,6 +42,7 @@ import js7.common.configuration.Js7Configuration
 import js7.common.utils.Exceptions.repeatUntilNoException
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.RunningController
+import js7.controller.RunningController.TestWiring
 import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
 import js7.controller.configuration.ControllerConfiguration
@@ -78,7 +79,7 @@ final class DirectoryProvider(
   bareSubagents: Map[AgentPath, Seq[SubagentId]] = Map.empty,
   items: Seq[InventoryItem] = Nil,
   controllerConfig: Config = ConfigFactory.empty,
-  controllerModule: Module = EMPTY_MODULE,
+  controllerTestWiring: RunningController.TestWiring = RunningController.TestWiring.empty,
   agentHttps: Boolean = false,
   agentHttpsMutual: Boolean = false,
   agentConfig: Config = ConfigFactory.empty,
@@ -203,29 +204,29 @@ extends HasCloser
     }
 
   def newController(
-    module: Module = controllerModule,
+    testWiring: TestWiring = controllerTestWiring,
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(findFreeTcpPort()),
     httpsPort: Option[Int] = None)
   : TestController =
       new TestController(
-        runningControllerResource(module, config, httpPort, httpsPort)
+        runningControllerResource(testWiring, config, httpPort, httpsPort)
         .toAllocated
         .await(99.s))
 
   private def controllerResource(
-    module: Module = controllerModule,
+    testWiring: TestWiring = controllerTestWiring,
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(findFreeTcpPort()),
     httpsPort: Option[Int] = None)
   : Resource[Task, TestController] =
     Resource.make(
-      runningControllerResource(module, config, httpPort, httpsPort)
+      runningControllerResource(testWiring, config, httpPort, httpsPort)
         .toAllocated.map(new TestController(_)))(
       release = _.stop)
 
   private def runningControllerResource(
-    module: Module = controllerModule,
+    testWiring: RunningController.TestWiring = controllerTestWiring,
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(findFreeTcpPort()),
     httpsPort: Option[Int] = None)
@@ -268,7 +269,7 @@ extends HasCloser
       RunningController.threadPoolResource[Task](conf, orCommon = scheduler)
         .flatMap(js7Scheduler =>
           RunningController
-            .resource(conf, js7Scheduler, Some(module))
+            .resource(conf, js7Scheduler, testWiring)
             .evalTap(runningController => Task {
               startForTest(runningController)
             })

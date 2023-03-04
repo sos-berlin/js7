@@ -2,7 +2,6 @@ package js7.controller.web
 
 import akka.actor.ActorSystem
 import cats.effect.Resource
-import com.google.inject.Injector
 import js7.base.problem.Checked
 import js7.cluster.ClusterNode
 import js7.common.akkahttp.web.AkkaWebServer
@@ -27,8 +26,7 @@ object ControllerWebServer
     totalRunningSince: Deadline,
     eventWatch: FileEventWatch,
     controllerConfiguration: ControllerConfiguration,
-    sessionRegister: SessionRegister[SimpleSession],
-    injector: Injector)(
+    sessionRegister: SessionRegister[SimpleSession])(
     implicit actorSystem_ : ActorSystem)
   : Resource[Task, ControllerWebServer] =
     AkkaWebServer.resource(
@@ -47,6 +45,5 @@ object ControllerWebServer
             clusterNode,
             totalRunningSince,
             sessionRegister,
-            eventWatch,
-            injector))))
+            eventWatch))))
 }

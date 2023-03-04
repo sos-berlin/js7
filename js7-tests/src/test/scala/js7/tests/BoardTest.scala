@@ -1,16 +1,15 @@
 package js7.tests
 
-import com.google.inject.{AbstractModule, Provides}
-import javax.inject.Singleton
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Problem
 import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
-import js7.base.time.{AlarmClock, TestAlarmClock, Timestamp}
+import js7.base.time.{TestAlarmClock, Timestamp}
 import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.ScalaUtils.syntax.RichEither
+import js7.controller.RunningController
 import js7.data.Problems.ItemIsStillReferencedProblem
 import js7.data.agent.AgentPath
 import js7.data.board.BoardEvent.NoticeDeleted
@@ -58,9 +57,8 @@ with BlockingItemUpdater
 
   private val clock = TestAlarmClock(startTimestamp)
 
-  override protected def controllerModule = new AbstractModule {
-    @Provides @Singleton def provideAlarmClock(): AlarmClock = clock
-  }
+  override protected def controllerTestWiring = RunningController.TestWiring(
+    alarmClock = Some(clock))
 
   "ExpectNotices" - {
     "expect(0, 1), post(1, 2), expect(0, 2), post(0)" in {
