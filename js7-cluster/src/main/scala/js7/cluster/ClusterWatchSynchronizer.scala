@@ -279,7 +279,7 @@ private final class ClusterWatchSynchronizer(
         case Some(()) => Task.completed
         case None =>
           val clusterState = this.clusterState
-          logger.trace(s"Heartbeat ($nr) $clusterState")
+          //logger.trace(s"Heartbeat ($nr) $clusterState")
           doACheckedHeartbeat(
             clusterState, registerClusterWatchId, clusterWatchIdChangeAllowed = true
           ).flatMap {

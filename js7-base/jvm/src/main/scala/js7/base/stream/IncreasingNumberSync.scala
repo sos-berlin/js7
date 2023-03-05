@@ -1,7 +1,6 @@
 package js7.base.stream
 
 import js7.base.log.Logger
-import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.monixutils.MonixDeadline
 import js7.base.stream.IncreasingNumberSync.*
@@ -22,7 +21,7 @@ final class IncreasingNumberSync(initial: Long, valueToString: Long => String)
   @volatile private var _last = initial
 
   def onAdded(a: Long): Unit = {
-    logger.trace(s"onAdded $a")
+    //logger.trace(s"onAdded $a")
     synchronized {
       if (a < _last) throw new IllegalArgumentException(s"Added ${valueToString(a)} < last ${valueToString(_last)}")
       _last = a
@@ -42,9 +41,9 @@ final class IncreasingNumberSync(initial: Long, valueToString: Long => String)
     */
   def whenAvailable(after: Long, until: Option[MonixDeadline], delay: FiniteDuration = ZeroDuration)
   : Task[Boolean] = {
-    def argsString =
-      s"$after delay=${delay.pretty}${until.fold("")(o => " until=" + o.timeLeft.pretty)}"
-    logger.traceTaskWithResult("whenAvailable", argsString, task =
+    //def argsString =
+    //  s"$after delay=${delay.pretty}${until.fold("")(o => " until=" + o.timeLeft.pretty)}"
+    //logger.traceTaskWithResult("whenAvailable", argsString, task =
       Task.defer {
         if (after < _last)
           Task.True  // Event already waiting
@@ -55,7 +54,7 @@ final class IncreasingNumberSync(initial: Long, valueToString: Long => String)
             .delayResult(delay min until.fold(FiniteDuration.MaxValue)(_.timeLeftOrZero))
           until.fold(task)(u => task.timeoutTo(u.timeLeftOrZero, Task.False))
         }
-      })
+      }
   }
 
   private def whenAvailable2(after: Long): Task[Boolean] =

@@ -28,7 +28,7 @@ private object TestResultCollector
     newMaybeVirtualThread("TestResultCollector-shutdown-hook") {
       logThreads()
       logger.info(s"Test summary:\n$asString\n")
-      dumpJavaHeap()
+      if (sys.props.contains("js7.dumpHeap")) dumpJavaHeap()
       Log4j.shutdown() // Set shutdownHook="disable" in project/log4j2.xml !!!
     })
 
