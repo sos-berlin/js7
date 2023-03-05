@@ -101,7 +101,6 @@ trait RealEventWatch extends EventWatch
     def next(lazyAfter: () => (EventId, Option[FiniteDuration]))
     : Task[(Option[Observable[EventId]], () => (EventId, Option[FiniteDuration]))] =
       Task.deferAction { implicit s =>
-        // Access now the in previous iteration computed lastEventId and limit values (see below)
         val (after, maybeTimeout) = lazyAfter()
         // Timeout is renewed after every fetched event
         deadline = maybeTimeout.map(t => now + (t min EventRequest.LongTimeout))

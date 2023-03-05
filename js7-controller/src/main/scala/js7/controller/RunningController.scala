@@ -30,12 +30,12 @@ import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CatsBlocking.BlockingTaskResource
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SyncResource.syntax.RichSyncResource
-import js7.base.utils.{ProgramTermination, SetOnce}
+import js7.base.utils.{Allocated, ProgramTermination, SetOnce}
 import js7.base.web.Uri
 import js7.cluster.ClusterNode.RestartAfterJournalTruncationException
 import js7.cluster.{ClusterNode, WorkingClusterNode}
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import js7.common.akkautils.Akkas
+import js7.common.akkautils.Akkas.actorSystemResource
 import js7.common.system.ThreadPools
 import js7.controller.ControllerOrderKeeper.ControllerIsShuttingDownProblem
 import js7.controller.RunningController.*
@@ -45,7 +45,6 @@ import js7.controller.configuration.ControllerConfiguration
 import js7.controller.item.ItemUpdater
 import js7.controller.web.ControllerWebServer
 import js7.core.command.{CommandExecutor, CommandMeta}
-import js7.core.license.LicenseChecker
 import js7.data.Problems.{ClusterNodeIsNotActiveProblem, PassiveClusterNodeShutdownNotAllowedProblem}
 import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerCommand.{AddOrder, ShutDown}
@@ -55,11 +54,9 @@ import js7.data.event.EventId
 import js7.data.item.{ItemOperation, SignableItem, UnsignedSimpleItem}
 import js7.data.order.FreshOrder
 import js7.journal.JournalActor.Output
-import js7.journal.recover.StateRecoverer
 import js7.journal.state.FileStatePersistence
 import js7.journal.watch.StrictEventWatch
-import js7.journal.{EventIdClock, EventIdGenerator, JournalActor}
-import js7.license.LicenseCheckContext
+import js7.journal.{EventIdClock, JournalActor}
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
@@ -257,8 +254,7 @@ object RunningController
 
     for {
       iox <- IOExecutor.resource[Task](conf.config, conf.name + " I/O")
-      runningController <- resource(conf, alarmClock, eventIdClock)(
-        scheduler, iox)
+      runningController <- resource(conf, alarmClock, eventIdClock)(scheduler, iox)
     } yield runningController
   }
 
@@ -268,31 +264,21 @@ object RunningController
     eventIdClock: EventIdClock)
     (implicit scheduler: Scheduler, iox: IOExecutor)
   : Resource[Task, RunningController] = {
-    import conf.{config, implicitAkkaAskTimeout, journalMeta}
+    import conf.{clusterConf, config, httpsConfig, implicitAkkaAskTimeout, journalConf, journalMeta}
 
     val testEventBus = new StandardEventBus[Any]
 
     // Recover and initialize other stuff in parallel
-    val resources =
-      StateRecoverer.resource[ControllerState](journalMeta, config)
-        .parZip(
-          Akkas.actorSystemResource(conf.name, config))
-        .flatMap { case (recovered, actorSystem) =>
-          implicit val a = actorSystem
-          import conf.{clusterConf, config, httpsConfig, journalConf}
-          ClusterNode.resource(
-            recovered,
-            journalMeta, journalConf, clusterConf, config,
-            new EventIdGenerator(eventIdClock),
-            (uri, name) => AkkaHttpControllerApi.resource(
-              uri, clusterConf.peersUserAndPassword, httpsConfig, name = name),
-            new LicenseChecker(LicenseCheckContext(conf.configDirectory)),
-            testEventBus,
-            implicitAkkaAskTimeout
-          ).orThrow.map((recovered, actorSystem, _))
-        }
-        .parZip(
-          itemVerifierResource(config, testEventBus))
+    val recoveringResource =
+      ClusterNode.recoveringResource[ControllerState](
+        actorSystemResource(conf.name, config),
+        (uri, name, actorSystem) => AkkaHttpControllerApi.resource(
+          uri, clusterConf.peersUserAndPassword, httpsConfig, name = name)(actorSystem),
+        configDirectory = conf.configDirectory,
+        journalMeta, journalConf, clusterConf, eventIdClock, testEventBus, config)
+
+    val resources = recoveringResource
+      .parZip(itemVerifierResource(config, testEventBus))
 
     resources.flatMap { case ((recovered, actorSystem, clusterNode), itemVerifier) =>
       @volatile var clusterStartupTermination = ProgramTermination()
@@ -304,11 +290,10 @@ object RunningController
             .map {
               case None => Left(clusterStartupTermination)
 
-              case Some((recovered, workingClusterNode)) =>
+              case Some(workingClusterNode) =>
                 startControllerOrderKeeper(
-                  workingClusterNode.persistence,
+                  workingClusterNode.persistenceAllocated,
                   clusterNode.workingClusterNode.orThrow,
-                  recovered.recoveredState,
                   alarmClock,
                   conf, testEventBus)
             }
@@ -325,7 +310,7 @@ object RunningController
         testEventBus.when[ControllerOrderKeeper.ControllerReadyTestIncident.type].void.runToFuture)
 
       // The ControllerOrderKeeper if started
-      val orderKeeperActor: Task[Checked[ActorRef @@ ControllerOrderKeeper]] =
+      val currentOrderKeeperActor: Task[Checked[ActorRef @@ ControllerOrderKeeper]] =
         logger.traceTask(
           controllerState
             .map(_.map(_.clusterState))
@@ -340,11 +325,11 @@ object RunningController
                 }
             }
             .tapError(t => Task {
-              logger.debug(s"orderKeeperActor => ${t.toStringWithCauses}", t)
+              logger.debug(s"currentOrderKeeperActor => ${t.toStringWithCauses}", t)
               whenReady.tryFailure(t)
             }))
 
-      val orderKeeperTerminated = logger.traceTask(
+      val untilOrderKeeperTerminated = logger.traceTask(
         orderKeeperStarted.flatMap {
           case Left(termination) => Task.pure(termination)
           case Right(o) =>
@@ -365,10 +350,10 @@ object RunningController
               clusterStartupTermination = termination
               clusterNode.onShutdown.as(Completed)
             },
-          orderKeeperActor))
+          currentOrderKeeperActor))
 
       val orderApi = new MainOrderApi(controllerState)
-      val itemUpdater = new MyItemUpdater(itemVerifier, orderKeeperActor)
+      val itemUpdater = new MyItemUpdater(itemVerifier, currentOrderKeeperActor)
       val sessionRegister = SessionRegister.start(actorSystem, SimpleSession.apply, config)
 
       val webServerResource: Resource[Task, ControllerWebServer] =
@@ -393,7 +378,7 @@ object RunningController
               orderApi,
               controllerState.map(_.orThrow),
               commandExecutor, itemUpdater,
-              whenReady.future, orderKeeperTerminated.runToFuture,
+              whenReady.future, untilOrderKeeperTerminated.runToFuture,
               sessionRegister, conf, testEventBus,
               actorSystem)))(
           release =
@@ -428,9 +413,8 @@ object RunningController
           ControllerState.signableItemJsonCodec))
 
   private def startControllerOrderKeeper(
-    persistence: FileStatePersistence[ControllerState],
+    persistenceAllocated: Allocated[Task, FileStatePersistence[ControllerState]],
     workingClusterNode: WorkingClusterNode[ControllerState],
-    controllerState: Option[ControllerState],
     alarmClock: AlarmClock,
     conf: ControllerConfiguration,
     testEventPublisher: EventPublisher[Any])(
@@ -440,11 +424,11 @@ object RunningController
       val terminationPromise = Promise[ProgramTermination]()
       val actor = actorSystem.actorOf(
         Props {
-          new ControllerOrderKeeper(terminationPromise, persistence, workingClusterNode,
+          new ControllerOrderKeeper(terminationPromise, persistenceAllocated, workingClusterNode,
             alarmClock, conf, testEventPublisher)
         },
         "ControllerOrderKeeper")
-      actor ! ControllerOrderKeeper.Input.Start(controllerState)
+      actor ! ControllerOrderKeeper.Input.Start
       val termination = terminationPromise.future
         .andThen { case Failure(t) => logger.error(t.toStringWithCauses, t) }
       Right(OrderKeeperStarted(actor.taggedWith[ControllerOrderKeeper], termination))

@@ -27,7 +27,7 @@ import js7.base.time.{AdmissionTimeScheme, AlarmClock, TimeInterval}
 import js7.base.utils.Collections.implicits.InsertableMutableMap
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.StackTraceThrowable
-import js7.base.utils.{DuplicateKeyException, SetOnce}
+import js7.base.utils.{Allocated, DuplicateKeyException, SetOnce}
 import js7.common.akkautils.Akkas.{encodeAsActorName, uniqueActorName}
 import js7.common.akkautils.SupervisorStrategies
 import js7.common.system.PlatformInfos.currentPlatformInfo
@@ -77,7 +77,7 @@ final class AgentOrderKeeper(
   recovered_ : Recovered[AgentState],
   signatureVerifier: SignatureVerifier,
   jobLauncherConf: JobLauncherConf,
-  persistence: FileStatePersistence[AgentState],
+  persistenceAllocated: Allocated[Task, FileStatePersistence[AgentState]],
   private implicit val clock: AlarmClock,
   conf: AgentConfiguration)
   (implicit protected val scheduler: Scheduler, iox: IOExecutor)
@@ -87,6 +87,7 @@ final class AgentOrderKeeper(
   import conf.implicitAkkaAskTimeout
   import context.{actorOf, watch}
 
+  private val persistence = persistenceAllocated.allocatedThing
   private val ownAgentPath = persistence.unsafeCurrentState().meta.agentPath
   private val localSubagentId = persistence.unsafeCurrentState().meta.subagentId
   private val controllerId = persistence.unsafeCurrentState().meta.controllerId
@@ -171,7 +172,7 @@ final class AgentOrderKeeper(
             if (jobRegister.isEmpty && !terminatingJournal) {
               persist(AgentShutDown) { (_, _) =>
                 terminatingJournal = true
-                persistence.stop.runAsyncAndForget
+                persistenceAllocated.stop.runAsyncAndForget
               }
             }
           }
@@ -729,7 +730,7 @@ final class AgentOrderKeeper(
   }
 
   private def onOrderIsProcessable(order: Order[Order.State]): Unit =
-    persistence.unsafeCurrentState
+    persistence.unsafeCurrentState()
       .idToWorkflow.checked(order.workflowId)
       .map(workflow => workflow -> workflow.instruction(order.position))
       .match_ {

@@ -196,12 +196,14 @@ object RunningAgent {
       val recovered = whenRecovered.awaitInfinite
       recovered.eventWatch.closeWithCloser(closer)
 
-      val persistence = FileStatePersistence
-        .start(recovered, journalConf,
+      val persistenceAllocated = FileStatePersistence
+        .resource(recovered, journalConf,
           injector.instance[EventIdGenerator],
           new StandardEventBus)
+        .toAllocated
         .awaitInfinite
-      closer.onClose(persistence.stop.await(3.s)) // TODO Use StoppableRegister
+      val persistence = persistenceAllocated.allocatedThing
+      closer.onClose(persistenceAllocated.stop.await(3.s))
 
       val gateKeeperConf = injector.instance[GateKeeper.Configuration[SimpleUser]]
 
@@ -209,7 +211,7 @@ object RunningAgent {
       val terminationPromise = Promise[ProgramTermination]()
       val mainActor = actorSystem.actorOf(
         Props {
-          new MainActor(persistence, agentConfiguration, injector, mainActorReadyPromise,
+          new MainActor(persistenceAllocated, agentConfiguration, injector, mainActorReadyPromise,
             terminationPromise)
         },
         "main")

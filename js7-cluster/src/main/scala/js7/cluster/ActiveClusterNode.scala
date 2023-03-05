@@ -78,9 +78,8 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
     initialClusterState match {
       case clusterState @ (_: Coupled | _: ActiveShutDown) =>
         Task.defer {
-          logger.info("Requesting acknowledgement for the last recovered event")
+          logger.info("Requesting the passive node's acknowledgement for the last recovered event")
           awaitAcknowledgement(clusterState.passiveUri, eventId)
-            .logWhenItTakesLonger("acknowledgement")
             .flatTap {
               case Left(problem) => Task(logger.debug(problem.toString))
               case Right(Completed) => Task(logger.info("Passive node acknowledged the recovered state"))
@@ -457,17 +456,18 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
 
   private def awaitAcknowledgement(passiveUri: Uri, eventId: EventId)
   : Task[Checked[Completed]] =
-    Observable
-      .fromResource(
-        common.clusterNodeApi(passiveUri, "awaitAcknowledgement"))
-      .flatMap(api => observeEventIds(api, heartbeat = None))
-      .dropWhile(_ != eventId)
-      .headOptionL
-      .map {
-        case Some(`eventId`) => Right(Completed)
-        case _ => Left(Problem.pure(s"awaitAcknowledgement($eventId): Observable ended unexpectedly"))
-      }
-      .logWhenItTakesLonger
+    common
+      .clusterNodeApi(passiveUri, "awaitAcknowledgement")
+      .use(api =>
+        observeEventIds(api, heartbeat = None)
+          .dropWhile(_ != eventId)
+          .headOptionL
+          .map {
+            case Some(`eventId`) => Right(Completed)
+            case _ => Left(Problem.pure(
+              s"awaitAcknowledgement($eventId): Observable ended unexpectedly"))
+          })
+      .logWhenItTakesLonger("passive cluster node acknowledgement")
 
   private def observeEventIds(api: ClusterNodeApi, heartbeat: Option[FiniteDuration]): Observable[EventId] =
     RecouplingStreamReader

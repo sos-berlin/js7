@@ -2,54 +2,45 @@ package js7.cluster
 
 import akka.util.Timeout
 import cats.effect.Resource
-import com.typesafe.config.Config
 import js7.base.eventbus.EventPublisher
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SetOnce
 import js7.base.web.Uri
 import js7.cluster.ClusterCommon.*
+import js7.cluster.ClusterConf.ClusterProductName
 import js7.cluster.watch.api.ClusterWatchProblems.{ClusterNodeLossNotConfirmedProblem, ClusterWatchInactiveNodeProblem}
 import js7.common.system.startup.Halt.haltJava
 import js7.core.license.LicenseChecker
 import js7.data.cluster.ClusterEvent.{ClusterNodeLostEvent, ClusterPassiveLost}
 import js7.data.cluster.ClusterState.{FailedOver, HasNodes, SwitchedOver}
-import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterState, ClusterTiming}
+import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterState}
 import monix.eval.Task
-import monix.execution.Scheduler
 
-private[cluster] final class ClusterCommon(
-  clusterConf: ClusterConf,
+private[cluster] final class ClusterCommon private(
+  val clusterWatchCounterpart: ClusterWatchCounterpart,
   val clusterNodeApi: (Uri, String) => Resource[Task, ClusterNodeApi],
-  timing: ClusterTiming,
-  val config: Config,
-  val licenseChecker: LicenseChecker,
-  val testEventPublisher: EventPublisher[Any],
-  val journalActorAskTimeout: Timeout)
-  (implicit scheduler: Scheduler)
+  clusterConf: ClusterConf,
+  licenseChecker: LicenseChecker,
+  val testEventBus: EventPublisher[Any])(
+  implicit val journalActorAskTimeout: Timeout)
 {
   import clusterConf.ownId
 
   val activationInhibitor = new ActivationInhibitor
-  private val allocatedClusterWatchCounterpart = ClusterWatchCounterpart
-    .resource(clusterConf, timing, testEventPublisher)
-    .toAllocated
-    .runSyncUnsafe(99.s)/*TODO Make ClusterCommon a service*/
-
   private val _clusterWatchSynchronizer = SetOnce[ClusterWatchSynchronizer]
-
-  def clusterWatchCounterpart = allocatedClusterWatchCounterpart.allocatedThing
 
   def stop: Task[Unit] =
     Task.defer {
       _clusterWatchSynchronizer.toOption.fold(Task.unit)(_.stop)
-        .guarantee(allocatedClusterWatchCounterpart.stop)
     }
+
+  def requireValidLicense: Task[Checked[Unit]] =
+    Task(licenseChecker.checkLicense(ClusterProductName))
 
   def clusterWatchSynchronizer(clusterState: ClusterState.HasNodes): Task[ClusterWatchSynchronizer] =
     Task {
@@ -122,8 +113,8 @@ private[cluster] final class ClusterCommon(
                     if (problem.is(ClusterNodeLossNotConfirmedProblem)
                       || problem.is(ClusterWatchInactiveNodeProblem)) {
                       logger.warn(
-                        s"⛔️ ClusterWatch did not agree to '${event.getClass.simpleScalaName}' event: $problem")
-                      testEventPublisher.publish(ClusterWatchDisagreedToActivation)
+                        s"🚫 ClusterWatch did not agree to '${event.getClass.simpleScalaName}' event: $problem")
+                      testEventBus.publish(ClusterWatchDisagreedToActivation)
                       if (event.isInstanceOf[ClusterPassiveLost]) {
                         haltJava(
                           "🟥 While this node has lost the passive node" +
@@ -150,7 +141,7 @@ private[cluster] final class ClusterCommon(
                         logger.info(
                           s"${confirm.confirmer} agreed to '${event.getClass.simpleScalaName}' event")
                     }
-                    testEventPublisher.publish(ClusterWatchAgreedToActivation)
+                    testEventBus.publish(ClusterWatchAgreedToActivation)
                     body
                 }
             case ClusterState.Empty => Task.left(Problem.pure(
@@ -161,6 +152,20 @@ private[cluster] final class ClusterCommon(
 private[js7] object ClusterCommon
 {
   private val logger = Logger(getClass)
+
+  def resource(
+    clusterWatchCounterpart: ClusterWatchCounterpart,
+    clusterNodeApi: (Uri, String) => Resource[Task, ClusterNodeApi],
+    clusterConf: ClusterConf,
+    licenseChecker: LicenseChecker,
+    testEventPublisher: EventPublisher[Any])(
+    implicit akkaTimeout: Timeout)
+  : Resource[Task, ClusterCommon] =
+      Resource.make(
+        Task(new ClusterCommon(
+          clusterWatchCounterpart,
+          clusterNodeApi, clusterConf, licenseChecker, testEventPublisher)))(
+        release = _.stop)
 
   def clusterEventAndStateToString(event: ClusterEvent, state: ClusterState): String =
     s"ClusterEvent: $event --> $state"

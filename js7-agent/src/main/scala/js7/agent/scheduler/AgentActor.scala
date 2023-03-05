@@ -27,7 +27,7 @@ import js7.base.time.AlarmClock
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.RightUnit
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{ProgramTermination, SetOnce}
+import js7.base.utils.{Allocated, ProgramTermination, SetOnce}
 import js7.common.akkautils.{SimpleStateActor, SupervisorStrategies}
 import js7.common.system.JavaInformations.javaInformation
 import js7.common.system.SystemInformations.systemInformation
@@ -49,7 +49,7 @@ import scala.concurrent.{Future, Promise}
   */
 private[agent] final class AgentActor private(
   terminatePromise: Promise[ProgramTermination],
-  persistence: FileStatePersistence[AgentState],
+  persistenceAllocated: Allocated[Task, FileStatePersistence[AgentState]],
   clock: AlarmClock,
   agentConf: AgentConfiguration,
   jobLauncherConf: JobLauncherConf,
@@ -59,6 +59,7 @@ private[agent] final class AgentActor private(
 {
   import agentConf.{implicitAkkaAskTimeout, journalMeta}
   import context.{actorOf, watch}
+  val persistence = persistenceAllocated.allocatedThing
   import persistence.eventWatch
 
   override val supervisorStrategy = SupervisorStrategies.escalate
@@ -244,7 +245,7 @@ private[agent] final class AgentActor private(
       if (started.isEmpty) {
         // When no AgentOrderKeeper has been startet, we need to stop the journal ourselves
         //persistence.journalActor ! JournalActor.Input.Terminate
-        persistence.stop.runAsyncAndForget
+        persistenceAllocated.stop.runAsyncAndForget
       }
     }
 
@@ -281,7 +282,7 @@ private[agent] final class AgentActor private(
                 requireNonNull(recovered),
                 allocatedSignatureVerifier.allocatedThing,
                 jobLauncherConf,
-                persistence,
+                persistenceAllocated,
                 clock,
                 agentConf)
               },
@@ -330,9 +331,9 @@ object AgentActor
     (implicit scheduler: Scheduler, iox: IOExecutor)
   {
     def apply(
-      persistence: FileStatePersistence[AgentState],
+      persistence: Allocated[Task, FileStatePersistence[AgentState]],
       terminatePromise: Promise[ProgramTermination])
-    =
+    : AgentActor =
       new AgentActor(terminatePromise, persistence,
         clock, agentConfiguration, jobLauncherConf, testEventBus)
   }

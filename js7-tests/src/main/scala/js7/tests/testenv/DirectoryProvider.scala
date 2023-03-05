@@ -188,14 +188,14 @@ extends HasCloser
           }
           body(testController)
         } catch { case NonFatal(t) =>
-          logger.error(t.toStringWithCauses) /* Akka may crash before the caller gets the error so we log the error here */
+          logger.error(s"💥💥💥 ${t.toStringWithCauses}") /* Akka may crash before the caller gets the error so we log the error here */
           try testController.terminate() await 99.s
           catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
           throw t
         }
       try testController.stop await 99.s
       catch { case NonFatal(t) =>
-        logger.error(t.toStringWithCauses) /* Akka may crash before the caller gets the error so we log the error here */
+        logger.error(s"💥💥💥 ${t.toStringWithCauses}") /* Akka may crash before the caller gets the error so we log the error here */
         try testController.close()
         catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
         throw t
@@ -260,7 +260,7 @@ extends HasCloser
         }
       }
       for (t <- runningController.terminated.failed) {
-        logger.error(t.toStringWithCauses)
+        logger.error(s"💥💥💥 ${t.toStringWithCauses}")
         logger.debug(t.toStringWithCauses, t)
       }
     }
@@ -290,7 +290,7 @@ extends HasCloser
       val result =
         try body(agents)
         catch { case NonFatal(t) =>
-          logger.error(t.toStringWithCauses) /* Akka may crash before the caller gets the error so we log the error here */
+          logger.error(s"💥💥💥 ${t.toStringWithCauses}") /* Akka may crash before the caller gets the error so we log the error here */
           try agents.traverse(_.terminate()) await 99.s
           catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
           throw t

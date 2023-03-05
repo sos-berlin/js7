@@ -30,7 +30,6 @@ import js7.base.utils.SetOnce
 import js7.base.utils.StackTraces.*
 import js7.base.web.HttpClient
 import js7.cluster.ClusterCommon.clusterEventAndStateToString
-import js7.cluster.ClusterConf.ClusterProductName
 import js7.cluster.PassiveClusterNode.*
 import js7.cluster.watch.api.ClusterWatchProblems.{ClusterFailOverWhilePassiveLostProblem, NoClusterWatchProblem, UntaughtClusterWatchProblem}
 import js7.common.http.RecouplingStreamReader
@@ -130,7 +129,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
     */
   def run(recoveredState: S): Task[Checked[Recovered[S]]] =
     logger.debugTask(
-      Task(common.licenseChecker.checkLicense(ClusterProductName))
+      common.requireValidLicense
         .flatMapT(_ => Task.deferAction { implicit s =>
           val recoveredClusterState = recoveredState.clusterState
           logger.debug(s"recoveredClusterState=$recoveredClusterState")

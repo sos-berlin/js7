@@ -1,8 +1,8 @@
 package js7.cluster
 
-import akka.actor.ActorRefFactory
+import akka.actor.{ActorRefFactory, ActorSystem}
 import akka.util.Timeout
-import cats.effect.concurrent.Deferred
+import cats.effect.concurrent.{Deferred, Ref}
 import cats.effect.{ExitCase, Resource}
 import cats.syntax.flatMap.*
 import com.softwaremill.diffx
@@ -17,9 +17,12 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
 import js7.base.service.Service.Started
 import js7.base.time.ScalaTime.*
+import js7.base.utils.Allocated
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
+import js7.cluster.ClusterConf.ClusterProductName
 import js7.cluster.ClusterNode.*
 import js7.cluster.JournalTruncator.truncateJournal
 import js7.core.license.LicenseChecker
@@ -29,11 +32,11 @@ import js7.data.cluster.ClusterState.{Coupled, Empty, FailedOver, HasNodes}
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterCommand, ClusterNodeApi, ClusterSetting, ClusterWatchRequest, ClusterWatchingCommand}
 import js7.data.event.{AnyKeyedEvent, EventId, JournalPosition, SnapshotableState, Stamped}
-import js7.journal.EventIdGenerator
 import js7.journal.configuration.JournalConf
 import js7.journal.data.JournalMeta
 import js7.journal.recover.{Recovered, StateRecoverer}
-import js7.journal.state.FileStatePersistence
+import js7.journal.{EventIdClock, EventIdGenerator}
+import js7.license.LicenseCheckContext
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.atomic.AtomicAny
@@ -43,7 +46,8 @@ import scala.util.{Success, Try}
 
 final class ClusterNode[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
   prepared: Prepared[S],
-  passiveOrWorkingNode: AtomicAny[Option[Either[PassiveClusterNode[S], WorkingClusterNode[S]]]],
+  passiveOrWorkingNode: AtomicAny[Option[Either[PassiveClusterNode[S], Allocated[Task, WorkingClusterNode[S]]]]],
+  currentStateRef: Ref[Task, Task[Either[Problem, S]]],
   journalConf: JournalConf,
   clusterConf: ClusterConf,
   eventIdGenerator: EventIdGenerator,
@@ -59,21 +63,18 @@ extends Service.StoppableByRequest
   import clusterConf.ownId
   import common.activationInhibitor
 
-  private val workingNodeStarted = Deferred.unsafe[Task, Try[Option[(Recovered[S]/*FIXME Release memory*/, WorkingClusterNode[S])]]]
+  private val workingNodeStarted = Deferred.unsafe[Task, Try[Option[WorkingClusterNode[S]]]]
   private var _testDontNotifyActiveNodeAboutShutdown = false // for test only
   private val recoveryStopRequested = Deferred.unsafe[Task, Unit]
-
-  @volatile private var _currentState: Task[Either[Problem, S]] =
-    prepared.currentPassiveReplicatedState.map(_.toChecked(ClusterNodeIsNotReadyProblem).flatten)
 
   def dontNotifyActiveNodeAboutShutdown(): Unit =
     _testDontNotifyActiveNodeAboutShutdown = true
 
   def currentState: Task[Either[Problem, S]] =
-    Task.defer(_currentState)
+    currentStateRef.get.flatten
 
   /** None when stopped before activated. */
-  def untilActivated: Task[Option[(Recovered[S], WorkingClusterNode[S])]] =
+  def untilActivated: Task[Option[WorkingClusterNode[S]]] =
     logger.traceTaskWithResult("untilActivated", task =
       workingNodeStarted.get.dematerialize)
 
@@ -86,51 +87,45 @@ extends Service.StoppableByRequest
    * @return A pair of `Task`s with maybe the current `S` of this passive node (if so)
    *         and ClusterFollowUp.
    */
-  protected def start: Task[Started] = {
-    object StartingClusterCancelledException extends Throwable with NoStackTrace
-    // untilClusterNodeRecovered terminates when this cluster node becomes active or terminates
-    // replicatedState accesses the current ControllerState while this node is passive, otherwise it is None
-    startService(
-      logger
-        .traceTask("untilActiveNodeRecovered")(
-          prepared.untilActiveNodeRecovered)
-        .flatMapT(recovered =>
-          startWorkingNode(recovered).map(_.map(recovered -> _)))
-        .map(_.orThrow)
-        .materialize
-        .flatTap(triedWorkingNode =>
-          workingNodeStarted.complete(triedWorkingNode.map(Some(_))).attempt)
-        .dematerialize
-        .flatMap { case (recovered, workingNode) =>
-          Task {
-            _currentState = workingNode.persistence.state.map(Right(_))
-          }
-        }
-        .guaranteeCase {
-          case ExitCase.Completed => Task.unit
-          // Duplicate ???
-          case ExitCase.Error(t) => Task(logger.error(t.toStringWithCauses, t.nullIfNoStackTrace))
-          case ExitCase.Canceled => Task(logger.warn("❌ Canceled"))
-        }
-        .start
-        .flatMap(fiber => logger.traceTask("fiber.join")(
-          Task.race(recoveryStopRequested.get, fiber.join)))
-        .*>(untilStopRequested)
-        .*>(stopRecovery)
-        .*>(Task.defer(passiveOrWorkingNode.get() match {
-            case Some(Left(passiveClusterNode)) =>
-              Task.unless(_testDontNotifyActiveNodeAboutShutdown)(
-                passiveClusterNode.notifyActiveNodeAboutShutdown)
-
-            case _ => Task.unit
-          }))
-        .guarantee(Task.defer(
-          passiveOrWorkingNode.get() match {
-            case Some(Right(workingClusterNode)) => workingClusterNode.stop
-            case _ => Task.unit
-          }))
-        .guarantee(common.stop))
-  }
+  protected def start: Task[Started] =
+    startService(logger
+      .traceTask("untilActiveNodeRecovered")(
+        prepared.untilActiveNodeRecovered)
+      .map(_.orThrow)
+      .flatTap(recovered =>
+        Task.raiseUnless(recovered.clusterState.isEmptyOrActive(ownId))(
+          new IllegalStateException(
+            "Controller has recovered from Journal but is not the active node in ClusterState: " +
+              s"id=$ownId, failedOver=${recovered.clusterState}")))
+      .flatMap(recovered =>
+        startWorkingNode(recovered))
+      .materialize
+      .flatTap(triedWorkingNode =>
+        workingNodeStarted.complete(triedWorkingNode.map(Some(_))).attempt)
+      .dematerialize
+      .flatMap(workingNode =>
+        currentStateRef.set(workingNode.persistence.state.map(Right(_))))
+      .guaranteeCase {
+        case ExitCase.Completed => Task.unit
+        // Duplicate ???
+        case ExitCase.Error(t) => Task(logger.error(t.toStringWithCauses, t.nullIfNoStackTrace))
+        case ExitCase.Canceled => Task(logger.warn("❌ Canceled"))
+      }
+      .start
+      .flatMap(fiber => logger.traceTask("fiber.join")(
+        Task.race(recoveryStopRequested.get, fiber.join)))
+      .*>(untilStopRequested)
+      .*>(stopRecovery)
+      .*>(Task.defer(passiveOrWorkingNode.get() match {
+        case Some(Left(passiveClusterNode)) if !_testDontNotifyActiveNodeAboutShutdown =>
+          passiveClusterNode.notifyActiveNodeAboutShutdown
+        case _ => Task.unit
+      }))
+      .guarantee(Task.defer(
+        passiveOrWorkingNode.get() match {
+          case Some(Right(workingClusterNodeAllocated)) => workingClusterNodeAllocated.stop
+          case _ => Task.unit
+        })))
 
   def onShutdown: Task[Unit] =
     stopRecovery
@@ -142,24 +137,20 @@ extends Service.StoppableByRequest
         workingNodeStarted.complete(Success(None)).attempt.void
     }
 
-  private def startWorkingNode(recovered: Recovered[S]): Task[Checked[WorkingClusterNode[S]]] =
+  private def startWorkingNode(recovered: Recovered[S]): Task[WorkingClusterNode[S]] =
     logger.traceTask(
-      FileStatePersistence
-        .start[S](
-          recovered, journalConf, eventIdGenerator, eventBus)
-        .flatMap(persistence => Task.defer {
-          val workingClusterNode = new WorkingClusterNode(persistence, common, clusterConf)
-          assertThat(!passiveOrWorkingNode.get().exists(_.isRight))
-          passiveOrWorkingNode := Some(Right(workingClusterNode))
-
-          workingClusterNode.start(recovered.clusterState, recovered.eventId)
-            .rightAs(workingClusterNode)
-          /*FIXME left: stop persistence / in stop? / use Resource?*/
-        }))
+      WorkingClusterNode
+        .resource(
+          recovered, common, journalConf, clusterConf, eventIdGenerator, eventBus)
+        .toAllocated
+        .flatTap(allocated => Task {
+          passiveOrWorkingNode := Some(Right(allocated))
+        })
+        .map(_.allocatedThing))
 
   def workingClusterNode: Checked[WorkingClusterNode[S]] =
     passiveOrWorkingNode.get()
-      .flatMap(_.toOption)
+      .flatMap(_.toOption.map(_.allocatedThing))
       .toRight(ClusterNodeIsNotActiveProblem)
 
   def executeCommand(command: ClusterCommand): Task[Checked[ClusterCommand.Response]] =
@@ -192,11 +183,8 @@ extends Service.StoppableByRequest
             else {
               workingNodeStarted.get
                 .dematerialize
-                .flatMap {
-                  case None => Task.none
-                  case Some((recovered, workingNode)) =>
-                    workingNode.persistence.clusterState.map(Some(_))
-                }
+                .flatMap(_.fold_(Task.none,
+                  _.persistence.clusterState.map(Some(_))))
                 .timeoutTo(duration/*???*/ - 500.ms, Task.none)
                 .flatMap {
                   case None =>
@@ -233,13 +221,13 @@ extends Service.StoppableByRequest
       case cmd: ClusterWatchConfirm =>
         Task(passiveOrWorkingNode.get())
           .flatMap {
-            case Some(Right(workingClusterNode)) =>
-              workingClusterNode.executeClusterWatchConfirm(cmd)
+            case Some(Right(workingClusterNodeAllocated)) =>
+              workingClusterNodeAllocated.allocatedThing.executeClusterWatchConfirm(cmd)
             case _ =>
               common.clusterWatchCounterpart.executeClusterWatchConfirm(cmd)
           }
           .tapEval(result => Task(
-            common.testEventPublisher.publish(ClusterWatchConfirmed(cmd, result))))
+            common.testEventBus.publish(ClusterWatchConfirmed(cmd, result))))
     }
 
   def clusterWatchRequestStream: Task[fs2.Stream[Task, ClusterWatchRequest]] =
@@ -257,23 +245,88 @@ object ClusterNode
 {
   private val logger = Logger(getClass)
 
-  def resource[S <: SnapshotableState[S] : diffx.Diff : Tag](
+  def recoveringResource[S <: SnapshotableState[S] : diffx.Diff : Tag](
+    akkaResource: Resource[Task, ActorSystem],
+    clusterNodeApi: (Uri, String, ActorSystem) => Resource[Task, ClusterNodeApi],
+    configDirectory: Path,
+    journalMeta: JournalMeta,
+    journalConf: JournalConf,
+    clusterConf: ClusterConf,
+    eventIdClock: EventIdClock,
+    testEventBus: EventPublisher[Any],
+    config: Config)
+    (implicit S: SnapshotableState.Companion[S], scheduler: Scheduler, akkaTimeout: Timeout)
+  : Resource[Task, (Recovered[S], ActorSystem, ClusterNode[S])] =
+    StateRecoverer.resource[S](journalMeta, config)
+      .parZip(
+        akkaResource)
+      .flatMap { case (recovered, actorSystem) =>
+        implicit val a = actorSystem
+        ClusterNode
+          .resource(
+            recovered, journalMeta, journalConf, clusterConf, config,
+            eventIdClock,
+            clusterNodeApi(_, _, actorSystem),
+            new LicenseChecker(LicenseCheckContext(configDirectory)),
+            testEventBus)
+          .orThrow
+          .map(clusterNode =>
+            (recovered, actorSystem, clusterNode))
+      }
+
+  private def resource[S <: SnapshotableState[S] : diffx.Diff : Tag](
     recovered: Recovered[S],
     journalMeta: JournalMeta,
     journalConf: JournalConf,
     clusterConf: ClusterConf,
     config: Config,
-    eventIdGenerator: EventIdGenerator,
+    eventIdClock: EventIdClock,
     clusterNodeApi: (Uri, String) => Resource[Task, ClusterNodeApi],
     licenseChecker: LicenseChecker,
-    eventBus: EventPublisher[Any],
-    journalActorAskTimeout: Timeout)
+    eventBus: EventPublisher[Any])
+    (implicit
+      S: SnapshotableState.Companion[S],
+      scheduler: Scheduler,
+      actorRefFactory: ActorRefFactory,
+      akkaTimeout: akka.util.Timeout)
+  : Checked[Resource[Task, ClusterNode[S]]] = {
+    val checked = recovered.clusterState match {
+      case Empty =>
+        (clusterConf.isPrimary || recovered.eventId == EventId.BeforeFirst) !!
+          PrimaryClusterNodeMayNotBecomeBackupProblem
+
+      case clusterState: HasNodes =>
+        import clusterConf.ownId
+        licenseChecker.checkLicense(ClusterProductName) >>
+          ((ownId == clusterState.activeId || ownId == clusterState.passiveId) !! Problem.pure(
+            s"Own cluster $ownId does not match clusterState=${recovered.clusterState}"))
+    }
+
+    for (_ <- checked) yield
+      for {
+        clusterWatchCounterpart <-
+          ClusterWatchCounterpart.resource(clusterConf, clusterConf.timing, eventBus)
+        common <- ClusterCommon.resource(clusterWatchCounterpart, clusterNodeApi, clusterConf,
+          licenseChecker, eventBus)
+        clusterNode <- resource2(recovered, common, journalMeta, journalConf, clusterConf, config,
+          new EventIdGenerator(eventIdClock),
+          eventBus)
+      } yield clusterNode
+  }
+
+  private def resource2[S <: SnapshotableState[S] : diffx.Diff : Tag](
+    recovered: Recovered[S],
+    common: ClusterCommon,
+    journalMeta: JournalMeta, journalConf: JournalConf, clusterConf: ClusterConf,
+    config: Config,
+    eventIdGenerator: EventIdGenerator,
+    eventBus: EventPublisher[Any])
     (implicit
       S: SnapshotableState.Companion[S],
       scheduler: Scheduler,
       actorRefFactory: ActorRefFactory,
       timeout: akka.util.Timeout)
-  : Checked[Resource[Task, ClusterNode[S]]] = {
+  : Resource[Task, ClusterNode[S]] = {
     import clusterConf.ownId
 
     if (recovered.clusterState != Empty) logger.info(
@@ -281,43 +334,10 @@ object ClusterNode
 
     val keepTruncatedRest = config.getBoolean("js7.journal.cluster.keep-truncated-rest")
     val passiveOrWorkingNode =
-      AtomicAny[Option[Either[PassiveClusterNode[S], WorkingClusterNode[S]]]](None)
-    val common = new ClusterCommon(clusterConf, clusterNodeApi, clusterConf.timing,
-      config, licenseChecker, eventBus, journalActorAskTimeout)
+      AtomicAny[Option[
+        Either[PassiveClusterNode[S], Allocated[Task, WorkingClusterNode[S]]]]](None)
 
     import common.activationInhibitor
-
-    /**
-     * Returns a pair of `Task`s
-     * - `(Task[None], _)` no replicated state available, because it's an active node or the backup node has not yet been appointed.
-     * - `(Task[Some[Checked[S]]], _)` with the current replicated state if this node has started as a passive node.
-     * - `(_, Task[Checked[ClusterFollowUp]]` when this node should be activated
-     *
-     * @return A pair of `Task`s with maybe the current `S` of this passive node (if so)
-     *         and ClusterFollowUp.
-     */
-    def prepare(): Checked[Prepared[S]] =
-      recovered.clusterState match {
-        case Empty =>
-          if (clusterConf.isPrimary) {
-            logger.debug(s"Active primary cluster $ownId, no backup node appointed")
-            Right(Prepared(
-              currentPassiveReplicatedState = Task.none,
-              untilActiveNodeRecovered = activationInhibitor.startActive.as(Right(recovered))))
-          } else if (recovered.eventId != EventId.BeforeFirst)
-            Left(PrimaryClusterNodeMayNotBecomeBackupProblem)
-          else
-            Right(startAsBackupNodeWithEmptyClusterState())
-
-        case clusterState: HasNodes =>
-          if (ownId == clusterState.activeId)
-            Right(startAsActiveNodeWithBackup())
-          else if (ownId == clusterState.passiveId)
-            Right(startAsPassiveNode(recovered, clusterState))
-          else
-            Left(Problem.pure(
-              s"Own cluster $ownId does not match clusterState=${recovered.clusterState}"))
-      }
 
     def startAsBackupNodeWithEmptyClusterState(): Prepared[S] = {
       logger.info(s"Backup cluster $ownId, awaiting appointment from a primary node")
@@ -446,11 +466,32 @@ object ClusterNode
       node
     }
 
-    for (prepared <- prepare()) yield
-      Service.resource(Task(
-        new ClusterNode(prepared, passiveOrWorkingNode,
-          journalConf, clusterConf,
-          eventIdGenerator, eventBus.narrowPublisher, common)))
+    val prepared = recovered.clusterState match {
+      case Empty =>
+        if (clusterConf.isPrimary) {
+          logger.debug(s"Active primary cluster $ownId, no backup node appointed")
+          Prepared(
+            currentPassiveReplicatedState = Task.none,
+            untilActiveNodeRecovered = activationInhibitor.startActive.as(Right(recovered)))
+        } else
+          startAsBackupNodeWithEmptyClusterState()
+
+      case clusterState: HasNodes =>
+        if (ownId == clusterState.activeId)
+          startAsActiveNodeWithBackup()
+        else
+          startAsPassiveNode(recovered, clusterState)
+    }
+
+    Service.resource(
+      for {
+        currentStateRef <- Ref[Task].of(
+          prepared.currentPassiveReplicatedState
+            .map(_.toChecked(ClusterNodeIsNotReadyProblem).flatten))
+      } yield new ClusterNode(
+        prepared, passiveOrWorkingNode, currentStateRef,
+        journalConf, clusterConf,
+        eventIdGenerator, eventBus.narrowPublisher, common))
   }
 
   // TODO Provisional fix because it's not easy to restart the recovery
@@ -461,8 +502,6 @@ object ClusterNode
   final case class ClusterWatchConfirmed(
     command: ClusterWatchConfirm,
     result: Checked[Unit])
-
-  private case object ClusterNodeCanceledProblem extends Problem.ArgumentlessCoded
 
   private final case class Prepared[S <: SnapshotableState[S]](
     currentPassiveReplicatedState: Task[Option[Checked[S]]],

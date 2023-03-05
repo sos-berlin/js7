@@ -16,6 +16,7 @@ import js7.base.log.CorrelId
 import js7.base.problem.Checked
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.{Closer, HasCloser}
 import js7.common.guice.GuiceImplicits.RichInjector
@@ -65,22 +66,23 @@ object TestAgentActorProvider {
     implicit val actorSystem: ActorSystem = injector.instance[ActorSystem]
     implicit val scheduler: Scheduler = injector.instance[Scheduler]
 
-    val persistence = FileStatePersistence
-      .start(
+    val persistenceAllocated = FileStatePersistence
+      .resource(
         Recovered.noJournalFile[AgentState](journalMeta, now, config),
         journalConf,
         injector.instance[EventIdGenerator])
+      .toAllocated
       .awaitInfinite
 
     val actor = actorSystem.actorOf(
       Props {
         injector
           .instance[AgentActor.Factory]
-          .apply(persistence, Promise())
+          .apply(persistenceAllocated, Promise())
       },
       "AgentActor")
 
     closer.register(injector.instance[Closer])
-    (agentConfiguration, persistence, actor)
+    (agentConfiguration, persistenceAllocated.allocatedThing, actor)
   }
 }

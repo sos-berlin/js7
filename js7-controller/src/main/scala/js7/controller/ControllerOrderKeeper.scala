@@ -30,7 +30,7 @@ import js7.base.utils.Collections.implicits.RichIterable
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StackTraces.StackTraceThrowable
-import js7.base.utils.{ProgramTermination, SetOnce}
+import js7.base.utils.{Allocated, ProgramTermination, SetOnce}
 import js7.cluster.WorkingClusterNode
 import js7.common.akkautils.Akkas.encodeAsActorName
 import js7.common.akkautils.SupervisorStrategies
@@ -47,7 +47,6 @@ import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.board.BoardEvent.{NoticeDeleted, NoticePosted}
 import js7.data.board.{BoardPath, BoardState, Notice, NoticeId}
 import js7.data.calendar.{Calendar, CalendarExecutor}
-import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerCommand.{ControlWorkflow, ControlWorkflowPath, TransferOrders}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.data.controller.ControllerStateExecutor.convertImplicitly
@@ -92,7 +91,7 @@ import scala.util.{Failure, Success, Try}
   */
 final class ControllerOrderKeeper(
   stopped: Promise[ProgramTermination],
-  persistence: FileStatePersistence[ControllerState],
+  persistenceAllocated: Allocated[Task, FileStatePersistence[ControllerState]],
   clusterNode: WorkingClusterNode[ControllerState],
   alarmClock: AlarmClock,
   controllerConfiguration: ControllerConfiguration,
@@ -106,6 +105,7 @@ with MainJournalingActor[ControllerState, Event]
   import js7.controller.ControllerOrderKeeper.RichIdToOrder
 
   override val supervisorStrategy = SupervisorStrategies.escalate
+  private def persistence = persistenceAllocated.allocatedThing
   protected def journalConf = controllerConfiguration.journalConf
   protected def journalActor = persistence.journalActor
 
@@ -198,7 +198,7 @@ with MainJournalingActor[ControllerState, Event]
             // The event forces the cluster to acknowledge this event and the snapshot taken
             terminatingJournal = true
             persistKeyedEventTask(NoKey <-: ControllerShutDown)((_, _) => Completed)
-              .tapEval(_ => persistence.stop)
+              .tapEval(_ => persistenceAllocated.stop)
               .runToFuture
               .onComplete {
                 case Success(Right(Completed)) =>
@@ -256,7 +256,7 @@ with MainJournalingActor[ControllerState, Event]
 
     def start(): Task[Checked[Completed]] =
       clusterNode.switchOver   // Will terminate `cluster`, letting ControllerOrderKeeper terminate
-        .flatMapT(o => persistence.stop.as(Right(o)))
+        .flatMapT(o => persistenceAllocated.stop.as(Right(o)))
 
     def close() = stillSwitchingOverSchedule.cancel()
   }
@@ -276,9 +276,9 @@ with MainJournalingActor[ControllerState, Event]
     }
 
   def receive = {
-    case Input.Start(maybeClusterState) =>
-      for (controllerState <- maybeClusterState) {
-        assertActiveClusterState(controllerState.clusterState)
+    case Input.Start =>
+      val controllerState = persistence.unsafeCurrentState()
+      if (controllerState.controllerMetaState.isDefined) {
         recover(controllerState)
       }
 
@@ -292,14 +292,6 @@ with MainJournalingActor[ControllerState, Event]
         .pipeTo(self)
 
     case msg => notYetReady(msg)
-  }
-
-  private def assertActiveClusterState(clusterState: ClusterState): Unit = {
-    import controllerConfiguration.clusterConf.ownId
-    if (!clusterState.isEmptyOrActive(ownId))
-      throw new IllegalStateException(
-        "Controller has recovered from Journal but is not the active node in ClusterState: " +
-          s"id=$ownId, failedOver=$clusterState")
   }
 
   private def recover(controllerState: ControllerState): Unit = {
@@ -1560,7 +1552,7 @@ private[controller] object ControllerOrderKeeper
   private val logger = Logger(getClass)
 
   object Input {
-    final case class Start(maybeClusterState: Option[ControllerState])
+    final case object Start
   }
 
   sealed trait Command

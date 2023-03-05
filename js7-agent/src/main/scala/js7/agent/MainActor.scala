@@ -11,12 +11,13 @@ import js7.agent.scheduler.{AgentActor, AgentHandle}
 import js7.base.auth.UserId
 import js7.base.log.{CorrelId, Logger}
 import js7.base.problem.Checked
-import js7.base.utils.ProgramTermination
+import js7.base.utils.{Allocated, ProgramTermination}
 import js7.common.akkautils.CatchingSupervisorStrategy
 import js7.common.guice.GuiceImplicits.RichInjector
 import js7.core.command.CommandMeta
 import js7.journal.recover.Recovered
 import js7.journal.state.FileStatePersistence
+import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.Promise
 import scala.util.control.NoStackTrace
@@ -25,7 +26,7 @@ import scala.util.control.NoStackTrace
   * @author Joacim Zschimmer
   */
 final class MainActor(
-  persistence: FileStatePersistence[AgentState],
+  persistenceAllocated: Allocated[Task, FileStatePersistence[AgentState]],
   agentConfiguration: AgentConfiguration,
   injector: Injector,
   readyPromise: Promise[Ready],
@@ -41,7 +42,7 @@ extends Actor {
   private val agentActor = watch(actorOf(
     Props {
       injector.instance[AgentActor.Factory]
-        .apply(persistence, terminationPromise)
+        .apply(persistenceAllocated, terminationPromise)
     },
     "agent"))
   private val agentHandle = new AgentHandle(agentActor)

@@ -7,7 +7,9 @@ import js7.base.problem.Problem
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 
 /** Command from ClusterWatch to a cluster node. */
-sealed trait ClusterWatchingCommand
+sealed trait ClusterWatchingCommand {
+  def toShortString: String = toString
+}
 
 object ClusterWatchingCommand
 {

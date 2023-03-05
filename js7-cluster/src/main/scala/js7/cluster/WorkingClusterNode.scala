@@ -1,15 +1,18 @@
 package js7.cluster
 
+import akka.actor.ActorRefFactory
+import cats.effect.Resource
 import com.softwaremill.diffx
 import izumi.reflect.Tag
+import js7.base.eventbus.{EventPublisher, StandardEventBus}
 import js7.base.generic.Completed
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.problem.{Checked, Problem}
-import js7.base.utils.ScalaUtils.syntax.{RichEitherF, RichOption}
-import js7.base.utils.SetOnce
+import js7.base.utils.CatsUtils.syntax.RichResource
+import js7.base.utils.ScalaUtils.syntax.{RichEither, RichEitherF, RichOption}
+import js7.base.utils.{Allocated, SetOnce}
 import js7.base.web.Uri
-import js7.cluster.ClusterConf.ClusterProductName
 import js7.cluster.WorkingClusterNode.*
 import js7.data.Problems.{ClusterNodeIsNotActiveProblem, ClusterNodesAlreadyAppointed}
 import js7.data.cluster.ClusterEvent.ClusterNodesAppointed
@@ -17,8 +20,11 @@ import js7.data.cluster.ClusterState.HasNodes
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterCommand, ClusterSetting, ClusterState}
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{EventId, SnapshotableState}
+import js7.data.event.{AnyKeyedEvent, EventId, SnapshotableState, Stamped}
 import js7.data.node.NodeId
+import js7.journal.EventIdGenerator
+import js7.journal.configuration.JournalConf
+import js7.journal.recover.Recovered
 import js7.journal.state.FileStatePersistence
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -32,12 +38,13 @@ import monix.execution.Scheduler
   * the ClusterNodesAppointed event.
   */
 final class WorkingClusterNode[S <: SnapshotableState[S]: SnapshotableState.Companion: diffx.Diff: Tag](
-  val persistence: FileStatePersistence[S],
+  val persistenceAllocated: Allocated[Task, FileStatePersistence[S]],
   common: ClusterCommon,
   clusterConf: ClusterConf)
   (implicit scheduler: Scheduler)
 //TODO extends Service
 {
+  val persistence: FileStatePersistence[S] = persistenceAllocated.allocatedThing
   private val _activeClusterNode = SetOnce.undefined[ActiveClusterNode[S]](
     "ActiveClusterNode[S]",
     ClusterNodeIsNotActiveProblem)
@@ -48,7 +55,7 @@ final class WorkingClusterNode[S <: SnapshotableState[S]: SnapshotableState.Comp
     clusterState match {
       case ClusterState.Empty => Task.pure(Right(Completed))
       case clusterState: HasNodes =>
-        Task(common.licenseChecker.checkLicense(ClusterProductName))
+        common.requireValidLicense
           .flatMapT(_ =>
             startActiveClusterNode(clusterState, eventId))
     }
@@ -107,7 +114,7 @@ final class WorkingClusterNode[S <: SnapshotableState[S]: SnapshotableState.Comp
     logger.debugTask(
       currentClusterState.flatMap {
         case ClusterState.Empty =>
-          Task(common.licenseChecker.checkLicense(ClusterProductName))
+          common.requireValidLicense
             .flatMapT(_ =>
               persistence.persistKeyedEvent(NoKey <-: ClusterNodesAppointed(setting))
                 .flatMapT { case (_, state) =>
@@ -166,4 +173,38 @@ final class WorkingClusterNode[S <: SnapshotableState[S]: SnapshotableState.Comp
 object WorkingClusterNode
 {
   private val logger = Logger(getClass)
+
+  def resource[S <: SnapshotableState[S] : SnapshotableState.Companion : diffx.Diff : Tag](
+    recovered: Recovered[S],
+    common: ClusterCommon,
+    journalConf: JournalConf,
+    clusterConf: ClusterConf,
+    eventIdGenerator: EventIdGenerator = new EventIdGenerator,
+    keyedEventBus: EventPublisher[Stamped[AnyKeyedEvent]] = new StandardEventBus)
+    (implicit scheduler: Scheduler, actorRefFactory: ActorRefFactory, timeout: akka.util.Timeout)
+  : Resource[Task, WorkingClusterNode[S]] =
+    for {
+      _ <- Resource.eval(common.requireValidLicense.map(_.orThrow))
+      persistenceAllocated <- Resource.eval(FileStatePersistence
+        .resource(recovered, journalConf, eventIdGenerator, keyedEventBus)
+        .toAllocated/* ControllerOrderKeeper and AgentOrderKeeper both require Allocated*/)
+      workingClusterNode <- resource(
+        recovered.clusterState, recovered.eventId, persistenceAllocated, common, clusterConf)
+    } yield workingClusterNode
+
+  def resource[S <: SnapshotableState[S] : SnapshotableState.Companion : diffx.Diff : Tag](
+    clusterState: ClusterState,
+    eventId: EventId,
+    persistenceAllocated: Allocated[Task, FileStatePersistence[S]],
+    common: ClusterCommon,
+    clusterConf: ClusterConf)
+    (implicit scheduler: Scheduler)
+  : Resource[Task, WorkingClusterNode[S]] = {
+    Resource.make(
+      acquire = Task.defer {
+        val w = new WorkingClusterNode(persistenceAllocated, common, clusterConf)
+        w.start(clusterState, eventId).as(w)
+      })(
+      release = _.stop)
+  }
 }

@@ -19,6 +19,8 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.Allocated
+import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.Collections.RichMap
 import js7.base.utils.Collections.implicits.*
 import js7.base.utils.ScalaUtils.syntax.*
@@ -32,6 +34,7 @@ import js7.journal.state.FileStatePersistenceTest.*
 import js7.journal.test.TestData
 import js7.journal.watch.JournalEventWatch
 import js7.journal.{EventIdClock, EventIdGenerator, JournalActor}
+import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.schedulers.SchedulerService
 import monix.reactive.Observable
@@ -136,15 +139,17 @@ final class FileStatePersistenceTest extends OurTestSuite with BeforeAndAfterAll
 
   private class RunningPersistence extends ProvideActorSystem {
     protected def config = TestConfig
-    private var persistence: FileStatePersistence[TestState] = null
+    private var persistenceAllocated: Allocated[Task, FileStatePersistence[TestState]] = null
+    def persistence = persistenceAllocated.allocatedThing
 
     def start() = {
       val recovered = StateRecoverer.recover[TestState](journalMeta, JournalEventWatch.TestConfig)
       implicit val a = actorSystem
       implicit val timeout: Timeout = Timeout(99.s)
-      persistence = FileStatePersistence
-        .start(recovered, JournalConf.fromConfig(TestConfig),
+      persistenceAllocated = FileStatePersistence
+        .resource(recovered, JournalConf.fromConfig(TestConfig),
           new EventIdGenerator(EventIdClock.fixed(epochMilli = 1000/*EventIds start at 1000000*/)))
+        .toAllocated
         .await(99.s)
       persistence
     }
@@ -152,9 +157,9 @@ final class FileStatePersistenceTest extends OurTestSuite with BeforeAndAfterAll
     def stop() = {
       (persistence.journalActor ? JournalActor.Input.TakeSnapshot)(99.s) await 99.s
       if (persistence != null) {
-        persistence.stop.await(99.s)
+        persistenceAllocated.stop.await(99.s)
       }
-      persistence.stop.await(99.s)
+      persistenceAllocated.stop.await(99.s)
       close()
     }
   }

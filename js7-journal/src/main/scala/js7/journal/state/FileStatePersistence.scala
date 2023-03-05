@@ -3,6 +3,7 @@ package js7.journal.state
 import akka.actor.{ActorRef, ActorRefFactory}
 import akka.pattern.ask
 import akka.util.Timeout
+import cats.effect.Resource
 import com.softwaremill.diffx
 import com.softwaremill.tagging.{@@, Tagger}
 import izumi.reflect.Tag
@@ -38,22 +39,12 @@ final class FileStatePersistence[S <: SnapshotableState[S]: Tag](
   getCurrentState: () => S,
   persistTask: Task[PersistFunction[S, Event]],
   persistLaterTask: Task[PersistLaterFunction[Event]],
-  actor: ActorRef @@ StateJournalingActor.type,
-  val journalActor: ActorRef @@ JournalActor.type,
-  journalActorStopped: Task[Unit])
+  val journalActor: ActorRef @@ JournalActor.type)
   (implicit
-    protected val S: SnapshotableState.Companion[S],
-    actorRefFactory: ActorRefFactory)
+    protected val S: SnapshotableState.Companion[S])
 extends StatePersistence[S]
 with FileStatePersistence.PossibleFailover
 {
-  val stop: Task[Unit] =
-    Task.defer {
-      actorRefFactory.stop(actor)
-      journalActor ! JournalActor.Input.Terminate
-      journalActorStopped
-    }.memoize
-
   def persistKeyedEvent[E <: Event](
     keyedEvent: KeyedEvent[E],
     options: CommitOptions = CommitOptions.default)
@@ -78,12 +69,11 @@ with FileStatePersistence.PossibleFailover
   def persistEvent[E <: Event](key: E#Key, options: CommitOptions = CommitOptions.default)
     (implicit enclosing: sourcecode.Enclosing)
   : (S => Checked[E]) => Task[Checked[(Stamped[KeyedEvent[E]], S)]] =
-    stateToEvent => Task.defer {
+    stateToEvent =>
       lock(key)(
         persistEventUnlocked(
           stateToEvent.andThen(_.map(KeyedEvent(key, _))),
           options))
-    }
 
   private def persistEventUnlocked[E <: Event](
     stateToEvent: S => Checked[KeyedEvent[E]],
@@ -150,69 +140,93 @@ object FileStatePersistence
       actorRefFactory: ActorRefFactory,
       timeout: akka.util.Timeout)
   : Task[FileStatePersistence[S]] =
-    Task.defer {
-      import recovered.journalMeta
-      val S = implicitly[SnapshotableState.Companion[S]]
-      val journalId = recovered.journalId getOrElse JournalId.random()
+    resource(recovered, journalConf, eventIdGenerator, keyedEventBus)
+      .allocated
+      .map(_._1)
 
-      if (recovered.recoveredJournalFile.isEmpty) {
-        logger.info("Starting a new empty journal")
-      }
+  def resource[S <: SnapshotableState[S]: SnapshotableState.Companion: diffx.Diff: Tag](
+    recovered: Recovered[S],
+    journalConf: JournalConf,
+    eventIdGenerator: EventIdGenerator = new EventIdGenerator,
+    keyedEventBus: EventPublisher[Stamped[AnyKeyedEvent]] = new StandardEventBus)
+    (implicit
+      scheduler: Scheduler,
+      actorRefFactory: ActorRefFactory,
+      timeout: akka.util.Timeout)
+  : Resource[Task, FileStatePersistence[S]] = {
+    Resource.make(
+      acquire = Task.defer {
+        import recovered.journalMeta
+        val S = implicitly[SnapshotableState.Companion[S]]
+        val journalId = recovered.journalId getOrElse JournalId.random()
 
-      val journalActorStopped = Promise[JournalActor.Stopped]()
-      val journalActor = actorRefFactory
-        .actorOf(
-          JournalActor.props[S](journalMeta, journalConf, keyedEventBus, scheduler,
-            eventIdGenerator, journalActorStopped),
-          "Journal")
-        .taggedWith[JournalActor.type]
-
-
-      val whenJournalActorReady = Task.fromFuture(
-        (journalActor ?
-          JournalActor.Input.Start(
-            recovered.state,
-            Some(recovered.eventWatch),
-            recovered.recoveredJournalFile.fold(JournalHeaders.initial(journalId))(_.nextJournalHeader),
-            recovered.totalRunningSince)
-          )(Timeout(1.h /*???*/)
-        ).mapTo[JournalActor.Output.Ready].map(_.journalHeader))
-
-      val askJournalStateGetter: Task[() => S] = Task
-        .deferFuture(
-          (journalActor ? JournalActor.Input.GetJournaledState)
-            .mapTo[() => S])
-        .logWhenItTakesLonger("JournalActor.Input.GetJournaledState")
-
-      whenJournalActorReady
-        .flatMap { journalHeader =>
-          logger.debug("JournalActor is ready")
-          askJournalStateGetter.map(journalHeader -> _)
+        if (recovered.recoveredJournalFile.isEmpty) {
+          logger.info("Starting a new empty journal")
         }
-        .flatMap { case (journalHeader, getCurrentState) =>
-          Task {
-            val persistPromise = Promise[PersistFunction[S, Event]]()
-            val persistTask: Task[PersistFunction[S, Event]] = Task.fromFuture(persistPromise.future)
-            val persistLaterPromise = Promise[PersistLaterFunction[Event]]()
-            val persistLaterTask: Task[PersistLaterFunction[Event]] =
-              Task.fromFuture(persistLaterPromise.future)
 
-            val actor = actorRefFactory
-              .actorOf(
-                StateJournalingActor.props[S, Event](
-                  getCurrentState, journalActor, journalConf, persistPromise, persistLaterPromise),
-                encodeAsActorName("StateJournalingActor:" + S))
-              .taggedWith[StateJournalingActor.type]
+        val journalActorStopped = Promise[JournalActor.Stopped]()
+        val journalActor = actorRefFactory
+          .actorOf(
+            JournalActor.props[S](journalMeta, journalConf, keyedEventBus, scheduler,
+              eventIdGenerator, journalActorStopped),
+            "Journal")
+          .taggedWith[JournalActor.type]
 
-            new FileStatePersistence[S](
-              journalId, journalHeader, journalConf,
-              recovered.eventWatch,
-              getCurrentState, persistTask, persistLaterTask,
-              actor, journalActor,
-              Task.fromFuture(journalActorStopped.future).void)
+
+        val whenJournalActorReady = Task.fromFuture(
+          (journalActor ?
+            JournalActor.Input.Start(
+              recovered.state,
+              Some(recovered.eventWatch),
+              recovered.recoveredJournalFile.fold(JournalHeaders.initial(journalId))(_.nextJournalHeader),
+              recovered.totalRunningSince)
+            )(Timeout(1.h /*???*/)
+          ).mapTo[JournalActor.Output.Ready].map(_.journalHeader))
+
+        val askJournalStateGetter: Task[() => S] = Task
+          .deferFuture(
+            (journalActor ? JournalActor.Input.GetJournaledState)
+              .mapTo[() => S])
+          .logWhenItTakesLonger("JournalActor.Input.GetJournaledState")
+
+        whenJournalActorReady
+          .flatMap { journalHeader =>
+            logger.debug("JournalActor is ready")
+            askJournalStateGetter.map(journalHeader -> _)
           }
+          .flatMap { case (journalHeader, getCurrentState) =>
+            Task {
+              val persistPromise = Promise[PersistFunction[S, Event]]()
+              val persistTask = Task.fromFuture(persistPromise.future)
+              val persistLaterPromise = Promise[PersistLaterFunction[Event]]()
+              val persistLaterTask = Task.fromFuture(persistLaterPromise.future)
+
+              val actor = actorRefFactory
+                .actorOf(
+                  StateJournalingActor.props[S, Event](
+                    getCurrentState, journalActor, journalConf, persistPromise, persistLaterPromise),
+                  encodeAsActorName("StateJournalingActor:" + S))
+                .taggedWith[StateJournalingActor.type]
+
+              val persistence = new FileStatePersistence[S](
+                journalId, journalHeader, journalConf,
+                recovered.eventWatch,
+                getCurrentState, persistTask, persistLaterTask,
+                journalActor)
+
+              (persistence, journalActor, actor, journalActorStopped)
+            }
+          }
+      })(
+      release = { case (persistence, journalActor, actor, journalActorStopped) =>
+        Task.defer {
+          actorRefFactory.stop(actor)
+          journalActor ! JournalActor.Input.Terminate
+          Task.fromFuture(journalActorStopped.future).void
         }
-    }
+      })
+      .map(_._1)
+  }
 
   sealed trait PossibleFailover {
     private val tryingPassiveLostSwitch = Switch(false)
