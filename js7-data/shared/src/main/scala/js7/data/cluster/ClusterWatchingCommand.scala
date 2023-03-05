@@ -24,7 +24,7 @@ object ClusterWatchingCommand
       s"ClusterWatchConfirm($argString)"
 
     def argString =
-      s"$requestId $clusterWatchId $clusterWatchRunId${problem.fold("")(o => s" ⛔ $o")}"
+      s"$requestId $clusterWatchId $clusterWatchRunId${problem.fold("")(o => s" 🚫 $o")}"
   }
 
   implicit val jsonCodec: TypedJsonCodec[ClusterWatchingCommand] = TypedJsonCodec(

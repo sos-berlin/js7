@@ -62,7 +62,7 @@ extends StringMap
 
 object CorrelIdLog4jStringMap
 {
-  private val nullString = "❗️null❗️  ".take(CorrelId.width + 2 * ("❗️".length - 1))
+  private val nullString = "❓null❓"
   private var _forEachCount = 0L
 
   def forEachCount = _forEachCount

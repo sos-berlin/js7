@@ -73,7 +73,8 @@ object MonixBase
           var infoLogged = false
           task
             .whenItTakesLonger()(duration => Task {
-              def msg = s"⭕ Still waiting $preposition $what for ${duration.pretty}"
+              val m = if (duration < InfoWorryDuration) "🟡" else if (!infoLogged) "🟠" else "🔴"
+              def msg = s"$m Still waiting $preposition $what for ${duration.pretty}"
               if (duration < InfoWorryDuration)
                 logger.debug(msg)
               else {

@@ -55,14 +55,14 @@ final class AsyncLock private(
                     val nr = waitCounter.incrementAndGet()
                     var infoLogged = false
                     log.debug(/*spaces are for column alignment*/
-                      s"⟲ 🔴$nr $name enqueues    $acquirer (currently locked by ${lockedBy.withCorrelId}) ...")
+                      s"⟲ 🟡$nr $name enqueues    $acquirer (currently locked by ${lockedBy.withCorrelId}) ...")
                     mvar.put(acquirer)
                       .whenItTakesLonger(warnTimeouts)(_ =>
                         for (lockedBy <- mvar.tryRead) yield {
-                          val symbol = if (!infoLogged) "🔴" else "⭕"
+                          val m = if (!infoLogged) "🟠" else "🔴"
                           infoLogged = true
                           logger.info(
-                            s"⟲ $symbol$nr $name: $acquirer is still waiting" +
+                            s"⟲ $m$nr $name: $acquirer is still waiting" +
                               s" for ${waitingSince.elapsed.pretty}," +
                               s" currently locked by ${lockedBy getOrElse "None"} ...")
                         })

@@ -142,7 +142,7 @@ extends Service.StoppableByRequest
             Task.raiseError(RequestTimeoutException)))
         .onErrorRestartLoop(()) {
           case (RequestTimeoutException, _, retry) =>
-            val m = if (!warned) "🔴" else "⭕"
+            val m = if (!warned) "🟠" else "🔴"
             warned = true
             logger.warn(
               m + " Still trying to get a confirmation from " +
@@ -249,7 +249,7 @@ extends Service.StoppableByRequest
 
           case _ =>
             if (confirm.requestId != requested.id) {
-              logger.debug(s"⛔ confirm.requestId=${confirm.requestId}, but requested=${requested.id}")
+              logger.debug(s"🚫 confirm.requestId=${confirm.requestId}, but requested=${requested.id}")
               val problem = ClusterWatchRequestDoesNotMatchProblem
               logger.debug(s"$problem id=${confirm.requestId} but _requested=${requested.id}")
               Left(problem)

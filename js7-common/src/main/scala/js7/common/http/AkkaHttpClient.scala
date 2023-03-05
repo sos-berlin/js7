@@ -328,16 +328,17 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
             _.pipeIf(!request.headers.contains(StreamingJsonHeader))(o => Task.defer {
               var waitingLogged = false
               o.whenItTakesLonger()(_ => Task {
+                val m = if (!waitingLogged) "🟠" else "🔴"
                 waitingLogged = true
                 logger.debug(
-                  s"⭕ $responseLogPrefix => Still waiting for response${closed ?? " (closed)"}")
+                  s"$m $responseLogPrefix => Still waiting for response${closed ?? " (closed)"}")
               }).guaranteeCase(exitCase => Task(if (waitingLogged)
                 logger.debug(
                   s"🟢 $responseLogPrefix => $exitCase")))
             })
             .tapEval(response => Task {
               val mark = response.status.isFailure ?? (response.status match {
-                case Unauthorized | Forbidden => "⛔️"
+                case Unauthorized | Forbidden => "⛔"
                 case _ => "❓"
               })
               val suffix = response.status.isFailure ??
