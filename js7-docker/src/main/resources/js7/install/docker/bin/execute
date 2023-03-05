@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+container="$1"
+shift
+docker exec -ti "$container" /bin/bash -lc "$*"

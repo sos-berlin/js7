@@ -1,3 +1,4 @@
-if [ -f "$HOME/bashrc" ]; then
-  . "$HOME/bashrc"
+echo .bash_profile
+if [ -f "$HOME/.bashrc" ]; then
+  . "$HOME/.bashrc"
 fi

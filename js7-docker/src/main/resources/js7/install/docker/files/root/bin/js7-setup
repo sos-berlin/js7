@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+uid="${uid:-1000}"
+
+chown root:root -R /opt/js7-[1-9]*
+chmod o-w -R /opt/js7-[1-9]*
+ln -s /opt/js7-[1-9]* /opt/js7
+
+mkdir -p /var/opt/js7/{provider,cluster-watch,cluster-watch-b,controller,agent}/data &&\
+mkdir -p /var/opt/js7/testControllerAgent
+
+groupadd --gid "$uid" js7
+useradd --uid "$uid" --gid js7 --home-dir /home/js7 --no-create-home --shell /bin/bash js7
+
+ln -sf data/logs/js7.log /home/js7/js7.log
+ln -sf data/logs/js7-debug.log /home/js7/js7-debug.log
+
+chown js7:js7 -R /home/js7 /var/opt/js7

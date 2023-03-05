@@ -107,6 +107,8 @@ services:
     restart: unless-stopped
     depends_on:
       - cluster-watch # Delay start of this cluster-watch-b and give way to the other cluster-watch
+    profiles:
+      - dontStart # Non-existent profile
 
   subagent-1-a:
     image: js7
