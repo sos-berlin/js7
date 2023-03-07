@@ -1,7 +1,6 @@
 package js7.journal
 
 import java.util.concurrent.atomic.AtomicLong
-import javax.inject.{Inject, Singleton}
 import js7.base.time.WallClock
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.{EventId, Stamped}
@@ -10,8 +9,7 @@ import scala.annotation.tailrec
 /**
   * @author Joacim Zschimmer
   */
-@Singleton
-final class EventIdGenerator @Inject()(eventIdClock: EventIdClock)
+final class EventIdGenerator(eventIdClock: EventIdClock)
 extends Iterator[EventId]
 {
   def this() = this(EventIdClock.Default)

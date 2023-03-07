@@ -7,7 +7,7 @@ import scala.util.{Failure, Success}
   * @author Joacim Zschimmer
   */
 final class UntilNoneIterator[A] private(read: => Option[A])
-extends com.google.common.collect.AbstractIterator[A]
+extends SimpleIterator[A]
 with Iterator[A]
 {
   def computeNext() = read getOrElse endOfData

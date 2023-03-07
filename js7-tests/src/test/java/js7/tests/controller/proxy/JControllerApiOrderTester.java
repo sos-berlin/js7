@@ -16,7 +16,6 @@ import js7.data_for_java.order.JOrderObstacle;
 import js7.data_for_java.order.JOrderObstacle.WaitingForTime;
 import js7.proxy.javaapi.JControllerApi;
 import js7.proxy.javaapi.data.controller.JEventAndControllerState;
-import static com.google.common.collect.Maps.newHashMap;
 import static java.util.Collections.singleton;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static js7.data_for_java.vavr.VavrUtils.await;
@@ -40,7 +39,7 @@ class JControllerApiOrderTester
             orderId,
             workflowPath,
             Optional.of(scheduledFor),
-            newHashMap())));
+            new java.util.HashMap<>())));
         assertThat(added, equalTo(true));
 
 

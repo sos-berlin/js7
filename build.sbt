@@ -411,7 +411,6 @@ lazy val `js7-common` = project
       akkaSlf4j ++
       akkaHttpTestkit % "test" ++
       javaxInject ++
-      guice ++
       findbugs ++
       scalaTest % "test" ++
       log4j % "test" ++
@@ -669,7 +668,6 @@ lazy val `js7-agent` = project
       akkaHttpTestkit % "test" ++
       akkaHttp ++
       intelliJAnnotations % "compile" ++
-      guice ++
       scalaTest % "test" ++
       log4j % "test" ++
       lmaxDisruptor % "test"

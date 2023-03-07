@@ -2,7 +2,6 @@ package js7.cluster
 
 import cats.effect.{ExitCase, Resource}
 import cats.syntax.flatMap.*
-import com.google.common.annotations.VisibleForTesting
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
 import js7.base.problem.Checked
@@ -12,10 +11,11 @@ import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.base.web.Uri
 import js7.cluster.ActivationInhibitor.*
 import js7.data.cluster.ClusterCommand.ClusterInhibitActivation
-import js7.data.cluster.{ClusterNodeApi, ClusterSetting}
 import js7.data.cluster.ClusterState.FailedOver
+import js7.data.cluster.{ClusterNodeApi, ClusterSetting}
 import monix.catnap.MVar
 import monix.eval.Task
+import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
 
 /** Inhibits activation of cluster node for the specified duration. */
@@ -120,7 +120,7 @@ private[cluster] final class ActivationInhibitor
       }
     }
 
-  @VisibleForTesting
+  @TestOnly
   private[cluster] def state: Task[Option[State]] =
     stateMvarTask.flatMap(_.tryRead)
 }
