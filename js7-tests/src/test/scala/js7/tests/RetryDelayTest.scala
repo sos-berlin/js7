@@ -1,15 +1,14 @@
 package js7.tests
 
-import com.google.inject.{AbstractModule, Provides}
 import java.time.ZoneId
-import javax.inject.Singleton
+import js7.agent.RunningAgent
 import js7.base.configutils.Configs.*
 import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.ScalaTime.*
-import js7.base.time.{AlarmClock, TestAlarmClock}
+import js7.base.time.TestAlarmClock
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
 import js7.data.order.OrderEvent.{OrderAdded, OrderAwoke, OrderCaught, OrderFailed, OrderMoved, OrderOutcomeAdded, OrderRetrying, OrderStarted, OrderTerminated}
@@ -39,9 +38,8 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
   override protected def controllerTestWiring = RunningController.TestWiring(
     alarmClock = Some(clock))
 
-  override protected def agentModule = new AbstractModule {
-    @Provides @Singleton def provideAlarmClock(): AlarmClock = clock
-  }
+  override protected def agentTestWiring = RunningAgent.TestWiring(
+    alarmClock = Some(clock))
 
   "Retry with delay" in {
     val workflow = Workflow(

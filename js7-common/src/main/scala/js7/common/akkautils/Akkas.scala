@@ -7,6 +7,7 @@ import akka.util.ByteString
 import cats.effect.Resource
 import com.typesafe.config.{Config, ConfigException, ConfigFactory}
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.time.JavaTimeConverters.*
 import js7.base.time.ScalaTime.*
@@ -14,8 +15,8 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.configuration.Js7Configuration
 import monix.eval.Task
 import monix.execution.Scheduler
-import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.*
+import scala.concurrent.duration.Deadline.now
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.control.NonFatal
 
@@ -29,35 +30,31 @@ object Akkas
   def newActorSystem(
     name: String,
     config: Config = ConfigFactory.empty,
-    defaultExecutionContext: ExecutionContext = ExecutionContext.global)
-  = {
-    logger.debug(s"new ActorSystem('$name')")
-    val myConfig = ConfigFactory.systemProperties
-      .withFallback(config)
-      .withFallback(Js7Configuration.defaultConfig)
-      .resolve
-    ActorSystem(
-      name,
-      Some(myConfig),
-      Some(getClass.getClassLoader),
-      myConfig.getBoolean("js7.akka.use-js7-thread-pool") ? defaultExecutionContext)
-  }
+    executionContext: ExecutionContext = ExecutionContext.global)
+  : ActorSystem =
+    logger.debugCall("newActorSystem", name) {
+      val myConfig = ConfigFactory.systemProperties
+        .withFallback(config)
+        .withFallback(Js7Configuration.defaultConfig)
+        .resolve
+
+      ActorSystem(
+        name,
+        Some(myConfig),
+        Some(getClass.getClassLoader),
+        myConfig.getBoolean("js7.akka.use-js7-thread-pool") ? executionContext)
+    }
 
   def terminateAndWait(actorSystem: ActorSystem): Unit =
     terminateAndWait(actorSystem,
       actorSystem.settings.config.getDuration("js7.akka.shutdown-timeout").toFiniteDuration)
 
-  def terminateAndWait(actorSystem: ActorSystem, timeout: FiniteDuration): Unit = {
-    logger.debug(s"ActorSystem('${actorSystem.name}') terminate ...")
-    try {
-      val since = now
-      terminate(actorSystem).await(timeout)
-      logger.debug(s"ActorSystem('${actorSystem.name}') terminated (${since.elapsed.pretty})")
-    } catch {
-      case NonFatal(t) =>
+  def terminateAndWait(actorSystem: ActorSystem, timeout: FiniteDuration): Unit =
+    logger.debugCall("terminateAndWait", actorSystem.name)(
+      try terminate(actorSystem).await(timeout)
+      catch { case NonFatal(t) =>
         logger.warn(s"ActorSystem('${actorSystem.name}').terminate(): ${t.toStringWithCauses}")
-    }
-  }
+      })
 
   /** Shut down connection pool and terminate ActorSystem.
     * Only once callable.

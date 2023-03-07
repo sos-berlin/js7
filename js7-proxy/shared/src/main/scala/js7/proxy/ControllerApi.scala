@@ -14,7 +14,6 @@ import js7.base.session.SessionApi
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Stoppable, StoppablesRegister}
 import js7.base.web.HttpClient.HttpException
 import js7.base.web.{HttpClient, Uri}
 import js7.controller.client.HttpControllerApi
@@ -51,11 +50,9 @@ extends ControllerApiWithHttp
   protected def apiResource(implicit src: sourcecode.Enclosing) =
     apiCache.resource
 
-  private val stoppables = new StoppablesRegister
-
   def stop: Task[Unit] =
     logger.debugTask(
-      stoppables.stop *> apiCache.release)
+      apiCache.release)
 
   /** For testing (it's slow): wait for a condition in the running event stream. **/
   def when(predicate: EventAndState[Event, ControllerState] => Boolean)
@@ -180,12 +177,6 @@ extends ControllerApiWithHttp
               Task.raiseError(t)
           })
     })
-
-  def addStoppable(stoppable: Stoppable[Task]): Task[Unit] =
-    stoppables.add(stoppable)
-
-  def removeStoppable(stoppable: Stoppable[Task]): Task[Unit] =
-    stoppables.remove(stoppable)
 }
 
 object ControllerApi

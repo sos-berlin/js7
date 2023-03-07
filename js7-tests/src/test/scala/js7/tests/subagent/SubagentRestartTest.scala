@@ -1,11 +1,10 @@
 package js7.tests.subagent
 
-import js7.agent.RunningAgent
+import js7.agent.TestAgent
 import js7.base.Problems.MessageSignedByUnknownProblem
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.log.Logger
 import js7.base.test.OurTestSuite
-import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
@@ -28,7 +27,7 @@ final class SubagentRestartTest extends OurTestSuite with SubagentTester
 
   protected implicit val scheduler = Scheduler.traced
 
-  private var myAgent: RunningAgent = null
+  private var myAgent: TestAgent = null
 
   override def beforeAll() = {
     super.beforeAll()

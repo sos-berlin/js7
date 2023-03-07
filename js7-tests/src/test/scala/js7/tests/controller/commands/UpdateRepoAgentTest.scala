@@ -1,6 +1,6 @@
 package js7.tests.controller.commands
 
-import js7.agent.RunningAgent
+import js7.agent.TestAgent
 import js7.agent.configuration.AgentConfiguration
 import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.generic.SecretString
@@ -9,7 +9,6 @@ import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
-import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
@@ -52,7 +51,7 @@ final class UpdateRepoAgentTest extends OurTestSuite
 
       // Start Agent before Controller to bind the reserved TCP port early, and the Controller needs not to wait
       val agent1 = directoryProvider.startAgents().await(99.s).head
-      var agent2: RunningAgent = null
+      var agent2: TestAgent = null
       directoryProvider.runController() { controller =>
         controller.httpApi
           .login_(Some(UserAndPassword(
@@ -66,7 +65,7 @@ final class UpdateRepoAgentTest extends OurTestSuite
           if (agent2 != null) agent2.terminate() await 99.s
           // Start a new Agent with same state but a (hopefully) different HTTP port
           val port = findFreeTcpPort()
-          agent2 = RunningAgent.startForTest(AgentConfiguration.forTest(
+          agent2 = TestAgent.start(AgentConfiguration.forTest(
             directoryProvider.agents.head.directory,
             name = "UpdateRepoAgentTest",
             httpPort = Some(port))

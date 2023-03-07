@@ -1,10 +1,9 @@
 package js7.agent.tests
 
 import akka.actor.ActorSystem
-import js7.agent.RunningAgent
+import js7.agent.TestAgent
 import js7.agent.client.AgentClient
 import js7.agent.configuration.AgentConfiguration
-import js7.agent.configuration.Akkas.newAgentActorSystem
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSignedItem, Batch, DedicateAgentDirector, DetachOrder}
@@ -25,6 +24,8 @@ import js7.base.time.Stopwatch
 import js7.base.utils.Closer.syntax.*
 import js7.base.utils.Closer.withCloser
 import js7.base.web.Uri
+import js7.common.akkautils.Akkas
+import js7.common.akkautils.Akkas.newActorSystem
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.event.{Event, EventRequest, KeyedEvent, Stamped}
@@ -58,9 +59,9 @@ final class OrderAgentTest extends OurTestSuite
       BPathExecutable.toFile(jobDir).writeUtf8Executable(TestScript)
 
       val agentConf = AgentConfiguration.forTest(directory, name = "OrderAgentTest")
-      RunningAgent.run(agentConf, timeout = Some(99.s)) { agent =>
+      TestAgent.blockingRun(agentConf, 99.s) { agent =>
         withCloser { implicit closer =>
-          implicit val actorSystem: ActorSystem = newAgentActorSystem(getClass.getSimpleName)
+          implicit val actorSystem: ActorSystem = newActorSystem(getClass.getSimpleName)
           val agentClient = AgentClient(agent.localUri, Some(TestUserAndPassword)).closeWithCloser
           assert(agentClient
             .commandExecute(
@@ -119,6 +120,7 @@ final class OrderAgentTest extends OurTestSuite
           try agentClient.commandExecute(AgentCommand.ShutDown()).await(99.s).orThrow
           catch { case t: RuntimeException
             if Option(t.getMessage) getOrElse "" contains "Connection reset by peer" => }
+          Akkas.terminateAndWait(actorSystem)
         }
       }
     }
@@ -142,9 +144,9 @@ final class OrderAgentTest extends OurTestSuite
           js7.journal.snapshot.log-actor-limit = 10
           """)
       val timeout = 1.hour
-      RunningAgent.run(agentConf, timeout = Some(timeout)) { agent =>
+      TestAgent.blockingRun(agentConf, timeout) { agent =>
         withCloser { implicit closer =>
-          implicit val actorSystem: ActorSystem = newAgentActorSystem(getClass.getSimpleName)
+          implicit val actorSystem: ActorSystem = newActorSystem(getClass.getSimpleName)
           val agentClient = AgentClient(agent.localUri, Some(TestUserAndPassword)).closeWithCloser
           agentClient.login() await 99.s
           assert(
@@ -184,6 +186,7 @@ final class OrderAgentTest extends OurTestSuite
           info(stopwatch.itemsPerSecondString(n, "orders"))
 
           agentClient.commandExecute(AgentCommand.ShutDown()).await(99.s).orThrow
+          Akkas.terminateAndWait(actorSystem)
         }
       }
     }

@@ -8,6 +8,7 @@ import com.softwaremill.diffx
 import com.softwaremill.tagging.{@@, Tagger}
 import izumi.reflect.Tag
 import js7.base.eventbus.{EventPublisher, StandardEventBus}
+import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.monixutils.Switch
@@ -219,11 +220,13 @@ object FileStatePersistence
           }
       })(
       release = { case (persistence, journalActor, actor, journalActorStopped) =>
-        Task.defer {
-          actorRefFactory.stop(actor)
-          journalActor ! JournalActor.Input.Terminate
-          Task.fromFuture(journalActorStopped.future).void
-        }
+        logger.debugTask(s"$persistence stop")(
+          Task.defer {
+            actorRefFactory.stop(actor)
+            journalActor ! JournalActor.Input.Terminate
+            Task.fromFuture(journalActorStopped.future).void
+              .logWhenItTakesLonger("JournalActor.Input.Terminate")
+          })
       })
       .map(_._1)
   }

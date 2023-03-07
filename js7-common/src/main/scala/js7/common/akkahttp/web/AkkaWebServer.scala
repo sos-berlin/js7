@@ -76,6 +76,7 @@ trait AkkaWebServer extends Service
           .debugTask(s"$toString terminate $binding")(
             Task.deferFuture(
               binding.terminate(hardDeadline = shutdownTimeout)))
+          .void
           .onErrorHandle { t =>
             logger.error(s"$toString $binding.terminate => ${t.toStringWithCauses}",
               t.nullIfNoStackTrace)

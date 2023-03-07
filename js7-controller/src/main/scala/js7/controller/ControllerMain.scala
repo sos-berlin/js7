@@ -45,9 +45,7 @@ final class ControllerMain
       RunningController.threadPoolResource[SyncIO](conf).useSync { implicit scheduler =>
         val (controller, stop) = RunningController.resource(conf, scheduler).allocated.awaitInfinite
         withShutdownHooks(conf.config, "ControllerMain", () => onJavaShutdown(stop)) {
-          val termination = controller.terminated.awaitInfinite
-          stop.awaitInfinite
-          termination
+          controller.terminated.awaitInfinite
         }
       }
 

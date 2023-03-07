@@ -746,6 +746,7 @@ lazy val `js7-tests` = project
   .dependsOn(
     `js7-controller`,
     `js7-agent`,
+    `js7-agent` % "test->test",
     `js7-proxy`.jvm,
     `js7-cluster-watch`,
     `js7-agent-client`,

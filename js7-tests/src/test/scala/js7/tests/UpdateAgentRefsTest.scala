@@ -2,13 +2,12 @@ package js7.tests
 
 import java.nio.file.Files.move
 import java.nio.file.Paths
-import js7.agent.RunningAgent
+import js7.agent.TestAgent
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.{copyDirectoryContent, deleteDirectoryContentRecursively, deleteDirectoryRecursively}
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
-import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
@@ -54,7 +53,7 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
   private lazy val controller = directoryProvider.newController()
 
   private lazy val controllerApi = newControllerApi(controller, Some(directoryProvider.controller.userAndPassword))
-  private var agent: RunningAgent = null
+  private var agent: TestAgent = null
 
   override def afterAll() = {
     controllerApi.stop.await(99.s)
@@ -68,7 +67,7 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
     directoryProvider.prepareAgentFiles(agentFileTree)
 
     val subagentItem = SubagentItem(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort1"))
-    agent = RunningAgent.startForTest(agentFileTree.agentConfiguration) await 99.s
+    agent = TestAgent.start(agentFileTree.agentConfiguration) await 99.s
 
     controllerApi
       .updateItems(
@@ -101,11 +100,12 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
     ).await(99.s).orThrow
 
     controller.eventWatch.await[ItemDeleted](_.event.key == agentPath, after = eventId)
-    agent.terminated await 99.s
+    agent.untilTerminated await 99.s
+    agent.stop.await(99.s)
   }
 
   "Add AgentRef again: Agent's journal should be new due to implicit Reset" in {
-    agent = RunningAgent.startForTest(agentFileTree.agentConfiguration) await 99.s
+    agent = TestAgent.start(agentFileTree.agentConfiguration) await 99.s
 
     val eventId = controller.eventWatch.lastFileEventId
     val versionId = VersionId("AGAIN")
@@ -137,7 +137,7 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
 
   "Change Directors's URI and keep Agent's state (move the Agent)" in {
     val subagentItem = SubagentItem(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort2"))
-    agent = RunningAgent.startForTest(
+    agent = TestAgent.start(
       agentFileTree.agentConfiguration.copy(
         webServerPorts = List(WebServerPort.localhost(agentPort2)))
     ) await 99.s
@@ -151,7 +151,7 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
     move(outdatedState, agentFileTree.stateDir)
     val eventId = controller.eventWatch.lastFileEventId
 
-    agent = RunningAgent.startForTest(
+    agent = TestAgent.start(
       agentFileTree.agentConfiguration.copy(
         webServerPorts = List(WebServerPort.localhost(agentPort2)))
     ) await 99.s
@@ -169,7 +169,7 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
     val subagentItem = SubagentItem(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort3"))
     // DELETE AGENT'S STATE DIRECTORY
     deleteDirectoryContentRecursively(agentFileTree.stateDir)
-    agent = RunningAgent.startForTest(
+    agent = TestAgent.start(
       agentFileTree.agentConfiguration.copy(
         webServerPorts = List(WebServerPort.localhost(agentPort3)))
     ) await 99.s

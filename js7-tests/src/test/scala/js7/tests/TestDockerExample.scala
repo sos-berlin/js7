@@ -1,13 +1,12 @@
 package js7.tests
 
 import cats.effect.SyncIO
-import cats.syntax.traverse.*
+import cats.syntax.parallel.*
 import java.nio.file.Files.{createDirectories, createDirectory, setPosixFilePermissions}
 import java.nio.file.attribute.PosixFilePermissions
 import java.nio.file.{Files, Path}
-import js7.agent.RunningAgent
+import js7.agent.TestAgent
 import js7.agent.configuration.AgentConfiguration
-import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.ShutDown
 import js7.base.io.JavaResource
 import js7.base.io.file.FileUtils.syntax.*
@@ -15,6 +14,7 @@ import js7.base.io.file.FileUtils.{deleteDirectoryContentRecursively, temporaryD
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.Log4j
 import js7.base.thread.Futures.implicits.*
+import js7.base.thread.MonixBlocking.syntax.{RichTask, RichTaskTraversable}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsBlocking.BlockingTaskResource
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
@@ -69,10 +69,11 @@ object TestDockerExample
     withCloser { implicit closer =>
       val conf = ControllerConfiguration.forTest(configAndData = env.controllerDir, httpPort = Some(4444))
       val agents = for (agentPath <- TestAgentPaths) yield {
-        val agent = RunningAgent.startForTest(AgentConfiguration.forTest(
+        val agent = TestAgent.start(AgentConfiguration.forTest(
           configAndData = env.agentDir(agentPath),
           name = AgentConfiguration.DefaultName)
-        ).map(_.closeWithCloser) await 99.s
+        ).map(_.closeWithCloser)
+          .await(99.s)
         //env.file(agentPath, SourceType.Json) := AgentRef(AgentPath.NoId, uri = agent.localUri.toString)
         agent
       }
@@ -80,7 +81,7 @@ object TestDockerExample
         print('\n')
         (for (agent <- agents) yield {
           agent.executeCommandAsSystemUser(ShutDown(Some(SIGTERM)))
-          val r = agent.terminated
+          val r = agent.untilTerminated
           agent.close()
           r
         }) await 10.s
@@ -93,9 +94,7 @@ object TestDockerExample
             //??? controller.executeCommandAsSystemUser(ControllerCommand.ScheduleOrdersEvery(1.minute)).runToFuture.await(99.s).orThrow
             controller.terminated await 365 * 24.h
         }
-        for (agent <- agents) agent.executeCommandAsSystemUser(AgentCommand.ShutDown())
-        agents.traverse(_.terminated) await 60.s
-        agents foreach (_.close())
+        agents.parTraverse(_.stop) await 60.s
       }
     }
   }

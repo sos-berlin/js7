@@ -6,7 +6,9 @@ import js7.base.catsutils.UnsafeMemoizable.syntax.*
 final class Allocated[F[_]: UnsafeMemoizable, +A](val allocatedThing: A, stop_ : F[Unit])
 extends Stoppable[F]
 {
-  val stop = stop_.unsafeMemoize
+  val stop: F[Unit] =
+    stop_.unsafeMemoize
+
   override def toString = allocatedThing.toString
 }
 

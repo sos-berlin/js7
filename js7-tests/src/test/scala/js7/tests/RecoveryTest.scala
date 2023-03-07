@@ -1,12 +1,11 @@
 package js7.tests
 
 import cats.syntax.traverse.*
-import js7.agent.RunningAgent
+import js7.agent.TestAgent
 import js7.base.configutils.Configs.*
 import js7.base.crypt.silly.{SillySignature, SillySignatureVerifier, SillySigner}
 import js7.base.log.Logger
 import js7.base.test.OurTestSuite
-import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.{autoClosing, multipleAutoClosing}
@@ -123,10 +122,12 @@ final class RecoveryTest extends OurTestSuite
       controller.terminate(suppressSnapshot = true).await(99.s)
     }
 
-  private def runAgents(directoryProvider: DirectoryProvider)(body: IndexedSeq[RunningAgent] => Unit): Unit = {
+  private def runAgents(directoryProvider: DirectoryProvider)
+    (body: IndexedSeq[TestAgent] => Unit)
+  : Unit = {
     val agents = directoryProvider.agents
       .map(_.agentConfiguration)
-      .traverse(RunningAgent.startForTest(_))
+      .traverse(TestAgent.start(_))
       .await(10.s)
     multipleAutoClosing(agents) { _ =>
       // TODO Duplicate code in DirectoryProvider

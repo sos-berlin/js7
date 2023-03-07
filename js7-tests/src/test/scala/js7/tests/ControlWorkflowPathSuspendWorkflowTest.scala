@@ -2,7 +2,7 @@ package js7.tests
 
 import cats.syntax.parallel.*
 import java.util.concurrent.TimeoutException
-import js7.agent.RunningAgent
+import js7.agent.TestAgent
 import js7.agent.data.event.AgentEvent.AgentReady
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.problem.Checked
@@ -52,8 +52,8 @@ extends OurTestSuite with DirectoryProviderForScalaTest
 
   private var controller: TestController = null
 
-  private var aAgent: RunningAgent = null
-  private var bAgent: RunningAgent = null
+  private var aAgent: TestAgent = null
+  private var bAgent: TestAgent = null
 
   private def eventWatch = controller.eventWatch
 

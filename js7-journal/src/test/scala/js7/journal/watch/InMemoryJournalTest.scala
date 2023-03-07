@@ -28,7 +28,7 @@ final class InMemoryJournalTest extends OurTestSuite
     val journal = newJournal()
 
     journal.persistKeyedEvent("A" <-: TestEvent.Added("a")).await(99.s).orThrow
-    assert(journal.unsafeCurrentState == TestState(1000, keyToAggregate = Map(
+    assert(journal.unsafeCurrentState() == TestState(1000, keyToAggregate = Map(
       "A" -> TestAggregate("A", "a"))))
     assert(journal.tornEventId == EventId.BeforeFirst)
     assert(journal.lastAddedEventId == 1000)
@@ -36,7 +36,7 @@ final class InMemoryJournalTest extends OurTestSuite
       Stamped(1000, "A" <-: TestEvent.Added("a"))))
 
     journal.persistKeyedEvent("A" <-: TestEvent.Appended('1')).await(99.s).orThrow
-    assert(journal.unsafeCurrentState == TestState(1001, keyToAggregate = Map(
+    assert(journal.unsafeCurrentState() == TestState(1001, keyToAggregate = Map(
       "A" -> TestAggregate("A", "a1"))))
     assert(journal.tornEventId == EventId.BeforeFirst)
     assert(journal.lastAddedEventId == 1001)

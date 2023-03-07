@@ -14,7 +14,6 @@ import js7.data_for_java.value.JExpression;
 import js7.launcher.forjava.internal.BlockingInternalJob;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import static com.google.common.base.Throwables.throwIfUnchecked;
 import static io.vavr.control.Either.right;
 import static java.lang.System.lineSeparator;
 import static java.lang.Thread.currentThread;
@@ -126,7 +125,6 @@ public final class TestBlockingInternalJob implements BlockingInternalJob
             CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> currentThread().getName());
             assert !future.get().startsWith(expectedBlockingThreadPoolName);
         } catch (Throwable t) {
-            throwIfUnchecked(t);
             throw new RuntimeException(t);
         }
     }

@@ -124,6 +124,12 @@ object ScalaTime
     def max(o: Duration): Duration =
       if (this > o) duration else o
 
+    def toFiniteDuration: Option[FiniteDuration] =
+      duration match {
+        case o: FiniteDuration => Some(o)
+        case _: Duration.Infinite => None
+      }
+
     override def toString = pretty  // For ScalaTest
 
     def msPretty: String = {

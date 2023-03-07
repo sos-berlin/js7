@@ -55,7 +55,7 @@ extends HasCloser
 
   private val actorSystemLazy = Lazy(newActorSystem(
     "JS7-Proxy",
-    defaultExecutionContext = scheduler))
+    executionContext = scheduler))
   private lazy val actorSystem = actorSystemLazy()
 
   onClose {

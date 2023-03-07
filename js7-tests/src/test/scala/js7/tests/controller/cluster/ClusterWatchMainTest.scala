@@ -7,6 +7,7 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.log.Logger
 import js7.base.test.OurAsyncTestSuite
+import js7.base.utils.ProgramTermination
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.cluster.watch.{ClusterWatchConf, ClusterWatchMain}
 import js7.common.commandline.CommandLineArguments
@@ -60,7 +61,7 @@ final class ClusterWatchMainTest extends OurAsyncTestSuite with ControllerCluste
               .race(
                 service.untilStopped,
                 stopClusterWatch.get.to[Task])
-              .void)
+              .as(ProgramTermination()))
           }
         catch { case t: Throwable =>
           logger.error(t.toStringWithCauses, t)

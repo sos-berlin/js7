@@ -110,8 +110,7 @@ object TestControllerAgent
                     agent.executeCommandAsSystemUser(ShutDown(Some(SIGTERM)))
                       .*>(Task(
                         agent.close()))
-                      .*>(Task.fromFuture(
-                        agent.terminated))))
+                      .*>(agent.untilTerminated)))
                 .awaitInfinite
               Log4j.shutdown()
             } .closeWithCloser

@@ -1,9 +1,8 @@
 package js7.tests.testenv
 
 import cats.syntax.option.*
-import com.google.inject.Module
-import com.google.inject.util.Modules.EMPTY_MODULE
 import com.typesafe.config.{Config, ConfigFactory}
+import js7.agent.RunningAgent
 import js7.base.auth.Admission
 import js7.base.crypt.{DocumentSigner, SignatureVerifier, Signed, SignedString}
 import js7.base.io.JavaResource
@@ -66,7 +65,7 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
 
   protected def controllerTestWiring: RunningController.TestWiring =
     RunningController.TestWiring.empty
-  protected def agentModule: Module = EMPTY_MODULE
+  protected def agentTestWiring: RunningAgent.TestWiring = RunningAgent.TestWiring.empty
   protected lazy val controllerHttpPort = findFreeTcpPort().some
   protected lazy val controllerHttpsPort = none[Int]
   protected lazy val controllerAdmission = Admission(

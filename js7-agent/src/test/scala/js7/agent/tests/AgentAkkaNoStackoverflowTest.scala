@@ -1,13 +1,12 @@
 package js7.agent.tests
 
-import js7.agent.RunningAgent
+import js7.agent.TestAgent
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.tests.AgentAkkaNoStackoverflowTest.*
 import js7.agent.tests.TestAgentDirectoryProvider.provideAgentDirectory
 import js7.base.log.Logger
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
-import monix.execution.Scheduler.Implicits.traced
 
 /**
   * @author Joacim Zschimmer
@@ -18,7 +17,7 @@ final class AgentAkkaNoStackoverflowTest extends OurTestSuite with AgentTester
     val exception = intercept[RuntimeException] {
       provideAgentDirectory { directory =>
         val conf = AgentConfiguration.forTest(directory, "AgentAkkaNoStackoverflowTest")
-        RunningAgent.run(conf, timeout = Some(99.s)) { agent =>
+        TestAgent.blockingRun(conf, 99.s) { agent =>
           logger.warn("THROW TEST ERROR")
           sys.error("TEST ERROR")
         }

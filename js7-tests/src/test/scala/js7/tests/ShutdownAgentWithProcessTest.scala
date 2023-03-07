@@ -1,14 +1,13 @@
 package js7.tests
 
 import java.lang.System.lineSeparator as nl
-import js7.agent.RunningAgent
+import js7.agent.TestAgent
 import js7.agent.client.AgentClient
 import js7.agent.data.commands.AgentCommand
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.process.ProcessSignal.SIGKILL
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.OurTestSuite
-import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichBoolean
@@ -68,10 +67,11 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite with ControllerAge
       agentClient
         .commandExecute(AgentCommand.ShutDown(processSignal = Some(SIGKILL)))
         .await(99.s)
-      agent.terminated.await(99.s)
+      agent.untilTerminated.await(99.s)
+      agent.stop.await(99.s)
     }
 
-    val restartedAgent = RunningAgent.startForTest(agentTree.agentConfiguration)
+    val restartedAgent = TestAgent.start(agentTree.agentConfiguration)
       .await(10.s)
     eventWatch.await[OrderFailed](_.key == simpleOrderId)
 
@@ -118,7 +118,7 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite with ControllerAge
       caughtOrderId <-: OrderDetached,
       caughtOrderId <-: OrderFinished()))
 
-    restartedAgent.terminate().await(99.s)
+    restartedAgent.stop.await(99.s)
   }
 
   private def manipulateEvent(keyedEvent: AnyKeyedEvent, orderId: OrderId): Option[AnyKeyedEvent] =

@@ -14,7 +14,6 @@ import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.Closer.syntax.*
-import js7.common.guice.GuiceImplicits.*
 import js7.data.agent.Problems.{AgentPathMismatchProblem, AgentRunIdMismatchProblem}
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
@@ -31,7 +30,7 @@ final class EventRouteTest extends OurTestSuite with AgentTester
 {
   protected val akkaAskTimeout = 99.s
 
-  implicit private lazy val scheduler: Scheduler = agent.injector.instance[Scheduler]
+  implicit private lazy val scheduler: Scheduler = agent.scheduler
   implicit private lazy val actorSystem: ActorSystem = agent.actorSystem
   private val agentClient = AgentClient(agent.localUri, Some(TestUserAndPassword)).closeWithCloser
   private var agentRunId: AgentRunId = _

@@ -66,19 +66,21 @@ extends SubagentDriver
   }
 
   def stop(signal: Option[ProcessSignal]) =
-    Task.defer {
-      stopping = true
-      val orderCount = orderIdToJobDriver.toMap.size
-      logger.info("Stopping" + ((orderCount > 0) ?? s", waiting for $orderCount processes"))
-      Task
-        .parZip2(
-          orderIdToJobDriver.stop,
-          signal.fold(Task.unit)(killAllAndStop))
-        .tapEval(_ => Task(logger.debug("Stopped")))
-        .*>(Task {
-          fileValueState.close()
-        })
-    }
+    logger.debugTask(
+      Task.defer {
+        stopping = true
+        val orderCount = orderIdToJobDriver.toMap.size
+        if (orderCount > 0) {
+          logger.info("Stopping, waiting for $orderCount processes")
+        }
+        Task
+          .parZip2(
+            orderIdToJobDriver.stop,
+            signal.fold(Task.unit)(killAllAndStop))
+          .*>(Task {
+            fileValueState.close()
+          })
+      })
 
   private def killAllAndStop(signal: ProcessSignal): Task[Unit] =
     logger.debugTask("killAllAndStop", signal)(

@@ -6,10 +6,9 @@ import akka.http.scaladsl.model.StatusCodes.{Forbidden, NotFound, OK}
 import akka.http.scaladsl.model.headers.{Accept, Location, RawHeader}
 import akka.http.scaladsl.model.{HttpEntity, HttpHeader, Uri as AkkaUri}
 import akka.stream.Materializer
-import com.google.inject.{AbstractModule, Provides}
 import io.circe.syntax.EncoderOps
 import io.circe.{Json, JsonObject}
-import javax.inject.Singleton
+import js7.agent.RunningAgent
 import js7.base.auth.SessionToken
 import js7.base.circeutils.CirceUtils.*
 import js7.base.crypt.silly.{SillySignature, SillySigner}
@@ -77,9 +76,8 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest
   private implicit def implicitSessionToken: Task[Some[SessionToken]] =
     Task(Some(SessionToken(SecretString(sessionToken))))
 
-  override val agentModule = new AbstractModule {
-    @Provides @Singleton def eventIdClock(): EventIdClock = EventIdClock.fixed(2000)
-  }
+  override protected def agentTestWiring = RunningAgent.TestWiring(
+    eventIdClock = Some(EventIdClock.fixed(2000)))
 
   override protected def controllerTestWiring = RunningController.TestWiring(
     eventIdClock = Some(EventIdClock.fixed(1000)))

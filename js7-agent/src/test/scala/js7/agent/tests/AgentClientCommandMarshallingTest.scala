@@ -1,7 +1,6 @@
 package js7.agent.tests
 
-import com.google.inject.{AbstractModule, Provides}
-import javax.inject.Singleton
+import js7.agent.RunningAgent
 import js7.agent.client.SimpleAgentClient
 import js7.agent.command.CommandHandler
 import js7.agent.data.commands.AgentCommand
@@ -26,9 +25,8 @@ import org.scalatest.concurrent.ScalaFutures
 final class AgentClientCommandMarshallingTest
 extends OurTestSuite with ScalaFutures with AgentTester {
 
-  override protected def extraAgentModule = new AbstractModule {
-    @Provides @Singleton
-    def commandHandler(): CommandHandler = new CommandHandler {
+  override protected val agentTestWiring = RunningAgent.TestWiring(
+    commandHandler = Some(new CommandHandler {
       def execute(command: AgentCommand, meta: CommandMeta): Task[Checked[command.Response]] =
         Task {
           (command match {
@@ -41,8 +39,8 @@ extends OurTestSuite with ScalaFutures with AgentTester {
 
       def overview = throw new NotImplementedError
       def detailed = throw new NotImplementedError
-    }
-  }
+    }))
+
   override implicit val patienceConfig = PatienceConfig(timeout = 10.s)
   private lazy val client = new SimpleAgentClient(agent.localUri, None).closeWithCloser
     .sideEffect(_.setSessionToken(agent.sessionToken))

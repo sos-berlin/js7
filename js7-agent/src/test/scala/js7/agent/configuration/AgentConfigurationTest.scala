@@ -30,7 +30,7 @@ final class AgentConfigurationTest extends OurTestSuite
         .fromCommandLine(CommandLineArguments(Seq(
           s"--config-directory=$config",
           s"--data-directory=$data")))
-        .finishAndProvideFiles
+      c.createDirectories()
       assert(c.copy(config = DefaultConfig) == AgentConfiguration(
         configDirectory = config,
         dataDirectory = data,
@@ -71,7 +71,7 @@ final class AgentConfigurationTest extends OurTestSuite
     provideConfigAndData { (config, data) =>
       val expectedFile = data / s"work/kill_task.$shellExt"
       val myConf = conf(s"--config-directory=$config", s"--data-directory=$data")
-        .finishAndProvideFiles
+      myConf.createDirectories()
       assert(myConf.subagentConf.killScript == Some(ProcessKillScript(expectedFile)))
     }
   }
@@ -79,7 +79,7 @@ final class AgentConfigurationTest extends OurTestSuite
   "--kill-script= (empty)" in {
     provideConfigAndData { (config, data) =>
       val myConf = conf(s"--config-directory=$config", s"--data-directory=$data", "--kill-script=")
-        .finishAndProvideFiles
+      myConf.createDirectories()
       assert(myConf.killScript == None)
     }
   }
@@ -87,8 +87,8 @@ final class AgentConfigurationTest extends OurTestSuite
   "--kill-script=FILE" in {
     provideConfigAndData { (config, data) =>
       val myConf = conf(s"--config-directory=$config", s"--data-directory=$data",
-        "--kill-script=/my/kill/script"
-      ).finishAndProvideFiles
+        "--kill-script=/my/kill/script")
+      myConf.createDirectories()
       assert(myConf.killScript == Some(ProcessKillScript(Paths.get("/my/kill/script").toAbsolutePath)))
     }
   }

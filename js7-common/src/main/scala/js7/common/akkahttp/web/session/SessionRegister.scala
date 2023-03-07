@@ -16,22 +16,17 @@ import js7.base.generic.Completed
 import js7.base.io.file.FileUtils.provideFile
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
-import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.JavaTimeConverters.*
-import js7.base.time.ScalaTime.*
-import js7.base.utils.Closer
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.version.Version
-import js7.common.akkahttp.web.session.SessionRegister.*
 import js7.common.http.AkkaHttpClient.`x-js7-session`
 import js7.common.system.ServerOperatingSystem.operatingSystem
 import monix.eval.Task
 import monix.execution.Scheduler
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.Promise
-import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
@@ -45,24 +40,6 @@ final class SessionRegister[S <: Session] private[session](
   val systemSession: Task[Checked[S]] = Task.fromFuture(systemSessionPromise.future)
   val systemUser: Task[Checked[SimpleUser]] =
     systemSession.map(_.map(_.currentUser./*???*/asInstanceOf[SimpleUser]))
-
-  def placeSessionTokenInDirectoryLegacy(user: SimpleUser, workDirectory: Path, closer: Closer)
-  : Task[SessionToken] =
-    Task.deferAction(implicit s =>
-      placeSessionTokenInDirectory(user, workDirectory)
-        .allocated
-        .logWhenItTakesLonger("createSystemSession")
-        .flatMap { case (sessionToken, release) =>
-          Task {
-            closer.onClose {
-              try release.runSyncUnsafe(5.s)
-              catch { case NonFatal(t) => logger.error(
-                s"createSessionTokenFile release => ${t.toStringWithCauses}")
-              }
-            }
-            sessionToken
-          }
-        })
 
   def placeSessionTokenInDirectory(user: SimpleUser, workDirectory: Path)
   : Resource[Task, SessionToken] = {

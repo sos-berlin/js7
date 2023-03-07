@@ -7,7 +7,7 @@ import cats.syntax.functor.*
 trait Stoppable[F[_]]
 {
   // Idempotent
-  def stop: F[Unit]
+  protected def stop: F[Unit]
 }
 
 object Stoppable

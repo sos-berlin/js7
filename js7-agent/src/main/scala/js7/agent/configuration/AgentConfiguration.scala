@@ -75,7 +75,7 @@ extends CommonConfiguration
   def stateDirectory: Path =
     dataDirectory / "state"
 
-  def finishAndProvideFiles: AgentConfiguration = {
+  def createDirectories(): Unit = {
     if (logDirectory == defaultLogDirectory(dataDirectory) && !exists(logDirectory)) {
       createDirectory(logDirectory)
     }
@@ -86,7 +86,6 @@ extends CommonConfiguration
       assertThat(workDirectory == dataDirectory / "work")
       createDirectory(workDirectory)
     }
-    this
   }
 
   lazy val workDirectory: Path =

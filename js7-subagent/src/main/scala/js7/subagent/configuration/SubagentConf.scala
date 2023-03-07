@@ -96,24 +96,21 @@ extends CommonConfiguration
       Left(Problem(s"Setting $sigkillName must contain \"$$pid\""))
     else if (killForWindows.nonEmpty && !killForWindows.contains("$pid"))
       Left(Problem(s"Setting $sigkillWindowsName must contain \"$$pid\""))
-    else Right(
-      JobLauncherConf(
+    else
+      SubagentConf.jobLauncherConf(
         executablesDirectory = executablesDirectory,
         shellScriptTmpDirectory = shellScriptTmpDirectory,
-        tmpDirectory = workTmpDirectory,
-        workingDirectory = jobWorkingDirectory,
+        workTmpDirectory = workTmpDirectory,
+        jobWorkingDirectory = jobWorkingDirectory,
         systemEncoding = config.optionAs[String]("js7.job.execution.encoding")
           .map(Charset.forName/*throws*/)
           .getOrElse(systemEncoding.orThrow),
-        killWithSigterm = config.seqAs[String](sigtermName),
-        killWithSigkill = config.seqAs[String](sigkillName),
-        killForWindows = config.seqAs[String](sigkillWindowsName),
         killScript = killScript,
         scriptInjectionAllowed = scriptInjectionAllowed,
-        RecouplingStreamReaderConfs.fromConfig(config).orThrow,
         iox,
         blockingJobScheduler = blockingJobScheduler,
-        clock))
+        clock,
+        config)
   }
 
   private def provideKillScript(): SubagentConf =
@@ -182,6 +179,48 @@ object SubagentConf
       stdoutCommitDelay = myConfig.finiteDuration("js7.order.stdout-stderr.commit-delay").orThrow,
       name = name,
       myConfig)
+  }
+
+  def jobLauncherConf(
+    executablesDirectory: Path,
+    shellScriptTmpDirectory: Path,
+    workTmpDirectory: Path,
+    jobWorkingDirectory: Path,
+    systemEncoding: Charset,
+    killScript: Option[ProcessKillScript],
+    scriptInjectionAllowed: Boolean = false,
+    iox: IOExecutor, blockingJobScheduler: Scheduler, clock: AlarmClock, config: Config)
+  : Checked[JobLauncherConf] = {
+    val sigtermName = "js7.job.execution.kill-with-sigterm-command"
+    val sigkillName = "js7.job.execution.kill-with-sigkill-command"
+    val sigkillWindowsName = "js7.job.execution.kill-command-for-windows"
+    val killWithSigterm = config.seqAs[String](sigtermName)
+    val killWithSigkill = config.seqAs[String](sigkillName)
+    val killForWindows = config.seqAs[String](sigkillWindowsName)
+    if (killWithSigterm.nonEmpty && !killWithSigterm.contains("$pid"))
+      Left(Problem(s"Setting $sigtermName must contain \"$$pid\""))
+    else if (killWithSigkill.nonEmpty && !killWithSigkill.contains("$pid"))
+      Left(Problem(s"Setting $sigkillName must contain \"$$pid\""))
+    else if (killForWindows.nonEmpty && !killForWindows.contains("$pid"))
+      Left(Problem(s"Setting $sigkillWindowsName must contain \"$$pid\""))
+    else Right(
+      JobLauncherConf(
+        executablesDirectory = executablesDirectory,
+        shellScriptTmpDirectory = shellScriptTmpDirectory,
+        tmpDirectory = workTmpDirectory,
+        workingDirectory = jobWorkingDirectory,
+        systemEncoding = config.optionAs[String]("js7.job.execution.encoding")
+          .map(Charset.forName /*throws*/)
+          .getOrElse(systemEncoding),
+        killWithSigterm = config.seqAs[String](sigtermName),
+        killWithSigkill = config.seqAs[String](sigkillName),
+        killForWindows = config.seqAs[String](sigkillWindowsName),
+        killScript = killScript,
+        scriptInjectionAllowed = scriptInjectionAllowed,
+        RecouplingStreamReaderConfs.fromConfig(config).orThrow,
+        iox,
+        blockingJobScheduler = blockingJobScheduler,
+        clock))
   }
 
   private def autoCreateDirectory(directory: Path): Path = {

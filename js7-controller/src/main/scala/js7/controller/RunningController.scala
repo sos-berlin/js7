@@ -36,6 +36,7 @@ import js7.cluster.ClusterNode.RestartAfterJournalTruncationException
 import js7.cluster.{ClusterNode, WorkingClusterNode}
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.akkautils.Akkas.actorSystemResource
+import js7.common.akkautils.DeadLetterActor
 import js7.common.system.ThreadPools
 import js7.controller.ControllerOrderKeeper.ControllerIsShuttingDownProblem
 import js7.controller.RunningController.*
@@ -271,7 +272,9 @@ object RunningController
     // Recover and initialize other stuff in parallel
     val recoveringResource =
       ClusterNode.recoveringResource[ControllerState](
-        actorSystemResource(conf.name, config),
+        actorSystemResource(conf.name, config)
+          .evalTap(actorSystem => Task(
+            DeadLetterActor.subscribe(actorSystem))),
         (uri, name, actorSystem) => AkkaHttpControllerApi.resource(
           uri, clusterConf.peersUserAndPassword, httpsConfig, name = name)(actorSystem),
         configDirectory = conf.configDirectory,

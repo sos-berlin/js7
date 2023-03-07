@@ -2,7 +2,7 @@ package js7.agent.tests
 
 import java.nio.file.Files.createDirectory
 import java.nio.file.Path
-import js7.agent.RunningAgent
+import js7.agent.TestAgent
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSignedItem, DedicateAgentDirector}
@@ -57,7 +57,7 @@ final class AgentTest extends OurTestSuite with AgentTester
           if (directory != WorkingDirectory) {
             agentConf = agentConf.copy(jobWorkingDirectory = workingDirectory)
           }
-          RunningAgent.run(agentConf, timeout = Some(99.s)) { agent =>
+          TestAgent.blockingRun(agentConf, 99.s) { agent =>
             val agentApi = agent.api(CommandMeta(TestUser))
             agentApi
               .commandExecute(

@@ -48,4 +48,12 @@ object AutoClosing
         }
     }
   }
+
+  object syntax {
+    implicit final class RichAutoClosable[A <: AutoCloseable](private val autoCloseable: A)
+    extends AnyVal {
+      def use[B](body: A => B): B =
+        autoClosing(autoCloseable)(body)
+    }
+  }
 }

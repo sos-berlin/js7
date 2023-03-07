@@ -2,12 +2,12 @@ package js7.agent.tests
 
 import akka.actor.ActorSystem
 import js7.agent.client.AgentClient
-import js7.agent.configuration.Akkas
 import js7.base.BuildInfo
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.common.akkautils.Akkas.newActorSystem
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.concurrent.ScalaFutures
 
@@ -19,8 +19,7 @@ final class AgentClientTest extends OurTestSuite with ScalaFutures with AgentTes
   override implicit val patienceConfig = PatienceConfig(timeout = 10.s)
 
   override lazy val agentConfiguration = newAgentConfiguration()
-  private implicit lazy val actorSystem: ActorSystem =
-    Akkas.newAgentActorSystem("AgentClientTest")(closer)
+  private implicit lazy val actorSystem: ActorSystem = newActorSystem("AgentClientTest")
   private lazy val client = AgentClient(agentUri = agent.localUri, userAndPassword = None)
 
   override def afterAll(): Unit = {

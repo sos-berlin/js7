@@ -51,23 +51,23 @@ object JavaMain
     }
 
   def withShutdownHooks[A](config: Config, name: String, onJavaShutdown: () => Unit)(body: => A): A =
-    autoClosing(addJavaShutdownHooks(config, name, onJavaShutdown))(_ =>
+    autoClosing(addJavaShutdownHook(config, name, onJavaShutdown))(_ =>
       body)
 
   def shutdownHookResource[F[_] : Sync](config: Config, name: String)(onJavaShutdown: => Unit)
   : Resource[F, Unit] =
     Resource
       .fromAutoCloseable(Sync[F].delay(
-        addJavaShutdownHooks(config, name, () => onJavaShutdown)))
+        addJavaShutdownHook(config, name, () => onJavaShutdown)))
       .map(_ => ())
 
-  private def addJavaShutdownHooks(config: Config, name: String, onJavaShutdown: () => Unit): AutoCloseable = {
-    val hooks =
+  private def addJavaShutdownHook(config: Config, name: String, onJavaShutdown: () => Unit): AutoCloseable = {
+    val maybeHook =
       if (config.as[Boolean](AkkaShutdownHook, false)) {
         logger.debug(s"JS7 shutdown hook suppressed because Akka has one: $AkkaShutdownHook = on")
-        Nil
+        None
       } else
-        JavaShutdownHook.add(name) {
+        Some(JavaShutdownHook.add(name) {
           try onJavaShutdown()
           catch {
             case t: Throwable =>
@@ -75,10 +75,10 @@ object JavaMain
               throw t
           }
           finally Log4j.shutdown()
-        } :: Nil
+        })
 
     new AutoCloseable {
-      def close() = hooks.foreach(_.close())
+      def close() = maybeHook.foreach(_.close())
     }
   }
 }

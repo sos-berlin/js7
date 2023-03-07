@@ -4,14 +4,12 @@ import cats.effect.Resource
 import cats.syntax.foldable.*
 import cats.syntax.parallel.*
 import cats.syntax.traverse.*
-import com.google.inject.Module
-import com.google.inject.util.Modules.EMPTY_MODULE
 import com.typesafe.config.ConfigUtil.quoteString
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Files.{createDirectories, createDirectory, createTempDirectory}
 import java.nio.file.Path
-import js7.agent.RunningAgent
 import js7.agent.configuration.AgentConfiguration
+import js7.agent.{RunningAgent, TestAgent}
 import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.configutils.Configs.{HoconStringInterpolator, *}
 import js7.base.crypt.{DocumentSigner, SignatureVerifier, Signed, SignedString}
@@ -65,7 +63,6 @@ import monix.execution.atomic.AtomicBoolean
 import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.{Iterable, Map}
-import scala.concurrent.Future
 import scala.concurrent.duration.*
 import scala.util.Random
 import scala.util.control.NonFatal
@@ -169,8 +166,8 @@ extends HasCloser
   def controllerAdmission(runningController: RunningController): Admission =
     Admission(runningController.localUri, Some(controller.userAndPassword))
 
-  def run[A](body: (TestController, IndexedSeq[RunningAgent]) => A): A =
-    runAgents(scheduler = scheduler)(agents =>
+  def run[A](body: (TestController, IndexedSeq[TestAgent]) => A): A =
+    runAgents()(agents =>
       runController()(controller =>
         body(controller, agents)))
 
@@ -277,21 +274,20 @@ extends HasCloser
   }
 
   def runAgents[A](
-    agentPaths: Seq[AgentPath] = DirectoryProvider.this.agentPaths,
-    scheduler: Option[Scheduler] = scheduler)(
-    body: Vector[RunningAgent] => A)
+    agentPaths: Seq[AgentPath] = DirectoryProvider.this.agentPaths)(
+    body: Vector[TestAgent] => A)
   : A =
     multipleAutoClosing(agents
       .filter(o => agentPaths.contains(o.agentPath))
       .map(_.agentConfiguration)
-      .parTraverse(a => Task.fromFuture(RunningAgent.startForTest(a, scheduler)))
+      .parTraverse(a => TestAgent.start(a))
       .await(99.s))
     { agents =>
       val result =
         try body(agents)
         catch { case NonFatal(t) =>
           logger.error(s"💥💥💥 ${t.toStringWithCauses}") /* Akka may crash before the caller gets the error so we log the error here */
-          try agents.traverse(_.terminate()) await 99.s
+          try agents.traverse(_.stop) await 99.s
           catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
           throw t
         }
@@ -299,17 +295,17 @@ extends HasCloser
       result
     }
 
-  def startAgents(module: Module = EMPTY_MODULE): Future[Seq[RunningAgent]] =
-    agents
-      .parTraverse(a => Task.fromFuture(
-        startAgent(a.agentPath, module)))
-      .runToFuture
+  def startAgents(testWiring: RunningAgent.TestWiring = RunningAgent.TestWiring.empty)
+  : Task[Seq[TestAgent]] =
+    agents.parTraverse(a => startAgent(a.agentPath, testWiring))
 
-  def startAgent(agentPath: AgentPath, module: Module = EMPTY_MODULE): Future[RunningAgent] =
-    RunningAgent.startForTest(
+  def startAgent(
+    agentPath: AgentPath,
+    testWiring: RunningAgent.TestWiring = RunningAgent.TestWiring.empty)
+  : Task[TestAgent] =
+    TestAgent.start(
       agentToTree(agentPath).agentConfiguration,
-      module = module,
-      scheduler = scheduler)
+      testWiring)
 
   def startBareSubagents(): Task[Seq[(BareSubagent, (SubagentId, Task[Unit]))]] =
     agents
@@ -438,7 +434,7 @@ extends HasCloser
 
 object DirectoryProvider
 {
-  val Vinitial = VersionId("INITIAL")
+  private val Vinitial = VersionId("INITIAL")
   private val logger = Logger[this.type]
 
   def toLocalSubagentId(agentPath: AgentPath): SubagentId =

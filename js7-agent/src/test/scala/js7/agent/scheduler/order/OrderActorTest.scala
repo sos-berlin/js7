@@ -4,12 +4,11 @@ import akka.actor.{Actor, ActorRef, PoisonPill, Props, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
 import com.softwaremill.diffx.generic.auto.*
-import com.typesafe.config.{Config, ConfigValueFactory}
+import com.typesafe.config.Config
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Files.{createDirectory, exists}
 import java.nio.file.{Files, Path}
 import js7.agent.configuration.AgentConfiguration
-import js7.agent.configuration.Akkas.newAgentActorSystem
 import js7.agent.data.AgentState
 import js7.agent.scheduler.order.OrderActorTest.*
 import js7.agent.tests.TestAgentDirectoryProvider
@@ -28,6 +27,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.HasCloser
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.common.akkautils.Akkas.newActorSystem
 import js7.common.akkautils.{CatchingActor, SupervisorStrategies}
 import js7.common.http.configuration.RecouplingStreamReaderConf
 import js7.common.utils.Exceptions.repeatUntilNoException
@@ -65,18 +65,21 @@ import scala.concurrent.duration.Deadline.now
 final class OrderActorTest extends OurTestSuite with HasCloser with BeforeAndAfterAll
 {
   private lazy val directoryProvider = TestAgentDirectoryProvider()
-  private lazy val config = AgentConfiguration
-    .forTest(
-      directoryProvider.agentDirectory,
-      name = "OrderActorTest")
-    .finishAndProvideFiles
-    .config
-    .withValue("js7.journal.simulate-sync", ConfigValueFactory.fromAnyRef("20ms"))
-  private lazy val actorSystem = newAgentActorSystem("OrderActorTest")
+  private lazy val conf = AgentConfiguration.forTest(
+    directoryProvider.agentDirectory,
+    name = "OrderActorTest")
+  import conf.config
+  private lazy val actorSystem = newActorSystem("OrderActorTest")
+
+  override def beforeAll() = {
+    super.beforeAll()
+    conf.createDirectories()
+  }
 
   override def afterAll() = {
     close()
     directoryProvider.close()
+    actorSystem.terminate()
     super.afterAll()
   }
 

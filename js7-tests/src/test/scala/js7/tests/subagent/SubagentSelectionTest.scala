@@ -1,10 +1,9 @@
 package js7.tests.subagent
 
 import cats.syntax.traverse.*
-import js7.agent.RunningAgent
+import js7.agent.TestAgent
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.test.OurTestSuite
-import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.RichEither
@@ -46,7 +45,7 @@ final class SubagentSelectionTest extends OurTestSuite with SubagentTester with 
   private lazy val dSubagentItem = newSubagentItem(dSubagentId)
   private lazy val subagentItems = Seq(aSubagentItem, bSubagentItem, cSubagentItem, dSubagentItem)
 
-  private var myAgent: RunningAgent = null
+  private var myAgent: TestAgent = null
 
   protected implicit val scheduler = Scheduler.traced
 

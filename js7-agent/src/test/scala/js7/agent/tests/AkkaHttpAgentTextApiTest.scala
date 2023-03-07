@@ -1,9 +1,7 @@
 package js7.agent.tests
 
 import akka.http.scaladsl.model.StatusCodes.*
-import akka.http.scaladsl.server.directives.SecurityDirectives.Authenticator
-import com.google.inject.{AbstractModule, Provides}
-import javax.inject.Singleton
+import js7.agent.RunningAgent
 import js7.agent.client.AkkaHttpAgentTextApi
 import js7.agent.command.CommandHandler
 import js7.agent.configuration.AgentConfiguration
@@ -44,29 +42,24 @@ extends OurTestSuite with BeforeAndAfterAll with HasCloser with TestAgentProvide
     config"js7.web.server.auth.https-client-authentication = off",   // TODO Test with client certificate
     httpPort = None, httpsPort = Some(findFreeTcpPort()))
 
-  override protected def extraAgentModule = new AbstractModule {
-    @Provides @Singleton
-    def commandExecutor(): CommandHandler = new CommandHandler {
+  override protected def agentTestWiring = RunningAgent.TestWiring(
+    commandHandler = Some(new CommandHandler {
       def execute(command: AgentCommand, meta: CommandMeta): Task[Checked[command.Response]] =
       Task {
         (command match {
           case ExpectedTerminate => Right(AgentCommand.Response.Accepted)
           case _ => fail()
-        })
-          .map(_.asInstanceOf[command.Response])
+        }).map(_.asInstanceOf[command.Response])
       }
 
       def overview = throw new NotImplementedError
       def detailed = throw new NotImplementedError
-    }
-
-    @Provides @Singleton
-    def authenticator(conf: AgentConfiguration): Authenticator[SimpleUser] =
+    }),
+    authenticator = Some(_ =>
       new OurMemoizingAuthenticator({
         case TestUserId => Some(SimpleUser(TestUserId, HashedPassword(Password, identity)))
         case _ => None
-      })
-  }
+      })))
 
   override def beforeAll() = {
     provideHttpsFiles()

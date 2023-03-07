@@ -3,7 +3,6 @@ package js7.agent.scheduler
 import akka.actor.{Actor, ActorRef, Props, Stash, Terminated}
 import akka.pattern.ask
 import java.util.Objects.requireNonNull
-import javax.inject.{Inject, Singleton}
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
@@ -47,7 +46,7 @@ import scala.concurrent.{Future, Promise}
 /**
   * @author Joacim Zschimmer
   */
-private[agent] final class AgentActor private(
+private[agent] final class AgentActor(
   terminatePromise: Promise[ProgramTermination],
   persistenceAllocated: Allocated[Task, FileStatePersistence[AgentState]],
   clock: AlarmClock,
@@ -321,22 +320,6 @@ object AgentActor
     agentPath: AgentPath,
     controllerId: ControllerId,
     actor: ActorRef)
-
-  @Singleton
-  final class Factory @Inject private(
-    clock: AlarmClock,
-    agentConfiguration: AgentConfiguration,
-    jobLauncherConf: JobLauncherConf,
-    testEventBus: StandardEventBus[Any])
-    (implicit scheduler: Scheduler, iox: IOExecutor)
-  {
-    def apply(
-      persistence: Allocated[Task, FileStatePersistence[AgentState]],
-      terminatePromise: Promise[ProgramTermination])
-    : AgentActor =
-      new AgentActor(terminatePromise, persistence,
-        clock, agentConfiguration, jobLauncherConf, testEventBus)
-  }
 
   type ItemSignatureKeysUpdated = ItemSignatureKeysUpdated.type
   case object ItemSignatureKeysUpdated

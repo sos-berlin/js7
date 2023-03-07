@@ -1,14 +1,13 @@
 package js7.tests.agent
 
 import java.nio.file.Files.exists
-import js7.agent.RunningAgent
+import js7.agent.TestAgent
 import js7.base.auth.Admission
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.touchFile
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
-import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
@@ -59,7 +58,7 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(simpleWorkflow, lockWorkflow, forkingWorkflow, lock, jobResource)
 
-  private var myAgent: RunningAgent = null
+  private var myAgent: TestAgent = null
 
   "ResetAgent while a locking order is executed" in {
     myAgent = agent
@@ -68,7 +67,8 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
     eventWatch.await[OrderProcessingStarted](_.key == orderId)
 
     controllerApi.executeCommand(ResetAgent(agentPath)).await(99.s).orThrow
-    myAgent.terminated.await(99.s)
+    myAgent.untilTerminated.await(99.s)
+    agent.stop.await(99.s)
     eventWatch.await[OrderTerminated](_.key == orderId)
     assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(lockWorkflow.id),
@@ -119,7 +119,8 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
     eventWatch.await[OrderProcessingStarted](_.key == childOrderId)
 
     controllerApi.executeCommand(ResetAgent(agentPath)).await(99.s).orThrow
-    myAgent.terminated.await(99.s)
+    myAgent.untilTerminated.await(99.s)
+    myAgent.stop.await(99.s)
 
     eventWatch.await[OrderFailedInFork](_.key == childOrderId)
     assert(eventWatch.eventsByKey[OrderEvent](childOrderId) == Seq(
@@ -170,7 +171,8 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
 
     eventId = eventWatch.lastAddedEventId
     controllerApi.executeCommand(ResetAgent(agentPath)).await(99.s).orThrow
-    myAgent.terminated.await(99.s)
+    myAgent.untilTerminated.await(99.s)
+    myAgent.stop.await(99.s)
 
     // Create some file to let it look like the Agent could not delete the journal
     val stateDir = directoryProvider.agentToTree(agentPath).stateDir
@@ -233,7 +235,9 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
         // Steal this Agent with ReseAgent(force)!
         secondControllerApi.executeCommand(ResetAgent(agentPath, force = true)).await(99.s)
         secondControllerApi.stop.await(99.s)  // ActorSystem still alive ???
-        myAgent.terminated.await(99.s)
+        myAgent.untilTerminated.await(99.s)
+        myAgent.stop.await(99.s)
+
         myAgent = directoryProvider.startAgent(agentPath) await 99.s
 
         // Now, we the Agent is ours! It is dedicated to secondController

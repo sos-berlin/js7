@@ -19,17 +19,23 @@ final class JavaShutdownHook private(onShutdown: () => Unit, name: String) exten
     }
   }
 
+  logger.trace(s"$toString addShutdownHook")
   sys.runtime.addShutdownHook(hook)
-  logger.trace(s"JavaShutdownHook '$name' added")
 
-  def close(): Unit = remove()
+  def close(): Unit =
+    remove()
 
-  def remove(): Unit =
-    try sys.runtime.removeShutdownHook(hook)
-    catch {
+  def remove(): Unit = {
+    try {
+      sys.runtime.removeShutdownHook(hook)
+      logger.trace(s"$toString ShutdownHook removed")
+    } catch {
       case t: IllegalStateException => logger.trace(s"JavaShutdownHook.remove: ${t.toStringWithCauses}")  // "Shutdown in progress"
       case NonFatal(t) => logger.warn(s"JavaShutdownHook.remove: $t", t)
     }
+  }
+
+  override def toString = s"JavaShutdownHook($name)"
 }
 
 object JavaShutdownHook {

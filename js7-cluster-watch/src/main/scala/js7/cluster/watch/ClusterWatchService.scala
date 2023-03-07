@@ -9,12 +9,12 @@ import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.MonixDeadline
 import js7.base.monixutils.MonixDeadline.syntax.DeadlineSchedule
 import js7.base.problem.Checked
-import js7.base.service.{RestartAfterFailureService, Service}
+import js7.base.service.{MainService, RestartAfterFailureService, Service}
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.syntax.{RichEither, RichThrowable}
-import js7.base.utils.{DelayConf, Delayer}
+import js7.base.utils.{DelayConf, Delayer, ProgramTermination}
 import js7.base.web.HttpClient
 import js7.base.web.HttpClient.HttpException
 import js7.cluster.watch.ClusterWatch.Confirmed
@@ -39,7 +39,7 @@ final class ClusterWatchService private[ClusterWatchService](
   keepAlive: FiniteDuration,
   retryDelays: NonEmptySeq[FiniteDuration],
   val eventBus: ClusterWatchEventBus)
-extends Service.StoppableByRequest
+extends MainService with Service.StoppableByRequest
 {
   private val clusterWatch = new ClusterWatch(now, eventBus = eventBus)
   val clusterWatchRunId = ClusterWatchRunId.random()
@@ -48,6 +48,9 @@ extends Service.StoppableByRequest
   protected def start =
     startServiceAndLog(logger, nodeApis.toList.mkString(", "))(
       run)
+
+  val untilTerminated: Task[ProgramTermination] =
+    untilStopped.as(ProgramTermination())
 
   private def run: Task[Unit] =
     Observable
@@ -144,7 +147,7 @@ object ClusterWatchService
   : Resource[Task, ClusterWatchService] =
     resource2(clusterWatchId, apiResources, config.withFallback(defaultConfig), eventBus)
 
-  def restartableResource(
+  private def restartableResource(
     clusterWatchId: ClusterWatchId,
     apiResources: Resource[Task, Nel[HttpClusterNodeApi]],
     config: Config)

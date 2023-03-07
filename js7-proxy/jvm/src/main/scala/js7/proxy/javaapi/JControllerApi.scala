@@ -1,6 +1,5 @@
 package js7.proxy.javaapi
 
-import cats.syntax.flatMap.*
 import cats.syntax.traverse.*
 import com.typesafe.config.Config
 import io.vavr.control.Either as VEither
@@ -53,7 +52,10 @@ final class JControllerApi(val asScala: ControllerApi, config: Config)
   private val clusterWatchService = AsyncVariable[Option[Allocated[Task, ClusterWatchService]]](None)
 
   def stop: CompletableFuture[Void] =
-    runTask(asScala.stop.as(Void))
+    runTask(
+      stopClusterWatch_
+        .*>(asScala.stop)
+        .as(Void))
 
   /** Fetch event stream from Controller. */
   @Nonnull
@@ -316,9 +318,6 @@ final class JControllerApi(val asScala: ControllerApi, config: Config)
       .map(JEventAndControllerState.apply))
   }
 
-  private def runTask[A](task: Task[A]): CompletableFuture[A] =
-    CorrelId.bindNew(task.runToFuture).asJava
-
   @Nonnull
   def runClusterWatch(@Nonnull clusterWatchId: ClusterWatchId): CompletableFuture[Void] =
     startClusterWatch(clusterWatchId)
@@ -340,7 +339,6 @@ final class JControllerApi(val asScala: ControllerApi, config: Config)
           ClusterWatchService
             .resource(clusterWatchId, asScala.apiResources.sequence, config, eventBus.asScala)
             .toAllocated
-            .flatTap(asScala.addStoppable)
             .map(Some(_))
       }
       .map(_.get.allocatedThing)
@@ -348,11 +346,16 @@ final class JControllerApi(val asScala: ControllerApi, config: Config)
 
   @Nonnull
   def stopClusterWatch: CompletableFuture[Void] =
+    runTask(
+      stopClusterWatch_.as(Void))
+
+  private def stopClusterWatch_ : Task[Unit] =
     clusterWatchService
-      .update(_.fold(Task.none)(allocated =>
-        asScala.removeStoppable(allocated) *>
-          allocated.stop.as(None)))
-      .as(Void).runToFuture.asJava
+      .update(_.fold(Task.none)(_.stop.as(None)))
+      .void
+
+  private def runTask[A](task: Task[A]): CompletableFuture[A] =
+    CorrelId.bindNew(task.runToFuture).asJava
 }
 
 object JControllerApi {

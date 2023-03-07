@@ -3,11 +3,10 @@ package js7.tests.testenv
 import cats.effect.Resource
 import cats.syntax.parallel.*
 import com.typesafe.config.{Config, ConfigFactory}
-import js7.agent.RunningAgent
+import js7.agent.TestAgent
 import js7.base.configutils.Configs.*
 import js7.base.log.Logger
 import js7.base.problem.Checked
-import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.WallClock
@@ -39,9 +38,9 @@ import scala.util.control.NonFatal
 trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
   this: org.scalatest.Suite =>
 
-  protected final lazy val agents: Seq[RunningAgent] = directoryProvider.startAgents(agentModule)
+  protected final lazy val agents: Seq[TestAgent] = directoryProvider.startAgents(agentTestWiring)
     .await(99.s)
-  protected final lazy val agent: RunningAgent = agents.head
+  protected final lazy val agent: TestAgent = agents.head
 
   protected final lazy val (bareSubagents, bareSubagentIdToRelease)
   : (Seq[BareSubagent], Map[SubagentId, Task[Unit]]) =
@@ -112,7 +111,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
     for (o <- clusterWatchServiceOnce.toOption) o._2.await(99.s)
 
     agents
-      .parTraverse(a => a.terminate() *> Task(a.close()))
+      .parTraverse(a => a.terminate() *> a.stop)
       .await(15.s)
 
     try bareSubagentIdToRelease.values.await(99.s)

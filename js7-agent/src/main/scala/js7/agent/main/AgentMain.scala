@@ -2,20 +2,14 @@ package js7.agent.main
 
 import js7.agent.RunningAgent
 import js7.agent.configuration.AgentConfiguration
-import js7.agent.data.commands.AgentCommand.ShutDown
 import js7.base.BuildInfo
 import js7.base.configutils.Configs.logConfig
-import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.Logger
-import js7.base.thread.Futures.implicits.SuccessFuture
-import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ProgramTermination
-import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.common.commandline.CommandLineArguments
-import js7.common.system.startup.JavaMain.withShutdownHooks
 import js7.common.system.startup.JavaMainLockfileSupport.lockAndRunMain
 import js7.common.system.startup.StartUp.{nowString, printlnWithClock}
-import js7.common.system.startup.{Js7ReturnCodes, StartUp}
+import js7.common.system.startup.{Js7ReturnCodes, ServiceMain, StartUp}
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.subagent.BareSubagent
 import scala.concurrent.duration.{Deadline, Duration, NANOSECONDS}
@@ -69,29 +63,9 @@ final class AgentMain
         blockingRunAgentDirector(agentConf)
     }
 
-  private def blockingRunAgentDirector(agentConf: AgentConfiguration): ProgramTermination = {
+  private def blockingRunAgentDirector(conf: AgentConfiguration): ProgramTermination = {
     printlnWithClock("Continue as Agent Director")
-    var termination = ProgramTermination()
-    val agent = RunningAgent(agentConf).awaitInfinite
-    autoClosing(agent) { _ =>
-      withShutdownHooks(agentConf.config, "AgentMain", () => onJavaShutdown(agent)) {
-        termination = agent.terminated.awaitInfinite
-      }
-    }
-    termination
-  }
-
-  private def onJavaShutdown(agent: RunningAgent): Unit = {
-    logger.warn("Trying to shut down JS7 Agent due to Java shutdown")
-    import agent.scheduler
-    agent.executeCommandAsSystemUser(ShutDown(Some(SIGTERM)))
-      .runAsyncUncancelable {
-        case Left(throwable) => logger.error(s"onJavaShutdown: ${throwable.toStringWithCauses}",
-          throwable.nullIfNoStackTrace)
-        case Right(_) =>
-      }
-    agent.terminated.awaitInfinite
-    agent.close()
+    ServiceMain.blockingRun("Agent", conf.config, RunningAgent.resource(conf)(_))
   }
 }
 

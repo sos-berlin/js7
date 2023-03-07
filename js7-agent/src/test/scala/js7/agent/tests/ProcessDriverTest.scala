@@ -1,9 +1,7 @@
 package js7.agent.tests
 
-import com.google.inject.Guice
+import java.nio.charset.StandardCharsets.US_ASCII
 import java.nio.file.Files.createTempDirectory
-import js7.agent.configuration.AgentConfiguration
-import js7.agent.configuration.inject.AgentModule
 import js7.agent.tests.ProcessDriverTest.TestScript
 import js7.base.io.file.FileUtils.deleteDirectoryRecursively
 import js7.base.io.file.FileUtils.syntax.RichPath
@@ -12,11 +10,13 @@ import js7.base.io.process.ReturnCode
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.SuccessFuture
+import js7.base.thread.IOExecutor
 import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.time.AlarmClock
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.measureTime
-import js7.base.utils.Closer
-import js7.common.guice.GuiceImplicits.RichInjector
+import js7.base.utils.CatsUtils.syntax.RichResource
+import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.job.{CommandLine, JobKey, RelativePathExecutable}
 import js7.data.order.{HistoricOutcome, Order, OrderId, Outcome}
 import js7.data.subagent.SubagentId
@@ -24,9 +24,11 @@ import js7.data.value.{NamedValues, NumberValue, StringValue}
 import js7.data.workflow.WorkflowPath
 import js7.data.workflow.position.Position
 import js7.launcher.StdObservers
-import js7.launcher.configuration.{JobLauncherConf, TaskConfiguration}
+import js7.launcher.configuration.TaskConfiguration
 import js7.launcher.process.{ProcessDriver, RichProcess}
-import monix.execution.Scheduler.Implicits.traced
+import js7.subagent.configuration.SubagentConf
+import monix.eval.Task
+import monix.execution.Scheduler.Implicits.traced as scheduler
 import monix.reactive.subjects.PublishSubject
 import org.scalatest.BeforeAndAfterAll
 
@@ -35,12 +37,12 @@ import org.scalatest.BeforeAndAfterAll
   */
 final class ProcessDriverTest extends OurTestSuite with BeforeAndAfterAll with TestAgentDirectoryProvider
 {
-  private lazy val injector = Guice.createInjector(new AgentModule(
-    AgentConfiguration.forTest(agentDirectory, name = "ProcessDriverTest")))
+  private lazy val ioxAllocated = IOExecutor.resource[Task](SubagentConf.defaultConfig, "ProcessDriverTest")
+    .toAllocated.await(99.s)
 
   override protected def afterAll() = {
-    injector.instance[Closer].close()
     closer.close()
+    ioxAllocated.stop.await(99.s)
     super.afterAll()
   }
 
@@ -59,8 +61,22 @@ final class ProcessDriverTest extends OurTestSuite with BeforeAndAfterAll with T
         WorkflowPath("JOBCHAIN") ~ "VERSION" /: Position(0),
         Order.Processing(SubagentId("SUBAGENT")),
         historicOutcomes = Vector(HistoricOutcome(Position(999), Outcome.Succeeded(Map("a" -> StringValue("A"))))))
-      val taskRunner = new ProcessDriver(order.id, taskConfiguration,
-        injector.instance[JobLauncherConf])
+
+      val jobLauncherConf = SubagentConf.jobLauncherConf(
+        executablesDirectory = executableDirectory,
+        shellScriptTmpDirectory = executableDirectory,
+        workTmpDirectory = executableDirectory,
+        jobWorkingDirectory = executableDirectory,
+        systemEncoding = US_ASCII,
+        killScript = None,
+        scriptInjectionAllowed = false,
+        ioxAllocated.allocatedThing,
+        blockingJobScheduler = scheduler,
+        AlarmClock(),
+        SubagentConf.defaultConfig
+      ).orThrow
+
+      val taskRunner = new ProcessDriver(order.id, taskConfiguration, jobLauncherConf)
       val out, err = PublishSubject[String]()
       val stdObservers = new StdObservers(out, err, charBufferSize = 7, keepLastErrLine = false)
       val whenOut = out.foldL.runToFuture

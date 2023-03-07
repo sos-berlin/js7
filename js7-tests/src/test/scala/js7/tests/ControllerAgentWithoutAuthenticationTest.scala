@@ -1,7 +1,7 @@
 package js7.tests
 
 import java.nio.file.Files.{createDirectories, createDirectory}
-import js7.agent.RunningAgent
+import js7.agent.TestAgent
 import js7.agent.configuration.AgentConfiguration
 import js7.base.crypt.silly.{SillySignature, SillySigner}
 import js7.base.io.file.FileUtils.syntax.*
@@ -95,7 +95,7 @@ final class ControllerAgentWithoutAuthenticationTest extends OurTestSuite
       val subagentId = SubagentId("SUBAGENT")
       val agentRef = AgentRef(agentPath, directors = Seq(subagentId))
       val subagentItem = SubagentItem(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort"))
-      RunningAgent.run(agentConfiguration) { _ =>
+      TestAgent.blockingRun(agentConfiguration, 99.s) { _ =>
         RunningController.blockingRun(controllerConfiguration, 99.s) { runningController =>
           val testController = new TestController(new Allocated(runningController, Task.unit))
           testController.waitUntilReady()

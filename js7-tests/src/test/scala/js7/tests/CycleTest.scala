@@ -1,16 +1,15 @@
 package js7.tests
 
-import com.google.inject.{AbstractModule, Provides}
 import java.time.{LocalTime, ZoneId}
 import java.util.concurrent.TimeoutException
-import javax.inject.Singleton
+import js7.agent.RunningAgent
 import js7.base.configutils.Configs.*
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.JavaTimestamp.local
 import js7.base.time.JavaTimestamp.specific.RichJavaTimestamp
 import js7.base.time.ScalaTime.DurationRichInt
-import js7.base.time.{AdmissionTimeScheme, AlarmClock, AlwaysPeriod, DailyPeriod, TestAlarmClock, Timestamp, Timezone}
+import js7.base.time.{AdmissionTimeScheme, AlwaysPeriod, DailyPeriod, TestAlarmClock, Timestamp, Timezone}
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.controller.RunningController
 import js7.data.agent.AgentPath
@@ -54,9 +53,8 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
   override protected def controllerTestWiring = RunningController.TestWiring(
     alarmClock = Some(clock))
 
-  override protected def agentModule = new AbstractModule {
-    @Provides @Singleton def provideAlarmClock(): AlarmClock = clock
-  }
+  override protected def agentTestWiring = RunningAgent.TestWiring(
+    alarmClock = Some(clock))
 
   private implicit val zone: ZoneId = CycleTest.zone
 
