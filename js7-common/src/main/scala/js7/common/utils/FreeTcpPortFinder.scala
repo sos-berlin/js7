@@ -11,8 +11,8 @@ object FreeTcpPortFinder
   // Do not overlap with ephemeral port range to avoid collision.
   // IANA recommends for ephemeral ports the range 49152 to 65535.
   // Linux may use 32767 to 60999, see  /proc/sys/net/ipv4/ip_local_port_range
-  private val availablePorts = 20000 to 32767
-  private val requiredPortCount = 5000
+  private val availablePorts = 10000 to 32767
+  private val requiredPortCount = 1000
 
   private val freePortNumberIterator = {
     val first = availablePorts.head + abs(Random.nextInt(availablePorts.length - requiredPortCount))
