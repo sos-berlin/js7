@@ -4,7 +4,7 @@ import cats.effect.{Resource, Sync, SyncIO}
 import cats.syntax.flatMap.*
 import com.typesafe.config.Config
 import js7.base.BuildInfo
-import js7.base.configutils.Configs.{ConvertibleConfig, logConfig}
+import js7.base.configutils.Configs.logConfig
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{Log4j, Logger}
 import js7.base.service.{MainService, Service}
@@ -25,9 +25,6 @@ import scala.concurrent.duration.{Deadline, Duration, NANOSECONDS}
 
 object ServiceMain
 {
-  // Don't use a Logger here to avoid overwriting a concurrently used logfile !!!
-  private val AkkaShutdownHook = "akka.coordinated-shutdown.run-by-jvm-shutdown-hook"
-
   var _runningSince: Option[Deadline] = None
 
   def runningSince: Option[Deadline] =
@@ -136,6 +133,7 @@ object ServiceMain
       logJavaSettings()
     }
 
+    /** Adds an own ThreadPool and a shutdown hook. */
     def blockingRun[S <: MainService](
       name: String,
       config: Config,
@@ -145,19 +143,19 @@ object ServiceMain
     : ProgramTermination =
       ThreadPools.standardSchedulerResource[SyncIO](name, config)
         .use(implicit scheduler => SyncIO(
-          resource(name, config)(service(scheduler))
+          withShutdownHook(service(scheduler))
             .use(use)
             .await(timeout)))
         .unsafeRunSync()
 
-    private def resource[S <: MainService](name: String, config: Config)
-      (serviceResource: Resource[Task, S])
+    private def withShutdownHook[S <: MainService](serviceResource: Resource[Task, S])
       (implicit scheduler: Scheduler)
     : Resource[Task, S] =
       serviceResource
         .toAllocatedResource
         .flatTap(allocated =>
-          shutdownHookResource[Task](config, name)(onJavaShutdown(allocated)))
+          shutdownHookResource[Task](name = allocated.allocatedThing.toString)(
+            onJavaShutdown(allocated)))
         .map(_.allocatedThing)
 
     private def onJavaShutdown[S <: Service](allocatedService: Allocated[Task, S])
@@ -171,32 +169,23 @@ object ServiceMain
       }
     }
 
-    def shutdownHookResource[F[_] : Sync](config: Config, name: String)(onJavaShutdown: => Unit)
+    private def shutdownHookResource[F[_] : Sync](name: String)(onJavaShutdown: => Unit)
     : Resource[F, Unit] =
       Resource
         .fromAutoCloseable(Sync[F].delay(
-          addJavaShutdownHook(config, name, () => onJavaShutdown)))
+          addJavaShutdownHook(name, () => onJavaShutdown)))
         .map(_ => ())
 
-    private def addJavaShutdownHook(config: Config, name: String, onJavaShutdown: () => Unit)
+    private def addJavaShutdownHook(name: String, onJavaShutdown: () => Unit)
     : AutoCloseable = {
-      val maybeHook =
-        if (config.as[Boolean](AkkaShutdownHook, false)) {
-          logger.debug(s"JS7 shutdown hook suppressed because Akka has one: $AkkaShutdownHook = on")
-          None
-        } else
-          Some(JavaShutdownHook.add(name) {
-            try onJavaShutdown()
-            catch {
-              case t: Throwable =>
-                logger.debug(t.toStringWithCauses, t)
-                throw t
-            }
-            finally Log4j.shutdown()
-          })
-
-      new AutoCloseable {
-        def close() = maybeHook.foreach(_.close())
+      JavaShutdownHook.add(name) {
+        try onJavaShutdown()
+        catch {
+          case t: Throwable =>
+            logger.debug(t.toStringWithCauses, t)
+            throw t
+        } finally
+          Log4j.shutdown()
       }
     }
   }

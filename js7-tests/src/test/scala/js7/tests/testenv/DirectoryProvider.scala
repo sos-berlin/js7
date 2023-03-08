@@ -177,28 +177,31 @@ extends HasCloser
     config: Config = ConfigFactory.empty)
     (body: TestController => A)
   : A =
-    controllerResource(httpPort = httpPort, config = config).blockingUse(99.s) { testController =>
-      val result =
-        try {
-          if (!dontWaitUntilReady) {
-            testController.waitUntilReady()
+    testControllerResource(httpPort = httpPort, config = config)
+      .blockingUse(99.s) { testController =>
+        val result =
+          try {
+            if (!dontWaitUntilReady) {
+              testController.waitUntilReady()
+            }
+            body(testController)
+          } catch { case NonFatal(t) =>
+            // Akka may crash before the caller gets the error so we log the error here
+            logger.error(s"💥💥💥 ${t.toStringWithCauses}")
+            try testController.terminate() await 99.s
+            catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
+            throw t
           }
-          body(testController)
-        } catch { case NonFatal(t) =>
-          logger.error(s"💥💥💥 ${t.toStringWithCauses}") /* Akka may crash before the caller gets the error so we log the error here */
-          try testController.terminate() await 99.s
+        try testController.stop await 99.s
+        catch { case NonFatal(t) =>
+          // Akka may crash before the caller gets the error so we log the error here
+          logger.error(s"💥💥💥 ${t.toStringWithCauses}")
+          try testController.close()
           catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
           throw t
         }
-      try testController.stop await 99.s
-      catch { case NonFatal(t) =>
-        logger.error(s"💥💥💥 ${t.toStringWithCauses}") /* Akka may crash before the caller gets the error so we log the error here */
-        try testController.close()
-        catch { case t2: Throwable if t2 ne t => t.addSuppressed(t2) }
-        throw t
+        result
       }
-      result
-    }
 
   def newController(
     testWiring: TestWiring = controllerTestWiring,
@@ -211,7 +214,7 @@ extends HasCloser
         .toAllocated
         .await(99.s))
 
-  private def controllerResource(
+  private def testControllerResource(
     testWiring: TestWiring = controllerTestWiring,
     config: Config = ConfigFactory.empty,
     httpPort: Option[Int] = Some(findFreeTcpPort()),
@@ -266,7 +269,7 @@ extends HasCloser
       RunningController.threadPoolResource[Task](conf, orCommon = scheduler)
         .flatMap(js7Scheduler =>
           RunningController
-            .resource(conf, js7Scheduler, testWiring)
+            .resource(conf, testWiring)(js7Scheduler)
             .evalTap(runningController => Task {
               startForTest(runningController)
             })

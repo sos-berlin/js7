@@ -28,10 +28,8 @@ import js7.journal.watch.StrictEventWatch
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
-import org.jetbrains.annotations.TestOnly
 import scala.concurrent.Future
 
-@TestOnly
 final class TestController(allocated: Allocated[Task, RunningController])
 extends AutoCloseable
 {

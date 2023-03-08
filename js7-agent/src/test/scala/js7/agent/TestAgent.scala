@@ -17,7 +17,7 @@ import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
 import js7.base.utils.{Allocated, ProgramTermination}
 import js7.base.web.Uri
-import js7.common.system.startup.ServiceMain
+import js7.common.system.startup.MainServices
 import js7.core.command.CommandMeta
 import js7.journal.watch.EventWatch
 import monix.eval.Task
@@ -84,8 +84,8 @@ object TestAgent {
     timeout: FiniteDuration = 99.s)
     (body: TestAgent => Unit)
   : ProgramTermination =
-    ServiceMain.withLogger.blockingRun(conf.name, conf.config, timeout = timeout)(
-      service = resource(conf)(_),
+    MainServices.blockingRun(conf.name, conf.config, timeout = timeout)(
+      resource = resource(conf)(_),
       use = (agent: RunningAgent) => Task.defer {
         val testAgent = new TestAgent(new Allocated(agent, agent.terminate().void))
         try body(testAgent)

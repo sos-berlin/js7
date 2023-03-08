@@ -246,14 +246,14 @@ object RunningController
     (whileRunning: RunningController => Unit)
   : ProgramTermination =
     threadPoolResource[SyncIO](conf).useSync(implicit scheduler =>
-      resource(conf, scheduler)
+      resource(conf)
         .blockingUse(timeout) { runningController =>
           whileRunning(runningController)
           runningController.terminated.awaitInfinite
         })
 
-  def resource(conf: ControllerConfiguration, scheduler: Scheduler,
-    testWiring: TestWiring = TestWiring.empty)
+  def resource(conf: ControllerConfiguration, testWiring: TestWiring = TestWiring.empty)
+    (implicit scheduler: Scheduler)
   : Resource[Task, RunningController] = {
     val alarmClock: AlarmClock =
       testWiring.alarmClock getOrElse

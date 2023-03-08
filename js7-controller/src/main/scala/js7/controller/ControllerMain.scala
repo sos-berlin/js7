@@ -13,5 +13,5 @@ object ControllerMain
       "Controller",
       ControllerConfiguration.fromCommandLine(_),
       useLockFile = true)(
-      RunningController.resource(_, _))
+      RunningController.resource(_)(_))
 }
