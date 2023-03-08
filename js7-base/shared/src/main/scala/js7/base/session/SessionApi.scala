@@ -3,6 +3,8 @@ package js7.base.session
 import cats.effect.Resource
 import js7.base.auth.UserAndPassword
 import js7.base.generic.Completed
+import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.session.SessionApi.*
@@ -41,19 +43,14 @@ trait SessionApi
     body
 
   final def tryLogout: Task[Completed] =
-    Task.defer {
-      logger.trace(s"↘ $toString: tryLogout")
+    logger.traceTask(s"$toString: tryLogout")(
       tryLogoutLock.lock(
         logout()
           .onErrorRecover { case t =>
             logger.debug(s"$toString: logout failed: ${t.toStringWithCauses}")
             clearSession()
             Completed
-          }
-          .guaranteeCase(exitCase => Task {
-            logger.trace(s"↙ $toString: tryLogout => $exitCase")
           }))
-    }
 
   protected[SessionApi] final def onErrorDefault(throwable: Throwable): Task[Unit] =
     Task {
@@ -66,19 +63,13 @@ trait SessionApi
 
 object SessionApi
 {
-  private val logger = scribe.Logger[this.type]
+  private val logger = Logger[this.type]
 
   /** Logs out when the resource is being released. */
   def resource[A <: SessionApi](api: Task[A]): Resource[Task, A] =
     Resource.make(
       acquire = api)(
-      release = api =>
-        api.logout()
-          .void
-          .onErrorHandle { t =>
-            logger.debug(s"logout() => ${t.toStringWithCauses}")
-            ()
-          })
+      release = _.tryLogout.void)
 
   def logError(throwable: Throwable, myToString: String): Task[Boolean] =
     Task {
