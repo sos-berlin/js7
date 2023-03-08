@@ -1,5 +1,7 @@
 package js7.provider
 
+import akka.actor.ActorSystem
+import cats.effect.Resource
 import cats.implicits.*
 import com.typesafe.config.ConfigUtil
 import java.nio.file.{Path, Paths}
@@ -7,22 +9,23 @@ import js7.base.Problems.UnknownSignatureTypeProblem
 import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.convert.As.*
-import js7.base.crypt.generic.SignatureServices.nameToDocumentSignerCompanion
+import js7.base.crypt.generic.SignatureServices
 import js7.base.generic.{Completed, SecretString}
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
+import js7.base.service.{MainService, Service}
 import js7.base.thread.IOExecutor
 import js7.base.time.JavaTimeConverters.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
-import js7.base.utils.HasCloser
+import js7.base.utils.ProgramTermination
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichPartialFunction}
-import js7.common.akkautils.ProvideActorSystem
+import js7.common.akkautils.Akkas
 import js7.common.files.{DirectoryReader, PathSeqDiff, PathSeqDiffer}
-import js7.controller.client.AkkaHttpControllerApi
+import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
 import js7.controller.workflow.WorkflowReader
 import js7.core.item.{ItemPaths, SimpleItemReader, TypedSourceReader}
 import js7.data.agent.AgentRef
@@ -43,50 +46,44 @@ import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
 
 // Test in js7.tests.provider.ProviderTest
+
 /**
-  * @author Joacim Zschimmer
-  */
+ * @author Joacim Zschimmer
+ */
 final class Provider(
   itemSigner: ItemSigner[SignableItem],
+  protected val httpControllerApi: HttpControllerApi,
+  controllerApi: ControllerApi,
   protected val conf: ProviderConfiguration)
-extends HasCloser with Observing with ProvideActorSystem
-{
-  private val userAndPassword: Option[UserAndPassword] = for {
-      userName <- conf.config.optionAs[String]("js7.provider.controller.user")
-      password <- conf.config.optionAs[String]("js7.provider.controller.password")
-    } yield UserAndPassword(UserId(userName), SecretString(password))
-
-  protected val httpControllerApi: AkkaHttpControllerApi =
-    new AkkaHttpControllerApi(
-      conf.controllerUri, userAndPassword,
-      actorSystem = actorSystem,
-      conf.config, conf.httpsConfig)
-
-  private val controllerApi = new ControllerApi(
-    Nel.one(AkkaHttpControllerApi.admissionToApiResource(
-    Admission(conf.controllerUri, userAndPassword), conf.httpsConfig)(actorSystem)))
+  (implicit
+    protected val scheduler: Scheduler,
+    protected val iox: IOExecutor)
+extends Observing
+with MainService with Service.StoppableByRequest {
 
   protected def config = conf.config
 
-  private val firstRetryLoginDurations = conf.config.getDurationList("js7.provider.controller.login-retry-delays")
+  private val firstRetryLoginDurations = conf.config
+    .getDurationList("js7.provider.controller.login-retry-delays")
     .asScala.map(_.toFiniteDuration)
   private val typedSourceReader = new TypedSourceReader(conf.liveDirectory, readers)
   private val newVersionId = new VersionIdGenerator
   private val lastEntries = AtomicAny(Vector.empty[DirectoryReader.Entry])
 
-  def stop: Task[Completed] =
-    Task.defer {
-      logger.debug("stop")
-      httpControllerApi.tryLogout
-        .guarantee(Task {
-          httpControllerApi.close()
-          close()
-        })
-        .memoize
-    }
+  val untilTerminated =
+    untilStopped.as(ProgramTermination())
+
+  def start =
+    startService(run)
+
+  private def run: Task[Unit] =
+    if (conf.testSuppressStart) untilStopRequested else observe.completedL
+
+  override def stop =
+    Task(close()) *> super.stop
 
   /** Compares the directory with the Controller's repo and sends the difference.
-    * Parses each file, so it may take some time for a big configuration directory. */
+   * Parses each file, so it may take some time for a big configuration directory. */
   def initiallyUpdateControllerConfiguration(versionId: Option[VersionId] = None): Task[Checked[Completed]] = {
     val localEntries = readDirectory()
     for {
@@ -108,7 +105,7 @@ extends HasCloser with Observing with ProvideActorSystem
     loginUntilReachable >> controllerDiff(readDirectory())
 
   /** Compares the directory with the Controller's repo and sends the difference.
-    * Parses each file, so it may take some time for a big configuration directory. */
+   * Parses each file, so it may take some time for a big configuration directory. */
   private def controllerDiff(localEntries: Seq[DirectoryReader.Entry])
   : Task[Checked[InventoryItemDiff_]] =
     for {
@@ -119,7 +116,7 @@ extends HasCloser with Observing with ProvideActorSystem
         InventoryItemDiff.diff(_, controllerItems, ignoreVersion = true))
 
   private def readLocalItems(files: Seq[Path]): Task[Checked[Seq[InventoryItem]]] =
-    Task { typedSourceReader.readItems(files) }
+    Task {typedSourceReader.readItems(files)}
 
   def updateControllerConfiguration(versionId: Option[VersionId] = None): Task[Checked[Completed]] =
     for {
@@ -223,23 +220,40 @@ object Provider
     SimpleItemReader(AgentRef),
     SimpleItemReader(SubagentItem))
 
-  def apply(conf: ProviderConfiguration): Checked[Provider] = {
-    val itemSigner = {
-      val typeName = conf.config.getString("js7.provider.sign-with")
-      val configPath = "js7.provider.private-signature-keys." + ConfigUtil.quoteString(typeName)
-      val keyFile = Paths.get(conf.config.getString(s"$configPath.key"))
-      val password = SecretString(conf.config.getString(s"$configPath.password"))
-      nameToDocumentSignerCompanion
-        .rightOr(typeName, UnknownSignatureTypeProblem(typeName))
-        .flatMap(companion => companion.checked(keyFile.byteArray, password))
-        .map(messageSigner => new ItemSigner(messageSigner, signableItemJsonCodec))
-    }.orThrow
-    Right(new Provider(itemSigner, conf))
+  def resource(conf: ProviderConfiguration)(implicit scheduler: Scheduler)
+  : Resource[Task, Provider] =
+    for {
+      actorSystem <- Akkas.actorSystemResource("Providor", conf.config, scheduler)
+      iox <- IOExecutor.resource[Task](conf.config, "Provider")
+      provider <- resource2(conf)(scheduler, iox, actorSystem)
+    } yield provider
+
+  private def resource2(conf: ProviderConfiguration)
+    (implicit scheduler: Scheduler, iox: IOExecutor, actorSystem: ActorSystem)
+  : Resource[Task, Provider] = {
+    val userAndPassword: Option[UserAndPassword] = for {
+      userName <- conf.config.optionAs[String]("js7.provider.controller.user")
+      password <- conf.config.optionAs[String]("js7.provider.controller.password")
+    } yield UserAndPassword(UserId(userName), SecretString(password))
+    for {
+      api <- AkkaHttpControllerApi.resource(conf.controllerUri, userAndPassword, conf.httpsConfig)
+      controllerApi <- ControllerApi.resource(
+        Nel.one(AkkaHttpControllerApi.admissionToApiResource(
+          Admission(conf.controllerUri, userAndPassword), conf.httpsConfig)))
+
+      itemSigner = toItemSigner(conf).orThrow
+      provider <- Service.resource(Task(new Provider(itemSigner, api, controllerApi, conf)))
+    } yield provider
   }
 
-  def observe(stop: Task[Unit], conf: ProviderConfiguration)(implicit s: Scheduler, iox: IOExecutor): Checked[Observable[Completed]] =
-    for (provider <- Provider(conf)) yield
-      provider
-        .observe(stop)
-        .guarantee(provider.stop.map((_: Completed) => ()))
+  private def toItemSigner(conf: ProviderConfiguration): Checked[ItemSigner[SignableItem]] = {
+    val typeName = conf.config.getString("js7.provider.sign-with")
+    val configPath = "js7.provider.private-signature-keys." + ConfigUtil.quoteString(typeName)
+    val keyFile = Paths.get(conf.config.getString(s"$configPath.key"))
+    val password = SecretString(conf.config.getString(s"$configPath.password"))
+    SignatureServices.nameToDocumentSignerCompanion
+      .rightOr(typeName, UnknownSignatureTypeProblem(typeName))
+      .flatMap(companion => companion.checked(keyFile.byteArray, password))
+      .map(messageSigner => new ItemSigner(messageSigner, signableItemJsonCodec))
+  }
 }

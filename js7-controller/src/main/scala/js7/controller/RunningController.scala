@@ -19,6 +19,7 @@ import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.ShuttingDownProblem
 import js7.base.problem.{Checked, Problem}
+import js7.base.service.{MainService, Service}
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.IOExecutor
 import js7.base.thread.MonixBlocking.syntax.*
@@ -88,6 +89,7 @@ final class RunningController private(
   val testEventBus: StandardEventBus[Any],
   val actorSystem: ActorSystem)
   (implicit val scheduler: Scheduler)
+extends MainService
 {
   private val httpApiUserAndPassword = SetOnce[Option[UserAndPassword]]
   private val _httpApi = SetOnce[AkkaHttpControllerApi]
@@ -113,6 +115,15 @@ final class RunningController private(
         o
       }
 
+  val untilTerminated =
+    Task.fromFuture(terminated)
+
+  def start =
+    startService(untilTerminated.void)
+
+  def stop =
+    terminate().void
+
   def terminate(
     suppressSnapshot: Boolean = false,
     clusterAction: Option[ShutDown.ClusterAction] = None,
@@ -120,7 +131,7 @@ final class RunningController private(
   : Task[ProgramTermination] =
     Task.defer {
       if (terminated.isCompleted)  // Works only if previous termination has been completed
-        Task.fromFuture(terminated)
+        untilTerminated
       else
         actorSystem.whenTerminated.value match {
           case Some(Failure(t)) => Task.raiseError(t)
@@ -141,10 +152,10 @@ final class RunningController private(
                   ).flatMap {
                     case Left(problem @ ControllerIsShuttingDownProblem) =>
                       logger.info(problem.toString)
-                      Task.fromFuture(terminated).map(Right(_))
+                      untilTerminated.map(Right(_))
                     case o => Task.pure(o)
                   }.map(_.orThrow)
-                t <- Task.fromFuture(terminated)
+                t <- untilTerminated
               } yield t)
         }
     }.logWhenItTakesLonger
@@ -280,8 +291,9 @@ object RunningController
         configDirectory = conf.configDirectory,
         journalMeta, journalConf, clusterConf, eventIdClock, testEventBus, config)
 
-    val resources = recoveringResource
-      .parZip(itemVerifierResource(config, testEventBus))
+    val resources = CorrelId.bindNew(recoveringResource)
+      .parZip(CorrelId.bindNew(
+        itemVerifierResource(config, testEventBus)))
 
     resources.flatMap { case ((recovered, actorSystem, clusterNode), itemVerifier) =>
       @volatile var clusterStartupTermination = ProgramTermination()
@@ -372,20 +384,17 @@ object RunningController
 
       def runningControllerResource(webServer: ControllerWebServer)
       : Resource[Task, RunningController] =
-        Resource.make(
-          acquire = Task(
-            new RunningController(
-              recovered.eventWatch.strict,
-              () => webServer.localUri,
-              recoveredEventId = recovered.eventId,
-              orderApi,
-              controllerState.map(_.orThrow),
-              commandExecutor, itemUpdater,
-              whenReady.future, untilOrderKeeperTerminated.runToFuture,
-              sessionRegister, conf, testEventBus,
-              actorSystem)))(
-          release =
-            _.terminate().void)
+        Service.resource(Task(
+          new RunningController(
+            recovered.eventWatch.strict,
+            () => webServer.localUri,
+            recoveredEventId = recovered.eventId,
+            orderApi,
+            controllerState.map(_.orThrow),
+            commandExecutor, itemUpdater,
+            whenReady.future, untilOrderKeeperTerminated.runToFuture,
+            sessionRegister, conf, testEventBus,
+            actorSystem)))
 
       for {
         _ <- sessionRegister.placeSessionTokenInDirectory(SimpleUser.System, conf.workDirectory)

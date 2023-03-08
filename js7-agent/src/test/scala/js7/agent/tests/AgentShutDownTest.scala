@@ -76,7 +76,7 @@ final class AgentShutDownTest extends OurTestSuite with BeforeAndAfterAll with T
       client.commandExecute(ShutDown(Some(SIGKILL))).await(99.s).orThrow
       agent.untilTerminated.await(99.s)
       client.close()
-      Akkas.terminate(actorSystem) // Don't wait, may not terminated ???
+      Akkas.terminate(actorSystem).runAsyncAndForget // Blocking ???
     }
 
     TestAgent.blockingRun(agentConfiguration,  99.s) { agent =>

@@ -84,8 +84,9 @@ object TestAgent {
     timeout: FiniteDuration = 99.s)
     (body: TestAgent => Unit)
   : ProgramTermination =
-    ServiceMain.blockingRun[RunningAgent](conf.name, conf.config, resource(conf)(_),
-      use = agent => Task.defer {
+    ServiceMain.withLogger.blockingRun(conf.name, conf.config, timeout = timeout)(
+      service = resource(conf)(_),
+      use = (agent: RunningAgent) => Task.defer {
         val testAgent = new TestAgent(new Allocated(agent, agent.terminate().void))
         try body(testAgent)
         catch { case NonFatal(t) =>
@@ -93,8 +94,7 @@ object TestAgent {
           throw t
         }
         agent.terminate()
-      },
-      timeout = timeout)
+      })
 
   def start(
     conf: AgentConfiguration,

@@ -34,6 +34,7 @@ import js7.base.utils.{Allocated, ProgramTermination, SetOnce}
 import js7.cluster.WorkingClusterNode
 import js7.common.akkautils.Akkas.encodeAsActorName
 import js7.common.akkautils.SupervisorStrategies
+import js7.common.system.startup.ServiceMain
 import js7.controller.ControllerOrderKeeper.*
 import js7.controller.agent.{AgentDriver, AgentDriverConfiguration}
 import js7.controller.configuration.ControllerConfiguration
@@ -421,9 +422,7 @@ with MainJournalingActor[ControllerState, Event]
       throw problem.throwable.appendCurrentStackTrace
 
     case Internal.Ready(Right(Completed)) =>
-      logger.info(s"Controller '${_controllerState.controllerId.string}' is ready" +
-        ControllerMain.runningSince.fold("")(o => s" (after ${o.elapsed.pretty})") +
-        "\n" + "─" * 80)
+      logger.info(ServiceMain.readyMessageWithLine(s"${_controllerState.controllerId} is ready"))
       testEventPublisher.publish(ControllerReadyTestIncident)
       clusterNode.onTerminatedUnexpectedly.runToFuture onComplete { tried =>
         self ! Internal.ClusterModuleTerminatedUnexpectedly(tried)

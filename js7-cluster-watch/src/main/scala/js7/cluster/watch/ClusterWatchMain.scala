@@ -1,44 +1,19 @@
 package js7.cluster.watch
 
-import cats.effect.Resource
-import js7.base.BuildInfo
 import js7.base.utils.ProgramTermination
-import js7.cluster.watch.api.HttpClusterNodeApi
-import js7.common.akkautils.Akkas.actorSystemResource
-import js7.common.commandline.CommandLineArguments
-import js7.common.http.AkkaHttpClient
-import js7.common.system.startup.StartUp.printlnWithClock
-import js7.common.system.startup.{JavaMain, ServiceMain}
+import js7.common.system.startup.ServiceMain
 import monix.eval.Task
-import monix.execution.Scheduler
 
 object ClusterWatchMain
 {
-  def main(args: Array[String]): Unit = {
-    printlnWithClock(s"JS7 ClusterWatch ${BuildInfo.longVersion}")
-    // Lazy, otherwise Log4j may be used and implicitly start uninitialized
-    lazy val arguments = CommandLineArguments(args.toVector)
-    lazy val conf = ClusterWatchConf.fromCommandLine(arguments)
-    JavaMain.runMain("ClusterWatch", arguments, conf.config) {
-      run(conf)(_.untilTerminated)
-    }
-  }
+  // No Logger here!
 
-  def run(conf: ClusterWatchConf)(use: ClusterWatchService => Task[ProgramTermination]): Unit =
-    ServiceMain.blockingRun(conf.clusterWatchId.toString, conf.config, resource(conf, _), use)
+  def main(args: Array[String]): Unit =
+    sys.runtime.exit(
+      run(args)(_.untilTerminated))
 
-  private def resource(conf: ClusterWatchConf, scheduler: Scheduler)
-  : Resource[Task, ClusterWatchService] = {
-    import conf.{clusterNodeAdmissions, config, httpsConfig}
-    for {
-      akka <- actorSystemResource(name = "ClusterWatch", config, scheduler)
-      service <- ClusterWatchService.resource(
-        conf.clusterWatchId,
-        apiResources = clusterNodeAdmissions
-          .traverse(admission => AkkaHttpClient
-            .resource(admission.uri, uriPrefixPath = "", httpsConfig, name = "ClusterNode")(akka)
-            .flatMap(HttpClusterNodeApi.resource(admission, _, uriPrefix = "controller"))),
-        config)
-    } yield service
-  }
+  def run(args: Array[String])(use: ClusterWatchService => Task[ProgramTermination]): Int =
+    ServiceMain.intMain(args, "ClusterWatch", ClusterWatchConf.fromCommandLine)(
+      ClusterWatchService.resource,
+      use = use)
 }

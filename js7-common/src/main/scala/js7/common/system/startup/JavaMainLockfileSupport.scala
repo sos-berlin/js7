@@ -20,21 +20,34 @@ object JavaMainLockfileSupport
   // Do not call any function that may use a Logger before we own the lock file !!!
   // Because this could trigger an unexpected log file rotation.
 
-  /** Exit if lockFile is already locked. */
-  def lockAndRunMain(args: Array[String])(body: CommandLineArguments => Unit): Unit =
-    CommandLineArguments.parse(args.toIndexedSeq) { arguments =>
-      val data = Paths.get(arguments.as[String]("--data-directory="))
-      val state = data.resolve("state")
-      if (!exists(state)) createDirectory(state)
-      // The lockFile secures the state directory against double use.
-      val lockFile = state.resolve("lock")
-      lock(lockFile) {
-        JavaMain.runMain {
-          cleanWorkDirectory(data.resolve("work"))
-          body(arguments)
-        }
+  def runMain[R](args: Array[String], useLockFile: Boolean = false)
+    (body: CommandLineArguments => R)
+  : R =
+    if (useLockFile) {
+      lockAndRunMain(args)(body)
+    } else {
+      val arguments = CommandLineArguments(args.toIndexedSeq)
+      JavaMain.runMain {
+        body(arguments)
       }
     }
+
+  // Cleans also work directory
+  /** Exit if lockFile is already locked. */
+  def lockAndRunMain[R](args: Array[String])(body: CommandLineArguments => R): R = {
+    val arguments = CommandLineArguments(args.toIndexedSeq)
+    val data = Paths.get(arguments.as[String]("--data-directory="))
+    val state = data.resolve("state")
+    if (!exists(state)) createDirectory(state)
+    // The lockFile secures the state directory against double use.
+    val lockFile = state.resolve("lock")
+    lock(lockFile) {
+      JavaMain.runMain {
+        cleanWorkDirectory(data.resolve("work"))
+        body(arguments)
+      }
+    }
+  }
 
   private def cleanWorkDirectory(workDirectory: Path): Unit =
     if (exists(workDirectory)) {
@@ -44,17 +57,17 @@ object JavaMainLockfileSupport
     }
 
   // Also write PID to lockFile (Java >= 9)
-  private def lock(lockFile: Path)(body: => Unit): Unit = {
+  private def lock[R](lockFile: Path)(body: => R): R = {
     val lockFileChannel = FileChannel.open(lockFile, CREATE, WRITE)
     Try(lockFileChannel.tryLock()) match {
       case Failure(throwable) =>
         printlnWithClock(s"tryLock: $throwable")
-        System.exit(1)
+        JavaMain.exit(1)
 
       case Success(null) =>
         lockFileChannel.close()
         printlnWithClock("Duplicate start of JS7")
-        System.exit(1)
+        JavaMain.exit(1)
 
       case Success(_) =>
         try {

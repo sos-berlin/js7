@@ -14,12 +14,12 @@ import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
 import js7.base.problem.Problem
 import js7.base.system.OperatingSystem.isMac
-import js7.base.thread.Futures.implicits.*
 import js7.base.test.OurTestSuite
-import js7.base.thread.IOExecutor.Implicits.globalIOX
+import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.common.commandline.CommandLineArguments
 import js7.core.item.{ItemPaths, VersionedItemReader}
 import js7.data.agent.AgentPath
 import js7.data.event.EventId
@@ -34,9 +34,7 @@ import js7.provider.Provider
 import js7.provider.configuration.ProviderConfiguration
 import js7.tests.provider.ProviderTest.*
 import js7.tests.testenv.ControllerAgentForScalaTest
-import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
-import scala.concurrent.Promise
 import scala.concurrent.duration.*
 import scala.concurrent.duration.Deadline.now
 
@@ -59,11 +57,16 @@ final class ProviderTest extends OurTestSuite with ControllerAgentForScalaTest
   private lazy val providerDirectory = directoryProvider.directory / "provider"
   private lazy val live = providerDirectory / "config/live"
   private lazy val orderGeneratorsDir = providerDirectory / "config/order-generators"
-  private lazy val providerConfiguration = ProviderConfiguration.fromCommandLine(Seq(
-    "--config-directory=" + providerDirectory / "config",
-    "--controller-uri=" + controller.localUri),
-    testConfig)
-  private lazy val provider = Provider(providerConfiguration).orThrow
+
+  private lazy val conf: ProviderConfiguration =
+    CommandLineArguments.parse(
+      Seq(
+        "--config-directory=" + providerDirectory / "config",
+        "--controller-uri=" + controller.localUri))(
+      ProviderConfiguration.fromCommandLine(_, testConfig))
+
+  private lazy val (provider, stopProvider) = Provider.resource(conf).allocated
+    .await(99.s)
   private lazy val v1Time = now
 
   override def beforeAll() = {
@@ -103,7 +106,7 @@ final class ProviderTest extends OurTestSuite with ControllerAgentForScalaTest
   }
 
   override def afterAll() = {
-    provider.close()
+    stopProvider.await(99.s)
     deleteDirectoryRecursively(providerDirectory)
     super.afterAll()
   }
@@ -223,17 +226,14 @@ final class ProviderTest extends OurTestSuite with ControllerAgentForScalaTest
     }
 
     "stop" in {
-      provider.stop await 99.s
-      provider.close()
+      stopProvider.await(99.s)
     }
   }
 
   "observe" - {
-    val stop = Promise[Unit]()
-    lazy val whenObserved = Provider.observe(Task.fromFuture(stop.future), providerConfiguration)
-      .orThrow
-      .onCancelTriggerError
-      .foreach { _ => }
+    lazy val (provider, stopProvider) = Provider.resource(conf.copy(testSuppressStart = true))
+      .allocated.await(99.s)
+    lazy val whenObserved = provider.observe.completedL.runToFuture
     var lastEventId = EventId.BeforeFirst
 
     "Initial observation with a workflow and an agentRef added" in {
@@ -308,7 +308,7 @@ final class ProviderTest extends OurTestSuite with ControllerAgentForScalaTest
     "stop" in {
       assert(!whenObserved.isCompleted)
       assert(!whenObserved.isCompleted)
-      stop.success(())
+      stopProvider.await(99.s)
       whenObserved await 99.s
     }
   }

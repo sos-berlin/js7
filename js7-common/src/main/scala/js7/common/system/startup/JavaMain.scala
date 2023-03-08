@@ -1,84 +1,34 @@
 package js7.common.system.startup
 
-import cats.effect.{Resource, Sync}
-import com.typesafe.config.Config
-import js7.base.BuildInfo
-import js7.base.configutils.Configs.{ConvertibleConfig, logConfig}
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.log.{Log4j, Logger}
-import js7.base.utils.AutoClosing.autoClosing
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.common.commandline.CommandLineArguments
 import js7.common.message.ProblemCodeMessages
-import js7.common.system.startup.StartUp.{logJavaSettings, printlnWithClock, startUpLine}
-import js7.common.utils.JavaShutdownHook
+import js7.common.system.startup.StartUp.printlnWithClock
 
 object JavaMain
 {
-  private val AkkaShutdownHook = "akka.coordinated-shutdown.run-by-jvm-shutdown-hook"
   private lazy val logger = Logger[this.type]
 
-  def runMain[A](name: String, arguments: => CommandLineArguments, config: => Config)(body: => A)
-  : Unit =
-    runMain {
-      // Log early for early timestamp and proper logger initialization by a
-      // single (non-concurrent) call
-      // Log a bar, in case the previous file is appended
-      logger.info(s"$name ${BuildInfo.longVersion}" +
-        "\n" + "━" * 80)  // In case, the previous file is appended
-      logger.info(startUpLine())
-      logger.debug(arguments.toString)
-      //logger.info(s"config=${conf.configDirectory}")
-      logConfig(config)
-      logJavaSettings()
-      body
-    }
-
-  def runMain(body: => Unit): Unit =
+  def runMain[R](body: => R): R =
     try {
       Log4j.initialize()
       coupleScribeWithSlf4j()
       ProblemCodeMessages.initialize()
       // Initialize class and object for possible quicker emergency stop
       Halt.initialize()
-      body
+      val r = body
       Log4j.shutdown()
+      r
     } catch { case t: Throwable =>
       logger.error(t.toStringWithCauses, t)
       Log4j.shutdown()
       printlnWithClock(s"TERMINATING DUE TO ERROR: ${t.toStringWithCauses}")
-      sys.runtime.exit(1)
+      exit(1)
     }
 
-  def withShutdownHooks[A](config: Config, name: String, onJavaShutdown: () => Unit)(body: => A): A =
-    autoClosing(addJavaShutdownHook(config, name, onJavaShutdown))(_ =>
-      body)
-
-  def shutdownHookResource[F[_] : Sync](config: Config, name: String)(onJavaShutdown: => Unit)
-  : Resource[F, Unit] =
-    Resource
-      .fromAutoCloseable(Sync[F].delay(
-        addJavaShutdownHook(config, name, () => onJavaShutdown)))
-      .map(_ => ())
-
-  private def addJavaShutdownHook(config: Config, name: String, onJavaShutdown: () => Unit): AutoCloseable = {
-    val maybeHook =
-      if (config.as[Boolean](AkkaShutdownHook, false)) {
-        logger.debug(s"JS7 shutdown hook suppressed because Akka has one: $AkkaShutdownHook = on")
-        None
-      } else
-        Some(JavaShutdownHook.add(name) {
-          try onJavaShutdown()
-          catch {
-            case t: Throwable =>
-              logger.debug(t.toStringWithCauses, t)
-              throw t
-          }
-          finally Log4j.shutdown()
-        })
-
-    new AutoCloseable {
-      def close() = maybeHook.foreach(_.close())
-    }
+  def exit(number: Int): Nothing = {
+    sys.runtime.exit(number)
+    throw new AssertionError("exit failed")
   }
 }

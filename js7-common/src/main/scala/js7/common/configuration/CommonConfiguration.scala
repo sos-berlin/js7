@@ -17,7 +17,7 @@ import js7.common.internet.IP.StringToServerInetSocketAddress
 /**
   * @author Joacim Zschimmer
   */
-trait CommonConfiguration extends WebServerBinding.HasLocalUris
+trait CommonConfiguration extends WebServerBinding.HasLocalUris with BasicConfiguration
 {
   def config: Config
 
@@ -74,6 +74,7 @@ object CommonConfiguration
   object Common {
     def fromCommandLineArguments(a: CommandLineArguments): Common =
       Common(
+        // Startup code parses --data-directory= too, to allow placing a lock file !!!
         dataDirectory = a.as[Path]("--data-directory=").toAbsolutePath,
         configDirectory = a.as[Path]("--config-directory=").toAbsolutePath,
         webServerPorts =

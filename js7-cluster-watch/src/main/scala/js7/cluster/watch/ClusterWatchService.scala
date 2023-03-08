@@ -21,12 +21,15 @@ import js7.cluster.watch.ClusterWatch.Confirmed
 import js7.cluster.watch.ClusterWatchService.*
 import js7.cluster.watch.api.ClusterWatchProblems.ClusterWatchRequestDoesNotMatchProblem
 import js7.cluster.watch.api.HttpClusterNodeApi
+import js7.common.akkautils.Akkas.actorSystemResource
 import js7.common.configuration.Js7Configuration.defaultConfig
+import js7.common.http.AkkaHttpClient
 import js7.data.cluster.ClusterEvent.ClusterNodeLostEvent
 import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterState, ClusterWatchId, ClusterWatchRequest, ClusterWatchRunId}
 import js7.data.node.NodeId
 import monix.eval.Task
+import monix.execution.Scheduler
 import monix.reactive.Observable
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters.*
@@ -138,6 +141,21 @@ extends MainService with Service.StoppableByRequest
 object ClusterWatchService
 {
   private val logger = Logger(getClass)
+
+  def resource(conf: ClusterWatchConf, scheduler: Scheduler)
+  : Resource[Task, ClusterWatchService] = {
+    import conf.{clusterNodeAdmissions, config, httpsConfig}
+    for {
+      akka <- actorSystemResource(name = "ClusterWatch", config, scheduler)
+      service <- ClusterWatchService.resource(
+        conf.clusterWatchId,
+        apiResources = clusterNodeAdmissions
+          .traverse(admission => AkkaHttpClient
+            .resource(admission.uri, uriPrefixPath = "", httpsConfig, name = "ClusterNode")(akka)
+            .flatMap(HttpClusterNodeApi.resource(admission, _, uriPrefix = "controller"))),
+        config)
+    } yield service
+  }
 
   def resource(
     clusterWatchId: ClusterWatchId,

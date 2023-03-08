@@ -9,8 +9,7 @@ import js7.base.log.Logger
 import js7.base.test.OurAsyncTestSuite
 import js7.base.utils.ProgramTermination
 import js7.base.utils.ScalaUtils.syntax.RichThrowable
-import js7.cluster.watch.{ClusterWatchConf, ClusterWatchMain}
-import js7.common.commandline.CommandLineArguments
+import js7.cluster.watch.ClusterWatchMain
 import js7.data.cluster.ClusterEvent.ClusterCoupled
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.{Workflow, WorkflowPath}
@@ -54,10 +53,10 @@ final class ClusterWatchMainTest extends OurAsyncTestSuite with ControllerCluste
                 |  }
                 |]""".stripMargin
 
-            val conf = ClusterWatchConf.fromCommandLine(CommandLineArguments(Seq(
+            val args = Array(
               "--cluster-watch-id=MY-CLUSTER-WATCH",
-              "--config-directory=" + dir)))
-            ClusterWatchMain.run(conf)(service => Task
+              "--config-directory=" + dir)
+            ClusterWatchMain.run(args)(service => Task
               .race(
                 service.untilStopped,
                 stopClusterWatch.get.to[Task])

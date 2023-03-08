@@ -1,13 +1,19 @@
 package js7.base.utils
 
+import cats.Applicative
+import cats.effect.Resource
 import js7.base.catsutils.UnsafeMemoizable
 import js7.base.catsutils.UnsafeMemoizable.syntax.*
 
 final class Allocated[F[_]: UnsafeMemoizable, +A](val allocatedThing: A, stop_ : F[Unit])
-extends Stoppable[F]
 {
   val stop: F[Unit] =
     stop_.unsafeMemoize
+
+  def toSingleUseResource(implicit F: Applicative[F]): Resource[F, Allocated[F, A]] =
+    Resource.make(
+      acquire = F.pure(this))(
+      release = _.stop)
 
   override def toString = allocatedThing.toString
 }

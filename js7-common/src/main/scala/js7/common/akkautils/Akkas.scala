@@ -16,7 +16,6 @@ import js7.common.configuration.Js7Configuration
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.duration.*
-import scala.concurrent.duration.Deadline.now
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.control.NonFatal
 
@@ -51,15 +50,21 @@ object Akkas
 
   def terminateAndWait(actorSystem: ActorSystem, timeout: FiniteDuration): Unit =
     logger.debugCall("terminateAndWait", actorSystem.name)(
-      try terminate(actorSystem).await(timeout)
+      try terminateFuture(actorSystem).await(timeout)
       catch { case NonFatal(t) =>
         logger.warn(s"ActorSystem('${actorSystem.name}').terminate(): ${t.toStringWithCauses}")
       })
 
+  def terminate(actorSystem: ActorSystem): Task[Unit] =
+    logger.debugTask(s"terminate ActorSystem('${actorSystem.name}')")(
+      Task.deferFuture(
+        terminateFuture(actorSystem)
+      ).void)
+
   /** Shut down connection pool and terminate ActorSystem.
     * Only once callable.
     */
-  def terminate(actorSystem: ActorSystem): Future[Terminated] = {
+  private def terminateFuture(actorSystem: ActorSystem): Future[Terminated] = {
     if (actorSystem.whenTerminated.isCompleted)
       actorSystem.whenTerminated
     else {
@@ -159,14 +164,5 @@ object Akkas
   : Resource[Task, ActorSystem] =
     Resource.make(
       acquire = Task(newActorSystem(name, config, scheduler)).executeOn(scheduler))(
-      release = actorSystem =>
-        Task.deferFuture {
-          logger.debug(s"ActorSystem('$name') terminate ...")
-          val since = now
-          terminate(actorSystem)
-            .map { _ =>
-              logger.debug(s"ActorSystem('$name') terminated (${since.elapsed.pretty})")
-              ()
-            }(scheduler)
-        })
+      release = terminate)
 }

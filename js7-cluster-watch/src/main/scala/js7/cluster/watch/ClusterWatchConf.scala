@@ -11,7 +11,7 @@ import js7.base.io.https.HttpsConfig
 import js7.base.utils.CatsUtils.Nel
 import js7.base.web.Uri
 import js7.common.commandline.CommandLineArguments
-import js7.common.configuration.Js7Configuration
+import js7.common.configuration.{BasicConfiguration, Js7Configuration}
 import js7.data.cluster.ClusterWatchId
 import scala.jdk.CollectionConverters.*
 
@@ -21,6 +21,7 @@ final case class ClusterWatchConf(
   clusterNodeAdmissions: Nel[Admission],
   httpsConfig: HttpsConfig,
   config: Config)
+extends BasicConfiguration
 
 object ClusterWatchConf
 {

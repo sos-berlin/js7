@@ -2,10 +2,9 @@ package js7.base.utils
 
 import cats.Functor
 import cats.data.{NonEmptyList, NonEmptySeq, Validated}
-import cats.effect.{BracketThrow, Resource, SyncIO, Timer}
+import cats.effect.{BracketThrow, Resource, Sync, SyncIO, Timer}
 import cats.kernel.Monoid
-import cats.syntax.foldable.*
-import cats.syntax.functor.*
+import cats.syntax.all.*
 import izumi.reflect.Tag
 import java.io.{ByteArrayInputStream, InputStream}
 import java.util.Base64
@@ -59,6 +58,13 @@ object CatsUtils
       def toAllocated[G[x] >: F[x], B >: A](implicit F: BracketThrow[G], G: UnsafeMemoizable[G])
       : G[Allocated[G, B]] =
         resource.allocated[G, B].map(Allocated.fromPair(_))
+
+      def toAllocatedResource[G[x] >: F[x], B >: A](implicit G: Sync[G], g: UnsafeMemoizable[G])
+      : Resource[G, Allocated[G, B]] =
+        Resource.suspend(
+          resource
+            .toAllocated[G, B]
+            .map(_.toSingleUseResource))
     }
   }
 

@@ -16,7 +16,7 @@ import js7.base.utils.Tests.isTest
 import js7.cluster.ClusterConf
 import js7.common.akkahttp.web.data.WebServerPort
 import js7.common.commandline.CommandLineArguments
-import js7.common.configuration.{CommonConfiguration, Js7Configuration}
+import js7.common.configuration.{BasicConfiguration, CommonConfiguration, Js7Configuration}
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.controller.{ControllerId, ControllerState}
 import js7.journal.configuration.JournalConf
@@ -37,11 +37,13 @@ final case class ControllerConfiguration(
   clusterConf: ClusterConf,
   name: String,
   config: Config)
-extends CommonConfiguration
+extends BasicConfiguration with CommonConfiguration
 {
-  implicit def implicitAkkaAskTimeout: Timeout = akkaAskTimeout
+  override def maybeConfigDirectory = Some(configDirectory)
 
-  def itemDirectory: Path = configDirectory / "live"
+  override def maybeDataDirectory = Some(dataDirectory)
+
+  implicit def implicitAkkaAskTimeout: Timeout = akkaAskTimeout
 
   def stateDirectory: Path = dataDirectory / "state"
 

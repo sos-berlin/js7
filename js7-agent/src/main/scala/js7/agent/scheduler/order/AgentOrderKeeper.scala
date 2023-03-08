@@ -10,7 +10,6 @@ import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{AttachItem, AttachOrder, AttachSignedItem, DetachItem, DetachOrder, MarkOrder, OrderCommand, ReleaseEvents, Response}
 import js7.agent.data.event.AgentEvent.{AgentReady, AgentShutDown}
-import js7.agent.main.AgentMain
 import js7.agent.scheduler.order.AgentOrderKeeper.*
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.crypt.{SignatureVerifier, Signed}
@@ -31,6 +30,7 @@ import js7.base.utils.{Allocated, DuplicateKeyException, SetOnce}
 import js7.common.akkautils.Akkas.{encodeAsActorName, uniqueActorName}
 import js7.common.akkautils.SupervisorStrategies
 import js7.common.system.PlatformInfos.currentPlatformInfo
+import js7.common.system.startup.ServiceMain
 import js7.common.utils.Exceptions.wrapException
 import js7.core.problems.ReverseReleaseEventsProblem
 import js7.data.agent.Problems.{AgentDuplicateOrder, AgentIsShuttingDown}
@@ -304,10 +304,7 @@ final class AgentOrderKeeper(
           }
 
       case Internal.Ready =>
-        logger.info(s"$ownAgentPath is ready" +
-          AgentMain.runningSince.fold("")(o => s" (after ${o.elapsed.pretty})") +
-          "\n" + "─" * 80)
-
+        logger.info(ServiceMain.readyMessageWithLine(s"$ownAgentPath is ready"))
         become("ready")(ready)
         unstashAll()
 
