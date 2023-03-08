@@ -42,7 +42,7 @@ extends Service.StoppableByRequest
   private val nextRequestId = Atomic(if (isTest) 1 else
     Random.nextLong((Long.MaxValue - (3 * 32_000_000/*a year*/) / timing.heartbeat.toSeconds))
       / 1000_000 * 1000_000)
-  private val lock = AsyncLock()
+  private val lock = AsyncLock(noMinorLog = true)
   private val _requested = Atomic(None: Option[Requested])
   private val pubsub = new Fs2PubSub[Task, ClusterWatchRequest]
 
@@ -114,12 +114,12 @@ extends Service.StoppableByRequest
         val reqId = RequestId(nextRequestId.getAndIncrement())
         val request = toRequest(reqId)
         lock.lock(
-          logger.debugTaskWithResult[Checked[ClusterWatchConfirmation]]("check",
-            s"$request${!clusterWatchIdChangeAllowed ?? ",clusterWatchIdChangeAllowed=false"}"
-          )(check2(
-            clusterWatchId, request,
-            new Requested(clusterWatchId, request,
-              clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed))))
+          logger.traceTaskWithResult("check",
+            s"$request${!clusterWatchIdChangeAllowed ?? ",clusterWatchIdChangeAllowed=false"}",
+            task = check2(
+              clusterWatchId, request,
+              new Requested(clusterWatchId, request,
+                clusterWatchIdChangeAllowed = clusterWatchIdChangeAllowed))))
       }
 
   private def check2(

@@ -163,7 +163,8 @@ object Logger
     private def logF[F[_], A](
       logger: ScalaLogger,
       logLevel: LogLevel,
-      function: String, args: => Any = "",
+      function: String,
+      args: => Any = "",
       resultToLoggable: A => Any = null)
       (body: F[A])
       (implicit F: Sync[F])
@@ -223,9 +224,7 @@ object Logger
   }
 
   private final class StartReturnLogContext(logger: ScalaLogger, logLevel: LogLevel,
-    function: String,
-    args: => Any = "",
-  )
+    function: String, args: => Any = "")
   {
     logStart(logger, logLevel, function, args)
     private val startedAt = System.nanoTime()
@@ -237,10 +236,10 @@ object Logger
         (System.nanoTime() - startedAt).ns.pretty + " "
 
     def logExitCase(exitCase: ExitCase[Throwable]): Unit =
-      Logger.logExitCase(logger, logLevel, function, args, duration, exitCase)
+      Logger.logExitCase(logger, logLevel, function, "", duration, exitCase)
 
     def logReturn(marker: String, msg: AnyRef): Unit =
-      Logger.logReturn(logger, logLevel, function, args, duration, marker, msg)
+      Logger.logReturn(logger, logLevel, function, "", duration, marker, msg)
   }
 
   private def logStart(logger: ScalaLogger, logLevel: LogLevel, function: String,

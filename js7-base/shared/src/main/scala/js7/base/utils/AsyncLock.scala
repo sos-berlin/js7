@@ -17,10 +17,11 @@ import scala.concurrent.duration.FiniteDuration
 final class AsyncLock private(
   name: String,
   warnTimeouts: IterableOnce[FiniteDuration],
-  suppressLog: Boolean)
+  noLog: Boolean,
+  noMinorLog: Boolean = false)
 {
   private val lockM = MVar[Task].empty[Acquirer]().memoize
-  private val log = if (suppressLog) js7.base.log.Logger.empty else logger
+  private val log = if (noLog) js7.base.log.Logger.empty else logger
 
   def lock[A](task: Task[A])(implicit src: sourcecode.Enclosing): Task[A] =
     lock(src.value)(task)
@@ -40,11 +41,11 @@ final class AsyncLock private(
         val acquirer = new Acquirer(CorrelId.current, acquirerToString)
         mvar.tryPut(acquirer).flatMap(hasAcquired =>
           if (hasAcquired) {
-            log.trace(s"↘ $name acquired by $acquirer ↘")
+            if (!noMinorLog) log.trace(s"↘ $name acquired by $acquirer ↘")
             acquirer.startMetering()
             Task.unit
           } else
-            if (suppressLog)
+            if (noLog)
               mvar.put(acquirer)
                 .as(Right(()))
             else {
@@ -79,7 +80,7 @@ final class AsyncLock private(
                       if (!hasAcquired)
                         Left(())  // Locked again by someone else, so try again
                       else {
-                        log.trace(s"↘ $name acquired by $acquirer ↘")
+                        if (!noMinorLog) log.trace(s"↘ $name acquired by $acquirer ↘")
                         acquirer.startMetering()
                         Right(())  // The lock is ours!
                       }
@@ -91,13 +92,13 @@ final class AsyncLock private(
     Task.defer {
       exitCase match {
         case ExitCase.Completed =>
-          log.trace(s"↙ $name released by ${acquirerToString()} ↙")
+          if (!noMinorLog) log.trace(s"↙ $name released by ${acquirerToString()} ↙")
 
         case ExitCase.Canceled =>
-          log.trace(s"↙❌ $name released by ${acquirerToString()} · Canceled ↙")
+          if (!noMinorLog) log.trace(s"↙❌ $name released by ${acquirerToString()} · Canceled ↙")
 
         case ExitCase.Error(t) =>
-          log.trace(s"↙💥 $name released by ${acquirerToString()} · ${t.toStringWithCauses} ↙")
+          if (!noMinorLog) log.trace(s"↙💥 $name released by ${acquirerToString()} · ${t.toStringWithCauses} ↙")
       }
       lockM.flatMap(_.take).void
     }
@@ -111,14 +112,18 @@ object AsyncLock
   private val waitCounter = Atomic(0)
 
   def apply()(implicit enclosing: sourcecode.Enclosing): AsyncLock =
-    apply(name = enclosing.value)
+    apply(noMinorLog = false)
+
+  def apply(noMinorLog: Boolean)(implicit enclosing: sourcecode.Enclosing): AsyncLock =
+    apply(name = enclosing.value, noMinorLog = noMinorLog)
 
   def apply(
     name: String,
     logWorryDurations: IterableOnce[FiniteDuration] = DefaultWorryDurations,
-    suppressLog: Boolean = false)
+    suppressLog: Boolean = false,
+    noMinorLog: Boolean = false)
   : AsyncLock =
-    new AsyncLock(name, logWorryDurations, suppressLog)
+    new AsyncLock(name, logWorryDurations, suppressLog, noMinorLog = noMinorLog)
 
   private final class Acquirer(correlId: CorrelId, nameToString: () => String) {
     private lazy val name = nameToString()
