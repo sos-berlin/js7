@@ -44,11 +44,11 @@ final class ForkListRecoveryTest extends OurTestSuite with DirectoryProviderForS
   "Join" in {
     directoryProvider.run { (controller, _) =>
       childOrderIds.toVector
-        .traverse(orderId =>
+        .traverse(childOrderId =>
           controller.eventWatch.whenKeyedEvent[OrderPrompted](
-            EventRequest.singleClass(), childOrderIds.head
+            EventRequest.singleClass(), childOrderId
           ) >>
-            controller.executeCommandAsSystemUser(AnswerOrderPrompt(orderId)))
+            controller.executeCommandAsSystemUser(AnswerOrderPrompt(childOrderId)))
         .await(99.s)
         .combineProblems
         .orThrow

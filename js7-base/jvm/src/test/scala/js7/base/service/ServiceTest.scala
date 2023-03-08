@@ -17,7 +17,7 @@ import scala.util.control.NoStackTrace
 
 final class ServiceTest extends OurAsyncTestSuite
 {
-  private val delay = 100.ms
+  private val delay = 200.ms
   private val iterations = if (isIntelliJIdea) 100 else 10
 
   private def repeat(n: Int)(body: => Future[Assertion]): Future[Assertion] =
