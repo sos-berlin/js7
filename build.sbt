@@ -784,7 +784,9 @@ def isExcludedJar(path: String) =
   path.startsWith("com.google.j2objc.j2objc-annotations-") ||
   //path.startsWith("com.intellij.annotations-") ||  <-- required by TypeTag[RichProcess]
   path.startsWith("listenablefuture-9999.0-empty-to-avoid-conflict-with-guava-") ||
-  path.startsWith("org.typelevel.simulacrum-scalafix-annotations_")
+  path.startsWith("org.typelevel.simulacrum-scalafix-annotations_") ||
+  path.startsWith("org.scalatest.") ||
+  path.startsWith("org.scalactic.")
 
 //--------------------------------------------------------------------------------------------------
 // RELEASE
