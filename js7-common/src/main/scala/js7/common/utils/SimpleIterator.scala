@@ -93,10 +93,8 @@ trait SimpleIterator[T] extends Iterator[T] {
     _next
   }
 
-  private def ensureNext(): Unit = {
+  private def ensureNext(): Unit =
     if (!hasNext) throw new NoSuchElementException
-    _next
-  }
 }
 
 object SimpleIterator {
