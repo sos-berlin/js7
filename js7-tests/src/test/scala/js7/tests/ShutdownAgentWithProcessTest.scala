@@ -123,12 +123,12 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite with ControllerAge
 
   private def manipulateEvent(keyedEvent: AnyKeyedEvent, orderId: OrderId): Option[AnyKeyedEvent] =
     keyedEvent match {
-    case o @ KeyedEvent(`orderId`, _) => Some(o)
-    case o @ KeyedEvent(_, _: AgentShutDown) => Some(o)
-    case KeyedEvent(agentPath: AgentPath, _: AgentReady) =>
-      Some(agentPath <-: AgentReady("UTC", None))
-    case _ => None
-  }
+      case o @ KeyedEvent(`orderId`, _) => Some(o)
+      case o @ KeyedEvent(_, _: AgentShutDown) => Some(o)
+      case KeyedEvent(agentPath: AgentPath, _: AgentReady) =>
+        Some(agentPath <-: AgentReady("UTC", None))
+      case _ => None
+    }
 }
 
 object ShutdownAgentWithProcessTest

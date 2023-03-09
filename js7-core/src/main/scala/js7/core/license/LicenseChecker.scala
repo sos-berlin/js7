@@ -3,8 +3,7 @@ package js7.core.license
 import js7.base.log.Logger
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.ServiceProviders.findServices
-import js7.base.utils.ScalaUtils.RightUnit
-import js7.base.utils.ScalaUtils.syntax.RichThrowable
+import js7.base.utils.ScalaUtils.syntax.*
 import js7.license.{LicenseCheck, LicenseCheckContext}
 import scala.util.control.NonFatal
 
@@ -19,11 +18,7 @@ final class LicenseChecker(licenseCheckContext: LicenseCheckContext)
     }
 
   def checkLicense(productName: String): Checked[Unit] =
-    try
-      if (!hasLicense(licenseChecks, productName))
-        Left(Problem(s"No license for $productName"))
-      else
-        RightUnit
+    try hasLicense(licenseChecks, productName) !! Problem(s"No license for $productName")
     catch { case NonFatal(t) =>
       logger.error(t.toStringWithCauses, t)
       Left(Problem.fromThrowable(t))
