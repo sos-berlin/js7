@@ -184,7 +184,8 @@ object WorkingClusterNode
     (implicit scheduler: Scheduler, actorRefFactory: ActorRefFactory, timeout: akka.util.Timeout)
   : Resource[Task, WorkingClusterNode[S]] =
     for {
-      _ <- Resource.eval(common.requireValidLicense.map(_.orThrow))
+      _ <- Resource.eval(Task.unless(recovered.clusterState == ClusterState.Empty)(
+        common.requireValidLicense.map(_.orThrow)))
       persistenceAllocated <- Resource.eval(FileStatePersistence
         .resource(recovered, journalConf, eventIdGenerator, keyedEventBus)
         .toAllocated/* ControllerOrderKeeper and AgentOrderKeeper both require Allocated*/)
