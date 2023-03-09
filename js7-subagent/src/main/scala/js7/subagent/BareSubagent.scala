@@ -119,7 +119,7 @@ object BareSubagent
           .toJobLauncherConf(iox, blockingInternalJobScheduler, clock)
           .flatMap(SubagentCommandExecutor.checkedResource(journal, conf, _)(iox))
           .orThrow
-        actorSystem <- Akkas.actorSystemResource(conf.name, config, js7Scheduler)
+        actorSystem <- Akkas.actorSystemResource(conf.name, config)
         sessionRegister = SessionRegister.start[SimpleSession](
           actorSystem, SimpleSession(_), config)
         _ <- sessionRegister.placeSessionTokenInDirectory(SimpleUser.System, conf.workDirectory)

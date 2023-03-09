@@ -158,9 +158,9 @@ object Akkas
   def actorSystemResource(name: String, config: Config = ConfigFactory.empty)
   : Resource[Task, ActorSystem] =
     Resource.suspend(Task.deferAction(scheduler => Task(
-      actorSystemResource(name, config, scheduler))))
+      actorSystemResource1(name, config, scheduler))))
 
-  def actorSystemResource(name: String, config: Config, scheduler: Scheduler)
+  private def actorSystemResource1(name: String, config: Config, scheduler: Scheduler)
   : Resource[Task, ActorSystem] =
     Resource.make(
       acquire = Task(newActorSystem(name, config, scheduler)).executeOn(scheduler))(

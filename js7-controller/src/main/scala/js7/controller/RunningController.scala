@@ -283,9 +283,7 @@ object RunningController
     // Recover and initialize other stuff in parallel
     val recoveringResource =
       ClusterNode.recoveringResource[ControllerState](
-        actorSystemResource(conf.name, config)
-          .evalTap(actorSystem => Task(
-            DeadLetterActor.subscribe(actorSystem))),
+        actorSystemResource(conf.name, config),
         (uri, name, actorSystem) => AkkaHttpControllerApi.resource(
           uri, clusterConf.peersUserAndPassword, httpsConfig, name = name)(actorSystem),
         configDirectory = conf.configDirectory,

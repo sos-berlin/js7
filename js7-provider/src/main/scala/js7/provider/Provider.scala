@@ -223,7 +223,7 @@ object Provider
   def resource(conf: ProviderConfiguration)(implicit scheduler: Scheduler)
   : Resource[Task, Provider] =
     for {
-      actorSystem <- Akkas.actorSystemResource("Providor", conf.config, scheduler)
+      actorSystem <- Akkas.actorSystemResource("Providor", conf.config)
       iox <- IOExecutor.resource[Task](conf.config, "Provider")
       provider <- resource2(conf)(scheduler, iox, actorSystem)
     } yield provider
