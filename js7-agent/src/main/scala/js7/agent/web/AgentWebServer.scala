@@ -4,6 +4,7 @@ import akka.actor.ActorSystem
 import cats.effect.Resource
 import js7.agent.DirectAgentApi
 import js7.agent.configuration.AgentConfiguration
+import js7.agent.data.views.AgentOverview
 import js7.agent.web.common.AgentSession
 import js7.base.auth.SimpleUser
 import js7.common.akkahttp.web.AkkaWebServer
@@ -16,6 +17,7 @@ import monix.eval.Task
 object AgentWebServer
 {
   def resource(
+    agentOverview: Task[AgentOverview],
     agentConfiguration: AgentConfiguration,
     gateKeeperConfiguration: GateKeeper.Configuration[SimpleUser],
     api: CommandMeta => DirectAgentApi,
@@ -29,6 +31,7 @@ object AgentWebServer
       (binding, whenShuttingDown) =>
         Task.deferAction(implicit scheduler => Task.pure(
           new AgentBoundRoute(
+            agentOverview,
             binding,
             whenShuttingDown,
             api,

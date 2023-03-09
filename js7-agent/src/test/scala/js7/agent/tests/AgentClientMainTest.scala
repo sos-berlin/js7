@@ -1,19 +1,12 @@
 package js7.agent.tests
 
-import js7.agent.RunningAgent
 import js7.agent.client.main.AgentClientMain
-import js7.agent.command.CommandHandler
-import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.ShutDown
-import js7.agent.tests.AgentClientMainTest.*
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceString, RichJson}
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
-import js7.base.problem.Checked
 import js7.base.test.OurTestSuite
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import js7.core.command.CommandMeta
-import monix.eval.Task
 import org.scalatest.BeforeAndAfterAll
 import scala.collection.mutable
 
@@ -26,20 +19,16 @@ final class AgentClientMainTest extends OurTestSuite with BeforeAndAfterAll with
 
   override def afterAll() = closer closeThen super.afterAll()
 
-  override protected def agentTestWiring = RunningAgent.TestWiring(
-    commandHandler = Some(new CommandHandler {
-      def execute(command: AgentCommand, meta: CommandMeta): Task[Checked[command.Response]] =
-        Task {
-          (command match {
-            case ExpectedTerminate => Right(AgentCommand.Response.Accepted)
-            case _ => fail()
-          }).map(_.asInstanceOf[command.Response])
-        }
-
-      def overview = throw new NotImplementedError
-
-      def detailed = throw new NotImplementedError
-    }))
+  //override protected def agentTestWiring = RunningAgent.TestWiring(
+  //  commandHandler = Some(new CommandHandler {
+  //    def execute(command: AgentCommand, meta: CommandMeta): Task[Checked[command.Response]] =
+  //      Task {
+  //        (command match {
+  //          case ExpectedTerminate => Right(AgentCommand.Response.Accepted)
+  //          case _ => fail()
+  //        }).map(_.asInstanceOf[command.Response])
+  //      }
+  //  }))
 
   "main" in {
     val output = mutable.Buffer.empty[String]

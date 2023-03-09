@@ -12,8 +12,11 @@ import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.ShutDown
+import js7.agent.data.views.AgentOverview
+import js7.agent.main.AgentMain
 import js7.agent.web.AgentWebServer
 import js7.agent.web.common.AgentSession
+import js7.base.BuildInfo
 import js7.base.auth.{SessionToken, SimpleUser, UserId}
 import js7.base.eventbus.StandardEventBus
 import js7.base.io.file.FileUtils.syntax.*
@@ -35,6 +38,8 @@ import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.session.SessionRegister
 import js7.common.akkautils.{Akkas, DeadLetterActor}
+import js7.common.system.JavaInformations.javaInformation
+import js7.common.system.SystemInformations.systemInformation
 import js7.common.system.ThreadPools.newUnlimitedScheduler
 import js7.common.system.startup.StartUp
 import js7.core.command.CommandMeta
@@ -144,7 +149,7 @@ object RunningAgent {
     import conf.config
     for {
       _ <- Resource.eval(Task(conf.createDirectories()))
-      actorSystem <- Akkas.actorSystemResource(conf.name, config, scheduler)
+      actorSystem <- Akkas.actorSystemResource(conf.name, config)
         .evalTap(actorSystem => Task(
           DeadLetterActor.subscribe(actorSystem)))
       iox <- IOExecutor.resource[Task](config, conf.name + "-I/O")
@@ -224,6 +229,14 @@ object RunningAgent {
             actor ! MainActor.Input.Start(recovered))
           }
 
+      val agentOverview = Task(AgentOverview(
+        startedAt = AgentMain.startedAt,
+        version = BuildInfo.prettyVersion,
+        buildId = BuildInfo.buildId,
+        //isTerminating = isTerminating /*FIXME*/ ,
+        system = systemInformation(),
+        java = javaInformation()))
+
       for {
         recovered <- StateRecoverer.resource[AgentState](journalMeta, config)
         persistenceAllocated <- Resource.make(
@@ -236,7 +249,7 @@ object RunningAgent {
         (mainActor, untilActorReady, whenActorTerminated) = x
         api <- Resource.eval(untilActorReady.map(_.api))
         webServer <- AgentWebServer
-          .resource(conf, gateKeeperConf, api, sessionRegister, persistence.eventWatch)
+          .resource(agentOverview, conf, gateKeeperConf, api, sessionRegister, persistence.eventWatch)
           .evalTap(webServer => Task {
             conf.workDirectory / "http-uri" :=
               webServer.localHttpUri.fold(_ => "", o => s"$o/agent")

@@ -7,7 +7,6 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.system.startup.Halt
 import js7.controller.command.ControllerCommandExecutor.*
 import js7.core.command.{CommandExecutor, CommandMeta, CommandRegister, CommandRun}
-import js7.data.command.{CommandHandlerDetailed, CommandHandlerOverview}
 import js7.data.controller.ControllerCommand
 import js7.data.controller.ControllerCommand.{Batch, EmergencyStop}
 import monix.eval.Task
@@ -77,12 +76,6 @@ extends CommandExecutor[ControllerCommand]
       case Batch(_) =>   // Log only individual commands
       case _ => logger.debug(s"↘ $run")
     }
-
-  def overview: CommandHandlerOverview =
-    register.overview
-
-  def detailed: CommandHandlerDetailed[ControllerCommand] =
-    register.detailed
 }
 
 object ControllerCommandExecutor {

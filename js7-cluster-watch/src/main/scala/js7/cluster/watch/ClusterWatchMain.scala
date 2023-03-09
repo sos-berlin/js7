@@ -14,6 +14,6 @@ object ClusterWatchMain
 
   def run(args: Array[String])(use: ClusterWatchService => Task[ProgramTermination]): Int =
     ServiceMain.intMain(args, "ClusterWatch", ClusterWatchConf.fromCommandLine)(
-      ClusterWatchService.resource,
+      (conf, _) => ClusterWatchService.resource(conf),
       use = use)
 }

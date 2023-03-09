@@ -3,6 +3,7 @@ package js7.agent.main
 import js7.agent.RunningAgent
 import js7.agent.configuration.AgentConfiguration
 import js7.base.log.Logger
+import js7.base.time.Timestamp
 import js7.base.utils.ProgramTermination
 import js7.common.commandline.CommandLineArguments
 import js7.common.system.startup.JavaMainLockfileSupport.lockAndRunMain
@@ -51,6 +52,7 @@ final class AgentMain
 object AgentMain
 {
   // No Logger here!
+  val startedAt = Timestamp.now
 
   def main(args: Array[String]): Unit = {
     ServiceMain.startUp("Agent")

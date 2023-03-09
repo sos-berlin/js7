@@ -8,7 +8,7 @@ trait DelegateOverview {
   def version: String
   def buildId: String
   def startedAt: Timestamp
-  def isTerminating: Boolean
+  //def isTerminating: Boolean
   def system: SystemInformation
   def java: JavaInformation
 }

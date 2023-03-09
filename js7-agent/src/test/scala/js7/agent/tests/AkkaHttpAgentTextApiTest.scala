@@ -3,7 +3,6 @@ package js7.agent.tests
 import akka.http.scaladsl.model.StatusCodes.*
 import js7.agent.RunningAgent
 import js7.agent.client.AkkaHttpAgentTextApi
-import js7.agent.command.CommandHandler
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.commands.AgentCommand
 import js7.agent.tests.AkkaHttpAgentTextApiTest.*
@@ -13,7 +12,6 @@ import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceString}
 import js7.base.configutils.Configs.*
 import js7.base.generic.SecretString
 import js7.base.io.process.ProcessSignal.SIGTERM
-import js7.base.problem.Checked
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -23,8 +21,6 @@ import js7.base.web.Uri
 import js7.common.akkahttp.web.auth.OurMemoizingAuthenticator
 import js7.common.http.AkkaHttpClient
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import js7.core.command.CommandMeta
-import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import org.scalatest.Assertions.*
 import org.scalatest.BeforeAndAfterAll
@@ -43,18 +39,15 @@ extends OurTestSuite with BeforeAndAfterAll with HasCloser with TestAgentProvide
     httpPort = None, httpsPort = Some(findFreeTcpPort()))
 
   override protected def agentTestWiring = RunningAgent.TestWiring(
-    commandHandler = Some(new CommandHandler {
-      def execute(command: AgentCommand, meta: CommandMeta): Task[Checked[command.Response]] =
-      Task {
-        (command match {
-          case ExpectedTerminate => Right(AgentCommand.Response.Accepted)
-          case _ => fail()
-        }).map(_.asInstanceOf[command.Response])
-      }
-
-      def overview = throw new NotImplementedError
-      def detailed = throw new NotImplementedError
-    }),
+    //commandHandler = Some(new CommandHandler {
+    //  def execute(command: AgentCommand, meta: CommandMeta): Task[Checked[command.Response]] =
+    //  Task {
+    //    (command match {
+    //      case ExpectedTerminate => Right(AgentCommand.Response.Accepted)
+    //      case _ => fail()
+    //    }).map(_.asInstanceOf[command.Response])
+    //  }
+    //}),
     authenticator = Some(_ =>
       new OurMemoizingAuthenticator({
         case TestUserId => Some(SimpleUser(TestUserId, HashedPassword(Password, identity)))

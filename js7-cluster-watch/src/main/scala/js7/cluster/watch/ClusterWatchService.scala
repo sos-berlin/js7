@@ -29,7 +29,6 @@ import js7.data.cluster.ClusterWatchingCommand.ClusterWatchConfirm
 import js7.data.cluster.{ClusterState, ClusterWatchId, ClusterWatchRequest, ClusterWatchRunId}
 import js7.data.node.NodeId
 import monix.eval.Task
-import monix.execution.Scheduler
 import monix.reactive.Observable
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters.*
@@ -142,11 +141,11 @@ object ClusterWatchService
 {
   private val logger = Logger(getClass)
 
-  def resource(conf: ClusterWatchConf, scheduler: Scheduler)
+  def resource(conf: ClusterWatchConf)
   : Resource[Task, ClusterWatchService] = {
     import conf.{clusterNodeAdmissions, config, httpsConfig}
     for {
-      akka <- actorSystemResource(name = "ClusterWatch", config, scheduler)
+      akka <- actorSystemResource(name = "ClusterWatch", config)
       service <- ClusterWatchService.resource(
         conf.clusterWatchId,
         apiResources = clusterNodeAdmissions

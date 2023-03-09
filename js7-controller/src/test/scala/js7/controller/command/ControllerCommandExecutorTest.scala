@@ -58,10 +58,4 @@ final class ControllerCommandExecutorTest extends OurTestSuite
         Right(Response.Accepted)))))
     assert(cancelled == 2)
   }
-
-  "detailed" in {
-    assert(commandExecutor.overview.currentCommandCount == 0)
-    assert(commandExecutor.overview.totalCommandCount == 6)
-    assert(commandExecutor.detailed.commandRuns.isEmpty)
-  }
 }

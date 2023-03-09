@@ -39,7 +39,6 @@ final class MainActor(
   (implicit scheduler: Scheduler, iox: IOExecutor)
 extends Actor {
 
-  import agentConfiguration.implicitAkkaAskTimeout
   import context.{actorOf, watch}
 
   override val supervisorStrategy = CatchingSupervisorStrategy(terminationPromise)
@@ -57,7 +56,7 @@ extends Actor {
     new CommandActor.Handle(actor)
   }
 
-  private def api(meta: CommandMeta) = new DirectAgentApi(commandHandler, agentHandle, meta)
+  private def api(meta: CommandMeta) = new DirectAgentApi(commandHandler, meta)
 
   override def preStart() = {
     super.preStart()

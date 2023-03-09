@@ -1,7 +1,7 @@
 package js7.core.command
 
 import js7.base.log.CorrelId
-import js7.data.command.{CommandHandlerDetailed, CommandHandlerOverview, CommonCommand}
+import js7.data.command.CommonCommand
 import scala.collection.mutable
 import scala.concurrent.duration.Deadline.now
 
@@ -25,15 +25,5 @@ final class CommandRegister[C <: CommonCommand]
   def remove(id: CorrelId): Unit =
     synchronized {
       idToCommand -= id
-    }
-
-  def overview: CommandHandlerOverview =
-    synchronized {
-      CommandHandlerOverview(currentCommandCount = idToCommand.size, totalCommandCount = totalCounter)
-    }
-
-  def detailed: CommandHandlerDetailed[C] =
-    synchronized {
-      CommandHandlerDetailed(idToCommand.values.map(_.overview).toVector)
     }
 }

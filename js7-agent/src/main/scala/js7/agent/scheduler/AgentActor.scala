@@ -8,10 +8,8 @@ import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.CoupleController
 import js7.agent.data.event.AgentEvent.AgentDedicated
-import js7.agent.data.views.AgentOverview
 import js7.agent.scheduler.AgentActor.*
 import js7.agent.scheduler.order.AgentOrderKeeper
-import js7.base.BuildInfo
 import js7.base.auth.UserId
 import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier
 import js7.base.eventbus.StandardEventBus
@@ -28,9 +26,6 @@ import js7.base.utils.ScalaUtils.RightUnit
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, ProgramTermination, SetOnce}
 import js7.common.akkautils.{SimpleStateActor, SupervisorStrategies}
-import js7.common.system.JavaInformations.javaInformation
-import js7.common.system.SystemInformations.systemInformation
-import js7.common.system.startup.StartUp
 import js7.data.agent.Problems.{AgentAlreadyDedicatedProblem, AgentIsShuttingDown, AgentNotDedicatedProblem, AgentPathMismatchProblem, AgentRunIdMismatchProblem, AgentWrongControllerProblem}
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
@@ -120,15 +115,6 @@ private[agent] final class AgentActor(
       for (_ <- terminateCompleted.future) {
         context.stop(self)
       }
-
-    case Command.GetOverview =>
-      sender() ! AgentOverview(
-        version = BuildInfo.prettyVersion,
-        buildId = BuildInfo.buildId,
-        startedAt = StartUp.startedAt,
-        isTerminating = terminating,
-        system = systemInformation(),
-        java = javaInformation)
   }
 
   private def executeExternalCommand(externalCommand: Input.ExternalCommand): Unit = {
@@ -298,10 +284,6 @@ private[agent] final class AgentActor(
 object AgentActor
 {
   private val logger = Logger(getClass)
-
-  object Command {
-    case object GetOverview
-  }
 
   object Input {
     final case class Start(recovered: Recovered[AgentState])

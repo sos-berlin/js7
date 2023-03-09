@@ -1,8 +1,6 @@
 package js7.agent.command
 
 import akka.actor.{Actor, ActorRef}
-import akka.pattern.ask
-import akka.util.Timeout
 import cats.instances.future.*
 import cats.syntax.traverse.*
 import js7.agent.command.CommandActor.*
@@ -16,7 +14,6 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.common.system.startup.Halt
 import js7.core.command.{CommandMeta, CommandRegister, CommandRun}
-import js7.data.command.{CommandHandlerDetailed, CommandHandlerOverview}
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.Promise
@@ -40,12 +37,6 @@ extends Actor {
       correlId.bind {
         executeCommand(command, meta, response)
       }
-
-    case Command.GetOverview =>
-      sender() ! register.overview
-
-    case Command.GetDetailed =>
-      sender() ! register.detailed
 
     case Internal.Respond(run, correlId, promise, response) =>
       correlId.bind[Unit] {
@@ -127,11 +118,6 @@ object CommandActor {
 
   private val logger = Logger(getClass)
 
-  object Command {
-    case object GetOverview
-    case object GetDetailed
-  }
-
   object Input {
     final case class Execute(
       command: AgentCommand,
@@ -148,20 +134,12 @@ object CommandActor {
       response: Try[Checked[Response]])
   }
 
-  final class Handle(actor: ActorRef)(implicit askTimeout: Timeout) extends CommandHandler {
+  final class Handle(actor: ActorRef) extends CommandHandler {
     def execute(command: AgentCommand, meta: CommandMeta) =
       Task.deferFuture {
         val promise = Promise[Checked[Response]]()
         actor ! Input.Execute(command, meta, CorrelId.current, promise)
         promise.future
       }
-
-    def overview =
-      Task.deferFuture(
-        (actor ? Command.GetOverview).mapTo[CommandHandlerOverview])
-
-    def detailed =
-      Task.deferFuture(
-        (actor ? Command.GetDetailed).mapTo[CommandHandlerDetailed[AgentCommand]])
   }
 }

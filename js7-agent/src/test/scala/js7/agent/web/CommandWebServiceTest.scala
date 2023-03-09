@@ -12,14 +12,12 @@ import js7.agent.web.test.WebServiceTest
 import js7.base.circeutils.CirceUtils.*
 import js7.base.circeutils.CirceUtils.implicits.*
 import js7.base.io.process.ProcessSignal.SIGTERM
-import js7.base.log.CorrelId
 import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
 import js7.core.command.CommandMeta
 import js7.data.agent.Problems.AgentIsShuttingDown
-import js7.data.command.{CommandHandlerDetailed, CommandHandlerOverview, CommandRunOverview}
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.Future
@@ -40,13 +38,6 @@ final class CommandWebServiceTest extends OurTestSuite with WebServiceTest with 
         case TestCommandWhileShuttingDown => Left(AgentIsShuttingDown)
         case _ => fail()
       })
-
-  protected def commandOverview =
-    Task.pure(CommandHandlerOverview(currentCommandCount = 111, totalCommandCount = 222))
-
-  protected def commandDetailed =
-    Task.pure(CommandHandlerDetailed(List(
-      CommandRunOverview(CorrelId("_CORREL_"), 1.h, TestCommand))))
 
   private val route =
     pathSegments("agent/api/command") {
@@ -83,25 +74,6 @@ final class CommandWebServiceTest extends OurTestSuite with WebServiceTest with 
       testSessionHeader ~>
       Accept(`application/json`) ~>
       route
-
-  "commandHandler returns overview" in {
-    Get("/agent/api/command") ~> testSessionHeader ~> Accept(`application/json`) ~> route ~> check {
-      assert(responseAs[Json] == Json.obj(
-        "currentCommandCount" -> Json.fromInt(111),
-        "totalCommandCount" -> Json.fromInt(222)))
-    }
-  }
-
-  "commandHandler/ returns array of running commands" in {
-    Get("/agent/api/command/") ~> testSessionHeader ~> Accept(`application/json`) ~> route ~> check {
-      assert(status == OK)
-      assert(responseAs[Json] == Json.fromValues(List(
-        Json.obj(
-          "correlId" -> "_CORREL_".asJson,
-          "duration" -> 3600.asJson,
-          "command" -> (TestCommand: AgentCommand).asJson.dropNullValues))))
-    }
-  }
 }
 
 private object CommandWebServiceTest {

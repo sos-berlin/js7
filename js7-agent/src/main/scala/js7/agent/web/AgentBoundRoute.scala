@@ -6,8 +6,9 @@ import akka.http.scaladsl.server.directives.CodingDirectives.{decodeRequest, enc
 import js7.agent.DirectAgentApi
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.commands.AgentCommand
+import js7.agent.data.views.AgentOverview
 import js7.agent.web.common.AgentSession
-import js7.base.auth.{SimpleUser, UserId}
+import js7.base.auth.SimpleUser
 import js7.base.problem.Checked
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkahttp.WebLogDirectives
@@ -29,6 +30,7 @@ import scala.concurrent.duration.Deadline
  * @author Joacim Zschimmer
  */
 private final class AgentBoundRoute(
+  protected val agentOverview: Task[AgentOverview],
   binding: WebServerBinding,
   protected val whenShuttingDown: Future[Deadline],
   api: CommandMeta => DirectAgentApi,
@@ -43,20 +45,10 @@ extends AkkaWebServer.BoundRoute
 with WebLogDirectives
 with ApiRoute
 {
-  private lazy val anonymousApi = api(CommandMeta(
-    user = gateKeeperConfiguration.idToUser(UserId.Anonymous)
-      .getOrElse(sys.error("Anonymous user has not been defined"))))
-
   protected val gateKeeper = GateKeeper(binding, gateKeeperConfiguration)
 
-  protected def agentApi(meta: CommandMeta) = api(meta)
-  protected def agentOverview = anonymousApi.overview
-
   protected def commandExecute(meta: CommandMeta, command: AgentCommand) =
-    agentApi(meta).commandExecute(command)
-
-  protected def commandOverview = anonymousApi.commandOverview
-  protected def commandDetailed = anonymousApi.commandDetailed
+    api(meta).commandExecute(command)
 
   protected def akkaAskTimeout = agentConfiguration.akkaAskTimeout
   protected def config = agentConfiguration.config

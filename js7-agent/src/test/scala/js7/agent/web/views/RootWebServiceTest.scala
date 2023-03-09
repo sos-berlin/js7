@@ -31,7 +31,7 @@ final class RootWebServiceTest extends OurTestSuite with WebServiceTest with Roo
     startedAt = Timestamp.parse("2015-06-01T12:00:00Z"),
     version = "TEST-VERSION",
     buildId = "BUILD-ID",
-    isTerminating = false,
+    //isTerminating = false,
     system = SystemInformation(hostname = "TEST-HOSTNAME"),
     java = JavaInformation(
       version = "x.y.z",
@@ -43,7 +43,6 @@ final class RootWebServiceTest extends OurTestSuite with WebServiceTest with Roo
     "startedAt": 1433160000000,
     "version": "TEST-VERSION",
     "buildId": "BUILD-ID",
-    "isTerminating": false,
     "system": {
       "hostname": "TEST-HOSTNAME",
       "mxBeans": {}
