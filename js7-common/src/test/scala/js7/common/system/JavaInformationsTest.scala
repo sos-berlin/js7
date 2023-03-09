@@ -11,7 +11,7 @@ import js7.data.system.JavaInformation
 final class JavaInformationsTest extends OurTestSuite {
 
   "JSON" in {
-    val javaInformation = JavaInformations.javaInformation
+    val javaInformation = JavaInformations.javaInformation()
     val json = javaInformation.asJson
     assert(json.as[JavaInformation] == Right(javaInformation))
     assert(json.jsonObjectOrThrow.toMap("systemProperties").jsonObjectOrThrow.toMap contains "java.version")

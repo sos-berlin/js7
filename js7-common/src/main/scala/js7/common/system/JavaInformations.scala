@@ -22,7 +22,7 @@ object JavaInformations
       v <- sys.props.get(k)
     } yield k -> v).toMap
 
-  val javaInformation = JavaInformation(
+  def javaInformation() = JavaInformation(
     version = implementationVersion,
     availableProcessors = sys.runtime.availableProcessors,
     Memory(

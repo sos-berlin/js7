@@ -66,7 +66,7 @@ with PseudoAgentRoute
       startedAt = StartUp.startedAt,
       isTerminating = commandExecutor.isShuttingDown,
       system = systemInformation(),
-      java = javaInformation))
+      java = javaInformation()))
 
   val webServerRoute: Route =
     (decodeRequest & encodeResponse)( // Before handleErrorAndLog to allow simple access to HttpEntity.Strict

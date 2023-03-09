@@ -16,5 +16,5 @@ object PlatformInfos
     hostname = operatingSystem.hostname,
     operatingSystem.distributionNameAndVersionOption,
     cpuModel = operatingSystem.cpuModel,
-    javaInformation)
+    javaInformation())
 }

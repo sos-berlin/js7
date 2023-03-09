@@ -47,5 +47,5 @@ trait ApiRootRoute extends ControllerRouteProvider
         totalRunningTime = totalRunningSince.elapsed roundUpToNext 1.ms,
         orderCount = checkedControllerState.toOption.map(_.idToOrder.size),
         system = systemInformation(),
-        java = javaInformation)
+        java = javaInformation())
 }
