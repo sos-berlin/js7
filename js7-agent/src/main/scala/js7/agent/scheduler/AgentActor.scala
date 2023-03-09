@@ -31,17 +31,18 @@ import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.journal.files.JournalFiles.JournalMetaOps
-import js7.journal.recover.Recovered
 import js7.journal.state.FileStatePersistence
 import js7.launcher.configuration.JobLauncherConf
 import monix.eval.Task
 import monix.execution.Scheduler
+import scala.concurrent.duration.Deadline
 import scala.concurrent.{Future, Promise}
 
 /**
   * @author Joacim Zschimmer
   */
 private[agent] final class AgentActor(
+  totalRunningSince: Deadline,
   terminatePromise: Promise[ProgramTermination],
   persistenceAllocated: Allocated[Task, FileStatePersistence[AgentState]],
   clock: AlarmClock,
@@ -58,7 +59,7 @@ private[agent] final class AgentActor(
 
   override val supervisorStrategy = SupervisorStrategies.escalate
 
-  private var recovered: Recovered[AgentState] = null
+  private var recoveredAgentState: AgentState = null
   private val started = SetOnce[Started]
   private val shutDownCommand = SetOnce[AgentCommand.ShutDown]
   private var isResetting = false
@@ -91,11 +92,10 @@ private[agent] final class AgentActor(
   }
 
   def receive = {
-    case Input.Start(recovered) =>
-      this.recovered = recovered
-      val state = recovered.state
-      if (state.isDedicated) {
-        addOrderKeeper(state.agentPath, state.controllerId).orThrow
+    case Input.Start(recoveredAgentState) =>
+      this.recoveredAgentState = recoveredAgentState
+      if (recoveredAgentState.isDedicated) {
+        addOrderKeeper(recoveredAgentState.agentPath, recoveredAgentState.controllerId).orThrow
       }
       become("ready")(ready)
       sender() ! Output.Ready
@@ -258,13 +258,13 @@ private[agent] final class AgentActor(
             s"This Agent has already started as '${started.agentPath}' for '${started.controllerId}'"))
 
         case None =>
-          val recovered = this.recovered
-          this.recovered = null  // release memory
+          val recoveredAgentState = this.recoveredAgentState
+          this.recoveredAgentState = null  // release memory
           val actor = actorOf(
             Props {
               new AgentOrderKeeper(
-                recovered.totalRunningSince,
-                requireNonNull(recovered),
+                totalRunningSince,
+                requireNonNull(recoveredAgentState),
                 allocatedSignatureVerifier.allocatedThing,
                 jobLauncherConf,
                 persistenceAllocated,
@@ -286,7 +286,7 @@ object AgentActor
   private val logger = Logger(getClass)
 
   object Input {
-    final case class Start(recovered: Recovered[AgentState])
+    final case class Start(agentState: AgentState)
     final case class ExternalCommand(
       userId: UserId,
       command: AgentCommand,

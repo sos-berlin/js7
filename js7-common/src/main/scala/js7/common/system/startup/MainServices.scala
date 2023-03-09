@@ -3,13 +3,14 @@ package js7.common.system.startup
 import cats.effect.{Resource, SyncIO}
 import com.typesafe.config.Config
 import js7.base.service.MainService
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.thread.MonixBlocking.syntax.*
+import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.utils.ProgramTermination
-import js7.base.utils.SyncResource.syntax.RichSyncResource
+import js7.base.utils.SyncResource.syntax.*
 import js7.common.system.ThreadPools
 import monix.eval.Task
 import monix.execution.Scheduler
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration.*
 
 // Needs access to js7-common/ThreadPools
 object MainServices
@@ -20,10 +21,14 @@ object MainServices
     config: Config,
     timeout: Duration = Duration.Inf)(
     resource: Scheduler => Resource[Task, S],
-    use: S => Task[ProgramTermination] = (_: S).untilTerminated)
+    use: (S, Scheduler) => ProgramTermination =
+      (service: S, scheduler: Scheduler) => service.untilTerminated.await(timeout)(scheduler))
   : ProgramTermination =
     ThreadPools
       .standardSchedulerResource[SyncIO](name, config)
       .useSync(implicit scheduler =>
-        resource(scheduler).use(use).await(timeout))
+        resource(scheduler)
+          .use(service => Task(
+            use(service, scheduler)))
+          .await(timeout + 1.s/*allow `use` to fail first*/))
 }

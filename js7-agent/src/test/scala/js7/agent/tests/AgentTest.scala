@@ -58,7 +58,7 @@ final class AgentTest extends OurTestSuite with AgentTester
             agentConf = agentConf.copy(jobWorkingDirectory = workingDirectory)
           }
           TestAgent.blockingRun(agentConf, 99.s) { agent =>
-            val agentApi = agent.api(CommandMeta(TestUser))
+            val agentApi = agent.api.await(99.s).orThrow.apply(CommandMeta(TestUser))
             agentApi
               .commandExecute(
                 DedicateAgentDirector(Some(subagentId), controllerId, agentPath))

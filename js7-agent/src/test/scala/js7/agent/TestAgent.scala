@@ -14,7 +14,7 @@ import js7.base.problem.Checked
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.syntax.RichResource
-import js7.base.utils.ScalaUtils.syntax.RichThrowable
+import js7.base.utils.ScalaUtils.syntax.{RichEither, RichThrowable}
 import js7.base.utils.{Allocated, ProgramTermination}
 import js7.base.web.Uri
 import js7.common.system.startup.MainServices
@@ -55,9 +55,9 @@ extends AutoCloseable {
     agent.sessionToken
 
   def currentAgentState(): AgentState =
-    agent.currentAgentState()
+    agent.agentState.await(99.s).orThrow
 
-  def api: CommandMeta => DirectAgentApi =
+  def api: Task[Checked[CommandMeta => DirectAgentApi]] =
     agent.api
 
   def eventWatch: EventWatch =
@@ -86,14 +86,15 @@ object TestAgent {
   : ProgramTermination =
     MainServices.blockingRun(conf.name, conf.config, timeout = timeout)(
       resource = resource(conf)(_),
-      use = (agent: RunningAgent) => Task.defer {
+      use = (agent: RunningAgent, scheduler: Scheduler) => {
         val testAgent = new TestAgent(new Allocated(agent, agent.terminate().void))
         try body(testAgent)
         catch { case NonFatal(t) =>
           logger.debug(s"💥 ${t.toStringWithCauses}", t.nullIfNoStackTrace)
+          agent.terminate().await(99.s)(scheduler)
           throw t
         }
-        agent.terminate()
+        agent.terminate().await(99.s)(scheduler)
       })
 
   def start(
@@ -109,17 +110,16 @@ object TestAgent {
     RunningAgent.resource(conf, testWiring)
       .flatMap(agent => Resource.makeCase(
         acquire = Task.pure(agent))(
-        release = {
-          case (agent, exitCase) =>
-            exitCase match {
-              case ExitCase.Error(throwable) =>
-                logger.error(throwable.toStringWithCauses, throwable.nullIfNoStackTrace)
-              case _ =>
-            }
-            // Avoid Akka 2.6 StackTraceError which occurs when agent.terminate() has not been executed:
-            Task.fromFuture(agent.terminated).void
-              .timeoutTo(3.s, Task.unit)
-              .tapError(t => Task(
-                logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)))
+        release = (agent, exitCase) => {
+          exitCase match {
+            case ExitCase.Error(throwable) =>
+              logger.error(throwable.toStringWithCauses, throwable.nullIfNoStackTrace)
+            case _ =>
+          }
+          // Avoid Akka 2.6 StackTraceError which occurs when agent.terminate() has not been executed:
+          Task.fromFuture(agent.terminated).void
+            .timeoutTo(3.s, Task.unit)
+            .tapError(t => Task(
+              logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)))
         }))
 }

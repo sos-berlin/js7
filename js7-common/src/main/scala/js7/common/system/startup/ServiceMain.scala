@@ -10,6 +10,7 @@ import js7.base.log.{Log4j, Logger}
 import js7.base.service.{MainService, Service}
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
+import js7.base.time.Timestamp
 import js7.base.utils.CatsUtils.syntax.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{Allocated, ProgramTermination}
@@ -25,7 +26,8 @@ import scala.concurrent.duration.{Deadline, Duration, NANOSECONDS}
 
 object ServiceMain
 {
-  var _runningSince: Option[Deadline] = None
+  private var _runningSince: Option[Deadline] = None
+  lazy val startedAt = Timestamp.now
 
   def runningSince: Option[Deadline] =
     _runningSince
@@ -80,6 +82,7 @@ object ServiceMain
     val nanoTime = System.nanoTime() // Before anything else, fetch clock
     printlnWithClock(s"JS7 $name ${BuildInfo.longVersion}")
     _runningSince = Some(Deadline(Duration(nanoTime, NANOSECONDS)))
+    startedAt
     StartUp.initializeMain()
   }
 

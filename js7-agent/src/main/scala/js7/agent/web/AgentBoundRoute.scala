@@ -10,6 +10,7 @@ import js7.agent.data.views.AgentOverview
 import js7.agent.web.common.AgentSession
 import js7.base.auth.SimpleUser
 import js7.base.problem.Checked
+import js7.base.utils.ScalaUtils.syntax.RichEitherF
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkahttp.WebLogDirectives
 import js7.common.akkahttp.web.AkkaWebServer
@@ -33,7 +34,7 @@ private final class AgentBoundRoute(
   protected val agentOverview: Task[AgentOverview],
   binding: WebServerBinding,
   protected val whenShuttingDown: Future[Deadline],
-  api: CommandMeta => DirectAgentApi,
+  api: Task[Checked[CommandMeta => DirectAgentApi]],
   protected val agentConfiguration: AgentConfiguration,
   gateKeeperConfiguration: GateKeeper.Configuration[SimpleUser],
   protected val sessionRegister: SessionRegister[AgentSession],
@@ -48,7 +49,7 @@ with ApiRoute
   protected val gateKeeper = GateKeeper(binding, gateKeeperConfiguration)
 
   protected def commandExecute(meta: CommandMeta, command: AgentCommand) =
-    api(meta).commandExecute(command)
+    api.flatMapT(_.apply(meta).commandExecute(command))
 
   protected def akkaAskTimeout = agentConfiguration.akkaAskTimeout
   protected def config = agentConfiguration.config

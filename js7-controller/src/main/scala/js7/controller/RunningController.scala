@@ -37,7 +37,6 @@ import js7.cluster.ClusterNode.RestartAfterJournalTruncationException
 import js7.cluster.{ClusterNode, WorkingClusterNode}
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.akkautils.Akkas.actorSystemResource
-import js7.common.akkautils.DeadLetterActor
 import js7.common.system.ThreadPools
 import js7.controller.ControllerOrderKeeper.ControllerIsShuttingDownProblem
 import js7.controller.RunningController.*
@@ -293,23 +292,19 @@ object RunningController
       .parZip(CorrelId.bindNew(
         itemVerifierResource(config, testEventBus)))
 
-    resources.flatMap { case ((recovered, actorSystem, clusterNode), itemVerifier) =>
-      @volatile var clusterStartupTermination = ProgramTermination()
+    resources.flatMap { case ((recoveredExtract, actorSystem, clusterNode), itemVerifier) =>
       implicit val implicitActorSystem = actorSystem
 
       val orderKeeperStarted: Task[Either[ProgramTermination, OrderKeeperStarted]] =
         logger.traceTaskWithResult(
           clusterNode.untilActivated
-            .map {
-              case None => Left(clusterStartupTermination)
-
-              case Some(workingClusterNode) =>
-                startControllerOrderKeeper(
-                  workingClusterNode.persistenceAllocated,
-                  clusterNode.workingClusterNode.orThrow,
-                  alarmClock,
-                  conf, testEventBus)
-            }
+            .map(_.flatMap { workingClusterNode =>
+              startControllerOrderKeeper(
+                workingClusterNode.persistenceAllocated,
+                clusterNode.workingClusterNode.orThrow,
+                alarmClock,
+                conf, testEventBus)
+            })
             .onErrorRecover { case t: RestartAfterJournalTruncationException =>
               logger.info(t.getMessage)
               Left(ProgramTermination(restart = true))
@@ -358,11 +353,7 @@ object RunningController
       val commandExecutor = new ControllerCommandExecutor(
         new MyCommandExecutor(
           clusterNode,
-          onShutDownBeforeClusterActivated = termination =>
-            Task.defer {
-              clusterStartupTermination = termination
-              clusterNode.onShutdown.as(Completed)
-            },
+          onShutDownBeforeClusterActivated = clusterNode.onShutdown,
           currentOrderKeeperActor))
 
       val orderApi = new MainOrderApi(controllerState)
@@ -373,8 +364,8 @@ object RunningController
         ControllerWebServer
           .resource(
             orderApi, commandExecutor, itemUpdater, controllerState, clusterNode,
-            recovered.totalRunningSince, // Maybe different from JournalHeader
-            recovered.eventWatch,
+            recoveredExtract.totalRunningSince, // Maybe different from JournalHeader
+            recoveredExtract.eventWatch,
             conf, sessionRegister)
           .evalTap(webServer => Task(
             conf.workDirectory / "http-uri" :=
@@ -384,9 +375,9 @@ object RunningController
       : Resource[Task, RunningController] =
         Service.resource(Task(
           new RunningController(
-            recovered.eventWatch.strict,
+            recoveredExtract.eventWatch.strict,
             () => webServer.localUri,
-            recoveredEventId = recovered.eventId,
+            recoveredEventId = recoveredExtract.eventId,
             orderApi,
             controllerState.map(_.orThrow),
             commandExecutor, itemUpdater,
@@ -446,7 +437,7 @@ object RunningController
 
   private class MyCommandExecutor(
     clusterNode: ClusterNode[ControllerState],
-    onShutDownBeforeClusterActivated: ProgramTermination => Task[Completed],
+    onShutDownBeforeClusterActivated: ProgramTermination => Task[Unit],
     orderKeeperActor: Task[Checked[ActorRef @@ ControllerOrderKeeper]])
     (implicit timeout: Timeout)
   extends CommandExecutor[ControllerCommand]

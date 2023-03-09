@@ -41,6 +41,9 @@ extends AutoCloseable
   def journalId: Option[JournalId] =
     recoveredJournalFile.map(_.journalId)
 
+  def extract: Recovered.Extract =
+    Recovered.Extract(eventId, eventWatch, totalRunningSince)
+
   // Suppresses Config (which may contain secrets)
   override def toString = s"Recovered($journalMeta,$recoveredJournalFile,$eventWatch)"
 }
@@ -73,4 +76,12 @@ object Recovered
       totalRunningSince,
       config,
       new JournalEventWatch(journalMeta, config, Some(EventId.BeforeFirst)))
+
+  final case class Extract(
+    eventId: EventId,
+    eventWatch: JournalEventWatch,
+    totalRunningSince: Deadline)
+  {
+    override def productPrefix = "Recovered.Extract"
+  }
 }

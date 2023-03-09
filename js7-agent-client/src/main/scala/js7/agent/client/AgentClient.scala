@@ -1,6 +1,7 @@
 package js7.agent.client
 
 import akka.actor.ActorSystem
+import cats.effect.Resource
 import js7.agent.data.AgentApi
 import js7.agent.data.AgentState.keyedEventJsonCodec
 import js7.agent.data.commands.AgentCommand
@@ -79,4 +80,12 @@ object AgentClient
       override def toString = s"AgentClient($prefixedUri)"
     }
   }
+
+  def resource(agentUri: Uri, userAndPassword: Option[UserAndPassword], label: String = "Agent",
+    httpsConfig: => HttpsConfig = HttpsConfig.empty)
+    (implicit actorSystem: ActorSystem)
+  : Resource[Task, AgentClient] =
+    Resource.make(
+      acquire = Task(apply(agentUri, userAndPassword, label, httpsConfig)))(
+      release = client => client.tryLogout *> Task(client.close()))
 }

@@ -7,6 +7,7 @@ import js7.base.auth.SimpleUser
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.core.command.CommandMeta
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
@@ -28,7 +29,8 @@ final class AttachSignedItemTest extends OurTestSuite with DirectoryProviderForS
     import directoryProvider.itemSigner
     directoryProvider.runAgents() { runningAgents =>
       val runningAgent = runningAgents.head
-      val agentApi = runningAgent.api(CommandMeta(SimpleUser(directoryProvider.agents(0).userAndPassword.get.userId)))
+      val agentApi = runningAgent.api.await(99.s).orThrow.apply(
+        CommandMeta(SimpleUser(directoryProvider.agents(0).userAndPassword.get.userId)))
       assert(agentApi
         .commandExecute(
           DedicateAgentDirector(Some(SubagentId("SUBAGENT")), controllerId, agentPath))

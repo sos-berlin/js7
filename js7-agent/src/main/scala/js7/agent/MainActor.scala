@@ -16,18 +16,19 @@ import js7.base.time.AlarmClock
 import js7.base.utils.{Allocated, ProgramTermination}
 import js7.common.akkautils.CatchingSupervisorStrategy
 import js7.core.command.CommandMeta
-import js7.journal.recover.Recovered
 import js7.journal.state.FileStatePersistence
 import js7.launcher.configuration.JobLauncherConf
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.Promise
+import scala.concurrent.duration.Deadline
 import scala.util.control.NoStackTrace
 
 /**
   * @author Joacim Zschimmer
   */
 final class MainActor(
+  totalRunningSince: Deadline,
   persistenceAllocated: Allocated[Task, FileStatePersistence[AgentState]],
   agentConfiguration: AgentConfiguration,
   testCommandHandler: Option[CommandHandler],
@@ -45,7 +46,8 @@ extends Actor {
 
   private val agentActor = watch(actorOf(
     Props {
-      new AgentActor(terminationPromise, persistenceAllocated, clock, agentConfiguration,
+      new AgentActor(totalRunningSince,
+        terminationPromise, persistenceAllocated, clock, agentConfiguration,
         jobLauncherConf, testEventBus)
     },
     "agent"))
@@ -100,7 +102,7 @@ object MainActor
   final case class Ready(api: CommandMeta => DirectAgentApi)
 
   object Input {
-    final case class Start(recovered: Recovered[AgentState])
+    final case class Start(agentState: AgentState)
 
     final case class ExternalCommand(
       command: AgentCommand,

@@ -5,6 +5,7 @@ import akka.util.Timeout
 import cats.effect.concurrent.{Deferred, Ref}
 import cats.effect.{ExitCase, Resource}
 import cats.syntax.flatMap.*
+import cats.syntax.traverse.*
 import com.softwaremill.diffx
 import com.typesafe.config.Config
 import izumi.reflect.Tag
@@ -17,10 +18,10 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.service.Service
 import js7.base.service.Service.Started
 import js7.base.time.ScalaTime.*
-import js7.base.utils.Allocated
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.{Allocated, ProgramTermination}
 import js7.base.web.Uri
 import js7.cluster.ClusterConf.ClusterProductName
 import js7.cluster.ClusterNode.*
@@ -49,7 +50,7 @@ final class ClusterNode[S <: SnapshotableState[S]: diffx.Diff: Tag] private(
   passiveOrWorkingNode: AtomicAny[Option[Either[PassiveClusterNode[S], Allocated[Task, WorkingClusterNode[S]]]]],
   currentStateRef: Ref[Task, Task[Either[Problem, S]]],
   journalConf: JournalConf,
-  clusterConf: ClusterConf,
+  val clusterConf: ClusterConf,
   eventIdGenerator: EventIdGenerator,
   eventBus: EventPublisher[Stamped[AnyKeyedEvent]],
   common: ClusterCommon)
@@ -63,7 +64,8 @@ extends Service.StoppableByRequest
   import clusterConf.ownId
   import common.activationInhibitor
 
-  private val workingNodeStarted = Deferred.unsafe[Task, Try[Option[WorkingClusterNode[S]]]]
+  private val workingNodeStarted =
+    Deferred.unsafe[Task, Try[Either[ProgramTermination, WorkingClusterNode[S]]]]
   private var _testDontNotifyActiveNodeAboutShutdown = false // for test only
   private val recoveryStopRequested = Deferred.unsafe[Task, Unit]
 
@@ -74,7 +76,7 @@ extends Service.StoppableByRequest
     currentStateRef.get.flatten
 
   /** None when stopped before activated. */
-  def untilActivated: Task[Option[WorkingClusterNode[S]]] =
+  def untilActivated: Task[Either[ProgramTermination, WorkingClusterNode[S]]] =
     logger.traceTaskWithResult("untilActivated", task =
       workingNodeStarted.get.dematerialize)
 
@@ -101,7 +103,7 @@ extends Service.StoppableByRequest
         startWorkingNode(recovered))
       .materialize
       .flatTap(triedWorkingNode =>
-        workingNodeStarted.complete(triedWorkingNode.map(Some(_))).attempt)
+        workingNodeStarted.complete(triedWorkingNode.map(Right(_))).attempt)
       .dematerialize
       .flatMap(workingNode =>
         currentStateRef.set(workingNode.persistence.state.map(Right(_))))
@@ -115,7 +117,7 @@ extends Service.StoppableByRequest
       .flatMap(fiber => logger.traceTask("fiber.join")(
         Task.race(recoveryStopRequested.get, fiber.join)))
       .*>(untilStopRequested)
-      .*>(stopRecovery)
+      .*>(stopRecovery(ProgramTermination()/*???*/))
       .*>(Task.defer(passiveOrWorkingNode.get() match {
         case Some(Left(passiveClusterNode)) if !_testDontNotifyActiveNodeAboutShutdown =>
           passiveClusterNode.notifyActiveNodeAboutShutdown
@@ -127,14 +129,14 @@ extends Service.StoppableByRequest
           case _ => Task.unit
         })))
 
-  def onShutdown: Task[Unit] =
-    stopRecovery
+  def onShutdown(termination: ProgramTermination): Task[Unit] =
+    stopRecovery(termination)
 
-  private def stopRecovery: Task[Unit] =
+  private def stopRecovery(termination: ProgramTermination): Task[Unit] =
     Task.defer {
       logger.trace("stopRecovery")
-      recoveryStopRequested.complete(()).attempt *>
-        workingNodeStarted.complete(Success(None)).attempt.void
+      recoveryStopRequested.complete(termination).attempt *>
+        workingNodeStarted.complete(Success(Left(termination))).attempt.void
     }
 
   private def startWorkingNode(recovered: Recovered[S]): Task[WorkingClusterNode[S]] =
@@ -183,20 +185,24 @@ extends Service.StoppableByRequest
             else {
               workingNodeStarted.get
                 .dematerialize
-                .flatMap(_.fold_(Task.none,
-                  _.persistence.clusterState.map(Some(_))))
+                .flatMap(_.traverse(_.persistence.clusterState))
+                .map(Some(_))
                 .timeoutTo(duration/*???*/ - 500.ms, Task.none)
                 .flatMap {
                   case None =>
+                    Task.left(Problem.pure(
+                      "ClusterInhibitActivation timed out — please try again"))
+
+                  case Some(Left(_: ProgramTermination)) =>
                     // No persistence
                     Task.left(Problem.pure(
-                      "ClusterInhibitActivation command failed — please try again"))
+                      "ClusterInhibitActivation command failed due to cluster is being terminated"))
 
-                  case Some(failedOver: FailedOver) =>
+                  case Some(Right(failedOver: FailedOver)) =>
                     logger.debug(s"inhibitActivation(${duration.pretty}) => $failedOver")
                     Task.right(ClusterInhibitActivation.Response(Some(failedOver)))
 
-                  case Some(clusterState) =>
+                  case Some(Right(clusterState)) =>
                     Task.left(Problem.pure("ClusterInhibitActivation command failed " +
                       s"because node is already active but not failed-over: $clusterState"))
                 }
@@ -256,7 +262,7 @@ object ClusterNode
     testEventBus: EventPublisher[Any],
     config: Config)
     (implicit S: SnapshotableState.Companion[S], scheduler: Scheduler, akkaTimeout: Timeout)
-  : Resource[Task, (Recovered[S], ActorSystem, ClusterNode[S])] =
+  : Resource[Task, (Recovered.Extract, ActorSystem, ClusterNode[S])] =
     StateRecoverer.resource[S](journalMeta, config)
       .parZip(
         akkaResource)
@@ -271,7 +277,7 @@ object ClusterNode
             testEventBus)
           .orThrow
           .map(clusterNode =>
-            (recovered, actorSystem, clusterNode))
+            (recovered.extract, actorSystem, clusterNode))
       }
 
   private def resource[S <: SnapshotableState[S] : diffx.Diff : Tag](

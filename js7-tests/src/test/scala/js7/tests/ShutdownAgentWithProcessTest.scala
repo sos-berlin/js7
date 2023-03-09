@@ -71,54 +71,52 @@ final class ShutdownAgentWithProcessTest extends OurTestSuite with ControllerAge
       agent.stop.await(99.s)
     }
 
-    val restartedAgent = TestAgent.start(agentTree.agentConfiguration)
-      .await(10.s)
-    eventWatch.await[OrderFailed](_.key == simpleOrderId)
+    TestAgent.blockingRun(agentTree.agentConfiguration) { restartedAgent =>
+      eventWatch.await[OrderFailed](_.key == simpleOrderId)
 
-    assert(eventWatch.keyedEvents[Event](after = addOrderEventId)
-      .flatMap(manipulateEvent(_, simpleOrderId)) == Seq(
-      simpleOrderId <-: OrderAdded(simpleWorkflow.id),
-      simpleOrderId <-: OrderAttachable(agentPath),
-      simpleOrderId <-: OrderAttached(agentPath),
+      assert(eventWatch.keyedEvents[Event](after = addOrderEventId)
+        .flatMap(manipulateEvent(_, simpleOrderId)) == Seq(
+        simpleOrderId <-: OrderAdded(simpleWorkflow.id),
+        simpleOrderId <-: OrderAttachable(agentPath),
+        simpleOrderId <-: OrderAttached(agentPath),
 
-      simpleOrderId <-: OrderStarted,
-      simpleOrderId <-: OrderProcessingStarted(subagentId),
-      simpleOrderId <-: OrderStdoutWritten(s"TestJob$nl"),
-      simpleOrderId <-: OrderProcessed(Outcome.Killed(Outcome.Failed(namedValues = Map(
-        "returnCode" -> NumberValue(if (isWindows) 1 else 137))))),
-      agentPath <-: AgentShutDown,
+        simpleOrderId <-: OrderStarted,
+        simpleOrderId <-: OrderProcessingStarted(subagentId),
+        simpleOrderId <-: OrderStdoutWritten(s"TestJob$nl"),
+        simpleOrderId <-: OrderProcessed(Outcome.Killed(Outcome.Failed(namedValues = Map(
+          "returnCode" -> NumberValue(if (isWindows) 1 else 137))))),
+        agentPath <-: AgentShutDown,
 
-      agentPath <-: AgentReady("UTC", None),
-      simpleOrderId <-: OrderProcessingKilled,
+        agentPath <-: AgentReady("UTC", None),
+        simpleOrderId <-: OrderProcessingKilled,
 
-      simpleOrderId <-: OrderDetachable,
-      simpleOrderId <-: OrderDetached,
-      simpleOrderId <-: OrderFailed(Position(0))))
+        simpleOrderId <-: OrderDetachable,
+        simpleOrderId <-: OrderDetached,
+        simpleOrderId <-: OrderFailed(Position(0))))
 
-    assert(eventWatch.keyedEvents[Event](after = addOrderEventId)
-      .flatMap(manipulateEvent(_, caughtOrderId)) == Seq(
-      caughtOrderId <-: OrderAdded(catchingWorkflow.id),
-      caughtOrderId <-: OrderMoved(Position(0) / "try+0" % 0),
-      caughtOrderId <-: OrderAttachable(agentPath),
-      caughtOrderId <-: OrderAttached(agentPath),
+      assert(eventWatch.keyedEvents[Event](after = addOrderEventId)
+        .flatMap(manipulateEvent(_, caughtOrderId)) == Seq(
+        caughtOrderId <-: OrderAdded(catchingWorkflow.id),
+        caughtOrderId <-: OrderMoved(Position(0) / "try+0" % 0),
+        caughtOrderId <-: OrderAttachable(agentPath),
+        caughtOrderId <-: OrderAttached(agentPath),
 
-      caughtOrderId <-: OrderStarted,
-      caughtOrderId <-: OrderProcessingStarted(subagentId),
-      caughtOrderId <-: OrderStdoutWritten(s"TestJob$nl"),
-      caughtOrderId <-: OrderProcessed(Outcome.Killed(Outcome.Failed(namedValues = Map(
-        "returnCode" -> NumberValue(if (isWindows) 1 else 137))))),
-      agentPath <-: AgentShutDown,
+        caughtOrderId <-: OrderStarted,
+        caughtOrderId <-: OrderProcessingStarted(subagentId),
+        caughtOrderId <-: OrderStdoutWritten(s"TestJob$nl"),
+        caughtOrderId <-: OrderProcessed(Outcome.Killed(Outcome.Failed(namedValues = Map(
+          "returnCode" -> NumberValue(if (isWindows) 1 else 137))))),
+        agentPath <-: AgentShutDown,
 
-      agentPath <-: AgentReady("UTC", None),
-      caughtOrderId <-: OrderProcessingKilled,
-      caughtOrderId <-: OrderCaught(Position(0) / "catch+0" % 0),
-      caughtOrderId <-: OrderMoved(Position(1)),
+        agentPath <-: AgentReady("UTC", None),
+        caughtOrderId <-: OrderProcessingKilled,
+        caughtOrderId <-: OrderCaught(Position(0) / "catch+0" % 0),
+        caughtOrderId <-: OrderMoved(Position(1)),
 
-      caughtOrderId <-: OrderDetachable,
-      caughtOrderId <-: OrderDetached,
-      caughtOrderId <-: OrderFinished()))
-
-    restartedAgent.stop.await(99.s)
+        caughtOrderId <-: OrderDetachable,
+        caughtOrderId <-: OrderDetached,
+        caughtOrderId <-: OrderFinished()))
+    }
   }
 
   private def manipulateEvent(keyedEvent: AnyKeyedEvent, orderId: OrderId): Option[AnyKeyedEvent] =

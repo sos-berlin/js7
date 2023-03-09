@@ -52,7 +52,6 @@ import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentS
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowPath, WorkflowPathControl}
-import js7.journal.recover.Recovered
 import js7.journal.state.FileStatePersistence
 import js7.journal.{JournalActor, MainJournalingActor}
 import js7.launcher.configuration.JobLauncherConf
@@ -74,7 +73,7 @@ import scala.util.{Failure, Success, Try}
  */
 final class AgentOrderKeeper(
   totalRunningSince: Deadline,
-  recovered_ : Recovered[AgentState],
+  recoveredAgentState : AgentState,
   signatureVerifier: SignatureVerifier,
   jobLauncherConf: JobLauncherConf,
   persistenceAllocated: Allocated[Task, FileStatePersistence[AgentState]],
@@ -186,7 +185,7 @@ final class AgentOrderKeeper(
       context.system)
 
   watch(journalActor)
-  self ! Internal.Recover(recovered_)
+  self ! Internal.Recover(recoveredAgentState)
   // Do not use recovered_ after here to allow release of the big object
 
   override def postStop() = {
@@ -201,11 +200,10 @@ final class AgentOrderKeeper(
   }
 
   def receive = {
-    case Internal.Recover(recovered) =>
-      val state = recovered.state
-      journalState = state.journalState
+    case Internal.Recover(recoveredAgentState) =>
+      journalState = recoveredAgentState.journalState
 
-      become("Recovering")(recovering(state))
+      become("Recovering")(recovering(recoveredAgentState))
       unstashAll()
 
       // FIXME (?) Continue deletion of Subagent AFTER Orders has been recovered
@@ -215,14 +213,14 @@ final class AgentOrderKeeper(
         .initialize(localSubagentId, controllerId)
         .*>(
           subagentKeeper
-            .recoverSubagents(state.idToSubagentItemState.values.toVector)
+            .recoverSubagents(recoveredAgentState.idToSubagentItemState.values.toVector)
             .flatMapT(_ =>
               subagentKeeper.recoverSubagentSelections(
-                state.pathToUnsignedSimple(SubagentSelection).values.toVector))
+                recoveredAgentState.pathToUnsignedSimple(SubagentSelection).values.toVector))
             .map(_.orThrow))
         .materialize
         .foreach { tried =>
-          self.forward(Internal.SubagentKeeperInitialized(state, tried))
+          self.forward(Internal.SubagentKeeperInitialized(recoveredAgentState, tried))
         }
     case _ => stash()
   }
@@ -851,7 +849,7 @@ object AgentOrderKeeper {
   }
 
   private object Internal {
-    final case class Recover(recovered: Recovered[AgentState])
+    final case class Recover(agentState: AgentState)
     final case class SubagentKeeperInitialized(agentState: AgentState, tried: Try[Unit])
     final case class OrdersRecovered(agentState: AgentState)
     case object Ready

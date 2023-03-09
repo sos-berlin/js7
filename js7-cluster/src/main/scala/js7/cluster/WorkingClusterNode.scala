@@ -114,20 +114,19 @@ final class WorkingClusterNode[S <: SnapshotableState[S]: SnapshotableState.Comp
     logger.debugTask(
       currentClusterState.flatMap {
         case ClusterState.Empty =>
-          common.requireValidLicense
-            .flatMapT(_ =>
-              persistence.persistKeyedEvent(NoKey <-: ClusterNodesAppointed(setting))
-                .flatMapT { case (_, state) =>
-                  state.clusterState match {
-                    case clusterState: HasNodes =>
-                      startActiveClusterNode(clusterState, state.eventId)
-                    case clusterState => Task.pure(Left(Problem.pure(
-                      s"Unexpected ClusterState $clusterState after ClusterNodesAppointed")))
-                  }
-                })
+          persistence.persistKeyedEvent(NoKey <-: ClusterNodesAppointed(setting))
+            .flatMapT { case (_, state) =>
+              state.clusterState match {
+                case clusterState: HasNodes =>
+                  startActiveClusterNode(clusterState, state.eventId)
+                case clusterState => Task.pure(Left(Problem.pure(
+                  s"Unexpected ClusterState $clusterState after ClusterNodesAppointed")))
+              }
+            }
 
         case _: HasNodes =>
-          activeClusterNodeTask
+          common.requireValidLicense
+            .flatMapT(_ => activeClusterNodeTask)
             .flatMapT(_.appointNodes(setting))
       })
 
