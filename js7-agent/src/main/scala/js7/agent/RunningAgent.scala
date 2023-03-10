@@ -147,10 +147,16 @@ extends MainService
           //🔨}
           clusterNode.onShutdown(ProgramTermination(restart = command.restart)) >>
             api.flatMap {
-              case Left(ClusterNodeIsNotReadyProblem | ClusterNodeIsNotActiveProblem
-                        | ShuttingDownProblem) =>
+              case Left(ClusterNodeIsNotActiveProblem | ShuttingDownProblem) =>
                 Task.right(AgentCommand.Response.Accepted)
-              case Left(problem) => Task.pure(Left(problem))
+
+              case Left(problem @ ClusterNodeIsNotReadyProblem/*???*/) =>
+                logger.error(s"❓ $command => $problem")
+                Task.right(AgentCommand.Response.Accepted)
+
+              case Left(problem) =>
+                Task.pure(Left(problem))
+
               case Right(api) =>
                 api(meta).commandExecute(command)
             }
