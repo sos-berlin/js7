@@ -9,7 +9,7 @@ import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SetOnce
 import js7.base.utils.StackTraces.*
-import js7.data.cluster.ClusterState
+import js7.data.cluster.{ClusterState, ClusterStateSnapshot}
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.SnapshotableStateBuilder.*
 import monix.eval.Task
@@ -30,6 +30,8 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]
   private val _journalHeader = SetOnce[JournalHeader]
   private val getStatePromise = Promise[Task[S]]()
 
+  protected var _standards: SnapshotableState.Standards = SnapshotableState.Standards.empty
+
   def initializeState(journalHeader: Option[JournalHeader], eventId: EventId, totalEventCount: Long, state: S): Unit = {
     journalHeader foreach { _journalHeader := _ }
     _eventId = eventId
@@ -48,9 +50,11 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]
 
   def result(): S
 
-  def journalState: JournalState
+  def journalState: JournalState =
+    _standards.journalState
 
-  def clusterState: ClusterState
+  def clusterState: ClusterState =
+    _standards.clusterState
 
   def addSnapshotObject(obj: Any): Unit = {
     recordCount += 1
@@ -81,6 +85,15 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]
         }
     }
   }
+
+  protected final def addStandardObject(obj: Any): Unit =
+    obj match {
+      case o: JournalState =>
+        _standards = _standards.copy(journalState = o)
+
+      case ClusterStateSnapshot(o) =>
+        _standards = _standards.copy(clusterState = o)
+    }
 
   protected def onSnapshotObjectNotApplicable(obj: Any): Unit =
     throw SnapshotObjectNotApplicableProblem(obj).throwable.appendCurrentStackTrace
@@ -209,10 +222,6 @@ object SnapshotableStateBuilder
     protected final def state = _state
 
     protected final def updateState(state: S) = _state = state
-
-    def journalState = _state.journalState
-
-    def clusterState = _state.clusterState
   }
 
   private case class SnapshotObjectNotApplicableProblem(obj: Any) extends Problem.Coded {

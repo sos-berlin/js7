@@ -5,8 +5,8 @@ import js7.agent.data.orderwatch.{FileWatchState, FileWatchStateHandler}
 import js7.base.crypt.Signed
 import js7.base.problem.Checked.*
 import js7.base.utils.Collections.implicits.*
-import js7.data.cluster.ClusterState
-import js7.data.event.{EventId, JournalState, SnapshotableState, SnapshotableStateBuilder, Stamped}
+import js7.data.cluster.ClusterStateSnapshot
+import js7.data.event.{EventId, JournalState, SnapshotableStateBuilder, Stamped}
 import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.item.{SignableItem, SignableItemKey, SignedItemEvent, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItem}
 import js7.data.job.{JobResource, JobResourcePath}
@@ -20,7 +20,6 @@ extends SnapshotableStateBuilder[AgentState]
 {
   protected val S = AgentState
 
-  private var _journalState = JournalState.empty
   private var _eventId = EventId.BeforeFirst
   private var agentMetaState = AgentMetaState.empty
   private val keyToUnsignedItemState = mutable.Map.empty[UnsignedItemKey, UnsignedItemState]
@@ -58,11 +57,11 @@ extends SnapshotableStateBuilder[AgentState]
     case item: UnsignedSimpleItem =>
       keyToUnsignedItemState.insert(item.path, item.toInitialItemState)
 
-    case o: JournalState =>
-      _journalState = o
-
     case o: AgentMetaState =>
       agentMetaState = o
+
+    case o @ (_: JournalState | _: ClusterStateSnapshot) =>
+      addStandardObject(o)
   }
 
   private def onSignedItemAdded(added: SignedItemEvent.SignedItemAdded): Unit = {
@@ -80,7 +79,7 @@ extends SnapshotableStateBuilder[AgentState]
   override protected def onOnAllSnapshotsAdded() = {
     _state = AgentState(
       _eventId,
-      SnapshotableState.Standards(_journalState, ClusterState.Empty),
+      _standards,
       agentMetaState,
       (keyToUnsignedItemState.view ++ fileWatchStateBuilder.result).toMap,
       idToOrder.toMap,
@@ -96,8 +95,4 @@ extends SnapshotableStateBuilder[AgentState]
   }
 
   def result() = _state.copy(eventId = _eventId)
-
-  def journalState = JournalState.empty
-
-  def clusterState = ClusterState.Empty
 }

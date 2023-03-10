@@ -13,7 +13,7 @@ import js7.data.calendar.{Calendar, CalendarState}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{Event, EventDrivenState, JournalEvent, JournalState, KeyedEvent, SnapshotableState, SnapshotableStateBuilder, Stamped}
+import js7.data.event.{Event, EventDrivenState, JournalEvent, JournalState, KeyedEvent, SnapshotableStateBuilder, Stamped}
 import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeleted, ItemDeletionMarked}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedItemEvent.{UnsignedItemAdded, UnsignedItemChanged}
@@ -39,7 +39,6 @@ with OrderWatchStateHandler[ControllerStateBuilder]
   protected val S = ControllerState
   val companion: ControllerStateBuilder.type = ControllerStateBuilder
 
-  private var standards: SnapshotableState.Standards = SnapshotableState.Standards.empty
   private var controllerMetaState = ControllerMetaState.Undefined
   private var repo = Repo.empty
   private val _idToOrder = mutable.Map.empty[OrderId, Order[Order.State]]
@@ -80,7 +79,7 @@ with OrderWatchStateHandler[ControllerStateBuilder]
   def pathToJobResource = keyToItem(JobResource)
 
   protected def onInitializeState(state: ControllerState): Unit = {
-    standards = state.standards
+    _standards = state.standards
     controllerMetaState = state.controllerMetaState
     repo = state.repo
     _idToOrder ++= state.idToOrder
@@ -159,11 +158,8 @@ with OrderWatchStateHandler[ControllerStateBuilder]
     case o: ControllerMetaState =>
       controllerMetaState = o
 
-    case o: JournalState =>
-      standards = standards.copy(journalState = o)
-
-    case ClusterStateSnapshot(o) =>
-      standards = standards.copy(clusterState = o)
+    case o @ (_: JournalState | _: ClusterStateSnapshot) =>
+      addStandardObject(o)
   }
 
   override protected def onOnAllSnapshotsAdded() = {
@@ -354,12 +350,12 @@ with OrderWatchStateHandler[ControllerStateBuilder]
       case KeyedEvent(_, ControllerTestEvent) =>
 
       case KeyedEvent(_: NoKey, event: JournalEvent) =>
-        standards = standards.copy(
-          journalState = standards.journalState.applyEvent(event))
+        _standards = _standards.copy(
+          journalState = _standards.journalState.applyEvent(event))
 
       case KeyedEvent(_: NoKey, event: ClusterEvent) =>
-        standards = standards.copy(
-          clusterState = standards.clusterState.applyEvent(event).orThrow)
+        _standards = _standards.copy(
+          clusterState = _standards.clusterState.applyEvent(event).orThrow)
 
       case _ => eventNotApplicable(keyedEvent).orThrow
     }
@@ -407,7 +403,7 @@ with OrderWatchStateHandler[ControllerStateBuilder]
   def result() =
     ControllerState(
       eventId = eventId,
-      standards,
+      _standards,
       controllerMetaState,
       _keyToUnsignedItemState.toMap,
       repo,
@@ -416,10 +412,6 @@ with OrderWatchStateHandler[ControllerStateBuilder]
       deletionMarkedItems.toSet,
       _idToOrder.toMap
     ).finish
-
-  def journalState = standards.journalState
-
-  def clusterState = standards.clusterState
 }
 
 object ControllerStateBuilder extends EventDrivenState.Companion[ControllerStateBuilder, Event]
