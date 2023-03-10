@@ -50,6 +50,7 @@ final class JobDriverStarvationTest extends OurTestSuite with ControllerAgentFor
 
     val orderIds = for (i <- 1 to n) yield OrderId(s"ORDER-$i")
     val proxy = controllerApi.startProxy().await(99.s)
+
     val firstOrdersProcessing = proxy.observable
       .map(_.stampedEvent.value)
       .collect {
@@ -58,6 +59,7 @@ final class JobDriverStarvationTest extends OurTestSuite with ControllerAgentFor
       .take(parallelism)
       .completedL
       .runToFuture
+
     val allOrdersDeleted = proxy.observable
       .map(_.stampedEvent.value)
       .collect {
@@ -74,10 +76,7 @@ final class JobDriverStarvationTest extends OurTestSuite with ControllerAgentFor
         .fromIterable(orderIds)
         .map(FreshOrder(_, workflow.path, deleteWhenTerminated = true)))
       .await(99.s).orThrow
-    // Seems to work now: intercept[TimeoutException] {
-      firstOrdersProcessing.await(99.s)
-    //}
-    //System.err.println("JobDriverStarvationTest: Second order is starving in AgentOrderKeeper")
+    firstOrdersProcessing.await(99.s)
     logger.info("🔵 " + itemsPerSecondString(t.elapsed, n, "started"))
 
     t = now

@@ -75,6 +75,19 @@ private object LoggingTestAdder {
   private val pendingMarkup = ""
   private val failureMarkup = orange + bold
 
+  private val collectResult: Result => Unit =
+    TestResultCollector.add _
+  // Trying to use a sbt-wide TestResultCollector, not the instance for the respective
+  // subproject ClassLoader created by ScalaTest. Fails with ClassNotFoundException.
+  //  result => {
+  //    val cls = ClassLoader.getSystemClassLoader
+  //      .loadClass(classOf[TestResultCollector.type].getName)  ---> ClassNotFoundException
+  //    val singletonField = cls.getDeclaredField("singleton")
+  //    singletonField.setAccessible(true)
+  //    val singleton = singletonField.get(null)
+  //    cls.getMethod("add", classOf[Result]).invoke(singleton, result)
+  //  }
+
   private val droppableStackTracePrefixes = Set(
     "java.",
     "scala.",
@@ -120,7 +133,8 @@ private object LoggingTestAdder {
           logger.info(eager(failureMarkup + bar + resetColor))
           clipStackTrace(t)
       }
-      TestResultCollector.add(result)
+
+      collectResult(result)
     }
   }
 

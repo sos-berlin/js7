@@ -14,6 +14,8 @@ import scala.jdk.CollectionConverters.MapHasAsScala
 
 private object TestResultCollector
 {
+  val singleton = this
+
   private val results = mutable.Buffer[Result]()
   private val logger = Logger[this.type]
   private val ThreadNameRegex = """(\d+-)?(.*)""".r
