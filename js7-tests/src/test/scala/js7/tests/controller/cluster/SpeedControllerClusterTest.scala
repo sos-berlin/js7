@@ -11,13 +11,13 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.expression.Expression.StringConstant
 import js7.data.workflow.instructions.Prompt
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.controller.cluster.ClusterSpeedTest.*
+import js7.tests.controller.cluster.SpeedControllerClusterTest.*
 import js7.tests.testenv.ControllerClusterForScalaTest
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.Deadline.now
 
-final class ClusterSpeedTest extends OurTestSuite with ControllerClusterForScalaTest
+final class SpeedControllerClusterTest extends OurTestSuite with ControllerClusterForScalaTest
 {
   val items = Seq(workflow)
 
@@ -55,7 +55,7 @@ final class ClusterSpeedTest extends OurTestSuite with ControllerClusterForScala
   }
 }
 
-object ClusterSpeedTest
+object SpeedControllerClusterTest
 {
   private val workflow = Workflow(WorkflowPath("SPEED") ~ "INITIAL",
     Seq(Prompt(StringConstant(""))))

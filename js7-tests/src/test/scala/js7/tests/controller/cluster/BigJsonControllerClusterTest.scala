@@ -20,15 +20,15 @@ import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.launcher.OrderProcess
 import js7.launcher.internal.InternalJob
 import js7.proxy.ControllerApi
-import js7.tests.controller.cluster.BigJsonClusterTest.*
+import js7.tests.controller.cluster.BigJsonControllerClusterTest.*
 import js7.tests.testenv.ControllerClusterForScalaTest
 import js7.tests.testenv.ControllerClusterForScalaTest.assertEqualJournalFiles
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
-final class BigJsonClusterTest extends OurTestSuite with ControllerClusterForScalaTest
+final class BigJsonControllerClusterTest extends OurTestSuite with ControllerClusterForScalaTest
 {
-  private val bigString = BigJsonClusterTest.bigString // Allocate one
+  private val bigString = BigJsonControllerClusterTest.bigString // Allocate one
 
   private val workflow = Workflow(WorkflowPath("BIG-JSON") ~ "INITIAL",
     Seq.fill(2)(
@@ -68,7 +68,7 @@ final class BigJsonClusterTest extends OurTestSuite with ControllerClusterForSca
   }
 }
 
-object BigJsonClusterTest
+object BigJsonControllerClusterTest
 {
   private val agentPath = AgentPath("AGENT")
   private val bigStringSize = 9_000_000 max

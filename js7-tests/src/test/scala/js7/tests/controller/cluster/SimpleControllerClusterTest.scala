@@ -16,7 +16,7 @@ import js7.tests.controller.cluster.ControllerClusterTester.*
 import js7.tests.testenv.ControllerClusterForScalaTest.assertEqualJournalFiles
 import monix.execution.Scheduler.Implicits.traced
 
-final class SimpleClusterTest extends ControllerClusterTester
+final class SimpleControllerClusterTest extends ControllerClusterTester
 {
   override protected def shellScript = s"echo '${"-" * 100}'\n" *
     (if (sys.props.contains("test.speed")) 10000 else 1)

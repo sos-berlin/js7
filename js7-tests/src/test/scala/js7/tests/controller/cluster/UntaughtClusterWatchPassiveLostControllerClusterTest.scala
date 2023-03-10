@@ -13,7 +13,7 @@ import js7.data.cluster.ClusterWatchCheckEvent
 import js7.data.controller.ControllerCommand.ShutDown
 import monix.execution.Scheduler.Implicits.global
 
-final class UntaughtClusterWatchPassiveLostClusterTest extends ControllerClusterTester
+final class UntaughtClusterWatchPassiveLostControllerClusterTest extends ControllerClusterTester
 {
   override protected def primaryControllerConfig =
     // Short timeout because something blocks web server shutdown occasionally

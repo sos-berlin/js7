@@ -10,11 +10,11 @@ import js7.cluster.ClusterNode.ClusterWatchConfirmed
 import js7.cluster.watch.api.ClusterWatchProblems.{ClusterWatchRequestDoesNotMatchProblem, OtherClusterWatchStillAliveProblem}
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, ClusterWatchRegistered}
 import js7.data.cluster.{ClusterState, ClusterWatchId}
-import js7.tests.controller.cluster.ClusterWatchChangeTest.*
+import js7.tests.controller.cluster.ClusterWatchChangeClusterTest.*
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.Promise
 
-final class ClusterWatchChangeTest extends ControllerClusterTester
+final class ClusterWatchChangeClusterTest extends ControllerClusterTester
 {
   "Start and stop some ClusterWatch with same or different ClusterWatchIds" in {
     withControllerAndBackup(suppressClusterWatch = true) { (primary, backup, _) =>
@@ -139,7 +139,7 @@ final class ClusterWatchChangeTest extends ControllerClusterTester
   }
 }
 
-object ClusterWatchChangeTest
+object ClusterWatchChangeClusterTest
 {
   private val logger = Logger[this.type]
   private val aClusterWatchId = ClusterWatchId("A-CLUSTER-WATCH")

@@ -11,7 +11,7 @@ import js7.data.value.NumberValue
 import js7.tests.controller.cluster.ControllerClusterTester.*
 import monix.execution.Scheduler.Implicits.traced
 
-final class PassiveLostClusterTest extends ControllerClusterTester
+final class PassiveLostControllerClusterTest extends ControllerClusterTester
 {
   override protected def configureClusterNodes = false
 

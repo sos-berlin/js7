@@ -15,15 +15,15 @@ import js7.data.event.EventId
 import js7.data.order.OrderEvent.{OrderFinished, OrderProcessingStarted}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.tests.controller.cluster.ControllerClusterTester.*
-import js7.tests.controller.cluster.SwitchOverClusterTest.*
+import js7.tests.controller.cluster.SwitchOverControllerClusterTest.*
 import js7.tests.testenv.TestController
 import monix.execution.Scheduler.Implicits.traced
 import scala.util.Try
 
-final class SwitchOverClusterTest extends ControllerClusterTester
+final class SwitchOverControllerClusterTest extends ControllerClusterTester
 {
   override protected def removeObsoleteJournalFiles = false
-  private lazy val manyOrdersCount = sys.props.get("SwitchOverClusterTest").map(_.toInt) getOrElse 1
+  private lazy val manyOrdersCount = sys.props.get("SwitchOverControllerClusterTest").map(_.toInt) getOrElse 1
   private lazy val timeout = if (manyOrdersCount > 1) 1.h else 99.s
 
   "Switchover" in {
@@ -97,7 +97,7 @@ final class SwitchOverClusterTest extends ControllerClusterTester
   }
 }
 
-object SwitchOverClusterTest
+object SwitchOverControllerClusterTest
 {
   private val logger = Logger(getClass)
 }

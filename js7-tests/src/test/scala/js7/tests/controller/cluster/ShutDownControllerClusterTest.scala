@@ -19,7 +19,7 @@ import js7.data.event.EventId
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 
-final class ShutDownClusterTest extends ControllerClusterTester
+final class ShutDownControllerClusterTest extends ControllerClusterTester
 {
   override protected def removeObsoleteJournalFiles = false
 

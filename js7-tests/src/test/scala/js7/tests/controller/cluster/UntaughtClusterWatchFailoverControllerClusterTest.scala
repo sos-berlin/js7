@@ -20,11 +20,11 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.NumberValue
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.tests.controller.cluster.ControllerClusterTester.*
-import js7.tests.controller.cluster.UntaughtClusterWatchFailoverClusterTest.*
+import js7.tests.controller.cluster.UntaughtClusterWatchFailoverControllerClusterTest.*
 import monix.execution.Scheduler.Implicits.global
 import scala.concurrent.duration.Deadline.now
 
-final class UntaughtClusterWatchFailoverClusterTest extends ControllerClusterTester
+final class UntaughtClusterWatchFailoverControllerClusterTest extends ControllerClusterTester
 {
   override protected def primaryControllerConfig =
     // Short timeout because something blocks web server shutdown occasionally
@@ -110,6 +110,6 @@ final class UntaughtClusterWatchFailoverClusterTest extends ControllerClusterTes
   }
 }
 
-object UntaughtClusterWatchFailoverClusterTest {
+object UntaughtClusterWatchFailoverControllerClusterTest {
   private val logger = Logger[this.type]
 }

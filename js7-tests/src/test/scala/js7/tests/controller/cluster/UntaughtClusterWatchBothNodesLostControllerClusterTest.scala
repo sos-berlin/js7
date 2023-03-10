@@ -11,11 +11,11 @@ import js7.cluster.watch.api.ClusterWatchProblems.{ClusterNodeIsNotLostProblem, 
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterFailedOver, ClusterPassiveLost}
 import js7.data.cluster.ClusterState.{Coupled, PassiveLost}
 import js7.data.cluster.ClusterWatchCheckEvent
-import js7.tests.controller.cluster.UntaughtClusterWatchBothNodesLostTest.*
+import js7.tests.controller.cluster.UntaughtClusterWatchBothNodesLostControllerClusterTest.*
 import monix.execution.Scheduler.Implicits.global
 
 // Connection between cluster nodes is broken, leading to ClusterPassiveLost and ClusterFailedOver.
-final class UntaughtClusterWatchBothNodesLostTest extends ControllerClusterTester
+final class UntaughtClusterWatchBothNodesLostControllerClusterTest extends ControllerClusterTester
 {
   override protected def primaryControllerConfig =
     // Short timeout because something blocks web server shutdown occasionally
@@ -87,6 +87,6 @@ final class UntaughtClusterWatchBothNodesLostTest extends ControllerClusterTeste
   }
 }
 
-object UntaughtClusterWatchBothNodesLostTest {
+object UntaughtClusterWatchBothNodesLostControllerClusterTest {
   private val logger = Logger[this.type]
 }

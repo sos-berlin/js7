@@ -12,12 +12,12 @@ import js7.data.job.{JobResource, JobResourcePath}
 import js7.data.order.OrderEvent.{OrderFinished, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.workflow.{Workflow, WorkflowPath}
-import js7.tests.controller.cluster.JobResourceClusterTest.*
+import js7.tests.controller.cluster.JobResourceControllerClusterTest.*
 import js7.tests.jobs.EmptyJob
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 
-final class JobResourceClusterTest extends ControllerClusterTester
+final class JobResourceControllerClusterTest extends ControllerClusterTester
 {
   "Cluster handles JobResources properly" in {
     withControllerAndBackupWithoutAgents() { (primary, backup, _) =>
@@ -57,7 +57,7 @@ final class JobResourceClusterTest extends ControllerClusterTester
   }
 }
 
-object JobResourceClusterTest
+object JobResourceControllerClusterTest
 {
   private val jobResource = JobResource(JobResourcePath("JOB-RESOURCE"))
   private val jobResource0 = jobResource.copy(itemRevision = Some(ItemRevision(0)))

@@ -26,12 +26,12 @@ import js7.data.value.NumberValue
 import js7.journal.files.JournalFiles
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.tests.controller.cluster.ControllerClusterTester.*
-import js7.tests.controller.cluster.FailoverClusterTest.*
+import js7.tests.controller.cluster.FailoverControllerClusterTest.*
 import js7.tests.testenv.ControllerClusterForScalaTest.assertEqualJournalFiles
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.Deadline.now
 
-final class FailoverClusterTest extends ControllerClusterTester
+final class FailoverControllerClusterTest extends ControllerClusterTester
 {
   override protected def primaryControllerConfig =
     // Short timeout because something blocks web server shutdown occasionally
@@ -143,6 +143,6 @@ final class FailoverClusterTest extends ControllerClusterTester
   }
 }
 
-object FailoverClusterTest {
+object FailoverControllerClusterTest {
   private val logger = Logger[this.type]
 }

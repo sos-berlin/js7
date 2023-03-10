@@ -19,7 +19,7 @@ import js7.journal.files.JournalFiles.listJournalFiles
 import js7.tests.controller.cluster.ControllerClusterTester.*
 import monix.execution.Scheduler.Implicits.traced
 
-final class AppointNodesLatelyClusterTest extends OurTestSuite with ControllerClusterTester
+final class AppointNodesLatelyControllerClusterTest extends OurTestSuite with ControllerClusterTester
 {
   override protected def configureClusterNodes = false
 
