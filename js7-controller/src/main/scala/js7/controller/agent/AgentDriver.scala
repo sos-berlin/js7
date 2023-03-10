@@ -45,6 +45,7 @@ import js7.data.delegate.DelegateCouplingState.{Coupled, Resetting}
 import js7.data.event.{AnyKeyedEvent, Event, EventId, EventRequest, KeyedEvent, Stamped}
 import js7.data.item.ItemAttachedState.{Attachable, Attached}
 import js7.data.item.{InventoryItemEvent, InventoryItemKey, SignableItem, UnsignedItem}
+import js7.data.node.NodeId
 import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderDetached}
 import js7.data.order.{Order, OrderEvent, OrderId, OrderMark}
 import js7.data.orderwatch.OrderWatchEvent
@@ -706,6 +707,10 @@ private[controller] object AgentDriver
     final case class Reset(force: Boolean) extends DeadLetterSuppression
 
     final case class ResetSubagent(subagentId: SubagentId, force: Boolean) extends Queueable
+
+    final case class ClusterAppointNodes(idToUri: Map[NodeId, Uri], activeId: NodeId) extends Queueable
+
+    case object ClusterSwitchOver extends Queueable
   }
 
   object Output {

@@ -13,7 +13,7 @@ import js7.agent.command.CommandHandler
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.ShutDown
+import js7.agent.data.commands.AgentCommand.{ClusterAppointNodes, ClusterSwitchOver, ShutDown}
 import js7.agent.data.views.AgentOverview
 import js7.agent.web.AgentWebServer
 import js7.agent.web.common.AgentSession
@@ -160,6 +160,16 @@ extends MainService
       //🔨  Task(clusterNode.workingClusterNode)
       //🔨    .flatMapT(_.appointNodes(idToUri, activeId))
       //🔨    .rightAs(AgentCommand.Response.Accepted)
+
+      case ClusterAppointNodes(idToUri, activeId) =>
+        Task(clusterNode.workingClusterNode)
+          .flatMapT(_.appointNodes(idToUri, activeId))
+          .rightAs(AgentCommand.Response.Accepted)
+
+      case ClusterSwitchOver =>
+        Task(clusterNode.workingClusterNode)
+          .flatMapT(_.switchOver)
+          .rightAs(AgentCommand.Response.Accepted)
 
       case _ =>
         api.flatMapT(api =>

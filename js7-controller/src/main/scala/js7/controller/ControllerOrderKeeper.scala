@@ -827,7 +827,7 @@ with MainJournalingActor[ControllerState, Event]
           .mapTo[JournalActor.Output.SnapshotTaken.type]
           .map(_ => Right(ControllerCommand.Response.Accepted))
 
-      case ControllerCommand.ClusterSwitchOver =>
+      case ControllerCommand.ClusterSwitchOver(None) =>
         clusterSwitchOver(restart = true)
 
       case shutDown: ControllerCommand.ShutDown =>
@@ -932,6 +932,30 @@ with MainJournalingActor[ControllerState, Event]
           case Right(events) =>
             persistTransactionAndSubsequentEvents(events)(handleEvents)
               .map(_ => Right(ControllerCommand.Response.Accepted))
+        }
+
+      case ControllerCommand.ClusterAppointNodes(idToUri, activeNode, Some(agentPath)) =>
+        Future.successful {
+          agentRegister.checked(agentPath)
+            .map { agentEntry =>
+              agentEntry.actor ! AgentDriver.Input.ClusterAppointNodes(idToUri, activeNode)
+              // - Asynchronous, no response awaited
+              // - No error checking
+              // - Gets lost on Agent restart
+              ControllerCommand.Response.Accepted
+            }
+        }
+
+      case ControllerCommand.ClusterSwitchOver(Some(agentPath)) =>
+        Future.successful {
+          agentRegister.checked(agentPath)
+            .map { agentEntry =>
+              agentEntry.actor ! AgentDriver.Input.ClusterSwitchOver
+              // - Asynchronous, no response awaited
+              // - No error checking
+              // - Gets lost on Agent restart
+              ControllerCommand.Response.Accepted
+            }
         }
 
       case _ =>

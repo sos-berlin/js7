@@ -60,7 +60,7 @@ final class JournaledProxySwitchOverClusterTest extends OurTestSuite with Cluste
           // SWITCH-OVER
 
           lastEventId = primaryController.eventWatch.lastAddedEventId
-          primaryController.executeCommandAsSystemUser(ClusterSwitchOver).await(99.s).orThrow
+          primaryController.executeCommandAsSystemUser(ClusterSwitchOver()).await(99.s).orThrow
           primaryController.terminated await 99.s
         }
 

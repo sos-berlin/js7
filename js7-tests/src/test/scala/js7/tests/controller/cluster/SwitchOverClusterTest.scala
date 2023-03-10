@@ -42,7 +42,7 @@ final class SwitchOverClusterTest extends ControllerClusterTester
           backupController.eventWatch.await[OrderProcessingStarted](_.key == orderId)
 
           // SWITCH OVER TO BACKUP
-          primaryController.executeCommandAsSystemUser(ClusterSwitchOver).await(timeout).orThrow
+          primaryController.executeCommandAsSystemUser(ClusterSwitchOver()).await(timeout).orThrow
           //May already be terminated: primaryController.eventWatch.await[ClusterSwitchedOver]()
           backupController.eventWatch.await[ClusterSwitchedOver]()
           // Controller terminates after switched-over
@@ -67,7 +67,7 @@ final class SwitchOverClusterTest extends ControllerClusterTester
           primaryController.eventWatch.await[OrderProcessingStarted](_.key == orderId)
 
           // SWITCH OVER TO PRIMARY
-          backupController.executeCommandAsSystemUser(ClusterSwitchOver).await(timeout).orThrow
+          backupController.executeCommandAsSystemUser(ClusterSwitchOver()).await(timeout).orThrow
           primaryController.eventWatch.await[ClusterSwitchedOver]()
           Try(backupController.terminated.await(timeout)).failed foreach { t =>
             // Erstmal beendet sich der Controller nach SwitchOver

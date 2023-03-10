@@ -241,12 +241,13 @@ object ControllerCommand extends CommonCommand.Companion
 
   final case class ClusterAppointNodes(
     idToUri: Map[NodeId, Uri],
-    activeId: NodeId)
+    activeId: NodeId,
+    agentPath: Option[AgentPath] = None)
   extends ControllerCommand {
     type Response = Response.Accepted
   }
 
-  case object ClusterSwitchOver
+  final case class ClusterSwitchOver(agentPath: Option[AgentPath] = None)
   extends ControllerCommand {
     type Response = Response.Accepted
   }
@@ -295,7 +296,7 @@ object ControllerCommand extends CommonCommand.Companion
     Subtype(deriveConfiguredCodec[ControlWorkflowPath]),
     Subtype(deriveConfiguredCodec[ControlWorkflow]),
     Subtype(deriveConfiguredCodec[ClusterAppointNodes]),
-    Subtype(ClusterSwitchOver),
+    Subtype(deriveConfiguredCodec[ClusterSwitchOver]),
     Subtype(deriveConfiguredCodec[ResetAgent]),
     Subtype(deriveConfiguredCodec[ResetSubagent]),
     Subtype(TakeSnapshot))

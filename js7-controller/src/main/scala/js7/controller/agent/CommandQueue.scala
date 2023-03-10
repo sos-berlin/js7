@@ -191,6 +191,12 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
 
       case Input.ResetSubagent(subagentId, force) =>
         AgentCommand.ResetSubagent(subagentId, force = force)
+
+      case Input.ClusterAppointNodes(idToUri, activeId) =>
+        AgentCommand.ClusterAppointNodes(idToUri, activeId)
+
+      case Input.ClusterSwitchOver =>
+        AgentCommand.ClusterSwitchOver
     }
 
   final def onOrdersDetached(orderIds: View[OrderId]): Unit = {

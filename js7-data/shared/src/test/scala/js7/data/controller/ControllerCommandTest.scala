@@ -437,19 +437,27 @@ final class ControllerCommandTest extends OurTestSuite
         Map(
           NodeId("A") -> Uri("https://A"),
           NodeId("B") -> Uri("https://B")),
-        activeId = NodeId("A")),
+        activeId = NodeId("A"),
+        Some(AgentPath("AGENT"))),
       json"""{
         "TYPE": "ClusterAppointNodes",
         "idToUri": {
           "A": "https://A",
           "B": "https://B"
         },
-        "activeId": "A"
+        "activeId": "A",
+        "agentPath": "AGENT"
       }""")
   }
 
   "ClusterSwitchOver" in {
-    testJson[ControllerCommand](ClusterSwitchOver,
+    testJson[ControllerCommand](ClusterSwitchOver(Some(AgentPath("AGENT"))),
+      json"""{
+        "TYPE": "ClusterSwitchOver",
+        "agentPath": "AGENT"
+      }""")
+
+    testJson[ControllerCommand](ClusterSwitchOver(),
       json"""{
         "TYPE": "ClusterSwitchOver"
       }""")
