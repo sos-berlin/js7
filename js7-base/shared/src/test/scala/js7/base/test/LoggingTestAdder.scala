@@ -17,7 +17,7 @@ private final class LoggingTestAdder(suiteName: String) {
 
   Logger.initialize()
 
-  private val since = now
+  private lazy val since = now
   private val outerNames = Seq(suiteName).to(mutable.Stack)
   private var firstTestCalled = false
   private var succeededCount = 0
@@ -50,11 +50,10 @@ private final class LoggingTestAdder(suiteName: String) {
     finally outerNames.pop()
   }
 
-  def freezeContext(testName: String) =
-    new TestContext(
-      this,
-      outerNames.toVector,
-      testName)
+  def freezeContext(testName: String): TestContext = {
+    since
+    new TestContext(this, outerNames.toVector, testName)
+  }
 
   def afterAll(): Unit =
     logger.info(s"$suiteName — " +
@@ -76,7 +75,7 @@ private object LoggingTestAdder {
   private val failureMarkup = orange + bold
 
   private val collectResult: Result => Unit =
-    TestResultCollector.add _
+    TestResultCollector.add
   // Trying to use a sbt-wide TestResultCollector, not the instance for the respective
   // subproject ClassLoader created by ScalaTest. Fails with ClassNotFoundException.
   //  result => {

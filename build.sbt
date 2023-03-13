@@ -129,6 +129,9 @@ Global / concurrentRestrictions := Seq(
 val scalaTestArguments = Tests.Argument(TestFrameworks.ScalaTest,
   (if (testParallelization > 1) "-oNCLPQF" else "-oF") +: Seq("-W", "30", "30"): _*)
 
+// Use a single ClassLoader and a single instance of Log4j FileAppender – DOES NOT WORK ???
+classLoaderLayeringStrategy := ClassLoaderLayeringStrategy.Flat
+
 val _dummy_ = {
   sys.props("TEST") = "true"
 }

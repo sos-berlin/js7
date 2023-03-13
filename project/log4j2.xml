@@ -10,6 +10,10 @@
                              filePattern="target/build-%d{yyyy-MM-dd}-%i.log.gz"
                              append="true"
                              immediateFlush="${sys:js7.log4j.immediateFlush:-true}">
+      <!--TODO Each subproject (probably due to seperate ClassLoaders) has an own file handle
+           and flushes independently, resulting in wrong concatenated buffers.
+           Event parts are not written
+          How to use a single file handle for all subprojects ???-->
       <!-- append=true is required to let forked tests append. -->
       <patternLayout pattern="%d{DEFAULT_MICROS} %-5level{INFO=info, DEBUG=debug, TRACE=trace} %notEmpty{%X{js7.correlId} }[%threadName] %logger %notEmpty{»%marker« }- %message%n"
                      charset="UTF-8"/>
