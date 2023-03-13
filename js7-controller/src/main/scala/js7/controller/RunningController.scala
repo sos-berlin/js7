@@ -353,7 +353,7 @@ object RunningController
       val commandExecutor = new ControllerCommandExecutor(
         new MyCommandExecutor(
           clusterNode,
-          onShutDownBeforeClusterActivated = clusterNode.onShutdown,
+          onShutDownBeforeClusterActivated = clusterNode.stopRecovery,
           currentOrderKeeperActor))
 
       val orderApi = new MainOrderApi(controllerState)

@@ -90,52 +90,52 @@ extends Service.StoppableByRequest
    *         and ClusterFollowUp.
    */
   protected def start: Task[Started] =
-    startService(logger
-      .traceTask("untilActiveNodeRecovered")(
-        prepared.untilActiveNodeRecovered)
-      .map(_.orThrow)
-      .flatTap(recovered =>
-        Task.raiseUnless(recovered.clusterState.isEmptyOrActive(ownId))(
-          new IllegalStateException(
-            "Controller has recovered from Journal but is not the active node in ClusterState: " +
-              s"id=$ownId, failedOver=${recovered.clusterState}")))
-      .flatMap(recovered =>
-        startWorkingNode(recovered))
+    startService(
+      untilWorkingNodeStarted
+        .start
+        .flatMap(fiber =>
+          Task.race(recoveryStopRequested.get, fiber.join))
+        .*>(untilStopRequested)
+        .guaranteeCase(exitCase =>
+          Task.defer(passiveOrWorkingNode.get() match {
+            case Some(Left(passiveClusterNode))
+              if exitCase == ExitCase.Completed && !_testDontNotifyActiveNodeAboutShutdown =>
+              passiveClusterNode.notifyActiveNodeAboutShutdown
+
+            case Some(Right(workingClusterNodeAllocated)) =>
+              workingClusterNodeAllocated.stop
+
+            case _ => Task.unit
+          })))
+
+  private def untilWorkingNodeStarted: Task[Unit] =
+    logger.debugTask(untilRecovered
+      .flatMap(startWorkingNode)
       .materialize
       .flatTap(triedWorkingNode =>
         workingNodeStarted.complete(triedWorkingNode.map(Right(_))).attempt)
       .dematerialize
       .flatMap(workingNode =>
-        currentStateRef.set(workingNode.persistence.state.map(Right(_))))
-      .guaranteeCase {
-        case ExitCase.Completed => Task.unit
-        // Duplicate ???
-        case ExitCase.Error(t) => Task(logger.error(t.toStringWithCauses, t.nullIfNoStackTrace))
-        case ExitCase.Canceled => Task(logger.warn("❌ Canceled"))
-      }
-      .start
-      .flatMap(fiber => logger.traceTask("fiber.join")(
-        Task.race(recoveryStopRequested.get, fiber.join)))
-      .*>(untilStopRequested)
-      .*>(stopRecovery(ProgramTermination()/*???*/))
-      .*>(Task.defer(passiveOrWorkingNode.get() match {
-        case Some(Left(passiveClusterNode)) if !_testDontNotifyActiveNodeAboutShutdown =>
-          passiveClusterNode.notifyActiveNodeAboutShutdown
-        case _ => Task.unit
-      }))
-      .guarantee(Task.defer(
-        passiveOrWorkingNode.get() match {
-          case Some(Right(workingClusterNodeAllocated)) => workingClusterNodeAllocated.stop
-          case _ => Task.unit
-        })))
+        currentStateRef.set(workingNode.persistence.state.map(Right(_)))))
+      //.guaranteeCase {
+      //  case ExitCase.Completed => Task.unit
+      //  // Duplicate ?
+      //  case ExitCase.Error(t) => Task(logger.error(t.toStringWithCauses, t.nullIfNoStackTrace))
+      //  case ExitCase.Canceled => Task(logger.warn("❌ untilWorkingNodeStarted canceled"))
+      //})
 
-  def onShutdown(termination: ProgramTermination): Task[Unit] =
-    stopRecovery(termination)
+  private def untilRecovered: Task[Recovered[S]] =
+    logger.debugTask(prepared
+      .untilRecovered
+      .map(_.orThrow)
+      .flatTap(recovered => Task.raiseUnless(recovered.clusterState.isEmptyOrActive(ownId))(
+        new IllegalStateException("Controller has recovered from Journal but is not the " +
+          s"active node in ClusterState: id=$ownId, failedOver=${recovered.clusterState}"))))
 
-  private def stopRecovery(termination: ProgramTermination): Task[Unit] =
+  def stopRecovery(termination: ProgramTermination): Task[Unit] =
     Task.defer {
       logger.trace("stopRecovery")
-      recoveryStopRequested.complete(termination).attempt *>
+      recoveryStopRequested.complete(()).attempt *>
         workingNodeStarted.complete(Success(Left(termination))).attempt.void
     }
 
@@ -265,19 +265,17 @@ object ClusterNode
   : Resource[Task, (Recovered.Extract, ActorSystem, ClusterNode[S])] =
     StateRecoverer.resource[S](journalMeta, config)
       .parZip(
-        akkaResource)
+        akkaResource/*start in parallel*/)
       .flatMap { case (recovered, actorSystem) =>
         implicit val a = actorSystem
-        ClusterNode
-          .resource(
-            recovered, journalMeta, journalConf, clusterConf, config,
-            eventIdClock,
-            clusterNodeApi(_, _, actorSystem),
-            new LicenseChecker(LicenseCheckContext(configDirectory)),
-            testEventBus)
-          .orThrow
-          .map(clusterNode =>
-            (recovered.extract, actorSystem, clusterNode))
+        for (clusterNode <-
+               resource(
+                 recovered, journalMeta, journalConf, clusterConf, config,
+                 clusterNodeApi(_, _, actorSystem),
+                 new LicenseChecker(LicenseCheckContext(configDirectory)),
+                 eventIdClock, testEventBus
+               ).orThrow)
+        yield (recovered.extract, actorSystem, clusterNode)
       }
 
   private def resource[S <: SnapshotableState[S] : diffx.Diff : Tag](
@@ -286,9 +284,9 @@ object ClusterNode
     journalConf: JournalConf,
     clusterConf: ClusterConf,
     config: Config,
-    eventIdClock: EventIdClock,
     clusterNodeApi: (Uri, String) => Resource[Task, ClusterNodeApi],
     licenseChecker: LicenseChecker,
+    eventIdClock: EventIdClock,
     eventBus: EventPublisher[Any])
     (implicit
       S: SnapshotableState.Companion[S],
@@ -339,13 +337,12 @@ object ClusterNode
       s"This is cluster $ownId, recovered ClusterState is ${recovered.clusterState}")
 
     val keepTruncatedRest = config.getBoolean("js7.journal.cluster.keep-truncated-rest")
-    val passiveOrWorkingNode =
-      AtomicAny[Option[
-        Either[PassiveClusterNode[S], Allocated[Task, WorkingClusterNode[S]]]]](None)
+    val passiveOrWorkingNode = AtomicAny[Option[
+      Either[PassiveClusterNode[S], Allocated[Task, WorkingClusterNode[S]]]]](None)
 
     import common.activationInhibitor
 
-    def startAsBackupNodeWithEmptyClusterState(): Prepared[S] = {
+    def prepareBackupNodeWithEmptyClusterState(): Prepared[S] = {
       logger.info(s"Backup cluster $ownId, awaiting appointment from a primary node")
       val startedPromise = Promise[ClusterStartBackupNode]()
       val passiveClusterNode = Task.fromFuture(startedPromise.future)
@@ -364,7 +361,7 @@ object ClusterNode
 
       Prepared(
         currentPassiveReplicatedState = currentPassiveState,
-        untilActiveNodeRecovered = untilActiveRecovered,
+        untilRecovered = untilActiveRecovered,
         expectingStartBackupCommand = Some(startedPromise))
     }
 
@@ -391,7 +388,7 @@ object ClusterNode
                 case None => Task.none
                 case Some((_, passiveClusterNode)) => passiveClusterNode.state.map(s => Some(Right(s)))
               },
-            untilActiveNodeRecovered =
+            untilRecovered =
               failedOver.flatMap {
                 case None => Task.right(recovered)
                 case Some((ourRecovered, passiveClusterNode)) =>
@@ -402,7 +399,7 @@ object ClusterNode
           logger.info("Remaining the active cluster node, not coupled with passive node")
           Prepared(
             currentPassiveReplicatedState = Task.none,
-            untilActiveNodeRecovered = activationInhibitor.startActive.as(Right(recovered)))
+            untilRecovered = activationInhibitor.startActive.as(Right(recovered)))
       }
 
     def startPassiveAfterFailover(coupled: Coupled, otherFailedOver: FailedOver)
@@ -411,8 +408,8 @@ object ClusterNode
         ", and became active while this node was absent")
       assertThat(otherFailedOver.idToUri == coupled.idToUri &&
         otherFailedOver.activeId == coupled.passiveId)
-      // This restarted, previously failed active cluster node may have written one chunk of events more than
-      // the passive node, maybe even an extra snapshot in a new journal file.
+      // This restarted, previously failed active cluster node may have written one chunk of events
+      // more than the passive node, maybe even an extra snapshot in a new journal file.
       // These extra events are not acknowledged. So we truncate our journal.
       val ourRecovered = truncateJournalAndRecoverAgain(otherFailedOver) match {
         case None => recovered
@@ -446,7 +443,7 @@ object ClusterNode
       recovered
     }
 
-    def startAsPassiveNode(recovered: Recovered[S], clusterState: HasNodes) = {
+    def preparePassiveNode(recovered: Recovered[S], clusterState: HasNodes): Prepared[S] = {
       logger.info(
         if (clusterState.isInstanceOf[Coupled])
           s"Remaining a passive cluster node following the active ${clusterState.activeId}"
@@ -455,7 +452,7 @@ object ClusterNode
       val passive = newPassiveClusterNode(recovered, clusterState.setting)
       Prepared(
         currentPassiveReplicatedState = passive.state.map(s => Some(Right(s))),
-        untilActiveNodeRecovered = passive.run(recovered.state))
+        untilRecovered = passive.run(recovered.state))
     }
 
     def newPassiveClusterNode(
@@ -478,15 +475,15 @@ object ClusterNode
           logger.debug(s"Active primary cluster $ownId, no backup node appointed")
           Prepared(
             currentPassiveReplicatedState = Task.none,
-            untilActiveNodeRecovered = activationInhibitor.startActive.as(Right(recovered)))
+            untilRecovered = activationInhibitor.startActive.as(Right(recovered)))
         } else
-          startAsBackupNodeWithEmptyClusterState()
+          prepareBackupNodeWithEmptyClusterState()
 
       case clusterState: HasNodes =>
         if (ownId == clusterState.activeId)
           startAsActiveNodeWithBackup()
         else
-          startAsPassiveNode(recovered, clusterState)
+          preparePassiveNode(recovered, clusterState)
     }
 
     Service.resource(
@@ -511,6 +508,6 @@ object ClusterNode
 
   private final case class Prepared[S <: SnapshotableState[S]](
     currentPassiveReplicatedState: Task[Option[Checked[S]]],
-    untilActiveNodeRecovered: Task[Checked[Recovered[S]]],
+    untilRecovered: Task[Checked[Recovered[S]]],
     expectingStartBackupCommand: Option[Promise[ClusterStartBackupNode]] = None)
 }

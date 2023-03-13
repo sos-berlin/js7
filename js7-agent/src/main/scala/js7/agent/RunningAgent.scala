@@ -62,7 +62,7 @@ final class RunningAgent private(
   clusterNode: ClusterNode[AgentState],
   webServer: AkkaWebServer & AkkaWebServer.HasUri,
   val terminated: Future[ProgramTermination],
-  val api: Task[Checked[CommandMeta => DirectAgentApi]],
+  val directAgentApi: Task[Checked[CommandMeta => DirectAgentApi]],
   sessionRegister: SessionRegister[AgentSession],
   val sessionToken: SessionToken,
   val testEventBus: StandardEventBus[Any],
@@ -145,8 +145,8 @@ extends MainService
           //🔨if (command.dontNotifyActiveNode && clusterNode.isPassive) {
           //🔨  clusterNode.dontNotifyActiveNodeAboutShutdown()
           //🔨}
-          clusterNode.onShutdown(ProgramTermination(restart = command.restart)) >>
-            api.flatMap {
+          clusterNode.stopRecovery(ProgramTermination(restart = command.restart)) >>
+            directAgentApi.flatMap {
               case Left(ClusterNodeIsNotActiveProblem | ShuttingDownProblem) =>
                 Task.right(AgentCommand.Response.Accepted)
 
@@ -178,7 +178,7 @@ extends MainService
           .rightAs(AgentCommand.Response.Accepted)
 
       case _ =>
-        api.flatMapT(api =>
+        directAgentApi.flatMapT(api =>
           api(meta).commandExecute(command))
     }).map(_.map((_: AgentCommand.Response).asInstanceOf[command.Response]))
 
@@ -333,10 +333,10 @@ object RunningAgent {
       sessionToken <- sessionRegister
         .placeSessionTokenInDirectory(SimpleUser.System, conf.workDirectory)
 
-      api = currentMainActor.flatMap(_.traverse(_.whenReady.map(_.api)))
+      directApi = currentMainActor.flatMap(_.traverse(_.whenReady.map(_.api)))
       webServer <- AgentWebServer
         .resource(
-          agentOverview, conf, gateKeeperConf, api, sessionRegister,
+          agentOverview, conf, gateKeeperConf, directApi, sessionRegister,
           recoveredExtract.eventWatch)(actorSystem)
         .evalTap(webServer => Task {
           conf.workDirectory / "http-uri" :=
@@ -348,7 +348,7 @@ object RunningAgent {
           clusterNode,
           webServer, /*Task(mainActor),*/
           untilMainActorTerminated.runToFuture,
-          api, sessionRegister, sessionToken,
+          directApi, sessionRegister, sessionToken,
           testEventBus,
           actorSystem, config)))
     } yield agent
