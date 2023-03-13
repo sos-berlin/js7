@@ -52,7 +52,7 @@ final class FileWatchLongTest extends OurTestSuite with ControllerAgentForScalaT
 
   "Start with a file" in {
     createDirectory(sourceDirectory)
-    controllerApi.updateUnsignedSimpleItems(Seq(fileWatch)).await(99.s).orThrow
+    controller.api.updateUnsignedSimpleItems(Seq(fileWatch)).await(99.s).orThrow
     val file = sourceDirectory / "1"
     val orderId = fileToOrderId("1")
     file := ""
@@ -67,7 +67,7 @@ final class FileWatchLongTest extends OurTestSuite with ControllerAgentForScalaT
   }
 
   "Delete FileWatch" in {
-    assert(controllerApi.updateItems(Observable(DeleteSimple(fileWatch.path))).await(99.s) ==
+    assert(controller.api.updateItems(Observable(DeleteSimple(fileWatch.path))).await(99.s) ==
       Right(Completed))
     eventWatch.await[ItemDeleted](_.event.key == fileWatch.path)
     assert(controllerState.keyTo(OrderWatchState).isEmpty)

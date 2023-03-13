@@ -1,7 +1,5 @@
 package js7.tests.controller.cluster
 
-import js7.base.auth.UserId
-import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
@@ -13,6 +11,7 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.tests.controller.cluster.ControllerClusterTester.*
 import js7.tests.testenv.ControllerClusterForScalaTest.assertEqualJournalFiles
 import monix.execution.Scheduler.Implicits.traced
+import monix.reactive.Observable
 
 final class ReplicatingControllerClusterTest extends ControllerClusterTester
 {
@@ -32,7 +31,7 @@ final class ReplicatingControllerClusterTest extends ControllerClusterTester
 
         assertEqualJournalFiles(primary.controller, backup.controller, n = 1)
 
-        primaryController.executeCommandAsSystemUser(TakeSnapshot).await(99.s).orThrow
+        primaryController.api.executeCommand(TakeSnapshot).await(99.s).orThrow
         assertEqualJournalFiles(primary.controller, backup.controller, n = 1)
 
         primaryController.runOrder(FreshOrder(OrderId("🔵"), TestWorkflow.path))
@@ -58,8 +57,7 @@ final class ReplicatingControllerClusterTest extends ControllerClusterTester
           backupController.eventWatch.await[OrderFinished](_.key == OrderId("🔹"), after = lastEventId)
 
           // Check acknowledgement of empty event list
-          primaryController.httpApi.login_(Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD"))).await(99.s)
-          primaryController.httpApi.addOrders(Nil).await(99.s)  // Emits no events
+          primaryController.api.addOrders(Observable.empty).await(99.s).orThrow  // Emits no events
         }
       }
     }

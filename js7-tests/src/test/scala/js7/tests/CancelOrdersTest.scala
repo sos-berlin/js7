@@ -62,7 +62,7 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
       scheduledFor = Some(Timestamp.now + 99.seconds))
     controller.addOrderBlocking(order)
     eventWatch.await[OrderAttached](_.key == order.id)
-    controllerApi.executeCommand(CancelOrders(Set(order.id), CancellationMode.FreshOnly))
+    controller.api.executeCommand(CancelOrders(Set(order.id), CancellationMode.FreshOnly))
       .await(99.seconds).orThrow
     eventWatch.await[OrderCancelled](_.key == order.id)
     assert(onlyRelevantEvents(eventWatch.eventsByKey[OrderEvent](order.id)) == Vector(
@@ -74,7 +74,7 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
     val order = FreshOrder(OrderId("🔺"), singleJobWorkflow.path, Map("sleep" -> 1))
     controller.addOrderBlocking(order)
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
-    controllerApi.executeCommand(CancelOrders(Set(order.id), CancellationMode.FreshOrStarted()))
+    controller.api.executeCommand(CancelOrders(Set(order.id), CancellationMode.FreshOrStarted()))
       .await(99.seconds).orThrow
     assert(eventWatch.await[OrderTerminated](_.key == order.id).head.value.event == OrderFinished())
 
@@ -95,9 +95,9 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
 
     // Controller knows, the order has started
-    assert(controllerApi.executeCommand(CancelOrders(Set(order.id), CancellationMode.FreshOnly)).await(99.seconds) ==
+    assert(controller.api.executeCommand(CancelOrders(Set(order.id), CancellationMode.FreshOnly)).await(99.seconds) ==
       Left(CancelStartedOrderProblem(OrderId("❌"))))
-    controllerApi
+    controller.api
       .executeCommand(
         CancelOrders(Set(order.id), CancellationMode.FreshOrStarted(Some(CancellationMode.Kill()))))
       .await(99.seconds).orThrow
@@ -108,7 +108,7 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
     val order = FreshOrder(OrderId("🔴"), twoJobsWorkflow.path, Map("sleep" -> 2))
     controller.addOrderBlocking(order)
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
-    controllerApi.executeCommand(CancelOrders(Set(order.id), CancellationMode.FreshOrStarted()))
+    controller.api.executeCommand(CancelOrders(Set(order.id), CancellationMode.FreshOrStarted()))
       .await(99.seconds).orThrow
     eventWatch.await[OrderCancelled](_.key == order.id)
 
@@ -201,7 +201,7 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
     eventWatch.await[OrderProcessingStarted](_.key == order.id / "🥕")
 
     val mode = CancellationMode.FreshOrStarted(Some(CancellationMode.Kill()))
-    controllerApi.executeCommand(CancelOrders(Set(order.id), mode))
+    controller.api.executeCommand(CancelOrders(Set(order.id), mode))
       .await(99.seconds).orThrow
     eventWatch.await[OrderCancelled](_.key == order.id)
 
@@ -233,7 +233,7 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
     sleep(100.ms)  // Try to avoid "killed before start"
 
     val mode = CancellationMode.FreshOrStarted(Some(CancellationMode.Kill()))
-    controllerApi.executeCommand(CancelOrders(Set(order.id  / "🥕"), mode))
+    controller.api.executeCommand(CancelOrders(Set(order.id  / "🥕"), mode))
       .await(99.seconds).orThrow
     eventWatch.await[OrderCancelled](_.key == order.id / "🥕")
 
@@ -271,11 +271,11 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
     controller.addOrderBlocking(order)
     eventWatch.await[OrderPrompted](_.key == order.id)
 
-    controllerApi.executeCommand(CancelOrders(Seq(order.id))).await(99.s).orThrow
+    controller.api.executeCommand(CancelOrders(Seq(order.id))).await(99.s).orThrow
     eventWatch.await[OrderCancelled](_.key == order.id)
     assert(controllerState.idToOrder(order.id).isState[Order.Cancelled])
 
-    assert(controllerApi
+    assert(controller.api
       .executeCommand(
         ResumeOrder(order.id, position = Some(Position(1)), asSucceeded = true))
       .await(99.s) == Left(CannotResumeOrderProblem))
@@ -304,7 +304,7 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
     val mode = CancellationMode.FreshOrStarted(Some(CancellationMode.Kill(
       immediately = immediately,
       workflowPosition)))
-    controllerApi.executeCommand(CancelOrders(Set(order.id), mode))
+    controller.api.executeCommand(CancelOrders(Set(order.id), mode))
       .await(99.seconds).orThrow
     eventWatch.await[OrderCancelled](_.key == order.id)
     assert(onlyRelevantEvents(
@@ -314,7 +314,7 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
   }
 
   "Cancel unknown order" in {
-    assert(controllerApi.executeCommand(
+    assert(controller.api.executeCommand(
       CancelOrders(Set(OrderId("UNKNOWN")), CancellationMode.FreshOnly)
     ).await(99.seconds) ==
       Left(UnknownOrderProblem(OrderId("UNKNOWN"))))
@@ -327,7 +327,7 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
         singleJobWorkflow.path, scheduledFor = Some(Timestamp.now + 99.seconds))
     for (o <- orders) controller.addOrderBlocking(o)
     for (o <- orders) eventWatch.await[OrderAttached](_.key == o.id)
-    val response = controllerApi.executeCommand(
+    val response = controller.api.executeCommand(
       CancelOrders(orders.map(_.id), CancellationMode.FreshOnly)
     ).await(99.seconds).orThrow
     assert(response == Response.Accepted)
@@ -363,10 +363,10 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
     addWorkflow(workflow)
 
     val eventId = eventWatch.lastAddedEventId
-    controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+    controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
     eventWatch.await[OrderStdoutWritten](after = eventId)
 
-    controllerApi
+    controller.api
       .executeCommand(
         CancelOrders(Seq(orderId), CancellationMode.kill()))
       .await(99.s).orThrow
@@ -418,10 +418,10 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
     addWorkflow(workflow)
 
     val eventId = eventWatch.lastAddedEventId
-    controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+    controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
     eventWatch.await[OrderStdoutWritten](after = eventId)
 
-    controllerApi
+    controller.api
       .executeCommand(
         CancelOrders(Seq(orderId), CancellationMode.kill()))
       .await(99.s).orThrow
@@ -465,11 +465,11 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
     addWorkflow(workflow)
 
     val eventId = eventWatch.lastAddedEventId
-    controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+    controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
     eventWatch.await[OrderStdoutWritten](after = eventId)
 
     sleep(500.ms)
-    controllerApi
+    controller.api
       .executeCommand(
         CancelOrders(Seq(orderId), CancellationMode.kill()))
       .await(99.s).orThrow
@@ -522,11 +522,11 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
       addWorkflow(workflow)
 
       val eventId = eventWatch.lastAddedEventId
-      controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+      controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
       eventWatch.await[OrderStdoutWritten](after = eventId)
 
       sleep(500.ms)
-      controllerApi
+      controller.api
         .executeCommand(
           CancelOrders(Seq(orderId), CancellationMode.kill()))
         .await(99.s).orThrow
@@ -581,11 +581,11 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
       addWorkflow(workflow)
 
       val eventId = eventWatch.lastAddedEventId
-      controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+      controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
       eventWatch.await[OrderStdoutWritten](after = eventId)
 
       sleep(500.ms)
-      controllerApi
+      controller.api
         .executeCommand(
           CancelOrders(Seq(orderId), CancellationMode.kill()))
         .await(99.s).orThrow
@@ -630,11 +630,11 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
     addWorkflow(workflow)
 
     val eventId = eventWatch.lastAddedEventId
-    controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+    controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
     eventWatch.await[OrderStdoutWritten](after = eventId)
 
     sleep(1.s)
-    controllerApi
+    controller.api
       .executeCommand(
         CancelOrders(Seq(orderId), CancellationMode.kill()))
       .await(99.s).orThrow
@@ -653,7 +653,7 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
   }
 
   private def addWorkflow(workflow: Workflow): Unit = {
-    controllerApi
+    controller.api
       .updateItems(Observable(
         AddVersion(workflow.id.versionId),
         AddOrChangeSigned(directoryProvider.itemSigner.toSignedString(workflow))))

@@ -48,7 +48,7 @@ final class ObsoleteJournalFilesRemovedTest extends OurTestSuite with DirectoryP
       controller.eventWatch.await[ControllerEvent.ControllerReady]()
       assert(controllerJournalFiles.size == 1)
 
-      controller.executeCommandAsSystemUser(TakeSnapshot).await(99.s).orThrow
+      controller.api.executeCommand(TakeSnapshot).await(99.s).orThrow
       assert(controllerJournalFiles.size == 1)
     }
   }

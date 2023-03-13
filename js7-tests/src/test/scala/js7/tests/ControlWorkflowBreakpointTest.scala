@@ -49,7 +49,7 @@ extends OurTestSuite with ControllerAgentForScalaTest
   protected val agentPaths = Seq(agentPath)
   protected val items = Seq(aWorkflow, tryWorkflow)
   protected implicit def implicitEventWatch: StrictEventWatch = eventWatch
-  protected implicit def implicitControllerApi: ControllerApi = controllerApi
+  protected implicit def implicitControllerApi: ControllerApi = controller.api
 
   "Set some breakpoints" in {
     var eventId = setBreakpoints(
@@ -89,7 +89,7 @@ extends OurTestSuite with ControllerAgentForScalaTest
         .ordersToObstacles(Seq(aOrderId), Timestamp.now)
         .map(_.toSeq)
 
-    controllerApi.addOrder(FreshOrder(aOrderId, aWorkflow.path, deleteWhenTerminated = true))
+    controller.api.addOrder(FreshOrder(aOrderId, aWorkflow.path, deleteWhenTerminated = true))
       .await(99.s)
 
     // Breakpoint at Position(0)
@@ -97,11 +97,11 @@ extends OurTestSuite with ControllerAgentForScalaTest
     assert(orderObstacles == Right(Seq(
       aOrderId -> Set[OrderObstacle](OrderObstacle.WaitingForCommand))))
 
-    controllerApi.executeCommand(ResumeOrder(aOrderId)).await(99.s).orThrow
+    controller.api.executeCommand(ResumeOrder(aOrderId)).await(99.s).orThrow
     eventId = eventWatch.await[OrderPrompted](_.key == aOrderId, after = eventId)
       .last.eventId
 
-    controllerApi.executeCommand(AnswerOrderPrompt(aOrderId)).await(99.s).orThrow
+    controller.api.executeCommand(AnswerOrderPrompt(aOrderId)).await(99.s).orThrow
 
     // Breakpoint at Position(1) reached
     eventWatch.await[OrderSuspended](_.key == aOrderId, after = eventId)
@@ -113,12 +113,12 @@ extends OurTestSuite with ControllerAgentForScalaTest
       ItemRevision(1),
       UnsignedItemChanged.apply)
 
-    controllerApi.executeCommand(ResumeOrder(aOrderId)).await(99.s).orThrow
+    controller.api.executeCommand(ResumeOrder(aOrderId)).await(99.s).orThrow
 
     // Breakpoint at Position(3) reached
     eventWatch.await[OrderSuspended](_.key == aOrderId, after = eventId)
 
-    controllerApi.executeCommand(ResumeOrder(aOrderId)).await(99.s).orThrow
+    controller.api.executeCommand(ResumeOrder(aOrderId)).await(99.s).orThrow
     eventWatch.await[OrderFinished](_.key == aOrderId, after = eventId)
 
     assert(eventWatch.eventsByKey[OrderEvent](aOrderId) == Seq(
@@ -173,15 +173,15 @@ extends OurTestSuite with ControllerAgentForScalaTest
 
   "Breakpoint in a Try block" in {
     val orderId = OrderId("🔵")
-    controllerApi
+    controller.api
       .executeCommand(ControlWorkflow(tryWorkflow.id, addBreakpoints = Set(
         Position(1) / Try_ % 0)))
       .await(99.s).orThrow
 
-    controllerApi.addOrder(FreshOrder(orderId, tryWorkflow.id.path)).await(99.s).orThrow
+    controller.api.addOrder(FreshOrder(orderId, tryWorkflow.id.path)).await(99.s).orThrow
     eventWatch.await[OrderSuspended](_.key == orderId)
 
-    controllerApi.executeCommand(ResumeOrder(orderId)).await(99.s).orThrow
+    controller.api.executeCommand(ResumeOrder(orderId)).await(99.s).orThrow
     eventWatch.await[OrderFinished](_.key == orderId)
   }
 }

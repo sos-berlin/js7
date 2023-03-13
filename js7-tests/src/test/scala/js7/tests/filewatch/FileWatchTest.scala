@@ -126,7 +126,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
     delete(file)
     eventWatch.await[OrderDeleted](_.key == orderId)
 
-    controllerApi.updateItems(Observable(DeleteSimple(myFileWatch.path))).await(99.s).orThrow
+    controller.api.updateItems(Observable(DeleteSimple(myFileWatch.path))).await(99.s).orThrow
   }
 
   "Add a file" in {
@@ -164,7 +164,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
     file := ""
     eventWatch.await[OrderProcessingStarted](_.key == orderId)
 
-    assert(controllerApi.executeCommand(DeleteOrdersWhenTerminated(orderId :: Nil)).await(99.s) ==
+    assert(controller.api.executeCommand(DeleteOrdersWhenTerminated(orderId :: Nil)).await(99.s) ==
       Left(CannotDeleteWatchingOrderProblem(orderId)))
 
     TestJob.continue()
@@ -185,7 +185,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
     file := ""
     eventWatch.await[OrderProcessingStarted](_.key == orderId)
 
-    controllerApi.executeCommand(CancelOrders(orderId :: Nil)).await(99.s).orThrow
+    controller.api.executeCommand(CancelOrders(orderId :: Nil)).await(99.s).orThrow
     eventWatch.await[OrderCancellationMarkedOnAgent](_.key == orderId)
 
     TestJob.continue()
@@ -194,7 +194,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
       eventWatch.await[OrderDeleted](_.key == orderId, timeout = 100.ms)
     }
 
-    assert(controllerApi.executeCommand(DeleteOrdersWhenTerminated(orderId :: Nil)).await(99.s) ==
+    assert(controller.api.executeCommand(DeleteOrdersWhenTerminated(orderId :: Nil)).await(99.s) ==
       Left(CannotDeleteWatchingOrderProblem(orderId)))
 
     delete(file)
@@ -216,7 +216,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
       itemRevision = itemRevision.next
       val eventId = eventWatch.lastAddedEventId
       val changedFileWatch = waitingFileWatch.copy(delay = i.ms/*little change*/)
-      controllerApi.updateUnsignedSimpleItems(Seq(changedFileWatch)).await(99.s).orThrow
+      controller.api.updateUnsignedSimpleItems(Seq(changedFileWatch)).await(99.s).orThrow
       eventWatch.await[ItemAttached](after = eventId)
       assert(eventWatch.keyedEvents[InventoryItemEvent](after = eventId) ==
         Seq(
@@ -276,7 +276,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
 
       val changedFileWatch = waitingFileWatch.copy(
         directoryExpr = expr(StringConstant.quote(newDirectory.toString)))
-      controllerApi.updateUnsignedSimpleItems(Seq(changedFileWatch)).await(99.s).orThrow
+      controller.api.updateUnsignedSimpleItems(Seq(changedFileWatch)).await(99.s).orThrow
       eventWatch.await[ItemAttached](after = eventId)
       eventWatch.await[OrderDeleted](_.key == singletonOrderId, after = eventId)
       eventWatch.await[OrderDeleted](_.key == bothOrderId, after = eventId)
@@ -324,14 +324,14 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
 
     // Restore waitingFileWatch
     val eventId = eventWatch.lastAddedEventId
-    controllerApi.updateUnsignedSimpleItems(Seq(waitingFileWatch)).await(99.s).orThrow
+    controller.api.updateUnsignedSimpleItems(Seq(waitingFileWatch)).await(99.s).orThrow
     eventWatch.await[ItemAttached](_.event.key == waitingFileWatch.path, after = eventId)
   }
 
   "Change Agent" in {
     val eventId = eventWatch.lastAddedEventId
     val changedFileWatch = fileWatch.copy(agentPath = bAgentPath)
-    controllerApi.updateUnsignedSimpleItems(Seq(changedFileWatch)).await(99.s).orThrow
+    controller.api.updateUnsignedSimpleItems(Seq(changedFileWatch)).await(99.s).orThrow
     eventWatch.await[ItemAttached](after = eventId)
     assert(eventWatch.keyedEvents[InventoryItemEvent](after = eventId) ==
       Seq(
@@ -343,7 +343,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
   }
 
   "Deleting the Workflow referenced by the FileWatch is rejected" in {
-    assert(controllerApi.updateItems(Observable(
+    assert(controller.api.updateItems(Observable(
       AddVersion(VersionId("TRY-DELETE")),
       RemoveVersioned(workflow.path)
     )).await(99.s) ==
@@ -352,7 +352,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
 
   "Delete a FileWatch" in {
     val eventId = eventWatch.lastAddedEventId
-    assert(controllerApi.updateItems(Observable(
+    assert(controller.api.updateItems(Observable(
       DeleteSimple(fileWatch.path),
       DeleteSimple(waitingFileWatch.path)
     )).await(99.s) == Right(Completed))

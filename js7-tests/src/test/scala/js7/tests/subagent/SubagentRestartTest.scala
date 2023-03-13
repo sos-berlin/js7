@@ -7,7 +7,6 @@ import js7.base.log.Logger
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
-import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.agent.AgentRefStateEvent.AgentReady
 import js7.data.event.KeyedEvent
@@ -35,7 +34,6 @@ final class SubagentRestartTest extends OurTestSuite with SubagentTester
   }
 
   override def afterAll() = {
-    controllerApi.stop.await(99.s)
     controller.terminate().await(99.s)
     for (a <- Option(myAgent)) a.terminate().await(99.s)
     super.afterAll()
@@ -46,7 +44,7 @@ final class SubagentRestartTest extends OurTestSuite with SubagentTester
 
     runSubagent(bareSubagentItem, suppressSignatureKeys = true) { _ =>
       val orderId = OrderId("ITEM-SIGNATURE")
-      controller.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+      controller.addOrderBlocking(FreshOrder(orderId, workflow.path))
 
       val started = eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
         .head.value.event
@@ -64,7 +62,7 @@ final class SubagentRestartTest extends OurTestSuite with SubagentTester
 
     runSubagent(bareSubagentItem) { _ =>
       locally {
-        controller.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+        controller.addOrderBlocking(FreshOrder(orderId, workflow.path))
         val events = eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
         assert(events.head.value.event == OrderProcessingStarted(bareSubagentItem.id))
 
@@ -97,7 +95,7 @@ final class SubagentRestartTest extends OurTestSuite with SubagentTester
     TestSemaphoreJob.reset()
 
     runSubagent(bareSubagentItem) { subagent =>
-      controller.addOrder(FreshOrder(aOrderId, workflow.path)).await(99.s).orThrow
+      controller.addOrderBlocking(FreshOrder(aOrderId, workflow.path))
 
       val started = eventWatch.await[OrderProcessingStarted](_.key == aOrderId, after = eventId)
         .head.value.event
@@ -115,7 +113,7 @@ final class SubagentRestartTest extends OurTestSuite with SubagentTester
     // Subagent is unreachable now
     eventId = eventWatch.lastAddedEventId
     val bOrderId = OrderId("B-RESTART-SUBAGENT")
-    controller.addOrder(FreshOrder(bOrderId, workflow.path)).await(99.s).orThrow
+    controller.addOrderBlocking(FreshOrder(bOrderId, workflow.path))
 
     runSubagent(bareSubagentItem) { _ =>
       locally {
@@ -144,7 +142,7 @@ final class SubagentRestartTest extends OurTestSuite with SubagentTester
     TestSemaphoreJob.reset()
 
     runSubagent(bareSubagentItem) { subagent =>
-      controller.addOrder(FreshOrder(aOrderId, workflow.path)).await(99.s).orThrow
+      controller.addOrderBlocking(FreshOrder(aOrderId, workflow.path))
 
       val started = eventWatch.await[OrderProcessingStarted](_.key == aOrderId, after = eventId)
         .head.value.event
@@ -170,7 +168,7 @@ final class SubagentRestartTest extends OurTestSuite with SubagentTester
     eventWatch.await[AgentReady](after = eventId)
 
     val bOrderId = OrderId("B-RESTART-BOTH")
-    controller.addOrder(FreshOrder(bOrderId, workflow.path)).await(99.s).orThrow
+    controller.addOrderBlocking(FreshOrder(bOrderId, workflow.path))
 
     runSubagent(bareSubagentItem) { _ =>
       locally {

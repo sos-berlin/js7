@@ -1,13 +1,16 @@
 package js7.tests.controller.commands
 
 import akka.http.scaladsl.model.StatusCodes.InternalServerError
+import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.configutils.Configs.*
+import js7.base.generic.SecretString
 import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.web.Uri
 import js7.common.http.AkkaHttpClient.HttpException
+import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
 import js7.data.agent.{AgentPath, AgentRef}
 import js7.data.order.{FreshOrder, OrderId}
 import js7.data.subagent.{SubagentId, SubagentItem}
@@ -26,9 +29,16 @@ final class AddOrderTimeoutTest extends OurTestSuite with ControllerAgentForScal
     """
 
   "AddOrder timeout is returned as 403 Service Unavailable" in {
-    controller.httpApi.login().await(99.s)
+    val httpApi: HttpControllerApi = {
+      new AkkaHttpControllerApi(
+        controller.localUri,
+        Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))),
+          actorSystem = controller.actorSystem, config = controller.config, name = controller.conf.name)
+      }
+
+    httpApi.login().await(99.s)
     val status = intercept[HttpException] {
-      controller.httpApi.addOrder(FreshOrder(OrderId("ORDER"), workflow.path)).await(99.s)
+      httpApi.addOrder(FreshOrder(OrderId("ORDER"), workflow.path)).await(99.s)
     }.status
     // Despite error, addOrder may be successfully completed, so ServiceUnavailable is inappropriate:
     // assert(status == ServiceUnavailable)

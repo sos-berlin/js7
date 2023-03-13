@@ -115,8 +115,9 @@ object TestControllerAgent
               for (i <- 1 to conf.orderGeneratorCount) {
                 val at = Timestamp.now
                 controller
-                  .addOrder(
+                  .api.addOrder(
                     FreshOrder(OrderId(s"test-$i@$at"), TestWorkflowPath, scheduledFor = Some(at)))
+                  .rightAs(())
                   .map(_.orThrow)
                   .onErrorRecover { case t: Throwable =>
                     logger.error(s"addOrder failed: ${t.toStringWithCauses}", t.nullIfNoStackTrace)

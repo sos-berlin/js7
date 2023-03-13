@@ -39,7 +39,7 @@ final class DuplicateAgentRefTest extends OurTestSuite with ControllerAgentForSc
   "Add a second AgentRef/SubagentItem with same URI" in {
     controller.eventWatch.await[AgentReady](_.key == aAgentPath)
     val subagentId = SubagentId(bAgentPath.string + "-0")
-    controllerApi.updateUnsignedSimpleItems(Seq(
+    controller.api.updateUnsignedSimpleItems(Seq(
       AgentRef(bAgentPath, Seq(subagentId)),
       SubagentItem(subagentId, bAgentPath, agent.localUri)
     )).await(99.s).orThrow

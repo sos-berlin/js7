@@ -1,7 +1,5 @@
 package js7.tests.controller.cluster
 
-import js7.base.auth.{UserAndPassword, UserId}
-import js7.base.generic.SecretString
 import js7.base.problem.Checked.*
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.MonixBlocking.syntax.*
@@ -27,22 +25,19 @@ final class ShutDownControllerClusterTest extends ControllerClusterTester
     "ShutDown primary node only (no switchover)" in {
       withControllerAndBackup() { (primary, backup, clusterSetting) =>
         backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
-          backupController.httpApi.login_(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))).await(99.s)
-
           primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
             primaryController.eventWatch.await[ClusterWatchRegistered]()
             primaryController.eventWatch.await[ClusterCoupled]()
-            primaryController.httpApi.login_(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))).await(99.s)
-            assert(primaryController.httpApi.clusterState.await(99.s) == Right(Coupled(clusterSetting)))
+            assert(primaryController.clusterState.await(99.s) == Coupled(clusterSetting))
 
-            primaryController.executeCommandAsSystemUser(ShutDown())
+            primaryController.api.executeCommand(ShutDown())
               .await(99.s).orThrow
             primaryController.terminated.await(99.s)
           }
 
           val activeNodeShutDown = backupController.eventWatch.await[ClusterActiveNodeShutDown](after = EventId.BeforeFirst).head.eventId
 
-          assert(backupController.httpApi.clusterState.await(99.s) == Right(ClusterState.ActiveShutDown(clusterSetting)))
+          assert(backupController.clusterState.await(99.s) == ClusterState.ActiveShutDown(clusterSetting))
 
           primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
             val activeRestarted = primaryController.eventWatch.await[ClusterActiveNodeRestarted](
@@ -63,8 +58,8 @@ final class ShutDownControllerClusterTest extends ControllerClusterTester
             primaryController.eventWatch.await[ClusterWatchRegistered]()
             primaryController.eventWatch.await[ClusterCoupled]()
 
-            primaryController
-              .executeCommandAsSystemUser(ShutDown(clusterAction = Some(ClusterAction.Switchover)))
+            primaryController.api
+              .executeCommand(ShutDown(clusterAction = Some(ClusterAction.Switchover)))
               .await(99.s).orThrow
             backupController.eventWatch.await[ClusterSwitchedOver]()
             primaryController.terminated.await(99.s)
@@ -81,7 +76,7 @@ final class ShutDownControllerClusterTest extends ControllerClusterTester
             primaryController.eventWatch.await[ClusterWatchRegistered]()
 
             primaryController
-              .executeCommandAsSystemUser(ShutDown(clusterAction = Some(ClusterAction.Failover)))
+              .api.executeCommand(ShutDown(clusterAction = Some(ClusterAction.Failover)))
               .await(99.s).orThrow
             primaryController.terminated.await(99.s)
           }
@@ -113,7 +108,7 @@ final class ShutDownControllerClusterTest extends ControllerClusterTester
                     assert(primaryController.clusterState.await(99.s) ==
                       Coupled(clusterSetting.copy(activeId = backupId)))
 
-                    backupController.executeCommandAsSystemUser(ShutDown()).await(99.s).orThrow
+                    backupController.api.executeCommand(ShutDown()).await(99.s).orThrow
                     backupController.terminated await 99.s
                 }
             }
@@ -128,7 +123,7 @@ final class ShutDownControllerClusterTest extends ControllerClusterTester
           primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
             primaryController.eventWatch.await[ClusterCoupled]()
 
-            primaryController.executeCommandAsSystemUser(ShutDown(clusterAction = Some(ClusterAction.Failover)))
+            primaryController.api.executeCommand(ShutDown(clusterAction = Some(ClusterAction.Failover)))
               .await(99.s).orThrow
             primaryController.terminated.await(99.s)
           }
@@ -142,7 +137,7 @@ final class ShutDownControllerClusterTest extends ControllerClusterTester
             //  But JournalActor does not answer if not started.
             primaryController.waitUntilReady()
 
-            backupController.executeCommandAsSystemUser(ShutDown()).await(99.s).orThrow
+            backupController.api.executeCommand(ShutDown()).await(99.s).orThrow
             backupController.terminated await 99.s
           }
         }
@@ -156,7 +151,7 @@ final class ShutDownControllerClusterTest extends ControllerClusterTester
     //      primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
     //        primaryController.eventWatch.await[ClusterCoupled]()
     //
-    //        primaryController.executeCommandAsSystemUser(ShutDown(clusterAction = Some(ClusterAction.CompleteShutdown)))
+    //        primaryController.api.executeCommand(ShutDown(clusterAction = Some(ClusterAction.CompleteShutdown)))
     //          .await(99.s).orThrow
     //        primaryController.terminated.await(99.s)
     //        backupController.terminated.await(99.s)
@@ -181,7 +176,7 @@ final class ShutDownControllerClusterTest extends ControllerClusterTester
           primaryController.eventWatch.await[ClusterWatchRegistered]()
           primaryController.eventWatch.await[ClusterCoupled]()
 
-          backupController.executeCommandAsSystemUser(ShutDown()).await(99.s).orThrow
+          backupController.api.executeCommand(ShutDown()).await(99.s).orThrow
           backupController.close()
 
           primaryController.eventWatch.await[ClusterPassiveLost]()
@@ -196,9 +191,9 @@ final class ShutDownControllerClusterTest extends ControllerClusterTester
             //waitUntilClusterWatchRegistered(primaryController)
             primaryController.eventWatch.await[ClusterCoupled]()
 
-            backupController.executeCommandAsSystemUser(ShutDown(clusterAction = Some(ClusterAction.Switchover)))
+            backupController.api.executeCommand(ShutDown(clusterAction = Some(ClusterAction.Switchover)))
               .await(99.s).left.map(_ is PassiveClusterNodeShutdownNotAllowedProblem)
-            backupController.executeCommandAsSystemUser(ShutDown(clusterAction = Some(ClusterAction.Failover)))
+            backupController.api.executeCommand(ShutDown(clusterAction = Some(ClusterAction.Failover)))
               .await(99.s).left.map(_ is PassiveClusterNodeShutdownNotAllowedProblem)
           }
         }

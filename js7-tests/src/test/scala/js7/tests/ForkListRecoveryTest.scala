@@ -9,7 +9,6 @@ import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.AnswerOrderPrompt
-import js7.data.event.EventRequest
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderPromptAnswered, OrderPrompted, OrderStarted, OrderTerminated}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.value.expression.ExpressionParser.{expr, exprFunction}
@@ -35,8 +34,7 @@ final class ForkListRecoveryTest extends OurTestSuite with DirectoryProviderForS
 
   "Fork" in {
     directoryProvider.run { (controller, _) =>
-      controller.addOrder(newOrder(parentOrderId, workflow.path, n))
-        .await(99.s).orThrow
+      controller.addOrderBlocking(newOrder(parentOrderId, workflow.path, n))
       controller.eventWatch.await[OrderPrompted](_.key == childOrderIds.head)
     }
   }
@@ -45,10 +43,9 @@ final class ForkListRecoveryTest extends OurTestSuite with DirectoryProviderForS
     directoryProvider.run { (controller, _) =>
       childOrderIds.toVector
         .traverse(childOrderId =>
-          controller.eventWatch.whenKeyedEvent[OrderPrompted](
-            EventRequest.singleClass(), childOrderId
-          ) >>
-            controller.executeCommandAsSystemUser(AnswerOrderPrompt(childOrderId)))
+          controller.eventWatch
+            .awaitAsync[OrderPrompted](_.key ==  childOrderId)
+            .*>(controller.api.executeCommand(AnswerOrderPrompt(childOrderId))))
         .await(99.s)
         .combineProblems
         .orThrow

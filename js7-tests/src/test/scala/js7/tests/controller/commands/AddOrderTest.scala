@@ -1,7 +1,6 @@
 package js7.tests.controller.commands
 
 import io.circe.syntax.EncoderOps
-import js7.base.auth.SimpleUser
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.configutils.Configs.*
 import js7.base.log.Logger
@@ -10,7 +9,6 @@ import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
-import js7.core.command.CommandMeta
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.{AddOrder, DeleteOrdersWhenTerminated}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten}
@@ -36,15 +34,13 @@ final class AddOrderTest extends OurTestSuite with ControllerAgentForScalaTest
     js7.job.execution.signed-script-injection-allowed = yes
     """
 
-  private val commandMeta = CommandMeta(SimpleUser.TestAnonymous)
-
   "Order in an empty workflow finishs immediately" in {
     val orderId = OrderId("EMPTY-WORKFLOW")
     assert(controller.runOrder(FreshOrder(orderId, emptyWorkflow.path)).map(_.value) == Seq(
       OrderAdded(emptyWorkflow.path ~ "INITIAL"),
       OrderStarted,
       OrderFinished()))
-    controller.executeCommandForTest(DeleteOrdersWhenTerminated(Seq(orderId))).orThrow
+    controller.api.executeCommand(DeleteOrdersWhenTerminated(Seq(orderId))).await(99.s).orThrow
     eventWatch.await[OrderDeleted](_.key == orderId)
   }
 
@@ -66,7 +62,7 @@ final class AddOrderTest extends OurTestSuite with ControllerAgentForScalaTest
 
   "Add order without arguments to workflow requiring some" in {
     val orderId = OrderId("NO-PARAMETERS")
-    val added = controller.executeCommand(AddOrder(FreshOrder(orderId, paramWorkflow.path)), commandMeta)
+    val added = controller.api.executeCommand(AddOrder(FreshOrder(orderId, paramWorkflow.path)))
       .await(99.s)
     assert(added == Left(MissingOrderArgumentProblem(numberParameter)))
   }

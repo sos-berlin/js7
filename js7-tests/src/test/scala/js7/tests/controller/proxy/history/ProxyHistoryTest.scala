@@ -2,10 +2,8 @@ package js7.tests.controller.proxy.history
 
 import com.softwaremill.diffx.generic.auto.*
 import com.softwaremill.diffx.scalatest.DiffShouldMatcher.*
-import js7.base.auth.{UserAndPassword, UserId}
 import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.eventbus.StandardEventBus
-import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.RichPath
 import js7.base.log.Logger
 import js7.base.problem.Checked.Ops
@@ -83,7 +81,6 @@ final class ProxyHistoryTest extends OurTestSuite with ProvideActorSystem with C
 
         var releaseEventsEventId = EventId.BeforeFirst
         var lastAddedEventId = EventId.BeforeFirst
-        primaryController.httpApi.login_(Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD")))) await 99.s
         @volatile var lastState = ControllerState.empty
         @volatile var finished = false
         var rounds = 0

@@ -5,7 +5,6 @@ import js7.base.problem.Problems.UnknownKeyProblem
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
-import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion}
 import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderOutcomeAdded, OrderProcessingStarted}
@@ -90,7 +89,7 @@ extends OurTestSuite with SubagentTester with BlockingItemUpdater
         EmptyJob.execute(
           agentPath,
           subagentSelectionId = Some(expr("'*INVALID*'")))))
-    val checked = controllerApi
+    val checked = controller.api
       .updateItems(Observable(
         AddVersion(workflow.id.versionId),
         AddOrChangeSigned(toSignedString(workflow))))
@@ -104,7 +103,7 @@ extends OurTestSuite with SubagentTester with BlockingItemUpdater
     val orderId = OrderId("SELECTION")
     val freshOrder = FreshOrder(orderId, workflowPath, Map(
       "subagentSelectionId" -> StringValue(subagentSelectionId.string)))
-    controller.addOrder(freshOrder).await(99.s).orThrow
+    controller.addOrderBlocking(freshOrder)
     assert(
       eventWatch.await[OrderProcessingStarted](_.key == orderId).head.value.event.subagentId ==
         Some(bareSubagentId))
@@ -115,7 +114,7 @@ extends OurTestSuite with SubagentTester with BlockingItemUpdater
     val orderId = OrderId("SUBAGENT-ID-AS-SELECTION")
     val freshOrder = FreshOrder(orderId, workflowPath, Map(
       "subagentSelectionId" -> StringValue(bareSubagentId.string)))
-    controller.addOrder(freshOrder).await(99.s).orThrow
+    controller.addOrderBlocking(freshOrder)
     assert(
       eventWatch.await[OrderProcessingStarted](_.key == orderId).head.value.event.subagentId ==
         Some(bareSubagentId))

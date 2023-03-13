@@ -69,7 +69,7 @@ final class UpdateRepoX509RootTest extends OurTestSuite with ControllerAgentForS
         algorithm = "SHA512withRSA",
         signerCertificate = signer.certificateString)
       val signed = Signed(item, signedString)
-      controllerApi.updateRepo(v2, Seq(signed)).await(99.s).orThrow
+      controller.api.updateRepo(v2, Seq(signed)).await(99.s).orThrow
     }
 
     "Signature does not match item (item tampered)" in {
@@ -82,7 +82,7 @@ final class UpdateRepoX509RootTest extends OurTestSuite with ControllerAgentForS
           algorithm = Some("SHA512withRSA"),
           signerCertificate = Some(signer.certificateString)))
       val signed = Signed(item, signedString)
-      assert(controllerApi.updateRepo(v3, Seq(signed)).await(99.s) == Left(TamperedWithSignedMessageProblem))
+      assert(controller.api.updateRepo(v3, Seq(signed)).await(99.s) == Left(TamperedWithSignedMessageProblem))
     }
   }
 
@@ -100,7 +100,7 @@ final class UpdateRepoX509RootTest extends OurTestSuite with ControllerAgentForS
         algorithm = Some("SHA512withRSA"),
         signerCertificate = Some(alienSigner.certificateString)))
     val alienSigned = Signed(item, alienSignedString)
-    assert(controllerApi.updateRepo(v4, Seq(alienSigned)).await(99.s) == Left(MessageSignedByUnknownProblem))
+    assert(controller.api.updateRepo(v4, Seq(alienSigned)).await(99.s) == Left(MessageSignedByUnknownProblem))
   }
 }
 

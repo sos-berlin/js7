@@ -55,7 +55,7 @@ final class CalendarTest extends OurTestSuite with ControllerAgentForScalaTest
   "Reject invalid Calendar" in {
     // Falsches Datumsformat
     // Falscher dateOffset
-    val checked = controllerApi.updateUnsignedSimpleItems(Seq(calendar.copy(dateOffset = 24.h)))
+    val checked = controller.api.updateUnsignedSimpleItems(Seq(calendar.copy(dateOffset = 24.h)))
       .await(99.s)
     assert(checked == Left(Problem("Invalid dateOffset")))
   }
@@ -77,7 +77,7 @@ final class CalendarTest extends OurTestSuite with ControllerAgentForScalaTest
       periodDatePattern = "yyyy-MM-dd")
 
     val eventId = eventWatch.lastAddedEventId
-    controllerApi.updateUnsignedSimpleItems(Seq(myCalendar))
+    controller.api.updateUnsignedSimpleItems(Seq(myCalendar))
       .await(99.s).orThrow
     eventWatch.await[UnsignedSimpleItemChanged](_.event.key == calendar.path, after = eventId)
 
@@ -91,18 +91,18 @@ final class CalendarTest extends OurTestSuite with ControllerAgentForScalaTest
   "Delete Workflow and Calendar" in {
     val eventId = eventWatch.lastAddedEventId
     if (false) { // TODO Allow and test simultaneous deletion of Calendar and Workflow (?)
-      controllerApi.updateItems(Observable(
+      controller.api.updateItems(Observable(
         DeleteSimple(calendar.path),
         AddVersion(VersionId("DELETE")),
         RemoveVersioned(workflow.path))
       ).await(99.s).orThrow
     } else {
-      controllerApi.updateItems(Observable(
+      controller.api.updateItems(Observable(
         AddVersion(VersionId("DELETE")),
         RemoveVersioned(workflow.path))
       ).await(99.s).orThrow
       eventWatch.await[ItemDeleted](_.event.key == workflow.id, after = eventId)
-      controllerApi.updateItems(Observable(
+      controller.api.updateItems(Observable(
         DeleteSimple(calendar.path)),
       ).await(99.s).orThrow
     }

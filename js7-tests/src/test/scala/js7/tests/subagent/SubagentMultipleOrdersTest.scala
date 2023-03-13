@@ -70,7 +70,7 @@ final class SubagentMultipleOrdersTest extends OurTestSuite with SubagentTester
     orderIds: Iterable[OrderId],
     assertEvents: (OrderId, Seq[OrderEvent]) => Task[Assertion])
   : Task[Unit] =
-    controllerApi
+    controller.api
       .addOrders(Observable
         .fromIterable(orderIds)
         .map(FreshOrder(_, workflow.path)))
@@ -85,7 +85,7 @@ final class SubagentMultipleOrdersTest extends OurTestSuite with SubagentTester
 
   private def observeFinishedOrderEvents(orderIds: Set[OrderId])
   : Observable[(OrderId, Seq[OrderEvent])] =
-    controllerApi
+    controller.api
       .eventAndStateObservable(fromEventId = Some(EventId.BeforeFirst))
       .mapAccumulate(orderIds.map(_ -> Vector.empty[OrderEvent]).toMap) {
         case (idToEvents, eventAndState) =>

@@ -65,7 +65,7 @@ final class FileWatchDelayTest extends OurTestSuite with ControllerAgentForScala
 
   "Start with some files" in {
     createDirectories(watchedDirectory)
-    controllerApi.updateUnsignedSimpleItems(Seq(fileWatch)).await(99.s).orThrow
+    controller.api.updateUnsignedSimpleItems(Seq(fileWatch)).await(99.s).orThrow
     await[ItemAttached](_.event.key == orderWatchPath)
 
     // Each test has an increasing sequence of file modifications, delaying FileAdded and OrderAdded.

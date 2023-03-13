@@ -67,7 +67,7 @@ extends OurTestSuite with DirectoryProviderForScalaTest
   "ControlWorkflowPath suspend=true" in {
     controller = directoryProvider.newController()
     def controllerState = controller.controllerState.await(99.s)
-    implicit val controllerApi = directoryProvider.newControllerApi(controller)
+    implicit val controllerApi = controller.api
 
     var eventId = suspendWorkflow(aWorkflow.path, true, ItemRevision(1),
       UnsignedSimpleItemAdded.apply)
@@ -77,7 +77,7 @@ extends OurTestSuite with DirectoryProviderForScalaTest
       .itemToIgnorantAgents(WorkflowPathControl).get(WorkflowPathControlPath(aWorkflow.path)) == None)
 
     val aOrderId = OrderId("A")
-    controllerApi.addOrder(FreshOrder(aOrderId, aWorkflow.path, deleteWhenTerminated = true))
+    controller.api.addOrder(FreshOrder(aOrderId, aWorkflow.path, deleteWhenTerminated = true))
       .await(99.s)
     intercept[TimeoutException](
       eventWatch.await[OrderStarted](_.key == aOrderId, after = eventId, timeout = 500.ms))
@@ -98,7 +98,7 @@ extends OurTestSuite with DirectoryProviderForScalaTest
     eventId = suspendWorkflow(aWorkflow.path, true, ItemRevision(3),
       UnsignedSimpleItemChanged.apply)
 
-    controllerApi.executeCommand(AnswerOrderPrompt(aOrderId)).await(99.s)
+    controller.api.executeCommand(AnswerOrderPrompt(aOrderId)).await(99.s)
     // OrderPromptAnswered happens despite suspended Workflow
     eventId = eventWatch.await[OrderPromptAnswered](_.key == aOrderId, after = eventId)
       .head.eventId
@@ -157,8 +157,6 @@ extends OurTestSuite with DirectoryProviderForScalaTest
     assert(controllerState
       .itemToIgnorantAgents(WorkflowPathControl)(WorkflowPathControlPath(aWorkflow.path)) ==
       Set(aAgentPath))
-
-    controllerApi.stop.await(99.s)
   }
 
   "After Agent recouples, the attachable WorkflowPathControl is attached" in {
@@ -182,8 +180,8 @@ extends OurTestSuite with DirectoryProviderForScalaTest
     val bOrderId = OrderId("B")
 
     locally {
-      implicit val controllerApi = directoryProvider.newControllerApi(controller)
-      controllerApi.addOrder(FreshOrder(bOrderId, bWorkflow.path, deleteWhenTerminated = true))
+      implicit val controllerApi = controller.api
+      controller.api.addOrder(FreshOrder(bOrderId, bWorkflow.path, deleteWhenTerminated = true))
         .await(99.s)
       eventWatch.await[OrderStdoutWritten](
         _ == bOrderId <-: OrderStdoutWritten("B1SemaphoreJob\n"),
@@ -199,8 +197,6 @@ extends OurTestSuite with DirectoryProviderForScalaTest
       eventWatch.await[ItemAttachable](
         _.event.key == WorkflowPathControlPath(bWorkflow.path),
         after = eventId)
-
-      controllerApi.stop.await(99.s)
     }
 
     controller.terminate().await(99.s)
@@ -214,7 +210,7 @@ extends OurTestSuite with DirectoryProviderForScalaTest
       .head.eventId
 
     controller = directoryProvider.newController()
-    implicit val controllerApi = directoryProvider.newControllerApi(controller)
+    implicit val controllerApi = controller.api
     eventId = eventWatch.lastFileEventId
 
     // Events at recovery
@@ -240,10 +236,9 @@ extends OurTestSuite with DirectoryProviderForScalaTest
   }
 
   "WorkflowPathControl disappears with the last Workflow version" in {
-    val controllerApi = directoryProvider.newControllerApi(controller)
     val eventId = eventWatch.lastAddedEventId
 
-    controllerApi
+    controller.api
       .updateItems(Observable(
         AddVersion(VersionId("DELETE")),
         RemoveVersioned(aWorkflow.path),

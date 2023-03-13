@@ -44,7 +44,7 @@ final class SubagentTest extends OurTestSuite with SubagentTester
 
     runSubagent(bareSubagentItem, suppressSignatureKeys = true) { _ =>
       val orderId = OrderId("ITEM-SIGNATURE")
-      controller.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+      controller.addOrderBlocking(FreshOrder(orderId, workflow.path))
 
       val started = eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
         .head.value.event
@@ -71,7 +71,7 @@ final class SubagentTest extends OurTestSuite with SubagentTester
       assert(controllerState.keyTo(SubagentItemState)(bareSubagentId)
         .platformInfo.map(_.js7Version) contains Js7Version)
 
-      controller.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+      controller.addOrderBlocking(FreshOrder(orderId, workflow.path))
 
       val processingStarted = eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
         .head.value.event
@@ -81,7 +81,7 @@ final class SubagentTest extends OurTestSuite with SubagentTester
         .head.value.event
       assert(started == OrderStdoutWritten("TestSemaphoreJob\n"))
 
-      controllerApi.executeCommand(CancelOrders(Seq(orderId), CancellationMode.kill()))
+      controller.api.executeCommand(CancelOrders(Seq(orderId), CancellationMode.kill()))
         .await(99.s).orThrow
 
       val processed = eventWatch.await[OrderProcessed](_.key == orderId, after = eventId)
@@ -100,7 +100,7 @@ final class SubagentTest extends OurTestSuite with SubagentTester
       controllerState.keyTo(SubagentItemState)(bareSubagentId).problem.isDefined))
 
     val orderId = OrderId("WAIT-FOR-SUBAGENT")
-    controller.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+    controller.addOrderBlocking(FreshOrder(orderId, workflow.path))
     eventWatch.await[OrderAttached](_.key == orderId, after = eventId)
 
     intercept[TimeoutException] {

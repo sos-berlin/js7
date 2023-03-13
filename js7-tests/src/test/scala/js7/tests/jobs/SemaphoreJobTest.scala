@@ -25,7 +25,7 @@ final class SemaphoreJobTest extends OurTestSuite with ControllerAgentForScalaTe
   "continue and reset" in {
     assert(TestSemaphoreJob.semaphore.flatMap(_.count).await(99.s) == 0)
     val orderId = OrderId("ORDER")
-    controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+    controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
 
     controller.eventWatch.await[OrderProcessingStarted](_.key == orderId)
     controller.eventWatch.await[OrderStdoutWritten](_.key == orderId)
@@ -47,7 +47,7 @@ final class SemaphoreJobTest extends OurTestSuite with ControllerAgentForScalaTe
 
   "reset while job is waiting" in {
     val orderId = OrderId("ORDER-2")
-    controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+    controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
 
     controller.eventWatch.await[OrderProcessingStarted](_.key == orderId)
     controller.eventWatch.await[OrderStdoutWritten](_.key == orderId)

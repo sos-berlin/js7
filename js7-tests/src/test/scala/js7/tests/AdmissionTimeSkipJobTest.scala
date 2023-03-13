@@ -97,7 +97,7 @@ final class AdmissionTimeSkipJobTest extends OurTestSuite with ControllerAgentFo
     val orderId = OrderId("#2021-09-03#")  // Friday
     assert(orderIdToDate(orderId).map(_.getDayOfWeek) == Some(FRIDAY))
 
-    controllerApi.addOrder(FreshOrder(orderId, singleJobWorkflow.path)).await(99.s).orThrow
+    controller.api.addOrder(FreshOrder(orderId, singleJobWorkflow.path)).await(99.s).orThrow
     eventWatch.await[OrderAttached](_.key == orderId, after = eventId)
     assert(controllerState.idToOrder(orderId).isState[Fresh])
 
@@ -110,7 +110,7 @@ final class AdmissionTimeSkipJobTest extends OurTestSuite with ControllerAgentFo
     clock.resetTo(local("2021-09-10T00:00")) // Friday
     val eventId = eventWatch.lastAddedEventId
     val orderId = OrderId("NO-DATE")
-    controllerApi.addOrder(FreshOrder(orderId, singleJobWorkflow.path)).await(99.s).orThrow
+    controller.api.addOrder(FreshOrder(orderId, singleJobWorkflow.path)).await(99.s).orThrow
     eventWatch.await[OrderAttached](_.key == orderId, after = eventId)
     assert(controllerState.idToOrder(orderId).isState[Fresh])
 
@@ -125,7 +125,7 @@ final class AdmissionTimeSkipJobTest extends OurTestSuite with ControllerAgentFo
     val orderId = OrderId("#2021-02-29#invalid")
     assert(orderIdToDate(orderId).map(_.getDayOfWeek) == None)
 
-    controllerApi.addOrder(FreshOrder(orderId, singleJobWorkflow.path)).await(99.s).orThrow
+    controller.api.addOrder(FreshOrder(orderId, singleJobWorkflow.path)).await(99.s).orThrow
     eventWatch.await[OrderAttached](_.key == orderId, after = eventId)
     assert(controllerState.idToOrder(orderId).isState[Fresh])
 

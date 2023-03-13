@@ -34,7 +34,7 @@ final class SubagentMoveTest extends OurTestSuite with SubagentTester
       val aOrderId = OrderId("A-MOVE-SUBAGENT")
       var eventId = eventWatch.lastAddedEventId
       locally {
-        controllerApi.addOrder(FreshOrder(aOrderId, workflow.path)).await(99.s).orThrow
+        controller.api.addOrder(FreshOrder(aOrderId, workflow.path)).await(99.s).orThrow
         val processingStarted = eventWatch
           .await[OrderProcessingStarted](_.key == aOrderId, after = eventId).head.value.event
         assert(processingStarted == OrderProcessingStarted(bareSubagentItem.id))
@@ -44,7 +44,7 @@ final class SubagentMoveTest extends OurTestSuite with SubagentTester
 
       eventId = eventWatch.lastAddedEventId
       //val agentEventId = myAgent.eventWatch.lastAddedEventId
-      controllerApi.updateItems(Observable(AddOrChangeSimple(bare1SubagentItem)))
+      controller.api.updateItems(Observable(AddOrChangeSimple(bare1SubagentItem)))
         .await(99.s).orThrow
       //myAgent.eventWatch.await[ItemAttachedToMe](_.event.item.key == bare1SubagentItem.id,
       //  after = agentEventId)
@@ -70,7 +70,7 @@ final class SubagentMoveTest extends OurTestSuite with SubagentTester
           // Start another order
           val bOrderId = OrderId("B-MOVE-SUBAGENT")
           TestSemaphoreJob.continue(1)
-          controllerApi.addOrder(FreshOrder(bOrderId, workflow.path)).await(99.s).orThrow
+          controller.api.addOrder(FreshOrder(bOrderId, workflow.path)).await(99.s).orThrow
           val bStarted = eventWatch.await[OrderProcessingStarted](_.key == bOrderId, after = eventId)
             .head.value.event
           assert(bStarted == OrderProcessingStarted(bare1SubagentItem.id))

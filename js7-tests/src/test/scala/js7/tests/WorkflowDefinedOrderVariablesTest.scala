@@ -54,7 +54,7 @@ final class WorkflowDefinedOrderVariablesTest extends OurTestSuite with Controll
   }
 
   "Argument and variable name sets must be disjoint" in {
-    val checked = controllerApi.addOrders(Observable(
+    val checked = controller.api.addOrders(Observable(
       FreshOrder(OrderId("DUPLICATE-NAME"), workflow.path, arguments = Map(
         "jobResource" -> StringValue("de"),
         "variableName" -> StringValue("Acer"),

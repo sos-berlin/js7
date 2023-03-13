@@ -39,6 +39,7 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
   protected val agentPaths = Seq(aAgentPath, bAgentPath)
   protected val items = Seq(workflow)
   override protected val controllerConfig = config"""
+    js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
     js7.journal.remove-obsolete-files = false
     js7.controller.agent-driver.command-batch-delay = 0ms
     js7.controller.agent-driver.event-buffer-delay = 10ms"""
@@ -77,7 +78,7 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
     val initialOrderId = orderId1
 
     directoryProvider.runController() { controller =>
-      controller.updateUnsignedSimpleItemsAsSystemUser(Seq(aFileWatch)).await(99.s).orThrow
+      controller.api.updateUnsignedSimpleItems(Seq(aFileWatch)).await(99.s).orThrow
       // OrderWatch will be attached to the agent after next restart
     }
 
@@ -126,7 +127,7 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
             await[OrderStarted](_.key == orderId)
             createDirectory(bDirectory)
             val beforeAttached = eventWatch.lastAddedEventId
-            controller.updateUnsignedSimpleItemsAsSystemUser(Seq(bFileWatch)).await(99.s).orThrow
+            controller.api.updateUnsignedSimpleItems(Seq(bFileWatch)).await(99.s).orThrow
             await[ItemAttached](ke => ke.event.key == orderWatchPath && ke.event.itemRevision == Some(ItemRevision(1)),
               after = beforeAttached)
             // The OrderWatch watches now the bDirectory, but the running Order points to aDirectory.

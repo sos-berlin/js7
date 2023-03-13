@@ -60,7 +60,7 @@ with BlockingItemUpdater
   protected val items = Seq(atControllerWorkflow, atAgentWorkflow, mixedAgentsWorkflow,
     errorWorkflow, failingChildOrdersWorkflow, joinFailingChildOrdersWorkflow,
     indexWorkflow, exampleWorkflow)
-  private lazy val proxy = controllerApi.startProxy().await(99.s)
+  private lazy val proxy = controller.api.startProxy().await(99.s)
 
   "Events and Order.Forked snapshot" in {
     val workflowId = atControllerWorkflow.id
@@ -98,7 +98,7 @@ with BlockingItemUpdater
       .runToFuture
 
     val eventId = eventWatch.lastAddedEventId
-    controllerApi
+    controller.api
       .addOrder(newOrder(orderId, workflowId.path, n, deleteWhenTerminated = true))
       .await(99.s).orThrow
 
@@ -153,7 +153,7 @@ with BlockingItemUpdater
       Map("myList" -> ListValue(Seq(StringValue("DUPLICATE"), StringValue("DUPLICATE")))),
       deleteWhenTerminated = true)
 
-    controllerApi.addOrder(freshOrder).await(99.s).orThrow
+    controller.api.addOrder(freshOrder).await(99.s).orThrow
 
     eventWatch.await[OrderFailed](_.key == orderId, after = eventId)
     assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
@@ -182,7 +182,7 @@ with BlockingItemUpdater
         Map("myList" -> ListValue(Seq(StringValue(childId)))),
         deleteWhenTerminated = true)
 
-      controllerApi.addOrder(freshOrder).await(99.s).orThrow
+      controller.api.addOrder(freshOrder).await(99.s).orThrow
 
       eventWatch.await[OrderFailed](_.key == orderId, after = eventId)
       assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
@@ -205,7 +205,7 @@ with BlockingItemUpdater
       deleteWhenTerminated = true)
 
     val eventId = eventWatch.lastAddedEventId
-    controllerApi.addOrder(freshOrder).await(99.s).orThrow
+    controller.api.addOrder(freshOrder).await(99.s).orThrow
 
     assert(eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
       .head.value.event == OrderFinished())
@@ -353,11 +353,11 @@ with BlockingItemUpdater
       .runToFuture
 
     val order = newOrder(orderId, workflowPath, n)
-    controllerApi.addOrders(Observable(order)).await(99.s).orThrow
+    controller.api.addOrders(Observable(order)).await(99.s).orThrow
 
     childOrdersProcessed.await(9.s)
     if (cancelChildOrders) {
-      controllerApi.executeCommand(
+      controller.api.executeCommand(
         CancelOrders(childOrderIds)
       ).await(99.s).orThrow
     }
@@ -365,7 +365,7 @@ with BlockingItemUpdater
     assert(eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
       .head.value.event == expectedTerminationEvent)
     val terminatedOrder = controllerState.idToOrder(orderId)
-    controllerApi.deleteOrdersWhenTerminated(Observable(orderId)).await(99.s).orThrow
+    controller.api.deleteOrdersWhenTerminated(Observable(orderId)).await(99.s).orThrow
     terminatedOrder
   }
 
@@ -380,7 +380,7 @@ with BlockingItemUpdater
       workflowId.path,
       Map("myList" -> ListValue(myList.map(StringValue(_)))),
       deleteWhenTerminated = true)
-    controllerApi.addOrder(freshOrder).await(99.s).orThrow
+    controller.api.addOrder(freshOrder).await(99.s).orThrow
 
     assert(eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
       .head.value.event == OrderFinished())
@@ -455,7 +455,7 @@ with BlockingItemUpdater
       workflowId.path,
       Map("myList" -> ListValue(Seq(StringValue("SINGLE-ELEMENT")))),
       deleteWhenTerminated = true)
-    controllerApi.addOrder(freshOrder).await(99.s).orThrow
+    controller.api.addOrder(freshOrder).await(99.s).orThrow
 
     eventWatch.await[OrderFailed](_.key == orderId, after = eventId)
 
@@ -491,7 +491,7 @@ with BlockingItemUpdater
       workflowId.path,
       Map("myList" -> myList),
       deleteWhenTerminated = true)
-    controllerApi.addOrder(freshOrder).await(99.s).orThrow
+    controller.api.addOrder(freshOrder).await(99.s).orThrow
 
     assert(eventWatch.await[OrderTerminated](_.key == orderId, after = eventId)
       .head.value.event == OrderFinished())

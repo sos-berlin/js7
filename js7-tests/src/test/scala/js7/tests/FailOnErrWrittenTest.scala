@@ -34,7 +34,7 @@ final class FailOnErrWrittenTest extends OurTestSuite with ControllerAgentForSca
 
   "JobResourcePath" in {
     val orderId = OrderId("ORDER")
-    controllerApi.addOrder(FreshOrder(orderId, workflow.path, Map(
+    controller.api.addOrder(FreshOrder(orderId, workflow.path, Map(
       "A" -> StringValue("A OF ORDER")
     ))).await(99.s).orThrow
     controller.eventWatch.await[OrderTerminated](_.key == orderId)

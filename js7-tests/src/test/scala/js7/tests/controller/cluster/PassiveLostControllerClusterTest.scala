@@ -21,9 +21,9 @@ final class PassiveLostControllerClusterTest extends ControllerClusterTester
 
       var backupController = backup.newController(httpPort = Some(backupControllerPort))
 
-      primaryController.executeCommandForTest(
-        ClusterAppointNodes(clusterSetting.idToUri, clusterSetting.activeId)
-      ).orThrow
+      primaryController.api
+        .executeCommand(ClusterAppointNodes(clusterSetting.idToUri, clusterSetting.activeId))
+        .await(99.s).orThrow
       primaryController.eventWatch.await[ClusterCoupled]()
 
       val firstOrderId = OrderId("🔺")

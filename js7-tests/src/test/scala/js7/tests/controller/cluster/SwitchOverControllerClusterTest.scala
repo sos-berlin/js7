@@ -1,7 +1,5 @@
 package js7.tests.controller.cluster
 
-import js7.base.auth.UserId
-import js7.base.generic.SecretString
 import js7.base.log.Logger
 import js7.base.problem.Checked.*
 import js7.base.thread.Futures.implicits.*
@@ -18,6 +16,7 @@ import js7.tests.controller.cluster.ControllerClusterTester.*
 import js7.tests.controller.cluster.SwitchOverControllerClusterTest.*
 import js7.tests.testenv.TestController
 import monix.execution.Scheduler.Implicits.traced
+import monix.reactive.Observable
 import scala.util.Try
 
 final class SwitchOverControllerClusterTest extends ControllerClusterTester
@@ -36,13 +35,12 @@ final class SwitchOverControllerClusterTest extends ControllerClusterTester
           primaryController.eventWatch.await[ClusterCoupled]()
           val orderId = OrderId("⭕")
           primaryController.addOrderBlocking(FreshOrder(orderId, TestWorkflow.path))
-          primaryController.httpApiDefaultLogin(Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD")))
           addOrders(orderIds)
           primaryController.eventWatch.await[OrderProcessingStarted](_.key == orderId)
           backupController.eventWatch.await[OrderProcessingStarted](_.key == orderId)
 
           // SWITCH OVER TO BACKUP
-          primaryController.executeCommandAsSystemUser(ClusterSwitchOver()).await(timeout).orThrow
+          primaryController.api.executeCommand(ClusterSwitchOver()).await(timeout).orThrow
           //May already be terminated: primaryController.eventWatch.await[ClusterSwitchedOver]()
           backupController.eventWatch.await[ClusterSwitchedOver]()
           // Controller terminates after switched-over
@@ -67,7 +65,7 @@ final class SwitchOverControllerClusterTest extends ControllerClusterTester
           primaryController.eventWatch.await[OrderProcessingStarted](_.key == orderId)
 
           // SWITCH OVER TO PRIMARY
-          backupController.executeCommandAsSystemUser(ClusterSwitchOver()).await(timeout).orThrow
+          backupController.api.executeCommand(ClusterSwitchOver()).await(timeout).orThrow
           primaryController.eventWatch.await[ClusterSwitchedOver]()
           Try(backupController.terminated.await(timeout)).failed foreach { t =>
             // Erstmal beendet sich der Controller nach SwitchOver
@@ -87,12 +85,12 @@ final class SwitchOverControllerClusterTest extends ControllerClusterTester
   }
 
   private def addOrders(orderId: Seq[OrderId])(implicit controller: TestController): Unit = {
-    controller.httpApi.login(onlyIfNotLoggedIn = true).await(timeout)
     orderId.grouped(1000)
+      .map(Observable.fromIterable)
       .map(_.map(FreshOrder(_, TestWorkflow.path,
         scheduledFor = Some(Timestamp("3000-01-01T00:00:00Z")))))
       .foreach { orders =>
-        controller.httpApi.addOrders(orders).await(timeout)
+        controller.api.addOrders(orders).await(timeout).orThrow
       }
   }
 }

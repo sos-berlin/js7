@@ -52,7 +52,7 @@ final class UntaughtClusterWatchFailoverControllerClusterTest extends Controller
 
         // KILL PRIMARY
         primaryController
-          .executeCommandAsSystemUser(ShutDown(clusterAction = Some(ShutDown.ClusterAction.Failover)))
+          .api.executeCommand(ShutDown(clusterAction = Some(ShutDown.ClusterAction.Failover)))
           .await(99.s).orThrow
         primaryController.close()
         logger.info("💥 Controller shut down with backup fail-over while script is running 💥")

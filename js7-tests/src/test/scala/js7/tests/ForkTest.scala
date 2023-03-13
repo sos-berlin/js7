@@ -58,7 +58,7 @@ final class ForkTest extends OurTestSuite with ControllerAgentForScalaTest
         "CITRON" -> NumberValue(21)))),
       HistoricOutcome(Position(4), Outcome.succeeded)))
 
-    controller.executeCommandAsSystemUser(DeleteOrdersWhenTerminated(Seq(TestOrder.id)))
+    controller.api.executeCommand(DeleteOrdersWhenTerminated(Seq(TestOrder.id)))
       .await(99.s).orThrow
   }
 
@@ -76,7 +76,7 @@ final class ForkTest extends OurTestSuite with ControllerAgentForScalaTest
   "joinIfFailed" in {
     val orderId = OrderId("JOIN-IF-FAILED")
     val childOrderId = orderId / "💥"
-    controllerApi.addOrder(FreshOrder(orderId, joinIfFailedForkWorkflow.path)).await(99.s).orThrow
+    controller.api.addOrder(FreshOrder(orderId, joinIfFailedForkWorkflow.path)).await(99.s).orThrow
     controller.eventWatch.await[OrderFailedInFork](_.key == childOrderId)
     controller.eventWatch.await[OrderFailed](_.key == orderId)
   }
@@ -84,10 +84,10 @@ final class ForkTest extends OurTestSuite with ControllerAgentForScalaTest
   "Failed, resume failed child order" in {
     val orderId = OrderId("FAIL-THEN-RESUME")
     val childOrderId = orderId / "💥"
-    controllerApi.addOrder(FreshOrder(orderId, failInForkWorkflow.path)).await(99.s).orThrow
+    controller.api.addOrder(FreshOrder(orderId, failInForkWorkflow.path)).await(99.s).orThrow
     controller.eventWatch.await[OrderFailed](_.key == childOrderId)
 
-    controllerApi
+    controller.api
       .executeCommand(ResumeOrder(
         childOrderId,
         position = Some(Position(0) / "fork+💥" % 1),
@@ -101,10 +101,10 @@ final class ForkTest extends OurTestSuite with ControllerAgentForScalaTest
   "Failed, cancel failed child order" in {
     val orderId = OrderId("FAIL-THEN-CANCEL")
     val childOrderId = orderId / "💥"
-    controllerApi.addOrder(FreshOrder(orderId, failInForkWorkflow.path)).await(99.s).orThrow
+    controller.api.addOrder(FreshOrder(orderId, failInForkWorkflow.path)).await(99.s).orThrow
     controller.eventWatch.await[OrderFailed](_.key == childOrderId)
 
-    controllerApi.executeCommand(CancelOrders(Seq(childOrderId))).await(99.s).orThrow
+    controller.api.executeCommand(CancelOrders(Seq(childOrderId))).await(99.s).orThrow
     controller.eventWatch.await[OrderCancelled](_.key == childOrderId)
     controller.eventWatch.await[OrderFailed](_.key == orderId)
   }
@@ -126,7 +126,7 @@ final class ForkTest extends OurTestSuite with ControllerAgentForScalaTest
     val expectedFailed = OrderFailed(Position(0))
     assert(eventWatch.await[OrderFailed](_.key == order.id).head.value.event == expectedFailed)
 
-    controller.executeCommandAsSystemUser(CancelOrders(Set(order.id), CancellationMode.FreshOrStarted())).await(99.s).orThrow
+    controller.api.executeCommand(CancelOrders(Set(order.id), CancellationMode.FreshOrStarted())).await(99.s).orThrow
     eventWatch.await[OrderCancelled](_.key == order.id)
     assert(eventWatch.eventsByKey[OrderEvent](order.id) == Vector(
       OrderAdded(workflow.id, order.arguments),
@@ -134,7 +134,7 @@ final class ForkTest extends OurTestSuite with ControllerAgentForScalaTest
       expectedFailed,
       OrderCancelled))
 
-    controllerApi.executeCommand(
+    controller.api.executeCommand(
       CancelOrders(Seq(OrderId("DUPLICATE|🥕")), CancellationMode.kill(immediately = true))
     ).await(99.s).orThrow
     eventWatch.await[OrderCancelled](_.key == OrderId("DUPLICATE|🥕"))

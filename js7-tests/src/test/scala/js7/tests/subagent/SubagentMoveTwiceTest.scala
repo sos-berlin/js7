@@ -34,7 +34,7 @@ final class SubagentMoveTwiceTest extends OurTestSuite with SubagentTester
     var eventId = eventWatch.lastAddedEventId
     val aOrderId = OrderId("A-ORDER")
     locally {
-      controllerApi.addOrder(FreshOrder(aOrderId, workflow.path)).await(99.s).orThrow
+      controller.api.addOrder(FreshOrder(aOrderId, workflow.path)).await(99.s).orThrow
       val processingStarted = eventWatch
         .await[OrderProcessingStarted](_.key == aOrderId, after = eventId).head.value.event
       assert(processingStarted == OrderProcessingStarted(bareSubagentId))
@@ -47,7 +47,7 @@ final class SubagentMoveTwiceTest extends OurTestSuite with SubagentTester
     locally {
       val bare1SubagentItem = bareSubagentItem.copy(uri = Uri("http://localhost:" + findFreeTcpPort()))
       val agentEventId = agent.eventWatch.lastAddedEventId
-      controllerApi.updateItems(Observable(AddOrChangeSimple(bare1SubagentItem)))
+      controller.api.updateItems(Observable(AddOrChangeSimple(bare1SubagentItem)))
         .await(99.s).orThrow
       agent.eventWatch.await[SubagentCouplingFailed](_.key == bareSubagentId, after = agentEventId)
     }
@@ -56,7 +56,7 @@ final class SubagentMoveTwiceTest extends OurTestSuite with SubagentTester
     val bare2SubagentItem = bareSubagentItem.copy(uri = Uri("http://localhost:" + findFreeTcpPort()))
     locally {
       val agentEventId = agent.eventWatch.lastAddedEventId
-      controllerApi.updateItems(Observable(AddOrChangeSimple(bare2SubagentItem)))
+      controller.api.updateItems(Observable(AddOrChangeSimple(bare2SubagentItem)))
         .await(99.s).orThrow
       agent.eventWatch.await[SubagentCouplingFailed](_.key == bareSubagentId, after = agentEventId)
     }
@@ -86,7 +86,7 @@ final class SubagentMoveTwiceTest extends OurTestSuite with SubagentTester
         // Start another order
         val bOrderId = OrderId("B-ORDER")
         TestSemaphoreJob.continue(1)
-        controllerApi.addOrder(FreshOrder(bOrderId, workflow.path)).await(99.s).orThrow
+        controller.api.addOrder(FreshOrder(bOrderId, workflow.path)).await(99.s).orThrow
         val bStarted = eventWatch.await[OrderProcessingStarted](_.key == bOrderId, after = eventId)
           .head.value.event
         assert(bStarted == OrderProcessingStarted(bareSubagentId))

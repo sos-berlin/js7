@@ -1,7 +1,6 @@
 package js7.tests.controller.cluster
 
 import js7.base.configutils.Configs.HoconStringInterpolator
-import js7.base.problem.Checked.Ops
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
@@ -10,7 +9,6 @@ import js7.cluster.watch.api.ClusterWatchProblems.ClusterNodeIsNotLostProblem
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterPassiveLost}
 import js7.data.cluster.ClusterState.{Coupled, PassiveLost}
 import js7.data.cluster.ClusterWatchCheckEvent
-import js7.data.controller.ControllerCommand.ShutDown
 import monix.execution.Scheduler.Implicits.global
 
 final class UntaughtClusterWatchPassiveLostControllerClusterTest extends ControllerClusterTester
@@ -30,8 +28,8 @@ final class UntaughtClusterWatchPassiveLostControllerClusterTest extends Control
         waitForCondition(10.s, 10.ms)(clusterWatch.clusterState().exists(_.isInstanceOf[Coupled]))
 
         // KILL BACKUP
-        backupController.executeCommandAsSystemUser(ShutDown(dontNotifyActiveNode = true))
-          .await(99.s).orThrow
+        backupController.terminate(dontNotifyActiveNode = true)
+          .await(99.s)
         backupController.close()
       }
 

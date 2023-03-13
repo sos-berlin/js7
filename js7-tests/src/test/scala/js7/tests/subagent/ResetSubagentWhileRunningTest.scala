@@ -40,12 +40,12 @@ final class ResetSubagentWhileRunningTest extends OurTestSuite with SubagentTest
       eventWatch.await[SubagentCoupled](_.key == bareSubagentId)
       firstSubagentRunId = subagent.subagentRunId
 
-      controllerApi.addOrder(FreshOrder(aOrderId, workflow.path)).await(99.s).orThrow
+      controller.api.addOrder(FreshOrder(aOrderId, workflow.path)).await(99.s).orThrow
       eventWatch.await[OrderProcessingStarted](_.key == aOrderId)
       eventWatch.await[OrderStdoutWritten](_.key == aOrderId)
 
       // RESET
-      controllerApi.executeCommand(ResetSubagent(bareSubagentItem.id)).await(99.s).orThrow
+      controller.api.executeCommand(ResetSubagent(bareSubagentItem.id)).await(99.s).orThrow
       eventWatch.await[SubagentResetStarted](_.key == bareSubagentId)
 
       val processed = eventWatch.await[OrderProcessed](_.key == aOrderId).head
@@ -53,7 +53,7 @@ final class ResetSubagentWhileRunningTest extends OurTestSuite with SubagentTest
       eventWatch.await[OrderMoved](_.key == aOrderId, after = processed.eventId)
 
       // Add bOrderId which should wait until Subagent has been reset and restarted
-      controllerApi.addOrder(FreshOrder(bOrderId, workflow.path)).await(99.s).orThrow
+      controller.api.addOrder(FreshOrder(bOrderId, workflow.path)).await(99.s).orThrow
       eventWatch.await[OrderAttached](_.key == bOrderId)
       intercept[TimeoutException] {
         // Times out because Subagent is being reset

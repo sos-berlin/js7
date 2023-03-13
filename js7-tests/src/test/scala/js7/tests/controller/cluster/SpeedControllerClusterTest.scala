@@ -35,10 +35,10 @@ final class SpeedControllerClusterTest extends OurTestSuite with ControllerClust
               val order = FreshOrder(orderId, workflow.path)
               // 3 acks:
               for {
-                _ <- primaryController.addOrder(order).map(_.orThrow)
-                _ <- primaryController.executeCommandAsSystemUser(CancelOrders(Seq(order.id)))
+                _ <- primaryController.api.addOrder(order).map(_.orThrow)
+                _ <- primaryController.api.executeCommand(CancelOrders(Seq(order.id)))
                   .map(_.orThrow)
-                _ <- primaryController.executeCommandAsSystemUser(DeleteOrdersWhenTerminated(Seq(order.id)))
+                _ <- primaryController.api.executeCommand(DeleteOrdersWhenTerminated(Seq(order.id)))
                   .map(_.orThrow)
               } yield ()
             }

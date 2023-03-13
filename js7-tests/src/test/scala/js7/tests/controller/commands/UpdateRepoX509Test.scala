@@ -75,7 +75,7 @@ final class UpdateRepoX509Test extends OurTestSuite with ControllerAgentForScala
         algorithm = "SHA512withRSA",
         signerId = SignerId.of("CN=SIGNER"))
       val signed = Signed(itemFile.contentString.parseJsonAs[SignableItem].orThrow, signedString)
-      controllerApi.updateRepo(v2, Seq(signed)).await(99.s).orThrow
+      controller.api.updateRepo(v2, Seq(signed)).await(99.s).orThrow
 
       locally {
         val v3 = VersionId("3")
@@ -86,7 +86,7 @@ final class UpdateRepoX509Test extends OurTestSuite with ControllerAgentForScala
           itemFile.contentString + " ",
           GenericSignature("X509", signatureBase64File.contentString, algorithm = Some("SHA512withRSA"), signerId = Some(SignerId("CN=SIGNER"))))
         val signed = Signed(itemFile.contentString.parseJsonAs[SignableItem].orThrow, signedStringV3)
-        assert(controllerApi.updateRepo(v3, Seq(signed)).await(99.s) == Left(TamperedWithSignedMessageProblem))
+        assert(controller.api.updateRepo(v3, Seq(signed)).await(99.s) == Left(TamperedWithSignedMessageProblem))
       }
 
       locally {
@@ -98,7 +98,7 @@ final class UpdateRepoX509Test extends OurTestSuite with ControllerAgentForScala
           itemFile.contentString,
           GenericSignature("X509", signatureBase64File.contentString, algorithm = Some("SHA512withRSA"), signerId = Some(SignerId("CN=ALIEN"))))
         val signed = Signed(itemFile.contentString.parseJsonAs[SignableItem].orThrow, signedStringV4)
-        assert(controllerApi.updateRepo(v4, Seq(signed)).await(99.s) == Left(Problem("The signature's SignerId is unknown: CN=ALIEN")))
+        assert(controller.api.updateRepo(v4, Seq(signed)).await(99.s) == Left(Problem("The signature's SignerId is unknown: CN=ALIEN")))
       }
     }
   }

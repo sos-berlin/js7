@@ -64,7 +64,7 @@ extends OurTestSuite with DirectoryProviderForScalaTest
 
   "ControlWorkflow sets some breakpoints" in {
     controller = directoryProvider.newController()
-    implicit val controllerApi = directoryProvider.newControllerApi(controller)
+    implicit val controllerApi = controller.api
 
     aAgent = directoryProvider.startAgent(aAgentPath).await(99.s)
 
@@ -97,8 +97,6 @@ extends OurTestSuite with DirectoryProviderForScalaTest
       Set(Position(1), Position(3)),
       ItemRevision(1),
       UnsignedItemChanged.apply)
-
-    controllerApi.stop.await(99.s)
   }
 
   "After Agent recouples, the attachable WorkflowControl is attached" in {
@@ -120,8 +118,8 @@ extends OurTestSuite with DirectoryProviderForScalaTest
     val bOrderId = OrderId("B")
 
     locally {
-      implicit val controllerApi = directoryProvider.newControllerApi(controller)
-      controllerApi.addOrder(FreshOrder(bOrderId, bWorkflow.path, deleteWhenTerminated = true))
+      implicit val controllerApi = controller.api
+      controller.api.addOrder(FreshOrder(bOrderId, bWorkflow.path, deleteWhenTerminated = true))
         .await(99.s)
       eventWatch.await[OrderStdoutWritten](
         _ == bOrderId <-: OrderStdoutWritten("B1SemaphoreJob\n"),
@@ -141,8 +139,6 @@ extends OurTestSuite with DirectoryProviderForScalaTest
       eventWatch.await[ItemAttachable](
         _.event.key == bWorkflowControlId,
         after = eventId)
-
-      controllerApi.stop.await(99.s)
     }
 
     controller.terminate().await(99.s)
@@ -156,7 +152,7 @@ extends OurTestSuite with DirectoryProviderForScalaTest
       .head.eventId
 
     controller = directoryProvider.newController()
-    implicit val controllerApi = directoryProvider.newControllerApi(controller)
+    implicit val controllerApi = controller.api
     eventId = eventWatch.lastFileEventId
 
     // Events at recovery
@@ -187,10 +183,9 @@ extends OurTestSuite with DirectoryProviderForScalaTest
   }
 
   "WorkflowControl disappears with the Workflow" in {
-    val controllerApi = directoryProvider.newControllerApi(controller)
     val eventId = eventWatch.lastAddedEventId
 
-    controllerApi
+    controller.api
       .updateItems(Observable(
         AddVersion(VersionId("DELETE")),
         RemoveVersioned(aWorkflow.path),

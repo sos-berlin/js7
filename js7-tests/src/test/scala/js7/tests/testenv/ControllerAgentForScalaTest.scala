@@ -13,7 +13,7 @@ import js7.base.time.WallClock
 import js7.base.utils.CatsBlocking.BlockingTaskResource
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Allocated, Lazy, SetOnce}
+import js7.base.utils.{Allocated, SetOnce}
 import js7.cluster.watch.ClusterWatchService
 import js7.data.controller.ControllerState
 import js7.data.execution.workflow.instructions.InstructionExecutorService
@@ -57,13 +57,10 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
         config"""js7.web.server.auth.https-client-authentication = $controllerHttpsMutual""",
         httpPort = controllerHttpPort,
         httpsPort = controllerHttpsPort)
-    controller.httpApiDefaultLogin(Some(directoryProvider.controller.userAndPassword))
     controller
   }
 
   protected final lazy val eventWatch = controller.eventWatch
-  private val controllerApiLazy = Lazy(directoryProvider.newControllerApi(controller))
-  protected lazy val controllerApi = controllerApiLazy()
 
   private val clusterWatchServiceOnce = SetOnce[Allocated[Task, ClusterWatchService]]
 
@@ -106,7 +103,6 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
   }
 
   override def afterAll() = {
-    for (o <- controllerApiLazy) o.stop await 99.s
     controller.terminate() await 15.s
 
     for (o <- clusterWatchServiceOnce.toOption) o.stop.await(99.s)
@@ -158,7 +154,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
 
   protected final def enableSubagents(subagentIdToEnable: (SubagentId, Boolean)*): Unit = {
     val eventId = eventWatch.lastAddedEventId
-    controllerApi
+    controller.api
       .updateItems(Observable
         .fromIterable(subagentIdToEnable)
         .map {

@@ -28,7 +28,7 @@ final class JobResourceAtBareSubagentTest extends JobResourceTest
 
   override def beforeAll() = {
     super.beforeAll()
-    controllerApi
+    controller.api
       .updateItems(Observable(
         ItemOperation.AddOrChangeSimple(bareSubagentItem),
         ItemOperation.AddOrChangeSimple(directoryProvider.subagentItems(0).copy(disabled = true))))

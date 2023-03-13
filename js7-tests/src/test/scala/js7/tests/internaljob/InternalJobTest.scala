@@ -154,13 +154,13 @@ final class InternalJobTest extends OurTestSuite with ControllerAgentForScalaTes
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
 
     // Let cancel handler throw its exception
-    controllerApi.executeCommand(CancelOrders(Seq(order.id), CancellationMode.kill()))
+    controller.api.executeCommand(CancelOrders(Seq(order.id), CancellationMode.kill()))
       .await(99.s).orThrow
     eventWatch.await[OrderCancellationMarked](_.key == order.id)
     sleep(50.ms)
 
     // Now cancel immediately
-    controllerApi.executeCommand(CancelOrders(Seq(order.id), CancellationMode.kill(immediately = true)))
+    controller.api.executeCommand(CancelOrders(Seq(order.id), CancellationMode.kill(immediately = true)))
       .await(99.s).orThrow
     val outcome = eventWatch.await[OrderProcessed](_.key == order.id).head.value.event.outcome
     assert(outcome == Outcome.Killed(Outcome.Failed(Some("Canceled"))))
@@ -168,7 +168,7 @@ final class InternalJobTest extends OurTestSuite with ControllerAgentForScalaTes
   }
 
   "stop" in {
-    controllerApi.stop await 99.s
+    controller.api.stop await 99.s
     controller.terminate() await 99.s
     agent.terminate() await 99.s
     assert(SimpleJob.stopped)
@@ -230,7 +230,7 @@ final class InternalJobTest extends OurTestSuite with ControllerAgentForScalaTes
     directoryProvider.updateVersionedItems(controller, versionId, Seq(workflow))
 
     val eventId = eventWatch.lastAddedEventId
-    controllerApi.addOrders(
+    controller.api.addOrders(
       Observable.fromIterable(ordersArguments)
         .map {
           case (orderId, args) => FreshOrder(orderId, workflow.path, arguments = args)

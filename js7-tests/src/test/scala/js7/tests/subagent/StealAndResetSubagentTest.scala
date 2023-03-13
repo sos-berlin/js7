@@ -56,7 +56,7 @@ final class StealAndResetSubagentTest extends OurTestSuite with SubagentTester
 
       // Start an Order
       locally {
-        controllerApi.addOrder(FreshOrder(aOrderId, aWorkflow.path)).await(99.s).orThrow
+        controller.api.addOrder(FreshOrder(aOrderId, aWorkflow.path)).await(99.s).orThrow
         val processingStarted = eventWatch.await[OrderProcessingStarted](_.key == aOrderId)
           .head.value.event
         assert(processingStarted == OrderProcessingStarted(bareSubagentId))
@@ -66,15 +66,15 @@ final class StealAndResetSubagentTest extends OurTestSuite with SubagentTester
       }
 
       // THE THIEVE COMES
-      controllerApi.updateItems(Observable(ItemOperation.AddOrChangeSimple(stolenSubagentItem)))
+      controller.api.updateItems(Observable(ItemOperation.AddOrChangeSimple(stolenSubagentItem)))
         .await(99.s).orThrow
 
       // THIEVE STARTS AN ORDER
-      controllerApi.addOrder(FreshOrder(thieveOrderId, thieveWorkflow.path)).await(99.s).orThrow
+      controller.api.addOrder(FreshOrder(thieveOrderId, thieveWorkflow.path)).await(99.s).orThrow
       eventWatch.await[OrderAttached](_.key == thieveOrderId)
 
       // STEAL
-      controllerApi.executeCommand(ResetSubagent(stolenSubagentItem.id, force = true))
+      controller.api.executeCommand(ResetSubagent(stolenSubagentItem.id, force = true))
         .await(99.s).orThrow
       eventWatch.await[SubagentResetStarted](_.key == stolenSubagentItem.id)
 
@@ -93,10 +93,10 @@ final class StealAndResetSubagentTest extends OurTestSuite with SubagentTester
     }
 
     // Reset and delete bareSubagentId to give the thieve a change to dedicate the Subagent
-    controllerApi.executeCommand(ResetSubagent(bareSubagentId, force = true))
+    controller.api.executeCommand(ResetSubagent(bareSubagentId, force = true))
       .await(99.s).orThrow
     eventWatch.await[SubagentResetStarted](_.key == bareSubagentId)
-    controllerApi.updateItems(Observable(DeleteSimple(bareSubagentId))).await(99.s).orThrow
+    controller.api.updateItems(Observable(DeleteSimple(bareSubagentId))).await(99.s).orThrow
     eventWatch.await[ItemDeleted](_.event.key == bareSubagentId)
 
     // START SUBAGENT AGAIN AND THIEVE WILL TAKE IT OVER

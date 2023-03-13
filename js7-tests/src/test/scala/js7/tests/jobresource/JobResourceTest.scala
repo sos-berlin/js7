@@ -66,7 +66,7 @@ class JobResourceTest extends OurTestSuite with ControllerAgentForScalaTest
     controller.eventWatch.await[SignedItemAdded](_.event.key == bJobResource.path)
 
     val orderId = OrderId("ORDER")
-    controllerApi.addOrder(FreshOrder(orderId, workflow.path, Map(
+    controller.api.addOrder(FreshOrder(orderId, workflow.path, Map(
       "A" -> StringValue("A of ORDER")
     ))).await(99.s).orThrow
     controller.eventWatch.await[ItemAttached](_.event.key == aJobResource.path)
@@ -87,15 +87,15 @@ class JobResourceTest extends OurTestSuite with ControllerAgentForScalaTest
 
   "Change JobResource" in {
     val eventId = controller.eventWatch.lastAddedEventId
-    controllerApi.updateSignedItems(Seq(sign(b1JobResource))).await(99.s).orThrow
+    controller.api.updateSignedItems(Seq(sign(b1JobResource))).await(99.s).orThrow
     val orderId = OrderId("ORDER-1")
-    controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+    controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
     controller.eventWatch.await[ItemAttached](_.event.key == b1JobResource.path, after = eventId)
   }
 
   "JobResource with order variable references (no order access)" in {
     val eventId = controller.eventWatch.lastAddedEventId
-    controllerApi.updateSignedItems(Seq(sign(b2JobResource))).await(99.s).orThrow
+    controller.api.updateSignedItems(Seq(sign(b2JobResource))).await(99.s).orThrow
     controller.eventWatch.await[ItemAttached](_.event.key == b2JobResource.path, after = eventId)
 
     val orderId = OrderId("ORDER-2")
@@ -110,7 +110,7 @@ class JobResourceTest extends OurTestSuite with ControllerAgentForScalaTest
 
   "JobResource with environment variable access" in {
     val orderId = OrderId("ORDER-ENV")
-    controllerApi.addOrder(FreshOrder(orderId, envWorkflow.path)).await(99.s).orThrow
+    controller.api.addOrder(FreshOrder(orderId, envWorkflow.path)).await(99.s).orThrow
     val terminated = controller.eventWatch.await[OrderTerminated](_.key == orderId).head
     assert(terminated.value.event.isInstanceOf[OrderFinished])
 
@@ -123,7 +123,7 @@ class JobResourceTest extends OurTestSuite with ControllerAgentForScalaTest
   "Example for an SOS JobResource" - {
     "without scheduledFor" in {
       val orderId = OrderId("ORDER-SOS")
-      controllerApi.addOrder(FreshOrder(orderId, sosWorkflow.path)).await(99.s).orThrow
+      controller.api.addOrder(FreshOrder(orderId, sosWorkflow.path)).await(99.s).orThrow
       val terminated = controller.eventWatch.await[OrderTerminated](_.key == orderId).head
       assert(terminated.value.event.isInstanceOf[OrderFinished])
 
@@ -146,11 +146,11 @@ class JobResourceTest extends OurTestSuite with ControllerAgentForScalaTest
     }
 
     "with scheduledFor" in {
-      controllerApi.updateSignedItems(Seq(sign(sosJobResource))).await(99.s).orThrow
+      controller.api.updateSignedItems(Seq(sign(sosJobResource))).await(99.s).orThrow
 
       val orderId = OrderId("ORDER-SOS-SCHEDULED")
       val scheduledFor = Timestamp("2021-04-26T00:11:22.789Z")
-      controllerApi.addOrder(FreshOrder(orderId, sosWorkflow.path, scheduledFor = Some(scheduledFor)))
+      controller.api.addOrder(FreshOrder(orderId, sosWorkflow.path, scheduledFor = Some(scheduledFor)))
         .await(99.s).orThrow
       val terminated = controller.eventWatch.await[OrderTerminated](_.key == orderId).head
       assert(terminated.value.event.isInstanceOf[OrderFinished])
@@ -185,7 +185,7 @@ class JobResourceTest extends OurTestSuite with ControllerAgentForScalaTest
           ShellScriptExecutable(":",
             env = Map(
               "aJobResourceVariable" -> parseExpression("JobResource:UNKNOWN:a").orThrow))))))
-    assert(controllerApi.updateSignedItems(Seq(sign(workflow)), Some(workflow.id.versionId))
+    assert(controller.api.updateSignedItems(Seq(sign(workflow)), Some(workflow.id.versionId))
       .await(99.s) == Left(MissingReferencedItemProblem(workflow.id, JobResourcePath("UNKNOWN"))))
   }
 
@@ -221,7 +221,7 @@ class JobResourceTest extends OurTestSuite with ControllerAgentForScalaTest
               else s"echo $existingName=/$$$existingName/",
               env = Map(
                 existingName -> parseExpression(expr).orThrow))))))
-      controllerApi.updateSignedItems(Seq(sign(workflow)), Some(workflow.id.versionId))
+      controller.api.updateSignedItems(Seq(sign(workflow)), Some(workflow.id.versionId))
         .await(99.s).orThrow
       workflow
     }
@@ -229,7 +229,7 @@ class JobResourceTest extends OurTestSuite with ControllerAgentForScalaTest
 
   "Delete a JobResource" in {
     val deleteJobResource =
-      controllerApi.updateItems(Observable.pure(DeleteSimple(bJobResource.path)))
+      controller.api.updateItems(Observable.pure(DeleteSimple(bJobResource.path)))
 
     // ItemIsStillReferenced
     assert(deleteJobResource.await(99.s)
@@ -239,20 +239,20 @@ class JobResourceTest extends OurTestSuite with ControllerAgentForScalaTest
 
     // Cancel and delete Orders
     val referencingWorkflows = Set(workflow.id, internalWorkflow.id)
-    val orderIds = controllerApi
+    val orderIds = controller.api
       .controllerState.await(99.s).orThrow
       .idToOrder.values
       .filter(o => referencingWorkflows(o.workflowId))
       .map(_.id)
       .toSeq
-    controllerApi
+    controller.api
       .executeCommand(CancelOrders(orderIds, mode = CancellationMode.kill(immediately = true)))
       .await(99.s).orThrow
-    controllerApi.executeCommand(DeleteOrdersWhenTerminated(orderIds))
+    controller.api.executeCommand(DeleteOrdersWhenTerminated(orderIds))
       .await(99.s).orThrow
 
     // Remove workflows
-    controllerApi
+    controller.api
       .updateItems(Observable(
         AddVersion(VersionId("JOBRESOURCE-DELETED")),
         ItemOperation.RemoveVersioned(workflow.path),
@@ -267,7 +267,7 @@ class JobResourceTest extends OurTestSuite with ControllerAgentForScalaTest
 
     // JobResource can be added again
     val v = VersionId("JOBRESOURCE-ADDED-AGAIN")
-    controllerApi
+    controller.api
       .updateItems(Observable(
         AddVersion(v),
         AddOrChangeSigned(toSignedString(bJobResource)),
@@ -317,7 +317,7 @@ class JobResourceTest extends OurTestSuite with ControllerAgentForScalaTest
               "FROMEXECUTABLE" -> expr(s"""toFile(${StringConstant.quote(executableContent)}, "*.tmp")"""))),
           jobResourcePaths = Seq(myJobResource.path)))))
 
-    controllerApi.updateSignedItems(Seq(sign(myJobResource), sign(myWorkflow)), Some(versionId))
+    controller.api.updateSignedItems(Seq(sign(myJobResource), sign(myWorkflow)), Some(versionId))
       .await(99.s).orThrow
 
     val orderId = OrderId("TMPFILE")

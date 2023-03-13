@@ -8,6 +8,7 @@ import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.log.Logger
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
 import js7.base.problem.Checked.*
+import js7.base.problem.ProblemException
 import js7.base.problem.Problems.DuplicateKey
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.test.OurTestSuite
@@ -21,7 +22,6 @@ import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
 import js7.common.akkautils.Akkas.actorSystemResource
-import js7.common.http.AkkaHttpClient.HttpException
 import js7.controller.client.AkkaHttpControllerApi.admissionToApiResource
 import js7.data.Problems.VersionedItemRemovedProblem
 import js7.data.agent.AgentPath
@@ -37,7 +37,6 @@ import js7.data.workflow.instructions.executable.WorkflowJob
 import js7.data.workflow.instructions.{Execute, Prompt}
 import js7.data.workflow.{Workflow, WorkflowId, WorkflowPath}
 import js7.proxy.ControllerApi
-import js7.tests.testenv.ControllerTestUtils.syntax.RichRunningController
 import js7.tests.testenv.{DirectoryProvider, TestController}
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
@@ -71,22 +70,19 @@ final class ControllerRepoTest extends OurTestSuite
 
       provider.runAgents() { _ =>
         provider.runController() { controller =>
-          controller.httpApi.login_(Some(userAndPassword)).await(99.s)
-          val controllerApi = controller.newControllerApi(Some(userAndPassword))
-
           withClue("Add Workflow: ") {
             val v = V1
             val workflow = testWorkflow(v) withId AWorkflowPath ~ v
             val signed = itemSigner.sign(workflow)
-            controllerApi.updateRepo(v, Seq(signed)).await(99.s).orThrow
+            controller.api.updateRepo(v, Seq(signed)).await(99.s).orThrow
             controller.runOrder(FreshOrder(OrderId("A"), workflow.path))
 
             // Non-empty UpdateRepo with same resulting Repo is accepted
-            controllerApi.updateRepo(v, Seq(signed)).await(99.s).orThrow
-            controllerApi.updateRepo(v, Seq(signed)).await(99.s).orThrow
+            controller.api.updateRepo(v, Seq(signed)).await(99.s).orThrow
+            controller.api.updateRepo(v, Seq(signed)).await(99.s).orThrow
 
             // Empty UpdateRepo with same VersionId is rejected due to duplicate VersionId
-            assert(controllerApi.updateRepo(v, Nil).await(99.s) ==
+            assert(controller.api.updateRepo(v, Nil).await(99.s) ==
               Left(DuplicateKey("VersionId", v)))
           }
 
@@ -94,32 +90,32 @@ final class ControllerRepoTest extends OurTestSuite
             val v = V2
             val workflow = testWorkflow(v) withId BWorkflowPath ~ v
             val signed = itemSigner.sign(workflow)
-            controllerApi.updateRepo(v, Seq(signed)).await(99.s).orThrow
+            controller.api.updateRepo(v, Seq(signed)).await(99.s).orThrow
             controller.runOrder(FreshOrder(OrderId("B"), workflow.path))
           }
 
           withClue("Change first Workflow: ") {
             val v = V3
             val workflow = testWorkflow(v) withId AWorkflowPath ~ v
-            controllerApi.updateRepo(v, Seq(itemSigner.sign(workflow))).await(99.s).orThrow
+            controller.api.updateRepo(v, Seq(itemSigner.sign(workflow))).await(99.s).orThrow
             runOrder(controller, workflow.id, OrderId("A-3"))
           }
 
           withClue("Delete a workflow containing orders: ") {
             val v = VersionId("WITH-ORDER")
             val workflow = Workflow(WorkflowPath("WITH-ORDER") ~ v, Seq(Prompt(StringConstant(""))))
-            controllerApi.updateRepo(v, Seq(itemSigner.sign(workflow)))
+            controller.api.updateRepo(v, Seq(itemSigner.sign(workflow)))
               .await(99.s).orThrow
 
             val orderId = OrderId("DELETE-WITH-ORDER")
-            controllerApi.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+            controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
               .await(99.s).orThrow
             controller.eventWatch.await[OrderPrompted](_.key == orderId)
 
-            controllerApi.updateRepo(VersionId("WITH-ORDER-DELETED"), delete = Seq(workflow.path))
+            controller.api.updateRepo(VersionId("WITH-ORDER-DELETED"), delete = Seq(workflow.path))
               .await(99.s).orThrow
 
-            controller.executeCommandAsSystemUser(AnswerOrderPrompt(orderId))
+            controller.api.executeCommand(AnswerOrderPrompt(orderId))
               .await(99.s).orThrow
             controller.eventWatch.await[OrderDeleted](_.key == orderId)
             controller.eventWatch.await[ItemDeleted](_.event.key == workflow.id)
@@ -128,9 +124,6 @@ final class ControllerRepoTest extends OurTestSuite
 
         // Recovery
         provider.runController() { controller =>
-          controller.httpApi.login_(Some(userAndPassword)).await(99.s)
-          val controllerApi = controller.newControllerApi(Some(userAndPassword))
-
           // V2
           // Previously defined workflow is still known
           runOrder(controller, BWorkflowPath ~ V2, OrderId("B-AGAIN"))
@@ -140,7 +133,7 @@ final class ControllerRepoTest extends OurTestSuite
             val v = V4
             val workflow = testWorkflow(v) withId CWorkflowPath ~ v
             val signed = itemSigner.sign(workflow)
-            controllerApi.updateRepo(v, Seq(signed)).await(99.s).orThrow
+            controller.api.updateRepo(v, Seq(signed)).await(99.s).orThrow
             controller.runOrder(FreshOrder(OrderId("C"), workflow.path))
           }
 
@@ -150,10 +143,11 @@ final class ControllerRepoTest extends OurTestSuite
           // Delete workflow
           provider.updateVersionedItems(controller, V6, delete = CWorkflowPath :: Nil)
           assert(Try { runOrder(controller, CWorkflowPath ~ V6, OrderId("B-6")) }
-            .failed.get.asInstanceOf[HttpException].problem contains VersionedItemRemovedProblem(CWorkflowPath))
+            .failed.get.asInstanceOf[ProblemException].problem ==
+            VersionedItemRemovedProblem(CWorkflowPath))
 
           // Command is rejected due to duplicate VersionId
-          assert(controllerApi.updateRepo(V2, Nil).await(99.s) ==
+          assert(controller.api.updateRepo(V2, Nil).await(99.s) ==
             Left(DuplicateKey("VersionId", V2)))
 
           // AWorkflowPath is still version V3
@@ -179,7 +173,7 @@ final class ControllerRepoTest extends OurTestSuite
 
       def runOrder(controller: TestController, workflowId: WorkflowId, orderId: OrderId): Unit = {
         val order = FreshOrder(orderId, workflowId.path)
-        controller.httpApi.addOrder(order).await(99.s)
+        controller.api.addOrder(order).await(99.s).orThrow
         awaitOrder(controller, orderId, workflowId)
       }
 

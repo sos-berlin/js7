@@ -91,7 +91,7 @@ object TestDockerExample
       RunningController.threadPoolResource[SyncIO](conf).useSync { implicit scheduler =>
         RunningController.resource(conf)
           .blockingUse(99.s) { controller =>
-            //??? controller.executeCommandAsSystemUser(ControllerCommand.ScheduleOrdersEvery(1.minute)).runToFuture.await(99.s).orThrow
+            //??? controller.api.executeCommand(ControllerCommand.ScheduleOrdersEvery(1.minute)).runToFuture.await(99.s).orThrow
             controller.terminated await 365 * 24.h
         }
         agents.parTraverse(_.stop) await 60.s

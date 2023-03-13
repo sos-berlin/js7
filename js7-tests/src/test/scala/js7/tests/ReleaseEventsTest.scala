@@ -93,15 +93,15 @@ final class ReleaseEventsTest extends OurTestSuite with DirectoryProviderForScal
       assertControllerJournalFileCount(1)
 
       // Controller sends ReleaseEvents after some events from Agent have arrived. So we start an order.
-      controller.executeCommandAsSystemUser(TakeSnapshot).await(99.s).orThrow
+      controller.api.executeCommand(TakeSnapshot).await(99.s).orThrow
       val bAdded = controller.runOrder(bOrder).head.eventId
       assertControllerJournalFileCount(2)
 
-      controller.executeCommandAsSystemUser(TakeSnapshot).await(99.s).orThrow
+      controller.api.executeCommand(TakeSnapshot).await(99.s).orThrow
       assertControllerJournalFileCount(3)
 
       controller.runOrder(cOrder)
-      controller.executeCommandAsSystemUser(TakeSnapshot).await(99.s).orThrow
+      controller.api.executeCommand(TakeSnapshot).await(99.s).orThrow
       assertControllerJournalFileCount(4)
 
       b.executeCommand(ReleaseEvents(bAdded)).await(99.s)
@@ -115,7 +115,7 @@ final class ReleaseEventsTest extends OurTestSuite with DirectoryProviderForScal
       assertControllerJournalFileCount(1)
 
       // TakeSnapshot and KeepSnapshot on last event written should tear this event
-      controller.executeCommandAsSystemUser(TakeSnapshot).await(99.s).orThrow
+      controller.api.executeCommand(TakeSnapshot).await(99.s).orThrow
       assert(tornEventId < lastFileEventId)
       a.executeCommand(ReleaseEvents(lastFileEventId)).await(99.s)
       b.executeCommand(ReleaseEvents(lastFileEventId)).await(99.s)

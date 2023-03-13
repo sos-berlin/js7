@@ -23,11 +23,11 @@ final class SimpleControllerClusterTest extends ControllerClusterTester
 
   "Cluster replicates journal files properly" in {
     runControllerAndBackup() { (primary, primaryController, backup, backupController, _) =>
-      assert(primaryController.executeCommandForTest(ControllerCommand.NoOperation()) ==
+      assert(primaryController.api.executeCommand(ControllerCommand.NoOperation()).await(99.s) ==
         Right(ControllerCommand.Response.Accepted))
 
       // Passive cluster node rejects command for active cluster node
-      assert(backupController.executeCommandForTest(ControllerCommand.NoOperation()) ==
+      assert(backupController.api.executeCommand(ControllerCommand.NoOperation()).await(99.s) ==
         Left(ClusterNodeIsNotActiveProblem))
 
       assert(
@@ -46,7 +46,8 @@ final class SimpleControllerClusterTest extends ControllerClusterTester
         .headL
         .runToFuture
       orderIds
-        .map(orderId => primaryController.addOrder(FreshOrder(orderId, TestWorkflow.path)))
+        .map(orderId => primaryController.api
+          .addOrder(FreshOrder(orderId, TestWorkflow.path)))
         .toVector.sequence
         .await(99.s)
         .sequence.orThrow

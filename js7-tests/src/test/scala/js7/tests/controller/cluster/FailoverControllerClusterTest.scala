@@ -66,7 +66,7 @@ final class FailoverControllerClusterTest extends ControllerClusterTester
       primaryController.eventWatch.await[OrderProcessingStarted](_.key == orderId)
       backupController.eventWatch.await[OrderProcessingStarted](_.key == orderId)
       // KILL PRIMARY
-      primaryController.executeCommandAsSystemUser(ShutDown(clusterAction = Some(ShutDown.ClusterAction.Failover)))
+      primaryController.api.executeCommand(ShutDown(clusterAction = Some(ShutDown.ClusterAction.Failover)))
         .await(99.s).orThrow
       primaryController.terminated await 99.s
       primaryController.close()
@@ -112,7 +112,7 @@ final class FailoverControllerClusterTest extends ControllerClusterTester
       backupController.eventWatch.await[ClusterCoupled](after = failedOverEventId)
       assertEqualJournalFiles(primary.controller, backup.controller, n = 1)
 
-      backupController.executeCommandForTest(ClusterSwitchOver()).orThrow
+      backupController.api.executeCommand(ClusterSwitchOver()).await(99.s).orThrow
       val recoupledEventId = primaryController.eventWatch.await[ClusterSwitchedOver](after = failedOverEventId).head.eventId
 
       backupController.terminated await 99.s

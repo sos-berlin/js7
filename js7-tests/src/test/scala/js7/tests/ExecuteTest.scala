@@ -460,7 +460,7 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
       ParallelInternalJob.execute(agentPath, parallelism = parallelism)))
     val orderIds = for (i <- 1 to parallelism) yield OrderId(s"PARALLEL-$i")
     val eventId = eventWatch.lastAddedEventId
-    controllerApi.addOrders(Observable
+    controller.api.addOrders(Observable
       .fromIterable(orderIds)
       .map(FreshOrder(_, workflow.path)))
       .await(99.s).orThrow
@@ -468,14 +468,14 @@ final class ExecuteTest extends OurTestSuite with ControllerAgentForScalaTest
       eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
     }
     val extraOrderId = OrderId("PARALLEL-EXTRA")
-    controllerApi.addOrder(FreshOrder(extraOrderId, workflow.path)).await(99.s).orThrow
+    controller.api.addOrder(FreshOrder(extraOrderId, workflow.path)).await(99.s).orThrow
     eventWatch.await[OrderAttached](_.key == extraOrderId, after = eventId)
     assert(orderToObstacles(extraOrderId)(WallClock) == Right(Set(jobParallelismLimitReached)))
 
-    controllerApi.executeCommand(CancelOrders(extraOrderId :: Nil)).await(99.s).orThrow
+    controller.api.executeCommand(CancelOrders(extraOrderId :: Nil)).await(99.s).orThrow
     eventWatch.await[OrderCancelled](_.key == extraOrderId, after = eventId)
 
-    controllerApi
+    controller.api
       .executeCommand(
         CancelOrders(orderIds, CancellationMode.kill(immediately = true)))
       .await(99.s).orThrow

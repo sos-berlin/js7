@@ -60,12 +60,12 @@ with BlockingItemUpdater
 
     TestJob.reset()
     val orderId = OrderId(s"#$qualifier#CONSUMING")
-    controllerApi
+    controller.api
       .addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
       .await(99.s).orThrow
     eventWatch.await[OrderNoticesExpected](_.key == orderId)
 
-    controllerApi.executeCommand(
+    controller.api.executeCommand(
       PostNotice(aBoard.path, noticeId)
     ).await(99.s).orThrow
 
@@ -154,12 +154,12 @@ with BlockingItemUpdater
       val eventId = eventWatch.lastAddedEventId
       val noticeId = NoticeId("2022-10-24")
       val orderId = OrderId(s"#${noticeId.string}#")
-      controller.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true)).await(99.s).orThrow
+      controller.addOrderBlocking(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
       eventWatch.await[OrderPrompted](_.key == orderId)
 
-      controllerApi.executeCommand(DeleteNotice(aBoard.path, noticeId)).await(99.s).orThrow
+      controller.api.executeCommand(DeleteNotice(aBoard.path, noticeId)).await(99.s).orThrow
 
-      controllerApi.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
+      controller.api.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
       eventWatch.await[OrderTerminated](_.key == orderId)
 
       val events = eventWatch.eventsByKey[OrderEvent](orderId, after = eventId)
@@ -195,12 +195,12 @@ with BlockingItemUpdater
 
     TestJob.reset()
     val orderId = OrderId(s"#$qualifier#POST-UNUSED")
-    controllerApi
+    controller.api
       .addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
       .await(99.s).orThrow
     eventWatch.await[OrderNoticesExpected](_.key == orderId)
 
-    controllerApi.executeCommand(
+    controller.api.executeCommand(
       PostNotice(aBoard.path, noticeId)
     ).await(99.s).orThrow
 
@@ -215,7 +215,7 @@ with BlockingItemUpdater
     assert(controllerState.keyTo(BoardState)(bBoard.path).idToNotice(noticeId).isInConsumption)
     assert(controllerState.keyTo(BoardState)(bBoard.path).idToNotice(noticeId).consumptionCount == 1)
 
-    controllerApi.executeCommand(
+    controller.api.executeCommand(
       PostNotice(bBoard.path, noticeId)
     ).await(99.s).orThrow
 
@@ -263,19 +263,19 @@ with BlockingItemUpdater
     val qualifier = qualifiers.next()
     val noticeId = NoticeId(qualifier)
 
-    controllerApi.executeCommand(
+    controller.api.executeCommand(
       PostNotice(aBoard.path, noticeId)
     ).await(99.s).orThrow
 
     TestJob.reset()
     TestJob.continue()
     val orderId = OrderId(s"#$qualifier#CONSUMING")
-    controllerApi
+    controller.api
       .addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
       .await(99.s).orThrow
     eventWatch.await[OrderNoticesConsumptionStarted](_.key == orderId)
 
-    controllerApi.executeCommand(
+    controller.api.executeCommand(
       PostNotice(aBoard.path, noticeId)
     ).await(99.s).orThrow
     eventWatch.await[OrderNoticesConsumed](_.key == orderId)
@@ -317,12 +317,12 @@ with BlockingItemUpdater
     val aOrderId = OrderId(s"#$qualifier#CONSUMING-A")
     val bOrderId = OrderId(s"#$qualifier#CONSUMING-B")
 
-    controllerApi.executeCommand(
+    controller.api.executeCommand(
       PostNotice(aBoard.path, noticeId)
     ).await(99.s).orThrow
 
     for (orderId <- View(aOrderId, bOrderId)) {
-      controllerApi
+      controller.api
         .addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
         .await(99.s).orThrow
       eventWatch.await[OrderNoticesConsumptionStarted](_.key == orderId)
@@ -396,12 +396,12 @@ with BlockingItemUpdater
 
     TestJob.reset()
     val orderId = OrderId(s"#$qualifier#NESTED")
-    controllerApi
+    controller.api
       .addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
       .await(99.s).orThrow
     eventWatch.await[OrderNoticesExpected](_.key == orderId)
 
-    controllerApi.executeCommand(
+    controller.api.executeCommand(
       PostNotice(aBoard.path, noticeId)
     ).await(99.s).orThrow
 
@@ -423,7 +423,7 @@ with BlockingItemUpdater
 
     assert(controllerState.keyTo(BoardState)(bBoard.path).idToNotice.get(noticeId).isEmpty)
 
-    controllerApi.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
+    controller.api.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
     eventWatch.await[OrderNoticesConsumed](_.key == orderId)
 
     deleteItems(workflow.path)
@@ -466,11 +466,11 @@ with BlockingItemUpdater
 
     TestJob.reset()
     val orderId = OrderId(s"#$qualifier#CONSUMING-FAILING")
-    controllerApi
+    controller.api
       .addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
       .await(99.s).orThrow
 
-    controllerApi.executeCommand(
+    controller.api.executeCommand(
       PostNotice(aBoard.path, noticeId)
     ).await(99.s).orThrow
 
@@ -484,7 +484,7 @@ with BlockingItemUpdater
     assert(!controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).isInConsumption)
     assert(controllerState.keyTo(BoardState)(aBoard.path).idToNotice(noticeId).consumptionCount == 0)
 
-    controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+    controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
     deleteItems(workflow.path)
     assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id, deleteWhenTerminated = true),
@@ -509,16 +509,16 @@ with BlockingItemUpdater
     val noticeId = NoticeId(qualifier)
 
     val orderId = OrderId(s"#$qualifier#CANCEL-WHILE-PROMTING")
-    controllerApi
+    controller.api
       .addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
       .await(99.s).orThrow
 
-    controllerApi.executeCommand(
+    controller.api.executeCommand(
       PostNotice(aBoard.path, noticeId)
     ).await(99.s).orThrow
 
     eventWatch.await[OrderPrompted](_.key == orderId)
-    controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+    controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
 
     eventWatch.await[OrderNoticesConsumed](_.key == orderId)
     eventWatch.await[OrderCancelled](_.key == orderId)

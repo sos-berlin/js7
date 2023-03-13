@@ -44,7 +44,7 @@ final class SubagentDeleteTest extends OurTestSuite with SubagentTester
   "Delete bare Subagent" in {
     runSubagent(bareSubagentItem) { _ =>
       val eventId = eventWatch.lastAddedEventId
-      controllerApi
+      controller.api
         .updateItems(Observable(DeleteSimple(bareSubagentItem.id)))
         .await(99.s)
         .orThrow
@@ -58,12 +58,12 @@ final class SubagentDeleteTest extends OurTestSuite with SubagentTester
     val bOrderId = OrderId("REMOVE-SUBAGENT-B")
     var eventId = eventWatch.lastAddedEventId
 
-    controllerApi
+    controller.api
       .updateItems(Observable(AddOrChangeSimple(bareSubagentItem)))
       .await(99.s).orThrow
     runSubagent(bareSubagentItem) { _ =>
       locally {
-        controller.addOrder(FreshOrder(aOrderId, workflow.path)).await(99.s).orThrow
+        controller.addOrderBlocking(FreshOrder(aOrderId, workflow.path))
         val started = eventWatch.await[OrderProcessingStarted](_.key == aOrderId, after = eventId)
           .head.value.event
         assert(started == OrderProcessingStarted(bareSubagentItem.path))
@@ -71,7 +71,7 @@ final class SubagentDeleteTest extends OurTestSuite with SubagentTester
         // aOrderId waits for semaphore
       }
 
-      controllerApi
+      controller.api
         .updateItems(Observable(DeleteSimple(bareSubagentItem.path)))
         .await(99.s).orThrow
       eventWatch.await[ItemDetachable](_.event.key == bareSubagentItem.id, after = eventId)
@@ -84,7 +84,7 @@ final class SubagentDeleteTest extends OurTestSuite with SubagentTester
 
       // Don't allow orders to start while SubagentItem is deleted
       eventId = eventWatch.lastAddedEventId
-      controller.addOrder(FreshOrder(bOrderId, workflow.path)).await(99.s).orThrow
+      controller.addOrderBlocking(FreshOrder(bOrderId, workflow.path))
       intercept[TimeoutException] {
         eventWatch.await[OrderProcessingStarted](_.key == bOrderId, timeout = 1.s)
       }
@@ -101,7 +101,7 @@ final class SubagentDeleteTest extends OurTestSuite with SubagentTester
 
     // START SUBAGENT AGAIN
 
-    controllerApi
+    controller.api
       .updateItems(Observable(AddOrChangeSimple(bareSubagentItem)))
       .await(99.s).orThrow
 
@@ -123,7 +123,7 @@ final class SubagentDeleteTest extends OurTestSuite with SubagentTester
       var eventId = eventWatch.lastAddedEventId
 
       locally {
-        controller.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+        controller.addOrderBlocking(FreshOrder(orderId, workflow.path))
         val started = eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
           .head.value.event
         assert(started == OrderProcessingStarted(bareSubagentItem.path))
@@ -131,7 +131,7 @@ final class SubagentDeleteTest extends OurTestSuite with SubagentTester
         // orderId waits for semaphore
       }
 
-      controllerApi
+      controller.api
         .updateItems(Observable(DeleteSimple(bareSubagentItem.path)))
         .await(99.s).orThrow
       eventWatch.await[ItemDetachable](_.event.key == bareSubagentItem.id, after = eventId)
@@ -144,7 +144,7 @@ final class SubagentDeleteTest extends OurTestSuite with SubagentTester
 
       // Changing a Subagent is rejected while it is being deleted
       locally {
-        val checked = controllerApi
+        val checked = controller.api
           .updateItems(Observable(AddOrChangeSimple(bareSubagentItem.copy(disabled = true))))
           .await(99.s)
         assert(checked == Left(Problem(
@@ -152,7 +152,7 @@ final class SubagentDeleteTest extends OurTestSuite with SubagentTester
       }
 
       // Deleting a Subagent is ignored while it is being deleted
-      controllerApi
+      controller.api
         .updateItems(Observable(DeleteSimple(bareSubagentId)))
         .await(99.s)
         .orThrow
@@ -176,7 +176,7 @@ final class SubagentDeleteTest extends OurTestSuite with SubagentTester
   }
 
   "The Director Subagent cannot be deleted" in {
-    val checked = controllerApi
+    val checked = controller.api
       .updateItems(Observable(
         DeleteSimple(directoryProvider.subagentId)))
       .await(99.s)

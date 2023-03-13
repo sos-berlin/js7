@@ -185,7 +185,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
         HistoricOutcome(Position(0) / "fork+🥕" % 1 / "then" % 0,
           Outcome.Failed(Some("FAIL WITH FINISH")))))
 
-      controllerApi.executeCommand(CancelOrders(Seq(orderId / "🥕"))).await(99.s).orThrow
+      controller.api.executeCommand(CancelOrders(Seq(orderId / "🥕"))).await(99.s).orThrow
       eventWatch.await[OrderFailed](_.key == orderId)
       val events = eventWatch
         .allKeyedEvents[OrderEvent]

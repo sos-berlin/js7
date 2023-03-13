@@ -22,9 +22,9 @@ final class TwoPrimaryControllerClusterNodesTest extends OurTestSuite with Contr
           config = config"js7.journal.cluster.node.is-backup = false"
         ) { _ =>
           val cmd = ClusterAppointNodes(clusterSetting.idToUri, clusterSetting.activeId)
-          primaryController.executeCommandAsSystemUser(cmd).await(99.s).orThrow
+          primaryController.api.executeCommand(cmd).await(99.s).orThrow
           sleep(5.s)
-          //assert(primaryController.executeCommandAsSystemUser(cmd).await(99.s) == Left(ClusterNodeIsNotBackupProblem))
+          //assert(primaryController.api.executeCommand(cmd).await(99.s) == Left(ClusterNodeIsNotBackupProblem))
         }
       }
     }

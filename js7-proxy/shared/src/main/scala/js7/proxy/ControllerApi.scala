@@ -14,9 +14,10 @@ import js7.base.session.SessionApi
 import js7.base.time.ScalaTime.*
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.web.HttpClient.HttpException
+import js7.base.web.HttpClient.{HttpException, isTemporaryUnreachable, liftProblem}
 import js7.base.web.{HttpClient, Uri}
 import js7.controller.client.HttpControllerApi
+import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerCommand.Response.Accepted
 import js7.data.controller.ControllerCommand.{AddOrder, AddOrders, ReleaseEvents}
 import js7.data.controller.ControllerState.*
@@ -38,7 +39,8 @@ import scala.util.Failure
 
 final class ControllerApi(
   val apiResources: Nel[Resource[Task, HttpControllerApi]],
-  proxyConf: ProxyConf = ProxyConf.default)
+  proxyConf: ProxyConf = ProxyConf.default,
+  failWhenUnreachable: Boolean = false)
 extends ControllerApiWithHttp
 {
   private val apiCache = new RefCountedResource(
@@ -51,8 +53,16 @@ extends ControllerApiWithHttp
     apiCache.resource
 
   def stop: Task[Unit] =
+    stop()
+
+  def stop(dontLogout: Boolean = true): Task[Unit] =
     logger.debugTask(
-      apiCache.release)
+      Task
+        .when(dontLogout)(
+          apiCache.cachedValue
+            .fold(Task.unit)(api => Task(
+              api.clearSession())))
+        .*>(apiCache.release))
 
   /** For testing (it's slow): wait for a condition in the running event stream. **/
   def when(predicate: EventAndState[Event, ControllerState] => Boolean)
@@ -147,35 +157,49 @@ extends ControllerApiWithHttp
     logger.debugTask(
       untilReachable(_.snapshot()))
 
+  def clusterState: Task[Checked[ClusterState]] =
+    controllerState.map(_.map(_.clusterState))
+
   private def untilReachable[A](body: HttpControllerApi => Task[A]): Task[Checked[A]] =
+    CorrelId.bindIfEmpty(
+      if (!failWhenUnreachable)
+        untilReachable1(body)
+      else
+        liftProblem(
+          apiResource
+            .use(api => api
+              .retryIfSessionLost()(
+                body(api)))))
+
+  private def untilReachable1[A](body: HttpControllerApi => Task[A]): Task[Checked[A]] =
     CorrelId.bindIfEmpty(Task.defer {
       // TODO Similar to SessionApi.retryUntilReachable
       val delays = SessionApi.defaultLoginDelays()
       var warned = now - 1.h
-      /*HttpClient.liftProblem*/(
-        apiResource
-          .use(api => api
-            .retryIfSessionLost()(body(api))
-            .materialize.map {
-              case Failure(t: HttpException) if t.statusInt == 503/*Service unavailable*/ =>
-                Failure(t)  // Trigger onErrorRestartLoop
-              case o => HttpClient.failureToChecked(o)
+      apiResource
+        .use(api => api
+          .retryIfSessionLost()(body(api))
+          .materialize.map {
+            case Failure(t: HttpException) if t.statusInt == 503/*Service unavailable*/ =>
+              Failure(t)  // Trigger onErrorRestartLoop
+            case o => HttpClient.failureToChecked(o)
+          }
+          .dematerialize)
+        .onErrorRestartLoop(()) {
+          case (t, _, retry)
+            if isTemporaryUnreachable(t) && delays.hasNext =>
+            if (warned.elapsed >= 60.s) {
+              logger.warn(t.toStringWithCauses)
+              warned = now
+            } else {
+              logger.debug(t.toStringWithCauses)
             }
-            .dematerialize)
-          .onErrorRestartLoop(()) {
-            case (t, _, retry) if HttpClient.isTemporaryUnreachable(t) && delays.hasNext =>
-              if (warned.elapsed >= 60.s) {
-                logger.warn(t.toStringWithCauses)
-                warned = now
-              } else {
-                logger.debug(t.toStringWithCauses)
-              }
-              apiCache.clear *>
-                Task.sleep(delays.next()) *>
-                retry(())
-            case (t, _, _) =>
-              Task.raiseError(t)
-          })
+            apiCache.clear *>
+              Task.sleep(delays.next()) *>
+              retry(())
+
+          case (t, _, _) => Task.raiseError(t)
+        }
     })
 }
 

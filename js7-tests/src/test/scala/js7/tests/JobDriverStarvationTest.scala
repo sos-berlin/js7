@@ -49,7 +49,7 @@ final class JobDriverStarvationTest extends OurTestSuite with ControllerAgentFor
     // letting the other starve until the JobActor requests the next order.
 
     val orderIds = for (i <- 1 to n) yield OrderId(s"ORDER-$i")
-    val proxy = controllerApi.startProxy().await(99.s)
+    val proxy = controller.api.startProxy().await(99.s)
 
     val firstOrdersProcessing = proxy.observable
       .map(_.stampedEvent.value)
@@ -71,7 +71,7 @@ final class JobDriverStarvationTest extends OurTestSuite with ControllerAgentFor
       .runToFuture
 
     var t = now
-    controllerApi
+    controller.api
       .addOrders(Observable
         .fromIterable(orderIds)
         .map(FreshOrder(_, workflow.path, deleteWhenTerminated = true)))

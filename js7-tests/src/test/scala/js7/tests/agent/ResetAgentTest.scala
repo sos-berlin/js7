@@ -63,10 +63,10 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
   "ResetAgent while a locking order is executed" in {
     myAgent = agent
     val orderId = OrderId("RESET-AGENT-1")
-    controllerApi.addOrder(FreshOrder(orderId, lockWorkflow.path)).await(99.s).orThrow
+    controller.api.addOrder(FreshOrder(orderId, lockWorkflow.path)).await(99.s).orThrow
     eventWatch.await[OrderProcessingStarted](_.key == orderId)
 
-    controllerApi.executeCommand(ResetAgent(agentPath)).await(99.s).orThrow
+    controller.api.executeCommand(ResetAgent(agentPath)).await(99.s).orThrow
     myAgent.untilTerminated.await(99.s)
     agent.stop.await(99.s)
     eventWatch.await[OrderTerminated](_.key == orderId)
@@ -89,7 +89,7 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
 
   "Run another order" in {
     val orderId = OrderId("RESET-AGENT-2")
-    controllerApi.addOrder(FreshOrder(orderId, lockWorkflow.path)).await(99.s).orThrow
+    controller.api.addOrder(FreshOrder(orderId, lockWorkflow.path)).await(99.s).orThrow
     eventWatch.await[OrderAttachable](_.key == orderId)
 
     barrier.flatMap(_.tryPut(())).runSyncUnsafe()
@@ -115,10 +115,10 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
   "ResetAgent while a forking order is executed" in {
     val orderId = OrderId("FORKING")
     val childOrderId = orderId / "FORK"
-    controllerApi.addOrder(FreshOrder(orderId, forkingWorkflow.path)).await(99.s).orThrow
+    controller.api.addOrder(FreshOrder(orderId, forkingWorkflow.path)).await(99.s).orThrow
     eventWatch.await[OrderProcessingStarted](_.key == childOrderId)
 
-    controllerApi.executeCommand(ResetAgent(agentPath)).await(99.s).orThrow
+    controller.api.executeCommand(ResetAgent(agentPath)).await(99.s).orThrow
     myAgent.untilTerminated.await(99.s)
     myAgent.stop.await(99.s)
 
@@ -148,7 +148,7 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
   }
 
   "ResetAgent when Agent is reset already" in {
-    val checked = controllerApi.executeCommand(ResetAgent(agentPath)).await(99.s)
+    val checked = controller.api.executeCommand(ResetAgent(agentPath)).await(99.s)
     val possibleProblems = Set(
       Problem("AgentRef is already in state 'Resetting'"),
       Problem("AgentRef is already in state 'Reset(ResetCommand)'"))
@@ -170,7 +170,7 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
     eventWatch.await[AgentCoupled](after = eventId)
 
     eventId = eventWatch.lastAddedEventId
-    controllerApi.executeCommand(ResetAgent(agentPath)).await(99.s).orThrow
+    controller.api.executeCommand(ResetAgent(agentPath)).await(99.s).orThrow
     myAgent.untilTerminated.await(99.s)
     myAgent.stop.await(99.s)
 

@@ -93,7 +93,7 @@ final class WatchSignatureKeysTest extends OurTestSuite with ControllerAgentForS
   "Signature matches item" in {
     val v = nextVersion()
     val item = workflow.withVersion(v)
-    controllerApi.updateRepo(v, Seq(itemSigner.sign(item))).await(99.s).orThrow
+    controller.api.updateRepo(v, Seq(itemSigner.sign(item))).await(99.s).orThrow
     testOrder(v)
   }
 
@@ -109,7 +109,7 @@ final class WatchSignatureKeysTest extends OurTestSuite with ControllerAgentForS
       whenUpdated.await(99.s)
 
       val v = nextVersion()
-      val checked = controllerApi.updateRepo(v, Seq(sign(workflow.withVersion(v)))).await(99.s)
+      val checked = controller.api.updateRepo(v, Seq(sign(workflow.withVersion(v)))).await(99.s)
       assert(checked == Left(Problem(
         "The signature's SignerId is unknown: CN=WatchSignatureKeysTest-A")))
     }
@@ -126,7 +126,7 @@ final class WatchSignatureKeysTest extends OurTestSuite with ControllerAgentForS
   "PEM file restored, Signature matches item" in {
     val v = nextVersion()
     val item = workflow.withVersion(v)
-    controllerApi.updateRepo(v, Seq(itemSigner.sign(item))).await(99.s).orThrow
+    controller.api.updateRepo(v, Seq(itemSigner.sign(item))).await(99.s).orThrow
     testOrder(v)
   }
 
@@ -150,7 +150,7 @@ final class WatchSignatureKeysTest extends OurTestSuite with ControllerAgentForS
       subagentsKeyDirectory / "key-1.pem" := bCertAndKey.certificatePem
       whenUpdated.await(99.s)
 
-      val checked = controllerApi.updateRepo(v, Seq(sign(workflow.withVersion(v)))).await(99.s)
+      val checked = controller.api.updateRepo(v, Seq(sign(workflow.withVersion(v)))).await(99.s)
       assert(checked == Left(Problem(
         "The signature's SignerId is unknown: CN=WatchSignatureKeysTest-A")))
     }
@@ -158,7 +158,7 @@ final class WatchSignatureKeysTest extends OurTestSuite with ControllerAgentForS
     "Sign with changed signature key" in {
       val v = nextVersion()
       val signed = bItemSigner.sign(workflow.withVersion(v))
-      controllerApi.updateRepo(v, Seq(signed)).await(99.s).orThrow
+      controller.api.updateRepo(v, Seq(signed)).await(99.s).orThrow
       testOrder(v)
     }
   }
@@ -206,7 +206,7 @@ final class WatchSignatureKeysTest extends OurTestSuite with ControllerAgentForS
     Future.sequence(Seq[Future[Unit]](controllerUpdated, agentUpdated, subagentUpdated)).await(99.s)
 
     val v = nextVersion()
-    controllerApi.updateRepo(v, Seq(cItemSigner.sign(workflow.withVersion(v)))).await(99.s).orThrow
+    controller.api.updateRepo(v, Seq(cItemSigner.sign(workflow.withVersion(v)))).await(99.s).orThrow
 
     testOrder(v)
   }

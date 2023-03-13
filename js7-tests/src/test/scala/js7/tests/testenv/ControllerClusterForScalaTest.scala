@@ -214,7 +214,7 @@ trait ControllerClusterForScalaTest
   /** Simulate a kill via ShutDown(failOver) - still writes new snapshot. */
   protected final def simulateKillActiveNode(controller: TestController): Task[Unit] =
     controller
-      .executeCommandAsSystemUser(
+      .api.executeCommand(
         ShutDown(clusterAction = Some(ShutDown.ClusterAction.Failover)))
       .map(_.orThrow)
       .flatMap(_ => Task.deferFuture(controller.terminated))

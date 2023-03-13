@@ -96,7 +96,7 @@ final class SubagentDisabledTest extends OurTestSuite with SubagentTester
 
     val orderId = nextOrderId()
     var eventId = eventWatch.lastAddedEventId
-    controllerApi.addOrder(toOrder(orderId)).await(99.s).orThrow
+    controller.api.addOrder(toOrder(orderId)).await(99.s).orThrow
     eventWatch.await[OrderAttached](_.key == orderId, after = eventId)
     eventId = eventWatch.lastAddedEventId
     intercept[TimeoutException] {
@@ -105,7 +105,7 @@ final class SubagentDisabledTest extends OurTestSuite with SubagentTester
 
     // Re-enableSubagents
     eventId = eventWatch.lastAddedEventId
-    controllerApi
+    controller.api
       .updateItems(Observable(
         AddOrChangeSimple(aSubagentItem.copy(disabled = false))))
       .await(99.s).orThrow
@@ -123,7 +123,7 @@ final class SubagentDisabledTest extends OurTestSuite with SubagentTester
 
   private def runOrderAndCheck(orderId: OrderId, subagentId: SubagentId): Unit = {
     val eventId = eventWatch.lastAddedEventId
-    controllerApi.addOrder(toOrder(orderId)).await(99.s).orThrow
+    controller.api.addOrder(toOrder(orderId)).await(99.s).orThrow
     val started = eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
       .head.value.event
     assert(started.subagentId contains subagentId)

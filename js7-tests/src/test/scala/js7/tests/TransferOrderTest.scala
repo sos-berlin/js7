@@ -46,14 +46,14 @@ with BlockingItemUpdater
     withTemporaryItem(workflow) { v1Workflow =>
       // aOrderId sticks in Order.Prompting, is transferable
       val aOrderId = OrderId("A-ORDER")
-      controllerApi
+      controller.api
         .addOrder(FreshOrder(aOrderId, v1Workflow.path, stopPositions = Set(Position(1))))
         .await(99.s).orThrow
       eventWatch.await[OrderPrompted](_.key == aOrderId)
 
       // bOrderId sticks in Order.Processing, is not transferable because Attached
       val bOrderId = OrderId("B-ORDER")
-      controllerApi
+      controller.api
         .addOrder(FreshOrder(bOrderId, v1Workflow.path,
           startPosition = Some(Position(1)),
           stopPositions = Set(Position(2))))
@@ -62,7 +62,7 @@ with BlockingItemUpdater
 
       // cOrderId is forked and attached to agentPath, too
       val cOrderId = OrderId("C-ORDER")
-      controllerApi
+      controller.api
         .addOrder(FreshOrder(cOrderId, v1Workflow.path,
           startPosition = Some(Position(2)), stopPositions = Set(Position(3))))
         .await(99.s).orThrow
@@ -71,34 +71,34 @@ with BlockingItemUpdater
 
       // dOrderId is Order.ConsumeNotices
       val dOrderId = OrderId("D-ORDER")
-      controllerApi
+      controller.api
         .addOrder(FreshOrder(dOrderId, v1Workflow.path, startPosition = Some(Position(3))))
         .await(99.s).orThrow
       eventWatch.await[OrderNoticesExpected](_.key == dOrderId)
 
       // TransferOrders will fail
       val v2Workflow = updateItem(workflow)
-      val checked = controllerApi.executeCommand(TransferOrders(v1Workflow.id)).await(99.s)
+      val checked = controller.api.executeCommand(TransferOrders(v1Workflow.id)).await(99.s)
       assert(checked == Left(Problem(
         "Order:B-ORDER to be transferred is Attached to Agent:AGENT;\n" +
         "Order:C-ORDER|BRANCH to be transferred is Attached to Agent:AGENT")))
 
       // Detach bOrderId
-      controllerApi.executeCommand(SuspendOrders(Set(bOrderId))).await(99.s).orThrow
+      controller.api.executeCommand(SuspendOrders(Set(bOrderId))).await(99.s).orThrow
       eventWatch.await[OrderSuspensionMarkedOnAgent](_.key == bOrderId)
       ASemaphoreJob.continue()
       eventWatch.await[OrderSuspended](_.key == bOrderId)
       assert(controllerState.idToOrder(bOrderId).isDetached)
 
       // Detach cChildOrderId
-      controllerApi.executeCommand(SuspendOrders(Set(cChildOrderId))).await(99.s).orThrow
+      controller.api.executeCommand(SuspendOrders(Set(cChildOrderId))).await(99.s).orThrow
       eventWatch.await[OrderSuspensionMarkedOnAgent](_.key == cChildOrderId)
       CSemaphoreJob.continue()
       eventWatch.await[OrderSuspended](_.key == cChildOrderId)
       assert(controllerState.idToOrder(cChildOrderId).isDetached)
 
       // TransferOrders will succeed, all orders are transferable
-      controllerApi.executeCommand(TransferOrders(v1Workflow.id)).await(99.s).orThrow
+      controller.api.executeCommand(TransferOrders(v1Workflow.id)).await(99.s).orThrow
 
       for (orderId <- Seq(aOrderId, bOrderId, cOrderId, cChildOrderId, dOrderId))
         withClue(s"$orderId: ") {
@@ -130,18 +130,18 @@ with BlockingItemUpdater
 
       eventWatch.await[ItemDeleted](_.event.key == v1Workflow.id)
 
-      controllerApi.executeCommand(AnswerOrderPrompt(aOrderId)).await(99.s).orThrow
+      controller.api.executeCommand(AnswerOrderPrompt(aOrderId)).await(99.s).orThrow
       eventWatch.await[OrderFinished](_.key == aOrderId)
 
-      controllerApi.executeCommand(ResumeOrder(bOrderId)).await(99.s).orThrow
+      controller.api.executeCommand(ResumeOrder(bOrderId)).await(99.s).orThrow
       eventWatch.await[OrderFinished](_.key == bOrderId)
 
       // Forked cOrderId finished, too
-      controllerApi.executeCommand(ResumeOrder(cChildOrderId)).await(99.s).orThrow
+      controller.api.executeCommand(ResumeOrder(cChildOrderId)).await(99.s).orThrow
       eventWatch.await[OrderFinished](_.key == cOrderId)
 
       // Notice-consuming dOrderId finished, too
-      controllerApi.executeCommand(PostNotice(noticeBoad.path, NoticeId("NOTICE")))
+      controller.api.executeCommand(PostNotice(noticeBoad.path, NoticeId("NOTICE")))
         .await(99.s).orThrow
       eventWatch.await[OrderFinished](_.key == dOrderId)
     }

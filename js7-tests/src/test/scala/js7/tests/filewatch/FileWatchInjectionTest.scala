@@ -32,7 +32,7 @@ final class FileWatchInjectionTest extends OurTestSuite with ControllerAgentForS
     StringConstant(sourceDirectory.toString))
 
   "Start with existing file" in {
-    controllerApi.updateUnsignedSimpleItems(Seq(fileWatch)).await(99.s).orThrow
+    controller.api.updateUnsignedSimpleItems(Seq(fileWatch)).await(99.s).orThrow
     // TODO SimpleItemAttachmentFailed
     intercept[TimeoutException] {
       eventWatch.await[ItemAttached](_.event.key == fileWatch.path, timeout = 1.s)

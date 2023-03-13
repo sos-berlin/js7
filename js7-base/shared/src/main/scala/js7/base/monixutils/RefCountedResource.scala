@@ -66,6 +66,9 @@ final class RefCountedResource[A: Tag](base: Resource[Task, A])
           cached.release
       }))
 
+  def cachedValue: Option[A] =
+    maybeCached.map(_.a)
+
   private class Cached(val a: A, val release: Task[Unit]) {
     @volatile var refCount = 1
     @volatile var releaseOnZero = false

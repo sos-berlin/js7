@@ -74,13 +74,13 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
 
       delete(file)
       val a = OrderId("🔵")
-      controllerApi.addOrder(FreshOrder(a, workflow.path, deleteWhenTerminated = true))
+      controller.api.addOrder(FreshOrder(a, workflow.path, deleteWhenTerminated = true))
         .await(99.s).orThrow
       assert(controller.eventWatch.await[OrderLocksAcquired](_.key == a).map(_.value).nonEmpty)
 
       val queuedOrderIds = for (i <- 1 to 10) yield OrderId(s"🟠-$i")
       for (orderId <- queuedOrderIds) {
-        controllerApi.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+        controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
           .await(99.s).orThrow
         assert(controller.eventWatch.await[OrderLocksQueued](_.key == orderId).map(_.value).nonEmpty)
       }
@@ -176,12 +176,12 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
     val order2Id = OrderId("🟥-TWO")
     val aOrderId = OrderId("🟥-A")
     val bOrderId = OrderId("🟥-B")
-    controllerApi.addOrder(FreshOrder(order2Id, workflow2.path, deleteWhenTerminated = true))
+    controller.api.addOrder(FreshOrder(order2Id, workflow2.path, deleteWhenTerminated = true))
       .await(99.s).orThrow
     controller.eventWatch.await[OrderLocksAcquired](_.key == order2Id)
-    controllerApi.addOrder(FreshOrder(aOrderId, workflow1.path, deleteWhenTerminated = true))
+    controller.api.addOrder(FreshOrder(aOrderId, workflow1.path, deleteWhenTerminated = true))
       .await(99.s).orThrow
-    controllerApi.addOrder(FreshOrder(bOrderId, workflow1.path, deleteWhenTerminated = true))
+    controller.api.addOrder(FreshOrder(bOrderId, workflow1.path, deleteWhenTerminated = true))
       .await(99.s).orThrow
     controller.eventWatch.await[OrderTerminated](_.key == aOrderId)
     controller.eventWatch.await[OrderTerminated](_.key == bOrderId)
@@ -223,8 +223,8 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
     val orders = Random.shuffle(
       for (workflow <- Seq(workflow1, workflow2); i <- 1 to 100) yield
         FreshOrder(OrderId(s"${workflow.path.string}-$i"), workflow.path))
-    controllerApi.addOrders(Observable.from(orders)).await(99.s).orThrow
-    controllerApi.executeCommand(DeleteOrdersWhenTerminated(orders.map(_.id))).await(99.s).orThrow
+    controller.api.addOrders(Observable.from(orders)).await(99.s).orThrow
+    controller.api.executeCommand(DeleteOrdersWhenTerminated(orders.map(_.id))).await(99.s).orThrow
     val terminated = for (order <- orders) yield controller.eventWatch.await[OrderTerminated](_.key == order.id)
     for (keyedEvent <- terminated.map(_.last.value))  assert(keyedEvent.event == OrderFinished(), s"- ${keyedEvent.key}")
     for (order <- orders) controller.eventWatch.await[OrderDeleted](_.key == order.id)
@@ -254,11 +254,11 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
     assert(workflow.referencedItemPaths.toSet == Set(lockPath, lock2Path, agentPath))
 
     val orderId = OrderId("🟦")
-    controllerApi.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+    controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
       .await(99.s).orThrow
     controller.eventWatch.await[OrderFailed](_.key == orderId)
 
-    controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+    controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
     controller.eventWatch.await[OrderDeleted](_.key == orderId)
 
     assert(controller.eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
@@ -311,7 +311,7 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
     assert(workflow.referencedItemPaths.toSet == Set(lockPath, lock2Path, agentPath))
 
     val orderId = OrderId("🟨")
-    controllerApi.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+    controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
       .await(99.s).orThrow
     controller.eventWatch.await[OrderDeleted](_.key == orderId)
     assert(controller.eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
@@ -354,12 +354,12 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
     assert(workflow.referencedItemPaths.toSet == Set(lockPath))
 
     val orderId = OrderId("🟩")
-    controllerApi.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+    controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
       .await(99.s).orThrow
 
     controller.eventWatch.await[OrderFailed](_.key == orderId)
-    controllerApi.executeCommand(DeleteOrdersWhenTerminated(Seq(orderId))).await(99.s).orThrow
-    controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+    controller.api.executeCommand(DeleteOrdersWhenTerminated(Seq(orderId))).await(99.s).orThrow
+    controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
     assert(controller.eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
@@ -394,11 +394,11 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
         }
       }""")
     val orderId = OrderId("🟪")
-    controllerApi.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+    controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
       .await(99.s).orThrow
 
     controller.eventWatch.await[OrderFailed](_.key == orderId / "BRANCH")
-    controllerApi.executeCommand(CancelOrders(Seq(orderId / "BRANCH", orderId)))
+    controller.api.executeCommand(CancelOrders(Seq(orderId / "BRANCH", orderId)))
       .await(99.s).orThrow
     assert(controller.eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id, deleteWhenTerminated = true),
@@ -436,7 +436,7 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
           lockedWorkflow = Workflow.of(Finish())))))
 
     val orderId = OrderId("🟫")
-    controllerApi.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+    controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
       .await(99.s).orThrow
     controller.eventWatch.await[OrderFinished](_.key == orderId)
 
@@ -463,7 +463,7 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
         Available,
         Queue.empty))
 
-    controllerApi
+    controller.api
       .updateItems(Observable(
         AddVersion(VersionId("FINISH-REMOVED")),
         RemoveVersioned(workflow.path)))
@@ -483,7 +483,7 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
               lockedWorkflow = Workflow.of(Finish())))))))))
 
     val orderId = OrderId("🟣")
-    controllerApi.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+    controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
       .await(99.s).orThrow
     controller.eventWatch.await[OrderFinished](_.key == orderId)
 
@@ -498,7 +498,7 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
         Available,
         Queue.empty))
 
-    controllerApi
+    controller.api
       .updateItems(Observable(
         AddVersion(VersionId("FINISH-IN-FORK-REMOVED")),
         RemoveVersioned(workflow.path)))
@@ -511,11 +511,11 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
         lock (lock = "LOCK", count = 2) {}
       }""")
     val orderId = OrderId("⬛️")
-    controllerApi.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+    controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
       .await(99.s).orThrow
 
     controller.eventWatch.await[OrderFailed](_.key == orderId)
-    controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+    controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
     assert(controller.eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(workflow.id, deleteWhenTerminated = true),
       OrderStarted,
@@ -558,11 +558,11 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
       val bOrderId = OrderId("🔹")
 
       ASemaphoreJob.reset()
-      controllerApi.addOrder(FreshOrder(aOrderId, aWorkflow.path, deleteWhenTerminated = true))
+      controller.api.addOrder(FreshOrder(aOrderId, aWorkflow.path, deleteWhenTerminated = true))
         .await(99.s).orThrow
       controller.eventWatch.await[OrderStdoutWritten](_.key == aOrderId)
 
-      controllerApi.addOrder(FreshOrder(bOrderId, bWorkflow.path, deleteWhenTerminated = true))
+      controller.api.addOrder(FreshOrder(bOrderId, bWorkflow.path, deleteWhenTerminated = true))
         .await(99.s).orThrow
       controller.eventWatch.await[OrderLocksQueued](_.key == bOrderId)
 
@@ -607,7 +607,7 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
         LockState(
           Lock(lock2Path, itemRevision = Some(ItemRevision(0)))))
 
-      controllerApi
+      controller.api
         .updateItems(Observable(
           AddVersion(VersionId("MULTIPLE-1-DELETE")),
           RemoveVersioned(aWorkflow.path),
@@ -650,12 +650,12 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
 
       val aOrderId = OrderId("♣️️")
       ASemaphoreJob.reset()
-      controllerApi.addOrder(FreshOrder(aOrderId, aWorkflow.path, deleteWhenTerminated = true))
+      controller.api.addOrder(FreshOrder(aOrderId, aWorkflow.path, deleteWhenTerminated = true))
         .await(99.s).orThrow
       controller.eventWatch.await[OrderStdoutWritten](_.key == aOrderId)
 
       val bOrderId = OrderId("♦️")
-      controllerApi.addOrder(FreshOrder(bOrderId, bWorkflow.path, deleteWhenTerminated = true))
+      controller.api.addOrder(FreshOrder(bOrderId, bWorkflow.path, deleteWhenTerminated = true))
         .await(99.s).orThrow
       controller.eventWatch.await[OrderLocksQueued](_.key == bOrderId)
 
@@ -672,7 +672,7 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
 
       val cOrderId = OrderId("♠️")
       BSemaphoreJob.reset()
-      controllerApi.addOrder(FreshOrder(cOrderId, cWorkflow.path, deleteWhenTerminated = true))
+      controller.api.addOrder(FreshOrder(cOrderId, cWorkflow.path, deleteWhenTerminated = true))
         .await(99.s).orThrow
       controller.eventWatch.await[OrderStdoutWritten](_.key == aOrderId)
 
@@ -739,7 +739,7 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
         LockState(
           Lock(lock2Path, itemRevision = Some(ItemRevision(0)))))
 
-      controllerApi
+      controller.api
         .updateItems(Observable(
           AddVersion(VersionId("MULTIPLE-2-DELETE")),
           RemoveVersioned(aWorkflow.path),
@@ -751,7 +751,7 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
 
   "Cancel while waiting for lock" in {
     val lockingOrderId = OrderId("CANCEL-WHILE-QUEUING-IN-LOCK")
-    controllerApi
+    controller.api
       .addOrder(FreshOrder(lockingOrderId, promptInLockWorkflow.path, deleteWhenTerminated = true))
       .await(99.s).orThrow
     controller.eventWatch.await[OrderPrompted](_.key == lockingOrderId)
@@ -763,11 +763,11 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
           count = None,
           lockedWorkflow = Workflow.empty))))
     val orderId = OrderId("CANCEL-WHILE-QUEUING-FOR-LOCK")
-    controllerApi.addOrder(FreshOrder(orderId, queueingWorkflow.path, deleteWhenTerminated = true))
+    controller.api.addOrder(FreshOrder(orderId, queueingWorkflow.path, deleteWhenTerminated = true))
       .await(99.s).orThrow
     controller.eventWatch.await[OrderLocksQueued](_.key == orderId)
 
-    controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+    controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
     controller.eventWatch.await[OrderCancelled](_.key == orderId)
 
     assert(controller.eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
@@ -778,7 +778,7 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
       OrderCancelled,
       OrderDeleted))
 
-    controllerApi.executeCommand(AnswerOrderPrompt(lockingOrderId)).await(99.s).orThrow
+    controller.api.executeCommand(AnswerOrderPrompt(lockingOrderId)).await(99.s).orThrow
     controller.eventWatch.await[OrderDeleted](_.key == lockingOrderId)
     assert(controller.eventWatch.eventsByKey[OrderEvent](lockingOrderId) == Seq(
       OrderAdded(promptInLockWorkflow.id, deleteWhenTerminated = true),
@@ -797,7 +797,7 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
         Available,
         Queue.empty))
 
-    controllerApi.updateItems(Observable(
+    controller.api.updateItems(Observable(
       AddVersion(VersionId("DELETE")),
       RemoveVersioned(queueingWorkflow.path)
     )).await(99.s).orThrow
@@ -805,12 +805,12 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
 
   "Cancel while using a lock" in {
     val orderId = OrderId("CANCEL-WHILE-IN-LOCK")
-    controllerApi
+    controller.api
       .addOrder(FreshOrder(orderId, promptInLockWorkflow.path, deleteWhenTerminated = true))
       .await(99.s).orThrow
     controller.eventWatch.await[OrderPrompted](_.key == orderId)
 
-    controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+    controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
     assert(controller.eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
       OrderAdded(promptInLockWorkflow.id, deleteWhenTerminated = true),
       OrderStarted,
@@ -846,19 +846,19 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
       // First exclusive, then non-exclusive is queued
       val aOrder = FreshOrder(OrderId("EXCLUSIVE-A"), exclusiveWorkflow.path,
         deleteWhenTerminated = true)
-      controllerApi.addOrder(aOrder).await(99.s).orThrow
+      controller.api.addOrder(aOrder).await(99.s).orThrow
       eventWatch.await[OrderPrompted](_.key == aOrder.id)
 
       val bOrder = FreshOrder(OrderId("EXCLUSIVE-B"), nonExclusiveWorkflow.path,
         deleteWhenTerminated = true)
-      controllerApi.addOrder(bOrder).await(99.s).orThrow
+      controller.api.addOrder(bOrder).await(99.s).orThrow
       eventWatch.await[OrderLocksQueued](_.key == bOrder.id)
 
-      controllerApi.executeCommand(AnswerOrderPrompt(aOrder.id)).await(99.s).orThrow
+      controller.api.executeCommand(AnswerOrderPrompt(aOrder.id)).await(99.s).orThrow
       eventWatch.await[OrderFinished](_.key == aOrder.id)
 
       eventWatch.await[OrderPrompted](_.key == bOrder.id)
-      controllerApi.executeCommand(AnswerOrderPrompt(bOrder.id)).await(99.s).orThrow
+      controller.api.executeCommand(AnswerOrderPrompt(bOrder.id)).await(99.s).orThrow
       eventWatch.await[OrderFinished](_.key == bOrder.id)
     }
 
@@ -866,25 +866,25 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
       // First non-exclusive, then exclusive is queued
       val aOrder = FreshOrder(OrderId("EXCLUSIVE-AA"), exclusiveWorkflow.path,
         deleteWhenTerminated = true)
-      controllerApi.addOrder(aOrder).await(99.s).orThrow
+      controller.api.addOrder(aOrder).await(99.s).orThrow
       eventWatch.await[OrderPrompted](_.key == aOrder.id)
 
       val bOrder = FreshOrder(OrderId("EXCLUSIVE-BB"), nonExclusiveWorkflow.path,
         deleteWhenTerminated = true)
-      controllerApi.addOrder(bOrder).await(99.s).orThrow
+      controller.api.addOrder(bOrder).await(99.s).orThrow
       eventWatch.await[OrderLocksQueued](_.key == bOrder.id)
 
-      controllerApi.executeCommand(AnswerOrderPrompt(aOrder.id)).await(99.s).orThrow
+      controller.api.executeCommand(AnswerOrderPrompt(aOrder.id)).await(99.s).orThrow
       eventWatch.await[OrderFinished](_.key == aOrder.id)
       eventWatch.await[OrderDeleted](_.key == aOrder.id)
 
       eventWatch.await[OrderPrompted](_.key == bOrder.id)
-      controllerApi.executeCommand(AnswerOrderPrompt(bOrder.id)).await(99.s).orThrow
+      controller.api.executeCommand(AnswerOrderPrompt(bOrder.id)).await(99.s).orThrow
       eventWatch.await[OrderFinished](_.key == bOrder.id)
       eventWatch.await[OrderDeleted](_.key == bOrder.id)
     }
 
-    controllerApi.updateItems(Observable(
+    controller.api.updateItems(Observable(
       AddVersion(VersionId("REMOVE-EXCLUSIVE")),
       RemoveVersioned(exclusiveWorkflow.path),
       RemoveVersioned(nonExclusiveWorkflow.path)
@@ -938,7 +938,7 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
 
         OrderFailed(Position(0) / "try+1" % 0)))
 
-      controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+      controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
       eventWatch.await[OrderDeleted](_.key == orderId)
     }
   }
@@ -995,7 +995,7 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
 
         OrderFailed(Position(0) / "try+1" % 0)))
 
-      controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+      controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
       eventWatch.await[OrderDeleted](_.key == orderId)
     }
   }
@@ -1006,7 +1006,7 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
         lock (lock = "LOCK") {}
       }""")
     val v = VersionId("DELETE-BUT-ORDER")
-    assert(controllerApi.updateItems(Observable(
+    assert(controller.api.updateItems(Observable(
       AddVersion(v),
       DeleteSimple(lockPath)
     )).await(99.s) == Left(Problem.Combined(Set(
@@ -1023,11 +1023,11 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
       }""")
     val v = VersionId("DELETE-WHILE-ORDER")
     val orderId = OrderId("DELETING")
-    controllerApi.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+    controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
       .await(99.s).orThrow
     controller.eventWatch.await[OrderPrompted](_.key == orderId)
 
-    def removeWorkflowAndLock() = controllerApi
+    def removeWorkflowAndLock() = controller.api
       .updateItems(Observable(
         DeleteSimple(lockPath),
         AddVersion(v),
@@ -1037,7 +1037,7 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
     // Lock cannot be deleted due to orders in the deleted (but still versioned) Workflow
     assert(removeWorkflowAndLock() == Left(ItemIsStillReferencedProblem(lockPath, workflow.id)))
 
-    controllerApi.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
+    controller.api.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
     controller.eventWatch.await[OrderDeleted](_.key == orderId)
     removeWorkflowAndLock().orThrow
   }
@@ -1046,7 +1046,7 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
     val eventId = controller.eventWatch.lastAddedEventId
     val previousControllerState = controllerState
     val v = VersionId("DELETE")
-    controllerApi.updateItems(Observable(
+    controller.api.updateItems(Observable(
       DeleteSimple(lockPath),
       DeleteSimple(lock2Path),
       DeleteSimple(limit2LockPath),

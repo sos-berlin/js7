@@ -33,7 +33,7 @@ final class ExampleTest extends OurTestSuite with ControllerAgentForScalaTest
   "Test" in {
     val eventId = eventWatch.lastAddedEventId
     val orderId = OrderId("🔵")
-    controllerApi.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+    controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
       .await(99.s).orThrow
     assert(eventWatch.await[OrderTerminated](_.key == orderId).map(_.value.event) ==
       Seq(OrderFinished()))

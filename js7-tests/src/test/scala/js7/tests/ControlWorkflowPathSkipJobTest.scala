@@ -86,10 +86,9 @@ extends OurTestSuite with ControllerAgentForScalaTest
   }
 
   "WorkflowPathControl disappears with the last Workflow version" in {
-    val controllerApi = directoryProvider.newControllerApi(controller)
     val eventId = eventWatch.lastAddedEventId
 
-    controllerApi
+    controller.api
       .updateItems(Observable(
         AddVersion(VersionId("DELETE")),
         RemoveVersioned(aWorkflow.path),
@@ -107,7 +106,7 @@ extends OurTestSuite with ControllerAgentForScalaTest
   private def skipJob(workflowPath: WorkflowPath, skip: Boolean, revision: ItemRevision)
   : EventId = {
     val eventId = eventWatch.lastAddedEventId
-    controllerApi
+    controller.api
       .executeCommand(ControlWorkflowPath(workflowPath, skip = Map(
         label -> skip)))
       .await(99.s).orThrow

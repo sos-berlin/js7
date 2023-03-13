@@ -1,7 +1,5 @@
 package js7.tests.controller.cluster
 
-import js7.base.auth.UserId
-import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.problem.Checked.*
 import js7.base.test.OurTestSuite
@@ -37,13 +35,11 @@ final class AppointNodesLatelyControllerClusterTest extends OurTestSuite with Co
 
         var backupController = backup.newController(httpPort = Some(backupControllerPort))
 
-        backupController.httpApiDefaultLogin(Some(UserId("TEST-USER") -> SecretString("TEST-PASSWORD")))
-        backupController.httpApi.login() await 99.s
-        assert(backupController.httpApi.clusterState.await(99.s) == Left(BackupClusterNodeNotAppointed))
+        assert(backupController.api.clusterState.await(99.s) == Left(BackupClusterNodeNotAppointed))
 
-        primaryController.executeCommandForTest(
+        primaryController.api.executeCommand(
           ClusterAppointNodes(clusterSetting.idToUri, clusterSetting.activeId)
-        ).orThrow
+        ).await(99.s).orThrow
         primaryController.eventWatch.await[ClusterCoupled]()
         primaryController.eventWatch.await[ClusterWatchRegistered]()
 
@@ -66,7 +62,8 @@ final class AppointNodesLatelyControllerClusterTest extends OurTestSuite with Co
         // UPDATING BACKUP URI IS REJECTED WHEN COUPLED
         val clusterAppointNodes = ClusterAppointNodes(
           updatedBackupSetting.idToUri, updatedBackupSetting.activeId)
-        assert(primaryController.executeCommandForTest(clusterAppointNodes) == Left(ClusterSettingNotUpdatable))
+        assert(primaryController.api.executeCommand(clusterAppointNodes).await(99.s) ==
+          Left(ClusterSettingNotUpdatable))
 
         // CHANGE BACKUP URI WHEN PASSIVE IS LOST
         locally {
@@ -74,7 +71,7 @@ final class AppointNodesLatelyControllerClusterTest extends OurTestSuite with Co
           backupController.terminate(dontNotifyActiveNode = true).await(99.s)
 
           primaryController.eventWatch.await[ClusterPassiveLost](after = eventId)
-          primaryController.executeCommandForTest(clusterAppointNodes).orThrow
+          primaryController.api.executeCommand(clusterAppointNodes).await(99.s).orThrow
           primaryController.eventWatch.await[ClusterSettingUpdated](after = eventId)
 
           backupController = backup.newController(httpPort = Some(backupControllerPort))

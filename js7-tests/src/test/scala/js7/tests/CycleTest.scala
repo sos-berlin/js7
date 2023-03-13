@@ -224,10 +224,10 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
 
     val eventId = eventWatch.lastAddedEventId
     val orderId = OrderId(s"#$orderDate#CANCEL")
-    controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+    controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
     eventWatch.await[OrderCyclingPrepared](_.key == orderId, after = eventId)
 
-    controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+    controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
     eventWatch.await[OrderCancelled](_.key == orderId, after = eventId)
       .map(_.value.event)
 
@@ -291,7 +291,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
       clock.resetTo(Timestamp("2021-03-28T01:00:00Z"))
       var eventId = eventWatch.lastAddedEventId
       val orderId = OrderId("#2021-03-28#SUMMER")
-      controllerApi.addOrder(FreshOrder(orderId, workflow.path))
+      controller.api.addOrder(FreshOrder(orderId, workflow.path))
         .await(99.s).orThrow
       eventWatch.await[OrderCyclingPrepared](_.key == orderId, after = eventId)
       assert(orderToObstacles(orderId) ==
@@ -317,14 +317,14 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
         Timestamp("2021-03-28T02:00:00Z"),
         Timestamp("2021-03-28T02:30:00Z")))
 
-      controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+      controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
     }
 
     "Summer to winter" in {
       clock.resetTo(Timestamp("2021-10-31T00:00:00Z"))
       var eventId = eventWatch.lastAddedEventId
       val orderId = OrderId("#2021-10-31#WINTER")
-      controllerApi.addOrder(FreshOrder(orderId, workflow.path))
+      controller.api.addOrder(FreshOrder(orderId, workflow.path))
         .await(99.s).orThrow
 
       eventWatch.await[OrderCyclingPrepared](_.key == orderId, after = eventId)
@@ -360,7 +360,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
         Timestamp("2021-10-31T00:30:00Z"),
         Timestamp("2021-10-31T02:00:00Z"))) // 01:00 is skipped!!
 
-      controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+      controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
     }
   }
 
@@ -380,7 +380,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
       val orderDate = timeInterval.start.toLocalDateTime(zone).toLocalDate
       val orderId = OrderId(s"#$orderDate#CycleTesterTest")
       scribe.debug(s"addOrder $orderId")
-      controllerApi
+      controller.api
         .addOrder(FreshOrder(orderId, cycleTestExampleWorkflow.path, deleteWhenTerminated = true))
         .await(99.s).orThrow
 
@@ -424,7 +424,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
 
     var eventId = eventWatch.lastAddedEventId
     val orderId = OrderId("#2021-10-01#ONCE-A-DAY")
-    controllerApi.addOrder(FreshOrder(orderId, workflow.path))
+    controller.api.addOrder(FreshOrder(orderId, workflow.path))
       .await(99.s).orThrow
 
     clock.tick()

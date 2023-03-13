@@ -37,7 +37,7 @@ final class DeleteOrderWhenTerminatedTest extends OurTestSuite with ControllerAg
     val order = FreshOrder(OrderId("🔵"), quickWorkflow.id.path, scheduledFor = Some(Timestamp.now + 1.s))
     controller.addOrderBlocking(order)
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
-    controller.executeCommandAsSystemUser(DeleteOrdersWhenTerminated(Seq(order.id))).await(99.s).orThrow
+    controller.api.executeCommand(DeleteOrdersWhenTerminated(Seq(order.id))).await(99.s).orThrow
     eventWatch.await[OrderDeleted](_.key == order.id)
     assert(eventWatch.eventsByKey[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
       OrderAdded(quickWorkflow.id, order.arguments, order.scheduledFor),
@@ -58,7 +58,7 @@ final class DeleteOrderWhenTerminatedTest extends OurTestSuite with ControllerAg
     val order = FreshOrder(OrderId("🔴"), slowWorkflow.id.path)
     controller.addOrderBlocking(order)
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
-    controller.executeCommandAsSystemUser(DeleteOrdersWhenTerminated(Seq(order.id))).await(99.s).orThrow
+    controller.api.executeCommand(DeleteOrdersWhenTerminated(Seq(order.id))).await(99.s).orThrow
     eventWatch.await[OrderDeleted](_.key == order.id)
     assert(controller.eventWatch.eventsByKey[OrderEvent](order.id).filterNot(_.isInstanceOf[OrderStdWritten]) == Vector(
       OrderAdded(slowWorkflow.id, order.arguments, order.scheduledFor),

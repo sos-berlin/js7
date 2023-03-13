@@ -46,7 +46,7 @@ final class Cycle2Test extends OurTestSuite with ControllerAgentForScalaTest wit
     } else {
       val today = LocalDate.now().toString
       val orderId = OrderId(s"#$today#ONCE-A-DAY")
-      controllerApi.addOrder(FreshOrder(orderId, js2012Workflow.path))
+      controller.api.addOrder(FreshOrder(orderId, js2012Workflow.path))
         .await(99.s).orThrow
       eventWatch.await[OrderCycleStarted](_.key == orderId)
       sleep(1.s)

@@ -37,7 +37,7 @@ final class OrderStartAndStopPositionsTest extends OurTestSuite with ControllerA
       startPosition: Option[Position] = None,
       stopPositions: Set[PositionOrLabel] = Set.empty)
     =
-      controllerApi
+      controller.api
         .addOrder(FreshOrder(
           OrderId("INVALID"), workflow.path,
           startPosition = startPosition,

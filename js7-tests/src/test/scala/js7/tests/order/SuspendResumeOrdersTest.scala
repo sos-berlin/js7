@@ -53,7 +53,7 @@ with BlockingItemUpdater
 
   private lazy val triggerFile = createTempFile("SuspendResumeOrdersTest-", ".tmp")
 
-  import controllerApi.{addOrder, executeCommand}
+  import controller.api.{addOrder, executeCommand}
 
   override def beforeAll() = {
     for (a <- directoryProvider.agents) {
@@ -585,15 +585,14 @@ with BlockingItemUpdater
         Prompt(expr("'PROMPT'"))))
     withTemporaryItem(workflow) { workflow =>
       val orderId = OrderId("SUSPEND-AT-END")
-      controller.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
-        .await(99.s).orThrow
+      controller.addOrderBlocking(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
       eventWatch.await[OrderPrompted](_.key == orderId)
 
-      controllerApi.executeCommand(SuspendOrders(Seq(orderId))).await(99.s).orThrow
-      controllerApi.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
+      controller.api.executeCommand(SuspendOrders(Seq(orderId))).await(99.s).orThrow
+      controller.api.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
       eventWatch.await[OrderSuspended](_.key == orderId)
 
-      controllerApi.executeCommand(ResumeOrders(Seq(orderId))).await(99.s).orThrow
+      controller.api.executeCommand(ResumeOrders(Seq(orderId))).await(99.s).orThrow
       eventWatch.await[OrderDeleted](_.key == orderId)
 
       assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
@@ -631,15 +630,14 @@ with BlockingItemUpdater
     def testSuspendAndCancel(workflow: Workflow): Unit =
       withTemporaryItem(workflow) { workflow =>
         val orderId = OrderId(workflow.path.string)
-        controller.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
-          .await(99.s).orThrow
+        controller.addOrderBlocking(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
         eventWatch.await[OrderPrompted](_.key == orderId)
 
-        controllerApi.executeCommand(SuspendOrders(Seq(orderId))).await(99.s).orThrow
-        controllerApi.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
+        controller.api.executeCommand(SuspendOrders(Seq(orderId))).await(99.s).orThrow
+        controller.api.executeCommand(AnswerOrderPrompt(orderId)).await(99.s).orThrow
         eventWatch.await[OrderSuspended](_.key == orderId)
 
-        controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+        controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
         eventWatch.await[OrderDeleted](_.key == orderId)
 
         assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(

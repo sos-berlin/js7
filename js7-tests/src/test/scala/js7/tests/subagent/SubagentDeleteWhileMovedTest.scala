@@ -31,7 +31,7 @@ final class SubagentDeleteWhileMovedTest extends OurTestSuite with SubagentTeste
     runSubagent(bareSubagentItem) { _ =>
       val aOrderId = OrderId("A-CHANGE-URI-TWICE")
       locally {
-        controllerApi.addOrder(FreshOrder(aOrderId, workflow.path)).await(99.s).orThrow
+        controller.api.addOrder(FreshOrder(aOrderId, workflow.path)).await(99.s).orThrow
         val processingStarted = eventWatch
           .await[OrderProcessingStarted](_.key == aOrderId, after = eventId).head.value.event
         assert(processingStarted == OrderProcessingStarted(bareSubagentId))
@@ -45,7 +45,7 @@ final class SubagentDeleteWhileMovedTest extends OurTestSuite with SubagentTeste
     locally {
       val bare1SubagentItem = bareSubagentItem.copy(uri = Uri("http://localhost:" + findFreeTcpPort()))
       val agentEventId = agent.eventWatch.lastAddedEventId
-      controllerApi.updateItems(Observable(AddOrChangeSimple(bare1SubagentItem)))
+      controller.api.updateItems(Observable(AddOrChangeSimple(bare1SubagentItem)))
         .await(99.s).orThrow
       agent.eventWatch.await[SubagentCouplingFailed](_.key == bareSubagentId, after = agentEventId)
     }
@@ -53,7 +53,7 @@ final class SubagentDeleteWhileMovedTest extends OurTestSuite with SubagentTeste
     // Delete SubagentItem
     locally {
       eventId = eventWatch.lastAddedEventId
-      controllerApi.updateItems(Observable(DeleteSimple(bareSubagentId)))
+      controller.api.updateItems(Observable(DeleteSimple(bareSubagentId)))
         .await(99.s).orThrow
       eventWatch.await[ItemDeleted](_.event.key == bareSubagentId, after = eventId)
     }

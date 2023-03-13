@@ -36,9 +36,9 @@ final class ResetSubagentTest extends OurTestSuite with SubagentTester
     runSubagent(bareSubagentItem) { subagent =>
       eventWatch.await[SubagentCoupled](_.key == bareSubagentId)
       firstSubagentRunId = subagent.subagentRunId
-      controller.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+      controller.addOrderBlocking(FreshOrder(orderId, workflow.path))
 
-      controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+      controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
       eventWatch.await[OrderStdoutWritten](_.key == orderId)
 
       // For this test, the terminating Subagent must no emit any event before shutdown
@@ -47,7 +47,7 @@ final class ResetSubagentTest extends OurTestSuite with SubagentTester
     }
     eventWatch.await[SubagentCouplingFailed](_.key == bareSubagentId)
 
-    controllerApi.executeCommand(ResetSubagent(bareSubagentItem.id)).await(99.s).orThrow
+    controller.api.executeCommand(ResetSubagent(bareSubagentItem.id)).await(99.s).orThrow
     val processed1 = eventWatch.await[OrderProcessed](_.key == orderId).head
     assert(processed1.value.event == OrderProcessed.processLostDueToReset)
 

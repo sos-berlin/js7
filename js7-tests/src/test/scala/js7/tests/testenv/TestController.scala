@@ -2,37 +2,49 @@ package js7.tests.testenv
 
 import akka.actor.ActorSystem
 import com.typesafe.config.Config
-import js7.base.auth.{SimpleUser, UserAndPassword}
+import js7.base.auth.Admission
 import js7.base.eventbus.StandardEventBus
 import js7.base.generic.Completed
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.DurationRichInt
-import js7.base.utils.{Allocated, ProgramTermination}
+import js7.base.utils.CatsUtils.Nel
+import js7.base.utils.ScalaUtils.syntax.RichEither
+import js7.base.utils.{Allocated, Lazy, ProgramTermination}
 import js7.base.web.Uri
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
-import js7.controller.client.HttpControllerApi
+import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.{OrderApi, RunningController}
-import js7.core.command.CommandMeta
 import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerCommand.ShutDown
-import js7.data.controller.{ControllerCommand, ControllerState}
+import js7.data.controller.ControllerState
 import js7.data.event.{EventId, EventRequest, Stamped}
-import js7.data.item.{ItemOperation, UnsignedSimpleItem}
+import js7.data.item.ItemOperation
 import js7.data.order.OrderEvent.{OrderDeleted, OrderFailed, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent}
 import js7.journal.JournalActor
 import js7.journal.watch.StrictEventWatch
+import js7.proxy.ControllerApi
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import scala.concurrent.Future
 
-final class TestController(allocated: Allocated[Task, RunningController])
+final class TestController(allocated: Allocated[Task, RunningController], admission: Admission)
 extends AutoCloseable
 {
+  val conf: ControllerConfiguration =
+    runningController.conf
+
+  private val apiLazy = Lazy(new ControllerApi(
+    admissionsToApiResources(Nel.one(admission))(actorSystem),
+    failWhenUnreachable = true))
+
+  implicit lazy val api: ControllerApi =
+    apiLazy.value
+
   def runningController: RunningController =
     allocated.allocatedThing
 
@@ -43,19 +55,18 @@ extends AutoCloseable
     stop.await(99.s)
 
   def stop: Task[Unit] =
-    allocated.stop
+    stopControllerApi
+      .guarantee(allocated.stop)
 
-  val conf: ControllerConfiguration =
-    runningController.conf
+  private def stopControllerApi: Task[Unit] =
+    Task.defer(apiLazy.toOption.fold(Task.unit)(controllerApi =>
+      controllerApi.stop(dontLogout = true/*Akka may block when server has been shut down*/)))
 
-  val config: Config =
+  def config: Config =
     conf.config
 
   def localUri: Uri =
     runningController.localUri
-
-  def httpApi: HttpControllerApi =
-    runningController.httpApi
 
   val eventWatch: StrictEventWatch =
     runningController.eventWatch
@@ -91,38 +102,13 @@ extends AutoCloseable
         suppressSnapshot = suppressSnapshot,
         clusterAction,
         dontNotifyActiveNode = dontNotifyActiveNode)
-      .<*(allocated.stop)
-
-  def executeCommandForTest(command: ControllerCommand): Checked[command.Response] =
-    executeCommandAsSystemUser(command) await 99.s
-
-  def executeCommandAsSystemUser(command: ControllerCommand): Task[Checked[command.Response]] =
-    runningController.executeCommandAsSystemUser(command)
-
-  def executeCommand(command: ControllerCommand, meta: CommandMeta)
-  : Task[Checked[command.Response]] =
-    runningController.executeCommand(command, meta)
-
-  def updateUnsignedSimpleItemsAsSystemUser(items: Seq[UnsignedSimpleItem])
-  : Task[Checked[Completed]] =
-    runningController.updateUnsignedSimpleItemsAsSystemUser(items)
-
-  def updateUnsignedSimpleItems(user: SimpleUser, items: Seq[UnsignedSimpleItem])
-  : Task[Checked[Completed]] =
-    runningController.updateUnsignedSimpleItems(user, items)
+      .guarantee(allocated.stop)
 
   def updateItemsAsSystemUser(operations: Observable[ItemOperation]): Task[Checked[Completed]] =
     runningController.updateItemsAsSystemUser(operations)
 
-  def updateItems(user: SimpleUser, operations: Observable[ItemOperation])
-  : Task[Checked[Completed]] =
-    runningController.updateItems(user, operations)
-
   def addOrderBlocking(order: FreshOrder): Unit =
-    runningController.addOrderBlocking((order))
-
-  def addOrder(order: FreshOrder): Task[Checked[Unit]] =
-    runningController.addOrder(order)
+    runningController.addOrder(order).await(99.s).orThrow
 
   def runOrder(order: FreshOrder): Seq[Stamped[OrderEvent]] = {
     val timeout = 99.s
@@ -148,9 +134,6 @@ extends AutoCloseable
 
   def clusterState: Task[ClusterState] =
     runningController.clusterState
-
-  def httpApiDefaultLogin(userAndPassword: Option[UserAndPassword]): Unit =
-    runningController.httpApiDefaultLogin(userAndPassword)
 
   def journalActorState: JournalActor.Output.JournalActorState =
     runningController.journalActorState

@@ -149,14 +149,6 @@ extends HasCloser
     itemSigner.sign(item)
 
   /** Proxy's ControllerApi */
-  def newControllerApi(controller: TestController): ControllerApi =
-    newControllerApi(controller.runningController)
-
-  /** Proxy's ControllerApi */
-  def newControllerApi(runningController: RunningController): ControllerApi =
-    controllerApiResource(runningController).allocated.await(99.s)._1  // Caller must stop it
-
-  /** Proxy's ControllerApi */
   def controllerApiResource(runningController: RunningController): Resource[Task, ControllerApi] =
     ControllerApi.resource(
       admissionsToApiResources(
@@ -209,10 +201,10 @@ extends HasCloser
     httpPort: Option[Int] = Some(findFreeTcpPort()),
     httpsPort: Option[Int] = None)
   : TestController =
-      new TestController(
-        runningControllerResource(testWiring, config, httpPort, httpsPort)
-        .toAllocated
-        .await(99.s))
+    testControllerResource(testWiring, config, httpPort, httpsPort)
+      .allocated
+      .map(_._1)
+      .await(99.s)
 
   private def testControllerResource(
     testWiring: TestWiring = controllerTestWiring,
@@ -222,7 +214,11 @@ extends HasCloser
   : Resource[Task, TestController] =
     Resource.make(
       runningControllerResource(testWiring, config, httpPort, httpsPort)
-        .toAllocated.map(new TestController(_)))(
+        .toAllocated
+        .map(runningController =>
+          new TestController(
+            runningController,
+            controllerAdmission(runningController.allocatedThing))))(
       release = _.stop)
 
   private def runningControllerResource(

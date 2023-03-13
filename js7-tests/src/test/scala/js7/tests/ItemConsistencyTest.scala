@@ -36,7 +36,7 @@ final class ItemConsistencyTest extends OurTestSuite with ControllerAgentForScal
   import directoryProvider.itemSigner
 
   "Adding a FileWatch with missing Workflow is rejected" in {
-    val checked = controllerApi
+    val checked = controller.api
       .updateItems(Observable(AddOrChangeSimple(fileWatch)))
       .await(99.s)
     assert(checked == Left(Problem.Combined(Seq(
@@ -45,7 +45,7 @@ final class ItemConsistencyTest extends OurTestSuite with ControllerAgentForScal
   }
 
   "Workflow consistency" in {
-    val checked = controllerApi
+    val checked = controller.api
       .updateItems(Observable(
         AddVersion(versionId),
         AddOrChangeSigned(itemSigner.sign(workflow).signedString)))
@@ -55,7 +55,7 @@ final class ItemConsistencyTest extends OurTestSuite with ControllerAgentForScal
       MissingReferencedItemProblem(workflow.id, jobResource.path),
       MissingReferencedItemProblem(workflow.id, agentPath)))))
 
-    controllerApi
+    controller.api
       .updateItems(Observable(
         AddOrChangeSimple(AgentRef(agentPath, Seq(subagentId))),
         AddOrChangeSimple(SubagentItem(subagentId, agentPath, Uri("http://0.0.0.0:0"))),
@@ -68,7 +68,7 @@ final class ItemConsistencyTest extends OurTestSuite with ControllerAgentForScal
   }
 
   "Adding the FileWatch" in {
-    controllerApi
+    controller.api
       .updateItems(Observable(AddOrChangeSimple(fileWatch)))
       .await(99.s)
       .orThrow

@@ -60,7 +60,7 @@ final class JournaledProxySwitchOverClusterTest extends OurTestSuite with Cluste
           // SWITCH-OVER
 
           lastEventId = primaryController.eventWatch.lastAddedEventId
-          primaryController.executeCommandAsSystemUser(ClusterSwitchOver()).await(99.s).orThrow
+          primaryController.api.executeCommand(ClusterSwitchOver()).await(99.s).orThrow
           primaryController.terminated await 99.s
         }
 
@@ -81,7 +81,7 @@ final class JournaledProxySwitchOverClusterTest extends OurTestSuite with Cluste
             httpPort = Some(new URI(backupController.localUri.toString).getPort)
           ) { backupController2 =>
             runOrder(OrderId("ORDER-ON-BACKUP-RESTARTED"))
-            backupController2.executeCommandAsSystemUser(ShutDown(clusterAction = Some(ClusterAction.Failover)))
+            backupController2.api.executeCommand(ShutDown(clusterAction = Some(ClusterAction.Failover)))
               .await(99.s).orThrow
             backupController2.terminated.await(99.s)
           }

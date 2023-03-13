@@ -2,20 +2,15 @@ package js7.tests.controller.commands
 
 import js7.agent.TestAgent
 import js7.agent.configuration.AgentConfiguration
-import js7.base.auth.{UserAndPassword, UserId}
-import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
-import js7.base.problem.Checked
 import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
-import js7.base.web.HttpClient.HttpException
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.agent.AgentPath
-import js7.data.controller.ControllerCommand
 import js7.data.job.RelativePathExecutable
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
@@ -23,7 +18,6 @@ import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.controller.commands.UpdateRepoAgentTest.*
 import js7.tests.testenv.{DirectoryProvider, TestController}
 import monix.execution.Scheduler.Implicits.traced
-import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer
@@ -40,7 +34,7 @@ final class UpdateRepoAgentTest extends OurTestSuite
     autoClosing(directoryProvider) { _ =>
       (directoryProvider.controller.configDir / "private" / "private.conf") ++=
         """js7.auth.users {
-          |  UpdateRepoAgentTest {
+          |  TEST-USER {
           |    password = "plain:TEST-PASSWORD"
           |    permissions = [ UpdateItem ]
           |  }
@@ -53,11 +47,6 @@ final class UpdateRepoAgentTest extends OurTestSuite
       val agent1 = directoryProvider.startAgents().await(99.s).head
       var agent2: TestAgent = null
       directoryProvider.runController() { controller =>
-        controller.httpApi
-          .login_(Some(UserAndPassword(
-            UserId("UpdateRepoAgentTest"),
-            SecretString("TEST-PASSWORD"))))
-          .await(99.s)
         runOrder(controller, OrderId("🔺"))
         agent1.terminate() await 99.s
 
@@ -71,9 +60,10 @@ final class UpdateRepoAgentTest extends OurTestSuite
             httpPort = Some(port))
           ).await(99.s)
 
-          controller.updateUnsignedSimpleItemsAsSystemUser(Seq(
-            directoryProvider.subagentItems.head.copy(uri = agent2.localUri)
-          )).await(99.s).orThrow
+          controller.api
+            .updateUnsignedSimpleItems(Seq(
+              directoryProvider.subagentItems.head.copy(uri = agent2.localUri)))
+            .await(99.s).orThrow
           runOrder(controller, OrderId(s"🔵-$i"))
         }
       }
@@ -86,11 +76,6 @@ final class UpdateRepoAgentTest extends OurTestSuite
       agent2.terminate() await 99.s
     }
   }
-
-  private def executeCommand(controller: TestController, cmd: ControllerCommand): Checked[cmd.Response] =
-    controller.httpApi.executeCommand(cmd).map(Right.apply)
-      .onErrorRecover { case HttpException.HasProblem(problem) => Left(problem) }
-      .await(99.seconds)
 }
 
 object UpdateRepoAgentTest

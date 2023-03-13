@@ -70,7 +70,7 @@ with BlockingItemUpdater
       val expecting01OrderIds = Seq(
         OrderId(s"#$qualifier#EXPECTING-0-1-A"),
         OrderId(s"#$qualifier#EXPECTING-0-1-B"))
-      controllerApi.addOrders(
+      controller.api.addOrders(
         Observable.fromIterable(expecting01OrderIds).map(FreshOrder(_, expecting01Workflow.path))
       ).await(99.s).orThrow
       for (orderId <- expecting01OrderIds) eventWatch.await[OrderNoticesExpected](_.key == orderId)
@@ -139,7 +139,7 @@ with BlockingItemUpdater
       val notice = Notice(NoticeId(qualifier), board0.path, endOfLife0)
 
       val expectingOrderIds = Seq(OrderId(s"#$qualifier#EXPECTING-A"), OrderId(s"#$qualifier#EXPECTING-B"))
-      controllerApi.addOrders(
+      controller.api.addOrders(
         Observable.fromIterable(expectingOrderIds).map(FreshOrder(_, expecting0Workflow.path))
       ).await(99.s).orThrow
       for (orderId <- expectingOrderIds) eventWatch.await[OrderNoticesExpected](_.key == orderId)
@@ -233,17 +233,17 @@ with BlockingItemUpdater
       val noticeId = NoticeId(qualifier)
 
       val orderIds = Seq(OrderId(s"#$qualifier#EXPECTING-A"), OrderId(s"#$qualifier#EXPECTING-B"))
-      controllerApi.addOrders(
+      controller.api.addOrders(
         Observable.fromIterable(orderIds).map(FreshOrder(_, expectingAgentWorkflow.path))
       ).await(99.s).orThrow
       for (orderId <- orderIds) eventWatch.await[OrderNoticesExpected](_.key == orderId)
-      controllerApi.executeCommand(
+      controller.api.executeCommand(
         ControllerCommand.PostNotice(board0.path, noticeId)
       ).await(99.s).orThrow
       for (orderId <- orderIds) eventWatch.await[OrderNoticesRead](_.key == orderId)
 
       val notice2 = Notice(NoticeId("2222-08-09"), board0.path, endOfLife0)
-      controllerApi.executeCommand(
+      controller.api.executeCommand(
         ControllerCommand.PostNotice(board0.path, notice2.id)
       ).await(99.s).orThrow
       assert(controllerState.keyTo(BoardState)(board0.path).idToNotice(notice2.id) ==
@@ -252,13 +252,13 @@ with BlockingItemUpdater
 
     "PostNotices command without expecting order" in {
       val notice = Notice(NoticeId("2222-08-09"), board0.path, endOfLife0)
-      controllerApi.executeCommand(
+      controller.api.executeCommand(
         ControllerCommand.PostNotice(board0.path, notice.id)
       ).await(99.s).orThrow
 
       // With explicit endOfLife
       val notice2 = Notice(NoticeId("2222-08-10"), board0.path, Timestamp("2222-08-09T12:00:00Z"))
-      controllerApi.executeCommand(
+      controller.api.executeCommand(
         ControllerCommand.PostNotice(board0.path, notice2.id,
           endOfLife = Some(notice2.endOfLife))
       ).await(99.s).orThrow
@@ -284,13 +284,13 @@ with BlockingItemUpdater
 
       val eventId = eventWatch.lastAddedEventId
 
-      assert(controllerApi.executeCommand(DeleteNotice(board0.path, NoticeId("UNKNOWN"))).await(99.s) ==
+      assert(controller.api.executeCommand(DeleteNotice(board0.path, NoticeId("UNKNOWN"))).await(99.s) ==
         Left(UnknownKeyProblem("NoticeId", "NoticeId:UNKNOWN")))
 
-      assert(controllerApi.executeCommand(DeleteNotice(BoardPath("UNKNOWN"), notice.id)).await(99.s) ==
+      assert(controller.api.executeCommand(DeleteNotice(BoardPath("UNKNOWN"), notice.id)).await(99.s) ==
         Left(UnknownKeyProblem("BoardPath", "Board:UNKNOWN")))
 
-      controllerApi.executeCommand(DeleteNotice(board0.path, notice.id)).await(99.s).orThrow
+      controller.api.executeCommand(DeleteNotice(board0.path, notice.id)).await(99.s).orThrow
       assert(eventWatch.await[NoticeDeleted](_.key == board0.path, after = eventId).head.value.event ==
         NoticeDeleted(notice.id))
     }
@@ -313,13 +313,13 @@ with BlockingItemUpdater
       val expectingOrderId = OrderId(s"#$qualifier#EXPECTING")
       val startAt = startTimestamp + 10.days
 
-      controllerApi
+      controller.api
         .addOrders(Observable(
           FreshOrder(posterOrderId, posting0Workflow.path, scheduledFor = Some(startAt)),
           FreshOrder(expectingOrderId, expecting0Workflow.path, scheduledFor = Some(startAt))))
         .await(99.s).orThrow
       sleep(500.ms)
-      val idToOrder = controllerApi.controllerState.await(99.s).orThrow.idToOrder
+      val idToOrder = controller.api.controllerState.await(99.s).orThrow.idToOrder
       assert(idToOrder(posterOrderId).isState[Fresh] && idToOrder(expectingOrderId).isState[Fresh])
 
       clock := startAt
@@ -331,32 +331,32 @@ with BlockingItemUpdater
       val qualifier = "2222-11-11"
       val postingOrderId = OrderId(s"#$qualifier#SUSPENDIBLE-POSTING")
       val expectingOrderId = OrderId(s"#$qualifier#SUSPENDIBLE-EXPECTING")
-      controllerApi.addOrder(FreshOrder(expectingOrderId, expecting0Workflow.path))
+      controller.api.addOrder(FreshOrder(expectingOrderId, expecting0Workflow.path))
         .await(99.s).orThrow
       eventWatch.await[OrderNoticesExpected](_.key == expectingOrderId)
 
-      controllerApi.executeCommand(SuspendOrders(Seq(expectingOrderId))).await(99.s).orThrow
+      controller.api.executeCommand(SuspendOrders(Seq(expectingOrderId))).await(99.s).orThrow
       eventWatch.await[OrderSuspensionMarked](_.key == expectingOrderId)
 
       val eventId = eventWatch.lastAddedEventId
-      controllerApi.addOrder(FreshOrder(postingOrderId, posting0Workflow.path))
+      controller.api.addOrder(FreshOrder(postingOrderId, posting0Workflow.path))
         .await(99.s).orThrow
       eventWatch.await[OrderNoticesRead](_.key == expectingOrderId)
       eventWatch.await[OrderMoved](_.key == expectingOrderId, after = eventId)
       eventWatch.await[OrderSuspended](_.key == expectingOrderId, after = eventId)
 
-      controllerApi.executeCommand(ResumeOrder(expectingOrderId)).await(99.s).orThrow
+      controller.api.executeCommand(ResumeOrder(expectingOrderId)).await(99.s).orThrow
       eventWatch.await[OrderFinished](_.key == expectingOrderId)
     }
 
     "Order.ExpectingNotice is cancelable" in {
       val qualifier = "2222-12-12"
       val expectingOrderId = OrderId(s"#$qualifier#CANCELABLE-EXPECTING")
-      controllerApi.addOrder(FreshOrder(expectingOrderId, expecting0Workflow.path))
+      controller.api.addOrder(FreshOrder(expectingOrderId, expecting0Workflow.path))
         .await(99.s).orThrow
       eventWatch.await[OrderNoticesExpected](_.key == expectingOrderId)
 
-      controllerApi.executeCommand(CancelOrders(Seq(expectingOrderId))).await(99.s).orThrow
+      controller.api.executeCommand(CancelOrders(Seq(expectingOrderId))).await(99.s).orThrow
       eventWatch.await[OrderCancelled](_.key == expectingOrderId)
     }
   }
@@ -365,7 +365,7 @@ with BlockingItemUpdater
     val boardState = controllerState.keyTo(BoardState)(board0.path)
 
     val updatedBoard = board0.copy(postOrderToNoticeId = expr("$jsOrderId"))
-    controllerApi.updateUnsignedSimpleItems(Seq(updatedBoard)).await(99.s).orThrow
+    controller.api.updateUnsignedSimpleItems(Seq(updatedBoard)).await(99.s).orThrow
 
     assert(controllerState.keyTo(BoardState)(board0.path) ==
       boardState.copy(
@@ -396,11 +396,11 @@ with BlockingItemUpdater
       ItemIsStillReferencedProblem(board2.path, expecting02Workflow.id),
       ItemIsStillReferencedProblem(board2.path, posting12Workflow.id)))))
 
-    controllerApi
+    controller.api
       .deleteOrdersWhenTerminated(Observable.fromIterable(
         controllerState.idToOrder.keys))
       .await(99.s).orThrow
-    controllerApi
+    controller.api
       .updateItems(Observable(
         DeleteSimple(board0.path),
         DeleteSimple(board1.path),
@@ -438,10 +438,10 @@ with BlockingItemUpdater
       val day = Timestamp.now.toIsoString.take(10) // yyyy-MM-dd
       val postOrderId = OrderId(s"#$day#JOC-1446-POST")
       val expectOrderId = OrderId(s"#$day#JOC-1446-EXPECT")
-      controllerApi
+      controller.api
         .addOrder(FreshOrder(postOrderId, postingWorkflow.path, deleteWhenTerminated = true))
         .await(99.s).orThrow
-      controllerApi
+      controller.api
         .addOrder(FreshOrder(expectOrderId, expectingWorkflow.path, deleteWhenTerminated = true))
         .await(99.s).orThrow
       eventWatch.await[OrderDeleted](_.key == postOrderId)

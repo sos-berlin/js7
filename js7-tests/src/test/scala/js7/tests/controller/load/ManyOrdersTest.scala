@@ -42,7 +42,7 @@ final class ManyOrdersTest extends OurTestSuite with ControllerAgentForScalaTest
   }
 
   override def afterAll() = {
-    controllerApi.stop await 99.s
+    controller.api.stop await 99.s
     controller.terminate() await longTimeout
     super.afterAll()
   }
@@ -51,7 +51,7 @@ final class ManyOrdersTest extends OurTestSuite with ControllerAgentForScalaTest
     val t = new Stopwatch
     addOrders()
     if (n > defaultN) println(t.itemsPerSecondString(n, "orders added"))
-    controller.executeCommandAsSystemUser(TakeSnapshot) await longTimeout
+    controller.api.executeCommand(TakeSnapshot) await longTimeout
     if (n > defaultN) println(t.itemsPerSecondString(n, "orders written to snapshot"))
     waitUntilAllOrdersFinished(t)
     if (n > defaultN) println(t.itemsPerSecondString(n, "orders processed"))
@@ -61,7 +61,7 @@ final class ManyOrdersTest extends OurTestSuite with ControllerAgentForScalaTest
     val payload = "BIG-"
     val order = FreshOrder(OrderId(s"ORDER"), workflow.path,
       arguments = Map("BIG" -> StringValue(payload * (orderSize / payload.length))))
-    controllerApi
+    controller.api
       .addOrders(Observable
         .fromIterable(1 to n)
         .map(i => order.copy(id = OrderId(s"ORDER-$i"))))

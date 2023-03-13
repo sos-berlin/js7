@@ -74,7 +74,7 @@ final class SubagentSelectionTest extends OurTestSuite with SubagentTester with 
     // Start Subagents
     idToRelease
 
-    controllerApi
+    controller.api
       .updateItems(
         Observable(
           Observable(
@@ -139,7 +139,7 @@ final class SubagentSelectionTest extends OurTestSuite with SubagentTester with 
   def runOrdersAndCheck(n: Int, expected: Map[SubagentId, Int]): Unit = {
     val eventId = eventWatch.lastAddedEventId
     val orderIds = Vector.fill(n) { nextOrderId() }
-    controllerApi.addOrders(Observable.fromIterable(orderIds).map(toOrder))
+    controller.api.addOrders(Observable.fromIterable(orderIds).map(toOrder))
       .await(99.s).orThrow
     val started = for (orderId <- orderIds) yield
       eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
@@ -152,13 +152,13 @@ final class SubagentSelectionTest extends OurTestSuite with SubagentTester with 
     val eventId = eventWatch.lastAddedEventId
     val changed = subagentSelection.copy(subagentToPriority = Map(
       aSubagentId -> 1))
-    controllerApi
+    controller.api
       .updateItems(Observable(AddOrChangeSimple(changed)))
       .await(99.s)
       .orThrow
 
     val orderId = OrderId("CHANGED-SUBAGENTSELECTION")
-    controllerApi.addOrder(toOrder(orderId)).await(99.s).orThrow
+    controller.api.addOrder(toOrder(orderId)).await(99.s).orThrow
     val started = eventWatch.await[OrderProcessingStarted](_.key == orderId, after = eventId)
       .head.value.event
     assert(started.subagentId.contains(aSubagentId))
@@ -184,12 +184,12 @@ final class SubagentSelectionTest extends OurTestSuite with SubagentTester with 
 
   "SubagentSelection can only be deleted after Workflow" in {
     val eventId = eventWatch.lastAddedEventId
-    val checked = controllerApi
+    val checked = controller.api
       .updateItems(Observable(DeleteSimple(subagentSelection.id)))
       .await(99.s)
     assert(checked == Left(ItemIsStillReferencedProblem(subagentSelection.id, workflow.id)))
 
-    controllerApi
+    controller.api
       .updateItems(Observable(
         AddVersion(VersionId("DELETE")),
         RemoveVersioned(workflow.path)))
@@ -199,7 +199,7 @@ final class SubagentSelectionTest extends OurTestSuite with SubagentTester with 
   }
 
   "Subagent can only be deleted after SubagentSelection" in {
-    val checked = controllerApi
+    val checked = controller.api
       .updateItems(Observable(DeleteSimple(aSubagentId)))
       .await(99.s)
     assert(checked == Left(ItemIsStillReferencedProblem(aSubagentId, subagentSelection.id)))
@@ -207,7 +207,7 @@ final class SubagentSelectionTest extends OurTestSuite with SubagentTester with 
 
   "Delete SubagentSelection" in {
     val eventId = eventWatch.lastAddedEventId
-    controllerApi
+    controller.api
       .updateItems(Observable(DeleteSimple(subagentSelection.id)))
       .await(99.s)
     eventWatch.await[ItemDeleted](_.event.key == subagentSelection.id, after = eventId)
@@ -215,7 +215,7 @@ final class SubagentSelectionTest extends OurTestSuite with SubagentTester with 
 
   "Delete Subagents" in {
     val eventId = eventWatch.lastAddedEventId
-    controllerApi
+    controller.api
       .updateItems(Observable(
         DeleteSimple(bSubagentId),
         DeleteSimple(cSubagentId),

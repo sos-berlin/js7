@@ -43,20 +43,20 @@ with BlockingItemUpdater
       TestJob.execute(agentPath),
       TestJob.execute(agentPath))))
     val orderId = OrderId("CANCELING")
-    controllerApi.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
+    controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
     eventWatch.await[OrderStdoutWritten](_.key == orderId)
 
     val agentTerminated = agent.terminate()
     TestJob.continue()
     agentTerminated.await(99.s)
 
-    controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+    controller.api.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
 
     // Delete Agent's journal
     deleteDirectoryContentRecursively(directoryProvider.agents.head.stateDir)
 
     val freshAgent = directoryProvider.startAgent(agentPath) await 99.s
-    controllerApi.executeCommand(ResetAgent(agentPath)).await(99.s).orThrow
+    controller.api.executeCommand(ResetAgent(agentPath)).await(99.s).orThrow
     eventWatch.await[OrderTerminated](_.key == orderId)
 
     assert(eventWatch.eventsByKey[OrderEvent](orderId)

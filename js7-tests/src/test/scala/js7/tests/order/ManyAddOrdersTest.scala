@@ -58,10 +58,10 @@ final class ManyAddOrdersTest extends OurTestSuite with ControllerAgentForScalaT
       .flatMap(orderIds =>
         Observable.fromTask(
           orderIds.toVector.traverse(orderId =>
-            controllerApi.addOrders(Observable.pure(FreshOrder(orderId, workflowPath)))
+            controller.api.addOrders(Observable.pure(FreshOrder(orderId, workflowPath)))
           ).delayExecution(Random.nextInt(2).ms) >>
             orderIds.toVector.traverse(orderId =>
-              controllerApi.deleteOrdersWhenTerminated(Observable(orderId)))
+              controller.api.deleteOrdersWhenTerminated(Observable(orderId)))
         ))
       .completedL
     val awaitRemoved = controller.eventWatch

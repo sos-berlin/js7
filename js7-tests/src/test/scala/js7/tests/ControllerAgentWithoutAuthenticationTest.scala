@@ -3,7 +3,10 @@ package js7.tests
 import java.nio.file.Files.{createDirectories, createDirectory}
 import js7.agent.TestAgent
 import js7.agent.configuration.AgentConfiguration
+import js7.base.auth.{Admission, UserAndPassword, UserId}
+import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.crypt.silly.{SillySignature, SillySigner}
+import js7.base.generic.SecretString
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.problem.Checked.Ops
@@ -87,17 +90,25 @@ final class ControllerAgentWithoutAuthenticationTest extends OurTestSuite
         "--config-directory=" + dir / "agent/config" ::
         "--data-directory=" + dir / "agent/data" ::
         "--http-port=" + agentPort :: Nil))
-      val controllerConfiguration = ControllerConfiguration.fromCommandLine(CommandLineArguments(
-        "--config-directory=" + dir / "controller/config" ::
-        "--data-directory=" + dir / "controller/data" ::
-        "--http-port=" + controllerPort :: Nil))
+      val controllerConfiguration = ControllerConfiguration
+        .fromCommandLine(
+          CommandLineArguments(
+            "--config-directory=" + dir / "controller/config" ::
+              "--data-directory=" + dir / "controller/data" ::
+              "--http-port=" + controllerPort :: Nil),
+          config"""js7.auth.users.TEST-USER = "plain:TEST-PASSWORD" """)
 
       val subagentId = SubagentId("SUBAGENT")
       val agentRef = AgentRef(agentPath, directors = Seq(subagentId))
       val subagentItem = SubagentItem(subagentId, agentPath, Uri(s"http://127.0.0.1:$agentPort"))
       TestAgent.blockingRun(agentConfiguration, 99.s) { _ =>
         RunningController.blockingRun(controllerConfiguration, 99.s) { runningController =>
-          val testController = new TestController(new Allocated(runningController, Task.unit))
+          val testController = new TestController(
+            new Allocated(runningController, Task.unit),
+            Admission(
+              runningController.localUri,
+              Some(UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))))
+          )
           testController.waitUntilReady()
 
           testController.updateItemsAsSystemUser(Observable(

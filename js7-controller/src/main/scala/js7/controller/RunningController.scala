@@ -8,7 +8,7 @@ import cats.syntax.traverse.*
 import com.softwaremill.diffx.generic.auto.*
 import com.softwaremill.tagging.{@@, Tagger}
 import com.typesafe.config.Config
-import js7.base.auth.{SimpleUser, UserAndPassword}
+import js7.base.auth.SimpleUser
 import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier
 import js7.base.eventbus.{EventPublisher, StandardEventBus}
 import js7.base.generic.Completed
@@ -27,11 +27,10 @@ import js7.base.time.AlarmClock
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
-import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CatsBlocking.BlockingTaskResource
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SyncResource.syntax.RichSyncResource
-import js7.base.utils.{Allocated, ProgramTermination, SetOnce}
+import js7.base.utils.{Allocated, ProgramTermination}
 import js7.base.web.Uri
 import js7.cluster.ClusterNode.RestartAfterJournalTruncationException
 import js7.cluster.{ClusterNode, WorkingClusterNode}
@@ -40,7 +39,7 @@ import js7.common.akkautils.Akkas.actorSystemResource
 import js7.common.system.ThreadPools
 import js7.controller.ControllerOrderKeeper.ControllerIsShuttingDownProblem
 import js7.controller.RunningController.*
-import js7.controller.client.{AkkaHttpControllerApi, HttpControllerApi}
+import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.command.ControllerCommandExecutor
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.item.ItemUpdater
@@ -82,7 +81,7 @@ final class RunningController private(
   commandExecutor: ControllerCommandExecutor,
   itemUpdater: ItemUpdater,
   whenReady: Future[Unit],
-  terminated1: Future[ProgramTermination],
+  val terminated: Future[ProgramTermination],
   val sessionRegister: SessionRegister[SimpleSession],
   val conf: ControllerConfiguration,
   val testEventBus: StandardEventBus[Any],
@@ -90,29 +89,7 @@ final class RunningController private(
   (implicit val scheduler: Scheduler)
 extends MainService
 {
-  private val httpApiUserAndPassword = SetOnce[Option[UserAndPassword]]
-  private val _httpApi = SetOnce[AkkaHttpControllerApi]
-
   @TestOnly lazy val localUri = localUri_()
-  @TestOnly lazy val httpApi: HttpControllerApi = {
-    if (_httpApi.isEmpty) {
-      httpApiUserAndPassword.trySet(None)
-      _httpApi := new AkkaHttpControllerApi(localUri, httpApiUserAndPassword.orThrow,
-        actorSystem = actorSystem, config = conf.config, name = conf.name)
-    }
-    _httpApi.orThrow
-  }
-
-  val terminated: Future[ProgramTermination] =
-    terminated1
-      .map { o =>
-        for (o <- _httpApi) {
-          logger.debugCall("_httpApi.close()", "") {
-            o.close() // Close before server
-          }
-        }
-        o
-      }
 
   val untilTerminated =
     Task.fromFuture(terminated)
@@ -139,34 +116,30 @@ extends MainService
             Task.pure(ProgramTermination())
           case None =>
             logger.debugTask(
-              for {
-                _ <- _httpApi.toOption.fold(Task.unit)(_
-                  .tryLogout.void.onErrorHandle(t => logger.warn(t.toString)))
-                _ <-
-                  executeCommandAsSystemUser(
-                    ControllerCommand.ShutDown(
-                      suppressSnapshot = suppressSnapshot,
-                      clusterAction = clusterAction,
-                      dontNotifyActiveNode = dontNotifyActiveNode)
-                  ).flatMap {
-                    case Left(problem @ ControllerIsShuttingDownProblem) =>
-                      logger.info(problem.toString)
-                      untilTerminated.map(Right(_))
-                    case o => Task.pure(o)
-                  }.map(_.orThrow)
-                t <- untilTerminated
-              } yield t)
+              executeCommandAsSystemUser(
+                ControllerCommand.ShutDown(
+                  suppressSnapshot = suppressSnapshot,
+                  clusterAction = clusterAction,
+                  dontNotifyActiveNode = dontNotifyActiveNode)
+              ).rightAs(())
+                .flatMap {
+                  case Left(problem @ ControllerIsShuttingDownProblem) =>
+                    logger.info(problem.toString)
+                    Task.right(())
+                  case o => Task.pure(o)
+                }.map(_.orThrow)
+                .*>(untilTerminated))
         }
     }.logWhenItTakesLonger
 
-  def executeCommandAsSystemUser(command: ControllerCommand): Task[Checked[command.Response]] =
+  private def executeCommandAsSystemUser(command: ControllerCommand): Task[Checked[command.Response]] =
     for {
       checkedSession <- sessionRegister.systemSession
       checkedChecked <- checkedSession.traverse(session =>
         executeCommand(command, CommandMeta(session.currentUser)))
     } yield checkedChecked.flatten
 
-  def executeCommand(command: ControllerCommand, meta: CommandMeta): Task[Checked[command.Response]] =
+  private def executeCommand(command: ControllerCommand, meta: CommandMeta): Task[Checked[command.Response]] =
     logger.debugTask("executeCommand", command.toShortString)(
       commandExecutor.executeCommand(command, meta)
         .executeOn(scheduler))
@@ -176,7 +149,7 @@ extends MainService
       .flatMapT(updateUnsignedSimpleItems(_, items))
       .executeOn(scheduler)
 
-  def updateUnsignedSimpleItems(user: SimpleUser, items: Seq[UnsignedSimpleItem]): Task[Checked[Completed]] =
+  private def updateUnsignedSimpleItems(user: SimpleUser, items: Seq[UnsignedSimpleItem]): Task[Checked[Completed]] =
     VerifiedUpdateItems
       .fromOperations(
         Observable.fromIterable(items)
@@ -190,16 +163,11 @@ extends MainService
     sessionRegister.systemUser
       .flatMapT(updateItems(_, operations))
 
-  def updateItems(user: SimpleUser, operations: Observable[ItemOperation]): Task[Checked[Completed]] =
+  private def updateItems(user: SimpleUser, operations: Observable[ItemOperation]): Task[Checked[Completed]] =
     VerifiedUpdateItems
       .fromOperations(operations, itemUpdater.signedItemVerifier.verify, user)
       .flatMapT(itemUpdater.updateItems)
       .executeOn(scheduler)
-
-  @TestOnly
-  def addOrderBlocking(order: FreshOrder): Unit =
-    addOrder(order)
-      .runToFuture.await(99.s).orThrow
 
   @TestOnly
   def addOrder(order: FreshOrder): Task[Checked[Unit]] =
@@ -216,13 +184,6 @@ extends MainService
   @TestOnly
   def clusterState: Task[ClusterState] =
     controllerState.map(_.clusterState)
-
-  @TestOnly
-  def httpApiDefaultLogin(userAndPassword: Option[UserAndPassword]): Unit = {
-    assertThat(_httpApi.isEmpty)
-    httpApiUserAndPassword := userAndPassword
-    httpApi
-  }
 
   @TestOnly
   def journalActorState: Output.JournalActorState = {

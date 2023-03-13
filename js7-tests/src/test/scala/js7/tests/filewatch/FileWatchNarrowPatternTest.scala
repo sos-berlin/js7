@@ -54,7 +54,7 @@ final class FileWatchNarrowPatternTest extends OurTestSuite with ControllerAgent
 
   "Add two files" in {
     createDirectory(sourceDirectory)
-    controllerApi.updateUnsignedSimpleItems(Seq(fileWatch)).await(99.s).orThrow
+    controller.api.updateUnsignedSimpleItems(Seq(fileWatch)).await(99.s).orThrow
     eventWatch.await[ItemAttached](_.event.key == fileWatch.path)
 
     // Add one by one to circument AgentOrderKeeper's problem with multiple orders (JobDriverStarvationTest)
@@ -70,7 +70,7 @@ final class FileWatchNarrowPatternTest extends OurTestSuite with ControllerAgent
   "Narrow the pattern" in {
     val eventId = eventWatch.lastAddedEventId
     val changedFileWatch = fileWatch.copy(pattern = Some(SimplePattern("NARROW-.+")))
-    controllerApi.updateUnsignedSimpleItems(Seq(changedFileWatch)).await(99.s).orThrow
+    controller.api.updateUnsignedSimpleItems(Seq(changedFileWatch)).await(99.s).orThrow
     eventWatch.await[ItemAttached](_.event.key == fileWatch.path, after = eventId)
 
     // Now, the A file is not match and out of scope, and a ExternalOrderVanished is emitted.

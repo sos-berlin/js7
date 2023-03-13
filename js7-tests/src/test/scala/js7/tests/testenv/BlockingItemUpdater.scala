@@ -8,7 +8,6 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.controller.ControllerState
 import js7.data.item.ItemOperation.{AddOrChangeOperation, AddOrChangeSigned, AddOrChangeSimple, AddVersion}
 import js7.data.item.{InventoryItem, InventoryItemPath, ItemOperation, SignableItem, UnsignedSimpleItem, VersionId, VersionedItem, VersionedItemPath}
-import js7.proxy.ControllerApi
 import monix.execution.Scheduler
 import monix.execution.atomic.Atomic
 import monix.reactive.Observable
@@ -18,7 +17,7 @@ trait BlockingItemUpdater {
   private val nextVersionId_ = Atomic(1)
 
   protected def sign[A <: SignableItem](item: A): Signed[A]
-  protected def controllerApi: ControllerApi
+  protected def controller: TestController
   protected def controllerState: ControllerState
 
   protected final def nextVersionId() = {
@@ -74,7 +73,7 @@ trait BlockingItemUpdater {
         case item: UnsignedSimpleItem => AddOrChangeSimple(item)
       }
 
-    controllerApi
+    controller.api
       .updateItems(
         Observable.fromIterable(versionId.toOption.map(AddVersion(_))) ++
           Observable.fromIterable(operations))
@@ -85,7 +84,7 @@ trait BlockingItemUpdater {
   }
 
   protected final def deleteItems(paths: InventoryItemPath*)(implicit s: Scheduler): Unit =
-    controllerApi
+    controller.api
       .updateItems(
         Observable.fromIterable(
           (paths.exists(_.isInstanceOf[VersionedItemPath]) ? AddVersion(nextVersionId())) ++

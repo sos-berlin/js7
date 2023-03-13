@@ -50,7 +50,7 @@ final class AdmissionTimeTest extends OurTestSuite with ControllerAgentForScalaT
     "Wait for start of permission period" in {
       val orderId = OrderId("🔵")
       val eventId = eventWatch.lastAddedEventId
-      controllerApi.addOrder(FreshOrder(orderId, sundayWorkflow.path)).await(99.s).orThrow
+      controller.api.addOrder(FreshOrder(orderId, sundayWorkflow.path)).await(99.s).orThrow
       eventWatch.await[OrderAttached](_.key == orderId, after = eventId)
       assert(controllerState.idToOrder(orderId).isState[Fresh])
       assert(controllerState.idToOrder(orderId).position == Position(0))
@@ -77,7 +77,7 @@ final class AdmissionTimeTest extends OurTestSuite with ControllerAgentForScalaT
       clock := local("2021-03-21T03:59")
       val eventId = eventWatch.lastAddedEventId
       val orderId = OrderId("🟢")
-      controllerApi.addOrder(FreshOrder(orderId, sundayWorkflow.path)).await(99.s).orThrow
+      controller.api.addOrder(FreshOrder(orderId, sundayWorkflow.path)).await(99.s).orThrow
       eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
     }
 
@@ -85,7 +85,7 @@ final class AdmissionTimeTest extends OurTestSuite with ControllerAgentForScalaT
       clock := local("2021-03-21T04:00")
       val eventId = eventWatch.lastAddedEventId
       val orderId = OrderId("🟠")
-      controllerApi.addOrder(FreshOrder(orderId, sundayWorkflow.path)).await(99.s).orThrow
+      controller.api.addOrder(FreshOrder(orderId, sundayWorkflow.path)).await(99.s).orThrow
       assert(controllerState.idToOrder(orderId).isState[Fresh])
       assert(controllerState.idToOrder(orderId).position == Position(0))
       assert(orderToObstacles(orderId) ==
@@ -98,7 +98,7 @@ final class AdmissionTimeTest extends OurTestSuite with ControllerAgentForScalaT
       clock := local("2021-03-28T02:59")
       val eventId = eventWatch.lastAddedEventId
       val orderId = OrderId("🟤")
-      controllerApi.addOrder(FreshOrder(orderId, sundayWorkflow.path)).await(99.s).orThrow
+      controller.api.addOrder(FreshOrder(orderId, sundayWorkflow.path)).await(99.s).orThrow
       eventWatch.await[OrderAttached](_.key == orderId, after = eventId)
       assert(controllerState.idToOrder(orderId).isState[Fresh])
       assert(controllerState.idToOrder(orderId).position == Position(0))
@@ -113,14 +113,14 @@ final class AdmissionTimeTest extends OurTestSuite with ControllerAgentForScalaT
       clock := local("2021-03-28T04:59")
       val eventId = eventWatch.lastAddedEventId
       val orderId = OrderId("🔴")
-      controllerApi.addOrder(FreshOrder(orderId, sundayWorkflow.path)).await(99.s).orThrow
+      controller.api.addOrder(FreshOrder(orderId, sundayWorkflow.path)).await(99.s).orThrow
       eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
     }
 
     "Start order at end of shifted permission period" in {
       clock := local("2021-03-28T05:00")
       val orderId = OrderId("🟣")
-      controllerApi.addOrder(FreshOrder(orderId, sundayWorkflow.path)).await(99.s).orThrow
+      controller.api.addOrder(FreshOrder(orderId, sundayWorkflow.path)).await(99.s).orThrow
       assert(controllerState.idToOrder(orderId).isState[Fresh])
       assert(controllerState.idToOrder(orderId).position == Position(0))
       assert(orderToObstacles(orderId) ==
@@ -134,7 +134,7 @@ final class AdmissionTimeTest extends OurTestSuite with ControllerAgentForScalaT
     clock := local("2021-10-31T00:00")
     val eventId = eventWatch.lastAddedEventId
     val orderId = OrderId("🟦")
-    controllerApi.addOrder(FreshOrder(orderId, mondayWorkflow.path)).await(99.s).orThrow
+    controller.api.addOrder(FreshOrder(orderId, mondayWorkflow.path)).await(99.s).orThrow
     eventWatch.await[OrderAttached](_.key == orderId)
     assert(controllerState.idToOrder(orderId).isState[Fresh])
     assert(controllerState.idToOrder(orderId).position == Position(0))
@@ -154,7 +154,7 @@ final class AdmissionTimeTest extends OurTestSuite with ControllerAgentForScalaT
     clock := tooEarly
     val eventId = eventWatch.lastAddedEventId
     val orderId = OrderId("🟥")
-    controllerApi.addOrder(FreshOrder(orderId, mondayWorkflow.path)).await(99.s).orThrow
+    controller.api.addOrder(FreshOrder(orderId, mondayWorkflow.path)).await(99.s).orThrow
     eventWatch.await[OrderAttached](_.key == orderId, after = eventId)
     assert(controllerState.idToOrder(orderId).isState[Fresh])
     assert(controllerState.idToOrder(orderId).position == Position(0))
