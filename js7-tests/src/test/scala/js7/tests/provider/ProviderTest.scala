@@ -59,11 +59,13 @@ final class ProviderTest extends OurTestSuite with ControllerAgentForScalaTest
   private lazy val orderGeneratorsDir = providerDirectory / "config/order-generators"
 
   private lazy val conf: ProviderConfiguration =
-    CommandLineArguments.parse(
-      Seq(
-        "--config-directory=" + providerDirectory / "config",
-        "--controller-uri=" + controller.localUri))(
-      ProviderConfiguration.fromCommandLine(_, testConfig))
+    CommandLineArguments
+      .parse(
+        Seq(
+          "--config-directory=" + providerDirectory / "config",
+          "--controller-uri=" + controller.localUri))(
+        ProviderConfiguration.fromCommandLine(_, testConfig))
+      .copy(testSuppressStart = true)
 
   private lazy val (provider, stopProvider) = Provider.resource(conf).allocated
     .await(99.s)
@@ -231,7 +233,7 @@ final class ProviderTest extends OurTestSuite with ControllerAgentForScalaTest
   }
 
   "observe" - {
-    lazy val (provider, stopProvider) = Provider.resource(conf.copy(testSuppressStart = true))
+    lazy val (provider, stopProvider) = Provider.resource(conf)
       .allocated.await(99.s)
     lazy val whenObserved = provider.observe.completedL.runToFuture
     var lastEventId = EventId.BeforeFirst

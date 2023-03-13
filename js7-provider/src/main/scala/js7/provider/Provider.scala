@@ -84,10 +84,9 @@ with MainService with Service.StoppableByRequest {
 
   /** Compares the directory with the Controller's repo and sends the difference.
    * Parses each file, so it may take some time for a big configuration directory. */
-  def initiallyUpdateControllerConfiguration(versionId: Option[VersionId] = None): Task[Checked[Completed]] = {
-    val localEntries = readDirectory()
+  def initiallyUpdateControllerConfiguration(versionId: Option[VersionId] = None): Task[Checked[Completed]] =
     for {
-      _ <- loginUntilReachable
+      localEntries <- readDirectory
       checkedDiff <- controllerDiff(localEntries)
       checkedCompleted <- checkedDiff
         .traverse(execute(versionId, _))
@@ -98,11 +97,13 @@ with MainService with Service.StoppableByRequest {
       }
       checkedCompleted
     }
-  }
 
   @TestOnly
   def testControllerDiff: Task[Checked[InventoryItemDiff_]] =
-    loginUntilReachable >> controllerDiff(readDirectory())
+    for {
+      localEntries <- readDirectory
+      diff <- controllerDiff(localEntries)
+    } yield diff
 
   /** Compares the directory with the Controller's repo and sends the difference.
    * Parses each file, so it may take some time for a big configuration directory. */
@@ -116,13 +117,13 @@ with MainService with Service.StoppableByRequest {
         InventoryItemDiff.diff(_, controllerItems, ignoreVersion = true))
 
   private def readLocalItems(files: Seq[Path]): Task[Checked[Seq[InventoryItem]]] =
-    Task {typedSourceReader.readItems(files)}
+    Task(typedSourceReader.readItems(files))
 
   def updateControllerConfiguration(versionId: Option[VersionId] = None): Task[Checked[Completed]] =
     for {
       _ <- loginUntilReachable
       last = lastEntries.get()
-      currentEntries = readDirectory()
+      currentEntries <- readDirectory
       checkedCompleted <- toItemDiff(PathSeqDiffer.diff(currentEntries, last))
         .traverse(
           execute(versionId, _))
@@ -189,14 +190,17 @@ with MainService with Service.StoppableByRequest {
       logger.info(s"AddOrChange $o")
   }
 
-  private def fetchControllerItems: Task[Iterable[InventoryItem]] =
-    httpControllerApi.snapshot()
+  private def fetchControllerItems: Task[Iterable[InventoryItem]] = {
+    httpControllerApi
+      .retryUntilReachable()(
+        httpControllerApi.snapshot())
       .map(_.items.filter(o =>
         !o.isInstanceOf[WorkflowPathControl] &&
           !o.isInstanceOf[WorkflowControl]))
+  }
 
-  private def readDirectory(): Vector[DirectoryReader.Entry] =
-    DirectoryReader.entries(conf.liveDirectory).toVector
+  private def readDirectory: Task[Vector[DirectoryReader.Entry]] =
+    Task(DirectoryReader.entries(conf.liveDirectory).toVector)
 
   private def toItemDiff(diff: PathSeqDiff): Checked[InventoryItemDiff_] = {
     val checkedAddedOrChanged = typedSourceReader.readItems(diff.added ++ diff.changed)
