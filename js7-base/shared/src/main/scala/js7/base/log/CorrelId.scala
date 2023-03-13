@@ -266,8 +266,10 @@ object CorrelId extends GenericString.Checked_[CorrelId]
   def logStatisticsIfEnabled(): Unit =
     if (CorrelId.isEnabled) logStatistics()
 
-  def logStatistics(): Unit =
-    scribe.debug(statistics)
+  def logStatistics(): Unit = {
+    // Logger must not be instantiated early, because it recursively uses this CorrelId object
+    Logger[this.type].debug(statistics)
+  }
 
   def statistics: String =
     s"$generateCount CorrelIds generated, $asStringCount× string, " +

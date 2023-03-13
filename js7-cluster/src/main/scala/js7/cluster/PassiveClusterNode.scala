@@ -84,6 +84,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
   @volatile var awaitingCoupledEvent = false
   @volatile private var stopped = false
 
+  /** Allow the active node to emit ClusterPassiveLost quickly. */
   def notifyActiveNodeAboutShutdown: Task[Unit] =
     logger.debugTask {
       // Active and passive node may be shut down at the same time. We try to handle this here.
@@ -113,9 +114,10 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
             // The connection of the killed notifyActive HTTP request may be still blocked !!!
             // until it is responded (see AkkaHttpClient)
             // It should not disturb the shutdown.
-            Task(logger.debug(s"onShutdown: clusterState=$clusterState"))
+            Task(logger.debug(s"notifyActiveNodeAboutShutdown: clusterState=$clusterState"))
           case Right(()) =>
-            Task(logger.debug("onShutdown: Active node has been notified about shutdown"))
+            Task(logger.debug(
+              "notifyActiveNodeAboutShutdown: Active node has been notified about shutdown"))
         }
         .as(())
     }

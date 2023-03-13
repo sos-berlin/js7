@@ -2,7 +2,7 @@ package js7.base.utils
 
 import cats.effect.ExitCase
 import java.lang.System.nanoTime
-import js7.base.log.CorrelId
+import js7.base.log.{CorrelId, WaitSymbol}
 import js7.base.monixutils.MonixBase.DefaultWorryDurations
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.time.ScalaTime.*
@@ -54,23 +54,23 @@ final class AsyncLock private(
                 mvar.tryRead.flatMap {
                   case Some(lockedBy) =>
                     val nr = waitCounter.incrementAndGet()
-                    var infoLogged = false
+                    val waitSymbol = new WaitSymbol
+                    waitSymbol.onDebug()
                     log.debug(/*spaces are for column alignment*/
-                      s"⟲ 🟡$nr $name enqueues    $acquirer (currently locked by ${lockedBy.withCorrelId}) ...")
+                      s"⟲ $waitSymbol$nr $name enqueues    $acquirer (currently locked by ${lockedBy.withCorrelId}) ...")
                     mvar.put(acquirer)
                       .whenItTakesLonger(warnTimeouts)(_ =>
                         for (lockedBy <- mvar.tryRead) yield {
-                          val m = if (!infoLogged) "🟠" else "🔴"
-                          infoLogged = true
+                          waitSymbol.onInfo()
                           logger.info(
-                            s"⟲ $m$nr $name: $acquirer is still waiting" +
+                            s"⟲ $waitSymbol$nr $name: $acquirer is still waiting" +
                               s" for ${waitingSince.elapsed.pretty}," +
                               s" currently locked by ${lockedBy getOrElse "None"} ...")
                         })
                       .map { _ =>
                         lazy val msg =
                           s"↘ 🟢$nr $name acquired by $acquirer after ${waitingSince.elapsed.pretty} ↘"
-                        if (infoLogged) log.info(msg) else log.debug(msg)
+                        if (waitSymbol.infoLogged) log.info(msg) else log.debug(msg)
                         acquirer.startMetering()
                         Right(())
                     }

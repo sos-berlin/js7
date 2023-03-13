@@ -108,7 +108,7 @@ trait RealEventWatch extends EventWatch
           .map {
             case false =>
               val remaining = deadline.map(_.timeLeft)
-              logger.debug("committedEventIdSync.whenAvailable returned false, " +
+              logger.debug("committedEventIdSync.whenAvailable returned false" +
                 remaining.fold("")(o => ", remaining=" + o.pretty))
               (remaining.forall(_.isPositive) ? Observable.empty,
                 () => after -> deadline.map(_.timeLeftOrZero))
@@ -308,7 +308,7 @@ trait RealEventWatch extends EventWatch
     timeout: FiniteDuration)
     (implicit s: Scheduler)
   : Task[Vector[Stamped[KeyedEvent[E]]]] = {
-    val label = s"awaitAsync[${implicitly[ClassTag[E]].runtimeClass.simpleScalaName}]"
+    val label = s"awaitAsync[${implicitly[ClassTag[E]].runtimeClass.shortClassName}]"
     logger.debugTask(label)(
       when[E](EventRequest.singleClass[E](after = after, Some(timeout)), predicate)
         .map {

@@ -542,13 +542,12 @@ extends Actor with Stash with JournalLogging
           case _ => true
         }
         .mapParallelBatch() { snapshotObject =>
-          // TODO Crash with SerializationException like EventSnapshotWriter ?
+          logger.trace(s"Snapshot ${snapshotObject.toString.truncateWithEllipsis(200)}")
           snapshotObject -> snapshotObject.asJson(S.snapshotObjectJsonCodec).toByteArray
         }
         .foreach { case (snapshotObject, byteArray) =>
           if (conf.slowCheckState) checkingBuilder.addSnapshotObject(snapshotObject)
           snapshotWriter.writeSnapshot(byteArray)
-          logger.trace(s"Snapshot ${snapshotObject.toString.truncateWithEllipsis(200)}")
         }(scheduler)
       // TODO Do not block the thread
       Await.result(future, 999.s)

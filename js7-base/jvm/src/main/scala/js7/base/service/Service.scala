@@ -90,7 +90,7 @@ object Service
     Resource.make(
       acquire = startService(newService, start))(
       release = service => service.stop
-        .logWhenItTakesLonger(s"${service.getClass.simpleScalaName}:$service stop"))
+        .logWhenItTakesLonger(s"stopping $service"))
 
   private def startService[S <: Service](newService: Task[S], start: S => Task[Started]): Task[S] =
     newService.flatTap(service =>

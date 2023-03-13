@@ -1,10 +1,6 @@
 package js7.base.service
 
 import cats.effect.concurrent.Deferred
-import js7.base.log.Logger
-import js7.base.log.Logger.syntax.*
-import js7.base.monixutils.MonixBase.syntax.RichMonixTask
-import js7.base.service.StoppableByRequest.*
 import monix.eval.{Fiber, Task}
 
 trait StoppableByRequest {
@@ -21,14 +17,8 @@ trait StoppableByRequest {
     stopRequested.complete(())
       .*>(fiber.get)
       .flatMap(_.join)
-      .logWhenItTakesLonger(s"stopping $toString")
       .memoize
 
   protected def stop =
-    logger.debugTask(s"$toString stop")(
-      memoizedStop)
-}
-
-object StoppableByRequest {
-  private val logger = Logger[this.type]
+    memoizedStop
 }

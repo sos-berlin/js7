@@ -75,21 +75,27 @@ private[cluster] final class ClusterCommon private(
   def tryEndlesslyToSendCommand(
     apiResource: Resource[Task, ClusterNodeApi],
     command: ClusterCommand)
-  : Task[Unit] = {
-    val name = command.getClass.simpleScalaName
-    apiResource
-      .use(api => api
-        .retryIfSessionLost()(
-          api.loginUntilReachable(onlyIfNotLoggedIn = true)
-            .*>(api.executeClusterCommand(command)))
-        .map((_: ClusterCommand.Response) => ())
-        .onErrorRestartLoop(()) { (throwable, _, retry) =>
-          logger.warn(s"'$name' command failed with ${throwable.toStringWithCauses}")
-          logger.debug(throwable.toString, throwable)
-          // TODO ClusterFailed event?
-          Task.sleep(1.s/*TODO*/) *> // TODO Handle heartbeat timeout?
-            retry(())
-        })
+  : Task[Unit] =
+    Task.defer {
+      val name = command.getClass.simpleScalaName
+      var warned = false
+      val since = now
+      apiResource
+        .use(api => api
+          .retryIfSessionLost()(
+            api.loginUntilReachable(onlyIfNotLoggedIn = true)
+              .*>(api.executeClusterCommand(command)))
+          .map((_: ClusterCommand.Response) => ())
+          .onErrorRestartLoop(()) { (throwable, _, retry) =>
+            warned = true
+            logger.warn(s"🔴 $name command failed with ${throwable.toStringWithCauses}")
+            logger.debug(throwable.toString, throwable)
+            // TODO ClusterFailed event?
+            Task.sleep(1.s/*TODO*/) *> // TODO Handle heartbeat timeout?
+              retry(())
+          }
+          .>>(Task(if (warned)
+            logger.info(s"🟢 $name command succeeded after ${since.elapsed.pretty}"))))
   }
 
   def inhibitActivationOfPeer(clusterState: HasNodes): Task[Option[FailedOver]] =

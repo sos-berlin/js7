@@ -75,9 +75,9 @@ final class OrderAgentTest extends OurTestSuite
           // Without Login, this registers all anonymous clients
           assert(agentClient
             .commandExecute(
-                DedicateAgentDirector(Some(subagentId), controllerId, agentPath))
-            .await(99.s).toOption.get
-            .isInstanceOf[DedicateAgentDirector.Response])
+              DedicateAgentDirector(Some(subagentId), controllerId, agentPath))
+            .await(99.s).orThrow.isInstanceOf[DedicateAgentDirector.Response])
+
           agentClient
             .commandExecute(
               AttachItem(SubagentItem(subagentId, agentPath, Uri("http://127.0.0.1:0"))))

@@ -1,5 +1,6 @@
 package js7.data.event
 
+import js7.base.log.Logger
 import js7.base.problem.Checked.*
 import js7.base.problem.Problem
 import js7.base.time.ScalaTime.*
@@ -189,7 +190,7 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]
 
 object SnapshotableStateBuilder
 {
-  private val logger = scribe.Logger[this.type]
+  private val logger = Logger[this.type]
 
   abstract class Simple[S <: SnapshotableState[S]](protected val S: SnapshotableState.Companion[S])
   extends SnapshotableStateBuilder[S]

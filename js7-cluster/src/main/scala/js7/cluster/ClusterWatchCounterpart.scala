@@ -6,7 +6,7 @@ import cats.syntax.flatMap.*
 import js7.base.eventbus.EventPublisher
 import js7.base.fs2utils.Fs2PubSub
 import js7.base.log.Logger.syntax.*
-import js7.base.log.{CorrelId, Logger}
+import js7.base.log.{CorrelId, Logger, WaitSymbol}
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.monixutils.MonixDeadline
 import js7.base.monixutils.MonixDeadline.now
@@ -129,8 +129,8 @@ extends Service.StoppableByRequest
   : Task[Checked[ClusterWatchConfirmation]] =
     Task.defer {
       _requested.set(Some(requested))
-      val t = now
-      var warned = false
+      val since = now
+      val waitSymbol = new WaitSymbol
       pubsub.publish(request)
         .logWhenItTakesLonger(s"ClusterWatch.send($request)")
         .*>(Task(
@@ -142,14 +142,13 @@ extends Service.StoppableByRequest
             Task.raiseError(RequestTimeoutException)))
         .onErrorRestartLoop(()) {
           case (RequestTimeoutException, _, retry) =>
-            val m = if (!warned) "🟠" else "🔴"
-            warned = true
-            logger.warn(
-              m + " Still trying to get a confirmation from " +
-                clusterWatchId.fold("any ClusterWatch")(id =>
-                  id.toString + (requested.clusterWatchIdChangeAllowed ?? " (or other)")) +
-                " for " + request.toShortString + "" +
-                " for " + t.elapsed.pretty + "...")
+            waitSymbol.onWarn()
+            logger.warn(waitSymbol.toString +
+              " Still trying to get a confirmation from " +
+              clusterWatchId.fold("any ClusterWatch")(id =>
+                id.toString + (requested.clusterWatchIdChangeAllowed ?? " (or other)")) +
+              " for " + request.toShortString + "" +
+              " for " + since.elapsed.pretty + "...")
             retry(())
 
           case (t, _, _) => Task.raiseError(t)
@@ -160,19 +159,24 @@ extends Service.StoppableByRequest
 
           case Right(confirmation) =>
             Task {
-              if (warned) logger.info(
+              if (waitSymbol.warnLogged) logger.info(
                 s"🟢 ${confirmation.clusterWatchId} finally confirmed ${
-                  request.toShortString} after ${t.elapsed.pretty}")
+                  request.toShortString} after ${since.elapsed.pretty}")
             }
         }
-        .guaranteeCase(exitCase => Task {
-          _requested.set(None)
-          if (warned && exitCase != ExitCase.Completed) {
-            val m = if (exitCase == ExitCase.Canceled) "❌" else "💥"
+        .guaranteeCase {
+          case ExitCase.Error(t) if waitSymbol.warnLogged => Task {
             logger.warn(
-              s"$m ${request.toShortString} => $exitCase · after ${t.elapsed.pretty}")
+              s"💥 ${request.toShortString} => ${t.toStringWithCauses} · after ${since.elapsed.pretty}")
           }
-        })
+          case ExitCase.Canceled if waitSymbol.warnLogged => Task {
+            logger.info(
+              s"⚫️ ${request.toShortString} => Canceled after ${since.elapsed.pretty}")
+          }
+          case _ => Task.unit
+        }
+        .guarantee(Task(
+          _requested.set(None)))
     }
 
   def executeClusterWatchConfirm(confirm: ClusterWatchConfirm): Task[Checked[Unit]] =
