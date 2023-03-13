@@ -5,6 +5,7 @@ import java.util.NoSuchElementException
 import js7.base.time.JavaTime.*
 import js7.provider.scheduledorder.oldruntime.OldSchedule.*
 import scala.annotation.tailrec
+import scala.collection.AbstractIterator
 
 final case class OldSchedule(
   timeZone: ZoneId,
@@ -19,7 +20,7 @@ extends Schedule {
     instants(instantInterval, limit = 1).buffered.headOption
 
   def instants(instantInterval: InstantInterval, limit: Int = Int.MaxValue): Iterator[Instant] =
-    new Iterator[Instant] {
+    new AbstractIterator[Instant] {
       private var remaining = limit
       private var from = instantInterval.from minusNanos 1
       private var _next: Instant = null

@@ -5,12 +5,13 @@ import js7.base.time.WallClock
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.event.{EventId, Stamped}
 import scala.annotation.tailrec
+import scala.collection.AbstractIterator
 
 /**
   * @author Joacim Zschimmer
   */
 final class EventIdGenerator(eventIdClock: EventIdClock)
-extends Iterator[EventId]
+extends AbstractIterator[EventId]
 {
   def this() = this(EventIdClock.Default)
 

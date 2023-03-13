@@ -5,7 +5,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.time.{TimeInterval, Timestamp}
 import js7.data.execution.workflow.instructions.ScheduleSimulator.*
 import js7.data.order.CycleState
-import scala.collection.View
+import scala.collection.{AbstractIterator, View}
 import scala.concurrent.duration.FiniteDuration
 
 trait ScheduleSimulator {
@@ -13,7 +13,7 @@ trait ScheduleSimulator {
 
   def simulate(timeInterval: TimeInterval, actionDuration: FiniteDuration = 0.s): View[Scheduled] =
     View.fromIteratorProvider(() =>
-      new Iterator[Scheduled] {
+      new AbstractIterator[Scheduled] {
         var timestamp = timeInterval.start
 
         private var _next: Option[Scheduled] = Some(Scheduled(

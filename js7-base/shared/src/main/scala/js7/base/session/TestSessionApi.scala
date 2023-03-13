@@ -6,6 +6,7 @@ import js7.base.generic.{Completed, SecretString}
 import js7.base.session.TestSessionApi.*
 import monix.eval.Task
 import monix.execution.atomic.{AtomicAny, AtomicLong}
+import scala.collection.AbstractIterator
 
 final class TestSessionApi(expectedUserAndPassword: Option[UserAndPassword] = None)
 extends SessionApi.HasUserAndPassword with HasIsIgnorableStackTrace
@@ -40,7 +41,7 @@ extends SessionApi.HasUserAndPassword with HasIsIgnorableStackTrace
 
 object TestSessionApi
 {
-  private val sessionTokenGenerator = new Iterator[SessionToken] {
+  private val sessionTokenGenerator = new AbstractIterator[SessionToken] {
     private val counter = AtomicLong(0L)
     def hasNext = true
     def next() = SessionToken(SecretString("SECRET-" + counter.incrementAndGet().toString))

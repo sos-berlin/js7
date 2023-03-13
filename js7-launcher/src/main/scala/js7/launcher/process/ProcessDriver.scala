@@ -4,7 +4,7 @@ import cats.syntax.traverse.*
 import js7.base.generic.Completed
 import js7.base.io.process.ProcessSignal
 import js7.base.log.Logger
-import js7.base.problem.Checked._
+import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.system.OperatingSystem.isWindows
 import js7.base.time.ScalaTime.*
@@ -20,6 +20,7 @@ import js7.launcher.forwindows.{WindowsLogon, WindowsProcess}
 import js7.launcher.process.ProcessDriver.*
 import js7.launcher.process.ShellScriptProcess.startPipedShellScript
 import monix.eval.{Fiber, Task}
+import scala.collection.AbstractIterator
 import scala.concurrent.Promise
 import scala.util.{Failure, Success}
 
@@ -157,7 +158,7 @@ object ProcessDriver
   /** Linux may return a "busy" error when starting many processes at once. */
   private val globalStartProcessLock = AsyncLock("globalStartProcessLock", noMinorLog = true)
 
-  private object taskIdGenerator extends Iterator[TaskId] {
+  private object taskIdGenerator extends AbstractIterator[TaskId] {
     private val generator = newGenerator()
     def hasNext = generator.hasNext
     def next() = generator.next()
