@@ -6,14 +6,13 @@ package js7.base.utils
   *
   * @author Joacim Zschimmer
   */
-import js7.base.problem.Problem
-
 final class Lazy[A] private(eval: => A)
 {
   @volatile
   private var state: State = NotEvaluated
 
-  def apply(): A = value
+  def apply(): A =
+    value
 
   def value: A =
     state match {
@@ -46,9 +45,11 @@ final class Lazy[A] private(eval: => A)
       case _ => None
     }
 
-  def isDefined = state.isInstanceOf[Evaluated]
+  def isDefined: Boolean =
+    state.isInstanceOf[Evaluated]
 
-  def isEmpty = !isDefined
+  def isEmpty: Boolean =
+    !isDefined
 
   def foreach(f: A => Unit): Unit =
     state match {
@@ -71,6 +72,4 @@ object Lazy
 {
   def apply[A](eval: => A): Lazy[A] =
     new Lazy(eval)
-
-  case object RecursiveLazyEvaluationProblem extends Problem.ArgumentlessCoded
 }
