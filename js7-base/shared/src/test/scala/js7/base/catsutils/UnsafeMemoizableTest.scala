@@ -1,14 +1,12 @@
 package js7.base.catsutils
 
 import cats.FlatMap
-import cats.effect.syntax.syncEffect.*
-import cats.effect.{Concurrent, IO, Sync, SyncEffect, SyncIO}
+import cats.effect.{Concurrent, IO, Sync, SyncIO}
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
 import java.util.concurrent.atomic.AtomicInteger
 import js7.base.catsutils.UnsafeMemoizable.syntax.*
 import js7.base.test.OurAsyncTestSuite
-import js7.base.utils.Lazy
 import monix.eval.Task
 import org.scalatest.Assertion
 import scala.concurrent.ExecutionContext
@@ -31,15 +29,6 @@ final class UnsafeMemoizableTest extends OurAsyncTestSuite
   }
 
   "unsafeMemoize with Cats SyncIO (experimental only)" in {
-    implicit def blockingSyncEffectMemoizable[F[_] : SyncEffect]: UnsafeMemoizable[F] =
-      new UnsafeMemoizable[F] {
-        def unsafeMemoize[A](body: F[A]): F[A] = {
-          // `Lazy` blocks the thread when used concurrently. Only a experiment.
-          val lzy = Lazy(body.runSync[SyncIO].unsafeRunSync())
-          Sync[F].delay(lzy.value)
-        }
-      }
-
     check[SyncIO](_.unsafeMemoize, 1).unsafeRunSync()
   }
 

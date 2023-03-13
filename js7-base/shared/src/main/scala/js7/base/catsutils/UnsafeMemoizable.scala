@@ -1,10 +1,12 @@
 package js7.base.catsutils
 
-import cats.effect.Concurrent
 import cats.effect.concurrent.Deferred
+import cats.effect.syntax.syncEffect.*
+import cats.effect.{Concurrent, Sync, SyncEffect, SyncIO}
 import cats.syntax.flatMap.*
 import cats.syntax.functor.*
 import java.util.concurrent.atomic.AtomicBoolean
+import js7.base.utils.Lazy
 import monix.eval.Task
 
 /** Monix Task like unsafe memoize for any Cats Concurrent. */
@@ -34,6 +36,15 @@ object UnsafeMemoizable
           else
             deferred.get
         }
+      }
+    }
+
+  implicit def blockingSyncEffectMemoizable[F[_] : SyncEffect]: UnsafeMemoizable[F] =
+    new UnsafeMemoizable[F] {
+      def unsafeMemoize[A](body: F[A]): F[A] = {
+        // `Lazy` blocks the thread when used concurrently. Only a experiment.
+        val lzy = Lazy(body.runSync[SyncIO].unsafeRunSync())
+        Sync[F].delay(lzy.value)
       }
     }
 
