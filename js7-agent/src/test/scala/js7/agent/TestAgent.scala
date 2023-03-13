@@ -59,6 +59,9 @@ extends AutoCloseable {
   def sessionToken: SessionToken =
     agent.sessionToken
 
+  def untilReady: Task[MainActor.Ready] =
+    agent.untilReady
+
   def currentAgentState(): AgentState =
     agent.agentState.await(99.s).orThrow
 

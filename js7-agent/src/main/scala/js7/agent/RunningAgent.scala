@@ -62,6 +62,7 @@ final class RunningAgent private(
   clusterNode: ClusterNode[AgentState],
   webServer: AkkaWebServer & AkkaWebServer.HasUri,
   val terminated: Future[ProgramTermination],
+  val untilReady: Task[MainActor.Ready],
   val directAgentApi: Task[Checked[CommandMeta => DirectAgentApi]],
   sessionRegister: SessionRegister[AgentSession],
   val sessionToken: SessionToken,
@@ -285,6 +286,13 @@ object RunningAgent {
 
     @deprecated val whenReady = Promise[Unit] // NOT USED ?
 
+    val untilReady: Task[MainActor.Ready] =
+      mainActorStarted.flatMap {
+        case Left(_: ProgramTermination) => Task.raiseError(new IllegalStateException(
+          "Agent has been terminated"))
+        case Right(mainActorStarted) => mainActorStarted.whenReady
+      }
+
     // The AgentOrderKeeper if started
     val currentMainActor: Task[Checked[MainActorStarted]] =
       logger.traceTask(
@@ -348,7 +356,7 @@ object RunningAgent {
           clusterNode,
           webServer, /*Task(mainActor),*/
           untilMainActorTerminated.runToFuture,
-          directApi, sessionRegister, sessionToken,
+          untilReady, directApi, sessionRegister, sessionToken,
           testEventBus,
           actorSystem, config)))
     } yield agent
