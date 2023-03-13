@@ -17,7 +17,7 @@ object Dependencies
   //val kittensVersion = "1.2.1"
   val catsParseVersion = "0.3.8"
   val circeVersion = "0.14.5"
-  val circeGenericExtrasVersion = "0.14.1"
+  val circeGenericExtrasVersion = "0.14.3"
   val scalaTestVersion = "3.2.15"
   val scalaTestCheckVersion = "3.2.14.0"
   val scalaCheckVersion= "1.17.0"
