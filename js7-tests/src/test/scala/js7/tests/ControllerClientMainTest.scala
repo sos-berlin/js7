@@ -1,6 +1,7 @@
 package js7.tests
 
 import js7.base.circeutils.CirceUtils.{JsonStringInterpolator, RichCirceString, RichJson}
+import js7.base.io.process.ReturnCode
 import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.time.ScalaTime.*
@@ -28,7 +29,7 @@ final class ControllerClientMainTest extends OurTestSuite with ControllerAgentFo
 
   "main with Controller URI only checks whether Controller is responding (it is)" in {
     val output = mutable.Buffer[String]()
-    assertResult(0) {
+    assertResult(ReturnCode(0)) {
       ControllerClientMain.run(
         s"--config-directory=$configDirectory" :: s"--data-directory=$dataDirectory" ::
           s"https://localhost:$httpsPort" :: Nil,
@@ -39,7 +40,7 @@ final class ControllerClientMainTest extends OurTestSuite with ControllerAgentFo
 
   "Multiple api calls" in {
     val output = mutable.Buffer[String]()
-    assertResult(0) {
+    assertResult(ReturnCode(0)) {
       ControllerClientMain.run(
         s"--config-directory=$configDirectory" :: s"--data-directory=$dataDirectory" ::
           s"https://localhost:$httpsPort" ::
@@ -53,7 +54,7 @@ final class ControllerClientMainTest extends OurTestSuite with ControllerAgentFo
   "main with Controller URI only checks whether Controller is responding (it is not)" in {
     val unusedPort = 0
     val output = mutable.Buffer[String]()
-    assertResult(1) {
+    assertResult(ReturnCode(1)) {
       ControllerClientMain.run(
         s"--config-directory=$configDirectory" :: s"--data-directory=$dataDirectory" ::
           s"https://localhost:$unusedPort" ::

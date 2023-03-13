@@ -1,5 +1,6 @@
 package js7.common.system.startup
 
+import js7.base.io.process.ReturnCode
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
 import js7.base.log.{Log4j, Logger}
 import js7.base.utils.ScalaUtils.syntax.*
@@ -17,18 +18,20 @@ object JavaMain
       ProblemCodeMessages.initialize()
       // Initialize class and object for possible quicker emergency stop
       Halt.initialize()
-      val r = body
-      Log4j.shutdown()
-      r
+      body
     } catch { case t: Throwable =>
       logger.error(t.toStringWithCauses, t)
-      Log4j.shutdown()
       printlnWithClock(s"TERMINATING DUE TO ERROR: ${t.toStringWithCauses}")
-      exit(1)
+      exit1()
     }
 
-  def exit(number: Int): Nothing = {
-    sys.runtime.exit(number)
+  def exit1(): Nothing = {
+    exitIfNonZero(ReturnCode(1))
     throw new AssertionError("exit failed")
+  }
+
+  def exitIfNonZero(returnCode: ReturnCode): Unit = {
+    Log4j.shutdown()
+    if (returnCode.number != 0) System.exit(returnCode.number)
   }
 }

@@ -2,13 +2,14 @@ package js7.agent.main
 
 import js7.agent.RunningAgent
 import js7.agent.configuration.AgentConfiguration
+import js7.base.io.process.ReturnCode
 import js7.base.log.Logger
 import js7.base.time.Timestamp
 import js7.base.utils.ProgramTermination
 import js7.common.commandline.CommandLineArguments
 import js7.common.system.startup.JavaMainLockfileSupport.lockAndRunMain
-import js7.common.system.startup.ServiceMain
 import js7.common.system.startup.StartUp.printlnWithClock
+import js7.common.system.startup.{JavaMain, ServiceMain}
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.subagent.BareSubagent
 
@@ -21,8 +22,8 @@ final class AgentMain
 {
   private lazy val logger = Logger(getClass)
 
-  private def run(commandLineArguments: CommandLineArguments, conf: AgentConfiguration): Int = {
-    ServiceMain.withLogger.logFirstLines("Agent", commandLineArguments, conf)
+  private def run(commandLineArguments: CommandLineArguments, conf: AgentConfiguration): ReturnCode = {
+    ServiceMain.logging.logFirstLines("Agent", commandLineArguments, conf)
     if (conf.scriptInjectionAllowed) logger.info("SIGNED SCRIPT INJECTION IS ALLOWED")
 
     ServiceMain.handleProgramTermination("Agent") {
@@ -44,7 +45,7 @@ final class AgentMain
   private def blockingRunDirector(conf: AgentConfiguration): ProgramTermination = {
     logger.info("Continue as Agent Director\n" + "─" * 80)
     printlnWithClock("Continue as Agent Director")
-    ServiceMain.withLogger.blockingRun("Agent", conf.config)(
+    ServiceMain.logging.blockingRun("Agent", conf.config)(
       service = RunningAgent.resource(conf)(_))
   }
 }
@@ -57,12 +58,10 @@ object AgentMain
   def main(args: Array[String]): Unit = {
     ServiceMain.startUp("Agent")
 
-    val exitCode = lockAndRunMain(args) { commandLineArguments =>
+    val returnCode = lockAndRunMain(args) { commandLineArguments =>
       val conf = AgentConfiguration.fromCommandLine(commandLineArguments)
       new AgentMain().run(commandLineArguments, conf)
     }
-    if (exitCode != 0) {
-      System.exit(exitCode)
-    }
+    JavaMain.exitIfNonZero(returnCode)
   }
 }

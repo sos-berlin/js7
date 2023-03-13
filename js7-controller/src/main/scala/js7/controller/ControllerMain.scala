@@ -8,7 +8,7 @@ object ControllerMain
   // No Logger here!
 
   def main(args: Array[String]): Unit =
-    ServiceMain.main[ControllerConfiguration, RunningController](
+    ServiceMain.mainMainThenExit[ControllerConfiguration, RunningController](
       args,
       "Controller",
       ControllerConfiguration.fromCommandLine(_),

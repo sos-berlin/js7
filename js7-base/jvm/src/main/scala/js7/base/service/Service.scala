@@ -85,7 +85,6 @@ object Service
   : Resource[Task, S] =
     resource(newService, (_: S).start)
 
-  @deprecated
   private def resource[S <: Service](newService: Task[S], start: S => Task[Started])
   : Resource[Task, S] =
     Resource.make(

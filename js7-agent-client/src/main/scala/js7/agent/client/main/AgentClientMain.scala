@@ -5,10 +5,12 @@ import js7.agent.client.AkkaHttpAgentTextApi
 import js7.base.auth.SessionToken
 import js7.base.convert.AsJava.StringAsPath
 import js7.base.generic.SecretString
-import js7.base.log.{Log4j, Logger}
+import js7.base.io.process.ReturnCode
+import js7.base.log.Logger
 import js7.base.utils.AutoClosing.autoClosing
 import js7.base.web.Uri
 import js7.common.commandline.CommandLineArguments
+import js7.common.system.startup.JavaMain
 import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
 
@@ -21,31 +23,29 @@ object AgentClientMain
 
   def main(args: Array[String]): Unit =
     try {
-      val rc = run(args.toIndexedSeq, println)
-      Log4j.shutdown()
-      sys.runtime.exit(rc)
+      val returnCode = run(args.toIndexedSeq, println)
+      JavaMain.exitIfNonZero(returnCode)
     }
     catch { case NonFatal(t) =>
       println(s"ERROR: $t")
       logger.error(t.toString, t)
-      Log4j.shutdown()
-      sys.runtime.exit(1)
+      JavaMain.exit1()
     }
 
-  def run(args: Seq[String], print: String => Unit): Int = {
+  def run(args: Seq[String], print: String => Unit): ReturnCode = {
     val (agentUri, configDirectory, dataDir, operations) = parseArgs(args)
     val sessionToken = SessionToken(SecretString(Files.readAllLines(dataDir resolve "work/session-token").asScala mkString ""))
     autoClosing(new AkkaHttpAgentTextApi(agentUri, None, print, configDirectory)) { textApi =>
       textApi.setSessionToken(sessionToken)
       if (operations.isEmpty)
-        if (textApi.checkIsResponding()) 0 else 1
+        ReturnCode(if (textApi.checkIsResponding()) 0 else 1)
       else {
         operations foreach {
           case StringCommand(command) => textApi.executeCommand(command)
           case StdinCommand => textApi.executeCommand(scala.io.Source.stdin.mkString)
           case Get(uri) => textApi.getApi(uri)
         }
-        0
+        ReturnCode(0)
       }
     }
   }

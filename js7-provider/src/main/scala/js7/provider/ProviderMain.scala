@@ -8,6 +8,6 @@ object ProviderMain
   // No Logger here!
 
   def main(args: Array[String]): Unit =
-    ServiceMain.main(args, "Provider", ProviderConfiguration.fromCommandLine(_))(
+    ServiceMain.mainMainThenExit(args, "Provider", ProviderConfiguration.fromCommandLine(_))(
       Provider.resource(_)(_))
 }

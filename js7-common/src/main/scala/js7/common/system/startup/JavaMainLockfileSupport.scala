@@ -62,12 +62,12 @@ object JavaMainLockfileSupport
     Try(lockFileChannel.tryLock()) match {
       case Failure(throwable) =>
         printlnWithClock(s"tryLock: $throwable")
-        JavaMain.exit(1)
+        JavaMain.exit1()
 
       case Success(null) =>
         lockFileChannel.close()
         printlnWithClock("Duplicate start of JS7")
-        JavaMain.exit(1)
+        JavaMain.exit1()
 
       case Success(_) =>
         try {

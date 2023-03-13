@@ -2,22 +2,24 @@ package js7.common.system.startup
 
 import cats.effect.{Resource, SyncIO}
 import com.typesafe.config.Config
+import izumi.reflect.Tag
 import js7.base.service.MainService
 import js7.base.thread.MonixBlocking.syntax.*
-import js7.base.time.ScalaTime.DurationRichInt
+import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ProgramTermination
 import js7.base.utils.SyncResource.syntax.*
 import js7.common.system.ThreadPools
 import monix.eval.Task
 import monix.execution.Scheduler
 import scala.concurrent.duration.*
+import js7.base.utils.AllocatedForJvm.*
 
 // Needs access to js7-common/ThreadPools
 object MainServices
 {
-  /** Adds an own ThreadPool. */
-  def blockingRun[S <: MainService](
-    name: String,
+  /** Run a MainService with its own ThreadPool. */
+  def blockingRun[S <: MainService: Tag](
+    threadPoolName: String,
     config: Config,
     timeout: Duration = Duration.Inf)(
     resource: Scheduler => Resource[Task, S],
@@ -27,10 +29,9 @@ object MainServices
     })
   : ProgramTermination =
     ThreadPools
-      .standardSchedulerResource[SyncIO](name, config)
-      .useSync(implicit scheduler =>
-        resource(scheduler)
-          .use(service => Task(
-            use(service, scheduler)))
-          .await(timeout + 1.s/*allow `use` to fail first*/))
+      .standardSchedulerResource[SyncIO](threadPoolName, config)
+      .useSync { implicit scheduler =>
+        resource(scheduler).toAllocated.await(timeout)
+          .blockingUse(timeout)(use(_, scheduler))
+      }
 }
