@@ -27,9 +27,9 @@ final class AttachSignedItemTest extends OurTestSuite with DirectoryProviderForS
 
   "AttachSignedItem command verifies signature" in {
     import directoryProvider.itemSigner
-    directoryProvider.runAgents() { runningAgents =>
-      val runningAgent = runningAgents.head
-      val agentApi = runningAgent.api.await(99.s).orThrow.apply(
+    directoryProvider.runAgents() { agents =>
+      val agent = agents.head
+      val agentApi = agent.directAgentApi.await(99.s).orThrow.apply(
         CommandMeta(SimpleUser(directoryProvider.agents(0).userAndPassword.get.userId)))
       assert(agentApi
         .commandExecute(
