@@ -3,7 +3,7 @@ package js7.base.generic
 import cats.parse.Parser
 import io.circe.{Decoder, Encoder, Json}
 import js7.base.convert.As
-import js7.base.parser.CatsBasicParsers
+import js7.base.parser.BasicParsers
 import js7.base.utils.Ordinal
 import js7.base.utils.ScalaUtils.syntax.*
 
@@ -40,7 +40,7 @@ object GenericInt {
 
     // Required for RangeSet[ReturnCode].jsonDecoder
     implicit val parser: Parser[A] =
-      CatsBasicParsers.int.map(apply(_))
+      BasicParsers.int.map(apply(_))
 
     implicit val JsonEncoder: Encoder[A] = o => Json.fromInt(o.number)
     implicit val JsonDecoder: Decoder[A] = _.as[Int] map apply

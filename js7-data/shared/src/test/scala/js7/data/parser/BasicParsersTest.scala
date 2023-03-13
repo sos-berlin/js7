@@ -5,13 +5,13 @@ import cats.parse.Parser.Expectation.InRange
 import cats.parse.Parser.{end, string}
 import cats.parse.{Parser, Parser0}
 import js7.base.parser.BasicPrinter.appendIdentifier
-import js7.base.parser.CatsBasicParsers.*
-import js7.base.parser.CatsParsers.{ParsingProblem, checkedParse}
+import js7.base.parser.BasicParsers.*
+import js7.base.parser.Parsers.{ParsingProblem, checkedParse}
 import js7.base.problem.{Checked, Problem}
 import js7.base.test.OurTestSuite
 import js7.base.utils.ScalaUtils.withStringBuilder
 
-final class CatsBasicParsersTest extends OurTestSuite
+final class BasicParsersTest extends OurTestSuite
 {
   "checkedParse" - {
     "End" in {

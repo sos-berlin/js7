@@ -9,7 +9,6 @@ import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
 import js7.data.job.{CommandLineExecutable, PathExecutable, ReturnCodeMeaning, ShellScriptExecutable}
 import js7.data.lock.LockPath
-import js7.data.parser.UseFastparse
 import js7.data.source.SourcePos
 import js7.data.value.NumberValue
 import js7.data.value.expression.Expression.{Equal, In, LastReturnCode, ListExpression, NamedValue, NumericConstant, Or, StringConstant}
@@ -38,10 +37,7 @@ final class WorkflowParserTest extends OurTestSuite
       }"""
     assert(WorkflowParser.parse(source) == Left(Problem(
       // TODO Wrong position in error message, should be 4:12
-      if (UseFastparse)
-        """Expected Unknown job name 'A':6:8, found """""
-      else
-        """Parsing failed at position 6:8 “      }❓” · Unknown job name 'A'""")))
+      """Parsing failed at position 6:8 “      }❓” · Unknown job name 'A'""")))
   }
 
   "Execute anonymous" in {
@@ -193,10 +189,7 @@ final class WorkflowParserTest extends OurTestSuite
           execute executable="my/executable", agent="AGENT"
         }
       }""") == Left(Problem(
-      if (UseFastparse)
-        """Expected unique job definitions (duplicates: DUPLICATE):10:8, found """""
-      else
-        """Parsing failed at position 10:8 “      }❓” · Expected unique job definitions (duplicates: DUPLICATE)""")))
+      """Parsing failed at position 10:8 “      }❓” · Expected unique job definitions (duplicates: DUPLICATE)""")))
   }
 
   "Single instruction with relative job path" in {
@@ -433,10 +426,7 @@ final class WorkflowParserTest extends OurTestSuite
           catch {}
         }""") ==
         Left(Problem(
-          if (UseFastparse)
-            """Expected Missing a retry instruction in the catch block to make sense of retryDelays or maxTries:5:9, found "}""""
-          else
-            """Parsing failed at position 5:9 “        ❓}” · Missing a retry instruction in the catch block to make sense of retryDelays or maxTries""")))
+          """Parsing failed at position 5:9 “        ❓}” · Missing a retry instruction in the catch block to make sense of retryDelays or maxTries""")))
     }
 
     "try with maxRetries but retry is missing" in {
@@ -446,10 +436,7 @@ final class WorkflowParserTest extends OurTestSuite
           catch {}
         }""") ==
         Left(Problem(
-          if (UseFastparse)
-            """Expected Missing a retry instruction in the catch block to make sense of retryDelays or maxTries:5:9, found "}""""
-          else
-            """Parsing failed at position 5:9 “        ❓}” · Missing a retry instruction in the catch block to make sense of retryDelays or maxTries""")))
+          """Parsing failed at position 5:9 “        ❓}” · Missing a retry instruction in the catch block to make sense of retryDelays or maxTries""")))
     }
   }
 

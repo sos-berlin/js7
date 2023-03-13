@@ -6,13 +6,13 @@ import cats.parse.*
 import cats.parse.Parser.{Error, Expectation, end}
 import cats.syntax.show.*
 import js7.base.parser.BasicPrinter.isIdentifierStart
-import js7.base.parser.CatsBasicParsers.w
+import js7.base.parser.BasicParsers.w
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.*
 //import js7.base.value.ValuePrinter.quoteString
 import scala.util.control.NonFatal
 
-object CatsParsers
+object Parsers
 {
   object syntax {
     implicit final class RichParser0[+A](private val parser0: Parser0[A]) extends AnyVal

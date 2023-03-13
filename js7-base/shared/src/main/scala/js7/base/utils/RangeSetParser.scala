@@ -2,8 +2,8 @@ package js7.base.utils
 
 import cats.parse.Parser.{end, string}
 import cats.parse.{Parser, Parser0}
-import js7.base.parser.CatsBasicParsers.{isWhiteChar, w}
-import js7.base.parser.CatsParsers.checkedParse
+import js7.base.parser.BasicParsers.{isWhiteChar, w}
+import js7.base.parser.Parsers.checkedParse
 import js7.base.problem.Checked
 import js7.base.utils.RangeSet.{Interval, Single}
 import js7.base.utils.RangeSetParser.*

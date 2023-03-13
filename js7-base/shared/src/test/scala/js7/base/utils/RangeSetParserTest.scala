@@ -1,6 +1,6 @@
 package js7.base.utils
 
-import js7.base.parser.CatsBasicParsers
+import js7.base.parser.BasicParsers
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.utils.RangeSet.{Interval, Single}
@@ -8,7 +8,7 @@ import js7.base.utils.RangeSet.{Interval, Single}
 final class RangeSetParserTest extends OurTestSuite {
 
   private def parse(string: String) =
-    RangeSet.parse(CatsBasicParsers.int, string)
+    RangeSet.parse(BasicParsers.int, string)
 
   "Empty" in {
     assert(parse("") == Right(RangeSet.empty[Int]))

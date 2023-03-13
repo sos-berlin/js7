@@ -1,31 +1,22 @@
 package js7.data.value.expression
 
-import fastparse.*
-import fastparse.NoWhitespace.*
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
+import js7.data.value.expression.ExpressionParser.*
 import js7.data.value.expression.Expression.*
-import js7.data.value.expression.FastparseExpressionParser.*
 import js7.data.workflow.instructions.executable.WorkflowJob
 import org.scalactic.source
 
-/**
-  * @author Joacim Zschimmer
-  */
-final class FastparseExpressionParserTest extends OurTestSuite
+final class ExpressionParserTest extends OurTestSuite
 {
   // See also ExpressionTest
 
   "NamedValue" - {
     "$ with impossible names" in {
-      assert(parse("$var/1", dollarNamedValue(_)) ==
-        Parsed.Success(NamedValue("var"), 4))
-      assert(parse("$var.1", dollarNamedValue(_)) ==
-        Parsed.Success(NamedValue("var"), 4))
-      assert(parse("$var-1", dollarNamedValue(_)) ==
-        Parsed.Success(NamedValue("var"), 4))
-      assert(parse("$var_1", dollarNamedValue(_)) ==
-        Parsed.Success(NamedValue("var_1"), 6))
+      assert(dollarNamedValue.parse("$var/1") == Right("/1" -> NamedValue("var")))
+      assert(dollarNamedValue.parse("$var.1") == Right(".1" -> NamedValue("var")))
+      assert(dollarNamedValue.parse("$var-1") == Right("-1" -> NamedValue("var")))
+      assert(dollarNamedValue.parse("$var_1") == Right("" -> NamedValue("var_1")))
     }
 
     testExpression("""$key""", NamedValue("key"))
@@ -137,14 +128,11 @@ final class FastparseExpressionParserTest extends OurTestSuite
         testExpression(s"'ONE\nTWO'".trim, StringConstant("ONE\nTWO"))
         testExpression(s"'ONE\r\nTWO'".trim, StringConstant("ONE\nTWO"))
 
-        // Bad syntax, because ' cannot be used at start or end of the string:
-        // TODO Delete this code
+        // TODO Bad syntax, because ' cannot be used at start or end of the string
         testExpression(s"''->'<-''".trim, StringConstant("->'<-"))
         testExpression(s"'''->''<-'''".trim, StringConstant("->''<-"))
         testExpression(s"''''->'''<-''''".trim, StringConstant("->'''<-"))
         testExpression(s"'''''->''''<-'''''".trim, StringConstant("->''''<-"))
-        testError(s"''''''->'''''<-''''''".trim,
-        """Error in expression: Expected (not | argumentExpression):1:15, found "-''''''"""")
       }
 
       "Invalid escaped characters" in {
@@ -154,11 +142,13 @@ final class FastparseExpressionParserTest extends OurTestSuite
         for (escaped <- invalidEscaped) {
           // With ' to render as "-string
           assert(parseExpression(s""" "'\\$escaped" """.trim) == Left(Problem(
-            """Error in expression: Expected blackslash (\) and one of the following characters: [\"trn$]:1:5, found "\""""")))
+            s"""Error in expression: Parsing failed at position 4 “"'\\❓$escaped"”""" +
+            """ · Expected blackslash (\) and one of the following characters: [\"trn$]""")))
 
           // Without ' to render as '-string
           assert(parseExpression(s""" "\\$escaped" """.trim) == Left(Problem(
-            """Error in expression: Expected blackslash (\) and one of the following characters: [\"trn$]:1:4, found "\""""")))
+            s"""Error in expression: Parsing failed at position 3 “"\\❓$escaped"”""" +
+            """ · Expected blackslash (\) and one of the following characters: [\"trn$]""")))
         }
       }
     }
@@ -232,8 +222,8 @@ final class FastparseExpressionParserTest extends OurTestSuite
         ListExpression(List(NumericConstant(0), NumericConstant(3), NumericConstant(50)))))
 
     testError("""$returnCode in [0, 3, 50] || $result == "1"""",
-      "Error in expression: Expected boolean operarands for operator ||: " +
-       """[0, 3, 50] || $result == '1':1:44, found """"")
+      """Error in expression: Parsing failed at position 44 “…ult == "1"❓”""" +
+       """ · Expected boolean operans for operator ||: [0, 3, 50] || $result == '1'""")
 
     testBooleanExpression("""($returnCode in [0, 3, 50]) || $result == "1"""",
       Or(
@@ -263,7 +253,10 @@ final class FastparseExpressionParserTest extends OurTestSuite
       MkString(ListExpression(StringConstant("STRING") :: NamedValue("NAME") :: NumericConstant(7) :: Nil)))
   }
 
-  testExpression("1 + 2+3",
+  testExpression("1+2",
+    Add(NumericConstant(1), NumericConstant(2)))
+
+  testExpression("1 + 2 + 3",
     Add(Add(NumericConstant(1), NumericConstant(2)), NumericConstant(3)))
 
   testExpression("'A' ++ 'B'++'C'",
@@ -299,15 +292,13 @@ final class FastparseExpressionParserTest extends OurTestSuite
   }
 
   "Unknown boolean function" in {
-    def parser[x: P] = expression ~ End
     assert(parseExpression(""""true".toBoolean""") ==
       Right(ToBoolean(StringConstant("true"))))
   }
 
   private def testBooleanExpression(exprString: String, expr: BooleanExpression)(implicit pos: source.Position) =
     exprString in {
-      def parser[x: P] = expression ~ End
-      assert(parseExpression(exprString) == Right(expr))
+        assert(parseExpression(exprString) == Right(expr))
       assert(parseExpression(expr.toString) == Right(expr), " - toString")
     }
 
@@ -317,7 +308,6 @@ final class FastparseExpressionParserTest extends OurTestSuite
     }
 
   private def testExpressionRaw(exprString: String, expr: Expression)(implicit pos: source.Position) = {
-    def parser[x: P] = expression ~ End
     assert(parseExpression(exprString) == Right(expr))
     assert(parseExpression(expr.toString) == Right(expr), " - toString")
   }
@@ -328,7 +318,6 @@ final class FastparseExpressionParserTest extends OurTestSuite
     }
 
   private def testErrorRaw(exprString: String, errorMessage: String)(implicit pos: source.Position) = {
-    def parser[x: P] = expression ~ End
     assert(parseExpression(exprString) == Left(Problem(errorMessage)))
   }
 }

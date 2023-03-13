@@ -16,7 +16,6 @@ object Dependencies
   val izumiReflectVersion = "2.1.3"
   //val kittensVersion = "1.2.1"
   val catsParseVersion = "0.3.8"
-  val fastparseVersion = "2.3.3"
   val circeVersion = "0.14.5"
   val circeGenericExtrasVersion = "0.14.1"
   val scalaTestVersion = "3.2.15"
@@ -72,8 +71,6 @@ object Dependencies
   val circe               = "io.circe" %% "circe-core" % circeVersion ::
                             "io.circe" %% "circe-parser" % circeVersion ::
                             "io.circe" %% "circe-generic" % circeVersion :: Nil
-
-  val fastparse           = "com.lihaoyi" %% "fastparse" % fastparseVersion
 
   val intelliJAnnotations = "com.intellij" % "annotations" % "12.0"
 

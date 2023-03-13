@@ -12,7 +12,6 @@ import js7.common.files.DirectoryReader
 import js7.controller.tests.InventoryItemDiffTest.{ATestItem, AWorkflow, BTestItem, BWorkflow, CWorkflow, TestItemReader}
 import js7.controller.workflow.WorkflowReader
 import js7.core.item.TypedSourceReader
-import js7.data.parser.UseFastparse
 import org.scalatest.BeforeAndAfterAll
 
 /**
@@ -47,10 +46,7 @@ final class VersionedItemReaderTest extends OurTestSuite with BeforeAndAfterAll
       assert(typedSourceReader.readItems(DirectoryReader.files(directory)) ==
         Left(Problem.Combined(Set(
           Problem(
-            if (UseFastparse)
-              """Problem with 'Workflow:D' (txt) [Expected "define":1:1, found "ERROR"]"""
-            else
-              """Problem with 'Workflow:D' (txt) [Parsing failed at position 1 “❓ERROR” · Expected “define”]"""),
+            """Problem with 'Workflow:D' (txt) [Parsing failed at position 1 “❓ERROR” · Expected “define”]"""),
           Problem("""Problem with 'Workflow:E' (JSON) [JSON ParsingFailure: expected json value got 'NO-JSO...' (line 1, column 1)]"""),
           Problem(s"File '...${separator}folder${separator}test.alien.json'" +
             " is not recognized as a configuration file" +
