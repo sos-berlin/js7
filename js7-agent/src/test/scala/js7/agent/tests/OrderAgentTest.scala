@@ -63,6 +63,7 @@ final class OrderAgentTest extends OurTestSuite
         withCloser { implicit closer =>
           implicit val actorSystem: ActorSystem = newActorSystem(getClass.getSimpleName)
           val agentClient = AgentClient(agent.localUri, Some(TestUserAndPassword)).closeWithCloser
+
           assert(agentClient
             .commandExecute(
               DedicateAgentDirector(Some(subagentId), controllerId, agentPath))
@@ -70,6 +71,7 @@ final class OrderAgentTest extends OurTestSuite
             Left(Problem(s"HTTP 401 Unauthorized: POST ${agent.localUri}/agent/api/command => " +
               "The resource requires authentication, which was not supplied with the request")))
           agentClient.login() await 99.s
+
           // Without Login, this registers all anonymous clients
           assert(agentClient
             .commandExecute(

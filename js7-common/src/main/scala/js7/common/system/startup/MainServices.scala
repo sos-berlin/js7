@@ -21,8 +21,10 @@ object MainServices
     config: Config,
     timeout: Duration = Duration.Inf)(
     resource: Scheduler => Resource[Task, S],
-    use: (S, Scheduler) => ProgramTermination =
-      (service: S, scheduler: Scheduler) => service.untilTerminated.await(timeout)(scheduler))
+    use: (S, Scheduler) => ProgramTermination = (service: S, scheduler: Scheduler) => {
+      implicit val s = scheduler
+      service.untilTerminated.await(timeout)
+    })
   : ProgramTermination =
     ThreadPools
       .standardSchedulerResource[SyncIO](name, config)

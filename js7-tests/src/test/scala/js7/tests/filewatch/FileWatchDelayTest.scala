@@ -14,7 +14,6 @@ import js7.base.thread.Futures.implicits.SuccessFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentPath
-import js7.data.event.EventRequest
 import js7.data.item.BasicItemEvent.ItemAttached
 import js7.data.order.OrderEvent.{OrderDeleted, OrderFinished}
 import js7.data.order.OrderId
@@ -77,10 +76,10 @@ final class FileWatchDelayTest extends OurTestSuite with ControllerAgentForScala
         val externalOrderName = ExternalOrderName(filename)
         val orderId = fileToOrderId(filename)
         val whenArised = eventWatch
-          .whenKeyedEvent[ExternalOrderArised](
-            EventRequest.singleClass(after = eventWatch.lastAddedEventId, timeout = Some(99.s)),
-            key = orderWatchPath,
-            predicate = _.externalOrderName == externalOrderName)
+          .awaitAsync[ExternalOrderArised](
+            stamped =>
+              stamped.key == orderWatchPath && stamped.event.externalOrderName == externalOrderName,
+            after = eventWatch.lastAddedEventId)
           .runToFuture
         val since = now
 

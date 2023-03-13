@@ -11,8 +11,9 @@ import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.WallClock
 import js7.base.utils.CatsBlocking.BlockingTaskResource
+import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Lazy, SetOnce}
+import js7.base.utils.{Allocated, Lazy, SetOnce}
 import js7.cluster.watch.ClusterWatchService
 import js7.data.controller.ControllerState
 import js7.data.execution.workflow.instructions.InstructionExecutorService
@@ -64,7 +65,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
   private val controllerApiLazy = Lazy(directoryProvider.newControllerApi(controller))
   protected lazy val controllerApi = controllerApiLazy()
 
-  private val clusterWatchServiceOnce = SetOnce[(ClusterWatchService, /*release:*/Task[Unit])]
+  private val clusterWatchServiceOnce = SetOnce[Allocated[Task, ClusterWatchService]]
 
   protected def clusterWatchServiceResource: Option[Resource[Task, ClusterWatchService]] =
     None
@@ -91,7 +92,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
     bareSubagents
     agents
     for (service <- clusterWatchServiceResource)
-      clusterWatchServiceOnce := service.allocated.await(99.s)
+      clusterWatchServiceOnce := service.toAllocated.await(99.s)
     controller
 
     if (waitUntilReady) {
@@ -108,7 +109,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
     for (o <- controllerApiLazy) o.stop await 99.s
     controller.terminate() await 15.s
 
-    for (o <- clusterWatchServiceOnce.toOption) o._2.await(99.s)
+    for (o <- clusterWatchServiceOnce.toOption) o.stop.await(99.s)
 
     agents
       .parTraverse(a => a.terminate() *> a.stop)

@@ -6,7 +6,6 @@ import java.lang.management.ManagementFactory.getOperatingSystemMXBean
 import java.nio.file.Files.createDirectory
 import java.nio.file.{Files, Path}
 import js7.agent.data.commands.AgentCommand
-import js7.agent.data.commands.AgentCommand.ShutDown
 import js7.base.convert.AsJava.StringAsPath
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.{deleteDirectoryContentRecursively, temporaryDirectory}
@@ -106,11 +105,7 @@ object TestControllerAgent
               Task
                 .parZip2(
                   controller.stop,
-                  agents.parTraverse(agent =>
-                    agent.executeCommandAsSystemUser(ShutDown(Some(SIGTERM)))
-                      .*>(Task(
-                        agent.close()))
-                      .*>(agent.untilTerminated)))
+                  agents.parTraverse(_.terminate(processSignal = Some(SIGTERM))))
                 .awaitInfinite
               Log4j.shutdown()
             } .closeWithCloser

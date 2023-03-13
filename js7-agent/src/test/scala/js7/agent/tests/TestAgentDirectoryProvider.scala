@@ -26,8 +26,7 @@ trait TestAgentDirectoryProvider extends HasCloser
   ProblemCodeMessages.initialize()
   coupleScribeWithSlf4j()
 
-  private val signature = SillySignature("MY-SILLY-SIGNATURE")
-  final val itemSigner = new ItemSigner(new SillySigner(signature), AgentState.signableItemJsonCodec)
+  final val itemSigner = TestAgentDirectoryProvider.itemSigner
 
   final lazy val agentDirectory = {
     val agentDirectory = createTempDirectory("TestAgentDirectoryProvider-") withCloser { dir =>
@@ -77,6 +76,9 @@ trait TestAgentDirectoryProvider extends HasCloser
 
 object TestAgentDirectoryProvider
 {
+  private val signature = SillySignature("MY-SILLY-SIGNATURE")
+  final val itemSigner = new ItemSigner(new SillySigner(signature), AgentState.signableItemJsonCodec)
+
   def apply() = new TestAgentDirectoryProvider {}
 
   /* Following resources have been generated with the command lines:

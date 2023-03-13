@@ -173,7 +173,8 @@ object WorkingClusterNode
 {
   private val logger = Logger(getClass)
 
-  def resource[S <: SnapshotableState[S] : SnapshotableState.Companion : diffx.Diff : Tag](
+  private[cluster]
+  def resource[S <: SnapshotableState[S]: SnapshotableState.Companion: diffx.Diff: Tag](
     recovered: Recovered[S],
     common: ClusterCommon,
     journalConf: JournalConf,
@@ -188,23 +189,11 @@ object WorkingClusterNode
       persistenceAllocated <- Resource.eval(FileStatePersistence
         .resource(recovered, journalConf, eventIdGenerator, keyedEventBus)
         .toAllocated/* ControllerOrderKeeper and AgentOrderKeeper both require Allocated*/)
-      workingClusterNode <- resource(
-        recovered.clusterState, recovered.eventId, persistenceAllocated, common, clusterConf)
+      workingClusterNode <- Resource.make(
+        acquire = Task.defer {
+          val w = new WorkingClusterNode(persistenceAllocated, common, clusterConf)
+          w.start(recovered.clusterState, recovered.eventId).as(w)
+        })(
+        release = _.stop)
     } yield workingClusterNode
-
-  def resource[S <: SnapshotableState[S] : SnapshotableState.Companion : diffx.Diff : Tag](
-    clusterState: ClusterState,
-    eventId: EventId,
-    persistenceAllocated: Allocated[Task, FileStatePersistence[S]],
-    common: ClusterCommon,
-    clusterConf: ClusterConf)
-    (implicit scheduler: Scheduler)
-  : Resource[Task, WorkingClusterNode[S]] = {
-    Resource.make(
-      acquire = Task.defer {
-        val w = new WorkingClusterNode(persistenceAllocated, common, clusterConf)
-        w.start(clusterState, eventId).as(w)
-      })(
-      release = _.stop)
-  }
 }
