@@ -4,7 +4,7 @@ import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
-import js7.common.http.Uris.encodeQuery
+import js7.base.web.Uris.encodeQuery
 import js7.data.cluster.ClusterWatchId
 import js7.data.event.{Event, EventRequest, JournalPosition}
 import scala.concurrent.duration.FiniteDuration

@@ -210,7 +210,7 @@ lazy val js7 = (project in file("."))
     `js7-controller`,
     `js7-controller-client`.jvm,
     `js7-agent-client`,
-    `js7-agent-data`,
+    `js7-agent-data`.jvm,
     `js7-provider`,
     `js7-proxy`.jvm,
     `js7-tests`,
@@ -485,6 +485,7 @@ lazy val `js7-proxy` = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
   .dependsOn(
     `js7-controller-client`,
+    `js7-agent-data`,
     `js7-base` % "test->test",
     `js7-tester` % "test")
   .jvmConfigure(_.dependsOn(
@@ -511,6 +512,7 @@ lazy val `js7-controller-client` = crossProject(JSPlatform, JVMPlatform)
   .withoutSuffixFor(JVMPlatform)
   .dependsOn(
     `js7-cluster-watch-api`,
+    `js7-agent-data`,
     `js7-common-http`,
     `js7-base` % "test->test",
     `js7-tester` % "test")
@@ -657,7 +659,11 @@ lazy val `js7-agent` = project
     `js7-agent-client`,
     `js7-subagent`,
     `js7-cluster`,
-    `js7-agent-data`, `js7-launcher`, `js7-core`, `js7-common`, `js7-data`.jvm,
+    `js7-agent-data`.jvm,
+    `js7-launcher`,
+    `js7-core`,
+    `js7-common`,
+    `js7-data`.jvm,
     `js7-base`.jvm % "test->test", `js7-tester`.jvm % "test",
     `js7-service-pgp` % "test")
   .settings(commonSettings)
@@ -694,7 +700,7 @@ lazy val `js7-subagent` = project
   }
 
 lazy val `js7-agent-client` = project
-  .dependsOn(`js7-data`.jvm, `js7-common-http`.jvm, `js7-common`, `js7-agent-data`,
+  .dependsOn(`js7-data`.jvm, `js7-common-http`.jvm, `js7-common`, `js7-agent-data`.jvm,
     `js7-cluster-watch-api`.jvm,
     `js7-base`.jvm % "test->test",
     `js7-tester`.jvm % "test")
@@ -711,8 +717,11 @@ lazy val `js7-agent-client` = project
       lmaxDisruptor % "test"
   }
 
-lazy val `js7-agent-data` = project
-  .dependsOn(`js7-common`, `js7-data`.jvm, `js7-base`.jvm % "test->test", `js7-tester`.jvm % "test")
+lazy val `js7-agent-data` = crossProject(JSPlatform, JVMPlatform)
+  .dependsOn(
+    `js7-data`,
+    `js7-base` % "test->test",
+    `js7-tester` % "test")
   .settings(commonSettings)
   .settings(description := "JS7 Agent - Value Classes")
   .settings {

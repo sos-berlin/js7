@@ -10,7 +10,6 @@ import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.{CorrelId, CorrelIdWrapped}
 import js7.base.problem.TestCodeProblem
 import js7.base.test.OurTestSuite
-import js7.common.message.ProblemCodeMessages
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.command.CancellationMode
 import js7.data.controller.ControllerId
@@ -32,8 +31,6 @@ import js7.tester.CirceJsonTester.{testJson, testJsonDecoder}
   */
 final class AgentCommandTest extends OurTestSuite
 {
-  ProblemCodeMessages.initialize()
-
   "Batch" in {
     check(AgentCommand.Batch(
       List(
@@ -61,7 +58,7 @@ final class AgentCommandTest extends OurTestSuite
             "arguments": {
               "ARG": "VALUE"
             },
-            "message": "TestMessage argument=$$argument (ARG=VALUE)"
+            "message": "TestCode(ARG=VALUE)"
           }
         ]
       }""")
