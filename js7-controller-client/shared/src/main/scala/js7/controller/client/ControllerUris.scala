@@ -3,7 +3,7 @@ package js7.controller.client
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
-import js7.common.http.Uris.{encodePath, encodeQuery}
+import js7.base.web.Uris.{encodePath, encodeQuery}
 import js7.data.event.EventId
 import js7.data.order.OrderId
 import scala.reflect.ClassTag

@@ -1,7 +1,7 @@
-package js7.common.http
+package js7.base.web
 
 import js7.base.test.OurTestSuite
-import js7.common.http.Uris.*
+import js7.base.web.Uris.{encodePath, encodeQuery, encodeSegment}
 
 /**
   * @author Joacim Zschimmer

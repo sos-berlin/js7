@@ -23,7 +23,7 @@ import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.akkautils.{Akkas, ProvideActorSystem}
 import js7.common.http.AkkaHttpClient
-import js7.common.http.Uris.{encodePath, encodeQuery}
+import js7.base.web.Uris.{encodePath, encodeQuery}
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.data.controller.ControllerState
 import js7.data.event.{Event, EventId, EventRequest, KeyedEvent, Stamped}

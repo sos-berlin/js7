@@ -9,7 +9,7 @@ import js7.base.stream.Numbered
 import js7.base.time.ScalaTime.RichFiniteDuration
 import js7.base.web.Uri
 import js7.common.http.AkkaHttpClient
-import js7.common.http.Uris.encodeQuery
+import js7.base.web.Uris.encodeQuery
 import js7.data.event.{Event, EventRequest, KeyedEvent, Stamped}
 import js7.data.session.HttpSessionApi
 import js7.data.subagent.{SubagentCommand, SubagentRunId}
