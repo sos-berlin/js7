@@ -2,6 +2,7 @@ package js7.common.system
 
 import java.lang.management.ManagementFactory.{getOperatingSystemMXBean, getPlatformMBeanServer}
 import javax.management.ObjectName
+import js7.base.system.Java8Polyfill.*
 import js7.base.system.SystemInformation
 import js7.common.system.ServerOperatingSystem.operatingSystem
 import scala.util.Try
@@ -10,7 +11,7 @@ object SystemInformations
 {
   def totalPhysicalMemory: Option[Long] =
     getOperatingSystemMXBean match {
-      case o: com.sun.management.OperatingSystemMXBean => Some(o.getTotalPhysicalMemorySize)
+      case o: com.sun.management.OperatingSystemMXBean => Some(o.getTotalMemorySize)
       case _ => None
   }
 
@@ -28,7 +29,9 @@ object SystemInformations
       "systemLoadAverage" -> bean.getSystemLoadAverage))
   }
 
-  private val OperatingSystemObjectName = new ObjectName("java.lang", "type", "ServerOperatingSystem")
+  private val OperatingSystemObjectName =
+    new ObjectName("java.lang", "type", "ServerOperatingSystem")
+
   private def platformMBean(): Map[String, Any] = {
     val bean = getPlatformMBeanServer
     val keys =
@@ -51,4 +54,6 @@ object SystemInformations
       mxBeans = Map("operatingSystem" -> (
         operatingSystemMXBean() ++
         platformMBean())))
+
+  java8Polyfill()
 }
