@@ -17,7 +17,6 @@ import js7.common.akkahttp.web.session.SessionRoute.*
 import js7.data.problems.InvalidLoginProblem
 import monix.eval.Task
 import monix.execution.Scheduler
-import scala.collection.immutable.Set
 
 /**
   * @author Joacim Zschimmer

@@ -72,7 +72,7 @@ extends Service.StoppableByRequest
   def dontNotifyActiveNodeAboutShutdown(): Unit =
     _testDontNotifyActiveNodeAboutShutdown = true
 
-  def currentState: Task[Either[Problem, S]] =
+  val currentState: Task[Either[Problem, S]] =
     currentStateRef.get.flatten
 
   /** None when stopped before activated. */

@@ -79,7 +79,7 @@ with MainService with Service.StoppableByRequest {
   private def run: Task[Unit] =
     if (conf.testSuppressStart) untilStopRequested else observe.completedL
 
-  override def stop =
+  override protected def stop =
     Task(close()) *> super.stop
 
   /** Compares the directory with the Controller's repo and sends the difference.

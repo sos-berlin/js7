@@ -312,10 +312,7 @@ object RunningController
         .memoize
 
       val commandExecutor = new ControllerCommandExecutor(
-        new MyCommandExecutor(
-          clusterNode,
-          onShutDownBeforeClusterActivated = clusterNode.stopRecovery,
-          currentOrderKeeperActor))
+        new MyCommandExecutor(clusterNode, currentOrderKeeperActor))
 
       val orderApi = new MainOrderApi(controllerState)
       val itemUpdater = new MyItemUpdater(itemVerifier, currentOrderKeeperActor)
@@ -324,7 +321,7 @@ object RunningController
       val webServerResource: Resource[Task, ControllerWebServer] =
         ControllerWebServer
           .resource(
-            orderApi, commandExecutor, itemUpdater, controllerState, clusterNode,
+            orderApi, commandExecutor, itemUpdater, clusterNode,
             recoveredExtract.totalRunningSince, // Maybe different from JournalHeader
             recoveredExtract.eventWatch,
             conf, sessionRegister)
@@ -398,7 +395,6 @@ object RunningController
 
   private class MyCommandExecutor(
     clusterNode: ClusterNode[ControllerState],
-    onShutDownBeforeClusterActivated: ProgramTermination => Task[Unit],
     orderKeeperActor: Task[Checked[ActorRef @@ ControllerOrderKeeper]])
     (implicit timeout: Timeout)
   extends CommandExecutor[ControllerCommand]
@@ -413,7 +409,7 @@ object RunningController
             if (command.dontNotifyActiveNode && clusterNode.isPassive) {
               clusterNode.dontNotifyActiveNodeAboutShutdown()
             }
-            onShutDownBeforeClusterActivated(ProgramTermination(restart = command.restart)) >>
+            clusterNode.stopRecovery(ProgramTermination(restart = command.restart)) >>
               orderKeeperActor.flatMap {
                 case Left(ClusterNodeIsNotActiveProblem | ShuttingDownProblem) =>
                   Task.right(ControllerCommand.Response.Accepted)
