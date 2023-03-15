@@ -2,7 +2,6 @@ package js7.data.controller
 
 import cats.syntax.foldable.*
 import cats.syntax.traverse.*
-import io.circe.generic.semiauto.deriveCodec
 import js7.base.circeutils.typed.{Subtype, TypedJsonCodec}
 import js7.base.crypt.Signed
 import js7.base.problem.Checked.RichCheckedIterable
@@ -739,7 +738,7 @@ with ItemContainer.Companion[ControllerState]
     Subtype[JournalHeader],
     Subtype[SnapshotMeta],
     Subtype[JournalState],
-    Subtype(deriveCodec[ClusterStateSnapshot]),
+    Subtype[ClusterStateSnapshot],
     Subtype[ControllerMetaState],
     Subtype[AgentRefState],
     Subtype[SubagentItemState](Nil, aliases = Seq("SubagentRefState")),

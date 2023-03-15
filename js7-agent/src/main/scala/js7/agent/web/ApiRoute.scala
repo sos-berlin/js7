@@ -6,6 +6,7 @@ import akka.http.scaladsl.server.Route
 import js7.agent.web.views.RootWebService
 import js7.cluster.web.ClusterRoute
 import js7.common.akkahttp.web.session.SessionRoute
+import js7.journal.web.JournalRoute
 
 /**
   * @author Joacim Zschimmer
@@ -15,6 +16,7 @@ extends RootWebService
 with CommandWebService
 with EventRoute
 with SessionRoute
+with JournalRoute
 with ClusterRoute
 {
   protected final val apiRoute: Route =
@@ -22,6 +24,7 @@ with ClusterRoute
       case "event" => eventRoute
       case "command" => commandRoute
       case "session" => sessionRoute
+      case "journal" => journalRoute
       case "cluster" => clusterRoute
       case _ => complete(NotFound)
     } ~

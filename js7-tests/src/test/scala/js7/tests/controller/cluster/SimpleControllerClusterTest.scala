@@ -22,7 +22,7 @@ final class SimpleControllerClusterTest extends ControllerClusterTester
     (if (sys.props.contains("test.speed")) 10000 else 1)
 
   "Cluster replicates journal files properly" in {
-    runControllerAndBackup() { (primary, primaryController, backup, backupController, _) =>
+    runControllerAndBackup() { (primary, primaryController, _, backup, backupController, _, _) =>
       assert(primaryController.api.executeCommand(ControllerCommand.NoOperation()).await(99.s) ==
         Right(ControllerCommand.Response.Accepted))
 

@@ -20,6 +20,7 @@ import js7.data.cluster.ClusterEvent.{ClusterNodeLostEvent, ClusterPassiveLost}
 import js7.data.cluster.ClusterState.{FailedOver, HasNodes, SwitchedOver}
 import js7.data.cluster.{ClusterCommand, ClusterEvent, ClusterNodeApi, ClusterState}
 import monix.eval.Task
+import scala.concurrent.duration.Deadline.now
 
 private[cluster] final class ClusterCommon private(
   val clusterWatchCounterpart: ClusterWatchCounterpart,

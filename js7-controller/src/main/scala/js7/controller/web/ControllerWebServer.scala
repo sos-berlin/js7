@@ -2,7 +2,6 @@ package js7.controller.web
 
 import akka.actor.ActorSystem
 import cats.effect.Resource
-import js7.base.problem.Checked
 import js7.cluster.ClusterNode
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
@@ -21,7 +20,6 @@ object ControllerWebServer
     orderApi: OrderApi,
     commandExecutor: ControllerCommandExecutor,
     itemUpdater: ItemUpdater,
-    controllerState: Task[Checked[ControllerState]],
     clusterNode: ClusterNode[ControllerState],
     totalRunningSince: Deadline,
     eventWatch: FileEventWatch,
@@ -41,7 +39,6 @@ object ControllerWebServer
             orderApi,
             commandExecutor,
             itemUpdater,
-            controllerState,
             clusterNode,
             totalRunningSince,
             sessionRegister,

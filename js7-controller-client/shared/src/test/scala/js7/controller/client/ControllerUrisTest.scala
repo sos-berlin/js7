@@ -2,6 +2,7 @@ package js7.controller.client
 
 import js7.base.test.OurTestSuite
 import js7.base.web.Uri
+import js7.data.agent.AgentPath
 import js7.data.order.OrderId
 
 /**
@@ -33,6 +34,18 @@ final class ControllerUrisTest extends OurTestSuite
   "snapshot" - {
     "list" in {
       assert(controllerUris.snapshot.list == Uri("https://example.com/controller/api/snapshot/"))
+    }
+  }
+
+  "agentForward" - {
+    "agentForward" in {
+      assert(controllerUris.agentForward(AgentPath("FOLDER/AGENT")) ==
+        Uri("https://example.com/controller/api/agent-forward/FOLDER%2FAGENT"))
+    }
+
+    "agentCommand" in {
+      assert(controllerUris.agentCommand(AgentPath("FOLDER/AGENT")) ==
+        Uri("https://example.com/controller/api/agent-forward/FOLDER%2FAGENT/command"))
     }
   }
 }

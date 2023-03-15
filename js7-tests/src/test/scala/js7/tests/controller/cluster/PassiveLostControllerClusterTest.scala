@@ -16,7 +16,7 @@ final class PassiveLostControllerClusterTest extends ControllerClusterTester
   override protected def configureClusterNodes = false
 
   "Passive lost" in {
-    withControllerAndBackup() { (primary, backup, clusterSetting) =>
+    withControllerAndBackup() { (primary, _, backup, _, clusterSetting) =>
       val primaryController = primary.newController(httpPort = Some(primaryControllerPort))
 
       var backupController = backup.newController(httpPort = Some(backupControllerPort))

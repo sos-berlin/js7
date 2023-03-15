@@ -51,7 +51,7 @@ final class FailoverControllerClusterTest extends ControllerClusterTester
 
   private def test(addNonReplicatedEvents: Boolean = false): Unit = {
     sys.props(testHeartbeatLossPropertyKey) = "false"
-    withControllerAndBackup() { (primary, backup, clusterSetting) =>
+    withControllerAndBackup() { (primary, _, backup, _, clusterSetting) =>
       var primaryController = primary.newController(httpPort = Some(primaryControllerPort))
       var backupController = backup.newController(httpPort = Some(backupControllerPort))
 

@@ -4,6 +4,7 @@ import cats.effect.{Resource, SyncIO}
 import com.typesafe.config.{Config, ConfigFactory}
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
+import js7.agent.TestAgent
 import js7.base.auth.{Admission, UserAndPassword, UserId}
 import js7.base.configutils.Configs.*
 import js7.base.generic.SecretString
@@ -84,21 +85,29 @@ trait ControllerClusterForScalaTest
   sys.props(testHeartbeatLossPropertyKey) = "false"
 
   final def runControllerAndBackup(suppressClusterWatch: Boolean = false)
-    (body: (DirectoryProvider, TestController, DirectoryProvider, TestController, ClusterSetting) => Unit)
+    (body: (DirectoryProvider, TestController, Vector[TestAgent],
+            DirectoryProvider, TestController, Vector[TestAgent], ClusterSetting) => Unit)
   : Unit =
-    withControllerAndBackup(suppressClusterWatch) { (primary, backup, clusterSetting) =>
-      runControllers(primary, backup) { (primaryController, backupController) =>
-        body(primary, primaryController, backup, backupController, clusterSetting)
-      }
+    withControllerAndBackup(suppressClusterWatch) {
+      (primary, primaryAgents, backup, backupAgents, clusterSetting) =>
+        runControllers(primary, backup) { (primaryController, backupController) =>
+          body(
+            primary, primaryController, primaryAgents,
+            backup, backupController, backupAgents,
+            clusterSetting)
+        }
     }
 
   final def withControllerAndBackup(suppressClusterWatch: Boolean = false)
-    (body: (DirectoryProvider, DirectoryProvider, ClusterSetting) => Unit)
+    (body: (DirectoryProvider, Vector[TestAgent], DirectoryProvider, Vector[TestAgent], ClusterSetting) => Unit)
   : Unit =
-    withControllerAndBackupWithoutAgents(suppressClusterWatch) { (primary, backup, setting) =>
-      primary.runAgents() { _ =>
-        body(primary, backup, setting)
-      }
+    withControllerAndBackupWithoutAgents(suppressClusterWatch) {
+      (primary, backup, setting) =>
+        backup.runAgents() { backupAgents =>
+          primary.runAgents() { primaryAgents =>
+            body(primary, primaryAgents, backup, backupAgents, setting)
+          }
+        }
     }
 
   final def withControllerAndBackupWithoutAgents(suppressClusterWatch: Boolean = false)
@@ -106,7 +115,9 @@ trait ControllerClusterForScalaTest
   : Unit =
     withCloser { implicit closer =>
       val testName = ControllerClusterForScalaTest.this.getClass.getSimpleName
-      val agentPorts = findFreeTcpPorts(agentPaths.size)
+      val (agentPorts, backupAgentPorts) = findFreeTcpPorts(2 * agentPaths.size)
+        .grouped(2).map(seq => (seq(0), seq(1))).toVector.unzip
+
       val primary = new DirectoryProvider(
         agentPaths, Map.empty, items, testName = Some(s"$testName-Primary"),
         controllerConfig = combine(
@@ -123,15 +134,22 @@ trait ControllerClusterForScalaTest
             js7.journal.cluster.TEST-ACK-LOSS = "$testAckLossPropertyKey"
             js7.journal.release-events-delay = 0s
             js7.journal.remove-obsolete-files = $removeObsoleteJournalFiles
+            js7.auth.cluster.password = "PRIMARY-CONTROLLER-PASSWORD"
+            js7.auth.users.Controller.password = "plain:BACKUP-CONTROLLER-PASSWORD"
             js7.auth.users.TEST-USER.password = "plain:TEST-PASSWORD"
-            js7.auth.users.Controller.password = "plain:PRIMARY-CONTROLLER-PASSWORD"
-            js7.auth.cluster.password = "BACKUP-CONTROLLER-PASSWORD" """),
+            js7.auth.users.TEST-USER.permissions = [ AgentDirectorForward ]"""),
         agentPorts = agentPorts,
-        agentConfig = config"""js7.job.execution.signed-script-injection-allowed = on"""
+        agentConfig = config"""
+          js7.job.execution.signed-script-injection-allowed = on
+          js7.journal.release-events-delay = 0s
+          js7.journal.remove-obsolete-files = $removeObsoleteJournalFiles
+          js7.auth.cluster.password = "PRIMARY-AGENT-PASSWORD"
+          js7.auth.users.Agent.password = "plain:BACKUP-AGENT-PASSWORD""""
       ).closeWithCloser
 
       val backup = new DirectoryProvider(
-        Nil, Map.empty, Nil, testName = Some(s"$testName-Backup"),
+        agentPaths, Map.empty, Nil, testName = Some(s"$testName-Backup"),
+        doNotAddItems = true,
         controllerConfig = combine(
           backupControllerConfig,
           config"""
@@ -140,9 +158,17 @@ trait ControllerClusterForScalaTest
             js7.journal.cluster.TEST-ACK-LOSS = "$testAckLossPropertyKey"
             js7.journal.release-events-delay = 0s
             js7.journal.remove-obsolete-files = $removeObsoleteJournalFiles
-            js7.auth.users.Controller.password = "plain:BACKUP-CONTROLLER-PASSWORD"
-            js7.auth.users.TEST-USER.password = "plain:TEST-PASSWORD"
-            js7.auth.cluster.password = "PRIMARY-CONTROLLER-PASSWORD""""),
+            js7.auth.cluster.password = "BACKUP-CONTROLLER-PASSWORD"
+            js7.auth.users.Controller.password = "plain:PRIMARY-CONTROLLER-PASSWORD"
+            js7.auth.users.TEST-USER.password = "plain:TEST-PASSWORD""""),
+        agentPorts = backupAgentPorts,
+        agentConfig = config"""
+          js7.job.execution.signed-script-injection-allowed = on
+          js7.journal.cluster.node.is-backup = yes
+          js7.journal.release-events-delay = 0s
+          js7.journal.remove-obsolete-files = $removeObsoleteJournalFiles
+          js7.auth.cluster.password = "BACKUP-AGENT-PASSWORD"
+          js7.auth.users.Agent.password = "plain:PRIMARY-AGENT-PASSWORD""""
       ).closeWithCloser
 
       // Replicate credentials required for agents
@@ -151,7 +177,7 @@ trait ControllerClusterForScalaTest
         backup.controller.configDir / "private" / "private.conf",
         REPLACE_EXISTING)
 
-      for (a <- primary.agents) a.writeExecutable(TestPathExecutable, shellScript)
+      for (a <- primary.agents ++ backup.agents) a.writeExecutable(TestPathExecutable, shellScript)
 
       val setting = ClusterSetting(
         Map(
@@ -227,16 +253,16 @@ object ControllerClusterForScalaTest
   val clusterWatchId = ClusterWatchId("CLUSTER-WATCH")
 
   def assertEqualJournalFiles(
-    primary: DirectoryProvider.ControllerTree,
-    backup: DirectoryProvider.ControllerTree,
+    primary: DirectoryProvider.Tree,
+    backup: DirectoryProvider.Tree,
     n: Int)
     (implicit pos: source.Position)
   : Unit = {
-    waitForCondition(9.s, 10.ms) { listJournalFiles(primary.stateDir / "controller").size == n }
-    val journalFiles = listJournalFiles(primary.stateDir / "controller")
+    waitForCondition(9.s, 10.ms) { listJournalFiles(primary.journalFileBase).size == n }
+    val journalFiles = listJournalFiles(primary.journalFileBase)
     // Snapshot is not being acknowledged, so a new journal file starts asynchronously (or when one event has been written)
     assert(journalFiles.size == n)
-    waitForCondition(9.s, 10.ms) { listJournalFiles(backup.stateDir / "controller").size == n }
+    waitForCondition(9.s, 10.ms) { listJournalFiles(backup.journalFileBase).size == n }
     for (primaryFile <- journalFiles.map(_.file)) {
       withClue(s"$primaryFile: ") {
         val backupJournalFile = backup.stateDir.resolve(primaryFile.getFileName)

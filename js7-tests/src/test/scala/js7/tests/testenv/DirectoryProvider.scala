@@ -446,6 +446,8 @@ object DirectoryProvider
     lazy val dataDir = directory / "data"
     lazy val stateDir = dataDir / "state"
 
+    def journalFileBase: Path
+
     private[DirectoryProvider] def createDirectoriesAndFiles(): Unit = {
       createDirectory(directory)
       createDirectory(configDir)
@@ -459,6 +461,7 @@ object DirectoryProvider
     keyStore: Option[JavaResource], trustStores: Iterable[JavaResource], agentHttpsMutual: Boolean)
   extends Tree
   {
+    val journalFileBase = stateDir / "controller"
     val userAndPassword = UserAndPassword(UserId("TEST-USER"), SecretString("TEST-PASSWORD"))
     // TODO Like AgentTree, use this port in startController
     //lazy val port = findFreeTcpPort()
@@ -516,6 +519,7 @@ object DirectoryProvider
     config: Config = ConfigFactory.empty)
   extends Tree {
     val directory = rootDirectory / agentPath.string
+    val journalFileBase = stateDir / "agent"
     lazy val agentConfiguration = AgentConfiguration.forTest(directory,
       name = name,
       config.withFallback(bareSubagentIds

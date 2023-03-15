@@ -16,7 +16,6 @@ import js7.base.test.OurTestSuite
 import js7.base.time.ScalaTime.*
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkahttp.CirceJsonSupport.{jsonMarshaller, jsonUnmarshaller}
-import js7.core.command.CommandMeta
 import js7.data.agent.Problems.AgentIsShuttingDown
 import monix.eval.Task
 import monix.execution.Scheduler
@@ -31,7 +30,7 @@ final class CommandWebServiceTest extends OurTestSuite with WebServiceTest with 
   protected def scheduler = Scheduler.traced
   override protected val uriPathPrefix = "test"
 
-  protected def commandExecute(meta: CommandMeta, command: AgentCommand) =
+  protected val executeCommand = (command, _) =>
     Task(
       command match {
         case TestCommand => Right(AgentCommand.Response.Accepted)

@@ -39,7 +39,7 @@ final class BigJsonControllerClusterTest extends OurTestSuite with ControllerClu
   override protected val clusterTiming = ClusterTiming(1.s, 10.s)
 
   "Cluster replicates big JSON" in {
-    runControllerAndBackup() { (primary, primaryController, backup, backupController, _) =>
+    runControllerAndBackup() { (primary, primaryController, _, backup, backupController, _, _) =>
       import primaryController.eventWatch
       eventWatch.await[ClusterEvent.ClusterCoupled]()
 

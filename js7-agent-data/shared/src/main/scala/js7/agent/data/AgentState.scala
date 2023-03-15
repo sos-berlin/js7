@@ -14,6 +14,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.Tests.isTest
 import js7.data.agent.{AgentPath, AgentRefState, AgentRunId}
 import js7.data.calendar.{Calendar, CalendarPath, CalendarState}
+import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerId
 import js7.data.event.KeyedEvent.NoKey
 import js7.data.event.KeyedEventTypedJsonCodec.KeyedSubtype
@@ -345,6 +346,7 @@ with ItemContainer.Companion[AgentState]
 
   val snapshotObjectJsonCodec = TypedJsonCodec[Any](
     Subtype[JournalState],
+    Subtype[ClusterStateSnapshot],
     Subtype[AgentMetaState],
     Workflow.subtype,
     Subtype[SubagentItemState](aliases = Seq("SubagentRefState")),
@@ -358,6 +360,7 @@ with ItemContainer.Companion[AgentState]
   implicit val keyedEventJsonCodec: KeyedEventTypedJsonCodec[Event] = {
     KeyedEventTypedJsonCodec[Event](
       KeyedSubtype[JournalEvent],
+      KeyedSubtype[ClusterEvent],
       KeyedSubtype[SubagentItemStateEvent],
       KeyedSubtype[OrderEvent],
       KeyedSubtype[AgentEvent],

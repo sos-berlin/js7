@@ -48,6 +48,7 @@ import js7.data.agent.{AgentPath, AgentRef, AgentRefState, AgentRunId}
 import js7.data.board.BoardEvent.{NoticeDeleted, NoticePosted}
 import js7.data.board.{BoardPath, BoardState, Notice, NoticeId}
 import js7.data.calendar.{Calendar, CalendarExecutor}
+import js7.data.cluster.ClusterEvent
 import js7.data.controller.ControllerCommand.{ControlWorkflow, ControlWorkflowPath, TransferOrders}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.data.controller.ControllerStateExecutor.convertImplicitly
@@ -521,6 +522,9 @@ with MainJournalingActor[ControllerState, Event]
                           case _: SubagentEventsObserved => Nil  // Not needed
                           case _ => Timestamped(keyedEvent) :: Nil
                         }
+
+                      case KeyedEvent(_: NoKey, _: ClusterEvent) =>
+                        Nil
 
                       case _ =>
                         logger.error(s"Unknown event received from ${agentEntry.agentPath}: $keyedEvent")

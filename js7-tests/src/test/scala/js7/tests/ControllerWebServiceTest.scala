@@ -160,36 +160,36 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest
     ).await(99.s).orThrow
   }
 
-  "/controller/api/agent-proxy" - {
-    //"/controller/api/agent-proxy/%2FFOLDER%2FAGENT-A" in {
+  "/controller/api/agent-forward" - {
+    //"/controller/api/agent-forward/%2FFOLDER%2FAGENT-A" in {
     //  // Pass-through AgentRef. Slashes but the first in AgentPath must be coded as %2F.
     //  val headers = RawHeader("x-js7-session", sessionToken) :: Nil
-    //  val overview = httpClient.get[AgentOverview](Uri(s"$uri/controller/api/agent-proxy/FOLDER%2FAGENT-A"), Duration.Inf, headers) await 99.s
+    //  val overview = httpClient.get[AgentOverview](Uri(s"$uri/controller/api/agent-forward/FOLDER%2FAGENT-A"), Duration.Inf, headers) await 99.s
     //  assert(overview.version == BuildInfo.prettyVersion)
     //}
 
-    "/controller/api/agent-proxy/UNKNOWN returns 400" in {
+    "/controller/api/agent-forward/UNKNOWN returns 400" in {
       val headers = RawHeader("x-js7-session", sessionToken) :: Nil
       val e = intercept[HttpException] {
-        httpClient.get[Json](Uri(s"$uri/controller/api/agent-proxy/UNKNOWN"), headers) await 99.s
+        httpClient.get[Json](Uri(s"$uri/controller/api/agent-forward/UNKNOWN"), headers) await 99.s
       }
       assert(e.status.intValue == 400/*BadRequest*/)
       assert(e.problem == Some(UnknownKeyProblem("AgentPath", AgentPath("UNKNOWN"))))
     }
 
-    //"/controller/api/agent-proxy/FOLDER%2FAGENT-A/NOT-FOUND returns 404" in {
+    //"/controller/api/agent-forward/FOLDER%2FAGENT-A/NOT-FOUND returns 404" in {
     //  val headers = RawHeader("x-js7-session", sessionToken) :: Nil
     //  assert(
     //    intercept[HttpException] {
-    //      httpClient.get[Json](Uri(s"$uri/controller/api/agent-proxy/FOLDER%2FAGENT-A/task"), headers) await 99.s
+    //      httpClient.get[Json](Uri(s"$uri/controller/api/agent-forward/FOLDER%2FAGENT-A/task"), headers) await 99.s
     //    }.status.intValue == 404/*NotFound*/)
     //}
     //
-    //"/controller/api/agent-proxy/FOLDER%2FAGENT-A/timer" in {
+    //"/controller/api/agent-forward/FOLDER%2FAGENT-A/timer" in {
     //  val headers = RawHeader("x-js7-session", sessionToken) :: Nil
     //  assert(
     //    intercept[HttpException] {
-    //      httpClient.get[Json](Uri(s"$uri/controller/api/agent-proxy/FOLDER%2FAGENT-A/timer"), headers) await 99.s
+    //      httpClient.get[Json](Uri(s"$uri/controller/api/agent-forward/FOLDER%2FAGENT-A/timer"), headers) await 99.s
     //    }.status.intValue == 404/*NotFound*/)
     //}
   }

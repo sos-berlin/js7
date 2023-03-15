@@ -5,13 +5,13 @@ import akka.http.scaladsl.server.Directives.decodeRequest
 import cats.effect.Resource
 import js7.agent.client.AgentClient
 import js7.agent.configuration.AgentConfiguration
-import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.*
 import js7.agent.web.CommandWebServerTest.*
 import js7.agent.web.common.AgentSession
 import js7.base.auth.SimpleUser
 import js7.base.configutils.Configs.*
 import js7.base.log.ScribeForJava.coupleScribeWithSlf4j
+import js7.base.test.OurAsyncTestSuite
 import js7.base.web.Uri
 import js7.common.akkahttp.AkkaHttpServerUtils.pathSegments
 import js7.common.akkahttp.web.AkkaWebServer
@@ -20,14 +20,12 @@ import js7.common.akkahttp.web.data.WebServerBinding
 import js7.common.akkahttp.web.session.SessionRegister
 import js7.common.akkautils.Akkas.actorSystemResource
 import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
-import js7.core.command.CommandMeta
 import js7.data.agent.{AgentPath, AgentRunId}
 import js7.data.event.{EventId, JournalId}
 import js7.data.order.OrderId
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.traced
-import js7.base.test.OurAsyncTestSuite
 import scala.concurrent.Future
 
 /**
@@ -62,7 +60,7 @@ final class CommandWebServerTest extends OurAsyncTestSuite
           protected def commandOverview = throw new NotImplementedError
           protected def commandDetailed = throw new NotImplementedError
 
-          protected def commandExecute(meta: CommandMeta, command: AgentCommand) =
+          protected val executeCommand = (command, meta) =>
             Task(
               command match {
                 case _: CoupleController => Right(CoupleController.Response(orderIds))

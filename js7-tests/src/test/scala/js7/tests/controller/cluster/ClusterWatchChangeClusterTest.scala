@@ -17,7 +17,7 @@ import scala.concurrent.Promise
 final class ClusterWatchChangeClusterTest extends ControllerClusterTester
 {
   "Start and stop some ClusterWatch with same or different ClusterWatchIds" in {
-    withControllerAndBackup(suppressClusterWatch = true) { (primary, backup, _) =>
+    withControllerAndBackup(suppressClusterWatch = true) { (primary, _, backup, _, _) =>
       val primaryController = primary.newController(httpPort = Some(primaryControllerPort))
 
       var whenConfirmed = primaryController.testEventBus.when[ClusterWatchConfirmed].runToFuture

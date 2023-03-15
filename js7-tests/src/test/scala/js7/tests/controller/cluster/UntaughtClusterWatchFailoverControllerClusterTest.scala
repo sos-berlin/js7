@@ -32,7 +32,7 @@ final class UntaughtClusterWatchFailoverControllerClusterTest extends Controller
       .withFallback(super.primaryControllerConfig)
 
   "Failover and recouple" in {
-    withControllerAndBackup(suppressClusterWatch = true) { (primary, backup, clusterSetting) =>
+    withControllerAndBackup(suppressClusterWatch = true) { (primary, _, backup, _, clusterSetting) =>
       val primaryController = primary.newController(httpPort = Some(primaryControllerPort))
 
       backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>

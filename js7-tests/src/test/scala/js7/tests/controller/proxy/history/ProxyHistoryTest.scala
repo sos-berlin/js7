@@ -61,7 +61,7 @@ final class ProxyHistoryTest extends OurTestSuite with ProvideActorSystem with C
   override protected val agentPaths = AAgentPath :: BAgentPath :: Nil
 
   "Read event stream in small parts and write history" in {
-    withControllerAndBackup() { (primary, backup, _) =>
+    withControllerAndBackup() { (primary, _, backup, _, _) =>
       def listJournalFilenames = listJournalFiles(primary.controller.dataDir / "state" / "controller")
         .map(_.file.getFileName.toString)
 
@@ -212,7 +212,7 @@ final class ProxyHistoryTest extends OurTestSuite with ProvideActorSystem with C
   }
 
   "Java history" in {
-    runControllerAndBackup() { (primary, _, _, _, _) =>
+    runControllerAndBackup() { (primary, _, _, _, _, _, _) =>
       autoClosing(new JProxyContext) { context =>
         val api = context.newControllerApi(
           admissions.map(JAdmission.apply).toList.asJava,

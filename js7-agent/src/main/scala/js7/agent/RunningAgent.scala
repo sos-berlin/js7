@@ -19,15 +19,16 @@ import js7.agent.web.AgentWebServer
 import js7.agent.web.common.AgentSession
 import js7.base.BuildInfo
 import js7.base.auth.{SessionToken, SimpleUser, UserId}
+import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.eventbus.StandardEventBus
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
-import js7.base.problem.Checked
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.ShuttingDownProblem
+import js7.base.problem.{Checked, Problem}
 import js7.base.service.{MainService, Service}
 import js7.base.thread.IOExecutor
 import js7.base.time.AlarmClock
@@ -46,7 +47,7 @@ import js7.common.system.SystemInformations.systemInformation
 import js7.common.system.ThreadPools.newUnlimitedScheduler
 import js7.common.system.startup.{ServiceMain, StartUp}
 import js7.core.command.CommandMeta
-import js7.data.Problems.{ClusterNodeIsNotActiveProblem, ClusterNodeIsNotReadyProblem}
+import js7.data.Problems.{BackupClusterNodeNotAppointed, ClusterNodeIsNotActiveProblem, ClusterNodeIsNotReadyProblem}
 import js7.journal.EventIdClock
 import js7.journal.files.JournalFiles.JournalMetaOps
 import js7.journal.recover.Recovered
@@ -63,7 +64,7 @@ final class RunningAgent private(
   webServer: AkkaWebServer & AkkaWebServer.HasUri,
   val terminated: Future[ProgramTermination],
   val untilReady: Task[MainActor.Ready],
-  val directAgentApi: Task[Checked[CommandMeta => DirectAgentApi]],
+  val executeCommand1: (AgentCommand, CommandMeta) => Task[Checked[AgentCommand.Response]],
   sessionRegister: SessionRegister[AgentSession],
   val sessionToken: SessionToken,
   val testEventBus: StandardEventBus[Any],
@@ -103,10 +104,9 @@ extends MainService
   : Task[ProgramTermination] =
     terminating {
       logger.debug("terminate")
-      @deprecated val systemUser = SimpleUser(UserId("System")) // TODO
-      /*directE*/executeCommand(
+      executeCommand(
         AgentCommand.ShutDown(processSignal, suppressSnapshot = suppressSnapshot),
-        CommandMeta(systemUser)
+        CommandMeta(SimpleUser.System)
       ).map(_.orThrow)
     }
 
@@ -137,51 +137,38 @@ extends MainService
 
   private[agent] def executeCommand(command: AgentCommand, meta: CommandMeta)
   : Task[Checked[AgentCommand.Response]] =
-    (command match {
-      case command: AgentCommand.ShutDown =>
-        logger.info(s"❗ $command")
-        //🔨if (command.clusterAction.nonEmpty && !clusterNode.isWorkingNode)
-        //🔨  Task.pure(Left(PassiveClusterNodeShutdownNotAllowedProblem))
-        //🔨else {
-          //🔨if (command.dontNotifyActiveNode && clusterNode.isPassive) {
-          //🔨  clusterNode.dontNotifyActiveNodeAboutShutdown()
+    logger.debugTask("executeCommand", command.getClass.shortClassName)(
+      (command match {
+        case command: AgentCommand.ShutDown =>
+          logger.info(s"❗ $command")
+          //🔨if (command.clusterAction.nonEmpty && !clusterNode.isWorkingNode)
+          //🔨  Task.pure(Left(PassiveClusterNodeShutdownNotAllowedProblem))
+          //🔨else {
+            //🔨if (command.dontNotifyActiveNode && clusterNode.isPassive) {
+            //🔨  clusterNode.dontNotifyActiveNodeAboutShutdown()
+            //🔨}
+            clusterNode.stopRecovery(ProgramTermination(restart = command.restart)) >>
+              executeCommand1(command, meta)
           //🔨}
-          clusterNode.stopRecovery(ProgramTermination(restart = command.restart)) >>
-            directAgentApi.flatMap {
-              case Left(ClusterNodeIsNotActiveProblem | ShuttingDownProblem) =>
-                Task.right(AgentCommand.Response.Accepted)
 
-              case Left(problem @ ClusterNodeIsNotReadyProblem/*???*/) =>
-                logger.error(s"❓ $command => $problem")
-                Task.right(AgentCommand.Response.Accepted)
+        //🔨case AgentCommand.ClusterAppointNodes(idToUri, activeId) =>
+        //🔨  Task(clusterNode.workingClusterNode)
+        //🔨    .flatMapT(_.appointNodes(idToUri, activeId))
+        //🔨    .rightAs(AgentCommand.Response.Accepted)
 
-              case Left(problem) =>
-                Task.pure(Left(problem))
+        case ClusterAppointNodes(idToUri, activeId) =>
+          Task(clusterNode.workingClusterNode)
+            .flatMapT(_.appointNodes(idToUri, activeId))
+            .rightAs(AgentCommand.Response.Accepted)
 
-              case Right(api) =>
-                api(meta).commandExecute(command)
-            }
-        //🔨}
+        case ClusterSwitchOver =>
+          Task(clusterNode.workingClusterNode)
+            .flatMapT(_.switchOver)
+            .rightAs(AgentCommand.Response.Accepted)
 
-      //🔨case AgentCommand.ClusterAppointNodes(idToUri, activeId) =>
-      //🔨  Task(clusterNode.workingClusterNode)
-      //🔨    .flatMapT(_.appointNodes(idToUri, activeId))
-      //🔨    .rightAs(AgentCommand.Response.Accepted)
-
-      case ClusterAppointNodes(idToUri, activeId) =>
-        Task(clusterNode.workingClusterNode)
-          .flatMapT(_.appointNodes(idToUri, activeId))
-          .rightAs(AgentCommand.Response.Accepted)
-
-      case ClusterSwitchOver =>
-        Task(clusterNode.workingClusterNode)
-          .flatMapT(_.switchOver)
-          .rightAs(AgentCommand.Response.Accepted)
-
-      case _ =>
-        directAgentApi.flatMapT(api =>
-          api(meta).commandExecute(command))
-    }).map(_.map((_: AgentCommand.Response).asInstanceOf[command.Response]))
+        case _ =>
+          executeCommand1(command, meta)
+      }).map(_.map((_: AgentCommand.Response).asInstanceOf[command.Response])))
 
   override def toString =
     "Agent"
@@ -196,7 +183,10 @@ object RunningAgent {
     import conf.{config, httpsConfig, implicitAkkaAskTimeout, journalConf, journalMeta}
 
     // FIXME Use AgentPath as cluster node UserId --> wie AgentDedicated abwarten? Brauchen wir das?
-    val clusterConf = ClusterConf.fromConfig(UserId("Agent"), config).orThrow
+    val clusterConf = {
+      val userId = config.as[UserId]("js7.auth.cluster.user")
+      ClusterConf.fromConfig(userId, config).orThrow
+    }
 
     // Recover and initialize other stuff in parallel
     val clock = testWiring.alarmClock getOrElse AlarmClock(
@@ -337,14 +327,63 @@ object RunningAgent {
       system = systemInformation(),
       java = javaInformation()))
 
+    def executeCommand(cmd: AgentCommand, meta: CommandMeta)
+    : Task[Checked[AgentCommand.Response]] =
+      (cmd match {
+        case cmd: AgentCommand.ShutDown =>
+          logger.info(s"❗ $cmd")
+          //🔨if (cmd.clusterAction.nonEmpty && !clusterNode.isWorkingNode)
+          //🔨  Task.pure(Left(PassiveClusterNodeShutdownNotAllowedProblem))
+          //🔨else {
+          //🔨if (cmd.dontNotifyActiveNode && clusterNode.isPassive) {
+          //🔨  clusterNode.dontNotifyActiveNodeAboutShutdown()
+          //🔨}
+          clusterNode.stopRecovery(ProgramTermination(restart = cmd.restart)) >>
+            currentMainActor
+              .flatMap(_.traverse(_.whenReady.map(_.api)))
+              .flatMap {
+                case Left(ClusterNodeIsNotActiveProblem | ShuttingDownProblem
+                          | BackupClusterNodeNotAppointed) =>
+                  Task.right(AgentCommand.Response.Accepted)
+
+                case Left(problem @ ClusterNodeIsNotReadyProblem /*???*/) =>
+                  logger.error(s"❓ $cmd => $problem")
+                  Task.right(AgentCommand.Response.Accepted)
+
+                case Left(problem) =>
+                  Task.pure(Left(problem))
+
+                case Right(api) =>
+                  api(meta).commandExecute(cmd)
+              }
+        //🔨}
+
+        case ClusterAppointNodes(idToUri, activeId) =>
+          Task(clusterNode.workingClusterNode)
+            .flatMapT(_.appointNodes(idToUri, activeId))
+            .rightAs(AgentCommand.Response.Accepted)
+
+        case ClusterSwitchOver =>
+          Task.left(Problem("Agent still not support ClusterSwitchOver command"))
+          // Notify AgentOrderKeeper ???
+          //Task(clusterNode.workingClusterNode)
+          //  .flatMapT(_.switchOver)
+          //  .rightAs(AgentCommand.Response.Accepted)
+
+        case _ =>
+          currentMainActor
+            .flatMap(_.traverse(_.whenReady.map(_.api)))
+            .flatMapT(api => api(meta).commandExecute(cmd))
+      }).map(_.map((_: AgentCommand.Response).asInstanceOf[cmd.Response]))
+
     for {
       sessionToken <- sessionRegister
         .placeSessionTokenInDirectory(SimpleUser.System, conf.workDirectory)
 
-      directApi = currentMainActor.flatMap(_.traverse(_.whenReady.map(_.api)))
       webServer <- AgentWebServer
         .resource(
-          agentOverview, conf, gateKeeperConf, directApi, sessionRegister,
+          agentOverview, conf, gateKeeperConf, executeCommand, clusterNode,
+          sessionRegister,
           recoveredExtract.eventWatch)(actorSystem)
         .evalTap(webServer => Task {
           conf.workDirectory / "http-uri" :=
@@ -356,7 +395,7 @@ object RunningAgent {
           clusterNode,
           webServer, /*Task(mainActor),*/
           untilMainActorTerminated.runToFuture,
-          untilReady, directApi, sessionRegister, sessionToken,
+          untilReady, executeCommand, sessionRegister, sessionToken,
           testEventBus,
           actorSystem, config)))
     } yield agent

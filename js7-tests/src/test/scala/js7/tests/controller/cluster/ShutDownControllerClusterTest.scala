@@ -23,7 +23,7 @@ final class ShutDownControllerClusterTest extends ControllerClusterTester
 
   "ShutDown active node" - {
     "ShutDown primary node only (no switchover)" in {
-      withControllerAndBackup() { (primary, backup, clusterSetting) =>
+      withControllerAndBackup() { (primary, _, backup, _, clusterSetting) =>
         backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
           primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
             primaryController.eventWatch.await[ClusterWatchRegistered]()
@@ -52,7 +52,7 @@ final class ShutDownControllerClusterTest extends ControllerClusterTester
     }
 
     "ShutDown active node with switchover" in {
-      withControllerAndBackup() { (primary, backup, _) =>
+      withControllerAndBackup() { (primary, _, backup, _, _) =>
         backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
           primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
             primaryController.eventWatch.await[ClusterWatchRegistered]()
@@ -69,7 +69,7 @@ final class ShutDownControllerClusterTest extends ControllerClusterTester
     }
 
     "ShutDown active node with failover (for testing)" in {
-      withControllerAndBackup() { (primary, backup, clusterSetting) =>
+      withControllerAndBackup() { (primary, _, backup, _, clusterSetting) =>
         backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
           primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
             primaryController.eventWatch.await[ClusterCoupled]()
@@ -118,7 +118,7 @@ final class ShutDownControllerClusterTest extends ControllerClusterTester
     }
 
     "ShutDown active node with failover requested (for testing), then immediate restart of the shut down node" in {
-      withControllerAndBackup() { (primary, backup, clusterSetting) =>
+      withControllerAndBackup() { (primary, _, backup, _, clusterSetting) =>
         backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
           primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
             primaryController.eventWatch.await[ClusterCoupled]()
@@ -170,7 +170,7 @@ final class ShutDownControllerClusterTest extends ControllerClusterTester
 
   "ShutDown passive node" - {
     "ShutDown passive node only (no switchover)" in {
-      withControllerAndBackup() { (primary, backup, _) =>
+      withControllerAndBackup() { (primary, _, backup, _, _) =>
         val backupController = backup.newController(httpPort = Some(backupControllerPort))
         primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
           primaryController.eventWatch.await[ClusterWatchRegistered]()
@@ -185,7 +185,7 @@ final class ShutDownControllerClusterTest extends ControllerClusterTester
     }
 
     "ShutDown passive node with switchover or failover is rejected" in {
-      withControllerAndBackup() { (primary, backup, _) =>
+      withControllerAndBackup() { (primary, _, backup, _, _) =>
         backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
           primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
             //waitUntilClusterWatchRegistered(primaryController)

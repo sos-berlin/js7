@@ -65,9 +65,6 @@ extends AutoCloseable {
   def currentAgentState(): AgentState =
     agent.agentState.await(99.s).orThrow
 
-  def directAgentApi: Task[Checked[CommandMeta => DirectAgentApi]] =
-    agent.directAgentApi
-
   def eventWatch: EventWatch =
     agent.eventWatch
 

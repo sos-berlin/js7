@@ -2,6 +2,7 @@ package js7.proxy
 
 import cats.effect.Resource
 import io.circe.{Json, JsonObject}
+import js7.agent.data.commands.AgentCommand
 import js7.base.circeutils.CirceUtils.RichJson
 import js7.base.crypt.Signed
 import js7.base.eventbus.StandardEventBus
@@ -17,6 +18,7 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.HttpClient.{HttpException, isTemporaryUnreachable, liftProblem}
 import js7.base.web.{HttpClient, Uri}
 import js7.controller.client.HttpControllerApi
+import js7.data.agent.AgentPath
 import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerCommand.Response.Accepted
 import js7.data.controller.ControllerCommand.{AddOrder, AddOrders, ReleaseEvents}
@@ -148,6 +150,11 @@ extends ControllerApiWithHttp
   def executeCommand(command: ControllerCommand): Task[Checked[command.Response]] =
     logger.debugTask("executeCommand", command.toShortString)(
       untilReachable(_.executeCommand(command)))
+
+  def executeAgentCommand(agentPath: AgentPath, command: AgentCommand)
+  : Task[Checked[command.Response]] =
+    logger.debugTask("executeAgentCommand", command.toShortString)(
+      untilReachable(_.executeAgentCommand(agentPath, command)))
 
   def journalInfo: Task[Checked[JournalInfo]] =
     logger.debugTask(

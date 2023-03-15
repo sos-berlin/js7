@@ -41,3 +41,6 @@ case object UpdateItemPermission extends Permission
 
 /** Permission to control the Subagent. */
 case object AgentDirectorPermission extends Permission
+
+/** Permission to forward web requests to Agent Directors. */
+case object AgentDirectorForwardPermission extends Permission

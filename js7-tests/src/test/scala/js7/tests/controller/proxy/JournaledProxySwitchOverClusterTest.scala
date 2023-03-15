@@ -26,7 +26,7 @@ final class JournaledProxySwitchOverClusterTest extends OurTestSuite with Cluste
   override protected val removeObsoleteJournalFiles = false
 
   "JournaledProxy accesses a switching Cluster" in {
-    withControllerAndBackup() { (primary, backup, _) =>
+    withControllerAndBackup() { (primary, _, backup, _, _) =>
       val backupController = backup.newController(httpPort = Some(backupControllerPort))
 
       lazy val proxy = controllerApi.startProxy().await(99.s)

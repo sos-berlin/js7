@@ -67,7 +67,7 @@ final class ClusterWatchMainTest extends OurAsyncTestSuite with ControllerCluste
         })
 
       val runAnOrder = IO {
-        runControllerAndBackup(suppressClusterWatch = true) { (_, controller, _, _, _) =>
+        runControllerAndBackup(suppressClusterWatch = true) { (_, controller, _, _, _, _, _) =>
           controller.eventWatch.await[ClusterCoupled]()
           controller.runOrder(FreshOrder(OrderId("ORDER"), workflow.path))
           ()

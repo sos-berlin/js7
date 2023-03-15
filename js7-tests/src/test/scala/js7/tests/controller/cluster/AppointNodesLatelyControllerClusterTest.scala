@@ -22,7 +22,7 @@ final class AppointNodesLatelyControllerClusterTest extends OurTestSuite with Co
   override protected def configureClusterNodes = false
 
   "ClusterAppointNodes command after first journal file has been deleted, then change Backup's URI" in {
-    withControllerAndBackup() { (primary, backup, clusterSetting) =>
+    withControllerAndBackup() { (primary, _, backup, _, clusterSetting) =>
       primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
         val orderId = OrderId("🔺")
         primaryController.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path))

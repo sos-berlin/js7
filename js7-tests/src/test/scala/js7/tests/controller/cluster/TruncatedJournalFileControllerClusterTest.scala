@@ -18,7 +18,7 @@ final class TruncatedJournalFileControllerClusterTest extends ControllerClusterT
   override protected def removeObsoleteJournalFiles = false
 
   "Backup node replicates truncated journal file" in {
-    withControllerAndBackup() { (primary, backup, _) =>
+    withControllerAndBackup() { (primary, _, backup, _, _) =>
       primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
         val backupController = backup.newController(httpPort = Some(backupControllerPort))
 

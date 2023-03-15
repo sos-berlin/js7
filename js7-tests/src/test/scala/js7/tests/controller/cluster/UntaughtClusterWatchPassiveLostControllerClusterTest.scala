@@ -19,7 +19,7 @@ final class UntaughtClusterWatchPassiveLostControllerClusterTest extends Control
       .withFallback(super.primaryControllerConfig)
 
   "PassiveLost" in {
-    withControllerAndBackup(suppressClusterWatch = true) { (primary, backup, _) =>
+    withControllerAndBackup(suppressClusterWatch = true) { (primary, _, backup, _, _) =>
       val primaryController = primary.newController(httpPort = Some(primaryControllerPort))
       val backupController = backup.newController(httpPort = Some(backupControllerPort))
 

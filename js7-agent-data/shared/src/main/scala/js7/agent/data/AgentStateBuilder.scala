@@ -6,7 +6,7 @@ import js7.base.crypt.Signed
 import js7.base.problem.Checked.*
 import js7.base.utils.Collections.implicits.*
 import js7.data.cluster.ClusterStateSnapshot
-import js7.data.event.{EventId, JournalState, SnapshotableStateBuilder, Stamped}
+import js7.data.event.{JournalState, SnapshotableStateBuilder, Stamped}
 import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.item.{SignableItem, SignableItemKey, SignedItemEvent, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItem}
 import js7.data.job.{JobResource, JobResourcePath}
@@ -20,7 +20,6 @@ extends SnapshotableStateBuilder[AgentState]
 {
   protected val S = AgentState
 
-  private var _eventId = EventId.BeforeFirst
   private var agentMetaState = AgentMetaState.empty
   private val keyToUnsignedItemState = mutable.Map.empty[UnsignedItemKey, UnsignedItemState]
   private val idToOrder = mutable.Map.empty[OrderId, Order[Order.State]]
@@ -78,7 +77,7 @@ extends SnapshotableStateBuilder[AgentState]
 
   override protected def onOnAllSnapshotsAdded() = {
     _state = AgentState(
-      _eventId,
+      eventId,
       _standards,
       agentMetaState,
       (keyToUnsignedItemState.view ++ fileWatchStateBuilder.result).toMap,
@@ -90,9 +89,9 @@ extends SnapshotableStateBuilder[AgentState]
 
   protected def onAddEvent = {
     case Stamped(eventId, _, keyedEvent) =>
-      _eventId = eventId
+      updateEventId(eventId)
       _state = _state.applyEvent(keyedEvent).orThrow
   }
 
-  def result() = _state.copy(eventId = _eventId)
+  def result() = _state.copy(eventId = eventId)
 }

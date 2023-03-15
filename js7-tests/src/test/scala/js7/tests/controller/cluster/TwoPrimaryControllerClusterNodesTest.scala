@@ -15,7 +15,7 @@ final class TwoPrimaryControllerClusterNodesTest extends OurTestSuite with Contr
   override protected def configureClusterNodes = false
 
   "ClusterAppointNodes is rejected if backup cluster node is not configured as a backup" in {
-    withControllerAndBackup() { (primary, backup, clusterSetting) =>
+    withControllerAndBackup() { (primary, _, backup, _, clusterSetting) =>
       primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
         backup.runController(
           httpPort = Some(backupControllerPort),
@@ -31,7 +31,7 @@ final class TwoPrimaryControllerClusterNodesTest extends OurTestSuite with Contr
   }
 
   "An active primary may not be configured as a backup node" in {
-    withControllerAndBackup() { (primary, _, _) =>
+    withControllerAndBackup() { (primary, _, _, _, _) =>
       primary.runController(httpPort = Some(primaryControllerPort)) { _ => }
       val t = intercept[ProblemException] {
         primary.runController(

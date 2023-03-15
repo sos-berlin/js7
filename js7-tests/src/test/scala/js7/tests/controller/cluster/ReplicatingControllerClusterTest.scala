@@ -16,7 +16,7 @@ import monix.reactive.Observable
 final class ReplicatingControllerClusterTest extends ControllerClusterTester
 {
   "Cluster replicates journal files properly" in {
-    withControllerAndBackup() { (primary, backup, _) =>
+    withControllerAndBackup() { (primary, _, backup, _, _) =>
       val primaryController = primary.newController(httpPort = Some(primaryControllerPort))
       primaryController.waitUntilReady()
       primaryController.runOrder(FreshOrder(OrderId("🔶"), TestWorkflow.path))

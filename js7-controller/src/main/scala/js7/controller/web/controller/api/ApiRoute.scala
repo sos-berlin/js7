@@ -25,7 +25,7 @@ with JournalInfoRoute
 with CommandRoute
 with OrderRoute
 with ItemRoute
-with AgentProxyRoute
+with AgentForwardRoute
 with SnapshotRoute
 with SessionRoute
 with ClusterRoute
@@ -40,7 +40,8 @@ with LogRoute
         case "command"     => commandRoute
         case "cluster"     => clusterRoute
         case "order"       => orderRoute
-        case "agent-proxy" => agentProxyRoute
+        case "agent-forward" => agentForwardRoute
+        case "agent-proxy" => agentForwardRoute // COMPATIBLE with <=v2.5
         case "snapshot"    => snapshotRoute
         case "session"     => sessionRoute
         case "item"        => itemRoute

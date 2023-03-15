@@ -3,7 +3,8 @@ package js7.controller.client
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.web.Uri
-import js7.base.web.Uris.{encodePath, encodeQuery}
+import js7.base.web.Uris.{encodePath, encodeQuery, encodeSegment}
+import js7.data.agent.AgentPath
 import js7.data.event.EventId
 import js7.data.order.OrderId
 import scala.reflect.ClassTag
@@ -37,6 +38,12 @@ final class ControllerUris private(controllerUri: Uri)
     def list(eventId: Option[EventId]) =
       api("/" + encodePath("snapshot", ""), eventId.toList.map("eventId" -> _.toString)*)
   }
+
+  def agentCommand(agentPath: AgentPath): Uri =
+    agentForward(agentPath) / "command"
+
+  def agentForward(agentPath: AgentPath): Uri =
+    api("/agent-forward") / encodeSegment(agentPath.string)
 
   def api(query: (String, String)*): Uri =
     api("", query*)

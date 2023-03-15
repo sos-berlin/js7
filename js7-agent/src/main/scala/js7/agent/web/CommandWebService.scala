@@ -20,7 +20,7 @@ import monix.execution.Scheduler
 trait CommandWebService
 extends AgentRouteProvider with EntitySizeLimitProvider
 {
-  protected def commandExecute(meta: CommandMeta, command: AgentCommand): Task[Checked[AgentCommand.Response]]
+  protected val executeCommand: (AgentCommand, CommandMeta) => Task[Checked[AgentCommand.Response]]
 
   private implicit def implicitScheduler: Scheduler = scheduler
 
@@ -31,7 +31,7 @@ extends AgentRouteProvider with EntitySizeLimitProvider
           withSizeLimit(entitySizeLimit) {
             entity(as[AgentCommand]) { command =>
               completeTask {
-                commandExecute(CommandMeta(user), command)
+                executeCommand(command, CommandMeta(user))
               }
             }
           }

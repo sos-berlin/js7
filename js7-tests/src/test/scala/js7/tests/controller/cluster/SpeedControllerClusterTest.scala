@@ -23,7 +23,7 @@ final class SpeedControllerClusterTest extends OurTestSuite with ControllerClust
 
   for (n <- sys.props.get("test.speed"/*try 1000*/).map(_.toInt)) {
     "Speed test" in {
-      withControllerAndBackup() { (primary, backup, _) =>
+      withControllerAndBackup() { (primary, _, backup, _, _) =>
         backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { _ =>
           primary.runController(httpPort = Some(primaryControllerPort)) { primaryController =>
             primaryController.eventWatch.await[ClusterEvent.ClusterCoupled]()

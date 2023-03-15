@@ -2,12 +2,14 @@ package js7.agent.web
 
 import akka.actor.ActorSystem
 import cats.effect.Resource
-import js7.agent.DirectAgentApi
 import js7.agent.configuration.AgentConfiguration
+import js7.agent.data.AgentState
+import js7.agent.data.commands.AgentCommand
 import js7.agent.data.views.AgentOverview
 import js7.agent.web.common.AgentSession
 import js7.base.auth.SimpleUser
 import js7.base.problem.Checked
+import js7.cluster.ClusterNode
 import js7.common.akkahttp.web.AkkaWebServer
 import js7.common.akkahttp.web.auth.GateKeeper
 import js7.common.akkahttp.web.session.SessionRegister
@@ -21,7 +23,8 @@ object AgentWebServer
     agentOverview: Task[AgentOverview],
     agentConfiguration: AgentConfiguration,
     gateKeeperConfiguration: GateKeeper.Configuration[SimpleUser],
-    api: Task[Checked[CommandMeta => DirectAgentApi]],
+    executeCommand: (AgentCommand, CommandMeta) => Task[Checked[AgentCommand.Response]],
+    clusterNode: ClusterNode[AgentState],
     sessionRegister: SessionRegister[AgentSession],
     eventWatch: FileEventWatch)
     (implicit actorSystem: ActorSystem)
@@ -35,7 +38,8 @@ object AgentWebServer
             agentOverview,
             binding,
             whenShuttingDown,
-            api,
+            executeCommand,
+            clusterNode,
             agentConfiguration,
             gateKeeperConfiguration,
             sessionRegister,

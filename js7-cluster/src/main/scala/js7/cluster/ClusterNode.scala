@@ -108,6 +108,9 @@ extends Service.StoppableByRequest
             case _ => Task.unit
           })))
 
+  override protected def stop =
+    stopRecovery(ProgramTermination()/*???*/) *> super.stop
+
   private def untilWorkingNodeStarted: Task[Unit] =
     logger.debugTask(untilRecovered
       .flatMap(startWorkingNode)

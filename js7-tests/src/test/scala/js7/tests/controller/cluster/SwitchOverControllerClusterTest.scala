@@ -28,7 +28,7 @@ final class SwitchOverControllerClusterTest extends ControllerClusterTester
   "Switchover" in {
     val orderIds = for (i <- 1 to manyOrdersCount) yield
       OrderId(s"ORDER-XXXXXXXXX-XXXXXXXXX-XXXXXXXXX-XXXXXXXXX-XXXXXXXXX-XXXXXXXXX-XXXXXXXXX-XXXXXXXXX-XXXXXXXXX-$i")
-    withControllerAndBackup() { (primary, backup, _) =>
+    withControllerAndBackup() { (primary, _, backup, _, _) =>
       var lastEventId = EventId.BeforeFirst
       backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
         primary.runController(httpPort = Some(primaryControllerPort)) { implicit primaryController =>

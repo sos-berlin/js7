@@ -3,6 +3,7 @@ package js7.controller.client
 import cats.effect.Resource
 import io.circe.{Decoder, Encoder, Json}
 import izumi.reflect.Tag
+import js7.agent.data.commands.AgentCommand
 import js7.base.auth.UserAndPassword
 import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.generic.Completed
@@ -10,6 +11,7 @@ import js7.base.session.SessionApi
 import js7.base.web.{HttpClient, Uri}
 import js7.cluster.watch.api.HttpClusterNodeApi
 import js7.controller.client.HttpControllerApi.*
+import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.DeleteOrdersWhenTerminated
 import js7.data.controller.{ControllerCommand, ControllerOverview, ControllerState}
 import js7.data.event.{EventApi, EventId, JournalInfo}
@@ -53,6 +55,11 @@ extends EventApi with HttpClusterNodeApi with HttpSessionApi with HasIsIgnorable
 
   final def executeCommand(command: ControllerCommand): Task[command.Response] =
     httpClient.post[ControllerCommand, ControllerCommand.Response](uris.command, command)
+      .map(_.asInstanceOf[command.Response])
+
+  final def executeAgentCommand(agentPath: AgentPath, command: AgentCommand)
+  : Task[command.Response] =
+    httpClient.post[AgentCommand, AgentCommand.Response](uris.agentCommand(agentPath), command)
       .map(_.asInstanceOf[command.Response])
 
   final def overview: Task[ControllerOverview] =
