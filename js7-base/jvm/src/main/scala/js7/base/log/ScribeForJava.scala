@@ -1,6 +1,7 @@
 package js7.base.log
 
 import java.util.concurrent.ConcurrentHashMap
+import js7.base.utils.Once
 import scribe.format.Formatter
 import scribe.output.format.OutputFormat
 import scribe.output.{EmptyOutput, LogOutput}
@@ -8,22 +9,19 @@ import scribe.{Level, LogRecord}
 
 object ScribeForJava
 {
-  private var initialized = false
+  private val ifNotCoupled = new Once
   // Lazy for not touching Logger before initialization (?)
   private lazy val classToLoggerCache = new ConcurrentHashMap[String, org.slf4j.Logger]
 
   def coupleScribeWithSlf4j(noLog4jInit: Boolean = false): Unit =
-    if (!initialized) synchronized {
-      if (!initialized) {
-        if (!noLog4jInit) Log4j.initialize()
-        scribe.Logger.root
-          .clearHandlers()
-          .clearModifiers()
-          .withHandler(Slf4jFormatter, Log4jWriter, Some(Level.Trace))
-          //.withHandler(Formatter.simple, Log4jWriter, Some(Level.Trace))
-          .replace()
-        initialized = true
-      }
+    ifNotCoupled {
+      if (!noLog4jInit) Log4j.initialize()
+      scribe.Logger.root
+        .clearHandlers()
+        .clearModifiers()
+        .withHandler(Slf4jFormatter, Log4jWriter, Some(Level.Trace))
+        //.withHandler(Formatter.simple, Log4jWriter, Some(Level.Trace))
+        .replace()
     }
 
   private object Slf4jFormatter extends Formatter {

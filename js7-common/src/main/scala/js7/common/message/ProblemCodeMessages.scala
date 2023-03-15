@@ -3,7 +3,7 @@ package js7.common.message
 import js7.base.configutils.Configs
 import js7.base.io.JavaResource
 import js7.base.problem.{CodedMessages, ProblemCode}
-import monix.execution.atomic.AtomicBoolean
+import js7.base.utils.Once
 import scala.util.Try
 
 /**
@@ -16,12 +16,10 @@ object ProblemCodeMessages
 
   private[message] val problemCodeToPattern: ProblemCode => Option[String] =
     code => Try(config.getString(code.string)).toOption
-  private val once = AtomicBoolean(false)
+  private val ifNotInitialized = new Once
 
   def initialize(): Unit =
-    if (!once.get()) synchronized {
-      if (!once.getAndSet(true)) {
-        CodedMessages.codeToPattern = problemCodeToPattern
-      }
+    ifNotInitialized {
+      CodedMessages.codeToPattern = problemCodeToPattern
     }
 }

@@ -4,7 +4,7 @@ import java.lang.reflect.Method
 import java.time.LocalDateTime
 import js7.base.time.ScalaTime.*
 import js7.base.time.Timestamp
-import js7.base.utils.Tests
+import js7.base.utils.{Once, Tests}
 import monix.execution.atomic.AtomicBoolean
 import scala.concurrent.duration.Deadline
 import scala.util.{Failure, Success, Try}
@@ -17,7 +17,7 @@ object Log4j
   private val isShutdown = AtomicBoolean(false)
   private val startedAt = Timestamp.now
   private val runningSince = Deadline.now
-  private var initialized = false
+  private val ifNotInitialized = new Once
 
   // Do not touch the logger before initialize has been called !!!
   private lazy val logger = Logger[this.type]
@@ -31,14 +31,10 @@ object Log4j
         })
 
   def initialize() =
-    synchronized {
-      if (!initialized) {
-        if (CorrelId.couldBeEnabled) CorrelIdLog4JThreadContextMap.initialize()
-        for (t <- shutdownMethod.failed) logger.warn(t.toString)
-        initialized = true
-
-        Tests.log()
-      }
+    ifNotInitialized {
+      if (CorrelId.couldBeEnabled) CorrelIdLog4JThreadContextMap.initialize()
+      for (t <- shutdownMethod.failed) logger.warn(t.toString)
+      Tests.log()
     }
 
   def setDefaultConfiguration(resource: String): Unit =
