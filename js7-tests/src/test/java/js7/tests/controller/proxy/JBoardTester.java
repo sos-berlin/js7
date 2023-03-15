@@ -129,8 +129,6 @@ public class JBoardTester
             .idToNotice(expectedNoticeId)
             .get();
         assertThat(noticePlace.noticeId(), equalTo(expectedNoticeId));
-        assertThat(noticePlace.expectation().get().orderIds(),
-            equalTo(new HashSet<>(asList(expectingOrderId))));
         assertThat(noticePlace.expectingOrderIds(),
             equalTo(new HashSet<>(asList(expectingOrderId))));
     }

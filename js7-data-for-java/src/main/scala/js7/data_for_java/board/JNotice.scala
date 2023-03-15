@@ -20,15 +20,6 @@ final case class JNoticePlace(asScala: NoticePlace)
   def notice: Optional[JNotice] =
     asScala.notice.map(JNotice(_)).toJava
 
-  @Deprecated
-  @deprecated("Use expectingOrderIds", "v2.5")
-  @Nonnull
-  def expectation: Optional[JNoticeExpectation] =
-    if (asScala.expectingOrderIds.isEmpty)
-      Optional.empty
-    else
-      Optional.of(JNoticeExpectation(asScala.expectingOrderIds.asJava))
-
   def expectingOrderIds: java.util.Set[OrderId] =
     asScala.expectingOrderIds.asJava
 }
