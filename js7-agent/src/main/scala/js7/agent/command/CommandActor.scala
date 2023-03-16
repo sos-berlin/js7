@@ -7,7 +7,7 @@ import js7.agent.command.CommandActor.*
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.{AttachItem, AttachSignedItem, Batch, ClusterAppointNodes, ClusterSwitchOver, CoupleController, DedicateAgentDirector, DetachItem, EmergencyStop, NoOperation, OrderCommand, Reset, ResetSubagent, Response, ShutDown, TakeSnapshot}
 import js7.agent.scheduler.AgentHandle
-import js7.base.circeutils.JavaJsonCodecs.instant.StringInstantJsonCodec
+import js7.base.circeutils.JavaDataJsonCodecs.instant.StringInstantJsonCodec
 import js7.base.log.{CorrelId, CorrelIdWrapped, Logger}
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*

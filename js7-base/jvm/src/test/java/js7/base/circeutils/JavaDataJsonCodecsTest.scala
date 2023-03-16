@@ -3,31 +3,19 @@ package js7.base.circeutils
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, Encoder, Json}
-import java.io.File
-import java.nio.file.Paths
 import java.time.format.DateTimeParseException
 import java.time.{Duration, Instant}
-import js7.base.circeutils.CirceUtils.*
-import js7.base.circeutils.JavaJsonCodecs.*
-import js7.base.time.ScalaTime.*
+import js7.base.circeutils.JavaDataJsonCodecs.*
 import js7.base.test.OurTestSuite
+import js7.base.time.ScalaTime.*
 import js7.base.utils.IntelliJUtils.intelliJuseImport
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.tester.CirceJsonTester.testJson
 import scala.concurrent.duration.*
 
 /**
   * @author Joacim Zschimmer
   */
-final class JavaJsonCodecsTest extends OurTestSuite {
-
-  "Path" in {
-    if (File.separatorChar == '\\') {
-      testJson(Paths.get("/tmp/test"), json""" "\\tmp\\test" """)
-    } else {
-      testJson(Paths.get("/tmp/test"), json""" "/tmp/test" """)
-    }
-  }
+final class JavaDataJsonCodecsTest extends OurTestSuite {
 
   "Instant" - {  // See also Timestamp
     case class A(instant: Instant)
@@ -49,7 +37,7 @@ final class JavaJsonCodecsTest extends OurTestSuite {
     }
 
     "String" - {
-      import JavaJsonCodecs.instant.StringInstantJsonCodec
+      import JavaDataJsonCodecs.instant.StringInstantJsonCodec
       intelliJuseImport(StringInstantJsonCodec)
       implicit val aJsonCodec: Codec.AsObject[A] = deriveCodec
 
@@ -90,7 +78,7 @@ final class JavaJsonCodecsTest extends OurTestSuite {
     }
 
     "Numeric" - {
-      import JavaJsonCodecs.instant.InstantJsonCodec
+      import JavaDataJsonCodecs.instant.InstantJsonCodec
 
       "Numeric" in {
         val instant = Instant.parse("2017-11-12T09:24:32.471Z")

@@ -64,7 +64,7 @@ object DirectoryWatcher
           // so that no directory change will be overlooked.
           val readDirectory = repeatWhileIOException(
             options,
-            iox(Task(DirectoryState.readDirectory(directory, options.matches))))
+            iox(Task(DirectoryStateJvm.readDirectory(directory, options.matches))))
           Observable
             .fromResource(basicWatcher.observableResource)
             .flatMap(observable =>

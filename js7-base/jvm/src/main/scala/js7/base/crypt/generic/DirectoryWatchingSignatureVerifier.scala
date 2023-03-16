@@ -16,7 +16,7 @@ import js7.base.crypt.generic.DirectoryWatchingSignatureVerifier.{Settings, Stat
 import js7.base.crypt.{GenericSignature, SignatureVerifier, SignerId}
 import js7.base.data.ByteArray
 import js7.base.io.file.FileUtils.syntax.RichPath
-import js7.base.io.file.watch.{DirectoryState, DirectoryWatcher, WatchOptions}
+import js7.base.io.file.watch.{DirectoryState, DirectoryStateJvm, DirectoryWatcher, WatchOptions}
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.RichMonixObservable
@@ -169,7 +169,7 @@ extends SignatureVerifier with Service
 
   private def readDirectory(directory: Path): Checked[DirectoryState] =
     catchNonFatal(
-      DirectoryState.readDirectory(directory, isRelevantFile))
+      DirectoryStateJvm.readDirectory(directory, isRelevantFile))
 
   private def isRelevantFile(file: Path) =
     !file.getFileName.startsWith(".")

@@ -1,19 +1,15 @@
 package js7.base.circeutils
 
 import io.circe.{Codec, Decoder, DecodingFailure, Encoder, HCursor, Json}
-import java.nio.file.{Path, Paths}
 import java.time.format.DateTimeFormatter
 import java.time.{Duration, Instant, ZoneId}
-import js7.base.circeutils.CirceUtils.toStringJsonCodec
 import scala.util.control.NonFatal
 
 /**
   * @author Joacim Zschimmer
   */
-object JavaJsonCodecs
+object JavaDataJsonCodecs
 {
-  implicit val PathJsonCodec: Codec[Path] = toStringJsonCodec(o => Paths.get(o))
-
   implicit val DurationEncoder: Encoder[Duration] =
     o => o.getNano match {
       case 0 => Json.fromLong(o.getSeconds)
