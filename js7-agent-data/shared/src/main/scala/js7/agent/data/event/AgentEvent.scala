@@ -20,7 +20,7 @@ object AgentEvent
 {
   intelliJuseImport(FiniteDurationJsonEncoder)
 
-  /** Agent has been dedicated to a Controlller. */
+  /** Agent has been dedicated to a Controller. */
   final case class AgentDedicated(
     subagentId: Option[SubagentId],
     agentPath: AgentPath,
