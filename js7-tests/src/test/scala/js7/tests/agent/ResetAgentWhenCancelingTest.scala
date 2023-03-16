@@ -9,9 +9,9 @@ import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.Problems.AgentResetProblem
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerCommand.{CancelOrders, ResetAgent}
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancelled, OrderDetached, OrderFailed, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancelled, OrderDetached, OrderFailed, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted, OrderStdoutWritten, OrderTerminated}
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, Outcome}
-import js7.data.workflow.position.Position
+import js7.data.workflow.position.{InstructionNr, Position}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.agent.ResetAgentWhenCancelingTest.*
 import js7.tests.jobs.SemaphoreJob
@@ -60,7 +60,13 @@ with BlockingItemUpdater
     eventWatch.await[OrderTerminated](_.key == orderId)
 
     assert(eventWatch.eventsByKey[OrderEvent](orderId)
-      .filter(e => !e.isInstanceOf[OrderCancellationMarked]/*unreliable ordering*/) ==
+      .filter(e => !e.isInstanceOf[OrderCancellationMarked]/*unreliable ordering*/)
+      .filter(e => !e.isInstanceOf[OrderMoved]/*may occur after OrderProcessed*/)
+      .map {
+        // OrderFailed(Position(1)) when OrderMoved has been emitted
+        case OrderFailed(Position(Nil, InstructionNr(1)), None) => OrderFailed(Position(0))
+        case e => e
+      } ==
       Seq(
         OrderAdded(workflow.id),
         OrderAttachable(agentPath),
