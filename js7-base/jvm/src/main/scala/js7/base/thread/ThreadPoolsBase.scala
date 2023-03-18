@@ -17,9 +17,9 @@ object ThreadPoolsBase
 
   def newBlockingExecutor(name: String, keepAlive: FiniteDuration = 60.s): ExecutorService =
     maybeNewVirtualThreadExecutorService() getOrElse
-      newBlockingThreadPool(name, keepAlive)
+      newBlockingNonVirtualThreadPool(name, keepAlive)
 
-  def newBlockingThreadPool(name: String, keepAlive: FiniteDuration = 60.s): ExecutorService =
+  def newBlockingNonVirtualThreadPool(name: String, keepAlive: FiniteDuration = 60.s): ExecutorService =
     newThreadPoolExecutor(name = name, keepAlive = keepAlive,
       corePoolSize = 0, maximumPoolSize = Int.MaxValue, queueSize = Some(0))
 

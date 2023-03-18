@@ -10,7 +10,7 @@ import js7.base.thread.Futures.implicits.*
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.thread.IOExecutor.ioFuture
 import js7.base.thread.MonixBlocking.syntax.RichTask
-import js7.base.thread.ThreadPoolsBase.newBlockingThreadPool
+import js7.base.thread.ThreadPoolsBase.newBlockingNonVirtualThreadPool
 import js7.base.thread.VirtualThreads.maybeNewVirtualThreadExecutorService
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.itemsPerSecondString
@@ -59,7 +59,7 @@ final class IOExecutorTest extends OurTestSuite
     }
 
     "Performance with thread pool" in {
-      val executor = newBlockingThreadPool("IOExecutorTest")
+      val executor = newBlockingNonVirtualThreadPool("IOExecutorTest")
       testPerformance(executor, 1000)
       testPerformance(executor, 10000)
       testPerformance(executor, 100000)
