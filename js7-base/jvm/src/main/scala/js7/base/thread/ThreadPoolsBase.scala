@@ -2,6 +2,7 @@ package js7.base.thread
 
 import com.typesafe.config.Config
 import java.util.concurrent.{ArrayBlockingQueue, ExecutorService, LinkedBlockingQueue, SynchronousQueue, ThreadFactory, ThreadPoolExecutor}
+import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.system.Java8Polyfill.*
 import js7.base.thread.VirtualThreads.maybeNewVirtualThreadExecutorService
 import js7.base.time.JavaTimeConverters.AsScalaDuration
@@ -10,16 +11,21 @@ import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 
 object ThreadPoolsBase
 {
-  def newBlockingExecutor(config: Config, name: String): ExecutorService =
-    newBlockingExecutor(
-      name = name,
-      keepAlive = config.getDuration("js7.thread-pools.io.keep-alive").toFiniteDuration)
+  def newBlockingExecutor(config: Config, name: String): ExecutorService = {
+    val keepAlive = config.getDuration("js7.thread-pools.io.keep-alive").toFiniteDuration
+    val virtualAllowed = config.optionAs[String]("js7.thread-pools.virtual")
+      .exists(Set("", "true"))
+    if (virtualAllowed)
+      newBlockingExecutor(name, keepAlive)
+    else
+      newBlockingNonVirtualExecutor(name, keepAlive)
+  }
 
   def newBlockingExecutor(name: String, keepAlive: FiniteDuration = 60.s): ExecutorService =
     maybeNewVirtualThreadExecutorService() getOrElse
-      newBlockingNonVirtualThreadPool(name, keepAlive)
+      newBlockingNonVirtualExecutor(name, keepAlive)
 
-  def newBlockingNonVirtualThreadPool(name: String, keepAlive: FiniteDuration = 60.s): ExecutorService =
+  def newBlockingNonVirtualExecutor(name: String, keepAlive: FiniteDuration = 60.s): ExecutorService =
     newThreadPoolExecutor(name = name, keepAlive = keepAlive,
       corePoolSize = 0, maximumPoolSize = Int.MaxValue, queueSize = Some(0))
 

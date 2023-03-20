@@ -1,13 +1,13 @@
 package js7.launcher.forjava.internal
 
 import cats.effect.Resource
-import js7.base.test.OurTestSuite
 import java.lang.System.lineSeparator as nl
 import java.nio.charset.StandardCharsets.UTF_8
 import java.nio.file.Paths
 import js7.base.io.file.FileUtils.temporaryDirectoryResource
 import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
+import js7.base.test.OurTestSuite
 import js7.base.thread.Futures.implicits.*
 import js7.base.thread.IOExecutor.Implicits.globalIOX
 import js7.base.thread.MonixBlocking.syntax.*
@@ -15,7 +15,7 @@ import js7.base.time.AlarmClock
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ScalaUtils.syntax.{RichEitherF, RichEitherIterable, RichPartialFunction}
 import js7.common.http.configuration.RecouplingStreamReaderConf
-import js7.common.system.ThreadPools.newUnlimitedScheduler
+import js7.common.system.ThreadPools.newUnlimitedNonVirtualScheduler
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerId
 import js7.data.job.{InternalExecutable, JobConf, JobKey}
@@ -43,7 +43,7 @@ import scala.concurrent.Future
 final class InternalJobLauncherForJavaTest extends OurTestSuite with BeforeAndAfterAll
 {
   private val blockingThreadPoolName = "InternalJobLauncherForJavaTest"
-  private val blockingJobScheduler = newUnlimitedScheduler(name = blockingThreadPoolName)
+  private val blockingJobScheduler = newUnlimitedNonVirtualScheduler(name = blockingThreadPoolName)
 
   override def afterAll() = {
     blockingJobScheduler.shutdown()

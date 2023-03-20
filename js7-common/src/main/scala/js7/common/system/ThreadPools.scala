@@ -7,7 +7,7 @@ import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.convert.As
 import js7.base.log.{CorrelId, Logger}
 import js7.base.system.Java8Polyfill.*
-import js7.base.thread.ThreadPoolsBase.newBlockingNonVirtualThreadPool
+import js7.base.thread.ThreadPoolsBase.{newBlockingExecutor, newBlockingNonVirtualExecutor}
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.time.ScalaTime.*
 import js7.base.utils.ByteUnits.toKiBGiB
@@ -59,8 +59,14 @@ object ThreadPools
     }
   }
 
-  def newUnlimitedScheduler(name: String): SchedulerService =
-    ExecutorScheduler(newBlockingNonVirtualThreadPool(name, keepAlive = 10.s),
+  def newUnlimitedScheduler(name: String, config: Config): SchedulerService =
+    ExecutorScheduler(
+      newBlockingExecutor(config, name),
+      uncaughtExceptionReporter, SynchronousExecution, Features.empty)
+
+  def newUnlimitedNonVirtualScheduler(name: String): SchedulerService =
+    ExecutorScheduler(
+      newBlockingNonVirtualExecutor(name),
       uncaughtExceptionReporter, SynchronousExecution, Features.empty)
 
   private val nextNumber = AtomicInt(0)

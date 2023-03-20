@@ -217,7 +217,7 @@ object RunningAgent {
       iox <- IOExecutor.resource[Task](config, conf.name + "-I/O")
       blockingJobScheduler <- Resource
         .make(
-          acquire = Task(newUnlimitedScheduler("JS7 blocking job")))(
+          acquire = Task(newUnlimitedScheduler("JS7 blocking job", config)))(
           release = scheduler => Task(scheduler.shutdown()))
         .map(CorrelId.enableScheduler)
 

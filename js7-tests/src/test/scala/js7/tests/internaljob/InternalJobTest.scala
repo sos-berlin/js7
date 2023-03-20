@@ -51,6 +51,7 @@ final class InternalJobTest extends OurTestSuite with ControllerAgentForScalaTes
     js7.controller.agent-driver.event-buffer-delay = 10ms
     """
   override protected val agentConfig = config"""
+    js7.thread-pools.virtual = false
     js7.job.execution.signed-script-injection-allowed = on
     """
   private val versionIdIterator = Iterator.from(1).map(i => VersionId(s"v$i"))

@@ -109,8 +109,9 @@ object BareSubagent
         iox <- IOExecutor.resource[Task](config, name = conf.name + "-I/O")
         // For BlockingInternalJob (thread-blocking Java jobs)
         blockingInternalJobScheduler <-
-          schedulerServiceToResource(Task(newUnlimitedScheduler("JS7 blocking job")))
-            .map(CorrelId.enableScheduler(_))
+          schedulerServiceToResource(Task(
+            newUnlimitedScheduler("JS7 blocking job", conf.config)
+          )).map(CorrelId.enableScheduler(_))
         clock <- AlarmClock.resource[Task](Some(alarmClockCheckingInterval))
         journal = new InMemoryJournal(SubagentState.empty,
           size = inMemoryJournalSize,
