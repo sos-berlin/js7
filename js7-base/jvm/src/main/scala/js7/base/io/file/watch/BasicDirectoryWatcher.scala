@@ -111,7 +111,7 @@ object BasicDirectoryWatcher
     if (isMac) // https://bugs.openjdk.java.net/browse/JDK-7133447
       try Array(com.sun.nio.file.SensitivityWatchEventModifier.HIGH/*2s instead of 10s*/)
       catch { case t: Throwable =>
-        logger.debug(s"SensitivityWatchEventModifier.HIGH => ${t.toStringWithCauses}")
+        logger.debug(s"❗ SensitivityWatchEventModifier.HIGH => ${t.toStringWithCauses}")
         Array.empty
       }
     else

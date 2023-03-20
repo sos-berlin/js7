@@ -16,7 +16,7 @@ final case class Uri(string: String) extends GenericString
 
   def port: Checked[Int] =
     javaUri.flatMap(_.getPort match {
-      case -1 => Left(Problem.pure("URI has no port number"))
+      case -1 => Left(Problem.pure(s"URI has no port number: $string"))
       case n => Right(n)
     })
 

@@ -258,7 +258,7 @@ extends Actor with Stash with ActorLogging with ReceiveLoggingActor
 
   private case class Deferred(correlId: CorrelId, async: Boolean, callback: Checked[Accepted] => Unit)
   extends Item {
-    override def toString = s"Deferred${async ?? "async"}"
+    override def toString = s"Deferred(${async ?? "async"})"
   }
 
   private case class Persist[A](

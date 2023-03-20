@@ -76,12 +76,19 @@ extends MainService with Service.StoppableByRequest
 
     private def observeAgainAndAgain[A](observable: Observable[A]): Observable[A] =
       Delayer.observable[Task](delayConf)
-        .flatMap(_ =>
+        .flatMap { _ =>
+          var failed = false
           observable
-            .onErrorHandleWith { t =>
-              logger.warn(s"⟲ $nodeApi => ${t.toStringWithCauses}")
-              Observable.empty
+            .doAfterSubscribe(Task {
+              if (failed) logger.info(s"🟢 $nodeApi is being watching again")
+              failed = false
             })
+            .onErrorHandleWith { t =>
+              logger.warn(s"🔴 $nodeApi => ${t.toStringWithCauses}")
+              failed = true
+              Observable.empty
+            }
+        }
 
     private def clusterWatchRequestObservable: Observable[ClusterWatchRequest] =
       logger.traceObservable("clusterWatchRequestObservable", nodeApi)(

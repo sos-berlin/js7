@@ -345,8 +345,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
     passiveUri: Uri,
     timing: ClusterTiming)
   : Task[Checked[Completed]] = {
-    def msg =
-      s"observeEventIds($passiveUri, peersUserAndPassword=${clusterConf.peersUserAndPassword})"
+    def msg = s"observeEventIds($passiveUri)"
     fetchAndHandleAcknowledgedEventIds2(passiveId, passiveUri, timing)
       .flatMap {
         case Left(missingHeartbeatProblem @ MissingPassiveClusterNodeHeartbeatProblem(passiveId, duration)) =>

@@ -332,9 +332,14 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
                 val m = waitingLogged match { case 1 => "🟡" case 2 => "🟠" case _ => "🔴" }
                 logger.debug(
                   s"$m $responseLogPrefix => Still waiting for response${closed ?? " (closed)"}")
-              }).guaranteeCase(exitCase => Task(if (waitingLogged > 0)
-                logger.debug(
-                  s"🟢 $responseLogPrefix => $exitCase")))
+              }).guaranteeCase(exitCase => Task(if (waitingLogged > 0) {
+                val sym = exitCase match {
+                  case ExitCase.Error(_) => "💥"
+                  case ExitCase.Canceled => "⚫️"
+                  case ExitCase.Completed => "🟢"
+                }
+                logger.debug(s"$sym $responseLogPrefix => $exitCase")
+              }))
             })
             .tapEval(response => Task {
               val mark = response.status.isFailure ?? (response.status match {

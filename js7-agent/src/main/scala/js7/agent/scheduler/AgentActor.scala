@@ -122,7 +122,6 @@ private[agent] final class AgentActor(
     command match {
       case command: AgentCommand.ShutDown =>
         if (!terminating) {
-          logger.info(s"❗ $command")
           response.completeWith(terminateOrderKeeper(command))
         }
 

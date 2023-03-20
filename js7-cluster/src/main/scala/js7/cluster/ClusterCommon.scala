@@ -1,7 +1,7 @@
 package js7.cluster
 
 import akka.util.Timeout
-import cats.effect.Resource
+import cats.effect.{ExitCase, Resource}
 import js7.base.eventbus.EventPublisher
 import js7.base.log.Logger
 import js7.base.log.Logger.syntax.*
@@ -95,8 +95,13 @@ private[cluster] final class ClusterCommon private(
             Task.sleep(1.s/*TODO*/) *> // TODO Handle heartbeat timeout?
               retry(())
           }
-          .>>(Task(if (warned)
-            logger.info(s"🟢 $name command succeeded after ${since.elapsed.pretty}"))))
+          .guaranteeCase {
+            case ExitCase.Completed => Task(
+              if (warned) logger.info(s"🟢 $name command succeeded after ${since.elapsed.pretty}"))
+            case ExitCase.Canceled => Task(
+              if (warned) logger.info(s"⚫️ $name Canceled after ${since.elapsed.pretty}"))
+            case _ => Task.unit
+          })
   }
 
   def inhibitActivationOfPeer(clusterState: HasNodes): Task[Option[FailedOver]] =

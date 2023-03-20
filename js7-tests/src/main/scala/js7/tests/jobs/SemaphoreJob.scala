@@ -2,6 +2,7 @@ package js7.tests.jobs
 
 import cats.effect.ExitCase
 import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.utils.ScalaUtils.syntax.RichJavaClass
 import js7.data.order.Outcome
@@ -16,23 +17,35 @@ import scala.reflect.ClassTag
 abstract class SemaphoreJob(companion: SemaphoreJob.Companion[? <: SemaphoreJob])
 extends InternalJob
 {
-  final def toOrderProcess(step: Step) = {
-    val orderId = step.order.id
-    OrderProcess(
-      step.outTaskObserver.send(companion.stdoutLine)
-        .*>(companion.semaphore
-          .tapEval(sema =>
-            sema.count.flatMap(count =>
-              Task(logger.debug(s"$orderId acquire ... (count=$count)"))))
-          .flatMap(_.acquire)
-          .logWhenItTakesLonger(s"${getClass.shortClassName}.semaphore.acquire/${step.order.id}")
-          .tapEval(_ => Task(logger.debug(s"$orderId acquired")))
-          .as(Outcome.succeeded))
-    .guaranteeCase {
-      case ExitCase.Completed => Task.unit
-      case exitCase => Task(logger.warn(s"$orderId $exitCase"))
-    })
-  }
+  final def toOrderProcess(step: Step) =
+    OrderProcess {
+      val orderId = step.order.id
+      logger.debugTask(s"SemaphoreJob/$orderId")(
+        step
+          .outTaskObserver.send(companion.stdoutLine)
+          .*>(companion.semaphore
+            .flatMap(sema =>
+              sema
+                .tryAcquire
+                .flatMap {
+                  case true => Task.unit
+                  case false =>
+                    sema.count
+                      .flatMap { n =>
+                        logger.info(s"🔴 $orderId acquire ... (n=$n)")
+                        sema.acquire
+                      }
+                      .guaranteeCase(exitCase => Task {
+                        exitCase match {
+                          case ExitCase.Error(_) => logger.debug(s"💥 $orderId $exitCase")
+                          case ExitCase.Canceled => logger.debug(s"⚫️ $orderId $exitCase")
+                          case ExitCase.Completed => logger.debug(s"🟢 $orderId acquired")
+                        }
+                      })
+                })
+            .logWhenItTakesLonger(s"${getClass.shortClassName}.semaphore.acquire/${step.order.id}")
+            .as(Outcome.succeeded)))
+    }
 }
 
 object SemaphoreJob

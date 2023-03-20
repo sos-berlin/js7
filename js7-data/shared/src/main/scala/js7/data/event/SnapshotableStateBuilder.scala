@@ -116,7 +116,7 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]
       try {
         recordCount += 1
         if (stamped.eventId <= _eventId) {
-          throw new IllegalArgumentException(s"EventId out of order: ${EventId.toString(_eventId)} >= ${stamped.toString.truncateWithEllipsis(100)}")
+          throw new IllegalArgumentException(s"EventId is not ascending: ${EventId.toString(_eventId)} >= ${stamped.toString.truncateWithEllipsis(100)}")
         }
         try onAddEvent(stamped)
         catch { case NonFatal(t) =>

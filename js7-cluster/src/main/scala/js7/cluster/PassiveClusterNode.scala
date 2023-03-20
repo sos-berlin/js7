@@ -130,7 +130,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
     * Returns also a `Task` with the current ClusterState while being passive or active.
     */
   def run(recoveredState: S): Task[Checked[Recovered[S]]] =
-    logger.debugTask(
+    CorrelId.bindNew(logger.debugTask(
       common.requireValidLicense
         .flatMapT(_ => Task.deferAction { implicit s =>
           val recoveredClusterState = recoveredState.clusterState
@@ -187,7 +187,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
               stopped = true
             })
             .guarantee(activeApiCache.clear)
-        }))
+        })))
 
   private def cutJournalFile(file: Path, length: Long, eventId: EventId): Unit =
     if (exists(file)) {

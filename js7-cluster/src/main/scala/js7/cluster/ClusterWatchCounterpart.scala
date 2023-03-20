@@ -152,7 +152,7 @@ extends Service.StoppableByRequest
         }
         .flatTap {
           case Left(problem) =>
-            Task(logger.warn(s"ClusterWatch rejected ${request.toShortString}: $problem"))
+            Task(logger.warn(s"🚫 ClusterWatch rejected ${request.toShortString}: $problem"))
 
           case Right(confirmation) =>
             Task {

@@ -9,6 +9,7 @@ import java.nio.file.{Path, Paths}
 import js7.base.system.OperatingSystem.{isMac, isSolaris, isWindows}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.typeclasses.IsEmpty.syntax.toIsEmptyAllOps
 import scala.concurrent.duration.*
 import scala.io.Source.fromInputStream
 import scala.sys.process.*
@@ -108,7 +109,21 @@ object ServerOperatingSystem {
         readFirstLine(anyFile)
       }
 
-      if (isMac || isSolaris)
+      if (isMac)
+        Try {
+          val RegEx = "([a-zA-Z]+):\t+(.+)$".r
+          val lines = ("/usr/bin/sw_vers").!!.trim.split('\n').toVector
+          def read(key: String): Option[String] =
+            lines.collectFirst {
+              case RegEx(`key`, value) => value
+            }
+          Vector(
+            read("ProductName"),
+            read("ProductVersion"),
+            read("BuildVersion").map("build " + _)
+          ).flatten.mkString(" ").??
+        }.toOption.flatten
+      else if (isSolaris)
         None
       else
         Try { readFirstLine(Paths.get("/etc/system-release")) }  // Best result under CentOS 7.2 (more version details than in /etc/os-release)

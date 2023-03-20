@@ -3,7 +3,7 @@ package js7.common.http
 import cats.syntax.apply.*
 import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.generic.Completed
-import js7.base.log.Logger
+import js7.base.log.{Logger, WaitSymbol}
 import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Problems.InvalidSessionTokenProblem
@@ -34,6 +34,7 @@ abstract class RecouplingStreamReader[
   conf: RecouplingStreamReaderConf)
 {
   @volatile private var markedAsStopped = false
+  private val waitSymbol = new WaitSymbol
 
   protected def couple(index: I): Task[Checked[I]] =
     Task.pure(Right(index))
@@ -47,12 +48,13 @@ abstract class RecouplingStreamReader[
           var logged = false
           lazy val msg = s"$api: coupling failed: $problem"
           if (inUse && !stopRequested && !coupledApiVar.isStopped) {
-            logger.warn(msg)
+            waitSymbol.onWarn()
+            logger.warn(s"$waitSymbol $msg")
             logged = true
           }
           for (throwable <- problem.throwableOption.map(_.nullIfNoStackTrace)
                if !api.isIgnorableStackTrace(throwable)) {
-            logger.debug(msg, throwable)
+            logger.debug(s"💥 $msg", throwable)
             logged = true
           }
           if (!logged) {
@@ -161,7 +163,11 @@ abstract class RecouplingStreamReader[
       ).flatten
 
     private def observe(after: I): Observable[V] =
-      Observable.fromTask(tryEndlesslyToGetObservable(after))
+      Observable.fromTask(
+        tryEndlesslyToGetObservable(after)
+          .<*(Task {
+            if (waitSymbol.called) logger.info(s"🟢 Observing $api ...")
+          }))
         .flatten
         .map { v =>
           lastIndex = toIndex(v)

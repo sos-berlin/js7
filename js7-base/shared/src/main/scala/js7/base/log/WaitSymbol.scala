@@ -9,6 +9,14 @@ final class WaitSymbol {
   private var _infoLogged = false
   private var _warnLogged = false
 
+  def clear(): Unit = {
+    _index = 0
+    _called = false
+    _debugLogged = false
+    _infoLogged = false
+    _warnLogged = false
+  }
+
   def onDebug(): Unit = {
     increment()
     _debugLogged = true
