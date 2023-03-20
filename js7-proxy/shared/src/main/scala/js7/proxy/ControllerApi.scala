@@ -48,7 +48,7 @@ extends ControllerApiWithHttp
   private val apiCache = new RefCountedResource(
     JournaledProxy.selectActiveNodeApi(
       apiResources,
-      onCouplingError = _ => t => SessionApi.logError(t, toString).void,
+      onCouplingError = _ => t => SessionApi.onErrorTryAgain(t, toString).void,
       proxyConf))
 
   protected def apiResource(implicit src: sourcecode.Enclosing) =

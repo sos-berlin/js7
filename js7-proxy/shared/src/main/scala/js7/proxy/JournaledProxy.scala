@@ -319,7 +319,7 @@ object JournaledProxy
         Task
           .tailRecM(())(_ => apis
             .traverse(api =>
-              fetchClusterNodeState(api, onCouplingError(api))
+              fetchClusterNodeState(api)
                 .materializeIntoChecked  /*don't let the whole operation fail*/
                 .start
                 .map(ApiWithFiber(api, _)))
@@ -378,11 +378,10 @@ object JournaledProxy
     api: Api,
     clusterNodeState: Checked[ClusterNodeState])
 
-  private def fetchClusterNodeState[Api <: RequiredApi](api: Api, onError: Throwable => Task[Unit])
-  : Task[Checked[ClusterNodeState]] =
+  private def fetchClusterNodeState[Api <: RequiredApi](api: Api): Task[Checked[ClusterNodeState]] =
     HttpClient
       .liftProblem(
-        api.retryIfSessionLost(onError)(
+        api.retryIfSessionLost()(
           api.clusterNodeState))
 
   private def logProblems[Api <: RequiredApi](
