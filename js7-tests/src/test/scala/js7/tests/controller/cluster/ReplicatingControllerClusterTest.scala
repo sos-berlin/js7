@@ -4,7 +4,7 @@ import js7.base.problem.Checked.Ops
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
-import js7.data.cluster.ClusterEvent
+import js7.data.cluster.{ClusterEvent, ClusterTiming}
 import js7.data.controller.ControllerCommand.TakeSnapshot
 import js7.data.order.OrderEvent.OrderFinished
 import js7.data.order.{FreshOrder, OrderId}
@@ -15,6 +15,8 @@ import monix.reactive.Observable
 
 final class ReplicatingControllerClusterTest extends ControllerClusterTester
 {
+  protected override val clusterTiming = ClusterTiming(heartbeat = 1.s, heartbeatTimeout = 5.s)
+
   "Cluster replicates journal files properly" in {
     withControllerAndBackup() { (primary, _, backup, _, _) =>
       val primaryController = primary.newController(httpPort = Some(primaryControllerPort))

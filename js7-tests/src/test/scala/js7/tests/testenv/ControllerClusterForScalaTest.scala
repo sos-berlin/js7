@@ -72,7 +72,7 @@ trait ControllerClusterForScalaTest
   protected final lazy val controllerAdmissions =
     Nel.of(primaryControllerAdmission, backupControllerAdmission)
 
-  protected val clusterTiming = ClusterTiming(1.s, 3.s)
+  protected val clusterTiming = ClusterTiming(heartbeat = 500.ms, heartbeatTimeout = 500.ms)
 
   protected def clusterWatchConfig: Config =
     ConfigFactory.empty()
