@@ -13,9 +13,8 @@ import monix.execution.Scheduler.Implicits.traced
 import monix.execution.atomic.AtomicInt
 import monix.execution.schedulers.TestScheduler
 import monix.reactive.Observable
+import scala.concurrent.TimeoutException
 import scala.concurrent.duration.*
-import scala.concurrent.duration.Deadline.now
-import scala.concurrent.{Future, TimeoutException}
 
 /**
   * @author Joacim Zschimmer
@@ -282,19 +281,6 @@ final class MonixBaseTest extends OurAsyncTestSuite
       durationOfTask(Task.pure(7).delayResult(10.ms))
         .map(o =>
           assert(o._1 == 7 && o._2 >= 10.ms))
-        .runToFuture
-    }
-
-    "deferFutureAndLog Future.successful" in {
-      deferFutureAndLog(Future.successful(()), "TEST")
-        .map(o => assert(o.equals(())))
-        .runToFuture
-    }
-
-    "deferFutureAndLog" in {
-      val t = now
-      deferFutureAndLog(Future(()), "TEST")
-        .map(o => assert(o.equals(()) && t.elapsed < 2.s))
         .runToFuture
     }
   }

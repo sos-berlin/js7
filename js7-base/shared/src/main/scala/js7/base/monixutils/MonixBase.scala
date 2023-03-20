@@ -346,8 +346,6 @@ object MonixBase
     }
   }
 
-  import syntax.*
-
   def promiseTask[A](body: Promise[A] => Unit): Task[A] =
     Task.deferFuture {
       val promise = Promise[A]()
@@ -360,27 +358,6 @@ object MonixBase
       val t = now
       task.map(_ -> t.elapsed)
     }
-
-  //def deferFutureAndLog[A](f: => Future[A])(implicit A: TypeTag[A]): Task[A] =
-  //  deferFutureAndLog(A.tpe.toString, f)
-
-  def deferFutureAndLog[A](lazyFuture: => Future[A], name: => String): Task[A] =
-    Task.defer {
-      val future = lazyFuture
-      future.value match {
-        case Some(tried) =>
-          Task.fromTry(tried)
-
-        case None =>
-          logger.debug(s"Waiting for Future '$name' ...")
-          Task.fromFuture(future)
-            .logWhenItTakesLonger(name)
-            .guaranteeCase(exitCase => Task(logger.debug(s"Future '$name' $exitCase")))
-      }
-    }
-
-  def autoCloseableToObservable[A <: AutoCloseable](newA: => A): Observable[A] =
-    Observable.fromResource(Resource.fromAutoCloseable(Task(newA)))
 
   def closeableIteratorToObservable[A](iterator: CloseableIterator[A]): Observable[A] =
     closingIteratorToObservable(iterator.closeAtEnd)
