@@ -99,8 +99,8 @@ extends Service.StoppableByRequest
         .guaranteeCase(exitCase =>
           Task.defer(passiveOrWorkingNode.get() match {
             case Some(Left(passiveClusterNode))
-              if exitCase == ExitCase.Completed && !_testDontNotifyActiveNodeAboutShutdown =>
-              passiveClusterNode.notifyActiveNodeAboutShutdown
+              if exitCase == ExitCase.Completed =>
+              passiveClusterNode.onShutdown(_testDontNotifyActiveNodeAboutShutdown)
 
             case Some(Right(workingClusterNodeAllocated)) =>
               workingClusterNodeAllocated.stop

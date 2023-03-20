@@ -1,5 +1,6 @@
 package js7.cluster
 
+import cats.effect.concurrent.Deferred
 import com.softwaremill.diffx
 import com.typesafe.config.Config
 import io.circe.syntax.*
@@ -70,12 +71,14 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
   import setting.{activeId, idToUri}
 
   private val jsonReadAhead = config.getInt("js7.web.client.json-read-ahead")
+  private val shutdown = Deferred.unsafe[Task, Unit]
 
   assertThat(activeId != ownId && setting.passiveId == ownId)
   assertThat(initialFileEventId.isDefined == (recovered.clusterState == ClusterState.Empty))
 
   private val activeApiCache = new RefCountedResource(
     common.clusterNodeApi(idToUri(activeId), "Active node"))
+
   private def activeApiResource(implicit src: sourcecode.Enclosing) =
     activeApiCache.resource
 
@@ -84,8 +87,12 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
   @volatile private var awaitingCoupledEvent = false
   @volatile private var stopped = false
 
+  def onShutdown(dontNotifyActiveNode: Boolean = false): Task[Unit] =
+    shutdown.complete(()).attempt *>
+      Task.unless(dontNotifyActiveNode)(notifyActiveNodeAboutShutdown)
+
   /** Allow the active node to emit ClusterPassiveLost quickly. */
-  def notifyActiveNodeAboutShutdown: Task[Unit] =
+  private def notifyActiveNodeAboutShutdown: Task[Unit] =
     logger.debugTask {
       // Active and passive node may be shut down at the same time. We try to handle this here.
       val untilDecoupled = logger.traceTask(Task
@@ -201,16 +208,25 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
       }
     }
 
-  private def tryEndlesslyToSendClusterPrepareCoupling: Task[Unit] =
+  private def tryEndlesslyToSendClusterPrepareCoupling: Task[Unit] = {
     // TODO Delay until we have replicated nearly all events, to avoid a long PreparedCoupled state
     //  Annähernd gleichlaufende Uhren vorausgesetzt, können wir den Zeitstempel des letzten Events heranziehen.
     //  Wenn kein Event kommt? Herzschlag mit Zeitstempel (nicht EventId) versehen (wäre sowieso nützlich)
     //  ["HEARTBEAT", { timestamp: 1234.567 }]
     //  {TYPE: "Heartbeat", eventId: 1234567000, timestamp: 1234.567 }    Herzschlag-Event?
     //  Funktioniert nicht, wenn die Uhren verschieden gehen. Differenz feststellen?
-    common.tryEndlesslyToSendCommand(
-      activeApiResource,
-      ClusterPrepareCoupling(activeId = activeId, passiveId = ownId))
+    Task
+      .race(
+        shutdown.get,
+        common.tryEndlesslyToSendCommand(
+          activeApiResource,
+          ClusterPrepareCoupling(activeId = activeId, passiveId = ownId)))
+      .flatMap {
+        case Left(()) => Task(logger.debug(
+          "❌ tryEndlesslyToSendClusterPrepareCoupling canceled due to shutdown"))
+        case Right(()) => Task.unit
+      }
+  }
 
   private def sendClusterCouple: Task[Unit] =
     common.tryEndlesslyToSendCommand(
