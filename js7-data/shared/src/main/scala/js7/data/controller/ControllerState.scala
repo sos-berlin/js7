@@ -584,14 +584,17 @@ with SnapshotableState[ControllerState]
     idToOrder.valuesIterator.map(_.workflowId).toSet
       .tap(o => logger.trace(s"${idToOrder.size} orders => isWorkflowUsedByOrders size=${o.size}"))
 
+  @deprecated
   def agentToUri(agentPath: AgentPath): Option[Uri] =
-    keyToItem(AgentRef)
-      .get(agentPath)
-      .flatMap(agentRef =>
-        agentRef.director match {
-          case Some(director) => keyToItem(SubagentItem).get(director).map(_.uri)
-          case None => agentRef.uri
-        })
+    agentToUris(agentPath).headOption
+
+  def agentToUris(agentPath: AgentPath): List[Uri] =
+    for {
+      agentRef <- keyToItem(AgentRef).get(agentPath).toList
+      uris <- agentRef.director
+        .fold(agentRef.uri.toList)(director =>
+          keyToItem(SubagentItem).get(director).toList.flatMap(_.uris))
+    } yield uris
 
   def itemToAttachedState(itemKey: InventoryItemKey, itemRevision: Option[ItemRevision], agentPath: AgentPath)
   : ItemAttachedState =

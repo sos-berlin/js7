@@ -42,6 +42,7 @@ import js7.data_for_java.orderwatch.JFileWatch
 import js7.data_for_java.subagent.{JSubagentItem, JSubagentItemState, JSubagentSelection}
 import js7.data_for_java.vavr.VavrConverters.*
 import js7.data_for_java.workflow.{JWorkflowControl, JWorkflowControlId, JWorkflowId}
+import scala.annotation.nowarn
 import scala.jdk.CollectionConverters.*
 import scala.jdk.OptionConverters.*
 import scala.jdk.StreamConverters.*
@@ -73,11 +74,19 @@ extends JJournaledState[JControllerState, ControllerState]
       .mapValues(JAgentRef(_))
       .asJava
 
-  /** Looks up the URI of an AgentPath.. */
+  /** Looks up the URI of an AgentPath. */
+  @deprecated("Use agentToUris", "2.6")
+  @Deprecated
   @Nonnull
   def agentToUri(@Nonnull agentPath: AgentPath): JOptional[Uri] =
-    asScala.agentToUri(agentPath)
+    (asScala.agentToUri(agentPath): @nowarn("msg=deprecated"))
       .toJava
+
+  /** Looks up the URIs of an AgentPath. */
+  @Nonnull
+  def agentToUris(@Nonnull agentPath: AgentPath): java.util.List[Uri] =
+    asScala.agentToUris(agentPath)
+      .asJava
 
   /** Looks up an AgentRefState. */
   @Nonnull

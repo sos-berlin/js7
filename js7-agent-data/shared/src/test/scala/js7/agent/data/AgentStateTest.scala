@@ -50,12 +50,12 @@ final class AgentStateTest extends OurAsyncTestSuite
     AgentPath("AGENT"),
     Uri("https://localhost:0"),
     disabled = false,
-    Some(ItemRevision(7)))
+    itemRevision = Some(ItemRevision(7)))
 
   private val subagentSelection = SubagentSelection(
     SubagentSelectionId("SELECTION"),
     Map(subagentItem.id -> 1),
-    Some(ItemRevision(7)))
+    itemRevision = Some(ItemRevision(7)))
 
   private val unsignedWorkflow = Workflow(WorkflowPath("UNSIGNED-v2.2-WORKFLOW") ~ "1.0", Nil)
   private val workflow = Workflow(WorkflowPath("WORKFLOW") ~ "1.0", Nil)

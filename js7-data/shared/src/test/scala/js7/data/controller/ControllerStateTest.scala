@@ -460,12 +460,12 @@ object ControllerStateTest
     AgentPath("AGENT"),
     Uri("https://SUBAGENT"),
     disabled = false,
-    Some(ItemRevision(7)))
+    itemRevision = Some(ItemRevision(7)))
   private val subagentItemState = SubagentItemState.initial(subagentItem)
   private val subagentSelection = SubagentSelection(
     SubagentSelectionId("SELECTION"),
     Map(subagentItem.id -> 1),
-    Some(ItemRevision(7)))
+    itemRevision = Some(ItemRevision(7)))
 
   private val lock = Lock(LockPath("LOCK"), itemRevision = Some(ItemRevision(7)))
 
