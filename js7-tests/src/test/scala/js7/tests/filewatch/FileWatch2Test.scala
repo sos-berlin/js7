@@ -10,6 +10,7 @@ import js7.base.system.OperatingSystem.isMac
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
+import js7.base.utils.Tests.isIntelliJIdea
 import js7.data.agent.AgentPath
 import js7.data.controller.ControllerEvent.ControllerShutDown
 import js7.data.event.KeyedEvent.NoKey
@@ -38,11 +39,17 @@ final class FileWatch2Test extends OurTestSuite with DirectoryProviderForScalaTe
 {
   protected val agentPaths = Seq(aAgentPath, bAgentPath)
   protected val items = Seq(workflow)
+
   override protected val controllerConfig = config"""
     js7.journal.remove-obsolete-files = false
-    js7.controller.agent-driver.command-batch-delay = 0ms
-    js7.controller.agent-driver.event-buffer-delay = 10ms"""
-  private val pollTimeout = if (isMac) "2.5s" else "1s"
+    js7.controller.agent-driver.command-batch-delay = 0s
+    js7.controller.agent-driver.event-buffer-delay = 0s"""
+
+  // TODO MacOS: Waiting for JDK-8293067
+  //  https://bugs.java.com/bugdatabase/view_bug.do?bug_id=8293067
+  //  https://github.com/openjdk/jdk/pull/10140
+  private val pollTimeout = if (isMac && isIntelliJIdea/*because it's slow*/) "2.5s" else "1s"
+
   override protected def agentConfig = config"""
     js7.filewatch.poll-timeout = $pollTimeout
     js7.filewatch.watch-delay = 1ms
