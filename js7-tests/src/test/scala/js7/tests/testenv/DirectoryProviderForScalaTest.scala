@@ -36,7 +36,7 @@ trait DirectoryProviderForScalaTest extends BeforeAndAfterAll with HasCloser {
 
   protected def agentPaths: Seq[AgentPath]
   protected def agentHttps = false
-  protected def agentPorts: Iterable[Int] = Nil
+  protected def agentPorts: Seq[Int] = Nil
   protected def doNotAddItems = false
 
   protected def bareSubagentIds: Map[AgentPath, Seq[SubagentId]] = Map.empty

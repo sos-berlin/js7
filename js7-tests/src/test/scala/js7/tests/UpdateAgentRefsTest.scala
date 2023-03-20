@@ -47,8 +47,12 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
 
   private lazy val agentPort1 :: agentPort2 :: agentPort3 :: Nil = findFreeTcpPorts(3)
   private lazy val agentFileTree = new DirectoryProvider.AgentTree(directoryProvider.directory,
-    agentPath, SubagentId(agentPath.string + "-0"), "AGENT",
-    agentPort1, config = agentConfig)
+    agentPath,
+    SubagentItem(
+      SubagentId(agentPath.string + "-0"), agentPath, disabled = subagentsDisabled,
+      uri = Uri(s"http://127.0.0.1:$agentPort1")),
+    "AGENT",
+    config = agentConfig)
 
   private lazy val controller = directoryProvider.newController()
 

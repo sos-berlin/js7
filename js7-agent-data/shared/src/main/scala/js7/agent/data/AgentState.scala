@@ -60,9 +60,8 @@ with SnapshotableState[AgentState]
   def companion = AgentState
 
   /** A Controller has initialized this Agent? */
-  def isDedicated =
-    agentPath.nonEmpty/*shortcut*/ ||
-      copy(eventId = EventId.BeforeFirst) != AgentState.empty
+  def isDedicated: Boolean =
+    agentPath.nonEmpty/*shortcut*/
 
   def isFreshlyDedicated: Boolean =
     isDedicated &&

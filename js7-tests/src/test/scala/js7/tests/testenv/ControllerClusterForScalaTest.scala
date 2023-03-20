@@ -128,8 +128,8 @@ trait ControllerClusterForScalaTest
               Backup: "http://127.0.0.1:$backupControllerPort"
             }"""),
           config"""
-            js7.journal.cluster.heartbeat = ${clusterTiming.heartbeat.toSeconds}s
-            js7.journal.cluster.heartbeat-timeout = ${clusterTiming.heartbeatTimeout.toSeconds}s
+            js7.journal.cluster.heartbeat = ${clusterTiming.heartbeat}
+            js7.journal.cluster.heartbeat-timeout = ${clusterTiming.heartbeatTimeout}
             js7.journal.cluster.TEST-HEARTBEAT-LOSS = "$testHeartbeatLossPropertyKey"
             js7.journal.cluster.TEST-ACK-LOSS = "$testAckLossPropertyKey"
             js7.journal.release-events-delay = 0s
@@ -139,8 +139,11 @@ trait ControllerClusterForScalaTest
             js7.auth.users.TEST-USER.password = "plain:TEST-PASSWORD"
             js7.auth.users.TEST-USER.permissions = [ AgentDirectorForward ]"""),
         agentPorts = agentPorts,
+        backupAgentPorts = backupAgentPorts,
         agentConfig = config"""
           js7.job.execution.signed-script-injection-allowed = on
+          js7.journal.cluster.heartbeat = ${clusterTiming.heartbeat}
+          js7.journal.cluster.heartbeat-timeout = ${clusterTiming.heartbeatTimeout}
           js7.journal.release-events-delay = 0s
           js7.journal.remove-obsolete-files = $removeObsoleteJournalFiles
           js7.auth.cluster.password = "PRIMARY-AGENT-PASSWORD"
@@ -154,21 +157,27 @@ trait ControllerClusterForScalaTest
           backupControllerConfig,
           config"""
             js7.journal.cluster.node.is-backup = yes
+            js7.journal.cluster.heartbeat = ${clusterTiming.heartbeat}
+            js7.journal.cluster.heartbeat-timeout = ${clusterTiming.heartbeatTimeout}
             js7.journal.cluster.TEST-HEARTBEAT-LOSS = "$testHeartbeatLossPropertyKey"
             js7.journal.cluster.TEST-ACK-LOSS = "$testAckLossPropertyKey"
             js7.journal.release-events-delay = 0s
             js7.journal.remove-obsolete-files = $removeObsoleteJournalFiles
             js7.auth.cluster.password = "BACKUP-CONTROLLER-PASSWORD"
             js7.auth.users.Controller.password = "plain:PRIMARY-CONTROLLER-PASSWORD"
-            js7.auth.users.TEST-USER.password = "plain:TEST-PASSWORD""""),
+            js7.auth.users.TEST-USER.password = "plain:TEST-PASSWORD"
+            js7.auth.users.TEST-USER.permissions = [ AgentDirectorForward ]"""),
         agentPorts = backupAgentPorts,
         agentConfig = config"""
           js7.job.execution.signed-script-injection-allowed = on
+          js7.journal.cluster.heartbeat = ${clusterTiming.heartbeat}
+          js7.journal.cluster.heartbeat-timeout = ${clusterTiming.heartbeatTimeout}
           js7.journal.cluster.node.is-backup = yes
           js7.journal.release-events-delay = 0s
           js7.journal.remove-obsolete-files = $removeObsoleteJournalFiles
           js7.auth.cluster.password = "BACKUP-AGENT-PASSWORD"
-          js7.auth.users.Agent.password = "plain:PRIMARY-AGENT-PASSWORD""""
+          js7.auth.users.Agent.password = "plain:PRIMARY-AGENT-PASSWORD"
+          js7.auth.users.Controller.password = "plain:AGENT-PASSWORD" """
       ).closeWithCloser
 
       // Replicate credentials required for agents

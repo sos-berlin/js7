@@ -86,8 +86,11 @@ extends ReceiveLoggingActor.WithStash
       .map(password => UserAndPassword(controllerConfiguration.controllerId.toUserId, password))
 
   private val agentRunIdOnce = SetOnce.fromOption(initialAgentRunId)
+
   private var client = newAgentClient(persistence.unsafeCurrentState().agentToUri(agentPath)
     .getOrElse(Uri(s"unknown-uri://$agentPath"/*should not happen ???*/)))
+  private var passiveClient = persistence.unsafeCurrentState().agentToUris(agentPath)
+    .tail.headOption.map(newAgentClient(_))
   /** Only filled when coupled */
   private var lastFetchedEventId = initialEventId
   private var lastCommittedEventId = initialEventId
@@ -103,8 +106,8 @@ extends ReceiveLoggingActor.WithStash
   private val eventFetcherTerminated = Promise[Unit]()
   private var noJournal = false
   private var isReset = false
-  private val clusterWatchId = ClusterWatchId(
-    controllerId.string + "." + controllerConfiguration.clusterConf.ownId.string)
+  private val clusterWatchId = ClusterWatchId(controllerId.string + "/" +
+    controllerConfiguration.clusterConf.ownId.string + "/" + agentPath.string)
   private var allocatedClusterWatchService: Option[Allocated[Task, ClusterWatchService]] = None
 
   private val eventFetcher = new RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], AgentClient](
@@ -624,18 +627,17 @@ extends ReceiveLoggingActor.WithStash
   private def startClusterWatch: Task[Allocated[Task, ClusterWatchService]] =
     Task.defer {
       assertThat(allocatedClusterWatchService.isEmpty)
-      clusterWatchResource
+      ClusterWatchService
+        .resource(
+          clusterWatchId,
+          Resource.eval(Task.pure(Nel.fromListUnsafe(
+            client :: passiveClient.toList))),
+          controllerConfiguration.config)
         .toAllocated
         .flatTap(service => Task {
           allocatedClusterWatchService = Some(service)
         })
     }
-
-  private def clusterWatchResource: Resource[Task, ClusterWatchService] =
-    ClusterWatchService.resource(
-      clusterWatchId,
-      Resource.eval(Task.pure(Nel.one(client))),
-      controllerConfiguration.config)
 
   private def stopClusterWatch: Task[Unit] =
     Task.defer(allocatedClusterWatchService.fold(Task.unit)(_

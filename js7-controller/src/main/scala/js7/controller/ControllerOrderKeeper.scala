@@ -38,7 +38,7 @@ import js7.common.system.startup.ServiceMain
 import js7.controller.ControllerOrderKeeper.*
 import js7.controller.agent.{AgentDriver, AgentDriverConfiguration}
 import js7.controller.configuration.ControllerConfiguration
-import js7.controller.problems.ControllerIsNotReadyProblem
+import js7.controller.problems.{ControllerIsNotReadyProblem, ControllerIsShuttingDownProblem, ControllerIsSwitchingOverProblem}
 import js7.core.command.CommandMeta
 import js7.core.common.ActorRegister
 import js7.core.problems.ReverseReleaseEventsProblem
@@ -1573,9 +1573,6 @@ with MainJournalingActor[ControllerState, Event]
 
 private[controller] object ControllerOrderKeeper
 {
-  object ControllerIsShuttingDownProblem extends Problem.ArgumentlessCoded
-  private object ControllerIsSwitchingOverProblem extends Problem.ArgumentlessCoded
-
   private val logger = Logger(getClass)
 
   object Input {

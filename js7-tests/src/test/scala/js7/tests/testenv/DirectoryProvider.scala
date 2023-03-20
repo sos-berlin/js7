@@ -64,7 +64,6 @@ import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
 import scala.collection.immutable.{Iterable, Map}
 import scala.concurrent.duration.*
-import scala.util.Random
 import scala.util.control.NonFatal
 
 /**
@@ -80,7 +79,8 @@ final class DirectoryProvider(
   agentHttps: Boolean = false,
   agentHttpsMutual: Boolean = false,
   agentConfig: Config = ConfigFactory.empty,
-  agentPorts: Iterable[Int] = Nil,
+  agentPorts: Seq[Int] = Nil,
+  backupAgentPorts: Seq[Int] = Nil/*Required for SubagentItem.backupUri*/,
   subagentsDisabled: Boolean = false,
   provideAgentHttpsCertificate: Boolean = false,
   provideAgentClientCertificate: Boolean = false,
@@ -107,17 +107,23 @@ extends HasCloser
   val controller = new ControllerTree(directory / "controller",
     keyStore = controllerKeyStore, trustStores = controllerTrustStores,
     agentHttpsMutual = agentHttpsMutual)
-  val agentToTree: Map[AgentPath, AgentTree] =
+  val agentToTree: Map[AgentPath, AgentTree] = {
+    val ports = agentPorts ++ Vector.fill(agentPaths.length - agentPorts.length)(findFreeTcpPort())
     agentPaths
-      .zip(agentPorts ++ Vector.fill(agentPaths.size - agentPorts.size)(findFreeTcpPort()))
-      .map { case (agentPath, port) =>
+      .zip(ports.zipAll(backupAgentPorts.take(ports.length).map(Some(_)), -999/*unused*/, None))
+      .map { case (agentPath, (primaryPort, maybeBackupPort)) =>
         val localSubagentId = toLocalSubagentId(agentPath)
+        val localhost = if (agentHttps) "https://localhost" else "http://127.0.0.1"
+
+        val localSubagentItem = SubagentItem(
+          localSubagentId, agentPath, disabled = subagentsDisabled,
+          uri = Uri(s"$localhost:$primaryPort"),
+          backupUri = for (backupPort <- maybeBackupPort) yield Uri(s"$localhost:$backupPort"))
+
         agentPath ->
           new AgentTree(directory, agentPath,
-            localSubagentId,
+            localSubagentItem,
             testName.fold("")(_ + "-") ++ localSubagentId.string,
-            port = port,
-            https = agentHttps,
             mutualHttps = agentHttpsMutual,
             provideHttpsCertificate = provideAgentHttpsCertificate,
             provideClientCertificate = provideAgentClientCertificate,
@@ -126,6 +132,7 @@ extends HasCloser
             agentConfig)
       }
       .toMap
+  }
   val agents: Vector[AgentTree] = agentToTree.values.toVector
   lazy val agentRefs: Vector[AgentRef] =
     for (a <- agents) yield AgentRef(a.agentPath, Seq(a.localSubagentId))
@@ -509,10 +516,9 @@ object DirectoryProvider
 
   final class AgentTree(rootDirectory: Path,
     val agentPath: AgentPath,
-    val localSubagentId: SubagentId,
+    localSubagentItem: SubagentItem,
     name: String,
-    port: Int,
-    https: Boolean = false, mutualHttps: Boolean = false,
+    mutualHttps: Boolean = false,
     provideHttpsCertificate: Boolean = false, provideClientCertificate: Boolean = false,
     bareSubagentIds: Seq[SubagentId] = Nil,
     subagentsDisabled: Boolean = false,
@@ -520,6 +526,10 @@ object DirectoryProvider
   extends Tree {
     val directory = rootDirectory / agentPath.string
     val journalFileBase = stateDir / "agent"
+
+    val localUri = localSubagentItem.uri
+    private val port = localSubagentItem.uri.port.orThrow
+    private val https = localSubagentItem.uri.string.startsWith("https:")
     lazy val agentConfiguration = AgentConfiguration.forTest(directory,
       name = name,
       config.withFallback(bareSubagentIds
@@ -527,19 +537,18 @@ object DirectoryProvider
         .combineAll),
       httpPort = !https ? port,
       httpsPort = https ? port)
-    lazy val localUri = Uri((if (https) "https://localhost" else "http://127.0.0.1") + ":" + port)
-    lazy val password = SecretString(Array.fill(8)(Random.nextPrintableChar()).mkString)
+    lazy val password = SecretString(s"$agentPath-PASSWORD")
     lazy val userAndPassword = Some(UserAndPassword(UserId("Controller"), password))
     lazy val executables = configDir / "executables"
-
-    private lazy val localSubagentItem = SubagentItem(
-      localSubagentId, agentPath, uri = agentConfiguration.localUri, disabled = subagentsDisabled)
     lazy val bareSubagentItems =
       for (subagentId <- bareSubagentIds) yield
         SubagentItem(
           subagentId, agentPath, Uri(s"http://localhost:${findFreeTcpPort()}"),
           disabled = subagentsDisabled)
     lazy val subagentItems = localSubagentItem +: bareSubagentItems
+
+    def localSubagentId: SubagentId =
+      localSubagentItem.id
 
     override def createDirectoriesAndFiles(): Unit = {
       super.createDirectoriesAndFiles()

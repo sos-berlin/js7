@@ -7,4 +7,8 @@ package object problems
   case object ControllerIsNotReadyProblem extends Problem.ArgumentlessCoded {
     override val httpStatusCode = 503  // Service Unavailable
   }
+
+  object ControllerIsShuttingDownProblem extends Problem.ArgumentlessCoded
+
+  object ControllerIsSwitchingOverProblem extends Problem.ArgumentlessCoded
 }

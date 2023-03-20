@@ -61,7 +61,7 @@ final class OrderAgentTest extends OurTestSuite
       val agentConf = AgentConfiguration.forTest(directory, name = "OrderAgentTest")
       TestAgent.blockingRun(agentConf, 99.s) { agent =>
         withCloser { implicit closer =>
-          implicit val actorSystem: ActorSystem = newActorSystem(getClass.getSimpleName)
+          import agent.actorSystem
           val agentClient = AgentClient(agent.localUri, Some(TestUserAndPassword)).closeWithCloser
 
           assert(agentClient
@@ -118,11 +118,6 @@ final class OrderAgentTest extends OurTestSuite
             Right(AgentCommand.Response.Accepted))
 
           //TODO assert((agentClient.task.overview await 99.s) == TaskRegisterOverview(currentTaskCount = 0, totalTaskCount = 1))
-
-          try agentClient.commandExecute(AgentCommand.ShutDown()).await(99.s).orThrow
-          catch { case t: RuntimeException
-            if Option(t.getMessage) getOrElse "" contains "Connection reset by peer" => }
-          Akkas.terminateAndWait(actorSystem)
         }
       }
     }
