@@ -12,6 +12,8 @@ import js7.base.io.https.{HttpsConfig, KeyStoreRef}
 import js7.base.io.process.Processes.ShellFileExtension as sh
 import js7.base.problem.Checked.Ops
 import js7.base.test.OurTestSuite
+import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.Closer.syntax.RichClosersAutoCloseable
 import js7.base.utils.ScalaUtils.syntax.*
@@ -22,6 +24,7 @@ import js7.common.utils.FreeTcpPortFinder.findFreeTcpPort
 import js7.controller.client.AkkaHttpControllerApi
 import js7.data.agent.AgentPath
 import js7.data.cluster.ClusterWatchId
+import js7.data.controller.ControllerCommand
 import js7.data.job.RelativePathExecutable
 import js7.data.workflow.{WorkflowParser, WorkflowPath}
 import js7.tests.https.HttpsTestBase.*
@@ -29,6 +32,7 @@ import js7.tests.testenv.DirectoryProvider.{ExportedControllerTrustStoreRef, Exp
 import js7.tests.testenv.{ControllerAgentForScalaTest, DirectoryProvider}
 import org.scalatest.BeforeAndAfterAll
 import scala.concurrent.duration.*
+import monix.execution.Scheduler.Implicits.global
 
 /**
   * Controller and Agent with server-side HTTPS.
@@ -179,6 +183,9 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest wit
   }
 
   override def afterAll() = {
+    // Don't use (unavailable) HTTPS to shutdown Controller, use direct call:
+    controller.runningController.shutdown(ControllerCommand.ShutDown()).await(99.s)
+
     close()
     delete(clientKeyStore)
     super.afterAll()

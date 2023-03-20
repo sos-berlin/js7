@@ -37,12 +37,12 @@ import js7.cluster.{ClusterNode, WorkingClusterNode}
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.common.akkautils.Akkas.actorSystemResource
 import js7.common.system.ThreadPools
-import js7.controller.ControllerOrderKeeper.ControllerIsShuttingDownProblem
 import js7.controller.RunningController.*
 import js7.controller.client.AkkaHttpControllerApi
 import js7.controller.command.ControllerCommandExecutor
 import js7.controller.configuration.ControllerConfiguration
 import js7.controller.item.ItemUpdater
+import js7.controller.problems.ControllerIsShuttingDownProblem
 import js7.controller.web.ControllerWebServer
 import js7.core.command.{CommandExecutor, CommandMeta}
 import js7.data.Problems.{ClusterNodeIsNotActiveProblem, PassiveClusterNodeShutdownNotAllowedProblem}
@@ -63,7 +63,7 @@ import monix.reactive.Observable
 import org.jetbrains.annotations.TestOnly
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{Future, Promise}
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Try}
 
 /**
  * JS7 Controller.
@@ -98,39 +98,23 @@ extends MainService
     startService(untilTerminated.void)
 
   def stop =
-    terminate().void
+    shutdown(ShutDown()).void
 
-  def terminate(
-    suppressSnapshot: Boolean = false,
-    clusterAction: Option[ShutDown.ClusterAction] = None,
-    dontNotifyActiveNode: Boolean = false)
-  : Task[ProgramTermination] =
+  def shutdown(cmd: ShutDown): Task[ProgramTermination] =
     Task.defer {
       if (terminated.isCompleted)  // Works only if previous termination has been completed
         untilTerminated
       else
-        actorSystem.whenTerminated.value match {
-          case Some(Failure(t)) => Task.raiseError(t)
-          case Some(Success(_)) =>
-            logger.warn("Controller terminate: Akka has already been terminated")
-            Task.pure(ProgramTermination())
-          case None =>
-            logger.debugTask(
-              executeCommandAsSystemUser(
-                ControllerCommand.ShutDown(
-                  suppressSnapshot = suppressSnapshot,
-                  clusterAction = clusterAction,
-                  dontNotifyActiveNode = dontNotifyActiveNode)
-              ).rightAs(())
-                .flatMap {
-                  case Left(problem @ ControllerIsShuttingDownProblem) =>
-                    logger.info(problem.toString)
-                    Task.right(())
-                  case o => Task.pure(o)
-                }.map(_.orThrow)
-                .*>(untilTerminated))
-        }
-    }.logWhenItTakesLonger
+        logger.debugTask(
+          executeCommandAsSystemUser(cmd)
+            .rightAs(())
+            .flatMapLeftCase { case problem @ ControllerIsShuttingDownProblem =>
+              logger.info(problem.toString)
+              Task.right(())
+            }
+            .map(_.orThrow)
+            .*>(untilTerminated))
+    }
 
   private def executeCommandAsSystemUser(command: ControllerCommand): Task[Checked[command.Response]] =
     for {

@@ -174,18 +174,19 @@ object ControllerCommand extends CommonCommand.Companion
     }
 
     implicit val jsonEncoder: Encoder.AsObject[ShutDown] = o =>
-      JsonObject.fromIterable(
-        o.restart.thenList("restart" -> Json.True) :::
-        ("clusterAction" -> o.clusterAction.asJson) ::
-        o.suppressSnapshot.thenList("suppressSnapshot" -> Json.True) :::
-        Nil)
+      JsonObject(
+        "restart" -> o.restart.?.asJson,
+        "clusterAction" -> o.clusterAction.asJson,
+        "suppressSnapshot" -> o.suppressSnapshot.?.asJson,
+        "dontNotifyActiveNode" -> o.dontNotifyActiveNode.?.asJson)
 
     implicit val jsonDecoder: Decoder[ShutDown] = c =>
       for {
         restart <- c.getOrElse[Boolean]("restart")(false)
         clusterAction <- c.get[Option[ClusterAction]]("clusterAction")
         suppressSnapshot <- c.getOrElse[Boolean]("suppressSnapshot")(false)
-      } yield ShutDown(restart, clusterAction, suppressSnapshot)
+        dontNotifyActiveNode <- c.getOrElse[Boolean]("dontNotifyActiveNode")(false)
+      } yield ShutDown(restart, clusterAction, suppressSnapshot, dontNotifyActiveNode)
   }
 
   final case class ResumeOrder(

@@ -5,17 +5,20 @@ import com.typesafe.config.Config
 import js7.base.auth.Admission
 import js7.base.eventbus.StandardEventBus
 import js7.base.generic.Completed
+import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.DurationRichInt
 import js7.base.utils.CatsUtils.Nel
-import js7.base.utils.ScalaUtils.syntax.RichEither
+import js7.base.utils.ScalaUtils.syntax.{RichEither, RichEitherF}
 import js7.base.utils.{Allocated, Lazy, ProgramTermination}
 import js7.base.web.Uri
 import js7.common.akkahttp.web.session.{SessionRegister, SimpleSession}
 import js7.controller.client.AkkaHttpControllerApi.admissionsToApiResources
 import js7.controller.configuration.ControllerConfiguration
+import js7.controller.problems.ControllerIsShuttingDownProblem
 import js7.controller.{OrderApi, RunningController}
 import js7.data.cluster.ClusterState
 import js7.data.controller.ControllerCommand.ShutDown
@@ -27,10 +30,12 @@ import js7.data.order.{FreshOrder, OrderEvent}
 import js7.journal.JournalActor
 import js7.journal.watch.StrictEventWatch
 import js7.proxy.ControllerApi
+import js7.tests.testenv.TestController.*
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.reactive.Observable
 import scala.concurrent.Future
+import scala.util.{Failure, Success}
 
 final class TestController(allocated: Allocated[Task, RunningController], admission: Admission)
 extends AutoCloseable
@@ -60,7 +65,7 @@ extends AutoCloseable
 
   private def stopControllerApi: Task[Unit] =
     Task.defer(apiLazy.toOption.fold(Task.unit)(controllerApi =>
-      controllerApi.stop(dontLogout = true/*Akka may block when server has been shut down*/)))
+      controllerApi.stop(dontLogout = true/*Akka may block when server has just been shut down*/)))
 
   def config: Config =
     conf.config
@@ -92,17 +97,44 @@ extends AutoCloseable
   def terminated: Future[ProgramTermination] =
     runningController.terminated
 
+  def untilTerminated: Task[ProgramTermination] =
+    runningController.untilTerminated.logWhenItTakesLonger
+
   def terminate(
     suppressSnapshot: Boolean = false,
     clusterAction: Option[ShutDown.ClusterAction] = None,
     dontNotifyActiveNode: Boolean = false)
   : Task[ProgramTermination] =
-    runningController
-      .terminate(
+    logger.traceTask {
+      val cmd = ShutDown(
         suppressSnapshot = suppressSnapshot,
-        clusterAction,
+        clusterAction = clusterAction,
         dontNotifyActiveNode = dontNotifyActiveNode)
-      .guarantee(allocated.stop)
+
+      shutdown(cmd).guarantee(stop)
+    }
+
+  private def shutdown(cmd: ShutDown): Task[ProgramTermination] =
+    logger.debugTask(Task.defer {
+      if (terminated.isCompleted) // Works only if previous termination has been completed
+        untilTerminated
+      else
+        actorSystem.whenTerminated.value match {
+          case Some(Failure(t)) => Task.raiseError(t)
+          case Some(Success(_)) =>
+            logger.warn("Controller terminate: Akka has already been terminated")
+            Task.pure(ProgramTermination())
+          case None =>
+            api
+              .executeCommand(cmd)
+              .flatMapLeftCase { case problem @ ControllerIsShuttingDownProblem =>
+                logger.info(problem.toString)
+                Task.right(())
+              }
+              .map(_.orThrow)
+              .*>(untilTerminated)
+        }
+    })
 
   def updateItemsAsSystemUser(operations: Observable[ItemOperation]): Task[Checked[Completed]] =
     runningController.updateItemsAsSystemUser(operations)
@@ -137,4 +169,10 @@ extends AutoCloseable
 
   def journalActorState: JournalActor.Output.JournalActorState =
     runningController.journalActorState
+
+  override def toString = s"TestController(${conf.controllerId}/${conf.clusterConf.ownId})"
+}
+
+object TestController {
+  private val logger = Logger[this.type]
 }

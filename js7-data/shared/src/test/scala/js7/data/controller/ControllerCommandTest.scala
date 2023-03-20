@@ -276,6 +276,15 @@ final class ControllerCommandTest extends OurTestSuite
         }""")
     }
 
+    "suppressSnapshot=true, dontNotifyActiveNode=true" in {
+      testJson[ControllerCommand](ShutDown(suppressSnapshot = true, dontNotifyActiveNode = true),
+        json"""{
+          "TYPE": "ShutDown",
+          "suppressSnapshot": true,
+          "dontNotifyActiveNode": true
+        }""")
+    }
+
     "suppressSnapshot=true" in {
       testJson[ControllerCommand](ShutDown(suppressSnapshot = true),
         json"""{
