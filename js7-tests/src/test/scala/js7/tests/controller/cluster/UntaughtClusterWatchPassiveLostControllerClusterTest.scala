@@ -49,6 +49,8 @@ final class UntaughtClusterWatchPassiveLostControllerClusterTest extends Control
         waitForCondition(99.s, 10.ms)(
           clusterWatch.manuallyConfirmNodeLoss(backupId, "CONFIRMER")
             != Left(ClusterNodeIsNotLostProblem(backupId)))
+        assert(clusterWatch.manuallyConfirmNodeLoss(backupId, "CONFIRMER")
+          != Left(ClusterNodeIsNotLostProblem(backupId)))
 
         primaryController.eventWatch.await[ClusterPassiveLost]()
 
