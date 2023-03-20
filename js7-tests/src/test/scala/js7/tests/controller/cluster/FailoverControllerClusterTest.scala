@@ -25,31 +25,20 @@ import js7.data.order.{FreshOrder, OrderId}
 import js7.data.value.NumberValue
 import js7.journal.files.JournalFiles
 import js7.journal.files.JournalFiles.JournalMetaOps
-import js7.tests.controller.cluster.ControllerClusterTester.*
 import js7.tests.controller.cluster.FailoverControllerClusterTest.*
+import js7.tests.controller.cluster.ControllerClusterTester.*
 import js7.tests.testenv.ControllerClusterForScalaTest.assertEqualJournalFiles
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.duration.Deadline.now
 
-final class FailoverControllerClusterTest extends ControllerClusterTester
+class FailoverControllerClusterTest protected extends ControllerClusterTester
 {
   override protected def primaryControllerConfig =
     // Short timeout because something blocks web server shutdown occasionally
     config"""js7.web.server.shutdown-timeout = 0.5s"""
       .withFallback(super.primaryControllerConfig)
 
-  "Failover and recouple" in {
-    test()
-  }
-
-  "Failover and recouple with non-replicated (truncated) events" in {
-    // The intermediate fix will HALT the complete JVM
-    // to allow a restart with the truncated journal file
-    //pending
-    test(addNonReplicatedEvents = true)
-  }
-
-  private def test(addNonReplicatedEvents: Boolean = false): Unit = {
+  protected final def test(addNonReplicatedEvents: Boolean = false): Unit = {
     sys.props(testHeartbeatLossPropertyKey) = "false"
     withControllerAndBackup() { (primary, _, backup, _, clusterSetting) =>
       var primaryController = primary.newController(httpPort = Some(primaryControllerPort))
@@ -145,4 +134,19 @@ final class FailoverControllerClusterTest extends ControllerClusterTester
 
 object FailoverControllerClusterTest {
   private val logger = Logger[this.type]
+}
+
+final class NonTruncatingFailoverControllerClusterTest extends FailoverControllerClusterTest {
+  "Failover and recouple" in {
+    test()
+  }
+}
+
+final class TruncatingFailoverControllerClusterTest extends FailoverControllerClusterTest {
+  "Failover and recouple with non-replicated (truncated) events" in {
+    // The intermediate fix will HALT the complete JVM
+    // to allow a restart with the truncated journal file
+    //pending
+    test(addNonReplicatedEvents = true)
+  }
 }
