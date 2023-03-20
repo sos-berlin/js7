@@ -11,6 +11,8 @@ import js7.base.io.file.FileUtils.syntax.*
 import js7.base.io.file.FileUtils.withTemporaryDirectory
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
+import js7.base.time.ScalaTime.*
+import scala.concurrent.duration.*
 import scala.jdk.CollectionConverters.*
 
 /**
@@ -100,14 +102,26 @@ final class ConfigsTest extends OurTestSuite
       }
     }
 
-    "Interpolating Int value" in {
-      val i = 7
-      assert(config"""A = $i""" == ConfigFactory.parseMap(Map("A" -> 7).asJava))
-    }
+    "Interpolating" - {
+      "Int" in {
+        val i = 7
+        assert(config"""A = $i""" == ConfigFactory.parseMap(Map("A" -> 7).asJava))
+      }
 
-    "Interpolating Array value" in {
-      val array = List(1, 2, 3)
-      assert(config"""A = $array""" == ConfigFactory.parseMap(Map("A" -> Seq(1, 2, 3).asJava).asJava))
+      "Array" in {
+        val array = List(1, 2, 3)
+        assert(config"""A = $array""" == ConfigFactory.parseMap(Map("A" -> Seq(1, 2, 3).asJava).asJava))
+      }
+
+      "FiniteDuration and Map" in {
+        val array = Seq(1.ns, 2.µs, 3.ms, 4.s, 5.minutes, 6.h, 7.days)
+        assert(configString"""A = $array""" == "A = [ 1ns, 2microseconds, 3ms, 4s, 5m, 6h, 7d ]")
+      }
+
+      "Map" in {
+        val array = Map(1 -> 1.s, "file" -> Paths.get("FILE"), "array" -> Seq(1, 2.s))
+        assert(configString"""A = $array""" == "A = { 1: 1s, file: FILE, array: [ 1, 2s ] }")
+      }
     }
   }
 

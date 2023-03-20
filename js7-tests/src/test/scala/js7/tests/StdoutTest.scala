@@ -35,7 +35,7 @@ final class StdoutTest extends OurTestSuite with ControllerAgentForScalaTest
   override protected def agentConfig = config"""
     js7.job.execution.signed-script-injection-allowed = on
     js7.order.stdout-stderr.chunk-size = $chunkSize
-    js7.order.stdout-stderr.delay = ${delay.toMillis}ms"""
+    js7.order.stdout-stderr.delay = $delay"""
 
   private val versionIdIterator = Iterator.from(1).map(i => VersionId(s"v$i"))
   private val workflowPathIterator = Iterator.from(1).map(i => WorkflowPath(s"WORKFLOW-$i"))

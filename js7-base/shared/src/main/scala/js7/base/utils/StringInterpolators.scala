@@ -2,18 +2,23 @@ package js7.base.utils
 
 object StringInterpolators {
 
-  def interpolate(sc: StringContext, args: Seq[Any], argToString: Any => String, reserve: Int = 100)
+  def interpolate(
+    stringContext: StringContext, args: Seq[Any],
+    argToString: Any => String = _.toString,
+    reserve: Int = 100)
   : String = {
-    val builder = new java.lang.StringBuilder(sc.parts.view.map(_.length).sum + reserve)
-    interpolateTo(sc, args, argToString: Any => String)(builder)
+    val builder = new java.lang.StringBuilder(stringContext.parts.view.map(_.length).sum + reserve)
+    interpolateTo(stringContext, args, argToString: Any => String)(builder)
     builder.toString
   }
 
-  def interpolateTo(sc: StringContext, args: Seq[Any], argToString: Any => String)
+  def interpolateTo(
+    stringContext: StringContext, args: Seq[Any],
+    argToString: Any => String = _.toString)
     (appendable: Appendable)
   : Unit = {
-    StringContext.checkLengths(args, sc.parts)
-    val p = sc.parts.iterator
+    StringContext.checkLengths(args, stringContext.parts)
+    val p = stringContext.parts.iterator
     appendable.append(p.next())
     for (arg <- args) {
       appendable.append(argToString(arg))

@@ -3,17 +3,21 @@ package js7.base.configutils
 import cats.Monoid
 import com.typesafe.config.ConfigRenderOptions.concise
 import com.typesafe.config.{Config, ConfigException, ConfigFactory, ConfigParseOptions, ConfigValue}
+import io.circe.Json
+import java.io.File
 import java.nio.file.Files.exists
 import java.nio.file.Path
 import java.time.Duration
-import js7.base.circeutils.CirceUtils.JsonStringInterpolator
+import js7.base.circeutils.AnyJsonCodecs
 import js7.base.convert.ConvertiblePartialFunctions.wrappedConvert
 import js7.base.convert.{As, ConvertiblePartialFunction}
+import js7.base.generic.GenericString
 import js7.base.io.JavaResource
 import js7.base.log.Logger
 import js7.base.problem.Checked.catchExpected
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.JavaTimeConverters.AsScalaDuration
+import js7.base.time.ScalaTime.RichFiniteDuration
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.StringInterpolators.interpolate
 import scala.concurrent.duration.FiniteDuration
@@ -144,7 +148,7 @@ object Configs
   implicit final class HoconStringInterpolator(private val sc: StringContext) extends AnyVal
   {
     def config(args: Any*)(implicit enclosing: sourcecode.Enclosing): Config = {
-      val configString = interpolate(sc, args, JsonStringInterpolator.toJsonString)
+      val configString = interpolate(sc, args, toHoconString)
       try ConfigFactory.parseString(
         configString,
         ConfigParseOptions.defaults().setOriginDescription(enclosing.value))
@@ -153,5 +157,45 @@ object Configs
         throw t
       }
     }
+
+    def configString(args: Any*): String =
+      interpolate(sc, args, toHoconString)
   }
+
+  private def toHoconString(value: Any): String =
+    value match {
+      case v: ToHoconString => v.toHoconString
+
+      case v: FiniteDuration => v.toHoconString
+
+      case v @ (_: String | _: GenericString | _: Path | _: File) =>
+        val str = v match {
+          case o: GenericString => o.string
+          case o => o.toString
+        }
+        val json = Json.fromString(str).toString
+        // Strip quotes. Interpolation is expected to occur already in quotes: "$var"
+        json.substring(1, json.length - 1)
+
+      case v: Map[?, ?] =>
+        v.asInstanceOf[Map[Any, Any]].view
+          .map {
+            case (k, v) => toHoconString(k) + ": " + toHoconString(v)
+          }
+          .mkString("{ ", ", ", " }")
+
+      case v: Iterable[?] =>
+        v.view.map(toHoconString).mkString("[ ", ", ", " ]")
+
+      case v: Array[?] =>
+        v.view.map(toHoconString).mkString("[ ", ", ", " ]")
+
+      case v: java.util.Map[?, ?] =>
+        toHoconString(v.asScala)
+
+      case v: java.lang.Iterable[?] =>
+        toHoconString(v.asScala)
+
+      case v => AnyJsonCodecs.anyToJson(v).toString
+    }
 }

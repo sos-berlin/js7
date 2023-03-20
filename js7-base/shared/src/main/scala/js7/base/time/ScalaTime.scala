@@ -308,6 +308,20 @@ object ScalaTime
       duration.toBigDecimalSeconds.bigDecimal.stripTrailingZeros.toPlainString
 
     def pretty: String = (duration: Duration).pretty
+
+    def toHoconString: String = {
+      val duration = this.duration
+      duration.length.toString +
+        (duration.unit match {
+          case NANOSECONDS => "ns"
+          case MICROSECONDS => "microseconds"
+          case MILLISECONDS => "ms"
+          case SECONDS => "s"
+          case MINUTES => "m"
+          case HOURS => "h"
+          case DAYS => "d"
+        })
+    }
   }
 
   implicit final class RichFiniteDurationCompanion(private val underlying: FiniteDuration.type)
