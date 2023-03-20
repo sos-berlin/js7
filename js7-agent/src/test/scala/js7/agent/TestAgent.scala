@@ -6,6 +6,7 @@ import js7.agent.RunningAgent.TestWiring
 import js7.agent.configuration.AgentConfiguration
 import js7.agent.data.AgentState
 import js7.agent.data.commands.AgentCommand
+import js7.agent.data.commands.AgentCommand.ShutDown
 import js7.base.auth.SessionToken
 import js7.base.eventbus.StandardEventBus
 import js7.base.io.process.ProcessSignal
@@ -42,9 +43,11 @@ extends AutoCloseable {
 
   def terminate(
     processSignal: Option[ProcessSignal] = None,
+    clusterAction: Option[ShutDown.ClusterAction] = None,
     suppressSnapshot: Boolean = false)
   : Task[ProgramTermination] =
-    agent.terminate(processSignal, suppressSnapshot)
+    agent
+      .terminate(processSignal, clusterAction, suppressSnapshot)
       .guarantee(stop)
 
   def untilTerminated: Task[ProgramTermination] =
@@ -75,7 +78,7 @@ extends AutoCloseable {
     agent.executeCommandAsSystemUser(command)
 
   def executeCommand(cmd: AgentCommand, meta: CommandMeta): Task[Checked[AgentCommand.Response]] =
-    agent.executeCommand(cmd: AgentCommand, meta)
+    agent.executeCommand1(cmd: AgentCommand, meta)
 
   //def blockingUse[R](stopTimeout: Duration)(body: TestAgent => R)(implicit scheduler: Scheduler)
   //: R = {

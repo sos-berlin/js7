@@ -100,12 +100,13 @@ extends MainService
 
   private[agent] def terminate(
     processSignal: Option[ProcessSignal] = None,
+    clusterAction: Option[ShutDown.ClusterAction] = None,
     suppressSnapshot: Boolean = false)
   : Task[ProgramTermination] =
     terminating {
       logger.debug("terminate")
-      executeCommand(
-        AgentCommand.ShutDown(processSignal, suppressSnapshot = suppressSnapshot),
+      executeCommand1(
+        AgentCommand.ShutDown(processSignal, clusterAction, suppressSnapshot = suppressSnapshot),
         CommandMeta(SimpleUser.System)
       ).map(_.orThrow)
     }

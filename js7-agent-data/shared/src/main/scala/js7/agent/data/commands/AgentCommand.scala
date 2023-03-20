@@ -137,12 +137,24 @@ object AgentCommand extends CommonCommand.Companion
 
   final case class ShutDown(
     processSignal: Option[ProcessSignal] = None,
+    clusterAction: Option[ShutDown.ClusterAction] = None,
     suppressSnapshot: Boolean = false,
     restart: Boolean = false)
   extends ShutdownOrAbort {
     type Response = Response.Accepted
   }
   object ShutDown {
+    sealed trait ClusterAction
+    object ClusterAction {
+      case object Switchover extends ClusterAction
+
+      case object Failover extends ClusterAction
+
+      implicit val jsonCodec: TypedJsonCodec[ClusterAction] = TypedJsonCodec[ClusterAction](
+        Subtype(Switchover),
+        Subtype(Failover))
+    }
+
     implicit val jsonCodec: Codec.AsObject[ShutDown] =
       deriveConfiguredCodec[ShutDown]
   }
