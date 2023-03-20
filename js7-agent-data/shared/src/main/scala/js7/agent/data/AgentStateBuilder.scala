@@ -5,7 +5,7 @@ import js7.agent.data.orderwatch.{FileWatchState, FileWatchStateHandler}
 import js7.base.crypt.Signed
 import js7.base.problem.Checked.*
 import js7.base.utils.Collections.implicits.*
-import js7.data.cluster.ClusterStateSnapshot
+import js7.data.cluster.{ClusterState, ClusterStateSnapshot}
 import js7.data.event.{JournalState, SnapshotableStateBuilder, Stamped}
 import js7.data.item.SignedItemEvent.SignedItemAdded
 import js7.data.item.{SignableItem, SignableItemKey, SignedItemEvent, UnsignedItemKey, UnsignedItemState, UnsignedSimpleItem}
@@ -15,7 +15,6 @@ import js7.data.workflow.{Workflow, WorkflowId}
 import scala.collection.mutable
 
 final class AgentStateBuilder
-//extends FileWatchStateHandler[AgentStateBuilder]
 extends SnapshotableStateBuilder[AgentState]
 {
   protected val S = AgentState
@@ -59,8 +58,15 @@ extends SnapshotableStateBuilder[AgentState]
     case o: AgentMetaState =>
       agentMetaState = o
 
-    case o @ (_: JournalState | _: ClusterStateSnapshot) =>
-      addStandardObject(o)
+    case journalState: JournalState =>
+      _state = _state.copy(
+        standards = _state.standards.copy(
+          journalState = journalState))
+
+    case ClusterStateSnapshot(clusterState) =>
+      _state = _state.copy(
+        standards = _state.standards.copy(
+          clusterState = clusterState))
   }
 
   private def onSignedItemAdded(added: SignedItemEvent.SignedItemAdded): Unit = {
@@ -75,17 +81,15 @@ extends SnapshotableStateBuilder[AgentState]
     }
   }
 
-  override protected def onOnAllSnapshotsAdded() = {
-    _state = AgentState(
-      eventId,
-      _standards,
-      agentMetaState,
-      (keyToUnsignedItemState.view ++ fileWatchStateBuilder.result).toMap,
-      idToOrder.toMap,
-      idToWorkflow.toMap,
-      pathToJobResource.toMap,
-      keyToSignedItem.toMap)
-  }
+  override protected def onOnAllSnapshotsAdded() =
+    _state = _state.copy(
+      eventId = eventId,
+      meta = agentMetaState,
+      keyToUnsignedItemState_ = (keyToUnsignedItemState.view ++ fileWatchStateBuilder.result).toMap,
+      idToOrder = idToOrder.toMap,
+      idToWorkflow = idToWorkflow.toMap,
+      pathToJobResource = pathToJobResource.toMap,
+      keyToSignedItem = keyToSignedItem.toMap)
 
   protected def onAddEvent = {
     case Stamped(eventId, _, keyedEvent) =>
@@ -93,5 +97,12 @@ extends SnapshotableStateBuilder[AgentState]
       _state = _state.applyEvent(keyedEvent).orThrow
   }
 
-  def result() = _state.copy(eventId = eventId)
+  override def journalState: JournalState =
+    _state.journalState
+
+  override def clusterState: ClusterState =
+    _state.clusterState
+
+  def result() =
+    _state.copy(eventId = eventId)
 }

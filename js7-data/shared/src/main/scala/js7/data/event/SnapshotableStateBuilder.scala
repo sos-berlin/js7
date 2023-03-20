@@ -10,7 +10,7 @@ import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.SetOnce
 import js7.base.utils.StackTraces.*
-import js7.data.cluster.{ClusterState, ClusterStateSnapshot}
+import js7.data.cluster.ClusterState
 import js7.data.event.SnapshotMeta.SnapshotEventId
 import js7.data.event.SnapshotableStateBuilder.*
 import monix.eval.Task
@@ -31,8 +31,6 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]
   private val _journalHeader = SetOnce[JournalHeader]
   private val getStatePromise = Promise[Task[S]]()
 
-  protected var _standards: SnapshotableState.Standards = SnapshotableState.Standards.empty
-
   def initializeState(journalHeader: Option[JournalHeader], eventId: EventId, totalEventCount: Long, state: S): Unit = {
     journalHeader foreach { _journalHeader := _ }
     _eventId = eventId
@@ -49,13 +47,11 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]
 
   protected def onAddEvent: PartialFunction[Stamped[KeyedEvent[Event]], Unit]
 
+  def journalState: JournalState
+
+  def clusterState: ClusterState
+
   def result(): S
-
-  def journalState: JournalState =
-    _standards.journalState
-
-  def clusterState: ClusterState =
-    _standards.clusterState
 
   def addSnapshotObject(obj: Any): Unit = {
     recordCount += 1
@@ -86,15 +82,6 @@ trait SnapshotableStateBuilder[S <: SnapshotableState[S]]
         }
     }
   }
-
-  protected final def addStandardObject(obj: Any): Unit =
-    obj match {
-      case o: JournalState =>
-        _standards = _standards.copy(journalState = o)
-
-      case ClusterStateSnapshot(o) =>
-        _standards = _standards.copy(clusterState = o)
-    }
 
   protected def onSnapshotObjectNotApplicable(obj: Any): Unit =
     throw SnapshotObjectNotApplicableProblem(obj).throwable.appendCurrentStackTrace
@@ -194,6 +181,7 @@ object SnapshotableStateBuilder
 
   abstract class Simple[S <: SnapshotableState[S]](protected val S: SnapshotableState.Companion[S])
   extends SnapshotableStateBuilder[S]
+  with StandardsBuilder
   {
     private var _state = S.empty
 

@@ -13,7 +13,7 @@ import js7.data.calendar.{Calendar, CalendarState}
 import js7.data.cluster.{ClusterEvent, ClusterStateSnapshot}
 import js7.data.controller.ControllerEvent.{ControllerShutDown, ControllerTestEvent}
 import js7.data.event.KeyedEvent.NoKey
-import js7.data.event.{Event, EventDrivenState, JournalEvent, JournalState, KeyedEvent, SnapshotableStateBuilder, Stamped}
+import js7.data.event.{Event, EventDrivenState, JournalEvent, JournalState, KeyedEvent, SnapshotableStateBuilder, Stamped, StandardsBuilder}
 import js7.data.item.BasicItemEvent.{ItemAttachedStateEvent, ItemDeleted, ItemDeletionMarked}
 import js7.data.item.SignedItemEvent.{SignedItemAdded, SignedItemChanged}
 import js7.data.item.UnsignedItemEvent.{UnsignedItemAdded, UnsignedItemChanged}
@@ -33,6 +33,7 @@ import scala.collection.mutable
 
 final class ControllerStateBuilder
 extends SnapshotableStateBuilder[ControllerState]
+with StandardsBuilder
 with EventDrivenStateView[ControllerStateBuilder, Event]
 with OrderWatchStateHandler[ControllerStateBuilder]
 {
