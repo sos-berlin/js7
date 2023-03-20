@@ -14,7 +14,7 @@ import java.nio.file.{Path, Paths}
 import js7.base.circeutils.CirceUtils.*
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
-import js7.base.log.Logger
+import js7.base.log.{CorrelId, Logger}
 import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.MonixBase.syntax.{RichMonixObservable, RichMonixTask}
 import js7.base.monixutils.MonixDeadline.now
@@ -387,32 +387,35 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                     if (isReplicatingHeadOfFile) {
                       val recoveredJournalFile = continuation.maybeRecoveredJournalFile.getOrElse(
                         throw new IllegalStateException("Failover but nothing has been replicated"))
+                      val lastEventId = recoveredJournalFile.eventId
+                      eventIdGenerator.updateLastEventId(lastEventId)
                       val failedOverStamped = toStampedFailedOver(clusterState,
                         JournalPosition(recoveredJournalFile.fileEventId, lastProperEventPosition))
                       val failedOver = failedOverStamped.value.event
                       common.ifClusterWatchAllowsActivation(clusterState, failedOver)(
                         Task {
                           logger.warn("❗️Failover")
-                          val fileSize = {
-                            val file = recoveredJournalFile.file
-                            assertThat(exists(file))
+                          val file = recoveredJournalFile.file
+                          val fileSize =
                             autoClosing(FileChannel.open(file, APPEND)) { out =>
                               writeFailedOverEvent(out, file, failedOverStamped, lastProperEventPosition)
+                              out.size
                             }
-                            size(file)
-                          }
+                          builder.startWithState(JournalProgress.InCommittedEventsSection,
+                            journalHeader = Some(recoveredJournalFile.journalHeader),
+                            eventId = lastEventId,
+                            totalEventCount = recoveredJournalFile.nextJournalHeader.totalEventCount + 1,
+                            recoveredJournalFile.state)
+                          builder.put(failedOverStamped)
+
+                          replicatedFirstEventPosition := recoveredJournalFile.firstEventPosition
+                          replicatedFileLength = fileSize
+                          lastProperEventPosition = fileSize
+
                           //eventWatch.onJournalingStarted(???)
                           eventWatch.onFileWrittenAndEventsCommitted(
                             PositionAnd(fileSize, failedOverStamped.eventId), n = 1)
                           eventWatch.onJournalingEnded(fileSize)
-                          builder.startWithState(JournalProgress.InCommittedEventsSection,
-                            journalHeader = Some(recoveredJournalFile.journalHeader),
-                            eventId = failedOverStamped.eventId,
-                            totalEventCount = recoveredJournalFile.nextJournalHeader.totalEventCount + 1,
-                            recoveredJournalFile.state.applyEvent(failedOver).orThrow)
-                          replicatedFirstEventPosition := recoveredJournalFile.firstEventPosition
-                          replicatedFileLength = fileSize
-                          lastProperEventPosition = fileSize
                           Right(true)
                         })
                     } else {
@@ -423,9 +426,9 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
                       common.ifClusterWatchAllowsActivation(clusterState, failedOver)(
                         Task {
                           logger.warn("❗️Failover")
+                          writeFailedOverEvent(out, file, failedOverStamped, lastProperEventPosition)
                           builder.rollbackToEventSection()
                           builder.put(failedOverStamped)
-                          writeFailedOverEvent(out, file, failedOverStamped, lastProperEventPosition)
                           val fileSize = out.size
                           replicatedFileLength = fileSize
                           lastProperEventPosition = fileSize
@@ -598,8 +601,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
             if (!isReplicatingHeadOfFile) {
               // In case of fail-over while the next journal file's snapshot is written,
               // we need to remove the next file and cut this file's open transaction
-              // So we cut off open transaction already now
-              // But this leads to inexactly replicated files !!!
+              // So we cut off open transaction already now.
               out.truncate(lastProperEventPosition)
               eventWatch.onJournalingEnded(lastProperEventPosition)
             }
@@ -629,7 +631,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
         file.getFileName}' file at position $lastProperEventPosition")
       out.truncate(lastProperEventPosition)
     }
-    // TODO Use JournalLogging
+    // TODO Use JournalLogger
     val event = failedOverStamped: Stamped[KeyedEvent[ClusterEvent]]
     out.write(ByteBuffer.wrap(
       (event.asJson.compactPrint + '\n').getBytes(UTF_8)))
