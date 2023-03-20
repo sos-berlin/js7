@@ -1,5 +1,6 @@
 package js7.base.utils
 
+import cats.effect.SyncIO
 import cats.instances.either.*
 import cats.instances.list.*
 import cats.instances.option.*
@@ -88,9 +89,23 @@ final class ScalaUtilsTest extends OurTestSuite
 
     "Coeval" in {
       assert(Coeval[E](Left("A")).flatMapT(_ => Coeval.pure(Left("B"))).value() == Left("A"))
-      assert(Coeval[E](Left("A")).flatMapT(o => Coeval.pure(Right(3 * o))).value() == Left("A"))
+      assert(Coeval[E](Left("A")).flatMapT(right => Coeval.pure(Right(3 * right))).value() == Left("A"))
       assert(Coeval[E](Right(7)).flatMapT(_ => Coeval.pure(Left("B"))).value() == Left("B"))
-      assert(Coeval[E](Right(7)).flatMapT(o => Coeval.pure(Right(3 * o))).value() == Right(21))
+      assert(Coeval[E](Right(7)).flatMapT(right => Coeval.pure(Right(3 * right))).value() == Right(21))
+    }
+
+    "flatMapLeft" in {
+      assert(SyncIO[E](Left("A")).flatMapLeft(left => SyncIO.pure(Left(left + "*"))).unsafeRunSync() == Left("A*"))
+      assert(SyncIO[E](Left("9")).flatMapLeft(left => SyncIO.pure(Right(left.toInt))).unsafeRunSync() == Right(9))
+      assert(SyncIO[E](Right(3)).flatMapLeft(_ => fail()).unsafeRunSync() == Right(3))
+    }
+
+    "flatMapLeftCase" in {
+      assert(SyncIO[E](Left("A")).flatMapLeftCase(left => SyncIO.pure(Left(left + "*"))).unsafeRunSync() == Left("A*"))
+      assert(SyncIO[E](Left("9")).flatMapLeftCase(left => SyncIO.pure(Right(left.toInt))).unsafeRunSync() == Right(9))
+      assert(SyncIO[E](Left("A")).flatMapLeftCase { case "A" => SyncIO.pure(Left("B")) }.unsafeRunSync() == Left("B"))
+      assert(SyncIO[E](Left("X")).flatMapLeftCase { case "A" => SyncIO.pure(Left("B")) }.unsafeRunSync() == Left("X"))
+      assert(SyncIO[E](Right(3)).flatMapLeftCase(_ => fail()).unsafeRunSync() == Right(3))
     }
   }
 

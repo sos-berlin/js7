@@ -68,11 +68,28 @@ object ScalaUtils
           case Right(right) => f(right)
         }
 
+      // TODO A better name ?
+      /** Simple alternative to `EitherT` `flatMap` if for-comprehension is not needed. */
+      def flatMapRight[R1](f: R => F[Either[L, R1]])(implicit F: Monad[F]): F[Either[L, R1]] =
+        flatMapT(f)
+
       /** Simple alternative to `EitherT` `flatMap` if for-comprehension is not needed. */
       def flatTapT[R1](f: R => F[Either[L, R1]])(implicit F: Monad[F]): F[Either[L, R]] =
         F.flatMap(underlying) {
           case Left(left) => F.pure(Left(left))
           case Right(right) => f(right).map(_.as(right))
+        }
+
+      def flatMapLeft[L1](f: L => F[Either[L1, R]])(implicit F: Monad[F]): F[Either[L1, R]] =
+        F.flatMap(underlying) {
+          case Left(left) => f(left)
+          case Right(right) => F.pure(Right(right))
+        }
+
+      def flatMapLeftCase[R1 >: R](f: PartialFunction[L, F[Either[L, R1]]])(implicit F: Monad[F]): F[Either[L, R1]] =
+        F.flatMap(underlying) {
+          case Left(left) => f.applyOrElse(left, (left: L) => F.pure(Left(left)))
+          case Right(right) => F.pure(Right(right))
         }
     }
 
