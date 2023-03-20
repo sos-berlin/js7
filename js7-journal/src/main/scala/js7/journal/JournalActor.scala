@@ -177,7 +177,8 @@ extends Actor with Stash with JournalLogging
               lastWrittenEventId = o.value
             }
             // TODO Handle serialization (but not I/O) error? writeEvents is not atomic.
-            if (commitLater && !requireClusterAcknowledgement/*? irrelevant because acceptEarly is not used in a Cluster for now*/) {
+            if (commitLater) {
+              // TODO Set a timer for a later commit here?
               reply(sender(), replyTo, Output.Accepted(callersItem))
               persistBuffer.add(
                 AcceptEarlyPersist(correlId, totalEventCount + 1, stampedEvents.size, since,
