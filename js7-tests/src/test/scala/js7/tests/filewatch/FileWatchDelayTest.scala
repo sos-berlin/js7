@@ -70,7 +70,7 @@ final class FileWatchDelayTest extends OurTestSuite with ControllerAgentForScala
 
     // Each test has an increasing sequence of file modifications, delaying FileAdded and OrderAdded.
     def delayedFileAddedTest(i: Int) = Task {
-      val filename = s"file-$i"
+      val filename = s"file-$i:"
       withClue(filename) {
         val file = watchedDirectory / filename
         val externalOrderName = ExternalOrderName(filename)
@@ -81,24 +81,29 @@ final class FileWatchDelayTest extends OurTestSuite with ControllerAgentForScala
               stamped.key == orderWatchPath && stamped.event.externalOrderName == externalOrderName,
             after = eventWatch.lastAddedEventId)
           .runToFuture
-        val since = now
 
         logger.info(s"""file-$i := """"")
+        val since = now
         file := ""
         sleepUntil(since + systemWatchDelay + 100.ms)
 
-        logger.info(s"""file-$i ++= "A"""")
+        logger.info(s"""file-$i ++= "A" +${since.elapsed.pretty}""")
         file ++= "A"
         assert(!whenArised.isCompleted)
         val divisor = 4
         for (j <- 1 to i * divisor) withClue(s"#$i") {
-          sleepUntil(since + j * writeDuration / divisor)
-          logger.info(s"""file-$i ++= "${"+" * j}"""")
+          sleepUntil(since + systemWatchDelay + j * writeDuration / divisor)
+          logger.info(s"""file-$i ++= "${"+" * j}" +${since.elapsed.pretty}""")
           file ++= "+"
           assert(!whenArised.isCompleted)
         }
         whenArised.await(99.s)
-        assert(since.elapsed >= systemWatchDelay + i * writeDuration)
+        val expectedDuration = fileWatch.delay + i * writeDuration
+        val duration = since.elapsed
+        // TODO On MacOS, files arise 3s or 4s later then expected
+        logger.info(s"file-$i arised ⭐️ after ${duration.pretty}, " +
+          s"${(duration - expectedDuration).pretty} later than expected")
+        assert(duration >= expectedDuration)
         await[OrderFinished](_.key == orderId)
         await[OrderDeleted](_.key == orderId)
         assert(!exists(file))
