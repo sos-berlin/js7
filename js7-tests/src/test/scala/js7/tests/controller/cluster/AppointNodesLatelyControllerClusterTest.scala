@@ -62,8 +62,8 @@ final class AppointNodesLatelyControllerClusterTest extends OurTestSuite with Co
         // UPDATING BACKUP URI IS REJECTED WHEN COUPLED
         val clusterAppointNodes = ClusterAppointNodes(
           updatedBackupSetting.idToUri, updatedBackupSetting.activeId)
-        assert(primaryController.api.executeCommand(clusterAppointNodes).await(99.s) ==
-          Left(ClusterSettingNotUpdatable))
+        assert(primaryController.api.executeCommand(clusterAppointNodes).await(99.s)
+          .left.exists(_ is ClusterSettingNotUpdatable))
 
         // CHANGE BACKUP URI WHEN PASSIVE IS LOST
         locally {

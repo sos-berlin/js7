@@ -135,5 +135,9 @@ object Problems
 
   case object ClusterNodesAlreadyAppointed extends Problem.ArgumentlessCoded
 
-  case object ClusterSettingNotUpdatable extends Problem.ArgumentlessCoded
+  final case class ClusterSettingNotUpdatable(clusterState: ClusterState)
+  extends Problem.Coded {
+    def arguments = Map("clusterState" -> clusterState.toString)
+  }
+  object ClusterSettingNotUpdatable extends Problem.Coded.Companion
 }

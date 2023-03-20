@@ -127,14 +127,14 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
                 setting.passiveUri
               if (changedPassiveUri.isDefined && !clusterState.isInstanceOf[IsDecoupled]
                 || updated != setting /*reject other differences*/ )
-                Left(ClusterSettingNotUpdatable)
+                Left(ClusterSettingNotUpdatable(clusterState))
               else if (updated.copy(clusterWatchId = None) == current.copy(clusterWatchId = None))
                 Right(None)
               else
                 Right(Some(ClusterSettingUpdated(changedPassiveUri)))
 
-            case _ =>
-              Left(ClusterSettingNotUpdatable)
+            case clusterState =>
+              Left(ClusterSettingNotUpdatable(clusterState))
           }.flatMapT {
             case (stampedEvents, state: HasNodes) if stampedEvents.nonEmpty =>
               proceedNodesAppointed(state).as(Right(()))
