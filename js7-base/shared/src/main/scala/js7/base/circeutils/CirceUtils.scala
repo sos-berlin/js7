@@ -18,6 +18,7 @@ import js7.base.data.{ByteArray, ByteSequence, Writable}
 import js7.base.generic.GenericString
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.StringInterpolators
 import scala.collection.immutable.SeqMap
 import scala.collection.mutable
 import scala.util.control.NonFatal
@@ -291,8 +292,11 @@ object CirceUtils
   //  }
 
   implicit final class JsonStringInterpolator(private val sc: StringContext) extends AnyVal {
-    def json(args: Any*): Json =
-      JsonStringInterpolator.interpolate(sc, args).parseJsonOrThrow
+    def json(args: Any*): Json = {
+      StringInterpolators
+        .interpolate(sc, args, JsonStringInterpolator.toJsonString)
+        .parseJsonOrThrow
+    }
 
     /** Dummy interpolator returning the string itself, to allow syntax checking by IntelliJ IDEA. */
     def jsonString(args: Any*): String = {
@@ -327,7 +331,7 @@ object CirceUtils
       builder.toString
     }
 
-    private def toJsonString(arg: Any): String =
+    def toJsonString(arg: Any): String =
       arg match {
         case arg @ (_: String | _: GenericString | _: Path | _: File) =>
           val str = arg match {

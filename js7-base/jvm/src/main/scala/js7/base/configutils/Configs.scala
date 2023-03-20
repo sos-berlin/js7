@@ -15,6 +15,7 @@ import js7.base.problem.Checked.catchExpected
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.JavaTimeConverters.AsScalaDuration
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.StringInterpolators.interpolate
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
@@ -143,7 +144,7 @@ object Configs
   implicit final class HoconStringInterpolator(private val sc: StringContext) extends AnyVal
   {
     def config(args: Any*)(implicit enclosing: sourcecode.Enclosing): Config = {
-      val configString = JsonStringInterpolator.interpolate(sc, args)
+      val configString = interpolate(sc, args, JsonStringInterpolator.toJsonString)
       try ConfigFactory.parseString(
         configString,
         ConfigParseOptions.defaults().setOriginDescription(enclosing.value))
