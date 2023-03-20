@@ -1,9 +1,6 @@
 package js7.journal.recover
 
 sealed trait JournalProgress
-{
-  def isAcceptingEvents = false
-}
 
 object JournalProgress
 {
@@ -15,13 +12,9 @@ object JournalProgress
 
   case object AfterSnapshotSection extends JournalProgress
 
-  case object InCommittedEventsSection extends JournalProgress {
-    override def isAcceptingEvents = true
-  }
+  case object InCommittedEventsSection extends JournalProgress
 
-  case object InTransaction extends JournalProgress {
-    override def isAcceptingEvents = true
-  }
+  case object InTransaction extends JournalProgress
 
-  case object EndOfFile extends JournalProgress
+  //case object EndOfFile extends JournalProgress
 }

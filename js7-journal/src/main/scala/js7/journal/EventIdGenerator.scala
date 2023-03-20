@@ -21,9 +21,9 @@ extends AbstractIterator[EventId]
 
   def updateLastEventId(newEventId: EventId): Unit =
     while (true) {
-      val e = lastResult.get
-      if (e >= newEventId) return
-      if (lastResult.compareAndSet(e, newEventId)) return
+      val last = lastResult.get
+      if (newEventId < last) return
+      if (lastResult.compareAndSet(last, newEventId)) return
     }
 
   def hasNext = true

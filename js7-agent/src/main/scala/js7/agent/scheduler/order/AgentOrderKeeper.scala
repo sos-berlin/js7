@@ -116,12 +116,12 @@ final class AgentOrderKeeper(
 
     def shuttingDown = shutDownCommand.isDefined
 
-    def start(terminate: AgentCommand.ShutDown): Unit =
+    def start(cmd: AgentCommand.ShutDown): Unit =
       if (!shuttingDown) {
-        shutDownCommand = Some(terminate)
+        shutDownCommand = Some(cmd)
         since := now
         fileWatchManager.stop.runAsyncAndForget
-        if (terminate.suppressSnapshot) {
+        if (cmd.suppressSnapshot) {
           snapshotFinished = true
         } else {
           journalActor ! JournalActor.Input.TakeSnapshot  // Take snapshot before OrderActors are stopped
@@ -324,8 +324,8 @@ final class AgentOrderKeeper(
           processCommand(cmd)
         })
 
-    case terminate: AgentCommand.ShutDown =>
-      shutdown.start(terminate)
+    case cmd: AgentCommand.ShutDown =>
+      shutdown.start(cmd)
       sender() ! AgentCommand.Response.Accepted
 
     case JournalActor.Output.SnapshotTaken =>

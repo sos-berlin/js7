@@ -5,8 +5,9 @@ import js7.base.log.Logger
 import js7.base.problem.Checked.*
 import js7.base.utils.ScalaUtils.*
 import js7.base.utils.ScalaUtils.syntax.RichString
+import js7.data.cluster.ClusterState
 import js7.data.event.JournalSeparators.{Commit, EventHeader, SnapshotFooter, SnapshotHeader, Transaction}
-import js7.data.event.{Event, EventId, JournalHeader, JournalId, KeyedEvent, SnapshotableState, SnapshotableStateBuilder, Stamped}
+import js7.data.event.{Event, EventId, JournalHeader, JournalId, JournalState, KeyedEvent, SnapshotableState, SnapshotableStateBuilder, Stamped}
 import js7.journal.recover.FileSnapshotableStateBuilder.*
 import js7.journal.recover.JournalProgress.{AfterHeader, AfterSnapshotSection, InCommittedEventsSection, InSnapshotSection, InTransaction, Initial}
 import scala.collection.mutable
@@ -21,8 +22,9 @@ final class FileSnapshotableStateBuilder[S <: SnapshotableState[S]](
   expectedJournalId: Option[JournalId],
   newBuilder: () => SnapshotableStateBuilder[S])
 {
-  def this(journalFileForInfo: Path, expectedJournalId: Option[JournalId])(implicit S: SnapshotableState.Companion[S]) =
-    this(journalFileForInfo, expectedJournalId, S.newBuilder _)
+  def this(journalFileForInfo: Path, expectedJournalId: Option[JournalId])
+    (implicit S: SnapshotableState.Companion[S])
+  = this(journalFileForInfo, expectedJournalId, S.newBuilder _)
 
   private val builder = newBuilder()
   private var _progress: JournalProgress = JournalProgress.Initial
@@ -47,7 +49,13 @@ final class FileSnapshotableStateBuilder[S <: SnapshotableState[S]](
     private def isInTransaction = buffer != null
   }
 
-  def startWithState(progress: JournalProgress, journalHeader: Option[JournalHeader], eventId: EventId, totalEventCount: Long, state: S): Unit = {
+  def startWithState(
+    progress: JournalProgress,
+    journalHeader: Option[JournalHeader],
+    eventId: EventId,
+    totalEventCount: Long,
+    state: S)
+  : Unit = {
     this._progress = progress
     builder.initializeState(journalHeader, eventId, totalEventCount, state)
   }
@@ -64,12 +72,13 @@ final class FileSnapshotableStateBuilder[S <: SnapshotableState[S]](
             _progress = AfterHeader
 
           case _ => throw new IllegalArgumentException(
-            s"Not a valid JS7 journal file: $journalFileForInfo. Expected a JournalHeader instead of " +
-              s"${journalRecord.toString.truncateWithEllipsis(100)}:")
+            s"Not a valid JS7 journal file: $journalFileForInfo. Expected a JournalHeader" +
+              s" instead of ${journalRecord.toString.truncateWithEllipsis(100)}:")
         }
 
       case AfterHeader =>
-        if (journalRecord != SnapshotHeader) throw new IllegalArgumentException("Missing SnapshotHeader in journal file")
+        if (journalRecord != SnapshotHeader) throw new IllegalArgumentException(
+          "Missing SnapshotHeader in journal file")
         _progress = InSnapshotSection
 
       case InSnapshotSection =>
@@ -82,7 +91,8 @@ final class FileSnapshotableStateBuilder[S <: SnapshotableState[S]](
         }
 
       case AfterSnapshotSection =>
-        if (journalRecord != EventHeader) throw new IllegalArgumentException("Missing EventHeader in journal file")
+        if (journalRecord != EventHeader) throw new IllegalArgumentException(
+          "Missing EventHeader in journal file")
         _progress = InCommittedEventsSection
 
       case InCommittedEventsSection =>
@@ -107,7 +117,8 @@ final class FileSnapshotableStateBuilder[S <: SnapshotableState[S]](
         }
 
       case _ =>
-        throw new IllegalArgumentException(s"Illegal JSON while journal file reader is in state '$journalProgress': ${journalRecord.toString.truncateWithEllipsis(100)}")
+        throw new IllegalArgumentException(
+          s"Illegal JSON while journal file reader is in state '$journalProgress': ${journalRecord.toString.truncateWithEllipsis(100)}")
     }
 
   def rollbackToEventSection(): Unit =
@@ -124,22 +135,27 @@ final class FileSnapshotableStateBuilder[S <: SnapshotableState[S]](
     _progress = InCommittedEventsSection
   }
 
-  def journalProgress = _progress
+  def journalProgress: JournalProgress =
+    _progress
 
-  def fileJournalHeader = builder.fileJournalHeader
+  def fileJournalHeader: Option[JournalHeader] =
+    builder.fileJournalHeader
 
   /** Calculated next JournalHeader. */
-  def nextJournalHeader = builder.nextJournalHeader
+  def nextJournalHeader: Option[JournalHeader] =
+    builder.nextJournalHeader
 
-  def eventId = builder.eventId
+  def eventId: EventId =
+    builder.eventId
 
-  def result() = builder.result()
+  def result(): S =
+    builder.result()
 
-  def journalState = builder.journalState
+  def journalState: JournalState =
+    builder.journalState
 
-  def clusterState = builder.clusterState
-
-  def isAcceptingEvents = _progress.isAcceptingEvents
+  def clusterState: ClusterState =
+    builder.clusterState
 
   def logStatistics(): Unit =
     builder.logStatistics(Try(Files.size(journalFileForInfo)).toOption)

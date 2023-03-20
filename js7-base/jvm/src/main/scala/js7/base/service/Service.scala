@@ -81,24 +81,18 @@ object Service
 
   private val logger = Logger[this.type]
 
-  def resource[S <: Service](newService: Task[S])
-  : Resource[Task, S] =
-    resource(newService, (_: S).start)
-
-  private def resource[S <: Service](newService: Task[S], start: S => Task[Started])
-  : Resource[Task, S] =
+  def resource[S <: Service](newService: Task[S]): Resource[Task, S] =
     Resource.make(
-      acquire = startService(newService, start))(
-      release = service => service.stop
-        .logWhenItTakesLonger(s"stopping $service"))
+      acquire = startService(newService))(
+      release = service => service.stop.logWhenItTakesLonger(s"stopping $service"))
 
-  private def startService[S <: Service](newService: Task[S], start: S => Task[Started]): Task[S] =
+  private def startService[S <: Service](newService: Task[S]): Task[S] =
     newService.flatTap(service =>
       if (service.started.getAndSet(true))
         Task.raiseError(Problem.pure(s"$toString started twice").throwable)
       else
         logger.traceTask(s"$service start")(
-          start(service)))
+          service.start))
 
   private def logInfoStartAndStop[A](
     logger: ScalaLogger,

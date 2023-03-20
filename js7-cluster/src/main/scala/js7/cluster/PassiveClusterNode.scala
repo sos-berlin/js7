@@ -81,7 +81,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
 
   private val stateBuilderAndAccessor = new StateBuilderAndAccessor(recovered.state)
   private var dontActivateBecauseOtherFailedOver = otherFailed
-  @volatile var awaitingCoupledEvent = false
+  @volatile private var awaitingCoupledEvent = false
   @volatile private var stopped = false
 
   /** Allow the active node to emit ClusterPassiveLost quickly. */

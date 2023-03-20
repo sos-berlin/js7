@@ -697,7 +697,6 @@ object JournalActor
 {
   private val logger = Logger[this.type]
   private val TmpSuffix = ".tmp"  // Duplicate in PassiveClusterNode
-  //private val DispatcherName = "js7.journal.dispatcher"  // Config setting; name is used for thread names
 
   //private val ClusterNodeHasBeenSwitchedOverProblem = Problem.pure("After switchover, this cluster node is no longer active")
 
@@ -711,7 +710,7 @@ object JournalActor
   =
     Props {
       new JournalActor[S](journalMeta, conf, keyedEventBus, scheduler, eventIdGenerator, stopped)
-    } //.withDispatcher(DispatcherName)
+    }
 
   private def toSnapshotTemporary(file: Path) = file.resolveSibling(s"${file.getFileName}$TmpSuffix")
 

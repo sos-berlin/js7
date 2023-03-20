@@ -57,7 +57,7 @@ final class FileWatchManager(
   }
   private val logDelays = config.getDurationList("js7.filewatch.log-delays")
     .asScala.toVector.map(_.toFiniteDuration)
-  private val pollTimeout = config.getDuration("js7.filewatch.poll-timeout").toFiniteDuration max 0.ms
+  private val pollTimeout = config.getDuration("js7.filewatch.poll-timeout").toFiniteDuration max 0.s
   private val watchDelay = config.getDuration("js7.filewatch.watch-delay").toFiniteDuration max 0.s
   private val lockKeeper = new LockKeeper[OrderWatchPath]
   private val idToStopper = AsyncMap(Map.empty[OrderWatchPath, Task[Unit]])

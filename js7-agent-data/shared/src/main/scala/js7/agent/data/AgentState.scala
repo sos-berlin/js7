@@ -250,8 +250,9 @@ with SnapshotableState[AgentState]
 
   protected def updateFileWatchStates(
     fileWatchStates: Iterable[FileWatchState],
-    remove: Iterable[OrderWatchPath]
-  ) = update(addItemStates = fileWatchStates, removeItemStates = remove)
+    remove: Iterable[OrderWatchPath])
+  : Checked[AgentState] =
+    update(addItemStates = fileWatchStates, removeItemStates = remove)
 
   protected def update(
     orders: Iterable[Order[Order.State]],
@@ -267,7 +268,8 @@ with SnapshotableState[AgentState]
         keyToUnsignedItemState_ = keyToUnsignedItemState_
           -- removeItemStates ++ addItemStates.map(o => o.path -> o)))
 
-  def agentPath = meta.agentPath
+  def agentPath: AgentPath =
+    meta.agentPath
 
   lazy val keyToItem: MapView[InventoryItemKey, InventoryItem] =
     new MapView[InventoryItemKey, InventoryItem] {

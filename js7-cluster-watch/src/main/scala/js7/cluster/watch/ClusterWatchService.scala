@@ -146,7 +146,7 @@ object ClusterWatchService
     import conf.{clusterNodeAdmissions, config, httpsConfig}
     for {
       akka <- actorSystemResource(name = "ClusterWatch", config)
-      service <- ClusterWatchService.resource(
+      service <- resource(
         conf.clusterWatchId,
         apiResources = clusterNodeAdmissions
           .traverse(admission => AkkaHttpClient
@@ -190,16 +190,19 @@ object ClusterWatchService
       val keepAlive = config.finiteDuration("js7.web.client.keep-alive").orThrow
       val retryDelays = config.getDurationList("js7.journal.cluster.watch.retry-delays")
         .asScala.map(_.toFiniteDuration).toVector
-      apiResources
-        .flatMap(nodeApis =>
+
+      for {
+        nodeApis <- apiResources
+        service <-
           Service.resource(
             Task.deferAction(scheduler => Task(
-            new ClusterWatchService(
-              clusterWatchId,
-              nodeApis,
+              new ClusterWatchService(
+                clusterWatchId,
+                nodeApis,
                 () => scheduler.now,
-              keepAlive = keepAlive,
-              retryDelays = NonEmptySeq.fromSeq(retryDelays) getOrElse NonEmptySeq.of(1.s),
-                eventBus)))))
+                keepAlive = keepAlive,
+                retryDelays = NonEmptySeq.fromSeq(retryDelays) getOrElse NonEmptySeq.of(1.s),
+                eventBus))))
+      } yield service
     })
 }
