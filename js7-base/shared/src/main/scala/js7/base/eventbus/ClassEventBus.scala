@@ -6,7 +6,7 @@ import js7.base.utils.ScalaUtils.implicitClass
 import js7.base.utils.SuperclassCache
 import monix.eval.Task
 import monix.execution.atomic.AtomicBoolean
-import scala.concurrent.Promise
+import scala.concurrent.{Future, Promise}
 import scala.reflect.ClassTag
 import scala.util.control.NonFatal
 
@@ -91,6 +91,29 @@ trait ClassEventBus[E] extends EventPublisher[E] with AutoCloseable
       oneShotFilterMap(f)(promise.success)
       promise.future
     }
+
+  // TODO Replace above Task-returning call with the following Future-returning calls.
+  // Denn die hier beginnen die Überwachung sofort und nicht irgendwann.
+  final def whenFuture[C <: Classifier : ClassTag]: Future[ClassifierToEvent[C]] =
+    whenFuture_[C](_ => true)
+
+  final def whenFuture_[C <: Classifier : ClassTag](predicate: ClassifierToEvent[C] => Boolean)
+  : Future[ClassifierToEvent[C]] = {
+    val promise = Promise[ClassifierToEvent[C]]()
+    oneShot[C](predicate)(promise.success)
+    promise.future
+  }
+
+  final def whenPFFuture[C <: Classifier: ClassTag, D](pf: PartialFunction[ClassifierToEvent[C], D])
+  : Future[D] =
+    whenFilterMapFuture(pf.lift)
+
+  final def whenFilterMapFuture[C <: Classifier: ClassTag, D](f: ClassifierToEvent[C] => Option[D])
+  : Future[D] = {
+    val promise = Promise[D]()
+    oneShotFilterMap(f)(promise.success)
+    promise.future
+  }
 
   final def oneShot[C <: Classifier: ClassTag](
     predicate: ClassifierToEvent[C] => Boolean = (_: ClassifierToEvent[C]) => true)

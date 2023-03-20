@@ -6,35 +6,39 @@ import js7.base.thread.MonixBlocking.syntax.*
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.base.utils.AutoClosing.autoClosing
+import js7.base.utils.ScalaUtils.syntax.RichBoolean
 import js7.cluster.ClusterNode.ClusterWatchConfirmed
 import js7.cluster.watch.api.ClusterWatchProblems.{ClusterWatchRequestDoesNotMatchProblem, OtherClusterWatchStillAliveProblem}
 import js7.data.cluster.ClusterEvent.{ClusterCoupled, ClusterCouplingPrepared, ClusterWatchRegistered}
 import js7.data.cluster.{ClusterState, ClusterWatchId}
-import js7.tests.controller.cluster.ClusterWatchChangeClusterTest.*
+import js7.tests.controller.cluster.ChangeClusterWatchTest.*
 import monix.execution.Scheduler.Implicits.traced
 import scala.concurrent.Promise
 
-final class ClusterWatchChangeClusterTest extends ControllerClusterTester
+final class ChangeClusterWatchTest extends ControllerClusterTester
 {
   "Start and stop some ClusterWatch with same or different ClusterWatchIds" in {
     withControllerAndBackup(suppressClusterWatch = true) { (primary, _, backup, _, _) =>
       val primaryController = primary.newController(httpPort = Some(primaryControllerPort))
 
-      var whenConfirmed = primaryController.testEventBus.when[ClusterWatchConfirmed].runToFuture
+      var whenConfirmed = primaryController.testEventBus
+        .whenFilterMapFuture[ClusterWatchConfirmed, ClusterWatchConfirmed](confirmed =>
+          (confirmed.result != Left(ClusterWatchRequestDoesNotMatchProblem/*irrelevant*/)) ?
+            confirmed)
 
       backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { _ =>
         // ClusterWatch is not required for ClusterCouplingPrepared
-        val x = primaryController.eventWatch.await[ClusterCouplingPrepared]().head.eventId
+        val first = primaryController.eventWatch.await[ClusterCouplingPrepared]().head.eventId
         sleep(3.s)
         // But ClusterWatch is required for ClusterCoupled
         assert(primaryController.eventWatch.allKeyedEvents[ClusterCoupled].isEmpty)
 
         withClusterWatchService(aClusterWatchId) { a =>
-          val z = primaryController.eventWatch.await[ClusterCoupled]().head.eventId
+          val third = primaryController.eventWatch.await[ClusterCoupled]().head.eventId
           // ClusterWatchRegistered is expected to immediately follow ClusterCouplingPrepared
           // but we await this only now, to not force this wrong behaviour.
-          val y = primaryController.eventWatch.await[ClusterWatchRegistered]().head.eventId
-          assert(x < y && y < z)
+          val second = primaryController.eventWatch.await[ClusterWatchRegistered]().head.eventId
+          assert(first < second && second < third)
 
           val confirmed = whenConfirmed.await(99.s)
           assert(confirmed.command.clusterWatchId == a.clusterWatchId)
@@ -52,13 +56,12 @@ final class ClusterWatchChangeClusterTest extends ControllerClusterTester
         logger.info("🔵 Same ClusterWatchId again")
 
         def whenProperRequestIsConfirmed() = primaryController.testEventBus
-          .when_[ClusterWatchConfirmed](predicate = confirmed =>
+          .whenFuture_[ClusterWatchConfirmed](predicate = confirmed =>
             confirmed.result != Left(ClusterWatchRequestDoesNotMatchProblem) || {
               // bClusterWatchId may confirm the last request already confirmed by aClusterWatchId
               logger.debug(s"Ignore: $confirmed")
               false
             })
-          .runToFuture
 
         whenConfirmed = whenProperRequestIsConfirmed()
         withClusterWatchService(aClusterWatchId) { a =>
@@ -139,7 +142,7 @@ final class ClusterWatchChangeClusterTest extends ControllerClusterTester
   }
 }
 
-object ClusterWatchChangeClusterTest
+object ChangeClusterWatchTest
 {
   private val logger = Logger[this.type]
   private val aClusterWatchId = ClusterWatchId("A-CLUSTER-WATCH")
