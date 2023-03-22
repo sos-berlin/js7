@@ -30,6 +30,7 @@ object Instructions
     Subtype[StickySubagent],
     Subtype[AddOrder],
     Subtype[Options],
+    Subtype[Stop],
     Subtype[EmptyInstruction],
     Subtype[Gap])
 }
