@@ -13,12 +13,12 @@ import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.OrderEventSource.*
 import js7.data.execution.workflow.instructions.InstructionExecutorService
-import js7.data.order.Order.{Cancelled, Failed, FailedInFork, IsTerminated, ProcessingKilled}
-import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCaught, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderFailed, OrderFailedInFork, OrderFailedIntermediate_, OrderLocksDequeued, OrderLocksReleased, OrderMoved, OrderNoticesConsumed, OrderOperationCancelled, OrderOutcomeAdded, OrderPromptAnswered, OrderResumed, OrderResumptionMarked, OrderStickySubagentLeaved, OrderSuspended, OrderSuspensionMarked}
+import js7.data.order.Order.{Cancelled, Failed, FailedInFork, IsTerminated, ProcessingKilled, Stopped, StoppedWhileFresh}
+import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCaught, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderFailed, OrderFailedInFork, OrderFailedIntermediate_, OrderLocksDequeued, OrderLocksReleased, OrderMoved, OrderNoticesConsumed, OrderOperationCancelled, OrderOutcomeAdded, OrderPromptAnswered, OrderResumed, OrderResumptionMarked, OrderStickySubagentLeaved, OrderStopped, OrderSuspended, OrderSuspensionMarked}
 import js7.data.order.{Order, OrderId, OrderMark, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
 import js7.data.state.StateView
-import js7.data.workflow.instructions.{End, Finish, ForkInstruction, Gap, LockInstruction, Retry, TryInstruction}
+import js7.data.workflow.instructions.{End, Finish, ForkInstruction, Gap, LockInstruction, Options, Retry, TryInstruction}
 import js7.data.workflow.position.BranchPath.Segment
 import js7.data.workflow.position.{BranchId, Position, TryBranchId, WorkflowPosition}
 import js7.data.workflow.{Instruction, Workflow}
@@ -42,7 +42,7 @@ final class OrderEventSource(state: StateView)
       Nil
     else
       orderMarkKeyedEvent(order).getOrElse(
-        if (order.isSuspended)
+        if (order.isSuspendedOrStopped)
           Nil
         else if (state.isOrderAtBreakpoint(order))
           atController(OrderSuspended :: Nil)
@@ -145,6 +145,28 @@ final class OrderEventSource(state: StateView)
     uncatchable: Boolean)
   : Checked[List[OrderActorEvent]] = {
     val outcomeAdded = outcome.map(OrderOutcomeAdded(_)).toList
+    if (isStopOnFailure(workflow, order.position))
+      Right(outcomeAdded ::: atController(OrderStopped :: Nil))
+    else
+      for (events <- failAndLeave(workflow, order, uncatchable)) yield
+        outcomeAdded ++: events
+  }
+
+  @tailrec
+  private def isStopOnFailure(workflow: Workflow, position: Position): Boolean =
+    workflow.instruction(position) match {
+      case Options(Some(stopOnFailure), _, _) => stopOnFailure
+      case _ => position.parent match {
+        case Some(parent) => isStopOnFailure(workflow, parent)
+        case None => false
+      }
+    }
+
+  private def failAndLeave(
+    workflow: Workflow,
+    order: Order[Order.State],
+    uncatchable: Boolean)
+  : Checked[List[OrderActorEvent]] =
     leaveBlocks(workflow, order, catchable = !uncatchable) {
       case (None | Some(BranchId.IsFailureBoundary(_)), failPosition) =>
         atController {
@@ -161,8 +183,7 @@ final class OrderEventSource(state: StateView)
 
       case (Some(TryBranchId(_)), catchPos) =>
         OrderCaught(catchPos) :: Nil
-    }.map(outcomeAdded ++: _)
-  }
+    }
 
   // Return Nil or List(OrderJoined)
   private def joinedEvents(order: Order[Order.State]): Checked[List[KeyedEvent[OrderActorEvent]]] =
@@ -250,7 +271,7 @@ final class OrderEventSource(state: StateView)
       order.isCancelable &&
       // If workflow End is reached unsuspended, the order is finished normally
       // TODO Correct? Or should we check only the end of the main/forked workflow?
-      (!instruction(order.workflowPosition).isInstanceOf[End] || state.isSuspended(order))
+      (!instruction(order.workflowPosition).isInstanceOf[End] || state.isSuspendedOrStopped(order))
 
   /** Returns a `Right(Some(OrderSuspended | OrderSuspensionMarked))` iff order is not already marked as suspending. */
   def suspend(orderId: OrderId, mode: SuspensionMode): Checked[Option[List[OrderActorEvent]]] =
@@ -328,7 +349,10 @@ final class OrderEventSource(state: StateView)
               case None | Some(OrderMark.Suspending(_)) =>
                 val okay = order.isSuspended ||
                   order.mark.exists(_.isInstanceOf[OrderMark.Suspending]) ||
-                  order.isState[Failed] && order.isDetached
+                  order.isDetached && (
+                    order.isState[Failed] ||
+                      order.isState[Stopped] ||
+                      order.isState[StoppedWhileFresh])
                 if (!okay)
                   Left(CannotResumeOrderProblem)
                 else
@@ -455,7 +479,7 @@ final class OrderEventSource(state: StateView)
         workflow.instruction(workflowPosition.position)
     }
 
-  private def atController(events: List[OrderActorEvent]): List[OrderActorEvent] =
+  private def atController(events: => List[OrderActorEvent]): List[OrderActorEvent] =
     if (isAgent)
       OrderDetachable :: Nil
     else

@@ -234,7 +234,9 @@ extends KeyedJournalingActor[AgentState, OrderEvent]
         case _: Order.Forked            => become("forked")(wrap(standard))
         case _: Order.BetweenCycles     => become("forked")(wrap(standard))
         case _: Order.Failed            => become("failed")(wrap(standard))
-        case _: Order.FailedWhileFresh  => become("stoppedWhileFresh")(wrap(standard))
+        case _: Order.FailedWhileFresh  => become("failedWhileFresh")(wrap(standard))
+        case _: Order.Stopped           => become("stopped")(wrap(standard))
+        case _: Order.StoppedWhileFresh => become("stoppedWhileFresh")(wrap(standard))
         case _: Order.FailedInFork      => become("failedInFork")(wrap(standard))
         case _: Order.Broken            => become("broken")(wrap(standard))
         case Order.WaitingForLock | _: Order.ExpectingNotice | _: Order.ExpectingNotices |
