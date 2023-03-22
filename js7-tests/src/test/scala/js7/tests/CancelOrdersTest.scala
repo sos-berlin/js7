@@ -18,7 +18,7 @@ import js7.data.event.KeyedEvent
 import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion}
 import js7.data.item.VersionId
 import js7.data.job.ShellScriptExecutable
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOperationCancelled, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPrompted, OrderStarted, OrderStdWritten, OrderStdoutWritten, OrderTerminated}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancellationMarked, OrderCancellationMarkedOnAgent, OrderCancelled, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderForked, OrderJoined, OrderMoved, OrderOperationCancelled, OrderProcessed, OrderProcessingKilled, OrderProcessingStarted, OrderPrompted, OrderStarted, OrderStdWritten, OrderStdoutWritten, OrderTerminated}
 import js7.data.order.{FreshOrder, Order, OrderEvent, OrderId, Outcome}
 import js7.data.problems.CannotResumeOrderProblem
 import js7.data.value.Value.convenience.*
@@ -26,13 +26,13 @@ import js7.data.value.expression.Expression.NamedValue
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.value.{NamedValues, StringValue}
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{Execute, Fork, Prompt}
+import js7.data.workflow.instructions.{BreakOrder, Execute, Fork, Prompt}
 import js7.data.workflow.position.{Position, WorkflowPosition}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.CancelOrdersTest.*
 import js7.tests.jobs.EmptyJob
-import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
+import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import monix.execution.Scheduler.Implicits.traced
 import monix.reactive.Observable
 import scala.concurrent.duration.*
@@ -42,6 +42,7 @@ import scala.concurrent.duration.Deadline.now
   * @author Joacim Zschimmer
   */
 final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTest
+with BlockingItemUpdater
 {
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -652,6 +653,38 @@ final class CancelOrdersTest extends OurTestSuite with ControllerAgentForScalaTe
       OrderProcessed(Outcome.killed(SIGKILL)),
       OrderProcessingKilled,
       OrderCancelled))
+  }
+
+  "Cancel a Broken Order" in {
+    val workflow = Workflow.of(WorkflowPath("BROKEN-WORKFLOW"),
+      EmptyJob.execute(agentPath),
+      BreakOrder())
+    withTemporaryItem(workflow) { workflow =>
+      val orderId = OrderId("BROKEN")
+      controllerApi.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+        .await(99.s).orThrow
+      eventWatch.await[OrderBroken](_.key == orderId)
+
+      controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+      eventWatch.await[OrderTerminated](_.key == orderId)
+      eventWatch.await[OrderDeleted](_.key == orderId)
+
+      assert(eventWatch.eventsByKey[OrderEvent](orderId) ==
+        Seq(
+          OrderAdded(workflow.id, deleteWhenTerminated = true),
+          OrderAttachable(agentPath),
+          OrderAttached(agentPath),
+          OrderStarted,
+          OrderProcessingStarted(Some(subagentId)),
+          OrderProcessed(Outcome.succeeded),
+          OrderMoved(Position(1)),
+          OrderBroken(None),
+          OrderCancellationMarked(),
+          OrderDetachable,
+          OrderDetached,
+          OrderCancelled,
+          OrderDeleted))
+    }
   }
 
   private def addWorkflow(workflow: Workflow): Unit = {

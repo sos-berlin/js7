@@ -37,6 +37,7 @@ final class InstructionExecutorService(val clock: WallClock)
       new StickySubagentExecutor(this),
       new OptionsExecutor(this),
       new StopExecutor(this),
+      new BreakOrderExecutor(this),
       new CycleExecutor(this)
     ).toKeyedMap(_.instructionClass: Class[? <: Instruction]))
 

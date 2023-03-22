@@ -5,6 +5,7 @@ import java.time.{LocalTime, ZoneId}
 import java.util.concurrent.TimeoutException
 import javax.inject.Singleton
 import js7.base.configutils.Configs.*
+import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.JavaTimestamp.local
@@ -14,15 +15,15 @@ import js7.base.time.{AdmissionTimeScheme, AlarmClock, AlwaysPeriod, DailyPeriod
 import js7.base.utils.ScalaUtils.syntax.RichEither
 import js7.data.agent.AgentPath
 import js7.data.calendar.{Calendar, CalendarPath}
-import js7.data.controller.ControllerCommand.CancelOrders
+import js7.data.controller.ControllerCommand.{CancelOrders, ResumeOrder}
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.execution.workflow.instructions.ScheduleTester
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderCancelled, OrderCaught, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderStarted}
+import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancelled, OrderCaught, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderResumed, OrderStarted, OrderStopped, OrderTerminated}
 import js7.data.order.OrderObstacle.WaitingForOtherTime
 import js7.data.order.{CycleState, FreshOrder, OrderEvent, OrderId, OrderObstacle, Outcome}
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.workflow.instructions.Schedule.{Periodic, Scheme, Ticking}
-import js7.data.workflow.instructions.{Cycle, Fail, Schedule, TryInstruction}
+import js7.data.workflow.instructions.Schedule.{Continuous, Periodic, Scheme, Ticking}
+import js7.data.workflow.instructions.{Cycle, Fail, Schedule, Stop, TryInstruction}
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.CycleTest.*
@@ -247,7 +248,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
     New command to cancel only within the block ?
     and then continue with next cycle.
     CancelOrder(label="..")
-    Oder besonderers Kommando zum Zyklus abzubrechen,
+    Oder besonderes Kommando zum Zyklus abzubrechen,
     das auch Angaben für den nächsten Zyklus ändern kann.
   }
 */
@@ -445,6 +446,62 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
     clock.tick(1.s)
     eventId = eventWatch.await[OrderCycleStarted](_.key == orderId, after = eventId).head.eventId
     assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 3)
+  }
+
+  "Resume with invalid Cycle BranchId lets the Order fail" in {
+    clock.resetTo(local("2023-03-21T00:00"))
+    val workflow = Workflow(
+      WorkflowPath("BROKEN-WORKFLOW"),
+      calendarPath = Some(calendar.path),
+      instructions = Seq(
+        Cycle(
+          Schedule(Seq(Schedule.Scheme(
+            AdmissionTimeScheme(Seq(AlwaysPeriod)),
+            Continuous(1.s)))),
+          Workflow.of(
+            EmptyJob.execute(agentPath),
+            Stop()))))
+    withTemporaryItem(workflow) { workflow =>
+      val orderId = OrderId("#2023-03-21#BROKEN")
+      controllerApi.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+        .await(99.s).orThrow
+      eventWatch.await[OrderStopped](_.key == orderId)
+
+      controllerApi
+        .executeCommand(
+          ResumeOrder(orderId, position = Some(Position(0) / "cycle+💣" % 2)))
+        .await(99.s).orThrow
+      eventWatch.await[OrderBroken](_.key == orderId)
+
+      controllerApi.executeCommand(CancelOrders(Seq(orderId))).await(99.s).orThrow
+      eventWatch.await[OrderTerminated](_.key == orderId)
+      eventWatch.await[OrderDeleted](_.key == orderId)
+
+      assert(eventWatch.eventsByKey[OrderEvent](orderId)
+        .filter {
+          case _: OrderCyclingPrepared => false
+          case _: OrderMoved => false
+          case _ => true
+        } ==
+        Seq(
+          OrderAdded(workflow.id, deleteWhenTerminated = true),
+          OrderStarted,
+          OrderCycleStarted,
+          OrderAttachable(agentPath),
+          OrderAttached(agentPath),
+          OrderProcessingStarted(Some(subagentId)),
+          OrderProcessed(Outcome.succeeded),
+          OrderDetachable,
+          OrderDetached,
+          OrderStopped,
+          OrderResumed(Some(Position(0) / "cycle+💣" % 2)),
+          OrderOutcomeAdded(Outcome.Disrupted(Problem("Expected a Cycle BranchId but got: cycle+💣"))),
+          OrderFailed(Position(0) / "cycle+💣" % 2),
+          OrderOutcomeAdded(Outcome.Disrupted(Problem("Expected a Cycle BranchId but got: cycle+💣"))),
+          OrderBroken(None),
+          OrderCancelled,
+          OrderDeleted))
+    }
   }
 }
 

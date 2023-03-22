@@ -43,7 +43,7 @@ import js7.data.execution.workflow.instructions.{ExecuteAdmissionTimeSwitch, Ins
 import js7.data.item.BasicItemEvent.{ItemAttachedToMe, ItemDetached, ItemDetachingFromMe, SignedItemAttachedToMe}
 import js7.data.item.{InventoryItem, SignableItem, UnsignedItem}
 import js7.data.job.{JobKey, JobResource}
-import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderBroken, OrderCoreEvent, OrderDetached, OrderProcessed}
+import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderCoreEvent, OrderDetached, OrderProcessed}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
 import js7.data.state.OrderEventHandler.FollowUp
@@ -703,20 +703,16 @@ final class AgentOrderKeeper(
       }
       if (!delayed) {
         val keyedEvents = orderEventSource.nextEvents(order.id)
-        keyedEvents foreach {
-          case KeyedEvent(orderId, OrderBroken(maybeProblem)) =>
-            logger.error(s"$orderId is broken${maybeProblem.fold("")(": " + _)}") // ???
-
-          case KeyedEvent(orderId_, event) =>
-            val future = orderRegister(orderId_).actor ?
-              OrderActor.Command.HandleEvents(event :: Nil, CorrelId.current)
-            try Await.result(future, 99.s) // TODO Blocking! SLOW because inhibits parallelization
-            catch { case NonFatal(t) => logger.error(
-              s"$orderId_ <-: ${event.toShortString} => ${t.toStringWithCauses}")
-            }
-            // TODO Not awaiting the response may lead to duplicate events
-            //  for example when OrderSuspensionMarked is emitted after OrderProcessed and before OrderMoved.
-            //  Then, two OrderMoved are emitted, because the second event is based on the same Order state.
+        keyedEvents foreach { case KeyedEvent(orderId_, event) =>
+          val future = orderRegister(orderId_).actor ?
+            OrderActor.Command.HandleEvents(event :: Nil, CorrelId.current)
+          try Await.result(future, 99.s) // TODO Blocking! SLOW because inhibits parallelization
+          catch { case NonFatal(t) => logger.error(
+            s"$orderId_ <-: ${event.toShortString} => ${t.toStringWithCauses}")
+          }
+          // TODO Not awaiting the response may lead to duplicate events
+          //  for example when OrderSuspensionMarked is emitted after OrderProcessed and before OrderMoved.
+          //  Then, two OrderMoved are emitted, because the second event is based on the same Order state.
         }
         if (keyedEvents.isEmpty && order.isProcessable) {
           onOrderIsProcessable(order)

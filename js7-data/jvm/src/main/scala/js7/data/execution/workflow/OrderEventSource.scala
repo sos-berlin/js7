@@ -13,7 +13,7 @@ import js7.data.command.{CancellationMode, SuspensionMode}
 import js7.data.event.{<-:, KeyedEvent}
 import js7.data.execution.workflow.OrderEventSource.*
 import js7.data.execution.workflow.instructions.InstructionExecutorService
-import js7.data.order.Order.{Cancelled, Failed, FailedInFork, IsTerminated, ProcessingKilled, Stopped, StoppedWhileFresh}
+import js7.data.order.Order.{Broken, Cancelled, Failed, FailedInFork, IsTerminated, ProcessingKilled, Stopped, StoppedWhileFresh}
 import js7.data.order.OrderEvent.{OrderActorEvent, OrderAwoke, OrderBroken, OrderCancellationMarked, OrderCancelled, OrderCaught, OrderCoreEvent, OrderDeleted, OrderDetachable, OrderFailed, OrderFailedInFork, OrderFailedIntermediate_, OrderLocksDequeued, OrderLocksReleased, OrderMoved, OrderNoticesConsumed, OrderOperationCancelled, OrderOutcomeAdded, OrderPromptAnswered, OrderResumed, OrderResumptionMarked, OrderStickySubagentLeaved, OrderStopped, OrderSuspended, OrderSuspensionMarked}
 import js7.data.order.{Order, OrderId, OrderMark, Outcome}
 import js7.data.problems.{CannotResumeOrderProblem, CannotSuspendOrderProblem, UnreachableOrderPositionProblem}
@@ -36,13 +36,13 @@ final class OrderEventSource(state: StateView)
 
   def nextEvents(orderId: OrderId): Seq[KeyedEvent[OrderActorEvent]] = {
     val order = idToOrder(orderId)
-    if (order.isState[Order.Broken])
-      Nil // Avoid issuing a second OrderBroken (would be a loop)
-    else if (!weHave(order))
+    if (!weHave(order))
       Nil
     else
       orderMarkKeyedEvent(order).getOrElse(
-        if (order.isSuspendedOrStopped)
+        if (order.isState[Order.Broken])
+          Nil // Avoid issuing a second OrderBroken (would be a loop)
+        else if (order.isSuspendedOrStopped)
           Nil
         else if (state.isOrderAtBreakpoint(order))
           atController(OrderSuspended :: Nil)
@@ -271,7 +271,7 @@ final class OrderEventSource(state: StateView)
       order.isCancelable &&
       // If workflow End is reached unsuspended, the order is finished normally
       // TODO Correct? Or should we check only the end of the main/forked workflow?
-      (!instruction(order.workflowPosition).isInstanceOf[End] || state.isSuspendedOrStopped(order))
+      (!instruction(order.workflowPosition).isInstanceOf[End] || state.isSuspendedOrStopped(order) || order.isState[Broken])
 
   /** Returns a `Right(Some(OrderSuspended | OrderSuspensionMarked))` iff order is not already marked as suspending. */
   def suspend(orderId: OrderId, mode: SuspensionMode): Checked[Option[List[OrderActorEvent]]] =
