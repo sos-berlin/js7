@@ -509,7 +509,7 @@ with TrivialItemState.Companion[Workflow]
   /** Test only. */
   def apply(
     id: WorkflowId,
-    labeledInstructions: Seq[Instruction.Labeled],
+    instructions: Seq[Instruction.Labeled],
     nameToJob: Map[WorkflowJob.Name, WorkflowJob] = Map.empty,
     orderPreparation: OrderPreparation = OrderPreparation.default,
     timeZone: Timezone = Timezone.utc,
@@ -519,7 +519,7 @@ with TrivialItemState.Companion[Workflow]
     source: Option[String] = None,
     outer: Option[Workflow] = None)
   : Workflow =
-    checkedSub(id, labeledInstructions.toIndexedSeq, nameToJob, orderPreparation,
+    checkedSub(id, instructions.toIndexedSeq, nameToJob, orderPreparation,
       timeZone, jobResourcePaths, calendarPath, result, source, outer).orThrow
 
   /** Checks a subworkflow.
