@@ -18,12 +18,15 @@ import js7.data.calendar.{Calendar, CalendarPath}
 import js7.data.controller.ControllerCommand.{CancelOrders, ResumeOrder}
 import js7.data.event.{KeyedEvent, Stamped}
 import js7.data.execution.workflow.instructions.ScheduleTester
-import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancelled, OrderCaught, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderResumed, OrderStarted, OrderStopped, OrderTerminated}
+import js7.data.item.ItemOperation.{AddOrChangeSigned, AddVersion}
+import js7.data.item.VersionId
+import js7.data.lock.{Lock, LockPath}
+import js7.data.order.OrderEvent.{LockDemand, OrderAdded, OrderAttachable, OrderAttached, OrderBroken, OrderCancelled, OrderCaught, OrderCycleFinished, OrderCycleStarted, OrderCyclingPrepared, OrderDeleted, OrderDetachable, OrderDetached, OrderFailed, OrderFinished, OrderLocksAcquired, OrderLocksReleased, OrderMoved, OrderOutcomeAdded, OrderProcessed, OrderProcessingStarted, OrderResumed, OrderStarted, OrderStopped, OrderTerminated}
 import js7.data.order.OrderObstacle.WaitingForOtherTime
 import js7.data.order.{CycleState, FreshOrder, OrderEvent, OrderId, OrderObstacle, Outcome}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.Schedule.{Continuous, Periodic, Scheme, Ticking}
-import js7.data.workflow.instructions.{Cycle, Fail, Schedule, Stop, TryInstruction}
+import js7.data.workflow.instructions.{Break, Cycle, Fail, Fork, If, LockInstruction, Schedule, Stop, TryInstruction}
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.CycleTest.*
@@ -31,6 +34,7 @@ import js7.tests.jobs.{EmptyJob, SemaphoreJob}
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import monix.execution.Scheduler.Implicits.traced
+import monix.reactive.Observable
 import scala.collection.immutable.VectorBuilder
 import scala.concurrent.duration.*
 
@@ -38,7 +42,7 @@ final class CycleTest extends OurTestSuite
 with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
 {
   protected val agentPaths = Seq(agentPath)
-  protected val items = Seq(calendar, cycleTestExampleCalendar, cycleTestExampleWorkflow)
+  protected val items = Seq(calendar, cycleTestExampleCalendar, cycleTestExampleWorkflow, lock)
 
   override protected def controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -87,7 +91,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
           Schedule(Seq(
             Scheme(
               AdmissionTimeScheme(Seq(AlwaysPeriod)),
-              Schedule.Continuous(pause = 0.s, limit = Some(3))))),
+              Continuous(pause = 0.s, limit = Some(3))))),
           cycleWorkflow = Workflow.of(
             EmptyJob.execute(agentPath)))),
       calendarPath = Some(calendar.path)))
@@ -141,9 +145,9 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
       WorkflowPath("ENDLESS"),
       Seq(
         Cycle(
-          Schedule(Seq(Schedule.Scheme(
+          Schedule(Seq(Scheme(
             AdmissionTimeScheme(Seq(AlwaysPeriod)),
-            Schedule.Continuous(pause = 0.s, limit = Some(Int.MaxValue))))),
+            Continuous(pause = 0.s, limit = Some(Int.MaxValue))))),
           Workflow.empty)),
       calendarPath = Some(calendar.path)))
     val events = controller.runOrder(FreshOrder(OrderId("ENDLESS"), workflow.path))
@@ -157,7 +161,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
         Cycle(
           Schedule(Seq(Scheme(
             AdmissionTimeScheme(Seq(AlwaysPeriod)),
-            Schedule.Continuous(pause = 0.s, limit = Some(1))))),
+            Continuous(pause = 0.s, limit = Some(1))))),
           Workflow.of(Fail(Some(expr("'TEST FAILURE'")))))),
       calendarPath = Some(calendar.path)))
 
@@ -186,7 +190,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
             Cycle(
               Schedule(Seq(Scheme(
                 AdmissionTimeScheme(Seq(AlwaysPeriod)),
-                Schedule.Continuous(pause = 0.s, limit = Some(1))))),
+                Continuous(pause = 0.s, limit = Some(1))))),
               Workflow.of(Fail(Some(expr("'TEST FAILURE'")))))),
           Workflow.empty)),
       calendarPath = Some(calendar.path)))
@@ -448,6 +452,105 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
     assert(eventWatch.eventsByKey[OrderEvent](orderId).count(_ == OrderCycleStarted) == 3)
   }
 
+  "Break" - {
+    "Break" in {
+      clock.resetTo(local("2023-03-21T00:00"))
+
+      val workflow = Workflow(
+        WorkflowPath("BREAK-WORKFLOW"),
+        calendarPath = Some(calendar.path),
+        instructions = Seq(
+          Cycle(
+            Schedule(Seq(Scheme(
+              AdmissionTimeScheme(Seq(AlwaysPeriod)),
+              Continuous(pause = 0.s, limit = Some(1))))),
+            Workflow.of(
+              If(
+                expr("true"),
+                Workflow.of(
+                  LockInstruction(
+                    List(LockDemand(lock.path)),
+                    Workflow.of(
+                      TryInstruction(
+                        Workflow.of(
+                          EmptyJob.execute(agentPath),
+                          Break(),
+                          Fail()),
+                        Workflow.of(
+                          Fail()))))))))))
+
+      withTemporaryItem(workflow) { workflow =>
+        val orderId = OrderId("#2023-03-21#BREAK")
+        controllerApi.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+          .await(99.s).orThrow
+        eventWatch.await[OrderTerminated](_.key == orderId)
+        eventWatch.await[OrderDeleted](_.key == orderId)
+
+        assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
+          OrderAdded(workflow.id, deleteWhenTerminated = true),
+          OrderStarted,
+
+          OrderCyclingPrepared(
+            CycleState(end = local("2023-03-22T00:00"), 0, 1, next = Timestamp.Epoch)),
+          OrderCycleStarted,
+
+          OrderMoved(Position(0) / "cycle+end=1679436000000,i=1" % 0 / "then" % 0),
+          OrderLocksAcquired(List(LockDemand(lock.path))),
+          OrderMoved(Position(0) / "cycle+end=1679436000000,i=1" % 0 / "then" % 0 / "lock" % 0 / "try+0" % 0),
+          OrderAttachable(agentPath),
+          OrderAttached(agentPath),
+          OrderProcessingStarted(Some(subagentId)),
+          OrderProcessed(Outcome.succeeded),
+          OrderMoved(Position(0) / "cycle+end=1679436000000,i=1" % 0 / "then" % 0 / "lock" % 0 / "try+0" % 1),
+          OrderDetachable,
+          OrderDetached,
+          OrderLocksReleased(List(lock.path)),
+          OrderMoved(Position(0) / "cycle+end=1679436000000,i=1" % 1),
+
+          OrderCycleFinished(None),
+
+          OrderMoved(Position(1)),
+          OrderFinished(None),
+          OrderDeleted))
+      }
+    }
+
+    "Break without Cycle is rejected" in {
+      val versionId = VersionId("WILL-BE-REJECTED")
+      val checked = controllerApi
+        .updateItems(Observable(
+          AddVersion(versionId),
+          AddOrChangeSigned(toSignedString(Workflow.of(
+            WorkflowPath("WILL-BE-REJECTED") ~ versionId,
+            If(expr("true"), Workflow.of(
+              Break())))))))
+        .await(99.s)
+
+      assert(checked == Left(Problem(
+        "JSON DecodingFailure at : Break instruction at 0/then:0 without Cycle")))
+    }
+
+    "Break in Fork without Cycle is rejected" in {
+      val versionId = VersionId("WILL-BE-REJECTED")
+      val checked = controllerApi
+        .updateItems(Observable(
+          AddVersion(versionId),
+          AddOrChangeSigned(toSignedString(Workflow(
+            WorkflowPath("WILL-BE-REJECTED") ~ versionId,
+            calendarPath = Some(calendar.path),
+            instructions = Seq(Cycle(Schedule(Nil),
+              Workflow.of(
+                Fork.of(
+                  "A" -> Workflow.of(
+                    If(expr("true"), Workflow.of(
+                      Break()))))))))))))
+        .await(99.s)
+
+      assert(checked == Left(Problem(
+        "JSON DecodingFailure at : Break instruction at 0/cycle:0/fork+A:0/then:0 without Cycle")))
+    }
+  }
+
   "Resume with invalid Cycle BranchId lets the Order fail" in {
     clock.resetTo(local("2023-03-21T00:00"))
     val workflow = Workflow(
@@ -455,7 +558,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
       calendarPath = Some(calendar.path),
       instructions = Seq(
         Cycle(
-          Schedule(Seq(Schedule.Scheme(
+          Schedule(Seq(Scheme(
             AdmissionTimeScheme(Seq(AlwaysPeriod)),
             Continuous(1.s)))),
           Workflow.of(
@@ -533,6 +636,8 @@ object CycleTest
 
   private class TestJob extends SemaphoreJob(TestJob)
   private object TestJob extends SemaphoreJob.Companion[TestJob]
+
+  private val lock = Lock(LockPath("LOCK"))
 
   // Use this Log4j Clock with the properties
   // -Dlog4j2.Clock=js7.tests.CycleTestt$CycleTestLog4jClock -Duser.timezone=Europe/Mariehamn

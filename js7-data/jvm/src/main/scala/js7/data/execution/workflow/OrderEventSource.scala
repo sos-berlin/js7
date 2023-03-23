@@ -73,7 +73,7 @@ final class OrderEventSource(state: StateView)
                 executorService.toEvents(instruction(order.workflowPosition), order, state)
                   // Multiple returned events are expected to be independent
                   // and are applied to the same idToOrder !!!
-                  .flatMap(_
+                  .flatMap(events => events
                     .flatTraverse {
                       case orderId <-: (moved: OrderMoved) =>
                         applyMoveInstructions(idToOrder(orderId), moved)
@@ -167,12 +167,12 @@ final class OrderEventSource(state: StateView)
     order: Order[Order.State],
     uncatchable: Boolean)
   : Checked[List[OrderActorEvent]] =
-    leaveBlocks(workflow, order, catchable = !uncatchable) {
+    leaveBlocksThen(workflow, order, catchable = !uncatchable) {
       case (None | Some(BranchId.IsFailureBoundary(_)), failPosition) =>
         atController {
           // TODO Transfer parent order to Agent to access joinIfFailed there !
           // For now, order will be moved to Controller, which joins the orders anyway.
-          lazy val joinIfFailed = order.parent
+          val joinIfFailed = order.parent
             .flatMap(forkOrder => instruction_[ForkInstruction](forkOrder).toOption)
             .fold(false)(_.joinIfFailed)
           if (joinIfFailed)
@@ -489,13 +489,19 @@ final class OrderEventSource(state: StateView)
 object OrderEventSource {
   private val logger = scribe.Logger[this.type]
 
-  def leaveBlocks(workflow: Workflow, order: Order[Order.State], events: List[OrderActorEvent])
+  def leaveBlocks(
+    workflow: Workflow, order: Order[Order.State],
+    events: List[OrderActorEvent],
+    until: BranchId => Boolean = _ => false)
   : Checked[List[OrderActorEvent]] =
-    leaveBlocks(workflow, order, catchable = false) {
+    leaveBlocksThen(workflow, order, catchable = false, until = until) {
       case _ => events
     }
 
-  private def leaveBlocks(workflow: Workflow, order: Order[Order.State], catchable: Boolean)
+  private def leaveBlocksThen(
+    workflow: Workflow, order: Order[Order.State],
+    catchable: Boolean,
+    until: BranchId => Boolean = _ => false)
     (toEvent: PartialFunction[(Option[BranchId], Position), List[OrderActorEvent]])
   : Checked[List[OrderActorEvent]] =
     catchNonFatalFlatten {
@@ -510,6 +516,10 @@ object OrderEventSource {
         reverseBranchPath match {
           case Nil =>
             callToEvent(None, failPosition)
+
+          case Segment(nr, branchId) :: _ if until(branchId) =>
+            for (events <- callToEvent(Some(branchId), failPosition))
+              yield OrderMoved(reverseBranchPath.reverse % nr.increment) :: events
 
           case Segment(_, branchId @ BranchId.IsFailureBoundary(_)) :: _ =>
             callToEvent(Some(branchId), failPosition)

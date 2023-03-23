@@ -532,7 +532,7 @@ final case class Order[+S <: Order.State](
           case _ => inapplicable
         }
 
-      case OrderCycleFinished(cycleState/*???*/) =>
+      case OrderCycleFinished(cycleState) =>
         position.parent
           .toChecked(inapplicableProblem)
           .map(cyclePosition =>

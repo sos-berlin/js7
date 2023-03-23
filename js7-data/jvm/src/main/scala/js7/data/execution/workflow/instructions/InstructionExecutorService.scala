@@ -38,7 +38,8 @@ final class InstructionExecutorService(val clock: WallClock)
       new OptionsExecutor(this),
       new StopExecutor(this),
       new BreakOrderExecutor(this),
-      new CycleExecutor(this)
+      new CycleExecutor(this),
+      new BreakExecutor(this)
     ).toKeyedMap(_.instructionClass: Class[? <: Instruction]))
 
   private[instructions] val forkCache = new ForkInstructionExecutor.Cache
