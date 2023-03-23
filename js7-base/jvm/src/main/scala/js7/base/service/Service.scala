@@ -51,7 +51,9 @@ trait Service extends AnyRef {
             .guaranteeCase {
               case ExitCase.Error(t) =>
                 // A service should not die
-                logger.error(s"$service died after ${since.elapsed.pretty}: ${t.toStringWithCauses}")
+                logger.error(
+                  s"$service died after ${since.elapsed.pretty}: ${t.toStringWithCauses}",
+                  t.nullIfNoStackTrace)
                 stopped.complete(Failure(t))
 
               case ExitCase.Canceled =>
