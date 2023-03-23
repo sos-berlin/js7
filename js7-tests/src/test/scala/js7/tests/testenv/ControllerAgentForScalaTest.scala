@@ -1,7 +1,6 @@
 package js7.tests.testenv
 
 import cats.effect.Resource
-import cats.syntax.parallel.*
 import com.typesafe.config.{Config, ConfigFactory}
 import js7.agent.TestAgent
 import js7.base.configutils.Configs.*
@@ -103,18 +102,18 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
   }
 
   override def afterAll() = {
-    controller.terminate() await 15.s
-
-    for (o <- clusterWatchServiceOnce.toOption) o.stop.await(99.s)
-
-    agents
-      .parTraverse(a => a.terminate() *> a.stop)
-      .await(15.s)
-
-    try bareSubagentIdToRelease.values.await(99.s)
-    catch { case NonFatal(t) =>
-      logger.error(s"bareSubagentIdToRelease => ${t.toStringWithCauses}", t)
-    }
+    Task
+      .parSequenceN(sys.runtime.availableProcessors)(
+        Seq(
+          Seq(controller.terminate().void),
+          clusterWatchServiceOnce.toOption.map(_.stop).toList,
+          agents.map(_.terminate().void),
+          bareSubagentIdToRelease.values
+        ).flatten.map(_.onErrorHandle { t =>
+          logger.error(t.toStringWithCauses, t)
+          throw t
+        }))
+      .await(99.s)
 
     super.afterAll()
   }
