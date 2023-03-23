@@ -97,7 +97,7 @@ object AddOrderTest
   private val numberParameter = OrderParameter.Required("myNumber", NumberValue)
 
   private val unknownArgWorkflow = Workflow(WorkflowPath("UNKNOWN-ARG"),
-    labeledInstructions = Vector(
+    instructions = Vector(
       EmptyJob.execute(agentPath,
         arguments = Map("string" -> NamedValue("unknownString")))))
 
@@ -112,7 +112,7 @@ object AddOrderTest
   private object EchoJob extends InternalJob.Companion[EchoJob]
 
   private val paramWorkflow = Workflow(WorkflowPath("PARAMETERIZED-WORKFLOW"),
-    labeledInstructions = Vector(
+    instructions = Vector(
       EchoJob.execute(agentPath, arguments = Map(
         "STRING" -> NamedValue("myString"),
         "NUMBER" -> NamedValue("myNumber")))),

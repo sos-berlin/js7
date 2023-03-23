@@ -1,5 +1,7 @@
 package js7.data.workflow
 
+import cats.syntax.foldable.*
+import cats.syntax.traverse.*
 import io.circe.syntax.EncoderOps
 import io.circe.{Codec, Decoder, Encoder, JsonObject}
 import js7.base.circeutils.CirceUtils.*
@@ -23,7 +25,7 @@ import js7.data.value.expression.{Expression, PositionSearch, Scope}
 import js7.data.workflow.Instruction.{@:, Labeled}
 import js7.data.workflow.Workflow.isCorrectlyEnded
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.instructions.{BoardInstruction, Cycle, End, Execute, Fork, ForkInstruction, Gap, If, ImplicitEnd, Instructions, LockInstruction, Retry, TryInstruction}
+import js7.data.workflow.instructions.{BoardInstruction, Break, Cycle, End, Execute, Fork, ForkInstruction, Gap, If, ImplicitEnd, Instructions, LockInstruction, Retry, TryInstruction}
 import js7.data.workflow.position.BranchPath.Segment
 import js7.data.workflow.position.{BranchId, BranchPath, InstructionNr, Label, Position, PositionOrLabel, WorkflowBranchPath, WorkflowPosition}
 import scala.annotation.tailrec
@@ -88,7 +90,8 @@ with TrivialItemState[Workflow]
       checkJobs ++
       checkRetry() ++
       checkLabels ++
-      checkCalendar
+      checkCalendar ++
+      checkBreak()
     val problems = chk.collect { case Left(problem) => problem }.toVector
     if (problems.nonEmpty)
       Left(Problem.Combined(problems))
@@ -148,6 +151,27 @@ with TrivialItemState[Workflow]
       (!flattenedInstructions.exists(_._2.instruction.isInstanceOf[Cycle])
         || calendarPath.nonEmpty
       ) !! Problem("Cycle instruction requires calendarPath"))
+
+  private def checkBreak(branchPath: BranchPath = Nil, inCycle: Boolean = false)
+  : View[Checked[Unit]] =
+    for ((nr, Labeled(_, instr, _)) <- numberedInstructions) yield
+      for {
+        isInCycle <- instr
+          .match_ {
+            case _: Cycle => Right(true)
+            case _: Break if !inCycle =>
+              Left(Problem.pure(s"Break instruction at ${branchPath % nr} without Cycle"))
+            case _: Instruction.IsOrderBoundary => Right(false)
+            case _ => Right(inCycle)
+          }
+        _ <- instr
+          .branchWorkflows
+          .flatMap { case (branchId, w) =>
+            w.checkBreak(branchPath % nr / branchId, isInCycle)
+          }
+          .sequence
+          .map(_.combineAll)
+      } yield ()
 
   lazy val referencedAttachableUnsignedPaths
   : Vector[InventoryItemPath.AttachableToAgent & UnsignedSimpleItemPath] =
@@ -509,7 +533,7 @@ with TrivialItemState.Companion[Workflow]
   /** Test only. */
   def apply(
     id: WorkflowId,
-    labeledInstructions: Seq[Instruction.Labeled],
+    instructions: Seq[Instruction.Labeled],
     nameToJob: Map[WorkflowJob.Name, WorkflowJob] = Map.empty,
     orderPreparation: OrderPreparation = OrderPreparation.default,
     timeZone: Timezone = Timezone.utc,
@@ -519,7 +543,7 @@ with TrivialItemState.Companion[Workflow]
     source: Option[String] = None,
     outer: Option[Workflow] = None)
   : Workflow =
-    checkedSub(id, labeledInstructions.toIndexedSeq, nameToJob, orderPreparation,
+    checkedSub(id, instructions.toIndexedSeq, nameToJob, orderPreparation,
       timeZone, jobResourcePaths, calendarPath, result, source, outer).orThrow
 
   /** Checks a subworkflow.

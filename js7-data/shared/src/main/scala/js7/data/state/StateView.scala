@@ -161,8 +161,8 @@ trait StateView extends ItemContainer
       (order.state.eq(FailedInFork) || endReached)
   }
 
-  final def isSuspended(order: Order[Order.State]): Boolean =
-    order.isSuspended || isWorkflowSuspended(order.workflowPath)
+  final def isSuspendedOrStopped(order: Order[Order.State]): Boolean =
+    order.isSuspendedOrStopped || isWorkflowSuspended(order.workflowPath)
 
   final def isWorkflowSuspended(workflowPath: WorkflowPath): Boolean =
     keyTo(WorkflowPathControl)

@@ -12,7 +12,8 @@ final case class InstructionNr(number: Int) extends GenericInt
 
   require(number >= InstructionNr.FirstInt, s"Negative Index? $number")
 
-  def +(n: Int) = copy(number + n)
+  def increment: InstructionNr =
+    copy(number + 1)
 
   def /(branchId: BranchId) = BranchPath.Segment(this, branchId)
 

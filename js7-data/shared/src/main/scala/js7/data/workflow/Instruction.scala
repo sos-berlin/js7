@@ -117,4 +117,6 @@ object Instruction
         }
       } yield Labeled(labels, instruction)
   }
+
+  trait IsOrderBoundary extends Instruction
 }

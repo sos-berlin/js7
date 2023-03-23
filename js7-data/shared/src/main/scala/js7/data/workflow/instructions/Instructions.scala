@@ -27,8 +27,12 @@ object Instructions
     Subtype.named1[TryInstruction]("Try"),
     Subtype.named1[LockInstruction]("Lock"),
     Subtype[Cycle],
+    Subtype[Break],
     Subtype[StickySubagent],
     Subtype[AddOrder],
+    Subtype[Options],
+    Subtype[Stop],
+    Subtype[BreakOrder],
     Subtype[EmptyInstruction],
     Subtype[Gap])
 }

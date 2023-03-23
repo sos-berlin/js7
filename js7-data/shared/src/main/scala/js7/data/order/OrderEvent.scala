@@ -426,7 +426,8 @@ object OrderEvent
     def apply(movedTo: Position) = new OrderCaught(movedTo, None)
   }
 
-  /** Only intermediate, not persisted. Will be converted to `OrderFailed` or `OrderCaught`. */
+  /** Only intermediate, not persisted. Will be converted to `OrderFailed`, `OrderCaught` or
+   * `OrderStopped`,  */
   final case class OrderFailedIntermediate_(
     outcome: Option[Outcome.NotSucceeded] = None,
     uncatchable: Boolean = false)
@@ -518,6 +519,9 @@ object OrderEvent
 
   type OrderSuspended = OrderSuspended.type
   case object OrderSuspended extends OrderActorEvent
+
+  type OrderStopped = OrderStopped.type
+  case object OrderStopped extends OrderActorEvent
 
   final case class OrderResumptionMarked(
     position: Option[Position] = None,
@@ -691,6 +695,7 @@ object OrderEvent
     Subtype(deriveConfiguredCodec[OrderSuspensionMarked]),
     Subtype(OrderSuspensionMarkedOnAgent),
     Subtype(OrderSuspended),
+    Subtype(OrderStopped),
     Subtype(deriveConfiguredCodec[OrderResumptionMarked]),
     Subtype(deriveConfiguredCodec[OrderResumed]),
     Subtype(deriveConfiguredCodec[OrderFinished]),
