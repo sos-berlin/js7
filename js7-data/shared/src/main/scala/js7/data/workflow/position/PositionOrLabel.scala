@@ -50,7 +50,7 @@ extends PositionOrLabel
       (Position(branchPath.init, last.nr), branchPath.last.branchId, nr)
 
   def increment: Position =
-    copy(nr = nr + 1)
+    copy(nr = nr.increment)
 
   lazy val normalized: Position =
     reuseIfEqual(this, BranchPath.normalize(branchPath) % nr)
