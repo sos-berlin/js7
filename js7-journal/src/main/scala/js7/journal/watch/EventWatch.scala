@@ -50,6 +50,22 @@ trait EventWatch
 
   def journalInfo: JournalInfo
 
+  def untilAllKeys[E <: Event : ClassTag](
+    keys: IterableOnce[E#Key],
+    predicate: KeyedEvent[E] => Boolean = Every,
+    after: EventId,
+    timeout: Option[FiniteDuration])
+  : Task[Seq[Stamped[KeyedEvent[E]]]] =
+    observe(EventRequest.singleClass[E](after = after, timeout = timeout))
+      .filter(stamped => predicate(stamped.value))
+      .mapAccumulate(Set.from(keys)) { (keys, stamped) =>
+        val minishedKeys = keys - stamped.value.key
+        (minishedKeys, (stamped, minishedKeys.nonEmpty))
+      }
+      .takeWhile(_._2)
+      .map(_._1)
+      .toListL
+
   /** TEST ONLY - Blocking. */
   @TestOnly
   def await[E <: Event: ClassTag: Tag](

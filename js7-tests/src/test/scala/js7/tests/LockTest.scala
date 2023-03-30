@@ -226,8 +226,9 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
     controller.api.addOrders(Observable.from(orders)).await(99.s).orThrow
     controller.api.executeCommand(DeleteOrdersWhenTerminated(orders.map(_.id))).await(99.s).orThrow
     val terminated = for (order <- orders) yield controller.eventWatch.await[OrderTerminated](_.key == order.id)
+    val terminatedX = controller.eventWatch.awaitKeys[OrderTerminated](orders.map(_.id))
     for (keyedEvent <- terminated.map(_.last.value))  assert(keyedEvent.event == OrderFinished(), s"- ${keyedEvent.key}")
-    for (order <- orders) controller.eventWatch.await[OrderDeleted](_.key == order.id)
+    controller.eventWatch.awaitKeys[OrderDeleted](orders.map(_.id))
     assert(controllerState.keyTo(LockState)(limit2LockPath) ==
       LockState(
         Lock(limit2LockPath, limit = 2, itemRevision = Some(ItemRevision(0))),

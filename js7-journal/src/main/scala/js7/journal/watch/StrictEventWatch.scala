@@ -61,6 +61,18 @@ final class StrictEventWatch(val underlying: FileEventWatch)
   : Task[Vector[Stamped[KeyedEvent[E]]]] =
     underlying.awaitAsync(predicate, after, timeout)
 
+  @TestOnly
+  def awaitKeys[E <: Event : ClassTag](
+    keys: IterableOnce[E#Key],
+    predicate: KeyedEvent[E] => Boolean = Every,
+    after: EventId = EventId.BeforeFirst,
+    timeout: FiniteDuration = 99.s)
+    (implicit s: Scheduler)
+  : Seq[Stamped[KeyedEvent[E]]] =
+    underlying
+      .untilAllKeys(keys, predicate, after = after, timeout = Some(timeout))
+      .await(timeout)
+
   /** TEST ONLY - Blocking. */
   @TestOnly
   def expect[E <: Event : ClassTag, A](
