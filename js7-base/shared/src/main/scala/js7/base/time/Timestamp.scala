@@ -85,9 +85,6 @@ object Timestamp
   def parse(dateTime: String): Timestamp =
     implementation.parse(dateTime)
 
-  def ofDeadline(deadline: Deadline): Timestamp =
-    now + deadline.timeLeft
-
   def now: Timestamp =
     ofEpochMilli(currentTimeMillis)
 

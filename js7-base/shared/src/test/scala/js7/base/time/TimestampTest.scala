@@ -98,13 +98,6 @@ final class TimestampTest extends OurTestSuite
     assert(Timestamp("2018-11-21T12:34:56.987Z").pretty == "2018-11-21 12:34:56.987Z")
   }
 
-  "ofDeadline" in {
-    val a = Deadline.now + 10.seconds
-    val ts = Timestamp.ofDeadline(a)
-    assert(ts >= Timestamp.now + 9.seconds &&
-           ts <= Timestamp.now + 11.seconds)
-  }
-
   if (sys.props contains "test.speed")
   "JSON String/Number speed comparision" in {
     val n = 100000

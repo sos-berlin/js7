@@ -411,6 +411,13 @@ final class ScalaTimeTest extends OurTestSuite
       assert((Deadline.now - 2.s).timeLeftOrZero == 0.s)
       assert((Deadline.now + 2.s).timeLeftOrZero > 1.s)
     }
+
+    "toTimestamp" in {
+      val a = Deadline.now + 10.seconds
+      val ts = a.toTimestamp
+      assert(ts >= Timestamp.now + 9.seconds &&
+        ts <= Timestamp.now + 11.seconds)
+    }
   }
 
   "Timestamp" - {

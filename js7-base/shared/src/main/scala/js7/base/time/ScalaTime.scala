@@ -4,6 +4,7 @@ import cats.Show
 import java.math.{MathContext, RoundingMode}
 import js7.base.convert.As
 import js7.base.utils.Ascii.isAsciiDigit
+import js7.base.utils.ScalaUtils.syntax.*
 import scala.annotation.tailrec
 import scala.concurrent.blocking
 import scala.concurrent.duration.*
@@ -354,6 +355,14 @@ object ScalaTime
     //  val durationNanos = duration.toNanos
     //  Deadline((underlying.time.toNanos / durationNanos * durationNanos).nanoseconds)
     //}
+
+    def toTimestamp: Timestamp =
+      Timestamp.now + underlying.timeLeft
+
+    def pretty: String = {
+      val timeLeft = underlying.timeLeft
+      s"Deadline(${timeLeft.isPositive ?? "+"}${timeLeft.pretty} ${Timestamp.now + timeLeft})"
+    }
   }
 
   def sleep(d: Duration): Unit = {
