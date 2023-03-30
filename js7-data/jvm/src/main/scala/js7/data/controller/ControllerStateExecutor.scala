@@ -529,7 +529,7 @@ final case class ControllerStateExecutor private(
                 controllerState = state
                 _keyedEvents ++= keyedEvents
                 queue ++= keyedEvents.view
-                  .flatMap(ControllerStateExecutor(controllerState).keyedEventToOrderIds)
+                  .flatMap(ControllerStateExecutor(controllerState).keyedEventToPendingOrderIds)
                   .toSeq.distinct
             }
           }
@@ -574,9 +574,9 @@ final case class ControllerStateExecutor private(
     buffer.to(ArraySeq)
   }
 
-  private def keyedEventToOrderIds(keyedEvent: KeyedEvent[OrderEvent]): View[OrderId] =
+  private def keyedEventToPendingOrderIds(keyedEvent: KeyedEvent[OrderEvent]): View[OrderId] =
     View(keyedEvent.key) ++ (keyedEvent.event match {
-      case OrderLockEvent(lockPaths) =>
+      case OrderLockEvent/*only OrderLocksReleased | OrderLocksDequeued ???*/(lockPaths) =>
         lockPaths.view
           .flatMap(controllerState.keyTo(LockState).get)
           .flatMap(_.firstQueuedOrderId)
