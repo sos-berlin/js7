@@ -1,5 +1,6 @@
 package js7.base.monixutils
 
+import cats.effect.concurrent.Deferred
 import cats.syntax.apply.*
 import izumi.reflect.Tag
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
@@ -7,7 +8,6 @@ import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.base.utils.{AsyncLock, LockKeeper}
 import monix.eval.Task
-import scala.concurrent.Promise
 
 class AsyncMap[K: Tag, V: Tag](initial: Map[K, V] = Map.empty[K, V])
 {
@@ -17,8 +17,11 @@ class AsyncMap[K: Tag, V: Tag](initial: Map[K, V] = Map.empty[K, V])
   protected final val shortLock = AsyncLock(s"$name.shortLock", suppressLog = true)
   @volatile private var _map = initial
 
-  protected[AsyncMap] def onEntryInsert() = Checked.unit
-  protected[AsyncMap] def onEntryRemoved() = {}
+  protected[AsyncMap] def onEntryInsert(): Checked[Unit] =
+    Checked.unit
+
+  protected[AsyncMap] def onEntryRemoved(): Task[Unit] =
+    Task.unit
 
   final def isEmpty: Boolean =
     _map.isEmpty
@@ -51,20 +54,20 @@ class AsyncMap[K: Tag, V: Tag](initial: Map[K, V] = Map.empty[K, V])
   /** Not synchronized with other updates! */
   final def removeConditional(predicate: ((K, V)) => Boolean)(implicit src: sourcecode.Enclosing)
   : Task[Map[K, V]] =
-    shortLock.lock(Task {
+    shortLock.lock(Task.defer {
       val (removed, remaining) = _map.partition(predicate)
       _map = remaining
       onEntryRemoved()
-      removed
+        .as(removed)
     })
 
   final def remove(key: K)(implicit src: sourcecode.Enclosing): Task[Option[V]] =
     lockKeeper.lock(key)(
-      shortLock.lock(Task {
+      shortLock.lock(Task.defer {
         val removed = _map.get(key)
         _map = _map.removed(key)
-        if (removed.isDefined) onEntryRemoved()
-        removed
+        Task.when(removed.isDefined)(onEntryRemoved())
+          .as(removed)
       }))
 
   final def updateExisting(key: K, update: V => Task[Checked[V]])
@@ -173,8 +176,8 @@ object AsyncMap
   trait Stoppable {
     this: AsyncMap[?, ?] =>
 
+    private val whenEmpty = Deferred.unsafe[Task, Unit]
     @volatile private var stoppingProblem: Problem = null
-    private val whenEmptyPromise = Promise[Unit]()
 
     private def isStopping = stoppingProblem != null
 
@@ -182,13 +185,13 @@ object AsyncMap
       problem == stoppingProblem
 
     final val whenStopped: Task[Unit] =
-      Task.fromFuture(whenEmptyPromise.future)
+      whenEmpty.get
         .*>(Task(logger.debug(s"$name stopped")))
         .memoize
 
     /** Initiate stop. */
     final val initiateStop: Task[Unit] =
-      initiateStopWithProblem(Problem.pure(s"$name is been stopped"))
+      initiateStopWithProblem(Problem.pure(s"$name is being stopped"))
 
     final def initiateStopWithProblem(problem: Problem): Task[Unit] =
       Task.defer {
@@ -197,9 +200,8 @@ object AsyncMap
             stoppingProblem = problem
             isEmpty
           })
-          .map { isEmpty_ =>
-            if (isEmpty_) whenEmptyPromise.success(())
-          }
+          .flatMap(Task.when(_)(
+            whenEmpty.complete(())))
       }
 
     final val stop: Task[Unit] =
@@ -208,7 +210,10 @@ object AsyncMap
     override protected[monixutils] final def onEntryInsert(): Checked[Unit] =
       Option(stoppingProblem).toLeft(())
 
-    override protected[monixutils] final def onEntryRemoved(): Unit =
-      if (isStopping && isEmpty) whenEmptyPromise.trySuccess(())
+    override protected[monixutils] final def onEntryRemoved() =
+      Task.defer(
+        Task.when(isStopping && isEmpty)(
+          whenEmpty.complete(())
+            .attempt.void))
   }
 }
