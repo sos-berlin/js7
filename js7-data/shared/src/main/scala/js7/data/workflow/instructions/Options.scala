@@ -4,7 +4,7 @@ import io.circe.Codec
 import io.circe.generic.semiauto.deriveCodec
 import js7.data.agent.AgentPath
 import js7.data.source.SourcePos
-import js7.data.workflow.position.BranchId
+import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Instruction, Workflow}
 
 final case class Options(
@@ -14,6 +14,10 @@ final case class Options(
 extends Instruction
 {
   def withoutSourcePos = copy(sourcePos = None)
+
+  override def withPositions(position: Position): Instruction =
+    copy(
+      block = block.withPositions(position / BranchId.Options))
 
   override def adopt(outer: Workflow) = copy(
     block = block.copy(outer = Some(outer)))

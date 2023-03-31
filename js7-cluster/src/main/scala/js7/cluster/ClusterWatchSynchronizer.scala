@@ -36,17 +36,21 @@ private final class ClusterWatchSynchronizer(
   private val heartbeat = AtomicAny[Option[Heartbeat]](None)
 
   // The calling ActiveClusterNode is expected to have locked clusterStateLock !!!
-  def start(clusterState: HasNodes, registerClusterWatchId: RegisterClusterWatchId)
+  def start(currentClusterState: Task[HasNodes], registerClusterWatchId: RegisterClusterWatchId)
   : Task[Checked[Completed]] =
     logger.debugTask(Task.defer {
       this.registerClusterWatchId := registerClusterWatchId
       // Due to clusterWatchIdChangeAllowed = true, the ClusterWatch should always agree.
       // This is more to teach a recently started ClusterWatch.
-      askClusterWatch(clusterState, registerClusterWatchId)
-        .when(clusterState.setting.clusterWatchId.isDefined)
+      currentClusterState
+        .flatMap(clusterState =>
+          askClusterWatch(clusterState, registerClusterWatchId)
+            // The clusterState may have changed due to ClusterWatchRegistered
+            .when(clusterState.setting.clusterWatchId.isDefined))
         .flatMapT(_ =>
-          startHeartbeating(clusterState, registerClusterWatchId)
-            .map(Right.apply))
+          currentClusterState.flatMap(
+            startHeartbeating(_, registerClusterWatchId)
+              .map(Right.apply)))
     })
 
   private def askClusterWatch(

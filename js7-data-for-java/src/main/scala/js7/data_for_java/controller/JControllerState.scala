@@ -224,10 +224,6 @@ extends JJournaledState[JControllerState, ControllerState]
       .toVavr
 
   @Nonnull
-  def orderIsInCurrentVersionWorkflow: Order[Order.State] => Boolean =
-    _.workflowId.versionId == asScala.repo.currentVersionId
-
-  @Nonnull
   def orderStateToCount(): JMap[Class[? <: Order.State], java.lang.Integer] =
     orderStateToCount(any)
 

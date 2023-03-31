@@ -26,7 +26,8 @@ trait Instruction
   def withoutSourcePos: Instruction
 
   def withPositions(position: Position): Instruction = {
-    assert(branchWorkflows.isEmpty, s"$instructionName.withPositions is not implemented")
+    if (branchWorkflows.nonEmpty) throw new AssertionError(
+      s"$instructionName.withPositions is not implemented")
     this
   }
 

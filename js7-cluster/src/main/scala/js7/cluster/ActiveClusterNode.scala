@@ -13,8 +13,8 @@ import js7.base.problem.Checked.*
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.base.utils.{AsyncLock, SetOnce}
 import js7.base.web.{HttpClient, Uri}
 import js7.cluster.ActiveClusterNode.*
 import js7.cluster.watch.api.ClusterWatchConfirmation
@@ -41,7 +41,6 @@ import scala.concurrent.duration.*
 import scala.util.{Failure, Success}
 
 final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
-  initialClusterState: ClusterState.HasNodes,
   persistence: FileStatePersistence[S],
   common: ClusterCommon,
   clusterConf: ClusterConf)
@@ -57,34 +56,50 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
   private val sendingClusterStartBackupNode = SerialCancelable()
   @volatile private var noMoreJournaling = false
   @volatile private var stopRequested = false
-  private val clusterWatchSynchronizer =
-    common.initialClusterWatchSynchronizer(initialClusterState)
+  private val clusterWatchSynchronizerOnce = SetOnce[ClusterWatchSynchronizer]
+
+  private def clusterWatchSynchronizer = clusterWatchSynchronizerOnce.orThrow
 
   import clusterConf.ownId
 
-  def start(eventId: EventId): Task[Checked[Unit]] =
-    Task.defer {
-      assertThat(initialClusterState.activeId == ownId)
-      clusterStateLock.lock(
-        Task.parMap2(
-          // .start requires a locked clusterStateLock!
-          clusterWatchSynchronizer.start(initialClusterState, registerClusterWatchId),
-          awaitAcknowledgmentIfCoupled(eventId)
-        )(_ |+| _)
-          .flatMapT(_ => proceed(initialClusterState).as(Checked.unit)))
-    }
+  def start(eventId: EventId): Task[Checked[Unit]] = {
+    // When ClusterWatchId changes at start, an ClusterWatchRegistered event is emitted,
+    // changing the ClusterState (the ClusterWatchId part).
+    // In this case we continue with the updated ClusterState
+    def currentClusterState = persistence.clusterState.map(_.asInstanceOf[HasNodes])
 
-  private def awaitAcknowledgmentIfCoupled(eventId: EventId): Task[Checked[Completed]] =
+    currentClusterState
+      .flatMap { initialClusterState =>
+        assertThat(initialClusterState.activeId == ownId)
+        clusterStateLock.lock(
+          Task.parMap2(
+            // .start requires a locked clusterStateLock!
+            Task.defer {
+              clusterWatchSynchronizerOnce :=
+                common.initialClusterWatchSynchronizer(initialClusterState)
+              clusterWatchSynchronizer.start(currentClusterState, registerClusterWatchId)
+            },
+            awaitAcknowledgmentIfCoupled(initialClusterState, eventId)
+          )(_ |+| _)
+          .flatMapT(_ => proceed(initialClusterState).as(Checked.unit)))
+      }
+  }
+
+  private def awaitAcknowledgmentIfCoupled(initialClusterState: HasNodes, eventId: EventId)
+  : Task[Checked[Completed]] =
     initialClusterState match {
       case clusterState @ (_: Coupled | _: ActiveShutDown) =>
-        Task.defer {
-          logger.info("Requesting the passive node's acknowledgement for the last recovered event")
-          awaitAcknowledgement(clusterState.passiveUri, eventId)
-            .flatTap {
-              case Left(problem) => Task(logger.debug(problem.toString))
-              case Right(Completed) => Task(logger.info("Passive node acknowledged the recovered state"))
-            }
-        }
+        logger.info(
+          s"Requesting the passive node's acknowledgement for the last recovered event ($eventId)")
+        awaitAcknowledgement(clusterState.passiveUri, eventId)
+          .flatMapT(ackEventId =>
+            // In case of ClusterWatchRegistered, check persistence.currentState.eventId too
+            if (ackEventId == eventId || ackEventId == persistence.unsafeCurrentState().eventId) {
+              logger.info("Passive node acknowledged the recovered state")
+              Task.right(Completed)
+            } else
+              Task.left(Problem(
+                s"Passive Cluster node acknowledged $ackEventId which is not the expected EventId")))
       case _ => Task.right(Completed)
     }
 
@@ -92,13 +107,13 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
     logger.debugTask(Task.defer {
       stopRequested = true
       fetchingAcks.cancel()
-      clusterWatchSynchronizer.stop
+      clusterWatchSynchronizerOnce.toOption.fold(Task.completed)(_.stop)
     })
 
   def beforeJournalingStarts: Task[Checked[Unit]] =
     Task.defer {
       logger.trace("beforeJournalingStarts")
-      initialClusterState match {
+      persistence.clusterState flatMap {
         case clusterState: Coupled =>
           // Inhibit activation of peer again. If recovery or asking ClusterWatch took a long time,
           // peer may have activated itself.
@@ -453,16 +468,15 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
           logger.debug(s"fetchAndHandleAcknowledgedEventIds ended => $exitCase")))
     }
 
-  private def awaitAcknowledgement(passiveUri: Uri, eventId: EventId)
-  : Task[Checked[Completed]] =
+  private def awaitAcknowledgement(passiveUri: Uri, eventId: EventId): Task[Checked[EventId]] =
     common
       .clusterNodeApi(passiveUri, "awaitAcknowledgement")
       .use(api =>
         observeEventIds(api, heartbeat = None)
-          .dropWhile(_ != eventId)
+          .dropWhile(_ < eventId)
           .headOptionL
           .map {
-            case Some(`eventId`) => Right(Completed)
+            case Some(eId) => Right(eId)
             case _ => Left(Problem.pure(
               s"awaitAcknowledgement($eventId): Observable ended unexpectedly"))
           })
