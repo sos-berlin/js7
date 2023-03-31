@@ -38,18 +38,22 @@ private final class ClusterWatchSynchronizer private(ownId: NodeId, initialInlay
   private val registerClusterWatchId = SetOnce[RegisterClusterWatchId]
 
   // The calling ActiveClusterNode is expected to have locked clusterStateLock !!!
-  def start(clusterState: HasNodes, registerClusterWatchId: RegisterClusterWatchId)
+  def start(currentClusterState: Task[HasNodes], registerClusterWatchId: RegisterClusterWatchId)
   : Task[Checked[Completed]] =
     logger.debugTask(Task.defer {
       this.registerClusterWatchId := registerClusterWatchId
       // Due to clusterWatchIdChangeAllowed = true, the ClusterWatch should always agree.
       // This is more to teach a recently started ClusterWatch.
-      askClusterWatch(clusterState, registerClusterWatchId)
-        .when(clusterState.setting.clusterWatchId.isDefined)
+      currentClusterState
+        .flatMap(clusterState =>
+          askClusterWatch(clusterState, registerClusterWatchId)
+            // The clusterState may have changed due to ClusterWatchRegistered
+            .when(clusterState.setting.clusterWatchId.isDefined))
         .flatMapT(_ =>
-          inlay.value
-            .flatMap(_.startHeartbeating(clusterState, registerClusterWatchId))
-            .map(Right.apply))
+          currentClusterState.flatMap(clusterState =>
+            inlay.value
+              .flatMap(_.startHeartbeating(clusterState, registerClusterWatchId))
+              .map(Right.apply)))
     })
 
   private def askClusterWatch(

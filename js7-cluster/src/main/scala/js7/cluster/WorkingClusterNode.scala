@@ -49,10 +49,10 @@ final class WorkingClusterNode[S <: SnapshotableState[S]: SnapshotableState.Comp
   def startIfNonEmpty(clusterState: ClusterState, eventId: EventId): Task[Checked[Completed]] =
     clusterState match {
       case ClusterState.Empty => Task.pure(Right(Completed))
-      case clusterState: HasNodes =>
+      case _: HasNodes =>
         Task(common.licenseChecker.checkLicense(ClusterProductName))
           .flatMapT(_ =>
-            startActiveClusterNode(clusterState, eventId))
+            startActiveClusterNode(eventId))
     }
 
   def close(): Unit =
@@ -122,12 +122,7 @@ final class WorkingClusterNode[S <: SnapshotableState[S]: SnapshotableState.Comp
             .flatMapT(_ =>
               persistence.persistKeyedEvent(NoKey <-: ClusterNodesAppointed(setting))
                 .flatMapT { case (_, state) =>
-                  state.clusterState match {
-                    case clusterState: HasNodes =>
-                      startActiveClusterNode(clusterState, state.eventId)
-                    case clusterState => Task.pure(Left(Problem.pure(
-                      s"Unexpected ClusterState $clusterState after ClusterNodesAppointed")))
-                  }
+                  startActiveClusterNode(state.eventId)
                 })
 
         case _: HasNodes =>
@@ -135,9 +130,9 @@ final class WorkingClusterNode[S <: SnapshotableState[S]: SnapshotableState.Comp
             .flatMapT(_.appointNodes(setting))
       })
 
-  private def startActiveClusterNode(clusterState: HasNodes, eventId: EventId): Task[Checked[Completed]] =
+  private def startActiveClusterNode(eventId: EventId): Task[Checked[Completed]] =
     Task.defer {
-      val activeClusterNode = new ActiveClusterNode(clusterState, persistence, common, clusterConf)
+      val activeClusterNode = new ActiveClusterNode(persistence, common, clusterConf)
       if (_activeClusterNode.trySet(activeClusterNode))
         activeClusterNode.start(eventId)
       else

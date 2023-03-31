@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Restart both Controller nodes and restart alternating one of the ClusterWatches.
+
+docker-compose stop
+
+docker-compose start \
+ provider\
+ cluster-watch\
+ subagent-1-a\
+ subagent-1-b\
+ subagent-2-a\
+ controller\
+ backup-controller
+
+while true; do
+  sleep 20
+
+  docker-compose stop controller
+  docker-compose stop backup-controller cluster-watch
+  docker-compose start controller backup-controller
+
+  sleep 30
+  docker-compose start cluster-watch-b
+
+  sleep 20
+  docker-compose stop controller
+  docker-compose stop backup-controller cluster-watch-b
+  docker-compose start controller backup-controller
+
+  sleep 30
+  docker-compose start cluster-watch
+done
