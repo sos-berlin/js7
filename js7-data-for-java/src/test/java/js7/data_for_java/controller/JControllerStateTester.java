@@ -109,12 +109,7 @@ final class JControllerStateTester
 
         testOrdersBy(markedAsDeleteWhenTerminated(false), asList(aOrder));
         testOrdersBy(markedAsDeleteWhenTerminated(true), asList(bOrder));
-
-        testOrdersBy(controllerState.orderIsInCurrentVersionWorkflow(), asList(aOrder));
-        testOrdersBy(not(controllerState.orderIsInCurrentVersionWorkflow()), asList(bOrder));
     }
-
-
 
     void testOrderStateToCount() {
         Map<Class<? extends Order.State>,Integer> allCounters = controllerState.orderStateToCount();
