@@ -107,7 +107,7 @@ final class ActiveClusterNode[S <: SnapshotableState[S]: diffx.Diff](
     logger.debugTask(Task.defer {
       stopRequested = true
       fetchingAcks.cancel()
-      clusterWatchSynchronizerOnce.toOption.fold(Task.completed)(_.stop)
+      clusterWatchSynchronizerOnce.toOption.fold(Task.unit)(_.stop)
     })
 
   def beforeJournalingStarts: Task[Checked[Unit]] =

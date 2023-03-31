@@ -248,7 +248,7 @@ final class AsyncMapTest extends OurAsyncTestSuite
         (for {
           _ <- asyncMap.initiateStop
           checked <- asyncMap.insert(1, "NOT ALLOWED")
-          _ = assert(checked == Left(Problem("AsyncMap[Int, String] is been stopped")))
+          _ = assert(checked == Left(Problem("AsyncMap[Int, String] is being stopped")))
         } yield succeed
         ).runToFuture
       }

@@ -500,7 +500,7 @@ extends ReceiveLoggingActor.WithStash
         case _ =>
           logger.warn(s"Command batch failed: $problem")
       }
-      logger.trace(s"delayCommandExecutionAfterErrorUntil=${Timestamp.ofDeadline(delayCommandExecutionAfterErrorUntil)}")
+      logger.trace(s"delayCommandExecutionAfterErrorUntil=${delayCommandExecutionAfterErrorUntil.toTimestamp}")
       delayCommandExecutionAfterErrorUntil = now + conf.commandErrorDelay
       commandQueue.handleBatchFailed(inputs)
       stopIfTerminated()

@@ -119,7 +119,8 @@ final class ConfigsTest extends OurTestSuite
       }
 
       "Map" in {
-        val array = Map(1 -> 1.s, "file" -> Paths.get("FILE"), "array" -> Seq(1, 2.s))
+        val array: Map[Any, Any] =
+          Map(1 -> 1.s, "file" -> Paths.get("FILE"), "array" -> Seq(1, 2.s))
         assert(configString"""A = $array""" == "A = { 1: 1s, file: FILE, array: [ 1, 2s ] }")
       }
     }
