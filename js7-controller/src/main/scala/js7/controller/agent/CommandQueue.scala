@@ -1,32 +1,42 @@
 package js7.controller.agent
 
-import com.typesafe.scalalogging.Logger as ScalaLogger
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.Batch
-import js7.base.log.{CorrelId, CorrelIdWrapped}
+import js7.base.log.Logger.syntax.*
+import js7.base.log.{CorrelId, CorrelIdWrapped, Logger}
 import js7.base.problem.{Checked, Problem}
+import js7.base.time.ScalaTime.{RichDeadline, RichFiniteDuration}
 import js7.base.utils.Assertions.assertThat
-import js7.base.utils.ScalaUtils.syntax.RichBoolean
+import js7.base.utils.AsyncLock
+import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichThrowable}
 import js7.controller.agent.AgentDriver.{Input, Queueable, ReleaseEventsQueueable}
 import js7.controller.agent.CommandQueue.*
+import js7.data.agent.AgentPath
 import js7.data.order.OrderId
 import monix.eval.Task
-import monix.execution.Scheduler
 import scala.collection.{View, mutable}
+import scala.concurrent.duration.Deadline.now
+import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success}
 
 /**
   * @author Joacim Zschimmer
   */
-private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(implicit s: Scheduler)
+private[agent] abstract class CommandQueue(
+  agentPath: AgentPath,
+  batchSize: Int,
+  commandErrorDelay: FiniteDuration)
 {
   protected def commandParallelism: Int
   protected def executeCommand(command: AgentCommand.Batch): Task[Checked[command.Response]]
-  protected def asyncOnBatchSucceeded(queuedInputResponses: Seq[QueuedInputResponse]): Unit
-  protected def asyncOnBatchFailed(inputs: Vector[Queueable], problem: Problem): Unit
+  protected def asyncOnBatchSucceeded(queuedInputResponses: Seq[QueuedInputResponse]): Task[Unit]
+  protected def asyncOnBatchFailed(inputs: Vector[Queueable], problem: Problem): Task[Unit]
 
+  private val logger = Logger.withPrefix[this.type](agentPath.string)
+  private val lock = AsyncLock()
   private val attachedOrderIds = mutable.Set.empty[OrderId]
   private val executingInputs = mutable.Set.empty[Queueable]
+  private var delayCommandExecutionAfterErrorUntil = now
   private var isCoupled = false
   private var freshlyCoupled = false
   private var openRequestCount = 0
@@ -49,8 +59,6 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
           queueSet --= duplicates
           queue += attach
           queueSet += attach
-
-        //case attach: Input.AttachSignedItem => Same as for AttachUnsignedItem ???
 
         case o =>
           queue += o
@@ -83,91 +91,119 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
 
     def contains(queueable: Queueable) =
       queueSet contains queueable
+
+    override def toString = s"CommandQueue.queue(${queue.map(_.toShortString)})"
   }
 
-  final def onCoupled(attachedOrderIds: Set[OrderId]) =
-    synchronized/*for easier testing*/ {
+  final def onCoupled(attachedOrderIds: Set[OrderId]): Task[Unit] =
+    lock.lock(Task.defer {
       this.attachedOrderIds.clear()
       this.attachedOrderIds ++= attachedOrderIds
       queue.removeAlreadyAttachedOrders()
       isCoupled = true
       freshlyCoupled = true
-      maySend()
-    }
+      maySendLocked
+    })
 
-  final def onDecoupled(): Unit =
-    isCoupled = false
+  final def onDecoupled(): Task[Unit] =
+    lock.lock(Task {
+      isCoupled = false
+    })
 
-  final def enqueue(input: Queueable): Boolean =
-    synchronized {
+  final def enqueue(input: Queueable): Task[Boolean] =
+    lock.lock(Task.defer {
       assertThat(!isTerminating)
       input match {
         case Input.AttachOrder(order, _) if attachedOrderIds contains order.id =>
           logger.debug(s"AttachOrder(${order.id} ignored because Order is already attached to Agent")
-          false
+          Task.pure(false)
         case _ =>
-          if (queue.contains(input)) {
+          if (queue contains input) {
             logger.trace(s"Ignore duplicate $input")
-            false
+            Task.pure(false)
           } else {
             queue.enqueue(input)
-            if (queue.size == batchSize || freshlyCoupled) {
-              maySend()
-            }
-            true
+            Task
+              .when(queue.size == batchSize || freshlyCoupled)(
+                maySendLocked)
+              .as(true)
           }
       }
-    }
+    })
 
-  final def reset(): Unit = {
-    attachedOrderIds.clear()
-    isCoupled = false
-    freshlyCoupled = false
-  }
+  final def reset: Task[Unit] =
+    /*FIXME lock*/(Task {
+      attachedOrderIds.clear()
+      isCoupled = false
+      freshlyCoupled = false
+    })
 
-  final def terminate(): Unit = {
-    if (executingInputs.nonEmpty) {
-      logger.info(s"Waiting for responses to AgentCommands: ${executingInputs.map(_.toShortString).mkString(", ")}")
-    }
-    isTerminating = true
-  }
+  final def terminate: Task[Unit] =
+    lock.lock(Task {
+      if (executingInputs.nonEmpty) {
+        logger.info(s"🟡 Waiting for responses to AgentCommands: ${executingInputs.map(_.toShortString).mkString(", ")}")
+      }
+      isTerminating = true
+    })
 
   final def isTerminated =
     isTerminating && executingInputs.isEmpty
 
-  final def maySend(): Unit =
-    synchronized {
-      //logger.trace(s"maySend() isCoupled=$isCoupled freshlyCoupled=$freshlyCoupled openRequestCount=$openRequestCount" +
-      //  s" commandParallelism=$commandParallelism isTerminating=$isTerminated" +
-      //  s" attachedOrderIds.size=${attachedOrderIds.size} executingInput={${executingInputs.map(_.toShortString).mkString(" ")}}")
-      if (isCoupled && !isTerminating) {
-        lazy val inputs = queue.view
-          .filterNot(executingInputs)
-          .take(if (freshlyCoupled) 1 else batchSize)  // if freshlyCoupled, send only command to try connection
-          .toVector
-        if (openRequestCount < commandParallelism && (!freshlyCoupled || openRequestCount == 0) && inputs.nonEmpty) {
-          executingInputs ++= inputs
-          openRequestCount += 1
-          val subcmds = inputs.map(o => CorrelIdWrapped(CorrelId.empty, inputToAgentCommand(o)))
-          executeCommand(Batch(subcmds))
-            .materialize foreach {
-              case Success(Right(Batch.Response(responses))) =>
-                asyncOnBatchSucceeded(
-                  for ((i, r) <- inputs zip responses) yield
-                    QueuedInputResponse(i, r))
+  final def maySend: Task[Unit] =
+    lock.lock(maySendLocked)
 
-              case Success(Left(problem)) =>
-                asyncOnBatchFailed(inputs, problem)
+  private def maySendLocked: Task[Unit] =
+    logger.traceTask(Task.defer(Task.when(isCoupled && !isTerminating) {
+      lazy val inputs = queue.view
+        .filterNot(executingInputs)
+        .take(if (freshlyCoupled) 1 else batchSize)  // if freshlyCoupled, send only command to try connection
+        .toVector
 
-              case Failure(t) =>
-                asyncOnBatchFailed(inputs, Problem.fromThrowable(t))
-            }
-        }
+      val canSend = openRequestCount < commandParallelism
+        && (!freshlyCoupled || openRequestCount == 0)
+        && inputs.nonEmpty
+
+      Task.when(canSend)(Task.defer {
+        executingInputs ++= inputs
+        openRequestCount += 1
+        delayNextCommand
+          .*>(sendNow(inputs))
+          .onErrorHandle(t => Task(logger.error(t.toStringWithCauses, t)))
+          .startAndForget /*TODO*/
+      })
+    }))
+
+  private def delayNextCommand: Task[Unit] =
+    Task.defer {
+      val delay = delayCommandExecutionAfterErrorUntil.timeLeft
+      Task.when(delay.isPositive) {
+        logger.debug(s"Delay command after error for ${delay.pretty}")
+        Task.sleep(delay)
       }
     }
 
-  private def inputToAgentCommand(input: Queueable): AgentCommand =
-    input match {
+  private def sendNow(queuable: Vector[Queueable]): Task[Unit] =
+    Task.defer {
+      val subcmds = queuable.map(o => CorrelIdWrapped(CorrelId.current, queuableToAgentCommand(o)))
+      executeCommand(Batch(subcmds))
+        .map(_.map(response =>
+          for ((i, r) <- queuable zip response.responses) yield QueuedInputResponse(i, r)))
+        .materialize
+        .flatMap {
+          case Success(Right(queuedInputResponses)) =>
+            asyncOnBatchSucceeded(queuedInputResponses)
+
+          case Success(Left(problem)) =>
+            asyncOnBatchFailed(queuable, problem)
+
+          case Failure(t) =>
+            asyncOnBatchFailed(queuable, Problem.fromThrowable(t))
+        }
+        .startAndForget
+    }
+
+  private def queuableToAgentCommand(queuable: Queueable): AgentCommand =
+    queuable match {
       case Input.AttachOrder(order, agentPath) =>
         AgentCommand.AttachOrder(order, agentPath)
 
@@ -199,19 +235,20 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
         AgentCommand.ClusterSwitchOver
     }
 
-  final def onOrdersDetached(orderIds: View[OrderId]): Unit = {
-    attachedOrderIds --= orderIds
-  }
+  final def onOrdersDetached(orderIds: View[OrderId]): Task[Unit] =
+    Task.when(orderIds.nonEmpty)(lock.lock(Task[Unit] {
+      attachedOrderIds --= orderIds
+    }))
 
-  final def onOrdersAttached(orderIds: View[OrderId]): Unit = {
-    attachedOrderIds ++= orderIds
-    logger.trace(s"attachedOrderIds=${attachedOrderIds.toSeq.sorted.mkString(" ")}")
-  }
+  final def onOrdersAttached(orderIds: View[OrderId]): Task[Unit] =
+    Task.when(orderIds.nonEmpty)(lock.lock(Task {
+      attachedOrderIds ++= orderIds
+      logger.trace(s"attachedOrderIds=${attachedOrderIds.toSeq.sorted.mkString(" ")}")
+    }))
 
-  final def handleBatchSucceeded(responses: Seq[QueuedInputResponse]): Seq[Queueable] =
-    synchronized {
+  final def handleBatchSucceeded(responses: Seq[QueuedInputResponse]): Task[Seq[Queueable]] =
+    lock.lock(Task.defer {
       freshlyCoupled = false
-      val inputs = responses.map(_.input).toSet
 
       // Dequeue commands including rejected ones, but not those with ServiceUnavailable response.
       // The dequeued commands will not be repeated !!!
@@ -220,35 +257,43 @@ private[agent] abstract class CommandQueue(logger: ScalaLogger, batchSize: Int)(
           r.input)
         .toSet)
       onQueuedInputsResponded(responses.map(_.input).toSet)
-      responses.flatMap {
-        case QueuedInputResponse(input, Right(AgentCommand.Response.Accepted)) =>
-          Some(input)
+        .*>(Task {
+          responses.flatMap {
+            case QueuedInputResponse(input, Right(AgentCommand.Response.Accepted)) =>
+              Some(input)
 
-        case QueuedInputResponse(_, Right(o)) =>
-          sys.error(s"Unexpected response from Agent: $o")
+            case QueuedInputResponse(_, Right(o)) =>
+              sys.error(s"Unexpected response from Agent: $o")
 
-        //case QueuedInputResponse(input, Left(AgentIsShuttingDown)) =>
-        // TODO Be sure to repeat the command after coupling
+            //case QueuedInputResponse(input, Left(AgentIsShuttingDown)) =>
+            // TODO Be sure to repeat the command after coupling
 
-        case QueuedInputResponse(input, Left(problem)) =>
-          // MarkOrder(FreshOnly) fails if order has started !!!
-          logger.error(s"Agent rejected ${input.toShortString}: $problem")
-          // Agent's state does not match controller's state ???
-          None
-      }
-    }
+            case QueuedInputResponse(input, Left(problem)) =>
+              // MarkOrder(FreshOnly) fails if order has started !!!
+              logger.error(s"Agent rejected ${input.toShortString}: $problem")
+              // Agent's state does not match controller's state ???
+              None
+          }
+        })
+    })
 
-  final def handleBatchFailed(inputs: Seq[Queueable]): Unit =
-    synchronized {
+  final def handleBatchFailed(inputs: Seq[Queueable]): Task[Unit] =
+    lock.lock(Task.defer {
+      delayCommandExecutionAfterErrorUntil = now + commandErrorDelay
+      logger.trace(
+        s"delayCommandExecutionAfterErrorUntil=${delayCommandExecutionAfterErrorUntil.toTimestamp}")
       // Don't remove from queue. Queued inputs will be processed again
       onQueuedInputsResponded(inputs.toSet)
-    }
+    })
 
-  private def onQueuedInputsResponded(inputs: Set[Queueable]): Unit = {
-    executingInputs --= inputs
-    openRequestCount -= 1
-    maySend()
-  }
+  private def onQueuedInputsResponded(inputs: Set[Queueable]): Task[Unit] =
+    Task.defer {
+      executingInputs --= inputs
+      openRequestCount -= 1
+      maySend
+        .onErrorHandle(t => Task(logger.error(t.toStringWithCauses, t)))
+        .startAndForget /*TODO*/
+    }
 }
 
 object CommandQueue

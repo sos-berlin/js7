@@ -81,13 +81,13 @@ private[agent] final class AgentActor(
 
   override def postStop() = {
     super.postStop()
-    terminatePromise.trySuccess(
-      ProgramTermination(restart = shutDownCommand.toOption.fold(false)(_.restart)))
     if (isResetting) {
       logger.warn("DELETE JOURNAL FILES DUE TO AGENT RESET")
       journalMeta.deleteJournal(ignoreFailure = true)
     }
     allocatedSignatureVerifier.stop.awaitInfinite
+    terminatePromise.trySuccess(
+      ProgramTermination(restart = shutDownCommand.toOption.fold(false)(_.restart)))
     logger.debug("Stopped")
   }
 

@@ -1,6 +1,6 @@
 package js7.controller.agent
 
-import akka.actor.{DeadLetterSuppression, Props}
+import akka.actor.ActorSystem
 import cats.data.EitherT
 import cats.effect.Resource
 import cats.syntax.flatMap.*
@@ -14,24 +14,20 @@ import js7.base.configutils.Configs.ConvertibleConfig
 import js7.base.crypt.Signed
 import js7.base.generic.{Completed, SecretString}
 import js7.base.log.Logger
-import js7.base.monixutils.MonixBase.promiseTask
+import js7.base.log.Logger.syntax.*
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.problem.{Checked, Problem}
-import js7.base.thread.Futures.promiseFuture
-import js7.base.thread.Futures.syntax.RichFuture
-import js7.base.thread.MonixBlocking.syntax.RichTask
+import js7.base.service.Service
 import js7.base.time.ScalaTime.*
-import js7.base.time.Timestamp
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.CatsUtils.Nel
 import js7.base.utils.CatsUtils.syntax.RichResource
 import js7.base.utils.ScalaUtils.syntax.*
-import js7.base.utils.{Allocated, SetOnce}
+import js7.base.utils.{Allocated, AsyncLock, SetOnce}
 import js7.base.web.Uri
 import js7.cluster.watch.ClusterWatchService
-import js7.common.akkautils.ReceiveLoggingActor
 import js7.common.http.RecouplingStreamReader
 import js7.controller.agent.AgentDriver.*
 import js7.controller.agent.CommandQueue.QueuedInputResponse
@@ -56,30 +52,27 @@ import monix.execution.atomic.AtomicInt
 import monix.execution.{Cancelable, CancelableFuture, Scheduler}
 import monix.reactive.Observable
 import scala.concurrent.Promise
-import scala.concurrent.duration.Deadline.now
 import scala.util.chaining.scalaUtilChainingOps
 import scala.util.control.NoStackTrace
-import scala.util.{Failure, Success, Try}
 
-/**
-  * Couples to an Agent, sends orders, and fetches events.
-  *
-  * @author Joacim Zschimmer
-  */
 final class AgentDriver private(
   initialAgentRef: AgentRef,
   initialAgentRunId: Option[AgentRunId],
   initialEventId: EventId,
+  onEvents: (AgentRunId, Seq[Stamped[AnyKeyedEvent]]) => Task[Option[EventId]],  // TODO Stream
+  onOrderMarked: Map[OrderId, OrderMark] => Task[Unit],
   persistence: StatePersistence[ControllerState],
   conf: AgentDriverConfiguration,
-  controllerConfiguration: ControllerConfiguration)
+  controllerConfiguration: ControllerConfiguration,
+  actorSystem: ActorSystem)
   (implicit protected val scheduler: Scheduler)
-extends ReceiveLoggingActor.WithStash
+extends Service.StoppableByRequest
 {
+  agentDriver =>
+
   import controllerConfiguration.controllerId
 
   private val agentPath = initialAgentRef.path
-  private var agentRef = initialAgentRef
   private val logger = Logger.withPrefix[this.type](agentPath.string)
   private val agentUserAndPassword: Option[UserAndPassword] =
     controllerConfiguration.config.optionAs[SecretString]("js7.auth.agents." + ConfigUtil.joinPath(agentPath.string))
@@ -87,6 +80,7 @@ extends ReceiveLoggingActor.WithStash
 
   private val agentRunIdOnce = SetOnce.fromOption(initialAgentRunId)
 
+  private var agentRef = initialAgentRef
   private var client = newAgentClient(persistence.unsafeCurrentState().agentToUri(agentPath)
     .getOrElse(Uri(s"unknown-uri://$agentPath"/*should not happen ???*/)))
   private var passiveClient = persistence.unsafeCurrentState().agentToUris(agentPath)
@@ -99,16 +93,18 @@ extends ReceiveLoggingActor.WithStash
   private var currentFetchedFuture: Option[CancelableFuture[Completed]] = None
   private var releaseEventsCancelable: Option[Cancelable] = None
   private var delayNextReleaseEvents = false
-  private var delayCommandExecutionAfterErrorUntil = now
   private var isTerminating = false
   private var changingUri: Option[Uri] = None
   private val sessionNumber = AtomicInt(0)
   private val eventFetcherTerminated = Promise[Unit]()
   private var noJournal = false
   private var isReset = false
+
   private val clusterWatchId = ClusterWatchId(controllerId.string + "/" +
     controllerConfiguration.clusterConf.ownId.string + "/" + agentPath.string)
   private var allocatedClusterWatchService: Option[Allocated[Task, ClusterWatchService]] = None
+
+  private val lock = AsyncLock()
 
   private val eventFetcher = new RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], AgentClient](
     _.eventId, conf.recouplingStreamReader)
@@ -160,55 +156,63 @@ extends ReceiveLoggingActor.WithStash
         val agentCouplingFailed = AgentCouplingFailed(problem)
         if (lastCouplingFailed contains agentCouplingFailed) {
           logger.debug(s"Coupling failed: $problem")
-          Task.pure(true)
+          Task.pure(!isTerminating)
         } else {
           lastCouplingFailed = Some(agentCouplingFailed)
           if (agentCouplingFailed.problem is InvalidSessionTokenProblem) {
             logger.debug(s"Coupling failed: $problem")
-            Task.pure(true)
+            Task.pure(!isTerminating)
           } else {
             logger.warn(s"Coupling failed: $problem")
             for (t <- problem.throwableOption if t.getStackTrace.nonEmpty) logger.debug(s"Coupling failed: $problem", t)
             if (noJournal)
-              Task.pure(true)
+              Task.pure(!isTerminating)
             else
               persistence.persistKeyedEvent(agentPath <-: agentCouplingFailed)
-                .map(_.map(_ => true))  // recouple and continue after onCouplingFailed
+                .map(_.map(_ => !isTerminating))  // recouple and continue after onCouplingFailed
                 .map(_.orThrow)
           }
         }
       }
 
     override protected def onCoupled(api: AgentClient, after: EventId) =
-      promiseTask[Completed] { promise =>
+      Task.defer {
         logger.info(s"Coupled with $api after=${EventId.toString(after)}")
         sessionNumber += 1
         assertThat(attachedOrderIds != null)
-        self ! Internal.OnCoupled(promise, attachedOrderIds)
-        attachedOrderIds = null
+        lock
+          .lock(Task {
+            lastCouplingFailed = None
+            delayNextReleaseEvents = false
+          })
+          .*>(commandQueue.onCoupled(attachedOrderIds))
+          .*>(Task {
+            attachedOrderIds = null
+          })
+          .as(Completed)
       }
 
-    override protected def onDecoupled = Task {
-      logger.debug("onDecoupled")
-      sessionNumber += 1
-      self ! Internal.OnDecoupled
-      Completed
-    }
+    override protected def onDecoupled =
+      Task.defer {
+        logger.debug("onDecoupled")
+        sessionNumber += 1
+        commandQueue.onDecoupled()
+          .as(Completed)
+      }
 
     protected def stopRequested = false
   }
 
-  private val commandQueue = new CommandQueue(logger, batchSize = conf.commandBatchSize) {
+  private val commandQueue: CommandQueue = new CommandQueue(
+    agentPath,
+    batchSize = conf.commandBatchSize,
+    conf.commandErrorDelay
+  ) {
     protected def commandParallelism = conf.commandParallelism
 
-    protected def executeCommand(command: AgentCommand.Batch) = {
+    protected def executeCommand(command: AgentCommand.Batch) = logger.traceTask {
       val expectedSessionNumber: Int = sessionNumber.get()
       for {
-        _ <- Task.defer {
-          val delay = delayCommandExecutionAfterErrorUntil.timeLeft
-          if (delay.isPositive) logger.debug(s"${AgentDriver.this.toString}: Delay command after error until ${Timestamp.now + delay}")
-          Task.sleep(delay)
-        }
         checkedApi <- eventFetcher.coupledApi.map(_.toRight(DecoupledProblem))
         response <-
           (for {
@@ -216,7 +220,7 @@ extends ReceiveLoggingActor.WithStash
             api <- EitherT(Task.pure(checkedApi))
             response <- EitherT(
               if (sessionNumber.get() != expectedSessionNumber)
-                Task.pure(Left(DecoupledProblem))
+                Task.left(DecoupledProblem)
               else
                 // TODO Still a small possibility for race-condition? May log a AgentDuplicateOrder
                 api.commandExecute(command))
@@ -225,69 +229,112 @@ extends ReceiveLoggingActor.WithStash
     }
 
     protected def asyncOnBatchSucceeded(queuedInputResponses: Seq[QueuedInputResponse]) =
-      self ! Internal.BatchSucceeded(queuedInputResponses)
+      Task.defer {
+        lastCouplingFailed = None
+        handleBatchSucceeded(queuedInputResponses)
+          .flatMap(succeededInputs => Task.defer {
+            val markedOrders = succeededInputs.view
+              .collect { case o: Input.MarkOrder => o.orderId -> o.mark }
+              .toMap
+            Task
+              .when(markedOrders.nonEmpty)(
+                onOrderMarked(markedOrders))
+              .*>(Task.defer {
+                val releaseEvents = succeededInputs collect { case o: ReleaseEventsQueueable => o }
+                if (releaseEvents.nonEmpty) {
+                  releaseEventsCancelable foreach (_.cancel())
+                  releaseEventsCancelable = None
+                }
+                stopIfTerminated
+              })
+          })
+      }
 
     protected def asyncOnBatchFailed(inputs: Vector[Queueable], problem: Problem) =
-      if (problem == DecoupledProblem/*avoid loop*/ || isTerminating) {
-        self ! Internal.BatchFailed(inputs, problem)
-      } else
-        eventFetcher.invalidateCoupledApi
-          .*>(Task { currentFetchedFuture.foreach(_.cancel()) })
-          .*>(cancelObservationAndAwaitTermination)
-          .*>(eventFetcher.decouple)
-          .*>(Task {
-            self ! Internal.BatchFailed(inputs, problem)
-          })
-          .runToFuture
-          .onFailure { case t =>
-            logger.error("asyncOnBatchFailed: " + t.toStringWithCauses, t.nullIfNoStackTrace)
-          }
+      Task.defer(
+        if (problem == DecoupledProblem/*avoid loop*/ || isTerminating) {
+          onBatchFailed(inputs, problem)
+        } else
+          eventFetcher.invalidateCoupledApi
+            .*>(Task { currentFetchedFuture.foreach(_.cancel()) })
+            .*>(cancelObservationAndAwaitTermination)
+            .*>(eventFetcher.decouple)
+            .*>(onBatchFailed(inputs, problem))
+            .tapError(t => Task {
+              logger.error("asyncOnBatchFailed: " + t.toStringWithCauses, t.nullIfNoStackTrace)
+            })
+      )
+
+    private def onBatchFailed(inputs: Seq[Queueable], problem: Problem): Task[Unit] =
+      Task.defer {
+        problem match {
+          case DecoupledProblem |
+               InvalidSessionTokenProblem |
+               RecouplingStreamReader.TerminatedProblem =>
+            logger.debug(s"Command batch failed: $problem")
+          case _ =>
+            logger.warn(s"Command batch failed: $problem")
+        }
+        commandQueue.handleBatchFailed(inputs) *>
+          stopIfTerminated
+      }
   }
 
-  override def preStart() = {
-    super.preStart()
-    logger.debug(s"preStart $agentRunIdOnce")
-    startClusterWatch.awaitInfinite/*TODO Blocking*/
-  }
+  protected def start =
+    startClusterWatch *>
+      startService(
+        untilStopRequested
+          .*>(Task(eventFetcher.markAsStopped()))
+          .*>(eventFetcher.terminateAndLogout)
+          .*>(Task(currentFetchedFuture.foreach(_.cancel())))
+          .*>(allocatedClusterWatchService.fold(Task.unit)(_.stop)))
 
-  override def postStop() = {
-    logger.debug("postStop")
-    eventFetcher.markAsStopped()
-    eventFetcher.terminateAndLogout.runAsyncAndForget
-    currentFetchedFuture.foreach(_.cancel())
-    allocatedClusterWatchService.fold(Task.unit)(_.stop).awaitInfinite // TODO Blocking
-    super.postStop()
-  }
-
-  protected def key = agentPath  // Only one version is active at any time
+  private def stopThis: Task[Unit] =
+    stop // ???
 
   private def newAgentClient(uri: Uri): AgentClient =
     AgentClient(uri, agentUserAndPassword, label = agentPath.toString,
-      controllerConfiguration.httpsConfig)(context.system)
+      controllerConfiguration.httpsConfig)(actorSystem)
 
-  def receive = {
-    case input: Input with Queueable if !isTerminating =>
-      val ok = commandQueue.enqueue(input)
-      if (ok) scheduler.scheduleOnce(conf.commandBatchDelay) {
-        self ! Internal.CommandQueueReady  // (Even with commandBatchDelay == 0) delay maySend() such that Queueable pending in actor's mailbox can be queued
-      }
+  def send(input: Input & Queueable): Task[Unit] =
+    logger.traceTask("send", input.toShortString)(Task.defer {
+      if (isTerminating)
+        Task.raiseError(new IllegalStateException(s"$toString is terminating"))
+      else
+        commandQueue.enqueue(input)
+          .flatMap(ok =>
+            Task.when(ok)(
+              // (Even with commandBatchDelay == 0) delay maySend() such that Queueable pending
+              // in actor's mailbox can be queued
+              // Send command when stop requested — or cancel the timer ???
+              untilStopRequested
+                // TODO Set timer only for the first send!
+                .timeoutTo(conf.commandBatchDelay, Task.unit)
+                .*>(commandQueue.maySend)
+                .onErrorHandle(t => Task(logger.error(t.toStringWithCauses, t)))
+                .startAndForget))
+    })
 
-    case Input.ChangeUri(agentRef, uri) =>
+  def changeUri(agentRef: AgentRef, uri: Uri): Task[Unit] =
+    logger.traceTask(lock.lock(Task.defer {
       this.agentRef = agentRef
       if (uri != client.baseUri || isReset) {
-        logger.debug(s"ChangeUri $uri")
+        logger.debug(s"changeUri $uri")
         // TODO Changing URI in quick succession is not properly solved
         isReset = false
         for (u <- changingUri) logger.warn(s"Already changing URI to $u ?")
         changingUri = Some(uri)
         cancelObservationAndAwaitTermination
           .*>(eventFetcher.decouple)
-          .runToFuture.onFailure { case t =>
-            logger.error("ChangeUri: " + t.toStringWithCauses, t.nullIfNoStackTrace)
-          }
-      }
+          .onErrorHandle(t =>
+            logger.error("ChangeUri: " + t.toStringWithCauses, t.nullIfNoStackTrace))
+          .startAndForget
+      } else
+        Task.unit
+    }))
 
-    case Internal.UriChanged =>
+  private def onUriChanged: Task[Unit] =
+    logger.traceTask(lock.lock(Task {
       for (uri <- changingUri) {
         client.close()
         logger.debug(s"new AgentClient($uri)")
@@ -296,65 +343,78 @@ extends ReceiveLoggingActor.WithStash
           .flatMap(_ => startClusterWatch)
           .void
           .attempt
-          .foreach { tried =>
+          .flatMap { tried =>
             changingUri = None
-            for (throwable <- tried.left) {
-              logger.error(s"Internal.UriChanged($uri) => ${throwable.toStringWithCauses}",
-                throwable.nullIfNoStackTrace)
-              context.stop(self)
-            }
-            self ! Internal.FetchEvents
+            tried
+              .match_ {
+                case Left(throwable) =>
+                  logger.error(s"Internal.UriChanged($uri) => ${throwable.toStringWithCauses}",
+                    throwable.nullIfNoStackTrace)
+                  stopThis
+                case Right(()) => Task.unit
+              }
+              .*>(startFetchingEvents)
           }
+          .onErrorHandle(t => Task(logger.error(t.toStringWithCauses, t)))
+          .runAsyncAndForget // TODO
       }
+    }))
 
-    case Input.Terminate(noJournal, reset) =>
+  def terminate(noJournal: Boolean = false, reset: Boolean = false): Task[Unit] =
+    logger.traceTask(lock.lock(Task.defer {
       this.noJournal = noJournal
       // Wait until all pending Agent commands are responded, and do not accept further commands
-      if (!isTerminating) {
+      Task.unless(isTerminating) {
         logger.debug(s"Terminate" + (noJournal ?? " noJournal") + (reset ?? " reset"))
         isTerminating = true
-        commandQueue.terminate()
-        currentFetchedFuture.foreach(_.cancel())
-        eventFetcherTerminated.completeWith(
-          eventFetcher.terminateAndLogout.runToFuture)  // Rejects current commands waiting for coupling
-        agentRunIdOnce.toOption match {
-          case Some(agentRunId) if reset =>
-            // Required only for ItemDeleted, redundant for ResetAgent
-            // Because of terminateAndLogout, we must login agein to issue the Reset command
-            Task
-              .fromFuture(eventFetcherTerminated.future)
-              .onErrorHandle(_ => ())
-              .*>(client.login(onlyIfNotLoggedIn = true))  // Login again
-              .*>(client
-                .commandExecute(AgentCommand.Reset(Some(agentRunId)))
-                .materializeIntoChecked
-                .map {
-                  case Left(problem) => logger.error(s"Reset command failed: $problem")
-                  case Right(_) =>
-                })
-              .runToFuture
-              .foreach { _ =>
-              // Ignore any Problem or Exception from Reset command
-              self ! Internal.Terminate
-            }
+        commandQueue.terminate.*>(Task {
+          currentFetchedFuture.foreach(_.cancel())
+          eventFetcherTerminated.completeWith(
+            eventFetcher.terminateAndLogout.runToFuture) // Rejects current commands waiting for coupling
+          agentRunIdOnce.toOption match {
+            case Some(agentRunId) if reset =>
+              // Required only for ItemDeleted, redundant for ResetAgent
+              // Because of terminateAndLogout, we must login agein to issue the Reset command
+              Task
+                .fromFuture(eventFetcherTerminated.future)
+                .onErrorHandle(_ => ())
+                .*>(client.login(onlyIfNotLoggedIn = true)) // Login again
+                .*>(client
+                  .commandExecute(AgentCommand.Reset(Some(agentRunId)))
+                  .raceWith(untilStopRequested)
+                  .map(_.fold(identity, _ => Left(Problem("AgentDriver is stopping"))))
+                  .materializeIntoChecked
+                  .map {
+                    case Left(problem) => logger.error(s"Reset command failed: $problem")
+                    case Right(_) =>
+                  })
+                .*>(
+                  lock.lock(
+                    // Ignore any Problem or Exception from Reset command
+                    stopIfTerminated))
+                .onErrorHandle(t => Task(logger.error(t.toStringWithCauses, t)))
+                .runAsyncAndForget // TODO
 
-          case _ =>
-            stopIfTerminated()
-        }
+            case _ =>
+              stopIfTerminated
+                .onErrorHandle(t => Task(logger.error(t.toStringWithCauses, t)))
+                .runAsyncAndForget // TODO
+          }
+        })
       }
+    }))
 
-    case Internal.Terminate =>
-      stopIfTerminated()
-
-    case Input.Reset(force) =>
-      val sender = this.sender()
+  def reset(force: Boolean): Task[Boolean] =
+    logger.traceTask(/*lock.lock*/(Task.defer {
       isReset = true
-      commandQueue.reset()
-      eventFetcher.coupledApi
+      commandQueue.reset
+        .*>(eventFetcher.coupledApi)
         .flatMap {
           case None => Task.pure(false)
           case Some(api) =>
-            api.commandExecute(AgentCommand.Reset(!force ? agentRunIdOnce.orThrow))
+            api
+              .retryIfSessionLost()(
+                api.commandExecute(AgentCommand.Reset(!force ? agentRunIdOnce.orThrow)))
               .materializeIntoChecked
               .map {
                 case Left(problem) =>
@@ -364,44 +424,48 @@ extends ReceiveLoggingActor.WithStash
                   true
               }
         }
-        .flatMap(agentHasBeenReset =>
-          eventFetcher.terminateAndLogout
-            .*>(Task { currentFetchedFuture.foreach(_.cancel()) })
-            .*>(cancelObservationAndAwaitTermination)
-            .*>(eventFetcher.decouple)
-            .as(agentHasBeenReset))
-        .runToFuture
-        .onComplete { tried =>
-          sender ! (tried: Try[Boolean])
-          if (tried.isSuccess) {
-            context.stop(self)
-          }
-        }
+        .<*(eventFetcher.terminateAndLogout)
+        .<*(Task(currentFetchedFuture.foreach(_.cancel())))
+        .<*(cancelObservationAndAwaitTermination)
+        .<*(eventFetcher.decouple)
+        .<*(stopThis
+          .onErrorHandle(t => Task(logger.error(t.toStringWithCauses, t)))
+          .startAndForget/*TODO*/)
+    }))
 
-    case Input.StartFetchingEvents | Internal.FetchEvents =>
-      if (changingUri.isEmpty && !isTerminating) {
-        assertThat(currentFetchedFuture.isEmpty, "Duplicate fetchEvents")
-        currentFetchedFuture = Some(
-          observeAndConsumeEvents
-            .onCancelRaiseError(CancelledMarker)
-            .runToFuture
-            .andThen {
-              case tried =>
-                logger.trace(s"self ! Internal.FetchFinished($tried)")
-                self ! Internal.FetchFinished(tried)
-            })
-      }
+  def startFetchingEvents: Task[Unit] =
+    logger.traceTask(lock.lock(Task {
+      assertThat(currentFetchedFuture.isEmpty, "Duplicate fetchEvents")
+      currentFetchedFuture = Some(
+        observeAndConsumeEvents
+          .onCancelRaiseError(CancelledMarker)
+          .onErrorHandle(t => Task(logger.error(t.toStringWithCauses, t)))
+          .*>(onFetchFinished)
+          .onCancelRaiseError(CancelledMarker)
+          .as(Completed)
+          .runToFuture)
+    }))
 
-    case Internal.OnCoupled(promise, agentOrderIds) =>
-      lastCouplingFailed = None
-      delayNextReleaseEvents = false
-      commandQueue.onCoupled(agentOrderIds)
-      promise.success(Completed)
+  private def onFetchFinished: Task[Unit] =
+    logger.traceTask("onFetchFinished")(/*lock.lock???*/(Task.defer {
+      // Message is expected only after ChangeUri or after InvalidSessionTokenProblem while executing a command
+      currentFetchedFuture = None
+      eventFetcher.decouple
+        .*>(eventFetcher.pauseBeforeNextTry(conf.recouplingStreamReader.delay))
+        .materialize
+        .onErrorHandle(t => Task(logger.error(t.toStringWithCauses, t)))
+        .*>(Task.defer(Task
+          .unless(isTerminating)(
+            if (changingUri.isDefined)
+              onUriChanged
+            else
+              startFetchingEvents)))
+        .onErrorHandle(t => Task(logger.error(t.toStringWithCauses, t)))
+        .startAndForget /*TODO*/
+    }))
 
-    case Internal.OnDecoupled =>
-      commandQueue.onDecoupled()
-
-    case Internal.FetchedEvents(stampedEvents, promise) =>
+  private def onEventsFetched(stampedEvents: Seq[Stamped[AnyKeyedEvent]]): Task[Unit] =
+    lock.lock(Task.defer {
       assertThat(stampedEvents.nonEmpty)
       val reducedStampedEvents = stampedEvents dropWhile { stamped =>
         val drop = stamped.eventId <= lastFetchedEventId
@@ -417,97 +481,37 @@ extends ReceiveLoggingActor.WithStash
         reducedStampedEvents.view.collect {
           case Stamped(_, _, KeyedEvent(orderId: OrderId, _: OrderAttachedToAgent)) => orderId
         })
-      commandQueue.onOrdersDetached(
-        reducedStampedEvents.view.collect {
-          case Stamped(_, _, KeyedEvent(orderId: OrderId, OrderDetached)) => orderId
-        })
+        .*>(commandQueue.onOrdersDetached(
+          reducedStampedEvents.view.collect {
+            case Stamped(_, _, KeyedEvent(orderId: OrderId, OrderDetached)) => orderId
+          }))
+        .*>(onEvents(agentRunIdOnce.orThrow, reducedStampedEvents)
+          .flatMap {
+            case Some(eventId) => releaseEvents(eventId)
+            case None => Task.unit
+          })
+    })
 
-      promiseFuture[Option[EventId]] { p =>
-        context.parent ! Output.EventsFromAgent(agentRunIdOnce.orThrow, reducedStampedEvents, p)
-      } onComplete {
-        case Success(Some(eventId)) =>
-          self ! Internal.ReleaseEvents(eventId, promise)
-
-        case Success(None) =>
-          promise.success(Completed)
-
-        case Failure(t) =>
-          promise.complete(Failure(t))
-      }
-
-    case Internal.ReleaseEvents(lastEventId, promise) =>
+  private def releaseEvents(lastEventId: EventId): Task[Unit] =
+    Task {
       lastCommittedEventId = lastEventId
       if (releaseEventsCancelable.isEmpty) {
         val delay = if (delayNextReleaseEvents) conf.releaseEventsPeriod else ZeroDuration
         releaseEventsCancelable = Some(scheduler.scheduleOnce(delay) {
-          self ! Internal.ReleaseEventsNow
+          releaseEventsNow
+            .onErrorHandle(t => Task(logger.error(t.toStringWithCauses, t)))
+            .runAsyncAndForget
         })
         delayNextReleaseEvents = true
       }
-      promise.success(Completed)
+    }
 
-    case Internal.FetchFinished(tried) =>
-      // Message is expected only after ChangeUri or after InvalidSessionTokenProblem while executing a command
-      logger.debug(s"FetchFinished $tried")
-      currentFetchedFuture = None
-      eventFetcher.decouple
-        .*>(eventFetcher.pauseBeforeNextTry(conf.recouplingStreamReader.delay))
-        .runToFuture
-        .onComplete { _ =>
-          if (!isTerminating) {
-            if (changingUri.isDefined) {
-              logger.trace("self ! Internal.UriChanged")
-              self ! Internal.UriChanged
-            } else {
-              logger.trace("self ! Internal.FetchEvents")
-              self ! Internal.FetchEvents
-            }
-          }
-        }
-
-    case Internal.ReleaseEventsNow =>
-      if (!isTerminating) {
-        commandQueue.enqueue(ReleaseEventsQueueable(lastCommittedEventId))
-      }
-
-    case Internal.CommandQueueReady =>
-      commandQueue.maySend()
-
-    case Internal.BatchSucceeded(responses) =>
-      lastCouplingFailed = None
-      val succeededInputs = commandQueue.handleBatchSucceeded(responses)
-
-      val markedOrders = succeededInputs.view
-        .collect { case o: Input.MarkOrder => o.orderId -> o.mark }
-        .toMap
-      if (markedOrders.nonEmpty) {
-        context.parent ! Output.OrdersMarked(markedOrders)
-      }
-
-      val releaseEvents = succeededInputs collect { case o: ReleaseEventsQueueable => o }
-      if (releaseEvents.nonEmpty) {
-        releaseEventsCancelable foreach (_.cancel())
-        releaseEventsCancelable = None
-      }
-      stopIfTerminated()
-
-    case Internal.BatchFailed(inputs, problem) =>
-      problem match {
-        case DecoupledProblem |
-             InvalidSessionTokenProblem |
-             RecouplingStreamReader.TerminatedProblem =>
-          logger.debug(s"Command batch failed: $problem")
-        case _ =>
-          logger.warn(s"Command batch failed: $problem")
-      }
-      logger.trace(s"delayCommandExecutionAfterErrorUntil=${delayCommandExecutionAfterErrorUntil.toTimestamp}")
-      delayCommandExecutionAfterErrorUntil = now + conf.commandErrorDelay
-      commandQueue.handleBatchFailed(inputs)
-      stopIfTerminated()
-  }
+  private def releaseEventsNow: Task[Unit] =
+    Task.unless(isTerminating)(
+      commandQueue.enqueue(ReleaseEventsQueueable(lastCommittedEventId)).void)
 
   private def cancelObservationAndAwaitTermination: Task[Completed] =
-    Task.defer {
+    logger.traceTask(Task.defer {
       currentFetchedFuture match {
         case None => Task.completed
         case Some(fetchedFuture) =>
@@ -518,10 +522,10 @@ extends ReceiveLoggingActor.WithStash
               Completed
             }
       }
-    }
+    })
 
   private def observeAndConsumeEvents: Task[Completed] =
-    Task.defer {
+    logger.traceTask(Task.defer {
       val delay = conf.eventBufferDelay max conf.commitDelay
       eventFetcher.observe(client, after = lastFetchedEventId)
         .pipe(obs =>
@@ -539,16 +543,13 @@ extends ReceiveLoggingActor.WithStash
           .fromTask(persistence.whenNoFailoverByOtherNode
             .logWhenItTakesLonger("whenNoFailoverByOtherNode"))
           .map(_ => o))
-        .mapEval(stampedEvents =>
-          promiseTask[Completed] { promise =>
-            self ! Internal.FetchedEvents(stampedEvents, promise)
-          })
+        .mapEval(onEventsFetched)
         .completedL
         .map(_ => Completed)
-    }
+    })
 
   private def dedicateAgentIfNeeded: Task[Checked[(AgentRunId, EventId)]] =
-    Task.defer {
+    logger.traceTask(Task.defer {
       agentRunIdOnce.toOption match {
         case Some(agentRunId) => Task.pure(Right(agentRunId -> lastFetchedEventId))
         case None =>
@@ -570,7 +571,7 @@ extends ReceiveLoggingActor.WithStash
               .rightAs(agentRunId -> agentEventId)
             }
       }
-    }
+    })
 
   private def reattachSubagents(): Unit = {
     val controllerState = persistence.unsafeCurrentState()
@@ -582,11 +583,15 @@ extends ReceiveLoggingActor.WithStash
             .foreach(item => agentToAttachedState.get(agentPath)
               .foreach {
                 case Attachable =>
-                  self ! Input.AttachUnsignedItem(item)
+                  send(Input.AttachUnsignedItem(item))
+                    .onErrorHandle(t => Task(logger.error(t.toStringWithCauses, t)))
+                    .runAsyncAndForget // TODO
 
                 case Attached(rev) =>
                   if (item.itemRevision == rev) {
-                    self ! Input.AttachUnsignedItem(item)
+                    send(Input.AttachUnsignedItem(item))
+                      .onErrorHandle(t => Task(logger.error(t.toStringWithCauses, t)))
+                      .runAsyncAndForget // TODO
                   }
 
                 case _ =>
@@ -596,25 +601,21 @@ extends ReceiveLoggingActor.WithStash
       }
   }
 
-  private def stopIfTerminated() =
-    if (commandQueue.isTerminated) {
+  private def stopIfTerminated: Task[Unit] =
+    Task.defer(Task.when(commandQueue.isTerminated) {
       logger.debug("Stop")
-      case object Stop
       currentFetchedFuture.foreach(_.cancel())
       releaseEventsCancelable.foreach(_.cancel())
       Task.fromFuture(eventFetcherTerminated.future)
-        .onErrorRecover { case t => logger.debug(t.toStringWithCauses) }
+        .onErrorHandle(t => logger.debug(t.toStringWithCauses))
         .flatMap(_ => Task
           .parZip2(
             closeClient,
             stopClusterWatch)
           .void)
-        .onErrorRecover { case t => logger.debug(t.toStringWithCauses) }
-        .foreach(_ => self ! Stop)
-      become("stopping") {
-        case Stop => context.stop(self)
-      }
-    }
+        .onErrorHandle(t => logger.debug(t.toStringWithCauses))
+        .*>(stopThis.startAndForget/*TODO*/)
+    })
 
   private def closeClient: Task[Unit] =
     eventFetcher.invalidateCoupledApi
@@ -658,15 +659,23 @@ private[controller] object AgentDriver
     classOf[SubagentItemStateEvent],
     classOf[InventoryItemEvent],
     classOf[OrderWatchEvent])
+
   private val DecoupledProblem = Problem.pure("Agent has been decoupled")
 
-  def props(agentRef: AgentRef, agentRunId: Option[AgentRunId], eventId: EventId,
+  def resource(
+    agentRef: AgentRef, agentRunId: Option[AgentRunId], eventId: EventId,
+    onEvents: (AgentRunId, Seq[Stamped[AnyKeyedEvent]]) => Task[Option[EventId]], // TODO Stream
+    onOrderMarked: Map[OrderId, OrderMark] => Task[Unit],
     persistence: StatePersistence[ControllerState],
-    agentDriverConf: AgentDriverConfiguration, controllerConf: ControllerConfiguration)
+    agentDriverConf: AgentDriverConfiguration, controllerConf: ControllerConfiguration,
+    actorSystem: ActorSystem)
     (implicit s: Scheduler)
-  =
-    Props { new AgentDriver(agentRef, agentRunId, eventId,
-      persistence, agentDriverConf, controllerConf) }
+  : Resource[Task, AgentDriver] =
+    Service.resource(Task(
+      new AgentDriver(
+        agentRef, agentRunId, eventId,
+        onEvents, onOrderMarked,
+        persistence, agentDriverConf, controllerConf, actorSystem)))
 
   sealed trait Queueable extends Input {
     def toShortString = toString
@@ -676,10 +685,6 @@ private[controller] object AgentDriver
 
   sealed trait Input
   object Input {
-    case object StartFetchingEvents
-
-    final case class ChangeUri(agentRef: AgentRef, uri: Uri)
-
     final case class AttachUnsignedItem(item: UnsignedItem)
     extends Input with Queueable
 
@@ -701,13 +706,6 @@ private[controller] object AgentDriver
 
     final case class MarkOrder(orderId: OrderId, mark: OrderMark) extends Input with Queueable
 
-    final case class Terminate(
-      noJournal: Boolean = false,
-      reset: Boolean = false)
-    extends DeadLetterSuppression
-
-    final case class Reset(force: Boolean) extends DeadLetterSuppression
-
     final case class ResetSubagent(subagentId: SubagentId, force: Boolean) extends Queueable
 
     final case class ClusterAppointNodes(idToUri: Map[NodeId, Uri], activeId: NodeId) extends Queueable
@@ -716,28 +714,7 @@ private[controller] object AgentDriver
   }
 
   object Output {
-    final case class EventsFromAgent(
-      agentRunId: AgentRunId,
-      stamped: Seq[Stamped[AnyKeyedEvent]],
-      promise: Promise[Option[EventId]])
-
     final case class OrdersMarked(orderToMark: Map[OrderId, OrderMark])
-  }
-
-  private object Internal {
-    case object CommandQueueReady extends DeadLetterSuppression
-    final case class BatchSucceeded(responses: Seq[QueuedInputResponse]) extends DeadLetterSuppression
-    final case class BatchFailed(inputs: Seq[Queueable], problem: Problem) extends DeadLetterSuppression
-    case object FetchEvents extends DeadLetterSuppression
-    final case class FetchedEvents(events: Seq[Stamped[AnyKeyedEvent]], promise: Promise[Completed])
-      extends DeadLetterSuppression
-    final case class FetchFinished(tried: Try[Completed]) extends DeadLetterSuppression
-    final case class OnCoupled(promise: Promise[Completed], orderIds: Set[OrderId]) extends DeadLetterSuppression
-    case object OnDecoupled extends DeadLetterSuppression
-    final case class ReleaseEvents(lastEventId: EventId, promise: Promise[Completed]) extends DeadLetterSuppression
-    case object ReleaseEventsNow extends DeadLetterSuppression
-    case object UriChanged extends DeadLetterSuppression
-    case object Terminate
   }
 
   private case object CancelledMarker extends Exception with NoStackTrace

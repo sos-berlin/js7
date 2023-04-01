@@ -1,11 +1,13 @@
 package js7.controller.agent
 
 import com.typesafe.scalalogging.Logger as ScalaLogger
+import cats.syntax.traverse.*
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.Batch
 import js7.base.log.Logger
 import js7.base.problem.Problem
 import js7.base.test.OurTestSuite
+import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
 import js7.controller.agent.AgentDriver.{Input, Queueable}
@@ -22,6 +24,7 @@ import monix.eval.Task
 import monix.execution.Scheduler.Implicits.traced
 import monix.execution.atomic.AtomicInt
 import org.scalatest.matchers.should.Matchers.*
+import scala.collection.immutable.ArraySeq
 import scala.collection.mutable
 
 /**
@@ -34,23 +37,25 @@ final class CommandQueueTest extends OurTestSuite
     val commandQueueFailed = mutable.Buffer[(Vector[Queueable], Problem)]()
     val commandQueue = new MyCommandQueue(logger, batchSize = 3) {
       protected def asyncOnBatchSucceeded(queuedInputResponses: Seq[QueuedInputResponse]) =
-        commandQueueSucceeded += queuedInputResponses
+        Task(commandQueueSucceeded += queuedInputResponses)
 
       protected def asyncOnBatchFailed(inputs: Vector[Queueable], problem: Problem) =
-        commandQueueFailed += ((inputs, problem))
+        Task(commandQueueFailed += ((inputs, problem)))
     }
 
     val expected = mutable.Buffer[Seq[QueuedInputResponse]]()
 
-    commandQueue.onCoupled(Set.empty)
+    commandQueue.onCoupled(Set.empty).runSyncUnsafe(99.s)
 
     // The first Input is sent alone to the Agent regardless of commandBatchSize.
     val aOrder = toOrder("A")
     var ok = commandQueue.enqueue(AgentDriver.Input.AttachOrder(aOrder, TestAgentPath))
+      .runSyncUnsafe(99.s)
     assert(ok)
 
     // Duplicate
     ok = commandQueue.enqueue(AgentDriver.Input.AttachOrder(aOrder, TestAgentPath))
+      .runSyncUnsafe(99.s)
     assert(!ok)
 
     expected += toQueuedInputResponse(aOrder) :: Nil
@@ -59,29 +64,31 @@ final class CommandQueueTest extends OurTestSuite
 
     val twoOrders = toOrder("B") :: toOrder("C") :: Nil
     for (o <- twoOrders) commandQueue.enqueue(AgentDriver.Input.AttachOrder(o, TestAgentPath))
+      .runSyncUnsafe(99.s)
     waitForCondition(99.s, 10.ms) { commandQueueSucceeded == expected }
     assert(commandQueueSucceeded == expected)
 
     // After the Agent has processed the Input, the two queued commands are sent as a Batch to the Agent
-    commandQueue.handleBatchSucceeded(commandQueueSucceeded.last) shouldEqual List(Input.AttachOrder(aOrder, TestAgentPath))
+    commandQueue.handleBatchSucceeded(commandQueueSucceeded.last).runSyncUnsafe(99.s) shouldEqual List(Input.AttachOrder(aOrder, TestAgentPath))
     expected += twoOrders map toQueuedInputResponse
     waitForCondition(99.s, 10.ms) { commandQueueSucceeded == expected }
     assert(commandQueueSucceeded == expected)
 
     val fiveOrders = toOrder("D") :: toOrder("E") :: toOrder("F") :: toOrder("G") :: toOrder("H") :: Nil
     for (o <- fiveOrders) commandQueue.enqueue(AgentDriver.Input.AttachOrder(o, TestAgentPath))
+      .runSyncUnsafe(99.s)
     expected += fiveOrders take 1 map toQueuedInputResponse
     waitForCondition(99.s, 10.ms) { commandQueueSucceeded == expected }
     assert(commandQueueSucceeded == expected)
 
     // After the Agent has processed the Input, three of the queued commands are sent as a Batch to the Agent
-    commandQueue.handleBatchSucceeded(commandQueueSucceeded.last) shouldEqual fiveOrders.take(1).map(o => Input.AttachOrder(o, TestAgentPath))
+    commandQueue.handleBatchSucceeded(commandQueueSucceeded.last).runSyncUnsafe(99.s) shouldEqual fiveOrders.take(1).map(o => Input.AttachOrder(o, TestAgentPath))
     expected += fiveOrders drop 1 take 3 map toQueuedInputResponse
     waitForCondition(99.s, 10.ms) { commandQueueSucceeded == expected }
     assert(commandQueueSucceeded == expected)
 
     // Finally, the last queued Input is processed
-    commandQueue.handleBatchSucceeded(commandQueueSucceeded.last)
+    commandQueue.handleBatchSucceeded(commandQueueSucceeded.last).runSyncUnsafe(99.s)
     expected += fiveOrders drop 4 map toQueuedInputResponse
     waitForCondition(99.s, 10.ms) { commandQueueSucceeded == expected }
     assert(commandQueueSucceeded == expected)
@@ -92,34 +99,41 @@ final class CommandQueueTest extends OurTestSuite
     // ControllerOrderQueue may send MarkOrder for each OrderEvent received from Agent
     // because MarkOrder is executeted asynchronously and effect occurs later.
     val queue = new MyCommandQueue(logger, batchSize = 3) {
-      protected def asyncOnBatchSucceeded(queuedInputResponses: Seq[QueuedInputResponse]) = ()
-      protected def asyncOnBatchFailed(inputs: Vector[Queueable], problem: Problem) = ()
+      protected def asyncOnBatchSucceeded(queuedInputResponses: Seq[QueuedInputResponse]) =
+        Task.unit
+
+      protected def asyncOnBatchFailed(inputs: Vector[Queueable], problem: Problem) =
+        Task.unit
     }
-    var ok = queue.enqueue(Input.MarkOrder(OrderId("ORDER"), OrderMark.Suspending()))
+    var ok = queue.enqueue(Input.MarkOrder(OrderId("ORDER"), OrderMark.Suspending())).await(99.s)
     assert(ok)
-    ok = queue.enqueue(Input.MarkOrder(OrderId("ORDER"), OrderMark.Suspending()))
+    ok = queue.enqueue(Input.MarkOrder(OrderId("ORDER"), OrderMark.Suspending())).await(99.s)
     assert(!ok)
-    ok = queue.enqueue(Input.MarkOrder(OrderId("ORDER"), OrderMark.Resuming()))
+    ok = queue.enqueue(Input.MarkOrder(OrderId("ORDER"), OrderMark.Resuming())).await(99.s)
     assert(ok)
   }
 
   "Performance with any orders" in {
     // Run with -DCommandQueueTest=10000000 (10 million) -Xmx3g
     val n = sys.props.get("CommandQueueTest").map(_.toInt) getOrElse 10000
-    val orders = for (i <- 1 to n) yield toOrder(i.toString)
     val commandQueueSucceeded = AtomicInt(0)
+
     val commandQueue = new MyCommandQueue(logger, batchSize = 100) {
       protected def asyncOnBatchSucceeded(queuedInputResponses: Seq[QueuedInputResponse]) = {
-        handleBatchSucceeded(queuedInputResponses)
         commandQueueSucceeded += queuedInputResponses.size
+        handleBatchSucceeded(queuedInputResponses).void
       }
-      protected def asyncOnBatchFailed(inputs: Vector[Queueable], problem: Problem) = {}
+      protected def asyncOnBatchFailed(inputs: Vector[Queueable], problem: Problem) =
+        fail(problem.toString)
     }
-    commandQueue.onCoupled(Set.empty)
-    for (order <- orders) {
-      commandQueue.enqueue(AgentDriver.Input.AttachOrder(order, TestAgentPath))
-    }
-    commandQueue.maySend()
+
+    commandQueue.onCoupled(Set.empty).await(99.s)
+    (1 to n).view
+      .map(i => toOrder(i.toString))
+      .to(ArraySeq)
+      .traverse(order => commandQueue.enqueue(AgentDriver.Input.AttachOrder(order, TestAgentPath)))
+      .await(99.s)
+    commandQueue.maySend.await(99.s)
     waitForCondition(9.s, 10.ms) { commandQueueSucceeded.get() == n }
     assert(commandQueueSucceeded.get() == n)
   }
@@ -137,7 +151,7 @@ object CommandQueueTest {
   private def toOrder(name: String) = Order(OrderId(name), TestWorkflow.id /: Position(0), Order.Fresh)
 
   private abstract class MyCommandQueue(logger: ScalaLogger, batchSize: Int)
-  extends CommandQueue(logger, batchSize = batchSize)
+  extends CommandQueue(TestAgentPath, batchSize = batchSize, commandErrorDelay = 1.s)
   {
     protected def commandParallelism = 2
 

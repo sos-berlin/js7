@@ -137,7 +137,7 @@ object TestAgent {
             case _ =>
           }
           // Avoid Akka 2.6 StackTraceError which occurs when agent.terminate() has not been executed:
-          Task.fromFuture(agent.terminated).void
+          agent.untilTerminated.void
             .timeoutTo(3.s, Task.unit)
             .tapError(t => Task(
               logger.error(t.toStringWithCauses, t.nullIfNoStackTrace)))

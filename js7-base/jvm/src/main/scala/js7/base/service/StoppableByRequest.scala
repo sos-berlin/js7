@@ -11,7 +11,7 @@ trait StoppableByRequest {
     this.fiber.complete(fiber)
 
   protected final def untilStopRequested: Task[Unit] =
-    stopRequested.get
+    stopRequested.get.uncancelable
 
   private val memoizedStop =
     stopRequested.complete(())

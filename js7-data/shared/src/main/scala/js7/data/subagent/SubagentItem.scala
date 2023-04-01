@@ -13,7 +13,7 @@ final case class SubagentItem(
   id: SubagentId,
   agentPath: AgentPath,
   uri: Uri,
-  backupUri: Option[Uri] = None,
+  @deprecated backupUri: Option[Uri] = None,
   disabled: Boolean = false,
   itemRevision: Option[ItemRevision] = None)
 extends UnsignedSimpleItem
@@ -38,7 +38,7 @@ extends UnsignedSimpleItem
   // Circular dependency! AgentRef references subagentId: Seq[SubagentId]
   override def referencedItemPaths = new View.Single(agentPath)
 
-  def uris: List[Uri] =
+  @deprecated def uris: List[Uri] =
     uri:: backupUri.toList
 
   // COMPATIBLE with v2.1

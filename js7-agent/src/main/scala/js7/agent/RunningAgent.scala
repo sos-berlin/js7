@@ -27,6 +27,7 @@ import js7.base.io.process.ProcessSignal
 import js7.base.io.process.ProcessSignal.SIGTERM
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{CorrelId, Logger}
+import js7.base.monixutils.MonixBase.syntax.RichMonixTask
 import js7.base.problem.Checked.*
 import js7.base.problem.Problems.ShuttingDownProblem
 import js7.base.problem.{Checked, Problem}
@@ -64,7 +65,7 @@ final class RunningAgent private(
   clusterNode: ClusterNode[AgentState],
   persistence: Task[FileStatePersistence[AgentState]],
   webServer: AkkaWebServer & AkkaWebServer.HasUri,
-  val terminated: Future[ProgramTermination],
+  actorTermination: Task[ProgramTermination],
   val untilReady: Task[MainActor.Ready],
   val executeCommand1: (AgentCommand, CommandMeta) => Task[Checked[AgentCommand.Response]],
   sessionRegister: SessionRegister[AgentSession],
@@ -73,24 +74,32 @@ final class RunningAgent private(
   val actorSystem: ActorSystem,
   val config: Config)
   (implicit val scheduler: Scheduler)
-extends MainService
+extends MainService with Service.StoppableByRequest
 {
   lazy val localUri: Uri = webServer.localUri
 
   val untilTerminated: Task[ProgramTermination] =
-    Task.fromFuture(terminated)
+    actorTermination
 
   def agentState: Task[Checked[AgentState]] =
     clusterNode.currentState
 
   private val isTerminating = Atomic(false)
+  @volatile private var isActorTerminated = false
 
   logger.debug("Ready")
 
   protected def start: Task[Service.Started] =
-    startService(untilTerminated.void)
+    Task.defer {
+      for (_ <- actorTermination.attempt) isActorTerminated = true
+      startService(
+        untilStopRequested
+          .*>(shutdown)
+          /*// Stop WebServer early to close TCP connections — required for testing
+          .*>(webServer.stop)*/)
+    }
 
-  protected def stop: Task[Unit] =
+  private def shutdown: Task[Unit] =
     terminating(Task {
       executeCommandAsSystemUser(ShutDown(Some(SIGTERM)))
         .runAsyncUncancelable {
@@ -105,20 +114,21 @@ extends MainService
     clusterAction: Option[ShutDown.ClusterAction] = None,
     suppressSnapshot: Boolean = false)
   : Task[ProgramTermination] =
-    terminating {
-      logger.debug("terminate")
-      executeCommand1(
-        AgentCommand.ShutDown(processSignal, clusterAction, suppressSnapshot = suppressSnapshot),
-        CommandMeta(SimpleUser.System)
-      ).map(_.orThrow)
-    }
+    logger.debugTask(
+      terminating {
+        executeCommand1(
+          AgentCommand.ShutDown(processSignal, clusterAction, suppressSnapshot = suppressSnapshot),
+          CommandMeta(SimpleUser.System)
+        ).map(_.orThrow)
+      })
 
   private def terminating(body: Task[Unit]): Task[ProgramTermination] =
     Task.defer {
       Task
-        .unless(isTerminating.getAndSet(true) || terminated.isCompleted)(
+        .unless(isTerminating.getAndSet(true) || isActorTerminated)(
           body)
         .*>(untilTerminated)
+        .logWhenItTakesLonger
     }
 
   private[agent] def executeCommandAsSystemUser(command: AgentCommand)
@@ -360,7 +370,7 @@ object RunningAgent {
           clusterNode,
           persistenceDeferred.get,
           webServer, /*Task(mainActor),*/
-          untilMainActorTerminated.runToFuture,
+          untilMainActorTerminated,
           untilReady, executeCommand, sessionRegister, sessionToken,
           testEventBus,
           actorSystem, config)))

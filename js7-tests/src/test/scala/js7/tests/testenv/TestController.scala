@@ -65,7 +65,9 @@ extends AutoCloseable
 
   private def stopControllerApi: Task[Unit] =
     Task.defer(apiLazy.toOption.fold(Task.unit)(controllerApi =>
-      controllerApi.stop(dontLogout = true/*Akka may block when server has just been shut down*/)))
+      controllerApi
+        .stop(dontLogout = true/*Akka may block when server has just been shut down*/)
+        .logWhenItTakesLonger))
 
   def config: Config =
     conf.config
@@ -127,6 +129,7 @@ extends AutoCloseable
           case None =>
             api
               .executeCommand(cmd)
+              .rightAs(())
               .flatMapLeftCase { case problem @ ControllerIsShuttingDownProblem =>
                 logger.info(problem.toString)
                 Task.right(())
@@ -134,7 +137,7 @@ extends AutoCloseable
               .map(_.orThrow)
               .*>(untilTerminated)
         }
-    })
+    }).logWhenItTakesLonger
 
   def updateItemsAsSystemUser(operations: Observable[ItemOperation]): Task[Checked[Completed]] =
     runningController.updateItemsAsSystemUser(operations)
