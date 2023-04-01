@@ -147,7 +147,7 @@ object SessionApi
 
     override def retryIfSessionLost[A]()(body: Task[A]): Task[A] =
       Task.defer {
-        val delays = loginDelays()
+        val delays = Iterator(0.s) ++ loginDelays()
         login(onlyIfNotLoggedIn = true) *>
           body
             .onErrorRestartLoop(()) {
