@@ -19,7 +19,7 @@ import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
 import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import monix.execution.Scheduler.Implicits.traced
 
-final class ResetAgentWhenCancelingTest  extends OurTestSuite with ControllerAgentForScalaTest
+final class ResetAgentWhenCancelingTest extends OurTestSuite with ControllerAgentForScalaTest
 with BlockingItemUpdater
 {
   override protected def controllerConfig =
@@ -37,8 +37,7 @@ with BlockingItemUpdater
   protected def agentPaths = Seq(agentPath)
   protected def items = Nil
 
-  "ResetAgent while an Order is being canceled" in {
-    TestJob.reset()
+  "ResetAgent while an Order is being canceled and the Agent restarts" in {
     val workflow = updateItem(Workflow(WorkflowPath("WORKFLOW"), Seq(
       TestJob.execute(agentPath),
       TestJob.execute(agentPath))))
@@ -59,6 +58,7 @@ with BlockingItemUpdater
     controller.api.executeCommand(ResetAgent(agentPath)).await(99.s).orThrow
     eventWatch.await[OrderTerminated](_.key == orderId)
 
+    // TODO 💥While resetting, the order may start the second job, but the test does not expect this
     assert(eventWatch.eventsByKey[OrderEvent](orderId)
       .filter(e => !e.isInstanceOf[OrderCancellationMarked]/*unreliable ordering*/)
       .filter(e => !e.isInstanceOf[OrderMoved]/*may occur after OrderProcessed*/)
