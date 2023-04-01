@@ -17,7 +17,7 @@ import js7.data.order.OrderEvent.{OrderAdded, OrderAttachable, OrderAttached, Or
 import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderObstacle, OrderObstacleCalculator, Outcome}
 import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.expr
-import js7.data.workflow.instructions.{Prompt, TryInstruction}
+import js7.data.workflow.instructions.{If, Prompt, TryInstruction}
 import js7.data.workflow.position.BranchId.Try_
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath}
@@ -28,13 +28,13 @@ import js7.journal.watch.StrictEventWatch
 import js7.proxy.ControllerApi
 import js7.tests.ControlWorkflowBreakpointTest.*
 import js7.tests.jobs.EmptyJob
-import js7.tests.testenv.ControllerAgentForScalaTest
 import js7.tests.testenv.DirectoryProvider.toLocalSubagentId
+import js7.tests.testenv.{BlockingItemUpdater, ControllerAgentForScalaTest}
 import monix.execution.Scheduler.Implicits.traced
 import scala.jdk.CollectionConverters.*
 
 final class ControlWorkflowBreakpointTest
-extends OurTestSuite with ControllerAgentForScalaTest
+extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
 {
   override protected val controllerConfig = config"""
     js7.auth.users.TEST-USER.permissions = [ UpdateItem ]
@@ -172,7 +172,7 @@ extends OurTestSuite with ControllerAgentForScalaTest
   }
 
   "Breakpoint in a Try block" in {
-    val orderId = OrderId("🔵")
+    val orderId = OrderId("🟦")
     controllerApi
       .executeCommand(ControlWorkflow(tryWorkflow.id, addBreakpoints = Set(
         Position(1) / Try_ % 0)))
@@ -183,6 +183,38 @@ extends OurTestSuite with ControllerAgentForScalaTest
 
     controllerApi.executeCommand(ResumeOrder(orderId)).await(99.s).orThrow
     eventWatch.await[OrderFinished](_.key == orderId)
+  }
+
+  "Breakpoint at an If instruction" in {
+    val workflow = Workflow.of(WorkflowPath("IF-WORKFLOW"),
+      If(expr("true"), Workflow.of(
+        If(expr("true"), Workflow.of(
+          EmptyJob.execute(agentPath),
+          If(expr("true"), Workflow.empty))))))
+
+    val positions = Seq(
+      Position(0),
+      Position(0) / "then" % 0,
+      Position(0) / "then" % 0 / "then" % 0,
+      Position(0) / "then" % 0 / "then" % 1)
+    withTemporaryItem(workflow) { workflow =>
+      val orderId = OrderId("🟩")
+      controllerApi
+        .executeCommand(ControlWorkflow(workflow.id, addBreakpoints = positions.toSet))
+        .await(99.s).orThrow
+
+      var eventId = eventWatch.lastAddedEventId
+      controllerApi.addOrder(FreshOrder(orderId, workflow.id.path, deleteWhenTerminated = true))
+        .await(99.s).orThrow
+
+      for (position <- positions) {
+        eventId = eventWatch.await[OrderSuspended](_.key == orderId, after = eventId).last.eventId
+        assert(controller.controllerState.await(99.s).idToOrder(orderId).position == position)
+        controllerApi.executeCommand(ResumeOrder(orderId)).await(99.s).orThrow
+      }
+
+      eventWatch.await[OrderFinished](_.key == orderId)
+    }
   }
 }
 

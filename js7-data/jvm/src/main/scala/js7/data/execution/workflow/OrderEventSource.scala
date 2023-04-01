@@ -419,35 +419,46 @@ final class OrderEventSource(state: StateView)
 
   private[workflow] def applyMoveInstructions(order: Order[Order.State], firstMove: Option[OrderMoved] = None)
   : Checked[Vector[OrderMoved]] = {
-    @tailrec
-    def loop(order: Order[Order.State], visited: Vector[OrderMoved]): Checked[Vector[OrderMoved]] =
-      nextMove(order) match {
-        case Left(problem) => Left(problem)
+    //@tailrec
+    def loop(order: Order[Order.State], visited: Vector[OrderMoved]): Checked[Vector[OrderMoved]] = {
+      if (state.isOrderAtBreakpoint(order))
+        Right(visited)
+      else
+        nextMove(order) match {
+          case Left(problem) => Left(problem)
 
-        case Right(Some(orderMoved)) =>
-          if (visited.exists(_.to == orderMoved.to))
-            Left(Problem(s"${order.id} is in a workflow loop: " +
-              visited.reverse
-                .map(moved => moved.toString + " " +
-                  idToWorkflow.checked(order.workflowId)
-                    .flatMap(_.labeledInstruction(moved.to))
-                    .fold(_.toString, _.toString)
-                    .truncateWithEllipsis(50))
-                .mkString(" --> ")))
-          else
-            loop(
-              order.withPosition(orderMoved.to),
-              if (orderMoved.reason.isEmpty && visited.lastOption.exists(_.reason.isEmpty))
-                visited.updated(visited.length - 1, orderMoved)
-              else
-                visited :+ orderMoved)
+          case Right(Some(orderMoved)) =>
+            if (visited.exists(_.to == orderMoved.to))
+              Left(Problem(s"${order.id} is in a workflow loop: " +
+                visited.reverse
+                  .map(moved => moved.toString + " " +
+                    idToWorkflow.checked(order.workflowId)
+                      .flatMap(_.labeledInstruction(moved.to))
+                      .fold(_.toString, _.toString)
+                      .truncateWithEllipsis(50))
+                  .mkString(" --> ")))
+            else
+              for {
+                order <- order.applyEvent(orderMoved)
+                events <- loop(
+                  order,
+                  if (orderMoved.reason.isEmpty && visited.lastOption.exists(_.reason.isEmpty))
+                    visited.updated(visited.length - 1, orderMoved)
+                  else
+                    visited :+ orderMoved)
+              } yield events
 
-        case Right(None) => Right(visited)
-      }
+          case Right(None) => Right(visited)
+        }
+    }
 
     firstMove match {
       case None => loop(order, Vector.empty)
-      case Some(move) => loop(order.withPosition(move.to), Vector(move))
+      case Some(move) =>
+        for {
+          order <- order.applyEvent(move)
+          events <- loop(order, Vector(move))
+        } yield events
     }
   }
 
