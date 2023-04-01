@@ -119,7 +119,7 @@ with BlockingItemUpdater
         OrderAttached(agentPath),
         OrderStarted,
         OrderProcessingStarted(Some(subagentId)),
-        OrderProcessed(Outcome.Failed()),
+        OrderProcessed(Outcome.Failed(Some("💥FailingJob failed💥"))),
         OrderDetachable,
         OrderDetached,
         OrderStopped,
