@@ -3,13 +3,14 @@ package js7.common.http
 import akka.Done
 import akka.actor.ActorSystem
 import akka.http.scaladsl.marshalling.Marshal
+import akka.http.scaladsl.model.ContentTypes.`application/json`
 import akka.http.scaladsl.model.HttpEntity.{Chunk, ChunkStreamPart, LastChunk}
 import akka.http.scaladsl.model.HttpMethods.{GET, POST}
-import akka.http.scaladsl.model.MediaTypes.{`application/json`, `text/plain`}
+import akka.http.scaladsl.model.MediaTypes.`text/plain`
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, GatewayTimeout, Unauthorized}
 import akka.http.scaladsl.model.headers.CacheDirectives.{`no-cache`, `no-store`}
 import akka.http.scaladsl.model.headers.{Accept, ModeledCustomHeader, ModeledCustomHeaderCompanion, `Cache-Control`}
-import akka.http.scaladsl.model.{ContentType, ContentTypes, ErrorInfo, HttpEntity, HttpHeader, HttpMethod, HttpRequest, HttpResponse, RequestEntity, StatusCode, Uri as AkkaUri}
+import akka.http.scaladsl.model.{ContentType, ContentTypes, ErrorInfo, HttpEntity, HttpHeader, HttpMethod, HttpRequest, HttpResponse, MediaTypes, RequestEntity, StatusCode, Uri as AkkaUri}
 import akka.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, Unmarshal}
 import akka.http.scaladsl.{ConnectionContext, Http}
 import akka.stream.Materializer
@@ -179,7 +180,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
         .toAkkaSourceTask
         .flatMap(akkaChunks =>
           sendReceive(
-            HttpRequest(POST, uri.asAkka, Accept(`application/json`) :: Nil,
+            HttpRequest(POST, uri.asAkka, AcceptJson,
               HttpEntity.Chunked(`application/x-ndjson`.toContentType, akkaChunks)),
             logData = Some("postObservable")))
         .flatMap(unmarshal[B](POST, uri))
@@ -200,7 +201,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
       .toAkkaSourceTask
       .flatMap(akkaChunks =>
         sendReceive(
-          HttpRequest(POST, uri.asAkka, Accept(`application/json`) :: Nil,
+          HttpRequest(POST, uri.asAkka, AcceptJson,
             HttpEntity.Chunked(`application/x-ndjson`.toContentType, akkaChunks)),
           logData = Some("postObservable")))
       .flatMap(unmarshal[Json](POST, uri))
@@ -219,7 +220,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
   final def postDiscardResponse[A: Encoder](uri: Uri, data: A, allowedStatusCodes: Set[Int] = Set.empty)
     (implicit s: Task[Option[SessionToken]])
   : Task[Int] =
-    post_[A](uri, data, Accept(`application/json`) :: Nil)
+    post_[A](uri, data, AcceptJson)
       .flatMap { httpResponse =>
         Task.defer {
           if (!httpResponse.status.isSuccess && !allowedStatusCodes(httpResponse.status.intValue))
@@ -511,7 +512,7 @@ object AkkaHttpClient
 
   private val logger = Logger(getClass)
   private val LF = ByteString("\n")
-  private val AcceptJson = Accept(`application/json`) :: Nil
+  private val AcceptJson = Accept(MediaTypes.`application/json`) :: Nil
   private val requestCounter = AtomicLong(0)
 
   final class Standard(
@@ -597,7 +598,7 @@ object AkkaHttpClient
     private def shortDataString = dataAsString.truncateWithEllipsis(10000)
 
     lazy val problem: Option[Problem] =
-      if (httpResponse.entity.contentType == ContentTypes.`application/json`)
+      if (httpResponse.entity.contentType == `application/json`)
         io.circe.parser.decode[Problem](dataAsString) match {
           case Left(error) =>
             logger.debug(s"$uri: $prefixString, Problem cannot be parsed: $error - $dataAsString")

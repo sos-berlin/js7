@@ -17,7 +17,7 @@ final case class ResourceAutoCloseable[A](resource: Resource[Task, A], timeout: 
   def value: A =
     value_
 
-  def close() =
+  def close(): Unit =
     if (!closed.getAndSet(true)) {
       release.await(timeout)
     }

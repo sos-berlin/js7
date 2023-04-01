@@ -92,7 +92,7 @@ object JobDriverStarvationTest
 {
   private val logger = Logger[this.type]
   private val n = 10_000
-  private val parallelism = 97
+  private val parallelism = 97 min n
   private val agentPath = AgentPath("AGENT")
 
   private val workflow = Workflow(
