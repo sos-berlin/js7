@@ -31,7 +31,7 @@ object EventId
         val millis = eventId / 1000
         val micros = eventId % 1000
         val iso = Timestamp.ofEpochMilli(millis).toIsoString  // Timestamp has millisecond presision
-        if (micros == 0)
+        if (true || micros == 0)
           iso
         else {
           val sb = new StringBuilder(iso.length + 10)

@@ -93,7 +93,7 @@ final class EventRouteTest extends OurTestSuite with RouteTester with EventRoute
     Get("/event?after=5") ~> Accept(`application/x-ndjson`) ~> route ~> check {
       assert(status == BadRequest)
       assert(response.utf8String.await(99.s) ==
-        "EventSeqTorn: Requested EventId after=5/1970-01-01T00:00:00.000Z-005 is not available. Oldest available EventId is 0/BeforeFirst\n")
+        "EventSeqTorn: Requested EventId after=5/1970-01-01T00:00:00Z is not available. Oldest available EventId is 0/BeforeFirst\n")
     }
   }
 

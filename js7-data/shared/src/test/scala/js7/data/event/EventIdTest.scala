@@ -31,12 +31,12 @@ final class EventIdTest extends OurTestSuite
 
   "toString" in {
     assert(EventId.toString(EventId(      0)) ==       "0/BeforeFirst")
-    assert(EventId.toString(EventId(      1)) ==       "1/1970-01-01T00:00:00.000Z-001")
+    assert(EventId.toString(EventId(      1)) ==       "1/1970-01-01T00:00:00Z")
     assert(EventId.toString(EventId( 123000)) ==  "123000/1970-01-01T00:00:00.123Z")
-    assert(EventId.toString(EventId( 123400)) ==  "123400/1970-01-01T00:00:00.123Z-400")
-    assert(EventId.toString(EventId( 123450)) ==  "123450/1970-01-01T00:00:00.123Z-450")
-    assert(EventId.toString(EventId( 123456)) ==  "123456/1970-01-01T00:00:00.123Z-456")
+    assert(EventId.toString(EventId( 123400)) ==  "123400/1970-01-01T00:00:00.123Z")
+    assert(EventId.toString(EventId( 123450)) ==  "123450/1970-01-01T00:00:00.123Z")
+    assert(EventId.toString(EventId( 123456)) ==  "123456/1970-01-01T00:00:00.123Z")
     assert(EventId.toString(EventId(1000000)) == "1000000/1970-01-01T00:00:01Z")
-    assert(EventId.toString(EventId.JavascriptMaxValue) == "9007199254740992/2255-06-05T23:47:34.740Z-992")
+    assert(EventId.toString(EventId.JavascriptMaxValue) == "9007199254740992/2255-06-05T23:47:34.740Z")
   }
 }
