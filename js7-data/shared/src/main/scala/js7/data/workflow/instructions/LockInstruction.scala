@@ -59,16 +59,17 @@ extends Instruction {
 object LockInstruction {
   @TestOnly
   def apply(
-    locks: Seq[LockDemand],
+    demands: Seq[LockDemand],
     lockedWorkflow: Workflow,
     sourcePos: Option[SourcePos] = None)
   : LockInstruction =
-    new LockInstruction(locks.toList, lockedWorkflow, sourcePos)
+    new LockInstruction(demands.toList, lockedWorkflow, sourcePos)
       .checked.orThrow
 
+  @TestOnly
   def single(
     lockPath: LockPath,
-    count: Option[Int],
+    count: Option[Int] = None,
     lockedWorkflow: Workflow,
     sourcePos: Option[SourcePos] = None)
   : LockInstruction =
