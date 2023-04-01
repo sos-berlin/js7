@@ -36,7 +36,7 @@ final class ReplicatingControllerClusterTest extends ControllerClusterTester
         primaryController.api.executeCommand(TakeSnapshot).await(99.s).orThrow
         assertEqualJournalFiles(primary.controller, backup.controller, n = 1)
 
-        primaryController.runOrder(FreshOrder(OrderId("🔵"), TestWorkflow.path))
+        primaryController.runOrder(FreshOrder(OrderId("🟦"), TestWorkflow.path))
         assertEqualJournalFiles(primary.controller, backup.controller, n = 1)
 
         simulateKillActiveNode(primaryController) await 99.s

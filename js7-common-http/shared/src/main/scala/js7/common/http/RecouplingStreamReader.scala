@@ -3,8 +3,8 @@ package js7.common.http
 import cats.syntax.apply.*
 import js7.base.exceptions.HasIsIgnorableStackTrace
 import js7.base.generic.Completed
-import js7.base.log.{Logger, WaitSymbol}
 import js7.base.log.Logger.syntax.*
+import js7.base.log.{BlockingSymbol, Logger}
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.problem.{Checked, Problem, ProblemException}
@@ -34,7 +34,7 @@ abstract class RecouplingStreamReader[
   conf: RecouplingStreamReaderConf)
 {
   @volatile private var markedAsStopped = false
-  private val waitSymbol = new WaitSymbol
+  private val sym = new BlockingSymbol
 
   protected def couple(index: I): Task[Checked[I]] =
     Task.pure(Right(index))
@@ -48,8 +48,8 @@ abstract class RecouplingStreamReader[
           var logged = false
           lazy val msg = s"$api: coupling failed: $problem"
           if (inUse && !stopRequested && !coupledApiVar.isStopped) {
-            waitSymbol.onWarn()
-            logger.warn(s"$waitSymbol $msg")
+            sym.onWarn()
+            logger.warn(s"$sym $msg")
             logged = true
           }
           for (throwable <- problem.throwableOption.map(_.nullIfNoStackTrace)
@@ -166,7 +166,7 @@ abstract class RecouplingStreamReader[
       Observable.fromTask(
         tryEndlesslyToGetObservable(after)
           .<*(Task {
-            if (waitSymbol.called) logger.info(s"🟢 Observing $api ...")
+            if (sym.called) logger.info(s"🟢 Observing $api ...")
           }))
         .flatten
         .map { v =>
@@ -195,7 +195,7 @@ abstract class RecouplingStreamReader[
                       (problem match {
                         case InvalidSessionTokenProblem =>
                           Task {
-                            logger.debug(s"⛔ $api: $InvalidSessionTokenProblem")
+                            logger.debug(s"🔒 $api: $InvalidSessionTokenProblem")
                             true
                           }
                         case _ =>
@@ -241,7 +241,7 @@ abstract class RecouplingStreamReader[
       }
 
     private def tryEndlesslyToCouple(after: I): Task[I] =
-      Task.tailRecM(())(_ => Task.defer(
+      logger.debugTask(Task.tailRecM(())(_ => Task.defer(
         if (isStopped)
           Task.raiseError(new IllegalStateException(s"RecouplingStreamReader($api) has been stopped")
             with NoStackTrace)
@@ -278,7 +278,7 @@ abstract class RecouplingStreamReader[
                   _ <- Task { recouplingPause.onCouplingSucceeded() }
                   _ <- onCoupled(api, after)
                 } yield Right(updatedIndex)
-            }))
+            })))
   }
 
   private val pauseBeforeRecoupling =

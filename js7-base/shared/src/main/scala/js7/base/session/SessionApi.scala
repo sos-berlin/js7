@@ -4,7 +4,7 @@ import cats.effect.{ExitCase, Resource}
 import js7.base.auth.UserAndPassword
 import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
-import js7.base.log.{Logger, WaitSymbol}
+import js7.base.log.{BlockingSymbol, Logger}
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.session.SessionApi.*
@@ -53,7 +53,7 @@ trait SessionApi
           }))
 
   private[SessionApi] final def onErrorTryAgain(throwable: Throwable): Task[Boolean] =
-    SessionApi.onErrorTryAgain(throwable, toString)
+    SessionApi.onErrorTryAgain(toString, throwable)
 }
 
 object SessionApi
@@ -66,7 +66,7 @@ object SessionApi
       acquire = api)(
       release = _.tryLogout.void)
 
-  def warn(throwable: Throwable, myToString: String): Unit = {
+  private def warn(myToString: String, throwable: Throwable): Unit = {
     logger.warn(s"$myToString: ${throwable.toStringWithCauses}")
     throwable match {
       case _: javax.net.ssl.SSLException =>
@@ -79,19 +79,8 @@ object SessionApi
     }
   }
 
-  def onErrorTryAgain(throwable: Throwable, myToString: String): Task[Boolean] =
+  def onErrorTryAgain(myToString: String, throwable: Throwable): Task[Boolean] =
     Task.pure(true)
-
-  trait NoSession extends SessionApi
-  {
-    final def login_(userAndPassword: Option[UserAndPassword], onlyIfNotLoggedIn: Boolean = false) =
-      Task.completed
-
-    final def logout() =
-      Task.completed
-
-    final def clearSession() = {}
-  }
 
   trait LoginUntilReachable extends SessionApi
   {
@@ -112,26 +101,26 @@ object SessionApi
         if (onlyIfNotLoggedIn && hasSession)
           Task.completed
         else {
-          val waitSymbol = new WaitSymbol
+          val sym = new BlockingSymbol
           login_(userAndPassword)
             .onErrorRestartLoop(()) { (throwable, _, retry) =>
               val isTemporary = isTemporaryUnreachable(throwable)
-              val sym = isTemporary ?? {
-                waitSymbol.onWarn()
-                s"$waitSymbol "
+              val prefix = isTemporary ?? {
+                sym.onWarn()
+                s"$sym "
               }
-              warn(throwable, s"$sym$self")
+              warn(s"$prefix$self", throwable)
               onError(throwable).flatMap(continue =>
-                if (continue && delays.hasNext && isTemporary)
+                if (continue/*normally true*/ && delays.hasNext && isTemporary)
                   retry(()) delayExecution delays.next()
                 else
                   Task.raiseError(throwable))
             }
             .guaranteeCase {
               case ExitCase.Completed => Task(
-                if (waitSymbol.called) logger.info(s"🟢 $self logged-in"))
+                if (sym.called) logger.info(s"🟢 $self logged-in"))
               case ExitCase.Canceled => Task(
-                if (waitSymbol.called) logger.info(s"⚫️ $self Canceled"))
+                if (sym.called) logger.info(s"⚫️ $self Canceled"))
               case _ => Task.unit
             }
         })
@@ -172,7 +161,7 @@ object SessionApi
     : Task[A] =
       Task.defer {
         val delays = loginDelays()
-        val waitSymbol = new WaitSymbol
+        val sym = new BlockingSymbol
         loginUntilReachable(delays, onError = onError, onlyIfNotLoggedIn = true)
           .flatMap((_: Completed) =>
             body.onErrorRestartLoop(()) { (throwable, _, retry) =>
@@ -185,8 +174,8 @@ object SessionApi
                     loginUntilReachable(delays, onError = onError)
 
                   case e: HttpException if isTemporaryUnreachable(e) && delays.hasNext =>
-                    waitSymbol.onWarn()
-                    warn(e, s"🔴 $toString")
+                    sym.onWarn()
+                    warn(s"$sym $toString", e)
                     onError(e).flatMap(continue =>
                       if (continue)
                         loginUntilReachable(delays, onError = onError, onlyIfNotLoggedIn = true)
@@ -201,9 +190,9 @@ object SessionApi
             })
           .guaranteeCase {
             case ExitCase.Completed => Task(
-              if (waitSymbol.called) logger.info(s"🟢 $self reached"))
+              if (sym.called) logger.info(s"🟢 $self reached"))
             case ExitCase.Canceled => Task(
-              if (waitSymbol.called) logger.info(s"⚫️ $self Canceled"))
+              if (sym.called) logger.info(s"⚫️ $self Canceled"))
             case _ => Task.unit
           }
       }

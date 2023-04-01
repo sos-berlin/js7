@@ -32,7 +32,7 @@ final class DeleteOrderWhenTerminatedDelayedTest extends OurTestSuite with Contr
   }
 
   "OrderDeleted is delayed" in {
-    val order = FreshOrder(OrderId("🔴"), workflow.id.path)
+    val order = FreshOrder(OrderId("🔻"), workflow.id.path)
     controller.addOrderBlocking(order)
     eventWatch.await[OrderStarted](_.key == order.id)
     controller.api.executeCommand(DeleteOrdersWhenTerminated(Seq(order.id))).await(99.s).orThrow

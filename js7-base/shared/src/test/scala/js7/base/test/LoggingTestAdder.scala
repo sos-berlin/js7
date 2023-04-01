@@ -62,7 +62,7 @@ private final class LoggingTestAdder(suiteName: String) {
       else bold) +
       s"$succeededCount tests succeeded$resetColor" +
       (if (failedCount == 0) "" else s" · $failureMarkup💥 $failedCount failed$resetColor") +
-      (if (pendingCount == 0) "" else s" · $pendingMarkup❌ $pendingCount pending$resetColor") +
+      (if (pendingCount == 0) "" else s" · $pendingMarkup🚧 $pendingCount pending$resetColor") +
       (if (failedCount == 0 && pendingCount == 0) s" $successMarkup✔︎$resetColor " else " · ") +
       since.elapsed.pretty + "\n")
 }
@@ -151,7 +151,7 @@ private object LoggingTestAdder {
           s"$successMarkup$prefix$testName$resetColor $prettyDuration"
 
         case Failure(_: TestPendingException) =>
-          s"❌ $pendingMarkup$prefix$testName (PENDING)$resetColor $prettyDuration"
+          s"🚧 $pendingMarkup$prefix$testName (PENDING)$resetColor $prettyDuration"
 
         case Failure(t) =>
           s"💥 $failureMarkup$prefix$testName 💥$resetColor $prettyDuration"
@@ -164,7 +164,7 @@ private object LoggingTestAdder {
           f"✔️  $prettyDuration%-7s $successMarkup$prefix$shortTestName$resetColor"
 
         case Failure(_: TestPendingException) =>
-          f"❌ $prettyDuration%-7s $pendingMarkup$prefix$shortTestName (PENDING)$resetColor"
+          f"🚧 $prettyDuration%-7s $pendingMarkup$prefix$shortTestName (PENDING)$resetColor"
 
         case Failure(t) =>
           f"💥 $prettyDuration%-7s $failureMarkup$prefix$shortTestName 💥$resetColor"

@@ -14,8 +14,8 @@ import java.nio.file.{Path, Paths}
 import js7.base.circeutils.CirceUtils.*
 import js7.base.data.ByteArray
 import js7.base.data.ByteSequence.ops.*
-import js7.base.log.{CorrelId, Logger}
 import js7.base.log.Logger.syntax.*
+import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.{RichMonixObservable, RichMonixTask}
 import js7.base.monixutils.MonixDeadline.now
 import js7.base.monixutils.ObservablePauseDetector.RichPauseObservable
@@ -223,7 +223,7 @@ private[cluster] final class PassiveClusterNode[S <: SnapshotableState[S]: diffx
           ClusterPrepareCoupling(activeId = activeId, passiveId = ownId)))
       .flatMap {
         case Left(()) => Task(logger.debug(
-          "❌ tryEndlesslyToSendClusterPrepareCoupling canceled due to shutdown"))
+          "⚫ tryEndlesslyToSendClusterPrepareCoupling canceled due to shutdown"))
         case Right(()) => Task.unit
       }
   }

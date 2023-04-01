@@ -73,12 +73,12 @@ final class LockTest extends OurTestSuite with ControllerAgentForScalaTest with 
       assert(workflow.referencedItemPaths.toSet == Set(lockPath, agentPath, bAgentPath))
 
       delete(file)
-      val a = OrderId("🔵")
+      val a = OrderId("🔷")
       controller.api.addOrder(FreshOrder(a, workflow.path, deleteWhenTerminated = true))
         .await(99.s).orThrow
       assert(controller.eventWatch.await[OrderLocksAcquired](_.key == a).map(_.value).nonEmpty)
 
-      val queuedOrderIds = for (i <- 1 to 10) yield OrderId(s"🟠-$i")
+      val queuedOrderIds = for (i <- 1 to 10) yield OrderId(s"🔶-$i")
       for (orderId <- queuedOrderIds) {
         controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
           .await(99.s).orThrow

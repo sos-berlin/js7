@@ -423,7 +423,7 @@ extends SubagentDriver with SubagentEventListener[S0]
       .race(stoppingVar.flatMap(_.read), task)
       .flatMap {
         case Left(()) =>
-          logger.debug("❌ whenStoppedCancelAndFail!")
+          logger.debug("⚫ whenStoppedCancelAndFail!")
           Task.raiseError(Problem("postCommandUntilSucceeded stopped").throwable)
         case Right(a) =>
           Task.pure(a)

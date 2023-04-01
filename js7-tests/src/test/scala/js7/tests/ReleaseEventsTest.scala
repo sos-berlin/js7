@@ -143,9 +143,9 @@ private object ReleaseEventsTest
   private val TestPathExecutable = RelativePathExecutable(s"TEST$sh")
   private val TestWorkflow = Workflow.of(WorkflowPath("test"),
     Execute(WorkflowJob(TestAgentPath, TestPathExecutable)))
-  private val aOrder = FreshOrder(OrderId("🔵"), TestWorkflow.id.path)
+  private val aOrder = FreshOrder(OrderId("🟦"), TestWorkflow.id.path)
   private val bOrder = FreshOrder(OrderId("🔶"), TestWorkflow.id.path)
-  private val cOrder = FreshOrder(OrderId("⭕️"), TestWorkflow.id.path)
+  private val cOrder = FreshOrder(OrderId("🔻"), TestWorkflow.id.path)
   private val dOrder = FreshOrder(OrderId("🔺"), TestWorkflow.id.path)
 
   private def newApi(controller: TestController, credentials: UserAndPassword): HttpControllerApi = {

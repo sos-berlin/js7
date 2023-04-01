@@ -64,13 +64,13 @@ final class UpdateRepoAgentTest extends OurTestSuite
             .updateUnsignedSimpleItems(Seq(
               directoryProvider.subagentItems.head.copy(uri = agent2.localUri)))
             .await(99.s).orThrow
-          runOrder(controller, OrderId(s"🔵-$i"))
+          runOrder(controller, OrderId(s"♣️-$i"))
         }
       }
 
       // Controller recovery
       directoryProvider.runController() { controller =>
-        runOrder(controller, OrderId("⭕"))
+        runOrder(controller, OrderId("♠️"))
       }
 
       agent2.terminate() await 99.s

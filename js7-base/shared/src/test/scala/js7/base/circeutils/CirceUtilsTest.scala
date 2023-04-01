@@ -153,7 +153,7 @@ final class CirceUtilsTest extends OurTestSuite
       if (simple.int == 0)
         Left(Problem("PROBLEM"))
       else
-        Right(simple.copy(string = simple.string + "🔵"))
+        Right(simple.copy(string = simple.string + "🔷"))
 
     implicit val simpleCodec: Codec.AsObject[Simple] =
       deriveCodec[Simple].check(checkSimple)
@@ -161,6 +161,6 @@ final class CirceUtilsTest extends OurTestSuite
     assert(json"""{ "int": 0, "string": "B" }""".as[Simple] == Left(
       DecodingFailure("PROBLEM", Nil)))
 
-    assert(json"""{ "int": 1, "string": "B" }""".as[Simple] == Right(Simple(1, "B🔵")))
+    assert(json"""{ "int": 1, "string": "B" }""".as[Simple] == Right(Simple(1, "B🔷")))
   }
 }

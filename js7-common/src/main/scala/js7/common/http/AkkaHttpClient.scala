@@ -10,7 +10,7 @@ import akka.http.scaladsl.model.MediaTypes.`text/plain`
 import akka.http.scaladsl.model.StatusCodes.{Forbidden, GatewayTimeout, Unauthorized}
 import akka.http.scaladsl.model.headers.CacheDirectives.{`no-cache`, `no-store`}
 import akka.http.scaladsl.model.headers.{Accept, ModeledCustomHeader, ModeledCustomHeaderCompanion, `Cache-Control`}
-import akka.http.scaladsl.model.{ContentType, ContentTypes, ErrorInfo, HttpEntity, HttpHeader, HttpMethod, HttpRequest, HttpResponse, MediaTypes, RequestEntity, StatusCode, Uri as AkkaUri}
+import akka.http.scaladsl.model.{ContentType, ErrorInfo, HttpEntity, HttpHeader, HttpMethod, HttpRequest, HttpResponse, MediaTypes, RequestEntity, StatusCode, Uri as AkkaUri}
 import akka.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, Unmarshal}
 import akka.http.scaladsl.{ConnectionContext, Http}
 import akka.stream.Materializer
@@ -33,6 +33,7 @@ import js7.base.io.https.HttpsConfig
 import js7.base.log.{CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.problem.Checked.*
+import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.problem.{Checked, Problem}
 import js7.base.time.ScalaTime.*
 import js7.base.time.Stopwatch.bytesPerSecondString
@@ -268,7 +269,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
         @volatile var canceled = false
         var responseFuture: Future[HttpResponse] = null
         val since = now
-        lazy val logPrefix = s"$toString: ${sessionToken.fold("")(_.short + " ")}#$number"
+        lazy val logPrefix = s"#$number $toString: ${sessionToken.fold("")(_.short)}"
         lazy val responseLog0 = s"$logPrefix ${requestToString(req, logData, isResponse = true)} "
         def responseLogPrefix = responseLog0 + since.elapsed.pretty
         logger.trace(s">--> $logPrefix: ${requestToString(req, logData)}")
@@ -288,7 +289,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
           .guaranteeCase {
             case ExitCase.Canceled => Task {
               canceled = true
-              logger.debug(s"<~~❌ $responseLogPrefix => canceled")
+              logger.debug(s"<~~⚫️ $responseLogPrefix => canceled")
               if (responseFuture != null) {
                 // TODO Akka's max-open-requests may be exceeded when new requests are opened
                 //  while many canceled requests are still not completed by Akka
@@ -299,7 +300,7 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
                   responseFuture
                     .flatMap(_
                       .discardEntityBytes().future.andThen { case tried =>
-                        logger.debug(s"$responseLogPrefix discardResponse => " +
+                        logger.debug(s"⚫️$responseLogPrefix discardResponse => " +
                           tried.fold(_.toStringWithCauses, _ => "ok"))
                       })
                     .map((_: Done) => ())
@@ -309,13 +310,13 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
             }
 
             case ExitCase.Error(throwable) => Task.defer {
-              val mark = throwable match {
+              val sym = throwable match {
                 case t: akka.stream.StreamTcpException if t.getMessage.contains(
                   "failed because of java.net.ConnectException: ") => "⭕"
                 case _ => "💥"
               }
               logger.debug(
-                s"<~~$mark $responseLogPrefix => failed with ${throwable.toStringWithCauses}")
+                s"<~~$sym$responseLogPrefix => failed with ${throwable.toStringWithCauses}")
               Task.raiseError(toPrettyProblem(throwable).throwable)
             }
 
@@ -326,41 +327,60 @@ trait AkkaHttpClient extends AutoCloseable with HttpClient with HasIsIgnorableSt
           }
           .map(decompressResponse)
           .pipeIf(logger.underlying.isDebugEnabled)(
-            _.pipeIf(!request.headers.contains(StreamingJsonHeader))(o => Task.defer {
-              var waitingLogged = 0
-              o.whenItTakesLonger()(_ => Task {
-                waitingLogged += 1
-                val m = waitingLogged match { case 1 => "🟡" case 2 => "🟠" case _ => "🔴" }
-                logger.debug(
-                  s"$m $responseLogPrefix => Still waiting for response${closed ?? " (closed)"}")
-              }).guaranteeCase(exitCase => Task(if (waitingLogged > 0) {
-                val sym = exitCase match {
-                  case ExitCase.Error(_) => "💥"
-                  case ExitCase.Canceled => "⚫️"
-                  case ExitCase.Completed => "🟢"
-                }
-                logger.debug(s"$sym $responseLogPrefix => $exitCase")
-              }))
-            })
-            .tapEval(response => Task {
-              val mark = response.status.isFailure ?? (response.status match {
-                case Unauthorized | Forbidden => "⛔"
-                case _ => "❓"
-              })
-              val suffix = response.status.isFailure ??
-                (try
-                  response.entity match {
-                    case HttpEntity.Strict(ContentTypes.`application/json`, bytes) =>
-                      bytes.parseJsonAs[Problem].toOption.fold("")(" · " + _)
-                    case HttpEntity.Strict(ContentType.WithCharset(`text/plain`, charset), bytes) =>
-                      bytes.decodeString(charset.nioCharset)
-                        .parseJsonAs[Problem].toOption.fold("")(" · " + _)
-                    case _ => ""
-                  } catch { case NonFatal(_) => "" })
-              logger.debug(
-                s"<--<$mark $responseLogPrefix => ${response.status}$suffix")
-            }))
+            _.pipeIf(!request.headers.contains(StreamingJsonHeader))(
+              logWait(_, responseLogPrefix)
+            ).tapEval(response => Task(
+              logResponseError(response, responseLogPrefix))))
       })
+
+  private def logWait(untilResponded: Task[HttpResponse], responseLogPrefix: String): Task[HttpResponse] =
+    Task.defer {
+      var waitingLogged = false
+      untilResponded
+        .whenItTakesLonger()(_ => Task {
+          val sym = if (!waitingLogged) "🟡" else "🟠"
+          waitingLogged = true
+          logger.debug(
+            s"$sym$responseLogPrefix => Still waiting for response${closed ?? " (closed)"}")
+        })
+        .guaranteeCase(exitCase => Task(if (waitingLogged) {
+          val sym = exitCase match {
+            case ExitCase.Error(_) => "💥"
+            case ExitCase.Canceled => "⚫️"
+            case ExitCase.Completed => "🔵"
+          }
+          logger.debug(s"$sym$responseLogPrefix => $exitCase")
+        }))
+    }
+
+  private def logResponseError(response: HttpResponse, responseLogPrefix: String): Unit = {
+    val sym = response.status.isFailure ?? (response.status match {
+      case Unauthorized => "⛔"
+      case Forbidden =>
+        response.entity match {
+          case HttpEntity.Strict(`application/json`, bytes)
+            if (bytes.parseJsonAs[Problem].exists(_ is InvalidSessionTokenProblem)) =>
+            "🔒" // The SessionToken has probably expired. Then the caller will re-login.
+          case _ =>
+            "⛔"
+        }
+      case _ => "❓"
+    })
+
+    val suffix = response.status.isFailure ??
+      (try response.entity match {
+        case HttpEntity.Strict(`application/json`, bytes) =>
+          bytes.parseJsonAs[Problem].toOption.fold("")(" · " + _)
+        case HttpEntity.Strict(ContentType.WithCharset(`text/plain`, charset), bytes) =>
+          bytes.decodeString(charset.nioCharset)
+            .parseJsonAs[Problem].toOption.fold("")(" · " + _)
+        case _ => ""
+      } catch {
+        case NonFatal(_) => ""
+      })
+
+    logger.debug(s"<--<$sym$responseLogPrefix => ${response.status}$suffix")
+  }
 
   private def unmarshal[A: FromResponseUnmarshaller](method: HttpMethod, uri: Uri)(httpResponse: HttpResponse) =
     if (!httpResponse.status.isSuccess)

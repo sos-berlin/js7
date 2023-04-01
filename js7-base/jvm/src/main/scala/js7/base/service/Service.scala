@@ -107,7 +107,7 @@ object Service
       logger.info(s"$serviceName$a started")
       task.guaranteeCase {
         case ExitCase.Error(_) => Task.unit // startService logs the error
-        case ExitCase.Canceled => Task(logger.info(s"❌ $serviceName canceled"))
+        case ExitCase.Canceled => Task(logger.info(s"⚫ $serviceName canceled"))
         case ExitCase.Completed => Task(logger.info(s"$serviceName stopped"))
       }
     }

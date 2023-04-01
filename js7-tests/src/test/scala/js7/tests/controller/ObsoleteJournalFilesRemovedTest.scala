@@ -60,5 +60,5 @@ private object ObsoleteJournalFilesRemovedTest
   private val pathExecutable = RelativePathExecutable(s"TEST$sh")
   private val workflow = Workflow.of(WorkflowPath("test"),
     Execute(WorkflowJob(agentPath, pathExecutable)))
-  private val aOrder = FreshOrder(OrderId("🔵"), workflow.id.path)
+  private val aOrder = FreshOrder(OrderId("🔷"), workflow.id.path)
 }

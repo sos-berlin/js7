@@ -2,7 +2,7 @@ package js7.base.utils
 
 import cats.effect.ExitCase
 import java.lang.System.nanoTime
-import js7.base.log.{CorrelId, WaitSymbol}
+import js7.base.log.{BlockingSymbol, CorrelId}
 import js7.base.monixutils.MonixBase.DefaultWorryDurations
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.time.ScalaTime.*
@@ -32,16 +32,21 @@ final class AsyncLock private(
   }
 
   private def lock2[A](acquirer: () => String)(task: Task[A]): Task[A] =
-    acquire(acquirer)
-      .bracketCase(_ => task)((_, exitCase) => release(acquirer, exitCase))
+    Task.defer {
+      val nr = waitCounter.incrementAndGet()
+      acquire(nr, acquirer)
+        .bracketCase(_ =>
+          task)(
+          release = (_, exitCase) => release(nr, acquirer, exitCase))
+    }
 
-  private def acquire(acquirerToString: () => String): Task[Unit] =
+  private def acquire(nr: Int, acquirerToString: () => String): Task[Unit] =
     lockM
       .flatMap(mvar => Task.defer {
         val acquirer = new Acquirer(CorrelId.current, acquirerToString)
         mvar.tryPut(acquirer).flatMap(hasAcquired =>
           if (hasAcquired) {
-            if (!noMinorLog) log.trace(s"↘ $name acquired by $acquirer ↘")
+            if (!noMinorLog) log.trace(s"↘ ⚪️$nr $name acquired by $acquirer ↘")
             acquirer.startMetering()
             Task.unit
           } else
@@ -53,24 +58,23 @@ final class AsyncLock private(
               Task.tailRecM(())(_ =>
                 mvar.tryRead.flatMap {
                   case Some(lockedBy) =>
-                    val nr = waitCounter.incrementAndGet()
-                    val waitSymbol = new WaitSymbol
-                    waitSymbol.onDebug()
+                    val sym = new BlockingSymbol
+                    sym.onDebug()
                     log.debug(/*spaces are for column alignment*/
-                      s"⟲ $waitSymbol$nr $name enqueues    $acquirer (currently locked by ${lockedBy.withCorrelId}) ...")
+                      s"⟲ $sym$nr $name enqueues    $acquirer (currently locked by ${lockedBy.withCorrelId}) ...")
                     mvar.put(acquirer)
                       .whenItTakesLonger(warnTimeouts)(_ =>
                         for (lockedBy <- mvar.tryRead) yield {
-                          waitSymbol.onInfo()
+                          sym.onInfo()
                           logger.info(
-                            s"⟲ $waitSymbol$nr $name: $acquirer is still waiting" +
+                            s"⟲ $sym$nr $name: $acquirer is still waiting" +
                               s" for ${waitingSince.elapsed.pretty}," +
                               s" currently locked by ${lockedBy getOrElse "None"} ...")
                         })
                       .map { _ =>
                         lazy val msg =
                           s"↘ 🟢$nr $name acquired by $acquirer after ${waitingSince.elapsed.pretty} ↘"
-                        if (waitSymbol.infoLogged) log.info(msg) else log.debug(msg)
+                        if (sym.infoLogged) log.info(msg) else log.debug(msg)
                         acquirer.startMetering()
                         Right(())
                     }
@@ -80,7 +84,8 @@ final class AsyncLock private(
                       if (!hasAcquired)
                         Left(())  // Locked again by someone else, so try again
                       else {
-                        if (!noMinorLog) log.trace(s"↘ $name acquired by $acquirer ↘")
+                        // "…" denotes just-in-time availability
+                        if (!noMinorLog) log.trace(s"↘ ⚪️$nr $name acquired by…$acquirer ↘")
                         acquirer.startMetering()
                         Right(())  // The lock is ours!
                       }
@@ -88,17 +93,17 @@ final class AsyncLock private(
             })
       })
 
-  private def release(acquirerToString: () => String, exitCase: ExitCase[Throwable]): Task[Unit] =
+  private def release(nr: Int, acquirerToString: () => String, exitCase: ExitCase[Throwable]): Task[Unit] =
     Task.defer {
-      exitCase match {
+      if (!noMinorLog) exitCase match {
         case ExitCase.Completed =>
-          if (!noMinorLog) log.trace(s"↙ $name released by ${acquirerToString()} ↙")
+          log.trace(s"↙ ⚪️$nr $name released by ${acquirerToString()} ↙")
 
         case ExitCase.Canceled =>
-          if (!noMinorLog) log.trace(s"↙❌ $name released by ${acquirerToString()} · Canceled ↙")
+          log.trace(s"↙ ⚫$nr $name released by ${acquirerToString()} · Canceled ↙")
 
         case ExitCase.Error(t) =>
-          if (!noMinorLog) log.trace(s"↙💥 $name released by ${acquirerToString()} · ${t.toStringWithCauses} ↙")
+          log.trace(s"↙ 💥$nr $name released by ${acquirerToString()} · ${t.toStringWithCauses} ↙")
       }
       lockM.flatMap(_.take).void
     }

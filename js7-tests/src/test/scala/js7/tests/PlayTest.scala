@@ -32,7 +32,7 @@ final class PlayTest extends OurTestSuite with ControllerAgentForScalaTest
     """
   private val versionIdIterator = Iterator.from(1).map(i => VersionId(s"v$i"))
   private val workflowPathIterator = Iterator.from(1).map(i => WorkflowPath(s"WORKFLOW-$i"))
-  private val orderIdIterator = Iterator.from(1).map(i => OrderId(s"🔵-$i"))
+  private val orderIdIterator = Iterator.from(1).map(i => OrderId(s"🔷-$i"))
 
   "Test" in {
     val workflowJson = json"""{

@@ -1,8 +1,9 @@
 package js7.base.log
 
-import js7.base.log.WaitSymbol.*
+import js7.base.log.BlockingSymbol.*
 
-final class WaitSymbol {
+/** Escalating symbols ⚪🟡🟠🔴 to show the patient retrys after a temporary blocking failure.*/
+final class BlockingSymbol {
   private var _index = 0
   private var _called = false
   private var _debugLogged = false
@@ -63,6 +64,6 @@ final class WaitSymbol {
     symbols(_index)
 }
 
-object WaitSymbol {
-  private val symbols = Array("⚪️", "🟡", "🟠", "🔴")
+object BlockingSymbol {
+  private val symbols = Array("⚪", "🟡", "🟠", "🔴")
 }

@@ -26,7 +26,7 @@ object DirectoryStateJvm
         }
         .map(path => path -> DirectoryState.Entry(path))
         .toMap))
-    logger.debug(
+    logger.trace(
       s"readDirectory '$directory' => ${directoryState.fileToEntry.size} files in ${since.elapsed.pretty}")
     directoryState
   }

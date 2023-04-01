@@ -20,8 +20,8 @@ import js7.base.utils.ByteUnits.toKBGB
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.common.akkahttp.WebLogDirectives.*
 import js7.common.http.AkkaHttpClient.{`x-js7-correlation-id`, `x-js7-request-id`, `x-js7-session`}
-import scala.concurrent.duration.Deadline.now
 import scala.concurrent.duration.*
+import scala.concurrent.duration.Deadline.now
 import scala.reflect.ClassTag
 
 /**
@@ -143,7 +143,7 @@ trait WebLogDirectives extends ExceptionHandling
 
     maybeResponse match {
       case Some(response) => sb.append(response.status.intValue)
-      case _ => sb.append("in ")
+      case _ => sb.append("-->")
     }
     sb.append(' ')
     // Let SessionToken and request number look like in AkkaHttpClient

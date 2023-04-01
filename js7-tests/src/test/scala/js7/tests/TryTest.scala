@@ -106,7 +106,7 @@ with BlockingItemUpdater
           tryWorkflow = Workflow.of(Fail()),
           catchWorkflow = Workflow.of(Fail())))))
 
-    val orderId = OrderId("❌")
+    val orderId = OrderId("🔻")
     controller.addOrderBlocking(FreshOrder(orderId, workflowPath))
     controller.eventWatch.await[OrderFailed](_.key == orderId)
     checkEventSeq(
@@ -132,7 +132,7 @@ with BlockingItemUpdater
           tryWorkflow = Workflow.of(Fail()),
           catchWorkflow = Workflow.empty))))
 
-    val orderId = OrderId("🟥")
+    val orderId = OrderId("♣️")
     controller.addOrderBlocking(FreshOrder(orderId, workflowPath))
     controller.eventWatch.await[OrderFinished](_.key == orderId)
 
@@ -161,7 +161,7 @@ with BlockingItemUpdater
         EmptyJob.execute(agentPath)))
     val Some(v) = updateItems(workflow)
 
-    val orderId = OrderId("⭕")
+    val orderId = OrderId("♦️")
     controller.addOrderBlocking(FreshOrder(orderId, workflow.path))
     controller.eventWatch.await[OrderFinished](_.key == orderId)
 
@@ -204,7 +204,7 @@ with BlockingItemUpdater
          |}""".stripMargin).orThrow
     val Some(v) = updateItems(workflow)
 
-    val orderId = OrderId("🔴")
+    val orderId = OrderId("♠️")
     controller.addOrderBlocking(FreshOrder(orderId, workflow.path))
     controller.eventWatch.await[OrderTerminated](_.key == orderId)
 
@@ -215,12 +215,12 @@ with BlockingItemUpdater
       OrderAttached(agentPath),
       OrderStarted,
       OrderForked(Vector(
-        "🥕" -> OrderId("🔴|🥕"),
-        "🍋" -> OrderId("🔴|🍋"),
-        "🌶" -> OrderId("🔴|🌶"))),
+        "🥕" -> OrderId("♠️|🥕"),
+        "🍋" -> OrderId("♠️|🍋"),
+        "🌶" -> OrderId("♠️|🌶"))),
       OrderDetachable,
       OrderDetached,
-      OrderJoined(Outcome.Failed(Some("Order:🔴|🍋 Failed;\nOrder:🔴|🌶 Failed"))),
+      OrderJoined(Outcome.Failed(Some("Order:♠️|🍋 Failed;\nOrder:♠️|🌶 Failed"))),
       OrderCaught(Position(0) / "catch+0" % 0),
       OrderAttachable(agentPath),
       OrderAttached(agentPath),
@@ -231,7 +231,7 @@ with BlockingItemUpdater
       OrderDetached,
       OrderFinished()))
 
-    checkEventSeq(OrderId("🔴|🍋"), controller.eventWatch.allKeyedEvents[OrderEvent], Vector(
+    checkEventSeq(OrderId("♠️|🍋"), controller.eventWatch.allKeyedEvents[OrderEvent], Vector(
       OrderProcessingStarted(subagentId),
       OrderProcessed(Outcome.Failed(None, NamedValues.rc(1))),
       OrderDetachable,

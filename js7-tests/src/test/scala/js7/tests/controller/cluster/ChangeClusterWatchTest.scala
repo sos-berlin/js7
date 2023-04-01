@@ -53,7 +53,7 @@ final class ChangeClusterWatchTest extends ControllerClusterTester
             a.clusterState().exists(_.isInstanceOf[ClusterState.Coupled]))
         }
 
-        logger.info("🔵 Same ClusterWatchId again")
+        logger.info("🔷 Same ClusterWatchId again")
 
         def whenProperRequestIsConfirmed() = primaryController.testEventBus
           .whenFuture_[ClusterWatchConfirmed](predicate = confirmed =>
@@ -71,7 +71,7 @@ final class ChangeClusterWatchTest extends ControllerClusterTester
           assert(confirmed.result == Right(()))
         }
 
-        logger.info("🔵 Different ClusterWatchId")
+        logger.info("🔷 Different ClusterWatchId")
         whenConfirmed = whenProperRequestIsConfirmed()
         val eventId = primaryController.eventWatch.lastAddedEventId
         withClusterWatchService(bClusterWatchId) { b =>
@@ -83,11 +83,11 @@ final class ChangeClusterWatchTest extends ControllerClusterTester
             rejectedClusterWatchId = bClusterWatchId,
             requestedClusterWatchId = aClusterWatchId)))
 
-          logger.info("🔵 Wait for expiration of aClusterWatchId")
+          logger.info("🔷 Wait for expiration of aClusterWatchId")
           assert(primaryController.eventWatch.await[ClusterWatchRegistered](after = eventId)
             .head.value.event.clusterWatchId == b.clusterWatchId)
 
-          logger.info("🔵 Start DUPLICATE ClusterWatch with SAME bClusterWatchId")
+          logger.info("🔷 Start DUPLICATE ClusterWatch with SAME bClusterWatchId")
           // bClusterWatchId is used twice, non-unique
           val executedPromise = Promise[ClusterWatchConfirmed]()
           val subscription = primaryController.testEventBus
@@ -110,7 +110,7 @@ final class ChangeClusterWatchTest extends ControllerClusterTester
             }
           }
 
-          logger.info("🔵 Now, the first bClusterWatch is invalid and cannot be used")
+          logger.info("🔷 Now, the first bClusterWatch is invalid and cannot be used")
           // ClusterWatchCounterpart detects this
           confirmed = primaryController.testEventBus.when[ClusterWatchConfirmed].await(99.s)
           assert(confirmed.command.clusterWatchId == b.clusterWatchId)
@@ -126,7 +126,7 @@ final class ChangeClusterWatchTest extends ControllerClusterTester
             == Some(bClusterWatchId))
         }
 
-        logger.info("🔵 Start bClusterWatchId again to allow primaryController to terminate")
+        logger.info("🔷 Start bClusterWatchId again to allow primaryController to terminate")
         // Allow primaryController to terminate by acknowledging ClusterActiveNodeShutdown event.
         whenConfirmed = whenProperRequestIsConfirmed()
         withClusterWatchService(bClusterWatchId) { b =>

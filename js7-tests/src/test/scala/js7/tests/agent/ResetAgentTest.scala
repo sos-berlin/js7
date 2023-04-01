@@ -240,7 +240,7 @@ final class ResetAgentTest extends OurTestSuite with ControllerAgentForScalaTest
 
         myAgent = directoryProvider.startAgent(agentPath) await 99.s
 
-        // Now, we the Agent is ours! It is dedicated to secondController
+        // Now, the Agent is our! It is dedicated to secondController
         secondController.eventWatch.await[AgentDedicated]()
 
         secondController.eventWatch.await[AgentCoupled]()

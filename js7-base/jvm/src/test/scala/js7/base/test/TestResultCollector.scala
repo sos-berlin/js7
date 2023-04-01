@@ -9,8 +9,10 @@ import js7.base.system.JavaHeapDump.dumpHeapTo
 import js7.base.test.LoggingTestAdder.Result
 import js7.base.thread.VirtualThreads.newMaybeVirtualThread
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichThrowable}
+import org.scalatest.exceptions.TestPendingException
 import scala.collection.mutable
 import scala.jdk.CollectionConverters.MapHasAsScala
+import scala.util.{Failure, Success, Try}
 
 private object TestResultCollector
 {
@@ -40,7 +42,7 @@ private object TestResultCollector
         .toVector
         .sortBy(th => (th._1.getName, th._1.threadId))
 
-      logger.debug(threadToTrace.size.toString + " threads:\n" +
+      logger.debug("Shutdown hook\n" + threadToTrace.size.toString + " threads:\n" +
         "━" * 80 + "\n" +
         threadToTrace.view.map(_._1.getName)
           .groupBy(name => ThreadNameRegex.findAllIn(name.reverse).group(2).reverse)
@@ -84,16 +86,28 @@ private object TestResultCollector
   def asString: String =
     synchronized {
       results
-        .sortWith((a, b) =>
-          if (a.prettyDuration != b.prettyDuration)
+        .sortWith { (a, b) =>
+          val at = weighTry(a.tried)
+          val bt = weighTry(b.tried)
+          if (at != bt)
+            at < bt
+          else if (a.prettyDuration != b.prettyDuration)
             a.duration < b.duration
           else
             a.prefix.compareTo(b.prefix) match {
               case 0 => a.testName == b.testName
               case i => i < 0
-            })
+            }
+        }
         .map(_.toSummaryLine)
         .mkString("\n")
+    }
+
+  private def weighTry(tried: Try[Unit]): Int =
+    tried match {
+      case Success(_) => 1
+      case Failure(_: TestPendingException) => 2
+      case Failure(_) => 3
     }
 
   java8Polyfill()

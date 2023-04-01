@@ -240,7 +240,7 @@ final class RetryTest extends OurTestSuite with ControllerAgentForScalaTest
       OrderMoved(Position(0) / catch_(2) % 0 / Then % 0),
       OrderFailed(Position(0) / catch_(2) % 0 / Then % 0))
 
-    val orderId = OrderId("🔵")
+    val orderId = OrderId("♣️")
     val afterEventId = eventWatch.lastAddedEventId
     controller.addOrderBlocking(FreshOrder(orderId, workflow.id.path))
     awaitAndCheckEventSeq[OrderFailed](afterEventId, orderId, expectedEvents)

@@ -8,10 +8,10 @@ for i in {1..1}; do
   echo "$row"
 done
 
-echo "$HELLO  🔵"
+echo "$HELLO  🟦"
 sleep 1
-echo "$HELLO  🔵 🔵"
+echo "$HELLO  🟦🟦"
 sleep 1
-echo "$HELLO  🔵 🔵 🔵"
+echo "$HELLO  🟦🟦🟦"
 sleep 1
-echo "$HELLO  🔵 🔵 🔵 🔵"
+echo "$HELLO  🟦🟦🟦🟦"

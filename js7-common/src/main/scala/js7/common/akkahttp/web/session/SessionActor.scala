@@ -91,14 +91,14 @@ extends Actor {
       val checkedSession = (tokenToSession.get(token), idsOrUser) match {
         case (None, _) =>
           val users = idsOrUser.fold(_.mkString("|"), _.id)
-          logger.debug(s"⛔ InvalidSessionToken: Rejecting unknown session token of $users")
+          logger.debug(s"🔒 InvalidSessionToken: Rejecting unknown session token of $users")
           Left(InvalidSessionTokenProblem)
 
         case (Some(session), Right(user)) if !user.id.isAnonymous && user.id != session.currentUser.id =>
           tryUpdateLatelyAuthenticatedUser(user, session)
 
         case (Some(session), Left(userIds)) if !userIds.contains(session.currentUser.id) =>
-          logger.debug("⛔ InvalidSessionToken: HTTPS distinguished name UserIds " +
+          logger.debug("🔒 InvalidSessionToken: HTTPS distinguished name UserIds " +
             s"'${userIds.mkString(", ")}' do not include Sessions's ${session.currentUser.id}")
           Left(InvalidSessionTokenProblem)
 
@@ -139,7 +139,7 @@ extends Actor {
       logger.info(s"${session.sessionToken} for ${session.sessionInit.loginUser.id} switched to ${newUser.id}")
       Right(session)
     } else {
-      logger.debug(s"⛔ InvalidSessionToken: ${session.sessionToken}: Rejecting session token " +
+      logger.debug(s"🔒 InvalidSessionToken: ${session.sessionToken}: Rejecting session token " +
         s"belonging to ${session.currentUser.id} but sent by ${newUser.id}")
       Left(InvalidSessionTokenProblem)
     }

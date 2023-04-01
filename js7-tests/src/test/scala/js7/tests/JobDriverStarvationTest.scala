@@ -77,12 +77,12 @@ final class JobDriverStarvationTest extends OurTestSuite with ControllerAgentFor
         .map(FreshOrder(_, workflow.path, deleteWhenTerminated = true)))
       .await(99.s).orThrow
     firstOrdersProcessing.await(99.s)
-    logger.info("🔵 " + itemsPerSecondString(t.elapsed, n, "started"))
+    logger.info("🔷 " + itemsPerSecondString(t.elapsed, n, "started"))
 
     t = now
     TestJob.continue(orderIds.size)
     allOrdersDeleted.await(99.s)
-    logger.info("🔵 " + itemsPerSecondString(t.elapsed, n, "completed"))
+    logger.info("🔷 " + itemsPerSecondString(t.elapsed, n, "completed"))
 
     proxy.stop.await(99.s)
   }

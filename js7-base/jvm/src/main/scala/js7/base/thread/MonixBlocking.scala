@@ -1,6 +1,8 @@
 package js7.base.thread
 
 import izumi.reflect.Tag
+import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.thread.Futures.implicits.*
 import js7.base.utils.StackTraces.StackTraceThrowable
 import monix.eval.Task
@@ -14,12 +16,16 @@ import scala.util.control.NonFatal
   */
 object MonixBlocking
 {
+  private val logger = Logger[this.type]
+
   object syntax {
     implicit class RichTask[A](private val underlying: Task[A]) extends AnyVal
     {
-      def await(duration: Duration)(implicit s: Scheduler): A =
+      def await(duration: Duration)(implicit s: Scheduler): A = {
         try
-          underlying
+          logger
+            .debugTask(
+              underlying)
             .runSyncStep
             .fold(_.runSyncUnsafe(duration), identity)
         catch { case NonFatal(t) =>
@@ -28,6 +34,7 @@ object MonixBlocking
           }
           throw t
         }
+      }
 
       def awaitInfinite(implicit s: Scheduler): A =
         await(Duration.Inf)

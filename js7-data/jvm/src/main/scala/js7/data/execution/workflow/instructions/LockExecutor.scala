@@ -1,6 +1,8 @@
 package js7.data.execution.workflow.instructions
 
+import js7.base.log.Logger
 import js7.base.utils.ScalaUtils.syntax.*
+import js7.data.execution.workflow.instructions.LockExecutor.*
 import js7.data.order.Order
 import js7.data.order.OrderEvent.{OrderDetachable, OrderLocksAcquired, OrderLocksQueued, OrderLocksReleased}
 import js7.data.state.StateView
@@ -27,9 +29,13 @@ extends EventInstructionExecutor
                     .acquire(order.id, _)/*check only*/)
                   .rightAs(
                     OrderLocksAcquired(instruction.demands) :: Nil)
-              else if (order.isState[Order.WaitingForLock])
+              else if (order.isState[Order.WaitingForLock]) {
+                // Caller trys too often ???
+                logger.trace(s"🟡 ${order.id} is still WaitingForLock: ${
+                  instruction.demands.zip(availability)
+                    .collect { case (demand, false) => demand.lockPath }.mkString(" ")}")
                 Right(Nil)
-              else
+              } else
                 state
                   .foreachLockDemand(instruction.demands)(_
                     .enqueue(order.id, _)/*check only*/)
@@ -49,4 +55,8 @@ extends EventInstructionExecutor
           OrderDetachable
         else
           OrderLocksReleased(instr.lockPaths))))
+}
+
+object LockExecutor {
+  private val logger = Logger[this.type]
 }

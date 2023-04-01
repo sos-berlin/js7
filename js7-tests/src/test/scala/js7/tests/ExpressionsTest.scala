@@ -81,19 +81,19 @@ object ExpressionsTest {
   private val TestWorkflow = WorkflowParser.parse(WorkflowPath("WORKFLOW") ~ "INITIAL", workflowNotation).orThrow
 
   private val orders = Vector(
-    FreshOrder(OrderId("❌"), TestWorkflow.id.path),
-    FreshOrder(OrderId("⭕️"), TestWorkflow.id.path, arguments = Map("ARG" -> StringValue("ARG-VALUE"))),
-    FreshOrder(OrderId("🔺"), TestWorkflow.id.path, arguments = Map(
+    FreshOrder(OrderId("🟧"), TestWorkflow.id.path),
+    FreshOrder(OrderId("🟩"), TestWorkflow.id.path, arguments = Map("ARG" -> StringValue("ARG-VALUE"))),
+    FreshOrder(OrderId("🟦"), TestWorkflow.id.path, arguments = Map(
       "ARG" -> StringValue("ARG-VALUE"),
       "ARG2" -> StringValue("ARG2-VALUE"),
       "RETURN_CODE" -> StringValue("1"))))
 
   private val ExpectedEvents = Map(
-    OrderId("❌") -> Vector(
+    OrderId("🟧") -> Vector(
       OrderAdded(TestWorkflow.id),
       OrderOutcomeAdded(Outcome.Disrupted(Problem("No such named value: ARG"))),
       OrderFailed(Position(0))),
-    OrderId("⭕️") -> Vector(
+    OrderId("🟩") -> Vector(
       OrderAdded(TestWorkflow.id, Map("ARG" -> StringValue("ARG-VALUE"))),
       OrderMoved(Position(0) / Then % 0),
       OrderAttachable(TestAgentPath),
@@ -105,7 +105,7 @@ object ExpressionsTest {
       OrderDetachable,
       OrderDetached,
       OrderFailed(Position(0) / Then % 0)),
-    OrderId("🔺") -> Vector(
+    OrderId("🟦") -> Vector(
       OrderAdded(TestWorkflow.id, Map(
         "ARG" -> StringValue("ARG-VALUE"),
         "ARG2" -> StringValue("ARG2-VALUE"),

@@ -144,21 +144,23 @@ extends AutoCloseable
 
   def runOrder(order: FreshOrder): Seq[Stamped[OrderEvent]] = {
     val timeout = 99.s
-    val eventId = eventWatch.lastAddedEventId
-    addOrderBlocking(order)
-    eventWatch
-      .observe(EventRequest.singleClass[OrderEvent](eventId, Some(timeout + 9.s)))
-      .filter(_.value.key == order.id)
-      .map(o => o.copy(value = o.value.event))
-      .takeWhileInclusive { case Stamped(_, _, event) =>
-        if (order.deleteWhenTerminated)
-          event != OrderDeleted && !event.isInstanceOf[OrderFailed]
-        else
-          !event.isInstanceOf[OrderTerminated]
-      }
-      .toL(Vector)
-      .executeOn(scheduler)
-      .await(timeout)
+    logger.debugTask("runOrder", order.id)(Task.defer {
+      val eventId = eventWatch.lastAddedEventId
+      addOrderBlocking(order)
+      eventWatch
+        .observe(EventRequest.singleClass[OrderEvent](eventId, Some(timeout + 9.s)))
+        .filter(_.value.key == order.id)
+        .map(o => o.copy(value = o.value.event))
+        .takeWhileInclusive { case Stamped(_, _, event) =>
+          if (order.deleteWhenTerminated)
+            event != OrderDeleted && !event.isInstanceOf[OrderFailed]
+          else
+            !event.isInstanceOf[OrderTerminated]
+        }
+        .toL(Vector)
+        .executeOn(scheduler)
+        .logWhenItTakesLonger
+    }).await(timeout)
   }
 
   def waitUntilReady(): Unit =

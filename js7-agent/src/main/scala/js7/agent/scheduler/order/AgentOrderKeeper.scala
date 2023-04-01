@@ -137,7 +137,7 @@ final class AgentOrderKeeper(
     }
 
     def onStillTerminating() =
-      logger.info(s"Still terminating, waiting for ${orderRegister.size} orders" +
+      logger.info(s"🟠 Still terminating, waiting for ${orderRegister.size} orders" +
         s", ${jobRegister.size} jobs" +
         (!snapshotFinished ?? ", and the snapshot"))
 

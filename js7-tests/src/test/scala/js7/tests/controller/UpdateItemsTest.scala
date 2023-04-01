@@ -69,7 +69,7 @@ with BlockingItemUpdater
   }
 
   "ControllerCommand.UpdateRepo with VersionedItem" in {
-    val orderIds = Vector(OrderId("🔺"), OrderId("🔵"))
+    val orderIds = Vector(OrderId("🔺"), OrderId("🔷"))
     controller.api.updateItems(Observable(AddVersion(V1), AddOrChangeSigned(toSignedString(workflow1)))).await(99.s).orThrow
     controller.api.addOrders(Observable(FreshOrder(orderIds(0), workflowPath))).await(99.s).orThrow
 

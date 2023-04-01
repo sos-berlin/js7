@@ -110,7 +110,7 @@ with BlockingItemUpdater
   }
 
   "An order reaching end of workflow is suspendible" in {
-    val order = FreshOrder(OrderId("⭕️"), singleJobWorkflow.path)
+    val order = FreshOrder(OrderId("🔻"), singleJobWorkflow.path)
     addOrder(order).await(99.s).orThrow
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
 
@@ -143,7 +143,7 @@ with BlockingItemUpdater
 
   "Suspend with kill" in {
     deleteIfExists(triggerFile)
-    val order = FreshOrder(OrderId("🟥"), singleJobWorkflow.path)
+    val order = FreshOrder(OrderId("♣️"), singleJobWorkflow.path)
     addOrder(order).await(99.s).orThrow
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
 
@@ -198,7 +198,7 @@ with BlockingItemUpdater
 
   "Suspend and resume orders between two jobs" in {
     deleteIfExists(triggerFile)
-    val order = FreshOrder(OrderId("🔴"), twoJobsWorkflow.path)
+    val order = FreshOrder(OrderId("♦️"), twoJobsWorkflow.path)
     addOrder(order).await(99.s).orThrow
 
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
@@ -355,7 +355,7 @@ with BlockingItemUpdater
 
   "Resume with position a still suspending order is inhibited" in {
     deleteIfExists(triggerFile)
-    val order = FreshOrder(OrderId("🔵"), twoJobsWorkflow.path)
+    val order = FreshOrder(OrderId("🟦"), twoJobsWorkflow.path)
     addOrder(order).await(99.s).orThrow
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
 

@@ -70,8 +70,8 @@ final class StampedTest extends OurTestSuite {
     assert(Stamped.checkOrdering(0, Seq(Stamped(1, ""), Stamped(2, "")))
       == Right(()))
     assert(Stamped.checkOrdering(1, Seq(Stamped(1, ""), Stamped(2, "")))
-      == Left(Problem("Duplicate EventId 1/1970-01-01T00:00:00.000Z-001")))
+      == Left(Problem("Duplicate EventId 1/1970-01-01T00:00:00Z")))
     assert(Stamped.checkOrdering(3, Seq(Stamped(4, ""), Stamped(2, "")))
-      == Left(Problem("EventId 2/1970-01-01T00:00:00.000Z-002 <= 4/1970-01-01T00:00:00.000Z-004")))
+      == Left(Problem("EventId 2/1970-01-01T00:00:00Z <= 4/1970-01-01T00:00:00Z")))
   }
 }

@@ -29,7 +29,7 @@ final class OrderParameterTest extends OurTestSuite with ControllerAgentForScala
   protected def agentPaths = agentPath :: Nil
   protected def items = Seq(jobResource, workflow)
 
-  private val orderIdIterator = Iterator.from(1).map(i => OrderId(s"🔵-$i"))
+  private val orderIdIterator = Iterator.from(1).map(i => OrderId(s"🔷-$i"))
 
   "a" in {
     runWithWorkflowPath(

@@ -74,11 +74,10 @@ trait SubagentExecutor
               val orderIds = orderToProcessing.toMap.keys.toVector.sorted
               if (dontWaitForDirector) Task {
                 for (orderId <- orderIds) logger.warn(
-                  shutDown.toString + ": Agent Director has not yet acknowledged " +
-                    "processing of " + orderId)
+                  s"$shutDown: Agent Director has not yet acknowledged processing of $orderId")
               } else Task.defer {
                 for (orderId <- orderIds) logger.info(
-                  s"Delaying $shutDown until Agent Director has acknowledged processing of $orderId")
+                  s"🟡 Delaying $shutDown until Agent Director has acknowledged processing of $orderId")
                   // Await process termination and DetachProcessedOrder commands
                 orderToProcessing.whenStopped
                   .logWhenItTakesLonger("Director-acknowledged Order processes")
@@ -217,6 +216,9 @@ trait SubagentExecutor
 
   protected def releaseEvents(eventId: EventId): Task[Checked[Unit]] =
     journal.releaseEvents(eventId)
+
+  def subagentId: Option[SubagentId] =
+    dedicatedOnce.toOption.map(_.subagentId)
 }
 
 object SubagentExecutor

@@ -61,6 +61,9 @@ extends Service
 
   @TestOnly
   def testEventBus = commandExecutor.testEventBus
+
+  override def toString =
+    s"BareSubagent(${commandExecutor.subagentId getOrElse "not dedicated"})"
 }
 
 object BareSubagent

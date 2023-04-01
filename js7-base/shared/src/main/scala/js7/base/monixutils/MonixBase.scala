@@ -60,6 +60,9 @@ object MonixBase
           case _ => task
         }
 
+      def raceWith[B >: A](other: Task[B]): Task[Either[A, B]] =
+        Task.race(task, other)
+
       def logWhenItTakesLonger(implicit enclosing: sourcecode.Enclosing): Task[A] =
         logWhenItTakesLonger2("in", "continues", enclosing.value)
 
@@ -73,7 +76,7 @@ object MonixBase
           var infoLogged = false
           task
             .whenItTakesLonger()(duration => Task {
-              val m = if (duration < InfoWorryDuration) "🟡" else if (!infoLogged) "🟠" else "🔴"
+              val m = if (duration < InfoWorryDuration) "🟡" else "🟠"
               def msg = s"$m Still waiting $preposition $what for ${duration.pretty}"
               if (duration < InfoWorryDuration)
                 logger.debug(msg)
@@ -84,9 +87,9 @@ object MonixBase
             })
             .guaranteeCase(exit => Task(if (infoLogged) exit match {
               case ExitCase.Completed => logger.info(
-                s"🟢 $what $completed after ${since.elapsed.pretty}")
+                s"🔵 $what $completed after ${since.elapsed.pretty}")
               case ExitCase.Canceled => logger.info(
-                s"❌ $what canceled after ${since.elapsed.pretty}")
+                s"⚫ $what canceled after ${since.elapsed.pretty}")
               case ExitCase.Error(t) => logger.info(
                 s"💥 $what failed after ${since.elapsed.pretty} with ${t.toStringWithCauses}")
             }))

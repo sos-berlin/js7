@@ -3,6 +3,8 @@ package js7.base.monixutils
 import cats.effect.concurrent.Deferred
 import cats.syntax.apply.*
 import izumi.reflect.Tag
+import js7.base.log.Logger
+import js7.base.log.Logger.syntax.*
 import js7.base.problem.Problems.{DuplicateKey, UnknownKeyProblem}
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.ScalaUtils.syntax.*
@@ -162,7 +164,7 @@ class AsyncMap[K: Tag, V: Tag](initial: Map[K, V] = Map.empty[K, V])
 
 object AsyncMap
 {
-  private val logger = scribe.Logger[this.type]
+  private val logger = Logger[this.type]
 
   def apply[K: Tag, V: Tag](initial: Map[K, V] = Map.empty[K, V]) =
     new AsyncMap(initial)
@@ -205,7 +207,8 @@ object AsyncMap
       }
 
     final val stop: Task[Unit] =
-      initiateStop *> whenStopped
+      logger.traceTask(
+        initiateStop *> whenStopped)
 
     override protected[monixutils] final def onEntryInsert(): Checked[Unit] =
       Option(stoppingProblem).toLeft(())

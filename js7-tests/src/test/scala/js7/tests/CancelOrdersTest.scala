@@ -72,7 +72,7 @@ with BlockingItemUpdater
   }
 
   "Cancel a finishing order" in {
-    val order = FreshOrder(OrderId("🔺"), singleJobWorkflow.path, Map("sleep" -> 1))
+    val order = FreshOrder(OrderId("🔸"), singleJobWorkflow.path, Map("sleep" -> 1))
     controller.addOrderBlocking(order)
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
     controller.api.executeCommand(CancelOrders(Set(order.id), CancellationMode.FreshOrStarted()))
@@ -91,13 +91,13 @@ with BlockingItemUpdater
   }
 
   "Cancelling (mode=FreshOnly) a started order is not possible" in {
-    val order = FreshOrder(OrderId("❌"), twoJobsWorkflow.path, Map("sleep" -> 5))
+    val order = FreshOrder(OrderId("♠️"), twoJobsWorkflow.path, Map("sleep" -> 5))
     controller.addOrderBlocking(order)
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
 
     // Controller knows, the order has started
     assert(controller.api.executeCommand(CancelOrders(Set(order.id), CancellationMode.FreshOnly)).await(99.seconds) ==
-      Left(CancelStartedOrderProblem(OrderId("❌"))))
+      Left(CancelStartedOrderProblem(OrderId("♠️"))))
     controller.api
       .executeCommand(
         CancelOrders(Set(order.id), CancellationMode.FreshOrStarted(Some(CancellationMode.Kill()))))
@@ -106,7 +106,7 @@ with BlockingItemUpdater
   }
 
   "Cancel a started order between two jobs" in {
-    val order = FreshOrder(OrderId("🔴"), twoJobsWorkflow.path, Map("sleep" -> 2))
+    val order = FreshOrder(OrderId("♣️"), twoJobsWorkflow.path, Map("sleep" -> 2))
     controller.addOrderBlocking(order)
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
     controller.api.executeCommand(CancelOrders(Set(order.id), CancellationMode.FreshOrStarted()))
@@ -125,7 +125,7 @@ with BlockingItemUpdater
   }
 
   "Cancel an order and the first job" in {
-    val order = FreshOrder(OrderId("⭕"), singleJobWorkflow.path, Map("sleep" -> 100))
+    val order = FreshOrder(OrderId("🔻"), singleJobWorkflow.path, Map("sleep" -> 100))
     testCancelFirstJob(order, Some(singleJobWorkflow.id /: Position(0)), immediately = false)
   }
 
@@ -147,14 +147,14 @@ with BlockingItemUpdater
   }
 
   "Cancel an order and a certain running job with SIGKILL" in {
-    val order = FreshOrder(OrderId("🔵"), singleJobWorkflow.path, Map("sleep" -> 100))
+    val order = FreshOrder(OrderId("🟦"), singleJobWorkflow.path, Map("sleep" -> 100))
     testCancelFirstJob(order, Some(singleJobWorkflow.id /: Position(0)),
       immediately = true)
   }
 
   if (isUnix) {
     "Cancel with sigkillDelay" in {
-      val order = FreshOrder(OrderId("🟥"), sigkillDelayWorkflow.path)
+      val order = FreshOrder(OrderId("🟩"), sigkillDelayWorkflow.path)
       val t = now
       testCancel(order, None, awaitTrapping = true, immediately = false,
         mode => Vector(
@@ -268,7 +268,7 @@ with BlockingItemUpdater
   }
 
   "A canceled Order is not resumable" in {
-    val order = FreshOrder(OrderId("⚫"), promptingWorkflow.path)
+    val order = FreshOrder(OrderId("⬛"), promptingWorkflow.path)
     controller.addOrderBlocking(order)
     eventWatch.await[OrderPrompted](_.key == order.id)
 

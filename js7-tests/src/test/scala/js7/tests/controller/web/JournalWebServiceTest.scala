@@ -145,7 +145,7 @@ final class JournalWebServiceTest extends OurTestSuite with BeforeAndAfterAll wi
         scribe.debug(s"observeWithHeartbeat: ${bytes.utf8String.trim}")
       }
 
-    val orderId = OrderId("🔵")
+    val orderId = OrderId("🔷")
     httpControllerApi.addOrder(FreshOrder(orderId, workflow.path)) await 99.s
     controller.eventWatch.await[OrderFinished](_.key == orderId)
     awaitAndAssert(lines.exists(_ contains "OrderFinished"))

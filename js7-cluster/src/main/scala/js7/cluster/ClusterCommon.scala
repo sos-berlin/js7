@@ -125,7 +125,7 @@ private[cluster] final class ClusterCommon private(
                     if (problem.is(ClusterNodeLossNotConfirmedProblem)
                       || problem.is(ClusterWatchInactiveNodeProblem)) {
                       logger.warn(
-                        s"🚫 ClusterWatch did not agree to '${event.getClass.simpleScalaName}' event: $problem")
+                        s"⛔ ClusterWatch did not agree to '${event.getClass.simpleScalaName}' event: $problem")
                       testEventBus.publish(ClusterWatchDisagreedToActivation)
                       if (event.isInstanceOf[ClusterPassiveLost]) {
                         haltJava(

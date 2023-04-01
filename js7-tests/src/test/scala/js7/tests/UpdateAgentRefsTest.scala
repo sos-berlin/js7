@@ -81,7 +81,7 @@ final class UpdateAgentRefsTest extends OurTestSuite with DirectoryProviderForSc
           AddVersion(v1),
           AddOrChangeSigned(toSignedString(workflow withVersion v1))))
       .await(99.s).orThrow
-    controller.runOrder(FreshOrder(OrderId("🔵"), workflow.path, deleteWhenTerminated = true))
+    controller.runOrder(FreshOrder(OrderId("🔷"), workflow.path, deleteWhenTerminated = true))
   }
 
   private lazy val outdatedState = agentFileTree.stateDir.resolveSibling(Paths.get("state~"))

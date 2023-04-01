@@ -31,7 +31,7 @@ extends Service.StoppableByRequest
     startService(
       untilStopRequested
         .guarantee(Task {
-          logger.debug("watchService.close()")
+          logger.debug(s"watchService.close() — $directory")
           watchService.close()
         }))
 
@@ -50,7 +50,8 @@ extends Service.StoppableByRequest
   private def directoryWatchResource: Resource[Task, WatchKey] =
     Resource.make(
       repeatWhileIOException(options, Task {
-        logger.debug(s"register watchService $kinds, ${highSensitivity.mkString(",")} $directory")
+        logger.debug(
+          s"register watchService $kinds, ${highSensitivity.mkString(",")} $directory")
         directory.register(watchService, kinds.toArray: Array[WatchEvent.Kind[?]], highSensitivity*)
       })
     )(release = watchKey => Task {
@@ -64,7 +65,7 @@ extends Service.StoppableByRequest
   private def poll(canceled: => Boolean): Task[Seq[DirectoryWatchEvent]] =
     Task.defer {
       val since = now
-      def prefix = s"pollEvents ... ${since.elapsed.pretty} => "
+      def prefix = s"pollEvents($directory) ... ${since.elapsed.pretty} => "
       try {
         val events = pollWatchKey()
         logger.trace(prefix + (if (events.isEmpty) "timed out" else events.mkString(", ")))
@@ -78,7 +79,7 @@ extends Service.StoppableByRequest
        case NonFatal(t: ClosedWatchServiceException) =>
          // At least for testing, check ClosedWatchServiceException exception as early as here,
          // otherwise RejectedExecutionException may be thrown later.
-         logger.debug(s"${t.toStringWithCauses}")
+         logger.debug(s"$prefix => ${t.toStringWithCauses}")
          Task.pure(Nil)
       }
     }.executeOn(iox.scheduler)

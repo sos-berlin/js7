@@ -25,7 +25,7 @@ final class VersionedItemPathTest extends OurTestSuite
     assert(json""" "${APath.Anonymous.string}" """.as[APath].isLeft)
     assert(json""" "//ERROR" """.as[APath].isLeft)
     assert(json""" "PATH" """.as[APath] == Right(APath("PATH")))
-    assert(json""" "🔵" """.as[APath] == Right(APath("🔵")))
+    assert(json""" "🔷" """.as[APath] == Right(APath("🔷")))
   }
 
   "JSON with generic VersionedItemPath.jsonCodec" in {
@@ -92,7 +92,7 @@ final class VersionedItemPathTest extends OurTestSuite
     assert(APath.checked("a@b") == Left(InvalidNameProblem("APath", "a@b")))
     assert(APath.checked("a,b") == Left(InvalidNameProblem("APath", "a,b")))
     assert(APath.checked("a//b") == Left(InvalidNameProblem("APath", "a//b")))
-    assert(APath.checked("🔵") == Right(APath("🔵")))
+    assert(APath.checked("🔷") == Right(APath("🔷")))
     assert(APath.checked(s"a${VersionSeparator}b") == Left(InvalidNameProblem("APath", "a~b")))
   }
 

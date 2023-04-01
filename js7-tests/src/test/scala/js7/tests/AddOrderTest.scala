@@ -39,7 +39,7 @@ final class AddOrderTest extends OurTestSuite with ControllerAgentForScalaTest
   protected def items = Seq(aWorkflow, bWorkflow, c1Workflow, c2Workflow)
 
   "AddOrder" in {
-    val orderId = OrderId("🔵")
+    val orderId = OrderId("🔷")
     val events = controller.runOrder(FreshOrder(orderId, aWorkflow.path))
     assert(events.map(_.value) == Seq(
       OrderAdded(aWorkflow.id),
@@ -56,7 +56,7 @@ final class AddOrderTest extends OurTestSuite with ControllerAgentForScalaTest
   }
 
   "AddOrder with duplicate OrderId" in {
-    val orderId = OrderId("🟠")
+    val orderId = OrderId("🟧")
     val events = controller.runOrder(FreshOrder(orderId, aWorkflow.path))
     assert(events.map(_.value) == Seq(
       OrderAdded(aWorkflow.id),

@@ -39,7 +39,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
   protected def items = Nil
 
   "finish" in {
-    val orderId = OrderId("🟠")
+    val orderId = OrderId("♣️")
     checkEvents[OrderFinished](
       Workflow.of(
         EmptyJob.execute(agentPath),
@@ -62,7 +62,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
   }
 
   "finish with if" in {
-    val orderId = OrderId("🟢")
+    val orderId = OrderId("♠️")
     checkEvents[OrderFinished](
       Workflow.of(
         EmptyJob.execute(agentPath),
@@ -93,7 +93,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
   }
 
   "finish in fork, finish first" in {
-    val orderId = OrderId("🔵")
+    val orderId = OrderId("♥️")
     val events = runUntil[OrderTerminated](
       Workflow.of(
         Fork(
@@ -161,7 +161,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
           "🍋" -> Workflow.of(
             EmptyJob.execute(agentPath)))))
 
-    val orderId = OrderId("🟣")
+    val orderId = OrderId("🟪")
 
     withTemporaryItem(workflow.withId(workflowId.path)) { workflow =>
       controller.addOrderBlocking(FreshOrder(orderId, workflow.path))
@@ -210,11 +210,11 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
           OrderForked(Vector(
             "🥕" -> orderId / "🥕",
             "🍋" -> orderId / "🍋")),
-          OrderJoined(Outcome.Failed(Some("Order:🟣|🥕 has been cancelled"))),
+          OrderJoined(Outcome.Failed(Some("Order:🟪|🥕 has been cancelled"))),
           OrderFailed(Position(0))))
 
       assert(controllerState.idToOrder(orderId).historicOutcomes == Seq(
-        HistoricOutcome(Position(0), Outcome.Failed(Some("Order:🟣|🥕 has been cancelled")))))
+        HistoricOutcome(Position(0), Outcome.Failed(Some("Order:🟪|🥕 has been cancelled")))))
     }
   }
 

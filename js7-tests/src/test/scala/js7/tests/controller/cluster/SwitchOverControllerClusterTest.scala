@@ -33,7 +33,7 @@ final class SwitchOverControllerClusterTest extends ControllerClusterTester
       backup.runController(httpPort = Some(backupControllerPort), dontWaitUntilReady = true) { backupController =>
         primary.runController(httpPort = Some(primaryControllerPort)) { implicit primaryController =>
           primaryController.eventWatch.await[ClusterCoupled]()
-          val orderId = OrderId("⭕")
+          val orderId = OrderId("🟧")
           primaryController.addOrderBlocking(FreshOrder(orderId, TestWorkflow.path))
           addOrders(orderIds)
           primaryController.eventWatch.await[OrderProcessingStarted](_.key == orderId)
@@ -59,7 +59,7 @@ final class SwitchOverControllerClusterTest extends ControllerClusterTester
           primaryController.eventWatch.await[ClusterCoupled](after = lastEventId)
           assert(backupController.journalActorState.isRequiringClusterAcknowledgement)
 
-          val orderId = OrderId("🔴")
+          val orderId = OrderId("🟩")
           backupController.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path))
           backupController.eventWatch.await[OrderProcessingStarted](_.key == orderId, timeout = timeout)
           primaryController.eventWatch.await[OrderProcessingStarted](_.key == orderId)
@@ -75,7 +75,7 @@ final class SwitchOverControllerClusterTest extends ControllerClusterTester
           lastEventId = primaryController.eventWatch.await[OrderFinished](_.key == orderId, timeout = timeout).head.eventId
 
           locally {
-            val orderId = OrderId("❌")
+            val orderId = OrderId("🟦")
             primaryController.addOrderBlocking(FreshOrder(orderId, TestWorkflow.id.path))
             primaryController.eventWatch.await[OrderProcessingStarted](_.key == orderId, timeout = timeout)
           }

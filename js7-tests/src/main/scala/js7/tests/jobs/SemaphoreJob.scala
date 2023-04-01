@@ -39,7 +39,7 @@ extends InternalJob
                         exitCase match {
                           case ExitCase.Error(_) => logger.debug(s"💥 $orderId $exitCase")
                           case ExitCase.Canceled => logger.debug(s"⚫️ $orderId $exitCase")
-                          case ExitCase.Completed => logger.debug(s"🟢 $orderId acquired")
+                          case ExitCase.Completed => logger.debug(s"🔵 $orderId acquired")
                         }
                       })
                 })

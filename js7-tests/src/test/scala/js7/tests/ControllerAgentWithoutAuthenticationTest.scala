@@ -133,5 +133,5 @@ object ControllerAgentWithoutAuthenticationTest
   private val pathExecutable = PathExecutable("EXECUTABLE.cmd")
   private val workflow = Workflow.of(WorkflowPath("WORKFLOW") ~ versionId,
     Execute(WorkflowJob(agentPath, pathExecutable)))
-  private val orderId = OrderId("🔵")
+  private val orderId = OrderId("🔷")
 }

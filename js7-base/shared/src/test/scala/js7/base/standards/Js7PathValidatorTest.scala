@@ -18,7 +18,7 @@ final class Js7PathValidatorTest extends OurTestSuite
 
   "Valid paths" in {
     assert(checked("A") == Right("A"))
-    assert(checked("🔵") == Right("🔵"))
+    assert(checked("🔷") == Right("🔷"))
     assert(checked("A-B").isRight)
     assert(checked("A--B---C").isRight)
     assert(checked("folder/a-b").isRight)
@@ -53,7 +53,7 @@ object Js7PathValidatorTest
 
   def checkValid[A](checked: String => Checked[A]): Unit = {
     assert(checked("A").isRight)
-    assert(checked("🔵").isRight)
+    assert(checked("🔷").isRight)
     assert(checked("A-B").isRight)
     assert(checked("A--B---C").isRight)
     assert(checked("folder/a-b").isRight)

@@ -19,7 +19,7 @@ private final class DirectoryWatcher(
 {
   private def readDirectoryAndObserveForever(state: DirectoryState)
   : Observable[(Seq[DirectoryEvent], DirectoryState)] =
-    logger.debugObservable(
+    logger.traceObservable(
       Observable
         .tailRecM(state) { state =>
           val since = now
@@ -34,7 +34,7 @@ private final class DirectoryWatcher(
 
   private[watch] def readDirectoryAndObserve(state: DirectoryState)
   : Observable[(Seq[DirectoryEvent], DirectoryState)] =
-    logger.debugObservable(
+    logger.traceObservable(
       Observable
         .fromTask(readDirectory map state.diffTo)
         .filter(_.nonEmpty)
@@ -55,7 +55,7 @@ object DirectoryWatcher
 
   def observable(state: DirectoryState, options: WatchOptions)(implicit iox: IOExecutor)
   : Observable[Seq[DirectoryEvent]] =
-    logger.debugObservable(
+    logger.traceObservable(
       Observable
         .fromResource(BasicDirectoryWatcher.resource(options))
         .flatMap { basicWatcher =>

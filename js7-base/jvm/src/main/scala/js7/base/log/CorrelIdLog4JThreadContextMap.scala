@@ -109,7 +109,7 @@ object CorrelIdLog4JThreadContextMap
   }
 
   def logStatistics(): Unit =
-    Logger[this.type].debug(statistics)
+    Logger[this.type].trace(statistics)
 
   private def debug(string: => String): Unit =
     if (isDebug) println(myClassName + " - " + string)

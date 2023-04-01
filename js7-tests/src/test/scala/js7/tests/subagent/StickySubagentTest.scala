@@ -52,7 +52,7 @@ final class StickySubagentTest extends OurTestSuite with ControllerAgentForScala
   "StickySubagent with SubagentSelection" in {
     enableSubagents(a1SubagentId -> false, a2SubagentId -> false)
 
-    val orderId = OrderId("🔵")
+    val orderId = OrderId("♣️")
     controller.addOrderBlocking(FreshOrder(orderId, withSubagentSelectionWorkflow.path))
 
     eventWatch.await[OrderPrompted](_.key == orderId)
@@ -246,7 +246,7 @@ final class StickySubagentTest extends OurTestSuite with ControllerAgentForScala
 
   "Fail in StickySubagent at Controller" in {
     enableSubagents(aSubagentId -> true, a1SubagentId -> false, a2SubagentId -> false)
-    val orderId = OrderId("🔴")
+    val orderId = OrderId("♦️")
     val events = controller.runOrder(FreshOrder(orderId, failAtControllerWorkflow.path))
       .map(_.value)
     assert(events == Seq(
@@ -260,7 +260,7 @@ final class StickySubagentTest extends OurTestSuite with ControllerAgentForScala
 
   "Fail in StickySubagent at Agent" in {
     enableSubagents(aSubagentId -> true, a1SubagentId -> false, a2SubagentId -> false)
-    val orderId = OrderId("🔴🔴")
+    val orderId = OrderId("♦️♦️")
     val events = controller.runOrder(FreshOrder(orderId, failAtAgentWorkflow.path))
       .map(_.value)
     assert(events == Seq(

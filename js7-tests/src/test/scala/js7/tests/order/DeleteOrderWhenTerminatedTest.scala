@@ -34,7 +34,7 @@ final class DeleteOrderWhenTerminatedTest extends OurTestSuite with ControllerAg
   }
 
   "Delete a fresh order" in {
-    val order = FreshOrder(OrderId("🔵"), quickWorkflow.id.path, scheduledFor = Some(Timestamp.now + 1.s))
+    val order = FreshOrder(OrderId("🟦"), quickWorkflow.id.path, scheduledFor = Some(Timestamp.now + 1.s))
     controller.addOrderBlocking(order)
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
     controller.api.executeCommand(DeleteOrdersWhenTerminated(Seq(order.id))).await(99.s).orThrow
@@ -55,7 +55,7 @@ final class DeleteOrderWhenTerminatedTest extends OurTestSuite with ControllerAg
   }
 
   "Delete a finished order" in {
-    val order = FreshOrder(OrderId("🔴"), slowWorkflow.id.path)
+    val order = FreshOrder(OrderId("🟧"), slowWorkflow.id.path)
     controller.addOrderBlocking(order)
     eventWatch.await[OrderProcessingStarted](_.key == order.id)
     controller.api.executeCommand(DeleteOrdersWhenTerminated(Seq(order.id))).await(99.s).orThrow

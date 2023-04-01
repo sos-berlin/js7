@@ -6,7 +6,7 @@ import cats.syntax.flatMap.*
 import js7.base.eventbus.EventPublisher
 import js7.base.fs2utils.Fs2PubSub
 import js7.base.log.Logger.syntax.*
-import js7.base.log.{CorrelId, Logger, WaitSymbol}
+import js7.base.log.{BlockingSymbol, CorrelId, Logger}
 import js7.base.monixutils.MonixBase.syntax.*
 import js7.base.monixutils.MonixDeadline
 import js7.base.monixutils.MonixDeadline.now
@@ -127,7 +127,7 @@ extends Service.StoppableByRequest
     Task.defer {
       _requested.set(Some(requested))
       val since = now
-      val waitSymbol = new WaitSymbol
+      val sym = new BlockingSymbol
       pubsub.publish(request)
         .logWhenItTakesLonger(s"ClusterWatch.send($request)")
         .*>(Task(
@@ -139,8 +139,8 @@ extends Service.StoppableByRequest
             Task.raiseError(RequestTimeoutException)))
         .onErrorRestartLoop(()) {
           case (RequestTimeoutException, _, retry) =>
-            waitSymbol.onWarn()
-            logger.warn(waitSymbol.toString +
+            sym.onWarn()
+            logger.warn(sym.toString +
               " Still trying to get a confirmation from " +
               clusterWatchId.fold("any ClusterWatch")(id =>
                 id.toString + (requested.clusterWatchIdChangeAllowed ?? " (or other)")) +
@@ -152,23 +152,23 @@ extends Service.StoppableByRequest
         }
         .flatTap {
           case Left(problem) =>
-            Task(logger.warn(s"🚫 ClusterWatch rejected ${request.toShortString}: $problem"))
+            Task(logger.warn(s"⛔ ClusterWatch rejected ${request.toShortString}: $problem"))
 
           case Right(confirmation) =>
             Task {
-              if (waitSymbol.warnLogged) logger.info(
+              if (sym.warnLogged) logger.info(
                 s"🟢 ${confirmation.clusterWatchId} finally confirmed ${
                   request.toShortString} after ${since.elapsed.pretty}")
             }
         }
         .guaranteeCase {
-          case ExitCase.Error(t) if waitSymbol.warnLogged => Task {
+          case ExitCase.Error(t) if sym.warnLogged => Task {
             logger.warn(
               s"💥 ${request.toShortString} => ${t.toStringWithCauses} · after ${since.elapsed.pretty}")
           }
-          case ExitCase.Canceled if waitSymbol.warnLogged => Task {
+          case ExitCase.Canceled if sym.warnLogged => Task {
             logger.info(
-              s"⚫️ ${request.toShortString} => Canceled after ${since.elapsed.pretty}")
+              s"⚫ ${request.toShortString} => Canceled after ${since.elapsed.pretty}")
           }
           case _ => Task.unit
         }
@@ -250,7 +250,7 @@ extends Service.StoppableByRequest
 
           case _ =>
             if (confirm.requestId != requested.id) {
-              logger.debug(s"🚫 confirm.requestId=${confirm.requestId}, but requested=${requested.id}")
+              logger.debug(s"⛔ confirm.requestId=${confirm.requestId}, but requested=${requested.id}")
               val problem = ClusterWatchRequestDoesNotMatchProblem
               logger.debug(s"$problem id=${confirm.requestId} but _requested=${requested.id}")
               Left(problem)
