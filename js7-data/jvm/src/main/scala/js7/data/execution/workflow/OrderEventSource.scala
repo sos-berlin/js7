@@ -72,20 +72,24 @@ final class OrderEventSource(state: StateView)
               else
                 executorService.toEvents(instruction(order.workflowPosition), order, state)
                   // Multiple returned events are expected to be independent
-                  // and are applied to the same idToOrder !!!
-                  .flatMap(events => events
-                    .flatTraverse {
-                      case orderId <-: (moved: OrderMoved) =>
-                        applyMoveInstructions(idToOrder(orderId), moved)
-                          .map(_.map(orderId <-: _))
+                  // and are applied to the same order !!!
+                  .flatMap { events =>
+                    val (first, maybeLast) = events.splitAt(events.length - 1)
+                    maybeLast
+                      .flatTraverse {
+                        case orderId <-: (moved: OrderMoved) =>
+                          applyMoveInstructions(idToOrder(orderId), moved)
+                            .map(_.map(orderId <-: _))
 
-                      case orderId <-: OrderFailedIntermediate_(outcome, uncatchable) =>
-                        // OrderFailedIntermediate_ is used internally only
-                        fail(idToOrder(orderId), outcome, uncatchable)
-                          .map(_.map(orderId <-: _))
+                        case orderId <-: OrderFailedIntermediate_(outcome, uncatchable) =>
+                          // OrderFailedIntermediate_ is used internally only
+                          fail(idToOrder(orderId), outcome, uncatchable)
+                            .map(_.map(orderId <-: _))
 
-                      case o => Right(o :: Nil)
-                    })
+                        case o => Right(o :: Nil)
+                      }
+                      .map(first ::: _)
+                  }
 
             case Right(events) => Right(events)
           }
