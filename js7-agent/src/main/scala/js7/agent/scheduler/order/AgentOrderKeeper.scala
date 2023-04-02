@@ -46,12 +46,12 @@ import js7.data.job.{JobKey, JobResource}
 import js7.data.order.OrderEvent.{OrderAttachedToAgent, OrderCoreEvent, OrderDetached, OrderProcessed}
 import js7.data.order.{Order, OrderEvent, OrderId}
 import js7.data.orderwatch.{FileWatch, OrderWatchPath}
+import js7.data.state.OrderEventHandler
 import js7.data.state.OrderEventHandler.FollowUp
-import js7.data.state.{OrderEventHandler, StateView}
 import js7.data.subagent.{SubagentId, SubagentItem, SubagentSelection, SubagentSelectionId}
 import js7.data.workflow.instructions.Execute
 import js7.data.workflow.instructions.executable.WorkflowJob
-import js7.data.workflow.{Workflow, WorkflowControl, WorkflowPath, WorkflowPathControl}
+import js7.data.workflow.{Workflow, WorkflowControl, WorkflowPathControl}
 import js7.journal.recover.Recovered
 import js7.journal.state.FileStatePersistence
 import js7.journal.{JournalActor, MainJournalingActor}
@@ -812,28 +812,7 @@ final class AgentOrderKeeper(
     }
 
   private def orderEventSource =
-  //new OrderEventSource(persistence.currentState)
-    new OrderEventSource(new StateView {
-      def isAgent = true
-
-      override def maybeAgentPath =
-        persistence.currentState.maybeAgentPath
-
-      def controllerId = AgentOrderKeeper.this.controllerId
-
-      def idToOrder = persistence.currentState.idToOrder
-
-      def orders = persistence.currentState.idToOrder.values
-
-      def idToWorkflow = persistence.currentState.idToWorkflow
-
-      def workflowPathToId(workflowPath: WorkflowPath) =
-        persistence.currentState.workflowPathToId(workflowPath)
-
-      def keyToUnsignedItemState = persistence.currentState.keyToUnsignedItemState
-
-      def keyToItem = persistence.currentState.keyToItem
-    })
+    new OrderEventSource(persistence.currentState)
 
   override def toString = "AgentOrderKeeper"
 }

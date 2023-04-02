@@ -2,10 +2,12 @@ package js7.data.execution.workflow
 
 import cats.instances.either.*
 import cats.instances.list.*
+import cats.syntax.flatMap.*
 import cats.syntax.traverse.*
 import js7.base.problem.Checked.catchNonFatalFlatten
 import js7.base.problem.{Checked, Problem}
 import js7.base.utils.Assertions.assertThat
+import js7.base.utils.ScalaUtils.checkedCast
 import js7.base.utils.ScalaUtils.syntax.*
 import js7.data.Problems.CancelStartedOrderProblem
 import js7.data.agent.AgentPath
@@ -28,11 +30,14 @@ import scala.reflect.ClassTag
 /**
   * @author Joacim Zschimmer
   */
-final class OrderEventSource(state: StateView)
+final class OrderEventSource(state: StateView/*idToOrder must be a Map!!!*/)
   (implicit executorService: InstructionExecutorService)
 {
   import executorService.clock
-  import state.{idToOrder, idToWorkflow, isAgent}
+  import state.{idToWorkflow, isAgent}
+
+  // TODO Updates to StateView should be solved immutably. Refactor OrderEventSource?
+  private var idToOrder = state.idToOrder
 
   def nextEvents(orderId: OrderId): Seq[KeyedEvent[OrderActorEvent]] = {
     val order = idToOrder(orderId)
@@ -50,7 +55,10 @@ final class OrderEventSource(state: StateView)
         else if (state.isWorkflowSuspended(order.workflowPath))
           Nil
         else
-          checkedNextEvents(order) |> (invalidToEvent(order, _)))
+          checkedNextEvents(order) match {
+            case Left(problem) => invalidToEvent(order, problem)
+            case Right(keyedEvents) => keyedEvents
+          })
   }
 
   private def checkedNextEvents(order: Order[Order.State])
@@ -75,20 +83,22 @@ final class OrderEventSource(state: StateView)
                   // and are applied to the same order !!!
                   .flatMap { events =>
                     val (first, maybeLast) = events.splitAt(events.length - 1)
-                    maybeLast
-                      .flatTraverse {
-                        case orderId <-: (moved: OrderMoved) =>
-                          applyMoveInstructions(idToOrder(orderId), moved)
-                            .map(_.map(orderId <-: _))
+                    updateIdToOrder(first) >>
+                      maybeLast
+                        .flatTraverse {
+                          case orderId <-: (moved: OrderMoved) =>
+                            applyMoveInstructions(idToOrder(orderId), moved)
+                              .map(_.map(orderId <-: _))
 
-                        case orderId <-: OrderFailedIntermediate_(outcome, uncatchable) =>
-                          // OrderFailedIntermediate_ is used internally only
-                          fail(idToOrder(orderId), outcome, uncatchable)
-                            .map(_.map(orderId <-: _))
+                          case orderId <-: OrderFailedIntermediate_(outcome, uncatchable) =>
+                            // OrderFailedIntermediate_ is used internally only
+                            fail(idToOrder(orderId), outcome, uncatchable)
+                              .map(_.map(orderId <-: _))
 
-                        case o => Right(o :: Nil)
-                      }
-                      .map(first ::: _)
+                          case o => Right(o :: Nil)
+                        }
+                        .flatTap(updateIdToOrder)
+                        .map(first ::: _)
                   }
 
             case Right(events) => Right(events)
@@ -96,11 +106,33 @@ final class OrderEventSource(state: StateView)
         ).flatMap(checkEvents)
     }
 
+  private def updateIdToOrder(keyedEvents: IterableOnce[KeyedEvent[OrderActorEvent]])
+  : Checked[Unit] = {
+    val it = keyedEvents.iterator
+    if (!it.hasNext)
+      Checked.unit
+    else
+      checkedCast[Map[OrderId, Order[Order.State]]](idToOrder)
+        .flatMap { idToOrder_ =>
+          var iToO = idToOrder_
+          var problem: Problem = null
+          while (it.hasNext && problem == null) {
+            val KeyedEvent(orderId, event) = it.next()
+            iToO.checked(orderId).flatMap(_.applyEvent(event)) match {
+              case Left(prblm) => problem = prblm
+              case Right(order) => iToO = iToO.updated(order.id, order)
+            }
+          }
+          this.idToOrder = iToO
+          (problem == null) !! problem
+      }
+  }
+
   private def checkEvents(keyedEvents: Seq[KeyedEvent[OrderActorEvent]]) = {
     var id2o = Map.empty[OrderId, Checked[Order[Order.State]]]
     var problem: Option[Problem] = None
     for (KeyedEvent(orderId, event) <- keyedEvents if problem.isEmpty) {
-      id2o.getOrElse(orderId, idToOrder.checked(orderId)).flatMap(_.applyEvent(event)) match {
+      id2o.getOrElse(orderId, state.idToOrder.checked(orderId)).flatMap(_.applyEvent(event)) match {
         case Left(prblm) => problem = Some(prblm)
         case Right(order) => id2o += orderId -> Right(order)
       }
@@ -110,27 +142,23 @@ final class OrderEventSource(state: StateView)
 
   private def invalidToEvent(
     order: Order[Order.State],
-    checkedEvents: Checked[Seq[KeyedEvent[OrderActorEvent]]])
-  : Seq[KeyedEvent[OrderActorEvent]] =
-    checkedEvents match {
-      case Left(problem) =>
-        val events =
-          if (order.isFailable)
-            fail(order, Some(Outcome.Disrupted(problem)), uncatchable = true) match {
-              case Left(prblm) =>
-                logger.debug(s"WARN ${order.id}: $prblm")
-                OrderOutcomeAdded(Outcome.Disrupted(problem)) ::
-                  OrderBroken() ::
-                  (order.isAttached && order.isInDetachableState).thenList(
-                    OrderDetachable)
-              case Right(events) => events
-            }
-          else
-            OrderOutcomeAdded(Outcome.Disrupted(problem)) :: OrderBroken() :: Nil
-        events.map(order.id <-: _)
-
-      case Right(o) => o
-    }
+    problem: Problem)
+  : Seq[KeyedEvent[OrderActorEvent]] = {
+    val events =
+      if (order.isFailable)
+        fail(order, Some(Outcome.Disrupted(problem)), uncatchable = true) match {
+          case Left(prblm) =>
+            logger.debug(s"WARN ${order.id}: $prblm")
+            OrderOutcomeAdded(Outcome.Disrupted(problem)) ::
+              OrderBroken() ::
+              (order.isAttached && order.isInDetachableState).thenList(
+                OrderDetachable)
+          case Right(events) => events
+        }
+      else
+        OrderOutcomeAdded(Outcome.Disrupted(problem)) :: OrderBroken() :: Nil
+    events.map(order.id <-: _)
+   }
 
   private[data] def fail(
     order: Order[Order.State],
@@ -177,7 +205,7 @@ final class OrderEventSource(state: StateView)
           // TODO Transfer parent order to Agent to access joinIfFailed there !
           // For now, order will be moved to Controller, which joins the orders anyway.
           val joinIfFailed = order.parent
-            .flatMap(forkOrder => instruction_[ForkInstruction](forkOrder).toOption)
+            .flatMap(forkOrderId => instruction_[ForkInstruction](forkOrderId).toOption)
             .fold(false)(_.joinIfFailed)
           if (joinIfFailed)
             OrderFailedInFork(failPosition) :: Nil
