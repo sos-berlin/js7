@@ -18,7 +18,7 @@ import js7.data.order.{FreshOrder, OrderEvent, OrderId, OrderObstacle, OrderObst
 import js7.data.value.StringValue
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.{If, Prompt, TryInstruction}
-import js7.data.workflow.position.BranchId.Try_
+import js7.data.workflow.position.BranchId.{Try_, try_}
 import js7.data.workflow.position.Position
 import js7.data.workflow.{Workflow, WorkflowControl, WorkflowControlId, WorkflowId, WorkflowPath}
 import js7.data_for_java.controller.{JControllerCommand, JControllerState}
@@ -47,7 +47,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
     """
 
   protected val agentPaths = Seq(agentPath)
-  protected val items = Seq(aWorkflow, tryWorkflow)
+  protected val items = Seq(aWorkflow)
   protected implicit def implicitEventWatch: StrictEventWatch = eventWatch
   protected implicit def implicitControllerApi: ControllerApi = controllerApi
 
@@ -172,17 +172,53 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
   }
 
   "Breakpoint in a Try block" in {
-    val orderId = OrderId("🟦")
-    controllerApi
-      .executeCommand(ControlWorkflow(tryWorkflow.id, addBreakpoints = Set(
-        Position(1) / Try_ % 0)))
-      .await(99.s).orThrow
+    val workflow = Workflow(WorkflowPath("IN-TRY-WORKFLOW"), Seq(
+      EmptyJob.execute(agentPath),
+      TryInstruction(
+        Workflow.of(EmptyJob.execute(agentPath)),
+        Workflow.of(EmptyJob.execute(agentPath)))))
 
-    controllerApi.addOrder(FreshOrder(orderId, tryWorkflow.id.path)).await(99.s).orThrow
-    eventWatch.await[OrderSuspended](_.key == orderId)
+    withTemporaryItem(workflow) { workflow =>
+      val orderId = OrderId("🟦")
+      controllerApi
+        .executeCommand(ControlWorkflow(workflow.id, addBreakpoints = Set(
+          Position(1) / Try_ % 0)))
+        .await(99.s).orThrow
 
-    controllerApi.executeCommand(ResumeOrder(orderId)).await(99.s).orThrow
-    eventWatch.await[OrderFinished](_.key == orderId)
+      controllerApi.addOrder(FreshOrder(orderId, workflow.id.path)).await(99.s).orThrow
+      eventWatch.await[OrderSuspended](_.key == orderId)
+
+      assert(controller.controllerState.await(99.s).idToOrder(orderId).position ==
+        Position(1) / try_(0) % 0)
+
+      controllerApi.executeCommand(ResumeOrder(orderId)).await(99.s).orThrow
+      eventWatch.await[OrderFinished](_.key == orderId)
+    }
+  }
+
+  "Breakpoint at a Try block" in {
+    val workflow = Workflow(WorkflowPath("AT-TRY-WORKFLOW"), Seq(
+      EmptyJob.execute(agentPath),
+      TryInstruction(
+        Workflow.of(EmptyJob.execute(agentPath)),
+        Workflow.of(EmptyJob.execute(agentPath)))))
+
+    withTemporaryItem(workflow) { workflow =>
+      val orderId = OrderId("🟪")
+      controllerApi
+        .executeCommand(ControlWorkflow(workflow.id, addBreakpoints = Set(
+          Position(1))))
+        .await(99.s).orThrow
+
+      controllerApi.addOrder(FreshOrder(orderId, workflow.id.path)).await(99.s).orThrow
+      eventWatch.await[OrderSuspended](_.key == orderId)
+
+      assert(controller.controllerState.await(99.s).idToOrder(orderId).position ==
+        Position(1))
+
+      controllerApi.executeCommand(ResumeOrder(orderId)).await(99.s).orThrow
+      eventWatch.await[OrderFinished](_.key == orderId)
+    }
   }
 
   "Breakpoint at an If instruction" in {
@@ -228,12 +264,6 @@ object ControlWorkflowBreakpointTest
     EmptyJob.execute(agentPath),
     EmptyJob.execute(agentPath),
     EmptyJob.execute(agentPath)))
-
-  private val tryWorkflow = Workflow(WorkflowPath("TRY-WORKFLOW") ~ "INITIAL", Seq(
-    EmptyJob.execute(agentPath),
-    TryInstruction(
-      Workflow.of(EmptyJob.execute(agentPath)),
-      Workflow.of(EmptyJob.execute(agentPath)))))
 
   private val aWorkflowControlId = WorkflowControlId(aWorkflow.id)
 
