@@ -26,7 +26,7 @@ import js7.data.order.OrderObstacle.WaitingForOtherTime
 import js7.data.order.{CycleState, FreshOrder, OrderEvent, OrderId, OrderObstacle, Outcome}
 import js7.data.value.expression.ExpressionParser.expr
 import js7.data.workflow.instructions.Schedule.{Continuous, Periodic, Scheme, Ticking}
-import js7.data.workflow.instructions.{Break, Cycle, Fail, Fork, If, LockInstruction, Schedule, Stop, TryInstruction}
+import js7.data.workflow.instructions.{Break, Cycle, Fail, Fork, If, LockInstruction, Options, Schedule, Stop, TryInstruction}
 import js7.data.workflow.position.{BranchId, Position}
 import js7.data.workflow.{Workflow, WorkflowPath}
 import js7.tests.CycleTest.*
@@ -473,7 +473,8 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
                       TryInstruction(
                         Workflow.of(
                           EmptyJob.execute(agentPath),
-                          Break(),
+                          If(expr("true"), Workflow.of(
+                            Break())),
                           Fail()),
                         Workflow.of(
                           Fail()))))))))))
@@ -500,7 +501,7 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
           OrderAttached(agentPath),
           OrderProcessingStarted(Some(subagentId)),
           OrderProcessed(Outcome.succeeded),
-          OrderMoved(Position(0) / "cycle+end=1679436000000,i=1" % 0 / "then" % 0 / "lock" % 0 / "try+0" % 1),
+          OrderMoved(Position(0) / "cycle+end=1679436000000,i=1" % 0 / "then" % 0 / "lock" % 0 / "try+0" % 1 / "then" % 0),
           OrderDetachable,
           OrderDetached,
           OrderLocksReleased(List(lock.path)),
@@ -509,6 +510,58 @@ with ControllerAgentForScalaTest with ScheduleTester with BlockingItemUpdater
           OrderCycleFinished(None),
 
           OrderMoved(Position(1)),
+          OrderFinished(None),
+          OrderDeleted))
+      }
+    }
+
+    "Break in Options" in {
+      clock.resetTo(local("2023-03-21T00:00"))
+
+      val workflow = Workflow(
+        WorkflowPath("OPTIONS-BREAK-WORKFLOW"),
+        calendarPath = Some(calendar.path),
+        instructions = Seq(
+          Options(stopOnFailure = Some(true),
+            block = Workflow.of(
+              Cycle(
+                Schedule(Seq(Scheme(
+                  AdmissionTimeScheme(Seq(AlwaysPeriod)),
+                  Continuous(pause = 0.s, limit = Some(1))))),
+                Workflow.of(
+                  EmptyJob.execute(agentPath),
+                  If(expr("true"), Workflow.of(
+                    Break())),
+                  Fail()))))))
+
+      withTemporaryItem(workflow) { workflow =>
+        val orderId = OrderId("#2023-03-21#OPTIONS-BREAK")
+        controller.api.addOrder(FreshOrder(orderId, workflow.path, deleteWhenTerminated = true))
+          .await(99.s).orThrow
+        eventWatch.await[OrderTerminated](_.key == orderId)
+        eventWatch.await[OrderDeleted](_.key == orderId)
+
+        assert(eventWatch.eventsByKey[OrderEvent](orderId) == Seq(
+          OrderAdded(workflow.id, deleteWhenTerminated = true),
+          OrderMoved(Position(0) / "options" % 0),
+          OrderStarted,
+
+          OrderCyclingPrepared(
+            CycleState(end = local("2023-03-22T00:00"), 0, 1, next = Timestamp.Epoch)),
+          OrderCycleStarted,
+
+          OrderAttachable(agentPath),
+          OrderAttached(agentPath),
+          OrderProcessingStarted(Some(subagentId)),
+          OrderProcessed(Outcome.succeeded),
+          OrderMoved(Position(0) / "options" % 0 / "cycle+end=1679436000000,i=1" % 1 / "then" % 0),
+          OrderMoved(Position(0) / "options" % 0 / "cycle+end=1679436000000,i=1" % 1),
+
+          OrderCycleFinished(None),
+
+          OrderMoved(Position(1)),
+          OrderDetachable,
+          OrderDetached,
           OrderFinished(None),
           OrderDeleted))
       }

@@ -39,7 +39,7 @@ extends PositionOrLabel
   def /:(workflowId: WorkflowId) = new WorkflowPosition(workflowId, this)
 
   def checkedParent: Checked[Position] =
-    parent.toRight(Problem.pure(s"Position $toString has not parent position"))
+    parent.toRight(Problem.pure(s"Position $toString has no parent position"))
 
   def parent: Option[Position] =
     for (last <- branchPath.lastOption) yield
