@@ -84,8 +84,8 @@ extends AutoCloseable
   def orderApi: OrderApi =
     runningController.orderApi
 
-  def controllerState: Task[ControllerState] =
-    runningController.controllerState
+  def controllerState(): ControllerState =
+    runningController.controllerState.await(99.s)
 
   def sessionRegister: SessionRegister[SimpleSession] =
     runningController.sessionRegister

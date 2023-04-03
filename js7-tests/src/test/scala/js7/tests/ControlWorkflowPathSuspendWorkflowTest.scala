@@ -66,7 +66,7 @@ extends OurTestSuite with DirectoryProviderForScalaTest
 
   "ControlWorkflowPath suspend=true" in {
     controller = directoryProvider.newController()
-    def controllerState = controller.controllerState.await(99.s)
+    def controllerState = controller.controllerState()
     implicit val controllerApi = controller.api
 
     var eventId = suspendWorkflow(aWorkflow.path, true, ItemRevision(1),
@@ -133,14 +133,14 @@ extends OurTestSuite with DirectoryProviderForScalaTest
       UnsignedSimpleItemChanged.apply)
     eventWatch.await[OrderFinished](_.key == aOrderId, after = eventId)
 
-    assert(controller.controllerState.await(99.s)
+    assert(controller.controllerState()
       .keyTo(WorkflowPathControl)(WorkflowPathControlPath(aWorkflow.path)) ==
       WorkflowPathControl(
         WorkflowPathControlPath(aWorkflow.path),
         suspended = false,
         itemRevision = Some(ItemRevision(6))))
 
-    assert(controller.controllerState.await(99.s)
+    assert(controller.controllerState()
       .itemToAgentToAttachedState(WorkflowPathControlPath(aWorkflow.path)) ==
       Map(aAgentPath -> Attached(Some(ItemRevision(6)))))
 
@@ -160,7 +160,7 @@ extends OurTestSuite with DirectoryProviderForScalaTest
   }
 
   "After Agent recouples, the attachable WorkflowPathControl is attached" in {
-    def controllerState = controller.controllerState.await(99.s)
+    def controllerState = controller.controllerState()
     val eventId = eventWatch.lastAddedEventId
     aAgent = directoryProvider.startAgent(aAgentPath).await(99.s)
 
@@ -224,13 +224,13 @@ extends OurTestSuite with DirectoryProviderForScalaTest
     B2SemaphoreJob.continue()
     eventWatch.await[OrderFinished](_.key == bOrderId)
 
-    controller.controllerState.await(99.s)
+    controller.controllerState()
       .keyTo(WorkflowPathControl)(WorkflowPathControlPath(bWorkflow.path)) ==
         WorkflowPathControl(
           WorkflowPathControlPath(bWorkflow.path),
           suspended = true,
           itemRevision = Some(ItemRevision(1)))
-    controller.controllerState.await(99.s)
+    controller.controllerState()
       .itemToAgentToAttachedState(WorkflowPathControlPath(bWorkflow.path)) ==
       Map(bAgentPath -> Attached(Some(ItemRevision(1))))
   }
@@ -262,7 +262,7 @@ extends OurTestSuite with DirectoryProviderForScalaTest
 
     assert(bAgent.currentAgentState().keyTo(WorkflowPathControl).isEmpty)
     // Controller has implicitly deleted WorkflowPathControl
-    assert(controller.controllerState.await(99.s).keyTo(WorkflowPathControl).isEmpty)
+    assert(controller.controllerState().keyTo(WorkflowPathControl).isEmpty)
   }
 
   private def suspendWorkflow(workflowPath: WorkflowPath, suspend: Boolean, revision: ItemRevision,

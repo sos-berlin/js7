@@ -100,7 +100,7 @@ extends OurTestSuite with DirectoryProviderForScalaTest
   }
 
   "After Agent recouples, the attachable WorkflowControl is attached" in {
-    def controllerState = controller.controllerState.await(99.s)
+    def controllerState = controller.controllerState()
     val eventId = eventWatch.lastAddedEventId
     aAgent = directoryProvider.startAgent(aAgentPath).await(99.s)
 
@@ -171,13 +171,13 @@ extends OurTestSuite with DirectoryProviderForScalaTest
     B2SemaphoreJob.continue()
     eventWatch.await[OrderFinished](_.key == bOrderId)
 
-    controller.controllerState.await(99.s)
+    controller.controllerState()
       .keyTo(WorkflowControl)(bWorkflowControlId) ==
         WorkflowControl(
           bWorkflowControlId,
           breakpoints = Set(Position(1)),
           itemRevision = Some(ItemRevision(1)))
-    controller.controllerState.await(99.s)
+    controller.controllerState()
       .itemToAgentToAttachedState(bWorkflowControlId) ==
       Map(bAgentPath -> Attached(Some(ItemRevision(1))))
   }
@@ -209,7 +209,7 @@ extends OurTestSuite with DirectoryProviderForScalaTest
 
     assert(bAgent.currentAgentState().keyTo(WorkflowControl).isEmpty)
     // Controller has implicitly deleted WorkflowControl
-    assert(controller.controllerState.await(99.s).keyTo(WorkflowControl).isEmpty)
+    assert(controller.controllerState().keyTo(WorkflowControl).isEmpty)
   }
 }
 

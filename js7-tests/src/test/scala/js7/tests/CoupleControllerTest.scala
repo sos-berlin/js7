@@ -6,7 +6,6 @@ import js7.base.configutils.Configs.HoconStringInterpolator
 import js7.base.io.file.FileUtils.syntax.*
 import js7.base.log.Logger
 import js7.base.test.OurTestSuite
-import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.data.agent.AgentRefStateEvent.{AgentCouplingFailed, AgentReady, AgentShutDown}
 import js7.data.agent.{AgentPath, AgentRefState}
@@ -65,7 +64,7 @@ final class CoupleControllerTest extends OurTestSuite with DirectoryProviderForS
       }
 
       controller.eventWatch.await[AgentShutDown](after = lastEventId)
-      assert(controller.controllerState.await(99.s).keyTo(AgentRefState)(agentPath).couplingState ==
+      assert(controller.controllerState().keyTo(AgentRefState)(agentPath).couplingState ==
         DelegateCouplingState.ShutDown)
 
       // DELETE OLD AGENTS'S EVENTS THE CONTROLLER HAS NOT READ => UnknownEventIdProblem

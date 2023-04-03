@@ -99,7 +99,8 @@ final class RecoveryTest extends OurTestSuite
                   logger.error("Test failed due to unexpected events:\n" + orderStampeds.mkString("\n"))
                   throw t
                 }
-                assert(controller.controllerState.await(99.s).idToOrder.keySet == (orders :+ QuickOrder).map(_.id).toSet)
+                assert(controller.controllerState().idToOrder.keySet ==
+                  (orders :+ QuickOrder).map(_.id).toSet)
               }
             }
           }

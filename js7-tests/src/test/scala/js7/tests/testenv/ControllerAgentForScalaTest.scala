@@ -71,7 +71,7 @@ trait ControllerAgentForScalaTest extends DirectoryProviderForScalaTest {
   protected def waitUntilReady = true
 
   protected final def controllerState: ControllerState =
-    controller.controllerState.await(99.s)
+    controller.controllerState()
 
   protected final def orderToObstacles(orderId: OrderId)(implicit clock: WallClock)
   : Checked[Set[OrderObstacle]] = {

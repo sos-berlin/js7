@@ -43,7 +43,7 @@ with BlockingItemUpdater
       controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
       eventWatch.await[OrderStopped](_.key == orderId)
 
-      val order = controller.controllerState.await(99.s).idToOrder(orderId)
+      val order = controllerState.idToOrder(orderId)
       assert(order.isState[Stopped] && order.isStarted && !order.isFailed)
 
       controller.api
@@ -70,7 +70,7 @@ with BlockingItemUpdater
       controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
       eventWatch.await[OrderStopped](_.key == orderId)
 
-      val order = controller.controllerState.await(99.s).idToOrder(orderId)
+      val order = controllerState.idToOrder(orderId)
       assert(order.isState[Stopped] && order.isDetached)
 
       controller.api

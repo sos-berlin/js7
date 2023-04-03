@@ -188,8 +188,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
       controller.api.addOrder(FreshOrder(orderId, workflow.id.path)).await(99.s).orThrow
       eventWatch.await[OrderSuspended](_.key == orderId)
 
-      assert(controller.controllerState.await(99.s).idToOrder(orderId).position ==
-        Position(1) / try_(0) % 0)
+      assert(controllerState.idToOrder(orderId).position == Position(1) / try_(0) % 0)
 
       controller.api.executeCommand(ResumeOrder(orderId)).await(99.s).orThrow
       eventWatch.await[OrderFinished](_.key == orderId)
@@ -213,8 +212,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
       controller.api.addOrder(FreshOrder(orderId, workflow.id.path)).await(99.s).orThrow
       eventWatch.await[OrderSuspended](_.key == orderId)
 
-      assert(controller.controllerState.await(99.s).idToOrder(orderId).position ==
-        Position(1))
+      assert(controllerState.idToOrder(orderId).position == Position(1))
 
       controller.api.executeCommand(ResumeOrder(orderId)).await(99.s).orThrow
       eventWatch.await[OrderFinished](_.key == orderId)
@@ -245,7 +243,7 @@ extends OurTestSuite with ControllerAgentForScalaTest with BlockingItemUpdater
 
       for (position <- positions) {
         eventId = eventWatch.await[OrderSuspended](_.key == orderId, after = eventId).last.eventId
-        assert(controller.controllerState.await(99.s).idToOrder(orderId).position == position)
+        assert(controllerState.idToOrder(orderId).position == position)
         controller.api.executeCommand(ResumeOrder(orderId)).await(99.s).orThrow
       }
 

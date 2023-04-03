@@ -49,7 +49,7 @@ with BlockingItemUpdater
       controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
       eventWatch.await[OrderStopped](_.key == orderId)
 
-      val order = controller.controllerState.await(99.s).idToOrder(orderId)
+      val order = controllerState.idToOrder(orderId)
       assert(order.isState[Stopped] && order.isFailed)
 
       controller.api
@@ -110,7 +110,7 @@ with BlockingItemUpdater
       controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
       eventWatch.await[OrderStopped](_.key == orderId)
 
-      val stoppedPosition = controller.controllerState.await(99.s).idToOrder(orderId).position
+      val stoppedPosition = controllerState.idToOrder(orderId).position
       assert(stoppedPosition == Position(0) / "options" % 0 / "lock" % 1 / "lock" % 0)
 
       controller.api
@@ -162,7 +162,7 @@ with BlockingItemUpdater
       controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
       eventWatch.await[OrderStopped](_.key == orderId)
 
-      val order = controller.controllerState.await(99.s).idToOrder(orderId)
+      val order = controllerState.idToOrder(orderId)
       assert(order.isState[Stopped] && order.isFailed && order.isDetached)
 
       controller.api
@@ -199,7 +199,7 @@ with BlockingItemUpdater
       controller.api.addOrder(FreshOrder(orderId, workflow.path)).await(99.s).orThrow
       eventWatch.await[OrderStopped](_.key == orderId)
 
-      val order = controller.controllerState.await(99.s).idToOrder(orderId)
+      val order = controllerState.idToOrder(orderId)
       assert(order.isState[StoppedWhileFresh] && order.isFailed && order.isDetached)
 
       val historyOperations = Seq(

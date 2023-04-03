@@ -45,7 +45,7 @@ final class ChangeClusterWatchTest extends ControllerClusterTester
           assert(confirmed.command.clusterWatchRunId == a.clusterWatchRunId)
           assert(confirmed.result == Right(()))
 
-          assert(primaryController.controllerState.await(99.s)
+          assert(primaryController.controllerState()
             .clusterState.asInstanceOf[ClusterState.Coupled].setting.clusterWatchId
             == Some(aClusterWatchId))
 
@@ -121,7 +121,7 @@ final class ChangeClusterWatchTest extends ControllerClusterTester
               ClusterWatchRegistered(aClusterWatchId),
               ClusterWatchRegistered(bClusterWatchId)))
 
-          assert(primaryController.controllerState.await(99.s)
+          assert(primaryController.controllerState()
             .clusterState.asInstanceOf[ClusterState.Coupled].setting.clusterWatchId
             == Some(bClusterWatchId))
         }
