@@ -166,6 +166,9 @@ final class SubagentDeleteTest extends OurTestSuite with SubagentTester
 
       // Continue orderId
       TestSemaphoreJob.continue(1)
+      // FIXME OrderProcessed may not occur when recovering Agent stops RemoteSubagentDriver
+      //  due to deletion while still recovering processing Orders.
+      //  See fixme in SubagentKeeper
       eventWatch.await[OrderProcessed](_.key == orderId, after = eventId)
       eventWatch.await[OrderFinished](_.key == orderId, after = eventId)
 
