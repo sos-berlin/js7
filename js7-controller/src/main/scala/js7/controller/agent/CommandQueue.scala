@@ -9,7 +9,7 @@ import js7.base.time.ScalaTime.{RichDeadline, RichFiniteDuration}
 import js7.base.utils.Assertions.assertThat
 import js7.base.utils.AsyncLock
 import js7.base.utils.ScalaUtils.syntax.{RichBoolean, RichThrowable}
-import js7.controller.agent.AgentDriver.{Input, Queueable, ReleaseEventsQueueable}
+import js7.controller.agent.AgentDriver.Queueable
 import js7.controller.agent.CommandQueue.*
 import js7.data.agent.AgentPath
 import js7.data.order.OrderId
@@ -49,11 +49,11 @@ private[agent] abstract class CommandQueue(
 
     def enqueue(input: Queueable): Unit =
       input match {
-        case o: Input.DetachOrder => detachQueue += o
+        case o: Queueable.DetachOrder => detachQueue += o
 
-        case attach: Input.AttachUnsignedItem =>
+        case attach: Queueable.AttachUnsignedItem =>
           val duplicates = queue.collect {
-            case o: Input.AttachUnsignedItem if o.item.key == attach.item.key => o
+            case o: Queueable.AttachUnsignedItem if o.item.key == attach.item.key => o
           }
           queue --= duplicates
           queueSet --= duplicates
@@ -74,7 +74,7 @@ private[agent] abstract class CommandQueue(
     def removeAlreadyAttachedOrders(): Unit = {
       def isAlreadyAttached(log: Boolean = false)(queueable: Queueable): Boolean =
         queueable match {
-          case o: Input.AttachOrder if attachedOrderIds.contains(o.order.id) =>
+          case o: Queueable.AttachOrder if attachedOrderIds.contains(o.order.id) =>
             if (log) logger.trace(s"removeAlreadyAttachedOrders: ${o.order.id}")
             true
           case _ =>
@@ -114,7 +114,7 @@ private[agent] abstract class CommandQueue(
     lock.lock(Task.defer {
       assertThat(!isTerminating)
       input match {
-        case Input.AttachOrder(order, _) if attachedOrderIds contains order.id =>
+        case Queueable.AttachOrder(order, _) if attachedOrderIds contains order.id =>
           logger.debug(s"AttachOrder(${order.id} ignored because Order is already attached to Agent")
           Task.pure(false)
         case _ =>
@@ -204,34 +204,34 @@ private[agent] abstract class CommandQueue(
 
   private def queuableToAgentCommand(queuable: Queueable): AgentCommand =
     queuable match {
-      case Input.AttachOrder(order, agentPath) =>
+      case Queueable.AttachOrder(order, agentPath) =>
         AgentCommand.AttachOrder(order, agentPath)
 
-      case Input.DetachOrder(orderId) =>
+      case Queueable.DetachOrder(orderId) =>
         AgentCommand.DetachOrder(orderId)
 
-      case Input.MarkOrder(orderId, mark) =>
+      case Queueable.MarkOrder(orderId, mark) =>
         AgentCommand.MarkOrder(orderId, mark)
 
-      case Input.AttachUnsignedItem(item) =>
+      case Queueable.AttachUnsignedItem(item) =>
         AgentCommand.AttachItem(item)
 
-      case Input.AttachSignedItem(signed) =>
+      case Queueable.AttachSignedItem(signed) =>
         AgentCommand.AttachSignedItem(signed)
 
-      case Input.DetachItem(id) =>
+      case Queueable.DetachItem(id) =>
         AgentCommand.DetachItem(id)
 
-      case ReleaseEventsQueueable(untilEventId) =>
+      case Queueable.ReleaseEventsQueueable(untilEventId) =>
         AgentCommand.ReleaseEvents(untilEventId)
 
-      case Input.ResetSubagent(subagentId, force) =>
+      case Queueable.ResetSubagent(subagentId, force) =>
         AgentCommand.ResetSubagent(subagentId, force = force)
 
-      case Input.ClusterAppointNodes(idToUri, activeId) =>
+      case Queueable.ClusterAppointNodes(idToUri, activeId) =>
         AgentCommand.ClusterAppointNodes(idToUri, activeId)
 
-      case Input.ClusterSwitchOver =>
+      case Queueable.ClusterSwitchOver =>
         AgentCommand.ClusterSwitchOver
     }
 

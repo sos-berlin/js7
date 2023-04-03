@@ -566,7 +566,7 @@ with MainJournalingActor[ControllerState, Event]
         }
       }
 
-    case AgentDriver.Output.OrdersMarked(orderToMark) =>
+    case Internal.OrdersMarked(orderToMark) =>
       val unknown = orderToMark -- _controllerState.idToOrder.keySet
       if (unknown.nonEmpty) {
         logger.error("Response to AgentCommand.MarkOrder from Agent for unknown orders: " +
@@ -936,7 +936,7 @@ with MainJournalingActor[ControllerState, Event]
         Future.successful {
           agentRegister.checked(agentPath)
             .map { agentEntry =>
-              agentEntry.agentDriver.send(AgentDriver.Input.ClusterAppointNodes(idToUri, activeNode)).runAsyncAndForget // TODO
+              agentEntry.agentDriver.send(AgentDriver.Queueable.ClusterAppointNodes(idToUri, activeNode)).runAsyncAndForget // TODO
               // - Asynchronous, no response awaited
               // - No error checking
               // - Gets lost on Agent restart
@@ -948,7 +948,7 @@ with MainJournalingActor[ControllerState, Event]
         Future.successful {
           agentRegister.checked(agentPath)
             .map { agentEntry =>
-              agentEntry.agentDriver.send(AgentDriver.Input.ClusterSwitchOver).runAsyncAndForget // TODO
+              agentEntry.agentDriver.send(AgentDriver.Queueable.ClusterSwitchOver).runAsyncAndForget // TODO
               // - Asynchronous, no response awaited
               // - No error checking
               // - Gets lost on Agent restart
@@ -1086,7 +1086,7 @@ with MainJournalingActor[ControllerState, Event]
           Task.fromFuture(promise.future)
         },
         orderIdToMarked => Task {
-          self ! AgentDriver.Output.OrdersMarked(orderIdToMarked)
+          self ! Internal.OrdersMarked(orderIdToMarked)
           // TODO Asynchronous ?
         },
         persistence, agentDriverConfiguration, controllerConfiguration, context.system)
@@ -1111,17 +1111,17 @@ with MainJournalingActor[ControllerState, Event]
   //          itemKey match {
   //            case itemKey: SignableItemKey =>
   //              for (signedItem <- _controllerState.keyToSignedItem.get(itemKey)) {
-  //                actor ! AgentDriver.Input.AttachSignedItem(signedItem)
+  //                actor ! AgentDriver.Queueable.AttachSignedItem(signedItem)
   //              }
   //
   //            case path: UnsignedSimpleItemPath =>
   //              for (item <- _controllerState.pathToUnsignedSimpleItem.get(path)) {
-  //                actor ! AgentDriver.Input.AttachUnsignedItem(item)
+  //                actor ! AgentDriver.Queueable.AttachUnsignedItem(item)
   //              }
   //          }
   //
   //        case Detachable =>
-  //          actor ! AgentDriver.Input.DetachItem(itemKey)
+  //          actor ! AgentDriver.Queueable.DetachItem(itemKey)
   //
   //        case _ =>
   //      }
@@ -1252,7 +1252,7 @@ with MainJournalingActor[ControllerState, Event]
   private def proceedWithItem(itemKey: InventoryItemKey): Unit = {
     itemKey match {
       case agentPath: AgentPath =>
-        // TODO Handle AgentRef here: agentEntry .actor ! AgentDriver.Input.StartFetchingEvents ...
+        // TODO Handle AgentRef here: agentEntry .actor ! AgentDriver.Queueable.StartFetchingEvents ...
 
       case itemKey: InventoryItemKey =>
         for (agentToAttachedState <- _controllerState.itemToAgentToAttachedState.get(itemKey)) {
@@ -1265,20 +1265,20 @@ with MainJournalingActor[ControllerState, Event]
                     itemKey match {
                       case itemKey: SignableItemKey =>
                         for (signedItem <- _controllerState.keyToSignedItem.get(itemKey)) {
-                          agentEntry.agentDriver.send(AgentDriver.Input.AttachSignedItem(signedItem)).runAsyncAndForget // TODO
+                          agentEntry.agentDriver.send(AgentDriver.Queueable.AttachSignedItem(signedItem)).runAsyncAndForget // TODO
                         }
 
                       case itemKey: UnsignedItemKey =>
                         for (item <- _controllerState.keyToItem.get(itemKey)) {
                           val unsignedItem = item.asInstanceOf[UnsignedItem]
-                          agentEntry.agentDriver.send(AgentDriver.Input.AttachUnsignedItem(unsignedItem)).runAsyncAndForget // TODO
+                          agentEntry.agentDriver.send(AgentDriver.Queueable.AttachUnsignedItem(unsignedItem)).runAsyncAndForget // TODO
                         }
                     }
 
                   case Detachable =>
                     if (/*!agentEntry.isDeleted && */!agentEntry.detachingItems.contains(itemKey)) {
                       agentEntry.detachingItems += itemKey
-                      agentEntry.agentDriver.send(AgentDriver.Input.DetachItem(itemKey)).runAsyncAndForget // TODO
+                      agentEntry.agentDriver.send(AgentDriver.Queueable.DetachItem(itemKey)).runAsyncAndForget // TODO
                     }
 
                   case _ =>
@@ -1298,7 +1298,7 @@ with MainJournalingActor[ControllerState, Event]
           subagentItemState.isResettingForcibly match {
             case Some(force) =>
               for (agentDriver <- agentRegister.get(subagentItemState.item.agentPath).map(_.agentDriver)) {
-                agentDriver.send(AgentDriver.Input.ResetSubagent(subagentId, force)).runAsyncAndForget // TODO
+                agentDriver.send(AgentDriver.Queueable.ResetSubagent(subagentId, force)).runAsyncAndForget // TODO
               }
             case _ =>
           }
@@ -1407,7 +1407,7 @@ with MainJournalingActor[ControllerState, Event]
           for ((_, agentEntry) <- checkedWorkflowAndAgentEntry(order)) {
             // CommandQueue filters multiple equal MarkOrder
             // because we may send multiple ones due to asynchronous execution
-            agentEntry.agentDriver.send(AgentDriver.Input.MarkOrder(order.id, mark)).runAsyncAndForget // TODO
+            agentEntry.agentDriver.send(AgentDriver.Queueable.MarkOrder(order.id, mark)).runAsyncAndForget // TODO
           }
         }
       }
@@ -1460,19 +1460,19 @@ with MainJournalingActor[ControllerState, Event]
             .appended(signedWorkflow)
             .filter(signedItem => isDetachedOrAttachable(signedItem.value, agentPath))
             .foreach { signedItem =>
-              agentDriver.send(AgentDriver.Input.AttachSignedItem(signedItem)).runAsyncAndForget // TODO
+              agentDriver.send(AgentDriver.Queueable.AttachSignedItem(signedItem)).runAsyncAndForget // TODO
             }
 
           // Attach more required Items
           for (item <- unsignedItemsToBeAttached(workflow, agentPath)) {
-            agentDriver.send(AgentDriver.Input.AttachUnsignedItem(item)).runAsyncAndForget // TODO
+            agentDriver.send(AgentDriver.Queueable.AttachUnsignedItem(item)).runAsyncAndForget // TODO
           }
 
           orderEntry.triedToAttached = true
           // TODO AttachOrder mit parent orders!
           // Agent markiert die als bloß gebraucht für Kindaufträge
           // Mit Referenzzähler: der letzte Kindauftrag löscht seine Elternaufträge
-          agentDriver.send(AgentDriver.Input.AttachOrder(order, agentPath)).runAsyncAndForget // TODO
+          agentDriver.send(AgentDriver.Queueable.AttachOrder(order, agentPath)).runAsyncAndForget // TODO
           // FIXME Reihenfolge der runAsyncAndForget ist beliebig!
         }
       }
@@ -1542,7 +1542,7 @@ with MainJournalingActor[ControllerState, Event]
             agentRegister.get(agentPath) match {
               case None => logger.error(s"detachOrderFromAgent '$orderId': Unknown $agentPath")
               case Some(a) =>
-                a.agentDriver.send(AgentDriver.Input.DetachOrder(orderId)).runAsyncAndForget
+                a.agentDriver.send(AgentDriver.Queueable.DetachOrder(orderId)).runAsyncAndForget
                 orderEntry.isDetaching = true
             }
           }
@@ -1610,6 +1610,7 @@ private[controller] object ControllerOrderKeeper
     final case class Ready(outcome: Checked[Completed])
     case object StillShuttingDown extends DeadLetterSuppression
     final case class ShutDown(shutdown: ControllerCommand.ShutDown)
+    final case class OrdersMarked(orderToMark: Map[OrderId, OrderMark])
 
     final case class EventsFromAgent(
       agentPath: AgentPath,

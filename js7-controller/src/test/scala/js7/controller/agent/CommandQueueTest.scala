@@ -1,7 +1,7 @@
 package js7.controller.agent
 
-import com.typesafe.scalalogging.Logger as ScalaLogger
 import cats.syntax.traverse.*
+import com.typesafe.scalalogging.Logger as ScalaLogger
 import js7.agent.data.commands.AgentCommand
 import js7.agent.data.commands.AgentCommand.Batch
 import js7.base.log.Logger
@@ -10,7 +10,7 @@ import js7.base.test.OurTestSuite
 import js7.base.thread.MonixBlocking.syntax.RichTask
 import js7.base.time.ScalaTime.*
 import js7.base.time.WaitForCondition.waitForCondition
-import js7.controller.agent.AgentDriver.{Input, Queueable}
+import js7.controller.agent.AgentDriver.Queueable
 import js7.controller.agent.CommandQueue.QueuedInputResponse
 import js7.controller.agent.CommandQueueTest.*
 import js7.data.agent.AgentPath
@@ -47,14 +47,14 @@ final class CommandQueueTest extends OurTestSuite
 
     commandQueue.onCoupled(Set.empty).runSyncUnsafe(99.s)
 
-    // The first Input is sent alone to the Agent regardless of commandBatchSize.
+    // The first Queueable is sent alone to the Agent regardless of commandBatchSize.
     val aOrder = toOrder("A")
-    var ok = commandQueue.enqueue(AgentDriver.Input.AttachOrder(aOrder, TestAgentPath))
+    var ok = commandQueue.enqueue(AgentDriver.Queueable.AttachOrder(aOrder, TestAgentPath))
       .runSyncUnsafe(99.s)
     assert(ok)
 
     // Duplicate
-    ok = commandQueue.enqueue(AgentDriver.Input.AttachOrder(aOrder, TestAgentPath))
+    ok = commandQueue.enqueue(AgentDriver.Queueable.AttachOrder(aOrder, TestAgentPath))
       .runSyncUnsafe(99.s)
     assert(!ok)
 
@@ -63,31 +63,31 @@ final class CommandQueueTest extends OurTestSuite
     assert(commandQueueSucceeded == expected)
 
     val twoOrders = toOrder("B") :: toOrder("C") :: Nil
-    for (o <- twoOrders) commandQueue.enqueue(AgentDriver.Input.AttachOrder(o, TestAgentPath))
+    for (o <- twoOrders) commandQueue.enqueue(AgentDriver.Queueable.AttachOrder(o, TestAgentPath))
       .runSyncUnsafe(99.s)
     waitForCondition(99.s, 10.ms) { commandQueueSucceeded == expected }
     assert(commandQueueSucceeded == expected)
 
-    // After the Agent has processed the Input, the two queued commands are sent as a Batch to the Agent
-    commandQueue.handleBatchSucceeded(commandQueueSucceeded.last).runSyncUnsafe(99.s) shouldEqual List(Input.AttachOrder(aOrder, TestAgentPath))
+    // After the Agent has processed the Queueable, the two queued commands are sent as a Batch to the Agent
+    commandQueue.handleBatchSucceeded(commandQueueSucceeded.last).runSyncUnsafe(99.s) shouldEqual List(Queueable.AttachOrder(aOrder, TestAgentPath))
     expected += twoOrders map toQueuedInputResponse
     waitForCondition(99.s, 10.ms) { commandQueueSucceeded == expected }
     assert(commandQueueSucceeded == expected)
 
     val fiveOrders = toOrder("D") :: toOrder("E") :: toOrder("F") :: toOrder("G") :: toOrder("H") :: Nil
-    for (o <- fiveOrders) commandQueue.enqueue(AgentDriver.Input.AttachOrder(o, TestAgentPath))
+    for (o <- fiveOrders) commandQueue.enqueue(AgentDriver.Queueable.AttachOrder(o, TestAgentPath))
       .runSyncUnsafe(99.s)
     expected += fiveOrders take 1 map toQueuedInputResponse
     waitForCondition(99.s, 10.ms) { commandQueueSucceeded == expected }
     assert(commandQueueSucceeded == expected)
 
-    // After the Agent has processed the Input, three of the queued commands are sent as a Batch to the Agent
-    commandQueue.handleBatchSucceeded(commandQueueSucceeded.last).runSyncUnsafe(99.s) shouldEqual fiveOrders.take(1).map(o => Input.AttachOrder(o, TestAgentPath))
+    // After the Agent has processed the Queueable, three of the queued commands are sent as a Batch to the Agent
+    commandQueue.handleBatchSucceeded(commandQueueSucceeded.last).runSyncUnsafe(99.s) shouldEqual fiveOrders.take(1).map(o => Queueable.AttachOrder(o, TestAgentPath))
     expected += fiveOrders drop 1 take 3 map toQueuedInputResponse
     waitForCondition(99.s, 10.ms) { commandQueueSucceeded == expected }
     assert(commandQueueSucceeded == expected)
 
-    // Finally, the last queued Input is processed
+    // Finally, the last queued Queueable is processed
     commandQueue.handleBatchSucceeded(commandQueueSucceeded.last).runSyncUnsafe(99.s)
     expected += fiveOrders drop 4 map toQueuedInputResponse
     waitForCondition(99.s, 10.ms) { commandQueueSucceeded == expected }
@@ -105,11 +105,11 @@ final class CommandQueueTest extends OurTestSuite
       protected def asyncOnBatchFailed(inputs: Vector[Queueable], problem: Problem) =
         Task.unit
     }
-    var ok = queue.enqueue(Input.MarkOrder(OrderId("ORDER"), OrderMark.Suspending())).await(99.s)
+    var ok = queue.enqueue(Queueable.MarkOrder(OrderId("ORDER"), OrderMark.Suspending())).await(99.s)
     assert(ok)
-    ok = queue.enqueue(Input.MarkOrder(OrderId("ORDER"), OrderMark.Suspending())).await(99.s)
+    ok = queue.enqueue(Queueable.MarkOrder(OrderId("ORDER"), OrderMark.Suspending())).await(99.s)
     assert(!ok)
-    ok = queue.enqueue(Input.MarkOrder(OrderId("ORDER"), OrderMark.Resuming())).await(99.s)
+    ok = queue.enqueue(Queueable.MarkOrder(OrderId("ORDER"), OrderMark.Resuming())).await(99.s)
     assert(ok)
   }
 
@@ -131,7 +131,7 @@ final class CommandQueueTest extends OurTestSuite
     (1 to n).view
       .map(i => toOrder(i.toString))
       .to(ArraySeq)
-      .traverse(order => commandQueue.enqueue(AgentDriver.Input.AttachOrder(order, TestAgentPath)))
+      .traverse(order => commandQueue.enqueue(AgentDriver.Queueable.AttachOrder(order, TestAgentPath)))
       .await(99.s)
     commandQueue.maySend.await(99.s)
     waitForCondition(9.s, 10.ms) { commandQueueSucceeded.get() == n }
@@ -146,7 +146,7 @@ object CommandQueueTest {
     Execute(WorkflowJob(TestAgentPath, PathExecutable("EXECUTABLE"))))
 
   private def toQueuedInputResponse(order: Order[Order.IsFreshOrReady]) =
-    QueuedInputResponse(AgentDriver.Input.AttachOrder(order, TestAgentPath), Right(AgentCommand.Response.Accepted))
+    QueuedInputResponse(AgentDriver.Queueable.AttachOrder(order, TestAgentPath), Right(AgentCommand.Response.Accepted))
 
   private def toOrder(name: String) = Order(OrderId(name), TestWorkflow.id /: Position(0), Order.Fresh)
 

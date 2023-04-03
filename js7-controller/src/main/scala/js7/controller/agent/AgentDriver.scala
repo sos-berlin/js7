@@ -234,13 +234,13 @@ extends Service.StoppableByRequest
         handleBatchSucceeded(queuedInputResponses)
           .flatMap(succeededInputs => Task.defer {
             val markedOrders = succeededInputs.view
-              .collect { case o: Input.MarkOrder => o.orderId -> o.mark }
+              .collect { case o: Queueable.MarkOrder => o.orderId -> o.mark }
               .toMap
             Task
               .when(markedOrders.nonEmpty)(
                 onOrderMarked(markedOrders))
               .*>(Task.defer {
-                val releaseEvents = succeededInputs collect { case o: ReleaseEventsQueueable => o }
+                val releaseEvents = succeededInputs collect { case o: Queueable.ReleaseEventsQueueable => o }
                 if (releaseEvents.nonEmpty) {
                   releaseEventsCancelable foreach (_.cancel())
                   releaseEventsCancelable = None
@@ -296,7 +296,7 @@ extends Service.StoppableByRequest
     AgentClient(uri, agentUserAndPassword, label = agentPath.toString,
       controllerConfiguration.httpsConfig)(actorSystem)
 
-  def send(input: Input & Queueable): Task[Unit] =
+  def send(input: Queueable): Task[Unit] =
     logger.traceTask("send", input.toShortString)(Task.defer {
       if (isTerminating)
         Task.raiseError(new IllegalStateException(s"$toString is terminating"))
@@ -508,7 +508,7 @@ extends Service.StoppableByRequest
 
   private def releaseEventsNow: Task[Unit] =
     Task.unless(isTerminating)(
-      commandQueue.enqueue(ReleaseEventsQueueable(lastCommittedEventId)).void)
+      commandQueue.enqueue(Queueable.ReleaseEventsQueueable(lastCommittedEventId)).void)
 
   private def cancelObservationAndAwaitTermination: Task[Completed] =
     logger.traceTask(Task.defer {
@@ -583,13 +583,13 @@ extends Service.StoppableByRequest
             .foreach(item => agentToAttachedState.get(agentPath)
               .foreach {
                 case Attachable =>
-                  send(Input.AttachUnsignedItem(item))
+                  send(Queueable.AttachUnsignedItem(item))
                     .onErrorHandle(t => Task(logger.error(t.toStringWithCauses, t)))
                     .runAsyncAndForget // TODO
 
                 case Attached(rev) =>
                   if (item.itemRevision == rev) {
-                    send(Input.AttachUnsignedItem(item))
+                    send(Queueable.AttachUnsignedItem(item))
                       .onErrorHandle(t => Task(logger.error(t.toStringWithCauses, t)))
                       .runAsyncAndForget // TODO
                   }
@@ -677,44 +677,38 @@ private[controller] object AgentDriver
         onEvents, onOrderMarked,
         persistence, agentDriverConf, controllerConf, actorSystem)))
 
-  sealed trait Queueable extends Input {
+  sealed trait Queueable {
     def toShortString = toString
   }
-
-  private[agent] final case class ReleaseEventsQueueable(agentEventId: EventId) extends Queueable
-
-  sealed trait Input
-  object Input {
+  object Queueable {
     final case class AttachUnsignedItem(item: UnsignedItem)
-    extends Input with Queueable
+    extends Queueable
 
     final case class AttachSignedItem(signed: Signed[SignableItem])
-    extends Input with Queueable
+    extends Queueable
 
     final case class DetachItem(key: InventoryItemKey)
-    extends Input with Queueable
+    extends Queueable
 
     final case class AttachOrder(order: Order[Order.IsFreshOrReady], agentPath: AgentPath)
-    extends Input with Queueable {
+    extends Queueable {
       override lazy val hashCode = order.id.hashCode
 
       def orderId = order.id
       override def toShortString = s"AttachOrder(${orderId.string}, ${order.workflowPosition}, ${order.state.getClass.simpleScalaName})"
     }
 
-    final case class DetachOrder(orderId: OrderId) extends Input with Queueable
+    final case class DetachOrder(orderId: OrderId) extends Queueable
 
-    final case class MarkOrder(orderId: OrderId, mark: OrderMark) extends Input with Queueable
+    final case class MarkOrder(orderId: OrderId, mark: OrderMark) extends Queueable
+
+    private[agent] final case class ReleaseEventsQueueable(agentEventId: EventId) extends Queueable
 
     final case class ResetSubagent(subagentId: SubagentId, force: Boolean) extends Queueable
 
     final case class ClusterAppointNodes(idToUri: Map[NodeId, Uri], activeId: NodeId) extends Queueable
 
     case object ClusterSwitchOver extends Queueable
-  }
-
-  object Output {
-    final case class OrdersMarked(orderToMark: Map[OrderId, OrderMark])
   }
 
   private case object CancelledMarker extends Exception with NoStackTrace
