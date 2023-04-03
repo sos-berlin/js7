@@ -29,13 +29,13 @@ object Logger
   object syntax {
     // Empty implementation to be compatible with the JVM variant
     implicit final class RichLogger(private val logger: scribe.Logger) extends AnyVal {
-      def debugTask[A](task: Task[A])(implicit src: sourcecode.Name): Task[A] =
+      def debugTask[A](task: Task[A])/*(implicit src: sourcecode.Name)*/: Task[A] =
         task
 
       def debugTask[A](functionName: String, args: => Any = "")(task: Task[A]): Task[A] =
         task
 
-      def debugTaskWithResult[A](task: Task[A])(implicit src: sourcecode.Name): Task[A] =
+      def debugTaskWithResult[A](task: Task[A])/*(implicit src: sourcecode.Name)*/: Task[A] =
         task
 
       def debugTaskWithResult[A](
@@ -46,7 +46,7 @@ object Logger
       : Task[A] =
         task
 
-      def traceTask[A](task: Task[A])(implicit src: sourcecode.Name): Task[A] =
+      def traceTask[A](task: Task[A])/*(implicit src: sourcecode.Name)*/: Task[A] =
         task
 
       def traceTask[A](function: String, args: => Any = "")(task: Task[A]): Task[A] =
@@ -71,7 +71,7 @@ object Logger
       : Resource[Task, A] =
         resource
 
-      def debugObservable[A](observable: Observable[A])(implicit src: sourcecode.Name)
+      def debugObservable[A](observable: Observable[A])/*(implicit src: sourcecode.Name)*/
       : Observable[A] =
         observable
 
