@@ -37,7 +37,7 @@ abstract class RecouplingStreamReader[
   private val sym = new BlockingSymbol
 
   protected def couple(index: I): Task[Checked[I]] =
-    Task.pure(Right(index))
+    Task.right(index)
 
   protected def getObservable(api: Api, after: I): Task[Checked[Observable[V]]]
 
@@ -178,8 +178,8 @@ abstract class RecouplingStreamReader[
     private def tryEndlesslyToGetObservable(after: I): Task[Observable[V]] =
       Task.tailRecM(())(_ =>
         if (isStopped)
-          Task.pure(Right(Observable.raiseError(
-            new IllegalStateException(s"RecouplingStreamReader($api) has been stopped"))))
+          Task.right(Observable.raiseError(
+            new IllegalStateException(s"RecouplingStreamReader($api) has been stopped")))
         else
           coupleIfNeeded(after = after)
             .flatMap(after => /*`after` may have changed after initial AgentDedicated.*/
@@ -188,7 +188,7 @@ abstract class RecouplingStreamReader[
                 .flatMap {
                   case Left(problem) =>
                     if (isStopped)
-                      Task.pure(Left(()))  // Fail in next iteration
+                      Task.left(())  // Fail in next iteration
                     else if (problem is EventSeqTornProblem)
                       Task.raiseError(problem.throwable)
                     else
@@ -220,10 +220,10 @@ abstract class RecouplingStreamReader[
           .onErrorRecoverWith {
             case t: TimeoutException =>
               logger.debug(s"💥 $api: ${t.toString}")
-              Task.pure(Right(Observable.empty))
+              Task.right(Observable.empty)
 
             case HttpException.HasProblem(problem) =>
-              Task.pure(Left(problem))
+              Task.left(problem)
           }
           .map(_.map(obs =>
             idleTimeout.fold(obs)(idleTimeout => obs
@@ -257,8 +257,9 @@ abstract class RecouplingStreamReader[
           ) .materializeIntoChecked
             .flatMap {
               case Left(problem) =>
-                if (isStopped)
-                  Task.pure(Left(()))  // Fail in next iteration
+                if (isStopped) {
+                  Task.left((()))
+                } // Fail in next iteration
                 else
                   for {
                     _ <- Task.when(problem == InvalidSessionTokenProblem)(

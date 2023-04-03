@@ -196,15 +196,13 @@ object AsyncMap
       initiateStopWithProblem(Problem.pure(s"$name is being stopped"))
 
     final def initiateStopWithProblem(problem: Problem): Task[Unit] =
-      Task.defer {
-        shortLock
-          .lock(Task {
-            stoppingProblem = problem
-            isEmpty
-          })
-          .flatMap(Task.when(_)(
-            whenEmpty.complete(())))
-      }
+      shortLock
+        .lock(Task {
+          stoppingProblem = problem
+          isEmpty
+        })
+        .flatMap(Task.when(_)(
+          whenEmpty.complete(())))
 
     final val stop: Task[Unit] =
       logger.traceTask(
