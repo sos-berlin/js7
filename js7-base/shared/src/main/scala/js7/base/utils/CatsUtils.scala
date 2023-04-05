@@ -19,7 +19,7 @@ import scala.concurrent.duration.*
   */
 object CatsUtils
 {
-  type Nel[A] = NonEmptyList[A]
+  type Nel[+A] = NonEmptyList[A]
   val Nel = NonEmptyList
 
   def combine[A: Monoid](as: A*): A =

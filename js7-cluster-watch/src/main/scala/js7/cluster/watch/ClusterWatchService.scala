@@ -148,8 +148,7 @@ object ClusterWatchService
 {
   private val logger = Logger(getClass)
 
-  def resource(conf: ClusterWatchConf)
-  : Resource[Task, ClusterWatchService] = {
+  def resource(conf: ClusterWatchConf): Resource[Task, ClusterWatchService] = {
     import conf.{clusterNodeAdmissions, config, httpsConfig}
     for {
       akka <- actorSystemResource(name = "ClusterWatch", config)
