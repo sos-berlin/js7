@@ -46,6 +46,7 @@ with BlockingItemUpdater
     eventWatch.await[OrderStdoutWritten](_.key == orderId)
 
     val agentTerminated = agent.terminate()
+    sleep(500.ms) // Give terminate some time to take effect
     TestJob.continue()
     agentTerminated.await(99.s)
 
