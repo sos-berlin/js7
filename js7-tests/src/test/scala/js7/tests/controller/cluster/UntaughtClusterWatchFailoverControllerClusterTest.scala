@@ -104,7 +104,6 @@ final class UntaughtClusterWatchFailoverControllerClusterTest extends Controller
 
           backupController.eventWatch.await[OrderFinished](_.key == orderId, after = failedOverEventId)
         }
-        primaryController.close()
       }
     }
   }

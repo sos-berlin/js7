@@ -59,9 +59,10 @@ extends AutoCloseable
   def close() =
     stop.await(99.s)
 
-  def stop: Task[Unit] =
+  val stop: Task[Unit] =
     stopControllerApi
       .guarantee(allocated.stop)
+      .memoize
 
   private def stopControllerApi: Task[Unit] =
     Task.defer(apiLazy.toOption.fold(Task.unit)(controllerApi =>
