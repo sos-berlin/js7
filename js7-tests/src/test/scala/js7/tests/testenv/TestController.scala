@@ -163,7 +163,7 @@ extends AutoCloseable
         }
         .toL(Vector)
         .executeOn(scheduler)
-        .logWhenItTakesLonger
+        .logWhenItTakesLonger(s"runOrder(${order.id})")
     }).await(timeout)
   }
 

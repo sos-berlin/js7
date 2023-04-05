@@ -19,6 +19,7 @@ extends InternalJob
 {
   final def toOrderProcess(step: Step) =
     OrderProcess {
+      val semaName = s"${getClass.shortClassName}.semaphore ${step.order.id}"
       val orderId = step.order.id
       logger.debugTask(s"SemaphoreJob/$orderId")(
         step
@@ -32,7 +33,7 @@ extends InternalJob
                   case false =>
                     sema.count
                       .flatMap { n =>
-                        logger.info(s"🔴 $orderId acquire ... (n=$n)")
+                        logger.info(s"🟣 $semaName acquire ... (n=$n)")
                         sema.acquire
                       }
                       .guaranteeCase(exitCase => Task {
@@ -43,7 +44,7 @@ extends InternalJob
                         }
                       })
                 })
-            .logWhenItTakesLonger(s"${getClass.shortClassName}.semaphore.acquire/${step.order.id}")
+            .logWhenItTakesLonger(s"$semaName")
             .as(Outcome.succeeded)))
     }
 }

@@ -380,7 +380,7 @@ extends OurTestSuite with BeforeAndAfterAll with ControllerAgentForScalaTest
               "arguments": {
                 "orderId": "UNKNOWN"
               },
-              "message": "Unknown OrderId 'UNKNOWN'"
+              "message": "Unknown Order:UNKNOWN"
             }, {
               "TYPE": "Accepted"
             }
