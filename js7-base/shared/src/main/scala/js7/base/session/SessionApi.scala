@@ -6,6 +6,7 @@ import js7.base.generic.Completed
 import js7.base.log.Logger.syntax.*
 import js7.base.log.{BlockingSymbol, Logger}
 import js7.base.monixutils.MonixBase.syntax.*
+import js7.base.problem.Problem
 import js7.base.problem.Problems.InvalidSessionTokenProblem
 import js7.base.session.SessionApi.*
 import js7.base.time.ScalaTime.*
@@ -138,22 +139,36 @@ object SessionApi
       Task.defer {
         val delays = Iterator(0.s) ++ loginDelays()
         login(onlyIfNotLoggedIn = true) *>
-          body
-            .onErrorRestartLoop(()) {
-              case (HttpException.HasProblem(problem), _, retry)
-                if problem.is(InvalidSessionTokenProblem) && delays.hasNext =>
-                clearSession()
-                // Race condition with a parallel operation,
-                // which after the same error has already logged-in again successfully.
-                // Should be okay if login is delayed like here
-                logger.debug(s"$toString: Login again due to: $problem")
-                Task.sleep(delays.next()) *>
-                  login() *>
-                  retry(())
+          Task.tailRecM(())(_ =>
+            body
+              .onErrorRestartLoop(()) {
+                case (HttpException.HasProblem(problem), _, retry)
+                  if problem.is(InvalidSessionTokenProblem) && delays.hasNext =>
+                  renewSession(problem, delays) *>
+                    retry(())
 
-              case (throwable, _, _) =>
-                Task.raiseError(throwable)
-            }
+                case (throwable, _, _) =>
+                  Task.raiseError(throwable)
+              }
+              .flatMap { // A may be a Checked[Problem]
+                case Left(problem: Problem)
+                  if problem.is(InvalidSessionTokenProblem) && delays.hasNext =>
+                  renewSession(problem, delays).as(Left(()))
+                case o => Task.right(o)
+              }
+          )
+      }
+
+    private def renewSession(problem: Problem, delays: Iterator[FiniteDuration])
+    : Task[Completed] =
+      Task.defer {
+        clearSession()
+        // Race condition with a parallel operation,
+        // which after the same error has already logged-in again successfully.
+        // Should be okay if login is delayed like here
+        logger.debug(s"$toString: Login again due to: $problem")
+        Task.sleep(delays.next()) *>
+          login()
       }
 
     override final def retryUntilReachable[A](onError: Throwable => Task[Boolean] = onErrorTryAgain)
