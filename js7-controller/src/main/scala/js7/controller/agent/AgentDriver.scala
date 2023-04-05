@@ -75,36 +75,37 @@ extends Service.StoppableByRequest
   private val agentPath = initialAgentRef.path
   private val logger = Logger.withPrefix[this.type](agentPath.string)
   private val agentUserAndPassword: Option[UserAndPassword] =
-    controllerConfiguration.config.optionAs[SecretString]("js7.auth.agents." + ConfigUtil.joinPath(agentPath.string))
+    controllerConfiguration.config
+      .optionAs[SecretString]("js7.auth.agents." + ConfigUtil.joinPath(agentPath.string))
       .map(password => UserAndPassword(controllerConfiguration.controllerId.toUserId, password))
-
-  private val agentRunIdOnce = SetOnce.fromOption(initialAgentRunId)
-
-  private var agentRef = initialAgentRef
-  private var client = newAgentClient(persistence.unsafeCurrentState().agentToUri(agentPath)
-    .getOrElse(Uri(s"unknown-uri://$agentPath"/*should not happen ???*/)))
-  private var passiveClient = persistence.unsafeCurrentState().agentToUris(agentPath)
-    .tail.headOption.map(newAgentClient(_))
-  /** Only filled when coupled */
-  private var lastFetchedEventId = initialEventId
-  private var lastCommittedEventId = initialEventId
-  @volatile
-  private var lastCouplingFailed: Option[AgentCouplingFailed] = None
-  private var currentFetchedFuture: Option[CancelableFuture[Completed]] = None
-  private var releaseEventsCancelable: Option[Cancelable] = None
-  private var delayNextReleaseEvents = false
-  private var isTerminating = false
-  private var changingUri: Option[Uri] = None
-  private val sessionNumber = AtomicInt(0)
-  private val eventFetcherTerminated = Promise[Unit]()
-  private var noJournal = false
-  private var isReset = false
 
   private val clusterWatchId = ClusterWatchId(controllerId.string + "/" +
     controllerConfiguration.clusterConf.ownId.string + "/" + agentPath.string)
-  private var allocatedClusterWatchService: Option[Allocated[Task, ClusterWatchService]] = None
 
-  private val lock = AsyncLock()
+  private val agentRunIdOnce = SetOnce.fromOption(initialAgentRunId)
+  private var isTerminating = false
+  private val eventFetcherTerminated = Promise[Unit]()
+  private val sessionNumber = AtomicInt(0)
+  @volatile private var lastCouplingFailed: Option[AgentCouplingFailed] = None
+  private var noJournal = false
+
+  private object state {
+    val lock = AsyncLock()
+    var director: Option[SubagentId] = initialAgentRef.director
+    var client = newAgentClient(persistence.unsafeCurrentState().agentToUri(agentPath)
+      .getOrElse(Uri(s"unknown-uri://$agentPath"/*should not happen ???*/)))
+    var passiveClient = persistence.unsafeCurrentState().agentToUris(agentPath)
+      .tail.headOption.map(newAgentClient(_))
+    /** Only filled when coupled */
+    var lastFetchedEventId = initialEventId
+    var lastCommittedEventId = initialEventId
+    @deprecated var currentFetchedFuture: Option[CancelableFuture[Completed]] = None
+    var releaseEventsCancelable: Option[Cancelable] = None
+    var delayNextReleaseEvents = false
+    var changingUri: Option[Uri] = None
+    var isReset = false
+    var allocatedClusterWatchService: Option[Allocated[Task, ClusterWatchService]] = None
+  }
 
   private val eventFetcher = new RecouplingStreamReader[EventId, Stamped[AnyKeyedEvent], AgentClient](
     _.eventId, conf.recouplingStreamReader)
@@ -119,7 +120,9 @@ extends Service.StoppableByRequest
               Task.pure(Left(Problem.pure("Resetting, but no AgentRunId?")))  // Invalid state
 
             case (Resetting(force), maybeAgentRunId) if force || maybeAgentRunId.isDefined =>
-              client.commandExecute(AgentCommand.Reset(maybeAgentRunId))
+              state.client
+                .retryIfSessionLost()(
+                  state.client.commandExecute(AgentCommand.Reset(maybeAgentRunId)))
                 .map {
                   case Left(AgentNotDedicatedProblem) => Checked.unit  // Already reset
                   case o => o
@@ -132,7 +135,7 @@ extends Service.StoppableByRequest
           })
         .flatMapT(_ => dedicateAgentIfNeeded)
         .flatMapT { case (agentRunId, agentEventId) =>
-          client.commandExecute(CoupleController(agentPath, agentRunId, eventId = agentEventId))
+          state.client.commandExecute(CoupleController(agentPath, agentRunId, eventId = agentEventId))
             .flatMapT { case CoupleController.Response(orderIds) =>
               logger.trace(s"CoupleController returned attached OrderIds={${orderIds.toSeq.sorted.mkString(" ")}}")
               attachedOrderIds = orderIds
@@ -180,10 +183,10 @@ extends Service.StoppableByRequest
         logger.info(s"Coupled with $api after=${EventId.toString(after)}")
         sessionNumber += 1
         assertThat(attachedOrderIds != null)
-        lock
+        state.lock
           .lock(Task {
             lastCouplingFailed = None
-            delayNextReleaseEvents = false
+            state.delayNextReleaseEvents = false
           })
           .*>(commandQueue.onCoupled(attachedOrderIds))
           .*>(Task {
@@ -242,8 +245,8 @@ extends Service.StoppableByRequest
               .*>(Task.defer {
                 val releaseEvents = succeededInputs collect { case o: Queueable.ReleaseEventsQueueable => o }
                 if (releaseEvents.nonEmpty) {
-                  releaseEventsCancelable foreach (_.cancel())
-                  releaseEventsCancelable = None
+                  state.releaseEventsCancelable foreach (_.cancel())
+                  state.releaseEventsCancelable = None
                 }
                 stopIfTerminated
               })
@@ -256,7 +259,7 @@ extends Service.StoppableByRequest
           onBatchFailed(inputs, problem)
         } else
           eventFetcher.invalidateCoupledApi
-            .*>(Task { currentFetchedFuture.foreach(_.cancel()) })
+            .*>(Task { state.currentFetchedFuture.foreach(_.cancel()) })
             .*>(cancelObservationAndAwaitTermination)
             .*>(eventFetcher.decouple)
             .*>(onBatchFailed(inputs, problem))
@@ -286,8 +289,8 @@ extends Service.StoppableByRequest
         untilStopRequested
           .*>(Task(eventFetcher.markAsStopped()))
           .*>(eventFetcher.terminateAndLogout)
-          .*>(Task(currentFetchedFuture.foreach(_.cancel())))
-          .*>(allocatedClusterWatchService.fold(Task.unit)(_.stop)))
+          .*>(Task(state.currentFetchedFuture.foreach(_.cancel())))
+          .*>(state.allocatedClusterWatchService.fold(Task.unit)(_.stop)))
 
   private def stopThis: Task[Unit] =
     stop // ???
@@ -311,40 +314,41 @@ extends Service.StoppableByRequest
                 // TODO Set timer only for the first send!
                 .timeoutTo(conf.commandBatchDelay, Task.unit)
                 .*>(commandQueue.maySend)
-                .onErrorHandle(t => Task(logger.error(t.toStringWithCauses, t)))
+                .onErrorHandle(t => Task(logger.error(
+                  s"send(${input.toShortString}) => ${t.toStringWithCauses}", t)))
                 .startAndForget))
     })
 
   def changeUri(agentRef: AgentRef, uri: Uri): Task[Unit] =
-    logger.traceTask(lock.lock(Task.defer {
-      this.agentRef = agentRef
-      if (uri != client.baseUri || isReset) {
+    logger.traceTask(state.lock.lock(Task.defer {
+      state.director = agentRef.director
+      if (uri != state.client.baseUri || state.isReset) {
         logger.debug(s"changeUri $uri")
         // TODO Changing URI in quick succession is not properly solved
-        isReset = false
-        for (u <- changingUri) logger.warn(s"Already changing URI to $u ?")
-        changingUri = Some(uri)
+        state.isReset = false
+        for (u <- state.changingUri) logger.warn(s"Already changing URI to $u ?")
+        state.changingUri = Some(uri)
         cancelObservationAndAwaitTermination
           .*>(eventFetcher.decouple)
           .onErrorHandle(t =>
-            logger.error("ChangeUri: " + t.toStringWithCauses, t.nullIfNoStackTrace))
+            logger.error("changeUri => " + t.toStringWithCauses, t.nullIfNoStackTrace))
           .startAndForget
       } else
         Task.unit
     }))
 
   private def onUriChanged: Task[Unit] =
-    logger.traceTask(lock.lock(Task {
-      for (uri <- changingUri) {
-        client.close()
+    logger.traceTask(state.lock.lock(Task {
+      for (uri <- state.changingUri) {
+        state.client.close()
         logger.debug(s"new AgentClient($uri)")
-        client = newAgentClient(uri)
+        state.client = newAgentClient(uri)
         stopClusterWatch
           .flatMap(_ => startClusterWatch)
           .void
           .attempt
           .flatMap { tried =>
-            changingUri = None
+            state.changingUri = None
             tried
               .match_ {
                 case Left(throwable) =>
@@ -361,26 +365,27 @@ extends Service.StoppableByRequest
     }))
 
   def terminate(noJournal: Boolean = false, reset: Boolean = false): Task[Unit] =
-    logger.traceTask(lock.lock(Task.defer {
-      this.noJournal = noJournal
+    logger.traceTask(state.lock.lock(Task.defer {
+      this.noJournal |= noJournal
       // Wait until all pending Agent commands are responded, and do not accept further commands
       Task.unless(isTerminating) {
         logger.debug(s"Terminate" + (noJournal ?? " noJournal") + (reset ?? " reset"))
         isTerminating = true
-        commandQueue.terminate.*>(Task {
-          currentFetchedFuture.foreach(_.cancel())
+        commandQueue.terminate.*>(Task.defer {
+          state.currentFetchedFuture.foreach(_.cancel())
           eventFetcherTerminated.completeWith(
             eventFetcher.terminateAndLogout.runToFuture) // Rejects current commands waiting for coupling
           agentRunIdOnce.toOption match {
             case Some(agentRunId) if reset =>
               // Required only for ItemDeleted, redundant for ResetAgent
-              // Because of terminateAndLogout, we must login agein to issue the Reset command
+              // Because of terminateAndLogout, we must login again to issue the Reset command
               Task
                 .fromFuture(eventFetcherTerminated.future)
+                .logWhenItTakesLonger(s"$agentPath whenEventFetcherTerminated")
                 .onErrorHandle(_ => ())
-                .*>(client.login(onlyIfNotLoggedIn = true)) // Login again
-                .*>(client
-                  .commandExecute(AgentCommand.Reset(Some(agentRunId)))
+                .*>(state.client
+                  .retryIfSessionLost()(
+                    state.client.commandExecute(AgentCommand.Reset(Some(agentRunId))))
                   .raceWith(untilStopRequested)
                   .map(_.fold(identity, _ => Left(Problem("AgentDriver is stopping"))))
                   .materializeIntoChecked
@@ -389,16 +394,16 @@ extends Service.StoppableByRequest
                     case Right(_) =>
                   })
                 .*>(
-                  lock.lock(
+                  state.lock.lock(
                     // Ignore any Problem or Exception from Reset command
                     stopIfTerminated))
                 .onErrorHandle(t => Task(logger.error(t.toStringWithCauses, t)))
-                .runAsyncAndForget // TODO
+                .startAndForget // TODO
 
             case _ =>
               stopIfTerminated
                 .onErrorHandle(t => Task(logger.error(t.toStringWithCauses, t)))
-                .runAsyncAndForget // TODO
+                .startAndForget // TODO
           }
         })
       }
@@ -406,7 +411,7 @@ extends Service.StoppableByRequest
 
   def reset(force: Boolean): Task[Boolean] =
     logger.traceTask(/*lock.lock*/(Task.defer {
-      isReset = true
+      state.isReset = true
       commandQueue.reset
         .*>(eventFetcher.coupledApi)
         .flatMap {
@@ -425,22 +430,23 @@ extends Service.StoppableByRequest
               }
         }
         .<*(eventFetcher.terminateAndLogout)
-        .<*(Task(currentFetchedFuture.foreach(_.cancel())))
+        .<*(Task(state.currentFetchedFuture.foreach(_.cancel())))
         .<*(cancelObservationAndAwaitTermination)
         .<*(eventFetcher.decouple)
         .<*(stopThis
-          .onErrorHandle(t => Task(logger.error(t.toStringWithCauses, t)))
+          .onErrorHandle(t =>
+            logger.error("stopThis => " + t.toStringWithCauses, t.nullIfNoStackTrace))
           .startAndForget/*TODO*/)
     }))
 
   def startFetchingEvents: Task[Unit] =
-    logger.traceTask(lock.lock(Task {
-      assertThat(currentFetchedFuture.isEmpty, "Duplicate fetchEvents")
-      currentFetchedFuture = Some(
+    logger.traceTask(state.lock.lock(Task {
+      assertThat(state.currentFetchedFuture.isEmpty, "Duplicate fetchEvents")
+      state.currentFetchedFuture = Some(
         observeAndConsumeEvents
           .onCancelRaiseError(CancelledMarker)
           .onErrorHandle(t => Task(logger.error(t.toStringWithCauses, t)))
-          .*>(onFetchFinished)
+          .guarantee(onFetchFinished)
           .onCancelRaiseError(CancelledMarker)
           .as(Completed)
           .runToFuture)
@@ -449,70 +455,69 @@ extends Service.StoppableByRequest
   private def onFetchFinished: Task[Unit] =
     logger.traceTask("onFetchFinished")(/*lock.lock???*/(Task.defer {
       // Message is expected only after ChangeUri or after InvalidSessionTokenProblem while executing a command
-      currentFetchedFuture = None
+      state.currentFetchedFuture = None
       eventFetcher.decouple
         .*>(eventFetcher.pauseBeforeNextTry(conf.recouplingStreamReader.delay))
         .materialize
         .onErrorHandle(t => Task(logger.error(t.toStringWithCauses, t)))
         .*>(Task.defer(Task
           .unless(isTerminating)(
-            if (changingUri.isDefined)
+            if (state.changingUri.isDefined)
               onUriChanged
             else
               startFetchingEvents)))
-        .onErrorHandle(t => Task(logger.error(t.toStringWithCauses, t)))
+        .onErrorHandle(t =>
+          logger.error("onFetchFinished => " + t.toStringWithCauses, t.nullIfNoStackTrace))
         .startAndForget /*TODO*/
     }))
 
-  private def onEventsFetched(stampedEvents: Seq[Stamped[AnyKeyedEvent]]): Task[Unit] =
-    lock.lock(Task.defer {
-      assertThat(stampedEvents.nonEmpty)
-      val reducedStampedEvents = stampedEvents dropWhile { stamped =>
-        val drop = stamped.eventId <= lastFetchedEventId
-        if (drop) logger.debug(s"Drop duplicate received event: $stamped")
-        drop
-      }
-
-      // The events must be journaled and handled by ControllerOrderKeeper
-      val lastEventId = stampedEvents.last.eventId
-      lastFetchedEventId = lastEventId
-
-      commandQueue.onOrdersAttached(
+  private def onEventsFetched(stampedEvents: Seq[Stamped[AnyKeyedEvent]]): Task[Unit] = {
+    assertThat(stampedEvents.nonEmpty)
+    val reducedStampedEvents = stampedEvents dropWhile { stamped =>
+      val drop = stamped.eventId <= state.lastFetchedEventId
+      if (drop) logger.debug(s"Drop duplicate received event: $stamped")
+      drop
+    }
+    val lastEventId = stampedEvents.last.eventId
+    state.lock
+      .lock(Task {
+        // The events must be journaled and handled by ControllerOrderKeeper
+        state.lastFetchedEventId = lastEventId
+      })
+      .*>(commandQueue.onOrdersAttached(
         reducedStampedEvents.view.collect {
           case Stamped(_, _, KeyedEvent(orderId: OrderId, _: OrderAttachedToAgent)) => orderId
-        })
-        .*>(commandQueue.onOrdersDetached(
-          reducedStampedEvents.view.collect {
-            case Stamped(_, _, KeyedEvent(orderId: OrderId, OrderDetached)) => orderId
-          }))
-        .*>(onEvents(agentRunIdOnce.orThrow, reducedStampedEvents)
-          .flatMap {
-            case Some(eventId) => releaseEvents(eventId)
-            case None => Task.unit
-          })
-    })
+        }))
+      .*>(commandQueue.onOrdersDetached(
+        reducedStampedEvents.view.collect {
+          case Stamped(_, _, KeyedEvent(orderId: OrderId, OrderDetached)) => orderId
+        }))
+      .*>(onEvents(agentRunIdOnce.orThrow, reducedStampedEvents))
+      .flatMap(_.fold(Task.unit)(
+        releaseEvents))
+      .onErrorHandle(t =>
+        logger.error(s"$agentDriver.onEvents => " + t.toStringWithCauses, t.nullIfNoStackTrace))
+      .logWhenItTakesLonger(s"$agentDriver.onEvents")
+  }
 
   private def releaseEvents(lastEventId: EventId): Task[Unit] =
-    Task {
-      lastCommittedEventId = lastEventId
-      if (releaseEventsCancelable.isEmpty) {
-        val delay = if (delayNextReleaseEvents) conf.releaseEventsPeriod else ZeroDuration
-        releaseEventsCancelable = Some(scheduler.scheduleOnce(delay) {
-          releaseEventsNow
+    state.lock.lock(Task {
+      state.lastCommittedEventId = lastEventId
+      if (state.releaseEventsCancelable.isEmpty) {
+        val delay = if (state.delayNextReleaseEvents) conf.releaseEventsPeriod else ZeroDuration
+        state.releaseEventsCancelable = Some(scheduler.scheduleOnce(delay) {
+          Task.unless(isTerminating)(
+            commandQueue.enqueue(Queueable.ReleaseEventsQueueable(state.lastCommittedEventId)).void)
             .onErrorHandle(t => Task(logger.error(t.toStringWithCauses, t)))
             .runAsyncAndForget
         })
-        delayNextReleaseEvents = true
+        state.delayNextReleaseEvents = true
       }
-    }
-
-  private def releaseEventsNow: Task[Unit] =
-    Task.unless(isTerminating)(
-      commandQueue.enqueue(Queueable.ReleaseEventsQueueable(lastCommittedEventId)).void)
+    })
 
   private def cancelObservationAndAwaitTermination: Task[Completed] =
     logger.traceTask(Task.defer {
-      currentFetchedFuture match {
+      state.currentFetchedFuture match {
         case None => Task.completed
         case Some(fetchedFuture) =>
           fetchedFuture.cancel()
@@ -527,7 +532,7 @@ extends Service.StoppableByRequest
   private def observeAndConsumeEvents: Task[Completed] =
     logger.traceTask(Task.defer {
       val delay = conf.eventBufferDelay max conf.commitDelay
-      eventFetcher.observe(client, after = lastFetchedEventId)
+      eventFetcher.observe(state.client, after = state.lastFetchedEventId)
         .pipe(obs =>
           if (delay.isZeroOrBelow)
             obs.bufferIntrospective(conf.eventBufferSize)
@@ -551,11 +556,11 @@ extends Service.StoppableByRequest
   private def dedicateAgentIfNeeded: Task[Checked[(AgentRunId, EventId)]] =
     logger.traceTask(Task.defer {
       agentRunIdOnce.toOption match {
-        case Some(agentRunId) => Task.pure(Right(agentRunId -> lastFetchedEventId))
+        case Some(agentRunId) => Task.pure(Right(agentRunId -> state.lastFetchedEventId))
         case None =>
-          client
+          state.client
             .commandExecute(
-              DedicateAgentDirector(agentRef.director, controllerId, agentPath))
+              DedicateAgentDirector(state.director, controllerId, agentPath))
             .flatMapT { case DedicateAgentDirector.Response(agentRunId, agentEventId) =>
               (if (noJournal)
                 Task.pure(Checked.unit)
@@ -604,47 +609,45 @@ extends Service.StoppableByRequest
   private def stopIfTerminated: Task[Unit] =
     Task.defer(Task.when(commandQueue.isTerminated) {
       logger.debug("Stop")
-      currentFetchedFuture.foreach(_.cancel())
-      releaseEventsCancelable.foreach(_.cancel())
+      state.currentFetchedFuture.foreach(_.cancel())
+      state.releaseEventsCancelable.foreach(_.cancel())
       Task.fromFuture(eventFetcherTerminated.future)
         .onErrorHandle(t => logger.debug(t.toStringWithCauses))
-        .flatMap(_ => Task
-          .parZip2(
-            closeClient,
-            stopClusterWatch)
-          .void)
-        .onErrorHandle(t => logger.debug(t.toStringWithCauses))
+        .*>(closeClient)
+        .*>(stopClusterWatch)
+        .onErrorHandle(t =>
+          logger.error("stopIfTerminated => " + t.toStringWithCauses, t.nullIfNoStackTrace))
         .*>(stopThis.startAndForget/*TODO*/)
     })
 
   private def closeClient: Task[Unit] =
     eventFetcher.invalidateCoupledApi
       .materialize
-      .flatMap(_ => client.tryLogout.void)
+      .flatMap(_ => state.client.tryLogout.void)
       .guarantee(Task {
-        client.close()
+        state.client.close()
       })
 
   private def startClusterWatch: Task[Allocated[Task, ClusterWatchService]] =
     Task.defer {
-      assertThat(allocatedClusterWatchService.isEmpty)
+      assertThat(state.allocatedClusterWatchService.isEmpty)
       ClusterWatchService
         .resource(
           clusterWatchId,
           Resource.eval(Task.pure(Nel.fromListUnsafe(
-            client :: passiveClient.toList))),
+            state.client :: state.passiveClient.toList))),
           controllerConfiguration.config)
         .toAllocated
         .flatTap(service => Task {
-          allocatedClusterWatchService = Some(service)
+          state.allocatedClusterWatchService = Some(service)
         })
     }
 
   private def stopClusterWatch: Task[Unit] =
-    Task.defer(allocatedClusterWatchService.fold(Task.unit)(_
+    Task.defer(state.allocatedClusterWatchService.fold(Task.unit)(_
       .stop
       .guarantee(Task {
-        allocatedClusterWatchService = None
+        state.allocatedClusterWatchService = None
       })))
 
   override def toString = s"AgentDriver($agentPath)"
@@ -695,7 +698,8 @@ private[controller] object AgentDriver
       override lazy val hashCode = order.id.hashCode
 
       def orderId = order.id
-      override def toShortString = s"AttachOrder(${orderId.string}, ${order.workflowPosition}, ${order.state.getClass.simpleScalaName})"
+      override def toShortString =
+        s"AttachOrder($orderId, ${order.workflowPosition}, ${order.state.getClass.simpleScalaName})"
     }
 
     final case class DetachOrder(orderId: OrderId) extends Queueable

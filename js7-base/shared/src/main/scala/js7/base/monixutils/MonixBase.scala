@@ -63,6 +63,21 @@ object MonixBase
       def raceWith[B >: A](other: Task[B]): Task[Either[A, B]] =
         Task.race(task, other)
 
+      def startAndForgetOrLog(what: => String): Task[Unit] =
+        task
+          .logAndIgnoreError(what)
+          .startAndForget
+
+      def runAsyncAndForgetOrLog(what: => String)(implicit scheduler: Scheduler): Unit =
+        task
+          .logAndIgnoreError(what)
+          .runAsyncAndForget
+
+      def logAndIgnoreError(what: => String): Task[Unit] =
+        task.void
+          .onErrorHandle(t =>
+            logger.error(s"$what => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+
       def logWhenItTakesLonger(implicit enclosing: sourcecode.Enclosing): Task[A] =
         logWhenItTakesLonger2("in", "continues", enclosing.value)
 

@@ -5,7 +5,9 @@ import akka.pattern.{ask, pipe}
 import cats.instances.either.*
 import cats.instances.future.*
 import cats.instances.vector.*
+import cats.syntax.parallel.*
 import cats.syntax.flatMap.*
+import cats.syntax.foldable.*
 import cats.syntax.option.*
 import cats.syntax.traverse.*
 import java.time.ZoneId
@@ -183,9 +185,14 @@ with MainJournalingActor[ControllerState, Event]
           !snapshotTaken ?? ", snapshot required"}")
         if (!terminatingAgentDrivers) {
           terminatingAgentDrivers = true
-          agentRegister.values foreach {
-            _.agentDriver.terminate().runAsyncAndForget // TODO
-          }
+          agentRegister.values.map(_.agentDriver)
+            .toVector
+            .parTraverse(agentDriver =>
+              agentDriver.terminate()
+                .onErrorHandle(t => logger.error(
+                  s"$agentDriver.terminate => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+                .logWhenItTakesLonger(s"$agentDriver.terminate"))
+            .runAsyncAndForget // TODO
         }
         if (runningAgentDriverCount == 0) {
           if (!takingSnapshot) {
@@ -377,9 +384,15 @@ with MainJournalingActor[ControllerState, Event]
       // This is to handle race-condition: An Agent may have already completed an order.
       // So send AttachOrder before DetachOrder.
       // The Agent will ignore the duplicate AttachOrder if it arrives before DetachOrder.
-      agentRegister.values foreach {
-        _.agentDriver.startFetchingEvents.runAsyncAndForget // TODO
-      }
+      agentRegister.values.map(_.agentDriver)
+        .toVector
+        .traverse(agentDriver =>
+          agentDriver
+            .startFetchingEvents
+            .logAndIgnoreError(s"startFetchingEvents($agentDriver)")
+            .onErrorHandle(t => logger.error(
+              s"$agentDriver.startFetchingEvents => ${t.toStringWithCauses}", t.nullIfNoStackTrace)))
+        .awaitInfinite // TODO
 
     case Command.Execute(_: ControllerCommand.ShutDown, _, _) =>
       stash()
@@ -625,7 +638,12 @@ with MainJournalingActor[ControllerState, Event]
             case Resetting(_) | Reset(_) =>
               agentEntry = registerAgent(agentRefState.agentRef,
                 agentRunId = None, eventId = EventId.BeforeFirst)
-              agentEntry.agentDriver.startFetchingEvents.runAsyncAndForget // TODO
+              agentEntry.agentDriver
+                .startFetchingEvents
+                .onErrorHandle(t => logger.error(
+                  s"${agentEntry.agentDriver}.startFetchingEvents => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+                .logWhenItTakesLonger(s"${agentEntry.agentDriver}.startFetchingEvents")
+                .awaitInfinite // TODO
             //??? reattachToAgent(agentPath)
 
             case _ =>
@@ -684,8 +702,13 @@ with MainJournalingActor[ControllerState, Event]
       journalTerminated = true
       if (!shuttingDown && switchover.isEmpty) logger.error("JournalActor terminated")
       if (switchover.isDefined && runningAgentDriverCount > 0) {
-        agentRegister.values foreach {
-          _.agentDriver.terminate(noJournal = true).runAsyncAndForget // TODO
+        agentRegister.values.map(_.agentDriver) foreach { agentDriver =>
+          agentDriver
+            .terminate(noJournal = true)
+            .onErrorHandle(t => logger.error(
+              s"$agentDriver.terminate => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+            .logWhenItTakesLonger(s"$agentDriver.terminate")
+            .runAsyncAndForget // TODO
         }
       } else {
         context.stop(self)
@@ -935,8 +958,14 @@ with MainJournalingActor[ControllerState, Event]
       case ControllerCommand.ClusterAppointNodes(idToUri, activeNode, Some(agentPath)) =>
         Future.successful {
           agentRegister.checked(agentPath)
-            .map { agentEntry =>
-              agentEntry.agentDriver.send(AgentDriver.Queueable.ClusterAppointNodes(idToUri, activeNode)).runAsyncAndForget // TODO
+            .map(_.agentDriver)
+            .map { agentDriver =>
+              agentDriver
+                .send(AgentDriver.Queueable.ClusterAppointNodes(idToUri, activeNode))
+                .onErrorHandle(t => logger.error(
+                  s"$agentDriver.send(ClusterAppointNodes) => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+                .logWhenItTakesLonger(s"$agentDriver.send(ClusterAppointNodes)")
+                .awaitInfinite // TODO
               // - Asynchronous, no response awaited
               // - No error checking
               // - Gets lost on Agent restart
@@ -947,8 +976,14 @@ with MainJournalingActor[ControllerState, Event]
       case ControllerCommand.ClusterSwitchOver(Some(agentPath)) =>
         Future.successful {
           agentRegister.checked(agentPath)
-            .map { agentEntry =>
-              agentEntry.agentDriver.send(AgentDriver.Queueable.ClusterSwitchOver).runAsyncAndForget // TODO
+            .map(_.agentDriver)
+            .map { agentDriver =>
+              agentDriver
+                .send(AgentDriver.Queueable.ClusterSwitchOver)
+                .onErrorHandle(t => logger.error(
+                  s"$agentDriver.send(ClusterSwitchOver) => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+                .logWhenItTakesLonger(s"$agentDriver.send(ClusterSwitchOver)")
+                .awaitInfinite // TODO
               // - Asynchronous, no response awaited
               // - No error checking
               // - Gets lost on Agent restart
@@ -1091,7 +1126,7 @@ with MainJournalingActor[ControllerState, Event]
         },
         persistence, agentDriverConfiguration, controllerConfiguration, context.system)
       .toAllocated
-      .awaitInfinite // FIXME Blocking
+      .awaitInfinite // TODO Blocking
 
     allocated.allocatedThing.untilStopped
       .*>(Task(
@@ -1214,8 +1249,14 @@ with MainJournalingActor[ControllerState, Event]
     logEvent(event)
     event match {
       case UnsignedSimpleItemAdded(agentRef: AgentRef) =>
-        val entry = registerAgent(agentRef, agentRunId = None, eventId = EventId.BeforeFirst)
-        entry.agentDriver.startFetchingEvents.runAsyncAndForget // TODO
+        val agentDriver = registerAgent(agentRef, agentRunId = None, eventId = EventId.BeforeFirst)
+          .agentDriver
+        agentDriver
+          .startFetchingEvents
+          .onErrorHandle(t => logger.error(
+            s"$agentDriver.startFetchingEvents => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+          .logWhenItTakesLonger(s"$agentDriver.startFetchingEvents}")
+          .awaitInfinite // TODO
 
         // TODO Not required in a future implementation, when Agents must be defined when referenced
         //reattachToAgent(agentRef.path)
@@ -1223,13 +1264,25 @@ with MainJournalingActor[ControllerState, Event]
       case UnsignedSimpleItemChanged(agentRef: AgentRef) =>
         agentRegister(agentRef.path) = agentRegister(agentRef.path).copy(agentRef = agentRef)
         for (uri <- persistence.unsafeCurrentState().agentToUri(agentRef.path)) {
-          agentRegister(agentRef.path).agentDriver.changeUri(agentRef, uri).runAsyncAndForget // TODO
+          val agentDriver = agentRegister(agentRef.path).agentDriver
+          agentDriver
+            .changeUri(agentRef, uri)
+            .onErrorHandle(t => logger.error(
+              s"$agentDriver.changeUri => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+            .logWhenItTakesLonger(s"$agentDriver.changeUri($uri)")
+            .awaitInfinite // TODO
         }
 
       case UnsignedSimpleItemChanged(subagentItem: SubagentItem) =>
         for (agentRef <- persistence.unsafeCurrentState().keyToItem(AgentRef).get(subagentItem.agentPath)) {
           for (uri <- persistence.unsafeCurrentState().agentToUri(agentRef.path)) {
-            agentRegister(agentRef.path).agentDriver.changeUri(agentRef, uri).runAsyncAndForget // TODO
+            val agentDriver = agentRegister(agentRef.path).agentDriver
+            agentDriver
+              .changeUri(agentRef, uri)
+              .onErrorHandle(t => logger.error(
+                s"$agentDriver.changeUri => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+              .logWhenItTakesLonger(s"$agentDriver.changeUri($uri)")
+              .awaitInfinite // TODO
           }
         }
 
@@ -1241,7 +1294,12 @@ with MainJournalingActor[ControllerState, Event]
       case ItemDeleted(agentPath: AgentPath) =>
         for (entry <- agentRegister.get(agentPath)) {
           entry.isDeleted = true
-          entry.agentDriver.terminate(reset = true).runAsyncAndForget // TODO
+          val agentDriver = entry.agentDriver
+          agentDriver.terminate(reset = true)
+            .onErrorHandle(t => logger.error(
+              s"$agentDriver.terminate(reset) => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+            .logWhenItTakesLonger(s"$agentDriver.terminate(reset)")
+            .runAsyncAndForget // TODO
           // Actor terminates asynchronously, so do not add an AgentRef immediately after deletion!
         }
 
@@ -1265,20 +1323,38 @@ with MainJournalingActor[ControllerState, Event]
                     itemKey match {
                       case itemKey: SignableItemKey =>
                         for (signedItem <- _controllerState.keyToSignedItem.get(itemKey)) {
-                          agentEntry.agentDriver.send(AgentDriver.Queueable.AttachSignedItem(signedItem)).runAsyncAndForget // TODO
+                          val agentDriver = agentEntry.agentDriver
+                          agentDriver
+                            .send(AgentDriver.Queueable.AttachSignedItem(signedItem))
+                            .onErrorHandle(t => logger.error(
+                              s"$agentDriver.send(AttachSignedItem) => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+                            .logAndIgnoreError(s"$agentDriver.send(AttachSignedItem)")
+                            .awaitInfinite // TODO
                         }
 
                       case itemKey: UnsignedItemKey =>
                         for (item <- _controllerState.keyToItem.get(itemKey)) {
                           val unsignedItem = item.asInstanceOf[UnsignedItem]
-                          agentEntry.agentDriver.send(AgentDriver.Queueable.AttachUnsignedItem(unsignedItem)).runAsyncAndForget // TODO
+                          val agentDriver = agentEntry.agentDriver
+                          agentDriver
+                            .send(AgentDriver.Queueable.AttachUnsignedItem(unsignedItem))
+                            .onErrorHandle(t => logger.error(
+                              s"$agentDriver.send(AttachUnsignedItem) => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+                            .logAndIgnoreError(s"$agentDriver.send(AttachUnsignedItem)")
+                            .awaitInfinite // TODO
                         }
                     }
 
                   case Detachable =>
                     if (/*!agentEntry.isDeleted && */!agentEntry.detachingItems.contains(itemKey)) {
                       agentEntry.detachingItems += itemKey
-                      agentEntry.agentDriver.send(AgentDriver.Queueable.DetachItem(itemKey)).runAsyncAndForget // TODO
+                      val agentDriver = agentEntry.agentDriver
+                      agentEntry.agentDriver
+                        .send(AgentDriver.Queueable.DetachItem(itemKey))
+                        .onErrorHandle(t => logger.error(
+                          s"$agentDriver.send(DetachItem) => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+                        .logWhenItTakesLonger(s"$agentDriver.send(DetachItem)")
+                        .awaitInfinite // TODO
                     }
 
                   case _ =>
@@ -1298,7 +1374,12 @@ with MainJournalingActor[ControllerState, Event]
           subagentItemState.isResettingForcibly match {
             case Some(force) =>
               for (agentDriver <- agentRegister.get(subagentItemState.item.agentPath).map(_.agentDriver)) {
-                agentDriver.send(AgentDriver.Queueable.ResetSubagent(subagentId, force)).runAsyncAndForget // TODO
+                agentDriver
+                  .send(AgentDriver.Queueable.ResetSubagent(subagentId, force))
+                  .onErrorHandle(t => logger.error(
+                    s"$agentDriver.send(ResetSubagent) => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+                  .logWhenItTakesLonger(s"$agentDriver.send(ResetSubagent)")
+                  .awaitInfinite // TODO
               }
             case _ =>
           }
@@ -1407,7 +1488,13 @@ with MainJournalingActor[ControllerState, Event]
           for ((_, agentEntry) <- checkedWorkflowAndAgentEntry(order)) {
             // CommandQueue filters multiple equal MarkOrder
             // because we may send multiple ones due to asynchronous execution
-            agentEntry.agentDriver.send(AgentDriver.Queueable.MarkOrder(order.id, mark)).runAsyncAndForget // TODO
+            val agentDriver = agentEntry.agentDriver
+            agentDriver
+              .send(AgentDriver.Queueable.MarkOrder(order.id, mark))
+              .onErrorHandle(t => logger.error(
+                s"$agentDriver.send(MarkOrder(${order.id})) => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+              .logWhenItTakesLonger(s"$agentDriver.send(MarkOrder(${order.id}))")
+              .awaitInfinite // TODO
           }
         }
       }
@@ -1455,25 +1542,37 @@ with MainJournalingActor[ControllerState, Event]
           import agentEntry.{agentDriver, agentPath}
 
           // Maybe attach Workflow
-          workflow.referencedAttachableToAgentSignablePaths
-            .flatMap(_controllerState.pathToSignedSimpleItem.get)
-            .appended(signedWorkflow)
-            .filter(signedItem => isDetachedOrAttachable(signedItem.value, agentPath))
-            .foreach { signedItem =>
-              agentDriver.send(AgentDriver.Queueable.AttachSignedItem(signedItem)).runAsyncAndForget // TODO
-            }
+          val attachSignedItems: Seq[Task[Unit]] =
+            workflow.referencedAttachableToAgentSignablePaths
+              .flatMap(_controllerState.pathToSignedSimpleItem.get)
+              .appended(signedWorkflow)
+              .filter(signedItem => isDetachedOrAttachable(signedItem.value, agentPath))
+              .map(signedItem =>
+                agentDriver.send(AgentDriver.Queueable.AttachSignedItem(signedItem)))
 
           // Attach more required Items
-          for (item <- unsignedItemsToBeAttached(workflow, agentPath)) {
-            agentDriver.send(AgentDriver.Queueable.AttachUnsignedItem(item)).runAsyncAndForget // TODO
-          }
+          val attachUnsignedItems: Seq[Task[Unit]] =
+            unsignedItemsToBeAttached(workflow, agentPath)
+              .toVector
+              .map(item =>
+                agentDriver.send(AgentDriver.Queueable.AttachUnsignedItem(item)))
 
-          orderEntry.triedToAttached = true
           // TODO AttachOrder mit parent orders!
           // Agent markiert die als bloß gebraucht für Kindaufträge
           // Mit Referenzzähler: der letzte Kindauftrag löscht seine Elternaufträge
-          agentDriver.send(AgentDriver.Queueable.AttachOrder(order, agentPath)).runAsyncAndForget // TODO
-          // FIXME Reihenfolge der runAsyncAndForget ist beliebig!
+          val attachOrder: Task[Unit] =
+            agentDriver.send(AgentDriver.Queueable.AttachOrder(order, agentPath))
+
+          orderEntry.triedToAttached = true
+
+          // Now, Tasks are calculcated from mutable state and and be started as a sequence:
+          (attachSignedItems ++ attachUnsignedItems :+ attachOrder)
+            .sequence
+            .map(_.combineAll)
+            .onErrorHandle(t => logger.error(
+              s"tryAttachOrderToAgent(${order.id}) => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+            .logWhenItTakesLonger(s"tryAttachOrderToAgent(${order.id})")
+            .awaitInfinite // TODO
         }
       }
     }
@@ -1539,11 +1638,16 @@ with MainJournalingActor[ControllerState, Event]
           .flatMap(_.detaching)
           .onProblem(p => logger.error(s"detachOrderFromAgent '$orderId': not Detaching: $p"))
           .foreach { agentPath =>
-            agentRegister.get(agentPath) match {
+            agentRegister.get(agentPath).map(_.agentDriver) match {
               case None => logger.error(s"detachOrderFromAgent '$orderId': Unknown $agentPath")
-              case Some(a) =>
-                a.agentDriver.send(AgentDriver.Queueable.DetachOrder(orderId)).runAsyncAndForget
+              case Some(agentDriver) =>
                 orderEntry.isDetaching = true
+                agentDriver
+                  .send(AgentDriver.Queueable.DetachOrder(orderId))
+                  .onErrorHandle(t => logger.error(
+                    s"detachOrderFromAgent($orderId) => ${t.toStringWithCauses}", t.nullIfNoStackTrace))
+                  .logWhenItTakesLonger(s"detachOrderFromAgent($orderId)")
+                  .awaitInfinite // TODO
             }
           }
       }
