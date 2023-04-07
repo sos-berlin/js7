@@ -62,7 +62,7 @@ final class AsyncLockTest extends OurAsyncTestSuite
     "AsyncLock, not concurrent" in {
       val lock = AsyncLock("TEST", logWorryDurations = Nil, suppressLog = suppressLog)
       Observable.fromIterable(1 to n)
-        .map(_ => lock.lock(Task.unit))
+        .mapEval(_ => lock.lock(Task.unit))
         .completedL
         .timed.map { case (duration, ()) =>
           logger.info(Stopwatch.itemsPerSecondString(duration, n))
