@@ -1,5 +1,6 @@
 package js7.base.monixutils
 
+import cats.effect.Resource
 import js7.base.problem.Checked
 import js7.base.utils.AsyncLock
 import monix.eval.Task
@@ -44,6 +45,12 @@ final class AsyncVariable[V](initial: V)
         _value = v
         r
       }))
+
+  def use[R](task: V => Task[R])(implicit src: sourcecode.Enclosing): Task[R] =
+    resource.use(task)
+
+  def resource(implicit src: sourcecode.Enclosing): Resource[Task, V] =
+    lock.resource.map(_ => _value)
 
   private def shieldValue[A](body: => Task[A]): Task[A] =
     lock.lock(Task.defer/*shield access to _value in body*/(body))
